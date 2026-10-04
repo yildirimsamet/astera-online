@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * CHAT READS TWO POINTS LARGER THAN THE REST OF THE GAME. D170, owner request.
+ * CHAT MESSAGE COPY MATCHES ITS 16PX COMPOSER. Owner request, 2026-10-04.
  *
  * Every other surface in Astera states a FACT — a price, a level, a countdown —
  * and the compact scale is what lets a 350px screen hold enough of them to make a
@@ -20,10 +20,10 @@ import { describe, expect, it } from 'vitest';
 const CSS = readFileSync(resolve(__dirname, '../src/styles/chrome.css'), 'utf8');
 
 describe('the chat type scale', () => {
-  it('defines a scoped two-point lift rather than a second scale', () => {
+  it('matches the composer inside the chat scope', () => {
     const block = /\.chat-type\s*\{([^}]*)\}/.exec(CSS)?.[1] ?? '';
     expect(block, '.chat-type is missing from chrome.css').not.toBe('');
-    expect(block).toMatch(/--text-body:\s*14px/);
+    expect(block).toMatch(/--text-body:\s*16px/);
     expect(block).toMatch(/--text-micro:\s*11px/);
   });
 

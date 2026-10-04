@@ -119,9 +119,11 @@ const WEIGHT_STEP = { down: 1.8636, up: 1.7073 } as const;
  * here leaves both sub-ratios and the 3.18× floor-to-cap distance untouched: the
  * markers grow, the statement they make does not move.
  *
- * 0.290 / 0.540 / 0.922 becomes 0.362 / 0.675 / 1.152.
+ * The earlier quarter lift made 0.290 / 0.540 / 0.922 into 0.362 / 0.675 / 1.152.
+ * Owner instruction on 2026-10-04 adds 30% at all three anchors and every rung:
+ * 0.471 / 0.8775 / 1.498. The same shape and clamping remain in effect.
  */
-const WEIGHT_SCALE = 1.25;
+const WEIGHT_SCALE = 1.25 * 1.3;
 
 const WEIGHT_RADIUS: Record<1 | 2 | 3, number> = {
   1: (WEIGHT_MIDDLE * WEIGHT_SCALE) / WEIGHT_STEP.down,

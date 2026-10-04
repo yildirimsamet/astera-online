@@ -67,7 +67,7 @@ describe('monthly fleet tempo', () => {
   it('keeps ground craft stationary and mining independent', () => {
     for (const id of GROUND_HULLS) expect(HULLS[id].speed).toBe(0);
     expect(HULLS.PROSPECTOR.speed).toBe(PROSPECTOR.speed);
-    expect(PROSPECTOR.speed).toBe(618.75);
+    expect(PROSPECTOR.speed).toBe(1546.875);
   });
 });
 
@@ -167,7 +167,7 @@ describe('D153 probe speed', () => {
 
   /** The cut is on the probe alone. Nothing else in the model reads it. */
   it('moves nothing but the probe', () => {
-    expect(PROSPECTOR.speed).toBe(618.75);
+    expect(PROSPECTOR.speed).toBe(1546.875);
     expect(fleetTravelExact(1250, { DART: 1 }, UNAIDED))
       .toBeCloseTo((15 - 1 / 6) / 2 / FLEET_SPEED_FACTOR);
   });

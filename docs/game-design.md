@@ -19,8 +19,10 @@ The next season uses a radius-`4,500` galaxy with a `450` minimum pair distance:
 addresses, 100 bot addresses and 130 neutral addresses. Neutrals are staged (`15/8/3` initial
 T1/T2/T3 openings, followed by one opening per free colony slot at the census cadence) while the
 full authored address pool remains deterministic. Player mobile hulls are slowed to `75%` of their
-profile speed and pirate fleets to `70%`; the Prospector travels at `618.75`, returns laden at
-`309.375`, and chases rocks in the `262.5–562.5` range. Asteroid lifetime is unchanged.
+profile speed and pirate fleets to `70%`; the Prospector travels at `1546.875`, returns laden at
+`773.4375`, and chases rocks in the `262.5–562.5` range. The mining speeds include the owner's
+2026-10-04 `2.5×` increase; asteroid lifetime is unchanged. The same update enlarges all three
+planet size anchors and the intervening Core-level ramp by `30%`, preserving their proportions.
 
 The convoy clock is 180 minutes. Trade ships use four 180-minute daily windows: `01–04`, `07–10`,
 `15–18` and `21–24`. These are new-season constants; existing live seasons are not migrated.

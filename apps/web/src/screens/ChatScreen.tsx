@@ -689,7 +689,7 @@ function ChannelPanel({
                         <span className="block truncate text-v2-ink-3">{message.replyTo.content}</span>
                       </div>
                     ) : null}
-                    <p className="mt-0.5 whitespace-pre-wrap break-words text-caption leading-snug text-v2-ink-2">
+                    <p className="mt-0.5 whitespace-pre-wrap break-words text-body leading-snug text-v2-ink-2">
                       {message.content}
                     </p>
                   </div>

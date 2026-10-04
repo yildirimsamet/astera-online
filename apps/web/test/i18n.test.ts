@@ -163,8 +163,10 @@ describe('Vocabulary describes the calibrated catalogue, not its retired stats',
   it('states the Prospector outbound and laden return speeds in every language', () => {
     for (const locale of [en, tr, de, fr, es, ja]) {
       const detail = locale.vocabulary.hull.PROSPECTOR.detail;
-      expect(detail).toContain('619');
-      expect(detail).toContain('309');
+      expect(detail).toContain('1547');
+      expect(detail).toContain('773');
+      expect(detail).not.toContain('619');
+      expect(detail).not.toContain('309');
       expect(detail).not.toContain('825');
     }
   });

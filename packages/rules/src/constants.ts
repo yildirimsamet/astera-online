@@ -1603,8 +1603,9 @@ export const PROBE = {
  *
  * SPEED IS THE LOAD-BEARING NUMBER. D74 set the pre-scaling base to 330; the
  * wider-disc unit change made that 825. The owner's 2026-09-25 fleet pass then
- * slowed every leg of this craft by 25%, leaving 618.75 before a Derrick and
- * 928.125 with its 1.5x lift.
+ * slowed every leg of this craft by 25%. The 2026-10-04 owner instruction then
+ * raised mining speed 2.5x to 1546.875 before a Derrick and 2320.3125 with its
+ * 1.5x lift; rocks retain the September speed band.
  *
  * It was 62 against rocks that run at 140-300, and the mathematics of that were
  * never wrong — a closed orbit means a slower craft still has a meeting, it simply
@@ -1944,12 +1945,11 @@ export const PROSPECTOR = {
   /**
    * Game units per minute, before a Derrick.
    *
-   * The wider-disc unit change made the old 330 base 825. Owner instruction on
-   * 2026-09-25 applies the same 25% slowdown to the Prospector and its moving
-   * targets: 825 → 618.75 here, and 350–750 → 262.5–562.5 for rocks. That
-   * keeps the chase relationship while making the whole mining journey slower.
+   * September's wider-disc profile was 618.75 after its 25% slowdown. Owner
+   * instruction on 2026-10-04 raises the craft alone 2.5x to 1546.875; rocks
+   * retain 262.5–562.5. Both mining and salvage read this one base speed.
    */
-  speed: 618.75,
+  speed: 1546.875,
   /**
    * HOW MUCH SLOWER A LADEN CRAFT FLIES HOME. Owner's figure: twice, from three
    * (2026-09-14). The brake stays a brake — a full craft is still the slowest

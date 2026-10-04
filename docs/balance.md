@@ -21,8 +21,11 @@ and this profile win.
   under the staged census (`T1 15 / T2 8 / T3 3` initially, then one free colony slot per census),
   with the T3 target share at `0.13`.
 - **Tempo:** player mobile hulls use `0.75×` their profile speed (including cargo and collectors),
-  pirate fleets use `0.70×`; the Prospector is `618.75` units/minute, its rocks are `262.5–562.5`,
-  and its laden return is `309.375` units/minute. Asteroid lifetime is unchanged.
+  pirate fleets use `0.70×`; the Prospector is `1546.875` units/minute after the owner-approved
+  2026-10-04 `2.5×` increase. Its rocks remain `262.5–562.5`, and its laden return is `773.4375`
+  units/minute. Asteroid lifetime is unchanged.
+  Planet marker radii also grew uniformly `1.3×`: Core `1 / 11 / 22` anchors are approximately
+  `0.471 / 0.8775 / 1.498` world units; the geometric size ramp and development ratios are retained.
 - **Fuel:** the fleet-wide value rate is `0.00495`, 10% below the former `0.0055` rate after the
   slowdown; the Collector's special fuel mass is `900` instead of `1,000`. Chosen travel pace
   still changes arrival time without an additional fuel discount.

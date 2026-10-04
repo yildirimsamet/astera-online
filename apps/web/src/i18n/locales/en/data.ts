@@ -272,7 +272,7 @@ export const vocabulary = {
       tag: 'Mines asteroids',
       role: 'Mines asteroids with a base hold of 200 · cannot join a raid fleet',
       pitch: 'Intercepts a moving asteroid and returns what it can carry to the Works. It cannot raid or transfer.',
-      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base outbound and empty-return speed is 619; laden return speed is 309. Its base hold is 200; a Derrick and Prospector Holds research can improve these values. Each world starts with room for two; Prospector Holds III opens a third craft slot. It never joins raids or home defence.',
+      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base outbound and empty-return speed is 1547; laden return speed is 773. Its base hold is 200; a Derrick and Prospector Holds research can improve these values. Each world starts with room for two; Prospector Holds III opens a third craft slot. It never joins raids or home defence.',
     },
   },
 

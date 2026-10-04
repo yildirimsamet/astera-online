@@ -1,15 +1,17 @@
 # Kazıcı hızının 2,5× artırılması — 4 Ekim 2026
 
 İstek, büyüyen galakside Kazıcıların gidiş/dönüş uçuşunu hızlandırmak olarak
-incelendi. Bu belge inceleme sonucudur; kaynak sabiti ve canlı hız değiştirilmedi.
+incelendi. İlk inceleme kaynak sabiti veya canlı hız değiştirilmeden tamamlandı.
+Owner'ın sonraki uygulama/yayın talebiyle kaynak hız `1546.875` yapıldı; aşağıdaki
+tablo değişiklik öncesini ve yeni profili karşılaştırır. Yayın kanıtı release kaydına eklenir.
 Ekonomi simülasyonu ve snowball audit çalıştırılmadı.
 
 ## Sayısal etki
 
-`PROSPECTOR.speed` şu anda 618,75. Tek hız sabiti 1.546,875 yapıldığında,
+`PROSPECTOR.speed` önce 618,75'ti. Tek hız sabiti 1.546,875 yapıldığında,
 `prospectorSpeed` ve `prospectorReturnSpeed` mevcut çarpanları korur:
 
-| Koşul | Şimdi | Önerilen | Birim |
+| Koşul | Önce | Yeni | Birim |
 | --- | ---: | ---: | --- |
 | Gidiş / boş dönüş | 618,75 | 1.546,875 | oyun birimi/dakika |
 | Yüklü dönüş | 309,375 | 773,4375 | oyun birimi/dakika |
@@ -40,8 +42,7 @@ sürelerine doğrudan `÷2,5` uygulanmaz; gerçek solver yeni buluşmayı hesapl
 - Daha fazla sefer ve daha erken varış kaynak toplama fırsatını artırır; gelir
   kesin olarak 2,5× olmaz. Alanın ore/spawn miktarı ve rakiplerin önce ulaşması
   sınırlayıcı kalır. Bu inceleme ilerleme/ekonomi dengesini simüle etmez.
-- Altı dildeki Kazıcı açıklamaları 619/309 hızlarını sabit metin olarak içerir;
-  gerçek değişiklikte 1.547/773 gösterimine veya kuraldan beslenen değerlere geçmeli.
+- Altı dildeki Kazıcı açıklamaları yeni yuvarlanmış `1547/773` hızlarını gösterir.
 
 ## Test kanıtı ve uygulama kapsamı
 

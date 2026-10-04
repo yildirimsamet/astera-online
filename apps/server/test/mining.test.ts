@@ -1168,6 +1168,79 @@ describe('mining', () => {
   });
 
   describe('the trip home', () => {
+    it('admits the faster laden round trip only when it fits before season end', async () => {
+      await placeAt(f.db, other, { x: 1000 });
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const field = await giveDebris(f.db, f.seasonId, other, {
+        alloy: 1000, crystal: 0, createdAt: f.clock.now(),
+      });
+      const now = f.clock.now().getTime();
+      await f.db.update(seasons).set({ endsAt: new Date(now + 2 * 60_000) })
+        .where(eq(seasons.id, f.seasonId));
+      await expect(launchHarvest(f.db, mine, field.id, 1, f.clock))
+        .rejects.toMatchObject({ code: 'SEASON_ENDS_BEFORE_RETURN' });
+      expect(await f.db.select().from(miningRuns)).toEqual([]);
+      await f.db.update(seasons).set({ endsAt: new Date(now + 3 * 60_000) })
+        .where(eq(seasons.id, f.seasonId));
+      const launched = await launchHarvest(f.db, mine, field.id, 1, f.clock);
+      f.clock.set(launched.arriveAt);
+      await worker(f).tick();
+      const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      expect(back!.minedAlloy).toBe(200);
+      expect(back!.homeAt!.getTime() - now).toBeLessThan(3 * 60_000);
+      expect(back!.homeAt!.getTime() - now).toBeGreaterThan(2 * 60_000);
+    });
+
+    it('keeps a stored legacy arrival and starts its laden return at the new speed', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const field = await giveDebris(f.db, f.seasonId, other, {
+        alloy: 1000, crystal: 0, createdAt: f.clock.now(),
+      });
+      const launched = await launchHarvest(f.db, mine, field.id, 1, f.clock);
+      const legacyArrival = new Date(f.clock.now().getTime() + travelExact(120, 618.75) * 60_000);
+      await f.db.update(miningRuns).set({ arriveAt: legacyArrival })
+        .where(eq(miningRuns.id, launched.runId));
+      await f.db.update(scheduledEvents).set({ resolveAt: legacyArrival })
+        .where(and(eq(scheduledEvents.refId, launched.runId), eq(scheduledEvents.kind, 'mining_arrival')));
+      f.clock.set(new Date(legacyArrival.getTime() - 1));
+      await worker(f).tick();
+      const [outbound] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      expect(outbound).toMatchObject({ status: 'outbound', arriveAt: legacyArrival, homeAt: null });
+      f.clock.set(legacyArrival);
+      await worker(f).tick();
+      const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      expect(back!.minedAlloy).toBe(200);
+      const expectedHome = legacyArrival.getTime() + travelExact(120, 773.4375) * 60_000;
+      expect(Math.abs(back!.homeAt!.getTime() - expectedHome)).toBeLessThanOrEqual(1);
+    });
+
+    it('lands an already returning legacy craft at its persisted home instant', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const field = await giveDebris(f.db, f.seasonId, other, {
+        alloy: 1000, crystal: 0, createdAt: f.clock.now(),
+      });
+      const launched = await launchHarvest(f.db, mine, field.id, 1, f.clock);
+      f.clock.set(launched.arriveAt);
+      await worker(f).tick();
+      const legacyHome = new Date(launched.arriveAt.getTime() + travelExact(120, 309.375) * 60_000);
+      await f.db.update(miningRuns).set({ homeAt: legacyHome })
+        .where(eq(miningRuns.id, launched.runId));
+      await f.db.update(scheduledEvents).set({ resolveAt: legacyHome })
+        .where(and(eq(scheduledEvents.refId, launched.runId), eq(scheduledEvents.kind, 'mining_return')));
+      f.clock.set(new Date(legacyHome.getTime() - 1));
+      await worker(f).tick();
+      const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      expect(back).toMatchObject({ status: 'returning', homeAt: legacyHome, minedAlloy: 200 });
+      f.clock.set(legacyHome);
+      await worker(f).tick();
+      const [done] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      expect(done).toMatchObject({ status: 'done', minedAlloy: 200 });
+      const [craft] = await f.db.select().from(units).where(and(
+        eq(units.planetId, mine), eq(units.location, 'home'), eq(units.hull, 'PROSPECTOR'),
+      ));
+      expect(craft!.count).toBe(1);
+    });
+
     it.each(['alloy', 'crystal', 'deuterium'] as const)(
       'keeps a partial %s-only haul at laden speed', async (resource) => {
         await giveUnits(f.db, mine, { PROSPECTOR: 1 });

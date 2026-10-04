@@ -7,7 +7,8 @@ import {
 describe('earliest orbital rendezvous', () => {
   it.each([
     { name: 'pirate', radius: 1550, targetSpeed: PIRATE.speedMax * 2, speed: HULLS.CITADEL.speed, passAt: 0.1, offset: 1 },
-    { name: 'asteroid', radius: 1000, targetSpeed: GALAXY.asteroidSpeedMax, speed: PROSPECTOR.speed, passAt: 0.005, offset: 0.1 },
+    // Keep a slow craft for this transient-pass regression as live mining speed changes.
+    { name: 'asteroid', radius: 1000, targetSpeed: GALAXY.asteroidSpeedMax, speed: GALAXY.asteroidSpeedMax * 1.1, passAt: 0.005, offset: 0.1 },
   ])('keeps the brief first $name pass between scan samples', ({ radius, targetSpeed, speed, passAt, offset }) => {
     const period = 2 * Math.PI * radius / targetSpeed;
     const orbit: OrbitElements = {
@@ -33,6 +34,22 @@ describe('earliest orbital rendezvous', () => {
       expect(hit!.flightMinutes).toBeCloseTo(hi, 9);
       expect(Math.abs(residual(hit!.flightMinutes))).toBeLessThan(1e-8);
     }
+  });
+
+  it.each([1, 1.5])('meets a moving asteroid at the current mining speed with a %s multiplier', (multiplier) => {
+    const orbit: OrbitElements = {
+      radius: 4000, period: 2 * Math.PI * 4000 / GALAXY.asteroidSpeedMax,
+      speed: GALAXY.asteroidSpeedMax, phase: 1, inclination: 0.3, ascendingNode: 0.7,
+    };
+    const from = { x: -1000, y: 0, z: 1000 };
+    const now = 40000;
+    const speed = PROSPECTOR.speed * multiplier;
+    const residual = (minutes: number) => travelExact(distance(from, orbitPosition(orbit, now + minutes)), speed) - minutes;
+    const hit = interceptOrbit(from, speed, orbit, now + 30, now);
+    expect(hit).not.toBeNull();
+    expect(Math.abs(residual(hit!.flightMinutes))).toBeLessThan(1e-7);
+    expect(residual(hit!.flightMinutes - 0.0001)).toBeGreaterThan(0);
+    expect(hit!.flightMinutes).toBeLessThan(travelExact(5000, 618.75 * multiplier));
   });
 
   it('meets an already coincident target immediately', () => {

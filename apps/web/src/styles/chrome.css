@@ -1480,7 +1480,7 @@
   text-underline-offset: 3px;
 }
 /**
- * CHAT READS TWO POINTS LARGER THAN THE REST OF THE GAME. D170, owner request.
+ * CHAT MESSAGES MATCH THE COMPOSER'S 16PX TYPE. Owner request, 2026-10-04.
  *
  * Every other surface states a FACT — a price, a level, a countdown — and the
  * compact scale is what lets a 350px screen hold enough of them to decide with.
@@ -1490,10 +1490,10 @@
  * A SCOPE, NOT A SECOND SCALE. It re-points the two tokens the chat surface
  * actually uses, so the lift follows every element inside the sheet without any
  * of them naming a size of its own — and nothing outside it moves. Raising
- * `--text-body` globally would have grown every row in the game by two points.
+ * `--text-body` globally would grow every row in the game.
  */
 .chat-type {
-  --text-body: 14px;
+  --text-body: 16px;
   --text-micro: 11px;
 }
 
@@ -1505,7 +1505,7 @@
   background-color: #231d38;
 }
 
-/* iOS zooms focused small controls. Keep the chat copy compact and its controls legible. */
+/* iOS zooms focused small controls. Match the legible 16px message copy. */
 .chat-type :is(input, textarea, select) {
   font-size: 16px;
   line-height: 1.25;

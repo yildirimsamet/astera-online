@@ -348,7 +348,7 @@ export const vocabulary = {
       tag: 'Asteroit kazar',
       role: 'Asteroitlerden cevher getirir; taban ambarı 200’dür ve akın filosuna katılamaz.',
       pitch: 'Hareketli bir asteroidi yakalar, taşıyabildiği cevheri üretim havuzuna getirir. Savaş veya transfer görevi yapmaz.',
-      detail: 'Kazıcı yalnız keşfedilmiş asteroitlere ve enkaz sahalarına gönderilir. Taban gidiş ve boş dönüş hızı 619, yüklü dönüş hızı 309, taban ambarı 200’dür; Matkap ve Kazıcı Ambarları araştırması bu değerleri artırabilir. Her dünya başlangıçta en fazla iki Kazıcı tutar; Kazıcı Ambarları III üçüncü araç yuvasını açar. Normal akınlara katılmaz ve ev savunmasında savaşmaz.',
+      detail: 'Kazıcı yalnız keşfedilmiş asteroitlere ve enkaz sahalarına gönderilir. Taban gidiş ve boş dönüş hızı 1547, yüklü dönüş hızı 773, taban ambarı 200’dür; Matkap ve Kazıcı Ambarları araştırması bu değerleri artırabilir. Her dünya başlangıçta en fazla iki Kazıcı tutar; Kazıcı Ambarları III üçüncü araç yuvasını açar. Normal akınlara katılmaz ve ev savunmasında savaşmaz.',
     },
   },
 

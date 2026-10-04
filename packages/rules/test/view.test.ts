@@ -85,17 +85,18 @@ describe('D153 world size by core level', () => {
    * AND A QUARTER WENT BACK ON, THROUGH THE SAME KIND OF DIAL. Owner call: worlds
    * were reading too small. `WEIGHT_SCALE` multiplies the anchors rather than
    * three retyped numbers, for exactly the reason D166 had to re-derive them — so
-   * the figures below moved and the two properties the tests after this one hold
+   * The 2026-10-04 owner request adds another 30% through that same dial. The
+   * figures below moved and the two properties the tests after this one hold
    * (one uniform factor, and no level that is a jump) did not.
    */
   it('anchors the three authored sizes at the floor, the middle and the cap', () => {
-    expect(worldRadius(1)).toBeCloseTo(0.362, 3);
-    expect(worldRadius(11)).toBeCloseTo(0.675, 6);
-    expect(worldRadius(CORE_TOP_LEVEL)).toBeCloseTo(1.152, 3);
+    expect(worldRadius(1)).toBeCloseTo(0.471, 3);
+    expect(worldRadius(11)).toBeCloseTo(0.675 * 1.3, 6);
+    expect(worldRadius(CORE_TOP_LEVEL)).toBeCloseTo(1.498, 3);
   });
 
   /** And the shrink is UNIFORM, which is the property that keeps the ramp's shape. */
-  it('shrank all three anchors by one factor', () => {
+  it('scales all three anchors by one factor', () => {
     const scale = worldRadius(11) / 0.82;
     expect(worldRadius(1) / 0.44).toBeCloseTo(scale, 2);
     expect(worldRadius(CORE_TOP_LEVEL) / 1.4).toBeCloseTo(scale, 2);

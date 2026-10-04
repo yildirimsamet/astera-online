@@ -348,7 +348,7 @@ export const vocabulary = {
       tag: 'Mines d\'astéroïdes',
       role: 'Les astéroïdes miniers avec une base de 200 · ne peuvent pas rejoindre une flotte de raid',
       pitch: 'Intercepte un astéroïde en mouvement et renvoie ce qu\'il peut transporter aux Travaux. Il ne peut ni attaquer ni transférer.',
-      detail: 'Un prospecteur ne peut être envoyé que vers des astéroïdes et des champs de débris révélés. Sa vitesse de base à l’aller et au retour à vide est de 619 ; chargé, il revient à 309. Sa capacité de base est de 200 ; la Foreuse et la recherche Prospector Holds peuvent améliorer ces valeurs. Chaque monde commence avec de la place pour deux ; Prospector Holds III ouvre un troisième emplacement d’appareil. Il ne rejoint jamais les raids ni la défense locale.',
+      detail: 'Un prospecteur ne peut être envoyé que vers des astéroïdes et des champs de débris révélés. Sa vitesse de base à l’aller et au retour à vide est de 1547 ; chargé, il revient à 773. Sa capacité de base est de 200 ; la Foreuse et la recherche Prospector Holds peuvent améliorer ces valeurs. Chaque monde commence avec de la place pour deux ; Prospector Holds III ouvre un troisième emplacement d’appareil. Il ne rejoint jamais les raids ni la défense locale.',
     },
   },
 

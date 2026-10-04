@@ -272,7 +272,7 @@ export const vocabulary = {
       tag: 'Minas de asteroides',
       role: 'Extrae asteroides con una base de 200 · no puede unirse a una flota de incursión',
       pitch: 'Intercepta un asteroide en movimiento y devuelve lo que puede transportar a Producción. No puede atacar ni transferir.',
-      detail: 'Un Prospector solo puede enviarse a asteroides y campos de escombros revelados. Su velocidad base de ida y de regreso vacío es 619; cargado regresa a 309. Su capacidad base es 200; Derrick y la investigación Bodegas de Prospector pueden mejorar estos valores. Cada mundo comienza con espacio para dos; Bodegas de Prospector III abre una tercera ranura. Nunca se une a incursiones ni a la defensa local.',
+      detail: 'Un Prospector solo puede enviarse a asteroides y campos de escombros revelados. Su velocidad base de ida y de regreso vacío es 1547; cargado regresa a 773. Su capacidad base es 200; Derrick y la investigación Bodegas de Prospector pueden mejorar estos valores. Cada mundo comienza con espacio para dos; Bodegas de Prospector III abre una tercera ranura. Nunca se une a incursiones ni a la defensa local.',
     },
   },
 

@@ -239,7 +239,7 @@ describe('Fleet V2 catalog contract — D148', () => {
     })).toBe(true);
   });
 
-  it('leaves the ground and mining craft numerically untouched', () => {
+  it('preserves ground craft and the current mining profile', () => {
     expect(HULLS.BASTION).toMatchObject({
       id: 'BASTION', cls: 'BULWARK', atk: 144, hp: 1000, speed: 0, cargo: 0,
       minShipyard: 1, ground: true,
@@ -253,7 +253,7 @@ describe('Fleet V2 catalog contract — D148', () => {
       minShipyard: 0, ground: true,
     });
     expect(HULLS.PROSPECTOR).toMatchObject({
-      id: 'PROSPECTOR', cls: 'SUPPORT', atk: 0, hp: 150, speed: 618.75, cargo: 200,
+      id: 'PROSPECTOR', cls: 'SUPPORT', atk: 0, hp: 150, speed: 1546.875, cargo: 200,
       minShipyard: 1, ground: false,
     });
   });

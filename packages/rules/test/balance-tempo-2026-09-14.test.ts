@@ -64,10 +64,10 @@ describe('the drill and the rock it meets', () => {
   });
 
   it('comes home at half speed laden, not a third', () => {
-    expect(PROSPECTOR.speed).toBe(618.75);
+    expect(PROSPECTOR.speed).toBe(1546.875);
     expect(PROSPECTOR.returnSpeedFactor).toBe(1 / 2);
-    expect(prospectorReturnSpeed([], true)).toBe(309.375);
-    expect(prospectorReturnSpeed([], false)).toBe(618.75);
+    expect(prospectorReturnSpeed([], true)).toBe(773.4375);
+    expect(prospectorReturnSpeed([], false)).toBe(1546.875);
     expect(PROSPECTOR.shortTripMinutes).toBe(4 / 3);
   });
 
