@@ -43,9 +43,6 @@ const raidBody = z.object({
   acknowledgeRadiationLoss: z.boolean().optional(),
 }).strict();
 
-/** Temporary, account-scoped restriction for IMG. Remove after moderation review. */
-const SUSPENDED_PIRATE_RAID_ACCOUNT_ID = '3d0e4b19-35bb-420d-87ad-b57d807c8d04';
-
 /**
  * PIRATES — the third target class. D150.
  *
@@ -256,9 +253,6 @@ export function registerPirateRoutes(app: FastifyInstance): void {
 
   /** Send a fleet at one. Refused if it will be gone before they could arrive. */
   app.post('/api/pirates/raid', { preHandler: requireAuth }, async (req) => {
-    if (req.accountId === SUSPENDED_PIRATE_RAID_ACCOUNT_ID) {
-      throw new GameError('PIRATE_RAID_SUSPENDED', 'Pirate raid dispatch is temporarily unavailable', 403);
-    }
     const body = raidBody.parse(req.body);
     const legacy = await me(req.accountId!);
     const planetId = body.originPlanetId ?? legacy.planetId;

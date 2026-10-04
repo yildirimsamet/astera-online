@@ -26,15 +26,6 @@ const launchBody = z.object({
   craft: z.number().int().min(1).max(500),
 }).strict();
 
-/** Temporary, account-scoped restriction for IMG. Remove after moderation review. */
-const SUSPENDED_MINING_ACCOUNT_ID = '3d0e4b19-35bb-420d-87ad-b57d807c8d04';
-
-const assertMiningAllowed = (accountId: string): void => {
-  if (accountId === SUSPENDED_MINING_ACCOUNT_ID) {
-    throw new GameError('MINING_SUSPENDED', 'Prospector dispatch is temporarily unavailable', 403);
-  }
-};
-
 /**
  * MINING — the Drill's reason to exist. D19.
  *
@@ -241,7 +232,6 @@ export function registerMiningRoutes(app: FastifyInstance): void {
 
   /** Send craft to a wreck field. D32. */
   app.post('/api/mining/harvest', { preHandler: requireAuth }, async (req) => {
-    assertMiningAllowed(req.accountId!);
     const body = z
       .object({ originPlanetId: z.string().uuid().optional(), fieldId: z.string().uuid(), craft: z.number().int().min(1).max(500) }).strict()
       .parse(req.body);
@@ -255,7 +245,6 @@ export function registerMiningRoutes(app: FastifyInstance): void {
 
   /** Send craft at a rock. Refused if it will be gone before they arrive. */
   app.post('/api/mining/launch', { preHandler: requireAuth }, async (req) => {
-    assertMiningAllowed(req.accountId!);
     const body = launchBody.parse(req.body);
     const legacy = await me(req.accountId!);
     const planetId = body.originPlanetId ?? legacy.planetId;

@@ -41,6 +41,10 @@ Journal'ın production'daki ilk 97 girdisi ve SQL dosyaları local'de değişmem
 Journal indeksleri ve zamanları sıralı; eksik SQL dosyası yok. Migration'ın gerçek veri
 üzerindeki başarısı henüz ölçülmedi; stage restore provası bunu doğrulayacak.
 
+`0130`, gezegen deuterium sütunlarının tipini değiştirir; dolu tabloda lock/rewrite süresi
+stage kopyasında ölçülecek. Ruleset 16 yeni worker event türleri üretir; geçiş eski ve yeni
+worker/API süreçleri karışıkken yapılmayacak.
+
 **Tespit edilen wipe engeli:** `planet_faults.planet_id` FK'si `NO ACTION`; production'da
 40 fault kaydı mevcut. Wipe listesinin bunları gezegenlerden önce temizlememesi gerçek
 `delete from planets` / `23503` hatasıyla ayrı local DB'de yeniden üretildi. Düzeltme yalnız
@@ -91,6 +95,7 @@ değerlendirilecek.
    Account/lifetime, önceki sonuçlar, sosyal ödüller, skin hakları ve sohbet arşivlerini karşılaştır.
 7. İki yeni MAIN sezonunun aynı cycle ve hedef ruleset ile açıldığını; yeni event takvimini,
    foreign key temizliğini ve ödüllerin successor cycle'a bağlanmasını doğrula.
+   Her MAIN'de beş anıt ve beş sabit HP bulutu bulunmalı; development lobisi açılmamalı.
 8. Worker ve üç API'yi başlat; dört health ve runtime commit kontrolü yap. Stage SSL/vhost
    kur; hazırlanan client'ı yayınla. HTTPS login, refresh, yeni sezona katılım, ödül teslimi,
    filo/rapor, klan, chat ve SSE akışını tarayıcıdan kontrol et.

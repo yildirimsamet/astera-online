@@ -1,5 +1,4 @@
 import type { FastifyInstance } from 'fastify';
-import { randomUUID } from 'node:crypto';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
@@ -109,23 +108,6 @@ describe('asteroid API fog and launch authority', () => {
     expect(response.statusCode, response.body).toBe(200);
     expect(response.json()).toMatchObject({ asteroidId: targetId });
     expect(response.json()).not.toHaveProperty('asteroidIndex');
-  });
-
-  it('temporarily rejects only IMG on both Prospector launch routes', async () => {
-    const imgAccountId = '3d0e4b19-35bb-420d-87ad-b57d807c8d04';
-    const imgAuth = { authorization: `Bearer ${await app.tokens.issueAccess(imgAccountId)}` };
-
-    for (const [url, payload] of [
-      ['/api/mining/launch', { asteroidId: targetId, craft: 1 }],
-      ['/api/mining/harvest', { fieldId: randomUUID(), craft: 1 }],
-    ] as const) {
-      const denied = await app.inject({ method: 'POST', url, headers: imgAuth, payload });
-      expect(denied.statusCode, denied.body).toBe(403);
-      expect(denied.json()).toMatchObject({ error: 'MINING_SUSPENDED' });
-    }
-
-    const allowed = await launch(authA, { asteroidId: targetId, craft: 1 });
-    expect(allowed.statusCode, allowed.body).toBe(200);
   });
 
   it('wakes the commander’s other live clients when a mining run launches', async () => {
