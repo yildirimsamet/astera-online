@@ -361,3 +361,58 @@ recovery'si çağrılmadı. Kanıt git dışındaki
 penceresi, ardından idempotent snapshot/cleanup; geç kalan veya bozuk state'in
 istatistik/ödül kaybı üretmeden kapanması testlenmeli. Sezon/PvP kuralı bu incelemede
 değiştirilmedi; `CLAUDE.md` core season değişikliklerini sahibin kararına bağlar.
+
+## Kazıcı / chat / gezegen / HUD yayını — 4 Ekim 2026
+
+Stage ve production release'i `810db64db1685e9b3b4ca6d43d390cc7f714b401`;
+sekiz uygulama container'ı aynı
+`sha256:5a534daa6cde878a8cf295bae3a3d0a23cac88808800ba1ef9489520ef98f203`
+image'iyle healthy. Stage geçişi 20:52–20:54 UTC, production 20:56–20:58 UTC
+arasında rolling yapıldı: önce worker, ardından üç API, son olarak web.
+Runtime metrics commit ve iki public `release.txt` aynı SHA'yı doğrular.
+
+- Kazıcı hızı 618,75 → 1.546,875; yüklü dönüş 773,4375. Matkap çarpanı
+  korunur. Kayıtlı `arriveAt` ve başlamış dönüşün `homeAt` saati yeniden yazılmaz.
+- Chat mesaj gövdesi composer ile 16 px; önceki dil tercihi, Klan/DM zeminleri
+  ve iOS input font düzeltmesi korunur. Üç gezegen ölçek anchor'ı 1,3× büyütüldü.
+- HUD'un authoritative planet cache'i geç gelen eski world-list yanıtıyla
+  ezilmiyor. Depo doluyken ödül, rafineri kapasite artışı, harcama, toplama ve
+  iade senaryoları gerçek UI/cache akışında doğrulandı.
+- Web artifact'ı `7d54062f9fcef8ab86dcd550979f91737cf8c158` kaynak build'inden
+  kullanıldı: sonraki commit'lerin web/rules/public/config/dependency girdileri
+  ve Docker web build aşamalarıyla farkı olmadığı kontrol edildi. Yayın marker'ı
+  `810db64`; ayrı `web-source-sha.txt` gerçek build kaynağını kaydeder.
+- Stage'de image startup provası protected checkout'un `umask 077` izinlerinin
+  root-owned Docker COPY dosyalarını runtime `node` için okunamaz bıraktığını
+  yakaladı. Eski healthy worker geri alındı; final image `/app` altında `a+rX`
+  uygular. Runtime hâlâ unprivileged ve dosyaların sahibi root; env'e dokunulmaz.
+  Aynı image üzerinde önce EACCES, sonra okuma ve tüm servis startup'ı doğrulandı.
+
+Manual asteroid işlemi release geçişinden önce ayrıca uygulandı: stage Vantage'a
+20:38:36 UTC'de, production Vantage'a 20:39:59 UTC'de **onar** asteroid eklendi.
+Production toplamı ondur; boş Kestrel'e eklenmedi. Mevcut rock kimlikleri/ore/uçuşlar,
+natural spawn girdileri ve pirate lane aynen korundu; mining cache invalidation
+commit'te yayınlandı. Sabit request zamanı durable idempotency anahtarıdır; aynı
+işlem ancak kayıtlı request ile retry edilir, yeni zamanla tekrar çağrılmaz.
+
+Migration veya ikinci wipe yapılmadı. Journal 141, mevcut iki MAIN sezonun
+kimliği/cycle/start/end'i, 941 hesap, 687 sezon sonucu, 95 sosyal ödül, altı sezon
+ödül hakkı ve Venator'un tek Toxic entitlement'ı önce/sonra aynı. Failed event sıfır.
+Production env aynı; canlı ödeme ayarları korunur. Önceki image/webroot, checksum'lı
+dump, env/nginx ve işlem kanıtları erişimi kısıtlı
+`/home/yildirim/backups/astera-miner-speed-20261004` altında saklandı. Rolling
+rollback yalnız image ve webroot içindir; yeni oyuncu yazılarının üstüne DB restore edilmez.
+
+Typecheck ve root lint geçti. Ekonomi simülasyonu/snowball hariç rules **1.978 PASS**;
+web **5.045 PASS / 29 SKIP**, server **2.871 PASS / 1 SKIP**. Server'ın 197 test
+dosyası, kesilen ilk koşunun tamamlanmış PASS dosyaları, iki düzeltilmiş/yeni dosya
+ve üç ayrı disposable DB'de tamamlanan shard'ın birleşimiyle doğrulandı. Web tam
+koşusundaki eski asteroid/gezegen boyut beklentisi düzeltildi; etkilenen altı dosya
+65/65 geçti. Birleşik dosya kanıtları git dışındaki `out/deployment-20261004` altında
+`miner-final-server-coverage.json` ve `miner-final-web-coverage.json` dosyalarıdır.
+
+350 px gerçek tarayıcıda chat, planet model/pick ve tüm HUD stock işlemleri geçti.
+İki public HTTPS origin'de 43'er asset, server listesi ve same-origin istekler
+hatasız; sertifika doğrulandı, page/request error sıfır. `nginx -t` geçti; mevcut
+konfigürasyon korunarak CORS/mixed-content sorunu gözlenmedi. Fiziksel iPhone
+klavye testi yapılmadı. Altı disposable local test DB'si yayın sonrası kaldırıldı.

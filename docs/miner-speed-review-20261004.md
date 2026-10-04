@@ -73,3 +73,12 @@ Frontend aynı kural ve güncel açıklamalarla yayınlanır; başlamış uçuş
 Git dışındaki kanıtlar `out/deployment-20261004/miner-speed-*-results.json` ve
 `miner-speed-geometry-summary.json` altında; bu aday koşular gerçek kaynak değişikliği
 sonrasında gerekli release doğrulamasının yerine geçmez.
+
+## Uygulama ve yayın sonucu
+
+`810db64db1685e9b3b4ca6d43d390cc7f714b401` stage ve production'a 4 Ekim'de
+yayınlandı. Yukarıdaki incelemede belirtilen eski hız/geometri/cooldown fixture'ları
+güncellendi; testler silinmedi. Final rules 1.978, server 2.871 PASS / 1 SKIP;
+typecheck ve lint geçti. İki ortamın çalışan image'inde gidiş 1.546,875 ve yüklü
+dönüş 773,4375 doğrulandı. Migration/wipe tekrarlanmadı; yayın ve rollback kanıtı
+[`deployment-stage-rollout.md`](deployment-stage-rollout.md) son bölümündedir.
