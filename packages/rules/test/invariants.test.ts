@@ -543,8 +543,8 @@ describe('the asteroid field', () => {
    * Below that threshold — which is where the old 62 sat — the guarantee is gone
    * and the solver is relying on the step being fine enough.
    */
-  it('deliberately relies on the circular solver below the monotonic-root threshold', () => {
-    expect(prospectorSpeed([])).toBeLessThan(
+  it('keeps the faster Prospector above the monotonic-root threshold', () => {
+    expect(prospectorSpeed([])).toBeGreaterThan(
       TRAVEL.distanceFactor * GALAXY.asteroidSpeedMax,
     );
   });

@@ -5,9 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/keys.js';
-import { useClaimReward } from '../src/api/queries.js';
+import { useClaimReward, usePlanet } from '../src/api/queries.js';
 import { useWorld, WorldProvider } from '../src/api/world.js';
-import type { PlanetsView } from '../src/api/schemas.js';
+import type { PlanetsView, PlanetView } from '../src/api/schemas.js';
 import { StatusBar } from '../src/shell/StatusBar.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
@@ -43,6 +43,11 @@ function RewardProbe() {
   );
 }
 
+function PlanetReading() {
+  const { data } = usePlanet();
+  return <output aria-label="stock">{JSON.stringify(data?.planet)}</output>;
+}
+
 const show = (data = worlds()) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(keys.planets, data);
@@ -58,6 +63,73 @@ const show = (data = worlds()) => {
 };
 
 describe('commander world selection', () => {
+  it('keeps updated refinery capacities and amounts when an older worlds read arrives', async () => {
+    localStorage.clear();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(keys.planets, worlds());
+    client.setQueryData(keys.planetById('capital'), capital);
+    let finishRead: (data: PlanetsView) => void = () => undefined;
+    const olderRead = new Promise<PlanetsView>((resolve) => { finishRead = resolve; });
+    const api = new Api({ fetch: () => Promise.reject(new Error('unexpected fetch')) });
+    api.planets = vi.fn().mockReturnValue(olderRead);
+    render(<QueryClientProvider client={client}><ApiProvider api={api}>
+      <WorldProvider><PlanetReading /></WorldProvider>
+    </ApiProvider></QueryClientProvider>);
+    await waitFor(() => { expect(screen.getByLabelText('stock')).toHaveTextContent('"alloy":500'); });
+    act(() => { void client.refetchQueries({ queryKey: keys.planets }); });
+    await waitFor(() => { expect(api.planets).toHaveBeenCalledOnce(); });
+    const updated = planetView({ buildings: { ...capital.buildings, REFINERY: 2, EXTRACTOR: 2 } }, {
+      id: 'capital', alloy: 2400, crystal: 750, alloyCap: 3000, crystalCap: 900,
+      bufferAlloyCap: 1500, bufferCrystalCap: 600, alloyPerHour: 150, crystalPerHour: 60,
+    });
+    act(() => { client.setQueryData(keys.planetById('capital'), updated); });
+    await waitFor(() => { expect(screen.getByLabelText('stock')).toHaveTextContent('"alloyCap":3000'); });
+    await act(async () => {
+      // The list response made before the upgrade also advances a production buffer.
+      finishRead(worlds([planetView({}, { id: 'capital', bufferAlloy: 1 }), colony]));
+      await olderRead;
+    });
+    await waitFor(() => { expect(client.getQueryState(keys.planets)?.fetchStatus).toBe('idle'); });
+    expect(client.getQueryData(keys.planetById('capital'))).toEqual(updated);
+    expect(screen.getByLabelText('stock')).toHaveTextContent('"alloy":2400');
+    expect(screen.getByLabelText('stock')).toHaveTextContent('"crystalCap":900');
+    expect(screen.getByLabelText('stock')).toHaveTextContent('"bufferAlloyCap":1500');
+    expect(screen.getByLabelText('stock')).toHaveTextContent('"crystalPerHour":60');
+    client.clear();
+  });
+
+  it('keeps a reward claimed into a full store after an already pending worlds read', async () => {
+    localStorage.clear();
+    const full = planetView({}, { id: 'capital', alloy: 2000, crystal: 600 });
+    const paid = planetView({}, { id: 'capital', alloy: 2400, crystal: 750 });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(keys.planets, worlds([full, colony]));
+    client.setQueryData(keys.planetById('capital'), full);
+    let finishRead: (data: PlanetsView) => void = () => undefined;
+    const olderRead = new Promise<PlanetsView>((resolve) => { finishRead = resolve; });
+    const api = new Api({ fetch: () => Promise.reject(new Error('unexpected fetch')) });
+    api.planets = vi.fn().mockReturnValue(olderRead);
+    api.claimReward = vi.fn().mockResolvedValue({
+      granted: { alloy: 400, crystal: 150, deuterium: 0 },
+      rewards: { chains: [], claimable: 0 }, planet: paid,
+    });
+    render(<QueryClientProvider client={client}><ApiProvider api={api}>
+      <WorldProvider><RewardProbe /><PlanetReading /></WorldProvider>
+    </ApiProvider></QueryClientProvider>);
+    await waitFor(() => { expect(screen.getByLabelText('stock')).toHaveTextContent('"alloy":2000'); });
+    act(() => { void client.refetchQueries({ queryKey: keys.planets }); });
+    await waitFor(() => { expect(api.planets).toHaveBeenCalledOnce(); });
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Claim' }));
+    await waitFor(() => { expect(screen.getByLabelText('stock')).toHaveTextContent('"alloy":2400'); });
+    await act(async () => { finishRead(worlds([full, colony])); await olderRead; });
+    await waitFor(() => { expect(client.getQueryState(keys.planets)?.fetchStatus).toBe('idle'); });
+    expect(client.getQueryData<PlanetView>(keys.planetById('capital'))?.planet.alloy).toBe(2400);
+    expect(client.getQueryData<PlanetsView>(keys.planets)?.planets[0]?.planet.crystal).toBe(750);
+    expect(screen.getByLabelText('stock')).toHaveTextContent('"crystal":750');
+    expect(client.getQueryData(keys.planetById('colony'))).toEqual(colony);
+    client.clear();
+  });
+
   it('does not show the account menu and signals before they are taught in Academy', () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData(keys.planet, capital);

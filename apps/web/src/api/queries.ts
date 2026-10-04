@@ -1523,6 +1523,8 @@ function useApplyPlanet() {
     const seedAlias = activePlanetId === null && allowCapitalAlias;
     await Promise.all([
       client.cancelQueries({ queryKey: explicitKey }),
+      // This response updates the owned-world list too; an older GET must not undo it.
+      client.cancelQueries({ queryKey: keys.planets }),
       ...(seedAlias
         ? [client.cancelQueries({ queryKey: keys.planet })]
         : []),

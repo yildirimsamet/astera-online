@@ -59,7 +59,12 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!data) return;
     for (const world of data.planets) {
-      queryClient.setQueryData(keys.planetById(world.planet.id), world);
+      const key = keys.planetById(world.planet.id);
+      // The list warms missing worlds. A later list response must not rewind a
+      // single-world read or a mutation, including its production time anchor.
+      if (queryClient.getQueryData<PlanetView>(key) === undefined) {
+        queryClient.setQueryData(key, world);
+      }
     }
   }, [data, queryClient]);
 
