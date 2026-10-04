@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/keys.js';
-import { useClaimReward, usePlanet } from '../src/api/queries.js';
+import { useCancelBuildOrder, useClaimReward, useCollect, usePlanet, useUpgrade } from '../src/api/queries.js';
 import { useWorld, WorldProvider } from '../src/api/world.js';
 import type { PlanetsView, PlanetView } from '../src/api/schemas.js';
 import { StatusBar } from '../src/shell/StatusBar.js';
@@ -48,6 +48,17 @@ function PlanetReading() {
   return <output aria-label="stock">{JSON.stringify(data?.planet)}</output>;
 }
 
+function StockActions() {
+  const upgrade = useUpgrade();
+  const collect = useCollect();
+  const cancel = useCancelBuildOrder();
+  return <div>
+    <button type="button" onClick={() => { upgrade.mutate('REFINERY'); }}>Spend</button>
+    <button type="button" onClick={() => { collect.mutate(); }}>Collect</button>
+    <button type="button" onClick={() => { cancel.mutate('order-1'); }}>Refund</button>
+  </div>;
+}
+
 const show = (data = worlds()) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(keys.planets, data);
@@ -63,6 +74,42 @@ const show = (data = worlds()) => {
 };
 
 describe('commander world selection', () => {
+  it.each([
+    { action: 'Spend', alloy: 300, crystal: 100 },
+    { action: 'Collect', alloy: 700, crystal: 300 },
+    { action: 'Refund', alloy: 600, crystal: 250 },
+  ])('keeps $action stock changes after an older owned-worlds response', async ({ action, alloy, crystal }) => {
+    localStorage.clear();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(keys.planets, worlds());
+    client.setQueryData(keys.planetById('capital'), capital);
+    let finishRead: (data: PlanetsView) => void = () => undefined;
+    const olderRead = new Promise<PlanetsView>((resolve) => { finishRead = resolve; });
+    const changed = planetView({}, { ...capital.planet, alloy, crystal });
+    const api = new Api({ fetch: () => Promise.reject(new Error('unexpected fetch')) });
+    api.planets = vi.fn().mockReturnValue(olderRead);
+    api.upgrade = vi.fn().mockResolvedValue({ planet: changed });
+    api.collect = vi.fn().mockResolvedValue({ planet: changed });
+    api.cancelBuildOrder = vi.fn().mockResolvedValue({ planet: changed });
+    render(<QueryClientProvider client={client}><ApiProvider api={api}>
+      <WorldProvider><StockActions /><PlanetReading /></WorldProvider>
+    </ApiProvider></QueryClientProvider>);
+    await waitFor(() => { expect(screen.getByLabelText('stock')).toHaveTextContent('"alloy":500'); });
+    act(() => { void client.refetchQueries({ queryKey: keys.planets }); });
+    await waitFor(() => { expect(api.planets).toHaveBeenCalledOnce(); });
+    await userEvent.setup().click(screen.getByRole('button', { name: action }));
+    await waitFor(() => { expect(screen.getByLabelText('stock')).toHaveTextContent(`"alloy":${String(alloy)}`); });
+    const anchor = client.getQueryState(keys.planetById('capital'))?.dataUpdatedAt;
+    await act(async () => { finishRead(worlds()); await olderRead; });
+    await waitFor(() => { expect(client.getQueryState(keys.planets)?.fetchStatus).toBe('idle'); });
+    expect(client.getQueryData(keys.planetById('capital'))).toEqual(changed);
+    expect(client.getQueryData<PlanetsView>(keys.planets)?.planets[0]?.planet.crystal).toBe(crystal);
+    expect(screen.getByLabelText('stock')).toHaveTextContent(`"crystal":${String(crystal)}`);
+    expect(client.getQueryState(keys.planetById('capital'))?.dataUpdatedAt).toBe(anchor);
+    expect(client.getQueryData(keys.planetById('colony'))).toEqual(colony);
+    client.clear();
+  });
+
   it('keeps updated refinery capacities and amounts when an older worlds read arrives', async () => {
     localStorage.clear();
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

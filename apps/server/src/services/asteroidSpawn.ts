@@ -34,7 +34,9 @@ import { isPerson } from './people.js';
  * the hour just gone, reads which showers cover the hour, stores the lanes and level
  * weights the rules use, and queues the next hour. The rocks themselves are never stored —
  * `asteroidField.ts` derives them from the row — so the row is the whole state, and
- * writing it exactly once is what keeps a rock's identity stable.
+ * fixing every natural lane once is what keeps a rock's identity stable. The
+ * operator-only manualAsteroids command may append a bonus lane, with a full
+ * equality check protecting every existing rock and its public identity.
  */
 
 export const HOUR_MS = 3_600_000;

@@ -38,19 +38,13 @@ describe('the rock ladder', () => {
   });
 
   /**
-   * THE CLEARANCE THE ROCKS USED TO HAVE IS GONE, AND IT IS RECORDED RATHER THAN
-   * ASSUMED. `scene.ts` used to promise that the richest rock was "well under two
-   * thirds of the smallest world"; at ×1.5 against worlds at ×1.25 the top grade
-   * now draws slightly LARGER than a Core-1 world.
-   *
-   * This is deliberate and it is the owner's call, so the test states where the
-   * line actually sits instead of pretending the old one holds: a newcomer's world
-   * is the one that can be confused with a rock, and everything from the middle of
-   * the Core ladder up still clears the largest rock by a wide margin.
+   * Owner, 2026-10-04: planets grow another 30%, with asteroid sizes unchanged.
+   * This restores clearance even below a Core-1 world; the developed worlds
+   * still clear the richest rock by a wide margin.
    */
-  it('is no longer under the smallest world, and is far under a developed one', () => {
+  it('stays below the enlarged worlds, and far below a developed one', () => {
     const richest = asteroidRadius(5);
-    expect(richest).toBeGreaterThan(worldRadius(1));
+    expect(richest).toBeLessThan(worldRadius(1));
     expect(richest).toBeLessThan(worldRadius(11) * 0.6);
     expect(richest).toBeLessThan(worldRadius(CORE_TOP_LEVEL) * 0.35);
   });

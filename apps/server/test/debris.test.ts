@@ -17,6 +17,7 @@ import {
   debrisFields,
   galaxyEvents,
   miningRuns,
+  planets,
   players,
   scheduledEvents,
   type GalaxyEventPayload,
@@ -310,9 +311,12 @@ describe('wreck fields', () => {
       the assertion at the end is about a field that faded rather than about a
       squadron that is free.
     */
+    const [origin] = await f.db.select({ x: planets.x, y: planets.y, z: planets.z })
+      .from(planets).where(eq(planets.id, mine));
+    const longLeg = (PROSPECTOR.shortTripMinutes + 0.5) * prospectorSpeed([]) / TRAVEL.distanceFactor;
     await f.db
       .update(debrisFields)
-      .set({ x: 1_500 })
+      .set({ x: origin!.x + longLeg, y: origin!.y, z: origin!.z })
       .where(eq(debrisFields.id, field.id));
 
     const run = await launchHarvest(f.db, mine, field.id, 1, f.clock);

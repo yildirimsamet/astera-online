@@ -122,7 +122,8 @@ export function privateAsteroidFieldWithEvents(
  *
  * Keyed by the season secret, the hour and its lanes — the complete input — so a
  * cached hour can never be served for a different one. Rows are written once and
- * never updated, which is what makes this cache safe to keep for the process's life.
+ * natural lanes never updated. Operator bonus batches may append a lane only after
+ * proving all existing rocks identical; the complete key keeps those reads fresh.
  */
 const hourCache = new Map<string, AsteroidSpec[]>();
 const HOUR_CACHE_MAX = 64;
