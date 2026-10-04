@@ -56,6 +56,11 @@ import {
 import { dockEndsAt } from './trade.js';
 import { minutesSince } from '../clock.js';
 import { sensorHistoryForPlayer } from './sensorHistory.js';
+import { loadMonumentTraffic, monumentTrafficFleet, type NativeMonumentTraffic } from './monumentTraffic.js';
+import { fleetCount } from '@astera/rules';
+import { liveRadiationFor, type FlightRadiation } from './radiation.js';
+import { missionCohorts, missionFlightPath, physicalFleets, projectHpFlight, type FlightCohort } from './flightProjection.js';
+import { flightSegment } from './specialFlightRadiation.js';
 
 /**
  * TRAFFIC — the galaxy is busy, and now you can see it.
@@ -498,6 +503,10 @@ function windowOf(
  * column — a sentinel string is a 500 from the driver, which is how this was found.
  */
 export interface TrafficSnapshot {
+  radiation?: FlightRadiation;
+  missionCohorts?: ReadonlyMap<string, FlightCohort[]>;
+  physicalFleets?: ReadonlyMap<string, Fleet>;
+  monumentTraffic?: NativeMonumentTraffic;
   missionRows: { mission: typeof missions.$inferSelect }[];
   clanFleetByMission: ReadonlyMap<string, { clanId: string; tag: string; label: string }>;
   miningRows: { run: typeof miningRuns.$inferSelect }[];
@@ -557,7 +566,7 @@ export async function loadTrafficSnapshot(
   now: Date = new Date(),
 ): Promise<TrafficSnapshot> {
   const impactCutoff = new Date(now.getTime() - DEATH_STAR.impactSeconds * 1000);
-  const [missionRows, miningRows, pirateRaidRows, tradeRunRows, convoyRunRows, interceptionRows, impactRows] =
+  const [missionRows, miningRows, pirateRaidRows, tradeRunRows, convoyRunRows, interceptionRows, impactRows, monumentTraffic] =
     await Promise.all([
     db
       .select({ mission: missions })
@@ -607,6 +616,7 @@ export async function loadTrafficSnapshot(
         ne(strategicImpacts.outcome, 'INTERCEPTED'),
         gte(strategicImpacts.createdAt, impactCutoff),
       )),
+    loadMonumentTraffic(db, seasonId),
   ]);
 
   const jointMissionIds = missionRows
@@ -624,6 +634,15 @@ export async function loadTrafficSnapshot(
   const clanFleetByMission = new Map(combined.map((row) => [row.missionId, {
     clanId: row.clanId, tag: row.tag, label: `[${row.tag}] Klan Filosu`,
   }]));
+  const radiation = await liveRadiationFor(db, seasonId, new Map());
+  const [cohorts, physical] = radiation.model === 'HP' ? await Promise.all([
+    missionCohorts(db, missionRows.map(row => row.mission)),
+    physicalFleets(db, [
+      ...pirateRaidRows.map(({ raid }) => `pirate:${raid.id}`),
+      ...tradeRunRows.map(({ run }) => `trade:${run.id}`),
+      ...convoyRunRows.map(({ run }) => `intergalactic-convoy:${run.id}`),
+    ]),
+  ]) : [undefined, undefined];
 
   const ids = new Set<string>();
   for (const { mission } of missionRows) {
@@ -655,6 +674,8 @@ export async function loadTrafficSnapshot(
   const landedDeathStarMissionIds = new Set(impactRows.map((row) => row.missionId));
   if (ids.size === 0) {
     return {
+      radiation, missionCohorts: cohorts, physicalFleets: physical,
+      monumentTraffic,
       missionRows,
       clanFleetByMission,
       miningRows,
@@ -696,6 +717,8 @@ export async function loadTrafficSnapshot(
     coreRows.map((row) => [row.planetId, row.level]),
   );
   return {
+    radiation, missionCohorts: cohorts, physicalFleets: physical,
+    monumentTraffic,
     missionRows,
     clanFleetByMission,
     miningRows,
@@ -1109,12 +1132,40 @@ export function projectGalaxyTraffic(
 
   const out: Contact[] = [];
 
-  for (const { mission } of missionRows) {
+  if (snapshot.monumentTraffic && now.getTime() < snapshot.monumentTraffic.endsAt) {
+    for (const flight of snapshot.monumentTraffic.flights) {
+      if (ownPlayerId === flight.ownerPlayerId || (ownPlayerId === null && ownedPlanets.has(flight.originPlanetId))) continue;
+      const leg = flight.route.find(segment => segment.startMs <= now.getTime() && now.getTime() < segment.endMs);
+      if (!leg) continue;
+      const slice = windowOf(leg.from, leg.to, new Date(leg.startMs), new Date(leg.endMs), now);
+      if (!slice) continue;
+      const zone = zoneAt(slice.from);
+      if (zone === 'NONE') continue;
+      const fleet = flight.kind === 'fleet' ? monumentTrafficFleet(snapshot.monumentTraffic, flight, now) : {};
+      if (flight.kind === 'fleet' && fleetCount(fleet) === 0) continue;
+      if (zone === 'CONTACT') {
+        const reveal = radarReveal(slice.from);
+        out.push({ id: flight.id, kind: 'unknown', ...slice,
+          ...(reveal.size && flight.kind === 'fleet' ? { mass: massClass(fleet) } : {}),
+          ...(reveal.kind ? { silhouette: flight.kind } : {}) });
+      } else out.push({ id: flight.id, kind: flight.kind, ...slice,
+        ...(flight.kind === 'fleet' ? { fleet, mass: massClass(fleet) } : {}) });
+    }
+  }
+
+  for (const { mission: sourceMission } of missionRows) {
+    let mission = sourceMission;
     const centres = {
       origin: positions.get(mission.originPlanetId),
       target: positions.get(mission.targetPlanetId),
     };
     if (!centres.origin || !centres.target) continue;
+    if (snapshot.radiation?.model === 'HP' && mission.kind !== 'probe' && mission.kind !== 'death_star') {
+      const projection = projectHpFlight(snapshot.missionCohorts?.get(mission.id) ?? [],
+        missionFlightPath(mission, { origin: centres.origin, target: centres.target }), now, snapshot.radiation);
+      if (fleetCount(projection.fleet) === 0) continue;
+      mission = { ...mission, fleet: projection.fleet };
+    }
     // Where the craft is DRAWN flying between. The true centres are still what an
     // effect is anchored to — an explosion happens at the world, not in orbit.
     const { from: origin, to: target } = drawnLeg(mission, centres.origin, centres.target);
@@ -1687,13 +1738,21 @@ export function projectGalaxyTraffic(
     // nothing in the air to draw.
     const legArriveAt = returning ? raid.homeAt : raid.arriveAt;
     if (!legArriveAt) continue;
+    const physicalWing = snapshot.radiation?.model === 'HP' ? projectHpFlight([{
+      fleet: snapshot.physicalFleets?.get(`pirate:${raid.id}`) ?? {}, damage: raid.damage,
+      tech: raid.tech ?? {}, paidAt: raid.radiationSettledAt,
+    }], returning ? [flightSegment(meet, home, raid.returnDepartAt ?? raid.arriveAt, legArriveAt)]
+      : [flightSegment(home, meet, raid.departAt, raid.arriveAt),
+        flightSegment(meet, meet, raid.arriveAt, new Date(engagementEndsAt(raid.arriveAt.getTime())))], now, snapshot.radiation).fleet
+      : raidFleets.get(raid.id) ?? raid.fleet;
+    if (snapshot.radiation?.model === 'HP' && fleetCount(physicalWing) === 0) continue;
 
     const homeCore = coreLevels.get(raid.planetId);
     const surface = homeCore === undefined ? 0 : surfaceStandoff(worldRadius(homeCore));
     const { from, to } = returning
       ? visualLeg(meet, home, 0, surface)
       : visualLeg(home, meet, surface, 0);
-    const departAt = returning ? raid.arriveAt : raid.departAt;
+    const departAt = returning ? raid.returnDepartAt ?? raid.arriveAt : raid.departAt;
 
     /*
       THE ATTACKING WING HOLDS, AND FIRES, FOR THE SAME TEN SECONDS. D52 · D150.
@@ -1756,13 +1815,13 @@ export function projectGalaxyTraffic(
           to: hold,
           startAt: now,
           endAt: new Date(fightEndsAt),
-          ...(reveal.size ? { mass: massClass(raidFleets.get(raid.id) ?? raid.fleet) } : {}),
+          ...(reveal.size ? { mass: massClass(physicalWing) } : {}),
           ...(reveal.kind ? { silhouette: 'fleet' } : {}),
           ...moment,
         });
         continue;
       }
-      const aboardNow = raidFleets.get(raid.id) ?? raid.fleet;
+      const aboardNow = physicalWing;
       out.push({
         id: raid.id,
         kind: 'fleet',
@@ -1788,7 +1847,7 @@ export function projectGalaxyTraffic(
       the rendezvous — the fog hides and never lies. The live `units` rows are the
       same source `pendingThreads` gives the owner.
     */
-    const aboard = raidFleets.get(raid.id) ?? raid.fleet;
+    const aboard = physicalWing;
 
     if (zone === 'CONTACT') {
       const reveal = radarReveal(slice.from);
@@ -1832,7 +1891,8 @@ export function projectGalaxyTraffic(
    * fetching belong to the commander who sent it, exactly as a transfer's hold
    * does. There is no field here for a modified client to read.
    */
-  for (const { run } of tradeRunRows) {
+  for (const { run: sourceRun } of tradeRunRows) {
+    let run = sourceRun;
     /*
       WHOSE CONVOY IT IS, NOT WHOSE PAD IT LEFT. D150.
 
@@ -1857,6 +1917,15 @@ export function projectGalaxyTraffic(
     const returning = run.status === 'returning';
     const legArriveAt = returning ? run.homeAt : run.arriveAt;
     if (!legArriveAt) continue;
+    if (snapshot.radiation?.model === 'HP') {
+      const projection = projectHpFlight([{ fleet: snapshot.physicalFleets?.get(`trade:${run.id}`) ?? {},
+        damage: run.damage, tech: run.tech ?? {}, paidAt: run.radiationSettledAt }],
+        returning ? [flightSegment(meet, home, dockEndsAt(run.arriveAt), legArriveAt)]
+          : [flightSegment(home, meet, run.departAt, run.arriveAt), flightSegment(meet, meet, run.arriveAt, dockEndsAt(run.arriveAt))],
+        now, snapshot.radiation);
+      if (fleetCount(projection.fleet) === 0) continue;
+      run = { ...run, fleet: projection.fleet };
+    }
 
     const homeCore = coreLevels.get(run.planetId);
     const surface = homeCore === undefined ? 0 : surfaceStandoff(worldRadius(homeCore));
@@ -1957,7 +2026,8 @@ export function projectGalaxyTraffic(
    * at NONE: no hold position and therefore no bearing back to the launch pad.
    * Rewards and cargo never enter this projection.
    */
-  for (const { run } of convoyRunRows) {
+  for (const { run: sourceRun } of convoyRunRows) {
+    let run = sourceRun;
     const mine = ownPlayerId === null
       ? ownedPlanets.has(run.planetId)
       : run.ownerPlayerId === ownPlayerId;
@@ -1970,6 +2040,16 @@ export function projectGalaxyTraffic(
       y: run.engagementEndY,
       z: run.engagementEndZ,
     };
+    if (snapshot.radiation?.model === 'HP') {
+      const projection = projectHpFlight([{ fleet: snapshot.physicalFleets?.get(`intergalactic-convoy:${run.id}`) ?? {},
+        damage: run.damage, tech: run.tech, paidAt: run.radiationSettledAt }], [
+          flightSegment(home, intercept, run.departAt, run.arriveAt),
+          flightSegment(intercept, engagementEnd, run.arriveAt, run.engagementEndsAt),
+          flightSegment(engagementEnd, home, run.engagementEndsAt, run.homeAt),
+        ], now, snapshot.radiation);
+      if (fleetCount(projection.fleet) === 0) continue;
+      run = { ...run, fleet: projection.fleet };
+    }
     // The route is already frozen at launch, so rendering follows its timestamps
     // even if the arrival worker is late changing the persistence state.
     const returning = run.status === 'returning'

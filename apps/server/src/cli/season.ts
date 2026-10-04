@@ -83,6 +83,7 @@ season adopt-event-calendar [--yes] [--shard CODE]
   --days N          season length              (default: ${String(SEASON.days)})
   --cap N           planets per galaxy         (default: ${String(SERVERS.capacity)})
   --count N         galaxies, for 'bootstrap'  (default: ${String(SERVERS.count)})
+  --ruleset N       explicit season ruleset (use 16 to deal the approved monuments)
   --unattended N    DEV AID ONLY: place N inert commanders on the FIRST open galaxy
                     so a solo developer has something to scout and raid.
   --id ID           reward tier, for 'reward'    (default: ${SOCIAL_REWARD})
@@ -152,6 +153,7 @@ async function main(): Promise<void> {
       days: { type: 'string' },
       cap: { type: 'string' },
       count: { type: 'string' },
+      ruleset: { type: 'string' },
       unattended: { type: 'string' },
       id: { type: 'string' },
       kind: { type: 'string' },
@@ -183,6 +185,7 @@ async function main(): Promise<void> {
           capacity,
           days: num(values.days, SEASON.days),
           ...(values.seed === undefined ? {} : { seedBase: num(values.seed, 0) }),
+          ...(values.ruleset === undefined ? {} : { rulesetVersion: num(values.ruleset, 15) }),
         });
         console.log(
           [
@@ -254,6 +257,7 @@ async function main(): Promise<void> {
           startsAt: systemClock.now(),
           days: num(values.days, SEASON.days),
           playerCap: capacity,
+          ...(values.ruleset === undefined ? {} : { rulesetVersion: num(values.ruleset, 15) }),
         });
 
         console.log(
@@ -462,7 +466,7 @@ async function main(): Promise<void> {
           return;
         }
 
-        const result = await departToSilentSpace(db, systemClock, name);
+        const result = await departToSilentSpace(db, systemClock, name, { adminUsernames: env.ADMIN_USERNAMES });
         if (result.status !== 'MOVED') {
           throw new Error(
             `${found.commander} was NOT moved (${result.status}) and nothing was written. `
@@ -552,6 +556,7 @@ async function main(): Promise<void> {
           capacity: galaxyCapacity(values.cap, env.NODE_ENV === 'production'),
           days: num(values.days, SEASON.days),
           ...(values.seed === undefined ? {} : { seedBase: num(values.seed, 0) }),
+          ...(values.ruleset === undefined ? {} : { rulesetVersion: num(values.ruleset, 15) }),
         });
         console.log(
           [

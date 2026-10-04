@@ -30,6 +30,7 @@ import { revalidateClanWarTargetPlanet } from './clanWar.js';
 import { releaseSupportForWorldChange } from './clanSupport.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 import { notify } from './notifications.js';
+import { prepareMonumentOriginChange, reanchorMonumentOrigin } from './monumentOwnership.js';
 
 /**
  * SADAKAT VE KOPUŞ. `docs/colony-faults-plan.md` §4-5.
@@ -134,6 +135,9 @@ export const onColonySecession: Handler = async ({ db, clock }, event) => {
   const planetId = event.refId;
   if (!planetId) return;
   await db.transaction(async (tx) => {
+    const [initial] = await tx.select({ kind: planets.kind }).from(planets).where(eq(planets.id, planetId));
+    if (initial?.kind !== 'COLONY') return;
+    await prepareMonumentOriginChange(tx, planetId);
     const [world] = await tx.select().from(planets).where(eq(planets.id, planetId)).for('update');
     if (!world?.controllerPlayerId || world.kind !== 'COLONY') return;
 
@@ -208,6 +212,9 @@ export async function secedeColony(
   now: Date,
   notificationRefId: string,
 ): Promise<boolean> {
+  const [initial] = await tx.select({ kind: planets.kind }).from(planets).where(eq(planets.id, planetId));
+  if (initial?.kind !== 'COLONY') return false;
+  await prepareMonumentOriginChange(tx, planetId);
   const [world] = await tx.select().from(planets).where(eq(planets.id, planetId)).for('update');
   if (!world?.controllerPlayerId || world.kind !== 'COLONY') return false;
   const owner = world.controllerPlayerId;
@@ -402,6 +409,7 @@ export async function secedeColony(
   */
   await revalidateClanWarTargetPlanet(tx, planetId, now);
   // Klan Savunma Desteği: nobody is left to defend; waves from here re-anchor.
+  await reanchorMonumentOrigin(tx, planetId);
   await releaseSupportForWorldChange(tx, { planetId, now });
   return true;
 }

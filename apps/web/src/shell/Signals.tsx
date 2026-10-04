@@ -9,6 +9,7 @@ import {
   describeNotification,
   isAlarming,
   notificationIdentity,
+  notificationMonumentTarget,
   signalFamily,
   signalGlyph,
   signalOutcome,
@@ -119,9 +120,11 @@ export function useOpenSignals(): () => ReadonlySet<string> {
 export function Signals({
   onOpen,
   onFocusPlanet,
+  onFocusMonument,
 }: {
   onOpen: SignalGo;
   onFocusPlanet: (planetId: string) => void;
+  onFocusMonument?: (monumentId: string) => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -186,6 +189,7 @@ export function Signals({
           }}
         >
           <SignalsFeed
+            onFocusMonument={onFocusMonument ? (id) => { setOpen(false); onFocusMonument(id); } : undefined}
             justRead={justRead}
             onGo={(panel, stop, reportMissionId, focus) => {
               onOpen(panel, stop, reportMissionId, focus);
@@ -210,11 +214,13 @@ export function SignalsFeed({
   justRead,
   onGo,
   onFocusPlanet,
+  onFocusMonument,
 }: {
   /** Ids marked read by this opening; they stay lit until the feed closes. */
   justRead: ReadonlySet<string>;
   onGo: SignalGo;
   onFocusPlanet: (planetId: string) => void;
+  onFocusMonument?: (monumentId: string) => void;
 }) {
   const { t } = useTranslation();
   const { events, groups, status, now } = useSignalFeed();
@@ -265,6 +271,7 @@ export function SignalsFeed({
         <div className="plate plate-inset">
           {groups.map((entry) => (
             <Event
+              onFocusMonument={onFocusMonument}
               key={entry.event.id}
               event={entry.event}
               repeats={entry.repeats}
@@ -296,6 +303,10 @@ export function SignalsFeed({
  * is why the exhaustiveness of this map is asserted in `notification-routes.test`.
  */
 export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
+  monument_inbound: { panel: null },
+  monument_probe_lost: { panel: null },
+  monument_returning: { panel: null },
+  convoy_result: { panel: 'planet' },
   // Something is coming: spend the stock, build a gun, get the fleet out.
   incoming_fleet: { panel: 'planet' },
   strategic_incoming: { panel: 'planet' },
@@ -463,6 +474,7 @@ function Event({
   now,
   onGo,
   onFocusPlanet,
+  onFocusMonument,
 }: {
   event: NotificationView;
   repeats: number;
@@ -476,6 +488,7 @@ function Event({
     focus?: { planetId?: string; group?: string; itemId?: string },
   ) => void;
   onFocusPlanet: (planetId: string) => void;
+  onFocusMonument?: (monumentId: string) => void;
 }) {
   const line = describeNotification(event, now);
   if (!line) return null;
@@ -509,6 +522,7 @@ function Event({
 
   const sentence = (
     <Sentence
+      onFocusMonument={onFocusMonument}
       line={line}
       event={event}
       repeats={repeats}
@@ -522,6 +536,11 @@ function Event({
         type="button"
         aria-label={i18n.t('signals.openEvent')}
         onClick={() => {
+          const monument = notificationMonumentTarget(event);
+          if (monument?.monumentId && event.kind !== 'raid_result' && onFocusMonument) {
+            onFocusMonument(monument.monumentId);
+            return;
+          }
           /*
             THE SHELF DECIDES WHETHER THE ROW NAMES A FIGHT. Owner report.
 
@@ -646,11 +665,13 @@ function Sentence({
   event,
   repeats,
   onFocusPlanet,
+  onFocusMonument,
 }: {
   line: string;
   event: NotificationView;
   repeats: number;
   onFocusPlanet: (planetId: string) => void;
+  onFocusMonument?: (monumentId: string) => void;
 }) {
   const subject = notificationIdentity(event);
   const subjectAt = subject === null ? -1 : line.indexOf(subject.label);
@@ -659,7 +680,9 @@ function Sentence({
       {subject && subjectAt >= 0 ? (
         <>
           {line.slice(0, subjectAt)}
-          {subject.planetId ? (
+          {subject.monumentId && onFocusMonument ? <button type="button"
+            onClick={() => { if (subject.monumentId) onFocusMonument(subject.monumentId); }}
+            className="pointer-events-auto relative z-10 font-bold text-inherit underline decoration-current/40 underline-offset-2">{subject.label}</button> : subject.planetId ? (
             <button
               type="button"
               onClick={() => {

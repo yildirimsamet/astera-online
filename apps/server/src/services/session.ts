@@ -12,12 +12,12 @@ import {
   radarRevealsOrigin,
   radarRevealsSize,
   ENGAGEMENT_STANDOFF,
+  engagementEndsAt,
   visualLeg,
   type Fleet,
   type Grade,
   type MassClass,
   type PirateLevel,
-  type RadiationSource,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
@@ -45,7 +45,9 @@ import { instrumentLevels, levelOf } from './intel.js';
 import { inboundRadarLead, LEAD_TOLERANCE } from './radar.js';
 import { dockEndsAt } from './trade.js';
 import { isHostileMission } from './flight.js';
-import { flightFadeAt, liveRadiationFor } from './radiation.js';
+import { flightFadeAt, liveRadiationFor, type FlightRadiation } from './radiation.js';
+import { missionCohorts, missionFlightPath, physicalFleets, projectHpFlight } from './flightProjection.js';
+import { flightSegment } from './specialFlightRadiation.js';
 
 /* ── the unlock cascade ─────────────────────────────────────── */
 
@@ -654,9 +656,17 @@ export async function pendingThreads(
   const radarByPlanet = new Map(ownedIds.map((id) => [id, levelOf(levels, id, 'RADAR')]));
   const pending: PendingThread[] = [];
 
-  const radiation = new Map<string, RadiationSource[]>();
+  const radiation = new Map<string, FlightRadiation>();
+  const cohorts = await missionCohorts(db, inFlight.map(row => row.mission));
   for (const row of inFlight) {
-    const m = row.mission;
+    let m = row.mission;
+    const model = await liveRadiationFor(db, m.seasonId, radiation);
+    const ends = { origin: { x: row.originX, y: row.originY, z: row.originZ },
+      target: { x: row.targetX, y: row.targetY, z: row.targetZ } };
+    const projection = model.model === 'HP' && m.kind !== 'probe' && m.kind !== 'death_star'
+      ? projectHpFlight(cohorts.get(m.id) ?? [], missionFlightPath(m, ends), now, model) : null;
+    if (projection && fleetCount(projection.fleet) === 0) continue;
+    if (projection) m = { ...m, fleet: projection.fleet };
     const minutes = Math.max(0, Math.round((m.arriveAt.getTime() - now.getTime()) / 60_000));
 
     /**
@@ -764,7 +774,7 @@ export async function pendingThreads(
     // stored forwards, so it is named after the world it turned back from like a return leg, K8.
     const backwards = m.kind === 'return' || m.parentMissionId !== null;
     // Radyasyon (D15): when a cloud finishes this wing. Probes and Death Stars are not ships.
-    const fadeAt = m.kind === 'probe' || m.kind === 'death_star'
+    const fadeAt = projection ? projection.fadeAt : m.kind === 'probe' || m.kind === 'death_star'
       ? null
       : flightFadeAt(m, {
           origin: { x: row.originX, y: row.originY, z: row.originZ },
@@ -944,6 +954,14 @@ export async function pendingThreads(
       if (!spec) continue;
       const home = { x: originX, y: originY, z: originZ };
       const meet = { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ };
+      const model = await liveRadiationFor(db, raid.seasonId, radiation);
+      const departAt = returning ? raid.returnDepartAt ?? raid.arriveAt : raid.departAt;
+      const path = returning ? [flightSegment(meet, home, departAt, arriveAt)]
+        : [flightSegment(home, meet, raid.departAt, raid.arriveAt),
+          flightSegment(meet, meet, raid.arriveAt, new Date(engagementEndsAt(raid.arriveAt.getTime())))];
+      const projection = model.model === 'HP' ? projectHpFlight([{ fleet: aboard.get(`pirate:${raid.id}`) ?? {},
+        damage: raid.damage, tech: raid.tech ?? {}, paidAt: raid.radiationSettledAt }], path, now, model) : null;
+      if (projection && fleetCount(projection.fleet) === 0) continue;
       pending.push({
         id: raid.id,
         kind: 'pirate',
@@ -954,11 +972,12 @@ export async function pendingThreads(
         minutesRemaining: Math.max(0, Math.round((arriveAt.getTime() - now.getTime()) / 60_000)),
         arriveAt,
         leg: returning ? 'return' : 'outbound',
-        fleet: aboard.get(`pirate:${raid.id}`) ?? raid.fleet,
+        fleet: projection?.fleet ?? aboard.get(`pirate:${raid.id}`) ?? raid.fleet,
+        ...(projection?.fadeAt ? { fadeAt: projection.fadeAt } : {}),
         path: {
           from: returning ? meet : home,
           to: returning ? home : meet,
-          departAt: returning ? raid.arriveAt : raid.departAt,
+          departAt,
           arriveAt,
         },
       });
@@ -1004,12 +1023,19 @@ export async function pendingThreads(
           inArray(tradeRuns.status, ['outbound', 'returning']),
         ));
 
+  const merchantFleets = await physicalFleets(db, convoys.map(({ run }) => `trade:${run.id}`));
   for (const { run, originX, originY, originZ } of convoys) {
     const returning = run.status === 'returning';
     const arriveAt = returning ? run.homeAt : run.arriveAt;
     if (!arriveAt) continue;
     const home = { x: originX, y: originY, z: originZ };
     const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
+    const model = await liveRadiationFor(db, run.seasonId, radiation);
+    const path = returning ? [flightSegment(meet, home, dockEndsAt(run.arriveAt), arriveAt)]
+      : [flightSegment(home, meet, run.departAt, run.arriveAt), flightSegment(meet, meet, run.arriveAt, dockEndsAt(run.arriveAt))];
+    const projection = model.model === 'HP' ? projectHpFlight([{ fleet: merchantFleets.get(`trade:${run.id}`) ?? {},
+      damage: run.damage, tech: run.tech ?? {}, paidAt: run.radiationSettledAt }], path, now, model) : null;
+    if (projection && fleetCount(projection.fleet) === 0) continue;
     pending.push({
       id: run.id,
       kind: 'trade',
@@ -1035,7 +1061,8 @@ export async function pendingThreads(
         a raid there are no casualties for the launch roster to be stale about — the
         parked `units` rows and this column can never disagree.
       */
-      fleet: run.fleet,
+      fleet: projection?.fleet ?? run.fleet,
+      ...(projection?.fadeAt ? { fadeAt: projection.fadeAt } : {}),
       path: {
         from: returning ? meet : home,
         to: returning ? home : meet,
@@ -1070,6 +1097,7 @@ export async function pendingThreads(
           inArray(intergalacticConvoyRuns.status, ['outbound', 'returning']),
         ));
 
+  const convoyFleets = await physicalFleets(db, intergalacticRuns.map(({ run }) => `intergalactic-convoy:${run.id}`));
   for (const { run } of intergalacticRuns) {
     // Visual phase follows the immutable flight clock, not worker throughput.
     // Rewards remain unresolved until the handler commits, but a late worker
@@ -1090,6 +1118,14 @@ export async function pendingThreads(
       y: engagementHold.y + engagementEnd.y - intercept.y,
       z: engagementHold.z + engagementEnd.z - intercept.z,
     };
+    const model = await liveRadiationFor(db, run.seasonId, radiation);
+    const projection = model.model === 'HP' ? projectHpFlight([{ fleet: convoyFleets.get(`intergalactic-convoy:${run.id}`) ?? {},
+      damage: run.damage, tech: run.tech, paidAt: run.radiationSettledAt }], [
+        flightSegment(home, intercept, run.departAt, run.arriveAt),
+        flightSegment(intercept, engagementEnd, run.arriveAt, run.engagementEndsAt),
+        flightSegment(engagementEnd, home, run.engagementEndsAt, run.homeAt),
+      ], now, model) : null;
+    if (projection && fleetCount(projection.fleet) === 0) continue;
     pending.push({
       id: run.id,
       kind: 'intergalactic_convoy',
@@ -1100,7 +1136,8 @@ export async function pendingThreads(
       engagementEndsAt: run.engagementEndsAt,
       homeAt: run.homeAt,
       leg: returning ? 'return' : 'outbound',
-      fleet: run.fleet,
+      fleet: projection?.fleet ?? run.fleet,
+      ...(projection?.fadeAt ? { fadeAt: projection.fadeAt } : {}),
       path: {
         from: returning ? engagementEnd : home,
         to: returning ? home : intercept,

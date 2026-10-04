@@ -16,6 +16,7 @@ import { refreshSensorEpoch } from './sensorHistory.js';
 import { reconcileClanPlayerReclaim } from './clan.js';
 import { publish, publishShard, publishSight } from '../stream/bus.js';
 import { notifyDmPeers } from './dm.js';
+import { hasMonumentActivity } from './monumentLifecycle.js';
 
 export type TransferStatus = 'MOVED' | 'ACTIVE' | 'PLACEMENT' | 'SEASON' | 'CAPACITY' | 'FLIGHT' | 'EVENT' | 'EFFECT' | 'UNITS' | 'CONTENTION' | 'APPLICATION';
 class Deferred extends Error { constructor(readonly status: TransferStatus) { super(status); } }
@@ -38,7 +39,7 @@ function defer(status: TransferStatus): never { throw new Deferred(status); }
  * still defer, and a defer writes nothing. The return path never reads it — a
  * return is authorised by its application, not by the operator.
  */
-export async function transferCommander(db: Db, playerId: string, targetSeasonId: string, clock: Clock, applicationId?: string, options: { ownerRequested?: boolean } = {}): Promise<{ status: TransferStatus }> {
+export async function transferCommander(db: Db, playerId: string, targetSeasonId: string, clock: Clock, applicationId?: string, options: { ownerRequested?: boolean; adminUsernames?: readonly string[] } = {}): Promise<{ status: TransferStatus }> {
   try {
     await db.transaction(async (tx) => {
       await tx.execute(sql`set local lock_timeout = '150ms'`);
@@ -122,6 +123,7 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
         defer('FLIGHT');
       }
       // Klan Savunma Desteği: a wave sent or hosted ties two worlds together for its life.
+      if (await hasMonumentActivity(tx, playerId, ids)) defer('FLIGHT');
       const [support] = await tx.select({ id: clanSupportWaves.id }).from(clanSupportWaves).where(and(
         inArray(clanSupportWaves.status, ['OUTBOUND', 'STATIONED', 'RETURNING']),
         or(eq(clanSupportWaves.senderPlayerId, playerId), eq(clanSupportWaves.hostPlayerId, playerId),
@@ -219,7 +221,7 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       for (const w of worlds) await loadLocked(tx, w.id, { now: () => now });
       if (membership) {
         const [account] = await tx.select().from(accounts).where(eq(accounts.id, player.accountId));
-        await reconcileClanPlayerReclaim(tx, { playerId, seasonId: source.id, displayName: account?.displayName ?? player.name, now, preserveCommander: true, activeCutoff: new Date(now.getTime() - INACTIVITY_MS) });
+        await reconcileClanPlayerReclaim(tx, { playerId, seasonId: source.id, displayName: account?.displayName ?? player.name, now, preserveCommander: true, activeCutoff: new Date(now.getTime() - INACTIVITY_MS), adminUsernames: options.adminUsernames });
         await tx.update(clanMemberships).set({ leftAt: now }).where(and(eq(clanMemberships.playerId, playerId), isNull(clanMemberships.leftAt)));
       }
       await tx.update(clanRequests).set({ status: 'CLOSED', resolvedAt: now }).where(and(eq(clanRequests.playerId, playerId), eq(clanRequests.status, 'PENDING')));

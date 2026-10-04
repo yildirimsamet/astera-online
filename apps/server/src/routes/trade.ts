@@ -34,6 +34,7 @@ const tradeBody = z.object({
   fleet: mobileFleetSchema,
   give: resources,
   want: resources,
+  acknowledgeRadiationLoss: z.boolean().optional(),
 }).strict();
 
 /**
@@ -81,6 +82,7 @@ export function registerTradeRoutes(app: FastifyInstance): void {
         fleet: body.fleet,
         give: body.give,
         want: body.want,
+        acknowledgeRadiationLoss: body.acknowledgeRadiationLoss,
       },
       app.clock,
       owner.playerId,

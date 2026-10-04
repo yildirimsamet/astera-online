@@ -22,6 +22,7 @@ import { registerPlanetRoutes } from './routes/planet.js';
 import { registerRewardRoutes } from './routes/rewards.js';
 import { registerIntelRoutes } from './routes/intel.js';
 import { registerGalaxyRoutes } from './routes/galaxy.js';
+import { registerMonumentRoutes } from './routes/monuments.js';
 import { registerMiningRoutes } from './routes/mining.js';
 import { registerPirateRoutes } from './routes/pirates.js';
 import { registerTradeRoutes } from './routes/trade.js';
@@ -404,6 +405,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerRewardRoutes(app);
     registerIntelRoutes(app);
     registerGalaxyRoutes(app);
+    registerMonumentRoutes(app);
     registerMiningRoutes(app);
     registerPirateRoutes(app);
     registerTradeRoutes(app);

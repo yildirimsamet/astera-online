@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { RadiationPreview } from '../ui/RadiationPreview.js';
 import {
   HULLS,
   combatValue,
@@ -261,16 +262,7 @@ export function LaunchSheet({
                 </p>
               )}
               {/* Radyasyon (D10): what the route takes from every ship, or how many it finishes. */}
-              {radiation && (
-                <p
-                  data-radiation-warning
-                  className={`text-caption leading-snug ${radiation.destroyed > 0 ? 'text-v2-hostile' : 'text-v2-warn'}`}
-                >
-                  {radiation.destroyed > 0
-                    ? t('launch.radiationLethal', { count: radiation.destroyed })
-                    : t(radiation.docks ? 'launch.radiationDock' : 'launch.radiationPatched', { pct: radiation.pct })}
-                </p>
-              )}
+              <RadiationPreview radiation={radiation} combat />
               <p className="text-micro leading-snug text-v2-ink-3">
                 {!pirate && !lesson && <span data-launch-recall>{t('launch.recallNote')} </span>}
                 {/* Fleetsave (D28): a launch is a risk to the world AND the only way to make the fleet safe. */}

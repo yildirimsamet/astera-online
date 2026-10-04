@@ -291,6 +291,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
 
       {bell && (
         <BellHost
+          onFocusMonument={(id) => { onFocusCraft({ kind: 'monument', id }); }}
           tab={bell.tab}
           justRead={bell.justRead}
           onTab={(tab) => {

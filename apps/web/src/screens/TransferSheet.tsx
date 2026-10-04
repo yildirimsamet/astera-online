@@ -24,7 +24,7 @@ import {
 } from '@astera/rules';
 import { useGalaxy, useTransfer } from '../api/queries.js';
 import {
-  lethalAfterRefusal, radiationRefusalCount, routeRadiation, toRadiationSources, type RadiationRefusal,
+  lethalAfterRefusal, radiationRefusalCount, routeRadiation, transferHpRadiation, toHpRadiationSources, toRadiationSources, type RadiationRefusal,
 } from '../lib/radiation.js';
 import type { PlanetView } from '../api/schemas.js';
 import { hullName } from '../i18n/names.js';
@@ -33,6 +33,7 @@ import { clockTime, duration, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { PaceRow } from '../ui/PaceRow.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
+import { RadiationPreview } from '../ui/RadiationPreview.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { Tally } from '../ui/Tally.js';
@@ -216,13 +217,20 @@ export function TransferSheet({
    * RADYASYON ON THE WAY OUT, quoted before the press (plan D10): the dose the server
    * settles at the landing, and a lethal route's hold is the acknowledgement it asks for.
    */
-  const clouds = useGalaxy().data?.radiation;
+  const galaxy = useGalaxy();
+  const clouds = galaxy.data?.radiation;
   const sources = useMemo(() => toRadiationSources(clouds ?? []), [clouds]);
   const departMs = serverNow();
+  const hpClouds = galaxy.data?.hpRadiation;
+  const hpSources = useMemo(() => toHpRadiationSources(hpClouds ?? []), [hpClouds]);
+  const hpModel = galaxy.data?.radiationModel === 'HP' || hpSources.length > 0;
   // A server refusal for this same selection outranks the quote (see `lethalAfterRefusal`).
   const [refused, setRefused] = useState<RadiationRefusal | null>(null);
   const radiation = eta > 0
-    ? lethalAfterRefusal(routeRadiation({
+    ? lethalAfterRefusal(hpModel ? transferHpRadiation({ fleet, returning: returningFleet, tech: mods.tech,
+        path: [{ from: planet.planet.position, to: target.position, startMs: departMs, endMs: departMs + eta * 60_000 },
+          { from: target.position, to: planet.planet.position, startMs: departMs + eta * 60_000,
+            endMs: departMs + (eta + returnMinutes) * 60_000 }] }, hpSources) : routeRadiation({
         fleet, from: planet.planet.position, to: target.position, departMs, arriveMs: departMs + eta * 60_000,
       }, sources), refused, fleet)
     : null;
@@ -329,16 +337,7 @@ export function TransferSheet({
         <div data-transfer-commit className="grid gap-2">
           {/* THE RULE, BEFORE THE BUTTON: it turns once; what the origin keeps heads the sheet. */}
           <p className="text-micro leading-snug text-v2-ink-3">{t('transfer.rules')}</p>
-          {radiation && (
-            <p
-              data-radiation-warning
-              className={`text-caption leading-snug ${radiation.destroyed > 0 ? 'text-v2-hostile' : 'text-v2-warn'}`}
-            >
-              {radiation.destroyed > 0
-                ? t('launch.radiationLethal', { count: radiation.destroyed })
-                : t(radiation.docks ? 'launch.radiationDock' : 'launch.radiationPatched', { pct: radiation.pct })}
-            </p>
-          )}
+          <RadiationPreview radiation={radiation} />
           <HoldButton
             label={t('transfer.commit')}
             disabledReason={transfer.isPending ? t('transfer.sending') : refusal}

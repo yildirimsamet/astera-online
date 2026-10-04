@@ -395,6 +395,8 @@ async function hasOutboundPvpStrike(
       eq(clanWarContributions.playerId, playerId),
       inArray(clanWarContributions.status, ['OUTBOUND', 'STAGED', 'IN_BATTLE']),
       inArray(clanWarOperations.status, ['ASSEMBLING', 'ATTACKING']),
+      // A monument is a neutral PvE lane; only a player-targeted joint strike blocks recovery protection.
+      eq(clanWarOperations.targetKind, 'PLANET'),
     ))
     .limit(1);
   return committed !== undefined;
@@ -601,7 +603,7 @@ export async function forceRecoveryShield(
  * none to charge; settling is not the reaching-out this rule is about.
  */
 /** Both stored windows for a set of commanders, read as one live protection each. */
-async function protectionsOf(
+export async function protectionsOf(
   tx: Queryable,
   playerIds: readonly string[],
   now: Date,
@@ -670,6 +672,23 @@ export async function assertAttackProtections(
   refuseProtectedTarget(protectionOf(input.defenderPlayerId));
 
   const mine = protectionOf(input.attackerPlayerId);
+  await commitOwnShieldLoss(tx, input, mine);
+}
+
+/** Monument defenders stand in space; only the launcher's own protection is relevant. */
+export async function assertOwnShieldLoss(
+  tx: Tx,
+  input: { attackerPlayerId: string; now: Date; acknowledgeShieldLoss: boolean },
+): Promise<void> {
+  const protections = await protectionsOf(tx, [input.attackerPlayerId], input.now);
+  await commitOwnShieldLoss(tx, input, protections.get(input.attackerPlayerId) ?? null);
+}
+
+async function commitOwnShieldLoss(
+  tx: Tx,
+  input: { attackerPlayerId: string; now: Date; acknowledgeShieldLoss: boolean },
+  mine: AttackProtection | null,
+): Promise<void> {
   if (!mine) return;
   if (!input.acknowledgeShieldLoss) {
     throw new GameError(

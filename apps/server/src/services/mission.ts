@@ -385,9 +385,17 @@ export async function launchAttack(
     const tech = mods.tech;
     const oneWay = fleetTravelExact(dist, requested, { ...mods, pace: chosenPace });
     const arriveAt = addMinutes(origin.now, oneWay);
+    const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
+    const homeward = fleetTravelExact(dist, requested, { ...mods, pace: 1 });
+    const homeAt = addMinutes(resolveAt, homeward);
     await assertRadiationSafe(tx, {
       seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
-      fleet: requested, acknowledged: acknowledgeRadiation,
+      fleet: requested, tech, acknowledged: acknowledgeRadiation,
+      path: [
+        { from: origin, to: target, startMs: origin.now.getTime(), endMs: arriveAt.getTime() },
+        { from: target, to: target, startMs: arriveAt.getTime(), endMs: resolveAt.getTime() },
+        { from: target, to: origin, startMs: resolveAt.getTime(), endMs: homeAt.getTime() },
+      ],
     });
     /**
      * THE ENGAGEMENT. D44.
@@ -403,11 +411,9 @@ export async function launchAttack(
      * `in_flight` — one fleet per target, the flight bay, the reaper — keeps
      * holding for exactly as long as the fleet is actually there.
      */
-    const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
     // The survivors fly home at FULL speed whatever pace went out (self-review 2026-09-23, R6):
     // measuring the way back at the outbound pace refused slow raids that land home in time.
-    const homeward = fleetTravelExact(dist, requested, { ...mods, pace: 1 });
-    assertSeasonOpenThrough(origin, addMinutes(resolveAt, homeward));
+    assertSeasonOpenThrough(origin, homeAt);
 
     const [mission] = await tx
       .insert(missions)

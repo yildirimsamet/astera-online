@@ -65,6 +65,12 @@ import {
   collectSchema,
   countryUpdatedSchema,
   galaxySchema,
+  monumentsSchema,
+  monumentQuoteSchema,
+  monumentSendSchema,
+  monumentProbeLaunchSchema,
+  monumentRecallQuoteSchema,
+  monumentRecallSchema,
   skinCollectionSchema,
   skinShopSchema,
   skinPricingSchema,
@@ -216,6 +222,15 @@ export interface ClanAidInput {
   cargo: Resources;
 }
 
+export interface MonumentSendInput {
+  originPlanetId: string;
+  fleet: Fleet;
+  purpose: 'ATTACK' | 'REINFORCE';
+  acknowledgeShieldLoss?: boolean;
+  acknowledgeRadiationLoss?: boolean;
+}
+export interface MonumentRecallSelection { lotId: string; count: number }
+
 export interface IntergalacticConvoyLaunchInput {
   originPlanetId: string;
   occurrenceId: string;
@@ -223,6 +238,7 @@ export interface IntergalacticConvoyLaunchInput {
   quotedAt: Date;
   quotedFlightSeconds: number;
   quotedArriveAt: Date;
+  acknowledgeRadiationLoss?: boolean;
 }
 
 /**
@@ -535,6 +551,17 @@ export class Api {
       method: 'POST', body: { skinId },
     });
   traffic = () => this.send('/api/galaxy/traffic', trafficSchema);
+  monuments = () => this.send('/api/monuments', monumentsSchema);
+  quoteMonument = (monumentId: string, input: MonumentSendInput) =>
+    this.send(`/api/monuments/${encodeURIComponent(monumentId)}/quote`, monumentQuoteSchema, { method: 'POST', body: { ...input } });
+  sendMonument = (monumentId: string, input: MonumentSendInput, key: string) =>
+    this.send(`/api/monuments/${encodeURIComponent(monumentId)}/send`, monumentSendSchema, { method: 'POST', body: { ...input }, idempotencyKey: key });
+  probeMonument = (monumentId: string, originPlanetId: string, key: string) =>
+    this.send(`/api/monuments/${encodeURIComponent(monumentId)}/probe`, monumentProbeLaunchSchema, { method: 'POST', body: { originPlanetId }, idempotencyKey: key });
+  quoteMonumentRecall = (waveId: string, selections: readonly MonumentRecallSelection[]) =>
+    this.send(`/api/monuments/waves/${encodeURIComponent(waveId)}/recall/quote`, monumentRecallQuoteSchema, { method: 'POST', body: { selections } });
+  recallMonument = (waveId: string, selections: readonly MonumentRecallSelection[], key: string) =>
+    this.send(`/api/monuments/waves/${encodeURIComponent(waveId)}/recall`, monumentRecallSchema, { method: 'POST', body: { selections }, idempotencyKey: key });
   leaderboard = gatedRead(() => this.send('/api/leaderboard', leaderboardSchema), BIG_READ_GAP_MS);
   seasonArchive = (cursor?: number) => this.send(
     `/api/season-archive?limit=12${cursor === undefined ? '' : `&cursor=${String(cursor)}`}`,
@@ -595,10 +622,14 @@ export class Api {
       { method: 'POST', body: { ...input } });
   markClanWarTarget = (targetPlanetId: string) =>
     this.clanMutation('/api/clan/war/target', clanWarTargetResultSchema, { targetPlanetId });
+  markClanWarMonumentTarget = (targetMonumentId: string) =>
+    this.clanMutation('/api/clan/war/target', clanWarTargetResultSchema, { targetMonumentId });
   cancelClanWar = () => this.clanMutation('/api/clan/war/cancel', clanWarTargetResultSchema);
-  startClanWar = (acknowledgeShieldLoss: boolean, pace: MissionPace = 1) =>
-    this.clanMutation('/api/clan/war/start', clanWarStartResultSchema, { acknowledgeShieldLoss, pace });
-  contributeClanWar = (input: { originPlanetId: string; fleet: Fleet; acknowledgeShieldLoss: boolean }) =>
+  startClanWar = (acknowledgeShieldLoss: boolean, pace: MissionPace = 1, acknowledgeRadiationLoss?: boolean) =>
+    this.clanMutation('/api/clan/war/start', clanWarStartResultSchema, { acknowledgeShieldLoss, pace,
+      ...(acknowledgeRadiationLoss ? { acknowledgeRadiationLoss: true } : {}) });
+  contributeClanWar = (input: { originPlanetId: string; fleet: Fleet; acknowledgeShieldLoss: boolean;
+    acknowledgeRadiationLoss?: boolean }) =>
     this.clanMutation('/api/clan/war/contributions', clanWarContributionResultSchema, input);
   recallClanWar = (contributionId: string) =>
     this.clanMutation(`/api/clan/war/contributions/${encodeURIComponent(contributionId)}/recall`,
@@ -911,6 +942,7 @@ export class Api {
     fleet: Fleet,
     originPlanetId?: string,
     quotedMinutes?: number,
+    acknowledgeRadiationLoss?: boolean,
   ) =>
     this.send('/api/pirates/raid', pirateRaidSchema, {
       method: 'POST',
@@ -919,6 +951,7 @@ export class Api {
         fleet,
         ...(originPlanetId ? { originPlanetId } : {}),
         ...(quotedMinutes !== undefined ? { quotedMinutes } : {}),
+        ...(acknowledgeRadiationLoss ? { acknowledgeRadiationLoss: true } : {}),
       },
     });
 
@@ -937,10 +970,12 @@ export class Api {
     give: { alloy: number; crystal: number; deuterium: number },
     want: { alloy: number; crystal: number; deuterium: number },
     originPlanetId?: string,
+    acknowledgeRadiationLoss?: boolean,
   ) =>
     this.send('/api/trade/launch', tradeLaunchSchema, {
       method: 'POST',
-      body: { occurrenceId, fleet, give, want, ...(originPlanetId ? { originPlanetId } : {}) },
+      body: { occurrenceId, fleet, give, want, ...(originPlanetId ? { originPlanetId } : {}),
+        ...(acknowledgeRadiationLoss ? { acknowledgeRadiationLoss: true } : {}) },
     });
 
   /** Commit the exact moving-target quote the confirmation surface displayed. */

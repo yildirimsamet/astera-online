@@ -27,7 +27,7 @@ const ROUND = 'pointer-events-auto relative grid size-9 place-items-center round
  * a figure an older server does not send is left out, never printed as zero.
  */
 export interface GalaxyTarget {
-  kind: 'asteroid' | 'contact' | 'debris';
+  kind: 'asteroid' | 'contact' | 'debris' | 'monument';
   id: string;
   label: string;
   detail: string;
@@ -36,7 +36,7 @@ export interface GalaxyTarget {
 export function GalaxyReadout({ online, onlineToday, counts, targets = [], onFocusTarget }: {
   online?: number;
   onlineToday?: number;
-  counts: { worlds: number; fleetsAway: number; rocks: number; pirates: number; wrecks: number };
+  counts: { worlds: number; fleetsAway: number; rocks: number; pirates: number; wrecks: number; monuments?: number };
   targets?: readonly GalaxyTarget[];
   onFocusTarget?: (focus: Focus) => void;
 }) {
@@ -64,7 +64,7 @@ export function GalaxyReadout({ online, onlineToday, counts, targets = [], onFoc
     }
   }, [openKind, targets]);
   const listed = openKind === null ? [] : targets.filter((target) => target.kind === openKind);
-  const countLabel = openKind === 'asteroid'
+  const countLabel = openKind === 'monument' ? t('monument.finder', { count: counts.monuments ?? 0 }) : openKind === 'asteroid'
     ? t('galaxy.rocks', { count: counts.rocks })
     : openKind === 'contact'
       ? t('galaxy.pirates', { count: counts.pirates })
@@ -105,6 +105,7 @@ export function GalaxyReadout({ online, onlineToday, counts, targets = [], onFoc
         {count('asteroid', counts.rocks, t('galaxy.rocks', { count: counts.rocks }), 'text-v2-crystal flex items-center')}
         {count('contact', counts.pirates, t('galaxy.pirates', { count: counts.pirates }), 'col-start-2 text-v2-hostile flex items-center')}
         {count('debris', counts.wrecks, t('galaxy.wrecks', { count: counts.wrecks }), 'text-v2-alloy flex items-center')}
+        {count('monument', counts.monuments ?? 0, t('monument.finder', { count: counts.monuments ?? 0 }), 'text-v2-deut flex items-center')}
       </p>
       {openKind !== null && listed.length > 0 && (
         <ul

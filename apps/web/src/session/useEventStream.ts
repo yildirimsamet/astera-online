@@ -47,6 +47,7 @@ export const STRATEGIC_SIGHT_CONSISTENCY_MS = 500;
  * cannot cover, because the player made the decision minutes ago.
  */
 const LIVE_READS = [
+  keys.monuments,
   keys.planet,
   keys.planets,
   keys.galaxy,

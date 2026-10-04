@@ -9,10 +9,11 @@ import { CommanderHost } from '../v2/shell/CommanderHost.js';
 import { BaseSwitch, type BaseView } from '../v2/hud/BaseSwitch.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
-import { VIEW } from '@astera/rules';
+import { VIEW, hpRadiationApplies } from '@astera/rules';
 import { NextSeason } from '../ui/NextSeason.js';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { monumentName } from '../i18n/names.js';
 import {
   miningSceneData,
   useGalaxy,
@@ -38,6 +39,7 @@ import {
   useContactWindows,
   useLaunchDeathStar,
   useSettlement,
+  useMonuments,
 } from '../api/queries.js';
 import type {
   AsteroidView,
@@ -54,6 +56,7 @@ import {
   ContactFocus,
   PirateFocus,
   PlanetFocus,
+  MonumentFocus,
   IntergalacticConvoyFocus,
   TradeFocus,
   RunFocus,
@@ -62,6 +65,8 @@ import {
   type Focus,
 } from '../galaxy/FocusPanel.jsx';
 import { threadKey } from '../galaxy/threadKey.js';
+import { MonumentSheet } from './MonumentSheet.js';
+import { monumentPendingThreads } from '../lib/monumentFlights.js';
 import type { PlanetGroup } from '../lib/directives.js';
 import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
@@ -368,6 +373,7 @@ export function GalaxyView({
   const planet = usePlanet();
   const intel = useIntel();
   const season = useSeason();
+  const monumentCatalog = useMonuments(hpRadiationApplies(planet.data?.rulesetVersion ?? 0));
   const pending = usePending();
   const traffic = useTraffic();
   const mining = useMining();
@@ -504,7 +510,7 @@ export function GalaxyView({
   const [focus, setFocus] = useState<Focus | null>(null);
   const [clanInitialTab, setClanInitialTab] = useState<'overview' | 'war'>('overview');
   const clanWar = useClanWar(clanBadge.data?.membership?.role === 'LEADER'
-    && focus?.kind === 'planet');
+    && (focus?.kind === 'planet' || focus?.kind === 'monument'));
   const clanWarActions = useClanWarActions();
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
   /** Klan Savunma Desteği: the clanmate world the send sheet is open for. */
@@ -778,6 +784,7 @@ export function GalaxyView({
     the door that tells the clan: clan chat, opened with the report's line as a draft.
   */
   const reportDoors: ReportDoors = {
+    onFocusMonument: (id) => { onPanel(null); setFocus({ kind: 'monument', id }); setDetail(true); setAttacking(false); },
     onFocusPlanet: (planetId: string) => {
       onPanel(null);
       focusPlanet(planetId);
@@ -809,12 +816,21 @@ export function GalaxyView({
   const asteroids = miningScene.asteroids;
   const runs = miningScene.runs;
   const wrecks = miningScene.debris;
-  const threads = useMemo(() => pending.data?.pending ?? [], [pending.data]);
+  // The monument payload carries the server-time snapshot used for its flight
+  // visibility.  Rebuilding this array on the five-second HUD clock made the
+  // 3D fleet tree churn even though no flight data had changed; countdown text
+  // is derived from each thread's arrival instant where it is displayed.
+  const monumentThreads = useMemo(() => monumentPendingThreads(monumentCatalog.data), [monumentCatalog.data]);
+  const threads = useMemo(() => [...pending.data?.pending ?? [], ...monumentThreads], [pending.data, monumentThreads]);
   const contacts = useMemo(() => traffic.data?.contacts ?? [], [traffic.data]);
   /* The corner lists pirates the Telescope has identified, including remembered ones.
      Radar-only returns stay anonymous on the disc and outside this named tally. */
   const knownPirates = useMemo(() => knownPirateContacts(contacts), [contacts]);
   const findableTargets = useMemo<GalaxyTarget[]>(() => [
+      ...(galaxy.data?.monuments ?? []).map((monument) => ({ kind: 'monument' as const, id: monument.id,
+        label: monumentName(monument.ordinal),
+        detail: monument.controller.kind === 'PLAYER' ? monument.controller.name
+          : monument.controller.kind === 'CLAN' ? `[${monument.controller.tag}] ${monument.controller.name}` : t(monument.emptySince ? 'monument.empty' : 'monument.neutral') })),
       ...asteroids.map((rock, index) => ({
         kind: 'asteroid' as const,
         id: rock.id,
@@ -843,7 +859,7 @@ export function GalaxyView({
           : t('focus.debris.titleOver', { planet: planets.find((world) => world.id === field.planetId)?.name ?? '' }),
         detail: t('galaxy.targetResources', { amount: compact(field.alloy + field.crystal + field.deuterium) }),
       })),
-    ], [asteroids, knownPirates, pirateList.data?.pirates, planets, t, wrecks]);
+    ], [galaxy.data?.monuments, asteroids, knownPirates, pirateList.data?.pirates, planets, t, wrecks]);
   const interceptions = useMemo(() => traffic.data?.interceptions ?? [], [traffic.data]);
   const interceptionImpacts = useMemo(
     () => traffic.data?.interceptionImpacts ?? [],
@@ -923,7 +939,7 @@ export function GalaxyView({
       contact on the disc, which is exactly the state a tap on a foreign fleet
       produces. D163.
     */
-    const exists = requested.kind === 'run'
+    const exists = requested.kind === 'monument' ? (galaxy.data?.monuments ?? []).some((row) => row.id === requested.id) : requested.kind === 'run'
       ? runs.some((run) => run.id === requested.id && run.status !== 'done')
       : requested.kind === 'contact'
         ? contacts.some((c) => c.id === requested.id)
@@ -932,9 +948,9 @@ export function GalaxyView({
     handledCraftFocusRequest.current = craftFocusRequest.request;
     setFocus(requested);
     setTransferOriginId(null);
-    setDetail(false);
+    setDetail(requested.kind === 'monument');
     setAttacking(false);
-  }, [craftFocusRequest, runs, threads, contacts]);
+  }, [craftFocusRequest, runs, threads, contacts, galaxy.data?.monuments]);
 
   /**
    * EVERY PROP THE DISC TAKES IS STABLE. D53.
@@ -1143,6 +1159,7 @@ export function GalaxyView({
       rocks: asteroids.length,
       pirates: knownPirates.length,
       wrecks: wrecks.length,
+      monuments: galaxy.data?.monuments?.length ?? 0,
     },
   };
   /** The context slot draws at the foot while the season is live and no page is open. */
@@ -1185,6 +1202,8 @@ export function GalaxyView({
         intergalacticConvoy={intergalacticConvoy}
         sensors={sensors}
         {...(galaxy.data?.radiation ? { radiation: galaxy.data.radiation } : {})}
+        {...(galaxy.data?.hpRadiation ? { hpRadiation: galaxy.data.hpRadiation } : {})}
+        {...(galaxy.data?.monuments ? { monuments: galaxy.data.monuments } : {})}
         showTelescopeReach={showTelescopeReach}
         showRadarReach={showRadarReach}
         {...(activeWorldPosition ? { homePosition: activeWorldPosition } : { homePosition: undefined })}
@@ -1285,6 +1304,19 @@ export function GalaxyView({
 
       {/* ── focus ───────────────────────────────────────────── */}
 
+      {!coachFocus && focus?.kind === 'monument' && !detail && galaxy.data?.monuments?.find((row) => row.id === focus.id) && (
+        <MonumentFocus monument={galaxy.data.monuments.find((row) => row.id === focus.id)!}
+          onInspect={() => { setDetail(true); }} onClose={close} />
+      )}
+      {!coachFocus && focus?.kind === 'monument' && detail && planet.data && galaxy.data && (
+        <MonumentSheet key={`${focus.id}:${planet.data.planet.id}`} monumentId={focus.id} origin={planet.data} playerId={galaxy.data.you.playerId}
+          clanId={clanBadge.data?.membership?.clanId ?? null} onClose={() => { setDetail(false); }}
+          {...(clanBadge.data?.membership?.role === 'LEADER' && clanWar.data?.available === true
+            && (clanWar.data.operation === null || clanWar.data.operation.status === 'COMPLETED') ? { onClanTarget: (monumentId: string) => {
+              clanWarActions.monumentTarget.mutate(monumentId, { onSuccess: () => { setFocus(null); setDetail(false); setClanInitialTab('war'); onPanel('clan'); },
+                onError: (error: Error) => { say(describe(error), 'error'); } });
+            } } : {})} />
+      )}
       {!coachFocus && focus?.kind === 'planet' && selected && focusedPlanet && showPlanetFocus && !attacking && (
         <PlanetFocus
           target={selected}
@@ -1530,6 +1562,7 @@ export function GalaxyView({
           if (!thread) return null;
           return (
             <ThreadFocus
+              onFocusMonument={(id) => { setFocus({ kind: 'monument', id }); setDetail(true); setAttacking(false); }}
               thread={thread}
               /**
                * OFF THE CLOCK, NOT OFF THE PAYLOAD.

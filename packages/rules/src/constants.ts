@@ -3444,8 +3444,11 @@ export const MULTI_WORLD = {
    * radiation (`shipDamageRulesetVersion`, owner decision K5 — with the next season).
    * 14 → 15 on 2026-10-02: Klan Savunma Desteği and the defence posture
    * (`clanDefenseRulesetVersion`, owner decision K11 — with the next season).
+   * 15 → 16 on 2026-10-04: monuments and fixed HP radiation, for new seasons only.
    */
-  rulesetVersion: 15,
+  rulesetVersion: 16,
+  /** Monument and fixed HP radiation are dealt together, after every adapter is complete. */
+  monumentRulesetVersion: 16,
   /**
    * TAKTİK GERİ ÇEKİLME ARRIVES WITH A SEASON, NEVER INSIDE ONE. Owner decision,
    * 2026-09-23. A live season keeps the battle rule it was dealt: a fleet its owner

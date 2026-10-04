@@ -71,6 +71,7 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
       return [keys.traffic, keys.galaxy, keys.planet, keys.pending, keys.miningField];
     case 'control':
       return [
+        keys.monuments,
         keys.traffic,
         keys.galaxy,
         keys.planet,
@@ -165,6 +166,8 @@ export const isPrivateEvent = (kind: string): boolean => kind.startsWith(PRIVATE
  */
 export function readsForPrivateEvent(kind: string): readonly (readonly string[])[] | null {
   switch (kind.slice(PRIVATE_PREFIX.length)) {
+    case 'monument':
+      return [keys.monuments, keys.pending, keys.planet, keys.planets, keys.notifications, keys.reports, keys.galaxy, keys.traffic, keys.clanWar];
     /** A world this commander watches launched or recovered combat craft. */
     case 'sight':
       return [keys.galaxy, keys.intel];

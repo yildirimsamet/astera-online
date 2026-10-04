@@ -2,10 +2,10 @@ import { z } from 'zod';
 import { FAULT_KINDS } from '@astera/rules';
 import type { NotificationView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
-import { hullName, unlockCopy } from '../i18n/names.js';
-import { compact, full } from './format.js';
+import { hullName, monumentName, unlockCopy } from '../i18n/names.js';
+import { compact, decimal, full } from './format.js';
 import { commanderLabel } from './identity.js';
-import { duration } from './time.js';
+import { dayClock, duration } from './time.js';
 
 /**
  * THE SEVEN KINDS OF NEWS, TURNED INTO THE SENTENCES A PLAYER READS. D45.
@@ -543,10 +543,40 @@ const identity = (
 export interface NotificationIdentity {
   label: string;
   planetId?: string;
+  monumentId?: string;
+}
+
+const monumentTarget = z.object({ monumentId: z.string().uuid(), monumentOrdinal: z.number().int().min(1).max(5).optional() });
+const monumentResult = monumentTarget.extend({ targetKind: z.literal('MONUMENT'), attacking: z.boolean(),
+  grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']), control: z.enum(['ATTACKER', 'DEFENDER', 'EMPTY']),
+  survivors: z.number().int().nonnegative(), unitsLost: z.number().int().nonnegative(),
+  lootDeuterium: z.number().finite().nonnegative(), dominion: z.number().int().safe(),
+  opponents: z.array(z.object({ kind: z.enum(['PLAYER', 'NEUTRAL']), name: z.string(),
+    clanName: z.string().nullable(), clanTag: z.string().nullable() })).default([]) });
+
+/** Native target payloads cannot be treated as historical planet-shaped news. */
+export function notificationMonumentTarget(notification: NotificationView): NotificationIdentity | null {
+  const allowed = notification.kind === 'monument_inbound' || notification.kind === 'monument_probe_lost'
+    || z.object({ targetKind: z.literal('MONUMENT') }).safeParse(notification.payload).success;
+  if (!allowed) return null;
+  const parsed = monumentTarget.safeParse(notification.payload);
+  if (!parsed.success) return null;
+  return { label: monumentName(parsed.data.monumentOrdinal), monumentId: parsed.data.monumentId };
+}
+
+/** A hostile monument wave is actionable only until its server-authored ETA. */
+export function activeMonumentInbound(notification: NotificationView, monumentId: string, now: number): boolean {
+  if (notification.kind !== 'monument_inbound') return false;
+  const parsed = monumentTarget.extend({ arriveAt: z.coerce.date() }).safeParse(notification.payload);
+  return parsed.success
+    && parsed.data.monumentId === monumentId
+    && parsed.data.arriveAt.getTime() > now;
 }
 
 /** The identity already printed in a notification, plus its safe Galaxy route. */
 export function notificationIdentity(notification: NotificationView): NotificationIdentity | null {
+  const target = notificationMonumentTarget(notification);
+  if (target) return target;
   switch (notification.kind) {
     case 'incoming_fleet':
     case 'strategic_incoming': {
@@ -649,6 +679,49 @@ export function notificationIdentity(notification: NotificationView): Notificati
  * test place a notification either side of its own arrival.
  */
 export function describeNotification(notification: NotificationView, now: number): string | null {
+  const native = notificationMonumentTarget(notification);
+  if (native) {
+    const name = native.label;
+    if (notification.kind === 'radiation_lost') {
+      const parsed = monumentTarget.extend({ lost: z.number().int().positive(), left: z.number().int().nonnegative(), lostDeuterium: z.number().finite().nonnegative() }).safeParse(notification.payload);
+      return parsed.success ? i18n.t('monument.newsRadiation', { name, count: parsed.data.lost, left: parsed.data.left,
+        cargo: decimal(parsed.data.lostDeuterium, 3) }) : null;
+    }
+    if (notification.kind === 'monument_inbound') {
+      const parsed = monumentTarget.extend({ arriveAt: z.coerce.date() }).safeParse(notification.payload);
+      if (!parsed.success) return null;
+      return i18n.t('monument.newsInbound', { name, clock: parsed.data.arriveAt.getTime() <= now
+        ? i18n.t('notifications.incomingLanded') : duration((parsed.data.arriveAt.getTime() - now) / 60_000) });
+    }
+    if (notification.kind === 'monument_probe_lost') return i18n.t('monument.newsProbeLost', { name });
+    if (notification.kind === 'monument_returning') {
+      const parsed = monumentTarget.extend({ craft: z.number().int().positive(), arriveAt: z.coerce.date(),
+        reason: z.enum(['RECALLED', 'CAPACITY', 'MEMBERSHIP', 'CONTROL_CHANGED', 'DEFEAT', 'WORLD_CHANGED', 'FREEZE']) }).safeParse(notification.payload);
+      return parsed.success ? i18n.t('monument.newsReturning', { name, count: parsed.data.craft,
+        reason: i18n.t(`monument.returnReason.${parsed.data.reason}`),
+        clock: duration(Math.max(0, (parsed.data.arriveAt.getTime() - now) / 60_000)) }) : null;
+    }
+    if (notification.kind === 'probe_report') {
+      const parsed = monumentTarget.extend({ observedAt: z.coerce.date(), deliveredAt: z.coerce.date() }).safeParse(notification.payload);
+      return parsed.success ? i18n.t('monument.newsProbeHome', { name,
+        observed: dayClock(parsed.data.observedAt, now), delivered: dayClock(parsed.data.deliveredAt, now) }) : null;
+    }
+    if (notification.kind === 'raid_result') {
+      const parsed = monumentResult.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      const sentence = i18n.t('monument.newsBattle', { name, outcome: i18n.t(`monument.reportControl.${parsed.data.control}`),
+        left: parsed.data.survivors, lost: parsed.data.unitsLost, points: String(parsed.data.dominion) });
+      if (parsed.data.opponents.length === 0) return sentence;
+      const opponents = parsed.data.opponents.map((opponent) => opponent.kind === 'NEUTRAL'
+        ? i18n.t('monument.neutral')
+        : opponent.clanTag ? `${opponent.name} [${opponent.clanTag}]` : opponent.name).join(' · ');
+      return `${sentence} · ${i18n.t('monument.newsOpponents', { names: opponents })}`;
+    }
+    if (notification.kind === 'fleet_returned') {
+      const parsed = monumentTarget.extend({ trip: z.literal('monument'), craft: z.number().int().nonnegative(), deuterium: z.number().finite().nonnegative() }).safeParse(notification.payload);
+      return parsed.success ? i18n.t('monument.newsHome', { name, count: parsed.data.craft, cargo: decimal(parsed.data.deuterium, 3) }) : null;
+    }
+  }
   switch (notification.kind) {
     case 'incoming_fleet':
     case 'strategic_incoming': {
@@ -1257,6 +1330,9 @@ export const isUrgent = (notification: NotificationView): boolean =>
  * player to read red as "something happened" rather than as "something is wrong".
  */
 export const isAlarming = (notification: NotificationView): boolean => {
+  if (notification.kind === 'monument_inbound' || notification.kind === 'monument_probe_lost') return true;
+  const result = monumentResult.safeParse(notification.payload);
+  if (notification.kind === 'raid_result' && result.success) return result.data.survivors === 0 || result.data.dominion < 0;
   if (
     notification.kind === 'incoming_fleet'
     || notification.kind === 'strategic_incoming'
@@ -1314,6 +1390,7 @@ const isPirateNews = (notification: NotificationView): boolean => {
 };
 
 export function signalFamily(notification: NotificationView): SignalFamily {
+  if (notification.kind === 'monument_inbound' || notification.kind === 'monument_probe_lost') return 'threat';
   switch (notification.kind) {
     case 'galaxy_event_started':
     case 'galaxy_event_ended':
@@ -1496,6 +1573,12 @@ export function signalGlyph(notification: NotificationView): SignalGlyph {
   // same kind and are not the same news.
   if (isPirateNews(notification)) return 'skull';
   switch (notification.kind) {
+    case 'monument_inbound':
+      return 'incoming';
+    case 'monument_probe_lost':
+      return 'probe';
+    case 'monument_returning':
+      return 'returned';
     case 'incoming_fleet':
       return 'incoming';
     case 'strategic_incoming':

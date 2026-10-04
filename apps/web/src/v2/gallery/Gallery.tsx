@@ -20,6 +20,7 @@ import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
 import { AwaySheet } from '../hud/AwaySheet.js';
 import { PlanetModelsGallery } from './PlanetModelsGallery.js';
+import { MonumentModelsGallery } from './MonumentModelsGallery.js';
 import { GallerySupport } from './GallerySupport.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
@@ -918,6 +919,7 @@ function Views({ view }: { view: string }) {
 }
 
 export function Gallery({ view }: { view: string | null }) {
+  if (view === 'monument-models') return <MonumentModelsGallery />;
   if (view?.startsWith('skin-card:')) {
     const skinId = view.slice('skin-card:'.length);
     if (!PLANET_SKIN_IDS.includes(skinId as PlanetSkinId)) return null;

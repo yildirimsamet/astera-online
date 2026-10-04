@@ -49,7 +49,8 @@ export function NowLine({ entries, now, contacts = [], open, onOpen, onClose, on
   return (
     <>
       {/* An inset card under the top bar, as the mock draws it — not a strip bled to the edges. */}
-      <div className={`${floating ? 'pointer-events-none absolute inset-x-0 top-full z-20' : ''} px-2.5 pt-2`}>
+      <div {...(floating ? { 'data-now-float': '' } : {})}
+        className={`${floating ? 'pointer-events-none absolute inset-x-0 top-full z-20' : ''} px-2.5 pt-2`}>
       <button
         type="button"
         data-now-line=""

@@ -4,8 +4,10 @@ import {
   allowedPaces,
   type MissionPace,
   COMBAT_HULLS,
+  ENGAGEMENT_MS,
   fleetCount,
   salvageCapacity,
+  hpRadiationApplies,
   type Fleet,
   type MobileHullId,
 } from '@astera/rules';
@@ -24,7 +26,7 @@ import {
 import { useAcademyLesson } from '../onboarding/lessonScope.js';
 import { useTargetReading } from './useTargetReading.js';
 import {
-  lethalAfterRefusal, radiationRefusalCount, routeRadiation, toRadiationSources, type RadiationRefusal,
+  lethalAfterRefusal, radiationRefusalCount, routeRadiation, routeHpRadiation, toHpRadiationSources, toRadiationSources, type RadiationRefusal,
 } from './radiation.js';
 import { ACADEMY_LEG_SECONDS, academyLessonFleet } from '@astera/rules';
 import type { LaunchTarget } from '../screens/LaunchSheet.js';
@@ -177,6 +179,11 @@ export function useLaunchPlan({
   const galaxy = useGalaxy();
   const clouds = galaxy.data?.radiation;
   const sources = useMemo(() => toRadiationSources(clouds ?? []), [clouds]);
+  const hpClouds = galaxy.data?.hpRadiation;
+  const hpSources = useMemo(() => toHpRadiationSources(hpClouds ?? []), [hpClouds]);
+  const hpModel = galaxy.data?.radiationModel === 'HP'
+    || hpRadiationApplies(season.data?.rulesetVersion ?? 0)
+    || hpSources.length > 0;
   const departMs = serverNow();
   /*
     THE SERVER'S REFUSAL IS A FORECAST TOO. At a window's edge, or for a cloud about to light,
@@ -184,7 +191,14 @@ export function useLaunchPlan({
     selection it refused, so the next hold is the acknowledgement it asked for.
   */
   const [refused, setRefused] = useState<RadiationRefusal | null>(null);
-  const radiation = target.kind === 'world' && route !== null && !lesson
+  const endpoint = target.kind === 'world' ? target.world.position : route?.rendezvous;
+  const arriveMs = departMs + (route?.oneWayMinutes ?? 0) * 60_000;
+  const homeMs = departMs + (route?.exposureMinutes ?? 0) * 60_000;
+  const hpQuote = hpModel && route !== null && endpoint && !lesson ? routeHpRadiation({ fleet: sending, tech: mods.tech,
+    path: [{ from: planet.planet.position, to: endpoint, startMs: departMs, endMs: arriveMs },
+      { from: endpoint, to: endpoint, startMs: arriveMs, endMs: arriveMs + ENGAGEMENT_MS },
+      { from: endpoint, to: planet.planet.position, startMs: arriveMs + ENGAGEMENT_MS, endMs: homeMs }] }, hpSources) : null;
+  const radiation = hpModel ? lethalAfterRefusal(hpQuote, refused, sending) : target.kind === 'world' && route !== null && !lesson
     ? lethalAfterRefusal(routeRadiation({
         fleet: sending,
         from: planet.planet.position,
@@ -369,6 +383,7 @@ export function useLaunchPlan({
         {
           pirateId: pirate.id,
           fleet: sending,
+          ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiationLoss: true } : {}),
           /*
             THE MINUTE ON THIS SCREEN RIDES THE LAUNCH. D183. A pirate's rendezvous is an
             instantaneous solve, and a table even half a minute old can name a different lap of
@@ -385,6 +400,8 @@ export function useLaunchPlan({
           },
           onError: (err) => {
             say(describe(err), 'error');
+            const count = radiationRefusalCount(err);
+            if (count !== null) setRefused({ count, fleet: sending });
             onRefused();
           },
         },

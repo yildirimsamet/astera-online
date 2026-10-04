@@ -26,7 +26,7 @@ type EventStatus = typeof eventStatus.enumValues[number];
  * folded into GLOBAL, because teaching the next reader that "galaxy-wide" and
  * "bolted to one clan" are the same category is how the next event gets it wrong.
  */
-type Policy = 'PERSONAL' | 'BLOCKER' | 'GLOBAL' | 'NEUTRAL' | 'WORLD' | 'CLAN';
+type Policy = 'PERSONAL' | 'BLOCKER' | 'GLOBAL' | 'NEUTRAL' | 'WORLD' | 'CLAN' | 'MONUMENT';
 export type TransferEventDisposition = 'MOVE' | 'KEEP' | 'DEFER' | 'RECONCILE';
 
 /** Every new persisted kind must decide its transfer semantics before compilation. */
@@ -65,6 +65,11 @@ export const TRANSFER_EVENT_POLICIES = {
   neutral_census: 'GLOBAL',
   // A live support wave blocks a commander transfer on either end (plan §Üyelik).
   clan_support_expiry: 'BLOCKER',
+  monument_arrival: 'BLOCKER',
+  monument_probe: 'BLOCKER',
+  // These clocks belong to the public target, independent of a holder's account.
+  monument_loss: 'MONUMENT',
+  monument_respawn: 'MONUMENT',
 } as const satisfies Record<EventKind, Policy>;
 
 /**
@@ -83,7 +88,7 @@ export function transferEventDisposition(
   if (status === 'done') return 'KEEP';
   const policies: Readonly<Record<string, Policy | undefined>> = TRANSFER_EVENT_POLICIES;
   const policy = policies[kind];
-  if (policy === 'GLOBAL' || policy === 'WORLD' || policy === 'CLAN') return 'KEEP';
+  if (policy === 'GLOBAL' || policy === 'WORLD' || policy === 'CLAN' || policy === 'MONUMENT') return 'KEEP';
   if (status !== 'pending') return 'DEFER';
   if (policy === 'PERSONAL') return resolveAt > now ? 'MOVE' : 'DEFER';
   if (policy === 'NEUTRAL') return 'RECONCILE';

@@ -1,4 +1,6 @@
 export const clanWar = {
+  radiationMember: "{{name}}: radyasyon {{count}} gemiyi yok edecek. Dalgayı geri çağırıp kendi kayıp onayınla yeniden gönder.",
+  radiationMemberRequired: "Üye kendi radyasyon kaybını onaylamalı",
   tab: 'Savaş', purpose: 'Tek hedef. Birçok komutan. Ortak saldırı.',
   contactBoundary: 'Klan kimliği belli. Komutanlar, yük ve rota gizli kalır.',
   disbandBurn: 'Klanı dağıtmak hazinedeki {{alloy}} alaşım, {{crystal}} kristal ve {{deuterium}} döteryumu kalıcı olarak yok eder. Üyelere iade yapılmaz.',
@@ -71,7 +73,7 @@ export const clanWar = {
   seatEmpty: 'Boş',
   seatYou: 'Sen',
   seatNoWave: '{{name}} henüz dalga göndermedi.',
-  status: { OUTBOUND: 'Toplanma noktasına uçuyor', STAGED: 'Toplanma noktasında hazır',
+  status: { TRANSFERRED: 'Monument filolarına devredildi', OUTBOUND: 'Toplanma noktasına uçuyor', STAGED: 'Toplanma noktasında hazır',
     RECALL_ORDERED: 'Geri çağrıldı', IN_BATTLE: 'Savaşta', RETURNING: 'Eve dönüyor',
     HOME: 'Evde', LOST: 'Yok oldu' },
   operationStatus: { ASSEMBLING: 'Toplanıyor', ATTACKING: 'Saldırı yolda',

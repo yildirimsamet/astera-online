@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { RadiationSourceInput } from '../services/radiation.js';
+import type { HpRadiationSourceInput, RadiationSourceInput } from '../services/radiation.js';
 
 /**
  * THE OPERATOR'S RADIATION DOOR, AS WORDS. Owner decision K4 (`plan.md` F9).
@@ -11,11 +11,14 @@ import type { RadiationSourceInput } from '../services/radiation.js';
 export const RADIATION_USAGE = `usage:
   pnpm radiation add --season <id> (--planet <id> | --at x,y,z) --radius <r>
                      (--intensity <%/min> | --shelter) [--from <iso>] [--until <iso>] [--label <text>]
+  pnpm radiation add --hp --season <id> (--monument <id> | --planet <id> | --at x,y,z) --radius <r>
+                     (--intensity <hp/min> | --shelter) [--from <iso>] [--until <iso>] [--label <text>]
   pnpm radiation list --season <id>
   pnpm radiation end <source id>`;
 
 export type RadiationCommand =
   | { command: 'add'; input: RadiationSourceInput }
+  | { command: 'addHp'; input: HpRadiationSourceInput }
   | { command: 'list'; seasonId: string }
   | { command: 'end'; id: string };
 
@@ -24,8 +27,8 @@ function refuse(why: string): never {
 }
 
 const uuid = z.string().uuid();
-const VALUE_FLAGS = new Set(['--season', '--planet', '--at', '--radius', '--intensity', '--from', '--until', '--label']);
-const SWITCHES = new Set(['--shelter']);
+const VALUE_FLAGS = new Set(['--season', '--planet', '--monument', '--at', '--radius', '--intensity', '--from', '--until', '--label']);
+const SWITCHES = new Set(['--shelter', '--hp']);
 
 function flagsOf(argv: readonly string[]): Map<string, string | true> {
   const flags = new Map<string, string | true>();
@@ -83,7 +86,40 @@ export function parseRadiationCommand(argv: readonly string[]): RadiationCommand
   const flags = flagsOf(rest);
   const seasonId = idOf(text(flags, '--season'), '--season');
   const planet = text(flags, '--planet');
+  const monument = text(flags, '--monument');
   const at = text(flags, '--at');
+  const hp = flags.get('--hp') === true;
+  if (hp) {
+    if ([planet, monument, at].filter((value) => value !== undefined).length !== 1) {
+      refuse('HP source needs exactly one of --monument, --planet and --at');
+    }
+    let anchor: HpRadiationSourceInput['anchor'];
+    if (monument !== undefined) anchor = { kind: 'MONUMENT', monumentId: idOf(monument, '--monument') };
+    else if (planet !== undefined) anchor = { kind: 'PLANET', planetId: idOf(planet, '--planet') };
+    else {
+      const parts = (at ?? '').split(',');
+      if (parts.length !== 3) refuse('--at takes x,y,z');
+      const [x = '', y = '', z = ''] = parts;
+      anchor = { kind: 'ZONE', at: { x: number(x, '--at'), y: number(y, '--at'), z: number(z, '--at') } };
+    }
+    const radius = text(flags, '--radius');
+    if (radius === undefined) refuse('--radius is required');
+    const shelter = flags.get('--shelter') === true;
+    const intensity = text(flags, '--intensity');
+    if (!shelter && intensity === undefined) refuse('an HP cloud needs --intensity (or --shelter)');
+    const from = text(flags, '--from');
+    const until = text(flags, '--until');
+    return {
+      command: 'addHp',
+      input: {
+        seasonId, anchor, radius: number(radius, '--radius'),
+        intensityHpPerMinute: intensity === undefined ? 0 : number(intensity, '--intensity'),
+        mode: shelter ? 'SHELTER' : 'EMIT', label: text(flags, '--label') ?? '',
+        ...(from === undefined ? {} : { activeFrom: date(from, '--from') }),
+        ...(until === undefined ? {} : { activeUntil: date(until, '--until') }),
+      },
+    };
+  }
   if ((planet === undefined) === (at === undefined)) refuse('name exactly one of --planet and --at');
   let anchor: RadiationSourceInput['anchor'];
   if (planet !== undefined) {

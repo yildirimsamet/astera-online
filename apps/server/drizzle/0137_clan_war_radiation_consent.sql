@@ -1,0 +1,1 @@
+ALTER TABLE "clan_war_contributions" ADD COLUMN "radiation_loss_acknowledged" boolean DEFAULT false NOT NULL;

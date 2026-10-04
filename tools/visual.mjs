@@ -17,6 +17,24 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--monument-ui')) {
+  const { verifyMonumentUi } = await import('./monument-ui-visual.mjs');
+  await verifyMonumentUi(process.argv[2] ?? 'out/monument-ui');
+  process.exit(0);
+}
+
+if (process.argv.includes('--radiation-haze')) {
+  const { verifyRadiationHaze } = await import('./radiation-haze-visual.mjs');
+  await verifyRadiationHaze(process.argv[2] ?? 'out/radiation-haze');
+  process.exit(0);
+}
+
+if (process.argv.includes('--monument-models')) {
+  const { verifyMonumentModels } = await import('./monument-model-visual.mjs');
+  await verifyMonumentModels(process.argv[2] ?? 'out/monument-models');
+  process.exit(0);
+}
+
 if (process.argv.includes('--battle-reports')) {
   const { verifyBattleReports } = await import('./battle-report-visual.mjs');
   await verifyBattleReports(process.argv[2] ?? 'out/battle-reports');

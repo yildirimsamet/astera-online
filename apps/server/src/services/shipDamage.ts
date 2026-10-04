@@ -3,14 +3,17 @@ import {
   dockLocation,
   fleetEntries,
   repairPct,
-  shipRepairCost,
-  shipRepairMinutes,
+  shipHpRepairCost,
+  shipHpRepairMinutes,
+  splitForHpLanding,
   splitForLanding,
   type TechLevels,
   type DamageLot,
   type DamageLots,
   type Fleet,
   type HullId,
+  type HpDamageLot,
+  type HpDamageLots,
 } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
 import { buildOrders, shipDamageLots, units } from '../db/schema.js';
@@ -31,6 +34,7 @@ export interface DockedLot {
   hull: HullId;
   count: number;
   damageBp: number;
+  remainderBp?: number;
   /** A `BUILDING` repair order names this lot. Derived, never stored. */
   repairing: boolean;
   /** That order, so a job holding several hulls can list them; null while the lot waits. */
@@ -43,6 +47,11 @@ export interface DockReport {
   autoRepaired: DamageLot[];
   /** Above it: waiting in the dock. */
   docked: DamageLot[];
+}
+
+export interface HpDockReport extends DockReport {
+  autoRepaired: HpDamageLot[];
+  docked: HpDamageLot[];
 }
 
 /** How many ships a list of lots holds. */
@@ -88,6 +97,7 @@ export async function dockLotsOf(tx: Queryable, planetId: string): Promise<Docke
       hull: lot.hull,
       count,
       damageBp: lot.damageBp,
+      ...(lot.remainderBp > 0 ? { remainderBp: lot.remainderBp } : {}),
       repairing: job !== null,
       orderId: job,
     }];
@@ -112,13 +122,13 @@ export function dockView(lots: readonly DockedLot[], yard: number, tech: TechLev
   return {
     lots: lots.map((lot) => ({
       ...lot,
-      cost: shipRepairCost([lot], pct),
-      minutes: shipRepairMinutes([lot], yard, tech, pct),
+      cost: shipHpRepairCost([lot], pct),
+      minutes: shipHpRepairMinutes([lot], yard, tech, pct),
     })),
     /** "Repair all": every lot not already under repair. */
     waiting: {
-      cost: shipRepairCost(waiting, pct),
-      minutes: shipRepairMinutes(waiting, yard, tech, pct),
+      cost: shipHpRepairCost(waiting, pct),
+      minutes: shipHpRepairMinutes(waiting, yard, tech, pct),
     },
     /** The share of a repair Industrial leaves: 100, 75 or 50. */
     pct,
@@ -126,10 +136,10 @@ export function dockView(lots: readonly DockedLot[], yard: number, tech: TechLev
 }
 
 /** One lot row per landing's damage state, and its ships at `dock:<lot>`. Never merged. */
-async function dock(tx: Tx, planetId: string, ownerPlayerId: string, lots: DamageLots, at: Date): Promise<void> {
+async function dock(tx: Tx, planetId: string, ownerPlayerId: string, lots: HpDamageLots, at: Date): Promise<void> {
   for (const lot of lots) {
     const [row] = await tx.insert(shipDamageLots)
-      .values({ planetId, hull: lot.hull, damageBp: lot.damageBp, createdAt: at })
+      .values({ planetId, hull: lot.hull, damageBp: lot.damageBp, remainderBp: lot.remainderBp ?? 0, createdAt: at })
       .returning({ id: shipDamageLots.id });
     if (!row) throw new Error('dock lot insert returned no row');
     await tx.insert(units).values({
@@ -151,7 +161,7 @@ export interface Landing {
   ownerPlayerId: string;
   fleet: Fleet;
   /** What the ships carry; null or empty when every one of them is whole. */
-  damage: DamageLots | null | undefined;
+  damage: HpDamageLots | null | undefined;
   at: Date;
 }
 
@@ -164,7 +174,18 @@ export interface Landing {
  * row lock, as every landing already does.
  */
 export async function landShips(tx: Tx, input: Landing): Promise<DockReport> {
+  if (input.damage?.some((lot) => lot.remainderBp !== undefined)) return landHpShips(tx, input);
   const landing = splitForLanding(input.fleet, input.damage);
+  const merged = await homeOf(tx, input.planetId);
+  for (const [hull, count] of fleetEntries(landing.home)) merged[hull] = (merged[hull] ?? 0) + count;
+  await setUnits(tx, input.planetId, merged, 'home', input.ownerPlayerId);
+  await dock(tx, input.planetId, input.ownerPlayerId, landing.docked, input.at);
+  return { autoRepaired: landing.autoRepaired, docked: landing.docked };
+}
+
+/** The same physical landing, preserving HP fractions through the Repair Station. */
+export async function landHpShips(tx: Tx, input: Omit<Landing, 'damage'> & { damage: HpDamageLots | null | undefined }): Promise<HpDockReport> {
+  const landing = splitForHpLanding(input.fleet, input.damage);
   const merged = await homeOf(tx, input.planetId);
   for (const [hull, count] of fleetEntries(landing.home)) merged[hull] = (merged[hull] ?? 0) + count;
   await setUnits(tx, input.planetId, merged, 'home', input.ownerPlayerId);
@@ -200,10 +221,10 @@ export async function releaseRepairedLots(
  */
 export async function dockDamaged(
   tx: Tx,
-  input: { planetId: string; ownerPlayerId: string; lots: DamageLots; at: Date },
+  input: { planetId: string; ownerPlayerId: string; lots: HpDamageLots; at: Date },
 ): Promise<DockReport> {
   const standing = await homeOf(tx, input.planetId);
-  const judged = splitForLanding(standing, input.lots);
+  const judged = input.lots.some((lot) => lot.remainderBp !== undefined) ? splitForHpLanding(standing, input.lots) : splitForLanding(standing, input.lots);
   const moved: Fleet = {};
   for (const lot of judged.docked) moved[lot.hull] = judged.home[lot.hull] ?? 0;
   await setUnits(tx, input.planetId, moved, 'home', input.ownerPlayerId);

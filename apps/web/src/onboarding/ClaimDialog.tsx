@@ -5,7 +5,7 @@ import { Button } from '../v2/kit/Surface.js';
 import type { CountryCode } from '@astera/rules';
 import { CountryPicker } from '../v2/identity/CountryPicker.js';
 import { Flag } from '../v2/identity/Flag.js';
-import { countryName, detectCountry } from '../v2/identity/country.js';
+import { browserTimeZone, countryName, detectCountry } from '../v2/identity/country.js';
 
 /**
  * THE WALL, AT THE ONE MOMENT THE PLAYER WANTS SOMETHING. D56.
@@ -52,7 +52,7 @@ export function ClaimDialog({
   const [problemField, setProblemField] = useState<'name' | 'password' | null>(null);
   const [busy, setBusy] = useState(false);
   const [submittedUsername, setSubmittedUsername] = useState<string | null>(null);
-  const [countryCode, setCountryCode] = useState<CountryCode>(() => detectCountry(navigator));
+  const [countryCode, setCountryCode] = useState<CountryCode>(() => detectCountry(navigator, browserTimeZone()));
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const nameId = useId();
   const passwordId = useId();

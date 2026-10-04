@@ -15,6 +15,7 @@ import { TradeSheet } from '../src/screens/TradeSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import i18n from '../src/i18n/index.js';
 import { planetView } from './fixtures.js';
+import { keys } from '../src/api/keys.js';
 
 /**
  * TİCARET KONVOYU — THE SCREEN THE WHOLE FEATURE IS DECIDED ON. D156.
@@ -33,6 +34,9 @@ import { planetView } from './fixtures.js';
 
 const NOW = Date.now();
 const SEASON_START = new Date(NOW - 600 * 60_000);
+let hpRate: number | null = null;
+const requestPath = (url: Parameters<typeof globalThis.fetch>[0]): string =>
+  typeof url === 'string' ? url : url instanceof URL ? url.pathname : url.url;
 
 const merchant = (over: Partial<TradeShipEvent> = {}): TradeShipEvent => ({
   id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11',
@@ -64,6 +68,9 @@ const trader = (
 
 const wrapper = ({ children }: { children: ReactNode }) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(keys.galaxy, { radiationModel: hpRate === null ? 'PCT' : 'HP', radiation: [], hpRadiation: hpRate === null ? [] : [
+    { id: 'hp', mode: 'EMIT', center: { x: 0, y: 0, z: 0 }, radius: 100_000, intensityHpPerMinute: hpRate, activeFrom: new Date(0), activeUntil: null },
+  ] });
   const api = new Api({ fetch: vi.fn<typeof globalThis.fetch>() });
   return (
     <QueryClientProvider client={client}>
@@ -110,6 +117,7 @@ const setAmount = (name: RegExp, value: number): void => {
 };
 
 beforeEach(async () => {
+  hpRate = null;
   await i18n.changeLanguage('en');
 });
 
@@ -118,6 +126,15 @@ afterEach(async () => {
 });
 
 /* ── the arithmetic, before any pixels ───────────────────────── */
+
+it('shows the merchant flight’s HP loss before its held consent', async () => {
+  hpRate = 1_000_000;
+  sheet();
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: /more Atlas/i }));
+  expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/HP per ship/);
+  expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/destroys 1 ship/);
+});
 
 describe('planTradeRoute', () => {
   it('solves the meeting with the same interceptOrbit the server runs', () => {
@@ -649,9 +666,9 @@ describe('committing the convoy', () => {
     // The commit is held (K4); Enter twice is the keyboard's hold.
     fireEvent.keyDown(commit(), { key: 'Enter' });
     fireEvent.keyDown(commit(), { key: 'Enter' });
-    await waitFor(() => { expect(fetchMock).toHaveBeenCalled(); });
+    await waitFor(() => { expect(fetchMock.mock.calls.some(([url]) => requestPath(url).endsWith('/api/trade/launch'))).toBe(true); });
 
-    const call = fetchMock.mock.calls.at(-1);
+    const call = fetchMock.mock.calls.find(([url]) => requestPath(url).endsWith('/api/trade/launch'));
     expect(call?.[0]).toContain('/api/trade/launch');
     const raw = call?.[1]?.body;
     const body: unknown = JSON.parse(typeof raw === 'string' ? raw : '{}');

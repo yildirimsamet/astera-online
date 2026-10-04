@@ -90,6 +90,51 @@ const shieldQuote = {
 };
 
 describe('clan war decision surface', () => {
+  it('shows own HP loss and requires its consent before contributing, resetting consent when the fleet changes', async () => {
+    const { api } = show(active, 'MEMBER', [origin]);
+    vi.spyOn(api, 'quoteClanWar').mockResolvedValue({ ...shieldQuote, shieldWouldDrop: null,
+      refusals: [{ code: 'RADIATION_LETHAL', message: 'Known HP loss' }],
+      radiation: { doseHp: 100, destroyed: 1, lostFleet: { DART: 1 }, health: [] } });
+    const contribute = vi.spyOn(api, 'contributeClanWar').mockReturnValue(new Promise<never>(() => undefined));
+    await openWave();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /more dart/i }));
+    const accept = await screen.findByRole('checkbox', { name: /accept the radiation losses/i });
+    expect(send()).toBeDisabled();
+    expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/100(?:\.00)? HP per ship/i);
+    await user.click(accept);
+    expect(send()).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: /more dart/i }));
+    await waitFor(() => { expect(screen.getByRole('checkbox', { name: /accept the radiation losses/i })).not.toBeChecked(); });
+    expect(send()).toBeDisabled();
+    await user.click(screen.getByRole('checkbox', { name: /accept the radiation losses/i }));
+    hold(send());
+    await waitFor(() => { expect(contribute).toHaveBeenCalledWith({ originPlanetId: 'origin-a', fleet: { DART: 2 },
+      acknowledgeShieldLoss: false, acknowledgeRadiationLoss: true }); });
+  });
+
+  it('blocks the leader for missing member HP consent and explains which member must act', () => {
+    const war = clanWarSchema.parse({ ...launchReady, operation: { ...launchReady.operation,
+      radiationByPace: [{ pace: 1, own: [], missingConsents: [{ playerId: 'member', username: 'Scout', count: 3 }] }],
+    } });
+    show(war);
+    expect(strike()).toBeDisabled();
+    expect(screen.getByText(/Scout.*3.*radiation|Scout.*radiation.*3/i)).toBeInTheDocument();
+  });
+
+  it('shows the leader’s own HP cost and sends only the leader’s consent', async () => {
+    const war = clanWarSchema.parse({ ...launchReady, operation: { ...launchReady.operation,
+      radiationByPace: [{ pace: 1, own: [{ doseHp: 220, destroyed: 1, lostFleet: { DART: 1 }, health: [] }], missingConsents: [] }],
+    } });
+    const { api } = show(war);
+    const start = vi.spyOn(api, 'startClanWar').mockReturnValue(new Promise<never>(() => undefined));
+    expect(strike()).toBeDisabled();
+    await userEvent.setup().click(screen.getByRole('checkbox', { name: /accept the radiation losses/i }));
+    expect(strike()).toBeEnabled();
+    hold(strike());
+    await waitFor(() => { expect(start).toHaveBeenCalledWith(false, 1, true); });
+  });
+
   it('explains shared capacity and where a leader selects a target', () => {
     show();
     expect(screen.getByText(/Galaxy Focus/i)).toBeInTheDocument();

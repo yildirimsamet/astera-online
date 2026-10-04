@@ -20,6 +20,7 @@ import {
   CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION,
   type GalaxySpec,
   type NeutralTier,
+  MONUMENT_SEASON_DEFAULTS,
 } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
 import {
@@ -33,6 +34,8 @@ import {
   seasonCycles,
   seasons,
   shards,
+  monuments,
+  hpRadiationSources,
   units,
 } from '../db/schema.js';
 import { addMinutes } from '../clock.js';
@@ -186,6 +189,10 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
       })
       .returning();
 
+  if (season!.rulesetVersion >= MULTI_WORLD.monumentRulesetVersion) {
+    await seedApprovedMonuments(tx, season!, initializedAt);
+  }
+
   await seedGalaxyEventCalendar(tx, season!, initializedAt);
   if (season!.asteroidDynamicFrom !== null) {
     const opensAt = initializedAt > season!.startsAt ? initializedAt : season!.startsAt;
@@ -242,6 +249,45 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
     }
   }
   return { shard: shard!, season: season! };
+}
+
+/** Deal the approved monument map atomically with a new HP-radiation season. */
+async function seedApprovedMonuments(
+  tx: Tx,
+  season: typeof seasons.$inferSelect,
+  settledAt: Date,
+): Promise<void> {
+  const rows = await tx.insert(monuments).values(MONUMENT_SEASON_DEFAULTS.positions.map((position, index) => ({
+    seasonId: season.id,
+    ordinal: index + 1,
+    x: position.x,
+    y: position.y,
+    z: position.z,
+    capacity: MONUMENT_SEASON_DEFAULTS.capacity,
+    productionPerMinute: MONUMENT_SEASON_DEFAULTS.productionPerMinute,
+    garrison: { ...MONUMENT_SEASON_DEFAULTS.garrison },
+    garrisonTemplate: { ...MONUMENT_SEASON_DEFAULTS.garrison },
+    garrisonTech: { ...MONUMENT_SEASON_DEFAULTS.garrisonTech },
+    garrisonDamage: [],
+    settledAt,
+  }))).returning({ id: monuments.id, ordinal: monuments.ordinal, x: monuments.x, y: monuments.y, z: monuments.z });
+  if (rows.length !== MONUMENT_SEASON_DEFAULTS.count) {
+    throw new Error(`approved monument deal created ${String(rows.length)} targets`);
+  }
+  await tx.insert(hpRadiationSources).values(rows.map((row) => ({
+    seasonId: season.id,
+    anchorKind: 'MONUMENT' as const,
+    anchorId: row.id,
+    x: row.x,
+    y: row.y,
+    z: row.z,
+    radius: MONUMENT_SEASON_DEFAULTS.cloudRadius,
+    intensityHpPerMinute: MONUMENT_SEASON_DEFAULTS.intensityHpPerMinute,
+    mode: 'EMIT' as const,
+    activeFrom: season.startsAt,
+    activeUntil: null,
+    label: `Monument ${String(row.ordinal)} cloud`,
+  })));
 }
 
 async function createNeutralWorlds(

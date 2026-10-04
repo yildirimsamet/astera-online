@@ -1,13 +1,18 @@
+import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MULTI_WORLD, type Fleet } from '@astera/rules';
-import { missions, planets, players, radiationSources, seasons, units } from '../src/db/schema.js';
+import { HULLS, MULTI_WORLD, type Fleet } from '@astera/rules';
+import { hpRadiationSources, missions, monuments, monumentShipLots, monumentWaves, planets, players, radiationSources, scheduledEvents, seasons, units } from '../src/db/schema.js';
 import { recomputePlayerWealth } from '../src/services/planet.js';
+import { readMonuments } from '../src/services/monumentView.js';
 import { launchAttack } from '../src/services/mission.js';
 import {
   addRadiationSource,
+  addHpRadiationSource,
+  endHpRadiationSource,
   endRadiationSource,
   listRadiationSources,
+  listHpRadiationSources,
   settleMissionRadiation,
   sourcesForSeason,
 } from '../src/services/radiation.js';
@@ -79,6 +84,102 @@ beforeEach(async () => {
 });
 
 describe('a radiation source', () => {
+  it('refuses percentage sources in a fixed-HP season instead of accepting an ineffective cloud', async () => {
+    await ruleset(16);
+    await expect(addRadiationSource(f.db, { seasonId: f.seasonId, anchor: { kind: 'ZONE', at: { x: 0, y: 0, z: 0 } },
+      radius: 1000, intensityPctPerMinute: 1, mode: 'EMIT', label: 'wrong model' }, f.clock)).rejects.toMatchObject({ code: 'RADIATION_UNAVAILABLE' });
+    expect(await listRadiationSources(f.db, f.seasonId)).toEqual([]);
+  });
+
+  it('refuses backdating or an already-ended HP source without rewriting historical exposure', async () => {
+    await ruleset(16);
+    const base = { seasonId: f.seasonId, anchor: { kind: 'ZONE' as const, at: { x: 0, y: 0, z: 0 } },
+      radius: 1000, intensityHpPerMinute: 4, mode: 'EMIT' as const, label: 'historical' };
+    await expect(addHpRadiationSource(f.db, { ...base, activeFrom: new Date(f.clock.now().getTime() - 120 * 60_000) }, f.clock))
+      .rejects.toMatchObject({ code: 'RADIATION_BAD_SOURCE' });
+    await expect(addHpRadiationSource(f.db, { ...base, activeUntil: f.clock.now() }, f.clock))
+      .rejects.toMatchObject({ code: 'RADIATION_BAD_SOURCE' });
+    expect(await listHpRadiationSources(f.db, f.seasonId)).toEqual([]);
+  });
+
+  it('schedules the first HOLD casualty when an operator adds a cloud without charging time before its creation', async () => {
+    await ruleset(16);
+    const [m] = await f.db.insert(monuments).values({ seasonId: f.seasonId, ordinal: 1, x: 6000, y: 0, z: 0,
+      capacity: 7270, productionPerMinute: 10, controllerPlayerId: f.playerIds[0]!, settledAt: f.clock.now() }).returning();
+    const id = randomUUID();
+    await f.db.insert(monumentWaves).values({ id, seasonId: f.seasonId, monumentId: m!.id, playerId: f.playerIds[0]!,
+      originPlanetId: raider, unitLocation: `monument:${id}`, purpose: 'ATTACK', sentFleet: { DART: 1 }, tech: {}, route: [],
+      status: 'HOLD', sentAt: f.clock.now(), heldAt: f.clock.now(), radiationSettledAt: f.clock.now(), fuelPaid: 0 });
+    await f.db.insert(monumentShipLots).values({ waveId: id, hull: 'DART', count: 1, damageBp: 0, remainderBp: 0, deuterium: 0 });
+    await giveUnits(f.db, raider, { DART: 1 }, `monument:${id}`);
+    f.clock.advance(120);
+    const cloud = await addHpRadiationSource(f.db, { seasonId: f.seasonId, anchor: { kind: 'MONUMENT', monumentId: m!.id },
+      radius: 1000, intensityHpPerMinute: 100, mode: 'EMIT', label: 'new hazard' }, f.clock);
+    const events = await f.db.select().from(scheduledEvents).where(and(eq(scheduledEvents.kind, 'monument_loss'), eq(scheduledEvents.status, 'pending')));
+    expect(events).toHaveLength(1);
+    expect(events[0]?.resolveAt.getTime()).toBe(f.clock.now().getTime() + Math.ceil(HULLS.DART.hp / 100 * 60_000));
+    expect((await f.db.select().from(monumentShipLots))[0]).toMatchObject({ count: 1, damageBp: 0, remainderBp: 0 });
+    await endHpRadiationSource(f.db, cloud.id, f.clock);
+    expect(await f.db.select().from(scheduledEvents).where(and(eq(scheduledEvents.kind, 'monument_loss'), eq(scheduledEvents.status, 'pending')))).toEqual([]);
+  });
+
+  it('keeps HP source history separate, supports monument anchors, and refuses ruleset 15', async () => {
+    await ruleset(16);
+    const [monument] = await f.db.insert(monuments).values({ seasonId: f.seasonId, ordinal: 1, x: 6000, y: 0, z: 0,
+      capacity: 7270, productionPerMinute: 10, settledAt: f.clock.now() }).returning();
+    const row = await addHpRadiationSource(f.db, {
+      seasonId: f.seasonId, anchor: { kind: 'MONUMENT', monumentId: monument!.id },
+      radius: 1000, intensityHpPerMinute: 4, mode: 'EMIT', label: 'approved',
+    }, f.clock);
+    expect(row).toMatchObject({ anchorKind: 'MONUMENT', anchorId: monument!.id, radius: 1000, intensityHpPerMinute: 4 });
+    await endHpRadiationSource(f.db, row.id, f.clock);
+    expect((await listHpRadiationSources(f.db, f.seasonId))[0]?.activeUntil).toEqual(f.clock.now());
+    expect(await f.db.select().from(radiationSources)).toEqual([]);
+    await ruleset(15);
+    await expect(addHpRadiationSource(f.db, {
+      seasonId: f.seasonId, anchor: { kind: 'ZONE', at: { x: 0, y: 0, z: 0 } },
+      radius: 1000, intensityHpPerMinute: 4, mode: 'EMIT', label: '',
+    }, f.clock)).rejects.toMatchObject({ code: 'RADIATION_UNAVAILABLE' });
+    expect(await f.db.select().from(hpRadiationSources)).toHaveLength(1);
+  });
+
+  it('cancels a future HP source without a negative window, damage or a surviving loss timer', async () => {
+    await ruleset(16);
+    const from = new Date(f.clock.now().getTime() + 60 * 60_000);
+    const cloud = await addHpRadiationSource(f.db, { seasonId: f.seasonId,
+      anchor: { kind: 'ZONE', at: { x: 6000, y: 0, z: 0 } }, radius: 1000, mode: 'EMIT',
+      intensityHpPerMinute: 100, label: 'future', activeFrom: from }, f.clock);
+    const cancelled = await endHpRadiationSource(f.db, cloud.id, f.clock);
+    expect(cancelled.activeUntil).toEqual(from);
+    f.clock.advance(70);
+    expect(await endHpRadiationSource(f.db, cloud.id, f.clock)).toEqual(cancelled);
+    expect(await f.db.select().from(scheduledEvents).where(eq(scheduledEvents.kind, 'monument_loss'))).toEqual([]);
+  });
+
+  it('settles exposure before an operator ends the source and preserves that wound on subsequent reads', async () => {
+    await ruleset(16);
+    const [target] = await f.db.insert(monuments).values({ seasonId: f.seasonId, ordinal: 1, x: 6000, y: 0, z: 0,
+      capacity: 7270, productionPerMinute: 10, controllerPlayerId: f.playerIds[0]!, settledAt: f.clock.now() }).returning();
+    const id = randomUUID();
+    await f.db.insert(monumentWaves).values({ id, seasonId: f.seasonId, monumentId: target!.id, playerId: f.playerIds[0]!,
+      originPlanetId: raider, unitLocation: `monument:${id}`, purpose: 'ATTACK', sentFleet: { DART: 1 }, tech: {}, route: [],
+      status: 'HOLD', sentAt: f.clock.now(), heldAt: f.clock.now(), radiationSettledAt: f.clock.now(), fuelPaid: 0 });
+    await f.db.insert(monumentShipLots).values({ waveId: id, hull: 'DART', count: 1, damageBp: 0, remainderBp: 0, deuterium: 0 });
+    await giveUnits(f.db, raider, { DART: 1 }, `monument:${id}`);
+    const cloud = await addHpRadiationSource(f.db, { seasonId: f.seasonId,
+      anchor: { kind: 'MONUMENT', monumentId: target!.id }, radius: 1000, mode: 'EMIT', intensityHpPerMinute: 4, label: 'ten minutes' }, f.clock);
+    f.clock.advance(10);
+    await endHpRadiationSource(f.db, cloud.id, f.clock);
+    const before = await f.db.select().from(monumentShipLots);
+    expect((before[0]!.damageBp + before[0]!.remainderBp) * HULLS.DART.hp / 10_000).toBeCloseTo(40, 10);
+    expect(await f.db.select().from(scheduledEvents).where(and(eq(scheduledEvents.kind, 'monument_loss'), eq(scheduledEvents.status, 'pending')))).toEqual([]);
+    f.clock.advance(5);
+    const view = await f.db.transaction((tx) => readMonuments(tx, { playerId: f.playerIds[0]!, seasonId: f.seasonId, at: f.clock.now(), adminUsernames: [] }));
+    expect(view.waves[0]?.lots[0]?.remainingHp).toBeCloseTo(HULLS.DART.hp - 40, 10);
+    expect(view.waves[0]?.returnForecast).toMatchObject({ doseHp: 0, destroyed: 0 });
+    expect(await f.db.select().from(monumentShipLots)).toEqual(before);
+  });
+
   it('stands on a world\'s centre, or on a point in space', async () => {
     const world = await addRadiationSource(f.db, {
       seasonId: f.seasonId, anchor: { kind: 'PLANET', planetId: target },

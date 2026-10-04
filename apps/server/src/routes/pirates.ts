@@ -40,6 +40,7 @@ const raidBody = z.object({
    * deploy behind still launches exactly as it did.
    */
   quotedMinutes: z.number().finite().nonnegative().optional(),
+  acknowledgeRadiationLoss: z.boolean().optional(),
 }).strict();
 
 /**
@@ -266,6 +267,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
       app.clock,
       owner.playerId,
       body.quotedMinutes,
+      body.acknowledgeRadiationLoss,
     );
   });
 }

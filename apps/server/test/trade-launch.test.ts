@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { pino } from 'pino';
 import { and, eq, inArray } from 'drizzle-orm';
 import {
   GALAXY_EVENTS,
@@ -16,12 +17,15 @@ import {
 import {
   buildings,
   galaxyEventOccurrences,
+  hpRadiationSources,
   planets,
   seasons,
   tradeRuns,
   units,
 } from '../src/db/schema.js';
 import { minutesSince } from '../src/clock.js';
+import { buildApp } from '../src/app.js';
+import { TokenService } from '../src/auth/tokens.js';
 import { tradeShipOf } from '../src/services/tradeField.js';
 import { launchTrade, tradeLocation } from '../src/services/trade.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -36,6 +40,7 @@ import {
   levelWorld,
   seedWorld,
   testDb,
+  testEnv,
   type Fixture,
 } from './helpers.js';
 
@@ -127,6 +132,31 @@ describe('a convoy sent to the merchant', () => {
   };
 
   const RES = (alloy = 0, crystal = 0, deuterium = 0) => ({ alloy, crystal, deuterium });
+
+  it('requires explicit HP loss acknowledgement before paying a lethal merchant flight', async () => {
+    const merchant = await merchantUp();
+    const fleet = await armed();
+    await f.db.update(seasons).set({ rulesetVersion: 16 }).where(eq(seasons.id, f.seasonId));
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'ZONE', x: 0, y: 0, z: 0,
+      radius: 100_000, mode: 'EMIT', intensityHpPerMinute: 1_000_000, activeFrom: f.clock.now() });
+    const order = { occurrenceId: merchant.occurrenceId, fleet, give: RES(400), want: RES(0, 200) };
+    await expect(launchTrade(f.db, mine, order, f.clock)).rejects.toMatchObject({ code: 'RADIATION_LETHAL' });
+    expect(await f.db.select().from(tradeRuns)).toEqual([]);
+    const built = buildApp({ env: testEnv(), logger: pino({ level: 'silent' }), db: f.db, clock: f.clock });
+    await built.app.ready();
+    try {
+      const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+      const headers = { authorization: `Bearer ${await tokens.issueAccess(f.accountIds[0]!)}` };
+      const payload = { ...order, originPlanetId: mine };
+      const denied = await built.app.inject({ method: 'POST', url: '/api/trade/launch', headers, payload: { ...payload, acknowledgeRadiationLoss: false } });
+      expect(denied.statusCode, denied.body).toBe(409);
+      expect(denied.json<{ error: string }>().error).toBe('RADIATION_LETHAL');
+      expect(await f.db.select().from(tradeRuns)).toEqual([]);
+      const launch = await built.app.inject({ method: 'POST', url: '/api/trade/launch', headers, payload: { ...payload, acknowledgeRadiationLoss: true } });
+      expect(launch.statusCode, launch.body).toBe(200);
+      expect(launch.json<{ fleet: Fleet }>().fleet).toEqual(fleet);
+    } finally { await built.close(); }
+  });
 
   it('cannot take resting Prospectors on a trade convoy but can take fresh ones', async () => {
     const merchant = await merchantUp();

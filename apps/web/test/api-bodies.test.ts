@@ -53,6 +53,17 @@ async function bodyOf(call: (api: Api) => Promise<unknown>): Promise<{
  * is the backstop for the day somebody forgets.
  */
 const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: unknown][] = [
+  ['startClanWar HP consent', a => a.startClanWar(false, 1, true),
+    { acknowledgeShieldLoss: false, pace: 1, acknowledgeRadiationLoss: true }],
+  ['contributeClanWar HP consent', a => a.contributeClanWar({ originPlanetId: 'home', fleet: { DART: 2 },
+    acknowledgeShieldLoss: false, acknowledgeRadiationLoss: true }),
+    { originPlanetId: 'home', fleet: { DART: 2 }, acknowledgeShieldLoss: false, acknowledgeRadiationLoss: true }],
+  ['raidPirate HP consent', a => a.raidPirate('pirate', { DART: 2 }, 'home', 12, true),
+    { pirateId: 'pirate', fleet: { DART: 2 }, originPlanetId: 'home', quotedMinutes: 12, acknowledgeRadiationLoss: true }],
+  ['trade HP consent', a => a.trade('merchant', { ATLAS: 1 }, { alloy: 10, crystal: 0, deuterium: 0 },
+    { alloy: 0, crystal: 5, deuterium: 0 }, 'home', true),
+    { occurrenceId: 'merchant', fleet: { ATLAS: 1 }, give: { alloy: 10, crystal: 0, deuterium: 0 },
+      want: { alloy: 0, crystal: 5, deuterium: 0 }, originPlanetId: 'home', acknowledgeRadiationLoss: true }],
   ['register', (a) => a.register('vantage', 'a-long-enough-password', 'DE'), { username: 'vantage', password: 'a-long-enough-password', countryCode: 'DE' }],
   ['login', (a) => a.login('vantage', 'a-long-enough-password'), { username: 'vantage', password: 'a-long-enough-password' }],
   ['claim', (a) => a.claim('vantage', 'a-long-enough-password', [], 'FR'), { username: 'vantage', password: 'a-long-enough-password', countryCode: 'FR', intents: [] }],

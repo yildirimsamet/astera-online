@@ -32,6 +32,7 @@ import {
   GROUND_HULLS,
   HULLS,
   MOBILE_HULLS,
+  MONUMENT_SEASON_DEFAULTS,
   NON_COMBATANT_HULLS,
   counterMult,
   advanceEconomy,
@@ -669,6 +670,13 @@ export interface World {
   totalMinutes: number;
   /** The ruleset this season is dealt. `SimConfig.rulesetVersion`. */
   rulesetVersion: number;
+  /**
+   * The immutable monument deal for this simulated season. The simulator does not
+   * run monument dispatches yet, but it must expose the same seeded targets and
+   * radiation/economy inputs as the server so balance studies cannot silently use
+   * a different map or garrison.
+   */
+  monuments: SimMonument[];
   hullCrystalShare?: SimConfig['hullCrystalShare'];
   spectrometryCrystalCost: number;
   isotopes: boolean;
@@ -689,6 +697,20 @@ export interface World {
   strategic: Omit<StrategicDiagnostics,
     'neutralLootShare' | 'uniqueNeutralRaiders' | 'remainingNeutral'
     | 'coloniesPerPlayer' | 'capitalHeldDeathStarValue'>;
+}
+
+export interface SimMonument {
+  id: string;
+  ordinal: number;
+  x: number;
+  y: number;
+  z: number;
+  capacity: number;
+  productionPerMinute: number;
+  cloudRadius: number;
+  intensityHpPerMinute: number;
+  garrison: Fleet;
+  garrisonTech: TechLevels;
 }
 
 /* ── setup ─────────────────────────────────────────────────────── */
@@ -717,6 +739,7 @@ const calendarProfile = (
 export function buildWorld(cfg: SimConfig): World {
   const rng = mulberry32(cfg.seed);
   const galaxy = generateGalaxy(cfg.seed, cfg.players);
+  const rulesetVersion = cfg.rulesetVersion ?? MULTI_WORLD.rulesetVersion;
 
   const names: ArchetypeName[] = [];
   for (const type of ARCHETYPE_NAMES) {
@@ -789,8 +812,23 @@ export function buildWorld(cfg: SimConfig): World {
       .slice(0, 18);
   }
 
+  const monuments: SimMonument[] = rulesetVersion >= MULTI_WORLD.monumentRulesetVersion
+    ? MONUMENT_SEASON_DEFAULTS.positions.map((position, index) => ({
+        id: `monument-${String(index + 1)}`,
+        ordinal: index + 1,
+        ...position,
+        capacity: MONUMENT_SEASON_DEFAULTS.capacity,
+        productionPerMinute: MONUMENT_SEASON_DEFAULTS.productionPerMinute,
+        cloudRadius: MONUMENT_SEASON_DEFAULTS.cloudRadius,
+        intensityHpPerMinute: MONUMENT_SEASON_DEFAULTS.intensityHpPerMinute,
+        garrison: { ...MONUMENT_SEASON_DEFAULTS.garrison },
+        garrisonTech: { ...MONUMENT_SEASON_DEFAULTS.garrisonTech },
+      }))
+    : [];
+
   return {
-    rulesetVersion: cfg.rulesetVersion ?? MULTI_WORLD.rulesetVersion,
+    rulesetVersion,
+    monuments,
     players,
     missions: [],
     miningRuns: [],

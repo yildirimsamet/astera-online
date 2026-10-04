@@ -45,6 +45,7 @@ vi.mock('../../src/api/queries.js', async () => {
     useMining: () => ({ data: { runs } }),
     useTraffic: () => ({ data: { contacts: [] } }),
     usePlanet: () => ({ data: withRoom }),
+    useMonuments: () => ({ data: undefined }),
     useRecallMining: () => ({ mutate: recallMining, isPending: false }),
     useRecallFlight: () => ({ mutate: recallFlight, isPending: false }),
     useMySupport: () => ({ data: { waves: [] } }),

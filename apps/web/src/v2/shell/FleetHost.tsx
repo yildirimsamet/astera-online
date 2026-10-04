@@ -1,7 +1,7 @@
-import { clanDefenseApplies, fleetCount } from '@astera/rules';
+import { clanDefenseApplies, fleetCount, hpRadiationApplies } from '@astera/rules';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useClanSupportActions, useMySupport, usePlanet, useRecallFlight, useRecallMining } from '../../api/queries.js';
+import { useClanSupportActions, useMySupport, useMonuments, usePlanet, useRecallFlight, useRecallMining } from '../../api/queries.js';
 import { useWorld } from '../../api/world.js';
 import { roomOf } from '../../lib/fleetPage.js';
 import { useAirborne, type AirborneItem, type StripFocus } from '../../shell/PendingStrip.js';
@@ -28,6 +28,7 @@ export function FleetHost({ onFocus, onClose, onOpenRepairStation }: {
   const [recalling, setRecalling] = useState<string | null>(null);
   const { items, now } = useAirborne();
   const planet = usePlanet().data;
+  const monuments = useMonuments(hpRadiationApplies(planet?.rulesetVersion ?? 0)).data;
   const { activePlanetId, capitalPlanetId, worlds } = useWorld();
   const recallFlight = useRecallFlight();
   const recallMining = useRecallMining();
@@ -56,6 +57,7 @@ export function FleetHost({ onFocus, onClose, onOpenRepairStation }: {
 
   return (
     <FleetPage
+      {...(monuments ? { monuments: { view: monuments, onFocus: (monumentId: string) => { onClose(); onFocus({ kind: 'monument', id: monumentId }); } } } : {})}
       tab={tab}
       onTab={setTab}
       now={now}

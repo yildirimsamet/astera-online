@@ -8,6 +8,7 @@ import {
   intergalacticConvoyRuns,
   miningRuns,
   missions,
+  monumentWaves,
   pirateRaids,
   tradeRuns,
   type ClanWarLeg,
@@ -216,7 +217,7 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
     .where(and(
       eq(clanWarContributions.originPlanetId, planetId),
       eq(clanWarContributions.sourceKind, 'PHYSICAL'),
-      notInArray(clanWarContributions.status, ['HOME', 'LOST']),
+      notInArray(clanWarContributions.status, ['HOME', 'LOST', 'TRANSFERRED']),
     ));
 
   /**
@@ -234,13 +235,23 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
       notInArray(clanSupportWaves.status, ['HOME', 'LOST']),
     ));
 
+  // One dispatch keeps one bay until its root AND every partial recall are home
+  // or lost. A completed root can still have a physical fragment on its way back.
+  const [monument] = await tx.select({
+    n: sql<number>`count(distinct coalesce(${monumentWaves.rootWaveId}, ${monumentWaves.id}))::int`,
+  }).from(monumentWaves).where(and(
+    eq(monumentWaves.originPlanetId, planetId),
+    notInArray(monumentWaves.status, ['HOME', 'LOST']),
+  ));
+
   return (flights?.n ?? 0)
     + (mining?.n ?? 0)
     + (pirate?.n ?? 0)
     + (trade?.n ?? 0)
     + (convoy?.n ?? 0)
     + (contributed?.n ?? 0)
-    + (supporting?.n ?? 0);
+    + (supporting?.n ?? 0)
+    + (monument?.n ?? 0);
 }
 
 export interface BayCount {

@@ -198,7 +198,7 @@ describe('IntergalacticConvoy.tsx, by its source', () => {
     const canvas = readFileSync('src/galaxy/GalaxyCanvas.tsx', 'utf8');
     expect(canvas).toContain("focus.kind === 'intergalacticConvoy'");
     expect(canvas).toContain('CONVOY_FOCUS_DISTANCE');
-    expect(canvas).toContain("exactApproach={coachTap !== null || focus?.kind === 'intergalacticConvoy'}");
+    expect(canvas).toContain("exactApproach={coachTap !== null || focus?.kind === 'intergalacticConvoy' || focus?.kind === 'monument'}");
   });
 
   it('raycasts a long box instead of the old train-sized sphere', () => {

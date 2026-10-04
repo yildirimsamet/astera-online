@@ -135,6 +135,7 @@ export function Outline({ now, worlds, flights, queues, onWorld, onFlight, onQue
 
   return (
     <aside
+      data-outline=""
       aria-label={t('outline.label')}
       className="flex h-full w-[260px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-v2-line bg-v2-deep/95 px-3 py-3 font-v2-ui"
     >

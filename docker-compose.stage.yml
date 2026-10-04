@@ -1,0 +1,60 @@
+# Use with docker-compose.prod.yml and the stage checkout's own .env.
+# The base owns topology and runtime settings; this override isolates stage.
+name: astera-stage
+
+x-stage-environment: &stage-environment
+  PADDLE_CHECKOUT_ENABLED: 'false'
+  PADDLE_ENV: sandbox
+  PADDLE_LIVE_API_KEY: ''
+  PADDLE_CLIENT_SIDE_TOKEN: ''
+  PADDLE_WEBHOOK_SECRET: ''
+  POLAR_CHECKOUT_ENABLED: 'false'
+  POLAR_ENV: sandbox
+  POLAR_ACCESS_TOKEN: ''
+  POLAR_WEBHOOK_SECRET: ''
+  POLAR_RETURN_URL: https://stage.asteraonline.space/
+
+x-stage-api: &stage-api
+  image: ${ASTERA_STAGE_IMAGE:?Set a commit-tagged ASTERA_STAGE_IMAGE in the stage environment}
+  mem_limit: ${STAGE_API_MEMORY_LIMIT:-512m}
+  mem_reservation: ${STAGE_API_MEMORY_RESERVATION:-128m}
+  environment: *stage-environment
+
+services:
+  postgres:
+    container_name: astera-postgres-stage
+    mem_limit: ${STAGE_POSTGRES_MEMORY_LIMIT:-1g}
+    mem_reservation: ${STAGE_POSTGRES_MEMORY_RESERVATION:-256m}
+    # These use the base's same variables, so Compose merges each port once.
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:?Set POSTGRES_PORT=5546 in the stage environment}:5432'
+
+  valkey:
+    container_name: astera-valkey-stage
+
+  api1:
+    <<: *stage-api
+    container_name: astera-api1-stage
+    ports:
+      - '127.0.0.1:${API_PORT_1:?Set API_PORT_1=3300 in the stage environment}:3200'
+
+  api2:
+    <<: *stage-api
+    container_name: astera-api2-stage
+    ports:
+      - '127.0.0.1:${API_PORT_2:?Set API_PORT_2=3301 in the stage environment}:3200'
+
+  api3:
+    <<: *stage-api
+    container_name: astera-api3-stage
+    ports:
+      - '127.0.0.1:${API_PORT_3:?Set API_PORT_3=3302 in the stage environment}:3200'
+
+  worker:
+    image: ${ASTERA_STAGE_IMAGE:?Set a commit-tagged ASTERA_STAGE_IMAGE in the stage environment}
+    container_name: astera-worker-stage
+    mem_limit: ${STAGE_WORKER_MEMORY_LIMIT:-512m}
+    mem_reservation: ${STAGE_WORKER_MEMORY_RESERVATION:-128m}
+    environment: *stage-environment
+    ports:
+      - '127.0.0.1:${WORKER_PORT:?Set WORKER_PORT=3310 in the stage environment}:3210'

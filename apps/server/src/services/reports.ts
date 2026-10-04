@@ -1,5 +1,6 @@
 import { spatialHistory } from './spatialHistory.js';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
+import { clanWarPlanetTarget } from './clanWar.js';
 import {
   type EscapeOutcome,
   type FaultKind,
@@ -40,6 +41,7 @@ import {
 } from '../db/schema.js';
 import { pirateCallsign, pirateSpecAt } from './pirateField.js';
 import { addDominionCounters } from './dominion.js';
+import { readMonumentBattleReports, type MonumentReportView } from './monumentReports.js';
 
 /** The wire's ceiling for `recovery.lossHours`: finite, and far past any bar. */
 const RECOVERY_HOURS_CAP = 999;
@@ -413,7 +415,7 @@ export interface StrategicReportView {
   defenderClan: null;
 }
 
-export type ReportView = BattleReportView | StrategicReportView;
+export type ReportView = BattleReportView | StrategicReportView | MonumentReportView;
 
 export interface RivalSummaryView {
   planetId: string;
@@ -445,6 +447,7 @@ async function readBattleReportsIn(
   playerId: string,
   limit: number,
 ): Promise<{ reports: ReportView[]; rivals: RivalSummaryView[] }> {
+  const monumentReports = await readMonumentBattleReports(tx, playerId, limit);
   const ownJointResults = await tx
     .select({ reportId: clanWarParticipantResults.reportId, operationId: clanWarParticipantResults.operationId,
       dominionDelta: clanWarParticipantResults.dominionDelta })
@@ -500,7 +503,7 @@ async function readBattleReportsIn(
       .orderBy(desc(strategicImpacts.createdAt)),
   ]);
 
-  if (history.length === 0 && impacts.length === 0) return { reports: [], rivals: [] };
+  if (history.length === 0 && impacts.length === 0) return { reports: monumentReports, rivals: [] };
 
   /* The per-commander rows of every supported battle in reach — the page and the rivals. */
   const supportedIds = history.filter((row) => row.defenderCount > 1).map((row) => row.id);
@@ -946,7 +949,7 @@ async function readBattleReportsIn(
         operationId: operation.id,
         clan: { id: operation.clanId, name: operation.clanName, tag: operation.clanTag },
         coordinatorPlayerId: operation.leaderPlayerId,
-        target: { playerId: operation.targetPlayerId, planetId: operation.targetPlanetId,
+        target: { playerId: clanWarPlanetTarget(operation).playerId, planetId: clanWarPlanetTarget(operation).planetId,
           name: operation.targetPlanetName, x: operation.targetX, y: operation.targetY,
           z: operation.targetZ },
         attackerCount: (resultByReport.get(row.id) ?? []).length,
@@ -1130,6 +1133,7 @@ async function readBattleReportsIn(
   }
 
   const reports: ReportView[] = [
+    ...monumentReports,
     ...rows.map(viewOf),
     ...impacts.map(strategicViewOf),
   ]

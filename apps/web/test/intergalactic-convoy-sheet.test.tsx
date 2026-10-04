@@ -10,6 +10,7 @@ import { ToastProvider } from '../src/ui/Toast.js';
 import type { IntergalacticConvoyEvent } from '../src/lib/intergalacticConvoy.js';
 import { planetView } from './fixtures.js';
 import { full } from '../src/lib/format.js';
+import { keys } from '../src/api/keys.js';
 
 const START = new Date('2026-09-11T21:00:00.000Z');
 const NOW = new Date('2026-09-12T16:10:00.000Z');
@@ -49,7 +50,7 @@ describe('the intergalactic convoy commitment surface', () => {
     vi.restoreAllMocks();
   });
 
-  function openSheet(fleet: Fleet = { DART: 12 }) {
+  function openSheet(fleet: Fleet = { DART: 12 }, hpRate?: number) {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(NOW);
     const launch = vi.fn().mockRejectedValue(new Error('test stop after request'));
@@ -57,6 +58,10 @@ describe('the intergalactic convoy commitment surface', () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
+    client.setQueryData(keys.galaxy, { radiationModel: hpRate === undefined ? 'PCT' : 'HP', radiation: [], hpRadiation: hpRate === undefined ? [] : [
+      { id: 'hp', mode: 'EMIT', center: { x: 0, y: 0, z: 0 }, radius: 100_000, intensityHpPerMinute: hpRate,
+        activeFrom: new Date(0), activeUntil: null },
+    ] });
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>
         <ApiProvider api={api}>
@@ -118,6 +123,15 @@ describe('the intergalactic convoy commitment surface', () => {
         - input.quotedFlightSeconds * 1000,
     )).toBeLessThan(1);
     expect(key.length).toBeGreaterThanOrEqual(8);
+  });
+  it('shows lethal HP exposure on the real moving route and sends its own consent', async () => {
+    const launch = openSheet({ DART: 2 }, 1_000_000);
+    fireEvent.click(screen.getByRole('button', { name: 'Send every Dart' }));
+    expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/HP per ship/);
+    expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/destroys 2 ships/);
+    hold();
+    await waitFor(() => { expect(launch).toHaveBeenCalled(); });
+    expect(launch.mock.calls[0]?.[0]).toMatchObject({ acknowledgeRadiationLoss: true });
   });
 
   it('recalculates after Max and minus, including removing a hull from a mixed wing', async () => {

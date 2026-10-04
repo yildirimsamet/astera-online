@@ -1,4 +1,6 @@
 export const clanWar = {
+  radiationMember: "{{name}}: la radiación destruiría {{count}} naves. Retira la oleada y vuelve a enviarla aceptando tu propia pérdida.",
+  radiationMemberRequired: "Un miembro debe aceptar su pérdida por radiación",
   tab: 'Guerra', purpose: 'Un objetivo. Varios comandantes. Un ataque conjunto.',
   contactBoundary: 'El clan está identificado. Sus comandantes, carga y ruta permanecen ocultos.',
   disbandBurn: 'Disolver el clan destruye para siempre {{alloy}} aleación, {{crystal}} cristal y {{deuterium}} deuterio del tesoro. No se reembolsa a los miembros.',
@@ -71,7 +73,7 @@ export const clanWar = {
   seatEmpty: 'Libre',
   seatYou: 'Tú',
   seatNoWave: '{{name}} aún no ha enviado ninguna oleada.',
-  status: { OUTBOUND: 'Hacia la reunión', STAGED: 'Lista en la reunión',
+  status: { TRANSFERRED: 'Transferida a flotas del monumento', OUTBOUND: 'Hacia la reunión', STAGED: 'Lista en la reunión',
     RECALL_ORDERED: 'Retirada solicitada', IN_BATTLE: 'En combate', RETURNING: 'De regreso',
     HOME: 'En casa', LOST: 'Perdida' },
   operationStatus: { ASSEMBLING: 'Reuniéndose', ATTACKING: 'Ataque en marcha',

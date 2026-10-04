@@ -155,6 +155,8 @@ export interface RaidInput {
   support?: readonly DefenderStack[];
   /** Who the host is, for the outcome rows. Empty where nobody asks. */
   hostPlayerId?: string;
+  /** New HP seasons preserve radiation fractions through both standing and escaped resolutions. */
+  preciseDamage?: boolean;
 }
 
 /** Whole drops only, and a tank the row cannot vouch for is empty. */
@@ -162,17 +164,18 @@ const tankOf = (deuterium: number): number =>
   Number.isFinite(deuterium) ? Math.floor(Math.max(0, deuterium)) : 0;
 
 export function resolveRaid(input: RaidInput): RaidResolution {
+  const context = input.preciseDamage ? 'HP_PLANET' : 'PLANET';
   const host = (line: Fleet): DefenderStack =>
     ({ stackId: 'host', playerId: input.hostPlayerId ?? '', fleet: line, tech: input.defender });
   const support = input.support ?? [];
   if (support.length > 0) {
     if (input.escape) throw new RangeError('a line holding clan support never lifts');
     return {
-      result: resolveBattle(input.stacks, [host(input.line), ...support], input.shield, input.rng()),
+      result: resolveBattle(input.stacks, [host(input.line), ...support], input.shield, input.rng(), context),
       escape: null,
     };
   }
-  const standing = resolveBattle(input.stacks, [host(input.line)], input.shield, input.rng());
+  const standing = resolveBattle(input.stacks, [host(input.line)], input.shield, input.rng(), context);
   if (!input.escape) return { result: standing, escape: null };
 
   const ships = escapingShips(input.line);
@@ -196,6 +199,6 @@ export function resolveRaid(input: RaidInput): RaidResolution {
   for (const [id, count] of fleetEntries(input.line)) {
     if (HULLS[id].ground) guns[id] = count;
   }
-  const result = resolveBattle(input.stacks, [host(guns)], input.shield, input.rng());
+  const result = resolveBattle(input.stacks, [host(guns)], input.shield, input.rng(), context);
   return { result, escape: { kind: 'ESCAPED', ships, fuel } };
 }

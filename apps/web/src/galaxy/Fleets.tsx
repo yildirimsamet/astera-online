@@ -34,6 +34,8 @@ import {
   concealedVolley,
   contactPosition,
   CRAFT_SCALE,
+  STRATEGIC_CONTACT_SCALE,
+  STRATEGIC_HULL_SCALE_MULT,
   engagementPosition,
   engagementTargetPosition,
   isHeading,
@@ -238,9 +240,11 @@ interface HullProps {
   scale: number;
   glow: string;
   focused: boolean;
+  /** Landmark callers can opt out of the galaxy's distance fog. */
+  fog?: boolean;
 }
 
-function LoadedHull({ url, scale, glow, focused }: HullProps) {
+function LoadedHull({ url, scale, glow, focused, fog = true }: HullProps) {
   const { scene } = useGLTF(url, false);
 
   const model = useMemo(() => {
@@ -261,6 +265,7 @@ function LoadedHull({ url, scale, glow, focused }: HullProps) {
        */
       for (const material of materialsOf(node)) {
         configureOpaqueTransparentBody(material);
+        (material as THREE.Material & { fog?: boolean }).fog = fog;
       }
       /**
        * ALWAYS VISIBLE, AND STILL SOLID.
@@ -316,6 +321,7 @@ function LoadedHull({ url, scale, glow, focused }: HullProps) {
         `,
       });
       material.toneMapped = false;
+      material.fog = false;
       node.material = material;
       node.renderOrder = SHIP_ORDER - 1;
       owned.push(material);
@@ -1124,7 +1130,7 @@ function Flight({
 
         <TrackingMark
           kind={isDeathStar ? 'death_star' : isProbe ? 'probe' : 'fleet'}
-          scale={isDeathStar ? style.scale * 3.4 : style.scale}
+          scale={isDeathStar ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
           colour={isDeathStar ? DEATH_STAR_LIGHT.glow : style.neon}
           focused={focused}
         />
@@ -1157,18 +1163,18 @@ function Flight({
           ) : (
             <>
               <Wake
-                scale={isDeathStar ? style.scale * 3.4 : style.scale}
+                scale={isDeathStar ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
                 colour={isDeathStar ? DEATH_STAR_LIGHT.glow : style.neon}
                 lengthScale={isDeathStar ? 0.5 : 1}
               />
               <Hull
                 url={isDeathStar ? MODEL.deathStar : style.url}
-                scale={isDeathStar ? style.scale * 3.4 : style.scale}
+                scale={isDeathStar ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
                 glow={isDeathStar ? DEATH_STAR_LIGHT.glow : style.neon}
                 focused={focused}
               />
               {isDeathStar ? (
-                <StrategicExhaust scale={style.scale * 3.4} />
+                <StrategicExhaust scale={style.scale * STRATEGIC_HULL_SCALE_MULT} />
               ) : (
                 <group position={[0, 0, -style.scale * 0.42]}>
                   <Exhaust
@@ -2193,7 +2199,7 @@ const CONTACT_STYLE: Record<Contact['kind'], { neon: string; scale: number; flam
   // amber and goes a shade paler — recognisably the same kind of thing, visibly
   // not headed for a rock. D32.
   harvest: { neon: '#ffcf8f', scale: 0.18 * CRAFT_SCALE, flame: '#ffe9cc' },
-  death_star: { neon: '#ff4d67', scale: 0.34 * CRAFT_SCALE, flame: '#ff9cac' },
+  death_star: { neon: '#ff4d67', scale: STRATEGIC_CONTACT_SCALE, flame: '#ff9cac' },
   /**
    * A PIRATE. D150.
    *
@@ -2981,7 +2987,7 @@ function Foreign({
 
         <TrackingMark
           kind={contact.kind}
-          scale={contact.kind === 'death_star' ? style.scale * 3.4 : style.scale}
+          scale={contact.kind === 'death_star' ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
           colour={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
           focused={focused}
         />
@@ -3062,18 +3068,18 @@ function Foreign({
           ) : (
             <>
               <Wake
-                scale={contact.kind === 'death_star' ? style.scale * 3.4 : style.scale}
+                scale={contact.kind === 'death_star' ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
                 colour={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
                 lengthScale={contact.kind === 'death_star' ? 0.5 : 1}
               />
               <Hull
                 url={contact.kind === 'death_star' ? MODEL.deathStar : MODEL.probe}
-                scale={contact.kind === 'death_star' ? style.scale * 3.4 : style.scale}
+                scale={contact.kind === 'death_star' ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
                 glow={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
                 focused={focused}
               />
               {contact.kind === 'death_star' ? (
-                <StrategicExhaust scale={style.scale * 3.4} />
+                <StrategicExhaust scale={style.scale * STRATEGIC_HULL_SCALE_MULT} />
               ) : (
                 <group position={[0, 0, -style.scale * 0.42]}>
                   <Exhaust

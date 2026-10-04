@@ -5,12 +5,13 @@ import { useClanWarActions } from '../api/queries.js';
 import { ApiError } from '../api/client.js';
 import type { ClanWar, PlanetView } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
-import { hullName } from '../i18n/names.js';
+import { hullName, monumentName } from '../i18n/names.js';
 import { full } from '../lib/format.js';
 import { countdown, useNow } from '../lib/time.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
+import { RadiationPreview } from '../ui/RadiationPreview.js';
 import { ChoiceChips } from '../v2/kit/ChoiceChips.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { Figure, Figures } from '../v2/kit/Figure.js';
@@ -48,18 +49,23 @@ export function ClanWaveSheet({ operation, worlds, onClose, onSent }: {
   const [fleet, setFleet] = useState<Fleet>({});
   const [quotedKey, setQuotedKey] = useState<string | null>(null);
   const [acknowledgeShield, setAcknowledgeShield] = useState(false);
+  const [acknowledgeRadiation, setAcknowledgeRadiation] = useState(false);
   const origin = worlds.find((world) => world.planet.id === originId) ?? worlds[0];
   const quoteKey = `${origin?.planet.id ?? ''}:${JSON.stringify(fleet)}`;
   const quote = quotedKey === quoteKey ? actions.quote.data : undefined;
-  const blockingRefusals = quote?.refusals.filter((refusal) => refusal.code !== 'SHIELD_WOULD_DROP') ?? [];
+  const radiationLoss = (quote?.radiation?.destroyed ?? 0) > 0;
+  const blockingRefusals = quote?.refusals.filter((refusal) => refusal.code !== 'SHIELD_WOULD_DROP'
+    && !(refusal.code === 'RADIATION_LETHAL' && radiationLoss)) ?? [];
   const quoteCanSend = quote !== undefined && (quote.ok
-    || (quote.shieldWouldDrop !== null && blockingRefusals.length === 0));
+    || ((quote.shieldWouldDrop !== null || radiationLoss) && blockingRefusals.length === 0));
   const picked = fleetCount(fleet);
 
   const setCount = (hull: HullId, value: number): void => {
     const next = Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
     setFleet((current) => ({ ...current, [hull]: next }));
     setQuotedKey(null);
+    setAcknowledgeShield(false);
+    setAcknowledgeRadiation(false);
   };
 
   const requestQuote = actions.quote.mutate;
@@ -80,6 +86,7 @@ export function ClanWaveSheet({ operation, worlds, onClose, onSent }: {
         : quote === undefined ? (actions.quote.isError ? describeError(actions.quote.error) : t('clanWar.quoting'))
           : blockingRefusals[0] ? describeError(new ApiError(blockingRefusals[0].code, blockingRefusals[0].message, 409))
             : quote.shieldWouldDrop !== null && !acknowledgeShield ? t('clanWar.acknowledgeFirst')
+              : radiationLoss && !acknowledgeRadiation ? t('monument.consent')
               : quoteCanSend ? null : t('clanWar.quoting');
 
   const hulls = MOBILE_HULLS.filter((hull) => (origin?.fleet[hull] ?? 0) > 0);
@@ -87,7 +94,8 @@ export function ClanWaveSheet({ operation, worlds, onClose, onSent }: {
   return (
     <Sheet
       eyebrow={t('clanWar.waveEyebrow', { world: operation.staging.name })}
-      title={`${operation.target.username} · ${operation.target.planetName}`}
+      title={operation.target.kind === 'MONUMENT' ? monumentName(operation.target.monumentOrdinal ?? undefined)
+        : `${operation.target.username} · ${operation.target.planetName}`}
       detents={['fit']}
       placement="page"
       onClose={onClose}
@@ -100,7 +108,8 @@ export function ClanWaveSheet({ operation, worlds, onClose, onSent }: {
             onCommit={() => {
               if (!origin) return;
               actions.contribute.mutate(
-                { originPlanetId: origin.planet.id, fleet, acknowledgeShieldLoss: acknowledgeShield },
+                { originPlanetId: origin.planet.id, fleet, acknowledgeShieldLoss: acknowledgeShield,
+                  ...(acknowledgeRadiation ? { acknowledgeRadiationLoss: true } : {}) },
                 { onSuccess: () => { setFleet({}); setQuotedKey(null); setAcknowledgeShield(false); onSent(); } },
               );
             }}
@@ -126,6 +135,7 @@ export function ClanWaveSheet({ operation, worlds, onClose, onSent }: {
               setFleet({});
               setQuotedKey(null);
               setAcknowledgeShield(false);
+              setAcknowledgeRadiation(false);
             }}
           />
         )}
@@ -195,6 +205,12 @@ export function ClanWaveSheet({ operation, worlds, onClose, onSent }: {
                 {describeError(new ApiError(blocking.code, blocking.message, 409))}
               </p>
             ))}
+            {quote.radiation && <RadiationPreview combat radiation={{ kind: 'HP', doseHp: quote.radiation.doseHp,
+              destroyed: quote.radiation.destroyed, lostFleet: quote.radiation.lostFleet,
+              lots: quote.radiation.health, docks: quote.radiation.health.some((lot) => lot.needsDock) }} />}
+            {radiationLoss && <Toggle tone="hostile" checked={acknowledgeRadiation} onChange={setAcknowledgeRadiation}>
+              {t('monument.radiation')}
+            </Toggle>}
             {quote.shieldWouldDrop && (
               <div className="flex flex-col gap-1 rounded-control border border-v2-hostile/40 bg-v2-hostile/5 px-2.5 py-2">
                 <p className="text-caption text-v2-hostile">{t('clanWar.shield', { kind: quote.shieldWouldDrop.kind })}</p>

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   battleReports,
@@ -82,21 +82,38 @@ async function waveRow(over: Partial<typeof clanSupportWaves.$inferInsert> = {})
 }
 
 describe('the additive clan defence schema', () => {
-  it('appends every enum value without moving an existing one', () => {
+  it('keeps the original enum segments and the database order after additive extensions', async () => {
     expect(missionKind.enumValues).toEqual([
       'attack', 'probe', 'return', 'transfer', 'settlement', 'death_star',
       'clan_transfer', 'clan_war', 'clan_support',
     ]);
-    expect(eventKind.enumValues.slice(-3)).toEqual([
+    const eventStart = eventKind.enumValues.indexOf('clan_war_expiry');
+    expect(eventKind.enumValues.slice(eventStart, eventStart + 3)).toEqual([
       'clan_war_expiry', 'neutral_census', 'clan_support_expiry',
     ]);
-    expect(notificationKind.enumValues.slice(-5)).toEqual([
+    const newsStart = notificationKind.enumValues.indexOf('radiation_lost');
+    expect(notificationKind.enumValues.slice(newsStart, newsStart + 5)).toEqual([
       'radiation_lost',
       'clan_support_inbound',
       'clan_support_departed',
       'clan_support_result',
       'defence_posture_reset',
     ]);
+    for (const enumeration of [missionKind, eventKind, notificationKind]) {
+      const stored = await f.db.execute<{ label: string }>(sql`
+        SELECT e.enumlabel AS label FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typname = ${enumeration.enumName} ORDER BY e.enumsortorder
+      `);
+      const labels = stored.map((row) => row.label);
+      expect([...labels].sort()).toEqual([...enumeration.enumValues].sort());
+      const original = enumeration.enumName === 'event_kind'
+        ? ['clan_war_expiry', 'neutral_census', 'clan_support_expiry']
+        : enumeration.enumName === 'notification_kind'
+          ? ['radiation_lost', 'clan_support_inbound', 'clan_support_departed', 'clan_support_result', 'defence_posture_reset']
+          : [...missionKind.enumValues];
+      const start = labels.indexOf(original[0]!);
+      expect(labels.slice(start, start + original.length)).toEqual(original);
+    }
   });
 });
 

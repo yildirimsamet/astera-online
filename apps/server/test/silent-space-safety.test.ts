@@ -84,7 +84,7 @@ it('preserves reports but detaches their spatial evidence after a round trip', a
   expect(probes[0]).toMatchObject({ spatiallyCurrent: false });
   const reports = await readBattleReports(f.db, f.playerIds[0]!);
   expect(reports.reports).toHaveLength(1);
-  expect(reports.reports[0]!.opponentPlanetId).toBeNull();
+  expect(reports.reports.find(row => row.kind === 'BATTLE')?.opponentPlanetId).toBeNull();
   expect(reports.rivals).toHaveLength(0);
 });
 it('enforces one result per account and cycle across different galaxies', async () => {

@@ -2,6 +2,10 @@
 
 Production VPS: `ssh yildirim@hoofywood.com`
 
+Stage rehearsal and the owner-requested forced season transition are prepared in
+[`deployment-stage-rollout.md`](deployment-stage-rollout.md); its recorded inventory is a
+point-in-time inspection, not evidence of a completed deployment.
+
 Astera Online is live at `https://asteraonline.space`. This is the production runbook: it
 describes the topology that actually runs, the evidence required before opening it to players,
 and the rollback boundary. It is deliberately not a release history.
@@ -1839,3 +1843,45 @@ docker exec astera-postgres-prod psql -U astera -d astera -tAc \
 ```
 
 `active_players` should match the non-bot `last_active_at > now() - 60 min` count at the hour.
+
+## Monument release — 2026-10-04
+
+Feature contract and review: `monument-design-plan.md` and the final section of
+`monument-code-review.md`. New seasons default to ruleset 16 and atomically deal five
+monuments with five fixed-HP clouds. Existing ruleset 14–15 seasons retain their rules;
+do not rewrite their version or backfill monuments. `MONUMENT-LOCAL` is a development
+shard and is not seeded by a production process.
+
+Schema journal now contains **141 migrations**, ending at
+`0140_monument_return_notice`. Apply the complete ordered `0127`–`0140` chain with
+the new image's migration command. Do not rename applied `0138`/`0139` journal entries.
+The local database has 141/141 applied; that is not a production migration rehearsal.
+
+Two release conditions need operational attention:
+
+1. `0130` changes `planets.deuterium` and `buffer_deuterium` to double precision so
+   physical cargo can preserve fractional production. `ALTER TABLE` can lock/rewrite
+   the populated table. Measure it on the restored production backup using the existing
+   preflight steps; use the release runbook's required maintenance sequence if the
+   observed lock/rewrite cannot fit the serving budget. No production timing is claimed
+   by the unit or local tests.
+2. The new worker knows `monument_arrival`, `monument_loss`, `monument_respawn` and
+   `monument_probe`; old code does not. Stop the singleton worker for the migration/
+   version cutover, migrate with the new image, roll all APIs, then start the new worker.
+   Do not open a ruleset-16 season or allow rollover until all these roles run the new
+   code. Publish the matching web artifact as part of that release. Once a ruleset-16
+   season has active fleets, rolling only the worker/API back to the old image is unsafe;
+   use the production runbook's tested restore procedure if rollback is necessary.
+
+Preflight must be green with `pnpm verify --exclude-sims`. The owner explicitly excluded
+season-economy simulations, snowball audit and calibration; this command still checks
+workspace types/lint and all other rules/web/server tests. Historical baseline failures
+are not proof of a passing release gate. Review the final recorded result before shipping.
+
+After rollout, check `/health`, `pendingMigrations = 0`, new live-season version 16,
+exactly five monument rows and five monument-anchored HP clouds, public galaxy target
+visibility, a normal planet launch, and worker failure/stranded-flight counters. Test a
+monument quote/send/recall with the release test commander, including capacity-return
+news. Keep `/health` and the worker log visible during this smoke. Production execution
+and maintenance approval remain part of the existing deployment runbook; this feature
+review did not deploy or stop production.

@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../src/i18n/index.js';
 import { CountryPicker } from '../src/v2/identity/CountryPicker.js';
 import { Flag } from '../src/v2/identity/Flag.js';
-import { detectCountry } from '../src/v2/identity/country.js';
+import { isCountryCode } from '@astera/rules';
+import { browserTimeZone, countryOfTimeZone, detectCountry } from '../src/v2/identity/country.js';
+import { TIME_ZONE_COUNTRIES } from '../src/v2/identity/timeZoneCountries.js';
 import { ClaimDialog } from '../src/onboarding/ClaimDialog.js';
 import { MenuPanel } from '../src/shell/MenuPanel.js';
 import { Api } from '../src/api/client.js';
@@ -14,6 +16,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 afterEach(async () => {
   await i18n.changeLanguage('en');
 });
+
+const english = { languages: ['en-US'], language: 'en-US' };
+const austrian = { languages: ['de-AT'], language: 'de-AT' };
+
+/** The test machine's own clock must never decide a default. */
+function stubTimeZone(timeZone: string): void {
+  const formatter = new Intl.DateTimeFormat();
+  const real = formatter.resolvedOptions.bind(formatter);
+  vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function resolved(this: Intl.DateTimeFormat) {
+    return { ...real(), timeZone };
+  });
+}
 
 describe('country identity', () => {
   it('draws the authored SVG flag with a localised accessible name', () => {
@@ -34,6 +48,63 @@ describe('country identity', () => {
     expect(detectCountry({ languages: ['en-US'], language: 'en' })).toBe('TR');
     expect(detectCountry({ languages: ['tr', 'en'], language: 'tr' })).toBe('TR');
     expect(detectCountry({ languages: ['xx'], language: 'xx' })).toBe('TR');
+  });
+
+  it('prefers where the device clock is over the language it is set to', () => {
+    expect(detectCountry(english, 'Europe/Istanbul')).toBe('TR');
+    expect(detectCountry({ languages: ['tr-TR'], language: 'tr-TR' }, 'Europe/Berlin')).toBe('DE');
+    expect(detectCountry(austrian, 'America/Sao_Paulo')).toBe('BR');
+    for (const [zone, country] of [
+      ['Asia/Tokyo', 'JP'], ['Australia/Sydney', 'AU'], ['Africa/Lagos', 'NG'], ['America/Mexico_City', 'MX'],
+      ['Europe/London', 'GB'], ['Asia/Kolkata', 'IN'], ['Europe/Kyiv', 'UA'], ['Europe/Zurich', 'CH'],
+      ['America/Toronto', 'CA'], ['Asia/Shanghai', 'CN'], ['America/New_York', 'US'],
+    ] as const) {
+      expect(detectCountry(english, zone), zone).toBe(country);
+    }
+  });
+
+  it('reads the legacy identifiers Chrome and Safari can still report', () => {
+    for (const [zone, country] of [
+      ['Asia/Calcutta', 'IN'], ['Europe/Kiev', 'UA'], ['Asia/Katmandu', 'NP'], ['Asia/Saigon', 'VN'],
+      ['Asia/Istanbul', 'TR'], ['Turkey', 'TR'], ['US/Eastern', 'US'], ['America/Buenos_Aires', 'AR'],
+    ] as const) {
+      expect(countryOfTimeZone(zone), zone).toBe(country);
+    }
+  });
+
+  it('keeps a merged IANA zone in its own country', () => {
+    for (const [zone, country] of [
+      ['Europe/Oslo', 'NO'], ['Europe/Amsterdam', 'NL'], ['Atlantic/Reykjavik', 'IS'], ['Iceland', 'IS'], ['Europe/Vaduz', 'LI'],
+    ] as const) {
+      expect(countryOfTimeZone(zone), zone).toBe(country);
+    }
+  });
+
+  it('falls back to the language for a clock that names no place', () => {
+    for (const zone of ['UTC', 'Etc/UTC', 'Etc/GMT-3', '+03:00', 'Mars/Olympus', '', 'Atlantic/Jan_Mayen']) {
+      expect(countryOfTimeZone(zone), zone).toBeUndefined();
+      expect(detectCountry(austrian, zone), zone).toBe('AT');
+    }
+    expect(detectCountry(austrian)).toBe('AT');
+  });
+
+  it('lists every zone once, under a known country', () => {
+    const seen = new Set<string>();
+    for (const [country, zones] of Object.entries(TIME_ZONE_COUNTRIES)) {
+      expect(isCountryCode(country), country).toBe(true);
+      for (const zone of zones.split(' ')) {
+        expect(seen.has(zone), zone).toBe(false);
+        seen.add(zone);
+      }
+    }
+    expect(seen.size).toBeGreaterThanOrEqual(418);
+  });
+
+  it('reads the browser clock and survives an Intl failure', () => {
+    stubTimeZone('Asia/Tokyo');
+    expect(browserTimeZone()).toBe('Asia/Tokyo');
+    vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(() => { throw new RangeError('no Intl'); });
+    expect(browserTimeZone()).toBeUndefined();
   });
 });
 
@@ -84,7 +155,17 @@ describe('the country picker', () => {
     expect(onSelect).toHaveBeenCalledWith('ES');
   });
 
+  it('starts the claim from the country of the device clock', async () => {
+    stubTimeZone('Europe/Berlin');
+    render(<ClaimDialog planetName="Kestrel" onClaim={vi.fn()} onSignIn={vi.fn()} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Commander name'), 'NewPilot');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('button', { name: /Germany/ })).toBeInTheDocument();
+  });
+
   it('carries the selected country into the registration claim', async () => {
+    stubTimeZone('America/New_York');
     const onClaim = vi.fn(() => Promise.resolve());
     render(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} />);
     const user = userEvent.setup();

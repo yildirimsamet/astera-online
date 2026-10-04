@@ -3,10 +3,10 @@ import {
   assertDamageCarried,
   carryToBp,
   normalizeLots,
-  type DamageLot,
   type DamageLots,
 } from './damage.js';
 import { hullTech, type TechLevels } from './tech.js';
+import { normalizeHpDamage, type HpDamageLot, type HpDamageLots } from './radiationHp.js';
 import {
   ALL_HULLS,
   HULLS,
@@ -62,8 +62,8 @@ export interface CombatResult {
    * in and did not die of. Ground guns are never listed: they rebuild from salvage. The
    * caller decides what the damage means (`splitForLanding`); an NPC side ignores it.
    */
-  attackerDamage: DamageLot[];
-  defenderDamage: DamageLot[];
+  attackerDamage: HpDamageLot[];
+  defenderDamage: HpDamageLot[];
 }
 
 /**
@@ -220,7 +220,7 @@ export interface JointAttackerStack {
    * DAMAGE THE WAVE ARRIVED WITH — radiation on the way in. Absent means every ship is
    * whole, which is every battle a defender fights: nothing at `home` is ever damaged.
    */
-  damage?: DamageLots;
+  damage?: HpDamageLots;
 }
 
 /** What one contribution did and what it cost, once the board is settled. */
@@ -241,7 +241,7 @@ export interface JointContributionOutcome {
    */
   hullDamage: number;
   /** This wave's damaged survivors; they fly home on this wave's return leg. */
-  survivorDamage: DamageLot[];
+  survivorDamage: HpDamageLot[];
 }
 
 export interface JointCombatResult extends CombatResult {
@@ -305,7 +305,12 @@ function jointReturnFire(
 /* ── ships that arrived damaged ─────────────────────────────────── */
 
 /** Some damaged ships of one hull in one wave, and the hull each of them has left. */
-interface Wounded { count: number; hpLeft: number }
+interface Wounded {
+  count: number;
+  hpLeft: number;
+  /** An untouched precise wound survives without an HP → BP round trip. */
+  arrivalDamage?: HpDamageLot;
+}
 /** Per hull, a wave's damaged ships in the order they die: least hull left first. */
 type WoundMap = Map<HullId, Wounded[]>;
 
@@ -318,14 +323,24 @@ const woundedCount = (wounded: WoundMap, hull: HullId): number =>
   (wounded.get(hull) ?? []).reduce((sum, group) => sum + group.count, 0);
 
 /** A wave's arrival damage as the hull each ship has left, at its owner's armour. */
-function woundedFrom(stack: { fleet: Fleet; damage?: DamageLots }, stats: SideStats): WoundMap {
-  const lots = normalizeLots(stack.damage);
+function combatLots(fleet: Fleet, lots: HpDamageLots | undefined, precise: boolean): HpDamageLot[] {
+  return precise ? normalizeHpDamage(fleet, lots) : normalizeLots(lots);
+}
+
+function woundedFrom(stack: { fleet: Fleet; damage?: HpDamageLots }, stats: SideStats, precise = false): WoundMap {
+  const lots = combatLots(stack.fleet, stack.damage, precise);
   assertDamageCarried(stack.fleet, lots);
   const out: WoundMap = new Map();
   for (const lot of lots) {
     const hp = stats.hp(lot.hull);
     const groups = out.get(lot.hull) ?? [];
-    groups.push({ count: lot.count, hpLeft: hp * (SHIP_DAMAGE.destroyedBp - lot.damageBp) / SHIP_DAMAGE.destroyedBp });
+    // Subtract the fractional field last: 9999 + (1 - epsilon) can round to
+    // 10000, even though these two fields describe a ship with positive HP.
+    const remainingBp = (SHIP_DAMAGE.destroyedBp - lot.damageBp) - (precise ? lot.remainderBp ?? 0 : 0);
+    groups.push({
+      count: lot.count, hpLeft: hp * remainingBp / SHIP_DAMAGE.destroyedBp,
+      ...(precise ? { arrivalDamage: { hull: lot.hull, count: lot.count, damageBp: lot.damageBp, remainderBp: lot.remainderBp ?? 0 } } : {}),
+    });
     out.set(lot.hull, groups);
   }
   for (const groups of out.values()) groups.sort((a, b) => a.hpLeft - b.hpLeft);
@@ -499,6 +514,7 @@ export function resolveJointCombat(
   shield: number,
   rng: Rng,
   defenderTech: CombatSide,
+  preciseDamage = false,
 ): JointCombatResult {
   if (stacks.length === 0) {
     throw new RangeError('a combined attack needs at least one contribution');
@@ -507,7 +523,7 @@ export function resolveJointCombat(
   const stats = stacks.map((stack) => statsFor(stack.tech));
   const live = stacks.map((stack) => ({ ...stack.fleet }));
   const starts = stacks.map((stack) => ({ ...stack.fleet }));
-  const wounded = stacks.map((stack, i) => woundedFrom(stack, stats[i]!));
+  const wounded = stacks.map((stack, i) => woundedFrom(stack, stats[i]!, preciseDamage));
   const D: Fleet = { ...defender };
   const defStart: Fleet = { ...defender };
 
@@ -647,7 +663,7 @@ export function resolveJointCombat(
   const attackerLosses = fleetDiff(atkStart, attackerSurvivors);
   const defenderLosses = fleetDiff(defStart, D);
 
-  const survivorDamage = attackerSurvivorDamage(stacks, live, stats, wounded, carryA);
+  const survivorDamage = attackerSurvivorDamage(stacks, live, stats, wounded, carryA, preciseDamage);
   const contributions = stacks.map((stack, i) => {
     const losses = fleetDiff(starts[i]!, live[i]!);
     return {
@@ -663,11 +679,11 @@ export function resolveJointCombat(
   });
 
   /* The defender never arrives damaged (nothing at `home` is), so only its carry remains. */
-  const defenderDamage: DamageLot[] = [];
+  const defenderDamage: HpDamageLot[] = [];
   for (const [hull] of fleetEntries(D)) {
     if (HULLS[hull].ground) continue;
-    const damageBp = survivorBp(carryD.get(hull) ?? 0, d.hp(hull));
-    if (damageBp > 0) defenderDamage.push({ hull, count: 1, damageBp });
+    const lot = survivorLot(hull, 1, carryD.get(hull) ?? 0, d.hp(hull), preciseDamage);
+    if (lot) defenderDamage.push(lot);
   }
 
   return {
@@ -682,8 +698,8 @@ export function resolveJointCombat(
     attackerLossValue: fleetValue(attackerLosses),
     defenderLossValue: Math.max(0, fleetValue(defenderLosses) - fleetValue(defenceSalvage)),
     defenceSalvage,
-    attackerDamage: normalizeLots(survivorDamage.flat()),
-    defenderDamage: normalizeLots(defenderDamage),
+    attackerDamage: combatLots(attackerSurvivors, survivorDamage.flat(), preciseDamage),
+    defenderDamage: combatLots(D, defenderDamage, preciseDamage),
     contributions,
   };
 }
@@ -701,8 +717,25 @@ function attackerSurvivorDamage(
   stats: readonly SideStats[],
   wounded: readonly WoundMap[],
   carry: ReadonlyMap<string, number>,
-): DamageLot[][] {
-  return stackSurvivorDamage(stacks.map((stack) => stack.contributionId), live, stats, wounded, carry);
+  precise = false,
+): HpDamageLot[][] {
+  return stackSurvivorDamage(stacks.map((stack) => stack.contributionId), live, stats, wounded, carry, precise);
+}
+
+/** The HP path preserves sub-bp wounds; the planet path keeps its pinned rounding. */
+function survivorLot(hull: HullId, count: number, lostHp: number, hp: number, precise: boolean, hpLeft = hp - lostHp): HpDamageLot | null {
+  if (!precise) {
+    const damageBp = survivorBp(lostHp, hp);
+    return damageBp > 0 ? { hull, count, damageBp } : null;
+  }
+  if (count === 0 || lostHp <= 0) return null;
+  if (!(hpLeft > 0)) throw new RangeError('a monument survivor must have positive HP');
+  const exact = lostHp / hp * SHIP_DAMAGE.destroyedBp;
+  // The ship still exists. Float noise at the destruction boundary cannot round
+  // its carried damage into a dead lot; radiation will resolve its next HP dose.
+  const damageBp = Math.min(SHIP_DAMAGE.destroyedBp - 1, Math.floor(exact + 1e-8));
+  const remainderBp = Math.min(1 - Number.EPSILON, Math.max(0, exact >= SHIP_DAMAGE.destroyedBp ? 1 : exact - damageBp));
+  return { hull, count, damageBp, remainderBp };
 }
 
 /**
@@ -716,14 +749,17 @@ function stackSurvivorDamage(
   stats: readonly SideStats[],
   wounded: readonly WoundMap[],
   carry: ReadonlyMap<string, number>,
-): DamageLot[][] {
+  precise = false,
+): HpDamageLot[][] {
   const out = ids.map((_, i) => {
-    const lots: DamageLot[] = [];
+    const lots: HpDamageLot[] = [];
     for (const [hull, groups] of wounded[i]!) {
       const hp = stats[i]!.hp(hull);
       for (const group of groups) {
-        const damageBp = survivorBp(hp - group.hpLeft, hp);
-        if (damageBp > 0) lots.push({ hull, count: group.count, damageBp });
+        const lot = precise && group.arrivalDamage
+          ? { ...group.arrivalDamage, count: group.count }
+          : survivorLot(hull, group.count, hp - group.hpLeft, hp, precise, group.hpLeft);
+        if (lot) lots.push(lot);
       }
     }
     return lots;
@@ -742,15 +778,15 @@ function stackSurvivorDamage(
     }
   }
   for (const [key, { hull, hp, members }] of holders) {
-    const damageBp = survivorBp(carry.get(key) ?? 0, hp);
-    if (damageBp === 0) continue;
+    const lot = survivorLot(hull, 1, carry.get(key) ?? 0, hp, precise);
+    if (!lot) continue;
     const [owner] = [...members].sort((a, b) =>
       b.healthy - a.healthy
       || ids[a.index]!.localeCompare(ids[b.index]!)
       || a.index - b.index);
-    if (owner) out[owner.index]!.push({ hull, count: 1, damageBp });
+    if (owner) out[owner.index]!.push(lot);
   }
-  return out.map((lots) => normalizeLots(lots));
+  return out.map((lots, i) => combatLots(live[i]!, lots, precise));
 }
 
 /**
@@ -818,8 +854,8 @@ export interface DefenderStack {
   playerId: string;
   fleet: Fleet;
   tech: CombatSide;
-  /** A wave's carried damage. The host never has any: nothing at `home` is damaged. */
-  damage?: DamageLots;
+  /** A wave's carried damage. A planet host is healthy; a monument defender need not be. */
+  damage?: HpDamageLots;
 }
 
 /** What one defending stack sent in, kept and lost. */
@@ -832,19 +868,19 @@ export interface DefenderOutcome {
   /** The host's is net of `defenceSalvage`, so the parts sum to `defenderLossValue`. */
   lossValue: number;
   /** This stack's damaged survivors. Never a ground gun — those rebuild from salvage. */
-  survivorDamage: DamageLot[];
+  survivorDamage: HpDamageLot[];
 }
 
 export interface BattleResult extends JointCombatResult {
   defenders: DefenderOutcome[];
 }
 
-function assertDefendingLine(defenders: readonly DefenderStack[]): void {
+function assertDefendingLine(defenders: readonly DefenderStack[], monument: boolean, precise: boolean): void {
   if (defenders.length === 0) throw new RangeError('a battle needs a defending line');
-  if (normalizeLots(defenders[0]!.damage).length > 0) {
+  if (!monument && combatLots(defenders[0]!.fleet, defenders[0]!.damage, precise).length > 0) {
     throw new RangeError('the host stack stands at home and cannot carry damage');
   }
-  for (const stack of defenders.slice(1)) {
+  for (const stack of monument ? defenders : defenders.slice(1)) {
     for (const [hull, count] of fleetEntries(stack.fleet)) {
       if (count > 0 && HULLS[hull].ground) {
         throw new RangeError(`a support wave cannot hold the ground gun ${hull}`);
@@ -879,11 +915,16 @@ export function resolveBattle(
   defenders: readonly DefenderStack[],
   shield: number,
   rng: Rng,
+  /** New ruleset callers explicitly opt in; legacy planet battles retain exact parity. */
+  context: 'PLANET' | 'MONUMENT' | 'HP_PLANET' = 'PLANET',
 ): BattleResult {
-  assertDefendingLine(defenders);
-  if (defenders.length === 1) {
+  const monument = context === 'MONUMENT';
+  const precise = context !== 'PLANET';
+  if (monument && shield !== 0) throw new RangeError('a monument fleet has no planet shield');
+  assertDefendingLine(defenders, monument, precise);
+  if (defenders.length === 1 && !monument) {
     const only = defenders[0]!;
-    const joint = resolveJointCombat(stacks, only.fleet, shield, rng, only.tech);
+    const joint = resolveJointCombat(stacks, only.fleet, shield, rng, only.tech, precise);
     return {
       ...joint,
       defenders: [{
@@ -904,12 +945,12 @@ export function resolveBattle(
   const stats = stacks.map((stack) => statsFor(stack.tech));
   const live = stacks.map((stack) => ({ ...stack.fleet }));
   const starts = stacks.map((stack) => ({ ...stack.fleet }));
-  const wounded = stacks.map((stack, i) => woundedFrom(stack, stats[i]!));
+  const wounded = stacks.map((stack, i) => woundedFrom(stack, stats[i]!, precise));
 
   const dStats = defenders.map((stack) => statsFor(stack.tech));
   const dLive = defenders.map((stack) => ({ ...stack.fleet }));
   const dStarts = defenders.map((stack) => ({ ...stack.fleet }));
-  const dWounded = defenders.map((stack, j) => woundedFrom(stack, dStats[j]!));
+  const dWounded = defenders.map((stack, j) => woundedFrom(stack, dStats[j]!, precise));
   const dIds = defenders.map((stack) => stack.stackId);
 
   const defValueBefore = fleetValue(mergedFleet(dStarts));
@@ -1049,7 +1090,7 @@ export function resolveBattle(
   const attackerLosses = fleetDiff(atkStart, attackerSurvivors);
   const defenderLosses = fleetDiff(defStart, D);
 
-  const survivorDamage = attackerSurvivorDamage(stacks, live, stats, wounded, carryA);
+  const survivorDamage = attackerSurvivorDamage(stacks, live, stats, wounded, carryA, precise);
   const contributions = stacks.map((stack, i) => {
     const losses = fleetDiff(starts[i]!, live[i]!);
     return {
@@ -1064,7 +1105,7 @@ export function resolveBattle(
     };
   });
 
-  const defenderSurvivorDamage = stackSurvivorDamage(dIds, dLive, dStats, dWounded, carryD)
+  const defenderSurvivorDamage = stackSurvivorDamage(dIds, dLive, dStats, dWounded, carryD, precise)
     .map((lots) => lots.filter((lot) => !HULLS[lot.hull].ground));
   const salvageValue = fleetValue(defenceSalvage);
   const outcomes = defenders.map((stack, j) => {
@@ -1093,8 +1134,8 @@ export function resolveBattle(
     attackerLossValue: fleetValue(attackerLosses),
     defenderLossValue: Math.max(0, fleetValue(defenderLosses) - salvageValue),
     defenceSalvage,
-    attackerDamage: normalizeLots(survivorDamage.flat()),
-    defenderDamage: normalizeLots(defenderSurvivorDamage.flat()),
+    attackerDamage: combatLots(attackerSurvivors, survivorDamage.flat(), precise),
+    defenderDamage: combatLots(D, defenderSurvivorDamage.flat(), precise),
     contributions,
     defenders: outcomes,
   };

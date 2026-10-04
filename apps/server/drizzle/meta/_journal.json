@@ -890,6 +890,104 @@
       "when": 1790881632085,
       "tag": "0126_unknown_sandman",
       "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1791048282003,
+      "tag": "0127_monument_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1791050369658,
+      "tag": "0128_monument_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1791052133830,
+      "tag": "0129_hp_dock_fraction",
+      "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1791052994511,
+      "tag": "0130_monument_deuterium_precision",
+      "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1791054445703,
+      "tag": "0131_monument_battle_outcomes",
+      "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "7",
+      "when": 1791063549183,
+      "tag": "0132_hp_flight_cursors",
+      "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1791064067763,
+      "tag": "0133_hp_special_flights",
+      "breakpoints": true
+    },
+    {
+      "idx": 134,
+      "version": "7",
+      "when": 1791065012079,
+      "tag": "0134_monument_probes",
+      "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1791092694728,
+      "tag": "0135_monument_joint_targets",
+      "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1791096089925,
+      "tag": "0136_monument_report_target",
+      "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1791119122784,
+      "tag": "0137_clan_war_radiation_consent",
+      "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1791122087852,
+      "tag": "0138_ancient_black_cat",
+      "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1791122504044,
+      "tag": "0139_rapid_cerise",
+      "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1791131534482,
+      "tag": "0140_monument_return_notice",
+      "breakpoints": true
     }
   ]
 }

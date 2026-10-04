@@ -31,6 +31,7 @@ import {
 } from '../src/services/servers.js';
 import { joinSeason } from '../src/services/player.js';
 import { grantReward } from '../src/services/rewards.js';
+import { createSeason } from '../src/services/season.js';
 import { forceSeasonEnd } from '../src/worker/handlers.js';
 import { testDb, testEnv, truncateAll, type Fixture, giveDebris } from './helpers.js';
 
@@ -965,6 +966,23 @@ describe('servers', () => {
   /* ── the service, directly ────────────────────────────────── */
 
   describe('listServers', () => {
+    it('shows the local monument season as a dev-only open test door', async () => {
+      await bootstrapServers(db, clock, { count: 2, capacity: 50 });
+      await createSeason(db, {
+        shardCode: 'MONUMENT-LOCAL', shardName: 'Monument Local', ordinal: 678649,
+        seed: 16_004, startsAt: clock.now(), days: 30, playerCap: 60, rulesetVersion: 16,
+      });
+      const previous = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+      try {
+        const rows = await listServers(db, clock);
+        expect(rows).toContainEqual(expect.objectContaining({ code: 'MONUMENT-LOCAL', status: 'open' }));
+      } finally {
+        if (previous === undefined) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = previous;
+      }
+    });
+
     it('keeps retired historical shards out of the live list', async () => {
       await bootstrapServers(db, clock, { count: 10, capacity: 50 });
       const rows = await listServers(db, clock);

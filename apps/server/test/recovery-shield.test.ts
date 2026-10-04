@@ -820,7 +820,7 @@ describe('the recovery shield', () => {
     const report = await overwhelm();
     const { readBattleReports } = await import('../src/services/reports.js');
     const find = async (playerId: string) => (await readBattleReports(f.db, playerId)).reports
-      .find((row) => row.kind !== 'STRATEGIC' && row.missionId === report.missionId);
+      .find((row) => row.kind === 'BATTLE' && row.missionId === report.missionId);
     const defended = await find(f.playerIds[1]!);
     const attacked = await find(f.playerIds[0]!);
     const recovery = defended && 'recovery' in defended ? defended.recovery : undefined;
@@ -841,7 +841,7 @@ describe('the recovery shield', () => {
     await worker().tick();
     const { readBattleReports } = await import('../src/services/reports.js');
     const defended = (await readBattleReports(f.db, f.playerIds[1]!)).reports
-      .find((row) => row.kind !== 'STRATEGIC' && row.missionId === launch.missionId);
+      .find((row) => row.kind === 'BATTLE' && row.missionId === launch.missionId);
     const recovery = defended && 'recovery' in defended ? defended.recovery : undefined;
     expect(Number.isFinite(recovery?.lossHours)).toBe(true);
     expect(recovery?.shielded).toBe(false);

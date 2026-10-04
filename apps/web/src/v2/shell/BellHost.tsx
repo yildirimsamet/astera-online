@@ -14,6 +14,7 @@ export interface BellHostProps {
   onGo: SignalGo;
   /** Fly the camera to a world. */
   onFocusPlanet: (planetId: string) => void;
+  onFocusMonument?: (monumentId: string) => void;
   /** Open the base: the chronicle's line about the player's own active world lands there. */
   onOpenPlanet: () => void;
 }
@@ -25,7 +26,7 @@ export interface BellHostProps {
  * galaxy chronicle — and every way out of them closes the sheet first so the camera
  * move is seen. Chat is a page of its own (`ChatHost`).
  */
-export function BellHost({ tab, onTab, onClose, justRead, onGo, onFocusPlanet, onOpenPlanet }: BellHostProps) {
+export function BellHost({ tab, onTab, onClose, justRead, onGo, onFocusPlanet, onFocusMonument, onOpenPlanet }: BellHostProps) {
   const { activePlanetId } = useWorld();
   const galaxy = useGalaxy();
   const planetIds = galaxy.data?.planets.map((planet) => planet.id);
@@ -43,6 +44,7 @@ export function BellHost({ tab, onTab, onClose, justRead, onGo, onFocusPlanet, o
       unseen={justRead.size}
       signals={(
         <SignalsFeed
+          onFocusMonument={onFocusMonument ? (id) => { onClose(); onFocusMonument(id); } : undefined}
           justRead={justRead}
           onGo={(panel, stop, reportMissionId, focus) => {
             onClose();

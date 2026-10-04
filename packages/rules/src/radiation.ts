@@ -20,20 +20,25 @@ import type { Fleet, Vec3 } from './types.js';
  * ONE COPY. The server settles with these, the client forecasts and draws with them,
  * and the simulator would read them too; nothing else computes a dose.
  *
- * A Monument hold (K3a) is a segment that holds still: `from === to` for its window.
+ * A stationary hold is a segment with `from === to` for its window. The next-season
+ * HP model in `radiationHp.ts` shares this geometry, while keeping its dose separate.
  */
 
-export interface RadiationSource {
+/** Spatial and historical coverage shared by percentage and HP rulesets. */
+export interface RadiationField {
   id: string;
   /** EMIT doses; SHELTER cancels every EMIT for the time it covers. */
   mode: 'EMIT' | 'SHELTER';
   center: Vec3;
   radius: number;
-  /** Share of a full hull per minute inside, in percent. A SHELTER's is ignored. */
-  intensityPctPerMinute: number;
   activeFromMs: number;
   /** `null` while it has not been ended. Ending a source never rewrites the past. */
   activeUntilMs: number | null;
+}
+
+export interface RadiationSource extends RadiationField {
+  /** Share of a full hull per minute inside, in percent. A SHELTER's is ignored. */
+  intensityPctPerMinute: number;
 }
 
 /** Straight flight at constant speed from `from` at `startMs` to `to` at `endMs`. */
@@ -56,9 +61,9 @@ const DOSE_EPSILON = 1e-6;
 const finite = (n: number): boolean => Number.isFinite(n);
 const finitePoint = (p: Vec3): boolean => finite(p.x) && finite(p.y) && finite(p.z);
 
-function assertSource(source: RadiationSource): void {
+function assertSource(source: RadiationField, intensityPerMinute: number): void {
   if (!finitePoint(source.center) || !finite(source.radius) || source.radius <= 0
-    || !finite(source.intensityPctPerMinute) || source.intensityPctPerMinute < 0
+    || !finite(intensityPerMinute) || intensityPerMinute < 0
     || !finite(source.activeFromMs)
     || (source.activeUntilMs !== null && !finite(source.activeUntilMs))) {
     throw new RangeError(`bad radiation source ${source.id}`);
@@ -102,7 +107,7 @@ export function sphereInterval(segment: Segment, center: Vec3, radius: number): 
 }
 
 /** A source's part of a segment: inside it, and while it is live. */
-function liveInterval(segment: Segment, source: RadiationSource): [number, number] | null {
+function liveInterval(segment: Segment, source: RadiationField): [number, number] | null {
   const inside = sphereInterval(segment, source.center, source.radius);
   if (!inside) return null;
   const lo = Math.max(inside[0], source.activeFromMs);
@@ -110,31 +115,36 @@ function liveInterval(segment: Segment, source: RadiationSource): [number, numbe
   return hi > lo ? [lo, hi] : null;
 }
 
-interface DosePiece {
+export interface RadiationRatePiece {
   startMs: number;
   endMs: number;
-  /** Basis points of a full hull per millisecond. */
+  /** Units supplied by the caller, per millisecond. */
   rate: number;
 }
 
 /** Where on a segment a dose is being taken, and how fast. Nonzero pieces only, in order. */
-function doseProfile(segment: Segment, sources: readonly RadiationSource[]): DosePiece[] {
+export function radiationRateProfile<Source extends RadiationField>(
+  segment: Segment,
+  sources: readonly Source[],
+  intensityPerMinute: (source: Source) => number,
+): RadiationRatePiece[] {
   assertSegment(segment);
-  for (const source of sources) assertSource(source);
+  for (const source of sources) assertSource(source, intensityPerMinute(source));
   const emits: { span: [number, number]; rate: number }[] = [];
   const shelters: [number, number][] = [];
   for (const source of sources) {
-    if (source.mode === 'EMIT' && source.intensityPctPerMinute === 0) continue;
+    const intensity = intensityPerMinute(source);
+    if (source.mode === 'EMIT' && intensity === 0) continue;
     const span = liveInterval(segment, source);
     if (!span) continue;
     if (source.mode === 'SHELTER') shelters.push(span);
-    else emits.push({ span, rate: (source.intensityPctPerMinute * 100) / MINUTE_MS });
+    else emits.push({ span, rate: intensity / MINUTE_MS });
   }
   if (emits.length === 0) return [];
 
   const cuts = [...new Set([...emits.flatMap(({ span }) => span), ...shelters.flat()])].sort((a, b) => a - b);
   const within = (span: [number, number], t: number): boolean => span[0] <= t && t <= span[1];
-  const pieces: DosePiece[] = [];
+  const pieces: RadiationRatePiece[] = [];
   for (let i = 1; i < cuts.length; i++) {
     const startMs = cuts[i - 1], endMs = cuts[i];
     if (startMs === undefined || endMs === undefined) continue;
@@ -145,6 +155,9 @@ function doseProfile(segment: Segment, sources: readonly RadiationSource[]): Dos
   }
   return pieces;
 }
+
+const doseProfile = (segment: Segment, sources: readonly RadiationSource[]): RadiationRatePiece[] =>
+  radiationRateProfile(segment, sources, (source) => source.intensityPctPerMinute * 100);
 
 /** The dose one segment takes, in basis points of a full hull, unrounded. */
 export function segmentExposure(segment: Segment, sources: readonly RadiationSource[]): number {

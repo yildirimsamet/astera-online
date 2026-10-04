@@ -17,6 +17,7 @@ import { refreshSensorEpoch } from './sensorHistory.js';
 import { revalidateClanWarTargetPlanet } from './clanWar.js';
 import { releaseSupportForWorldChange } from './clanSupport.js';
 import { armFaults } from './faults.js';
+import { prepareMonumentOriginChange, reanchorMonumentOrigin } from './monumentOwnership.js';
 
 export interface CommanderWorld {
   playerId: string;
@@ -95,6 +96,7 @@ export async function capitalPlanet(
 export async function lockWorlds(
   tx: Tx,
   planetIds: string[],
+  options: { requireLive?: boolean } = {},
 ): Promise<Map<string, typeof planets.$inferSelect>> {
   const unique = [...new Set(planetIds)].sort();
   const rows = await tx.select().from(planets).where(inArray(planets.id, unique));
@@ -105,7 +107,7 @@ export async function lockWorlds(
   if (seasonIds.size !== 1) {
     throw new GameError('CROSS_SEASON', 'Those worlds are in different galaxies', 403);
   }
-  await lockSeason(tx, rows[0]!.seasonId);
+  await lockSeason(tx, rows[0]!.seasonId, options.requireLive ?? true);
   const locked: (typeof planets.$inferSelect)[] = [];
   for (const id of unique) {
     const [world] = await tx.select().from(planets).where(eq(planets.id, id)).for('update');
@@ -292,6 +294,7 @@ export async function transferPlanetControl(
   tx: Tx,
   input: TransferControlInput,
 ): Promise<{ previousPlayerId: string | null; planetId: string }> {
+  await prepareMonumentOriginChange(tx, input.targetPlanetId);
   const [pair] = await tx
     .select({
       planetSeason: planets.seasonId,
@@ -360,6 +363,7 @@ export async function transferPlanetControl(
     .where(and(eq(planets.id, input.targetPlanetId), expected))
     .returning({ id: planets.id });
   if (rows.length === 0) throw new GameError('TARGET_CHANGED', 'That world changed first', 409);
+  await reanchorMonumentOrigin(tx, input.targetPlanetId);
 
   await tx.delete(neutralPlanetState).where(eq(neutralPlanetState.planetId, input.targetPlanetId));
   /*

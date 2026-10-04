@@ -354,6 +354,10 @@ describe('the radar warning', () => {
    * Written against the leads the rules compute, so it holds at any hull speed.
    */
   it('gives each rung its own circle, and never a wider one', async () => {
+    // Neither shell may cover the complete leg: a saturated L5 lead no longer
+    // makes 90% of that flight a point outside L3's circle.
+    await placeAt(f.db, attacker, { x: 0, y: 0, z: 0 });
+    await placeAt(f.db, defender, { x: radarRange(5) * 2, y: 0, z: 0 });
     await giveInstrument(f.db, defender, 'RADAR', 3);
     const { arriveAt, missionId } = await launch();
     const low = await leadFor(missionId, 3);
@@ -786,7 +790,9 @@ describe('the kinds of news the server can send', () => {
       'clan_support_inbound',
       'clan_support_result',
       'colony_captured',
+      'colony_fault',
       'colony_lost',
+      'colony_loyalty_warning',
       'convoy_result',
       'death_star_result',
       // Klan Savunma Desteği: leaving a clan drops a SUPPORT world back to the retreat.
@@ -795,6 +801,9 @@ describe('the kinds of news the server can send', () => {
       'galaxy_event_ended',
       'galaxy_event_started',
       'incoming_fleet',
+      'monument_inbound',
+      'monument_probe_lost',
+      'monument_returning',
       'probe_report',
       // Radyasyon (plan F9): ships a cloud finished; the client routes it to the fleet board.
       'radiation_lost',

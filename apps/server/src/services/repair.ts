@@ -2,9 +2,9 @@ import { eq, inArray } from 'drizzle-orm';
 import {
   repairPct,
   shipDamageApplies,
-  shipRepairCost,
-  shipRepairMinutes,
-  type DamageLot,
+  shipHpRepairCost,
+  shipHpRepairMinutes,
+  type HpDamageLot,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
@@ -70,7 +70,7 @@ export async function startRepair(
       });
     }
 
-    const lots: DamageLot[] = chosen.map(({ hull, count, damageBp }) => ({ hull, count, damageBp }));
+    const lots: HpDamageLot[] = chosen.map(({ hull, count, damageBp, remainderBp }) => ({ hull, count, damageBp, remainderBp: remainderBp ?? 0 }));
     const tech = asTech(context.projected.research);
     const pct = repairPct(tech);
     const hulls = new Set(lots.map((lot) => lot.hull));
@@ -78,8 +78,8 @@ export async function startRepair(
       kind: 'REPAIR',
       subject: hulls.size === 1 ? [...hulls][0] ?? 'ALL' : 'ALL',
       count: lots.reduce((sum, lot) => sum + lot.count, 0),
-      cost: shipRepairCost(lots, pct),
-      minutes: shipRepairMinutes(lots, planet.buildings.SHIPYARD, tech, pct),
+      cost: shipHpRepairCost(lots, pct),
+      minutes: shipHpRepairMinutes(lots, planet.buildings.SHIPYARD, tech, pct),
     });
     await tx.update(shipDamageLots).set({ repairOrderId: order.id })
       .where(inArray(shipDamageLots.id, chosen.map((lot) => lot.id)));

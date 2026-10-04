@@ -1,4 +1,5 @@
 import { COUNTRY_CODES, isCountryCode, type CountryCode } from '@astera/rules';
+import { TIME_ZONE_COUNTRIES } from './timeZoneCountries.js';
 
 export function countryName(code: string, language: string): string {
   try {
@@ -16,7 +17,34 @@ export function foldCountrySearch(value: string): string {
     .replace(/[ıİ]/g, 'i');
 }
 
-export function detectCountry(nav: Pick<Navigator, 'language' | 'languages'>): CountryCode {
+const ZONE_COUNTRY = new Map<string, CountryCode>();
+for (const [country, zones] of Object.entries(TIME_ZONE_COUNTRIES)) {
+  if (!isCountryCode(country)) continue;
+  for (const zone of zones.split(' ')) ZONE_COUNTRY.set(zone.toLowerCase(), country);
+}
+
+/** The country of an IANA zone name; undefined for UTC, offsets and unknown names. IDs are case-insensitive. */
+export function countryOfTimeZone(timeZone: string): CountryCode | undefined {
+  return ZONE_COUNTRY.get(timeZone.toLowerCase());
+}
+
+/** The device clock's IANA zone, read locally — no permission, no network. */
+export function browserTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Where the device's clock is set says where the player is better than the language it
+ * speaks: a Turkish phone set to English still runs on Europe/Istanbul.
+ */
+export function detectCountry(nav: Pick<Navigator, 'language' | 'languages'>, timeZone?: string): CountryCode {
+  const fromClock = timeZone === undefined ? undefined : countryOfTimeZone(timeZone);
+  if (fromClock !== undefined) return fromClock;
+
   // `language` is the device's primary choice. A secondary `en-US` in
   // `languages` must not silently turn a Turkish or Japanese device American.
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition

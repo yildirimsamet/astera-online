@@ -10,7 +10,7 @@ export const SILENT_SPACE_INTERVAL_MS = 5 * 60_000;
 export interface SilentSpaceResult { ran: boolean; movedOut: number; returned: number; checked: number; deferred: Record<string, number>; failed: number }
 
 /** One bounded maintenance pass per five minutes across replicas, independently of fleet ticks. */
-export async function runSilentSpaceSweep(db: Db, clock: Clock, options: { batchSize?: number; maxWaitingShards?: number; onError?: (error: unknown) => void } = {}): Promise<SilentSpaceResult> {
+export async function runSilentSpaceSweep(db: Db, clock: Clock, options: { batchSize?: number; maxWaitingShards?: number; adminUsernames?: readonly string[]; onError?: (error: unknown) => void } = {}): Promise<SilentSpaceResult> {
   const result: SilentSpaceResult = { ran: false, movedOut: 0, returned: 0, checked: 0, deferred: {}, failed: 0 };
   const batchSize = options.batchSize ?? 5;
   if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 20) throw new RangeError('Invalid Silent Space batch size');
@@ -44,7 +44,7 @@ export async function runSilentSpaceSweep(db: Db, clock: Clock, options: { batch
       if (!target) continue;
       result.checked++;
       try {
-        const { status } = await transferCommander(db, application.playerId, target.id, clock, application.id);
+        const { status } = await transferCommander(db, application.playerId, target.id, clock, application.id, { adminUsernames: options.adminUsernames });
         if (status === 'MOVED') result.returned++;
         else {
           result.deferred[status] = (result.deferred[status] ?? 0) + 1;
@@ -69,7 +69,7 @@ export async function runSilentSpaceSweep(db: Db, clock: Clock, options: { batch
       result.checked++;
       try {
         const target = await ensureWaitingSeason(db, season.id, clock, { maxShards: options.maxWaitingShards ?? 16 });
-        const status = target ? (await transferCommander(db, player.id, target.id, clock)).status : 'CAPACITY';
+        const status = target ? (await transferCommander(db, player.id, target.id, clock, undefined, { adminUsernames: options.adminUsernames })).status : 'CAPACITY';
         if (status === 'MOVED') result.movedOut++;
         else result.deferred[status] = (result.deferred[status] ?? 0) + 1;
       } catch (error) { result.failed++; options.onError?.(error); }
@@ -137,11 +137,11 @@ export async function describeSilentSpaceDeparture(db: Db, clock: Clock, command
  * sweep would); it simply closes the audit row while the operator is watching.
  */
 export async function departToSilentSpace(db: Db, clock: Clock, commander: string,
-  options: { maxWaitingShards?: number } = {}): Promise<{ departure: SilentSpaceDeparture; status: TransferStatus; targetSeasonId: string | null }> {
+  options: { maxWaitingShards?: number; adminUsernames?: readonly string[] } = {}): Promise<{ departure: SilentSpaceDeparture; status: TransferStatus; targetSeasonId: string | null }> {
   const departure = await describeSilentSpaceDeparture(db, clock, commander);
   const target = await ensureWaitingSeason(db, departure.seasonId, clock, { maxShards: options.maxWaitingShards ?? 16 });
   if (!target) return { departure, status: 'CAPACITY', targetSeasonId: null };
-  const { status } = await transferCommander(db, departure.playerId, target.id, clock, undefined, { ownerRequested: true });
+  const { status } = await transferCommander(db, departure.playerId, target.id, clock, undefined, { ownerRequested: true, adminUsernames: options.adminUsernames });
   if (status === 'MOVED') await emitTransferOutbox(db);
   return { departure, status, targetSeasonId: target.id };
 }

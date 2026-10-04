@@ -1,9 +1,9 @@
 import { HULLS, fleetEntries, type Fleet } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
-import type { ClanSupportWave } from '../../api/schemas.js';
-import { hullLabel, hullName } from '../../i18n/names.js';
+import type { ClanSupportWave, Monuments } from '../../api/schemas.js';
+import { hullLabel, hullName, monumentName } from '../../i18n/names.js';
 import { garrisonOf, legProgress, paceShown, recallPreview, type roomOf } from '../../lib/fleetPage.js';
-import { full } from '../../lib/format.js';
+import { decimal, full } from '../../lib/format.js';
 import { clockTime, countdown } from '../../lib/time.js';
 import type { AirborneItem, FlightMark } from '../../shell/PendingStrip.js';
 import { Icon, type IconId } from '../icons.js';
@@ -29,6 +29,7 @@ export interface FleetWorld {
 }
 
 export interface FleetPageProps {
+  monuments?: { view: Monuments; onFocus: (monumentId: string) => void };
   tab: FleetTab;
   onTab: (tab: FleetTab) => void;
   /** Server time, ticking. */
@@ -62,6 +63,7 @@ export interface FleetPageProps {
 
 /** The act as a picture: the glyph the rest of the game uses for it. */
 const MARK: Record<FlightMark, IconId> = {
+  monument: 'i-attack',
   fleet: 'i-attack',
   probe: 'i-probe',
   incoming: 'i-attack',
@@ -357,6 +359,7 @@ export function FleetPage({
   onRecall,
   onOpenRepairStation,
   support,
+  monuments,
   onClose,
 }: FleetPageProps) {
   const { t } = useTranslation();
@@ -397,6 +400,18 @@ export function FleetPage({
           </ul>
         ))}
         {tab === 'air' && support && support.waves.length > 0 && <SupportGroup support={support} now={now} />}
+        {tab === 'air' && monuments && monuments.view.waves.some((wave) => wave.status === 'HOLD') && (
+          <section data-testid="monument-hold-group" className="flex flex-col gap-1.5 border-t border-v2-line pt-2">
+            <h3 className="text-caption font-semibold text-v2-ink">{t('monument.yourWaves')} · {t('monument.status.HOLD')}</h3>
+            {monuments.view.waves.filter((wave) => wave.status === 'HOLD').map((wave) => <button key={wave.id} type="button"
+              onClick={() => { monuments.onFocus(wave.monumentId); }} className="rounded-control border border-v2-line bg-v2-panel p-2.5 text-left">
+              <span className="block text-caption font-semibold text-v2-self">{monumentName(monuments.view.monuments.find((row) => row.id === wave.monumentId)?.ordinal)} · {full(fleetEntries(wave.fleet).reduce((sum, [, count]) => sum + count, 0))}</span>
+              <span className="block text-micro text-v2-deut">{t('monument.cargo', { amount: decimal(wave.deuterium), capacity: decimal(wave.lots.reduce((sum, lot) => sum + lot.cargoCapacity, 0)) })}</span>
+              <span className="block text-micro text-v2-ink-2">{t('monument.ownRate', { rate: decimal(wave.productionPerMinute) })}</span>
+              {wave.nextLossAt && <span className="block text-micro text-v2-hostile">{t('monument.lossAt', { time: countdown(wave.nextLossAt.getTime() - now) })}</span>}
+            </button>)}
+          </section>
+        )}
         {tab === 'home' && (
           <ul className="flex flex-col gap-1.5">
             {worlds.map((world) => (

@@ -1,4 +1,6 @@
 export const clanWar = {
+  radiationMember: "{{name}}: {{count}} ships would be lost to radiation. Recall and send the wave again with your own loss consent.",
+  radiationMemberRequired: "A member must confirm their radiation loss",
   tab: 'War', purpose: 'One target. Many commanders. One shared strike.',
   contactBoundary: 'The clan is identified. Its commanders, cargo and route remain hidden.',
   disbandBurn: 'Disbanding permanently destroys the treasury: {{alloy}} alloy, {{crystal}} crystal, {{deuterium}} deuterium. Members receive no refund.',
@@ -72,7 +74,7 @@ export const clanWar = {
   seatEmpty: 'Empty',
   seatYou: 'You',
   seatNoWave: '{{name}} has not sent a wave yet.',
-  status: { OUTBOUND: 'Flying to staging', STAGED: 'Ready at staging',
+  status: { TRANSFERRED: 'Transferred to monument fleets', OUTBOUND: 'Flying to staging', STAGED: 'Ready at staging',
     RECALL_ORDERED: 'Recall ordered', IN_BATTLE: 'In battle', RETURNING: 'Flying home',
     HOME: 'Home', LOST: 'Lost' },
   operationStatus: { ASSEMBLING: 'Gathering', ATTACKING: 'Attack underway',

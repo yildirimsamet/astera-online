@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NotificationView, PendingThread, PlanetView } from '../../src/api/schemas.js';
+import { monumentsSchema, type Monuments, type NotificationView, type PendingThread, type PlanetView } from '../../src/api/schemas.js';
 import { ToastProvider } from '../../src/ui/Toast.js';
 import { HudTop } from '../../src/v2/shell/HudTop.js';
 import { planetView } from '../fixtures.js';
@@ -18,6 +18,7 @@ let planet: PlanetView = planetView();
 let worlds: PlanetView[] = [planet];
 let notifications: NotificationView[] = [];
 let pending: PendingThread[] = [];
+let monuments: Monuments | undefined;
 let shieldUntil: Date | null = null;
 let claimable = 0;
 const mutate = vi.fn();
@@ -31,6 +32,7 @@ vi.mock('../../src/api/queries.js', async () => {
     useNotifications: () => ({ data: { notifications } }),
     useRewards: () => ({ data: { claimable } }),
     usePending: () => ({ data: { pending } }),
+    useMonuments: () => ({ data: monuments }),
     useMining: () => ({ data: { runs: [] } }),
     useGalaxyEvents: () => ({ data: { events: [] } }),
     useTraffic: () => ({ data: { contacts: [] } }),
@@ -57,12 +59,26 @@ beforeEach(() => {
   worlds = [planet];
   notifications = [];
   pending = [];
+  monuments = undefined;
   shieldUntil = null;
   claimable = 0;
   mutate.mockReset();
 });
 
 describe('the wired top of the shell', () => {
+  it('includes native monument flights on the Now line without a planet mission', () => {
+    planet = { ...planet, rulesetVersion: 16 };
+    const now = Date.now(), arriveAt = new Date(now + 9 * 60_000), id = '00000000-0000-4000-8000-000000000001';
+    monuments = monumentsSchema.parse({ serverNow: new Date(now), monuments: [{ id, ordinal: 2,
+      position: { x: 6000, y: 0, z: 0 }, controller: { kind: 'NEUTRAL' }, capacity: 7270, used: 0, reserved: 0, productionPerMinute: 60, emptySince: null }],
+      probes: [], probeReports: [], waves: [{ id, monumentId: id, playerId: id, originPlanetId: 'p1', rootWaveId: null, jointOperationId: null,
+        purpose: 'ATTACK', status: 'OUTBOUND', sentAt: new Date(now), arriveAt, heldAt: null, position: { x: 0, y: 0, z: 0 },
+        tech: {}, fleet: { CITADEL: 1 }, lots: [], deuterium: 0, productionPerMinute: 0, fillsAt: null, nextLossAt: null,
+        route: [{ from: { x: 0, y: 0, z: 0 }, to: { x: 6000, y: 0, z: 0 }, startMs: now, endMs: arriveAt.getTime() }],
+        returnForecast: { homePlanetId: 'p1', arriveAt, minutes: 9, doseHp: 0, destroyed: 0, deuterium: 0, lostDeuterium: 0, lots: [] } }] });
+    render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
+    expect(screen.getByRole('button', { name: /Most urgent timer/ })).toHaveTextContent('Abandoned Station');
+  });
   it('reads the active world’s stores', () => {
     render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
     expect(screen.getByRole('button', { name: 'Alloy: 500 of 2,000' })).toBeInTheDocument();

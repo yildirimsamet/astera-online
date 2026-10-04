@@ -295,6 +295,7 @@ export class EventWorker {
       this.silentSpaceTask = runSilentSpaceSweep(this.db, this.clock, {
         onError: (err) => { this.log.error({ err }, 'Silent Space commander deferred after an error'); },
         batchSize: this.opts.silentSpaceBatch ?? 5, maxWaitingShards: this.opts.silentSpaceMaxShards ?? 16,
+        adminUsernames: this.opts.adminUsernames ? [...this.opts.adminUsernames] : undefined,
       }).then(result => {
         if (result.ran) this.log.info(result, 'Silent Space five-minute maintenance');
       }).catch((err: unknown) => {

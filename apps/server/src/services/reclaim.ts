@@ -58,8 +58,9 @@ import {
   watches,
   shipDamageLots,
 } from '../db/schema.js';
-import { reconcileClanPlayerReclaim } from './clan.js';
+import { prepareClanReclaimMonuments, reconcileClanPlayerReclaim } from './clan.js';
 import { addDominionCounters } from './dominion.js';
+import { hasMonumentActivity, removeTerminalMonumentWaves } from './monumentLifecycle.js';
 
 /**
  * RECLAIMING THE SEAT OF A COMMANDER WHO STOPPED COMING BACK. Owner instruction.
@@ -280,6 +281,7 @@ export async function busy(
   playerId: string,
   rows: { runIds: string[]; raidIds: string[]; tradeIds: string[]; convoyIds: string[] },
 ): Promise<boolean> {
+  if (await hasMonumentActivity(tx, playerId, planetIds)) return true;
   const [flight] = await tx
     .select({ id: missions.id })
     .from(missions)
@@ -436,6 +438,7 @@ export async function demolish(
 ): Promise<void> {
   let { missionIds } = rows;
   const { fieldIds, runIds, raidIds, tradeIds, convoyIds } = rows;
+  await removeTerminalMonumentWaves(tx, playerId, planetIds);
 
   /*
     TERMINAL JOINT WARS ARE SEASON HISTORY, BUT THEIR LIVE FOREIGN KEYS ARE NOT.
@@ -787,6 +790,7 @@ export async function reclaimIdleSeats(
   db: Db,
   clock: Clock,
   idleMs: number = IDLE_MS,
+  options: { adminUsernames?: readonly string[] } = {},
 ): Promise<ReclaimResult> {
   const now = clock.now();
   const cutoff = new Date(now.getTime() - idleMs);
@@ -829,6 +833,13 @@ export async function reclaimIdleSeats(
   for (const row of candidates) {
     try {
       const done = await db.transaction(async (tx) => {
+        // Discovery is repeated below under the prepared target/player locks.
+        // A busy commander cannot be reclaimed or have their fleets recalled.
+        const initialWorlds = await tx.select({ id: planets.id }).from(planets).where(eq(planets.controllerPlayerId, row.playerId));
+        const initialIds = initialWorlds.map((world) => world.id);
+        if (await busy(tx, initialIds, row.playerId, await commanderRows(tx, initialIds, row.playerId))) return 'busy' as const;
+        const monumentTargets = await prepareClanReclaimMonuments(tx, { playerId: row.playerId, now,
+          activeCutoff: cutoff, adminUsernames: options.adminUsernames });
         /**
          * RE-READ UNDER A LOCK. The list above was taken outside any transaction,
          * and a commander who opens the game in the seconds between that read and
@@ -861,6 +872,8 @@ export async function reclaimIdleSeats(
           displayName: row.displayName,
           now,
           activeCutoff: cutoff,
+          monumentTargets,
+          adminUsernames: options.adminUsernames,
         });
         await foldRecord(tx, row.accountId, row);
         await demolish(tx, planetIds, row.playerId, rows);

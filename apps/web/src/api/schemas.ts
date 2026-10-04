@@ -742,7 +742,7 @@ export const clanSupportWaveSchema = z.object({
   expiresAt: z.coerce.date().nullable(),
   returnAt: z.coerce.date().nullable(),
   returnReason: z.enum([
-    'RECALLED', 'SENT_BACK', 'HOST_CLOSED', 'EXPIRED', 'BAND', 'MEMBERSHIP', 'WORLD_CHANGED', 'FREEZE',
+    'RECALLED', 'SENT_BACK', 'HOST_CLOSED', 'EXPIRED', 'BAND', 'MEMBERSHIP', 'CONTROL_CHANGED', 'WORLD_CHANGED', 'FREEZE',
   ]).nullable(),
   outOfBand: z.boolean(),
   battles: z.number().int().nonnegative(),
@@ -1199,9 +1199,90 @@ export const radiationSourceSchema = z.object({
 });
 export type RadiationSourceView = z.infer<typeof radiationSourceSchema>;
 
+/** Ruleset 16 clouds carry HP, independently of the legacy percentage model. */
+export const hpRadiationSourceSchema = radiationSourceSchema.omit({ intensityPctPerMinute: true }).extend({
+  intensityHpPerMinute: z.number().finite().nonnegative(),
+});
+export type HpRadiationSourceView = z.infer<typeof hpRadiationSourceSchema>;
+
+export const publicMonumentSchema = z.object({
+  id: z.string(), ordinal: z.number().int().min(1).max(5), position: vec3,
+  controller: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('NEUTRAL') }),
+    z.object({ kind: z.literal('PLAYER'), playerId: z.string(), name: z.string() }),
+    z.object({ kind: z.literal('CLAN'), clanId: z.string(), name: z.string(), tag: z.string() }),
+  ]),
+  capacity: z.number().finite().nonnegative(), used: z.number().finite().nonnegative(),
+  productionPerMinute: z.number().finite().nonnegative(),
+  radiationHpPerMinute: z.number().finite().nonnegative().default(0),
+  emptySince: z.coerce.date().nullable(),
+  respawnAt: z.coerce.date().nullable().default(null),
+});
+export type PublicMonument = z.infer<typeof publicMonumentSchema>;
+/** Private monument reads expose only the caller's own outbound reservation. */
+const privateMonumentSchema = publicMonumentSchema.extend({ reserved: z.number().finite().nonnegative() });
+const monumentLotSchema = z.object({
+  id: z.string(), hull: hullId, count: z.number().int().positive(),
+  damageBp: z.number().int().min(0).max(9999), remainderBp: z.number().finite().min(0).lt(1),
+  maxHp: z.number().positive(), remainingHp: z.number().nonnegative(),
+  deuterium: z.number().nonnegative(), cargoCapacity: z.number().nonnegative(),
+});
+const monumentReturnForecastSchema = z.object({
+  homePlanetId: z.string(), arriveAt: z.coerce.date(), minutes: z.number().nonnegative(),
+  doseHp: z.number().nonnegative(), destroyed: z.number().int().nonnegative(),
+  deuterium: z.number().nonnegative(), lostDeuterium: z.number().nonnegative(), lots: z.array(monumentLotSchema),
+});
+export const monumentWaveSchema = z.object({
+  id: z.string(), monumentId: z.string(), playerId: z.string(), originPlanetId: z.string(),
+  rootWaveId: z.string().nullable(), jointOperationId: z.string().nullable(),
+  status: z.enum(['OUTBOUND', 'HOLD', 'RETURNING']), purpose: z.enum(['ATTACK', 'REINFORCE']),
+  sentAt: z.coerce.date(), heldAt: z.coerce.date().nullable(), arriveAt: z.coerce.date().nullable(), position: vec3,
+  route: z.array(z.object({ from: vec3, to: vec3, startMs: z.number(), endMs: z.number() })),
+  tech: techLevels, fleet, lots: z.array(monumentLotSchema), deuterium: z.number().nonnegative(),
+  productionPerMinute: z.number().nonnegative(), fillsAt: z.coerce.date().nullable(), nextLossAt: z.coerce.date().nullable(),
+  fadeAt: z.coerce.date().nullable().optional(),
+  returnReason: z.enum(['RECALLED', 'CAPACITY', 'MEMBERSHIP', 'CONTROL_CHANGED', 'DEFEAT', 'WORLD_CHANGED', 'FREEZE']).nullable().optional(),
+  returnForecast: monumentReturnForecastSchema,
+});
+export type MonumentWave = z.infer<typeof monumentWaveSchema>;
+const monumentProbeSchema = z.object({
+  id: z.string(), monumentId: z.string(), status: z.enum(['OUTBOUND', 'RETURNING', 'HOME', 'LOST', 'CANCELLED']),
+  departAt: z.coerce.date(), arriveAt: z.coerce.date(),
+});
+export const monumentsSchema = z.object({
+  serverNow: z.coerce.date(), monuments: z.array(privateMonumentSchema), waves: z.array(monumentWaveSchema),
+  probes: z.array(monumentProbeSchema.extend({ originPlanetId: z.string(), homeAt: z.coerce.date().nullable(),
+    route: z.array(z.object({ from: vec3, to: vec3, startMs: z.number(), endMs: z.number() })) })),
+  probeReports: z.array(z.object({ id: z.string(), monumentId: z.string(), fleet, accuracy: z.literal(1),
+    observedAt: z.coerce.date(), deliveredAt: z.coerce.date() })),
+});
+export type Monuments = z.infer<typeof monumentsSchema>;
+export const monumentQuoteSchema = z.object({
+  fuel: z.number().nonnegative(), arriveAt: z.coerce.date(), travelMinutes: z.number().nonnegative(),
+  room: z.object({ used: z.number().nonnegative(), reserved: z.number().nonnegative(), total: z.number().nonnegative(), after: z.number().nonnegative() }),
+  bays: z.object({ used: z.number().int().nonnegative(), total: z.number().int().nonnegative() }), shieldWouldDrop: z.boolean(),
+  holdForecast: z.object({ productionPerMinute: z.number().nonnegative(), nextLossAt: z.coerce.date().nullable() }).optional(),
+  outboundForecast: z.object({ doseHp: z.number().nonnegative(), destroyed: z.number().int().nonnegative(), fleet,
+    health: z.array(z.object({ hull: hullId, count: z.number().int().positive(), maxHp: z.number().positive(),
+      remainingHp: z.number().nonnegative(), damageBp: z.number().int().nonnegative(), remainderBp: z.number().finite().nonnegative() })) }),
+});
+export type MonumentQuote = z.infer<typeof monumentQuoteSchema>;
+const monumentMutationWaveSchema = z.object({ id: z.string(), monumentId: z.string(), status: z.enum(['OUTBOUND', 'RETURNING', 'HOLD', 'HOME', 'LOST']) });
+export const monumentSendSchema = z.object({ wave: monumentMutationWaveSchema, quote: monumentQuoteSchema });
+export const monumentProbeLaunchSchema = z.object({ probe: monumentProbeSchema, lossProbability: z.number().min(0).max(1), price: resources });
+export const monumentRecallQuoteSchema = z.object({
+  fleet, deuterium: z.number().nonnegative(), arriveAt: z.coerce.date(), minutes: z.number().nonnegative(),
+  doseHp: z.number().nonnegative(), destroyed: z.number().int().nonnegative(), arrivalDeuterium: z.number().nonnegative(),
+  lots: z.array(monumentLotSchema), arrivalLots: z.array(monumentLotSchema),
+});
+export const monumentRecallSchema = z.object({ wave: monumentMutationWaveSchema });
+
 export const galaxySchema = z.object({
+  radiationModel: z.enum(['HP', 'PCT']).optional(),
   /** Empty before ruleset 14; absent on every server that predates it. */
   radiation: z.array(radiationSourceSchema).optional(),
+  hpRadiation: z.array(hpRadiationSourceSchema).optional(),
+  monuments: z.array(publicMonumentSchema).optional(),
   you: z.object({
     planetId: z.string(),
     playerId: z.string(),
@@ -1655,15 +1736,27 @@ export const clanAidSchema = z.object({
 
 /** One member-only read for the purse, shared capacity and current operation. */
 const clanWarContributionStatus = z.enum([
-  'OUTBOUND', 'STAGED', 'RECALL_ORDERED', 'IN_BATTLE', 'RETURNING', 'HOME', 'LOST',
+  'OUTBOUND', 'STAGED', 'RECALL_ORDERED', 'IN_BATTLE', 'RETURNING', 'HOME', 'LOST', 'TRANSFERRED',
 ]);
+const clanWarRadiationSchema = z.object({
+  doseHp: z.number().nonnegative(), destroyed: z.number().int().nonnegative(), lostFleet: fleet,
+  health: z.array(z.object({ hull: hullId, count: z.number().int().positive(), maxHp: z.number().positive(),
+    remainingHp: z.number().nonnegative(), healthPct: z.number().min(0).max(100), needsDock: z.boolean() })),
+});
 const clanWarOperationSchema = z.object({
+  radiationByPace: z.array(z.object({ pace: z.number().positive().max(1), own: z.array(clanWarRadiationSchema),
+    missingConsents: z.array(z.object({ playerId: z.string(), username: z.string(), count: z.number().int().positive() })),
+  })).default([]),
   id: z.string(),
   status: z.enum(['ASSEMBLING', 'ATTACKING', 'RETURNING', 'COMPLETED']),
-  closeReason: z.enum(['BATTLE', 'LEADER_CANCEL', 'EXPIRED', 'TARGET_CHANGED', 'FAILED']).nullable(),
+  closeReason: z.enum(['BATTLE', 'MONUMENT', 'LEADER_CANCEL', 'EXPIRED', 'TARGET_CHANGED', 'FAILED']).nullable(),
   leaderPlayerId: z.string(),
-  target: z.object({ playerId: z.string(), username: z.string(), planetId: z.string(),
-    planetName: z.string(), position: vec3 }),
+  target: z.union([
+    z.object({ kind: z.literal('PLANET').optional(), monumentId: z.null().optional(), monumentOrdinal: z.number().int().min(1).max(5).nullable().optional(), playerId: z.string(),
+      username: z.string(), planetId: z.string(), planetName: z.string(), position: vec3 }),
+    z.object({ kind: z.literal('MONUMENT'), monumentId: z.string(), playerId: z.null(),
+      monumentOrdinal: z.number().int().min(1).max(5).nullable().optional(), username: z.string(), planetId: z.null(), planetName: z.string(), position: vec3 }),
+  ]),
   staging: z.object({ planetId: z.string(), name: z.string(), position: vec3 }),
   createdAt: z.coerce.date(), expiresAt: z.coerce.date(),
   startedAt: z.coerce.date().nullable(), resolvedAt: z.coerce.date().nullable(),
@@ -1697,6 +1790,7 @@ export const clanWarSchema = z.object({
 export type ClanWar = z.infer<typeof clanWarSchema>;
 
 export const clanWarQuoteSchema = z.object({
+  radiation: clanWarRadiationSchema.nullable().optional(),
   ok: z.boolean(), refusals: z.array(z.object({ code: z.string(), message: z.string() })),
   sourceKind: z.enum(['PHYSICAL', 'LEADER_CAPITAL']), bulk: z.number().nonnegative(),
   fuel: z.object({
@@ -2196,6 +2290,8 @@ export const probeSchema = z.object({
 export const unlockable = z.enum(['TELESCOPE', 'RADAR', 'EXPLORER', 'VEIL']);
 
 const pendingThread = z.object({
+  monumentId: z.string().optional(),
+  monumentOrdinal: z.number().int().min(1).max(5).optional(),
   /** Klan Savunma Desteği: a `transfer` that is a support wave's leg. Optional for a rolling deploy. */
   clanSupport: z.boolean().optional(),
   /**
@@ -2218,7 +2314,7 @@ const pendingThread = z.object({
    */
   kind: z.enum([
     'fleet', 'probe', 'incoming', 'transfer', 'settlement', 'death_star', 'pirate', 'trade',
-    'intergalactic_convoy',
+    'intergalactic_convoy', 'monument',
   ]),
   targetName: z.string(),
   originPlanetId: z.string().uuid().optional(),
@@ -2656,8 +2752,20 @@ const strategicBattleReport = z.object({
   defenderClan: z.null().optional(),
 });
 
+const monumentBattleReport = z.object({
+  kind: z.literal('MONUMENT'), id: z.string(), at: z.coerce.date(),
+  monument: z.object({ id: z.string(), ordinal: z.number().int().min(1).max(5), position: publicMonumentSchema.shape.position }),
+  attacking: z.boolean(), grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']), control: z.enum(['ATTACKER', 'DEFENDER', 'EMPTY']),
+  roundCount: z.number().int().nonnegative(), yourFleet: fleet, yourSurvivors: fleet, yourLosses: fleet,
+  yourDamage: z.array(monumentLotSchema.pick({ hull: true, count: true, damageBp: true, remainderBp: true })),
+  theirLosses: fleet, lootDeuterium: z.number().finite().nonnegative(), dominion: dominionInteger,
+  opponents: z.array(z.object({ kind: z.enum(['PLAYER', 'NEUTRAL']), playerId: z.string().nullable(), name: z.string(),
+    clanName: z.string().nullable(), clanTag: z.string().nullable() })).default([]),
+});
+export type MonumentBattleReport = z.infer<typeof monumentBattleReport>;
+
 export const reportsSchema = z.object({
-  reports: z.array(z.union([ordinaryBattleReport, strategicBattleReport])),
+  reports: z.array(z.union([ordinaryBattleReport, strategicBattleReport, monumentBattleReport])),
   rivals: z.array(z.object({
     planetId: z.string(),
     playerId: z.string(),

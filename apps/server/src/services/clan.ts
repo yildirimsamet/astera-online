@@ -66,6 +66,7 @@ import {
   revalidateClanWarTargetMembership,
 } from './clanWar.js';
 import { releaseClanSupport } from './clanSupport.js';
+import { prepareClanMonuments, promoteClanMonuments, releaseClanMonuments } from './monumentMembership.js';
 
 export interface ClanActor {
   playerId: string;
@@ -695,6 +696,7 @@ export async function createClan(
     description: string;
     recruiting: boolean;
     clock: Clock;
+    adminUsernames?: readonly string[];
   },
 ) {
   const now = input.clock.now();
@@ -708,6 +710,7 @@ export async function createClan(
   }
   assertRecruitmentUnlocked(input.actor, now);
   const capital = await capitalPlanet(tx, input.actor.playerId);
+  const monumentTargets = await prepareClanMonuments(tx, { playerIds: [input.actor.playerId], now, adminUsernames: input.adminUsernames });
   const locked = await loadLocked(tx, capital.id, input.clock, { expectedPlayerId: input.actor.playerId });
   const season = await assertClanRuleset(tx, input.actor.seasonId);
   if (season.status !== 'live') throw new GameError('SEASON_FROZEN', 'That season is over', 409);
@@ -772,6 +775,7 @@ export async function createClan(
     matureAt: now,
     aidPolicyChangedAt: now,
   });
+  await promoteClanMonuments(tx, monumentTargets, input.actor.playerId, clan.id, now);
   await saveResources(tx, capital.id, {
     alloy: locked.alloy - CLAN.creationCost.alloy,
     crystal: locked.crystal - CLAN.creationCost.crystal,
@@ -1015,7 +1019,7 @@ async function activeMemberRows(tx: Queryable, clanId: string) {
 
 export async function acceptClanRequest(
   tx: Tx,
-  input: { actor: ClanActor; requestId: string; acknowledgeHostile: boolean; now: Date },
+  input: { actor: ClanActor; requestId: string; acknowledgeHostile: boolean; now: Date; adminUsernames?: readonly string[] },
 ) {
   await lockSeason(tx, input.actor.seasonId);
   const [initial] = await tx.select().from(clanRequests).where(and(
@@ -1023,6 +1027,7 @@ export async function acceptClanRequest(
     eq(clanRequests.seasonId, input.actor.seasonId),
   )).limit(1);
   if (!initial) throw new GameError('CLAN_REQUEST_NOT_FOUND', 'No such clan request', 404);
+  const monumentTargets = await prepareClanMonuments(tx, { playerIds: [initial.playerId], now: input.now, extraClanIds: [initial.clanId], adminUsernames: input.adminUsernames });
   const clan = await lockClan(tx, initial.clanId, input.actor.seasonId);
   const before = await activeMemberRows(tx, clan.id);
   await lockClanPlayers(tx, [...before.map((member) => member.playerId), initial.playerId]);
@@ -1077,6 +1082,7 @@ export async function acceptClanRequest(
     matureAt: addMinutes(input.now, CLAN.adaptationMinutes),
     aidPolicyChangedAt: input.now,
   });
+  await promoteClanMonuments(tx, monumentTargets, candidate.id, clan.id, input.now);
   const teammateIds = members.map((member) => member.playerId);
   await tx.delete(playerRivals).where(or(
     and(eq(playerRivals.playerId, candidate.id), inArray(playerRivals.targetPlayerId, teammateIds)),
@@ -1237,7 +1243,7 @@ async function separateMember(
   });
 }
 
-export async function leaveClan(tx: Tx, input: { actor: ClanActor; now: Date }) {
+export async function leaveClan(tx: Tx, input: { actor: ClanActor; now: Date; adminUsernames?: readonly string[] }) {
   await lockSeason(tx, input.actor.seasonId);
   const membership = await activeClanMembership(tx, input.actor.playerId);
   if (!membership) throw new GameError('NOT_IN_CLAN', 'You do not belong to a clan', 409);
@@ -1245,6 +1251,7 @@ export async function leaveClan(tx: Tx, input: { actor: ClanActor; now: Date }) 
     throw new GameError('CLAN_LEADER_MUST_TRANSFER', 'Transfer leadership or disband the clan first', 409);
   }
   // Klan Savunma Desteği: worlds and waves settle BEFORE the clan and player locks.
+  const monumentTargets = await prepareClanMonuments(tx, { playerIds: [input.actor.playerId], now: input.now, extraClanIds: [membership.clanId], adminUsernames: input.adminUsernames });
   await releaseClanSupport(tx, { playerIds: [input.actor.playerId], now: input.now });
   await lockClan(tx, membership.clanId, input.actor.seasonId);
   const members = await activeMemberRows(tx, membership.clanId);
@@ -1258,6 +1265,7 @@ export async function leaveClan(tx: Tx, input: { actor: ClanActor; now: Date }) 
     clanId: membership.clanId,
     playerId: input.actor.playerId,
   });
+  await releaseClanMonuments(tx, monumentTargets, [input.actor.playerId], input.now);
   await separateMember(tx, {
     actor: input.actor,
     membershipId: mine.id,
@@ -1275,7 +1283,7 @@ export async function leaveClan(tx: Tx, input: { actor: ClanActor; now: Date }) 
 
 export async function kickClanMember(
   tx: Tx,
-  input: { actor: ClanActor; playerId: string; now: Date },
+  input: { actor: ClanActor; playerId: string; now: Date; adminUsernames?: readonly string[] },
 ) {
   await lockSeason(tx, input.actor.seasonId);
   if (input.playerId === input.actor.playerId) {
@@ -1288,7 +1296,9 @@ export async function kickClanMember(
   */
   const kicker = await activeClanMembership(tx, input.actor.playerId);
   const kicked = await activeClanMembership(tx, input.playerId);
+  let monumentTargets: Awaited<ReturnType<typeof prepareClanMonuments>> = [];
   if (kicker !== null && kicked !== null && kicker.clanId === kicked.clanId) {
+    monumentTargets = await prepareClanMonuments(tx, { playerIds: [input.playerId], now: input.now, extraClanIds: [kicker.clanId], adminUsernames: input.adminUsernames });
     await releaseClanSupport(tx, { playerIds: [input.playerId], now: input.now });
   }
   const { membership: leader } = await lockLedClan(tx, input.actor);
@@ -1300,6 +1310,7 @@ export async function kickClanMember(
     clanId: leader.clanId,
     playerId: target.playerId,
   });
+  await releaseClanMonuments(tx, monumentTargets, [target.playerId], input.now);
   const targetName = await displayNameOf(tx, target.playerId);
   await separateMember(tx, {
     actor: input.actor,
@@ -1370,13 +1381,16 @@ export async function disbandClan(
      * warn about — and refuses with `CLAN_TREASURY_BURN_UNCONFIRMED` otherwise.
      */
     acknowledgeTreasuryBurn?: boolean;
+    adminUsernames?: readonly string[];
   },
 ) {
   await lockSeason(tx, input.actor.seasonId);
   // Klan Savunma Desteği: every member's worlds and waves, before the clan lock.
   const dissolving = await activeClanMembership(tx, input.actor.playerId);
+  let monumentTargets: Awaited<ReturnType<typeof prepareClanMonuments>> = [];
   if (dissolving !== null && dissolving.role === 'LEADER') {
     const everyone = await activeMemberRows(tx, dissolving.clanId);
+    monumentTargets = await prepareClanMonuments(tx, { playerIds: everyone.map((member) => member.playerId), now: input.now, extraClanIds: [dissolving.clanId], adminUsernames: input.adminUsernames });
     await releaseClanSupport(tx, { playerIds: everyone.map((member) => member.playerId), now: input.now });
   }
   const { clan, membership: leader } = await lockLedClan(tx, input.actor);
@@ -1391,6 +1405,7 @@ export async function disbandClan(
   const members = await activeMemberRows(tx, leader.clanId);
   const memberIds = members.map((member) => member.playerId);
   await lockClanPlayers(tx, memberIds);
+  await releaseClanMonuments(tx, monumentTargets, memberIds, input.now);
   await addCeasefires(tx, input.actor.seasonId, leader.clanId, memberIds, memberIds, input.now);
   await recordClanEvent(tx, {
     seasonId: input.actor.seasonId,
@@ -1493,6 +1508,20 @@ export async function readClanEvents(
  * takes over. With nobody active, retaining a leaderless clan would strand every
  * dormant member, so the clan is closed exactly like an explicit disband.
  */
+/** Reclaim takes this before its source player lock; placement already holds exclusive seasons. */
+export async function prepareClanReclaimMonuments(tx: Tx, input: {
+  playerId: string; now: Date; activeCutoff: Date; adminUsernames?: readonly string[];
+}): Promise<Awaited<ReturnType<typeof prepareClanMonuments>>> {
+  const membership = await activeClanMembership(tx, input.playerId);
+  if (membership?.role !== 'LEADER') return [];
+  const peers = await tx.select({ playerId: clanMemberships.playerId, lastActiveAt: players.lastActiveAt })
+    .from(clanMemberships).innerJoin(players, eq(clanMemberships.playerId, players.id))
+    .where(and(eq(clanMemberships.clanId, membership.clanId), isNull(clanMemberships.leftAt)));
+  if (peers.some((peer) => peer.playerId !== input.playerId && peer.lastActiveAt >= input.activeCutoff)) return [];
+  return prepareClanMonuments(tx, { playerIds: peers.map((peer) => peer.playerId), now: input.now,
+    extraClanIds: [membership.clanId], adminUsernames: input.adminUsernames });
+}
+
 export async function reconcileClanPlayerReclaim(
   tx: Tx,
   input: {
@@ -1502,6 +1531,8 @@ export async function reconcileClanPlayerReclaim(
     now: Date;
     activeCutoff: Date;
     preserveCommander?: boolean;
+    adminUsernames?: readonly string[];
+    monumentTargets?: Awaited<ReturnType<typeof prepareClanMonuments>>;
   },
 ): Promise<void> {
   const [initial] = await tx
@@ -1518,6 +1549,7 @@ export async function reconcileClanPlayerReclaim(
     ))
     .limit(1);
   if (!initial) return;
+  const monumentTargets = input.monumentTargets ?? await prepareClanReclaimMonuments(tx, input);
 
   /*
     KLAN SAVUNMA DESTEĞİ, BEFORE THE CLAN LOCK. A reclaimed leader with no active member to
@@ -1580,6 +1612,7 @@ export async function reconcileClanPlayerReclaim(
         at: input.now,
       });
     } else {
+      await releaseClanMonuments(tx, monumentTargets, members.map((member) => member.playerId), input.now);
       // System disband follows the same zero-sum treasury path as a leader's
       // explicit disband. There is no human confirmation or actor on this path.
       await burnClanTreasury(tx, {

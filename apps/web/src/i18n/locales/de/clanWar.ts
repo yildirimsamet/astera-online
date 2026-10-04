@@ -1,4 +1,6 @@
 export const clanWar = {
+  radiationMember: "{{name}}: Strahlung würde {{count}} Schiffe zerstören. Rufe die Welle zurück und sende sie erneut mit deiner eigenen Zustimmung.",
+  radiationMemberRequired: "Ein Mitglied muss den Strahlungsverlust bestätigen",
   tab: 'Krieg', purpose: 'Ein Ziel. Viele Kommandanten. Ein gemeinsamer Angriff.',
   contactBoundary: 'Der Clan ist bekannt. Kommandanten, Ladung und Route bleiben verborgen.',
   disbandBurn: 'Die Auflösung vernichtet dauerhaft {{alloy}} Legierung, {{crystal}} Kristall und {{deuterium}} Deuterium aus der Kasse. Mitglieder erhalten keine Erstattung.',
@@ -71,7 +73,7 @@ export const clanWar = {
   seatEmpty: 'Frei',
   seatYou: 'Du',
   seatNoWave: '{{name}} hat noch keine Welle gesendet.',
-  status: { OUTBOUND: 'Zum Sammelpunkt unterwegs', STAGED: 'Am Sammelpunkt bereit',
+  status: { TRANSFERRED: 'An Monumentflotten übergeben', OUTBOUND: 'Zum Sammelpunkt unterwegs', STAGED: 'Am Sammelpunkt bereit',
     RECALL_ORDERED: 'Rückruf angeordnet', IN_BATTLE: 'Im Kampf', RETURNING: 'Auf dem Heimweg',
     HOME: 'Zu Hause', LOST: 'Verloren' },
   operationStatus: { ASSEMBLING: 'Sammelt sich', ATTACKING: 'Angriff unterwegs',

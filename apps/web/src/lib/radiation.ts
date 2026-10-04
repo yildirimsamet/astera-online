@@ -1,16 +1,28 @@
 import {
   SHIP_DAMAGE,
   applyDose,
+  applyHpDose,
+  HULLS,
+  hullTech,
+  fleetEntries,
+  segmentsExposureHp,
+  transferStayingFleet,
   fleetCount,
   missionSegments,
   needsDock,
+  needsHpDock,
   segmentsDoseBp,
   type Fleet,
   type RadiationSource,
+  type HpRadiationSource,
+  type HpDamageLots,
+  type HullId,
+  type Segment,
+  type TechLevels,
   type Vec3,
 } from '@astera/rules';
 import { ApiError } from '../api/client.js';
-import type { RadiationSourceView } from '../api/schemas.js';
+import type { HpRadiationSourceView, RadiationSourceView } from '../api/schemas.js';
 import { damagePct } from './repairStation.js';
 
 /**
@@ -35,7 +47,8 @@ export const toRadiationSources = (views: readonly RadiationSourceView[]): Radia
     activeUntilMs: view.activeUntil?.getTime() ?? null,
   }));
 
-export interface RouteRadiation {
+export interface PctRouteRadiation {
+  kind?: 'PCT';
   /** Share of a full hull every ship takes, in basis points. */
   doseBp: number;
   /** The same, as the whole percent a player reads. */
@@ -46,6 +59,60 @@ export interface RouteRadiation {
   destroyed: number;
 }
 
+export interface HpRouteRadiation {
+  kind: 'HP';
+  doseHp: number;
+  returnDoseHp?: number;
+  destroyed: number;
+  docks: boolean;
+  lostFleet: Fleet;
+  lots: { hull: HullId; count: number; maxHp: number; remainingHp: number; healthPct: number; needsDock: boolean; returning?: boolean }[];
+}
+export type RouteRadiation = PctRouteRadiation | HpRouteRadiation;
+
+export const toHpRadiationSources = (views: readonly HpRadiationSourceView[]): HpRadiationSource[] =>
+  views.map(view => ({ id: view.id, mode: view.mode, center: view.center, radius: view.radius,
+    intensityHpPerMinute: view.intensityHpPerMinute, activeFromMs: view.activeFrom.getTime(), activeUntilMs: view.activeUntil?.getTime() ?? null }));
+
+/** Exact own-ship health on known flight segments. Combat may add another wound. */
+export function routeHpRadiation(route: { fleet: Fleet; tech: TechLevels; path: readonly Segment[]; damage?: HpDamageLots },
+  sources: readonly HpRadiationSource[]): HpRouteRadiation | null {
+  if (sources.length === 0 || fleetCount(route.fleet) === 0) return null;
+  const doseHp = segmentsExposureHp(route.path, sources);
+  if (doseHp <= 0) return null;
+  const outcome = applyHpDose(route.fleet, route.damage, doseHp, route.tech);
+  const lots: HpRouteRadiation['lots'] = [];
+  for (const [hull, count] of fleetEntries(outcome.fleet)) {
+    const maxHp = HULLS[hull].hp * hullTech(route.tech, hull).hp;
+    const damaged = outcome.lots.filter(lot => lot.hull === hull);
+    for (const lot of damaged) {
+      const bp = lot.damageBp + (lot.remainderBp ?? 0);
+      lots.push({ hull, count: lot.count, maxHp, remainingHp: maxHp * (1 - bp / 10_000),
+        healthPct: 100 - bp / 100, needsDock: needsHpDock(lot) });
+    }
+    const healthy = count - damaged.reduce((sum, lot) => sum + lot.count, 0);
+    if (healthy > 0) lots.push({ hull, count: healthy, maxHp, remainingHp: maxHp, healthPct: 100, needsDock: false });
+  }
+  return { kind: 'HP', doseHp, destroyed: fleetCount(outcome.destroyed), lostFleet: outcome.destroyed,
+    lots, docks: lots.some(lot => lot.needsDock) };
+}
+
+/** A transfer's selected return ships keep their outbound wound; the rest land once. */
+export function transferHpRadiation(route: { fleet: Fleet; returning: Fleet; tech: TechLevels; path: readonly Segment[] },
+  sources: readonly HpRadiationSource[]): HpRouteRadiation | null {
+  const outward = route.path.slice(0, 1);
+  const stay = routeHpRadiation({ ...route, fleet: transferStayingFleet(route.fleet, route.returning), path: outward }, sources);
+  const home = routeHpRadiation({ ...route, fleet: route.returning }, sources);
+  if (!stay && !home) return null;
+  const doseHp = segmentsExposureHp(outward, sources);
+  const lostFleet: Fleet = { ...(stay?.lostFleet ?? {}) };
+  for (const [hull, count] of fleetEntries(home?.lostFleet ?? {})) lostFleet[hull] = (lostFleet[hull] ?? 0) + count;
+  const lots = [...(stay?.lots ?? []).map(lot => ({ ...lot, returning: false })),
+    ...(home?.lots ?? []).map(lot => ({ ...lot, returning: true }))];
+  return { kind: 'HP', doseHp, returnDoseHp: home ? Math.max(0, home.doseHp - doseHp) : 0,
+    lostFleet, destroyed: fleetCount(lostFleet), lots, docks: lots.some(lot => lot.needsDock) };
+}
+
 /**
  * WHAT A ROUTE WILL COST IN RADIATION, before the ships leave. A launch leaves home whole
  * (I1), so every ship takes the same dose. `null` when the route crosses no live cloud.
@@ -53,7 +120,7 @@ export interface RouteRadiation {
 export function routeRadiation(
   route: { fleet: Fleet; from: Vec3; to: Vec3; departMs: number; arriveMs: number },
   sources: readonly RadiationSource[],
-): RouteRadiation | null {
+): PctRouteRadiation | null {
   if (sources.length === 0 || fleetCount(route.fleet) === 0) return null;
   const doseBp = segmentsDoseBp(missionSegments({
     origin: route.from, target: route.to, departAtMs: route.departMs, arriveAtMs: route.arriveMs,
@@ -95,13 +162,21 @@ export function radiationAt(
  * radiation is and never hides the worlds inside it.
  */
 export const hazeAlpha = (pctPerMinute: number): number =>
-  Math.min(0.2, 0.06 + 0.035 * Math.log2(1 + Math.max(0, pctPerMinute)));
+  0.75 * Math.min(0.09, 0.018 + 0.014 * Math.log2(1 + Math.max(0, pctPerMinute)));
+
+/** HP clouds use a different unit scale; four HP/min is the season baseline. */
+export const hpHazeAlpha = (hpPerMinute: number): number =>
+  0.75 * Math.min(0.09, 0.018 + 0.014 * Math.log2(1 + Math.max(0, hpPerMinute) / 4));
 
 /** The clouds on the disc now: lit and emitting. A shelter cancels a dose; it is not a cloud. */
 export const drawnClouds = (views: readonly RadiationSourceView[], nowMs: number): RadiationSourceView[] =>
   views.filter((view) => view.mode === 'EMIT'
     && view.activeFrom.getTime() <= nowMs
     && (view.activeUntil === null || nowMs < view.activeUntil.getTime()));
+
+export const drawnHpClouds = (views: readonly HpRadiationSourceView[], nowMs: number): HpRadiationSourceView[] =>
+  views.filter((view) => view.mode === 'EMIT' && view.intensityHpPerMinute > 0
+    && view.activeFrom.getTime() <= nowMs && (view.activeUntil === null || nowMs < view.activeUntil.getTime()));
 
 /** A server's `RADIATION_LETHAL`, kept against the selection it refused (plan D10). */
 export interface RadiationRefusal {

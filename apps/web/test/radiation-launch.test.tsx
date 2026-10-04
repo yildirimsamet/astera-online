@@ -11,6 +11,7 @@ import { LaunchSheet } from '../src/screens/LaunchSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
+import { HULLS } from '@astera/rules';
 
 /**
  * RADIATION ON THE LAUNCH SHEET. Plan D10 · F10.
@@ -32,17 +33,19 @@ const mine = planetView({ fleet: { DART: 20 } }, { deuterium: 50_000 });
 const minutes = planRoute(mine.planet.position, target.position, { DART: 1 }, mine.fleet, mine.ground,
   flightModifiers(mine)).oneWayMinutes;
 
-function show(pctOverFlight: number | null) {
+function show(pctOverFlight: number | null, hpOverFlight?: number) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   const launch = vi.spyOn(api, 'launch').mockResolvedValue({
     missionId: 'm1', arriveAt: new Date(Date.now() + 600_000), exposureMinutes: 20,
     homeDefenceAfter: 4, pending: [], planet: mine,
   } as never);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(keys.season, { rivals: [], shieldUntil: null });
+  client.setQueryData(keys.season, { rivals: [], shieldUntil: null, rulesetVersion: hpOverFlight === undefined ? 15 : 16 });
   client.setQueryData(keys.galaxy, {
     you: { planetId: mine.planet.id, playerId: 'me' },
     planets: [],
+    hpRadiation: hpOverFlight === undefined ? [] : [{ id: 'hp', mode: 'EMIT', center: { x: 200, y: 0, z: 0 }, radius: 100_000,
+      intensityHpPerMinute: hpOverFlight / minutes, activeFrom: new Date(0), activeUntil: null }],
     radiation: pctOverFlight === null ? [] : [{
       id: 'storm', mode: 'EMIT', center: { x: 200, y: 0, z: 0 }, radius: 100_000,
       intensityPctPerMinute: pctOverFlight / minutes, activeFrom: new Date(0), activeUntil: null,
@@ -72,6 +75,15 @@ const line = () => document.querySelector('[data-radiation-warning]');
 beforeEach(async () => { await i18n.changeLanguage('en'); });
 
 describe('radiation on the launch sheet', () => {
+  it('shows the new HP route loss and carries its held consent without using the legacy percent clouds', async () => {
+    const { launch } = show(null, HULLS.DART.hp * 2);
+    await pick();
+    expect(line()).toHaveTextContent(/HP per ship/);
+    expect(line()).toHaveTextContent(/destroys 1 ship/);
+    hold();
+    await waitFor(() => { expect(launch).toHaveBeenCalled(); });
+    expect(launch.mock.calls[0]?.[5]).toBe(true);
+  });
   it('says nothing where the route crosses no cloud', async () => {
     show(null);
     await pick();

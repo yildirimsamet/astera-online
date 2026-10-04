@@ -14,6 +14,7 @@ import {
 } from '@astera/rules';
 import {
   galaxyEventOccurrences,
+  hpRadiationSources,
   intergalacticConvoyRuns,
   notifications,
   planets,
@@ -126,6 +127,37 @@ async function armed(fleet: Fleet, planetId = mine): Promise<void> {
 }
 
 describe('an intergalactic convoy strike launch', () => {
+  it('requires explicit HP loss acknowledgement for the frozen strike route', async () => {
+    const crossing = await convoyUp();
+    const fleet: Fleet = { DART: 20, COURIER: 2 };
+    await grant(f.db, mine, 400_000, 120_000);
+    await fuelUp(f.db, mine);
+    await giveUnits(f.db, mine, fleet);
+    await f.db.update(seasons).set({ rulesetVersion: 16 }).where(eq(seasons.id, f.seasonId));
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'ZONE', x: 0, y: 0, z: 0,
+      radius: 100_000, mode: 'EMIT', intensityHpPerMinute: 1_000_000, activeFrom: f.clock.now() });
+    const order = await crossing.order(fleet);
+    const input = { planetId: mine, expectedPlayerId: f.playerIds[0]!, order, clock: f.clock };
+    await expect(f.db.transaction((tx) => launchIntergalacticConvoy(tx, input))).rejects.toMatchObject({ code: 'RADIATION_LETHAL' });
+    expect(await f.db.select().from(intergalacticConvoyRuns)).toEqual([]);
+    const built = buildApp({ env: testEnv(), logger: pino({ level: 'silent' }), db: f.db, clock: f.clock });
+    await built.app.ready();
+    try {
+      const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+      const headers = { authorization: `Bearer ${await tokens.issueAccess(f.accountIds[0]!)}`, 'idempotency-key': 'hp-convoy-acknowledgement' };
+      const payload = { ...order, originPlanetId: mine, quotedAt: order.quotedAt.toISOString(), quotedArriveAt: order.quotedArriveAt.toISOString() };
+      const denied = await built.app.inject({ method: 'POST', url: '/api/intergalactic-convoy/launch', headers, payload: { ...payload, acknowledgeRadiationLoss: false } });
+      expect(denied.statusCode, denied.body).toBe(409);
+      expect(denied.json<{ error: string }>().error).toBe('RADIATION_LETHAL');
+      const acknowledged = { ...payload, acknowledgeRadiationLoss: true };
+      const launch = await built.app.inject({ method: 'POST', url: '/api/intergalactic-convoy/launch', headers, payload: acknowledged });
+      expect(launch.statusCode, launch.body).toBe(200);
+      expect(launch.json<{ fleet: Fleet }>().fleet).toEqual(fleet);
+      expect((await built.app.inject({ method: 'POST', url: '/api/intergalactic-convoy/launch', headers, payload: acknowledged })).json<{ runId: string }>().runId)
+        .toBe(launch.json<{ runId: string }>().runId);
+      expect(await f.db.select().from(intergalacticConvoyRuns)).toHaveLength(1);
+    } finally { await built.close(); }
+  });
   it('freezes both moving endpoints, prepays unequal-leg fuel, parks the fleet, and holds a bay', async () => {
     const live = await convoyUp();
     const fleet = { VIPER: 8 } satisfies Fleet;

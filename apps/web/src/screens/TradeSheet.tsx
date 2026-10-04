@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   TRANSFER_CARGO_HULLS,
+  TRADE,
   fleetCount,
   combatValue,
   garrisonOf,
@@ -13,7 +14,7 @@ import {
   type TechLevels,
   type TradeQuote,
 } from '@astera/rules';
-import { useLaunchTrade } from '../api/queries.js';
+import { useGalaxy, useLaunchTrade } from '../api/queries.js';
 import type { PlanetView } from '../api/schemas.js';
 import { hullLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
@@ -32,6 +33,8 @@ import {
 import { duration, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
+import { RadiationPreview } from '../ui/RadiationPreview.js';
+import { lethalAfterRefusal, radiationRefusalCount, routeHpRadiation, toHpRadiationSources, type RadiationRefusal } from '../lib/radiation.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { Tally } from '../ui/Tally.js';
 import { HullMark } from '../ui/icons/hulls.js';
@@ -184,6 +187,18 @@ export function TradeSheet({
     mods,
   );
   const fuel = route?.fuel ?? 0;
+  const galaxy = useGalaxy();
+  const hpViews = galaxy.data?.hpRadiation;
+  const hpSources = useMemo(() => toHpRadiationSources(hpViews ?? []), [hpViews]);
+  const [radiationRefused, setRadiationRefused] = useState<RadiationRefusal | null>(null);
+  const meet = route?.rendezvous;
+  const arrival = now + (route?.oneWayMinutes ?? 0) * 60_000;
+  const dockEnd = arrival + TRADE.dockSeconds * 1000;
+  const hpQuote = route && meet ? routeHpRadiation({ fleet, tech: mods.tech,
+    path: [{ from: planet.planet.position, to: meet, startMs: now, endMs: arrival },
+      { from: meet, to: meet, startMs: arrival, endMs: dockEnd },
+      { from: meet, to: planet.planet.position, startMs: dockEnd, endMs: now + route.exposureMinutes * 60_000 }] }, hpSources) : null;
+  const radiation = lethalAfterRefusal(hpQuote, radiationRefused, fleet);
 
   /**
    * WHAT IS ACTUALLY SPENDABLE — AND THE TANK KEEPS ITS OWN FLIGHT'S WORTH.
@@ -360,6 +375,7 @@ export function TradeSheet({
             </div>
           )}
           <div data-testid="trade-commit">
+            <RadiationPreview radiation={radiation} />
             <HoldButton
               label={t('trade.send')}
               /*
@@ -371,13 +387,18 @@ export function TradeSheet({
                 : launch.isPending ? t('trade.sending') : refusal}
               onCommit={() => {
                 launch.mutate(
-                  { occurrenceId: merchant.id, fleet, give: offered, want },
+                  { occurrenceId: merchant.id, fleet, give: offered, want,
+                    ...(radiation && radiation.destroyed > 0 ? { acknowledgeRadiationLoss: true } : {}) },
                   {
                     onSuccess: (result) => {
                       say(t('trade.launched', { duration: duration(result.flightMinutes) }));
                       onLaunched();
                     },
-                    onError: (error) => { say(describe(error), 'error'); },
+                    onError: (error) => {
+                      say(describe(error), 'error');
+                      const count = radiationRefusalCount(error);
+                      if (count !== null) setRadiationRefused({ count, fleet });
+                    },
                   },
                 );
               }}

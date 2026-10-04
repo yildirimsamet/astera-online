@@ -13,7 +13,7 @@ import {
   type Resources,
 } from '@astera/rules';
 import { ApiError, createIdempotencyKey } from '../api/client.js';
-import { useLaunchIntergalacticConvoy } from '../api/queries.js';
+import { useGalaxy, useLaunchIntergalacticConvoy } from '../api/queries.js';
 import type { PlanetView } from '../api/schemas.js';
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import {
@@ -29,6 +29,8 @@ import { hullLabel } from '../i18n/names.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
+import { RadiationPreview } from '../ui/RadiationPreview.js';
+import { lethalAfterRefusal, radiationRefusalCount, routeHpRadiation, toHpRadiationSources, type RadiationRefusal } from '../lib/radiation.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
@@ -71,6 +73,18 @@ export function IntergalacticConvoySheet({
     planet.ground,
     mods,
   );
+  const galaxy = useGalaxy();
+  const hpViews = galaxy.data?.hpRadiation;
+  const hpSources = useMemo(() => toHpRadiationSources(hpViews ?? []), [hpViews]);
+  const [radiationRefused, setRadiationRefused] = useState<RadiationRefusal | null>(null);
+  const arrival = now + (route?.oneWayMinutes ?? 0) * 60_000;
+  const engagementEnd = seasonStart.getTime() + (route?.engagementEndsAtMinute ?? 0) * 60_000;
+  const home = seasonStart.getTime() + (route?.homeAtMinute ?? 0) * 60_000;
+  const hpQuote = route?.rendezvous ? routeHpRadiation({ fleet, tech: mods.tech,
+    path: [{ from: planet.planet.position, to: route.rendezvous, startMs: now, endMs: arrival },
+      { from: route.rendezvous, to: route.engagementEnd, startMs: arrival, endMs: engagementEnd },
+      { from: route.engagementEnd, to: planet.planet.position, startMs: engagementEnd, endMs: home }] }, hpSources) : null;
+  const radiation = lethalAfterRefusal(hpQuote, radiationRefused, fleet);
   const buildings: BuildingLevels = {
     CORE: planet.buildings.CORE ?? 0,
     REFINERY: planet.buildings.REFINERY ?? 0,
@@ -175,12 +189,15 @@ export function IntergalacticConvoySheet({
       quotedFlightSeconds: fresh.oneWayMinutes * 60,
       quotedArriveAt: new Date(quotedAt + fresh.oneWayMinutes * 60_000),
       idempotencyKey: createIdempotencyKey(),
+      ...(radiation && radiation.destroyed > 0 ? { acknowledgeRadiationLoss: true } : {}),
     }, {
       onSuccess: (result) => {
         say(t('convoy.launched', { duration: duration(result.flightSeconds / 60) }));
         onLaunched();
       },
       onError: (error) => {
+        const count = radiationRefusalCount(error);
+        if (count !== null) setRadiationRefused({ count, fleet });
         say(error instanceof ApiError && error.code === 'CONVOY_QUOTE_CHANGED'
           ? t('convoy.quoteChanged')
           : describe(error), 'error');
@@ -196,6 +213,7 @@ export function IntergalacticConvoySheet({
       detents={['full']}
       footer={
         <div data-testid="convoy-commit">
+          <RadiationPreview radiation={radiation} />
           <HoldButton
             label={t('convoy.commit')}
             disabledReason={launch.isPending ? t('convoy.sending') : refusal}

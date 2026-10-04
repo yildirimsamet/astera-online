@@ -27,6 +27,8 @@ import {
   type Resources,
   type TransferReturnPlan,
   lotsWithin,
+  hpRadiationApplies,
+  normalizeHpDamage,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -354,13 +356,19 @@ export async function launchTransfer(
     const oneWay = fleetTravelExact(dist, fleet, { ...mods, pace: chosenPace });
     if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel');
     const arriveAt = addMinutes(origin.now, oneWay);
-    await assertRadiationSafe(tx, {
-      seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
-      fleet, acknowledged: acknowledgeRadiation,
-    });
     const returnMinutes = fleetCount(returning) > 0
       ? fleetTravelExact(dist, returning, { ...mods, pace: 1 }) : 0;
-    assertSeasonOpenThrough(origin, addMinutes(arriveAt, returnMinutes));
+    const homeAt = addMinutes(arriveAt, returnMinutes);
+    await assertRadiationSafe(tx, {
+      seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
+      fleet, tech, acknowledged: acknowledgeRadiation,
+      returning,
+      path: [
+        { from: origin, to: target, startMs: origin.now.getTime(), endMs: arriveAt.getTime() },
+        { from: target, to: origin, startMs: arriveAt.getTime(), endMs: homeAt.getTime() },
+      ],
+    });
+    assertSeasonOpenThrough(origin, homeAt);
     const [mission] = await tx.insert(missions).values({
       fuelPaid: fuel,
       seasonId: origin.seasonId,
@@ -806,8 +814,11 @@ export async function resolveTransfer(
   const returning = mission.parentMissionId === null && mission.recalledAt === null
     ? mission.returnFleet ?? {} : {};
   const staying = transferStayingFleet(mission.fleet, returning);
+  const damageWithin = (part: Fleet) => hpRadiationApplies(rulesetVersion)
+    ? normalizeHpDamage(part, mission.damage?.filter((lot) => (part[lot.hull] ?? 0) > 0))
+    : lotsWithin(mission.damage, part);
   // Whole hull types stay or go, so each part takes the damage of its own hulls.
-  const returningDamage = lotsWithin(mission.damage, returning);
+  const returningDamage = damageWithin(returning);
   if (fleetCount(returning) > 0) {
     const [returnMission] = await tx.insert(missions).values({
       fuelPaid: 0,
@@ -841,7 +852,7 @@ export async function resolveTransfer(
       planetId: target.id,
       ownerPlayerId: mission.ownerPlayerId,
       fleet: staying,
-      damage: lotsWithin(mission.damage, staying),
+      damage: damageWithin(staying),
       at: now,
     });
   }

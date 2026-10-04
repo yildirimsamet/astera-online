@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
-import { coreTier, distance, planetSkinById } from '@astera/rules';
+import { coreTier, distance, hpRadiationApplies, planetSkinById } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import {
   accounts,
@@ -9,6 +9,7 @@ import {
   planetFaults,
   planets,
   players,
+  seasons,
 } from '../db/schema.js';
 import { readTelescopes } from '../services/intel.js';
 import {
@@ -28,6 +29,8 @@ import {
   playerDominionSql,
 } from '../services/dominion.js';
 import { radiationForGalaxy } from '../services/radiation.js';
+import { hpRadiationForGalaxy } from '../services/radiationSources.js';
+import { readPublicMonumentFacts } from '../services/monumentView.js';
 import { requireAuth } from './auth.js';
 
 /**
@@ -52,6 +55,15 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
   app.get('/api/galaxy', { preHandler: requireAuth }, async (req) => {
     const self = await app.projections.commander(req.accountId!);
     const now = app.clock.now();
+    const seasonRows = await app.db.select({ rulesetVersion: seasons.rulesetVersion })
+      .from(seasons).where(eq(seasons.id, self.seasonId));
+    const monumentSeason = hpRadiationApplies(seasonRows[0]?.rulesetVersion ?? 0);
+    const [monuments, hpRadiation] = monumentSeason
+      ? await Promise.all([
+        app.db.transaction((tx) => readPublicMonumentFacts(tx, self.seasonId, now)),
+        hpRadiationForGalaxy(app.db, self.seasonId, now),
+      ])
+      : [[], []] as const;
 
     const [allWorlds, watching, sensors, remembered, clanPresence, adminPlayerIds, ownFaultRows, radiation] = await Promise.all([
       app.projections.worlds(self.seasonId, now),
@@ -105,6 +117,9 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     return {
       /** Radyasyon (plan F9): public, like the worlds — every commander flies through the same sky. */
       radiation,
+      radiationModel: hpRadiationApplies(seasonRows[0]?.rulesetVersion ?? 0) ? 'HP' : 'PCT',
+      monuments,
+      hpRadiation,
       you: {
         planetId: self.capitalPlanetId,
         playerId: self.playerId,

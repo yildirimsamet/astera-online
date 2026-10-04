@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { Contact, MiningRun, PendingThread } from '../src/api/schemas.js';
+import type { FlightFocus } from '../src/lib/flights.js';
 import { PendingStrip } from '../src/shell/PendingStrip.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 
@@ -31,6 +32,8 @@ vi.mock('../src/api/queries.js', async () => {
     usePending: () => ({ data: { pending: rows } }),
     useMining: () => ({ data: { runs } }),
     useTraffic: () => ({ data: { contacts } }),
+    usePlanet: () => ({ data: undefined }),
+    useMonuments: () => ({ data: undefined }),
     useRecallMining: () => ({ mutate: recall, isPending: false }),
     useRecallFlight: () => ({ mutate: recallFleet, isPending: false }),
   };
@@ -78,12 +81,7 @@ const run = (over: Partial<MiningRun> = {}): MiningRun => ({
 const show = (
   pending: PendingThread[],
   miningRuns: MiningRun[] = [],
-  onFocus?: (
-    focus:
-      | { kind: 'thread'; key: string }
-      | { kind: 'run'; id: string }
-      | { kind: 'contact'; id: string },
-  ) => void,
+  onFocus?: (focus: FlightFocus) => void,
   seen: Contact[] = [],
 ) => {
   rows = pending;

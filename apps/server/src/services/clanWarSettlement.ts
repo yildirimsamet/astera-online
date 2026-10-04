@@ -28,8 +28,10 @@ import {
   type JointAttackerStack,
   type Resources,
   normalizeLots,
+  normalizeHpDamage,
   shipDamageApplies,
-  type DamageLot,
+  hpRadiationApplies,
+  type HpDamageLot,
 } from '@astera/rules';
 import { dockDamaged, dockNotice, shipsIn } from './shipDamage.js';
 import { settleWaveRadiation, tellRadiationLoss } from './radiation.js';
@@ -88,6 +90,7 @@ import { recordGalaxyEvent } from './chronicle.js';
 import { publishShard } from '../stream/bus.js';
 import {
   closeOperation,
+  clanWarPlanetTarget,
   planContributionReturn,
   type ClanWarOperationRow,
 } from './clanWar.js';
@@ -321,6 +324,7 @@ export async function resolveClanWarBattle(
       ? ESCAPE.minimumCombatShips : 0,
     support: stations.map((station) => station.stack),
     hostPlayerId: defender.playerId,
+    preciseDamage: hpRadiationApplies(input.rulesetVersion),
   });
   const result = raid.result;
   // The host's own part of the line; the waves' survivors go back to their own rows.
@@ -354,7 +358,7 @@ export async function resolveClanWarBattle(
   const damageRule = shipDamageApplies(input.rulesetVersion);
   const attackerDamage = damageRule ? result.attackerDamage : [];
   const defenderDamage = damageRule ? result.defenderDamage : [];
-  const waveDamage = (outcome: { survivorDamage: DamageLot[] }): DamageLot[] =>
+  const waveDamage = (outcome: { survivorDamage: HpDamageLot[] }): HpDamageLot[] =>
     (damageRule ? outcome.survivorDamage : []);
   const defenderDock = await dockDamaged(tx, {
     planetId: defender.planetId,
@@ -663,7 +667,7 @@ export async function resolveClanWarBattle(
   const survivedByPlayer = new Map<string, Fleet>();
   const lootByPlayer = new Map<string, Resources>();
   const salvageByPlayer = new Map<string, Resources>();
-  const carriedByPlayer = new Map<string, DamageLot[]>();
+  const carriedByPlayer = new Map<string, HpDamageLot[]>();
   for (const outcome of result.contributions) {
     carriedByPlayer.set(outcome.playerId, [
       ...(carriedByPlayer.get(outcome.playerId) ?? []),
@@ -693,7 +697,9 @@ export async function resolveClanWarBattle(
     loot: lootByPlayer.get(playerId) ?? { ...NOTHING },
     salvage: salvageByPlayer.get(playerId) ?? { ...NOTHING },
     hullDamage: damageByPlayer.get(playerId) ?? 0,
-    damage: normalizeLots(carriedByPlayer.get(playerId)),
+    damage: hpRadiationApplies(input.rulesetVersion)
+      ? normalizeHpDamage(survivedByPlayer.get(playerId) ?? {}, carriedByPlayer.get(playerId))
+      : normalizeLots(carriedByPlayer.get(playerId)),
     dominionRaw: weights.find((weight) => weight.playerId === playerId)?.raw ?? 0,
     dominionDelta: deltaByPlayer.get(playerId) ?? 0,
     createdAt: now,
@@ -979,7 +985,7 @@ async function returnPoolUntouched(
     await planContributionReturn(tx, {
       contribution: wave,
       operation: input.operation,
-      fromPlanetId: input.operation.targetPlanetId,
+      fromPlanetId: clanWarPlanetTarget(input.operation).planetId,
       fleet: await fleetOfContribution(tx, wave),
       now: input.now,
     });

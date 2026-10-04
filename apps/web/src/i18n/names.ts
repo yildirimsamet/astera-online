@@ -27,6 +27,19 @@ import i18n from './index.js';
  */
 
 export const buildingName = (id: BuildingId): string => i18n.t(`vocabulary.building.${id}.name`);
+
+const MONUMENT_NAME_KEYS = [
+  'monument.names.one', 'monument.names.two', 'monument.names.three', 'monument.names.four', 'monument.names.five',
+] as const;
+
+/** Public ordinals identify the five supplied models; missing legacy identities stay readable. */
+export function monumentName(ordinal: number | undefined): string {
+  if (ordinal === undefined || !Number.isInteger(ordinal)) {
+    return i18n.t('monument.genericTitle');
+  }
+  const key = MONUMENT_NAME_KEYS[ordinal - 1];
+  return key === undefined ? i18n.t('monument.genericTitle') : i18n.t(key);
+}
 export const buildingTag = (id: BuildingId): string => i18n.t(`vocabulary.building.${id}.tag`);
 export const buildingRole = (id: BuildingId): string => i18n.t(`vocabulary.building.${id}.role`);
 export const buildingDetail = (id: BuildingId): string => i18n.t(`vocabulary.building.${id}.detail`);

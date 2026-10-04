@@ -40,11 +40,15 @@ const EVERY_KIND = [
   'colony_fault',
   'colony_loyalty_warning',
   'colony_lost',
+  'convoy_result',
   'death_star_result',
   'fleet_returned',
   'galaxy_event_ended',
   'galaxy_event_started',
   'incoming_fleet',
+  'monument_inbound',
+  'monument_probe_lost',
+  'monument_returning',
   'probe_report',
   'radiation_lost',
   'raid_result',
@@ -61,6 +65,10 @@ const EVERY_KIND = [
 
 /** A payload each kind's parser will actually accept, so a row really renders. */
 const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
+  convoy_result: { trip: 'intergalactic_convoy', runId: '00000000-0000-4000-8000-000000000002', resourceReward: { alloy: 10, crystal: 0, deuterium: 0 }, awardedFleet: {}, inTransit: true },
+  monument_returning: { targetKind: 'MONUMENT', monumentId: '00000000-0000-4000-8000-000000000001', monumentOrdinal: 1, reason: 'CAPACITY', craft: 2, arriveAt: '2026-08-26T12:40:00.000Z' },
+  monument_inbound: { monumentId: '00000000-0000-4000-8000-000000000001', monumentOrdinal: 1, arriveAt: '2026-08-26T12:20:00.000Z' },
+  monument_probe_lost: { monumentId: '00000000-0000-4000-8000-000000000001', monumentOrdinal: 1 },
   clan_support_inbound: {
     waveId: 'w', senderPlayerId: 's', senderName: 'Ali', hostPlanetId: 'p9', hostPlanetName: 'Vantage',
     fleet: { DART: 4 }, arriveAt: '2026-08-26T12:20:00.000Z',

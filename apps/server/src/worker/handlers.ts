@@ -35,6 +35,7 @@ import {
   settleWreck,
   soloStack,
   shipDamageApplies,
+  hpRadiationApplies,
   travelExact,
   vaultProtects,
   type Fleet,
@@ -60,6 +61,8 @@ import {
   clanSupportDominionEvents,
   clanSupportWaves,
   dominionEvents,
+  monumentBattleParticipants,
+  monumentBattles,
   galaxyEvents,
   intergalacticConvoyRuns,
   miningRuns,
@@ -154,6 +157,8 @@ import {
   triggerAt,
 } from '../services/strategicInterception.js';
 import { safeHomePlanet } from '../services/ownership.js';
+import { monumentOriginCapitals, prepareMonumentOriginChange } from '../services/monumentOwnership.js';
+import { closeSeasonMonuments } from '../services/monumentSeasonClose.js';
 import {
   reinforceNeutral,
   resolveNeutralBattle,
@@ -198,6 +203,7 @@ import { resolveClanAid } from '../services/clanAid.js';
 import { processGalaxyEventLifecycle } from '../services/galaxyEvents.js';
 import { isHostileMission } from '../services/flight.js';
 import { resolveNeutralCensus } from '../services/season.js';
+import { onMonumentArrival, onMonumentLoss, onMonumentProbe, onMonumentRespawn } from './monumentHandlers.js';
 
 export interface HandlerContext {
   db: Db;
@@ -285,15 +291,22 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     const jointEscrowPlanetIds = mission.kind === 'clan_war'
       ? await clanWarEscrowPlanetIds(tx, mission.id)
       : [];
+    const [originChangeTarget] = mission.kind === 'death_star'
+      ? await tx.select({ kind: planets.kind }).from(planets).where(eq(planets.id, mission.targetPlanetId)) : [];
+    const preparesMonumentOrigin = originChangeTarget?.kind === 'COLONY';
+    const monumentCapitals = preparesMonumentOrigin
+      ? await monumentOriginCapitals(tx, mission.targetPlanetId) : [];
     const lockedPlanetIds = [...new Set([
       mission.originPlanetId,
       mission.targetPlanetId,
       ...(ownerCapital ? [ownerCapital.id] : []),
       ...jointEscrowPlanetIds,
+      ...monumentCapitals,
     ])].sort();
     for (const id of lockedPlanetIds) {
       await tx.select({ id: planets.id }).from(planets).where(eq(planets.id, id)).for('update');
     }
+    if (preparesMonumentOrigin) await prepareMonumentOriginChange(tx, mission.targetPlanetId);
 
     /*
       A JOINT WAR LEG IS DISPATCHED BEFORE EVERY GENERIC BRANCH. Klan Ortak Savaşı.
@@ -897,6 +910,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         ? ESCAPE.minimumCombatShips : 0,
       support: stations.map((station) => station.stack),
       hostPlayerId: defender.playerId,
+      preciseDamage: hpRadiationApplies(season.rulesetVersion),
     });
     const result = raid.result;
     /*
@@ -2108,6 +2122,7 @@ async function freezeSeason(
     const capturedThrough = event === null
       ? new Date(Math.min(clock.now().getTime(), season.endsAt.getTime()))
       : season.endsAt;
+    await closeSeasonMonuments(tx, { seasonId, cutoff: capturedThrough, adminUsernames: [...adminUsernames] });
     const ownedWorlds = await tx
       .select({ id: planets.id })
       .from(planets)
@@ -2154,6 +2169,7 @@ async function freezeSeason(
       botRows,
       chronicleRows,
       worldRows,
+      monumentShares,
     ] = await Promise.all([
       tx.select({
         attackerPlayerId: dominionEvents.attackerPlayerId,
@@ -2173,6 +2189,8 @@ async function freezeSeason(
           ...joint,
           ...await tx.select({ playerId: clanSupportDominionEvents.playerId, delta: clanSupportDominionEvents.delta })
             .from(clanSupportDominionEvents).where(inArray(clanSupportDominionEvents.seasonId, cycleSeasons)),
+          ...await tx.select({ playerId: monumentBattleParticipants.playerId, delta: monumentBattleParticipants.dominionDelta })
+            .from(monumentBattleParticipants).where(inArray(monumentBattleParticipants.seasonId, cycleSeasons)),
         ]),
       tx.select().from(battleReports).where(inArray(battleReports.seasonId, cycleSeasons)),
       tx.select({
@@ -2226,6 +2244,9 @@ async function freezeSeason(
       tx.select({ id: planets.id, name: planets.name })
         .from(planets)
         .where(eq(planets.seasonId, seasonId)),
+      tx.select({ participant: monumentBattleParticipants, battle: monumentBattles }).from(monumentBattleParticipants)
+        .innerJoin(monumentBattles, eq(monumentBattleParticipants.battleId, monumentBattles.id))
+        .where(inArray(monumentBattleParticipants.seasonId, cycleSeasons)),
     ]);
     assertDominionLedgers(roster, scoreEvents, season.rulesetVersion, jointWarEvents);
     assertClanDominionLedgers(
@@ -2297,6 +2318,10 @@ async function freezeSeason(
     const convoyByPlayer = byPlayer(convoyRows, (run) => run.ownerPlayerId);
     const strikesTakenBy = byPlayer(impacts, (impact) => impact.defenderPlayerId);
     const supportSharesByPlayer = byPlayer(supportShares, (row) => row.playerId);
+    const monumentLines = byPlayer(monumentShares, (row) => row.battle.id);
+    // A neutral garrison has no personal defence row. Operator PvP still has one.
+    const monumentPvp = monumentShares.filter((row) => monumentLines.get(row.battle.id)?.some((entry) => entry.participant.side === 'DEFENCE'));
+    const monumentsByPlayer = byPlayer(monumentPvp, (row) => row.participant.playerId);
     const linePowerByReport = new Map<string, number>();
     for (const row of supportShares) {
       linePowerByReport.set(row.reportId, (linePowerByReport.get(row.reportId) ?? 0) + row.power);
@@ -2326,6 +2351,7 @@ async function freezeSeason(
         report.attackerPlayerId === player.playerId || report.defenderPlayerId === player.playerId
         || mySupportShares.has(report.id)
       ));
+      const myMonuments = monumentsByPlayer.get(player.playerId) ?? [];
       const defenderPart = (report: (typeof reports)[number]) => {
         const share = mySupportShares.get(report.id);
         if (report.defenderCount <= 1 || !share) {
@@ -2364,6 +2390,25 @@ async function freezeSeason(
         if (impact.attackerPlayerId === player.playerId) damageDealt += impact.damage;
         if (impact.defenderPlayerId === player.playerId) damageTaken += impact.damage;
       }
+      for (const { participant, battle } of myMonuments) {
+        const line = monumentLines.get(battle.id) ?? [];
+        const ownSide = line.filter((row) => row.participant.side === participant.side);
+        const enemies = line.filter((row) => row.participant.side !== participant.side);
+        const sidePower = ownSide.reduce((sum, row) => sum + combatValue(row.participant.fleet), 0);
+        const sideValue = ownSide.reduce((sum, row) => sum + fleetValue(row.participant.fleet), 0);
+        const weight = sidePower > 0 ? combatValue(participant.fleet) / sidePower
+          : sideValue > 0 ? fleetValue(participant.fleet) / sideValue : 0;
+        damageDealt += enemies.reduce((sum, row) => sum + fleetValue(row.participant.losses), 0) * weight;
+        damageTaken += fleetValue(participant.losses);
+        if (participant.side === 'ATTACK') attacks++;
+        else defences++;
+        for (const enemy of enemies) rivalCounts.set(enemy.participant.playerId, (rivalCounts.get(enemy.participant.playerId) ?? 0) + 1);
+        if (participant.side === 'ATTACK' && (!biggest || participant.lootDeuterium > biggest.value)) {
+          const opponentId = enemies.map((row) => row.participant.playerId).sort()[0];
+          biggest = { value: participant.lootDeuterium, opponentName: opponentId === undefined ? 'Unknown commander'
+            : identity.get(opponentId)?.commanderName ?? 'Unknown commander' };
+        }
+      }
       const rivalEntry = [...rivalCounts.entries()]
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
       const rival = rivalEntry
@@ -2381,7 +2426,7 @@ async function freezeSeason(
         stats.coverage = { kind: 'partial', reason: 'TELEMETRY_CUTOVER' };
       }
       {
-        stats.competition.battles = mine.length;
+        stats.competition.battles = mine.length + myMonuments.length;
         stats.competition.attacks = attacks;
         stats.competition.defences = defences;
         stats.competition.damageDealt = damageDealt;
@@ -2406,6 +2451,14 @@ async function freezeSeason(
             if (HULLS[hull].ground || count <= 0) continue;
             stats.competition.shipsLostByHull[hull] =
               (stats.competition.shipsLostByHull[hull] ?? 0) + count;
+            stats.competition.shipsLost += count;
+          }
+        }
+        for (const { participant } of myMonuments) {
+          stats.competition.playerLoot.deuterium += participant.lootDeuterium;
+          for (const [hull, count] of fleetEntries(participant.losses)) {
+            if (HULLS[hull].ground || count <= 0) continue;
+            stats.competition.shipsLostByHull[hull] = (stats.competition.shipsLostByHull[hull] ?? 0) + count;
             stats.competition.shipsLost += count;
           }
         }
@@ -2458,7 +2511,7 @@ async function freezeSeason(
           commanderName: player.commanderName,
           countryCode: player.countryCode,
           planetName: player.planetName,
-          battles: mine.length,
+          battles: mine.length + myMonuments.length,
           attacks,
           defences,
           rival,
@@ -2963,6 +3016,10 @@ export const onClanSupportExpiry: Handler = async ({ db, clock }, event) => {
 };
 
 export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
+  monument_arrival: onMonumentArrival,
+  monument_loss: onMonumentLoss,
+  monument_respawn: onMonumentRespawn,
+  monument_probe: onMonumentProbe,
   clan_war_expiry: onClanWarExpiry,
   clan_support_expiry: onClanSupportExpiry,
   mission_arrival: onMissionArrival,

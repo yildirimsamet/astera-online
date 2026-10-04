@@ -1,4 +1,6 @@
 export const clanWar = {
+  radiationMember: "{{name}} : les radiations détruiraient {{count}} vaisseaux. Rappelez la vague et renvoyez-la en acceptant votre propre perte.",
+  radiationMemberRequired: "Un membre doit accepter ses pertes par radiation",
   tab: 'Guerre', purpose: 'Une cible. Plusieurs commandants. Une attaque commune.',
   contactBoundary: 'Le clan est identifié. Ses commandants, sa cargaison et sa route restent cachés.',
   disbandBurn: 'Dissoudre le clan détruit définitivement {{alloy}} alliage, {{crystal}} cristal et {{deuterium}} deutérium du trésor. Aucun membre n’est remboursé.',
@@ -71,7 +73,7 @@ export const clanWar = {
   seatEmpty: 'Libre',
   seatYou: 'Toi',
   seatNoWave: '{{name}} n’a pas encore envoyé de vague.',
-  status: { OUTBOUND: 'Vers le rassemblement', STAGED: 'Prête au rassemblement',
+  status: { TRANSFERRED: 'Transférée aux flottes du monument', OUTBOUND: 'Vers le rassemblement', STAGED: 'Prête au rassemblement',
     RECALL_ORDERED: 'Rappel demandé', IN_BATTLE: 'Au combat', RETURNING: 'Sur le chemin du retour',
     HOME: 'Rentrée', LOST: 'Perdue' },
   operationStatus: { ASSEMBLING: 'Rassemblement', ATTACKING: 'Attaque en route',

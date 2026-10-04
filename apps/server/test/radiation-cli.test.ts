@@ -10,8 +10,22 @@ import { parseRadiationCommand } from '../src/cli/radiationCommand.js';
 
 const SEASON = '11111111-1111-4111-8111-111111111111';
 const PLANET = '22222222-2222-4222-8222-222222222222';
+const MONUMENT = '33333333-3333-4333-8333-333333333333';
 
 describe('pnpm radiation', () => {
+  it('places an HP cloud on a monument without changing the legacy percentage command', () => {
+    expect(parseRadiationCommand(['add', '--hp', '--season', SEASON, '--monument', MONUMENT,
+      '--radius', '1000', '--intensity', '4', '--from', '2026-10-04T00:00:00Z'])).toEqual({
+      command: 'addHp',
+      input: {
+        seasonId: SEASON, anchor: { kind: 'MONUMENT', monumentId: MONUMENT },
+        radius: 1000, intensityHpPerMinute: 4,
+        mode: 'EMIT', label: '',
+        activeFrom: new Date('2026-10-04T00:00:00Z'),
+      },
+    });
+  });
+
   it('places a cloud on a point in space', () => {
     expect(parseRadiationCommand(['add', '--season', SEASON, '--at', '1,-2.5,3', '--radius', '20',
       '--intensity', '0.5', '--label', 'Kestrel storm'])).toEqual({

@@ -1,4 +1,6 @@
 export const clanWar = {
+  radiationMember: "{{name}}：放射線で{{count}}隻が失われます。艦隊を呼び戻し、自分の損失を承認して再派遣してください。",
+  radiationMemberRequired: "メンバー本人による放射線損失の承認が必要",
   tab: '共同戦',
   purpose: '標的は一つ。集う司令官は複数。攻撃は一度。',
   contactBoundary: 'クランの存在は判明していますが、司令官、積み荷、航路はまだ見えません。',
@@ -95,6 +97,7 @@ export const clanWar = {
   seatYou: 'あなた',
   seatNoWave: '{{name}}はまだ攻撃隊を派遣していません。',
   status: {
+    TRANSFERRED: 'モニュメント艦隊へ移管',
     OUTBOUND: '集結地点へ飛行中',
     STAGED: '集結地点で待機中',
     RECALL_ORDERED: '呼び戻し指示済み',

@@ -134,7 +134,7 @@ pnpm verify
 
 Required: zero type errors, zero lint errors, expected tests green.
 
-`pnpm lint` gives type-aware ESLint a 4 GB Node heap through the root script. The full workspace
+`pnpm lint` gives type-aware ESLint a 6 GB Node heap through the root script. The full workspace
 regularly exceeds Node's 2 GB default; do not bypass the script with a bare `eslint .` invocation.
 
 - Ban `any`/compiler-silencing casts; parse untrusted boundaries with Zod.

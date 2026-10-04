@@ -4,11 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { useClanWarActions } from '../api/queries.js';
 import type { ClanWar, PlanetView } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
-import { hullName } from '../i18n/names.js';
+import { hullName, monumentName } from '../i18n/names.js';
 import { full } from '../lib/format.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { planetArt, RESOURCE_ART } from '../ui/assets.js';
 import { PaceRow } from '../ui/PaceRow.js';
+import { RadiationPreview } from '../ui/RadiationPreview.js';
 import { initials } from '../v2/hud/CommanderCard.js';
 import { Icon } from '../v2/icons.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
@@ -61,6 +62,7 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
   const [donateOpen, setDonateOpen] = useState(false);
   const [acknowledgeStartShield, setAcknowledgeStartShield] = useState(false);
   const [wantedPace, setWantedPace] = useState<MissionPace>(1);
+  const [acknowledgeRadiation, setAcknowledgeRadiation] = useState(false);
   const operation = war.operation;
 
   if (!war.available) return <p className="px-2 py-4 text-body text-v2-ink-2">{t('clanWar.unavailable')}</p>;
@@ -106,8 +108,12 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
   const strikeMinutes = operation.pool.strikeMinutes ?? null;
   const strikePaces = strikeMinutes === null ? [] : pacesForMinutes(strikeMinutes);
   const strikePace = strikePaces.includes(wantedPace) ? wantedPace : 1;
+  const radiation = operation.radiationByPace.find((forecast) => forecast.pace === strikePace);
+  const ownRadiationLoss = radiation?.own.some((forecast) => forecast.destroyed > 0) ?? false;
   const strikeRefusal = startReason
     ?? (operation.startShieldWouldDrop !== null && !acknowledgeStartShield ? t('clanWar.acknowledgeFirst')
+      : (radiation?.missingConsents.length ?? 0) > 0 ? t('clanWar.radiationMemberRequired')
+      : ownRadiationLoss && !acknowledgeRadiation ? t('monument.consent')
       : actions.start.isPending ? t('clanWar.starting') : null);
   const sendRefusal = !mature ? t('clanWar.immature') : null;
 
@@ -152,10 +158,21 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
             <>
               <p data-clan-strike-eta className="text-caption text-v2-ink-2">{t('clanWar.strikeEta', {
                 time: duration(strikeMinutes / strikePace) })}</p>
-              <PaceRow data-clan-pace paces={strikePaces} pace={strikePace} onChange={setWantedPace}
+              <PaceRow data-clan-pace paces={strikePaces} pace={strikePace} onChange={(pace) => {
+                setWantedPace(pace); setAcknowledgeRadiation(false);
+              }}
                 hint={t('clanWar.paceHint')} />
             </>
           )}
+          {radiation?.own.map((forecast, index) => <RadiationPreview key={index} combat radiation={{ kind: 'HP',
+            doseHp: forecast.doseHp, destroyed: forecast.destroyed, lostFleet: forecast.lostFleet,
+            lots: forecast.health, docks: forecast.health.some((lot) => lot.needsDock) }} />)}
+          {ownRadiationLoss && <Toggle tone="hostile" checked={acknowledgeRadiation} onChange={setAcknowledgeRadiation}>
+            {t('monument.radiation')}
+          </Toggle>}
+          {radiation?.missingConsents.map((member) => <p key={member.playerId} className="text-caption text-v2-hostile">
+            {t('clanWar.radiationMember', { name: member.username, count: member.count })}
+          </p>)}
           {operation.startShieldWouldDrop && (
             <div className="flex flex-col gap-1 rounded-control border border-v2-hostile/40 bg-v2-hostile/5 px-2.5 py-2">
               <p className="text-caption text-v2-hostile">{t('clanWar.launchShield', { kind: operation.startShieldWouldDrop.kind })}</p>
@@ -170,7 +187,8 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
               label={t('clanWar.launch')}
               disabledReason={strikeRefusal}
               onCommit={() => {
-                actions.start.mutate({ acknowledgeShieldLoss: acknowledgeStartShield, pace: strikePace });
+                actions.start.mutate({ acknowledgeShieldLoss: acknowledgeStartShield, pace: strikePace,
+                  ...(acknowledgeRadiation ? { acknowledgeRadiationLoss: true } : {}) });
               }}
             />
           </div>
@@ -238,14 +256,18 @@ function WarTarget({ operation, now }: { operation: Operation; now: number }) {
     <Plate className="flex flex-col gap-3 p-3">
       <div data-war-target="" className="flex flex-col gap-3">
         <div className="flex items-center gap-2.5">
-          <img src={planetArt(operation.target.planetId)} alt="" className="size-11 shrink-0 rounded-full object-cover" />
+          {operation.target.kind === 'MONUMENT'
+            ? <span className="flex size-11 shrink-0 items-center justify-center rounded-control border border-v2-line text-v2-self"><Icon id="i-attack" className="size-6" /></span>
+            : <img src={planetArt(operation.target.planetId)} alt="" className="size-11 shrink-0 rounded-full object-cover" />}
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
               <span className="text-micro text-v2-ink-3">{t('clanWar.target')}</span>
-              <span className="rounded-chip border border-v2-rival/60 px-1 font-v2-mono text-micro font-semibold leading-4 text-v2-rival">
+              {operation.target.kind !== 'MONUMENT' && operation.target.username && <span className="rounded-chip border border-v2-rival/60 px-1 font-v2-mono text-micro font-semibold leading-4 text-v2-rival">
                 {operation.target.username}
-              </span>
-              <span className="break-words text-caption font-semibold text-v2-ink">{operation.target.planetName}</span>
+              </span>}
+              <span className="break-words text-caption font-semibold text-v2-ink">{operation.target.kind === 'MONUMENT'
+                ? monumentName(operation.target.monumentOrdinal ?? undefined)
+                : operation.target.planetName}</span>
             </p>
             {operation.status === 'ASSEMBLING' && (
               <p className="text-micro text-v2-ink-2">{t('clanWar.expires', { time: countdown(operation.expiresAt.getTime() - now) })}</p>

@@ -12,6 +12,15 @@ import i18n from '../src/i18n/index.js';
 import { LANGUAGES } from '../src/i18n/languages.js';
 
 describe('clan joint war wire contract', () => {
+  it('explains a missing member’s own radiation consent in every language', () => {
+    for (const language of LANGUAGES) {
+      const t = i18n.getFixedT(language);
+      expect(t('clanWar.radiationMember', { name: 'Scout', count: 3 }), language).toContain('Scout');
+      expect(t('clanWar.radiationMember', { name: 'Scout', count: 3 }), language).toContain('3');
+      expect(t('clanWar.radiationMemberRequired'), language).not.toMatch(/clanWar\./);
+    }
+  });
+
   it('parses the one private war view and its live operation', () => {
     const view = clanWarSchema.parse({
       available: true, level: 2, maxLevel: false,

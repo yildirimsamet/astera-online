@@ -1501,3 +1501,8 @@
 .v2-shell:has([data-now-line]) [data-galaxy-top-corners] {
   top: 3rem;
 }
+/* The desktop Outline owns the left column under the top bar; the Now line floats over
+   the galaxy beside it, as it does on a phone. 260px is the Outline's own width. */
+.v2-shell:has([data-outline]) [data-now-float] {
+  left: 260px;
+}

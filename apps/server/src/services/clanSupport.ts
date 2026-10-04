@@ -14,6 +14,7 @@ import {
   fleetTravelExact,
   hangarCapacity,
   hangarLoad,
+  hpRadiationApplies,
   postureFromToggles,
   supportFuel,
   supportTravelMinutes,
@@ -21,6 +22,7 @@ import {
   type Fleet,
   type HullId,
   type PostureToggles,
+  type TechLevels,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -44,7 +46,7 @@ import {
   type WaveRow,
 } from './clanSupportView.js';
 import { turnMissionHome } from './movement.js';
-import { missionPath, settleFlightRadiation, tellRadiationLoss } from './radiation.js';
+import { missionPath, radiationChanged, settleFlightRadiation, tellRadiationLoss } from './radiation.js';
 import { dockNotice, landShips, type DockReport } from './shipDamage.js';
 import { publishPrivate, publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
@@ -527,19 +529,27 @@ export async function shipsOf(db: Queryable, wave: WaveRow): Promise<Fleet> {
 }
 
 /** How long the flight home from the host takes, at the sender's research. */
+/** New HP cohorts keep the research with which their carried wounds were earned. */
+export async function supportFlightTech(db: Queryable, wave: WaveRow): Promise<TechLevels> {
+  const [outbound] = await db.select({ tech: missions.tech, version: seasons.rulesetVersion }).from(missions)
+    .innerJoin(seasons, eq(seasons.id, missions.seasonId)).where(eq(missions.id, wave.outboundMissionId));
+  if (!outbound) throw new Error(`support ${wave.id} lost its committed mission`);
+  return hpRadiationApplies(outbound.version) ? outbound.tech ?? {} : techOf(db, wave.senderPlayerId);
+}
+
 async function homewardMinutes(db: Queryable, wave: WaveRow, destinationPlanetId: string, fleet: Fleet): Promise<{
-  minutes: number; distance: number;
+  minutes: number; distance: number; tech: TechLevels;
 }> {
   const [from] = await db.select().from(planets).where(eq(planets.id, wave.hostPlanetId));
   const [to] = await db.select().from(planets).where(eq(planets.id, destinationPlanetId));
   if (!from || !to) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
   const span = distance(from, to);
-  const tech = await techOf(db, wave.senderPlayerId);
+  const tech = await supportFlightTech(db, wave);
   const minutes = supportTravelMinutes(fleetTravelExact(span, fleet, {
     boost: fleetSpeedMult(await orbitOf(db, destinationPlanetId)),
     tech,
   }));
-  return { minutes, distance: span };
+  return { minutes, distance: span, tech };
 }
 
 /**
@@ -591,7 +601,7 @@ export async function returnWave(tx: Tx, wave: WaveRow, reason: ReturnReason, no
     targetPlanetId: destinationPlanetId,
     fleet,
     damage: wave.damage,
-    tech: await techOf(tx, wave.senderPlayerId),
+    tech: leg.tech,
     distance: leg.distance,
     departAt: now,
     arriveAt: returnAt,
@@ -846,12 +856,14 @@ export async function resolveClanSupportLeg(
     planetId: wave.originPlanetId,
     location: wave.unitLocation,
     damage: wave.damage,
+    tech: mission.tech ?? {},
+    fromMs: Math.max(wave.radiationSettledAt?.getTime() ?? mission.departAt.getTime(), mission.departAt.getTime()),
   });
-  const damaged: WaveRow = dose.doseBp === 0
+  const damaged: WaveRow = !radiationChanged(dose)
     ? wave
     : { ...wave, damage: dose.damage.length > 0 ? [...dose.damage] : null };
-  if (dose.doseBp > 0) {
-    await tx.update(clanSupportWaves).set({ damage: damaged.damage }).where(eq(clanSupportWaves.id, wave.id));
+  if (radiationChanged(dose)) {
+    await tx.update(clanSupportWaves).set({ damage: damaged.damage, radiationSettledAt: mission.arriveAt }).where(eq(clanSupportWaves.id, wave.id));
   }
   await tellRadiationLoss(tx, { playerId: wave.senderPlayerId, refId: mission.id, toPlanetId: mission.targetPlanetId },
     dose, now);

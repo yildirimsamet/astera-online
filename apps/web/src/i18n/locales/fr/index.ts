@@ -1,4 +1,5 @@
 import { silentSpace } from './silentSpace.js';
+import { monument } from './monument.js';
 import { app, consent, document, landing, loading, servers, settings } from './entry.js';
 import { chat, crash, leaderboard, menu, pendingStrip, sheet, signals, statusBar, surface, toast } from './shell.js';
 import { focus, galaxy, pirate, worlds } from './world.js';
@@ -25,6 +26,7 @@ import type { Resources } from '../en/index.js';
 
 /** French resources share the source language's structure and interpolation contract. */
 export const fr: Resources = {
+  monument,
   silentSpace,
   academy,
   landing,

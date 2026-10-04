@@ -26,7 +26,9 @@ import {
 } from '@astera/rules';
 import {
   battleReports,
+  asteroidSpawnHours,
   buildings,
+  hpRadiationSources,
   debrisFields,
   notifications,
   pirateRaids,
@@ -40,7 +42,7 @@ import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { launchPirateRaid } from '../src/services/pirateRaid.js';
 import { refreshSensorEpoch, sensorHistoryForPlayer } from '../src/services/sensorHistory.js';
-import { privatePirateField, pirateId } from '../src/services/pirateField.js';
+import { loadPirateSnapshot, privatePirateField, pirateId } from '../src/services/pirateField.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { baysInUse } from '../src/services/flight.js';
 import { fleetTruthFor } from '../src/services/intel.js';
@@ -136,6 +138,39 @@ describe('a raid at a pirate', () => {
   beforeEach(async () => {
     f = await seedWorld(2, 4242, { pirates: true });
     mine = f.planetIds[0]!;
+  });
+
+  it('requires explicit HP loss acknowledgement for a lethal pirate route', async () => {
+    await f.db.update(seasons).set({ rulesetVersion: 16 }).where(eq(seasons.id, f.seasonId));
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    if (!season) throw new Error('missing season');
+    await f.db.insert(asteroidSpawnHours).values({ seasonId: f.seasonId, hourStartsAt: season.startsAt, spawnFrom: season.startsAt,
+      activePlayers: 2, lanes: [], pirateLane: { fromMinute: 0, untilMinute: 60, count: 3 } });
+    f.clock.set(new Date(season.startsAt.getTime() + 61 * 60_000));
+    const snapshot = await loadPirateSnapshot(f.db, f.seasonId, f.clock.now());
+    const spec = snapshot.standing(f.clock.now())[0];
+    if (!spec) throw new Error('missing active HP-season pirate');
+    const position = piratePosition(spec, 61);
+    await placeAt(f.db, mine, { x: position.x + 100, y: position.y, z: position.z });
+    const target = { id: pirateId(snapshot.key, spec.index) };
+    const fleet = await armed();
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'ZONE', x: 0, y: 0, z: 0,
+      radius: 100_000, mode: 'EMIT', intensityHpPerMinute: 1_000_000, activeFrom: f.clock.now() });
+    await expect(launchPirateRaid(f.db, mine, target.id, fleet, f.clock)).rejects.toMatchObject({ code: 'RADIATION_LETHAL' });
+    expect(await f.db.select().from(pirateRaids)).toEqual([]);
+    const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
+    await built.app.ready();
+    try {
+      const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+      const headers = { authorization: `Bearer ${await tokens.issueAccess(f.accountIds[0]!)}` };
+      const payload = { originPlanetId: mine, pirateId: target.id, fleet };
+      const denied = await built.app.inject({ method: 'POST', url: '/api/pirates/raid', headers, payload: { ...payload, acknowledgeRadiationLoss: false } });
+      expect(denied.statusCode, denied.body).toBe(409);
+      expect(denied.json<{ error: string }>().error).toBe('RADIATION_LETHAL');
+      const launch = await built.app.inject({ method: 'POST', url: '/api/pirates/raid', headers, payload: { ...payload, acknowledgeRadiationLoss: true } });
+      expect(launch.statusCode, launch.body).toBe(200);
+      expect(launch.json<{ fleet: Fleet }>().fleet).toEqual(fleet);
+    } finally { await built.close(); }
   });
 
   /**

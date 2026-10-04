@@ -1,12 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fleetCount } from '@astera/rules';
+import { fleetCount, hpRadiationApplies } from '@astera/rules';
 import {
   useMining,
   usePending,
   useRecallMining,
   useRecallFlight,
   useTraffic,
+  useMonuments,
+  usePlanet,
 } from '../api/queries.js';
 import { threadKey } from '../galaxy/threadKey.js';
 import {
@@ -20,6 +22,7 @@ import {
   type FlightFocus,
 } from '../lib/flights.js';
 import { legProgress } from '../lib/fleetPage.js';
+import { monumentPendingThreads } from '../lib/monumentFlights.js';
 import { countdown, useNow } from '../lib/time.js';
 import { FlightBar } from '../ui/FlightBar.js';
 import {
@@ -158,7 +161,9 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
    */
   const traffic = useTraffic();
   const now = useNow(1000);
-  const threads = data?.pending ?? [];
+  const origin = usePlanet();
+  const monuments = useMonuments(hpRadiationApplies(origin.data?.rulesetVersion ?? 0));
+  const threads = [...data?.pending ?? [], ...monumentPendingThreads(monuments.data, now)];
   const runs = (mining.data?.runs ?? []).filter((run) => run.status !== 'done');
   const seen = traffic.data?.contacts ?? [];
 
@@ -423,10 +428,12 @@ export interface AirborneItem {
  * now leads with the glyph the rest of the game already uses for that act.
  */
 export type FlightMark =
+  | 'monument'
   | 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star'
   | 'mining' | 'salvage' | 'pirate' | 'trade' | 'intergalactic_convoy';
 
 const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
+  monument: AttackIcon,
   fleet: AttackIcon,
   probe: ScanIcon,
   incoming: IncomingIcon,

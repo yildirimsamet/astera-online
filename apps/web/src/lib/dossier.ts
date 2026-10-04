@@ -209,7 +209,7 @@ export function fieldedAtLeast(reports: readonly Report[], planetId: string): {
   let best: { fleet: Fleet; at: number } | null = null;
 
   for (const report of reports) {
-    if (report.kind === 'STRATEGIC') continue;
+    if (report.kind === 'STRATEGIC' || report.kind === 'MONUMENT') continue;
     if (report.opponentPlanetId !== planetId) continue;
     // A supported line's losses are partly clanmates' ships; the floor is the HOST's own.
     const host = report.defenseLine?.members.find((member) => member.role === 'HOST');

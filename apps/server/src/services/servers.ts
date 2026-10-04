@@ -43,6 +43,7 @@ import {
   neutralPlanetState,
   notifications,
   planets,
+  planetFaults,
   planetResearch,
   playerResearch,
   playerRivals,
@@ -68,6 +69,12 @@ import {
   watches,
   radiationSources,
   shipDamageLots,
+  hpRadiationSources,
+  monuments,
+  monumentShipLots,
+  monumentWaves,
+  monumentBattles,
+  monumentBattleParticipants,
 } from '../db/schema.js';
 import { createSeasonIn } from './season.js';
 import { GameError } from './planet.js';
@@ -123,6 +130,10 @@ export const shardCodeFor = (ordinal: number): string => `EU-${String(ordinal)}`
 export const shardNameFor = (ordinal: number): string =>
   SHARD_NAMES[(ordinal - 1) % SHARD_NAMES.length] ?? `Galaxy ${String(ordinal)}`;
 
+/** A disposable ruleset-16 door for the local visual/gameplay rehearsal only. */
+const DEVELOPMENT_MONUMENT_SHARD = 'MONUMENT-LOCAL';
+const developmentLobby = (): boolean => process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test';
+
 /* ── reading the list ───────────────────────────────────────── */
 
 /**
@@ -148,7 +159,16 @@ export async function listServers(db: Db, clock: Clock): Promise<ServerSummary[]
   const official = rows.filter(({ shard }) => (
     shard.ordinal >= 1 && shard.ordinal <= SERVERS.count
   ));
-  const visibleRows = (official.length > 0 ? official : rows).slice(0, SERVERS.count);
+  const primaryRows = (official.length > 0 ? official : rows).slice(0, SERVERS.count);
+  const localMonument = developmentLobby()
+    ? rows.find(({ shard }) => shard.code === DEVELOPMENT_MONUMENT_SHARD)
+    : undefined;
+  // Production keeps the sequential official frontier. Local development also
+  // exposes the explicit monument rehearsal so a player can choose the ruleset
+  // 16 season from the normal lobby instead of knowing a hidden shard code.
+  const visibleRows = localMonument && !primaryRows.some(({ shard }) => shard.code === localMonument.shard.code)
+    ? [...primaryRows, localMonument]
+    : primaryRows;
 
   const since = addMinutes(clock.now(), -SERVERS.onlineWindowMinutes);
 
@@ -185,7 +205,12 @@ export async function listServers(db: Db, clock: Clock): Promise<ServerSummary[]
   }));
 
   const frontier = frontierOrdinal(facts.filter((f) => f.live));
-  return facts.map(({ live, ...rest }) => ({ ...rest, status: statusOf(rest, live, frontier) }));
+  return facts.map(({ live, ...rest }) => ({
+    ...rest,
+    status: developmentLobby() && rest.code === DEVELOPMENT_MONUMENT_SHARD && live
+      ? statusOf(rest, live, rest.planets < rest.capacity ? rest.ordinal : frontier)
+      : statusOf(rest, live, frontier),
+  }));
 }
 
 interface Fillable {
@@ -343,6 +368,8 @@ export interface BootstrapOptions {
   days?: number;
   /** Seeds are derived from this so a bootstrap is reproducible when it needs to be. */
   seedBase?: number;
+  /** Explicit season ruleset; omitted keeps the current production default. */
+  rulesetVersion?: number;
 }
 
 export interface BootstrapResult {
@@ -415,6 +442,7 @@ async function bootstrapServersIn(
       startsAt,
       days,
       playerCap: capacity,
+      ...(opts.rulesetVersion === undefined ? {} : { rulesetVersion: opts.rulesetVersion }),
     });
     if (cycleId !== null && cycleId !== opened.season.cycleId) {
       throw new Error('One bootstrap opened seasons in different cycles');
@@ -574,6 +602,11 @@ export async function wipeAllServers(
     // tables and the clans they name are deleted below. 2026-09-27.
     await archiveSeasonChat(tx, clock.now());
     await tx.delete(rewardGrants);
+    await tx.delete(monumentBattleParticipants);
+    await tx.delete(monumentBattles);
+    await tx.delete(monumentShipLots);
+    await tx.delete(monumentWaves);
+    await tx.delete(hpRadiationSources);
     // Clan rows form their own child graph around missions, players and clans.
     // Personal shares go first; immutable score/event history is kept only until
     // this seasonal wipe, never into the next galaxy.
@@ -603,6 +636,8 @@ export async function wipeAllServers(
     await tx.delete(clanSupportWaves);
     await tx.delete(battleReports);
     await tx.delete(clanWarOperations);
+    // A monument preparation owns a real target FK; delete its history before the target.
+    await tx.delete(monuments);
     await tx.delete(clanTreasuryEvents);
     await tx.delete(clanRaidRoster);
     await tx.delete(attackCommitments);
@@ -682,6 +717,8 @@ export async function wipeAllServers(
     await tx.delete(planetResearch);
     await tx.delete(neutralPlanetState);
     await tx.delete(seasonTelemetrySegments);
+    // Faults and in-progress repairs retain a NO ACTION FK to their seasonal world.
+    await tx.delete(planetFaults);
     await tx.delete(planets);
     /*
       THE RIVAL MARKS, AND IT IS THE SAME LESSON A FOURTH TIME. D183 added

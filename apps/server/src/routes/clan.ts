@@ -25,6 +25,7 @@ import { donateToClanTreasury, upgradeClanLevel } from '../services/clanTreasury
 import {
   cancelClanWarOperation,
   markClanWarTarget,
+  markClanWarMonumentTarget,
   quoteClanWarContribution,
   readClanWar,
   recallClanWarContribution,
@@ -109,7 +110,10 @@ const disbandBody = z.object({
   acknowledgeTreasuryBurn: z.boolean().default(false),
 }).strict();
 /** The world the clan is going to hit. Everything else about it is server-decided. */
-const warTargetBody = z.object({ targetPlanetId: z.string().uuid() }).strict();
+const warTargetBody = z.union([
+  z.object({ targetPlanetId: z.string().uuid() }).strict(),
+  z.object({ targetMonumentId: z.string().uuid() }).strict(),
+]);
 /**
  * The leader has read that launching gives up their own shield, and said yes.
  * Only a fleetless coordinator can still be holding one by this point, but the
@@ -117,6 +121,7 @@ const warTargetBody = z.object({ targetPlanetId: z.string().uuid() }).strict();
  */
 const warStartBody = z.object({
   acknowledgeShieldLoss: z.boolean().default(false),
+  acknowledgeRadiationLoss: z.boolean().default(false),
   /** The combined leg's pace; the service checks the rung against this flight. Plan §15.5a. */
   pace: z.number().positive().max(1).optional(),
 }).strict();
@@ -136,6 +141,7 @@ const warContributionBody = z.object({
   fleet: mobileFleetSchema,
   /** The sender has read that this gives up their own shield, and said yes. */
   acknowledgeShieldLoss: z.boolean().default(false),
+  acknowledgeRadiationLoss: z.boolean().default(false),
 }).strict();
 const aidBody = z.object({
   originPlanetId: z.string().uuid(),
@@ -190,7 +196,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
    */
   app.get('/api/clan/war', { preHandler: requireAuth }, async (req) => {
     const actor = await clanActor(app.db, req.accountId!);
-    return readClanWar(app.db, actor, app.clock.now());
+    return readClanWar(app.db, actor, app.clock.now(), [...app.adminUsernames]);
   });
 
   /** My support waves still out — the Fleet page's "Klan desteği" group. */
@@ -311,6 +317,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
       actor,
       ...body,
       clock: { now: () => now },
+      adminUsernames: [...app.adminUsernames],
     }));
   });
 
@@ -352,7 +359,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
       key: idempotencyKey(req),
       body: { requestId, ...body },
       now,
-    }, (tx) => acceptClanRequest(tx, { actor, requestId, ...body, now }));
+    }, (tx) => acceptClanRequest(tx, { actor, requestId, ...body, now, adminUsernames: [...app.adminUsernames] }));
   });
 
   for (const action of ['reject', 'withdraw'] as const) {
@@ -386,7 +393,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
       key: idempotencyKey(req),
       body: {},
       now,
-    }, (tx) => leaveClan(tx, { actor, now }));
+    }, (tx) => leaveClan(tx, { actor, now, adminUsernames: [...app.adminUsernames] }));
   });
 
   app.post('/api/clan/kick', { preHandler: requireAuth }, async (req) => {
@@ -399,7 +406,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
       key: idempotencyKey(req),
       body,
       now,
-    }, (tx) => kickClanMember(tx, { actor, playerId: body.playerId, now }));
+    }, (tx) => kickClanMember(tx, { actor, playerId: body.playerId, now, adminUsernames: [...app.adminUsernames] }));
   });
 
   app.post('/api/clan/leadership', { preHandler: requireAuth }, async (req) => {
@@ -451,9 +458,12 @@ export function registerClanRoutes(app: FastifyInstance): void {
       key: idempotencyKey(req),
       body,
       now,
-    }, (tx) => markClanWarTarget(tx, {
+    }, (tx) => 'targetMonumentId' in body ? markClanWarMonumentTarget(tx, {
+      actor, monumentId: body.targetMonumentId, clock: { now: () => now }, adminUsernames: [...app.adminUsernames],
+    }) : markClanWarTarget(tx, {
       actor,
       targetPlanetId: body.targetPlanetId,
+      adminUsernames: [...app.adminUsernames],
       clock: { now: () => now },
     }));
   });
@@ -465,6 +475,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
     const now = app.clock.now();
     return quoteClanWarContribution(app.db, {
       actor,
+      adminUsernames: [...app.adminUsernames],
       originPlanetId: body.originPlanetId,
       fleet: body.fleet,
       clock: { now: () => now },
@@ -483,9 +494,11 @@ export function registerClanRoutes(app: FastifyInstance): void {
       now,
     }, (tx) => sendClanWarContribution(tx, {
       actor,
+      adminUsernames: [...app.adminUsernames],
       originPlanetId: body.originPlanetId,
       fleet: body.fleet,
       acknowledgeShieldLoss: body.acknowledgeShieldLoss,
+      acknowledgeRadiationLoss: body.acknowledgeRadiationLoss,
       clock: { now: () => now },
     }));
   });
@@ -505,6 +518,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
       now,
     }, (tx) => recallClanWarContribution(tx, {
       actor,
+      adminUsernames: [...app.adminUsernames],
       contributionId,
       clock: { now: () => now },
     }));
@@ -522,7 +536,9 @@ export function registerClanRoutes(app: FastifyInstance): void {
       now,
     }, (tx) => startClanWar(tx, {
       actor,
+      adminUsernames: [...app.adminUsernames],
       acknowledgeShieldLoss: body.acknowledgeShieldLoss,
+      acknowledgeRadiationLoss: body.acknowledgeRadiationLoss,
       pace: body.pace,
       clock: { now: () => now },
     }));
@@ -538,7 +554,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
       key: idempotencyKey(req),
       body: {},
       now,
-    }, (tx) => cancelClanWarOperation(tx, { actor, clock: { now: () => now } }));
+    }, (tx) => cancelClanWarOperation(tx, { actor, clock: { now: () => now }, adminUsernames: [...app.adminUsernames] }));
   });
 
   app.post('/api/clan/treasury/donate', { preHandler: requireAuth }, async (req) => {
@@ -590,6 +606,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
       actor,
       now,
       acknowledgeTreasuryBurn: body.acknowledgeTreasuryBurn,
+      adminUsernames: [...app.adminUsernames],
     }));
   });
 

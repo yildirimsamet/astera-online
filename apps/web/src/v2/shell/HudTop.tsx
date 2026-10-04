@@ -6,17 +6,20 @@ import {
   useMining,
   useNotifications,
   usePending,
+  useMonuments,
   usePlanet,
   useRewards,
   useSeason,
   useTraffic,
 } from '../../api/queries.js';
+import { hpRadiationApplies } from '@astera/rules';
 import { useWorld } from '../../api/world.js';
 import { bellState } from '../../lib/bell.js';
 import { collectState, worksOutlook } from '../../lib/collect.js';
 import { compact } from '../../lib/format.js';
 import { haptic } from '../../lib/haptics.js';
 import { nowEntries } from '../../lib/nowLine.js';
+import { monumentPendingThreads } from '../../lib/monumentFlights.js';
 import type { FlightFocus } from '../../lib/flights.js';
 import { useProjected } from '../../lib/projection.js';
 import { useNow } from '../../lib/time.js';
@@ -69,7 +72,9 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
   const season = useSeason().data;
   const notifications = useNotifications().data?.notifications ?? [];
   const rewards = useRewards().data?.claimable ?? 0;
-  const threads = usePending().data?.pending ?? [];
+  const pending = usePending().data?.pending ?? [];
+  const monuments = useMonuments(hpRadiationApplies(planet.data?.rulesetVersion ?? 0)).data;
+  const threads = [...pending, ...monumentPendingThreads(monuments, now)];
   const runs = useMining().data?.runs ?? [];
   const events = useGalaxyEvents().data?.events ?? [];
   const contacts = useTraffic().data?.contacts ?? [];

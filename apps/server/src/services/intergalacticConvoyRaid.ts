@@ -5,6 +5,8 @@ import {
   MOBILE_HULLS,
   TRAVEL,
   combatValue,
+  hpRadiationApplies,
+  capLoadToSurvivors,
   convoyProductionCap,
   distance,
   fleetEntries,
@@ -45,6 +47,9 @@ import {
   setUnits,
 } from './planet.js';
 import { techOf } from './researchState.js';
+import { landShips } from './shipDamage.js';
+import { flightPrefix, flightSegment, settleSpecialFlightRadiation } from './specialFlightRadiation.js';
+import { assertRadiationSafe } from './radiation.js';
 
 const MOBILE = new Set<string>(MOBILE_HULLS);
 
@@ -57,6 +62,7 @@ export interface IntergalacticConvoyOrder {
   quotedAt: Date;
   quotedFlightSeconds: number;
   quotedArriveAt: Date;
+  acknowledgeRadiationLoss?: boolean;
 }
 
 export interface IntergalacticConvoyLaunch {
@@ -285,6 +291,13 @@ export async function launchIntergalacticConvoy(
   assertFuel(fuel, origin.deuterium);
   const returnMinutes = fleetTravelExact(returnDistance, requested, { boost, tech });
   const homeAt = addMinutes(engagementEndsAt, returnMinutes);
+  if (hpRadiationApplies(origin.rulesetVersion)) await assertRadiationSafe(tx, {
+    seasonId: origin.seasonId, from: origin, to: hit.intercept, departAt: origin.now, arriveAt, fleet: requested,
+    tech, acknowledged: input.order.acknowledgeRadiationLoss ?? false,
+    path: [flightSegment(origin, hit.intercept, origin.now, arriveAt),
+      flightSegment(hit.intercept, hit.engagementEnd, arriveAt, engagementEndsAt),
+      flightSegment(hit.engagementEnd, returnPoint, engagementEndsAt, homeAt)],
+  });
   assertSeasonOpenThrough(origin, homeAt);
 
   /*
@@ -417,11 +430,38 @@ export async function resolveIntergalacticConvoyArrival(
   runId: string,
   clock: Clock,
 ): Promise<void> {
-  const [candidate] = await tx.select().from(intergalacticConvoyRuns).where(and(
+  const [peek] = await tx.select().from(intergalacticConvoyRuns).where(and(
     eq(intergalacticConvoyRuns.id, runId),
     eq(intergalacticConvoyRuns.status, 'outbound'),
   )).limit(1);
+  if (!peek) return;
+  const origin = await loadLocked(tx, peek.planetId, clock);
+  const [candidate] = await tx.select().from(intergalacticConvoyRuns).where(and(
+    eq(intergalacticConvoyRuns.id, runId), eq(intergalacticConvoyRuns.status, 'outbound'),
+  )).for('update');
   if (!candidate) return;
+  const precise = hpRadiationApplies(origin.rulesetVersion);
+  let aboard = await fleetOfRun(tx, candidate.planetId, runId);
+  if (precise) {
+    const meet = { x: candidate.interceptX, y: candidate.interceptY, z: candidate.interceptZ };
+    const end = { x: candidate.engagementEndX, y: candidate.engagementEndY, z: candidate.engagementEndZ };
+    const dose = await settleSpecialFlightRadiation(tx, { id: candidate.id, leg: 'OUT', seasonId: candidate.seasonId,
+      rulesetVersion: origin.rulesetVersion, planetId: candidate.planetId, playerId: candidate.ownerPlayerId,
+      location: intergalacticConvoyLocation(runId), path: [flightSegment({ x: candidate.returnX, y: candidate.returnY, z: candidate.returnZ }, meet,
+        candidate.departAt, candidate.arriveAt), flightSegment(meet, end, candidate.arriveAt, candidate.engagementEndsAt)],
+      damage: candidate.damage, tech: candidate.tech, radiationSettledAt: candidate.radiationSettledAt });
+    aboard = dose.fleet;
+    await tx.update(intergalacticConvoyRuns).set({ damage: dose.damage.length ? [...dose.damage] : null,
+      radiationSettledAt: dose.radiationSettledAt }).where(eq(intergalacticConvoyRuns.id, runId));
+    if (fleetCount(aboard) === 0) {
+      await tx.update(intergalacticConvoyRuns).set({ status: 'done', resourceReward: { alloy: 0, crystal: 0, deuterium: 0 }, awardedFleet: {} })
+        .where(eq(intergalacticConvoyRuns.id, runId));
+      await recomputePlayerWealth(tx, candidate.ownerPlayerId);
+      await publishShard(tx, candidate.seasonId, 'arrival');
+      await publish(tx, candidate.ownerPlayerId, 'private:convoy');
+      return;
+    }
+  }
 
   const [season] = await tx.select({ asteroidKey: seasons.asteroidKey })
     .from(seasons)
@@ -433,13 +473,21 @@ export async function resolveIntergalacticConvoyArrival(
     candidate.occurrenceId,
   );
   if (!season || !occurrence) throw new Error(`convoy ${runId} lost its occurrence`);
-  const resourceReward = { ...candidate.quotedResourceReward };
-  const awardedFleet = rollIntergalacticConvoyAward({
-    fleet: candidate.fleet,
-    shipQualityFactor: candidate.shipQualityFactor,
+  const canStrike = !precise || combatValue(aboard) > 0;
+  const actualQuote = precise && canStrike ? quoteIntergalacticConvoyReward({ productionCap: candidate.productionCap,
+    fleet: aboard, launchTech: candidate.tech, effect: occurrence.effect }) : null;
+  const resourceReward = canStrike ? { ...(actualQuote?.resourceReward ?? candidate.quotedResourceReward) } : { alloy: 0, crystal: 0, deuterium: 0 };
+  const awardedFleet = canStrike ? rollIntergalacticConvoyAward({
+    fleet: precise ? aboard : candidate.fleet,
+    shipQualityFactor: actualQuote?.shipQualityFactor ?? candidate.shipQualityFactor,
     effect: occurrence.effect,
     rng: rewardRng(season.asteroidKey, candidate.id),
-  });
+  }) : {};
+  if (precise) {
+    const withPrizes = { ...aboard };
+    for (const [hull, count] of fleetEntries(awardedFleet)) withPrizes[hull] = (withPrizes[hull] ?? 0) + count;
+    await setUnits(tx, candidate.planetId, withPrizes, intergalacticConvoyLocation(runId), candidate.ownerPlayerId);
+  }
 
   const [run] = await tx.update(intergalacticConvoyRuns).set({
     status: 'returning',
@@ -488,36 +536,69 @@ export async function resolveIntergalacticConvoyReturn(
   runId: string,
   clock: Clock,
 ): Promise<IntergalacticConvoyDelivery | null> {
-  const [run] = await tx.update(intergalacticConvoyRuns).set({ status: 'done' }).where(and(
+  const [claimed] = await tx.update(intergalacticConvoyRuns).set({ status: 'done' }).where(and(
     eq(intergalacticConvoyRuns.id, runId),
     eq(intergalacticConvoyRuns.status, 'returning'),
   )).returning();
+  let run = claimed;
   if (!run) return null;
   if (run.resourceReward === null || run.awardedFleet === null) {
     throw new Error(`returning convoy ${runId} has unresolved rewards`);
   }
+  let resourceReward = run.resourceReward;
+  let awardedFleet = run.awardedFleet;
 
   const destinationPlanetId = await safeHomePlanet(tx, run.ownerPlayerId, run.planetId);
   const home = await loadLocked(tx, destinationPlanetId, clock);
-  await clearIntergalacticConvoyUnits(tx, run.planetId, run.id);
-
-  const delivered: Fleet = { ...run.fleet };
-  for (const [hull, count] of fleetEntries(run.awardedFleet)) {
-    const next = (delivered[hull] ?? 0) + count;
-    if (!Number.isSafeInteger(next)) throw new Error(`convoy ${runId} fleet overflow`);
-    delivered[hull] = next;
+  const precise = hpRadiationApplies(home.rulesetVersion);
+  let delivered: Fleet;
+  if (precise) {
+    const dose = await settleSpecialFlightRadiation(tx, { id: run.id, leg: 'HOME', seasonId: run.seasonId,
+      rulesetVersion: home.rulesetVersion, planetId: run.planetId, playerId: run.ownerPlayerId,
+      location: intergalacticConvoyLocation(runId), path: [flightSegment({ x: run.engagementEndX, y: run.engagementEndY, z: run.engagementEndZ },
+        { x: run.returnX, y: run.returnY, z: run.returnZ }, run.engagementEndsAt, run.homeAt)],
+      damage: run.damage, tech: run.tech, radiationSettledAt: run.radiationSettledAt });
+    delivered = dose.fleet;
+    resourceReward = capLoadToSurvivors({ loot: resourceReward, salvage: null }, delivered, run.tech).loot ?? { alloy: 0, crystal: 0, deuterium: 0 };
+    const survivingAwards: Fleet = {};
+    for (const [hull, count] of fleetEntries(awardedFleet)) {
+      const survived = Math.min(count, delivered[hull] ?? 0);
+      if (survived > 0) survivingAwards[hull] = survived;
+    }
+    awardedFleet = survivingAwards;
+    run = { ...run, damage: dose.damage.length ? [...dose.damage] : null, resourceReward,
+      awardedFleet, radiationSettledAt: dose.radiationSettledAt };
+    await tx.update(intergalacticConvoyRuns).set({ damage: run.damage, resourceReward: run.resourceReward, awardedFleet,
+      radiationSettledAt: run.radiationSettledAt }).where(eq(intergalacticConvoyRuns.id, runId));
+    if (fleetCount(delivered) === 0) {
+      await recomputePlayerWealth(tx, run.ownerPlayerId);
+      await publishShard(tx, run.seasonId, 'arrival');
+      await publish(tx, run.ownerPlayerId, 'private:convoy');
+      return null;
+    }
+  } else {
+    delivered = { ...run.fleet };
+    for (const [hull, count] of fleetEntries(awardedFleet)) {
+      const next = (delivered[hull] ?? 0) + count;
+      if (!Number.isSafeInteger(next)) throw new Error(`convoy ${runId} fleet overflow`);
+      delivered[hull] = next;
+    }
   }
+
+  await clearIntergalacticConvoyUnits(tx, run.planetId, run.id);
   const merged: Fleet = { ...home.homeFleet };
   for (const [hull, count] of fleetEntries(delivered)) {
     const next = (merged[hull] ?? 0) + count;
     if (!Number.isSafeInteger(next)) throw new Error(`convoy ${runId} delivery overflow`);
     merged[hull] = next;
   }
-  await setUnits(tx, destinationPlanetId, merged, 'home', run.ownerPlayerId);
+  if (precise) await landShips(tx, { planetId: destinationPlanetId, ownerPlayerId: run.ownerPlayerId,
+    fleet: delivered, damage: run.damage, at: home.now });
+  else await setUnits(tx, destinationPlanetId, merged, 'home', run.ownerPlayerId);
   await saveResources(tx, destinationPlanetId, {
-    alloy: home.alloy + run.resourceReward.alloy,
-    crystal: home.crystal + run.resourceReward.crystal,
-    deuterium: home.deuterium + run.resourceReward.deuterium,
+    alloy: home.alloy + resourceReward.alloy,
+    crystal: home.crystal + resourceReward.crystal,
+    deuterium: home.deuterium + resourceReward.deuterium,
   });
   await recomputePlayerWealth(tx, run.ownerPlayerId);
   if (destinationPlanetId !== run.planetId) await recomputeWealth(tx, run.planetId);
@@ -528,8 +609,8 @@ export async function resolveIntergalacticConvoyReturn(
     payload: {
       trip: 'intergalactic_convoy',
       runId: run.id,
-      resourceReward: run.resourceReward,
-      awardedFleet: run.awardedFleet,
+      resourceReward,
+      awardedFleet,
       destinationPlanetId,
     },
     at: home.now,
@@ -540,8 +621,8 @@ export async function resolveIntergalacticConvoyReturn(
   return {
     runId: run.id,
     destinationPlanetId,
-    resourceReward: run.resourceReward,
-    awardedFleet: run.awardedFleet,
+    resourceReward,
+    awardedFleet,
   };
 }
 
@@ -582,14 +663,29 @@ export async function abandonIntergalacticConvoyRun(
 
     const destinationPlanetId = await safeHomePlanet(tx, run.ownerPlayerId, run.planetId);
     const home = await loadLocked(tx, destinationPlanetId, clock);
+    let stranded = run.fleet;
+    const precise = hpRadiationApplies(home.rulesetVersion);
+    let damage = run.damage;
+    if (precise) {
+      const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
+      const dose = await settleSpecialFlightRadiation(tx, { id: run.id, leg: 'OUT', seasonId: run.seasonId,
+        rulesetVersion: home.rulesetVersion, planetId: run.planetId, playerId: run.ownerPlayerId, location: intergalacticConvoyLocation(run.id),
+        path: flightPrefix([flightSegment({ x: run.returnX, y: run.returnY, z: run.returnZ }, meet, run.departAt, run.arriveAt),
+          flightSegment(meet, { x: run.engagementEndX, y: run.engagementEndY, z: run.engagementEndZ }, run.arriveAt, run.engagementEndsAt)], home.now),
+        damage: run.damage, tech: run.tech, radiationSettledAt: run.radiationSettledAt });
+      stranded = dose.fleet;
+      damage = dose.damage.length ? [...dose.damage] : null;
+      await tx.update(intergalacticConvoyRuns).set({ damage, radiationSettledAt: dose.radiationSettledAt }).where(eq(intergalacticConvoyRuns.id, run.id));
+    }
     await clearIntergalacticConvoyUnits(tx, run.planetId, run.id);
     const merged: Fleet = { ...home.homeFleet };
-    for (const [hull, count] of fleetEntries(run.fleet)) {
+    for (const [hull, count] of fleetEntries(stranded)) {
       const next = (merged[hull] ?? 0) + count;
       if (!Number.isSafeInteger(next)) throw new Error(`convoy ${runId} recall overflow`);
       merged[hull] = next;
     }
-    await setUnits(tx, destinationPlanetId, merged, 'home', run.ownerPlayerId);
+    if (precise) await landShips(tx, { planetId: destinationPlanetId, ownerPlayerId: run.ownerPlayerId, fleet: stranded, damage, at: home.now });
+    else await setUnits(tx, destinationPlanetId, merged, 'home', run.ownerPlayerId);
     await recomputePlayerWealth(tx, run.ownerPlayerId);
     if (destinationPlanetId !== run.planetId) await recomputeWealth(tx, run.planetId);
     await notify(tx, {
@@ -599,7 +695,7 @@ export async function abandonIntergalacticConvoyRun(
         trip: 'recalled',
         sourceTrip: 'intergalactic_convoy',
         runId: run.id,
-        craft: fleetCount(run.fleet),
+        craft: fleetCount(stranded),
         craftKind: 'fleet',
       },
       at: home.now,

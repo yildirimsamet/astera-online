@@ -87,6 +87,10 @@ export const DISC_RADIUS = GALAXY.radius / SCALE;
 */
 export const CRAFT_SCALE = 1.6;
 
+/** Shared strategic hull sizing; monument sizing is anchored to the public trade ship. */
+export const STRATEGIC_HULL_SCALE_MULT = 3.4;
+export const STRATEGIC_CONTACT_SCALE = 0.34 * CRAFT_SCALE;
+
 /**
  * THE CONVERSION AND THE HEIGHT EXAGGERATION NOW LIVE IN `@astera/rules`. D106.
  *

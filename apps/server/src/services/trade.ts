@@ -11,17 +11,21 @@ import {
   interceptOrbit,
   missionFuel,
   quoteTrade,
+  claimDebris,
+  hpRadiationApplies,
+  tradeUnits,
   tradeShipActive,
   transferCargoCapacity,
   type Fleet,
   type Resources,
   type TradeRate,
+  type TechLevels,
   type Vec3,
 } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { addMinutes, atMinute } from '../clock.js';
-import { tradeRuns, units } from '../db/schema.js';
+import { planets, tradeRuns, units } from '../db/schema.js';
 import { publish, publishShard } from '../stream/bus.js';
 import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
@@ -34,6 +38,9 @@ import { planetView, type PlanetView } from './planetView.js';
 import { schedule } from '../worker/queue.js';
 import { pendingThreads, type PendingThread } from './session.js';
 import { techOf } from './researchState.js';
+import { landShips } from './shipDamage.js';
+import { flightPrefix, flightSegment, settleSpecialFlightRadiation } from './specialFlightRadiation.js';
+import { assertRadiationSafe } from './radiation.js';
 import {
   GameError,
   assertSeasonOpenThrough,
@@ -89,6 +96,10 @@ export type TradeRunRow = typeof tradeRuns.$inferSelect;
  */
 export const tradeLocation = (runId: string): string => `trade:${runId}`;
 
+/** Only transport holds carry a merchant's offer or payment. */
+const survivingTradeCargo = (cargo: Resources, fleet: Fleet, tech: TechLevels): Resources =>
+  claimDebris(cargo.alloy, cargo.crystal, cargo.deuterium, transferCargoCapacity(fleet, tech));
+
 /**
  * When the convoy stops being alongside and turns for home.
  *
@@ -106,6 +117,7 @@ export interface TradeOrder {
   fleet: Fleet;
   give: Resources;
   want: Resources;
+  acknowledgeRadiationLoss?: boolean;
 }
 
 export interface TradeLaunch {
@@ -293,6 +305,12 @@ export async function launchTrade(
 
     const arriveAt = atMinute(origin.seasonStart, hit.meetsAtMinutes);
     const homeMinutes = fleetTravelExact(reach, requested, { boost: fleetSpeedMult(origin.orbit), tech });
+    if (hpRadiationApplies(origin.rulesetVersion)) await assertRadiationSafe(tx, {
+      seasonId: origin.seasonId, from: origin, to: hit.at, departAt: origin.now, arriveAt, fleet: requested,
+      tech, acknowledged: order.acknowledgeRadiationLoss ?? false, path: [flightSegment(origin, hit.at, origin.now, arriveAt),
+        flightSegment(hit.at, hit.at, arriveAt, dockEndsAt(arriveAt)),
+        flightSegment(hit.at, origin, dockEndsAt(arriveAt), addMinutes(dockEndsAt(arriveAt), homeMinutes))],
+    });
     assertSeasonOpenThrough(origin, addMinutes(dockEndsAt(arriveAt), homeMinutes));
 
     const [run] = await tx
@@ -304,6 +322,7 @@ export async function launchTrade(
         // The convoy follows its COMMANDER home, not the pad. D150; see the column.
         ownerPlayerId: origin.playerId,
         fleet: requested,
+        tech: hpRadiationApplies(origin.rulesetVersion) ? tech : null,
         give: order.give,
         want: order.want,
         // Frozen at launch: what was quoted on the screen is what the return pays.
@@ -401,10 +420,26 @@ export async function resolveTradeArrival(
     .set({ status: 'returning' })
     .where(and(eq(tradeRuns.id, runId), eq(tradeRuns.status, 'outbound')))
     .returning();
-  const run = claimed[0];
+  let run = claimed[0];
   if (!run) return;
 
-  const aboard = await fleetOfRun(tx, run.planetId, runId);
+  const origin = await loadLocked(tx, run.planetId, clock);
+  const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
+  let aboard = await fleetOfRun(tx, run.planetId, runId);
+  if (hpRadiationApplies(origin.rulesetVersion)) {
+    const dose = await settleSpecialFlightRadiation(tx, { id: run.id, leg: 'OUT', seasonId: run.seasonId,
+      rulesetVersion: origin.rulesetVersion, planetId: run.planetId, playerId: run.ownerPlayerId,
+      location: tradeLocation(run.id), path: [flightSegment(origin, meet, run.departAt, run.arriveAt),
+        flightSegment(meet, meet, run.arriveAt, dockEndsAt(run.arriveAt))],
+      damage: run.damage, tech: run.tech ?? {}, radiationSettledAt: run.radiationSettledAt });
+    aboard = dose.fleet;
+    const give = survivingTradeCargo(run.give, aboard, run.tech ?? {});
+    const fraction = tradeUnits(give, run.rate) / tradeUnits(run.give, run.rate);
+    const want = survivingTradeCargo({ alloy: Math.floor(run.want.alloy * fraction),
+      crystal: Math.floor(run.want.crystal * fraction), deuterium: Math.floor(run.want.deuterium * fraction) }, aboard, run.tech ?? {});
+    run = { ...run, give, want, damage: dose.damage.length ? [...dose.damage] : null, radiationSettledAt: dose.radiationSettledAt };
+    await tx.update(tradeRuns).set({ give, want, damage: run.damage, radiationSettledAt: run.radiationSettledAt }).where(eq(tradeRuns.id, runId));
+  }
   if (fleetCount(aboard) === 0) {
     // Nothing to fly home. It cannot happen on this lane — there is no combat —
     // but a run with no craft must never be left drawing a flight or holding a bay.
@@ -417,15 +452,12 @@ export async function resolveTradeArrival(
   /*
     THE RETURN LEG IS PRICED AT THE COMMANDER'S CURRENT PACE, NOT THE LAUNCH'S.
 
-    `trade_runs` carries no `tech` column and deliberately should not: D137 freezes
-    doctrine at launch because doctrine decides a FIGHT, and there is no fight
-    here. Propulsion is not combat research, takes no share of the 25% product
+    The launch snapshot prices radiation health and hold capacity. Propulsion is
+    read live for the homeward leg, as it was before HP radiation. It takes no share of the 25% product
     ceiling and is not probe-visible (D152), so reading it live costs nothing and
     is what the mining lane already does with its own homeward leg.
   */
   const tech = await techOf(tx, run.ownerPlayerId);
-  const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
-  const origin = await loadLocked(tx, run.planetId, clock);
   const back = fleetTravelExact(
     distance(meet, origin),
     aboard,
@@ -481,20 +513,39 @@ export async function resolveTradeReturn(
     .set({ status: 'done' })
     .where(and(eq(tradeRuns.id, runId), eq(tradeRuns.status, 'returning')))
     .returning();
-  const run = claimed[0];
+  let run = claimed[0];
   if (!run) return null;
 
   const storagePlanetId = run.planetId;
   const destinationPlanetId = await safeHomePlanet(tx, run.ownerPlayerId, storagePlanetId);
   const home = await loadLocked(tx, destinationPlanetId, clock);
-  const returning = await fleetOfRun(tx, storagePlanetId, runId);
+  let returning = await fleetOfRun(tx, storagePlanetId, runId);
+  const precise = hpRadiationApplies(home.rulesetVersion);
+  if (precise && run.homeAt) {
+    const dose = await settleSpecialFlightRadiation(tx, { id: run.id, leg: 'HOME', seasonId: run.seasonId,
+      rulesetVersion: home.rulesetVersion, planetId: storagePlanetId, playerId: run.ownerPlayerId,
+      location: tradeLocation(run.id), path: [flightSegment({ x: run.interceptX, y: run.interceptY, z: run.interceptZ },
+        home, dockEndsAt(run.arriveAt), run.homeAt)], damage: run.damage, tech: run.tech ?? {}, radiationSettledAt: run.radiationSettledAt });
+    returning = dose.fleet;
+    run = { ...run, damage: dose.damage.length ? [...dose.damage] : null,
+      want: survivingTradeCargo(run.want, returning, run.tech ?? {}), radiationSettledAt: dose.radiationSettledAt };
+    await tx.update(tradeRuns).set({ want: run.want, damage: run.damage, radiationSettledAt: run.radiationSettledAt }).where(eq(tradeRuns.id, runId));
+    if (fleetCount(returning) === 0) {
+      await recomputePlayerWealth(tx, run.ownerPlayerId);
+      await publishShard(tx, run.seasonId, 'arrival');
+      await publish(tx, run.ownerPlayerId, 'private:trade');
+      return null;
+    }
+  }
 
   const merged: Fleet = { ...home.homeFleet };
   for (const [hull, count] of fleetEntries(returning)) {
     merged[hull] = (merged[hull] ?? 0) + count;
   }
   await clearRunUnits(tx, storagePlanetId, runId);
-  await setUnits(tx, destinationPlanetId, merged, 'home', run.ownerPlayerId);
+  if (precise) await landShips(tx, { planetId: destinationPlanetId, ownerPlayerId: run.ownerPlayerId,
+    fleet: returning, damage: run.damage, at: home.now });
+  else await setUnits(tx, destinationPlanetId, merged, 'home', run.ownerPlayerId);
 
   const haul = run.want;
   await saveResources(tx, destinationPlanetId, {
@@ -559,7 +610,7 @@ export async function abandonTradeRun(
       .set({ status: 'done' })
       .where(and(eq(tradeRuns.id, runId), eq(tradeRuns.status, leg)))
       .returning();
-    const run = claimed[0];
+    let run = claimed[0];
     if (!run) return null;
 
     const destinationPlanetId = await safeHomePlanet(tx, run.ownerPlayerId, run.planetId);
@@ -579,17 +630,35 @@ export async function abandonTradeRun(
      * lock → advance → validate → mutate — with no exception for housekeeping.
      */
     const home = await loadLocked(tx, destinationPlanetId, clock);
-    const stranded = await fleetOfRun(tx, run.planetId, runId);
+    let stranded = await fleetOfRun(tx, run.planetId, runId);
+    const precise = hpRadiationApplies(home.rulesetVersion);
+    if (precise) {
+      const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
+      const [departure] = await tx.select({ x: planets.x, y: planets.y, z: planets.z }).from(planets).where(eq(planets.id, run.planetId));
+      if (!departure) throw new Error('trade origin disappeared');
+      const path = leg === 'outbound'
+        ? [flightSegment(departure, meet, run.departAt, run.arriveAt), flightSegment(meet, meet, run.arriveAt, dockEndsAt(run.arriveAt))]
+        : run.homeAt ? [flightSegment(meet, home, dockEndsAt(run.arriveAt), run.homeAt)] : [];
+      const dose = await settleSpecialFlightRadiation(tx, { id: run.id, leg: leg === 'outbound' ? 'OUT' : 'HOME', seasonId: run.seasonId,
+        rulesetVersion: home.rulesetVersion, planetId: run.planetId, playerId: run.ownerPlayerId, location: tradeLocation(run.id),
+        path: flightPrefix(path, home.now), damage: run.damage, tech: run.tech ?? {}, radiationSettledAt: run.radiationSettledAt });
+      stranded = dose.fleet;
+      run = { ...run, damage: dose.damage.length ? [...dose.damage] : null, radiationSettledAt: dose.radiationSettledAt };
+      await tx.update(tradeRuns).set({ damage: run.damage, radiationSettledAt: run.radiationSettledAt }).where(eq(tradeRuns.id, run.id));
+    }
     const merged: Fleet = { ...home.homeFleet };
     for (const [hull, count] of fleetEntries(stranded)) {
       merged[hull] = (merged[hull] ?? 0) + count;
     }
     await clearRunUnits(tx, run.planetId, runId);
-    if (fleetEntries(merged).length > 0) {
+    if (precise) await landShips(tx, { planetId: destinationPlanetId, ownerPlayerId: run.ownerPlayerId,
+      fleet: stranded, damage: run.damage, at: home.now });
+    else if (fleetEntries(merged).length > 0) {
       await setUnits(tx, destinationPlanetId, merged, 'home', run.ownerPlayerId);
     }
 
-    const cargo = leg === 'outbound' ? run.give : run.want;
+    const originalCargo = leg === 'outbound' ? run.give : run.want;
+    const cargo = precise ? survivingTradeCargo(originalCargo, stranded, run.tech ?? {}) : originalCargo;
     await saveResources(tx, destinationPlanetId, {
       alloy: home.alloy + cargo.alloy,
       crystal: home.crystal + cargo.crystal,

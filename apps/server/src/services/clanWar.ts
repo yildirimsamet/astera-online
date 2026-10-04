@@ -22,14 +22,26 @@ import {
   maxRadarRange,
   travelExact,
   hangarLoad,
+  applyHpDose,
+  hullTech,
+  hpRadiationApplies,
+  segmentsExposureHp,
+  fleetEntries,
   isMissionPace,
   jointWarFuelLegs,
   pacesForMinutes,
+  MOBILE_HULLS,
+  normalizeHpDamage,
+  needsHpDock,
   type FaultKind,
   type Fleet,
   type HullId,
   type JointWarFuelLeg,
   type TechLevels,
+  type MissionPace,
+  type HpDamageLots,
+  type HpRadiationSource,
+  type Segment,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import { commitGameError } from './idempotency.js';
@@ -49,6 +61,9 @@ import {
   satellites,
   seasons,
   units,
+  monuments,
+  monumentWaves,
+  monumentShipLots,
   type ClanWarCloseReason,
   type ClanWarContributionSource,
   type ClanWarContributionStatus,
@@ -68,6 +83,7 @@ import {
 } from './planet.js';
 import { dockNotice, landShips, type DockReport } from './shipDamage.js';
 import { settleWaveRadiation, tellRadiationLoss } from './radiation.js';
+import { flightSegment } from './specialFlightRadiation.js';
 import { safeHomePlanet } from './ownership.js';
 import { notify } from './notifications.js';
 import { assertDeparturesAllowed, baysOf } from './flight.js';
@@ -90,6 +106,7 @@ import {
   assertTargetReachable,
   assertTierBand,
   assertWorldAttackable,
+  assertOwnShieldLoss,
   protectionFrom,
 } from './attackProtection.js';
 import {
@@ -115,6 +132,10 @@ import type { ClanActor } from './clan.js';
   module scope, and neither does.
 */
 import { resolveClanWarBattle } from './clanWarSettlement.js';
+import { lockMonuments, hpSourcesForSeason, type LockedMonument } from './monument.js';
+import { advanceLockedMonument, monumentEndpoints, monumentHomes } from './monumentArrival.js';
+import { lockWorlds } from './ownership.js';
+import { scheduleFlightBoundary } from './monumentBoundaries.js';
 
 /**
  * KLAN ORTAK SAVAŞI — the operation. Owner design, 2026-09-20.
@@ -153,11 +174,52 @@ const LIVE_CONTRIBUTION_STATUSES: readonly ClanWarContributionStatus[] = [
 export type ClanWarOperationRow = typeof clanWarOperations.$inferSelect;
 
 export interface ClanWarTargetView {
-  playerId: string;
+  kind: 'PLANET' | 'MONUMENT';
+  monumentId: string | null;
+  monumentOrdinal: number | null;
+  playerId: string | null;
   username: string;
-  planetId: string;
+  planetId: string | null;
   planetName: string;
   position: { x: number; y: number; z: number };
+}
+
+/** The database CHECK is mirrored at this boundary before planet-only code runs. */
+export function clanWarPlanetTarget(operation: ClanWarOperationRow): { planetId: string; playerId: string } {
+  if (operation.targetKind !== 'PLANET' || operation.targetPlanetId === null || operation.targetPlayerId === null) {
+    throw new GameError('CLAN_WAR_TARGET_INVALID', 'This operation has no planet target', 409);
+  }
+  return { planetId: operation.targetPlanetId, playerId: operation.targetPlayerId };
+}
+
+const targetPlayers = (operation: { targetPlayerId: string | null } | null | undefined): string[] =>
+  operation?.targetPlayerId ? [operation.targetPlayerId] : [];
+
+/** Discover every writable world first, then all monument/clan/player locks in order. */
+async function prepareWarMonuments(tx: Tx, operation: ClanWarOperationRow | null, at: Date,
+  input: { extraPlayerIds?: readonly string[]; extraMonumentId?: string; extraWorldIds?: readonly string[];
+    adminUsernames?: readonly string[] } = {}): Promise<Map<string, LockedMonument>> {
+  const ids = [...new Set([operation?.targetMonumentId, input.extraMonumentId].filter((id): id is string => typeof id === 'string'))];
+  const pool = operation ? await tx.select().from(clanWarContributions).where(eq(clanWarContributions.operationId, operation.id)) : [];
+  const playersToLock = [...new Set([...(input.extraPlayerIds ?? []), ...targetPlayers(operation), ...pool.map((wave) => wave.playerId)])];
+  const ownWorlds = ids.length === 0 || playersToLock.length === 0 ? [] : await tx.select({ id: planets.id }).from(planets)
+    .where(inArray(planets.controllerPlayerId, playersToLock));
+  const endpoints = ids.length === 0 ? { planetIds: [], homeIds: new Map<string, string>() } : await monumentEndpoints(tx, ids);
+  const worldIds = [...(input.extraWorldIds ?? []), ...endpoints.planetIds, ...ownWorlds.map((world) => world.id), ...pool.map((wave) => wave.originPlanetId),
+    ...[operation?.stagingPlanetId, operation?.targetPlanetId].filter((id): id is string => typeof id === 'string')];
+  if (ids.length === 0) {
+    await lockWarWorlds(tx, worldIds);
+    return new Map();
+  }
+  const worlds = await lockWorlds(tx, worldIds);
+  const memberships = await Promise.all(playersToLock.map((id) => activeClanMembership(tx, id)));
+  const locked = await lockMonuments(tx, ids, { extraPlayerIds: playersToLock,
+    extraClanIds: [...new Set(memberships.flatMap((membership) => membership ? [membership.clanId] : []))] });
+  for (const target of locked) {
+    const homes = await monumentHomes(tx, target, endpoints.homeIds, worlds);
+    await advanceLockedMonument(tx, target, homes, at, input.adminUsernames ?? []);
+  }
+  return new Map(locked.map((target) => [target.monument.id, target]));
 }
 
 /**
@@ -187,6 +249,8 @@ export interface ClanWarContributionView {
 }
 
 export interface ClanWarOperationView {
+  radiationByPace: { pace: MissionPace; own: WarRadiationForecast[];
+    missingConsents: { playerId: string; username: string; count: number }[] }[];
   id: string;
   status: ClanWarOperationRow['status'];
   closeReason: ClanWarCloseReason | null;
@@ -302,8 +366,8 @@ export async function projectOperation(
   viewerPlayerId?: string,
   now: Date = new Date(),
 ): Promise<ClanWarOperationView> {
-  const [target, staging, waves] = await Promise.all([
-    db
+  const [target, staging, monumentTarget, waves] = await Promise.all([
+    operation.targetPlayerId === null ? Promise.resolve([]) : db
       .select({ username: accounts.displayName })
       .from(players)
       .innerJoin(accounts, eq(accounts.id, players.accountId))
@@ -313,6 +377,11 @@ export async function projectOperation(
       .select({ name: planets.name, x: planets.x, y: planets.y, z: planets.z })
       .from(planets)
       .where(eq(planets.id, operation.stagingPlanetId))
+      .limit(1),
+    operation.targetMonumentId === null ? Promise.resolve([]) : db
+      .select({ ordinal: monuments.ordinal })
+      .from(monuments)
+      .where(eq(monuments.id, operation.targetMonumentId))
       .limit(1),
     /*
       ONE QUERY FOR THE WHOLE POOL, joined rather than looked up per wave. Five
@@ -330,6 +399,8 @@ export async function projectOperation(
         status: clanWarContributions.status,
         fleet: clanWarContributions.fleet,
         tech: clanWarContributions.tech,
+        damage: clanWarContributions.damage,
+        radiationLossAcknowledged: clanWarContributions.radiationLossAcknowledged,
         reservedBulk: clanWarContributions.reservedBulk,
         fuelPaid: clanWarContributions.fuelPaid,
         sentAt: clanWarContributions.sentAt,
@@ -376,15 +447,63 @@ export async function projectOperation(
   */
   const staged = waves.filter((wave) => wave.status === 'STAGED');
   let strikeMinutes: number | null = null;
+  let strikeTarget: { x: number; y: number; z: number } | undefined;
   if (operation.status === 'ASSEMBLING' && staged.length > 0 && staging[0]) {
-    const [targetAt] = await db
-      .select({ x: planets.x, y: planets.y, z: planets.z })
-      .from(planets)
-      .where(eq(planets.id, operation.targetPlanetId))
-      .limit(1);
+    const targetAt = operation.targetKind === 'MONUMENT'
+      ? { x: operation.targetX, y: operation.targetY, z: operation.targetZ }
+      : (await db.select({ x: planets.x, y: planets.y, z: planets.z }).from(planets)
+        .where(eq(planets.id, clanWarPlanetTarget(operation).planetId)).limit(1))[0];
     const speed = await strikeSpeed(db, operation.stagingPlanetId, staged);
     const minutes = targetAt ? travelExact(distance(staging[0], targetAt), speed) : Infinity;
     strikeMinutes = Number.isFinite(minutes) ? minutes : null;
+    strikeTarget = targetAt;
+  }
+  const radiationByPace: ClanWarOperationView['radiationByPace'] = [];
+  if (strikeMinutes !== null && strikeTarget && staging[0]) {
+    const [season] = await db.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons)
+      .where(eq(seasons.id, operation.seasonId));
+    if (season && hpRadiationApplies(season.rulesetVersion)) {
+      const ids = [...new Set(staged.map((wave) => wave.originPlanetId))];
+      const [sources, homes, orbitRows, cores] = await Promise.all([
+        hpSourcesForSeason(db, operation.seasonId),
+        db.select({ id: planets.id, x: planets.x, y: planets.y, z: planets.z }).from(planets)
+          .where(inArray(planets.id, ids)),
+        db.select({ planetId: satellites.planetId, slot: satellites.slot, type: satellites.type })
+          .from(satellites).where(inArray(satellites.planetId, ids)),
+        db.select({ planetId: buildings.planetId, level: buildings.level }).from(buildings)
+          .where(and(inArray(buildings.planetId, ids), eq(buildings.type, 'CORE'))),
+      ]);
+      for (const pace of pacesForMinutes(strikeMinutes)) {
+        const own: WarRadiationForecast[] = [];
+        const missing = new Map<string, { playerId: string; username: string; count: number }>();
+        const arriveAt = addMinutes(now, strikeMinutes / pace);
+        for (const wave of staged) {
+          const path = [flightSegment(staging[0], strikeTarget, now, arriveAt)];
+          const home = homes.find((row) => row.id === wave.originPlanetId);
+          if (operation.targetKind === 'PLANET' && home) {
+            const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
+            const back = fleetTravelExact(distance(strikeTarget, home), wave.fleet, {
+              tech: wave.tech, boost: fleetSpeedMult(orbitFromRows(
+                orbitRows.filter((row) => row.planetId === home.id),
+                cores.find((row) => row.planetId === home.id)?.level ?? 0)),
+            });
+            path.push(flightSegment(strikeTarget, strikeTarget, arriveAt, resolveAt),
+              flightSegment(strikeTarget, home, resolveAt, addMinutes(resolveAt, back)));
+          }
+          const forecast = warRadiationForecast(wave.fleet, wave.damage, wave.tech, path, sources);
+          if (!forecast) continue;
+          if (wave.playerId === viewerPlayerId) own.push(forecast);
+          if (viewerPlayerId === operation.leaderPlayerId && wave.playerId !== viewerPlayerId
+            && !wave.radiationLossAcknowledged && forecast.destroyed > 0) {
+            const previous = missing.get(wave.playerId);
+            missing.set(wave.playerId, { playerId: wave.playerId, username: wave.username,
+              count: (previous?.count ?? 0) + forecast.destroyed });
+          }
+        }
+        radiationByPace.push({ pace, own, missingConsents: [...missing.values()]
+          .sort((a, b) => a.playerId.localeCompare(b.playerId)) });
+      }
+    }
   }
   const pool = {
     combatHulls: pooled.reduce(
@@ -413,13 +532,17 @@ export async function projectOperation(
     }
   }
   return {
+    radiationByPace,
     id: operation.id,
     status: operation.status,
     closeReason: operation.closeReason,
     leaderPlayerId: operation.leaderPlayerId,
     target: {
+      kind: operation.targetKind,
+      monumentId: operation.targetMonumentId,
+      monumentOrdinal: monumentTarget[0]?.ordinal ?? null,
       playerId: operation.targetPlayerId,
-      username: target[0]?.username ?? 'Former commander',
+      username: operation.targetKind === 'MONUMENT' ? '' : target[0]?.username ?? 'Former commander',
       planetId: operation.targetPlanetId,
       planetName: operation.targetPlanetName,
       position: { x: operation.targetX, y: operation.targetY, z: operation.targetZ },
@@ -464,6 +587,7 @@ export async function readClanWar(
   db: Db,
   actor: ClanActor,
   now: Date,
+  adminUsernames: readonly string[] = [],
 ): Promise<ClanWarEconomyView & {
   serverNow: string;
   operation: ClanWarOperationView | null;
@@ -471,11 +595,11 @@ export async function readClanWar(
   const clan = await requireMemberClan(db, actor);
   const available = await jointWarAvailable(db, actor.seasonId);
   let operation = available ? await openOperation(db, clan.id) : null;
-  if (operation !== null && operation.status === 'ASSEMBLING') {
+  if (operation !== null && (operation.status === 'ASSEMBLING' || operation.targetKind === 'MONUMENT')) {
     await db.transaction(async (tx) => {
       await lockSeason(tx, actor.seasonId);
-      await lockWarWorlds(tx, [operation!.stagingPlanetId, operation!.targetPlanetId]);
-      await lockClanPlayers(tx, [operation!.targetPlayerId]);
+      await prepareWarMonuments(tx, operation, now, { extraPlayerIds: [actor.playerId], adminUsernames });
+      await lockClanPlayers(tx, targetPlayers(operation));
       const [locked] = await tx
         .select()
         .from(clanWarOperations)
@@ -524,7 +648,7 @@ export async function closeOperation(
     .set({
       status: 'RETURNING',
       closeReason: reason,
-      resolvedAt: reason === 'BATTLE' ? now : operation.resolvedAt,
+      resolvedAt: reason === 'BATTLE' || reason === 'MONUMENT' ? now : operation.resolvedAt,
     })
     .where(eq(clanWarOperations.id, operation.id))
     .returning();
@@ -606,13 +730,21 @@ async function finalizeIfTargetChanged(
   now: Date,
 ): Promise<ClanWarOperationRow> {
   if (operation.status !== 'ASSEMBLING') return operation;
+  if (operation.targetKind === 'MONUMENT') {
+    if (operation.targetMonumentId === null) throw new GameError('CLAN_WAR_TARGET_INVALID', 'Missing monument target', 409);
+    const [target] = await tx.select().from(monuments).where(eq(monuments.id, operation.targetMonumentId));
+    const membership = target?.controllerPlayerId ? await activeClanMembership(tx, target.controllerPlayerId) : null;
+    if (target && target.controllerClanId !== operation.clanId && membership?.clanId !== operation.clanId) return operation;
+    return closeOperation(tx, { operation, reason: 'TARGET_CHANGED', now });
+  }
+  const identity = clanWarPlanetTarget(operation);
   const [target] = await tx
     .select({ controllerPlayerId: planets.controllerPlayerId })
     .from(planets)
-    .where(eq(planets.id, operation.targetPlanetId))
+    .where(eq(planets.id, identity.planetId))
     .limit(1);
-  const targetMembership = await activeClanMembership(tx, operation.targetPlayerId);
-  if (target?.controllerPlayerId === operation.targetPlayerId
+  const targetMembership = await activeClanMembership(tx, identity.playerId);
+  if (target?.controllerPlayerId === identity.playerId
     && targetMembership?.clanId !== operation.clanId) {
     return operation;
   }
@@ -634,7 +766,7 @@ async function assertClanWarSeason(
     .from(players)
     .where(inArray(players.id, [
       input.operation.leaderPlayerId,
-      input.operation.targetPlayerId,
+      ...targetPlayers(input.operation),
     ]));
   const playerSeasons = new Map(playerRows.map((row) => [row.id, row.seasonId]));
   const expected = input.operation.seasonId;
@@ -642,7 +774,7 @@ async function assertClanWarSeason(
     || input.clanSeasonId !== expected
     || input.worldSeasonIds.some((seasonId) => seasonId !== expected)
     || playerSeasons.get(input.operation.leaderPlayerId) !== expected
-    || playerSeasons.get(input.operation.targetPlayerId) !== expected) {
+    || (input.operation.targetPlayerId !== null && playerSeasons.get(input.operation.targetPlayerId) !== expected)) {
     throw new GameError(
       'CROSS_SEASON',
       'Every joint-war participant and world must remain in one galaxy',
@@ -717,7 +849,7 @@ async function assertTargetDiscovered(
 
 export async function markClanWarTarget(
   tx: Tx,
-  input: { actor: ClanActor; targetPlanetId: string; clock: Clock },
+  input: { actor: ClanActor; targetPlanetId: string; clock: Clock; adminUsernames?: readonly string[] },
 ): Promise<{ operation: ClanWarOperationView }> {
   const now = input.clock.now();
   const season = await lockSeason(tx, input.actor.seasonId);
@@ -728,7 +860,8 @@ export async function markClanWarTarget(
   */
   const standing = await activeClanMembership(tx, input.actor.playerId);
   const previous = standing ? await openOperation(tx, standing.clanId) : null;
-  await lockWarWorlds(tx, [input.targetPlanetId, previous?.stagingPlanetId]);
+  await prepareWarMonuments(tx, previous, now, { extraPlayerIds: [input.actor.playerId],
+    extraWorldIds: [input.targetPlanetId], adminUsernames: input.adminUsernames });
 
   /*
     THE TARGET WORLD IS HELD, NOT JUST READ.
@@ -879,6 +1012,46 @@ export async function markClanWarTarget(
   return { operation: await projectOperation(tx, operation) };
 }
 
+/** The same preparation pool, with a genuine monument FK and public coordinates. */
+export async function markClanWarMonumentTarget(tx: Tx,
+  input: { actor: ClanActor; monumentId: string; clock: Clock; adminUsernames?: readonly string[] }): Promise<{ operation: ClanWarOperationView }> {
+  const now = input.clock.now();
+  const season = await lockSeason(tx, input.actor.seasonId);
+  if (season.rulesetVersion < MULTI_WORLD.monumentRulesetVersion) {
+    throw new GameError('MONUMENT_UNAVAILABLE', 'Monuments are not available in this galaxy', 409);
+  }
+  const [identity] = await tx.select().from(monuments).where(eq(monuments.id, input.monumentId));
+  if (!identity) throw new GameError('MONUMENT_NOT_FOUND', 'No such monument', 404);
+  if (identity.seasonId !== input.actor.seasonId) throw new GameError('CROSS_SEASON', 'That monument is in another galaxy', 409);
+  const membership = await activeClanMembership(tx, input.actor.playerId);
+  const previous = membership ? await openOperation(tx, membership.clanId) : null;
+  const targets = await prepareWarMonuments(tx, previous, now, { extraPlayerIds: [input.actor.playerId],
+    extraMonumentId: identity.id, adminUsernames: input.adminUsernames });
+  const target = targets.get(identity.id);
+  if (!target) throw new GameError('MONUMENT_NOT_FOUND', 'No such monument', 404);
+  const clan = await lockLedClan(tx, input.actor);
+  const existing = await lockOperation(tx, clan.id);
+  if (existing && (await finalizeIfExpired(tx, existing, now)).status !== 'COMPLETED') {
+    throw new GameError('CLAN_WAR_ALREADY_OPEN', 'Your clan already has an operation', 409);
+  }
+  if (target.monument.controllerClanId === clan.id || target.memberships.get(target.monument.controllerPlayerId ?? '') === clan.id) {
+    throw new GameError('MONUMENT_FRIENDLY_FIRE', 'Your side already controls that monument', 403);
+  }
+  const expiresAt = addMinutes(now, CLAN.warTargetMinutes);
+  if (expiresAt > season.endsAt) throw new GameError('CLAN_WAR_SEASON_TOO_SHORT', 'This galaxy ends before a joint war could finish', 409);
+  const [staging] = await tx.select().from(planets).where(and(eq(planets.controllerPlayerId, input.actor.playerId), eq(planets.kind, 'CAPITAL')));
+  if (!staging) throw new GameError('NO_CAPITAL', 'You have no capital to stage at', 409);
+  const [operation] = await tx.insert(clanWarOperations).values({ seasonId: season.id, clanId: clan.id,
+    clanName: clan.name, clanTag: clan.tag, leaderPlayerId: input.actor.playerId, stagingPlanetId: staging.id,
+    targetKind: 'MONUMENT', targetMonumentId: identity.id, targetPlanetName: `Monument ${identity.ordinal}`,
+    targetX: identity.x, targetY: identity.y, targetZ: identity.z, createdAt: now, expiresAt }).returning();
+  if (!operation) throw new Error('monument operation insert returned no row');
+  await schedule(tx, { seasonId: season.id, kind: 'clan_war_expiry', refId: operation.id,
+    dedupeKey: `clan-war-expiry:${operation.id}`, resolveAt: expiresAt });
+  await publishWar(tx, clan.id);
+  return { operation: await projectOperation(tx, operation, input.actor.playerId, now) };
+}
+
 
 /* ── contributions ──────────────────────────────────────────────── */
 
@@ -896,6 +1069,47 @@ export interface ClanWarRefusal {
   message: string;
 }
 
+export interface WarRadiationForecast {
+  doseHp: number;
+  destroyed: number;
+  lostFleet: Fleet;
+  health: { hull: HullId; count: number; maxHp: number; remainingHp: number;
+    healthPct: number; needsDock: boolean }[];
+}
+
+/** Known environmental cost only: it does not predict battle wounds or time in HOLD. */
+function warRadiationForecast(fleet: Fleet, damage: HpDamageLots | null, tech: TechLevels,
+  path: readonly Segment[], sources: readonly HpRadiationSource[]): WarRadiationForecast | null {
+  const doseHp = segmentsExposureHp(path, sources);
+  if (doseHp === 0) return null;
+  const result = applyHpDose(fleet, damage, doseHp, tech);
+  const wounded = normalizeHpDamage(result.fleet, result.lots);
+  const health = fleetEntries(result.fleet).flatMap(([hull, count]) => {
+    const maxHp = HULLS[hull].hp * hullTech(tech, hull).hp;
+    const lots = wounded.filter((lot) => lot.hull === hull);
+    const healthy = count - lots.reduce((sum, lot) => sum + lot.count, 0);
+    return [...lots.map((lot) => {
+      const bp = lot.damageBp + (lot.remainderBp ?? 0);
+      return { hull, count: lot.count, maxHp, remainingHp: maxHp * (1 - bp / 10_000),
+        healthPct: 100 - bp / 100, needsDock: needsHpDock(lot) };
+    }), ...(healthy > 0 ? [{ hull, count: healthy, maxHp, remainingHp: maxHp,
+      healthPct: 100, needsDock: false }] : [])];
+  });
+  return { doseHp, destroyed: fleetCount(result.destroyed), lostFleet: result.destroyed, health };
+}
+
+function requireWaveRadiation(wave: { playerId: string; fleet: Fleet; damage: HpDamageLots | null;
+  tech: TechLevels; radiationLossAcknowledged: boolean },
+  input: { actor: ClanActor; acknowledgeRadiationLoss?: boolean },
+  path: readonly Segment[], sources: readonly HpRadiationSource[]): void {
+  if (wave.radiationLossAcknowledged
+    || (wave.playerId === input.actor.playerId && input.acknowledgeRadiationLoss)) return;
+  const forecast = warRadiationForecast(wave.fleet, wave.damage, wave.tech, path, sources);
+  if (forecast && forecast.destroyed > 0) throw new GameError('RADIATION_LETHAL',
+    'This commander must acknowledge the radiation loss before the strike can launch',
+    409, { playerId: wave.playerId, count: forecast.destroyed });
+}
+
 export interface ClanWarFuelLegQuote {
   leg: JointWarFuelLeg;
   distance: number;
@@ -903,6 +1117,7 @@ export interface ClanWarFuelLegQuote {
 }
 
 export interface ClanWarContributionQuote {
+  radiation: WarRadiationForecast | null;
   ok: boolean;
   /** Every reason this wave would be refused, not just the first one. */
   refusals: ClanWarRefusal[];
@@ -965,12 +1180,13 @@ function assertMobileAttackFleet(fleet: Fleet): void {
 }
 
 interface ContributionContext {
+  radiation: WarRadiationForecast | null;
   operation: ClanWarOperationRow;
   clan: typeof clans.$inferSelect & { level: number };
   sourceKind: ClanWarContributionSource;
   origin: LockedPlanet;
   staging: typeof planets.$inferSelect;
-  target: typeof planets.$inferSelect;
+  target: { id: string; seasonId: string; x: number; y: number; z: number };
   tech: Awaited<ReturnType<typeof techOf>>;
   legs: ClanWarFuelLegQuote[];
   fuel: number;
@@ -1004,6 +1220,8 @@ async function gatherContribution(
     fleet: Fleet;
     clock: Clock;
     acknowledgeShieldLoss: boolean;
+    acknowledgeRadiationLoss?: boolean;
+    adminUsernames?: readonly string[];
   },
 ): Promise<ContributionContext> {
   const now = input.clock.now();
@@ -1017,11 +1235,8 @@ async function gatherContribution(
   // Origin and staging together, in id order, before anything takes the clan row.
   const standing = await activeClanMembership(tx, input.actor.playerId);
   const pending = standing ? await openOperation(tx, standing.clanId) : null;
-  await lockWarWorlds(tx, [
-    input.originPlanetId,
-    pending?.stagingPlanetId,
-    pending?.targetPlanetId,
-  ]);
+  await prepareWarMonuments(tx, pending, now, { extraPlayerIds: [input.actor.playerId],
+    extraWorldIds: [input.originPlanetId], adminUsernames: input.adminUsernames });
 
   const origin = await loadLocked(tx, input.originPlanetId, input.clock, {
     expectedPlayerId: input.actor.playerId,
@@ -1051,7 +1266,7 @@ async function gatherContribution(
     );
   }
 
-  await lockClanPlayers(tx, [input.actor.playerId, operation.targetPlayerId]);
+  await lockClanPlayers(tx, [input.actor.playerId, ...targetPlayers(operation)]);
   const confirmed = await activeClanMembership(tx, input.actor.playerId);
   if (confirmed?.clanId !== clanRow.id) {
     throw new GameError('NOT_IN_CLAN', 'You no longer belong to that clan', 403);
@@ -1069,8 +1284,9 @@ async function gatherContribution(
 
   const [staging] = await tx.select().from(planets)
     .where(eq(planets.id, operation.stagingPlanetId)).limit(1);
-  const [target] = await tx.select().from(planets)
-    .where(eq(planets.id, operation.targetPlanetId)).limit(1);
+  const target = operation.targetKind === 'MONUMENT' && operation.targetMonumentId !== null
+    ? (await tx.select().from(monuments).where(eq(monuments.id, operation.targetMonumentId)).limit(1))[0]
+    : (await tx.select().from(planets).where(eq(planets.id, clanWarPlanetTarget(operation).planetId)).limit(1))[0];
   if (!staging || !target) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
   await assertClanWarSeason(tx, {
     operation,
@@ -1083,7 +1299,7 @@ async function gatherContribution(
     refuse('CLAN_WAR_TARGET_CHANGED', 'That target is no longer hostile');
   }
   try {
-    assertWorldAttackable(target, now);
+    if ('kind' in target) assertWorldAttackable(target, now);
   } catch (error) {
     if (!(error instanceof GameError)) throw error;
     refuse(error.code, error.message);
@@ -1210,29 +1426,32 @@ async function gatherContribution(
     the start, because a wave sitting in escrow for twenty hours can be overtaken
     by any of the three.
   */
-  const peaks = await peakCoreLevels(tx, [input.actor.playerId, operation.targetPlayerId]);
+  if (operation.targetKind === 'PLANET') {
+  const { playerId: targetPlayerId } = clanWarPlanetTarget(operation);
+  const peaks = await peakCoreLevels(tx, [input.actor.playerId, targetPlayerId]);
   const [recent] = await tx
     .select({ value: count() })
     .from(attackCommitments)
     .where(and(
       eq(attackCommitments.attackerPlayerId, input.actor.playerId),
-      eq(attackCommitments.targetPlayerId, operation.targetPlayerId),
+      eq(attackCommitments.targetPlayerId, targetPlayerId),
       gt(attackCommitments.launchedAt, addMinutes(now, -ABUSE.bashWindowMinutes)),
     ));
   const gate = canAttack(
     { playerId: input.actor.playerId, peakCoreLevel: peaks.get(input.actor.playerId) ?? 1 },
-    { playerId: operation.targetPlayerId, peakCoreLevel: peaks.get(operation.targetPlayerId) ?? 1 },
+    { playerId: targetPlayerId, peakCoreLevel: peaks.get(targetPlayerId) ?? 1 },
     recent?.value ?? 0,
   );
   if (!gate.ok) {
     refuse(gate.reason ?? 'CLAN_WAR_PARTICIPANT_INELIGIBLE', 'You cannot fight that commander');
   }
   try {
-    await assertClanHostilityAllowed(tx, input.actor.playerId, operation.targetPlayerId, now);
-    await assertTargetReachable(tx, operation.targetPlayerId, now);
+    await assertClanHostilityAllowed(tx, input.actor.playerId, targetPlayerId, now);
+    await assertTargetReachable(tx, targetPlayerId, now);
   } catch (error) {
     if (!(error instanceof GameError)) throw error;
     refuse(error.code, error.message);
+  }
   }
 
   const [me] = await tx
@@ -1251,7 +1470,19 @@ async function gatherContribution(
   }
 
   const owned = await totalUnitsOf(tx, origin.planetId);
+  const radiation = hpRadiationApplies(origin.rulesetVersion) ? warRadiationForecast(input.fleet, null, tech, [
+    ...sourceKind === 'PHYSICAL' ? [flightSegment(origin, staging, now, stagingAt)] : [],
+    flightSegment(staging, target, stagingAt, addMinutes(stagingAt, combinedMinutes)),
+    ...operation.targetKind === 'PLANET' ? [
+      flightSegment(target, target, addMinutes(stagingAt, combinedMinutes), addMinutes(stagingAt, combinedMinutes + engagementMinutes)),
+      flightSegment(target, origin, addMinutes(stagingAt, combinedMinutes + engagementMinutes), battleHomeAt),
+    ] : [],
+  ], await hpSourcesForSeason(tx, operation.seasonId)) : null;
+  if (radiation && radiation.destroyed > 0 && !input.acknowledgeRadiationLoss) {
+    refuse('RADIATION_LETHAL', 'Radiation on the planned route would destroy ships');
+  }
   return {
+    radiation,
     operation,
     clan: { ...clanRow, level: clanRow.level },
     sourceKind,
@@ -1299,6 +1530,8 @@ export async function quoteClanWarContribution(
     fleet: Fleet;
     clock: Clock;
     acknowledgeShieldLoss?: boolean;
+    acknowledgeRadiationLoss?: boolean;
+    adminUsernames?: readonly string[];
   },
 ): Promise<ClanWarContributionQuote> {
   return db.transaction(async (tx) => {
@@ -1312,6 +1545,7 @@ export async function quoteClanWarContribution(
       context.combinedMinutes + engagementMinutes + context.returnMinutes,
     );
     return {
+      radiation: context.radiation,
       ok: context.refusals.length === 0,
       refusals: context.refusals,
       sourceKind: context.sourceKind,
@@ -1384,6 +1618,8 @@ export async function sendClanWarContribution(
     originPlanetId: string;
     fleet: Fleet;
     acknowledgeShieldLoss: boolean;
+    acknowledgeRadiationLoss?: boolean;
+    adminUsernames?: readonly string[];
     clock: Clock;
   },
 ): Promise<ClanWarContributionResult> {
@@ -1405,9 +1641,9 @@ export async function sendClanWarContribution(
     through the same gate an ordinary raid does — which also re-checks that the
     TARGET can be reached at all.
   */
-  await assertAttackProtections(tx, {
+  if (context.operation.targetKind === 'PLANET') await assertAttackProtections(tx, {
     attackerPlayerId: input.actor.playerId,
-    defenderPlayerId: context.operation.targetPlayerId,
+    defenderPlayerId: clanWarPlanetTarget(context.operation).playerId,
     now,
     acknowledgeShieldLoss: input.acknowledgeShieldLoss,
   });
@@ -1430,6 +1666,8 @@ export async function sendClanWarContribution(
     playerId: input.actor.playerId,
     originPlanetId: context.origin.planetId,
     sourceKind: context.sourceKind,
+    shieldLossAcknowledged: input.acknowledgeShieldLoss,
+    radiationLossAcknowledged: input.acknowledgeRadiationLoss ?? false,
     fleet: input.fleet,
     /*
       THE OWNER'S RESEARCH, FROZEN THE MOMENT THEY COMMITTED. Owner decision.
@@ -1539,14 +1777,14 @@ export async function sendClanWarContribution(
 
 export async function cancelClanWarOperation(
   tx: Tx,
-  input: { actor: ClanActor; clock: Clock },
+  input: { actor: ClanActor; clock: Clock; adminUsernames?: readonly string[] },
 ): Promise<{ operation: ClanWarOperationView }> {
   const now = input.clock.now();
   await lockSeason(tx, input.actor.seasonId);
   const standing = await activeClanMembership(tx, input.actor.playerId);
   const pending = standing ? await openOperation(tx, standing.clanId) : null;
-  await lockWarWorlds(tx, [pending?.stagingPlanetId, pending?.targetPlanetId]);
-  const clan = await lockLedClan(tx, input.actor, pending ? [pending.targetPlayerId] : []);
+  await prepareWarMonuments(tx, pending, now, { extraPlayerIds: [input.actor.playerId], adminUsernames: input.adminUsernames });
+  const clan = await lockLedClan(tx, input.actor, targetPlayers(pending));
   const operation = await lockOperation(tx, clan.id);
   if (!operation) throw new GameError('CLAN_WAR_NOT_FOUND', 'No operation to cancel', 404);
   let settled = await finalizeIfExpired(tx, operation, now);
@@ -1654,7 +1892,7 @@ export async function planContributionReturn(
   },
 ): Promise<void> {
   const { contribution, operation, now } = input;
-  if (contribution.status === 'HOME' || contribution.status === 'LOST') return;
+  if (contribution.status === 'HOME' || contribution.status === 'LOST' || contribution.status === 'TRANSFERRED') return;
 
   if (fleetCount(input.fleet) === 0) {
     await tx.delete(units).where(and(
@@ -1783,7 +2021,7 @@ export async function planContributionReturn(
  */
 export async function recallClanWarContribution(
   tx: Tx,
-  input: { actor: ClanActor; contributionId: string; clock: Clock },
+  input: { actor: ClanActor; contributionId: string; clock: Clock; adminUsernames?: readonly string[] },
 ): Promise<{ contributionId: string; status: ClanWarContributionStatus }> {
   const now = input.clock.now();
   await lockSeason(tx, input.actor.seasonId);
@@ -1798,24 +2036,17 @@ export async function recallClanWarContribution(
   }
 
   const [pending] = await tx
-    .select({
-      stagingPlanetId: clanWarOperations.stagingPlanetId,
-      targetPlanetId: clanWarOperations.targetPlanetId,
-      targetPlayerId: clanWarOperations.targetPlayerId,
-    })
+    .select()
     .from(clanWarOperations)
     .where(eq(clanWarOperations.id, row.operationId))
     .limit(1);
-  await lockWarWorlds(tx, [
-    row.originPlanetId,
-    pending?.stagingPlanetId,
-    pending?.targetPlanetId,
-  ]);
+  await prepareWarMonuments(tx, pending ?? null, now, { extraPlayerIds: [input.actor.playerId],
+    extraWorldIds: [row.originPlanetId], adminUsernames: input.adminUsernames });
 
   const [clan] = await tx.select().from(clans)
     .where(eq(clans.id, row.clanId)).for('update');
   if (!clan) throw new GameError('CLAN_NOT_FOUND', 'No such active clan', 404);
-  await lockClanPlayers(tx, [input.actor.playerId, ...(pending ? [pending.targetPlayerId] : [])]);
+  await lockClanPlayers(tx, [input.actor.playerId, ...targetPlayers(pending)]);
   const [operationRow] = await tx
     .select()
     .from(clanWarOperations)
@@ -2119,6 +2350,8 @@ export async function startClanWar(
   input: {
     actor: ClanActor;
     acknowledgeShieldLoss: boolean;
+    acknowledgeRadiationLoss?: boolean;
+    adminUsernames?: readonly string[];
     /** The combined leg's pace, one of `MISSION_PACES`. Full speed when absent. */
     pace?: number;
     clock: Clock;
@@ -2133,9 +2366,10 @@ export async function startClanWar(
 
   const standing = await activeClanMembership(tx, input.actor.playerId);
   const pending = standing ? await openOperation(tx, standing.clanId) : null;
+  if (pending?.targetKind === 'MONUMENT') return startMonumentClanWar(tx, input, pending, chosenPace);
   await lockWarWorlds(tx, [pending?.stagingPlanetId, pending?.targetPlanetId]);
 
-  const clan = await lockLedClan(tx, input.actor, pending ? [pending.targetPlayerId] : []);
+  const clan = await lockLedClan(tx, input.actor, targetPlayers(pending));
   const opened = await lockOperation(tx, clan.id);
   if (!opened) throw new GameError('CLAN_WAR_NOT_FOUND', 'Your clan has no target', 404);
   let operation = await finalizeIfExpired(tx, opened, now);
@@ -2157,10 +2391,12 @@ export async function startClanWar(
     throw new GameError('CLAN_WAR_EXPIRED', 'That target has expired', 409);
   }
 
+  const { planetId: targetPlanetId, playerId: targetPlayerId } = clanWarPlanetTarget(operation);
+
   const [staging] = await tx.select().from(planets)
     .where(eq(planets.id, operation.stagingPlanetId)).limit(1);
   const [target] = await tx.select().from(planets)
-    .where(eq(planets.id, operation.targetPlanetId)).limit(1);
+    .where(eq(planets.id, targetPlanetId)).limit(1);
   if (!staging || !target) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
   await assertClanWarSeason(tx, {
     operation,
@@ -2243,7 +2479,7 @@ export async function startClanWar(
 
   const fighters = [...new Set(pool.map((wave) => wave.playerId))].sort();
   const eligibleAttackers = [...new Set([...fighters, operation.leaderPlayerId])].sort();
-  await lockClanPlayers(tx, [...eligibleAttackers, operation.targetPlayerId]);
+  await lockClanPlayers(tx, [...eligibleAttackers, targetPlayerId]);
 
   /*
     EVERY COMMANDER BEHIND THE STRIKE, ON THEIR OWN ACCOUNT, AGAIN. Maturity, the
@@ -2252,13 +2488,13 @@ export async function startClanWar(
     the trigger spends their quota and shield; their eligibility cannot be lent
     by a member whose hulls are in the pool.
   */
-  const peaks = await peakCoreLevels(tx, [...eligibleAttackers, operation.targetPlayerId]);
+  const peaks = await peakCoreLevels(tx, [...eligibleAttackers, targetPlayerId]);
   const attackerSeasonRows = await tx
     .select({ id: players.id, seasonId: players.seasonId })
     .from(players)
     .where(inArray(players.id, eligibleAttackers));
   const attackerSeasons = new Map(attackerSeasonRows.map((row) => [row.id, row.seasonId]));
-  const targetPeak = peaks.get(operation.targetPlayerId) ?? 1;
+  const targetPeak = peaks.get(targetPlayerId) ?? 1;
   const ineligible: string[] = [];
   for (const playerId of eligibleAttackers) {
     const membership = await activeClanMembership(tx, playerId);
@@ -2270,7 +2506,7 @@ export async function startClanWar(
     }
     const band = canAttack(
       { playerId, peakCoreLevel: peaks.get(playerId) ?? 1 },
-      { playerId: operation.targetPlayerId, peakCoreLevel: targetPeak },
+      { playerId: targetPlayerId, peakCoreLevel: targetPeak },
       0,
     );
     if (!band.ok) ineligible.push(playerId);
@@ -2297,7 +2533,7 @@ export async function startClanWar(
   const prepared = await prepareJointClanAttack(tx, {
     clanId: clan.id,
     participants,
-    targetPlayerId: operation.targetPlayerId,
+    targetPlayerId: targetPlayerId,
     now,
   });
 
@@ -2316,7 +2552,7 @@ export async function startClanWar(
     */
     await assertAttackProtections(tx, {
       attackerPlayerId: participant.playerId,
-      defenderPlayerId: operation.targetPlayerId,
+      defenderPlayerId: targetPlayerId,
       now,
       acknowledgeShieldLoss: participant.fought || input.acknowledgeShieldLoss,
     });
@@ -2324,6 +2560,8 @@ export async function startClanWar(
 
   const arriveAt = addMinutes(now, oneWay);
   const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
+  const hpSources = hpRadiationApplies(season.rulesetVersion)
+    ? await hpSourcesForSeason(tx, operation.seasonId) : [];
   /*
     EVERY WAVE HAS TO BE ABLE TO GET HOME INSIDE THE GALAXY, recomputed from where
     it is standing NOW rather than from the estimate its quote made a day ago.
@@ -2343,6 +2581,9 @@ export async function startClanWar(
         409,
       );
     }
+    requireWaveRadiation(wave, input, [flightSegment(staging, target, now, arriveAt),
+      flightSegment(target, target, arriveAt, resolveAt),
+      flightSegment(target, destination, resolveAt, addMinutes(resolveAt, back))], hpSources);
   }
 
   const [mission] = await tx.insert(missions).values({
@@ -2378,7 +2619,7 @@ export async function startClanWar(
     ...prepared,
     missionId: mission.id,
     seasonId: operation.seasonId,
-    targetPlayerId: operation.targetPlayerId,
+    targetPlayerId: targetPlayerId,
     now,
   });
 
@@ -2427,6 +2668,114 @@ export async function startClanWar(
     participants: fighters.length,
     operation: await projectOperation(tx, attacking ?? operation, input.actor.playerId, now),
   };
+}
+
+/** Native waves retain per-owner health and physical escrow; only their explicit group fights together. */
+async function startMonumentClanWar(tx: Tx, input: {
+  actor: ClanActor; acknowledgeShieldLoss: boolean; acknowledgeRadiationLoss?: boolean;
+  pace?: number; clock: Clock; adminUsernames?: readonly string[];
+}, pending: ClanWarOperationRow, pace: MissionPace): Promise<ClanWarStartResult> {
+  const now = input.clock.now();
+  const targets = await prepareWarMonuments(tx, pending, now, { extraPlayerIds: [input.actor.playerId], adminUsernames: input.adminUsernames });
+  const target = pending.targetMonumentId === null ? undefined : targets.get(pending.targetMonumentId);
+  if (!target) throw new GameError('MONUMENT_NOT_FOUND', 'No such monument', 404);
+  const clan = await lockLedClan(tx, input.actor);
+  const opened = await lockOperation(tx, clan.id);
+  if (opened?.id !== pending.id) throw new GameError('CLAN_WAR_NOT_FOUND', 'Your operation changed', 409);
+  let operation = await finalizeIfExpired(tx, opened, now);
+  operation = await finalizeIfTargetChanged(tx, operation, now);
+  if (operation.status !== 'ASSEMBLING') {
+    if (operation.closeReason === 'TARGET_CHANGED') return commitGameError(new GameError('CLAN_WAR_TARGET_CHANGED', 'That target is now friendly', 409));
+    throw new GameError('CLAN_WAR_NOT_ASSEMBLING', 'That operation can no longer be launched', 409);
+  }
+  const [staging] = await tx.select().from(planets).where(eq(planets.id, operation.stagingPlanetId));
+  if (!staging) throw new GameError('PLANET_NOT_FOUND', 'The staging world changed', 409);
+  await assertClanWarSeason(tx, { operation, actorSeasonId: input.actor.seasonId, clanSeasonId: clan.seasonId,
+    worldSeasonIds: [staging.seasonId, target.monument.seasonId] });
+  assertDeparturesAllowed(staging.id, await faultsOfPlanet(tx, staging.id));
+  const waves = await tx.select().from(clanWarContributions).where(eq(clanWarContributions.operationId, operation.id))
+    .orderBy(clanWarContributions.id).for('update');
+  if (waves.some((wave) => wave.status === 'OUTBOUND')) throw new GameError('CLAN_WAR_SUPPORT_INBOUND', 'Support is still on its way', 409);
+  const pool = waves.filter((wave) => wave.status === 'STAGED');
+  if (pool.length === 0 || !pool.some((wave) => COMBAT_HULLS.some((hull) => (wave.fleet[hull] ?? 0) > 0))) {
+    throw new GameError('CLAN_WAR_NO_COMBAT_FLEET', 'A combined attack needs at least one combat hull', 409);
+  }
+  const fighters = [...new Set(pool.map((wave) => wave.playerId))].sort();
+  for (const playerId of [...new Set([...fighters, operation.leaderPlayerId])]) {
+    const membership = await activeClanMembership(tx, playerId);
+    const [player] = await tx.select({ seasonId: players.seasonId }).from(players).where(eq(players.id, playerId));
+    if (membership?.clanId !== clan.id || membership.matureAt > now || player?.seasonId !== operation.seasonId) {
+      throw new GameError('CLAN_WAR_PARTICIPANT_INELIGIBLE', 'A participant is no longer ready for this strike', 409);
+    }
+  }
+  // Physical staging waves already reserve their own bay. The capital pool reserves none until dispatch.
+  for (const originId of [...new Set(pool.filter((wave) => wave.sourceKind === 'LEADER_CAPITAL').map((wave) => wave.originPlanetId))]) {
+    const bay = await baysOf(tx, originId, await coreLevelOf(tx, originId));
+    const needed = pool.filter((wave) => wave.sourceKind === 'LEADER_CAPITAL' && wave.originPlanetId === originId).length;
+    if (bay.used + needed > bay.total) throw new GameError('NO_FREE_BAY', 'Your home has no free flight bay', 409);
+  }
+  const minutes = travelExact(distance(staging, target.monument), await strikeSpeed(tx, staging.id, pool));
+  if (!Number.isFinite(minutes) || !pacesForMinutes(minutes).includes(pace)) throw new GameError('PACE_TOO_SLOW', 'Choose a faster flight speed', 400);
+  const arriveAt = addMinutes(now, minutes / pace);
+  if (arriveAt >= target.season.endsAt) throw new GameError('CLAN_WAR_SEASON_TOO_SHORT', 'That strike cannot arrive before this galaxy closes', 409);
+  const holders = [...new Set(target.waves.filter((wave) => wave.status === 'HOLD').map((wave) => wave.playerId))];
+  if (holders.length > 0) {
+    for (const playerId of [...new Set([...fighters, operation.leaderPlayerId])]) {
+      for (const holderId of holders) await assertClanHostilityAllowed(tx, playerId, holderId, now);
+    }
+  }
+  // A monument contribution is a real dispatch even while the target is
+  // neutral.  Every fighter and the coordinator must therefore acknowledge
+  // losing their own active shield; a later capture cannot make an earlier
+  // neutral launch retroactively PvP.  Member consent is stored on that
+  // member's contribution, while the coordinator's button supplies its own.
+  for (const playerId of [...new Set([...fighters, operation.leaderPlayerId])]) {
+    const acknowledged = playerId === input.actor.playerId ? input.acknowledgeShieldLoss
+      : pool.filter((wave) => wave.playerId === playerId).every((wave) => wave.shieldLossAcknowledged);
+    await assertOwnShieldLoss(tx, { attackerPlayerId: playerId, now, acknowledgeShieldLoss: acknowledged });
+  }
+  const sources = await hpSourcesForSeason(tx, operation.seasonId);
+  for (const wave of pool) requireWaveRadiation(wave, input,
+    [flightSegment(staging, target.monument, now, arriveAt)], sources);
+  const nativeIds: string[] = [];
+  for (const contribution of pool) {
+    const physical = await tx.select().from(units).where(and(eq(units.planetId, contribution.originPlanetId), eq(units.location, contribution.unitLocation))).for('update');
+    if (MOBILE_HULLS.some((hull) => (contribution.fleet[hull] ?? 0) !== (physical.find((row) => row.hull === hull)?.count ?? 0))) {
+      throw new GameError('MONUMENT_MANIFEST_MISMATCH', 'The staged fleet changed; refresh and try again', 409);
+    }
+    const id = randomUUID();
+    const unitLocation = `monument:${id}`;
+    const [wave] = await tx.insert(monumentWaves).values({ id, seasonId: operation.seasonId, monumentId: target.monument.id,
+      playerId: contribution.playerId, originPlanetId: contribution.originPlanetId, jointOperationId: operation.id,
+      jointContributionId: contribution.id, unitLocation, purpose: 'ATTACK',
+      sentFleet: contribution.fleet, tech: contribution.tech, fuelPaid: contribution.fuelPaid, sentAt: now, arriveAt,
+      radiationSettledAt: now, route: [{ from: { x: staging.x, y: staging.y, z: staging.z },
+        to: { x: target.monument.x, y: target.monument.y, z: target.monument.z }, startMs: now.getTime(), endMs: arriveAt.getTime() }] }).returning();
+    if (!wave) throw new Error('joint monument wave insert returned no row');
+    const damage = normalizeHpDamage(contribution.fleet, contribution.damage);
+    const manifest = MOBILE_HULLS.flatMap((hull) => {
+      const wounded = damage.filter((lot) => lot.hull === hull);
+      const healthy = (contribution.fleet[hull] ?? 0) - wounded.reduce((sum, lot) => sum + lot.count, 0);
+      return [...wounded.map((lot) => ({ waveId: wave.id, hull, count: lot.count, damageBp: lot.damageBp,
+        remainderBp: lot.remainderBp ?? 0, deuterium: 0 })), ...(healthy > 0 ? [{ waveId: wave.id, hull, count: healthy, damageBp: 0, remainderBp: 0, deuterium: 0 }] : [])];
+    });
+    const stored = await tx.insert(monumentShipLots).values(manifest).returning();
+    await tx.delete(units).where(and(eq(units.planetId, contribution.originPlanetId), eq(units.location, contribution.unitLocation)));
+    await setUnits(tx, contribution.originPlanetId, contribution.fleet, unitLocation, contribution.playerId);
+    await tx.update(clanWarContributions).set({ status: 'TRANSFERRED', reservedBulk: 0, battleAt: arriveAt }).where(eq(clanWarContributions.id, contribution.id));
+    await schedule(tx, { seasonId: operation.seasonId, kind: 'monument_arrival', refId: wave.id,
+      resolveAt: arriveAt, dedupeKey: `monument-arrival:${wave.id}:0`, payload: { generation: 0 } });
+    await scheduleFlightBoundary(tx, wave, stored.map((lot) => ({ ...lot, playerId: wave.playerId, tech: wave.tech })), sources, target.season.endsAt);
+    nativeIds.push(wave.id);
+  }
+  const [attacking] = await tx.update(clanWarOperations).set({ status: 'ATTACKING', startedAt: now })
+    .where(eq(clanWarOperations.id, operation.id)).returning();
+  for (const playerId of holders) await notify(tx, { playerId, kind: 'monument_inbound', at: now, refId: nativeIds[0]!,
+    payload: { targetKind: 'MONUMENT', monumentId: target.monument.id, monumentOrdinal: target.monument.ordinal, waveId: nativeIds[0]!, arriveAt: arriveAt.toISOString() } });
+  await publishShard(tx, operation.seasonId, 'launch');
+  await publishWar(tx, clan.id);
+  return { missionId: nativeIds[0]!, arriveAt: arriveAt.toISOString(), resolveAt: arriveAt.toISOString(), participants: fighters.length,
+    operation: await projectOperation(tx, attacking ?? operation, input.actor.playerId, now) };
 }
 
 const coreLevelOf = async (tx: Queryable, planetId: string): Promise<number> => {

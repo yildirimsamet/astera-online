@@ -6,9 +6,11 @@ import {
   fleetEntries,
   hangarLoad,
   normalizeLots,
+  normalizeHpDamage,
+  hpRadiationApplies,
   shipDamageApplies,
   withinTierBand,
-  type DamageLot,
+  type HpDamageLot,
   type DefenderOutcome,
   type DefenderStack,
   type Fleet,
@@ -20,12 +22,11 @@ import {
 import type { Tx } from '../db/client.js';
 import { clanSupportBattleResults, clanSupportWaves } from '../db/schema.js';
 import { activeClanMembership } from './clanCombat.js';
-import { loseWave, lockWaves, publishSupport, returnWave, shipsOf } from './clanSupport.js';
+import { loseWave, lockWaves, publishSupport, returnWave, shipsOf, supportFlightTech } from './clanSupport.js';
 import type { WaveRow } from './clanSupportView.js';
 import { notify } from './notifications.js';
 import { recomputePlayerWealth, setUnits, type LockedPlanet } from './planet.js';
 import { peakCoreLevels } from './player.js';
-import { techOf } from './researchState.js';
 
 /**
  * KLAN SAVUNMA DESTEĞİ — THE DEFENDING LINE, WHOEVER HOLDS IT. Plan §Server.
@@ -103,7 +104,8 @@ export async function standStations(
       await loseWave(tx, wave, input.now);
       continue;
     }
-    const lots = damageRule ? normalizeLots(wave.damage) : [];
+    const lots = !damageRule ? [] : hpRadiationApplies(input.rulesetVersion)
+      ? normalizeHpDamage(fleet, wave.damage) : normalizeLots(wave.damage);
     stations.push({
       wave,
       fleet,
@@ -112,7 +114,7 @@ export async function standStations(
         stackId: wave.id,
         playerId: wave.senderPlayerId,
         fleet,
-        tech: { tech: await techOf(tx, wave.senderPlayerId) },
+        tech: { tech: await supportFlightTech(tx, wave) },
         ...(lots.length > 0 ? { damage: lots } : {}),
       },
     });
@@ -171,7 +173,7 @@ function bySupporter(stations: readonly Station[], outcomes: readonly DefenderOu
     losses: Fleet;
     survivors: Fleet;
     lossValue: number;
-    damage: DamageLot[];
+    damage: HpDamageLot[];
   }>();
   const add = (into: Fleet, from: Fleet) => {
     for (const [hull, n] of fleetEntries(from)) into[hull] = (into[hull] ?? 0) + n;
@@ -255,7 +257,7 @@ export async function writeDefenderResults(
       survivors: row.survivors,
       power: row.power,
       lossValue: row.lossValue,
-      damage: normalizeLots(row.damage),
+      damage: row.damage.some((lot) => lot.remainderBp !== undefined) ? normalizeHpDamage(row.survivors, row.damage) : normalizeLots(row.damage),
       dominionDelta: 0,
       createdAt: input.now,
     })),

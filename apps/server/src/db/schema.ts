@@ -22,13 +22,15 @@ import {
 import type {
   CombatRound,
   BuildQueueId,
-  DamageLot,
+  HpDamageLot,
   ClassReading,
   EscapeOutcome,
   FaultKind,
   Fleet,
   Grade,
   HullId,
+  MobileHullId,
+  Segment,
   GalaxyEventKind as ScheduledGalaxyEventKind,
   AsteroidHourLane,
   PirateHourLane,
@@ -144,6 +146,11 @@ export const eventKind = pgEnum('event_kind', [
   'neutral_census',
   /** A stationed support wave reaching the end of its twelve hours. 2026-10-01. */
   'clan_support_expiry',
+  /** Outside-galaxy physical wave transitions and lazy HOLD boundaries. */
+  'monument_arrival',
+  'monument_loss',
+  'monument_respawn',
+  'monument_probe',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -238,6 +245,11 @@ export const notificationKind = pgEnum('notification_kind', [
   'clan_support_departed',
   'clan_support_result',
   'defence_posture_reset',
+  /** Actual hostile launch, delivered only to current HOLD owners. */
+  'monument_inbound',
+  'monument_probe_lost',
+  /** An automatic native return starts now; its ships have not landed yet. */
+  'monument_returning',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -1260,7 +1272,8 @@ export const planets = pgTable('planets', {
   z: real('z').notNull(),
   alloy: real('alloy').notNull().default(500),
   crystal: real('crystal').notNull().default(120),
-  deuterium: real('deuterium').notNull().default(0),
+  /** Incoming physical monument cargo retains its fraction in the home economy. */
+  deuterium: doublePrecision('deuterium').notNull().default(0),
   /**
    * Production that has not been collected yet. D16.
    *
@@ -1272,7 +1285,7 @@ export const planets = pgTable('planets', {
    */
   bufferAlloy: real('buffer_alloy').notNull().default(0),
   bufferCrystal: real('buffer_crystal').notNull().default(0),
-  bufferDeuterium: real('buffer_deuterium').notNull().default(0),
+  bufferDeuterium: doublePrecision('buffer_deuterium').notNull().default(0),
   shield: real('shield').notNull().default(0),
   /** Lazy economy anchor. Advanced inside the row lock, never on a timer. */
   lastTickAt: timestamp('last_tick_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1694,7 +1707,9 @@ export const missions = pgTable('missions', {
    * rule and every leg in an older season. The Repair Station judges it on landing
    * (`landShips`), never in the air.
    */
-  damage: jsonb('damage').$type<DamageLot[]>(),
+  damage: jsonb('damage').$type<HpDamageLot[]>(),
+  /** Last HP interval paid on this physical leg; null on legacy rows. */
+  radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
 }, (t) => [
   index('missions_status_arrive_idx').on(t.status, t.arriveAt),
   index('missions_origin_idx').on(t.originPlanetId),
@@ -1975,13 +1990,17 @@ export const shipDamageLots = pgTable('ship_damage_lots', {
   planetId: uuid('planet_id').notNull().references(() => planets.id),
   hull: text('hull').$type<HullId>().notNull(),
   damageBp: integer('damage_bp').notNull(),
+  /** Zero for legacy landings; HP ships carry their exact fraction into the dock. */
+  remainderBp: doublePrecision('remainder_bp').notNull().default(0),
   repairOrderId: uuid('repair_order_id').references(() => buildOrders.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
   index('ship_damage_lots_planet_idx').on(t.planetId),
   index('ship_damage_lots_repair_order_idx').on(t.repairOrderId),
   /** At or under the line a ship is patched on landing; at a full hull it is gone. */
-  check('ship_damage_lots_damage_check', sql`${t.damageBp} BETWEEN 2001 AND 9999`),
+  check('ship_damage_lots_damage_check', sql`${t.damageBp} BETWEEN 2000 AND 9999
+    AND (${t.damageBp} > 2000 OR ${t.remainderBp} > 0)
+    AND ${t.remainderBp} >= 0 AND ${t.remainderBp} < 1`),
 ]);
 
 /**
@@ -2024,6 +2043,266 @@ export const radiationSources = pgTable('radiation_sources', {
   check('radiation_sources_mode_check', sql`${t.mode} IN ('EMIT', 'SHELTER')`),
   check('radiation_sources_anchor_check', sql`(${t.anchorKind} = 'ZONE' AND ${t.anchorId} IS NULL)
     OR (${t.anchorKind} = 'PLANET' AND ${t.anchorId} IS NOT NULL)`),
+]);
+
+/**
+ * An outside-galaxy target, never a synthetic planet. New-season preparation
+ * supplies its balance values explicitly; these tables do not activate a ruleset.
+ * The generation identifies the current holding/empty period for stale events.
+ */
+export const monuments = pgTable('monuments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  ordinal: integer('ordinal').notNull(),
+  x: doublePrecision('x').notNull(),
+  y: doublePrecision('y').notNull(),
+  z: doublePrecision('z').notNull(),
+  capacity: integer('capacity').notNull(),
+  productionPerMinute: doublePrecision('production_per_minute').notNull(),
+  controllerPlayerId: uuid('controller_player_id').references(() => players.id),
+  controllerClanId: uuid('controller_clan_id').references(() => clans.id),
+  /** Neutral ships are not player lots and never die of environmental radiation. */
+  garrison: jsonb('garrison').$type<Fleet>().notNull().default({}),
+  /** Explicit new-season configuration; never inferred from a depleted live roster. */
+  garrisonTemplate: jsonb('garrison_template').$type<Fleet>().notNull().default({}),
+  garrisonTech: jsonb('garrison_tech').$type<TechLevels>().notNull().default({}),
+  garrisonDamage: jsonb('garrison_damage').$type<HpDamageLot[]>().notNull().default([]),
+  settledAt: timestamp('settled_at', { withTimezone: true }).notNull(),
+  emptySince: timestamp('empty_since', { withTimezone: true }),
+  generation: integer('generation').notNull().default(0),
+}, (t) => [
+  uniqueIndex('monuments_season_ordinal_idx').on(t.seasonId, t.ordinal),
+  uniqueIndex('monuments_id_season_idx').on(t.id, t.seasonId),
+  index('monuments_controller_player_idx').on(t.controllerPlayerId),
+  index('monuments_controller_clan_idx').on(t.controllerClanId),
+  check('monuments_ordinal_check', sql`${t.ordinal} BETWEEN 1 AND 5`),
+  check('monuments_amounts_check', sql`${t.capacity} > 0 AND ${t.generation} >= 0
+    AND ${t.productionPerMinute} >= 0 AND ${t.productionPerMinute} < 'Infinity'::float8`),
+  check('monuments_position_check', sql`${t.x} > '-Infinity'::float8 AND ${t.x} < 'Infinity'::float8
+    AND ${t.y} > '-Infinity'::float8 AND ${t.y} < 'Infinity'::float8
+    AND ${t.z} > '-Infinity'::float8 AND ${t.z} < 'Infinity'::float8`),
+  check('monuments_controller_check', sql`${t.controllerPlayerId} IS NULL OR ${t.controllerClanId} IS NULL`),
+]);
+
+/**
+ * Historical HP clouds, deliberately separate from percentage sources. Anchor IDs
+ * are snapshots without a target FK: deleting/reclaiming a target cannot erase a
+ * cloud that a still-unsettled flight already crossed. End a window, never reprice it.
+ */
+export const hpRadiationSources = pgTable('hp_radiation_sources', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  anchorKind: text('anchor_kind').$type<'ZONE' | 'PLANET' | 'MONUMENT'>().notNull(),
+  anchorId: uuid('anchor_id'),
+  x: doublePrecision('x').notNull(),
+  y: doublePrecision('y').notNull(),
+  z: doublePrecision('z').notNull(),
+  radius: doublePrecision('radius').notNull(),
+  intensityHpPerMinute: doublePrecision('intensity_hp_per_minute').notNull(),
+  mode: text('mode').$type<'EMIT' | 'SHELTER'>().notNull(),
+  activeFrom: timestamp('active_from', { withTimezone: true }).notNull(),
+  activeUntil: timestamp('active_until', { withTimezone: true }),
+  label: text('label').notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('hp_radiation_sources_season_time_idx').on(t.seasonId, t.activeFrom, t.activeUntil),
+  check('hp_radiation_sources_amounts_check', sql`${t.radius} > 0 AND ${t.radius} < 'Infinity'::float8
+    AND ${t.intensityHpPerMinute} >= 0 AND ${t.intensityHpPerMinute} < 'Infinity'::float8`),
+  check('hp_radiation_sources_position_check', sql`${t.x} > '-Infinity'::float8 AND ${t.x} < 'Infinity'::float8
+    AND ${t.y} > '-Infinity'::float8 AND ${t.y} < 'Infinity'::float8
+    AND ${t.z} > '-Infinity'::float8 AND ${t.z} < 'Infinity'::float8`),
+  check('hp_radiation_sources_mode_check', sql`${t.mode} IN ('EMIT', 'SHELTER')`),
+  check('hp_radiation_sources_anchor_check', sql`(${t.anchorKind} = 'ZONE' AND ${t.anchorId} IS NULL)
+    OR (${t.anchorKind} IN ('PLANET', 'MONUMENT') AND ${t.anchorId} IS NOT NULL)`),
+  check('hp_radiation_sources_window_check', sql`${t.activeUntil} IS NULL OR ${t.activeUntil} >= ${t.activeFrom}`),
+]);
+
+/** A probe holds only an undelivered arrival snapshot, never an ordinary fleet. */
+export const monumentProbes = pgTable('monument_probes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  monumentId: uuid('monument_id').notNull(),
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  originPlanetId: uuid('origin_planet_id').notNull().references(() => planets.id),
+  status: text('status').$type<'OUTBOUND' | 'RETURNING' | 'HOME' | 'LOST' | 'CANCELLED'>().notNull().default('OUTBOUND'),
+  outboundRoute: jsonb('outbound_route').$type<Segment[]>().notNull(),
+  returnRoute: jsonb('return_route').$type<Segment[]>(),
+  departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
+  arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
+  homeAt: timestamp('home_at', { withTimezone: true }),
+  snapshotFleet: jsonb('snapshot_fleet').$type<Fleet>(),
+  observedAt: timestamp('observed_at', { withTimezone: true }),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+}, (t) => [
+  foreignKey({ name: 'monument_probes_target_season_fk', columns: [t.monumentId, t.seasonId],
+    foreignColumns: [monuments.id, monuments.seasonId] }).onDelete('cascade'),
+  index('monument_probes_target_arrival_idx').on(t.monumentId, t.status, t.arriveAt),
+  index('monument_probes_player_idx').on(t.playerId, t.status),
+  index('monument_probes_origin_idx').on(t.originPlanetId),
+  check('monument_probes_status_check', sql`${t.status} IN ('OUTBOUND', 'RETURNING', 'HOME', 'LOST', 'CANCELLED')`),
+  check('monument_probes_clock_check', sql`${t.arriveAt} >= ${t.departAt}
+    AND (${t.homeAt} IS NULL OR ${t.homeAt} >= ${t.arriveAt})`),
+  check('monument_probes_snapshot_check', sql`CASE
+    WHEN ${t.status} IN ('OUTBOUND', 'LOST', 'CANCELLED') THEN ${t.snapshotFleet} IS NULL AND ${t.observedAt} IS NULL AND ${t.deliveredAt} IS NULL
+    WHEN ${t.status} = 'RETURNING' THEN ${t.snapshotFleet} IS NOT NULL AND ${t.observedAt} IS NOT NULL AND ${t.homeAt} IS NOT NULL AND ${t.returnRoute} IS NOT NULL AND ${t.deliveredAt} IS NULL
+    WHEN ${t.status} = 'HOME' THEN ${t.snapshotFleet} IS NOT NULL AND ${t.observedAt} IS NOT NULL AND ${t.deliveredAt} IS NOT NULL
+    ELSE false END`),
+]);
+
+export type MonumentWaveStatus = 'OUTBOUND' | 'HOLD' | 'RETURNING' | 'HOME' | 'LOST';
+export type MonumentReturnReason = 'RECALLED' | 'CAPACITY' | 'MEMBERSHIP' | 'CONTROL_CHANGED' | 'DEFEAT' | 'WORLD_CHANGED' | 'FREEZE';
+
+/**
+ * Owned ships remain in the origin's personal hangar under `unitLocation`; the
+ * wave supplies their actual mission/target/path. `sentFleet` is a launch snapshot,
+ * not the live roster. A partial return names the root so it keeps one launch bay.
+ * Origin changes must reanchor units and this row before deleting the old world.
+ */
+export const monumentWaves = pgTable('monument_waves', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  monumentId: uuid('monument_id').notNull(),
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  originPlanetId: uuid('origin_planet_id').notNull().references(() => planets.id),
+  rootWaveId: uuid('root_wave_id').references((): AnyPgColumn => monumentWaves.id, { onDelete: 'cascade' }),
+  /** Historical provenance for a joint-operation → HOLD handoff. */
+  jointContributionId: uuid('joint_contribution_id'),
+  /** Only explicitly prepared waves with this common ID arrive as one attack. */
+  jointOperationId: uuid('joint_operation_id'),
+  unitLocation: text('unit_location').notNull(),
+  purpose: text('purpose').$type<'ATTACK' | 'REINFORCE'>().notNull(),
+  sentFleet: jsonb('sent_fleet').$type<Fleet>().notNull(),
+  tech: jsonb('tech').$type<TechLevels>().notNull(),
+  route: jsonb('route').$type<Segment[]>().notNull(),
+  reservedBulk: integer('reserved_bulk').notNull().default(0),
+  fuelPaid: doublePrecision('fuel_paid').notNull(),
+  status: text('status').$type<MonumentWaveStatus>().notNull().default('OUTBOUND'),
+  returnReason: text('return_reason').$type<MonumentReturnReason>(),
+  sentAt: timestamp('sent_at', { withTimezone: true }).notNull(),
+  arriveAt: timestamp('arrive_at', { withTimezone: true }),
+  heldAt: timestamp('held_at', { withTimezone: true }),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }).notNull(),
+  generation: integer('generation').notNull().default(0),
+}, (t) => [
+  foreignKey({
+    name: 'monument_waves_target_season_fk',
+    columns: [t.monumentId, t.seasonId],
+    foreignColumns: [monuments.id, monuments.seasonId],
+  }).onDelete('cascade'),
+  uniqueIndex('monument_waves_unit_location_idx').on(t.unitLocation),
+  index('monument_waves_target_status_idx').on(t.monumentId, t.status),
+  index('monument_waves_player_status_idx').on(t.playerId, t.status),
+  index('monument_waves_origin_status_idx').on(t.originPlanetId, t.status),
+  index('monument_waves_root_idx').on(t.rootWaveId),
+  index('monument_waves_joint_idx').on(t.jointOperationId, t.status),
+  check('monument_waves_location_check', sql`${t.unitLocation} = 'monument:' || ${t.id}::text`),
+  check('monument_waves_purpose_check', sql`${t.purpose} IN ('ATTACK', 'REINFORCE')`),
+  check('monument_waves_status_check', sql`${t.status} IN ('OUTBOUND', 'HOLD', 'RETURNING', 'HOME', 'LOST')`),
+  check('monument_waves_reason_check', sql`${t.returnReason} IS NULL OR ${t.returnReason}
+    IN ('RECALLED', 'CAPACITY', 'MEMBERSHIP', 'CONTROL_CHANGED', 'DEFEAT', 'WORLD_CHANGED', 'FREEZE')`),
+  check('monument_waves_amounts_check', sql`${t.reservedBulk} >= 0 AND ${t.generation} >= 0
+    AND ${t.fuelPaid} >= 0 AND ${t.fuelPaid} < 'Infinity'::float8`),
+  check('monument_waves_lifecycle_check', sql`(${t.status} <> 'HOLD' OR ${t.heldAt} IS NOT NULL)
+    AND (${t.status} NOT IN ('OUTBOUND', 'RETURNING') OR ${t.arriveAt} IS NOT NULL)
+    AND (${t.status} <> 'RETURNING' OR ${t.returnReason} IS NOT NULL)
+    AND (${t.status} NOT IN ('HOME', 'LOST') OR ${t.resolvedAt} IS NOT NULL)
+    AND (${t.arriveAt} IS NULL OR ${t.arriveAt} >= ${t.sentAt})
+    AND (${t.heldAt} IS NULL OR ${t.heldAt} >= ${t.sentAt})
+    AND ${t.radiationSettledAt} >= ${t.sentAt}`),
+]);
+
+/**
+ * Physical health/cargo manifest of identical ships in an owned wave. The live
+ * population remains in `units`; services must verify its sum against these
+ * cohort counts before any settlement/transfer. Ownership and research live once,
+ * on the wave. Different health/fill cohorts retain independent identities.
+ */
+export const monumentShipLots = pgTable('monument_ship_lots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  waveId: uuid('wave_id').notNull().references(() => monumentWaves.id, { onDelete: 'cascade' }),
+  hull: text('hull').$type<MobileHullId>().notNull(),
+  count: integer('count').notNull(),
+  damageBp: integer('damage_bp').notNull(),
+  remainderBp: doublePrecision('remainder_bp').notNull(),
+  deuterium: doublePrecision('deuterium').notNull(),
+}, (t) => [
+  index('monument_ship_lots_wave_idx').on(t.waveId),
+  check('monument_ship_lots_count_check', sql`${t.count} > 0`),
+  check('monument_ship_lots_damage_check', sql`${t.damageBp} BETWEEN 0 AND 9999
+    AND ${t.remainderBp} >= 0 AND ${t.remainderBp} < 1`),
+  check('monument_ship_lots_cargo_check', sql`${t.deuterium} >= 0 AND ${t.deuterium} < 'Infinity'::float8
+    AND (${t.deuterium} = 0 OR ${t.hull} IN ('COURIER', 'WAYFARER', 'ATLAS', 'ARGOSY'))`),
+  check('monument_ship_lots_hull_check', sql`${t.hull} IN ('DART', 'PIKE', 'RAMPART', 'WARDEN', 'COURIER',
+    'VIPER', 'TALON', 'STRONGHOLD', 'SENTINEL', 'WAYFARER', 'TEMPEST', 'BALLISTA', 'LEVIATHAN',
+    'PRAETORIAN', 'ATLAS', 'NULLIFIER', 'GARBAGE_COLLECTOR', 'CATACLYSM', 'CORSAIR', 'CITADEL', 'PALADIN', 'ARGOSY')`),
+]);
+
+/** Immutable target/identity snapshots survive world, wave and commander cleanup. */
+export const monumentBattles = pgTable('monument_battles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  monumentId: uuid('monument_id').notNull(),
+  monumentOrdinal: integer('monument_ordinal').notNull(),
+  monumentPosition: jsonb('monument_position').$type<Vec3>().notNull(),
+  triggerWaveId: uuid('trigger_wave_id').notNull(),
+  attackerFleet: jsonb('attacker_fleet').$type<Fleet>().notNull(),
+  defenderFleet: jsonb('defender_fleet').$type<Fleet>().notNull(),
+  attackerSurvivors: jsonb('attacker_survivors').$type<Fleet>().notNull(),
+  defenderSurvivors: jsonb('defender_survivors').$type<Fleet>().notNull(),
+  grade: text('grade').$type<Grade>().notNull(),
+  rounds: jsonb('rounds').$type<CombatRound[]>().notNull(),
+  control: text('control').$type<'ATTACKER' | 'DEFENDER' | 'EMPTY'>().notNull(),
+  lootDeuterium: doublePrecision('loot_deuterium').notNull(),
+  lootValue: bigint('loot_value', { mode: 'number' }).notNull(),
+  attackerLossValue: bigint('attacker_loss_value', { mode: 'number' }).notNull(),
+  defenderLossValue: bigint('defender_loss_value', { mode: 'number' }).notNull(),
+  rulesetVersion: integer('ruleset_version').notNull(),
+  eligible: boolean('eligible').notNull(),
+  rawExchange: bigint('raw_exchange', { mode: 'number' }).notNull(),
+  transfer: bigint('transfer', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('monument_battles_trigger_idx').on(t.triggerWaveId),
+  index('monument_battles_season_time_idx').on(t.seasonId, t.createdAt),
+  check('monument_battles_control_check', sql`${t.control} IN ('ATTACKER', 'DEFENDER', 'EMPTY')`),
+  check('monument_battles_amounts_check', sql`${t.lootDeuterium} >= 0 AND ${t.lootDeuterium} < 'Infinity'::float8
+    AND ${t.lootValue} BETWEEN 0 AND 9007199254740991
+    AND ${t.attackerLossValue} BETWEEN 0 AND 9007199254740991
+    AND ${t.defenderLossValue} BETWEEN 0 AND 9007199254740991
+    AND ${t.rulesetVersion} > 0 AND ${t.transfer} BETWEEN -9007199254740991 AND 9007199254740991
+    AND ${t.rawExchange} BETWEEN -9007199254740991 AND 9007199254740991
+    AND ((${t.eligible} = false AND ${t.transfer} = 0 AND ${t.rawExchange} = 0)
+      OR (${t.eligible} = true AND ${t.rawExchange} = ${t.lootValue} + ${t.defenderLossValue} - ${t.attackerLossValue}
+        AND (${t.rulesetVersion} < 7 OR ${t.rawExchange} = ${t.transfer})))`),
+]);
+
+/** Personal report and integer journal; player/clan/wave IDs deliberately have no live FK. */
+export const monumentBattleParticipants = pgTable('monument_battle_participants', {
+  battleId: uuid('battle_id').notNull().references(() => monumentBattles.id, { onDelete: 'cascade' }),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  playerId: uuid('player_id').notNull(),
+  /** Immutable identity shown in the participant's own report after cleanup. */
+  commanderName: text('commander_name').notNull().default('Unknown commander'),
+  clanName: text('clan_name'),
+  clanTag: text('clan_tag'),
+  clanId: uuid('clan_id'),
+  side: text('side').$type<'ATTACK' | 'DEFENCE'>().notNull(),
+  waveIds: jsonb('wave_ids').$type<string[]>().notNull(),
+  fleet: jsonb('fleet').$type<Fleet>().notNull(),
+  survivors: jsonb('survivors').$type<Fleet>().notNull(),
+  losses: jsonb('losses').$type<Fleet>().notNull(),
+  damage: jsonb('damage').$type<HpDamageLot[]>().notNull(),
+  lootDeuterium: doublePrecision('loot_deuterium').notNull(),
+  dominionDelta: bigint('dominion_delta', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.battleId, t.playerId, t.side] }),
+  index('monument_participants_season_idx').on(t.seasonId),
+  index('monument_participants_player_time_idx').on(t.playerId, t.createdAt),
+  check('monument_participants_side_check', sql`${t.side} IN ('ATTACK', 'DEFENCE')`),
+  check('monument_participants_amounts_check', sql`${t.dominionDelta} BETWEEN -9007199254740991 AND 9007199254740991
+    AND ${t.lootDeuterium} >= 0 AND ${t.lootDeuterium} < 'Infinity'::float8`),
 ]);
 
 /**
@@ -2167,8 +2446,8 @@ export const battleReports = pgTable('battle_reports', {
    * the spot, and the report shows which went to the Repair Station. Each side reads only
    * its own. Empty on every report before ruleset 14.
    */
-  attackerDamage: jsonb('attacker_damage').$type<DamageLot[]>().notNull().default([]),
-  defenderDamage: jsonb('defender_damage').$type<DamageLot[]>().notNull().default([]),
+  attackerDamage: jsonb('attacker_damage').$type<HpDamageLot[]>().notNull().default([]),
+  defenderDamage: jsonb('defender_damage').$type<HpDamageLot[]>().notNull().default([]),
   /** Historical compatibility field. New battle reports always write zero. */
   disruptedMinutes: real('disrupted_minutes').notNull().default(0),
   /**
@@ -2419,7 +2698,8 @@ export const clanSupportWaves = pgTable('clan_support_waves', {
   /** The wave as it was sent. Never edited; a bigger wave is a second row. */
   fleet: jsonb('fleet').$type<Fleet>().notNull(),
   /** Damage the wave's ships carry — from a flight leg or a battle at the host. */
-  damage: jsonb('damage').$type<DamageLot[]>(),
+  damage: jsonb('damage').$type<HpDamageLot[]>(),
+  radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
   /** Room this wave takes in the host's support bay while OUTBOUND or STATIONED. Bulk. */
   reservedBulk: real('reserved_bulk').notNull(),
   /** Deuterium paid once, up front, for the way out and the way back. */
@@ -2496,7 +2776,7 @@ export const clanSupportBattleResults = pgTable('clan_support_battle_results', {
   power: bigint('power', { mode: 'number' }).notNull().default(0),
   /** This commander's permanent loss value, net of salvage for the host. */
   lossValue: bigint('loss_value', { mode: 'number' }).notNull().default(0),
-  damage: jsonb('damage').$type<DamageLot[]>().notNull().default([]),
+  damage: jsonb('damage').$type<HpDamageLot[]>().notNull().default([]),
   /** The stores the raid took. The host's alone: a wave carries no cargo. */
   lootLost: jsonb('loot_lost').$type<Resources>(),
   dominionDelta: bigint('dominion_delta', { mode: 'number' }).notNull().default(0),
@@ -2583,6 +2863,7 @@ export type ClanWarStatus = 'ASSEMBLING' | 'ATTACKING' | 'RETURNING' | 'COMPLETE
 /** Why an operation stopped being open. NULL while it is still assembling or attacking. */
 export type ClanWarCloseReason =
   | 'BATTLE'
+  | 'MONUMENT'
   | 'LEADER_CANCEL'
   | 'EXPIRED'
   | 'TARGET_CHANGED'
@@ -2604,8 +2885,10 @@ export const clanWarOperations = pgTable('clan_war_operations', {
    * the rendezvous under a wave that is already paid for and in the air.
    */
   stagingPlanetId: uuid('staging_planet_id').notNull().references(() => planets.id),
-  targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
-  targetPlayerId: uuid('target_player_id').notNull().references(() => players.id),
+  targetKind: text('target_kind').$type<'PLANET' | 'MONUMENT'>().notNull().default('PLANET'),
+  targetPlanetId: uuid('target_planet_id').references(() => planets.id),
+  targetPlayerId: uuid('target_player_id').references(() => players.id),
+  targetMonumentId: uuid('target_monument_id').references(() => monuments.id),
   /** Target identity frozen for the report and for the clan's own war tab. */
   targetPlanetName: text('target_planet_name').notNull(),
   targetX: real('target_x').notNull(),
@@ -2637,6 +2920,10 @@ export const clanWarOperations = pgTable('clan_war_operations', {
   index('clan_war_operations_expiry_idx').on(t.seasonId, t.status, t.expiresAt),
   index('clan_war_operations_target_idx').on(t.targetPlanetId, t.status),
   index('clan_war_operations_target_player_idx').on(t.targetPlayerId, t.status),
+  check('clan_war_operations_target_check', sql`(${t.targetKind} = 'PLANET' AND ${t.targetPlanetId} IS NOT NULL
+    AND ${t.targetPlayerId} IS NOT NULL AND ${t.targetMonumentId} IS NULL)
+    OR (${t.targetKind} = 'MONUMENT' AND ${t.targetMonumentId} IS NOT NULL
+    AND ${t.targetPlanetId} IS NULL AND ${t.targetPlayerId} IS NULL)`),
   check(
     'clan_war_operations_status_check',
     sql`${t.status} IN ('ASSEMBLING', 'ATTACKING', 'RETURNING', 'COMPLETED')`,
@@ -2644,7 +2931,7 @@ export const clanWarOperations = pgTable('clan_war_operations', {
   check(
     'clan_war_operations_close_reason_check',
     sql`${t.closeReason} IS NULL
-      OR ${t.closeReason} IN ('BATTLE', 'LEADER_CANCEL', 'EXPIRED', 'TARGET_CHANGED', 'FAILED')`,
+      OR ${t.closeReason} IN ('BATTLE', 'MONUMENT', 'LEADER_CANCEL', 'EXPIRED', 'TARGET_CHANGED', 'FAILED')`,
   ),
   check('clan_war_operations_window_check', sql`${t.expiresAt} > ${t.createdAt}`),
   /**
@@ -2670,8 +2957,8 @@ export const clanWarOperations = pgTable('clan_war_operations', {
   /** A settled battle is the only thing that can have resolved, and it must have launched. */
   check(
     'clan_war_operations_battle_check',
-    sql`(${t.resolvedAt} IS NULL OR ${t.closeReason} = 'BATTLE')
-      AND (${t.closeReason} IS DISTINCT FROM 'BATTLE'
+    sql`(${t.resolvedAt} IS NULL OR ${t.closeReason} IN ('BATTLE', 'MONUMENT'))
+      AND (${t.closeReason} IS NULL OR ${t.closeReason} NOT IN ('BATTLE', 'MONUMENT')
         OR (${t.startedAt} IS NOT NULL AND ${t.resolvedAt} IS NOT NULL))
       AND (${t.closeReason} IS DISTINCT FROM 'FAILED' OR ${t.startedAt} IS NOT NULL)`,
   ),
@@ -2692,7 +2979,8 @@ export type ClanWarContributionStatus =
   | 'IN_BATTLE'
   | 'RETURNING'
   | 'HOME'
-  | 'LOST';
+  | 'LOST'
+  | 'TRANSFERRED';
 
 /**
  * PHYSICAL flies; LEADER_CAPITAL is already standing on the staging world.
@@ -2734,13 +3022,18 @@ export const clanWarContributions = pgTable('clan_war_contributions', {
    */
   unitLocation: text('unit_location').notNull(),
   /** Damage this wave's ships carry across its legs (`missions.damage`, per wave). */
-  damage: jsonb('damage').$type<DamageLot[]>(),
+  damage: jsonb('damage').$type<HpDamageLot[]>(),
+  radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
   /** Room taken out of the Klan Hangarı while this wave is live. `hangarLoad` units. */
   reservedBulk: real('reserved_bulk').notNull(),
   /** Deuterium taken once, up front, for every leg this wave will ever fly. */
   fuelPaid: real('fuel_paid').notNull(),
   fuelLegs: jsonb('fuel_legs').$type<ClanWarFuelLeg[]>().notNull(),
   status: text('status').$type<ClanWarContributionStatus>().notNull().default('OUTBOUND'),
+  /** Consent for the actual PvP monument dispatch; staging itself spends no shield. */
+  shieldLossAcknowledged: boolean('shield_loss_acknowledged').notNull().default(false),
+  /** Member-owned consent; a leader cannot invent permission to lose this physical wave. */
+  radiationLossAcknowledged: boolean('radiation_loss_acknowledged').notNull().default(false),
   sentAt: timestamp('sent_at', { withTimezone: true }).notNull(),
   stagedAt: timestamp('staged_at', { withTimezone: true }),
   recalledAt: timestamp('recalled_at', { withTimezone: true }),
@@ -2764,7 +3057,7 @@ export const clanWarContributions = pgTable('clan_war_contributions', {
   check(
     'clan_war_contributions_status_check',
     sql`${t.status} IN ('OUTBOUND', 'STAGED', 'RECALL_ORDERED', 'IN_BATTLE',
-      'RETURNING', 'HOME', 'LOST')`,
+      'RETURNING', 'HOME', 'LOST', 'TRANSFERRED')`,
   ),
   check(
     'clan_war_contributions_source_check',
@@ -2831,7 +3124,7 @@ export const clanWarParticipantResults = pgTable('clan_war_participant_results',
   salvage: jsonb('salvage').$type<Resources>().notNull(),
   hullDamage: real('hull_damage').notNull().default(0),
   /** This commander's damaged survivors as they left the battle. Kalıcı gemi hasarı. */
-  damage: jsonb('damage').$type<DamageLot[]>().notNull().default([]),
+  damage: jsonb('damage').$type<HpDamageLot[]>().notNull().default([]),
   /** The unnormalised score this commander earned, and the transfer it became. */
   dominionRaw: bigint('dominion_raw', { mode: 'number' }).notNull().default(0),
   dominionDelta: bigint('dominion_delta', { mode: 'number' }).notNull().default(0),
@@ -3533,7 +3826,9 @@ export const pirateRaids = pgTable('pirate_raids', {
   /** One hull towed home from a DECISIVE win, or NULL. */
   capturedHull: text('captured_hull').$type<HullId>(),
   /** Damage the hunting fleet carries home (`missions.damage`). Null: all whole. */
-  damage: jsonb('damage').$type<DamageLot[]>(),
+  damage: jsonb('damage').$type<HpDamageLot[]>(),
+  radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
+  returnDepartAt: timestamp('return_depart_at', { withTimezone: true }),
 }, (t) => [
   index('pirate_raids_planet_idx').on(t.planetId, t.status),
   index('pirate_raids_season_idx').on(t.seasonId, t.status),
@@ -3600,6 +3895,10 @@ export const tradeRuns = pgTable('trade_runs', {
   fleet: jsonb('fleet').$type<Fleet>().notNull(),
   /** What the convoy carries out. Already debited from the origin at launch. */
   give: jsonb('give').$type<Resources>().notNull(),
+  /** HP seasons freeze armor/cargo with the physical launch, independently of live return propulsion. */
+  tech: jsonb('tech').$type<TechLevels>(),
+  damage: jsonb('damage').$type<HpDamageLot[]>(),
+  radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
   /** What it brings home. Credited on the return leg, never before. */
   want: jsonb('want').$type<Resources>().notNull(),
   /**
@@ -3677,6 +3976,8 @@ export const intergalacticConvoyRuns = pgTable('intergalactic_convoy_runs', {
   resourceQualityFactor: doublePrecision('resource_quality_factor').notNull(),
   shipQualityFactor: doublePrecision('ship_quality_factor').notNull(),
   quotedResourceReward: jsonb('quoted_resource_reward').$type<Resources>().notNull(),
+  damage: jsonb('damage').$type<HpDamageLot[]>(),
+  radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
   resourceReward: jsonb('resource_reward').$type<Resources>(),
   awardedFleet: jsonb('awarded_fleet').$type<Fleet>(),
   /**

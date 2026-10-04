@@ -4,8 +4,9 @@ import type { Focus } from '../galaxy/FocusPanel.js';
 import type { CraftFocus } from '../galaxy/ownCraft.js';
 import { threadKey } from '../galaxy/threadKey.js';
 import i18n from '../i18n/index.js';
+import { monumentName } from '../i18n/names.js';
 
-export type FlightFocus = CraftFocus | Extract<Focus, { kind: 'contact' }>;
+export type FlightFocus = CraftFocus | Extract<Focus, { kind: 'contact' | 'monument' }>;
 
 /** Use the same visible craft target in the Fleet page and the timers sheet. */
 export function flightFocus(thread: PendingThread, index: number, contacts: readonly Contact[]): FlightFocus | undefined {
@@ -79,6 +80,9 @@ export const contactFor = (
   : contacts.find((c) => c.id === thread.contactId));
 
 export const flightTitle = (thread: PendingThread): string => {
+  if (thread.monumentOrdinal !== undefined) {
+    return `${monumentName(thread.monumentOrdinal)} · ${i18n.t(`monument.status.${thread.leg === 'return' ? 'RETURNING' : 'OUTBOUND'}`)}`;
+  }
   if (thread.kind === 'incoming') {
     /**
      * WHICH OF YOUR WORLDS, AND — AT RADAR L5 — WHERE FROM.

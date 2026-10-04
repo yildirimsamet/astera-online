@@ -1,93 +1,109 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { VIEW, toWorld } from '@astera/rules';
-import type { RadiationSourceView } from '../api/schemas.js';
-import { drawnClouds, hazeAlpha } from '../lib/radiation.js';
+import type { HpRadiationSourceView, RadiationSourceView } from '../api/schemas.js';
+import { drawnClouds, drawnHpClouds, hazeAlpha, hpHazeAlpha } from '../lib/radiation.js';
 import { useNow } from '../lib/time.js';
+import { paintRadiationVolume } from './radiationVolume.js';
 
 /**
- * RADIATION, DRAWN. Owner decision K3 (`plan.md` F10): a simple greenish-yellow haze.
- *
- * ONE SPHERE PER LIT CLOUD, AT THE SERVER'S GEOMETRY — the exact sphere the dose is
- * solved against, through the same `toWorld` every other boundary uses, so where the
- * haze stops is where the dose stops.
- *
- * A GAS, NOT A SHELL. A cloud is thickest where a line of sight crosses the most of it —
- * through the middle — and thins to nothing at the edge, so the alpha follows how
- * squarely the surface faces the eye and the silhouette fades out rather than drawing a
- * rim. (Weighted to the limb, the first version read as a solid yellow planet.)
- *
- * ONLY THE FAR SIDE IS DRAWN. From outside that is one layer instead of two stacked
- * ones; from inside — `SensorRings` learned the camera often is — it is the wall that
- * surrounds you, a faint tint that says you are in it.
- *
- * CHEAP. Additive, no depth write, a 32×24 sphere and a value-noise drift in the
- * fragment; one draw per cloud, and v1 only ever has the operator's few (K4). A shelter
- * is not drawn: it cancels a dose, and a second shape would read as a second cloud.
+ * The server's exact sphere, drawn as sparse smoke rather than a tinted shell.
+ * Six fixed samples along the view ray reveal depth, warped filaments and clear
+ * lanes. Density fades continuously to zero at the boundary. From inside, only
+ * the remaining path to the exit contributes, avoiding an opaque enclosing wall.
+ * One draw per cloud, one shared 108 KiB density texture and sphere geometry;
+ * no per-frame noise baking, particles or post-processing.
  */
 
-const COLOUR = new THREE.Color('#d8f04a');
+const COLOUR = new THREE.Color('#b5d58b');
+const COOL_COLOUR = new THREE.Color('#7eaf98');
 
 const vertex = /* glsl */ `
-  varying vec3 vNormal;
-  varying vec3 vView;
-  varying vec3 vLocal;
+  out vec3 vLocal;
   void main() {
     vLocal = position;
-    vec4 world = modelMatrix * vec4(position, 1.0);
-    vNormal = normalize(mat3(modelMatrix) * normal);
-    vView = cameraPosition - world.xyz;
-    gl_Position = projectionMatrix * viewMatrix * world;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 
 const fragment = /* glsl */ `
+  precision highp sampler3D;
+  uniform sampler3D uDensity;
   uniform vec3 uColour;
+  uniform vec3 uCoolColour;
+  uniform vec3 uEye;
   uniform float uAlpha;
   uniform float uTime;
-  varying vec3 vNormal;
-  varying vec3 vView;
-  varying vec3 vLocal;
-
-  float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453); }
-  float noise(vec3 p) {
-    vec3 i = floor(p);
-    vec3 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(
-      mix(mix(hash(i), hash(i + vec3(1, 0, 0)), f.x), mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
-      mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x), mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y),
-      f.z);
-  }
+  uniform float uPhase;
+  in vec3 vLocal;
+  out vec4 hazeColour;
 
   void main() {
-    float facing = abs(dot(normalize(vNormal), normalize(vView)));
-    float depth = pow(facing, 1.6);
-    float drift = noise(vLocal * 2.6 + vec3(uTime * 0.04, uTime * 0.025, -uTime * 0.03));
-    float a = uAlpha * depth * (0.6 + 0.8 * drift);
-    gl_FragColor = vec4(uColour, a);
+    vec3 ray = normalize(vLocal - uEye);
+    float b = dot(uEye, ray);
+    float chord = sqrt(max(0.0, b * b - dot(uEye, uEye) + 1.0));
+    float entry = max(0.0, -b - chord);
+    float path = max(0.0, -b + chord - entry);
+    vec3 start = uEye + ray * entry;
+
+    // Slow motion in the field, with a different orientation for each cloud.
+    float turn = uPhase + uTime * 0.009;
+    float tilt = uPhase * 0.71 + uTime * 0.006;
+    mat2 spin = mat2(cos(turn), -sin(turn), sin(turn), cos(turn));
+    mat2 lean = mat2(cos(tilt), -sin(tilt), sin(tilt), cos(tilt));
+    float column = 0.0;
+    for (int i = 0; i < 6; i++) {
+      vec3 p = start + ray * path * ((float(i) + 0.5) / 6.0);
+      float envelope = pow(max(0.0, 1.0 - dot(p, p)), 1.35);
+      p.xz = spin * p.xz;
+      p.xy = lean * p.xy;
+      column += texture(uDensity, p * 0.5 + 0.5).r * envelope;
+    }
+    column *= path / 6.0;
+    float density = 1.0 - exp(-column * 3.6);
+    // Both opacity and colour thin into the surrounding space, without a rim.
+    vec3 colour = mix(uCoolColour, uColour, density);
+    hazeColour = vec4(colour, uAlpha * density);
   }
 `;
 
-function Cloud({ cloud }: { cloud: RadiationSourceView }) {
-  const centre = useMemo(() => toWorld(cloud.center), [cloud.center]);
-  const uniforms = useMemo(() => ({
-    uColour: { value: COLOUR },
-    uAlpha: { value: hazeAlpha(cloud.intensityPctPerMinute) },
-    uTime: { value: 0 },
-  }), [cloud.intensityPctPerMinute]);
+type CloudView = RadiationSourceView | HpRadiationSourceView;
 
-  useFrame((_, delta) => {
+function Cloud({ cloud, volume, geometry }: {
+  cloud: CloudView;
+  volume: THREE.Data3DTexture;
+  geometry: THREE.SphereGeometry;
+}) {
+  const centre = useMemo(() => toWorld(cloud.center), [cloud.center]);
+  const radius = cloud.radius / VIEW.scale;
+  const alpha = 'intensityHpPerMinute' in cloud ? hpHazeAlpha(cloud.intensityHpPerMinute) : hazeAlpha(cloud.intensityPctPerMinute);
+  const uniforms = useMemo(() => ({
+    uDensity: { value: volume },
+    uColour: { value: COLOUR },
+    uCoolColour: { value: COOL_COLOUR },
+    uEye: { value: new THREE.Vector3() },
+    uAlpha: { value: alpha },
+    uTime: { value: 0 },
+    uPhase: { value: cloud.center.x * 0.017 + cloud.center.z * 0.029 },
+  }), [alpha, volume, cloud.center.x, cloud.center.z]);
+
+  useFrame(({ camera }, delta) => {
     uniforms.uTime.value += delta;
+    uniforms.uEye.value.set(
+      camera.position.x - centre[0],
+      camera.position.y - centre[1],
+      camera.position.z - centre[2],
+    ).divideScalar(radius);
   });
 
   return (
-    <mesh position={centre} scale={cloud.radius / VIEW.scale} renderOrder={-30} frustumCulled={false}>
-      <sphereGeometry args={[1, 32, 24]} />
+    <mesh name={`radiation-haze-${cloud.id}`} position={centre} scale={radius} geometry={geometry} renderOrder={-30} frustumCulled={false}>
       <shaderMaterial
+        name="RadiationHaze"
         vertexShader={vertex}
         fragmentShader={fragment}
+        glslVersion={THREE.GLSL3}
         uniforms={uniforms}
         transparent
         depthWrite={false}
@@ -98,18 +114,22 @@ function Cloud({ cloud }: { cloud: RadiationSourceView }) {
   );
 }
 
-export function RadiationHaze({ clouds }: { clouds: readonly RadiationSourceView[] }) {
-  /*
-    ON A SLOW CLOCK, NOT ON THE GALAXY'S REFETCH. A cloud lit "now" arrives a moment
-    before this device's estimate of the server's clock reaches its start, and one set to
-    light later arrives long before it — drawn off the payload alone, either would wait
-    for an unrelated re-render to appear. Five seconds is plenty for a haze.
-  */
+function Clouds({ clouds }: { clouds: readonly CloudView[] }) {
+  const volume = useMemo(() => paintRadiationVolume(), []);
+  const geometry = useMemo(() => new THREE.SphereGeometry(1, 32, 24), []);
+  useEffect(() => {
+    volume.needsUpdate = true;
+    return () => {
+      volume.dispose();
+      geometry.dispose();
+    };
+  }, [volume, geometry]);
+  return clouds.map((cloud) => <Cloud key={cloud.id} cloud={cloud} volume={volume} geometry={geometry} />);
+}
+
+export function RadiationHaze({ clouds = [], hpClouds = [] }: { clouds?: readonly RadiationSourceView[]; hpClouds?: readonly HpRadiationSourceView[] }) {
+  // A scheduled cloud appears on the server clock without waiting for a refetch.
   const now = useNow(5_000);
-  const lit = drawnClouds(clouds, now);
-  return (
-    <>
-      {lit.map((cloud) => <Cloud key={cloud.id} cloud={cloud} />)}
-    </>
-  );
+  const lit = [...drawnClouds(clouds, now), ...drawnHpClouds(hpClouds, now)];
+  return lit.length > 0 ? <Clouds clouds={lit} /> : null;
 }

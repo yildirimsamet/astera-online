@@ -41,7 +41,7 @@ import type {
   FeedbackKind,
   ClanWar,
 } from './schemas.js';
-import type { ClanAidInput, IntergalacticConvoyLaunchInput } from './client.js';
+import type { ClanAidInput, IntergalacticConvoyLaunchInput, MonumentRecallSelection, MonumentSendInput } from './client.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
 import { serverNow } from '../lib/clock.js';
@@ -682,6 +682,32 @@ export function useClanWar(enabled = true) {
   return useQuery({ queryKey: keys.clanWar, queryFn: api.clanWar, enabled, ...READ });
 }
 
+/** Native waves have indefinite HOLD, and distinct arrival, cargo and HP boundaries. */
+export function useMonuments(enabled = true) {
+  const api = useApi();
+  const result = useQuery({ queryKey: keys.monuments, queryFn: api.monuments, enabled, ...READ, refetchInterval: NET_MS });
+  const moments = useMemo(() => [
+    ...(result.data?.waves.flatMap((wave) => [wave.arriveAt, wave.fillsAt, wave.nextLossAt, wave.fadeAt ?? null]) ?? []),
+    ...(result.data?.probes.flatMap((probe) => [probe.arriveAt, probe.homeAt]) ?? []),
+  ].flatMap((moment) => moment === null ? [] : [moment.getTime()]).sort((a, b) => a - b), [result.data]);
+  useRefetchOnArrival(moments, [keys.monuments, keys.planet, keys.pending, keys.reports, keys.galaxy]);
+  return result;
+}
+
+export function useMonumentActions() {
+  const api = useApi();
+  const client = useQueryClient();
+  const refresh = async (): Promise<void> => {
+    await Promise.all([keys.monuments, keys.galaxy, keys.planet, keys.planets, keys.pending,
+      keys.traffic, keys.notifications, keys.reports, keys.clanWar, keys.season].map((queryKey) => client.invalidateQueries({ queryKey })));
+  };
+  return {
+    send: useMutation({ mutationFn: ({ monumentId, input, key }: { monumentId: string; input: MonumentSendInput; key: string }) => api.sendMonument(monumentId, input, key), onSuccess: refresh }),
+    probe: useMutation({ mutationFn: ({ monumentId, originPlanetId, key }: { monumentId: string; originPlanetId: string; key: string }) => api.probeMonument(monumentId, originPlanetId, key), onSuccess: refresh }),
+    recall: useMutation({ mutationFn: ({ waveId, selections, key }: { waveId: string; selections: readonly MonumentRecallSelection[]; key: string }) => api.recallMonument(waveId, selections, key), onSuccess: refresh }),
+  };
+}
+
 /** War writes affect a small set of reads; each response is parsed by Api. */
 export function useClanWarActions() {
   const api = useApi();
@@ -696,14 +722,17 @@ export function useClanWarActions() {
   return {
     target: useMutation({ mutationFn: (planetId: string) => api.markClanWarTarget(planetId),
       onSuccess: refresh }),
+    monumentTarget: useMutation({ mutationFn: (monumentId: string) => api.markClanWarMonumentTarget(monumentId),
+      onSuccess: refresh }),
     cancel: useMutation({ mutationFn: () => api.cancelClanWar(), onSuccess: refresh }),
-    start: useMutation({ mutationFn: ({ acknowledgeShieldLoss, pace }: {
-      acknowledgeShieldLoss: boolean; pace: MissionPace;
-    }) => api.startClanWar(acknowledgeShieldLoss, pace), onSuccess: refresh }),
+    start: useMutation({ mutationFn: ({ acknowledgeShieldLoss, pace, acknowledgeRadiationLoss }: {
+      acknowledgeShieldLoss: boolean; pace: MissionPace; acknowledgeRadiationLoss?: boolean;
+    }) => acknowledgeRadiationLoss ? api.startClanWar(acknowledgeShieldLoss, pace, true)
+      : api.startClanWar(acknowledgeShieldLoss, pace), onSuccess: refresh }),
     quote: useMutation({ mutationFn: (input: { originPlanetId: string; fleet: Fleet }) =>
       api.quoteClanWar(input) }),
     contribute: useMutation({ mutationFn: (input: { originPlanetId: string; fleet: Fleet;
-      acknowledgeShieldLoss: boolean }) => api.contributeClanWar(input),
+      acknowledgeShieldLoss: boolean; acknowledgeRadiationLoss?: boolean }) => api.contributeClanWar(input),
       onSuccess: async (result) => {
         await applyPlanet(result.planet);
         /*
@@ -2008,9 +2037,9 @@ export function useRaidPirate() {
   return useMutation({
     scope: lane.scope,
     mutationFn: (
-      { pirateId, fleet, quotedMinutes }:
-      { pirateId: string; fleet: Fleet; quotedMinutes?: number },
-    ) => api.raidPirate(pirateId, fleet, activePlanetId ?? undefined, quotedMinutes),
+      { pirateId, fleet, quotedMinutes, acknowledgeRadiationLoss }:
+      { pirateId: string; fleet: Fleet; quotedMinutes?: number; acknowledgeRadiationLoss?: boolean },
+    ) => api.raidPirate(pirateId, fleet, activePlanetId ?? undefined, quotedMinutes, acknowledgeRadiationLoss),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([
@@ -2053,12 +2082,13 @@ export function useLaunchTrade(originPlanetId: string) {
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
     scope: lane.scope,
-    mutationFn: ({ occurrenceId, fleet, give, want }: {
+    mutationFn: ({ occurrenceId, fleet, give, want, acknowledgeRadiationLoss }: {
       occurrenceId: string;
       fleet: Fleet;
       give: { alloy: number; crystal: number; deuterium: number };
       want: { alloy: number; crystal: number; deuterium: number };
-    }) => api.trade(occurrenceId, fleet, give, want, originPlanetId),
+      acknowledgeRadiationLoss?: boolean;
+    }) => api.trade(occurrenceId, fleet, give, want, originPlanetId, acknowledgeRadiationLoss),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([

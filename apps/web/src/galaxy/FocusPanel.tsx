@@ -35,12 +35,13 @@ import type {
   PlanetView,
   Report,
   RivalSummary,
+  PublicMonument,
 } from '../api/schemas.js';
 import { useGalaxy, useProbe, useSetRival, useWatch } from '../api/queries.js';
 import { radiationAt, toRadiationSources } from '../lib/radiation.js';
 import { rivalColour } from './PlanetField.jsx';
 import type { TargetMiningRun } from './scene.js';
-import { hullLabel, hullName, satelliteLabel } from '../i18n/names.js';
+import { hullLabel, hullName, monumentName, satelliteLabel } from '../i18n/names.js';
 import { compact, decimal, full } from '../lib/format.js';
 import {
   colonizationPhase,
@@ -103,6 +104,7 @@ import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 
 export type Focus =
   | { kind: 'planet'; id: string }
+  | { kind: 'monument'; id: string }
   | { kind: 'asteroid'; id: string }
   | { kind: 'run'; id: string }
   | { kind: 'thread'; key: string }
@@ -133,6 +135,19 @@ export type Focus =
   | { kind: 'intergalacticConvoy'; id: string };
 
 /* ── shared chrome ───────────────────────────────────────────── */
+
+export function MonumentFocus({ monument, onInspect, onClose }: {
+  monument: PublicMonument; onInspect: () => void; onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const controller = monument.controller.kind === 'PLAYER' ? monument.controller.name
+    : monument.controller.kind === 'CLAN' ? `[${monument.controller.tag}] ${monument.controller.name}` : t(monument.emptySince ? 'monument.empty' : 'monument.neutral');
+  return <Shell title={monumentName(monument.ordinal)} eyebrow={controller}
+    summary={<><span className="block">{t('monument.capacityShort', { used: full(monument.used), total: full(monument.capacity) })}</span>
+      <span className="block text-v2-deut">{t('monument.production', { rate: decimal(monument.productionPerMinute) })}</span>
+      <span className="block text-v2-warn">{t('monument.radiationRate', { rate: decimal(monument.radiationHpPerMinute) })}</span></>}
+    open={false} onToggle={onInspect} onClose={onClose}>{null}</Shell>;
+}
 
 /**
  * THE GÖZLEMEVI'S BUTTONS (K2). One primary per surface, in your colour, marked
@@ -3219,12 +3234,14 @@ export function ThreadFocus({
   onClose,
   open,
   onToggle,
+  onFocusMonument,
 }: {
   thread: PendingThread;
   minutesRemaining: number;
   onClose: () => void;
   open: boolean;
   onToggle: () => void;
+  onFocusMonument?: (monumentId: string) => void;
 }) {
   const { t } = useTranslation();
   const composition = thread.fleet ? describeThreadFleet(thread.fleet) : null;
@@ -3281,6 +3298,8 @@ export function ThreadFocus({
       <p className="mt-3 text-caption leading-snug text-v2-ink-2">
         {t(thread.leg === 'return' ? 'focus.thread.returning' : 'focus.thread.outbound')}
       </p>
+      {thread.monumentId && onFocusMonument && <button type="button" className="mt-3 min-h-10 w-full rounded-control border border-v2-line px-3 text-caption font-semibold text-v2-self"
+        onClick={() => { if (thread.monumentId) onFocusMonument(thread.monumentId); }}>{t('monument.look', { name: thread.targetName })}</button>}
     </Shell>
   );
 }

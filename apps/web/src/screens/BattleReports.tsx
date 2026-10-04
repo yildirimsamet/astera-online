@@ -4,7 +4,7 @@ import { ABUSE, COMBAT, DEATH_STAR, HULLS, fleetCount, fleetEntries, type Grade,
 import { useReports } from '../api/queries.js';
 import type { BattleReport, Report, StrategicBattleReport } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
-import { hullLabel } from '../i18n/names.js';
+import { hullLabel, monumentName } from '../i18n/names.js';
 import { compact, decimal, full, signed } from '../lib/format.js';
 import { factorLabel } from '../lib/supportFactor.js';
 import { duration, staleness, useNow } from '../lib/time.js';
@@ -15,6 +15,7 @@ import { EmptyState, Section, Unreachable } from '../ui/kit/index.js';
 import { ReportScene } from '../v2/hud/ReportScene.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import './battle-report.css';
+import { MonumentReportSheet } from './MonumentReportSheet.js';
 
 /**
  * THE CLOSING LINK OF THE LOOP.
@@ -145,7 +146,7 @@ export const reportFor = (
   reports: readonly Report[],
   id: string,
 ): Report | undefined => reports.find((candidate) =>
-  candidate.missionId === id
+  candidate.kind === 'MONUMENT' ? candidate.id === id : candidate.missionId === id
   || (candidate.kind !== 'STRATEGIC' && candidate.pirateRaidId === id));
 
 /**
@@ -167,6 +168,7 @@ export const reportFor = (
  */
 /** What the galaxy hands a report: the ways out of it, and what the disc knows of the other side. */
 export interface ReportDoors {
+  onFocusMonument?: (monumentId: string) => void;
   /** Fly to a world named by a report, from the list or its detail. */
   onFocusPlanet?: (planetId: string) => void;
   /** E6: back to the raided world's dossier. */
@@ -199,6 +201,7 @@ export function BattleReportDoor({
   }, [isError, missing, onUnavailable]);
 
   if (!report) return null;
+  if (report.kind === 'MONUMENT') return <MonumentReportSheet report={report} onClose={onClose} onFocusMonument={doors.onFocusMonument} />;
   return report.kind === 'STRATEGIC'
     ? <StrategicReportSheet report={report} onClose={onClose} onFocusPlanet={doors.onFocusPlanet} />
     : (
@@ -250,6 +253,12 @@ export function BattleReports({
       ) : (
         <div className="rounded-control border border-v2-line bg-v2-deep/40">
           {reports.map((report) => {
+            if (report.kind === 'MONUMENT') return <button type="button" key={report.id} data-report-row=""
+              onClick={() => { setOpen(report); }} className="grid w-full gap-1 border-b border-v2-line/60 px-3 py-3 text-left text-caption last:border-b-0">
+              <span className="font-semibold text-v2-ink">{monumentName(report.monument.ordinal)} · {t(`monument.reportControl.${report.control}`)}</span>
+              <span className="text-micro text-v2-ink-2">{t('monument.reportOwn', { sent: fleetCount(report.yourFleet), left: fleetCount(report.yourSurvivors), lost: fleetCount(report.yourLosses) })}</span>
+              <span className="font-v2-mono text-micro text-v2-ink-3">{staleness((now - report.at.getTime()) / 60_000)} · {t('reports.dominion')} {signed(report.dominion)}</span>
+            </button>;
             if (report.kind === 'STRATEGIC') {
               return (
                 <StrategicReportRow
@@ -316,7 +325,7 @@ export function BattleReports({
       )}
 
       {open && (
-        open.kind === 'STRATEGIC' ? (
+        open.kind === 'MONUMENT' ? <MonumentReportSheet report={open} onClose={() => { setOpen(null); }} onFocusMonument={doors.onFocusMonument} /> : open.kind === 'STRATEGIC' ? (
           <StrategicReportSheet report={open} onClose={() => { setOpen(null); }} onFocusPlanet={doors.onFocusPlanet} />
         ) : (
           <ReportSheet report={open} onClose={() => { setOpen(null); }} {...doors} />

@@ -1288,7 +1288,7 @@ describe('ruleset-v3 clans', () => {
     await workerFor(f).tick();
 
     const before = await readBattleReports(f.db, f.playerIds[2]!, 20);
-    expect(before.reports[0]?.attackerClan).toBeNull();
+    expect(before.reports.find(row => row.kind === 'BATTLE')?.attackerClan).toBeNull();
 
     // Still inside the twelve-hour commitment window, so the quota rebinds.
     await joinClan(f, clan.clanId, 0, 1, true);
@@ -1298,7 +1298,7 @@ describe('ruleset-v3 clans', () => {
     expect(commitment?.attackerClanId).toBeNull();
 
     const after = await readBattleReports(f.db, f.playerIds[2]!, 20);
-    expect(after.reports[0]?.attackerClan).toBeNull();
+    expect(after.reports.find(row => row.kind === 'BATTLE')?.attackerClan).toBeNull();
   });
 
   it('stamps the launch-time clan on a report and keeps it after the attacker leaves', async () => {
@@ -1311,12 +1311,12 @@ describe('ruleset-v3 clans', () => {
     );
     f.clock.set(settledAt(raid.arriveAt));
     await workerFor(f).tick();
-    expect((await readBattleReports(f.db, f.playerIds[2]!, 20)).reports[0]?.attackerClan)
+    expect((await readBattleReports(f.db, f.playerIds[2]!, 20)).reports.find(row => row.kind === 'BATTLE')?.attackerClan)
       .toMatchObject({ tag: 'OG' });
 
     const member = await clanActor(f.db, f.accountIds[1]!);
     await f.db.transaction((tx) => leaveClan(tx, { actor: member, now: f.clock.now() }));
-    expect((await readBattleReports(f.db, f.playerIds[2]!, 20)).reports[0]?.attackerClan)
+    expect((await readBattleReports(f.db, f.playerIds[2]!, 20)).reports.find(row => row.kind === 'BATTLE')?.attackerClan)
       .toMatchObject({ tag: 'OG' });
   });
 

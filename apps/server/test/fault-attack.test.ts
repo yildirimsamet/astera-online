@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { and, eq } from 'drizzle-orm';
-import { FAULT, FAULT_KINDS, type FaultKind } from '@astera/rules';
+import { DEATH_STAR, FAULT, FAULT_KINDS, type FaultKind } from '@astera/rules';
 import {
   battleReports, missions, notifications, planetFaults, planets, scheduledEvents, strategicAssets,
 } from '../src/db/schema.js';
@@ -235,9 +235,9 @@ describe('ağır bir saldırı', () => {
     const { readBattleReports } = await import('../src/services/reports.js');
 
     const defenderView = (await readBattleReports(f.db, f.playerIds[1]!)).reports
-      .find((row) => row.kind !== 'STRATEGIC' && row.missionId === launch.missionId);
+      .find((row) => row.kind === 'BATTLE' && row.missionId === launch.missionId);
     const attackerView = (await readBattleReports(f.db, f.playerIds[0]!)).reports
-      .find((row) => row.kind !== 'STRATEGIC' && row.missionId === launch.missionId);
+      .find((row) => row.kind === 'BATTLE' && row.missionId === launch.missionId);
 
     expect(defenderView && 'colonyFaults' in defenderView ? [...defenderView.colonyFaults].sort() : null)
       .toEqual([...broken].sort());
@@ -324,8 +324,8 @@ describe('ağır bir saldırı', () => {
     }
   });
 
-  /** Death Star'ın ilk vuruşu kalkanı koşulsuz veriyor — koloniyi de bozuyor. */
-  it('Death Star ilk vuruşu koloniye iki arıza bırakır', async () => {
+  /** D179 and the owner’s 2026-10-01 rule: EMP and loyalty, through the strategic path. */
+  it('Death Star vuruşu kolonide EMP ve sadakat kaybı yaratır', async () => {
     await grant(f.db, colony, 200_000, 50_000);
     // D168: a Death Star strike answers to the same development band as a raid; `grant` raised the
     // colony's Core, so the striker comes up to it.
@@ -339,7 +339,9 @@ describe('ağır bir saldırı', () => {
 
     const [struck] = await f.db.select().from(planets).where(eq(planets.id, colony));
     expect(struck?.controllerPlayerId, 'ilk vuruş dünyayı ele geçirmemeli').toBe(f.playerIds[1]!);
-    expect(await faultsOf(colony)).toHaveLength(FAULT.attackFaults);
+    expect(struck?.empUntil?.getTime()).toBe(f.clock.now().getTime() + DEATH_STAR.empMinutes * 60_000);
+    expect(struck?.loyalty).toBe(100 - DEATH_STAR.colonyLoyaltyLoss);
+    expect(await faultsOf(colony)).toHaveLength(0);
   });
 
   it('dönüş bacağı saldırganın dünyasını bozmaz', async () => {

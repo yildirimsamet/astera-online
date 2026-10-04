@@ -36,6 +36,8 @@ import {
   buildOrders,
   clanLootShares,
   missions,
+  monumentShipLots,
+  monumentWaves,
   planetFaults,
   planets,
   players,
@@ -449,6 +451,17 @@ export async function loadLocked(
   clock: Clock,
   options: { requireLive?: boolean; expectedPlayerId?: string } = {},
 ): Promise<LockedPlanet> {
+  return loadPlanetState(tx, planetId, clock, { ...options, mutate: true });
+}
+
+/** Quotes use the same economy/loyalty projection without persisting a tick or acquiring the world row. */
+export async function readPlanetState(tx: Tx, planetId: string, clock: Clock,
+  options: { requireLive?: boolean; expectedPlayerId?: string } = {}): Promise<LockedPlanet> {
+  return loadPlanetState(tx, planetId, clock, { ...options, mutate: false });
+}
+
+async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
+  options: { requireLive?: boolean; expectedPlayerId?: string; mutate: boolean }): Promise<LockedPlanet> {
   // Resolve the parent first without locking the child, then take locks in the
   // global season → planet order. The pre-read locates a lock, not authority.
   const [identity] = await tx
@@ -458,7 +471,8 @@ export async function loadLocked(
   if (!identity) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
 
   const season = await lockSeason(tx, identity.seasonId, options.requireLive ?? true);
-  const [row] = await tx.select().from(planets).where(eq(planets.id, planetId)).for('update');
+  const query = tx.select().from(planets).where(eq(planets.id, planetId));
+  const [row] = options.mutate ? await query.for('update') : await query;
   if (!row) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
   if (row.seasonId !== season.id) {
     throw new GameError('PLACEMENT_CHANGED', 'Your galaxy changed; refresh and try again', 409);
@@ -533,7 +547,7 @@ export async function loadLocked(
   */
   const loyalty = loyaltyAt(row, levels, faults.length, now);
 
-  if (advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt)) {
+  if (options.mutate && advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt)) {
     /*
       A HAND-OVER THAT DID NOT COME THROUGH `transferPlanetControl`, REPAIRED
       RATHER THAN REFUSED.
@@ -816,6 +830,7 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
     committedBuilds,
     committedResearch,
     [unclaimedClanLoot],
+    [monumentCargo],
   ] = await Promise.all([
     tx.select().from(buildings).where(inArray(buildings.planetId, worldIds)),
     tx.select().from(satellites).where(inArray(satellites.planetId, worldIds)),
@@ -861,6 +876,9 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
       })
       .from(clanLootShares)
       .where(eq(clanLootShares.playerId, playerId)),
+    tx.select({ deuterium: sql<number>`coalesce(sum(${monumentShipLots.deuterium}), 0)::float8` })
+      .from(monumentShipLots).innerJoin(monumentWaves, eq(monumentShipLots.waveId, monumentWaves.id))
+      .where(and(eq(monumentWaves.playerId, playerId), inArray(monumentWaves.status, ['OUTBOUND', 'HOLD', 'RETURNING']))),
   ]);
 
   let value = 0;
@@ -907,6 +925,7 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
   if (unclaimedClanLoot) {
     value += unclaimedClanLoot.alloy + unclaimedClanLoot.crystal + unclaimedClanLoot.deuterium;
   }
+  if (monumentCargo) value += monumentCargo.deuterium;
   value = Math.round(value);
   await tx.update(players).set({ wealth: value }).where(eq(players.id, playerId));
   return value;

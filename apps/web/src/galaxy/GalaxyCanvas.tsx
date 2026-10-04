@@ -15,8 +15,12 @@ import type {
   StrategicInterception,
   StrategicInterceptionImpact,
   RadiationSourceView,
+  HpRadiationSourceView,
+  PublicMonument,
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
+import { Monuments } from './Monuments.js';
+import { monumentNavigationRadius } from './monuments.js';
 import {
   easedCameraRange,
   finishedCameraRange,
@@ -133,7 +137,6 @@ const MIN_POLAR = Math.PI * 0.04;
 const MAX_POLAR = Math.PI * 0.96;
 
 /** How far past the rim you may drift before the camera is quietly walked back. */
-const LEASH = DISC_RADIUS * 1.15;
 
 /** Seconds spent easing onto a new subject. Long enough to follow, short enough not to wait. */
 const EASE = 0.5;
@@ -210,6 +213,8 @@ export interface GalaxyCanvasProps {
   sensors?: readonly ReachRing[];
   /** Radiation clouds (K3, F10). Public, like the worlds; absent draws nothing. */
   radiation?: readonly RadiationSourceView[];
+  hpRadiation?: readonly HpRadiationSourceView[];
+  monuments?: readonly PublicMonument[];
   /**
    * Whether each instrument's boundaries are drawn AT ALL. Owner instruction.
    *
@@ -311,6 +316,8 @@ export function GalaxyCanvas({
   meteorShower = false,
   sensors,
   radiation,
+  hpRadiation = EMPTY_HP_RADIATION,
+  monuments = EMPTY_MONUMENTS,
   showTelescopeReach = false,
   showRadarReach = false,
   homePosition,
@@ -334,6 +341,7 @@ export function GalaxyCanvas({
   const sceneReady = useRef(false);
   const openingMark = useRef<HTMLSpanElement>(null);
   const nodes = useMemo(() => planetNodes(planets), [planets]);
+  const navigationRadius = useMemo(() => monumentNavigationRadius(monuments, hpRadiation), [monuments, hpRadiation]);
   const home = useMemo<[number, number, number]>(
     () => activeWorldPosition(planets, activePlanetId, homePosition),
     [activePlanetId, homePosition, planets],
@@ -378,6 +386,11 @@ export function GalaxyCanvas({
     if (focus.kind === 'planet') {
       const node = nodes.find((n) => n.id === focus.id);
       return node ? () => node.position : null;
+    }
+
+    if (focus.kind === 'monument') {
+      const monument = monuments.find((row) => row.id === focus.id);
+      return monument ? () => toWorld(monument.position) : null;
     }
 
     if (focus.kind === 'asteroid' && seasonStart) {
@@ -481,6 +494,7 @@ export function GalaxyCanvas({
   }, [
     focus,
     nodes,
+    monuments,
     asteroids,
     seasonStart,
     pending,
@@ -508,7 +522,7 @@ export function GalaxyCanvas({
    */
   const approach = focus === null || focus.kind === 'planet'
     ? null
-    : focus.kind === 'intergalacticConvoy'
+    : focus.kind === 'monument' ? 20 : focus.kind === 'intergalacticConvoy'
       ? CONVOY_FOCUS_DISTANCE
       : CRAFT_DISTANCE;
 
@@ -557,7 +571,7 @@ export function GalaxyCanvas({
   return (
     <Canvas
       frameloop="demand"
-      camera={{ position: initialHomeCameraPosition(...home), fov: GALAXY_FOV, near: 0.1, far: 600 }}
+      camera={{ position: initialHomeCameraPosition(...home), fov: GALAXY_FOV, near: 0.1, far: Math.max(600, navigationRadius * 5) }}
       /**
        * A CLAMP, SO THE PRESET CAN ONLY EVER LOWER THE RATIO.
        *
@@ -717,7 +731,9 @@ export function GalaxyCanvas({
           behind the things they are about rather than over them.
         */}
         {/* Radiation (K3): a haze where the dose is, behind the worlds it may wrap. */}
-        {radiation && radiation.length > 0 && <RadiationHaze clouds={radiation} />}
+        <RadiationHaze {...(radiation ? { clouds: radiation } : {})} hpClouds={hpRadiation} />
+        <Monuments monuments={monuments} focusedId={focus?.kind === 'monument' ? focus.id : null}
+          onSelect={(id) => { onFocus({ kind: 'monument', id }); }} />
         {sensors && sensors.length > 0 && (
           <SensorRings
             posts={sensors}
@@ -878,13 +894,14 @@ export function GalaxyCanvas({
         <span ref={openingMark} data-academy-home data-academy-home-ready="false" className="pointer-events-none block size-px" />
       </Html>}
       <Rig
+        navigationRadius={navigationRadius}
         home={home}
         homeSignal={homeSignal}
         centerSignal={centerSignal}
         subject={subject}
         focusKey={focusKey}
         approach={approach}
-        exactApproach={coachTap !== null || focus?.kind === 'intergalacticConvoy'}
+        exactApproach={coachTap !== null || focus?.kind === 'intergalacticConvoy' || focus?.kind === 'monument'}
         openWide={openWide}
         wideDistance={wideDistance}
         {...(sightRadius !== undefined ? { sightRadius } : {})}
@@ -944,6 +961,8 @@ export function GalaxyCanvas({
  */
 /** A stable empty set: a fresh array each render would move a prop identity. */
 const EMPTY_RIVALS: readonly RivalMark[] = [];
+const EMPTY_MONUMENTS: readonly PublicMonument[] = [];
+const EMPTY_HP_RADIATION: readonly HpRadiationSourceView[] = [];
 
 const LABEL_BOX = { w: 132, h: 46 };
 /** Past this the type is smaller than the disc's own dust. */
@@ -1241,6 +1260,7 @@ export function GalaxyPlanetName({ node }: { node: PlanetNode }) {
  * mid-gesture.
  */
 function Rig({
+  navigationRadius,
   home,
   homeSignal,
   centerSignal,
@@ -1255,6 +1275,7 @@ function Rig({
   sceneReady,
   openingMark,
 }: {
+  navigationRadius: number;
   home: [number, number, number];
   homeSignal: number;
   /** Re-take the current subject, as a fresh selection would (E11: Space). 0 is never a request. */
@@ -1532,7 +1553,7 @@ function Rig({
      */
     if (act.leash) {
       const t = controls.target;
-      const correction = sphericalLeashCorrection(t.x, t.y, t.z, LEASH);
+      const correction = sphericalLeashCorrection(t.x, t.y, t.z, navigationRadius);
       if (correction) goTo(correction[0], correction[1], correction[2]);
     }
 
@@ -1617,7 +1638,7 @@ function Rig({
       minDistance={1.2}
       // Far enough to see the whole disc at once, and no further — past this the
       // galaxy is a smudge and the player has lost their bearings.
-      maxDistance={DISC_RADIUS * 3}
+      maxDistance={navigationRadius / 1.15 * 3}
       screenSpacePanning
       mouseButtons={{
         LEFT: THREE.MOUSE.ROTATE,

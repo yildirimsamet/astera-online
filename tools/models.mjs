@@ -18,8 +18,9 @@
  * Everything here is offline. Nothing in this pipeline ships to the browser.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
+import { tmpdir } from 'node:os';
 import { writePlanetVersions } from './planet-versions.mjs';
 
 const SOURCE = 'assets/source/models';
@@ -53,6 +54,8 @@ const POLICY = {
   sattelites: { texture: 256, simplify: true, ratio: 0.5, error: 0.01 },
   /** The one thing a player watches long enough to notice a bad silhouette. */
   ships: { texture: 512, simplify: false },
+  /** Five public structures, drawn much larger than a hull. Keep their tiled material maps. */
+  monuments: { texture: 1280, simplify: false },
   /**
    * The mining craft. Same class of object as a ship — it flies, it is followed,
    * and its silhouette is a drill bit leading a hull, which is the entire read.
@@ -179,6 +182,7 @@ const DEFAULT_POLICY = { texture: 512, simplify: false };
  */
 const SHIP_TRIANGLE_CEILING = 5_000;
 const SHIP_LOD_TRIANGLE_CEILING = 3_000;
+const MONUMENT_TRIANGLE_CEILING = 5_000;
 
 /** Every mobile hull in `FLEET_V2_ASSET_MANIFEST`, mirrored for the offline tool. */
 const FLEET_V2_MODEL_PATHS = new Set([
@@ -216,6 +220,11 @@ const LOD_VARIANTS = {
 const UNCAPPED_CRAFT = new Set(['ships/trade_ship.glb']);
 
 const PATH_POLICY = {
+  // These two have a single unwrapped 4K colour map instead of three tiled maps.
+  'monuments/monument_abandoned_space_wreckage.glb': { texture: 2048, simplify: false },
+  // Its densely split inner ring needs a slightly larger combined attribute
+  // error bound to reach 5k; this includes normal/UV error, not just geometry.
+  'monuments/monument_ancient_stargate.glb': { texture: 2048, simplify: false, error: 0.1 },
   // The new Germany, France, Spain and Japan masters are 960-triangle unit
   // spheres. Preserve their already light full geometry and spend the galaxy
   // budget on a smaller texture and an approximately 200-triangle distant tier.
@@ -420,17 +429,35 @@ for (const source of sources) {
     && !UNCAPPED_CRAFT.has(rel)
     && !base.simplify
     && before.triangles > SHIP_TRIANGLE_CEILING;
+  const monument = rel.startsWith('monuments/');
   const policy = capped
     ? { ...base, simplify: true, ratio: SHIP_TRIANGLE_CEILING / before.triangles, error: 0.01 }
     : base;
 
   if (!lodOnly) {
-    const after = FLEET_V2_MODEL_PATHS.has(rel)
-      ? optimiseWithinTriangleCeiling(source, target, policy, SHIP_TRIANGLE_CEILING)
-      : (optimise(source, target, policy), describe(target));
-    if (FLEET_V2_MODEL_PATHS.has(rel) && after.triangles > SHIP_TRIANGLE_CEILING) {
+    const ceiling = monument
+      ? MONUMENT_TRIANGLE_CEILING
+      : FLEET_V2_MODEL_PATHS.has(rel) ? SHIP_TRIANGLE_CEILING : undefined;
+    let after;
+    if (monument) {
+      const { prepareMonumentModel } = await import('./monument-models.mjs');
+      const scratch = mkdtempSync(join(tmpdir(), 'astera-monuments-'));
+      try {
+        const prepared = join(scratch, 'prepared.glb');
+        await prepareMonumentModel(source, prepared, MONUMENT_TRIANGLE_CEILING, base.error, base.texture);
+        optimise(prepared, target, { ...policy, simplify: false });
+        after = describe(target);
+      } finally {
+        rmSync(scratch, { recursive: true, force: true });
+      }
+    } else {
+      after = ceiling !== undefined
+        ? optimiseWithinTriangleCeiling(source, target, policy, ceiling)
+        : (optimise(source, target, policy), describe(target));
+    }
+    if (ceiling !== undefined && after.triangles > ceiling) {
       throw new Error(
-        `${rel} exceeds the ${String(SHIP_TRIANGLE_CEILING)} triangle ceiling: ` +
+        `${rel} exceeds the ${String(ceiling)} triangle ceiling: ` +
         `${String(after.triangles)}`,
       );
     }
