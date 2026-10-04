@@ -317,6 +317,17 @@ kapat/aç/yenilemede korunması doğrulandı. Bu render sahte API verisiyle yap�
 yerel UI provasıdır; fiziksel iPhone klavyesi denenmedi. İlgili son 68 test ve
 typecheck/lint geçti; dil fix'inden sonraki tüm web koşusu 5.040 PASS / 29 SKIP.
 
+Bu chat düzeltmeleri `5e5c0c3d94b80d4b673d8a98b1d7934df9246c93` web
+artifact'ıyla stage'e 19:30:30 UTC, production'a 19:32:39 UTC'de yayınlandı.
+Server/rules/dependency farkı olmadığı doğrulandı; sunucu image'i `856cbf6`
+olarak kaldı. İki ortamda HTTPS, CSP nonce ve public API; stage'de 41,
+production'da 43 asset'lik tarayıcı smoke'u hatasız geçti. Sekiz uygulama
+container'ı sağlıklı, production journal 141, failed/stale event ve yanlış
+cycle'a ödül teslimi sıfır. Production env korundu; migration/wipe tekrarlanmadı.
+Yayın kanıtı özel backup'taki `astera-chat-20261004/chat-publication-summary.json`.
+Son ödül gözleminde altı hakkın üçü teslim edilmiş, üçü bekliyordu; tarihli
+snapshot kopyaları saklandı, yerel CSV'ler bu gözleme güncellendi.
+
 ## Doğal sezon kapanışı incelemesi — 4 Ekim 2026
 
 Production'ın iki canlı MAIN sezonunda `season_end` 3 Kasım 18:56:16 UTC,
