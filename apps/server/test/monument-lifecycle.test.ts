@@ -38,10 +38,12 @@ describe('monument reclaim and placement references', () => {
       x: m.x, y: m.y, z: m.z, radius: 100, mode: 'EMIT', intensityHpPerMinute: 1, activeFrom: f.clock.now() });
     await f.db.update(seasons).set({ status: 'frozen' }).where(eq(seasons.id, f.seasonId));
     await wipeAllServers(f.db, f.clock, { count: 1, capacity: 2, seedBase: 20_261_004 });
-    expect(await f.db.select().from(monuments)).toHaveLength(0);
+    expect(await f.db.select().from(monuments).where(eq(monuments.seasonId, f.seasonId))).toHaveLength(0);
     expect(await f.db.select().from(monumentWaves)).toHaveLength(0);
     expect(await f.db.select().from(monumentShipLots)).toHaveLength(0);
-    expect(await f.db.select().from(hpRadiationSources)).toHaveLength(0);
+    expect(await f.db.select().from(hpRadiationSources).where(eq(hpRadiationSources.seasonId, f.seasonId))).toHaveLength(0);
+    expect(await f.db.select().from(monuments)).toHaveLength(5);
+    expect(await f.db.select().from(hpRadiationSources)).toHaveLength(5);
     expect((await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId)))[0]?.status).toBe('wiped');
   });
 

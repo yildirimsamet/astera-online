@@ -241,3 +241,21 @@ değildir; başka sitelerin vhost'ları bu deploy kapsamında değiştirilmez.
 - Sahip stage'i test edip production geçişini onayladı; son local değişikliklerin de
   push edilip release'e alınmasını istedi. Production geçişinin kendi son dump'ı ve
   kendi kapanış snapshot'ı kullanılacak; stage verisi production'a geri yazılmayacak.
+
+### Release doğrulama sonucu
+
+Workspace typecheck ve lint geçti. Ekonomi simülasyonları/snowball hariç rules
+107 dosya / 1.976 test, web 368 dosya / 5.035 test PASS (bir dosya / 29 test SKIP).
+Sunucu tam koşusu ve düzeltilen beklentilerin hedefli tekrarları birlikte güncel
+196 test dosyasını kapsar: 2.855 PASS, bir SKIP. Tam koşu başlarken toplanıp daha
+sonra sahibin isteğiyle silinen geçici pirate restriction test'i release dosyası
+değildir. Eski sensör mesafeleriyle başarısız olmuş dosya yeni fixture'larla 34/34;
+eski wipe beklentisi, eski sezon nesnelerinin temizliğini ve yeni sezonun beş anıt /
+beş HP bulutunu ayrı doğrulayarak 5/5 geçti. Fault cleanup ile birlikte son wipe
+regresyonu 7/7 PASS. Geçmiş recap'in canlı successor için açılış sayacı göstermesi
+testle yeniden üretildi; düzeltme ve afterglow regresyonu 18/18 geçti.
+
+Dosya bazında birleşik sunucu kanıtı `/tmp/astera-final-server-coverage-20261004.json`;
+release SHA'sıyla sunucudaki backup klasörüne de alınır. VPS'teki ek disposable CI
+koşusu performans nedeniyle durduruldu ve PASS olarak sayılmadı. Production/stage
+DB'si test veritabanı olarak kullanılmadı.
