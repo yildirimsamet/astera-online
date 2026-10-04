@@ -88,7 +88,9 @@ COPY apps/server/drizzle  ./apps/server/drizzle
 # Node's own signal handling, and a real PID 1. Without an init, SIGTERM from
 # `docker stop` never reaches the process and every deploy is a hard kill in the
 # middle of whatever transaction the worker was running.
-RUN apk add --no-cache tini
+# Operator checkouts can have umask 077. COPY preserves those root-owned modes;
+# the unprivileged runtime must be able to read manifests, dependencies and source.
+RUN apk add --no-cache tini && chmod -R a+rX /app
 ENTRYPOINT ["/sbin/tini", "--"]
 
 USER node
