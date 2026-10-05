@@ -762,7 +762,8 @@ function ChannelPanel({
               }}
               onKeyDown={(event) => {
                 // Enter selects IME text too; Safari can report that selection only as 229.
-                if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+                const legacyKeyCode: unknown = Reflect.get(event.nativeEvent, 'keyCode');
+                if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || legacyKeyCode === 229) return;
                 event.preventDefault();
                 if (!event.repeat) event.currentTarget.form?.requestSubmit();
               }}
