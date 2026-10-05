@@ -368,6 +368,12 @@ export const planet = {
 
 /** The ladder behind one row: what this thing becomes. */
 export const itemSheet = {
+  coreTierGuide: "Kernlevel und Planetenstufen",
+  coreTierCurrent: "Kern L{{level}} → Stufe {{tier}}",
+  coreTierRule: "Dein Planet gewinnt alle drei Kernlevel eine Stufe. Die markierte Zeile zeigt deine aktuelle Stufe.",
+  coreTierLevel: "Kernlevel",
+  coreTierPlanet: "Planetenstufe",
+  coreTierRange: "L{{from}}–L{{to}}",
   eyebrowNotInOrbit: "Nicht im Orbit",
   eyebrowInOrbit: "Im Orbit",
   eyebrowNotInstalled: "Nicht installiert",

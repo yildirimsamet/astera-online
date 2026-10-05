@@ -62,7 +62,7 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
   // Every second: the works fill while the player watches, and the planet query has no poll.
   const held = useProjected(planet.data?.planet, planet.dataUpdatedAt, 1_000);
   const collect = useCollect();
-  const [transfer, setTransfer] = useState<CollectionTransfer | null>(null);
+  const [transfer, setTransfer] = useState<(CollectionTransfer & { planetId: string }) | null>(null);
   useEffect(() => {
     if (transfer === null) return;
     const timer = window.setTimeout(() => { setTransfer(null); }, 1_200);
@@ -113,10 +113,11 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
           onSuccess: (result) => {
             setTransfer({
               id: Date.now(),
+              planetId: result.planet.planet.id,
               each: {
-                alloy: { from: held.alloy, to: held.alloy + result.moved.alloy },
-                crystal: { from: held.crystal, to: held.crystal + result.moved.crystal },
-                deuterium: { from: held.deuterium, to: held.deuterium + result.moved.deuterium },
+                alloy: { from: result.planet.planet.alloy - result.moved.alloy, to: result.planet.planet.alloy },
+                crystal: { from: result.planet.planet.crystal - result.moved.crystal, to: result.planet.planet.crystal },
+                deuterium: { from: result.planet.planet.deuterium - result.moved.deuterium, to: result.planet.planet.deuterium },
               },
             });
             const moved = Math.round(result.moved.alloy + result.moved.crystal + result.moved.deuterium);
@@ -163,7 +164,7 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
         rewards={rewards}
         boosted={boostUntil !== null && boostUntil.getTime() > now}
         {...(works ? { works } : {})}
-        transfer={transfer}
+        transfer={transfer?.planetId === data?.planet.id ? transfer : null}
         onCommander={onCommander}
         onRewards={onRewards}
         onWorld={onWorlds}

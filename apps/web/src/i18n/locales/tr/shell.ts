@@ -389,6 +389,7 @@ export const leaderboard = {
 } as const;
 
 export const chat = {
+  previousSeasonPlace: "Önceki sezon · {{rank}}. sıra",
   eyebrow: 'Canlı kanallar',
   title: 'Sohbet',
   launcher: 'Galaksi sohbetini aç',

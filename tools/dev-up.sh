@@ -173,15 +173,19 @@ step 'Opening the galaxies'
 # that has just been created has none, so this is what makes the very first
 # request to /api/preview answer instead of 409 NO_FRONTIER.
 pnpm -s --filter @astera/server season bootstrap
+# Read the complete output before checking it: a missing search tool or an early
+# pipe close must not turn a failed status read into permission to create a season.
+season_status=$(pnpm -s --filter @astera/server season status)
 # Keep the monument rehearsal available on every disposable local database. The
 # official EU seasons retain their dealt rulesets; this scratch door is explicit
 # ruleset 16 so a fresh `pnpm start` never silently opens a pre-monument galaxy.
 if [[ "${NODE_ENV:-development}" != 'production' && "${NODE_ENV:-development}" != 'test' ]] \
-  && ! pnpm -s --filter @astera/server season status | rg -q '^.*MONUMENT-LOCAL'; then
+  && ! grep -F 'MONUMENT-LOCAL' <<< "$season_status" >/dev/null; then
   pnpm -s --filter @astera/server season create \
     --shard MONUMENT-LOCAL --seed 16005 --days 30 --cap 60 --ruleset 16
+  season_status=$(pnpm -s --filter @astera/server season status)
 fi
-pnpm -s --filter @astera/server season status
+printf '%s\n' "$season_status"
 
 # ── 7. the processes ────────────────────────────────────────────────────────
 step 'Starting the API/worker and the client'

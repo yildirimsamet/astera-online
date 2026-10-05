@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClaimReward, usePlanet, useRewards } from '../api/queries.js';
+import { useWorld } from '../api/world.js';
 import type { RewardChainView, RewardTierView } from '../api/schemas.js';
 import { compact, full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
@@ -83,6 +84,7 @@ export function RewardsScreen({ commander }: { commander: string }) {
   const { t } = useTranslation();
   const { data, isPending, isError, refetch } = useRewards();
   const planet = usePlanet();
+  const { capitalPlanetId, worlds } = useWorld();
   const claim = useClaimReward();
   const say = useToast();
 
@@ -138,7 +140,10 @@ export function RewardsScreen({ commander }: { commander: string }) {
    * claimed one at a time, and warning about a total nobody will press in one go
    * would overstate it.
    */
-  const held = planet.data?.planet;
+  // Rewards are always credited to the capital, including while viewing a colony.
+  const held = capitalPlanetId
+    ? worlds.find((world) => world.planet.id === capitalPlanetId)?.planet
+    : planet.data?.planet;
   const claimableTiers = data.chains.flatMap((c) => c.tiers.filter((x) => x.state === 'claimable'));
   const overflowing =
     held !== undefined &&

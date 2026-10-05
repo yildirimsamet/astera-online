@@ -93,6 +93,35 @@ const show = ({
 const rung = (level: number): HTMLElement | null =>
   document.querySelector<HTMLElement>(`[data-rung="${String(level)}"]`);
 
+describe('the Command Core tier information box', () => {
+  it('opens the full level-to-tier table at the Command Core', async () => {
+    show({ item: { kind: 'building', id: 'CORE' } });
+    const toggle = screen.getByRole('button', { name: /Core levels & planet tiers/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    await userEvent.click(toggle);
+    const table = screen.getByRole('table', { name: 'Core levels & planet tiers' });
+    expect(within(table).getByText('L1–L3')).toBeInTheDocument();
+    expect(within(table).getByText('L4–L6')).toBeInTheDocument();
+    expect(within(table).getByText('L22–L24')).toBeInTheDocument();
+    expect(table.querySelector('[aria-current="true"]')).toHaveTextContent('L4–L6');
+    await userEvent.click(toggle);
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it.each([[1,1],[3,1],[4,2],[6,2],[7,3],[21,7],[22,8],[24,8],[25,9]])('shows Core L%i at tier %i', async (level, tier) => {
+    show({ item: { kind: 'building', id: 'CORE' }, over: { buildings: { CORE: level, REFINERY: 1, EXTRACTOR: 1, VAULT: 1, SHIPYARD: 1 } } });
+    expect(screen.getByText(`Core L${String(level)} → Tier ${String(tier)}`)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Core levels & planet tiers/ }));
+    expect(screen.getByRole('table').querySelector('[aria-current="true"]')).toHaveTextContent(`Tier ${String(tier)}`);
+  });
+
+  it('keeps tier information specific to Command Core', () => {
+    show({ item: { kind: 'building', id: 'REFINERY' } });
+    expect(screen.queryByRole('button', { name: /Core levels & planet tiers/ })).not.toBeInTheDocument();
+  });
+});
+
 const hero = (): HTMLElement => document.querySelector<HTMLElement>('[data-item-hero]')!;
 const heroArt = (): string => hero().querySelector('img')?.getAttribute('src') ?? '';
 

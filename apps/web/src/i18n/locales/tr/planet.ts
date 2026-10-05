@@ -367,6 +367,12 @@ export const planet = {
 } as const;
 
 export const itemSheet = {
+  coreTierGuide: "Çekirdek seviyeleri ve gezegen kademeleri",
+  coreTierCurrent: "Çekirdek Sv.{{level}} → Kademe {{tier}}",
+  coreTierRule: "Gezegen kademesi her üç çekirdek seviyesinde bir artar. Vurgulanan satır mevcut kademeni gösterir.",
+  coreTierLevel: "Çekirdek seviyesi",
+  coreTierPlanet: "Gezegen kademesi",
+  coreTierRange: "Sv.{{from}}–Sv.{{to}}",
   eyebrowNotInOrbit: "Yörüngede değil",
   eyebrowInOrbit: "Yörüngede",
   eyebrowNotInstalled: "Kurulu değil",

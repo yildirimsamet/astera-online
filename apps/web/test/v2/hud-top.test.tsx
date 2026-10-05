@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { monumentsSchema, type Monuments, type NotificationView, type PendingThread, type PlanetView } from '../../src/api/schemas.js';
@@ -157,11 +157,30 @@ describe('the wired top of the shell', () => {
   it('says what came in', async () => {
     planet = planetView({}, { bufferAlloy: 400 });
     mutate.mockImplementation((_input: undefined, options: { onSuccess: (r: unknown) => void }) => {
-      options.onSuccess({ moved: { alloy: 400, crystal: 0, deuterium: 0 }, blocked: { alloy: 0, crystal: 0, deuterium: 0 } });
+      planet = planetView({}, { alloy: 900 });
+      options.onSuccess({ planet, moved: { alloy: 400, crystal: 0, deuterium: 0 }, blocked: { alloy: 0, crystal: 0, deuterium: 0 } });
     });
     render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
     await userEvent.click(screen.getByRole('button', { name: /^Works/ }));
     expect(await screen.findByText('Collected 400')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Alloy: 900 of 2,000' })).toHaveTextContent('900');
+  });
+
+  it('keeps a collection effect on its originating world when selection changes in flight', async () => {
+    planet = planetView({}, { bufferAlloy: 400 });
+    let finish = (_answer: unknown): void => undefined;
+    mutate.mockImplementation((_input: undefined, options: { onSuccess: (r: unknown) => void }) => {
+      finish = options.onSuccess;
+    });
+    const { container, rerender } = render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
+    await userEvent.click(screen.getByRole('button', { name: /^Works/ }));
+    const collected = planetView({}, { alloy: 900 });
+    planet = planetView({}, { id: 'p2', alloy: 536, deuterium: 2 });
+    worlds = [collected, planet];
+    rerender(<HudTop commander="Samet" {...handlers()} />);
+    act(() => { finish({ planet: collected, moved: { alloy: 400, crystal: 0, deuterium: 0 }, blocked: { alloy: 0, crystal: 0, deuterium: 0 } }); });
+    expect(screen.getByRole('button', { name: 'Alloy: 536 of 2,000' })).toHaveTextContent('536');
+    expect(container.querySelector('[data-collect-particle]')).toBeNull();
   });
 
   it('sends a full store to the economy instead of collecting nothing', async () => {

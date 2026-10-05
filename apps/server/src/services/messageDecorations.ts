@@ -5,7 +5,36 @@ import type { Queryable } from '../db/client.js';
 export type MessageChannel = 'general' | 'clan' | 'dm';
 export interface ReplyPreview { id: string; username: string; content: string }
 export interface ReactionView { emoji: ReactionEmoji; count: number; mine: boolean }
-export interface MessageDecoration { replyTo: ReplyPreview | null; reactions: ReactionView[] }
+export type PodiumPlace = 1 | 2 | 3;
+export interface MessageDecoration { replyTo: ReplyPreview | null; reactions: ReactionView[]; previousSeasonRank?: PodiumPlace }
+
+/** The frozen previous cycle, across wipes and galaxy transfers; never the live ladder. */
+export async function previousSeasonPodium(
+  db: Queryable, playerIds: readonly string[],
+): Promise<Map<string, PodiumPlace>> {
+  if (playerIds.length === 0) return new Map();
+  const ids = sql.join([...new Set(playerIds)].map((id) => sql`${id}::uuid`), sql`, `);
+  const rows = await db.execute<{ playerId: string; place: number }>(sql`
+    SELECT p.id AS "playerId", r.final_rank AS place
+      FROM players p
+      JOIN seasons current_season ON current_season.id = p.season_id
+      JOIN season_cycles current_cycle ON current_cycle.id = current_season.cycle_id
+      JOIN season_cycles previous_cycle ON previous_cycle.ordinal = current_cycle.ordinal - 1
+      JOIN season_results r ON r.cycle_id = previous_cycle.id AND r.account_id = p.account_id
+      JOIN seasons previous_season ON previous_season.id = r.season_id AND previous_season.status IN ('frozen', 'wiped')
+      JOIN shards previous_shard ON previous_shard.id = previous_season.shard_id
+     WHERE p.id IN (${ids}) AND r.final_rank BETWEEN 1 AND 3
+       AND (previous_shard.role = 'MAIN' OR EXISTS (
+         SELECT 1 FROM season_reward_entitlements e
+          WHERE e.source_season_id = r.season_id AND e.target_cycle_id = current_cycle.id
+       ))
+  `);
+  const places = new Map<string, PodiumPlace>();
+  for (const row of rows) {
+    if (row.place === 1 || row.place === 2 || row.place === 3) places.set(row.playerId, row.place);
+  }
+  return places;
+}
 
 const tableFor = (channel: MessageChannel): string => channel === 'general' ? 'chat_messages'
   : channel === 'clan' ? 'clan_messages' : 'dm_messages';
@@ -63,16 +92,18 @@ export async function reactionViews(
 export async function messageDecorations(
   db: Queryable,
   channel: MessageChannel,
-  rows: readonly { id: string; replyToMessageId: string | null }[],
+  rows: readonly { id: string; authorPlayerId: string; replyToMessageId: string | null }[],
   playerId: string,
   earliest?: Date,
 ): Promise<Map<string, MessageDecoration>> {
-  const [previews, reactions] = await Promise.all([
+  const [previews, reactions, podium] = await Promise.all([
     replyPreviews(db, channel, rows.flatMap((row) => row.replyToMessageId ? [row.replyToMessageId] : []), earliest),
     reactionViews(db, channel, rows.map((row) => row.id), playerId),
+    previousSeasonPodium(db, rows.map((row) => row.authorPlayerId)),
   ]);
   return new Map(rows.map((row) => [row.id, {
     replyTo: row.replyToMessageId ? previews.get(row.replyToMessageId) ?? null : null,
     reactions: reactions.get(row.id) ?? [],
+    ...(podium.has(row.authorPlayerId) ? { previousSeasonRank: podium.get(row.authorPlayerId) } : {}),
   }]));
 }

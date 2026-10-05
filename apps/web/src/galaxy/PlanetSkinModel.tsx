@@ -396,6 +396,7 @@ function LoadedPlanetSkinModel({
         <instancedMesh
           ref={hits}
           name="planet-skin-hits"
+          userData={{ planetOccluder: true }}
           args={[undefined, undefined, nodes.length]}
           frustumCulled={false}
           onPointerUp={select}
@@ -532,6 +533,7 @@ function ModelInstances({
         <instancedMesh
           ref={hits}
           name={`${name}-hits`}
+          userData={{ planetOccluder: true }}
           args={[undefined, undefined, capacity]}
           frustumCulled={false}
           onPointerUp={select}

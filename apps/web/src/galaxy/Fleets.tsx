@@ -242,9 +242,11 @@ interface HullProps {
   focused: boolean;
   /** Landmark callers can opt out of the galaxy's distance fog. */
   fog?: boolean;
+  /** Landmarks keep the planets' depth buffer; moving craft remain foreground markers. */
+  foreground?: boolean;
 }
 
-function LoadedHull({ url, scale, glow, focused, fog = true }: HullProps) {
+function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }: HullProps) {
   const { scene } = useGLTF(url, false);
 
   const model = useMemo(() => {
@@ -254,7 +256,7 @@ function LoadedHull({ url, scale, glow, focused, fog = true }: HullProps) {
     const clone = posedCraft(scene, MODEL_FACING[url] ?? '+z', MODEL_POSE[url]);
     clone.traverse((node) => {
       if (!isMesh(node)) return;
-      node.renderOrder = SHIP_ORDER;
+      node.renderOrder = foreground ? SHIP_ORDER : 0;
       /**
        * Marked transparent so the hull joins the LAST render queue.
        *
@@ -265,6 +267,7 @@ function LoadedHull({ url, scale, glow, focused, fog = true }: HullProps) {
        */
       for (const material of materialsOf(node)) {
         configureOpaqueTransparentBody(material);
+        material.depthTest = true;
         (material as THREE.Material & { fog?: boolean }).fog = fog;
       }
       /**
@@ -280,12 +283,12 @@ function LoadedHull({ url, scale, glow, focused, fog = true }: HullProps) {
        * the near side. Turning depth testing off instead would have been one line
        * and would have turned every ship inside out.
        */
-      node.onBeforeRender = (renderer) => {
-        renderer.clearDepth();
-      };
+      if (foreground) {
+        node.onBeforeRender = (renderer) => { renderer.clearDepth(); };
+      }
     });
     return clone;
-  }, [scene, url]);
+  }, [scene, url, fog, foreground]);
 
   /*
     THE RIM IS A HINT, NOT A FRAME (owner, 2026-09-24): half as thick as it was (0.035 of
@@ -303,7 +306,7 @@ function LoadedHull({ url, scale, glow, focused, fog = true }: HullProps) {
         },
         transparent: true,
         depthWrite: false,
-        depthTest: false,
+        depthTest: !foreground,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending,
         vertexShader: `
@@ -323,11 +326,11 @@ function LoadedHull({ url, scale, glow, focused, fog = true }: HullProps) {
       material.toneMapped = false;
       material.fog = false;
       node.material = material;
-      node.renderOrder = SHIP_ORDER - 1;
+      node.renderOrder = foreground ? SHIP_ORDER - 1 : -1;
       owned.push(material);
     });
     return { outline: clone, outlineMaterials: owned };
-  }, [model, glow, focused]);
+  }, [model, glow, focused, foreground]);
 
   useEffect(
     () => () => {

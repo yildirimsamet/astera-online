@@ -1,6 +1,7 @@
 import { SilentSpaceNotice } from '../shell/SilentSpaceNotice.js';
 import { useReturnStatus, useApplyToReturn } from '../api/returnQueries.js';
 import { useRequest } from '../lib/useRequest.js';
+import { useSensorReach } from '../lib/useSensorReach.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
@@ -21,6 +22,8 @@ import {
   useIntel,
   useHarvest,
   useMine,
+  useRecallFlight,
+  useRecallMining,
   useFleetArrivals,
   useMining,
   useMiningArrivals,
@@ -383,6 +386,8 @@ export function GalaxyView({
   const setRival = useSetRival();
   const mine = useMine();
   const harvest = useHarvest();
+  const recallMining = useRecallMining();
+  const recallFlight = useRecallFlight();
   const settlement = useSettlement();
   const deathStar = useLaunchDeathStar();
   const { activePlanetId, capitalPlanetId, worlds, selectPlanet } = useWorld();
@@ -541,11 +546,11 @@ export function GalaxyView({
    * ask for. `SensorToggles` keeps its struck-through glyph precisely so an unlit
    * switch reads as "off", not as "missing".
    *
-   * SESSION STATE, NOT STORAGE. Reloading starts clean, which is the same answer
-   * as "both start off" — there is no remembered preference to be surprised by.
+   * Remember each device's choice across reloads. Both start off only when there
+   * is no saved preference; unavailable storage falls back to this visit's state.
    */
-  const [showTelescopeReach, setShowTelescopeReach] = useState(false);
-  const [showRadarReach, setShowRadarReach] = useState(false);
+  const [showTelescopeReach, setShowTelescopeReach] = useSensorReach('telescope');
+  const [showRadarReach, setShowRadarReach] = useSensorReach('radar');
   const [eventsGuideOpen, setEventsGuideOpen] = useState(false);
   /**
    * THE RADAR SWITCH ONLY EXISTS IF THERE IS A RADAR. Owner instruction.
@@ -1274,7 +1279,7 @@ export function GalaxyView({
           {/* Home, back in plain sight and first in the stack (owner, 2026-09-24): never under a card or a rail. */}
           {showGuidance && <HomeChip onHome={flyHome} />}
           <div data-sensor-toggles className="pointer-events-none">
-            <ViewChip layersOn={showTelescopeReach || showRadarReach} onOpen={() => { setViewOpen(true); }} />
+            <ViewChip layersOn={showTelescopeReach || (hasRadar && showRadarReach)} onOpen={() => { setViewOpen(true); }} />
           </div>
         </div>
       </div>
@@ -1536,6 +1541,13 @@ export function GalaxyView({
           return (
             <RunFocus
               run={run}
+              recalling={recallMining.isPending}
+              onRecall={() => {
+                recallMining.mutate({ runId: run.id, ...(run.planetId ? { originPlanetId: run.planetId } : {}) }, {
+                  onSuccess: () => { say(t('pendingStrip.recallStarted')); },
+                  onError: (error) => { say(describe(error), 'error'); },
+                });
+              }}
               rock={asteroids.find((a) => a.id === run.asteroidId)}
               wreck={
                 run.targetKind === 'debris'
@@ -1564,6 +1576,14 @@ export function GalaxyView({
             <ThreadFocus
               onFocusMonument={(id) => { setFocus({ kind: 'monument', id }); setDetail(true); setAttacking(false); }}
               thread={thread}
+              recalling={recallFlight.isPending}
+              onRecall={() => {
+                if (thread.id === undefined) return;
+                recallFlight.mutate({ missionId: thread.id }, {
+                  onSuccess: () => { say(t('pendingStrip.recallFleetStarted')); },
+                  onError: (error) => { say(describe(error), 'error'); },
+                });
+              }}
               /**
                * OFF THE CLOCK, NOT OFF THE PAYLOAD.
                *

@@ -157,7 +157,7 @@ the script's final line as proof of deployment.
 
 ## Production deploy, in order
 
-The root `pnpm verify` and `pnpm lint` commands run type-aware ESLint with a 4 GB Node heap.
+The root `pnpm verify` and `pnpm lint` commands run type-aware ESLint with a 6 GB Node heap.
 Use those root scripts during qualification; a bare `eslint .` falls back to Node's smaller
 default heap and can fail for memory reasons without identifying an application regression.
 
@@ -1842,7 +1842,10 @@ docker exec astera-postgres-prod psql -U astera -d astera -tAc \
     from asteroid_spawn_hours order by hour_starts_at desc limit 3;"
 ```
 
-`active_players` should match the non-bot `last_active_at > now() - 60 min` count at the hour.
+For releases from 2026-10-05, the raw eligible population is eligible active people plus
+`floor(active non-retired bots / 2)`. Asteroid `active_players` may reflect the existing rolling
+average after the founding day; `eligible_players` records the raw figure. Pirate hours use
+the same eligible population. Already recorded hours retain their population and object IDs.
 
 ## Monument release — 2026-10-04
 
@@ -1885,3 +1888,33 @@ monument quote/send/recall with the release test commander, including capacity-r
 news. Keep `/health` and the worker log visible during this smoke. Production execution
 and maintenance approval remain part of the existing deployment runbook; this feature
 review did not deploy or stop production.
+
+## Chat, input and spawn follow-ups — 2026-10-05
+
+This patch adds no migration and does not require a season reset. The web changes include
+16 px editable controls, remembered Telescope/Radar range toggles, the Core/tier information
+box, double-click message actions, and room colour across the entire chat sheet. It also
+includes the pending chat podium, craft-detail recalls, landmark occlusion and HUD fixes.
+
+Active bots contribute half their number to future asteroid and pirate hours, rounding an
+odd remainder down. Retired/inactive bots stay excluded and human eligibility gates remain.
+The four current asteroid shower windows use definition version 10, at the same starts:
+
+| Türkiye time | Weekday | Weekend |
+| --- | --- | --- |
+| Lunch | 12:30–13:00 ×4 | 13:00–13:30 ×6 |
+| Evening | 20:00–20:30 ×6 | 20:00–20:30 ×10 |
+
+**Changing the image does not rewrite a live season's stored calendar.** Once all APIs and
+the worker run the matching code, use the existing `adopt-event-calendar` dry run and `--yes`
+commands above before publishing the matching events guide. Adopt every live fixed-calendar
+shard. Future windows change from the next hour boundary; opened windows, existing asteroid
+IDs, claims and flights remain intact. The command is idempotent. Do not use a wipe,
+`restamp` or `sync-events` for this calendar change. Restore a matching stored calendar as
+well as images if this change needs rollback.
+
+Local validation excludes economy simulations and snowball audits; the recorded evidence is
+in `out/seven-followups-20261005`. Mobile browser emulation checks focus scale and computed
+control sizes; it does not claim an actual iPhone hardware test. The owner authorized the
+complete rollout on 2026-10-05. Use the rolling path, retain the previous image/webroot and
+rehearse the backup restore and calendar adoption before applying it to production.

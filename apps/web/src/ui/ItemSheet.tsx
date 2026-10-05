@@ -34,6 +34,7 @@ import { Sheet } from '../v2/kit/Sheet.js';
 import { useOrderDuration } from './Action.js';
 import { BUILDING_TOP, SATELLITE_ART, buildingArt, instrumentArt } from './assets.js';
 import type { Blocked } from './UpgradeRow.js';
+import { CoreTierInfo } from './CoreTierInfo.js';
 
 /**
  * WHAT ONE MORE LEVEL BUYS, AND WHAT THIS THING BECOMES. D1 (docs/ui-v2/design-mocks).
@@ -216,6 +217,8 @@ export function ItemSheet({
               <p data-item-detail className="text-caption leading-snug text-v2-ink-3">{detail}</p>
             )}
           </div>
+
+          {item.kind === 'building' && item.id === 'CORE' && <CoreTierInfo level={durableLevel} />}
 
           {inactiveOpensAt !== null && (
             <p role="status" className="text-caption leading-snug text-v2-warn">

@@ -69,7 +69,8 @@ export function worksAt(
    *
    * `toServerTime` moves it across. Every figure below is now on one clock.
    */
-  const from = toServerTime(fetchedAt) / 60_000;
+  // Response time loses production during network delay and cache normalization.
+  const from = (planet.snapshotAt?.getTime() ?? toServerTime(fetchedAt)) / 60_000;
   const to = Math.max(from, now / 60_000);
   const until = planet.disruptedUntil ? planet.disruptedUntil.getTime() / 60_000 : 0;
   /*
@@ -88,9 +89,10 @@ export function worksAt(
       planet.bufferCrystalCap,
       planet.bufferCrystal + planet.crystalPerHour * hours,
     ),
-    // Deuterium is mined, never passively produced. It stays put until a
-    // server-authored mining, collection, spend or raid mutation moves it.
-    bufferDeuterium: planet.bufferDeuterium,
+    // A world without a plant preserves its mined haul, just as advanceEconomy does.
+    bufferDeuterium: (planet.deuteriumPerHour ?? 0) > 0
+      ? Math.min(planet.bufferDeuteriumCap, planet.bufferDeuterium + (planet.deuteriumPerHour ?? 0) * hours)
+      : planet.bufferDeuterium,
   };
 }
 

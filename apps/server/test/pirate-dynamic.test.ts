@@ -62,10 +62,9 @@ describe('a ruleset-9 season', () => {
   });
 
   /**
-   * PIRATES ARE SIZED TO PEOPLE ALONE. Owner instruction, 2026-09-26, reversing
-   * 2026-09-19: a bot at the controls still adds nothing to the hour.
+   * People count fully; active server commanders contribute half their number.
    */
-  it('sizes the hour to the people, however many bots are awake', async () => {
+  it('sizes the hour to people plus half of the active bots', async () => {
     const { db, clock, season } = await seasonWith(16, 9, 'EU-DYN-G');
     // Eight of the sixteen are the server's, and joining left every one at the controls.
     const seated = await db.select({ accountId: players.accountId }).from(players)
@@ -74,8 +73,8 @@ describe('a ruleset-9 season', () => {
       accountId: row.accountId, ordinal: i + 1, persona: 'raider', nextActionAt: clock.now(), createdAt: clock.now(),
     })));
     await openAsteroidHour(db, { seasonId: season.id, hourStartsAt: START, now: clock.now() });
-    // Eight people: 8 × 0.25 = 2. Counting the bots it would have been 16 × 0.25 = 4.
-    expect(await pirateLaneOf(season.id)).toEqual({ fromMinute: 0, untilMinute: 60, count: 2 });
+    // Eight people plus half of eight bots: 12 × 0.25 = 3.
+    expect(await pirateLaneOf(season.id)).toEqual({ fromMinute: 0, untilMinute: 60, count: 3 });
   });
 
   it('publishes exactly the stored pirates, and resolves each by its handle and its index', async () => {

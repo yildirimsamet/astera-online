@@ -451,6 +451,7 @@ export const leaderboard = {
 } as const;
 
 export const chat = {
+  previousSeasonPlace: "Vorige Saison · Platz {{rank}}",
   eyebrow: 'Live-Kanäle',
   title: 'Chat',
   launcher: 'Galaxie-Chat öffnen',

@@ -5,7 +5,9 @@ import {
   useQuery,
   useQueryClient,
   type InfiniteData,
+  type MutationFunctionContext,
   type QueryClient,
+  type UseMutationOptions,
 } from '@tanstack/react-query';
 import { TRAFFIC, engagementEndsAt } from '@astera/rules';
 import type { ChatLanguage, MissionPace, ReactionEmoji, TransferReturnPlan } from '@astera/rules';
@@ -44,6 +46,7 @@ import type {
 import type { ClanAidInput, IntergalacticConvoyLaunchInput, MonumentRecallSelection, MonumentSendInput } from './client.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
+import { latestPlanetSnapshot, markPlanetPrediction, readPlanetSnapshot, settlePlanetPrediction, takeDeferredPlanetRead } from './planetCache.js';
 import { serverNow } from '../lib/clock.js';
 import { worksAt } from '../lib/projection.js';
 import {
@@ -196,10 +199,12 @@ export function useServers() {
 
 export function usePlanet() {
   const api = useApi();
+  const client = useQueryClient();
   const { activePlanetId } = useWorld();
+  const key = activePlanetId ? keys.planetById(activePlanetId) : keys.planet;
   return useQuery({
-    queryKey: activePlanetId ? keys.planetById(activePlanetId) : keys.planet,
-    queryFn: () => api.planet(activePlanetId ?? undefined),
+    queryKey: key,
+    queryFn: () => readPlanetSnapshot(client, key, () => api.planet(activePlanetId ?? undefined)),
     ...READ,
   });
 }
@@ -537,7 +542,6 @@ export function useClaimReward() {
   const apply = useApplyPlanet();
   const lane = usePlanetMutationLane(capitalPlanetId);
   return useMutation({
-    scope: lane.scope,
     mutationFn: (id: string) => api.claimReward(id),
     onMutate: lane.enter,
     onSuccess: async (result) => {
@@ -690,20 +694,31 @@ export function useMonuments(enabled = true) {
     ...(result.data?.waves.flatMap((wave) => [wave.arriveAt, wave.fillsAt, wave.nextLossAt, wave.fadeAt ?? null]) ?? []),
     ...(result.data?.probes.flatMap((probe) => [probe.arriveAt, probe.homeAt]) ?? []),
   ].flatMap((moment) => moment === null ? [] : [moment.getTime()]).sort((a, b) => a - b), [result.data]);
-  useRefetchOnArrival(moments, [keys.monuments, keys.planet, keys.pending, keys.reports, keys.galaxy]);
+  useRefetchOnArrival(moments, [keys.monuments, keys.planet, keys.planets, keys.pending, keys.reports, keys.galaxy]);
   return result;
 }
 
 export function useMonumentActions() {
   const api = useApi();
   const client = useQueryClient();
+  const lane = usePlanetInputLane();
   const refresh = async (): Promise<void> => {
     await Promise.all([keys.monuments, keys.galaxy, keys.planet, keys.planets, keys.pending,
       keys.traffic, keys.notifications, keys.reports, keys.clanWar, keys.season].map((queryKey) => client.invalidateQueries({ queryKey })));
   };
   return {
-    send: useMutation({ mutationFn: ({ monumentId, input, key }: { monumentId: string; input: MonumentSendInput; key: string }) => api.sendMonument(monumentId, input, key), onSuccess: refresh }),
-    probe: useMutation({ mutationFn: ({ monumentId, originPlanetId, key }: { monumentId: string; originPlanetId: string; key: string }) => api.probeMonument(monumentId, originPlanetId, key), onSuccess: refresh }),
+    send: useMutation({
+      mutationFn: ({ monumentId, input, key }: { monumentId: string; input: MonumentSendInput; key: string }) => api.sendMonument(monumentId, input, key),
+      onMutate: ({ input }) => lane.enter(input.originPlanetId),
+      onSuccess: refresh,
+      onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+    }),
+    probe: useMutation({
+      mutationFn: ({ monumentId, originPlanetId, key }: { monumentId: string; originPlanetId: string; key: string }) => api.probeMonument(monumentId, originPlanetId, key),
+      onMutate: ({ originPlanetId }) => lane.enter(originPlanetId),
+      onSuccess: refresh,
+      onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+    }),
     recall: useMutation({ mutationFn: ({ waveId, selections, key }: { waveId: string; selections: readonly MonumentRecallSelection[]; key: string }) => api.recallMonument(waveId, selections, key), onSuccess: refresh }),
   };
 }
@@ -713,6 +728,7 @@ export function useClanWarActions() {
   const api = useApi();
   const client = useQueryClient();
   const { activePlanetId } = useWorld();
+  const lane = usePlanetInputLane();
   const applyPlanet = useApplyPlanet();
   const refresh = (): void => {
     void client.invalidateQueries({ queryKey: keys.clanWar });
@@ -733,6 +749,7 @@ export function useClanWarActions() {
       api.quoteClanWar(input) }),
     contribute: useMutation({ mutationFn: (input: { originPlanetId: string; fleet: Fleet;
       acknowledgeShieldLoss: boolean; acknowledgeRadiationLoss?: boolean }) => api.contributeClanWar(input),
+      onMutate: ({ originPlanetId }) => lane.enter(originPlanetId),
       onSuccess: async (result) => {
         await applyPlanet(result.planet);
         /*
@@ -750,14 +767,17 @@ export function useClanWarActions() {
         client.setQueryData<ClanWar>(keys.clanWar, (current) =>
           current ? { ...current, operation: result.war } : current);
         refresh();
-      } }),
+      },
+      onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+    }),
     recall: useMutation({ mutationFn: (id: string) => api.recallClanWar(id), onSuccess: refresh }),
-    donate: useMutation({ mutationFn: (input: { planetId: string; resources: Resources }) =>
-      api.donateClanTreasury(input), onSuccess: () => {
-        void client.invalidateQueries({ queryKey: keys.clanWar });
-        void client.invalidateQueries({ queryKey: keys.planets });
-        void client.invalidateQueries({ queryKey: keys.planet });
-      } }),
+    donate: useMutation({
+      mutationFn: (input: { planetId: string; resources: Resources }) => api.donateClanTreasury(input),
+      onMutate: ({ planetId }) => lane.enter(planetId),
+      onSuccess: () => Promise.all([keys.clanWar, keys.planets, keys.planet]
+        .map((queryKey) => client.invalidateQueries({ queryKey }))),
+      onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+    }),
     upgrade: useMutation({ mutationFn: (level: number) => api.upgradeClanLevel(level),
       onSuccess: () => {
         void client.invalidateQueries({ queryKey: keys.clanWar });
@@ -783,6 +803,7 @@ export function useClanSupportActions() {
   const api = useApi();
   const client = useQueryClient();
   const applyPlanet = useApplyPlanet();
+  const lane = usePlanetInputLane();
   const refresh = (): void => {
     void client.invalidateQueries({ queryKey: keys.clanSupport });
     void client.invalidateQueries({ queryKey: keys.planet });
@@ -794,10 +815,12 @@ export function useClanSupportActions() {
       api.quoteClanSupport(input) }),
     send: useMutation({
       mutationFn: (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet }) => api.sendClanSupport(input),
+      onMutate: ({ originPlanetId }) => lane.enter(originPlanetId),
       onSuccess: async (result) => {
         await applyPlanet(result.planet);
         refresh();
       },
+      onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
     }),
     recall: useMutation({ mutationFn: (waveId: string) => api.recallClanSupport(waveId), onSuccess: refresh }),
     sendBack: useMutation({ mutationFn: (waveId: string) => api.sendBackClanSupport(waveId), onSuccess: refresh }),
@@ -809,13 +832,16 @@ export function useSetDefencePosture() {
   const api = useApi();
   const client = useQueryClient();
   const applyPlanet = useApplyPlanet();
+  const lane = usePlanetInputLane();
   return useMutation({
     mutationFn: ({ planetId, escape, support }: { planetId: string; escape: boolean; support: boolean }) =>
       api.setDefencePosture(planetId, { escape, support }),
+    onMutate: ({ planetId }) => lane.enter(planetId),
     onSuccess: async (result) => {
       await applyPlanet(result.planet);
       if (result.returnedWaves > 0) void client.invalidateQueries({ queryKey: keys.clanSupport });
     },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
 
@@ -851,6 +877,9 @@ export function useClanActions() {
   const api = useApi();
   const client = useQueryClient();
   const applyPlanet = useApplyPlanet();
+  const { capitalPlanetId } = useWorld();
+  const capitalLane = usePlanetMutationLane(capitalPlanetId);
+  const originLane = usePlanetInputLane();
   const refreshClan = (): void => {
     void client.invalidateQueries({ queryKey: ['clan'] });
   };
@@ -863,10 +892,12 @@ export function useClanActions() {
 
   const create = useMutation({
     mutationFn: (input: Parameters<typeof api.createClan>[0]) => api.createClan(input),
+    onMutate: capitalLane.enter,
     onSuccess: async (result) => {
       await applyPlanet(result.planet);
       refreshPublicClan();
     },
+    onSettled: (_data, _error, _vars, turn) => { capitalLane.leave(turn); },
   });
   const apply = useMutation({
     mutationFn: (clanId: string) => api.applyToClan(clanId),
@@ -911,21 +942,25 @@ export function useClanActions() {
     api.disbandClan(acknowledgeTreasuryBurn), onSuccess: refreshPublicClan });
   const claimDepot = useMutation({
     mutationFn: () => api.claimClanDepot(),
+    onMutate: capitalLane.enter,
     onSuccess: async (result) => {
       await applyPlanet(result.planet);
       refreshClan();
       void client.invalidateQueries({ queryKey: keys.leaderboard });
     },
+    onSettled: (_data, _error, _vars, turn) => { capitalLane.leave(turn); },
   });
   const quoteAid = useMutation({ mutationFn: (input: ClanAidInput) => api.quoteClanAid(input) });
   const launchAid = useMutation({
     mutationFn: (input: ClanAidInput) => api.launchClanAid(input),
+    onMutate: ({ originPlanetId }) => originLane.enter(originPlanetId),
     onSuccess: async (result) => {
       await applyPlanet(result.planet);
       refreshClan();
       void client.invalidateQueries({ queryKey: keys.pending });
       void client.invalidateQueries({ queryKey: keys.traffic });
     },
+    onSettled: (_data, _error, _vars, turn) => { originLane.leave(turn); },
   });
   const postChat = useMutation({
     mutationFn: (body: string | { content: string; replyToMessageId?: string }) =>
@@ -1380,7 +1415,7 @@ export function useMiningArrivals(runs: readonly MiningRun[] | undefined): void 
     }
     return out.sort((a, b) => a - b);
   }, [runs]);
-  useRefetchOnArrival(moments, [keys.mining, keys.planet, keys.pending, keys.galaxy]);
+  useRefetchOnArrival(moments, [keys.mining, keys.planet, keys.planets, keys.pending, keys.galaxy]);
 }
 
 /**
@@ -1469,7 +1504,7 @@ export function useFleetArrivals(pending: readonly PendingThread[] | undefined):
     }
     return [...out].sort((a, b) => a - b);
   }, [pending]);
-  useRefetchOnArrival(moments, [keys.pending, keys.planet, keys.galaxy, keys.reports, keys.traffic]);
+  useRefetchOnArrival(moments, [keys.pending, keys.planet, keys.planets, keys.galaxy, keys.reports, keys.traffic]);
 }
 
 function useInvalidator() {
@@ -1520,22 +1555,28 @@ function useApplyPlanet() {
   return async (planet: PlanetView, allowCapitalAlias = true) => {
     const id = planet.planet.id;
     const explicitKey = keys.planetById(id);
-    const seedAlias = activePlanetId === null && allowCapitalAlias;
+    const alias = client.getQueryData<PlanetView>(keys.planet);
+    const capitalId = client.getQueryData<PlanetsView>(keys.planets)?.capitalPlanetId ?? alias?.planet.id;
+    const seedAlias = alias?.planet.id === id
+      || (activePlanetId === null && allowCapitalAlias && (!capitalId || capitalId === id));
     await Promise.all([
       client.cancelQueries({ queryKey: explicitKey }),
-      // This response updates the owned-world list too; an older GET must not undo it.
-      client.cancelQueries({ queryKey: keys.planets }),
       ...(seedAlias
-        ? [client.cancelQueries({ queryKey: keys.planet })]
+        ? [client.cancelQueries({ queryKey: keys.planet, exact: true })]
         : []),
     ]);
-    client.setQueryData(explicitKey, planet);
-    // The legacy capital alias exists only when no WorldProvider selected an id.
-    // A capital-only mutation (rewards) must never overwrite a selected colony.
-    if (seedAlias) client.setQueryData(keys.planet, planet);
+    const current = client.getQueryData<PlanetView>(explicitKey);
+    const capital = seedAlias ? client.getQueryData<PlanetView>(keys.planet) : undefined;
+    const held = capital ? latestPlanetSnapshot(current, capital) : current;
+    const latest = latestPlanetSnapshot(held, planet);
+    settlePlanetPrediction(current);
+    settlePlanetPrediction(capital);
+    client.setQueryData(explicitKey, latest);
+    // The alias only follows its known physical world, never another colony.
+    if (seedAlias) client.setQueryData(keys.planet, latest);
     client.setQueryData(keys.planets, (current: PlanetsView | undefined) =>
       current
-        ? { ...current, planets: current.planets.map((world) => world.planet.id === id ? planet : world) }
+        ? { ...current, planets: current.planets.map((world) => world.planet.id === id ? latest : world) }
         : current);
   };
 }
@@ -1575,6 +1616,9 @@ interface Rollback extends MutationTurn {
  * rollback can restore the first mutation's optimistic frame after both requests
  * failed. This small turnstile includes prediction and reconciliation in the same
  * lane, while keeping unrelated planets independent.
+ * Do not combine it with mutation scopes: observer options follow world selection,
+ * while TanStack's registered scope membership stays at the original world. A
+ * queued mutation can then pause behind another world's write and never resume.
  */
 const mutationTurns = new WeakMap<QueryClient, Map<string, Promise<void>>>();
 
@@ -1604,12 +1648,43 @@ async function enterMutationTurn(client: QueryClient, id: string): Promise<Mutat
   };
 }
 
+const planetLaneId = (client: QueryClient, planetId: string | null): string => {
+  const id = planetId
+    ?? client.getQueryData<PlanetsView>(keys.planets)?.capitalPlanetId
+    ?? client.getQueryData<PlanetView>(keys.planet)?.planet.id
+    ?? 'capital';
+  return `planet:${id}`;
+};
+
+/** TanStack captures this context before a queued mutation waits or the world changes. */
+function planetMutationOrigin({ meta }: MutationFunctionContext): string | null {
+  const id = meta?.planetId;
+  if (id === null || typeof id === 'string') return id;
+  throw new Error('Planet mutation has no captured origin');
+}
+
+function requiredPlanetMutationOrigin(context: MutationFunctionContext): string {
+  const id = planetMutationOrigin(context);
+  if (id === null) throw new Error('Select a world before sending this mutation');
+  return id;
+}
+
 function usePlanetMutationLane(planetId: string | null) {
   const client = useQueryClient();
-  const id = `planet:${planetId ?? 'capital'}`;
+  const id = planetLaneId(client, planetId);
   return {
-    scope: { id },
+    id,
+    meta: { planetId },
     enter: () => enterMutationTurn(client, id),
+    leave: (turn: MutationTurn | undefined): void => { turn?.release(); },
+  };
+}
+
+/** A sheet can spend from a world other than the selected one. */
+function usePlanetInputLane() {
+  const client = useQueryClient();
+  return {
+    enter: (planetId: string) => enterMutationTurn(client, planetLaneId(client, planetId)),
     leave: (turn: MutationTurn | undefined): void => { turn?.release(); },
   };
 }
@@ -1629,7 +1704,7 @@ async function enterMiningTurn(client: QueryClient, planetLaneId: string): Promi
 function useMiningMutationLane(planetId: string | null) {
   const client = useQueryClient();
   const lane = usePlanetMutationLane(planetId);
-  return { ...lane, enter: () => enterMiningTurn(client, lane.scope.id) };
+  return { ...lane, enter: () => enterMiningTurn(client, lane.id) };
 }
 
 function useOptimisticPlanet() {
@@ -1638,7 +1713,7 @@ function useOptimisticPlanet() {
   const key = activePlanetId ? keys.planetById(activePlanetId) : keys.planet;
   const lane = usePlanetMutationLane(activePlanetId);
   return {
-    scope: lane.scope,
+    meta: lane.meta,
     predict: async (of: (view: PlanetView) => PlanetView | null): Promise<Rollback> => {
       const turn = await lane.enter();
       try {
@@ -1662,9 +1737,14 @@ function useOptimisticPlanet() {
          * view what the server is about to return, less the spend.
          */
         const fetchedAt = client.getQueryState(key)?.dataUpdatedAt ?? Date.now();
+        const now = serverNow();
         const settled: PlanetView = {
           ...previous,
-          planet: { ...previous.planet, ...worksAt(previous.planet, fetchedAt, serverNow()) },
+          planet: {
+            ...previous.planet,
+            ...worksAt(previous.planet, fetchedAt, now),
+            ...(previous.planet.snapshotAt ? { snapshotAt: new Date(now) } : {}),
+          },
         };
         const predicted = of(settled);
         /**
@@ -1675,6 +1755,7 @@ function useOptimisticPlanet() {
          */
         if (!predicted) return { ...turn, key, previous: undefined, optimistic: undefined };
         const optimistic = client.setQueryData<PlanetView>(key, predicted);
+        if (optimistic) markPlanetPrediction(optimistic);
         /**
          * AND THE UNDO IS THE SETTLED VIEW, NOT THE ONE THAT CAME OUT OF THE CACHE.
          *
@@ -1694,21 +1775,33 @@ function useOptimisticPlanet() {
       client.setQueryData<PlanetView>(context.key, (current) =>
         current === context.optimistic ? context.previous : current);
     },
-    settle: lane.leave,
+    settle: async (context: Rollback | undefined): Promise<void> => {
+      settlePlanetPrediction(context?.optimistic);
+      try {
+        if (context && takeDeferredPlanetRead(context.optimistic)) {
+          await Promise.all([
+            client.invalidateQueries({ queryKey: context.key, exact: true }),
+            client.invalidateQueries({ queryKey: keys.planets }),
+          ]);
+        }
+      } finally {
+        lane.leave(context);
+      }
+    },
   };
 }
 
 export function useUpgrade() {
   const api = useApi();
-  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
-  const { scope, predict, rollback, settle } = useOptimisticPlanet();
+  const { meta, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
-    scope,
-    mutationFn: (type: BuildingId) => activePlanetId
-      ? api.upgrade(activePlanetId, type)
-      : api.upgrade(type),
+    meta,
+    mutationFn: (type: BuildingId, context) => {
+      const planetId = planetMutationOrigin(context);
+      return planetId ? api.upgrade(planetId, type) : api.upgrade(type);
+    },
     onMutate: (type: BuildingId) => predict((view) => predictUpgrade(view, type)),
     onError: (_error, _type, context) => {
       rollback(context);
@@ -1719,21 +1812,21 @@ export function useUpgrade() {
       // for everybody, and the ladder because Wealth moved.
       invalidate(keys.galaxy, keys.leaderboard);
     },
-    onSettled: (_data, _error, _type, context) => { settle(context); },
+    onSettled: (_data, _error, _type, context) => settle(context),
   });
 }
 
 export function useBuild() {
   const api = useApi();
-  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
-  const { scope, predict, rollback, settle } = useOptimisticPlanet();
+  const { meta, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
-    scope,
-    mutationFn: ({ hull, count }: { hull: HullId; count: number }) => activePlanetId
-      ? api.build(activePlanetId, hull, count)
-      : api.build(hull, count),
+    meta,
+    mutationFn: ({ hull, count }: { hull: HullId; count: number }, context) => {
+      const planetId = planetMutationOrigin(context);
+      return planetId ? api.build(planetId, hull, count) : api.build(hull, count);
+    },
     onMutate: ({ hull, count }: { hull: HullId; count: number }) =>
       predict((view) => predictBuild(view, hull, count)),
     onError: (_error, _vars, context) => {
@@ -1743,7 +1836,7 @@ export function useBuild() {
       await apply(result.planet);
       invalidate(keys.leaderboard);
     },
-    onSettled: (_data, _error, _vars, context) => { settle(context); },
+    onSettled: (_data, _error, _vars, context) => settle(context),
   });
 }
 
@@ -1761,14 +1854,15 @@ export function useBuild() {
  */
 export function useRepairFault() {
   const api = useApi();
-  const invalidate = useInvalidator();
+  const client = useQueryClient();
+  const lane = usePlanetInputLane();
   return useMutation({
     mutationFn: ({ planetId, faultId }: { planetId: string; faultId: string }) =>
       api.repairFault(planetId, faultId),
-    onSuccess: () => {
-      invalidate(keys.planet);
-      invalidate(keys.planets);
-    },
+    onMutate: ({ planetId }) => lane.enter(planetId),
+    onSuccess: () => Promise.all([keys.planet, keys.planets]
+      .map((queryKey) => client.invalidateQueries({ queryKey }))),
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
 
@@ -1779,10 +1873,11 @@ export function useCancelBuildOrder() {
   const apply = useApplyPlanet();
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
-    scope: lane.scope,
-    mutationFn: (orderId: string) => activePlanetId
-      ? api.cancelBuildOrder(activePlanetId, orderId)
-      : api.cancelBuildOrder(orderId),
+    meta: lane.meta,
+    mutationFn: (orderId: string, context) => {
+      const planetId = planetMutationOrigin(context);
+      return planetId ? api.cancelBuildOrder(planetId, orderId) : api.cancelBuildOrder(orderId);
+    },
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await apply(result.planet);
@@ -1800,10 +1895,13 @@ export function useCancelBuildOrder() {
 export function useStartRepair() {
   const api = useApi();
   const apply = useApplyPlanet();
+  const lane = usePlanetInputLane();
   return useMutation({
     mutationFn: ({ planetId, request }: { planetId: string; request: { lotIds: string[] } | { all: true } }) =>
       api.startRepair(planetId, request),
+    onMutate: ({ planetId }) => lane.enter(planetId),
     onSuccess: async (result) => { await apply(result.planet, false); },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
 
@@ -1811,25 +1909,28 @@ export function useStartRepair() {
 export function useCancelRepair() {
   const api = useApi();
   const apply = useApplyPlanet();
+  const lane = usePlanetInputLane();
   return useMutation({
     mutationFn: ({ planetId, orderId }: { planetId: string; orderId: string }) =>
       api.cancelBuildOrder(planetId, orderId),
+    onMutate: ({ planetId }) => lane.enter(planetId),
     onSuccess: async (result) => { await apply(result.planet, false); },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
 
 /** Discovery is history-derived, so only placement of an already-visible project is predicted. */
 export function useCompleteResearch() {
   const api = useApi();
-  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
-  const { scope, predict, rollback, settle } = useOptimisticPlanet();
+  const { meta, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
-    scope,
-    mutationFn: (projectId: ResearchProjectId) => activePlanetId
-      ? api.completeResearch(activePlanetId, projectId)
-      : api.completeResearch(projectId),
+    meta,
+    mutationFn: (projectId: ResearchProjectId, context) => {
+      const planetId = planetMutationOrigin(context);
+      return planetId ? api.completeResearch(planetId, projectId) : api.completeResearch(projectId);
+    },
     onMutate: (projectId: ResearchProjectId) =>
       predict((view) => predictResearch(view, projectId)),
     onError: (_error, _projectId, context) => {
@@ -1839,21 +1940,21 @@ export function useCompleteResearch() {
       await apply(result.planet);
       invalidate(keys.mining, keys.leaderboard);
     },
-    onSettled: (_data, _error, _projectId, context) => { settle(context); },
+    onSettled: (_data, _error, _projectId, context) => settle(context),
   });
 }
 
 export function useRaiseInstrument() {
   const api = useApi();
-  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
-  const { scope, predict, rollback, settle } = useOptimisticPlanet();
+  const { meta, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
-    scope,
-    mutationFn: (type: InstrumentId) => activePlanetId
-      ? api.raiseInstrument(activePlanetId, type)
-      : api.raiseInstrument(type),
+    meta,
+    mutationFn: (type: InstrumentId, context) => {
+      const planetId = planetMutationOrigin(context);
+      return planetId ? api.raiseInstrument(planetId, type) : api.raiseInstrument(type);
+    },
     onMutate: (type: InstrumentId) => predict((view) => predictInstrument(view, type)),
     onError: (_error, _type, context) => {
       rollback(context);
@@ -1863,21 +1964,21 @@ export function useRaiseInstrument() {
       await apply(result.planet);
       invalidate(keys.intel, keys.galaxy, keys.leaderboard);
     },
-    onSettled: (_data, _error, _type, context) => { settle(context); },
+    onSettled: (_data, _error, _type, context) => settle(context),
   });
 }
 
 export function useInstallSatellite() {
   const api = useApi();
-  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
-  const { scope, predict, rollback, settle } = useOptimisticPlanet();
+  const { meta, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
-    scope,
-    mutationFn: (type: SatelliteId) => activePlanetId
-      ? api.installSatellite(activePlanetId, type)
-      : api.installSatellite(type),
+    meta,
+    mutationFn: (type: SatelliteId, context) => {
+      const planetId = planetMutationOrigin(context);
+      return planetId ? api.installSatellite(planetId, type) : api.installSatellite(type);
+    },
     onMutate: (type: SatelliteId) => predict((view) => predictSatellite(view, type)),
     onError: (_error, _type, context) => {
       rollback(context);
@@ -1891,7 +1992,7 @@ export function useInstallSatellite() {
       await apply(result.planet);
       invalidate(keys.intel, keys.galaxy, keys.leaderboard);
     },
-    onSettled: (_data, _error, _type, context) => { settle(context); },
+    onSettled: (_data, _error, _type, context) => settle(context),
   });
 }
 
@@ -1910,15 +2011,18 @@ export function useWatch() {
 
 export function useProbe() {
   const api = useApi();
+  const client = useQueryClient();
   const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
-    scope: lane.scope,
-    mutationFn: (targetPlanetId: string) => api.probe(targetPlanetId, activePlanetId ?? undefined),
+    meta: lane.meta,
+    mutationFn: (targetPlanetId: string, context) => api.probe(targetPlanetId, planetMutationOrigin(context) ?? undefined),
     onMutate: lane.enter,
-    onSuccess: () => {
-      invalidate(keys.planet, keys.intel, keys.pending, keys.rewards);
+    onSuccess: async () => {
+      await Promise.all([keys.planet, keys.planets]
+        .map((queryKey) => client.invalidateQueries({ queryKey })));
+      invalidate(keys.intel, keys.pending, keys.rewards);
     },
     onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
   });
@@ -1932,13 +2036,12 @@ export function useProbe() {
  */
 export function useCollect() {
   const api = useApi();
-  const { activePlanetId } = useWorld();
   const invalidate = useInvalidator();
   const apply = useApplyPlanet();
-  const { scope, predict, rollback, settle } = useOptimisticPlanet();
+  const { meta, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
-    scope,
-    mutationFn: () => api.collect(activePlanetId ?? undefined),
+    meta,
+    mutationFn: (_vars, context) => api.collect(planetMutationOrigin(context) ?? undefined),
     onMutate: () => predict(predictCollect),
     onError: (_error, _vars, context) => {
       rollback(context);
@@ -1947,8 +2050,8 @@ export function useCollect() {
       await apply(result.planet);
       invalidate(keys.galaxy, keys.leaderboard);
     },
-    onSettled: (_data, _error, _vars, context) => { settle(context); },
-  });
+    onSettled: (_data, _error, _vars, context) => settle(context),
+  } satisfies UseMutationOptions<Awaited<ReturnType<typeof api.collect>>, Error, void, Rollback>);
 }
 
 /**
@@ -2037,11 +2140,12 @@ export function useRaidPirate() {
   const applyPlanet = useApplyPlanet();
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
-    scope: lane.scope,
+    meta: lane.meta,
     mutationFn: (
       { pirateId, fleet, quotedMinutes, acknowledgeRadiationLoss }:
       { pirateId: string; fleet: Fleet; quotedMinutes?: number; acknowledgeRadiationLoss?: boolean },
-    ) => api.raidPirate(pirateId, fleet, activePlanetId ?? undefined, quotedMinutes, acknowledgeRadiationLoss),
+      context,
+    ) => api.raidPirate(pirateId, fleet, planetMutationOrigin(context) ?? undefined, quotedMinutes, acknowledgeRadiationLoss),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([
@@ -2083,14 +2187,14 @@ export function useLaunchTrade(originPlanetId: string) {
   const invalidate = useInvalidator();
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
-    scope: lane.scope,
+    meta: lane.meta,
     mutationFn: ({ occurrenceId, fleet, give, want, acknowledgeRadiationLoss }: {
       occurrenceId: string;
       fleet: Fleet;
       give: { alloy: number; crystal: number; deuterium: number };
       want: { alloy: number; crystal: number; deuterium: number };
       acknowledgeRadiationLoss?: boolean;
-    }) => api.trade(occurrenceId, fleet, give, want, originPlanetId, acknowledgeRadiationLoss),
+    }, context) => api.trade(occurrenceId, fleet, give, want, requiredPlanetMutationOrigin(context), acknowledgeRadiationLoss),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([
@@ -2112,11 +2216,12 @@ export function useLaunchIntergalacticConvoy(originPlanetId: string) {
   const invalidate = useInvalidator();
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
-    scope: lane.scope,
+    meta: lane.meta,
     mutationFn: (
       { idempotencyKey, ...input }:
       Omit<IntergalacticConvoyLaunchInput, 'originPlanetId'> & { idempotencyKey: string },
-    ) => api.launchIntergalacticConvoy({ ...input, originPlanetId }, idempotencyKey),
+      context,
+    ) => api.launchIntergalacticConvoy({ ...input, originPlanetId: requiredPlanetMutationOrigin(context) }, idempotencyKey),
     onMutate: async () => {
       const turn = await lane.enter();
       try {
@@ -2154,9 +2259,9 @@ export function useMine() {
   const apply = useApplyMiningResult(activePlanetId);
   const lane = useMiningMutationLane(activePlanetId);
   return useMutation({
-    scope: lane.scope,
-    mutationFn: ({ asteroidId, craft }: { asteroidId: string; craft: number }) =>
-      api.mine(asteroidId, craft, activePlanetId ?? undefined),
+    meta: lane.meta,
+    mutationFn: ({ asteroidId, craft }: { asteroidId: string; craft: number }, context) =>
+      api.mine(asteroidId, craft, planetMutationOrigin(context) ?? undefined),
     onMutate: lane.enter,
     onSuccess: apply,
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
@@ -2170,9 +2275,9 @@ export function useHarvest() {
   const apply = useApplyMiningResult(activePlanetId);
   const lane = useMiningMutationLane(activePlanetId);
   return useMutation({
-    scope: lane.scope,
-    mutationFn: ({ fieldId, craft }: { fieldId: string; craft: number }) =>
-      api.harvest(fieldId, craft, activePlanetId ?? undefined),
+    meta: lane.meta,
+    mutationFn: ({ fieldId, craft }: { fieldId: string; craft: number }, context) =>
+      api.harvest(fieldId, craft, planetMutationOrigin(context) ?? undefined),
     onMutate: lane.enter,
     onSuccess: apply,
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
@@ -2211,7 +2316,7 @@ export function useRecallMining() {
         ?? client.getQueryData<PlanetView>(keys.planet)?.planet.id;
       const legacyCapital = activePlanetId === null && (!originId || originId === capitalId);
       const turn = await enterMiningTurn(
-        client, `planet:${legacyCapital ? 'capital' : originId ?? 'capital'}`,
+        client, planetLaneId(client, legacyCapital ? null : originId),
       );
       try {
         await Promise.all([
@@ -2238,17 +2343,20 @@ export function useLaunch() {
   const apply = useApplyPlanet();
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
-    scope: lane.scope,
+    meta: lane.meta,
     mutationFn: (
       { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation }:
       {
         targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean; pace?: MissionPace;
         acknowledgeRadiation?: boolean;
       },
-    ) =>
-      activePlanetId
-        ? api.launch(activePlanetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation)
-        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation),
+      context,
+    ) => {
+      const planetId = planetMutationOrigin(context);
+      return planetId
+        ? api.launch(planetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation)
+        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation);
+    },
     onMutate: lane.enter,
     onSuccess: async (result) => {
       /**
@@ -2285,7 +2393,7 @@ export function useTransfer(originPlanetId: string) {
   const invalidate = useInvalidator();
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
-    scope: lane.scope,
+    meta: lane.meta,
     mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation }: {
       targetPlanetId: string;
       fleet: Fleet;
@@ -2294,7 +2402,7 @@ export function useTransfer(originPlanetId: string) {
       returnPlan: TransferReturnPlan;
       /** The commander has read what radiation on this route would take (plan D10). */
       acknowledgeRadiation?: boolean;
-    }) => api.transfer(originPlanetId, targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation),
+    }, context) => api.transfer(requiredPlanetMutationOrigin(context), targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([
@@ -2316,8 +2424,8 @@ export function useSettlement() {
   const invalidate = useInvalidator();
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
-    scope: lane.scope,
-    mutationFn: (targetPlanetId: string) => api.settle(activePlanetId!, targetPlanetId),
+    meta: lane.meta,
+    mutationFn: (targetPlanetId: string, context) => api.settle(requiredPlanetMutationOrigin(context), targetPlanetId),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([
@@ -2338,15 +2446,15 @@ export function useBuildDeathStar() {
   const invalidate = useInvalidator();
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
-    scope: lane.scope,
-    mutationFn: () => api.buildDeathStar(activePlanetId!),
+    meta: lane.meta,
+    mutationFn: (_vars, context) => api.buildDeathStar(requiredPlanetMutationOrigin(context)),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await apply(result.planet);
       invalidate(keys.leaderboard);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
-  });
+  } satisfies UseMutationOptions<Awaited<ReturnType<typeof api.buildDeathStar>>, Error, void, MutationTurn>);
 }
 
 /**
@@ -2363,12 +2471,12 @@ export function useBuildInterceptor() {
   const apply = useApplyPlanet();
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
-    scope: lane.scope,
-    mutationFn: () => api.buildInterceptor(activePlanetId!),
+    meta: lane.meta,
+    mutationFn: (_vars, context) => api.buildInterceptor(requiredPlanetMutationOrigin(context)),
     onMutate: lane.enter,
     onSuccess: async (result) => { await apply(result.planet); },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
-  });
+  } satisfies UseMutationOptions<Awaited<ReturnType<typeof api.buildInterceptor>>, Error, void, MutationTurn>);
 }
 
 export function useLaunchDeathStar() {
@@ -2379,8 +2487,8 @@ export function useLaunchDeathStar() {
   const invalidate = useInvalidator();
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
-    scope: lane.scope,
-    mutationFn: (targetPlanetId: string) => api.launchDeathStar(activePlanetId!, targetPlanetId),
+    meta: lane.meta,
+    mutationFn: (targetPlanetId: string, context) => api.launchDeathStar(requiredPlanetMutationOrigin(context), targetPlanetId),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([

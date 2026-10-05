@@ -73,9 +73,24 @@ describe('the resource meter', () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it('shows a collection flight toward stock while the value counts up', () => {
-    const { container } = render(<ResourceMeter resource="alloy" value={100} cap={1_000} transfer={{ id: 1, from: 100, to: 186 }} />);
+  it('shows a collection flight beside the current stock', () => {
+    const { container } = render(<ResourceMeter resource="alloy" value={186} cap={1_000} transfer={{ id: 1, from: 100, to: 186 }} />);
     expect(container.querySelectorAll('[data-collect-particle]')).toHaveLength(3);
-    expect(container.querySelector('[data-counting]')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Alloy: 186 of 1,000' })).toHaveTextContent('186');
+  });
+
+  it('immediately shows a spend while a collection effect is still present', () => {
+    const transfer = { id: 1, from: 100, to: 1_505 };
+    const { rerender } = render(<ResourceMeter resource="alloy" value={1_505} cap={2_000} transfer={transfer} />);
+    rerender(<ResourceMeter resource="alloy" value={536} cap={2_000} transfer={transfer} />);
+    expect(screen.getByRole('img', { name: 'Alloy: 536 of 2,000' })).toHaveTextContent('536');
+  });
+
+  it('does not retain the animation balance after an interrupted collection', () => {
+    const { rerender } = render(<ResourceMeter resource="deuterium" value={135} cap={300} transfer={{ id: 1, from: 0, to: 135 }} />);
+    rerender(<ResourceMeter resource="deuterium" value={2} cap={300} />);
+    expect(screen.getByRole('img', { name: 'Deuterium: 2 of 300' })).toHaveTextContent('2');
+    rerender(<ResourceMeter resource="deuterium" value={0} cap={300} />);
+    expect(screen.getByRole('img', { name: 'Deuterium: 0 of 300' })).toHaveTextContent('0');
   });
 });

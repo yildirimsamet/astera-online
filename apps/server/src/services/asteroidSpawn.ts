@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, gte, isNotNull, lt, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, isNotNull, isNull, lt, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   ASTEROID_DYNAMIC,
@@ -14,6 +14,7 @@ import type { Db, Queryable } from '../db/client.js';
 import {
   accounts,
   buildings,
+  botProfiles,
   planets,
   asteroidSpawnHours,
   galaxyEventOccurrences,
@@ -66,14 +67,12 @@ export async function scheduleAsteroidHour(
 }
 
 /**
- * WHO PAYS FOR THE SKY: PEOPLE, AND ONLY PEOPLE. Owner instruction, 2026-09-26:
- * *"Asteroid ve korsan spawn oranları botları hesaba katmasın"* — and the showers
- * too. This one count sizes the hour's rocks, a shower's multiple of them and the
- * hour's pirates, so filtering it here filters all three. It reverses 2026-09-19,
- * which counted awake bots because a quiet galaxy left them nothing to mine or hunt;
- * the server's commanders now go on duty only while people are playing
- * (`bots/population.ts`), so the field is never theirs alone. A retired bot keeps
- * its `bot_profiles` row and stays out with the rest (`isPerson`).
+ * WHO PAYS FOR THE SKY. Owner instruction, 2026-10-05: eligible people count
+ * fully and active, non-retired server commanders contribute half their number.
+ * Integer hour records round an odd bot remainder down. This shared population
+ * sizes rocks, their shower multipliers and pirates; galaxy capacity still counts
+ * only people. Bot identity comes from bot_profiles, never a username or account
+ * age, and retired profiles remain excluded.
  *
  * Plan §15.6 — *"Sybil sınırı şart"*. One rock an hour per active commander is the right rule and
  * an open door: a raw `lastActiveAt` sweep lets a hundred free accounts logging in buy a hundred
@@ -133,9 +132,17 @@ export async function countEligibleCommanders(
       isPerson,
     ))
     .groupBy(players.id, accounts.createdAt);
-  return rows.filter((row) => row.accountCreatedAt < season.startsAt
+  const people = rows.filter((row) => row.accountCreatedAt < season.startsAt
     || row.joinedAt <= foundedBy
     || (row.joinedAt <= joinedBefore && row.peak >= ASTEROID_DYNAMIC.supply.coreLevel)).length;
+  const [bots] = await db.select({ n: sql<number>`count(*)::int` }).from(players)
+    .innerJoin(botProfiles, eq(botProfiles.accountId, players.accountId))
+    .where(and(
+      eq(players.seasonId, seasonId),
+      gte(players.lastActiveAt, activeSince),
+      isNull(botProfiles.retiredAt),
+    ));
+  return people + Math.floor((bots?.n ?? 0) / 2);
 }
 
 /**

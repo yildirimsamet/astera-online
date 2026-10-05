@@ -452,6 +452,7 @@ export const leaderboard = {
 } as const;
 
 export const chat = {
+  previousSeasonPlace: "Previous season · place {{rank}}",
   eyebrow: 'Live channels',
   title: 'Chat',
   launcher: 'Open galaxy chat',

@@ -88,12 +88,10 @@ describe('who counts toward the asteroid supply', () => {
   });
 
   /**
-   * PEOPLE ONLY. Owner instruction, 2026-09-26, reversing 2026-09-19: the server's own
-   * commanders never pay for the sky — not the rocks, not a shower's multiple of them, not the
-   * pirates — however awake they are and however far they have raised their Core. A retired one
-   * keeps its profile row, so it stays out too.
+   * Retired profiles still identify server commanders, but contribute nothing.
+   * A single active bot rounds down to zero additional supply.
    */
-  it('never counts the server’s own commanders, awake or retired', async () => {
+  it('excludes retired bots and rounds down a single active bot', async () => {
     for (const id of f.playerIds) {
       await settle(id, ASTEROID_DYNAMIC.supply.graceMinutes + 60, ASTEROID_DYNAMIC.supply.coreLevel);
     }
@@ -102,6 +100,42 @@ describe('who counts toward the asteroid supply', () => {
       { accountId: f.accountIds[1]!, ordinal: 1, persona: 'raider', nextActionAt: now, createdAt: now },
       { accountId: f.accountIds[2]!, ordinal: 2, persona: 'raider', nextActionAt: now, createdAt: now, retiredAt: now },
     ]);
+    expect(await countEligibleCommanders(f.db, f.seasonId, now)).toBe(1);
+  });
+
+  it('counts half of active bots without letting them bypass human gates at full weight', async () => {
+    const now = f.clock.now();
+    await settle(f.playerIds[0]!, ASTEROID_DYNAMIC.supply.graceMinutes + 60, ASTEROID_DYNAMIC.supply.coreLevel);
+    for (const index of [1, 2]) await settle(f.playerIds[index]!, 0, 1);
+    await f.db.insert(botProfiles).values([1, 2].map(index => ({
+      accountId: f.accountIds[index]!, ordinal: index, persona: 'raider', nextActionAt: now, createdAt: now,
+    })));
+    expect(await countEligibleCommanders(f.db, f.seasonId, now)).toBe(2);
+    await f.db.update(players).set({ lastActiveAt: new Date(now.getTime() - (ASTEROID_DYNAMIC.activeWindowMinutes + 1) * 60_000) }).where(eq(players.id, f.playerIds[2]!));
+    expect(await countEligibleCommanders(f.db, f.seasonId, now)).toBe(1);
+  });
+
+  it.each([0, 1, 2, 3, 4])('adds half of %i active bots, rounding odd remainders down', async botCount => {
+    f = await seedWorld(6);
+    const now = f.clock.now();
+    await f.db.insert(botProfiles).values(f.accountIds.slice(1).map((accountId, index) => ({
+      accountId, ordinal: index + 1, persona: 'raider', nextActionAt: now, createdAt: now,
+    })));
+    await f.db.update(players).set({ lastActiveAt: new Date(now.getTime() - (ASTEROID_DYNAMIC.activeWindowMinutes + 1) * 60_000) })
+      .where(sql`${players.id} != ${f.playerIds[0]}`);
+    for (const id of f.playerIds.slice(1, botCount + 1)) await f.db.update(players).set({ lastActiveAt: now }).where(eq(players.id, id));
+    expect(await countEligibleCommanders(f.db, f.seasonId, now)).toBe(1 + Math.floor(botCount / 2));
+  });
+
+  it('keeps retired bots out of a larger active population', async () => {
+    const now = f.clock.now();
+    await settle(f.playerIds[0]!, ASTEROID_DYNAMIC.supply.graceMinutes + 60, ASTEROID_DYNAMIC.supply.coreLevel);
+    for (const index of [1, 2]) await settle(f.playerIds[index]!, 0, 1);
+    await f.db.insert(botProfiles).values([1, 2].map(index => ({
+      accountId: f.accountIds[index]!, ordinal: index, persona: 'raider', nextActionAt: now, createdAt: now,
+    })));
+    expect(await countEligibleCommanders(f.db, f.seasonId, now)).toBe(2);
+    await f.db.update(botProfiles).set({ retiredAt: now }).where(eq(botProfiles.accountId, f.accountIds[2]!));
     expect(await countEligibleCommanders(f.db, f.seasonId, now)).toBe(1);
   });
 

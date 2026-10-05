@@ -58,6 +58,30 @@ function show() {
 afterEach(async () => { await i18n.changeLanguage('en'); });
 
 describe('direct messages in chat', () => {
+  it('opens DM reply actions with a double click', async () => {
+    const { postDm } = show();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: /DM.*1 unread/i }));
+    await user.dblClick(screen.getByText('Private hello'));
+    await user.click(screen.getByRole('button', { name: 'Reply' }));
+    await user.type(screen.getByRole('textbox', { name: 'Message Commander Atlas' }), 'Agreed');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => { expect(postDm).toHaveBeenCalledWith('peer-1', 'Agreed', 'message-1'); });
+  });
+
+  it('does not open double-click actions for an unavailable DM', async () => {
+    const { client } = show();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: /DM.*1 unread/i }));
+    act(() => {
+      client.setQueryData(keys.dmConversations, { conversations: [{ ...conversation, canSend: false, unavailableReason: 'WAITING' }], totalUnread: 1 });
+    });
+    await waitFor(() => { expect(screen.getByRole('textbox', { name: 'Message Commander Atlas' })).toBeDisabled(); });
+    await user.dblClick(screen.getByText('Private hello'));
+    expect(screen.queryByRole('button', { name: 'Reply' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add emoji reaction' })).not.toBeInTheDocument();
+  });
+
   it('sends a DM with Enter while Shift+Enter keeps a newline', async () => {
     const { postDm } = show();
     const user = userEvent.setup();

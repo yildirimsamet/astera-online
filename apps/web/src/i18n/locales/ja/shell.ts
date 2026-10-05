@@ -452,6 +452,7 @@ export const leaderboard = {
 } as const;
 
 export const chat = {
+  previousSeasonPlace: "前シーズン · {{rank}}位",
   eyebrow: "ライブ チャンネル",
   title: "チャット",
   launcher: "ギャラクシーチャットを開く",

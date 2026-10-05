@@ -397,6 +397,13 @@ describe('world identity on the disc', () => {
     expect(limbLight('dark', 'UNKNOWN')).toBeGreaterThan(unread);
   });
 
+  it.each(['UNKNOWN', 'REMEMBERED'] as const)('keeps a faint edge above the lifted %s body', (intel) => {
+    const unread = bodyLight('dark', intel);
+    expect(unread).toBeGreaterThanOrEqual(0.55);
+    expect(limbLight('dark', intel)).toBeGreaterThan(unread);
+    expect(limbLight('dark', intel)).toBeLessThan(limbLight('dark', 'RESOLVED'));
+  });
+
   it('marks every owned colony as self and preserves capital/colony identity', () => {
     const [capital, colony] = planetNodes([
       {

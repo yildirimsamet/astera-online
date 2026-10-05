@@ -368,6 +368,12 @@ export const planet = {
 
 /** The ladder behind one row: what this thing becomes. */
 export const itemSheet = {
+  coreTierGuide: "コアレベルと惑星ティア",
+  coreTierCurrent: "コア Lv{{level}} → ティア {{tier}}",
+  coreTierRule: "コアレベルが3上がるごとに惑星ティアが1上がります。強調された行が現在のティアです。",
+  coreTierLevel: "コアレベル",
+  coreTierPlanet: "惑星ティア",
+  coreTierRange: "Lv{{from}}–Lv{{to}}",
   eyebrowNotInOrbit: "軌道上にありません",
   eyebrowInOrbit: "軌道上",
   eyebrowNotInstalled: "未設置",

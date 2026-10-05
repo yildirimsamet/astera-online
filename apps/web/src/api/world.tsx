@@ -6,10 +6,11 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import type { PlanetView } from './schemas.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
+import { readPlanetSnapshot, readWorldSnapshots } from './planetCache.js';
 
 interface WorldContextValue {
   activePlanetId: string | null;
@@ -42,55 +43,62 @@ const rememberWorld = (key: string, planetId: string): void => {
   }
 };
 
+const combineWorlds = (results: UseQueryResult<PlanetView>[]): PlanetView[] =>
+  results.flatMap((result) => result.data ? [result.data] : []);
+
 /** Commander-wide world selection, persisted per season and commander. */
 export function WorldProvider({ children }: { children: ReactNode }) {
   const api = useApi();
   const queryClient = useQueryClient();
   const worldsQuery = useQuery({
     queryKey: keys.planets,
-    queryFn: api.planets,
+    queryFn: ({ signal }) => readWorldSnapshots(queryClient, api.planets, signal),
     staleTime: 15_000,
+    // SSE is primary; this also heals a missed credit while the stream is down.
+    refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   });
   const data = worldsQuery.data;
   const storageKey = data ? `astera:world:v1:${data.seasonId}:${data.playerId}` : null;
-  const [requested, setRequested] = useState<string | null>(null);
+  const [requested, setRequested] = useState<{ storageKey: string; planetId: string } | null>(null);
 
-  useEffect(() => {
-    if (!data) return;
-    for (const world of data.planets) {
-      const key = keys.planetById(world.planet.id);
-      // The list warms missing worlds. A later list response must not rewind a
-      // single-world read or a mutation, including its production time anchor.
-      if (queryClient.getQueryData<PlanetView>(key) === undefined) {
-        queryClient.setQueryData(key, world);
-      }
-    }
-  }, [data, queryClient]);
+  const worlds = useQueries({
+    queries: (data?.planets ?? []).map((world) => ({
+      queryKey: keys.planetById(world.planet.id),
+      queryFn: () => readPlanetSnapshot(queryClient, keys.planetById(world.planet.id), () => api.planet(world.planet.id)),
+      enabled: false,
+      initialData: world,
+      initialDataUpdatedAt: worldsQuery.dataUpdatedAt,
+    })),
+    combine: combineWorlds,
+  });
 
   useEffect(() => {
     if (!storageKey || !data) return;
+    // Resource refreshes preserve this visit's selection even if persistence fails.
+    if (requested?.storageKey === storageKey
+      && data.planets.some((world) => world.planet.id === requested.planetId)) return;
     const stored = storedWorld(storageKey);
     const valid = data.planets.some((world) => world.planet.id === stored);
     const next = valid ? stored! : data.capitalPlanetId;
-    setRequested(next);
+    setRequested({ storageKey, planetId: next });
     if (!valid) rememberWorld(storageKey, next);
-  }, [data, storageKey]);
+  }, [data, storageKey, requested]);
 
-  const activePlanetId = requested && data?.planets.some((world) => world.planet.id === requested)
-    ? requested
+  const activePlanetId = requested?.storageKey === storageKey && data?.planets.some((world) => world.planet.id === requested.planetId)
+    ? requested.planetId
     : data?.capitalPlanetId ?? null;
 
   const value = useMemo<WorldContextValue>(() => ({
     activePlanetId,
     capitalPlanetId: data?.capitalPlanetId ?? null,
-    worlds: data?.planets ?? [],
+    worlds,
     selectPlanet: (planetId) => {
-      if (!data?.planets.some((world) => world.planet.id === planetId)) return;
-      setRequested(planetId);
-      if (storageKey) rememberWorld(storageKey, planetId);
+      if (!storageKey || !data?.planets.some((world) => world.planet.id === planetId)) return;
+      setRequested({ storageKey, planetId });
+      rememberWorld(storageKey, planetId);
     },
-  }), [activePlanetId, data, storageKey]);
+  }), [activePlanetId, data, worlds, storageKey]);
 
   return <WorldContext.Provider value={value}>{children}</WorldContext.Provider>;
 }

@@ -96,6 +96,8 @@ export function useArrivals(instants: readonly (Date | null | undefined)[]): voi
         keys.mining,
         keys.traffic,
         keys.planet,
+        // Cargo may land on an inactive world; normalize those balances too.
+        keys.planets,
         keys.galaxy,
         /**
          * AND THE TWO THAT SAY WHAT HAPPENED.

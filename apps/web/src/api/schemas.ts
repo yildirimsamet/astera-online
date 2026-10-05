@@ -776,6 +776,8 @@ export const clanSupportWaveAnswerSchema = z.object({ wave: clanSupportWaveSchem
 export const planetSchema = z.object({
   planet: z.object({
     id: z.string(),
+    /** Economy anchor and ordering of server views; optional for rolling deploys. */
+    snapshotAt: z.coerce.date().optional(),
     name: z.string(),
     skinId: z.enum(PLANET_SKIN_IDS).nullable().optional(),
     kind: z.enum(['CAPITAL', 'COLONY']).optional(),
@@ -1878,6 +1880,7 @@ export const clanAidLaunchSchema = z.object({
 });
 
 const messageInteractionSchema = {
+  previousSeasonRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   replyTo: z.object({ id: z.string(), username: z.string(), content: z.string() }).nullable().optional(),
   reactions: z.array(z.object({ emoji: z.enum(REACTION_EMOJIS), count: z.number().int().positive(), mine: z.boolean() })).optional(),
 };

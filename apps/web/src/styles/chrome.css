@@ -1497,10 +1497,20 @@
   --text-micro: 11px;
 }
 
-/* Room colour stays visible while composing, so Clan cannot be mistaken for General. */
+.chat-type [data-chat-author] {
+  font-size: 12px;
+}
+
+.chat-type [data-chat-podium-icon] svg {
+  color: inherit;
+}
+
+/* Tint the complete chat sheet, including its title, tabs and body insets. */
+[data-sheet-panel]:has(> [data-sheet-body] .chat-type[data-chat-room='clan']),
 .chat-type[data-chat-room='clan'] {
   background-color: #102d22;
 }
+[data-sheet-panel]:has(> [data-sheet-body] .chat-type[data-chat-room='dm']),
 .chat-type[data-chat-room='dm'] {
   background-color: #231d38;
 }

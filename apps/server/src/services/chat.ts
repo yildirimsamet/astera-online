@@ -6,7 +6,7 @@ import { accounts, chatMessages, chatReadMarkers, clanMemberships, clans, planet
 import { GameError } from './planet.js';
 import { locationIsKnown, type LocationSight } from './locationSight.js';
 import { publishShard } from '../stream/bus.js';
-import { messageDecorations, type ReactionView, type ReplyPreview } from './messageDecorations.js';
+import { messageDecorations, previousSeasonPodium, type PodiumPlace, type ReactionView, type ReplyPreview } from './messageDecorations.js';
 
 export interface ChatMessageView {
   id: string;
@@ -20,6 +20,7 @@ export interface ChatMessageView {
   self: boolean;
   replyTo: ReplyPreview | null;
   reactions: ReactionView[];
+  previousSeasonRank?: PodiumPlace;
   /**
    * THE AUTHOR SPEAKS WITH ADMIN AUTHORITY. Owner instruction.
    *
@@ -212,10 +213,12 @@ export async function postChat(
     if (!message) throw new Error('chat insert returned no row');
 
     await publishShard(tx, me.player.seasonId, 'chat');
+    const previousSeasonRank = (await previousSeasonPodium(tx, [me.player.id])).get(me.player.id);
     return {
       ...message, planetId: me.planetId, username: me.username, clanTag: me.clanTag, self: true,
       admin: adminUsernames.has(me.login),
       replyTo: replyTo ?? null, reactions: [],
+      ...(previousSeasonRank === undefined ? {} : { previousSeasonRank }),
     };
   });
 }

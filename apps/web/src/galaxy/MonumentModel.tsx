@@ -37,6 +37,6 @@ export function monumentModel(scene: THREE.Object3D): THREE.Object3D {
 /** Reuse the fleet Hull rim: one back-side shader pass, no postprocessing bloom. */
 export function MonumentModel({ ordinal, focused = false }: { ordinal: number; focused?: boolean }) {
   return <group name={`monument-model-${ordinal}`}>
-    <Hull url={monumentModelUrl(ordinal)} scale={MONUMENT_SCALE} glow={MONUMENT_GLOW} focused={focused} fog={MONUMENT_FOG} />
+    <Hull url={monumentModelUrl(ordinal)} scale={MONUMENT_SCALE} glow={MONUMENT_GLOW} focused={focused} fog={MONUMENT_FOG} foreground={false} />
   </group>;
 }

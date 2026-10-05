@@ -82,12 +82,10 @@ async function hourRow(f: Fixture, hourStartsAt: Date) {
 
 describe('opening an hour', () => {
   /**
-   * THE SKY IS PAID FOR BY PEOPLE. Owner instruction, 2026-09-26, reversing the
-   * 2026-09-19 rule that counted awake bots: a bot at the controls — `last_active_at`
-   * fresh — still adds nothing. The server's commanders only go on duty while people
-   * are playing, so the field is never left to them alone.
+   * Owner, 2026-10-05: eligible people plus half of active bots. With an integer
+   * population an unpaired bot rounds down; two active bots add one commander.
    */
-  it('counts one rock for each person who played in the last hour, never a bot', async () => {
+  it('counts active people and rounds down an unpaired active bot', async () => {
     const f = await dynamicWorld(4);
     const hour = f.clock.now();
     // Two people at the controls, one who left over an hour ago, one the server plays.
@@ -127,8 +125,8 @@ describe('opening an hour', () => {
     expect(dynamicRocks(snapshot.asteroids)).toHaveLength(3 * ASTEROID_DYNAMIC.perPlayerPerHour * 10);
   });
 
-  /** Owner, 2026-09-26: a shower multiplies the people who played, never the bots. */
-  it('multiplies only the people under a shower, not the bots awake beside them', async () => {
+  /** The same rounded population sizes both normal hours and shower bonuses. */
+  it('sizes a shower against active people plus rounded bot pairs', async () => {
     const f = await dynamicWorld(3);
     const hour = f.clock.now();
     await f.db.insert(botProfiles).values({
@@ -434,12 +432,13 @@ describe('adopting the working-week calendar on a live season', () => {
     for (const row of reshaped) {
       expect(row.effect).toEqual(plannedEffectFor(row.kind, row.startsAt.getTime() / 60_000, GALAXY_EVENTS));
       expect(row.definitionVersion).toBe(GALAXY_EVENTS.definitions[row.kind].version);
+      if (row.kind === 'ASTEROID_SHOWER') expect(minutesSince(row.startsAt, row.endsAt)).toBe(30);
     }
-    // Friday 21:00 opens the weekday convoy, Saturday 20:00 the x5 shower.
+    // Friday 21:00 opens the weekday convoy, Saturday 20:00 the x10 shower.
     expect(reshaped.find((row) => row.startsAt.getTime() === cutover.getTime())?.kind)
       .toBe('INTERGALACTIC_CONVOY');
     expect(reshaped.find((row) => row.startsAt.getTime() === at(3, 20).getTime()
-      && row.kind === 'ASTEROID_SHOWER')?.effect).toEqual({ asteroidSpawnMultiplier: 5 });
+      && row.kind === 'ASTEROID_SHOWER')?.effect).toEqual({ asteroidSpawnMultiplier: 10 });
 
     // Removed windows took their queue moments with them; new ones brought theirs.
     const moments = await db.select().from(scheduledEvents).where(and(

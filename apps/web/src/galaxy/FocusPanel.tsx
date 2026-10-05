@@ -72,7 +72,7 @@ import { rateAnchor } from '../lib/trade.js';
 import type { TradeShipEvent } from '../lib/trade.js';
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { HullMark } from '../ui/icons/hulls.js';
-import { AttackIcon, EyeIcon } from '../ui/icons/index.js';
+import { AttackIcon, EyeIcon, ReturnedIcon } from '../ui/icons/index.js';
 import { Price } from '../ui/Action.js';
 import { Band } from '../ui/UpgradeRow.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
@@ -3139,6 +3139,8 @@ export function RunFocus({
   onClose,
   open,
   onToggle,
+  onRecall,
+  recalling = false,
 }: {
   run: MiningRun;
   rock: AsteroidView | undefined;
@@ -3148,6 +3150,8 @@ export function RunFocus({
   onClose: () => void;
   open: boolean;
   onToggle: () => void;
+  onRecall?: () => void;
+  recalling?: boolean;
 }) {
   const { t } = useTranslation();
   const returning = run.status === 'returning';
@@ -3155,6 +3159,7 @@ export function RunFocus({
   const now = useNow(1000);
   const arriveAt = returning ? (run.homeAt ?? run.arriveAt) : run.arriveAt;
   const remainingMs = arriveAt.getTime() - now;
+  const recallable = run.status === 'outbound' && run.recalledAt === null && run.arriveAt.getTime() > now;
 
   return (
     <Shell
@@ -3170,6 +3175,12 @@ export function RunFocus({
       onToggle={onToggle}
       onClose={onClose}
       summary={<span>{countdown(remainingMs)}</span>}
+      actions={recallable && onRecall ? (
+        <button type="button" className={`${BTN_PRIMARY} basis-full`} disabled={recalling} onClick={onRecall}>
+          <ReturnedIcon className="size-4" />
+          {t(recalling ? 'pendingStrip.recallingProspectors' : 'pendingStrip.recallProspectors')}
+        </button>
+      ) : undefined}
     >
       <div className="grid grid-cols-2 gap-2">
         <Figure
@@ -3235,6 +3246,8 @@ export function ThreadFocus({
   open,
   onToggle,
   onFocusMonument,
+  onRecall,
+  recalling = false,
 }: {
   thread: PendingThread;
   minutesRemaining: number;
@@ -3242,11 +3255,15 @@ export function ThreadFocus({
   open: boolean;
   onToggle: () => void;
   onFocusMonument?: (monumentId: string) => void;
+  onRecall?: () => void;
+  recalling?: boolean;
 }) {
   const { t } = useTranslation();
   const composition = thread.fleet ? describeThreadFleet(thread.fleet) : null;
   const now = useNow(1000);
   const remainingMs = thread.arriveAt.getTime() - now;
+  const recallable = thread.recallable === true && thread.id !== undefined
+    && thread.kind !== 'incoming' && thread.leg !== 'return' && remainingMs > 0;
 
   return (
     <Shell
@@ -3264,6 +3281,12 @@ export function ThreadFocus({
       onToggle={onToggle}
       onClose={onClose}
       summary={<span>{countdown(remainingMs)}</span>}
+      actions={recallable && onRecall ? (
+        <button type="button" className={`${BTN_PRIMARY} basis-full`} disabled={recalling} onClick={onRecall}>
+          <ReturnedIcon className="size-4" />
+          {t(recalling ? 'pendingStrip.recallingFleet' : 'pendingStrip.recallFleet')}
+        </button>
+      ) : undefined}
     >
       <div className="grid grid-cols-2 gap-2">
         <Figure label={t('focus.thread.arrivesIn')} value={duration(minutesRemaining)} />

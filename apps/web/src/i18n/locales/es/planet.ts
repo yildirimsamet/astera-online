@@ -368,6 +368,12 @@ export const planet = {
 
 /** The ladder behind one row: what this thing becomes. */
 export const itemSheet = {
+  coreTierGuide: "Niveles del Núcleo y del planeta",
+  coreTierCurrent: "Núcleo N{{level}} → Nivel planetario {{tier}}",
+  coreTierRule: "Tu planeta sube un nivel por cada tres niveles del Núcleo. La fila resaltada muestra tu nivel actual.",
+  coreTierLevel: "Nivel del Núcleo",
+  coreTierPlanet: "Nivel planetario",
+  coreTierRange: "N{{from}}–N{{to}}",
   eyebrowNotInOrbit: "No en órbita",
   eyebrowInOrbit: "En órbita",
   eyebrowNotInstalled: "No instalado",

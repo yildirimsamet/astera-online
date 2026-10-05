@@ -451,6 +451,7 @@ export const leaderboard = {
 } as const;
 
 export const chat = {
+  previousSeasonPlace: "Temporada anterior · puesto {{rank}}",
   eyebrow: 'Canales en vivo',
   title: 'Chat',
   launcher: 'Abrir chat de galaxia',

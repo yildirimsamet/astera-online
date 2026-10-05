@@ -366,6 +366,12 @@ export const planet = {
   },
 } as const;
 export const itemSheet = {
+  coreTierGuide: "Niveaux du Noyau et paliers planétaires",
+  coreTierCurrent: "Noyau N{{level}} → Palier {{tier}}",
+  coreTierRule: "Votre planète gagne un palier tous les trois niveaux du Noyau. La ligne surlignée indique votre palier actuel.",
+  coreTierLevel: "Niveau du Noyau",
+  coreTierPlanet: "Palier planétaire",
+  coreTierRange: "N{{from}}–N{{to}}",
   eyebrowNotInOrbit: "Pas en orbite",
   eyebrowInOrbit: "En orbite",
   eyebrowNotInstalled: "Non installé",

@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { full, stock } from '../../lib/format.js';
 import { RESOURCE_ART } from '../../ui/assets.js';
@@ -55,22 +54,6 @@ function BoostMark() {
  */
 export function ResourceMeter({ resource, value, cap, onOpen, boosted = false, safe = 0, transfer = null }: ResourceMeterProps) {
   const { t } = useTranslation();
-  const [count, setCount] = useState<number | null>(null);
-  useEffect(() => {
-    if (!transfer || transfer.to <= transfer.from) return;
-    let frame = 0;
-    const began = performance.now();
-    setCount(transfer.from);
-    const tick = (now: number): void => {
-      const share = Math.min(1, (now - began) / 700);
-      setCount(Math.round(transfer.from + (transfer.to - transfer.from) * (1 - (1 - share) ** 3)));
-      if (share < 1) frame = requestAnimationFrame(tick);
-      else setCount(null);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(frame); };
-  }, [transfer]);
-  const shown = count ?? (transfer ? Math.max(value, transfer.to) : value);
   const isFull = cap > 0 && value >= cap - 0.5;
   const name = t(isFull ? 'meter.full' : 'meter.reading', {
     resource: t(LABEL[resource]),
@@ -82,7 +65,7 @@ export function ResourceMeter({ resource, value, cap, onOpen, boosted = false, s
     <>
       <span className="flex items-center gap-1">
         <img src={RESOURCE_ART[resource]} alt="" draggable={false} className="size-4 shrink-0 object-contain" />
-        <span data-counting={count !== null ? '' : undefined} className="font-v2-mono text-body tabular-nums text-v2-ink">{stock(shown)}</span>
+        <span className="font-v2-mono text-body tabular-nums text-v2-ink">{stock(value)}</span>
         {boosted && <BoostMark />}
       </span>
       {/* The Base's own store bar, compact (owner, 2026-09-25: the two did not match). */}

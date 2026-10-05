@@ -1255,13 +1255,13 @@ const CLOUD_LAYER_ROTATIONS: readonly [number, number, number][] = [
 const CLOUD_GROUP_ROTATION_AXIS = new THREE.Vector3(0.38, 1, 0.24).normalize();
 
 /**
- * The centre keeps the exact painted cloud. The two skins only reveal depth at
- * an angle; together they restore the same 0.18 brightness as the original plate.
+ * The centre keeps the painted cloud; the two skins reveal depth at an angle.
+ * All three layers use 75% of their previous opacity.
  */
 const CLOUD_DEPTH_LAYERS = [
-  { offset: -DISC_RADIUS * 0.012, opacity: 0.0125, scale: 0.995 },
-  { offset: 0, opacity: 0.065, scale: 1 },
-  { offset: DISC_RADIUS * 0.012, opacity: 0.0125, scale: 1.005 },
+  { offset: -DISC_RADIUS * 0.012, opacity: 0.009375, scale: 0.995 },
+  { offset: 0, opacity: 0.04875, scale: 1 },
+  { offset: DISC_RADIUS * 0.012, opacity: 0.009375, scale: 1.005 },
 ] as const;
 
 /** Slightly broader than the original painted plate, without changing its shape. */

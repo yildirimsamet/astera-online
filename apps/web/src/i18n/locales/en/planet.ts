@@ -368,6 +368,12 @@ export const planet = {
 
 /** The ladder behind one row: what this thing becomes. */
 export const itemSheet = {
+  coreTierGuide: "Core levels & planet tiers",
+  coreTierCurrent: "Core L{{level}} → Tier {{tier}}",
+  coreTierRule: "Your planet gains one tier for every three Core levels. The highlighted row is your current tier.",
+  coreTierLevel: "Core level",
+  coreTierPlanet: "Planet tier",
+  coreTierRange: "L{{from}}–L{{to}}",
   eyebrowNotInOrbit: "Not in orbit",
   eyebrowInOrbit: "In orbit",
   eyebrowNotInstalled: "Not installed",

@@ -2708,37 +2708,29 @@ export const GALAXY_EVENTS = {
     ASTEROID_SHOWER: {
       schedule: 'FIXED_DAILY',
       /**
-       * VERSION 9 reduces the evening multipliers from weekday x5 to x3 and
-       * weekend x6 to x5. Version 7 introduced the working-week schedule because *"kitlemiz
-       * 30-40 yaş çalışan insanlar bunlar eventleri yakalayamıyor ve tüm gün oynayan
-       * eventlerin hepsini yakalayan azınlık ise ekonomik ve güç olarak uçuyor."*
-       *
-       * Six windows a day paid whoever could attend six windows a day. A weekday now
-       * has two — lunch and the evening — and the weekend a bigger pair, when the
-       * audience is actually free. The version moves because the SHAPE moved, and
-       * `restampFutureOccurrences` compares it to decide whether a dealt row is
-       * current. (5 was the front load, 6 the 23:00 window; both shapes are gone.)
+       * VERSION 10 doubles every version-9 multiplier and shortens each shower to
+       * thirty minutes (owner, 2026-10-05). Weekday/weekend starts stay unchanged.
+       * The definition version lets calendar adoption identify stale future rows.
        *
        * A SHOWER NO LONGER SIZES A LANE OF ITS OWN. Under the dynamic field
        * (`ASTEROID_DYNAMIC`) the multiplier scales the hour's per-player spawn for
        * the part of the hour the window covers, which is why a window may open on a
-       * half hour: 12:30–13:30 multiplies the second half of one hour and the first
-       * half of the next.
+       * half hour: 12:30–13:00 multiplies only the second half of that hour.
        *
        * A LIVE SEASON DOES NOT GAIN IT ON DEPLOY. Calendars are dealt once at
        * creation; the running galaxy adopts this shape through the operator command
        * `pnpm season adopt-event-calendar`, which never touches a window that opened.
        */
-      version: 9,
+      version: 10,
       windows: [
-        { days: 'WEEKDAY', startsAtLocalMinute: 12 * 60 + 30, endsAtLocalMinute: 13 * 60 + 30,
-          effect: { asteroidSpawnMultiplier: 2 } },
-        { days: 'WEEKDAY', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
-          effect: { asteroidSpawnMultiplier: 3 } },
-        { days: 'WEEKEND', startsAtLocalMinute: 13 * 60, endsAtLocalMinute: 14 * 60,
-          effect: { asteroidSpawnMultiplier: 3 } },
-        { days: 'WEEKEND', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
-          effect: { asteroidSpawnMultiplier: 5 } },
+        { days: 'WEEKDAY', startsAtLocalMinute: 12 * 60 + 30, endsAtLocalMinute: 13 * 60,
+          effect: { asteroidSpawnMultiplier: 4 } },
+        { days: 'WEEKDAY', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 20 * 60 + 30,
+          effect: { asteroidSpawnMultiplier: 6 } },
+        { days: 'WEEKEND', startsAtLocalMinute: 13 * 60, endsAtLocalMinute: 13 * 60 + 30,
+          effect: { asteroidSpawnMultiplier: 6 } },
+        { days: 'WEEKEND', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 20 * 60 + 30,
+          effect: { asteroidSpawnMultiplier: 10 } },
       ],
     },
     TRADE_SHIP: {
@@ -3326,8 +3318,8 @@ export const PIRATE = {
   /**
    * THE DYNAMIC PIRATE FIELD. Owner instruction, 2026-09-19: pirates spawn like the
    * rocks — per commander who actually played, not per seat. Every hour the worker
-   * counts the people active before it opened (`countEligibleCommanders`, bots never
-   * count) and that hour spawns `activePlayers × perActivePlayerPerHour` pirates,
+   * counts active eligible people plus half of active bots (`countEligibleCommanders`)
+   * and that hour spawns `activePlayers × perActivePlayerPerHour` pirates,
    * and never fewer than `floorPerHour`, so a commander alone at four in the morning
    * still has a target. A 1000-seat galaxy with 200 people on is ~50 an hour; a
    * quiet night is one.

@@ -252,6 +252,8 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
   return {
     planet: {
       id: p.planetId,
+      // The economy was advanced under this world's lock at this instant.
+      snapshotAt: p.now,
       name: p.name,
       skinId: p.equippedSkinId ? planetSkinById(p.equippedSkinId)?.id ?? null : null,
       kind: p.kind,

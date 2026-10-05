@@ -157,4 +157,12 @@ describe('the merchant rail', () => {
     expect(screen.getByTestId('trade-rate')).toBeInTheDocument();
     expect(screen.getByTestId('trade-open')).toHaveTextContent(/konvoy|takas|ticaret/i);
   });
+
+  it('explains the cargo ship needed for trade when only Prospectors are home', async () => {
+    await i18n.changeLanguage('tr');
+    rail({ fleetAtHome: { PROSPECTOR: 5 } });
+    expect(screen.getByTestId('trade-open')).toBeDisabled();
+    expect(screen.getByTestId('trade-open')).toHaveTextContent('Ticaret için kargo gemisi gerekli');
+    expect(screen.queryByText('Bu dünyada bekleyen gemi yok')).not.toBeInTheDocument();
+  });
 });

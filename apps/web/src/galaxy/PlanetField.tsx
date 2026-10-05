@@ -416,6 +416,8 @@ function RecoveryScar({ node }: { node: PlanetNode }) {
 export const LIMB_SCALE = 1.14;
 export { LIMB_PEAK };
 export const LIMB_OPACITY = 0.45;
+/** A faint edge keeps distant public silhouettes distinguishable from background stars. */
+export const MIN_LIMB_PX = 0.8;
 
 /**
  * A breath so slow it is under conscious notice, and the reason it exists at all
@@ -444,13 +446,16 @@ export const VISIBLE_PLANET_BRIGHTNESS = 1.25;
 export const HIDDEN_PLANET_BRIGHTNESS = 0.85;
 
 export function limbLight(stance: Stance, intel: PlanetNode['intel']): number {
-  return Math.max(STANCE_LIGHT[stance], 0.6)
+  const light = Math.max(STANCE_LIGHT[stance], 0.6)
     * (intel === 'RESOLVED' ? VISIBLE_PLANET_BRIGHTNESS : HIDDEN_PLANET_BRIGHTNESS);
+  // Keep the faint edge above the lifted body without changing live-sight brightness.
+  return intel === 'RESOLVED' ? light : Math.max(light, MIN_PLANET_BODY_LIGHT + 0.05);
 }
 
 function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
   const ref = useRef<THREE.InstancedMesh>(null);
   const camera = useThree((state) => state.camera);
+  const height = useThree((state) => state.size.height);
   const texture = useMemo(() => limbTexture(), []);
   const tint = useMemo(() => new THREE.Color(), []);
   const count = nodes.length;
@@ -476,12 +481,16 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
     const mesh = ref.current;
     if (!mesh) return;
     const t = clock.elapsedTime;
+    const pixelScale = camera instanceof THREE.PerspectiveCamera && height > 0
+      ? 2 * Math.tan(camera.fov * Math.PI / 360) / height
+      : 0;
     nodes.forEach((node, i) => {
       UP.position.set(node.position[0], node.position[1], node.position[2]);
       UP.quaternion.copy(camera.quaternion);
       // Phase off the world's own x so the field never settles into one rhythm.
       const breath = 1 + Math.sin(t * LIMB_BREATH_RATE + node.position[0]) * LIMB_BREATH_DEPTH;
-      UP.scale.setScalar(node.radius * 2 * LIMB_SCALE * breath);
+      const edge = MIN_LIMB_PX * pixelScale * camera.position.distanceTo(UP.position);
+      UP.scale.setScalar(Math.max(node.radius * LIMB_SCALE, node.radius + edge) * 2 * breath);
       UP.updateMatrix();
       mesh.setMatrixAt(i, UP.matrix);
     });
@@ -538,7 +547,7 @@ const UP = new THREE.Object3D();
  */
 export const UNRESOLVED_BODY_LIGHT = 0.7;
 /** A world must remain a readable, solid silhouette even at the darkest stance. */
-export const MIN_PLANET_BODY_LIGHT = 0.45;
+export const MIN_PLANET_BODY_LIGHT = 0.55;
 
 /**
  * What losing resolution costs a world. D126.
@@ -857,6 +866,7 @@ function PlanetInstances({
       <instancedMesh
         ref={ref}
         name="planet-worlds"
+        userData={{ planetOccluder: true }}
         args={[undefined, undefined, count]}
         onPointerUp={pick}
         /**

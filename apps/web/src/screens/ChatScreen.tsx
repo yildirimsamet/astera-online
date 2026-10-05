@@ -37,6 +37,10 @@ import { ClanIcon, CloseIcon, PlusIcon, SendIcon } from '../ui/icons/index.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Segmented } from '../v2/kit/Segmented.js';
 import { EmptyState } from '../v2/kit/Surface.js';
+import { Trophy, type Place } from '../ui/Medal.js';
+
+const PODIUM_BORDER: Record<Place, string> = { 1: 'border-rank-gold/35', 2: 'border-rank-silver/35', 3: 'border-rank-copper/35' };
+const PODIUM_INK: Record<Place, string> = { 1: 'text-rank-gold', 2: 'text-rank-silver', 3: 'text-rank-copper' };
 
 interface MessageRow {
   id: string;
@@ -49,6 +53,7 @@ interface MessageRow {
   self: boolean;
   /** The author speaks with admin authority. Marked in gold; see the row below. */
   admin?: boolean;
+  previousSeasonRank?: Place;
   replyTo?: { id: string; username: string; content: string } | null;
   reactions?: { emoji: ReactionEmoji; count: number; mine: boolean }[];
 }
@@ -629,13 +634,20 @@ function ChannelPanel({
                     tabIndex={0}
                     aria-label={t('chat.messageActions', { name: message.username })}
                     onPointerDown={(event) => {
-                      if ((event.target as HTMLElement).closest('button') || disabledReason) return;
+                      if (disabledReason || (event.target instanceof Element && event.target.closest('button, a'))) return;
                       clearHold();
                       holdTimer.current = setTimeout(() => { openActions(message.id); haptic('tap'); }, 450);
                     }}
                     onPointerUp={clearHold}
                     onPointerCancel={clearHold}
                     onPointerLeave={clearHold}
+                    onDoubleClick={(event) => {
+                      if (disabledReason || (event.target instanceof Element && event.target.closest('button, a'))) return;
+                      event.preventDefault();
+                      clearHold();
+                      openActions(message.id);
+                      haptic('tap');
+                    }}
                     onContextMenu={(event) => {
                       event.preventDefault();
                       if (!disabledReason) openActions(message.id);
@@ -651,9 +663,10 @@ function ChannelPanel({
                       same hairline every message has, tinted at 35%, and the name at full
                       strength. It wins over both ordinary surfaces, self included.
                     */
-                    className={`min-w-0 rounded-control border px-2.5 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self ${message.self ? 'rounded-tr-cell' : 'rounded-tl-cell'} ${
+                    className={`min-w-0 touch-manipulation rounded-control border px-2.5 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self ${message.self ? 'rounded-tr-cell' : 'rounded-tl-cell'} ${
                       message.admin === true
                         ? 'border-v2-premium/35 bg-v2-deep'
+                        : message.previousSeasonRank !== undefined ? `${PODIUM_BORDER[message.previousSeasonRank]} bg-v2-deep`
                         : message.self ? selfSurface : 'border-v2-line bg-v2-deep'
                     }`}
                   >
@@ -678,6 +691,14 @@ function ChannelPanel({
                         </button>
                       ) : (
                         <span data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-v2-premium' : 'text-v2-ink'}`}>{commanderLabel(message.username, message.clanTag)}</span>
+                      )}
+                      {message.previousSeasonRank !== undefined && (
+                        <span data-chat-podium-icon role="img"
+                          aria-label={t('chat.previousSeasonPlace', { rank: message.previousSeasonRank })}
+                          title={t('chat.previousSeasonPlace', { rank: message.previousSeasonRank })}
+                          className={`shrink-0 self-center ${PODIUM_INK[message.previousSeasonRank]}`}>
+                          <Trophy won size={14} />
+                        </span>
                       )}
                       <time className="ml-auto shrink-0 font-v2-mono text-micro text-v2-ink-3" dateTime={message.createdAt.toISOString()}>
                         {chatRelativeTime(message.createdAt, now, t)}

@@ -876,7 +876,7 @@ export function GalaxyCanvas({
           radius={0.72}
           levels={6}
         />
-        <Vignette eskil={false} offset={0.24} darkness={0.7} />
+        <Vignette eskil={false} offset={0.24} darkness={0.62} />
       </EffectComposer>
       )}
 

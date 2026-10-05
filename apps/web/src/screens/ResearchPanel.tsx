@@ -507,7 +507,7 @@ export function ResearchPanel({ onNeed, focus }: {
       */}
       <section aria-label={t('research.queueTitle')} className="flex flex-col gap-1.5">
         <QueueLane label={t('research.queueLane')} orders={queueOrders} now={now} onOpen={pickOrder} />
-        {running ? (
+        {running?.finishesAt ? (
           <p data-research-running className="text-micro leading-snug text-v2-ink-2">
             <span className="text-v2-self">{t('research.runningLabel')}</span>
             {' · '}

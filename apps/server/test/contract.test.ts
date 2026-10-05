@@ -296,6 +296,7 @@ describe('every payload the client parses', () => {
 
   it('GET /api/planet parses', async () => {
     const parsed = planetSchema.parse(await get('/api/planet'));
+    expect(parsed.planet).toHaveProperty('snapshotAt', f.clock.now());
     // Spot-check the D25 split rather than only that it parsed: a schema can be
     // loose enough to accept the wrong shape silently.
     expect(parsed.instruments.TELESCOPE).toBe(2);
@@ -386,6 +387,7 @@ describe('every payload the client parses', () => {
     expect(list.capitalPlanetId).toBe(f.planetIds[0]);
     expect(list.planets).toHaveLength(1);
     expect(list.planets[0]?.planet.kind).toBe('CAPITAL');
+    expect(list.planets[0]?.planet).toHaveProperty('snapshotAt', f.clock.now());
     planetSchema.parse(await get(`/api/planets/${list.capitalPlanetId}`));
   });
 
@@ -404,6 +406,7 @@ describe('every payload the client parses', () => {
     const planetId = f.planetIds[0]!;
     f.clock.advance(120);
     const mutated = collectSchema.parse(await post(`/api/planets/${planetId}/collect`, {}));
+    expect(mutated.planet.planet).toHaveProperty('snapshotAt', f.clock.now());
     const fetched = planetSchema.parse(await get(`/api/planets/${planetId}`));
     expect(mutated.planet).toEqual(fetched);
   });

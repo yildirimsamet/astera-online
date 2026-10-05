@@ -86,6 +86,27 @@ afterEach(async () => {
 });
 
 describe('galaxy chat surface', () => {
+  it('marks each previous-season podium place with a quiet border and a cup beside the author', () => {
+    show(vi.fn(), 'general', {
+      pages: [{ messages: initial.pages[0]!.messages.map((message, index) => ({
+        ...message, previousSeasonRank: index + 1,
+      })), nextBefore: null }], pageParams: [null],
+    });
+    const metals = ['gold', 'silver', 'copper'];
+    initial.pages[0]!.messages.forEach((message, index) => {
+      const bubble = document.querySelector(`[data-chat-message="${message.id}"]`)!;
+      expect(bubble).toHaveClass(`border-rank-${metals[index]}/35`);
+      const icon = bubble.querySelector('[data-chat-podium-icon]');
+      expect(icon).toHaveAttribute('aria-label', `Previous season · place ${index + 1}`);
+      expect(icon?.previousElementSibling).toHaveAttribute('data-chat-author');
+      expect(icon?.querySelector('svg')).not.toBeNull();
+    });
+  });
+
+  it('keeps a legacy message free of a previous-season cup', () => {
+    show();
+    expect(document.querySelector('[data-chat-podium-icon]')).toBeNull();
+  });
   it('keeps reaction controls outside the message bubble and omits redundant initials', async () => {
     show();
     const bubble = document.querySelector('[data-chat-message="one"]')!;
@@ -149,6 +170,38 @@ describe('galaxy chat surface', () => {
     await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'I agree');
     await user.click(screen.getByRole('button', { name: 'Send' }));
     await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'I agree', 'one'); });
+  });
+
+  it('opens the same actions by double click and sends a quoted General reply', async () => {
+    const { post } = show();
+    const user = userEvent.setup();
+    await user.dblClick(screen.getByText('Merhaba galaksi'));
+    expect(screen.getByRole('button', { name: 'Add emoji reaction' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Reply' }));
+    await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'Double-click reply');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'Double-click reply', 'one'); });
+  });
+
+  it('opens Clan emoji actions by double click', async () => {
+    const { api } = show(vi.fn(), 'clan');
+    const user = userEvent.setup();
+    await user.dblClick(screen.getByText('Rim temiz'));
+    await user.click(screen.getByRole('button', { name: 'Add emoji reaction' }));
+    await user.click(screen.getByRole('button', { name: 'React with 👍' }));
+    await waitFor(() => { expect(api.reactToMessage).toHaveBeenCalledWith('clan', 'clan-one', '👍'); });
+  });
+
+  it('does not open actions on a single click', async () => {
+    show();
+    await userEvent.click(screen.getByText('Merhaba galaksi'));
+    expect(screen.queryByRole('button', { name: 'Reply' })).not.toBeInTheDocument();
+  });
+
+  it('keeps a double click on the commander link separate from message actions', () => {
+    show();
+    fireEvent.doubleClick(screen.getByRole('button', { name: 'İzci' }));
+    expect(screen.queryByRole('button', { name: 'Add emoji reaction' })).not.toBeInTheDocument();
   });
 
   it('keeps keyboard activation of a commander link separate from message actions', () => {

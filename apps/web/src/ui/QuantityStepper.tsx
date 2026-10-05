@@ -104,7 +104,7 @@ export function QuantityStepper({
       <div className="flex shrink-0 items-center gap-1.5 font-v2-ui">
         <div className="flex h-7 items-stretch overflow-hidden rounded-control border border-v2-line-hi bg-v2-deep/60">
           {step(decreaseLabel, current <= min, current - 1, '−')}
-          {field('w-9 border-x border-v2-line bg-transparent text-center font-v2-mono text-caption font-semibold text-v2-ink outline-none')}
+          {field('w-12 border-x border-v2-line bg-transparent text-center font-v2-mono font-semibold text-v2-ink outline-none')}
           {step(increaseLabel, current >= upper, current + 1, '+')}
         </div>
         <span data-count-max>

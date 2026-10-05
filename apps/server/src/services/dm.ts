@@ -8,7 +8,7 @@ import {
 } from '../db/schema.js';
 import { CHANNEL, publish } from '../stream/bus.js';
 import { GameError } from './planet.js';
-import { messageDecorations } from './messageDecorations.js';
+import { messageDecorations, previousSeasonPodium } from './messageDecorations.js';
 
 interface Commander {
   id: string;
@@ -253,8 +253,10 @@ export async function postDm(db: Db, accountId: string, recipientPlayerId: strin
     if (!message) throw new Error('DM insert returned no row');
     await publish(tx, me.id, 'private:dm');
     await publish(tx, recipientPlayerId, 'private:dm');
+    const previousSeasonRank = (await previousSeasonPodium(tx, [me.id])).get(me.id);
     return { conversationId, message: { ...message, username: me.username, self: true,
-      replyTo: replyTo ?? null, reactions: [] } };
+      replyTo: replyTo ?? null, reactions: [],
+      ...(previousSeasonRank === undefined ? {} : { previousSeasonRank }) } };
   });
 }
 
