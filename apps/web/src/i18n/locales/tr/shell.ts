@@ -390,6 +390,7 @@ export const leaderboard = {
 
 export const chat = {
   previousSeasonPlace: "Önceki sezon · {{rank}}. sıra",
+  supporterBadge: "Astera destekçisi",
   eyebrow: 'Canlı kanallar',
   title: 'Sohbet',
   launcher: 'Galaksi sohbetini aç',

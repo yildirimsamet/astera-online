@@ -140,7 +140,7 @@ import {
 import {
   focusTapDecision,
   planetFocusRailVisible,
-  transferOriginForFocus,
+  planetFocusSelection,
 } from '../galaxy/follow.js';
 import {
   reconcileOwnInterceptionImpacts,
@@ -520,7 +520,7 @@ export function GalaxyView({
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
   /** Klan Savunma Desteği: the clanmate world the send sheet is open for. */
   const [supportHost, setSupportHost] = useState<SupportHost | null>(null);
-  /** The world that was active before focusing another controlled world. */
+  /** The active source, kept separate from the focused transfer destination. */
   const [transferOriginId, setTransferOriginId] = useState<string | null>(null);
   const [worldsOpen, setWorldsOpen] = useState(false);
   /**
@@ -987,14 +987,7 @@ export function GalaxyView({
         onFocused?.(next);
         return;
       }
-      if (ownedId !== null) {
-        // Selecting the target as active is immediate, but "transfer here" still
-        // originates at the world that was active when this focus began.
-        setTransferOriginId(transferOriginForFocus(activePlanetId, ownedId));
-        selectPlanet(ownedId);
-      } else {
-        setTransferOriginId(null);
-      }
+      setTransferOriginId(planetFocusSelection(activePlanetId, ownedId).transferOriginId);
       setFocus(decision.focus);
       setDetail(decision.detail);
       setAttacking(false);
@@ -1003,16 +996,15 @@ export function GalaxyView({
     [activePlanetId, focus, onFocused, onPanel, planets, selectPlanet],
   );
   const focusPlanet = useCallback(
-    (planetId: string) => {
+    (planetId: string, intent: 'focus' | 'select' = 'focus') => {
       const target = planets.find((candidate) => candidate.id === planetId);
       if (!target) return;
       const next: Focus = { kind: 'planet', id: planetId };
       const ownedId = controlledWorldId(planets, planetId);
-      if (ownedId !== null) {
-        setTransferOriginId(transferOriginForFocus(activePlanetId, ownedId));
-        selectPlanet(ownedId);
-      } else {
-        setTransferOriginId(null);
+      const selection = planetFocusSelection(activePlanetId, ownedId, intent);
+      setTransferOriginId(selection.transferOriginId);
+      if (selection.activePlanetId !== null && selection.activePlanetId !== activePlanetId) {
+        selectPlanet(selection.activePlanetId);
       }
       setFocus(next);
       setDetail(false);
@@ -2163,7 +2155,7 @@ export function GalaxyView({
           worlds={worlds}
           activePlanetId={activePlanetId}
           capitalPlanetId={capitalPlanetId}
-          onSelect={focusPlanet}
+          onSelect={(id) => { focusPlanet(id, 'select'); }}
           onTransfer={(originPlanetId, targetPlanetId) => {
             /*
               THE ACTIVE WORLD DOES NOT MOVE, and neither does the camera subject

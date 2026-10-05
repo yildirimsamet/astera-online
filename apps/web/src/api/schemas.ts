@@ -1490,6 +1490,9 @@ export const polarPurchaseSchema = z.object({ checkoutId: z.string().uuid(),
   }) });
 /** An operator's grant of an externally paid look (a Shopier order). */
 export const skinGrantedSchema = z.object({ accountId: z.string(), skinId: planetSkinId, grantedAt: z.coerce.date() });
+export const supporterStatusSchema = z.object({
+  accountId: z.string(), username: z.string(), supporter: z.boolean(), grantedAt: z.coerce.date().nullable(),
+});
 
 export const leaderboardSchema = z.object({
   ladder: z.array(
@@ -1880,6 +1883,7 @@ export const clanAidLaunchSchema = z.object({
 });
 
 const messageInteractionSchema = {
+  supporter: z.boolean().optional(),
   previousSeasonRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   replyTo: z.object({ id: z.string(), username: z.string(), content: z.string() }).nullable().optional(),
   reactions: z.array(z.object({ emoji: z.enum(REACTION_EMOJIS), count: z.number().int().positive(), mine: z.boolean() })).optional(),

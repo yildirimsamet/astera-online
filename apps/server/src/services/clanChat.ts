@@ -7,7 +7,7 @@ import { publishPrivate } from '../stream/bus.js';
 import { activeClanMembership, activeClanPlayerIds, lockClanPlayers } from './clanCombat.js';
 import { clanActor } from './clan.js';
 import { GameError, lockSeason } from './planet.js';
-import { messageDecorations, previousSeasonPodium, type PodiumPlace, type ReactionView, type ReplyPreview } from './messageDecorations.js';
+import { messageDecorations, authorRecognition, type PodiumPlace, type ReactionView, type ReplyPreview } from './messageDecorations.js';
 
 export interface ClanMessageView {
   id: string;
@@ -21,6 +21,7 @@ export interface ClanMessageView {
   replyTo: ReplyPreview | null;
   reactions: ReactionView[];
   previousSeasonRank?: PodiumPlace;
+  supporter?: boolean;
 }
 
 export async function readClanChat(
@@ -159,7 +160,7 @@ export async function postClanChat(
   for (const playerId of await activeClanPlayerIds(tx, membership.clanId)) {
     await publishPrivate(tx, playerId, 'chat');
   }
-  const previousSeasonRank = (await previousSeasonPodium(tx, [input.playerId])).get(input.playerId);
+  const recognition = (await authorRecognition(tx, [input.playerId])).get(input.playerId);
   return {
     ...message,
     planetId: actor.planetId,
@@ -168,7 +169,7 @@ export async function postClanChat(
     createdAt: message.createdAt.toISOString(),
     self: true,
     replyTo: replyTo ?? null, reactions: [],
-    ...(previousSeasonRank === undefined ? {} : { previousSeasonRank }),
+    ...recognition,
   };
 }
 

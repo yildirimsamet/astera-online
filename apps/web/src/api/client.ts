@@ -19,6 +19,7 @@ import { noteServerTime } from '../lib/clock.js';
 import {
   adminFeedbackPageSchema,
   skinGrantedSchema,
+  supporterStatusSchema,
   activeGalaxyEventsSchema,
   announcementPublishedSchema,
   announcementsPageSchema,
@@ -456,6 +457,8 @@ export class Api {
       method: 'POST',
       body: { username, skinId, orderRef },
     });
+  setSupporter = (username: string, supporter: boolean) =>
+    this.send('/api/admin/supporters', supporterStatusSchema, { method: 'POST', body: { username, supporter } });
   publishAnnouncement = (title: string, bodyHtml: string) =>
     this.send('/api/admin/announcements', announcementPublishedSchema, {
       method: 'POST',

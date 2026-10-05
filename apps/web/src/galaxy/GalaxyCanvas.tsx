@@ -660,9 +660,10 @@ export function GalaxyCanvas({
       {/*
         Atmospheric perspective. Distant worlds fade into the nebula instead of
         staying crisp, which is most of what makes a scene read as deep rather than
-        as objects on a black sheet. Far enough out that nothing interactive hides.
+        as objects on a black sheet. The owner-set 250–500 range keeps worlds
+        visible longer as the camera zooms out (owner, 2026-10-05).
       */}
-      <fog attach="fog" args={['#070c18', 55, 210]} />
+      <fog attach="fog" args={['#070c18', 250, 500]} />
 
       {/* One key light, from the same upper-left the planet renders assume, so the
           asteroids are shaded consistently with everything else. RAISED WITH THE 3D

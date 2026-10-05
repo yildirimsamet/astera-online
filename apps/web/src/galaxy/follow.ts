@@ -119,7 +119,7 @@ export function focusTapDecision(
   return { kind: 'focus', focus: next, detail: repeatedFocusTap(current, next) };
 }
 
-/** The transfer source that survives making a focused controlled target active. */
+/** The active source for a different owned transfer target; never a self-transfer. */
 export function transferOriginForFocus(
   activePlanetId: string | null,
   controlledPlanetId: string | null,
@@ -127,6 +127,16 @@ export function transferOriginForFocus(
   return controlledPlanetId !== null && activePlanetId !== controlledPlanetId
     ? activePlanetId
     : null;
+}
+
+/** Looking at a destination must not move the resource HUD or the transfer source. */
+export function planetFocusSelection(
+  activePlanetId: string | null,
+  controlledPlanetId: string | null,
+  intent: 'focus' | 'select' = 'focus',
+): { activePlanetId: string | null; transferOriginId: string | null } {
+  const selectedId = intent === 'select' ? controlledPlanetId ?? activePlanetId : activePlanetId;
+  return { activePlanetId: selectedId, transferOriginId: transferOriginForFocus(selectedId, controlledPlanetId) };
 }
 
 /** An already-active controlled world focuses silently: there is nowhere to transfer to. */

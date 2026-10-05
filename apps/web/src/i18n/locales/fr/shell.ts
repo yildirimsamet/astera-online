@@ -402,6 +402,7 @@ export const leaderboard = {
 } as const;
 export const chat = {
   previousSeasonPlace: "Saison précédente · place {{rank}}",
+  supporterBadge: "Soutien d’Astera",
   eyebrow: "Canaux en direct",
   title: "Chat",
   launcher: "Ouvrir le chat de la galaxie",

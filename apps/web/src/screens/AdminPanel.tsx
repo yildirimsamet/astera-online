@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type ReactNode, type SyntheticEvent } from 'react';
+import { useId, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -20,14 +20,16 @@ import { Button, EmptyState, Note } from '../v2/kit/Surface.js';
 import { Segmented } from '../v2/kit/Segmented.js';
 import { Icon } from '../v2/icons.js';
 import { PLANET_SKIN_CATALOG, SKIN_COLLECTIONS } from '../ui/skinCatalog.js';
+import { HeartIcon } from '../ui/icons/index.js';
 
-type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS';
+type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SUPPORTERS';
 
 const ADMIN_TAB_ID: Record<AdminTab, string> = {
   COMPOSE: 'admin-compose-tab',
   FEEDBACK: 'admin-feedback-tab',
   PERF: 'admin-perf-tab',
   SKINS: 'admin-skins-tab',
+  SUPPORTERS: 'admin-supporters-tab',
 };
 
 /** The Gözlemevi field: one height, one border, your colour when it has the caret. */
@@ -36,15 +38,15 @@ const LABEL = 'text-micro font-semibold uppercase tracking-wide text-v2-ink-3';
 
 /**
  * THE OPERATOR'S DESK, IN THE GÖZLEMEVI LANGUAGE (owner 2026-09-27: every surface this work
- * touched redrawn to the ui-v2 standard). Four tools behind one switch: an announcement, the
- * players' feedback, the performance recorder, and the grant of a look paid on Shopier.
+ * touched redrawn to the ui-v2 standard). Announcements, feedback, performance recordings,
+ * Shopier skin grants and permanent manual supporter recognition.
  */
 export default function AdminPanel() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<AdminTab>('COMPOSE');
   return (
     <div className="flex h-full min-h-0 flex-col font-v2-ui">
-      <div className="shrink-0 px-2 py-2.5">
+      <div className="shrink-0 px-2 py-2.5 [&_[role=tablist]]:grid-cols-3 [&_[role=tablist]]:grid-flow-row sm:[&_[role=tablist]]:grid-cols-none sm:[&_[role=tablist]]:grid-flow-col">
         <Segmented
           label={t('community.admin.tabsLabel')}
           value={tab}
@@ -55,6 +57,7 @@ export default function AdminPanel() {
             { id: 'FEEDBACK', label: t('community.admin.feedbackTab') },
             { id: 'PERF', label: t('community.admin.perfTab') },
             { id: 'SKINS', label: t('community.admin.skinsTab') },
+            { id: 'SUPPORTERS', label: t('community.admin.supportersTab') },
           ]}
         />
       </div>
@@ -66,7 +69,7 @@ export default function AdminPanel() {
         {tab === 'COMPOSE' ? <AnnouncementComposer />
           : tab === 'FEEDBACK' ? <AdminFeedbackList />
             : tab === 'PERF' ? <PerfRecorderPanel />
-              : <SkinGrantForm />}
+              : tab === 'SKINS' ? <SkinGrantForm /> : <SupporterForm />}
       </div>
     </div>
   );
@@ -384,6 +387,61 @@ interface GrantRow { skinId: PlanetSkinId; outcome: GrantOutcome }
 
 const isGrantItem = (value: string): value is GrantItem =>
   value === 'bundle' || PLANET_SKIN_IDS.some((id) => id === value);
+
+function SupporterForm() {
+  const { t } = useTranslation();
+  const api = useApi();
+  const id = useId();
+  const submitting = useRef(false);
+  const [commander, setCommander] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ username: string; supporter: boolean } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const ready = commander.trim().length >= 2 && !busy;
+
+  const submit = async (supporter: boolean): Promise<void> => {
+    if (!ready || submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    setResult(null);
+    setError(null);
+    const username = commander.trim();
+    try {
+      setResult(await api.setSupporter(username, supporter));
+    } catch (fault) {
+      setError(fault instanceof ApiError && fault.code === 'ACCOUNT_NOT_FOUND'
+        ? t('community.admin.supporterNoAccount', { name: username }) : describeError(fault));
+    } finally {
+      submitting.current = false;
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={(event) => { event.preventDefault(); void submit(true); }}
+      className="mx-auto flex w-full max-w-md flex-col gap-3 pt-1" aria-busy={busy}>
+      <Note>{t('community.admin.supporterIntro')}</Note>
+      <div className="flex items-center gap-2 rounded-control border border-chat-supporter/35 bg-v2-deep px-3 py-2 text-caption text-chat-supporter-ink">
+        <HeartIcon className="size-4 shrink-0" />{t('chat.supporterBadge')}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={id} className={LABEL}>{t('community.admin.supporterCommander')}</label>
+        <input id={id} value={commander} maxLength={32} autoComplete="off" disabled={busy}
+          onChange={(event) => { setCommander(event.currentTarget.value); setResult(null); setError(null); }}
+          className={FIELD} />
+      </div>
+      <Button type="submit" variant="primary" size="lg" full disabled={!ready}>
+        {busy ? t('community.admin.supporterWorking') : t('community.admin.supporterGrant')}
+      </Button>
+      <Button type="button" variant="ghost" size="lg" full disabled={!ready}
+        onClick={() => { void submit(false); }}>{t('community.admin.supporterRevoke')}</Button>
+      {error !== null && <p role="alert" className="text-caption text-v2-warn">{error}</p>}
+      {result !== null && <p role="status" className="text-caption text-chat-supporter-ink">
+        {t(result.supporter ? 'community.admin.supporterGranted' : 'community.admin.supporterRevoked', { name: result.username })}
+      </p>}
+    </form>
+  );
+}
 
 /**
  * A SHOPIER ORDER, GRANTED BY HAND (owner 2026-09-27: "Manuel + admin formu"). Shopier's page

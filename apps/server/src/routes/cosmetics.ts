@@ -6,6 +6,7 @@ import { isAdminAccount } from '../services/admin.js';
 import { GameError } from '../services/planet.js';
 import { equipPlanetSkin, grantPlanetSkin, skinCollection } from '../services/cosmetics.js';
 import { usernameSchema } from '../auth/credentials.js';
+import { setSupporterStatus } from '../services/supporters.js';
 
 const skinId = z.enum(PLANET_SKIN_IDS);
 const equipBody = z.object({ skinId: skinId.nullable() }).strict();
@@ -15,6 +16,7 @@ const grantBody = z.object({
   skinId,
   orderRef: z.string().trim().min(3).max(120),
 }).strict();
+const supporterBody = z.object({ username: usernameSchema, supporter: z.boolean() }).strict();
 
 async function requireAdmin(req: FastifyRequest): Promise<void> {
   await requireAuth(req);
@@ -37,5 +39,11 @@ export function registerCosmeticRoutes(app: FastifyInstance): void {
   app.post('/api/admin/skins/grant', { preHandler: requireAdmin }, (req) => {
     const body = grantBody.parse(req.body ?? {});
     return grantPlanetSkin(app.db, req.accountId!, body.username, body.skinId, body.orderRef);
+  });
+  app.post('/api/admin/supporters', { preHandler: requireAdmin }, async (req) => {
+    const body = supporterBody.parse(req.body ?? {});
+    const result = await setSupporterStatus(app.db, app.clock, req.accountId!, body.username, body.supporter);
+    req.log.info({ operatorAccountId: req.accountId, accountId: result.accountId, supporter: result.supporter }, 'Manual supporter status');
+    return result;
   });
 }

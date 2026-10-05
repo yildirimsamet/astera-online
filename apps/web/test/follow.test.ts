@@ -15,6 +15,7 @@ import {
   rigGestureState,
   sphericalLeashCorrection,
   transferOriginForFocus,
+  planetFocusSelection,
   type RigFrame,
 } from '../src/galaxy/follow.js';
 import type { Focus } from '../src/galaxy/FocusPanel.js';
@@ -290,6 +291,23 @@ describe('first tap focuses, second tap opens detail', () => {
   it('keeps the previous active world as a transfer source for another controlled target', () => {
     expect(transferOriginForFocus('capital', 'colony')).toBe('capital');
     expect(transferOriginForFocus('colony', 'capital')).toBe('colony');
+  });
+
+  it('keeps the active capital as the source while inspecting a colony target', () => {
+    expect(planetFocusSelection('capital', 'colony')).toEqual({ activePlanetId: 'capital', transferOriginId: 'capital' });
+    // Looking back at the source offers no capital-to-itself transfer.
+    expect(planetFocusSelection('capital', 'capital')).toEqual({ activePlanetId: 'capital', transferOriginId: null });
+  });
+
+  it('changes the source only through an explicit world selection', () => {
+    expect(planetFocusSelection('capital', 'colony', 'select')).toEqual({ activePlanetId: 'colony', transferOriginId: null });
+    expect(planetFocusSelection('colony', 'capital')).toEqual({ activePlanetId: 'colony', transferOriginId: 'colony' });
+  });
+
+  it('keeps foreign focus and a missing active world from inventing a transfer origin', () => {
+    expect(planetFocusSelection('capital', null)).toEqual({ activePlanetId: 'capital', transferOriginId: null });
+    expect(planetFocusSelection(null, 'colony')).toEqual({ activePlanetId: null, transferOriginId: null });
+    expect(planetFocusSelection(null, 'colony', 'select')).toEqual({ activePlanetId: 'colony', transferOriginId: null });
   });
 
   it('offers no self-transfer when the focused world was already active', () => {

@@ -149,8 +149,8 @@ export function TransferSheet({
 }) {
   const { t } = useTranslation();
   const say = useToast();
-  // Focusing a controlled destination also makes it active. The source therefore
-  // travels explicitly instead of being re-read from the now-changed selector.
+  // Both route ends travel explicitly; target focus and later world selection
+  // must never change the source of an already-open transfer picker.
   const transfer = useTransfer(planet.planet.id);
   const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
   /**

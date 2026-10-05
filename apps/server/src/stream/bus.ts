@@ -69,7 +69,7 @@ export type ShardEventKind =
   | 'clan';
 
 /** Events that affect every signed-in commander, regardless of their season. */
-export type GlobalEventKind = 'announcement';
+export type GlobalEventKind = 'announcement' | 'chat-badges';
 
 /**
  * Shard kinds go out prefixed, and the prefix is not decoration.

@@ -80,6 +80,7 @@ import {
   chatPostSchema,
   chatReadSchema,
   chatUnreadSchema,
+  supporterStatusSchema,
   chroniclePageSchema,
   claimSchema,
   collectSchema,
@@ -1509,6 +1510,20 @@ describe('every payload the client parses', () => {
     expect(sent.message).toHaveProperty('clanTag');
     const marked = chatReadSchema.parse(await post('/api/chat/read', { messageId: sent.message.id }));
     expect(marked.ok).toBe(true);
+  });
+
+  it('preserves a permanent supporter in chat history and immediate responses through the web schemas', async () => {
+    const { accounts } = await import('../src/db/schema.js');
+    const { setSupporterStatus } = await import('../src/services/supporters.js');
+    const [account] = await f.db.select().from(accounts).where(eq(accounts.id, f.accountIds[0]!));
+    const granted = supporterStatusSchema.parse(await setSupporterStatus(f.db, f.clock, f.accountIds[1]!, account!.username, true));
+    expect(granted.supporter).toBe(true);
+    const sent = chatPostSchema.parse(await post('/api/chat/messages', { content: 'A permanent supporter' }));
+    expect(sent.message.supporter).toBe(true);
+    const page = chatPageSchema.parse(await get('/api/chat/messages'));
+    expect(page.messages.find((row) => row.id === sent.message.id)?.supporter).toBe(true);
+    await setSupporterStatus(f.db, f.clock, f.accountIds[1]!, account!.username, false);
+    expect(chatPageSchema.parse(await get('/api/chat/messages')).messages.find((row) => row.id === sent.message.id)?.supporter).toBeUndefined();
   });
 
   it('POST /api/rival parses', async () => {

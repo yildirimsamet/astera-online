@@ -33,7 +33,7 @@ import { chatRelativeTime } from '../lib/chatTime.js';
 import { commanderLabel } from '../lib/identity.js';
 import { haptic } from '../lib/haptics.js';
 import { useNow } from '../lib/time.js';
-import { ClanIcon, CloseIcon, PlusIcon, SendIcon } from '../ui/icons/index.js';
+import { ClanIcon, CloseIcon, HeartIcon, PlusIcon, SendIcon } from '../ui/icons/index.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Segmented } from '../v2/kit/Segmented.js';
 import { EmptyState } from '../v2/kit/Surface.js';
@@ -51,8 +51,9 @@ interface MessageRow {
   content: string;
   createdAt: Date;
   self: boolean;
-  /** The author speaks with admin authority. Marked in gold; see the row below. */
+  /** The author speaks with admin authority. Marked in rose, distinct from the gold podium. */
   admin?: boolean;
+  supporter?: boolean;
   previousSeasonRank?: Place;
   replyTo?: { id: string; username: string; content: string } | null;
   reactions?: { emoji: ReactionEmoji; count: number; mine: boolean }[];
@@ -658,21 +659,18 @@ function ChannelPanel({
                         event.preventDefault(); openActions(message.id);
                       }
                     }}
-                    /*
-                      THE ADMIN IS RINGED IN GOLD — QUIETLY. Owner instruction, twice: the
-                      same hairline every message has, tinted at 35%, and the name at full
-                      strength. It wins over both ordinary surfaces, self included.
-                    */
+                    /* Admin authority wins; podium supporters keep the earned metal. */
                     className={`min-w-0 touch-manipulation rounded-control border px-2.5 py-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self ${message.self ? 'rounded-tr-cell' : 'rounded-tl-cell'} ${
                       message.admin === true
-                        ? 'border-v2-premium/35 bg-v2-deep'
+                        ? 'border-chat-admin/35 bg-v2-deep'
                         : message.previousSeasonRank !== undefined ? `${PODIUM_BORDER[message.previousSeasonRank]} bg-v2-deep`
+                        : message.supporter === true ? 'border-chat-supporter/35 bg-v2-deep'
                         : message.self ? selfSurface : 'border-v2-line bg-v2-deep'
                     }`}
                   >
                     <div className="flex items-baseline gap-2">
                       {message.self ? (
-                        <strong data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-v2-premium' : selfInk}`}>{commanderLabel(message.username, message.clanTag)}</strong>
+                        <strong data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : selfInk}`}>{commanderLabel(message.username, message.clanTag)}</strong>
                       ) : message.planetId !== undefined ? (
                         <button
                           type="button"
@@ -684,13 +682,19 @@ function ChannelPanel({
                           }}
                           data-chat-author
                           className={`min-w-0 truncate text-caption font-semibold underline decoration-v2-ink-3/50 underline-offset-2 ${
-                            message.admin === true ? 'text-v2-premium' : 'text-v2-ink'
+                            message.admin === true ? 'text-chat-admin-ink' : 'text-v2-ink'
                           }`}
                         >
                           {commanderLabel(message.username, message.clanTag)}
                         </button>
                       ) : (
-                        <span data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-v2-premium' : 'text-v2-ink'}`}>{commanderLabel(message.username, message.clanTag)}</span>
+                        <span data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : 'text-v2-ink'}`}>{commanderLabel(message.username, message.clanTag)}</span>
+                      )}
+                      {message.supporter === true && (
+                        <span data-chat-supporter-icon role="img" aria-label={t('chat.supporterBadge')}
+                          title={t('chat.supporterBadge')} className="shrink-0 self-center text-chat-supporter-ink">
+                          <HeartIcon className="size-3.5" />
+                        </span>
                       )}
                       {message.previousSeasonRank !== undefined && (
                         <span data-chat-podium-icon role="img"

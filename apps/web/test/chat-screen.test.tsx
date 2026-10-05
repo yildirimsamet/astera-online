@@ -664,17 +664,7 @@ describe('galaxy chat surface', () => {
 });
 
 describe('the admin speaking in chat', () => {
-  /**
-   * GOLD, ON THE NAME AND ON THE MESSAGE. Owner instruction.
-   *
-   * A galaxy-wide room has no other way to say "this one is answerable for the
-   * game". The name carries the colour and the message's own container repeats it
-   * as a border, so the mark survives a wall of scrolling text — one glance finds
-   * the official word without reading a single name.
-   *
-   * `alloy` is the palette's existing gold (`#d9a441`); nothing was invented.
-   */
-  const golden = () => {
+  const adminMessages = () => {
     const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
     vi.spyOn(api, 'markChatRead').mockResolvedValue({ ok: true, readAt: at });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -700,37 +690,72 @@ describe('the admin speaking in chat', () => {
     );
   };
 
-  it('paints the admin’s name gold and rings their message in a QUIET gold', () => {
-    /*
-      SOFT, AND ASSERTED AS SOFT. Owner report: full-strength gold on the border
-      was "çok kalın", loud enough that readers complained — a 1px rule at 100%
-      saturation still shouts next to `border-line-soft` on every message around
-      it.
-
-      `border-alloy/35` is the house idiom, already used elsewhere in the client,
-      and it matches the plate tint in `styles.css` (alloy mixed at 24% into the
-      line colour). The NAME keeps full strength: it is small, it is the signal,
-      and it is what a reader is looking for.
-
-      Asserted with a word boundary rather than `toContain`, because
-      `'border-alloy/35'.includes('border-alloy')` is true — the old assertion
-      could not have failed on this change, which is the one thing a test about a
-      shade must be able to do.
-    */
-    const view = golden();
-    const row = view.container.querySelector('[data-chat-message="m-admin"]');
-    expect(row, 'the admin message has no row').not.toBeNull();
-    // D6: the gold is the Gözlemevi's premium hue now; the quiet 35% ring is the rule.
-    expect(row!.className).toMatch(/\bborder-v2-premium\/35\b/);
-    expect(row!.className, 'the border is at full strength again')
-      .not.toMatch(/\bborder-v2-premium(?![/\d])/);
-    expect(row!.querySelector('[data-chat-author]')!.className).toContain('text-v2-premium');
+  it('separates the admin from the gold podium with a quiet rose border and name', () => {
+    const view = adminMessages();
+    const row = view.container.querySelector('[data-chat-message="m-admin"]')!;
+    expect(row).toHaveClass('border-chat-admin/35');
+    expect(row.querySelector('[data-chat-author]')).toHaveClass('text-chat-admin-ink');
+    expect(row).not.toHaveClass('border-v2-premium/35');
   });
 
   it('leaves an ordinary commander untouched', () => {
-    const view = golden();
+    const view = adminMessages();
     const row = view.container.querySelector('[data-chat-message="m-player"]');
-    expect(row!.className).not.toContain('border-v2-premium');
-    expect(row!.querySelector('[data-chat-author]')!.className).not.toContain('text-v2-premium');
+    expect(row!.className).not.toContain('border-chat-admin');
+    expect(row!.querySelector('[data-chat-author]')!.className).not.toContain('text-chat-admin-ink');
+  });
+});
+
+
+describe('permanent supporter recognition', () => {
+  it('shows the heart for supporters in all author layouts without changing ordinary messages', () => {
+    show(vi.fn(), 'general', {
+      ...initial,
+      pages: [{ ...initial.pages[0], messages: initial.pages[0]!.messages.map((message) => ({ ...message, supporter: true })) }],
+    });
+    for (const message of initial.pages[0]!.messages) {
+      const bubble = document.querySelector(`[data-chat-message="${message.id}"]`)!;
+      expect(bubble).toHaveClass('border-chat-supporter/35');
+      const heart = bubble.querySelector('[data-chat-supporter-icon]');
+      expect(heart).toHaveAttribute('aria-label', 'Astera supporter');
+      expect(heart?.querySelector('svg')).not.toBeNull();
+      expect(bubble.querySelector('[data-chat-podium-icon]')).toBeNull();
+    }
+  });
+
+  it.each([1, 2, 3] as const)('keeps place %s border and shows a heart beside the earned cup', (rank) => {
+    const data = { ...initial, pages: [{ ...initial.pages[0], messages: [
+      { ...initial.pages[0]!.messages[0], supporter: true, previousSeasonRank: rank },
+    ] }] };
+    show(vi.fn(), 'general', data);
+    const bubble = document.querySelector('[data-chat-message="one"]')!;
+    const metal = { 1: 'gold', 2: 'silver', 3: 'copper' }[rank];
+    expect(bubble).toHaveClass(`border-rank-${metal}/35`);
+    expect(bubble).not.toHaveClass('border-chat-supporter/35');
+    const heart = bubble.querySelector('[data-chat-supporter-icon]');
+    expect(heart).toHaveAttribute('aria-label', 'Astera supporter');
+    expect(heart?.nextElementSibling).toHaveAttribute('data-chat-podium-icon');
+  });
+
+  it('keeps admin authority rose while showing both independent earned badges', () => {
+    show(vi.fn(), 'general', { ...initial, pages: [{ ...initial.pages[0], messages: [
+      { ...initial.pages[0]!.messages[2], admin: true, supporter: true, previousSeasonRank: 1 },
+    ] }] });
+    const bubble = document.querySelector('[data-chat-message="two"]')!;
+    expect(bubble).toHaveClass('border-chat-admin/35');
+    expect(bubble.querySelector('[data-chat-author]')).toHaveClass('text-chat-admin-ink');
+    expect(bubble.querySelector('[data-chat-supporter-icon]')).not.toBeNull();
+    expect(bubble.querySelector('[data-chat-podium-icon]')).not.toBeNull();
+  });
+
+  it('removes revoked recognition on a chat refresh and renders it in the clan room', async () => {
+    const { client } = show();
+    act(() => { client.setQueryData(keys.clanChat, { ...initial, pages: [{ ...initial.pages[0], messages: [
+      { ...initial.pages[0]!.messages[0], supporter: true, clanTag: 'WAR' },
+    ] }] }); });
+    fireEvent.click(screen.getByRole('tab', { name: /Clan/ }));
+    expect(document.querySelector('[data-chat-supporter-icon]')).not.toBeNull();
+    act(() => { client.setQueryData(keys.clanChat, initial); });
+    await waitFor(() => { expect(document.querySelector('[data-chat-supporter-icon]')).toBeNull(); });
   });
 });

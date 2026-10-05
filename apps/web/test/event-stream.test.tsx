@@ -94,6 +94,13 @@ describe('the event stream', () => {
     });
   };
 
+  it('refreshes only chat recognition reads after a manual supporter change', () => {
+    mountCaughtUp();
+    fire('global:chat-badges');
+    act(() => { vi.advanceTimersByTime(COALESCE_MS + 1); });
+    expect([...asked].sort()).toEqual(['chat', 'clan', 'dm']);
+  });
+
   it('refreshes everything when something happens to you', () => {
     mountCaughtUp();
     fire('raided');

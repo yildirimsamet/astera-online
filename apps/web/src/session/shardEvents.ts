@@ -33,6 +33,8 @@ export function readsForGlobalEvent(kind: string): readonly (readonly string[])[
   switch (kind.slice(GLOBAL_PREFIX.length)) {
     case 'announcement':
       return [keys.announcements];
+    case 'chat-badges':
+      return [keys.chatMessages, keys.clanChat, keys.dmMessages];
     default:
       return [];
   }

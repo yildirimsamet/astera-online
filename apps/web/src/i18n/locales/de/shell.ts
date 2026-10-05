@@ -452,6 +452,7 @@ export const leaderboard = {
 
 export const chat = {
   previousSeasonPlace: "Vorige Saison · Platz {{rank}}",
+  supporterBadge: "Astera-Unterstützer",
   eyebrow: 'Live-Kanäle',
   title: 'Chat',
   launcher: 'Galaxie-Chat öffnen',

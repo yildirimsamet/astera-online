@@ -58,6 +58,19 @@ function show() {
 afterEach(async () => { await i18n.changeLanguage('en'); });
 
 describe('direct messages in chat', () => {
+  it('shows a supporter heart beside the podium cup in direct messages', async () => {
+    const { client } = show();
+    client.setQueryData(keys.dmMessagesFor('thread-1'), {
+      pages: [{ messages: [{ ...firstMessage, supporter: true, previousSeasonRank: 2 }], nextBefore: null,
+        canSend: true, unavailableReason: null }], pageParams: [null],
+    });
+    await userEvent.setup().click(screen.getByRole('tab', { name: /DM.*1 unread/i }));
+    const bubble = document.querySelector('[data-chat-message="message-1"]')!;
+    expect(bubble).toHaveClass('border-rank-silver/35');
+    expect(bubble.querySelector('[data-chat-supporter-icon]')).toHaveAttribute('aria-label', 'Astera supporter');
+    expect(bubble.querySelector('[data-chat-podium-icon]')).toHaveAttribute('aria-label', 'Previous season · place 2');
+  });
+
   it('opens DM reply actions with a double click', async () => {
     const { postDm } = show();
     const user = userEvent.setup();

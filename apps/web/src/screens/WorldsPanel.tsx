@@ -76,8 +76,7 @@ const INK: Record<'alloy' | 'crystal' | 'deuterium', string> = {
  * (D163).
  *
  * THE OLD ROUTE IS UNTOUCHED (D118): focus a world, focus it again to manage it,
- * and the focus rail still offers the transfer with the previously active world as
- * its source.
+ * and the focus rail keeps the active world as the source while looking at a target.
  */
 export function WorldsPanel({
   worlds,

@@ -1,12 +1,24 @@
 import { sql } from 'drizzle-orm';
 import { REACTION_EMOJIS, type ReactionEmoji } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
+import { supporterPlayers } from './supporters.js';
 
 export type MessageChannel = 'general' | 'clan' | 'dm';
 export interface ReplyPreview { id: string; username: string; content: string }
 export interface ReactionView { emoji: ReactionEmoji; count: number; mine: boolean }
 export type PodiumPlace = 1 | 2 | 3;
-export interface MessageDecoration { replyTo: ReplyPreview | null; reactions: ReactionView[]; previousSeasonRank?: PodiumPlace }
+export interface AuthorRecognition { previousSeasonRank?: PodiumPlace; supporter?: boolean }
+export interface MessageDecoration extends AuthorRecognition { replyTo: ReplyPreview | null; reactions: ReactionView[] }
+
+/** Batch recognition once per page; also used by immediate send responses. */
+export async function authorRecognition(db: Queryable, playerIds: readonly string[]): Promise<Map<string, AuthorRecognition>> {
+  const ids = [...new Set(playerIds)];
+  const [podium, supporters] = await Promise.all([previousSeasonPodium(db, ids), supporterPlayers(db, ids)]);
+  return new Map(ids.map((id) => [id, {
+    ...(podium.has(id) ? { previousSeasonRank: podium.get(id) } : {}),
+    ...(supporters.has(id) ? { supporter: true } : {}),
+  }]));
+}
 
 /** The frozen previous cycle, across wipes and galaxy transfers; never the live ladder. */
 export async function previousSeasonPodium(
@@ -96,14 +108,14 @@ export async function messageDecorations(
   playerId: string,
   earliest?: Date,
 ): Promise<Map<string, MessageDecoration>> {
-  const [previews, reactions, podium] = await Promise.all([
+  const [previews, reactions, recognition] = await Promise.all([
     replyPreviews(db, channel, rows.flatMap((row) => row.replyToMessageId ? [row.replyToMessageId] : []), earliest),
     reactionViews(db, channel, rows.map((row) => row.id), playerId),
-    previousSeasonPodium(db, rows.map((row) => row.authorPlayerId)),
+    authorRecognition(db, rows.map((row) => row.authorPlayerId)),
   ]);
   return new Map(rows.map((row) => [row.id, {
     replyTo: row.replyToMessageId ? previews.get(row.replyToMessageId) ?? null : null,
     reactions: reactions.get(row.id) ?? [],
-    ...(podium.has(row.authorPlayerId) ? { previousSeasonRank: podium.get(row.authorPlayerId) } : {}),
+    ...recognition.get(row.authorPlayerId),
   }]));
 }
