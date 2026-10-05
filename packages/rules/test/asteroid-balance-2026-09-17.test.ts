@@ -24,18 +24,18 @@ describe('2026-09-17 asteroid balance', () => {
     })).toEqual([{ fromMinute: 600, untilMinute: 660, count: 26, frontCount: 0 }]);
   });
 
-  it('defines the reduced weekday and weekend showers for future restamps', () => {
-    expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBe(9);
+  it('defines doubled half-hour showers for future calendar adoption', () => {
+    expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBe(10);
     expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows.map((window) => [
       window.days,
       window.startsAtLocalMinute,
       window.endsAtLocalMinute,
       window.effect.asteroidSpawnMultiplier,
     ])).toEqual([
-      ['WEEKDAY', 750, 810, 2],
-      ['WEEKDAY', 1200, 1260, 3],
-      ['WEEKEND', 780, 840, 3],
-      ['WEEKEND', 1200, 1260, 5],
+      ['WEEKDAY', 750, 780, 4],
+      ['WEEKDAY', 1200, 1230, 6],
+      ['WEEKEND', 780, 810, 6],
+      ['WEEKEND', 1200, 1230, 10],
     ]);
     expect(GALAXY_EVENTS.definitions.TRADE_SHIP.windows.map((window) => [
       window.startsAtLocalMinute,
