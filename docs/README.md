@@ -50,6 +50,7 @@ what the game is trying to be.
 | [deployment.md](deployment.md) | How it ships, and what must never happen in the wrong order |
 | [visual-quality.md](visual-quality.md) | What a frame has to look like before it counts as done |
 | [glossary.md](glossary.md) | Dominion? Clarity? Veil? Salvage? |
+| [komutan-gemisi/](komutan-gemisi/README.md) | Komutan Gemisi + Savaş Alanı: the owner-approved real-time pilot mode — spec, decisions, plan (Turkish) |
 | [economy-v2.json](economy-v2.json) | Generated: every level of every building, hull and project. `node tools/economy-v2-model.mjs --json` |
 
 **In a hurry:** `CLAUDE.md` → `decisions.md` → `balance.md`.
