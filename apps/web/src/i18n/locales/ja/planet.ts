@@ -553,7 +553,7 @@ export const launch = {
   exposedFor: "防衛が薄い時間：{{duration}}",
   oneWayUnknown: "—",
   pace: "飛行速度",
-  paceHint: "遅く飛ぶほど到着が遅くなります。燃料は同じです。飛行は12時間を超えられません。",
+  paceHint: "遅く飛ぶほど到着が遅くなり、帰還も同じ速度です。燃料は同じで、各区間は12時間を超えられません。",
   paceFull: "フル",
   /* The five reasons this commitment can be refused, each stated on the button. */
   noBay: "飛行枠に空きがありません",
@@ -633,7 +633,7 @@ export const transfer = {
   cooldown: "荷下ろし中・残り{{duration}}",
   homewardFuel: "自分の惑星間の移送は燃料が半分です。攻撃では通常量を消費します。",
   /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
-  paceHint: "低速なら到着が遅くなり、飛行中の艦船は襲撃されません。燃料は同じで、飛行時間は最長12時間です。",
+  paceHint: "低速なら到着が遅くなり、飛行中の艦船は襲撃されません。戻る艦隊も同じ速度で帰還します。燃料は同じで、各区間は最長12時間です。",
   fuelShort: "{{short}}不足",
   eyebrow: "惑星間移送",
   returnEta: "出発元への帰還まで{{duration}}・到着時刻{{time}}",

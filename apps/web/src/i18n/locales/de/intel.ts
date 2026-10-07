@@ -160,6 +160,7 @@ export const reports = {
   pirateHeld: 'Die Piraten verteidigten weiter. Du hast bei diesem Überfall keine Beute mitgenommen.',
   /** The prize, and the only door in the game into a hull you did not build. */
   pirateCaptured: 'Von Piraten',
+  pirateOverrun: 'Ohne Geleitschutz konnten die Frachter nicht entkommen: {{fleet}}.',
   pirateCapturedNote:
     'Intakt aus dem Wrack einer von Ihnen zerstörten Besatzung entnommen. Es schließt sich der Garnison der Welt an, zu der Ihre Flotte zurückkehrt – auch wenn die Hangarkapazität überschritten ist – und zählt nicht als eine, die Sie gebaut haben.',
   youHeld: 'Du hast den Überfall gestoppt. Der Angreifer hat keine Ressourcen beansprucht.',

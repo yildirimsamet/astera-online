@@ -12,6 +12,18 @@ const galaxy = readFileSync('src/screens/GalaxyView.tsx', 'utf8');
 const app = readFileSync('src/App.tsx', 'utf8');
 const canvas = readFileSync('src/galaxy/GalaxyCanvas.tsx', 'utf8');
 
+/**
+ * Owner report, 2026-10-06: picking a world from the desk outline focused it on the galaxy but
+ * left the old world selected. The request carries `select` from the shell through the app to
+ * the galaxy, which selects with the same intent the Worlds sheet uses.
+ */
+describe('selecting a world from the outline', () => {
+  it('carries the select intent from the app to the galaxy', () => {
+    expect(app).toMatch(/options\?\.select \? \{ select: true \} : \{\}/);
+    expect(galaxy).toMatch(/focusPlanet\(focusRequest\.planetId, focusRequest\.select === true \? 'select' : 'focus'\)/);
+  });
+});
+
 /** Owner, 2026-09-24: Home ("Fly to your world") above the View chip in the right-hand stack. */
 describe('the galaxy’s right-hand stack', () => {
   it('puts Home above the View chip', () => {
@@ -72,7 +84,7 @@ describe('the report doors', () => {
 describe('a focus that asks for the dossier', () => {
   it('carries the ask from the app to the galaxy, which opens the dossier', () => {
     expect(app).toMatch(/options\?\.dossier \? \{ dossier: true \} : \{\}/);
-    expect(galaxy).toMatch(/focusPlanet\(focusRequest\.planetId\);\s*if \(focusRequest\.dossier\) setDetail\(true\);/);
+    expect(galaxy).toMatch(/focusPlanet\(focusRequest\.planetId, [^)]*\);\s*if \(focusRequest\.dossier\) setDetail\(true\);/);
   });
 });
 

@@ -59,6 +59,7 @@ import {
 } from '../lib/predict.js';
 import { useWorld } from './world.js';
 import { nextCrossing } from '../galaxy/crossing.js';
+import { setMonumentHonorees } from '../i18n/names.js';
 import { currentLanguage } from '../i18n/index.js';
 
 /**
@@ -151,7 +152,12 @@ export function useSeason() {
   const api = useApi();
   return useQuery({
     queryKey: keys.season,
-    queryFn: api.season,
+    queryFn: async () => {
+      const season = await api.season();
+      // Every surface names a monument through `monumentName`; it learns last season's five here.
+      setMonumentHonorees(season.monumentHonorees ?? []);
+      return season;
+    },
     staleTime: NET_MS,
     refetchInterval: NET_MS,
     refetchOnWindowFocus: true,

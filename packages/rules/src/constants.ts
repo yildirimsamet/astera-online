@@ -1604,8 +1604,9 @@ export const PROBE = {
  * SPEED IS THE LOAD-BEARING NUMBER. D74 set the pre-scaling base to 330; the
  * wider-disc unit change made that 825. The owner's 2026-09-25 fleet pass then
  * slowed every leg of this craft by 25%. The 2026-10-04 owner instruction then
- * raised mining speed 2.5x to 1546.875 before a Derrick and 2320.3125 with its
- * 1.5x lift; rocks retain the September speed band.
+ * raised mining speed 2.5x; on 2026-10-06 the owner found that too much and set it
+ * to 2x the September figure: 1237.5 before a Derrick and 1856.25 with its 1.5x
+ * lift; rocks retain the September speed band.
  *
  * It was 62 against rocks that run at 140-300, and the mathematics of that were
  * never wrong — a closed orbit means a slower craft still has a meeting, it simply
@@ -1946,10 +1947,12 @@ export const PROSPECTOR = {
    * Game units per minute, before a Derrick.
    *
    * September's wider-disc profile was 618.75 after its 25% slowdown. Owner
-   * instruction on 2026-10-04 raises the craft alone 2.5x to 1546.875; rocks
-   * retain 262.5–562.5. Both mining and salvage read this one base speed.
+   * instruction on 2026-10-04 raised the craft alone 2.5x (1546.875); on
+   * 2026-10-06 the owner called that too much and set it to 2x the September
+   * figure, 1237.5. Rocks retain 262.5–562.5. Both mining and salvage read this
+   * one base speed.
    */
-  speed: 1546.875,
+  speed: 1237.5,
   /**
    * HOW MUCH SLOWER A LADEN CRAFT FLIES HOME. Owner's figure: twice, from three
    * (2026-09-14). The brake stays a brake — a full craft is still the slowest
@@ -2580,7 +2583,9 @@ export const TRADE = {
   rate: RESOURCE_VALUE,
 
   /**
-   * HALF AN ARGOSY'S PACE, ON THE ARGOSY'S OWN SCALE. D155's lesson, applied before
+   * HALF AN ARGOSY'S AUTHORED PACE, ON THE ARGOSY'S OWN SCALE. The holds took a
+   * 2.5x lift on 2026-10-06 (`TRANSPORT_SPEED_MULT`) and the merchant did not, so
+   * every hold now leads it five-fold. D155's lesson, applied before
    * it could be repeated: a hull's catalogue figure is divided by
    * `TRAVEL.distanceFactor` to reach units per minute, and this number already IS
    * units per minute. Measured against a rock instead — rocks run 262.5–562.5 — the
@@ -3571,13 +3576,9 @@ export const MULTI_WORLD = {
    */
   colonyCoreThresholds: [9, 13, 16],
   /**
-   * `claimMinutes` IS NOT HERE, AND MUST NEVER BE TYPED BACK IN.
-   *
-   * The public claim window has to contain a settlement flight, so it is a
-   * duration measured against a DISTANCE and belongs with the arithmetic that
-   * knows both — `SETTLEMENT_CLAIM_MINUTES` in `strategic.ts`. Written here as a
-   * literal it was 30, sized when the disc had radius 1000, and D101 widened the
-   * disc 2.5× without it (D111).
+   * `claimMinutes` IS NOT HERE: the public claim window is
+   * `SETTLEMENT_CLAIM_MINUTES` in `strategic.ts` — a fixed ninety minutes since
+   * 2026-10-06, guarded there against the widest settlement flight (D111).
    */
   occupationMinutes: 6 * 60,
   /**

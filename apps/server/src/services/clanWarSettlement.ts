@@ -31,6 +31,7 @@ import {
   normalizeHpDamage,
   shipDamageApplies,
   hpRadiationApplies,
+  missionPaceOf,
   type HpDamageLot,
 } from '@astera/rules';
 import { dockDamaged, dockNotice, shipsIn } from './shipDamage.js';
@@ -802,6 +803,8 @@ export async function resolveClanWarBattle(
       fromPlanetId: defender.planetId,
       fleet: outcome.survivors,
       now,
+      // Home at the strike's own pace (owner, 2026-10-06).
+      pace: missionPaceOf(mission.pace),
     });
   }
   /* A wave that had no ships left to fight was never in `stacks`; it is lost too. */

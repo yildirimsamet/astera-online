@@ -117,14 +117,16 @@ export function App() {
     setPanelFocus((current) => nextPanelFocus(current, focus));
     setPanel(next);
   };
-  const [planetFocus, setPlanetFocus] = useState<{ planetId: string; request: number; dossier?: boolean } | null>(null);
+  const [planetFocus, setPlanetFocus] = useState<{ planetId: string; request: number; dossier?: boolean; select?: boolean } | null>(null);
   const [craftFocus, setCraftFocus] = useState<{ focus: StripFocus; request: number } | null>(null);
-  const focusPlanet = (planetId: string, options?: { dossier?: boolean }): void => {
+  const focusPlanet = (planetId: string, options?: { dossier?: boolean; select?: boolean }): void => {
     setPanel(null);
     setPlanetFocus((current) => ({
       planetId,
       request: (current?.request ?? 0) + 1,
       ...(options?.dossier ? { dossier: true } : {}),
+      // A world row in the desk outline SELECTS the world, as the Worlds sheet does.
+      ...(options?.select ? { select: true } : {}),
     }));
   };
 

@@ -8,6 +8,7 @@ import {
   fleetTravelExact,
   allowedPaces,
   isMissionPace,
+  missionPaceOf,
   hangarCapacity,
   hangarLoad,
   interpolatePosition,
@@ -356,8 +357,9 @@ export async function launchTransfer(
     const oneWay = fleetTravelExact(dist, fleet, { ...mods, pace: chosenPace });
     if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel');
     const arriveAt = addMinutes(origin.now, oneWay);
+    // The group ordered home flies back at the pace the transfer went out (owner, 2026-10-06).
     const returnMinutes = fleetCount(returning) > 0
-      ? fleetTravelExact(dist, returning, { ...mods, pace: 1 }) : 0;
+      ? fleetTravelExact(dist, returning, { ...mods, pace: chosenPace }) : 0;
     const homeAt = addMinutes(arriveAt, returnMinutes);
     await assertRadiationSafe(tx, {
       seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
@@ -832,9 +834,12 @@ export async function resolveTransfer(
       damage: returningDamage.length > 0 ? returningDamage : null,
       tech: mission.tech,
       distance: mission.distance,
+      // Both legs of a planned round trip fly at the chosen pace (owner, 2026-10-06).
+      pace: missionPaceOf(mission.pace),
       departAt: now,
       arriveAt: addMinutes(now, fleetTravelExact(mission.distance, returning, {
-        boost: fleetSpeedMult(await orbitOf(tx, mission.originPlanetId)), tech: mission.tech ?? {}, pace: 1,
+        boost: fleetSpeedMult(await orbitOf(tx, mission.originPlanetId)), tech: mission.tech ?? {},
+        pace: missionPaceOf(mission.pace),
       })),
       parentMissionId: mission.id,
     }).returning();

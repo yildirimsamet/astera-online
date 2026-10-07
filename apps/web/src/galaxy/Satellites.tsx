@@ -511,7 +511,8 @@ const SHIELD_FRAG = `
 
   void main() {
     vec3 n = normalize(vNormalW);
-    float lon = atan(n.z, n.x);
+    // atan(0, 0) is undefined at the poles; a NaN pixel there would bloom into a block.
+    float lon = abs(n.x) + abs(n.z) < 1e-6 ? 0.0 : atan(n.z, n.x);
     float lat = asin(clamp(n.y, -1.0, 1.0));
     vec2 uv = vec2(lon, lat) * uDensity;
 
@@ -534,7 +535,7 @@ const SHIELD_FRAG = `
     float lineHalf = max(0.018, aa * 0.8);
     float edge = smoothstep(0.5 - lineHalf - aa, 0.5 - lineHalf, d);
 
-    float fresnel = pow(1.0 - abs(dot(n, normalize(vViewW))), 3.0);
+    float fresnel = pow(max(0.0, 1.0 - abs(dot(n, normalize(vViewW)))), 3.0);
 
     /**
      * EDGES EVERYWHERE, BRIGHT AT THE LIMB — and this split is the whole trick.

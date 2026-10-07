@@ -52,8 +52,8 @@ describe('the two strips', () => {
     expect(pct(part(container, 'clears').style.left)).toBeCloseTo((20_000 / TOP) * 100, 4);
     expect(pct(part(container, 'clears').style.width)).toBeCloseTo((10_000 / TOP) * 100, 4);
     expect(pct(part(container, 'breaks').style.left)).toBeCloseTo((35_000 / TOP) * 100, 4);
-    expect(screen.getByText(`Full-success limit: ${compact(20_000)}–${compact(30_000)}`)).toBeInTheDocument();
-    expect(screen.getByText(`partial-success limit: ${compact(35_000)}–${compact(45_000)}`)).toBeInTheDocument();
+    expect(screen.getByText(`Full success if their defence is at most ${compact(20_000)}–${compact(30_000)}`)).toBeInTheDocument();
+    expect(screen.getByText(`At least partial success if at most ${compact(35_000)}–${compact(45_000)}`)).toBeInTheDocument();
   });
 
   it('marks where their ships run and says what the reading implies', () => {
@@ -107,7 +107,7 @@ describe('a defence nobody measured', () => {
 
   it('still says what this wing can take', () => {
     render(<ForceRuler yours={30_000} theirs={null} lines={lines} />);
-    expect(screen.getByText(`Full-success limit: ${compact(20_000)}–${compact(30_000)}`)).toBeInTheDocument();
+    expect(screen.getByText(`Full success if their defence is at most ${compact(20_000)}–${compact(30_000)}`)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Send a probe' })).toBeNull();
   });
 });
@@ -132,6 +132,8 @@ describe('what it says about the reading', () => {
     );
     expect(container.textContent).not.toMatch(/you will win|you will lose|likely victory|\d+% chance/i);
     expect(screen.getByTestId('ruler-loss')).toHaveTextContent(/35–60%/);
+    // The share is YOURS, so a "100%" can never be read as a chance of winning (owner, 2026-10-06).
+    expect(screen.getByTestId('ruler-loss')).toHaveTextContent(/your estimated loss/i);
     expect(container.textContent).toMatch(/not a chance of winning/i);
   });
 
@@ -153,6 +155,9 @@ describe('what it says about the reading', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/firing ships and ground guns/i);
     expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/three times/i);
+    // Why a line is a range, and what a success is.
+    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/at least one of your ships comes home/i);
+    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/left end is the worst case/i);
   });
 
   /**

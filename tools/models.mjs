@@ -123,8 +123,19 @@ const POLICY = {
    * these are flat panels meeting at hard corners, and a simplifier rounds a
    * corner before it removes a face. The openwork IS the silhouette — a ring, a
    * woven cage and a geodesic sphere are told apart by their holes.
+   *
+   * EXCEPT FOR THE `_lod` RING, drawn only while a shell is 22–70 px across. It
+   * replaced a procedural torus three and a half times too thick through Z — owner
+   * report, 2026-10-06: "balon gibi şişmiş bir silindir". Cut at a 2% error the ring
+   * keeps its measured bounds, its band and its spars at about 1,500 triangles, a
+   * fifth of the full one. It borrows the full ring's material, so its own plate is
+   * a 32 px placeholder that only keeps the file valid.
    */
-  dyson: { texture: 768, simplify: false },
+  dyson: {
+    texture: 768,
+    simplify: false,
+    variants: [{ suffix: '_lod', texture: 32, simplify: true, ratio: 0.05, error: 0.02 }],
+  },
   /**
    * THE SIXTEEN DEFAULT WORLDS (F9 · K7), and the one kind that ships THREE files.
    *

@@ -12,6 +12,7 @@ import {
   RESEARCH_TECH,
   SUPPORT_ROUND_TRIP,
   TRADE,
+  TRANSPORT_SPEED_MULT,
   TRAVEL,
   fleetCargo,
   fleetSpeed,
@@ -33,8 +34,9 @@ describe('monthly fleet tempo', () => {
         : hull.profile === 'COLLECTOR' ? 20
           : hull.cls === 'SKIRMISHER' ? 15 : hull.cls === 'LANCE' ? 20
             : hull.profile === 'ESCORT' ? 18 : 25;
+      const lift = hull.profile === 'TRANSPORT' ? TRANSPORT_SPEED_MULT : 1;
       expect(hull.speed, id)
-        .toBeCloseTo(profileFlightSpeed(authoredRoundTrip) * FLEET_SPEED_FACTOR, 9);
+        .toBeCloseTo(profileFlightSpeed(authoredRoundTrip) * FLEET_SPEED_FACTOR * lift, 9);
     }
   });
 
@@ -56,18 +58,36 @@ describe('monthly fleet tempo', () => {
     }
   });
 
-  it('gives each hold the round trip its rung authors', () => {
-    const cargo = ['COURIER', 'WAYFARER', 'ATLAS'] as const;
+  /**
+   * EVERY HOLD FLIES 2.5x ITS RUNG. Owner, 2026-10-06: a transport alone is moving
+   * cargo between worlds or meeting the merchant, and in a raid it already flies at
+   * the slowest warship's pace. The rung still tilts its fuel and its order.
+   */
+  it('gives each hold 2.5x the round trip its rung authors', () => {
+    expect(TRANSPORT_SPEED_MULT).toBe(2.5);
+    const cargo = ['COURIER', 'WAYFARER', 'ATLAS', 'ARGOSY'] as const;
     cargo.forEach((id, tier) => {
-      const expected = (SUPPORT_ROUND_TRIP[tier]! - 10 / 60) / FLEET_SPEED_FACTOR + 10 / 60;
-      expect(2 * fleetTravelExact(1250, { [id]: 1 }, UNAIDED) + 10 / 60)
-        .toBeCloseTo(expected, 9);
+      const authored = (SUPPORT_ROUND_TRIP[tier]! - 10 / 60) / FLEET_SPEED_FACTOR;
+      expect(2 * fleetTravelExact(1250, { [id]: 1 }, UNAIDED))
+        .toBeCloseTo(authored / TRANSPORT_SPEED_MULT, 9);
+      expect(HULLS[id].speed).toBeCloseTo(
+        profileFlightSpeed(SUPPORT_ROUND_TRIP[tier]!) * FLEET_SPEED_FACTOR * TRANSPORT_SPEED_MULT, 9);
     });
+  });
+
+  it('leaves the collector and the drill off the transport lift', () => {
+    expect(HULLS.GARBAGE_COLLECTOR.speed).toBeCloseTo(profileFlightSpeed(20) * FLEET_SPEED_FACTOR, 9);
+    expect(HULLS.PROSPECTOR.speed).toBe(PROSPECTOR.speed);
+  });
+
+  it('flies a mixed wing at its slowest warship, not at the lifted hold', () => {
+    expect(fleetSpeed({ CITADEL: 1, ARGOSY: 3 }, {})).toBe(HULLS.CITADEL.speed);
+    expect(HULLS.ARGOSY.speed).toBeGreaterThan(HULLS.CITADEL.speed);
   });
   it('keeps ground craft stationary and mining independent', () => {
     for (const id of GROUND_HULLS) expect(HULLS[id].speed).toBe(0);
     expect(HULLS.PROSPECTOR.speed).toBe(PROSPECTOR.speed);
-    expect(PROSPECTOR.speed).toBe(1546.875);
+    expect(PROSPECTOR.speed).toBe(1237.5);
   });
 });
 
@@ -167,7 +187,7 @@ describe('D153 probe speed', () => {
 
   /** The cut is on the probe alone. Nothing else in the model reads it. */
   it('moves nothing but the probe', () => {
-    expect(PROSPECTOR.speed).toBe(1546.875);
+    expect(PROSPECTOR.speed).toBe(1237.5);
     expect(fleetTravelExact(1250, { DART: 1 }, UNAIDED))
       .toBeCloseTo((15 - 1 / 6) / 2 / FLEET_SPEED_FACTOR);
   });

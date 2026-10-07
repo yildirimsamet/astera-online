@@ -9,6 +9,7 @@ import {
   combatValue,
   computeLoot,
   deuteriumOf,
+  missionPaceOf,
   raidableStock,
   fleetCargo,
   fleetCount,
@@ -1432,10 +1433,15 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
        * with its two ends swapped (D28), so `originPlanetId` is the world that was
        * raided.
        */
+      /*
+        AND AT THE PACE IT WENT OUT. Owner decision, 2026-10-06: "Bacakların eşit yarı yarıya
+        bölünmesi lazım" — a slow raid comes home as slowly as it flew, so the round trip the
+        launch sheet quoted is the one flown.
+      */
       const home = fleetTravelExact(
         mission.distance,
         result.attackerSurvivors,
-        { boost: fleetSpeedMult(attackerOrbit), tech: attackerTech },
+        { boost: fleetSpeedMult(attackerOrbit), tech: attackerTech, pace: missionPaceOf(mission.pace) },
       );
       const arriveAt = addMinutes(defender.now, home);
       const [ret] = await tx
@@ -1456,6 +1462,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
           damage: attackerDamage.length > 0 ? attackerDamage : null,
           tech: mission.tech,
           distance: mission.distance,
+          pace: missionPaceOf(mission.pace),
           departAt: defender.now,
           arriveAt,
           // Links safely docked loot back to the immutable D114 launch roster.

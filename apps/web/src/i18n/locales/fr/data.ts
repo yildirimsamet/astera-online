@@ -320,7 +320,7 @@ export const vocabulary = {
     ARGOSY: {
       name: 'Argosy',
       tag: 'Transporteur de capitaux',
-      role: 'La cale la plus profonde et la coque la plus lente du jeu.',
+      role: 'La cale la plus profonde du jeu, et le plus lent des transports.',
       pitch: 'Transporte presque jusqu\'à trois Atlas et ne peut rien distancer du tout.',
       detail: 'L\'Argosy est un moyen de transport de niveau quatre. Classe de soutien, elle est donc protégée pendant que les coques de combat sont en vie et sans défense une fois la ligne disparue. L\'allure du marchand est liée à cette coque : la cale la plus lente du catalogue la fixe.',
     },
@@ -348,7 +348,7 @@ export const vocabulary = {
       tag: 'Mines d\'astéroïdes',
       role: 'Les astéroïdes miniers avec une base de 200 · ne peuvent pas rejoindre une flotte de raid',
       pitch: 'Intercepte un astéroïde en mouvement et renvoie ce qu\'il peut transporter aux Travaux. Il ne peut ni attaquer ni transférer.',
-      detail: 'Un prospecteur ne peut être envoyé que vers des astéroïdes et des champs de débris révélés. Sa vitesse de base à l’aller et au retour à vide est de 1547 ; chargé, il revient à 773. Sa capacité de base est de 200 ; la Foreuse et la recherche Prospector Holds peuvent améliorer ces valeurs. Chaque monde commence avec de la place pour deux ; Prospector Holds III ouvre un troisième emplacement d’appareil. Il ne rejoint jamais les raids ni la défense locale.',
+      detail: 'Un prospecteur ne peut être envoyé que vers des astéroïdes et des champs de débris révélés. Sa vitesse de base à l’aller et au retour à vide est de 1238 ; chargé, il revient à 619. Sa capacité de base est de 200 ; la Foreuse et la recherche Prospector Holds peuvent améliorer ces valeurs. Chaque monde commence avec de la place pour deux ; Prospector Holds III ouvre un troisième emplacement d’appareil. Il ne rejoint jamais les raids ni la défense locale.',
     },
   },
 

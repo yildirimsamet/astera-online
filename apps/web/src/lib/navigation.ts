@@ -112,19 +112,14 @@ export function planRoute(
   const dist = distance(origin, target);
   const oneWay = fleetPace(sending, mods) > 0 ? fleetTravelExact(dist, sending, mods) : 0;
   /*
-    THE WAY HOME IS NOT THE WAY OUT WHEN A PACE WAS CHOSEN. The commander buys an ARRIVAL; the
-    survivors fly back at full speed, so the window the world stands short is the slow leg plus a
-    fast one. Doubling the slow leg would overstate it by hours on the figure this sheet exists to
-    state honestly.
+    THE WAY HOME IS THE WAY OUT, AT EVERY PACE. Owner decision, 2026-10-06: a slowed raid comes home
+    as slowly as it flew, so the window the world stands short is two equal legs — exactly what the
+    server schedules.
   */
-  const homeward = fleetPace(sending, { ...mods, pace: 1 }) > 0
-    ? fleetTravelExact(dist, sending, { ...mods, pace: 1 })
-    : 0;
-
   return {
     distance: dist,
     oneWayMinutes: oneWay,
-    exposureMinutes: exposureMinutes(oneWay, homeward),
+    exposureMinutes: exposureMinutes(oneWay),
     cargo: fleetCargo(sending, mods.tech),
     fuel: missionFuel(sending, dist, 2),
     homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),

@@ -2,6 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, type ComponentRef, type RefObject
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls, Preload } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
+import { guardBloomRef } from './finiteGuard.js';
 import { useGpuContext } from './gpuContext.js';
 import { ViewOffset } from './ViewOffset.js';
 import * as THREE from 'three';
@@ -869,7 +870,9 @@ export function GalaxyCanvas({
         */
         multisampling={preset.multisampling}
       >
+        {/* `guardBloomRef`: no pixel that is not finite reaches the mip chain (black blocks, 2026-10-06). */}
         <Bloom
+          ref={guardBloomRef}
           intensity={0.62}
           luminanceThreshold={0.78}
           luminanceSmoothing={0.22}

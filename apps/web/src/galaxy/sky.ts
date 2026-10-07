@@ -670,11 +670,13 @@ vec3 galaxyAt(vec2 sky, vec4 shape, float seed, vec3 coreTint, vec3 armTint, vec
   vec2 disc = vec2(p.x, p.y / thin);
   float r = length(disc);
   if (r > 1.8) return vec3(0.0);
-  float theta = atan(disc.y, disc.x);
+  // atan(0, 0) is undefined in GLSL — a NaN on most GPUs, and one NaN pixel blooms into a block.
+  float theta = r > 1e-6 ? atan(disc.y, disc.x) : 0.0;
   float wind = theta - log(r + 0.04) * 2.4;
   float shred = fbm(vec3(disc * 5.0, seed), 4) * 0.5 + 0.5;
-  float arms = pow(0.5 + 0.5 * cos(2.0 * wind + shred * 1.2), 2.0) * (0.55 + 0.9 * shred);
-  float lanes = pow(0.5 + 0.5 * cos(2.0 * wind + 1.7 + shred), 6.0) * smoothstep(0.12, 0.35, r);
+  // pow() of a negative is undefined; rounding can put 0.5 + 0.5·cos a hair under zero.
+  float arms = pow(max(0.0, 0.5 + 0.5 * cos(2.0 * wind + shred * 1.2)), 2.0) * (0.55 + 0.9 * shred);
+  float lanes = pow(max(0.0, 0.5 + 0.5 * cos(2.0 * wind + 1.7 + shred)), 6.0) * smoothstep(0.12, 0.35, r);
   float body = exp(-r * 2.9) * smoothstep(1.75, 1.0, r);
   float halo = exp(-r * 1.6) * 0.08 * smoothstep(1.8, 1.2, r);
   float bulge = exp(-r * r * 30.0);
@@ -688,8 +690,10 @@ vec3 galaxyAt(vec2 sky, vec4 shape, float seed, vec3 coreTint, vec3 armTint, vec
   light *= 1.0 - clamp(lanes * body * 2.2, 0.0, 0.7);
   // Only a nearly edge-on disc shows one lane straight through; at a moderate tilt
   // a straight lane reads as a scratch across the galaxy.
-  float lane = exp(-pow((p.y - 0.03 * (1.0 - thin)) / (0.045 * max(thin, 0.25)), 2.0))
-    * pow(1.0 - thin, 3.0) * smoothstep(0.85, 0.25, r);
+  // Squared by hand: pow() of the negative half of a lane is undefined, and a NaN here blooms.
+  float laneOffset = (p.y - 0.03 * (1.0 - thin)) / (0.045 * max(thin, 0.25));
+  float lane = exp(-laneOffset * laneOffset)
+    * pow(max(0.0, 1.0 - thin), 3.0) * smoothstep(0.85, 0.25, r);
   light *= 1.0 - clamp(lane * 1.5, 0.0, 0.92);
   return light * 0.06 * shape.w;
 }
@@ -777,10 +781,13 @@ void main() {
   vec3 colour = mix(cool, warm, clamp(core * 1.1 + bulge, 0.0, 1.0)) * starlight * 0.035;
 
   /* ── dust across the band ── */
-  float laneBand = exp(-pow((lat - 0.008) / (width * 0.95), 2.0));
+  // Squared by hand: lat is signed, and pow() of a negative is undefined (a NaN that blooms).
+  float laneOffset = (lat - 0.008) / (width * 0.95);
+  float laneBand = exp(-laneOffset * laneOffset);
   // The Great Rift: a lane that follows the midplane, wandering and broken.
   float riftCentre = fbm(onBand * 1.7 + 3.0, 3) * 0.03;
-  float rift = exp(-pow((lat - riftCentre) / (0.016 + 0.028 * core), 2.0));
+  float riftOffset = (lat - riftCentre) / (0.016 + 0.028 * core);
+  float rift = exp(-riftOffset * riftOffset);
   rift *= smoothstep(-0.3, 0.3, fbm(onBand * 2.4 + 9.0, 3));
   // Dark clouds with fractal edges: one coherent field, frayed by a finer one.
   // (Ridged fibres were tried here and read as marbled paper.)
@@ -788,7 +795,8 @@ void main() {
   float fray = fbm(sheared * 5.0 + 31.0, 3) * 0.1;
   float tau = laneBand * (rift * 1.5 + smoothstep(0.52, 0.74, dustClouds + fray) * 1.2);
   // The dark cloud: a silhouette torn at every scale, never a disc.
-  float darkReach = sqrt(reach(d, uDark)) + fbm(d * 7.0, 3) * 0.35 + fbm(d * 22.0, 4) * 0.28;
+  // reach() is 1 - cos, which rounding can put just under zero at the cloud's own centre.
+  float darkReach = sqrt(max(0.0, reach(d, uDark))) + fbm(d * 7.0, 3) * 0.35 + fbm(d * 22.0, 4) * 0.28;
   tau += smoothstep(1.0, 0.3, darkReach) * 2.4;
 
   vec3 transmit = exp(-tau * vec3(0.8, 1.0, 1.32));
@@ -964,7 +972,7 @@ void main() {
   // and the bright end does not clip into identical white discs.
   float stretched = asinh(flux * 600.0) / asinh(600.0);
   // Never under two device pixels: a smaller point shimmers as the sky turns.
-  float size = (1.05 + 3.9 * pow(stretched, 2.4)) * uPixelRatio;
+  float size = (1.05 + 3.9 * pow(max(0.0, stretched), 2.4)) * uPixelRatio;
   gl_PointSize = max(2.0, size);
   // Held back: the sky is the backdrop to the worlds, never their rival.
   vAlpha = clamp(stretched * 0.9, 0.0, 1.0) * min(1.0, size * size / (gl_PointSize * gl_PointSize) + 0.3);

@@ -538,7 +538,10 @@ export const focus = {
     craft: "艦船",
     craftUnknown: "—",
     returning: "帰還中です。追加の操作はありません。",
-    outbound: "出航した艦隊は呼び戻せません。",
+    outbound: "この飛行は呼び戻せません。",
+    /** A raid or a transfer may be turned once before it arrives (K8). */
+    recallable: "到着前に一度だけ引き返せます。帰路はそれまで飛んだ時間と同じだけかかります。",
+    outboundPirate: "海賊への襲撃は呼び戻せません。",
   },
 
   contact: {
@@ -669,7 +672,8 @@ export const pirate = {
   captured: "{{hull}}を捕獲しました",
   captureMissed: "牽引する価値のあるものは何も残っていません",
   send: "{{count}}・{{duration}}を送信",
-  outbound: "進水した艦隊はリコールできません。",
+  outbound: "海賊への襲撃は呼び戻せません。",
+  holdsHint: "戦闘艦が全滅すると輸送艦は逃げられず、それも奪えます。",
   /**
    * YOU CANNOT SEE THIS ONE — WHICH IS NOT THE SAME AS "THIS IS OLD". D160.
    *

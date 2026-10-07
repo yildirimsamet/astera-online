@@ -91,11 +91,11 @@ export const counter = {
   compareRuleToggle: 'What is this?',
   compareMeaning: 'Resource cost, not attack damage. A bigger fleet alone does not guarantee victory.',
   compareRule:
-    'Both sides\u2019 firing ships and ground guns are compared by resource cost. The shield and unarmed ships are not in this number. The forecast also uses ship classes, research and the known shield. When enemy value is below a limit, the model expects that level of success. Full success does not guarantee surviving ships: both sides can be destroyed. The reading may be old; random shot changes are not included.',
-  linesClears: 'Full-success limit: {{at}}',
-  linesBreaks: 'partial-success limit: {{at}}',
+    'Both sides\u2019 firing ships and ground guns are compared by resource cost. The shield and unarmed ships are not in this number. The forecast also uses ship classes, research and the known shield. When their defence stays under a line, the model expects that success — the defender broken and at least one of your ships comes home. A line is a range because the reading does not show everything (class split, shield): the left end is the worst case, the right end the best. How much of the wing it costs is the estimated loss below. The reading may be old; random shot changes are not included.',
+  linesClears: 'Full success if their defence is at most {{at}}',
+  linesBreaks: 'At least partial success if at most {{at}}',
   lineJoin: ' · ',
-  lossLabel: 'Estimated loss: {{share}} (by fleet resource value)',
+  lossLabel: 'Your estimated loss: {{share}} of the wing (by resource value)',
   lossUncertainty: 'This is a loss range based on current information, not a chance of winning.',
   lossTotalRisk: 'High risk: None of your ships may return.',
   /** What the lines could not see, and what is already known about the reading. D199. */

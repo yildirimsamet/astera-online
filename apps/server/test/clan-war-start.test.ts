@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
-import { ABUSE, CLAN, MULTI_WORLD, TRAVEL, fleetSpeed } from '@astera/rules';
+import { ABUSE, CLAN, MULTI_WORLD, TRAVEL, fleetSpeed, travelExact } from '@astera/rules';
 import {
   attackCommitments,
   clanCeasefires,
@@ -490,9 +490,10 @@ describe('launching the combined strike', () => {
   it('flies at the slowest ship in the pool, at every owner’s own pace', async () => {
     const f = await setup();
     await readyOperation(f);
-    await giveUnits(f.db, f.planetIds[1]!, { ATLAS: 2 });
+    // A Fortress, not a hold: since 2026-10-06 every transport outruns the Dart.
+    await giveUnits(f.db, f.planetIds[1]!, { RAMPART: 2 });
     await send(f, 0, f.planetIds[0]!, { DART: 10 });
-    await send(f, 1, f.planetIds[1]!, { ATLAS: 2 });
+    await send(f, 1, f.planetIds[1]!, { RAMPART: 2 });
     await landStaging(f);
     const result = await start(f);
 
@@ -500,11 +501,11 @@ describe('launching the combined strike', () => {
       .where(eq(missions.id, result.missionId));
     const minutes = (mission!.arriveAt.getTime() - mission!.departAt.getTime()) / 60_000;
     const dartOnly = fleetSpeed({ DART: 10 }, {});
-    const atlasOnly = fleetSpeed({ ATLAS: 2 }, {});
-    expect(atlasOnly).toBeLessThan(dartOnly);
-    // Long enough that the Atlas, not the Dart, set the pace.
-    expect(minutes).toBeGreaterThan(0);
-    expect(mission!.fleet.ATLAS).toBe(2);
+    const rampartOnly = fleetSpeed({ RAMPART: 2 }, {});
+    expect(rampartOnly).toBeLessThan(dartOnly);
+    // The Rampart, not the Dart, set the pace.
+    expect(minutes).toBeCloseTo(travelExact(mission!.distance, rampartOnly), 3);
+    expect(mission!.fleet.RAMPART).toBe(2);
   });
 });
 
@@ -841,7 +842,8 @@ describe('once the strike is in the air', () => {
  * The pace rungs were offered on every personal launch and refused here by the strict body —
  * `Unrecognized key(s) in object: 'pace'` — so the one attack most about TIMING, five commanders
  * arriving together at the hour the target is least ready, was the one that could not choose it.
- * Only the combined leg is paced; survivors fly home at full speed, as on every other lane.
+ * The staging leg flies at full speed and the combined leg at the chosen pace — and since
+ * 2026-10-06 the survivors fly home at that same pace, as on every other lane.
  */
 describe('choosing when the joint strike lands', () => {
   const startAt = (f: Fixture, pace: number) =>

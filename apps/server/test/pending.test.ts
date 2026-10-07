@@ -494,10 +494,10 @@ describe('what is in flight', () => {
    * THE PACE IT FLIES AT. Spec S1 (docs/ui-v2/gozlemevi.md).
    *
    * The Fleet page labels a slowed flight, and a raid sent at half speed that shows
-   * nothing about it reads as a clock gone wrong. The survivors fly home at full
-   * speed whatever went out (`launchAttack`), so the return leg says so too.
+   * nothing about it reads as a clock gone wrong. Since 2026-10-06 the survivors fly
+   * home at the pace they went out (`launchAttack`), so the return leg says so too.
    */
-  it('carries the pace your own craft flies at, and full speed on the way home', async () => {
+  it('carries the pace your own craft flies at, on the way home too', async () => {
     const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock, undefined, undefined, 0.5);
     const [out] = await pendingThreads(f.db, mine, f.clock.now());
     expect(out!.pace).toBe(0.5);
@@ -506,7 +506,7 @@ describe('what is in flight', () => {
     await worker().tick();
     const [home] = await pendingThreads(f.db, mine, f.clock.now());
     expect(home!.leg).toBe('return');
-    expect(home!.pace).toBe(1);
+    expect(home!.pace).toBe(0.5);
   });
 
   it('gives an inbound attack no pace: the defender is not told how the attacker chose to fly', async () => {

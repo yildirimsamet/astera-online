@@ -142,6 +142,8 @@ export function useTargetReading({
         attackerTech: tech,
         defenderTech: {},
         ...(pirateHandicap === undefined ? {} : { defenderDamageMult: pirateHandicap }),
+        // Holds outliving the crew's line are taken, as the server settles it (`pirateOverrun`).
+        pirate: true,
         shield: none,
         unarmed: none,
         wall: pirateCrew ? { kind: 'EXACT', fleet: pirateCrew } : { kind: 'UNKNOWN' },

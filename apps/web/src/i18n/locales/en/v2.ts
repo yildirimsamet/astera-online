@@ -72,6 +72,8 @@ export const now = {
   sheet: 'Timers',
   work: 'Work finishing',
   research: 'Research finishing',
+  /** An order behind the head of its lane: no clock yet (2026-10-06). */
+  queued: "Starts when the one ahead finishes",
   event: 'Event ending',
   shield: 'Your shield ends',
   shieldDetail: 'Raids can reach you after it',

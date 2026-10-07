@@ -537,7 +537,10 @@ export const focus = {
     craft: "Nave",
     craftUnknown: "—",
     returning: "En camino de regreso. Nada más que decidir.",
-    outbound: "Una flota lanzada no se puede recuperar.",
+    outbound: "Este vuelo no se puede recuperar.",
+    /** A raid or a transfer may be turned once before it arrives (K8). */
+    recallable: "Puede dar media vuelta una vez antes de llegar; el regreso dura lo que ya ha volado.",
+    outboundPirate: "Una incursión pirata no se puede recuperar.",
   },
 
   contact: {
@@ -668,7 +671,8 @@ export const pirate = {
   captured: "{{hull}} capturado",
   captureMissed: "No queda nada que valga la pena remolcar a casa",
   send: "Enviar {{count}} · {{duration}}",
-  outbound: "Una flota lanzada no se puede recuperar.",
+  outbound: "Una incursión pirata no se puede recuperar.",
+  holdsHint: "Caídas sus naves de guerra, sus cargueros no pueden escapar: también se los llevas.",
   /**
    * YOU CANNOT SEE THIS ONE — WHICH IS NOT THE SAME AS "THIS IS OLD". D160.
    *

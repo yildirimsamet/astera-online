@@ -68,6 +68,8 @@ export const now = {
   sheet: 'Timer',
   work: 'Bau wird fertig',
   research: 'Forschung wird fertig',
+  /** An order behind the head of its lane: no clock yet (2026-10-06). */
+  queued: "Beginnt, wenn der vorige fertig ist",
   event: 'Ereignis endet',
   shield: 'Dein Schild endet',
   shieldDetail: 'Danach können dich Angriffe erreichen',

@@ -14,7 +14,7 @@ import { ClanScreen } from '../../screens/ClanScreen.js';
 import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
-import { PlanetFocus, StrikeSheet } from '../../galaxy/FocusPanel.js';
+import { PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
 import { StrategicReportSheet } from '../../screens/BattleReports.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
@@ -699,6 +699,27 @@ function Views({ view }: { view: string }) {
       <Sheet detents={['full']} contained bleed eyebrow={t('community.admin.eyebrow')} title={t('community.admin.title')} onClose={noop}>
         <AdminPanel />
       </Sheet>
+    );
+  }
+  /* The timers sheet holds the whole queue; only the running order counts down (2026-10-06). */
+  if (view === 'timers') {
+    const timers = {
+      now: NOW, threads: [thread('transfer', 9)], runs: [], research: [], events: [], shieldUntil: null,
+      builds: [...construction, building('c3', 'EXTRACTOR', 95, 180)],
+    };
+    return <NowLine entries={nowEntries(timers)} sheet={nowEntries(timers, 'sheet')} now={NOW} open onOpen={noop} onClose={noop} />;
+  }
+  /* The line under a flight says what is true of it: a raid may still turn, a pirate raid never. */
+  if (view === 'focus-thread') {
+    return (
+      <ThreadFocus thread={thread('fleet', 12, { id: 'm-1', leg: 'outbound', fleet: { DART: 12 }, recallable: true })}
+        minutesRemaining={12} onClose={noop} open onToggle={noop} onRecall={noop} />
+    );
+  }
+  if (view === 'focus-thread-pirate') {
+    return (
+      <ThreadFocus thread={thread('pirate', 8, { id: 'r-1', leg: 'outbound', fleet: { DART: 6 } })}
+        minutesRemaining={8} onClose={noop} open onToggle={noop} />
     );
   }
   if (view === 'queue') {

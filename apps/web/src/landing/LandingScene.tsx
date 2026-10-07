@@ -2,6 +2,7 @@ import { Suspense, useMemo, useRef, type ReactNode } from 'react';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { AdaptiveDpr, Preload, useGLTF } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
+import { guardBloomRef } from '../galaxy/finiteGuard.js';
 import * as THREE from 'three';
 import {
   ASTEROID_MODELS,
@@ -105,7 +106,7 @@ export function LandingScene() {
       </Suspense>
 
       <EffectComposer>
-        <Bloom intensity={0.7} luminanceThreshold={0.3} luminanceSmoothing={0.5} mipmapBlur />
+        <Bloom ref={guardBloomRef} intensity={0.7} luminanceThreshold={0.3} luminanceSmoothing={0.5} mipmapBlur />
         <Vignette eskil={false} offset={0.22} darkness={0.8} />
       </EffectComposer>
       <AdaptiveDpr pixelated={false} />

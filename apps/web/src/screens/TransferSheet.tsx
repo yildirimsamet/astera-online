@@ -211,8 +211,9 @@ export function TransferSheet({
     () => fleetCount(fleet) > 0 ? fleetTravelExact(span, fleet, { ...mods, pace }) : 0,
     [fleet, span, mods, pace],
   );
+  // The group ordered home flies back at the transfer's pace (owner, 2026-10-06).
   const returnMinutes = fleetCount(returningFleet) > 0
-    ? fleetTravelExact(span, returningFleet, { ...mods, pace: 1 }) : 0;
+    ? fleetTravelExact(span, returningFleet, { ...mods, pace }) : 0;
   /**
    * RADYASYON ON THE WAY OUT, quoted before the press (plan D10): the dose the server
    * settles at the landing, and a lethal route's hold is the acknowledgement it asks for.

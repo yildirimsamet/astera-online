@@ -2,7 +2,7 @@ import { rewardPurse } from '../src/rewards.js';
 import { DEATH_STAR, ANTI_STRATEGIC, MULTI_WORLD, START, PLANET_START, TRAVEL, PIRATE, TRADE } from '../src/constants.js';
 import { CLAN } from '../src/clan.js';
 import { describe, expect, it } from 'vitest';
-import { ECONOMY_PROFILE, profileBuilding, profileIncome, profileResearch, profileHull } from '../src/economy-profile.js';
+import { ECONOMY_PROFILE, TRANSPORT_SPEED_MULT, profileBuilding, profileIncome, profileResearch, profileHull } from '../src/economy-profile.js';
 import { HULLS } from '../src/hulls.js';
 import { alloyRate, crystalRate, deuteriumRate, buildingCost, collectorCap, hullWorkMinutes } from '../src/economy.js';
 import { RESEARCH_CRYSTAL_DISCOUNT, RESEARCH_PROJECTS } from '../src/research.js';
@@ -88,7 +88,8 @@ describe('monthly economy', () => {
     expect(PIRATE.speedMax).toBe(HULLS.DART.speed * 0.70 / TRAVEL.distanceFactor);
     // The SLOWEST hold anchors the merchant, never a named hull — D186, and D196
     // moved the anchor from the Atlas to the Argosy without a constant changing.
-    expect(TRADE.speed).toBe(HULLS.ARGOSY.speed / TRAVEL.distanceFactor / 2);
+    // The merchant kept its pace when the holds took their 2.5x lift (2026-10-06).
+    expect(TRADE.speed).toBeCloseTo(HULLS.ARGOSY.speed / TRANSPORT_SPEED_MULT / TRAVEL.distanceFactor / 2, 9);
   });
 
 });

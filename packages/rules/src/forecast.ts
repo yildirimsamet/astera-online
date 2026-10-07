@@ -1,4 +1,5 @@
-import { resolveCombat, type CombatSide } from './combat.js';
+import { resolveCombat, type CombatResult, type CombatSide } from './combat.js';
+import { pirateOverrun } from './pirates.js';
 import {
   ALL_HULLS,
   COMBAT_CLASSES,
@@ -7,6 +8,7 @@ import {
   combatValue,
   counteredBy,
   counters,
+  fleetCount,
   fleetEntries,
   fleetValue,
 } from './hulls.js';
@@ -23,8 +25,9 @@ import type { CombatClass, Fleet, Grade, HullClass, HullId, HullProfile } from '
  * it. Raider-profile mirrors historically needed about half as much again for a
  * clean sweep; attack-led Lance mirrors can erase both sides in one salvo instead.
  * Research, Aegis, ground guns, transports and counters also move the thresholds,
- * so no fixed ratio can be printed. DECISIVE describes the defender being cleared,
- * not attacker survival; the loss estimate is a separate part of the decision.
+ * so no fixed ratio can be printed. A line is a SUCCESS line (owner, 2026-10-06): the
+ * grade, and at least one ship of the wing coming home (`successOf`); the loss estimate
+ * remains a separate part of the decision.
  *
  * SO THE ENGINE ANSWERS IT. Every wall the reading still allows is built at the
  * tiers this wing flies (the attack band keeps both commanders within one tier of
@@ -60,6 +63,11 @@ export interface ForecastInput {
   defenderTech: TechLevels;
   /** A pirate crew's handicap (D150). Absent for everybody else. */
   defenderDamageMult?: number;
+  /**
+   * The wall is a pirate crew: its holds are taken once its line is gone (`pirateOverrun`), as
+   * the server settles it. Absent for a world.
+   */
+  pirate?: boolean;
   /** The Aegis charge, as far as it is known. */
   shield: ForecastSpan;
   /** Hulls in the line that fire nothing, as far as they are known. Ignored for EXACT. */
@@ -69,12 +77,12 @@ export interface ForecastInput {
 
 export interface Forecast {
   /**
-   * The firepower at which this wing stops clearing a wall outright (DECISIVE):
-   * anything BELOW it is cleared. `low` is the least favourable wall the reading
-   * allows, `high` the most favourable.
+   * The firepower at which this wing stops clearing a wall outright (DECISIVE) with
+   * at least one of its own ships left to come home: anything BELOW it is cleared.
+   * `low` is the least favourable wall the reading allows, `high` the most favourable.
    */
   clears: ForecastSpan;
-  /** The firepower at which it stops even breaking one (PARTIAL or better). */
+  /** The firepower at which it stops even breaking one (PARTIAL or better), wing surviving. */
   breaks: ForecastSpan;
 }
 
@@ -285,11 +293,23 @@ function fight(wing: Fleet, wall: Fleet, shield: number, input: ForecastInput) {
   const defender: CombatSide = input.defenderDamageMult === undefined
     ? { tech: input.defenderTech }
     : { tech: input.defenderTech, damageMult: input.defenderDamageMult };
-  return resolveCombat(wing, wall, shield, MEAN_ROLL, {
+  const result = resolveCombat(wing, wall, shield, MEAN_ROLL, {
     attacker: { tech: input.attackerTech },
     defender,
   });
+  return input.pirate === true ? pirateOverrun(result) : result;
 }
+
+/**
+ * THE OUTCOME A LINE PROMISES: THE GRADE, AND A WING THAT COMES HOME. Owner decision, 2026-10-06.
+ *
+ * The server grades DECISIVE off the DEFENDER being gone, and an attack-led mirror can erase both
+ * sides in one salvo — a "full success" nobody comes home from, which pays nothing because nobody
+ * is left to carry it. A commander read exactly that on the ruler and lost every ship. So a fight
+ * the wing does not survive is no success at all, on both lines.
+ */
+const successOf = (result: CombatResult): Grade =>
+  fleetCount(result.attackerSurvivors) === 0 ? 'REPELLED' : result.grade;
 
 /**
  * THE WALK IS UPWARD, FROM NOTHING, AND STOPS AT THE FIRST LOSS.
@@ -442,7 +462,7 @@ export function forecastLines(wing: Fleet, input: ForecastInput): Forecast {
       const gradeAt = (firepower: number): Grade => {
         let g = seen.get(firepower);
         if (g === undefined) {
-          g = fight(wing, wallAt(firepower), setting.shield, input).grade;
+          g = successOf(fight(wing, wallAt(firepower), setting.shield, input));
           seen.set(firepower, g);
         }
         return g;

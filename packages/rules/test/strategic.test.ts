@@ -112,18 +112,17 @@ describe('multi-world strategic rules', () => {
   });
 
   /**
-   * D111. Stated as a RELATION rather than as a figure, because the figure is the
-   * thing that went stale: any of `GALAXY.radius`,
-   * `TRAVEL.*`, `HULLS.COURIER.speed` or the Courier count moves this window, and
-   * a test asserting "73" would have to be edited by whoever broke it.
+   * A FIXED NINETY MINUTES. Owner decision, 2026-10-06: the window stopped being
+   * derived from the Courier's speed when every transport became 2.5x faster —
+   * "Sabit olsun ve 90dk olsun". A derived window would have shrunk the race to a
+   * third of an hour for a speed change nobody aimed at it.
    */
-  it('defines the widest settlement flight as exactly one spherical diameter', () => {
+  it('holds the public claim open for a fixed ninety minutes', () => {
+    expect(SETTLEMENT_CLAIM_MINUTES).toBe(90);
     expect(GALAXY_SPAN).toBe(2 * GALAXY.radius);
+    // The widest crossing the disc allows still lands inside it.
     expect(fleetTravelExact(GALAXY_SPAN, settlementFleet, UNAIDED))
-      .toBeLessThanOrEqual(SETTLEMENT_CLAIM_MINUTES);
-    // And no wider than it has to be: one whole minute of rounding, never two.
-    expect(fleetTravelExact(GALAXY_SPAN, settlementFleet, UNAIDED))
-      .toBeGreaterThan(SETTLEMENT_CLAIM_MINUTES - 1);
+      .toBeLessThan(SETTLEMENT_CLAIM_MINUTES);
   });
 
   it('leaves every capital able to settle every neutral world in the shipped layout', () => {

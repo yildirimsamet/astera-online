@@ -1026,6 +1026,30 @@ describe('what a report about a pirate explains', () => {
     expect(within(sheet).getByText(/Viper/)).toBeInTheDocument();
   });
 
+  /**
+   * UNESCORTED HOLDS DO NOT ESCAPE (owner report, 2026-10-06). They are taken after the last
+   * round, not in it, so the rounds cannot show them: the report says it in words, by name.
+   */
+  it('says the holds that outlived the line could not escape', async () => {
+    await openSheet(pirate({
+      grade: 'DECISIVE',
+      rounds: [detailedRound({ shieldBefore: 0, shieldAfter: 0, shieldAbsorbed: 0, defenderLosses: { DART: 6 } })],
+      theirLosses: { DART: 6, ATLAS: 1 },
+    }));
+    const sheet = screen.getByRole('dialog');
+    const line = within(sheet).getByTestId('pirate-overrun');
+    expect(line).toHaveTextContent(/could not escape/i);
+    expect(line).toHaveTextContent(/1 Atlas/);
+  });
+
+  it('says nothing of holds when every loss fell inside the rounds', async () => {
+    await openSheet(pirate({
+      rounds: [detailedRound({ shieldBefore: 0, shieldAfter: 0, shieldAbsorbed: 0, defenderLosses: { DART: 6 } })],
+      theirLosses: { DART: 6 },
+    }));
+    expect(within(screen.getByRole('dialog')).queryByTestId('pirate-overrun')).toBeNull();
+  });
+
   it('claims no prize from a fight that did not take one', async () => {
     await openSheet(pirate());
     const sheet = screen.getByRole('dialog');

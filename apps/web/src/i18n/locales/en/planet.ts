@@ -553,7 +553,7 @@ export const launch = {
   exposedFor: "Exposed for {{duration}}",
   oneWayUnknown: "—",
   pace: "Flight speed",
-  paceHint: "Slower lands later. The fuel is the same, and nothing may stay up past 12h.",
+  paceHint: "Slower lands later and comes home at the same speed. Same fuel; no leg stays up past 12h.",
   paceFull: "Full",
   /* The five reasons this commitment can be refused, each stated on the button. */
   noBay: "No flight bay free",
@@ -633,7 +633,7 @@ export const transfer = {
   cooldown: "Unloading — {{duration}} left",
   homewardFuel: "Half rate — between your own worlds. An attack pays full.",
   /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
-  paceHint: "Slower lands later — ships in flight cannot be raided. Same fuel; nothing stays up past 12h.",
+  paceHint: "Slower lands later — ships in flight cannot be raided. A returning group flies back at the same speed. Same fuel; no leg past 12h.",
   fuelShort: "short {{short}}",
   eyebrow: "World transfer",
   returnEta: "Back at origin in {{duration}} · {{time}}",

@@ -30,8 +30,9 @@ export type NowEntry =
   | { tier: 2; kind: 'strike'; at: number; thread: PendingThread; focus?: FlightFocus }
   | { tier: 3; kind: 'flight'; at: number; thread: PendingThread; focus?: FlightFocus }
   | { tier: 3; kind: 'run'; at: number; run: MiningRun; focus: FlightFocus }
-  | { tier: 4; kind: 'build'; at: number; order: BuildOrderView }
-  | { tier: 4; kind: 'research'; at: number; order: ResearchQueueOrderView }
+  /** `waiting`: behind the head of its lane, so its clock is not running yet (D4). */
+  | { tier: 4; kind: 'build'; at: number; order: BuildOrderView; waiting: boolean }
+  | { tier: 4; kind: 'research'; at: number; order: ResearchQueueOrderView; waiting: boolean }
   | { tier: 5; kind: 'event'; at: number; event: ActiveGalaxyEvent }
   | { tier: 6; kind: 'shield'; at: number };
 
@@ -56,10 +57,18 @@ export interface NowInput {
  * a tier the sooner lands first. Threads stay until the server resolves them, so a
  * fight already due still leads; work, events and the shield drop the moment
  * they are over.
+ *
+ * `scope: 'sheet'` is the timers sheet one tap under the line, and it holds the WHOLE
+ * work queue (owner report, 2026-10-06: three orders queued, two shown). The line keeps
+ * its five-minute window for work; the sheet lists every order still to finish, each
+ * marked `waiting` while it stands behind the head of its lane.
  */
-export function nowEntries(input: NowInput): NowEntry[] {
+export function nowEntries(input: NowInput, scope: 'line' | 'sheet' = 'line'): NowEntry[] {
   const { now } = input;
   const within = (at: number, window: number): boolean => at > now && at - now <= window;
+  const workShown = (at: number): boolean => (scope === 'sheet' ? at > now : within(at, BUILD_WINDOW_MS));
+  const waiting = (order: { startedAt?: Date | undefined }): boolean =>
+    order.startedAt !== undefined && order.startedAt.getTime() > now;
   const entries: NowEntry[] = [];
 
   for (const [index, thread] of input.threads.entries()) {
@@ -79,11 +88,11 @@ export function nowEntries(input: NowInput): NowEntry[] {
   }
   for (const order of input.builds) {
     const at = order.finishesAt?.getTime();
-    if (at !== undefined && within(at, BUILD_WINDOW_MS)) entries.push({ tier: 4, kind: 'build', at, order });
+    if (at !== undefined && workShown(at)) entries.push({ tier: 4, kind: 'build', at, order, waiting: waiting(order) });
   }
   for (const order of input.research) {
     const at = order.finishesAt?.getTime();
-    if (at !== undefined && within(at, BUILD_WINDOW_MS)) entries.push({ tier: 4, kind: 'research', at, order });
+    if (at !== undefined && workShown(at)) entries.push({ tier: 4, kind: 'research', at, order, waiting: waiting(order) });
   }
   for (const event of input.events) {
     const at = event.endsAt.getTime();
@@ -127,11 +136,11 @@ export function describeNow(
     case 'run':
       return { title: runTitle(entry.run), detail: i18n.t('pendingStrip.craftCount', { count: entry.run.craft }) };
     case 'build':
-      return { title: buildOrderLabel(entry.order), detail: i18n.t('now.work') };
+      return { title: buildOrderLabel(entry.order), detail: i18n.t(entry.waiting ? 'now.queued' : 'now.work') };
     case 'research':
       return {
         title: `${researchName(entry.order.projectId)} ${i18n.t('itemSheet.rungLevel', { level: entry.order.level })}`,
-        detail: i18n.t('now.research'),
+        detail: i18n.t(entry.waiting ? 'now.queued' : 'now.research'),
       };
     case 'event':
       return { title: i18n.t(EVENT_NAME[entry.event.kind]), detail: i18n.t('now.event') };

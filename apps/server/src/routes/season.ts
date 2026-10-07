@@ -18,6 +18,7 @@ import type { Queryable } from '../db/client.js';
 import { addMinutes } from '../clock.js';
 import { protectionFrom } from '../services/attackProtection.js';
 import { averageSeasonStats, sumSeasonStats } from '../services/seasonArchive.js';
+import { monumentHonorees } from '../services/monumentHonorees.js';
 import { GameError } from '../services/planet.js';
 import { requireAuth } from './auth.js';
 
@@ -483,6 +484,11 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       result: result ?? null,
       /** Up to `RIVAL.max` marks, each carrying the slot the disc colours it by. D183. */
       rivals: await rivalsOf(app.db, row.playerId),
+      /**
+       * LAST SEASON'S TOP FIVE, ONE PER MONUMENT (owner, 2026-10-06): index N − 1 names
+       * monument N, null where nobody finished that rank. Public — the archive prints them.
+       */
+      monumentHonorees: await monumentHonorees(app.db, row.season.id),
       /**
        * THE COMMANDER'S OWN RAID IMMUNITY — WHICHEVER OF THE TWO IS STANDING.
        * D183 · 2026-09-14.

@@ -147,6 +147,7 @@ export const reports = {
   pirateHeld: 'Korsanların savunması devam etti. Bu saldırıdan ganimet alamadın.',
   /** Ödül: oyunda inşa etmediğin bir gövdeye açılan tek kapı. */
   pirateCaptured: 'Korsanlardan kaçırıldı.',
+  pirateOverrun: 'Muhafızları düşen yük gemileri kaçamadı: {{fleet}}.',
   pirateCapturedNote:
     'Yok ettiğin mürettebatın enkazından sağlam çıkarıldı. Filonun döndüğü dünyanın garnizonuna Hangar dolu olsa bile katılır ve inşa ettiğin gemilerden sayılmaz.',
   youHeld: 'Saldırıyı durdurdun. Rakip kaynak alamadı.',

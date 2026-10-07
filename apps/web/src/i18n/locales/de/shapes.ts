@@ -91,11 +91,11 @@ export const counter = {
   compareRuleToggle: 'Was ist das?',
   compareMeaning: 'Ressourcenkosten, kein Angriffsschaden. Eine größere Flotte allein garantiert keinen Sieg.',
   compareRule:
-    'Die Feuerschiffe und Bodengeschütze beider Seiten werden anhand der Ressourcenkosten verglichen. Der Schild und die unbewaffneten Schiffe sind in dieser Zahl nicht enthalten. Die Vorhersage berücksichtigt auch Schiffsklassen, Forschung und den bekannten Schild. Wenn der Feindwert unter einem Grenzwert liegt, erwartet das Modell dieses Erfolgsniveau. Ein vollständiger Erfolg garantiert nicht, dass die Schiffe überleben: Beide Seiten können zerstört werden. Die Lektüre mag alt sein; Zufällige Schusswechsel sind nicht enthalten.',
-  linesClears: 'Grenze für vollständigen Erfolg: {{at}}',
-  linesBreaks: 'Teilerfolgslimit: {{at}}',
+    'Die Feuerschiffe und Bodengeschütze beider Seiten werden anhand der Ressourcenkosten verglichen. Der Schild und die unbewaffneten Schiffe sind in dieser Zahl nicht enthalten. Die Vorhersage berücksichtigt auch Schiffsklassen, Forschung und den bekannten Schild. Bleibt ihre Verteidigung unter einer Linie, erwartet das Modell diesen Erfolg – die Verteidigung gebrochen und mindestens eines deiner Schiffe kehrt heim. Eine Linie ist eine Spanne, weil die Messung nicht alles zeigt (Klassenaufteilung, Schild): das linke Ende ist der schlechteste Fall, das rechte der beste. Was es den Flügel kostet, ist der geschätzte Verlust darunter. Die Messung kann alt sein; zufällige Schussschwankungen sind nicht enthalten.',
+  linesClears: 'Voller Erfolg bei höchstens {{at}} Verteidigung',
+  linesBreaks: 'Mindestens Teilerfolg bei höchstens {{at}}',
   lineJoin: ' · ',
-  lossLabel: 'Geschätzter Verlust: {{share}} (nach Flottenressourcenwert)',
+  lossLabel: 'Dein geschätzter Verlust: {{share}} des Flügels (nach Ressourcenwert)',
   lossUncertainty: 'Dies ist eine Verlustspanne, die auf aktuellen Informationen basiert, keine Gewinnchance.',
   lossTotalRisk: 'Hohes Risiko: Keines Ihrer Schiffe kehrt möglicherweise zurück.',
   /** What the lines could not see, and what is already known about the reading. D199. */

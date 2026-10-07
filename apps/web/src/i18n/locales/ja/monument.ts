@@ -17,6 +17,9 @@ export const monument = {
   "newsHome": "{{name}} · {{count}}隻帰還 · 重水素{{cargo}}配達",
   "newsReturning": "{{name}} · {{count}}隻が帰還中 · {{reason}} · 到着まで{{clock}}",
   finder: "モニュメント {{count}}",
+  /** Last season's rank-N commander in front of monument N (owner, 2026-10-06). */
+  honoured: '{{name}} • {{monument}}',
+  honouredNote: "前シーズン{{rank}}位、{{name}}の名を冠しています。",
   names: {
     one: '放棄された宇宙船残骸', two: '放棄された宇宙ステーション', three: '古代の天文台',
     four: '古代のスターゲート', five: '砕けた世界船',

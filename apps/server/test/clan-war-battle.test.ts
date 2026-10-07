@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
-import { CLAN, MULTI_WORLD, SERVERS, escapeFuel, fleetValue } from '@astera/rules';
+import { CLAN, MULTI_WORLD, SERVERS, UNAIDED, distance, escapeFuel, fleetTravelExact, fleetValue } from '@astera/rules';
 import {
   battleReports,
   clanRaidRoster,
@@ -393,6 +393,36 @@ describe('after the battle', () => {
         lootDeuterium: wave.loot?.deuterium ?? 0,
       });
     }
+  });
+
+  /** Owner decision, 2026-10-06: a fleet flies home at the speed the strike flew out. */
+  it('flies the survivors home at the strike pace', async () => {
+    const f = await setup();
+    await readyOperation(f);
+    await armDefender(f);
+    await send(f, 1, f.planetIds[1]!, { DART: 20 });
+    await land(f);
+    const result = await f.db.transaction(async (tx) => startClanWar(tx, {
+      actor: await clanActor(tx, f.accountIds[0]!),
+      acknowledgeShieldLoss: true,
+      pace: 0.5,
+      clock: f.clock,
+    }));
+    await land(f);
+
+    const [leg] = await f.db.select({ mission: missions }).from(clanWarMissions)
+      .innerJoin(missions, eq(missions.id, clanWarMissions.missionId))
+      .where(eq(clanWarMissions.leg, 'BATTLE_RETURN'));
+    expect(result.missionId).toBeTruthy();
+    expect(leg).toBeTruthy();
+    const back = leg!.mission;
+    expect(back.pace).toBe(0.5);
+    const rows = await f.db.select().from(planets);
+    const from = rows.find((row) => row.id === back.originPlanetId)!;
+    const to = rows.find((row) => row.id === back.targetPlanetId)!;
+    const minutes = (back.arriveAt.getTime() - back.departAt.getTime()) / 60_000;
+    expect(minutes).toBeCloseTo(
+      fleetTravelExact(distance(from, to), back.fleet, { ...UNAIDED, pace: 0.5 }), 3);
   });
 
   it('sends every survivor to the world it left from, carrying its own share', async () => {

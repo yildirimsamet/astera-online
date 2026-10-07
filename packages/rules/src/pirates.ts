@@ -7,6 +7,7 @@ import { missionFuel } from './fuel.js';
 import { orbitPosition } from './galaxy.js';
 import { mulberry32 } from './rng.js';
 import type { OrbitElements, SensorEpoch } from './galaxy.js';
+import type { CombatResult } from './combat.js';
 import { sensorZone, type SensorSphere, type SensorZone } from './sight.js';
 import type { Fleet, Grade, HullId, MobileHullId, Resources, Rng, Vec3 } from './types.js';
 
@@ -243,6 +244,43 @@ export function pirateCapture(
     if (ticket < 0) return id;
   }
   return entries[entries.length - 1]?.[0] ?? null;
+}
+
+/**
+ * UNESCORTED HOLDS DO NOT ESCAPE. Owner report, 2026-10-06.
+ *
+ * `combat.ts` keeps Support hulls behind the line while any warship on their side stands, which
+ * is right for every fight in the game — and it left two holes at a pirate. A line that died in
+ * the LAST round never exposed its holds, so they "escaped" a raid that had destroyed every gun;
+ * and a pirate carries no wound between raids, so a lone Atlas that three rounds of a small wing
+ * could not sink "repelled" every later raid with no damage on either side.
+ *
+ * So, at a pirate only: once no pirate warship stands and the raiders still have a gun, whatever
+ * holds are left are taken — destroyed in the ledger, wreckage on the field, a DECISIVE grade
+ * that pays the hoard and may tow one of them home (`pirateCapture` draws from the crew). The
+ * rounds stay exactly as they were fought; the overrun is the end of the engagement, not a round.
+ *
+ * PvP is untouched: a world's line has an Aegis and ground guns, and its rules are their own.
+ */
+export function pirateOverrun(result: CombatResult): CombatResult {
+  const left = fleetEntries(result.defenderSurvivors);
+  if (left.length === 0) return result;
+  if (left.some(([id]) => HULLS[id].cls !== 'SUPPORT')) return result;
+  const armed = fleetEntries(result.attackerSurvivors)
+    .some(([id]) => HULLS[id].cls !== 'SUPPORT' && HULLS[id].atk > 0);
+  if (!armed) return result;
+
+  const defenderLosses: Fleet = { ...result.defenderLosses };
+  for (const [id, n] of left) defenderLosses[id] = (defenderLosses[id] ?? 0) + n;
+  return {
+    ...result,
+    grade: 'DECISIVE',
+    lossRatio: 1,
+    defenderSurvivors: {},
+    defenderLosses,
+    defenderLossValue: result.defenderLossValue + fleetValue(result.defenderSurvivors),
+    defenderDamage: [],
+  };
 }
 
 /** Where this pirate is at this instant. The shared orbit trig, nothing added. */

@@ -386,7 +386,8 @@ export async function launchAttack(
     const oneWay = fleetTravelExact(dist, requested, { ...mods, pace: chosenPace });
     const arriveAt = addMinutes(origin.now, oneWay);
     const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
-    const homeward = fleetTravelExact(dist, requested, { ...mods, pace: 1 });
+    // Home at the same pace it went out (owner, 2026-10-06): the round trip is two equal legs.
+    const homeward = fleetTravelExact(dist, requested, { ...mods, pace: chosenPace });
     const homeAt = addMinutes(resolveAt, homeward);
     await assertRadiationSafe(tx, {
       seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
@@ -411,8 +412,8 @@ export async function launchAttack(
      * `in_flight` — one fleet per target, the flight bay, the reaper — keeps
      * holding for exactly as long as the fleet is actually there.
      */
-    // The survivors fly home at FULL speed whatever pace went out (self-review 2026-09-23, R6):
-    // measuring the way back at the outbound pace refused slow raids that land home in time.
+    // The survivors fly home at the pace that went out (owner, 2026-10-06), so the season's end
+    // is measured on that same slow way back.
     assertSeasonOpenThrough(origin, homeAt);
 
     const [mission] = await tx
@@ -544,7 +545,7 @@ export async function launchAttack(
     return {
       missionId: mission!.id,
       arriveAt,
-      // Out at the chosen pace, home at full speed — the survivors do not keep the choice. D-pace.
+      // Out and home at the chosen pace: two equal legs (owner, 2026-10-06).
       exposureMinutes: exposureMinutes(oneWay, homeward),
       homeDefenceAfter,
       /**

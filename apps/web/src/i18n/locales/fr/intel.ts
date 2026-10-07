@@ -159,6 +159,7 @@ export const reports = {
     "Les pirates ont tenu. Tu n’as obtenu aucun butin lors de cette attaque.",
   /** Récompense : la seule manière d’obtenir une coque que tu n’as pas construite. */
   pirateCaptured: "Capturé aux pirates.",
+  pirateOverrun: 'Sans escorte, les cargos n’ont pas pu s’échapper : {{fleet}}.',
   pirateCapturedNote:
     "Récupéré intact dans les débris de l’équipage détruit. Il rejoint la garnison du monde où ta flotte revient, même si le Hangar est plein, et ne compte pas parmi les vaisseaux que tu as construits.",
   youHeld: "Tu as repoussé l’attaque. L’adversaire n’a pris aucune ressource.",

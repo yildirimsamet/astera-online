@@ -248,9 +248,9 @@ export interface PendingThread {
   leg?: 'outbound' | 'return';
   /**
    * THE PACE THIS LEG FLIES AT (`missions.pace`, 1 = full speed). YOUR OWN MISSIONS ONLY.
-   * Spec S1: the Fleet page labels a slowed flight. A return leg reads 1 — the survivors
-   * fly home at full speed whatever went out (`launchAttack`). Never on `incoming`: how the
-   * attacker chose to fly is theirs.
+   * Spec S1: the Fleet page labels a slowed flight. Since 2026-10-06 a return leg reads the
+   * pace that went out — survivors fly home as slowly as they flew (`launchAttack`). Never on
+   * `incoming`: how the attacker chose to fly is theirs.
    */
   pace?: number;
   /**

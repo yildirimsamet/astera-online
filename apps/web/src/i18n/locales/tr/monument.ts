@@ -17,6 +17,9 @@ export const monument = {
   "newsHome": "{{name}} · {{count}} gemi eve döndü · {{cargo}} döteryum teslim edildi",
   "newsReturning": "{{name}} · {{count}} gemi dönüyor · {{reason}} · eve varış {{clock}}",
   finder: "{{count}} anıt",
+  /** Last season's rank-N commander in front of monument N (owner, 2026-10-06). */
+  honoured: '{{name}} • {{monument}}',
+  honouredNote: "Geçen sezonun {{rank}}. sırasındaki {{name}} adına.",
   names: {
     one: 'Terk Edilmiş Uzay Enkazı', two: 'Terk Edilmiş İstasyon', three: 'Kadim Gözlemevi',
     four: 'Kadim Yıldız Geçidi', five: 'Parçalanmış Dünya Gemisi',

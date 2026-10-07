@@ -549,7 +549,7 @@ export const launch = {
   exposedFor: "Verfügbar für {{duration}}",
   oneWayUnknown: "—",
   pace: "Fluggeschwindigkeit",
-  paceHint: "Langsamer landet später. Gleicher Treibstoff, und nichts bleibt über 12 Std. in der Luft.",
+  paceHint: "Langsamer landet später und fliegt im gleichen Tempo heim. Gleicher Treibstoff; kein Abschnitt über 12 Std.",
   paceFull: "Voll",
   /* The five reasons this commitment can be refused, each stated on the button. */
   noBay: "Kein Flugplatz frei",
@@ -629,7 +629,7 @@ export const transfer = {
   cooldown: "Entladen – noch {{duration}}",
   homewardFuel: "Halber Tarif – zwischen eigenen Welten. Ein Angriff zahlt voll.",
   /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
-  paceHint: "Langsamer landet später – Schiffe im Flug können nicht überfallen werden. Gleicher Treibstoff; nichts bleibt über 12 Std. in der Luft.",
+  paceHint: "Langsamer landet später – Schiffe im Flug können nicht überfallen werden. Eine zurückkehrende Gruppe fliegt im gleichen Tempo heim. Gleicher Treibstoff; kein Abschnitt über 12 Std.",
   fuelShort: "kurz {{short}}",
   eyebrow: "Welttransfer",
   returnEta: "Zurück am Start in {{duration}} · {{time}}",

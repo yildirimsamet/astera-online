@@ -171,7 +171,7 @@ describe('what it says about the reading', () => {
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId('compare-rule')).toHaveTextContent(/firing ships and ground guns/i);
-    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/both sides can be destroyed/i);
+    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/at least one of your ships comes home/i);
   });
 });
 
@@ -195,8 +195,8 @@ describe('the lines', () => {
   it('states both lines in words', () => {
     render(<ForceCompare yours={8240} theirs={reading} lines={lines} />);
     const said = screen.getByTestId('compare-lines');
-    expect(said).toHaveTextContent(`Full-success limit: ${compact(9_000)}`);
-    expect(said).toHaveTextContent(`partial-success limit: ${compact(12_000)}`);
+    expect(said).toHaveTextContent(`Full success if their defence is at most ${compact(9_000)}`);
+    expect(said).toHaveTextContent(`At least partial success if at most ${compact(12_000)}`);
   });
 
   /** An unread wall moves a line; the part nobody has measured is drawn as doubt. */
@@ -205,7 +205,7 @@ describe('the lines', () => {
     const view = render(<ForceCompare yours={8240} theirs={reading} lines={open} />);
     expect(widthOf(view, 'zone-clears')).toBeCloseTo((6_000 / 13_900) * 100, 4);
     expect(widthOf(view, 'zone-clears-open')).toBeCloseTo(((9_000 - 6_000) / 13_900) * 100, 4);
-    expect(screen.getByTestId('compare-lines')).toHaveTextContent(`Full-success limit: ${compact(6_000)}–${compact(9_000)}`);
+    expect(screen.getByTestId('compare-lines')).toHaveTextContent(`Full success if their defence is at most ${compact(6_000)}–${compact(9_000)}`);
   });
 
   it('clips a line that runs past the axis rather than stretching it', () => {
@@ -219,7 +219,7 @@ describe('the lines', () => {
   it('scales to the wing and its own lines when there is no reading', () => {
     const view = render(<ForceCompare yours={8240} theirs={null} lines={lines} />);
     expect(widthOf(view, 'zone-clears')).toBeCloseTo((9_000 / 12_000) * 100, 4);
-    expect(screen.getByTestId('compare-lines')).toHaveTextContent(`Full-success limit: ${compact(9_000)}`);
+    expect(screen.getByTestId('compare-lines')).toHaveTextContent(`Full success if their defence is at most ${compact(9_000)}`);
   });
 
   it('draws no lines for a wing with nothing selected', () => {
@@ -286,7 +286,7 @@ describe('the worst-case fleet loss warning', () => {
 
   it('keeps the unit and the uncertainty visible without expanding the detailed rule', () => {
     render(<ForceCompare yours={8240} theirs={reading} loss={{ low: 0.24, high: 1 }} />);
-    expect(screen.getByTestId('compare-loss')).toHaveTextContent(/24–100%.*fleet resource value/);
+    expect(screen.getByTestId('compare-loss')).toHaveTextContent(/24–100%.*resource value/);
     expect(screen.getByText(/not a chance of winning/)).toBeVisible();
     expect(screen.queryByTestId('compare-rule')).toBeNull();
   });

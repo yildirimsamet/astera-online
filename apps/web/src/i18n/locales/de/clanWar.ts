@@ -39,7 +39,7 @@ export const clanWar = {
   recallRule: 'Deine Welle kann zurückgerufen werden, bis der Angriff beginnt.',
   launch: 'Gemeinsamen Angriff starten', cancel: 'Ziel aufheben',
   strikeEta: 'Der Schlag landet {{time}} nach dem Start',
-  paceHint: 'Langsamer landet später – wähle die Stunde des Einschlags. Kein Zusatztreibstoff; Überlebende fliegen mit voller Geschwindigkeit heim; nichts bleibt über 12 Std. in der Luft.',
+  paceHint: 'Langsamer landet später – wähle die Stunde des Einschlags. Kein Zusatztreibstoff; Überlebende fliegen im gleichen Tempo heim; kein Abschnitt über 12 Std.',
   inboundReason: 'Unterstützung ist unterwegs. Warte auf ihre Ankunft.',
   noCombatReason: 'Mindestens ein Kampfschiff muss im Verband sein.',
   noWaveReason: 'Vor dem Start wird ein Beitrag benötigt.',

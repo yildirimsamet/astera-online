@@ -5,6 +5,7 @@ import {
   forecastLines,
   missionFuel,
   pirateHoard,
+  pirateStats,
   type Fleet,
 } from '@astera/rules';
 import {
@@ -180,6 +181,17 @@ describe('a raid on a pirate', () => {
     const crew = crewOf('strong');
     expect(planPirateRaid({ ...base, fleet: { DART: 3 }, crew, damageMult: 1, hoard: pirateHoard(crew),
       nerve: bold })).toBeNull();
+  });
+
+  /**
+   * A bot reads the pirate as the server settles it: holds that outlive the crew's last warship
+   * are taken (`pirateOverrun`, 2026-10-06), so a wing that kills the line clears the pirate.
+   */
+  it('counts a crew whose holds outlive its line as cleared', () => {
+    const crew: Fleet = { RAMPART: 3, COURIER: 2 };
+    const plan = planPirateRaid({ ...base, fleet: { DART: 5 }, crew, damageMult: pirateStats(1).damageMult,
+      hoard: pirateHoard(crew), nerve: careful });
+    expect(plan?.wing).toEqual({ DART: 4 });
   });
 
   it('takes a crew it clears, with the smallest wing that does', () => {

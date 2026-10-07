@@ -526,7 +526,7 @@ export const launch = {
   exposedFor: "{{duration}} boyunca açıksın",
   oneWayUnknown: "—",
   pace: "Uçuş hızı",
-  paceHint: "Yavaş olan geç varır. Yakıt aynı; hiçbir filo 12 saatten fazla havada kalamaz.",
+  paceHint: "Yavaş olan geç varır ve aynı hızla döner. Yakıt aynı; hiçbir bacak 12 saati geçemez.",
   paceFull: "Tam",
   /* Bu taahhüdün reddedilme sebepleri; her biri butonun üzerinde yazılı. */
   noBay: "Boş uçuş yuvası yok",
@@ -596,7 +596,7 @@ export const transfer = {
   cooldown: "Boşaltılıyor — {{duration}} kaldı",
   homewardFuel: "Yarı fiyat — kendi dünyaların arasında. Saldırı tam öder.",
   /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
-  paceHint: "Yavaş olan geç varır — havadaki gemi yağmalanamaz. Yakıt aynı; hiçbir filo 12 saatten fazla havada kalamaz.",
+  paceHint: "Yavaş olan geç varır — havadaki gemi yağmalanamaz. Geri dönen grup da aynı hızla döner. Yakıt aynı; hiçbir bacak 12 saati geçemez.",
   fuelShort: "{{short}} eksik",
   eyebrow: "Dünyalar arası transfer",
   returnEta: "Çıkışa dönüş {{duration}} sonra · {{time}}",

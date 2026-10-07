@@ -21,8 +21,10 @@ describe('the Turkish the force readings are written in', () => {
   it('says where a line sits without saying "gold"', () => {
     const clears = tr('counter.linesClears', { at: '12b' });
     const breaks = tr('counter.linesBreaks', { at: '12b' });
-    expect(clears).toBe('Tam başarı sınırı: 12b');
-    expect(breaks).toBe('Kısmi başarı sınırı: 12b');
+    // Owner report, 2026-10-06: "Tam başarı sınırı: 15b 20b · Kısmi başarı sınırı: 23b 31b — bu ne
+    // saçmalık". A bare "limit" read as what the wing NEEDS; the line states the condition.
+    expect(clears).toBe('Savunma en çok 12b ise tam başarı');
+    expect(breaks).toBe('Savunma en çok 12b ise en az kısmi başarı');
     // The rule this test exists for, held on the reading rather than the wording:
     // "12b altını" is read as GOLD before it is read as "what is under 12b", so the
     // line may never reach for `altı` to say where it sits.

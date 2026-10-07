@@ -39,7 +39,7 @@ export const clanWar = {
   recallRule: 'Tu oleada puede volver hasta que empiece el ataque.',
   launch: 'Iniciar ataque conjunto', cancel: 'Cancelar objetivo',
   strikeEta: 'El ataque llega {{time}} después del lanzamiento',
-  paceHint: 'Más lento llega más tarde: elige la hora del golpe. Sin combustible extra; los supervivientes vuelven a toda velocidad; nada permanece más de 12 h en vuelo.',
+  paceHint: 'Más lento llega más tarde: elige la hora del golpe. Sin combustible extra; los supervivientes vuelven a la misma velocidad; ningún tramo supera 12 h.',
   inboundReason: 'Llegan refuerzos. Espera a que aterricen.',
   noCombatReason: 'El grupo necesita al menos una nave de combate.',
   noWaveReason: 'El grupo necesita una contribución antes de salir.',

@@ -594,6 +594,52 @@ describe('what a pirate raid comes home with', () => {
     }
   });
 
+  /**
+   * UNESCORTED HOLDS DO NOT ESCAPE. Owner report, 2026-10-06: a pirate's holds survived every
+   * warship dying, and the lone hold then "repelled" every later raid with no damage on either
+   * side. A crew left with holds only is taken by a wing that still has a gun.
+   */
+  it('takes a crew of holds alone, destroys the pirate and reports the holds as lost', async () => {
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const key = season!.asteroidKey;
+    // Well inside the season, so the raid and its way home both fit.
+    const lastMinute = (season!.endsAt.getTime() - season!.startsAt.getTime()) / 60_000 - 24 * 60;
+    const spec = privatePirateField(key).find((candidate) =>
+      fleetEntries(candidate.roster).some(([id]) => HULLS[id].cls === 'SUPPORT')
+      && candidate.appearsAt + 2 < lastMinute);
+    expect(spec, 'a pirate that carries a hold').toBeDefined();
+    const minute = Math.ceil(spec!.appearsAt) + 1;
+    // The world is moved beside the pirate's track, so it is in sight with no instrument.
+    const at = piratePosition(spec!, minute);
+    await placeAt(f.db, mine, { x: at.x + 40, y: at.y, z: at.z });
+    f.clock.set(new Date(season!.startsAt.getTime() + minute * 60_000));
+    expect(sensorZone([sensorSphere({ x: at.x + 40, y: at.y, z: at.z }, 0, 0, mine)], at)).not.toBe('NONE');
+    const target: Target = { spec: spec!, id: pirateId(key, spec!.index), key };
+    // Every warship of the crew is already shot off: holds are all that is left.
+    const warships: Fleet = {};
+    for (const [id, n] of fleetEntries(target.spec.roster)) if (HULLS[id].cls !== 'SUPPORT') warships[id] = n;
+    await f.db.insert(pirateState).values({
+      seasonId: f.seasonId, index: target.spec.index, losses: warships, updatedAt: f.clock.now(),
+    });
+    await giveUnits(f.db, mine, { DART: 2 });
+    await grant(f.db, mine, 50_000, 10_000);
+    const launch = await launchPirateRaid(f.db, mine, target.id, { DART: 2 }, f.clock);
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+
+    const [report] = await f.db.select().from(battleReports);
+    expect(report!.grade).toBe('DECISIVE');
+    const holds: Fleet = {};
+    for (const [id, n] of fleetEntries(target.spec.roster)) if (HULLS[id].cls === 'SUPPORT') holds[id] = n;
+    expect(report!.defenderLosses).toMatchObject(holds);
+    expect(fleetCount(report!.attackerLosses)).toBe(0);
+    const [state] = await f.db.select().from(pirateState).where(and(
+      eq(pirateState.seasonId, f.seasonId), eq(pirateState.index, target.spec.index),
+    ));
+    expect(state!.destroyedAt).not.toBeNull();
+    expect(state!.destroyedByPlayerId).toBe(me);
+  });
+
   it('records the damage it did, and marks a wiped pirate destroyed', async () => {
     const target = await findVisible();
     const fleet = await overwhelming();
@@ -751,7 +797,8 @@ describe('what a pirate raid comes home with', () => {
     await placeAt(f.db, other, { x: origin!.x, y: origin!.y, z: origin!.z });
 
     const winner: Fleet = { DART: 250 };
-    const later: Fleet = { DART: 250, COURIER: 6 };
+    // A Fortress makes it the later fleet; a hold no longer would (holds fly 2.5x since 2026-10-06).
+    const later: Fleet = { DART: 250, RAMPART: 6 };
     await grant(f.db, mine, 500_000, 100_000);
     await grant(f.db, other, 500_000, 100_000);
     await giveUnits(f.db, mine, winner);

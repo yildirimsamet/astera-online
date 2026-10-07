@@ -160,6 +160,7 @@ export const reports = {
   pirateHeld: 'The pirates kept defending. You took no loot from this raid.',
   /** The prize, and the only door in the game into a hull you did not build. */
   pirateCaptured: 'From pirates',
+  pirateOverrun: 'Left without an escort, the holds could not escape: {{fleet}}.',
   pirateCapturedNote:
     'Taken intact from the wreck of a crew you destroyed. It joins the garrison at the world your fleet returns to — even over Hangar capacity — and it does not count as one you built.',
   youHeld: 'You stopped the raid. The attacker took no resources.',

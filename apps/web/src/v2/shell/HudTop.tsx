@@ -137,7 +137,7 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
     };
   })() : undefined;
 
-  const entries = nowEntries({
+  const timers = {
     now,
     threads,
     contacts,
@@ -146,7 +146,10 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
     research: data?.researchQueue ?? [],
     events,
     shieldUntil,
-  });
+  };
+  const entries = nowEntries(timers);
+  // The sheet under the line lists the whole work queue (owner, 2026-10-06).
+  const sheet = nowEntries(timers, 'sheet');
 
   return (
     <div className="relative shrink-0">
@@ -175,6 +178,7 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
       <NowLine
         floating
         entries={entries}
+        sheet={sheet}
         now={now}
         contacts={contacts}
         open={nowOpen}

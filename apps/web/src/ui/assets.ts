@@ -531,6 +531,14 @@ export const SATELLITE_NEON: Record<SatelliteId, string> = {
  */
 export const DYSON_MODEL = ['/assets/models/dyson/dyson_1.glb'] as const;
 
+/**
+ * THE SAME RING, SIMPLIFIED, for a shell 22–70 px across (`dysonLod`). Owner report,
+ * 2026-10-06: the procedural torus it replaced read as "a cylinder swollen like a
+ * balloon". Built by `tools/models.mjs` (the `dyson` policy's `_lod` variant): same
+ * bounds, band and spars at about a fifth of the triangles.
+ */
+export const DYSON_LOD_MODEL = '/assets/models/dyson/dyson_1_lod.glb';
+
 export type DysonModel = (typeof DYSON_MODEL)[number];
 
 /**

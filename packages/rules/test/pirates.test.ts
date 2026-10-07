@@ -24,6 +24,7 @@ import {
   pirateActive,
   pirateCapture,
   pirateHoard,
+  pirateOverrun,
   piratePosition,
   pirateRoster,
   pirateStats,
@@ -431,6 +432,68 @@ describe('capturing a hull', () => {
       expect(hits / runs).toBeGreaterThan(PIRATE.captureChance[level] - 0.03);
       expect(hits / runs).toBeLessThan(PIRATE.captureChance[level] + 0.03);
     }
+  });
+});
+
+/**
+ * UNESCORTED HOLDS DO NOT ESCAPE. Owner report, 2026-10-06: *"korsanın tüm savaş gemilerini yok
+ * etsende savunmasız olan kargo gemileri kurtulmayı başarıyor"* — and a lone hull that survived
+ * "repelled" every later raid with no damage on either side, because a pirate carries no wound
+ * between raids and three rounds of a small wing cannot sink an Atlas.
+ *
+ * Holds fly behind the line while it stands (`combat.ts`); once it is gone and the raiders still
+ * have a gun, the holds are taken. The fight's own rounds stay as they were fought.
+ */
+describe('the holds a pirate is left with', () => {
+  const fight = (wing: Fleet, crew: Fleet, level: PirateLevel = 1) =>
+    resolveCombat(wing, crew, 0, () => 0.5, {
+      attacker: { tech: {} }, defender: { tech: {}, ...pirateStats(level) },
+    });
+
+  it('takes the holds that outlived the last warship', () => {
+    const raw = fight({ DART: 4 }, { RAMPART: 3, COURIER: 2 });
+    // The premise: the line died in the last round and the holds were never shot at.
+    expect(raw.grade).toBe('PARTIAL');
+    expect(raw.defenderSurvivors.COURIER).toBe(2);
+    const settled = pirateOverrun(raw);
+    expect(settled.grade).toBe('DECISIVE');
+    expect(settled.lossRatio).toBe(1);
+    expect(fleetCount(settled.defenderSurvivors)).toBe(0);
+    expect(settled.defenderLosses).toMatchObject({ RAMPART: 3, COURIER: 2 });
+    expect(settled.defenderLossValue).toBe(fleetValue({ RAMPART: 3, COURIER: 2 }));
+    expect(settled.defenderDamage).toEqual([]);
+    // The rounds are the fight as it was fought; the overrun is not a round.
+    expect(settled.rounds).toBe(raw.rounds);
+    expect(settled.attackerSurvivors).toEqual(raw.attackerSurvivors);
+  });
+
+  it('takes a lone hold that three rounds could not sink', () => {
+    const raw = fight({ DART: 2 }, { ATLAS: 1 });
+    expect(raw.grade).toBe('REPELLED');
+    expect(raw.defenderSurvivors.ATLAS).toBe(1);
+    const settled = pirateOverrun(raw);
+    expect(settled.grade).toBe('DECISIVE');
+    expect(settled.defenderLosses).toEqual({ ATLAS: 1 });
+  });
+
+  it('leaves the result alone while a pirate warship still stands', () => {
+    const raw = fight({ DART: 1 }, { RAMPART: 2, COURIER: 1 });
+    expect(raw.defenderSurvivors.RAMPART).toBeGreaterThan(0);
+    expect(pirateOverrun(raw)).toBe(raw);
+  });
+
+  it('leaves the result alone when the raiders have no gun left', () => {
+    const raw = fight({ COURIER: 3 }, { COURIER: 1 });
+    expect(pirateOverrun(raw)).toBe(raw);
+    const wiped = fight({ DART: 1 }, { PIKE: 6, COURIER: 1 });
+    expect(fleetCount(wiped.attackerSurvivors)).toBe(0);
+    expect(pirateOverrun(wiped)).toBe(wiped);
+  });
+
+  it('changes nothing about a fight that was already won outright', () => {
+    const raw = fight({ DART: 40 }, { DART: 1, COURIER: 1 });
+    expect(raw.grade).toBe('DECISIVE');
+    expect(pirateOverrun(raw)).toBe(raw);
   });
 });
 

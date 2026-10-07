@@ -549,7 +549,7 @@ export const launch = {
   exposedFor: "Expuesto para {{duration}}",
   oneWayUnknown: "—",
   pace: "Velocidad de vuelo",
-  paceHint: "Más lento llega más tarde. El combustible es el mismo y nada permanece más de 12 h en vuelo.",
+  paceHint: "Más lento llega más tarde y vuelve a la misma velocidad. Mismo combustible; ningún tramo supera 12 h.",
   paceFull: "Total",
   /* The five reasons this commitment can be refused, each stated on the button. */
   noBay: "Ninguna bahía de vuelo libre",
@@ -629,7 +629,7 @@ export const transfer = {
   cooldown: "Descargando: quedan {{duration}}",
   homewardFuel: "Media tarifa: entre tus propios mundos. Un ataque paga completo.",
   /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
-  paceHint: "Más lento llega más tarde: las naves en vuelo no pueden ser saqueadas. Mismo combustible; nada permanece más de 12 h en vuelo.",
+  paceHint: "Más lento llega más tarde: las naves en vuelo no pueden ser saqueadas. El grupo que regresa vuelve a la misma velocidad. Mismo combustible; ningún tramo supera 12 h.",
   fuelShort: "corto {{short}}",
   eyebrow: "Transferencia mundial",
   returnEta: "Regreso al origen en {{duration}} · {{time}}",

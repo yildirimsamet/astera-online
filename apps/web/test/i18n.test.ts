@@ -96,15 +96,43 @@ describe('the Store protection promise', () => {
 });
 
 describe('Vocabulary describes the calibrated catalogue, not its retired stats', () => {
-  it('does not promise surviving ships merely because the defender is cleared', () => {
-    expect(en.counter.compareRule).toContain('does not guarantee surviving ships');
-    expect(tr.counter.compareRule).toContain('gemilerinin hayatta kalacağını garanti etmez');
+  /** Owner decision, 2026-10-06: a success line counts only fights the wing comes home from. */
+  it('defines a success as the defender broken AND a ship of yours coming home', () => {
+    expect(en.counter.compareRule).toContain('at least one of your ships comes home');
+    expect(tr.counter.compareRule).toContain('en az bir geminin eve dönmesi');
+    for (const locale of [de, es, fr, ja]) expect(locale.counter.compareRule).not.toMatch(/surviv|überleb|sobreviv|survie|生存を保証/i);
   });
 
   it('scopes research speed to the capital Core and merchant speed to the catalogue', () => {
     expect(en.vocabulary.building.CORE.detail).toContain('Only the capital’s Core sets research');
     expect(tr.vocabulary.building.CORE.detail).toContain('Araştırma sınırı ve hızı yalnız ana gezegenin');
     expect(tr.vocabulary.hull.ARGOSY.detail).toContain('katalogdaki en yavaş nakliye');
+  });
+
+  /** 2026-10-06: a paced fleet comes home at its own pace; the copy must say so and never "full speed". */
+  it('tells every pace picker that the way home keeps the pace', () => {
+    const fullSpeed = /full speed|tam hızla|voller Geschwindigkeit|toda velocidad|pleine vitesse|全速力/i;
+    const samePace = {
+      en: /same speed/i, tr: /aynı hızla/i, de: /gleichen Tempo/i, es: /misma velocidad/i,
+      fr: /même vitesse/i, ja: /同じ速度/u,
+    } as const;
+    for (const [lng, locale] of Object.entries({ en, tr, de, es, fr, ja })) {
+      for (const hint of [locale.launch.paceHint, locale.transfer.paceHint, locale.clanWar.paceHint]) {
+        expect(hint, lng).not.toMatch(fullSpeed);
+        expect(hint, lng).toMatch(samePace[lng as keyof typeof samePace]);
+      }
+    }
+  });
+
+  /** 2026-10-06: every hold flies 2.5x — the Argosy is the slowest HOLD, no longer the slowest hull. */
+  it('never calls the lifted Argosy the slowest hull in the game', () => {
+    const slowestHull = /slowest hull|en yavaş gövde|langsamste Rumpf|casco más lento|coque la plus lente|最も遅い船体/i;
+    for (const locale of [en, tr, de, es, fr, ja]) {
+      expect(locale.vocabulary.hull.ARGOSY.role).not.toMatch(slowestHull);
+    }
+    const slowest = (['COURIER', 'WAYFARER', 'ATLAS', 'ARGOSY', 'CITADEL'] as const)
+      .reduce((a, b) => (HULLS[a].speed <= HULLS[b].speed ? a : b));
+    expect(slowest).toBe('CITADEL');
   });
 
   it('teaches an attack-led Lance profile in both languages', () => {
@@ -163,9 +191,10 @@ describe('Vocabulary describes the calibrated catalogue, not its retired stats',
   it('states the Prospector outbound and laden return speeds in every language', () => {
     for (const locale of [en, tr, de, fr, es, ja]) {
       const detail = locale.vocabulary.hull.PROSPECTOR.detail;
-      expect(detail).toContain('1547');
-      expect(detail).toContain('773');
-      expect(detail).not.toContain('619');
+      expect(detail).toContain('1238');
+      expect(detail).toContain('619');
+      expect(detail).not.toContain('1547');
+      expect(detail).not.toContain('773');
       expect(detail).not.toContain('309');
       expect(detail).not.toContain('825');
     }
@@ -210,6 +239,8 @@ const RESEARCH_DETAIL_KEYS = {
  * that matches its English counterpart is an untranslated string.
  */
 const IDENTICAL_ON_PURPOSE = new Set([
+  // A commander's name, a bullet and the monument's own (translated) name: no words of its own.
+  'monument.honoured',
   // The player explicitly names this channel DM in both languages.
   'chat.dm.title',
   // The build-time tag is the formatted duration and nothing else — `duration()`

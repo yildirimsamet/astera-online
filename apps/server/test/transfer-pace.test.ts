@@ -1,8 +1,10 @@
 import { eq } from 'drizzle-orm';
+import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { TRAVEL, UNAIDED, distance, fleetTravelExact, missionFuel } from '@astera/rules';
 import { missions, planets } from '../src/db/schema.js';
 import { launchTransfer } from '../src/services/movement.js';
+import { EventWorker } from '../src/worker/loop.js';
 import {
   fuelUp,
   giveUnits,
@@ -14,6 +16,8 @@ import {
   testDb,
   type Fixture,
 } from './helpers.js';
+
+const silent = pino({ level: 'silent' });
 
 afterAll(async () => {
   const { close } = await testDb();
@@ -77,6 +81,26 @@ describe('the pace a transfer is flown at', () => {
     expect(Math.abs(minutes - fleetTravelExact(dist, { DART: 10 }, UNAIDED) * 2)).toBeLessThan(1 / 60_000);
     const [row] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
     expect(row?.pace).toBe(0.5);
+  });
+
+  /**
+   * THE GROUP THAT FLIES BACK KEEPS THE PACE. Owner decision, 2026-10-06: both legs of a planned
+   * round trip are flown at the chosen speed.
+   */
+  it('flies the returning group home at the pace the transfer went out', async () => {
+    const worker = new EventWorker(f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent);
+    const launched = await launchTransfer(
+      f.db, f.playerIds[0]!, mine, colony, { DART: 10 }, EMPTY, f.clock, 0.5,
+      { cargoShips: 'STAY', otherShips: 'RETURN' },
+    );
+    const [out] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
+    const outbound = out!.arriveAt.getTime() - out!.departAt.getTime();
+    f.clock.set(out!.arriveAt);
+    await worker.tick();
+    const [back] = await f.db.select().from(missions).where(eq(missions.parentMissionId, launched.missionId));
+    expect(back).toBeTruthy();
+    expect(back!.pace).toBe(0.5);
+    expect(Math.abs((back!.arriveAt.getTime() - back!.departAt.getTime()) - outbound)).toBeLessThanOrEqual(1);
   });
 
   /** Time, never money — and the homeward rate, whatever the pace. */

@@ -202,22 +202,26 @@ export function ForceRuler({
       </div>
 
       {(escape ?? lines) && (
-        <ul data-testid="ruler-lines" className="flex flex-wrap gap-x-3 gap-y-0.5 font-v2-mono text-micro text-v2-ink-2">
+        /*
+          ONE LINE PER CONDITION (2026-10-06): each now states its condition and its outcome, which
+          is too long to share a row at 350 px — wrapped side by side, the second ran off the edge.
+        */
+        <ul data-testid="ruler-lines" className="flex flex-col gap-0.5 font-v2-mono text-micro text-v2-ink-2">
           {escape && (
-            <li className="flex items-center gap-1.5">
-              <span aria-hidden="true" className="h-2.5 w-0 border-l border-dashed border-v2-warn" />
+            <li className="flex min-w-0 items-center gap-1.5">
+              <span aria-hidden="true" className="h-2.5 w-0 shrink-0 border-l border-dashed border-v2-warn" />
               {t('counter.escapeAt', { at: compact(escape.at) })}
             </li>
           )}
           {lines && (
-            <li className="flex items-center gap-1.5">
-              <span aria-hidden="true" className="h-2.5 w-1.5 rounded-cell border border-v2-self" />
+            <li className="flex min-w-0 items-center gap-1.5">
+              <span aria-hidden="true" className="h-2.5 w-1.5 shrink-0 rounded-cell border border-v2-self" />
               {t('counter.linesClears', { at: range(lines.clears) })}
             </li>
           )}
           {lines && (
-            <li className="flex items-center gap-1.5">
-              <span aria-hidden="true" className="h-2.5 w-1.5 rounded-cell border border-v2-ink-2" />
+            <li className="flex min-w-0 items-center gap-1.5">
+              <span aria-hidden="true" className="h-2.5 w-1.5 shrink-0 rounded-cell border border-v2-ink-2" />
               {t('counter.linesBreaks', { at: range(lines.breaks) })}
             </li>
           )}

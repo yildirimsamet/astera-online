@@ -495,7 +495,10 @@ export const focus = {
     craft: "Gemi",
     craftUnknown: "—",
     returning: "Dönüş yolundaki araçlara yeni emir verilemez.",
-    outbound: "Kalkan filo geri çağrılamaz.",
+    outbound: "Bu uçuş geri çağrılamaz.",
+    /** A raid or a transfer may be turned once before it arrives (K8). */
+    recallable: "Varmadan önce bir kez geri çağırabilirsin; dönüş, o ana kadar uçtuğu kadar sürer.",
+    outboundPirate: "Korsan akını geri çağrılamaz.",
   },
 
   contact: {
@@ -597,7 +600,8 @@ export const pirate = {
   captured: "{{hull}} ele geçirildi",
   captureMissed: "Eve çekilecek gemi kalmadı",
   send: "{{count}} gemi gönder · {{duration}}",
-  outbound: "Kalkan filo geri çağrılamaz.",
+  outbound: "Korsan akını geri çağrılamaz.",
+  holdsHint: "Savaş gemileri düşünce yük gemileri kaçamaz; onları da alırsın.",
   /** "Göremiyorsun" demek; "bu bilgi eski" demek değil. Rakamlar canlı. D160. */
   remembered: "Tanımladığından beri izleniyor · şu anda sensörlerinde değil",
   boundary:

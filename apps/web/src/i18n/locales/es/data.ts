@@ -244,7 +244,7 @@ export const vocabulary = {
     ARGOSY: {
       name: 'Argosy',
       tag: 'Transportista de capital',
-      role: 'La bodega más profunda y el casco más lento del juego.',
+      role: 'La bodega más profunda del juego y el más lento de los transportes.',
       pitch: 'Lleva casi hasta tres Atlas y no puede dejar atrás a nada.',
       detail: 'El Argosy es un transporte de nivel cuatro. Clase de apoyo, por lo que está protegido mientras los cascos de combate viven y quedan indefensos una vez que la línea desaparece. El ritmo del comerciante está ligado a este casco: el agarre más lento del catálogo lo marca.',
     },
@@ -272,7 +272,7 @@ export const vocabulary = {
       tag: 'Minas de asteroides',
       role: 'Extrae asteroides con una base de 200 · no puede unirse a una flota de incursión',
       pitch: 'Intercepta un asteroide en movimiento y devuelve lo que puede transportar a Producción. No puede atacar ni transferir.',
-      detail: 'Un Prospector solo puede enviarse a asteroides y campos de escombros revelados. Su velocidad base de ida y de regreso vacío es 1547; cargado regresa a 773. Su capacidad base es 200; Derrick y la investigación Bodegas de Prospector pueden mejorar estos valores. Cada mundo comienza con espacio para dos; Bodegas de Prospector III abre una tercera ranura. Nunca se une a incursiones ni a la defensa local.',
+      detail: 'Un Prospector solo puede enviarse a asteroides y campos de escombros revelados. Su velocidad base de ida y de regreso vacío es 1238; cargado regresa a 619. Su capacidad base es 200; Derrick y la investigación Bodegas de Prospector pueden mejorar estos valores. Cada mundo comienza con espacio para dos; Bodegas de Prospector III abre una tercera ranura. Nunca se une a incursiones ni a la defensa local.',
     },
   },
 

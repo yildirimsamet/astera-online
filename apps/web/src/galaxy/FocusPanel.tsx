@@ -6,6 +6,7 @@ import type { TFunction } from 'i18next';
 import {
   DEATH_STAR,
   FEATURE_FLAGS,
+  HULLS,
   MULTI_WORLD,
   SETTLEMENT_CLAIM_MINUTES,
   PROBE,
@@ -2817,6 +2818,9 @@ export function PirateFocus({
         <p className="text-caption text-v2-ink-3">{t('pirate.rosterUnknown')}</p>
       )}
 
+      {crewEntries.some(([hull]) => HULLS[hull].cls === 'SUPPORT') && (
+        <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('pirate.holdsHint')}</p>
+      )}
       <p className="mt-3 text-caption leading-snug text-v2-ink-3">{t('pirate.captureHint')}</p>
       <p className="mt-1 text-caption leading-snug text-v2-ink-3">{t('pirate.hoardHint')}</p>
       <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('pirate.boundary')}</p>
@@ -3318,8 +3322,16 @@ export function ThreadFocus({
         </div>
       )}
 
+      {/*
+        WHAT IS TRUE OF THIS FLIGHT, NOT OF FLIGHTS IN GENERAL. Owner report, 2026-10-06: every
+        outbound fleet read "a launched fleet cannot be recalled" — right over the Recall button.
+      */}
       <p className="mt-3 text-caption leading-snug text-v2-ink-2">
-        {t(thread.leg === 'return' ? 'focus.thread.returning' : 'focus.thread.outbound')}
+        {t(thread.leg === 'return'
+          ? 'focus.thread.returning'
+          : recallable
+            ? 'focus.thread.recallable'
+            : thread.kind === 'pirate' ? 'focus.thread.outboundPirate' : 'focus.thread.outbound')}
       </p>
       {thread.monumentId && onFocusMonument && <button type="button" className="mt-3 min-h-10 w-full rounded-control border border-v2-line px-3 text-caption font-semibold text-v2-self"
         onClick={() => { if (thread.monumentId) onFocusMonument(thread.monumentId); }}>{t('monument.look', { name: thread.targetName })}</button>}

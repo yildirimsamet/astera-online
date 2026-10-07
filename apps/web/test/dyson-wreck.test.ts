@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { z } from 'zod';
+import { DYSON_LOD_MODEL, DYSON_MODEL } from '../src/ui/assets.js';
 import {
-  createDysonLowGeometry,
   dysonLod,
   shellGroups,
   shellLook,
@@ -26,6 +29,36 @@ import type { GalaxyPlanet } from '../src/api/schemas.js';
  * instanced-mesh plumbing only a GPU can confirm, and `tools/visual.mjs` is where
  * that is checked.
  */
+
+const GLB = z.object({
+  meshes: z.array(z.object({
+    primitives: z.array(z.object({ indices: z.number(), attributes: z.object({ POSITION: z.number() }) })),
+  })),
+  accessors: z.array(z.object({ count: z.number(), min: z.array(z.number()).optional(), max: z.array(z.number()).optional() })),
+  nodes: z.array(z.object({ mesh: z.number().optional(), scale: z.array(z.number()).optional(), translation: z.array(z.number()).optional() })),
+});
+
+/** The bounds, node transform and triangle count a GLB states in its own JSON chunk. */
+const glb = (url: string) => {
+  const data = readFileSync(resolve(process.cwd(), 'public', url.replace(/^\//, '')));
+  let offset = 12;
+  while (offset < data.length) {
+    const length = data.readUInt32LE(offset);
+    if (data.toString('ascii', offset + 4, offset + 8).startsWith('JSON')) {
+      const doc = GLB.parse(JSON.parse(data.toString('utf8', offset + 8, offset + 8 + length)));
+      const primitive = doc.meshes[0]!.primitives[0]!;
+      const position = doc.accessors[primitive.attributes.POSITION]!;
+      const node = doc.nodes.find((n) => n.mesh === 0)!;
+      return {
+        bounds: { min: position.min ?? [], max: position.max ?? [] },
+        node: { scale: node.scale, translation: node.translation },
+        triangles: doc.accessors[primitive.indices]!.count / 3,
+      };
+    }
+    offset += 8 + length;
+  }
+  throw new Error(`${url} has no GLB JSON chunk`);
+};
 
 const world = (over: Partial<GalaxyPlanet> = {}): GalaxyPlanet => ({
   id: 'w1',
@@ -184,14 +217,26 @@ describe('dyson instance LOD', () => {
     expect(dysonLod(1, 91)).toBe('hidden');
   });
 
-  it('uses a silhouette mesh that is dramatically cheaper than the 6,970-triangle source', () => {
-    const geometry = createDysonLowGeometry();
-    const triangles = (geometry.index?.count ?? geometry.getAttribute('position').count) / 3;
-    geometry.computeBoundingSphere();
+  /**
+   * THE FAR RING IS THE RING, SIMPLIFIED. Owner report, 2026-10-06: zoomed out, the shells
+   * became "a cylinder swollen like a balloon wrapped round the world". The stand-in was a
+   * procedural torus whose tube was 0.24 of the radius through Z, where the ring itself is
+   * 0.068 — three and a half times too fat. The low tier is now the ring's own geometry cut to
+   * a fifth, which keeps its measured bounds (and so its size, by `unitModel`), its band and
+   * its spars.
+   */
+  it('draws its far tier with the ring itself, simplified, and never a stand-in shape', () => {
+    const full = glb(DYSON_MODEL[0]);
+    const far = glb(DYSON_LOD_MODEL);
+    expect(far.bounds).toEqual(full.bounds);
+    expect(far.node).toEqual(full.node);
+    expect(far.triangles).toBeLessThan(full.triangles / 4);
+    const { min, max } = far.bounds;
+    expect((max[2]! - min[2]!) / (max[0]! - min[0]!)).toBeLessThan(0.08);
 
-    expect(triangles).toBeLessThan(500);
-    expect(geometry.boundingSphere?.radius).toBeCloseTo(1, 2);
-    geometry.dispose();
+    const source = readFileSync('src/galaxy/DysonShells.tsx', 'utf8');
+    expect(source).toMatch(/useGLTF\(RING_LOD, false\)/);
+    expect(source).not.toMatch(/TorusGeometry/);
   });
 
   it('rejects a shell whose bounding sphere is outside the camera frustum', () => {

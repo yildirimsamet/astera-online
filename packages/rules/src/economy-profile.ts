@@ -407,6 +407,17 @@ export const SUPPORT_ROUND_TRIP = [17, 22, 32, 38] as const;
 /** Owner instruction, 2026-09-25: every shipyard-built fleet hull flies 25% slower. */
 export const FLEET_SPEED_FACTOR = 0.75;
 
+/**
+ * EVERY CARGO HOLD FLIES 2.5x ITS RUNG. Owner instruction, 2026-10-06.
+ *
+ * A transport alone is moving stock between the commander's own worlds or meeting
+ * the merchant; in a raid it already flies at its slowest warship's pace, so the
+ * lift buys convenience and never a faster strike. Speed only: the rung
+ * (`SUPPORT_ROUND_TRIP`) still orders the ladder and still tilts the fuel. The
+ * merchant (`TRADE.speed`) and the collector are not holds and did not take it.
+ */
+export const TRANSPORT_SPEED_MULT = 2.5;
+
 /** Catalogue speed for the full 1250-unit out-and-back trip, including ten seconds of combat. */
 export const profileFlightSpeed = (roundTripMinutes: number): number =>
   2500 * ECONOMY_PROFILE.distanceFactor / (roundTripMinutes - 1 / 6);
@@ -584,6 +595,7 @@ export function profileHull(live: Hull): ProfileHull {
     deuterium: [0, 12, 48, 130][tier - 1]!,
     cargo: SUPPORT_HOLD[tier - 1]!, bulk: [3, 6, 14, 30][tier - 1]!,
     referenceRoundTrip: SUPPORT_ROUND_TRIP[tier - 1]!,
-    speed: profileFlightSpeed(SUPPORT_ROUND_TRIP[tier - 1]!) * FLEET_SPEED_FACTOR };
+    speed: profileFlightSpeed(SUPPORT_ROUND_TRIP[tier - 1]!) * FLEET_SPEED_FACTOR
+      * (live.profile === 'TRANSPORT' ? TRANSPORT_SPEED_MULT : 1) };
   return common;
 }

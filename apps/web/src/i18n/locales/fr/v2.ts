@@ -68,6 +68,8 @@ export const now = {
   sheet: 'Minuteurs',
   work: 'Travaux bientôt finis',
   research: 'Recherche bientôt finie',
+  /** An order behind the head of its lane: no clock yet (2026-10-06). */
+  queued: "Commence quand le précédent se termine",
   event: 'Événement bientôt fini',
   shield: 'Ton bouclier tombe',
   shieldDetail: 'Ensuite, les raids peuvent t’atteindre',

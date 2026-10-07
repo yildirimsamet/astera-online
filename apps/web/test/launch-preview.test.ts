@@ -33,6 +33,14 @@ describe('the launch preview', () => {
     expect(route.exposureMinutes).toBe(exposureMinutes(route.oneWayMinutes));
   });
 
+  /** Owner decision, 2026-10-06: a slowed raid comes home as slowly — two equal legs. */
+  it('quotes a paced raid out and home at its pace', () => {
+    const sending = { DART: 10 };
+    const route = planRoute(HERE, THERE, sending, { DART: 20 }, {}, { ...UNAIDED, pace: 0.25 });
+    expect(route.oneWayMinutes).toBeCloseTo(fleetTravelExact(route.distance, sending, { ...UNAIDED, pace: 0.25 }), 9);
+    expect(route.exposureMinutes).toBeCloseTo(2 * route.oneWayMinutes, 9);
+  });
+
   it('counts what is left at home, including ground defence', () => {
     const route = planRoute(HERE, THERE, { DART: 12 }, { DART: 20, COURIER: 2 }, { BASTION: 3 }, UNAIDED);
     // 20 + 2 at home, 12 leave, 3 Bastions never leave.

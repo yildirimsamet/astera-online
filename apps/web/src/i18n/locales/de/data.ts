@@ -244,7 +244,7 @@ export const vocabulary = {
     ARGOSY: {
       name: 'Argosy',
       tag: 'Hauptwelttransporter',
-      role: 'Der tiefste Laderaum und der langsamste Rumpf im Spiel.',
+      role: 'Der tiefste Laderaum im Spiel und der langsamste Transporter.',
       pitch: 'Trägt fast so viel wie drei Atlanten und kann überhaupt nichts überholen.',
       detail: 'Der Argosy ist das Transportmittel der vierten Stufe. Unterstützungsklasse, daher ist sie abgeschirmt, solange Kampfrümpfe aktiv sind, und wehrlos, sobald die Linie verschwunden ist. Das Tempo des Händlers ist an diesen Rumpf gebunden: Der langsamste Laderaum im Katalog bestimmt ihn.',
     },
@@ -272,7 +272,7 @@ export const vocabulary = {
       tag: 'Miniert Asteroiden',
       role: 'Minen von Asteroiden mit einer Basiskapazität von 200 · kann keiner Schlachtzugsflotte beitreten',
       pitch: 'Fängt einen sich bewegenden Asteroiden ab und gibt alles, was er transportieren kann, an die Werke zurück. Es kann nicht geplündert oder transferiert werden.',
-      detail: 'Ein Prospektor kann nur zu aufgedeckten Asteroiden und Trümmerfeldern geschickt werden. Seine Grundgeschwindigkeit auf dem Hinweg und bei leerem Rückflug beträgt 1547; beladen kehrt er mit 773 zurück. Sein Grundladeraum beträgt 200; Derrick- und Prospektor-Holds-Forschung können diese Werte verbessern. Jede Welt beginnt mit Platz für zwei; Prospektor Holds III eröffnet einen dritten Schiffsplatz. Er beteiligt sich nie an Angriffen oder der Heimatverteidigung.',
+      detail: 'Ein Prospektor kann nur zu aufgedeckten Asteroiden und Trümmerfeldern geschickt werden. Seine Grundgeschwindigkeit auf dem Hinweg und bei leerem Rückflug beträgt 1238; beladen kehrt er mit 619 zurück. Sein Grundladeraum beträgt 200; Derrick- und Prospektor-Holds-Forschung können diese Werte verbessern. Jede Welt beginnt mit Platz für zwei; Prospektor Holds III eröffnet einen dritten Schiffsplatz. Er beteiligt sich nie an Angriffen oder der Heimatverteidigung.',
     },
   },
 

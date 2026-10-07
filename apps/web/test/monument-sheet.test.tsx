@@ -6,6 +6,7 @@ import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/keys.js';
 import { monumentsSchema } from '../src/api/schemas.js';
+import { setMonumentHonorees } from '../src/i18n/names.js';
 import { MonumentSheet } from '../src/screens/MonumentSheet.js';
 import { SeasonLockProvider } from '../src/session/seasonLock.js';
 import { planetView } from './fixtures.js';
@@ -70,6 +71,20 @@ describe('monument decision surface, through the real client and cache', () => {
     await screen.findByText(/Outbound radiation: 500/i);
     expect(requests.filter((request) => request.path.endsWith('/quote'))).toHaveLength(1);
     expect(requests.find((request) => request.path.endsWith('/quote'))?.body).toContain('"CITADEL":2');
+  });
+
+  /** Owner, 2026-10-06: the monument carries last season's rank-N name, and the sheet says why. */
+  it('says whose name the monument carries, and why', async () => {
+    setMonumentHonorees(['Vantasia', null, null, null, null]);
+    try {
+      show();
+      await screen.findByText('Named for Vantasia, rank 1 last season.');
+      const sheet = screen.getByRole('dialog');
+      expect(sheet).toHaveTextContent('Vantasia • Abandoned Space Wreckage');
+      expect(sheet).toHaveTextContent('Named for Vantasia, rank 1 last season.');
+    } finally {
+      setMonumentHonorees([]);
+    }
   });
 
   it('identifies an empty monument and shows the garrison return time', async () => {

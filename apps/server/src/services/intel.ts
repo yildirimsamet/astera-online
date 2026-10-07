@@ -13,6 +13,7 @@ import {
   detectChance,
   fuzzBand,
   computeLoot,
+  engagementEndsAt,
   scaleNeutralDeuteriumLoot,
   vaultProtects,
   probeAccuracy,
@@ -210,11 +211,10 @@ export async function fleetTruthFor(
       out.set(m.originPlanetId, { status: 'AWAY', expectedHomeAt: m.arriveAt });
       continue;
     }
-    // It has not turned around yet. The way back is flown at FULL speed whatever pace the raid
-    // went out at, so the return leg is the outbound one times its pace. Self-review
-    // 2026-09-23, R2: read as symmetric, a quarter-pace raid was reported away four times too long.
+    // It has not turned around yet. Since 2026-10-06 the way back is flown at the pace the raid
+    // went out at, so the return leg is as long as the outbound one, after the engagement.
     const outbound = m.arriveAt.getTime() - m.departAt.getTime();
-    const back = new Date(m.arriveAt.getTime() + outbound * m.pace);
+    const back = new Date(engagementEndsAt(m.arriveAt.getTime()) + outbound);
     out.set(m.originPlanetId, { status: 'AWAY', expectedHomeAt: back });
   }
 

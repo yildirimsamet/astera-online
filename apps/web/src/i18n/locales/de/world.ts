@@ -537,7 +537,10 @@ export const focus = {
     craft: "Schiff",
     craftUnknown: "—",
     returning: "Auf dem Rückweg. Es gibt nichts mehr zu entscheiden.",
-    outbound: "Eine gestartete Flotte kann nicht zurückgerufen werden.",
+    outbound: "Dieser Flug kann nicht zurückgerufen werden.",
+    /** A raid or a transfer may be turned once before it arrives (K8). */
+    recallable: "Vor der Ankunft kann sie einmal umkehren; der Rückweg dauert so lange wie der bisherige Flug.",
+    outboundPirate: "Ein Piratenüberfall kann nicht zurückgerufen werden.",
   },
 
   contact: {
@@ -668,7 +671,8 @@ export const pirate = {
   captured: "{{hull}} erfasst",
   captureMissed: "Nichts mehr übrig, was es wert wäre, nach Hause geschleppt zu werden",
   send: "Senden Sie {{count}} · {{duration}}",
-  outbound: "Eine gestartete Flotte kann nicht zurückgerufen werden.",
+  outbound: "Ein Piratenüberfall kann nicht zurückgerufen werden.",
+  holdsHint: "Sind seine Kriegsschiffe gefallen, können seine Frachter nicht entkommen – auch sie gehören dir.",
   /**
    * YOU CANNOT SEE THIS ONE — WHICH IS NOT THE SAME AS "THIS IS OLD". D160.
    *

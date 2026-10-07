@@ -482,6 +482,8 @@ export const okSchema = z.object({ ok: z.boolean() });
 
 export const seasonSchema = z.object({
   seasonId: z.string(),
+  /** Last season's top five, index N − 1 naming monument N (2026-10-06). Older servers omit it. */
+  monumentHonorees: z.array(z.string().nullable()).optional(),
   shard: z.string(),
   /** Added after the first season payload; old servers remain readable. */
   shardName: z.string().optional(),
@@ -2383,9 +2385,9 @@ const pendingThread = z.object({
   /**
    * THE PACE THIS LEG FLIES AT, 1 = full speed. YOUR OWN CRAFT ONLY. Spec S1.
    *
-   * The Fleet page labels a slowed flight with it. A return leg reads 1: the survivors
-   * fly home at full speed whatever went out. Absent on an inbound attack and on any
-   * server that predates the field.
+   * The Fleet page labels a slowed flight with it. Since 2026-10-06 a return leg reads the
+   * pace that went out: survivors fly home as slowly as they flew. Absent on an inbound
+   * attack and on any server that predates the field.
    */
   pace: z.number().positive().max(1).optional(),
   /**

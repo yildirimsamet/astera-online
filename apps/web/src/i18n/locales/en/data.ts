@@ -244,7 +244,7 @@ export const vocabulary = {
     ARGOSY: {
       name: 'Argosy',
       tag: 'Capital hauler',
-      role: 'The deepest hold and the slowest hull in the game.',
+      role: 'The deepest hold in the game, and the slowest of the transports.',
       pitch: 'Carries nearly as much as three Atlases, and can outrun nothing at all.',
       detail: 'The Argosy is tier four\'s transport. Support class, so it is shielded while combat hulls live and defenceless once the line is gone. The merchant\'s pace is tied to this hull: the slowest hold in the catalogue sets it.',
     },
@@ -272,7 +272,7 @@ export const vocabulary = {
       tag: 'Mines asteroids',
       role: 'Mines asteroids with a base hold of 200 · cannot join a raid fleet',
       pitch: 'Intercepts a moving asteroid and returns what it can carry to the Works. It cannot raid or transfer.',
-      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base outbound and empty-return speed is 1547; laden return speed is 773. Its base hold is 200; a Derrick and Prospector Holds research can improve these values. Each world starts with room for two; Prospector Holds III opens a third craft slot. It never joins raids or home defence.',
+      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base outbound and empty-return speed is 1238; laden return speed is 619. Its base hold is 200; a Derrick and Prospector Holds research can improve these values. Each world starts with room for two; Prospector Holds III opens a third craft slot. It never joins raids or home defence.',
     },
   },
 

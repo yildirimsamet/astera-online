@@ -20,10 +20,12 @@ and this profile win.
   100 bot seats and 130 neutral seats. Neutral addresses open in strata (`T1 76 / T2 38 / T3 16`)
   under the staged census (`T1 15 / T2 8 / T3 3` initially, then one free colony slot per census),
   with the T3 target share at `0.13`.
-- **Tempo:** player mobile hulls use `0.75×` their profile speed (including cargo and collectors),
-  pirate fleets use `0.70×`; the Prospector is `1546.875` units/minute after the owner-approved
-  2026-10-04 `2.5×` increase. Its rocks remain `262.5–562.5`, and its laden return is `773.4375`
-  units/minute. Asteroid lifetime is unchanged.
+- **Tempo:** player mobile hulls use `0.75×` their profile speed (including collectors), and every
+  cargo hold (`TRANSPORT`) flies `2.5×` that (`TRANSPORT_SPEED_MULT`, owner 2026-10-06; a mixed
+  wing still flies at its slowest warship, and the merchant kept its pace). Pirate fleets use
+  `0.70×`; the Prospector is `1237.5` units/minute — `2×` its September `618.75` (owner 2026-10-06,
+  down from the 2026-10-04 `2.5×`). Its rocks remain `262.5–562.5`, and its laden return is
+  `618.75` units/minute. Asteroid lifetime is unchanged.
   Planet marker radii also grew uniformly `1.3×`: Core `1 / 11 / 22` anchors are approximately
   `0.471 / 0.8775 / 1.498` world units; the geometric size ramp and development ratios are retained.
 - **Fuel:** the fleet-wide value rate is `0.00495`, 10% below the former `0.0055` rate after the
@@ -407,6 +409,10 @@ layout, the sphere creates the following five-seed neighbourhood means:
 Measured Fleet V2 tempo: a Dart reaches the production layout's 10th-nearest world in **10.6 min
 round trip**, its 25th in **14.9 min**. A Citadel round trip across the full diameter is about
 **3 h 33 min**.
+
+**Superseded 2026-10-06: the claim window is a fixed `90` minutes** (owner: "Sabit olsun ve 90dk
+olsun"), set when the holds took their `2.5×` lift; a test still guards that the widest settlement
+flight lands inside it. The history below is kept for the reasoning.
 
 **The settlement claim window is DERIVED from this table, not chosen against it (D111).**
 `SETTLEMENT_CLAIM_MINUTES` is the two-Courier flight across `GALAXY_SPAN` — one diameter,

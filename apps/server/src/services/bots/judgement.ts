@@ -203,6 +203,8 @@ export function planPirateRaid(input: Common & {
     attackerTech: input.tech,
     defenderTech: {},
     defenderDamageMult: input.damageMult,
+    // Settled as the server settles it: holds outliving the line are taken (`pirateOverrun`).
+    pirate: true,
     shield: { low: 0, high: 0 },
     unarmed: { low: 0, high: 0 },
     wall: { kind: 'EXACT', fleet: input.crew },

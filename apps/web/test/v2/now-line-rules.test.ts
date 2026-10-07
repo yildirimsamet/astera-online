@@ -135,6 +135,32 @@ describe('the Now line', () => {
     expect(nowEntries(input({ runs: [run('done', -30, -10)] }))).toEqual([]);
   });
 
+  /**
+   * THE SHEET HOLDS THE WHOLE QUEUE. Owner report, 2026-10-06: three orders queued, two shown —
+   * the line keeps its five-minute window, the sheet one tap under it lists every order, and an
+   * order behind the head is marked as waiting rather than given a clock that is not running.
+   */
+  it('lists every queued order in the sheet, the ones behind the head as waiting', () => {
+    const behind = (id: string, slot: number, starts: number, minutes: number): BuildOrderView => ({
+      id, queue: 'CONSTRUCTION', slot, kind: 'BUILDING', subject: 'REFINERY', count: 1,
+      startedAt: at(starts), finishesAt: at(minutes), cost: { alloy: 100, crystal: 0, deuterium: 0 },
+    });
+    const head = order(3);
+    const next = behind('order-next', 1, 3, 9);
+    const last = behind('order-last', 2, 9, 25);
+    const queued: ResearchQueueOrderView = {
+      id: 'research-next', slot: 1, projectId: 'CARGO_HOLDS', level: 3,
+      startedAt: at(10), finishesAt: at(70), cost: { alloy: 100, crystal: 0, deuterium: 0 },
+    };
+    const sheet = nowEntries(input({ builds: [head, next, last], research: [research(10), queued] }), 'sheet');
+    const work = sheet.flatMap((entry) => (entry.kind === 'build' || entry.kind === 'research' ? [entry] : []));
+    expect(work.map((entry) => entry.order.id))
+      .toEqual(['order-3', 'order-next', 'research-10', 'order-last', 'research-next']);
+    expect(work.map((entry) => entry.waiting)).toEqual([false, true, false, true, true]);
+    // The line itself keeps its window: only work in its last five minutes.
+    expect(kinds({ builds: [head, next, last] })).toEqual(['build']);
+  });
+
   it('shows work only in its last five minutes', () => {
     expect(kinds({ builds: [order(4), order(6), order(-1)], research: [research(5)] }))
       .toEqual(['build', 'research']);

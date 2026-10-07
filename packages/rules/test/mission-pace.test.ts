@@ -10,6 +10,7 @@ import {
   fleetTravelExact,
   isMissionPace,
   missionFuel,
+  missionPaceOf,
   pacesForMinutes,
 } from '../src/index.js';
 import type { Fleet } from '../src/types.js';
@@ -172,13 +173,11 @@ describe('the lane a flight is flown in', () => {
 });
 
 /**
- * HOW LONG THE WORLD STANDS SHORT OF ITS GARRISON — AND WHY THE PACE DOES NOT SIMPLY DOUBLE IT.
+ * HOW LONG THE WORLD STANDS SHORT OF ITS GARRISON.
  *
  * The exposure figure is the headline the raid sheet is built around: "home defence after launch,
- * and for how long". It was `oneWay * 2`, which was exactly right while both legs were the same
- * flight. A chosen pace breaks that: the commander picks when the raid ARRIVES, and the survivors
- * come home at full speed. Doubling the slow leg would overstate the window by hours on the one
- * figure a player uses to decide whether they dare launch at all.
+ * and for how long". Since 2026-10-06 a paced flight comes home at its own pace (owner: "Bacakların
+ * eşit yarı yarıya bölünmesi lazım"), so it is `oneWay * 2` at every pace again.
  */
 describe('how long a launch leaves home short', () => {
   const wing: Fleet = { DART: 40 };
@@ -188,10 +187,21 @@ describe('how long a launch leaves home short', () => {
     expect(exposureMinutes(oneWay)).toBe(oneWay * 2);
   });
 
-  it('adds the real way home rather than doubling the way out', () => {
+  /** Owner decision, 2026-10-06: a paced flight comes home at its pace — two equal legs. */
+  it('is both legs of a paced flight too', () => {
     const slow = fleetTravelExact(500, wing, { ...UNAIDED, pace: 0.25 });
-    const home = fleetTravelExact(500, wing, UNAIDED);
-    expect(exposureMinutes(slow, home)).toBeCloseTo(slow + home, 9);
-    expect(exposureMinutes(slow, home)).toBeLessThan(exposureMinutes(slow));
+    expect(exposureMinutes(slow)).toBeCloseTo(2 * slow, 9);
+    expect(exposureMinutes(slow)).toBeCloseTo(4 * exposureMinutes(fleetTravelExact(500, wing, UNAIDED)), 9);
+  });
+});
+
+/** A stored `missions.pace` read back as a rung; anything off the ladder flies at full speed. */
+describe('a stored pace read back', () => {
+  it('keeps every rung and falls back to full speed for anything else', () => {
+    for (const pace of MISSION_PACES) expect(missionPaceOf(pace)).toBe(pace);
+    expect(missionPaceOf(0.37)).toBe(1);
+    expect(missionPaceOf(null)).toBe(1);
+    expect(missionPaceOf(undefined)).toBe(1);
+    expect(missionPaceOf(Number.NaN)).toBe(1);
   });
 });

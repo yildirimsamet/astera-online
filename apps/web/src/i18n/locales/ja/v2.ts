@@ -72,6 +72,8 @@ export const now = {
   sheet: "タイマー",
   work: "作業完了",
   research: "研究完了",
+  /** An order behind the head of its lane: no clock yet (2026-10-06). */
+  queued: "前の作業が終わると開始",
   event: "イベント終了",
   shield: "シールド終了",
   shieldDetail: "終了後は襲撃を受ける可能性があります",

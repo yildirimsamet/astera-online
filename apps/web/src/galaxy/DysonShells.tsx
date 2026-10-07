@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { CORE_TOP_LEVEL } from '@astera/rules';
-import { DYSON_MODEL } from '../ui/assets.js';
+import { DYSON_LOD_MODEL, DYSON_MODEL } from '../ui/assets.js';
 import { unitModel } from './model.js';
 import { STANCE_LIGHT, isWrecked, type PlanetNode } from './scene.js';
 import { resolvedOnly } from './Satellites.jsx';
@@ -152,6 +152,8 @@ const PERIOD_X = 233;
  * would draw the second half of the set on top of the first.
  */
 const RING = DYSON_MODEL[0];
+/** The same ring cut to a fifth of its triangles, drawn while a shell is small (`dysonLod`). */
+const RING_LOD = DYSON_LOD_MODEL;
 
 /** N copies of the ring, evenly spaced through a half turn about its own X. */
 const spokes = (count: number): readonly THREE.Euler[] =>
@@ -438,14 +440,16 @@ export function dysonLod(radius: number, distance: number): DysonLod {
   return 'full';
 }
 
-/** A 192-triangle silhouette ring with the same measured inner and outer radii. */
-export function createDysonLowGeometry(): THREE.TorusGeometry {
-  const tube = (1 - SHELL_OPENING) / 2;
-  const centre = SHELL_OPENING + tube;
-  return new THREE.TorusGeometry(centre, tube, 4, 24);
-}
-
+/*
+  THE LOW TIER IS THE RING ITSELF, SIMPLIFIED. Owner report, 2026-10-06: zoomed out, the
+  shells were "a cylinder swollen like a balloon wrapped round the world". The low tier was a
+  procedural torus with a round tube 0.24 of the radius thick — the ring is 0.068 through Z, so
+  the stand-in was three and a half times too fat and had no spars at all. `RING_LOD` keeps the
+  ring's measured bounds (so `unitModel` sizes both identically), its band and its spars at
+  about 1,500 triangles, and borrows the full ring's material.
+*/
 useGLTF.preload(RING, false);
+useGLTF.preload(RING_LOD, false);
 
 interface Wearer {
   planet: PlanetNode;
@@ -549,11 +553,12 @@ function Shell({
   const lowRim = useRef<THREE.InstancedMesh>(null);
   const camera = useThree((state) => state.camera);
   const { scene } = useGLTF(RING, false);
+  const { scene: farScene } = useGLTF(RING_LOD, false);
 
   // Quantised exactly like the satellites and the rocks, so the raw geometry would
   // be sized by an arbitrary integer range rather than by the number below.
   const source = useMemo(() => unitModel(scene), [scene]);
-  const lowGeometry = useMemo(createDysonLowGeometry, []);
+  const far = useMemo(() => unitModel(farScene), [farScene]);
   const projection = useMemo(() => new THREE.Matrix4(), []);
   const frustum = useMemo(() => new THREE.Frustum(), []);
 
@@ -625,9 +630,8 @@ function Shell({
     () => () => {
       rimMaterial.dispose();
       bodyMaterial?.dispose();
-      lowGeometry.dispose();
     },
-    [bodyMaterial, lowGeometry, rimMaterial],
+    [bodyMaterial, rimMaterial],
   );
 
   const wearers = useMemo<Wearer[]>(
@@ -774,7 +778,7 @@ function Shell({
     updateBucket(cheap, cheapEdge, lowDrawn);
   });
 
-  if (!source || !bodyMaterial || wearers.length === 0) return null;
+  if (!source || !far || !bodyMaterial || wearers.length === 0) return null;
 
   const instances = wearers.length * copies.length;
 
@@ -807,7 +811,7 @@ function Shell({
       />
       <instancedMesh
         ref={lowRim}
-        args={[lowGeometry, rimMaterial, instances]}
+        args={[far.geometry, rimMaterial, instances]}
         frustumCulled={false}
         renderOrder={1}
         name="dyson-shell-rim-low"
@@ -815,7 +819,7 @@ function Shell({
       />
       <instancedMesh
         ref={lowBody}
-        args={[lowGeometry, bodyMaterial, instances]}
+        args={[far.geometry, bodyMaterial, instances]}
         frustumCulled={false}
         renderOrder={2}
         name="dyson-shells-low"

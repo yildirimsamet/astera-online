@@ -39,7 +39,7 @@ export const clanWar = {
   recallRule: 'Filon, saldırı başlayana kadar geri çağrılabilir.',
   launch: 'Ortak saldırıyı başlat', cancel: 'Hedefi iptal et',
   strikeEta: 'Vuruş kalkıştan {{time}} sonra iner',
-  paceHint: 'Yavaş olan geç varır — vuruş saatini sen seç. Ek yakıt yok; sağ kalanlar tam hızla döner; hiçbir filo 12 saatten fazla havada kalamaz.',
+  paceHint: 'Yavaş olan geç varır — vuruş saatini sen seç. Ek yakıt yok; sağ kalanlar aynı hızla döner; hiçbir bacak 12 saati geçemez.',
   inboundReason: 'Destek filosu geliyor, bekleyin.',
   noCombatReason: 'Havuzda en az bir savaş gemisi olmalı.',
   noWaveReason: 'Başlatmadan önce havuza gemi katılmalı.',

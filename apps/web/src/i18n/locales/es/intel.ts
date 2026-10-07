@@ -160,6 +160,7 @@ export const reports = {
   pirateHeld: 'Los piratas siguieron defendiéndose. No obtuviste ningún botín de esta incursión.',
   /** The prize, and the only door in the game into a hull you did not build. */
   pirateCaptured: 'De piratas',
+  pirateOverrun: 'Sin escolta, los cargueros no pudieron escapar: {{fleet}}.',
   pirateCapturedNote:
     'Tomado intacto de los restos de una tripulación que destruiste. Se une a la guarnición en el mundo al que regresa tu flota (incluso por encima de la capacidad del hangar) y no cuenta como una que tú construiste.',
   youHeld: 'Detuviste la incursión. El atacante no tomó recursos.',

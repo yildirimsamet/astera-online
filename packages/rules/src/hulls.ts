@@ -105,8 +105,9 @@ export const HULLS: Record<HullId, Hull> = {
    * THE TOP TIER'S TRANSPORT. D196, closing D195b's asymmetry: combat ran to tier 4
    * and logistics stopped at 3, so a Cataclysm fleet escorted an Atlas.
    *
-   * The slowest hull in the game and the deepest hold — `SUPPORT_ROUND_TRIP`'s
-   * fourth rung is 38 minutes; D208 gives the live Argosy a 26,000-unit hold. D195's two rules are
+   * The slowest hold and the deepest — `SUPPORT_ROUND_TRIP`'s fourth rung is 38
+   * minutes (before the 2.5x transport lift of 2026-10-06, `TRANSPORT_SPEED_MULT`);
+   * D208 gives the live Argosy a 26,000-unit hold. D195's two rules are
    * at their extreme here: nothing carries more and nothing drinks less per unit of
    * its own price.
    */

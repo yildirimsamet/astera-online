@@ -320,7 +320,7 @@ export const vocabulary = {
     ARGOSY: {
       name: 'Argosi',
       tag: 'Başkent yük gemisi',
-      role: 'Oyundaki en derin ambar ve en yavaş gövde.',
+      role: 'Oyundaki en derin ambar; nakliye gemilerinin en yavaşı.',
       pitch: 'Tek başına yaklaşık üç Atlas kadar taşır; karşılığında hiçbir şeyden kaçamaz.',
       detail: 'Argosi; dördüncü seviyenin nakliyesidir. Destek sınıfı olduğu için savaş gemileri hayattayken korunur, hat düştüğünde savunmasızdır. Tüccarın hızı katalogdaki en yavaş nakliye gövdesi olan Argosiye göre hesaplanır; kendi filon ise içindeki en yavaş gemiye göre uçar.',
     },
@@ -348,7 +348,7 @@ export const vocabulary = {
       tag: 'Asteroit kazar',
       role: 'Asteroitlerden cevher getirir; taban ambarı 200’dür ve akın filosuna katılamaz.',
       pitch: 'Hareketli bir asteroidi yakalar, taşıyabildiği cevheri üretim havuzuna getirir. Savaş veya transfer görevi yapmaz.',
-      detail: 'Kazıcı yalnız keşfedilmiş asteroitlere ve enkaz sahalarına gönderilir. Taban gidiş ve boş dönüş hızı 1547, yüklü dönüş hızı 773, taban ambarı 200’dür; Matkap ve Kazıcı Ambarları araştırması bu değerleri artırabilir. Her dünya başlangıçta en fazla iki Kazıcı tutar; Kazıcı Ambarları III üçüncü araç yuvasını açar. Normal akınlara katılmaz ve ev savunmasında savaşmaz.',
+      detail: 'Kazıcı yalnız keşfedilmiş asteroitlere ve enkaz sahalarına gönderilir. Taban gidiş ve boş dönüş hızı 1238, yüklü dönüş hızı 619, taban ambarı 200’dür; Matkap ve Kazıcı Ambarları araştırması bu değerleri artırabilir. Her dünya başlangıçta en fazla iki Kazıcı tutar; Kazıcı Ambarları III üçüncü araç yuvasını açar. Normal akınlara katılmaz ve ev savunmasında savaşmaz.',
     },
   },
 

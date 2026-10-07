@@ -32,7 +32,7 @@ export interface GameShellProps {
   panel: Panel;
   onPanel: ShellRoute;
   /** Frame a world on the galaxy; `dossier` opens its dossier too (a sighting's "Open the dossier", M4). */
-  onFocusPlanet: (planetId: string, options?: { dossier?: boolean }) => void;
+  onFocusPlanet: (planetId: string, options?: { dossier?: boolean; select?: boolean }) => void;
   /** Frame one of the player's craft (or a contact) from the Fleet page. */
   onFocusCraft: (focus: StripFocus) => void;
   /**
@@ -251,7 +251,8 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
           <OutlineHost
             onFocusPlanet={(planetId) => {
               clearPages();
-              onFocusPlanet(planetId);
+              // A world row selects that world, not only frames it (owner report, 2026-10-06).
+              onFocusPlanet(planetId, { select: true });
             }}
             onFocusCraft={(focus) => {
               clearPages();

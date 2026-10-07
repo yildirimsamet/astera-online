@@ -99,6 +99,14 @@ export const isMissionPace = (value: number): value is MissionPace =>
   (MISSION_PACES as readonly number[]).includes(value);
 
 /**
+ * A STORED PACE READ BACK AS A RUNG. `missions.pace` is a plain number column; a value that is not
+ * on the ladder (a legacy row, a hand edit) flies at full speed, which is what every flight flew
+ * before the choice existed.
+ */
+export const missionPaceOf = (value: number | null | undefined): MissionPace =>
+  value !== null && value !== undefined && isMissionPace(value) ? value : 1;
+
+/**
  * A FLIGHT NOBODY IS FLYING. Named rather than written out as `{ boost: 1, tech:
  * {} }`, so the handful of legitimate uses are greppable and everything else has
  * to justify itself.
@@ -174,11 +182,9 @@ export const pacesForMinutes = (fullSpeedMinutes: number): readonly MissionPace[
 /**
  * MINUTES THE ORIGIN PLANET IS LEFT WEAKENED: out, plus back.
  *
- * `homeward` defaults to the outbound leg, which is what every flight was before a commander could
- * choose a pace: one speed, two identical legs. It is a separate argument because a paced launch
- * is NOT symmetric — the commander buys when the raid arrives, and the survivors come home at full
- * speed — and doubling the slow leg would overstate by hours the one figure the raid sheet is
- * built around.
+ * `homeward` defaults to the outbound leg: one speed, two identical legs — at every pace since
+ * 2026-10-06, when the owner ruled that a paced flight comes home at its own pace. It stays a
+ * separate argument for the lanes whose way home is a different line (a pirate's rendezvous).
  */
 export const exposureMinutes = (oneWay: number, homeward: number = oneWay): number =>
   oneWay + homeward;

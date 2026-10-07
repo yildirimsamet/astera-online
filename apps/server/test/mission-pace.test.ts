@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { TRAVEL, UNAIDED, distance, fleetTravelExact, missionFuel } from '@astera/rules';
+import { COMBAT, TRAVEL, UNAIDED, distance, fleetTravelExact, missionFuel } from '@astera/rules';
 import { missions, planets, seasons } from '../src/db/schema.js';
 import { fleetTruthFor } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -116,17 +116,18 @@ describe('the pace a launch is flown at', () => {
   });
 
   /**
-   * THE RETURN LEG IS NOT THE CHOICE. A commander picks when their raid ARRIVES; letting the pace
-   * ride home too would hold the fleet out for a multiple of a journey they can no longer cancel,
-   * and an attack cannot be recalled.
+   * BOTH LEGS AT THE CHOSEN PACE. Owner decision, 2026-10-06: "Bacakların eşit yarı yarıya
+   * bölünmesi lazım. Hem gidiş hem dönüş için." A fleet flies home at the speed it flew out, so a
+   * slow raid's round trip is two equal halves — the figure the launch sheet quotes.
    */
-  it('sends the survivors home at full speed however slowly they went out', async () => {
+  it('sends the survivors home at the pace they went out', async () => {
     const worker = new EventWorker(f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent);
     const departedAt = f.clock.now();
     const slow = await launchAttack(
       f.db, attacker, defender, { DART: 5 }, f.clock, undefined, false, 0.5,
     );
     const outbound = minutesBetween(departedAt, slow.arriveAt);
+    expect(slow.exposureMinutes).toBeCloseTo(2 * outbound, 6);
 
     f.clock.set(settledAt(slow.arriveAt));
     await worker.tick();
@@ -134,19 +135,15 @@ describe('the pace a launch is flown at', () => {
     const rows = await f.db.select().from(missions).where(eq(missions.kind, 'return'));
     const home = rows[0];
     expect(home).toBeTruthy();
-    expect(home?.pace).toBe(1);
-    expect(minutesBetween(f.clock.now(), home!.arriveAt)).toBeLessThan(outbound);
+    expect(home?.pace).toBe(0.5);
+    expect(minutesBetween(home!.departAt, home!.arriveAt)).toBeCloseTo(outbound, 3);
   });
 
   /**
-   * THE SCOUT IS TOLD WHEN THE FLEET WILL REALLY BE HOME. Self-review 2026-09-23, R2.
-   *
-   * A telescope or probe reading an away fleet estimates its return as "the way back takes as long
-   * as the way out". A slow raid comes home at FULL speed, so that estimate held the fleet out four
-   * times too long at a quarter pace — and a scout who trusted it would raid a world whose garrison
-   * was already back.
+   * THE SCOUT IS TOLD WHEN THE FLEET WILL REALLY BE HOME: the way back takes as long as the way
+   * out, plus the engagement it fights in between.
    */
-  it('estimates a slow raid home on the full-speed way back', async () => {
+  it('estimates a slow raid home on the equally slow way back', async () => {
     const departedAt = f.clock.now();
     const slow = await launchAttack(
       f.db, attacker, defender, { DART: 5 }, f.clock, undefined, false, 0.25,
@@ -155,19 +152,24 @@ describe('the pace a launch is flown at', () => {
     const truth = (await fleetTruthFor(f.db, [attacker], f.clock.now())).get(attacker);
     expect(truth?.status).toBe('AWAY');
     const estimate = minutesBetween(slow.arriveAt, truth!.expectedHomeAt!);
-    expect(estimate).toBeCloseTo(outbound * 0.25, 3);
+    expect(estimate).toBeCloseTo(outbound + COMBAT.engagementSeconds / 60, 3);
   });
 
-  /**
-   * AND THE SEASON'S END IS MEASURED ON THAT SAME WAY BACK. Self-review 2026-09-23, R6. The launch
-   * guard assumed the survivors would crawl home at the outbound pace, so near the end of a season
-   * it refused a slow raid whose real, full-speed return landed in time — while the launch sheet,
-   * which knows the way home is fast, offered it.
-   */
-  it('accepts a slow raid whose full-speed way home lands before the season ends', async () => {
+  /** AND THE SEASON'S END IS MEASURED ON THAT SAME SLOW WAY BACK. */
+  it('refuses a slow raid whose slow way home would land after the season ends', async () => {
     const dist = await spanBetween(attacker, defender);
     const full = fleetTravelExact(dist, { DART: 5 }, UNAIDED);
     const endsAt = new Date(f.clock.now().getTime() + (full / 0.25 + full + 2) * 60_000);
+    await f.db.update(seasons).set({ endsAt }).where(eq(seasons.id, f.seasonId));
+    await expect(launchAttack(
+      f.db, attacker, defender, { DART: 5 }, f.clock, undefined, false, 0.25,
+    )).rejects.toMatchObject({ code: 'SEASON_ENDS_BEFORE_RETURN' });
+  });
+
+  it('accepts a slow raid whose slow way home lands before the season ends', async () => {
+    const dist = await spanBetween(attacker, defender);
+    const full = fleetTravelExact(dist, { DART: 5 }, UNAIDED);
+    const endsAt = new Date(f.clock.now().getTime() + (2 * full / 0.25 + 2) * 60_000);
     await f.db.update(seasons).set({ endsAt }).where(eq(seasons.id, f.seasonId));
     await expect(launchAttack(
       f.db, attacker, defender, { DART: 5 }, f.clock, undefined, false, 0.25,

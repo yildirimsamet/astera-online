@@ -1,7 +1,7 @@
 import { HULLS } from './hulls.js';
 import { GALAXY, MULTI_WORLD } from './constants.js';
 import { cargoMult, type TechLevels } from './tech.js';
-import { UNAIDED, distance, fleetTravelExact } from './travel.js';
+import { distance } from './travel.js';
 import type { PlanetSlot } from './galaxy.js';
 import type {
   Fleet,
@@ -22,49 +22,19 @@ import type {
 export const GALAXY_SPAN = 2 * GALAXY.radius;
 
 /**
- * HOW LONG A PUBLIC CLAIM STAYS OPEN. DERIVED, NEVER TYPED. D111.
+ * HOW LONG A PUBLIC CLAIM STAYS OPEN: NINETY MINUTES. Owner decision, 2026-10-06.
  *
- * A claim is a race that only a SETTLEMENT can win, and a settlement is two
- * Couriers — the settlement transport. So the window is not a taste in
- * minutes: it is the longest settlement flight the map can produce, or the far
- * half of the galaxy is unreachable by arithmetic and the race is decided by
- * where a commander was seeded rather than by anything they chose.
+ * D111 derived this from the widest settlement flight — two Couriers across one
+ * diameter — so the far half of the galaxy could never be locked out by arithmetic.
+ * When every transport became 2.5x faster that derivation would have shrunk the
+ * race from 81 minutes to about a third of an hour for a change nobody aimed at
+ * it. The owner fixed it instead: "Sabit olsun ve 90dk olsun."
  *
- * WRITTEN AS `30` IT WAS RIGHT ONCE. At radius 1000 the widest crossing was a
- * little over 2,000 units and two transports covered it in 29.2 minutes, so a flat
- * thirty was this same derivation with the arithmetic already done. D101 then
- * widened the disc 2.5× and named every constant that did and did not take the
- * factor — hull speeds no, `radarRange` no, the Prospector and the rocks yes —
- * and this one was never in the list. The widest crossing became 71.1 minutes
- * against an unchanged thirty-minute window.
- *
- * WHAT THAT COST, measured over seeds 1-3 at the shipped 300/51 layout: 48% of
- * all (capital, neutral) pairs were settleable at all, the median pair missed by
- * 0.8 minutes, and the six T3 worlds at the contested centre — the whole strategic
- * prize — sat 21 to 33 minutes from a rim capital. A commander could decisively
- * raid a world and then watch its one window close with their Couriers still in
- * the air. This is the class of failure D63 named: an absolute duration stops
- * being a fraction of the thing it has to cover as soon as the map moves.
- *
- * THE CEILING IS THE ONLY SLACK, and it is deliberate. A commander at the extreme
- * rim gets the rounding — about a minute at a real seed's widest pair — to see the
- * claim and press. Anyone nearer gets the difference between their flight and this
- * one, which is what still makes proximity worth having: the first valid arrival
- * wins, so distance decides the RACE while no longer deciding who may enter it.
+ * D111'S GUARANTEE STILL HOLDS, AND A TEST KEEPS IT: the widest crossing the disc
+ * allows lands well inside ninety minutes, so distance still decides the RACE
+ * (first valid arrival wins) and never who may enter it.
  */
-export const SETTLEMENT_CLAIM_MINUTES = Math.ceil(
-  fleetTravelExact(
-    GALAXY_SPAN,
-    { [MULTI_WORLD.settlement.transportHull]: MULTI_WORLD.settlement.transports },
-    /*
-      UNAIDED, AND THAT IS THE POINT (D180). This window has to contain the worst
-      settlement flight the map can produce, so it is measured at catalogue speed —
-      no Beacon, no Propulsion. A commander who has either gets the difference as
-      slack, which is the correct direction for a floor to be wrong in.
-    */
-    UNAIDED,
-  ),
-);
+export const SETTLEMENT_CLAIM_MINUTES = 90;
 
 /**
  * Capacity is deliberately stepwise and derived from the CAPITAL's Core: one colony

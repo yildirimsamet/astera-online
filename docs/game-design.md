@@ -19,9 +19,9 @@ The next season uses a radius-`4,500` galaxy with a `450` minimum pair distance:
 addresses, 100 bot addresses and 130 neutral addresses. Neutrals are staged (`15/8/3` initial
 T1/T2/T3 openings, followed by one opening per free colony slot at the census cadence) while the
 full authored address pool remains deterministic. Player mobile hulls are slowed to `75%` of their
-profile speed and pirate fleets to `70%`; the Prospector travels at `1546.875`, returns laden at
-`773.4375`, and chases rocks in the `262.5–562.5` range. The mining speeds include the owner's
-2026-10-04 `2.5×` increase; asteroid lifetime is unchanged. The same update enlarges all three
+profile speed and pirate fleets to `70%`; cargo holds fly `2.5×` their slowed profile speed
+(2026-10-06). The Prospector travels at `1237.5`, returns laden at `618.75`, and chases rocks in the
+`262.5–562.5` range — `2×` its September speed (owner 2026-10-06); asteroid lifetime is unchanged. The same update enlarges all three
 planet size anchors and the intervening Core-level ramp by `30%`, preserving their proportions.
 
 The convoy clock is 180 minutes. Trade ships use four 180-minute daily windows: `01–04`, `07–10`,
@@ -281,6 +281,13 @@ capacity. A deeper hold does not replace Courier because the slowest included hu
 
 Support hulls are **shielded from fire while any combat hull on their side survives**, which
 creates the escort decision: bring enough combat hulls to cover the cargo you brought.
+At a **pirate** (owner, 2026-10-06), holds left without a single warship are taken once the fight
+ends, provided the raiders still have a gun (`pirateOverrun`): destroyed, wreckage, a DECISIVE
+grade that pays the hoard and may tow one home. PvP worlds keep the plain rule.
+
+The launch ruler's **success lines** count a fight as success only when the defender is broken and
+at least one of the wing's ships comes home (owner, 2026-10-06) — a mutual wipe graded DECISIVE is
+no success on the ruler.
 
 ## Combat
 
@@ -619,8 +626,10 @@ reset continues. Activation status and measured acceptance are recorded in deplo
 
 - **Pace.** Every world-to-world launch — raid, transfer and the clan joint strike — may fly at
   100 / 75 / 50 / 25 / 10 % speed. A slower rung lands later and burns exactly the same fuel. No
-  paced flight may stay up past 12 hours (full speed is always allowed, however long). The way
-  home is always flown at full speed. Pirates, settlements and lessons fly at full speed.
+  paced flight leg may stay up past 12 hours (full speed is always allowed, however long). Since
+  2026-10-06 the way home is flown at the same pace as the way out — raid survivors, a transfer's
+  returning group and a clan strike's survivors (owner: "Bacakların eşit yarı yarıya bölünmesi
+  lazım"). Pirates, settlements and lessons fly at full speed.
 - **Recall (transfers, and raids since K8).** A commander's own transfer or raid may be turned
   around ONCE while still flying toward its target — a raid until its engagement begins, with no
   earlier lock; the way home takes as long as was already flown, costs nothing more, refunds no

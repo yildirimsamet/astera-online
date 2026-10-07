@@ -1301,6 +1301,7 @@ describe('how much of a wall the wing takes', () => {
       attackerTech: flightModifiers(holding).tech,
       defenderTech: {},
       defenderDamageMult: 0.65,
+      pirate: true,
       shield: { low: 0, high: 0 },
       unarmed: { low: 0, high: 0 },
       wall: { kind: 'EXACT', fleet: crew },

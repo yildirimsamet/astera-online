@@ -60,6 +60,30 @@ describe('recall from the selected craft', () => {
     expect(screen.queryByRole('button', { name: 'Recall fleet' })).not.toBeInTheDocument();
   });
 
+  /**
+   * THE LINE UNDER A FLIGHT SAYS WHAT IS TRUE OF THAT FLIGHT. Owner report, 2026-10-06: every
+   * outbound fleet read "a launched fleet cannot be recalled" — right over the Recall button.
+   */
+  it('tells a recallable fleet it can still turn, never that it cannot', () => {
+    render(<ThreadFocus thread={thread()} minutesRemaining={10}
+      onClose={vi.fn()} onToggle={vi.fn()} open onRecall={vi.fn()} />);
+    expect(screen.getByText(/can be turned home once/i)).toBeInTheDocument();
+    expect(screen.queryByText(/cannot be recalled/i)).not.toBeInTheDocument();
+  });
+
+  it('names a pirate raid as the flight that cannot turn', () => {
+    render(<ThreadFocus thread={thread({ kind: 'pirate', recallable: undefined })} minutesRemaining={10}
+      onClose={vi.fn()} onToggle={vi.fn()} open onRecall={vi.fn()} />);
+    expect(screen.getByText('A pirate raid cannot be recalled.')).toBeInTheDocument();
+  });
+
+  it('says plainly that a flight the server will not turn cannot be recalled', () => {
+    render(<ThreadFocus thread={thread({ kind: 'probe', recallable: undefined })} minutesRemaining={10}
+      onClose={vi.fn()} onToggle={vi.fn()} open onRecall={vi.fn()} />);
+    expect(screen.getByText('This flight cannot be recalled.')).toBeInTheDocument();
+    expect(screen.queryByText(/launched fleet/i)).not.toBeInTheDocument();
+  });
+
   it('disables a fleet recall already being submitted', () => {
     render(<ThreadFocus thread={thread()} minutesRemaining={10}
       onClose={vi.fn()} onToggle={vi.fn()} open onRecall={vi.fn()} recalling />);

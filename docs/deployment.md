@@ -1918,3 +1918,28 @@ in `out/seven-followups-20261005`. Mobile browser emulation checks focus scale a
 control sizes; it does not claim an actual iPhone hardware test. The owner authorized the
 complete rollout on 2026-10-05. Use the rolling path, retain the previous image/webroot and
 rehearse the backup restore and calendar adoption before applying it to production.
+
+## Owner list 2026-10-06 — eleven fixes
+
+No migration and no season operation: the rolling path, with the image and the webroot as the
+rollback (rule 10). `/api/season` gains an additive `monumentHonorees` field; an already-open
+client ignores it (rule 11).
+
+**Rule 13 — the live season changes on the first request the new image serves.** No row moves;
+the code reading them does:
+
+- Every cargo hold (Courier/Wayfarer/Atlas/Argosy) flies 2.5× (`TRANSPORT_SPEED_MULT`); the
+  Prospector flies 1237.5 (2× September); the merchant keeps its pace.
+- A paced flight now comes home at its own pace: raid survivors, a transfer's returning group and
+  clan joint-war survivors. Flights already in the air keep their stored `arrive_at`; a raid still
+  outbound at deploy time will come home on the NEW rule when it lands.
+- The public claim window is a fixed 90 minutes (was derived, 81). Claims already open keep their
+  stored `claim_until`.
+- A pirate whose warships are all down loses its holds too (`pirateOverrun`): DECISIVE, wreckage,
+  hoard. `pirates.ts` changed only for this; the derived lane (rosters, positions) is untouched.
+- The launch ruler's success lines and the bots' raid judgement count a mutual wipe as no success.
+- Monuments carry this galaxy's previous-season top five ("Name • Monument").
+
+Client-only: the Dyson far tier is the simplified ring (`dyson_1_lod.glb`), bloom's luminance
+pass discards non-finite pixels (`finiteGuard.ts`), the timers sheet lists the whole queue, the
+desk outline selects a world, and the recall line states what is true of each flight.

@@ -253,12 +253,14 @@ export const RADAR_FRAGMENT = /* glsl */ `
   void main() {
     vec3 p = normalize(vLocal);
     float facing = abs(dot(normalize(vNormal), normalize(vView)));
-    float rim = pow(1.0 - facing, 3.0) * uRim;
+    // facing can round a hair past 1; pow() of a negative is a NaN, and one NaN pixel blooms into a block.
+    float rim = pow(max(0.0, 1.0 - facing), 3.0) * uRim;
 
     // Sparse navigation arcs give an inside camera parallax without turning the
     // volume into the hard modelling-tool wireframe rejected in D124.
     float lat = asin(clamp(p.y, -1.0, 1.0));
-    float lon = atan(p.z, p.x);
+    // atan(0, 0) is undefined at the poles; a NaN pixel there would bloom into a block.
+    float lon = abs(p.x) + abs(p.z) < 1e-6 ? 0.0 : atan(p.z, p.x);
     float latPhase = lat / 0.7853981634;
     float lonPhase = lon / 0.7853981634;
     float latEdge = abs(fract(latPhase + 0.5) - 0.5) / max(fwidth(latPhase), 1e-5);
@@ -329,7 +331,7 @@ export const SHELL_FRAGMENT = /* glsl */ `
 
   void main() {
     float facing = abs(dot(normalize(vNormal), normalize(vView)));
-    float rim = pow(1.0 - facing, uFalloff);
+    float rim = pow(max(0.0, 1.0 - facing), uFalloff);
 
     // A small floor so the far wall stays faintly lit from inside; the rim is what
     // gives the bubble its edge from outside.
@@ -366,7 +368,8 @@ export const SHELL_FRAGMENT = /* glsl */ `
      * constant world width that aliases into a shimmering mess at distance.
      */
     float lat = asin(clamp(p.y, -1.0, 1.0));
-    float lon = atan(p.z, p.x);
+    // atan(0, 0) is undefined at the poles; a NaN pixel there would bloom into a block.
+    float lon = abs(p.x) + abs(p.z) < 1e-6 ? 0.0 : atan(p.z, p.x);
     float latPhase = lat / LAT_STEP;
     float lonPhase = lon / LON_STEP;
     float latEdge = abs(fract(latPhase + 0.5) - 0.5) / max(fwidth(latPhase), 1e-5);

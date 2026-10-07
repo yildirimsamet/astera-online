@@ -178,7 +178,8 @@ describe('the shell on a desk', () => {
     shell();
     await userEvent.click(screen.getByRole('button', { name: 'tab fleet' }));
     await userEvent.click(screen.getByRole('button', { name: 'outline world' }));
-    expect(onFocusPlanet).toHaveBeenCalledWith('p-2');
+    // A world row SELECTS the world (owner report, 2026-10-06): focus alone left the old one active.
+    expect(onFocusPlanet).toHaveBeenCalledWith('p-2', { select: true });
     expect(screen.queryByRole('dialog', { name: 'fleet' })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'bell' }));
     await userEvent.click(screen.getByRole('button', { name: 'outline flight' }));

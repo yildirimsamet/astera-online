@@ -5,6 +5,7 @@ import {
   HULLS,
   SUPPORT_HULLS,
   TRADE,
+  TRANSPORT_SPEED_MULT,
   TRAVEL,
   distance,
   generateGalaxyEventSchedule,
@@ -208,7 +209,10 @@ describe('the merchant on its orbit', () => {
     */
     const holds = SUPPORT_HULLS.filter((id) => HULLS[id].profile === 'TRANSPORT');
     const slowest = holds.reduce((a, b) => (HULLS[a].speed <= HULLS[b].speed ? a : b));
-    expect(TRADE.speed * 2 * TRAVEL.distanceFactor).toBeCloseTo(HULLS[slowest].speed, 9);
+    // 2026-10-06: the holds took a 2.5x lift and the merchant did not — it stays at
+    // half the slowest hold's AUTHORED pace, so every hold now leads it five-fold.
+    expect(TRADE.speed * 2 * TRAVEL.distanceFactor * TRANSPORT_SPEED_MULT)
+      .toBeCloseTo(HULLS[slowest].speed, 9);
 
     // Every cargo hull LEADS the merchant, so the convoy is a choice of hold size
     // rather than a question of whether you can catch it at all.

@@ -67,6 +67,9 @@ const closed = () => ({ open: false, onOpen: vi.fn(), onClose: vi.fn() });
 const entries = (over: Partial<NowInput>) => nowEntries({
   now: NOW, threads: [], runs: [], builds: [], research: [], events: [], shieldUntil: null, ...over,
 });
+const sheetEntries = (over: Partial<NowInput>) => nowEntries({
+  now: NOW, threads: [], runs: [], builds: [], research: [], events: [], shieldUntil: null, ...over,
+}, 'sheet');
 
 describe('the Now line', () => {
   it('is not in the page when nothing is timed', () => {
@@ -126,6 +129,33 @@ describe('the Now line', () => {
     const sheet = screen.getByRole('dialog', { name: 'Timers' });
     expect(within(sheet).getAllByRole('listitem')).toHaveLength(3);
     expect(within(sheet).getAllByText(/^at /)).toHaveLength(3);
+  });
+
+  /**
+   * ONLY THE RUNNING ORDER COUNTS DOWN. Owner report, 2026-10-06: every queued order wore a clock,
+   * which read as three buildings going up at once — the Base's own lanes mark the rest "Queued".
+   */
+  it('lists the whole queue, counting down only the running order', () => {
+    const next: BuildOrderView = { ...refinery, id: 'o-2', slot: 1, subject: 'EXTRACTOR', startedAt: at(120_000), finishesAt: at(900_000) };
+    const last: BuildOrderView = { ...refinery, id: 'o-3', slot: 2, subject: 'VAULT', startedAt: at(900_000), finishesAt: at(2_400_000) };
+    const input = { builds: [refinery, next, last] };
+    render(<NowLine entries={entries(input)} sheet={sheetEntries(input)} now={NOW} {...closed()} open />);
+    const sheet = screen.getByRole('dialog', { name: 'Timers' });
+    const rows = within(sheet).getAllByRole('listitem');
+    expect(rows).toHaveLength(3);
+    expect(within(rows[0]!).getByText('2m 00s')).toBeInTheDocument();
+    expect(within(rows[0]!).getByText(/^at /)).toBeInTheDocument();
+    expect(within(rows[0]!).getByText('Work finishing')).toBeInTheDocument();
+    for (const row of rows.slice(1)) {
+      expect(within(row).getByText('Queued')).toBeInTheDocument();
+      // A queued order is not finishing: it says when it starts.
+      expect(within(row).getByText('Starts when the one ahead finishes')).toBeInTheDocument();
+      expect(within(row).queryByText('Work finishing')).toBeNull();
+      expect(within(row).queryByText(/^at /)).toBeNull();
+      expect(within(row).queryByText(/\d+m \d+s/)).toBeNull();
+    }
+    // And the line says how many more the sheet holds.
+    expect(screen.getByText('+2')).toBeInTheDocument();
   });
 
   it.each([

@@ -538,7 +538,10 @@ export const focus = {
     craft: "Craft",
     craftUnknown: "—",
     returning: "On its way back. Nothing more to decide.",
-    outbound: "A launched fleet cannot be recalled.",
+    outbound: "This flight cannot be recalled.",
+    /** A raid or a transfer may be turned once before it arrives (K8). */
+    recallable: "It can be turned home once before it arrives; the way back takes as long as it has flown.",
+    outboundPirate: "A pirate raid cannot be recalled.",
   },
 
   contact: {
@@ -669,7 +672,8 @@ export const pirate = {
   captured: "{{hull}} captured",
   captureMissed: "Nothing left worth towing home",
   send: "Send {{count}} · {{duration}}",
-  outbound: "A launched fleet cannot be recalled.",
+  outbound: "A pirate raid cannot be recalled.",
+  holdsHint: "Once its warships are down, its holds cannot escape — they are taken too.",
   /**
    * YOU CANNOT SEE THIS ONE — WHICH IS NOT THE SAME AS "THIS IS OLD". D160.
    *

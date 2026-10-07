@@ -280,7 +280,7 @@ export function GalaxyView({
   panelFocus?: PanelFocusRequest | null;
   /** A route from an already-revealed identity back to its world. */
   /** A world to frame, from outside the galaxy; `dossier` opens its dossier as well (M4). */
-  focusRequest?: { planetId: string; request: number; dossier?: boolean } | null;
+  focusRequest?: { planetId: string; request: number; dossier?: boolean; select?: boolean } | null;
   /** A route from the permanent in-flight sheet to a craft already on the disc. */
   craftFocusRequest?: { focus: StripFocus; request: number } | null;
   /** Who is signed in. Shown on the one surface that is about you rather than the world. */
@@ -1018,7 +1018,7 @@ export function GalaxyView({
     if (!focusRequest || handledFocusRequest.current === focusRequest.request) return;
     if (!planets.some((candidate) => candidate.id === focusRequest.planetId)) return;
     handledFocusRequest.current = focusRequest.request;
-    focusPlanet(focusRequest.planetId);
+    focusPlanet(focusRequest.planetId, focusRequest.select === true ? 'select' : 'focus');
     if (focusRequest.dossier) setDetail(true);
   }, [focusPlanet, focusRequest, planets]);
 

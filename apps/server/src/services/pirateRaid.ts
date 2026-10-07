@@ -19,6 +19,7 @@ import {
   pirateActive,
   pirateCapture,
   piratePosition,
+  pirateOverrun,
   pirateStats,
   resolveCombat,
   resolveBattle,
@@ -559,10 +560,15 @@ async function settleArrival(
     attacker: { tech: raid.tech ?? {} },
     defender: { tech: {}, damageMult: pirateStats(spec.level).damageMult },
   };
-  const result = hpRadiationApplies(origin.rulesetVersion)
+  const fought = hpRadiationApplies(origin.rulesetVersion)
     ? resolveBattle([soloStack(attacking, combatTech.attacker, raid.damage ?? undefined)],
       [{ stackId: 'pirate', playerId: '', fleet: crew, tech: combatTech.defender }], 0, seededFrom(raid.id), 'HP_PLANET')
     : resolveCombat(attacking, crew, 0, seededFrom(raid.id), combatTech, raid.damage ?? undefined);
+  /*
+    UNESCORTED HOLDS DO NOT ESCAPE (owner report, 2026-10-06): once the crew's last warship is down
+    and this wing still has a gun, the holds left are taken — destroyed, wreckage, a DECISIVE grade.
+  */
+  const result = pirateOverrun(fought);
   /*
     KALICI GEMİ HASARI. The hunters carry their part-hit ships home to be judged on
     landing; the crew is nobody's and carries nothing (plan D1).

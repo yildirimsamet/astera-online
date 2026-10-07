@@ -160,6 +160,7 @@ export const reports = {
   pirateHeld: "海賊たちは守り続けた。この襲撃では戦利品は何も得られませんでした。",
   /** The prize, and the only door in the game into a hull you did not build. */
   pirateCaptured: "海賊より",
+  pirateOverrun: '護衛を失った輸送艦は逃げられなかった：{{fleet}}。',
   pirateCapturedNote:
     "あなたが破壊した乗組員の残骸から無傷で採取されました。これは、艦隊が戻る世界の駐屯地に加わります (たとえ 格納庫 容量を超えていたとしても) が、あなたが建造したものとしてカウントされません。",
   youHeld: "襲撃を中止しました。攻撃者はリソースを何も取得しませんでした。",

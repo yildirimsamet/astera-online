@@ -7,7 +7,7 @@ import { useApi } from '../api/context.js';
 import { keys, useMonumentActions, useMonuments, useNotifications } from '../api/queries.js';
 import type { MonumentWave, PlanetView } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
-import { hullName, monumentName } from '../i18n/names.js';
+import { hullName, monumentHonoree, monumentName } from '../i18n/names.js';
 import { activeMonumentInbound } from '../lib/notifications.js';
 import { useDebouncedValue } from '../lib/useDebouncedValue.js';
 import { decimal, full } from '../lib/format.js';
@@ -91,6 +91,8 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
         {target.respawnAt && target.controller.kind === 'NEUTRAL' && <p className="mt-1 text-micro text-v2-ink-2">{target.respawnAt.getTime() > now
           ? t('monument.respawnAt', { time: countdown(target.respawnAt.getTime() - now) }) : t('monument.respawnDue')}</p>}
         <p className="mt-2 text-micro leading-snug text-v2-ink-2">{t('monument.purpose')}</p>
+        {monumentHonoree(target.ordinal) !== null && <p className="mt-1 text-micro text-v2-ink-3">
+          {t('monument.honouredNote', { name: monumentHonoree(target.ordinal), rank: target.ordinal })}</p>}
         {onClanTarget && !friendly && <Button size="sm" className="mt-2" onClick={() => { onClanTarget(monumentId); }}>{t('monument.clanTarget')}</Button>}
       </Plate>}
       {incoming && <p role="alert" className="text-caption text-v2-hostile">{t('monument.incoming')}</p>}

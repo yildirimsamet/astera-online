@@ -67,6 +67,24 @@ const panel = (
 };
 
 describe('the pirate rail', () => {
+  /** Owner report, 2026-10-06: the rail said "a launched fleet cannot be recalled" of every fleet. */
+  it('says a pirate raid cannot be recalled, not every launched fleet', () => {
+    panel(identified(), { DART: 10 });
+    expect(screen.getByText('A pirate raid cannot be recalled.')).toBeInTheDocument();
+    expect(screen.queryByText(/launched fleet/i)).not.toBeInTheDocument();
+  });
+
+  /** The holds rule, where the crew is read — only when the crew carries a hold. */
+  it('tells the commander a crew\'s holds do not escape once its warships are down', () => {
+    panel(identified({ fleet: { RAMPART: 3, COURIER: 2 } }), { DART: 10 });
+    expect(screen.getByText(/holds cannot escape/i)).toBeInTheDocument();
+  });
+
+  it('says nothing of holds to a crew that carries none', () => {
+    panel(identified(), { DART: 10 });
+    expect(screen.queryByText(/holds cannot escape/i)).not.toBeInTheDocument();
+  });
+
   it('states the damage handicap as a number, not as a vibe', () => {
     panel(identified(), { DART: 10 });
     // 0.75 at level 3 → "25% less damage". The exact figure, because the whole

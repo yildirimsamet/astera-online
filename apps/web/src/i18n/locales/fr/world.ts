@@ -507,7 +507,10 @@ export const focus = {
     craftUnknown: "—",
     returning:
       "Impossible de donner de nouveaux ordres aux appareils déjà sur le chemin du retour.",
-    outbound: "Une flotte déjà lancée ne peut pas être rappelée.",
+    outbound: "Ce vol ne peut pas être rappelé.",
+    /** A raid or a transfer may be turned once before it arrives (K8). */
+    recallable: "Elle peut faire demi-tour une fois avant d’arriver ; le retour dure autant que le vol déjà effectué.",
+    outboundPirate: "Un raid pirate ne peut pas être rappelé.",
   },
   contact: {
     eyebrowBattle: "Un raid frappe sa cible",
@@ -610,7 +613,8 @@ export const pirate = {
   captured: "{{hull}} capturé",
   captureMissed: "Aucun vaisseau intact à remorquer",
   send: "Envoyer {{count}} vaisseaux · {{duration}}",
-  outbound: "Une flotte déjà lancée ne peut pas être rappelée.",
+  outbound: "Un raid pirate ne peut pas être rappelé.",
+  holdsHint: "Une fois ses vaisseaux de guerre abattus, ses cargos ne peuvent pas s’échapper : vous les prenez aussi.",
   /** Dire « tu ne le vois pas », pas « cette information est ancienne ». Les valeurs restent en direct. D160. */
   remembered:
     "Suivi depuis son identification · actuellement hors de portée de tes capteurs",

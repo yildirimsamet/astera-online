@@ -68,6 +68,8 @@ export const now = {
   sheet: 'Temporizadores',
   work: 'Obra a punto de terminar',
   research: 'Investigación a punto de terminar',
+  /** An order behind the head of its lane: no clock yet (2026-10-06). */
+  queued: "Empieza cuando termine el anterior",
   event: 'El evento termina',
   shield: 'Tu escudo termina',
   shieldDetail: 'Después, los ataques pueden alcanzarte',

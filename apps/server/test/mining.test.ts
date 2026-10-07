@@ -1210,7 +1210,7 @@ describe('mining', () => {
       await worker(f).tick();
       const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
       expect(back!.minedAlloy).toBe(200);
-      const expectedHome = legacyArrival.getTime() + travelExact(120, 773.4375) * 60_000;
+      const expectedHome = legacyArrival.getTime() + travelExact(120, prospectorReturnSpeed([], true)) * 60_000;
       expect(Math.abs(back!.homeAt!.getTime() - expectedHome)).toBeLessThanOrEqual(1);
     });
 

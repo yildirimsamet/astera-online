@@ -1889,6 +1889,12 @@ export async function planContributionReturn(
     /** What actually survives. The whole wave on every pre-battle path. */
     fleet: Fleet;
     now: Date;
+    /**
+     * THE STRIKE'S PACE, ON A BATTLE RETURN ONLY. Owner decision, 2026-10-06: survivors fly home at
+     * the pace the combined leg flew. Every pre-battle path omits it and flies at full speed — those
+     * waves never flew a paced leg.
+     */
+    pace?: MissionPace;
   },
 ): Promise<void> {
   const { contribution, operation, now } = input;
@@ -1948,11 +1954,13 @@ export async function planContributionReturn(
   if (!from || !to) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
 
   const span = distance(from, to);
+  const leg = contribution.status === 'IN_BATTLE' ? 'BATTLE_RETURN' : 'SUPPORT_RETURN';
+  const pace: MissionPace = leg === 'BATTLE_RETURN' ? input.pace ?? 1 : 1;
   const arriveAt = addMinutes(now, fleetTravelExact(span, input.fleet, {
     boost: fleetSpeedMult(await orbitOfPlanet(tx, destinationPlanetId)),
     tech: contribution.tech,
+    pace,
   }));
-  const leg = contribution.status === 'IN_BATTLE' ? 'BATTLE_RETURN' : 'SUPPORT_RETURN';
   const [mission] = await tx.insert(missions).values({
     // A return leg is already paid for: fuel is charged in full at the outbound launch.
     fuelPaid: 0,
@@ -1964,6 +1972,7 @@ export async function planContributionReturn(
     fleet: input.fleet,
     tech: contribution.tech,
     distance: span,
+    pace,
     departAt: now,
     arriveAt,
   }).returning();
@@ -2464,8 +2473,9 @@ export async function startClanWar(
   const span = distance(staging, target);
   /*
     THE LEADER CHOOSES WHEN IT LANDS, and the rung is checked against THIS leg before any shield
-    or quota is touched — the same order the personal raid lane keeps. Only the combined leg is
-    paced; survivors come home at full speed like every other lane (plan §15.5a).
+    or quota is touched — the same order the personal raid lane keeps. The staging legs fly at full
+    speed; the combined leg at the chosen pace, and since 2026-10-06 the survivors fly home at that
+    same pace like every other lane.
   */
   const fullSpeed = travelExact(span, slowest);
   if (!pacesForMinutes(fullSpeed).includes(chosenPace)) {
@@ -2573,6 +2583,7 @@ export async function startClanWar(
     const back = fleetTravelExact(distance(target, destination), wave.fleet, {
       boost: fleetSpeedMult(await orbitOfWorld(tx, destination.id)),
       tech: wave.tech,
+      pace: chosenPace,
     });
     if (addMinutes(resolveAt, back) > season.endsAt) {
       throw new GameError(

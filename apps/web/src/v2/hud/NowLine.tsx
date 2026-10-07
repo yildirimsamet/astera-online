@@ -3,11 +3,17 @@ import type { Contact } from '../../api/schemas.js';
 import { describeNow, type NowEntry } from '../../lib/nowLine.js';
 import type { FlightFocus } from '../../lib/flights.js';
 import { clockTime, countdown } from '../../lib/time.js';
+import { Icon } from '../icons.js';
 import { Sheet } from '../kit/Sheet.js';
 
 export interface NowLineProps {
   /** `nowEntries(...)`, most urgent first. */
   entries: readonly NowEntry[];
+  /**
+   * `nowEntries(..., 'sheet')`: what the sheet lists — the whole work queue, the orders behind
+   * each lane's head marked waiting. The line's own entries when absent.
+   */
+  sheet?: readonly NowEntry[];
   /** Server time, ticking. */
   now: number;
   /** The disc's contacts, so an inbound line says whether the attacker is in sight. */
@@ -38,10 +44,12 @@ export interface NowLineProps {
  * A tap opens every timer, each with its countdown and the clock time it lands
  * at — the answer a countdown otherwise makes the player compute.
  */
-export function NowLine({ entries, now, contacts = [], open, onOpen, onClose, onFocus, floating = false }: NowLineProps) {
+export function NowLine({ entries, sheet = entries, now, contacts = [], open, onOpen, onClose, onFocus, floating = false }: NowLineProps) {
   const { t } = useTranslation();
   const head = entries[0];
   if (!head) return null;
+  /** How many more the sheet holds: the line promises what one tap shows. */
+  const more = Math.max(entries.length, sheet.length) - 1;
 
   const enemy = head.kind === 'incoming';
   const { title, detail } = describeNow(head, contacts);
@@ -78,8 +86,8 @@ export function NowLine({ entries, now, contacts = [], open, onOpen, onClose, on
         <span className={`shrink-0 font-v2-mono text-caption tabular-nums ${enemy ? 'text-v2-hostile' : 'text-v2-ink'}`}>
           {countdown(head.at - now)}
         </span>
-        {entries.length > 1 && (
-          <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">+{entries.length - 1}</span>
+        {more > 0 && (
+          <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">+{more}</span>
         )}
       </button>
       </div>
@@ -87,24 +95,37 @@ export function NowLine({ entries, now, contacts = [], open, onOpen, onClose, on
       {open && (
         <Sheet title={t('now.sheet')} onClose={onClose}>
           <ul className="flex flex-col">
-            {entries.map((entry) => {
+            {sheet.map((entry) => {
               const said = describeNow(entry, contacts);
               const hostile = entry.kind === 'incoming';
               const focus = 'focus' in entry ? entry.focus : undefined;
+              const queued = 'waiting' in entry && entry.waiting;
               const row = <>
                 <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${hostile ? 'bg-v2-hostile' : 'bg-v2-self'}`} />
                 <span className="grid min-w-0 flex-1">
                   <span className="truncate text-caption font-semibold text-v2-ink">{said.title}</span>
                   {said.detail && <span className="truncate text-micro text-v2-ink-3">{said.detail}</span>}
                 </span>
-                <span className="grid shrink-0 justify-items-end">
-                  <span className={`font-v2-mono text-caption tabular-nums ${hostile ? 'text-v2-hostile' : 'text-v2-ink'}`}>
-                    {countdown(entry.at - now)}
+                {/*
+                  AN ORDER BEHIND THE HEAD OF ITS LANE HAS NO RUNNING CLOCK (owner, 2026-10-06):
+                  it wears the Base lane's own hourglass and "Queued", never a countdown that
+                  reads as work already under way.
+                */}
+                {queued ? (
+                  <span data-waiting="" className="inline-flex shrink-0 items-center gap-0.5 font-v2-mono text-caption text-v2-warn">
+                    <Icon id="i-hourglass" className="size-3 shrink-0" />
+                    {t('planet.queue.waiting')}
                   </span>
-                  <span className="font-v2-mono text-micro text-v2-ink-3">
-                    {t('now.at', { time: clockTime(new Date(entry.at)) })}
+                ) : (
+                  <span className="grid shrink-0 justify-items-end">
+                    <span className={`font-v2-mono text-caption tabular-nums ${hostile ? 'text-v2-hostile' : 'text-v2-ink'}`}>
+                      {countdown(entry.at - now)}
+                    </span>
+                    <span className="font-v2-mono text-micro text-v2-ink-3">
+                      {t('now.at', { time: clockTime(new Date(entry.at)) })}
+                    </span>
                   </span>
-                </span>
+                )}
               </>;
               return (
                 <li

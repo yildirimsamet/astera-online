@@ -91,11 +91,11 @@ export const counter = {
   compareRuleToggle: '¿Qué es esto?',
   compareMeaning: 'Coste de recursos, no daño de ataque. Una flota más grande por sí sola no garantiza la victoria.',
   compareRule:
-    'Los naves que disparan y los cañones terrestres de ambos bandos se comparan según el coste de los recursos. El escudo y los naves desarmados no están en este número. El pronóstico también utiliza clases de naves, investigaciones y el escudo conocido. Cuando el valor del enemigo está por debajo de un límite, el modelo espera ese nivel de éxito. El éxito total no garantiza la supervivencia de los naves: ambos bandos pueden ser destruidos. La lectura puede ser antigua; Los cambios de disparo aleatorios no están incluidos.',
-  linesClears: 'Límite de éxito total: {{at}}',
-  linesBreaks: 'límite de éxito parcial: {{at}}',
+    'Las naves que disparan y los cañones terrestres de ambos bandos se comparan según el coste de los recursos. El escudo y las naves desarmadas no están en este número. El pronóstico también utiliza clases de naves, investigaciones y el escudo conocido. Si su defensa no supera una línea, el modelo espera ese éxito: la defensa rota y al menos una de tus naves vuelve a casa. Una línea es un rango porque la lectura no lo muestra todo (reparto de clases, escudo): el extremo izquierdo es el peor caso y el derecho el mejor. Lo que le cuesta al ala es la pérdida estimada de abajo. La lectura puede ser antigua; los cambios aleatorios de disparo no están incluidos.',
+  linesClears: 'Éxito total si su defensa es como máximo {{at}}',
+  linesBreaks: 'Al menos éxito parcial si es como máximo {{at}}',
   lineJoin: ' · ',
-  lossLabel: 'Pérdida estimada: {{share}} (por valor de recurso de la flota)',
+  lossLabel: 'Tu pérdida estimada: {{share}} del ala (por valor de recursos)',
   lossUncertainty: 'Este es un rango de pérdida basado en información actual, no una posibilidad de ganar.',
   lossTotalRisk: 'Riesgo alto: Ninguno de tus naves puede regresar.',
   /** What the lines could not see, and what is already known about the reading. D199. */

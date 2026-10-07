@@ -68,6 +68,8 @@ export const now = {
   sheet: 'Zamanlayıcılar',
   work: 'İş bitiyor',
   research: 'Araştırma bitiyor',
+  /** An order behind the head of its lane: no clock yet (2026-10-06). */
+  queued: "Öndeki iş bitince başlar",
   event: 'Olay bitiyor',
   shield: 'Kalkanın bitiyor',
   shieldDetail: 'Sonrasında saldırıya açıksın',

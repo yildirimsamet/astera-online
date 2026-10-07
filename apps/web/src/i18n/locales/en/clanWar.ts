@@ -39,7 +39,7 @@ export const clanWar = {
   recallRule: 'Your wave can be called back until the strike starts.',
   launch: 'Start joint attack', cancel: 'Cancel target',
   strikeEta: 'Strike lands {{time}} after launch',
-  paceHint: 'Slower lands later — choose the hour it hits. No extra fuel; survivors fly home at full speed; nothing stays up past 12h.',
+  paceHint: 'Slower lands later — choose the hour it hits. No extra fuel; survivors fly home at the same speed; no leg past 12h.',
   inboundReason: 'Support fleet is arriving. Wait for it.',
   noCombatReason: 'At least one combat ship must be in the pool.',
   noWaveReason: 'The pool needs a contribution before launch.',

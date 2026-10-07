@@ -32,13 +32,33 @@ const MONUMENT_NAME_KEYS = [
   'monument.names.one', 'monument.names.two', 'monument.names.three', 'monument.names.four', 'monument.names.five',
 ] as const;
 
+/**
+ * LAST SEASON'S FIVE, ONE PER MONUMENT. Owner decision, 2026-10-06: "Vantasia • Kadim Yıldız
+ * Geçidi" wherever a monument is named. Index N − 1 is monument N; `/api/season` states them
+ * (`useSeason` hands them here as the payload arrives, before React reads it), and a rank
+ * nobody finished leaves its monument plain.
+ */
+let honorees: readonly (string | null)[] = [];
+export function setMonumentHonorees(names: readonly (string | null)[]): void {
+  honorees = names;
+}
+
+/** The commander monument N is named for, or null while that rank stands unclaimed. */
+export function monumentHonoree(ordinal: number | undefined): string | null {
+  if (ordinal === undefined || !Number.isInteger(ordinal) || MONUMENT_NAME_KEYS[ordinal - 1] === undefined) return null;
+  const name = honorees[ordinal - 1]?.trim() ?? '';
+  return name === '' ? null : name;
+}
+
 /** Public ordinals identify the five supplied models; missing legacy identities stay readable. */
 export function monumentName(ordinal: number | undefined): string {
   if (ordinal === undefined || !Number.isInteger(ordinal)) {
     return i18n.t('monument.genericTitle');
   }
   const key = MONUMENT_NAME_KEYS[ordinal - 1];
-  return key === undefined ? i18n.t('monument.genericTitle') : i18n.t(key);
+  if (key === undefined) return i18n.t('monument.genericTitle');
+  const name = monumentHonoree(ordinal);
+  return name === null ? i18n.t(key) : i18n.t('monument.honoured', { name, monument: i18n.t(key) });
 }
 export const buildingTag = (id: BuildingId): string => i18n.t(`vocabulary.building.${id}.tag`);
 export const buildingRole = (id: BuildingId): string => i18n.t(`vocabulary.building.${id}.role`);

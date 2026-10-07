@@ -63,12 +63,11 @@ export const counter = {
   compareMeaning:
     "Il s’agit du coût en ressources, pas des dégâts d’attaque. Une grande flotte ne garantit pas à elle seule la victoire.",
   compareRule:
-    "Le coût en ressources des vaisseaux et canons capables de tirer des deux camps est comparé. Le bouclier et les vaisseaux sans armes ne sont pas inclus dans cette valeur. L’estimation tient également compte des classes de vaisseaux, des recherches et du bouclier connu. Si la valeur adverse se situe sous le seuil indiqué, le modèle attend ce niveau de réussite. Une victoire totale ne garantit pas la survie de tes vaisseaux : les deux camps peuvent être entièrement détruits. Les renseignements peuvent être anciens et l’effet aléatoire des tours n’est pas pris en compte.",
-  linesClears: "Seuil de victoire totale : {{at}}",
-  linesBreaks: "Seuil de réussite partielle : {{at}}",
+    "Le coût en ressources des vaisseaux et canons capables de tirer des deux camps est comparé. Le bouclier et les vaisseaux sans armes ne sont pas inclus dans cette valeur. L’estimation tient également compte des classes de vaisseaux, des recherches et du bouclier connu. Si leur défense ne dépasse pas une ligne, le modèle attend cette réussite : la défense brisée et au moins un de tes vaisseaux rentre. Une ligne est une plage parce que la lecture ne montre pas tout (répartition des classes, bouclier) : l’extrémité gauche est le pire cas, la droite le meilleur. Ce que cela coûte à l’escadre est la perte estimée ci-dessous. Les renseignements peuvent être anciens et l’effet aléatoire des tours n’est pas pris en compte.",
+  linesClears: "Victoire totale si leur défense vaut au plus {{at}}",
+  linesBreaks: "Au moins une réussite partielle si au plus {{at}}",
   lineJoin: " · ",
-  lossLabel:
-    "Pertes estimées : {{share}} (selon la valeur en ressources de la flotte)",
+  lossLabel: "Ta perte estimée : {{share}} de l’escadre (selon la valeur en ressources)",
   lossUncertainty:
     "Ce n’est pas une probabilité de victoire, mais une fourchette de pertes fondée sur les renseignements disponibles.",
   lossTotalRisk: "Risque élevé : aucun de tes vaisseaux ne pourrait revenir.",

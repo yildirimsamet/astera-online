@@ -524,7 +524,7 @@ export const launch = {
   exposedFor: "Exposé pendant {{duration}}",
   oneWayUnknown: "—",
   pace: "Vitesse de vol",
-  paceHint: "Plus lent arrive plus tard. Même carburant, et rien ne reste en vol au-delà de 12 h.",
+  paceHint: "Plus lent arrive plus tard et rentre à la même vitesse. Même carburant ; aucune étape au-delà de 12 h.",
   paceFull: "Pleine",
   /* Raisons pour lesquelles cet engagement peut être refusé ; chacune apparaît sur le bouton. */
   noBay: "Aucune baie de vol libre",
@@ -595,7 +595,7 @@ export const transfer = {
   cooldown: "Déchargement — {{duration}} restantes",
   homewardFuel: "Demi-tarif — entre vos propres mondes. Une attaque paie plein.",
   /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
-  paceHint: "Plus lent arrive plus tard — les vaisseaux en vol ne peuvent pas être pillés. Même carburant ; rien ne reste en vol au-delà de 12 h.",
+  paceHint: "Plus lent arrive plus tard — les vaisseaux en vol ne peuvent pas être pillés. Un groupe qui revient rentre à la même vitesse. Même carburant ; aucune étape au-delà de 12 h.",
   fuelShort: "{{short}} manquants",
   eyebrow: "Transfert interplanétaire",
   returnEta: "Retour au départ dans {{duration}} · {{time}}",

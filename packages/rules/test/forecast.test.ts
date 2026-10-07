@@ -5,10 +5,13 @@ import {
   INTEL,
   RESEARCH_TECH,
   combatValue,
+  fleetCount,
   forecastLines,
   forecastLoss,
   matchupsAgainst,
   mulberry32,
+  pirateOverrun,
+  pirateStats,
   resolveCombat,
   wallKnowledgeOf,
   type Fleet,
@@ -46,13 +49,20 @@ const blind = (over: Partial<ForecastInput> = {}): ForecastInput => ({
   ...over,
 });
 
-/** Where the engine itself lands at the mean roll — the thing every line is measured by. */
+/**
+ * Where the engine itself lands at the mean roll — the thing every line is measured by — read as
+ * the SUCCESS the lines promise (owner decision, 2026-10-06): a wipe that takes the whole wing
+ * with it is no success, and a pirate's holds are taken once its line is gone (`pirateOverrun`).
+ */
 const flat = () => 0.5;
-const grade = (sending: Fleet, wall: Fleet, input: ForecastInput) =>
-  resolveCombat(sending, wall, input.shield.high, flat, {
+const grade = (sending: Fleet, wall: Fleet, input: ForecastInput) => {
+  const raw = resolveCombat(sending, wall, input.shield.high, flat, {
     attacker: { tech: input.attackerTech },
     defender: { tech: input.defenderTech, ...(input.defenderDamageMult === undefined ? {} : { damageMult: input.defenderDamageMult }) },
-  }).grade;
+  });
+  const settled = input.pirate === true ? pirateOverrun(raw) : raw;
+  return fleetCount(settled.attackerSurvivors) === 0 ? 'REPELLED' : settled.grade;
+};
 
 const spread = (s: { low: number; high: number }) => s.high / Math.max(1, s.low);
 
@@ -123,7 +133,13 @@ describe('the lines a wing is drawn against', () => {
     expect(f.breaks.low).toBeGreaterThan(mine * 0.9);
   });
 
-  it('matches attack-led Lance mirrors without treating DECISIVE as survival', () => {
+  /**
+   * A WIPE THAT TAKES THE WHOLE WING WITH IT IS NO SUCCESS. Owner decision, 2026-10-06, after a
+   * commander read "full success" and lost every ship: an attack-led Lance mirror can erase both
+   * sides in one salvo, which the server grades DECISIVE and pays nothing for — nobody is left to
+   * carry the loot home. The lines promise a wing that comes back.
+   */
+  it('does not count a mutual wipe as a success', () => {
     const wing: Fleet = { TALON: 30 };
     for (const count of [28, 29, 30, 31, 32, 33]) {
       const crew: Fleet = { TALON: count };
@@ -132,14 +148,24 @@ describe('the lines a wing is drawn against', () => {
       const r = resolveCombat(wing, crew, 0, flat, {
         attacker: { tech: none }, defender: { tech: none },
       });
-      expect(combatValue(crew) < f.clears.low, `clears ${String(count)}`).toBe(r.grade === 'DECISIVE');
-      expect(combatValue(crew) < f.breaks.low, `breaks ${String(count)}`).toBe(r.grade !== 'REPELLED');
+      const home = fleetCount(r.attackerSurvivors) > 0;
+      expect(combatValue(crew) < f.clears.low, `clears ${String(count)}`).toBe(home && r.grade === 'DECISIVE');
+      expect(combatValue(crew) < f.breaks.low, `breaks ${String(count)}`).toBe(home && r.grade !== 'REPELLED');
       if (count === 30) {
         expect(r.grade).toBe('DECISIVE');
         expect(combatValue(r.attackerSurvivors)).toBe(0);
-        expect(combatValue(r.defenderSurvivors)).toBe(0);
+        expect(combatValue(crew) < f.clears.low).toBe(false);
       }
     }
+  });
+
+  /** And a pirate's holds do not escape once its line is gone (`pirateOverrun`). */
+  it('counts a pirate whose holds outlive its line as cleared', () => {
+    const wing: Fleet = { DART: 4 };
+    const crew: Fleet = { RAMPART: 3, COURIER: 2 };
+    const base = blind({ wall: { kind: 'EXACT', fleet: crew }, defenderDamageMult: pirateStats(1).damageMult });
+    expect(combatValue(crew)).toBeGreaterThanOrEqual(forecastLines(wing, base).clears.low);
+    expect(combatValue(crew)).toBeLessThan(forecastLines(wing, { ...base, pirate: true }).clears.low);
   });
 });
 

@@ -17,6 +17,9 @@ export const monument = {
   "newsHome": "{{name}} · {{count}} ships home · {{cargo}} deuterium delivered",
   "newsReturning": "{{name}} · {{count}} ships returning · {{reason}} · home in {{clock}}",
   finder: "{{count}} monuments",
+  /** Last season's rank-N commander in front of monument N (owner, 2026-10-06). */
+  honoured: '{{name}} • {{monument}}',
+  honouredNote: "Named for {{name}}, rank {{rank}} last season.",
   names: {
     one: 'Abandoned Space Wreckage', two: 'Abandoned Station', three: 'Ancient Observatory',
     four: 'Ancient Stargate', five: 'Shattered World Ship',

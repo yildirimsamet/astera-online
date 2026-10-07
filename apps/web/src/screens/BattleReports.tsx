@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ABUSE, COMBAT, DEATH_STAR, HULLS, fleetCount, fleetEntries, type Grade, type HullId } from '@astera/rules';
+import { ABUSE, COMBAT, DEATH_STAR, HULLS, fleetCount, fleetEntries, type Fleet, type Grade, type HullId } from '@astera/rules';
 import { useReports } from '../api/queries.js';
 import type { BattleReport, Report, StrategicBattleReport } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
@@ -851,6 +851,7 @@ function ReportSheet({
           <BattleRound key={round.round} report={report} round={round} />
         ))}
       </div>
+      {report.pirate && <HoldsTaken report={report} />}
       <details className="mt-3">
         <summary className="cursor-pointer py-3 text-caption font-semibold text-v2-crystal focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self">
           {t('reports.rulesToggle')}
@@ -1463,6 +1464,33 @@ function CombatFormula({ grade, pirate = false }: { grade: Grade; pirate?: boole
  * is an accounting of what a fight cost; this is the one line that is a gain, and
  * it is a gain the shipyard could not have sold them.
  */
+/**
+ * UNESCORTED HOLDS DO NOT ESCAPE (owner report, 2026-10-06; `pirateOverrun`).
+ *
+ * The holds a pirate is left with once its last warship is down are taken AFTER the last round,
+ * so no round lists them — they are exactly what the report's losses hold beyond the rounds'
+ * sum. Named here, or a commander reads three rounds that killed warships and a ledger that
+ * also lost an Atlas, with nothing between.
+ */
+function HoldsTaken({ report }: { report: OrdinaryReport }) {
+  const { t } = useTranslation();
+  const inRounds: Fleet = {};
+  for (const round of report.rounds) {
+    for (const [hull, n] of fleetEntries(round.defenderLosses)) inRounds[hull] = (inRounds[hull] ?? 0) + n;
+  }
+  const taken = fleetEntries(report.theirLosses)
+    .map(([hull, n]) => [hull, n - (inRounds[hull] ?? 0)] as const)
+    .filter(([, n]) => n > 0);
+  if (taken.length === 0) return null;
+  return (
+    <p data-testid="pirate-overrun" className="mt-2 border-l-2 border-v2-self pl-3 text-caption leading-relaxed text-v2-ink-2">
+      {t('reports.pirateOverrun', {
+        fleet: taken.map(([hull, n]) => `${String(n)} ${hullLabel(hull)}`).join(t('counter.lineJoin')),
+      })}
+    </p>
+  );
+}
+
 function CapturedHull({ hull }: { hull: HullId }) {
   const { t } = useTranslation();
   const art = HULL_ART[hull];
