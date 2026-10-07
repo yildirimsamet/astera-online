@@ -46,14 +46,17 @@ telefonunda oynayıp **hissi onaylamadan** kapsam büyümez.
 ## İlk oturum kontrol listesi
 
 1. Bu klasörü okuma sırasıyla oku. Kodda adı geçen sembolleri bul (konumlar sembol adıyla verildi).
-2. `pnpm install` → `docker compose up -d` → `pnpm verify`. Sonucu panoya yaz. Daha önceden
-   kırık olan bir şey varsa düzeltme, yalnız kaydet.
+2. `pnpm install` → `docker compose up -d` → `pnpm verify`. Başarısız test **adlarını** panoya
+   yaz: bu, "yeşil" tanımının **temel çizgisidir** ([Çalışma düzeni](#calisma-duzeni)). Önceden
+   kırık olanı düzeltme, yalnız kaydet.
 3. Sahibe şu üç soruyu sor (önerilerle birlikte):
    - [KG-A1](02-kararlar.md#kg-a1): kalkan ne zaman biter?
    - [KG-A2](02-kararlar.md#kg-a2): yakıt bitince kurtarma gecikmesi.
    - [KG-A3](02-kararlar.md#kg-a3): tek döteryum deposu.
 
-   Ayrıca dal/PR düzenini sor. Önerim: `feature/komutan-gemisi` dalı ve faz başına bir PR.
+   [KG-A27](02-kararlar.md#kg-a27)'yi (durum × olay kuralları) bilgi olarak anlat; onayı F5'ten
+   önce gerekir. Ayrıca dal/PR düzenini sor (önerim: `feature/komutan-gemisi` dalı, faz başına
+   bir PR). **Cevap bekleme:** gelene kadar prototip varsayılanlarıyla ilerle.
 4. [12 F0](12-yol-haritasi.md#f0) adımlarını yap. Ardından F1'e başla.
 5. Varlık hattı (V) için sahibe hazır olduğunu söyle; telefon bağlama prosedürü
    [09 §5](09-varliklar-ve-referans-cikarma.md). F1 bu hatta bağımlı değildir.
@@ -93,10 +96,15 @@ telefonunda oynayıp **hissi onaylamadan** kapsam büyümez.
 | F7 Sahip incelemesi (kapı) | başlamadı | |
 | F8–F11 | bekliyor | F7 onayından sonra |
 
+<a id="calisma-duzeni"></a>
 ## Çalışma düzeni
 
-- **Git:** özellik dalında çalış. Her commit'ten önce `pnpm verify` yeşil olmalı. Referans
-  varlık asla commit edilmez. Dal/PR düzeni sahibin tercihidir.
+- **"Yeşil" tanımı:** sıfır tip hatası, sıfır lint hatası ve F0'da kaydedilen **temel çizgi
+  dışında** başarısız test yok. `pnpm verify` ilk hatada durur (typecheck → lint → test); temel
+  çizgide hata varsa testleri ayrıca çalıştırıp listeyi karşılaştır. Galaksi simülasyonuna
+  dokunmayan ara commit'lerde `pnpm verify --exclude-sims` yeterli; faz sonunda tam `pnpm verify`.
+- **Git:** özellik dalında çalış. Her commit'ten önce yeşil. Referans varlık asla commit edilmez.
+  Dal/PR düzeni sahibin tercihidir.
 - **Sahiple iletişim:**
   - Türkçe konuş.
   - Yalnız ürün kararlarını sor (yukarıdaki 1. kural). Soruyu önerinle ve varsayılanınla sor.
@@ -113,7 +121,9 @@ yeterli olmalı, ama gereksiz tekrar ve uzunluk içermemeli.
 
 - **Tek kaynak:**
   - Her bilgi tek yerde durur, diğer belgeler oraya bağlantı verir.
-  - Sayılar yalnız [04 §13](04-savas-mekanikleri.md#baslangic-degerleri)'te.
+  - Oyun ayar değerleri yalnız [04 §13](04-savas-mekanikleri.md#baslangic-degerleri)'te; diğer
+    belgeler onları adıyla anar. Açık sorulardaki öneri sayıları ve açıklayıcı örnekler istisnadır;
+    çelişkide 04 geçerlidir.
   - Kararlar yalnız [02](02-kararlar.md)'de.
 - **Ne zaman ne güncellenir:**
   - Kodu değiştiren commit, ilgili belgeyi de değiştirir.
@@ -142,6 +152,7 @@ yeterli olmalı, ama gereksiz tekrar ve uzunluk içermemeli.
 | Oda | bir arena örneği (varsayılan: galaksi başına) | `roomKeyFor` |
 | Çıkış / extraction | çıkış alanında tam durup 3 sn hasarsız kalma | `exit` |
 | Çekilme | yok edilme/yakıt/kopma sonrası eve dönüş | `towed` |
+| Geri çağrılma | deploy, sezon sonu veya galaksi değişiminde geminin eve dönmesi; kargo ambarda kalır | `recalled` |
 | Doğuş kalkanı | 60 sn hasarsızlık | `shield` |
 | İzlenen hedef | önleme işaretinin ait olduğu düşman (kilit değil) | — |
 | Önleme işareti | hareketli hedefe nereye ateş edileceği | `lead` |

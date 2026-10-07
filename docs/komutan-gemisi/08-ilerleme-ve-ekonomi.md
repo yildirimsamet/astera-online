@@ -40,8 +40,10 @@ kaynak eve taşındığında yağmalanabilir mi, yoksa yalnız gemiye mi harcan�
   `spreadBase → spreadMin` · Yakıt deposu +%60 · Ambar +%100 · yetenekler: süre/şarj ↑, bekleme ↓.
 - **Seviye bütçesi** (kartopuna karşı, önerilen): toplam seviye sayısına tavan (ör. 80 olası
   seviyeden 40) → herkes her şeyi maksimuma çıkaramaz, **uzmanlaşma** kararı doğar (avcı / taşıyıcı / kaçak).
-- **Güç farkı sınırı (S59, S75):** en üst seviye saldırgan bile başlangıç gemisini **3,5 sn'den
-  kısa sürede** öldürememeli (eşit gemiler arasında ~8 sn). Kaçış yetenekleri (turbo/duman/görünmezlik) saldırı
+- **Güç farkı sınırı (S59, S75):** TTK tanımıyla aynı ölçüde (**~%60 isabet**, [04 §4](04-savas-mekanikleri.md))
+  en üst seviye saldırgan başlangıç gemisini **3,5 sn'den kısa sürede** öldürememeli (eşit
+  gemiler arasında ~8 sn). Örnek tavanlarla: 400 / (14 × 10,4 × 0,6) ≈ 4,6 sn ✓; %100 isabette
+  ≈ 2,75 sn — bu, nişan becerisinin ödülüdür. Kaçış yetenekleri (turbo/duman/görünmezlik) saldırı
   gücüyle ölçeklenmez → zayıf oyuncu doğru oynarsa kaçabilir.
 - **Maliyet eğrisi:** seviye başına geometrik artış (ör. ×1,35); ilk seviyeler erişilebilir
   kaynaklarla, son seviyeler arena kaynağı ve/veya kartla.
@@ -64,7 +66,8 @@ kaynak eve taşındığında yağmalanabilir mi, yoksa yalnız gemiye mi harcan�
   kullanılmayan yakıt gemide kalır (yok edilmede de korunur, S34).
 - Döteryum değerli (değer ağırlığı alaşım 1 / kristal 2 / döteryum 32, `rules/valuation.ts`;
   takas 32:16:1). Depo birimi ↔ döteryum oranı etütte belirlenir; "1 birim = 1 döteryum" varsayılmaz.
-- Depo büyüklüğü sortie süresini belirler (S17): başlangıçta tam gazda ~6–7 dk (KG-A19).
+- Depo büyüklüğü sortie süresini belirler (S17): başlangıçta tam gazda ~6 dk
+  ([04 §13](04-savas-mekanikleri.md#baslangic-degerleri), KG-A19).
 
 ## 6. Arena geliri (F9)
 

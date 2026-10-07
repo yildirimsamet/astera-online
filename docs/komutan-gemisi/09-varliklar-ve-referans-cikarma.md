@@ -75,7 +75,9 @@ için **her zaman** vardır → CI, görsel testler ve prod referans varlığa a
   `.gitignore` `.env.local`'ı her dizinde dışlar) veya kabuk ortamında.
 - Vite eklentisi `apps/web/src/lib/refAssetsPlugin.ts` (`apply: 'serve'` — build'de hiç yok):
   `/__ref/*` → `$DIR/dist` ve `$DIR/audio`; `/__ref/manifest.json`. Dizin **repo içindeyse
-  başlatmayı reddeder**; değişken yoksa hiçbir şey yapmaz.
+  başlatmayı reddeder**; değişken yoksa hiçbir şey yapmaz. Vite `VITE_` öneki olmayan değişkenleri
+  `.env.local`'dan `process.env`'e yüklemez: `vite.config.ts` değeri `loadEnv(mode, root, '')` ile
+  okuyup eklentiye verir (önce kabuk ortamı).
 - Koruyucular: `.gitignore`'a `astera-ref-assets/`, `**/__ref/**`, `*.ref.glb`; `git ls-files`
   ile bu desenlerde izlenen dosya olmadığını doğrulayan test; F10'da `apps/web/dist` içinde
   `__ref` geçmediği kontrolü; kayıt defterinin varsayılanlarının `/__ref/`'e işaret etmediği testi.
@@ -102,6 +104,9 @@ olabilir (`df -h ~`).
      Bazı telefonlarda USB modu "Dosya aktarımı" olmalı.
    - `unauthorized` ise: **"Telefonda 'USB hata ayıklamaya izin verilsin mi?' sorusu çıktı;
      'Bu bilgisayara her zaman izin ver'i işaretleyip İzin ver'e dokunur musun?"**
+   - Linux'ta `no permissions` ise udev kuralı gerekir (`sudo` ister): önce sahibe sor; onay
+     gelirse dağıtımın `android-sdk-platform-tools-common` paketi ya da `51-android.rules`
+     kuralı, ardından `adb kill-server`.
 3. Cihaz bilgisi (rapora): `adb shell getprop ro.product.model`, `ro.build.version.release`,
    `ro.product.cpu.abi`.
 4. Paketleri bul: `adb shell pm list packages -3` → anahtar kelimeler: `metalstorm`, `starform`,

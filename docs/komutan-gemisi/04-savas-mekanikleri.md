@@ -1,7 +1,7 @@
 # Komutan Gemisi — Savaş, yetenekler, çıkış ve alan
 
-> **Durum:** Tasarım + başlangıç değerleri (2026-10-07). **Tüm sayıların tek kaynağı bu
-> dosyadaki [başlangıç değerleri](#baslangic-degerleri) tablosudur;** kodda
+> **Durum:** Tasarım + başlangıç değerleri (2026-10-07). **Tüm oyun ayar değerlerinin tek kaynağı
+> bu dosyadaki [başlangıç değerleri](#baslangic-degerleri) tablosudur;** kodda
 > `packages/rules/src/arena/tuning.ts` olarak yaşar.
 > **Hedef okuyucu:** Savaş kurallarını (`rules/arena`) ve sunucu odasını yazacak agent.
 > **Dayanak:** S18–S37, S43–S44, S64–S79 ([01](01-urun.md)); KG-K4, KG-K5, KG-A1, KG-A2, KG-A3,
@@ -19,13 +19,32 @@ Her kural **sunucuda** uygulanır (S51). İstemci aynı fonksiyonları yalnız t
    │         │  ▲                                  │
    │ kalkan  │  └──────────(hareket / alandan çıkış)┘
    │ (60 sn) ├──(gövde ≤ 0)─────────────────────────────────────────────► destroyed ─► towed
-   │         ├──(yakıt = 0)──► fuelOut (10 sn savunmasız) ──────────────────────────► towed
-   │         └──(girdi sessiz ≥1 sn)──► linkLost (30 sn) ──(dönerse)──► flying
+   │         ├──(yakıt = 0)──► fuelOut (kurtarma sayacı) ───────────────────────────► towed
+   │         └──(girdi yok, linkLostAfter)──► linkLost (30 sn) ──(dönerse)──► flying
    │                                         └──(dönmezse)──────────────────────────► towed
 ```
 
-`extracted` ve `towed` uçlarında gemi dünyadan çıkar ve sonuç ekranı açılır ([07](07-hud-ve-ekranlar.md#sonuc-ekranlari)).
-`fuelOut` ve `linkLost` sırasında yok edilirse sonuç `destroyed`'dır.
+`exiting`, `flying`'in alt durumudur: çıkış alanında ve `s = 0`. `extracted` ve `towed` uçlarında
+gemi dünyadan çıkar ve sonuç ekranı açılır ([07](07-hud-ve-ekranlar.md#sonuc-ekranlari)).
+
+<a id="durum-olay"></a>
+**Durum × olay kuralları** (prototip varsayılanı; F5'ten önce sahip onayı, [KG-A27](02-kararlar.md#kg-a27)):
+
+| Olay ↓ · durum → | `flying` | `fuelOut` | `linkLost` |
+|---|---|---|---|
+| Oyuncu girdisi | uygulanır | **hiçbiri** uygulanmaz (yön, ateş, yetenek dahil) | yok; aynı soketten yeniden gelirse → `flying` |
+| Gaz | oyuncunun | zorla 0 | zorla 0 |
+| İsabet | hasar; kalkan varsa söner | aynı | aynı |
+| Kalkan | ateş / çıkış alanı / kargo / süre ile biter | kendi süresinde biter | kendi süresinde biter |
+| Aktif duman, görünmezlik | sürer | süresi dolunca biter | süresi dolunca biter |
+| Çıkış sayacı (alanda, `s = 0`) | ilerler | **ilerler** — çıkışa ulaşmış gemi durmak için yakıt istemez | **ilerler** — çıkış fiziksel kuraldır |
+| Gövde ≤ 0 | `destroyed` | `destroyed` | `destroyed` |
+| Yakıt 0 | → `fuelOut` | — | yakıt yanmaya devam eder; 0 olursa kurtarma sayacı da başlar |
+| Sayaç doldu | — | `towed` | `towed` |
+| Yeni soketle `hello` | devralır (eski soket `replaced`) | devralır, `fuelOut` sürer | devralır → `flying` |
+
+İki sayaç birlikte işliyorsa önce dolan çeker (sonuç aynı). Çekilmeden önce çıkış sayacı dolarsa
+`extracted`.
 
 ## 2. Ateş ve mermi
 
@@ -83,7 +102,7 @@ Her kural **sunucuda** uygulanır (S51). İstemci aynı fonksiyonları yalnız t
 **Görünmezlik (S24, S77, KG-K4)**
 - `cloakDuration` sürer; bitince `cloakCooldown` başlar.
 - **Ateş anında bozulur** (sunucu, atış girdisini işlediği tick'te). Bozulma hem sahibine hem
-  çevreye görünür (titreşimli belirிş efekti + ses).
+  çevreye görünür (titreşimli beliriş efekti + ses). Süre dolunca sahibine "GÖRÜNMEZLİK BİTTİ".
 - **Hasar alır** (KG-K4). İsabet kıvılcımı vuran tarafa görünür (konumu anlık ele verir — adil).
   Hasar almak görünmezliği bozmaz (prototip varsayılanı, [KG-A25](02-kararlar.md#kg-a25)).
 - Sunucu görünmez gemiyi diğerlerinin snapshot'ına koymaz; yalnız `cloakShimmerDist` içinde
@@ -108,14 +127,15 @@ tam durmuşken** (`s = 0`) ilerler, `exitHold` saniyeye ulaşınca `extracted`.
 | Alan dışında | ekran dışı gösterge "ÇIKIŞ • 850 m" | — |
 | Alanda, hareket ediyor | "Çıkış alanındasın — tamamen dur" + hız | durur |
 | Alanda, durdu | "Gemi durdu — hasar almadan bekle · 2/3 sn" | ilerler |
-| Sayаçta hasar aldı | "Hasar aldın — sayaç sıfırlandı" | 0'a döner, durmaya devam ederse yeniden başlar |
+| Sayaçta hasar aldı | "Hasar aldın — sayaç sıfırlandı" | 0'a döner, durmaya devam ederse yeniden başlar |
 | Sayaçta gaz verdi / kımıldadı | "Hareket ettin — sayaç sıfırlandı" | 0 |
 | Alandan çıktı | gösterge geri gelir | 0 |
 | Tamamlandı | "Ana gezegene dönülüyor" | → sonuç ekranı |
 
-- Sayacı yalnız **hasar** ve **hareket** sıfırlar. Ateş etmek sıfırlamaz (spec yasaklamıyor);
-  duman ve görünmezlik kullanılabilir (çıkışı korumak bilinçli taktik); turbo hareket demektir
-  ([KG-A26](02-kararlar.md#kg-a26)).
+- Sayacı yalnız **hasar** ve **hareket** (`s > 0`; turbo dahil) sıfırlar. Yerinde dönmek hareket
+  değildir. Ateş etmek sıfırlamaz (spec yasaklamıyor); duman ve görünmezlik kullanılabilir (çıkışı
+  korumak bilinçli taktik) ([KG-A26](02-kararlar.md#kg-a26)).
+- Bağlantı kopması ve yakıt bitmesinde sayaç sürer ([§1 tablosu](#durum-olay)).
 - "Neden başlamadı / neden kesildi" her zaman metinle söylenir (S57).
 
 ## 7. Yok edilme (S32–S34)
@@ -132,25 +152,35 @@ tam durmuşken** (`s = 0`) ilerler, `exitHold` saniyeye ulaşınca `extracted`.
 <a id="yakit-bitmesi"></a>
 ## 8. Yakıt bitmesi (S35–S37, KG-A2)
 
-Yakıt 0 → motor kapanır (gaz zorla 0), gemi yavaşlayıp durur, HUD "Yakıt bitti — kurtarma yolda
-· 10 sn" ve gemi **`fuelOutRescueDelay` boyunca savunmasızdır** (prototip varsayılanı, KG-A2).
-Süre bitince `towed`: yeni hasar yok, eski hasar kalır (S36), kargo **o konuma** kapsül olarak
-bırakılır (S37). Bu sürede yok edilirse yok edilme kuralları geçerlidir.
+Yakıt 0 → motor kapanır (gaz zorla 0), gemi yavaşlayıp durur, **hiçbir girdi alınmaz**. HUD
+"Yakıt bitti — kurtarma yolda · 10 sn"; gemi **`fuelOutRescueDelay` boyunca savunmasızdır**
+(prototip varsayılanı, KG-A2). Süre bitince `towed`: yeni hasar yok, eski hasar kalır (S36), kargo
+**o konuma** kapsül olarak bırakılır (S37). Bu sürede yok edilirse yok edilme kuralları geçerlidir.
+Çıkış alanında durmuşken yakıt biterse sayaç sürer ([§1](#durum-olay)).
 
 <a id="baglanti-kopmasi"></a>
 ## 9. Bağlantı kopması ve arka plan (KG-K5)
 
-- Sunucu, `linkLostAfter` boyunca girdi gelmezse veya soket kapanırsa `linkLost`'a geçer:
-  gaz zorla 0, gemi durur, yeni yetenek yok (aktif olan kendi süresinde biter), **savunmasız**.
-- `linkLostGrace` (30 sn, kesin) içinde aynı hesap `hello` ile dönerse kontrol geri verilir
-  ("Bağlantı geri geldi"). Dönmezse `towed`: yakıt bitmesiyle aynı sonuç (yeni hasar yok, kargo düşer).
-- İstemci `visibilitychange` ile görünür olunca kendiliğinden yeniden bağlanır ve kalan süreyi
-  gösterir. Telefonu kilitlemek de bu kurala tabidir; giriş ekranında ve ayarlarda yazılı.
+- Girdi gelmeyince sunucu son girdiyi en çok `inputRepeatMax` tick tekrar eder, sonra nötr girdi
+  uygular (yön 0, ateş ve turbo kapalı, gaz yerinde).
+- `linkLostAfter` boyunca girdi gelmezse veya soket kapanırsa `linkLost`: gaz zorla 0, gemi durur,
+  yeni yetenek yok (aktif olan kendi süresinde biter), **savunmasız**. Kalkan ve çıkış sayacı:
+  [§1 tablosu](#durum-olay).
+- `linkLostGrace` (kesin) içinde dönen oyuncu kaldığı yerden sürer ("Bağlantı geri geldi"): aynı
+  soketten girdi yeniden gelirse doğrudan, yeni soketse `hello` (`resume`) ile. Dönmezse `towed`:
+  yakıt bitmesiyle aynı sonuç (yeni hasar yok, kargo düşer).
+- İstemci `visibilitychange` ile görünür olunca yeniden bağlanır ve kalan süreyi gösterir. Android
+  arka plandaki sayfayı bellekten atabilir; bu yüzden giriş anında `sessionStorage`'a niyet yazılır
+  ve açılışta varsa doğrudan `resume` ile bağlanılır ([06 §3](06-istemci.md#uygulama-dali)).
+  Telefonu kilitlemek de bu kurala tabidir; giriş ekranında ve ayarlarda yazılı.
 
 ## 10. Kargo — test yükü (F5) ve sonrası (F9)
 
 - F9'a kadar her pilot `testCargo` birim **TEST** kargosuyla doğar (S44). AMBAR göstergesi onu
-  gösterir. Çıkışta "60 test kargo eve ulaştı"; yok edilme/yakıt/kopmada kapsül olarak düşer.
+  gösterir. Çıkışta "60 TEST kargo kurtarıldı"; yok edilme/yakıt/kopmada kapsül olarak düşer.
+- **TEST kargo hiçbir zaman başkente yatırılmaz** (F8'de de): yalnız sortie istatistiğine yazılır.
+  Yoksa her doğuş bedava kaynak basar. Gerçek kargo F9'da gelir.
+- **Kısmi toplama:** kapsülden ambara sığdığı kadar alınır, kalanı kapsülde kalır.
 - **Değişmez:** odadaki toplam kargo yalnız çıkışla ve kapsül kaybolmasıyla azalır (test edilir).
 - Gerçek kaynak toplama yöntemi [KG-A12](02-kararlar.md#kg-a12), F9.
 
@@ -161,7 +191,9 @@ bırakılır (S37). Bu sürede yok edilirse yok edilme kuralları geçerlidir.
   oyuncu çıkışın üstüne düşmesin).
 - **Dış çember** (`ringRadius`): girişler 0°, 120°, 240°; çıkışlar 60°, 180°, 300° (girişle çıkış
   arası en geniş açıda). S27'yi birebir karşılar.
-- Doğuş: dört girişten **rastgele biri** (S28), `spawnJitter` içinde, merkeze bakarak.
+- Doğuş: dört girişten **rastgele biri** (S28), `spawnJitter` içinde. Burun **yatay**: dış
+  girişlerde merkeze doğru, merkez girişte rastgele bir yatay yöne (aşağıdaki çıkışa bakmaz; roll
+  dengelemesi dik bakışta kapalıdır).
 - Çevre: asteroit kümeleri (statik küreler, çeşitli boyut), enkaz, dış çıkışların yanında birer
   yapı (yer işareti + siper), çıkışlarda dikey ışıklı fener ve zeminde halka (görsel 01). Kamera
   yakınında yalnız istemcide toz/çizgi parçacıkları: hız ve yön hissi (S47). Merkez koridorlar
@@ -178,6 +210,7 @@ bot senaryosunda taşıyıcının çıkış başarı oranı. Sonuçla birlikte K
 ## 13. Başlangıç değerleri (hipotez — tek kaynak)
 
 Kesin olanlar spec'ten gelir ve değiştirilmez (✱). Diğerleri kovalamaca senaryosuyla ayarlanır.
+Diğer belgeler bu değerleri **adıyla** anar; çelişki olursa bu tablo geçerlidir.
 
 | Ad | Değer | Not |
 |---|---|---|
@@ -200,7 +233,7 @@ Kesin olanlar spec'ten gelir ve değiştirilmez (✱). Diğerleri kovalamaca sen
 | `turboCharge` / `turboRegen` / `turboRegenDelay` | 3 sn / 0,4 sn/sn / 1 sn | |
 | `turboMinStart` / `turboTapBurst` | 0,3 sn / 0,35 sn | |
 | `fuelTank` | 100 | döteryum birimi |
-| `throttleBurn` / `idleBurn` / `turboBurn` | 0,25 / 0,02 / +0,25 /sn | tam gazda ≈ 6,7 dk (KG-A19) |
+| `throttleBurn` / `idleBurn` / `turboBurn` | 0,25 / 0,02 / +0,25 /sn | tam gazda 100 / 0,27 ≈ 6,2 dk; sürekli ateşte ≈ 3,9 dk (KG-A19) |
 | `shotFuelCost` | 0,02 /atış | KG-A3 |
 | `hull` | 400 | |
 | `damage` | 10 /isabet | |
@@ -214,11 +247,14 @@ Kesin olanlar spec'ten gelir ve değiştirilmez (✱). Diğerleri kovalamaca sen
 | `smokeRadius` / `smokeGrow` / `smokeLife` / `smokeCooldown` | 35 m / 0,6 sn / 7 sn / 18 sn | |
 | `cloakDuration` / `cloakCooldown` / `cloakShimmerDist` | 4 sn / 25 sn / 60 m | |
 | `fuelOutRescueDelay` | 10 sn | KG-A2 |
-| `linkLostAfter` / `linkLostGrace` ✱ | 1 sn / 30 sn | KG-K5 |
+| `linkLostAfter` | 1 sn | mobil ağda sert gelirse 2–3 sn |
+| `linkLostGrace` ✱ | 30 sn | KG-K5 |
+| `inputBuffer` / `inputQueueMax` / `inputRepeatMax` | 2 tick / 6 / 3 tick | [05 §6](05-ag-ve-sunucu.md#girdi) |
+| `resultKeep` | 10 dk | yeniden bağlanana son sonuç ([05 §3](05-ag-ve-sunucu.md#uc-nokta)) |
 | `testCargo` / `cargoCapacity` | 60 / 100 | |
 | `cargoScatterCount` / `pickupRadius` / `dropLife` | 6 / 25 m / 300 sn | |
 | `roomCap` | 48 | KG-T4 |
-| `interpDelay` | 100 ms (uyarlanır 100–200) | KG-T14 |
+| `interpDelay` | 133 ms (iki snapshot aralığı; uyarlanır 133–200) | KG-T14 |
 | `extrapolationCap` / `headStartCap` | 150 ms / 100 ms | KG-T14, KG-T15 |
 | `aoiRadius` | 1500 m | snapshot'a giren uzaklık |
 | `offscreenEnemyDist` | 800 m | [07](07-hud-ve-ekranlar.md) |

@@ -95,8 +95,9 @@ ayarlanır. Aynı başparmakla **eşzamanlı** basılması gereken iki kontrol y
 
 Düğmeler arası boşluk ≥ 12 px (repo kuralı: hedef ≥ 44 px; savaşta daha büyüğü). Durumlar
 (hazır/doluyor/aktif/bekleme) yalnız renkle değil, halka + sayaç + kısa metinle ([07](07-hud-ve-ekranlar.md)).
-Düğme etiketleri sahibin görsellerindeki gibi **DUMAN · TURBO · GİZLEN · ATEŞ**. Yanlış basma
-sorun olursa GİZLEN'e ~150 ms basılı tutma eşiği denenir (dev anahtarı).
+Düğme **adları** sahibin görsellerindeki gibi: DUMAN, TURBO, GİZLEN, ATEŞ. **Sıra ve yer** bu
+tabloya göre (TURBO ATEŞ'e en yakın, GİZLEN en uzak) ve test edilerek (S53). Yanlış basma sorun
+olursa GİZLEN'e ~150 ms basılı tutma eşiği denenir (dev anahtarı).
 
 ## 7. İki aday yerleşim (prototipte dev anahtarıyla)
 
@@ -123,6 +124,7 @@ Referans görsellerdeki yerleşim **test edilmeden aynen uygulanmaz** (S53).
   mesafesinde kesişir (+ dağılım). Namlu noktaları `rules/arena` verisidir; sunucu aynı hesabı
   yapar. Yakın mesafede yanal sapma vuruş yarıçapının çok altında kalır.
 
+<a id="nisan"></a>
 ## 9. Nişan
 
 - Nişangâh = geminin ileri yönü. **Hassasiyet ayarı yalnız çubuk eğrisini, isabet özelliği yalnız
@@ -133,7 +135,7 @@ Referans görsellerdeki yerleşim **test edilmeden aynen uygulanmaz** (S53).
 - **Önleme işareti** (S73): mermi gemi hızını miras aldığından göreli çözülür: `p_rel` = hedef −
   namlu, `v_rel` = hedef hızı − kendi hız; `|p_rel + v_rel·t| = muzzleSpeed · t` ikinci derece
   denklemi (yalnız aritmetik + `sqrt`). Hedef önce interpolasyonlu durumundan `H` kadar ileri
-  taşınır: `H = render gecikmesi + tek yön gecikme − baş mesafesi` (≥ 0) ([05 §İsabet](05-ag-ve-sunucu.md#isabet)).
+  taşınır: `H = interpDelay + RTT + inputBuffer − headStart` (≥ 0; nedeni [05 §8](05-ag-ve-sunucu.md#isabet)).
   Çözüm yoksa veya `t` mermi ömründen büyükse işaret gösterilmez. Duman arkasında ya da görünmez
   hedefte işaret yoktur (S76–S77). İşaret mermiyi **yönlendirmez**, isabeti **garanti etmez**.
 
@@ -141,12 +143,21 @@ Referans görsellerdeki yerleşim **test edilmeden aynen uygulanmaz** (S53).
 
 - Arena kökünde `touch-action: none`, `user-select: none`, `-webkit-touch-callout: none`,
   bağlam menüsü engelli; sayfa yakınlaştırma zaten `lib/viewport.ts` ile kapalı.
-- **iOS Safari kenar kaydırma = geri git:** etkileşimli bölgeler sol kenardan ≥ 24 px içeride;
-  arenaya girerken `history.pushState`, `popstate` gelirse sayfadan çıkılmaz, "Alandan yalnız çıkış
-  noktasından ayrılabilirsin" uyarısı + bağlantı kopması kuralı (KG-K5) hatırlatılır.
+- **Kenar hareketleri:** iOS Safari'de sol kenardan kaydırma = geri. Android hareketli gezinmede
+  (sahibin telefonu Android) **iki yan kenardan** kaydırma = geri, alttan yukarı = ana ekran.
+  Etkileşimli bölgeler sol ve sağ kenardan ≥ 24 px, alttan ≥ 24 px + `env(safe-area-inset-bottom)`
+  içeride (B yerleşimindeki sağ kenar gaz kolu ve sağ alttaki ATEŞ dahil). Arenaya girerken
+  `history.pushState`; `popstate` gelirse sayfadan çıkılmaz, "Alandan yalnız çıkış noktasından
+  ayrılabilirsin" uyarısı + bağlantı kopması kuralı (KG-K5) hatırlatılır. Ana ekran hareketi
+  engellenemez: uygulama arka plana geçer, KG-K5 işler.
 - Güvenli alan boşlukları `env(safe-area-inset-*)`. iPhone Safari'de öğe tam ekranı **yok**;
-  Android Chrome'da "Savaş alanına gir" dokunuşunda tam ekran istenir. Yön kilidi yalnız Android
-  tam ekranında çalışır; iOS'ta kilit yok → katmanla çözülür (§11).
+  Android Chrome'da tam ekran istenir. Yön kilidi yalnız Android tam ekranında çalışır; iOS'ta
+  kilit yok → katmanla çözülür (§11).
+- **Kullanıcı etkinleştirmesi:** tam ekran, yön kilidi ve `AudioContext` bir dokunuşun (`click`)
+  içinde istenmeli; basılı tutma (`HoldButton`: parmak hâlâ ekrandayken `setTimeout`) bunu
+  sağlamaz. Bu yüzden yükleme ekranı **"BAŞLA"** dokunuşuyla biter: bu dokunuş tam ekranı, kilidi
+  ve sesi açar, `hello` gönderir; doğuş ve kalkan sayacı oyuncu hazırken başlar
+  ([06 §3](06-istemci.md#uygulama-dali)).
 - LAN'da (HTTP) iOS jiroskop izni yok; titreşim yalnız Android.
 
 <a id="dikey-mi-yatay-mi"></a>
@@ -155,7 +166,10 @@ Referans görsellerdeki yerleşim **test edilmeden aynen uygulanmaz** (S53).
 Varsayılan **dikey**. F7'de şunlardan biri doğrulanırsa yatay önerilir (karar sahibin, KG-A4):
 (a) sahip dönüş + ateş + turbo'yu dikeyde rahat birleştiremiyor; (b) dar yatay görüş yüzünden
 kovalamacada hedef sık sık ekran dışına kaçıyor (ölç: kovalamaca süresinin yüzde kaçında hedef
-ekran dışı); (c) kontroller + arka görüş + HUD ekranın **%35**'inden fazlasını kaplıyor.
+ekran dışı); (c) sahneyi görsel olarak kapatan HUD öğeleri (düğmeler, gaz kolu, dinlenen çubuk
+halkası, arka görüş, üst şerit, bağlam paneli, silah modelleri) güvenli alanın **%35**'inden
+fazlasını kaplıyor — `tools/arena-visual.mjs` DOM dikdörtgenlerinden hesaplar (görünmez dokunma
+bölgeleri sayılmaz).
 Yatay seçilirse: yalnız arena yatay olur (galaksi dikey kalır); dikey tutulan telefonda tam ekran
 "Telefonu yatay çevir" katmanı (ikon + metin); HUD ve kontroller yatay için yeniden yerleşir.
 
@@ -164,7 +178,8 @@ Yatay seçilirse: yalnız arena yatay olur (galaksi dikey kalır); dikey tutulan
 `W/S` veya `↑/↓` pitch · `A/D` veya `←/→` yaw · fare (pointer lock) = sanal çubuk · `R/F` gaz ± ·
 `X` gaz 0 · `Space` ateş · `Shift` turbo · `Q` duman · `E` görünmezlik · `L` önleme işareti ·
 `` ` `` dev katmanı. Masaüstü sekmesi, sahibin telefonuna karşı ikinci oyuncu olur ve PC/mobil
-ölçümünde kullanılır.
+ölçümünde kullanılır — **ikinci bir hesapla**: aynı hesap telefonu düşürür (tek pilot,
+[11 §7](11-test-ve-playtest.md#sahiple-oturum)).
 
 ## 13. PC/mobil eşitliği (S60, KG-A18)
 

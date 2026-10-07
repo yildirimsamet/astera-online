@@ -5,21 +5,26 @@
 > **Hedef okuyucu:** Geliştirmeyi yürüten agent.
 > **İlke (S45, S80–S83):** önce his. Sahip "kontrol rahatlığı ve savaş hissi yeterince iyi"
 > demeden (F7 kapısı) kapsam büyümez. Her faz TDD ile ([11](11-test-ve-playtest.md)), her faz
-> sonunda `pnpm verify` yeşil ve belgeler güncel ([README §Belge bakımı](README.md#belge-bakimi)).
+> sonunda tam `pnpm verify` yeşil ([tanım](README.md#calisma-duzeni)) ve belgeler güncel
+> ([README §Belge bakımı](README.md#belge-bakimi)).
 
 ---
 
 <a id="f0"></a>
 ## F0 — Hazırlık
 
-- Belgeleri okuma sırasıyla oku. `pnpm install`, `docker compose up -d`, `pnpm verify` → temel
-  durumu README panosuna yaz (önceden kırık test varsa düzeltme, yalnız kaydet).
+- Belgeleri okuma sırasıyla oku. `pnpm install`, `docker compose up -d`, `pnpm verify` → başarısız
+  test **adlarını** README panosuna yaz: bu **temel çizgidir** (eski `docs/test-baseline-2026-09-18.md`
+  güncel olmayabilir). Önceden kırık testi düzeltme, yalnız kaydet.
 - `master`'dan özellik dalı (ör. `feature/komutan-gemisi`).
 - **Sahibe sor:** [KG-A1](02-kararlar.md#kg-a1) (kalkan bitişi), [KG-A2](02-kararlar.md#kg-a2)
-  (yakıt bitince kurtarma gecikmesi), [KG-A3](02-kararlar.md#kg-a3) (tek depo). Cevapları KG-K'ye taşı.
+  (yakıt bitince kurtarma gecikmesi), [KG-A3](02-kararlar.md#kg-a3) (tek depo); [KG-A27](02-kararlar.md#kg-a27)'yi
+  bilgi olarak anlat (onay F5'ten önce). Cevapları KG-K'ye taşı. Cevap beklenmez: gelene kadar
+  prototip varsayılanıyla devam.
 - `.gitignore` koruyucuları + koruma testi; `ASTERA_REF_ASSETS_DIR`; bayrakların tipleri
   (`VITE_ARENA` → `vite-env.d.ts`; `ARENA_ENABLED`, `ARENA_DEV` → `env.ts`).
-- **Kabul:** temel durum kayıtlı, koruyucular ve test yerinde, üç cevap kayıtlı.
+- **Kabul:** temel çizgi kayıtlı, koruyucular ve test yerinde, sorular soruldu (cevap ya da
+  "varsayılanla devam" kayıtlı).
 
 <a id="v"></a>
 ## V — Referans varlık hattı (paralel; sahip ve telefon gerekir)
@@ -40,7 +45,8 @@ tutucularla birlikte TDD ile yapılır.
 - **Web:** bayraklı giriş (`BaseSwitch`), `App.tsx` dalı, lazy + kendi sınırı + yeniden deneme,
   yükleme ekranı, render sürücüsü, üç geçiş (ana, silahlar, arka görüş), sahne (kayıt defteri),
   girdi (çubuk, gaz kolu, yerleşim A/B, klavye), asgari HUD (gövde, yakıt + kalan süre, hız, gaz),
-  dev katmanı, ayarlar (hassasiyet, pitch ters, yerleşim), uçan hedef dronları (yerel).
+  dev katmanı, ayarlar (hassasiyet, pitch ters, yerleşim), uçan hedef dronları (yerel), dev
+  kısayolu `?arena=sandbox` ([06 §2](06-istemci.md)). Sim adımını yalnız render sürücüsü atar.
 - **Kapsar:** S9–S17, S47, S53–S56, S61–S63.
 - **Kırılma riski:** `App.tsx` (galaksinin unmount/remount'u; SSE sürekliliği; panel durumu;
   `academyReplay` ile etkileşim) · `BaseSwitch` mevcut görünümleri · altı dil eşitliği.
@@ -60,12 +66,13 @@ tutucularla birlikte TDD ile yapılır.
 <a id="f3"></a>
 ## F3 — Sunucu, WebSocket, senkronizasyon
 
-- **Sunucu:** `ROLE=arena`, rol başına route, sağlık, `/arena/ws`, `hello`/kimlik, odalar,
-  `Room.step`, girdi disiplini, snapshot + AOI, olaylar, ping/pong, backpressure, protokol sürümü,
-  `Presence.touch`, bus dinleyicisi (`placement_changed`), dev ağ koşullayıcı, ölçüler.
+- **Sunucu:** `ROLE=arena` (`buildApp` üzerinden), rol başına route, sağlık, `/arena/ws`, Origin
+  izin listesi, `hello` (kimlik, `mode`, `ARENA_ADMIN_ONLY`), odalar (dev'de tek oda), `Room.step`,
+  girdi FIFO'su, snapshot (self tam hassasiyet) + AOI, kadro, olaylar, ping/pong, backpressure,
+  protokol sürümü, `Presence.touch`, bus dinleyicisi (`placement_changed`), dev ağ koşullayıcı, ölçüler.
   `pnpm dev` ve `tools/dev-up.sh` arena sürecini başlatır; Vite proxy `/arena` (`ws: true`).
-- **Web:** soket, arena saati, tahmin + uzlaştırma, interpolasyon, uzak gemiler, mermi spawn
-  olayları ve çift iz engeli, ağ ölçüleri, `kick` → "yenile".
+- **Web:** soket, arena saati, tahmin + uzlaştırma (sıfır gecikmede düzeltme 0), interpolasyon,
+  uzak gemiler, mermi spawn olayları ve çift iz engeli, ağ ölçüleri, `kick` → "yenile".
 - **Kapsar:** S26, S49–S51, S60.
 - **Kırılma riski:** `app.ts` route kaydının rol başına ayrılması (api/both rollerinde route
   kümesi **birebir aynı kalmalı** — testle), `env.ts` şeması, Vite proxy (`/api` `ws: false` kalmalı).
@@ -80,14 +87,19 @@ tutucularla birlikte TDD ile yapılır.
 - Web: hasar yönü, arka görüşte çerçeveler, düşman çerçevesi + izlenen hedefin gövdesi, kalkan
   görseli ve "KALKAN KALKTI", patlama → sonuç ekranı → dönüş.
 - **Kapsar:** S26–S29, S32–S34 (kalıcılık hariç), S74–S75.
+- **Sahip ara kontrolü** (isteğe bağlı, kapı değil; S80): ilk PvP hissi — telefon + masaüstü
+  ikinci hesap veya botlar.
 - **Kabul:** B1/B2 botlarla oynanıyor; TTK ölçüldü ([04 §4](04-savas-mekanikleri.md)).
 
 <a id="f5"></a>
 ## F5 — Extraction
 
-- Çıkış alanları, çıkış durum makinesi ve panel nedenleri; test kargosu; saçılma ve toplama;
-  yakıt bitmesi (F0 cevabı); bağlantı kopması (30 sn; görünürlük değişiminde yeniden bağlanma);
-  yerleşim/sezon olaylarında güvenli dönüş; tüm sonuç ekranları.
+- **Önce:** [KG-A27](02-kararlar.md#kg-a27) onayı (durum × olay kuralları).
+- Çıkış alanları, çıkış durum makinesi ve panel nedenleri; durum × olay tablosu
+  ([04 §1](04-savas-mekanikleri.md#durum-olay)); test kargosu; saçılma ve (kısmi) toplama; yakıt
+  bitmesi (F0 cevabı); bağlantı kopması (30 sn; görünürlük değişiminde yeniden bağlanma; sayfa
+  atılırsa `resume`); yerleşim/sezon olaylarında geri çağrılma ve ertelenen `rollover`; tüm sonuç
+  ekranları.
 - **Kapsar:** S30–S31, S35–S37, S43–S44, S57, S79; KG-K5.
 - **Kabul:** B3–B7 geçiyor; "neden başlamadı/kesildi" her durumda yazılı.
 
@@ -121,13 +133,16 @@ tutucularla birlikte TDD ile yapılır.
 - **Kırılma riski:** migration sırası (`docs/deployment.md` kural 5–6), `commanderTransfer`,
   `freezeSeason`, `loadLocked`, bus kind'ları (yalnız eklenir), `apps/server/test/contract.test.ts`
   (istemcinin ayrıştırdığı yeni route'lar eklenir).
-- **Kabul:** idempotentlik testleri; uçtan uca: gir → çık → kargo başkentte; patla → tamir gerekli.
+- **Kabul:** idempotentlik testleri; uçtan uca: gir → çık → sortie yerleşti, **TEST kargo
+  yatırılmadı**; geri çağrılmada kargo ambarda; patla → tamir gerekli. Gerçek kargo yatırma yolu
+  sentetik kargoyla birim testinde (uçtan uca F9'da).
 
 <a id="f9"></a>
 ## F9 — Kaynak toplama ve ekonomi
 
 KG-A12 kararı; kaynak düğümleri/kırılan asteroitler/kapsüller; gerçek kargo türleri; simülatörle
-ekonomi etüdü; yeni kaynak/kartlar (KG-A10). **Kabul:** sahip onaylı etüt; simülasyonda ARR bantta.
+ekonomi etüdü; yeni kaynak/kartlar (KG-A10). **Kabul:** sahip onaylı etüt; simülasyonda ARR
+bantta; uçtan uca gir → topla → çık → gerçek kargo başkentte.
 
 <a id="f10"></a>
 ## F10 — Yayın hazırlığı
