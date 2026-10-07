@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, or } from 'drizzle-orm';
+import { and, eq, inArray, isNull, lte, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { PLANET_SKIN_IDS, type PlanetSkinId } from '@astera/rules';
 import type { Db } from '../db/client.js';
@@ -12,6 +12,8 @@ import { createPolarCheckoutSession, polarPricingForIp, polarReady, productIdsFo
 export const polarItemIds = [...PLANET_SKIN_IDS, 'bundle'] as const;
 const elementalIds = ['planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert'] as const;
 const skinsFor = (itemId: PolarItemId): readonly PlanetSkinId[] => itemId === 'bundle' ? elementalIds : [itemId];
+// Polar requests time out after 8s; leave room for persistence before recovering a crashed start.
+const CHECKOUT_START_TIMEOUT_MS = 60_000;
 
 /** A local intent is written before contacting Polar so even a fast webhook can find its owner. */
 export async function startPolarPurchase(db: Db, env: Env, accountId: string, itemId: PolarItemId, ip: string) {
@@ -29,14 +31,20 @@ export async function startPolarPurchase(db: Db, env: Env, accountId: string, it
       .where(and(eq(cosmeticEntitlements.accountId, accountId),
         inArray(cosmeticEntitlements.cosmeticId, skinsFor(itemId)), isNull(cosmeticEntitlements.revokedAt))).limit(1);
     if (owned) throw new GameError('SKIN_ALREADY_OWNED', 'This account already owns part of this offer', 409);
+    const now = Date.now();
+    // Recover every overlap under the account lock. Keep the intent for a late paid/refunded webhook.
+    await tx.update(polarSkinOrders).set({ status: 'FAILED' }).where(and(
+      eq(polarSkinOrders.accountId, accountId), inArray(polarSkinOrders.itemId, overlapping),
+      eq(polarSkinOrders.status, 'PENDING'),
+      or(lte(polarSkinOrders.expiresAt, new Date(now)),
+        and(isNull(polarSkinOrders.expiresAt),
+          lte(polarSkinOrders.createdAt, new Date(now - CHECKOUT_START_TIMEOUT_MS)))),
+    ));
     const [pending] = await tx.select().from(polarSkinOrders).where(and(
       eq(polarSkinOrders.accountId, accountId), inArray(polarSkinOrders.itemId, overlapping),
       eq(polarSkinOrders.status, 'PENDING'))).limit(1);
     if (pending) {
-      if (pending.expiresAt && pending.expiresAt.getTime() <= Date.now()) {
-        await tx.update(polarSkinOrders).set({ status: 'FAILED' })
-          .where(and(eq(polarSkinOrders.id, pending.id), eq(polarSkinOrders.status, 'PENDING')));
-      } else if (pending.itemId === itemId && pending.checkoutId && pending.checkoutUrl) {
+      if (pending.itemId === itemId && pending.checkoutId && pending.checkoutUrl) {
         return { checkoutId: pending.checkoutId, url: pending.checkoutUrl };
       } else {
         throw new GameError('SKIN_CHECKOUT_IN_PROGRESS', 'Another checkout for this skin is in progress', 409);

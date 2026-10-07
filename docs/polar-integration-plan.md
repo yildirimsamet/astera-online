@@ -188,3 +188,64 @@ Sağlayıcı doğrulaması ve yeniden teslim davranışı:
 doğrulanmadan skin verilmez; başarılı ödeme skini yalnız doğru hesaba bir kez verir;
 tam iade yalnız Polar'dan alınan hakkı kaldırır; Shopier ve geçmiş Paddle hakları
 çalışmaya devam eder.
+
+## Checkout başlangıcının toparlanması — 7 Ekim 2026
+
+Yerel kodda süreç kapanmasına karşı toparlanma düzeltildi. Checkout kimliği ve
+sağlayıcı son kullanma tarihi henüz yazılmamış PENDING rezervasyon, oluşturulmasından
+60 saniye sonra sonraki satın alma denemesinde FAILED yapılır. Sağlayıcı tarihi
+mevcut olan checkout o tarihe kadar yeniden kullanılır. Hesap kilidi altında tüm
+süresi geçmiş paket/tekli çakışmaları temizlenir; aktif çakışmalar engellenir.
+Eski sipariş silinmez: geç gelen ödeme ve tam iade yerel sipariş metadata'sıyla
+işlenmeye devam eder. Migration veya ek servis gerekmiyor.
+
+TDD'de önce başarısız olan regresyonlar uygulamadan sonra geçti: ilgili Polar
+testlerinde 28/28 başarılı. Yeni kapsam; başlangıç süresinin sınırı, saat geri
+gitmesi, eşzamanlı yeniden deneme, birden fazla çakışma, sağlayıcı hatası,
+başka hesapların korunması ve geç ödeme/iade teslimidir.
+
+Canlı organizasyon ve mevcut webhook MCP üzerinden tekrar doğrulandı: hesap
+active, ödeme hesabı bağlı, ödeme/iade/payout yetkileri açık; webhook enabled ve
+`order.paid`, `order.refunded`, `checkout.expired` olaylarına abone. Canlı delivery
+listesi hâlâ boş. Polar panelinde yeni bir canlı webhook/ürün kurulumu gerekmiyor;
+gerçek canlı alım ve tam iade doğrulaması bekliyor.
+
+İlk inceleme anında bu düzeltme production'a dağıtılmamıştı ve satış bayrağı
+kapalıydı. Kullanıcı 7 Ekim'de eksiklerin tamamlanmasını, düzeltmenin dağıtılmasını
+ve satışın açılmasını yetkilendirdi.
+
+Manuel verilen skinler `cosmetic_entitlements` içinde `source=MANUAL` olarak
+tutulur; Polar'a aktarılmaları gerekmez. Sahiplik ve checkout kontrolleri tüm
+aktif hakları dikkate alır. Polar tam iadesi yalnız aynı Polar siparişinden
+gelen hakkı geri alır; manuel hakları etkilemez.
+
+## Açılış doğrulaması — 7 Ekim 2026
+
+Ayrı `astera_polar_release_20261007_test` veritabanı ve geçici HTTPS webhook'u
+üzerinden eksik gerçek sandbox senaryoları tamamlandı:
+
+| Senaryo | Ödeme | Tam iade ve hakların geri alınması |
+| --- | --- | --- |
+| Lava / TRY | ₺99 | Başarılı; ₺82,50 + ₺16,50 vergi |
+| Element paketi / TRY | ₺279 | Başarılı; ₺232,50 + ₺46,50 vergi |
+| Element paketi / EUR, Almanya fatura ülkesi | €8,49 | Başarılı; €7,13 + €1,36 vergi |
+| Japan / EUR, Japonya fatura ülkesi | €2,99 | Başarılı; vergi €0 |
+
+Dört paid ve dört refunded olayı sağlayıcıdan gerçekten geldi ve HTTP 200 aldı.
+Paketlerin dört hakkı doğru hesaba bir kez verildi. Sağlayıcı üzerinden paket
+paid olayı yeniden gönderildi: yeniden teslim HTTP 200, hak ve olay sayıları
+değişmedi. Aynı test hesabındaki manuel Turkey hediyesi, Polar Lava tam iadesinden
+sonra aktif kaldı. Testler canlı galakside hesap veya oyuncu koltuğu oluşturmadı.
+
+Gerçek checkout oluşturma 721–1676 ms sürdü; mevcut 8 saniyelik API sınırı içinde.
+Yerel web build başarılı. Typecheck/lint temiz; ilgili Polar testleri 28/28.
+Genel web taramasındaki tek `resource-state` hatası değişmemiş HEAD kodunda da
+aynı testle tekrarlandı; bu release web/rules dosyalarına dokunmuyor. Ekonomi
+simülasyonları ve snowball audit kullanıcı talimatıyla kapsam dışında.
+
+Dağıtım kapsamı yalnız Polar servisinin toparlanmasıdır; migration, API şekli,
+rules veya oyun döngüsü değişmez. Üç API sırayla, singleton worker en son
+yenilenir. Production yedeği ayrı veritabanına geri yüklenip hesap, sezon,
+oyuncu, görev, migration ve manuel hak sayıları karşılaştırıldı; eski image,
+webroot, Nginx ve ortam dosyası geri dönüş için saklandı. Canlı alım/iade ve
+satış bayrağının son durumu açılışın runtime kabul kayıtlarıyla doğrulanır.

@@ -60,7 +60,7 @@ describe('Polar skin sales', () => {
     authorization = `Bearer ${await new TokenService('test-secret-that-is-long-enough', 15, 30)
       .issueAccess(fixture.accountIds[0]!)}`;
   });
-  afterEach(async () => { vi.unstubAllGlobals(); await close(); });
+  afterEach(async () => { vi.unstubAllGlobals(); vi.restoreAllMocks(); await close(); });
 
   async function purchase(itemId: string) {
     return app.inject({ method: 'POST', url: '/api/skins/polar-purchase', remoteAddress: '198.51.100.1',
@@ -84,6 +84,21 @@ describe('Polar skin sales', () => {
     return { id: orderId, status: 'paid', paid: true, product_id: productId,
       checkout_id: checkoutId, metadata: { astera_order_id: localId },
       total_amount: 9900, refunded_amount: 0, customer: { external_id: fixture.accountIds[0] } };
+  }
+
+  async function reserve(itemId: 'planet-lava' | 'planet-ice' | 'bundle', values: {
+    createdAt: Date;
+    accountId?: string;
+    checkoutId?: string;
+    checkoutUrl?: string;
+    expiresAt?: Date;
+  }) {
+    const productId = itemId === 'bundle' ? products.POLAR_PRODUCT_BUNDLE
+      : itemId === 'planet-lava' ? products.POLAR_PRODUCT_LAVA : products.POLAR_PRODUCT_ICE;
+    const [intent] = await fixture.db.insert(polarSkinOrders)
+      .values({ accountId: fixture.accountIds[0]!, itemId, productId, ...values }).returning();
+    if (!intent) throw new Error('Expected a checkout reservation');
+    return intent;
   }
 
   it('quotes TRY in Turkey and leaves EUR only products in EUR', async () => {
@@ -143,6 +158,142 @@ describe('Polar skin sales', () => {
     const orders = await fixture.db.select({ status: polarSkinOrders.status })
       .from(polarSkinOrders).where(eq(polarSkinOrders.accountId, fixture.accountIds[0]!));
     expect(orders.map(order => order.status)).toEqual(['FAILED', 'PENDING']);
+  });
+
+  it('recovers a reservation left by a crash and still delivers and refunds its late paid order once', async () => {
+    const abandoned = await reserve('planet-lava', { createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000) });
+    nextCheckoutId = randomUUID();
+    const response = await purchase('planet-lava');
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json()).toMatchObject({ checkoutId: nextCheckoutId });
+    expect(checkoutCalls).toHaveLength(1);
+    const [retained] = await fixture.db.select().from(polarSkinOrders).where(eq(polarSkinOrders.id, abandoned.id));
+    expect(retained).toMatchObject({ status: 'FAILED', checkoutId: null, expiresAt: null });
+
+    const data = paid(abandoned.id, 'planet-lava');
+    const eventId = randomUUID();
+    expect((await webhook('order.paid', data, eventId)).statusCode).toBe(200);
+    expect((await webhook('order.paid', data, eventId)).statusCode).toBe(200);
+    expect((await webhook('order.paid', data)).statusCode).toBe(200);
+    expect(await owned()).toEqual(['planet-lava']);
+    const rights = await fixture.db.select().from(cosmeticEntitlements)
+      .where(eq(cosmeticEntitlements.accountId, fixture.accountIds[0]!));
+    expect(rights).toHaveLength(1);
+    expect(rights[0]).toMatchObject({ source: 'POLAR', orderRef: `${data.id}:planet-lava` });
+    expect((await webhook('order.refunded', { ...data, status: 'refunded' })).statusCode).toBe(200);
+    expect(await owned()).toEqual([]);
+    const [replacement] = await fixture.db.select().from(polarSkinOrders)
+      .where(eq(polarSkinOrders.checkoutId, nextCheckoutId));
+    expect(replacement?.status).toBe('PENDING');
+  });
+
+  it.each([
+    { ageMs: 59_999, status: 409, calls: 0, retainedStatus: 'PENDING' },
+    { ageMs: 60_000, status: 200, calls: 1, retainedStatus: 'FAILED' },
+    { ageMs: -1000, status: 409, calls: 0, retainedStatus: 'PENDING' },
+  ])('handles a starting reservation aged $ageMs ms without expiring an active request', async ({ ageMs, status, calls, retainedStatus }) => {
+    const now = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const starting = await reserve('planet-lava', { createdAt: new Date(now - ageMs) });
+    const response = await purchase('planet-lava');
+    expect(response.statusCode, response.body).toBe(status);
+    if (status === 409) expect(response.json()).toMatchObject({ error: 'SKIN_CHECKOUT_IN_PROGRESS' });
+    expect(checkoutCalls).toHaveLength(calls);
+    const [retained] = await fixture.db.select().from(polarSkinOrders).where(eq(polarSkinOrders.id, starting.id));
+    expect(retained?.status).toBe(retainedStatus);
+  });
+
+  it('reuses an old checkout until its actual Polar expiry instead of applying the starting timeout', async () => {
+    const url = `https://sandbox.polar.sh/checkout/${checkoutId}`;
+    const active = await reserve('planet-lava', { createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      checkoutId, checkoutUrl: url, expiresAt: new Date(Date.now() + 60_000) });
+    const response = await purchase('planet-lava');
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json()).toMatchObject({ checkoutId, url });
+    expect(checkoutCalls).toHaveLength(0);
+    const [retained] = await fixture.db.select().from(polarSkinOrders).where(eq(polarSkinOrders.id, active.id));
+    expect(retained?.status).toBe('PENDING');
+  });
+
+  it('clears every expired overlapping reservation before starting a bundle', async () => {
+    const oldCheckoutId = randomUUID();
+    const expired = await reserve('planet-lava', { createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      checkoutId: oldCheckoutId, checkoutUrl: `https://sandbox.polar.sh/checkout/${oldCheckoutId}`,
+      expiresAt: new Date(Date.now() - 1000) });
+    const abandoned = await reserve('planet-ice', { createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000) });
+    const response = await purchase('bundle');
+    expect(response.statusCode, response.body).toBe(200);
+    expect(checkoutCalls).toHaveLength(1);
+    const orders = await fixture.db.select().from(polarSkinOrders)
+      .where(eq(polarSkinOrders.accountId, fixture.accountIds[0]!));
+    expect(orders.find(order => order.id === expired.id)?.status).toBe('FAILED');
+    expect(orders.find(order => order.id === abandoned.id)?.status).toBe('FAILED');
+    expect(orders.filter(order => order.status === 'PENDING').map(order => order.itemId)).toEqual(['bundle']);
+  });
+
+  it('keeps an active elemental checkout blocking a bundle even when another overlap is expired', async () => {
+    await reserve('planet-ice', { createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      expiresAt: new Date(Date.now() - 1000) });
+    const active = await reserve('planet-lava', { createdAt: new Date(), checkoutId,
+      checkoutUrl: `https://sandbox.polar.sh/checkout/${checkoutId}`, expiresAt: new Date(Date.now() + 60_000) });
+    const response = await purchase('bundle');
+    expect(response.statusCode, response.body).toBe(409);
+    expect(response.json()).toMatchObject({ error: 'SKIN_CHECKOUT_IN_PROGRESS' });
+    expect(checkoutCalls).toHaveLength(0);
+    const orders = await fixture.db.select().from(polarSkinOrders)
+      .where(eq(polarSkinOrders.accountId, fixture.accountIds[0]!));
+    expect(orders.some(order => order.itemId === 'bundle')).toBe(false);
+    expect(orders.find(order => order.id === active.id)?.status).toBe('PENDING');
+  });
+
+  it('opens one provider checkout when two requests recover the same abandoned reservation concurrently', async () => {
+    await reserve('planet-lava', { createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000) });
+    const responses = await Promise.all([purchase('planet-lava'), purchase('planet-lava')]);
+    expect(responses.some(response => response.statusCode === 200)).toBe(true);
+    for (const response of responses) {
+      expect([200, 409]).toContain(response.statusCode);
+      if (response.statusCode === 200) expect(response.json()).toMatchObject({ checkoutId });
+      else expect(response.json()).toMatchObject({ error: 'SKIN_CHECKOUT_IN_PROGRESS' });
+    }
+    expect(checkoutCalls).toHaveLength(1);
+    const orders = await fixture.db.select().from(polarSkinOrders)
+      .where(eq(polarSkinOrders.accountId, fixture.accountIds[0]!));
+    expect(orders.map(order => order.status).sort()).toEqual(['FAILED', 'PENDING']);
+  });
+
+  it('allows a retry if the provider fails while replacing an abandoned reservation', async () => {
+    await reserve('planet-lava', { createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000) });
+    const originalFetch = globalThis.fetch;
+    let rejected = false;
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
+      if (url === 'https://sandbox-api.polar.sh/v1/checkouts/' && !rejected) {
+        rejected = true;
+        return Promise.resolve(new Response('{}', { status: 503 }));
+      }
+      return originalFetch(url, init);
+    }));
+    const failed = await purchase('planet-lava');
+    expect(failed.statusCode, failed.body).toBe(502);
+    expect(failed.json()).toMatchObject({ error: 'POLAR_UNAVAILABLE' });
+    const response = await purchase('planet-lava');
+    expect(response.statusCode, response.body).toBe(200);
+    expect(checkoutCalls).toHaveLength(1);
+    const orders = await fixture.db.select().from(polarSkinOrders)
+      .where(eq(polarSkinOrders.accountId, fixture.accountIds[0]!));
+    expect(orders.map(order => order.status).sort()).toEqual(['FAILED', 'FAILED', 'PENDING']);
+  });
+
+  it('leaves another account\'s abandoned reservation untouched', async () => {
+    fixture = await seedWorld(2);
+    authorization = `Bearer ${await new TokenService('test-secret-that-is-long-enough', 15, 30)
+      .issueAccess(fixture.accountIds[0]!)}`;
+    const foreign = await reserve('planet-lava', { accountId: fixture.accountIds[1]!,
+      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000) });
+    await reserve('planet-lava', { createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000) });
+    const response = await purchase('planet-lava');
+    expect(response.statusCode, response.body).toBe(200);
+    const [retained] = await fixture.db.select().from(polarSkinOrders).where(eq(polarSkinOrders.id, foreign.id));
+    expect(retained?.status).toBe('PENDING');
   });
 
   it('reverses only fully refunded Polar rights and keeps a pre-payment reversal from granting', async () => {
