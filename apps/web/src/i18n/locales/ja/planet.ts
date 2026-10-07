@@ -590,7 +590,7 @@ export const launch = {
    * which is the sheet's own shape rather than a paragraph's job.
    */
   shieldWarning:
-    "これにより、初日のシールドが放棄されます。それがなくなると、他の指揮官もあなたを襲撃することができます。",
+    "これにより、開始時のシールドが放棄されます。それがなくなると、他の指揮官もあなたを襲撃することができます。",
   /** The same price, on the window a heavy defeat bought rather than on the first day. */
   recoveryShieldWarning:
     "これにより、回復シールドとその +50% の出力が放棄されます。それがなくなると、他の指揮官もあなたを襲撃することができます。",

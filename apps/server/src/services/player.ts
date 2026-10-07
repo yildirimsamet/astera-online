@@ -229,6 +229,14 @@ export async function joinSeason(
         await tx.update(mainVacancies).set({ consumedAt: now, consumedReason: 'NEW_JOIN' })
           .where(and(eq(mainVacancies.seasonId, seasonId), eq(mainVacancies.slotIndex, slot.index), isNull(mainVacancies.consumedAt)));
 
+        // The conditional UPDATE locks the account across concurrent galaxy joins.
+        // A failed placement rolls it back; wipes leave the account entitlement consumed.
+        const firstGame = seat === 'COMMANDER'
+          ? await tx.update(accounts).set({ firstGameShieldAvailable: false })
+            .where(and(eq(accounts.id, accountId), eq(accounts.firstGameShieldAvailable, true)))
+            .returning({ id: accounts.id })
+          : [];
+
         const [player] = await tx
           .insert(players)
           .values({
@@ -240,19 +248,9 @@ export async function joinSeason(
             joinedAt: now,
             lastSeenAt: now,
             lastActiveAt: now,
-            /**
-             * THE FIRST DAY IS SAFE. D183, owner instruction, reversing D14.
-             *
-             * Stamped HERE, at the one place a commander enters a galaxy, because
-             * that is what "every season, for everybody" means: a veteran joining
-             * a new shard is as new to it as anyone, and an account's history is
-             * exactly the wrong thing to read (D14's own objection). A commander
-             * arriving from the Academy comes through this line like everyone
-             * else, so the transfer needs no case of its own.
-             *
-             * Taking a shot gives it up — see `startAttack`'s `SHIELD_WOULD_DROP`.
-             */
-            newcomerShieldUntil: new Date(newcomerShieldUntil(now.getTime())),
+            // First game: 72h once. Every other season join: the existing 24h.
+            // Taking a shot still gives it up after `SHIELD_WOULD_DROP` consent.
+            newcomerShieldUntil: new Date(newcomerShieldUntil(now.getTime(), firstGame.length > 0)),
           })
           .onConflictDoNothing({ target: players.accountId })
           .returning();

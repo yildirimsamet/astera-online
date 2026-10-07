@@ -586,7 +586,7 @@ export const launch = {
    * which is the sheet's own shape rather than a paragraph's job.
    */
   shieldWarning:
-    "Dadurch wird Ihr Ersttagsschild aufgegeben. Sobald es weg ist, können auch andere Kommandeure Sie überfallen.",
+    "Dadurch wird Ihr Startschutzschild aufgegeben. Sobald es weg ist, können auch andere Kommandeure Sie überfallen.",
   /** The same price, on the window a heavy defeat bought rather than on the first day. */
   recoveryShieldWarning:
     "Dadurch wird Ihr Wiederherstellungsschild und dessen +50 % Leistung aufgegeben. Sobald es weg ist, können auch andere Kommandeure Sie überfallen.",

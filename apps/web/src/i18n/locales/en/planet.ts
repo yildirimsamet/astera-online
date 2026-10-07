@@ -590,7 +590,7 @@ export const launch = {
    * which is the sheet's own shape rather than a paragraph's job.
    */
   shieldWarning:
-    "This gives up your first-day shield. Once it is gone, other commanders can raid you too.",
+    "This gives up your starting shield. Once it is gone, other commanders can raid you too.",
   /** The same price, on the window a heavy defeat bought rather than on the first day. */
   recoveryShieldWarning:
     "This gives up your recovery shield and its +50% output. Once it is gone, other commanders can raid you too.",

@@ -396,10 +396,10 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     // A worker exposes only its loopback operations surface. It must never become
     // an accidental fourth public API replica merely because metrics need a port.
     if (opts.env.ROLE === 'worker') return;
-    registerAuthRoutes(app);
+    registerAuthRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
     registerServerRoutes(app);
     registerPreviewRoutes(app);
-    registerOnboardingRoutes(app);
+    registerOnboardingRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
     registerSeasonRoutes(app);
     registerPlanetRoutes(app);
     registerRewardRoutes(app);

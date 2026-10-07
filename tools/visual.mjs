@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--first-game-shield')) {
+  const { verifyFirstGameShield } = await import('./first-game-shield-visual.mjs');
+  await verifyFirstGameShield(process.argv[2] ?? 'out/first-game-shield');
+  process.exit(0);
+}
+
 if (process.argv.includes('--spend-bars')) {
   const { verifySpendBars } = await import('./spend-bar-visual.mjs');
   await verifySpendBars(process.argv[2] ?? 'out/spend-bars');

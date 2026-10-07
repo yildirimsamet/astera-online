@@ -553,6 +553,26 @@ way to roll it. That gap is not user-facing: a scheduled event is claimed with `
 simply runs that much late, which is the same lateness `WORKER_POLL_MS` already admits. Roll it
 LAST, so the APIs are already answering on the new image when it comes back.
 
+#### First-game shield: two-phase activation when adding the account entitlement
+
+Migration `0142_first_game_shield` adds a non-null account boolean with default `false`.
+Existing accounts and legacy writers stay on the normal 24-hour shield; only new human
+registrations opt into a one-time 72-hour shield. The first successful placement consumes
+the entitlement in the same transaction as the player and capital. Season wipes do not
+reset it. No historical account or player backfill is needed.
+
+After proving the expand-only migration against the restored copy and old image, migrate
+production with the new image. Persist and export `FIRST_GAME_SHIELD_ENABLED=false`, then
+roll API1 → API2 → API3 → worker. Require all four processes healthy on the new image and
+with this setting `false` before activation. This prevents a new replica from registering
+an eligible account whose first join is then handled by old code that cannot consume it.
+
+Once all four processes understand the entitlement, persist and export
+`FIRST_GAME_SHIELD_ENABLED=true` and repeat the same roll. The setting gates registration
+only: every upgraded replica honours an existing entitlement even while its own registration
+setting remains false. Require all four settings true before publishing the web guides.
+Future releases can use a single roll after this compatibility deployment is complete.
+
 #### D211: two-phase activation when upgrading from the 6/hour pirate lane
 
 The established prefix is unchanged, but an OLD worker cannot resolve an additional index.

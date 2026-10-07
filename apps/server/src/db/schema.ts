@@ -275,6 +275,8 @@ export const accounts = pgTable('accounts', {
   displayName: text('display_name').notNull(),
   countryCode: char('country_code', { length: 2 }).$type<CountryCode>().notNull().default('TR'),
   lifetime: jsonb('lifetime').$type<Record<string, number>>().notNull().default({}),
+  /** Only new human registrations opt in; consumed atomically on their first join. */
+  firstGameShieldAvailable: boolean('first_game_shield_available').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('accounts_email_idx').on(t.email),

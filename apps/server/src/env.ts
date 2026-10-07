@@ -19,6 +19,8 @@ const schema = z.object({
    * variable naming "the" shard could only ever be wrong for nine of them.
    */
   JWT_SECRET: z.string().min(16).default('dev-only-secret-do-not-ship-me'),
+  /** Enable new registrations only after every replica supports consuming this grant. */
+  FIRST_GAME_SHIELD_ENABLED: z.enum(['true', 'false']).default('true').transform(value => value === 'true'),
   /** Live checkout stays closed until all three secrets are supplied and enabled. */
   PADDLE_CHECKOUT_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   PADDLE_ENV: z.enum(['sandbox', 'production']).default('production'),

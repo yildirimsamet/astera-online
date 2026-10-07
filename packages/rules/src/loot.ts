@@ -275,8 +275,8 @@ export const tierBandReach = (peakCore: number): { tier: number; low: number; hi
  * against `serverNow()` (D51). A duration would have to be re-based by whoever
  * received it, which is how two surfaces start disagreeing about the same wait.
  */
-export const newcomerShieldUntil = (joinedMs: number): number =>
-  joinedMs + ABUSE.newcomerShieldHours * 3_600_000;
+export const newcomerShieldUntil = (joinedMs: number, firstGame = false): number =>
+  joinedMs + (firstGame ? ABUSE.firstGameShieldHours : ABUSE.newcomerShieldHours) * 3_600_000;
 
 /**
  * THE ONE READING OF A STORED PROTECTION COLUMN, AND EVERY OTHER ANSWER IS BUILT

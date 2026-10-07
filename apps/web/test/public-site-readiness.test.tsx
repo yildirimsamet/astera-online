@@ -36,6 +36,16 @@ const publicFile = (path: string): Promise<string> =>
 const parse = async (path: string): Promise<Document> =>
   new DOMParser().parseFromString(await publicFile(path), 'text/html');
 
+it.each([
+  ['/quick-start-guide.html', /72 hours/i, /24 hours/i, /once per new account/i],
+  ['/hizli-baslangic-rehberi.html', /72 saat/i, /24 saat/i, /bir defaya mahsus/i],
+] as const)('explains first-game and later-season protection in %s', async (path, first, later, once) => {
+  const text = (await parse(path)).body.textContent;
+  expect(text).toMatch(first);
+  expect(text).toMatch(later);
+  expect(text).toMatch(once);
+});
+
 const socialImage = 'https://asteraonline.space/assets/images/general/og-image.png';
 
 const showLanding = (): void => {

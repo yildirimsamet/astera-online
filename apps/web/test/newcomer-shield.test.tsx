@@ -103,7 +103,7 @@ function show(shieldUntil: Date | null, world: GalaxyPlanet = target) {
 
 beforeEach(async () => { await i18n.changeLanguage('en'); });
 
-describe('the first-day shield on the launch sheet', () => {
+describe('the starting shield on the launch sheet', () => {
   // Picking a ship is enough to read the price: it is written before the held commit (B14).
   const commit = async () => {
     const user = userEvent.setup();
@@ -120,7 +120,7 @@ describe('the first-day shield on the launch sheet', () => {
   it('says nothing at all to a commander who has no shield', async () => {
     show(null);
     await commit();
-    expect(screen.queryByText(/first-day shield/i)).toBeNull();
+    expect(screen.queryByText(/starting shield/i)).toBeNull();
   });
 
   /**
@@ -131,7 +131,7 @@ describe('the first-day shield on the launch sheet', () => {
   it('states the price beside the confirmation, in the same breath as the exposure', async () => {
     show(new Date(Date.now() + 6 * 3_600_000));
     await commit();
-    expect(screen.getByText(/first-day shield/i)).toBeInTheDocument();
+    expect(screen.getByText(/starting shield/i)).toBeInTheDocument();
   });
 
   it('sends the acknowledgement only once the commander has confirmed', async () => {
@@ -158,7 +158,7 @@ describe('the first-day shield on the launch sheet', () => {
   it('says nothing about the shield when the target is a caretaker world', async () => {
     show(new Date(Date.now() + 6 * 3_600_000), neutral);
     await commit();
-    expect(screen.queryByText(/first-day shield/i)).toBeNull();
+    expect(screen.queryByText(/starting shield/i)).toBeNull();
   });
 
   it('sends no acknowledgement for a neutral world, because none is spent', async () => {
@@ -202,6 +202,12 @@ describe('the attack shield in the permanent HUD', () => {
   it('shows how long the protection has left, and says why in full to a reader', () => {
     showStatus(new Date(Date.now() + 6 * 3_600_000));
     expect(screen.getByText(/5h 59m|6h 00m/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/cannot be raided/i)).toBeInTheDocument();
+  });
+
+  it('shows the entire three-day first-game window without capping it at a day', () => {
+    showStatus(new Date(Date.now() + 72 * 3_600_000), 'NEWCOMER');
+    expect(screen.getByText(/71h 59m|72h 00m/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/cannot be raided/i)).toBeInTheDocument();
   });
 

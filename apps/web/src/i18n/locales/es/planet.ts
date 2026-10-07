@@ -586,7 +586,7 @@ export const launch = {
    * which is the sheet's own shape rather than a paragraph's job.
    */
   shieldWarning:
-    "Esto renuncia a tu escudo del primer día. Una vez que desaparezca, otros comandantes también podrán atacarte.",
+    "Esto renuncia a tu escudo inicial. Una vez que desaparezca, otros comandantes también podrán atacarte.",
   /** The same price, on the window a heavy defeat bought rather than on the first day. */
   recoveryShieldWarning:
     "Esto renuncia a tu escudo de recuperación y su +50% de producción. Una vez que desaparezca, otros comandantes también podrán atacarte.",

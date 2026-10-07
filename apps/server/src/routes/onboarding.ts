@@ -63,7 +63,7 @@ type Applied =
   | { kind: Intent['kind']; ok: true }
   | { kind: Intent['kind']; ok: false; error: string; params?: Record<string, string | number> };
 
-export function registerOnboardingRoutes(app: FastifyInstance): void {
+export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEnabled = true): void {
   /**
    * THE ONE UNAUTHENTICATED ROUTE THAT SPENDS A SCARCE THING.
    *
@@ -77,7 +77,7 @@ export function registerOnboardingRoutes(app: FastifyInstance): void {
   app.post('/api/onboarding/claim', { config: { rateLimit: app.limits.signup } }, async (req, reply) => {
     const body = claimBody.parse(req.body ?? {});
 
-    const account = await claimAccount(app, body.username, body.password, body.countryCode);
+    const account = await claimAccount(app, body.username, body.password, body.countryCode, firstGameShieldEnabled);
 
     /**
      * The frontier, resolved at CLAIM TIME rather than taken from the client.
@@ -160,9 +160,10 @@ async function claimAccount(
   username: string,
   password: string,
   countryCode: z.infer<typeof registerBody>['countryCode'],
+  firstGameShieldEnabled: boolean,
 ): Promise<Awaited<ReturnType<typeof registerAccount>>> {
   try {
-    return await registerAccount(app.db, { username, password, countryCode });
+    return await registerAccount(app.db, { username, password, countryCode }, firstGameShieldEnabled);
   } catch (err) {
     if (err instanceof GameError && err.code === 'USERNAME_TAKEN') {
       try {

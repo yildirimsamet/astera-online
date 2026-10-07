@@ -554,7 +554,7 @@ export const launch = {
   warning:
     "Impossible de rappeler cette flotte. Une fois partie, tu ne découvriras ce qui se trouve en dessous qu’en suivant son arrivée ; jusqu’à son retour, {{count}} unités resteront sur ta planète.",
   shieldWarning:
-    "Ce raid fera tomber ton bouclier de premier jour. Une fois la protection levée, les autres commandants pourront eux aussi t’attaquer.",
+    "Ce raid fera tomber ton bouclier de départ. Une fois la protection levée, les autres commandants pourront eux aussi t’attaquer.",
   recoveryShieldWarning:
     "Ce raid mettra fin à ton bouclier de récupération et au bonus de production de +50 %. Une fois la protection levée, les autres commandants pourront eux aussi t’attaquer.",
   radiationLethal_one: "La radiation sur cette route détruit {{count}} vaisseau avant l’arrivée. Maintenir l’envoie quand même.",

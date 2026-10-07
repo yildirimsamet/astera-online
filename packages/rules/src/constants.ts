@@ -2183,6 +2183,9 @@ export const ABUSE = {
    */
   newcomerShieldHours: 24,
 
+  /** One prospective first-game grant per new human account. Owner, 2026-10-07. */
+  firstGameShieldHours: 72,
+
   /**
    * HOW LONG A COMMANDER IS SAFE AFTER A HEAVY DEFEAT. Owner instruction,
    * 2026-09-14: *"Ağır bir PvP kaybından sonra 4 saatlik saldırı koruması ver."*

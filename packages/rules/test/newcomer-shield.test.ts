@@ -21,9 +21,9 @@ import { ABUSE, newcomerShieldUntil, newcomerShielded } from '../src/index.js';
  * a colony — settle a fresh one and hide a fleet behind its untouchable sky — and
  * D168 moved the attack band onto the commander for exactly that reason.
  *
- * AND IT IS EVERY SEASON, FOR EVERYBODY. Not a first-account courtesy: a veteran
- * joining a new galaxy is as new to it as anyone, and a rule that reads a player's
- * history rather than their situation is the kind D14 rightly refused.
+ * The 24-hour baseline remains every season for everybody. Owner, 2026-10-07:
+ * prospective new accounts receive 72 hours once on their first successful join.
+ * The account service consumes that entitlement; this pure rule only picks the duration.
  */
 describe('the newcomer shield', () => {
   const joined = Date.UTC(2026, 0, 1, 12, 0, 0);
@@ -32,6 +32,16 @@ describe('the newcomer shield', () => {
     expect(newcomerShieldUntil(joined))
       .toBe(joined + ABUSE.newcomerShieldHours * 3_600_000);
     expect(ABUSE.newcomerShieldHours).toBe(24);
+  });
+
+  it('gives the first game three days and keeps later joins at one day', () => {
+    const until = newcomerShieldUntil(joined, true);
+    expect(until).toBe(joined + 72 * 3_600_000);
+    expect(ABUSE.firstGameShieldHours).toBe(72);
+    expect(newcomerShieldUntil(joined, false)).toBe(joined + 24 * 3_600_000);
+    expect(newcomerShielded(until, joined + 24 * 3_600_000)).toBe(true);
+    expect(newcomerShielded(until, until - 1)).toBe(true);
+    expect(newcomerShielded(until, until)).toBe(false);
   });
 
   it('is up for the whole window and down the instant it ends', () => {

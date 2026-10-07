@@ -46,6 +46,7 @@ const publicShape = (row: {
 export async function registerAccount(
   db: Db,
   input: { username: string; password: string; countryCode?: CountryCode },
+  firstGameShieldAvailable = true,
 ): Promise<AccountRecord> {
   const username = normaliseUsername(input.username);
   const passwordHash = await hashPassword(input.password);
@@ -57,6 +58,7 @@ export async function registerAccount(
       passwordHash,
       // The typed casing is what other players read; the folded one is the key.
       displayName: input.username.trim(),
+      firstGameShieldAvailable,
       ...(input.countryCode === undefined ? {} : { countryCode: input.countryCode }),
     })
     .onConflictDoNothing({ target: accounts.username })

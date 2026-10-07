@@ -68,7 +68,7 @@ export async function openSession(
  * Short access token in memory, long refresh token in an httpOnly cookie. Both
  * stateless, no session store.
  */
-export function registerAuthRoutes(app: FastifyInstance): void {
+export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled = true): void {
   /**
    * REGISTERING IS RATE-LIMITED AS A SIGNUP, NOT AS A LOGIN.
    *
@@ -78,7 +78,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
    */
   app.post('/api/auth/register', { config: { rateLimit: app.limits.signup } }, async (req, reply) => {
     const body = registerBody.parse(req.body ?? {});
-    const account = await registerAccount(app.db, body);
+    const account = await registerAccount(app.db, body, firstGameShieldEnabled);
     return openSession(app, reply, account);
   });
 
