@@ -56,6 +56,11 @@ is a licence to add systems. **Simple implementation, magnificent presentation.*
 Not a 4X. Not an MMO. Not an OGame clone. Not AAA. There is no alliance
 diplomacy, no tech tree, no fleet micro-management, no manual combat.
 
+> **Owner exception (2026-10-07):** the Komutan Gemisi Battlefield — an optional, real-time,
+> directly piloted PvP mode linked to the galaxy through resources and season-scoped upgrades —
+> is deliberately outside the sentence above. The galaxy stays the main game; the limits live in
+> [komutan-gemisi/01-urun.md](komutan-gemisi/01-urun.md#sahip-istisnasi).
+
 The production constraint that shapes everything: **a three-person team must be able to
 build, operate and grow this into a medium-to-large game without losing coherence.** Team
 growth expands production capacity; it does not justify systems that weaken the core loop.
