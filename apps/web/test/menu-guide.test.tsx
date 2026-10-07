@@ -120,9 +120,10 @@ describe('the quick-start guide row', () => {
     expect(page).toContain('<html');
   });
 
-  it('explains the first-day shield and the action that spends it', () => {
+  it('explains the one-time first-game shield, later joins and the action that spends it', () => {
     const page = readFileSync(resolve(process.cwd(), `public${publisherUrl('guide', 'tr')}`), 'utf8');
-    expect(page).toMatch(/ilk 24 saat/i);
+    expect(page).toMatch(/bir defaya mahsus 72 saat/i);
+    expect(page).toMatch(/sonraki sezon katılımları\s+.*24 saat/is);
     expect(page).toMatch(/saldırı.*koruma.*sona erer/is);
   });
 
