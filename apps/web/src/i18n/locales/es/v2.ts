@@ -135,6 +135,7 @@ export const fleetPage = {
   recallHome: "Si la llamas, en casa en {{time}}",
   recalling: "Volviendo…",
   emptyAir: "Nada en vuelo. Toca un mundo, una roca o un pirata en la galaxia para enviar naves.",
+  focusWorld: "Mostrar {{world}} en la galaxia",
   shipsHome_one: "{{count}} nave en casa",
   shipsHome_other: "{{count}} naves en casa",
   away: "{{count}} fuera",

@@ -35,7 +35,7 @@ export const chronicle = {
   dominionLeader: '{{commander}} took the Dominion lead',
   dominionLeaderDetail: '{{planet}} now stands at the top of the public ladder.',
   neutralClaim: 'Claim window opened at {{planet}} · T{{tier}}',
-  neutralClaimDetail: 'A decisive raid opened a public settlement race for this world.',
+  neutralClaimDetail: "A decisive raid opened a settlement race for this world. If the raider had a free colony slot, its first {{minutes}} min are theirs alone.",
   neutralOpened: '{{total}} neutral worlds opened',
   neutralOpenedDetail: 'The frontier expanded · T1 {{t1}} · T2 {{t2}} · T3 {{t3}}.',
   deathStarImpact: 'Death Star impact at {{planet}}',

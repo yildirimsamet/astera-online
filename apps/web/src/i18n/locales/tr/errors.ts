@@ -32,6 +32,7 @@ export const errors = {
   COLONY_CAP: 'Komuta Çekirdeğin yeni bir koloniyi taşıyamaz',
   NO_ACTIVE_CLAIM: 'Açık bir yerleşim talebi yok',
   CLAIM_EXPIRED: 'Yerleşim talebinin süresi doldu',
+  CLAIM_PRIORITY: "Hakkı açan akıncının önceliği sürüyor; Kuryelerin çok erken inerdi",
   TARGET_CHANGED: 'Bu dünyanın kontrolü önce değişti',
   SETTLEMENT_REQUIREMENTS: 'Yerleşim için tam 2 Kurye ve kuruluş yükü gerekir',
   DEATH_STAR_EXISTS: 'Bu dünyanın Ölüm Yıldızı kapasitesi dolu',

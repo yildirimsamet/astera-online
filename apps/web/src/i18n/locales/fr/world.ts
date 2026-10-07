@@ -103,6 +103,8 @@ export const galaxy = {
   recovery: "Fenêtre de récupération",
   emp: "Panne EMP",
   claimOpen: "Revendication ouverte",
+  claimMine: "Ta priorité",
+  claimPriority: "Priorité de l’attaquant",
   harvestAway: "{{count}} appareils partis · épave dans {{minutes}} min",
   miningAway: "{{count}} appareils partis · astéroïde dans {{minutes}} min",
   panelPlanetEyebrow: "Ta planète",
@@ -163,6 +165,7 @@ export const focus = {
     settleNeedCrystal: "Coloniser · manque de Cristal",
     settleNeedFuel: "Coloniser · manque de Deutérium",
     settleTooLate: "Coloniser · arrivée trop tardive",
+    settleNeedPriority: "Coloniser · priorité de l’attaquant",
     settleRecovering: "Coloniser · planète capitale en récupération",
     settleWhy: {
       recovering:
@@ -178,12 +181,15 @@ export const focus = {
       fuel: "{{need}} Deutérium requis · {{have}} présents ici",
       tooLate:
         "Les Cargos partant d’ici arriveraient après la fermeture de la course.",
+      priority: "Seul l’attaquant peut atterrir jusqu’à la fin de son heure. Lance dans {{wait}} et tes Cargos atterriront à son terme.",
     },
     settlementConfirm: {
       eyebrow: "Course à la colonisation",
       title: "Coloniser {{world}}",
       unsurveyedTitle: "Coloniser ce monde",
       race: "Le premier joueur à faire arriver 2 Cargos valides prend le contrôle de la planète.",
+      priorityMineFirst: "Ta priorité : tes Cargos atterrissent avant sa fin, personne ne peut atterrir avant toi.",
+      priorityMineLate: "Tes Cargos atterrissent après la fin de ta priorité ; dès lors, la première arrivée valide l’emporte.",
       noRecall:
         "Les vaisseaux de colonisation ne peuvent pas être rappelés. Si tu remportes la colonie, les ressources de fondation sont consommées et la planète s’ouvre avec le stock correspondant à son palier. Si quelqu’un arrive avant toi, tes Cargos et les ressources de fondation reviennent ; le carburant consommé, lui, n’est pas remboursé.",
       transports: "Vaisseaux de colonisation",
@@ -271,8 +277,7 @@ export const focus = {
     routeRaidDetail:
       "Lance un raid avec des vaisseaux de combat. Détruis toutes les unités défensives ainsi que le bouclier.",
     routeClaim: "La course s’ouvre automatiquement",
-    routeClaimDetail:
-      "Tu n’envoies rien. Dès qu’une victoire décisive est obtenue, le système ouvre lui-même la course.",
+    routeClaimDetail: "Tu n’envoies rien. Une victoire décisive ouvre la course d’elle-même ; si tu l’ouvres avec un emplacement de colonie libre, ses {{minutes}} premières min sont à toi seul.",
     routeSettle: "Envoyer la flotte de colonisation",
     routeSettleDetail:
       "Les vaisseaux de fondation et les ressources ne partent qu’à ce moment-là. La première arrivée valide gagne.",
@@ -288,11 +293,18 @@ export const focus = {
     settlementAwayExplain:
       "Tes 2 Cargos et les ressources de fondation sont partis. Aucun rappel possible ; la première arrivée valide prend la planète.",
     claimCloses: "se ferme dans {{duration}}",
+    claimPriorityMineTitle: "Course coloniale · ta priorité",
+    claimPriorityOtherTitle: "Course coloniale · priorité de l’attaquant",
+    claimPriorityMineExplain: "Tu as ouvert cette revendication : pendant ses {{minutes}} premières min, seuls tes Cargos peuvent atterrir. Ensuite, tout le monde court.",
+    claimPriorityOtherExplain: "L’attaquant qui a ouvert cette revendication a ses {{minutes}} premières min : seuls ses Cargos peuvent atterrir. Ensuite, la première arrivée valide l’emporte.",
+    claimPriorityCloses: "Priorité finie dans {{priority}} · course close dans {{closes}}",
     claimRaidStillOpen:
       "Un nouveau raid reste possible ; il ne prolonge pas la revendication ouverte.",
-    openColonySlot: "Emplacement de colonie",
+    colonySlotOpen: "Emplacement de colonie libre",
+    colonySlotNeedsCore: "Emplacement de colonie : Noyau de commandement {{required}} requis · actuel {{current}}",
+    colonySlotsFull: "Emplacements de colonie pleins ({{max}})",
     colonySlotExplain:
-      "Nécessaire uniquement à l’étape 3. Au départ de la flotte de fondation, un emplacement de colonie doit être disponible dans le Noyau de Commandement de la planète capitale.",
+      "Au départ de la flotte de fondation, un emplacement de colonie doit être libre dans le Noyau de Commandement de la planète capitale. S’il l’est quand ton raid ouvre la course, ses {{minutes}} premières min sont aussi à toi.",
     captureColonySlotExplain:
       "Nécessaire pour coloniser, pas pour frapper une colonie : l’Étoile de la Mort ne transfère jamais le contrôle d’un monde.",
     openFlightBay: "1 rampe de vol libre",

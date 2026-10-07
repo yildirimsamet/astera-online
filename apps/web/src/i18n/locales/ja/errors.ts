@@ -35,6 +35,7 @@ export const errors = {
   COLONY_CAP: "植民地の枠が足りません。首都の司令中枢を強化してください。",
   NO_ACTIVE_CLAIM: "進行中の入植競争はありません。",
   CLAIM_EXPIRED: "入植競争の期限が切れました。",
+  CLAIM_PRIORITY: "この競争を開いた襲撃者の優先権がまだ続いています。クーリエの着陸が早すぎます。",
   TARGET_CHANGED: "到着前にこの惑星の持ち主が変わりました。",
   SETTLEMENT_REQUIREMENTS: "入植にはクーリエ2隻と創設用の資源が必要です。",
   DEATH_STAR_EXISTS: "この世界は デス・スター の容量に達しました",

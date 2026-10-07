@@ -16,6 +16,7 @@ const ready: SettlementBlockInput = {
   stock: { alloy: 50_000, crystal: 50_000, deuterium: 50_000 },
   fuel: 40,
   canArrive: true,
+  priorityWait: 0,
 };
 
 describe('settlementBlock', () => {
@@ -63,6 +64,18 @@ describe('settlementBlock', () => {
     expect(settlementBlock({ ...ready, stock: { ...ready.stock, deuterium: 10 } }))
       .toEqual({ code: 'FUEL', need: MULTI_WORLD.settlement.charge.deuterium + 40, have: 10 });
     expect(settlementBlock({ ...ready, canArrive: false })).toEqual({ code: 'TOO_LATE' });
+  });
+
+  /**
+   * THE RAIDER'S HOUR IS THE LAST THING IN THE WAY (owner, 2026-10-07), in the order the
+   * launch refuses: a flight that cannot reach the claim at all is TOO_LATE whatever the
+   * hour says, and every missing ship or ore comes first. It carries the wait, because
+   * "not yet" without "until when" is not a decision.
+   */
+  it('names the raider\'s hour last, with how long to wait', () => {
+    expect(settlementBlock({ ...ready, priorityWait: 12.5 })).toEqual({ code: 'PRIORITY', waitMinutes: 12.5 });
+    expect(settlementBlock({ ...ready, canArrive: false, priorityWait: 12 })).toEqual({ code: 'TOO_LATE' });
+    expect(settlementBlock({ ...ready, couriers: 0, priorityWait: 12 })?.code).toBe('COURIER');
   });
 
   it('reports the slot before a bay, a bay before a Courier and a Courier before ore', () => {

@@ -1,10 +1,12 @@
 import { VIEW, GALAXY } from '@astera/rules';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { HpRadiationSourceView, PublicMonument } from '../src/api/schemas.js';
 import { MonumentFocus } from '../src/galaxy/FocusPanel.js';
 import { DISC_RADIUS } from '../src/galaxy/scene.js';
-import { monumentNavigationRadius } from '../src/galaxy/monuments.js';
+import { monumentFinderTargets, monumentNavigationRadius } from '../src/galaxy/monuments.js';
+import i18n from '../src/i18n/index.js';
+import { setMonumentHonorees } from '../src/i18n/names.js';
 import { focusIdentity, focusTapDecision, sphericalLeashCorrection } from '../src/galaxy/follow.js';
 import { drawnHpClouds } from '../src/lib/radiation.js';
 import { GalaxyReadout } from '../src/v2/hud/GalaxyCorners.js';
@@ -54,6 +56,34 @@ describe('public monument navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: /5.*monument/i }));
     fireEvent.click(screen.getByRole('button', { name: /Abandoned Space Wreckage/ }));
     expect(select).toHaveBeenCalledWith({ kind: 'monument', id: target.id });
+  });
+  /**
+   * THE FINDER READS IN LAST SEASON'S ORDER (owner, 2026-10-07): "sıralama geçen sezondaki ilk 5
+   * kullanıcının sıralamasına göre yapılsın". Rank N stands on monument N (owner, 2026-10-06), so
+   * the list follows the monuments' ordinals — whatever order the server happened to send them in.
+   */
+  it('lists the monuments in last season\'s rank order, whatever order they arrive in', () => {
+    setMonumentHonorees(['Vantasia', 'Yasin', null, 'Orin', 'Kael']);
+    try {
+      const arrived = [3, 5, 1, 4, 2].map((ordinal) => ({ ...target, id: `monument-${String(ordinal)}`, ordinal }));
+      const select = vi.fn();
+      render(<GalaxyReadout counts={{ worlds: 2, fleetsAway: 0, rocks: 0, pirates: 0, wrecks: 0, monuments: 5 }}
+        targets={monumentFinderTargets(arrived, i18n.t)} onFocusTarget={select} />);
+      fireEvent.click(screen.getByRole('button', { name: /5.*monument/i }));
+      const rows = within(screen.getByRole('list')).getAllByRole('button');
+      expect(rows.map((row) => row.textContent)).toEqual([
+        expect.stringContaining('Vantasia • '),
+        expect.stringContaining('Yasin • '),
+        // Nobody finished third: the monument keeps its plain name, and its place.
+        expect.stringMatching(/^03Ancient Observatory/),
+        expect.stringContaining('Orin • '),
+        expect.stringContaining('Kael • '),
+      ]);
+      fireEvent.click(rows[0]!);
+      expect(select).toHaveBeenCalledWith({ kind: 'monument', id: 'monument-1' });
+    } finally {
+      setMonumentHonorees([]);
+    }
   });
   it('draws HP cloud geometry on its actual windows without converting it to percentage dose', () => {
     const clouds = [cloud, { ...cloud, id: 'future', activeFrom: new Date(at.getTime() + 1) },

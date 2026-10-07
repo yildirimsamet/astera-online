@@ -17,8 +17,10 @@ import { FleetPage, type FleetTab } from '../hud/FleetPage.js';
  * every world. A raid or a transfer turns through the flight recall (K8), a
  * Prospector run through its own.
  */
-export function FleetHost({ onFocus, onClose, onOpenRepairStation }: {
+export function FleetHost({ onFocus, onFocusWorld, onClose, onOpenRepairStation }: {
   onFocus: (focus: StripFocus) => void;
+  /** A world's name in the home and Hangar views: that world, framed and selected (owner, 2026-10-07). */
+  onFocusWorld: (planetId: string) => void;
   onClose: () => void;
   /** A world's dock count opens that world's Repair Station, in its Base (2026-09-30). */
   onOpenRepairStation: (planetId: string) => void;
@@ -76,6 +78,11 @@ export function FleetHost({ onFocus, onClose, onOpenRepairStation }: {
       }))}
       recalling={recalling}
       onOpenRepairStation={onOpenRepairStation}
+      // The page covers the galaxy: it closes first, as a flight row's press does.
+      onFocusWorld={(planetId) => {
+        onClose();
+        onFocusWorld(planetId);
+      }}
       onFocus={(item) => {
         if (!item.focus) return;
         onClose();

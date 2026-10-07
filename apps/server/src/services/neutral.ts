@@ -5,6 +5,7 @@ import {
   HULLS,
   MULTI_WORLD,
   SETTLEMENT_CLAIM_MINUTES,
+  SETTLEMENT_PRIORITY_MINUTES,
   SHIELD,
   computeLoot,
   fleetCargo,
@@ -49,7 +50,7 @@ import { clearMissionUnits, fleetOfMission } from './mission.js';
 import { recordGalaxyEvent } from './chronicle.js';
 import { notify } from './notifications.js';
 import { orbitOf, recomputePlayerWealth, saveResources, setUnits } from './planet.js';
-import { safeHomePlanet } from './ownership.js';
+import { colonyStanding, safeHomePlanet } from './ownership.js';
 
 const EMPTY_VAULT = { alloy: 0, crystal: 0, deuterium: 0 };
 
@@ -310,8 +311,20 @@ export async function resolveNeutralBattle(
     // against one clock and dated from another.
     const now = clock.now();
     const claimUntil = addMinutes(now, SETTLEMENT_CLAIM_MINUTES);
+    /*
+      THE FIRST HOUR IS THE RAIDER'S, IF THEY CAN USE IT. Owner decision, 2026-10-07.
+      Written in the same guarded update as the window, so a raid on a LIVE claim moves
+      neither — the hour stays with whoever opened it. A raider with no free colony slot
+      reserves nothing: they could never land, and the hour would only lock everyone out.
+    */
+    const standing = await colonyStanding(tx, mission.ownerPlayerId);
+    const reserves = standing.colonies + standing.reservations < standing.capacity;
     const opened = await tx.update(neutralPlanetState)
-      .set({ claimUntil })
+      .set({
+        claimUntil,
+        claimPriorityPlayerId: reserves ? mission.ownerPlayerId : null,
+        claimPriorityUntil: reserves ? addMinutes(now, SETTLEMENT_PRIORITY_MINUTES) : null,
+      })
       .where(and(
         eq(neutralPlanetState.planetId, neutral.id),
         or(

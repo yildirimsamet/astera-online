@@ -75,9 +75,9 @@ const raid: PendingThread = {
   },
 };
 
-const host = (onFocus = vi.fn(), onClose = vi.fn(), onOpenRepairStation = vi.fn()) => render(
+const host = (onFocus = vi.fn(), onClose = vi.fn(), onOpenRepairStation = vi.fn(), onFocusWorld = vi.fn()) => render(
   <ToastProvider>
-    <FleetHost onFocus={onFocus} onClose={onClose} onOpenRepairStation={onOpenRepairStation} />
+    <FleetHost onFocus={onFocus} onClose={onClose} onOpenRepairStation={onOpenRepairStation} onFocusWorld={onFocusWorld} />
   </ToastProvider>,
 );
 
@@ -158,5 +158,20 @@ describe('the wired Fleet page', () => {
     await userEvent.click(screen.getByRole('tab', { name: /at home/i }));
     await userEvent.click(screen.getByRole('button', { name: /2 in repair/i }));
     expect(onOpenRepairStation).toHaveBeenCalledWith('p-1');
+  });
+
+  /**
+   * A WORLD'S NAME TAKES YOU TO IT (owner, 2026-10-07). The page covers the galaxy, so it
+   * closes first and the world is framed behind it — the same order a flight row keeps.
+   */
+  it.each([['At home'], ['Hangar']])('closes itself and frames the world whose name is pressed (%s)', async (view) => {
+    const order: string[] = [];
+    const onClose = vi.fn(() => { order.push('close'); });
+    const onFocusWorld = vi.fn(() => { order.push('focus'); });
+    host(vi.fn(), onClose, vi.fn(), onFocusWorld);
+    await userEvent.click(screen.getByRole('tab', { name: view }));
+    await userEvent.click(screen.getByRole('button', { name: /show thistle in the galaxy/i }));
+    expect(onFocusWorld).toHaveBeenCalledWith('p-1');
+    expect(order).toEqual(['close', 'focus']);
   });
 });

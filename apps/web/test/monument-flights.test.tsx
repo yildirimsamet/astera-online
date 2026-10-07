@@ -54,7 +54,7 @@ describe('native monument flights in the existing fleet surfaces', () => {
     const focus = vi.fn();
     const holding = monumentsSchema.parse({ ...view, waves: [{ ...wave, status: 'HOLD', heldAt: arrive, arriveAt: null, route: [] }] });
     render(<FleetPage tab="air" onTab={vi.fn()} now={new Date(at).getTime()} bays={null} hangar={null} flights={[]} worlds={[]}
-      recalling={null} onFocus={vi.fn()} onRecall={vi.fn()} onOpenRepairStation={vi.fn()} onClose={vi.fn()}
+      recalling={null} onFocus={vi.fn()} onRecall={vi.fn()} onOpenRepairStation={vi.fn()} onFocusWorld={vi.fn()} onClose={vi.fn()}
       monuments={{ view: holding, onFocus: focus }} />);
     expect(screen.getByTestId('monument-hold-group')).toHaveTextContent(/125.5.*300/);
     fireEvent.click(screen.getByRole('button', { name: /Abandoned Station/ }));

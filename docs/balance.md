@@ -414,6 +414,12 @@ round trip**, its 25th in **14.9 min**. A Citadel round trip across the full dia
 olsun"), set when the holds took their `2.5×` lift; a test still guards that the widest settlement
 flight lands inside it. The history below is kept for the reasoning.
 
+**The first `60` of those minutes are the raider's (owner decision, 2026-10-07):**
+`SETTLEMENT_PRIORITY_MINUTES`. Only the commander whose decisive raid opened the claim may land
+before it ends, and only if they had a free colony slot when it opened; the last 30 are everyone's
+race. The rule refuses a LANDING, not a launch, so a far commander leaves during the hour — the
+widest settlement flight (~32 min) is longer than the open tail and still reaches it.
+
 **The settlement claim window is DERIVED from this table, not chosen against it (D111).**
 `SETTLEMENT_CLAIM_MINUTES` is the two-Courier flight across `GALAXY_SPAN` — one diameter,
 `2·radius` = 4,000 units — rounded up: **34 minutes**. There is no figure to tune. It was

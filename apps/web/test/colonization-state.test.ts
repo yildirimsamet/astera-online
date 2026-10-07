@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { colonizationPhase } from '../src/lib/colonization.js';
+import { colonizationPhase, priorityWaitMinutes } from '../src/lib/colonization.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 
 const NOW = new Date('2026-08-31T12:00:00.000Z').getTime();
@@ -84,5 +84,39 @@ describe('colonization phase', () => {
       .toBe('OWNED');
     expect(colonizationPhase(world({ clanmate: true, kind: 'COLONY', neutral: undefined }), NOW))
       .toBe('CLANMATE');
+  });
+});
+
+/**
+ * THE RAIDER'S FIRST HOUR. Owner decision, 2026-10-07: only the commander whose raid opened
+ * a claim may land in its first sixty minutes. Everyone else may LEAVE early — what they
+ * need is the number: how long until a launch would land as the hour ends.
+ */
+describe('how long the raider\'s hour keeps a commander waiting', () => {
+  const race = (over: Partial<GalaxyPlanet> = {}) => world({
+    neutral: {
+      claimUntil: new Date(NOW + 80 * 60_000),
+      claimPriorityUntil: new Date(NOW + 40 * 60_000),
+    },
+    ...over,
+  });
+
+  it('is the time until a launch would land as the hour ends', () => {
+    expect(priorityWaitMinutes(race(), NOW, 10)).toBe(30);
+    expect(priorityWaitMinutes(race(), NOW, 39.5)).toBe(0.5);
+  });
+
+  it('keeps nobody waiting whose flight outlasts the hour', () => {
+    expect(priorityWaitMinutes(race(), NOW, 40)).toBe(0);
+    expect(priorityWaitMinutes(race(), NOW, 55)).toBe(0);
+  });
+
+  it('never holds back the raider, and nobody once the hour is over or when there is none', () => {
+    expect(priorityWaitMinutes(race({ claimPriorityMine: true }), NOW, 10)).toBe(0);
+    expect(priorityWaitMinutes(race(), NOW + 40 * 60_000, 10)).toBe(0);
+    expect(priorityWaitMinutes(world({ neutral: { claimUntil: new Date(NOW + 80 * 60_000) } }), NOW, 10)).toBe(0);
+    expect(priorityWaitMinutes(world({
+      neutral: { claimUntil: new Date(NOW + 80 * 60_000), claimPriorityUntil: null },
+    }), NOW, 10)).toBe(0);
   });
 });

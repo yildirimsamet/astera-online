@@ -14,7 +14,7 @@ import { VIEW, hpRadiationApplies } from '@astera/rules';
 import { NextSeason } from '../ui/NextSeason.js';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { monumentName } from '../i18n/names.js';
+import { monumentFinderTargets } from '../galaxy/monuments.js';
 import {
   miningSceneData,
   useGalaxy,
@@ -832,10 +832,7 @@ export function GalaxyView({
      Radar-only returns stay anonymous on the disc and outside this named tally. */
   const knownPirates = useMemo(() => knownPirateContacts(contacts), [contacts]);
   const findableTargets = useMemo<GalaxyTarget[]>(() => [
-      ...(galaxy.data?.monuments ?? []).map((monument) => ({ kind: 'monument' as const, id: monument.id,
-        label: monumentName(monument.ordinal),
-        detail: monument.controller.kind === 'PLAYER' ? monument.controller.name
-          : monument.controller.kind === 'CLAN' ? `[${monument.controller.tag}] ${monument.controller.name}` : t(monument.emptySince ? 'monument.empty' : 'monument.neutral') })),
+      ...monumentFinderTargets(galaxy.data?.monuments ?? [], t),
       ...asteroids.map((rock, index) => ({
         kind: 'asteroid' as const,
         id: rock.id,

@@ -7,6 +7,7 @@ import {
   GALAXY_SPAN,
   NEUTRAL_OPENING,
   SETTLEMENT_CLAIM_MINUTES,
+  SETTLEMENT_PRIORITY_MINUTES,
   colonyCapacity,
   hasColonyCapacity,
   neutralReserve,
@@ -123,6 +124,23 @@ describe('multi-world strategic rules', () => {
     // The widest crossing the disc allows still lands inside it.
     expect(fleetTravelExact(GALAXY_SPAN, settlementFleet, UNAIDED))
       .toBeLessThan(SETTLEMENT_CLAIM_MINUTES);
+  });
+
+  /**
+   * THE RAIDER'S HOUR, THEN EVERYONE'S HALF HOUR. Owner decision, 2026-10-07: "ilk 60dk
+   * sadece o kişi koloniyi elegeçirebilir olsun" — inside the same ninety minutes. Nobody
+   * else is shut out by distance: a launch is refused only for LANDING inside the hour, so
+   * any flight that fits the ninety reaches the open tail — a near commander waits and a far
+   * one (the widest crossing is longer than the tail) leaves during the hour.
+   */
+  it('gives the raider the first hour and leaves every flight a way into the rest', () => {
+    expect(SETTLEMENT_PRIORITY_MINUTES).toBe(60);
+    expect(SETTLEMENT_PRIORITY_MINUTES).toBeLessThan(SETTLEMENT_CLAIM_MINUTES);
+    for (const flight of [1, 29, fleetTravelExact(GALAXY_SPAN, settlementFleet, UNAIDED), 89.9]) {
+      const launch = Math.max(0, SETTLEMENT_PRIORITY_MINUTES - flight);
+      expect(launch + flight).toBeGreaterThanOrEqual(SETTLEMENT_PRIORITY_MINUTES);
+      expect(launch + flight).toBeLessThan(SETTLEMENT_CLAIM_MINUTES);
+    }
   });
 
   it('leaves every capital able to settle every neutral world in the shipped layout', () => {

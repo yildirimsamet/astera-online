@@ -1404,6 +1404,15 @@ export const neutralPlanetState = pgTable('neutral_planet_state', {
   tier: integer('tier').notNull(),
   profileSeed: integer('profile_seed').notNull(),
   claimUntil: timestamp('claim_until', { withTimezone: true }),
+  /**
+   * THE RAIDER'S FIRST HOUR. Owner decision, 2026-10-07 (`SETTLEMENT_PRIORITY_MINUTES`).
+   * Written with `claim_until` when a claim opens, and only for a raider who had a free
+   * colony slot; both null otherwise. Read only while the claim is live — a closed claim's
+   * pair is stale and the next opening overwrites it.
+   */
+  claimPriorityPlayerId: uuid('claim_priority_player_id')
+    .references(() => players.id, { onDelete: 'set null' }),
+  claimPriorityUntil: timestamp('claim_priority_until', { withTimezone: true }),
   nextReinforcementAt: timestamp('next_reinforcement_at', { withTimezone: true }),
   economyAnchorAt: timestamp('economy_anchor_at', { withTimezone: true }).notNull(),
 }, (t) => [check('neutral_planet_tier_check', sql`${t.tier} BETWEEN 1 AND 3`)]);

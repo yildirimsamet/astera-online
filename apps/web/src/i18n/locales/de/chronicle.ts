@@ -35,7 +35,7 @@ export const chronicle = {
   dominionLeader: '{{commander}} übernahm die Dominion-Führung',
   dominionLeaderDetail: '{{planet}} steht nun an der Spitze der öffentlichen Leiter.',
   neutralClaim: 'Anspruchsfenster geöffnet um {{planet}} · T{{tier}}',
-  neutralClaimDetail: 'Ein entscheidender Überfall eröffnete ein öffentliches Siedlungsrennen für diese Welt.',
+  neutralClaimDetail: "Ein entscheidender Überfall eröffnete ein Siedlungsrennen für diese Welt. Hatte der Angreifer einen freien Kolonieplatz, gehören ihm die ersten {{minutes}} Min. allein.",
   neutralOpened: '{{total}} neutrale Welten geöffnet',
   neutralOpenedDetail: 'Die Grenze wächst · T1 {{t1}} · T2 {{t2}} · T3 {{t3}}.',
   deathStarImpact: 'Einschlag des Todessterns bei {{planet}}',

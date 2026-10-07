@@ -1943,3 +1943,37 @@ the code reading them does:
 Client-only: the Dyson far tier is the simplified ring (`dyson_1_lod.glb`), bloom's luminance
 pass discards non-finite pixels (`finiteGuard.ts`), the timers sheet lists the whole queue, the
 desk outline selects a world, and the recall line states what is true of each flight.
+
+## Owner decision 2026-10-07 — the raider's first hour on a claim
+
+**One migration, expand-only:** `0141_claim_priority` adds two nullable columns to
+`neutral_planet_state` (`claim_priority_player_id` → `players.id ON DELETE SET NULL`,
+`claim_priority_until`). The old image neither reads nor writes them, so step 5b passes and the
+rolling path stands (rule 5). `/api/galaxy` gains an additive `neutral.claimPriorityUntil` and a
+per-caller `claimPriorityMine`; an already-open client ignores both (rule 11). The colony-slot chip
+fix of the same day ships with it (client only).
+
+**Rule 13 — the live season changes on the first request the new image serves.** A claim opened by
+a decisive raid from then on gives its first 60 minutes (`SETTLEMENT_PRIORITY_MINUTES`) to that
+raider alone, if they had a free colony slot; a stranger's settlement is refused at launch
+(`CLAIM_PRIORITY`) when it would land inside the hour, and turned back if it ever arrives inside
+one. Claims already open at deploy time have null columns and stay open to everyone.
+
+**Order on the rolling path.** The new image refuses a database behind its journal, so production
+is migrated FIRST, with the new image as a one-off (rule 6), after step 5b has booted the retained
+image against the migrated restore. The `ADD CONSTRAINT … FOREIGN KEY` briefly takes a
+`SHARE ROW EXCLUSIVE` lock on `players` and validates an all-null column — milliseconds. Until the
+worker is rolled (last), a claim opened by the old worker carries no hour; that is the same
+"open to everyone" a pre-deploy claim has.
+
+**Client only, same release:** the Fleet page's home and Hangar views take a press on a world's name
+to that world (selected, as the desk outline does); the galaxy's monument finder lists the five in
+last season's rank order (rank N stands on monument N).
+
+**Qualification (1a).** rules 1988/1988; web 5252 green, the one red is
+`resource-state.test.tsx`, red at HEAD; server 201/202 files green on the release candidate, the one
+red (`intel-states` fog key list) fixed in it and re-run green with the galaxy-route files (285);
+`snowball-audit` 14 red, inside its known 13–14 at HEAD. **The sim set grew by one:**
+`season.test.ts` "TAX holds its band" reads 0.0325 against the 0.035 floor with the first hour on,
+and passes with it off — the rule's own effect, measured, reported to the owner, and shipped on the
+owner's instruction ("her şeyi deploy et"). The band was not widened (1a).

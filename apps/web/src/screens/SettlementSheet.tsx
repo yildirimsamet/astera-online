@@ -47,6 +47,19 @@ export function SettlementSheet({
   );
   const fuel = missionFuel(fleet, span, 1);
   const closesIn = Math.max(0, (target.neutral?.claimUntil?.getTime() ?? now) - now);
+  /*
+    THE RAIDER'S OWN HOUR (owner, 2026-10-07). Inside it nobody else may land, so a raider
+    whose Couriers touch down before it ends is not in a race at all — and one who lands
+    after it is, from that instant. Strictly before: a landing ON the hour's end ties with
+    anyone else's.
+  */
+  const priorityUntil = target.neutral?.claimPriorityUntil?.getTime() ?? 0;
+  const ownHour = target.claimPriorityMine === true && priorityUntil > now;
+  const raceLine = !ownHour
+    ? 'focus.planet.settlementConfirm.race'
+    : now + travelMinutes * 60_000 < priorityUntil
+      ? 'focus.planet.settlementConfirm.priorityMineFirst'
+      : 'focus.planet.settlementConfirm.priorityMineLate';
   const tier = target.neutral?.tier;
   const opening = tier === undefined ? null : MULTI_WORLD.neutral[tier].captureStock;
 
@@ -71,7 +84,7 @@ export function SettlementSheet({
       {/* The race and the price of losing it, before any figure: this is what the press decides. */}
       <div className="mt-1 rounded-control border border-v2-self/40 bg-v2-self/10 px-3 py-2.5">
         <p className="text-caption font-semibold text-v2-ink">
-          {t('focus.planet.settlementConfirm.race')}
+          {t(raceLine)}
         </p>
         <p className="mt-1.5 text-caption leading-snug text-v2-ink-2">
           {t('focus.planet.settlementConfirm.noRecall')}

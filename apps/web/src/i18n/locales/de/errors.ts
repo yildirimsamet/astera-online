@@ -35,6 +35,7 @@ export const errors = {
   COLONY_CAP: 'Ihr Kommandokern kann keine weitere Kolonie beherbergen',
   NO_ACTIVE_CLAIM: 'Es ist kein Vergleichsanspruch offen',
   CLAIM_EXPIRED: 'Der Vergleichsanspruch ist abgelaufen',
+  CLAIM_PRIORITY: "Der Angreifer, der diesen Anspruch eröffnet hat, hat noch Vorrang; Ihre Kuriere würden zu früh landen",
   TARGET_CHANGED: 'Diese Welt hat zuerst den Controller gewechselt',
   SETTLEMENT_REQUIREMENTS: 'Eine Siedlung benötigt genau zwei Kuriere und ihre Gründungsfracht',
   DEATH_STAR_EXISTS: 'Diese Welt hat ihre Todessternkapazität erreicht',

@@ -37,6 +37,20 @@ export const GALAXY_SPAN = 2 * GALAXY.radius;
 export const SETTLEMENT_CLAIM_MINUTES = 90;
 
 /**
+ * THE FIRST HOUR OF A CLAIM BELONGS TO THE RAIDER WHO OPENED IT. Owner decision, 2026-10-07:
+ * "ilk 60dk sadece o kişi koloniyi elegeçirebilir olsun" — a commander who broke the guard
+ * kept losing the world to a stranger's Couriers before their own could land.
+ *
+ * Inside the ninety minutes, not added to them: sixty that are the raider's, thirty that are
+ * everyone's. The rule is about LANDING — anybody may leave early and land as the hour ends —
+ * and it is reserved only for a raider with a free colony slot at the moment the claim opens,
+ * or a commander could lock worlds they can never take. Nobody is shut out by distance:
+ * every flight that fits the ninety reaches the open thirty — a near commander waits, a far
+ * one leaves during the hour (the widest crossing, ~32 min, is longer than the thirty).
+ */
+export const SETTLEMENT_PRIORITY_MINUTES = 60;
+
+/**
  * Capacity is deliberately stepwise and derived from the CAPITAL's Core: one colony
  * per threshold reached in `MULTI_WORLD.colonyCoreThresholds` (D209).
  */

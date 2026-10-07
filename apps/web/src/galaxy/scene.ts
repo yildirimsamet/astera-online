@@ -227,6 +227,10 @@ export interface PlanetNode {
   controllerPlayerId?: string;
   neutralTier?: 1 | 2 | 3;
   claimUntil?: Date | null;
+  /** When the raider's first hour on the claim ends (owner, 2026-10-07). */
+  claimPriorityUntil?: Date | null;
+  /** The caller is that raider. */
+  claimPriorityMine?: boolean;
 }
 
 /**
@@ -317,7 +321,23 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     // that arrived carrying only its claim clock has no tier to copy.
     ...(planet.neutral?.tier ? { neutralTier: planet.neutral.tier } : {}),
     ...(planet.neutral ? { claimUntil: planet.neutral.claimUntil } : {}),
+    ...(planet.neutral?.claimPriorityUntil ? { claimPriorityUntil: planet.neutral.claimPriorityUntil } : {}),
+    ...(planet.claimPriorityMine === true ? { claimPriorityMine: true } : {}),
   }));
+}
+
+/**
+ * WHAT THE LABEL SAYS ABOUT A LIVE CLAIM: WHOSE HOUR IT IS. Owner decision, 2026-10-07.
+ *
+ * In its first hour a claim can be settled by the raider who opened it and nobody else, so
+ * "claim open" over it would send every other commander at a world that refuses them. The
+ * raider reads that the hour is theirs (`MINE`), everyone else whose it is (`PRIORITY`);
+ * after it, and on a claim nobody holds, it is simply open. Null when no claim is live.
+ */
+export function claimLabelOf(node: PlanetNode, now: number): 'OPEN' | 'MINE' | 'PRIORITY' | null {
+  if (!node.claimUntil || node.claimUntil.getTime() <= now) return null;
+  if (!node.claimPriorityUntil || node.claimPriorityUntil.getTime() <= now) return 'OPEN';
+  return node.claimPriorityMine === true ? 'MINE' : 'PRIORITY';
 }
 
 /**

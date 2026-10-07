@@ -135,6 +135,7 @@ export const fleetPage = {
   recallHome: "Rappelée, de retour dans {{time}}",
   recalling: "Demi-tour…",
   emptyAir: "Rien en vol. Touche un monde, un astéroïde ou un pirate dans la galaxie pour envoyer des vaisseaux.",
+  focusWorld: "Afficher {{world}} dans la galaxie",
   shipsHome_one: "{{count}} vaisseau à quai",
   shipsHome_other: "{{count}} vaisseaux à quai",
   away: "{{count}} en route",

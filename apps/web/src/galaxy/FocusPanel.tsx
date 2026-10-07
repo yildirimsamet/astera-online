@@ -9,8 +9,10 @@ import {
   HULLS,
   MULTI_WORLD,
   SETTLEMENT_CLAIM_MINUTES,
+  SETTLEMENT_PRIORITY_MINUTES,
   PROBE,
   clanDefenseApplies,
+  colonyCapacity,
   combatValue,
   prospectorAvailability,
   distance,
@@ -18,6 +20,7 @@ import {
   fleetEntries,
   fleetTravelExact,
   missionFuel,
+  nextColonyCore,
   telescopeSlots,
   transferCargoCapacity,
   MOBILE_HULLS,
@@ -46,6 +49,7 @@ import { hullLabel, hullName, monumentName, satelliteLabel } from '../i18n/names
 import { compact, decimal, full } from '../lib/format.js';
 import {
   colonizationPhase,
+  priorityWaitMinutes,
   settlementBlock,
   type ColonizationPhase,
   type SettlementBlock,
@@ -480,6 +484,7 @@ const SETTLE_LABEL = {
   CRYSTAL: 'focus.planet.settleNeedCrystal',
   FUEL: 'focus.planet.settleNeedFuel',
   TOO_LATE: 'focus.planet.settleTooLate',
+  PRIORITY: 'focus.planet.settleNeedPriority',
 } as const satisfies Record<SettlementBlock['code'], string>;
 
 /** The sentence above the slab: what is missing, and the number that fixes it. D209. */
@@ -498,6 +503,7 @@ function settleReason(block: SettlementBlock, t: TFunction): string {
     case 'FUEL':
       return t('focus.planet.settleWhy.fuel', { need: compact(block.need), have: compact(block.have) });
     case 'TOO_LATE': return t('focus.planet.settleWhy.tooLate');
+    case 'PRIORITY': return t('focus.planet.settleWhy.priority', { wait: duration(block.waitMinutes) });
   }
 }
 
@@ -705,6 +711,18 @@ export function PlanetFocus({
   const settlementCanArrive = Boolean(
     claimUntil && now + settlementEta * 60_000 < claimUntil.getTime(),
   );
+  /*
+    THE RAIDER'S FIRST HOUR. Owner decision, 2026-10-07: only the commander whose raid opened
+    the claim may land in its first sixty minutes. The raider is told it is theirs; anyone
+    else is told whose it is, when it ends, and how long until a launch lands as it ends —
+    the server refuses an earlier landing (`CLAIM_PRIORITY`), and a refusal met only as an
+    error is a rule taught after the fact.
+  */
+  const priorityUntil = claimActive ? target.neutral?.claimPriorityUntil ?? null : null;
+  const priority = priorityUntil && priorityUntil.getTime() > now
+    ? { until: priorityUntil, mine: target.claimPriorityMine === true }
+    : null;
+  const priorityWait = claimActive ? priorityWaitMinutes(target, now, settlementEta) : 0;
   /**
    * WHAT THE SETTLERS BURN GETTING THERE. T6 — and this panel is the fourth door
    * into a launch, so it quotes the charge like the other three.
@@ -751,6 +769,7 @@ export function PlanetFocus({
     stock: planet.planet,
     fuel: settlementFuel,
     canArrive: settlementCanArrive,
+    priorityWait,
   });
   const settlementBlockLabel = originShipyardRevolt
     ? t('faults.launchBlock.SHIPYARD_REVOLT')
@@ -1119,10 +1138,11 @@ export function PlanetFocus({
         colonySlotOpen={colonySlotOpen}
         flightBayOpen={flightBayOpen}
         settlementEta={settlementEta}
-        settlementCanArrive={settlementCanArrive}
+        settlementCanArrive={settlementCanArrive && priorityWait === 0}
         settlementFuel={settlementFuel}
         settlementFuelled={settlementFuelled}
         claimActive={claimActive}
+        priority={priority}
         isRival={rivalSlot !== null}
         phase={colonyPhase}
       />
@@ -1602,6 +1622,7 @@ function StrategicWorldGuide({
   settlementFuel,
   settlementFuelled,
   claimActive,
+  priority,
   isRival,
   phase,
 }: {
@@ -1616,11 +1637,19 @@ function StrategicWorldGuide({
   settlementFuel: number;
   settlementFuelled: boolean;
   claimActive: boolean;
+  /** The raider's first hour on a live claim, while it runs. */
+  priority: { until: Date; mine: boolean } | null;
   isRival: boolean;
   phase: ColonizationPhase;
 }) {
   const { t } = useTranslation();
   const standing = planet.colonies;
+  const nextCore = standing ? nextColonyCore(standing.colonies, standing.reservations) : null;
+  const colonySlotLabel = colonySlotOpen
+    ? t('focus.planet.colonySlotOpen')
+    : nextCore === null
+      ? t('focus.planet.colonySlotsFull', { max: colonyCapacity(Infinity) })
+      : t('focus.planet.colonySlotNeedsCore', { required: nextCore, current: standing?.capitalCore ?? planet.researchCore });
 
   /**
    * WHICH STEP IS SHOWING ITS DETAIL.
@@ -1721,7 +1750,11 @@ function StrategicWorldGuide({
           <p className={`v2-legend ${ claimActive ? 'text-v2-self' : 'text-v2-ink' }`}>
             {t(phase === 'SETTLEMENT_IN_FLIGHT'
               ? 'focus.planet.settlementInFlight'
-              : claimActive ? 'focus.planet.claimOpen' : 'focus.planet.colonyRoute')}
+              : !claimActive
+                ? 'focus.planet.colonyRoute'
+                : priority === null
+                  ? 'focus.planet.claimOpen'
+                  : priority.mine ? 'focus.planet.claimPriorityMineTitle' : 'focus.planet.claimPriorityOtherTitle')}
           </p>
         </div>
         <ol className="mt-2 flex flex-col gap-1">
@@ -1740,7 +1773,7 @@ function StrategicWorldGuide({
             onToggle={() => { toggleStep('colony-2'); }}
             number="2"
             label={t('focus.planet.routeClaim')}
-            description={t('focus.planet.routeClaimDetail')}
+            description={t('focus.planet.routeClaimDetail', { minutes: SETTLEMENT_PRIORITY_MINUTES })}
             dataStep="2"
           />
           <RouteStep
@@ -1764,12 +1797,17 @@ function StrategicWorldGuide({
               </Requirement>
             ) : (
               <>
+                {/*
+                  THE CHIP SAYS WHICH WAY IT IS (owner report, 2026-10-07): "○ Koloni yuvası" read
+                  as an open slot to a Core 6 commander. Open, the Core that opens the next one, or
+                  full — never the bare name with its state left to a dot.
+                */}
                 <Requirement
                   ok={colonySlotOpen}
-                  label={t('focus.planet.openColonySlot')}
-                  explanation={t('focus.planet.colonySlotExplain')}
+                  label={colonySlotLabel}
+                  explanation={t('focus.planet.colonySlotExplain', { minutes: SETTLEMENT_PRIORITY_MINUTES })}
                 >
-                  {t('focus.planet.openColonySlot')}
+                  {colonySlotLabel}
                 </Requirement>
                 <Requirement
                   ok={flightBayOpen}
@@ -1834,12 +1872,21 @@ function StrategicWorldGuide({
         </ol>
         {claimActive && (
           <p className="mt-2 text-center text-body text-v2-ink">
-            {t('focus.planet.claimRaceExplain')}
+            {priority === null
+              ? t('focus.planet.claimRaceExplain')
+              : t(priority.mine ? 'focus.planet.claimPriorityMineExplain' : 'focus.planet.claimPriorityOtherExplain', {
+                minutes: SETTLEMENT_PRIORITY_MINUTES,
+              })}
           </p>
         )}
         {claimActive && until && (
           <p className="font-v2-mono mt-2 text-center text-body text-v2-self">
-            {t('focus.planet.claimCloses', { duration: duration((until.getTime() - now) / 60_000) })}
+            {priority === null
+              ? t('focus.planet.claimCloses', { duration: duration((until.getTime() - now) / 60_000) })
+              : t('focus.planet.claimPriorityCloses', {
+                priority: duration((priority.until.getTime() - now) / 60_000),
+                closes: duration((until.getTime() - now) / 60_000),
+              })}
           </p>
         )}
         {claimActive && (

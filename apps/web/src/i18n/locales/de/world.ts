@@ -96,6 +96,8 @@ export const galaxy = {
   recovery: "Schutz nach Rückkehr durchbrochen",
   emp: "EMP-Ausfall",
   claimOpen: "Kann beansprucht werden",
+  claimMine: "Ihr Vorrang",
+  claimPriority: "Vorrang des Angreifers",
 
   /** What a launch says as it leaves. */
   harvestAway: "{{count}} unterwegs · {{minutes}} Min. bis zum Wrack",
@@ -172,6 +174,7 @@ export const focus = {
     settleNeedCrystal: "Kolonie gefunden · Kristall fehlt",
     settleNeedFuel: "Kolonie gefunden · Deuterium fehlt",
     settleTooLate: "Kolonie gefunden · kommt zu spät",
+    settleNeedPriority: "Kolonie gründen · Vorrang des Angreifers",
     settleRecovering: "Kolonie gefunden · Ursprung wird wiederhergestellt",
     settleWhy: {
       recovering: "Ihre Welt erholt sich – noch kann keine Flotte sie verlassen.",
@@ -183,12 +186,15 @@ export const focus = {
       crystal: "{{need}} Kristall benötigt · {{have}} hier",
       fuel: "{{need}} Deuterium benötigt · {{have}} hier",
       tooLate: "Kuriere von hier landen nach Rennende.",
+      priority: "Bis sein Vorrang endet, darf nur der Angreifer landen. Starten Sie in {{wait}}, dann landen Ihre Kuriere genau zu dessen Ende.",
     },
     settlementConfirm: {
       eyebrow: "Kolonierasse",
       title: "{{world}} gefunden",
       unsurveyedTitle: "Diese Welt gefunden",
       race: "Die erste gültige Zwei-Kurier-Flotte erobert die Welt.",
+      priorityMineFirst: "Ihr Vorrang: Ihre Kuriere landen, bevor er endet – niemand kann vor Ihnen landen.",
+      priorityMineLate: "Ihre Kuriere landen nach dem Ende Ihres Vorrangs; ab dann gewinnt die erste gültige Ankunft.",
       noRecall:
         "Kolonieschiffe können nicht zurückgerufen werden. Wenn Sie die Kolonie gefunden haben, werden die Gründungskosten ausgegeben und die Welt wird mit dem Bestand ihrer Stufe geöffnet. Wenn ein anderer Kommandant zuerst gewinnt, kehren Ihre Kuriere und Gründungskosten zurück; abgebrannte Brennelemente nicht.",
       transports: "Kolonieschiffe",
@@ -277,7 +283,7 @@ export const focus = {
     routeRaid: "Gewinne einen entscheidenden Überfall",
     routeRaidDetail: "Angriff mit Kampfschiffen. Zerstöre jeden Verteidiger und den Schild.\nDas",
     routeClaim: "-Rennen wird automatisch geöffnet",
-    routeClaimDetail: "Nichts zum Senden. Ein entscheidender Überfall eröffnet das öffentliche Rennen von selbst.",
+    routeClaimDetail: "Nichts zum Senden. Ein entscheidender Überfall eröffnet das öffentliche Rennen von selbst – haben Sie dabei einen freien Kolonieplatz, gehören die ersten {{minutes}} Min. nur Ihnen.",
     routeSettle: "Entsende die Kolonieflotte",
     routeSettleDetail: "Senden Sie erst jetzt die Gründungsschiffe und Fracht. Die erste gültige Ankunft gewinnt.",
     routeSettleInFlightDetail: "Ihre Gründungsflotte fliegt. Der erste gültige Teilnehmer gewinnt.",
@@ -291,11 +297,18 @@ export const focus = {
     settlementAwayExplain:
       "Ihre beiden Kuriere und die Gründungsfracht sind abgereist. Sie können nicht zurückgerufen werden; Die erste gültige Ankunft erobert die Welt.",
     claimCloses: "Schließt in {{duration}}",
+    claimPriorityMineTitle: "Kolonierennen · Ihr Vorrang",
+    claimPriorityOtherTitle: "Kolonierennen · Vorrang des Angreifers",
+    claimPriorityMineExplain: "Sie haben diesen Anspruch eröffnet: In den ersten {{minutes}} Min. dürfen nur Ihre Kuriere landen. Danach treten alle an.",
+    claimPriorityOtherExplain: "Der Angreifer, der diesen Anspruch eröffnet hat, hat die ersten {{minutes}} Min.: Nur seine Kuriere dürfen landen. Danach gewinnt die erste gültige Ankunft.",
+    claimPriorityCloses: "Vorrang endet in {{priority}} · Rennen schließt in {{closes}}",
     claimRaidStillOpen:
       "Ein weiterer Überfall ist möglich; dieser Anspruch wird dadurch nicht erweitert.",
-    openColonySlot: "Kolonie-Slot",
+    colonySlotOpen: "Kolonieplatz frei",
+    colonySlotNeedsCore: "Kolonieplatz: Kommandokern {{required}} nötig · jetzt {{current}}",
+    colonySlotsFull: "Kolonieplätze voll ({{max}})",
     colonySlotExplain:
-      "Wird nur für Schritt 3 benötigt. Der Kommandokern Ihrer Hauptstadt muss einen ungenutzten Kolonieplatz bieten, wenn die Gründungsflotte abreist.",
+      "Der Kommandokern Ihrer Hauptstadt muss beim Abflug der Gründungsflotte einen freien Kolonieplatz bieten. Ist er frei, wenn Ihr Überfall das Rennen eröffnet, gehören Ihnen auch die ersten {{minutes}} Min.",
     captureColonySlotExplain:
       "Wird benötigt, um eine Kolonie zu gründen, niemals, um eine anzugreifen: Ein Todesstern überträgt nichts.",
     openFlightBay: "1 Freiflugbucht",

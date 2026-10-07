@@ -49,6 +49,8 @@ export interface FleetPageProps {
    * under its Shipyard and Hangar, and this opens the one the ships are held at.
    */
   onOpenRepairStation: (worldId: string) => void;
+  /** A world's name in the home and Hangar views frames that world in the galaxy (owner, 2026-10-07). */
+  onFocusWorld: (worldId: string) => void;
   /**
    * KLAN SAVUNMA DESTEĞİ: my waves still out, and the one control each may carry —
    * recall (standing) or turn back (in flight). Absent before the feature loads.
@@ -255,16 +257,40 @@ function SupportGroup({ support, now }: { support: NonNullable<FleetPageProps['s
   );
 }
 
+/**
+ * A WORLD'S NAME, AND THE WAY TO IT. Owner, 2026-10-07: "gezegenlerime tıklayınca tıkladığım
+ * gezegene focus olsun." The head of the row is the door — the chevron says so — while the
+ * hull chips, the dock count and the room bars keep their own jobs.
+ */
+function WorldName({ world, onFocus }: { world: FleetWorld; onFocus: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      onClick={onFocus}
+      aria-label={t('fleetPage.focusWorld', { world: world.name })}
+      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+    >
+      <Icon id={world.capital ? 'm-capital' : 'm-colony'} className="size-3.5 shrink-0 text-v2-self" title={t(world.capital ? 'fleetPage.capital' : 'fleetPage.colony')} />
+      <span className="min-w-0 truncate text-caption font-semibold text-v2-ink">{world.name}</span>
+      <Icon id="i-chev" className="size-3 shrink-0 text-v2-ink-3" />
+    </button>
+  );
+}
+
 /** A world's ships at home, by hull, with its class shape. */
-function Garrison({ world, onOpenRepairStation }: { world: FleetWorld; onOpenRepairStation: () => void }) {
+function Garrison({ world, onOpenRepairStation, onFocusWorld }: {
+  world: FleetWorld;
+  onOpenRepairStation: () => void;
+  onFocusWorld: () => void;
+}) {
   const { t } = useTranslation();
   const rows = garrisonOf(world.fleet);
   const total = rows.reduce((n, row) => n + row.count, 0);
   return (
     <li className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
       <div className="flex items-center gap-2">
-        <Icon id={world.capital ? 'm-capital' : 'm-colony'} className="size-3.5 shrink-0 text-v2-self" title={t(world.capital ? 'fleetPage.capital' : 'fleetPage.colony')} />
-        <span className="min-w-0 flex-1 truncate text-caption font-semibold text-v2-ink">{world.name}</span>
+        <WorldName world={world} onFocus={onFocusWorld} />
         {total > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-2">{t('fleetPage.shipsHome', { count: total })}</span>}
         {world.away > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">{t('fleetPage.away', { count: world.away })}</span>}
         {/* Why the count is lower than the ships owned: they wait for repair, and one tap opens that station. */}
@@ -300,7 +326,7 @@ function Garrison({ world, onOpenRepairStation }: { world: FleetWorld; onOpenRep
 }
 
 /** A world's Hangar and ground room, each with its fill, warn when full. */
-function WorldRoom({ world }: { world: FleetWorld }) {
+function WorldRoom({ world, onFocusWorld }: { world: FleetWorld; onFocusWorld: () => void }) {
   const { t } = useTranslation();
   const line = (kind: 'hangar' | 'ground', label: string, room: { used: number; total: number; full: boolean }, note?: string) => (
     <div data-room={kind} {...(room.full ? { 'data-full': '' } : {})} className="grid gap-1">
@@ -323,8 +349,7 @@ function WorldRoom({ world }: { world: FleetWorld }) {
   return (
     <li className="grid gap-2 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
       <div className="flex items-center gap-2">
-        <Icon id={world.capital ? 'm-capital' : 'm-colony'} className="size-3.5 shrink-0 text-v2-self" title={t(world.capital ? 'fleetPage.capital' : 'fleetPage.colony')} />
-        <span className="min-w-0 flex-1 truncate text-caption font-semibold text-v2-ink">{world.name}</span>
+        <WorldName world={world} onFocus={onFocusWorld} />
       </div>
       {world.room.hangar && line(
         'hangar',
@@ -358,6 +383,7 @@ export function FleetPage({
   onFocus,
   onRecall,
   onOpenRepairStation,
+  onFocusWorld,
   support,
   monuments,
   onClose,
@@ -415,7 +441,12 @@ export function FleetPage({
         {tab === 'home' && (
           <ul className="flex flex-col gap-1.5">
             {worlds.map((world) => (
-              <Garrison key={world.id} world={world} onOpenRepairStation={() => { onOpenRepairStation(world.id); }} />
+              <Garrison
+                key={world.id}
+                world={world}
+                onOpenRepairStation={() => { onOpenRepairStation(world.id); }}
+                onFocusWorld={() => { onFocusWorld(world.id); }}
+              />
             ))}
           </ul>
         )}
@@ -423,7 +454,9 @@ export function FleetPage({
           <>
             <p className="px-1 text-micro leading-snug text-v2-ink-3">{t('fleetPage.roomRule')}</p>
             <ul className="flex flex-col gap-1.5">
-              {worlds.map((world) => <WorldRoom key={world.id} world={world} />)}
+              {worlds.map((world) => (
+                <WorldRoom key={world.id} world={world} onFocusWorld={() => { onFocusWorld(world.id); }} />
+              ))}
             </ul>
           </>
         )}

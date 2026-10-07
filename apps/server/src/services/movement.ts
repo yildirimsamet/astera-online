@@ -412,6 +412,22 @@ export async function launchTransfer(
   });
 }
 
+/**
+ * THE END OF SOMEBODY ELSE'S FIRST HOUR, IF A LANDING AT `at` FALLS INSIDE IT. Owner decision,
+ * 2026-10-07 (`SETTLEMENT_PRIORITY_MINUTES`): only the raider who opened a claim may land in
+ * its first hour. The rule is about LANDING, so a commander may leave early and touch down
+ * on the hour's last instant. Checked at launch, where a commander meets it, and again on
+ * arrival, where the world changes hands.
+ */
+function reservedAgainst(
+  state: { claimPriorityPlayerId: string | null; claimPriorityUntil: Date | null },
+  playerId: string,
+  at: Date,
+): Date | null {
+  const { claimPriorityPlayerId: holder, claimPriorityUntil: until } = state;
+  return holder !== null && holder !== playerId && until !== null && at < until ? until : null;
+}
+
 export async function launchSettlement(
   db: Db,
   ownerPlayerId: string,
@@ -478,6 +494,12 @@ export async function launchSettlement(
     if (arriveAt >= neutral.state.claimUntil) {
       throw new GameError('RECOVERY_WINDOW_TOO_SHORT', 'The claim closes before arrival', 409, {
         claimUntil: neutral.state.claimUntil.toISOString(),
+      });
+    }
+    const reservedUntil = reservedAgainst(neutral.state, ownerPlayerId, arriveAt);
+    if (reservedUntil) {
+      throw new GameError('CLAIM_PRIORITY', 'The raider who opened this claim holds its first hour', 409, {
+        priorityUntil: reservedUntil.toISOString(),
       });
     }
     assertSeasonOpenThrough(origin, arriveAt);
@@ -922,7 +944,11 @@ export async function resolveSettlement(
     .innerJoin(neutralPlanetState, eq(neutralPlanetState.planetId, planets.id))
     .where(and(eq(planets.id, mission.targetPlanetId), eq(planets.kind, 'NEUTRAL')))
     .for('update');
-  if (!target?.state.claimUntil || target.state.claimUntil <= now) {
+  if (
+    !target?.state.claimUntil
+    || target.state.claimUntil <= now
+    || reservedAgainst(target.state, mission.ownerPlayerId, now)
+  ) {
     await rerouteToSafeHome(tx, mission, now);
     return 'REROUTED';
   }

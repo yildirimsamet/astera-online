@@ -78,6 +78,7 @@ import {
   asteroidWorldPosition,
   contactPosition,
   rivalSlotOf,
+  claimLabelOf,
   legStandoff,
   planetNodes,
   rendezvousMarks,
@@ -96,6 +97,7 @@ import { staleness } from '../lib/time.js';
 import { commanderLabel } from '../lib/identity.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
 import { RankBadge } from './RankBadge.jsx';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { FaultMark } from '../ui/marks.js';
 import { FLIGHT_FPS, HoldRate } from './frames.js';
@@ -972,6 +974,13 @@ const LABEL_BOX = { w: 132, h: 46 };
 /** Past this the type is smaller than the disc's own dust. */
 const LABEL_MAX_RANGE = 60;
 
+/** The claim word on a label: open, the caller's own first hour, or somebody else's. */
+function claimTag(claim: ReturnType<typeof claimLabelOf>, t: TFunction) {
+  if (claim === null) return null;
+  if (claim === 'PRIORITY') return <span className="text-dim">· {t('galaxy.claimPriority')}</span>;
+  return <span className="text-opportunity">· {t(claim === 'MINE' ? 'galaxy.claimMine' : 'galaxy.claimOpen')}</span>;
+}
+
 function labelRank(
   node: PlanetNode,
   selectedId: string | null,
@@ -1178,9 +1187,11 @@ function Labels({
               )}
               {node.state.kind === 'RECOVERY' && <span className="text-threat-ink">· {t('galaxy.recovery')}</span>}
               {node.state.kind === 'EMP' && <span className="text-crystal">· {t('galaxy.emp')}</span>}
-              {node.claimUntil && node.claimUntil.getTime() > serverNow() && (
-                <span className="text-opportunity">· {t('galaxy.claimOpen')}</span>
-              )}
+              {/*
+                WHOSE HOUR IT IS (owner, 2026-10-07): a claim in its first hour is the raider's
+                alone, and "claim open" over it would send everyone else at a refusal.
+              */}
+              {claimTag(claimLabelOf(node, serverNow()), t)}
             </span>
             <span className={`name flex items-center gap-1.5 ${node.isClanmate || node.stance === 'window' ? 'text-opportunity' : 'text-bone'}`}>
               {node.dominionRank ? <RankBadge rank={node.dominionRank} /> : null}

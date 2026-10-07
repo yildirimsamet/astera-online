@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
 import { coreTier, distance, hpRadiationApplies, planetSkinById } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import {
@@ -6,6 +6,7 @@ import {
   botProfiles,
   clanMemberships,
   clans,
+  neutralPlanetState,
   planetFaults,
   planets,
   players,
@@ -95,6 +96,25 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     const mineSet = new Set(self.planetIds);
     const faultyMine = new Set(ownFaultRows.map((row) => row.planetId));
     const byTarget = new Map(watching.map((w) => [w.targetPlanetId, w]));
+    /**
+     * THE RAIDER'S FIRST HOUR, TOLD TO THE RAIDER ALONE. Owner decision, 2026-10-07.
+     *
+     * Every commander gets the hour's END on the claim (`neutral.claimPriorityUntil`): it is
+     * when they may land, and a race whose rules are hidden is not a race. WHO holds it stays
+     * out of the shared projection — the Chronicle never named the raider either — so the
+     * one commander it belongs to is told here, per request, and only while some hour is
+     * running anywhere, which is almost never.
+     */
+    const priorityLive = worlds.some((world) =>
+      (world.neutral?.claimPriorityUntil?.getTime() ?? 0) > now.getTime());
+    const myPriority = new Set(priorityLive
+      ? (await app.db.select({ planetId: neutralPlanetState.planetId }).from(neutralPlanetState)
+        .where(and(
+          eq(neutralPlanetState.claimPriorityPlayerId, self.playerId),
+          gt(neutralPlanetState.claimPriorityUntil, now),
+        ))).map((row) => row.planetId)
+      : []);
+    const priorityFlag = (id: string) => (myPriority.has(id) ? { claimPriorityMine: true as const } : {});
 
     /**
      * THREE STATES, AND THE REDACTION HAPPENS HERE. D127.
@@ -246,7 +266,20 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
              *     the WHOLE GALAXY payload failed to parse. Every world vanished,
              *     including the caller's own. See the contract test.
              */
-            ...(claimOpen ? { neutral: { claimUntil: world.neutral!.claimUntil } } : {}),
+            ...(claimOpen
+              ? {
+                  neutral: {
+                    claimUntil: world.neutral!.claimUntil,
+                    // The raider's hour, while it runs (owner, 2026-10-07) — absent otherwise,
+                    // so a claim nobody holds crosses the fog exactly as it always did.
+                    ...(world.neutral!.claimPriorityUntil
+                      && world.neutral!.claimPriorityUntil.getTime() > now.getTime()
+                      ? { claimPriorityUntil: world.neutral!.claimPriorityUntil }
+                      : {}),
+                  },
+                }
+              : {}),
+            ...priorityFlag(world.id),
           };
 
           const record = remembered.get(world.id);
@@ -314,6 +347,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
           isCapital: world.kind === 'CAPITAL',
           // Private ownership state: never attach this bit to somebody else's row.
           ...(mineSet.has(world.id) && faultyMine.has(world.id) ? { faulty: true } : {}),
+          ...priorityFlag(world.id),
           // Present only where earned. Absent is not "unknown" — it is "you are
           // not looking at this planet".
           ...(watch

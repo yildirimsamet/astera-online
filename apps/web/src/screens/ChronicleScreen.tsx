@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SETTLEMENT_PRIORITY_MINUTES } from '@astera/rules';
 import { useChronicle } from '../api/queries.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
 import { full } from '../lib/format.js';
@@ -114,7 +115,7 @@ export function ChronicleScreen({
                   planet: event.payload.planetName,
                   tier: event.payload.tier,
                 });
-                detail = t('chronicle.neutralClaimDetail');
+                detail = t('chronicle.neutralClaimDetail', { minutes: SETTLEMENT_PRIORITY_MINUTES });
                 icon = <PlanetIcon className="size-4" />;
                 break;
               case 'neutral_opened':

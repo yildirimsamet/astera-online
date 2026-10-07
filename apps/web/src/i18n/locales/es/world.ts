@@ -96,6 +96,8 @@ export const galaxy = {
   recovery: "Protección de regreso vulnerada",
   emp: "Apagón EMP",
   claimOpen: "Disponible para reclamar",
+  claimMine: "Tu prioridad",
+  claimPriority: "Prioridad del atacante",
 
   /** What a launch says as it leaves. */
   harvestAway: "{{count}} en camino · {{minutes}} min hasta los restos",
@@ -172,6 +174,7 @@ export const focus = {
     settleNeedCrystal: "Colonia encontrada · Falta cristal",
     settleNeedFuel: "Colonia encontrada · Falta deuterio",
     settleTooLate: "Colonia encontrada · llega demasiado tarde",
+    settleNeedPriority: "Fundar colonia · prioridad del atacante",
     settleRecovering: "Colonia encontrada · origen recuperando",
     settleWhy: {
       recovering: "Tu mundo se está recuperando; ninguna flota puede abandonarlo todavía.",
@@ -183,12 +186,15 @@ export const focus = {
       crystal: "{{need}} Se necesita cristal · {{have}} aquí",
       fuel: "{{need}} Se necesita deuterio · {{have}} aquí",
       tooLate: "Los mensajeros de aquí aterrizan después del cierre de la carrera.",
+      priority: "Solo el atacante puede aterrizar hasta que acabe su hora. Lanza en {{wait}} y tus Mensajeros aterrizarán justo al terminar.",
     },
     settlementConfirm: {
       eyebrow: "Carrera de colonias",
       title: "Encontrado {{world}}",
       unsurveyedTitle: "Encontré este mundo",
       race: "La primera flota válida de dos Mensajero que llega toma el mundo.",
+      priorityMineFirst: "Tu prioridad: tus Mensajeros aterrizan antes de que acabe; nadie puede aterrizar antes que tú.",
+      priorityMineLate: "Tus Mensajeros aterrizan después de que acabe tu prioridad; desde entonces gana la primera llegada válida.",
       noRecall:
         "Los naves coloniales no se pueden recuperar. Si encuentras la colonia, el costo de fundación se gasta y el mundo se abre con las existencias de su nivel. Si otro comandante gana primero, tus Mensajeros y el coste de fundación regresan; el combustible gastado no.",
       transports: "Naves coloniales",
@@ -277,7 +283,7 @@ export const focus = {
     routeRaid: "Gana una incursión decisiva.",
     routeRaidDetail: "Ataque con naves de combate. Destruye a todos los defensores y el escudo.",
     routeClaim: "La carrera se abre automáticamente",
-    routeClaimDetail: "Nada que enviar. Una incursión decisiva abre por sí sola la carrera pública.",
+    routeClaimDetail: "Nada que enviar. Una incursión decisiva abre por sí sola la carrera pública; si la abres con un espacio de colonia libre, sus primeros {{minutes}} min son solo tuyos.",
     routeSettle: "Envía la flota colonial.",
     routeSettleDetail: "Recién ahora envía los naves fundadores y el cargamento. La primera llegada válida gana.",
     routeSettleInFlightDetail: "Tu flota fundadora está volando. Gana la primera llegada válida.",
@@ -291,11 +297,18 @@ export const focus = {
     settlementAwayExplain:
       "Tus 2 mensajeros y el cargamento fundador han partido. No se pueden recordar; la primera llegada válida toma el mundo.",
     claimCloses: "Cierra en {{duration}}",
+    claimPriorityMineTitle: "Carrera colonial · tu prioridad",
+    claimPriorityOtherTitle: "Carrera colonial · prioridad del atacante",
+    claimPriorityMineExplain: "Abriste este reclamo: durante sus primeros {{minutes}} min solo tus Mensajeros pueden aterrizar. Después, compiten todos.",
+    claimPriorityOtherExplain: "El atacante que abrió este reclamo tiene sus primeros {{minutes}} min: solo sus Mensajeros pueden aterrizar. Después, gana la primera llegada válida.",
+    claimPriorityCloses: "La prioridad acaba en {{priority}} · la carrera cierra en {{closes}}",
     claimRaidStillOpen:
       "Otra incursión es posible; no amplía esta afirmación.",
-    openColonySlot: "Espacio de colonia",
+    colonySlotOpen: "Espacio de colonia libre",
+    colonySlotNeedsCore: "Espacio de colonia: Núcleo de mando {{required}} necesario · ahora {{current}}",
+    colonySlotsFull: "Espacios de colonia llenos ({{max}})",
     colonySlotExplain:
-      "Solo es necesario para el paso 3. El núcleo de comando de tu capital debe proporcionar un espacio de colonia no utilizado cuando la flota fundadora se vaya.",
+      "El núcleo de comando de tu capital debe tener un espacio de colonia libre cuando salga la flota fundadora. Si lo tienes cuando tu incursión abre la carrera, sus primeros {{minutes}} min también son tuyos.",
     captureColonySlotExplain:
       "Necesario para fundar una colonia, nunca para atacar una: una Estrella de la Muerte no transfiere nada.",
     openFlightBay: "1 plaza de vuelo libre",

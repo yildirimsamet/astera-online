@@ -67,7 +67,8 @@ export type SettlementBlock =
   | { code: 'ALLOY'; need: number; have: number }
   | { code: 'CRYSTAL'; need: number; have: number }
   | { code: 'FUEL'; need: number; have: number }
-  | { code: 'TOO_LATE' };
+  | { code: 'TOO_LATE' }
+  | { code: 'PRIORITY'; waitMinutes: number };
 
 export interface SettlementBlockInput {
   originRecovering: boolean;
@@ -78,6 +79,8 @@ export interface SettlementBlockInput {
   /** What the settlers burn getting there, on top of the founding charge. */
   fuel: number;
   canArrive: boolean;
+  /** `priorityWaitMinutes`: how long somebody else's first hour holds this launch back. */
+  priorityWait: number;
 }
 
 export function settlementBlock(input: SettlementBlockInput): SettlementBlock | null {
@@ -102,5 +105,20 @@ export function settlementBlock(input: SettlementBlockInput): SettlementBlock | 
   const fuel = charge.deuterium + input.fuel;
   if (input.stock.deuterium < fuel) return { code: 'FUEL', need: fuel, have: input.stock.deuterium };
   if (!input.canArrive) return { code: 'TOO_LATE' };
+  if (input.priorityWait > 0) return { code: 'PRIORITY', waitMinutes: input.priorityWait };
   return null;
+}
+
+/**
+ * HOW LONG SOMEBODY ELSE'S FIRST HOUR HOLDS A SETTLEMENT BACK, IN MINUTES. Owner decision,
+ * 2026-10-07: only the raider who opened a claim may land in its first hour.
+ *
+ * The rule is about LANDING, so this is not the hour's remainder: it is the wait until a
+ * launch would touch down as the hour ends (`launchSettlement` refuses `arriveAt < until`).
+ * Zero for the raider, once the hour is over, and for a flight that outlasts it.
+ */
+export function priorityWaitMinutes(target: GalaxyPlanet, now: number, etaMinutes: number): number {
+  const until = target.neutral?.claimPriorityUntil?.getTime() ?? 0;
+  if (target.claimPriorityMine === true || until <= now) return 0;
+  return Math.max(0, (until - now) / 60_000 - etaMinutes);
 }

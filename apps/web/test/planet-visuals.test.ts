@@ -22,6 +22,7 @@ import {
   STANCE_LIGHT,
   SCALE,
   activeWorldPosition,
+  claimLabelOf,
   controlledWorldId,
   rivalSlotOf,
   planetNodes,
@@ -361,6 +362,35 @@ describe('world identity on the disc', () => {
     expect(hasVisibleClaim(seen!, now)).toBe(true);
     expect(hasVisibleClaim(remembered!, now)).toBe(false);
     expect(hasVisibleClaim(hidden!, now)).toBe(false);
+  });
+
+  /**
+   * THE LABEL SAYS WHOSE HOUR IT IS (owner, 2026-10-07). A claim in its first hour can be
+   * settled by one commander only, so "claim open" over it would send everybody else flying
+   * at a world that refuses them. The raider sees it is theirs; the rest see whose it is.
+   */
+  it('names a live claim by whose hour it is in', () => {
+    const now = 1_000;
+    const world = (id: string, neutral: { claimUntil: Date | null; claimPriorityUntil?: Date | null }, mine = false) => ({
+      id, name: id, owner: 'Caretaker', kind: 'NEUTRAL' as const,
+      position: { x: 100, y: 0, z: 0 }, coreTier: 1, coreLevel: 0,
+      satellites: [], shielded: false, isSelf: false, intel: 'RESOLVED' as const,
+      state: { kind: 'NORMAL' as const }, neutral, ...(mine ? { claimPriorityMine: true } : {}),
+    });
+    const open = new Date(now + 90 * 60_000);
+    const hour = new Date(now + 60 * 60_000);
+    const [free, mine, theirs, passed, closed] = planetNodes([
+      world('free', { claimUntil: open, claimPriorityUntil: null }),
+      world('mine', { claimUntil: open, claimPriorityUntil: hour }, true),
+      world('theirs', { claimUntil: open, claimPriorityUntil: hour }),
+      world('passed', { claimUntil: open, claimPriorityUntil: new Date(now) }),
+      world('closed', { claimUntil: new Date(now), claimPriorityUntil: null }),
+    ]);
+    expect(claimLabelOf(free!, now)).toBe('OPEN');
+    expect(claimLabelOf(mine!, now)).toBe('MINE');
+    expect(claimLabelOf(theirs!, now)).toBe('PRIORITY');
+    expect(claimLabelOf(passed!, now)).toBe('OPEN');
+    expect(claimLabelOf(closed!, now)).toBeNull();
   });
 
   it('raises visible worlds by 25% and lowers hidden worlds by 15%', () => {

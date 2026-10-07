@@ -12,6 +12,7 @@ import {
   MULTI_WORLD,
   NEUTRAL_OPENING,
   SETTLEMENT_CLAIM_MINUTES,
+  SETTLEMENT_PRIORITY_MINUTES,
   PROSPECTOR,
   RESEARCH_PROJECT_IDS,
   RESEARCH_PROJECTS,
@@ -467,6 +468,8 @@ export interface SimNeutralWorld {
   deuterium: number;
   lastTick: number;
   claimUntil: number | null;
+  /** The raider's first hour (owner, 2026-10-07): only `ownerId` may land before `until`. */
+  claimPriority: { ownerId: number; until: number } | null;
   nextReinforcement: number | null;
   recoveryUntil: number;
   empUntil: number;
@@ -496,6 +499,7 @@ function simNeutralWorld(
     deuterium: deuteriumStorageCap(0, crystalPerHour, template.buildings.VAULT),
     lastTick: openedAt,
     claimUntil: null,
+    claimPriority: null,
     nextReinforcement: template.reinforcementMinutes === null
       ? null
       : openedAt + template.reinforcementMinutes,
@@ -1365,6 +1369,11 @@ export function neutralRaidEligible(
   return archetype === 'GRINDER' && attackValue >= defenceValue * 2.5;
 }
 
+/** Whether a landing by `playerId` at `t` falls inside somebody else's first hour. Server: `movement.ts`. */
+function reservedAgainst(n: SimNeutralWorld, playerId: number, t: number): boolean {
+  return n.claimPriority !== null && n.claimPriority.ownerId !== playerId && t < n.claimPriority.until;
+}
+
 function trySettleNeutral(p: SimPlayer, n: SimNeutralWorld, t: number, world: World): void {
   if (n.claimUntil === null || n.claimUntil <= t || !canReserveColony(world, p)) return;
   const { transportHull, transports } = MULTI_WORLD.settlement;
@@ -1377,6 +1386,7 @@ function trySettleNeutral(p: SimPlayer, n: SimNeutralWorld, t: number, world: Wo
   const fuel = world.activityProfiles ? missionFuel(fleet, distance(p, n), 1) : 0;
   if (p.deuterium < cost.deuterium + fuel) return;
   if (world.activityProfiles ? arriveAt >= n.claimUntil : arriveAt > n.claimUntil) return;
+  if (reservedAgainst(n, p.id, arriveAt)) return;
   p.alloy -= cost.alloy;
   p.crystal -= cost.crystal;
   p.deuterium -= cost.deuterium + fuel;
@@ -1590,6 +1600,10 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
     // D112: a closed window reopens; a live one is never pushed back.
     if (result.grade === 'DECISIVE' && (target.claimUntil === null || target.claimUntil <= t)) {
       target.claimUntil = t + SETTLEMENT_CLAIM_MINUTES;
+      // The first hour is the raider's, if they have a slot to settle it with (owner, 2026-10-07).
+      target.claimPriority = canReserveColony(world, p)
+        ? { ownerId: p.id, until: t + SETTLEMENT_PRIORITY_MINUTES }
+        : null;
       // A completed battle is not a player command. Calendar-mode settlement is
       // considered by runStrategicSession at the next actual online decision.
       if (!world.activityProfiles) trySettleNeutral(p, target, t, world);
@@ -1623,9 +1637,11 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
       return;
     }
     if (target.controllerId === null && target.claimUntil !== null
-      && (world.activityProfiles ? target.claimUntil > t : target.claimUntil >= t)) {
+      && (world.activityProfiles ? target.claimUntil > t : target.claimUntil >= t)
+      && !reservedAgainst(target, p.id, t)) {
       target.controllerId = p.id;
       target.claimUntil = null;
+      target.claimPriority = null;
       target.protectedUntil = t + MULTI_WORLD.occupationMinutes;
       // D209: the tier's capture stock, and nothing of the caretaker's or the cargo.
       const stock = MULTI_WORLD.neutral[target.tier].captureStock;

@@ -108,7 +108,7 @@ function Fleet() {
     host: { playerId: 'mira', name: 'Mira' }, hostPlanetId: 'p-mira', hostPlanetName: 'Kestrel', ...over });
   return (
     <FleetPage tab={tab} onTab={setTab} now={NOW} bays={{ used: 3, total: 5 }} hangar={{ used: 612, total: 810 }}
-      flights={[]} worlds={[]} recalling={null} onFocus={noop} onRecall={noop} onOpenRepairStation={noop} onClose={noop}
+      flights={[]} worlds={[]} recalling={null} onFocus={noop} onRecall={noop} onOpenRepairStation={noop} onFocusWorld={noop} onClose={noop}
       support={{
         recalling: null,
         onRecall: noop,

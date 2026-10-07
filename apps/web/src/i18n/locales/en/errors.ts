@@ -35,6 +35,7 @@ export const errors = {
   COLONY_CAP: 'Your Command Core cannot hold another colony',
   NO_ACTIVE_CLAIM: 'No settlement claim is open',
   CLAIM_EXPIRED: 'The settlement claim has expired',
+  CLAIM_PRIORITY: "The raider who opened this claim still has priority; your Couriers would land too early",
   TARGET_CHANGED: 'That world changed controller first',
   SETTLEMENT_REQUIREMENTS: 'A settlement needs exactly two Couriers and its founding cargo',
   DEATH_STAR_EXISTS: 'This world has reached its Death Star capacity',

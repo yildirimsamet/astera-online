@@ -135,6 +135,7 @@ export const fleetPage = {
   recallHome: "Geri çağırırsan {{time}} içinde evde",
   recalling: "Dönüyor…",
   emptyAir: "Havada bir şey yok. Gemi göndermek için galakside bir dünyaya, kayaya ya da korsana dokun.",
+  focusWorld: "{{world}} gezegenini galakside göster",
   shipsHome_one: "Evde {{count}} gemi",
   shipsHome_other: "Evde {{count}} gemi",
   away: "{{count}} dışarıda",

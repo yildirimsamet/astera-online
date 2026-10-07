@@ -56,6 +56,7 @@ const props = (over: Partial<FleetPageProps> = {}): FleetPageProps => ({
   onFocus: vi.fn(),
   onRecall: vi.fn(),
   onOpenRepairStation: vi.fn(),
+  onFocusWorld: vi.fn(),
   onClose: vi.fn(),
   ...over,
 });
@@ -222,5 +223,31 @@ describe('the Repair Station from the Fleet page', () => {
   it('says nothing about the station for a world with nothing in it', () => {
     render(<FleetPage {...props({ tab: 'home' })} />);
     expect(screen.queryByRole('button', { name: /in repair/i })).toBeNull();
+  });
+
+  /**
+   * A WORLD'S NAME TAKES YOU TO IT (owner, 2026-10-07): "Evde ve Hangar kısımları gezegen
+   * gezegen ayrılmış ... gezegenlerime tıklayınca tıkladığım gezegene focus olsun." The row's
+   * head is the door — the hull chips, the dock count and the room bars keep their own jobs.
+   */
+  it.each(['home', 'room'] as const)('focuses the world whose name is pressed in the %s view', async (tab) => {
+    const onFocusWorld = vi.fn();
+    render(<FleetPage {...props({
+      tab,
+      onFocusWorld,
+      worlds: [world(), world({ id: 'p-2', name: 'Orrery', capital: false, active: false, docked: 2 })],
+    })} />);
+    await userEvent.click(screen.getByRole('button', { name: /show orrery in the galaxy/i }));
+    expect(onFocusWorld).toHaveBeenCalledTimes(1);
+    expect(onFocusWorld).toHaveBeenCalledWith('p-2');
+  });
+
+  it('keeps the dock count opening the Repair Station, not the world', async () => {
+    const onFocusWorld = vi.fn();
+    const onOpenRepairStation = vi.fn();
+    render(<FleetPage {...props({ tab: 'home', onFocusWorld, onOpenRepairStation, worlds: [world({ docked: 2 })] })} />);
+    await userEvent.click(screen.getByRole('button', { name: /2 in repair/i }));
+    expect(onOpenRepairStation).toHaveBeenCalledWith('p-1');
+    expect(onFocusWorld).not.toHaveBeenCalled();
   });
 });

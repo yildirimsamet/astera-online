@@ -101,6 +101,11 @@ export interface PublicWorld {
     threat: NeutralThreat;
     reserve: NeutralReserve;
     claimUntil: Date | null;
+    /**
+     * When the raider's first hour ends (owner, 2026-10-07) — the clock only. WHO holds it
+     * is never in this shared projection: the galaxy route tells the raider alone.
+     */
+    claimPriorityUntil: Date | null;
     nextReinforcementAt: Date | null;
   };
   clan?: { id: string; name: string; tag: string };
@@ -353,6 +358,9 @@ export async function publicWorlds(
                 },
               ),
               claimUntil: r.neutral.claimUntil,
+              // An hour nobody holds is no hour: a deleted raider's column is SET NULL and the
+              // server refuses nobody, so the map must not say it does.
+              claimPriorityUntil: r.neutral.claimPriorityPlayerId === null ? null : r.neutral.claimPriorityUntil,
               nextReinforcementAt: r.neutral.nextReinforcementAt,
             },
           }

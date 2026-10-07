@@ -35,7 +35,7 @@ wreckExhaustedDetail: 'Il ne reste plus aucune ressource à récupérer dans l�
 dominionLeader: '{{commander}} a pris la tête de la Domination',
 dominionLeaderDetail: '{{planet}} occupe désormais la première place du classement public.',
 neutralClaim: 'Fenêtre de revendication ouverte sur {{planet}} · palier {{tier}}',
-neutralClaimDetail: 'Un raid décisif a déclenché une course publique à la colonisation de ce monde.',
+neutralClaimDetail: "Un raid décisif a déclenché une course à la colonisation de ce monde. Si l’attaquant avait un emplacement de colonie libre, ses {{minutes}} premières min sont à lui seul.",
 neutralOpened: '{{total}} mondes neutres ouverts',
 neutralOpenedDetail: 'La frontière s’étend · T1 {{t1}} · T2 {{t2}} · T3 {{t3}}.',
 deathStarImpact: 'Frappe de l’Étoile de la Mort sur {{planet}}',

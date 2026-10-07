@@ -35,7 +35,7 @@ export const chronicle = {
   dominionLeader: '{{commander}} Hâkimiyet liderliğini aldı',
   dominionLeaderDetail: '{{planet}} artık herkese açık sıralamanın tepesinde.',
   neutralClaim: '{{planet}} üzerinde hak penceresi açıldı · {{tier}}. kademe',
-  neutralClaimDetail: 'Kesin bir akın, bu dünya için herkese açık bir yerleşim yarışı başlattı.',
+  neutralClaimDetail: "Kesin bir akın bu dünya için yerleşim yarışı başlattı. Akıncının boş koloni yuvası varsa ilk {{minutes}} dk yalnız o koloni kurabilir.",
   neutralOpened: '{{total}} nötr dünya açıldı',
   neutralOpenedDetail: 'Sınır genişledi · T1 {{t1}} · T2 {{t2}} · T3 {{t3}}.',
   deathStarImpact: '{{planet}} üzerinde Ölüm Yıldızı darbesi',

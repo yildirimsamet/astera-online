@@ -96,6 +96,8 @@ export const galaxy = {
   recovery: "リカバリ違反",
   emp: "EMP ブラックアウト",
   claimOpen: "申請受付中",
+  claimMine: "あなたの優先権",
+  claimPriority: "襲撃者の優先権",
 
   /** What a launch says as it leaves. */
   harvestAway: "回収艇{{count}}隻が航行中 · 残骸まで{{minutes}}分",
@@ -172,6 +174,7 @@ export const focus = {
     settleNeedCrystal: "入植 · クリスタルが不足",
     settleNeedFuel: "入植 · 重水素が不足",
     settleTooLate: "入植 · 期限までに到着できません",
+    settleNeedPriority: "入植 · 襲撃者の優先権中",
     settleRecovering: "入植 · 出発地が復旧中",
     settleWhy: {
       recovering: "出発地が復旧中です。今は艦隊を発進できません。",
@@ -183,12 +186,15 @@ export const focus = {
       crystal: "クリスタル{{need}}が必要 · この惑星には{{have}}",
       fuel: "重水素{{need}}が必要 · この惑星には{{have}}",
       tooLate: "ここからクーリエを送っても、入植期限に間に合いません。",
+      priority: "優先権が終わるまで着陸できるのは襲撃者だけです。{{wait}}後に送れば、クーリエは優先権の終了と同時に着陸します。",
     },
     settlementConfirm: {
       eyebrow: "入植競争",
       title: "{{world}}に入植",
       unsurveyedTitle: "この惑星に入植",
       race: "有効なクーリエ2隻の艦隊を最初に到着させた司令官が、この惑星を獲得します。",
+      priorityMineFirst: "あなたの優先権：クーリエは優先権の終了前に着陸するため、先に着陸できる者はいません。",
+      priorityMineLate: "クーリエはあなたの優先権が終わった後に着陸します。それ以降は最初の有効な到着が勝ちます。",
       noRecall:
         "入植艦隊は呼び戻せません。先に到着して入植できれば、創設費用を払い、そのティアに応じた資源を持つ植民地を得ます。ほかの司令官が先に入植した場合はクーリエと創設費用が戻りますが、使用した燃料は戻りません。",
       transports: "入植艦隊",
@@ -277,7 +283,7 @@ export const focus = {
     routeRaid: "決定的な襲撃に勝つ",
     routeRaidDetail: "戦闘艦で攻撃し、すべての防衛艦とシールドを破壊します。",
     routeClaim: "入植競争が自動的に始まる",
-    routeClaimDetail: "ここでは艦船も資源も送る必要はありません。決定的な襲撃だけで公開の入植競争が始まります。",
+    routeClaimDetail: "ここでは艦船も資源も送る必要はありません。決定的な襲撃だけで公開の入植競争が始まります。そのとき空き植民地枠があれば、最初の{{minutes}}分間はあなただけが入植できます。",
     routeSettle: "入植艦隊を派遣",
     routeSettleDetail: "この段階で初めて入植用の艦船と資源を送ります。条件を満たす艦隊が最初に到着すれば勝利です。",
     routeSettleInFlightDetail: "あなたの入植艦隊は飛行中です。条件を満たす艦隊が最初に到着すれば勝利です。",
@@ -291,11 +297,18 @@ export const focus = {
     settlementAwayExplain:
       "クーリエ2隻と入植用の資源が出航しました。呼び戻せません。条件を満たす艦隊が最初に到着すれば、この惑星を入植できます。",
     claimCloses: "{{duration}}で閉じる",
+    claimPriorityMineTitle: "入植競争 · あなたの優先権",
+    claimPriorityOtherTitle: "入植競争 · 襲撃者の優先権",
+    claimPriorityMineExplain: "この競争を開いたのはあなたです。最初の{{minutes}}分間は、あなたのクーリエだけが着陸できます。その後は全員の競争です。",
+    claimPriorityOtherExplain: "この競争を開いた襲撃者に最初の{{minutes}}分間の優先権があり、その間はその艦隊だけが着陸できます。その後は最初の有効な到着が勝ちます。",
+    claimPriorityCloses: "優先権終了まで{{priority}} · 競争終了まで{{closes}}",
     claimRaidStillOpen:
       "もう一度襲撃できますが、入植競争の期限は延長されません。",
-    openColonySlot: "コロニースロット",
+    colonySlotOpen: "植民地枠あり",
+    colonySlotNeedsCore: "植民地枠：司令コア{{required}}が必要 · 現在{{current}}",
+    colonySlotsFull: "植民地枠は満杯（{{max}}）",
     colonySlotExplain:
-      "入植艦隊を出す段階でだけ必要です。艦隊の出航時に、首都の司令中枢が未使用の植民地枠を提供している必要があります。",
+      "入植艦隊の出航時に、首都の司令中枢に未使用の植民地枠が必要です。襲撃で競争を開いた時点で空き枠があれば、最初の{{minutes}}分間の優先権も得られます。",
     captureColonySlotExplain:
       "植民地の設立には必要ですが、攻撃には不要です。デス・スター攻撃で所有権は移りません。",
     openFlightBay: "空き発進枠1つ",

@@ -35,7 +35,7 @@ export const chronicle = {
   dominionLeader: '{{commander}} tomó la delantera en Dominion',
   dominionLeaderDetail: '{{planet}} ahora se encuentra en la cima de la escala pública.',
   neutralClaim: 'Ventana de reclamo abierta en {{planet}} · T{{tier}}',
-  neutralClaimDetail: 'Una incursión decisiva abrió una carrera de asentamiento público para este mundo.',
+  neutralClaimDetail: "Una incursión decisiva abrió una carrera de asentamiento para este mundo. Si el atacante tenía un espacio de colonia libre, sus primeros {{minutes}} min son solo suyos.",
   neutralOpened: '{{total}} mundos neutrales abiertos',
   neutralOpenedDetail: 'La frontera crece · T1 {{t1}} · T2 {{t2}} · T3 {{t3}}.',
   deathStarImpact: 'Impacto de la Estrella de la Muerte en {{planet}}',

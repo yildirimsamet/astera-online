@@ -94,6 +94,8 @@ export const galaxy = {
   recovery: "Toparlanma açığı",
   emp: "EMP kesintisi",
   claimOpen: "Hak açık",
+  claimMine: "Öncelik sende",
+  claimPriority: "Öncelik akıncıda",
 
   harvestAway: "{{count}} araç kalktı · enkaza {{minutes}} dk",
   miningAway: "{{count}} araç kalktı · kayaya {{minutes}} dk",
@@ -161,6 +163,7 @@ export const focus = {
     settleNeedCrystal: "Koloni kur · Kristal eksik",
     settleNeedFuel: "Koloni kur · Döteryum eksik",
     settleTooLate: "Koloni kur · zamanında varamaz",
+    settleNeedPriority: "Koloni kur · öncelik akıncıda",
     settleRecovering: "Koloni kur · ana dünya toparlanıyor",
     settleWhy: {
       recovering: "Dünyan toparlanıyor; şu an buradan filo kalkamaz.",
@@ -172,12 +175,15 @@ export const focus = {
       crystal: "{{need}} Kristal gerekli · burada {{have}}",
       fuel: "{{need}} Döteryum gerekli · burada {{have}}",
       tooLate: "Buradan kalkan Kuryeler yarış kapandıktan sonra varır.",
+      priority: "Öncelik bitene kadar yalnız akıncı inebilir. {{wait}} sonra gönderirsen Kuryelerin öncelik biterken iner.",
     },
     settlementConfirm: {
       eyebrow: "Koloni yarışı",
       title: "{{world}} üzerinde koloni kur",
       unsurveyedTitle: "Bu dünyada koloni kur",
       race: "Geçerli 2 Şilebi ilk ulaştıran oyuncu gezegeni alır.",
+      priorityMineFirst: "Öncelik sende: Kuryelerin öncelik bitmeden iner, kimse senden önce inemez.",
+      priorityMineLate: "Kuryelerin önceliğin bittikten sonra iner; o andan sonra ilk geçerli varış kazanır.",
       noRecall:
         "Koloni gemileri geri çağrılamaz. Koloniyi sen kurarsan kuruluş bedeli harcanır ve gezegen kendi kademesinin stoğuyla açılır. Başkası önce kazanırsa Kuryelerin ve kuruluş bedelin geri döner; harcanan yakıt dönmez.",
       transports: "Koloni gemileri",
@@ -260,7 +266,7 @@ export const focus = {
     routeRaid: "Kesin zafer kazan",
     routeRaidDetail: "Savaş gemileriyle akın yap. Bütün savunma gemilerini ve kalkanı yok et.",
     routeClaim: "Yarış otomatik açılır",
-    routeClaimDetail: "Bir şey göndermezsin. Kesin zafer gelince sistem yarışı kendisi açar.",
+    routeClaimDetail: "Bir şey göndermezsin. Kesin zafer yarışı kendisi açar; açtığında boş koloni yuvan varsa ilk {{minutes}} dk yalnız sen koloni kurabilirsin.",
     routeSettle: "Koloni filosunu gönder",
     routeSettleDetail: "Kuruluş gemileri ve kaynakları yalnızca şimdi gönderilir. İlk geçerli varış kazanır.",
     routeSettleInFlightDetail: "Kuruluş filon yolda. İlk geçerli varış gezegeni alır.",
@@ -274,10 +280,17 @@ export const focus = {
     settlementAwayExplain:
       "2 Şilebin ve kuruluş kaynakların yola çıktı. Geri çağrılamazlar; ilk geçerli varış gezegeni alır.",
     claimCloses: "{{duration}} sonra kapanır",
+    claimPriorityMineTitle: "Koloni yarışı · öncelik sende",
+    claimPriorityOtherTitle: "Koloni yarışı · öncelik akıncıda",
+    claimPriorityMineExplain: "Hakkı sen açtın: ilk {{minutes}} dk yalnız senin Kuryelerin inebilir. Sonra herkes yarışır.",
+    claimPriorityOtherExplain: "Hakkı açan akıncının ilk {{minutes}} dk önceliği var: bu sürede yalnız onun Kuryeleri inebilir. Sonra ilk geçerli varış kazanır.",
+    claimPriorityCloses: "Öncelik {{priority}} sonra biter · yarış {{closes}} sonra kapanır",
     claimRaidStillOpen: "Tekrar akın yapılabilir; açık hakkın süresi uzamaz.",
-    openColonySlot: "Koloni yuvası",
+    colonySlotOpen: "Koloni yuvası açık",
+    colonySlotNeedsCore: "Koloni yuvası: Komuta Çekirdeği {{required}} gerekli · şu an {{current}}",
+    colonySlotsFull: "Koloni yuvaları dolu ({{max}})",
     colonySlotExplain:
-      "Yalnızca 3. adımda gerekir. Kuruluş filosu kalkarken ana gezegendeki Komuta Çekirdeğinde kullanılabilir bir koloni yuvası olmalı.",
+      "Kuruluş filosu kalkarken ana gezegendeki Komuta Çekirdeğinde boş bir koloni yuvası olmalı. Akının yarışı açtığı anda boş yuvan varsa ilk {{minutes}} dk öncelik de sende olur.",
     captureColonySlotExplain:
       "Koloni kurmak için gerekir, koloni vurmak için değil: Ölüm Yıldızı hiçbir dünyayı devretmez.",
     openFlightBay: "1 boş uçuş rampası",

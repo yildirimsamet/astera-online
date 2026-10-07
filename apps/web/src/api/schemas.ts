@@ -1414,6 +1414,11 @@ export const galaxySchema = z.object({
       isOwned: z.boolean().optional(),
       /** Present only on one of the caller's own worlds with at least one live fault. */
       faulty: z.boolean().optional(),
+      /**
+       * THE RAIDER'S FIRST HOUR IS YOURS (owner, 2026-10-07). Present, and true, only for
+       * the commander whose raid opened this claim while its first hour runs.
+       */
+      claimPriorityMine: z.boolean().optional(),
       isCapital: z.boolean().optional(),
       /** Client-derived from current `clanPresence`; never inferred from stale intel. */
       clanmate: z.boolean().optional(),
@@ -1444,6 +1449,8 @@ export const galaxySchema = z.object({
         threat: z.enum(['UNGUARDED', 'GUARDED', 'FORTIFIED']).optional(),
         reserve: z.enum(['EMPTY', 'LOW', 'RICH']).optional(),
         claimUntil: z.coerce.date().nullable(),
+        /** When the raider's first hour on this claim ends; null when nobody holds one. */
+        claimPriorityUntil: z.coerce.date().nullable().optional(),
         nextReinforcementAt: z.coerce.date().nullable().optional(),
       }).optional(),
       /**

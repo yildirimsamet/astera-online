@@ -139,6 +139,7 @@ export const fleetPage = {
   recallHome: "呼び戻すと{{time}}後に帰還",
   recalling: "帰還へ転針中…",
   emptyAir: "飛行中の艦隊はありません。銀河にある惑星、小惑星、海賊をタップして艦船を派遣できます。",
+  focusWorld: "{{world}}を銀河で表示",
   shipsHome_one: "{{count}}隻が駐留中",
   shipsHome_other: "{{count}}隻が駐留中",
   away: "{{count}}隻が出航中",

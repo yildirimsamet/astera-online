@@ -1,0 +1,3 @@
+ALTER TABLE "neutral_planet_state" ADD COLUMN "claim_priority_player_id" uuid;--> statement-breakpoint
+ALTER TABLE "neutral_planet_state" ADD COLUMN "claim_priority_until" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "neutral_planet_state" ADD CONSTRAINT "neutral_planet_state_claim_priority_player_id_players_id_fk" FOREIGN KEY ("claim_priority_player_id") REFERENCES "public"."players"("id") ON DELETE set null ON UPDATE no action;

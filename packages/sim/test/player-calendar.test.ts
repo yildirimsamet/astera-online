@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DECISION_MINUTES, nextDecision, playerWindows } from '../src/player-calendar.js';
 import { advanceStrategicLayer, buildWorld, runSeason, runStrategicSession } from '../src/season.js';
-import { fleetTravelExact, missionFuel, MULTI_WORLD } from '@astera/rules';
+import { fleetTravelExact, missionFuel, MULTI_WORLD, SETTLEMENT_PRIORITY_MINUTES } from '@astera/rules';
 
 function settlementFixture() {
   const world = buildWorld({ players: 5, days: 1, seed: 2, activityProfiles: ['low'], neutralRaidChance: 0 });
@@ -104,6 +104,55 @@ describe('working adult calendar', () => {
     expect(target.claimUntil).toBeGreaterThan(100);
     expect(world.strategicMissions.some(m => m.kind === 'settlement')).toBe(false);
     expect(p.fleet.COURIER).toBe(2);
+  });
+  /*
+    THE RAIDER'S FIRST HOUR (owner, 2026-10-07): "ilk 60dk sadece o kişi koloniyi elegeçirebilir
+    olsun" — reserved only for a raider who can take the world, and the rule is about LANDING.
+  */
+  it('reserves the first hour of a claim for a raider who holds a free colony slot', () => {
+    const decisive = (core: number) => {
+      const world = buildWorld({ players: 5, days: 1, seed: 2, activityProfiles: ['low'], spendingArchetype: 'CASUAL' });
+      const p = world.players[0]!, target = world.neutrals.find(n => n.tier === 1)!;
+      p.buildings.CORE = core;
+      target.fleet = {};
+      world.strategicMissions.push({ id: 999, kind: 'neutral_attack', ownerId: p.id, targetId: target.id,
+        arriveAt: 100, fleet: { DART: 1 }, returning: false });
+      advanceStrategicLayer(world, 100);
+      return { p, target };
+    };
+    const slot = decisive(MULTI_WORLD.colonyCoreThresholds[0]);
+    expect(slot.target.claimPriority).toEqual({ ownerId: slot.p.id, until: 100 + SETTLEMENT_PRIORITY_MINUTES });
+    const none = decisive(MULTI_WORLD.colonyCoreThresholds[0] - 1);
+    expect(none.target.claimUntil).toBeGreaterThan(100);
+    expect(none.target.claimPriority).toBeNull();
+  });
+  it('lets nobody else land inside the raider\'s hour, and lets them land as it ends', () => {
+    const { world, p, target } = settlementFixture();
+    const flight = fleetTravelExact(1250, { COURIER: 2 }, { boost: 1, tech: p.tech });
+    target.claimUntil = flight + 30;
+    target.claimPriority = { ownerId: world.players[1]!.id, until: flight + 1 };
+    runStrategicSession(p, 0, world);
+    expect(world.strategicMissions).toHaveLength(0);
+    target.claimPriority = { ownerId: world.players[1]!.id, until: flight };
+    runStrategicSession(p, 0, world);
+    expect(world.strategicMissions.filter(m => m.kind === 'settlement')).toHaveLength(1);
+  });
+  it('lets the raider land inside their own hour', () => {
+    const { world, p, target } = settlementFixture();
+    target.claimPriority = { ownerId: p.id, until: 99 };
+    runStrategicSession(p, 0, world);
+    const mission = world.strategicMissions.find(m => m.kind === 'settlement')!;
+    advanceStrategicLayer(world, mission.arriveAt);
+    expect(target.controllerId).toBe(p.id);
+    expect(target.claimPriority).toBeNull();
+  });
+  it('turns back a settlement that lands inside someone else\'s hour', () => {
+    const { world, p, target } = settlementFixture();
+    runStrategicSession(p, 0, world);
+    const mission = world.strategicMissions.find(m => m.kind === 'settlement')!;
+    target.claimPriority = { ownerId: world.players[1]!.id, until: mission.arriveAt + 1 };
+    advanceStrategicLayer(world, mission.arriveAt);
+    expect(target.controllerId).toBeNull();
   });
 });
 it('splits the same weekend time budget into short checks and an evening session', () => {

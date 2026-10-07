@@ -273,6 +273,8 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
       {fleetOpen && (
         <FleetHost
           onFocus={(focus) => { onFocusCraft(focus); }}
+          // A world row selects that world, not only frames it — as the outline's rows do.
+          onFocusWorld={(planetId) => { onFocusPlanet(planetId, { select: true }); }}
           onClose={() => { setFleetOpen(false); }}
           // The world, its Base on the Fleet tab, and the station open on it: one press.
           onOpenRepairStation={(planetId) => {

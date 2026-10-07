@@ -35,7 +35,7 @@ export const chronicle = {
   dominionLeader: "{{commander}}がドミニオン首位に立ちました",
   dominionLeaderDetail: "{{planet}}が公開ランキングの首位に立ちました。",
   neutralClaim: "{{planet}}・T{{tier}}で入植競争が始まりました",
-  neutralClaimDetail: "決定的な襲撃により、この惑星をめぐる公開の入植競争が始まりました。",
+  neutralClaimDetail: "決定的な襲撃により、この惑星をめぐる入植競争が始まりました。襲撃者に空き植民地枠があれば、最初の{{minutes}}分間はその襲撃者だけが入植できます。",
   neutralOpened: "中立惑星{{total}}個が開放されました",
   neutralOpenedDetail: "辺境が広がりました・T1 {{t1}}・T2 {{t2}}・T3 {{t3}}。",
   deathStarImpact: "{{planet}}にデス・スターが命中",

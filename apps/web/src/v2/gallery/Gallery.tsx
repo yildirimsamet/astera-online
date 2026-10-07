@@ -304,6 +304,7 @@ function GalleryFleet({ first }: { first: FleetTab }) {
       onFocus={noop}
       onRecall={noop}
       onOpenRepairStation={noop}
+      onFocusWorld={noop}
       onClose={noop}
     />
   );
@@ -634,6 +635,33 @@ function GalleryBand() {
   );
 }
 
+/**
+ * THE RAIDER'S FIRST HOUR ON THE COLONY ROUTE (owner, 2026-10-07): one live claim, seen by
+ * the raider who opened it and by a rival who has to wait for a launch to land as it ends.
+ */
+const claimWorld = (mine: boolean): GalaxyPlanet => ({
+  ...rival, kind: 'NEUTRAL', owner: '', name: 'Neutral T1-50', controller: { kind: 'NEUTRAL', tier: 1 },
+  neutral: {
+    tier: 1, threat: 'UNGUARDED', reserve: 'RICH', nextReinforcementAt: null,
+    claimUntil: new Date(NOW + 72 * MIN), claimPriorityUntil: new Date(NOW + 42 * MIN),
+  },
+  ...(mine ? { claimPriorityMine: true } : {}),
+});
+
+function GalleryClaim({ mine }: { mine: boolean }) {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
+    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    return null;
+  });
+  const settler: PlanetView = { ...launchWorld, colonies: { capitalCore: 9, colonies: 0, reservations: 0, capacity: 1 } };
+  return (
+    <PlanetFocus target={claimWorld(mine)} planet={settler} intel={launchIntel} reports={[]} now={NOW}
+      onClose={noop} onAttack={noop} onSettle={noop} onInstallTelescope={noop} onLaunched={noop} open onToggle={noop} />
+  );
+}
+
 function Views({ view }: { view: string }) {
   const { t } = useTranslation();
   if (view.startsWith('support-')) return <GallerySupport view={view} />;
@@ -909,6 +937,13 @@ function Views({ view }: { view: string }) {
         onClose={noop}
         onLaunched={noop}
       />
+    );
+  }
+  if (view === 'claim-mine' || view === 'claim-other') return <GalleryClaim mine={view === 'claim-mine'} />;
+  if (view === 'settlement-priority') {
+    return (
+      <SettlementSheet target={claimWorld(true)} planet={launchWorld} now={NOW} pending={false}
+        onClose={noop} onConfirm={noop} />
     );
   }
   if (view === 'settlement') {

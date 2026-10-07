@@ -594,6 +594,30 @@ describe('the three intel states', () => {
     expect(JSON.stringify(racing)).not.toContain('reserve');
   });
 
+  /**
+   * THE RAIDER'S HOUR CROSSES THE FOG WHILE IT RUNS, AND ONLY THEN (owner, 2026-10-07). When a
+   * stranger may land is part of the public race; absent means nobody holds an hour — the fog is
+   * still enforced by omission, so a claim without one carries exactly what it always did.
+   */
+  it('sends the raider\'s hour through the fog only while it runs', async () => {
+    await openClaimOn(far, 80);
+    const hold = async (minutes: number) => {
+      await f.db.update(neutralPlanetState).set({
+        claimPriorityPlayerId: f.playerIds[1]!,
+        claimPriorityUntil: new Date(f.clock.now().getTime() + minutes * 60_000),
+      }).where(eq(neutralPlanetState.planetId, far));
+    };
+
+    await hold(30);
+    const held = await world(far);
+    expect(held.intel).toBe('UNKNOWN');
+    expect(Object.keys(held.neutral ?? {})).toEqual(['claimUntil', 'claimPriorityUntil']);
+    expect(JSON.stringify(held)).not.toContain(f.playerIds[1]!);
+
+    await hold(-1);
+    expect(Object.keys((await world(far)).neutral ?? {})).toEqual(['claimUntil']);
+  });
+
   /** A closed race is a reading again, so it goes back behind the fog. */
   it('drops a claim window that has already run out', async () => {
     await openClaimOn(far, -60);

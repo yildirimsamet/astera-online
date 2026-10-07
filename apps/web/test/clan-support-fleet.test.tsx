@@ -26,7 +26,7 @@ const wave = (over: Record<string, unknown> = {}): ClanSupportWave => clanSuppor
 const props = (support: FleetPageProps['support']): FleetPageProps => ({
   tab: 'air', onTab: vi.fn(), now: NOW, bays: { used: 1, total: 4 }, hangar: { used: 10, total: 80 },
   flights: [], worlds: [], recalling: null, onFocus: vi.fn(), onRecall: vi.fn(),
-  onOpenRepairStation: vi.fn(), onClose: vi.fn(), support,
+  onOpenRepairStation: vi.fn(), onFocusWorld: vi.fn(), onClose: vi.fn(), support,
 });
 
 describe('the clan support group on the Fleet page', () => {

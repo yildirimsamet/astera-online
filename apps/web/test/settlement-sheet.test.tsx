@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { MULTI_WORLD } from '@astera/rules';
+import { MULTI_WORLD, fleetTravelExact } from '@astera/rules';
+import { flightModifiers } from '../src/lib/navigation.js';
 import { SettlementSheet } from '../src/screens/SettlementSheet.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
@@ -88,5 +89,33 @@ describe('settlement confirmation', () => {
       />,
     );
     expect(screen.queryByText('Colony opens with')).not.toBeInTheDocument();
+  });
+
+  /**
+   * THE RAIDER'S OWN HOUR CHANGES WHAT THE PRESS DECIDES (owner, 2026-10-07). Inside it
+   * nobody can land first, so there is no race to warn about; landing after it, there is.
+   */
+  it('tells the raider whether their Couriers land inside their own hour', () => {
+    const now = Date.now();
+    const planet = planetView({ fleet: { COURIER: 2 } }, { alloy: 10_000, crystal: 10_000, deuterium: 10_000 });
+    const eta = fleetTravelExact(200, { COURIER: 2 }, { boost: 1, tech: flightModifiers(planet).tech });
+    const theirs = (priorityMinutes: number): GalaxyPlanet => ({
+      ...target,
+      claimPriorityMine: true,
+      neutral: { ...target.neutral!, claimPriorityUntil: new Date(now + priorityMinutes * 60_000) },
+    });
+    const view = render(
+      <SettlementSheet target={theirs(eta + 5)} planet={planet} now={now} pending={false}
+        onClose={vi.fn()} onConfirm={vi.fn()} />,
+    );
+    expect(screen.getByText(/your priority: your couriers land before it ends — nobody can land ahead of you/i))
+      .toBeInTheDocument();
+    expect(screen.queryByText(/first valid two-Courier fleet/i)).not.toBeInTheDocument();
+
+    view.rerender(
+      <SettlementSheet target={theirs(eta / 2)} planet={planet} now={now} pending={false}
+        onClose={vi.fn()} onConfirm={vi.fn()} />,
+    );
+    expect(screen.getByText(/your couriers land after your priority ends/i)).toBeInTheDocument();
   });
 });

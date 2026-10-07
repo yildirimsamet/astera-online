@@ -8,9 +8,11 @@ import {
   GALAXY_SPAN,
   MULTI_WORLD,
   distance,
+  fleetTravelExact,
   missionFuel,
 } from '@astera/rules';
 import { duration } from '../src/lib/time.js';
+import { flightModifiers } from '../src/lib/navigation.js';
 import { resetClock } from '../src/lib/clock.js';
 import { compact } from '../src/lib/format.js';
 import { Api } from '../src/api/client.js';
@@ -1052,6 +1054,46 @@ describe('the focus rail’s two commitments', () => {
     expect(document.querySelector('[data-settle-reason]')).toBeNull();
   });
 
+  /**
+   * THE SLOT CHIP SAYS WHICH WAY IT IS. Owner report, 2026-10-07: a Core 6 commander read
+   * "○ Koloni yuvası" as an open slot — the chip named the requirement and left its state to a
+   * hollow dot and a colour. It now states the state, with the number that opens it.
+   */
+  it('states on the slot chip whether a colony slot is open, and which Core opens it', () => {
+    const Wrapper = harness();
+    const neutral = target({
+      kind: 'NEUTRAL',
+      controller: { kind: 'NEUTRAL', tier: 1 },
+      state: { kind: 'NORMAL' },
+      neutral: { tier: 1, threat: 'UNGUARDED', reserve: 'RICH', claimUntil: null, nextReinforcementAt: null },
+    });
+    const props = {
+      target: neutral, intel, reports: [], now: NOW, onClose: vi.fn(), onAttack: vi.fn(), onSettle: vi.fn(),
+      onInstallTelescope: vi.fn(), onLaunched: vi.fn(), open: true, onToggle: vi.fn(),
+    };
+    const view = render(
+      <Wrapper>
+        <PlanetFocus {...props} planet={{ ...mine, colonies: { capitalCore: 6, colonies: 0, reservations: 0, capacity: 0 } }} />
+      </Wrapper>,
+    );
+    expect(screen.getByRole('button', { name: 'Colony slot: Command Core 9 needed · now 6' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Colony slot$/ })).toBeNull();
+
+    view.rerender(
+      <Wrapper>
+        <PlanetFocus {...props} planet={{ ...mine, colonies: { capitalCore: 9, colonies: 0, reservations: 0, capacity: 1 } }} />
+      </Wrapper>,
+    );
+    expect(screen.getByRole('button', { name: 'Colony slot open' })).toBeInTheDocument();
+
+    view.rerender(
+      <Wrapper>
+        <PlanetFocus {...props} planet={{ ...mine, colonies: { capitalCore: 16, colonies: 3, reservations: 0, capacity: 3 } }} />
+      </Wrapper>,
+    );
+    expect(screen.getByRole('button', { name: 'Colony slots full (3)' })).toBeInTheDocument();
+  });
+
   it('shows founding requirements before the raid, so the claim cannot reveal a surprise cost', () => {
     const Wrapper = harness();
     render(
@@ -1638,5 +1680,88 @@ describe('the standing probe control keeps the rail’s own rules', () => {
     } finally {
       resetClock();
     }
+  });
+});
+
+/**
+ * THE RAIDER'S FIRST HOUR, SAID WHERE THE COLONY IS FOUNDED. Owner decision, 2026-10-07:
+ * "ilk 60dk sadece o kişi koloniyi elegeçirebilir olsun". The raider has to see that the hour
+ * is theirs; everyone else has to see whose it is, when it ends, and when they may leave —
+ * a refusal they could only meet as a server error would be the rule taught as a post-mortem.
+ */
+describe('the raider\'s first hour on the colony route', () => {
+  const race = (over: Partial<GalaxyPlanet> = {}, priorityUntil: Date | null = new Date(NOW + 50 * 60_000)) =>
+    target({
+      kind: 'NEUTRAL',
+      controller: { kind: 'NEUTRAL', tier: 1 },
+      state: { kind: 'NORMAL' },
+      neutral: {
+        tier: 1,
+        threat: 'UNGUARDED',
+        reserve: 'RICH',
+        claimUntil: new Date(NOW + 80 * 60_000),
+        claimPriorityUntil: priorityUntil,
+        nextReinforcementAt: null,
+      },
+      ...over,
+    });
+  const ready: PlanetView = {
+    ...mine,
+    planet: { ...mine.planet, deuterium: 5_000 },
+    fleet: { ...mine.fleet, COURIER: MULTI_WORLD.settlement.transports },
+    colonies: { capitalCore: 9, colonies: 0, reservations: 0, capacity: 1 },
+  };
+  const showRace = (world: GalaxyPlanet) => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={world}
+          planet={ready}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onSettle={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+  };
+
+  it('holds a rival back until a launch would land as the hour ends, and says when that is', () => {
+    showRace(race());
+    expect(screen.getByText(/^colony race · raider's priority$/i)).toBeInTheDocument();
+    expect(screen.getByText(/the raider who opened this claim has its first 60 min/i)).toBeInTheDocument();
+    const eta = fleetTravelExact(
+      distance(ready.planet.position, { x: 200, y: 0, z: 0 }),
+      { COURIER: MULTI_WORLD.settlement.transports },
+      { boost: 1, tech: flightModifiers(ready).tech },
+    );
+    expect(document.querySelector('[data-settle-reason]')).toHaveTextContent(
+      `Only the raider may land until their hour ends. Launch in ${duration(50 - eta)} and your Couriers land as it ends.`,
+    );
+    expect(screen.getByRole('button', { name: /found colony · raider's priority/i })).toBeDisabled();
+    expect(screen.getByText(`Priority ends in ${duration(50)} · race closes in ${duration(80)}`)).toBeInTheDocument();
+  });
+
+  it('tells the raider the hour is theirs and lets them found the colony now', () => {
+    showRace(race({ claimPriorityMine: true }));
+    expect(screen.getByText(/^colony race · your priority$/i)).toBeInTheDocument();
+    expect(screen.getByText(/you opened this claim: for its first 60 min only your couriers may land/i))
+      .toBeInTheDocument();
+    expect(document.querySelector('[data-settle-reason]')).toBeNull();
+    expect(screen.getByRole('button', { name: /^Found colony$/ })).toBeEnabled();
+  });
+
+  it('says nothing of an hour that has passed', () => {
+    showRace(race({}, new Date(NOW - 60_000)));
+    expect(screen.getByText(/^colony race open$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/priority/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /^Found colony$/ })).toBeEnabled();
   });
 });

@@ -33,6 +33,7 @@
   COLONY_CAP: 'Ton Noyau de Commandement ne peut pas encore soutenir une nouvelle colonie',
   NO_ACTIVE_CLAIM: 'Aucune revendication de colonisation n’est actuellement ouverte',
   CLAIM_EXPIRED: 'La revendication de colonisation a expiré',
+  CLAIM_PRIORITY: "L’attaquant qui a ouvert cette revendication a encore la priorité ; tes Cargos atterriraient trop tôt",
   TARGET_CHANGED: 'Le contrôle de ce monde a changé entre-temps',
   SETTLEMENT_REQUIREMENTS: 'La colonisation exige exactement 2 Cargos et les ressources de fondation',
   DEATH_STAR_EXISTS: 'La capacité d’Étoiles de la Mort de ce monde est déjà atteinte',

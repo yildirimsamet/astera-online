@@ -96,6 +96,8 @@ export const galaxy = {
   recovery: "Recovery breach",
   emp: "EMP blackout",
   claimOpen: "Claim open",
+  claimMine: "Your priority",
+  claimPriority: "Raider's priority",
 
   /** What a launch says as it leaves. */
   harvestAway: "{{count}} away · {{minutes}}m to the wreck",
@@ -172,6 +174,7 @@ export const focus = {
     settleNeedCrystal: "Found colony · Crystal missing",
     settleNeedFuel: "Found colony · Deuterium missing",
     settleTooLate: "Found colony · arrives too late",
+    settleNeedPriority: "Found colony · raider's priority",
     settleRecovering: "Found colony · origin recovering",
     settleWhy: {
       recovering: "Your world is recovering — no fleet can leave it yet.",
@@ -183,12 +186,15 @@ export const focus = {
       crystal: "{{need}} Crystal needed · {{have}} here",
       fuel: "{{need}} Deuterium needed · {{have}} here",
       tooLate: "Couriers from here land after the race closes.",
+      priority: "Only the raider may land until their hour ends. Launch in {{wait}} and your Couriers land as it ends.",
     },
     settlementConfirm: {
       eyebrow: "Colony race",
       title: "Found {{world}}",
       unsurveyedTitle: "Found this world",
       race: "The first valid two-Courier fleet to arrive takes the world.",
+      priorityMineFirst: "Your priority: your Couriers land before it ends — nobody can land ahead of you.",
+      priorityMineLate: "Your Couriers land after your priority ends; from then the first valid arrival wins.",
       noRecall:
         "Colony ships cannot be recalled. If you found the colony, the founding cost is spent and the world opens on its tier's stock. If another commander wins first, your Couriers and founding cost return; spent fuel does not.",
       transports: "Colony ships",
@@ -277,7 +283,7 @@ export const focus = {
     routeRaid: "Win a decisive raid",
     routeRaidDetail: "Attack with combat ships. Destroy every defender and the shield.",
     routeClaim: "Race opens automatically",
-    routeClaimDetail: "Nothing to send. A decisive raid opens the public race by itself.",
+    routeClaimDetail: "Nothing to send. A decisive raid opens the public race by itself — open it with a free colony slot and its first {{minutes}} min are yours alone.",
     routeSettle: "Dispatch the colony fleet",
     routeSettleDetail: "Only now send the founding ships and cargo. First valid arrival wins.",
     routeSettleInFlightDetail: "Your founding fleet is flying. The first valid arrival wins.",
@@ -291,11 +297,18 @@ export const focus = {
     settlementAwayExplain:
       "Your 2 Couriers and founding cargo have departed. They cannot be recalled; the first valid arrival takes the world.",
     claimCloses: "Closes in {{duration}}",
+    claimPriorityMineTitle: "Colony race · your priority",
+    claimPriorityOtherTitle: "Colony race · raider's priority",
+    claimPriorityMineExplain: "You opened this claim: for its first {{minutes}} min only your Couriers may land. After that, everyone races.",
+    claimPriorityOtherExplain: "The raider who opened this claim has its first {{minutes}} min: only their Couriers may land. After that, the first valid arrival wins.",
+    claimPriorityCloses: "Priority ends in {{priority}} · race closes in {{closes}}",
     claimRaidStillOpen:
       "Another raid is possible; it does not extend this claim.",
-    openColonySlot: "Colony slot",
+    colonySlotOpen: "Colony slot open",
+    colonySlotNeedsCore: "Colony slot: Command Core {{required}} needed · now {{current}}",
+    colonySlotsFull: "Colony slots full ({{max}})",
     colonySlotExplain:
-      "Needed only for step 3. Your capital's Command Core must provide an unused colony slot when the founding fleet leaves.",
+      "Your capital's Command Core must have an unused colony slot when the founding fleet leaves. Have one when your raid opens the race, and its first {{minutes}} min are yours alone.",
     captureColonySlotExplain:
       "Needed to found a colony, never to strike one: a Death Star transfers nothing.",
     openFlightBay: "1 free flight bay",

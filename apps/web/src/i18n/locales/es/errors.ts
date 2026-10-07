@@ -35,6 +35,7 @@ export const errors = {
   COLONY_CAP: 'Tu Núcleo de Mando no puede contener otra colonia',
   NO_ACTIVE_CLAIM: 'No hay ningún reclamo de liquidación abierto',
   CLAIM_EXPIRED: 'El reclamo de liquidación ha expirado',
+  CLAIM_PRIORITY: "El atacante que abrió este reclamo aún tiene prioridad; tus Mensajeros aterrizarían demasiado pronto",
   TARGET_CHANGED: 'Ese mundo cambió de controlador primero',
   SETTLEMENT_REQUIREMENTS: 'Un asentamiento necesita exactamente dos Mensajeros y su carga fundacional',
   DEATH_STAR_EXISTS: 'Este mundo ha alcanzado su capacidad de Estrella de la Muerte',

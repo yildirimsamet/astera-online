@@ -67,7 +67,9 @@ model parameters, not live constants.
 One commander per galaxy, with one uncapturable **capital** and up to three captured
 **colonies**. Colony slots open at the capital's Command Core 9, 13 and 16, and only the capital's
 Core counts (D209). Every caretaker world is guarded; a settled world opens on its tier's fixed
-capture stock, never on what the caretaker held (D209). Every controlled world is named, fixed in 3D and runs the complete planetary
+capture stock, never on what the caretaker held (D209). A decisive raid on a caretaker world opens a public
+90-minute claim; its first 60 minutes belong to the raider who opened it — if they hold a free
+colony slot — and only their Couriers may land in that hour (owner, 2026-10-07). Every controlled world is named, fixed in 3D and runs the complete planetary
 economy. Ordinary raids are structurally non-destructive; only a Death Star can apply the
 specific permanent level loss in D97/D98. A capital may be devastated but never captured.
 Under D179 a Death Star transfers no ownership: it is a one-hour EMP, and no world is ever handed
