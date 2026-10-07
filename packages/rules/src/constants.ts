@@ -3018,11 +3018,11 @@ export const SALVAGE = {
   perCollector: 7_500,
   /**
    * ITS FUEL MASS, SET BY HAND — THE ONE EXCEPTION TO D195. Owner instruction,
-   * 2026-09-20 and raised 2026-09-22. The 2026-09-26 speed pass reduced it 10%:
-   * `hullFuelRate` reads one tenth of this 900 mass, displaying 90 deuterium.
+   * 2026-09-20 and recalibrated 2026-10-07 from 90 to 20 deuterium on the card.
+   * `hullFuelRate` reads one tenth of this 200 mass; mission charges use the same mass.
    * `hullFuelMass` reads it; nothing else may derive it from price.
    */
-  fuelMass: 900,
+  fuelMass: 200,
 } as const;
 
 /**

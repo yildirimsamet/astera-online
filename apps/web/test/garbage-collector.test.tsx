@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MOBILE_HULLS, SALVAGE } from '@astera/rules';
+import { MOBILE_HULLS, SALVAGE, hullFuelRate } from '@astera/rules';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import type { GalaxyPlanet, NotificationView } from '../src/api/schemas.js';
@@ -73,6 +73,13 @@ describe('the Garbage Collector in the catalogue', () => {
     expect(screen.getByText('Salvage')).toBeVisible();
     expect(screen.getByText(compact(SALVAGE.perCollector))).toBeVisible();
     expect(screen.queryByText('Cargo')).not.toBeInTheDocument();
+  });
+
+  it('prints the requested 20 deuterium fuel rate on the ship card', () => {
+    render(<StatStrip atk={0} hp={540} speed={151} cargo={0} fuel={hullFuelRate('GARBAGE_COLLECTOR')} salvage={SALVAGE.perCollector} size="card" />);
+    expect(screen.getByText('Fuel')).toBeVisible();
+    expect(screen.getByText('20.0 /1k')).toBeVisible();
+    expect(screen.queryByText('90.0 /1k')).not.toBeInTheDocument();
   });
 
   it('leaves every other hull’s hold exactly where it was', () => {

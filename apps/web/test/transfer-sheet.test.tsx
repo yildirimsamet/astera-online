@@ -536,7 +536,7 @@ describe('the deuterium a transfer spends twice', () => {
 
     /*
       ASK FOR EVERY DROP AND THE HOLD STILL LEAVES THE FLIGHT ITS SHARE.
-      The bar reads what is left AFTER the hold — that has not changed — but the
+      The bar compares the flight cost against the tank AFTER the hold, and the
       slider's own ceiling now stops one launch short of the tank, so the state
       this bar used to go red in cannot be reached by dragging it. The refusal is
       still there underneath: a tank too small for the flight AT ALL is asserted

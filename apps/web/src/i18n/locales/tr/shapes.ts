@@ -12,6 +12,7 @@ export const spend = {
   reading: '{{label}}: {{spend}} gider, {{left}} kalır',
   readingSpend: '{{label}} — miktar: {{spend}}',
   readingShort: '{{label}}: {{short}} eksik',
+  shortfall: '{{short}} eksik',
 } as const;
 
 /** Sondanın bulanık okuması, olduğu gibi çizilir: `RangeBand`. */

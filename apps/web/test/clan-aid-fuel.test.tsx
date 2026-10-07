@@ -190,7 +190,8 @@ describe('the fuel a clan gift burns', () => {
     await userEvent.setup().type(alloy, '100');
 
     const fuel = document.querySelector('[data-aid-fuel] [role="img"]');
-    expect(fuel?.getAttribute('aria-label')).toContain(`${String(returningCourier)} spent`);
+    expect(document.querySelector('[data-aid-fuel] [data-spend-amount]')).toHaveTextContent(String(returningCourier));
+    expect(fuel?.getAttribute('aria-label')).toBe(`fuel for the flight: ${String(returningCourier)}`);
     expect(returningCourier).toBe(oneCourier * 2);
   });
 

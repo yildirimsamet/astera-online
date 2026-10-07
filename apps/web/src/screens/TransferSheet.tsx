@@ -525,7 +525,6 @@ export function TransferSheet({
                       spend={cargo[resource]}
                       tone={resource}
                       label={t('transfer.cargoSending')}
-                      readout="spend"
                       compactSize
                     />
                   </span>

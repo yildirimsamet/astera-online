@@ -403,7 +403,7 @@ describe('the fuel this launch burns', () => {
     render(
       <LaunchSheet
         target={{ kind: 'world', world: target }}
-        planet={planetView({ fleet: { DART: 2 } }, { deuterium })}
+        planet={planetView({ fleet: { DART: 20 } }, { deuterium })}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
       />,
@@ -412,11 +412,25 @@ describe('the fuel this launch burns', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: /more dart/i }));
   };
 
-  it('draws what is left of the tank when the flight is covered', async () => {
+  it('shows increasing fuel cost when more ships are selected', async () => {
     await packOne(10_000);
     const bar = document.querySelector('[data-spend-bar]');
     expect(bar).toHaveAttribute('data-short', 'false');
-    expect(document.querySelector('[data-spend-left]')).toBeInTheDocument();
+    const amount = document.querySelector('[data-spend-amount]');
+    expect(amount).toBeInTheDocument();
+    const first = Number(amount?.textContent);
+    expect(first).toBeGreaterThan(0);
+    expect(document.querySelector('[data-spend-left]')).toBeNull();
+    const user = userEvent.setup();
+    const quantity = screen.getByRole('textbox', { name: /dart quantity/i });
+    await user.clear(quantity);
+    await user.type(quantity, '20');
+    await user.tab();
+    expect(Number(document.querySelector('[data-spend-amount]')?.textContent)).toBeGreaterThan(first);
+    await user.clear(quantity);
+    await user.type(quantity, '1');
+    await user.tab();
+    expect(document.querySelector('[data-spend-amount]')).toHaveTextContent(String(first));
   });
 
   /**

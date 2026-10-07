@@ -17,6 +17,7 @@ export const spend = {
   reading: '{{label}}: {{spend}} gastado, {{left}} restante',
   readingSpend: '{{label}}: {{spend}}',
   readingShort: '{{label}}: {{short}} corto',
+  shortfall: 'faltan {{short}}',
 } as const;
 
 /** A probe's fuzzed reading, drawn as the doubt it is: `RangeBand`. */

@@ -210,7 +210,7 @@ describe('fuel per craft', () => {
 describe('D195 fuel by hull value', () => {
   it('reduces the fleet-wide thirst after the 25 percent speed reduction', () => {
     expect(FUEL.perValue).toBe(0.00495);
-    expect(SALVAGE.fuelMass).toBe(900);
+    expect(SALVAGE.fuelMass).toBe(200);
   });
   const value = (id: MobileHullId): number =>
     resourceValue(HULLS[id]);

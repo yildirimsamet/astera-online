@@ -3,46 +3,16 @@ import { compact } from '../lib/format.js';
 import { RESOURCE_ART } from './assets.js';
 
 /**
- * WHAT A PRICE TAKES OUT OF WHAT YOU HOLD. Owner instruction, and the third
- * member of D142's vocabulary.
- *
- * `CapacityBar` answers "does it fit"; `Meter` answers "how full is it". Neither
- * answers the question a commander holds while looking at a fuel figure or a
- * cargo hold, which is **what will be left of my tank after I press this** — and
- * that question was being answered everywhere in the game by two numbers on one
- * grey line and a subtraction the player was expected to do in their head.
- *
- * WHAT THE PICTURE SAYS:
- *
- *   · THE WHOLE BAR is what is standing in the store right now.
- *   · THE BRIGHT PART, taken off the LEFT-HAND end, is what this act would burn.
- *     It shrinks the remainder in front of the player's eyes as the stepper moves,
- *     which is the same teaching mechanism the build sheet's bright segment uses.
- *   · WHAT IS LEFT is the dim tail. It is the default figure for a fixed cost,
- *     because that decision asks what survives. A cargo slider can instead make
- *     the bright, departing amount the figure: there the player is choosing what
- *     to send, and the remainder is not the question.
- *
- * WHEN THE PRICE IS BIGGER THAN THE STORE the bar cannot draw it inside itself,
- * and pretending otherwise — clamping the spend at 100% — would draw "exactly
- * enough" for every shortfall from one unit to ten thousand. So the deficit
- * continues PAST the end of the store in threat red, separated by a hard stop
- * line, and the figure switches from what remains to what is missing. A player
- * who reads nothing sees a bar that has run off its own end.
- *
- * RED IS CORRECT HERE and `interface.md` I0's rule about full stores does not
- * apply: I0 protects a store that is FULL, which is not an attack. This is a
- * refusal — the control below it will not fire — and a refusal the player has
- * caused is exactly what the amber/red split exists to distinguish. Amber is a
- * gap you can close by building something; this one you close by not sending so
- * many ships, which is a decision on this very screen.
+ * What this action will spend, compared with the available store.
+ * The bright segment and the prominent figure both show the cost as selection
+ * changes. The dim tail provides stock context; a separate red segment and
+ * caption show any shortage without replacing the full cost.
  */
 export function SpendBar({
   stock,
   spend,
   tone,
   label,
-  readout = 'left',
   compactSize = false,
   inline = false,
 }: {
@@ -54,8 +24,6 @@ export function SpendBar({
   tone: 'alloy' | 'crystal' | 'deuterium';
   /** Two or three words naming the spend: "fuel for the flight". */
   label: string;
-  /** Which side of the decision gets the prominent number. */
-  readout?: 'left' | 'spend';
   /** Half height and no art, for a bar that sits inside a row rather than on a card. */
   compactSize?: boolean;
   /** One line — the label, the bar, the figure — for a bar riding a sticky header (the launch's tank). */
@@ -73,19 +41,18 @@ export function SpendBar({
   const scale = Math.max(1, stock, spend);
   const share = (value: number): number => Math.max(0, Math.min(100, (value / scale) * 100));
 
-  /* The answer follows the caller's decision: what remains after a cost,
-     or what is being packed when the slider itself chooses the spend. */
-  const figure = short > 0 ? (
-    <span data-spend-short className="readout shrink-0 text-caption text-threat-ink">
-      &minus;{compact(short)}
-    </span>
-  ) : readout === 'spend' ? (
-    <span data-spend-amount className="readout shrink-0 text-caption text-bone">
-      {compact(spend)}
-    </span>
-  ) : (
-    <span data-spend-left className="readout shrink-0 text-caption text-bone">
-      {compact(left)}
+  const shortage = t('spend.shortfall', { short: compact(short) });
+  const reading = t('spend.readingSpend', { label, spend: compact(spend) });
+  const figure = (
+    <span className="flex shrink-0 items-baseline gap-1.5">
+      <span data-spend-amount className={`readout text-caption ${short > 0 ? 'text-threat-ink' : 'text-bone'}`}>
+        {compact(spend)}
+      </span>
+      {short > 0 && (
+        <span data-spend-short className="readout text-micro text-threat-ink">
+          ({shortage})
+        </span>
+      )}
     </span>
   );
 
@@ -93,13 +60,7 @@ export function SpendBar({
       <div
         className={`socket flex overflow-hidden rounded-full ${inline ? 'h-1 min-w-0 flex-1' : `w-full ${compactSize ? 'h-1.5' : 'h-2'}`}`}
         role="img"
-        aria-label={
-          short > 0
-            ? t('spend.readingShort', { label, short: compact(short) })
-            : readout === 'spend'
-              ? t('spend.readingSpend', { label, spend: compact(spend) })
-            : t('spend.reading', { label, spend: compact(spend), left: compact(left) })
-        }
+        aria-label={short > 0 ? `${reading}; ${shortage}` : reading}
       >
         <span
           data-part="spent"

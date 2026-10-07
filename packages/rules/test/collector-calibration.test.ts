@@ -11,21 +11,9 @@ import {
 } from '../src/index.js';
 
 /**
- * THE GARBAGE COLLECTOR, RECALIBRATED. Owner decision, 2026-09-22, closing C1b.
- *
- * *"Hurdacı: 15k hurda taşıma kapasitesi → 7.5k'ya düşecek. Hangarda kapladığı alan: 40'a
- * çıkacak"* — and the thirst, revised in the same exchange, *"Yakıtı 100 döt yap"*.
- *
- * WHAT IT REPLACES. The chat logs' complaint was that an attacker takes the whole wreck — *"eşit
- * güçteysek bile adam kafa atıp geçiyor, hurdacı ile toplayıp geçiyor"* — and the owner closed the
- * obvious fix (giving each side its own wreck) on 2026-09-21: *"Hurdacıyı düzenleriz kalibre
- * ederiz."* This is that calibration. The wreck stays public and stays the attacker's to take; what
- * changes is what taking it costs.
- *
- * MEASURED BEFORE: one collector cost 26,000 AE, lifted 15,000 a trip and burned 1,920 AE of fuel,
- * so it repaid itself in TWO trips and then ran free for ever. Halving the lift, doubling the
- * thirst and near-tripling the room it occupies turns a fleet of them into a real commitment of
- * hangar space, ore and deuterium — which is the decision the mechanic never had.
+ * Collector calibration: September's salvage, price and bulk remain unchanged.
+ * The owner reduced its card fuel rate from 90 to 20 on 2026-10-07; these
+ * assertions account for the resulting flight charge without rebalancing salvage.
  */
 describe('what a collector lifts, burns and occupies', () => {
   it('lifts half of what it used to', () => {
@@ -35,9 +23,9 @@ describe('what a collector lifts, burns and occupies', () => {
   });
 
   /** The card quotes `fuelMass / 10`, which is how the owner states this figure. */
-  it('quotes 90 deuterium on its card after the fleet fuel cut', () => {
-    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(90);
-    expect(SALVAGE.fuelMass).toBe(900);
+  it('quotes the owner-requested 20 deuterium on its card', () => {
+    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(20);
+    expect(SALVAGE.fuelMass).toBe(200);
   });
 
   it('occupies forty of a hangar', () => {
@@ -51,22 +39,17 @@ describe('what a collector lifts, burns and occupies', () => {
   });
 });
 
-/**
- * THE POINT OF THE CALIBRATION, AS ARITHMETIC.
- *
- * A collector used to pay for itself in two trips. It is now a hull a commander has to WANT: room
- * in the hangar that a warship would otherwise take, deuterium every time it flies, and enough
- * trips that the decision to build one is a decision.
- */
 describe('what taking a wreck now costs', () => {
   const TRIP_DISTANCE = 600;
   const price = resourceValue(HULLS.GARBAGE_COLLECTOR);
   const fuelPerTrip = missionFuel({ GARBAGE_COLLECTOR: 1 }, TRIP_DISTANCE, 2);
 
-  it('takes several trips to pay for a collector, not two', () => {
+  it('accounts for the lower fuel bill separately from the hull price', () => {
     const net = SALVAGE.perCollector - fuelPerTrip * 32;
     expect(net).toBeGreaterThan(0);
-    expect(price / net).toBeGreaterThan(4);
+    expect(fuelPerTrip).toBe(24);
+    expect(net).toBe(6_732);
+    expect(price).toBe(26_000);
   });
 
   /** A big wreck now needs a fleet of them, and that fleet needs somewhere to live. */
@@ -78,15 +61,12 @@ describe('what taking a wreck now costs', () => {
     expect(needed * hullBulk('GARBAGE_COLLECTOR')).toBeGreaterThan(900);
   });
 
-  /**
-   * AND THE FUEL FOR THAT FLEET IS NO LONGER A ROUNDING ERROR — it is half of what the wreck is
-   * worth. Twenty-four collectors lifting a 180,000 field burn 92,160 alloy-equivalent doing it.
-   */
-  it('charges a fleet of collectors a fuel bill worth half the wreck', () => {
+  it('charges 24 collectors their lower fuel bill without changing salvage', () => {
     const needed = 24;
     const fuel = missionFuel({ GARBAGE_COLLECTOR: needed }, TRIP_DISTANCE, 2) * 32;
     const lifted = needed * SALVAGE.perCollector;
-    expect(fuel).toBeGreaterThan(lifted * 0.4);
+    expect(fuel).toBe(18_432);
+    expect(lifted).toBe(180_000);
     expect(fuel).toBeLessThan(lifted);
   });
 });

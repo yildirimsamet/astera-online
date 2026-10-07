@@ -24,7 +24,7 @@ describe('owner requests from 2026-09-20', () => {
    */
   it('quotes the Garbage Collector at its hand-set deuterium thirst', () => {
     expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(SALVAGE.fuelMass / 10);
-    expect(SALVAGE.fuelMass).toBe(900);
+    expect(SALVAGE.fuelMass).toBe(200);
   });
 
   it('opens satellite slots at Core 1, 9, 15 and 18', () => {

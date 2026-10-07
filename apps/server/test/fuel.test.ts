@@ -105,6 +105,20 @@ describe('fuel', () => {
     expect(await deuteriumAt(f, mine)).toBe(5_000 - expected);
   });
 
+  it('charges the lower collector rate in a mixed raid and stores the paid amount', async () => {
+    const fleet = { DART: 60, GARBAGE_COLLECTOR: 3 };
+    await giveUnits(f.db, mine, fleet);
+    await fuelUp(f.db, mine, 5000);
+    // Use a reference-distance route so rounding the combined mass and each part agrees.
+    await placeAt(f.db, mine, { x: 0, y: 0, z: 0 });
+    await placeAt(f.db, target, { x: 1000, y: 0, z: 0 });
+    const charged = missionFuel({ DART: 60 }, 1000, 2) + 120;
+    await launchAttack(f.db, mine, target, fleet, f.clock);
+    expect(await deuteriumAt(f, mine)).toBe(5000 - charged);
+    const [mission] = await f.db.select().from(missions).where(eq(missions.originPlanetId, mine));
+    expect(mission?.fuelPaid).toBe(charged);
+  });
+
   it('refuses a launch the tank cannot cover, and says by how much', async () => {
     await giveUnits(f.db, mine, { DART: 400 });
     await fuelUp(f.db, mine, 3);

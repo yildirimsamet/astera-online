@@ -110,6 +110,19 @@ describe('the Garbage Collector in the catalogue', () => {
     );
   });
 
+  it.each([
+    [0, 1000, 2, 0], [1, 0, 2, 0], [1, 1, 1, 1], [1, 1, 2, 2],
+    [1, 1000, 1, 20], [1, 1000, 2, 40], [3, 1000, 2, 120],
+  ] as const)('charges %i collectors over %i units on %i legs: %i deuterium', (count, span, legs, expected) => {
+    expect(missionFuel({ GARBAGE_COLLECTOR: count }, span, legs)).toBe(expected);
+  });
+
+  it('adds the reduced collector charge without changing the rest of a mixed fleet', () => {
+    const warships = missionFuel({ DART: 10 }, 1000, 2);
+    expect(missionFuel({ DART: 10, GARBAGE_COLLECTOR: 1 }, 1000, 2)).toBe(warships + 40);
+    expect(missionFuel({ GARBAGE_COLLECTOR: 1 }, 1000, 2, 'HOMEWARD')).toBe(20);
+  });
+
   it('charges its fixed thirst on every leg like any other mass', () => {
     const alone = missionFuel({ DART: 10 }, 1_000, 2);
     const withOne = missionFuel({ DART: 10, GARBAGE_COLLECTOR: 1 }, 1_000, 2);

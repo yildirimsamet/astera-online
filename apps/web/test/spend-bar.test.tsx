@@ -3,22 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { SpendBar } from '../src/ui/SpendBar.js';
 import i18n from '../src/i18n/index.js';
 
-/**
- * WHAT A PRICE TAKES OUT OF WHAT YOU HOLD. Owner instruction, D142's vocabulary.
- *
- * `CapacityBar` answers "does it fit" and `Meter` answers "how full is it".
- * Neither answers the question a commander holds while looking at a fuel figure
- * or a cargo hold: what will be left of my tank after I press this. That was
- * being answered everywhere by two numbers on one grey line and a subtraction the
- * player had to do in their head.
- *
- * The whole bar is the store, the bright part taken off the left is the burn, and
- * the dim tail is what survives. When the price is bigger than the store the
- * deficit continues PAST the end in red behind a hard stop line — because
- * clamping it at 100% would draw "exactly enough" for a shortfall of one unit and
- * for a shortfall of ten thousand alike, which are the two states a player most
- * needs to tell apart.
- */
+/** The cost stays prominent as a fleet/cargo selection changes; deficits remain separate. */
 
 beforeEach(async () => {
   await i18n.changeLanguage('en');
@@ -35,6 +20,37 @@ const widthOf = (view: ReturnType<typeof render>, part: string): number => {
 };
 
 describe('the spend bar', () => {
+  it('updates the cost upward as the selection increases and back down when cleared', () => {
+    const view = bar();
+    expect(view.container.querySelector('[data-spend-amount]')).toHaveTextContent(/^0$/);
+    for (const spend of [250, 700, 0]) {
+      view.rerender(<SpendBar stock={1000} spend={spend} tone="deuterium" label="fuel" />);
+      expect(view.container.querySelector('[data-spend-amount]')).toHaveTextContent(String(spend));
+      expect(view.container.querySelector('[data-spend-left]')).toBeNull();
+    }
+  });
+
+  it.each(['alloy', 'crystal', 'deuterium'] as const)('shows the cost for %s in inline and compact layouts', (tone) => {
+    for (const layout of [{ inline: true }, { compactSize: true }]) {
+      const view = bar({ tone, stock: 250, spend: 250, ...layout });
+      expect(view.container.querySelector('[data-spend-amount]')).toHaveTextContent('250');
+      expect(view.container.querySelector('[data-spend-short]')).toBeNull();
+      expect(view.container.querySelector('[data-spend-bar]')).toHaveAttribute('data-short', 'false');
+      view.unmount();
+    }
+  });
+
+  it.each([
+    ['tr', '300 eksik'], ['en', '300 short'], ['de', '300 fehlen'],
+    ['fr', 'manque 300'], ['es', 'faltan 300'], ['ja', '300不足'],
+  ])('keeps cost and shortfall distinct in %s', async (language, shortage) => {
+    await i18n.changeLanguage(language);
+    const view = bar({ stock: 100, spend: 400 });
+    expect(view.container.querySelector('[data-spend-amount]')).toHaveTextContent('400');
+    expect(view.container.querySelector('[data-spend-short]')).toHaveTextContent(shortage);
+    expect(view.container.querySelector('[role="img"]')).toHaveAttribute('aria-label', expect.stringContaining(shortage));
+  });
+
   it('draws the whole store as what survives when nothing is being spent', () => {
     const view = bar({ spend: 0 });
     expect(widthOf(view, 'left')).toBeCloseTo(100, 1);
@@ -48,14 +64,15 @@ describe('the spend bar', () => {
   });
 
   /** The one figure with any size to it, and it is the one being decided on. */
-  it('names what is left, not what it costs', () => {
+  it('shows the amount spent instead of the amount left', () => {
     const view = bar({ stock: 1000, spend: 250 });
-    expect(view.container.querySelector('[data-spend-left]')).toHaveTextContent('750');
+    expect(view.container.querySelector('[data-spend-amount]')).toHaveTextContent('250');
+    expect(view.container.querySelector('[data-spend-left]')).toBeNull();
     expect(view.container.querySelector('[data-spend-short]')).toBeNull();
   });
 
   it('can make the amount being sent the primary readout', () => {
-    const view = bar({ stock: 1000, spend: 250, label: 'Sending', readout: 'spend' });
+    const view = bar({ stock: 1000, spend: 250, label: 'Sending' });
 
     expect(view.container.querySelector('[data-spend-amount]')).toHaveTextContent('250');
     expect(view.container.querySelector('[data-spend-left]')).toBeNull();
@@ -64,11 +81,12 @@ describe('the spend bar', () => {
   });
 
   describe('when the price is bigger than the store', () => {
-    it('marks itself short and names the gap instead of the remainder', () => {
+    it('keeps the full cost visible and names the shortage separately', () => {
       const view = bar({ stock: 100, spend: 400 });
       expect(view.container.querySelector('[data-spend-bar]'))
         .toHaveAttribute('data-short', 'true');
-      expect(view.container.querySelector('[data-spend-short]')).toHaveTextContent('300');
+      expect(view.container.querySelector('[data-spend-amount]')).toHaveTextContent('400');
+      expect(view.container.querySelector('[data-spend-short]')).toHaveTextContent('300 short');
       expect(view.container.querySelector('[data-spend-left]')).toBeNull();
     });
 
@@ -93,9 +111,9 @@ describe('the spend bar', () => {
   /** The bar is a picture, and a picture needs a sentence for a screen reader. */
   it('reads out the two states in full', () => {
     expect(bar({ stock: 1000, spend: 250 }).container.querySelector('[role="img"]'))
-      .toHaveAttribute('aria-label', expect.stringContaining('750 left'));
+      .toHaveAttribute('aria-label', 'fuel: 250');
     expect(bar({ stock: 100, spend: 400 }).container.querySelector('[role="img"]'))
-      .toHaveAttribute('aria-label', expect.stringContaining('300 short'));
+      .toHaveAttribute('aria-label', 'fuel: 400; 300 short');
   });
 
   /** An empty store must not divide by zero and must still draw the deficit. */

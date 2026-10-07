@@ -13,6 +13,7 @@ export const spend = {
   reading: "{{label}} : {{spend}} dépensés, {{left}} restants",
   readingSpend: "{{label}} — quantité : {{spend}}",
   readingShort: "{{label}} : il manque {{short}}",
+  shortfall: 'manque {{short}}',
 } as const;
 /** Lecture floue d’une sonde, dessinée telle quelle : `RangeBand`. */
 export const rangeBand = {

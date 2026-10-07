@@ -29,7 +29,8 @@ and this profile win.
   Planet marker radii also grew uniformly `1.3×`: Core `1 / 11 / 22` anchors are approximately
   `0.471 / 0.8775 / 1.498` world units; the geometric size ramp and development ratios are retained.
 - **Fuel:** the fleet-wide value rate is `0.00495`, 10% below the former `0.0055` rate after the
-  slowdown; the Collector's special fuel mass is `900` instead of `1,000`. Chosen travel pace
+  slowdown; the Collector's special fuel mass is `200` (card rate `20` deuterium, reduced
+  from `90` by owner instruction 2026-10-07). Chosen travel pace
   still changes arrival time without an additional fuel discount.
 - **Colonies and orbit:** capital Core `9 / 13 / 16` opens the three colony slots. Every
   world gets its first satellite slot at Core `1`; further slots open at `9 / 15 / 18`.
