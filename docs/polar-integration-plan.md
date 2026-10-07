@@ -206,9 +206,9 @@ başka hesapların korunması ve geç ödeme/iade teslimidir.
 
 Canlı organizasyon ve mevcut webhook MCP üzerinden tekrar doğrulandı: hesap
 active, ödeme hesabı bağlı, ödeme/iade/payout yetkileri açık; webhook enabled ve
-`order.paid`, `order.refunded`, `checkout.expired` olaylarına abone. Canlı delivery
-listesi hâlâ boş. Polar panelinde yeni bir canlı webhook/ürün kurulumu gerekmiyor;
-gerçek canlı alım ve tam iade doğrulaması bekliyor.
+`order.paid`, `order.refunded`, `checkout.expired` olaylarına abone. İlk incelemede
+canlı delivery listesi boştu; aşağıdaki canlı denemelerde pozitif imzalı teslimler
+doğrulandı. Polar panelinde yeni bir canlı webhook/ürün kurulumu gerekmiyor.
 
 İlk inceleme anında bu düzeltme production'a dağıtılmamıştı ve satış bayrağı
 kapalıydı. Kullanıcı 7 Ekim'de eksiklerin tamamlanmasını, düzeltmenin dağıtılmasını
@@ -249,3 +249,36 @@ yenilenir. Production yedeği ayrı veritabanına geri yüklenip hesap, sezon,
 oyuncu, görev, migration ve manuel hak sayıları karşılaştırıldı; eski image,
 webroot, Nginx ve ortam dosyası geri dönüş için saklandı. Canlı alım/iade ve
 satış bayrağının son durumu açılışın runtime kabul kayıtlarıyla doğrulanır.
+
+## Canlı ödeme, teslim ve tam iade — 7 Ekim 2026
+
+Checkout toparlama düzeltmesi `7d9fdcde9305edb3e2acfc0dc7f8c5dc83d41285`
+sürümüyle üç API, worker ve web'e dağıtıldı. Kullanıcının onayıyla `adminlesh`
+hesabında iki gerçek Turkey / ₺99 denemesi yapıldı:
+
+| Checkout | Ödeme / skin teslimi | Tam iade |
+| --- | --- | --- |
+| `d420dfff-dd38-4cc2-9d9a-df1e7e07826e` | Stripe succeeded; Turkey 18:33:42 TRT'de tanımlandı | Başarılı, 18:37:36 TRT'de hak geri alındı |
+| `e4541472-7889-4148-bc3b-82409595f1f8` | Stripe succeeded; Turkey 18:47:43 TRT'de tanımlandı, kullanıcı envanterde gördüğünü doğruladı | Kullanıcının talebiyle başarılı; 18:49:50 TRT'de hak geri alındı |
+
+Her iade net ₺82,50 + ₺16,50 vergi, toplam ₺99. Dört canlı paid/refunded
+delivery'sinin tamamı HTTP 200; iki yerel sipariş de REVOKED.
+İlk denemede sonradan skin görünmemesi, test iadesinin beklenen sonucuydu.
+
+İlk denemede QNB uygulamasında onaydan sonra Mastercard 3D sayfası "sistem hatası"
+gösterdi, geçici boş formun ardından Polar başarı ekranı açıldı. İkinci denemede
+SMS onayıyla hata görülmedi. İki işlem de API'de başarılı; ret nedeni ve mesajı
+boş. Banka uygulamasından tarayıcıya dönüşte ekran durumunun gecikmesi olasıdır,
+fakat bankanın kesin 3D hata kodu Polar API'sinde bulunmadığı için kök neden
+doğrulanmış sayılmaz. Ödeme/ret nedeni, webhook teslimi ve yerel hak kayıtları
+izlenebilir; bankanın sayfasındaki tüm görüntüleme hataları buradan görülemez.
+
+`POLAR_CHECKOUT_ENABLED=true` 18:52:30 TRT itibarıyla üç API ve worker'da
+uygulandı; public `/api/skins/polar-shop` enabled=true. Frontend runtime bayrağını
+okur. Polar ana ödeme düğmesinde adlandırılır; TRY için mevcut Shopier bağlantısı
+"Shopier ile de ödeyebilirsiniz" bölümünde manuel teslim ve komutan adı
+talimatıyla sunulur. EUR ülke skinleri yalnız Polar üzerinden satılır.
+
+Kullanıcının Shopier talebiyle Viper'a Ice MANUAL hakkı verildi; aktif.
+Önceden var olan 27 MANUAL hakkın içerik hash'i değişmedi. Manuel teslimler için
+Polar'a geçmiş ödeme veya ürün hakkı aktarımı gerekmez.

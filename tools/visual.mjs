@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--skin-shop')) {
+  const { verifySkinShop } = await import('./skin-shop-visual.mjs');
+  await verifySkinShop(process.argv[2] ?? 'out/skin-shop');
+  process.exit(0);
+}
+
 if (process.argv.includes('--monument-ui')) {
   const { verifyMonumentUi } = await import('./monument-ui-visual.mjs');
   await verifyMonumentUi(process.argv[2] ?? 'out/monument-ui');

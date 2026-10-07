@@ -250,10 +250,11 @@ export function SkinShopContent({
         </div>
         {/* Shopier is a separate manual route, with the name to write in its order. */}
         {shopier && (
-          <div className="mt-1.5 grid gap-1.5">
+          <section aria-label={t('skins.shopierAlternative')} className="mt-2 grid gap-1.5 rounded-control border border-v2-line bg-v2-deep/60 p-2.5">
+            {buyReady && <h4 className="text-caption font-semibold text-v2-ink-2">{t('skins.shopierAlternative')}</h4>}
             {buyReady && <ShopierPress href={shopier} price={lira(SKIN_PRICE.TRY)} className={SHOPIER_SECOND} />}
             <ShopierNote commander={commander} />
-          </div>
+          </section>
         )}
 
         {/* The collection is visible together so players can compare looks and ownership. */}
@@ -340,11 +341,12 @@ export function SkinShopContent({
                 </button>
               ) : null}
               {bundleShopier !== null && (
-                <>
+                <section aria-label={t('skins.shopierAlternative')} className="mt-1 grid gap-1.5 rounded-control border border-v2-line bg-v2-deep/60 p-2.5">
+                  {bundleReady && <h4 className="text-caption font-semibold text-v2-ink-2">{t('skins.shopierAlternative')}</h4>}
                   <ShopierPress href={bundleShopier} price={lira(BUNDLE_PRICE.TRY)}
                     className={bundleReady ? SHOPIER_SECOND : `${buyClass} w-full`} />
                   <ShopierNote commander={commander} />
-                </>
+                </section>
               )}
             </div>
           </section>
@@ -377,8 +379,8 @@ export function SkinShopContent({
   );
 }
 
-/** Shopier's press when Polar is beside it: the same store gold, drawn as the second way. */
-const SHOPIER_SECOND = 'flex h-10 w-full items-center justify-center gap-1.5 rounded-control border border-v2-premium/55 bg-v2-premium/5 px-3 text-caption font-semibold text-v2-premium transition-colors hover:bg-v2-premium/10';
+/** A quiet alternative to the primary Polar payment. */
+const SHOPIER_SECOND = 'flex h-10 w-full items-center justify-center gap-1.5 rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink-2 transition-colors hover:bg-v2-raise hover:text-v2-ink';
 
 /** A Shopier product page, in a new tab: it is somewhere else, and the store stays open here. */
 function ShopierPress({ href, price, className }: { href: string; price: string; className: string }) {

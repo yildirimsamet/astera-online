@@ -173,6 +173,39 @@ describe('the skin store', () => {
   const shopierLabel = (amount: number) => i18n.t('skins.shopierBuy', { price: priceText(amount, 'TRY', 'en-US') });
   const shopier = (amount = SKIN_PRICE.TRY) => screen.getByRole('link', { name: shopierLabel(amount) });
 
+  it('names Polar as the primary payment and groups Shopier with its manual delivery instructions', () => {
+    const { onPurchase } = shop({ countryCode: 'TR', prices: turkishPrices });
+    const primary = screen.getByRole('button', { name: /buy with polar.*₺99\.00/i });
+    const alternative = screen.getByRole('region', { name: 'You can also pay with Shopier' });
+    expect(within(alternative).getByRole('heading', { name: 'You can also pay with Shopier' })).toBeInTheDocument();
+    expect(within(alternative).getByRole('link', { name: /pay with shopier/i })).toHaveAttribute('href', SHOPIER_LINKS['planet-toxic']);
+    expect(alternative).toHaveTextContent(/manual/i);
+    expect(alternative).toHaveTextContent('Samet');
+    expect(primary.compareDocumentPosition(alternative) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(primary);
+    expect(onPurchase).toHaveBeenCalledWith('planet-toxic');
+  });
+
+  it('keeps the bundle Polar payment ahead of a separate Shopier option at the bundle price', () => {
+    shop({ collection: none, countryCode: 'TR', prices: turkishPrices });
+    const bundle = screen.getByRole('region', { name: i18n.t('skins.bundleTitle') });
+    const primary = within(bundle).getByRole('button', { name: /buy all four with polar.*₺279\.00/i });
+    const alternative = within(bundle).getByRole('region', { name: 'You can also pay with Shopier' });
+    expect(within(alternative).getByRole('link', { name: shopierLabel(BUNDLE_PRICE.TRY) })).toHaveAttribute('href', SHOPIER_LINKS.bundle);
+    expect(alternative).toHaveTextContent(/manual/i);
+    expect(primary.compareDocumentPosition(alternative) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('explains the alternate Shopier route in Turkish beside the Polar payment', async () => {
+    await i18n.changeLanguage('tr');
+    shop({ countryCode: 'TR', prices: turkishPrices });
+    expect(screen.getByRole('button', { name: /polar ile satın al.*₺99\.00/i })).toBeEnabled();
+    const alternative = screen.getByRole('region', { name: 'Shopier ile de ödeyebilirsiniz' });
+    expect(within(alternative).getByRole('heading', { name: 'Shopier ile de ödeyebilirsiniz' })).toBeInTheDocument();
+    expect(alternative).toHaveTextContent(/manuel/i);
+    expect(alternative).toHaveTextContent('Samet');
+  });
+
   it('links only TRY-eligible looks and the set to Shopier products', () => {
     expect(SHOPIER_LINKS).toEqual({
       'planet-lava': 'https://www.shopier.com/asteraonline/51278662',
@@ -225,6 +258,7 @@ describe('the skin store', () => {
     fireEvent.click(card(/lava/i));
     expect(screen.queryByRole('link', { name: shopierLabel(SKIN_PRICE.TRY) })).toBeNull();
     expect(screen.queryByText(i18n.t('skins.shopierNote', { commander: 'Samet' }))).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'You can also pay with Shopier' })).toBeNull();
   });
 
   it('sells the set through Shopier too', () => {
@@ -261,6 +295,7 @@ describe('the skin store', () => {
   it('does not offer a TRY-only Shopier checkout when the visitor sees EUR', () => {
     shop({ collection: none, countryCode: 'DE' });
     expect(screen.queryByRole('link', { name: /shopier/i })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'You can also pay with Shopier' })).toBeNull();
     fireEvent.click(screen.getByRole('tab', { name: /country worlds/i }));
     expect(screen.queryByRole('link', { name: /shopier/i })).toBeNull();
   });

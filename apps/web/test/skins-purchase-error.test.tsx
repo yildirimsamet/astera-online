@@ -27,7 +27,7 @@ describe('checkout failure', () => {
   it('shows a retryable error when the transaction cannot be created', async () => {
     mocks.mutateAsync.mockRejectedValueOnce(new Error('Polar unavailable'));
     render(<SkinsScreen commander="Samet" onOpenInventory={vi.fn()} />);
-    const buy = await screen.findByRole('button', { name: /Buy · €2\.99/i });
+    const buy = await screen.findByRole('button', { name: /Buy with Polar · €2\.99/i });
     fireEvent.click(buy);
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/checkout could not start/i));
@@ -38,7 +38,7 @@ describe('checkout failure', () => {
     mocks.mutateAsync.mockResolvedValueOnce({ checkoutId: '9a046305-84df-4892-8e1f-6869479b9783',
       url: 'https://sandbox.polar.sh/checkout/9a046305-84df-4892-8e1f-6869479b9783' });
     render(<SkinsScreen commander="Samet" onOpenInventory={vi.fn()} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Buy · €2\.99/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Buy with Polar · €2\.99/i }));
     await waitFor(() => { expect(mocks.mutateAsync).toHaveBeenCalledWith('planet-lava'); });
     expect(mocks.navigate).toHaveBeenCalledWith('https://sandbox.polar.sh/checkout/9a046305-84df-4892-8e1f-6869479b9783');
   });
