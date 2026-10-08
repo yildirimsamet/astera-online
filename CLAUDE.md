@@ -178,6 +178,7 @@ talimatlar kapsam içindedir. Bu standart yazım kuralıdır; mekanikleri kod ve
 | `docs/review-sight.md`          | Touching Telescope/Radar/probe sight |
 | `docs/review-onboarding.md`     | Onboarding / new-player experience   |
 | `docs/glossary.md`              | Terms                                |
+| `docs/komutan-gemisi/README.md` | Touching Komutan Gemisi / Savaş Alanı (real-time pilot arena) |
 
 ## One thing to remember
 
