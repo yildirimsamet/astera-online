@@ -82,6 +82,7 @@ import {
   setUnits,
   type LockedPlanet,
 } from './planet.js';
+import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 
 /**
  * RAIDING A PIRATE. D150.
@@ -201,6 +202,7 @@ export async function launchPirateRaid(
   return db.transaction(async (tx) => {
     const origin = await loadLocked(tx, planetId, clock, { expectedPlayerId });
     assertWorldOperational(origin);
+    assertOutsideSilentSpace(origin);
 
     for (const [hull, count] of fleetEntries(requested)) {
       const available = origin.homeFleet[hull] ?? 0;
@@ -352,6 +354,7 @@ export async function launchPirateRaid(
         arriveAt,
       })
       .returning();
+    await markProgress(tx, origin.playerId, origin.now); // D212
 
     const remaining: Fleet = { ...origin.homeFleet };
     for (const [hull, count] of fleetEntries(requested)) {
@@ -831,14 +834,118 @@ function pirateReturnAnchor(turn: Vec3, home: Vec3): Vec3 {
 }
 
 /**
- * A pirate has just been destroyed. Fleets that are still on their outbound leg
- * turn at their current position immediately; they do not fly on to the dead
- * pirate's old rendezvous.
+ * TURN ONE OUTBOUND RAID FOR HOME, NOW, FROM WHERE IT IS.
+ *
+ * The one statement of an early turn, shared by the two things that cause one: the
+ * pirate destroyed by somebody else, and the commander calling the raid back (owner,
+ * 2026-10-08). The outbound dose is settled up to the turn, the craft fly home at
+ * their own speed from the point they occupy, and every return projection reads the
+ * stored turn point and instant.
  *
  * Replacing the stored intercept with the turn point and `arriveAt` with the turn
  * instant deliberately reuses every existing return projection. The stale arrival
  * event remains safe because the conditional status update below owns the state
- * transition.
+ * transition. Returns `missed` when that update lost to the arrival.
+ */
+async function turnRaidNow(
+  tx: Tx,
+  raid: PirateRaidRow,
+  rulesetVersion: number | undefined,
+  now: Date,
+  recall: boolean,
+): Promise<{ outcome: 'turned'; homeAt: Date; ships: number } | { outcome: 'lost' } | { outcome: 'missed' }> {
+  const precise = rulesetVersion !== undefined && hpRadiationApplies(rulesetVersion);
+  const [home] = await tx.select().from(planets).where(eq(planets.id, raid.planetId));
+  if (!home) throw new Error(`pirate raid ${raid.id} references a missing planet`);
+  let fleet = await fleetOfRaid(tx, raid.planetId, raid.id);
+  let damage = raid.damage;
+  let radiationSettledAt = raid.radiationSettledAt;
+  if (precise) {
+    const dose = await settleSpecialFlightRadiation(tx, { id: raid.id, leg: 'OUT', seasonId: raid.seasonId,
+      rulesetVersion, planetId: raid.planetId, playerId: raid.ownerPlayerId, location: raidLocation(raid.id),
+      path: flightPrefix([flightSegment(home, { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ }, raid.departAt, raid.arriveAt)], now),
+      damage: raid.damage, tech: raid.tech ?? {}, radiationSettledAt: raid.radiationSettledAt });
+    fleet = dose.fleet;
+    damage = dose.damage.length ? [...dose.damage] : null;
+    radiationSettledAt = dose.radiationSettledAt;
+  }
+  if (fleetCount(fleet) === 0) {
+    const closed = await tx
+      .update(pirateRaids)
+      .set({ status: 'done', damage, radiationSettledAt, ...(recall ? { recalledAt: now } : {}) })
+      .where(and(eq(pirateRaids.id, raid.id), eq(pirateRaids.status, 'outbound')))
+      .returning({ id: pirateRaids.id });
+    return closed[0] ? { outcome: 'lost' } : { outcome: 'missed' };
+  }
+
+  const [buildings, orbit] = await Promise.all([
+    buildingLevelsOf(tx, raid.planetId),
+    orbitOf(tx, raid.planetId),
+  ]);
+  const outbound = visualLeg(
+    home,
+    { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ },
+    surfaceStandoff(worldRadius(buildings.CORE)),
+    ENGAGEMENT_STANDOFF,
+  );
+  const duration = raid.arriveAt.getTime() - raid.departAt.getTime();
+  const progress = duration <= 0
+    ? 0
+    : Math.max(0, Math.min(1, (now.getTime() - raid.departAt.getTime()) / duration));
+  const turn = {
+    x: outbound.from.x + (outbound.to.x - outbound.from.x) * progress,
+    y: outbound.from.y + (outbound.to.y - outbound.from.y) * progress,
+    z: outbound.from.z + (outbound.to.z - outbound.from.z) * progress,
+  };
+  const returnAnchor = pirateReturnAnchor(turn, home);
+  const homeAt = addMinutes(
+    now,
+    fleetTravelExact(
+      distance(turn, outbound.from),
+      fleet,
+      { boost: fleetSpeedMult(orbit), tech: raid.tech ?? {} },
+    ),
+  );
+
+  const claimed = await tx
+    .update(pirateRaids)
+    .set({
+      status: 'returning',
+      interceptX: returnAnchor.x,
+      interceptY: returnAnchor.y,
+      interceptZ: returnAnchor.z,
+      arriveAt: now,
+      returnDepartAt: precise ? now : null,
+      damage,
+      radiationSettledAt,
+      homeAt,
+      loot: null,
+      salvage: null,
+      capturedHull: null,
+      ...(recall ? { recalledAt: now } : {}),
+    })
+    .where(and(
+      eq(pirateRaids.id, raid.id),
+      eq(pirateRaids.status, 'outbound'),
+      gt(pirateRaids.arriveAt, now),
+    ))
+    .returning({ id: pirateRaids.id });
+  if (!claimed[0]) return { outcome: 'missed' };
+
+  await schedule(tx, {
+    seasonId: raid.seasonId,
+    kind: 'pirate_return',
+    refId: raid.id,
+    resolveAt: homeAt,
+  });
+  await publish(tx, raid.ownerPlayerId, 'private:pirate');
+  return { outcome: 'turned', homeAt, ships: fleetCount(fleet) };
+}
+
+/**
+ * A pirate has just been destroyed. Fleets that are still on their outbound leg
+ * turn at their current position immediately; they do not fly on to the dead
+ * pirate's old rendezvous.
  */
 async function turnRaidsFromDestroyedPirate(
   tx: Tx,
@@ -857,101 +964,59 @@ async function turnRaidsFromDestroyedPirate(
       gt(pirateRaids.arriveAt, now),
     ));
   const [season] = await tx.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons).where(eq(seasons.id, winner.seasonId));
-  const precise = season !== undefined && hpRadiationApplies(season.rulesetVersion);
 
   let turned = false;
   for (const raid of candidates) {
-    const [home] = await tx.select().from(planets).where(eq(planets.id, raid.planetId));
-    if (!home) throw new Error(`pirate raid ${raid.id} references a missing planet`);
-    let fleet = await fleetOfRaid(tx, raid.planetId, raid.id);
-    let damage = raid.damage;
-    let radiationSettledAt = raid.radiationSettledAt;
-    if (precise) {
-      const dose = await settleSpecialFlightRadiation(tx, { id: raid.id, leg: 'OUT', seasonId: raid.seasonId,
-        rulesetVersion: season.rulesetVersion, planetId: raid.planetId, playerId: raid.ownerPlayerId, location: raidLocation(raid.id),
-        path: flightPrefix([flightSegment(home, { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ }, raid.departAt, raid.arriveAt)], now),
-        damage: raid.damage, tech: raid.tech ?? {}, radiationSettledAt: raid.radiationSettledAt });
-      fleet = dose.fleet;
-      damage = dose.damage.length ? [...dose.damage] : null;
-      radiationSettledAt = dose.radiationSettledAt;
-    }
-    if (fleetCount(fleet) === 0) {
-      await tx
-        .update(pirateRaids)
-        .set({ status: 'done', damage, radiationSettledAt })
-        .where(and(eq(pirateRaids.id, raid.id), eq(pirateRaids.status, 'outbound')));
-      continue;
-    }
-
-    const [buildings, orbit] = await Promise.all([
-      buildingLevelsOf(tx, raid.planetId),
-      orbitOf(tx, raid.planetId),
-    ]);
-    const outbound = visualLeg(
-      home,
-      { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ },
-      surfaceStandoff(worldRadius(buildings.CORE)),
-      ENGAGEMENT_STANDOFF,
-    );
-    const duration = raid.arriveAt.getTime() - raid.departAt.getTime();
-    const progress = duration <= 0
-      ? 0
-      : Math.max(0, Math.min(1, (now.getTime() - raid.departAt.getTime()) / duration));
-    const turn = {
-      x: outbound.from.x + (outbound.to.x - outbound.from.x) * progress,
-      y: outbound.from.y + (outbound.to.y - outbound.from.y) * progress,
-      z: outbound.from.z + (outbound.to.z - outbound.from.z) * progress,
-    };
-    const returnAnchor = pirateReturnAnchor(turn, home);
-    const homeAt = addMinutes(
-      now,
-      fleetTravelExact(
-        distance(turn, outbound.from),
-        fleet,
-        { boost: fleetSpeedMult(orbit), tech: raid.tech ?? {} },
-      ),
-    );
-
-    const claimed = await tx
-      .update(pirateRaids)
-      .set({
-        status: 'returning',
-        interceptX: returnAnchor.x,
-        interceptY: returnAnchor.y,
-        interceptZ: returnAnchor.z,
-        arriveAt: now,
-        returnDepartAt: precise ? now : null,
-        damage,
-        radiationSettledAt,
-        homeAt,
-        loot: null,
-        salvage: null,
-        capturedHull: null,
-      })
-      .where(and(
-        eq(pirateRaids.id, raid.id),
-        eq(pirateRaids.status, 'outbound'),
-        gt(pirateRaids.arriveAt, now),
-      ))
-      .returning({ id: pirateRaids.id });
-    if (!claimed[0]) continue;
-
+    const result = await turnRaidNow(tx, raid, season?.rulesetVersion, now, false);
+    if (result.outcome !== 'turned') continue;
     turned = true;
     await tellTargetGone(tx, raid, {
       callsign: pirateCallsign(key, raid.pirateIndex),
       level: spec.level,
-      ships: fleetCount(fleet),
+      ships: result.ships,
     }, now);
-    await schedule(tx, {
-      seasonId: raid.seasonId,
-      kind: 'pirate_return',
-      refId: raid.id,
-      resolveAt: homeAt,
-    });
-    await publish(tx, raid.ownerPlayerId, 'private:pirate');
   }
 
   if (turned) await publishShard(tx, winner.seasonId, 'pirate');
+}
+
+/**
+ * CALL A PIRATE RAID BACK. Owner, 2026-10-08: "Diğerlerinin olup bunun olmaması yanlış."
+ *
+ * The same one turn a raid at a world has (K8) and a Prospector squadron has: once,
+ * only while the raid is still outbound and strictly before its engagement begins.
+ * It turns where it is and flies home; nothing is fought or taken, the pirate's crew
+ * is untouched and the fuel for both legs stays spent.
+ *
+ * KEYED ON THE COMMANDER, NEVER ON THE PAD (D150). A raid that is not this commander's
+ * answers 404, like one that does not exist. Lock order matches the arrival worker:
+ * the raid row, then the world (inside the shared turn).
+ */
+export async function recallPirateRaid(
+  db: Db,
+  raidId: string,
+  clock: Clock,
+  expectedPlayerId: string,
+): Promise<{ raidId: string; homeAt: Date | null }> {
+  return db.transaction(async (tx) => {
+    const [raid] = await tx.select().from(pirateRaids).where(eq(pirateRaids.id, raidId)).for('update');
+    if (raid?.ownerPlayerId !== expectedPlayerId) {
+      throw new GameError('NOT_FOUND', 'That flight no longer exists', 404);
+    }
+    const [season] = await tx.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons).where(eq(seasons.id, raid.seasonId));
+    const now = clock.now();
+    if (raid.status !== 'outbound' || raid.recalledAt !== null || now.getTime() >= raid.arriveAt.getTime()) {
+      throw new GameError('NOT_RECALLABLE', 'That flight cannot be called back', 409);
+    }
+    const result = await turnRaidNow(tx, raid, season?.rulesetVersion, now, true);
+    if (result.outcome === 'missed') throw new GameError('NOT_RECALLABLE', 'That flight cannot be called back', 409);
+    if (result.outcome === 'lost') {
+      await clearRaidUnits(tx, raid.planetId, raid.id);
+      await recomputePlayerWealth(tx, raid.ownerPlayerId);
+    }
+    await publishShard(tx, raid.seasonId, 'pirate');
+    return { raidId: raid.id, homeAt: result.outcome === 'turned' ? result.homeAt : null };
+  });
 }
 
 /**
@@ -1118,6 +1183,8 @@ export async function resolvePirateReturn(
     kind: 'fleet_returned',
     payload: {
       trip: 'pirate',
+      // Called back before its engagement (owner, 2026-10-08): nothing was fought.
+      ...(raid.recalledAt !== null ? { recalled: true } : {}),
       ships: fleetCount(returning),
       lootAlloy: loot.alloy,
       lootCrystal: loot.crystal,

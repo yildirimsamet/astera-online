@@ -611,10 +611,21 @@ decision — eyes, or production, or faster drills.
 **Hardware in orbit is public; its levels are not (D15).** A dome reads as a dome to everyone,
 because deterrence only works if it is legible. How strong it is still costs a probe.
 
-## Silent Space — D174
+## Silent Space — D174, D212
 
-After 48 hours without authenticated API activity, the commander and all developed worlds
-move to Silent Space. MAIN colony addresses become initial-state unowned neutrals. A return
+**D212 (owner, 2026-10-07): Silent Space is a waiting room.** A MAIN commander moves after 30
+hours without starting an attack (any combat launch: world, Death Star, joint war wave, monument,
+pirate, convoy), a building/instrument/satellite order, a research, or a ship/ground-defence
+order (Death Star and Interceptor included). Logging in does not count. The clock is
+`players.last_progress_at`, stamped in the order's own transaction; a newcomer or a returning
+commander counts from arrival. Inside Silent Space, attacks, monument waves, joint-war marks,
+asteroid mining, wreck harvests, pirate raids, merchant runs and convoy strikes are refused
+(`SILENT_SPACE_LOCKED`), and resource production runs at 50 % with unchanged ceilings. Building,
+research, production, transfers and probes stay open. The Now line warns in the last 12 hours.
+Plan and edge cases: `docs/silent-space-waiting-room-plan.md`.
+
+D174 (superseded on the entry rule): after 48 hours without authenticated API activity, the
+commander and all developed worlds move to Silent Space. MAIN colony addresses become initial-state unowned neutrals. A return
 application reuses available departure colony sites with the applicant's own development.
 Unused neutrals remain capturable. Returns may exceed player capacity; a vacant or safe new
 capital address is allocated. New registrations remain capped. The oldest eligible applicant
@@ -637,7 +648,11 @@ reset continues. Activation status and measured acceptance are recorded in deplo
   earlier lock; the way home takes as long as was already flown, costs nothing more, refunds no
   fuel, and always lands. A turned raid fights nothing: no report, no loot, no count against the
   repeat-attack limit or the RAID reward chain, and the defender's warning drops. Probes,
-  settlements, Death Stars, pirate raids and clan-war legs keep their own rules.
+  settlements, Death Stars and clan-war legs keep their own rules.
+- **Pirate raid recall (owner, 2026-10-08).** A pirate raid turns home ONCE, until its engagement
+  begins, exactly where it is — the same early turn a raid makes when somebody else destroys the
+  pirate: the outbound dose is settled to the turn and the craft fly home at their own speed. No
+  fight, no loot, no capture, no fuel back; the homecoming says "called back". `pirate_raids.recalled_at`.
 - **The landing pause.** A world that has just received a transfer cannot send a transfer out for
   five minutes (`TRANSFER_COOLDOWN_MINUTES`). Attacks are not held by it; a recall is never caught.
 - **Homeward fuel.** A transfer between a commander's own worlds pays half the hostile rate
@@ -797,7 +812,8 @@ one-run-per-target restriction.
 craft's current point on its original route and starts a normal-speed empty return from there; it
 never teleports to the planet. The obsolete arrival event becomes a no-op, so a recalled craft
 cannot claim asteroid ore or wreckage later. Once the arrival instant is reached—or mining has
-resolved—the action is unavailable. No ship, probe, convoy or other flying craft gains recall.
+resolved—the action is unavailable. (Ships have since gained their own recall: transfers and raids
+under K8, pirate raids since 2026-10-08; probes and convoys still have none.)
 Prospectors are also excluded from interplanetary transfer on both the interface and server.
 
 **Mined ore comes home into the works, not into storage (D31)** — so a miner collects like

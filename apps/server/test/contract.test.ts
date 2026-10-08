@@ -18,6 +18,7 @@ import {
   TRAFFIC,
 } from '@astera/rules';
 import {
+  accountRewards,
   buildings,
   botProfiles,
   clanLootShares,
@@ -48,6 +49,8 @@ import { SHARD_PREFIX } from '../src/stream/bus.js';
 import { TokenService } from '../src/auth/tokens.js';
 import {
   buildSchema,
+  brandRecallSchema,
+  brandRecallAnswerSchema,
   activeGalaxyEventsSchema,
   announcementsPageSchema,
   buildCancelSchema,
@@ -99,6 +102,7 @@ import {
   miningFieldSchema,
   piratesSchema,
   pirateRaidSchema,
+  pirateRecallSchema,
   tradeLaunchSchema,
   miningSchema,
   miningStatusSchema,
@@ -189,6 +193,20 @@ describe('every payload the client parses', () => {
   let app: FastifyInstance;
   let built: ReturnType<typeof buildApp>;
   let auth: { authorization: string };
+
+  it('brand quiz status and reward use the client contract and reject caller-supplied payouts', async () => {
+    await f.db.insert(accountRewards).values({ accountId: f.accountIds[0]!, rewardId: 'BRAND_RECALL:1', createdAt: f.clock.now() });
+    const status = await app.inject({ method: 'GET', url: '/api/session/brand-recall', headers: auth });
+    expect(status.statusCode).toBe(200);
+    expect(brandRecallSchema.parse(status.json())).toMatchObject({ eligible: true, completed: false });
+    expect((await app.inject({ method: 'GET', url: '/api/session/brand-recall' })).statusCode).toBe(401);
+    f.clock.advance(3);
+    const invalid = await app.inject({ method: 'POST', url: '/api/session/brand-recall', headers: auth, payload: { answer: 'asteraonline.space', alloy: 999999 } });
+    expect(invalid.statusCode).toBe(400);
+    const claim = await app.inject({ method: 'POST', url: '/api/session/brand-recall', headers: auth, payload: { answer: 'asteraonline.space' } });
+    expect(claim.statusCode).toBe(200);
+    expect(brandRecallAnswerSchema.parse(claim.json())).toMatchObject({ correct: true, completed: true, granted: { alloy: 100, crystal: 50, deuterium: 20 } });
+  });
 
   beforeEach(async () => {
     f = await seedWorld(3, 4242, { pirates: true });
@@ -1166,6 +1184,11 @@ describe('every payload the client parses', () => {
     expect(JSON.stringify(parsed)).not.toContain('pirateIndex');
     const [row] = await f.db.select().from(pirateRaids).where(eq(pirateRaids.id, parsed.raidId));
     expect(row!.pirateIndex).toBe(found!.index);
+
+    f.clock.set(new Date((f.clock.now().getTime() + parsed.arriveAt.getTime()) / 2));
+    const recalled = pirateRecallSchema.parse(await post(`/api/pirates/raids/${parsed.raidId}/recall`, {}));
+    expect(recalled.raidId).toBe(parsed.raidId);
+    expect(recalled.homeAt!.getTime()).toBeGreaterThan(f.clock.now().getTime());
   });
 
   /**

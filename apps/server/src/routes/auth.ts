@@ -78,7 +78,7 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
    */
   app.post('/api/auth/register', { config: { rateLimit: app.limits.signup } }, async (req, reply) => {
     const body = registerBody.parse(req.body ?? {});
-    const account = await registerAccount(app.db, body, firstGameShieldEnabled);
+    const account = await registerAccount(app.db, body, firstGameShieldEnabled, app.clock.now());
     return openSession(app, reply, account);
   });
 

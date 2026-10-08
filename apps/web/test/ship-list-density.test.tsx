@@ -218,7 +218,7 @@ describe('what the attack sheet no longer spends a plate on', () => {
       at a world cannot be turned), and the fleetsave rule.
     */
     expect(view.container.textContent).not.toMatch(/cannot be recalled/i);
-    expect(view.container.textContent).toMatch(/stays thin for .+ until this fleet is home/i);
+    expect(view.container.textContent).toMatch(/cannot defend Kestrel-12 until it returns.*Estimated time away:/i);
     expect(view.container.querySelector('[data-launch-figures]')).toHaveTextContent(/\d+ units/);
     expect(view.container.textContent).toMatch(/cannot be raided/i);
   });

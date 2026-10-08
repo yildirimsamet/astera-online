@@ -163,7 +163,7 @@ describe('Japanese language support', () => {
     expect(ja.rewards.claim).toBe('受け取る');
     expect(ja.rewards.claimed).toBe('受取済み');
     expect(ja.rewards.social.handle).toBe('@JoinAstera');
-    expect(ja.rewards.intro).toContain('奪われる');
+    expect(ja.rewards.intro).toContain('略奪');
   });
 
   it('names clan actions and public events as game events', () => {
@@ -252,7 +252,7 @@ describe('Japanese language support', () => {
 
   it('labels the persistent controls and map contacts with the right game actions', () => {
     expect(ja.statusBar.works.hintFull).toContain('生産');
-    expect(ja.statusBar.works.collectedPartly).toContain('空き');
+    expect(ja.statusBar.works.collectedPartly).toContain('残っています');
     expect(ja.surface.waitingPlanet).toContain('惑星');
     expect(ja.menu.rewardsHint).toContain('報酬');
     expect(ja.menu.announcementsWaiting).toContain('新着');

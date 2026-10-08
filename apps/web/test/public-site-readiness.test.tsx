@@ -8,6 +8,8 @@ import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import i18n from '../src/i18n/index.js';
 import { LandingScreen } from '../src/screens/LandingScreen.js';
+import { wikiSitemap } from '../src/wiki/publication.js';
+import { wikiPages } from '../src/wiki/catalog.js';
 import { PUBLISHER_ORIGIN, publisherPaths, publisherUrl } from '../src/lib/publisherPages.js';
 
 vi.mock('../src/landing/LandingScene.jsx', () => ({
@@ -19,7 +21,7 @@ vi.mock('../src/landing/LandingScene.jsx', () => ({
  *
  * The game is one JavaScript application behind a session. A crawler — and the
  * H5 Games Ads / AdSense site review behind it — sees none of that. What it sees
- * is `public/`: ten hand-written HTML documents and the sitemap that lists them.
+ * is the standalone publisher HTML and the generated Wiki, with their merged sitemap.
  * Every assertion in this file is a thing that review checks and a thing no other
  * test in the project would notice breaking.
  *
@@ -201,15 +203,15 @@ describe('crawl instructions', () => {
    * so a stale entry here becomes a crawl error on the very domain being
    * submitted for review.
    */
-  it('lists the home page and exactly the pages that exist', async () => {
-    const source = await publicFile('sitemap.xml');
+  it('lists the home page and exactly the pages that exist', () => {
+    const source = wikiSitemap();
     const sitemap = new DOMParser().parseFromString(source, 'application/xml');
     const urls = [...sitemap.querySelectorAll('loc')].map((node) => node.textContent);
 
     expect(sitemap.querySelector('parsererror')).toBeNull();
     expect(urls[0]).toBe(`${PUBLISHER_ORIGIN}/`);
     expect([...urls.slice(1)].sort()).toEqual(
-      publisherPaths().map((path) => `${PUBLISHER_ORIGIN}${path}`).sort(),
+      [...publisherPaths(), ...wikiPages.map(page => page.path)].map((path) => `${PUBLISHER_ORIGIN}${path}`).sort(),
     );
   });
 
@@ -479,6 +481,7 @@ describe('public navigation from the front door', () => {
     showLanding();
 
     expect(screen.getByRole('link', { name: /about astera/i })).toHaveAttribute('href', '/about.html');
+    expect(screen.getByRole('link', { name: 'Wiki' })).toHaveAttribute('href', '/wiki');
     expect(screen.getByRole('link', { name: /how to play/i })).toHaveAttribute('href', '/quick-start-guide.html');
     expect(screen.getByRole('link', { name: /privacy/i })).toHaveAttribute('href', '/privacy.html');
     expect(screen.getByRole('link', { name: /terms/i })).toHaveAttribute('href', '/terms.html');

@@ -1,6 +1,8 @@
 export const silentSpace = {
   title: 'Sessiz Uzay’a taşındın',
-  body: '48 saat boyunca aktif olmadığın için gezegenlerini Sessiz Uzay’a taşıdık. Gezegenlerin ve ilerlemen korundu; burada oynamaya devam edebilirsin.',
+  body: "Son 30 saatte saldırı, bina geliştirme, araştırma, gemi veya savunma üretimi başlatmadığın için gezegenlerini Sessiz Uzay’a taşıdık. Gezegenlerin ve ilerlemen korundu.",
+  closed: "Burada saldırı, asteroid ve enkaz toplama, korsan baskını, tüccar seferi ve konvoy vuruşu kapalı.",
+  production: "Kaynak üretimi %50 hızda çalışır. Bina, araştırma ve gemi üretimi açık.",
   returnTo: '{{galaxy}} galaksisine dönmek için buradan başvurabilirsin.',
   apply: 'Dönüş başvurusu yap',
   applying: 'Başvuruluyor…',

@@ -5,6 +5,9 @@
   "description": "Führe eine geschützte Heimatwelt, erobere Kolonien und erkunde eine lebendige Galaxie, ohne die Stärke deiner Rivalen zu kennen.",
   "start_url": "/",
   "scope": "/",
+  "related_applications": [
+    { "platform": "webapp", "url": "/manifest.de.webmanifest", "id": "https://asteraonline.space/" }
+  ],
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#05070D",

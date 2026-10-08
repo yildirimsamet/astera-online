@@ -50,12 +50,12 @@ export const onboarding = {
     },
     fogAlone: {
       title: "Il n’y a encore personne ici",
-      line: "{{shard}} est encore en train de se remplir. Lorsqu’elle sera pleine, tu ne sauras pas ce que les autres possèdent.",
+      line: "{{shard}} accueille encore des commandants. Rassemble des renseignements pour connaître leurs ressources et défenses.",
       action: "Compris",
     },
     core: {
       title: "Commence par relever la limite",
-      line: "Le Noyau de Commandement détermine jusqu’à quel niveau les autres bâtiments peuvent progresser. Appuie sur sa ligne. Dans la fiche qui s’ouvre, regarde ce que donne le niveau 2 et combien il coûte, puis ajoute-le à la file.",
+      line: "Le Noyau de commande limite le niveau des structures, sauf le Hangar. Ouvre sa ligne et vérifie l’effet et le prix du niveau 2. Ajoute ensuite l’amélioration à la file.",
     },
     refinery: {
       title: "Produis davantage d’alliage",
@@ -74,18 +74,18 @@ export const onboarding = {
   haveAccount: "J’ai déjà un commandant",
   claim: {
     eyebrowName: "Dernière étape",
-    headingName: "Signe ce monde de ton nom",
+    headingName: "Choisis le nom de ton commandant",
     lineName:
       "Tes quatre commandes sont prêtes. Dès que {{name}} sera à toi, leurs véritables compteurs démarreront ensemble.",
     nameLabel: "Nom du commandant",
     next: "Continuer",
     eyebrowPassword: "Encore une étape",
-    headingPassword: "{{name}} est en cours de sécurisation",
+    headingPassword: "Choisis un mot de passe pour {{name}}",
     linePassword:
-      "Choisis un mot de passe ; quel que soit le navigateur utilisé, ton commandant t’y attendra.",
+      "Utilise ce mot de passe pour retrouver ton commandant sur un autre appareil.",
     passwordLabel: "Mot de passe",
     submit: "Revendiquer la planète",
-    working: "Attribution du monde…",
+    working: "Création du commandant…",
     back: "Retour",
   },
   trouble: {
@@ -94,6 +94,6 @@ export const onboarding = {
     unreachable: "Impossible de joindre la galaxie.",
     retry: "Réessayer",
     partial:
-      "Le monde est à toi. L’une des commandes préparées a été refusée au démarrage des véritables files.",
+      "Ta planète a été créée. Certaines commandes préparées n’ont pas démarré. Vérifie les files de production.",
   },
 } as const;

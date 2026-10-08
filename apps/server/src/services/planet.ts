@@ -28,6 +28,7 @@ import {
   type SatelliteSet,
   HULLS,
   DEATH_STAR,
+  SILENT_SPACE,
 } from '@astera/rules';
 import { minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -45,6 +46,7 @@ import {
   satellites,
   seasonTelemetrySegments,
   seasons,
+  shards,
   strategicAssets,
   units,
 } from '../db/schema.js';
@@ -167,6 +169,8 @@ export function economyAt(
    */
   faults: FaultSet = [],
   leakedSoFar?: Resources,
+  /** D212: `SILENT_SPACE.productionPace` for a world in Silent Space, 1 everywhere else. */
+  pace = 1,
 ) {
   // The deadline is an economic boundary even when the worker claims the freeze
   // event late. Status remains `live` during afterglow, but production does not.
@@ -189,6 +193,7 @@ export function economyAt(
       : null,
     faults,
     ...(leakedSoFar ? { leakedSoFar } : {}),
+    pace,
   };
   const state = recovering ? {
     alloy: row.alloy,
@@ -265,6 +270,8 @@ export interface LockedPlanet {
   seasonEndsAt: Date;
   /** The rule set the season was dealt, read off the row this lock already holds. */
   rulesetVersion: number;
+  /** D212: this world is in Silent Space — no fights, no farming, works at half pace. */
+  silentSpace: boolean;
   name: string;
   equippedSkinId: string | null;
   x: number; y: number; z: number;
@@ -484,12 +491,14 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     throw new GameError('PLANET_NOT_OWNED', 'You no longer control that world', 403);
   }
 
-  const [buildingRows, satelliteRows, unitRows, faultRows] = await Promise.all([
+  const [buildingRows, satelliteRows, unitRows, faultRows, [shard]] = await Promise.all([
     tx.select().from(buildings).where(eq(buildings.planetId, planetId)),
     tx.select().from(satellites).where(eq(satellites.planetId, planetId)),
     tx.select().from(units).where(and(eq(units.planetId, planetId), eq(units.location, 'home'))),
     tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)),
+    tx.select({ role: shards.role }).from(shards).where(eq(shards.id, season.shardId)),
   ]);
+  const silentSpace = shard?.role === 'WAITING';
   const faults = faultRows.map((fault) => fault.kind);
   /*
     THE LEAK'S OWN CEILING, and it is read off the fault rather than the world.
@@ -532,6 +541,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     clock.now(),
     faults,
     leakedSoFar ?? undefined,
+    silentSpace ? SILENT_SPACE.productionPace : 1,
   );
 
   /*
@@ -628,6 +638,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     seasonStart: season.startsAt,
     seasonEndsAt: season.endsAt,
     rulesetVersion: season.rulesetVersion,
+    silentSpace,
     name: row.name,
     equippedSkinId: row.equippedSkinId,
     x: row.x, y: row.y, z: row.z,

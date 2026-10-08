@@ -5,6 +5,7 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import {
+  accounts,
   neutralPlanetState,
   planets,
   probeReports,
@@ -133,6 +134,7 @@ describe('the three intel states', () => {
     seenAt?: string;
     name?: string;
     owner?: string;
+    country?: string;
     coreLevel?: number;
     coreTier?: number;
     satellites?: string[];
@@ -169,6 +171,34 @@ describe('the three intel states', () => {
   const raw = async (): Promise<string> =>
     (await app.inject({ method: 'GET', url: '/api/galaxy', headers: auth })).body;
   const world = async (id: string): Promise<World> => (await galaxy()).find((p) => p.id === id)!;
+
+  it('publishes country only with a known commander, never through an unknown world', async () => {
+    await f.db.update(accounts).set({ countryCode: 'FR' }).where(eq(accounts.id, f.accountIds[1]!));
+    await f.db.update(accounts).set({ countryCode: 'JP' }).where(eq(accounts.id, f.accountIds[2]!));
+    expect((await world(near)).country).toBe('FR');
+    const hidden = await world(far);
+    expect(hidden.intel).toBe('UNKNOWN');
+    expect(hidden).not.toHaveProperty('country');
+  });
+
+  it('remembers the country alongside the recorded owner after account and control changes', async () => {
+    await f.db.update(accounts).set({ countryCode: 'JP' }).where(eq(accounts.id, f.accountIds[2]!));
+    await probe(far);
+    expect((await world(far)).country).toBe('JP');
+    await f.db.update(accounts).set({ countryCode: 'DE' }).where(eq(accounts.id, f.accountIds[2]!));
+    await f.db.update(planets).set({ controllerPlayerId: f.playerIds[1]!, kind: 'COLONY' }).where(eq(planets.id, far));
+    expect((await world(far)).country).toBe('JP');
+  });
+
+  it('does not invent a country for an older remembered record', async () => {
+    await probe(far);
+    const [record] = await f.db.select().from(probeWorldMemories).where(eq(probeWorldMemories.targetPlanetId, far));
+    const legacy = { ...record!.silhouette };
+    Reflect.deleteProperty(legacy, 'country');
+    await f.db.update(probeWorldMemories).set({ silhouette: legacy }).where(eq(probeWorldMemories.targetPlanetId, far));
+    expect((await world(far)).intel).toBe('REMEMBERED');
+    expect(await world(far)).not.toHaveProperty('country');
+  });
 
   /** Fly a probe to `target` and let it come home with what it saw. */
   const probe = async (target: string): Promise<Date> => {

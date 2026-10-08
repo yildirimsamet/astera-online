@@ -362,9 +362,9 @@ function slowestHullIn(sending: Fleet): HullId | null {
 }
 
 /**
- * How far away a planet is *for this player right now* — at the speed of the
- * slowest ship they currently have at home. Distance in map units is not a
- * decision; "you would be gone 41 minutes" is.
+ * Best-case time before a wing is selected. Combat excludes transports and
+ * unarmed work craft; transport includes cargo hulls. Exact launch quotes still
+ * use the slowest selected hull in planRoute, not this discovery estimate.
  *
  * AND "RIGHT NOW" INCLUDES THEIR RESEARCH. D180 — it read the catalogue, so a
  * commander who had doubled their engines was still shown the pace they flew at on
@@ -376,8 +376,14 @@ export function reachMinutes(
   target: Vec3,
   homeFleet: Fleet,
   mods: FlightModifiers,
+  purpose: 'combat' | 'transport',
 ): number | null {
-  const speed = fleetPace(homeFleet, mods);
+  let speed = 0;
+  for (const hull of MOBILE_HULLS) {
+    if ((homeFleet[hull] ?? 0) <= 0) continue;
+    if (purpose === 'combat' && (HULLS[hull].family === 'CARGO' || HULLS[hull].atk <= 0)) continue;
+    speed = Math.max(speed, fleetPace({ [hull]: 1 }, mods));
+  }
   if (speed <= 0) return null;
   return travelMinutes(distance(origin, target), speed);
 }

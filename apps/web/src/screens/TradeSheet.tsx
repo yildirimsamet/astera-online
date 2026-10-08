@@ -130,7 +130,7 @@ export function TradeSheet({
   const { t } = useTranslation();
   const say = useToast();
   const launch = useLaunchTrade(planet.planet.id);
-  const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
+  const launchBlock = launchFault(planet.faults, 'fleet', planet.silentSpace === true);
 
   const [fleet, setFleet] = useState<Fleet>({});
   const [give, setGive] = useState<TradeGood>('alloy');
@@ -275,7 +275,7 @@ export function TradeSheet({
    * row by row rather than by reading two files side by side.
    */
   const refusal: string | null =
-    launchBlocked ? t('faults.launchBlock.SHIPYARD_REVOLT')
+    launchBlock !== null ? t(`faults.launchBlock.${launchBlock}`)
     : ships === 0 ? t('trade.chooseFleet')
     : !windowOpen ? t('trade.windowClosed')
     : baysFree <= 0 ? t('trade.noBay')
@@ -382,8 +382,8 @@ export function TradeSheet({
                 A DISABLED CONTROL STATES ITS OWN REASON. `interface.md`: an unavailable
                 action stays visible with the reason on it.
               */
-              disabledReason={launchBlocked
-                ? t('faults.launchBlock.SHIPYARD_REVOLT')
+              disabledReason={launchBlock !== null
+                ? t(`faults.launchBlock.${launchBlock}`)
                 : launch.isPending ? t('trade.sending') : refusal}
               onCommit={() => {
                 launch.mutate(

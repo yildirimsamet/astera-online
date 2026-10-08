@@ -26,6 +26,7 @@ import { useNow } from '../../lib/time.js';
 import { describe, useToast } from '../../ui/Toast.js';
 import { NowLine } from '../hud/NowLine.js';
 import { TopBar, type CollectionTransfer } from '../hud/TopBar.js';
+import { BrandMasthead } from '../../brand/Identity.js';
 
 export interface HudTopProps {
   commander: string;
@@ -146,6 +147,8 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
     research: data?.researchQueue ?? [],
     events,
     shieldUntil,
+    // D212: one figure per commander, published on every world's view.
+    silentSpaceAt: data?.silentSpaceAt ?? null,
   };
   const entries = nowEntries(timers);
   // The sheet under the line lists the whole work queue (owner, 2026-10-06).
@@ -153,6 +156,7 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
 
   return (
     <div className="relative shrink-0">
+      <BrandMasthead />
       <TopBar
         commander={commander}
         shield={shieldUntil ? { until: shieldUntil.getTime(), kind: season?.shieldKind ?? 'NEWCOMER' } : null}

@@ -75,6 +75,51 @@ const TURKISH = flatten(tr);
 const LOCALES = { en, tr, fr, de, es, ja } as const;
 const TRANSLATED_LOCALES = { fr, de, es, ja } as const;
 
+describe('the Command Core explanation respects independent upgrades', () => {
+  it.each(Object.entries(LOCALES))('names the Hangar exception in %s', (_, locale) => {
+    expect(locale.vocabulary.building.CORE.detail).toContain(locale.vocabulary.building.HANGAR.name);
+    expect(locale.planet.roles.coreClear).toContain(locale.vocabulary.building.HANGAR.name);
+    expect(locale.directives.coreCeilingDetail).toContain(locale.vocabulary.building.HANGAR.name);
+  });
+
+  it('does not claim that Core levels shorten building upgrade timers', () => {
+    expect(en.vocabulary.building.CORE.detail).not.toMatch(/shortens building time|no other building/i);
+    expect(tr.vocabulary.building.CORE.detail).not.toMatch(/bina sürelerini kısaltır|hiçbir bina/i);
+  });
+
+  it('uses current names in the Academy instead of retired aliases', () => {
+    for (const locale of Object.values(LOCALES)) {
+      expect(locale.academy.steps.foundry).toContain(locale.vocabulary.satellite.FOUNDRY.name);
+      expect(locale.academy.steps.veil).toContain(locale.vocabulary.instrument.VEIL.name);
+      expect(locale.academy.steps.vault).toContain(locale.vocabulary.building.VAULT.name);
+    }
+  });
+});
+
+describe('risk and defence explanations follow the current rules', () => {
+  it.each(Object.entries(LOCALES))('includes every emplacement affected by Doctrine in %s', (_, locale) => {
+    for (const id of ['BASTION', 'HARPOON', 'THORN'] as const) {
+      expect(locale.research.groundDoctrineDetail).toContain(locale.vocabulary.hull[id].name);
+    }
+  });
+
+  /* Owner, 2026-10-08: a pirate raid can be called back once, so its launch no longer says it cannot. */
+  it('launches a pirate raid without promising it cannot be called back', () => {
+    for (const locale of Object.values(LOCALES)) {
+      expect(locale.launch.holdPirate_one).not.toMatch(/geri çağrılamaz|no recall|kein Rückruf|aucun rappel|sin recuperación|呼び戻し不可/u);
+      expect(locale.launch.holdPirate_other).not.toMatch(/geri çağrılamaz|no recall|kein Rückruf|aucun rappel|sin recuperación|呼び戻し不可/u);
+    }
+    expect(tr.launch.holdPirate_other).not.toContain('geri dönüşü yok');
+  });
+
+  it('does not promise loss-free convoy flights through radiation', () => {
+    expect(en.convoy.boundary).toMatch(/radiation/i);
+    expect(tr.convoy.boundary).toMatch(/radyasyon/i);
+    expect(en.convoy.boundary).not.toMatch(/no losses/i);
+    expect(tr.convoy.boundary).not.toMatch(/kayıp vermez/i);
+  });
+});
+
 describe('the Store protection promise', () => {
   it('states the live ten-percent, eight-hour rule on both decision surfaces', () => {
     for (const locale of [en, tr]) {
@@ -97,15 +142,19 @@ describe('the Store protection promise', () => {
 
 describe('Vocabulary describes the calibrated catalogue, not its retired stats', () => {
   /** Owner decision, 2026-10-06: a success line counts only fights the wing comes home from. */
-  it('defines a success as the defender broken AND a ship of yours coming home', () => {
-    expect(en.counter.compareRule).toContain('at least one of your ships comes home');
-    expect(tr.counter.compareRule).toContain('en az bir geminin eve dönmesi');
-    for (const locale of [de, es, fr, ja]) expect(locale.counter.compareRule).not.toMatch(/surviv|überleb|sobreviv|survie|生存を保証/i);
+  it('requires a surviving ship for success without promising the whole fleet survives', () => {
+    expect(en.counter.compareRule).toContain('at least one ship surviving');
+    expect(tr.counter.compareRule).toContain('en az bir geminin sağ kalması');
+    expect(fr.counter.compareRule).toContain('au moins un vaisseau survivant');
+    expect(de.counter.compareRule).toContain('mindestens ein überlebendes Schiff');
+    expect(es.counter.compareRule).toContain('al menos una nave superviviente');
+    expect(ja.counter.compareRule).toContain('少なくとも1隻が生き残る');
+    expect(en.counter.compareRule).not.toMatch(/all ships survive|guaranteed/i);
   });
 
   it('scopes research speed to the capital Core and merchant speed to the catalogue', () => {
-    expect(en.vocabulary.building.CORE.detail).toContain('Only the capital’s Core sets research');
-    expect(tr.vocabulary.building.CORE.detail).toContain('Araştırma sınırı ve hızı yalnız ana gezegenin');
+    expect(en.vocabulary.building.CORE.detail).toMatch(/capital's Core determines research time/);
+    expect(tr.vocabulary.building.CORE.detail).toMatch(/Araştırma süresi.*ana gezegendeki Çekirdeğe bağlıdır/);
     expect(tr.vocabulary.hull.ARGOSY.detail).toContain('katalogdaki en yavaş nakliye');
   });
 
@@ -113,7 +162,7 @@ describe('Vocabulary describes the calibrated catalogue, not its retired stats',
   it('tells every pace picker that the way home keeps the pace', () => {
     const fullSpeed = /full speed|tam hızla|voller Geschwindigkeit|toda velocidad|pleine vitesse|全速力/i;
     const samePace = {
-      en: /same speed/i, tr: /aynı hızla/i, de: /gleichen Tempo/i, es: /misma velocidad/i,
+      en: /same speed/i, tr: /aynı hızla/i, de: /gleichen Tempo|derselben Geschwindigkeit/i, es: /misma velocidad/i,
       fr: /même vitesse/i, ja: /同じ速度/u,
     } as const;
     for (const [lng, locale] of Object.entries({ en, tr, de, es, fr, ja })) {
@@ -184,8 +233,8 @@ describe('Vocabulary describes the calibrated catalogue, not its retired stats',
       expect(en.vocabulary.building.CORE.detail).toContain(String(core));
       expect(tr.vocabulary.building.CORE.detail).toContain(String(core));
     }
-    expect(en.vocabulary.building.CORE.detail).toContain('Only the capital');
-    expect(tr.vocabulary.building.CORE.detail).toContain('Yalnız ana gezegendeki');
+    expect(en.vocabulary.building.CORE.detail).toContain('On the capital, levels');
+    expect(tr.vocabulary.building.CORE.detail).toContain('Ana gezegende 9, 13 ve 16');
   });
 
   it('states the Prospector outbound and laden return speeds in every language', () => {
@@ -269,7 +318,6 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'action.statCargoNone',
   'action.statFuelNone',
   'planetHero.shieldValue',
-  'servers.joining',
   'units.rangeJoin',
   // The dash between the two ends of a probe's range. Punctuation.
   'rangeBand.join',
@@ -339,6 +387,8 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // Two clocks and a slash. There is no word in it to translate, and the key
   // exists so a language that writes elapsed-after-total can still reorder it.
   'menu.trackClock',
+  // Wiki is the same established product label in both editions.
+  'menu.guideLabel',
   'rewards.social.url',
   // YouTube is the embedded-video provider's proper name in both languages.
   'community.admin.tools.video',
@@ -543,8 +593,8 @@ describe('decision sheets explain every item', () => {
     expect(tr.research.powerDetail).toContain('Söndürücü');
 
     // Engineering is permission only, with one useful rung for each advanced tier.
-    expect(en.research.engineeringDetail).toMatch(/first rung opens Tier 3.*second opens Tier 4/i);
-    expect(tr.research.engineeringDetail).toMatch(/İlk kademe üçüncü seviye.*ikinci kademe dördüncü seviye/i);
+    expect(en.research.engineeringDetail).toMatch(/Level 1.*Tier 3.*Level 2.*Tier 4/i);
+    expect(tr.research.engineeringDetail).toMatch(/1\. seviye.*3\. kademe.*2\. seviye.*4\. kademe/i);
 
     // Automation applies to mobile craft, not the separate ground-defence curve.
     expect(en.research.yardDetail).toContain('does not speed up ground defences');
@@ -552,7 +602,7 @@ describe('decision sheets explain every item', () => {
 
     // And the robots are its opposite number: the surface, never the yard. D198.
     expect(en.research.robotsDetail).toContain('does not speed up ships');
-    expect(tr.research.robotsDetail).toContain('Gemileri hızlandırmaz');
+    expect(tr.research.robotsDetail).toContain('Gemileri veya yer savunmasını hızlandırmaz');
 
     // Strategic stock is capped independently on every world, and both capacities
     // name their real figures (owner, 2026-10-01): 1 → 2 weapons, 2 → 4 charges.
@@ -814,18 +864,14 @@ describe('a refusal arrives in the language that is up', () => {
     expect(describeError(pointed)).toContain('Kestrel');
   });
 
-  /**
-   * A server one deploy ahead sends a code this build has never heard of. The
-   * English sentence is worse than a translation and enormously better than the
-   * literal string `errors.SOMETHING_NEW`.
-   */
-  it('falls back to the server sentence for an unknown code', () => {
+  /** Unknown diagnostics cannot establish a player-facing reason or outcome. */
+  it('uses a localised explanation for an unknown code', () => {
     const err = new ApiError('SOMETHING_NEW', 'A rule you have not met yet', 400);
-    expect(describeError(err)).toBe('A rule you have not met yet');
+    expect(describeError(err)).toBe(i18n.t('errors.unknown'));
   });
 
   it('never leaks a non-Error', () => {
-    expect(describeError('boom')).toBe('Something went wrong');
+    expect(describeError('boom')).toBe(i18n.t('errors.unknown'));
   });
 });
 

@@ -49,7 +49,7 @@ export const statusBar = {
     label: 'Produktionslager',
     labelFull: 'Produktionslager voll',
     collect: 'Abholen',
-    firstTip: 'Produktion sammelt sich hier. Zum Abholen tippen.',
+    firstTip: "Hole Ressourcen aus dem Produktionslager in den Speicher, um sie auszugeben.",
     fullStopped: 'Voll — Produktion gestoppt',
     fillsIn: 'voll in {{time}}',
     gathers: 'Die Produktion sammelt sich hier, bis du sie abholst',
@@ -61,7 +61,7 @@ export const statusBar = {
     crystal: '{{amount}} Kristall',
     deuterium: '{{amount}} Deuterium',
     collected: '{{amount}} abgeholt',
-    collectedPartly: '{{moved}} abgeholt · Für {{held}} war kein Platz',
+    collectedPartly: "{{moved}} in den Speicher gesammelt · {{held}} bleibt in dem Produktionslager",
     storeFull: 'Speicher voll',
   },
 } as const;
@@ -147,7 +147,7 @@ export const signals = {
   /** The eyebrow on a galaxy-wide row, so it is never mistaken for personal news. */
   worldEvent: 'Galaxie-Ereignis',
   empty:
-    'Noch nichts. Die Galaxie sagt Ihnen, wann eine Flotte gegen Sie vorgeht, wann eine Sonde gefangen wird und wann Ihre eigenen Schiffe heimkehren.',
+    "Noch keine Benachrichtigungen. Flottenwarnungen, erkannte Sonden und zurückkehrende Schiffe erscheinen hier.",
   repeat: '×{{count}}',
 
   /** The states that are true right now, rather than things that happened. */
@@ -158,7 +158,7 @@ export const signals = {
     worksStoppedDetail: 'Die Arbeiten sind voll. Die Produktion wird bei {{amount}} pro Stunde pausiert, bis Sie die Ware abholen.',
     alloyStoreLine: 'Legierungslager ist voll',
     crystalStoreLine: 'Kristallspeicher ist voll',
-    storeDetail: '{{amount}} wartet in Arbeit und kann nirgendwo hingehen. Gib etwas aus.',
+    storeDetail: "{{amount}} Ressourcen warten in dem Produktionslager. Gib gelagerte Ressourcen aus oder erhöhe die Kapazität, um Platz zu schaffen.",
   },
 } as const;
 
@@ -232,33 +232,33 @@ export const menu = {
   intelLabel: 'Intel',
   intelHint: 'Teleskop, Sonden, Radar und Kampfberichte',
   rewardsLabel: 'Belohnungen',
-  rewardsHint: 'Belohnungen für deine Erfolge in der Galaxie',
+  rewardsHint: "Hole Ressourcenbelohnungen für erreichte Ziele ab",
   /*
     The hint is this row's accessible name (see `MenuRow`), so it says what the
     page IS. It no longer promises a new tab, because the row no longer opens
     one — a hint that describes the old behaviour is worse than none.
   */
-  guideLabel: 'Schnellstart',
-  guideHint: 'Deine ersten Schritte, der Reihe nach erklärt',
+  guideLabel: 'Wiki',
+  guideHint: 'Gebäude, Schiffe und die Regeln der Galaxie',
   rewardsWaiting: '{{count}} bereit',
   /** T12: research is a commander's, not a world's, so its way in is here. */
   researchLabel: 'Forschung',
-  researchHint: 'Fünfzehn Forschungsprojekte, die all deinen Welten zugutekommen',
+  researchHint: "Sieh die gemeinsame Forschung deiner Welten und ihre Voraussetzungen",
   leaderboardLabel: 'Bestenliste',
   leaderboardHint: 'Jeder Kommandant, geordnet nach Dominion',
   announcementsLabel: 'Ankündigungen',
   announcementsHint: 'Neuigkeiten, Updates und Notizen vom Astera-Team',
   announcementsWaiting: '{{count}} neu',
   feedbackLabel: 'Feedback',
-  feedbackHint: 'Melde einen Fehler oder teile dem Team eine Idee oder ein Lob mit',
+  feedbackHint: "Melde ein Problem oder sende Feedback und Vorschläge",
   skinsShopLabel: 'Shop',
-  skinsShopHint: 'Entdecken Sie das Aussehen des Planeten in 3D',
+  skinsShopHint: "Sieh Planetendesigns und ihre Preise",
   skinsInventoryLabel: 'Inventar',
   skinsInventoryHint: 'Rüste Skins auf deinen Welten aus',
   clanLabel: 'Clan',
-  clanHint: 'Finden Sie eine fünfköpfige Besatzung oder gründen Sie Ihre eigene',
+  clanHint: "Tritt einem Clan bei oder gründe einen mit bis zu fünf Kommandanten",
   clanMemberLabel: 'Clan · [{{tag}}]',
-  clanMemberHint: 'Crew, Hilfe, gemeinsame Beute und privater Chat',
+  clanMemberHint: "Mitglieder, Hilfe, gemeinsame Beute, Clanverlauf und Chat",
   clanWaiting: '{{count}} wartet',
   rivalLabel: 'Rivale · {{commander}}',
   rivalHint: 'Fokussiere {{planet}} und wähle deinen nächsten Zug',
@@ -294,14 +294,14 @@ export const menu = {
     low: 'Niedrig',
   },
   qualityHint: {
-    high: 'Volle Auflösung. Das schärfste Bild, der meiste Akku.',
-    balanced: 'Dreiviertelauflösung. Kaum zu erkennen, deutlich kühler.',
-    low: 'Halbe Auflösung, keine Kantenglättung. Für ältere Telefone.',
+    high: "Höchste Bilddetails. Kann mehr Akku verbrauchen.",
+    balanced: "Senkt die Auflösungsgrenze und entlastet die Grafik. Wärme und Akkuverbrauch hängen von deinem Gerät ab.",
+    low: "Niedrigste Auflösungsgrenze. Kantenglättung bleibt aktiv; Bilddetails können abnehmen.",
   },
   fpsLabel: 'Bildrate',
   fpsOn: 'An',
   fpsOff: 'Aus',
-  fpsHint: 'Bilder, die die Galaxie pro Sekunde zeichnet. 24–30 im Stillstand sind normal; in Bewegung und im Kampf steigt der Wert.',
+  fpsHint: "Bilder, die die Galaxie pro Sekunde zeichnet. Ein höherer Wert bedeutet flüssigere Bewegung.",
 } as const;
 
 export const leaderboard = {
@@ -363,7 +363,7 @@ export const leaderboard = {
     searchPlaceholder: 'Kommandant',
     noMatch: 'Kein Kommandant entspricht dieser Suche.',
     galaxyRecord: {
-      title: 'Galaxiechronik', subtitle: 'Die gemeinsamen Fakten dieser Saison',
+      title: 'Galaxiechronik', subtitle: "Aufgezeichnete Saisonergebnisse dieser Galaxie",
       champion: 'Champion', clans: 'Clan-Podium',
       biggestBattle: 'Größte bestätigte Schlacht', dominionSwing: 'Stärkste Dominion-Änderung',
       contestedWorld: 'Umkämpfteste Welt',
@@ -390,12 +390,12 @@ export const leaderboard = {
       hint: 'Aufgezeichnete Kampffiguren werden angezeigt. Wirtschaftlichkeit, Flottenproduktion und Exploration wurden nicht gemessen und werden weggelassen.',
     },
     partialStats: {
-      title: 'Teiltelemetrie',
-      hint: 'Aktivität von vor Beginn der Telemetrie fehlt möglicherweise; Die aufgezeichneten Zahlen bleiben exakt.',
+      title: "Unvollständiger Aktivitätsverlauf",
+      hint: "Aktivitäten vor Beginn der Aufzeichnung können fehlen. Die angezeigten Summen umfassen aufgezeichnete Aktivitäten.",
     },
     forcedEnd: {
       title: 'Saison vorzeitig beendet',
-      hint: 'Der gespielte Zeitraum ist dauerhaft versiegelt, einschließlich seiner endgültigen Platzierungen und Belohnungen.',
+      hint: "Die Saison wurde mit Rangliste und Belohnungen zum Zeitpunkt ihres vorzeitigen Endes gespeichert.",
     },
     none: 'Keine',
     ratios: {
@@ -444,7 +444,7 @@ export const leaderboard = {
       recordedTotals: 'Erfasste Karriere-Gesamtzahlen',
       covered_one: '{{count}} Saison abgedeckt',
       covered_other: '{{count}} Staffeln abgedeckt',
-      coveredWithPartial: '{{count}} abgedeckte Staffeln · {{partial}} mit teilweiser Telemetrie',
+      coveredWithPartial: "{{count}} Saisons aufgezeichnet · {{partial}} mit unvollständigem Aktivitätsverlauf",
       seasons: 'Saison für Saison',
     },
   },
@@ -515,8 +515,8 @@ export const chat = {
  * pasted into a message to the person who will fix it. See `shell/crashReport.ts`.
  */
 export const crash = {
-  title: 'Etwas ist kaputt gegangen',
-  body: 'Die Schnittstelle hat das Zeichnen gestoppt. Durch das Neuladen gelangen Sie zurück zur Disc – nichts in der Galaxie ist verloren gegangen.',
+  title: "Die Spieloberfläche funktioniert nicht mehr",
+  body: "Lade die Seite neu. Die letzte Aktion ist möglicherweise unbestätigt; prüfe danach den aktuellen Stand.",
   reload: 'Neu laden',
   detailShow: 'Details anzeigen',
   detailHide: 'Details ausblenden',

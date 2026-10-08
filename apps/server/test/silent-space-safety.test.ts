@@ -9,6 +9,7 @@ import { afterAll, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { seedWorld, testDb, makeAccount } from './helpers.js';
 import { loadEnv } from '../src/env.js';
+import { SILENT_SPACE } from '@astera/rules';
 import { clans, clanMemberships, clanCeasefires, players, seasons, scheduledEvents, researchOrders, pirateRaids, missions, strategicImpacts, seasonResults, returnApplications, probeReports, battleReports, units, silentSpaceMaintenance, planets, shards, missionKind } from '../src/db/schema.js';
 import { transferCommander } from '../src/services/commanderTransfer.js';
 import { ensureWaitingSeason } from '../src/services/waitingServers.js';
@@ -26,7 +27,7 @@ it.each(['MEMBER', 'LEADER'] as const)('keeps ordinary exit ceasefires when a %s
     role: slot === 0 ? role : role === 'LEADER' ? 'MEMBER' as const : 'LEADER' as const,
     joinedAt: f.clock.now(), matureAt: f.clock.now(), aidPolicyChangedAt: f.clock.now() })));
   f.clock.advance(48 * 60);
-  await f.db.update(players).set({ lastActiveAt: f.clock.now() }).where(eq(players.id, f.playerIds[1]!));
+  await f.db.update(players).set({ lastProgressAt: f.clock.now() }).where(eq(players.id, f.playerIds[1]!));
   const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
   expect((await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock)).status).toBe('MOVED');
   expect(await f.db.select().from(clanCeasefires)).toHaveLength(1);
@@ -98,10 +99,18 @@ it('enforces one result per account and cycle across different galaxies', async 
   await expect(f.db.insert(seasonResults).values({ ...result!, seasonId: waiting!.id })).rejects.toThrow();
 });
 
+/**
+ * D212: placing an order IS activity, so these fixtures state that it was placed a full idle
+ * window ago and only its completion is still ahead — a long queue behind a commander who left.
+ */
+async function givenLongAgo(f: Awaited<ReturnType<typeof seedWorld>>): Promise<void> {
+  await f.db.update(players).set({ lastProgressAt: new Date(f.clock.now().getTime() - SILENT_SPACE.idleMs) });
+}
 it('retargets an unclaimed build and delivers its hull once after moving', async () => {
   const f = await seedWorld(1);
   f.clock.advance(48 * 60);
   await buildUnits(f.db, f.planetIds[0]!, 'DART', 1, f.clock);
+  await givenLongAgo(f);
   const waiting = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
   expect((await transferCommander(f.db, f.playerIds[0]!, waiting!.id, f.clock)).status).toBe('MOVED');
   const [event] = await f.db.select().from(scheduledEvents).where(eq(scheduledEvents.kind, 'build_complete'));
@@ -116,6 +125,7 @@ it.each(['pending', 'processing', 'failed'] as const)('defers previously claimed
   const f = await seedWorld(1);
   f.clock.advance(48 * 60);
   await buildUnits(f.db, f.planetIds[0]!, 'DART', 1, f.clock);
+  await givenLongAgo(f);
   await f.db.update(scheduledEvents).set({ status, attempts: 1 }).where(eq(scheduledEvents.kind, 'build_complete'));
   const waiting = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
   expect((await transferCommander(f.db, f.playerIds[0]!, waiting!.id, f.clock)).status).toBe('EVENT');

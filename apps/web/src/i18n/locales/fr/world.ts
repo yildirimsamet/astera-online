@@ -372,6 +372,8 @@ export const focus = {
     attack: "Préparer une attaque",
     attackNeutralAgain: "Attaquer à nouveau · revendication inchangée",
     attackOriginRecovering: "Attaque · planète capitale en récupération",
+    attackSilentSpace: "Attaque impossible · fermé dans l’Espace Silencieux",
+    attackSilentSpaceShort: "Espace Silencieux",
     attackShipyardRevolt: "Attaque impossible · mutinerie au Chantier Spatial",
     attackShipyardRevoltShort: "Mutinerie",
     radiationHere: "Nuage de radiation : chaque vaisseau ici perd {{pct}} % de sa coque par minute. Au-delà de 20 %, il attend la Station de réparation.",
@@ -522,7 +524,7 @@ export const focus = {
     outbound: "Ce vol ne peut pas être rappelé.",
     /** A raid or a transfer may be turned once before it arrives (K8). */
     recallable: "Elle peut faire demi-tour une fois avant d’arriver ; le retour dure autant que le vol déjà effectué.",
-    outboundPirate: "Un raid pirate ne peut pas être rappelé.",
+    outboundPirate: "L’engagement a commencé ; ce raid ne peut plus faire demi-tour.",
   },
   contact: {
     eyebrowBattle: "Un raid frappe sa cible",
@@ -625,13 +627,13 @@ export const pirate = {
   captured: "{{hull}} capturé",
   captureMissed: "Aucun vaisseau intact à remorquer",
   send: "Envoyer {{count}} vaisseaux · {{duration}}",
-  outbound: "Un raid pirate ne peut pas être rappelé.",
+  outbound: "Tu peux rappeler un raid pirate une fois avant le début de l’engagement.",
   holdsHint: "Une fois ses vaisseaux de guerre abattus, ses cargos ne peuvent pas s’échapper : vous les prenez aussi.",
   /** Dire « tu ne le vois pas », pas « cette information est ancienne ». Les valeurs restent en direct. D160. */
   remembered:
     "Suivi depuis son identification · actuellement hors de portée de tes capteurs",
   boundary:
-    "Une fois identifié, un pirate reste dans cette liste jusqu’à sa destruction ou son expiration, comme un astéroïde découvert. Son orbite étant calculable, tu conserves sa trace et le nombre de vaisseaux de son équipage même lorsqu’il sort de ta portée ; tu perds la vue directe, pas sa trace.",
+    "Un pirate identifié reste dans la liste jusqu’à sa destruction ou son départ. Hors portée, sa trajectoire et son équipage connu restent visibles. La vue en direct dépend toujours des capteurs.",
   hoardHint:
     "Le butin que tu peux ramener est limité par la capacité de cargaison de ta flotte.",
 } as const;

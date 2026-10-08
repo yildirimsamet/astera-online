@@ -87,12 +87,12 @@ export const counter = {
   escapeUnsure: 'Their ships may lift off; the reading does not settle every retreat condition.',
   escapeAt: 'Retreat power line: {{at}}',
   escapeRule:
-    'Tactical retreat: a line facing at least three times its own firepower, which that raid would wipe out, lifts its ships off instead of fighting, if the world\u2019s tank pays a {{distance}}-unit round trip. The guns stay, and the stores are still raided.',
+    "Tactical retreat requires at least three times the defender’s firepower and an attack that would wipe out its line. The planet must also fund a {{distance}}-unit round trip. If eligible, ships escape combat. Ground guns stay and resources can still be raided.",
   escapeMinimumRule: 'The defender also needs at least {{count}} fighting ships at home. A probe reading does not reveal the count.',
   compareRuleToggle: 'What is this?',
   compareMeaning: 'Resource cost, not attack damage. A bigger fleet alone does not guarantee victory.',
   compareRule:
-    'Both sides\u2019 firing ships and ground guns are compared by resource cost. The shield and unarmed ships are not in this number. The forecast also uses ship classes, research and the known shield. When their defence stays under a line, the model expects that success — the defender broken and at least one of your ships comes home. A line is a range because the reading does not show everything (class split, shield): the left end is the worst case, the right end the best. How much of the wing it costs is the estimated loss below. The reading may be old; random shot changes are not included.',
+    "The comparison uses armed ships’ and ground guns’ resource value; shields and unarmed ships are excluded. The forecast also uses classes, research and the known shield. Both partial and full success require at least one ship surviving. Unknown classes or shield create threshold ranges: the left edge is the worst case, the right edge the best. Estimated losses below show the possible cost. Readings may be outdated; random shot variation is excluded.",
   linesClears: 'Full success if their defence is at most {{at}}',
   linesBreaks: 'At least partial success if at most {{at}}',
   lineJoin: ' · ',

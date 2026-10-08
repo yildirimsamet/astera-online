@@ -86,6 +86,7 @@ import {
   miningFieldSchema,
   piratesSchema,
   pirateRaidSchema,
+  pirateRecallSchema,
   tradeLaunchSchema,
   miningSchema,
   miningStatusSchema,
@@ -123,6 +124,8 @@ import {
   reportsSchema,
   researchCompleteSchema,
   rewardClaimSchema,
+  brandRecallSchema,
+  brandRecallAnswerSchema,
   rewardsSchema,
   returnSchema,
   returnSeenSchema,
@@ -824,6 +827,14 @@ export class Api {
       { method: 'POST', body: {} },
     );
 
+  /** Turn a pirate raid home before its engagement — the same one turn as a fleet's (owner, 2026-10-08). */
+  recallPirateRaid = (raidId: string) =>
+    this.send(
+      `/api/pirates/raids/${encodeURIComponent(raidId)}/recall`,
+      pirateRecallSchema,
+      { method: 'POST', body: {} },
+    );
+
   watch = (targetPlanetId: string, slot: number, observerPlanetId?: string) =>
     this.send('/api/intel/watch', watchSchema, {
       method: 'POST',
@@ -891,6 +902,10 @@ export class Api {
    * `send()` serialises. A second `JSON.stringify` here would be a compile error,
    * which is the point of the rule.
    */
+  brandRecallStatus = () => this.send('/api/session/brand-recall', brandRecallSchema);
+
+  answerBrandRecall = (answer: string | null) => this.send('/api/session/brand-recall', brandRecallAnswerSchema, { method: 'POST', body: { answer } });
+
   claimReward = (id: string) =>
     this.send('/api/rewards/claim', rewardClaimSchema, { method: 'POST', body: { id } });
 

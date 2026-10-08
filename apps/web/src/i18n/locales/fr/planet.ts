@@ -60,7 +60,7 @@ export const planet = {
     label: "Sections de la planète",
     defendProblem: "Défense",
     defendQuestion:
-      "Renforce ici ton bouclier, tes réserves et tes canons planétaires.",
+      "Améliore ici Aegis, le Magasin et les défenses au sol.",
     orbitProblem: "Renseignement",
     orbitQuestion:
       "Construis ici les outils qui te permettent d’observer tes rivaux.",
@@ -115,7 +115,7 @@ export const planet = {
       lost: "Perdu",
       kept: "Remboursé",
       progress:
-        "Le travail déjà effectué est également perdu — une nouvelle commande repartira de zéro.",
+        "La progression de cette commande est perdue. Une nouvelle commande repart de zéro.",
       commit: "Annuler la commande",
       back: "Retour",
     },
@@ -130,9 +130,9 @@ export const planet = {
   },
   roles: {
     vault:
-      "Détermine combien d’heures de production de chaque ressource peuvent être stockées ; les 10 % inférieurs, dans la limite de 8 heures de production, sont protégés contre les raids.",
+      "Fixe la capacité de stockage de chaque ressource. Les raids ne prennent pas le plus petit montant entre 10 % de capacité et 8 heures de production.",
     shipyard:
-      "Débloque de nouvelles classes de vaisseaux ; accélère la construction des vaisseaux et des défenses terrestres, et augmente les chances de réussite de tes sondes.",
+      "Débloque des vaisseaux et accélère la production de vaisseaux et de défenses au sol. Améliore la précision et la discrétion des sondes.",
     refinery:
       "Augmente la production horaire d’alliage ; comme le Dépôt est exprimé en heures, la quantité d’alliage stockable augmente avec elle. La plupart des bâtiments et des vaisseaux utilisent cette ressource.",
     extractor:
@@ -142,7 +142,7 @@ export const planet = {
     coreCapped_other:
       "{{count}} bâtiments ont atteint la limite actuelle du Noyau ; ils ne peuvent plus progresser tant que le Noyau n’est pas amélioré.",
     coreClear:
-      "Aucun bâtiment ne peut dépasser le niveau du Noyau. Le Noyau détermine les limites des bâtiments et leur vitesse de construction.",
+      "Les structures, sauf le Hangar, ne peuvent pas dépasser le noyau de ce monde. Il accélère les instruments et les satellites, sauf la Liaison montante.",
   },
   defend: {
     escapeMinimum: "La retraite tactique exige au moins {{minimum}} vaisseaux de combat ici · {{count}} sur {{minimum}} prêts",
@@ -236,13 +236,13 @@ export const planet = {
     isotopeRole:
       "Révèle le Deutérium présent dans les astéroïdes isotopiques et permet d’y envoyer des Prospecteurs. Les ressources rapportées rejoignent le stock de production.",
     denseName: "Cellules de Carburant Dense",
-    denseTag: "Débloque le Coureur",
+    denseTag: "Débloque la Propulsion des Vaisseaux",
     denseRole:
-      "Pour la découvrir, remplis ta soute pendant un raid tout en laissant du butin sur la cible. Le Coureur est plus rapide que le Cargo Lourd, mais transporte moins.",
+      "Pour la découvrir, remplis ta soute lors d’un raid en laissant du butin sur la cible. La terminer débloque la recherche Propulsion des vaisseaux.",
     graviticName: "Charges Gravitiques",
-    graviticTag: "Débloque le Perceur",
+    graviticTag: "Débloque l’Annulateur",
     graviticRole:
-      "Pour la débloquer, attaque un monde disposant de défenses et d’un Aegis actif ; le bouclier doit absorber au moins {{share}} des dégâts du raid. Un seul Faucon suffit et tu n’as pas besoin de gagner. Le Perceur inflige cinq fois plus de dégâts au bouclier.",
+      "Attaque un monde défendu avec Aegis actif pour découvrir cette recherche. Le bouclier doit absorber au moins {{share}} de tes dégâts. Gagner n’est pas nécessaire. Elle débloque l’Annulateur, qui inflige cinq fois son attaque aux boucliers.",
     gridName: "Réseau d’Interception",
     gridTag: "Détruit l’Étoile de la Mort",
     gridRole:
@@ -254,12 +254,12 @@ export const planet = {
     waspDoctrineName: "Doctrine du Faucon",
     lanceDoctrineName: "Doctrine Lance/Perceur",
     bulwarkDoctrineName: "Doctrine du Rempart",
-    groundDoctrineName: "Doctrine Bastion/Hérisson",
+    groundDoctrineName: "Doctrine de défense au sol",
     generalName: "Armement et Blindage",
-    generalTag: "Améliore toutes les coques que tu possèdes",
+    generalTag: "Améliore les vaisseaux de combat et les cargos",
     doctrineTag: "Meilleure attaque et meilleur blindage",
     doctrineRole:
-      "Augmente simultanément la puissance d’attaque et la résistance de coque de la classe concernée. Les recherches ne modifient pas les avantages naturels entre classes.",
+      "Augmente ensemble l’attaque et la résistance des défenses au sol. Rapports de classes, capacité au sol et récupération restent inchangés.",
     yardName: "Automatisation du Chantier Spatial",
     yardTag: "Construit les vaisseaux plus rapidement",
     yardRole:
@@ -508,23 +508,23 @@ export const launch = {
   /** B14: the held commit, and the price line under the ships (K8: a world raid turns). */
   holdWorld_one: "Lancer {{count}} vaisseau",
   holdWorld_other: "Lancer {{count}} vaisseaux",
-  holdPirate_one: "Lancer {{count}} vaisseau — aucun rappel",
-  holdPirate_other: "Lancer {{count}} vaisseaux — aucun rappel",
-  warningWorld: "{{world}} reste affaibli pendant {{duration}}, jusqu’au retour de cette flotte.",
-  warningPirate: "Aucun rappel. {{world}} reste affaibli pendant {{duration}}, jusqu’au retour de cette flotte.",
+  holdPirate_one: "Lancer {{count}} vaisseau",
+  holdPirate_other: "Lancer {{count}} vaisseaux",
+  warningWorld: "Cette flotte ne défendra pas {{world}} avant son retour. Absence estimée : {{duration}}.",
+  warningPirate: "Tu peux rappeler ce raid une fois avant l’engagement. La flotte ne défendra pas {{world}} avant son retour. Absence estimée : {{duration}}.",
   recallNote:
     "Rappelable une fois en vol — le retour dure autant que le trajet déjà effectué. Le carburant n'est pas remboursé.",
   chooseFleet: "Choisis ta flotte",
   send: "Envoyer {{count}} vaisseaux",
   launched:
-    "Flotte lancée. Tu restes exposé pendant {{duration}} ; {{count}} unités restent chez toi.",
+    "Flotte envoyée. Retour estimé : {{duration}}. {{count}} unités restent pour défendre ta planète.",
   whileAway: "Pendant l’absence de cette flotte",
   defending: "{{count}} unités défendent le monde",
   nothingSent: "Tu n’as encore sélectionné aucun vaisseau",
-  exposedFor: "Exposé pendant {{duration}}",
+  exposedFor: "Absence estimée de la flotte : {{duration}}",
   oneWayUnknown: "—",
   pace: "Vitesse de vol",
-  paceHint: "Plus lent arrive plus tard et rentre à la même vitesse. Même carburant ; aucune étape au-delà de 12 h.",
+  paceHint: "Une flotte ralentie arrive plus tard et revient à la même vitesse. Le carburant ne change pas. Chaque trajet ralenti doit durer au maximum 12 heures.",
   paceFull: "Pleine",
   /* Raisons pour lesquelles cet engagement peut être refusé ; chacune apparaît sur le bouton. */
   noBay: "Aucune baie de vol libre",
@@ -552,7 +552,7 @@ export const launch = {
   noShips:
     "Aucun vaisseau n’est présent. Construis-en au Chantier Spatial ou attends le retour de ceux qui sont en mission.",
   warning:
-    "Impossible de rappeler cette flotte. Une fois partie, tu ne découvriras ce qui se trouve en dessous qu’en suivant son arrivée ; jusqu’à son retour, {{count}} unités resteront sur ta planète.",
+    "Cette flotte ne défendra pas ta planète avant son retour. {{count}} unités restent sur place.",
   shieldWarning:
     "Ce raid fera tomber ton bouclier de départ. Une fois la protection levée, les autres commandants pourront eux aussi t’attaquer.",
   recoveryShieldWarning:
@@ -565,7 +565,7 @@ export const launch = {
   radiationHpStays: "Reste à destination.",
   radiationHpDose: "Radiation en vol : {{hp}} HP par vaisseau.",
   radiationHpHealth: "{{count}}× {{hull}} · {{health}}% HP · {{hp}} / {{max}} HP",
-  radiationHpDock: "Repair Station nécessaire à l’arrivée.",
+  radiationHpDock: "Réparation nécessaire à la station de réparation après l’arrivée.",
   radiationHpFree: "Réparation gratuite à l’arrivée.",
   radiationHpCombat: "Le combat peut ajouter des dégâts.",
   radiationDock: "La route traverse une radiation : chaque vaisseau perd ~{{pct}} % de sa coque. Au-delà de 20 %, il attend à la Station de réparation.",
@@ -575,7 +575,7 @@ export const launch = {
   range: "distance {{d}}",
   arrive: "Arrivée",
   homeLabel: "Retour",
-  exposedShort: "exposé {{duration}}",
+  exposedShort: "flotte absente : {{duration}}",
   lootSub: "butin ~{{band}}",
   bay: "Rampe",
   bayThis: "celui-ci en prend 1",
@@ -586,16 +586,16 @@ export const launch = {
   staysPower: "puissance {{value}}",
   cargoEach: "{{amount}} de soute chacun",
   cargoAdds: "+{{amount}} de soute",
-  paceBrief: "même carburant · 12 h max",
-  warningWorldOpen: "{{world}} reste affaibli jusqu’au retour de cette flotte.",
-  warningPirateOpen: "Aucun rappel. {{world}} reste affaibli jusqu’au retour de cette flotte.",
+  paceBrief: "carburant identique · trajet ralenti ≤12 h",
+  warningWorldOpen: "Cette flotte ne défendra pas {{world}} avant son retour.",
+  warningPirateOpen: "Tu peux rappeler ce raid une fois avant l’engagement. La flotte ne défendra pas {{world}} avant son retour.",
 } as const;
 export const transfer = {
   fuel: "carburant de vol",
   cooldown: "Déchargement — {{duration}} restantes",
   homewardFuel: "Demi-tarif — entre vos propres mondes. Une attaque paie plein.",
   /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
-  paceHint: "Plus lent arrive plus tard — les vaisseaux en vol ne peuvent pas être pillés. Un groupe qui revient rentre à la même vitesse. Même carburant ; aucune étape au-delà de 12 h.",
+  paceHint: "Les vaisseaux en vol ne peuvent pas être pillés. Une flotte ralentie arrive plus tard et revient à la même vitesse. Le carburant ne change pas. Chaque trajet ralenti doit durer au maximum 12 heures.",
   fuelShort: "{{short}} manquants",
   eyebrow: "Transfert interplanétaire",
   returnEta: "Retour au départ dans {{duration}} · {{time}}",
@@ -653,6 +653,7 @@ export const faults = {
   title: "Pannes",
   mark: "Panne active",
   launchBlock: {
+    SILENT_SPACE: "Fermé dans l’Espace Silencieux — reviens pour l’utiliser",
     SHIPYARD_REVOLT: "Mutinerie au Chantier Spatial",
     PROSPECTOR_FAULT: "Centre des Prospecteurs en panne",
   },
@@ -663,12 +664,12 @@ export const faults = {
     priceBoth: "{{alloy}} alliage · {{crystal}} cristal",
     lane: "Équipe {{slot}}",
   },
-  tab: "Quelque chose est en panne ici",
+  tab: "Pannes actives",
   name: {
     REFINERY_OUTAGE: "Coupure de courant à la Raffinerie d’Alliage",
     EXTRACTOR_OUTAGE: "Coupure de courant à la Mine de Cristal",
     PLANT_OUTAGE: "Coupure de courant à la Raffinerie de Deutérium",
-    VAULT_LEAK: "Fuite du Dépôt",
+    VAULT_LEAK: "Fuite du Magasin",
     CORE_OUTAGE: "Coupure de courant au centre de commandement",
     TELESCOPE_FAULT: "Panne du Télescope",
     SHIPYARD_REVOLT: "Mutinerie au Chantier Spatial",
@@ -676,33 +677,33 @@ export const faults = {
   },
   stopped: {
     REFINERY_OUTAGE:
-      "La Raffinerie est plongée dans le noir. Ce monde ne produit plus aucun alliage.",
+      "La Raffinerie d’alliages est arrêtée. Cette planète ne produit plus d’alliage.",
     EXTRACTOR_OUTAGE:
-      "La Mine est plongée dans le noir. Ce monde ne produit plus aucun cristal.",
+      "L’Extracteur de cristaux est arrêté. Cette planète ne produit plus de cristal.",
     PLANT_OUTAGE:
-      "La Raffinerie est plongée dans le noir. Ce monde ne produit plus aucun Deutérium.",
+      "La Raffinerie de deutérium est arrêtée. Cette planète ne produit plus de deutérium.",
     VAULT_LEAK:
-      "Le Dépôt fuit vers l’orbite — tous ceux dont le Télescope porte jusque-là peuvent voir ce champ et venir le récupérer.",
+      "Les ressources perdues forment un champ de débris en orbite. Les commandants dont le Télescope atteint cette planète peuvent le voir et le récupérer.",
     CORE_OUTAGE:
-      "Le centre est hors ligne : l’Aegis est éteint et les canons terrestres n’ont plus de contrôle de tir. Les vaisseaux présents continuent de combattre. Si quelqu’un arrive maintenant, il tombe sur un monde exposé.",
+      "Le Noyau de commande est arrêté. Aegis et les défenses au sol sont désactivés. Les vaisseaux présents défendent toujours la planète.",
     TELESCOPE_FAULT:
-      "Le Télescope est aveugle. Jusqu’à sa réparation, ce monde ne voit rien au-delà de sa portée naturelle.",
+      "Le Télescope est arrêté. La visibilité de cette planète est limitée au rayon de base jusqu’à la réparation.",
     SHIPYARD_REVOLT:
-      "Le Chantier Spatial s’est arrêté. Plus rien ne décolle de ce monde — ni raid, ni transfert, ni convoi. Les flottes déjà en vol peuvent toujours rentrer.",
+      "Aucune nouvelle mission ne peut partir de cette planète. Les vaisseaux déjà en vol peuvent toujours revenir.",
     PROSPECTOR_FAULT:
-      "Le centre des Prospecteurs est fermé. Aucun Prospecteur ne peut partir de ce monde. Ceux déjà en mission peuvent toujours être rappelés.",
+      "Aucun Prospecteur ne peut partir de cette planète. Les Prospecteurs déjà en mission peuvent toujours être rappelés.",
   },
   toll: {
     title: "Ce que cette panne te coûte",
     alloy: "{{amount}} alliage par heure ne sont plus produits",
     crystal: "{{amount}} cristal par heure ne sont plus produits",
     deuterium: "Toute la production horaire de Deutérium de ce monde",
-    leak: "{{amount}} fuient en orbite chaque heure ; tous ceux qui peuvent voir ce monde peuvent venir les récupérer",
+    leak: "{{amount}} ressources fuient chaque heure vers le champ de débris. Les commandants qui le voient peuvent les récupérer.",
   },
   loyalty: {
     title: "Loyauté de ce monde",
     battleLoss: "Défaite légère −15 · défaite lourde −30 · Étoile de la Mort −{{strike}}",
-    line: "%{{value}} — diminue tant que {{count}} éléments sont en panne. À ce rythme, elle atteindra zéro dans {{time}} et la colonie déclarera son indépendance.",
+    line: "Loyauté : {{value}} %. Elle baisse avec {{count}} pannes actives. À ce rythme, elle atteint zéro dans {{time}} et tu perds la colonie.",
     bar: "Loyauté %{{value}}",
     left: "{{time}} restantes",
   },
@@ -711,12 +712,12 @@ export const faults = {
     crew: "équipe",
     parts: "pièce",
     takes:
-      "Prend entre 5 et 15 minutes. L’équipe donne sa durée exacte au moment où elle est mobilisée.",
+      "La réparation dure 5–15 minutes. Sa durée exacte est fixée au démarrage.",
   },
-  repair: "Envoyer une équipe",
+  repair: "Commencer la réparation",
   running: "Une équipe sur place · {{time}}",
   noCancel: "Une réparation commencée ne peut pas être annulée.",
   lanesFull: "Tes {{count}} équipes sont toutes mobilisées",
-  started: "Équipe en route.",
+  started: "La réparation a commencé.",
   failed: "Impossible de démarrer.",
 } as const;

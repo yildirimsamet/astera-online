@@ -5,6 +5,9 @@
   "description": "Korunan capital'ını yönet, koloniler kazan ve rakiplerinin elindekini görmeden canlı galaksiyi oku.",
   "start_url": "/",
   "scope": "/",
+  "related_applications": [
+    { "platform": "webapp", "url": "/manifest.tr.webmanifest", "id": "https://asteraonline.space/" }
+  ],
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#05070D",

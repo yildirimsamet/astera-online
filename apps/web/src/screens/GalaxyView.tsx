@@ -181,6 +181,7 @@ const IntergalacticConvoySheet = lazy(async () => {
 const AdminPanel = lazy(async () => import('./AdminPanel.js'));
 const SkinsScreen = lazy(async () => import('./SkinsScreen.js'));
 const SkinInventoryScreen = lazy(async () => import('./SkinInventoryScreen.js'));
+const WikiScreen = lazy(async () => { const module = await import('./WikiScreen.js'); return { default: module.WikiScreen }; });
 
 /**
  * THE GALAXY IS THE GAME. D20.
@@ -209,12 +210,12 @@ const SkinInventoryScreen = lazy(async () => import('./SkinInventoryScreen.js'))
 export const PERF_PANEL_CODES = [
   'planet', 'research', 'intel', 'report', 'leaderboard', 'clan', 'chat', 'chronicle',
   'rewards', 'announcements', 'feedback', 'donate', 'skin-shop', 'skin-inventory', 'admin',
-  'recap', 'menu', 'return',
+  'recap', 'menu', 'return', 'wiki',
 ] as const;
 export const perfPanelCode = (panel: Panel): number =>
   panel === null ? 0 : PERF_PANEL_CODES.indexOf(panel) + 1;
 
-export type Panel = 'planet' | 'research' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'skin-shop' | 'skin-inventory' | 'admin' | 'recap' | 'menu' | 'return' | null;
+export type Panel = 'planet' | 'research' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'skin-shop' | 'skin-inventory' | 'admin' | 'recap' | 'menu' | 'return' | 'wiki' | null;
 
 /**
  * WHICH SHELF INSIDE A PANEL, WHEN THE PANEL ALONE IS NOT AN ANSWER. D121.
@@ -369,7 +370,7 @@ export function GalaxyView({
 }) {
   // The admin performance recorder notes which sheet was open that second.
   useEffect(() => { setPerfExtra('panel', perfPanelCode(panel)); }, [panel]);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const returnStatus = useReturnStatus(showChat);
   const applyToReturn = useApplyToReturn();
   const galaxy = useGalaxy();
@@ -681,7 +682,7 @@ export function GalaxyView({
    *
    * So three things now have to be true: the files are in, every first-paint
    * payload has SETTLED, and the canvas has painted a frame with all of it in
-   * (`onReady` — see `FirstFrame`).
+   * (`onReady` — see `FirstSceneFrame`).
    *
    * SETTLED, NOT SUCCEEDED. A failed request must open the door: the surfaces
    * below degrade on their own, and a loading screen that outlives the network is
@@ -1207,6 +1208,7 @@ export function GalaxyView({
         rivals={season.data?.rivals ?? []}
         focus={focus}
         onReady={onReady}
+        openingDataReady={dataSettled}
         onFocus={onFocus}
         homeSignal={homeSignal}
         centerSignal={centerSignal}
@@ -1230,7 +1232,7 @@ export function GalaxyView({
         one chip at top right, which the Academy hides with the sensor switches
         until its Telescope exercise (`data-sensor-toggles`).
       */}
-      <div data-galaxy-top-corners="" className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
+      <div data-galaxy-top-corners="" className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2 pt-0">
         <div className="pointer-events-none flex min-w-0 flex-col items-start gap-1">
           {/*
             THE EVENTS RUNNING NOW, with their time left (owner, 2026-09-24): the context card
@@ -1305,7 +1307,7 @@ export function GalaxyView({
       {!coachFocus && focus?.kind === 'monument' && detail && planet.data && galaxy.data && (
         <MonumentSheet key={`${focus.id}:${planet.data.planet.id}`} monumentId={focus.id} origin={planet.data} playerId={galaxy.data.you.playerId}
           clanId={clanBadge.data?.membership?.clanId ?? null} onClose={() => { setDetail(false); }}
-          {...(clanBadge.data?.membership?.role === 'LEADER' && clanWar.data?.available === true
+          {...(clanBadge.data?.membership?.role === 'LEADER' && clanWar.data?.available === true && planet.data.silentSpace !== true
             && (clanWar.data.operation === null || clanWar.data.operation.status === 'COMPLETED') ? { onClanTarget: (monumentId: string) => {
               clanWarActions.monumentTarget.mutate(monumentId, { onSuccess: () => { setFocus(null); setDetail(false); setClanInitialTab('war'); onPanel('clan'); },
                 onError: (error: Error) => { say(describe(error), 'error'); } });
@@ -1481,7 +1483,7 @@ export function GalaxyView({
           fleetAway={planet.data?.fleetAway ?? {}}
           minutesLeft={Math.max(0, (tradeShip.endsAt.getTime() - now) / 60_000)}
           reachMinutes={tradeReach}
-          launchBlocked={launchFault(planet.data?.faults, 'fleet') !== null}
+          launchBlock={launchFault(planet.data?.faults, 'fleet', planet.data?.silentSpace === true)}
           onClose={close}
           onTrade={() => { setTrading(true); }}
           open={detail}
@@ -1503,7 +1505,7 @@ export function GalaxyView({
             hasCombatCraft={combatValue(planet.data?.fleet ?? {}) > 0}
             launchLocked={planet.data?.convoyLaunchLocked === true}
             occurrenceSpent={planet.data?.convoyOccurrenceSpent === true}
-            launchBlocked={launchFault(planet.data?.faults, 'fleet') !== null}
+            launchBlock={launchFault(planet.data?.faults, 'fleet', planet.data?.silentSpace === true)}
             onClose={close}
             onRaid={() => { setStrikingConvoy(true); }}
             open={detail}
@@ -1568,7 +1570,7 @@ export function GalaxyView({
               recalling={recallFlight.isPending}
               onRecall={() => {
                 if (thread.id === undefined) return;
-                recallFlight.mutate({ missionId: thread.id }, {
+                recallFlight.mutate({ missionId: thread.id, ...(thread.kind === 'pirate' ? { pirate: true } : {}) }, {
                   onSuccess: () => { say(t('pendingStrip.recallFleetStarted')); },
                   onError: (error) => { say(describe(error), 'error'); },
                 });
@@ -1820,6 +1822,14 @@ export function GalaxyView({
             {...(onReplayAcademy ? { onReplayAcademy } : {})}
             isAdmin={isAdmin}
           />
+        </V2Sheet>
+      )}
+
+      {panel === 'wiki' && (
+        <V2Sheet detents={['full']} {...menuBack} eyebrow="Astera Online" title="Wiki" quietTitle bleed onClose={() => { onPanel(null); }}>
+          <Suspense fallback={<p className="p-6 text-v2-ink-2">Wiki…</p>}>
+            <WikiScreen language={i18n.resolvedLanguage} />
+          </Suspense>
         </V2Sheet>
       )}
 
@@ -2223,8 +2233,7 @@ export function GalaxyView({
         />
       )}
 
-      {covered && (
-        <LoadingScreen
+      <LoadingScreen visible={covered}
           caption={
             !dataSettled
               ? t('loading.sweeping')
@@ -2234,7 +2243,6 @@ export function GalaxyView({
           }
           {...(dataSettled && !assets.ready ? { progress: assets.progress } : {})}
         />
-      )}
     </div>
     </SeasonLockProvider>
   );
@@ -2288,7 +2296,7 @@ function PirateFocusHost({
     <PirateFocus
       pirate={pirate}
       fleetAtHome={planet.data?.fleet ?? {}}
-      launchBlocked={launchFault(planet.data?.faults, 'fleet') !== null}
+      launchBlock={launchFault(planet.data?.faults, 'fleet', planet.data?.silentSpace === true)}
       raiding={raiding}
       open={open}
       onToggle={onToggle}
@@ -2409,7 +2417,7 @@ function AsteroidFocusHost({
       /** D183: the selected world's rest, published on the private mining view. */
       craftReadyAt={mining?.craftReadyAt ?? null}
       craftCooldowns={mining?.craftCooldowns}
-      launchBlock={launchFault(planet.data?.faults, 'prospector') ?? undefined}
+      launchBlock={launchFault(planet.data?.faults, 'prospector', planet.data?.silentSpace === true) ?? undefined}
       onClose={onClose}
       busy={busy}
       open={open}
@@ -2500,7 +2508,7 @@ function DebrisFocusHost({
       /** The lane the rule exists for: a field over your own world. D183. */
       craftReadyAt={mining?.craftReadyAt ?? null}
       craftCooldowns={mining?.craftCooldowns}
-      launchBlock={launchFault(planetQuery.data?.faults, 'prospector') ?? undefined}
+      launchBlock={launchFault(planetQuery.data?.faults, 'prospector', planetQuery.data?.silentSpace === true) ?? undefined}
       busy={busy}
       open={open}
       onToggle={onToggle}

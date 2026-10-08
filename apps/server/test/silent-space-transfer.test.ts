@@ -13,7 +13,7 @@ afterAll(async () => { await (await testDb()).close(); });
 async function idleFixture() {
   const f = await seedWorld(2);
   f.clock.advance(48 * 60);
-  await f.db.update(players).set({ lastActiveAt: f.clock.now() }).where(eq(players.id, f.playerIds[1]!));
+  await f.db.update(players).set({ lastProgressAt: f.clock.now() }).where(eq(players.id, f.playerIds[1]!));
   return f;
 }
 it('moves an existing inactive commander without replacing worlds, fleet, stock or activity', async () => {
@@ -27,7 +27,7 @@ it('moves an existing inactive commander without replacing worlds, fleet, stock 
   const [after] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
   expect(after).toMatchObject({ id: before!.id, controllerPlayerId: player!.id, name: before!.name, seasonId: target!.id, alloy: before!.alloy, crystal: before!.crystal });
   const [moved] = await f.db.select().from(players).where(eq(players.id, player!.id));
-  expect(moved).toMatchObject({ placementVersion: 1, homeShardId: player!.homeShardId, lastActiveAt: player!.lastActiveAt });
+  expect(moved).toMatchObject({ placementVersion: 1, homeShardId: player!.homeShardId, lastActiveAt: player!.lastActiveAt, lastProgressAt: player!.lastProgressAt });
   expect(await f.db.select().from(commanderTransfers)).toHaveLength(1);
   expect(await f.db.select().from(mainVacancies)).toHaveLength(1);
   expect((await transferCommander(f.db, player!.id, target!.id, f.clock)).status).not.toBe('MOVED');
@@ -65,9 +65,9 @@ it('drops the rival marks on both sides when a commander changes galaxy', async 
 it('leaves the marks of commanders who did not move', async () => {
   const f = await seedWorld(3);
   f.clock.advance(48 * 60);
-  await f.db.update(players).set({ lastActiveAt: f.clock.now() })
+  await f.db.update(players).set({ lastProgressAt: f.clock.now() })
     .where(eq(players.id, f.playerIds[1]!));
-  await f.db.update(players).set({ lastActiveAt: f.clock.now() })
+  await f.db.update(players).set({ lastProgressAt: f.clock.now() })
     .where(eq(players.id, f.playerIds[2]!));
   await f.db.insert(playerRivals).values({
     playerId: f.playerIds[1]!, planetId: f.planetIds[2]!, targetPlayerId: f.playerIds[2]!, slot: 0,
@@ -95,7 +95,7 @@ it('returns to the exact vacated address and preserves the commander through bot
 it('rechecks activity and refuses ended or incompatible seasons', async () => {
   const f = await idleFixture();
   const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
-  await f.db.update(players).set({ lastActiveAt: f.clock.now() }).where(eq(players.id, f.playerIds[0]!));
+  await f.db.update(players).set({ lastProgressAt: f.clock.now() }).where(eq(players.id, f.playerIds[0]!));
   expect((await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock)).status).toBe('ACTIVE');
   await f.db.update(seasons).set({ status: 'frozen' }).where(eq(seasons.id, target!.id));
   expect((await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock)).status).toBe('SEASON');
@@ -139,7 +139,7 @@ it('gives queued returns a turn even while more inactive commanders await depart
   const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
   expect((await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock)).status).toBe('MOVED');
   await enqueueReturn(f.db, f.accountIds[0]!, f.clock, 1);
-  await f.db.update(players).set({ lastActiveAt: new Date(f.clock.now().getTime() - 48 * 60 * 60_000) })
+  await f.db.update(players).set({ lastProgressAt: new Date(f.clock.now().getTime() - 48 * 60 * 60_000) })
     .where(eq(players.id, f.playerIds[1]!));
   const sweep = await runSilentSpaceSweep(f.db, f.clock, { batchSize: 1 });
   expect(sweep.returned).toBe(1);
@@ -151,7 +151,7 @@ it('reserves departed addresses for queued returns while keeping unused seats op
   const [before] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
   const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
   await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock);
-  await f.db.update(players).set({ lastActiveAt: new Date(f.clock.now().getTime() - 48 * 60 * 60_000) }).where(eq(players.id, f.playerIds[1]!));
+  await f.db.update(players).set({ lastProgressAt: new Date(f.clock.now().getTime() - 48 * 60 * 60_000) }).where(eq(players.id, f.playerIds[1]!));
   await transferCommander(f.db, f.playerIds[1]!, target!.id, f.clock);
   const app = await enqueueReturn(f.db, f.accountIds[0]!, f.clock, 1);
   const newcomer = await makeAccount(f.db, 'new-seat');
@@ -163,7 +163,7 @@ it('closes a vacancy consumed by a new player when no return is queued', async (
   const f = await idleFixture();
   const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
   await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock);
-  await f.db.update(players).set({ lastActiveAt: new Date(f.clock.now().getTime() - 48 * 60 * 60_000) }).where(eq(players.id, f.playerIds[1]!));
+  await f.db.update(players).set({ lastProgressAt: new Date(f.clock.now().getTime() - 48 * 60 * 60_000) }).where(eq(players.id, f.playerIds[1]!));
   await transferCommander(f.db, f.playerIds[1]!, target!.id, f.clock);
   const [source] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
   await f.db.update(shards).set({ playerCap: 1 }).where(eq(shards.id, source!.shardId));

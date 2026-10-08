@@ -18,6 +18,7 @@ import {
   type Grade,
   type MassClass,
   type PirateLevel,
+  SILENT_SPACE,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
@@ -48,6 +49,7 @@ import { isHostileMission } from './flight.js';
 import { flightFadeAt, liveRadiationFor, type FlightRadiation } from './radiation.js';
 import { missionCohorts, missionFlightPath, physicalFleets, projectHpFlight } from './flightProjection.js';
 import { flightSegment } from './specialFlightRadiation.js';
+import { isSilentSpaceShard } from './waitingRoom.js';
 
 /* ── the unlock cascade ─────────────────────────────────────── */
 
@@ -502,7 +504,10 @@ export async function buildReturnPayload(
       .select()
       .from(buildings)
       .where(inArray(buildings.planetId, ownedIds));
-    const hours = awayMinutes / 60;
+    // D212: Silent Space runs the works at half pace, and the estimate must not promise double.
+    const [season] = await db.select({ shardId: seasons.shardId }).from(seasons).where(eq(seasons.id, player.seasonId));
+    const pace = season && await isSilentSpaceShard(db, season.shardId) ? SILENT_SPACE.productionPace : 1;
+    const hours = (awayMinutes / 60) * pace;
     // An estimate by design: the exact figure is on the planet screen, and this
     // line exists to say "time passed and it mattered", not to be audited.
     const alloy = levels
@@ -972,6 +977,8 @@ export async function pendingThreads(
         minutesRemaining: Math.max(0, Math.round((arriveAt.getTime() - now.getTime()) / 60_000)),
         arriveAt,
         leg: returning ? 'return' : 'outbound',
+        // Turnable once, until its engagement begins — the server's word, as for a fleet (owner, 2026-10-08).
+        ...(!returning && raid.recalledAt === null && now.getTime() < raid.arriveAt.getTime() ? { recallable: true } : {}),
         fleet: projection?.fleet ?? aboard.get(`pirate:${raid.id}`) ?? raid.fleet,
         ...(projection?.fadeAt ? { fadeAt: projection.fadeAt } : {}),
         path: {

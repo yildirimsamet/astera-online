@@ -9,13 +9,13 @@
 
 export const vocabulary = {
   building: {
-    CORE: { name: 'Befehlskern', tag: 'Schaltet höhere Level frei', role: 'Legt Gebäudedecken und Baugeschwindigkeit fest; Die Hauptstadt eröffnet Kolonieplätze auf den Ebenen 9, 13 und 16.', detail: 'Kein anderes Gebäude kann über den Kommandokern hinausragen. Eine Erhöhung verkürzt die Bauzeit, eröffnet mehr Orbit- und Flugplätze auf festgelegten Ebenen und erweitert die Bodenverteidigungskapazität. Nur der Kern der Hauptstadt legt Forschungsobergrenzen und -geschwindigkeit fest und gewährt den ersten, zweiten und dritten Kolonieplatz auf den Stufen 9, 13 und 16. Er produziert selbst kein Erz oder Kampfkraft.' },
+    CORE: { name: 'Befehlskern', tag: 'Schaltet höhere Level frei', role: "Bestimmt die Stufengrenzen der Anlagen außer dem Hangar. Auf dem Heimatplaneten öffnet er Kolonieplätze auf Stufe 9, 13 und 16.", detail: "Bestimmt die Stufengrenzen dieser Welt außer dem Hangar mit seiner eigenen Grenze. Bestimmte Stufen schaffen Flugbuchten, Orbitplätze und Raum für Bodenabwehr. Er beschleunigt Instrumente und Satelliten außer dem Uplink. Gebäudeausbauten haben eigene Zeiten nach Typ und Stufe. Der Befehlskern des Heimatplaneten bestimmt Forschungszeiten und manche Voraussetzungen. Seine Stufen 9, 13 und 16 öffnen den ersten, zweiten und dritten Kolonieplatz." },
     REFINERY: { name: 'Legierungsraffinerie', tag: 'Erstellt Legierung', role: 'Legierung pro Stunde und Legierungslagerung', detail: 'Jedes Level erhöht das passive Legierungseinkommen und die Menge, die gespeichert werden kann. Die meisten Konstruktionen und Rümpfe werden aus Legierungen finanziert, was viele zukünftige Wartezeiten verkürzt.' },
     EXTRACTOR: { name: 'Kristallextraktor', tag: 'Macht Kristall', role: 'Kristall pro Stunde und Kristallspeicher', detail: 'Jedes Level erhöht das passive Kristalleinkommen und die Lagerung. Kristall ist die seltenere Hälfte der Kosten für fortschrittliche Hardware, Instrumente und Forschung.' },
     VAULT: { name: 'Speicher', tag: 'Vertieft den Shop', role: 'Erweitert den Ressourcenspeicher und lässt 10 % Spielraum für die nächsten passenden Legierungs- und Kristallhersteller-Upgrades. Die unteren 10 %, deren Produktionszeit auf 8 Stunden begrenzt ist, sind vor Überfällen sicher.', detail: 'Der Speicher wächst zunächst um seine erstellte Produktionsstundenleiter. Wenn diese Etage auf hohen Ebenen zu klein ist, wird Lager L erweitert, um 110 % der Legierungskosten der Legierungsraffinerie L→L+1 und des Kristallextraktors L→L+1 der Kristallkosten aufzunehmen. das daraus resultierende Stundenfenster gilt auch für Deuterium. Ein Überfall kann nicht die unteren 10 % des Lagers oder 8 Stunden der Produktion dieser Ressource erreichen. Der Speicher kämpft nicht und reduziert den eingehenden Schaden nicht.' },
     SHIPYARD: { name: 'Werft', tag: 'Schaltet bessere Schiffe frei', role: 'Schaltet Rümpfe frei, beschleunigt den Schiffs- und Bodenverteidigungsbau und stellt Sondengenauigkeit und Tarnung ein', detail: 'Höhere Level eröffnen neue Rumpfklassen und fertigen Schiffe und Bodenverteidigungen schneller. Sie verbessern außerdem die Messwerte Ihrer Sonden und erschweren das Erfassen Ihrer eigenen Sonden. Werftebenen fügen keine Warteschlangenplätze hinzu.' },
     HANGAR: { name: 'Hangar', tag: 'Legt fest, wie viel Flotte hineinpasst', role: 'Flottenraum auf dieser Welt · bei jedem Kommandokern ausbaubar', detail: 'Jedes Schiff belegt Hangarraum nach seiner Größe, auch Schiffe außerhalb der Heimat; Bodenverteidigungen nicht. Ein voller Hangar baut und empfängt keine weiteren Schiffe, verliert aber nichts, was er bereits enthält. Jede Stufe kostet ein Drittel der Flotte, für die sie Platz schafft; die oberen Stufen kosten daher mehr, als eine Welt ohne ausgebauten Speicher auf einmal fassen kann.' },
-    DEUTERIUM_PLANT: { name: 'Deuterium-Raffinerie', tag: 'Stellt Deuterium her', role: 'Deuterium pro Stunde und Brennstoffspeicher · die Obergrenze wird durch die Deuteriumsynthese festgelegt', detail: 'Jede Stufe erhöht die passive Deuteriumproduktion und die Menge, die gespeichert werden kann. Flotteneinführung von Deuteriumtreibstoffen; Erforsche die nächste Deuterium-Synthese-Sprung, wenn die Raffinerie ihre Level-Obergrenze erreicht.' },
+    DEUTERIUM_PLANT: { name: 'Deuterium-Raffinerie', tag: 'Stellt Deuterium her', role: 'Deuterium pro Stunde und Brennstoffspeicher · die Obergrenze wird durch die Deuteriumsynthese festgelegt', detail: "Jede Stufe erhöht die Deuteriumproduktion pro Stunde und die Speicherkapazität. Deuterium ist der Treibstoff für Flottenflüge. Wenn die Deuterium-Raffinerie ihre Stufengrenze erreicht, erforsche die nächste Stufe der Deuteriumsynthese." },
   },
 
   instrument: {
@@ -47,7 +47,7 @@ export const vocabulary = {
         'Erfordert einen Uplink im Orbit. Ohne Radar geben ankommende Flotten keine Ankunftswarnung und die meisten Sonden bleiben unbemerkt.',
       roleOwned:
         'Erkennt Bewegungen innerhalb seines Kreises ohne voraussichtliche Ankunftszeit und markiert Bedrohungen, die auf diese Welt abzielen, mit einer Ankunftszeit. L2 fügt die Peilung hinzu, L4 die grobe Größe und L5 die Ursprungswelt und die gesamte Flotte.',
-      detail: 'Mit jedem Level erweitert sich der Kontakt- und Zeitwarnkreis. Ebenen bis L5 erhöhen auch die Chance, Sonden zu fangen: L1 markiert eine ankommende Flotte mit ihrer Ankunftszeit, L2 fügt die Peilung hinzu, L4 schätzt ihre Stärke und L5 verrät ihren Ursprung und ihre Schiffe. L6–L8 kaufen zusätzliche Reichweite. Bewegungen, die nicht auf diese Welt abzielen, werden ohne ETA erkannt. Abfangladungen können nur mit Radar 3 oder höher strategische Waffen angreifen.',
+      detail: "Radar erkennt ankommende Flotten und verbessert die Sondenerkennung. Stufe 1 zeigt die Ankunftszeit. Stufe 2 ergänzt die Richtung; Stufe 4 schätzt die Stärke. Stufe 5 zeigt Herkunft und Schiffe. Höhere Stufen vergrößern auch die Reichweite.",
     },
     AEGIS: {
       name: 'Aegis',
@@ -128,9 +128,9 @@ export const vocabulary = {
 
   hull: {
     DART: {
-      name: 'Dart', tag: 'Zerbrechlicher Speed-Überfaller', role: 'Schnellster Einstiegskampfrumpf; tauscht Haltbarkeit gegen Belichtungszeit.',
-      pitch: 'Kommt schnell an und kehrt schnell zurück, bricht aber unter konzentriertem Feuer zusammen.',
-      detail: 'Ein kostengünstiger Scharmützler für kurze Angriffe und schwere Konterangriffe. Seine Geschwindigkeit gewährleistet die Verfügbarkeit der Heimverteidigung; Sein dünner Rumpf macht eine fehlgeschlagene Messung teuer.',
+      name: 'Dart', tag: 'Zerbrechlicher Speed-Überfaller', role: "Das schnellste Einstiegskampfschiff. Seine Rumpfstärke ist gering.",
+      pitch: "Hohe Geschwindigkeit verkürzt die Zeit fern vom Heimatplaneten. Die geringe Rumpfstärke erhöht das Verlustrisiko.",
+      detail: "Ein günstiges Kampfschiff der Klasse Scharmützler. Es ist gegen Schiffe der Klasse Bollwerk im Vorteil und gegen die Klasse Lanze im Nachteil. Seine Geschwindigkeit eignet sich für kurze Angriffe. Prüfe vor dem Start die Verteidigungsklassen des Ziels; seine Rumpfstärke ist gering.",
     },
     PIKE: {
       name: 'Hecht', tag: 'Einstiegslanzenrumpf', role: 'Zu Darts Preis greift es härter an und hat weniger Hülle, mit Klassenvorteil gegenüber Scharmützlern.',
@@ -154,7 +154,7 @@ export const vocabulary = {
     },
     VIPER: {
       name: 'Viper', tag: 'Effizienter Überfaller', role: 'Geschwindigkeit der Stufe zwei und besseres Überleben als Dart.',
-      pitch: 'Behält den Schnellflottenplan bei und zahlt gleichzeitig weniger Haltbarkeitssteuer.',
+      pitch: "Mehr Angriff und Rumpfstärke als Dart bei gleicher Basisgeschwindigkeit.",
       detail: 'Ein forschungsfreier Scharmützler der zweiten Stufe. Dart bleibt billiger, während beide Rümpfe die gleiche Geschwindigkeit haben. Viper setzt sein größeres Engagement in mehr Angriff, Rumpf, Ladung und eine bessere Kampfeffizienz bei gleichen Kosten um.',
     },
     TALON: {
@@ -199,7 +199,7 @@ export const vocabulary = {
     },
     ATLAS: {
       name: 'Atlas', tag: 'Schwertransport der dritten Stufe', role: 'Der größte Laderaum der dritten Stufe; langsam, sperrig und forschungsorientiert.',
-      pitch: 'Der effizienteste, sichere Transport mit hohem Volumen, bevor Argosy freigeschaltet wird.',
+      pitch: "Transportiert große Ressourcenmengen. Es ist unbewaffnet; schicke bei einem Angriff Kampfschiffe als Eskorte mit.",
       detail: 'Ein Unterstützungstransporter der Stufe 3, freigeschaltet durch Technik und Antrieb. Es verursacht keinen Schaden und macht die Planung einer Eskorte unerlässlich.',
     },
     NULLIFIER: {
@@ -245,7 +245,7 @@ export const vocabulary = {
       name: 'Argosy',
       tag: 'Hauptwelttransporter',
       role: 'Der tiefste Laderaum im Spiel und der langsamste Transporter.',
-      pitch: 'Trägt fast so viel wie drei Atlanten und kann überhaupt nichts überholen.',
+      pitch: "Bietet den größten Frachtraum. Seine geringe Geschwindigkeit kann die Reisezeit der Flotte verlängern.",
       detail: 'Der Argosy ist das Transportmittel der vierten Stufe. Unterstützungsklasse, daher ist sie abgeschirmt, solange Kampfrümpfe aktiv sind, und wehrlos, sobald die Linie verschwunden ist. Das Tempo des Händlers ist an diesen Rumpf gebunden: Der langsamste Laderaum im Katalog bestimmt ihn.',
     },
     BASTION: {
@@ -294,7 +294,7 @@ export const vocabulary = {
     },
     EXPLORER: {
       title: 'Explorer freigeschaltet',
-      body: 'Senden Sie eine Sonde, um sicherzugehen. Ihr Radar könnte es erfassen.',
+      body: "Sende eine Sonde, um die Flotte und Ressourcen des Ziels zu erkunden. Der Bericht kann Schätzungen enthalten; das Ziel kann den Scan bemerken.",
     },
     VEIL: { title: 'Schleier freigeschaltet', body: 'Ihr Flottenstatus kann für jeden, der zuschaut, als UNBEKANNT angezeigt werden.' },
   },
@@ -359,7 +359,7 @@ export const gains = {
     sweepNone: 'keine',
     reaches: '{{sense}} Kontakt (keine voraussichtliche Ankunftszeit) · {{warn}} zeitgesteuerte Warnung',
     maxed: 'Oberste Ebene; Warnungen verraten auch die Ursprungswelt und die genaue Flotte',
-    l1: 'Beginnt mit dem Fangen von Sonden und warnt, wenn eine eingehende Flotte den Kreis betritt',
+    l1: "Verbessert die Sondenerkennung. Warnt vor der Ankunft, sobald eine anfliegende Flotte in Radarreichweite kommt.",
     bearing: 'L2 verrät auch die Anflugrichtung',
     interception: "L3 erlaubt dieser Welt, Abfangladungen zu laden (Uplink nötig)",
     estimate: 'Zeigt die grobe Größe der herannahenden Kraft frühzeitig an',
@@ -447,7 +447,7 @@ export const gains = {
 export const directives = {
   inboundTitle: 'Eingehende Flotte · {{duration}}',
   inboundDetail:
-    'Gib die Vorräte aus, schicke deine Flotte los oder stehe und kämpfe. Es kann nicht genommen werden, wenn es nicht hier ist.',
+    "Du kannst gefährdete Ressourcen ausgeben, deine Flotte losschicken oder die Verteidigung verstärken. Schiffe im Flug können diesen Planeten nicht verteidigen.",
   inboundAction: 'Jetzt ausgeben',
 
   undefendedTitle: 'Diese Welt hat keine Bodenverteidigung',
@@ -456,8 +456,8 @@ export const directives = {
   undefendedAction: 'Verteidigung aufbauen',
 
   exposedTitle: '{{amount}} kann von Ihnen genommen werden',
-  exposedDetail: 'Ihr Tresor schützt {{now}}. Die nächste Ebene schützt {{next}}.',
-  exposedAction: 'Erhöhe den Tresor',
+  exposedDetail: "Der Speicher schützt {{now}} Ressourcen vor Angriffen. Die nächste Stufe schützt {{next}}.",
+  exposedAction: "Speicher ausbauen",
 
   scannedTitle_one: 'Jemand hat Sie gescannt',
   scannedTitle_other: '{{count}} scannt gegen Sie',
@@ -486,7 +486,7 @@ export const directives = {
   noRadarAction: 'Schauen Sie sich Radar an',
 
   coreCeilingTitle: 'Kommandokern blockiert {{count}}-Upgrades',
-  coreCeilingDetail: 'Nichts darf über den Kern hinausgehen. Durch Anheben werden alle auf einmal freigegeben.',
+  coreCeilingDetail: "Der Befehlskern begrenzt Gebäudestufen, außer beim Hangar. Verbessere zuerst den Kern, um diese Grenze zu erhöhen.",
   coreCeilingAction: 'Erhöhe den Kern',
 
   idleTitle: 'Nichts ist im Flug',
@@ -597,6 +597,7 @@ export const notifications = {
   targetGoneDebris: 'Das Wrackfeld wurde bereits bereinigt · {{count}} Bohrer drehen um',
   pirateHome: 'Rückkehr der Piraten · {{count}} Schiffe · +{{amount}} geplündert',
   pirateHomeEmpty: 'Rückkehr der Piraten · {{count}} Schiffe · mit leeren Händen',
+  pirateHomeRecalled: "Rückkehr der Piraten · {{count}} Schiffe · vor dem Gefecht zurückgerufen",
   pirateHomeBare: 'Rückkehr der Piraten · {{count}} Schiffe',
   pirateHomeTowed_looted: 'Rückkehr der Piraten · {{count}} Schiffe · +{{amount}} geplündert · {{hull}} gefangen',
   pirateHomeTowed_empty: 'Rückkehr der Piraten · {{count}} Schiffe · {{hull}} gefangen',

@@ -15,6 +15,7 @@ import {
   type NeutralThreat,
   type SatelliteId,
   type Vec3,
+  type CountryCode,
 } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import {
@@ -73,6 +74,8 @@ export interface PublicWorld {
   skin?: { id: PlanetSkinId; status: PlanetSkinStatus };
   name: string;
   owner: string;
+  /** Public commander identity; omitted for neutral worlds. */
+  country?: CountryCode;
   kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
   controller:
     | { kind: 'PLAYER'; playerId: string; displayName: string }
@@ -161,6 +164,7 @@ const publicShields = (rows: readonly { planetId: string; type: string }[]) =>
 export const silhouetteOf = (world: PublicWorld): {
   skin?: { id: PlanetSkinId; status: PlanetSkinStatus };
   owner: string;
+  country?: CountryCode;
   controllerPlayerId: string | null;
   clan: { id: string; name: string; tag: string } | null;
   kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
@@ -170,6 +174,7 @@ export const silhouetteOf = (world: PublicWorld): {
 } => ({
   ...(world.skin ? { skin: world.skin } : {}),
   owner: world.owner,
+  ...(world.country ? { country: world.country } : {}),
   controllerPlayerId:
     world.controller.kind === 'PLAYER' ? world.controller.playerId : null,
   clan: world.clan ?? null,
@@ -193,6 +198,7 @@ export async function publicWorlds(
     .select({
       planet: planets,
       ownerName: accounts.displayName,
+      ownerCountry: accounts.countryCode,
       neutral: neutralPlanetState,
       clanId: clans.id,
       clanName: clans.name,
@@ -327,6 +333,7 @@ export async function publicWorlds(
         : {}),
       name: r.planet.name,
       owner: r.ownerName ?? `Neutral T${String(tier)}`,
+      ...(controller.kind === 'PLAYER' && r.ownerCountry ? { country: r.ownerCountry } : {}),
       kind: r.planet.kind,
       controller,
       position: { x: r.planet.x, y: r.planet.y, z: r.planet.z },

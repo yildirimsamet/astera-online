@@ -14,9 +14,10 @@ function flagUrl(code: string): string | null {
   return entry?.[1] ?? null;
 }
 
-export function Flag({ code, language = 'en', className = '' }: {
+export function Flag({ code, language = 'en', size = 'regular', className = '' }: {
   code: string;
   language?: string;
+  size?: 'regular' | 'small';
   className?: string;
 }) {
   const label = countryName(code, language);
@@ -24,5 +25,5 @@ export function Flag({ code, language = 'en', className = '' }: {
   if (src === null) {
     return <span role="img" aria-label={code} className={`inline-flex items-center justify-center font-v2-mono text-micro rounded-cell ${className}`}>{code}</span>;
   }
-  return <img src={src} alt={label} role="img" className={`inline-block h-3 w-5 rounded-cell object-cover ${className}`} />;
+  return <img src={src} alt={label} role="img" className={`inline-block ${size === 'small' ? 'h-1.5 w-2.5' : 'h-3 w-5'} rounded-cell object-cover ${className}`} />;
 }

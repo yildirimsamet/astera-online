@@ -39,7 +39,7 @@ describe('the supplied tutorial hand', () => {
     const target = document.createElement('button');
     vi.spyOn(target, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 200, 80, 40));
     const view = render(<><LoadingScreen caption="Claim your planet" /><TutorialHand targets={() => [target]} /></>);
-    expect(view.container.querySelector('[data-loading-screen]')).toHaveClass('z-[70]');
+    expect(view.container.querySelector('[data-loading-screen]')).toHaveAttribute('aria-busy', 'true');
     const hand = view.container.querySelector('img[src$="tutorial-hand-icon.png"]')!.parentElement!;
     frames.shift()!(0);
     expect(hand.style.visibility).toBe('hidden');

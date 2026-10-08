@@ -35,8 +35,8 @@ export const vocabulary = {
     CORE: {
       name: 'Komuta Çekirdeği',
       tag: 'Gezegenin gelişim sınırı',
-      role: 'Bina seviye sınırını ve inşa hızını belirler; ana gezegende 9, 13 ve 16. seviyelerde koloni yuvası açar.',
-      detail: 'Hiçbir bina Komuta Çekirdeğinden daha yüksek seviyeye çıkamaz. Her yükseltme bina sürelerini kısaltır; belirli seviyelerde yeni yörünge yuvaları ve uçuş rampaları açar, yer savunması kapasitesini büyütür. Araştırma sınırı ve hızı yalnız ana gezegenin Çekirdeğine bağlıdır. Yalnız ana gezegendeki Çekirdek 9, 13 ve 16. seviyelerde sırasıyla birinci, ikinci ve üçüncü koloni hakkını verir. Doğrudan kaynak veya savaş gücü üretmez.',
+      role: "Hangar dışındaki yapıların seviye sınırını belirler. Ana gezegende 9, 13 ve 16. seviyelerde koloni yuvası açar.",
+      detail: "Bu gezegende Hangar dışındaki yapıların seviye sınırını belirler. Hangarın kendi seviye sınırı vardır. Belirli seviyelerde uçuş rampaları, yörünge yuvaları ve yer savunması alanı ekler. Gezegen cihazlarının ve Anten dışındaki uyduların kurulumunu hızlandırır; bina yükseltme süreleri bina türüne ve seviyesine bağlıdır. Araştırma süresi ve bazı araştırma koşulları ana gezegendeki Çekirdeğe bağlıdır. Ana gezegende 9, 13 ve 16. seviyelerde birinci, ikinci ve üçüncü koloni yuvasını açar.",
     },
     REFINERY: {
       name: 'Alaşım Rafinerisi',
@@ -54,7 +54,7 @@ export const vocabulary = {
       name: 'Depo',
       tag: 'Depo kapasitesini büyütür',
       role: 'Kaynak depolarını büyütür; aynı seviyedeki alaşım ve kristal üreticisinin sonraki yükseltmesine %10 pay bırakır. En alttaki %10, en fazla 8 saatlik üretim olmak üzere, akınlardan korunur.',
-      detail: 'Depo önce seviye başına tanımlı üretim-saatleriyle büyür. Yüksek seviyelerde bu taban yetmezse Depo L, Alaşım Rafinerisi L→L+1 alaşım bedelinin ve Kristal Ocağı L→L+1 kristal bedelinin %110’unu tutacak kadar genişler; oluşan saat penceresi Döteryuma da uygulanır. Akınlar, deponun en alttaki %10’u ile o kaynağın 8 saatlik üretiminden hangisi daha azsa ona erişemez. Depo çatışmaya katılmaz ve gelen hasarı azaltmaz.',
+      detail: "Depo seviyeleri, tutabileceğin üretim saatlerini artırır. Kapasite, aynı seviyedeki üreticilerin sonraki yükseltme bedellerinin en az %110’unu da karşılar. Depo L için bunlar Alaşım Rafinerisi L→L+1 alaşım bedeli ve Kristal Ocağı L→L+1 kristal bedelidir. Oluşan depolama saatleri döteryuma da uygulanır. Akınlar, depo kapasitesinin %10’u ile kaynağın 8 saatlik üretiminden küçük olanını alamaz. Depo savaşmaz veya hasarı emmez.",
     },
     SHIPYARD: {
       name: 'Tersane',
@@ -97,7 +97,7 @@ export const vocabulary = {
         'Kurulabilmesi için yörüngede Anten bulunmalıdır. Radar olmadan yaklaşan filo varış uyarısı üretmez ve sondaların çoğu fark edilmeden geçer.',
       roleOwned:
         'Çemberindeki hareketleri varış süresi olmadan algılar; bu dünyaya yönelen tehditleri ise varış süresiyle işaretler. 2. seviye yönü, 4. seviye yaklaşık büyüklüğü, 5. seviye çıkış dünyasını ve filo dökümünü gösterir.',
-      detail: 'Her Radar seviyesi temas ve zamanlı uyarı çemberini genişletir. İlk beş seviye sondaları yakalama ihtimalini de artırır: ilk seviye yaklaşan filoyu ve varış süresini gösterir; 2. seviye geliş yönünü, 4. seviye yaklaşık gücü, 5. seviye çıkış dünyasını ve filodaki gemileri açar. 6–8. seviyeler ek menzil sağlar. Bu dünyaya yönelmeyen hareketler algılanır ancak varış süresi taşımaz. Önleyici şarjlar stratejik silahlara ancak Radar 3 veya üstünde ateş edebilir.',
+      detail: "Radar, bu gezegene yaklaşan filoları algılar ve sonda yakalama ihtimalini artırır. 1. seviye varış süresini gösterir. 2. seviye yönü, 4. seviye yaklaşık gücü ekler. 5. seviye çıkış gezegenini ve gemileri gösterir. Seviye yükseldikçe algılama menzili de büyür.",
     },
     AEGIS: {
       name: 'Aegis',
@@ -172,9 +172,9 @@ export const vocabulary = {
     DART: {
       name: 'Ok',
       tag: 'Kırılgan hızlı akıncı',
-      role: 'Giriş seviyesindeki en hızlı savaş gövdesidir; dayanım yerine kısa görev süresi sunar.',
-      pitch: 'Hızla vurup döner, fakat yoğun ateş altında çabuk dağılır.',
-      detail: 'Ok, kısa akınlar ve ağır gövdelere karşı hızlı karşılık vermek için tasarlanmış ucuz bir Akıncı sınıfı gemidir. Hızı ev savunmasının dışarıda kaldığı süreyi azaltır; ince gövdesi ise yanlış istihbaratı pahalıya çevirir.',
+      role: "Giriş seviyesindeki en hızlı savaş gemisidir. Gövde dayanımı düşüktür.",
+      pitch: "Yüksek hızı, görevde geçirdiği süreyi azaltır. Düşük dayanımı gemi kaybı riskini artırır.",
+      detail: "Düşük bedelli bir Akıncı sınıfı savaş gemisidir. Sur sınıfına karşı avantajlı, Mızrak sınıfına karşı zayıftır. Hızı kısa akınlar için uygundur. Düşük gövde dayanımı nedeniyle göndermeden önce hedefin savunma sınıflarını kontrol et.",
     },
     PIKE: {
       name: 'Kargı',
@@ -208,7 +208,7 @@ export const vocabulary = {
       name: 'Engerek',
       tag: 'Verimli akıncı',
       role: 'Okun hız planını korurken ikinci seviyede daha iyi dayanım sunar.',
-      pitch: 'Hızlı filo fikrini sürdürür ve kırılganlık bedelini biraz azaltır.',
+      pitch: "Ok ile aynı temel hızda, daha yüksek saldırı gücü ve gövde dayanımı sunar.",
       detail: 'Engerek araştırma istemeyen ikinci seviye bir Akıncı gemisidir. Ok daha ucuzdur; iki geminin ham hızı aynıdır. Engerek daha büyük yatırımı daha yüksek saldırı, dayanım, ambar ve eşit maliyette daha iyi savaş verimine dönüştürür.',
     },
     TALON: {
@@ -271,7 +271,7 @@ export const vocabulary = {
       name: 'Atlas',
       tag: 'Üçüncü seviye ağır nakliye',
       role: 'Üçüncü seviyenin en büyük ambarına sahip, yavaş, hacimli ve araştırmaya bağlı nakliye gemisidir.',
-      pitch: 'Argosi açılmadan önce güvenli ve yüksek hacimli rotaların en verimli nakliyesidir.',
+      pitch: "Büyük miktarda kaynak taşır. Silahsızdır; akına gönderirken savaş gemileriyle koru.",
       detail: 'Atlas, Yıldız Gemisi Mühendisliği ve Gemi İtkisi ile açılan üçüncü seviye destek gemisidir. Hasar vermez ve düşük hızı nedeniyle değerli yükü için refakat ile rota güvenliği planını zorunlu kılar.',
     },
     NULLIFIER: {
@@ -287,7 +287,7 @@ export const vocabulary = {
       tag: 'Enkazdan {{salvage}} toplar',
       role: 'Özel destek gemisi: ateş etmez, katıldığı savaştan sonra enkaz toplar.',
       pitch: 'Yük gemisi gibi hattın arkasında uçar, son atışları o yer. Yanında savaş gemisi tut; onlar düşünce hedef olur.',
-      detail: 'Savaş bittiğinde hayatta kalan her Hurdacı enkazdan en fazla {{salvage}} toplar; alaşım, kristal ve döteryumu enkazdaki oranlarıyla alır, kalanı herkese açık enkaz alanı olarak yörüngede kalır. Topladığı filoyla birlikte depoya iner. Ambara bir şey eklemez, savaş gemisi olmadan uçamaz, enkaz alanına veya asteroide gönderilemez ve savunmadayken toplama yapmaz.',
+      detail: "Silahlı filoyla savaşa katılır. Sağ kalan her Hurdacı, enkazın alaşım, kristal ve döteryum oranıyla en fazla {{salvage}} kaynak alır. Kalan enkaz, herkese açık saha oluşturur. Normal kargo kapasitesini artırmaz. Savaş gemisi olmadan gönderilemez; asteroide veya enkaz sahasına gidemez. Savunmada enkaz toplamaz.",
     },
     CATACLYSM: {
       name: 'Kıyamet',
@@ -321,7 +321,7 @@ export const vocabulary = {
       name: 'Argosi',
       tag: 'Başkent yük gemisi',
       role: 'Oyundaki en derin ambar; nakliye gemilerinin en yavaşı.',
-      pitch: 'Tek başına yaklaşık üç Atlas kadar taşır; karşılığında hiçbir şeyden kaçamaz.',
+      pitch: "En büyük kargo kapasitesini sunar. Yavaş olduğu için filonun yolculuk süresini uzatabilir.",
       detail: 'Argosi; dördüncü seviyenin nakliyesidir. Destek sınıfı olduğu için savaş gemileri hayattayken korunur, hat düştüğünde savunmasızdır. Tüccarın hızı katalogdaki en yavaş nakliye gövdesi olan Argosiye göre hesaplanır; kendi filon ise içindeki en yavaş gemiye göre uçar.',
     },
     BASTION: {
@@ -369,7 +369,7 @@ export const vocabulary = {
     },
     EXPLORER: {
       title: 'Kâşif açıldı',
-      body: 'Kesin bilgi istiyorsan sonda gönder. Radarları onu yakalayabilir.',
+      body: "Hedefin filosu ve kaynakları hakkında bilgi almak için sonda gönder. Rapor tahmin içerebilir; hedef taramayı fark edebilir.",
     },
     VEIL: {
       title: 'Perde açıldı',
@@ -436,7 +436,7 @@ export const gains = {
     sweepNone: 'yok',
     reaches: '{{sense}} birim temas (varış süresi yok) · {{warn}} birim zamanlı uyarı',
     maxed: 'En üst seviye; uyarı çıkış dünyasını ve filonun tam içeriğini de gösterir',
-    l1: 'Sondaları yakalamaya başlar ve yaklaşan filo için varış uyarısı verir',
+    l1: "Sonda taramalarını fark etme ihtimalini artırır. Yaklaşan filo Radar menziline girince varış uyarısı verir.",
     bearing: '2. seviye geliş yönünü de gösterir',
     interception: "3. seviye bu dünyada önleyici şarj kurulmasını sağlar (Anten gerekir)",
     estimate: 'Yaklaşan gücün yaklaşık büyüklüğünü erkenden gösterir',
@@ -522,7 +522,7 @@ export const gains = {
 export const directives = {
   inboundTitle: 'Filo geliyor · {{duration}}',
   inboundDetail:
-    'Kaynaklarını harcayabilir, filonu başka göreve çıkarabilir veya savunmayı güçlendirebilirsin. Havadaki gemiler bu çatışmaya girmez.',
+    "Açıkta kalan kaynakları harcayabilir, filonu gönderebilir veya savunmayı güçlendirebilirsin. Havadaki gemiler bu gezegeni savunamaz.",
   inboundAction: 'Hemen harca',
 
   undefendedTitle: 'Bu gezegende yer savunması yok',
@@ -532,8 +532,8 @@ export const directives = {
   undefendedAction: 'Savunma kur',
 
   exposedTitle: 'Senden {{amount}} alınabilir',
-  exposedDetail: 'Depon {{now}} koruyor, bir üst seviyesi {{next}} koruyacak.',
-  exposedAction: 'Kasayı yükselt',
+  exposedDetail: "Depo şu an {{now}} kaynağı yağmadan korur. Sonraki seviye {{next}} kaynağı korur.",
+  exposedAction: "Depoyu yükselt",
 
   scannedTitle_one: 'Biri seni taradı',
   scannedTitle_other: 'Sana karşı {{count}} tarama',
@@ -563,7 +563,7 @@ export const directives = {
   noRadarAction: 'Radara bak',
 
   coreCeilingTitle: 'Komuta Çekirdeği {{count}} yükseltmeyi tıkıyor',
-  coreCeilingDetail: 'Hiçbir bina Çekirdeği geçemez. Onu yükseltince hepsi birden açılır.',
+  coreCeilingDetail: "Komuta Çekirdeği, Hangar dışındaki binaların seviye sınırını belirler. Sınıra ulaşan binayı geliştirmek için önce Çekirdeği yükselt.",
   coreCeilingAction: 'Çekirdeği yükselt',
 
   idleTitle: 'Devam eden uçuş yok',
@@ -670,6 +670,7 @@ export const notifications = {
   targetGoneDebris: 'Enkaz sahası çoktan toplanmış · {{count}} kazıcı geri dönüyor',
   pirateHome: 'Akın filosu evde · {{count}} gemi · +{{amount}} ganimet',
   pirateHomeEmpty: 'Akın filosu evde · {{count}} gemi · eli boş',
+  pirateHomeRecalled: "Akın filosu evde · {{count}} gemi · çatışmadan önce geri çağrıldı",
   pirateHomeBare: 'Akın filosu evde · {{count}} gemi',
   pirateHomeTowed_looted: 'Akın filosu evde · {{count}} gemi · +{{amount}} ganimet · {{hull}} ele geçirildi',
   pirateHomeTowed_empty: 'Akın filosu evde · {{count}} gemi · {{hull}} ele geçirildi',

@@ -9,6 +9,8 @@
 @import './v2/tokens.css';
 @import './v2/surfaces.css';
 @import './v2/store.css';
+@import './brand/styles.css';
+@import './brand/opening.css';
 
 /* Focus must not trigger iOS page zoom. Unlayered so compact text utilities
    cannot shrink editable controls below the keyboard-safe 16px size. */

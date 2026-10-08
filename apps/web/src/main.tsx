@@ -20,6 +20,7 @@ import { ToastProvider } from './ui/Toast.js';
 import { ErrorBoundary } from './shell/ErrorBoundary.js';
 import { ConsentNotice } from './shell/ConsentNotice.js';
 import { App } from './App.js';
+import { InstallProvider } from './brand/Install.js';
 import './styles.css';
 
 syncDocumentLanguage();
@@ -130,7 +131,7 @@ createRoot(root).render(
           <QueryClientProvider client={client}>
             <ApiProvider api={api}>
               <ToastProvider>
-                <App />
+                <InstallProvider><App /></InstallProvider>
                 {/*
                   BESIDE THE APP RATHER THAN INSIDE IT, because `App` returns
                   early for every session phase and the ad tag is already running

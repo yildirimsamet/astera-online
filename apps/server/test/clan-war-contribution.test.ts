@@ -430,6 +430,9 @@ describe('committing a wave', () => {
     const legs = await f.db.select().from(clanWarMissions);
     expect(legs).toHaveLength(1);
     expect(legs[0]!.leg).toBe('SUPPORT_OUT');
+    // D212: a joint-war wave is a combat launch for the commander who sent it.
+    const [sender] = await f.db.select({ at: players.lastProgressAt }).from(players).where(eq(players.id, f.playerIds[1]!));
+    expect(sender!.at).toEqual(f.clock.now());
   });
 
   it('adds the leader capital instantly, with no flight and no bay', async () => {

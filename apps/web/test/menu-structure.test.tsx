@@ -205,7 +205,7 @@ describe('the menu groups what it offers', () => {
       expect(onOpen, name).toHaveBeenCalledWith(panel);
     }
     expect(
-      screen.getByRole('link', { name: named(i18n.t('menu.guideLabel'), i18n.t('menu.guideHint')) }),
+      screen.getByRole('button', { name: named(i18n.t('menu.guideLabel'), i18n.t('menu.guideHint')) }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: named(i18n.t('academy.replay'), i18n.t('academy.replayHint')) }),
@@ -281,7 +281,7 @@ describe('the menu groups what it offers', () => {
 describe('every surface the menu opens can step back to it', () => {
   it('names the destinations the menu owns', () => {
     for (const panel of [
-      'skin-shop', 'skin-inventory', 'leaderboard', 'rewards', 'announcements', 'feedback', 'donate', 'admin',
+      'skin-shop', 'skin-inventory', 'leaderboard', 'rewards', 'announcements', 'feedback', 'donate', 'admin', 'wiki',
     ] as const) {
       expect(returnsToMenu(panel), panel).toBe(true);
     }

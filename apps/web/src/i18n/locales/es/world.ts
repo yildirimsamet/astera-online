@@ -387,6 +387,8 @@ export const focus = {
     attack: "Planificar un ataque",
     attackNeutralAgain: "Incursión nuevamente · reclamación sin cambios",
     attackOriginRecovering: "Ataque · origen recuperando",
+    attackSilentSpace: "No se puede atacar · cerrado en el Espacio Silencioso",
+    attackSilentSpaceShort: "Espacio Silencioso",
     attackShipyardRevolt: "No se puede atacar · revuelta en astilleros",
     attackShipyardRevoltShort: "Revuelta en el astillero",
     radiationHere: "Nube de radiación: cada nave aquí pierde {{pct}} % de su casco por minuto. Por encima del 20 % espera a la Estación de Reparación.",
@@ -553,7 +555,7 @@ export const focus = {
     outbound: "Este vuelo no se puede recuperar.",
     /** A raid or a transfer may be turned once before it arrives (K8). */
     recallable: "Puede dar media vuelta una vez antes de llegar; el regreso dura lo que ya ha volado.",
-    outboundPirate: "Una incursión pirata no se puede recuperar.",
+    outboundPirate: "El combate ha empezado; esta incursión ya no puede dar la vuelta.",
   },
 
   contact: {
@@ -684,7 +686,7 @@ export const pirate = {
   captured: "{{hull}} capturado",
   captureMissed: "No queda nada que valga la pena remolcar a casa",
   send: "Enviar {{count}} · {{duration}}",
-  outbound: "Una incursión pirata no se puede recuperar.",
+  outbound: "Puedes retirar una incursión pirata una vez antes de que empiece el combate.",
   holdsHint: "Caídas sus naves de guerra, sus cargueros no pueden escapar: también se los llevas.",
   /**
    * YOU CANNOT SEE THIS ONE — WHICH IS NOT THE SAME AS "THIS IS OLD". D160.
@@ -697,6 +699,6 @@ export const pirate = {
   remembered: "Seguimiento desde que lo identificaste · ahora no está en tus sensores",
   /** The boundary, stated — the same job the contact panel's last line does. */
   boundary:
-    "Un pirata que has identificado permanece en esta lista hasta que muere o se acaba su tiempo, exactamente como una roca que has encontrado. Su órbita tiene solución, por lo que mantienes la pista y el conteo de la tripulación fuera del alcance; lo que pierdes es la vista, no el rastro.",
+    "Un pirata identificado permanece en la lista hasta ser destruido o caducar. Fuera del alcance conservas su ruta y tripulación conocida. La vista en directo sigue dependiendo de los sensores.",
   hoardHint: "Lo que llevas a casa está limitado por las bodegas que trajiste.",
 } as const;

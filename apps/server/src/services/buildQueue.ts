@@ -53,6 +53,7 @@ import {
   type LockedPlanet,
 } from './planet.js';
 import { planetView, type PlanetView } from './planetView.js';
+import { markProgress } from './waitingRoom.js';
 import { researchLevels } from './researchState.js';
 import { releaseRepairedLots } from './shipDamage.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
@@ -335,6 +336,8 @@ export async function placeBuildOrder(
     resolveAt: readyAt,
   });
   await refreshWealth(tx, planet);
+  // D212: building, ship, defence, instrument and satellite orders keep a commander home; a repair does not.
+  if (input.kind !== 'REPAIR') await markProgress(tx, planet.playerId, planet.now);
   return order;
 }
 

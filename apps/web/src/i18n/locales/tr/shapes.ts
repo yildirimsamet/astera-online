@@ -56,12 +56,12 @@ export const counter = {
   escapeUnsure: 'Gemileri kaçabilir; okuma geri çekilmenin tüm koşullarını göstermiyor.',
   escapeAt: 'Kaçış güç çizgisi: {{at}}',
   escapeRule:
-    'Taktik geri çekilme: kendi ateş gücünün en az üç katıyla karşılaşan ve o akında silinecek bir hat, dünyanın deposu {{distance}} birimlik gidiş-dönüş yakıtını karşılıyorsa savaşmak yerine gemilerini kaçırır. Yer topları kalır, depo yine yağmalanır.',
+    "Taktik geri çekilme için saldıran ateş gücü savunmanın en az üç katı olmalı ve saldırı savunma hattını yok edecek durumda olmalıdır. Gezegen deposunda {{distance}} birimlik gidiş-dönüşün yakıtı da bulunmalıdır. Koşullar sağlanırsa gemiler savaştan kaçar. Yer savunması kalır ve kaynaklar yine yağmalanabilir.",
   escapeMinimumRule: 'Savunanın gezegende en az {{count}} savaş gemisi de olmalı. Sonda okuması gemi sayısını göstermez.',
   compareRuleToggle: 'Bu nedir?',
   compareMeaning: 'Kaynak maliyetidir; saldırı hasarı değildir. Büyük filo tek başına zafer garantisi vermez.',
   compareRule:
-    'İki tarafın ateş edebilen gemi ve toplarının kaynak maliyeti karşılaştırılır. Kalkan ve silahsız gemiler bu sayıya dahil değildir. Tahmin ayrıca gemi sınıflarını, araştırmaları ve bilinen kalkanı kullanır. Savunma bir çizgiyi aşmıyorsa model o başarıyı bekler; başarı, savunmanın kırılması ve filondan en az bir geminin eve dönmesidir. Çizginin aralık olması okumanın her şeyi göstermemesinden (sınıf dağılımı, kalkan) gelir: sol uç en kötü, sağ uç en iyi durumdur. Bunun filona kaça mal olacağı aşağıdaki tahmini kayıptır. Bilgi eski olabilir; turun şans etkisi hesaba katılmaz.',
+    "İki tarafın ateş edebilen gemi ve yer savunmaları kaynak değeriyle karşılaştırılır; kalkan ve silahsız gemiler bu değere dahil değildir. Tahmin, sınıfları, araştırmaları ve bilinen kalkanı da kullanır. Kısmi ve tam başarı için en az bir geminin sağ kalması gerekir. Bilinmeyen sınıflar veya kalkan, eşikleri aralık haline getirir: sol uç en kötü, sağ uç en iyi durumdur. Alttaki kayıp tahmini savaşın olası bedelini gösterir. Bilgi eski olabilir; rastgele atış değişimleri tahmine dahil değildir.",
   linesClears: 'Savunma en çok {{at}} ise tam başarı',
   linesBreaks: 'Savunma en çok {{at}} ise en az kısmi başarı',
   lineJoin: ' · ',

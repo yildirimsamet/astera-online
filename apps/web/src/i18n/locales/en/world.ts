@@ -388,6 +388,8 @@ export const focus = {
     attack: "Plan an attack",
     attackNeutralAgain: "Raid again · claim unchanged",
     attackOriginRecovering: "Attack · origin recovering",
+    attackSilentSpace: "Cannot attack · closed in Silent Space",
+    attackSilentSpaceShort: "Silent Space",
     attackShipyardRevolt: "Cannot attack · shipyard revolt",
     attackShipyardRevoltShort: "Shipyard revolt",
     radiationHere: "Radiation cloud: every ship here loses {{pct}}% of its hull a minute. Past 20% it waits for the Repair Station.",
@@ -554,7 +556,7 @@ export const focus = {
     outbound: "This flight cannot be recalled.",
     /** A raid or a transfer may be turned once before it arrives (K8). */
     recallable: "It can be turned home once before it arrives; the way back takes as long as it has flown.",
-    outboundPirate: "A pirate raid cannot be recalled.",
+    outboundPirate: "The engagement has begun; this raid can no longer turn.",
   },
 
   contact: {
@@ -685,7 +687,7 @@ export const pirate = {
   captured: "{{hull}} captured",
   captureMissed: "Nothing left worth towing home",
   send: "Send {{count}} · {{duration}}",
-  outbound: "A pirate raid cannot be recalled.",
+  outbound: "A pirate raid can be called back once before its engagement begins.",
   holdsHint: "Once its warships are down, its holds cannot escape — they are taken too.",
   /**
    * YOU CANNOT SEE THIS ONE — WHICH IS NOT THE SAME AS "THIS IS OLD". D160.
@@ -698,6 +700,6 @@ export const pirate = {
   remembered: "Tracked since you identified it · not on your sensors now",
   /** The boundary, stated — the same job the contact panel's last line does. */
   boundary:
-    "A pirate you have identified stays on this list until it dies or its time runs out, exactly like a rock you have found. Its orbit is solvable, so you keep the track and the crew count out of range — what you lose is the eye, not the trail.",
+    "An identified pirate stays listed until destroyed or expired. Outside sensor range, you retain its track and known crew. Live sight still depends on sensor range.",
   hoardHint: "What you carry home is capped by the holds you brought.",
 } as const;

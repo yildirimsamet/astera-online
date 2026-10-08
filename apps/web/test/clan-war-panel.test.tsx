@@ -137,7 +137,7 @@ describe('clan war decision surface', () => {
 
   it('explains shared capacity and where a leader selects a target', () => {
     show();
-    expect(screen.getByText(/Galaxy Focus/i)).toBeInTheDocument();
+    expect(screen.getByText(/galaxy map/i)).toBeInTheDocument();
     expect(document.querySelector('[data-clan-hangar]')).toHaveTextContent(/160/);
   });
 

@@ -17,6 +17,7 @@ import { REPAIR_STATION_ITEM } from '../../lib/repairStation.js';
 import { HudDock } from './HudDock.js';
 import { HudTop } from './HudTop.js';
 import { OutlineHost } from './OutlineHost.js';
+import { RecallHost } from '../../brand/RecallHost.js';
 
 /** Open a page: the panel, its shelf, the report, the row — as the app's router takes it. */
 export type ShellRoute = (
@@ -27,6 +28,7 @@ export type ShellRoute = (
 ) => void;
 
 export interface GameShellProps {
+  accountId?: string;
   commander: string;
   /** The page open over the galaxy, owned by the app. */
   panel: Panel;
@@ -73,7 +75,7 @@ export interface GameShellProps {
  * and pages dock to the right (both sheet kits). The keyboard works at every width:
  * 1–5 the tabs, Space the selection, Esc lets go (`shortcutOf`).
  */
-export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCraft, galaxy }: GameShellProps) {
+export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet, onFocusCraft, galaxy }: GameShellProps) {
   const [bell, setBell] = useState<{ tab: BellTab; justRead: ReadonlySet<string> } | null>(null);
   const [fleetOpen, setFleetOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -269,6 +271,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
 
       {/* E10: asked for after the galaxy is up, never before it (K5). */}
       <AwayHost onDoor={openAway} onAll={() => { openBell('signals'); }} />
+      {accountId && <RecallHost key={accountId} accountId={accountId} paused={panel !== null || bell !== null || fleetOpen || chatOpen || nowOpen} />}
 
       {fleetOpen && (
         <FleetHost

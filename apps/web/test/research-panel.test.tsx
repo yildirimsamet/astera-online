@@ -317,7 +317,7 @@ describe('a levelled project shows how far up it is', () => {
     expect(sheet.textContent)
       .not.toContain(compact(RESEARCH_PROJECTS.CARGO_HOLDS.costAt(1).alloy));
     // And the sheet names which rung the money is buying.
-    expect(sheet).toHaveTextContent(/Rung 3 of 5/i);
+    expect(sheet).toHaveTextContent(/Level 3 of 5/i);
   });
 
   /**

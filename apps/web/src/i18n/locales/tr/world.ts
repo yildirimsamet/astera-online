@@ -359,6 +359,8 @@ export const focus = {
     attack: "Saldırı planla",
     attackNeutralAgain: "Tekrar akın · hak değişmez",
     attackOriginRecovering: "Saldırı · ana dünya toparlanıyor",
+    attackSilentSpace: "Saldırılamaz · Sessiz Uzay’da kapalı",
+    attackSilentSpaceShort: "Sessiz Uzay",
     attackShipyardRevolt: "Saldırılamaz · tersanede isyan var",
     attackShipyardRevoltShort: "İsyan var",
     radiationHere: "Radyasyon bulutu: buradaki her gemi dakikada gövdesinin %{{pct}} kadarını kaybeder. %20'yi aşan Tamirhaneyi bekler.",
@@ -511,7 +513,7 @@ export const focus = {
     outbound: "Bu uçuş geri çağrılamaz.",
     /** A raid or a transfer may be turned once before it arrives (K8). */
     recallable: "Varmadan önce bir kez geri çağırabilirsin; dönüş, o ana kadar uçtuğu kadar sürer.",
-    outboundPirate: "Korsan akını geri çağrılamaz.",
+    outboundPirate: "Çatışma başladı; bu akın artık geri dönemez.",
   },
 
   contact: {
@@ -613,11 +615,11 @@ export const pirate = {
   captured: "{{hull}} ele geçirildi",
   captureMissed: "Eve çekilecek gemi kalmadı",
   send: "{{count}} gemi gönder · {{duration}}",
-  outbound: "Korsan akını geri çağrılamaz.",
+  outbound: "Korsan akınını çatışma başlamadan önce bir kez geri çağırabilirsin.",
   holdsHint: "Savaş gemileri düşünce yük gemileri kaçamaz; onları da alırsın.",
   /** "Göremiyorsun" demek; "bu bilgi eski" demek değil. Rakamlar canlı. D160. */
   remembered: "Tanımladığından beri izleniyor · şu anda sensörlerinde değil",
   boundary:
-    "Bir kez tanımladığın korsan, tıpkı bulduğun bir asteroit gibi, ölene ya da süresi dolana kadar bu listede kalır. Yörüngesi hesaplanabilir olduğu için menzil dışındayken de izini ve kadro sayısını korursun; kaybettiğin şey gözün, iz değil.",
+    "Tanımladığın korsan, yok edilene veya süresi dolana kadar listede kalır. Menzil dışında da rotasını ve bilinen mürettebatını görürsün. Canlı görüş, sensör menziline bağlıdır.",
   hoardHint: "Eve taşıyacağın ganimet, götürdüğün kargo hacmiyle sınırlıdır.",
 } as const;

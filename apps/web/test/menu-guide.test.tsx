@@ -11,26 +11,7 @@ import { publisherUrl } from '../src/lib/publisherPages.js';
 import i18n from '../src/i18n/index.js';
 import { CONSENT_EVENT, CONSENT_STORAGE_KEY } from '../src/lib/consent.js';
 
-/**
- * THE QUICK-START GUIDE, REACHABLE. Owner request, and deliberately the small
- * version of it.
- *
- * `public/hizli-baslangic-rehberi.html` is a finished standalone page that Vite
- * already copies into the build and Nginx already serves — so it has been
- * ADDRESSABLE all along and simply had no door. What was missing was one row.
- *
- * IT IS A LINK, AND IT STAYS IN THIS TAB. The page is its own document with its
- * own stylesheet, so an in-game sheet would be pretending it is part of the
- * interface while it still reads as a separate site — but a new tab was the wrong
- * answer too, and the owner said so. On a phone it leaves a tab behind on every
- * visit, and it costs the page the one control every reader already knows: the
- * browser's own back. So the row is an anchor, the guide replaces the game in
- * this tab, and stepping back restores it.
- *
- * APPENDED, NEVER INSERTED. A control that changes position between sessions has
- * to be re-found every time, so it goes after the last standing row and nothing
- * a commander already knows the position of moves.
- */
+/** The shared Wiki opens inside the game; legacy public guide URLs still work. */
 
 function harness() {
   const fetch = vi.fn(() =>
@@ -84,30 +65,18 @@ describe('the quick-start guide row', () => {
     show();
 
     expect(
-      screen.getByRole('link', { name: new RegExp(i18n.t('menu.guideLabel'), 'i') }),
+      screen.getByRole('button', { name: new RegExp(i18n.t('menu.guideLabel'), 'i') }),
     ).toBeInTheDocument();
   });
 
-  /*
-    A LINK, IN THIS TAB. Owner decision, reversing the new tab this shipped with.
-
-    Two things follow from it and both are improvements. The row becomes an
-    ANCHOR rather than a button, which is what it always was semantically — so a
-    long-press or a middle-click can still choose a new tab, and the browser's
-    own "back" now leads home without the page having to invent one. And a phone
-    stops accumulating tabs it never asked for.
-
-    The href is asserted rather than a click handler, because that IS the
-    behaviour: nothing runs, the browser navigates.
-  */
-  it('is a link to the guide rather than a button that opens a window', () => {
-    show();
-
-    const row = screen.getByRole('link', {
-      name: new RegExp(i18n.t('menu.guideLabel'), 'i'),
-    });
-    expect(row).toHaveAttribute('href', publisherUrl('guide', i18n.resolvedLanguage));
-    expect(row).not.toHaveAttribute('target');
+  it('opens the shared Wiki room without navigating away from the game', () => {
+    const { wrapper } = harness();
+    const onOpen = vi.fn(); const onSignOut = vi.fn();
+    render(<MenuPanel galaxy="Vantage" shard="EU-1" endsAt={null} onOpen={onOpen} onSignOut={onSignOut} />, { wrapper });
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(i18n.t('menu.guideLabel'), 'i') }));
+    expect(onOpen).toHaveBeenCalledOnce();
+    expect(onOpen).toHaveBeenCalledWith('wiki');
+    expect(onSignOut).not.toHaveBeenCalled();
   });
 
   /*

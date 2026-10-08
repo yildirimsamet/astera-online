@@ -18,7 +18,7 @@
 export const landing = {
   populationHeld: '<0>{{amount}}</0> komutan ana gezegenini yönetiyor',
   populationOnline: '<0>{{amount}}</0> şu an galakside',
-  register: 'Gezegenini İncele',
+  register: "Gezegenini incele",
   signIn: 'Zaten bir komutanım var',
   reassurance: 'Hesap gerekmiyor. Önce oyna, sonra sahiplen.',
 
@@ -26,15 +26,15 @@ export const landing = {
    * Dönen komutanın kapısı. Bu cihazda daha önce komutan olmuş biri için iki
    * düğmenin ağırlığı yer değiştirir; giriş öne geçer.
    */
-  welcomeBack: 'Ana gezegenin bıraktığın yerde duruyor',
+  welcomeBack: "Komutanınla oyuna devam et",
   signInPrimary: 'Giriş yap',
   returningHint: 'Aynı komutan, aynı galaksi; hangi tarayıcıdan girersen gir.',
   newCommander: 'Yeni komutan başlat',
   opening: 'Galaksi açılıyor',
   ready: 'Gezegenin hazır',
-  cover: 'Gökyüzü açılıyor',
-  publicLinksLabel: 'Yayıncı bağlantıları',
-  aboutLink: 'Astera Hakkında',
+  cover: "Oyun görselleri yükleniyor",
+  publicLinksLabel: "Oyun bilgileri ve politikalar",
+  aboutLink: "Astera hakkında",
   guideLink: 'Nasıl oynanır?',
   privacyLink: 'Gizlilik',
   termsLink: 'Koşullar',
@@ -48,17 +48,17 @@ export const landing = {
     close: 'Kapat',
     eyebrowRegister: 'Yeni komutan',
     eyebrowLogin: 'Tekrar hoş geldin',
-    headingRegister: 'Gezegenini İncele',
+    headingRegister: "Komutanını oluştur",
     headingLogin: 'Giriş yap',
     nameLabel: 'Komutan adı',
     namePlaceholder: 'Vantage',
     passwordLabel: 'Parola',
     passwordPlaceholder: 'En az {{count}} karakter',
-    submitBusy: 'Bağlanıyor',
+    submitBusy: "Giriş yapılıyor…",
     submitRegister: 'Komutanı oluştur',
     submitLogin: 'Giriş yap',
     switchToLogin: 'Zaten komutanım var',
-    switchToRegister: 'Yeni komutan oluşturayım',
+    switchToRegister: "Yeni komutan oluştur",
     badName: 'Ad 2–32 karakter olmalı. Her dilde harf, rakam, alt çizgi ve tek boşluk kullanabilirsin.',
     noName: 'Komutan adını yaz.',
     shortPassword: 'Parola en az {{count}} karakter olmalı.',
@@ -71,12 +71,12 @@ export const servers = {
   commanderLabel: 'Komutan',
   signOut: 'Çıkış yap',
   rule:
-    'Her galakside en fazla {{seats}} komutan var ve galaksiler sırayla doluyor. Yani katıldığın yerde seni bekleyen insanlar oluyor.',
-  loading: 'Gökyüzü taranıyor',
+    "Her galakside en fazla {{seats}} komutan oynar. Galaksiler sırayla açılır ve dolar.",
+  loading: "Galaksiler yükleniyor",
   unreachable: 'Galaksilere ulaşılamadı.',
   retry: 'Tekrar dene',
   listLabel: 'Galaksiler',
-  noneOpen: 'Şu an açık galaksi yok. Sezonlar arasındayız; birazdan tekrar bak.',
+  noneOpen: "Şu anda katılabileceğin açık bir galaksi yok. Galaksi listesini daha sonra kontrol et.",
   allFull: 'Bütün galaksiler dolu. Bir sonraki, sıfırlamada herkesle birlikte açılıyor.',
   online: '<0>{{amount}}</0> şu an galakside',
   yours: 'Senin galaksin',
@@ -88,20 +88,20 @@ export const servers = {
   },
   enter: 'Gir',
   join: 'Katıl',
-  joining: '…',
+  joining: "Katılınıyor…",
 } as const;
 
 export const app = {
-  blockedTitle: 'Şimdi olmaz',
+  blockedTitle: "Oyuna bağlanılamadı",
   blockedRetry: 'Tekrar dene',
   sessionFailed: 'Sunucuya ulaşılamadı',
 } as const;
 
 export const loading = {
-  contact: 'Bağlantı kuruluyor',
-  sweeping: 'Galaksi taranıyor',
-  charting: 'Galaksi çiziliyor',
-  raising: 'Görüntü yükleniyor',
+  contact: "Sunucuya bağlanılıyor",
+  sweeping: "Galaksi bilgileri yükleniyor",
+  charting: "Galaksi görselleri yükleniyor",
+  raising: "Oyun görünümü hazırlanıyor",
 } as const;
 
 export const document = {

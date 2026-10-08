@@ -96,8 +96,8 @@ describe('the launch preview', () => {
   });
 
   it('has no reach at all with an empty hangar', () => {
-    expect(reachMinutes(HERE, THERE, {}, UNAIDED)).toBeNull();
-    expect(reachMinutes(HERE, THERE, { BASTION: 5 }, UNAIDED)).toBeNull();
+    expect(reachMinutes(HERE, THERE, {}, UNAIDED, 'combat')).toBeNull();
+    expect(reachMinutes(HERE, THERE, { BASTION: 5 }, UNAIDED, 'combat')).toBeNull();
   });
 });
 

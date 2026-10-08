@@ -207,6 +207,7 @@ export function App() {
         `StatusBar` and `PendingStrip` here; the rehearsal still draws those until F2.6.
       */}
       <GameShell
+        accountId={session.me.accountId}
         commander={session.me.displayName}
         panel={panel}
         onPanel={openPanel}

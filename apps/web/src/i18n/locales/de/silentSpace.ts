@@ -1,6 +1,8 @@
 export const silentSpace = {
-  title: 'Du bist nach Silent Space gezogen',
-  body: 'Nach 48 Stunden Inaktivität haben wir Ihre Planeten in den Silent Space verschoben. Ihre Planeten und Ihr Fortschritt bleiben erhalten; Du kannst hier weiterspielen.',
+  title: "Du bist in den Stillen Raum umgezogen",
+  body: "Du hast 30 Stunden lang keinen Angriff, keinen Gebäudeausbau, keine Forschung und keinen Schiffs- oder Verteidigungsauftrag gestartet. Deshalb haben wir deine Planeten in den Stillen Raum verlegt. Deine Planeten und dein Fortschritt bleiben erhalten.",
+  closed: "Hier sind Angriffe, Asteroiden- und Trümmerabbau, Piratenangriffe, Händlerfahrten und Konvoiangriffe geschlossen.",
+  production: "Die Rohstoffproduktion läuft mit 50 %. Gebäude, Forschung und Schiffsaufträge bleiben offen.",
   returnTo: 'Bewerben Sie sich hier, um zu {{galaxy}} zurückzukehren.',
   apply: 'Beantragen Sie die Rückgabe',
   applying: 'Bewerben…',

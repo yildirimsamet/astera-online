@@ -52,7 +52,7 @@ export const monument = {
   "selectedBulk": "This fleet: {{bulk}} bulk",
   "holdForecast": "After arrival: {{rate}} deuterium/min · next ship loss {{time}}",
   "noLoss": "none forecast",
-  "attackOutcome": "Victory is resolved in combat: higher tiers fill HOLD first; excess cargo ships return, and a cargo-only survivor earns no production.",
+  "attackOutcome": "After victory, higher-tier ships take monument capacity first. Ships that do not fit return home. A fleet with only cargo ships earns no deuterium.",
   "losses": "{{count}} ships lost on the outbound route",
   "health": "{{name}}: {{remaining}} / {{max}} HP on arrival",
   "shield": "I agree to lose my shield on this PvP launch",
@@ -92,5 +92,5 @@ export const monument = {
     "HOLD": "Holding",
     "RETURNING": "Returning"
   },
-  "returnReason": {"RECALLED":"Recalled by you.","CAPACITY":"Returning because HOLD capacity is full.","MEMBERSHIP":"Returning because the side changed.","CONTROL_CHANGED":"Returning because control changed before arrival.","DEFEAT":"Returning after the battle.","WORLD_CHANGED":"Returning because the home world changed.","FREEZE":"Returning at season close."}
+  "returnReason": {"RECALLED":"Recalled by you.","CAPACITY":"Returning because the monument has no room for these ships.","MEMBERSHIP":"Returning because the side changed.","CONTROL_CHANGED":"Returning because control changed before arrival.","DEFEAT":"Returning after the battle.","WORLD_CHANGED":"Returning because the home world changed.","FREEZE":"Returning at season close."}
 } as const;

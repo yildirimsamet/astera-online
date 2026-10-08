@@ -1020,6 +1020,15 @@ export const planetSchema = z.object({
    */
   convoyOccurrenceSpent: z.boolean().optional(),
   /**
+   * SILENT SPACE, FROM BOTH SIDES OF THE DOOR. D212.
+   *
+   * `silentSpace`: this world is in Silent Space — fights and farms are closed and the
+   * per-hour rates above are already halved. `silentSpaceAt`: when a main-galaxy commander
+   * leaves if they order nothing until then. Optional only for a rolling deploy.
+   */
+  silentSpace: z.boolean().optional(),
+  silentSpaceAt: z.coerce.date().nullish(),
+  /**
    * Ownership ceilings, including craft away from the world. T4/T4b.
    * Optional only for a rolling deploy against an older server.
    */
@@ -1178,6 +1187,19 @@ export const rewardClaimSchema = z.object({
   granted: resources,
   rewards: rewardsSchema,
   ...withPlanet,
+});
+
+export const brandRecallSchema = z.object({
+  eligible: z.boolean(),
+  completed: z.boolean(),
+  reward: resources,
+});
+
+export const brandRecallAnswerSchema = z.object({
+  correct: z.boolean(),
+  completed: z.boolean(),
+  granted: resources,
+  planet: planetSchema.optional(),
 });
 
 
@@ -1377,6 +1399,8 @@ export const galaxySchema = z.object({
       seenAt: z.coerce.date().optional(),
       name: z.string().default(''),
       owner: z.string().default(''),
+      /** Country belongs to the same live/frozen owner identity; absent in fog and older records. */
+      country: countryCode.optional(),
       kind: z.enum(['CAPITAL', 'COLONY', 'NEUTRAL']).optional(),
       controller: z.discriminatedUnion('kind', [
         z.object({ kind: z.literal('PLAYER'), playerId: z.string(), displayName: z.string() }),
@@ -3106,6 +3130,12 @@ export const piratesSchema = z.object({
  * craft is drawn on the frame the response lands, and an older read already in
  * flight cannot land afterwards and erase it.
  */
+/** A pirate raid turned home before its engagement (owner, 2026-10-08). `homeAt` is null if nothing survived the turn. */
+export const pirateRecallSchema = z.object({
+  raidId: z.string(),
+  homeAt: z.coerce.date().nullable(),
+});
+
 export const pirateRaidSchema = z.object({
   raidId: z.string(),
   pirateId: z.string(),

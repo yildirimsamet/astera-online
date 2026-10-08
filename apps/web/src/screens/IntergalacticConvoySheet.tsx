@@ -57,7 +57,7 @@ export function IntergalacticConvoySheet({
   const { t } = useTranslation();
   const say = useToast();
   const launch = useLaunchIntergalacticConvoy(planet.planet.id);
-  const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
+  const launchBlock = launchFault(planet.faults, 'fleet', planet.silentSpace === true);
   const now = useNow(5_000);
   const [fleet, setFleet] = useState<Fleet>({});
   const mods = flightModifiers(planet);
@@ -126,8 +126,8 @@ export function IntergalacticConvoySheet({
     whatever is in the hangar. D124 — it is stated on the control, never only in
     the server's answer.
   */
-  const refusal = launchBlocked
-    ? t('faults.launchBlock.SHIPYARD_REVOLT')
+  const refusal = launchBlock !== null
+    ? t(`faults.launchBlock.${launchBlock}`)
     : planet.convoyOccurrenceSpent === true
       ? t('convoy.alreadyStruck')
     : ships === 0

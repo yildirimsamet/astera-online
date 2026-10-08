@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { adsensePlugin } from './src/lib/adsense.js';
+import { wikiPlugin } from './wikiPlugin.js';
+import { openingScreenPlugin } from './openingScreenPlugin.js';
 
 /**
  * Everything is served same-origin in dev, through this proxy.
@@ -22,7 +24,7 @@ const apiProxy = {
 };
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), adsensePlugin()],
+  plugins: [react(), tailwindcss(), openingScreenPlugin(), adsensePlugin(), wikiPlugin()],
   /**
    * THE CSP NONCE PLACEHOLDER, FILLED IN PER REQUEST BY NGINX.
    *

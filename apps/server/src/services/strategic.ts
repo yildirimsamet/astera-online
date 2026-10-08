@@ -41,6 +41,7 @@ import { inboundRadarLead } from './radar.js';
 import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
 import { researchLevels } from './researchState.js';
 import { rescheduleLoyaltyWatch } from './loyalty.js';
+import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 
 export async function buildDeathStar(db: Db, planetId: string, clock: Clock, expectedPlayerId?: string) {
   return db.transaction(async (tx) => {
@@ -110,6 +111,7 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
       })
       .returning();
     if (!asset) throw new Error('strategic asset insert returned no row');
+    await markProgress(tx, planet.playerId, planet.now); // D212: a weapon order is production
     await schedule(tx, {
       seasonId: planet.seasonId,
       kind: 'death_star_ready',
@@ -212,6 +214,7 @@ export async function buildInterceptor(
       })
       .returning();
     if (!asset) throw new Error('interceptor insert returned no row');
+    await markProgress(tx, planet.playerId, planet.now); // D212: a defence order is production
     // The same completion event the weapon uses: one asset lifecycle, not two.
     await schedule(tx, {
       seasonId: planet.seasonId,
@@ -248,6 +251,7 @@ export async function launchDeathStar(
     await lockWorlds(tx, [capital.id, originPlanetId, targetPlanetId]);
     const origin = await loadLocked(tx, originPlanetId, clock, { expectedPlayerId });
     assertWorldOperational(origin);
+    assertOutsideSilentSpace(origin);
     await assertFreeBay(tx, originPlanetId, origin.buildings.CORE, origin.faults);
 
     const [target] = await tx.select().from(planets).where(eq(planets.id, targetPlanetId));
@@ -357,6 +361,7 @@ export async function launchDeathStar(
       })
       .returning();
     if (!mission) throw new Error('death star mission insert returned no row');
+    await markProgress(tx, origin.playerId, origin.now); // D212
     const claimed = await tx
       .update(strategicAssets)
       .set({ status: 'LAUNCHED', missionId: mission.id, readyAt: null, remainingSeconds: 0 })

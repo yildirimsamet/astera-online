@@ -170,8 +170,8 @@ describe('what it says about the reading', () => {
     expect(screen.queryByTestId('compare-rule')).toBeNull();
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/firing ships and ground guns/i);
-    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/at least one of your ships comes home/i);
+    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/armed ships’ and ground guns’ resource value/i);
+    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/partial and full success require at least one ship surviving/i);
   });
 });
 
@@ -269,7 +269,7 @@ describe('the axis is force, not spend', () => {
     expect(screen.getByText('Armed unit value')).toBeInTheDocument();
     expect(screen.getByText(/Resource cost, not attack damage/)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: /what is this/i }));
-    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/firing ships and ground guns/i);
+    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/armed ships’ and ground guns’ resource value/i);
   });
 });
 

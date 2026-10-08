@@ -13,10 +13,15 @@
 * peut-être pas encore essayées : sondage, raid, minage et récupération d’épaves.
   */
 export const rewards = {
+  empty: 'Aucun objectif de récompense disponible',
+  emptyHint: 'Recharge la liste des récompenses pour vérifier.',
+  summaryReady: "À récupérer",
+  summaryClaimed: "Paliers récupérés",
+  allMilestones: "Tous les paliers",
   eyebrow: "Objectifs permanents",
   title: "Récompenses",
   intro:
-    "Ces objectifs n’expirent jamais et aucun ne demande une série ininterrompue. Les ressources récupérées sont ajoutées directement à ton Dépôt ; elles peuvent dépasser sa capacité et peuvent être perdues lors de raids.",
+    "Ces objectifs n’expirent pas et ne demandent aucune série. Les récompenses vont directement au Magasin, même au-delà de sa capacité. Les ressources non protégées peuvent être pillées.",
   waiting: "{{count}} récompenses t’attendent",
   allTaken: "Tu as récupéré les récompenses de tous les objectifs.",
   claim: "Récupérer",
@@ -57,7 +62,7 @@ export const rewards = {
     },
     CORE: {
       name: "Noyau de Commandement",
-      tag: "La limite supérieure des niveaux de bâtiments",
+      tag: "Augmente la limite de niveau des bâtiments, sauf le Hangar",
     },
     SHIPYARD: {
       name: "Chantier Spatial",

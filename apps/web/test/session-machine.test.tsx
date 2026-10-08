@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Api } from '../src/api/client.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Api, ApiError } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import type { ClaimResult } from '../src/api/schemas.js';
 import { useSession } from '../src/session/useSession.js';
 import { planetView } from './fixtures.js';
+import i18n from '../src/i18n/index.js';
+import { LANGUAGES } from '../src/i18n/languages.js';
 
 /**
  * WHICH SCREEN OPENS, AND WHY. D21.
@@ -95,6 +97,8 @@ const signedInOnly = {
 };
 
 describe('the session machine', () => {
+  afterEach(async () => { await i18n.changeLanguage('en'); });
+
   beforeEach(() => {
     vi.restoreAllMocks();
     window.sessionStorage.clear();
@@ -432,6 +436,17 @@ describe('the session machine', () => {
     });
 
     expect(queries.getQueryData(['planet'])).toBeUndefined();
+  });
+
+  it.each(LANGUAGES)('localises an unreachable profile after restoring the cookie in %s', async language => {
+    await i18n.changeLanguage(language);
+    const { wrapper, api } = harness(placed);
+    vi.spyOn(api, 'restore').mockResolvedValue(true);
+    vi.spyOn(api, 'me').mockRejectedValue(new ApiError('UNREACHABLE', 'Private upstream diagnostic', 502));
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => {
+      expect(result.current.session).toEqual({ phase: 'blocked', message: i18n.t('errors.unreachable') });
+    });
   });
 
   it('says the server is unreachable rather than pretending the account is gone', async () => {

@@ -47,12 +47,12 @@ export const onboarding = {
     },
     fogAlone: {
       title: 'Nobody else is here yet',
-      line: '{{shard}} is still filling. When it does, you will not be able to see what any of them are holding.',
+      line: "{{shard}} is still filling. Gather intelligence to learn other commanders' resources and defences.",
       action: 'Understood',
     },
     core: {
       title: 'Raise the level limit first',
-      line: 'The Command Core sets how high your other buildings can go. Tap its row. See what level 2 gives and costs, then add it to the queue.',
+      line: "The Command Core sets structure level limits, except for the Hangar. Open its row and review level 2’s effect and cost. Then queue the upgrade.",
     },
     refinery: {
       title: 'Make more alloy',
@@ -75,17 +75,17 @@ export const onboarding = {
   /** The wall, at the one moment the player wants something. */
   claim: {
     eyebrowName: 'Last step',
-    headingName: 'Sign the world with your name',
+    headingName: "Choose your commander name",
     lineName: 'Your four orders are staged. Claim {{name}} and their real clocks start together.',
     nameLabel: 'Commander name',
     next: 'Continue',
 
     eyebrowPassword: 'One more',
-    headingPassword: 'Lock {{name}}',
-    linePassword: 'Pick a password and your commander is waiting in whichever browser you sign in from.',
+    headingPassword: "Set a password for {{name}}",
+    linePassword: "Use this password to sign in with the same commander on another device.",
     passwordLabel: 'Password',
     submit: 'Claim the planet',
-    working: 'Taking the world',
+    working: "Creating your commander…",
     back: 'Back',
   },
 
@@ -95,6 +95,6 @@ export const onboarding = {
     unreachable: 'Could not reach the galaxy.',
     retry: 'Try again',
     /** One or more replayed decisions were refused once the server ran them. */
-    partial: 'Your world is yours. One staged order was refused when the real queues started.',
+    partial: "Your planet was created. Some prepared orders could not start. Check the current production queues.",
   },
 } as const;

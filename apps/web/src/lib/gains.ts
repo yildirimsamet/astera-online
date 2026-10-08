@@ -1,5 +1,6 @@
 import {
   HANGAR,
+  SILENT_SPACE,
   hangarCapacity,
   robotSpeedMult,
   yardSpeedMult,
@@ -123,6 +124,10 @@ export interface Gain {
   maxed?: true;
 }
 
+/** D212: the pace a world's works run at — halved in Silent Space, whole everywhere else. */
+export const productionPaceOf = (planet: { silentSpace?: boolean | undefined }): number =>
+  planet.silentSpace === true ? SILENT_SPACE.productionPace : 1;
+
 /**
  * WHAT ONE MORE LEVEL ACTUALLY BUYS.
  *
@@ -139,8 +144,11 @@ export function buildingGain(
   cappedCount: number,
   levels: BuildingLevels,
   production = 1,
+  /** D212: Silent Space runs the works at this pace. It slows the rate shown, never a store. */
+  pace = 1,
 ): Gain {
   const next = level + 1;
+  const running = production * pace;
   switch (id) {
     case 'CORE': {
       /*
@@ -176,8 +184,8 @@ export function buildingGain(
     case 'REFINERY':
       return {
         label: i18n.t('gains.refinery.label'),
-        now: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(level) * production) }),
-        next: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(next) * production) }),
+        now: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(level) * running) }),
+        next: i18n.t('gains.refinery.rate', { amount: compact(alloyRate(next) * running) }),
         unlocks: i18n.t('gains.refinery.storage', {
           now: compact(storageCap(alloyRate(level) * production, levels.VAULT)),
           next: compact(storageCap(alloyRate(next) * production, levels.VAULT)),
@@ -186,8 +194,8 @@ export function buildingGain(
     case 'EXTRACTOR':
       return {
         label: i18n.t('gains.extractor.label'),
-        now: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(level) * production) }),
-        next: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(next) * production) }),
+        now: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(level) * running) }),
+        next: i18n.t('gains.extractor.rate', { amount: compact(crystalRate(next) * running) }),
         unlocks: i18n.t('gains.extractor.storage', {
           now: compact(storageCap(crystalRate(level) * production, levels.VAULT)),
           next: compact(storageCap(crystalRate(next) * production, levels.VAULT)),
@@ -254,10 +262,10 @@ export function buildingGain(
       return {
         label: i18n.t('gains.plant.label'),
         now: i18n.t('gains.plant.value', {
-          rate: full(Math.round(deuteriumRate(level) * production)),
+          rate: full(Math.round(deuteriumRate(level) * running)),
         }),
         next: i18n.t('gains.plant.value', {
-          rate: full(Math.round(deuteriumRate(next) * production)),
+          rate: full(Math.round(deuteriumRate(next) * running)),
         }),
         unlocks: i18n.t('gains.plant.storage', {
           now: compact(deuteriumStorageCap(

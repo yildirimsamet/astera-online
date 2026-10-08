@@ -218,8 +218,14 @@ describe('launching the combined strike', () => {
     await send(f, 0, f.planetIds[0]!, { DART: 15 });
     await landStaging(f);
 
+    f.clock.advance(1);
     const result = await start(f);
     expect(result.participants).toBe(2);
+    // D212: the leader's launch is their combat order; the member's own wave already stamped them.
+    const [leader] = await f.db.select({ at: players.lastProgressAt }).from(players).where(eq(players.id, f.playerIds[0]!));
+    const [member] = await f.db.select({ at: players.lastProgressAt }).from(players).where(eq(players.id, f.playerIds[1]!));
+    expect(leader!.at).toEqual(f.clock.now());
+    expect(member!.at!.getTime()).toBeLessThan(f.clock.now().getTime());
 
     const combined = await f.db.select().from(clanWarMissions)
       .where(eq(clanWarMissions.leg, 'COMBINED_ATTACK'));

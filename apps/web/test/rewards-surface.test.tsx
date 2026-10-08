@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -57,7 +57,70 @@ const probeChain = (progress: number, states: ('locked' | 'claimable' | 'claimed
   tiers: [1, 3, 5].map((goal, i) => tier(goal, states[i]!, 'PROBE')),
 });
 
+beforeEach(() => { localStorage.removeItem('astera.accordion.rewards'); });
+
+describe('the concise reward ladder', () => {
+  it('measures progress toward the next unearned goal while keeping earned rewards claimable', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['rewards'], rewards([probeChain(3, ['claimable', 'claimable', 'locked'])], 2));
+    render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
+    expect(await screen.findByText('3 / 5')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^claim$/i })).toHaveLength(2);
+  });
+
+  it('keeps the next locked milestone visible and lets the commander open later payouts', async () => {
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['rewards'], rewards([probeChain(0, ['locked', 'locked', 'locked'])]));
+    const first = render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
+    expect(await screen.findByText('×1')).toBeInTheDocument();
+    expect(screen.queryByText('×5')).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: /all milestones.*probes sent/i }));
+    expect(screen.getByText('×5')).toBeInTheDocument();
+    first.unmount();
+    render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
+    expect(await screen.findByText('×5')).toBeInTheDocument();
+  });
+
+  it('shows every ready payout even when the full ladder is collapsed', async () => {
+    localStorage.setItem('astera.accordion.rewards', '[]');
+    const { wrapper: Wrapper, queries } = harness();
+    queries.setQueryData(['rewards'], rewards([probeChain(5, ['claimable', 'claimable', 'claimable'])], 3));
+    render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
+    expect(await screen.findAllByRole('button', { name: /^claim$/i })).toHaveLength(3);
+  });
+
+  it('waits for server confirmation, blocks duplicate claims and surfaces a refusal', async () => {
+    const { wrapper: Wrapper, queries, api } = harness();
+    queries.setQueryData(['rewards'], rewards([probeChain(1, ['claimable', 'locked', 'locked'])], 1));
+    let refuse: ((reason: Error) => void) | undefined;
+    const claim = vi.spyOn(api, 'claimReward').mockImplementation(() => new Promise((_resolve, reject) => { refuse = reject; }));
+    render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
+    const button = await screen.findByRole('button', { name: /^claim$/i });
+    await userEvent.setup().click(button);
+    expect(button).toBeDisabled();
+    expect(screen.queryByText(/\+200 alloy/i)).not.toBeInTheDocument();
+    await userEvent.setup().click(button);
+    expect(claim).toHaveBeenCalledTimes(1);
+    refuse?.(new Error('offline'));
+    await waitFor(() => { expect(button).toBeEnabled(); });
+    expect(screen.queryByText(/\+200 alloy/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/offline|could not|try again/i);
+  });
+});
+
 describe('the reward panel', () => {
+  it('does not treat an empty list as proof that all rewards were claimed and can reload it', async () => {
+    const { wrapper: Wrapper, queries, api } = harness();
+    queries.setQueryData(['rewards'], rewards([]));
+    const reload = vi.spyOn(api, 'rewards').mockResolvedValue({ chains: [probeChain(0, ['locked', 'locked', 'locked'])], claimable: 0 });
+    render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
+    expect(await screen.findByText('No reward goals available')).toBeInTheDocument();
+    expect(screen.queryByText(/everything on offer has been taken/i)).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: /try again/i }));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Probes sent')).toBeInTheDocument();
+  });
+
   it('renders the Academy vault and pirate chains', async () => {
     const { wrapper: Wrapper, queries } = harness();
     queries.setQueryData(['rewards'], rewards([

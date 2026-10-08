@@ -42,6 +42,7 @@ import { publish, publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { scheduleFlightBoundary, scheduleHoldBoundary } from './monumentBoundaries.js';
 import { hpSourcesForSeason } from './radiationSources.js';
+import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 export { hpSourcesForSeason } from './radiationSources.js';
 
 type MonumentRow = typeof monuments.$inferSelect;
@@ -421,6 +422,7 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
   const worlds = preview ? null : await lockWorlds(tx, [...own.map((row) => row.id), input.originPlanetId]);
   const origin = await (preview ? readPlanetState : loadLocked)(tx, input.originPlanetId, input.clock, { expectedPlayerId: input.senderPlayerId });
   assertWorldOperational(origin);
+  assertOutsideSilentSpace(origin);
   const locked = preview ? (await readMonumentRosters(tx, [input.monumentId], [input.senderPlayerId]))[0]!
     : await lockMonument(tx, input.monumentId, true, [input.senderPlayerId]);
   if (origin.seasonId !== locked.season.id) throw new GameError('CROSS_SEASON', 'That monument is in another galaxy', 403);
@@ -516,6 +518,7 @@ export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ 
     sentAt: origin.now, arriveAt: context.arriveAt, radiationSettledAt: origin.now,
   }).returning();
   if (!wave) throw new Error('monument dispatch insert returned no row');
+  await markProgress(tx, input.senderPlayerId, origin.now); // D212
   const remaining: Fleet = { ...origin.homeFleet };
   for (const [hull, count] of fleetEntries(fleet)) remaining[hull] = (remaining[hull] ?? 0) - count;
   await setUnits(tx, origin.planetId, remaining, 'home', input.senderPlayerId);

@@ -77,6 +77,8 @@ export const now = {
   event: 'Event ending',
   shield: 'Your shield ends',
   shieldDetail: 'Raids can reach you after it',
+  silentSpace: "Move to Silent Space",
+  silentSpaceDetail: "Start a build, research, production or attack",
   /** The clock time beside a countdown in the sheet. */
   at: 'at {{time}}',
 };

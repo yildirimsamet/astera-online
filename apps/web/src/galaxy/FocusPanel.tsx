@@ -675,6 +675,12 @@ export function PlanetFocus({
   const originShipyardRevolt = (planet.faults ?? []).some(
     (fault) => fault.kind === 'SHIPYARD_REVOLT',
   );
+  /*
+    SILENT SPACE CLOSES EVERY FIGHT, AND IT IS NAMED FIRST (D212): no repair, clock or
+    development lifts it — only going home does. Probe and transfer stay open.
+  */
+  const originSilentSpace = planet.silentSpace === true;
+  const clanTargetRefusal = originSilentSpace ? t('faults.launchBlock.SILENT_SPACE') : clanTargetReason;
   const colonyPhase = colonizationPhase(target, now, settlementInFlight);
   /**
    * A CLAIM WINDOW SURVIVES THE FOG, SO THE CONTROL HAS TO AS WELL. D112/D127.
@@ -809,7 +815,9 @@ export function PlanetFocus({
 
   const deathStarReady = readyDeathStar(planet) !== undefined;
   const hasDeathStar = deathStarsOf(planet).length > 0;
-  const deathStarBlock = !deathStarReady
+  const deathStarBlock = originSilentSpace
+    ? t('faults.launchBlock.SILENT_SPACE')
+    : !deathStarReady
     ? t('focus.planet.deathStarUnavailable')
     : originShipyardRevolt
       ? t('faults.launchBlock.SHIPYARD_REVOLT')
@@ -897,7 +905,9 @@ export function PlanetFocus({
               for the same no. The same argument puts it ahead of a shield clock
               here: the shield expires, the development gap does not.
             */
-            aria-label={t(originShipyardRevolt
+            aria-label={t(originSilentSpace
+              ? 'focus.planet.attackSilentSpace'
+              : originShipyardRevolt
               ? 'focus.planet.attackShipyardRevolt'
               : outOfBand
               ? 'focus.planet.attackOutOfBand'
@@ -908,7 +918,7 @@ export function PlanetFocus({
                   : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
                     ? 'focus.planet.attackNeutralAgain'
                     : 'focus.planet.attack')}
-            disabled={originShipyardRevolt || outOfBand || originRecovering || shieldedUntil !== null}
+            disabled={originSilentSpace || originShipyardRevolt || outOfBand || originRecovering || shieldedUntil !== null}
             onClick={onAttack}
           >
             {/*
@@ -925,7 +935,9 @@ export function PlanetFocus({
               rule: "protected for 4h" is a fact a commander can plan against,
               where "that commander is new" is trivia about somebody else.
             */}
-            {originShipyardRevolt
+            {originSilentSpace
+              ? t('focus.planet.attackSilentSpaceShort')
+              : originShipyardRevolt
               ? t('focus.planet.attackShipyardRevoltShort')
               : outOfBand
               ? t('focus.planet.attackOutOfBandShort')
@@ -1108,11 +1120,11 @@ export function PlanetFocus({
           )}
           {showClanTargetAction && <div className="basis-full">
             <button type="button" className={`${BTN_GHOST} w-full`}
-              disabled={clanTargetReason !== null || clanTargetPending}
+              disabled={clanTargetRefusal !== null || clanTargetPending}
               onClick={onMarkClanTarget}>
               {t('clanWar.markTarget')}
             </button>
-            {clanTargetReason && <p className="mt-1 text-caption text-v2-ink-2">{clanTargetReason}</p>}
+            {clanTargetRefusal && <p className="mt-1 text-caption text-v2-ink-2">{clanTargetRefusal}</p>}
           </div>}
           {attackControl}
           </>
@@ -1413,7 +1425,7 @@ function OwnedPlanetFocus({
 }) {
   const { t } = useTranslation();
   const routeDistance = distance(origin.planet.position, target.position);
-  const reach = reachMinutes(origin.planet.position, target.position, origin.fleet, flightModifiers(origin));
+  const reach = reachMinutes(origin.planet.position, target.position, origin.fleet, flightModifiers(origin), 'transport');
   const originRecovering = Boolean(
     origin.planet.recoveryUntil && origin.planet.recoveryUntil.getTime() > now,
   );
@@ -2671,7 +2683,7 @@ const MOBILE_HULL_IDS = MOBILE_HULLS;
 export function PirateFocus({
   pirate,
   fleetAtHome,
-  launchBlocked = false,
+  launchBlock = null,
   onClose,
   onAttack,
   raiding,
@@ -2681,7 +2693,8 @@ export function PirateFocus({
   pirate: PirateContact;
   /** What is STANDING at the selected world. Nothing in the air can be sent again. */
   fleetAtHome: Fleet;
-  launchBlocked?: boolean;
+  /** Why nothing may leave this world for this lane, if anything stops it. D212 adds Silent Space. */
+  launchBlock?: LaunchFault | null;
   onClose: () => void;
   /** Opens `LaunchSheet` — the game's one commitment surface. */
   onAttack: () => void;
@@ -2709,7 +2722,7 @@ export function PirateFocus({
   /**
    * THE BEST CASE THIS WORLD COULD MANAGE, AND IT IS LABELLED AS ONE.
    *
-   * `reachMinutes` is the soonest rendezvous the world's FASTEST hull could keep —
+   * `reachMinutes` is the soonest rendezvous the world's fastest COMBAT hull could keep —
    * an honest upper bound on opportunity, which is the question a rail answers:
    * could I reach this at all. What the launch will actually use depends on the
    * slowest ship SELECTED, and the sheet quotes that exactly, from the same table.
@@ -2762,11 +2775,11 @@ export function PirateFocus({
             type="button"
             data-primary
             className={`${BTN_PRIMARY} basis-full whitespace-normal`}
-            disabled={launchBlocked || !hasShips}
+            disabled={launchBlock !== null || !hasShips}
             onClick={onAttack}
           >
-            {launchBlocked
-              ? t('faults.launchBlock.SHIPYARD_REVOLT')
+            {launchBlock !== null
+              ? t(`faults.launchBlock.${launchBlock}`)
               : hasShips ? t('pirate.attack') : t('pirate.noShips')}
           </button>
         )
@@ -2871,7 +2884,8 @@ export function PirateFocus({
       <p className="mt-3 text-caption leading-snug text-v2-ink-3">{t('pirate.captureHint')}</p>
       <p className="mt-1 text-caption leading-snug text-v2-ink-3">{t('pirate.hoardHint')}</p>
       <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('pirate.boundary')}</p>
-      <p className="mt-2 text-caption leading-snug text-v2-warn">{t('pirate.outbound')}</p>
+      {/* Information now, not a warning: the raid can turn home once before its engagement (owner, 2026-10-08). */}
+      <p className="mt-2 text-caption leading-snug text-v2-ink-2">{t('pirate.outbound')}</p>
     </Shell>
   );
 }
@@ -2893,7 +2907,7 @@ export function IntergalacticConvoyFocus({
   hasCombatCraft,
   launchLocked,
   occurrenceSpent,
-  launchBlocked = false,
+  launchBlock = null,
   onClose,
   onRaid,
   open,
@@ -2906,7 +2920,8 @@ export function IntergalacticConvoyFocus({
   launchLocked: boolean;
   /** This world has already spent its one strike at the convoy that is up. D124. */
   occurrenceSpent: boolean;
-  launchBlocked?: boolean;
+  /** Why nothing may leave this world for this lane, if anything stops it. D212 adds Silent Space. */
+  launchBlock?: LaunchFault | null;
   onClose: () => void;
   onRaid: () => void;
   open: boolean;
@@ -2923,8 +2938,8 @@ export function IntergalacticConvoyFocus({
     said nothing about the quota, so the control invited a launch the server was
     always going to refuse.
   */
-  const refusal = launchBlocked
-    ? t('faults.launchBlock.SHIPYARD_REVOLT')
+  const refusal = launchBlock !== null
+    ? t(`faults.launchBlock.${launchBlock}`)
     : occurrenceSpent
       ? t('convoy.alreadyStruck')
     : launchLocked
@@ -2982,7 +2997,7 @@ export function TradeFocus({
   fleetAway,
   minutesLeft,
   reachMinutes: reach,
-  launchBlocked = false,
+  launchBlock = null,
   onClose,
   onTrade,
   open,
@@ -3004,7 +3019,8 @@ export function TradeFocus({
    * and the sheet quotes that exactly, from the same solver.
    */
   reachMinutes: number | null;
-  launchBlocked?: boolean;
+  /** Why nothing may leave this world for this lane, if anything stops it. D212 adds Silent Space. */
+  launchBlock?: LaunchFault | null;
   onClose: () => void;
   /** Opens `TradeSheet` — the surface the swap is actually committed on. */
   onTrade: () => void;
@@ -3059,7 +3075,7 @@ export function TradeFocus({
           data-testid="trade-open"
           data-primary
             className={`${BTN_PRIMARY} basis-full whitespace-normal`}
-          disabled={launchBlocked || !hasCraft || !hasCarrier || tooLate}
+          disabled={launchBlock !== null || !hasCraft || !hasCarrier || tooLate}
           onClick={onTrade}
         >
           {/*
@@ -3068,8 +3084,8 @@ export function TradeFocus({
             — depends on a convoy that has not been chosen yet, so it belongs to the
             sheet. What a rail can answer is whether there is any point opening one.
           */}
-          {launchBlocked
-            ? t('faults.launchBlock.SHIPYARD_REVOLT')
+          {launchBlock !== null
+            ? t(`faults.launchBlock.${launchBlock}`)
             : carriersAway
               ? t('trade.carriersAway')
             : !hasCraft

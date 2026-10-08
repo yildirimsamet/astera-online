@@ -37,7 +37,7 @@ export const statusBar = {
     hint: 'Recovery shield — you cannot be raided for {{duration}}',
   },
   recoveryBoost: {
-    mark: 'Output boosted +50%',
+    mark: "Production +50%",
     note: '+50% output while shielded',
   },
   bays: {
@@ -49,7 +49,7 @@ export const statusBar = {
     label: 'Works',
     labelFull: 'Works full',
     collect: 'Collect',
-    firstTip: 'Production gathers here. Tap to collect.',
+    firstTip: "Production gathers in the Works. Collect it into the Store before spending it.",
     fullStopped: 'Full — production stopped',
     fillsIn: 'full in {{time}}',
     gathers: 'Production gathers here until you collect it',
@@ -61,7 +61,7 @@ export const statusBar = {
     crystal: '{{amount}} crystal',
     deuterium: '{{amount}} deuterium',
     collected: 'Collected {{amount}}',
-    collectedPartly: 'Collected {{moved}} · {{held}} would not fit',
+    collectedPartly: "{{moved}} collected into the Store · {{held}} remains in the Works",
     storeFull: 'Store full',
   },
 } as const;
@@ -147,7 +147,7 @@ export const signals = {
   /** The eyebrow on a galaxy-wide row, so it is never mistaken for personal news. */
   worldEvent: 'Galaxy event',
   empty:
-    'Nothing yet. The galaxy tells you when a fleet moves against you, when a probe is caught, and when your own ships come home.',
+    "No notifications yet. Fleet warnings, detected probes and returning ships appear here.",
   repeat: '×{{count}}',
 
   /** The states that are true right now, rather than things that happened. */
@@ -158,7 +158,7 @@ export const signals = {
     worksStoppedDetail: 'The Works are full. Production is paused at {{amount}} per hour until you collect.',
     alloyStoreLine: 'Alloy store is full',
     crystalStoreLine: 'Crystal store is full',
-    storeDetail: '{{amount}} is waiting in the works with nowhere to go. Spend something.',
+    storeDetail: "{{amount}} resources are waiting in the Works. Spend stored resources or increase capacity to make room.",
   },
 } as const;
 
@@ -186,7 +186,7 @@ export const surface = {
   whatIntel: 'what you know',
   whatReports: 'your battle reports',
   whatRewards: 'your rewards',
-  whatLeaderboard: 'the Dominion ladder',
+  whatLeaderboard: "the Dominion standings",
   whatChat: 'galaxy chat',
   whatChronicle: 'the Galaxy Chronicle',
   whatAnnouncements: 'the announcements',
@@ -232,33 +232,33 @@ export const menu = {
   intelLabel: 'Intel',
   intelHint: 'Telescope, probes, radar and battle reports',
   rewardsLabel: 'Rewards',
-  rewardsHint: 'What the galaxy owes you for playing it',
+  rewardsHint: "Collect resource rewards for completed goals",
   /*
     The hint is this row's accessible name (see `MenuRow`), so it says what the
     page IS. It no longer promises a new tab, because the row no longer opens
     one — a hint that describes the old behaviour is worse than none.
   */
-  guideLabel: 'Quick start',
-  guideHint: 'The opening moves, in the order to make them',
+  guideLabel: 'Wiki',
+  guideHint: 'Buildings, ships and the rules of the galaxy',
   rewardsWaiting: '{{count}} ready',
   /** T12: research is a commander's, not a world's, so its way in is here. */
   researchLabel: 'Research',
-  researchHint: 'Fifteen projects, held by you and by every world you hold',
+  researchHint: "View research shared by all your worlds and its requirements",
   leaderboardLabel: 'Leaderboard',
   leaderboardHint: 'Every commander ranked by Dominion',
   announcementsLabel: 'Announcements',
   announcementsHint: 'News, updates and notes from the Astera team',
   announcementsWaiting: '{{count}} new',
   feedbackLabel: 'Feedback',
-  feedbackHint: 'Send a bug, idea or congratulations to the team',
+  feedbackHint: "Report a problem or send feedback and suggestions",
   skinsShopLabel: 'Shop',
-  skinsShopHint: 'Explore planet looks in 3D',
+  skinsShopHint: "View planet appearances and prices",
   skinsInventoryLabel: 'Inventory',
   skinsInventoryHint: 'Equip skins on your worlds',
   clanLabel: 'Clan',
-  clanHint: 'Find a five-seat crew or found your own',
+  clanHint: "Join a clan or create one for up to five commanders",
   clanMemberLabel: 'Clan · [{{tag}}]',
-  clanMemberHint: 'Crew, aid, shared loot and private chat',
+  clanMemberHint: "Members, aid, shared loot, clan history and chat",
   clanWaiting: '{{count}} waiting',
   rivalLabel: 'Rival · {{commander}}',
   rivalHint: 'Focus {{planet}} and choose your next move',
@@ -294,15 +294,15 @@ export const menu = {
     low: 'Low',
   },
   qualityHint: {
-    high: 'Full resolution. Sharpest picture, most battery.',
-    balanced: 'Three quarter resolution. Hard to see, markedly cooler.',
-    low: 'Half resolution, no edge smoothing. For older phones.',
+    high: "Highest image detail. May use more battery.",
+    balanced: "Lowers the resolution limit to reduce graphics work. Heat and battery effects depend on your device.",
+    low: "Lowest resolution limit. Edge smoothing stays on; image detail may decrease.",
   },
   /** A readout the player turns on. The hint says what the number counts. */
   fpsLabel: 'Frame rate',
   fpsOn: 'On',
   fpsOff: 'Off',
-  fpsHint: 'Frames the galaxy draws each second. 24–30 when nothing moves is normal; it rises in motion and battle.',
+  fpsHint: "The number of frames the galaxy draws per second. A higher number means smoother motion.",
 } as const;
 
 export const leaderboard = {
@@ -316,7 +316,7 @@ export const leaderboard = {
   searchLabel: 'Search commanders, planets or clans',
   searchPlaceholder: 'Commander, planet or clan',
   noMatch: 'No commander, planet or clan matches that search.',
-  locationUnknown: "You haven't discovered this commander's location yet.",
+  locationUnknown: "You have not discovered this commander's location yet.",
   /*
     THE IN-SEASON PRIZE — the answer to "what am I playing for".
     It sits directly above the standings, because that is where the decision is.
@@ -364,7 +364,7 @@ export const leaderboard = {
     searchPlaceholder: 'Commander',
     noMatch: 'No commander matches that search.',
     galaxyRecord: {
-      title: 'Galaxy Record', subtitle: 'The shared facts this season left behind',
+      title: 'Galaxy Record', subtitle: "Recorded season results for this galaxy",
       champion: 'Champion', clans: 'Clan podium',
       biggestBattle: 'Largest verified battle', dominionSwing: 'Sharpest Dominion change',
       contestedWorld: 'Most contested world',
@@ -391,12 +391,12 @@ export const leaderboard = {
       hint: 'Recorded combat figures are shown. Economy, fleet production and exploration were not measured and are omitted.',
     },
     partialStats: {
-      title: 'Partial telemetry',
-      hint: 'Activity from before telemetry began may be missing; recorded figures remain exact.',
+      title: "Incomplete activity record",
+      hint: "Some activity before recording began may be missing. The displayed totals cover recorded activity.",
     },
     forcedEnd: {
       title: 'Season ended early',
-      hint: 'The played period is sealed permanently, including its final standings and rewards.',
+      hint: "The season was recorded with its standings and rewards at the time it ended early.",
     },
     none: 'None',
     ratios: {
@@ -445,7 +445,7 @@ export const leaderboard = {
       recordedTotals: 'Recorded career totals',
       covered_one: '{{count}} season covered',
       covered_other: '{{count}} seasons covered',
-      coveredWithPartial: '{{count}} seasons covered · {{partial}} with partial telemetry',
+      coveredWithPartial: "{{count}} seasons recorded · {{partial}} have incomplete activity records",
       seasons: 'Season by season',
     },
   },
@@ -516,8 +516,8 @@ export const chat = {
  * pasted into a message to the person who will fix it. See `shell/crashReport.ts`.
  */
 export const crash = {
-  title: 'Something broke',
-  body: 'The interface stopped drawing. Reloading brings you back to the disc — nothing in the galaxy was lost.',
+  title: "The game interface stopped working",
+  body: "Reload the page to continue. Your last action may not be confirmed; check its current status after reloading.",
   reload: 'Reload',
   detailShow: 'Show detail',
   detailHide: 'Hide detail',

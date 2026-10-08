@@ -47,12 +47,12 @@ export const onboarding = {
     },
     fogAlone: {
       title: 'Nadie más está aquí todavía',
-      line: '{{shard}} todavía se está llenando. Cuando lo haga, no podrá ver lo que sostienen ninguno de ellos.',
+      line: "{{shard}} aún se está llenando. Reúne información para conocer los recursos y defensas de otros comandantes.",
       action: 'Entendido',
     },
     core: {
       title: 'Primero aumenta el límite de nivel.',
-      line: 'El Núcleo de Mando establece qué tan alto pueden llegar tus otros edificios. Toca su fila. Vea lo que ofrece y cuesta el nivel 2, luego agréguelo a la cola.',
+      line: "El Núcleo de comando limita el nivel de las estructuras, salvo el Hangar. Abre su fila y revisa el efecto y coste del nivel 2. Añade después la mejora a la cola.",
     },
     refinery: {
       title: 'Hacer más aleación',
@@ -75,17 +75,17 @@ export const onboarding = {
   /** The wall, at the one moment the player wants something. */
   claim: {
     eyebrowName: 'Último paso',
-    headingName: 'Firma el mundo con tu nombre',
+    headingName: "Elige el nombre de tu comandante",
     lineName: 'Tus cuatro pedidos están preparados. Reclama {{name}} y sus relojes reales comenzarán juntos.',
     nameLabel: 'Nombre del comandante',
     next: 'Continuar',
 
     eyebrowPassword: 'Uno más',
-    headingPassword: 'Bloquear {{name}}',
-    linePassword: 'Elija una contraseña y su comandante estará esperando en cualquier navegador desde el que inicie sesión.',
+    headingPassword: "Crea una contraseña para {{name}}",
+    linePassword: "Usa esta contraseña para acceder con el mismo comandante desde otro dispositivo.",
     passwordLabel: 'Contraseña',
     submit: 'Reclama el planeta',
-    working: 'Tomando el mundo',
+    working: "Creando tu comandante…",
     back: 'Atrás',
   },
 
@@ -95,6 +95,6 @@ export const onboarding = {
     unreachable: 'No se pudo llegar a la galaxia.',
     retry: 'Inténtalo de nuevo',
     /** One or more replayed decisions were refused once the server ran them. */
-    partial: 'Tu mundo es tuyo. Un pedido preparado fue rechazado cuando comenzaron las colas reales.',
+    partial: "Tu planeta se ha creado. Algunos pedidos preparados no pudieron empezar. Consulta las colas de producción.",
   },
 } as const;

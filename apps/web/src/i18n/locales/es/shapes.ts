@@ -87,12 +87,12 @@ export const counter = {
   escapeUnsure: 'Sus naves podrían despegar; la lectura no resuelve todas las condiciones de retirada.',
   escapeAt: 'Umbral de retirada: {{at}}',
   escapeRule:
-    'Retirada táctica: una línea que enfrenta al menos el triple de su propia potencia de fuego, y a la que ese ataque aniquilaría, hace despegar sus naves en lugar de luchar, si el depósito del mundo paga un viaje de ida y vuelta de {{distance}} unidades. Los cañones se quedan y las reservas se saquean igual.',
+    "La retirada táctica requiere al menos el triple de potencia y un ataque que destruiría toda la defensa. El planeta también debe pagar un viaje de ida y vuelta de {{distance}} unidades. Si se cumplen las condiciones, las naves evitan el combate. Las defensas terrestres permanecen y los recursos pueden ser saqueados.",
   escapeMinimumRule: 'El defensor también necesita al menos {{count}} naves de combate en casa. La lectura de la sonda no muestra cuántas hay.',
   compareRuleToggle: '¿Qué es esto?',
   compareMeaning: 'Coste de recursos, no daño de ataque. Una flota más grande por sí sola no garantiza la victoria.',
   compareRule:
-    'Las naves que disparan y los cañones terrestres de ambos bandos se comparan según el coste de los recursos. El escudo y las naves desarmadas no están en este número. El pronóstico también utiliza clases de naves, investigaciones y el escudo conocido. Si su defensa no supera una línea, el modelo espera ese éxito: la defensa rota y al menos una de tus naves vuelve a casa. Una línea es un rango porque la lectura no lo muestra todo (reparto de clases, escudo): el extremo izquierdo es el peor caso y el derecho el mejor. Lo que le cuesta al ala es la pérdida estimada de abajo. La lectura puede ser antigua; los cambios aleatorios de disparo no están incluidos.',
+    "Se compara el valor en recursos de naves armadas y defensas terrestres; escudos y naves desarmadas quedan excluidos. La previsión también considera clases, investigaciones y el escudo conocido. El éxito parcial y total requieren al menos una nave superviviente. Las incógnitas crean intervalos: izquierda significa peor caso, derecha mejor caso. Las pérdidas estimadas muestran el coste posible. La información puede estar desactualizada; no se incluye la variación aleatoria de disparos.",
   linesClears: 'Éxito total si su defensa es como máximo {{at}}',
   linesBreaks: 'Al menos éxito parcial si es como máximo {{at}}',
   lineJoin: ' · ',

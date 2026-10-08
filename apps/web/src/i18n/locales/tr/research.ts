@@ -27,7 +27,7 @@ export const research = {
     "Galaksideki belirli olaylarla keşfedilir. Keşfettikten sonra kaynak ve araştırma süresi harcayarak tamamlarsın.",
   industryBand: "Endüstri",
   industryNote:
-    "İlk dakikadan açıktır ve beşer kademeden oluşur. Üretim, yapım süresi ve taşıma kapasitesini geliştirir.",
+    "Üretimi, yapım ve onarım süresini, taşıma kapasitesini geliştirir. Seviye sınırını ve ön koşulları her projenin ayrıntısında görebilirsin.",
   doctrineBand: "Doktrin",
   doctrineNote:
     "Üst seviye gemileri açar; saldırı, zırh ve itki değerlerini ayrı ve sınırlı basamaklarda geliştirir. Savaş seviyeleri sonda raporlarında görünür.",
@@ -58,7 +58,7 @@ export const research = {
   sheetCost: "Araştırma bedeli",
   sheetOnce:
     "Komutanına ait Araştırma sırasına girer. İnşaat veya Tersane yuvası kullanmaz.",
-  sheetRung: "{{max}} kademenin {{level}}. kademesi. Her kademe ayrı alınır.",
+  sheetRung: "{{max}} seviyenin {{level}}. seviyesi. Her seviye ayrı satın alınır.",
 
   isotopeName: "İzotop Spektrometrisi",
   isotopeTag: "Döteryum madenciliğini açar",
@@ -96,13 +96,13 @@ export const research = {
   robotsRole:
     "İnşaat sırasına giren her şeyin süresini kısaltır; gemileri ve yer savunmalarını etkilemez.",
   robotsDetail:
-    "Her kademe bütün dünyalarında İnşaat sırasına vereceğin her siparişi daha çabuk bitirir: binalar, enstrümanlar ve uydular. Gemileri hızlandırmaz — o Tersane Otomasyonu'nun işidir; kaynak bedelini düşürmez ve sıraya yeni yuva eklemez.",
+    "Bütün gezegenlerindeki yeni İnşaat siparişlerinin süresini kısaltır: binalar, gezegen cihazları ve uydular. Gemileri veya yer savunmasını hızlandırmaz. Kaynak bedelini ve sıra kapasitesini değiştirmez.",
   industrialName: "Endüstri",
   industrialTag: "Gemileri daha ucuza ve hızlı onarır",
   industrialRole:
     "Tamirhanedeki her işin bedelini ve süresini kısaltır",
   industrialDetail:
-    "Her kademe, tüm dünyalarında hasarlı bir gemiyi onarmanın bedelinden ve süresinden dörtte bir düşer: 1. seviyede %75, 2. seviyede %50. Gemileri daha hızlı üretmez — o Tersane Otomasyonu'nun işidir — ve savaştan sonra %20 ya da daha az hasar alan gemi zaten ücretsiz onarılır.",
+    "Bütün gezegenlerindeki gemi onarımının bedelini ve süresini azaltır. 1. seviyede normal bedel ve sürenin %75’i, 2. seviyede %50’si uygulanır. Gemi üretimini hızlandırmaz. %20 veya daha az hasarlı gemiler inişte zaten ücretsiz onarılır.",
   holdsName: "Kazıcı Ambarları",
   holdsTag: "Kazıcılar daha çok taşır",
   holdsRole:
@@ -121,36 +121,36 @@ export const research = {
   engineeringRole:
     "Mühendislik I üçüncü, Mühendislik II dördüncü seviye gövde iznini açar. Her geminin sistem araştırması ve Tersane koşulu ayrıca geçerlidir.",
   engineeringDetail:
-    "Mühendislik bir savaş çarpanı değil, üretim iznidir. İlk kademe üçüncü seviye, ikinci kademe dördüncü seviye gövde kapılarını açar; belirli bir gemi ayrıca Güç, Zırh, İtki veya Gravitik Yükler ile belirtilen Tersane seviyesini isteyebilir.",
+    "1. seviye, 3. kademe gemilerin mühendislik koşulunu karşılar. 2. seviye, 4. kademe için aynı koşulu karşılar. Gemiye göre saldırı, zırh, itki veya Gravitik Yükler araştırması da gerekebilir. Geminin Tersane seviyesi koşulu ayrıca karşılanmalıdır.",
   powerName: "Gemi Gücü",
   powerTag: "Savaş gemilerinin saldırısını artırır",
   powerRole:
     "Filondaki savaş gemilerinin saldırısını yükseltir ve ileri saldırı gemilerinin üretim koşullarına katkı verir. Yük gemileri ve yer savunması etkilenmez.",
   powerDetail:
-    "Her kademe, Söndürücü dâhil bütün savaş gemilerinin normal saldırısını artırır ve hâlihazırda sahip olduğun gemilere de uygulanır. Nakliye gemilerine saldırı eklemez; Tabya, Kirpi, Kazıcı ve sonda etkilenmez. Saldıran kalkış, savunan çatışma anındaki seviyeyi kullanır.",
+    "Her seviye, Söndürücü dâhil bütün savaş gemilerinin normal saldırısını artırır. Sahip olduğun gemilere de uygulanır. Nakliye gemilerine saldırı eklemez; yer savunmaları, Kazıcı ve sonda etkilenmez. Saldıran filo kalkış, savunan taraf çatışma anındaki araştırma seviyesini kullanır.",
   armorName: "Gemi Zırhı",
   armorTag: "Gemilerin gövde dayanımını artırır",
   armorRole:
     "Nakliye dâhil filondaki bütün gemilerin dayanımını yükseltir ve ileri savunma gemilerinin üretim koşullarına katkı verir.",
   armorDetail:
-    "Her kademe, Kurye, Seyyah, Atlas ve Argosi dâhil filondaki bütün gemilerin gövde dayanımını artırır. Tabya, Kirpi, Kazıcı ve sonda etkilenmez. Saldıran filo kalkış, savunan taraf çatışma anındaki seviyeyi kullanır.",
+    "Her seviye, nakliye gemileri dâhil filondaki bütün gemilerin gövde dayanımını artırır. Yer savunmaları, Kazıcı ve sonda etkilenmez. Saldıran filo kalkış, savunan taraf çatışma anındaki araştırma seviyesini kullanır.",
   propulsionName: "Gemi İtkisi",
   propulsionTag: "Filonun hızını artırır",
   propulsionRole:
     "Filondaki bütün gemilerin hızını artırır ve Atlas üretim koşuluna katkı verir. Yoğun Yakıt Hücrelerinden sonra açılır.",
   propulsionDetail:
-    "Dört kademenin her biri filondaki bütün gemilerin taban hızına dörtte bir ekler; sonuncusu hızı ikiye katlar ve her uçuşu yarıya indirir. Karma filo yine en yavaş üyesinin hızında uçar; böylece itki seçtiğin filoyu geliştirirken gövde profilini silmez. Kazıcı ve sonda etkilenmez; yalnız tamamlandıktan sonra hesaplanan görevler artışı alır.",
-  groundDoctrineName: "Tabya/Kirpi Doktrini",
+    "Dört seviyenin her biri gemilerin taban hızına %25 ekler. Son seviyede taban hız iki katına çıkar. Karma filo en yavaş gemisinin hızında uçar. Kazıcılar ve sondalar etkilenmez. Artış, araştırma tamamlandıktan sonra başlayan görevlere uygulanır.",
+  groundDoctrineName: "Yer Savunma Doktrini",
   doctrineTag: "Yer savunmasını geliştirir",
   doctrineRole:
-    "Tabya ve Kirpinin saldırı ile gövde dayanımını birlikte yükseltir; kapasite, enkazdan geri kurulum ve sınıf eşleşmeleri değişmez.",
+    "Tabya, Zıpkın ve Kirpinin saldırı gücü ile gövde dayanımını artırır. Yer kapasitesi, enkazdan geri kurulum ve sınıf eşleşmeleri değişmez.",
   groundDoctrineDetail:
-    "Bütün dünyalarındaki Tabya ve Kirpileri güçlendirir. Yer kapasitesi ve enkazdan geri kurulum kuralı değişmez; savunmada çatışma anındaki kademe kullanılır.",
+    "Bütün gezegenlerindeki Tabya, Zıpkın ve Kirpinin saldırı gücü ile gövde dayanımını artırır. Yer kapasitesini veya enkazdan geri kurulum kuralını değiştirmez. Savunma, çatışma anındaki araştırma seviyesini kullanır.",
 
   gridName: "Önleme Ağı",
   gridTag: "Dünya başına dört önleyici şarj",
   gridRole: "Her dünyanın tutabileceği önleyici şarj sayısını 2'den 4'e çıkarır.",
-  gridDetail: "Araştırma olmadan her dünya 2 önleyici şarj yükleyebilir; bu araştırma sınırı her dünyada 4'e çıkarır. Şarj için o dünyada Anten ve Radar 3 gerekir. Yüklü şarj, zamanlı Radar önleme çemberine giren veya dünyalarından birinin Teleskop görüşünde tanımlanan ilk Ölüm Yıldızı’nı imha eder ve tükenir. Bir şarj bir silahı durdurur; dolu bir dünya ancak şarjından fazla silah aynı anda gelirse vurulur.",
+  gridDetail: "Her gezegendeki önleme şarjı sınırını 2’den 4’e çıkarır. Şarj hazırlamak için o gezegende Anten ve Radar 3 gerekir. Şarj, zamanlı Radar önleme halkasında yakalanan veya Teleskop görüşünde teşhis edilen bir Ölüm Yıldızını yok eder. Bunun için çalışan sensörler gerekir. Her önlemede bir şarj tüketilir.",
   stockpileName: "Stratejik Stok",
   stockpileTag: "Dünya başına iki Ölüm Yıldızı",
   stockpileRole: "Her dünyanın tutabileceği Ölüm Yıldızı sayısını 1'den 2'ye çıkarır; ikincisi birincinin üretimi bitince başlar.",

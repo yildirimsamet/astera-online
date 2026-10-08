@@ -94,7 +94,7 @@ describe('granting a Shopier order', () => {
     fill({ item: 'planet-lava' });
     submit();
     const list = await results();
-    expect(within(list).getByRole('listitem')).toHaveTextContent(/lost contact with the server/i);
+    expect(within(list).getByRole('listitem')).toHaveTextContent(/could not reach the server/i);
   });
 
   it('will not send without a commander and a real order number', () => {

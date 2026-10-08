@@ -12,10 +12,15 @@
  * knowing that probing, raiding, mining and salvaging exist.
  */
 export const rewards = {
+  empty: '表示できる報酬目標がありません',
+  emptyHint: '報酬一覧を再読み込みして確認してください。',
+  summaryReady: "受け取り可能",
+  summaryClaimed: "受け取った段階",
+  allMilestones: "すべての段階",
   eyebrow: "常設の報酬",
   title: "報酬",
   intro:
-    "銀河での行動が報酬になります。期限も連続プレイの条件もありません。報酬は貯蔵庫に入りますが、ほかの司令官に奪われる可能性があります。",
+    "これらの目標には期限も連続達成の条件もありません。報酬は貯蔵庫に直接入り、容量を超える場合もあります。保護されていない資源は略奪されます。",
 
   waiting: "受け取れる報酬：{{count}}件",
   allTaken: "現在受け取れる報酬はありません。銀河での行動を続けると、次の報酬が開放されます。",
@@ -48,7 +53,7 @@ export const rewards = {
     PIRATE: { name: "海賊を撃破", tag: "異なる海賊に勝ち、艦船を帰還させる" },
     PROBE: { name: "探査機を派遣", tag: "攻撃前に相手の情報を集める" },
     RAID: { name: "惑星を襲撃", tag: "異なる惑星を襲撃する" },
-    CORE: { name: "司令中枢", tag: "ほかの施設のレベル上限を引き上げる" },
+    CORE: { name: "司令中枢", tag: "格納庫以外の建物のレベル上限を上げる" },
     SHIPYARD: { name: "造船所", tag: "より大型の艦船を建造できるようにする" },
     REFINERY: { name: "合金精錬所", tag: "時間あたりの合金生産量を増やす" },
     EXTRACTOR: { name: "クリスタル採掘所", tag: "時間あたりのクリスタル生産量を増やす" },

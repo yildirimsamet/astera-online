@@ -5,7 +5,7 @@ import i18n from '../src/i18n/index.js';
 
 // jsdom has no Element.scrollTo. Model its final position for report-sheet
 // effects; browser harnesses verify the actual smooth scrolling and layout.
-Object.defineProperty(Element.prototype, 'scrollTo', {
+if (typeof Element !== 'undefined') Object.defineProperty(Element.prototype, 'scrollTo', {
   configurable: true,
   writable: true,
   value: function (this: Element, options: ScrollToOptions | number = {}, y = 0): void {

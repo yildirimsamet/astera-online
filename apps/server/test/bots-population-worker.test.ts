@@ -105,6 +105,11 @@ describe('population driven bot worker', () => {
       .from(players).innerJoin(botProfiles, eq(botProfiles.accountId, players.accountId))
       .where(and(eq(players.seasonId, f.seasonId), gte(players.lastActiveAt, f.clock.now())));
     expect(active?.n).toBe(1);
+    // D212: an awake bot is the population, so the Silent Space sweep never takes it.
+    const [progressing] = await f.db.select({ n: sql<number>`count(*)::int` })
+      .from(players).innerJoin(botProfiles, eq(botProfiles.accountId, players.accountId))
+      .where(and(eq(players.seasonId, f.seasonId), gte(players.lastProgressAt, f.clock.now())));
+    expect(progressing?.n).toBe(1);
 
     f.clock.advance(55);
     expect((await runBotSweep(f.db, f.clock, silent, 100)).awake).toBe(0);

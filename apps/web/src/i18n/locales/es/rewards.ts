@@ -12,10 +12,15 @@
  * knowing that probing, raiding, mining and salvaging exist.
  */
 export const rewards = {
+  empty: 'No hay objetivos de recompensa disponibles',
+  emptyHint: 'Vuelve a cargar la lista de recompensas para comprobarlo.',
+  summaryReady: "Listas para reclamar",
+  summaryClaimed: "Hitos reclamados",
+  allMilestones: "Todos los hitos",
   eyebrow: 'Recompensas permanentes',
   title: 'Recompensas',
   intro:
-    'Tus logros en la galaxia tienen recompensa. Nada caduca ni exige jugar varios días seguidos. Los recursos llegan a tu almacén, donde otros podrían arrebatártelos en un ataque.',
+    "Estos objetivos no caducan ni requieren una racha. Las recompensas llegan directamente al almacén, incluso por encima de su capacidad. Los recursos sin protección pueden ser saqueados.",
 
   waiting: '{{count}} recompensas por recoger',
   allTaken: 'Ya has recogido todas las recompensas disponibles. Habrá más cuando avances en la galaxia.',
@@ -48,7 +53,7 @@ export const rewards = {
     PIRATE: { name: 'Piratas derrotados', tag: 'Vence a distintos piratas y trae tus naves de vuelta' },
     PROBE: { name: 'Sondas enviadas', tag: 'Explora antes de atacar' },
     RAID: { name: 'Mundos asaltados', tag: 'Ataca mundos distintos' },
-    CORE: { name: 'Núcleo de Mando mejorado', tag: 'Amplía el límite de tus edificios' },
+    CORE: { name: 'Núcleo de Mando mejorado', tag: "Aumenta el límite de los edificios, salvo el Hangar" },
     SHIPYARD: { name: 'Astillero', tag: 'Abre cascos más pesados' },
     REFINERY: { name: 'Refinería de Aleaciones', tag: 'Más aleación cada hora' },
     EXTRACTOR: { name: 'Extractor de Cristal', tag: 'Más cristal cada hora' },

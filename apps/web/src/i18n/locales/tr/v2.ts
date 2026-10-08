@@ -73,6 +73,8 @@ export const now = {
   event: 'Olay bitiyor',
   shield: 'Kalkanın bitiyor',
   shieldDetail: 'Sonrasında saldırıya açıksın',
+  silentSpace: "Sessiz Uzay’a taşınma",
+  silentSpaceDetail: "Bina, araştırma, üretim veya saldırı başlat",
   /** The clock time beside a countdown in the sheet. */
   at: 'saat {{time}}',
 };

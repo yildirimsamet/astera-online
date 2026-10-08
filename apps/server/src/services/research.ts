@@ -16,6 +16,7 @@ import {
 } from '../db/schema.js';
 import { schedule } from '../worker/queue.js';
 import { planetView, type PlanetView } from './planetView.js';
+import { markProgress } from './waitingRoom.js';
 import {
   GameError,
   assertWorldOperational,
@@ -171,6 +172,7 @@ export async function completeResearch(
       resolveAt: readyAt,
     });
     await recomputePlayerWealth(tx, planet.playerId);
+    await markProgress(tx, planet.playerId, planet.now); // D212
     return { projectId, planet: await planetView(tx, planetId, clock) };
   });
 }

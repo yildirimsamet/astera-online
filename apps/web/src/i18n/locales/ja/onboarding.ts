@@ -47,12 +47,12 @@ export const onboarding = {
     },
     fogAlone: {
       title: "まだ他に誰もいません",
-      line: "{{shard}}にはこれからプレイヤーが増えます。ほかの司令官が来ても、その人の保有物は最初から見えません。",
+      line: "{{shard}}はまだ参加者を受け入れています。他の司令官の資源や防衛を知るには情報収集が必要です。",
       action: "わかりました",
     },
     core: {
       title: "まずレベル制限を上げてください",
-      line: "司令中枢がほかの建物のレベル上限を決めます。項目をタップし、レベル2の効果と費用を確認してから建設キューに追加しましょう。",
+      line: "司令中枢は格納庫以外の施設のレベル上限を決めます。行を開き、レベル2の効果と費用を確認してください。その後、強化を待機列に追加します。",
     },
     refinery: {
       title: "合金をもっと作る",
@@ -75,17 +75,17 @@ export const onboarding = {
   /** The wall, at the one moment the player wants something. */
   claim: {
     eyebrowName: "最後のステップ",
-    headingName: "惑星にあなたの名を刻む",
+    headingName: "司令官の名前を選択",
     lineName: "4件の指示を準備しました。{{name}}を確保すると、実際の建設時間が同時に動き始めます。",
     nameLabel: "司令官名",
     next: "続行",
 
     eyebrowPassword: "あと一歩",
-    headingPassword: "{{name}}を守る",
-    linePassword: "パスワードを設定すれば、どのブラウザからでも同じ司令官でログインできます。",
+    headingPassword: "{{name}}のパスワードを設定",
+    linePassword: "別の端末で同じ司令官にログインする際に、このパスワードを使います。",
     passwordLabel: "パスワード",
     submit: "惑星を確保する",
-    working: "惑星を確保中",
+    working: "司令官を作成中…",
     back: "戻る",
   },
 
@@ -95,6 +95,6 @@ export const onboarding = {
     unreachable: "銀河に到達できませんでした。",
     retry: "もう一度試してください",
     /** One or more replayed decisions were refused once the server ran them. */
-    partial: "惑星の確保は完了しましたが、準備した指示の一つを建設キューに追加できませんでした。",
+    partial: "惑星を作成しました。一部の準備した注文を開始できませんでした。現在の生産待ち一覧を確認してください。",
   },
 } as const;

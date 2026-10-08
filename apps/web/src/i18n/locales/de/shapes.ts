@@ -87,12 +87,12 @@ export const counter = {
   escapeUnsure: 'Ihre Schiffe könnten abheben; die Messung klärt nicht alle Rückzugsbedingungen.',
   escapeAt: 'Rückzugsgrenze: {{at}}',
   escapeRule:
-    'Taktischer Rückzug: eine Linie, die mindestens der dreifachen eigenen Feuerkraft gegenübersteht und von diesem Angriff ausgelöscht würde, lässt ihre Schiffe abheben statt zu kämpfen, sofern der Tank der Welt einen Hin- und Rückflug von {{distance}} Einheiten bezahlt. Die Geschütze bleiben, und die Lager werden trotzdem geplündert.',
+    "Taktischer Rückzug erfordert mindestens dreifache Feuerkraft und einen Angriff, der die Verteidigung vollständig vernichten würde. Der Planet muss auch einen {{distance}}-Einheiten-Rundflug bezahlen können. Dann entkommen die Schiffe dem Kampf. Bodenverteidigung bleibt; Ressourcen können weiterhin geplündert werden.",
   escapeMinimumRule: 'Der Verteidiger braucht außerdem mindestens {{count}} Kampfschiffe vor Ort. Eine Sondenmessung zeigt ihre Anzahl nicht.',
   compareRuleToggle: 'Was ist das?',
   compareMeaning: 'Ressourcenkosten, kein Angriffsschaden. Eine größere Flotte allein garantiert keinen Sieg.',
   compareRule:
-    'Die Feuerschiffe und Bodengeschütze beider Seiten werden anhand der Ressourcenkosten verglichen. Der Schild und die unbewaffneten Schiffe sind in dieser Zahl nicht enthalten. Die Vorhersage berücksichtigt auch Schiffsklassen, Forschung und den bekannten Schild. Bleibt ihre Verteidigung unter einer Linie, erwartet das Modell diesen Erfolg – die Verteidigung gebrochen und mindestens eines deiner Schiffe kehrt heim. Eine Linie ist eine Spanne, weil die Messung nicht alles zeigt (Klassenaufteilung, Schild): das linke Ende ist der schlechteste Fall, das rechte der beste. Was es den Flügel kostet, ist der geschätzte Verlust darunter. Die Messung kann alt sein; zufällige Schussschwankungen sind nicht enthalten.',
+    "Verglichen wird der Ressourcenwert bewaffneter Schiffe und Bodengeschütze; Schild und unbewaffnete Schiffe zählen nicht dazu. Die Prognose berücksichtigt auch Klassen, Forschung und den bekannten Schild. Teilweiser und voller Erfolg erfordern mindestens ein überlebendes Schiff. Unbekannte Klassen oder Schilde erzeugen Schwellenbereiche: links der schlechteste, rechts der beste Fall. Geschätzte Verluste zeigen mögliche Kosten. Messungen können veraltet sein; zufällige Schussvariation bleibt unberücksichtigt.",
   linesClears: 'Voller Erfolg bei höchstens {{at}} Verteidigung',
   linesBreaks: 'Mindestens Teilerfolg bei höchstens {{at}}',
   lineJoin: ' · ',

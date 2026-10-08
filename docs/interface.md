@@ -720,8 +720,11 @@ has no account yet and cannot reach a sheet that only exists after they sign in.
 
 ## Silent Space placement notice
 
-After an inactivity transfer, show a compact modal explaining the 48-hour absence, preserved
-planets/progress and the former galaxy. Offer “Apply to return” and “Keep playing”. Application
+After an inactivity transfer, show a compact modal explaining the 30 hours without a development
+or combat order (D212), what Silent Space closes, the 50 % resource production, preserved
+planets/progress and the former galaxy. Inside Silent Space every closed launch control states
+"Closed in Silent Space" before it is pressed. In a MAIN galaxy the Now line shows the departure
+countdown, amber, in its last 12 hours. Offer “Apply to return” and “Keep playing”. Application
 is explicit, never automatic on opening the notice. A queued application replaces the action
 with its current position and explains that temporary blockers preserve priority; no return ETA
 is promised. Dismissal is stored per commander/placement version on this device. Menu → Silent

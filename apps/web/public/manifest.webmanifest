@@ -5,6 +5,9 @@
   "description": "Command a protected capital, win colonies, and read a live galaxy without seeing what rivals hold.",
   "start_url": "/",
   "scope": "/",
+  "related_applications": [
+    { "platform": "webapp", "url": "/manifest.webmanifest", "id": "https://asteraonline.space/" }
+  ],
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#05070D",

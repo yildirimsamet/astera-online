@@ -1,10 +1,31 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { landing } from '../src/i18n/locales/en/entry.js';
+import { academy } from '../src/i18n/locales/en/academy.js';
 
 const harness = readFileSync(resolve(import.meta.dirname, '../../../tools/visual.mjs'), 'utf8');
 
 describe('the visual verification journey', () => {
+  it('can enter through both current English training doors', () => {
+    const selector = /const trainingDoor = page\.getByRole\('button', \{ name: \/([^/]+)\/([a-z]*) \}\)/.exec(harness);
+    if (!selector) throw new Error('Missing training-door selector');
+    const label = new RegExp(selector[1]!, selector[2]);
+    expect(landing.register).toMatch(label);
+    expect(landing.newCommander).toMatch(label);
+  });
+  it('can skip the current training screen', () => {
+    const selector = /const skip = page\.getByRole\('button', \{ name: \/([^/]+)\/([a-z]*) \}\)/.exec(harness);
+    if (!selector) throw new Error('Missing training skip selector');
+    expect(academy.skip).toMatch(new RegExp(selector[1]!, selector[2]));
+  });
+  it('offers a Wiki journey that checks public content with JavaScript disabled and the in-game sheet', () => {
+    expect(harness).toContain("process.argv.includes('--wiki')");
+    const wiki = readFileSync(resolve(import.meta.dirname, '../../../tools/wiki-visual.mjs'), 'utf8');
+    expect(wiki).toContain('javaScriptEnabled: false');
+    expect(wiki).toContain('view=wiki');
+    expect(wiki).toContain('scrollWidth');
+  });
   /**
    * THE DISC'S HOME MARK LEFT WITH THE v2 SHELL; the dock's Galaxy tab, pressed while
    * lit, is Home now (same three steps, D163). A harness still clicking the old mark

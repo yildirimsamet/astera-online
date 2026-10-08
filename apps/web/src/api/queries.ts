@@ -1555,7 +1555,7 @@ function useInvalidator() {
  * written here is the last word. `useOptimisticPlanet` already did this on the way
  * IN, for the same reason and with the same comment; the way out was missing it.
  */
-function useApplyPlanet() {
+export function useApplyPlanet() {
   const client = useQueryClient();
   const { activePlanetId } = useWorld();
   return async (planet: PlanetView, allowCapitalAlias = true) => {
@@ -2303,8 +2303,15 @@ export function useRecallFlight() {
   const api = useApi();
   const invalidate = useInvalidator();
   return useMutation({
-    mutationFn: ({ missionId }: { missionId: string }) => api.recallFlight(missionId),
-    onSuccess: () => { invalidate(['pending'], ['planet'], ['planets']); },
+    /*
+      ONE RECALL FOR EVERY OUTBOUND FLEET. A pirate raid lives in its own table, so the flight
+      list marks it and the request goes to its own lane (owner, 2026-10-08).
+    */
+    mutationFn: async ({ missionId, pirate }: { missionId: string; pirate?: boolean }) =>
+      pirate === true ? api.recallPirateRaid(missionId) : api.recallFlight(missionId),
+    onSuccess: (_result, { pirate }) => {
+      invalidate(['pending'], ['planet'], ['planets'], ...(pirate === true ? [keys.pirates] : []));
+    },
   });
 }
 

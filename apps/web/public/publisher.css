@@ -126,7 +126,3 @@ strong { color: #f5f8ff; }
   .site-nav .brand { width: 100%; }
   .facts { grid-template-columns: 1fr; }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-}

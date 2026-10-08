@@ -31,6 +31,7 @@ import { addMinutes } from '../clock.js';
 import { intergalacticConvoyRuns, seasons, units } from '../db/schema.js';
 import { publish, publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
+import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
 import { intergalacticConvoyOccurrence } from './galaxyEvents.js';
@@ -164,6 +165,7 @@ export async function launchIntergalacticConvoy(
     expectedPlayerId: input.expectedPlayerId,
   });
   assertWorldOperational(origin);
+  assertOutsideSilentSpace(origin);
 
   const [active] = await tx
     .select({ id: intergalacticConvoyRuns.id })
@@ -335,6 +337,7 @@ export async function launchIntergalacticConvoy(
     quotedResourceReward: quote.resourceReward,
   });
   if (!run) throw new Error('intergalactic convoy run insert returned no row');
+  await markProgress(tx, origin.playerId, origin.now); // D212
 
   const remaining: Fleet = { ...origin.homeFleet };
   for (const [hull, count] of fleetEntries(requested)) {

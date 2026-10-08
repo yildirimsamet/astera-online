@@ -191,7 +191,7 @@ describe('Academy ownership and progression', () => {
     lesson(openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === id)));
     expect(document.querySelector('img[src$="tutorial-hand-icon.png"]')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' }).className).toContain('academy-continue');
-    expect(screen.getByText(/introduction only/i)).toBeInTheDocument();
+    expect(screen.getByText(/introduces the feature/i)).toBeInTheDocument();
   });
   it.each([['intel', 'grow', 'Intel'], ['defend', 'orbit', 'Defend'], ['fleet', 'defend', 'Fleet']] as const)('keeps the planet menu open until %s is clicked', (id, previous, name) => {
     const world = openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === id));
@@ -293,10 +293,10 @@ describe('Academy ownership and progression', () => {
     const track = vi.spyOn(analytics, 'track');
     const onClaim = vi.fn();
     render(<Academy onClaim={onClaim} onSignIn={vi.fn()} onLeave={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip training' }));
     expect(screen.getByLabelText('Commander name')).toBeInTheDocument();
     expect(screen.queryByText(/four orders are staged/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/completed Academy progress/i)).toBeInTheDocument();
+    expect(screen.getByText(/completed training progress/i)).toBeInTheDocument();
     expect(onClaim).not.toHaveBeenCalled();
     expect(track).toHaveBeenCalledWith('tutorial_skip', { step: 0, lesson: 'welcome' });
   });
@@ -304,9 +304,9 @@ describe('Academy ownership and progression', () => {
     await i18n.changeLanguage('tr');
     const onSignIn = vi.fn();
     render(<Academy onClaim={vi.fn()} onSignIn={onSignIn} onLeave={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Giriş Yap (Hesabım Var)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Giriş yap' }));
     expect(onSignIn).toHaveBeenCalledOnce();
-    fireEvent.click(screen.getByRole('button', { name: 'Atla (Direk Kayıt Ol)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Eğitimi atla' }));
     expect(screen.getByLabelText('Komutan adı')).toBeInTheDocument();
   });
 });

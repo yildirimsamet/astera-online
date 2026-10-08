@@ -105,9 +105,9 @@ describe('the top bar', () => {
 
   it('marks every store while production is boosted', () => {
     const { rerender } = render(<TopBar {...props()} />);
-    expect(screen.queryAllByRole('img', { name: 'Output boosted +50%' })).toHaveLength(0);
+    expect(screen.queryAllByRole('img', { name: 'Production +50%' })).toHaveLength(0);
     rerender(<TopBar {...props({ boosted: true })} />);
-    expect(screen.getAllByRole('img', { name: 'Output boosted +50%' })).toHaveLength(3);
+    expect(screen.getAllByRole('img', { name: 'Production +50%' })).toHaveLength(3);
   });
 
   it('wears the shield on the commander chip while it holds, with its time', () => {

@@ -12,10 +12,15 @@
  * knowing that probing, raiding, mining and salvaging exist.
  */
 export const rewards = {
+  empty: 'No reward goals available',
+  emptyHint: 'Reload the reward list to check again.',
+  summaryReady: "Ready to claim",
+  summaryClaimed: "Claimed milestones",
+  allMilestones: "All milestones",
   eyebrow: 'Standing offers',
   title: 'Rewards',
   intro:
-    'The galaxy pays for playing it. Nothing here expires, nothing needs a streak, and everything lands in your store — where anyone can come and take it.',
+    "These goals do not expire or require a streak. Rewards go directly into your store, even above capacity. Unprotected resources can be raided.",
 
   waiting: '{{count}} ready to claim',
   allTaken: 'Everything on offer has been taken. More arrives as the galaxy does.',
@@ -48,7 +53,7 @@ export const rewards = {
     PIRATE: { name: 'Pirates defeated', tag: 'Win against different crews and bring ships home' },
     PROBE: { name: 'Probes sent', tag: 'Look before you leap' },
     RAID: { name: 'Worlds raided', tag: 'Different worlds, not the same one twice' },
-    CORE: { name: 'Command Core', tag: 'The ceiling everything else obeys' },
+    CORE: { name: 'Command Core', tag: "Raise building level limits, except for the Hangar" },
     SHIPYARD: { name: 'Shipyard', tag: 'Opens heavier hulls' },
     REFINERY: { name: 'Alloy Refinery', tag: 'Alloy every hour' },
     EXTRACTOR: { name: 'Crystal Extractor', tag: 'Crystal every hour' },

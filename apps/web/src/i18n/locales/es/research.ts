@@ -17,7 +17,7 @@ export const research = {
   eyebrow: "Comandante",
   title: "Investigación",
   /** What the whole screen is for, in the one clause a player reads before scrolling. */
-  premise: "Comprado una vez, en tu poder y en cada mundo que tienes lo tiene.",
+  premise: "La investigación completada se aplica a todos tus mundos. Cada nivel se compra por separado.",
 
   /** THE QUEUE. It belongs to the commander, not to the funding world. */
   queueTitle: "Cola de investigación",
@@ -36,7 +36,7 @@ export const research = {
     "Revelado por eventos específicos en la galaxia, luego completado al gastar recursos y tiempo de investigación.",
   industryBand: "Industria",
   industryNote:
-    "Abierto desde el primer minuto con cinco peldaños cada uno. Mejora la producción, el tiempo de construcción y la capacidad de carga.",
+    "Mejora la producción, los tiempos de construcción y reparación, y la capacidad de carga. Cada proyecto muestra su límite de niveles y requisitos.",
   doctrineBand: "Doctrina",
   doctrineNote:
     "Abre niveles avanzados de casco y mejora el ataque, el blindaje o la propulsión en escaleras delimitadas separadas. Los niveles de combate son visibles mediante sonda.",
@@ -71,7 +71,7 @@ export const research = {
   sheetComplete: "Investigación completa",
   sheetCost: "Costo de investigación",
   sheetOnce: "Colocado en la cola de investigación de todo tu comandante. No utiliza un espacio de Construcción ni de Astillero.",
-  sheetRung: "Rung {{level}} de {{max}}. Cada peldaño se compra por separado.",
+  sheetRung: "Nivel {{level}} de {{max}}. Cada nivel se compra por separado.",
 
   isotopeName: "Espectrometría de isótopos",
   isotopeTag: "Desbloquea la minería de deuterio",
@@ -109,13 +109,13 @@ export const research = {
   robotsRole:
     "Acorta todo lo que hay en la cola de construcción sin afectar a los naves ni a los cañones terrestres.",
   robotsDetail:
-    "Cada peldaño finaliza antes todos los pedidos de construcción futuros en tus mundos: edificios, instrumentos y satélites por igual. No acelera los naves (eso es Yard Automation) y no reduce los precios de los recursos ni agrega espacios en la cola.",
+    "Reduce las futuras construcciones en todos tus planetas: edificios, instrumentos y satélites. No acelera naves ni defensas terrestres. Precios y capacidad de cola no cambian.",
   industrialName: "Industrial",
   industrialTag: "Repara naves más barato y más rápido",
   industrialRole:
     "Reduce el coste y el tiempo de cada trabajo de la Estación de Reparación",
   industrialDetail:
-    "Cada peldaño reduce en un cuarto lo que cuesta y lo que tarda reparar una nave dañada en todos tus mundos: 75 % en el nivel 1 y 50 % en el nivel 2. No construye naves más rápido \u2014 eso es Yard Automation \u2014 y una nave con un 20 % de daño o menos tras una batalla se repara gratis de todos modos.",
+    "Reduce el coste y tiempo de reparación en todos tus planetas. El nivel 1 aplica el 75 % de lo normal; el nivel 2 aplica el 50 %. No acelera la construcción de naves. Los daños de hasta el 20 % ya se reparan gratis al aterrizar.",
   holdsName: "Retenciones del prospector",
   holdsTag: "Las naves mineras llevan más",
   holdsRole: "Aumenta todas las reservas del Prospector; La bonificación por capacidad de la torre de perforación se aplica en la parte superior.",
@@ -132,36 +132,36 @@ export const research = {
   engineeringRole:
     "Ingeniería I abre permisos de casco de nivel 3; Ingeniería II abre el Nivel 4. Los cascos individuales conservan sus requisitos de investigación de sistemas y de astillero.",
   engineeringDetail:
-    "La ingeniería otorga permiso de construcción en lugar de un multiplicador de combate. Su primer peldaño abre las puertas del casco del Nivel 3 y el segundo abre las puertas del casco del Nivel 4; un casco específico aún puede requerir energía, armadura, propulsión o cargas gravíticas y el nivel de astillero indicado.",
+    "El nivel 1 cumple el requisito de ingeniería de naves de categoría 3. El nivel 2 hace lo mismo para la categoría 4. Cada nave puede exigir Potencia, Blindaje, Propulsión o Cargas Gravíticas. Sigue siendo necesario el nivel de Astillero indicado.",
   powerName: "Potencia del nave",
   powerTag: "Genera ataque de buque de guerra",
   powerRole:
     "Aumenta el ataque de todos los buques de guerra de tu flota y satisface las puertas de construcción ofensivas avanzadas. Los cascos de carga y la defensa terrestre no se ven afectados.",
   powerDetail:
-    "Cada peldaño aumenta el ataque ordinario en cada buque de guerra, incluido el Anulador, y se aplica a los naves que ya posees. No añade ataque a los transportes ni afecta a Bastion, Thorn, Prospector o sondas. Un atacante lleva su nivel de tiempo de lanzamiento; un defensor lee el nivel del tiempo de batalla.",
+    "Cada nivel aumenta el ataque normal de todas las naves de guerra, incluido el Anulador. También beneficia a las naves que ya tienes. Los transportes no ganan ataque; defensas terrestres, Prospectores y sondas no cambian. El atacante usa su nivel al despegar; el defensor usa el nivel al comenzar el combate.",
   armorName: "Armadura de nave",
   armorTag: "Aumenta la resistencia del casco del nave.",
   armorRole:
     "Aumenta la resistencia del casco de cada nave de tu flota, incluidos los transportes, y satisface las puertas de construcción defensiva avanzada.",
   armorDetail:
-    "Cada peldaño aumenta la resistencia del casco de cada nave de tu flota, incluidos Mensajero, Caminante, Atlas y Argosy. No afecta a Bastion, Thorn, Prospector ni a las sondas. Un atacante lleva su nivel de tiempo de lanzamiento; un defensor lee el nivel del tiempo de batalla.",
+    "Cada nivel aumenta la resistencia de todas las naves de la flota, incluidos los transportes. Defensas terrestres, Prospectores y sondas no cambian. El atacante usa su nivel al despegar; el defensor usa el nivel al comenzar el combate.",
   propulsionName: "Propulsión de naves",
   propulsionTag: "Aumenta la velocidad de la flota",
   propulsionRole:
     "Aumenta la velocidad de cada nave de tu flota y contribuye a la puerta Atlas. Se abre después de Dense Fuel Cells.",
   propulsionDetail:
-    "Cada uno de los cuatro peldaños añade una cuarta parte a la velocidad nominal de cada nave de tu flota, por lo que el último la duplica y reduce a la mitad cada vuelo. Una flota mixta todavía viaja a la velocidad de su miembro más lento, por lo que la propulsión mejora la composición elegida sin borrar su perfil. No afecta a los prospectores ni a las sondas, y solo las misiones citadas una vez completadas reciben la ganancia.",
+    "Cada uno de los cuatro niveles añade un 25 % de la velocidad base. El último la duplica. Una flota mixta usa su nave más lenta. Prospectores y sondas no cambian. El efecto se aplica a misiones iniciadas después de completar la investigación.",
   groundDoctrineName: "Doctrina de Emplazamiento",
   doctrineTag: "Mejora la defensa terrestre.",
   doctrineRole:
-    "Aumenta el ataque de Bastión y Espina y la fuerza del casco juntos sin cambiar su capacidad, recuperación o enfrentamientos de clases.",
+    "Aumenta el ataque y la resistencia del Bastión, el Arpón y la Espina. No cambia la capacidad terrestre, la recuperación ni las ventajas de clase.",
   groundDoctrineDetail:
-    "Mejora el ataque y el casco de Bastions and Thorns en todos los mundos. Cambia la fuerza de combate, no la capacidad terrestre o el salvamento; Los defensores usan el peldaño que se sostiene cuando comienza la batalla.",
+    "Aumenta el ataque y la resistencia del Bastión, el Arpón y la Espina en todos tus planetas. Capacidad terrestre y recuperación no cambian. La defensa usa el nivel de investigación al comenzar el combate.",
 
   gridName: "Cuadrícula de intercepción",
   gridTag: "Cuatro cargas interceptoras por mundo",
   gridRole: "Aumenta de 2 a 4 las cargas interceptoras que puede tener cada uno de tus mundos.",
-  gridDetail: "Sin investigación, cada mundo puede cargar 2 cargas interceptoras; esta investigación eleva el límite a 4 en cada mundo. Una carga necesita un enlace ascendente y Radar 3 en su mundo. Una carga lista destruye la primera Estrella de la Muerte que cruza su anillo de intercepción del radar o que es identificada en la mira del telescopio de cualquiera de tus mundos, y luego se gasta. Una carga detiene un arma: un mundo cargado solo cae si llegan a la vez más armas que cargas tiene.",
+  gridDetail: "Aumenta el límite de cargas interceptoras de 2 a 4 por planeta. Prepararlas requiere Enlace ascendente y Radar 3 en ese planeta. Una carga destruye una Estrella de la Muerte identificada por Telescopio o interceptada a tiempo en el anillo de Radar. Los sensores deben funcionar. Cada intercepción consume una carga.",
   stockpileName: "Reserva estratégica",
   stockpileTag: "Dos Estrellas de la Muerte por mundo",
   stockpileRole: "Aumenta de 1 a 2 las Estrellas de la Muerte que puede tener cada uno de tus mundos. La segunda empieza cuando termina la primera.",

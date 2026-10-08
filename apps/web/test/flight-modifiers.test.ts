@@ -97,12 +97,12 @@ describe('every other surface that quotes a flight', () => {
    * is what the focus panel answers before a commander opens a launch sheet at all.
    */
   it('measures reach at the commander’s real pace', () => {
-    expect(reachMinutes(HERE, THERE, HOME, fast))
-      .toBeLessThan(reachMinutes(HERE, THERE, HOME, UNAIDED)!);
+    expect(reachMinutes(HERE, THERE, HOME, fast, 'combat'))
+      .toBeLessThan(reachMinutes(HERE, THERE, HOME, UNAIDED, 'combat')!);
   });
 
   it('still refuses a reach with nothing that can fly', () => {
-    expect(reachMinutes(HERE, THERE, { BASTION: 3 }, fast)).toBeNull();
+    expect(reachMinutes(HERE, THERE, { BASTION: 3 }, fast, 'combat')).toBeNull();
   });
 
   /**

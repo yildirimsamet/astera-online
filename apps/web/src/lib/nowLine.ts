@@ -21,6 +21,8 @@ export const BUILD_WINDOW_MS = 5 * MINUTE;
 export const EVENT_WINDOW_MS = 15 * MINUTE;
 /** The attack shield only in its last hour. */
 export const SHIELD_WINDOW_MS = 60 * MINUTE;
+/** The move to Silent Space in its last twelve hours: one evening is enough to answer it. D212. */
+export const SILENT_SPACE_WINDOW_MS = 12 * 60 * MINUTE;
 
 /** Kinds of your own thread that end in a fight at the far end. */
 const STRIKES: ReadonlySet<PendingThread['kind']> = new Set(['fleet', 'pirate', 'death_star']);
@@ -28,6 +30,8 @@ const STRIKES: ReadonlySet<PendingThread['kind']> = new Set(['fleet', 'pirate', 
 export type NowEntry =
   | { tier: 1; kind: 'incoming'; at: number; thread: PendingThread; focus?: FlightFocus }
   | { tier: 2; kind: 'strike'; at: number; thread: PendingThread; focus?: FlightFocus }
+  /** Losing the galaxy outranks every own timer; only an enemy landing comes first. D212. */
+  | { tier: 2; kind: 'silentSpace'; at: number }
   | { tier: 3; kind: 'flight'; at: number; thread: PendingThread; focus?: FlightFocus }
   | { tier: 3; kind: 'run'; at: number; run: MiningRun; focus: FlightFocus }
   /** `waiting`: behind the head of its lane, so its clock is not running yet (D4). */
@@ -47,6 +51,8 @@ export interface NowInput {
   research: readonly ResearchQueueOrderView[];
   events: readonly ActiveGalaxyEvent[];
   shieldUntil: Date | null;
+  /** When this commander leaves for Silent Space unless they order something first. D212. */
+  silentSpaceAt?: Date | null;
 }
 
 /**
@@ -100,6 +106,9 @@ export function nowEntries(input: NowInput, scope: 'line' | 'sheet' = 'line'): N
       entries.push({ tier: 5, kind: 'event', at, event });
     }
   }
+  if (input.silentSpaceAt && within(input.silentSpaceAt.getTime(), SILENT_SPACE_WINDOW_MS)) {
+    entries.push({ tier: 2, kind: 'silentSpace', at: input.silentSpaceAt.getTime() });
+  }
   if (input.shieldUntil && within(input.shieldUntil.getTime(), SHIELD_WINDOW_MS)) {
     entries.push({ tier: 6, kind: 'shield', at: input.shieldUntil.getTime() });
   }
@@ -146,5 +155,7 @@ export function describeNow(
       return { title: i18n.t(EVENT_NAME[entry.event.kind]), detail: i18n.t('now.event') };
     case 'shield':
       return { title: i18n.t('now.shield'), detail: i18n.t('now.shieldDetail') };
+    case 'silentSpace':
+      return { title: i18n.t('now.silentSpace'), detail: i18n.t('now.silentSpaceDetail') };
   }
 }

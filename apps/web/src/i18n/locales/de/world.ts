@@ -387,6 +387,8 @@ export const focus = {
     attack: "Planen Sie einen Angriff",
     attackNeutralAgain: "Erneuter Überfall · Anspruch unverändert",
     attackOriginRecovering: "-Angriff · Ursprung wird wiederhergestellt",
+    attackSilentSpace: "Kann nicht angreifen · im Stillen Raum geschlossen",
+    attackSilentSpaceShort: "Stiller Raum",
     attackShipyardRevolt: "Kann nicht angreifen · Werftaufstand",
     attackShipyardRevoltShort: "Werftaufstand",
     radiationHere: "Strahlungswolke: Jedes Schiff hier verliert pro Minute {{pct}} % seiner Hülle. Ab 20 % wartet es auf die Reparaturstation.",
@@ -553,7 +555,7 @@ export const focus = {
     outbound: "Dieser Flug kann nicht zurückgerufen werden.",
     /** A raid or a transfer may be turned once before it arrives (K8). */
     recallable: "Vor der Ankunft kann sie einmal umkehren; der Rückweg dauert so lange wie der bisherige Flug.",
-    outboundPirate: "Ein Piratenüberfall kann nicht zurückgerufen werden.",
+    outboundPirate: "Das Gefecht hat begonnen; dieser Überfall kann nicht mehr umkehren.",
   },
 
   contact: {
@@ -684,7 +686,7 @@ export const pirate = {
   captured: "{{hull}} erfasst",
   captureMissed: "Nichts mehr übrig, was es wert wäre, nach Hause geschleppt zu werden",
   send: "Senden Sie {{count}} · {{duration}}",
-  outbound: "Ein Piratenüberfall kann nicht zurückgerufen werden.",
+  outbound: "Einen Piratenüberfall kannst du vor Gefechtsbeginn einmal zurückrufen.",
   holdsHint: "Sind seine Kriegsschiffe gefallen, können seine Frachter nicht entkommen – auch sie gehören dir.",
   /**
    * YOU CANNOT SEE THIS ONE — WHICH IS NOT THE SAME AS "THIS IS OLD". D160.
@@ -697,6 +699,6 @@ export const pirate = {
   remembered: "Verfolgt, seit Sie es identifiziert haben · derzeit nicht auf Ihren Sensoren",
   /** The boundary, stated — the same job the contact panel's last line does. */
   boundary:
-    "Ein von Ihnen identifizierter Pirat bleibt auf dieser Liste, bis er stirbt oder seine Zeit abläuft, genau wie ein Stein, den Sie gefunden haben. Seine Umlaufbahn ist lösbar, Sie behalten also die Spur und die Besatzungszahl außerhalb der Reichweite – Sie verlieren das Auge, nicht die Spur.",
+    "Ein identifizierter Pirat bleibt bis zur Zerstörung oder zum Ablauf gelistet. Außerhalb der Sensorreichweite bleiben Route und bekannte Besatzung sichtbar. Die Live-Sicht hängt weiter von der Reichweite ab.",
   hoardHint: "Was Sie nach Hause tragen, wird durch die von Ihnen mitgebrachten Laderäume begrenzt.",
 } as const;

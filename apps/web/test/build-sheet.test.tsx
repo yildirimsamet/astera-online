@@ -568,15 +568,14 @@ describe('fleet holdings beside each hull name', () => {
   });
 
   /**
-   * NOTHING AWAY IS NOTHING TO SAY. "Away: 0" is a line of type spent telling a
-   * commander that the ordinary thing is happening, on the row that has the least
-   * width in the game to spend.
+   * The compact D170 location line states both halves even at zero away, so a
+   * commander can see that every ship is home without reading the hull's pitch.
    */
-  it('says nothing at all when none of that hull are away', () => {
+  it('shows every ship at home when none of that hull are away', () => {
     const view = show({ fleet: { DART: 11 }, fleetAway: {} });
     const row = view.container.querySelector('#row-DART');
 
-    expect(row).not.toHaveTextContent(/away/i);
+    expect(row).toHaveTextContent('11 in · 0 out');
   });
 });
 

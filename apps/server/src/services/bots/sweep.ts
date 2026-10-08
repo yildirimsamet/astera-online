@@ -339,7 +339,8 @@ export async function runBotSweep(
   if (awake.length > 0) {
     await db
       .update(players)
-      .set({ lastActiveAt: now })
+      // D212: the server's own commanders are the population, never Silent Space's guests.
+      .set({ lastActiveAt: now, lastProgressAt: now })
       .where(inArray(players.id, awake.map((bot) => bot.playerId)));
   }
 

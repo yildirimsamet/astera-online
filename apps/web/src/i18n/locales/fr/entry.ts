@@ -8,14 +8,14 @@ export const landing = {
   reassurance: 'Pas besoin de compte pour commencer. Joue d’abord, sauvegarde ensuite.',
 
   /** Accueil d’un commandant qui revient sur cet appareil. */
-  welcomeBack: 'Ta planète capitale t’attend là où tu l’as laissée',
+  welcomeBack: "Continue avec ton commandant",
   signInPrimary: 'Se connecter',
   returningHint: 'Retrouve ton commandant et ta galaxie depuis n’importe quel navigateur.',
   newCommander: 'Créer plutôt un nouveau commandant',
   opening: 'La galaxie s’ouvre',
   ready: 'Ta planète est prête',
-  cover: 'Le ciel se dévoile',
-  publicLinksLabel: 'En savoir plus',
+  cover: "Chargement des visuels du jeu",
+  publicLinksLabel: "Informations sur le jeu et politiques",
   aboutLink: 'À propos d’Astera',
   guideLink: 'Comment jouer',
   privacyLink: 'Confidentialité',
@@ -30,17 +30,17 @@ export const landing = {
     close: 'Fermer',
     eyebrowRegister: 'Nouveau commandant',
     eyebrowLogin: 'Content de te revoir',
-    headingRegister: 'Prends une planète',
+    headingRegister: "Crée ton commandant",
     headingLogin: 'Se connecter',
     nameLabel: 'Nom du commandant',
     namePlaceholder: 'Vantage',
     passwordLabel: 'Mot de passe',
     passwordPlaceholder: 'Au moins {{count}} caractères',
-    submitBusy: 'Connexion en cours',
+    submitBusy: "Connexion…",
     submitRegister: 'Créer un commandant',
     submitLogin: 'Se connecter',
     switchToLogin: 'J\'ai déjà un commandant',
-    switchToRegister: 'J\'ai besoin d\'un commandant',
+    switchToRegister: "Créer un nouveau commandant",
     badName: 'Utilise 2 à 32 lettres, chiffres, traits de soulignement ou espaces simples, dans toute langue.',
     noName: 'Saisis ton nom de commandant.',
     shortPassword: 'Les mots de passe comportent au moins {{count}} caractères.',
@@ -53,12 +53,12 @@ export const servers = {
   commanderLabel: 'Commandant',
   signOut: 'Se déconnecter',
   rule:
-    'Chaque galaxie accueille au plus {{seats}} commandants. Elles se remplissent l’une après l’autre : tu rejoindras donc une galaxie où d’autres jouent déjà.',
-  loading: 'Exploration du ciel',
+    "Chaque galaxie accueille au maximum {{seats}} commandants. Les galaxies s’ouvrent et se remplissent dans l’ordre.",
+  loading: "Chargement des galaxies",
   unreachable: 'Impossible d\'atteindre les galaxies.',
   retry: 'Essayer à nouveau',
   listLabel: 'Galaxies',
-  noneOpen: 'Aucune galaxie n\'est ouverte pour le moment. La saison est entre deux réinitialisations. Réessayez dans un instant.',
+  noneOpen: "Aucune galaxie ne peut être rejointe actuellement. Consulte la liste plus tard.",
   allFull: 'Toutes les galaxies sont pleines. La prochaine ouvrira à la réinitialisation de la saison, quand tout le monde repartira de zéro.',
   online: '<0>{{amount}}</0> dans la galaxie en ce moment',
   yours: 'Ta galaxie',
@@ -70,20 +70,20 @@ export const servers = {
   },
   enter: 'Entrer',
   join: 'Rejoindre',
-  joining: '…',
+  joining: "Connexion…",
 } as const;
 
 export const app = {
-  blockedTitle: 'Pas maintenant',
+  blockedTitle: "Connexion au jeu impossible",
   blockedRetry: 'Essayer à nouveau',
   sessionFailed: 'Impossible d\'atteindre le serveur',
 } as const;
 
 export const loading = {
-  contact: 'Connexion en cours',
-  sweeping: 'Exploration de la galaxie',
-  charting: 'Cartographie de la galaxie',
-  raising: 'La galaxie apparaît',
+  contact: "Connexion au serveur",
+  sweeping: "Chargement des informations de la galaxie",
+  charting: "Chargement des visuels de la galaxie",
+  raising: "Préparation de l’affichage du jeu",
 } as const;
 
 export const document = {

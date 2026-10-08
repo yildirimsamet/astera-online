@@ -9,12 +9,12 @@
 
 export const vocabulary = {
   building: {
-    CORE: { name: 'Núcleo de comando', tag: 'Desbloquea niveles más altos', role: 'Establece los techos del edificio y la velocidad de construcción; la capital abre espacios para colonias en los niveles 9, 13 y 16.', detail: 'Ningún otro edificio puede elevarse por encima del Centro de Mando. Aumentarlo acorta el tiempo de construcción, abre más órbitas y espacios de vuelo en niveles establecidos y expande la capacidad de defensa terrestre. Solo el Núcleo de la capital establece límites de investigación y velocidad, y otorga la primera, segunda y tercera colonia en los niveles 9, 13 y 16. No produce mineral ni poder de combate por sí solo.' },
+    CORE: { name: 'Núcleo de comando', tag: 'Desbloquea niveles más altos', role: "Limita el nivel de las estructuras, excepto el Hangar. En la capital abre espacios para colonias en los niveles 9, 13 y 16.", detail: "Limita el nivel de las estructuras de este mundo, excepto el Hangar, que tiene su propio límite. Algunos niveles añaden espacios de vuelo, órbita y defensa terrestre. Acelera la instalación de instrumentos y satélites, excepto el Enlace ascendente. El tiempo de mejora de un edificio depende de su tipo y nivel. El núcleo de la capital determina el tiempo y algunos requisitos de investigación. Sus niveles 9, 13 y 16 abren los tres espacios de colonia." },
     REFINERY: { name: 'Refinería de aleaciones', tag: 'Hace aleación', role: 'Aleación por hora y almacenamiento de aleaciones', detail: 'Cada nivel aumenta los ingresos de aleación pasiva y la cantidad que se puede almacenar. La aleación paga la mayor parte de la construcción y los cascos, por lo que esto acorta muchas esperas futuras.' },
     EXTRACTOR: { name: 'Extractor de cristales', tag: 'Hace cristal', role: 'Cristal por hora y almacenamiento de cristal', detail: 'Cada nivel aumenta los ingresos y el almacenamiento de cristales pasivos. El cristal es la mitad más rara del hardware, los instrumentos y los costos de investigación avanzados.' },
-    VAULT: { name: 'Almacenar', tag: 'Profundiza la almacén', role: 'Amplía el almacenamiento de recursos y deja un 10% de margen para las próximas actualizaciones de productores de cristales y aleaciones correspondientes. El 10% inferior, con un límite de 8 horas de producción, está a salvo de redadas.', detail: 'La Almacén crece primero según su escala de horas de producción creada por su autor. En niveles altos, si ese piso es demasiado pequeño, la Almacén L se expande para contener el 110% del costo de aleación de Refinería de aleación L→L+1 y el costo de cristal Extractor de cristal L→L+1; la ventana horaria resultante también se aplica al deuterio. Una incursión no puede alcanzar el 10% inferior de la almacén u 8 horas de producción de ese recurso, lo que sea menor. La Almacén no lucha ni reduce el daño recibido.' },
+    VAULT: { name: "Almacén", tag: 'Profundiza la almacén', role: 'Amplía el almacenamiento de recursos y deja un 10% de margen para las próximas actualizaciones de productores de cristales y aleaciones correspondientes. El 10% inferior, con un límite de 8 horas de producción, está a salvo de redadas.', detail: 'La Almacén crece primero según su escala de horas de producción creada por su autor. En niveles altos, si ese piso es demasiado pequeño, la Almacén L se expande para contener el 110% del costo de aleación de Refinería de aleación L→L+1 y el costo de cristal Extractor de cristal L→L+1; la ventana horaria resultante también se aplica al deuterio. Una incursión no puede alcanzar el 10% inferior de la almacén u 8 horas de producción de ese recurso, lo que sea menor. La Almacén no lucha ni reduce el daño recibido.' },
     SHIPYARD: { name: 'Astillero', tag: 'Desbloquea mejores naves', role: 'Desbloquea cascos · acelera la construcción de naves y defensa terrestre · establece la precisión y el sigilo de la sonda', detail: 'Los niveles más altos abren nuevas clases de cascos y completan naves y defensas terrestres más rápido. También agudizan las lecturas de sus sondas y hacen que sus propias sondas sean más difíciles de detectar. Los niveles de astillero no añaden espacios en la cola.' },
-    HANGAR: { name: 'Hangar', tag: 'Establece cuánta flota cabe', role: 'Espacio de flota en este mundo · se mejora con cualquier Núcleo de Mando', detail: 'Cada nave ocupa espacio en el Hangar según su tamaño, incluidas las naves que viajan fuera de casa; las defensas terrestres no. Un Hangar lleno no construye ni recibe más naves, pero no pierde nada de lo que ya tiene. Cada peldaño cuesta un tercio de la flota a la que hace sitio, así que los peldaños superiores cuestan más de lo que un mundo sin Almacenar mejorado puede guardar de una vez.' },
+    HANGAR: { name: 'Hangar', tag: 'Establece cuánta flota cabe', role: 'Espacio de flota en este mundo · se mejora con cualquier Núcleo de Mando', detail: "Cada nave ocupa espacio en el Hangar según su tamaño, también cuando está fuera del planeta. Las defensas terrestres no ocupan ese espacio. Un Hangar lleno impide construir o recibir más naves; conserva las existentes. Los niveles superiores pueden requerir mejorar el Almacén para reunir su coste." },
     DEUTERIUM_PLANT: { name: 'Refinería de deuterio', tag: 'Produce deuterio', role: 'Deuterio por hora y almacenamiento de combustible · su techo lo fija Deuterio Síntesis', detail: 'Cada nivel aumenta la producción pasiva de deuterio y la cantidad que se puede almacenar. El deuterio alimenta los lanzamientos de flotas; investiga el siguiente peldaño de síntesis de deuterio cuando la refinería alcance su nivel máximo.' },
   },
 
@@ -47,7 +47,7 @@ export const vocabulary = {
         'Requiere un enlace ascendente en órbita. Sin radar, las flotas entrantes no avisan de su llegada y la mayoría de las sondas pasan desapercibidas.',
       roleOwned:
         'Detecta movimiento dentro de su círculo sin ETA y marca las amenazas dirigidas a este mundo con una hora de llegada. L2 agrega rodamiento, L4 tamaño aproximado y L5 el mundo de origen y la flota completa.',
-      detail: 'Cada nivel amplía el círculo de contacto y alerta temporizada. Los niveles hasta L5 también mejoran las posibilidades de atrapar sondas: L1 marca una flota entrante con su hora de llegada, L2 agrega rumbo, L4 estima su fuerza y ​​L5 revela su origen y naves. L6–L8 compra alcance adicional. Se detecta movimiento no dirigido a este mundo sin ETA. Las cargas interceptoras solo pueden atacar armas estratégicas con Radar 3 o superior.',
+      detail: "El Radar detecta flotas entrantes y mejora la detección de sondas. El nivel 1 muestra la llegada. El nivel 2 añade dirección; el nivel 4 estima la fuerza. El nivel 5 revela origen y naves. Los niveles también aumentan el alcance.",
     },
     AEGIS: {
       name: 'Égida',
@@ -128,9 +128,9 @@ export const vocabulary = {
 
   hull: {
     DART: {
-      name: 'Dardo', tag: 'Asaltante de velocidad frágil', role: 'Casco de combate de entrada más rápido; intercambia durabilidad por tiempo de exposición.',
-      pitch: 'Llega y regresa rápidamente, pero se retira bajo fuego concentrado.',
-      detail: 'Un hostigador de bajo coste para incursiones cortas y contraataques de casco pesado. Su velocidad preserva el tiempo de actividad de la defensa local; su delgado casco encarece una lectura fallida.',
+      name: 'Dardo', tag: 'Asaltante de velocidad frágil', role: "La nave de combate inicial más rápida. Tiene poca resistencia de casco.",
+      pitch: "Su alta velocidad reduce el tiempo lejos del planeta. La poca resistencia aumenta el riesgo de perder la nave.",
+      detail: "Una nave de la clase Hostigador de bajo coste. Tiene ventaja contra la clase Baluarte y desventaja contra la clase Lanza. Su velocidad sirve para ataques cortos. Comprueba las clases defensivas del objetivo antes de enviarla, porque su casco resiste poco.",
     },
     PIKE: {
       name: 'Lucio', tag: 'Casco de lanza de entrada', role: 'Al precio de Dart, ataca más fuerte y tiene menos casco, con ventaja de clase contra los hostigadores.',
@@ -154,7 +154,7 @@ export const vocabulary = {
     },
     VIPER: {
       name: 'Víbora', tag: 'Asaltante eficiente', role: 'Velocidad de nivel dos y mejor supervivencia que Dart.',
-      pitch: 'Conserva el plan de flota rápida y paga menos impuestos de durabilidad.',
+      pitch: "Más ataque y resistencia que Dart con la misma velocidad base.",
       detail: 'Un hostigador de nivel dos sin investigación. Dart sigue siendo más barato, mientras que ambos cascos comparten la misma velocidad bruta. Viper convierte su mayor compromiso en más ataque, casco, carga y mejor eficiencia de combate con igual costo.',
     },
     TALON: {
@@ -199,7 +199,7 @@ export const vocabulary = {
     },
     ATLAS: {
       name: 'Atlas', tag: 'Transporte pesado de tercer nivel', role: 'La bodega de nivel tres más grande; lento, voluminoso y basado en la investigación.',
-      pitch: 'El transporte de gran volumen, seguro y más eficiente antes de que se desbloquee Argosy.',
+      pitch: "Transporta grandes cantidades de recursos. No tiene armas; acompáñalo con naves de combate en los ataques.",
       detail: 'Un transporte de apoyo de nivel tres desbloqueado por Ingeniería y Propulsión. No causa ningún daño y hace que la planificación del acompañamiento sea esencial.',
     },
     NULLIFIER: {
@@ -245,7 +245,7 @@ export const vocabulary = {
       name: 'Argosy',
       tag: 'Transportista de capital',
       role: 'La bodega más profunda del juego y el más lento de los transportes.',
-      pitch: 'Lleva casi hasta tres Atlas y no puede dejar atrás a nada.',
+      pitch: "Ofrece la mayor capacidad de carga. Su baja velocidad puede alargar el viaje de la flota.",
       detail: 'El Argosy es un transporte de nivel cuatro. Clase de apoyo, por lo que está protegido mientras los cascos de combate viven y quedan indefensos una vez que la línea desaparece. El ritmo del comerciante está ligado a este casco: el agarre más lento del catálogo lo marca.',
     },
     BASTION: {
@@ -294,7 +294,7 @@ export const vocabulary = {
     },
     EXPLORER: {
       title: 'Explorador desbloqueado',
-      body: 'Envíe una sonda para saberlo con certeza. Su radar puede captarlo.',
+      body: "Envía una sonda para conocer la flota y los recursos del objetivo. El informe puede incluir estimaciones; el objetivo puede detectar el escaneo.",
     },
     VEIL: { title: 'Velo desbloqueado', body: 'El estado de su flota puede ser DESCONOCIDO para cualquiera que esté mirando.' },
   },
@@ -359,7 +359,7 @@ export const gains = {
     sweepNone: 'ninguno',
     reaches: '{{sense}} contacto (sin ETA) · {{warn}} advertencia temporizada',
     maxed: 'Nivel superior; Las advertencias también revelan el mundo de origen y la flota exacta.',
-    l1: 'Comienza a capturar sondas y advierte cuando una flota entrante ingresa al círculo',
+    l1: "Mejora la detección de sondas. Avisa de la llegada cuando una flota entrante entra en el alcance del Radar.",
     bearing: 'L2 también revela la dirección de aproximación',
     interception: "L3 permite cargar cargas interceptoras en este mundo (requiere enlace ascendente)",
     estimate: 'Muestra el tamaño aproximado de la fuerza que se aproxima temprano',
@@ -447,7 +447,7 @@ export const gains = {
 export const directives = {
   inboundTitle: 'Flota entrante · {{duration}}',
   inboundDetail:
-    'Gasta las existencias, envía tu flota o resiste y lucha. No se puede tomar si no está aquí.',
+    "Puedes gastar los recursos expuestos, enviar tu flota o reforzar la defensa. Las naves en vuelo no pueden defender este planeta.",
   inboundAction: 'Gástalo ahora',
 
   undefendedTitle: 'Este mundo no tiene defensa terrestre.',
@@ -456,8 +456,8 @@ export const directives = {
   undefendedAction: 'Construir defensa',
 
   exposedTitle: '{{amount}} te lo pueden quitar',
-  exposedDetail: 'Su bóveda protege {{now}}. El siguiente nivel protege {{next}}.',
-  exposedAction: 'Levantar la bóveda',
+  exposedDetail: "El Almacén protege {{now}} recursos de los ataques. El siguiente nivel protege {{next}}.",
+  exposedAction: "Mejorar el Almacén",
 
   scannedTitle_one: 'Alguien te escaneó',
   scannedTitle_other: '{{count}} escanea en tu contra',
@@ -486,7 +486,7 @@ export const directives = {
   noRadarAction: 'Mira el radar',
 
   coreCeilingTitle: 'Núcleo de Mando está bloqueando las actualizaciones de {{count}}',
-  coreCeilingDetail: 'Nada puede exceder el Núcleo. Al levantarlo, se liberan todos a la vez.',
+  coreCeilingDetail: "El Núcleo de comando limita el nivel de los edificios, salvo el Hangar. Mejora el Núcleo para aumentar ese límite.",
   coreCeilingAction: 'Elevar el núcleo',
 
   idleTitle: 'No hay nada en vuelo',
@@ -597,6 +597,7 @@ export const notifications = {
   targetGoneDebris: 'El campo del naufragio ya fue limpiado · {{count}} simulacros regresando',
   pirateHome: 'Regreso de los piratas · {{count}} naves · +{{amount}} saqueado',
   pirateHomeEmpty: 'Regreso de los piratas · {{count}} naves · con las bodegas vacías',
+  pirateHomeRecalled: "Regreso de los piratas · {{count}} naves · retirada antes del combate",
   pirateHomeBare: 'Regreso de los piratas · {{count}} naves',
   pirateHomeTowed_looted: 'Regreso de los piratas · {{count}} naves · +{{amount}} saqueado · {{hull}} capturado',
   pirateHomeTowed_empty: 'Regreso de los piratas · {{count}} naves · {{hull}} capturados',

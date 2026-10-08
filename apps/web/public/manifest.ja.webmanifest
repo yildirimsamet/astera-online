@@ -5,6 +5,9 @@
   "description": "保護された首都を指揮し、植民地を獲得して、ライバルの戦力が見えない生きた銀河を探索しよう。",
   "start_url": "/",
   "scope": "/",
+  "related_applications": [
+    { "platform": "webapp", "url": "/manifest.ja.webmanifest", "id": "https://asteraonline.space/" }
+  ],
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#05070D",

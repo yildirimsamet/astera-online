@@ -20,6 +20,7 @@ import { GameError } from './services/planet.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerPlanetRoutes } from './routes/planet.js';
 import { registerRewardRoutes } from './routes/rewards.js';
+import { registerBrandRecallRoutes } from './routes/brandRecall.js';
 import { registerIntelRoutes } from './routes/intel.js';
 import { registerGalaxyRoutes } from './routes/galaxy.js';
 import { registerMonumentRoutes } from './routes/monuments.js';
@@ -411,6 +412,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerTradeRoutes(app);
     registerIntergalacticConvoyRoutes(app);
     registerSessionRoutes(app);
+    registerBrandRecallRoutes(app);
     registerReturnApplicationRoutes(app);
     registerChatRoutes(app);
     registerDmRoutes(app);

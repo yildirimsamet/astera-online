@@ -45,6 +45,7 @@ import type { Panel } from '../screens/GalaxyView.jsx';
 import { setFpsMeterEnabled, useFpsMeterEnabled } from '../lib/fpsMeter.js';
 import type { CountryCode } from '@astera/rules';
 import { CountryPicker } from '../v2/identity/CountryPicker.js';
+import { InstallButton } from '../brand/Install.js';
 import { Flag } from '../v2/identity/Flag.js';
 import { countryName } from '../v2/identity/country.js';
 
@@ -184,6 +185,10 @@ export function MenuPanel({
 
   return (
     <div data-v2-commander-menu className="flex flex-col gap-5 px-1 pb-3 font-v2-ui text-v2-ink">
+      <div className="flex items-center justify-between gap-2 border-b border-v2-line pb-3">
+        <div className="min-w-0"><p className="brand-small">Astera Online</p><p className="mt-1 select-all font-v2-mono text-micro text-v2-ink-2">asteraonline.space</p></div>
+        <InstallButton compact />
+      </div>
       {/**
        * RANK ONE — WHAT IS WAITING ON YOU, and only ever that.
        *
@@ -359,25 +364,13 @@ export function MenuPanel({
         )}
       </MenuGroup>
 
-      {/*
-        THE QUICK-START GUIDE AND THE REHEARSAL, TOGETHER AND NAMED AS HELP.
-
-        `public/hizli-baslangic-rehberi.html` is a finished standalone page the
-        build already ships and Nginx already serves, so all that was missing was a
-        door. It is A LINK, IN THIS TAB: the guide replaces the game and the
-        browser's own back restores it — a new tab leaves one behind on every visit
-        and costs the page the one control every reader already has.
-
-        It is still not an in-game sheet. The page carries its own stylesheet and
-        its own Turkish, and wrapping it would claim it is part of the interface
-        while it still reads as a separate site. See `shell/guide.ts`.
-      */}
+      {/* The Wiki shares the public edition without leaving the live galaxy. */}
       <MenuGroup label={t('menu.helpHeading')}>
         <MenuTile
           icon={<GuideIcon className="size-5" />}
           label={t('menu.guideLabel')}
           hint={t('menu.guideHint')}
-          href={publisherUrl('guide', i18n.resolvedLanguage)}
+          onClick={() => { onOpen('wiki'); }}
         />
         {onReplayAcademy && (
           <MenuTile

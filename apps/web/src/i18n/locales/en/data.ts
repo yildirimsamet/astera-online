@@ -9,13 +9,13 @@
 
 export const vocabulary = {
   building: {
-    CORE: { name: 'Command Core', tag: 'Unlocks higher levels', role: 'Sets building ceilings and construction speed; the capital opens colony slots at levels 9, 13 and 16.', detail: 'No other building can rise above the Command Core. Raising it shortens building time, opens more orbit and flight slots at set levels, and expands ground-defence capacity. Only the capital’s Core sets research ceilings and speed, and grants the first, second and third colony slots at levels 9, 13 and 16. It produces no ore or combat power by itself.' },
+    CORE: { name: 'Command Core', tag: 'Unlocks higher levels', role: "Sets structure level limits except for the Hangar. The capital opens colony slots at levels 9, 13 and 16.", detail: "Sets local structure level limits, except for the Hangar, which has its own limit. Certain levels add flight bays, orbit slots and ground-defence capacity. It speeds instrument installation and satellite construction, except for Uplink. Building upgrade times depend on building type and level. The capital's Core determines research time and some research requirements. On the capital, levels 9, 13 and 16 open the first, second and third colony slots." },
     REFINERY: { name: 'Alloy Refinery', tag: 'Makes alloy', role: 'Alloy per hour, and alloy storage', detail: 'Each level increases passive alloy income and the amount that can be stored. Alloy pays for most construction and hulls, so this shortens many future waits.' },
     EXTRACTOR: { name: 'Crystal Extractor', tag: 'Makes crystal', role: 'Crystal per hour, and crystal storage', detail: 'Each level increases passive crystal income and storage. Crystal is the rarer half of advanced hardware, instruments and research costs.' },
-    VAULT: { name: 'Store', tag: 'Deepens the store', role: 'Expands resource storage and leaves 10% headroom for the next matching alloy and crystal producer upgrades. The bottom 10%, capped at 8 hours of production, is safe from raids.', detail: 'The Store first grows by its authored production-hour ladder. At high levels, if that floor is too small, Store L expands to hold 110% of the Alloy Refinery L→L+1 alloy cost and Crystal Extractor L→L+1 crystal cost; the resulting hour window also applies to Deuterium. A raid cannot reach the lesser of the bottom 10% of the store or 8 hours of that resource’s production. The Store does not fight or reduce incoming damage.' },
+    VAULT: { name: 'Store', tag: 'Deepens the store', role: 'Expands resource storage and leaves 10% headroom for the next matching alloy and crystal producer upgrades. The bottom 10%, capped at 8 hours of production, is safe from raids.', detail: "Store levels increase the production hours you can keep. Capacity also covers at least 110% of the next same-level producer upgrade costs. Store L covers the Alloy Refinery L→L+1 alloy cost and Crystal Extractor L→L+1 crystal cost. The resulting storage hours also apply to Deuterium. Raids cannot take the smaller of 10% of storage capacity or 8 hours of that resource’s production. The Store does not fight or absorb damage." },
     SHIPYARD: { name: 'Shipyard', tag: 'Unlocks better ships', role: 'Unlocks hulls · speeds ship and ground-defence construction · sets probe accuracy and stealth', detail: 'Higher levels open new hull classes and finish ships and ground defences faster. They also sharpen your probe readings and make your own probes harder to catch. Shipyard levels add no queue slots.' },
-    HANGAR: { name: 'Hangar', tag: 'Sets how much fleet fits', role: 'Fleet room on this world · raised at any Command Core', detail: 'Every ship takes Hangar room by its size, including ships away from home; ground defences do not. A full Hangar builds and receives no more ships, but loses nothing it already holds. Each rung is priced at a third of the fleet it makes room for, so the upper rungs cost more than a world with no Store upgrades can hold at once.' },
-    DEUTERIUM_PLANT: { name: 'Deuterium Refinery', tag: 'Makes Deuterium', role: 'Deuterium per hour and fuel storage · its ceiling is set by Deuterium Synthesis', detail: 'Each level increases passive Deuterium production and the amount that can be stored. Deuterium fuels fleet launches; research the next Deuterium Synthesis rung when the Refinery reaches its level ceiling.' },
+    HANGAR: { name: 'Hangar', tag: 'Sets how much fleet fits', role: 'Fleet room on this world · raised at any Command Core', detail: "Ships use Hangar room according to their size, including ships away on missions. Ground defences do not. A full Hangar prevents new construction and arrivals but keeps existing ships. Each level costs one third of the fleet value its capacity accommodates. Higher levels may require Store upgrades to hold the full price." },
+    DEUTERIUM_PLANT: { name: 'Deuterium Refinery', tag: 'Makes Deuterium', role: 'Deuterium per hour and fuel storage · its ceiling is set by Deuterium Synthesis', detail: "Each level increases passive Deuterium production and the amount that can be stored. Deuterium fuels fleet launches; research the next Deuterium Synthesis level when the Refinery reaches its level ceiling." },
   },
 
   instrument: {
@@ -47,7 +47,7 @@ export const vocabulary = {
         'Requires an Uplink in orbit. Without Radar, inbound fleets give no arrival warning and most probes pass unnoticed.',
       roleOwned:
         'Detects movement inside its circle without an ETA and marks threats aimed at this world with an arrival time. L2 adds bearing, L4 rough size, and L5 the origin world and full fleet.',
-      detail: 'Every level widens the contact and timed-warning circle. Levels through L5 also improve the chance of catching probes: L1 marks an inbound fleet with its arrival time, L2 adds bearing, L4 estimates its strength, and L5 reveals its origin and ships. L6–L8 buy additional reach. Movement not aimed at this world is detected without an ETA. Interceptor charges can engage strategic weapons only at Radar 3 or above.',
+      detail: "Radar detects inbound fleets and improves probe detection. Level 1 shows arrival time. Level 2 adds direction; level 4 adds estimated strength. Level 5 reveals origin and ships. Higher levels also increase detection range.",
     },
     AEGIS: {
       name: 'Aegis',
@@ -128,9 +128,9 @@ export const vocabulary = {
 
   hull: {
     DART: {
-      name: 'Dart', tag: 'Fragile speed raider', role: 'Fastest entry combat hull; trades durability for exposure time.',
-      pitch: 'Arrives and returns quickly, but folds under concentrated fire.',
-      detail: 'A low-cost Skirmisher for short raids and heavy-hull counters. Its speed preserves home-defence uptime; its thin hull makes a failed read expensive.',
+      name: 'Dart', tag: 'Fragile speed raider', role: "The fastest entry-level combat ship. It has low hull strength.",
+      pitch: "High speed reduces time away from home. Low hull strength increases the risk of losing the ship.",
+      detail: "A low-cost Skirmisher combat ship. It has an advantage against Bulwarks and a disadvantage against Lances. Its speed suits short raids. Check the target’s defence classes before launch because its hull strength is low.",
     },
     PIKE: {
       name: 'Pike', tag: 'Entry Lance hull', role: 'At Dart’s price it attacks harder and has less hull, with class advantage against Skirmishers.',
@@ -154,7 +154,7 @@ export const vocabulary = {
     },
     VIPER: {
       name: 'Viper', tag: 'Efficient raider', role: 'Tier-two speed and better survival than Dart.',
-      pitch: 'Preserves the fast-fleet plan while paying less durability tax.',
+      pitch: "More attack and hull strength than Dart at the same base speed.",
       detail: 'A research-free tier-two Skirmisher. Dart remains cheaper, while both hulls share the same raw speed. Viper turns its larger commitment into more attack, hull, cargo and better equal-cost combat efficiency.',
     },
     TALON: {
@@ -199,7 +199,7 @@ export const vocabulary = {
     },
     ATLAS: {
       name: 'Atlas', tag: 'Tier-three heavy transport', role: 'The largest tier-three hold; slow, bulky and research-gated.',
-      pitch: 'The most efficient safe, high-volume transport before Argosy unlocks.',
+      pitch: "Carries large resource loads. It is unarmed; send combat escorts when using it on a raid.",
       detail: 'A tier-three support transport unlocked by Engineering and Propulsion. It deals no damage and makes escort planning essential.',
     },
     NULLIFIER: {
@@ -215,7 +215,7 @@ export const vocabulary = {
       tag: 'Lifts {{salvage}} of wreck',
       role: 'Special support hull: fires nothing, and collects wreck after the battle it flew into.',
       pitch: 'Flies behind the line like a transport and takes the last shots. Keep warships beside it — once they fall, it is prey.',
-      detail: 'When the battle ends, every collector still alive lifts up to {{salvage}} of the wreck — in the wreck’s own mix of alloy, crystal and deuterium — before the rest drifts as a public field. The haul lands in storage with the fleet. It adds nothing to the hold, cannot fly without a warship, cannot be sent at a wreck field or an asteroid, and collects nothing while defending.',
+      detail: "It follows an armed fleet into battle. Each surviving collector lifts up to {{salvage}} wreck resources, in the wreck’s mix of alloy, crystal and deuterium. Remaining wreckage forms a public field. It adds no ordinary cargo space. It cannot launch without a warship or travel to asteroids or wreck fields. It collects nothing while defending.",
     },
     CATACLYSM: {
       name: 'Cataclysm', tag: 'Capital striker', role: 'At Corsair’s price it attacks substantially harder, has less hull and flies slower as a tier-four Lance.',
@@ -227,7 +227,7 @@ export const vocabulary = {
       tag: 'Capital raider',
       role: 'The top tier\'s only Skirmisher — what breaks a Bulwark wall.',
       pitch: 'At Cataclysm’s price it is faster and tougher, but attacks less and carries a smaller hold.',
-      detail: 'Corsair is tier four’s only Skirmisher and shares the highest raw combat-speed rung with Dart, Viper and Tempest. It has less raw attack than Cataclysm but gains the Skirmisher advantage against Citadel walls; Lance-class targets counter it.',
+      detail: "Corsair is tier four’s only Skirmisher. Its base combat speed matches Dart, Viper and Tempest, the fastest warships. It has less base attack than Cataclysm. Its Skirmisher class gains an advantage against Citadel ships and takes a disadvantage against Lance ships.",
     },
     CITADEL: {
       name: 'Citadel', tag: 'Capital fortress', role: 'At Paladin’s price it has more hull, less attack and the slowest tier-four combat speed.',
@@ -245,7 +245,7 @@ export const vocabulary = {
       name: 'Argosy',
       tag: 'Capital hauler',
       role: 'The deepest hold in the game, and the slowest of the transports.',
-      pitch: 'Carries nearly as much as three Atlases, and can outrun nothing at all.',
+      pitch: "Provides the largest cargo hold. Its low speed can lengthen the fleet’s journey.",
       detail: 'The Argosy is tier four\'s transport. Support class, so it is shielded while combat hulls live and defenceless once the line is gone. The merchant\'s pace is tied to this hull: the slowest hold in the catalogue sets it.',
     },
     BASTION: {
@@ -294,7 +294,7 @@ export const vocabulary = {
     },
     EXPLORER: {
       title: 'Explorer unlocked',
-      body: 'Send a probe to know for certain. Their radar may catch it.',
+      body: "Send a probe to learn about the target’s fleet and resources. Reports can contain estimates; the target may detect the scan.",
     },
     VEIL: { title: 'Veil unlocked', body: 'Your fleet status can read UNKNOWN to anyone watching.' },
   },
@@ -315,7 +315,7 @@ export const gains = {
     label: 'Fleet room',
     value: '{{room}} room',
     none: 'No Hangar',
-    ceiling: 'Up to {{room}} at the top rung',
+    ceiling: "Up to {{room}} at the highest level",
   },
   refinery: {
     label: 'Alloy per hour',
@@ -359,7 +359,7 @@ export const gains = {
     sweepNone: 'none',
     reaches: '{{sense}} contact (no ETA) · {{warn}} timed warning',
     maxed: 'Top level; warnings also reveal the origin world and exact fleet',
-    l1: 'Starts catching probes and warns when an inbound fleet enters the circle',
+    l1: "Improves probe detection. Warns of arrival when an inbound fleet enters Radar range.",
     bearing: 'L2 also reveals the direction of approach',
     interception: "L3 lets this world load interceptor charges (Uplink needed)",
     estimate: 'Shows the approaching force’s rough size early',
@@ -447,7 +447,7 @@ export const gains = {
 export const directives = {
   inboundTitle: 'Inbound fleet · {{duration}}',
   inboundDetail:
-    'Spend the stock, send your fleet out, or stand and fight. It cannot be taken if it is not here.',
+    "You can spend exposed resources, send your fleet out or strengthen your defence. Ships in flight cannot defend this world.",
   inboundAction: 'Spend it now',
 
   undefendedTitle: 'This world has no ground defence',
@@ -456,8 +456,8 @@ export const directives = {
   undefendedAction: 'Build defence',
 
   exposedTitle: '{{amount}} can be taken from you',
-  exposedDetail: 'Your vault protects {{now}}. The next level protects {{next}}.',
-  exposedAction: 'Raise the Vault',
+  exposedDetail: "The Store protects {{now}} resources from raids. The next level protects {{next}}.",
+  exposedAction: "Upgrade the Store",
 
   scannedTitle_one: 'Someone scanned you',
   scannedTitle_other: '{{count}} scans against you',
@@ -486,7 +486,7 @@ export const directives = {
   noRadarAction: 'Look at Radar',
 
   coreCeilingTitle: 'Command Core is blocking {{count}} upgrades',
-  coreCeilingDetail: 'Nothing may exceed the Core. Raising it releases all of them at once.',
+  coreCeilingDetail: "The Command Core sets building level limits, except for the Hangar. Upgrade the Core before raising a building beyond that limit.",
   coreCeilingAction: 'Raise the Core',
 
   idleTitle: 'Nothing is in flight',
@@ -597,6 +597,7 @@ export const notifications = {
   targetGoneDebris: 'The wreck field was already picked clean · {{count}} drills turning back',
   pirateHome: 'Raiders home · {{count}} ships · +{{amount}} looted',
   pirateHomeEmpty: 'Raiders home · {{count}} ships · empty-handed',
+  pirateHomeRecalled: "Raiders home · {{count}} ships · called back before the engagement",
   pirateHomeBare: 'Raiders home · {{count}} ships',
   pirateHomeTowed_looted: 'Raiders home · {{count}} ships · +{{amount}} looted · {{hull}} captured',
   pirateHomeTowed_empty: 'Raiders home · {{count}} ships · {{hull}} captured',

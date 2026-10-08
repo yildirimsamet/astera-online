@@ -12,8 +12,6 @@ describe('the galaxy opening cover', () => {
     );
     expect(result.current).toBe(true);
     rerender({ ready: true });
-    expect(result.current).toBe(true);
-    act(() => { vi.advanceTimersByTime(450); });
     expect(result.current).toBe(false);
     rerender({ ready: false });
     expect(result.current).toBe(false);
@@ -24,19 +22,15 @@ describe('the galaxy opening cover', () => {
     expect(result.current).toBe(true);
   });
 
-  it('keeps a cached launch visible long enough to register', () => {
-    vi.useFakeTimers();
+  it('opens a cached launch immediately without waiting for animation', () => {
     const { result } = renderHook(() => useOpeningCover(true));
-    act(() => { vi.advanceTimersByTime(449); });
-    expect(result.current).toBe(true);
-    act(() => { vi.advanceTimersByTime(1); });
     expect(result.current).toBe(false);
   });
 
-  it('opens by five seconds even when the canvas never signals ready', () => {
+  it('opens by the hard deadline even when the canvas never signals ready', () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useOpeningCover(false));
-    act(() => { vi.advanceTimersByTime(4_999); });
+    act(() => { vi.advanceTimersByTime(19_999); });
     expect(result.current).toBe(true);
     act(() => { vi.advanceTimersByTime(1); });
     expect(result.current).toBe(false);

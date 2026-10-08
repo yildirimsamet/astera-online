@@ -17,7 +17,7 @@ export const research = {
   eyebrow: "Commander",
   title: "Research",
   /** What the whole screen is for, in the one clause a player reads before scrolling. */
-  premise: "Bought once, held by you, and every world you hold has it.",
+  premise: "Completed research applies to all worlds you own. Each research level is bought separately.",
 
   /** THE QUEUE. It belongs to the commander, not to the funding world. */
   queueTitle: "Research queue",
@@ -36,10 +36,10 @@ export const research = {
     "Revealed by specific events in the galaxy, then completed by spending resources and research time.",
   industryBand: "Industry",
   industryNote:
-    "Open from the first minute with five rungs each. Improves production, build time and carrying capacity.",
+    "Improves production, build and repair time, and carrying capacity. Each project shows its own level limit and prerequisites.",
   doctrineBand: "Doctrine",
   doctrineNote:
-    "Opens advanced hull tiers and improves attack, armour or propulsion on separate bounded ladders. Combat levels are probe-visible.",
+    "Unlocks advanced ship tiers and improves attack, armour or propulsion through research levels. Probes can reveal combat research levels.",
   strategicBand: "Strategic",
   strategicNote: "Raises how many Death Stars and interceptor charges each of your worlds can hold.",
 
@@ -71,7 +71,7 @@ export const research = {
   sheetComplete: "Research complete",
   sheetCost: "Research cost",
   sheetOnce: "Placed in your commander-wide Research queue. It does not use a Construction or Yard slot.",
-  sheetRung: "Rung {{level}} of {{max}}. Each rung is bought separately.",
+  sheetRung: "Level {{level}} of {{max}}. Each level is bought separately.",
 
   isotopeName: "Isotope Spectrometry",
   isotopeTag: "Unlocks Deuterium mining",
@@ -82,7 +82,7 @@ export const research = {
   denseName: "Dense Fuel Cells",
   denseTag: "Unlocks Ship Propulsion",
   denseRole:
-    "To reveal it, fill your cargo in one raid while loot remains on the target. Completion opens the Ship Propulsion research ladder.",
+    "To reveal it, fill your cargo in one raid while loot remains on the target. Completing it unlocks Ship Propulsion research.",
   denseDetail:
     "Completing it permanently opens Ship Propulsion research for your commander. Propulsion improves every ship in your fleet and is also part of the Atlas build gate; it does not change Prospectors or probes.",
   graviticName: "Gravitic Charges",
@@ -95,73 +95,73 @@ export const research = {
   synthesisName: "Deuterium Synthesis",
   synthesisTag: "Raises the Refinery ceiling",
   synthesisRole:
-    "Each rung opens three more Deuterium Refinery levels on every world you hold",
+    "Each level opens three more Deuterium Refinery levels on every world you hold",
   synthesisDetail:
-    "Each research rung raises the Deuterium Refinery ceiling by three levels on every world. You still build those Refinery levels separately where you need fuel production.",
+    "Each research level raises the Deuterium Refinery ceiling by three levels on every world. You still build those Refinery levels separately where you need fuel production.",
   yardName: "Yard Automation",
   yardTag: "Builds ships faster",
   yardRole:
     "Shortens mobile-craft build time without affecting ground guns or Yard capacity",
   yardDetail:
-    "Each rung reduces the time of every future mobile-craft order across your worlds, including Prospectors. It does not speed up ground defences, reduce resource prices or add Yard queue slots.",
+    "Each level reduces the time of every future mobile-craft order across your worlds, including Prospectors. It does not speed up ground defences, reduce resource prices or add Yard queue slots.",
   robotsName: "AI Robots",
   robotsTag: "Builds structures faster",
   robotsRole:
     "Shortens everything in the Construction queue without affecting ships or ground guns",
   robotsDetail:
-    "Each rung finishes every future Construction order across your worlds sooner: buildings, instruments and satellites alike. It does not speed up ships \u2014 that is Yard Automation \u2014 and it neither reduces resource prices nor adds queue slots.",
+    "Shortens future Construction orders on all your worlds: buildings, instruments and satellites. It does not speed up ships or ground defences. Resource prices and queue capacity remain unchanged.",
   industrialName: "Industrial",
   industrialTag: "Repairs ships cheaper and faster",
   industrialRole:
     "Cuts the bill and the time of every Repair Station job",
   industrialDetail:
-    "Each rung takes a quarter off what repairing a damaged ship costs and how long it takes, on every world you hold: 75% at level 1, 50% at level 2. It does not build ships faster \u2014 that is Yard Automation \u2014 and a ship damaged 20% or less after a battle is repaired free anyway.",
+    "Reduces ship repair cost and time on all your worlds. Level 1 uses 75% of normal cost and time; level 2 uses 50%. It does not speed up shipbuilding. Ships with 20% damage or less are already repaired free on landing.",
   holdsName: "Prospector Holds",
   holdsTag: "Mining craft carry more",
   holdsRole: "Raises every Prospector hold; the Derrick’s capacity bonus applies on top",
   holdsDetail:
-    "Each rung increases how much every Prospector can return with. The bonus multiplies with the Derrick satellite, and the third rung opens a third Prospector slot on every world.",
+    "Each level increases how much every Prospector can return with. The bonus multiplies with the Derrick satellite, and the third level opens a third Prospector slot on every world.",
   cargoName: "Cargo Holds",
   cargoTag: "Every hold carries more",
-  cargoRole: "Raises raid loot, world transfers and trade convoys alike · asteroid mining is its own ladder",
+  cargoRole: "Increases cargo capacity for raids, world transfers and trade convoys. Asteroid mining uses Prospector Holds research.",
   cargoDetail:
-    "Each rung expands the hold of every mobile ship for raids and transfers between your worlds. Courier, Wayfarer, Atlas and Argosy also carry more in trade convoys. Prospectors use Prospector Holds instead.",
+    "Each level expands the hold of every mobile ship for raids and transfers between your worlds. Courier, Wayfarer, Atlas and Argosy also carry more in trade convoys. Prospectors use Prospector Holds instead.",
 
   engineeringName: "Starship Engineering",
   engineeringTag: "Opens advanced hull tiers",
   engineeringRole:
     "Engineering I opens Tier 3 hull permissions; Engineering II opens Tier 4. Individual hulls retain their system-research and Shipyard requirements.",
   engineeringDetail:
-    "Engineering grants build permission rather than a combat multiplier. Its first rung opens Tier 3 hull gates and its second opens Tier 4; a specific hull may still require Power, Armor, Propulsion or Gravitic Charges and the stated Shipyard level.",
+    "Level 1 satisfies the engineering requirement for Tier 3 hulls. Level 2 does the same for Tier 4. Individual hulls may also need Power, Armor, Propulsion or Gravitic Charges. Their Shipyard level requirements still apply.",
   powerName: "Ship Power",
   powerTag: "Raises warship attack",
   powerRole:
     "Increases the attack of every warship in your fleet and satisfies advanced offensive build gates. Cargo hulls and ground defence are unaffected.",
   powerDetail:
-    "Each rung increases ordinary attack on every warship, the Nullifier included, and applies to ships you already own. It does not add attack to transports or affect Bastion, Thorn, Prospector or probes. An attacker carries its launch-time level; a defender reads the battle-time level.",
+    "Each level increases normal attack for all warships, including the Nullifier. Ships you already own also benefit. Transports gain no attack; ground defences, Prospectors and probes are unaffected. Attackers use their launch-time research level; defenders use their battle-time level.",
   armorName: "Ship Armor",
   armorTag: "Raises ship hull strength",
   armorRole:
     "Increases hull strength for every ship in your fleet, transports included, and satisfies advanced defensive build gates.",
   armorDetail:
-    "Each rung increases hull strength for every ship in your fleet, Courier, Wayfarer, Atlas and Argosy included. It does not affect Bastion, Thorn, Prospector or probes. An attacker carries its launch-time level; a defender reads the battle-time level.",
+    "Each level increases hull strength for all fleet ships, including transports. Ground defences, Prospectors and probes are unaffected. Attackers use their launch-time research level; defenders use their battle-time level.",
   propulsionName: "Ship Propulsion",
   propulsionTag: "Raises fleet speed",
   propulsionRole:
     "Increases the speed of every ship in your fleet and contributes to the Atlas gate. It opens after Dense Fuel Cells.",
   propulsionDetail:
-    "Each of the four rungs adds a quarter to the nominal speed of every ship in your fleet, so the last one doubles it and halves every flight. A mixed fleet still travels at the speed of its slowest member, so propulsion improves a chosen composition without erasing its profile. It does not affect Prospectors or probes, and only missions quoted after completion receive the gain.",
+    "Each of four levels adds 25% of base ship speed. The final level doubles base speed. A mixed fleet uses its slowest ship’s speed. Prospectors and probes are unaffected. The increase applies to missions launched after research finishes.",
   groundDoctrineName: "Emplacement Doctrine",
   doctrineTag: "Improves ground defence",
   doctrineRole:
-    "Raises Bastion and Thorn attack and hull strength together without changing their capacity, salvage or class matchups.",
+    "Raises attack and hull strength for Bastion, Harpoon and Thorn. Ground capacity, salvage and class matchups remain unchanged.",
   groundDoctrineDetail:
-    "Improves the attack and hull of Bastions and Thorns on every world. It changes combat strength, not ground capacity or salvage; defenders use the rung held when battle begins.",
+    "Increases attack and hull strength for Bastion, Harpoon and Thorn on all your worlds. Ground capacity and salvage rules remain unchanged. Defenders use the research level held when battle begins.",
 
   gridName: "Interception Grid",
   gridTag: "Four interceptor charges per world",
   gridRole: "Raises the interceptor charges each of your worlds can hold from 2 to 4.",
-  gridDetail: "Without research every world can load 2 interceptor charges; this raises the limit to 4 on each world. A charge needs an Uplink and Radar 3 on its world. A loaded charge destroys the first Death Star that crosses its timed Radar interception ring or is identified in Telescope sight from any world you hold, then is spent. One charge stops one weapon, so a loaded world falls only to more weapons arriving together than it holds charges.",
+  gridDetail: "Raises each world’s interceptor charge limit from 2 to 4. Loading charges requires Uplink and Radar 3 on that world. A charge destroys one Death Star identified in Telescope sight or caught at a timed Radar interception ring. Sensors must be operational. Each interception consumes one charge.",
   stockpileName: "Strategic Stockpile",
   stockpileTag: "Two Death Stars per world",
   stockpileRole: "Raises the Death Stars each of your worlds can hold from 1 to 2. The second starts once the first is finished.",

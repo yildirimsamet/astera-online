@@ -66,6 +66,66 @@ createRoot(document.getElementById('root')).render(React.createElement(Demo));
       if (errors.length) throw new Error(errors.join('\n'));
       console.log(`${language}: notice, dismissal, reopen, error and queued verified at 350×812`);
       await page.close();
+      await verifyLocks(browser, out, language);
     }
   } finally { await browser.close(); }
+}
+
+/**
+ * D212: the two new surfaces of the waiting room. A MAIN commander's amber Now line in the
+ * last twelve hours (and the timers sheet under it), and a launch rail that is closed in
+ * Silent Space and says why before it is pressed. Fixtures only; no commander is created.
+ */
+async function verifyLocks(browser, out, language) {
+  const page = await browser.newPage({ viewport: { width: 350, height: 812 }, locale: language });
+  const errors = [];
+  page.on('pageerror', error => { errors.push(error.message); console.error(error.message); });
+  await page.route('**/silent-space-locks-visual', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html>
+<html><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div>
+<script type="module">
+import RefreshRuntime from '/@react-refresh';
+RefreshRuntime.injectIntoGlobalHook(window); window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => (type) => type;
+window.__vite_plugin_react_preamble_installed__ = true;
+const React = (await import('/node_modules/.vite/deps/react.js')).default;
+const { createRoot } = (await import('/node_modules/.vite/deps/react-dom_client.js')).default;
+const { NowLine } = await import('/src/v2/hud/NowLine.tsx');
+const { nowEntries } = await import('/src/lib/nowLine.ts');
+const { PirateFocus } = await import('/src/galaxy/FocusPanel.tsx');
+const i18n = (await import('/src/i18n/index.ts')).default;
+await import('/src/styles.css');
+await i18n.changeLanguage('${language}');
+const now = Date.now();
+const entries = nowEntries({ now, threads: [], runs: [], builds: [], research: [], events: [], shieldUntil: null,
+  silentSpaceAt: new Date(now + 5 * 3600_000 + 12 * 60_000) });
+const pirate = { id: 'mJtQH0vR5cP8sN2xK7dL4A', callsign: 'mJtQ', zone: 'IDENTIFIED', at: { x: 100, y: 0, z: 0 },
+  expiresInMinutes: 180, reachMinutes: 12, reach: [{ hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }],
+  level: 3, fleet: { DART: 2 }, damageMult: 1, mass: 'MEDIUM' };
+function Demo() {
+  const [open, setOpen] = React.useState(false);
+  return React.createElement('main', { style: { minHeight: '100vh', background: 'radial-gradient(ellipse at top, #1b283d, #060a11)' } },
+    React.createElement(NowLine, { entries, now, open, onOpen: () => setOpen(true), onClose: () => setOpen(false) }),
+    React.createElement('div', { style: { position: 'fixed', left: 0, right: 0, bottom: 0 } },
+      React.createElement(PirateFocus, { pirate, fleetAtHome: { DART: 10 }, launchBlock: 'SILENT_SPACE', raiding: false,
+        onClose: () => {}, onAttack: () => { window.attacked = true; }, open: true, onToggle: () => {} })));
+}
+createRoot(document.getElementById('root')).render(React.createElement(Demo));
+</script></body></html>` }));
+  await page.goto(`${process.env.WEB ?? 'http://localhost:5173'}/silent-space-locks-visual`);
+  const line = page.locator('[data-now-line]');
+  await line.waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  if (await line.getAttribute('data-tone') !== 'warn') throw new Error('The departure timer is not amber');
+  if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw new Error('Horizontal overflow');
+  const locked = page.getByRole('button', { name: language === 'tr' ? 'Sessiz Uzay’da kapalı — dönünce açılır' : 'Closed in Silent Space — return to use it' });
+  await locked.waitFor();
+  if (await locked.isEnabled()) throw new Error('The pirate raid stays pressable in Silent Space');
+  const box = await locked.boundingBox();
+  if (!box || box.x < 0 || box.x + box.width > 350) throw new Error('The locked control leaves the phone width');
+  await page.screenshot({ path: `${out}/${language}-locks.png` });
+  await line.click();
+  await page.getByRole('dialog').waitFor();
+  await page.screenshot({ path: `${out}/${language}-timers.png` });
+  if (errors.length) throw new Error(errors.join('\n'));
+  console.log(`${language}: amber departure line, timers sheet and closed pirate rail verified at 350×812`);
+  await page.close();
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "pirate_raids" ADD COLUMN "recalled_at" timestamp with time zone;

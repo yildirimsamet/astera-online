@@ -165,6 +165,7 @@ export interface PlanetNode {
   skin?: GalaxyPlanet['skin'];
   name: string;
   owner: string;
+  country?: GalaxyPlanet['country'];
   /** Active public clan identity, if this commander currently has one. D114. */
   clan?: NonNullable<GalaxyPlanet['clan']>;
   /** A current clanmate, derived from the same bulk galaxy payload. */
@@ -287,6 +288,7 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     ...(planet.seenAt ? { seenAt: planet.seenAt } : {}),
     name: planet.name,
     owner: planet.owner,
+    ...(planet.country ? { country: planet.country } : {}),
     ...(planet.clan ? { clan: planet.clan } : {}),
     ...(!planet.dominionRank ? {} : { dominionRank: planet.dominionRank }),
     position: toWorld(planet.position),

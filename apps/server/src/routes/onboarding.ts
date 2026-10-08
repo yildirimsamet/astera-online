@@ -163,7 +163,7 @@ async function claimAccount(
   firstGameShieldEnabled: boolean,
 ): Promise<Awaited<ReturnType<typeof registerAccount>>> {
   try {
-    return await registerAccount(app.db, { username, password, countryCode }, firstGameShieldEnabled);
+    return await registerAccount(app.db, { username, password, countryCode }, firstGameShieldEnabled, app.clock.now());
   } catch (err) {
     if (err instanceof GameError && err.code === 'USERNAME_TAKEN') {
       try {

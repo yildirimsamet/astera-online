@@ -28,13 +28,15 @@ import {
   shieldHp,
   storageCap,
   vaultProtects,
+  SILENT_SPACE,
+  silentSpaceDueAt,
   type BuildingId,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
 import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, planetFaults, players, strategicAssets } from '../db/schema.js';
 import { baysOf } from './flight.js';
-import { awayFleet, loadLocked, totalUnitsOf } from './planet.js';
+import { awayFleet, loadLocked, totalUnitsOf, type LockedPlanet } from './planet.js';
 import { asTech, researchCoreLevel, researchView } from './researchState.js';
 import { dockLotsOf, dockView, shipsOfLots } from './shipDamage.js';
 import { colonyStanding } from './ownership.js';
@@ -109,6 +111,19 @@ const strategicView = (row: StrategicRow) => ({
   remainingSeconds: row.remainingSeconds,
 });
 
+function departureOf(
+  player: Pick<typeof players.$inferSelect, 'lastProgressAt' | 'joinedAt' | 'mainEnteredAt'> | undefined,
+  p: Pick<LockedPlanet, 'silentSpace' | 'seasonEndsAt'>,
+): Date | null {
+  if (!player || p.silentSpace) return null;
+  const at = silentSpaceDueAt({
+    lastProgressAt: player.lastProgressAt?.getTime() ?? null,
+    joinedAt: player.joinedAt.getTime(),
+    mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime(),
+  });
+  return at < p.seasonEndsAt.getTime() ? new Date(at) : null;
+}
+
 export async function planetView(tx: Tx, planetId: string, clock: Clock) {
   const p = await loadLocked(tx, planetId, clock, { requireLive: false });
   /**
@@ -181,9 +196,11 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     running over a dark refinery. Capacity remains nominal below: repairing a plant
     resumes the same vessels; an outage does not shrink them.
   */
-  const perHourAlloy = hasFault(p.faults, 'REFINERY_OUTAGE') ? 0 : nominalPerHourAlloy;
-  const perHourCrystal = hasFault(p.faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalPerHourCrystal;
-  const perHourDeuterium = hasFault(p.faults, 'PLANT_OUTAGE') ? 0 : nominalPerHourDeuterium;
+  // D212: Silent Space halves what runs; every ceiling below keeps reading the rated figure.
+  const pace = p.silentSpace ? SILENT_SPACE.productionPace : 1;
+  const perHourAlloy = hasFault(p.faults, 'REFINERY_OUTAGE') ? 0 : nominalPerHourAlloy * pace;
+  const perHourCrystal = hasFault(p.faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalPerHourCrystal * pace;
+  const perHourDeuterium = hasFault(p.faults, 'PLANT_OUTAGE') ? 0 : nominalPerHourDeuterium * pace;
 
   const vaultCapacity = vaultProtects(
     p.buildings.VAULT,
@@ -480,6 +497,15 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     flight: await baysOf(tx, planetId, p.buildings.CORE),
     convoyLaunchLocked: activeConvoy !== undefined,
     convoyOccurrenceSpent: spentConvoy !== undefined,
+    /**
+     * SILENT SPACE, FROM BOTH SIDES OF THE DOOR. D212.
+     *
+     * `silentSpace` closes the fight and farm controls before they are pressed and explains
+     * the halved rates above. `silentSpaceAt` is when a main-galaxy commander leaves if they
+     * order nothing until then; null inside Silent Space and when the season closes first.
+     */
+    silentSpace: p.silentSpace,
+    silentSpaceAt: departureOf(player, p),
     /**
      * BOTH CEILINGS AND BOTH LOADS. T4 · T4b.
      *

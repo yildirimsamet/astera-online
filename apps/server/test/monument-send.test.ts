@@ -69,6 +69,9 @@ describe('monument quote and dispatch', () => {
     expect(q.fuel).toBe(missionFuel(request.fleet, distance(before!, target), 2));
     expect(q.room.reserved).toBe(0);
     const sent = await send();
+    // D212: a monument wave is a combat launch.
+    expect((await f.db.select({ at: players.lastProgressAt }).from(players).where(eq(players.id, request.senderPlayerId)))[0]!.at)
+      .toEqual(f.clock.now());
     expect(sent.wave).toMatchObject({ status: 'OUTBOUND', purpose: 'ATTACK', reservedBulk: 0, fuelPaid: q.fuel,
       sentFleet: request.fleet, playerId: request.senderPlayerId, originPlanetId: request.originPlanetId });
     expect(sent.wave.arriveAt!.toISOString()).toBe(q.arriveAt);

@@ -11,7 +11,7 @@ import {
   type Fleet,
   type HullId,
 } from '@astera/rules';
-import { buildOrders, planets, seasons, units } from '../src/db/schema.js';
+import { buildOrders, planets, players, seasons, units } from '../src/db/schema.js';
 import { abandonBuildOrder, cancelBuildOrder } from '../src/services/buildQueue.js';
 import { secedeColony } from '../src/services/loyalty.js';
 import { planetView } from '../src/services/planetView.js';
@@ -97,6 +97,8 @@ describe('the Repair Station', () => {
     const [order] = await repairOrders();
     const minutes = shipRepairMinutes([lot('BALLISTA', 2, 6400)], 4, {}, 100);
     expect(order).toMatchObject({ kind: 'REPAIR', subject: 'BALLISTA', count: 2, cost: bill });
+    // D212: maintenance is not development; a repair alone does not keep a commander home.
+    expect((await f.db.select({ at: players.lastProgressAt }).from(players).where(eq(players.id, me)))[0]!.at).toBeNull();
     expect(order!.readyAt.getTime() - order!.startedAt.getTime()).toBe(Math.ceil(minutes * 60) * 1000);
     expect((await dockLotsOf(f.db, mine))[0]?.repairing).toBe(true);
     // Unusable while it is repaired: still in the dock, not at home.

@@ -35,8 +35,8 @@ export const vocabulary = {
     CORE: {
       name: 'Noyau de commande',
       tag: 'Débloque des niveaux plus élevés',
-      role: 'Définit les plafonds du bâtiment et la vitesse de construction ; la capitale ouvre des emplacements de colonie aux niveaux 9, 13 et 16.',
-      detail: 'Aucun autre bâtiment ne peut dépasser le Noyau de commandement. L\'améliorer raccourcit le temps de construction, ouvre davantage d\'orbites et de créneaux de vol à certains niveaux et augmente la capacité de défense au sol. Seul le Noyau de la capitale fixe les plafonds et la vitesse de recherche, et accorde les premier, deuxième et troisième emplacements de colonie aux niveaux 9, 13 et 16. Il ne produit ni minerai ni puissance de combat à lui seul.',
+      role: "Fixe la limite de niveau des structures, sauf le Hangar. Sur la capitale, ouvre des places de colonie aux niveaux 9, 13 et 16.",
+      detail: "Fixe la limite de niveau des structures de ce monde, sauf le Hangar, qui a sa propre limite. Certains niveaux ajoutent des rampes de vol, des places orbitales et de la capacité de défense au sol. Accélère l’installation des instruments et des satellites, sauf la Liaison montante. Le temps d’amélioration d’un bâtiment dépend de son type et de son niveau. Le noyau de la capitale détermine le temps de recherche et certaines conditions. Les niveaux 9, 13 et 16 de la capitale ouvrent les trois places de colonie.",
     },
     REFINERY: {
       name: 'Raffinerie d\'alliages',
@@ -97,7 +97,7 @@ export const vocabulary = {
         'Nécessite une liaison montante en orbite. Sans radar, les flottes entrantes ne donnent aucun avertissement d\'arrivée et la plupart des sondes passent inaperçues.',
       roleOwned:
         'Détecte les mouvements à l\'intérieur de son cercle sans ETA et marque les menaces visant ce monde avec une heure d\'arrivée. L2 ajoute le roulement, L4 la taille brute et L5 le monde d\'origine et la flotte complète.',
-      detail: 'Chaque niveau élargit le cercle de contact et d’avertissement chronométré. Les niveaux jusqu\'à L5 améliorent également les chances d\'attraper des sondes : L1 marque une flotte entrante avec son heure d\'arrivée, L2 ajoute le relèvement, L4 estime sa force et L5 révèle son origine et ses navires. L6–L8 achètent une portée supplémentaire. Un mouvement non destiné à ce monde est détecté sans ETA. Les charges d\'interception ne peuvent engager des armes stratégiques qu\'au radar 3 ou supérieur.',
+      detail: "Le Radar détecte les flottes entrantes et améliore la détection des sondes. Le niveau 1 indique l’arrivée. Le niveau 2 ajoute la direction ; le niveau 4 estime la puissance. Le niveau 5 révèle l’origine et les vaisseaux. Les niveaux augmentent aussi la portée.",
     },
     AEGIS: {
       name: 'Aegis',
@@ -172,9 +172,9 @@ export const vocabulary = {
     DART: {
       name: 'Dard',
       tag: 'Raid de vitesse fragile',
-      role: 'Coque de combat d\'entrée la plus rapide ; échange la durabilité contre le temps d’exposition.',
-      pitch: 'Arrive et revient rapidement, mais se plie sous un feu concentré.',
-      detail: 'Un tirailleur à faible coût pour les raids courts et les contre-attaques à coque lourde. Sa vitesse préserve la disponibilité de la défense nationale ; sa coque mince rend coûteuse une lecture ratée.',
+      role: "Le vaisseau de combat de départ le plus rapide. Sa coque est peu résistante.",
+      pitch: "Sa vitesse élevée réduit le temps passé loin de la planète. Sa faible résistance augmente le risque de perdre le vaisseau.",
+      detail: "Un vaisseau de combat de classe Tirailleur à faible coût. Il est avantagé contre la classe Rempart et désavantagé contre la classe Lance. Sa vitesse convient aux raids courts. Vérifie les classes de défense avant l’envoi : sa coque est peu résistante.",
     },
     PIKE: {
       name: 'Brochet',
@@ -208,7 +208,7 @@ export const vocabulary = {
       name: 'Vipère',
       tag: 'Raider efficace',
       role: 'Vitesse de niveau deux et meilleure survie que Dart.',
-      pitch: 'Préserve le plan de flotte rapide tout en payant moins de taxe de durabilité.',
+      pitch: "Plus d’attaque et de résistance que la Flèche, à la même vitesse de base.",
       detail: 'Un tirailleur de niveau deux sans recherche. Le Dart reste moins cher, alors que les deux coques partagent la même vitesse brute. Viper transforme son engagement plus important en plus d\'attaque, de coque, de fret et en une meilleure efficacité de combat à coût égal.',
     },
     TALON: {
@@ -271,7 +271,7 @@ export const vocabulary = {
       name: 'Atlas',
       tag: 'Transport lourd de troisième niveau',
       role: 'La plus grande cale de niveau trois ; lent, volumineux et axé sur la recherche.',
-      pitch: 'Le transport sûr et à grand volume le plus efficace avant le déverrouillage d\'Argosy.',
+      pitch: "Transporte de grandes quantités de ressources. Il est désarmé ; accompagne-le de vaisseaux de combat pendant un raid.",
       detail: 'Un transport de soutien de niveau trois débloqué par l\'ingénierie et la propulsion. Il n\'inflige aucun dégât et rend la planification de l\'escorte essentielle.',
     },
     NULLIFIER: {
@@ -321,7 +321,7 @@ export const vocabulary = {
       name: 'Argosy',
       tag: 'Transporteur de capitaux',
       role: 'La cale la plus profonde du jeu, et le plus lent des transports.',
-      pitch: 'Transporte presque jusqu\'à trois Atlas et ne peut rien distancer du tout.',
+      pitch: "Offre la plus grande capacité de cargaison. Sa faible vitesse peut allonger le trajet de la flotte.",
       detail: 'L\'Argosy est un moyen de transport de niveau quatre. Classe de soutien, elle est donc protégée pendant que les coques de combat sont en vie et sans défense une fois la ligne disparue. L\'allure du marchand est liée à cette coque : la cale la plus lente du catalogue la fixe.',
     },
     BASTION: {
@@ -369,7 +369,7 @@ export const vocabulary = {
     },
     EXPLORER: {
       title: 'Explorateur débloqué',
-      body: 'Envoyez une sonde pour en être sûr. Leur radar pourrait le détecter.',
+      body: "Envoie une sonde pour observer la flotte et les ressources de la cible. Le rapport peut contenir des estimations ; la cible peut détecter le scan.",
     },
     VEIL: {
       title: 'Voile débloqué',
@@ -436,7 +436,7 @@ export const gains = {
     sweepNone: 'aucun',
     reaches: 'Contact {{sense}} (pas d\'ETA) · Avertissement temporisé {{warn}}',
     maxed: 'Niveau supérieur ; les avertissements révèlent également le monde d\'origine et la flotte exacte',
-    l1: 'Commence à détecter les sondes et avertit lorsqu\'une flotte entrante entre dans le cercle',
+    l1: "Améliore la détection des sondes. Avertit de l’arrivée lorsqu’une flotte entrante entre dans la portée du Radar.",
     bearing: 'L2 révèle également la direction de l\'approche',
     interception: "L3 permet à ce monde de charger des charges d’interception (Antenne requise)",
     estimate: 'Affiche tôt la taille approximative de la force qui s\'approche',
@@ -522,7 +522,7 @@ export const gains = {
 export const directives = {
   inboundTitle: 'Flotte entrante · {{duration}}',
   inboundDetail:
-    'Dépensez le stock, envoyez votre flotte ou restez debout et combattez. Il ne peut pas être pris s\'il n\'est pas là.',
+    "Tu peux dépenser les ressources exposées, envoyer ta flotte ou renforcer ta défense. Les vaisseaux en vol ne peuvent pas défendre cette planète.",
   inboundAction: 'Dépensez-le maintenant',
 
   undefendedTitle: 'Ce monde n\'a pas de défense terrestre',
@@ -532,8 +532,8 @@ export const directives = {
   undefendedAction: 'Construire la défense',
 
   exposedTitle: '{{amount}} peut vous être retiré',
-  exposedDetail: 'Votre coffre-fort protège {{now}}. Le niveau suivant protège {{next}}.',
-  exposedAction: 'Élevez le coffre-fort',
+  exposedDetail: "Le Magasin protège {{now}} ressources des raids. Le niveau suivant en protège {{next}}.",
+  exposedAction: "Améliorer le Magasin",
 
   scannedTitle_one: 'Quelqu\'un t\'a scanné',
   scannedTitle_other: '{{count}} effectue une analyse contre vous',
@@ -563,7 +563,7 @@ export const directives = {
   noRadarAction: 'Regardez le radar',
 
   coreCeilingTitle: 'Le Noyau de commandement bloque {{count}} amélioration(s)',
-  coreCeilingDetail: 'Rien ne peut dépasser le Core. L\'élever les libère tous en même temps.',
+  coreCeilingDetail: "Le Noyau de commande limite le niveau des bâtiments, sauf le Hangar. Améliore le Noyau avant de dépasser cette limite.",
   coreCeilingAction: 'Élevez le noyau',
 
   idleTitle: 'Rien n\'est en vol',
@@ -670,6 +670,7 @@ export const notifications = {
   targetGoneDebris: 'Le champ de l\'épave a déjà été nettoyé · Les forets {{count}} reviennent en arrière',
   pirateHome: 'Retour des pirates · {{count}} vaisseaux · +{{amount}} pillés',
   pirateHomeEmpty: 'Retour des pirates · {{count}} vaisseaux · les cales sont vides',
+  pirateHomeRecalled: "Retour des pirates · {{count}} vaisseaux · rappelée avant l’engagement",
   pirateHomeBare: 'Retour des pirates · {{count}} vaisseaux',
   pirateHomeTowed_looted: 'Retour des pirates · {{count}} vaisseaux · +{{amount}} pillés · {{hull}} capturé',
   pirateHomeTowed_empty: 'Retour des pirates · {{count}} vaisseaux · {{hull}} capturés',

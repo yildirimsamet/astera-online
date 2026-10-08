@@ -390,8 +390,8 @@ describe('season archive surface', () => {
     await user.click(screen.getByRole('button', { name: /Season 1 · EU-1/i }));
     await user.click(screen.getByRole('button', { name: /Archive Ace/i }));
 
-    expect(screen.getByText('Partial telemetry')).toBeVisible();
-    expect(screen.getByText(/before telemetry began may be missing/)).toBeVisible();
+    expect(screen.getByText('Incomplete activity record')).toBeVisible();
+    expect(screen.getByText(/before recording began may be missing/)).toBeVisible();
     expect(screen.queryByText('Season ended early')).not.toBeInTheDocument();
   });
 
@@ -402,8 +402,8 @@ describe('season archive surface', () => {
     await user.click(screen.getByRole('button', { name: /Archive Ace/i }));
 
     expect(screen.getByText('Season ended early')).toBeVisible();
-    expect(screen.getByText(/played period is sealed/)).toBeVisible();
-    expect(screen.queryByText('Partial telemetry')).not.toBeInTheDocument();
+    expect(screen.getByText(/at the time it ended early/)).toBeVisible();
+    expect(screen.queryByText('Incomplete activity record')).not.toBeInTheDocument();
   });
 
   it('keeps the live leaderboard usable when the archive index cannot be reached', async () => {

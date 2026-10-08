@@ -17,7 +17,7 @@ export const landing = {
    */
   populationHeld: '<0>{{amount}}</0> commanders hold a world',
   populationOnline: '<0>{{amount}}</0> in game now',
-  register: 'Check Your Planet',
+  register: "Explore your planet",
   signIn: 'I already have a commander',
   reassurance: 'No account yet. Play first, keep it after.',
 
@@ -29,14 +29,14 @@ export const landing = {
    * `register`, because they say different things — one is "come back to the world
    * you left", the other is "see what this is".
    */
-  welcomeBack: 'Your capital is where you left it',
+  welcomeBack: "Continue with your commander",
   signInPrimary: 'Sign in',
   returningHint: 'Same commander, same galaxy, on any browser.',
   newCommander: 'Start a new commander',
   opening: 'Opening the galaxy',
   ready: 'Your planet is ready',
-  cover: 'Bringing the sky up',
-  publicLinksLabel: 'Publisher links',
+  cover: "Loading game visuals",
+  publicLinksLabel: "Game information and policies",
   aboutLink: 'About Astera',
   guideLink: 'How to play',
   privacyLink: 'Privacy',
@@ -51,17 +51,17 @@ export const landing = {
     close: 'Close',
     eyebrowRegister: 'New commander',
     eyebrowLogin: 'Welcome back',
-    headingRegister: 'Take a planet',
+    headingRegister: "Create your commander",
     headingLogin: 'Sign in',
     nameLabel: 'Commander name',
     namePlaceholder: 'Vantage',
     passwordLabel: 'Password',
     passwordPlaceholder: 'At least {{count}} characters',
-    submitBusy: 'Making contact',
+    submitBusy: "Signing in…",
     submitRegister: 'Create commander',
     submitLogin: 'Sign in',
     switchToLogin: 'I already have a commander',
-    switchToRegister: 'I need a commander',
+    switchToRegister: "Create a new commander",
     badName: 'Use 2–32 letters, numbers, underscores or single spaces, in any language.',
     noName: 'Enter your commander name.',
     shortPassword: 'Passwords are at least {{count}} characters.',
@@ -74,12 +74,12 @@ export const servers = {
   commanderLabel: 'Commander',
   signOut: 'Sign out',
   rule:
-    'Every galaxy holds {{seats}} commanders and no more. They fill in order, so the one you join is the one that already has people in it.',
-  loading: 'Reading the sky',
+    "Each galaxy holds up to {{seats}} commanders. Galaxies open and fill in order.",
+  loading: "Loading galaxies",
   unreachable: 'Could not reach the galaxies.',
   retry: 'Try again',
   listLabel: 'Galaxies',
-  noneOpen: 'No galaxy is open right now. The season is between wipes — try again shortly.',
+  noneOpen: "No galaxy is currently open to join. Check the galaxy list later.",
   allFull: 'Every galaxy is full. The next one opens at the wipe, when everyone starts again.',
   online: '<0>{{amount}}</0> in game now',
   yours: 'Your galaxy',
@@ -91,11 +91,11 @@ export const servers = {
   },
   enter: 'Enter',
   join: 'Join',
-  joining: '…',
+  joining: "Joining…",
 } as const;
 
 export const app = {
-  blockedTitle: 'Not right now',
+  blockedTitle: "Could not connect to the game",
   blockedRetry: 'Try again',
   /** What `useSession` says when a request failed with no message of its own. */
   sessionFailed: 'Could not reach the server',
@@ -103,11 +103,11 @@ export const app = {
 
 export const loading = {
   /** Between screens, while identity is being settled. */
-  contact: 'Making contact',
+  contact: "Connecting to the server",
   /** The galaxy: three waits, three different sentences. */
-  sweeping: 'Sweeping the disc',
-  charting: 'Charting the disc',
-  raising: 'Bringing it up',
+  sweeping: "Loading galaxy information",
+  charting: "Loading galaxy visuals",
+  raising: "Preparing the game view",
 } as const;
 
 /**

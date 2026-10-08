@@ -60,7 +60,7 @@ export const planet = {
   tabs: {
     label: "惑星のカテゴリ",
     defendProblem: "防衛",
-    defendQuestion: "シールド、貯蔵庫、地上砲を強化します。",
+    defendQuestion: "ここでイージス、貯蔵庫、地上防衛を強化します。",
     orbitProblem: "情報",
     orbitQuestion: "ライバルを確認するのに役立つツールを構築します。",
     reachProblem: "艦隊",
@@ -113,7 +113,7 @@ export const planet = {
       lead: "注文費用の{{share}}%を失います。残りはすぐに返却されます。",
       lost: "失う資源",
       kept: "返却される資源",
-      progress: "進んだ作業も失われ、再注文すると最初からやり直しです。",
+      progress: "この注文の進捗は失われます。再注文すると最初から生産します。",
       commit: "注文をキャンセル",
       back: "注文を残す",
     },
@@ -130,9 +130,9 @@ export const planet = {
   /** What each structure is for, in one line, where the row states it. */
   roles: {
     vault:
-      "各資源の貯蔵量を生産時間で決めます。下位10%は最大8時間分の生産量まで襲撃から守られます。",
+      "各資源の保管容量を決めます。容量の10%と8時間分の生産量のうち、少ない方が襲撃から保護されます。",
     shipyard:
-      "上位の船を解放し、建造を速め、送り出す探査機の精度を高めます。",
+      "新しい艦船を解放し、艦船と地上防衛の生産を速めます。偵察機の精度と隠密性も高めます。",
     refinery:
       "時間あたりの合金生産量を増やします。貯蔵庫の容量も生産時間に連動して増えます。多くの建物と船に合金が必要です。",
     extractor:
@@ -142,7 +142,7 @@ export const planet = {
     coreCapped_other:
       "司令中枢を上げるまで、建物{{count}}件をアップグレードできません。",
     coreClear:
-      "司令中枢は建物のレベル上限を決め、建設と研究の時間を短縮します。",
+      "格納庫以外の設備は、この惑星の司令中枢のレベルを超えられません。司令中枢は観測設備とアップリンク以外の衛星の設置を速めます。",
   },
 
   defend: {
@@ -236,13 +236,13 @@ export const planet = {
     isotopeRole:
       "同位体岩石中の重水素を表示し、探鉱者をそこに送ることができます。帰還貨物は工場に入ります。",
     denseName: "高密度燃料電池",
-    denseTag: "ランナーのロックを解除します",
+    denseTag: "艦船推進を解禁",
     denseRole:
-      "それを明らかにするには、戦利品がターゲットに残っている間に、1 回の襲撃で貨物を積み込みます。ランナーはホーラーよりも速いですが、運ぶものは少なくなります。",
+      "襲撃で貨物を満載にし、目標に戦利品が残ると発見できます。研究を完了すると艦船推進の研究が解禁されます。",
     graviticName: "重力電荷",
-    graviticTag: "ブリーチャーのロックを解除します",
+    graviticTag: "ヌリファイアを解禁",
     graviticRole:
-      "ロックを解除するには、アクティブな イージス で防御されたワールドを攻撃します。シールドは少なくとも {{share}} のダメージを吸収する必要があります。単一の Wasp が資格を得ることができます。勝つ必要はありません。ブリーチャーはシールドを 5 倍強く攻撃します。",
+      "この研究を発見するには、稼働中のイージスがある防衛された惑星を攻撃します。与えたダメージの{{share}}以上をシールドが吸収する必要があります。勝利は不要です。研究でシールドに5倍の攻撃を与えるヌリファイアを解放します。",
     gridName: "インターセプトグリッド",
     gridTag: "デス・スターを撃墜",
     gridRole:
@@ -254,12 +254,12 @@ export const planet = {
     waspDoctrineName: "ワスプ・ドクトリン",
     lanceDoctrineName: "突撃型/ブリーチャー・ドクトリン",
     bulwarkDoctrineName: "防壁型 ドクトリン",
-    groundDoctrineName: "定位置原則",
+    groundDoctrineName: "地上防衛ドクトリン",
     generalName: "武器と防具",
-    generalTag: "所有するすべての船体を改善します",
+    generalTag: "戦闘艦と輸送艦を強化",
     doctrineTag: "攻撃力と装甲が向上",
     doctrineRole:
-      "クラスおよび一般ボーナスはスタックしますが、それらを合わせた戦闘倍率は 25% に制限されます。クラスカウンターの方が依然として大きな利点があります。",
+      "地上防衛の攻撃力と船体耐久を同時に上げます。クラス相性、地上容量、残骸回収は変わりません。",
     yardName: "ヤードオートメーション",
     yardTag: "艦船の建造が速くなる",
     yardRole:
@@ -538,22 +538,22 @@ export const launch = {
   /** B14: the held commit, and the price line under the ships (K8: a world raid turns). */
   holdWorld_one: "{{count}}隻を発進",
   holdWorld_other: "{{count}}隻を発進",
-  holdPirate_one: "{{count}}隻を発進 · 呼び戻し不可",
-  holdPirate_other: "{{count}}隻を発進 · 呼び戻し不可",
-  warningWorld: "艦隊が帰還するまで{{duration}}の間、{{world}}の防衛が薄くなります。",
-  warningPirate: "呼び戻し不可。帰還するまで{{duration}}の間、{{world}}の防衛が薄くなります。",
+  holdPirate_one: "{{count}}隻を発進",
+  holdPirate_other: "{{count}}隻を発進",
+  warningWorld: "この艦隊は帰還するまで{{world}}を防衛できません。推定不在時間：{{duration}}。",
+  warningPirate: "この襲撃は交戦前に一度だけ呼び戻せます。艦隊は帰還するまで{{world}}を防衛できません。推定不在時間：{{duration}}。",
   recallNote:
     "飛行中に一度だけ呼び戻せます。帰還には往路で経過した時間と同じだけかかります。燃料は返還されません。",
   chooseFleet: "艦隊を選択してください",
   send: "{{count}}隻を派遣",
-  launched: "発進しました。{{duration}}の間、防衛が薄くなります · 残留{{count}}ユニット。",
+  launched: "艦隊を派遣しました。推定帰還時間：{{duration}}。惑星には防衛用に{{count}}ユニットが残っています。",
   whileAway: "この艦隊が不在の間",
   defending: "{{count}} ユニットがホームを防衛",
   nothingSent: "まだ船を選んでいません",
-  exposedFor: "防衛が薄い時間：{{duration}}",
+  exposedFor: "艦隊の推定不在時間：{{duration}}",
   oneWayUnknown: "—",
   pace: "飛行速度",
-  paceHint: "遅く飛ぶほど到着が遅くなり、帰還も同じ速度です。燃料は同じで、各区間は12時間を超えられません。",
+  paceHint: "減速した艦隊は到着が遅くなり、同じ速度で帰還します。燃料費は変わりません。減速するには、各飛行区間が12時間以内である必要があります。",
   paceFull: "フル",
   /* The five reasons this commitment can be refused, each stated on the button. */
   noBay: "飛行枠に空きがありません",
@@ -581,7 +581,7 @@ export const launch = {
   noShips:
     "自宅に船がありません。造船所で建造するか、艦隊が戻ってくるのを待ちます。",
   warning:
-    "これはリコールできません。一旦出発すると、そこに何があったのかを知る唯一の方法は、着陸するのを見ることです。そして、それが戻ってくるまで、あなたの惑星は {{count}} ユニットを保持します。",
+    "この艦隊は帰還するまで惑星を防衛できません。惑星には{{count}}ユニットが残ります。",
   /**
    * WHAT A RAID COSTS THE COMMANDER FOR THE REST OF THE DAY. D183.
    *
@@ -602,7 +602,7 @@ export const launch = {
   radiationHpStays: "目的地に残ります。",
   radiationHpDose: "飛行中の放射線：1隻あたり {{hp}} HP。",
   radiationHpHealth: "{{count}}× {{hull}} · HP {{health}}% · {{hp}} / {{max}} HP",
-  radiationHpDock: "着陸後に Repair Station が必要です。",
+  radiationHpDock: "着陸後に修理ステーションでの修理が必要です。",
   radiationHpFree: "着陸時に無料で修理されます。",
   radiationHpCombat: "戦闘で追加の損傷を受ける可能性があります。",
   radiationDock: "ルートは放射線を横断します: 各船は船体の ~{{pct}}% を占めます。 20% 以上が修理ステーションで待機しています。",
@@ -611,7 +611,7 @@ export const launch = {
   range: "範囲 {{d}}",
   arrive: "到着",
   homeLabel: "戻る",
-  exposedShort: "公開された {{duration}}",
+  exposedShort: "艦隊不在：{{duration}}",
   lootSub: "戦利品 ~{{band}}",
   bay: "フライトベイ",
   bayThis: "これには 1 がかかります",
@@ -622,9 +622,9 @@ export const launch = {
   staysPower: "パワー {{value}}",
   cargoEach: "{{amount}} 貨物各",
   cargoAdds: "+{{amount}} 貨物",
-  paceBrief: "同じ燃料・最長12時間",
-  warningWorldOpen: "艦隊が帰還するまで{{world}}の防衛は手薄になります。",
-  warningPirateOpen: "呼び戻し不可。艦隊が帰還するまで{{world}}の防衛は手薄になります。",
+  paceBrief: "燃料費同じ・減速区間12時間以内",
+  warningWorldOpen: "この艦隊は帰還するまで{{world}}を防衛できません。",
+  warningPirateOpen: "この襲撃は交戦前に一度だけ呼び戻せます。艦隊は帰還するまで{{world}}を防衛できません。",
 } as const;
 
 export const transfer = {
@@ -633,7 +633,7 @@ export const transfer = {
   cooldown: "荷下ろし中・残り{{duration}}",
   homewardFuel: "自分の惑星間の移送は燃料が半分です。攻撃では通常量を消費します。",
   /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
-  paceHint: "低速なら到着が遅くなり、飛行中の艦船は襲撃されません。戻る艦隊も同じ速度で帰還します。燃料は同じで、各区間は最長12時間です。",
+  paceHint: "飛行中の艦船は略奪されません。減速した艦隊は到着が遅くなり、帰還する艦船も同じ速度を使います。燃料費は変わりません。減速した各飛行区間は12時間以内に限られます。",
   fuelShort: "{{short}}不足",
   eyebrow: "惑星間移送",
   returnEta: "出発元への帰還まで{{duration}}・到着時刻{{time}}",
@@ -698,6 +698,7 @@ export const faults = {
   title: "故障",
   mark: "故障あり",
   launchBlock: {
+    SILENT_SPACE: "サイレントスペースでは使用不可・帰還後に使えます",
     SHIPYARD_REVOLT: "造船所で反乱 · 船を発進できません",
     PROSPECTOR_FAULT: "プロスペクター施設が停止中",
   },
@@ -709,13 +710,13 @@ export const faults = {
     priceBoth: "{{alloy}}合金・{{crystal}}クリスタル",
     lane: "修理班{{slot}}",
   },
-  tab: "この惑星で故障中",
+  tab: "発生中の故障",
   /** One line per fault: the name a player sees on the row and the sheet. */
   name: {
     REFINERY_OUTAGE: "合金精錬所の停止",
     EXTRACTOR_OUTAGE: "クリスタル採掘所の停止",
     PLANT_OUTAGE: "重水素精製所の停止",
-    VAULT_LEAK: "貯蔵庫からの流出",
+    VAULT_LEAK: "貯蔵庫の漏出",
     CORE_OUTAGE: "司令中枢の停止",
     TELESCOPE_FAULT: "望遠鏡の故障",
     SHIPYARD_REVOLT: "造船所の反乱",
@@ -723,26 +724,26 @@ export const faults = {
   },
   /** What it stops, in the player's terms. One sentence, no hedging. */
   stopped: {
-    REFINERY_OUTAGE: "合金精錬所が停止しています。この惑星では合金を生産できません。",
-    EXTRACTOR_OUTAGE: "クリスタル採掘所が停止しています。この惑星ではクリスタルを生産できません。",
-    PLANT_OUTAGE: "重水素精製所が停止しています。この惑星では重水素を生産できません。",
-    VAULT_LEAK: "貯蔵庫の資源が軌道へ流出しています。この惑星を望遠鏡で見られる司令官は、その資源を見つけて回収できます。",
-    CORE_OUTAGE: "司令中枢が停止しています。イージスと地上砲の射撃管制は機能しません。惑星にいる船は戦えますが、今は防衛が弱まっています。",
-    TELESCOPE_FAULT: "望遠鏡が故障しています。修理が終わるまで、この惑星は肉眼で見える範囲しか観測できません。",
-    SHIPYARD_REVOLT: "造船所で反乱が起きています。この惑星からは襲撃、輸送、護送のいずれも発進できません。すでに飛行中の船は帰還できます。",
-    PROSPECTOR_FAULT: "プロスペクター施設が停止しています。この惑星からプロスペクターを派遣できません。すでに出発した船は呼び戻せます。",
+    REFINERY_OUTAGE: "合金精錬所が停止しています。この惑星では合金を生産していません。",
+    EXTRACTOR_OUTAGE: "クリスタル採掘所が停止しています。この惑星ではクリスタルを生産していません。",
+    PLANT_OUTAGE: "重水素精製所が停止しています。この惑星では重水素を生産していません。",
+    VAULT_LEAK: "漏出した資源は軌道上に残骸地帯を作ります。この惑星に望遠鏡の範囲が届く司令官は、残骸地帯を発見して資源を回収できます。",
+    CORE_OUTAGE: "司令中枢が停止しています。イージスと地上防衛は無効です。惑星にいる艦船は引き続き防衛に参加します。",
+    TELESCOPE_FAULT: "望遠鏡が停止しています。修理が完了するまで、この惑星の視界は基本範囲に限られます。",
+    SHIPYARD_REVOLT: "この惑星から新しい任務を開始できません。飛行中の艦船は引き続き帰還できます。",
+    PROSPECTOR_FAULT: "この惑星からプロスペクターを派遣できません。任務中のプロスペクターは呼び戻せます。",
   },
   toll: {
     title: "失っているもの",
     alloy: "1時間あたり合金{{amount}}を生産できません",
     crystal: "1時間あたりクリスタル{{amount}}を生産できません",
     deuterium: "この惑星が1時間で生産するはずの重水素を失います",
-    leak: "毎時{{amount}}が軌道へ流出し、この惑星を見られる司令官なら回収できます",
+    leak: "毎時{{amount}}の資源が残骸地帯へ漏出します。残骸地帯を発見した司令官は資源を回収できます。",
   },
   loyalty: {
     title: "この惑星の忠誠度",
     battleLoss: "部分的敗北 −15 · 決定的敗北 −30 · デス・スター −{{strike}}",
-    line: "{{value}}% · {{count}}件の故障が続く間は低下します。このままでは{{time}}後に0となり、植民地は独立します。",
+    line: "忠誠度：{{value}}%。{{count}}件の故障により低下しています。この速度では{{time}}後にゼロとなり、植民地を失います。",
     bar: "忠誠度{{value}}%",
     left: "残り{{time}}",
   },
@@ -750,12 +751,12 @@ export const faults = {
     title: "修理",
     crew: "修理班",
     parts: "部品",
-    takes: "所要時間は5～15分です。担当する修理班ごとに時間が決まります。",
+    takes: "修理には5～15分かかります。正確な所要時間は修理開始時に決まります。",
   },
-  repair: "修理班を派遣",
+  repair: "修理を開始",
   running: "修理班が作業中 · {{time}}",
-  noCancel: "派遣した修理班は呼び戻せません。",
+  noCancel: "開始した修理はキャンセルできません。",
   lanesFull: "{{count}}組の修理班がすべて出動中",
-  started: "修理班が向かっています。",
+  started: "修理を開始しました。",
   failed: "修理を開始できませんでした。",
 } as const;

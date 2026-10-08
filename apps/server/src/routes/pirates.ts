@@ -23,7 +23,7 @@ import { GameError, orbitOf } from '../services/planet.js';
 import { ownedPlanet } from '../services/ownership.js';
 import { pirateCallsign, pirateId } from '../services/pirateField.js';
 import { sensorHistoryForPlayer } from '../services/sensorHistory.js';
-import { launchPirateRaid } from '../services/pirateRaid.js';
+import { launchPirateRaid, recallPirateRaid } from '../services/pirateRaid.js';
 import { techOf } from '../services/researchState.js';
 import { requireAuth } from './auth.js';
 
@@ -236,8 +236,8 @@ export function registerPirateRoutes(app: FastifyInstance): void {
          * pirate at all.
          */
         reach,
-        /** The soonest of them — what the summary line quotes before a pick. */
-        reachMinutes: reach.reduce<number | null>(
+        /** Best combat arrival: a fast unarmed transport cannot promise a raid. */
+        reachMinutes: reach.filter((entry) => HULLS[entry.hull].family !== 'CARGO' && HULLS[entry.hull].atk > 0).reduce<number | null>(
           (soonest, e) => (soonest === null || e.minutes < soonest ? e.minutes : soonest),
           null,
         ),
@@ -269,5 +269,13 @@ export function registerPirateRoutes(app: FastifyInstance): void {
       body.quotedMinutes,
       body.acknowledgeRadiationLoss,
     );
+  });
+
+  /** Turn a raid home before its engagement, once (owner, 2026-10-08). The server decides if it still can. */
+  app.post('/api/pirates/raids/:raidId/recall', { preHandler: requireAuth }, async (req) => {
+    const { raidId } = z.object({ raidId: z.string().uuid() }).strict().parse(req.params);
+    z.object({}).strict().parse(req.body ?? {});
+    const commander = await me(req.accountId!);
+    return recallPirateRaid(app.db, raidId, app.clock, commander.playerId);
   });
 }

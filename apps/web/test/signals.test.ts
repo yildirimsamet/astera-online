@@ -100,7 +100,7 @@ describe('what the game volunteers', () => {
     const status = statusOf(view(), holding({ alloy: 6000, crystal: 50, bufferAlloy: 900 }));
     expect(status.map((s) => s.line)).toContain('Alloy store is full');
     expect(status.find((s) => s.line === 'Alloy store is full')?.detail).toContain(
-      'nowhere to go',
+      'make room',
     );
   });
 

@@ -23,7 +23,7 @@ import {
   satelliteTag,
 } from '../i18n/names.js';
 import { affordWait } from '../lib/afford.js';
-import { buildingGain, instrumentGain, satelliteGain, type Gain } from '../lib/gains.js';
+import { buildingGain, instrumentGain, productionPaceOf, satelliteGain, type Gain } from '../lib/gains.js';
 import { orderMinutes } from '../lib/orderTime.js';
 import { projectedQueueState } from '../lib/predict.js';
 import { duration } from '../lib/time.js';
@@ -195,7 +195,7 @@ export function ItemSheet({
           {item.kind === 'satellite' ? (
             <OrbitHero id={item.id} orbit={projected.orbit} slots={orbitSlots} tag={tag} />
           ) : (
-            <Hero item={item} level={durableLevel} name={name} gain={gainFor(item, level, levels, production)} />
+            <Hero item={item} level={durableLevel} name={name} gain={gainFor(item, level, levels, production, productionPaceOf(planet))} />
           )}
 
           <div className="flex flex-col gap-1.5">
@@ -260,9 +260,9 @@ export function ItemSheet({
                     // and printing that sentence three times turns the ladder into
                     // wallpaper. A rung states its unlock only when it is a new one;
                     // the first rung's is the hero's, already on screen.
-                    repeats={rung === level + 1 || gainFor(item, rung - 1, levels, production).unlocks
-                      === gainFor(item, rung - 2, levels, production).unlocks}
-                    heroLabel={gainFor(item, level, levels, production).label}
+                    repeats={rung === level + 1 || gainFor(item, rung - 1, levels, production, productionPaceOf(planet)).unlocks
+                      === gainFor(item, rung - 2, levels, production, productionPaceOf(planet)).unlocks}
+                    heroLabel={gainFor(item, level, levels, production, productionPaceOf(planet)).label}
                     levels={levels}
                     production={production}
                   />
@@ -360,7 +360,7 @@ function Rung({
 }) {
   const { t } = useTranslation();
   const cost = costFor(planet, item, level - 1);
-  const gain = gainFor(item, level - 1, levels, production);
+  const gain = gainFor(item, level - 1, levels, production, productionPaceOf(planet));
   const takes = useOrderDuration(takesFor(planet, item, cost, level));
   // The Core's gain IS its level, which the rung already names: "L3 · L3" read as a fault.
   const value = item.kind === 'building' && item.id === 'CORE' ? null : gain.next;
@@ -668,9 +668,10 @@ const gainFor = (
   level: number,
   levels: BuildingLevels,
   production = 1,
+  pace = 1,
 ): Gain =>
   item.kind === 'building'
-    ? buildingGain(item.id, level, 0, levels, production)
+    ? buildingGain(item.id, level, 0, levels, production, pace)
     : item.kind === 'instrument'
       ? instrumentGain(item.id, level)
       : satelliteGain(item.id);

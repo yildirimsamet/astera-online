@@ -11,6 +11,11 @@
  * parçalarını göstermek: sonda, akın, madencilik ve enkaz toplama.
  */
 export const rewards = {
+  empty: 'Gösterilecek ödül hedefi yok',
+  emptyHint: 'Kontrol etmek için ödül listesini yeniden yükle.',
+  summaryReady: "Alınabilir ödüller",
+  summaryClaimed: "Alınan kademeler",
+  allMilestones: "Tüm kademeler",
   eyebrow: 'Kalıcı hedefler',
   title: 'Ödüller',
   intro:
@@ -44,7 +49,7 @@ export const rewards = {
     PIRATE: { name: 'Yenilen korsanlar', tag: 'Farklı korsanları yen; gemilerin sağ kalsın' },
     PROBE: { name: 'Yollanan sondalar', tag: 'Hedefe gitmeden önce bilgi topla' },
     RAID: { name: 'Akın yapılan dünyalar', tag: 'Her farklı dünya bir kez sayılır' },
-    CORE: { name: 'Komuta Çekirdeği', tag: 'Bina seviyelerinin üst sınırı' },
+    CORE: { name: 'Komuta Çekirdeği', tag: "Hangar dışındaki binaların seviye sınırını yükselt" },
     SHIPYARD: { name: 'Tersane', tag: 'Yeni gemi sınıfları ve daha hızlı üretim' },
     REFINERY: { name: 'Alaşım Rafinerisi', tag: 'Saat başı alaşım' },
     EXTRACTOR: { name: 'Kristal Ocağı', tag: 'Saat başı kristal' },

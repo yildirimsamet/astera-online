@@ -7,7 +7,7 @@ export const convoy = {
   alreadyAway: "この惑星から攻撃隊が出航中です",
   noCraft: "この惑星に戦闘艦がいません",
   cannotReach: "この惑星の艦隊では時間内に攻撃を終えられません",
-  boundary: "輸送船団は反撃しません。あなたの艦隊に損失は出ません。",
+  boundary: "船団は反撃しません。航路の放射線で艦船が損傷または破壊される場合があります。",
   engagement: "攻撃可能時間：5秒。",
   engagementLabel: "攻撃可能時間",
   engagementDuration: "5秒",
@@ -45,5 +45,5 @@ export const convoy = {
   commit: "攻撃隊を発進",
   sending: "発進中…",
   launched: "攻撃隊が出航しました・接触まで{{duration}}",
-  quoteChanged: "輸送船団が移動しました。選択した艦隊はそのままです。更新された予測を確認してください。",
+  quoteChanged: "船団が移動しました。艦船の選択は保持されています。更新された航路と費用を確認してください。",
 } as const;

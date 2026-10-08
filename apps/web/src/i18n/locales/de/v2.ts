@@ -73,6 +73,8 @@ export const now = {
   event: 'Ereignis endet',
   shield: 'Dein Schild endet',
   shieldDetail: 'Danach können dich Angriffe erreichen',
+  silentSpace: "Umzug in den Stillen Raum",
+  silentSpaceDetail: "Starte Bau, Forschung, Produktion oder Angriff",
   /** The clock time beside a countdown in the sheet. */
   at: 'um {{time}}',
 };

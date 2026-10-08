@@ -386,7 +386,7 @@ describe('what the launch costs the world it leaves', () => {
     await user.click(screen.getByRole('button', { name: /more dart/i }));
     // Four at home, one packed: three hold — counted before the button; the price line says for how long.
     expect(document.querySelector('[data-launch-figures]')).toHaveTextContent(/3 units/);
-    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/stays thin for .+ until this fleet is home/i);
+    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/cannot defend Kestrel-12 until it returns.*Estimated time away:/i);
     expect(document.body.textContent).not.toMatch(/cannot be recalled/i);
   });
 
@@ -1412,8 +1412,8 @@ describe('choosing how fast to fly', () => {
  *
  * The commit read "Launch — no recall" for every raid; since K8 that is the opposite of
  * the rule on a world, and a screen that states the opposite of the rule is worse than
- * one that says nothing (the transfer sheet learned the same lesson). A pirate raid is
- * still final, and the Academy has no recall to offer, so neither promises one.
+ * one that says nothing (the transfer sheet learned the same lesson). A pirate raid can
+ * also turn before engagement. The Academy has no recall action, so it promises none.
  */
 describe('what the sheet promises about turning a raid back', () => {
   const holding = planetView({ fleet: { DART: 4 } }, { deuterium: 500_000 });
@@ -1445,12 +1445,13 @@ describe('what the sheet promises about turning a raid back', () => {
     expect(screen.queryByText(/no recall/i)).toBeNull();
   });
 
-  it('still tells a pirate raid that it cannot be turned', async () => {
+  it('states that a pirate raid can turn once before engagement', async () => {
     await confirmWith(
       <LaunchSheet planet={holding} target={{ kind: 'pirate', pirate: pirateTarget }} onClose={vi.fn()} onLaunched={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: /^launch 2 ships — no recall$/i })).toBeVisible();
-    expect(screen.queryByText(/recalled once/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /^launch 2 ships$/i })).toBeVisible();
+    expect(screen.getByText(/call this raid back once before its engagement/i)).toBeVisible();
+    expect(screen.queryByText(/no recall/i)).toBeNull();
   });
 
   it('promises nothing about a recall inside a lesson, where the Academy has none', async () => {

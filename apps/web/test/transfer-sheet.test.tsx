@@ -44,6 +44,64 @@ const target = {
   isCapital: false,
 };
 
+const RETURN_CHOICE_KEY = 'astera.transfer-return.v1';
+beforeEach(() => { localStorage.removeItem(RETURN_CHOICE_KEY); });
+afterEach(() => { vi.restoreAllMocks(); });
+
+describe('remembering only transfer return choices', () => {
+  const open = () => render(<ToastProvider><TransferSheet target={target}
+    planet={planetView({ fleet: { COURIER: 2, DART: 2 } }, { id: 'capital-1', deuterium: 50_000 })}
+    onClose={vi.fn()} onLaunched={vi.fn()} /></ToastProvider>);
+
+  it('restores the last choices on reopen without restoring fleet, cargo or pace', async () => {
+    const user = userEvent.setup();
+    const first = open();
+    await user.click(screen.getByRole('radio', { name: /haulers.*stay/i }));
+    await user.click(screen.getByRole('radio', { name: /other ships.*return/i }));
+    await user.click(screen.getByRole('button', { name: 'More Courier' }));
+    fireEvent.change(screen.getByRole('slider', { name: /Alloy/i }), { target: { value: '50' } });
+    const speeds = within(first.container.querySelector<HTMLElement>('[data-transfer-pace]')!).getAllByRole('radio');
+    await user.click(speeds[1]!);
+    first.unmount();
+    open();
+    expect(screen.getByRole('radio', { name: /haulers.*stay/i })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /other ships.*return/i })).toBeChecked();
+    expect(screen.getByRole('textbox', { name: /courier quantity/i })).toHaveValue('0');
+    expect(screen.getByRole('slider', { name: /Alloy/i })).toHaveValue('0');
+    expect(document.querySelector('[data-transfer-pace]')).toBeNull();
+    expect(JSON.parse(localStorage.getItem(RETURN_CHOICE_KEY) ?? '{}')).toEqual({ cargoShips: 'STAY', otherShips: 'RETURN' });
+    await user.click(screen.getByRole('button', { name: 'More Courier' }));
+    expect(within(document.querySelector<HTMLElement>('[data-transfer-pace]')!).getAllByRole('radio')[0]).toBeChecked();
+  });
+
+  it('uses a persisted plan in the next actual order', async () => {
+    localStorage.setItem(RETURN_CHOICE_KEY, JSON.stringify({ cargoShips: 'STAY', otherShips: 'RETURN' }));
+    mutate.mockReset();
+    open();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'More Courier' }));
+    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    expect(mutate.mock.calls[0]?.[0]).toMatchObject({ returnPlan: { cargoShips: 'STAY', otherShips: 'RETURN' } });
+  });
+
+  it.each(['{', 'null', '[]', '"RETURN"', '{"cargoShips":"LAND","otherShips":"STAY"}', '{"cargoShips":"STAY"}'])('falls back safely for a corrupt preference: %s', (raw) => {
+    localStorage.setItem(RETURN_CHOICE_KEY, raw);
+    open();
+    expect(screen.getByRole('radio', { name: /haulers.*return/i })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /other ships.*stay/i })).toBeChecked();
+  });
+
+  it('keeps the choice usable when storage access is blocked', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('full'); });
+    open();
+    await userEvent.setup().click(screen.getByRole('radio', { name: /haulers.*stay/i }));
+    expect(screen.getByRole('radio', { name: /haulers.*stay/i })).toBeChecked();
+    expect(screen.getByRole('button', { name: /choose a fleet/i })).toBeDisabled();
+  });
+});
+
 describe('world transfer sheet', () => {
   beforeEach(() => {
     mutate.mockReset();
@@ -698,7 +756,8 @@ describe('choosing how fast a transfer flies', () => {
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     const row = view.container.querySelector<HTMLElement>('[data-transfer-pace]')!;
     expect(row).toHaveTextContent(/cannot be raided/i);
-    expect(row).toHaveTextContent(/same fuel/i);
+    expect(row).toHaveTextContent(/fuel stays unchanged/i);
+    expect(row).toHaveTextContent(/each slower flight leg must fit within 12 hours/i);
   });
 
   it('shows no speeds while nothing is packed', () => {

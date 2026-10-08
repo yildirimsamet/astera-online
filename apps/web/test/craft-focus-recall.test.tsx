@@ -71,10 +71,11 @@ describe('recall from the selected craft', () => {
     expect(screen.queryByText(/cannot be recalled/i)).not.toBeInTheDocument();
   });
 
-  it('names a pirate raid as the flight that cannot turn', () => {
+  /* Owner, 2026-10-08: a pirate raid turns too; once it can no longer, the engagement has begun. */
+  it('names the engagement as what stops a pirate raid turning', () => {
     render(<ThreadFocus thread={thread({ kind: 'pirate', recallable: undefined })} minutesRemaining={10}
       onClose={vi.fn()} onToggle={vi.fn()} open onRecall={vi.fn()} />);
-    expect(screen.getByText('A pirate raid cannot be recalled.')).toBeInTheDocument();
+    expect(screen.getByText('The engagement has begun; this raid can no longer turn.')).toBeInTheDocument();
   });
 
   it('says plainly that a flight the server will not turn cannot be recalled', () => {

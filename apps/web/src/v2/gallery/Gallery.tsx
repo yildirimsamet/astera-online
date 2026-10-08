@@ -54,12 +54,14 @@ import { SeasonArchiveScreen } from '../../screens/SeasonArchiveScreen.js';
 import { CountryPicker } from '../identity/CountryPicker.js';
 import { SkinShopContent } from '../../screens/SkinsScreen.js';
 import { useTranslation } from 'react-i18next';
+import { WikiScreen } from '../../screens/WikiScreen.js';
 import { SkinPreview } from '../../screens/SkinPreview.js';
 import { DonateScreen } from '../../screens/DonateScreen.js';
+import { RewardsScreen } from '../../screens/RewardsScreen.js';
 import { SkinInventoryContent } from '../../screens/SkinInventoryScreen.js';
 import AdminPanel from '../../screens/AdminPanel.js';
 import { PLANET_SKIN_CATALOG, SKIN_COLLECTIONS } from '../../ui/skinCatalog.js';
-import { PLANET_SKIN_IDS, type PlanetSkinId } from '@astera/rules';
+import { PLANET_SKIN_IDS, REWARD_CHAINS, type PlanetSkinId } from '@astera/rules';
 
 /**
  * THE v2 GALLERY — every kit and HUD piece with fixture data, for the camera.
@@ -662,9 +664,32 @@ function GalleryClaim({ mine }: { mine: boolean }) {
   );
 }
 
+function GalleryRewards({ state }: { state: string }) {
+  const { t } = useTranslation();
+  const [client] = useState(() => {
+    const next = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    const chains = REWARD_CHAINS.map((chain) => {
+      const progress = state === 'complete' ? 999 : chain.id === 'PROBE' ? 3 : chain.id === 'CORE' ? 4 : chain.id === 'SOCIAL' ? 0 : 1;
+      return { ...chain, progress, tiers: chain.tiers.map((tier, index) => ({
+        id: `${chain.id}:${String(tier.goal)}`, goal: tier.goal, alloy: tier.reward.alloy, crystal: tier.reward.crystal,
+        state: state === 'complete' ? 'claimed' : state === 'ready' && chain.id === 'SOCIAL' ? 'claimable'
+          : chain.id !== 'SOCIAL' && progress >= tier.goal ? index === 0 && chain.id === 'CORE' ? 'claimed' : 'claimable' : 'locked',
+      })) };
+    });
+    next.setQueryData(keys.rewards, { chains: state === 'empty' ? [] : chains, claimable: chains.reduce((sum, chain) => sum + chain.tiers.filter((tier) => tier.state === 'claimable').length, 0) });
+    next.setQueryData(keys.planet, planetView({}, { alloy: 5500, crystal: 2500 }));
+    return next;
+  });
+  return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
+    <RewardsScreen commander="Samet_The_Long_Commander_Name" />
+  </Sheet></div></QueryClientProvider>;
+}
+
 function Views({ view }: { view: string }) {
   const { t } = useTranslation();
+  if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
   if (view.startsWith('support-')) return <GallerySupport view={view} />;
+  if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
   if (view === 'intel') return <GalleryIntel />;
   if (view === 'base-fleet') return <GalleryBase />;
   if (view === 'base-fleet-empty') return <GalleryBase empty />;

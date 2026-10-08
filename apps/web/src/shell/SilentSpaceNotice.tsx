@@ -59,6 +59,11 @@ export function SilentSpaceNotice({ data, open, allowAutomatic, onClose, onApply
           {t(data.application ? 'silentSpace.queued' : 'silentSpace.title')}
         </h2>
         <p id="silent-space-body" className="mt-3 text-body leading-relaxed text-bone/80">{t('silentSpace.body')}</p>
+        {/* D212: what this room withholds, before the player finds out from a refused launch. */}
+        <ul className="mt-2 list-disc space-y-1 pl-4 text-label leading-relaxed text-bone/80">
+          <li>{t('silentSpace.closed')}</li>
+          <li>{t('silentSpace.production')}</li>
+        </ul>
         {data.application ? (
           <div className="mt-3 space-y-2">
             <p role="status" className="text-body font-semibold text-bone">{t('silentSpace.position', { galaxy: data.homeShard, position: full(data.application.position) })}</p>

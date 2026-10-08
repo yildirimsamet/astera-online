@@ -211,12 +211,16 @@ describe('the two launch lessons are the same lesson', () => {
     refused, silently.
   */
   /*
-    K8: a raid at a world turns once in flight; a pirate raid never does. The pirate
-    lesson taught "a launched fleet cannot be recalled" as a rule about every fleet,
-    which the next lesson — a raid at a world — would then contradict.
+    K8: a raid at a world turns once in flight, and since 2026-10-08 a pirate raid does too
+    (owner). The Academy's practice raid has no recall to show, so the lesson promises
+    neither "no recall" nor a button it cannot offer; nor may it teach "a launched fleet
+    cannot be recalled" as a rule about every fleet.
   */
-  it('says the PIRATE raid cannot be recalled, not every launched fleet', () => {
-    expect(en.academy.steps.pirate).toMatch(/pirate raid cannot be recalled/i);
+  it('makes no recall claim in the pirate lesson, least of all one about every fleet', () => {
+    const noRecall = /cannot be recalled|geri çağrılamaz|nicht zurückgerufen|no se puede (retirar|recuperar)|ne peut pas être rappel|呼び戻せ/u;
+    for (const [lng, words] of Object.entries({ en, tr, de, es, fr, ja })) {
+      expect(words.academy.steps.pirate, lng).not.toMatch(noRecall);
+    }
     const generic = {
       en: /a launched fleet cannot be recalled/i,
       tr: /kalkan filo geri çağrılamaz/i,

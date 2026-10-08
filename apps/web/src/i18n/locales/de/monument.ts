@@ -52,7 +52,7 @@ export const monument = {
   "selectedBulk": "Diese Flotte: {{bulk}} Volumen",
   "holdForecast": "Nach Ankunft: {{rate}} Deuterium/Min. · nächster Schiffsverlust {{time}}",
   "noLoss": "keiner erwartet",
-  "attackOutcome": "Der Sieg wird im Kampf entschieden: höhere Tiers füllen den HOLD zuerst; überschüssige Frachter kehren zurück, und ein reiner Frachter überträgt keine Produktion.",
+  "attackOutcome": "Nach einem Sieg belegen Schiffe höherer Stufen zuerst den Platz am Monument. Schiffe ohne Platz kehren heim. Eine Flotte nur aus Frachtern gewinnt kein Deuterium.",
   "losses": "{{count}} Schiffe gehen auf dem Hinflug verloren",
   "health": "{{name}}: {{remaining}} / {{max}} HP bei Ankunft",
   "shield": "Ich akzeptiere den Verlust meines Schildes bei diesem PvP-Start",
@@ -92,5 +92,5 @@ export const monument = {
     "HOLD": "Halten",
     "RETURNING": "Rückflug"
   },
-  "returnReason": {"RECALLED":"Von dir zurückgerufen.","CAPACITY":"Zurück, weil der Platz voll war.","MEMBERSHIP":"Zurück, weil sich die Seite geändert hat.","CONTROL_CHANGED":"Zurück, weil sich die Kontrolle vor der Ankunft geändert hat.","DEFEAT":"Nach dem Kampf zurückgekehrt.","WORLD_CHANGED":"Zurück, weil sich die Heimatwelt geändert hat.","FREEZE":"Zum Saisonende zurückgekehrt."}
+  "returnReason": {"RECALLED":"Von dir zurückgerufen.","CAPACITY":"Rückkehr: Am Monument ist kein Platz für diese Schiffe.","MEMBERSHIP":"Zurück, weil sich die Seite geändert hat.","CONTROL_CHANGED":"Zurück, weil sich die Kontrolle vor der Ankunft geändert hat.","DEFEAT":"Nach dem Kampf zurückgekehrt.","WORLD_CHANGED":"Zurück, weil sich die Heimatwelt geändert hat.","FREEZE":"Zum Saisonende zurückgekehrt."}
 } as const;

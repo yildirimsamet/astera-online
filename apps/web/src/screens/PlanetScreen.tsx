@@ -77,7 +77,7 @@ import { techOf } from '../lib/navigation.js';
   actually leaves.
 */
 import { FLEET_FAMILY_ORDER, HULLS_BY_FAMILY } from '../lib/roster.js';
-import { buildingGain, instrumentGain, satelliteGain } from '../lib/gains.js';
+import { buildingGain, instrumentGain, productionPaceOf, satelliteGain } from '../lib/gains.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import {
   HULL_ART,
@@ -2469,6 +2469,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
             capped,
             refinery.projectedLevels,
             production,
+            productionPaceOf(planet),
           )}
           cost={refinery.cost}
           held={held}
@@ -2511,6 +2512,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
             capped,
             extractor.projectedLevels,
             production,
+            productionPaceOf(planet),
           )}
           cost={extractor.cost}
           held={held}
@@ -2561,6 +2563,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
             cappedCountOf(plant.projectedLevels),
             plant.projectedLevels,
             production,
+            productionPaceOf(planet),
           )}
           cost={plant.cost}
           held={held}

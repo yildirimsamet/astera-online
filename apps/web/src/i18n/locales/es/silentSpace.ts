@@ -1,6 +1,8 @@
 export const silentSpace = {
-  title: 'Te mudaste a Silent Space',
-  body: 'Después de 48 horas de inactividad, trasladamos tus planetas al Espacio Silencioso. Vuestros planetas y vuestro progreso se preservan; Puedes seguir jugando aquí.',
+  title: "Te trasladamos al Espacio Silencioso",
+  body: "En 30 horas no iniciaste ningún ataque, mejora de edificio, investigación ni orden de naves o defensas, así que trasladamos tus planetas al Espacio Silencioso. Tus planetas y tu progreso se conservan.",
+  closed: "Aquí están cerrados los ataques, la recolección de asteroides y restos, los ataques piratas, las rutas comerciales y los ataques al convoy.",
+  production: "La producción de recursos funciona al 50 %. Los edificios, la investigación y las órdenes de naves siguen abiertos.",
   returnTo: 'Aplicar aquí para volver a {{galaxy}}.',
   apply: 'Aplicar para regresar',
   applying: 'Aplicando…',

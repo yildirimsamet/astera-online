@@ -52,6 +52,7 @@ import {
   saveResources,
   setUnits,
 } from './planet.js';
+import { assertOutsideSilentSpace } from './waitingRoom.js';
 
 /**
  * TİCARET KONVOYU — SENDING A CONVOY TO THE MERCHANT. D156.
@@ -191,6 +192,7 @@ export async function launchTrade(
   return db.transaction(async (tx) => {
     const origin = await loadLocked(tx, planetId, clock, { expectedPlayerId });
     assertWorldOperational(origin);
+    assertOutsideSilentSpace(origin);
 
     for (const [hull, count] of fleetEntries(requested)) {
       const available = origin.homeFleet[hull] ?? 0;

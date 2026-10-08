@@ -297,6 +297,21 @@ describe('the pending strip', () => {
     expect(screen.queryByRole('button', { name: /recall fleet/i })).toBeNull();
   });
 
+  /** Owner, 2026-10-08: a pirate raid turns too, and its recall goes to the pirate lane. */
+  it('offers recall on a pirate raid the server says may be turned, marked for its own lane', async () => {
+    recallFleet.mockReset();
+    const out = show([thread({ kind: 'pirate', id: 'r-9', recallable: true })]);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /open flights/i }));
+    await user.click(screen.getByRole('button', { name: /recall fleet/i }));
+    expect(recallFleet).toHaveBeenCalledWith({ missionId: 'r-9', pirate: true }, expect.any(Object));
+
+    out.unmount();
+    show([thread({ kind: 'pirate', id: 'r-9' })]);
+    await user.click(screen.getByRole('button', { name: /open flights/i }));
+    expect(screen.queryByRole('button', { name: /recall fleet/i })).toBeNull();
+  });
+
   it('offers recall only while a Prospector run is outbound', async () => {
     recall.mockReset();
     const outbound = show([], [run()]);

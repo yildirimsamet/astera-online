@@ -33,7 +33,7 @@ export const chronicle = {
   wreckExhausted: 'The wreckage at {{planet}} was exhausted',
   wreckExhaustedDetail: 'Nothing worth recovering remains. The Chronicle does not reveal who claimed it.',
   dominionLeader: '{{commander}} took the Dominion lead',
-  dominionLeaderDetail: '{{planet}} now stands at the top of the public ladder.',
+  dominionLeaderDetail: "{{planet}} now leads the public standings.",
   neutralClaim: 'Claim window opened at {{planet}} · T{{tier}}',
   neutralClaimDetail: "A decisive raid opened a settlement race for this world. If the raider had a free colony slot, its first {{minutes}} min are theirs alone.",
   neutralOpened: '{{total}} neutral worlds opened',

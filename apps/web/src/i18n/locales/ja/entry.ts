@@ -29,14 +29,14 @@ export const landing = {
    * `register`, because they say different things — one is "come back to the world
    * you left", the other is "see what this is".
    */
-  welcomeBack: "あなたの首都は前回のまま待っています",
+  welcomeBack: "司令官としてゲームを続ける",
   signInPrimary: "ログイン",
   returningHint: "どのブラウザでも、同じ司令官で同じ銀河へ。",
   newCommander: "新しい司令官で始める",
   opening: "銀河に接続中",
   ready: "惑星の準備ができました",
-  cover: "星空を準備中",
-  publicLinksLabel: "運営情報",
+  cover: "ゲームの画像を読み込み中",
+  publicLinksLabel: "ゲーム情報とポリシー",
   aboutLink: "アステラについて",
   guideLink: "遊び方",
   privacyLink: "プライバシー",
@@ -51,17 +51,17 @@ export const landing = {
     close: "閉じる",
     eyebrowRegister: "新しい司令官",
     eyebrowLogin: "おかえり",
-    headingRegister: "惑星を手に入れよう",
+    headingRegister: "司令官を作成",
     headingLogin: "ログイン",
     nameLabel: "司令官名",
     namePlaceholder: "Vantage",
     passwordLabel: "パスワード",
     passwordPlaceholder: "{{count}}文字以上",
-    submitBusy: "接続中",
+    submitBusy: "ログイン中…",
     submitRegister: "司令官を作成",
     submitLogin: "ログイン",
     switchToLogin: "司令官でログイン",
-    switchToRegister: "新しい司令官を作る",
+    switchToRegister: "新しい司令官を作成",
     badName: "名前は2～32文字。どの言語の文字・数字・アンダースコア・単独のスペースも使えます。",
     noName: "司令官名を入力してください。",
     shortPassword: "パスワードは {{count}} 文字以上です。",
@@ -74,12 +74,12 @@ export const servers = {
   commanderLabel: "司令官",
   signOut: "サインアウト",
   rule:
-    "各銀河の定員は{{seats}}人です。順に埋まるため、参加先にはすでにほかのプレイヤーがいます。",
-  loading: "銀河を確認中",
+    "各銀河には最大{{seats}}人の司令官が参加できます。銀河は順に開放され、定員まで参加できます。",
+  loading: "銀河一覧を読み込み中",
   unreachable: "銀河に接続できませんでした。",
   retry: "再試行",
   listLabel: "銀河",
-  noneOpen: "現在参加できる銀河はありません。シーズン切り替え中です。少し待ってからお試しください。",
+  noneOpen: "現在参加できる銀河はありません。後で一覧を確認してください。",
   allFull: "すべての銀河が満員です。次のシーズン切り替え時に新しい銀河が開きます。",
   online: "現在<0>{{amount}}</0>人がプレイ中",
   yours: "あなたの銀河",
@@ -91,11 +91,11 @@ export const servers = {
   },
   enter: "入る",
   join: "参加",
-  joining: "…",
+  joining: "参加中…",
 } as const;
 
 export const app = {
-  blockedTitle: "現在は利用できません",
+  blockedTitle: "ゲームに接続できませんでした",
   blockedRetry: "再試行",
   /** What `useSession` says when a request failed with no message of its own. */
   sessionFailed: "サーバーにアクセスできませんでした",
@@ -103,11 +103,11 @@ export const app = {
 
 export const loading = {
   /** Between screens, while identity is being settled. */
-  contact: "接続中",
+  contact: "サーバーに接続中",
   /** The galaxy: three waits, three different sentences. */
-  sweeping: "銀河を走査中",
-  charting: "銀河を描画中",
-  raising: "銀河を準備中",
+  sweeping: "銀河の情報を読み込み中",
+  charting: "銀河の画像を読み込み中",
+  raising: "ゲーム画面を準備中",
 } as const;
 
 /**

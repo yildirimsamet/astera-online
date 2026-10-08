@@ -60,7 +60,7 @@ export const planet = {
   tabs: {
     label: "Planetenkategorien",
     defendProblem: "Verteidigen",
-    defendQuestion: "Stärken Sie hier Ihre Schild-, Tresor- und Planetengeschütze.",
+    defendQuestion: "Baue hier Aegis, den Speicher und die Bodenabwehr aus.",
     orbitProblem: "Intel",
     orbitQuestion: "Erstellen Sie die Tools, die Ihnen helfen, Konkurrenten zu erkennen.",
     reachProblem: "Flotte",
@@ -113,7 +113,7 @@ export const planet = {
       lead: "{{share}} % der Kosten dieser Bestellung werden zerstört. Der Rest kommt jetzt zurück.",
       lost: "Zerstört",
       kept: "Zurückgegeben",
-      progress: "Die daran geleistete Arbeit geht ebenfalls verloren – eine Nachbestellung beginnt bei Null.",
+      progress: "Der Fortschritt dieses Auftrags geht verloren. Ein neuer Auftrag beginnt von vorn.",
       commit: "Bestellung stornieren",
       back: "Behalte es",
     },
@@ -130,9 +130,9 @@ export const planet = {
   /** What each structure is for, in one line, where the row states it. */
   roles: {
     vault:
-      "Legt fest, wie viele Stunden der eigenen Produktion jede Ressource enthält; Die unteren 10 %, die auf eine Produktionszeit von 8 Stunden begrenzt sind, sind vor Überfällen sicher.",
+      "Bestimmt die Lagerkapazität jeder Ressource. Der kleinere Betrag aus 10 % Kapazität und 8 Stunden Produktion ist vor Raubzügen geschützt.",
     shipyard:
-      "Schaltet schwerere Rümpfe frei, baut sie schneller und schärft jede von Ihnen gesendete Sonde.",
+      "Schaltet Schiffe frei und beschleunigt Schiffe und Bodenabwehr. Verbessert die Genauigkeit und Tarnung von Sonden.",
     refinery:
       "Erhöht die stündliche Legierungsproduktion; Der Speicher wird in Stunden gemessen, sodass der Inhalt, den er enthält, mitwächst. Die meisten Gebäude und Schiffe geben dies aus.",
     extractor:
@@ -142,7 +142,7 @@ export const planet = {
     coreCapped_other:
       "{{count}} Gebäude-Upgrades werden blockiert, bis der Kommandokern erhöht wird.",
     coreClear:
-      "Der Kommandokern legt Obergrenzen auf Gebäudeebene fest und verkürzt die Bau- und Forschungszeit.",
+      "Anlagen außer dem Hangar können die Befehlskern-Stufe dieser Welt nicht überschreiten. Er beschleunigt Instrumente und Satelliten außer dem Uplink.",
   },
 
   defend: {
@@ -236,13 +236,13 @@ export const planet = {
     isotopeRole:
       "Zeigt das Deuterium in Isotopengesteinen an und ermöglicht es Ihnen, Prospektoren dorthin zu schicken. Der Rücktransport gelangt ins Werk.",
     denseName: "Dichte Brennstoffzellen",
-    denseTag: "Schaltet den Runner frei",
+    denseTag: "Schaltet Schiffsantrieb frei",
     denseRole:
-      "Um es aufzudecken, füllen Sie Ihre Fracht in einem Überfall auf, während die Beute auf dem Ziel verbleibt. Der Runner ist schneller als ein Hauler, trägt aber weniger.",
+      "Fülle bei einem Überfall den Frachtraum, während am Ziel Beute zurückbleibt. Der Forschungsabschluss schaltet Schiffsantrieb frei.",
     graviticName: "Gravitische Ladungen",
-    graviticTag: "Schaltet den Breacher frei",
+    graviticTag: "Schaltet den Nullifier frei",
     graviticRole:
-      "Um es freizuschalten, greife eine verteidigte Welt mit einer aktiven Aegis an; Der Schild muss mindestens {{share}} deines Schadens absorbieren. Eine einzelne Wespe kann sich qualifizieren; Du musst nicht gewinnen. Der Breacher trifft Schilde fünfmal stärker.",
+      "Greife für diese Forschung eine verteidigte Welt mit aktivem Aegis an. Der Schild muss mindestens {{share}} deines Schadens absorbieren. Du musst nicht gewinnen. Sie schaltet den Nullifier frei, der Schilden fünffachen Angriff zufügt.",
     gridName: "Abfanggitter",
     gridTag: "Schießt einen Todesstern ab",
     gridRole:
@@ -254,12 +254,12 @@ export const planet = {
     waspDoctrineName: "Wespenlehre",
     lanceDoctrineName: "Lanzen-/Brecher-Doktrin",
     bulwarkDoctrineName: "Bollwerk-Doktrin",
-    groundDoctrineName: "Einlagerungslehre",
+    groundDoctrineName: "Bodenverteidigungsdoktrin",
     generalName: "Waffen und Rüstungen",
-    generalTag: "Verbessert jeden Rumpf, den Sie besitzen",
+    generalTag: "Verbessert Kampf- und Frachtschiffe",
     doctrineTag: "Besserer Angriff und Panzerung",
     doctrineRole:
-      "Klassen- und allgemeine Boni sind stapelbar, ihr kombinierter Kampfmultiplikator ist jedoch auf 25 % begrenzt. Klassenzähler bleiben der größere Vorteil.",
+      "Erhöht Angriff und Rumpfstärke der Bodenverteidigung gemeinsam. Klassenverhältnisse, Bodenkapazität und Bergung bleiben unverändert.",
     yardName: "Yard-Automatisierung",
     yardTag: "Baut Schiffe schneller",
     yardRole:
@@ -534,22 +534,22 @@ export const launch = {
   /** B14: the held commit, and the price line under the ships (K8: a world raid turns). */
   holdWorld_one: "{{count}} Schiff starten",
   holdWorld_other: "{{count}} Schiffe starten",
-  holdPirate_one: "{{count}} Schiff starten – kein Rückruf",
-  holdPirate_other: "{{count}} Schiffe starten – kein Rückruf",
-  warningWorld: "{{world}} bleibt {{duration}} geschwächt, bis diese Flotte zurück ist.",
-  warningPirate: "Kein Rückruf. {{world}} bleibt {{duration}} geschwächt, bis diese Flotte zurück ist.",
+  holdPirate_one: "{{count}} Schiff starten",
+  holdPirate_other: "{{count}} Schiffe starten",
+  warningWorld: "Diese Flotte verteidigt {{world}} erst nach ihrer Rückkehr wieder. Geschätzte Abwesenheit: {{duration}}.",
+  warningPirate: "Du kannst diesen Überfall vor dem Gefecht einmal zurückrufen. Die Flotte verteidigt {{world}} erst nach ihrer Rückkehr wieder. Geschätzte Abwesenheit: {{duration}}.",
   recallNote:
     "Im Flug einmal rückrufbar – der Rückweg dauert so lange wie der bisherige Flug. Treibstoff wird nicht erstattet.",
   chooseFleet: "Wählen Sie eine Flotte",
   send: "Senden Sie {{count}} Schiffe",
-  launched: "Gestartet. Verfügbar für {{duration}} · {{count}} Einheiten.",
+  launched: "Flotte gestartet. Geschätzte Rückkehr: {{duration}}. {{count}} Einheiten bleiben zur Verteidigung deines Planeten.",
   whileAway: "Während diese Flotte unterwegs ist",
   defending: "{{count}} Einheiten, die ihr Zuhause verteidigen",
   nothingSent: "Noch nichts gesendet",
-  exposedFor: "Verfügbar für {{duration}}",
+  exposedFor: "Geschätzte Flottenabwesenheit: {{duration}}",
   oneWayUnknown: "—",
   pace: "Fluggeschwindigkeit",
-  paceHint: "Langsamer landet später und fliegt im gleichen Tempo heim. Gleicher Treibstoff; kein Abschnitt über 12 Std.",
+  paceHint: "Langsamere Flotten kommen später an und kehren mit derselben Geschwindigkeit zurück. Der Treibstoff bleibt gleich. Jeder verlangsamte Flugabschnitt darf höchstens 12 Stunden dauern.",
   paceFull: "Voll",
   /* The five reasons this commitment can be refused, each stated on the button. */
   noBay: "Kein Flugplatz frei",
@@ -577,7 +577,7 @@ export const launch = {
   noShips:
     "Keine Schiffe zu Hause. Bauen Sie welche in der Werft oder warten Sie, bis eine Flotte zurückkommt.",
   warning:
-    "Dies kann nicht zurückgerufen werden. Sobald es weg ist, können Sie nur herausfinden, was dort unten war, indem Sie ihm bei der Landung zusehen – und Ihr Planet enthält {{count}} Einheiten, bis es zurückkommt.",
+    "Diese Flotte verteidigt deinen Planeten erst nach ihrer Rückkehr wieder. {{count}} Einheiten bleiben zu Hause.",
   /**
    * WHAT A RAID COSTS THE COMMANDER FOR THE REST OF THE DAY. D183.
    *
@@ -598,7 +598,7 @@ export const launch = {
   radiationHpStays: "Bleibt am Ziel.",
   radiationHpDose: "Flugstrahlung: {{hp}} HP pro Schiff.",
   radiationHpHealth: "{{count}}× {{hull}} · {{health}}% HP · {{hp}} / {{max}} HP",
-  radiationHpDock: "Bei Landung zur Repair Station.",
+  radiationHpDock: "Nach der Landung ist eine Reparatur in der Reparaturstation nötig.",
   radiationHpFree: "Bei Landung kostenlos repariert.",
   radiationHpCombat: "Kampf kann weiteren Schaden verursachen.",
   radiationDock: "Die Route kreuzt Strahlung: Jedes Schiff verliert ~{{pct}} % seiner Hülle. Über 20 % wartet in der Reparaturstation.",
@@ -607,7 +607,7 @@ export const launch = {
   range: "Entfernung {{d}}",
   arrive: "Ankunft",
   homeLabel: "Rückkehr",
-  exposedShort: "offen {{duration}}",
+  exposedShort: "Flotte abwesend: {{duration}}",
   lootSub: "Beute ~{{band}}",
   bay: "Flugplatz",
   bayThis: "dieser belegt 1",
@@ -618,9 +618,9 @@ export const launch = {
   staysPower: "Stärke {{value}}",
   cargoEach: "je {{amount}} Fracht",
   cargoAdds: "+{{amount}} Fracht",
-  paceBrief: "gleicher Treibstoff · max. 12 h",
-  warningWorldOpen: "{{world}} bleibt geschwächt, bis diese Flotte zurück ist.",
-  warningPirateOpen: "Kein Rückruf. {{world}} bleibt geschwächt, bis diese Flotte zurück ist.",
+  paceBrief: "gleicher Treibstoff · langsamer Abschnitt ≤12 h",
+  warningWorldOpen: "Diese Flotte verteidigt {{world}} erst nach ihrer Rückkehr wieder.",
+  warningPirateOpen: "Du kannst diesen Überfall vor dem Gefecht einmal zurückrufen. Die Flotte verteidigt {{world}} erst nach ihrer Rückkehr wieder.",
 } as const;
 
 export const transfer = {
@@ -629,7 +629,7 @@ export const transfer = {
   cooldown: "Entladen – noch {{duration}}",
   homewardFuel: "Halber Tarif – zwischen eigenen Welten. Ein Angriff zahlt voll.",
   /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
-  paceHint: "Langsamer landet später – Schiffe im Flug können nicht überfallen werden. Eine zurückkehrende Gruppe fliegt im gleichen Tempo heim. Gleicher Treibstoff; kein Abschnitt über 12 Std.",
+  paceHint: "Schiffe im Flug können nicht geplündert werden. Langsamere Flotten kommen später an und kehren mit derselben Geschwindigkeit zurück. Der Treibstoff bleibt gleich. Jeder verlangsamte Abschnitt darf höchstens 12 Stunden dauern.",
   fuelShort: "kurz {{short}}",
   eyebrow: "Welttransfer",
   returnEta: "Zurück am Start in {{duration}} · {{time}}",
@@ -694,6 +694,7 @@ export const faults = {
   title: "Fehler",
   mark: "Fehler liegt vor",
   launchBlock: {
+    SILENT_SPACE: "Im Stillen Raum geschlossen – nach der Rückkehr offen",
     SHIPYARD_REVOLT: "Werftaufstand – nichts kann starten",
     PROSPECTOR_FAULT: "Prospektor Center ist ausgefallen",
   },
@@ -705,13 +706,13 @@ export const faults = {
     priceBoth: "{{alloy}} Legierung · {{crystal}} Kristall",
     lane: "Besatzung {{slot}}",
   },
-  tab: "Hier ist etwas kaputt",
+  tab: "Aktive Störungen",
   /** One line per fault: the name a player sees on the row and the sheet. */
   name: {
     REFINERY_OUTAGE: "Stromausfall in der Legierungsraffinerie",
     EXTRACTOR_OUTAGE: "Ausfall des Kristallextraktors",
     PLANT_OUTAGE: "Stromausfall in der Deuteriumraffinerie",
-    VAULT_LEAK: "Tresorleck",
+    VAULT_LEAK: "Speicherleck",
     CORE_OUTAGE: "Befehlskernausfall",
     TELESCOPE_FAULT: "Teleskopfehler",
     SHIPYARD_REVOLT: "Aufstand im Hof",
@@ -719,26 +720,26 @@ export const faults = {
   },
   /** What it stops, in the player's terms. One sentence, no hedging. */
   stopped: {
-    REFINERY_OUTAGE: "Die Raffinerie ist dunkel. Diese Welt macht überhaupt keine Legierung.",
-    EXTRACTOR_OUTAGE: "Der Extraktor ist dunkel. Diese Welt stellt überhaupt keinen Kristall her.",
-    PLANT_OUTAGE: "Die Pflanze ist dunkel. Diese Welt produziert überhaupt kein Deuterium.",
-    VAULT_LEAK: "Das Gewölbe blutet in den Orbit – und jeder, dessen Teleskop diese Welt erreicht, kann das Feld sehen und dorthin fliegen.",
-    CORE_OUTAGE: "Der Kern ist dunkel: Die Aegis ist außer Gefecht gesetzt und die Bodengeschütze haben keine Feuerkontrolle. Schiffe zu Hause kämpfen immer noch. Wenn jemand jetzt landet, landet er auf einer offenen Welt.",
-    TELESCOPE_FAULT: "Das Teleskop ist blind. Diese Welt sieht nicht weiter als das bloße Auge, bis sie fixiert ist.",
-    SHIPYARD_REVOLT: "Der Hof ist verlassen. Nichts startet von dieser Welt – kein Überfall, kein Transfer, kein Konvoi. Schiff, das bereits in der Luft ist, kommt noch nach Hause.",
-    PROSPECTOR_FAULT: "Die Grube ist raus. Kein Prospektor kann von dieser Welt geschickt werden. Bereits verkaufte Artikel können noch zurückgerufen werden.",
+    REFINERY_OUTAGE: "Die Legierungsraffinerie ist ausgefallen. Dieser Planet produziert keine Legierung.",
+    EXTRACTOR_OUTAGE: "Der Kristallextraktor ist ausgefallen. Dieser Planet produziert keine Kristalle.",
+    PLANT_OUTAGE: "Die Deuteriumraffinerie ist ausgefallen. Dieser Planet produziert kein Deuterium.",
+    VAULT_LEAK: "Ausgetretene Ressourcen bilden ein Trümmerfeld im Orbit. Kommandanten mit ausreichender Teleskopreichweite können es sehen und die Ressourcen bergen.",
+    CORE_OUTAGE: "Der Befehlskern ist ausgefallen. Aegis und Bodenverteidigung sind deaktiviert. Schiffe auf diesem Planeten verteidigen ihn weiterhin.",
+    TELESCOPE_FAULT: "Das Teleskop ist ausgefallen. Dieser Planet nutzt bis zum Reparaturabschluss nur die Grundsichtweite.",
+    SHIPYARD_REVOLT: "Von diesem Planeten können keine neuen Missionen starten. Bereits fliegende Schiffe können weiterhin zurückkehren.",
+    PROSPECTOR_FAULT: "Prospektoren können von diesem Planeten nicht starten. Prospektoren auf Missionen können weiterhin zurückgerufen werden.",
   },
   toll: {
     title: "Was es braucht",
     alloy: "{{amount}} Legierung pro Stunde, wird nicht hergestellt",
     crystal: "{{amount}} Kristall pro Stunde, wird nicht hergestellt",
     deuterium: "Jede Stunde Deuterium hätte diese Welt produziert",
-    leak: "{{amount}} eine Stunde lang in den Orbit, wo jeder, der diese Welt sehen kann, herausfliegen und sie erobern kann",
+    leak: "Pro Stunde gelangen {{amount}} Ressourcen ins Trümmerfeld. Kommandanten, die es sehen, können sie bergen.",
   },
   loyalty: {
     title: "Die Loyalität dieser Welt",
     battleLoss: "Teilniederlage −15 · entscheidende Niederlage −30 · Todesstern −{{strike}}",
-    line: "{{value}} % – fällt, während {{count}} Dinge kaputt sind. Bei dieser Rate erreicht es in {{time}} Null und die Kolonie erklärt sich für unabhängig.",
+    line: "Loyalität: {{value}} %. Sie sinkt bei {{count}} aktiven Störungen. Bei diesem Tempo erreicht sie in {{time}} null und du verlierst die Kolonie.",
     bar: "Treue {{value}}%",
     left: "{{time}} übrig",
   },
@@ -746,12 +747,12 @@ export const faults = {
     title: "Die Reparatur",
     crew: "die Crew",
     parts: "Teile",
-    takes: "Dauert 5–15 Minuten. Bei der Anstellung gibt die Crew ihre Arbeitszeiten selbst an.",
+    takes: "Die Reparatur dauert 5–15 Minuten. Die genaue Dauer steht beim Start fest.",
   },
-  repair: "Senden Sie eine Crew",
+  repair: "Reparatur starten",
   running: "Eine Crew ist dabei · {{time}}",
-  noCancel: "Sobald eine Crew ausgefallen ist, kann sie nicht zurückgerufen werden.",
+  noCancel: "Eine gestartete Reparatur kann nicht abgebrochen werden.",
   lanesFull: "Alle {{count}} Crews sind draußen",
-  started: "Eine Crew ist unterwegs.",
+  started: "Reparatur gestartet.",
   failed: "Das konnte nicht gestartet werden.",
 } as const;

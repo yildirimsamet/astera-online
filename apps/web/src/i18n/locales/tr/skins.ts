@@ -33,7 +33,7 @@ export const skins = {
   modelUnavailable: 'Model yüklenemedi',
   normal: 'Sağlam',
   recovery: 'Toparlanma kalkanı (Hasarlı)',
-  recoveryNote: 'Ağır bir saldırıdan sonra vurulan gezegen, altı saatlik toparlanma kalkanı boyunca bu hasarlı modeli kullanır. Bu görünüm skin’e dahildir.',
+  recoveryNote: "Toparlanma kalkanı etkin olduğunda gezegen bu hasarlı görünümü kullanır. Kalkan 8 saat sürer; saldırı başlatmak onu erken bitirebilir. Hasarlı görünüm skin’e dahildir.",
   collection: 'Koleksiyon',
   owned: 'Sende var',
   worlds: 'Gezegenlerin',

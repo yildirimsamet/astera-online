@@ -49,17 +49,20 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
   const purpose = friendly ? 'REINFORCE' : 'ATTACK';
   const picked = fleetCount(fleet);
   const pickedBulk = hangarLoad(fleet);
+  // D212: Silent Space closes every monument wave; the server would refuse the quote too.
+  const silentSpace = origin.silentSpace === true;
   const input: MonumentSendInput = { originPlanetId: origin.planet.id, purpose, fleet, acknowledgeShieldLoss: shield, acknowledgeRadiationLoss: radiation };
   const quotedFleet = useDebouncedValue(fleet);
   const quoteReady = JSON.stringify(quotedFleet) === JSON.stringify(fleet);
   const quote = useQuery({ queryKey: [...keys.monuments, 'quote', monumentId, origin.planet.id, purpose, quotedFleet],
     queryFn: () => api.quoteMonument(monumentId, { originPlanetId: origin.planet.id, purpose, fleet: quotedFleet }),
-    enabled: !locked && target !== undefined && picked > 0 && quoteReady, retry: false, staleTime: 0 });
+    enabled: !locked && !silentSpace && target !== undefined && picked > 0 && quoteReady, retry: false, staleTime: 0 });
   const sendKey = useConfirmationKey(JSON.stringify({ monumentId, ...input }));
   const probeKey = useConfirmationKey(`${monumentId}:${origin.planet.id}:${String(probeConfirmation)}`);
   const consentMissing = (quote.data?.shieldWouldDrop === true && !shield)
     || ((quote.data?.outboundForecast.destroyed ?? 0) > 0 && !radiation);
-  const refusal = !target ? t('monument.missing') : picked === 0 ? t('monument.choose')
+  const refusal = silentSpace ? t('faults.launchBlock.SILENT_SPACE')
+    : !target ? t('monument.missing') : picked === 0 ? t('monument.choose')
     : actions.send.isPending ? t('monument.sending') : !quoteReady || quote.isFetching ? t('monument.quoting')
       : quote.error ? describeError(quote.error) : !quote.data ? t('monument.quoting')
         : consentMissing ? t('monument.consent') : quote.data.fuel > origin.planet.deuterium ? t('monument.insufficientFuel')

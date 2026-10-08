@@ -1769,10 +1769,36 @@ SILENT_SPACE_BATCH=5
 SILENT_SPACE_MAX_SHARDS=16
 ```
 
+**D212 (2026-10-07/08).** Migrations 0143 (`players.last_progress_at`, backfilled from
+`last_active_at`) and 0144 (`pirate_raids.recalled_at`) are expand-only. Keep the existing rule:
+`SILENT_SPACE_ENABLED=false` while API instances are mixed, so every order is stamped by new
+code before the 30-hour sweep runs. The first sweeps after enabling take every MAIN commander
+whose last login is older than 30 hours; at `SILENT_SPACE_BATCH=5` per five minutes that is 60
+an hour (`SILENT_SPACE_BATCH` accepts up to 20 for a faster first wave). Measure the wave first:
+`select count(*) from players p join seasons s on s.id = p.season_id join shards h on h.id =
+s.shard_id where h.role = 'MAIN' and s.status = 'live' and greatest(p.last_progress_at,
+p.joined_at, p.main_entered_at) <= now() - interval '30 hours'`.
+
 Do not change WORKER_POLL_MS. The maintenance lease persists its next due time across restarts.
 Inspect first and subsequent maintenance results, audit/outbox, placement/world consistency,
 queue failures and late fleet events. Unexpected failures mean disable transfers and forward-fix,
 never restore an old dump over subsequent player activity. Existing WAITING placements stay playable.
+
+**Local qualification (2026-10-08).** The local release was integrated with deployed
+`f2d8c97`; migration 0142 and the entire deployed journal prefix remain unchanged. Workspace
+types, root lint and production build passed. Rules: 2007 passed; server: 3008 passed,
+one existing skip; web: 5519 passed, 29 existing skips. Stale reward-count, resolved-world
+country-key, text and Wiki-link assertions were updated to the intended behavior; the
+reward check now compares every persisted reward record, and the fog allowlist stays exact.
+One overlong Wiki metadata description was shortened without changing its gameplay explanation.
+Economy simulations, snowball audit and calibration remain excluded as authorized below.
+The clean deployed baseline and this candidate produce the identical TAX failure: 0.0325
+against the 0.035 floor, with identical per-seed values. No balance band was changed.
+Isolated HTTP loop, two-client movement and real-browser checks passed for the game shell,
+EN/TR Wiki, seven opening-screen sizes, map identity labels, six-language rewards/transfer,
+Silent Space and the real-time brand quiz/payout/reload flow. Harnesses now wait for the
+opening cover and the intentional return-card delay; the loading review resizes one mounted
+screen to avoid Chromium's repeated development-module request limit.
 
 Migration 0064 backfills season_results.cycle_id and enforces one result per account/cycle.
 Preflight must find no duplicate account/cycle results. Rehearse on a fresh restored dump;

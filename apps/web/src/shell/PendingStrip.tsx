@@ -201,11 +201,11 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
         */
         ...(focus ? { focus } : {}),
         /*
-          THE SERVER'S WORD, NOT A GUESS. `recallable` is only ever set on a transfer or a raid (K8)
-          that is still turnable on this tick, and never twice.
+          THE SERVER'S WORD, NOT A GUESS. `recallable` is only ever set on a transfer, a raid (K8)
+          or a pirate raid that is still turnable on this tick, and never twice.
         */
         ...(thread.recallable === true && thread.id !== undefined
-          ? { recallMission: { missionId: thread.id } }
+          ? { recallMission: { missionId: thread.id, ...(thread.kind === 'pirate' ? { pirate: true } : {}) } }
           : {}),
       };
     }),
@@ -415,7 +415,7 @@ export interface AirborneItem {
   focus?: StripFocus;
   recall?: { runId: string; originPlanetId: string | undefined };
   /** A transfer the SERVER says may still be turned around. Owner decision, 2026-09-21. */
-  recallMission?: { missionId: string };
+  recallMission?: { missionId: string; pirate?: boolean };
 }
 
 /**

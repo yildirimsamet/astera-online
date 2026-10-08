@@ -1002,6 +1002,20 @@
       "when": 1791395536137,
       "tag": "0142_first_game_shield",
       "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1791403424923,
+      "tag": "0143_silent_space_progress",
+      "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1791407435379,
+      "tag": "0144_pirate_raid_recall",
+      "breakpoints": true
     }
   ]
 }

@@ -67,10 +67,13 @@ const panel = (
 };
 
 describe('the pirate rail', () => {
-  /** Owner report, 2026-10-06: the rail said "a launched fleet cannot be recalled" of every fleet. */
-  it('says a pirate raid cannot be recalled, not every launched fleet', () => {
+  /**
+   * Owner report, 2026-10-06: the rail said "a launched fleet cannot be recalled" of every fleet.
+   * Owner rule, 2026-10-08: a pirate raid turns home once before its engagement, like the rest.
+   */
+  it('states the pirate raid’s own recall rule, not a rule about every launched fleet', () => {
     panel(identified(), { DART: 10 });
-    expect(screen.getByText('A pirate raid cannot be recalled.')).toBeInTheDocument();
+    expect(screen.getByText('A pirate raid can be called back once before its engagement begins.')).toBeInTheDocument();
     expect(screen.queryByText(/launched fleet/i)).not.toBeInTheDocument();
   });
 

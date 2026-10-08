@@ -88,9 +88,8 @@ export function TopBar({
   ].join(' · ');
 
   return (
-    // The notch is added to the row, not taken from it: `viewport-fit=cover` makes the
-    // inset real on a notched phone, and inside a fixed h-12 it left the row ~1 px.
-    <header className="flex h-[calc(3.25rem+env(safe-area-inset-top))] items-center gap-1.5 border-b border-v2-line bg-v2-deep/90 px-2 pt-[env(safe-area-inset-top)] font-v2-ui">
+    // HudTop's masthead owns the notch inset; the resource row keeps its full height.
+    <header className="flex h-[3.25rem] items-center gap-1.5 border-b border-v2-line bg-v2-deep/90 px-2 font-v2-ui">
 
       {world && (
         <button

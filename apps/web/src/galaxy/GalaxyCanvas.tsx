@@ -1,6 +1,6 @@
-import { Suspense, useEffect, useMemo, useRef, type ComponentRef, type RefObject } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react';
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
-import { Html, OrbitControls, Preload } from '@react-three/drei';
+import { Html, OrbitControls } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import { guardBloomRef } from './finiteGuard.js';
 import { useGpuContext } from './gpuContext.js';
@@ -63,6 +63,7 @@ import {
 } from './StrategicInterception.jsx';
 import { PlanetField, rivalColour } from './PlanetField.jsx';
 import { SCENE_LIGHT } from './planetSurface.js';
+import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from './SceneWarmup.js';
 
 /** The rig's per-frame scratch for a tracked subject's drift (never allocated in the loop). */
 const TRACK_DRIFT = new THREE.Vector3();
@@ -97,6 +98,8 @@ import { staleness } from '../lib/time.js';
 import { commanderLabel } from '../lib/identity.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
 import { RankBadge } from './RankBadge.jsx';
+import { layoutPlanetLabels, planetLabelRank, planetLabelWidth } from './planetLabels.js';
+import { Flag } from '../v2/identity/Flag.js';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { FaultMark } from '../ui/marks.js';
@@ -300,9 +303,11 @@ export interface GalaxyCanvasProps {
    * Called once, after the first frame that has every model in it is on screen.
    *
    * The cover over this canvas cannot be lifted on "the request came back": the
-   * models still have to decode, compile and upload after that. See `FirstFrame`.
+   * models still have to decode, compile and upload after that. See `FirstSceneFrame`.
    */
   onReady?: () => void;
+  /** Do not certify an empty scene while its opening API payloads are pending. */
+  openingDataReady?: boolean;
 }
 
 export function GalaxyCanvas({
@@ -340,6 +345,7 @@ export function GalaxyCanvas({
   openingHome = false,
   allowFocus,
   onReady,
+  openingDataReady = true,
 }: GalaxyCanvasProps) {
   const sceneReady = useRef(false);
   const openingMark = useRef<HTMLSpanElement>(null);
@@ -570,6 +576,9 @@ export function GalaxyCanvas({
    * side, because a restored context is a new one.
    */
   const gpu = useGpuContext();
+  const [preparedEpoch, setPreparedEpoch] = useState(-1);
+  const prepared = preparedEpoch === gpu.epoch;
+  const onCompiled = useCallback(() => { setPreparedEpoch(gpu.epoch); }, [gpu.epoch]);
 
   return (
     <Canvas
@@ -817,8 +826,8 @@ export function GalaxyCanvas({
           selectedId={selectedId}
           rivals={rivals}
         />
-        <Preload all />
-        <FirstFrame onDrawn={() => { sceneReady.current = true; onReady?.(); }} />
+        {gpu.live && <SceneWarmup key={gpu.epoch} dataReady={openingDataReady} onCompiled={onCompiled} />}
+        <FirstSceneFrame ready={prepared && openingDataReady} onDrawn={() => { sceneReady.current = true; onReady?.(); }} />
       </Suspense>
 
       {/*
@@ -854,8 +863,10 @@ export function GalaxyCanvas({
       */}
       <RedrawOnRestore epoch={gpu.epoch} />
       <WideScreenFov />
+      <SceneRenderGate />
       {gpu.live && (
       <EffectComposer
+        enabled={prepared}
         key={`${String(preset.dprCap)}-${String(gpu.epoch)}`}
         enableNormalPass={false}
         frameBufferType={THREE.HalfFloatType}
@@ -970,30 +981,11 @@ const EMPTY_RIVALS: readonly RivalMark[] = [];
 const EMPTY_MONUMENTS: readonly PublicMonument[] = [];
 const EMPTY_HP_RADIATION: readonly HpRadiationSourceView[] = [];
 
-const LABEL_BOX = { w: 132, h: 46 };
-/** Past this the type is smaller than the disc's own dust. */
-const LABEL_MAX_RANGE = 60;
-
 /** The claim word on a label: open, the caller's own first hour, or somebody else's. */
 function claimTag(claim: ReturnType<typeof claimLabelOf>, t: TFunction) {
   if (claim === null) return null;
   if (claim === 'PRIORITY') return <span className="text-dim">· {t('galaxy.claimPriority')}</span>;
   return <span className="text-opportunity">· {t(claim === 'MINE' ? 'galaxy.claimMine' : 'galaxy.claimOpen')}</span>;
-}
-
-function labelRank(
-  node: PlanetNode,
-  selectedId: string | null,
-  rivals: readonly RivalMark[],
-): number {
-  if (node.id === selectedId) return 0;
-  if (node.isOwned) return 1;
-  if (node.isClanmate) return 2;
-  if (node.dominionRank) return 3;
-  if (rivalSlotOf(node, rivals) !== null) return 4;
-  if (node.state.kind === 'RECOVERY' || node.state.kind === 'EMP') return 5;
-  if (node.claimUntil && node.claimUntil.getTime() > serverNow()) return 5;
-  return 6;
 }
 
 function Labels({
@@ -1006,64 +998,21 @@ function Labels({
   rivals: readonly RivalMark[];
 }) {
   const { t } = useTranslation();
-  /**
-   * AN UNKNOWN WORLD CARRIES NOTHING AT ALL. D127, owner's instruction.
-   *
-   * Not a name, not a rank, not even the eye. Everything in this container is a
-   * READING, and the whole claim about a world nobody has looked at is that you
-   * have not read it — a mark saying "unread" is still a mark, and a hundred of
-   * them is a wall of marks over a galaxy whose faded bodies already say it.
-   *
-   * A REMEMBERED world DOES get one: a probe went and looked, and the name it
-   * brought back is exactly what it paid for. What that label must also carry is
-   * its AGE, because a record shown as a reading is the map asserting something it
-   * cannot know — see `seenAt`.
-   *
-   * THE EYE STAYS, ON THE WORLDS THAT HAVE ONE. It is in the label's own element
-   * rather than a mesh beside it, which is what fixed its scaling: a 3D quad had
-   * to reproduce drei's `distanceFactor` by hand and got it inverted — smaller on
-   * zoom in, larger on zoom out, drifting sideways the whole time. In the container
-   * it simply IS the label's scale, for free and for ever.
-   */
-  const marked = nodes.filter(
-    (node) => node.id === selectedId
-      || ((node.intel !== 'UNKNOWN') && (
-      node.isOwned
-      || node.isClanmate
-      || Boolean(node.dominionRank)
-      || node.stance === 'window'
-      || rivalSlotOf(node, rivals) !== null
-      || node.state.kind === 'RECOVERY'
-      || node.state.kind === 'EMP'
-      || Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow()))),
-  );
+  // Nearby earned identities need no tap. Unknown worlds remain unnamed, and
+  // remembered identities keep their record age. Only the visible, non-colliding
+  // pool mounts Html; the eye remains in PlanetField's spatial marker stack.
+  const [visibleIds, setVisibleIds] = useState<readonly string[]>([]);
+  const invalidate = useThree((state) => state.invalidate);
+  const membership = useRef('');
+  const labelIdentity = `${selectedId ?? ''}|${visibleIds.join('|')}`;
 
-  const labelIdentity = marked
-    .map((node) => `${node.id}:${node.state.kind}`)
-    .join('|');
-
-  // Recovery labels can join this list after the camera has rendered its last
-  // demand frame. Give every newly committed label one projection frame so its
-  // distanceFactor is correct before the player can see or touch it.
+  // A newly committed label needs one projection frame in the demand renderer.
   useCommittedDemandFrame(labelIdentity);
 
-  /**
-   * The draw order, and it is also the DROP order.
-   *
-   * Deliberately NOT memoised. A handful of worlds carry a name and sorting them
-   * costs nothing, while a memo would have to be keyed on every field the label
-   * reads — stance, claim clock, controller, position — and the first one left
-   * out is a label frozen at a value that has already changed.
-   */
-  const ordered = [...marked].sort(
-    (a, b) =>
-      labelRank(a, selectedId, rivals) - labelRank(b, selectedId, rivals),
-  );
-
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const ordered = visibleIds.flatMap((id) => { const node = byId.get(id); return node ? [node] : []; });
   const boxes = useRef(new Map<string, HTMLElement | null>());
-  const anchor = useRef(new THREE.Vector3());
-  const placed = useRef<{ x: number; y: number }[]>([]);
-  const clock = useRef(0);
+  const clock = useRef(0.1);
 
   useFrame(({ camera, size }, delta) => {
     // Ten times a second. The camera eases rather than jumps, so a label that
@@ -1072,35 +1021,32 @@ function Labels({
     if (clock.current < 0.1) return;
     clock.current = 0;
 
-    placed.current.length = 0;
-    for (const node of ordered) {
-      const element = boxes.current.get(node.id);
+    const placements = layoutPlanetLabels({ nodes, camera, width: size.width, height: size.height, selectedId, rivals, now: serverNow() });
+    // Camera distance may reorder priorities without changing membership. Keep
+    // mounted labels stable so panning does not cause needless React updates.
+    const nextIds = placements.map((placement) => placement.id).sort();
+    const nextMembership = nextIds.join('|');
+    if (membership.current !== nextMembership) {
+      membership.current = nextMembership;
+      setVisibleIds(nextIds);
+    }
+    const byPlacement = new Map(placements.map((placement) => [placement.id, placement]));
+    for (const [id, element] of boxes.current) {
       if (!element) continue;
-      anchor.current.set(node.position[0], node.position[1], node.position[2]);
-      const range = camera.position.distanceTo(anchor.current);
-      anchor.current.project(camera);
-      const x = ((anchor.current.x + 1) / 2) * size.width;
-      const y = ((1 - anchor.current.y) / 2) * size.height;
-
-      const onScreen =
-        anchor.current.z < 1
-        && x > -LABEL_BOX.w
-        && x < size.width + LABEL_BOX.w
-        && y > 0
-        && y < size.height;
-      let show = onScreen && range < LABEL_MAX_RANGE;
-      if (show) {
-        for (const other of placed.current) {
-          if (Math.abs(other.x - x) < LABEL_BOX.w && Math.abs(other.y - y) < LABEL_BOX.h) {
-            show = false;
-            break;
-          }
-        }
+      const placement = byPlacement.get(id);
+      if (placement) {
+        const shiftX = placement.left + placement.width / 2 - placement.x;
+        const shiftY = placement.top + placement.height - placement.y;
+        // The class already translates half the height in Tailwind's separate
+        // CSS `translate` property; adding -50% here would apply it twice.
+        const transform = `translate(${String(shiftX)}px, ${String(shiftY)}px)`;
+        if (element.style.transform !== transform) element.style.transform = transform;
+        const width = `${String(placement.width)}px`;
+        if (element.style.width !== width) element.style.width = width;
       }
-      if (show) placed.current.push({ x, y });
       // `visibility` rather than `display`: drei keeps measuring the wrapper, and
       // a box that collapses to zero would flip the answer on the next frame.
-      const next = show ? 'visible' : 'hidden';
+      const next = placement ? 'visible' : 'hidden';
       if (element.style.visibility !== next) element.style.visibility = next;
     }
   });
@@ -1113,17 +1059,12 @@ function Labels({
        * The shared definition, so the label and the dossier cannot drift apart.
        */
       const age = recordAgeMinutes(node, serverNow());
+      const detail = planetLabelRank(node, selectedId, rivals, serverNow()) < 7;
       return (
         <Html
           key={node.id}
           position={[node.position[0], node.position[1] + node.radius * 1.85, node.position[2]]}
           center
-          distanceFactor={6}
-          // OrbitControls zooms a perspective camera by moving it, so a centred
-          // recovery label can keep the same projected x/y while its distance
-          // changes. Force Drei to refresh the HTML scale on every requested
-          // demand frame, including the first committed recovery-label frame.
-          eps={-1}
           zIndexRange={[10, 0]}
           style={{ pointerEvents: 'none' }}
         >
@@ -1136,10 +1077,19 @@ function Labels({
           */}
           <span
             ref={(element) => {
-              boxes.current.set(node.id, element);
+              if (element) {
+                boxes.current.set(node.id, element);
+                clock.current = 0.1;
+                // Html's child root can commit after our post-commit frame. Its
+                // own ref is the reliable point to request the first projection.
+                invalidate();
+              }
+              else boxes.current.delete(node.id);
             }}
-            className="flex -translate-y-1/2 flex-col items-center whitespace-nowrap"
-            style={{ textShadow: '0 0 10px rgba(0,0,0,0.95)' }}
+            data-world-label={node.id}
+            data-world-label-detail={detail || undefined}
+            className="flex -translate-y-1/2 flex-col items-center gap-0.5 whitespace-nowrap px-1.5 py-1 text-center"
+            style={{ width: planetLabelWidth(node, detail), visibility: 'hidden', textShadow: '0 1px 4px #05070d, 0 0 12px #05070d' }}
           >
             {/*
               THE EYE IS NOT HERE. D126. It sits in the marker stack instead, one
@@ -1162,10 +1112,10 @@ function Labels({
               and a tap that produces nothing reads as a broken control.
             */}
             {node.intel === 'UNKNOWN' ? (
-              <span className="legend text-faint">{t('galaxy.unsurveyed')}</span>
+              <span className="legend text-micro text-faint">{t('galaxy.unsurveyed')}</span>
             ) : (
             <>
-            <span className="legend flex items-center gap-2">
+            {detail && <span className="legend text-micro flex max-w-full items-center gap-2 overflow-hidden">
               <span className={node.kind === 'CAPITAL' ? 'text-crystal' : node.kind === 'COLONY' ? 'text-opportunity' : 'text-dim'}>
                 {t(node.kind === 'CAPITAL'
                   ? 'galaxy.kindCapital'
@@ -1192,12 +1142,10 @@ function Labels({
                 alone, and "claim open" over it would send everyone else at a refusal.
               */}
               {claimTag(claimLabelOf(node, serverNow()), t)}
-            </span>
-            <span className={`name flex items-center gap-1.5 ${node.isClanmate || node.stance === 'window' ? 'text-opportunity' : 'text-bone'}`}>
-              {node.dominionRank ? <RankBadge rank={node.dominionRank} /> : null}
-              <span>{commanderLabel(node.owner, node.clan?.tag)}</span>
-            </span>
-            <GalaxyPlanetName node={node} />
+            </span>}
+            {!detail && <GalaxyPlanetName node={node} compact />}
+            <GalaxyCommanderName node={node} compact={!detail} />
+            {detail && <GalaxyPlanetName node={node} />}
             {/*
               A RECORD SAYS WHEN IT WAS TAKEN, AND WHAT IT IS. D127 · D151.
 
@@ -1219,7 +1167,7 @@ function Labels({
               world is are worse than either of them being wrong alone.
             */}
             {age !== null && (
-              <span className="legend text-faint">
+              <span data-world-record-age className="font-v2-mono text-micro max-w-full truncate text-v2-ink-3">
                 {t('galaxy.recordAge', { age: staleness(age) })}
               </span>
             )}
@@ -1234,11 +1182,11 @@ function Labels({
 }
 
 /** The owner's private fault state, attached to the name it qualifies. */
-export function GalaxyPlanetName({ node }: { node: PlanetNode }) {
+export function GalaxyPlanetName({ node, compact = false }: { node: PlanetNode; compact?: boolean }) {
   const { t } = useTranslation();
   return (
-    <span className="legend flex items-center gap-1.5">
-      <span>{node.name}</span>
+    <span className={`${compact ? `font-v2-ui text-caption font-semibold ${node.isOwned ? 'text-v2-self' : 'text-v2-ink'}` : 'legend text-micro'} flex max-w-full items-center gap-1.5`}>
+      <span className="truncate">{node.name}</span>
       {node.isOwned && node.faulty ? (
         <span
           data-colony-fault-icon
@@ -1251,6 +1199,17 @@ export function GalaxyPlanetName({ node }: { node: PlanetNode }) {
       ) : null}
     </span>
   );
+}
+
+/** The flag is the same earned/frozen identity as the commander printed beside it. */
+export function GalaxyCommanderName({ node, compact = false }: { node: PlanetNode; compact?: boolean }) {
+  const { i18n } = useTranslation();
+  if (node.intel === 'UNKNOWN' || node.kind === 'NEUTRAL' || !node.owner) return null;
+  return <span className={`${compact ? 'font-v2-ui text-micro text-v2-ink-2' : `name text-caption ${node.isClanmate || node.stance === 'window' ? 'text-opportunity' : 'text-bone'}`} flex max-w-full items-center gap-1.5`}>
+    {node.dominionRank ? <RankBadge rank={node.dominionRank} /> : null}
+    <span className="min-w-0 truncate">{commanderLabel(node.owner, node.clan?.tag)}</span>
+    {node.country && <Flag code={node.country} language={i18n.language} size="small" className="shrink-0" />}
+  </span>;
 }
 
 /**
@@ -1987,12 +1946,10 @@ function AmbientTicker() {
  * old cover came off on `assets.ready`, which is the moment before all of that
  * rather than after it.
  *
- * This sits INSIDE the same Suspense boundary as everything it is vouching for, so
- * it cannot mount until every `useGLTF` in the subtree has resolved; `<Preload all/>`
- * immediately above it forces the compile. Then it waits for a real animation frame
- * to be painted before it says so — `useFrame` runs BEFORE the draw, so reporting
- * from inside it would be one frame early, which is exactly the frame the stutter
- * is in.
+ * SceneWarmup sits INSIDE the same Suspense boundary as the models and prepares
+ * their programs with compileAsync. The composer waits for that preparation;
+ * FirstSceneFrame then reports from the animation frame AFTER its first draw,
+ * including the texture/buffer uploads. Download completion alone is never ready.
  *
  * Fires once and never again. A cover that can come back is a flash.
  */
@@ -2037,17 +1994,5 @@ function WideScreenFov() {
     camera.updateProjectionMatrix();
     invalidate();
   }, [camera, width, height, invalidate]);
-  return null;
-}
-
-function FirstFrame({ onDrawn }: { onDrawn: () => void }) {
-  const fired = useRef(false);
-  useFrame(() => {
-    if (fired.current) return;
-    fired.current = true;
-    requestAnimationFrame(() => {
-      onDrawn();
-    });
-  });
   return null;
 }

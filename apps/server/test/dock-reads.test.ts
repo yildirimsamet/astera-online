@@ -90,7 +90,7 @@ describe('the Repair Station dock, as the rest of the game reads it', () => {
 
   it('lets an idle commander with ships in the dock move to Silent Space, dock and all', async () => {
     f.clock.advance(48 * 60);
-    await f.db.update(players).set({ lastActiveAt: f.clock.now() }).where(eq(players.id, f.playerIds[1]!));
+    await f.db.update(players).set({ lastProgressAt: f.clock.now() }).where(eq(players.id, f.playerIds[1]!));
     await dock(mine, f.playerIds[0]!, { BALLISTA: 2 });
 
     const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);

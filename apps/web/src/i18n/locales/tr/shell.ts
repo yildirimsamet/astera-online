@@ -26,7 +26,7 @@ export const statusBar = {
     hint: 'Toparlanma kalkanı: {{duration}} boyunca sana akın yapılamaz',
   },
   recoveryBoost: {
-    mark: 'Üretim +%50 hızlı',
+    mark: "Üretim +%50",
     note: 'Koruma boyunca +%50 üretim',
   },
   bays: {
@@ -38,7 +38,7 @@ export const statusBar = {
     label: 'Havuz',
     labelFull: 'Havuz dolu',
     collect: 'Topla',
-    firstTip: 'Üretimin burada birikir. Toplamak için dokun.',
+    firstTip: "Üretim havuzda birikir. Harcayabilmek için kaynakları depoya topla.",
     fullStopped: 'Doldu — üretim durdu',
     fillsIn: '{{time}} sonra dolar',
     gathers: 'Üretim sen toplayana dek burada birikir',
@@ -50,7 +50,7 @@ export const statusBar = {
     crystal: '{{amount}} kristal',
     deuterium: '{{amount}} döteryum',
     collected: '{{amount}} toplandı',
-    collectedPartly: '{{moved}} toplandı, {{held}} sığmadı',
+    collectedPartly: "{{moved}} depoya toplandı · {{held}} havuzda kaldı",
     storeFull: 'Depo dolu',
   },
 } as const;
@@ -111,7 +111,7 @@ export const signals = {
   openEvent: 'İlgili raporu aç',
   worldEvent: 'Galaksi olayı',
   empty:
-    'Henüz bildirim yok. Sana bir filo yöneldiğinde, bir sonda yakalandığında ve gemilerin eve döndüğünde galaksi haber verir.',
+    "Henüz bildirim yok. Yaklaşan filo uyarıları, yakalanan sondalar ve dönen gemiler burada gösterilir.",
   repeat: '×{{count}}',
 
   status: {
@@ -121,7 +121,7 @@ export const signals = {
     worksStoppedDetail: 'Havuz dolu. Toplayana kadar saatte {{amount}} üretim yapılamıyor.',
     alloyStoreLine: 'Alaşım deposu dolu',
     crystalStoreLine: 'Kristal deposu dolu',
-    storeDetail: 'Havuzda {{amount}} bekliyor ama depoda yer yok. Kaynak harcayıp yer aç.',
+    storeDetail: "Havuzda {{amount}} kaynak bekliyor. Depoda yer açmak için kaynak harca veya kapasiteyi artır.",
   },
 } as const;
 
@@ -182,27 +182,27 @@ export const menu = {
   intelLabel: 'İstihbarat',
   intelHint: 'İzlediğin dünyalar, Radar kayıtları, sondalar ve savaş raporları',
   rewardsLabel: 'Ödüller',
-  rewardsHint: 'Galakside tamamladığın hedeflerden kazandığın kaynaklar',
-  guideLabel: 'Hızlı başlangıç',
-  guideHint: 'İlk hamleler, yapılması gereken sırayla',
+  rewardsHint: "Tamamladığın hedeflerden kazandığın kaynak ödüllerini al",
+  guideLabel: 'Wiki',
+  guideHint: 'Binalar, gemiler ve galaksinin kuralları',
   rewardsWaiting: '{{count}} hazır',
   researchLabel: 'Araştırma',
-  researchHint: 'Bir kez tamamlanan ve sahip olduğun bütün dünyalarda geçerli olan projeler',
+  researchHint: "Tüm gezegenlerinde geçerli araştırmaları ve koşullarını incele",
   leaderboardLabel: 'Liderlik tablosu',
   leaderboardHint: 'Galaksideki bütün komutanların Hâkimiyet sırası',
   announcementsLabel: 'Duyurular',
   announcementsHint: 'Astera ekibinden haberler, güncellemeler ve kısa notlar',
   announcementsWaiting: '{{count}} yeni',
   feedbackLabel: 'Geri bildirim',
-  feedbackHint: 'Astera ekibine hata bildir, öneri ilet veya görüşünü paylaş',
+  feedbackHint: "Hata bildir, öneri gönder veya görüşünü paylaş",
   skinsShopLabel: 'Mağaza',
-  skinsShopHint: 'Gezegen skinlerini 3D incele',
+  skinsShopHint: "Gezegen görünümlerini ve fiyatlarını incele",
   skinsInventoryLabel: 'Envanter',
   skinsInventoryHint: 'Skinlerini gezegenlerine uygula',
   clanLabel: 'Klan',
-  clanHint: 'En fazla beş komutanlık bir ekibe katıl veya kendi klanını kur',
+  clanHint: "Bir klana katıl veya en fazla beş üyeli klanını kur",
   clanMemberLabel: 'Klan · [{{tag}}]',
-  clanMemberHint: 'Üyeler, yardımlar, ortak ganimet, klan kaydı ve özel sohbet',
+  clanMemberHint: "Üyeler, yardım, ortak ganimet, klan geçmişi ve sohbet",
   clanWaiting: '{{count}} bekliyor',
   rivalLabel: 'Rakibin · {{commander}}',
   rivalHint: '{{planet}} dünyasına odaklan ve sonraki hamleni seç',
@@ -232,14 +232,14 @@ export const menu = {
     low: 'Düşük',
   },
   qualityHint: {
-    high: 'Tam çözünürlük. En keskin görüntü, en çok pil.',
-    balanced: 'Çözünürlük dörtte üçe iner. Fark zor görülür, ısınma belirgin azalır.',
-    low: 'Yarım çözünürlük, kenar yumuşatma kapalı. Eski telefonlar için.',
+    high: "En yüksek görüntü ayrıntısı. Daha fazla pil tüketebilir.",
+    balanced: "Daha düşük çözünürlükle grafik yükünü azaltır. Isınma ve pil tüketimine etkisi cihazına bağlıdır.",
+    low: "En düşük çözünürlük sınırı. Kenar yumuşatma açık kalır; görüntü ayrıntısı azalabilir.",
   },
   fpsLabel: 'Kare hızı',
   fpsOn: 'Açık',
   fpsOff: 'Kapalı',
-  fpsHint: 'Galaksinin saniyede çizdiği kare. Hiçbir şey hareket etmezken 24–30 normaldir; hareket ve savaşta yükselir.',
+  fpsHint: "Galaksinin saniyede çizdiği kare sayısı. Daha yüksek değer, daha akıcı görüntü anlamına gelir.",
 } as const;
 
 export const leaderboard = {
@@ -253,7 +253,7 @@ export const leaderboard = {
   searchLabel: 'Komutan, gezegen veya klan ara',
   searchPlaceholder: 'Komutan, gezegen veya klan',
   noMatch: 'Bu aramayla eşleşen komutan, gezegen veya klan yok.',
-  locationUnknown: 'Bu kişinin konumunu henüz keşfetmediniz.',
+  locationUnknown: "Bu komutanın konumunu henüz keşfetmedin.",
   /*
     SEZON İÇİ ÖDÜL — oyuncunun "ben ne için oynuyorum" sorusunun cevabı.
     Sıralamanın hemen üstünde durur, çünkü karar orada veriliyor.
@@ -301,7 +301,7 @@ export const leaderboard = {
     searchPlaceholder: 'Komutan',
     noMatch: 'Bu aramayla eşleşen komutan yok.',
     galaxyRecord: {
-      title: 'Galaksi Kaydı', subtitle: 'Bu sezonun galakside bıraktığı ortak gerçekler',
+      title: 'Galaksi Kaydı', subtitle: "Bu galaksinin kayıtlı sezon sonuçları",
       champion: 'Şampiyon', clans: 'Klan podyumu',
       biggestBattle: 'En büyük doğrulanmış savaş', dominionSwing: 'En sert Hâkimiyet değişimi',
       contestedWorld: 'En tartışmalı dünya',
@@ -328,12 +328,12 @@ export const leaderboard = {
       hint: 'Kaydedilmiş savaş verileri gösteriliyor. O dönemde ölçülmeyen ekonomi, filo üretimi ve keşif verileri gösterilmiyor.',
     },
     partialStats: {
-      title: 'Kısmi telemetri',
-      hint: 'Telemetri başlamadan önceki bazı hareketler eksik olabilir; kaydedilmiş rakamlar olduğu gibi korunur.',
+      title: "Eksik etkinlik kaydı",
+      hint: "Kayıt tutulmaya başlamadan önceki bazı hareketler eksik olabilir. Gösterilen sayılar kaydedilmiş etkinlikleri kapsar.",
     },
     forcedEnd: {
       title: 'Sezon erken sona erdi',
-      hint: 'Oynanan dönem; son sıralama ve ödüllerle birlikte kalıcı olarak kaydedildi.',
+      hint: "Sezon erken bitiş anındaki sıralama ve ödüllerle kaydedildi.",
     },
     none: 'Yok',
     ratios: {
@@ -382,7 +382,7 @@ export const leaderboard = {
       recordedTotals: 'Kaydedilmiş kariyer toplamları',
       covered_one: '{{count}} sezon kapsanıyor',
       covered_other: '{{count}} sezon kapsanıyor',
-      coveredWithPartial: '{{count}} sezon kapsanıyor · {{partial}} sezonda telemetri kısmi',
+      coveredWithPartial: "{{count}} sezonun kaydı var · {{partial}} sezonun etkinlik kaydı eksik",
       seasons: 'Sezon sezon',
     },
   },
@@ -442,8 +442,8 @@ export const chat = {
 } as const;
 
 export const crash = {
-  title: 'Bir şeyler bozuldu',
-  body: 'Arayüz çizmeyi durdurdu. Yeniden yüklemek seni diske geri getirir — galakside hiçbir şey kaybolmadı.',
+  title: "Oyun arayüzü çalışmayı durdurdu",
+  body: "Devam etmek için sayfayı yeniden yükle. Son işleminin sonucu doğrulanmamış olabilir; yükledikten sonra güncel durumu kontrol et.",
   reload: 'Yeniden yükle',
   detailShow: 'Ayrıntıyı göster',
   detailHide: 'Ayrıntıyı gizle',

@@ -18,6 +18,7 @@ import {
   intergalacticConvoyRuns,
   notifications,
   planets,
+  players,
   scheduledEvents,
   seasons,
   units,
@@ -173,6 +174,9 @@ describe('an intergalactic convoy strike launch', () => {
     }));
 
     expect(launch.engagementEndsAt.getTime() - launch.arriveAt.getTime()).toBe(5_000);
+    // D212: a convoy strike is a combat launch.
+    expect((await f.db.select({ at: players.lastProgressAt }).from(players).where(eq(players.id, f.playerIds[0]!)))[0]!.at)
+      .toEqual(f.clock.now());
     expect(launch.homeAt.getTime()).toBeGreaterThan(launch.engagementEndsAt.getTime());
     expect(launch.fuel).toBeGreaterThan(0);
     expect(launch.intercept).not.toEqual(launch.engagementEnd);

@@ -57,6 +57,7 @@ import { lockWorlds } from './ownership.js';
 import { prepareClanAttack, recordClanAttack } from './clanCombat.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 import { assertRadiationSafe } from './radiation.js';
+import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 
 export interface LaunchResult {
   missionId: string;
@@ -155,6 +156,7 @@ export async function launchAttack(
     await lockWorlds(tx, [originPlanetId, targetPlanetId]);
     const origin = await loadLocked(tx, originPlanetId, clock, { expectedPlayerId });
     assertWorldOperational(origin);
+    assertOutsideSilentSpace(origin);
 
     for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
       if ((origin.homeFleet[hull] ?? 0) < n) {
@@ -442,6 +444,7 @@ export async function launchAttack(
         arriveAt,
       })
       .returning();
+    await markProgress(tx, origin.playerId, origin.now); // D212
 
     if (them && preparedClanAttack) {
       await recordClanAttack(tx, {

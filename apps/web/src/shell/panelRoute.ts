@@ -166,6 +166,7 @@ const MENU_PANELS = new Set<Panel>([
   'feedback',
   'donate',
   'admin',
+  'wiki',
 ]);
 
 export const returnsToMenu = (panel: Panel): boolean => MENU_PANELS.has(panel);

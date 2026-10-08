@@ -63,7 +63,7 @@ export const intel = {
     missingNoSlot: "Aucun emplacement ne surveille de cible",
     missingNoTelescope: "Tu n’as pas de Télescope",
     gives:
-      "Il t’avertit lorsqu’une flotte quitte une planète. Avant un raid, tu peux ainsi savoir si sa défense est encore présente.",
+      "Indique si une flotte a quitté la planète observée. Pour préparer un raid, considère l’âge de l’observation et les défenses restées sur place.",
     costPoint:
       "Choisis une planète dans la galaxie et oriente un emplacement vers elle.",
     costInstall: "Construis-en un depuis l’écran de la planète.",
@@ -105,7 +105,7 @@ export const intel = {
     level: "Radar · niveau {{level}}",
     missing: "Tu n’as pas de Radar",
     gives:
-      "Il trace le rayon dans lequel tu détectes les appareils en mouvement, repère les sondes dirigées contre toi et signale avec leur temps d’arrivée les menaces visant ton monde.",
+      "Montre les mouvements à portée et le temps d’arrivée des menaces visant ta planète. Il peut détecter les sondes, sans garantie.",
     cost: "Sans Radar, la plupart des sondes envoyées vers ce monde passent inaperçues.",
     quiet: "Aucun sondage détecté. Radar de niveau {{level}} à l’écoute.",
     scan: "Sondage détecté",
@@ -271,7 +271,7 @@ export const reports = {
   roundTook: "Dégâts subis",
   roundLine: "<0>{{dealt}}</0> infligés, <1>{{took}}</1> subis",
   shield: "bouclier {{amount}}",
-  shieldBreaker: "Dissipateur +{{amount}}",
+  shieldBreaker: "Annulateur +{{amount}}",
   aegis: {
     aria: "Bouclier Aegis",
     label: "BOUCLIER AEGIS",
@@ -375,7 +375,7 @@ export const reports = {
     absorbed: "{{amount}} absorbés",
     reachedHulls: "Dégâts atteignant les coques",
     shieldBreaker:
-      "{{amount}} provenaient des dégâts du Dissipateur réservés au bouclier",
+      "{{amount}} provenaient des dégâts de l’Annulateur réservés au bouclier",
     noAegisNote:
       "Aucun bouclier n’a arrêté l’impact ; les {{amount}} points de puissance de tir ont tous atteint les coques défensives.",
     /** Même étape dans le vide : ici, aucune planète, donc aucune structure. */
@@ -561,7 +561,7 @@ export const dossier = {
     peekDefenceUnknown: "défense inconnue",
     rival: "Rival {{n}}",
     range: "Distance {{d}}",
-    flight: "vol de {{time}}",
+    flight: "Au plus tôt {{time}}",
     unreachable: "Hors de portée",
     known: "Connu {{have}}/{{total}}",
     lookNone: "Aucune sonde n’a regardé dedans",

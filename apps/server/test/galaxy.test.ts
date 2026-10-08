@@ -363,10 +363,12 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
      * reach or frozen through a probe; the fixture puts a telescope on this target,
      * so the full shape is the right expectation. What an unearned world carries is
      * asserted in `intel-states.test.ts`, and it is two fields.
+     * `country` travels with the known commander identity; the same intel suite
+     * checks that unknown worlds expose none and probe memories keep their snapshot.
      */
     expect(keys.sort()).toEqual(
       [
-        'attackProtectedUntil', 'controller', 'coreLevel', 'coreTier', 'fleet', 'id', 'intel',
+        'attackProtectedUntil', 'controller', 'country', 'coreLevel', 'coreTier', 'fleet', 'id', 'intel',
         'isCapital', 'isOwned', 'isSelf', 'kind', 'name', 'owner', 'position', 'satellites',
         'shielded', 'state', 'dominionRank',
       ].sort(),

@@ -17,7 +17,7 @@ export const research = {
   eyebrow: "Kommandant",
   title: "Forschung",
   /** What the whole screen is for, in the one clause a player reads before scrolling. */
-  premise: "Einmal gekauft, von dir gehalten, und jede Welt, die du besitzt, hat es.",
+  premise: "Abgeschlossene Forschung gilt auf allen deinen Welten. Jede Forschungsstufe wird einzeln bezahlt.",
 
   /** THE QUEUE. It belongs to the commander, not to the funding world. */
   queueTitle: "Forschungswarteschlange",
@@ -36,7 +36,7 @@ export const research = {
     "Wird durch bestimmte Ereignisse in der Galaxie aufgedeckt und dann durch den Einsatz von Ressourcen und Forschungszeit vervollständigt.",
   industryBand: "Industrie",
   industryNote:
-    "Offen ab der ersten Minute mit jeweils fünf Sprossen. Verbessert Produktion, Bauzeit und Tragfähigkeit.",
+    "Verbessert Produktion, Bau- und Reparaturzeit sowie Ladekapazität. Jedes Projekt zeigt seine Stufengrenze und Voraussetzungen.",
   doctrineBand: "Lehre",
   doctrineNote:
     "Öffnet erweiterte Rumpfstufen und verbessert Angriff, Panzerung oder Antrieb auf separaten begrenzten Leitern. Die Kampfstufen sind per Sonde sichtbar.",
@@ -71,7 +71,7 @@ export const research = {
   sheetComplete: "Forschung abgeschlossen",
   sheetCost: "Forschungskosten",
   sheetOnce: "Wird in Ihrer kommandantenweiten Forschungswarteschlange platziert. Es wird kein Bau- oder Hofplatz verwendet.",
-  sheetRung: "Strompfad {{level}} von {{max}}. Jede Sprosse wird separat gekauft.",
+  sheetRung: "Stufe {{level}} von {{max}}. Jede Stufe wird separat gekauft.",
 
   isotopeName: "Isotopenspektrometrie",
   isotopeTag: "Schaltet den Deuteriumabbau frei",
@@ -109,13 +109,13 @@ export const research = {
   robotsRole:
     "Verkürzt alles in der Bauwarteschlange, ohne Schiffe oder Bodengeschütze zu beeinträchtigen",
   robotsDetail:
-    "Mit jeder Sprosse wird jeder zukünftige Bauauftrag auf Ihren Welten schneller abgeschlossen: Gebäude, Instrumente und Satelliten gleichermaßen. Es beschleunigt Schiffe nicht – das ist Yard Automation – und es senkt weder die Ressourcenpreise noch fügt es Warteschlangenplätze hinzu.",
+    "Verkürzt künftige Bauaufträge auf allen Planeten: Gebäude, Instrumente und Satelliten. Beschleunigt weder Schiffe noch Bodenverteidigung. Preise und Warteschlangenkapazität bleiben unverändert.",
   industrialName: "Industrie",
   industrialTag: "Repariert Schiffe billiger und schneller",
   industrialRole:
     "Senkt Kosten und Dauer jedes Auftrags der Reparaturstation",
   industrialDetail:
-    "Jede Stufe senkt Kosten und Dauer der Reparatur eines beschädigten Schiffs auf all deinen Welten um ein Viertel: 75 % auf Stufe 1, 50 % auf Stufe 2. Schiffe werden dadurch nicht schneller gebaut \u2014 das macht Yard Automation \u2014 und ein Schiff mit höchstens 20 % Schaden wird nach einem Kampf ohnehin kostenlos repariert.",
+    "Senkt Schiffsreparaturkosten und -zeit auf allen Planeten. Stufe 1 nutzt 75 % der normalen Kosten und Zeit; Stufe 2 nutzt 50 %. Schiffsbau wird nicht beschleunigt. Schäden bis einschließlich 20 % werden bei Landung bereits kostenlos repariert.",
   holdsName: "Prospektor hält",
   holdsTag: "Bergbauschiffe transportieren mehr",
   holdsRole: "Erhöht jeden Prospektor-Hold; Zusätzlich gilt der Kapazitätsbonus des Derricks",
@@ -132,36 +132,36 @@ export const research = {
   engineeringRole:
     "Engineering I eröffnet Rumpfberechtigungen der Stufe 3; Engineering II eröffnet Tier 4. Einzelne Rümpfe behalten ihre Systemforschungs- und Werftanforderungen.",
   engineeringDetail:
-    "Engineering gewährt Bauberechtigung statt eines Kampfmultiplikators. Seine erste Sprosse öffnet Rumpftore der Stufe 3 und seine zweite öffnet die Rumpftore der Stufe 4; Für einen bestimmten Rumpf sind möglicherweise noch Energie, Panzerung, Antrieb oder Gravitationsladungen sowie die angegebene Werftstufe erforderlich.",
+    "Stufe 1 erfüllt die Ingenieursanforderung für Schiffe der Stufe 3. Stufe 2 gilt entsprechend für Stufe 4. Einzelne Schiffe benötigen zusätzlich Leistung, Panzerung, Antrieb oder Gravitische Ladungen. Die erforderliche Werftstufe gilt weiterhin.",
   powerName: "Schiffsenergie",
   powerTag: "Löst den Angriff eines Kriegsschiffs aus",
   powerRole:
     "Erhöht den Angriff jedes Kriegsschiffs deiner Flotte und erfüllt fortgeschrittene Offensiv-Baubedingungen. Frachtrümpfe und Bodenverteidigung bleiben unberührt.",
   powerDetail:
-    "Jede Sprosse erhöht den normalen Angriff auf jedes Kriegsschiff, einschließlich des Nullifiers, und gilt für Schiffe, die Sie bereits besitzen. Es fügt keinen Angriff auf Transporter hinzu und wirkt sich nicht auf Bastion, Thorn, Prospektor oder Sonden aus. Ein Angreifer trägt seine Startzeitebene; Ein Verteidiger liest die Kampfzeitstufe vor.",
+    "Jede Stufe erhöht den normalen Angriff aller Kriegsschiffe, einschließlich des Nullifiers. Bereits vorhandene Schiffe profitieren ebenfalls. Transporter erhalten keinen Angriff; Bodengeschütze, Prospektoren und Sonden bleiben unverändert. Angreifer nutzen ihre Forschungsstufe beim Start; Verteidiger die Stufe zu Kampfbeginn.",
   armorName: "Schiffspanzerung",
   armorTag: "Erhöht die Schiffsrumpfstärke",
   armorRole:
     "Erhöht die Rumpfstärke jedes Schiffs deiner Flotte, Transporter eingeschlossen, und erfüllt fortgeschrittene Defensiv-Baubedingungen.",
   armorDetail:
-    "Jede Sprosse erhöht die Rumpfstärke für jedes Schiff in Ihrer Flotte, einschließlich Kurier, Wanderer, Atlas und Argosy. Bastion, Thorn, Prospektor oder Sonden sind davon nicht betroffen. Ein Angreifer trägt seine Startzeitebene; Ein Verteidiger liest die Kampfzeitstufe vor.",
+    "Jede Stufe erhöht die Rumpfstärke aller Flottenschiffe, einschließlich Transportern. Bodengeschütze, Prospektoren und Sonden bleiben unverändert. Angreifer nutzen ihre Forschungsstufe beim Start; Verteidiger die Stufe zu Kampfbeginn.",
   propulsionName: "Schiffsantrieb",
   propulsionTag: "Erhöht die Flottengeschwindigkeit",
   propulsionRole:
     "Erhöht die Geschwindigkeit jedes Schiffs deiner Flotte und zählt zur Atlas-Baubedingung. Öffnet sich nach „Dichte Brennstoffzellen“.",
   propulsionDetail:
-    "Jede der vier Stufen erhöht die Nenngeschwindigkeit jedes Schiffes in Ihrer Flotte um ein Viertel, während die letzte Stufe sie verdoppelt und jeden Flug halbiert. Eine gemischte Flotte bewegt sich immer noch mit der Geschwindigkeit ihres langsamsten Mitglieds, sodass der Antrieb eine ausgewählte Zusammensetzung verbessert, ohne ihr Profil zu löschen. Es wirkt sich nicht auf Prospektoren oder Sonden aus und nur Missionen, die nach Abschluss angeboten werden, erhalten den Gewinn.",
-  groundDoctrineName: "Einlagerungslehre",
+    "Jede der vier Stufen erhöht die Geschwindigkeit um 25 % der Grundgeschwindigkeit. Die letzte verdoppelt sie. Eine gemischte Flotte nutzt ihr langsamstes Schiff. Prospektoren und Sonden bleiben unverändert. Der Bonus gilt für Missionen, die nach Forschungsabschluss starten.",
+  groundDoctrineName: "Bodenverteidigungsdoktrin",
   doctrineTag: "Verbessert die Bodenverteidigung",
   doctrineRole:
-    "Erhöht gemeinsam die Angriffs- und Hüllenstärke von Bastion und Thorn, ohne ihre Kapazität, Bergung oder Klassenzuordnung zu ändern.",
+    "Erhöht Angriff und Rumpfstärke von Bastion, Harpune und Dorn. Bodenkapazität, Bergung und Klassenverhältnisse bleiben unverändert.",
   groundDoctrineDetail:
-    "Verbessert den Angriff und die Hülle von Bastionen und Dornen auf jeder Welt. Es verändert die Kampfstärke, nicht die Bodenkapazität oder die Bergung; Verteidiger nutzen die Sprosse, die sie zu Beginn des Kampfes halten.",
+    "Erhöht Angriff und Rumpfstärke von Bastion, Harpune und Dorn auf allen deinen Planeten. Bodenkapazität und Bergungsregeln bleiben unverändert. Verteidiger nutzen die Forschungsstufe bei Kampfbeginn.",
 
   gridName: "Abfanggitter",
   gridTag: "Vier Abfangladungen pro Welt",
   gridRole: "Erhöht die Abfangladungen, die jede deiner Welten halten kann, von 2 auf 4.",
-  gridDetail: "Ohne Forschung kann jede Welt 2 Abfangladungen laden; diese Forschung hebt das Limit auf jeder Welt auf 4. Eine Ladung braucht auf ihrer Welt einen Uplink und Radar 3. Eine geladene Ladung zerstört den ersten Todesstern, der ihren zeitlichen Radar-Abfangring kreuzt oder in der Teleskopsicht einer deiner Welten erkannt wird, und ist dann verbraucht. Eine Ladung stoppt eine Waffe – eine geladene Welt fällt nur, wenn mehr Waffen gleichzeitig ankommen, als sie Ladungen hat.",
+  gridDetail: "Erhöht das Abfangladungsmaximum jedes Planeten von 2 auf 4. Laden erfordert Uplink und Radar 3 auf diesem Planeten. Eine Ladung zerstört einen Todesstern bei Teleskopidentifizierung oder rechtzeitiger Radar-Ring-Abfangung. Die Sensoren müssen funktionieren. Jede Abfangung verbraucht eine Ladung.",
   stockpileName: "Strategischer Vorrat",
   stockpileTag: "Zwei Todessterne pro Welt",
   stockpileRole: "Erhöht die Todessterne, die jede deiner Welten halten kann, von 1 auf 2. Der zweite beginnt, sobald der erste fertig ist.",

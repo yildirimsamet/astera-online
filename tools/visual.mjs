@@ -29,9 +29,39 @@ if (process.argv.includes('--spend-bars')) {
   process.exit(0);
 }
 
+if (process.argv.includes('--target-map')) {
+  const { verifyTargetMap } = await import('./target-map-visual.mjs');
+  await verifyTargetMap(process.argv[2] ?? 'out/target-map');
+  process.exit(0);
+}
+
+if (process.argv.includes('--loading')) {
+  const { verifyLoading } = await import('./loading-visual.mjs');
+  await verifyLoading(process.argv[2] ?? 'out/loading');
+  process.exit(0);
+}
+
+if (process.argv.includes('--brand-recall')) {
+  const { verifyBrandRecall } = await import('./brand-recall-visual.mjs');
+  await verifyBrandRecall(process.argv[2] ?? 'out/brand-recall');
+  process.exit(0);
+}
+
+if (process.argv.includes('--wiki')) {
+  const { verifyWiki } = await import('./wiki-visual.mjs');
+  await verifyWiki(process.argv[2] ?? 'out/wiki');
+  process.exit(0);
+}
+
 if (process.argv.includes('--skin-shop')) {
   const { verifySkinShop } = await import('./skin-shop-visual.mjs');
   await verifySkinShop(process.argv[2] ?? 'out/skin-shop');
+  process.exit(0);
+}
+
+if (process.argv.includes('--rewards')) {
+  const { verifyRewards } = await import('./rewards-visual.mjs');
+  await verifyRewards(process.argv[2] ?? 'out/rewards-v2');
   process.exit(0);
 }
 
@@ -162,8 +192,8 @@ const PASSWORD = 'correct-horse-battery';
  * keeps its opening orders, and uses the same two-step claim a visitor does.
  */
 // The front door waits for its own sky (D23), so the buttons are not there at once.
-const trainingDoor = page.getByRole('button', { name: /check your planet|start a new commander/i }).first();
-const commanderField = page.getByLabel(/commander name/i);
+const trainingDoor = page.getByRole('button', { name: /explore your planet|check your planet|start a new commander/i }).first();
+const commanderField = page.getByRole('textbox', { name: 'Commander name', exact: true });
 for (let attempt = 0; attempt < 3 && !(await commanderField.isVisible().catch(() => false)); attempt += 1) {
   try {
     await trainingDoor.waitFor({ timeout: 40_000 });
@@ -176,8 +206,11 @@ for (let attempt = 0; attempt < 3 && !(await commanderField.isVisible().catch(()
   // change. Do not let Playwright wait on that dev-only navigation forever; if it
   // resets the front door, this loop simply walks through it again.
   try {
+    await page.locator('[data-loading-screen]').waitFor({ state: 'hidden', timeout: 40_000 });
+    const refuse = page.getByRole('button', { name: 'Refuse', exact: true });
+    if (await refuse.isVisible()) await refuse.click();
     await trainingDoor.click({ noWaitAfter: true, timeout: 10_000 });
-    const skip = page.getByRole('button', { name: /^skip$/i });
+    const skip = page.getByRole('button', { name: /^skip(?: training)?$/i });
     await skip.waitFor({ timeout: 30_000 });
     await page.locator('[data-loading-screen]').waitFor({ state: 'hidden', timeout: 40_000 });
     await skip.click({ noWaitAfter: true, timeout: 10_000 });
@@ -190,9 +223,9 @@ for (let attempt = 0; attempt < 3 && !(await commanderField.isVisible().catch(()
 await commanderField.waitFor({ timeout: 20_000 });
 await commanderField.fill(COMMANDER);
 await page.getByRole('button', { name: /^continue$/i }).click();
-await page.getByLabel(/password/i).fill(PASSWORD);
+await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
 await page.getByRole('button', { name: /^claim the planet$/i }).click();
-await page.getByRole('dialog', { name: /sign the world/i }).waitFor({ state: 'hidden' });
+await page.getByRole('dialog', { name: /choose your commander name|set a password|sign the world/i }).waitFor({ state: 'hidden' });
 await page.waitForSelector('canvas', { timeout: 40_000 });
 // The models arrive over the network and decode on the CPU; surveying before
 // they land measures an empty scene.

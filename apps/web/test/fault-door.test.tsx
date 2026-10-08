@@ -136,7 +136,7 @@ describe('arızalı satırın kapısı', () => {
 
   it('bozuk satırın sekmesi işaretli', () => {
     show([fault('TELESCOPE_FAULT')]);
-    expect(screen.getByRole('tab', { name: /something here is broken/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /active faults/i })).toBeInTheDocument();
   });
 });
 
@@ -189,7 +189,7 @@ describe('onarım şeridi', () => {
     const strip = screen.getByRole('region', { name: 'Repairs' });
     const names = within(strip).getAllByRole('button').map((row) => row.textContent);
     expect(names[0]).toContain('Command core blackout');
-    expect(names[1]).toContain('Vault leak');
+    expect(names[1]).toContain('Store leak');
   });
 
   /**

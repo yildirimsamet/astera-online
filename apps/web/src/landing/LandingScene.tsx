@@ -1,6 +1,6 @@
-import { Suspense, useMemo, useRef, type ReactNode } from 'react';
+import { Suspense, useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
-import { AdaptiveDpr, Preload, useGLTF } from '@react-three/drei';
+import { AdaptiveDpr, useGLTF } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import { guardBloomRef } from '../galaxy/finiteGuard.js';
 import * as THREE from 'three';
@@ -15,6 +15,7 @@ import {
 import { BrightStars, Sky, softGlow } from '../galaxy/Environment.jsx';
 import { posedCraft, unitModel } from '../galaxy/model.js';
 import { place, placeVector, sizeOf, type Framing } from './layout.js';
+import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from '../galaxy/SceneWarmup.js';
 
 /**
  * THE FRONT DOOR, AS A PLACE RATHER THAN A FORM. D21.
@@ -63,7 +64,9 @@ const HERO_ART = '/assets/images/planets/planet_4.png';
 const NEIGHBOUR_ART = '/assets/images/planets/planet_12.png';
 const FAR_ART = '/assets/images/planets/planet_9.png';
 
-export function LandingScene() {
+export function LandingScene({ onReady }: { onReady?: () => void }) {
+  const [prepared, setPrepared] = useState(false);
+  const onCompiled = useCallback(() => { setPrepared(true); }, []);
   return (
     <Canvas
       className="!absolute inset-0"
@@ -102,10 +105,12 @@ export function LandingScene() {
 
       <Suspense fallback={null}>
         <Composition />
-        <Preload all />
+        <SceneWarmup onCompiled={onCompiled} />
+        <FirstSceneFrame ready={prepared} onDrawn={() => { onReady?.(); }} />
       </Suspense>
 
-      <EffectComposer>
+      <SceneRenderGate />
+      <EffectComposer enabled={prepared}>
         <Bloom ref={guardBloomRef} intensity={0.7} luminanceThreshold={0.3} luminanceSmoothing={0.5} mipmapBlur />
         <Vignette eskil={false} offset={0.22} darkness={0.8} />
       </EffectComposer>

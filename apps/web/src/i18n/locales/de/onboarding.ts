@@ -47,12 +47,12 @@ export const onboarding = {
     },
     fogAlone: {
       title: 'Es ist noch niemand hier',
-      line: '{{shard}} füllt sich noch. Wenn dies der Fall ist, können Sie nicht sehen, was einer von ihnen in der Hand hält.',
+      line: "{{shard}} füllt sich noch. Sammle Aufklärung über Ressourcen und Verteidigung anderer Kommandanten.",
       action: 'Verstanden',
     },
     core: {
       title: 'Erhöhen Sie zuerst das Levellimit',
-      line: 'Der Kommandokern legt fest, wie hoch Ihre anderen Gebäude steigen können. Tippen Sie auf die entsprechende Zeile. Sehen Sie, was Level 2 bringt und kostet, und fügen Sie es dann zur Warteschlange hinzu.',
+      line: "Der Befehlskern begrenzt Strukturstufen, außer beim Hangar. Öffne seine Zeile und prüfe Wirkung und Kosten von Stufe 2. Stelle dann das Upgrade in die Warteschlange.",
     },
     refinery: {
       title: 'Mehr Legierung herstellen',
@@ -75,17 +75,17 @@ export const onboarding = {
   /** The wall, at the one moment the player wants something. */
   claim: {
     eyebrowName: 'Letzter Schritt',
-    headingName: 'Unterschreiben Sie die Welt mit Ihrem Namen',
+    headingName: "Wähle deinen Kommandantennamen",
     lineName: 'Ihre vier Bestellungen werden bereitgestellt. Beanspruchen Sie {{name}} und ihre echten Uhren beginnen gemeinsam.',
     nameLabel: 'Kommandantenname',
     next: 'Weiter',
 
     eyebrowPassword: 'Noch eins',
-    headingPassword: 'Sperre {{name}}',
-    linePassword: 'Wählen Sie ein Passwort und Ihr Kommandant wartet in dem Browser, in dem Sie sich anmelden.',
+    headingPassword: "Lege ein Passwort für {{name}} fest",
+    linePassword: "Mit diesem Passwort meldest du dich auf anderen Geräten mit demselben Kommandanten an.",
     passwordLabel: 'Passwort',
     submit: 'Beanspruche den Planeten',
-    working: 'Die Welt erobern',
+    working: "Kommandant wird erstellt…",
     back: 'Zurück',
   },
 
@@ -95,6 +95,6 @@ export const onboarding = {
     unreachable: 'Die Galaxie konnte nicht erreicht werden.',
     retry: 'Versuchen Sie es erneut',
     /** One or more replayed decisions were refused once the server ran them. */
-    partial: 'Deine Welt gehört dir. Eine abgestufte Bestellung wurde abgelehnt, als es zu echten Warteschlangen kam.',
+    partial: "Dein Planet wurde erstellt. Einige vorbereitete Aufträge konnten nicht starten. Prüfe die Produktionswarteschlangen.",
   },
 } as const;

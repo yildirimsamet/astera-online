@@ -1,5 +1,5 @@
 import { and, asc, eq, gt, lte, sql } from 'drizzle-orm';
-import { INACTIVITY_MS, inactivityEligible } from '@astera/rules';
+import { SILENT_SPACE, silentSpaceDue } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, planets, players, returnApplications, seasons, shards, silentSpaceMaintenance } from '../db/schema.js';
@@ -54,12 +54,13 @@ export async function runSilentSpaceSweep(db: Db, clock: Clock, options: { batch
     }
     // Admit waiting commanders first so departures cannot exhaust every pass.
     const departureBudget = result.movedOut + result.returned < batchSize && performance.now() < deadline;
-    const cutoff = new Date(now.getTime() - INACTIVITY_MS);
+    // D212: thirty hours since the last development or combat order; a login moves nothing.
+    // GREATEST skips a null `last_progress_at`, exactly as `silentSpaceDueAt` does.
+    const cutoff = new Date(now.getTime() - SILENT_SPACE.idleMs);
     const candidates = await db.select({ player: players, season: seasons }).from(players)
       .innerJoin(seasons, eq(players.seasonId, seasons.id)).innerJoin(shards, eq(shards.id, seasons.shardId))
       .where(and(eq(shards.role, 'MAIN'), eq(seasons.status, 'live'), gt(seasons.endsAt, now),
-        lte(players.lastActiveAt, cutoff), lte(players.joinedAt, cutoff),
-        sql`coalesce(${players.mainEnteredAt}, ${players.joinedAt}) <= ${cutoff.toISOString()}::timestamptz`,
+        sql`greatest(${players.lastProgressAt}, ${players.joinedAt}, ${players.mainEnteredAt}) <= ${cutoff.toISOString()}::timestamptz`,
         state.cursorPlayerId ? gt(players.id, state.cursorPlayerId) : undefined))
       .orderBy(asc(players.id)).limit(50);
     let cursor = state.cursorPlayerId;
@@ -121,7 +122,7 @@ export async function describeSilentSpaceDeparture(db: Db, clock: Clock, command
     .from(planets).where(eq(planets.controllerPlayerId, player.id)).orderBy(asc(planets.kind), asc(planets.slotIndex));
   return {
     playerId: player.id, accountId: player.accountId, commander: name, seasonId: season.id, shard: shard.name, worlds,
-    inactive: inactivityEligible({ lastActiveAt: player.lastActiveAt.getTime(), joinedAt: player.joinedAt.getTime(),
+    inactive: silentSpaceDue({ lastProgressAt: player.lastProgressAt?.getTime() ?? null, joinedAt: player.joinedAt.getTime(),
       mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime() }, clock.now().getTime()),
   };
 }

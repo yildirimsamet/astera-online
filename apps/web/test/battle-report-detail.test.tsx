@@ -1081,7 +1081,7 @@ describe('savaşın bozduğu koloni sistemleri', () => {
       colonyFaults: ['VAULT_LEAK', 'SHIPYARD_REVOLT'],
     }));
     const line = screen.getByText(/Vantage-3/, { selector: '[data-colony-faults]' });
-    expect(line).toHaveTextContent('Vault leak');
+    expect(line).toHaveTextContent('Store leak');
     expect(line).toHaveTextContent('Revolt in the yard');
   });
 

@@ -47,12 +47,12 @@ export const onboarding = {
     },
     fogAlone: {
       title: 'Burada henüz kimse yok',
-      line: '{{shard}} hâlâ doluyor. Dolduğunda hiçbirinin elinde ne olduğunu göremeyeceksin.',
+      line: "{{shard}} henüz dolmadı. Katılan komutanların kaynaklarını ve savunmasını öğrenmek için istihbarat toplaman gerekir.",
       action: 'Anlaşıldı',
     },
     core: {
       title: 'Önce seviye sınırını aç',
-      line: 'Komuta Çekirdeği diğer binaların çıkabileceği seviyeyi belirler. Satıra dokun. Açılan kartta 2. seviyenin ne verdiğini ve fiyatını gör; sonra sıraya koy.',
+      line: "Komuta Çekirdeği, Hangar dışındaki yapıların seviye sınırını belirler. Satırını aç; 2. seviyenin etkisini ve bedelini incele. Sonra yükseltmeyi sıraya ekle.",
     },
     refinery: {
       title: 'Daha çok alaşım üret',
@@ -73,17 +73,17 @@ export const onboarding = {
 
   claim: {
     eyebrowName: 'Son adım',
-    headingName: 'Dünyayı adınla imzala',
+    headingName: "Komutan adını seç",
     lineName: 'Dört siparişin hazır. {{name}} senin olduğunda gerçek sayaçları birlikte başlar.',
     nameLabel: 'Komutan adı',
     next: 'Devam',
 
     eyebrowPassword: 'Bir tane daha',
-    headingPassword: '{{name}} kilitleniyor',
-    linePassword: 'Bir parola belirle; hangi tarayıcıdan girersen gir komutanın seni orada bekler.',
+    headingPassword: "{{name}} için parola belirle",
+    linePassword: "Başka bir cihazda aynı komutanla giriş yapmak için bu parolayı kullanacaksın.",
     passwordLabel: 'Parola',
     submit: 'Gezegeni sahiplen',
-    working: 'Dünya alınıyor',
+    working: "Komutan oluşturuluyor…",
     back: 'Geri',
   },
 
@@ -91,6 +91,6 @@ export const onboarding = {
     noFrontier: 'Şu anda bütün galaksiler dolu. Yeni bir sezon açılana kadar prova yapılamıyor.',
     unreachable: 'Galaksiye ulaşılamadı.',
     retry: 'Tekrar dene',
-    partial: 'Dünya senin. Hazırladığın siparişlerden biri gerçek sıralar başlarken reddedildi.',
+    partial: "Gezegenin oluşturuldu. Hazırladığın siparişlerin bazıları başlatılamadı. Güncel üretim sıralarını kontrol et.",
   },
 } as const;

@@ -7,7 +7,7 @@ export const convoy = {
   alreadyAway: 'A strike from this world is already away',
   noCraft: 'No combat craft at this world',
   cannotReach: 'No fleet here can complete the strike in time',
-  boundary: 'The convoy does not return fire; your fleet takes no losses.',
+  boundary: "The convoy does not return fire. Route radiation can damage or destroy your ships.",
   engagement: 'Firing window: 5 seconds.',
   engagementLabel: 'Firing window',
   engagementDuration: '5 sec',
@@ -45,5 +45,5 @@ export const convoy = {
   commit: 'Launch strike',
   sending: 'Launching…',
   launched: 'Strike launched · contact in {{duration}}',
-  quoteChanged: 'The convoy moved. The fleet is still selected; review the fresh quote.',
+  quoteChanged: "The convoy moved. Your selected ships are unchanged. Review the updated route and cost.",
 } as const;

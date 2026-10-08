@@ -77,6 +77,8 @@ export const now = {
   event: "イベント終了",
   shield: "シールド終了",
   shieldDetail: "終了後は襲撃を受ける可能性があります",
+  silentSpace: "サイレントスペースへ移動",
+  silentSpaceDetail: "建設・研究・生産・攻撃のいずれかを開始",
   /** The clock time beside a countdown in the sheet. */
   at: "{{time}}に",
 };

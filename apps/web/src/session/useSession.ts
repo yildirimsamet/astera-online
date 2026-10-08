@@ -167,7 +167,7 @@ export function useSession() {
       // A cold start that cannot reach the API is not a signed-out player, and
       // showing them the login form would teach them their account was lost.
       if (err instanceof ApiError && err.code === 'UNREACHABLE') {
-        setSession({ phase: 'blocked', message: err.message });
+        setSession({ phase: 'blocked', message: messageOf(err) });
         return;
       }
       setSession({ phase: 'landing', error: messageOf(err) });

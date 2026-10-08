@@ -7,7 +7,7 @@ export const convoy = {
   alreadyAway: 'Ya hay un ataque de este mundo en camino',
   noCraft: 'No hay naves de combate en este mundo',
   cannotReach: 'Ninguna flota de este mundo puede completar el ataque a tiempo',
-  boundary: 'El convoy no devuelve el fuego. Tu flota no sufrirá pérdidas.',
+  boundary: "El convoy no devuelve el fuego. La radiación de la ruta puede dañar o destruir tus naves.",
   engagement: 'Tiempo para disparar: 5 segundos.',
   engagementLabel: 'Tiempo para disparar',
   engagementDuration: '5 s',
@@ -45,5 +45,5 @@ export const convoy = {
   commit: 'Lanzar ataque',
   sending: 'Lanzando ataque…',
   launched: 'Ataque lanzado · contacto en {{duration}}',
-  quoteChanged: 'El convoy ha avanzado. Tu flota sigue seleccionada; revisa las nuevas condiciones.',
+  quoteChanged: "El convoy avanzó. Se conserva tu selección de naves. Revisa la ruta y el coste actualizados.",
 } as const;

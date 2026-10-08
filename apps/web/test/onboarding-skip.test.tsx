@@ -102,7 +102,7 @@ describe('skipping the onboarding rehearsal', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Skip' }));
 
     expect(onLeave).not.toHaveBeenCalled();
-    expect(screen.getByRole('dialog', { name: 'Sign the world with your name' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Choose your commander name' })).toBeInTheDocument();
     expect(screen.getByLabelText('Commander name')).toHaveFocus();
   });
 });

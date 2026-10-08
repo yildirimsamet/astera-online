@@ -45,6 +45,7 @@ import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { sumFleets } from '../lib/fleetPage.js';
+import { readTransferReturnPlan, rememberTransferReturnPlan } from '../lib/transferChoice.js';
 
 const MOVABLE = (Object.keys(HULLS) as HullId[]).filter(
   (id) => !HULLS[id].ground && id !== 'PROSPECTOR',
@@ -170,7 +171,7 @@ export function TransferSheet({
   const cooling = cooldownUntil !== null && cooldownUntil.getTime() > now;
   const [fleet, setFleet] = useState<Fleet>({});
   const [cargo, setCargo] = useState({ alloy: 0, crystal: 0, deuterium: 0 });
-  const [returnPlan, setReturnPlan] = useState<TransferReturnPlan>({ cargoShips: 'RETURN', otherShips: 'STAY' });
+  const [returnPlan, setReturnPlan] = useState<TransferReturnPlan>(readTransferReturnPlan);
   /**
    * THE ORIGIN'S OWN MODIFIERS — the ladder and the Beacon. D180.
    *
@@ -294,6 +295,7 @@ export function TransferSheet({
   const setReturnChoice = (group: keyof TransferReturnPlan, choice: TransferReturnPlan[typeof group]) => {
     const next = { ...returnPlan, [group]: choice };
     setReturnPlan(next);
+    rememberTransferReturnPlan(next);
     const nextReturning = transferReturningFleet(fleet, next);
     const nextFuel = missionFuel(fleet, span, 1, 'HOMEWARD')
       + (fleetCount(nextReturning) > 0 ? missionFuel(nextReturning, span, 1, 'HOMEWARD') : 0);

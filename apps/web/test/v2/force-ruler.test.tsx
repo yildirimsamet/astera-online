@@ -153,11 +153,11 @@ describe('what it says about the reading', () => {
     expect(screen.queryByTestId('ruler-rule')).toBeNull();
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/firing ships and ground guns/i);
+    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/armed ships’ and ground guns’ resource value/i);
     expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/three times/i);
     // Why a line is a range, and what a success is.
-    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/at least one of your ships comes home/i);
-    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/left end is the worst case/i);
+    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/partial and full success require at least one ship surviving/i);
+    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/left edge is the worst case/i);
   });
 
   /**

@@ -58,13 +58,13 @@ export const counter = {
   escapeUnsure: 'Leurs vaisseaux pourraient décoller ; la lecture ne précise pas toutes les conditions de retraite.',
   escapeAt: 'Seuil de retraite : {{at}}',
   escapeRule:
-    'Retraite tactique : une ligne face à au moins trois fois sa propre puissance de feu, que ce raid anéantirait, fait décoller ses vaisseaux au lieu de combattre, si le réservoir du monde paie un aller-retour de {{distance}} unités. Les canons restent, et les stocks sont tout de même pillés.',
+    "Le repli tactique exige une attaque au moins trois fois plus puissante qui détruirait toute la ligne défensive. La planète doit aussi payer un aller-retour de {{distance}} unités. Si les conditions sont remplies, les vaisseaux évitent le combat. Les défenses au sol restent et les ressources peuvent être pillées.",
   escapeMinimumRule: 'Le défenseur doit aussi avoir au moins {{count}} vaisseaux de combat sur place. Une sonde ne révèle pas leur nombre.',
   compareRuleToggle: "Qu’est-ce que c’est ?",
   compareMeaning:
     "Il s’agit du coût en ressources, pas des dégâts d’attaque. Une grande flotte ne garantit pas à elle seule la victoire.",
   compareRule:
-    "Le coût en ressources des vaisseaux et canons capables de tirer des deux camps est comparé. Le bouclier et les vaisseaux sans armes ne sont pas inclus dans cette valeur. L’estimation tient également compte des classes de vaisseaux, des recherches et du bouclier connu. Si leur défense ne dépasse pas une ligne, le modèle attend cette réussite : la défense brisée et au moins un de tes vaisseaux rentre. Une ligne est une plage parce que la lecture ne montre pas tout (répartition des classes, bouclier) : l’extrémité gauche est le pire cas, la droite le meilleur. Ce que cela coûte à l’escadre est la perte estimée ci-dessous. Les renseignements peuvent être anciens et l’effet aléatoire des tours n’est pas pris en compte.",
+    "La comparaison utilise la valeur en ressources des vaisseaux armés et défenses au sol ; bouclier et vaisseaux sans armes sont exclus. L’estimation considère aussi les classes, recherches et le bouclier connu. Les succès partiels et totaux exigent au moins un vaisseau survivant. Les inconnues créent des intervalles : gauche signifie pire cas, droite meilleur cas. Les pertes estimées montrent le coût possible. Les observations peuvent être anciennes ; les variations aléatoires des tirs sont exclues.",
   linesClears: "Victoire totale si leur défense vaut au plus {{at}}",
   linesBreaks: "Au moins une réussite partielle si au plus {{at}}",
   lineJoin: " · ",

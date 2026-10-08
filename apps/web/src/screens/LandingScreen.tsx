@@ -5,6 +5,7 @@ import { LandingScene } from '../landing/LandingScene.jsx';
 import { full } from '../lib/format.js';
 import { LANDING_ASSETS, usePreload, type Loader } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
+import { useOpeningCover } from '../lib/openingCover.js';
 import { useOwnPress } from '../ui/kit/index.js';
 import { Button as V2Button } from '../v2/kit/Surface.js';
 import { Icon } from '../v2/icons.js';
@@ -12,6 +13,7 @@ import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
 import { Wordmark } from '../ui/Wordmark.jsx';
 import { commanderKnownHere } from '../lib/returning.js';
 import { publisherUrl } from '../lib/publisherPages.js';
+import { describeError } from '../i18n/errors.js';
 
 /**
  * THE FRONT DOOR. D21.
@@ -107,6 +109,8 @@ export function LandingScreen({
    * game.
    */
   const assets = usePreload(LANDING_ASSETS, loadAsset ? { load: loadAsset } : {});
+  const [drawn, setDrawn] = useState(false);
+  const covered = useOpeningCover(assets.ready && drawn);
 
   const commanders = servers.data?.servers.reduce((sum, s) => sum + s.planets, 0) ?? null;
   const online = servers.data?.servers.reduce((sum, s) => sum + s.online, 0) ?? null;
@@ -114,7 +118,7 @@ export function LandingScreen({
 
   return (
     <main className="relative min-h-dvh overflow-hidden bg-v2-void font-v2-ui">
-      <LandingScene />
+      <LandingScene onReady={() => { setDrawn(true); }} />
 
       {/**
        * The copy sits in its own stacking context above the canvas, over a scrim
@@ -313,6 +317,7 @@ export function LandingScreen({
             aria-label={t('landing.publicLinksLabel')}
             className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-v2-line pt-3"
           >
+            <a className="text-micro text-v2-ink-3 underline underline-offset-4 hover:text-v2-ink-2" href={i18n.resolvedLanguage === 'tr' ? '/wiki/tr' : '/wiki'}>Wiki</a>
             {(
               [
                 ['about', 'landing.aboutLink'],
@@ -348,9 +353,7 @@ export function LandingScreen({
 
       {/* Over everything, including the form — the page underneath is live and
           loading the whole time it is up. */}
-      {!assets.ready && (
-        <LoadingScreen caption={t('landing.cover')} progress={assets.progress} />
-      )}
+      <LoadingScreen visible={covered} caption={t(assets.ready ? 'loading.raising' : 'landing.cover')} {...(!assets.ready ? { progress: assets.progress } : {})} />
     </main>
   );
 }
@@ -459,7 +462,7 @@ function AuthDialog({
       } catch (err) {
         // The session hook has already set the phase back; this is the part the
         // form owns — say what happened without discarding what was typed.
-        setProblem(err instanceof Error ? err.message : t('landing.form.failed'));
+        setProblem(describeError(err));
         setProblemField(null);
         setBusy(false);
       }

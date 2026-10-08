@@ -8,6 +8,7 @@ import { SpendBar } from '../ui/SpendBar.js';
 import { full } from '../lib/format.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { Button, Sheet } from '../ui/kit/index.js';
+import { productionPaceOf } from '../lib/gains.js';
 
 /**
  * ONE BROKEN THING, AND WHAT TO DO ABOUT IT. Koloni arızaları.
@@ -73,13 +74,14 @@ export function FaultSheet({
    */
   const bleeding = ((): string | null => {
     switch (fault.kind) {
+      // An outage costs what the works were RUNNING at — half the rating in Silent Space (D212).
       case 'REFINERY_OUTAGE':
         return t('faults.toll.alloy', {
-          amount: full(planet.planet.nominalAlloyPerHour ?? planet.planet.alloyPerHour),
+          amount: full(Math.round((planet.planet.nominalAlloyPerHour ?? planet.planet.alloyPerHour) * productionPaceOf(planet))),
         });
       case 'EXTRACTOR_OUTAGE':
         return t('faults.toll.crystal', {
-          amount: full(planet.planet.nominalCrystalPerHour ?? planet.planet.crystalPerHour),
+          amount: full(Math.round((planet.planet.nominalCrystalPerHour ?? planet.planet.crystalPerHour) * productionPaceOf(planet))),
         });
       case 'PLANT_OUTAGE':
         return t('faults.toll.deuterium');

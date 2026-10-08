@@ -40,7 +40,7 @@ export const statusBar = {
     label: "Stock de production",
     labelFull: "Stock de production plein",
     collect: "Collecter",
-    firstTip: "La production s'accumule ici. Touchez pour la collecter.",
+    firstTip: "Récupère les ressources du Stock de production dans le Magasin pour les dépenser.",
     fullStopped: "Plein — production arrêtée",
     fillsIn: "plein dans {{time}}",
     gathers: "La production s’accumule ici jusqu’à ce que tu la collectes",
@@ -52,7 +52,7 @@ export const statusBar = {
     crystal: '{{amount}} cristal',
     deuterium: '{{amount}} deutérium',
     collected: "{{amount}} collectés",
-    collectedPartly: "{{moved}} collectés, {{held}} n’ont pas pu être stockés",
+    collectedPartly: "{{moved}} transféré au Magasin · {{held}} reste dans le Stock de production",
     storeFull: "Dépôt plein",
   },
 } as const;
@@ -111,7 +111,7 @@ export const signals = {
   openEvent: "Ouvrir le rapport associé",
   worldEvent: "Événement galactique",
   empty:
-    "Aucune notification pour le moment. La galaxie t’avertira lorsqu’une flotte te visera, lorsqu’une sonde sera détectée ou lorsque tes vaisseaux rentreront.",
+    "Aucune notification. Les alertes de flotte, sondes détectées et retours de vaisseaux s’affichent ici.",
   repeat: "×{{count}}",
   status: {
     disruptedLine: "Stock de production hors service",
@@ -123,7 +123,7 @@ export const signals = {
     alloyStoreLine: "Réserve d’alliage pleine",
     crystalStoreLine: "Réserve de cristal pleine",
     storeDetail:
-      "{{amount}} attendent dans le stock de production, mais le Dépôt est plein. Dépense des ressources pour libérer de la place.",
+      "{{amount}} ressources attendent dans le Stock de production. Dépense des ressources stockées ou augmente la capacité pour libérer de la place.",
   },
 } as const;
 export const sheet = {
@@ -181,13 +181,13 @@ export const menu = {
   intelHint: "Mondes surveillés, relevés Radar, sondes et rapports de combat",
   rewardsLabel: "Récompenses",
   rewardsHint:
-    "Ressources gagnées grâce aux objectifs accomplis dans la galaxie",
-  guideLabel: "Démarrage rapide",
-  guideHint: "Tes premiers mouvements, dans l’ordre recommandé",
+    "Récupère les ressources gagnées en atteignant des objectifs",
+  guideLabel: "Wiki",
+  guideHint: "Bâtiments, vaisseaux et règles de la galaxie",
   rewardsWaiting: "{{count}} prêtes",
   researchLabel: "Recherche",
   researchHint:
-    "Projets permanents qui s’appliquent à tous les mondes que tu possèdes",
+    "Consulte les recherches communes à tes mondes et leurs conditions",
   leaderboardLabel: "Classement",
   leaderboardHint:
     "Classement de Domination de tous les commandants de la galaxie",
@@ -197,17 +197,17 @@ export const menu = {
   announcementsWaiting: "{{count}} nouvelles",
   feedbackLabel: "Retour",
   feedbackHint:
-    "Signale un problème, propose une idée ou partage ton avis avec l’équipe Astera",
+    "Signale un problème ou envoie un avis et des suggestions",
   skinsShopLabel: "Boutique",
-  skinsShopHint: "Découvre les apparences de planète en 3D",
+  skinsShopHint: "Consulte les apparences de planète et leurs prix",
   skinsInventoryLabel: "Inventaire",
   skinsInventoryHint: "Applique tes apparences à tes planètes",
   clanLabel: "Clan",
   clanHint:
-    "Rejoins une équipe pouvant compter jusqu’à cinq commandants ou crée ton propre clan",
+    "Rejoins un clan ou crée-en un pour cinq commandants maximum",
   clanMemberLabel: "Clan · [{{tag}}]",
   clanMemberHint:
-    "Membres, aide, butin partagé, historique du clan et chat privé",
+    "Membres, aide, butin partagé, historique et discussion du clan",
   clanWaiting: "{{count}} en attente",
   rivalLabel: "Ton rival · {{commander}}",
   rivalHint: "Concentre-toi sur {{planet}} et choisis ton prochain mouvement",
@@ -238,15 +238,15 @@ export const menu = {
     low: "Faible",
   },
   qualityHint: {
-    high: "Résolution complète. Image la plus nette, consommation la plus élevée.",
+    high: "Détails visuels maximaux. Peut consommer davantage de batterie.",
     balanced:
-      "Résolution réduite aux trois quarts. Différence visuelle minime, chauffe nettement réduite.",
-    low: "Demi-résolution, anticrénelage désactivé. Pour les appareils plus anciens.",
+      "Réduit la limite de résolution pour alléger le travail graphique. L’effet sur la chauffe et la batterie dépend de ton appareil.",
+    low: "Limite de résolution minimale. Le lissage des contours reste actif ; les détails peuvent diminuer.",
   },
   fpsLabel: "Images/s",
   fpsOn: "Activé",
   fpsOff: "Désactivé",
-  fpsHint: "Images que la galaxie dessine chaque seconde. 24–30 à l'arrêt est normal ; cela monte en mouvement et en combat.",
+  fpsHint: "Nombre d’images affichées par seconde dans la galaxie. Une valeur plus élevée signifie des mouvements plus fluides.",
 } as const;
 export const leaderboard = {
   eyebrow: "Galaxie locale",
@@ -310,7 +310,7 @@ export const leaderboard = {
     searchPlaceholder: "Commandant",
     noMatch: "Aucun commandant ne correspond à cette recherche.",
     galaxyRecord: {
-      title: "Archives de la galaxie", subtitle: "Les faits communs laissés par cette saison",
+      title: "Archives de la galaxie", subtitle: "Résultats enregistrés de cette saison pour la galaxie",
       champion: "Champion", clans: "Podium des clans",
       biggestBattle: "Plus grande bataille confirmée", dominionSwing: "Variation de Domination la plus forte",
       contestedWorld: "Monde le plus disputé",
@@ -339,12 +339,12 @@ export const leaderboard = {
       hint: "Les données de combat enregistrées sont affichées. Les données économiques, de production de flotte et d’exploration qui n’étaient pas mesurées à l’époque ne sont pas affichées.",
     },
     partialStats: {
-      title: "Télémétrie partielle",
-      hint: "Certaines actions antérieures au début de la télémétrie peuvent manquer ; les valeurs enregistrées sont conservées telles quelles.",
+      title: "Historique d’activité incomplet",
+      hint: "Certaines actions antérieures au début des enregistrements peuvent manquer. Les totaux affichés couvrent les actions enregistrées.",
     },
     forcedEnd: {
       title: "Saison terminée prématurément",
-      hint: "La période jouée a été enregistrée définitivement avec son classement final et ses récompenses.",
+      hint: "La saison a été enregistrée avec le classement et les récompenses au moment de sa fin anticipée.",
     },
     none: "Aucun",
     ratios: {
@@ -395,7 +395,7 @@ export const leaderboard = {
       covered_one: "{{count}} saison couverte",
       covered_other: "{{count}} saisons couvertes",
       coveredWithPartial:
-        "{{count}} saisons couvertes · télémétrie partielle sur {{partial}} saisons",
+        "{{count}} saisons enregistrées · historique incomplet pour {{partial}} saisons",
       seasons: "Saison par saison",
     },
   },
@@ -454,8 +454,8 @@ export const chat = {
   },
 } as const;
 export const crash = {
-  title: "Quelque chose s’est cassé",
-  body: "L’interface a cessé de s’afficher. Recharge la page pour revenir à la galaxie — rien n’a été perdu.",
+  title: "L’interface du jeu ne fonctionne plus",
+  body: "Recharge la page pour continuer. Le résultat de ta dernière action peut être inconnu ; vérifie-le après le rechargement.",
   reload: "Recharger",
   detailShow: "Afficher les détails",
   detailHide: "Masquer les détails",

@@ -1,4 +1,5 @@
 import { silentSpace } from './silentSpace.js';
+import { brand } from './brand.js';
 import { monument } from './monument.js';
 import { app, consent, document, landing, loading, servers, settings } from './entry.js';
 import { chat, crash, leaderboard, menu, pendingStrip, sheet, signals, statusBar, surface, toast } from './shell.js';
@@ -39,6 +40,7 @@ import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold
  * between English and Turkish — the other must not move with it.
  */
 export const en = {
+  brand,
   monument,
   silentSpace,
   academy,

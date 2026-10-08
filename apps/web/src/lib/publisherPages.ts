@@ -11,9 +11,9 @@
  *
  * So the addresses are stated once, here, and `public-site-readiness` asserts
  * three things against this table: every file exists, every page's `canonical`
- * agrees with the address it is listed under, and `sitemap.xml` lists exactly
- * these and nothing else. A sitemap that advertises a page nginx answers 404 for
- * is a crawl error on the domain being submitted for review, which is precisely
+ * agrees with the address it is listed under, and the generated `sitemap.xml`
+ * includes these alongside the Wiki's static page manifest. A sitemap that advertises
+ * a page nginx answers 404 for is a crawl error on the domain being submitted for review, which is precisely
  * the kind of thing an AdSense site review counts against a site.
  *
  * ONE PAGE PER LANGUAGE, WITH THE SLUG IN THAT LANGUAGE. `about.html` is

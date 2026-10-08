@@ -232,6 +232,9 @@ describe('a raid at a pirate', () => {
     const fleet = await armed();
     const flown = await launchPirateRaid(f.db, mine, target.id, fleet, f.clock);
     expect(flown.raidId).toBeTypeOf('string');
+    // D212: a pirate raid is a combat launch, and it keeps its commander out of Silent Space.
+    const [me] = await f.db.select({ at: players.lastProgressAt }).from(players).where(eq(players.id, f.playerIds[0]!));
+    expect(me!.at).toEqual(f.clock.now());
   });
 
   it('accepts and settles an extra handle while its own contacts are still staged', async () => {

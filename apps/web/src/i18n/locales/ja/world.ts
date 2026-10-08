@@ -388,6 +388,8 @@ export const focus = {
     attack: "攻撃を計画する",
     attackNeutralAgain: "再びレイド · 主張は変更されていない",
     attackOriginRecovering: "攻撃・原点回復",
+    attackSilentSpace: "攻撃不可・サイレントスペースでは使用不可",
+    attackSilentSpaceShort: "サイレントスペース",
     attackShipyardRevolt: "攻撃不可・造船所の反乱",
     attackShipyardRevoltShort: "造船所 の反乱",
     radiationHere: "放射線雲: ここにいるすべての船は 1 分間に船体の {{pct}}% を失います。 20%を超えると修理ステーションを待ちます。",
@@ -554,7 +556,7 @@ export const focus = {
     outbound: "この飛行は呼び戻せません。",
     /** A raid or a transfer may be turned once before it arrives (K8). */
     recallable: "到着前に一度だけ引き返せます。帰路はそれまで飛んだ時間と同じだけかかります。",
-    outboundPirate: "海賊への襲撃は呼び戻せません。",
+    outboundPirate: "交戦が始まったため、この襲撃はもう引き返せません。",
   },
 
   contact: {
@@ -685,7 +687,7 @@ export const pirate = {
   captured: "{{hull}}を捕獲しました",
   captureMissed: "牽引する価値のあるものは何も残っていません",
   send: "{{count}}・{{duration}}を送信",
-  outbound: "海賊への襲撃は呼び戻せません。",
+  outbound: "海賊への襲撃は交戦開始前に一度だけ呼び戻せます。",
   holdsHint: "戦闘艦が全滅すると輸送艦は逃げられず、それも奪えます。",
   /**
    * YOU CANNOT SEE THIS ONE — WHICH IS NOT THE SAME AS "THIS IS OLD". D160.
@@ -698,6 +700,6 @@ export const pirate = {
   remembered: "あなたがそれを識別したので追跡されました·今はあなたのセンサーではありません",
   /** The boundary, stated — the same job the contact panel's last line does. */
   boundary:
-    "あなたが特定した海賊は、あなたが見つけた岩のように、死ぬか時間がなくなるまでこのリストに残ります。その軌道は解決可能なので、トラックと乗組員の数を範囲外に保ちます。あなたが失うのは目であり、痕跡ではありません。",
+    "識別した海賊は破壊されるか期限が切れるまで一覧に残ります。センサー範囲外でも軌道と既知の乗員情報を確認できます。現在の視界はセンサー範囲に依存します。",
   hoardHint: "持ち帰ったものは、持ち込んだホールドによって制限されます。",
 } as const;

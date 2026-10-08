@@ -1,5 +1,5 @@
 export const convoy = {
-  eyebrow: 'Herkese açık event',
+  eyebrow: "Galaksi etkinliği",
   title: 'Galaksilerarası Konvoy',
   summaryReach: 'en iyi erişim {{duration}}',
   open: 'Akın planla',
@@ -7,7 +7,7 @@ export const convoy = {
   alreadyAway: 'Bu dünyadan bir akın zaten yolda',
   noCraft: 'Bu dünyada savaş gemisi yok',
   cannotReach: 'Buradaki hiçbir filo akını zamanında tamamlayamaz',
-  boundary: 'Konvoy karşılık vermez; filon kayıp vermez.',
+  boundary: "Konvoy karşılık vermez. Rota radyasyonu gemilerine hasar verebilir veya onları yok edebilir.",
   engagement: 'Ateş süresi: 5 saniye.',
   engagementLabel: 'Ateş süresi',
   engagementDuration: '5 sn',
@@ -45,5 +45,5 @@ export const convoy = {
   commit: 'Akını başlat',
   sending: 'Yola çıkıyor…',
   launched: 'Akın başladı · {{duration}} sonra temas',
-  quoteChanged: 'Konvoy ilerledi. Filo seçimin duruyor; güncel teklifi yeniden incele.',
+  quoteChanged: "Konvoy ilerledi. Seçtiğin gemiler korunuyor; güncel rota ve maliyeti yeniden incele.",
 } as const;

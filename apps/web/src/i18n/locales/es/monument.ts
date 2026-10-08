@@ -52,7 +52,7 @@ export const monument = {
   "selectedBulk": "Esta flota: {{bulk}} de volumen",
   "holdForecast": "Tras llegar: {{rate}} deuterio/min · próxima pérdida {{time}}",
   "noLoss": "ninguna prevista",
-  "attackOutcome": "La victoria se decide en combate: los tiers superiores llenan el HOLD primero; el exceso de cargueros regresa y un superviviente sin poder de combate no produce.",
+  "attackOutcome": "Tras la victoria, las naves de nivel superior ocupan primero la capacidad del monumento. Las que no caben vuelven a casa. Una flota con solo cargueros no obtiene deuterio.",
   "losses": "{{count}} naves perdidas en la ida",
   "health": "{{name}}: {{remaining}} / {{max}} HP al llegar",
   "shield": "Acepto perder mi escudo en este lanzamiento PvP",
@@ -92,5 +92,5 @@ export const monument = {
     "HOLD": "Manteniendo",
     "RETURNING": "Regreso"
   },
-  "returnReason": {"RECALLED":"Retirada por ti.","CAPACITY":"Regresó porque el hangar estaba lleno.","MEMBERSHIP":"Regresó porque cambió el bando.","CONTROL_CHANGED":"Regresó porque cambió el control antes de llegar.","DEFEAT":"Regresó después de la batalla.","WORLD_CHANGED":"Regresó porque cambió el mundo de origen.","FREEZE":"Regresó al cerrar la temporada."}
+  "returnReason": {"RECALLED":"Retirada por ti.","CAPACITY":"Regresan porque el monumento no tiene espacio para estas naves.","MEMBERSHIP":"Regresó porque cambió el bando.","CONTROL_CHANGED":"Regresó porque cambió el control antes de llegar.","DEFEAT":"Regresó después de la batalla.","WORLD_CHANGED":"Regresó porque cambió el mundo de origen.","FREEZE":"Regresó al cerrar la temporada."}
 } as const;

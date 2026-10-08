@@ -7,7 +7,7 @@ export const convoy = {
   alreadyAway: 'Ein Angriff dieser Welt ist bereits unterwegs',
   noCraft: 'Auf dieser Welt sind keine Kampfschiffe',
   cannotReach: 'Keine Flotte dieser Welt kann den Angriff rechtzeitig abschließen',
-  boundary: 'Der Konvoi schießt nicht zurück. Deine Flotte erleidet keine Verluste.',
+  boundary: "Der Konvoi erwidert das Feuer nicht. Strahlung auf der Route kann deine Schiffe beschädigen oder zerstören.",
   engagement: 'Schussfenster: 5 Sekunden.',
   engagementLabel: 'Schussfenster',
   engagementDuration: '5 Sek.',
@@ -45,5 +45,5 @@ export const convoy = {
   commit: 'Angriff starten',
   sending: 'Angriff wird gestartet…',
   launched: 'Angriff gestartet · Kontakt in {{duration}}',
-  quoteChanged: 'Der Konvoi ist weitergezogen. Deine Flotte bleibt ausgewählt; prüfe die neuen Bedingungen.',
+  quoteChanged: "Der Konvoi ist weitergeflogen. Deine Schiffsauswahl bleibt erhalten. Prüfe die aktualisierte Route und die Kosten.",
 } as const;

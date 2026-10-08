@@ -274,7 +274,7 @@ describe('a building whose render tiers', () => {
   /** "of Up to 7.3k at the top rung" was on the phone: the ceiling is a sentence of its own. */
   it('says where the hangar ladder ends, in its own words', () => {
     at('HANGAR');
-    expect(hero()).toHaveTextContent(/up to .* at the top rung/i);
+    expect(hero()).toHaveTextContent(/up to .* at the highest level/i);
     expect(hero()).not.toHaveTextContent(/of up to/i);
   });
 

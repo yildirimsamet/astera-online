@@ -55,12 +55,12 @@
     -->
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="64x64" href="/icons/favicon-64.png" />
-    <!--
-      The lockup is on the very first frame of every session — the loading cover
-      hangs it before React has decided which screen it is covering — so it is
-      fetched alongside the module graph rather than after it.
-    -->
-    <link rel="preload" as="image" href="/assets/images/logos/logo-lockup.png" />
+    <!-- First paint needs neither the application bundle nor a downloaded logo/font.
+         React replaces this small inline opening frame when it commits #root. -->
+    <style nonce="__CSP_NONCE__">
+      html,body{margin:0;background:#04060b}
+      /* ASTERA_OPENING_CSS */
+    </style>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -69,7 +69,17 @@
     <title>Astera Online</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main id="brand-boot" data-loading-screen class="brand-loading" role="status" aria-label="Astera Online" aria-busy="true">
+        <div class="brand-loading-composition">
+          <div class="brand-opening" aria-hidden="true"><!-- ASTERA_OPENING_ART --></div>
+          <div class="brand-loading-center"><h1 class="brand-loading-name" aria-label="Astera Online"><span class="brand-loading-wordmark" aria-hidden="true"><!-- ASTERA_WORDMARK --></span><span class="brand-loading-online" aria-hidden="true">ONLINE</span></h1></div>
+          <div class="brand-loading-status"><div class="brand-loading-readout"><p class="brand-loading-caption"></p></div><div class="brand-loading-rail" role="progressbar" aria-label="Astera Online"><span class="brand-loading-sweep"></span></div></div>
+        </div>
+        <p class="brand-loading-address">asteraonline<span>.space</span></p>
+      </main>
+    </div>
+    <noscript><style nonce="__CSP_NONCE__">#brand-boot{display:none}noscript main{padding:24px;color:#eef3ff}noscript a{color:#e6c77e}</style><main><h1>Astera Online</h1><p>A persistent multiplayer space strategy game. Explore the rules and game features in our public Wiki.</p><nav aria-label="Game guides"><a href="/wiki">English Wiki</a> · <a href="/wiki/tr" lang="tr">Türkçe Wiki</a> · <a href="/about.html">About Astera Online</a></nav></main></noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

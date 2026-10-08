@@ -52,6 +52,8 @@ export function NowLine({ entries, sheet = entries, now, contacts = [], open, on
   const more = Math.max(entries.length, sheet.length) - 1;
 
   const enemy = head.kind === 'incoming';
+  // D212: leaving the galaxy is a warning, never an enemy — amber, not red.
+  const warn = head.kind === 'silentSpace';
   const { title, detail } = describeNow(head, contacts);
 
   return (
@@ -62,10 +64,11 @@ export function NowLine({ entries, sheet = entries, now, contacts = [], open, on
       <button
         type="button"
         data-now-line=""
-        data-tone={enemy ? 'hostile' : 'self'}
+        data-tone={enemy ? 'hostile' : warn ? 'warn' : 'self'}
         onClick={onOpen}
         className={`flex h-8 w-full items-center gap-2 rounded-control border px-3 text-left font-v2-ui ${
-          enemy ? 'pointer-events-auto border-v2-hostile/50 bg-v2-deep/65' : 'pointer-events-auto border-v2-line/80 bg-v2-deep/55'
+          enemy ? 'pointer-events-auto border-v2-hostile/50 bg-v2-deep/65'
+            : warn ? 'pointer-events-auto border-v2-warn/50 bg-v2-deep/65' : 'pointer-events-auto border-v2-line/80 bg-v2-deep/55'
         }`}
       >
         <span className="sr-only">{t('now.label')}</span>
@@ -73,7 +76,7 @@ export function NowLine({ entries, sheet = entries, now, contacts = [], open, on
         <span
           aria-hidden="true"
           data-now-dot=""
-          className={`size-2 shrink-0 animate-pulse rounded-full ${enemy ? 'bg-v2-hostile' : 'bg-v2-self'}`}
+          className={`size-2 shrink-0 animate-pulse rounded-full ${enemy ? 'bg-v2-hostile' : warn ? 'bg-v2-warn' : 'bg-v2-self'}`}
         />
         <span
           {...(enemy ? { 'aria-live': 'polite' as const } : {})}
@@ -83,7 +86,7 @@ export function NowLine({ entries, sheet = entries, now, contacts = [], open, on
         </span>
         {detail && <span className="min-w-0 flex-1 truncate text-micro text-v2-ink-3">{detail}</span>}
         {!detail && <span className="flex-1" />}
-        <span className={`shrink-0 font-v2-mono text-caption tabular-nums ${enemy ? 'text-v2-hostile' : 'text-v2-ink'}`}>
+        <span className={`shrink-0 font-v2-mono text-caption tabular-nums ${enemy ? 'text-v2-hostile' : warn ? 'text-v2-warn' : 'text-v2-ink'}`}>
           {countdown(head.at - now)}
         </span>
         {more > 0 && (
@@ -101,7 +104,7 @@ export function NowLine({ entries, sheet = entries, now, contacts = [], open, on
               const focus = 'focus' in entry ? entry.focus : undefined;
               const queued = 'waiting' in entry && entry.waiting;
               const row = <>
-                <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${hostile ? 'bg-v2-hostile' : 'bg-v2-self'}`} />
+                <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${hostile ? 'bg-v2-hostile' : entry.kind === 'silentSpace' ? 'bg-v2-warn' : 'bg-v2-self'}`} />
                 <span className="grid min-w-0 flex-1">
                   <span className="truncate text-caption font-semibold text-v2-ink">{said.title}</span>
                   {said.detail && <span className="truncate text-micro text-v2-ink-3">{said.detail}</span>}

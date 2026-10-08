@@ -52,7 +52,7 @@ export const monument = {
   "selectedBulk": "Cette flotte : {{bulk}} de volume",
   "holdForecast": "Après l’arrivée : {{rate}} deutérium/min · prochaine perte {{time}}",
   "noLoss": "aucune prévue",
-  "attackOutcome": "La victoire se décide au combat : les tiers supérieurs remplissent le HOLD en premier ; le surplus de cargos revient, et un survivant sans puissance de combat ne produit rien.",
+  "attackOutcome": "Après la victoire, les vaisseaux de palier supérieur occupent d’abord la capacité du monument. Ceux qui ne tiennent pas rentrent. Une flotte composée uniquement de cargos ne gagne pas de deutérium.",
   "losses": "{{count}} vaisseaux perdus à l’aller",
   "health": "{{name}} : {{remaining}} / {{max}} HP à l’arrivée",
   "shield": "J’accepte de perdre mon bouclier lors de ce départ PvP",
@@ -92,5 +92,5 @@ export const monument = {
     "HOLD": "En attente",
     "RETURNING": "Retour"
   },
-  "returnReason": {"RECALLED":"Rappelé par vous.","CAPACITY":"Retour : la soute était pleine.","MEMBERSHIP":"Retour : le camp a changé.","CONTROL_CHANGED":"Retour : le contrôle a changé avant l’arrivée.","DEFEAT":"Retour après le combat.","WORLD_CHANGED":"Retour : le monde d’origine a changé.","FREEZE":"Retour à la clôture de la saison."}
+  "returnReason": {"RECALLED":"Rappelé par vous.","CAPACITY":"Retour : le monument n’a pas de place pour ces vaisseaux.","MEMBERSHIP":"Retour : le camp a changé.","CONTROL_CHANGED":"Retour : le contrôle a changé avant l’arrivée.","DEFEAT":"Retour après le combat.","WORLD_CHANGED":"Retour : le monde d’origine a changé.","FREEZE":"Retour à la clôture de la saison."}
 } as const;

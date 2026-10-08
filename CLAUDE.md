@@ -114,6 +114,14 @@ On a 350-wide phone, density and screen economy outrank decorative whitespace �
 blindly: **space must carry a purpose.** The 74px art socket earns its height (a render at
 40px reads as a favicon); a paragraph under a collapsed band does not.
 
+##### 5 · Premium Design — we are a visually oriented game.
+
+Hiç bir tasarımı baştan savma yapamazsın! Biz; premium AAA kalite bir oyun olma yolunda ilerliyoruz.
+Görsellik, tasarım, design çok önemli.
+**Her zaman**: ui-v2 ilkeleri ile uyumlu kaliteli, premium, bakanın hayran kalacagı tasarımlar yapmalısın.
+Oyunumuzda insanları etkileyen en önemli başlıca faktörlerden birisi tasarım görsellik kalite premium hissiyat.
+(prefers-reduced-motion tüm projede yasaklı)
+
 #### The question behind all four
 
 **Does this interface SHOW, or does it HELP?** An interface can present every fact a player
@@ -151,6 +159,10 @@ Regression signals: loop becomes `BUILD → WAIT → COLLECT → UPGRADE`; resou
 
 Dökümanlar güncel ve kesin bilgiyi içermiyor olabilir. **Kod'un kendisi ve Testler = Kesin Bilgi**
 
+**UI/UX writing:** Yeni veya güncellenen UI, gameplay açıklaması, yardım ve Wiki metinlerinde
+[`docs/ux-writing.md`](docs/ux-writing.md) uygulanır. Lore kapsam dışıdır; içindeki işlevsel
+talimatlar kapsam içindedir. Bu standart yazım kuralıdır; mekanikleri kod ve testlerden doğrula.
+
 | File                            | Read before                          |
 | ------------------------------- | ------------------------------------ |
 | `docs/product-vision.md`        | Judging product purpose              |
@@ -160,6 +172,7 @@ Dökümanlar güncel ve kesin bilgiyi içermiyor olabilir. **Kod'un kendisi ve T
 | `docs/deployment.md`            | Shipping / operations                |
 | `docs/engineering-standards.md` | Writing code                         |
 | `docs/interface.md`             | Screens / interaction                |
+| `docs/ux-writing.md`            | UI copy, gameplay explanations, onboarding, help, Wiki |
 | `docs/visual-design.md`         | Art / 3D                             |
 | `docs/playtest-log.md`          | Playtesting                          |
 | `docs/review-sight.md`          | Touching Telescope/Radar/probe sight |

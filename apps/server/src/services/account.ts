@@ -1,10 +1,10 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { accounts } from '../db/schema.js';
+import { accounts, accountRewards } from '../db/schema.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { normaliseUsername } from '../auth/credentials.js';
 import { GameError } from './planet.js';
-import type { CountryCode } from '@astera/rules';
+import { BRAND_RECALL, type CountryCode } from '@astera/rules';
 
 /**
  * Accounts with a name and a password. D21.
@@ -47,27 +47,37 @@ export async function registerAccount(
   db: Db,
   input: { username: string; password: string; countryCode?: CountryCode },
   firstGameShieldAvailable = true,
+  now = new Date(),
 ): Promise<AccountRecord> {
   const username = normaliseUsername(input.username);
   const passwordHash = await hashPassword(input.password);
 
-  const [created] = await db
-    .insert(accounts)
-    .values({
-      username,
-      passwordHash,
-      // The typed casing is what other players read; the folded one is the key.
-      displayName: input.username.trim(),
-      firstGameShieldAvailable,
-      ...(input.countryCode === undefined ? {} : { countryCode: input.countryCode }),
-    })
-    .onConflictDoNothing({ target: accounts.username })
-    .returning();
+  return db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(accounts)
+      .values({
+        username,
+        passwordHash,
+        // The typed casing is what other players read; the folded one is the key.
+        displayName: input.username.trim(),
+        firstGameShieldAvailable,
+        ...(input.countryCode === undefined ? {} : { countryCode: input.countryCode }),
+      })
+      .onConflictDoNothing({ target: accounts.username })
+      .returning();
 
-  if (!created) {
-    throw new GameError('USERNAME_TAKEN', 'That name is already flying', 409);
-  }
-  return publicShape(created);
+    if (!created) {
+      throw new GameError('USERNAME_TAKEN', 'That name is already flying', 409);
+    }
+    // Only creation enrolls a commander. Login, claim retries and season rollover
+    // must never turn an established account into a first-session quiz candidate.
+    await tx.insert(accountRewards).values({
+      accountId: created.id,
+      rewardId: BRAND_RECALL.rewardId,
+      createdAt: now,
+    });
+    return publicShape(created);
+  });
 }
 
 /**

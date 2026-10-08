@@ -11,7 +11,7 @@ it('explains the move in Turkish and submits only an explicit application', asyn
   await i18n.changeLanguage('tr');
   const p = props();
   render(<SilentSpaceNotice {...p} />);
-  expect(screen.getByRole('dialog')).toHaveTextContent('48 saat');
+  expect(screen.getByRole('dialog')).toHaveTextContent('30 saat');
   expect(screen.getByRole('dialog')).toHaveTextContent('ilerlemen korundu');
   expect(p.onApply).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Dönüş başvurusu yap' }));

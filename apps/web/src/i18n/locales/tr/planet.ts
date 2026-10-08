@@ -61,7 +61,7 @@ export const planet = {
     label: "Gezegen bölümleri",
     defendProblem: "Savunma",
     defendQuestion:
-      "Kalkanını, kasanı ve gezegen toplarını burada güçlendirirsin.",
+      "Aegis, Depo ve yer savunmalarını burada geliştirirsin.",
     orbitProblem: "Bilgi",
     orbitQuestion: "Rakipleri görmeni sağlayan araçları burada kurarsın.",
     reachProblem: "Filo",
@@ -114,7 +114,7 @@ export const planet = {
       lead: "Bu siparişin bedelinin %{{share}}'i yok olur. Kalanı hemen geri gelir.",
       lost: "Yok olan",
       kept: "Geri gelen",
-      progress: "Üzerinde yapılan iş de gider — yeniden sipariş sıfırdan başlar.",
+      progress: "Bu siparişteki ilerleme kaybolur. Yeniden sipariş verirsen üretim sıfırdan başlar.",
       commit: "Siparişi iptal et",
       back: "Vazgeç",
     },
@@ -130,9 +130,9 @@ export const planet = {
 
   roles: {
     vault:
-      "Her kaynağın kaç saatlik üretimini tutabildiğini belirler; en alttaki %10'luk dilim, en fazla 8 saatlik üretim olmak üzere, akınlara karşı korumalıdır.",
+      "Depo her kaynağın depolama kapasitesini belirler. Kapasitenin %10’u ile 8 saatlik üretimin küçük olanı akınlardan korunur.",
     shipyard:
-      "Yeni gemi sınıflarını açar; gemi ve yer savunması üretimini hızlandırır, sondalarının başarı ihtimalini artırır.",
+      "Yeni gemileri açar. Gemi ve yer savunması üretimini hızlandırır; sondaların doğruluğunu ve gizliliğini artırır.",
     refinery:
       "Saatlik alaşım üretimini artırır; depo saat cinsinden olduğu için tuttuğu alaşım da onunla büyür. Binaların ve gemilerin çoğu bu kaynağı kullanır.",
     extractor:
@@ -142,7 +142,7 @@ export const planet = {
     coreCapped_other:
       "{{count}} bina mevcut Çekirdek sınırına ulaştı; Çekirdeği yükseltmeden ilerleyemez.",
     coreClear:
-      "Hiçbir bina Çekirdek seviyesini geçemez. Bina sınırlarını ve inşaat hızını Çekirdek belirler.",
+      "Hangar dışındaki yapılar bu gezegenin Komuta Çekirdeği seviyesini geçemez. Çekirdek, gezegen cihazlarının ve Anten dışındaki uyduların kurulumunu hızlandırır.",
   },
 
   defend: {
@@ -234,13 +234,13 @@ export const planet = {
     isotopeRole:
       "İzotop kayalarındaki Döteryumu gösterir ve onlara Kazıcı göndermeni sağlar. Dönen yük üretim havuzuna gelir.",
     denseName: "Yoğun Yakıt Hücreleri",
-    denseTag: "Koşucuyu açar",
+    denseTag: "Gemi İtkisini açar",
     denseRole:
-      "Keşfetmek için bir akında ambarını doldur; hedefte ganimet kalsın. Koşucu, Şilep’ten hızlıdır ama daha az taşır.",
+      "Keşfetmek için bir akında ambarını doldur ve hedefte ganimet bırak. Araştırma tamamlandığında Gemi İtkisi araştırmasını açar.",
     graviticName: "Gravitik Yükler",
-    graviticTag: "Delici’yi açar",
+    graviticTag: "Söndürücüyü açar",
     graviticRole:
-      "Açmak için savunması ve aktif Aegis’i olan bir dünyaya saldır; kalkan hasarın en az {{share}}’ini emsin. Bir Atmaca bile yeter; kazanman gerekmez. Delici kalkana beş kat vurur.",
+      "Keşfetmek için savunması ve aktif Aegis’i olan bir dünyaya saldır. Kalkan, hasarının en az {{share}}’ini emmeli. Kazanman gerekmez. Araştırma, kalkana beş kat etki eden Söndürücü’yü açar.",
     gridName: "Önleme Ağı",
     gridTag: "Ölüm Yıldızı’nı düşürür",
     gridRole:
@@ -252,12 +252,12 @@ export const planet = {
     waspDoctrineName: "Atmaca Doktrini",
     lanceDoctrineName: "Mızrak/Delici Doktrini",
     bulwarkDoctrineName: "Sur Doktrini",
-    groundDoctrineName: "Tabya/Kirpi Doktrini",
+    groundDoctrineName: "Yer Savunma Doktrini",
     generalName: "Silah ve Zırh",
-    generalTag: "Sahip olduğun her gövdeyi geliştirir",
+    generalTag: "Savaş ve nakliye gemilerini geliştirir",
     doctrineTag: "Daha iyi saldırı ve zırh",
     doctrineRole:
-      "İlgili sınıfın saldırı gücünü ve gövde dayanımını birlikte artırır. Araştırmalar doğal sınıf üstünlüklerini değiştirmez.",
+      "Yer savunmasının saldırı gücü ve gövde dayanımı birlikte artar. Sınıf üstünlükleri, yer kapasitesi ve enkazdan geri kurulum değişmez.",
     yardName: "Tersane Otomasyonu",
     yardTag: "Gemileri daha hızlı kurar",
     yardRole:
@@ -504,29 +504,29 @@ export const launch = {
   goneIn: "{{duration}} içinde gidiyor",
   back: "Geri",
   launching: "Kalkıyor",
-  commit: "Gönder — geri dönüşü yok",
+  commit: "Gönder · geri çağrılamaz",
   /** A raid on a world, which may be turned once while it flies (K8); a pirate raid keeps `commit`. */
   commitWorld: "Gönder",
   /** B14: the held commit, and the price line under the ships (K8: a world raid turns). */
   holdWorld_one: "{{count}} gemi gönder",
   holdWorld_other: "{{count}} gemi gönder",
-  holdPirate_one: "{{count}} gemi gönder — geri dönüşü yok",
-  holdPirate_other: "{{count}} gemi gönder — geri dönüşü yok",
-  warningWorld: "{{world}} {{duration}} zayıf kalır — filo dönene kadar.",
-  warningPirate: "Geri çağrılamaz. {{world}} {{duration}} zayıf kalır — filo dönene kadar.",
+  holdPirate_one: "{{count}} gemi gönder",
+  holdPirate_other: "{{count}} gemi gönder",
+  warningWorld: "Bu filo dönene kadar {{world}} gezegenindeki savunmada yer almaz. Tahmini süre: {{duration}}.",
+  warningPirate: "Bu akını çatışmadan önce bir kez geri çağırabilirsin. Filo dönene kadar {{world}} gezegenindeki savunmada yer almaz. Tahmini süre: {{duration}}.",
   recallNote:
     "Yoldayken bir kez geri çağrılabilir — uçtuğu süre kadar sürede döner. Yakıt iade edilmez.",
   chooseFleet: "Filonu seç",
   send: "{{count}} gemi gönder",
   launched:
-    "Filo kalktı. {{duration}} boyunca açıktasın, evde {{count}} birlik kalıyor.",
+    "Filo gönderildi. Tahmini dönüş: {{duration}}. Gezegeninde {{count}} birlik savunmada kaldı.",
   whileAway: "Bu filo dışarıdayken",
   defending: "Evi {{count}} birlik savunuyor",
   nothingSent: "Henüz gemi seçmedin",
-  exposedFor: "{{duration}} boyunca açıksın",
+  exposedFor: "Tahmini filo yokluğu: {{duration}}",
   oneWayUnknown: "—",
   pace: "Uçuş hızı",
-  paceHint: "Yavaş olan geç varır ve aynı hızla döner. Yakıt aynı; hiçbir bacak 12 saati geçemez.",
+  paceHint: "Yavaşlatılan filo daha geç varır ve aynı hızla döner. Yakıt bedeli değişmez. Yavaşlatma yalnız her uçuş ayağı 12 saati aşmıyorsa seçilebilir.",
   paceFull: "Tam",
   /* Bu taahhüdün reddedilme sebepleri; her biri butonun üzerinde yazılı. */
   noBay: "Boş uçuş yuvası yok",
@@ -553,7 +553,7 @@ export const launch = {
   noShips:
     "Evde gemi yok. Tersanede yap ya da dışarıdakilerin dönmesini bekle.",
   warning:
-    "Bunu geri çağıramazsın. Kalktıktan sonra aşağıda ne olduğunu ancak inişini izleyerek öğrenirsin; o dönene kadar gezegeninde {{count}} birlik kalıyor.",
+    "Bu filo dönene kadar gezegenindeki savunmaya katılamaz. Gezegende {{count}} birlik kalır.",
   shieldWarning:
     "Bu akın başlangıç kalkanını bitirir. Kalkan kalktığında diğer komutanlar da sana akın edebilir.",
   recoveryShieldWarning:
@@ -566,7 +566,7 @@ export const launch = {
   radiationHpStays: "Hedefte kalır.",
   radiationHpDose: "Uçuş radyasyonu: gemi başına {{hp}} HP.",
   radiationHpHealth: "{{count}}× {{hull}} · %{{health}} HP · {{hp}} / {{max}} HP",
-  radiationHpDock: "İnişte Repair Station gerekir.",
+  radiationHpDock: "İnişte Tamirhanede onarım gerekir.",
   radiationHpFree: "İnişte ücretsiz onarılır.",
   radiationHpCombat: "Savaş ek hasar verebilir.",
   radiationDock: "Rota radyasyondan geçiyor: her gemi gövdesinin ~%{{pct}} kadarını kaybeder. %20'yi aşan Tamirhanede bekler.",
@@ -575,7 +575,7 @@ export const launch = {
   range: "mesafe {{d}}",
   arrive: "Varış",
   homeLabel: "Dönüş",
-  exposedShort: "açıkta {{duration}}",
+  exposedShort: "filo dışarıda: {{duration}}",
   lootSub: "ganimet ~{{band}}",
   bay: "Uçuş yuvası",
   bayThis: "bu sefer 1",
@@ -586,9 +586,9 @@ export const launch = {
   staysPower: "güç {{value}}",
   cargoEach: "{{amount}} kargo/gemi",
   cargoAdds: "+{{amount}} kargo",
-  paceBrief: "yakıt aynı · en çok 12 sa",
-  warningWorldOpen: "{{world}} filo dönene kadar zayıf kalır.",
-  warningPirateOpen: "Geri çağrılamaz. {{world}} filo dönene kadar zayıf kalır.",
+  paceBrief: "yakıt aynı · yavaş uçuş en çok 12 sa",
+  warningWorldOpen: "Bu filo dönene kadar {{world}} gezegenindeki savunmada yer almaz.",
+  warningPirateOpen: "Bu akını çatışmadan önce bir kez geri çağırabilirsin. Filo dönene kadar {{world}} gezegenindeki savunmada yer almaz.",
 } as const;
 
 export const transfer = {
@@ -596,7 +596,7 @@ export const transfer = {
   cooldown: "Boşaltılıyor — {{duration}} kaldı",
   homewardFuel: "Yarı fiyat — kendi dünyaların arasında. Saldırı tam öder.",
   /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
-  paceHint: "Yavaş olan geç varır — havadaki gemi yağmalanamaz. Geri dönen grup da aynı hızla döner. Yakıt aynı; hiçbir bacak 12 saati geçemez.",
+  paceHint: "Havadaki gemiler yağmalanamaz. Yavaşlatılan filo daha geç varır; dönüş grubu da aynı hızla döner. Yakıt bedeli değişmez. Yavaşlatılan her uçuş ayağı en fazla 12 saat olabilir.",
   fuelShort: "{{short}} eksik",
   eyebrow: "Dünyalar arası transfer",
   returnEta: "Çıkışa dönüş {{duration}} sonra · {{time}}",
@@ -655,6 +655,7 @@ export const faults = {
   title: "Arızalar",
   mark: "Arıza var",
   launchBlock: {
+    SILENT_SPACE: "Sessiz Uzay’da kapalı — dönünce açılır",
     SHIPYARD_REVOLT: "Tersanede isyan var",
     PROSPECTOR_FAULT: "Kazıcı merkezi arızalı",
   },
@@ -665,38 +666,38 @@ export const faults = {
     priceBoth: "{{alloy}} alaşım · {{crystal}} kristal",
     lane: "{{slot}}. ekip",
   },
-  tab: "Burada bir şey bozuk",
+  tab: "Arızalar",
   name: {
     REFINERY_OUTAGE: "Alaşım rafinerisinde elektrik kesintisi",
-    EXTRACTOR_OUTAGE: "Kristal çıkarıcıda elektrik kesintisi",
+    EXTRACTOR_OUTAGE: "Kristal Ocağı kesintisi",
     PLANT_OUTAGE: "Döteryum rafinerisinde elektrik kesintisi",
-    VAULT_LEAK: "Kasada sızıntı",
-    CORE_OUTAGE: "Komuta merkezinde elektrik kesintisi",
+    VAULT_LEAK: "Depo sızıntısı",
+    CORE_OUTAGE: "Komuta Çekirdeği kesintisi",
     TELESCOPE_FAULT: "Teleskop arızası",
     SHIPYARD_REVOLT: "Tersanede isyan",
     PROSPECTOR_FAULT: "Kazıcı merkezinde arıza",
   },
   stopped: {
-    REFINERY_OUTAGE: "Rafineri karanlıkta. Bu dünya hiç alaşım üretmiyor.",
-    EXTRACTOR_OUTAGE: "Çıkarıcı karanlıkta. Bu dünya hiç kristal üretmiyor.",
-    PLANT_OUTAGE: "Rafineri karanlıkta. Bu dünya hiç döteryum üretmiyor.",
-    VAULT_LEAK: "Kasa orbite akıyor — ve teleskobu buraya yetişen herkes o tarlayı görüp toplamaya gelebilir.",
-    CORE_OUTAGE: "Merkez karanlıkta: aegis sönük, yer toplarının atış kontrolü yok. Evdeki gemiler yine savaşıyor. Şimdi biri inerse açık bir dünyaya iner.",
-    TELESCOPE_FAULT: "Teleskop kör. Onarılana kadar bu dünya çıplak gözden öteye görmüyor.",
-    SHIPYARD_REVOLT: "Tersane işi bıraktı. Bu dünyadan hiçbir şey kalkmıyor — ne akın, ne transfer, ne konvoy. Havadakiler yine eve dönüyor.",
-    PROSPECTOR_FAULT: "Kazıcı merkezi kapalı. Bu dünyadan Prospector çıkamaz. Dışarıdakiler yine geri çağrılabilir.",
+    REFINERY_OUTAGE: "Alaşım Rafinerisi çalışmıyor. Bu gezegen alaşım üretmiyor.",
+    EXTRACTOR_OUTAGE: "Kristal Ocağı çalışmıyor. Bu gezegen kristal üretmiyor.",
+    PLANT_OUTAGE: "Döteryum Rafinerisi çalışmıyor. Bu gezegen döteryum üretmiyor.",
+    VAULT_LEAK: "Depodan sızan kaynaklar yörüngede bir enkaz sahası oluşturur. Teleskop menzili buraya ulaşan komutanlar sahayı görebilir ve kaynakları toplayabilir.",
+    CORE_OUTAGE: "Komuta Çekirdeği çalışmıyor. Aegis ve yer savunması devre dışı. Gezegendeki gemiler savunmaya katılmaya devam eder.",
+    TELESCOPE_FAULT: "Teleskop çalışmıyor. Onarılana kadar bu gezegenin görüşü temel görüş menziliyle sınırlı.",
+    SHIPYARD_REVOLT: "Bu gezegenden yeni görev başlatılamaz. Uçuştaki gemiler geri dönmeye devam eder.",
+    PROSPECTOR_FAULT: "Bu gezegenden Kazıcı gönderilemez. Görevdeki Kazıcılar geri çağrılabilir.",
   },
   toll: {
     title: "Sana neye mal oluyor",
     alloy: "Saatte {{amount}} alaşım, üretilmiyor",
     crystal: "Saatte {{amount}} kristal, üretilmiyor",
     deuterium: "Bu dünyanın üreteceği her saatlik döteryum",
-    leak: "Saatte {{amount}} orbite akıyor; burayı görebilen herkes uçup alabilir",
+    leak: "Saatte {{amount}} kaynak enkaz sahasına sızıyor. Sahayı gören komutanlar bu kaynakları toplayabilir.",
   },
   loyalty: {
     title: "Bu dünyanın sadakati",
     battleLoss: "Hafif yenilgi −15 · ağır yenilgi −30 · Ölüm Yıldızı −{{strike}}",
-    line: "%{{value}} — {{count}} şey bozukken düşüyor. Bu hızla {{time}} içinde sıfıra iner ve koloni bağımsızlığını ilan eder.",
+    line: "Sadakat: %{{value}}. {{count}} arıza nedeniyle düşüyor. Bu hızla {{time}} içinde sıfıra ulaşır ve koloniyi kaybedersin.",
     bar: "Sadakat %{{value}}",
     left: "{{time}} kaldı",
   },
@@ -704,12 +705,12 @@ export const faults = {
     title: "Onarım",
     crew: "ekip",
     parts: "parça",
-    takes: "5–15 dakika sürer. Ekip kendi saatini tutulduğu anda söyler.",
+    takes: "Onarım 5–15 dakika sürer. Kesin süre, onarım başladığında belirlenir.",
   },
-  repair: "Ekip gönder",
+  repair: "Onarımı başlat",
   running: "Bir ekip başında · {{time}}",
-  noCancel: "Tamir başladıktan sonra iptal edilemez.",
+  noCancel: "Başlayan onarım iptal edilemez.",
   lanesFull: "{{count}} ekibin hepsi dışarıda",
-  started: "Ekip yolda.",
+  started: "Onarım başladı.",
   failed: "Başlatılamadı.",
 } as const;

@@ -26,7 +26,7 @@ export const research = {
     "Ces recherches se découvrent grâce à certains événements de la galaxie. Une fois découvertes, elles doivent être terminées en dépensant des ressources et du temps de recherche.",
   industryBand: "Industrie",
   industryNote:
-    "Disponible dès le début et composée de cinq paliers par recherche. Elle améliore la production, les temps de construction et les capacités de transport.",
+    "Améliore la production, les temps de construction et de réparation, et les capacités de transport. Chaque projet indique sa limite de niveaux et ses prérequis.",
   doctrineBand: "Doctrine",
   doctrineNote:
     "Débloque les vaisseaux de haut palier et améliore séparément l’attaque, le blindage et la propulsion par étapes limitées. Les niveaux de combat apparaissent dans les rapports de sonde.",
@@ -56,7 +56,7 @@ export const research = {
   sheetCost: "Coût de la recherche",
   sheetOnce:
     "Entre dans la file de Recherche commune de ton commandant. N’utilise aucun emplacement de Construction ni de Chantier Spatial.",
-  sheetRung: "Palier {{level}} sur {{max}}. Chaque palier s’achète séparément.",
+  sheetRung: "Niveau {{level}} sur {{max}}. Chaque niveau est acheté séparément.",
   isotopeName: "Spectrométrie Isotopique",
   isotopeTag: "Débloque l’extraction du Deutérium",
   isotopeRole:
@@ -70,11 +70,11 @@ export const research = {
   denseDetail:
     "Une fois terminée, elle débloque définitivement la recherche Propulsion des Vaisseaux pour ton commandant. La Propulsion accélère tous les vaisseaux de ta flotte et fait partie des conditions de construction de l’Atlas ; les Prospecteurs et les sondes ne sont pas affectés.",
   graviticName: "Charges Gravitiques",
-  graviticTag: "Débloque le Dissipateur",
+  graviticTag: "Débloque le Annulateur",
   graviticRole:
-    "Pour la débloquer, attaque un monde disposant de défenses et d’un Aegis actif ; le bouclier doit absorber au moins {{share}} des dégâts. Une seule Flèche suffit, et tu n’as pas besoin de gagner. Le Dissipateur est cinq fois plus efficace contre un bouclier actif.",
+    "Pour la débloquer, attaque un monde disposant de défenses et d’un Aegis actif ; le bouclier doit absorber au moins {{share}} des dégâts. Une seule Flèche suffit, et tu n’as pas besoin de gagner. Le Annulateur est cinq fois plus efficace contre un bouclier actif.",
   graviticDetail:
-    "Une fois terminée, cette recherche remplit définitivement la condition spécialisée du Dissipateur. Le Dissipateur est une réponse spécifique aux Aegis actifs : ce n’est pas une amélioration générale des dégâts et son bonus contre le bouclier ne se reporte ni sur les vaisseaux ni sur les canons terrestres.",
+    "Une fois terminée, cette recherche remplit définitivement la condition spécialisée du Annulateur. Le Annulateur est une réponse spécifique aux Aegis actifs : ce n’est pas une amélioration générale des dégâts et son bonus contre le bouclier ne se reporte ni sur les vaisseaux ni sur les canons terrestres.",
   synthesisName: "Synthèse du Deutérium",
   synthesisTag: "Augmente le niveau maximal de la Raffinerie",
   synthesisRole:
@@ -92,13 +92,13 @@ export const research = {
   robotsRole:
     "Réduit le temps de tout ce qui entre dans la file de Construction ; n’affecte ni les vaisseaux ni les défenses terrestres.",
   robotsDetail:
-    "Chaque palier accélère toutes les futures commandes placées dans la file de Construction sur tous tes mondes : bâtiments, instruments et satellites. Il n’accélère pas les vaisseaux — c’est le rôle de l’Automatisation du Chantier Spatial —, ne réduit pas le coût en ressources et n’ajoute aucun emplacement à la file.",
+    "Raccourcit les prochaines constructions sur toutes tes planètes : bâtiments, instruments et satellites. N’accélère ni vaisseaux ni défenses au sol. Prix et capacité de file restent inchangés.",
   industrialName: "Industrie",
   industrialTag: "Répare les vaisseaux moins cher et plus vite",
   industrialRole:
     "Réduit le coût et la durée de chaque réparation à la Station de réparation",
   industrialDetail:
-    "Chaque palier retire un quart du coût et de la durée de réparation d’un vaisseau endommagé sur tous tes mondes : 75 % au niveau 1, 50 % au niveau 2. Il ne construit pas les vaisseaux plus vite \u2014 c’est le rôle de l’Automatisation du Chantier Spatial \u2014 et un vaisseau endommagé à 20 % ou moins après une bataille est de toute façon réparé gratuitement.",
+    "Réduit le prix et la durée des réparations sur toutes tes planètes. Le niveau 1 applique 75 % du prix et du temps normaux ; le niveau 2 applique 50 %. La construction des vaisseaux n’accélère pas. Les dégâts de 20 % ou moins sont déjà réparés gratuitement à l’arrivée.",
   holdsName: "Soutes de Prospecteur",
   holdsTag: "Les Prospecteurs transportent davantage",
   holdsRole:
@@ -116,35 +116,35 @@ export const research = {
   engineeringRole:
     "Ingénierie I autorise les coques de troisième palier et Ingénierie II celles de quatrième palier. Les recherches de systèmes et les conditions de Chantier Spatial propres à chaque vaisseau restent applicables.",
   engineeringDetail:
-    "L’Ingénierie n’est pas un multiplicateur de combat, mais une autorisation de production. Le premier palier ouvre les coques de troisième palier et le second celles de quatrième palier ; un vaisseau donné peut également exiger Puissance, Blindage, Propulsion ou Charges Gravitiques, ainsi qu’un niveau précis de Chantier Spatial.",
+    "Le niveau 1 satisfait le prérequis d’ingénierie des vaisseaux de palier 3. Le niveau 2 fait de même pour le palier 4. Chaque vaisseau peut aussi exiger Puissance, Armure, Propulsion ou Charges Gravitiques. Le niveau de Chantier naval requis reste nécessaire.",
   powerName: "Puissance des Vaisseaux",
   powerTag: "Augmente l’attaque des vaisseaux de combat",
   powerRole:
     "Augmente l’attaque des vaisseaux de combat de ta flotte et contribue aux conditions de production des vaisseaux offensifs avancés. Les transports et les défenses terrestres ne sont pas affectés.",
   powerDetail:
-    "Chaque palier augmente l’attaque normale de tous les vaisseaux de combat, Dissipateur compris, et s’applique aussi aux vaisseaux que tu possèdes déjà. Il n’ajoute aucune attaque aux transports ; le Bastion, le Hérisson, les Prospecteurs et les sondes ne sont pas affectés. La flotte attaquante utilise le niveau possédé au décollage, la défense celui présent au moment du combat.",
+    "Chaque niveau augmente l’attaque normale de tous les vaisseaux de combat, Annulateur compris. Les vaisseaux déjà possédés en bénéficient aussi. Les transports ne gagnent pas d’attaque ; défenses au sol, Prospecteurs et sondes restent inchangés. Les attaquants utilisent leur niveau au décollage ; les défenseurs utilisent celui au début du combat.",
   armorName: "Blindage des Vaisseaux",
   armorTag: "Augmente la résistance des coques",
   armorRole:
     "Augmente la résistance de tous les vaisseaux de ta flotte, transports compris, et contribue aux conditions de production des vaisseaux défensifs avancés.",
   armorDetail:
-    "Chaque palier augmente la résistance de coque de tous les vaisseaux de ta flotte, y compris les Cargos, Voyageurs, Atlas et Argosi. Le Bastion, le Hérisson, les Prospecteurs et les sondes ne sont pas affectés. La flotte attaquante utilise le niveau possédé au décollage, la défense celui présent au moment du combat.",
+    "Chaque niveau augmente la résistance de tous les vaisseaux de la flotte, transports compris. Défenses au sol, Prospecteurs et sondes restent inchangés. Les attaquants utilisent leur niveau au décollage ; les défenseurs utilisent celui au début du combat.",
   propulsionName: "Propulsion des Vaisseaux",
   propulsionTag: "Augmente la vitesse de la flotte",
   propulsionRole:
     "Augmente la vitesse de tous les vaisseaux de ta flotte et contribue aux conditions de production de l’Atlas. Se débloque après les Cellules de Carburant Dense.",
   propulsionDetail:
-    "Chacun des quatre paliers ajoute un quart de la vitesse de base aux vaisseaux de ta flotte ; le dernier double ainsi leur vitesse et réduit de moitié la durée de chaque vol. Une flotte mixte continue de voler à la vitesse de son membre le plus lent : la Propulsion améliore donc la flotte choisie sans effacer le profil propre de chaque coque. Les Prospecteurs et les sondes ne sont pas affectés ; seules les missions calculées après la fin de la recherche bénéficient du bonus.",
-  groundDoctrineName: "Doctrine Bastion/Hérisson",
+    "Chacun des quatre niveaux ajoute 25 % de la vitesse de base des vaisseaux. Le dernier double cette vitesse. Une flotte mixte utilise son vaisseau le plus lent. Prospecteurs et sondes ne sont pas affectés. L’effet s’applique aux missions lancées après la recherche.",
+  groundDoctrineName: "Doctrine de défense au sol",
   doctrineTag: "Améliore les défenses terrestres",
   doctrineRole:
-    "Augmente à la fois l’attaque et la résistance du Bastion et du Hérisson ; la capacité, la reconstruction depuis les débris et les avantages de classe restent inchangés.",
+    "Augmente l’attaque et la résistance du Bastion, du Harpon et du Épine. Capacité au sol, récupération et rapports de classes restent inchangés.",
   groundDoctrineDetail:
-    "Renforce les Bastions et Hérissons de tous tes mondes. La capacité terrestre et la règle de reconstruction depuis les débris restent inchangées ; la défense utilise le palier possédé au moment du combat.",
+    "Augmente l’attaque et la résistance du Bastion, du Harpon et du Épine sur toutes tes planètes. Capacité au sol et récupération restent inchangées. La défense utilise le niveau de recherche au début du combat.",
   gridName: "Réseau d’Interception",
   gridTag: "Quatre charges d’interception par monde",
   gridRole: "Fait passer de 2 à 4 les charges d’interception que chacun de tes mondes peut détenir.",
-  gridDetail: "Sans recherche, chaque monde peut charger 2 charges d’interception ; cette recherche porte la limite à 4 sur chaque monde. Une charge exige une Antenne et un Radar 3 sur son monde. Une charge prête détruit la première Étoile de la Mort qui franchit son anneau d’interception radar ou qui est identifiée dans le champ d’un Télescope de l’un de tes mondes, puis elle est consommée. Une charge arrête une arme : un monde chargé ne tombe que si plus d’armes arrivent ensemble qu’il n’a de charges.",
+  gridDetail: "Porte la limite de charges d’interception de 2 à 4 par planète. Leur préparation exige Liaison montante et Radar 3 sur cette planète. Une charge détruit une Étoile de la mort identifiée au Télescope ou interceptée dans l’anneau Radar au bon moment. Les capteurs doivent fonctionner. Chaque interception consomme une charge.",
   stockpileName: "Réserve Stratégique",
   stockpileTag: "Deux Étoiles de la Mort par monde",
   stockpileRole: "Fait passer de 1 à 2 les Étoiles de la Mort que chacun de tes mondes peut détenir. La seconde commence quand la première est terminée.",

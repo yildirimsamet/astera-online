@@ -387,7 +387,9 @@ describe('one resource snapshot per owned world', () => {
     client.setQueryData(keys.planetById('capital'), ready);
     const answer = deferred<unknown>();
     api.collect = vi.fn().mockReturnValue(answer.promise);
-    api.planet = vi.fn().mockResolvedValue(stamped('capital', 536, 500, 2, epoch + 86_400_000));
+    // Collection advances snapshotAt to now; this subsequent read must be newer
+    // even when the suite runs after the fixture's October 2026 epoch.
+    api.planet = vi.fn().mockResolvedValue(stamped('capital', 536, 500, 2, Date.now() + 86_400_000));
     const { result } = renderHook(() => ({ collect: useCollect(), planet: usePlanet(), world: useWorld() }), { wrapper });
     await waitFor(() => { expect(result.current.world.activePlanetId).toBe('capital'); });
     act(() => { result.current.collect.mutate(); });

@@ -862,6 +862,13 @@ export interface PlanetEconomyInput {
   */
   recoveryBoostUntilMinutes?: number | null;
   /**
+   * HOW FAST THE WORKS RUN, BETWEEN 0 AND 1. D212: `SILENT_SPACE.productionPace` there, 1 elsewhere.
+   *
+   * Unlike `production` it slows only what is made; both ceilings keep reading the rated
+   * figure, so leaving Silent Space never clamps a buffer down to a smaller vessel.
+   */
+  pace?: number;
+  /**
    * WHAT IS BROKEN ON THIS WORLD. Koloni arızaları; absent means nothing is.
    *
    * Three of the eight are read here and the other five are read where their effect
@@ -939,10 +946,12 @@ export function advanceEconomy(
   const nominalC = crystalRate(input.extractorLevel) * boost;
   const nominalD = deuteriumRate(input.plantLevel) * boost;
 
+  const pace = input.pace ?? 1;
+  if (!(pace >= 0 && pace <= 1)) throw new RangeError(`production pace must lie in [0, 1], got ${String(pace)}`);
   const faults = input.faults;
-  const ra = hasFault(faults, 'REFINERY_OUTAGE') ? 0 : nominalA;
-  const rc = hasFault(faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalC;
-  const rd = hasFault(faults, 'PLANT_OUTAGE') ? 0 : nominalD;
+  const ra = hasFault(faults, 'REFINERY_OUTAGE') ? 0 : nominalA * pace;
+  const rc = hasFault(faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalC * pace;
+  const rd = hasFault(faults, 'PLANT_OUTAGE') ? 0 : nominalD * pace;
   const maxShield = shieldHp(input.aegisLevel);
 
   /*

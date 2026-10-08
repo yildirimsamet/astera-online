@@ -73,6 +73,8 @@ export const now = {
   event: 'Événement bientôt fini',
   shield: 'Ton bouclier tombe',
   shieldDetail: 'Ensuite, les raids peuvent t’atteindre',
+  silentSpace: "Départ vers l’Espace Silencieux",
+  silentSpaceDetail: "Lance construction, recherche, production ou attaque",
   /** The clock time beside a countdown in the sheet. */
   at: 'à {{time}}',
 };

@@ -708,6 +708,14 @@ export const players = pgTable('players', {
    * commander per minute and never a read.
    */
   lastActiveAt: timestamp('last_active_at', { withTimezone: true }).notNull().defaultNow(),
+  /**
+   * THE LAST DEVELOPMENT OR COMBAT ORDER, AND WHAT KEEPS A COMMANDER IN A MAIN GALAXY. D212.
+   *
+   * Written by `markProgress` in the transaction that commits a building, ship/defence,
+   * research or combat order — never by a login, which is `lastActiveAt`'s job. Null until
+   * the first order; `silentSpaceDueAt` then counts from arrival.
+   */
+  lastProgressAt: timestamp('last_progress_at', { withTimezone: true }),
   /** Durable across devices, but not across a season: the newest chat instant read. D77. */
   lastChatReadAt: timestamp('last_chat_read_at', { withTimezone: true }),
   /** Durable attention anchor for private clan requests, depot and chat. D114. */
@@ -3429,6 +3437,8 @@ export const probeReports = pgTable('probe_reports', {
   silhouette: jsonb('silhouette').$type<{
     skin?: { id: PlanetSkinId; status: PlanetSkinStatus };
     owner: string;
+    /** Optional frozen identity for records created before country labels. */
+    country?: CountryCode;
     controllerPlayerId: string | null;
     clan: { id: string; name: string; tag: string } | null;
     kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
@@ -3529,6 +3539,8 @@ export const probeWorldMemories = pgTable('probe_world_memories', {
   silhouette: jsonb('silhouette').$type<{
     skin?: { id: PlanetSkinId; status: PlanetSkinStatus };
     owner: string;
+    /** Same snapshot identity as the recorded owner, never today's controller. */
+    country?: CountryCode;
     controllerPlayerId: string | null;
     clan: { id: string; name: string; tag: string } | null;
     kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
@@ -3840,6 +3852,13 @@ export const pirateRaids = pgTable('pirate_raids', {
   damage: jsonb('damage').$type<HpDamageLot[]>(),
   radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
   returnDepartAt: timestamp('return_depart_at', { withTimezone: true }),
+  /**
+   * WHEN ITS COMMANDER CALLED IT BACK, IF THEY DID. Owner, 2026-10-08.
+   *
+   * Set once by `recallPirateRaid`, before the engagement; the homecoming reads it to say
+   * "called back" rather than "empty-handed", because nothing was fought.
+   */
+  recalledAt: timestamp('recalled_at', { withTimezone: true }),
 }, (t) => [
   index('pirate_raids_planet_idx').on(t.planetId, t.status),
   index('pirate_raids_season_idx').on(t.seasonId, t.status),

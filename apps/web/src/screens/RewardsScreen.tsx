@@ -1,85 +1,27 @@
 import { useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { REWARD_CHAIN_IDS, type RewardChainId } from '@astera/rules';
 import { useClaimReward, usePlanet, useRewards } from '../api/queries.js';
 import { useWorld } from '../api/world.js';
 import type { RewardChainView, RewardTierView } from '../api/schemas.js';
 import { compact, full } from '../lib/format.js';
+import { useAccordion } from '../lib/accordion.js';
 import { haptic } from '../lib/haptics.js';
-import { Button, EmptyState, Plate, SkeletonText, Unreachable } from '../ui/kit/index.js';
-import {
-  AegisIcon,
-  ExternalIcon,
-  AttackIcon,
-  CargoIcon,
-  CoreIcon,
-  DrillIcon,
-  ExtractorIcon,
-  HullIcon,
-  RefineryIcon,
-  RewardIcon,
-  ScanIcon,
-  ShipyardIcon,
-  VaultIcon,
-  type IconProps,
-} from '../ui/icons/index.js';
-import { Rungs } from '../ui/Rungs.js';
+import { Icon, type IconId } from '../v2/icons.js';
+import { Button, EmptyState, Plate, PriceTag } from '../v2/kit/Surface.js';
 import { describe, useToast } from '../ui/Toast.js';
 
-/**
- * WHAT THE GALAXY OWES YOU FOR PLAYING IT.
- *
- * The panel exists because of a specific report: *"onboardingden sonra user'a
- * yapıcak bişey kalmıyor. Boş boş bekliyor."* A commander finishes the rehearsal,
- * spends the opening grant, and is left holding a world with nothing pressable on
- * it. `OPENING_BONUS` (D58) bought one more decision; this is a standing list of
- * them.
- *
- * IT IS A LIST OF THINGS TO DO, NOT A LIST OF PRIZES, and every design choice
- * below follows from that:
- *
- *   · THE CHAINS ARE NAMED AFTER THE ACT. "Probes sent", never "Scout Bonus I".
- *     Half the value of this screen is that a new commander reads it and learns
- *     that probing, raiding, drilling and salvaging exist at all — the recorded
- *     risk against this game is that nobody scouts and it degrades into a worse
- *     OGame.
- *   · ANYTHING CLAIMABLE FLOATS TO THE TOP, and nothing else is reordered. A list
- *     that re-sorted itself on every read would move the row under the thumb.
- *   · NOTHING COUNTS DOWN, nothing expires, and nothing says "don't miss out".
- *     `game-design.md` bans streaks and login bonuses by name; a timer here would
- *     be one wearing a different hat.
- *
- * The claim is not predicted. See `useClaimReward` — the server re-counts progress
- * under the planet lock and can legitimately refuse a tier this client thinks is
- * ready, and a reward that visibly un-happens is worse than a round trip nobody
- * was going to notice.
- */
-
-const CHAIN_ICON: Record<string, (props: IconProps) => React.ReactElement> = {
-  PROBE: ScanIcon,
-  RAID: AttackIcon,
-  CORE: CoreIcon,
-  SHIPYARD: ShipyardIcon,
-  REFINERY: RefineryIcon,
-  EXTRACTOR: ExtractorIcon,
-  SHIPS: HullIcon,
-  AEGIS: AegisIcon,
-  VAULT: VaultIcon,
-  PIRATE: AttackIcon,
-  MINE: DrillIcon,
-  SALVAGE: CargoIcon,
-  SOCIAL: RewardIcon,
+const CHAIN_ICON: Record<RewardChainId, IconId> = {
+  PROBE: 'i-probe', RAID: 'i-attack', CORE: 'i-base', SHIPYARD: 'i-fleet',
+  REFINERY: 'i-collect', EXTRACTOR: 'i-mine', SHIPS: 'i-fleet', AEGIS: 'i-shield',
+  VAULT: 'i-lock', PIRATE: 'm-pirate', MINE: 'm-rock', SALVAGE: 'm-debris', SOCIAL: 'i-gift',
 };
 
-/**
- * Chain ids the server may send that this build has never heard of.
- *
- * The schema parses `id` as a plain string on purpose (see `schemas.ts`), so a
- * newer server costs this client one unrenderable card rather than an empty
- * panel. This is where that promise is kept: no icon and no name means the card
- * is skipped, and every other one still draws.
- */
-const known = (chain: RewardChainView): boolean => chain.id in CHAIN_ICON;
+type KnownChain = RewardChainView & { id: RewardChainId };
+const known = (chain: RewardChainView): chain is KnownChain =>
+  REWARD_CHAIN_IDS.some((id) => id === chain.id);
 
+/** The server owns progress and credits. This surface makes the next act and payout legible. */
 export function RewardsScreen({ commander }: { commander: string }) {
   const { t } = useTranslation();
   const { data, isPending, isError, refetch } = useRewards();
@@ -87,506 +29,197 @@ export function RewardsScreen({ commander }: { commander: string }) {
   const { capitalPlanetId, worlds } = useWorld();
   const claim = useClaimReward();
   const say = useToast();
+  const ladder = useAccordion('rewards', []);
 
-  /**
-   * CLAIMABLE FIRST, then the original order.
-   *
-   * `REWARD_CHAINS` is authored in the order a commander meets these systems, and
-   * that order is worth keeping — so this is a stable partition rather than a
-   * sort. Two chains that are both waiting stay in the order the server sent
-   * them.
-   */
   const chains = useMemo(() => {
     const rows = (data?.chains ?? []).filter(known);
-    /**
-     * THE HAND-GRANTED CARD IS PINNED, ABOVE EVEN A CLAIMABLE ONE. Owner
-     * instruction.
-     *
-     * It is the only reward that asks the player to do something OUTSIDE the
-     * game, so it is the only one that cannot be discovered by playing — every
-     * other chain is met by pressing the things it pays for. A card nobody scrolls
-     * to is a card nobody follows.
-     */
-    const pinned = rows.filter((c) => c.metric === 'grant');
-    const rest = rows.filter((c) => c.metric !== 'grant');
-    const waiting = rest.filter((c) => c.tiers.some((x) => x.state === 'claimable'));
-    return [...pinned, ...waiting, ...rest.filter((c) => !waiting.includes(c))];
+    // The community bonus remains pinned; ready goals retain server order within their group.
+    const social = rows.filter((chain) => chain.metric === 'grant');
+    const goals = rows.filter((chain) => chain.metric !== 'grant');
+    return [...social, ...goals.filter((chain) => chain.tiers.some((tier) => tier.state === 'claimable')),
+      ...goals.filter((chain) => !chain.tiers.some((tier) => tier.state === 'claimable'))];
   }, [data]);
 
-  /**
-   * A FAILED READ IS NEVER DRAWN AS A SLOW ONE. D53a.
-   *
-   * `isPending` goes false on error while `data` stays undefined, so
-   * `isPending || !data` would shimmer for ever at a request that has already
-   * given up — and this panel would claim the ledger was empty.
-   */
-  if (isError) {
-    return (
-      <Unreachable
-        what={t('surface.whatRewards')}
-        onRetry={() => {
-          void refetch();
-        }}
-      />
-    );
-  }
-  // `isError` above is what keeps this honest: React Query drops `isPending` on
-  // failure, so a lone pending check would shimmer forever at a dead request (D53a).
-  if (isPending) return <SkeletonText lines={8} className="mt-2" />;
+  if (isError) return <div role="alert" className="py-5 font-v2-ui">
+    <Plate className="p-4">
+      <Icon id="i-warn" className="mb-3 size-6 text-v2-warn" />
+      <p className="text-caption leading-relaxed text-v2-ink-2">{t('surface.unreachable', { what: t('surface.whatRewards') })}</p>
+      <Button className="mt-3" onClick={() => { void refetch(); }}>{t('surface.retry')}</Button>
+    </Plate>
+  </div>;
+  if (isPending) return <div aria-busy="true" aria-label={t('rewards.title')} className="grid gap-3 py-3">
+    {[0, 1, 2].map((index) => <Plate key={index} className="grid gap-3 p-4">
+      <span className="h-3 w-1/3 animate-pulse rounded-chip bg-v2-raise" />
+      <span className="h-10 animate-pulse rounded-control bg-v2-raise/60" />
+    </Plate>)}
+  </div>;
+  if (chains.length === 0) return <div data-v2-rewards className="py-3 font-v2-ui">
+    <EmptyState icon={<Icon id="i-gift" className="size-6" />} title={t('rewards.empty')}
+      action={<Button className="mt-2" onClick={() => { void refetch(); }}>{t('surface.retry')}</Button>}>
+      {t('rewards.emptyHint')}
+    </EmptyState>
+  </div>;
 
-  /**
-   * Would taking what is on offer put either store over its ceiling? Measured
-   * against the LARGEST single claimable tier rather than the sum: they are
-   * claimed one at a time, and warning about a total nobody will press in one go
-   * would overstate it.
-   */
-  // Rewards are always credited to the capital, including while viewing a colony.
+  // Credits go to the capital even while a colony is selected. Overflow is per single claim.
   const held = capitalPlanetId
     ? worlds.find((world) => world.planet.id === capitalPlanetId)?.planet
     : planet.data?.planet;
-  const claimableTiers = data.chains.flatMap((c) => c.tiers.filter((x) => x.state === 'claimable'));
-  const overflowing =
-    held !== undefined &&
-    claimableTiers.some(
-      (x) => held.alloy + x.alloy > held.alloyCap || held.crystal + x.crystal > held.crystalCap,
-    );
+  const tiers = chains.flatMap((chain) => chain.tiers);
+  const taken = tiers.filter((tier) => tier.state === 'claimed').length;
+  const ready = tiers.filter((tier) => tier.state === 'claimable');
+  const overflowing = held !== undefined && ready.some((tier) =>
+    held.alloy + tier.alloy > held.alloyCap || held.crystal + tier.crystal > held.crystalCap);
+  const onClaim = (id: string) => {
+    haptic('commit');
+    claim.mutate(id, {
+      onSuccess: (result) => { say(t('rewards.granted', { alloy: compact(result.granted.alloy), crystal: compact(result.granted.crystal) })); },
+      onError: (error) => { say(describe(error), 'error'); },
+    });
+  };
 
-  return (
-    <div className="flex flex-col gap-4 pb-6 pt-3">
-      <p className="text-body leading-relaxed text-dim">{t('rewards.intro')}</p>
-
-      {/*
-        NO SECOND HEADING HERE. The sheet's own eyebrow already says STANDING
-        OFFERS directly above this, and printing it twice made the panel look like
-        it had two sections when it has one. What was worth keeping is the count,
-        so that is all this line is: a rule, and what is waiting on the end of it.
-      */}
-      {/*
-        WHAT HAPPENS IF THE STORE IS FULL, ANSWERED ON THE SCREEN.
-
-        It is the first question a player asks before pressing a button that adds
-        resources, and the honest answer is the surprising one: NOTHING IS LOST.
-        A grant is written straight to storage with no clamp — the same thing
-        `OPENING_BONUS` does, for the reason in its docblock — so the whole amount
-        lands and the store is simply allowed to sit above its ceiling for a while.
-        What that costs is the WORKS: they cannot be emptied into a store that is
-        already over, so the pressure is to spend rather than to hoard.
-
-        Shown only when it is actually true of something claimable right now.
-        A standing warning about a state nobody is in is noise.
-      */}
-      {overflowing && (
-        <p className="rounded-chip border border-alloy/40 bg-alloy/10 px-3 py-2 text-caption leading-relaxed text-alloy">
-          {t('rewards.overCap')}
-        </p>
-      )}
-
-      {data.claimable > 0 && (
-        <p className="flex items-center gap-2">
-          <span className="rail-soft flex-1" />
-          <span className="num shrink-0 text-micro text-opportunity">
-            {t('rewards.waiting', { count: data.claimable })}
-          </span>
-        </p>
-      )}
-
-      {chains.length === 0 ? (
-        <EmptyState icon={<RewardIcon className="size-7" />} title={t('rewards.allTaken')} />
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {chains.map((chain) => (
-            <ChainCard
-              key={chain.id}
-              chain={chain}
-              commander={commander}
-              busy={claim.isPending}
-              onClaim={(id) => {
-                haptic('commit');
-                claim.mutate(id, {
-                  onSuccess: (r) => {
-                    say(
-                      t('rewards.granted', {
-                        alloy: compact(r.granted.alloy),
-                        crystal: compact(r.granted.crystal),
-                      }),
-                    );
-                  },
-                  onError: (err) => {
-                    say(describe(err), 'error');
-                  },
-                });
-              }}
-            />
-          ))}
-        </ul>
-      )}
+  return <div data-v2-rewards className="flex flex-col gap-3 pb-5 pt-2 font-v2-ui text-v2-ink">
+    <div className="grid grid-cols-2 divide-x divide-v2-line rounded-control border border-v2-line bg-v2-deep">
+      <div className="p-3">
+        <p className="text-micro text-v2-ink-3">{t('rewards.summaryReady')}</p>
+        <p className={`mt-1 text-readout font-semibold leading-none tabular-nums ${ready.length > 0 ? 'text-v2-self' : 'text-v2-ink-2'}`}>{full(ready.length)}</p>
+      </div>
+      <div className="p-3">
+        <p className="text-micro text-v2-ink-3">{t('rewards.summaryClaimed')}</p>
+        <p className="mt-1 text-readout font-semibold leading-none tabular-nums">{full(taken)}<span className="ml-1 text-body font-normal text-v2-ink-3">/ {full(tiers.length)}</span></p>
+      </div>
     </div>
-  );
+    <p className="text-caption leading-relaxed text-v2-ink-2">{t('rewards.intro')}</p>
+    {overflowing && <div className="flex items-start gap-2 rounded-control border border-v2-warn/30 bg-v2-warn/5 p-3">
+      <Icon id="i-warn" className="mt-0.5 size-4 shrink-0 text-v2-warn" />
+      <p className="text-caption leading-relaxed text-v2-ink-2">{t('rewards.overCap')}</p>
+    </div>}
+    <ul className="grid gap-3">
+        {chains.map((chain) => chain.metric === 'grant'
+          ? <SocialCard key={chain.id} chain={chain} commander={commander} busy={claim.isPending} onClaim={onClaim} />
+          : <GoalCard key={chain.id} chain={chain} expanded={ladder.isOpen(chain.id)} onToggle={() => { ladder.toggle(chain.id); }} busy={claim.isPending} onClaim={onClaim} />)}
+    </ul>
+  </div>;
 }
 
-function ChainCard(props: {
-  chain: RewardChainView;
-  commander: string;
-  busy: boolean;
-  onClaim: (id: string) => void;
-}) {
-  // A hand-granted reward is not a progress chain wearing a different hat: it has
-  // no counter, its instructions live off-platform, and it is the one card that has
-  // to be READ rather than recognised. It gets its own surface.
-  if (props.chain.metric === 'grant') return <SocialCard {...props} />;
-  return <GoalCard {...props} />;
-}
-
-function GoalCard({
-  chain,
-  busy,
-  onClaim,
-}: {
-  chain: RewardChainView;
-  commander: string;
-  busy: boolean;
-  onClaim: (id: string) => void;
+function GoalCard({ chain, expanded, onToggle, busy, onClaim }: {
+  chain: KnownChain; expanded: boolean; onToggle: () => void; busy: boolean; onClaim: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const Icon = CHAIN_ICON[chain.id] ?? RewardIcon;
-  const waiting = chain.tiers.some((x) => x.state === 'claimable');
-  const done = chain.tiers.every((x) => x.state === 'claimed');
-  /** Rungs already bought. The ladder's length is the tier count, never a goal. */
-  const taken = chain.tiers.filter((x) => x.state === 'claimed').length;
+  const waiting = chain.tiers.some((tier) => tier.state === 'claimable');
+  const done = chain.tiers.every((tier) => tier.state === 'claimed');
+  const taken = chain.tiers.filter((tier) => tier.state === 'claimed').length;
+  const next = chain.tiers.find((tier) => tier.state === 'locked');
+  const standing = done ? t('rewards.progressDone') : chain.metric === 'level'
+    ? t('rewards.progressLevel', { have: chain.progress })
+    : next ? t('rewards.progressCount', { have: chain.progress, need: next.goal }) : full(chain.progress);
+  const name = t(`rewards.chains.${chain.id}.name`);
+  // Every earned payout stays pressable; only history and later locked tiers fold away.
+  const visible = expanded ? chain.tiers : chain.tiers.filter((tier) => tier.state === 'claimable' || tier === next);
+  const panelId = `reward-tiers-${chain.id}`;
 
-  /**
-   * THE STANDING, IN THE UNITS THE CHAIN IS ACTUALLY MEASURED IN.
-   *
-   * "3 / 5" and "L4" are different kinds of number and one phrasing could not
-   * carry both — a Command Core that read "4 / 5" would be claiming there are
-   * five of something. `metric` comes off the payload rather than being inferred
-   * from the id, so a chain added server-side says how to read itself.
-   */
-  const standing = done
-    ? t('rewards.progressDone')
-    : chain.metric === 'level'
-      ? t('rewards.progressLevel', { have: chain.progress })
-      : t('rewards.progressCount', {
-          have: chain.progress,
-          need: chain.tiers.find((x) => x.state !== 'claimed')?.goal ?? chain.progress,
-        });
-
-  return (
-    <Plate as="li" tone={waiting ? 'opportunity' : 'neutral'} className="px-3 py-3">
-      <div className="flex items-start gap-2">
-        <span
-          className={`socket grid size-9 shrink-0 place-items-center rounded-control ${
-            waiting ? 'text-opportunity' : done ? 'text-faint' : 'text-dim'
-          }`}
-        >
-          <Icon className="size-5" />
+  return <li data-reward-chain={chain.id}>
+    <Plate className="overflow-hidden">
+      <div className={`flex items-start gap-3 p-3 ${waiting ? 'border-t-2 border-v2-self' : 'border-t-2 border-transparent'}`}>
+        <span className={`grid size-10 shrink-0 place-items-center rounded-control border bg-v2-deep ${waiting ? 'border-v2-self/25 text-v2-self' : 'border-v2-line text-v2-ink-3'}`}>
+          <Icon id={CHAIN_ICON[chain.id]} className="size-5" />
         </span>
-
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
-            <p className="name min-w-0 flex-1 truncate text-bone">
-              {t(`rewards.chains.${chain.id}.name` as 'rewards.chains.PROBE.name')}
-            </p>
-            {/*
-              A CHAIN IS A LADDER, SO IT GETS RUNGS. D142.
-
-              "3 of 10 probes sent" is a sentence a player converts into the only
-              thing they wanted, which is how many payouts are left in this card.
-              One mark per TIER, lit as it is taken, is that fact arriving without
-              being read — and it is the same shape research uses, because a
-              reward chain and a research ladder are the same object: a small,
-              fixed number of discrete steps, each bought once.
-
-              The sentence survives as the rungs' accessible name, where it is
-              also the only place the metric can be stated.
-            */}
-            <span className={waiting ? 'text-opportunity' : ''}>
-              <Rungs level={taken} max={chain.tiers.length} next={!done} />
-            </span>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+            <h3 className="text-body font-semibold leading-snug">{name}</h3>
+            <span className={`text-caption font-semibold tabular-nums ${waiting ? 'text-v2-self' : 'text-v2-ink-2'}`}>{standing}</span>
           </div>
-          <p className="mt-1 text-label leading-snug text-faint">
-            {t(`rewards.chains.${chain.id}.tag` as 'rewards.chains.PROBE.tag')}
-          </p>
-          {/*
-            THE COUNT STAYS, UNDER THE TAG AND AT LABEL SIZE. The rungs say how
-            many payouts are left; this says what is being counted, which is the
-            one thing a shape cannot carry.
-          */}
-          <p className={`num mt-1 text-label ${waiting ? 'text-opportunity' : 'text-dim'}`}>
-            {standing}
-          </p>
+          <p className="mt-1 text-caption leading-snug text-v2-ink-3">{t(`rewards.chains.${chain.id}.tag`)}</p>
+          <div className="mt-3 flex gap-1" role="img" aria-label={`${t('rewards.summaryClaimed')}: ${taken} / ${chain.tiers.length}`}>
+            {chain.tiers.map((tier) => <span key={tier.id} aria-hidden="true" className={`h-1 flex-1 rounded-full ${tier.state === 'claimed' ? 'bg-v2-self' : tier.state === 'claimable' ? 'bg-v2-self/40 ring-1 ring-v2-self/50' : 'bg-v2-line'}`} />)}
+          </div>
         </div>
       </div>
-
-      <ul className="mt-3 flex flex-col gap-2">
-        {chain.tiers.map((tier) => (
-          <TierRow
-            key={tier.id}
-            tier={tier}
-            metric={chain.metric}
-            progress={chain.progress}
-            busy={busy}
-            onClaim={onClaim}
-          />
-        ))}
+      <ul id={panelId} className="divide-y divide-v2-line border-t border-v2-line bg-v2-deep/60">
+        {visible.map((tier) => <TierRow key={tier.id} tier={tier} metric={chain.metric} progress={chain.progress} busy={busy} onClaim={onClaim} />)}
       </ul>
+      {visible.length < chain.tiers.length || expanded ? <button type="button" onClick={onToggle}
+        aria-expanded={expanded} aria-controls={panelId} aria-label={`${t('rewards.allMilestones')} · ${name}`}
+        className="flex min-h-11 w-full items-center justify-between gap-2 border-t border-v2-line px-3 text-caption text-v2-ink-2 transition-colors hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self">
+        <span>{t('rewards.allMilestones')}<span className="ml-2 text-micro tabular-nums text-v2-ink-3">{taken} / {chain.tiers.length}</span></span>
+        <Icon id="i-chev" className={`size-4 transition-transform duration-200 ${expanded ? '-rotate-90' : 'rotate-90'}`} />
+      </button> : null}
     </Plate>
-  );
+  </li>;
 }
 
-/**
- * THE COMMUNITY BONUS. Owner instruction: put it at the top and make it premium.
- *
- * IT IS THE ONLY CARD IN THIS PANEL THAT ASKS FOR SOMETHING OUTSIDE THE GAME, and
- * every difference from the goal cards follows from that one fact:
- *
- *   · IT IS PINNED ABOVE EVERYTHING, claimable goals included. Every other chain
- *     is discovered by playing — you meet the probe reward by sending a probe.
- *     Nobody discovers this one by pressing anything, so a card at the bottom of a
- *     scroll is a card that does not exist.
- *   · IT HAS NO PROGRESS AND CANNOT HAVE ONE. There is nothing in the galaxy to
- *     count; the act happens on Twitter and a human confirms it. So the body is an
- *     INSTRUCTION, numbered, in the order it has to be done.
- *   · THE WAY OUT IS A REAL BUTTON, not a word in a sentence. It leaves the game
- *     for another site, which is exactly the kind of thing a control should be
- *     honest about — hence the glyph, the new tab, and `rel="noreferrer noopener"`
- *     so the page it opens gets no handle on this one.
- *   · THE COMMANDER NAME IS PRINTED, and getting this wrong would break the whole
- *     feature in silence. The operator's command resolves what is typed against
- *     `accounts.displayName`, the canonical commander identity — so a card that printed the
- *     PLANET's name would have every player send a string the grant can never
- *     find, and the operator would be told no such commander exists while looking
- *     at their message.
- *   · IT IS PAID ONCE PER ACCOUNT, FOR EVER, and this is the only card in the
- *     panel where "Taken" is not a statement about the current season. Owner
- *     instruction: *"twitter takip bonusu kişiye 1 kez verilebilmeli. her sezon
- *     her sezon alamaz."* The server is what enforces it — the grant is keyed on
- *     the account, so the tier simply never comes back as claimable — and this
- *     card's job is to say so, because a commander who reads the ordinary "Taken"
- *     on a fresh galaxy would reasonably follow the account again and wait for a
- *     reply that is never going to pay.
- *
- * THE INSTRUCTIONS COME DOWN ONCE THE BONUS IS TAKEN, whichever scope it had.
- * Three numbered steps and a button to another site are a thing to DO; leaving
- * them under a reward that has already been paid is the panel asking for work it
- * has already been given.
- */
-function SocialCard({
-  chain,
-  commander,
-  busy,
-  onClaim,
-}: {
-  chain: RewardChainView;
-  commander: string;
-  busy: boolean;
-  onClaim: (id: string) => void;
+function SocialCard({ chain, commander, busy, onClaim }: {
+  chain: KnownChain; commander: string; busy: boolean; onClaim: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const tier = chain.tiers[0];
   if (!tier) return null;
-
   const ready = tier.state === 'claimable';
   const taken = tier.state === 'claimed';
-  /** Taken, and it is never coming back — see the docblock. */
   const forever = taken && chain.scope === 'account';
 
-  return (
-    <Plate
-      as="li"
-      cut
-      tone={ready ? 'opportunity' : 'neutral'}
-      className="relative overflow-hidden px-2 pb-2 pt-3"
-    >
-      {/* A single wash behind the card, warm at one corner. The only decorative
-          gradient in the panel, and it is what separates "an offer from us" from
-          the eleven goals below it without shouting. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_100%_0%,rgb(89_200_255/0.14)_0%,transparent_62%)]"
-      />
-
-      <div className="relative">
-        <div className="flex items-start gap-2">
-          <span
-            className={`socket grid size-11 shrink-0 place-items-center rounded-control ${
-              ready ? 'text-opportunity' : 'text-crystal'
-            }`}
-          >
-            <RewardIcon className="size-6" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="legend text-crystal/80">{t('rewards.social.eyebrow')}</p>
-            <p className="name mt-1 leading-tight text-bone">
-              {t('rewards.chains.SOCIAL.name')}
-            </p>
-          </div>
-        </div>
-
-        {/* The prize, stated once and large. `full()` and not `compact()`: this is
-            a figure a player checks against a price. */}
-        <p className="mt-3 flex items-baseline gap-2">
-          <span className="readout text-figure text-alloy">{full(tier.alloy)}</span>
-          <span className="text-label text-faint">{t('rewards.social.alloy')}</span>
-          <span className="readout text-figure text-crystal">{full(tier.crystal)}</span>
-          <span className="text-label text-faint">{t('rewards.social.crystal')}</span>
-        </p>
-
-        {!taken && (
-          <ol className="mt-3 flex flex-col gap-2">
-            <Step n={1}>{t('rewards.social.step1')}</Step>
-            <Step n={2}>
-              <span>{t('rewards.social.step2')}</span>{' '}
-              <span className="num rounded-chip bg-raised px-2 py-1 text-label text-bone">
-                {commander}
-              </span>
-            </Step>
-            <Step n={3}>{t('rewards.social.step3')}</Step>
-          </ol>
-        )}
-
-        {!taken && (
-          <a
-            href={t('rewards.social.url')}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="slab slab-primary mt-2 w-full"
-          >
-            <ExternalIcon className="size-[18px] shrink-0" />
-            {t('rewards.social.open')}
-          </a>
-        )}
-
-        <div className="mt-3">
-          {ready ? (
-            <Button
-              size="md"
-              variant="primary"
-              full
-              disabled={busy}
-              onClick={() => {
-                onClaim(tier.id);
-              }}
-            >
-              {t('rewards.social.ready')}
-            </Button>
-          ) : (
-            <p
-              className={`rounded-chip border px-3 py-2 text-center text-label leading-relaxed ${
-                taken
-                  ? 'border-line-soft bg-deep text-faint'
-                  : 'border-line-soft bg-deep text-dim'
-              }`}
-            >
-              {forever
-                ? t('rewards.social.forever')
-                : taken
-                  ? t('rewards.claimed')
-                  : t('rewards.social.pending')}
-            </p>
-          )}
+  return <li data-reward-chain={chain.id}>
+    <Plate className="overflow-hidden">
+      <div className="flex items-center gap-3 border-b border-v2-line p-3">
+        <span className={`grid size-10 shrink-0 place-items-center rounded-control border bg-v2-deep ${ready ? 'border-v2-self/30 text-v2-self' : 'border-v2-line-hi text-v2-ink-2'}`}><Icon id="i-gift" className="size-6" /></span>
+        <div className="min-w-0">
+          <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('rewards.social.eyebrow')}</p>
+          <h3 className="mt-1 text-body font-semibold leading-snug">{t('rewards.chains.SOCIAL.name')}</h3>
+          {!taken && chain.scope === 'account' && <p className="mt-1 text-micro text-v2-ink-3">{t('rewards.chains.SOCIAL.tag')}</p>}
         </div>
       </div>
+      <div className="grid gap-3 p-3">
+        <div className="grid grid-cols-2 gap-2">
+          {(['alloy', 'crystal'] as const).map((resource) => <div key={resource} className="rounded-control border border-v2-line bg-v2-deep p-2.5">
+            <p className="text-micro text-v2-ink-3">{t(`vocabulary.resource.${resource}`)}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1"><PriceTag exact {...(resource === 'alloy' ? { alloy: tier.alloy } : { crystal: tier.crystal })} className="[&_img]:size-5 [&_span]:text-title" /></div>
+          </div>)}
+        </div>
+        {!taken && <ol className="grid gap-2.5">
+          <Step n={1}>{t('rewards.social.step1')}</Step>
+          <Step n={2}>{t('rewards.social.step2')}<span className="mt-1.5 block break-all rounded-control border border-v2-line-hi bg-v2-deep px-2 py-1.5 font-v2-mono text-caption text-v2-ink">{commander}</span></Step>
+          <Step n={3}>{t('rewards.social.step3')}</Step>
+        </ol>}
+        {!taken && <a href={t('rewards.social.url')} target="_blank" rel="noreferrer noopener"
+          className="flex min-h-11 items-center justify-center gap-2 rounded-control border border-v2-line-hi bg-v2-raise/60 px-3 py-2 text-caption text-v2-ink transition-colors hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self">
+          {t('rewards.social.open')}<Icon id="i-share" className="size-4 shrink-0" />
+        </a>}
+        {ready ? <span data-reward-claim={tier.id}><Button full variant="primary" size="lg" disabled={busy} onClick={() => { onClaim(tier.id); }}>{t('rewards.social.ready')}</Button></span>
+          : <div className="flex items-start gap-2 border-t border-v2-line pt-3 text-caption leading-relaxed text-v2-ink-3">
+            <Icon id={taken ? 'i-check' : 'i-clock'} className={`mt-0.5 size-4 shrink-0 ${taken ? 'text-v2-self' : ''}`} />
+            <p>{forever ? t('rewards.social.forever') : taken ? t('rewards.claimed') : t('rewards.social.pending')}</p>
+          </div>}
+      </div>
     </Plate>
-  );
+  </li>;
 }
 
-/** One numbered instruction. The numeral is drawn, because a bare `<ol>` marker
- *  is stripped by the CSS reset and these three have to be done in order. */
 function Step({ n, children }: { n: number; children: ReactNode }) {
-  return (
-    <li className="flex gap-2 text-caption leading-relaxed text-dim">
-      <span className="num mt-[1px] grid size-[18px] shrink-0 place-items-center rounded-full bg-raised text-micro text-crystal">
-        {n}
-      </span>
-      <span className="min-w-0 flex-1">{children}</span>
-    </li>
-  );
+  return <li className="flex items-start gap-2.5">
+    <span className="grid size-5 shrink-0 place-items-center rounded-full border border-v2-line-hi font-v2-mono text-micro text-v2-ink-3">{n}</span>
+    <div className="min-w-0 text-caption leading-relaxed text-v2-ink-2">{children}</div>
+  </li>;
 }
 
-function TierRow({
-  tier,
-  metric,
-  progress,
-  busy,
-  onClaim,
-}: {
-  tier: RewardTierView;
-  metric: string;
-  progress: number;
-  busy: boolean;
-  onClaim: (id: string) => void;
+function TierRow({ tier, metric, progress, busy, onClaim }: {
+  tier: RewardTierView; metric: string; progress: number; busy: boolean; onClaim: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const target =
-    metric === 'level'
-      ? t('rewards.goalLevel', { n: tier.goal })
-      : t('rewards.goalCount', { n: tier.goal });
-
-  /*
-    HOW CLOSE, NOT HOW FAR OFF. "4 to go" is the gap and hides the thing a player
-    is actually weighing: nine of ten and one of ten are both "to go" figures and
-    only one of them is worth staying for. The rail under the row fills toward the
-    goal, so a nearly-earned tier LOOKS nearly earned.
-  */
+  const claimed = tier.state === 'claimed';
+  const ready = tier.state === 'claimable';
+  const target = metric === 'level' ? t('rewards.goalLevel', { n: tier.goal }) : t('rewards.goalCount', { n: tier.goal });
   const reach = tier.goal > 0 ? Math.max(0, Math.min(1, progress / tier.goal)) : 1;
-  const locked = tier.state !== 'claimed' && tier.state !== 'claimable';
 
-  return (
-    <li className="plate-sunk relative flex items-center gap-2 overflow-hidden rounded-chip px-2 py-2">
-      {/*
-        THE FILL IS BEHIND THE ROW, not a separate bar beside it. A locked tier is
-        a thing being approached, and the row itself filling up is that sentence
-        with no extra element and no extra line of height.
-      */}
-      {locked && metric !== 'grant' && (
-        <span
-          aria-hidden
-          data-tier-reach
-          className="absolute inset-y-0 left-0 bg-crystal/10"
-          style={{ width: `${String(reach * 100)}%` }}
-        />
-      )}
-      <span
-        className={`num relative w-8 shrink-0 text-label ${
-          tier.state === 'claimed' ? 'text-faint line-through' : 'text-dim'
-        }`}
-      >
-        {metric === 'grant' ? '' : target}
+  return <li data-reward-tier={tier.id} className={`relative grid gap-1.5 px-3 py-2.5 ${claimed ? 'text-v2-ink-3' : ''}`}>
+    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+      <span className="text-caption font-semibold tabular-nums">{target}</span>
+      <span className={`text-micro tabular-nums ${ready ? 'text-v2-self' : 'text-v2-ink-3'}`}>
+        {ready ? t('rewards.waiting', { count: 1 }) : claimed ? t('rewards.claimed') : t('rewards.toGo', { count: Math.max(0, tier.goal - progress) })}
       </span>
-
-      {/*
-        The prize, in the two colours the resources wear everywhere else. `full()`
-        rather than `compact()`: these are figures a player checks against a price,
-        and "1.2k" cannot be compared to 950.
-      */}
-      <span className="relative min-w-0 flex-1 truncate text-label">
-        <span className="num text-alloy">{full(tier.alloy)}</span>
-        <span className="px-1 text-faint">·</span>
-        <span className="num text-crystal">{full(tier.crystal)}</span>
-      </span>
-
-      {tier.state === 'claimable' ? (
-        <span data-reward-claim={tier.id}><Button
-          className="relative"
-          size="sm"
-          variant="primary"
-          disabled={busy}
-          onClick={() => {
-            onClaim(tier.id);
-          }}
-        >
-          {t('rewards.claim')}
-        </Button></span>
-      ) : tier.state === 'claimed' ? (
-        <span className="num relative shrink-0 text-micro text-faint">{t('rewards.claimed')}</span>
-      ) : (
-        <span className="num relative shrink-0 text-micro text-faint">
-          {metric === 'grant'
-            ? t('rewards.social.pending')
-            : t('rewards.toGo', { count: Math.max(0, tier.goal - progress) })}
-        </span>
-      )}
-    </li>
-  );
+    </div>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <PriceTag alloy={tier.alloy} crystal={tier.crystal} exact className={`flex-wrap ${claimed ? 'opacity-50' : ''}`} />
+      {ready && <span data-reward-claim={tier.id}><Button size="md" variant="primary" disabled={busy} onClick={() => { onClaim(tier.id); }}>{t('rewards.claim')}</Button></span>}
+    </div>
+    {!claimed && !ready && <div aria-hidden="true" className="mt-1 h-0.5 overflow-hidden rounded-full bg-v2-line"><span data-tier-reach className="block h-full origin-left bg-v2-ink-3/60" style={{ transform: `scaleX(${String(reach)})` }} /></div>}
+  </li>;
 }

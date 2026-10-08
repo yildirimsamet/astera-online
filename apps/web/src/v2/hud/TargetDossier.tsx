@@ -98,7 +98,7 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
   const development = read.facts.find((fact) => fact.key === 'development');
   const tierBand = development?.note === undefined ? null : { value: development.value, note: development.note };
   const range = Math.round(distance(planet.planet.position, target.position));
-  const reach = fleetCount(wing) > 0 ? reachMinutes(planet.planet.position, target.position, wing, mods) : null;
+  const reach = fleetCount(wing) > 0 ? reachMinutes(planet.planet.position, target.position, wing, mods, 'combat') : null;
   const loot = lootEstimate(reading.report, fleetCargo(wing, mods.tech));
   const band = (low: number, high: number): string =>
     low === high ? compact(low) : `${compact(low)}${t('units.rangeJoin')}${compact(high)}`;

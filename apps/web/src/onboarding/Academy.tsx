@@ -407,7 +407,7 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
     {!claiming && <>
       <TutorialHand kind={intro && !showNext ? 'intro' : 'action'} targets={handTargets} bubble={bubble} />
       <section ref={bubble} data-beat-card key={nudge} className="plate pointer-events-auto fixed inset-x-2 top-2 z-50 rounded-control p-3 animate-[nudge_360ms_ease-out]" aria-live="polite">
-        <div className="flex items-center justify-between gap-2 text-label"><span className="text-crystal">{t('academy.title')}</span><span className="num text-faint">{world.step + 1}/{ACADEMY_STEPS.length}</span></div>
+        <div className="flex items-center justify-between gap-2 text-label"><span className="text-crystal">Astera Online · {t('academy.title')}</span><span className="num text-faint">{world.step + 1}/{ACADEMY_STEPS.length}</span></div>
         <p className="my-2 text-caption text-bone">{busy ? t('academy.wait') : aiming ? t('academy.aim') : telescope ? t('academy.sight') : replay && id === 'departure' ? t('academy.replayComplete') : t(`academy.steps.${id}`)}{intro && row ? ` ${t('academy.introOnly')}` : ''}</p>
         {id === 'radar' && <div data-testid="academy-radar-range" role="img"
           aria-label={`${t('academy.sensorNearTitle')}: ${t('vocabulary.hull.DART.name')} ×2. ${t('academy.sensorFarTitle')}: ?`}

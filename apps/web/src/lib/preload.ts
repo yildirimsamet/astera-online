@@ -116,7 +116,9 @@ export const fetchAsset: Loader = async (url) => {
     await new Promise<void>((resolve) => {
       const image = new Image();
       image.onload = () => {
-        resolve();
+        // onload alone can precede decoding. Warm the pixels the first frame uses.
+        if (typeof image.decode === 'function') void image.decode().then(resolve, resolve);
+        else resolve();
       };
       image.onerror = () => {
         resolve();
@@ -126,7 +128,9 @@ export const fetchAsset: Loader = async (url) => {
     return;
   }
   try {
-    await fetch(url, { cache: 'force-cache' });
+    const response = await fetch(url, { cache: 'force-cache' });
+    // fetch resolves at the headers; count a file only once its body has arrived.
+    await response.arrayBuffer();
   } catch {
     // A network failure is still an answer. The scene degrades; the door opens.
   }
@@ -165,7 +169,7 @@ export async function preloadAll(
 }
 
 export interface Preload {
-  /** 0 to 1. Reaches 1 when everything has settled or the deadline passed. */
+  /** Real settled-file fraction, 0 to 1. A deadline never manufactures 100%. */
   progress: number;
   ready: boolean;
 }
@@ -204,7 +208,7 @@ export function usePreload(
     };
 
     // Re-armed every run, so a cleanup can never leave the door with no way out.
-    const deadline = setTimeout(done, deadlineMs);
+    const deadline = setTimeout(() => { setReady(true); }, deadlineMs);
 
     if (!started.current) {
       started.current = true;

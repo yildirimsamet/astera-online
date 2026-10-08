@@ -37,7 +37,7 @@ it.each(['manual', 'sweep'] as const)('keeps a delayed operator monument battle 
   await f.db.insert(units).values({ planetId: origin.id, ownerPlayerId: f.playerIds[2]!, location: `monument:${attackId}`, hull: 'CATACLYSM', count: 20 });
   const operator = (await f.db.select().from(accounts).where(eq(accounts.id, f.accountIds[2]!)))[0]!;
   f.clock.advance(49 * 60);
-  await f.db.update(players).set({ lastActiveAt: f.clock.now() }).where(eq(players.id, f.playerIds[2]!));
+  await f.db.update(players).set({ lastProgressAt: f.clock.now() }).where(eq(players.id, f.playerIds[2]!));
   if (entry === 'manual') {
     expect((await departToSilentSpace(f.db, f.clock, 'Tester0', { adminUsernames: [operator.username] })).status).toBe('MOVED');
   } else {

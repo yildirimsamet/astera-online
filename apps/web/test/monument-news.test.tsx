@@ -93,7 +93,7 @@ describe('monument reports and actionable news', () => {
   it('announces a capacity return immediately with its reason and ETA, without claiming the fleet is home', () => {
     const event = notice('monument_returning', { ...target, reason: 'CAPACITY', craft: 2,
       arriveAt: new Date(at.getTime() + 10 * 60_000).toISOString() });
-    expect(describeNotification(event, at.getTime())).toMatch(/Ancient Observatory.*2.*capacity.*10/i);
+    expect(describeNotification(event, at.getTime())).toMatch(/Ancient Observatory.*2.*no room.*10/i);
     expect(describeNotification(event, at.getTime())).not.toMatch(/is home|returned home/i);
     expect(notificationIdentity(event)?.monumentId).toBe(id);
     news = [event];

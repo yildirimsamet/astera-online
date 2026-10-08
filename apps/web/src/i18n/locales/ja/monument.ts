@@ -52,7 +52,7 @@ export const monument = {
   "selectedBulk": "この艦隊：{{bulk}} バルク",
   "holdForecast": "到着後：毎分 {{rate}} 重水素 · 次の艦損失 {{time}}",
   "noLoss": "予測なし",
-  "attackOutcome": "勝敗は戦闘で決まります：高TierからHOLDを満たし、余った貨物船は帰還します。戦闘力のない生存艦は生産しません。",
+  "attackOutcome": "勝利後は高い階級の艦船から記念碑の収容枠に入ります。収容できない艦船は帰還します。貨物船だけの艦隊は重水素を獲得しません。",
   "losses": "往路で {{count}} 隻を失います",
   "health": "{{name}}：到着時 {{remaining}} / {{max}} HP",
   "shield": "このPvP出撃でシールドを失うことに同意します",
@@ -92,5 +92,5 @@ export const monument = {
     "HOLD": "滞在中",
     "RETURNING": "帰還中"
   },
-  "returnReason": {"RECALLED":"帰還を指示しました。","CAPACITY":"格納上限のため帰還しました。","MEMBERSHIP":"所属が変わったため帰還しました。","CONTROL_CHANGED":"到着前に支配が変わったため帰還しました。","DEFEAT":"戦闘後に帰還しました。","WORLD_CHANGED":"母星が変わったため帰還しました。","FREEZE":"シーズン終了で帰還しました。"}
+  "returnReason": {"RECALLED":"帰還を指示しました。","CAPACITY":"記念碑に艦船を収容できないため帰還します。","MEMBERSHIP":"所属が変わったため帰還しました。","CONTROL_CHANGED":"到着前に支配が変わったため帰還しました。","DEFEAT":"戦闘後に帰還しました。","WORLD_CHANGED":"母星が変わったため帰還しました。","FREEZE":"シーズン終了で帰還しました。"}
 } as const;

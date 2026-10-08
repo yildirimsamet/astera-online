@@ -129,7 +129,8 @@ describe('the hook the door waits on', () => {
     await waitFor(() => {
       expect(result.current.ready).toBe(true);
     });
-    expect(result.current.progress).toBe(1);
+    // A deadline releases the game; it cannot claim unreceived files arrived.
+    expect(result.current.progress).toBe(0);
   });
 
   it('is ready at once when the list is empty', () => {

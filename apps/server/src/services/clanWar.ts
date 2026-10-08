@@ -136,6 +136,7 @@ import { lockMonuments, hpSourcesForSeason, type LockedMonument } from './monume
 import { advanceLockedMonument, monumentEndpoints, monumentHomes } from './monumentArrival.js';
 import { lockWorlds } from './ownership.js';
 import { scheduleFlightBoundary } from './monumentBoundaries.js';
+import { assertSeasonOutsideSilentSpace, markProgress } from './waitingRoom.js';
 
 /**
  * KLAN ORTAK SAVAŞI — the operation. Owner design, 2026-09-20.
@@ -853,6 +854,7 @@ export async function markClanWarTarget(
 ): Promise<{ operation: ClanWarOperationView }> {
   const now = input.clock.now();
   const season = await lockSeason(tx, input.actor.seasonId);
+  await assertSeasonOutsideSilentSpace(tx, season); // D212
   /*
     The world being marked, and the staging world of whatever operation is still
     open — finalising an expired one hands its leader-capital wave back, which
@@ -1017,6 +1019,7 @@ export async function markClanWarMonumentTarget(tx: Tx,
   input: { actor: ClanActor; monumentId: string; clock: Clock; adminUsernames?: readonly string[] }): Promise<{ operation: ClanWarOperationView }> {
   const now = input.clock.now();
   const season = await lockSeason(tx, input.actor.seasonId);
+  await assertSeasonOutsideSilentSpace(tx, season); // D212
   if (season.rulesetVersion < MULTI_WORLD.monumentRulesetVersion) {
     throw new GameError('MONUMENT_UNAVAILABLE', 'Monuments are not available in this galaxy', 409);
   }
@@ -1634,6 +1637,7 @@ export async function sendClanWarContribution(
       refusals: context.refusals.map((row) => row.code).join(','),
     });
   }
+  await markProgress(tx, input.actor.playerId, now); // D212: a joint-war wave is a combat launch
 
   /*
     THE SHIELD IS SPENT HERE AND NOT AT THE MARK. Marking a target commits nothing;
@@ -2621,6 +2625,7 @@ export async function startClanWar(
     pace: chosenPace,
   }).returning();
   if (!mission) throw new Error('clan war combined mission insert returned no row');
+  await markProgress(tx, input.actor.playerId, now); // D212
   await tx.insert(clanWarMissions).values({
     missionId: mission.id,
     operationId: operation.id,
@@ -2779,6 +2784,7 @@ async function startMonumentClanWar(tx: Tx, input: {
     await scheduleFlightBoundary(tx, wave, stored.map((lot) => ({ ...lot, playerId: wave.playerId, tech: wave.tech })), sources, target.season.endsAt);
     nativeIds.push(wave.id);
   }
+  await markProgress(tx, input.actor.playerId, now); // D212
   const [attacking] = await tx.update(clanWarOperations).set({ status: 'ATTACKING', startedAt: now })
     .where(eq(clanWarOperations.id, operation.id)).returning();
   for (const playerId of holders) await notify(tx, { playerId, kind: 'monument_inbound', at: now, refId: nativeIds[0]!,

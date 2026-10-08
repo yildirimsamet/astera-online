@@ -928,7 +928,7 @@ describe('servers', () => {
      * A WIPE ENDS A GALAXY. IT DOES NOT UN-FOLLOW ANYBODY.
      *
      * The @JoinAstera bonus is paid once per person for ever, and its record is
-     * the only reward row keyed on the account rather than on the season's player.
+     * keyed on the account rather than on the season's player, as is the brand quiz.
      * `wipeAllServers` clears `reward_grants` wholesale — correctly, since that
      * table's progress was counted off worlds that are about to stop existing — and
      * clearing this one alongside it would pay every follower again on the first
@@ -941,12 +941,15 @@ describe('servers', () => {
       const { accounts } = await import('../src/db/schema.js');
       const [account] = await db.select().from(accounts).where(eq(accounts.id, me.accountId));
       await grantReward(db, account!.displayName, rewardId('SOCIAL', 1));
+      const rewardsBefore = await db.select().from(accountRewards)
+        .where(eq(accountRewards.accountId, me.accountId)).orderBy(accountRewards.rewardId);
+      expect(rewardsBefore).toContainEqual(expect.objectContaining({ rewardId: rewardId('SOCIAL', 1), claimedAt: null }));
 
       await sealAndWipe({ count: 1, capacity: 2 });
 
       expect(
-        await db.select().from(accountRewards).where(eq(accountRewards.accountId, me.accountId)),
-      ).toHaveLength(1);
+        await db.select().from(accountRewards).where(eq(accountRewards.accountId, me.accountId)).orderBy(accountRewards.rewardId),
+      ).toEqual(rewardsBefore);
       // And the operator is told so on the other side of the wipe.
       expect((await grantReward(db, account!.displayName, rewardId('SOCIAL', 1))).already).toBe(true);
     });

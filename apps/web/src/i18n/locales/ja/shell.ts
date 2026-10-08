@@ -37,7 +37,7 @@ export const statusBar = {
     hint: "回復シールド · あと{{duration}}は襲撃されません",
   },
   recoveryBoost: {
-    mark: "出力増加 +50%",
+    mark: "生産量+50%",
     note: "シールド時出力 +50%",
   },
   bays: {
@@ -49,7 +49,7 @@ export const statusBar = {
     label: "生産施設",
     labelFull: "生産施設が満杯",
     collect: "回収",
-    firstTip: "生産した資源はここに貯まります。タップして回収してください。",
+    firstTip: "生産した資源は生産プールに貯まります。使う前に貯蔵庫へ回収してください。",
     fullStopped: "満杯 · 生産停止",
     fillsIn: "満杯まで{{time}}",
     gathers: "回収するまで生産した資源がここに貯まります",
@@ -61,7 +61,7 @@ export const statusBar = {
     crystal: "{{amount}} クリスタル",
     deuterium: "{{amount}} 重水素",
     collected: "{{amount}}を回収しました",
-    collectedPartly: "{{moved}}を回収 · {{held}}は貯蔵庫に空きがありません",
+    collectedPartly: "{{moved}}を貯蔵庫へ回収・{{held}}は生産プールに残っています",
     storeFull: "貯蔵庫が満杯です",
   },
 } as const;
@@ -147,7 +147,7 @@ export const signals = {
   /** The eyebrow on a galaxy-wide row, so it is never mistaken for personal news. */
   worldEvent: "銀河の出来事",
   empty:
-    "まだ何もありません。銀河系は、艦隊がいつあなたに向かって移動するか、いつ探査機が捕捉されるか、そしてあなた自身の船がいつ帰還するかを教えてくれます。",
+    "通知はまだありません。接近する艦隊の警告、検出した偵察機、帰還した艦船をここに表示します。",
   repeat: "×{{count}}",
 
   /** The states that are true right now, rather than things that happened. */
@@ -158,7 +158,7 @@ export const signals = {
     worksStoppedDetail: "生産施設が満杯です。回収するまで、毎時{{amount}}の生産が一時停止します。",
     alloyStoreLine: "合金貯蔵庫は満杯です",
     crystalStoreLine: "クリスタル貯蔵庫は満杯です",
-    storeDetail: "{{amount}}が生産施設で回収を待っていますが、貯蔵庫に空きがありません。資源を消費してください。",
+    storeDetail: "{{amount}}の資源が生産プールにあります。保管資源を使うか容量を増やして空きを作ってください。",
   },
 } as const;
 
@@ -232,33 +232,33 @@ export const menu = {
   intelLabel: "情報",
   intelHint: "望遠鏡、探査機、レーダー、戦闘レポート",
   rewardsLabel: "報酬",
-  rewardsHint: "プレイして獲得した報酬を確認",
+  rewardsHint: "達成した目標の資源報酬を受け取る",
   /*
     The hint is this row's accessible name (see `MenuRow`), so it says what the
     page IS. It no longer promises a new tab, because the row no longer opens
     one — a hint that describes the old behaviour is worse than none.
   */
-  guideLabel: "クイックスタート",
-  guideHint: "序盤に取るべき行動を順番に確認",
+  guideLabel: "Wiki",
+  guideHint: "建物、艦船、銀河のルール",
   rewardsWaiting: "受取可能{{count}}件",
   /** T12: research is a commander's, not a world's, so its way in is here. */
   researchLabel: "研究",
-  researchHint: "司令官と保有する全惑星に適用される15の研究",
+  researchHint: "全惑星で共有する研究と必要条件を確認する",
   leaderboardLabel: "リーダーボード",
   leaderboardHint: "ドミニオンによってランク付けされたすべての指揮官",
   announcementsLabel: "お知らせ",
   announcementsHint: "Astera チームからのニュース、更新情報、メモ",
   announcementsWaiting: "新着{{count}}件",
   feedbackLabel: "フィードバック",
-  feedbackHint: "バグ、アイデア、またはお祝いの言葉をチームに送信します",
+  feedbackHint: "不具合、感想、改善案を送る",
   skinsShopLabel: "ショップ",
-  skinsShopHint: "3D で惑星の外観を探索",
+  skinsShopHint: "惑星の外観と価格を確認する",
   skinsInventoryLabel: "インベントリ",
   skinsInventoryHint: "ワールドにスキンを装備する",
   clanLabel: "クラン",
-  clanHint: "最大5人のクランに加入、または新たに設立",
+  clanHint: "クランに加入するか、最大5人のクランを作る",
   clanMemberLabel: "クラン · [{{tag}}]",
-  clanMemberHint: "乗組員、援助、戦利品の共有、プライベートチャット",
+  clanMemberHint: "メンバー、援助、共有戦利品、クラン履歴とチャット",
   clanWaiting: "{{count}} 待機中",
   rivalLabel: "ライバル・{{commander}}",
   rivalHint: "{{planet}} に注目して次の手を選択してください",
@@ -294,15 +294,15 @@ export const menu = {
     low: "低",
   },
   qualityHint: {
-    high: "フル解像度。最も鮮明な画像と最も多くのバッテリー。",
-    balanced: "4 分の 3 の解像度。見にくいですが、明らかに涼しいです。",
-    low: "半分の解像度、エッジ スムージングなし。古い携帯電話の場合。",
+    high: "最も細かい画質です。バッテリー消費が増える場合があります。",
+    balanced: "解像度の上限を下げて描画負荷を抑えます。発熱とバッテリーへの効果は端末によって異なります。",
+    low: "解像度の上限が最も低い設定です。輪郭の平滑化は有効のままで、細部の鮮明さが下がる場合があります。",
   },
   /** A readout the player turns on. The hint says what the number counts. */
   fpsLabel: "フレームレート",
   fpsOn: "オン",
   fpsOff: "オフ",
-  fpsHint: "銀河が毎秒描画するフレーム。何も動かないときの 24 ～ 30 は正常です。それは動きと戦いの中で高まります。",
+  fpsHint: "銀河を1秒間に描画する回数です。値が高いほど動きが滑らかになります。",
 } as const;
 
 export const leaderboard = {
@@ -364,7 +364,7 @@ export const leaderboard = {
     searchPlaceholder: "司令官",
     noMatch: "その検索に一致する指揮官はありません。",
     galaxyRecord: {
-      title: "ギャラクシーレコード", subtitle: "今シーズン残された共有事実",
+      title: "ギャラクシーレコード", subtitle: "この銀河のシーズン結果の記録",
       champion: "チャンピオン", clans: "クラン表彰台",
       biggestBattle: "検証された最大の戦い", dominionSwing: "最もシャープなドミニオンの変更",
       contestedWorld: "最も競争の激しい世界",
@@ -391,12 +391,12 @@ export const leaderboard = {
       hint: "記録された戦闘数値が表示されます。経済性、艦隊生産および探査は測定されていないため省略されています。",
     },
     partialStats: {
-      title: "部分的なテレメトリ",
-      hint: "テレメトリーが開始される前のアクティビティが欠落している可能性があります。記録された数値は正確なままです。",
+      title: "一部の活動記録なし",
+      hint: "記録開始前の活動が一部含まれていない場合があります。表示される合計は記録された活動の分です。",
     },
     forcedEnd: {
       title: "シーズンが早期に終了しました",
-      hint: "プレイ期間は、最終順位と報酬を含めて永久に封印されます。",
+      hint: "早期終了時点の順位と報酬でシーズンが記録されました。",
     },
     none: "なし",
     ratios: {
@@ -445,7 +445,7 @@ export const leaderboard = {
       recordedTotals: "記録されたキャリア合計",
       covered_one: "{{count}} シーズンをカバー",
       covered_other: "{{count}} シーズンをカバー",
-      coveredWithPartial: "{{count}} シーズンをカバー · {{partial}} 部分的なテレメトリあり",
+      coveredWithPartial: "{{count}}シーズンを記録・{{partial}}シーズンは活動記録が不完全",
       seasons: "季節ごとに",
     },
   },
@@ -516,8 +516,8 @@ export const chat = {
  * pasted into a message to the person who will fix it. See `shell/crashReport.ts`.
  */
 export const crash = {
-  title: "何かが壊れました",
-  body: "インターフェースは描画を停止しました。リロードするとディスクに戻ります。銀河系で失われたものは何もありません。",
+  title: "ゲーム画面が停止しました",
+  body: "続けるにはページを再読み込みしてください。最後の操作が確認できていない可能性があります。再読み込み後に状況を確認してください。",
   reload: "リロード",
   detailShow: "詳細を表示",
   detailHide: "詳細を隠す",

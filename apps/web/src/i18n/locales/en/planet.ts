@@ -60,7 +60,7 @@ export const planet = {
   tabs: {
     label: "Planet categories",
     defendProblem: "Defend",
-    defendQuestion: "Strengthen your shield, vault and planet guns here.",
+    defendQuestion: "Upgrade Aegis, the Store and ground defences here.",
     orbitProblem: "Intel",
     orbitQuestion: "Build the tools that help you see rivals.",
     reachProblem: "Fleet",
@@ -113,7 +113,7 @@ export const planet = {
       lead: "{{share}}% of what this order cost is destroyed. The rest comes back now.",
       lost: "Destroyed",
       kept: "Returned",
-      progress: "Work done on it is lost too — a re-order starts from nothing.",
+      progress: "This order's progress is lost. A new order starts from the beginning.",
       commit: "Cancel the order",
       back: "Keep it",
     },
@@ -130,9 +130,9 @@ export const planet = {
   /** What each structure is for, in one line, where the row states it. */
   roles: {
     vault:
-      "Sets how many hours of its own production each resource holds; the bottom 10%, capped at 8 hours of production, is safe from raids.",
+      "Sets each resource's storage capacity. Raids cannot take the smaller of 10% of capacity or 8 hours of production.",
     shipyard:
-      "Unlocks heavier hulls, builds them faster, and sharpens every probe you send.",
+      "Unlocks new ships and speeds ship and ground-defence production. It improves probe accuracy and stealth.",
     refinery:
       "Raises hourly alloy output; the store is measured in hours, so what it holds grows with it. Most buildings and ships spend this.",
     extractor:
@@ -142,7 +142,7 @@ export const planet = {
     coreCapped_other:
       "{{count}} building upgrades are blocked until the Command Core is raised.",
     coreClear:
-      "The Command Core sets building level ceilings and shortens construction and research time.",
+      "Structures except the Hangar cannot exceed this world's Command Core level. The Core speeds instruments and satellites other than Uplink.",
   },
 
   defend: {
@@ -236,13 +236,13 @@ export const planet = {
     isotopeRole:
       "Shows the Deuterium in isotope rocks and lets you send Prospectors to them. The return haul enters the Works.",
     denseName: "Dense Fuel Cells",
-    denseTag: "Unlocks the Runner",
+    denseTag: "Unlocks Ship Propulsion",
     denseRole:
-      "To reveal it, fill your cargo in one raid while loot remains on the target. The Runner is faster than a Hauler but carries less.",
+      "To reveal it, fill your cargo in one raid while loot remains at the target. Completion unlocks Ship Propulsion research.",
     graviticName: "Gravitic Charges",
-    graviticTag: "Unlocks the Breacher",
+    graviticTag: "Unlocks the Nullifier",
     graviticRole:
-      "To unlock it, attack a defended world with an active Aegis; the shield must absorb at least {{share}} of your damage. A single Wasp can qualify; you do not need to win. The Breacher hits shields five times harder.",
+      "Attack a defended world with active Aegis to discover this research. Its shield must absorb at least {{share}} of your damage. You need not win. This unlocks the Nullifier, which deals five times its attack to shields.",
     gridName: "Interception Grid",
     gridTag: "Shoots down a Death Star",
     gridRole:
@@ -256,10 +256,10 @@ export const planet = {
     bulwarkDoctrineName: "Bulwark Doctrine",
     groundDoctrineName: "Emplacement Doctrine",
     generalName: "Weapons and Armour",
-    generalTag: "Improves every hull you own",
+    generalTag: "Improves combat and cargo ships",
     doctrineTag: "Better attack and armour",
     doctrineRole:
-      "Class and general bonuses stack, but their combined combat multiplier is capped at 25%. Class counters remain the larger advantage.",
+      "Raises ground-defence attack and hull strength together. Class matchups, ground capacity and salvage remain unchanged.",
     yardName: "Yard Automation",
     yardTag: "Builds ships faster",
     yardRole:
@@ -273,7 +273,7 @@ export const planet = {
     synthesisName: "Deuterium Synthesis",
     synthesisTag: "Raises the Refinery ceiling",
     synthesisRole:
-      "Each rung opens three more Deuterium Refinery levels on every world you hold",
+      "Each level opens three more Deuterium Refinery levels on every world you hold",
     researchNeedCore: "Raise Command Core to L{{level}}",
     researchAct: "Research",
     researchComplete: "researched",
@@ -322,7 +322,7 @@ export const planet = {
     requirements: "Requires: {{requirements}}",
     maxed: "at its highest level",
     /** The one building with a second ceiling: its research rung. T5. */
-    plantRung: "Research another rung of Deuterium Synthesis",
+    plantRung: "Research another level of Deuterium Synthesis",
     queueFull: "3 orders are already waiting. Finish or cancel one to add this.",
   },
 
@@ -538,22 +538,22 @@ export const launch = {
   /** B14: the held commit, and the price line under the ships (K8: a world raid turns). */
   holdWorld_one: "Launch {{count}} ship",
   holdWorld_other: "Launch {{count}} ships",
-  holdPirate_one: "Launch {{count}} ship — no recall",
-  holdPirate_other: "Launch {{count}} ships — no recall",
-  warningWorld: "{{world}} stays thin for {{duration}}, until this fleet is home.",
-  warningPirate: "No recall. {{world}} stays thin for {{duration}}, until this fleet is home.",
+  holdPirate_one: "Launch {{count}} ship",
+  holdPirate_other: "Launch {{count}} ships",
+  warningWorld: "This fleet cannot defend {{world}} until it returns. Estimated time away: {{duration}}.",
+  warningPirate: "You can call this raid back once before its engagement. The fleet cannot defend {{world}} until it returns. Estimated time away: {{duration}}.",
   recallNote:
     "Can be recalled once while in flight — it returns in the time already flown. Fuel is not refunded.",
   chooseFleet: "Choose a fleet",
   send: "Send {{count}} ships",
-  launched: "Launched. Exposed for {{duration}} · {{count}} units holding.",
+  launched: "Fleet launched. Estimated return: {{duration}}. {{count}} units remain to defend your planet.",
   whileAway: "While this fleet is away",
   defending: "{{count}} units defending home",
   nothingSent: "Nothing sent yet",
-  exposedFor: "Exposed for {{duration}}",
+  exposedFor: "Estimated fleet absence: {{duration}}",
   oneWayUnknown: "—",
   pace: "Flight speed",
-  paceHint: "Slower lands later and comes home at the same speed. Same fuel; no leg stays up past 12h.",
+  paceHint: "Slower fleets arrive later and return at the same speed. Fuel cost stays unchanged. Slower speeds require every flight leg to fit within 12 hours.",
   paceFull: "Full",
   /* The five reasons this commitment can be refused, each stated on the button. */
   noBay: "No flight bay free",
@@ -581,7 +581,7 @@ export const launch = {
   noShips:
     "No ships at home. Build some in the shipyard, or wait for a fleet to come back.",
   warning:
-    "This cannot be recalled. Once it leaves, the only way to find out what was down there is to watch it land — and your planet holds {{count}} units until it comes back.",
+    "This fleet cannot defend your planet until it returns. {{count}} units remain at home.",
   /**
    * WHAT A RAID COSTS THE COMMANDER FOR THE REST OF THE DAY. D183.
    *
@@ -602,7 +602,7 @@ export const launch = {
   radiationHpStays: "Stays at the destination.",
   radiationHpDose: "Flight radiation: {{hp}} HP per ship.",
   radiationHpHealth: "{{count}}× {{hull}} · {{health}}% HP · {{hp}} / {{max}} HP",
-  radiationHpDock: "Repair Station on landing.",
+  radiationHpDock: "Requires repair at the Repair Station after landing.",
   radiationHpFree: "Patched free on landing.",
   radiationHpCombat: "Combat may add damage.",
   radiationDock: "The route crosses radiation: each ship takes ~{{pct}}% of its hull. Over 20% waits in the Repair Station.",
@@ -611,7 +611,7 @@ export const launch = {
   range: "range {{d}}",
   arrive: "Arrival",
   homeLabel: "Back",
-  exposedShort: "exposed {{duration}}",
+  exposedShort: "fleet away: {{duration}}",
   lootSub: "loot ~{{band}}",
   bay: "Flight bay",
   bayThis: "this one takes 1",
@@ -622,9 +622,9 @@ export const launch = {
   staysPower: "power {{value}}",
   cargoEach: "{{amount}} cargo each",
   cargoAdds: "+{{amount}} cargo",
-  paceBrief: "same fuel · 12h at most",
-  warningWorldOpen: "{{world}} stays thin until this fleet is home.",
-  warningPirateOpen: "No recall. {{world}} stays thin until this fleet is home.",
+  paceBrief: "same fuel · slower legs ≤12h",
+  warningWorldOpen: "This fleet cannot defend {{world}} until it returns.",
+  warningPirateOpen: "You can call this raid back once before its engagement. The fleet cannot defend {{world}} until it returns.",
 } as const;
 
 export const transfer = {
@@ -633,7 +633,7 @@ export const transfer = {
   cooldown: "Unloading — {{duration}} left",
   homewardFuel: "Half rate — between your own worlds. An attack pays full.",
   /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
-  paceHint: "Slower lands later — ships in flight cannot be raided. A returning group flies back at the same speed. Same fuel; no leg past 12h.",
+  paceHint: "Ships in flight cannot be raided. Slower fleets arrive later; returning ships use the same speed. Fuel stays unchanged. Each slower flight leg must fit within 12 hours.",
   fuelShort: "short {{short}}",
   eyebrow: "World transfer",
   returnEta: "Back at origin in {{duration}} · {{time}}",
@@ -698,6 +698,7 @@ export const faults = {
   title: "Faults",
   mark: "Fault present",
   launchBlock: {
+    SILENT_SPACE: "Closed in Silent Space — return to use it",
     SHIPYARD_REVOLT: "Shipyard revolt — nothing can launch",
     PROSPECTOR_FAULT: "Prospector centre is down",
   },
@@ -709,13 +710,13 @@ export const faults = {
     priceBoth: "{{alloy}} alloy · {{crystal}} crystal",
     lane: "Crew {{slot}}",
   },
-  tab: "Something here is broken",
+  tab: "Active faults",
   /** One line per fault: the name a player sees on the row and the sheet. */
   name: {
     REFINERY_OUTAGE: "Alloy refinery blackout",
     EXTRACTOR_OUTAGE: "Crystal extractor blackout",
     PLANT_OUTAGE: "Deuterium refinery blackout",
-    VAULT_LEAK: "Vault leak",
+    VAULT_LEAK: "Store leak",
     CORE_OUTAGE: "Command core blackout",
     TELESCOPE_FAULT: "Telescope failure",
     SHIPYARD_REVOLT: "Revolt in the yard",
@@ -723,26 +724,26 @@ export const faults = {
   },
   /** What it stops, in the player's terms. One sentence, no hedging. */
   stopped: {
-    REFINERY_OUTAGE: "The refinery is dark. This world is making no alloy at all.",
-    EXTRACTOR_OUTAGE: "The extractor is dark. This world is making no crystal at all.",
-    PLANT_OUTAGE: "The plant is dark. This world is making no deuterium at all.",
-    VAULT_LEAK: "The vault is bleeding into orbit — and anyone whose telescope reaches this world can see the field and fly out for it.",
-    CORE_OUTAGE: "The core is dark: the Aegis is down and the ground guns have no fire control. Ships at home still fight. If someone lands now, they land on an open world.",
-    TELESCOPE_FAULT: "The telescope is blind. This world sees no further than the naked eye until it is fixed.",
-    SHIPYARD_REVOLT: "The yard has walked out. Nothing launches from this world — no raid, no transfer, no convoy. Craft already in the air still come home.",
-    PROSPECTOR_FAULT: "The pit is out. No Prospector can be sent from this world. Craft already out can still be recalled.",
+    REFINERY_OUTAGE: "The Alloy Refinery is offline. This planet is not producing alloy.",
+    EXTRACTOR_OUTAGE: "The Crystal Extractor is offline. This planet is not producing crystal.",
+    PLANT_OUTAGE: "The Deuterium Refinery is offline. This planet is not producing deuterium.",
+    VAULT_LEAK: "Leaked resources form a wreck field in orbit. Commanders whose Telescope reaches this planet can see the field and collect its resources.",
+    CORE_OUTAGE: "The Command Core is offline. Aegis and ground defences are disabled. Ships at this planet still defend it.",
+    TELESCOPE_FAULT: "The Telescope is offline. This planet uses the basic sight radius until repairs finish.",
+    SHIPYARD_REVOLT: "No new missions can launch from this planet. Ships already in flight can still return.",
+    PROSPECTOR_FAULT: "Prospectors cannot launch from this planet. Prospectors already on missions can still be recalled.",
   },
   toll: {
     title: "What it is taking",
     alloy: "{{amount}} alloy an hour, not being made",
     crystal: "{{amount}} crystal an hour, not being made",
     deuterium: "Every hour of deuterium this world would have made",
-    leak: "{{amount}} an hour draining into orbit, where anyone who can see this world may fly out and take it",
+    leak: "{{amount}} resources leak into the wreck field each hour. Commanders who see the field can collect them.",
   },
   loyalty: {
     title: "This world's loyalty",
     battleLoss: "Partial defeat −15 · decisive defeat −30 · Death Star −{{strike}}",
-    line: "{{value}}% — falling while {{count}} things are broken. At this rate it reaches zero in {{time}}, and the colony declares itself independent.",
+    line: "Loyalty: {{value}}%. Falling with {{count}} active faults. At this rate, it reaches zero in {{time}} and you lose the colony.",
     bar: "Loyalty {{value}}%",
     left: "{{time}} left",
   },
@@ -750,12 +751,12 @@ export const faults = {
     title: "The repair",
     crew: "the crew",
     parts: "parts",
-    takes: "Takes 5–15 minutes. The crew name their own hours when they are hired.",
+    takes: "Repairs take 5–15 minutes. The exact duration is set when repairs start.",
   },
-  repair: "Send a crew",
+  repair: "Start repair",
   running: "A crew is on it · {{time}}",
-  noCancel: "Once a crew is out they cannot be called back.",
+  noCancel: "Repairs cannot be cancelled once started.",
   lanesFull: "All {{count}} crews are out",
-  started: "A crew is on its way.",
+  started: "Repairs started.",
   failed: "That could not be started.",
 } as const;

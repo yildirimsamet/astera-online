@@ -12,10 +12,15 @@
  * knowing that probing, raiding, mining and salvaging exist.
  */
 export const rewards = {
+  empty: 'Keine Belohnungsziele verfügbar',
+  emptyHint: 'Lade die Belohnungsliste erneut, um nachzusehen.',
+  summaryReady: "Bereit zum Abholen",
+  summaryClaimed: "Abgeholte Stufen",
+  allMilestones: "Alle Stufen",
   eyebrow: 'Dauerhafte Belohnungen',
   title: 'Belohnungen',
   intro:
-    'Für deine Erfolge in der Galaxie erhältst du Belohnungen. Sie verfallen nicht und setzen keine tägliche Serie voraus. Die Ressourcen landen in deinem Lager – und können dir dort bei einem Überfall abgenommen werden.',
+    "Diese Ziele laufen nicht ab und erfordern keine Serie. Belohnungen gelangen direkt in den Speicher, auch über dessen Kapazität. Ungeschützte Ressourcen können geplündert werden.",
 
   waiting: '{{count}} zum Abholen bereit',
   allTaken: 'Du hast alle verfügbaren Belohnungen abgeholt. Mit deinem Fortschritt kommen weitere dazu.',
@@ -48,7 +53,7 @@ export const rewards = {
     PIRATE: { name: 'Piraten besiegt', tag: 'Besiege verschiedene Piraten und bring deine Schiffe zurück' },
     PROBE: { name: 'Sonden entsandt', tag: 'Erkunde dein Ziel, bevor du angreifst' },
     RAID: { name: 'Welten überfallen', tag: 'Greif verschiedene Welten an' },
-    CORE: { name: 'Kommandokern ausgebaut', tag: 'Schaffe Platz für weitere Verbesserungen' },
+    CORE: { name: 'Kommandokern ausgebaut', tag: "Erhöhe Gebäudestufengrenzen, außer beim Hangar" },
     SHIPYARD: { name: 'Werft', tag: 'Öffnet schwerere Rümpfe' },
     REFINERY: { name: 'Legierungsraffinerie', tag: 'Mehr Legierung pro Stunde' },
     EXTRACTOR: { name: 'Kristallextraktor', tag: 'Mehr Kristall pro Stunde' },

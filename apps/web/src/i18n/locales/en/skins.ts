@@ -33,7 +33,7 @@ export const skins = {
   modelUnavailable: 'Model unavailable',
   normal: 'Normal',
   recovery: 'Recovery shield',
-  recoveryNote: 'After a heavy attack, the struck planet wears this damaged model while its eight-hour recovery shield lasts. It is included with the skin.',
+  recoveryNote: "The planet uses this damaged appearance while its recovery shield is active. The shield lasts 8 hours; launching an attack can end it early. This appearance is included with the skin.",
   collection: 'The collection',
   owned: 'Owned',
   worlds: 'Your planets',

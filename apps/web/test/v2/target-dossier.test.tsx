@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { FAULT, distance } from '@astera/rules';
+import { FAULT, distance, fleetPace, travelMinutes } from '@astera/rules';
 import type { GalaxyPlanet, IntelView } from '../../src/api/schemas.js';
 import { compact } from '../../src/lib/format.js';
 import { flightModifiers, reachMinutes } from '../../src/lib/navigation.js';
@@ -69,10 +69,23 @@ describe('the target dossier', () => {
     show({ rivalSlot: 0 });
     const target = world();
     const range = Math.round(distance(home.planet.position, target.position));
-    const reach = reachMinutes(home.planet.position, target.position, home.fleet, flightModifiers(home));
+    const reach = reachMinutes(home.planet.position, target.position, home.fleet, flightModifiers(home), 'combat');
     expect(screen.getByText('Rival 1')).toBeInTheDocument();
     expect(screen.getByText(`Range ${String(range)}`)).toBeInTheDocument();
-    expect(screen.getByText(`${duration(reach ?? 0)} flight`)).toBeInTheDocument();
+    expect(screen.getByText(`Earliest ${duration(reach ?? 0)}`)).toBeInTheDocument();
+  });
+
+  it('quotes the fastest warship as an earliest arrival despite a faster cargo ship', () => {
+    const origin = planetView({ fleet: { DART: 4, RAMPART: 9, COURIER: 2 } });
+    show({ planet: origin });
+    const minutes = travelMinutes(distance(origin.planet.position, world().position), fleetPace({ DART: 1 }, flightModifiers(origin)));
+    expect(screen.getByText(`Earliest ${duration(minutes)}`)).toBeInTheDocument();
+  });
+
+  it('does not advertise an attack arrival when only cargo ships are available', () => {
+    show({ planet: planetView({ fleet: { COURIER: 2 } }) });
+    expect(screen.getByText('Out of reach')).toBeInTheDocument();
+    expect(screen.queryByText(/^Earliest /)).not.toBeInTheDocument();
   });
 
   it('dates the reading by the look that bought it', () => {

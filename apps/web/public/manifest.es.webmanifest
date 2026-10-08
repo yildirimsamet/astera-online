@@ -5,6 +5,9 @@
   "description": "Dirige una capital protegida, conquista colonias y explora una galaxia viva sin conocer las fuerzas de tus rivales.",
   "start_url": "/",
   "scope": "/",
+  "related_applications": [
+    { "platform": "webapp", "url": "/manifest.es.webmanifest", "id": "https://asteraonline.space/" }
+  ],
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#05070D",

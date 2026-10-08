@@ -72,7 +72,7 @@ describe('the defending line in a battle report', () => {
     // losses, so the line names no direction (the rule under it says which way each goes).
     expect(within(line).getByText(/support ×1\.5 · the host’s own fight was multiplied by it/i)).toBeInTheDocument();
     expect(within(line).queryByText(/grew|shrank/i)).toBeNull();
-    expect(within(line).getByText(/only the host’s dominion moves/i)).toHaveTextContent(/lost ships count at their value/i);
+    expect(within(line).getByText(/only the host’s dominion changes/i)).toHaveTextContent(/supporters’ permanent ship losses are added separately at resource value/i);
   });
 
   it('shows the raider names and losses, and nothing about what survived', async () => {

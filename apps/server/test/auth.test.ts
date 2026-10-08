@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { hashPassword, verifyPassword } from '../src/auth/password.js';
-import { accounts } from '../src/db/schema.js';
+import { accounts, accountRewards } from '../src/db/schema.js';
 import { testDb, testEnv, truncateAll } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
@@ -417,6 +417,8 @@ describe('auth', () => {
     it('refuses a session whose account no longer exists', async () => {
       const registered = await register();
       const cookie = cookieOf(registered.headers);
+      // Account deletion removes permanent ledger rows before their owner.
+      await db.delete(accountRewards).where(eq(accountRewards.accountId, registered.json<SessionResponse>().accountId));
       await db
         .delete(accounts)
         .where(eq(accounts.id, registered.json<SessionResponse>().accountId));

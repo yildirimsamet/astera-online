@@ -40,6 +40,7 @@ import {
   type InstrumentId,
   type InstrumentLevels,
   type TelescopeReading,
+  SILENT_SPACE,
 } from '@astera/rules';
 import { addMinutes, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -56,6 +57,7 @@ import {
   satellites,
   scanEvents,
   seasons,
+  shards,
   strategicAssets,
   units,
   watches,
@@ -842,7 +844,8 @@ export async function standingAt(tx: Tx, target: typeof planets.$inferSelect, no
     };
   }
   const [[season], levels, hardwareRows, faultRows] = await Promise.all([
-    tx.select().from(seasons).where(eq(seasons.id, target.seasonId)),
+    tx.select({ startsAt: seasons.startsAt, endsAt: seasons.endsAt, status: seasons.status, role: shards.role })
+      .from(seasons).innerJoin(shards, eq(shards.id, seasons.shardId)).where(eq(seasons.id, target.seasonId)),
     buildingLevelsOf(tx, target.id),
     tx.select().from(satellites).where(eq(satellites.planetId, target.id)),
     /*
@@ -880,6 +883,8 @@ export async function standingAt(tx: Tx, target: typeof planets.$inferSelect, no
         deuterium: leak.leakedDeuterium + target.pendingLeakDeuterium,
       }
       : undefined,
+    // D212: a Silent Space world's works run at half pace, and the report must say so.
+    season.role === 'WAITING' ? SILENT_SPACE.productionPace : 1,
   ).state;
 }
 

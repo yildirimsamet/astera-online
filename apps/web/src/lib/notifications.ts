@@ -307,6 +307,8 @@ const returned = z.discriminatedUnion('trip', [
    */
   z.object({
     trip: z.literal('pirate'),
+    /** Turned home before its engagement (owner, 2026-10-08): nothing was fought. */
+    recalled: z.boolean().optional(),
     ships: z.number(),
     lootAlloy: z.number(),
     lootCrystal: z.number(),
@@ -1013,6 +1015,8 @@ export function describeNotification(notification: NotificationView, now: number
         });
       }
       if (trip.trip === 'pirate') {
+        // Called back before the engagement: "empty-handed" would say it fought and found nothing.
+        if (trip.recalled === true) return withDock(i18n.t('notifications.pirateHomeRecalled', { count: trip.ships }), trip);
         /*
           THE LANE IS NOT A COMMANDER, so it never borrows the raid's wording. A
           pirate has no world to come back FROM by name and no ledger to move, and

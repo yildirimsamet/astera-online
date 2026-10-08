@@ -65,6 +65,7 @@ import type { TechLevels } from '@astera/rules';
 import { publicPlanetIdentity, recordGalaxyEvent } from './chronicle.js';
 import { pendingThreads, type PendingThread } from './session.js';
 import { planetView, type PlanetView } from './planetView.js';
+import { assertOutsideSilentSpace } from './waitingRoom.js';
 
 /**
  * MINING — D19.
@@ -421,6 +422,7 @@ export async function launchMining(
   return db.transaction(async (tx) => {
     const origin = await loadLocked(tx, planetId, clock, { expectedPlayerId });
     assertWorldOperational(origin);
+    assertOutsideSilentSpace(origin);
 
     const field = await fieldOf(tx, origin.seasonId, origin.now);
     const nowMinutes = minutesSince(field.startsAt, origin.now);
@@ -1437,6 +1439,7 @@ export async function launchHarvest(
   return db.transaction(async (tx) => {
     const origin = await loadLocked(tx, planetId, clock, { expectedPlayerId });
     assertWorldOperational(origin);
+    assertOutsideSilentSpace(origin);
 
     const available = origin.homeFleet.PROSPECTOR ?? 0;
     if (available < craft) {

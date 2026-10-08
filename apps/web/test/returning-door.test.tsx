@@ -77,7 +77,7 @@ describe('the front door on a device nobody has played on', () => {
     const { onBegin } = show(false);
 
     const door = loudDoor();
-    expect(door?.textContent).toMatch(/check your planet/i);
+    expect(door?.textContent).toMatch(/explore your planet/i);
     expect(door).toHaveClass('bg-v2-self', 'rounded-control');
 
     await userEvent.setup().click(door!);
@@ -98,7 +98,7 @@ describe('the front door on a device that has held a commander', () => {
     const door = loudDoor();
     expect(door?.textContent).toMatch(/sign in/i);
     // The whole bug in one assertion: the loud control must not start a rehearsal.
-    expect(door?.textContent).not.toMatch(/check your planet/i);
+    expect(door?.textContent).not.toMatch(/explore your planet/i);
 
     await userEvent.setup().click(door!);
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe('the front door on a device that has held a commander', () => {
 
   it('says the planet is still there rather than that one is ready', () => {
     show(true);
-    expect(screen.getByText(/where you left it/i)).toBeInTheDocument();
+    expect(screen.getByText(/continue with your commander/i)).toBeInTheDocument();
     expect(screen.queryByText(/your planet is ready/i)).not.toBeInTheDocument();
   });
 
@@ -172,7 +172,7 @@ describe('remembering a commander', () => {
       </Wrapper>,
     );
 
-    expect(loudDoor()?.textContent).toMatch(/check your planet/i);
+    expect(loudDoor()?.textContent).toMatch(/explore your planet/i);
     spy.mockRestore();
   });
 });

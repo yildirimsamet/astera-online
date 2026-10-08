@@ -316,6 +316,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
              */
             name: world.name,
             owner: record.silhouette.owner,
+            ...(record.silhouette.country ? { country: record.silhouette.country } : {}),
             kind: record.silhouette.kind,
             coreLevel: record.silhouette.coreLevel,
             coreTier: coreTier(record.silhouette.coreLevel),

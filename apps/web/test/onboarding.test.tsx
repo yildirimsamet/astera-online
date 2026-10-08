@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiProvider } from '../src/api/context.js';
-import { Api } from '../src/api/client.js';
+import { Api, ApiError } from '../src/api/client.js';
+import i18n from '../src/i18n/index.js';
 import { LandingScreen } from '../src/screens/LandingScreen.jsx';
 import { ServersScreen } from '../src/screens/ServersScreen.jsx';
 import type { HistoricalSeasonResult, ServerRow } from '../src/api/schemas.js';
@@ -75,7 +76,7 @@ function harness(servers: ServerRow[] = [server()]) {
 const instantly: Loader = () => Promise.resolve();
 
 const openDoor = async (): Promise<void> => {
-  await screen.findByRole('button', { name: /check your planet/i });
+  await screen.findByRole('button', { name: i18n.t('landing.register') });
 };
 
 describe('the landing screen', () => {
@@ -151,7 +152,7 @@ describe('the landing screen', () => {
     );
     await openDoor();
 
-    await user.click(screen.getByRole('button', { name: /check your planet/i }));
+    await user.click(screen.getByRole('button', { name: i18n.t('landing.register') }));
     expect(onBegin).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -170,7 +171,7 @@ describe('the landing screen', () => {
     await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
     expect(screen.getByRole('dialog', { name: /sign in/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /i need a commander/i }));
+    await user.click(screen.getByRole('button', { name: i18n.t('landing.form.switchToRegister') }));
     expect(onBegin).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
@@ -266,10 +267,13 @@ describe('the landing screen', () => {
    * A refused sign-in must not empty the form. Retyping a password on a phone
    * because the server said no is how a player decides the game is not worth it.
    */
-  it('keeps what was typed when the server refuses', async () => {
+  it.each([
+    [new ApiError('BAD_CREDENTIALS', 'Private authentication diagnostic', 401), 'errors.BAD_CREDENTIALS'],
+    [new Error('Private authentication diagnostic'), 'errors.unknown'],
+  ] as const)('keeps the name and shows a localised refusal for %s', async (cause, messageKey) => {
     const user = userEvent.setup();
     const onAuthenticate = vi.fn(() =>
-      Promise.reject(new Error('That name and password do not match')),
+      Promise.reject(cause),
     );
     const { wrapper: Wrapper } = harness();
     render(
@@ -285,7 +289,8 @@ describe('the landing screen', () => {
     await user.type(within(form).getByLabelText(/password/i), 'wrong-password');
     await user.click(within(form).getByRole('button', { name: /^sign in$/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/do not match/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(i18n.t(messageKey));
+    expect(screen.getByRole('alert')).not.toHaveTextContent('Private authentication diagnostic');
     expect(within(form).getByLabelText(/commander name/i)).toHaveValue('Vantage');
     // And the button is pressable again, not stuck on "Making contact".
     expect(within(form).getByRole('button', { name: /^sign in$/i })).toBeEnabled();
