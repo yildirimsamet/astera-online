@@ -6,7 +6,7 @@ import { defineConfig } from 'eslint/config';
 
 export default defineConfig(
   // Local scratch output and pre-existing agent worktrees are not build input.
-  { ignores: ['**/dist/**', '**/node_modules/**', 'legacy/**', '**/drizzle/**', '.dev/**', '.claude/worktrees/**', 'out/**'] },
+  { ignores: ['**/dist/**', '**/node_modules/**', 'legacy/**', '**/drizzle/**', '.dev/**', '.claude/worktrees/**', '**/out/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,

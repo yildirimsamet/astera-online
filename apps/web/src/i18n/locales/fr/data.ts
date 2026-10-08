@@ -348,7 +348,7 @@ export const vocabulary = {
       tag: 'Mines d\'astéroïdes',
       role: 'Les astéroïdes miniers avec une base de 200 · ne peuvent pas rejoindre une flotte de raid',
       pitch: 'Intercepte un astéroïde en mouvement et renvoie ce qu\'il peut transporter aux Travaux. Il ne peut ni attaquer ni transférer.',
-      detail: 'Un prospecteur ne peut être envoyé que vers des astéroïdes et des champs de débris révélés. Sa vitesse de base à l’aller et au retour à vide est de 1238 ; chargé, il revient à 619. Sa capacité de base est de 200 ; la Foreuse et la recherche Prospector Holds peuvent améliorer ces valeurs. Chaque monde commence avec de la place pour deux ; Prospector Holds III ouvre un troisième emplacement d’appareil. Il ne rejoint jamais les raids ni la défense locale.',
+      detail: "Chaque planète peut posséder deux Prospecteurs. La recherche Soutes de Prospecteur au niveau 3 ouvre un troisième emplacement. Un retour chargé se fait à la moitié de la vitesse aller. Le Derrick et la recherche augmentent la capacité ; le Derrick améliore aussi la vitesse. Les Prospecteurs occupent le Hangar mais ne défendent pas la planète.",
     },
   },
 
@@ -409,11 +409,11 @@ export const gains = {
     value: 'Magasin {{store}}h · {{safe}}h protégé',
   },
   shipyard: {
-    accuracyLabel: 'Précision de la sonde',
-    seesLabel: 'Voit à travers un voile jusqu\'à',
-    seesValue: 'L{{level}}',
-    unlocksHull: 'Débloque le {{hull}}',
-    stealth: 'Et rend vos propres sondes plus difficiles à détecter',
+    timeLabel: "Durée de production",
+    timeReduced: "{{percent}} de moins",
+    scope: "Vaisseaux et défenses terrestres. Amélioration du niveau {{from}} au niveau {{to}}.",
+    rowNote: "Chaque pourcentage est comparé au niveau précédent.",
+    unlocksHull: "Condition du chantier remplie : {{hull}}. Des recherches peuvent aussi être nécessaires.",
   },
 
   telescope: {

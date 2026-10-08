@@ -23,6 +23,5 @@ describe('pirate formation presentation', () => {
     expect(source).toContain('node.computeBoundingSphere()');
     expect(source).toContain('<PirateEngineFlames');
     expect(source).toContain('name="pirate-engine-flames"');
-    expect(source).toContain('depthTest: false');
   });
 });

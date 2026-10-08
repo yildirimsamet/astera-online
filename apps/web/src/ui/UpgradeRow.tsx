@@ -372,10 +372,12 @@ export function UpgradeRow({
           ) : gain ? (
             <p className="font-v2-mono text-micro leading-snug">
               <span className="text-v2-ink-3">{gain.label} </span>
-              {gain.resourcePair
-                ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />
-                : <span className="text-v2-ink-2">{gain.now}</span>}
-              <span className="mx-1 text-v2-ink-3" aria-label={t('upgradeRow.becomes')}>→</span>
+              {gain.now !== undefined && <>
+                {gain.resourcePair
+                  ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />
+                  : <span className="text-v2-ink-2">{gain.now}</span>}
+                <span className="mx-1 text-v2-ink-3" aria-label={t('upgradeRow.becomes')}>→</span>
+              </>}
               {gain.resourcePair
                 ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
                 : <span className="text-v2-self">{gain.next}</span>}
@@ -673,10 +675,12 @@ export function UpgradeRow({
             ) : gain ? (
               <p className={`num text-caption ${gain.wrapOnRow ? 'leading-snug' : 'truncate'}`}>
                 <span className="text-faint">{gain.label} </span>
-                {gain.resourcePair
-                  ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />
-                  : <span className="text-dim">{gain.now}</span>}
-                <span className="mx-1 text-faint" aria-label={t('upgradeRow.becomes')}>→</span>
+                {gain.now !== undefined && <>
+                  {gain.resourcePair
+                    ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />
+                    : <span className="text-dim">{gain.now}</span>}
+                  <span className="mx-1 text-faint" aria-label={t('upgradeRow.becomes')}>→</span>
+                </>}
                 {gain.resourcePair
                   ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
                   : <span className="text-bone">{gain.next}</span>}

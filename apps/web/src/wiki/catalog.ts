@@ -33,7 +33,7 @@ function copy(subject: WikiSubject, language: WikiLanguage): { name: string; rol
     case 'satellite': return v.satellite[subject.id];
     case 'research': {
       const value = projectCopy[subject.id][language];
-      return { ...value, role: value.role.replace('{{share}}', `${number(DEUTERIUM.graviticDiscoveryShieldShare * 100, language)}%`) };
+      return { ...value, role: value.role.replace('{{share}}', language === 'tr' ? `%${number(DEUTERIUM.graviticDiscoveryShieldShare * 100, language)}` : `${number(DEUTERIUM.graviticDiscoveryShieldShare * 100, language)}%`) };
     }
     case 'building': return v.building[subject.id];
   }
@@ -50,7 +50,10 @@ function requirements(subject: WikiSubject, language: WikiLanguage): { text: str
     case 'hull': {
       const h = HULLS[subject.id];
       const research = h.requiredResearch.map(r => ref('research', r.project, r.level));
-      const text = [t(`Build at ${ref('building', 'SHIPYARD', h.minShipyard)}. ${research.length ? `Completed research: ${research.join(', ')}.` : 'No completed research is required for this hull.'}`, `${ref('building', 'SHIPYARD', h.minShipyard)} seviyesinde üretilir. ${research.length ? `Tamamlanmış araştırmalar: ${research.join(', ')}.` : 'Bu birim için tamamlanmış araştırma gerekmez.'}`)];
+      const yardRequirement = h.minShipyard === 0
+        ? t(`No Shipyard upgrade is required to build this unit. Upgrade the ${ref('building', 'SHIPYARD')} for faster production.`, `Bu birimi üretmek için Tersane yükseltmesi gerekmez. Daha hızlı üretim için ${ref('building', 'SHIPYARD')} binasını yükselt.`)
+        : t(`Build at ${ref('building', 'SHIPYARD', h.minShipyard)}.`, `Üretim koşulu: ${ref('building', 'SHIPYARD', h.minShipyard)}.`);
+      const text = [yardRequirement + ' ' + t(research.length ? `Completed research: ${research.join(', ')}.` : 'No completed research is required for this hull.', research.length ? `Tamamlanmış araştırmalar: ${research.join(', ')}.` : 'Bu birim için tamamlanmış araştırma gerekmez.')];
       if (h.ground) text.push(t('Ground defences use the Command Core’s ground capacity. They cannot fly, transfer or carry resources. They share the Yard queue with ships. Some destroyed defences are [[combat.loot|rebuilt free after combat]].', 'Yer savunmaları Komuta Çekirdeğinin yer kapasitesini kullanır. Uçamaz, transfer edilemez veya kaynak taşıyamazlar. Gemilerle aynı Tersane sırasını kullanırlar. Savaşta yok edilenlerin bir kısmı [[combat.loot|ücretsiz yeniden kurulur]].'));
       else if (h.id === 'PROSPECTOR') text.push(t('Prospector is a mining craft and cannot join raid fleets. Its craft limit and mining capacity are separate from ordinary fleet cargo. [[satellite.DERRICK|Derrick]] improves it, and it still uses Hangar room. Read [[galaxy.mining|mining]] before sending it.', 'Kazıcı, madencilik aracıdır; akın filosuna katılamaz. Araç sınırı ve maden kapasitesi, normal filo kargosundan ayrıdır. [[satellite.DERRICK|Matkap]] onu geliştirir; Hangar alanı kullanmaya devam eder. Göndermeden önce [[galaxy.mining|madencilik kurallarını]] oku.'));
       else text.push(t(`Class: ${vocabulary[language].combatClass[h.cls].name}. ${vocabulary[language].combatClass[h.cls].tag}. Ships away still use the origin’s [[building.HANGAR|Hangar]] room. The slowest selected ship sets fleet speed. Compare attack, hull strength, cargo and room before building.`, `Sınıf: ${vocabulary[language].combatClass[h.cls].name}. ${vocabulary[language].combatClass[h.cls].tag}. Görevdeki gemiler de çıkış gezegeninin [[building.HANGAR|Hangar]] alanında sayılır. En yavaş seçilen gemi filo hızını belirler. Üretmeden önce saldırıyı, dayanımı, kargoyu ve kullanılan alanı karşılaştır.`));

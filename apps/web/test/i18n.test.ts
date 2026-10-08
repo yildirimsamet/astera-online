@@ -135,7 +135,7 @@ describe('the Store protection promise', () => {
     expect(en.vocabulary.building.VAULT.detail).toContain('110%');
     expect(tr.vocabulary.building.VAULT.detail).toContain('110');
     for (const locale of [en, tr]) {
-      expect(locale.vocabulary.building.VAULT.detail).toContain('L→L+1');
+      expect(locale.vocabulary.building.VAULT.detail).toMatch(/L→L\+1|3→4/);
     }
   });
 });
@@ -152,10 +152,10 @@ describe('Vocabulary describes the calibrated catalogue, not its retired stats',
     expect(en.counter.compareRule).not.toMatch(/all ships survive|guaranteed/i);
   });
 
-  it('scopes research speed to the capital Core and merchant speed to the catalogue', () => {
-    expect(en.vocabulary.building.CORE.detail).toMatch(/capital's Core determines research time/);
-    expect(tr.vocabulary.building.CORE.detail).toMatch(/Araştırma süresi.*ana gezegendeki Çekirdeğe bağlıdır/);
-    expect(tr.vocabulary.hull.ARGOSY.detail).toContain('katalogdaki en yavaş nakliye');
+  it('scopes research speed to the capital Core and distinguishes transport speed', () => {
+    expect(en.vocabulary.building.CORE.detail).toMatch(/capital[’']s Core determines research time/);
+    expect(tr.vocabulary.building.CORE.detail).toMatch(/Araştırma süresini.*ana gezegendeki Çekirdek/);
+    expect(tr.vocabulary.hull.ARGOSY.role).toContain('en düşük nakliyeci hızına');
   });
 
   /** 2026-10-06: a paced fleet comes home at its own pace; the copy must say so and never "full speed". */
@@ -204,7 +204,7 @@ describe('Vocabulary describes the calibrated catalogue, not its retired stats',
       }
       expect(HULLS[escort].atk, escort).toBeGreaterThan(HULLS[fortress].atk);
       expect(HULLS[escort].hp, escort).toBeLessThan(HULLS[fortress].hp);
-      expect(en.vocabulary.hull[escort].role, escort).toMatch(/price.*attacks harder.*less hull/i);
+      expect(en.vocabulary.hull[escort].role, escort).toMatch(/more.*attack.*less hull.*same price/i);
       expect(tr.vocabulary.hull[escort].role, escort).toMatch(/aynı bedelde.*daha az dayan/i);
     }
   });
@@ -213,11 +213,11 @@ describe('Vocabulary describes the calibrated catalogue, not its retired stats',
     for (const id of ['VIPER', 'TEMPEST', 'CORSAIR'] as const) {
       expect(HULLS[id].speed, id).toBe(HULLS.DART.speed);
     }
-    expect(en.vocabulary.hull.VIPER.detail).toContain('same raw speed');
-    expect(tr.vocabulary.hull.VIPER.detail).toContain('ham hızı aynıdır');
+    expect(en.vocabulary.hull.VIPER.detail).toContain('same base speed');
+    expect(tr.vocabulary.hull.VIPER.detail).toContain('Temel hızı Ok ile aynıdır');
     expect(HULLS.ARGOSY.cargo).toBeGreaterThan(HULLS.ATLAS.cargo);
     expect(en.vocabulary.hull.ATLAS.role).toContain('tier-three');
-    expect(tr.vocabulary.hull.ATLAS.role).toContain('Üçüncü seviyenin');
+    expect(tr.vocabulary.hull.ATLAS.role).toContain('3. kademe');
     expect(en.vocabulary.hull.CORSAIR.pitch).not.toContain('heaviest guns');
     expect(tr.vocabulary.hull.CORSAIR.pitch).not.toContain('en ağır silah');
   });
@@ -225,10 +225,10 @@ describe('Vocabulary describes the calibrated catalogue, not its retired stats',
   it('names the third mining-craft slot and capital-only colony gates', () => {
     expect(prospectorCeiling({})).toBe(2);
     expect(prospectorCeiling({ PROSPECTOR_HOLDS: 3 })).toBe(3);
-    expect(en.vocabulary.hull.PROSPECTOR.detail).toContain('Prospector Holds III');
-    expect(tr.vocabulary.hull.PROSPECTOR.detail).toContain('Kazıcı Ambarları III');
-    expect(en.research.holdsDetail).toContain('third Prospector slot');
-    expect(tr.research.holdsDetail).toContain('üçüncü Kazıcı yuvasını');
+    expect(en.vocabulary.hull.PROSPECTOR.detail).toContain('Prospector Holds level 3');
+    expect(tr.vocabulary.hull.PROSPECTOR.detail).toContain('Kazıcı Ambarları 3. seviye');
+    expect(en.research.holdsRole).toContain('third Prospector slot');
+    expect(tr.research.holdsRole).toContain('üçüncü Kazıcı yuvasını');
     for (const core of MULTI_WORLD.colonyCoreThresholds) {
       expect(en.vocabulary.building.CORE.detail).toContain(String(core));
       expect(tr.vocabulary.building.CORE.detail).toContain(String(core));
@@ -237,15 +237,14 @@ describe('Vocabulary describes the calibrated catalogue, not its retired stats',
     expect(tr.vocabulary.building.CORE.detail).toContain('Ana gezegende 9, 13 ve 16');
   });
 
-  it('states the Prospector outbound and laden return speeds in every language', () => {
-    for (const locale of [en, tr, de, fr, es, ja]) {
-      const detail = locale.vocabulary.hull.PROSPECTOR.detail;
-      expect(detail).toContain('1238');
-      expect(detail).toContain('619');
-      expect(detail).not.toContain('1547');
-      expect(detail).not.toContain('773');
-      expect(detail).not.toContain('309');
-      expect(detail).not.toContain('825');
+  it('explains the loaded-return speed relative to outbound speed in every language', () => {
+    for (const [locale, wording] of [
+      [en, /half its outbound speed/], [tr, /gidiş hızının yarısında/],
+      [de, /Hälfte der Hinfluggeschwindigkeit/], [fr, /moitié de la vitesse aller/],
+      [es, /mitad de la velocidad de ida/], [ja, /往路の半分の速度/],
+    ] as const) {
+      expect(locale.vocabulary.hull.PROSPECTOR.detail).toMatch(wording);
+      expect(locale.vocabulary.hull.PROSPECTOR.detail).not.toMatch(/1238|1547|619|773/);
     }
   });
 
@@ -596,22 +595,22 @@ describe('decision sheets explain every item', () => {
     expect(en.research.engineeringDetail).toMatch(/Level 1.*Tier 3.*Level 2.*Tier 4/i);
     expect(tr.research.engineeringDetail).toMatch(/1\. seviye.*3\. kademe.*2\. seviye.*4\. kademe/i);
 
-    // Automation applies to mobile craft, not the separate ground-defence curve.
-    expect(en.research.yardDetail).toContain('does not speed up ground defences');
-    expect(tr.research.yardDetail).toContain('Yer savunmalarını hızlandırmaz');
+    // Live Yard orders use hullWorkMinutes for both ships and ground defences.
+    expect(en.research.yardDetail).toContain('including Prospectors and ground defences');
+    expect(tr.research.yardDetail).toContain('Kazıcılar ve yer savunmaları dahil');
 
     // And the robots are its opposite number: the surface, never the yard. D198.
-    expect(en.research.robotsDetail).toContain('does not speed up ships');
-    expect(tr.research.robotsDetail).toContain('Gemileri veya yer savunmasını hızlandırmaz');
+    expect(en.research.robotsDetail).toContain('Ships and ground defences use the Yard and are unaffected');
+    expect(tr.research.robotsDetail).toContain('Gemiler ve yer savunmaları Tersaneyi kullanır; etkilenmezler');
 
     // Strategic stock is capped independently on every world, and both capacities
     // name their real figures (owner, 2026-10-01): 1 → 2 weapons, 2 → 4 charges.
-    expect(en.research.stockpileDetail).toContain('on each world');
-    expect(tr.research.stockpileDetail).toContain('her dünya için');
+    expect(en.research.stockpileDetail).toContain('each planet');
+    expect(tr.research.stockpileDetail).toContain('her gezegene ayrı');
     expect(en.research.stockpileRole).toMatch(/1 to 2/);
-    expect(tr.research.stockpileRole).toMatch(/1'den 2'ye/);
-    expect(en.research.gridRole).toMatch(/2 to 4/);
-    expect(tr.research.gridRole).toMatch(/2'den 4'e/);
+    expect(tr.research.stockpileRole).toMatch(/1’den 2’ye/);
+    expect(en.research.gridRole).toMatch(/2(?: charges)? to 4/);
+    expect(tr.research.gridRole).toMatch(/2’den 4’e/);
     // The Grid no longer "grants access": the first two charges need no research.
     expect(en.research.gridDetail).not.toMatch(/grants access/i);
     expect(tr.research.gridDetail).not.toMatch(/erişim verir/i);

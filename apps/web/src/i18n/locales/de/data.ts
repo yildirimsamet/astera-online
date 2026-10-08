@@ -272,7 +272,7 @@ export const vocabulary = {
       tag: 'Miniert Asteroiden',
       role: 'Minen von Asteroiden mit einer Basiskapazität von 200 · kann keiner Schlachtzugsflotte beitreten',
       pitch: 'Fängt einen sich bewegenden Asteroiden ab und gibt alles, was er transportieren kann, an die Werke zurück. Es kann nicht geplündert oder transferiert werden.',
-      detail: 'Ein Prospektor kann nur zu aufgedeckten Asteroiden und Trümmerfeldern geschickt werden. Seine Grundgeschwindigkeit auf dem Hinweg und bei leerem Rückflug beträgt 1238; beladen kehrt er mit 619 zurück. Sein Grundladeraum beträgt 200; Derrick- und Prospektor-Holds-Forschung können diese Werte verbessern. Jede Welt beginnt mit Platz für zwei; Prospektor Holds III eröffnet einen dritten Schiffsplatz. Er beteiligt sich nie an Angriffen oder der Heimatverteidigung.',
+      detail: "Jeder Planet kann zunächst zwei Prospektoren besitzen. Prospektor-Frachträume auf Stufe 3 schaltet einen dritten Platz frei. Beladen fliegen sie mit der Hälfte der Hinfluggeschwindigkeit zurück. Bohrturm und Forschung erhöhen die Kapazität; der Bohrturm erhöht auch das Tempo. Prospektoren belegen Hangarplatz, kämpfen aber nicht in der Heimatverteidigung.",
     },
   },
 
@@ -332,11 +332,11 @@ export const gains = {
     value: '{{store}}h Speicher · {{safe}}h geschützt',
   },
   shipyard: {
-    accuracyLabel: 'Sondengenauigkeit',
-    seesLabel: 'Sieht durch einen Schleier bis zu',
-    seesValue: 'L{{level}}',
-    unlocksHull: 'Schaltet den {{hull}} frei',
-    stealth: 'Und macht Ihre eigenen Sonden schwerer zu erkennen',
+    timeLabel: "Produktionszeit",
+    timeReduced: "{{percent}} kürzer",
+    scope: "Schiffe und Bodenverteidigungen. Ausbau von Stufe {{from}} auf Stufe {{to}}.",
+    rowNote: "Jeder Prozentsatz bezieht sich auf die vorherige Stufe.",
+    unlocksHull: "Werftanforderung erfüllt: {{hull}}. Forschung kann zusätzlich nötig sein.",
   },
 
   telescope: {

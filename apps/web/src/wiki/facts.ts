@@ -5,7 +5,7 @@ import {
   CLAN_SUPPORT, CLAN_LEVEL_MAX, GALAXY_EVENTS, TRADE, MONUMENT_SEASON_DEFAULTS,
   CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION, INACTIVITY_MS, SILENT_SPACE, SETTLEMENT_CLAIM_MINUTES, SETTLEMENT_PRIORITY_MINUTES, TRAVEL,
   alloyRate, buildingCost, buildingMinutes, crystalRate, deuteriumRate,
-  flightSlots, groundSlots, hangarCapacity, hullBulk, instrumentCost, radarRange,
+  flightSlots, groundSlots, hangarCapacity, hullBulk, shipyardTimeReduction, instrumentCost, radarRange,
   researchEffectAt, satelliteCost, satelliteSlots, shieldHp, telescopeSlots,
   telescopeRange, telescopeWatchRange, telescopeCooldownHours, researchMinutes,
   clanHangarCapacity, clanLevelUpgradeCost, seasonRankRewardProgram, storageHours,
@@ -18,7 +18,7 @@ import { vocabulary as tr } from '../i18n/locales/tr/data.js';
 
 export const number = (value: number, language: WikiLanguage): string => new Intl.NumberFormat(language, { maximumFractionDigits: 2 }).format(value);
 const hours = (value: number, language: WikiLanguage): string => `${number(value, language)} ${language === 'en' ? 'h' : 'sa'}`;
-const percent = (value: number, language: WikiLanguage): string => `${number(value * 100, language)}%`;
+const percent = (value: number, language: WikiLanguage): string => language === 'tr' ? `%${number(value * 100, language)}` : `${number(value * 100, language)}%`;
 const label = (language: WikiLanguage, en: string, tr: string): string => language === 'en' ? en : tr;
 const costCells = (cost: Resources, language: WikiLanguage): string[] => [cost.alloy, cost.crystal, cost.deuterium].map(v => number(v, language));
 const resourceColumns = (language: WikiLanguage): string[] => language === 'en' ? ['Alloy', 'Crystal', 'Deuterium'] : ['Alaşım', 'Kristal', 'Döteryum'];
@@ -74,17 +74,18 @@ export function subjectReference(subject: WikiSubject, language: WikiLanguage): 
     case 'building': {
       const id = subject.id;
       const max = id === 'HANGAR' ? HANGAR.maxLevel : id === 'DEUTERIUM_PLANT' ? DEUTERIUM.plantLevelsPerResearch * RESEARCH_PROJECTS.DEUTERIUM_SYNTHESIS.maxLevel : CORE_TOP_LEVEL;
-      const effectName = id === 'HANGAR' ? label(language, 'Hangar room', 'Hangar alanı') : id === 'VAULT' ? label(language, 'Base storage hours', 'Temel depolama saati') : id === 'SHIPYARD' ? label(language, 'Shipyard level', 'Tersane seviyesi') : label(language, 'Production per hour', 'Saatlik üretim');
+      const effectName = id === 'HANGAR' ? label(language, 'Hangar room', 'Hangar alanı') : id === 'VAULT' ? label(language, 'Base storage hours', 'Temel depolama saati') : id === 'SHIPYARD' ? label(language, 'Production time saved vs previous level', 'Önceki seviyeye göre üretim süresindeki azalma') : label(language, 'Production per hour', 'Saatlik üretim');
       const effect = (rung: number): string => {
         if (id === 'HANGAR') return n(hangarCapacity(rung));
         if (id === 'VAULT') return n(storageHours(rung));
-        if (id === 'SHIPYARD') return n(rung);
+        if (id === 'SHIPYARD') return percent(Math.round(shipyardTimeReduction(rung - 1) * 1000) / 1000, language);
         return n(id === 'REFINERY' ? alloyRate(rung) : id === 'EXTRACTOR' ? crystalRate(rung) : deuteriumRate(rung));
       };
       blocks = [{ kind: 'note', text: words.priceNote }, table(label(language, 'Upgrade reference levels', 'Yükseltme referans seviyeleri'),
         [level, ...resourceColumns(language), ...(id === 'CORE' ? [label(language, 'Flight bays', 'Uçuş rampaları'), label(language, 'Orbit slots', 'Yörünge yuvaları'), label(language, 'Ground-defence capacity', 'Yer savunması kapasitesi')] : [effectName]), label(language, 'Base build minutes', 'Temel kurulum dakikası')],
         Array.from({ length: max }, (_, index) => { const rung = index + 1; return [n(rung), ...costCells(buildingCost(id, rung - 1), language), ...(id === 'CORE' ? [n(flightSlots(rung)), n(satelliteSlots(rung)), n(groundSlots(rung))] : [effect(rung)]), n(buildingMinutes(id, rung, {}))]; })),
         { kind: 'note', text: label(language, 'The table shows reference levels, not a universal building cap. The Hangar has its own fixed top; other local buildings obey the Core, and Deuterium Refinery also obeys Synthesis. Production rows exclude satellites and temporary effects.', 'Tablo referans seviyelerini gösterir; tüm binalara ortak tavan değildir. Hangarın sabit kendi tavanı vardır; diğer yerel binalar Çekirdeğe, Döteryum Rafinerisi ayrıca Senteze bağlıdır. Üretim satırları uydu ve geçici etki içermez.') }];
+      if (id === 'SHIPYARD') blocks.unshift({ kind: 'note', text: label(language, 'Time saved applies to ships and ground defences. Each row compares with the previous Shipyard level, with the same research bonuses.', 'Süre azalması gemiler ve yer savunmaları için geçerlidir. Her satır, araştırma bonusları aynı kalırken bir önceki Tersane seviyesiyle karşılaştırılır.') });
       break;
     }
     case 'instrument': {
@@ -174,7 +175,7 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
     [t('Free landing repair: damage at most', 'Ücretsiz iniş onarımı: en çok hasar'), `${n(SHIP_DAMAGE.autoRepairMaxBp / 100)}%`],
     [t('Repair orders, including the active order', 'Aktif iş dahil onarım siparişi sınırı'), n(BUILD.queueDepth)],
   ])];
-  if (id === 'intel.probes') blocks = [table(t('One planet probe, excluding flight fuel', 'Uçuş yakıtı hariç bir gezegen sondası'), resourceColumns(language), [costCells({ alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 }, language)])];
+  if (id === 'intel.probes') blocks = [table(t('Resource cost of one planet probe', 'Bir gezegen sondasının kaynak bedeli'), resourceColumns(language), [costCells({ alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 }, language)])];
   if (id === 'worlds.colonies') blocks = [pairs(language, t('Colony maintenance', 'Koloni bakımı'), [
     [t('Faults possible from local Core', 'Arıza çıkabilen yerel Çekirdek'), n(FAULT.minCoreLevel)],
     [t('Full loyalty', 'Tam sadakat'), n(FAULT.loyaltyMax)],

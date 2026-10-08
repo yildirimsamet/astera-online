@@ -101,9 +101,9 @@ export const research = {
   yardName: "Automatización de astilleros",
   yardTag: "Construye naves más rápido",
   yardRole:
-    "Acorta el tiempo de construcción de naves móviles sin afectar los cañones terrestres ni la capacidad del astillero.",
+    "Acorta las nuevas órdenes de producción de naves y defensas terrestres en todos tus planetas.",
   yardDetail:
-    "Cada peldaño reduce el tiempo de cada pedido futuro de naves móviles en tus mundos, incluidos los Prospectores. No acelera las defensas terrestres, no reduce los precios de los recursos ni agrega espacios en la cola de Yard.",
+    "Cada nivel reduce la duración de las nuevas órdenes del astillero, incluidos los Prospectores y las defensas terrestres. La tabla muestra qué parte del tiempo base queda. Los costes y la capacidad de la cola no cambian. La construcción y las reparaciones usan investigaciones distintas.",
   robotsName: "Robots con IA",
   robotsTag: "Construye estructuras más rápido",
   robotsRole:

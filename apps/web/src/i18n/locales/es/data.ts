@@ -272,7 +272,7 @@ export const vocabulary = {
       tag: 'Minas de asteroides',
       role: 'Extrae asteroides con una base de 200 · no puede unirse a una flota de incursión',
       pitch: 'Intercepta un asteroide en movimiento y devuelve lo que puede transportar a Producción. No puede atacar ni transferir.',
-      detail: 'Un Prospector solo puede enviarse a asteroides y campos de escombros revelados. Su velocidad base de ida y de regreso vacío es 1238; cargado regresa a 619. Su capacidad base es 200; Derrick y la investigación Bodegas de Prospector pueden mejorar estos valores. Cada mundo comienza con espacio para dos; Bodegas de Prospector III abre una tercera ranura. Nunca se une a incursiones ni a la defensa local.',
+      detail: "Cada planeta puede tener dos Prospectores sin investigación. Bodegas de Prospector de nivel 3 abre un tercer espacio. El regreso cargado usa la mitad de la velocidad de ida. La Torre de perforación y la investigación aumentan la capacidad; la torre también aumenta la velocidad. Usan espacio del Hangar, pero no defienden el planeta.",
     },
   },
 
@@ -332,11 +332,11 @@ export const gains = {
     value: '{{store}}h almacén · {{safe}}h protegido',
   },
   shipyard: {
-    accuracyLabel: 'Precisión de la sonda',
-    seesLabel: 'Ve a través de un velo hasta',
-    seesValue: 'L{{level}}',
-    unlocksHull: 'Desbloquea el {{hull}}',
-    stealth: 'Y hace que tus propias sondas sean más difíciles de detectar',
+    timeLabel: "Tiempo de producción",
+    timeReduced: "{{percent}} menos",
+    scope: "Naves y defensas terrestres. Mejora del nivel {{from}} al nivel {{to}}.",
+    rowNote: "Cada porcentaje se compara con el nivel anterior.",
+    unlocksHull: "Requisito de astillero cumplido: {{hull}}. Puede requerir investigación adicional.",
   },
 
   telescope: {

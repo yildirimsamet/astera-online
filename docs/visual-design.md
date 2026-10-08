@@ -399,8 +399,14 @@ formation it just selected or leave its rear ranks behind the rail.
 An identified pirate's selectable area follows the same visible truth. It is an instanced sphere per
 drawn hull, not one rectangular volume around the formation's extrema; the empty wedges between hulls
 remain available to galaxy clicks even at close zoom. Pirate engines use the batched animated plume
-field with depth testing disabled and stronger energy, so another hull's depth clear cannot erase the
-flame bank.
+field with stronger energy.
+
+**Worlds are opaque (owner, 2026-10-08).** Nothing draws through a nearer planet: hulls, drills,
+plumes, reticles, satellite rims and convoy wind are depth-tested against the worlds (no hull clears
+the depth buffer any more), and a map name is dropped when its box falls on a nearer world's disc. A
+name or pin that clears the nearer limb stays, as any object above that world would. Squadron pips and
+rank badges are depth-tested one and a half hulls nearer the camera, so their own squadron never
+covers them from a steep camera while a planet in front still does.
 
 ## Audio — nothing exists
 

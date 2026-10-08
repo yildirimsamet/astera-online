@@ -20,6 +20,7 @@ import {
   impactPoint,
   shotProgress,
   volleyFor,
+  behindTarget,
   type Shot,
 } from './volley.js';
 import { serverNow } from '../lib/clock.js';
@@ -139,6 +140,7 @@ export function Bombardment({
   /** One in sensor reach; reduced only for the synthetic, effect-only public view. */
   intensity = 1,
   engagementSeconds,
+  strikesWorld = false,
 }: {
   volleyKey: string;
   slots: readonly (readonly [number, number, number])[];
@@ -149,43 +151,60 @@ export function Bombardment({
   intensity?: number;
   /** Defaults to ordinary combat; the public convoy authors an exact five seconds. */
   engagementSeconds?: number;
+  /** The target is a world, which hides a volley fired from its far side. Not a formation. */
+  strikesWorld?: boolean;
 }) {
   const shots = useMemo(
     () => volleyFor(volleyKey, slots.length, radius, engagementSeconds),
     [volleyKey, slots.length, radius, engagementSeconds],
   );
+  const root = useRef<THREE.Group>(null);
+  const sight = useMemo(() => ({ squadron: new THREE.Vector3(), centre: new THREE.Vector3() }), []);
+  useFrame(({ camera }) => {
+    const node = root.current;
+    if (!node) return;
+    // Everything here draws over the worlds so a burst is never cut by the sphere
+    // it lands on; the struck world still hides the whole volley fired from behind it.
+    sight.squadron.setFromMatrixPosition(node.matrixWorld);
+    sight.centre.set(0, 0, distance).applyMatrix4(node.matrixWorld);
+    const eye = camera.position;
+    node.visible = !(strikesWorld && behindTarget([eye.x, eye.y, eye.z],
+      [sight.squadron.x, sight.squadron.y, sight.squadron.z], [sight.centre.x, sight.centre.y, sight.centre.z], radius));
+  });
 
   if (shots.length === 0 || distance <= 0 || radius <= 0) return null;
 
   return (
-    <Suspense fallback={null}>
-      {/**
-       * THE DISPLAY'S REAL RATE, FOR THESE TEN SECONDS ONLY. D53.
-       *
-       * Nothing here ever asked for a frame. The disc renders on demand and the
-       * only thing asking was the ambient floor, so the whole bombardment was
-       * drawn at the rate chosen for a rock creeping round a forty-minute orbit: a
-       * round crossing its gap in eight tenths of a second got about twenty stepped
-       * positions, and the nozzle flicker at nearly seven hertz got three and a
-       * half samples a cycle, which reads as noise rather than as an engine.
-       *
-       * `Meteors` and the camera rig have always done this; the one moment in the
-       * game that a decision was made forty minutes for was the one that did not.
-       */}
-      <FullRate />
-      {shots.map((shot, i) => (
-        <Round
-          key={i}
-          shot={shot}
-          from={slots[shot.slot] ?? [0, 0, 0]}
-          distance={distance}
-          radius={radius}
-          size={shipScale * MISSILE_OF_SHIP}
-          arriveAt={arriveAt}
-          intensity={intensity}
-        />
-      ))}
-    </Suspense>
+    <group ref={root}>
+      <Suspense fallback={null}>
+        {/**
+         * THE DISPLAY'S REAL RATE, FOR THESE TEN SECONDS ONLY. D53.
+         *
+         * Nothing here ever asked for a frame. The disc renders on demand and the
+         * only thing asking was the ambient floor, so the whole bombardment was
+         * drawn at the rate chosen for a rock creeping round a forty-minute orbit: a
+         * round crossing its gap in eight tenths of a second got about twenty stepped
+         * positions, and the nozzle flicker at nearly seven hertz got three and a
+         * half samples a cycle, which reads as noise rather than as an engine.
+         *
+         * `Meteors` and the camera rig have always done this; the one moment in the
+         * game that a decision was made forty minutes for was the one that did not.
+         */}
+        <FullRate />
+        {shots.map((shot, i) => (
+          <Round
+            key={i}
+            shot={shot}
+            from={slots[shot.slot] ?? [0, 0, 0]}
+            distance={distance}
+            radius={radius}
+            size={shipScale * MISSILE_OF_SHIP}
+            arriveAt={arriveAt}
+            intensity={intensity}
+          />
+        ))}
+      </Suspense>
+    </group>
   );
 }
 

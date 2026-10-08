@@ -17,6 +17,8 @@ const world = (id: string, name: string, dx: number, dz: number, over: Partial<G
 });
 const WORLDS = [
   world('home', 'Bellwether', 0, 0, { owner: 'Yıldırım', country: 'TR', coreTier: 2, coreLevel: 6, isSelf: true, isOwned: true }),
+  // Aligned behind home: reproduces the owner's premature-hide screenshot.
+  world('rear', 'Kestrel-108', 0, -2, { owner: 'Cremtar', country: 'ES' }),
   world('vega', 'Vega', -5, -9),
   world('kestrel', 'Kestrel', 6, -9, { owner: 'Ada', country: 'DE' }),
   world('memory', 'Solace', -3.5, 3, { owner: 'Orin', country: 'FR', intel: 'REMEMBERED', seenAt: new Date(Date.now() - 2 * 60 * 60_000) }),

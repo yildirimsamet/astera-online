@@ -59,8 +59,8 @@
     position: relative;
     isolation: isolate;
     display: inline-grid;
-    width: 1.35rem;
-    height: 1.55rem;
+    width: 0.7rem;
+    height: 0.75rem;
     flex: 0 0 auto;
     place-items: center;
   }
@@ -71,7 +71,7 @@
     width: 1.95rem;
     height: 1.95rem;
     border-radius: 999px;
-    background: radial-gradient(circle, color-mix(in srgb, var(--rank-metal) 46%, transparent), transparent 68%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--rank-metal) 36%, transparent), transparent 48%);
     content: '';
   }
 
@@ -103,8 +103,8 @@
   }
 
   .rank-badge-gold::before {
-    width: 2.15rem;
-    height: 2.15rem;
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
   .rank-badge-silver {

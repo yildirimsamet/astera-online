@@ -61,7 +61,7 @@ export async function verifyWiki(output) {
       await room.screenshot({ path: join(output, `${label}-sheet.png`) });
       const roomLayout = await dialog.evaluate(element => ({ fits: element.scrollWidth <= element.clientWidth, pageFits: document.documentElement.scrollWidth <= innerWidth }));
       assert.ok(roomLayout.fits && roomLayout.pageFits, `${label} Wiki sheet overflow`);
-      await dialog.getByRole('link', { name: language === 'en' ? /^Shipyard level \d+$/ : /^Tersane \d+\. seviye$/ }).click();
+      await dialog.getByRole('link', { name: language === 'en' ? /^Shipyard(?: level \d+)?$/ : /^Tersane(?: \d+\. seviye)?$/ }).click();
       await dialog.getByRole('heading', { name: language === 'en' ? 'Shipyard' : 'Tersane', exact: true }).waitFor();
       await dialog.getByRole('button', { name: language === 'en' ? /Dart/ : /Ok/ }).click();
       await dialog.getByRole('heading', { name: language === 'en' ? 'Dart' : 'Ok', exact: true }).waitFor();

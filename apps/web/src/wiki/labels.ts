@@ -13,7 +13,7 @@ export const wikiLabels = localized({
   home: 'Oyun Wiki’si', title: 'Astera Online Wiki', subtitle: 'Üretim, istihbarat, filo ve savaş kurallarını öğren. Bir sonraki eylemini seçmeden gereksinimleri, bedelleri ve riskleri karşılaştır.',
   categories: 'Wiki’yi keşfet', toc: 'Bu sayfada', related: 'İlgili konular', back: 'Geri dön:', publicPage: 'Wiki sayfasını aç',
   search: 'Wiki’de ara', noResults: 'Sonuç bulunamadı. Bir gemi, bina veya mekanik ara.', all: 'Tüm konular',
-  entry: 'Buradan başla', entryTitle: 'İlk komutanlığın', entryDetail: 'Üretimden istihbarata, ilk uçuşuna kadar uygulanabilir bir başlangıç.',
+  entry: 'Buradan başla', entryTitle: 'İlk adımların', entryDetail: 'Üretimden istihbarata, ilk uçuşuna kadar uygulanabilir bir başlangıç.',
   game: 'Astera Online oyna', requires: 'Gereksinimler ve bağlantılar', numbers: 'Referans değerleri', use: 'Nasıl kullanılır?',
   ruleNote: 'Araştırma ve yörünge bonusları uygulanmadan önceki temel değerler. Seçtiğin filo ve gezegenin güncel değerleri gönderim önizlemesinde gösterilir.',
   priceNote: 'Her satır, o seviyeye ulaşmak için ayrı ödenecek bedeldir. Yerel seviyeler ve araştırmalar süreleri ve kapasiteleri etkiler. Araştırma süresini ana gezegendeki Komuta Çekirdeği belirler.',

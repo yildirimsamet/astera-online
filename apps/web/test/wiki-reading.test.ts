@@ -1,9 +1,42 @@
 import { describe, expect, it } from 'vitest';
-import { flightSlots, satelliteSlots, groundSlots, telescopeRange, telescopeWatchRange, researchEffectAt, HULLS, TRAVEL } from '@astera/rules';
+import { flightSlots, satelliteSlots, groundSlots, telescopeRange, telescopeWatchRange, researchEffectAt, hullWorkMinutes, HULLS, TRAVEL, DEUTERIUM } from '@astera/rules';
 import { getWikiArticle } from '../src/wiki/catalog.js';
-import { number, subjectReference } from '../src/wiki/facts.js';
+import { conceptReference, number, subjectReference } from '../src/wiki/facts.js';
 
 describe('Wiki values a new player can interpret', () => {
+  it('compares Shipyard levels by time saved from each preceding level, for all units', () => {
+    for (const language of ['en', 'tr'] as const) {
+      const reference = subjectReference({ kind: 'building', id: 'SHIPYARD' }, language);
+      const table = reference.blocks.find(block => block.kind === 'table');
+      if (table?.kind !== 'table') throw new Error('Missing Shipyard levels');
+      const column = table.columns.indexOf(language === 'en' ? 'Production time saved vs previous level' : 'Önceki seviyeye göre üretim süresindeki azalma');
+      expect(column).toBeGreaterThanOrEqual(0);
+      for (const [index, row] of table.rows.entries()) {
+        const saved = 1 - hullWorkMinutes('CITADEL', 2, index + 1, {}) / hullWorkMinutes('CITADEL', 2, index, {});
+        const percentage = number(Math.round(saved * 1000) / 10, language);
+        expect(row[column]).toBe(language === 'tr' ? `%${percentage}` : `${percentage}%`);
+      }
+      expect(JSON.stringify(reference.blocks)).not.toMatch(/1 Dart|1 Ok/);
+    }
+  });
+  it('explains that a zero minimum Shipyard level does not require an upgrade', () => {
+    const article = getWikiArticle('hull.DART');
+    if (!article) throw new Error('Missing Dart requirements');
+    for (const language of ['en', 'tr'] as const) {
+      const text = article.sections[language].find(section => section.id === 'requirements')?.blocks.flatMap(block => block.kind === 'text' ? [block.text] : []).join(' ');
+      expect(text).toContain(language === 'en' ? 'No Shipyard upgrade is required' : 'Tersane yükseltmesi gerekmez');
+      expect(text).not.toMatch(/level 0|0\. seviye/);
+    }
+  });
+  it('formats Turkish percentages with the sign before the value in prose and tables', () => {
+    const article = getWikiArticle('research.GRAVITIC_CHARGES');
+    if (!article) throw new Error('Missing discovery explanation');
+    const prose = article.sections.tr.flatMap(section => section.blocks.flatMap(block => block.kind === 'text' ? [block.text] : [])).join(' ');
+    expect(prose).toContain(`%${number(DEUTERIUM.graviticDiscoveryShieldShare * 100, 'tr')}`);
+    const table = conceptReference('combat.model', 'tr')?.blocks.find(block => block.kind === 'table');
+    if (table?.kind !== 'table') throw new Error('Missing combat percentages');
+    expect(table.rows.find(row => row[0] === 'Kesin zaferde alınan korumasız ganimet')?.[1]).toMatch(/^%\d/);
+  });
   it('names the three independent Core capacities in separate columns', () => {
     for (const language of ['en', 'tr'] as const) {
       const table = subjectReference({ kind: 'building', id: 'CORE' }, language).blocks.find(b => b.kind === 'table');

@@ -25,6 +25,7 @@ export async function verifyTargetMap(output) {
       page.on('pageerror', error => { errors.push(error.message); });
       await page.goto(`${web}/target-map-preview.html`, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => window.__galaxy && document.querySelector('[data-world-label]'));
+      await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(1000);
 
       const aim = async (range, x = 22, z = 0) => {
@@ -73,7 +74,7 @@ export async function verifyTargetMap(output) {
       assert.equal(nearby.find(label => label.id === 'neutral')?.flags.length, 0, `${name}: neutral world has a commander flag`);
       assert.ok(nearby.length <= 32);
       for (const label of nearby) {
-        assert.ok(label.fontSizes.every(size => size <= 10), `${name}: map text has not been reduced`);
+        assert.ok(label.fontSizes.every(size => size <= 9), `${name}: map text has not been reduced another 10%`);
         for (const flag of label.flags) {
           assert.equal(flag.width, 10, `${name}: flag is not half width`);
           assert.equal(flag.height, 6, `${name}: flag is not half height`);
@@ -88,6 +89,34 @@ export async function verifyTargetMap(output) {
       }
       observations.push({ name, scenario: 'nearby', labels: nearby });
       await page.screenshot({ path: join(output, `${name}-nearby.png`) });
+
+      await aim(35);
+      await page.waitForFunction(() => {
+        const element = document.querySelector('[data-world-label="rear"]');
+        return element && getComputedStyle(element).visibility === 'visible';
+      });
+      const separated = await labels();
+      const home = separated.find(label => label.id === 'home');
+      const rear = separated.find(label => label.id === 'rear');
+      assert.ok(home && rear && rear.top + rear.height + 1 < home.top, `${name}: background name vanished before touching the foreground text`);
+      observations.push({ name, scenario: 'close-label-gap', labels: separated, gap: home.top - rear.top - rear.height });
+      await page.screenshot({ path: join(output, `${name}-close-label-gap.png`) });
+
+      await aim(55);
+      await page.waitForFunction(() => {
+        const element = document.querySelector('[data-world-label="rear"]');
+        return !element || getComputedStyle(element).visibility !== 'visible';
+      });
+      assert.ok((await labels()).some(label => label.id === 'home'), `${name}: collision hid the higher-priority owned label`);
+      observations.push({ name, scenario: 'actual-label-collision', labels: await labels() });
+
+      await aim(78);
+      await page.waitForFunction(() => {
+        const element = document.querySelector('[data-world-label="home"]');
+        return element && getComputedStyle(element).visibility === 'visible';
+      });
+      observations.push({ name, scenario: 'extended-range', labels: await labels() });
+      await page.screenshot({ path: join(output, `${name}-extended-range.png`) });
 
       await aim(95);
       await page.waitForFunction(() => [...document.querySelectorAll('[data-world-label]')].every(element => getComputedStyle(element).visibility === 'hidden'));
@@ -109,7 +138,7 @@ export async function verifyTargetMap(output) {
       observations.push({ name, scenario: 'close', labels: close });
       assert.deepEqual(errors, [], `${name}: runtime errors`);
       await context.close();
-      console.log(`PASS ${name}: untapped names, loaded country flags, dated memories, fog, zoom, bounds and collisions`);
+      console.log(`PASS ${name}: smaller text, measured collisions, background label gap, extended range, flags, fog and bounds`);
     }
   } catch (error) {
     if (page && !page.isClosed()) await page.screenshot({ path: join(output, 'failure.png') }).catch(() => undefined);

@@ -1,5 +1,7 @@
 import {
   HANGAR,
+  ALL_HULLS,
+  shipyardTimeReduction,
   SILENT_SPACE,
   hangarCapacity,
   robotSpeedMult,
@@ -92,8 +94,11 @@ const radarReachWord = (level: number): string => {
 export interface Gain {
   /** The quantity being bought, named as the player feels it. */
   label: string;
-  now: string;
+  /** Previous absolute value; omitted when the upgrade states a relative effect. */
+  now?: string;
   next: string;
+  /** Scope and comparison baseline when they are needed to interpret the effect. */
+  note?: string;
   /** Keep a longer comparison visible on narrow upgrade rows. */
   wrapOnRow?: true;
   /** Resource-shaped values use the game's learnt resource art, never initials. */
@@ -219,42 +224,13 @@ export function buildingGain(
       };
     }
     case 'SHIPYARD': {
-      const unlocked = (['PIKE', 'COURIER', 'RAMPART'] as const).find(
-        (hull) => HULLS[hull].minShipyard === next,
-      );
-
-      /**
-       * TWO THINGS, AND THE SECOND ONE IS WHAT KEEPS SELLING.
-       *
-       * `probeAccuracy` is clamped at 1.0, which an unveiled target hits at L4 —
-       * so from there the row read "100% -> 100%" for every level after. A Shipyard
-       * has not stopped buying anything: accuracy is `shipyard - veil`, so each
-       * level sees through a better Veil, and the same figure is what makes a probe
-       * hard to detect. Once the headline flattens, the row switches to the number
-       * that is still moving.
-       *
-       * `seesThrough` is the highest Veil a probe still beats the accuracy floor
-       * against: accuracy stays above its minimum while `shipyard - veil > -2.08`.
-       */
-      const seesThrough = (l: number): number => l + 2;
-      const flat = probeAccuracy(next, 0) === probeAccuracy(level, 0);
-      if (flat) {
-        return {
-          label: i18n.t('gains.shipyard.seesLabel'),
-          now: i18n.t('gains.shipyard.seesValue', { level: seesThrough(level) }),
-          next: i18n.t('gains.shipyard.seesValue', { level: seesThrough(next) }),
-          unlocks: unlocked
-            ? i18n.t('gains.shipyard.unlocksHull', { hull: hullLabel(unlocked) })
-            : i18n.t('gains.shipyard.stealth'),
-        };
-      }
+      const unlocked = ALL_HULLS.filter(hull => HULLS[hull].minShipyard === next);
       return {
-        label: i18n.t('gains.shipyard.accuracyLabel'),
-        now: percent(probeAccuracy(level, 0)),
-        next: percent(probeAccuracy(next, 0)),
-        ...(unlocked
-          ? { unlocks: i18n.t('gains.shipyard.unlocksHull', { hull: hullLabel(unlocked) }) }
-          : {}),
+        label: i18n.t('gains.shipyard.timeLabel'),
+        next: i18n.t('gains.shipyard.timeReduced', { percent: percent(shipyardTimeReduction(level)) }),
+        note: i18n.t('gains.shipyard.scope', { from: level, to: next }),
+        wrapOnRow: true,
+        ...(unlocked.length ? { unlocks: i18n.t('gains.shipyard.unlocksHull', { hull: unlocked.map(hullLabel).join(', ') }) } : {}),
       };
     }
     /** An hourly rate, in the same shape the other two producers are sold in. T5. */

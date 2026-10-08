@@ -13,9 +13,12 @@ import {
   HANGAR,
   START_BUILDINGS,
   hangarCapacity,
+  hullWorkMinutes,
+  ALL_HULLS,
 } from '@astera/rules';
 import { buildingGain, instrumentGain, satelliteGain } from '../src/lib/gains.js';
 import { LANGUAGES } from '../src/i18n/languages.js';
+import { percent } from '../src/lib/format.js';
 
 const LOCALES = LANGUAGES;
 
@@ -91,9 +94,9 @@ describe('every upgrade row states something that actually changes', () => {
         [...text.matchAll(/\d[\d.,\u00a0 ]*/g)].map((m) => Number(m[0].replace(/[^\d]/g, '')));
 
       // Two quantities on the row: how deep the store is, and how much is safe.
-      expect(figures(gain.now).length, `Vault ${String(level)} now`).toBeGreaterThanOrEqual(2);
+      expect(figures(gain.now ?? '').length, `Vault ${String(level)} now`).toBeGreaterThanOrEqual(2);
 
-      const [storeNow, safeNow] = figures(gain.now);
+      const [storeNow, safeNow] = figures(gain.now ?? '');
       const [storeNext, safeNext] = figures(gain.next);
       // The store is the headline, so it is the larger of the pair...
       expect(storeNow!).toBeGreaterThan(safeNow!);
@@ -282,7 +285,7 @@ describe('the instrument ceiling', () => {
       const gain = instrumentGain('RADAR', level);
       expect(gain.now).toContain(String(radarContactRange(level)));
       expect(gain.now).toContain(String(radarRange(level)));
-      expect(gain.now.toLowerCase()).toContain('no eta');
+      expect(gain.now?.toLowerCase()).toContain('no eta');
     }
   });
 });
@@ -293,14 +296,19 @@ describe('the instrument ceiling', () => {
  * strictly more than the one below it, or the row is back to lying.
  */
 describe('the rows that switch metric once their headline flattens', () => {
-  it('the Shipyard keeps naming a bigger number at every level', () => {
-    const seen = LEVELS.map((l) => buildingGain('SHIPYARD', l, 0, at(l)));
-    for (const [i, gain] of seen.entries()) {
-      expect(gain.now, `L${String(i)}`).not.toBe(gain.next);
+  it('the Shipyard reports a general time saving from the preceding level', () => {
+    for (const level of LEVELS) {
+      const gain = buildingGain('SHIPYARD', level, 0, at(level));
+      expect(gain.label).toBe('Production time');
+      expect(gain.now).toBeUndefined();
+      expect(gain.note).toContain('ships and ground defences');
+      expect(gain.note).toContain(`Level ${level} to ${level + 1} upgrade`);
+      for (const hull of ALL_HULLS) {
+        const reduction = 1 - hullWorkMinutes(hull, 3, level + 1, { YARD_AUTOMATION: 2 }) / hullWorkMinutes(hull, 3, level, { YARD_AUTOMATION: 2 });
+        expect(gain.next).toBe(`${percent(reduction)} shorter`);
+      }
+      expect(gain.next).not.toMatch(/Dart|Veil|1m/i);
     }
-    // Past the accuracy clamp it talks about Veils instead, and that figure rises.
-    const high = seen.slice(6);
-    for (const gain of high) expect(gain.label).toMatch(/veil/i);
   });
 
   it('the Veil keeps naming a better telescope at every level', () => {

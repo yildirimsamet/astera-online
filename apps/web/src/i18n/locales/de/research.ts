@@ -101,9 +101,9 @@ export const research = {
   yardName: "Yard-Automatisierung",
   yardTag: "Baut Schiffe schneller",
   yardRole:
-    "Verkürzt die Bauzeit mobiler Fahrzeuge, ohne die Bodengeschütze oder die Werftkapazität zu beeinträchtigen",
+    "Verkürzt neue Bauaufträge für Schiffe und Bodenverteidigung auf allen deinen Planeten.",
   yardDetail:
-    "Jede Sprosse verkürzt die Zeit für jede zukünftige Bestellung mobiler Fahrzeuge auf Ihren Welten, einschließlich Prospektoren. Es beschleunigt nicht die Bodenverteidigung, senkt die Ressourcenpreise nicht und fügt keine Yard-Warteschlangenplätze hinzu.",
+    "Jede Stufe verkürzt neue Werftaufträge, einschließlich Prospektoren und Bodenverteidigung. Die Tabelle zeigt den verbleibenden Anteil der Grundbauzeit. Ressourcenpreise und Warteschlangenkapazität ändern sich nicht. Gebäudebau und Schiffsreparaturen haben eigene Forschungseffekte.",
   robotsName: "KI-Roboter",
   robotsTag: "Baut Strukturen schneller auf",
   robotsRole:

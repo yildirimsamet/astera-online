@@ -94,7 +94,7 @@ export const conceptArticles: readonly WikiArticle[] = [
       "Tarafsız gezegenlere akın, kaynak ve koloni fırsatı sağlar. Bu savaşlarda oyuncular arasındaki [[season.dominion|Hâkimiyet]] puanı aktarılmaz. Tarafsız gezegen kademesi ile oyuncuların saldırı uygunluğunu belirleyen kademe aralığı ayrı kurallardır.",
     ]), ['worlds.settlement', 'intel.probes', 'combat.model']),
   topic('worlds', 'settlement', l('Founding a colony', 'Koloni kurmak'),
-    l("Prepare colony capacity, Couriers, resources and fuel. Learn settlement priority, arrival requirements and what returns if settlement fails.", "Koloni yuvanızı, Kuryeleri, kaynakları ve yakıtı hazırla. Yerleşim önceliğini, varış koşulunu ve başarısız yerleşimde geri dönenleri öğren."),
+    l("Prepare colony capacity, Couriers, resources and fuel. Learn settlement priority, arrival requirements and what returns if settlement fails.", "Koloni yuvanı, Kuryeleri, kaynakları ve yakıtı hazırla. Yerleşim önceliğini, varış koşulunu ve başarısız yerleşimde geri dönenleri öğren."),
     l([
       "Your capital’s Core opens colony slots at the levels in the table below. Each settlement flight reserves one slot until it resolves. Choose a neutral planet with an open settlement period and check that your arrival is valid.",
       "Send the required Couriers with the founding resources and one-way flight fuel. On success, the Couriers stay on the new colony and the founding resources are spent. Occupation protection starts on arrival.",
@@ -194,10 +194,10 @@ export const conceptArticles: readonly WikiArticle[] = [
     ]),
     l([
       "Cancelling Construction or Yard orders refunds only the share in the table below; the rest is lost. Started research cannot be cancelled. Check the order’s current state before deciding to cancel.",
-      "[[research.AI_ROBOTS|AI Robots]] shortens new Construction orders. [[research.YARD_AUTOMATION|Yard Automation]] shortens new mobile-ship orders, including Prospectors. It does not speed up ground defences. Neither research adds queue space or lowers resource prices.",
+      "[[research.AI_ROBOTS|AI Robots]] shortens new Construction orders. [[research.YARD_AUTOMATION|Yard Automation]] shortens new Yard orders, including ships, Prospectors and ground defences. Neither research adds queue space or lowers resource prices.",
     ], [
       "İnşaat veya Tersane siparişini iptal edersen aşağıdaki pay iade edilir; kalan kaynak kaybolur. Başlatılan araştırma iptal edilemez. İptal kararı vermeden önce siparişin güncel durumunu kontrol et.",
-      "[[research.AI_ROBOTS|Yapay Zekâ Robotları]], yeni İnşaat siparişlerini hızlandırır. [[research.YARD_AUTOMATION|Tersane Otomasyonu]], Kazıcı dahil yeni gemi siparişlerini hızlandırır; yer savunmalarını etkilemez. İki araştırma da sıraya yer eklemez veya kaynak bedelini düşürmez.",
+      "[[research.AI_ROBOTS|Yapay Zekâ Robotları]], yeni İnşaat siparişlerini hızlandırır. [[research.YARD_AUTOMATION|Tersane Otomasyonu]], gemi, Kazıcı ve yer savunması dahil yeni Tersane siparişlerini hızlandırır. İki araştırma da sıraya yer eklemez veya kaynak bedelini düşürmez.",
     ]), ['research.overview', 'fleet.repairs', 'worlds.colonies']),
   topic('hardware', 'orbit', l('Orbit slots & instrument choices', "Yörünge yuvaları ve gezegen cihazı seçimi"),
     l("Plan orbit slots for satellites and learn how Telescope, Radar, Aegis and Veil differ from orbital equipment.", "Uydular için yörünge yuvalarını planla. Teleskop, Radar, Aegis ve Perdenin yörünge donanımından farkını öğren."),

@@ -242,7 +242,7 @@ interface HullProps {
   focused: boolean;
   /** Landmark callers can opt out of the galaxy's distance fog. */
   fog?: boolean;
-  /** Landmarks keep the planets' depth buffer; moving craft remain foreground markers. */
+  /** Moving craft draw last in the transparent queue; landmarks keep their place in it. */
   foreground?: boolean;
 }
 
@@ -258,33 +258,18 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
       if (!isMesh(node)) return;
       node.renderOrder = foreground ? SHIP_ORDER : 0;
       /**
-       * Marked transparent so the hull joins the LAST render queue.
+       * Marked transparent so the hull joins the LAST render queue, after every
+       * world has written its depth. It is fully opaque and looks identical
+       * either way; what changes is when it draws.
        *
-       * It is fully opaque and looks identical either way; what changes is when
-       * it draws. The depth clear below has to be the last thing that happens in
-       * the frame, or the disc rings and beams that draw after it would find an
-       * empty depth buffer and bleed through the worlds.
+       * WORLDS ARE OPAQUE (owner, 2026-10-08). Hulls used to clear the depth
+       * buffer here so a craft stayed visible behind a planet; it then drew
+       * straight through the planet. A craft behind a world is hidden by it.
        */
       for (const material of materialsOf(node)) {
         configureOpaqueTransparentBody(material);
         material.depthTest = true;
         (material as THREE.Material & { fog?: boolean }).fog = fog;
-      }
-      /**
-       * ALWAYS VISIBLE, AND STILL SOLID.
-       *
-       * A craft is a few pixels across against worlds that are hundreds, so
-       * whenever a route passed behind a planet the ship simply disappeared —
-       * and the one thing a player is tracking is the thing that vanished.
-       *
-       * Clearing the depth buffer immediately before the hull draws puts it in
-       * front of everything already on screen while leaving depth testing intact
-       * WITHIN the hull, so the far side of the model still does not draw through
-       * the near side. Turning depth testing off instead would have been one line
-       * and would have turned every ship inside out.
-       */
-      if (foreground) {
-        node.onBeforeRender = (renderer) => { renderer.clearDepth(); };
       }
     });
     return clone;
@@ -306,7 +291,6 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
         },
         transparent: true,
         depthWrite: false,
-        depthTest: !foreground,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending,
         vertexShader: `
@@ -432,7 +416,6 @@ function FormationHullBucket({
           aimDistance={aimDistance}
           glow={HULL_LIGHT[hull].glow}
           focused={focused}
-          clearsDepth={index === 0}
         />
       ))}
       {lowParts.map((part, index) => (
@@ -445,7 +428,6 @@ function FormationHullBucket({
           aimDistance={aimDistance}
           glow={HULL_LIGHT[hull].glow}
           focused={focused}
-          clearsDepth={index === 0}
         />
       ))}
     </group>
@@ -460,7 +442,6 @@ function FormationHullPartMesh({
   aimDistance,
   glow,
   focused,
-  clearsDepth,
 }: {
   part: FormationHullPart;
   lod: ShipLod;
@@ -469,7 +450,6 @@ function FormationHullPartMesh({
   aimDistance: RefObject<number>;
   glow: string;
   focused: boolean;
-  clearsDepth: boolean;
 }) {
   const body = useRef<THREE.InstancedMesh>(null);
   const outline = useRef<THREE.InstancedMesh>(null);
@@ -490,7 +470,6 @@ function FormationHullPartMesh({
       },
       transparent: true,
       depthWrite: false,
-      depthTest: false,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending,
       vertexShader: `
@@ -576,7 +555,6 @@ function FormationHullPartMesh({
         renderOrder={SHIP_ORDER}
         name={`formation-hull-bodies-${lod}`}
         raycast={() => null}
-        onBeforeRender={clearsDepth ? (renderer) => { renderer.clearDepth(); } : undefined}
       />
     </>
   );
@@ -813,7 +791,6 @@ function StrategicExhaust({ scale }: { scale: number }) {
               color={puff.colour}
               transparent
               opacity={puff.opacity}
-              depthTest={false}
               depthWrite={false}
               blending={THREE.AdditiveBlending}
               toneMapped={false}
@@ -834,7 +811,6 @@ function StrategicExhaust({ scale }: { scale: number }) {
             color={puff.colour}
             transparent
             opacity={puff.opacity}
-            depthTest={false}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
             toneMapped={false}
@@ -1219,6 +1195,7 @@ function Flight({
                 radius={target.radius ?? formationScale}
                 shipScale={style.scale}
                 arriveAt={path.arriveAt.getTime()}
+                strikesWorld={target.radius !== null}
               />
               {/*
                 AND THE PIRATE SHOOTS BACK. Owner report: *"Korsan filo ile
@@ -1366,10 +1343,6 @@ function FormationLightField({
         vertexColors: true,
         transparent: true,
         depthWrite: false,
-        // Hulls deliberately clear map depth immediately before drawing. A
-        // formation plume rendered against the remaining last-hull depth could
-        // therefore vanish behind an unrelated member of its own squadron.
-        depthTest: false,
         blending: THREE.AdditiveBlending,
         vertexShader: `
           attribute float aSize;
@@ -1460,6 +1433,21 @@ function FormationLightField({
   );
 }
 
+/**
+ * A SQUADRON MARK IS DEPTH-TESTED AS IF A HULL AND A HALF NEARER THE CAMERA.
+ *
+ * Pips sit above a hull and rank badges under it, and both are depth-tested so a
+ * world in front hides them (owner, 2026-10-08). At their own depth a steep camera
+ * put the hull in front of its badge and erased it. The lead is the hull's own size:
+ * the squadron cannot cover its marks, a planet in front still does, and the lead
+ * never reaches past half the distance to the camera.
+ */
+const MARK_LEAD = 1.5;
+const MARK_LEAD_DEPTH = `
+  vec4 lead = projectionMatrix * vec4(mv.xy, min(mv.z + aLead, mv.z * 0.5), 1.0);
+  gl_Position.z = lead.z / lead.w * gl_Position.w;
+`;
+
 function FormationPips({
   markers,
   slots,
@@ -1476,6 +1464,7 @@ function FormationPips({
     const positions = new Float32Array(count * 3);
     const colours = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
+    const leads = new Float32Array(count);
     const lit = new THREE.Color(focused ? '#7fd4ff' : '#4aa8e8');
     const empty = new THREE.Color('#33404f');
     /** Wrapped at five so a larger `PER_MODEL` cannot grow an unreadable strip. */
@@ -1504,6 +1493,7 @@ function FormationPips({
         const colour = i < marker.filled ? lit : empty;
         colours.set([colour.r, colour.g, colour.b], cursor * 3);
         sizes[cursor] = pipSize;
+        leads[cursor] = authoredScale * MARK_LEAD;
         cursor += 1;
       }
     });
@@ -1512,6 +1502,7 @@ function FormationPips({
     buffer.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     buffer.setAttribute('color', new THREE.BufferAttribute(colours, 3));
     buffer.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    buffer.setAttribute('aLead', new THREE.BufferAttribute(leads, 1));
     return buffer;
   }, [markers, slots, scale, focused]);
 
@@ -1525,9 +1516,9 @@ function FormationPips({
         vertexColors: true,
         transparent: true,
         depthWrite: false,
-        depthTest: false,
         vertexShader: `
           attribute float aSize;
+          attribute float aLead;
           varying vec3 vColour;
           uniform float uProjectionScale;
           uniform float uPixelRatio;
@@ -1537,6 +1528,7 @@ function FormationPips({
             float projected = aSize * uProjectionScale / max(0.01, -mv.z);
             gl_PointSize = clamp(projected, 1.0, 7.0 * uPixelRatio);
             gl_Position = projectionMatrix * mv;
+            ${MARK_LEAD_DEPTH}
           }
         `,
         fragmentShader: `
@@ -1724,6 +1716,7 @@ function FormationRanks({
     const colours = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const cells = new Float32Array(count);
+    const leads = new Float32Array(count);
     const star = new THREE.Color(RANK_COLOUR.star);
     const glyph = new THREE.Color(RANK_COLOUR.glyph);
     let cursor = 0;
@@ -1743,6 +1736,7 @@ function FormationRanks({
         colours.set([tint.r, tint.g, tint.b], cursor * 3);
         sizes[cursor] = size;
         cells[cursor] = RANK_CELLS.indexOf(mark.glyph);
+        leads[cursor] = authoredScale * MARK_LEAD;
         cursor += 1;
       }
     });
@@ -1752,6 +1746,7 @@ function FormationRanks({
     buffer.setAttribute('color', new THREE.BufferAttribute(colours, 3));
     buffer.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
     buffer.setAttribute('aCell', new THREE.BufferAttribute(cells, 1));
+    buffer.setAttribute('aLead', new THREE.BufferAttribute(leads, 1));
     return buffer;
   }, [markers, slots, scale]);
 
@@ -1767,11 +1762,11 @@ function FormationRanks({
         vertexColors: true,
         transparent: true,
         depthWrite: false,
-        depthTest: false,
         toneMapped: false,
         vertexShader: `
           attribute float aSize;
           attribute float aCell;
+          attribute float aLead;
           varying vec3 vColour;
           varying float vCell;
           uniform float uProjectionScale;
@@ -1783,6 +1778,7 @@ function FormationRanks({
             float projected = aSize * uProjectionScale / max(0.01, -mv.z);
             gl_PointSize = clamp(projected, 1.0, 11.0 * uPixelRatio);
             gl_Position = projectionMatrix * mv;
+            ${MARK_LEAD_DEPTH}
           }
         `,
         fragmentShader: `
@@ -2317,6 +2313,10 @@ function ConcealedEngagement({
       : null),
     [fight, nodes],
   );
+  const world = useMemo(
+    () => (fight ? targetNodeOf(nodes, fight.target) : undefined),
+    [fight, nodes],
+  );
   const centre = useMemo(
     () => (fight ? engagementTargetPosition(fight, serverNow()) : null),
     [fight],
@@ -2373,6 +2373,7 @@ function ConcealedEngagement({
         arriveAt={fight.arriveAt.getTime()}
         intensity={bombardmentIntensity(true)}
         engagementSeconds={(fight.endsAt.getTime() - fight.arriveAt.getTime()) / 1000}
+        strikesWorld={world !== undefined}
       />
     </group>
   );
@@ -2726,10 +2727,8 @@ function PirateFormationHitTarget({
 }
 
 /**
- * The existing batched flame field, made explicit and brighter for pirates.
- * `depthTest: false` inside the field keeps its animated plumes visible after the
- * hull render path clears depth; this is one point-bank draw, not 13 sprites per
- * ship.
+ * The existing batched flame field, made explicit and brighter for pirates: one
+ * point-bank draw, not 13 sprites per ship.
  */
 function PirateEngineFlames({
   markers,
@@ -3122,6 +3121,7 @@ function Foreign({
             shipScale={style.scale}
             arriveAt={fight.arriveAt.getTime()}
             engagementSeconds={(fight.endsAt.getTime() - fight.arriveAt.getTime()) / 1000}
+            strikesWorld={world !== undefined}
           />
         )}
       </group>

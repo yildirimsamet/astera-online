@@ -231,7 +231,6 @@ function ConvoyWind({ slots, focused }: {
     vertexShader: WIND_VERTEX_SHADER,
     fragmentShader: WIND_FRAGMENT_SHADER,
     transparent: true,
-    depthTest: false,
     depthWrite: false,
     side: THREE.DoubleSide,
     blending: THREE.AdditiveBlending,

@@ -80,7 +80,7 @@ export function GalaxyReadout({ online, onlineToday, counts, targets = [], onFoc
         aria-expanded={openKind === kind}
         aria-controls={openKind === kind ? 'galaxy-target-list' : undefined}
         onClick={() => { setOpenKind((current) => current === kind ? null : kind); }}
-        className={`pointer-events-auto inline-flex min-h-7 items-center justify-end px-1 text-right underline decoration-dotted underline-offset-2 ${colour}`}
+        className={`pointer-events-auto inline-flex min-h-5 items-center justify-end px-1 text-right underline decoration-dotted underline-offset-2 ${colour}`}
       >
         {label}
       </button>

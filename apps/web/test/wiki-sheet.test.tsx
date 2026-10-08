@@ -9,7 +9,7 @@ describe('the Wiki room shares public articles', () => {
     fireEvent.click(screen.getByRole('link', { name: /^Dart$/ }));
     expect(screen.getByRole('heading', { level: 1, name: 'Dart' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open Wiki page' })).toHaveAttribute('href', '/wiki/fleet/dart');
-    fireEvent.click(screen.getByRole('link', { name: /^Shipyard level \d+$/ }));
+    fireEvent.click(screen.getByRole('link', { name: /^Shipyard$/ }));
     expect(screen.getByRole('heading', { level: 1, name: 'Shipyard' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /back.*Dart/i }));
     expect(screen.getByRole('heading', { level: 1, name: 'Dart' })).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe('the Wiki room shares public articles', () => {
     vi.spyOn(content, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 360, 350, 1800));
     vi.spyOn(toolbar, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 60, 350, 48));
     scroll.scrollTop = 500;
-    fireEvent.click(screen.getByRole('link', { name: /^Shipyard level \d+$/ }));
+    fireEvent.click(screen.getByRole('link', { name: /^Shipyard$/ }));
     expect(scroll.scrollTop).toBe(740);
     expect(screen.getByRole('heading', { name: 'Shipyard', level: 1 })).toHaveFocus();
   });

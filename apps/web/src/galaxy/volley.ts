@@ -410,3 +410,28 @@ export function returnVolleyFrame(distance: number): {
 } {
   return { position: [0, 0, distance], rotation: [0, Math.PI, 0] };
 }
+
+type Point = readonly [number, number, number];
+
+/**
+ * WHETHER THE STRUCK WORLD HIDES THE SQUADRON STRIKING IT (owner, 2026-10-08).
+ *
+ * Worlds are opaque, and the volley draws over everything so a burst on the
+ * surface is never cut in half by the sphere it lands on. Fired from the far
+ * side, it would therefore show straight through the planet; the whole volley
+ * hides with the squadron instead. True when the sight line from the eye meets
+ * the sphere before it reaches the squadron, or the eye is inside the world.
+ */
+export function behindTarget(eye: Point, squadron: Point, centre: Point, radius: number): boolean {
+  const [fx, fy, fz] = [eye[0] - centre[0], eye[1] - centre[1], eye[2] - centre[2]];
+  const c = fx * fx + fy * fy + fz * fz - radius * radius;
+  if (c <= 0) return true;
+  const [dx, dy, dz] = [squadron[0] - eye[0], squadron[1] - eye[1], squadron[2] - eye[2]];
+  const a = dx * dx + dy * dy + dz * dz;
+  if (a === 0) return false;
+  const b = 2 * (fx * dx + fy * dy + fz * dz);
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) return false;
+  const entry = (-b - Math.sqrt(discriminant)) / (2 * a);
+  return entry > 0 && entry < 1;
+}

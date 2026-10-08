@@ -145,7 +145,8 @@ describe('what the next level buys', () => {
     show();
     const gain = instrumentGain('TELESCOPE', 0);
     expect(hero()).toHaveTextContent(gain.label);
-    expect(hero()).toHaveTextContent(gain.now);
+    expect(gain.now).toBeDefined();
+    expect(hero()).toHaveTextContent(gain.now ?? '');
     expect(hero()).toHaveTextContent(gain.next);
   });
 
@@ -178,6 +179,18 @@ describe('what the next level buys', () => {
 });
 
 describe('the level ladder', () => {
+  it('shows the general Shipyard time saving without a ship example or a comparison arrow', () => {
+    show({ item: { kind: 'building', id: 'SHIPYARD' }, over: { buildings: { CORE: 8, SHIPYARD: 4 } } });
+    expect(hero()).toHaveTextContent('Production time');
+    expect(hero()).toHaveTextContent('7.5% shorter');
+    expect(hero()).toHaveTextContent('ships and ground defences');
+    expect(hero()).toHaveTextContent('Level 4 to 5 upgrade');
+    expect(hero()).not.toHaveTextContent(/Dart|sees through|→/i);
+    expect(rung(5)).toHaveTextContent('7.5% shorter');
+    expect(rung(6)).toHaveTextContent('7% shorter');
+    expect(rung(7)).toHaveTextContent('6.5% shorter');
+    expect(screen.getByText('Each percentage compares with the previous level.')).toBeInTheDocument();
+  });
   it('prices and times each of the next three levels', () => {
     const view = planet();
     show();

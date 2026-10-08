@@ -1110,10 +1110,21 @@ export function minutesUntilCollectorFull(
   return (room / ratePerHour) * 60;
 }
 
+/** Production speed relative to a level-zero Shipyard, for ships and ground defences. */
+export function shipyardSpeedMultiplier(level: number): number {
+  if (!Number.isInteger(level) || level < 0) throw new Error('Invalid Shipyard level');
+  return 1 + 0.12 * level;
+}
+
+/** Fraction of production time saved by upgrading from this level to the next. */
+export function shipyardTimeReduction(level: number): number {
+  return 1 - shipyardSpeedMultiplier(level) / shipyardSpeedMultiplier(level + 1);
+}
+
 /** Physical hull workload, shared by the real queue and its UI quote. */
 export function hullWorkMinutes(id: HullId, count: number, yard: number, tech: TechLevels): number {
   if (!Number.isInteger(count) || count < 1 || !Number.isInteger(yard) || yard < 0) throw new Error('Invalid hull work');
-  return profileHull(HULLS[id]).workMinutes * count / (1 + 0.12 * yard) * yardSpeedMult(tech)
+  return profileHull(HULLS[id]).workMinutes * count / shipyardSpeedMultiplier(yard) * yardSpeedMult(tech)
     * ECONOMY_ADJUSTMENT.buildTime;
 }
 

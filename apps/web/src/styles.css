@@ -20,6 +20,19 @@ select {
   font-size: 16px;
 }
 
+/* A map annotation is smaller than a panel reading. Derive from the same ui-v2
+   steps and keep icon/flag dimensions unchanged. */
+@layer utilities {
+  .galaxy-world-label .text-caption {
+    font-size: calc(var(--text-caption) * 0.9);
+  }
+
+  .galaxy-world-label .text-micro,
+  .galaxy-world-label .rank-badge-face {
+    font-size: calc(var(--text-micro) * 0.9);
+  }
+}
+
 /**
  * TWO SURFACES THAT NO UTILITY CAN REACH.
  *

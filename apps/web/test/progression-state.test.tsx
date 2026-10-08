@@ -13,6 +13,17 @@ const base = {
 };
 
 describe('shared progression presentation', () => {
+  it.each(['row', 'card'] as const)('shows a relative upgrade effect without an empty comparison in %s layout', layout => {
+    const view = render(<UpgradeRow {...base} layout={layout} level={4} gain={{ label: 'Production time', next: '7.5% shorter' }} />);
+    expect(view.container).toHaveTextContent('Production time 7.5% shorter');
+    expect(view.container).not.toHaveTextContent('→');
+  });
+
+  it.each(['row', 'card'] as const)('keeps the before-and-after comparison for absolute quantities in %s layout', layout => {
+    const view = render(<UpgradeRow {...base} layout={layout} level={4} gain={{ label: 'Capacity', now: '100', next: '120' }} />);
+    expect(view.container).toHaveTextContent('Capacity 100→120');
+  });
+
   it('keeps owned art open when only its next action is locked', () => {
     const view = render(
       <UpgradeRow {...base} level={3} blocked={{ reason: 'Needs Core L4' }} />,

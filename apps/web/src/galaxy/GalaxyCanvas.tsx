@@ -98,7 +98,7 @@ import { staleness } from '../lib/time.js';
 import { commanderLabel } from '../lib/identity.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
 import { RankBadge } from './RankBadge.jsx';
-import { layoutPlanetLabels, planetLabelRank, planetLabelWidth } from './planetLabels.js';
+import { layoutPlanetLabels, planetLabelRank, planetLabelWidth, type PlanetLabelSize } from './planetLabels.js';
 import { Flag } from '../v2/identity/Flag.js';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -1012,7 +1012,38 @@ function Labels({
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const ordered = visibleIds.flatMap((id) => { const node = byId.get(id); return node ? [node] : []; });
   const boxes = useRef(new Map<string, HTMLElement | null>());
+  const sizes = useRef(new Map<string, PlanetLabelSize>());
+  const observer = useRef<ResizeObserver | null>(null);
   const clock = useRef(0.1);
+
+  const measure = useCallback((id: string, element: HTMLElement) => {
+    const intel = element.dataset.worldLabelIntel;
+    if (intel !== 'UNKNOWN' && intel !== 'RESOLVED' && intel !== 'REMEMBERED') return;
+    const width = element.offsetWidth;
+    const height = element.offsetHeight;
+    if (width === 0 || height === 0) return;
+    const detail = element.dataset.worldLabelDetail === 'true';
+    const previous = sizes.current.get(id);
+    if (previous?.width === width && previous.height === height && previous.detail === detail && previous.intel === intel) return;
+    sizes.current.set(id, { width, height, detail, intel });
+    clock.current = 0.1;
+    invalidate();
+  }, [invalidate]);
+
+  useEffect(() => {
+    // Font, language and status changes can resize a name without a camera move.
+    // Observe the small mounted pool; projection only reads the cached numbers.
+    const resized = new ResizeObserver((entries) => {
+      for (const { target } of entries) {
+        if (!(target instanceof HTMLElement)) continue;
+        const id = target.dataset.worldLabel;
+        if (id) measure(id, target);
+      }
+    });
+    observer.current = resized;
+    for (const element of boxes.current.values()) if (element) resized.observe(element);
+    return () => { resized.disconnect(); observer.current = null; };
+  }, [measure]);
 
   useFrame(({ camera, size }, delta) => {
     // Ten times a second. The camera eases rather than jumps, so a label that
@@ -1021,7 +1052,7 @@ function Labels({
     if (clock.current < 0.1) return;
     clock.current = 0;
 
-    const placements = layoutPlanetLabels({ nodes, camera, width: size.width, height: size.height, selectedId, rivals, now: serverNow() });
+    const placements = layoutPlanetLabels({ nodes, camera, width: size.width, height: size.height, selectedId, rivals, now: serverNow(), sizes: sizes.current });
     // Camera distance may reorder priorities without changing membership. Keep
     // mounted labels stable so panning does not cause needless React updates.
     const nextIds = placements.map((placement) => placement.id).sort();
@@ -1041,8 +1072,8 @@ function Labels({
         // CSS `translate` property; adding -50% here would apply it twice.
         const transform = `translate(${String(shiftX)}px, ${String(shiftY)}px)`;
         if (element.style.transform !== transform) element.style.transform = transform;
-        const width = `${String(placement.width)}px`;
-        if (element.style.width !== width) element.style.width = width;
+        const maxWidth = `${String(Math.min(placement.detail ? 180 : 150, size.width - 16))}px`;
+        if (element.style.maxWidth !== maxWidth) element.style.maxWidth = maxWidth;
       }
       // `visibility` rather than `display`: drei keeps measuring the wrapper, and
       // a box that collapses to zero would flip the answer on the next frame.
@@ -1082,14 +1113,21 @@ function Labels({
                 clock.current = 0.1;
                 // Html's child root can commit after our post-commit frame. Its
                 // own ref is the reliable point to request the first projection.
+                measure(node.id, element);
+                observer.current?.observe(element);
                 invalidate();
               }
-              else boxes.current.delete(node.id);
+              else {
+                const previous = boxes.current.get(node.id);
+                if (previous) observer.current?.unobserve(previous);
+                boxes.current.delete(node.id);
+              }
             }}
             data-world-label={node.id}
             data-world-label-detail={detail || undefined}
-            className="flex -translate-y-1/2 flex-col items-center gap-0.5 whitespace-nowrap px-1.5 py-1 text-center"
-            style={{ width: planetLabelWidth(node, detail), visibility: 'hidden', textShadow: '0 1px 4px #05070d, 0 0 12px #05070d' }}
+            data-world-label-intel={node.intel}
+            className="galaxy-world-label flex -translate-y-1/2 flex-col items-center gap-0.5 whitespace-nowrap text-center"
+            style={{ width: 'max-content', maxWidth: planetLabelWidth(node, detail), visibility: 'hidden', textShadow: '0 1px 4px #05070d, 0 0 12px #05070d' }}
           >
             {/*
               THE EYE IS NOT HERE. D126. It sits in the marker stack instead, one

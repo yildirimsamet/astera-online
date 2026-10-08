@@ -84,9 +84,9 @@ export const research = {
   yardName: "Automatisation du Chantier Spatial",
   yardTag: "Construit les vaisseaux plus rapidement",
   yardRole:
-    "Réduit le temps de production des vaisseaux mobiles ; n’affecte ni les défenses terrestres ni la capacité de la file de production.",
+    "Réduit la durée des nouvelles commandes de vaisseaux et de défenses au sol sur toutes vos planètes.",
   yardDetail:
-    "Chaque palier accélère toutes les futures commandes de vaisseaux mobiles, Prospecteurs compris, sur tous tes mondes. Il n’accélère pas les défenses terrestres, ne réduit pas le coût en ressources et n’ajoute aucun emplacement à la file du Chantier Spatial.",
+    "Chaque niveau réduit la durée des nouvelles commandes du chantier, y compris les Prospecteurs et les défenses au sol. Le tableau indique la part de la durée de base restante. Les coûts et la capacité de la file restent inchangés. La construction et les réparations utilisent des recherches distinctes.",
   robotsName: "Robots d’Intelligence Artificielle",
   robotsTag: "Construit les structures plus rapidement",
   robotsRole:

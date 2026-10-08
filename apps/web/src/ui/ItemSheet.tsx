@@ -248,6 +248,7 @@ export function ItemSheet({
                 {t('itemSheet.ladderHeading')}
                 <span aria-hidden="true" className="h-px flex-1 bg-v2-line" />
               </p>
+              {item.kind === 'building' && item.id === 'SHIPYARD' && <p className="text-micro leading-snug text-v2-ink-3">{t('gains.shipyard.rowNote')}</p>}
               <ol className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-deep/60">
                 {rungs.map((rung) => (
                   <Rung
@@ -311,12 +312,14 @@ function Hero({ item, level, name, gain }: { item: ItemRef; level: number; name:
       <div className="min-w-0 flex-1">
         <p className={HEADING}>{gain.label}</p>
         <p className="mt-0.5 font-v2-mono text-body font-semibold tabular-nums text-v2-ink">
-          {gain.maxed ? gain.now : (
+          {gain.maxed ? gain.now : gain.now === undefined ? <span className="text-v2-self">{gain.next}</span> : (
             <>
-              {gain.now} <span className="text-v2-ink-3">→</span> <span className="text-v2-self">{gain.next}</span>
+              <span className="inline-block">{gain.now}</span>{' '}
+              <span className="inline-block"><span className="text-v2-ink-3">→</span>{' '}<span className="text-v2-self">{gain.next}</span></span>
             </>
           )}
         </p>
+        {gain.note && <p className="mt-1 text-micro leading-snug text-v2-ink-2">{gain.note}</p>}
         {/* A sentence of its own ("Up to 7.3k at the top rung"): the Hangar is the one ladder here with one. */}
         {gain.ceiling !== undefined && gain.maxed !== true && (
           <p className="mt-0.5 text-micro text-v2-ink-3">{gain.ceiling}</p>
@@ -366,7 +369,7 @@ function Rung({
   const value = item.kind === 'building' && item.id === 'CORE' ? null : gain.next;
 
   return (
-    <li data-rung={level} className={`flex items-start gap-2 px-2.5 py-2 ${first ? '' : 'opacity-70'}`}>
+    <li data-rung={level} className={`flex flex-wrap items-start gap-x-2 px-2.5 py-2 ${first ? '' : 'opacity-70'}`}>
       <span className={`w-10 shrink-0 font-v2-mono text-caption ${first ? 'text-v2-self' : 'text-v2-ink-3'}`}>
         {t('itemSheet.rungLevel', { level })}
       </span>
@@ -377,12 +380,12 @@ function Rung({
             {value}
           </span>
         )}
-        {gain.unlocks && !repeats && (
-          <span className="mt-0.5 block text-micro leading-snug text-v2-ink-2">{gain.unlocks}</span>
-        )}
       </span>
       <Cost cost={cost} />
       <span className="w-12 shrink-0 whitespace-nowrap text-right font-v2-mono text-micro text-v2-ink-3">{takes}</span>
+      {gain.unlocks && !repeats && (
+        <span className="mt-1 basis-full pl-12 text-micro leading-snug text-v2-ink-2">{gain.unlocks}</span>
+      )}
     </li>
   );
 }
