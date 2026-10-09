@@ -718,6 +718,10 @@ function Views({ view }: { view: string }) {
   if (view === 'country-picker') return <GalleryCountryPicker />;
   if (view === 'cosmetic-fleet') return <CosmeticFleetGallery />;
   if (view === 'cosmetic-fleet-titan') return <CosmeticFleetGallery engineId="engine-titan" />;
+  if (view.startsWith('cosmetic-fleet:')) {
+    const [engineId, flagId] = view.slice('cosmetic-fleet:'.length).split(':');
+    return <CosmeticFleetGallery engineId={engineId} flagId={flagId} />;
+  }
   if (view === 'ship-skin-fleet') return <CosmeticFleetGallery shipSkins={{ CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' }} />;
   if (view === 'ship-skin-inventory') return <SkinInventoryContent onEquip={noop} onEquipCosmetic={noop} onOpenShop={noop} pending={null} failure={null}
     collection={{ ownedSkinIds: [], ownedCosmeticIds: ['ship-red-dragon', 'ship-shark', 'ship-scorpion', 'ship-stingray'], planets: [],

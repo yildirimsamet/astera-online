@@ -1,5 +1,9 @@
 import type { CosmeticStyle } from '@astera/rules';
 import type { Vec3Tuple } from './scene.js';
+import {
+  bannerFragment, bannerVertex, infernoFragment, nebulaFragment, plumeVertex, prismDustFragment,
+  prismPlumeFragment, ringVertex, saturnFragment, tempestFragment,
+} from './cosmeticShaders.js';
 
 /** Raise the flag above the hulls; +Z is the nose and the cloth streams down -Z. */
 export function fleetFlagPose(formationScale: number): { position: Vec3Tuple; rotation: Vec3Tuple; scale: number } {
@@ -11,9 +15,34 @@ export function fleetFlagPose(formationScale: number): { position: Vec3Tuple; ro
   };
 }
 
+export interface EffectRecipe {
+  bands: number; particles: number; radius: number; motion: number; colour: string; secondary: string;
+  /** Paid standards of the second wave: light sweeps across their metal thread. */
+  sheen?: boolean;
+}
+const standard = (motion: number, colour: string, secondary: string, sheen = true): EffectRecipe =>
+  ({ bands: 1, particles: 0, radius: 1.5, motion, colour, secondary, sheen });
+
 /** Fixed geometry budgets; animation updates uniforms rather than allocating particles. */
-export const cosmeticEffectRecipe = (style: CosmeticStyle) => {
+export const cosmeticEffectRecipe = (style: CosmeticStyle): EffectRecipe => {
   switch (style) {
+    case 'saturn': return { bands: 7, particles: 0, radius: 1.9, motion: 30, colour: '#f1d9a6', secondary: '#fff4dc' };
+    case 'prism': return { bands: 2, particles: 0, radius: 2.02, motion: 31, colour: '#c9f3ff', secondary: '#ffd6fb' };
+    case 'inferno': return { bands: 2, particles: 0, radius: 1.95, motion: 32, colour: '#ff7a3d', secondary: '#ffc27a' };
+    case 'nebula': return { bands: 3, particles: 0, radius: 2.02, motion: 33, colour: '#ff8fd8', secondary: '#7fe8ff' };
+    case 'tempest': return { bands: 3, particles: 0, radius: 1.35, motion: 40, colour: '#8fd8ff', secondary: '#c9b8ff' };
+    case 'bastion': return standard(50, '#a3a99f', '#c9cdc6', false);
+    case 'meridian': return standard(51, '#8f9fb8', '#d7dee8', false);
+    case 'sovereign': return standard(52, '#f4c95d', '#fff1c4');
+    case 'kraken': return standard(53, '#4ff0e0', '#c9fff6');
+    case 'oni': return standard(54, '#ff4b3e', '#ffd84a');
+    case 'voideye': return standard(55, '#d78bff', '#ffd6ff');
+    case 'valkyrie': return standard(56, '#cfe6ff', '#ffffff');
+    case 'scarab': return standard(57, '#57a6ff', '#f7cd5c');
+    case 'stag': return standard(58, '#9ff0ff', '#ffffff');
+    case 'horizon': return standard(59, '#ffb35c', '#fff3d0');
+    case 'tiger': return standard(60, '#e8f6ff', '#9feaff');
+    case 'scorpion': return standard(61, '#ffbf3f', '#d06bff');
     case 'titan': return { bands: 2, particles: 0, radius: 1.35, motion: 10, colour: '#ff8f47', secondary: '#c4efff' };
     case 'reaper': return { bands: 1, particles: 0, radius: 1.5, motion: 5, colour: '#ebd8c1', secondary: '#fff0d6' };
     case 'ravager': return { bands: 1, particles: 0, radius: 1.5, motion: 6, colour: '#ff655c', secondary: '#fff0d6' };
@@ -27,6 +56,23 @@ export const cosmeticEffectRecipe = (style: CosmeticStyle) => {
     default: return { bands: 4, particles: 112, radius: 1.55, motion: 0, colour: '#44eac1', secondary: '#75abff' };
   }
 };
+
+const NEW_STANDARDS: ReadonlySet<CosmeticStyle> = new Set<CosmeticStyle>(['bastion', 'meridian', 'sovereign', 'kraken', 'oni', 'voideye', 'valkyrie', 'scarab', 'stag', 'horizon', 'tiger', 'scorpion']);
+const NEW_RINGS: Partial<Record<CosmeticStyle, string>> = { saturn: saturnFragment, prism: prismDustFragment, inferno: infernoFragment, nebula: nebulaFragment };
+const NEW_DRIVES: Partial<Record<CosmeticStyle, string>> = { tempest: tempestFragment, prism: prismPlumeFragment };
+
+/**
+ * Products sold before the second wave keep the shared program they shipped with. Each new
+ * look has its own program (`cosmeticShaders.ts`); kind 0 is a ring, 1 a drive, 2 a standard.
+ */
+export function effectProgram(style: CosmeticStyle, kind: number): { vertexShader: string; fragmentShader: string } {
+  const ring = kind < .5 ? NEW_RINGS[style] : undefined;
+  if (ring) return { vertexShader: ringVertex, fragmentShader: ring };
+  const drive = kind > .5 && kind < 1.5 ? NEW_DRIVES[style] : undefined;
+  if (drive) return { vertexShader: plumeVertex, fragmentShader: drive };
+  if (kind > 1.5 && NEW_STANDARDS.has(style)) return { vertexShader: bannerVertex, fragmentShader: bannerFragment };
+  return { vertexShader: effectVertex, fragmentShader: effectFragment };
+}
 
 export const effectVertex = `
   attribute float aEnvelope;

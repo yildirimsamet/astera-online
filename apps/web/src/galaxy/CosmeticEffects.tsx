@@ -8,20 +8,42 @@ import type { Marker } from './Squadrons.js';
 import { hullVisualScale, formationAimDirection } from './flightVisual.js';
 import { hullPoseLift } from '../ui/assets.js';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
-import { cosmeticEffectRecipe, effectFragment, effectVertex, fleetFlagPose } from './cosmeticEffects.js';
+import { cosmeticEffectRecipe, effectProgram, fleetFlagPose } from './cosmeticEffects.js';
+import { prismShardTransforms, RING_SPANS, saturnRingProfile } from './cosmeticRings.js';
+import { prominenceFragment, prominenceVertex, shardFragment, shardVertex } from './cosmeticShaders.js';
 
-export function EffectSurface({ style, kind, still = false, banner, colour, secondary }: { style: CosmeticStyle; kind: number; still?: boolean; banner?: THREE.Texture; colour?: string; secondary?: string }) {
+let saturnProfile: THREE.DataTexture | null = null;
+/** One small radial profile shared by every Saturn ring on the map. */
+function saturnProfileTexture(): THREE.DataTexture {
+  if (!saturnProfile) {
+    saturnProfile = new THREE.DataTexture(saturnRingProfile(256), 256, 1, THREE.RGBAFormat);
+    saturnProfile.magFilter = THREE.LinearFilter;
+    saturnProfile.minFilter = THREE.LinearFilter;
+    saturnProfile.needsUpdate = true;
+  }
+  return saturnProfile;
+}
+
+/** How far each second-wave belt undulates out of its plane (world radii). */
+const RING_LIFT: Partial<Record<CosmeticStyle, number>> = { inferno: .1, nebula: .05, prism: .03 };
+
+export function EffectSurface({ style, kind, still = false, banner, colour, secondary, veil = false }: { style: CosmeticStyle; kind: number; still?: boolean; banner?: THREE.Texture; colour?: string; secondary?: string; veil?: boolean }) {
   const recipe = cosmeticEffectRecipe(style);
+  const program = effectProgram(style, kind);
   const material = useRef<THREE.ShaderMaterial>(null);
   const uniforms = useMemo(() => ({ uTime: { value: 2.7 }, uKind: { value: kind }, uStyle: { value: recipe.motion },
-    uBanner: { value: banner ?? null }, uHasBanner: { value: banner ? 1 : 0 }, uColour: { value: new THREE.Color(colour ?? recipe.colour) }, uSecondary: { value: new THREE.Color(secondary ?? recipe.secondary) } }), [style, kind, banner, colour, secondary]);
+    uBanner: { value: banner ?? null }, uHasBanner: { value: banner ? 1 : 0 }, uColour: { value: new THREE.Color(colour ?? recipe.colour) }, uSecondary: { value: new THREE.Color(secondary ?? recipe.secondary) },
+    uSheen: { value: recipe.sheen ? 1 : 0 }, uProfile: { value: style === 'saturn' && kind < .5 ? saturnProfileTexture() : null },
+    uLift: { value: kind < .5 ? RING_LIFT[style] ?? 0 : 0 }, uVeil: { value: veil ? 1 : 0 } }), [style, kind, banner, colour, secondary, veil]);
   useFrame(({ clock }) => {
     if (!still && material.current) material.current.uniforms.uTime!.value = clock.elapsedTime;
   });
-  return <shaderMaterial ref={material} uniforms={uniforms} vertexShader={effectVertex} fragmentShader={effectFragment}
+  // Saturn's ice is lit material, not light: it blends over (and partly hides) the world behind.
+  const solid = kind > 1.5 || (kind < .5 && style === 'saturn');
+  return <shaderMaterial ref={material} uniforms={uniforms} vertexShader={program.vertexShader} fragmentShader={program.fragmentShader}
     transparent side={THREE.DoubleSide} depthWrite={kind > 1.5} depthTest toneMapped={false}
     forceSinglePass={kind < 1.5}
-    blending={kind > 1.5 ? THREE.NormalBlending : THREE.AdditiveBlending} />;
+    blending={solid ? THREE.NormalBlending : THREE.AdditiveBlending} />;
 }
 
 function OrbitalDust({ style, still }: { style: CosmeticStyle; still: boolean }) {
@@ -43,22 +65,107 @@ function OrbitalDust({ style, still }: { style: CosmeticStyle; still: boolean })
   </points>;
 }
 
+/** Annuli for the second wave: only the belt is rasterised, never a square of discarded pixels. */
+const RING_BELT: Partial<Record<CosmeticStyle, readonly [number, number]>> = RING_SPANS;
+
+const RING_LEAN: Partial<Record<CosmeticStyle, number>> = { saturn: .3, inferno: .22 };
+
 /** One shared asset for the shop, inventory and world. Radius is relative to the world. */
 export function CosmeticRing({ id, still = false }: { id: string; still?: boolean }) {
   const item = cosmeticById(id);
   if (item?.category !== 'RING' || !item.style) return null;
   const recipe = cosmeticEffectRecipe(item.style);
+  const belt = RING_BELT[item.style];
   return <group name={id} rotation={[.16, 0, .28]}>
-    <mesh rotation={[-Math.PI / 2, 0, 0]}>
-      {item.style === 'aurora' ? <ringGeometry args={[1.0, recipe.radius * 1.25, 128, 8]} /> : <planeGeometry args={[recipe.radius * 2.5, recipe.radius * 2.5]} />}
+    {/* Saturn keeps its flat ice but takes Saturn's own ~26° obliquity; Inferno leans too. Both open to more views. */}
+    <mesh rotation={[-Math.PI / 2 + (RING_LEAN[item.style] ?? 0), 0, 0]}>
+      {belt ? <ringGeometry args={[belt[0], belt[1], 160, 1]} />
+        : item.style === 'aurora' ? <ringGeometry args={[1.0, recipe.radius * 1.25, 128, 8]} /> : <planeGeometry args={[recipe.radius * 2.5, recipe.radius * 2.5]} />}
       <EffectSurface style={item.style} kind={0} still={still} />
     </mesh>
     {item.style === 'singularity' && <mesh rotation={[-Math.PI / 2 + .28, .3, 0]}>
       <planeGeometry args={[3.7, 3.7]} /><EffectSurface style={item.style} kind={0} still={still} />
     </mesh>}
     {item.style === 'helios' && <HeliosStations />}
-    <OrbitalDust style={item.style} still={still} />
+    {/* A fainter crossing veil gives the gas belts a body from every angle, as Singularity's second arc does. */}
+    {(item.style === 'nebula' || item.style === 'prism') && belt && <mesh rotation={[-Math.PI / 2 + .42, .22, 0]}>
+      <ringGeometry args={[belt[0] + .04, belt[1] - .06, 160, 1]} /><EffectSurface style={item.style} kind={0} still={still} veil />
+    </mesh>}
+    {item.style === 'prism' && <PrismShards still={still} />}
+    {item.style === 'inferno' && <group rotation={[RING_LEAN.inferno ?? 0, 0, 0]}><Prominences still={still} /></group>}
+    {recipe.particles > 0 && <OrbitalDust style={item.style} still={still} />}
   </group>;
+}
+
+/** Shared by every effect mesh that owns its material: one program, time through a uniform. */
+function useEffectMaterial(vertexShader: string, fragmentShader: string, still: boolean, options: THREE.ShaderMaterialParameters) {
+  const material = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 2.7 } }, vertexShader, fragmentShader, toneMapped: false, ...options,
+  }), [vertexShader, fragmentShader]);
+  useEffect(() => () => { material.dispose(); }, [material]);
+  useFrame(({ clock }) => { if (!still) material.uniforms.uTime!.value = clock.elapsedTime; });
+  return material;
+}
+
+/** 120 iridescent crystal shards in one instanced draw; the belt turns, the facets shimmer. */
+function PrismShards({ still }: { still: boolean }) {
+  const group = useRef<THREE.Group>(null);
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  const shards = useMemo(() => prismShardTransforms(), []);
+  const geometry = useMemo(() => {
+    const crystal = new THREE.OctahedronGeometry(1, 0);
+    crystal.scale(.42, 1.9, .42);
+    crystal.setAttribute('aHue', new THREE.InstancedBufferAttribute(new Float32Array(shards.map(shard => shard.hue)), 1));
+    return crystal;
+  }, [shards]);
+  useEffect(() => () => { geometry.dispose(); }, [geometry]);
+  const material = useEffectMaterial(shardVertex, shardFragment, still, {});
+  useLayoutEffect(() => {
+    if (!mesh.current) return;
+    const transform = new THREE.Object3D();
+    shards.forEach((shard, i) => {
+      transform.position.set(...shard.position);
+      transform.rotation.set(...shard.rotation);
+      transform.scale.setScalar(shard.scale);
+      transform.updateMatrix();
+      mesh.current!.setMatrixAt(i, transform.matrix);
+    });
+    mesh.current.instanceMatrix.needsUpdate = true;
+    mesh.current.computeBoundingSphere();
+  }, [shards]);
+  useFrame((_, dt) => { if (group.current && !still) group.current.rotation.y += Math.min(dt, .1) * .045; });
+  return <group ref={group}><instancedMesh ref={mesh} args={[geometry, material, shards.length]} /></group>;
+}
+
+const PROMINENCES = 8;
+/** Eight plasma arcs standing on the belt, rising and falling out of phase. */
+function Prominences({ still }: { still: boolean }) {
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  const geometry = useMemo(() => {
+    const arc = new THREE.TorusGeometry(.22, .045, 7, 20, Math.PI);
+    arc.setAttribute('aPhase', new THREE.InstancedBufferAttribute(new Float32Array([0, .37, .71, .19, .53, .88, .27, .62]), 1));
+    return arc;
+  }, []);
+  useEffect(() => () => { geometry.dispose(); }, [geometry]);
+  const material = useEffectMaterial(prominenceVertex, prominenceFragment, still, {
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  });
+  useLayoutEffect(() => {
+    if (!mesh.current) return;
+    const transform = new THREE.Object3D();
+    for (let i = 0; i < PROMINENCES; i++) {
+      const angle = i * Math.PI * 2 / PROMINENCES + .4;
+      const radius = 1.4 + .12 * (i % 2);
+      transform.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+      transform.rotation.set(0, -(angle + Math.PI / 2), 0);
+      transform.scale.set(1, 1.35, 1).multiplyScalar(.9 + .35 * ((i * 7) % 3) / 2);
+      transform.updateMatrix();
+      mesh.current.setMatrixAt(i, transform.matrix);
+    }
+    mesh.current.instanceMatrix.needsUpdate = true;
+    mesh.current.computeBoundingSphere();
+  }, []);
+  return <instancedMesh ref={mesh} args={[geometry, material, PROMINENCES]} />;
 }
 
 /** The local +Z axis is the nose; exhaust always travels down -Z. */

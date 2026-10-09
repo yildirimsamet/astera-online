@@ -195,3 +195,49 @@ All 208 ordinary server files are accounted for without omissions or duplicates:
 51 completed in the initial verify run, then 157 completed across three independent
 temporary test databases. Economy simulations and the snowball audit were excluded.
 Machine-readable coverage and results: `out/ship-skin-review/validation-results.json`.
+
+## Second premium wave — 2026-10-09
+
+Owner request: two deliberately plain included standards, ten paid standards, four paid rings
+and two paid drives, each clearly above the first collection. Research principles applied:
+players pay for what other commanders see (rings around every held world, drives on every
+flight, standards on every clan fleet); a living, animated signature separates premium from
+basic; each look needs a silhouette and colour readable at map distance; themed pairs invite
+collecting (Prism halo + drive; Amber Scorpion standard + Scorpion hull).
+
+- **Standards.** Sovereign Lion, Abyssal Kraken, Oni Warlord, Eye of the Void, Valkyrie, Sun
+  Scarab, Star Stag, Event Horizon, White Tiger, Amber Scorpion; included Bastion and Meridian
+  (flat colour, rectangular cloth, no metal). Each paid standard cuts its own cloth outline in
+  the artwork (`clipPath id="cloth"`, transparent outside), so tails, torn edges and claw slits
+  need no shader code. The banner program discards transparent texels and adds a gilded sheen:
+  a light band sweeps across bright metal thread about every nine seconds. The claw slits also
+  carry a painted gash so they still read when the texture is minified.
+- **Rings.** Saturn's Crown (real C/B/A anatomy from a 1D profile texture, Cassini and Encke
+  gaps, Keplerian shear, ~26° obliquity), Prism Halo (120 instanced crystal needles, thin-film
+  edges, rainbow dust and a crossing veil), Inferno (ridged plasma filaments, white-hot rim, eight
+  instanced prominence arcs), Nebula Veil (two logarithmic arms, dust lanes, star-forming knots,
+  warm core, crossing veil). Flat belts read as lines from many camera angles in the spherical
+  galaxy, so each new ring has obliquity, a crossing veil or vertical undulation.
+- **Drives.** Tempest (four forked bolts re-seeded twelve times a second; bolt paths are computed
+  per tube ring in the vertex stage, so the jagged polyline costs vertices, not pixels) and Prism
+  (white core dispersing into travelling spectral bands, light rings and glitter).
+- **Budgets.** Every new look compiles its own program (`cosmeticShaders.ts`); legacy products
+  keep the shared program unchanged. Belts are annuli (no discarded plane pixels), noise is
+  three octaves, drives stay at 1,536 triangles per craft in one instanced draw, Prism shards
+  are one 960-triangle draw, prominences one 2,240-triangle draw. Ring spans live in
+  `RING_SPANS` and feed both geometry and shaders.
+
+**Sale status.** The sixteen paid items are catalogued and visible in the shop as "on sale
+soon": they have no Polar mapping yet, so they have no quote. The owner creates the Polar
+products. For each item: add `{ productId, eurAmount, tryAmount }` to
+`config/polar-cosmetics.{sandbox,production}.json` and the matching env templates, add its
+`data-offer-price` entry to `pricing.html` and `fiyatlar.html`, and remove its ID from
+`AWAITING_POLAR_PRODUCTS` in `apps/server/test/polar-catalog.test.ts`. The tests then require
+the category price and the public listing. `publisher-pricing.js` already accepts these IDs.
+
+Verification: all 36 real product renders and the 350px/1280px shop layouts pass with no
+JavaScript or shader errors; both new drives pass the stationary-camera motion check
+(0.86% and 1.08% of preview pixels change). Rings were also checked in the real galaxy trial
+with Bloom, and drives and standards in the actual formation renderer. Reproduce cards with
+`node tools/visual.mjs out/cosmetic-collections --cosmetic-collections`, motion with
+`--cosmetic-motion`, and a formation with `v2-gallery.html?view=cosmetic-fleet:<engine>:<flag>`.
