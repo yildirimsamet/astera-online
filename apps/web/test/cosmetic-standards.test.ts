@@ -25,7 +25,7 @@ it('cuts each paid wave standard into its own silhouette and gives each its own 
     expect(svg, id).toContain('clip-path="url(#cloth)"');
     expect(svg, id).toMatch(/<clipPath id="cloth"><path d="[^"]+"\/><\/clipPath>/);
     expect(svg, id).toMatch(/Gradient/);
-    fields.add(svg.match(/<clipPath id="cloth"><path d="([^"]+)"/)![1]!);
+    fields.add(/<clipPath id="cloth"><path d="([^"]+)"/.exec(svg)![1]!);
   }
   expect(fields.size).toBeGreaterThanOrEqual(8);
 });
