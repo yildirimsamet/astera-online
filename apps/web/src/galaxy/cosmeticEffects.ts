@@ -1,11 +1,11 @@
 import type { CosmeticStyle } from '@astera/rules';
 import type { Vec3Tuple } from './scene.js';
 
-/** +Z is the fleet nose; pivot at the mast foot so the cloth streams down -Z. */
+/** Raise the flag above the hulls; +Z is the nose and the cloth streams down -Z. */
 export function fleetFlagPose(formationScale: number): { position: Vec3Tuple; rotation: Vec3Tuple; scale: number } {
   const scale = formationScale * 0.55;
   return {
-    position: [0, 0.95 * scale, formationScale * 0.5 - 0.83 * scale],
+    position: [0, formationScale * 0.7 + 0.95 * scale, formationScale * 0.5 - 0.83 * scale],
     rotation: [0, Math.PI / 2, 0],
     scale,
   };
