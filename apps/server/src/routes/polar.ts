@@ -11,7 +11,7 @@ const purchaseBody = z.object({ itemId: z.enum(polarItemIds) }).strict();
 
 export function registerPolarRoutes(app: FastifyInstance, env: Env): void {
   app.get('/api/skins/polar-pricing', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
-    req => polarPricingForIp(req.ip));
+    req => polarPricingForIp(req.ip, env));
   app.get('/api/skins/polar-shop', () => ({ enabled: polarReady(env) }));
   app.post('/api/skins/polar-purchase', { preHandler: requireAuth,
     config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, req => {

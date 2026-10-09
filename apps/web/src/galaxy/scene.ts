@@ -163,6 +163,7 @@ export interface SensorReach {
 export interface PlanetNode {
   id: string;
   skin?: GalaxyPlanet['skin'];
+  ringId?: string;
   name: string;
   owner: string;
   country?: GalaxyPlanet['country'];
@@ -270,6 +271,7 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
   return planets.map((planet) => ({
     id: planet.id,
     ...(planet.skin ? { skin: planet.skin } : {}),
+    ...(planet.ringId ? { ringId: planet.ringId } : {}),
     /**
      * THE ONE PLACE THE PAYLOAD'S GAPS ARE FILLED IN. D127.
      *

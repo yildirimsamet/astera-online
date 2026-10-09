@@ -1,3 +1,7 @@
+import { cosmeticById } from '@astera/rules';
+import type { ShipCosmeticEquipment } from '@astera/rules';
+import { shipHullModels } from './shipCosmetics.js';
+import { CosmeticFlag, FormationCosmeticEngines } from './CosmeticEffects.jsx';
 import {
   Suspense,
   useEffect,
@@ -19,7 +23,6 @@ import {
 } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
 import {
-  HULL_LOD_MODEL,
   HULL_MODEL,
   MODEL,
   MODEL_FACING,
@@ -99,11 +102,13 @@ export { threadKey } from './threadKey.js';
  */
 
 export function OwnFleets({
+  appearance,
   pending,
   nodes,
   focusedKey,
   onSelect,
 }: {
+  appearance?: Contact['appearance'];
   pending: readonly PendingThread[];
   /**
    * The worlds, so a leg can find the one it ends at.
@@ -129,6 +134,7 @@ export function OwnFleets({
             key={key}
             id={key}
             thread={thread}
+            appearance={thread.kind === 'incoming' ? undefined : appearance}
             nodes={nodes}
             focused={key === focusedKey}
             onSelect={() => {
@@ -359,12 +365,14 @@ function FormationHulls({
   scale,
   aimDistance,
   focused,
+  shipSkins,
 }: {
   markers: readonly Marker[];
   slots: readonly Vec3Tuple[];
   scale: number;
   aimDistance: RefObject<number>;
   focused: boolean;
+  shipSkins?: ShipCosmeticEquipment;
 }) {
   const buckets = useMemo(() => bucketFormationHulls(markers, slots), [markers, slots]);
   return (
@@ -377,6 +385,7 @@ function FormationHulls({
           scale={scale}
           aimDistance={aimDistance}
           focused={focused}
+          shipSkins={shipSkins}
         />
       ))}
     </>
@@ -389,15 +398,16 @@ function FormationHullBucket({
   scale,
   aimDistance,
   focused,
+  shipSkins,
 }: {
   hull: Marker['hull'];
   members: readonly FormationHullMember[];
   scale: number;
   aimDistance: RefObject<number>;
   focused: boolean;
+  shipSkins?: ShipCosmeticEquipment;
 }) {
-  const url = HULL_MODEL[hull];
-  const lowUrl = HULL_LOD_MODEL[hull];
+  const { model: url, lodModel: lowUrl } = shipHullModels(hull, shipSkins);
   const loaded = useGLTF([url, lowUrl], false);
   const scene = loaded[0]!.scene;
   const lowScene = loaded[1]!.scene;
@@ -867,12 +877,14 @@ export function useLine(enabled = true): THREE.BufferGeometry | null {
 }
 
 function Flight({
+  appearance,
   id,
   thread,
   nodes,
   focused,
   onSelect,
 }: {
+  appearance?: Contact['appearance'];
   /** The same key focus uses. Stable across refetches, so a volley does not re-roll. */
   id: string;
   thread: PendingThread;
@@ -1089,6 +1101,9 @@ function Flight({
       </lineSegments>
 
       <group ref={group} name="flight" userData={{ craftId: id }}>
+        {!isProbe && !isDeathStar && appearance?.flagId && <group position={[0, formationScale * 1.4, 0]} scale={formationScale * .55}>
+          <Suspense fallback={null}><CosmeticFlag id={appearance.flagId} /></Suspense>
+        </group>}
         {/*
           One generous invisible target for the whole squadron. Picking an
           individual model would be fiddly on a phone and would say the models are
@@ -1117,7 +1132,9 @@ function Flight({
         <Suspense fallback={null}>
           {markers ? (
             <>
+              {appearance?.engineId && <FormationCosmeticEngines id={appearance.engineId} markers={markers} slots={slots} scale={style.scale} aimDistance={formationAim} />}
               <FormationLightField
+                customEngine={Boolean(appearance?.engineId)}
                 markers={markers}
                 slots={slots}
                 scale={style.scale}
@@ -1137,6 +1154,7 @@ function Flight({
                 scale={style.scale}
                 aimDistance={formationAim}
                 focused={focused}
+                shipSkins={appearance?.shipSkins}
               />
             </>
           ) : (
@@ -1147,7 +1165,7 @@ function Flight({
                 lengthScale={isDeathStar ? 0.5 : 1}
               />
               <Hull
-                url={isDeathStar ? MODEL.deathStar : style.url}
+                url={isDeathStar ? MODEL.deathStar : isProbe && appearance?.probeId ? cosmeticById(appearance.probeId)?.model ?? style.url : style.url}
                 scale={isDeathStar ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
                 glow={isDeathStar ? DEATH_STAR_LIGHT.glow : style.neon}
                 focused={focused}
@@ -1263,6 +1281,7 @@ function FormationLightField({
   showPips,
   name = 'formation-lights',
   intensity = 1,
+  customEngine = false,
 }: {
   markers: readonly Marker[];
   slots: readonly Vec3Tuple[];
@@ -1272,6 +1291,7 @@ function FormationLightField({
   showPips: boolean;
   name?: string;
   intensity?: number;
+  customEngine?: boolean;
 }) {
   const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
   const lights = useMemo(() => {
@@ -1422,6 +1442,7 @@ function FormationLightField({
         frustumCulled={false}
         renderOrder={SHIP_ORDER + 1}
         name={name}
+        visible={!customEngine}
       />
       {showPips && (
         <>
@@ -3003,6 +3024,9 @@ function Foreign({
           payload had arrived. Keep the live marker mounted and let only the heavy
           hull geometry wait for its asset.
         */}
+        {contact.kind === 'fleet' && contact.appearance?.flagId && <group position={[0, formationScale * 1.4, 0]} scale={formationScale * .55}>
+          <Suspense fallback={null}><CosmeticFlag id={contact.appearance.flagId} /></Suspense>
+        </group>}
         <Suspense fallback={null}>
           {markers ? (
             <>
@@ -3018,6 +3042,7 @@ function Foreign({
                 current either way (the rock lane's rule), and a dimmed ship reads as
                 a rendering fault rather than as a sentence about sight.
               */}
+              {contact.kind === 'fleet' && contact.appearance?.engineId && <FormationCosmeticEngines id={contact.appearance.engineId} markers={markers} slots={slots} scale={style.scale} aimDistance={formationAim} />}
               {contact.kind === 'pirate' ? (
                 <PirateEngineFlames
                   markers={markers}
@@ -3029,6 +3054,7 @@ function Foreign({
                 />
               ) : (
                 <FormationLightField
+                  customEngine={Boolean(contact.appearance?.engineId)}
                   markers={markers}
                   slots={slots}
                   scale={style.scale}
@@ -3051,6 +3077,7 @@ function Foreign({
                 scale={style.scale}
                 aimDistance={formationAim}
                 focused={focused}
+                shipSkins={contact.kind === 'fleet' ? contact.appearance?.shipSkins : undefined}
               />
               {contact.kind === 'pirate' && (
                 <PirateMark scale={style.scale} focused={focused} />
@@ -3075,7 +3102,7 @@ function Foreign({
                 lengthScale={contact.kind === 'death_star' ? 0.5 : 1}
               />
               <Hull
-                url={contact.kind === 'death_star' ? MODEL.deathStar : MODEL.probe}
+                url={contact.kind === 'death_star' ? MODEL.deathStar : contact.kind === 'probe' && contact.appearance?.probeId ? cosmeticById(contact.appearance.probeId)?.model ?? MODEL.probe : MODEL.probe}
                 scale={contact.kind === 'death_star' ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
                 glow={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
                 focused={focused}

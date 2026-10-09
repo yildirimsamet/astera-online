@@ -11,7 +11,7 @@ import {
   turnOnto,
   unitModel,
 } from '../src/galaxy/model.js';
-import { MOBILE_HULLS } from '@astera/rules';
+import { COSMETICS, MOBILE_HULLS } from '@astera/rules';
 import {
   CRAFT_MODELS,
   HULL_MODEL,
@@ -398,9 +398,11 @@ describe('the facing table', () => {
    * other leaves an orphan entry that looks like coverage and provides none.
    */
   it('declares a facing only for models that exist', () => {
-    const known = new Set<string>(Object.values(MODEL));
+    const cosmeticModels = COSMETICS.flatMap(item => [item.model, item.lodModel, item.previewModel].filter((url): url is string => Boolean(url)));
+    const known = new Set<string>([...Object.values(MODEL), ...cosmeticModels]);
     for (const url of Object.keys(MODEL_FACING)) {
-      expect(known.has(url), `${url} has a facing but is not in MODEL`).toBe(true);
+      expect(known.has(url), `${url} has a facing but is not registered`).toBe(true);
+      expect(existsSync(resolve('public', url.slice(1))), `${url} has a facing but its file is missing`).toBe(true);
     }
   });
 });
@@ -449,7 +451,8 @@ describe('the model files', () => {
       const path = resolve(process.cwd(), 'public', url.replace(/^\//, ''));
       const kb = statSync(path).size / 1024;
       expect(kb, `MODEL.${name} is ${kb.toFixed(0)} KB — did it skip \`pnpm models\`?`).toBeLessThan(
-        400,
+        // Owner-approved detail budget for the premium probe's moderate flight LOD.
+        name === 'probeUfo' ? 900 : 400,
       );
     }
   });

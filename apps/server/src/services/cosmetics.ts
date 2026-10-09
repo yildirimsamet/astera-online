@@ -1,10 +1,11 @@
 import { and, eq, isNull } from 'drizzle-orm';
-import { planetSkinById, type PlanetSkinId } from '@astera/rules';
+import { cosmeticById, type CosmeticId, planetSkinById, type PlanetSkinId } from '@astera/rules';
 import type { Db, Queryable } from '../db/client.js';
-import { accounts, planets, cosmeticEntitlements, players } from '../db/schema.js';
+import { accounts, planets, cosmeticEntitlements, players, clanMemberships } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { GameError } from './planet.js';
 import { commanderForAccount } from './ownership.js';
+import { accountCosmeticEquipment, clanCosmeticFlags } from './cosmeticEquipment.js';
 import { normaliseUsername } from '../auth/credentials.js';
 
 /** Rights are account scoped; planet choices belong to a seasonal world. */
@@ -19,7 +20,16 @@ export async function skinCollection(db: Queryable, accountId: string) {
   }).from(planets)
     .innerJoin(players, eq(players.id, planets.controllerPlayerId))
     .where(eq(players.accountId, accountId));
+  const equipment = await accountCosmeticEquipment(db, [accountId]);
+  const [membership] = await db.select({ clanId: clanMemberships.clanId, role: clanMemberships.role, seasonId: players.seasonId })
+    .from(players).innerJoin(clanMemberships, and(eq(clanMemberships.playerId, players.id), isNull(clanMemberships.leftAt)))
+    .where(eq(players.accountId, accountId)).limit(1);
+  const clanFlags = membership ? await clanCosmeticFlags(db, membership.seasonId) : new Map<string, string>();
   return {
+    clanFlagId: membership ? clanFlags.get(membership.clanId) ?? null : null,
+    canEquipFlag: membership?.role === 'LEADER',
+    ownedCosmeticIds: rights.map(right => right.skinId).filter((id): id is CosmeticId => cosmeticById(id) !== null),
+    equipment: equipment.get(accountId) ?? {},
     ownedSkinIds: rights.map((right) => right.skinId).filter((id): id is PlanetSkinId => planetSkinById(id) !== null),
     planets: worlds.map((world) => ({
       ...world,
@@ -66,7 +76,7 @@ export async function grantPlanetSkin(
   db: Db,
   operatorAccountId: string,
   username: string,
-  skinId: PlanetSkinId,
+  skinId: CosmeticId,
   orderRef: string,
 ) {
   return db.transaction(async (tx) => {

@@ -19,6 +19,7 @@ import {
 } from '@astera/rules';
 import {
   accountRewards,
+  cosmeticEntitlements,
   buildings,
   botProfiles,
   clanLootShares,
@@ -126,6 +127,8 @@ import {
   satelliteInstallSchema,
   seasonSchema,
   sessionSchema,
+  skinCollectionSchema,
+  cosmeticEquipSchema,
   serverListSchema,
   trafficSchema,
   unlocksSchema,
@@ -193,6 +196,27 @@ describe('every payload the client parses', () => {
   let app: FastifyInstance;
   let built: ReturnType<typeof buildApp>;
   let auth: { authorization: string };
+
+  it('parses account cosmetics and equipment while preserving the legacy planet collection contract', async () => {
+    const initial = await app.inject({ method: 'GET', url: '/api/skins', headers: auth });
+    expect(initial.statusCode).toBe(200);
+    expect(skinCollectionSchema.parse(initial.json())).toMatchObject({ ownedSkinIds: [], ownedCosmeticIds: [], equipment: {} });
+    await f.db.insert(cosmeticEntitlements).values([
+      { accountId: f.accountIds[0]!, cosmeticId: 'ship-red-dragon', source: 'MANUAL', orderRef: 'contract-dragon' },
+      { accountId: f.accountIds[0]!, cosmeticId: 'ring-helios', source: 'MANUAL', orderRef: 'contract-ring' },
+    ]);
+    for (const [category, cosmeticId] of [['SHIP', 'ship-red-dragon'], ['RING', 'ring-helios']]) {
+      const equipped = await app.inject({ method: 'POST', url: '/api/cosmetics/equip', headers: auth, payload: { category, cosmeticId } });
+      expect(equipped.statusCode).toBe(200);
+      expect(cosmeticEquipSchema.parse(equipped.json())).toMatchObject({ category, cosmeticId });
+    }
+    const response = await app.inject({ method: 'GET', url: '/api/skins', headers: auth });
+    expect(response.statusCode).toBe(200);
+    const collection = skinCollectionSchema.parse(response.json());
+    expect(collection.ownedCosmeticIds?.sort()).toEqual(['ring-helios', 'ship-red-dragon']);
+    expect(collection).toMatchObject({ ownedSkinIds: [], equipment: { SHIP: { CORSAIR: 'ship-red-dragon' }, RING: 'ring-helios' } });
+    expect(collection.planets.some(planet => planet.id === f.planetIds[0])).toBe(true);
+  });
 
   it('brand quiz status and reward use the client contract and reject caller-supplied payouts', async () => {
     await f.db.insert(accountRewards).values({ accountId: f.accountIds[0]!, rewardId: 'BRAND_RECALL:1', createdAt: f.clock.now() });

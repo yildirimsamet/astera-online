@@ -15,11 +15,15 @@ let f: Fixture;
 let m: typeof monuments.$inferSelect;
 let start: number;
 const at = (minutes: number) => new Date(start + minutes * 60_000);
-async function probe(survives: boolean) {
+async function probe(survives: boolean, minimumDraw = 0, maximumDraw = 1) {
   const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
   if (!season) throw new Error('missing season');
-  let id = randomUUID();
-  while ((seededFrom('monument:probe:v1', season.asteroidKey, id)() >= 0.9) !== survives) id = randomUUID();
+  let id: string;
+  let draw: number;
+  do {
+    id = randomUUID();
+    draw = seededFrom('monument:probe:v1', season.asteroidKey, id)();
+  } while ((draw >= 0.75) !== survives || draw < minimumDraw || draw >= maximumDraw);
   const [row] = await f.db.insert(monumentProbes).values({ id, seasonId: f.seasonId, monumentId: m.id,
     playerId: f.playerIds[1]!, originPlanetId: f.planetIds[1]!, departAt: at(0), arriveAt: at(1),
     outboundRoute: [{ from: { x: 0, y: 0, z: 0 }, to: { x: m.x, y: m.y, z: m.z }, startMs: start, endMs: at(1).getTime() }] }).returning();
@@ -55,6 +59,9 @@ describe('a monument probe and its private arrival snapshot', () => {
     const [before] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[1]!));
     const results = await Promise.allSettled([launch(), launch()]);
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.find((result) => result.status === 'fulfilled')).toMatchObject({
+      status: 'fulfilled', value: { lossChance: 0.75 },
+    });
     const [after] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[1]!));
     expect(after?.alloy).toBe(before!.alloy - PROBE.alloy);
     expect(after?.crystal).toBe(before!.crystal - PROBE.crystal);
@@ -75,10 +82,12 @@ describe('a monument probe and its private arrival snapshot', () => {
     expect(lost).toMatchObject({ status: 'LOST', snapshotFleet: null, observedAt: null, deliveredAt: null });
     expect(await readMonumentProbeReports(f.db, row.playerId)).toEqual([]);
     expect(await f.db.select().from(notifications).where(and(eq(notifications.refId, row.id), eq(notifications.kind, 'probe_report')))).toEqual([]);
+    expect(await f.db.select().from(notifications).where(and(eq(notifications.refId, row.id), eq(notifications.kind, 'monument_probe_lost'))))
+      .toMatchObject([{ payload: { lossChance: 0.75 } }]);
   });
 
   it('stores exact counts at arrival and exposes them only on one successful return to their observer', async () => {
-    const row = await probe(true);
+    const row = await probe(true, 0.75, 0.9);
     await f.db.transaction((tx) => resolveMonumentProbe(tx, { probeId: row.id, leg: 'OUT', at: at(1), adminUsernames: [] }));
     const [returning] = await f.db.select().from(monumentProbes).where(eq(monumentProbes.id, row.id));
     expect(returning).toMatchObject({ status: 'RETURNING', snapshotFleet: m.garrison, observedAt: at(1), deliveredAt: null });

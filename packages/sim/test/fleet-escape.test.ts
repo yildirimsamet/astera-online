@@ -28,7 +28,7 @@ function arranged(deuterium: number) {
   const mission: Mission = {
     from: raider.id,
     to: target.id,
-    fleet: { DART: 60, COURIER: 20 },
+    fleet: { DART: 70, COURIER: 20 },
     arriveAt: t,
     distance: 100,
     scouted: true,
@@ -42,12 +42,20 @@ describe('the simulator and the fleet escape', () => {
     expect(fleetEscapeApplies(MULTI_WORLD.rulesetVersion)).toBe(true);
   });
 
-  it('leaves the ships home when a three-to-one raid lands on a tank that can lift them', () => {
+  it('leaves the ships home when an exactly 3.5-to-one raid lands on a tank that can lift them', () => {
     const { world, target, mission, t } = arranged(1_000);
     const before = target.deuterium;
     resolveMission(mission, t, world, freshStats());
     expect(target.fleet).toEqual({ ...LINE, PROSPECTOR: 2 });
     expect(target.deuterium).toBeLessThanOrEqual(before - escapeFuel(LINE));
+  });
+
+  it('does not escape a three-to-one raid below the new threshold', () => {
+    const { world, target, mission, t } = arranged(1_000);
+    mission.fleet = { DART: 60, COURIER: 20 };
+    resolveMission(mission, t, world, freshStats());
+    expect(target.fleet.DART ?? 0).toBe(0);
+    expect(target.fleet.PROSPECTOR).toBe(2);
   });
 
   it('loses them when the tank cannot pay for the lift', () => {

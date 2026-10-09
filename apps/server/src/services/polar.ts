@@ -1,10 +1,12 @@
+import { EXTRA_COSMETIC_IDS, type CosmeticId, type PlanetSkinId } from '@astera/rules';
 import type { Env } from '../env.js';
 import { isIP } from 'node:net';
 import { z } from 'zod';
 import { GameError } from './planet.js';
 
-export function productIdsFor(env: Env) {
+export function productIdsFor(env: Env): Partial<Record<PolarItemId, string>> {
   return {
+    ...Object.fromEntries(EXTRA_COSMETIC_IDS.flatMap(id => { const item = env.POLAR_COSMETIC_PRODUCTS[id]; return item ? [[id, item.productId]] : []; })),
     'planet-lava': env.POLAR_PRODUCT_LAVA,
     'planet-ice': env.POLAR_PRODUCT_ICE,
     'planet-toxic': env.POLAR_PRODUCT_TOXIC,
@@ -22,12 +24,12 @@ export function polarReady(env: Env): boolean {
   return env.POLAR_CHECKOUT_ENABLED
     && env.POLAR_ACCESS_TOKEN.trim().length > 0
     && env.POLAR_WEBHOOK_SECRET.trim().length > 0
-    && Object.values(productIdsFor(env)).every(id => id.length > 0);
+    && Object.values(productIdsFor(env)).every(id => Boolean(id));
 }
 
-export type PolarItemId = keyof ReturnType<typeof productIdsFor>;
+export type PolarItemId = CosmeticId | 'bundle';
 
-const euroPrices: Record<PolarItemId, number> = {
+const euroPrices: Record<PlanetSkinId | 'bundle', number> = {
   'planet-lava': 299, 'planet-ice': 299, 'planet-toxic': 299, 'planet-desert': 299,
   'planet-turkey': 299, 'planet-germany': 299, 'planet-france': 299,
   'planet-spain': 299, 'planet-japan': 299, bundle: 849,
@@ -40,7 +42,7 @@ const countryCache = new Map<string, { countryCode: string; expiresAt: number }>
 const countryResponse = z.object({ country: z.string().length(2) });
 
 /** Resolve the visitor's country on the server; checkout uses the same currency as the quote. */
-export async function polarPricingForIp(ip: string) {
+export async function polarPricingForIp(ip: string, env?: Env) {
   if (!isIP(ip)) throw new GameError('POLAR_PRICING_UNAVAILABLE', 'Location unavailable', 502);
   const cached = countryCache.get(ip);
   let countryCode = ip === '127.0.0.1' || ip === '::1' ? 'ZZ'
@@ -58,12 +60,21 @@ export async function polarPricingForIp(ip: string) {
       throw new GameError('POLAR_PRICING_UNAVAILABLE', 'Location unavailable', 502);
     }
   }
-  const prices = {} as Record<PolarItemId, { currencyCode: 'EUR' | 'TRY'; formatted: string; amount: number }>;
-  for (const itemId of Object.keys(euroPrices) as PolarItemId[]) {
+  const prices: Partial<Record<PolarItemId, { currencyCode: 'EUR' | 'TRY'; formatted: string; amount: number }>> = {};
+  for (const itemId of Object.keys(euroPrices) as (PlanetSkinId | 'bundle')[]) {
     const lira = countryCode === 'TR' ? liraPrices[itemId] : undefined;
     prices[itemId] = lira === undefined
       ? { currencyCode: 'EUR', formatted: `€${(euroPrices[itemId] / 100).toFixed(2)}`, amount: euroPrices[itemId] }
       : { currencyCode: 'TRY', formatted: `₺${lira / 100}`, amount: lira };
+  }
+  if (env) {
+    for (const id of EXTRA_COSMETIC_IDS) {
+      const item = env.POLAR_COSMETIC_PRODUCTS[id];
+      if (!item) continue;
+      const currencyCode = countryCode === 'TR' && item.tryAmount !== undefined ? 'TRY' : 'EUR';
+      const amount = currencyCode === 'TRY' ? item.tryAmount! : item.eurAmount;
+      prices[id] = { currencyCode, amount, formatted: new Intl.NumberFormat(currencyCode === 'TRY' ? 'tr-TR' : 'en-IE', { style: 'currency', currency: currencyCode }).format(amount / 100) };
+    }
   }
   return { countryCode, prices };
 }
@@ -91,11 +102,13 @@ export async function createPolarCheckoutSession(env: Env, input: {
   if (!polarReady(env)) throw new GameError('SKIN_SHOP_CLOSED', 'Skin sales are not available yet', 503);
   const base = env.POLAR_ENV === 'sandbox' ? 'https://sandbox-api.polar.sh' : 'https://api.polar.sh';
   try {
+    const productId = productIdsFor(env)[input.itemId];
+    if (!productId) throw new Error('Product is not configured');
     const response = await fetch(`${base}/v1/checkouts/`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${env.POLAR_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        products: [productIdsFor(env)[input.itemId]],
+        products: [productId],
         currency: input.currency.toLowerCase(),
         external_customer_id: input.accountId,
         ...(input.ip === '127.0.0.1' || input.ip === '::1' ? {} : { customer_ip_address: input.ip }),

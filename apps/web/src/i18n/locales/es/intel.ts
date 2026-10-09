@@ -466,11 +466,11 @@ export const reports = {
     salvageTheirs: 'Sus recolectores de basura levantaron {{amount}} los restos antes de que pudieran desplazarse.',
     /** Koloni arızaları: what a heavy defeat broke. Defender only. */
     /** Taktik geri çekilme. Defensor: qué despegó y cuánto quemó, o por qué no pudo. */
-    escaped_one: 'Tu nave despegó antes del combate (−{{fuel}} Deuterio): el ataque superaba a tu línea tres a uno.',
-    escaped_other: 'Tus {{count}} naves despegaron antes del combate (−{{fuel}} Deuterio): el ataque superaba a tu línea tres a uno.',
+    escaped_one: "Tu nave despegó antes del combate (−{{fuel}} Deuterio): el ataque superaba a tu línea defensiva.",
+    escaped_other: "Tus {{count}} naves despegaron antes del combate (−{{fuel}} Deuterio): el ataque superaba a tu línea defensiva.",
     stranded: 'Tus naves habrían despegado, pero el depósito no alcanzó: hacían falta {{fuel}} de Deuterio y había {{available}}.',
     /** Atacante: la línea se vació ante el ataque; nada sobre lo que tenía. */
-    fled: 'Sus naves despegaron antes del combate: una línea superada tres a uno que iba a ser aniquilada huye si su depósito puede pagarlo.',
+    fled: "Sus naves despegaron antes del combate: una línea superada que sería aniquilada se retira si tiene combustible suficiente.",
     colonyFaults: 'Roto en {{planet}} por esta derrota: {{faults}}.',
     /**
      * Recovery shield, defender only: the NET loss of the lookback at this battle, in

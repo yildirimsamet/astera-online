@@ -369,8 +369,8 @@ dealt under ruleset 11 or 12 keeps its original escape rule. The launch sheet tr
 an otherwise certain retreat as uncertain in a new season because a power reading
 does not reveal the defender's ship count.
 
-**The ships of a defending line lift off instead of fighting when the wing that arrived fires at
-least three times what the line fires AND the line would have been wiped out anyway — if the
+**The ships of a defending line lift off instead of fighting when the wing that arrived has at
+least 3.5 times the line's armed-unit resource value AND the line would have been wiped out anyway — if the
 world's tank pays the lift.** OGame's tactical retreat, corrected twice by this engine's numbers
 (`escape.ts`). Both sides are measured in `combatValue`, the axis the probe's defence band and the
 launch sheet already share; the line counts its guns, and the wing counts only what fires, so
@@ -378,10 +378,16 @@ cargo cannot buy the threshold. The guns and the Aegis stay and fight alone, the
 raided, and every downstream rule reads the battle that actually happened. Nothing moves on the
 disc: the ships are simply still at home afterwards.
 
-- **Why the DECISIVE guard.** On the ratio alone, a wall of transports that fires 9k and holds
-  off a 27k raid every time would run from it and hand over the stores, and a fleet under a
-  charged Aegis would leave the dome to a walkover. A line only runs from a fight it had already
-  lost, so the escape saves ships and never costs the defender anything (a property test).
+The fixed threshold rose from 3 to 3.5 on 2026-10-09, by owner instruction. Exactly
+3.5 qualifies and there is no upper limit. Active ground guns remain part of the defending line;
+guns disabled by a Core outage or EMP do not count until they are operational again.
+
+- **Why the DECISIVE guard.** Under the original 3× ratio, a transport wall worth 9k could
+  hold off a 27k raid yet run from it on the ratio alone and hand over the stores; a fleet
+  under a charged Aegis could also leave the dome to a walkover. The guard requires the
+  standing line to be wiped out. Mutual destruction also qualifies: it does not require
+  attacker survivors or guarantee a better economic outcome
+  ([verified example](fleet-escape-review-2026-10-09.md)).
 - **The lift is a launch (T6).** `missionFuel` for a 600-unit round trip, from the tank including
   the vault share, all or nothing, burned before the raider loads. Short → `STRANDED`: the line
   stands and the defender is told why.

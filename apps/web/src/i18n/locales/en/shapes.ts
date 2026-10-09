@@ -82,12 +82,12 @@ export const counter = {
    * a known shield; what they leave out is said, never implied.
    */
   /** Taktik geri çekilme on the comparison: the verdict line and the rule one tap deeper. */
-  escapeRun: 'Their line sits under a third of your fire: if their tank can pay, their ships lift off and only the guns fight.',
-  escapeStand: 'Their ships stand and fight: the reading is over a third of your fire, or more than this wing clears.',
+  escapeRun: "The reading meets the {{ratio}}× retreat threshold and the line can be wiped out. With enough fuel, their ships lift off.",
+  escapeStand: "Their ships stand and fight: the reading does not meet the {{ratio}}× retreat threshold, or this wing cannot wipe out the line.",
   escapeUnsure: 'Their ships may lift off; the reading does not settle every retreat condition.',
   escapeAt: 'Retreat power line: {{at}}',
   escapeRule:
-    "Tactical retreat requires at least three times the defender’s firepower and an attack that would wipe out its line. The planet must also fund a {{distance}}-unit round trip. If eligible, ships escape combat. Ground guns stay and resources can still be raided.",
+    "The attacker’s armed units must be worth at least {{ratio}} times the defending armed units, including active ground guns. The standing defence must also face total defeat. The planet must fund a {{distance}}-unit round trip. If eligible, ships escape combat. Ground guns stay and resources can still be raided.",
   escapeMinimumRule: 'The defender also needs at least {{count}} fighting ships at home. A probe reading does not reveal the count.',
   compareRuleToggle: 'What is this?',
   compareMeaning: 'Resource cost, not attack damage. A bigger fleet alone does not guarantee victory.',

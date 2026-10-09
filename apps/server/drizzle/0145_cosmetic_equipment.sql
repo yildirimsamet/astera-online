@@ -1,0 +1,1 @@
+ALTER TABLE "accounts" ADD COLUMN "cosmetic_equipment" jsonb DEFAULT '{}'::jsonb NOT NULL;

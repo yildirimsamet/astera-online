@@ -51,12 +51,12 @@ export const counter = {
   compareUnknownWhy: 'Bu tarafa bir sayı koyacak olan şey bir sonda.',
   compareLabel: '{{yours}} gönderiyorsun; dünyalarının son okuması {{theirs}}',
   /** Taktik geri çekilme: karşılaştırmadaki sonuç satırı ve bir dokunuş derindeki kural. */
-  escapeRun: 'Hatları ateş gücünün üçte birinin altında: yakıtları yetiyorsa gemileri kaçar, yalnız yer topları savaşır.',
-  escapeStand: 'Gemileri kalıp savaşır: okuma ateş gücünün üçte birinden yüksek ya da bu kanadın silebileceğinden fazla.',
+  escapeRun: "Okuma {{ratio}} katlık çekilme koşulunu karşılıyor ve savunma hattı yok edilebilir. Yakıtları yetiyorsa gemileri kaçar.",
+  escapeStand: "Gemileri kalıp savaşır. Okuma {{ratio}} katlık koşulu karşılamıyor veya bu filo savunma hattını yok edemiyor.",
   escapeUnsure: 'Gemileri kaçabilir; okuma geri çekilmenin tüm koşullarını göstermiyor.',
   escapeAt: 'Kaçış güç çizgisi: {{at}}',
   escapeRule:
-    "Taktik geri çekilme için saldıran ateş gücü savunmanın en az üç katı olmalı ve saldırı savunma hattını yok edecek durumda olmalıdır. Gezegen deposunda {{distance}} birimlik gidiş-dönüşün yakıtı da bulunmalıdır. Koşullar sağlanırsa gemiler savaştan kaçar. Yer savunması kalır ve kaynaklar yine yağmalanabilir.",
+    "Saldıranın silahlı birliklerinin kaynak değeri, aktif yer savunması dahil savunanın en az {{ratio}} katı olmalıdır. Saldırı mevcut savunma hattını tamamen yok edebilmelidir. Gezegen deposunda {{distance}} birimlik gidiş-dönüş yakıtı da bulunmalıdır. Koşullar sağlanırsa gemiler savaştan kaçar. Yer savunması kalır ve kaynaklar yine yağmalanabilir.",
   escapeMinimumRule: 'Savunanın gezegende en az {{count}} savaş gemisi de olmalı. Sonda okuması gemi sayısını göstermez.',
   compareRuleToggle: 'Bu nedir?',
   compareMeaning: 'Kaynak maliyetidir; saldırı hasarı değildir. Büyük filo tek başına zafer garantisi vermez.',

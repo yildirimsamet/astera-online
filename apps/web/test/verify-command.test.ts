@@ -51,22 +51,30 @@ if (args.includes(process.env.VERIFY_TEST_FAIL_AT)) process.exit(23);
     }
   }
 
-  it('keeps typecheck, lint and the full test suite for the default invocation', () => {
+  it('keeps typecheck, lint and ordinary tests for the default invocation', () => {
     const result = run();
     expect(result.status, result.stderr).toBe(0);
     expect(calls()).toEqual([['typecheck'], ['lint'], ['test']]);
   });
 
   it.each([['--exclude-sims'], ['--', '--exclude-sims']])(
-    'excludes the simulation workspace and snowball audit with %j', (...args) => {
+    'accepts the legacy ordinary-test option %j', (...args) => {
       const result = run(args);
       expect(result.status, result.stderr).toBe(0);
       expect(calls()).toEqual([
         ['typecheck'],
         ['lint'],
-        ['--filter', '!@astera/sim', '-r', 'run', 'test', '--exclude', '**/snowball-audit.test.*'],
+        ['test'],
       ]);
       expect(result.stdout).toContain('snowball');
+    },
+  );
+
+  it.each([['--include-long-tests'], ['--', '--include-long-tests']])(
+    'runs long tests only with the explicit option %j', (...args) => {
+      const result = run(args);
+      expect(result.status, result.stderr).toBe(0);
+      expect(calls()).toEqual([['typecheck'], ['lint'], ['run', 'test:long']]);
     },
   );
 
@@ -103,5 +111,13 @@ if (args.includes(process.env.VERIFY_TEST_FAIL_AT)) process.exit(23);
   it('is the entry point used by pnpm verify', () => {
     const manifest: unknown = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
     expect(manifest).toMatchObject({ scripts: { verify: 'node tools/verify.mjs' } });
+  });
+
+  it('excludes the economy workspace by default and exposes an explicit long-test command', () => {
+    const manifest: unknown = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+    expect(manifest).toMatchObject({ scripts: {
+      test: "pnpm --filter '!@astera/sim' -r run test",
+      'test:long': 'ASTERA_INCLUDE_LONG_TESTS=1 pnpm -r run test',
+    } });
   });
 });

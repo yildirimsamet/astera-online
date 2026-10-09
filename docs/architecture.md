@@ -484,8 +484,8 @@ worked example. **The server refuses to boot against a database it is ahead of**
 pnpm install
 docker compose up -d      # Postgres on :5433
 
-pnpm verify               # typecheck + lint + all tests
-pnpm sim -- --players=50 --seed=7    # balance regression model; not a capacity test
+pnpm verify               # typecheck + lint + ordinary tests; long sets excluded
+pnpm sim -- --players=50 --seed=7    # only after an explicit request for economy simulation
 
 pnpm --filter @astera/server db:generate   # after a schema change
 pnpm dev                                       # server + web together

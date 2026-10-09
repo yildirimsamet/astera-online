@@ -19,13 +19,16 @@ you add something, remove what it replaced.
 ```bash
 pnpm install
 docker compose up -d      # Postgres on :5433
-pnpm verify               # typecheck + lint + all tests
+pnpm verify               # typecheck + lint + ordinary tests; long sets excluded
 pnpm season migrate && pnpm season bootstrap
 pnpm dev                  # server + web
 ```
 
-**3 · See the maths run.** `pnpm sim -- --players=50 --seed=7` plays a full 14-day season with
+**3 · See the maths run, only when explicitly requested.** `pnpm sim -- --players=50 --seed=7` plays a full 14-day season with
 bots using the real rules, and prints the balance invariants and the final ladder.
+Economy/season simulations, snowball audits and similarly long studies require an
+explicit user request (owner rule, 2026-10-09); “all tests” does not authorize them.
+Only then use `pnpm verify --include-long-tests` or `pnpm test:long`.
 
 **4 · Feel the shape.** Open `legacy/prototype-standalone.html`. It runs on **wall-clock
 time**: play five minutes, close it, come back in a few hours. Still the fastest way to feel

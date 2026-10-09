@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, lte, or } from 'drizzle-orm';
 import { z } from 'zod';
-import { PLANET_SKIN_IDS, type PlanetSkinId } from '@astera/rules';
+import { COSMETIC_IDS, type CosmeticId } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import { accounts, cosmeticEntitlements, planets, players, polarReversals,
   polarSkinOrders, polarWebhookEvents } from '../db/schema.js';
@@ -9,18 +9,19 @@ import { publishShard } from '../stream/bus.js';
 import { GameError } from './planet.js';
 import { createPolarCheckoutSession, polarPricingForIp, polarReady, productIdsFor, type PolarItemId } from './polar.js';
 
-export const polarItemIds = [...PLANET_SKIN_IDS, 'bundle'] as const;
+export const polarItemIds = [...COSMETIC_IDS, 'bundle'] as const;
 const elementalIds = ['planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert'] as const;
-const skinsFor = (itemId: PolarItemId): readonly PlanetSkinId[] => itemId === 'bundle' ? elementalIds : [itemId];
+const skinsFor = (itemId: PolarItemId): readonly CosmeticId[] => itemId === 'bundle' ? elementalIds : [itemId];
 // Polar requests time out after 8s; leave room for persistence before recovering a crashed start.
 const CHECKOUT_START_TIMEOUT_MS = 60_000;
 
 /** A local intent is written before contacting Polar so even a fast webhook can find its owner. */
 export async function startPolarPurchase(db: Db, env: Env, accountId: string, itemId: PolarItemId, ip: string) {
   if (!polarReady(env)) throw new GameError('SKIN_SHOP_CLOSED', 'Skin sales are not available yet', 503);
-  const quote = await polarPricingForIp(ip);
+  const quote = await polarPricingForIp(ip, env);
   const price = quote.prices[itemId];
   const productId = productIdsFor(env)[itemId];
+  if (!price || !productId) throw new GameError('SKIN_SHOP_CLOSED', 'This product is not on sale yet', 503);
   const overlapping: PolarItemId[] = itemId === 'bundle'
     ? ['bundle', ...elementalIds] : elementalIds.some(id => id === itemId) ? [itemId, 'bundle'] : [itemId];
   const reservation = await db.transaction(async tx => {
@@ -155,5 +156,7 @@ export async function processPolarEvent(db: Db, webhookId: string, payload: unkn
       )).returning({ seasonId: planets.seasonId });
       for (const seasonId of new Set(changed.map(row => row.seasonId))) await publishShard(tx, seasonId, 'world');
     }
+    const ownerSeasons = await tx.select({ id: players.seasonId }).from(players).where(eq(players.accountId, intent.accountId));
+    for (const seasonId of new Set(ownerSeasons.map(row => row.id))) await publishShard(tx, seasonId, 'world');
   });
 }

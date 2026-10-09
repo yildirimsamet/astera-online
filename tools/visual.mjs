@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--planet-selection')) {
+  const { verifyPlanetSelection } = await import('./planet-selection-visual.mjs');
+  await verifyPlanetSelection(process.argv[2] ?? 'out/planet-selection');
+  process.exit(0);
+}
+
 if (process.argv.includes('--first-game-shield')) {
   const { verifyFirstGameShield } = await import('./first-game-shield-visual.mjs');
   await verifyFirstGameShield(process.argv[2] ?? 'out/first-game-shield');
@@ -50,6 +56,30 @@ if (process.argv.includes('--brand-recall')) {
 if (process.argv.includes('--wiki')) {
   const { verifyWiki } = await import('./wiki-visual.mjs');
   await verifyWiki(process.argv[2] ?? 'out/wiki');
+  process.exit(0);
+}
+
+if (process.argv.includes('--cosmetic-trial')) {
+  const { verifyCosmeticTrial } = await import('./cosmetic-trial-visual.mjs');
+  await verifyCosmeticTrial(process.argv[2] ?? 'out/cosmetic-trial');
+  process.exit(0);
+}
+
+if (process.argv.includes('--ship-skins')) {
+  const { verifyShipSkins } = await import('./ship-skins-visual.mjs');
+  await verifyShipSkins(process.argv[2] ?? 'out/ship-skins');
+  process.exit(0);
+}
+
+if (process.argv.includes('--cosmetic-motion')) {
+  const { verifyCosmeticMotion } = await import('./cosmetic-motion-visual.mjs');
+  await verifyCosmeticMotion(process.argv[2] ?? 'out/cosmetic-motion');
+  process.exit(0);
+}
+
+if (process.argv.includes('--cosmetic-collections')) {
+  const { verifyCosmeticCollections } = await import('./cosmetic-collections-visual.mjs');
+  await verifyCosmeticCollections(process.argv[2] ?? 'out/cosmetic-collections');
   process.exit(0);
 }
 

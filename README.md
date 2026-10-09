@@ -39,16 +39,22 @@ from its seed.
 pnpm install
 docker compose up -d      # Postgres on :5433 — two databases, astera and astera_test
 
-pnpm verify               # typecheck + lint + all 1,281 tests
+pnpm verify               # typecheck + lint + ordinary tests; long sets excluded
 pnpm typecheck
 pnpm lint
 pnpm test
 
-pnpm sim                  # look at a season by hand
+pnpm sim                  # only after an explicit request for economy simulation
 pnpm sim -- --players=200 --seed=7
 
 pnpm --filter @astera/server db:generate   # after a schema change
 ```
+
+Owner rule (2026-10-09): economy/season simulations, snowball audits and similarly
+long studies/calibration run only when the user explicitly requests those tests.
+“All tests” and ordinary verification do not authorize them. `pnpm test`, `pnpm verify`,
+direct simulation discovery and the server audit exclude them by default. Only after
+that explicit request use `pnpm verify --include-long-tests` or `pnpm test:long`.
 
 The root `pnpm lint` script runs type-aware ESLint with a 4 GB Node heap. Use that command instead
 of invoking `eslint .` directly; the full workspace can exhaust Node's 2 GB default heap.

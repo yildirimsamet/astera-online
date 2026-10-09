@@ -6,6 +6,7 @@ import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/keys.js';
 import { monumentsSchema } from '../src/api/schemas.js';
+import i18n from '../src/i18n/index.js';
 import { setMonumentHonorees } from '../src/i18n/names.js';
 import { MonumentSheet } from '../src/screens/MonumentSheet.js';
 import { SeasonLockProvider } from '../src/session/seasonLock.js';
@@ -44,7 +45,7 @@ function show(view: unknown = catalog, quoteDelay = 0, locked = false) {
         : path.endsWith('/send') ? { wave: { id: waveId, monumentId: id, status: 'OUTBOUND' }, quote }
           : path.endsWith('/recall') ? { wave: { id: waveId, monumentId: id, status: 'RETURNING' } }
             : path.endsWith('/probe') ? { probe: { id: waveId, monumentId: id, status: 'OUTBOUND', departAt: at, arriveAt: later },
-              lossProbability: 0.9, price: { alloy: 65, crystal: 40, deuterium: 0 } } : view;
+              lossProbability: 0.75, price: { alloy: 65, crystal: 40, deuterium: 0 } } : view;
     return new Response(JSON.stringify(result), { status: 200 });
   });
   const api = new Api({ fetch });
@@ -165,16 +166,23 @@ describe('monument decision surface, through the real client and cache', () => {
       .toBe(JSON.stringify({ selections: [{ lotId, count: 1 }] })); });
     expect(requests.find((entry) => entry.path.endsWith('/recall'))?.key).toBeTruthy();
   });
-  it('discloses the 90% probe loss and its price before the held action', async () => {
+  it('discloses the 75% probe loss and its price before the held action', async () => {
     const { requests } = show();
     await screen.findByText(/7,270/);
     const probe = await screen.findByTestId('monument-probe');
-    expect(probe).toHaveTextContent(/90%/);
+    expect(probe).toHaveTextContent(/75%/);
     expect(probe).toHaveTextContent(/65/);
     expect(probe).toHaveTextContent(/40/);
     hold(within(probe).getByRole('button', { name: /hold.*probe/i }));
     await waitFor(() => { expect(requests.find((entry) => entry.path.endsWith('/probe'))?.body)
       .toBe(JSON.stringify({ originPlanetId: 'home' })); });
+  });
+  it.each(['en', 'tr', 'de', 'fr', 'es', 'ja'] as const)('discloses the current probe loss before launch in %s', async (language) => {
+    await i18n.changeLanguage(language);
+    show();
+    const probe = await screen.findByTestId('monument-probe');
+    expect(probe).toHaveTextContent(language === 'tr' ? /%75/ : /75\s?%/);
+    expect(probe).not.toHaveTextContent(/90|\{\{/);
   });
   it('gives a second intentional probe a new confirmation identity', async () => {
     const { requests } = show();

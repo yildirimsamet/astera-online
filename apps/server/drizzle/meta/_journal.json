@@ -1016,6 +1016,13 @@
       "when": 1791407435379,
       "tag": "0144_pirate_raid_recall",
       "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1791500667839,
+      "tag": "0145_cosmetic_equipment",
+      "breakpoints": true
     }
   ]
 }

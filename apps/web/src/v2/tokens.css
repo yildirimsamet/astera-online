@@ -18,6 +18,7 @@
 @theme {
   /* ── ground ─ deepest first; the canvas sits at void */
   --color-v2-void: #04060b;
+  --color-v2-cosmetic-horizon: #162d42;
   --color-v2-deep: #080d18;
   --color-v2-panel: #0d1422;
   --color-v2-raise: #131c2f;

@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
+import { COSMETICS } from '@astera/rules';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import i18n from '../src/i18n/index.js';
@@ -85,8 +86,8 @@ const PAGES = [
   { path: '/kullanim-kosullari.html', language: 'tr', heading: /kullanım koşulları/i, pair: '/terms.html' },
   { path: '/refunds.html', language: 'en', heading: /refund and cancellation policy/i, pair: '/iade-politikasi.html' },
   { path: '/iade-politikasi.html', language: 'tr', heading: /İade ve İptal Politikası/u, pair: '/refunds.html' },
-  { path: '/pricing.html', language: 'en', heading: /planet skin pricing/i, pair: '/fiyatlar.html' },
-  { path: '/fiyatlar.html', language: 'tr', heading: /gezegen görünümü fiyatları/i, pair: '/pricing.html' },
+  { path: '/pricing.html', language: 'en', heading: /cosmetic pricing/i, pair: '/fiyatlar.html' },
+  { path: '/fiyatlar.html', language: 'tr', heading: /kozmetik fiyatları/i, pair: '/pricing.html' },
   { path: '/community-guidelines.html', language: 'en', heading: /community guidelines/i, pair: '/topluluk-kurallari.html' },
   { path: '/topluluk-kurallari.html', language: 'tr', heading: /topluluk kuralları/i, pair: '/community-guidelines.html' },
   { path: '/contact.html', language: 'en', heading: /contact/i, pair: '/iletisim.html' },
@@ -281,14 +282,15 @@ describe('the legal set says what it has to say', () => {
   );
 
   it.each(['/pricing.html', '/fiyatlar.html'])(
-    '%s marks all ten offers for country based Polar price previews', async (path) => {
+    '%s marks every paid offer for country based Polar price previews', async (path) => {
       const page = await parse(path);
       const offers = [...page.querySelectorAll('[data-offer-price]')]
         .map((element) => element.getAttribute('data-offer-price'));
-      expect(offers).toEqual([
+      expect(offers.sort()).toEqual([
         'planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert',
         'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'planet-japan', 'bundle',
-      ]);
+        ...COSMETICS.filter(item => item.category !== 'PLANET' && !item.free).map(item => item.id),
+      ].sort());
       expect(page.querySelector('script[src="/publisher-pricing.js"]')).not.toBeNull();
       expect(page.querySelector('[data-pricing-status]')).not.toBeNull();
     },

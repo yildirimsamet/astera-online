@@ -142,6 +142,17 @@ pnpm verify
 
 Required: zero type errors, zero lint errors, expected tests green.
 
+**Owner rule, 2026-10-09:** Economy/season simulations, snowball audits and similarly
+long economy studies/calibration run **only when the user explicitly requests those
+long tests**. A request to run “all tests”, finish a task or verify a change does not
+authorize them. This overrides older plans and test instructions. Ordinary rules,
+resource transaction, API and UI regressions remain required. `pnpm test` and
+`pnpm verify` exclude the simulation workspace and snowball audit by default;
+`--exclude-sims` remains compatible. Only after the explicit request use
+`pnpm verify --include-long-tests` or `pnpm test:long`.
+Direct `packages/sim` and server audit discovery is also disabled unless
+`ASTERA_INCLUDE_LONG_TESTS=1` is set by an explicitly authorized run.
+
 `pnpm lint` gives type-aware ESLint a 6 GB Node heap through the root script. The full workspace
 regularly exceeds Node's 2 GB default; do not bypass the script with a bare `eslint .` invocation.
 

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ESCAPE, type EscapeVerdict } from '@astera/rules';
-import { compact } from '../../lib/format.js';
+import { compact, decimal } from '../../lib/format.js';
 import { rulerTop, type ForceLines, type ForceReading } from '../../lib/ruler.js';
 import { staleness } from '../../lib/time.js';
 
@@ -123,7 +123,7 @@ export function ForceRuler({
           <div data-testid="ruler-rule" className="mt-1 flex flex-col gap-1 text-caption leading-relaxed text-v2-ink-2">
             {heading !== undefined && <p>{t('counter.compareMeaning')}</p>}
             <p>{t('counter.compareRule')}</p>
-            {escape && <p>{t('counter.escapeRule', { distance: ESCAPE.fuelDistance })}
+            {escape && <p>{t('counter.escapeRule', { distance: ESCAPE.fuelDistance, ratio: decimal(ESCAPE.ratio) })}
               {escape.minimumCombatShips ? ` ${t('counter.escapeMinimumRule', { count: escape.minimumCombatShips })}` : ''}</p>}
           </div>
         )}
@@ -230,7 +230,7 @@ export function ForceRuler({
 
       {escape?.verdict != null && (
         <p data-testid="ruler-verdict" className="text-caption leading-snug text-v2-ink">
-          {t(VERDICT[escape.verdict])}
+          {t(VERDICT[escape.verdict], { ratio: decimal(ESCAPE.ratio) })}
         </p>
       )}
 

@@ -210,7 +210,7 @@ export function useTargetReading({
    *
    * Only at another commander's world in a season dealt the rule: a caretaker and a
    * pirate never run, and a live season keeps the battle it was dealt. The line is a
-   * third of this wing's firepower on the enemy axis; the verdict is the rule applied
+   * wing's armed resource value divided by `ESCAPE.ratio`; the verdict is the rule applied
    * to the reading — outmatched AND cleared — and the tank stays the raider's unknown,
    * which the copy says rather than the sheet guessing. From ruleset 13 the probe
    * also cannot establish whether five combat ships stand there; an otherwise

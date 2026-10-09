@@ -199,9 +199,9 @@ export const menu = {
   feedbackHint:
     "Signale un problème ou envoie un avis et des suggestions",
   skinsShopLabel: "Boutique",
-  skinsShopHint: "Consulte les apparences de planète et leurs prix",
+  skinsShopHint: "Découvre les modèles, effets et prix",
   skinsInventoryLabel: "Inventaire",
-  skinsInventoryHint: "Applique tes apparences à tes planètes",
+  skinsInventoryHint: "Examine et équipe tes apparences",
   clanLabel: "Clan",
   clanHint:
     "Rejoins un clan ou crée-en un pour cinq commandants maximum",

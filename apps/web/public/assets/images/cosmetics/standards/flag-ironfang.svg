@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="640" viewBox="0 0 640 400">
+ <defs><linearGradient id="field" x2=".8" y2="1"><stop stop-color="#101722"/><stop offset=".48" stop-color="#05080d"/><stop offset="1" stop-color="#a8c8e4" stop-opacity=".24"/></linearGradient><linearGradient id="metal" x1=".15" y1="0" x2=".8" y2="1"><stop stop-color="#fff4d8"/><stop offset=".28" stop-color="#a8c8e4"/><stop offset=".48" stop-color="#eef2e8"/><stop offset=".58" stop-color="#a8c8e4"/><stop offset="1" stop-color="#a8c8e4" stop-opacity=".5"/></linearGradient><pattern id="weave" width="4" height="4" patternUnits="userSpaceOnUse"><path d="M0 0h4M0 0v4" stroke="#b4c1d0" stroke-opacity=".045" stroke-width=".5"/></pattern></defs>
+ <path fill="url(#field)" d="M0 0H640V400H0Z"/>
+ <path d="M25 0H75L260 200 75 400H25L211 200Z M640 0H600L420 200 600 400H640L464 200Z" fill="#a8c8e4" opacity=".12"/>
+ <path d="M25 16H616V384H25Z M34 23H607V377H34Z" fill="none" stroke="#a8c8e4" stroke-width="2" opacity=".75"/>
+ <g fill="#a8c8e4" opacity=".5"><path d="M65 29 l9 12 -9 12 -9 -12Z"/><path d="M110 29 l9 12 -9 12 -9 -12Z"/><path d="M155 29 l9 12 -9 12 -9 -12Z"/><path d="M200 29 l9 12 -9 12 -9 -12Z"/><path d="M245 29 l9 12 -9 12 -9 -12Z"/><path d="M290 29 l9 12 -9 12 -9 -12Z"/><path d="M335 29 l9 12 -9 12 -9 -12Z"/><path d="M380 29 l9 12 -9 12 -9 -12Z"/><path d="M425 29 l9 12 -9 12 -9 -12Z"/><path d="M470 29 l9 12 -9 12 -9 -12Z"/><path d="M515 29 l9 12 -9 12 -9 -12Z"/><path d="M560 29 l9 12 -9 12 -9 -12Z"/></g>
+ <path d="M40 71H600M40 329H600" stroke="#a8c8e4" opacity=".24"/>
+ <circle cx="327" cy="197" r="119" fill="none" stroke="#a8c8e4" stroke-width="1" opacity=".18"/>
+ <g transform="translate(163 29) scale(.82)"><path d="M100 78 161 119 200 67 239 119 300 78 283 178 307 209 266 253 241 328 213 303 200 345 187 303 159 328 134 253 93 209 117 178Z" fill="url(#metal)" stroke="#a8c8e4" stroke-width="2" fill-rule="evenodd"/><path d="M124 175 180 196 173 225 134 213ZM276 175 220 196 227 225 266 213ZM200 180 215 256 200 283 185 256ZM153 246 177 260 172 301ZM247 246 223 260 228 301Z" fill="#080b13"/><path d="M184 202 176 204 M216 202 224 204" stroke="#a8c8e4" stroke-width="3"/></g><path fill="url(#weave)" d="M0 0H640V400H0Z"/>
+ <path d="M61 356h80m-80 5h44M500 356h80m-44 5h44" stroke="#a8c8e4" opacity=".65"/>
+ </svg>

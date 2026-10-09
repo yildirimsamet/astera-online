@@ -8,6 +8,8 @@ import { TokenService } from '../src/auth/tokens.js';
 import { cosmeticEntitlements, polarSkinOrders } from '../src/db/schema.js';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 
+const ringProductId = '17734747-6204-4a58-bec2-ff49c52e1aa1';
+const sharkProductId = '88621909-3a6b-4f87-bcaa-d7cfe19bcd56';
 const secret = `whsec_${randomBytes(32).toString('base64')}`;
 const products = {
   POLAR_PRODUCT_LAVA: 'f372f658-e927-4051-b758-e5fa10d09f5f',
@@ -52,6 +54,7 @@ describe('Polar skin sales', () => {
     }));
     const built = buildApp({ env: testEnv({ ...products, POLAR_ENV: 'sandbox', POLAR_CHECKOUT_ENABLED: 'true',
       POLAR_ACCESS_TOKEN: 'polar_oat_test', POLAR_WEBHOOK_SECRET: secret,
+      POLAR_COSMETIC_PRODUCTS: JSON.stringify({ 'ring-aurora': { productId: ringProductId, eurAmount: 299, tryAmount: 9900 }, 'ship-shark': { productId: sharkProductId, eurAmount: 299, tryAmount: 9900 } }),
       POLAR_RETURN_URL: 'http://localhost:5173/' }), db: fixture.db,
       clock: fixture.clock, logger: pino({ level: 'silent' }) });
     app = built.app;
@@ -100,6 +103,41 @@ describe('Polar skin sales', () => {
     if (!intent) throw new Error('Expected a checkout reservation');
     return intent;
   }
+
+  it('refuses unconfigured cosmetics without creating a checkout', async () => {
+    expect((await purchase('ring-helios')).statusCode).toBe(503);
+    expect(checkoutCalls).toHaveLength(0);
+    expect((await purchase('flag-vanguard')).statusCode).toBe(503);
+  });
+
+  it('delivers a new-category cosmetic only after payment and removes its effective equipment after refund', async () => {
+    expect((await purchase('ring-aurora')).statusCode).toBe(200);
+    const [intent] = await fixture.db.select().from(polarSkinOrders).where(eq(polarSkinOrders.checkoutId, checkoutId));
+    const data = { ...paid(intent!.id, 'planet-lava'), product_id: ringProductId };
+    await webhook('order.paid', data);
+    const collection = () => app.inject({ method: 'GET', url: '/api/skins', headers: { authorization } });
+    expect((await collection()).json()).toMatchObject({ ownedCosmeticIds: ['ring-aurora'], ownedSkinIds: [] });
+    expect((await app.inject({ method: 'POST', url: '/api/cosmetics/equip', headers: { authorization },
+      payload: { category: 'RING', cosmeticId: 'ring-aurora' },
+    })).statusCode).toBe(200);
+    await webhook('order.refunded', { ...data, status: 'refunded', refunded_amount: 9900 });
+    expect((await collection()).json()).toMatchObject({ ownedCosmeticIds: [], equipment: {} });
+  });
+
+  it('sells the configured ship model, equips its hull, and removes its appearance after a signed refund', async () => {
+    expect((await purchase('ship-red-dragon')).statusCode).toBe(503);
+    expect((await purchase('ship-shark')).statusCode).toBe(200);
+    const [intent] = await fixture.db.select().from(polarSkinOrders).where(eq(polarSkinOrders.checkoutId, checkoutId));
+    const data = { ...paid(intent!.id, 'planet-lava'), product_id: sharkProductId };
+    await webhook('order.paid', data);
+    expect((await app.inject({ method: 'POST', url: '/api/cosmetics/equip', headers: { authorization },
+      payload: { category: 'SHIP', cosmeticId: 'ship-shark' },
+    })).statusCode).toBe(200);
+    const read = () => app.inject({ method: 'GET', url: '/api/skins', headers: { authorization } });
+    expect((await read()).json()).toMatchObject({ equipment: { SHIP: { CITADEL: 'ship-shark' } } });
+    await webhook('order.refunded', { ...data, status: 'refunded', refunded_amount: 9900 });
+    expect((await read()).json()).toMatchObject({ ownedCosmeticIds: [], equipment: {} });
+  });
 
   it('quotes TRY in Turkey and leaves EUR only products in EUR', async () => {
     const response = await app.inject({ method: 'GET', url: '/api/skins/polar-pricing', remoteAddress: '198.51.100.1' });

@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
-import { MULTI_WORLD } from '@astera/rules';
+import { EXTRA_COSMETIC_IDS, cosmeticById, MULTI_WORLD } from '@astera/rules';
 import { BOTS } from './services/bots/personas.js';
 
 const schema = z.object({
@@ -41,6 +41,12 @@ const schema = z.object({
   POLAR_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
   POLAR_ACCESS_TOKEN: z.string().default(''),
   POLAR_WEBHOOK_SECRET: z.string().default(''),
+  POLAR_COSMETIC_PRODUCTS: z.string().default('{}').transform((value, ctx): unknown => {
+    try { return JSON.parse(value.trim() || '{}') as unknown; }
+    catch { ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid cosmetic product JSON' }); return z.NEVER; }
+  }).pipe(z.record(z.enum(EXTRA_COSMETIC_IDS), z.object({
+    productId: z.string().uuid(), eurAmount: z.number().int().positive(), tryAmount: z.number().int().positive().optional(),
+  }).strict()).refine(items => Object.keys(items).every(id => !cosmeticById(id)?.free), 'Free cosmetics cannot have a price')),
   POLAR_RETURN_URL: z.string().url().default('http://localhost:5173/'),
   POLAR_PRODUCT_LAVA: z.string().uuid().or(z.literal('')).default(''),
   POLAR_PRODUCT_ICE: z.string().uuid().or(z.literal('')).default(''),

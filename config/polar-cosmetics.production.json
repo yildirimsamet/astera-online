@@ -1,0 +1,102 @@
+{
+  "ring-aurora": {
+    "productId": "21276a3f-0f48-41bc-950e-f2d11ffc8b76",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "ring-helios": {
+    "productId": "f16f4598-2954-4556-a6fe-b16e7b392f05",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "ring-singularity": {
+    "productId": "357c5aef-966b-4233-ac58-276a766ab51e",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "engine-aurora": {
+    "productId": "a268ac3d-6dfc-4a27-826a-4c27457ab159",
+    "eurAmount": 249,
+    "tryAmount": 6900
+  },
+  "engine-helios": {
+    "productId": "d8065f2d-9c37-4637-95b2-1cf5871be10b",
+    "eurAmount": 249,
+    "tryAmount": 6900
+  },
+  "engine-singularity": {
+    "productId": "10bb56e8-2d09-4db7-b4eb-930763ed66f5",
+    "eurAmount": 249,
+    "tryAmount": 6900
+  },
+  "engine-titan": {
+    "productId": "6747e0e0-545a-4b56-bad6-ee2512aacf6b",
+    "eurAmount": 249,
+    "tryAmount": 6900
+  },
+  "flag-aurora": {
+    "productId": "28ea1900-b82b-47c0-bb57-d003aa76d268",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-helios": {
+    "productId": "f820f9c2-1978-4fd4-b9ce-207164e8dbbe",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-singularity": {
+    "productId": "ae4901c7-ca45-42a4-aae2-f0400eadc91d",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-reaper": {
+    "productId": "9cc2c869-c9e2-4249-bbcd-ef1a928c3895",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-ravager": {
+    "productId": "aba0b38c-5816-4f65-9bfb-c1de4760a735",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-serpent": {
+    "productId": "019c1370-ce83-4543-a64c-c21ad29f69f9",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-phoenix": {
+    "productId": "63f148af-a653-42ac-97e2-09d8f57394f4",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-ironfang": {
+    "productId": "629e57bb-e258-4015-a59b-ee2898b05677",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "probe-ufo": {
+    "productId": "0af8eb81-16a1-4570-87e8-55c457b4a90a",
+    "eurAmount": 399,
+    "tryAmount": 9900
+  },
+  "ship-red-dragon": {
+    "productId": "be5b0f85-ce59-45d6-96ca-317d2613d3ea",
+    "eurAmount": 399,
+    "tryAmount": 9900
+  },
+  "ship-scorpion": {
+    "productId": "a30704d1-39a4-4329-8247-bf13b162fd7a",
+    "eurAmount": 399,
+    "tryAmount": 9900
+  },
+  "ship-shark": {
+    "productId": "c126778c-13cd-4083-b0cd-c76ac360eec9",
+    "eurAmount": 399,
+    "tryAmount": 9900
+  },
+  "ship-stingray": {
+    "productId": "a732ecc0-dbe7-4263-b471-4b5a0bbd3e69",
+    "eurAmount": 399,
+    "tryAmount": 9900
+  }
+}

@@ -1,3 +1,4 @@
+import { loadCosmeticTraffic, decorateCosmeticContacts } from './cosmeticTraffic.js';
 import { and, eq, gte, inArray, ne, or } from 'drizzle-orm';
 import {
   DEATH_STAR,
@@ -25,6 +26,7 @@ import {
   type PirateLevel,
   type SensorSphere,
   type SensorZone,
+  type ShipCosmeticEquipment,
   type Vec3,
 } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
@@ -198,6 +200,7 @@ export type ContactKind =
   | 'pirate';
 
 export interface Contact {
+  appearance?: { engineId?: string; probeId?: string; flagId?: string; shipSkins?: ShipCosmeticEquipment };
   /**
    * Stable for the life of the flight, and meaningless on its own.
    *
@@ -503,6 +506,7 @@ function windowOf(
  * column — a sentinel string is a 500 from the driver, which is how this was found.
  */
 export interface TrafficSnapshot {
+  cosmeticAppearances?: ReadonlyMap<string, NonNullable<Contact['appearance']>>;
   radiation?: FlightRadiation;
   missionCohorts?: ReadonlyMap<string, FlightCohort[]>;
   physicalFleets?: ReadonlyMap<string, Fleet>;
@@ -716,7 +720,7 @@ export async function loadTrafficSnapshot(
   const coreLevels = new Map<string, number>(
     coreRows.map((row) => [row.planetId, row.level]),
   );
-  return {
+  const snapshot: TrafficSnapshot = {
     radiation, missionCohorts: cohorts, physicalFleets: physical,
     monumentTraffic,
     missionRows,
@@ -731,6 +735,7 @@ export async function loadTrafficSnapshot(
     positions,
     coreLevels,
   };
+  return { ...snapshot, cosmeticAppearances: await loadCosmeticTraffic(db, seasonId, snapshot) };
 }
 
 export interface StrategicInterceptionView {
@@ -2186,5 +2191,5 @@ export function projectGalaxyTraffic(
     });
   }
 
-  return out;
+  return decorateCosmeticContacts(out, snapshot.cosmeticAppearances);
 }

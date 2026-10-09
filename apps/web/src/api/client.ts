@@ -1,3 +1,5 @@
+import type { CosmeticCategory, CosmeticId, MobileHullId } from '@astera/rules';
+import { cosmeticEquipSchema } from './schemas.js';
 import { returnStatusSchema } from './schemas.js';
 import type { z } from 'zod';
 import type {
@@ -543,6 +545,8 @@ export class Api {
    * seconds whoever asks (`gatedRead.ts`, the owner's phone recording 2026-09-19).
    */
   galaxy = gatedRead(() => this.send('/api/galaxy', galaxySchema), BIG_READ_GAP_MS);
+  equipCosmetic = (category: CosmeticCategory, cosmeticId: CosmeticId | null, hull?: MobileHullId) =>
+    this.send('/api/cosmetics/equip', cosmeticEquipSchema, { method: 'POST', body: { category, cosmeticId, ...(hull ? { hull } : {}) } });
   skins = () => this.send('/api/skins', skinCollectionSchema);
   skinShop = () => this.send('/api/skins/shop', skinShopSchema);
   skinPricing = () => this.send('/api/skins/pricing', skinPricingSchema);
@@ -550,7 +554,7 @@ export class Api {
     this.send('/api/skins/purchase', skinPurchaseSchema, { method: 'POST', body: { itemId } });
   polarShop = () => this.send('/api/skins/polar-shop', polarShopSchema);
   polarPricing = () => this.send('/api/skins/polar-pricing', polarPricingSchema);
-  purchasePolarSkin = (itemId: PlanetSkinId | 'bundle') =>
+  purchasePolarSkin = (itemId: CosmeticId | 'bundle') =>
     this.send('/api/skins/polar-purchase', polarPurchaseSchema, { method: 'POST', body: { itemId } });
   equipSkin = (planetId: string, skinId: PlanetSkinId | null) =>
     this.send(`/api/skins/planets/${encodeURIComponent(planetId)}`, skinEquipSchema, {

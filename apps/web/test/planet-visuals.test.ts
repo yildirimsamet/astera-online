@@ -58,15 +58,14 @@ describe('the atmosphere limb', () => {
   /**
    * IT STANDS OFF THE WORLD, AND STOPS WELL SHORT OF THE MARKER.
    *
-   * Every world in the galaxy has a limb; exactly one has a selection ring. A limb
-   * that reached as far as the ring would make the marker read against a bright
-   * band instead of against space, and "which of these did I tap" is the question
-   * the ring exists to answer.
+   * Every world has a limb; pins and eyes stand above it. There is no outer
+   * selection ring. A limb reaching the pin offset would hide that map marker
+   * against a bright band instead of leaving it legible against space.
    */
-  it('sits outside the world and inside the selection ring', () => {
+  it('sits outside the world and inside the pin offset', () => {
     expect(LIMB_SCALE).toBeGreaterThan(1);
     expect(LIMB_SCALE).toBeLessThan(SELECTION_RING);
-    // And not by a hair: the ring needs clear space to read in.
+    // The pin needs clear space to read in.
     expect(SELECTION_RING - LIMB_SCALE).toBeGreaterThan(0.1);
   });
 

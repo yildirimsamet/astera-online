@@ -1,3 +1,6 @@
+import { applyCosmeticTrial, type CosmeticTrial } from '../galaxy/cosmeticTrial.js';
+import { CosmeticTrialBar } from './CosmeticTrialBar.js';
+import { cosmeticById, planetSkinStatus, type CosmeticId } from '@astera/rules';
 import { SilentSpaceNotice } from '../shell/SilentSpaceNotice.js';
 import { useReturnStatus, useApplyToReturn } from '../api/returnQueries.js';
 import { useRequest } from '../lib/useRequest.js';
@@ -18,6 +21,7 @@ import { monumentFinderTargets } from '../galaxy/monuments.js';
 import {
   miningSceneData,
   useGalaxy,
+  useSkins,
   useGalaxyEvents,
   useIntel,
   useHarvest,
@@ -374,6 +378,9 @@ export function GalaxyView({
   const returnStatus = useReturnStatus(showChat);
   const applyToReturn = useApplyToReturn();
   const galaxy = useGalaxy();
+  const cosmetics = useSkins();
+  const [cosmeticTrial, setCosmeticTrial] = useState<CosmeticTrial | null>(null);
+  const [shopSelection, setShopSelection] = useState<CosmeticId | undefined>();
   const planet = usePlanet();
   const intel = useIntel();
   const season = useSeason();
@@ -784,6 +791,19 @@ export function GalaxyView({
   }, [intergalacticConvoy, planet.data, season.data, tradeMinute]);
 
   const planets = useMemo(() => planetsWithClanPresence(galaxy.data), [galaxy.data]);
+  const trialWorlds = useMemo(() => planets.filter(world => world.isOwned && world.intel !== 'UNKNOWN'), [planets]);
+  const trialBoostUntil = worlds.find(world => world.planet.id === cosmeticTrial?.planetId)?.planet.productionBoostUntil ?? null;
+  const trialStatus = planetSkinStatus(trialBoostUntil, new Date(now));
+  const displayPlanets = useMemo(() => applyCosmeticTrial(planets, cosmeticTrial, trialStatus), [planets, cosmeticTrial, trialStatus]);
+  useEffect(() => {
+    if (cosmeticTrial && (panel !== null || !trialWorlds.some(world => world.id === cosmeticTrial.planetId))) setCosmeticTrial(null);
+  }, [panel, cosmeticTrial, trialWorlds]);
+  useEffect(() => {
+    if (!cosmeticTrial) return;
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setCosmeticTrial(null); };
+    window.addEventListener('keydown', escape);
+    return () => { window.removeEventListener('keydown', escape); };
+  }, [cosmeticTrial]);
   /*
     WHAT A BATTLE REPORT IS HANDED, from a notification or from Intel's list (M4): whether
     the other side is a colony (its loyalty line), the mark it wears, and — in a clan only —
@@ -972,6 +992,7 @@ export function GalaxyView({
   }, []);
   const onFocus = useCallback(
     (next: Focus | null) => {
+      setCosmeticTrial(null);
       if (next) haptic('tap');
       const ownedId = next?.kind === 'planet' ? controlledWorldId(planets, next.id) : null;
       const decision = focusTapDecision(focus, next, ownedId);
@@ -1121,6 +1142,19 @@ export function GalaxyView({
     onPanel(view === 'world' ? 'planet' : 'research');
   };
 
+  const tryCosmetic = (cosmeticId: CosmeticId): void => {
+    const item = cosmeticById(cosmeticId);
+    if (item?.category !== 'PLANET' && item?.category !== 'RING') return;
+    const target = trialWorlds.find(world => world.id === activePlanetId) ?? trialWorlds[0];
+    if (!target) return;
+    close();
+    onPanel(null);
+    focusPlanet(target.id);
+    setCenterSignal(n => n + 1);
+    setShopSelection(cosmeticId);
+    setCosmeticTrial({ planetId: target.id, cosmeticId, enabled: true });
+  };
+
   /** Home, the disc's old mark (D163): clear the focus, focus the active world, raise the home signal. */
   const flyHome = (): void => {
     if (activePlanetId === null) return;
@@ -1158,7 +1192,7 @@ export function GalaxyView({
     },
   };
   /** The context slot draws at the foot while the season is live and no page is open. */
-  const slotShown = showGuidance && Boolean(planet.data) && panel === null && season.data?.status === 'live';
+  const slotShown = showGuidance && Boolean(planet.data) && panel === null && !cosmeticTrial && season.data?.status === 'live';
 
   const toggle = (): void => {
     setDetail((open) => !open);
@@ -1183,7 +1217,11 @@ export function GalaxyView({
     <SeasonLockProvider locked={season.data?.status === 'frozen'}>
     <div className="absolute inset-0 overflow-hidden">
       <GalaxyCanvas
-        planets={planets}
+        cosmeticAppearance={{ engineId: cosmetics.data?.equipment?.ENGINE,
+          probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,
+          shipSkins: cosmetics.data?.equipment?.SHIP }}
+        planets={displayPlanets}
+        inspectionPlanetId={cosmeticTrial?.planetId}
         pending={threads}
         contacts={contacts}
         interceptions={interceptions}
@@ -1313,7 +1351,7 @@ export function GalaxyView({
                 onError: (error: Error) => { say(describe(error), 'error'); } });
             } } : {})} />
       )}
-      {!coachFocus && focus?.kind === 'planet' && selected && focusedPlanet && showPlanetFocus && !attacking && (
+      {!cosmeticTrial && !coachFocus && focus?.kind === 'planet' && selected && focusedPlanet && showPlanetFocus && !attacking && (
         <PlanetFocus
           target={selected}
           planet={focusedPlanet}
@@ -1903,6 +1941,16 @@ export function GalaxyView({
         </V2Sheet>
       )}
 
+      {cosmeticTrial && <CosmeticTrialBar trial={cosmeticTrial} worlds={trialWorlds}
+        onSelect={id => {
+          if (!trialWorlds.some(world => world.id === id)) return;
+          setCosmeticTrial(current => current ? { ...current, planetId: id } : null);
+          close(); focusPlanet(id); setCenterSignal(n => n + 1);
+        }}
+        onCompare={() => { setCosmeticTrial(current => current ? { ...current, enabled: !current.enabled } : null); }}
+        onEnd={() => { setCosmeticTrial(null); }}
+        onShop={() => { setCosmeticTrial(null); onPanel('skin-shop'); }} />}
+
       {panel === 'skin-shop' && (
         <V2Sheet
           detents={['full']}
@@ -1913,7 +1961,7 @@ export function GalaxyView({
           onClose={() => { onPanel(null); }}
         >
           <Suspense fallback={<Waiting>{t('menu.skinsShopLabel')}</Waiting>}>
-            <SkinsScreen commander={commander} onOpenInventory={() => { onPanel('skin-inventory'); }} />
+            <SkinsScreen commander={commander} initialId={shopSelection} onTry={trialWorlds.length ? tryCosmetic : undefined} onOpenInventory={() => { onPanel('skin-inventory'); }} />
           </Suspense>
         </V2Sheet>
       )}

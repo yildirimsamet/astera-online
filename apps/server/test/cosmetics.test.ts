@@ -1,15 +1,20 @@
+import { clanActor, createClan } from '../src/services/clan.js';
+import { clanCosmeticFlags } from '../src/services/cosmeticEquipment.js';
+import { decorateCosmeticContacts } from '../src/services/cosmeticTraffic.js';
+import { loadTrafficSnapshot } from '../src/services/traffic.js';
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { accounts, cosmeticEntitlements, planets } from '../src/db/schema.js';
-import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
+import { accounts, cosmeticEntitlements, planets, seasons } from '../src/db/schema.js';
+import { seedWorld, testDb, testEnv, grant, setLevel, type Fixture } from './helpers.js';
 import { publicWorlds, silhouetteOf } from '../src/services/publicGalaxy.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { secedeColony } from '../src/services/loyalty.js';
 import { deleteAccount } from '../src/services/accountDeletion.js';
+import { skinCollectionSchema } from '../../web/src/api/schemas.js';
 
 afterAll(async () => { const { close } = await testDb(); await close(); });
 
@@ -42,6 +47,96 @@ describe('planet skin ownership and equipment', () => {
     player = { authorization: `Bearer ${await tokens.issueAccess(fixture.accountIds[1]!)}` };
   });
   afterEach(async () => { await close(); });
+
+  it('equips ship skins independently, validates the hull, and removes only the selected or revoked look', async () => {
+    const equip = (cosmeticId: string | null, hull?: string) => app.inject({
+      method: 'POST', url: '/api/cosmetics/equip', headers: player,
+      payload: { category: 'SHIP', cosmeticId, ...(hull ? { hull } : {}) },
+    });
+    expect((await equip('ship-shark')).statusCode).toBe(403);
+    expect((await app.inject({ method: 'POST', url: '/api/cosmetics/equip', payload: { category: 'SHIP', cosmeticId: 'ship-shark' } })).statusCode).toBe(401);
+    for (const skinId of ['ship-red-dragon', 'ship-shark']) {
+      expect((await app.inject({ method: 'POST', url: '/api/admin/cosmetics/grant', headers: admin,
+        payload: { username: recipientUsername, skinId, orderRef: `ships-${skinId}` },
+      })).statusCode).toBe(200);
+    }
+    expect((await equip('ship-shark', 'CORSAIR')).statusCode).toBe(400);
+    expect((await equip(null)).statusCode).toBe(400);
+    expect((await equip(null, 'unknown-hull')).statusCode).toBe(400);
+    expect((await equip(null, '__proto__')).statusCode).toBe(400);
+    const results = await Promise.all([equip('ship-red-dragon'), equip('ship-shark', 'CITADEL')]);
+    expect(results.map(result => result.statusCode)).toEqual([200, 200]);
+    const read = async () => skinCollectionSchema.parse((await app.inject({ method: 'GET', url: '/api/skins', headers: player })).json());
+    expect((await read()).equipment).toEqual({ SHIP: { CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark' } });
+    expect((await equip(null, 'CITADEL')).statusCode).toBe(200);
+    expect((await read()).equipment).toEqual({ SHIP: { CORSAIR: 'ship-red-dragon' } });
+    await fixture.db.update(cosmeticEntitlements).set({ revokedAt: fixture.clock.now() })
+      .where(eq(cosmeticEntitlements.cosmeticId, 'ship-red-dragon'));
+    expect((await read()).equipment).toEqual({});
+    expect((await equip('ship-red-dragon')).statusCode).toBe(403);
+  });
+
+  it('lets the leader lend an owned flag, keeps free flags available and never decorates unknown contacts', async () => {
+    await fixture.db.update(seasons).set({ rulesetVersion: 3 }).where(eq(seasons.id, fixture.seasonId));
+    await grant(fixture.db, fixture.planetIds[1]!, 120_000, 60_000);
+    await setLevel(fixture.db, fixture.planetIds[1]!, 'CORE', 10);
+    const actor = await clanActor(fixture.db, fixture.accountIds[1]!);
+    const clan = await fixture.db.transaction(tx => createClan(tx, {
+      actor, name: 'Cosmetic Guard', tag: 'CG', description: '', recruiting: true, clock: fixture.clock,
+    }));
+    expect((await app.inject({ method: 'POST', url: '/api/cosmetics/equip', headers: player,
+      payload: { category: 'FLAG', cosmeticId: 'flag-orbit' },
+    })).statusCode).toBe(200);
+    expect((await clanCosmeticFlags(fixture.db, fixture.seasonId)).get(clan.clanId)).toBe('flag-orbit');
+    expect((await app.inject({ method: 'POST', url: '/api/cosmetics/equip', headers: player,
+      payload: { category: 'FLAG', cosmeticId: 'flag-helios' },
+    })).statusCode).toBe(403);
+    const contacts = [{ id: randomUUID(), kind: 'unknown' as const, from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 1, z: 1 }, startAt: fixture.clock.now(), endAt: fixture.clock.now() }];
+    const snapshot = await loadTrafficSnapshot(fixture.db, fixture.seasonId, fixture.clock.now());
+    expect(decorateCosmeticContacts(contacts, snapshot.cosmeticAppearances)).toEqual(contacts);
+  });
+
+  it('serializes concurrent slot changes without losing either appearance', async () => {
+    for (const skinId of ['ring-aurora', 'engine-aurora']) {
+      expect((await app.inject({ method: 'POST', url: '/api/admin/cosmetics/grant', headers: admin,
+        payload: { username: recipientUsername, skinId, orderRef: `concurrent-${skinId}` },
+      })).statusCode).toBe(200);
+    }
+    const results = await Promise.all([
+      app.inject({ method: 'POST', url: '/api/cosmetics/equip', headers: player, payload: { category: 'RING', cosmeticId: 'ring-aurora' } }),
+      app.inject({ method: 'POST', url: '/api/cosmetics/equip', headers: player, payload: { category: 'ENGINE', cosmeticId: 'engine-aurora' } }),
+    ]);
+    expect(results.map(result => result.statusCode)).toEqual([200, 200]);
+    expect((await app.inject({ method: 'GET', url: '/api/skins', headers: player })).json()).toMatchObject({
+      equipment: { RING: 'ring-aurora', ENGINE: 'engine-aurora' },
+    });
+  });
+
+  it('authorizes independent cosmetic slots and preserves existing planet rights', async () => {
+    const equip = (category: string, cosmeticId: string | null) => app.inject({
+      method: 'POST', url: '/api/cosmetics/equip', headers: player, payload: { category, cosmeticId },
+    });
+    expect((await equip('RING', 'ring-aurora')).statusCode).toBe(403);
+    expect((await app.inject({ method: 'POST', url: '/api/admin/cosmetics/grant', headers: admin,
+      payload: { username: recipientUsername, skinId: 'ring-aurora', orderRef: 'ring-order-1' },
+    })).statusCode).toBe(200);
+    expect((await equip('ENGINE', 'ring-aurora')).statusCode).toBe(400);
+    expect((await equip('RING', 'ring-aurora')).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/api/skins', headers: player })).json()).toMatchObject({
+      ownedCosmeticIds: ['ring-aurora'], equipment: { RING: 'ring-aurora' }, ownedSkinIds: [],
+    });
+    const [world] = await publicWorlds(fixture.db, fixture.seasonId, fixture.clock.now(), [fixture.planetIds[1]!]);
+    expect(world).toHaveProperty('ringId', 'ring-aurora');
+    await fixture.db.update(cosmeticEntitlements).set({ revokedAt: fixture.clock.now() })
+      .where(eq(cosmeticEntitlements.cosmeticId, 'ring-aurora'));
+    expect((await app.inject({ method: 'GET', url: '/api/skins', headers: player })).json()).toMatchObject({ equipment: {} });
+    const [revokedWorld] = await publicWorlds(fixture.db, fixture.seasonId, fixture.clock.now(), [fixture.planetIds[1]!]);
+    expect(revokedWorld).not.toHaveProperty('ringId');
+    expect((await equip('RING', null)).statusCode).toBe(200);
+    expect((await equip('RING', '__proto__')).statusCode).toBe(400);
+    expect((await equip('FLAG', 'flag-vanguard')).statusCode).toBe(403);
+    expect((await app.inject({ method: 'POST', url: '/api/cosmetics/equip', payload: { category: 'RING', cosmeticId: null } })).statusCode).toBe(401);
+  });
 
   it('requires an operator to grant, then lets the recipient equip only owned worlds', async () => {
     const ownWorld = fixture.planetIds[1]!;

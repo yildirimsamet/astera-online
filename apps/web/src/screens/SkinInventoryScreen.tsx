@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import { cosmeticCategoriesFor, type CosmeticCategory, type CosmeticId, type MobileHullId } from '@astera/rules';
+import { CosmeticCategories, CosmeticCollection } from './CosmeticCollection.jsx';
+import { useEquipCosmetic } from '../api/queries.js';
 import { useTranslation } from 'react-i18next';
 import { PLANET_SKIN_IDS, type PlanetSkinId } from '@astera/rules';
 import type { z } from 'zod';
@@ -21,7 +25,29 @@ type Collection = z.infer<typeof skinCollectionSchema>;
  * tap on another dresses it at once, and Default takes the look off. Drawn in the Gözlemevi
  * language; no sales state is mixed in.
  */
-export function SkinInventoryContent({
+export function SkinInventoryContent(props: Parameters<typeof PlanetInventoryContent>[0] & {
+  onEquipCosmetic?: (category: CosmeticCategory, id: CosmeticId | null, hull?: MobileHullId) => void;
+  cosmeticPending?: boolean;
+  cosmeticError?: string;
+}) {
+  const { t } = useTranslation();
+  const [chosenCategory, setCategory] = useState<CosmeticCategory>('PLANET');
+  const owned = props.collection.ownedCosmeticIds ?? props.collection.ownedSkinIds;
+  const categories = cosmeticCategoriesFor(owned);
+  const category = categories.includes(chosenCategory) ? chosenCategory : categories[0] ?? 'PLANET';
+  return <div className="min-h-full bg-v2-void font-v2-ui text-v2-ink">
+    <header className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-3 pt-3">
+      <h2 className="text-body font-semibold">{t('menu.skinsInventoryLabel')} · {owned.length}</h2>
+      <button type="button" onClick={props.onOpenShop} className="min-h-10 rounded-control border border-v2-premium/50 px-3 text-caption text-v2-premium">{t('menu.skinsShopLabel')}</button>
+    </header>
+    <CosmeticCategories active={category} onChange={setCategory} owned={owned} inventory />
+    {category === 'PLANET' ? <PlanetInventoryContent {...props} /> : <CosmeticCollection key={category}
+      category={category} inventory owned={owned} equipment={props.collection.equipment ?? {}}
+      canEquipFlag={props.collection.canEquipFlag ?? false} onOpenOther={props.onOpenShop} onEquip={props.onEquipCosmetic} busy={props.cosmeticPending} error={props.cosmeticError} />}
+  </div>;
+}
+
+function PlanetInventoryContent({
   collection,
   onEquip,
   pending,
@@ -162,11 +188,15 @@ export default function SkinInventoryScreen({ onOpenShop }: { onOpenShop: () => 
   const { t } = useTranslation();
   const collection = useSkins();
   const equip = useEquipSkin();
+  const cosmetic = useEquipCosmetic();
   if (collection.isPending) return <Waiting>{t('skins.ownedSkins')}</Waiting>;
   if (!collection.data) return <p className="p-4 text-caption text-v2-ink-2">{t('skins.loadError')}</p>;
   return (
     <SkinInventoryContent
       collection={collection.data}
+      onEquipCosmetic={(category, cosmeticId, hull) => { cosmetic.mutate({ category, cosmeticId, hull }); }}
+      cosmeticPending={cosmetic.isPending}
+      cosmeticError={cosmetic.isError ? describeError(cosmetic.error) : undefined}
       onEquip={(planetId, skinId) => { equip.mutate({ planetId, skinId }); }}
       pending={equip.isPending ? equip.variables : null}
       failure={equip.isError ? { planetId: equip.variables.planetId, message: describeError(equip.error) } : null}

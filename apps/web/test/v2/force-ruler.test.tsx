@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import i18n from '../../src/i18n/index.js';
 import { compact } from '../../src/lib/format.js';
 import { rulerTop } from '../../src/lib/ruler.js';
 import { ForceRuler } from '../../src/v2/kit/ForceRuler.js';
@@ -154,10 +155,27 @@ describe('what it says about the reading', () => {
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/armed ships’ and ground guns’ resource value/i);
-    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/three times/i);
+    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/3\.5 times/i);
+    expect(screen.getByTestId('ruler-rule')).not.toHaveTextContent('{{');
     // Why a line is a range, and what a success is.
     expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/partial and full success require at least one ship surviving/i);
     expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/left edge is the worst case/i);
+  });
+
+  it.each([
+    ['en', '3.5'], ['tr', '3,5'], ['de', '3,5'], ['fr', '3,5'], ['es', '3,5'], ['ja', '3.5'],
+  ] as const)('resolves the current retreat ratio in the rule and verdicts in %s', async (language, ratio) => {
+    await i18n.changeLanguage(language);
+    const { rerender } = render(
+      <ForceRuler yours={35_000} theirs={reading} lines={lines} escape={{ at: 10_000, verdict: 'RUN' }} />,
+    );
+    fireEvent.click(screen.getByRole('button'));
+    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(ratio);
+    expect(screen.getByTestId('ruler-rule')).not.toHaveTextContent('{{');
+    expect(screen.getByTestId('ruler-verdict')).toHaveTextContent(ratio);
+    rerender(<ForceRuler yours={35_000} theirs={reading} lines={lines} escape={{ at: 10_000, verdict: 'STAND' }} />);
+    expect(screen.getByTestId('ruler-verdict')).toHaveTextContent(ratio);
+    expect(screen.getByTestId('ruler-verdict')).not.toHaveTextContent('{{');
   });
 
   /**

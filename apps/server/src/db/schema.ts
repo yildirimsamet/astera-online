@@ -43,6 +43,7 @@ import type {
   Resources,
   TechLevels,
   PlanetSkinId,
+  CosmeticEquipment,
   PlanetSkinStatus,
   JointWarFuelLeg,
   DefencePosture,
@@ -267,6 +268,7 @@ export type NotificationKind = (typeof notificationKind.enumValues)[number];
  * already there costs nothing, and dropping it would take the unique index with it.
  */
 export const accounts = pgTable('accounts', {
+  cosmeticEquipment: jsonb('cosmetic_equipment').$type<CosmeticEquipment>().notNull().default({}),
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email'),
   username: text('username').notNull(),

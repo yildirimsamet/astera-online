@@ -1,3 +1,4 @@
+import { COSMETIC_IDS, COSMETIC_CATEGORIES, SHIP_SKIN_IDS } from '@astera/rules';
 import { z } from 'zod';
 import { CHAT_LANGUAGES, COUNTRY_CODES, FAULT_KINDS, PLANET_SKIN_IDS, REACTION_EMOJIS } from '@astera/rules';
 import type {
@@ -1372,6 +1373,7 @@ export const galaxySchema = z.object({
   planets: z.array(
     z.object({
       id: z.string(),
+      ringId: z.string().optional(),
       /** Optional cosmetic look; UNKNOWN worlds never receive it. */
       skin: z.object({
         // An older client must still draw the galaxy when a newer server adds a product.
@@ -1494,7 +1496,20 @@ export const galaxySchema = z.object({
 });
 
 const planetSkinId = z.enum(PLANET_SKIN_IDS);
+const mobileHull = hullId.exclude(['BASTION', 'HARPOON', 'THORN', 'PROSPECTOR']);
+const shipCosmeticEquipmentSchema = z.record(mobileHull, z.enum(SHIP_SKIN_IDS));
+const cosmeticEquipmentSchema = z.object({
+  PLANET: z.enum(COSMETIC_IDS).optional(), RING: z.enum(COSMETIC_IDS).optional(),
+  PROBE: z.enum(COSMETIC_IDS).optional(), MINER: z.enum(COSMETIC_IDS).optional(),
+  ENGINE: z.enum(COSMETIC_IDS).optional(), FLAG: z.enum(COSMETIC_IDS).optional(),
+  SHIP: shipCosmeticEquipmentSchema.optional(),
+});
+export const cosmeticEquipSchema = z.object({ category: z.enum(COSMETIC_CATEGORIES), cosmeticId: z.enum(COSMETIC_IDS).nullable(), hull: mobileHull.optional() });
 export const skinCollectionSchema = z.object({
+  clanFlagId: z.string().nullable().optional(),
+  canEquipFlag: z.boolean().optional(),
+  ownedCosmeticIds: z.array(z.enum(COSMETIC_IDS)).optional(),
+  equipment: cosmeticEquipmentSchema.optional(),
   ownedSkinIds: z.array(planetSkinId),
   planets: z.array(z.object({
     id: z.string(),
@@ -3237,6 +3252,7 @@ export const intergalacticConvoyLaunchSchema = z.object({
 export const trafficSchema = z.object({
   contacts: z.array(
     z.object({
+      appearance: z.object({ engineId: z.string().optional(), probeId: z.string().optional(), flagId: z.string().optional(), shipSkins: shipCosmeticEquipmentSchema.optional() }).optional(),
       /** Stable for the flight, so focus survives a refetch. Maps to nothing else. */
       id: z.string(),
       /**

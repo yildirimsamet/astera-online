@@ -161,6 +161,12 @@ The root `pnpm verify` and `pnpm lint` commands run type-aware ESLint with a 6 G
 Use those root scripts during qualification; a bare `eslint .` falls back to Node's smaller
 default heap and can fail for memory reasons without identifying an application regression.
 
+Owner rule (2026-10-09): economy/season simulations, snowball audits and similarly long
+studies/calibration run only when the user explicitly requests those tests. Default
+`pnpm verify` and `pnpm test` exclude them. Ordinary release verification, “all tests”
+and historical commands below do not authorize long runs. Only after an explicit request
+use `pnpm verify --include-long-tests` or `pnpm test:long`; `--exclude-sims` stays compatible.
+
 ### 1. Qualify the commit locally
 
 ```bash

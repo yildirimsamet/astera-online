@@ -61,7 +61,7 @@ export const monument = {
   "insufficientFuel": "この航路の重水素が不足しています",
   "fullBays": "空き飛行枠がありません",
   "probe": "長押しで探査機を派遣",
-  "probeRisk": "探査機は90%の確率で失われます。生還すると正確な艦隊情報を持ち帰ります。",
+  "probeRisk": "探査機は{{chance}}の確率で失われます。生還すると正確な艦隊情報を持ち帰ります。",
   "probePrice": "費用：合金 {{alloy}} + 結晶 {{crystal}}",
   "probing": "探査機を派遣中…",
   "probeArrival": "探査機：{{status}} · {{time}}",

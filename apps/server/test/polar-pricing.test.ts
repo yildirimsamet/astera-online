@@ -1,9 +1,30 @@
+import { testEnv } from './helpers.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { polarPricingForIp } from '../src/services/polar.js';
+import { polarPricingForIp, productIdsFor } from '../src/services/polar.js';
 
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('Polar country pricing', () => {
+  it('can quote and identify ship products after configuration without inventing prices for the other ships', async () => {
+    const productId = 'f372f658-e927-4051-b758-e5fa10d09f5f';
+    const env = testEnv({ POLAR_COSMETIC_PRODUCTS: JSON.stringify({ 'ship-shark': { productId, eurAmount: 599, tryAmount: 19900 } }) });
+    const quote = await polarPricingForIp('127.0.0.1', env);
+    expect(quote.prices['ship-shark']).toMatchObject({ currencyCode: 'EUR', amount: 599 });
+    expect(quote.prices['ship-red-dragon']).toBeUndefined();
+    expect(productIdsFor(env)['ship-shark']).toBe(productId);
+  });
+  it('quotes only configured new cosmetic products and keeps existing offers available', async () => {
+    const env = testEnv({ POLAR_COSMETIC_PRODUCTS: JSON.stringify({ 'ring-aurora': {
+      productId: 'f372f658-e927-4051-b758-e5fa10d09f5f', eurAmount: 499, tryAmount: 14900,
+    } }) });
+    const quote = await polarPricingForIp('127.0.0.1', env);
+    expect(quote.prices['ring-aurora']).toEqual({ currencyCode: 'EUR', formatted: '€4.99', amount: 499 });
+    expect(quote.prices['engine-aurora']).toBeUndefined();
+    expect(quote.prices['planet-lava']).toBeDefined();
+    expect(() => testEnv({ POLAR_COSMETIC_PRODUCTS: '{invalid' })).toThrow();
+    expect(() => testEnv({ POLAR_COSMETIC_PRODUCTS: JSON.stringify({ 'flag-vanguard': { productId: 'f372f658-e927-4051-b758-e5fa10d09f5f', eurAmount: 99 } }) })).toThrow();
+  });
+
   it('shows TRY in Turkey only for products that have a TRY price', async () => {
     const lookup = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ip: '198.51.100.1', country: 'TR' }))));
     vi.stubGlobal('fetch', lookup);

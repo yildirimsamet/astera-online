@@ -3,24 +3,23 @@ import { resolve } from 'node:path';
 
 const args = process.argv.slice(2);
 if (args[0] === '--') args.shift();
-const excludeSims = args.length === 1 && args[0] === '--exclude-sims';
-if (args.length > 0 && !excludeSims) {
-  console.error('Usage: pnpm verify [--exclude-sims]');
+const includeLongTests = args.length === 1 && args[0] === '--include-long-tests';
+const legacyExcludeSims = args.length === 1 && args[0] === '--exclude-sims';
+if (args.length > 0 && !includeLongTests && !legacyExcludeSims) {
+  console.error('Usage: pnpm verify [--include-long-tests | --exclude-sims]');
   process.exit(2);
 }
 
-// Type and lint checks still cover the whole workspace. Only test execution is
-// reduced; ordinary economy/resource transaction tests remain in the gate.
+// Type and lint always cover the workspace. Long economy simulations and the
+// snowball audit require an explicit user request; ordinary resource tests stay.
 const commands = [
   ['typecheck'],
   ['lint'],
-  excludeSims
-    ? ['--filter', '!@astera/sim', '-r', 'run', 'test', '--exclude', '**/snowball-audit.test.*']
-    : ['test'],
+  includeLongTests ? ['run', 'test:long'] : ['test'],
 ];
 
-if (excludeSims) {
-  console.log('Skipping @astera/sim and snowball audit tests (--exclude-sims).');
+if (!includeLongTests) {
+  console.log('Skipping economy simulations and snowball audit tests; explicit user request required.');
 }
 
 for (const command of commands) {

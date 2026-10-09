@@ -9,7 +9,8 @@
   "scripts": {
     "build": "pnpm lint && pnpm typecheck && pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
+    "test": "pnpm --filter '!@astera/sim' -r run test",
+    "test:long": "ASTERA_INCLUDE_LONG_TESTS=1 pnpm -r run test",
     "sim": "pnpm --filter @astera/sim start",
     "balance:economy": "tsx tools/economy-calibration.ts",
     "balance:fleet": "tsx tools/fleet-calibration.ts",

@@ -15,6 +15,29 @@ Tarih: 2026-10-04. Güncel durum: A–F kapsamındaki native filo, sezon, API, U
 
 ## 2. Onaylanan ürün kararları
 
+2026-10-09 sonda riski güncellemesi: kullanıcı anıta gönderilen sondanın kayıp
+olasılığını %90'dan %75'e indirdi. Önce 0,75 sınırının altı / tam sınır / üstü,
+1.000 eşit aralıklı çekilişte 250 sağ kalan, yeni sağ kalan 0,75–0,90 aralığının
+varış ve dönüşü, kayıp bildirimi, API oranı ve altı dilde gönderim açıklaması
+test edilir. Saf kural, API/bildirim ve arayüz tek ortak sabiti kullanır. Ücret,
+uçuş, soğuma, rapor sahipliği ve varış/dönüşte yinelenen teslim davranışı korunur.
+Ekonomi simülasyonları ve snowball audit önceki kullanıcı talimatıyla kapsam dışıdır.
+
+Bu güncellemenin TDD kaydı: eski %90 kuralıyla saf kuralda 1, sunucuda 8,
+istemcide 7 test başarısız oldu. Ortak sabit güncellendikten sonra 6 saf kural,
+37 gerçek veritabanı/API ve 102 istemci/çeviri testi geçti. TypeScript ve lint
+geçti. Gerçek `MonumentSheet`, Türkçe/İngilizce 350 ve 1.280 px görünümde %75
+risk ve fiyatla kontrol edildi; yatay taşma yok. Kanıtlar
+`out/monument-probe-75/` altında. Genel kontrolde 2.021 kural testi ve 5.585
+istemci testi geçti; istemcide mevcut 29 test atlandı. Snowball dışındaki 208
+sunucu dosyasının tamamı tarandı: son doğrulamada 3.027 test geçti, mevcut bir
+test atlandı. İlk taramada çalışma sırasında değişen iki kozmetik testi
+başarısız oldu; güncel kodla iki dosyanın 18 testi yeniden çalıştırılarak geçti.
+Bu çalışma kozmetik kodunu veya testlerini değiştirmedi. İlk koşu ve tekrar
+doğrulaması `verification-proof.json` içinde ayrı kayıtlıdır; ham süreç sonuçları
+`verification-status.json` içindedir. Sunucu dosyaları ayrı test veritabanlarında,
+aynı anda en fazla altı süreçle kontrol edildi.
+
 ### Kontrol ve filo sahipliği
 
 - Klansız oyuncunun tuttuğu monument oyuncunun; klan üyesinin tuttuğu monument klanın kontrolündedir.
@@ -78,7 +101,7 @@ Tarih: 2026-10-04. Güncel durum: A–F kapsamındaki native filo, sezon, API, U
 ### Monument probe'u
 
 - Probe normal radiation hasarı almaz; monument'a ulaştığında ayrı bir kayıp kuralı çalışır.
-- Varışta %90 yok olur, %10 hayatta kalıp geri döner.
+- Varışta %75 yok olur, %25 hayatta kalıp geri döner (2026-10-09 kullanıcı kararı).
 - Gelen rapor mevcut gemi türlerini ve adetlerini %100 doğrulukla gösterir. Gezegen probe'undaki belirsizlik/accuracy bantları uygulanmaz.
 - Yalnız hayatta kalıp eve dönen probe rapor getirir. Ölen probe rapor veya kesin filo verisi iletmez. Snapshot monument'a varışta alınır; rapor eve dönüşte teslim edilir.
 - Rapor bir gözlem anını anlatır; ilerideki takviye, kayıp veya geri çağırmayı otomatik takip eden canlı bilgi değildir.
@@ -142,7 +165,7 @@ Tarih: 2026-10-04. Güncel durum: A–F kapsamındaki native filo, sezon, API, U
 - Kendi filolarında gövde bazında kalan sağlık, yük dolma zamanı, dönüş yolunun hasarı ve öngörülen eve varış sağlığı.
 - Gönderim ekranında kapasite rezervasyonu, yakıt, yol riski ve savaş sonrası yüksek tier önceliği; savaş sonucu kesinmiş gibi sunulmaz.
 - Manuel ve kısmi geri çağırma; seçilen gemiler, beraber dönecek yük ve ETA aynı karar ekranında gösterilir.
-- Probe gönderiminde %90 kayıp riski; raporda gözlem zamanı ve %100 doğru adetler. Yalnız hayatta kalıp eve dönen probe rapor getirir. Doğruluk ve teslim kararı yeniden sorulmaz.
+- Probe gönderiminde %75 kayıp riski; raporda gözlem zamanı ve %100 doğru adetler. Yalnız hayatta kalıp eve dönen probe rapor getirir. Doğruluk ve teslim kararı yeniden sorulmaz.
 - Filo panosu, battle report, bildirimler, klan ortak saldırısı ve mobil odak/gezinti bu hedefi destekler.
 - HOLD eden oyuncu saldırı kalkışını hemen bildirimlerinde ve monument/filo ekranında görür; kendi gezegen kalkanının düşmesi saldırı gönderimindeki mevcut PvP açıklamasıyla gösterilir.
 - Arayüz CLAUDE.md'deki açıklık, tahmin edilebilirlik, karar desteği ve etkileşim maliyeti kurallarına göre hazırlanır; görsel doğrulama geliştirme kapısıdır.
@@ -376,7 +399,7 @@ Daha önce geri çekilen 46 soruluk liste açık karar listesi değildir; onayl�
 ### E monument probe adaptörü: requirements ve riskler
 
 - Probe gerçek monument FK'sı, kendi rota/saatleri ve ayrı geçici snapshot kaydıyla saklanır; gezegen mission FK'sına sahte target yazılmaz. Mevcut probe fiyatı, hızı ve hedef başına beş saniyelik cooldown korunur; ek hangar, yakıt veya filo yuvası kuralı konmaz.
-- Varış sonucu sunucunun sezon anahtarı ve görev kimliğiyle deterministiktir: %90 LOST, %10 RETURNING. LOST rapor, roster veya araştırma üretmez. RETURNING yalnız o varış anındaki HOLD/NPC gövde/adet snapshot'ını taşır; eve varana kadar intel API'sinden okunamaz.
+- Varış sonucu sunucunun sezon anahtarı ve görev kimliğiyle deterministiktir: %75 LOST, %25 RETURNING. LOST rapor, roster veya araştırma üretmez. RETURNING yalnız o varış anındaki HOLD/NPC gövde/adet snapshot'ını taşır; eve varana kadar intel API'sinden okunamaz.
 - Geç worker veya daha yeni bir monument okuması geçmiş snapshot'ı yeniden yaratamaz: bütün due wave/probe varışları tek kronolojik çizelgede çözülür. Radiation HOLD kayıpları ve garnizon respawn'ı gözlem saatinden önce settle edilir; probe çevresel HP hasarından muaftır.
 - Tests: olasılık sınırları, ücret/rollback, cooldown yarışı, başka sezon/köken yetkisi, LOST gizliliği, gerçek ETA snapshot'ı, teslim öncesi gizlilik, tekrar event/teslim, köken kaybı ve sezon kapanışı. Reclaim/wipe/FK temizliği, native event, pending/traffic ve UI birlikte kapanmalıdır.
 
@@ -403,7 +426,7 @@ Daha önce geri çekilen 46 soruluk liste açık karar listesi değildir; onayl�
 ### F harita ve panel uygulama notları
 
 - Public monument/HP geometrisi galaxy boundary'de ayrılır; kameranın gezinme yarıçapı monument konumlarını ve bulut hacmini içerir, GALAXY.radius/yerleşim ekonomisi değişmez. Modeller ticaret gemisinin üç katı normalize ölçekte gerçek haritaya yerleştirilir ve filolardaki hafif neon rim'i paylaşır. İlk tap LOOK/rail, ikinci tap gerçek API'ye bağlı detaydır; aynı hedefteki query yenilenmesi kamerayı yeniden hareket ettirmez.
-- Panel kendi physical wave/lot sağlığını, üretim payını, dolma/ölüm saatini ve dönüş kargosunu gösterir. Değişen seçimin eski quote'u commit'e açılmaz; shield ve lethal radiation açık ayrı onaydır. Kısmi recall lot/count seçimiyle sunucu quote'u alır, kargoyu hull toplamından yeniden icat etmez; RETURNING salt okunur. Probe'un bedeli/%90 kaybı eylemden önce, successful snapshot iki tarih ile verilir. Ağ cevabı kaybında aynı body/idempotency anahtarı korunur.
+- Panel kendi physical wave/lot sağlığını, üretim payını, dolma/ölüm saatini ve dönüş kargosunu gösterir. Değişen seçimin eski quote'u commit'e açılmaz; shield ve lethal radiation açık ayrı onaydır. Kısmi recall lot/count seçimiyle sunucu quote'u alır, kargoyu hull toplamından yeniden icat etmez; RETURNING salt okunur. Probe'un bedeli/%75 kaybı eylemden önce, successful snapshot iki tarih ile verilir. Ağ cevabı kaybında aynı body/idempotency anahtarı korunur.
 - Harita/public finder, SSE private transition ve bağlantı yenilenmesi gerçek monument cache'ini yeniler. Klan hedefindeki nullable planet yerine açık MONUMENT discriminator kullanılır. Yabancı kontrol/membership, sıfır kargo/güç, kök bay, yetersiz fuel, quote hatası, seçim–quote yarışı ve sezon kapanışında kontrol reddi review kapsamındadır.
 - Yeni contract önce 4 FAIL → 4 PASS; actual controller-name/probe-route regresyonu önce FAIL → PASS. Panel bulunmazken yeni UI testi FAIL; panel/cache/consent/physical recall uygulaması sonrası 6 UI testi PASS. İlk 7 dosyalı frontend gate 139 PASS, çeviri karşılaştırmasında 1 FAIL (iki eş metin); bu metinler Türkçeleştirildi. Full suite bu aşamada çalıştırılmadı.
 

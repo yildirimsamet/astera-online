@@ -466,11 +466,11 @@ export const reports = {
     salvageTheirs: "敵のガベージコレクターが残骸から{{amount}}を回収しました。",
     /** Koloni arızaları: what a heavy defeat broke. Defender only. */
     /** Taktik geri çekilme. Defender: what ran and what the lift burned, or why it could not. */
-    escaped_one: "あなたの艦船は戦闘前に退避しました（重水素−{{fuel}}）。襲撃側の火力があなたの戦列の3倍以上でした。",
-    escaped_other: "あなたの艦船{{count}}隻は戦闘前に退避しました（重水素−{{fuel}}）。襲撃側の火力があなたの戦列の3倍以上でした。",
+    escaped_one: "あなたの艦船は戦闘前に退避しました（重水素−{{fuel}}）。襲撃部隊が防衛戦列を圧倒していました。",
+    escaped_other: "あなたの艦船{{count}}隻は戦闘前に退避しました（重水素−{{fuel}}）。襲撃部隊が防衛戦列を圧倒していました。",
     stranded: "艦船は退避できる状況でしたが、燃料が足りませんでした。重水素が{{fuel}}必要で、保有量は{{available}}でした。",
     /** Raider: the line emptied in front of the raid, and nothing about what it held. */
-    fled: "敵艦は戦闘前に退避しました。火力差が3倍以上で全滅する戦列は、惑星に往復分の燃料があれば退避します。",
+    fled: "敵艦は戦闘前に退避しました。圧倒的な攻撃で全滅する戦列は、燃料が足りれば退避します。",
     colonyFaults: "この敗北により{{planet}}で発生した故障：{{faults}}。",
     /**
      * Recovery shield, defender only: the NET loss of the lookback at this battle, in

@@ -18,6 +18,7 @@ import {
   resolveCombat,
   resolveRaid,
   soloStack,
+  type DefenderStack,
   type Fleet,
   type JointAttackerStack,
 } from '../src/index.js';
@@ -27,7 +28,7 @@ import {
  *
  * OGame's tactical retreat, with the two corrections this engine's own numbers asked for.
  * The ships of a defending line lift off instead of fighting when the wing that arrived
- * fires at least three times what the line fires AND the line would have been wiped out
+ * has at least 3.5 times the line's armed resource value AND the line would have been wiped out
  * anyway — and only if the world's tank can pay for the lift. The ground guns and the
  * Aegis stay and fight; everything else about the raid (loot, bash limit, recovery
  * shield) reads the battle that actually happened.
@@ -38,12 +39,12 @@ import {
 const NONE = { tech: {} };
 const seed = () => mulberry32(24_680);
 
-/** A T2 line the engine clears from 1.5× (measured 2026-09-23). Fires 48,458. */
+/** A mirrored T2 line the engine clears from 1.5× (measured 2026-09-23). */
 const LINE: Fleet = { VIPER: 20, TALON: 10, SENTINEL: 8 };
-/** Exactly three times LINE's firepower — 145,374 against 48,458. */
-const TRIPLE: Fleet = { VIPER: 60, TALON: 30, SENTINEL: 24 };
+/** Exactly 3.5 times LINE's armed resource value. */
+const THRESHOLD: Fleet = { VIPER: 70, TALON: 35, SENTINEL: 28 };
 /** One Viper short of the threshold. */
-const JUST_UNDER: Fleet = { VIPER: 59, TALON: 30, SENTINEL: 24 };
+const JUST_UNDER: Fleet = { VIPER: 69, TALON: 35, SENTINEL: 28 };
 /** Twice LINE — the fight between near-equals the owner wants left alone. */
 const DOUBLE: Fleet = { VIPER: 40, TALON: 20, SENTINEL: 16 };
 
@@ -52,7 +53,10 @@ const TANK = 100_000;
 const raid = (
   wing: Fleet | readonly JointAttackerStack[],
   line: Fleet,
-  options: { shield?: number; deuterium?: number; escape?: boolean; rulesetVersion?: number } = {},
+  options: {
+    shield?: number; deuterium?: number; escape?: boolean; rulesetVersion?: number;
+    support?: readonly DefenderStack[]; preciseDamage?: boolean;
+  } = {},
 ) => resolveRaid({
   stacks: Array.isArray(wing) ? wing : [soloStack(wing as Fleet, NONE)],
   line,
@@ -63,6 +67,8 @@ const raid = (
   escape: options.escape ?? true,
   minimumCombatShips: fleetEscapeMinimumApplies(options.rulesetVersion ?? MULTI_WORLD.rulesetVersion)
     ? ESCAPE.minimumCombatShips : 0,
+  ...(options.support === undefined ? {} : { support: options.support }),
+  ...(options.preciseDamage === undefined ? {} : { preciseDamage: options.preciseDamage }),
 });
 
 const plain = (wing: Fleet, line: Fleet, shield = 0) =>
@@ -72,8 +78,8 @@ const mobileIn = (fleet: Fleet): number =>
   fleetEntries(fleet).filter(([id]) => !HULLS[id].ground).reduce((n, [, c]) => n + c, 0);
 
 describe('the escape rule, as the owner set it', () => {
-  it('is three times the firepower, paid for with a 600-unit round trip', () => {
-    expect(ESCAPE.ratio).toBe(3);
+  it('is 3.5 times the armed resource value, paid for with a 600-unit round trip', () => {
+    expect(ESCAPE.ratio).toBe(3.5);
     expect(ESCAPE.fuelDistance).toBe(600);
   });
 
@@ -109,15 +115,18 @@ describe('the escape rule, as the owner set it', () => {
       .toBe('ESCAPED');
   });
 
-  it('draws its line at a third of what the wing fires', () => {
-    expect(combatValue(TRIPLE) / combatValue(LINE)).toBe(3);
-    expect(escapeLine(TRIPLE)).toBe(combatValue(LINE));
+  it('draws its line at the wing’s armed resource value divided by 3.5', () => {
+    expect(combatValue(THRESHOLD) / combatValue(LINE)).toBe(3.5);
+    expect(escapeLine(THRESHOLD)).toBe(combatValue(LINE));
     expect(escapeLine({ ATLAS: 50 })).toBe(0);
   });
 
-  it('decides the threshold inclusively: three times is enough, a drop under is not', () => {
-    expect(outmatches(300, 100)).toBe(true);
-    expect(outmatches(299.99, 100)).toBe(false);
+  it('includes exactly 3.5, excludes anything below it and has no upper limit', () => {
+    expect(outmatches(350, 100)).toBe(true);
+    expect(outmatches(349.99, 100)).toBe(false);
+    expect(outmatches(300, 100)).toBe(false);
+    expect(outmatches(400, 100)).toBe(true);
+    expect(outmatches(10_000, 100)).toBe(true);
     // A line that fires nothing is outmatched by anything that fires at all —
     // whether it RUNS is the DECISIVE guard's question, not this one's.
     expect(outmatches(1, 0)).toBe(true);
@@ -148,6 +157,49 @@ describe('which ships lift off', () => {
 });
 
 describe('resolveRaid', () => {
+  it('fights a three-to-one raid now that the threshold is 3.5', () => {
+    const wing: Fleet = { VIPER: 60, TALON: 30, SENTINEL: 24 };
+    const outcome = raid(wing, LINE);
+    expect(plain(wing, LINE).grade).toBe('DECISIVE');
+    expect(outcome.escape).toBeNull();
+    expect(outcome.result.rounds).toEqual(plain(wing, LINE).rounds);
+  });
+
+  it('counts active ground guns in the ratio, even when the ships alone qualify', () => {
+    const line: Fleet = { ...LINE, BASTION: 4 };
+    expect(combatValue(THRESHOLD)).toBe(3.5 * combatValue(LINE));
+    expect(combatValue(THRESHOLD)).toBeLessThan(3.5 * combatValue(line));
+    expect(plain(THRESHOLD, line).grade).toBe('DECISIVE');
+    expect(raid(THRESHOLD, line).escape).toBeNull();
+  });
+
+  it('charges for the transports that lift too, without counting them toward the ratio', () => {
+    const line: Fleet = { ...LINE, COURIER: 5 };
+    const fuel = escapeFuel(line);
+    expect(fuel).toBeGreaterThan(escapeFuel(LINE));
+    expect(raid(THRESHOLD, line, { deuterium: fuel }).escape)
+      .toEqual({ kind: 'ESCAPED', ships: line, fuel });
+    expect(raid(THRESHOLD, line, { deuterium: fuel - 1 }).escape)
+      .toEqual({ kind: 'STRANDED', ships: line, fuel, available: fuel - 1 });
+  });
+
+  it('never lifts a supported line, and rejects a caller that enables both rules', () => {
+    const support: DefenderStack[] = [{
+      stackId: 'support', playerId: 'ally', fleet: { DART: 5 }, tech: NONE,
+    }];
+    const wing: Fleet = { VIPER: 600 };
+    expect(raid(wing, LINE, { escape: false, support }).escape).toBeNull();
+    expect(() => raid(wing, LINE, { support })).toThrow('a line holding clan support never lifts');
+  });
+
+  it('preserves sub-bp attacker damage when an escape becomes a walkover', () => {
+    const damage = [{ hull: 'VIPER' as const, count: 70, damageBp: 0, remainderBp: 0.125 }];
+    const outcome = raid([soloStack(THRESHOLD, NONE, damage)], LINE, { preciseDamage: true });
+    expect(outcome.escape?.kind).toBe('ESCAPED');
+    expect(outcome.result.attackerDamage).toEqual(damage);
+    expect(outcome.result.defenderDamage).toEqual([]);
+  });
+
   it('lets a 1:2 fight happen exactly as it always did', () => {
     const outcome = raid(DOUBLE, LINE);
     expect(outcome.escape).toBeNull();
@@ -158,8 +210,8 @@ describe('resolveRaid', () => {
     expect(outcome.result.attackerLosses).toEqual(before.attackerLosses);
   });
 
-  it('lifts every ship off when the wing fires exactly three times the line', () => {
-    const outcome = raid(TRIPLE, LINE);
+  it('lifts every ship off when the wing has exactly 3.5 times the line’s armed resource value', () => {
+    const outcome = raid(THRESHOLD, LINE);
     expect(outcome.escape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: 46 });
     // No ship stood in the line, so no ship died — a walkover, as D173 has it.
     expect(mobileIn(outcome.result.defenderLosses)).toBe(0);
@@ -169,7 +221,7 @@ describe('resolveRaid', () => {
   });
 
   it('fights when the wing is one Viper short of the threshold', () => {
-    expect(combatValue(JUST_UNDER)).toBeLessThan(3 * combatValue(LINE));
+    expect(combatValue(JUST_UNDER)).toBeLessThan(3.5 * combatValue(LINE));
     const outcome = raid(JUST_UNDER, LINE);
     expect(outcome.escape).toBeNull();
     expect(outcome.result.grade).toBe('DECISIVE');
@@ -178,14 +230,14 @@ describe('resolveRaid', () => {
 
   it('counts only what fires: holds packed with cargo do not buy the threshold', () => {
     const padded: Fleet = { ...DOUBLE, ATLAS: 60 };
-    expect(fleetValue(padded)).toBeGreaterThan(3 * combatValue(LINE));
+    expect(fleetValue(padded)).toBeGreaterThan(3.5 * combatValue(LINE));
     expect(raid(padded, LINE).escape).toBeNull();
   });
 
   it('keeps a transport wall standing: a line the wing cannot clear never runs', () => {
     const wall: Fleet = { ATLAS: 40, SENTINEL: 6 };
-    const wing: Fleet = { VIPER: 25 };
-    expect(combatValue(wing)).toBeGreaterThanOrEqual(3 * combatValue(wall));
+    const wing: Fleet = { VIPER: 27 };
+    expect(combatValue(wing)).toBeGreaterThanOrEqual(3.5 * combatValue(wall));
     expect(plain(wing, wall).grade).not.toBe('DECISIVE');
     const outcome = raid(wing, wall);
     expect(outcome.escape).toBeNull();
@@ -193,27 +245,27 @@ describe('resolveRaid', () => {
   });
 
   it('stays under a dome that holds', () => {
-    expect(plain(TRIPLE, LINE, 400_000).grade).toBe('REPELLED');
-    expect(raid(TRIPLE, LINE, { shield: 400_000 }).escape).toBeNull();
+    expect(plain(THRESHOLD, LINE, 400_000).grade).toBe('REPELLED');
+    expect(raid(THRESHOLD, LINE, { shield: 400_000 }).escape).toBeNull();
   });
 
   it('has nothing to lift when only guns stand, and changes nothing', () => {
     const guns: Fleet = { BASTION: 4 };
-    const outcome = raid(TRIPLE, guns);
+    const outcome = raid(THRESHOLD, guns);
     expect(outcome.escape).toBeNull();
-    expect(outcome.result.rounds).toEqual(plain(TRIPLE, guns).rounds);
+    expect(outcome.result.rounds).toEqual(plain(THRESHOLD, guns).rounds);
   });
 
   it('does nothing against an empty world', () => {
-    const outcome = raid(TRIPLE, {});
+    const outcome = raid(THRESHOLD, {});
     expect(outcome.escape).toBeNull();
     expect(outcome.result.grade).toBe('DECISIVE');
   });
 
   it('leaves the guns to fight alone when the ships run', () => {
     const line: Fleet = { ...LINE, BASTION: 4 };
-    const wing: Fleet = { VIPER: 80, TALON: 38, SENTINEL: 30 };
-    expect(combatValue(wing)).toBeGreaterThanOrEqual(3 * combatValue(line));
+    const wing: Fleet = { VIPER: 100, TALON: 50, SENTINEL: 40 };
+    expect(combatValue(wing)).toBeGreaterThanOrEqual(3.5 * combatValue(line));
     const outcome = raid(wing, line);
     expect(outcome.escape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: 46 });
     const fought = plain(wing, { BASTION: 4 });
@@ -223,21 +275,21 @@ describe('resolveRaid', () => {
   });
 
   it('strands the fleet when the tank is one drop short, and the fight stands', () => {
-    const outcome = raid(TRIPLE, LINE, { deuterium: 45 });
+    const outcome = raid(THRESHOLD, LINE, { deuterium: 45 });
     expect(outcome.escape).toEqual({ kind: 'STRANDED', ships: LINE, fuel: 46, available: 45 });
-    expect(outcome.result.rounds).toEqual(plain(TRIPLE, LINE).rounds);
+    expect(outcome.result.rounds).toEqual(plain(THRESHOLD, LINE).rounds);
     expect(mobileIn(outcome.result.defenderLosses)).toBe(mobileIn(LINE));
   });
 
   it('lifts off on exactly the fuel it needs', () => {
-    expect(raid(TRIPLE, LINE, { deuterium: 46 }).escape?.kind).toBe('ESCAPED');
+    expect(raid(THRESHOLD, LINE, { deuterium: 46 }).escape?.kind).toBe('ESCAPED');
   });
 
   it('reads a fraction of a drop as nothing and a corrupt tank as empty', () => {
-    expect(raid(TRIPLE, LINE, { deuterium: 45.99 }).escape)
+    expect(raid(THRESHOLD, LINE, { deuterium: 45.99 }).escape)
       .toEqual({ kind: 'STRANDED', ships: LINE, fuel: 46, available: 45 });
     for (const broken of [Number.NaN, -5, Number.POSITIVE_INFINITY]) {
-      expect(raid(TRIPLE, LINE, { deuterium: broken }).escape)
+      expect(raid(THRESHOLD, LINE, { deuterium: broken }).escape)
         .toEqual({ kind: 'STRANDED', ships: LINE, fuel: 46, available: 0 });
     }
   });
@@ -248,11 +300,11 @@ describe('resolveRaid', () => {
     expect(mobileIn(outcome.result.defenderLosses)).toBe(mobileIn(LINE));
   });
 
-  it('adds up a joint war: three waves that each match the line are three times it', () => {
+  it('adds up all joint-war waves before comparing them with the line', () => {
     const waves = ['a', 'b', 'c'].map((id): JointAttackerStack => ({
       contributionId: id,
       playerId: `p-${id}`,
-      fleet: { ...LINE },
+      fleet: id === 'c' ? { VIPER: 30, TALON: 15, SENTINEL: 12 } : { ...LINE },
       tech: NONE,
     }));
     const outcome = raid(waves, LINE);
@@ -261,7 +313,7 @@ describe('resolveRaid', () => {
   });
 
   it('resolves the same inputs the same way every time', () => {
-    expect(raid(TRIPLE, { ...LINE, BASTION: 2 })).toEqual(raid(TRIPLE, { ...LINE, BASTION: 2 }));
+    expect(raid(THRESHOLD, { ...LINE, BASTION: 2 })).toEqual(raid(THRESHOLD, { ...LINE, BASTION: 2 }));
   });
 
   /**
@@ -312,19 +364,19 @@ describe('resolveRaid', () => {
 describe('escapeVerdict', () => {
   it('cannot promise retreat from a power reading that does not reveal ship count', () => {
     const clears = { low: 20_000, high: 30_000 };
-    expect(escapeVerdict(30_000, { low: 4_000, high: 9_000 }, clears, true))
+    expect(escapeVerdict(35_000, { low: 4_000, high: 9_000 }, clears, true))
       .toBe('UNSURE');
-    expect(escapeVerdict(30_000, { low: 10_001, high: 14_000 }, clears, true))
+    expect(escapeVerdict(35_000, { low: 10_001, high: 14_000 }, clears, true))
       .toBe('STAND');
   });
   const clears = { low: 20_000, high: 30_000 };
 
   it('says they run when the whole band sits under the line and is cleared everywhere', () => {
-    expect(escapeVerdict(30_000, { low: 4_000, high: 9_000 }, clears)).toBe('RUN');
+    expect(escapeVerdict(35_000, { low: 4_000, high: 9_000 }, clears)).toBe('RUN');
   });
 
   it('says they stand when even the bottom of the band is over the line', () => {
-    expect(escapeVerdict(30_000, { low: 10_001, high: 14_000 }, clears)).toBe('STAND');
+    expect(escapeVerdict(35_000, { low: 10_001, high: 14_000 }, clears)).toBe('STAND');
   });
 
   it('says they stand when the wing cannot clear the band anywhere', () => {
@@ -332,14 +384,14 @@ describe('escapeVerdict', () => {
   });
 
   it('says it is open when the band straddles the line', () => {
-    expect(escapeVerdict(30_000, { low: 8_000, high: 12_000 }, clears)).toBe('UNSURE');
+    expect(escapeVerdict(35_000, { low: 8_000, high: 12_000 }, clears)).toBe('UNSURE');
   });
 
   it('says it is open when the band is under the line but might not be cleared', () => {
-    expect(escapeVerdict(90_000, { low: 18_000, high: 25_000 }, clears)).toBe('UNSURE');
+    expect(escapeVerdict(105_000, { low: 18_000, high: 25_000 }, clears)).toBe('UNSURE');
   });
 
   it('counts the line itself as running, as the rule does', () => {
-    expect(escapeVerdict(30_000, { low: 10_000, high: 10_000 }, clears)).toBe('RUN');
+    expect(escapeVerdict(35_000, { low: 10_000, high: 10_000 }, clears)).toBe('RUN');
   });
 });

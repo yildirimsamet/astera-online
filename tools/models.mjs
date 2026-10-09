@@ -231,6 +231,9 @@ const LOD_VARIANTS = {
 const UNCAPPED_CRAFT = new Set(['ships/trade_ship.glb']);
 
 const PATH_POLICY = {
+  // UFO's dense UV seams stop ordinary simplification above 10k triangles.
+  // Separate close-up master and moderately simplified flight mesh.
+  'probes/probe_ufo.glb': { texture: 1024, simplify: false, rebake: true, triangleCeiling: 12000, error: 0.04, previewTexture: 2048 },
   // These two have a single unwrapped 4K colour map instead of three tiled maps.
   'monuments/monument_abandoned_space_wreckage.glb': { texture: 2048, simplify: false },
   // Its densely split inner ring needs a slightly larger combined attribute
@@ -299,6 +302,8 @@ const onlyPath = process.argv.find((arg) => arg.startsWith('--only='))?.slice('-
 function walk(dir) {
   const found = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    // Incoming models need a canonical category and build policy before they can be served.
+    if (dir === SOURCE && entry.isDirectory() && entry.name === 'new_skins') continue;
     const path = join(dir, entry.name);
     if (entry.isDirectory()) found.push(...walk(path));
     else if (entry.name.endsWith('.glb')) found.push(path);
@@ -430,6 +435,13 @@ for (const source of sources) {
     continue;
   }
 
+  const shipSkinName = /^ships\/skins\/([^/]+)\/model\.glb$/.exec(rel)?.[1];
+  if (shipSkinName) {
+    const { buildShipSkin } = await import('./ship-skin-models.mjs');
+    await buildShipSkin(source, target, shipSkinName, lodOnly);
+    continue;
+  }
+
   const base = policyFor(relative(SOURCE, source));
   /*
     A ship over the ceiling is cut to it, whatever its policy row says about
@@ -446,16 +458,28 @@ for (const source of sources) {
     : base;
 
   if (!lodOnly) {
-    const ceiling = monument
+    if (base.previewTexture) {
+      const preview = target.replace(/\.glb$/, '_preview.glb');
+      optimise(source, preview, { texture: base.previewTexture, simplify: false });
+      if (rel === 'probes/probe_ufo.glb') {
+        const { polishCosmeticFile } = await import('./cosmetic-materials.mjs');
+        await polishCosmeticFile(preview, 'ufo');
+      }
+    }
+    const ceiling = base.triangleCeiling ?? (monument
       ? MONUMENT_TRIANGLE_CEILING
-      : FLEET_V2_MODEL_PATHS.has(rel) ? SHIP_TRIANGLE_CEILING : undefined;
+      : FLEET_V2_MODEL_PATHS.has(rel) ? SHIP_TRIANGLE_CEILING : undefined);
     let after;
-    if (monument) {
+    if (monument || base.rebake) {
       const { prepareMonumentModel } = await import('./monument-models.mjs');
       const scratch = mkdtempSync(join(tmpdir(), 'astera-monuments-'));
       try {
         const prepared = join(scratch, 'prepared.glb');
-        await prepareMonumentModel(source, prepared, MONUMENT_TRIANGLE_CEILING, base.error, base.texture);
+        await prepareMonumentModel(source, prepared, ceiling ?? MONUMENT_TRIANGLE_CEILING, base.error, base.texture);
+        if (rel === 'probes/probe_ufo.glb') {
+          const { polishCosmeticFile } = await import('./cosmetic-materials.mjs');
+          await polishCosmeticFile(prepared, 'ufo');
+        }
         optimise(prepared, target, { ...policy, simplify: false });
         after = describe(target);
       } finally {

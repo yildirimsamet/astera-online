@@ -62,7 +62,7 @@ describe('monument public facts and private manifests over HTTP', () => {
   it('delivers an overdue surviving probe on read even when its owner has no monument fleet', async () => {
     const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
     let id = randomUUID();
-    while (seededFrom('monument:probe:v1', season!.asteroidKey, id)() < 0.9) id = randomUUID();
+    while (seededFrom('monument:probe:v1', season!.asteroidKey, id)() < 0.75) id = randomUUID();
     const outAt = new Date(f.clock.now().getTime() + 60_000);
     await f.db.insert(monumentProbes).values({ id, seasonId: f.seasonId, monumentId: m.id,
       playerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!, departAt: f.clock.now(), arriveAt: outAt,
@@ -461,7 +461,7 @@ describe('monument dispatch, probe and physical partial recall over HTTP', () =>
     const payload = { originPlanetId: f.planetIds[0]! };
     const first = await post(url, payload, headers);
     expect(first.statusCode).toBe(200);
-    expect(first.json()).toMatchObject({ probe: { monumentId: m.id, status: 'OUTBOUND' }, lossProbability: 0.9 });
+    expect(first.json()).toMatchObject({ probe: { monumentId: m.id, status: 'OUTBOUND' }, lossProbability: 0.75 });
     expect((await post(url, payload, headers)).json()).toEqual(first.json());
     expect((await post(url, payload)).json()).toMatchObject({ error: 'PROBE_COOLDOWN' });
   });

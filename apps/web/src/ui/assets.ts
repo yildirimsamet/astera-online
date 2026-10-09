@@ -261,6 +261,7 @@ export function nextGroundArt(id: GroundHullId, standing: number): string | null
  */
 export const MODEL = {
   probe: '/assets/models/ships/explorer_ship.glb',
+  probeUfo: '/assets/models/probes/probe_ufo.glb',
   /** Preserved ground batteries retain their existing geometry. They never travel. */
   bastion: '/assets/models/ships/ship_3.glb',
   thorn: '/assets/models/ships/ship_1.glb',
@@ -320,6 +321,9 @@ export const MODEL = {
  * and everybody notices in play.
  */
 export const MODEL_FACING: Record<string, Facing> = {
+  [MODEL.probeUfo]: '+z',
+  ...Object.fromEntries(Object.entries({ 'red-dragon': '-x', scorpion: '+z', shark: '-x', stingray: '+z' } as const)
+    .flatMap(([name, facing]) => ['', '_lod', '_preview'].map(suffix => [`/assets/models/ships/skins/${name}/model${suffix}.glb`, facing]))),
   ...Object.fromEntries(
     Object.values(FLEET_V2_ASSET_MANIFEST).map(({ model, facing }) => [model, facing]),
   ),
@@ -457,6 +461,7 @@ export const hullPoseLift = (hull: HullId): number =>
  * a claim about geometry that nothing honours.
  */
 export const CRAFT_MODELS: readonly string[] = [
+  MODEL.probeUfo,
   ...Object.values(FLEET_V2_ASSET_MANIFEST).map(({ model }) => model),
   MODEL.probe,
   MODEL.bastion,

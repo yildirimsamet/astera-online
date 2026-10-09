@@ -999,7 +999,7 @@ describe('a combined strike and the fleet escape', () => {
       .reduce<Record<string, number>>((fleet, row) => ({ ...fleet, [row.hull]: row.count }), {});
   };
 
-  it('lets the defending ships lift off when the waves together outgun the line three to one', async () => {
+  it('lets the defending ships lift off when the combined waves exceed the escape threshold', async () => {
     const f = await setup();
     await f.db.update(seasons).set({ rulesetVersion: MULTI_WORLD.fleetEscapeRulesetVersion })
       .where(eq(seasons.id, f.seasonId));

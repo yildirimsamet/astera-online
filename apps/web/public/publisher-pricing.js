@@ -2,6 +2,11 @@
 const PRICE_KEYS = new Set([
   'planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert',
   'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'planet-japan', 'bundle',
+  'ship-red-dragon', 'ship-scorpion', 'ship-shark', 'ship-stingray', 'probe-ufo',
+  'ring-aurora', 'ring-helios', 'ring-singularity',
+  'engine-aurora', 'engine-helios', 'engine-singularity', 'engine-titan',
+  'flag-aurora', 'flag-helios', 'flag-singularity', 'flag-reaper',
+  'flag-ravager', 'flag-serpent', 'flag-phoenix', 'flag-ironfang',
 ]);
 
 /** @param {unknown} value */

@@ -26,7 +26,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
-      # Rule units and property tests, the season regression gate, then the
-      # persistence suite against a real Postgres. The season gate is the one
-      # that catches balance regressions no unit test can see.
+      # Ordinary rules, UI and persistence tests. Owner rule (2026-10-09):
+      # economy simulations and snowball audits require an explicit request.
       - run: pnpm test

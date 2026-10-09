@@ -250,10 +250,13 @@ defenceSalvage 0.60 · lootBufferShare 0.50 · engagementSeconds 10
 
 ```
 fleet escape (ruleset 11, `ESCAPE`):
-  ships run ⇔ combatValue(wing) ≥ 3 × combatValue(line)  ∧  standing fight DECISIVE  ∧  tank ≥ lift
+  ships run ⇔ combatValue(wing) ≥ 3.5 × combatValue(line)  ∧  standing fight DECISIVE  ∧  tank ≥ lift
   lift = missionFuel(ships, 600, 2)
   ruleset 13+: defending line must also hold ≥5 fighting ships (transports and guns excluded)
 ```
+
+The fixed ratio rose from 3 to 3.5 on the owner's instruction (2026-10-09). Equality
+qualifies. The defending line includes active ground guns; all other escape conditions remain.
 
 The live ship catalog now moves alloy into crystal at constant economic value
 (`alloy + 2 × crystal + 32 × deuterium`). Crystal rises by 55% / 40% / 30% / 25%

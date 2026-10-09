@@ -1,4 +1,14 @@
 interface Span { left: number; right: number }
+interface VerticalSpan { top: number; bottom: number }
+
+/** Trial controls reserve the bottom of the canvas, including the dock below them. */
+export function bottomCover(canvas: VerticalSpan, panels: readonly VerticalSpan[]): number {
+  let cover = 0;
+  for (const panel of panels) {
+    if (panel.top < canvas.bottom && panel.bottom > canvas.top) cover = Math.max(cover, canvas.bottom - panel.top);
+  }
+  return Math.min(cover, (canvas.bottom - canvas.top) * .8);
+}
 
 /** Never more than this share of the canvas: a sliver of galaxy still has a middle. */
 const MOST = 0.8;

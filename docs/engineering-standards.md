@@ -7,12 +7,21 @@ Project law, not preferences. CI enforces most of it; the rest is enforced by re
 ## The gate
 
 ```bash
-pnpm verify        # typecheck + lint + all tests → 0 errors, all green
+pnpm verify        # typecheck + lint + ordinary tests → 0 errors, all green
 ```
 
 **There is no acceptable error count.** A warning that is always present is a warning nobody
 reads. If a rule is wrong, change the rule deliberately and say why — never learn to ignore
 its output.
+
+Owner rule (9 October 2026): economy/season simulations, snowball audits and similarly
+long economy studies or calibration run only after an explicit user request for those
+tests. “All tests” and ordinary task verification do not authorize them; this overrides
+older task plans. Defaults `pnpm test`, `pnpm verify` and the server test suite exclude
+the long sets, while normal rules/resource/API/UI tests remain required. Only when
+requested use `pnpm verify --include-long-tests` or `pnpm test:long`.
+The simulation workspace also disables test discovery without
+`ASTERA_INCLUDE_LONG_TESTS=1`, so a direct/recursive runner cannot start it accidentally.
 
 ## Motion
 

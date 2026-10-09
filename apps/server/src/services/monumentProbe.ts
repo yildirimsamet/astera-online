@@ -1,5 +1,5 @@
 import { and, desc, eq, gt, inArray, isNotNull } from 'drizzle-orm';
-import { PROBE, distance, fleetEntries, hpRadiationApplies, monumentProbeSurvives, seededFrom, travelExact, type Fleet } from '@astera/rules';
+import { MONUMENT_PROBE_LOSS_CHANCE, PROBE, distance, fleetEntries, hpRadiationApplies, monumentProbeSurvives, seededFrom, travelExact, type Fleet } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
 import { addMinutes, type Clock } from '../clock.js';
 import { monumentProbes, monuments, planets, scheduledEvents } from '../db/schema.js';
@@ -47,7 +47,7 @@ export async function launchMonumentProbe(tx: Tx, input: {
     dedupeKey: `monument-probe:out:${probe.id}`, resolveAt: arriveAt });
   await publish(tx, input.playerId, 'private:monument');
   await publishShard(tx, season.id, 'launch');
-  return { probeId: probe.id, arriveAt, flightMinutes, lossChance: 0.9, price: { alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 } };
+  return { probeId: probe.id, arriveAt, flightMinutes, lossChance: MONUMENT_PROBE_LOSS_CHANCE, price: { alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 } };
 }
 
 /** Called only by the locked target's chronological arrival timeline. */
@@ -57,7 +57,7 @@ export async function observeLockedMonumentProbe(tx: Tx, locked: LockedMonument,
   if (!monumentProbeSurvives(seededFrom('monument:probe:v1', locked.season.asteroidKey, probe.id)())) {
     await tx.update(monumentProbes).set({ status: 'LOST' }).where(and(eq(monumentProbes.id, probe.id), eq(monumentProbes.status, 'OUTBOUND')));
     await notify(tx, { playerId: probe.playerId, kind: 'monument_probe_lost', refId: probe.id, at,
-      payload: { targetKind: 'MONUMENT', monumentId: probe.monumentId, monumentOrdinal: locked.monument.ordinal, lossChance: 0.9 } });
+      payload: { targetKind: 'MONUMENT', monumentId: probe.monumentId, monumentOrdinal: locked.monument.ordinal, lossChance: MONUMENT_PROBE_LOSS_CHANCE } });
   } else {
     const holdIds = new Set(locked.waves.filter((wave) => wave.status === 'HOLD').map((wave) => wave.id));
     const fleet: Fleet = holdIds.size === 0 ? { ...locked.monument.garrison } : {};

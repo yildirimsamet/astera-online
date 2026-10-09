@@ -19,7 +19,7 @@ import type { Fleet, Rng } from './types.js';
  *
  *   1. there are ships in the line at all (guns never run);
  *   2. at least `ESCAPE.minimumCombatShips` armed ships stand in the line;
- *   3. the wing fires at least `ESCAPE.ratio` times what the line fires (`combatValue`
+ *   3. the wing has at least `ESCAPE.ratio` times the line's armed resource value (`combatValue`
  *      on both sides — the axis a probe's defence band and the launch sheet share);
  *   4. the line, standing, would have been wiped out — the full fight grades DECISIVE;
  *   5. the world's tank pays `escapeFuel` for the lift, all of it or none (T6).
@@ -28,12 +28,12 @@ import type { Fleet, Rng } from './types.js';
  * Aegis fight the wing alone, re-resolved from the same seed, and every downstream
  * rule — loot, Dominion, the recovery shield — reads that battle.
  *
- * WHY THE DECISIVE GUARD. The ratio alone ran two ways the defender loses by: a wall
- * of transports that fires 9k and holds off a 27k raid every time would run from it
- * and hand over the stores, and a fleet under a charged Aegis would leave the dome to
- * a walkover (D173). A fleet only ever runs from a fight it had already lost, so the
- * escape can save ships and never cost anything — `test/escape.test.ts` holds that as
- * a property.
+ * WHY THE DECISIVE GUARD. Under the original 3× ratio, a transport wall worth 9k
+ * could hold off a 27k raid yet run from it on the ratio alone and hand over the
+ * stores; a fleet under a charged Aegis could also leave the dome to a walkover
+ * (D173). The guard requires the standing line to be wiped out. It does not require
+ * attacker survivors or guarantee a better economic outcome: mutual destruction
+ * also qualifies (`docs/fleet-escape-review-2026-10-09.md`).
  *
  * WHY NOT A PROPERTY OF THE COMMANDER. Measured on the whole navy it would stop a
  * careful raider sending a slice under the line; the owner kept it per battle: fights
@@ -66,12 +66,12 @@ export function escapingShips(line: Fleet): Fleet {
 /** The lift is a launch: `missionFuel` for a round trip of `ESCAPE.fuelDistance`. */
 export const escapeFuel = (ships: Fleet): number => missionFuel(ships, ESCAPE.fuelDistance, 2);
 
-/** The strength half of the rule, inclusive: three times is enough. */
+/** The strength half of the rule, inclusive at `ESCAPE.ratio`. */
 export const outmatches = (attackerPower: number, linePower: number): boolean =>
   attackerPower >= ESCAPE.ratio * linePower;
 
 /**
- * THE FIREPOWER A LINE MAY HOLD AND STILL RUN FROM THIS WING — a third of the wing's.
+ * THE ARMED RESOURCE VALUE A LINE MAY HOLD AND STILL RUN — the wing's divided by `ESCAPE.ratio`.
  *
  * On the same axis as the defence band, so the launch sheet can draw it beside the
  * clear and break lines. It is the strength half only: a line under it still stands if

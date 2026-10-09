@@ -1,3 +1,8 @@
+import { CosmeticFleetGallery } from './CosmeticFleetGallery.jsx';
+import { CosmeticTrialGallery } from './CosmeticTrialGallery.jsx';
+import { PlanetSelectionGallery } from './PlanetSelectionGallery.jsx';
+import { CosmeticPreview } from '../../screens/CosmeticPreview.jsx';
+import { cosmeticById } from '@astera/rules';
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
@@ -711,6 +716,18 @@ function Views({ view }: { view: string }) {
   if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;
   if (view === 'leaderboard-archive') return <GalleryCommander page="leaderboard-archive" />;
   if (view === 'country-picker') return <GalleryCountryPicker />;
+  if (view === 'cosmetic-fleet') return <CosmeticFleetGallery />;
+  if (view === 'cosmetic-fleet-titan') return <CosmeticFleetGallery engineId="engine-titan" />;
+  if (view === 'ship-skin-fleet') return <CosmeticFleetGallery shipSkins={{ CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' }} />;
+  if (view === 'ship-skin-inventory') return <SkinInventoryContent onEquip={noop} onEquipCosmetic={noop} onOpenShop={noop} pending={null} failure={null}
+    collection={{ ownedSkinIds: [], ownedCosmeticIds: ['ship-red-dragon', 'ship-shark', 'ship-scorpion', 'ship-stingray'], planets: [],
+      equipment: { SHIP: { CORSAIR: 'ship-red-dragon', CITADEL: 'ship-shark', VIPER: 'ship-scorpion', LEVIATHAN: 'ship-stingray' } } }} />;
+  if (view.startsWith('cosmetic-card:')) {
+    const [id = '', angle] = view.slice('cosmetic-card:'.length).split(':');
+    const inspectionView = angle === 'top' || angle === 'side' || angle === 'right' || angle === 'rear' ? angle : undefined;
+    const item = cosmeticById(id);
+    return item ? <div className="bg-v2-void" style={{ width: 600 }}><CosmeticPreview id={id} still inspectionView={inspectionView} productCard={!inspectionView} /></div> : null;
+  }
   if (view === 'skin-shop') {
     return <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} />;
   }
@@ -1000,6 +1017,8 @@ function Views({ view }: { view: string }) {
 }
 
 export function Gallery({ view }: { view: string | null }) {
+  if (view === 'cosmetic-trial') return <CosmeticTrialGallery />;
+  if (view === 'planet-selection') return <PlanetSelectionGallery />;
   if (view === 'monument-models') return <MonumentModelsGallery />;
   if (view?.startsWith('skin-card:')) {
     const skinId = view.slice('skin-card:'.length);

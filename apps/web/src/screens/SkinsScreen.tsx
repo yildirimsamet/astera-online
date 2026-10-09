@@ -1,3 +1,5 @@
+import { CosmeticCategories, CosmeticCollection } from './CosmeticCollection.jsx';
+import { cosmeticById, type CosmeticCategory, type CosmeticId } from '@astera/rules';
 import { useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type PlanetSkinId, type PlanetSkinStatus } from '@astera/rules';
@@ -25,7 +27,7 @@ import { SkinPreview } from './SkinPreview.jsx';
 
 type Collection = z.infer<typeof skinCollectionSchema>;
 type Pricing = z.infer<typeof polarPricingSchema>;
-type ItemId = PlanetSkinId | 'bundle';
+type ItemId = CosmeticId | 'bundle';
 type PriceQuote = Pick<Pricing['prices'][string], 'formatted' | 'currencyCode'>;
 type PriceMap = Partial<Record<ItemId, PriceQuote>>;
 const EUR_ONLY_COUNTRY_SKINS = new Set<ItemId>(
@@ -60,10 +62,33 @@ const STARS = [
  *
  * Polar creates a hosted checkout through the authenticated server route.
  */
-export function SkinShopContent({
+export function SkinShopContent(props: Parameters<typeof PlanetShopContent>[0]) {
+  const { t } = useTranslation();
+  const [category, setCategory] = useState<CosmeticCategory>(props.initialId ? cosmeticById(props.initialId)?.category ?? 'PLANET' : 'PLANET');
+  const owned = props.collection.ownedCosmeticIds ?? props.collection.ownedSkinIds;
+  return <div className="min-h-full bg-v2-void font-v2-ui text-v2-ink">
+    <header className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-3 pt-3">
+      <h2 className="text-body font-semibold">{t('menu.skinsShopLabel')}</h2>
+      <button type="button" onClick={props.onOpenInventory} className="min-h-10 rounded-control border border-v2-line-hi px-3 text-caption text-v2-ink-2">{t('menu.skinsInventoryLabel')} · {owned.length}</button>
+    </header>
+    <CosmeticCategories active={category} onChange={setCategory} owned={owned} inventory={false} />
+    {category === 'PLANET' ? <PlanetShopContent {...props} /> : <CosmeticCollection key={category}
+      category={category} inventory={false} owned={owned} onTry={props.onTry} initialId={props.initialId} equipment={props.collection.equipment ?? {}} onOpenOther={props.onOpenInventory}
+      error={props.purchaseError ? t('skins.checkoutError') : undefined}
+      purchase={id => props.enabled && props.onPurchase && props.prices?.[id] ? <button type="button" disabled={props.pending}
+        onClick={() => { void props.onPurchase?.(id); }}
+        className="v2-store-shimmer min-h-11 w-full rounded-control bg-v2-premium px-3 text-caption font-semibold text-v2-void disabled:opacity-50">
+        {t('skins.buy', { price: props.prices[id].formatted })}
+      </button> : <button type="button" disabled className="min-h-11 w-full rounded-control border border-v2-line-hi text-caption text-v2-ink-3">{t('skins.onSaleSoon')}</button>} />}
+  </div>;
+}
+
+function PlanetShopContent({
   collection,
   commander,
   onOpenInventory,
+  onTry,
+  initialId,
   prices = {},
   countryCode,
   enabled = false,
@@ -74,6 +99,8 @@ export function SkinShopContent({
   collection: Collection;
   commander: string;
   onOpenInventory: () => void;
+  onTry?: (id: CosmeticId) => void;
+  initialId?: CosmeticId;
   prices?: PriceMap;
   countryCode?: string;
   /** Polar checkout is enabled. */
@@ -85,11 +112,12 @@ export function SkinShopContent({
 }) {
   const { t } = useTranslation();
   const owned = new Set(collection.ownedSkinIds);
-  const [activeCollection, setActiveCollection] = useState<SkinCollectionId>('elemental');
+  const initialPlanet = initialId ? SKIN_COLLECTION_IDS.flatMap(id => SKIN_COLLECTIONS[id].ids).find(id => id === initialId) : undefined;
+  const [activeCollection, setActiveCollection] = useState<SkinCollectionId>(initialPlanet && SKIN_COLLECTIONS.country.ids.some(id => id === initialPlanet) ? 'country' : 'elemental');
   const collectionIds = SKIN_COLLECTIONS[activeCollection].ids;
   // It opens on something to buy, where there is anything left to buy.
   const [selected, setSelected] = useState<PlanetSkinId>(
-    () => SKIN_COLLECTIONS.elemental.ids.find((id) => !owned.has(id)) ?? SKIN_COLLECTIONS.elemental.ids[0],
+    () => initialPlanet ?? SKIN_COLLECTIONS.elemental.ids.find((id) => !owned.has(id)) ?? SKIN_COLLECTIONS.elemental.ids[0],
   );
   const selectCollection = (id: SkinCollectionId): void => {
     setActiveCollection(id);
@@ -224,6 +252,8 @@ export function SkinShopContent({
           </div>
         </div>
 
+        {onTry && <button type="button" onClick={() => { onTry(selected); }}
+          className="mt-3 min-h-11 w-full rounded-control border border-v2-premium/60 bg-v2-premium/10 px-3 text-caption font-semibold text-v2-premium">{t('skins.tryOnWorld')}</button>}
         {/* THE ONE PRESS THAT BUYS IT, with its price; a look already owned goes to be worn. */}
         <div className="mt-3 flex items-center gap-3 rounded-control border border-v2-premium/35 bg-v2-panel/95 p-2.5">
           <div className="min-w-0">
@@ -407,7 +437,7 @@ function ShopierNote({ commander }: { commander: string }) {
   );
 }
 
-export default function SkinsScreen({ commander, onOpenInventory }: { commander: string; onOpenInventory: () => void }) {
+export default function SkinsScreen({ commander, onOpenInventory, onTry, initialId }: { commander: string; onOpenInventory: () => void; onTry?: (id: CosmeticId) => void; initialId?: CosmeticId }) {
   const { t } = useTranslation();
   const collection = useSkins();
   const shop = usePolarShop();
@@ -424,7 +454,7 @@ export default function SkinsScreen({ commander, onOpenInventory }: { commander:
   };
   if (collection.isPending) return <p className="p-4 text-body text-dim">{t('skins.collection')}…</p>;
   if (!collection.data) return <p className="p-4 text-body text-dim">{t('skins.loadError')}</p>;
-  return <SkinShopContent collection={collection.data} commander={commander} onOpenInventory={onOpenInventory}
+  return <SkinShopContent collection={collection.data} commander={commander} onOpenInventory={onOpenInventory} onTry={onTry} initialId={initialId}
     prices={pricing.data?.prices} countryCode={pricing.data?.countryCode ?? 'ZZ'}
     enabled={Boolean(shop.data?.enabled)} pending={purchase.isPending}
     purchaseError={checkoutFailed} onPurchase={onPurchase} />;

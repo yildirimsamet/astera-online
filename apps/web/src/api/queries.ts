@@ -1,3 +1,4 @@
+import type { CosmeticCategory, CosmeticId, MobileHullId } from '@astera/rules';
 import { useEffect, useMemo, useRef } from 'react';
 import {
   useInfiniteQuery,
@@ -288,7 +289,18 @@ export function usePolarPricing() {
 
 export function usePurchasePolarSkin() {
   const api = useApi();
-  return useMutation({ mutationFn: (itemId: PlanetSkinId | 'bundle') => api.purchasePolarSkin(itemId) });
+  return useMutation({ mutationFn: (itemId: CosmeticId | 'bundle') => api.purchasePolarSkin(itemId) });
+}
+
+export function useEquipCosmetic() {
+  const api = useApi();
+  const cache = useQueryClient();
+  return useMutation({
+    mutationFn: ({ category, cosmeticId, hull }: { category: CosmeticCategory; cosmeticId: CosmeticId | null; hull?: MobileHullId }) => api.equipCosmetic(category, cosmeticId, hull),
+    onSuccess: async () => {
+      await Promise.all([cache.invalidateQueries({ queryKey: keys.skins }), cache.invalidateQueries({ queryKey: keys.galaxy })]);
+    },
+  });
 }
 
 export function useEquipSkin() {

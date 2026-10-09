@@ -371,6 +371,10 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // Fleet V2 keeps these mythological proper names unchanged in Turkish.
   'vocabulary.hull.LEVIATHAN.name',
   'vocabulary.hull.ATLAS.name',
+  // Named cosmetic collections and the internationally used craft acronym.
+  'skins.productring-aurora',
+  'skins.productring-helios',
+  'skins.productprobe-ufo',
   // The reward panel. A multiplier and a fraction are notation, not language —
   // "×3" and "3 / 5" are read the same in both. The LEVEL forms beside them are
   // not on this list, because `L5` is `S5` in Turkish (seviye) and a translated

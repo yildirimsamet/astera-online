@@ -1,4 +1,4 @@
-import { MOBILE_HULLS, PROBE, combatValue, fleetCount, fleetEntries, hangarLoad, type Fleet, type HullId } from '@astera/rules';
+import { MOBILE_HULLS, MONUMENT_PROBE_LOSS_CHANCE, PROBE, combatValue, fleetCount, fleetEntries, hangarLoad, type Fleet, type HullId } from '@astera/rules';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,7 +10,7 @@ import { describeError } from '../i18n/errors.js';
 import { hullName, monumentHonoree, monumentName } from '../i18n/names.js';
 import { activeMonumentInbound } from '../lib/notifications.js';
 import { useDebouncedValue } from '../lib/useDebouncedValue.js';
-import { decimal, full } from '../lib/format.js';
+import { decimal, full, percent } from '../lib/format.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { HULL_ART } from '../ui/assets.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
@@ -134,7 +134,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
         </Plate>}
       </section>
       <section className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3" data-testid="monument-probe">
-        <p className="text-micro text-v2-warn">{t('monument.probeRisk')}</p>
+        <p className="text-micro text-v2-warn">{t('monument.probeRisk', { chance: percent(MONUMENT_PROBE_LOSS_CHANCE) })}</p>
         <p className="text-caption text-v2-ink">{t('monument.probePrice', { alloy: full(PROBE.alloy), crystal: full(PROBE.crystal) })}</p>
         <HoldButton label={t('monument.probe')} disabledReason={probeRefusal} onCommit={() => { actions.probe.mutate({ monumentId, originPlanetId: origin.planet.id, key: probeKey },
           { onSuccess: () => { setProbeConfirmation((value) => value + 1); } }); }} />

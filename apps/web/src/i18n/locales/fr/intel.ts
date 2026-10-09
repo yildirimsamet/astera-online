@@ -479,11 +479,11 @@ export const reports = {
       "Leurs Ferrailleurs ont récupéré {{amount}} de ferraille avant la dispersion des débris.",
     /** Pannes de colonie : ce qu’une lourde défaite endommage. Défenseur uniquement. */
     /** Taktik geri çekilme. Défenseur : ce qui a décollé et ce que le décollage a brûlé, ou pourquoi il n’a pas pu. */
-    escaped_one: 'Ton vaisseau a décollé avant le combat (−{{fuel}} Deutérium) : le raid surclassait ta ligne à trois contre un.',
-    escaped_other: 'Tes {{count}} vaisseaux ont décollé avant le combat (−{{fuel}} Deutérium) : le raid surclassait ta ligne à trois contre un.',
+    escaped_one: "Ton vaisseau a décollé avant le combat (−{{fuel}} Deutérium) : le raid dépassait ta ligne défensive.",
+    escaped_other: "Tes {{count}} vaisseaux ont décollé avant le combat (−{{fuel}} Deutérium) : le raid dépassait ta ligne défensive.",
     stranded: 'Tes vaisseaux auraient décollé, mais le réservoir ne suffisait pas : {{fuel}} Deutérium requis, {{available}} disponibles.',
     /** Attaquant : la ligne s’est vidée devant le raid ; rien sur son contenu. */
-    fled: 'Leurs vaisseaux ont décollé avant le combat : une ligne surclassée à trois contre un et vouée à l’anéantissement fuit si son réservoir peut payer.',
+    fled: "Leurs vaisseaux ont décollé avant le combat : une ligne dépassée qui serait anéantie se replie si son réservoir le permet.",
     colonyFaults:
       "Cette défaite a endommagé les éléments suivants sur {{planet}} : {{faults}}.",
     /**

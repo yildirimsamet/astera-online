@@ -61,7 +61,7 @@ export const monument = {
   "insufficientFuel": "No hay suficiente deuterio para esta ruta",
   "fullBays": "No hay bahía de vuelo libre",
   "probe": "Mantén para enviar una sonda",
-  "probeRisk": "90% de riesgo de perder la sonda. Si regresa, trae una lectura exacta de la flota.",
+  "probeRisk": "{{chance}} de riesgo de perder la sonda. Si regresa, trae una lectura exacta de la flota.",
   "probePrice": "Precio: {{alloy}} aleación + {{crystal}} cristal",
   "probing": "Enviando sonda…",
   "probeArrival": "Sonda: {{status}} · {{time}}",

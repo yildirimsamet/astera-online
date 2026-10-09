@@ -37,6 +37,14 @@ export function sightCameraDistance(radius: number, verticalFov: number, aspect:
   return radius * 1.25 / Math.sin(Math.min(vertical, horizontal));
 }
 
+/** Fit the complete premium ring while reserving room for the trial controls. */
+export function planetInspectionDistance(radius: number, width: number, height: number): number {
+  const safeWidth = Math.max(1, width), safeHeight = Math.max(1, height);
+  const fov = fovForAspect(45, safeWidth / safeHeight) * Math.PI / 360;
+  const pixels = Math.min(safeWidth * .82, safeHeight * .55);
+  return Math.max(1.2, radius * 2.3 * safeHeight / (pixels * Math.tan(fov)));
+}
+
 /**
  * WHAT THE CAMERA IS FOLLOWING, AND WHEN IT IS ALLOWED TO MOVE ON ITS OWN.
  *

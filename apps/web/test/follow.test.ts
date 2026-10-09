@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   sightCameraDistance,
+  planetInspectionDistance,
   fovForAspect,
   MAX_HORIZONTAL_FOV,
   cameraEaseStep,
@@ -19,6 +20,19 @@ import {
   type RigFrame,
 } from '../src/galaxy/follow.js';
 import type { Focus } from '../src/galaxy/FocusPanel.js';
+
+describe('cosmetic inspection framing', () => {
+  it.each([[350, 667], [350, 900], [1280, 900]])('fits the complete ring above the trial controls at %sx%s', (width, height) => {
+    for (const radius of [.14, .3, .7]) {
+      const distance = planetInspectionDistance(radius, width, height);
+      const fov = fovForAspect(45, width / height) * Math.PI / 360;
+      const diameter = 2 * radius * 2.3 * height / (2 * distance * Math.tan(fov));
+      expect(diameter).toBeLessThanOrEqual(width * .83);
+      expect(diameter).toBeLessThanOrEqual(height * .56);
+      expect(diameter).toBeGreaterThan(Math.min(width * .7, height * .45));
+    }
+  });
+});
 
 describe('explicit tutorial sight framing', () => {
   it('uses the full two seconds even when only the zoom changes', () => {

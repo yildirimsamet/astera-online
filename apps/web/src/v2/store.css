@@ -113,3 +113,12 @@
 .v2-store-chosen {
   box-shadow: 0 0 0 1px var(--card), 0 0 22px -4px var(--card);
 }
+
+.cosmetic-stage-glow {
+  background: radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--cosmetic-accent) 13%, transparent), transparent 64%),
+    radial-gradient(ellipse at 50% 115%, var(--color-v2-cosmetic-horizon) 0%, transparent 68%);
+}
+.cosmetic-collection button:focus-visible {
+  outline: 2px solid var(--cosmetic-accent);
+  outline-offset: 3px;
+}

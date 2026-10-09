@@ -53,12 +53,12 @@ export const counter = {
   compareLabel:
     "Tu envoies {{yours}} ; dernière estimation de leur monde : {{theirs}}",
   /** Taktik geri çekilme dans la comparaison : le verdict et la règle un geste plus loin. */
-  escapeRun: 'Leur ligne est sous un tiers de ton feu : si leur réservoir suffit, leurs vaisseaux décollent et seuls les canons combattent.',
-  escapeStand: 'Leurs vaisseaux restent et combattent : la lecture dépasse un tiers de ton feu ou ce que cette aile balaie.',
+  escapeRun: "La mesure atteint le seuil de repli de {{ratio}}× et la ligne peut être anéantie. Avec assez de carburant, leurs vaisseaux décollent.",
+  escapeStand: "Leurs vaisseaux restent et combattent : la mesure n’atteint pas le seuil de repli de {{ratio}}×, ou cette aile ne peut pas anéantir la ligne.",
   escapeUnsure: 'Leurs vaisseaux pourraient décoller ; la lecture ne précise pas toutes les conditions de retraite.',
   escapeAt: 'Seuil de retraite : {{at}}',
   escapeRule:
-    "Le repli tactique exige une attaque au moins trois fois plus puissante qui détruirait toute la ligne défensive. La planète doit aussi payer un aller-retour de {{distance}} unités. Si les conditions sont remplies, les vaisseaux évitent le combat. Les défenses au sol restent et les ressources peuvent être pillées.",
+    "La valeur en ressources des attaquants armés doit atteindre au moins {{ratio}} fois celle des défenseurs armés, canons au sol actifs compris. L’attaque doit aussi anéantir toute la défense présente. La planète doit payer un aller-retour de {{distance}} unités. Si ces conditions sont remplies, les vaisseaux évitent le combat. Les canons restent et les ressources peuvent être pillées.",
   escapeMinimumRule: 'Le défenseur doit aussi avoir au moins {{count}} vaisseaux de combat sur place. Une sonde ne révèle pas leur nombre.',
   compareRuleToggle: "Qu’est-ce que c’est ?",
   compareMeaning:

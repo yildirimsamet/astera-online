@@ -1,3 +1,4 @@
+import { WorldCosmeticRing } from './CosmeticEffects.jsx';
 import { Suspense, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
@@ -105,6 +106,9 @@ export function PlanetField({
 
   return (
     <>
+      {nodes.filter(node => node.ringId && node.intel !== 'UNKNOWN').map(node => (
+        <WorldCosmeticRing key={`ring:${node.id}`} node={node} />
+      ))}
       {warmId !== undefined && (
         // Its own boundary: warming a model never holds up, or hides, anything drawn.
         <Suspense fallback={null}>
@@ -978,7 +982,6 @@ function Highlights({
           node={node}
           camera={camera}
           viewportHeight={viewportHeight}
-          selected={node.id === selectedId}
           rivalSlot={node.isClanmate ? null : rivalSlotOf(node, rivals)}
           ally={node.isClanmate}
           claim={hasVisibleClaim(node, now)}
@@ -1039,13 +1042,9 @@ export const rivalColour = (slot: number): string =>
   ]!;
 
 /**
- * Where the selection ring stands off, as a multiple of the world's radius.
- *
- * Named because something else now has to stay inside it. The atmosphere limb is
- * on every world in the galaxy; the selection ring is on ONE. If the limb ever
- * reached as far, the marker would be reading against a bright band rather than
- * against space, and the one control that answers "which of these did I tap"
- * would be the hardest thing on screen to find. Pinned in `planet-visuals.test`.
+ * Pin/eye stand-off as a multiple of the world's radius. The historical name
+ * remains for the shared marker layout; no outer selection hoop is drawn.
+ * The atmosphere stays inside this offset so the map pin reads against space.
  */
 export const SELECTION_RING = 1.34;
 export const MIN_MARKER_PX = 18;
@@ -1276,14 +1275,12 @@ function EyeMarks({ nodes: all, open }: { nodes: readonly PlanetNode[]; open: bo
  * This sits ON the silhouette instead. A hairline at the planet's own edge, a soft
  * halo bleeding out of it, and a small chevron above — the map-marker vocabulary,
  * which is instantly legible and does not fence the planet off from the scene it
- * lives in. Selection adds a second, wider ring so the two states never collapse
- * into one another.
+ * lives in. Selecting a world keeps this edge marker without adding a second hoop.
  */
 function Ring({
   node,
   camera,
   viewportHeight,
-  selected,
   rivalSlot,
   ally,
   claim,
@@ -1292,7 +1289,6 @@ function Ring({
   node: PlanetNode;
   camera: THREE.Camera;
   viewportHeight: number;
-  selected: boolean;
   /** Which of the commander's marks this world wears, or null for none. D183. */
   rivalSlot: number | null;
   ally: boolean;
@@ -1434,12 +1430,6 @@ function Ring({
         </group>
       )}
 
-      {selected && (
-        <mesh>
-          <ringGeometry args={[node.radius * SELECTION_RING, node.radius * (SELECTION_RING + 0.02), 64]} />
-          <meshBasicMaterial color={colour} transparent opacity={0.55} depthWrite={false} />
-        </mesh>
-      )}
       </group>
     </group>
   );

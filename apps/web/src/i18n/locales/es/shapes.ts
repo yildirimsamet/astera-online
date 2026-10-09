@@ -82,12 +82,12 @@ export const counter = {
    * a known shield; what they leave out is said, never implied.
    */
   /** Taktik geri çekilme en la comparación: la conclusión y la regla un toque más adentro. */
-  escapeRun: 'Su línea está por debajo de un tercio de tu fuego: si su depósito alcanza, sus naves despegan y solo luchan los cañones.',
-  escapeStand: 'Sus naves se quedan a luchar: la lectura supera un tercio de tu fuego o lo que este ala puede barrer.',
+  escapeRun: "La lectura alcanza el umbral de retirada de {{ratio}}× y la línea puede ser aniquilada. Con combustible suficiente, sus naves despegan.",
+  escapeStand: "Sus naves se quedan a luchar: la lectura no alcanza el umbral de retirada de {{ratio}}×, o esta ala no puede aniquilar la línea.",
   escapeUnsure: 'Sus naves podrían despegar; la lectura no resuelve todas las condiciones de retirada.',
   escapeAt: 'Umbral de retirada: {{at}}',
   escapeRule:
-    "La retirada táctica requiere al menos el triple de potencia y un ataque que destruiría toda la defensa. El planeta también debe pagar un viaje de ida y vuelta de {{distance}} unidades. Si se cumplen las condiciones, las naves evitan el combate. Las defensas terrestres permanecen y los recursos pueden ser saqueados.",
+    "El valor en recursos de los atacantes armados debe ser al menos {{ratio}} veces el de los defensores armados, incluidos los cañones terrestres activos. El ataque también debe aniquilar toda la defensa presente. El planeta debe pagar un viaje de ida y vuelta de {{distance}} unidades. Si se cumplen las condiciones, las naves evitan el combate. Los cañones se quedan y los recursos pueden ser saqueados.",
   escapeMinimumRule: 'El defensor también necesita al menos {{count}} naves de combate en casa. La lectura de la sonda no muestra cuántas hay.',
   compareRuleToggle: '¿Qué es esto?',
   compareMeaning: 'Coste de recursos, no daño de ataque. Una flota más grande por sí sola no garantiza la victoria.',

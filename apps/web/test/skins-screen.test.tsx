@@ -11,6 +11,8 @@ vi.mock('../src/screens/SkinPreview.js', () => ({
     <div data-testid="preview">{skinId}:{status}</div>,
 }));
 
+vi.mock('../src/screens/CosmeticPreview.js', () => ({ CosmeticPreview: () => <div /> }));
+
 beforeEach(async () => { await i18n.changeLanguage('en'); });
 
 const collection = {
@@ -386,11 +388,12 @@ describe('skin inventory', () => {
     expect(within(screen.getByRole('article', { name: 'Orion' })).queryByRole('alert')).toBeNull();
   });
 
-  it('sends a commander with nothing to wear to the shop', () => {
+  it('opens included standards when the commander owns no purchased planet looks', () => {
     const { onOpenShop } = inventory({ collection: { ownedSkinIds: [], planets: collection.planets } });
-    expect(screen.getByText(i18n.t('skins.noOwnedSkins'))).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^planets/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^clan standards/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('group')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('skins.openShop') }));
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('menu.skinsShopLabel') }));
     expect(onOpenShop).toHaveBeenCalledTimes(1);
   });
 

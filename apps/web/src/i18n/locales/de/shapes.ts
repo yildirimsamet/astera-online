@@ -82,12 +82,12 @@ export const counter = {
    * a known shield; what they leave out is said, never implied.
    */
   /** Taktik geri çekilme im Vergleich: die Aussage und die Regel einen Tipp tiefer. */
-  escapeRun: 'Ihre Linie liegt unter einem Drittel deiner Feuerkraft: reicht ihr Tank, heben ihre Schiffe ab und nur die Geschütze kämpfen.',
-  escapeStand: 'Ihre Schiffe bleiben und kämpfen: die Messung liegt über einem Drittel deiner Feuerkraft oder über dem, was dieser Flügel räumt.',
+  escapeRun: "Die Messung erfüllt die {{ratio}}-fache Rückzugsgrenze und die Linie kann vernichtet werden. Mit genug Treibstoff heben ihre Schiffe ab.",
+  escapeStand: "Ihre Schiffe bleiben und kämpfen: Die Messung erfüllt die {{ratio}}-fache Rückzugsgrenze nicht, oder dieser Flügel kann die Linie nicht vernichten.",
   escapeUnsure: 'Ihre Schiffe könnten abheben; die Messung klärt nicht alle Rückzugsbedingungen.',
   escapeAt: 'Rückzugsgrenze: {{at}}',
   escapeRule:
-    "Taktischer Rückzug erfordert mindestens dreifache Feuerkraft und einen Angriff, der die Verteidigung vollständig vernichten würde. Der Planet muss auch einen {{distance}}-Einheiten-Rundflug bezahlen können. Dann entkommen die Schiffe dem Kampf. Bodenverteidigung bleibt; Ressourcen können weiterhin geplündert werden.",
+    "Der Ressourcenwert der bewaffneten Angreifer muss mindestens das {{ratio}}-Fache der bewaffneten Verteidiger betragen, einschließlich aktiver Bodengeschütze. Die stehende Verteidigung müsste vollständig vernichtet werden. Der Planet muss einen {{distance}}-Einheiten-Rundflug bezahlen können. Dann entkommen die Schiffe dem Kampf. Bodengeschütze bleiben; Ressourcen können weiterhin geplündert werden.",
   escapeMinimumRule: 'Der Verteidiger braucht außerdem mindestens {{count}} Kampfschiffe vor Ort. Eine Sondenmessung zeigt ihre Anzahl nicht.',
   compareRuleToggle: 'Was ist das?',
   compareMeaning: 'Ressourcenkosten, kein Angriffsschaden. Eine größere Flotte allein garantiert keinen Sieg.',

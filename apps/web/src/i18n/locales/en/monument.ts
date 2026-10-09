@@ -61,7 +61,7 @@ export const monument = {
   "insufficientFuel": "Not enough deuterium for this route",
   "fullBays": "No free flight bay",
   "probe": "Hold to send a probe",
-  "probeRisk": "90% chance of losing the probe. A survivor returns an exact fleet reading.",
+  "probeRisk": "{{chance}} chance of losing the probe. A survivor returns an exact fleet reading.",
   "probePrice": "Price: {{alloy}} alloy + {{crystal}} crystal",
   "probing": "Sending probe…",
   "probeArrival": "Probe: {{status}} · {{time}}",

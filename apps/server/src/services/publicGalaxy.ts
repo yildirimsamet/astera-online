@@ -1,3 +1,4 @@
+import { accountCosmeticEquipment } from './cosmeticEquipment.js';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import {
   SATELLITE_IDS,
@@ -70,6 +71,7 @@ import {
  */
 export interface PublicWorld {
   id: string;
+  ringId?: string;
   /** Equipped cosmetic only; no ownership rights or payment data. */
   skin?: { id: PlanetSkinId; status: PlanetSkinStatus };
   name: string;
@@ -197,6 +199,7 @@ export async function publicWorlds(
   const rows = await db
     .select({
       planet: planets,
+      ownerAccountId: accounts.id,
       ownerName: accounts.displayName,
       ownerCountry: accounts.countryCode,
       neutral: neutralPlanetState,
@@ -261,6 +264,7 @@ export async function publicWorlds(
       )),
   ]);
 
+  const cosmeticEquipment = await accountCosmeticEquipment(db, [...new Set(rows.flatMap(row => row.ownerAccountId ? [row.ownerAccountId] : []))]);
   const levels = new Map(buildingRows.map((r) => [`${r.planetId}:${r.type}`, r.level]));
   const installed = publicOrbit(satelliteRows);
   const shielded = publicShields(satelliteRows);
@@ -328,6 +332,8 @@ export async function publicWorlds(
       : null;
     return {
       id: r.planet.id,
+      ...(r.ownerAccountId && cosmeticEquipment.get(r.ownerAccountId)?.RING
+        ? { ringId: cosmeticEquipment.get(r.ownerAccountId)!.RING } : {}),
       ...(skin
         ? { skin: { id: skin.id, status: planetSkinStatus(r.planet.recoveryBoostUntil, now) } }
         : {}),

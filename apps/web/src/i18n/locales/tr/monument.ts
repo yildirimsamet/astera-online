@@ -61,7 +61,7 @@ export const monument = {
   "insufficientFuel": "Bu rota için yeterli döteryum yok",
   "fullBays": "Boş uçuş yuvası yok",
   "probe": "Sonda göndermek için basılı tut",
-  "probeRisk": "Sondanın kaybolma ihtimali %90. Sağ kalan sonda, gözlem anındaki kesin filo bilgisiyle döner.",
+  "probeRisk": "Sondanın kaybolma ihtimali {{chance}}. Sağ kalan sonda, gözlem anındaki kesin filo bilgisiyle döner.",
   "probePrice": "Bedel: {{alloy}} alaşım + {{crystal}} kristal",
   "probing": "Sonda gönderiliyor…",
   "probeArrival": "Sonda durumu: {{status}} · {{time}}",

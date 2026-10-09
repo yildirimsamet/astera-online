@@ -32,6 +32,7 @@ import {
   rigGestureState,
   sphericalLeashCorrection,
   sightCameraDistance,
+  planetInspectionDistance,
   cameraEaseStep,
 } from './follow.js';
 import {
@@ -176,6 +177,7 @@ const WIDE_TILT = Math.hypot(1.15, 1.75);
 const WHOLE_DISC_DISTANCE = DISC_RADIUS * WIDE_TILT;
 
 export interface GalaxyCanvasProps {
+  cosmeticAppearance?: Contact['appearance'];
   planets: readonly GalaxyPlanet[];
   /** Your own missions. Inbound attacks carry no path and are not drawn as one. */
   pending: readonly PendingThread[];
@@ -246,6 +248,8 @@ export interface GalaxyCanvasProps {
   homeSignal: number;
   /** Bumped to bring the selection back into frame after the player panned away (E11: Space). */
   centerSignal?: number;
+  /** A local cosmetic trial explicitly asks for a close view of this owned world. */
+  inspectionPlanetId?: string;
   /**
    * Open on the whole disc, with nothing selected. D56.
    *
@@ -311,6 +315,7 @@ export interface GalaxyCanvasProps {
 }
 
 export function GalaxyCanvas({
+  cosmeticAppearance,
   planets,
   pending,
   contacts,
@@ -337,6 +342,7 @@ export function GalaxyCanvas({
   onFocus,
   homeSignal,
   centerSignal = 0,
+  inspectionPlanetId,
   aim = null,
   openWide = false,
   wideDistance = WHOLE_DISC_DISTANCE,
@@ -775,6 +781,7 @@ export function GalaxyCanvas({
         <Satellites nodes={nodes} />
         <Shields nodes={nodes} ownLevel={aegisLevel} ownId={selfId} />
         <OwnFleets
+          appearance={cosmeticAppearance}
           pending={pending}
           nodes={nodes}
           focusedKey={focus?.kind === 'thread' ? focus.key : null}
@@ -918,6 +925,7 @@ export function GalaxyCanvas({
         subject={subject}
         focusKey={focusKey}
         approach={approach}
+        inspectionRadius={focus?.kind === 'planet' && focus.id === inspectionPlanetId ? nodes.find(node => node.id === inspectionPlanetId)?.radius : undefined}
         exactApproach={coachTap !== null || focus?.kind === 'intergalacticConvoy' || focus?.kind === 'monument'}
         openWide={openWide}
         wideDistance={wideDistance}
@@ -1278,7 +1286,8 @@ function Rig({
   centerSignal,
   subject,
   focusKey,
-  approach,
+  approach: focusApproach,
+  inspectionRadius,
   exactApproach = false,
   openWide = false,
   wideDistance,
@@ -1311,6 +1320,7 @@ function Rig({
   focusKey: string | null;
   /** Pull the camera in to at most this distance while easing. Null leaves it. */
   approach: number | null;
+  inspectionRadius?: number;
   /**
    * TAKE THE RANGE EXACTLY, RATHER THAN ONLY PULLING IN. Academy instruction.
    *
@@ -1340,6 +1350,8 @@ function Rig({
 }) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);
   const invalidate = useThree((state) => state.invalidate);
+  const size = useThree((state) => state.size);
+  const approach = inspectionRadius === undefined ? focusApproach : planetInspectionDistance(inspectionRadius, size.width, size.height);
   /** Where the pivot is heading, how much ease is left, and how to frame it. */
   const ease = useRef<{
     to: THREE.Vector3;

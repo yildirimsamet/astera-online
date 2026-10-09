@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ESCAPE, type EscapeVerdict } from '@astera/rules';
-import { compact } from '../lib/format.js';
+import { compact, decimal } from '../lib/format.js';
 import type { ForceLines, ForceReading } from '../lib/ruler.js';
 import { staleness } from '../lib/time.js';
 
@@ -65,7 +65,7 @@ export function ForceCompare({
    * TAKTİK GERİ ÇEKİLME ON THE ENEMY AXIS. Owner decision, 2026-09-23.
    *
    * `at` is the line firepower at or under which their ships lift off instead of
-   * fighting — a third of this wing's — drawn as a tick on their bar, because it is
+   * fighting — this wing's divided by `ESCAPE.ratio` — drawn as a tick on their bar, because it is
    * the same quantity the bar measures. `verdict` is `escapeVerdict` on the reading:
    * the rule applied to what was bought, never the answer, and null with no reading.
    * Absent wherever the rule does not apply: a pirate, a caretaker world, a season
@@ -129,7 +129,7 @@ export function ForceCompare({
         ) : null}
         {explained && escape ? (
           <p data-testid="compare-escape-rule" className="mt-2 text-body leading-relaxed text-dim">
-            {t('counter.escapeRule', { distance: ESCAPE.fuelDistance })}
+            {t('counter.escapeRule', { distance: ESCAPE.fuelDistance, ratio: decimal(ESCAPE.ratio) })}
             {escape.minimumCombatShips ? ` ${t('counter.escapeMinimumRule', { count: escape.minimumCombatShips })}` : ''}
           </p>
         ) : null}
@@ -279,9 +279,9 @@ export function ForceCompare({
             <>
               {t('counter.lineJoin')}
               {escape.verdict === 'RUN'
-                ? t('counter.escapeRun')
+                ? t('counter.escapeRun', { ratio: decimal(ESCAPE.ratio) })
                 : escape.verdict === 'STAND'
-                  ? t('counter.escapeStand')
+                  ? t('counter.escapeStand', { ratio: decimal(ESCAPE.ratio) })
                   : t('counter.escapeUnsure')}
             </>
           )}

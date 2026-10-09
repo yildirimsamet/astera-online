@@ -2,11 +2,13 @@ import { pino } from 'pino';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { ESCAPE, MULTI_WORLD, combatValue, escapeFuel, type Fleet } from '@astera/rules';
-import { battleReports, missions, notifications, planets, seasons, units } from '../src/db/schema.js';
+import { battleReports, missions, notifications, planets, seasons, scheduledEvents, units } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
+import { setDefencePosture } from '../src/services/clanSupport.js';
 import { planetView } from '../src/services/planetView.js';
 import { readBattleReports } from '../src/services/reports.js';
 import { EventWorker } from '../src/worker/loop.js';
+import { onMissionArrival } from '../src/worker/handlers.js';
 import {
   fuelUp,
   giveUnits,
@@ -37,11 +39,11 @@ afterAll(async () => {
   await close();
 });
 
-/** Fires 9,360. Its lift is 12 deuterium. */
+/** Twenty Darts at home; the lift is priced by the shared fuel formula. */
 const LINE: Fleet = { DART: 20 };
 const LIFT = escapeFuel(LINE);
-/** Exactly three times the line, with holds for the loot that do not count toward it. */
-const TRIPLE: Fleet = { DART: 60, COURIER: 20 };
+/** Exactly 3.5 times the line; unarmed cargo does not count toward it. */
+const THRESHOLD: Fleet = { DART: 70, COURIER: 20 };
 const DOUBLE: Fleet = { DART: 40, COURIER: 20 };
 const TANK = 1_000;
 
@@ -104,8 +106,8 @@ describe('the fleet escape on a raid', () => {
     await giveUnits(f.db, target, { ...LINE, PROSPECTOR: 2 });
   });
 
-  it('lifts the ships off a three-to-one raid and leaves every one of them home', async () => {
-    const report = await raid(TRIPLE);
+  it('lifts the ships off an exactly 3.5-to-one raid and leaves every one of them home', async () => {
+    const report = await raid(THRESHOLD);
     expect(report.fleetEscape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: LIFT });
     expect(await home(target)).toEqual({ ...LINE, PROSPECTOR: 2 });
     // Nothing stood in the line, so the raid was a walkover and took its share.
@@ -115,14 +117,95 @@ describe('the fleet escape on a raid', () => {
     expect(report.loot.alloy).toBeGreaterThan(0);
   });
 
+  it.each([60, 69])('fights instead of escaping against %i Darts, below 3.5-to-one', async (darts) => {
+    const report = await raid({ DART: darts, COURIER: 20 });
+    expect(report.fleetEscape).toBeNull();
+    expect(report.defenderLosses).toEqual(LINE);
+  });
+
+  it('counts online ground guns when comparing the forces', async () => {
+    await giveUnits(f.db, target, { THORN: 1 });
+    const report = await raid(THRESHOLD);
+    expect(report.grade).toBe('DECISIVE');
+    expect(report.fleetEscape).toBeNull();
+    expect(report.defenderFleet).toEqual({ ...LINE, THORN: 1 });
+  });
+
+  it('ignores EMP-disabled guns in the ratio and preserves them after the escape', async () => {
+    await giveUnits(f.db, target, { BASTION: 2 });
+    await f.db.update(planets).set({ empUntil: new Date(f.clock.now().getTime() + 3_600_000) })
+      .where(eq(planets.id, target));
+    const report = await raid(THRESHOLD);
+    expect(report.fleetEscape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: LIFT });
+    expect(report.defenderFleet).toEqual({});
+    expect(await home(target)).toEqual({ ...LINE, PROSPECTOR: 2, BASTION: 2 });
+  });
+
+  it.each([4, 5])('enforces the five-ship floor with %i ships in the current ruleset', async (count) => {
+    await rulesetOf(MULTI_WORLD.rulesetVersion);
+    await f.db.update(units).set({ count }).where(and(
+      eq(units.planetId, target), eq(units.hull, 'DART'), eq(units.location, 'home'),
+    ));
+    const report = await raid({ DART: 70, COURIER: 20 });
+    expect(report.fleetEscape?.kind ?? null).toBe(count === 5 ? 'ESCAPED' : null);
+    expect((await home(target)).DART ?? 0).toBe(count === 5 ? 5 : 0);
+  });
+
+  it('reads the escape toggle at battle time, including a change while the raid is in flight', async () => {
+    await rulesetOf(MULTI_WORLD.rulesetVersion);
+    await giveUnits(f.db, raider, THRESHOLD);
+    const launch = await launchAttack(f.db, raider, target, THRESHOLD, f.clock);
+    await f.db.transaction((tx) => setDefencePosture(tx, {
+      planetId: target, playerId: f.playerIds[1]!,
+      toggles: { escape: false, support: false }, clock: f.clock,
+    }));
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+    const [report] = await f.db.select().from(battleReports).where(eq(battleReports.missionId, launch.missionId));
+    expect(report).toBeDefined();
+    expect(report!.fleetEscape).toBeNull();
+    expect(report!.defenderLosses).toEqual(LINE);
+  });
+
+  it('serialises two first deliveries of the same raid before charging fuel', async () => {
+    await giveUnits(f.db, raider, THRESHOLD);
+    const launch = await launchAttack(f.db, raider, target, THRESHOLD, f.clock);
+    f.clock.set(settledAt(launch.arriveAt));
+    const [event] = await f.db.select().from(scheduledEvents).where(and(
+      eq(scheduledEvents.kind, 'mission_arrival'), eq(scheduledEvents.refId, launch.missionId),
+    ));
+    expect(event).toBeDefined();
+    const context = { db: f.db, clock: f.clock };
+    await Promise.all([onMissionArrival(context, event!), onMissionArrival(context, event!)]);
+    const reports = await f.db.select().from(battleReports);
+    expect(reports).toHaveLength(1);
+    expect(reports[0]!.fleetEscape?.kind).toBe('ESCAPED');
+    expect(await tank(target)).toBeCloseTo(TANK - LIFT - reports[0]!.loot.deuterium, 6);
+    expect(await home(target)).toEqual({ ...LINE, PROSPECTOR: 2 });
+  });
+
+  it('replayed and simultaneous deliveries cannot charge the lift or write the report twice', async () => {
+    const report = await raid(THRESHOLD);
+    const [event] = await f.db.select().from(scheduledEvents).where(and(
+      eq(scheduledEvents.kind, 'mission_arrival'), eq(scheduledEvents.refId, report.missionId!),
+    ));
+    expect(event).toBeDefined();
+    const fuelAfter = await tank(target);
+    const context = { db: f.db, clock: f.clock };
+    await Promise.all([onMissionArrival(context, event!), onMissionArrival(context, event!)]);
+    expect(await tank(target)).toBe(fuelAfter);
+    expect(await home(target)).toEqual({ ...LINE, PROSPECTOR: 2 });
+    expect(await f.db.select().from(battleReports)).toHaveLength(1);
+  });
+
   it('burns the lift out of the tank before the raider loads', async () => {
-    const report = await raid(TRIPLE);
+    const report = await raid(THRESHOLD);
     expect(await tank(target)).toBeCloseTo(TANK - LIFT - report.loot.deuterium, 6);
   });
 
   it('strands the fleet when the tank is one drop short, and the fight stands', async () => {
     await f.db.update(planets).set({ deuterium: LIFT - 1 }).where(eq(planets.id, target));
-    const report = await raid(TRIPLE);
+    const report = await raid(THRESHOLD);
     expect(report.fleetEscape).toEqual({
       kind: 'STRANDED', ships: LINE, fuel: LIFT, available: LIFT - 1,
     });
@@ -141,7 +224,7 @@ describe('the fleet escape on a raid', () => {
 
   it('keeps a running season on the rule it was dealt', async () => {
     await rulesetOf(MULTI_WORLD.fleetEscapeRulesetVersion - 1);
-    const report = await raid(TRIPLE);
+    const report = await raid(THRESHOLD);
     expect(report.fleetEscape).toBeNull();
     expect(report.defenderLosses).toEqual(LINE);
     expect(await tank(target)).toBeCloseTo(TANK - report.loot.deuterium, 6);
@@ -169,14 +252,14 @@ describe('the fleet escape on a raid', () => {
   };
 
   it('tells the defender what ran and what it burned, and the raider only that it ran', async () => {
-    await raid(TRIPLE);
+    await raid(THRESHOLD);
     expect(await escapeSeenBy(f.playerIds[1]!)).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: LIFT });
     expect(await escapeSeenBy(f.playerIds[0]!)).toEqual({ kind: 'ESCAPED' });
   });
 
   it('never tells the raider that the tank was dry', async () => {
     await f.db.update(planets).set({ deuterium: 0 }).where(eq(planets.id, target));
-    await raid(TRIPLE);
+    await raid(THRESHOLD);
     expect(await escapeSeenBy(f.playerIds[1]!)).toEqual({
       kind: 'STRANDED', ships: LINE, fuel: LIFT, available: 0,
     });
@@ -192,7 +275,7 @@ describe('the fleet escape on a raid', () => {
   };
 
   it('says so in both notifications, and the raider hears only that the ships ran', async () => {
-    const report = await raid(TRIPLE);
+    const report = await raid(THRESHOLD);
     const { raided, result } = await notified(report.missionId!);
     expect(raided).toMatchObject({ escape: 'ESCAPED', escapeShips: 20 });
     expect(result).toMatchObject({ targetFled: true });
@@ -201,7 +284,7 @@ describe('the fleet escape on a raid', () => {
 
   it('tells a stranded defender why, and the raider nothing', async () => {
     await f.db.update(planets).set({ deuterium: 0 }).where(eq(planets.id, target));
-    const report = await raid(TRIPLE);
+    const report = await raid(THRESHOLD);
     const { raided, result } = await notified(report.missionId!);
     expect(raided).toMatchObject({ escape: 'STRANDED', escapeShips: 20 });
     expect(result).not.toHaveProperty('targetFled');
@@ -220,9 +303,9 @@ describe('the fleet escape on a raid', () => {
   });
 
   it('sends the raider home with what it carried, like any other win', async () => {
-    const report = await raid(TRIPLE);
+    const report = await raid(THRESHOLD);
     const [back] = await f.db.select().from(missions)
       .where(and(eq(missions.parentMissionId, report.missionId!), eq(missions.kind, 'return')));
-    expect(back?.fleet).toEqual(TRIPLE);
+    expect(back?.fleet).toEqual(THRESHOLD);
   });
 });
