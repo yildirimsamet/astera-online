@@ -8,7 +8,7 @@ import type { Marker } from './Squadrons.js';
 import { hullVisualScale, formationAimDirection } from './flightVisual.js';
 import { hullPoseLift } from '../ui/assets.js';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
-import { cosmeticEffectRecipe, effectFragment, effectVertex } from './cosmeticEffects.js';
+import { cosmeticEffectRecipe, effectFragment, effectVertex, fleetFlagPose } from './cosmeticEffects.js';
 
 export function EffectSurface({ style, kind, still = false, banner, colour, secondary }: { style: CosmeticStyle; kind: number; still?: boolean; banner?: THREE.Texture; colour?: string; secondary?: string }) {
   const recipe = cosmeticEffectRecipe(style);
@@ -88,6 +88,11 @@ export function CosmeticFlag({ id, still = false }: { id: string; still?: boolea
       <FlagFabric id={id} style={style} still={still} />
     </mesh>
   </group>;
+}
+
+/** Shares the fleet's heading, with a centred mast on its nose and cloth trailing behind. */
+export function FleetCosmeticFlag({ id, scale }: { id: string; scale: number }) {
+  return <group name="fleet-clan-flag" {...fleetFlagPose(scale)}><CosmeticFlag id={id} /></group>;
 }
 
 function FlagFabric({ id, style, still }: { id: string; style: CosmeticStyle; still: boolean }) {

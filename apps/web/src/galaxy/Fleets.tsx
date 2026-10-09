@@ -1,7 +1,7 @@
 import { cosmeticById } from '@astera/rules';
 import type { ShipCosmeticEquipment } from '@astera/rules';
 import { shipHullModels } from './shipCosmetics.js';
-import { CosmeticFlag, FormationCosmeticEngines } from './CosmeticEffects.jsx';
+import { FleetCosmeticFlag, FormationCosmeticEngines } from './CosmeticEffects.jsx';
 import {
   Suspense,
   useEffect,
@@ -1101,9 +1101,8 @@ function Flight({
       </lineSegments>
 
       <group ref={group} name="flight" userData={{ craftId: id }}>
-        {!isProbe && !isDeathStar && appearance?.flagId && <group position={[0, formationScale * 1.4, 0]} scale={formationScale * .55}>
-          <Suspense fallback={null}><CosmeticFlag id={appearance.flagId} /></Suspense>
-        </group>}
+        {!isProbe && !isDeathStar && appearance?.flagId &&
+          <Suspense fallback={null}><FleetCosmeticFlag id={appearance.flagId} scale={formationScale} /></Suspense>}
         {/*
           One generous invisible target for the whole squadron. Picking an
           individual model would be fiddly on a phone and would say the models are
@@ -3024,9 +3023,8 @@ function Foreign({
           payload had arrived. Keep the live marker mounted and let only the heavy
           hull geometry wait for its asset.
         */}
-        {contact.kind === 'fleet' && contact.appearance?.flagId && <group position={[0, formationScale * 1.4, 0]} scale={formationScale * .55}>
-          <Suspense fallback={null}><CosmeticFlag id={contact.appearance.flagId} /></Suspense>
-        </group>}
+        {contact.kind === 'fleet' && contact.appearance?.flagId &&
+          <Suspense fallback={null}><FleetCosmeticFlag id={contact.appearance.flagId} scale={formationScale} /></Suspense>}
         <Suspense fallback={null}>
           {markers ? (
             <>

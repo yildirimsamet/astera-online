@@ -1,4 +1,15 @@
 import type { CosmeticStyle } from '@astera/rules';
+import type { Vec3Tuple } from './scene.js';
+
+/** +Z is the fleet nose; pivot at the mast foot so the cloth streams down -Z. */
+export function fleetFlagPose(formationScale: number): { position: Vec3Tuple; rotation: Vec3Tuple; scale: number } {
+  const scale = formationScale * 0.55;
+  return {
+    position: [0, 0.95 * scale, formationScale * 0.5 - 0.83 * scale],
+    rotation: [0, Math.PI / 2, 0],
+    scale,
+  };
+}
 
 /** Fixed geometry budgets; animation updates uniforms rather than allocating particles. */
 export const cosmeticEffectRecipe = (style: CosmeticStyle) => {
