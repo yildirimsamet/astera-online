@@ -64,10 +64,14 @@ The checkout amount evidence contains product IDs, currencies and totals only. C
   import and declared the already-locked `fflate@0.8.3` development dependency. A fresh
   manifest-only frozen-lock check passes; a small generated XLSX opens as a ZIP with valid
   escaped XML, numeric cells and invalid control characters removed. No economy study ran.
-- The merged PR and portable import pass the complete GitHub CI gate at `0b360fa`:
-  frozen installation, typecheck, lint and ordinary tests. Failure logs are also surfaced
-  as job annotations for future diagnosis. Post-integration source has passed local
-  typecheck and lint; the release must pass its own complete CI gate before qualification.
+- The merged PR and portable import pass frozen installation, typecheck and lint in
+  GitHub CI. Failure logs are surfaced as job annotations for diagnosis. Review caught
+  that GitHub's implicit `bash -e` does not preserve a failing command's exit through
+  `tee`; the test step now explicitly selects `bash`, which enables `pipefail`.
+  A real shell regression fails before that change (test exit 23 becomes 0) and passes
+  afterwards (23 stays 23; success stays 0). The earlier `0b360fa` workflow result is
+  not evidence that all tests passed. Post-integration source has passed local typecheck
+  and lint; the release must pass its corrected complete CI gate before qualification.
 
 Sanitized provider amount evidence: [32 checkout totals](evidence/polar-wave2-provider-checks-2026-10-10.json).
 

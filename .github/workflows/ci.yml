@@ -27,7 +27,8 @@ jobs:
       - run: pnpm lint
       # Ordinary rules, UI and persistence tests. Owner rule (2026-10-09):
       # economy simulations and snowball audits require an explicit request.
-      - run: pnpm test 2>&1 | tee "$RUNNER_TEMP/astera-tests.log"
+      - shell: bash
+        run: pnpm test 2>&1 | tee "$RUNNER_TEMP/astera-tests.log"
       - name: Expose test failure details
         if: failure()
         run: |
