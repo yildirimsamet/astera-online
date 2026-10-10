@@ -2325,3 +2325,25 @@ and green afterwards. No application code changed during this qualification.
 
 Sanitized measurements and application source hashes are retained in
 [the full release preflight evidence](evidence/full-release-preflight-2026-10-10.json).
+
+## Static menu shop showcase — 10 October 2026
+
+The menu entrance now uses one transparent 512×512 WebP (95,750 bytes): lava with
+the Inferno ring and a Red Dragon carrying a Phoenix clan standard. Its showcase
+Canvas, lazy model scene and background breathing animation are removed. Full shop
+product previews retain their existing behavior. A failed image is hidden without
+moving the card or disabling either destination.
+
+This release changes only the web client and its verification harnesses. There is
+no schema, server, rules, calendar or runtime configuration change. Use the rolling
+path with a clean, pushed commit; retain the previous image, webroot and private
+configuration backup. Keep all four runtime revisions and the public release marker
+on that commit under rule 1. Do not repeat calendar adoption or edit Polar mappings.
+
+Carry old hashed assets into the new webroot so already-open tabs can finish loading
+their previous client. They receive the still artwork after a normal reload. Before
+publication, check the new image and prebuilt web artifact; afterwards require the
+public artwork to match its SHA-256 and verify the release marker and CSP nonce.
+Check TR/EN at 350px and desktop width: one image, no showcase Canvas or autonomous
+animation, stable bounds during image loading/failure, and working Shop/Inventory
+destinations. Background galaxy rendering is outside the focused showcase harness.

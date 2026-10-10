@@ -1,12 +1,8 @@
-import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../v2/icons.js';
-import { SkinAssetBoundary } from '../galaxy/SkinAssetBoundary.js';
 import { ShopShowcasePoster } from './ShopShowcasePoster.js';
 
-const ShopShowcaseScene = lazy(() => import('./ShopShowcaseScene.js'));
-
-/** The menu previews the cosmetic collection in one compact, living scene. */
+/** A still cosmetic illustration keeps the menu independent of model loading and WebGL. */
 export function ShopShowcase({ onShop, onInventory }: {
   onShop: () => void;
   onInventory: () => void;
@@ -21,12 +17,8 @@ export function ShopShowcase({ onShop, onInventory }: {
         className="shop-showcase-hero group relative isolate block w-full overflow-hidden px-3 py-3 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-v2-premium v2-split:px-4 v2-split:py-4"
       >
         <div aria-hidden="true" className="shop-showcase-light pointer-events-none absolute inset-0" />
-        <div aria-hidden="true" className="shop-showcase-scene pointer-events-none absolute" data-showcase-scene>
-          <SkinAssetBoundary fallback={<ShopShowcasePoster />}>
-            <Suspense fallback={<ShopShowcasePoster />}>
-              {'WebGLRenderingContext' in window ? <ShopShowcaseScene /> : <ShopShowcasePoster />}
-            </Suspense>
-          </SkinAssetBoundary>
+        <div aria-hidden="true" className="shop-showcase-art pointer-events-none absolute" data-showcase-art>
+          <ShopShowcasePoster />
         </div>
         <div className="shop-showcase-copy relative z-10">
           <span className="inline-flex items-center gap-1.5 text-micro font-semibold uppercase tracking-label text-v2-premium">

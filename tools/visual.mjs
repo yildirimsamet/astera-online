@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--shop-showcase')) {
+  const { verifyShopShowcase } = await import('./shop-showcase-visual.mjs');
+  await verifyShopShowcase(process.argv[2] ?? 'out/shop-showcase-static/visuals');
+  process.exit(0);
+}
+
 if (process.argv.includes('--chat-recognition')) {
   const { verifyChatRecognition } = await import('./chat-recognition-visual.mjs');
   await verifyChatRecognition(process.argv[2] ?? 'out/chat-recognition');
