@@ -27,4 +27,16 @@ jobs:
       - run: pnpm lint
       # Ordinary rules, UI and persistence tests. Owner rule (2026-10-09):
       # economy simulations and snowball audits require an explicit request.
-      - run: pnpm test
+      - run: pnpm test 2>&1 | tee "$RUNNER_TEMP/astera-tests.log"
+      - name: Expose test failure details
+        if: failure()
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          from pathlib import Path
+          log = Path(os.environ['RUNNER_TEMP']) / 'astera-tests.log'
+          if log.exists():
+              text = '\n'.join(log.read_text(errors='replace').splitlines()[-80:])
+              text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print(f'::error title=Ordinary test failure::{text}')
+          PYTHON
