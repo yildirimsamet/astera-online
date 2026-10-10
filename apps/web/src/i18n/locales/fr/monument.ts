@@ -1,6 +1,6 @@
 export const monument = {
-  easy: "Easy",
-  hard: "Hard",
+  easy: "Facile",
+  hard: "Difficile",
   radiationLevelRate: "Rayonnement de niveau {{level}} : {{rate}} HP par vaisseau et par minute",
   easyAccess: "Facile · niveaux 1–3",
   hardAccess: "Difficile · tous les niveaux",

@@ -1,6 +1,6 @@
 export const monument = {
-  easy: "Easy",
-  hard: "Hard",
+  easy: "イージー",
+  hard: "ハード",
   radiationLevelRate: "放射線レベル{{level}}：1隻あたり毎分{{rate}}HP",
   easyAccess: "イージー · ティア1–3",
   hardAccess: "ハード · 全ティア",

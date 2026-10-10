@@ -7,15 +7,18 @@ describe('Wiki values a new player can interpret', () => {
   it('compares Easy and Hard monuments and explains the personal fleet cycle', () => {
     for (const language of ['en', 'tr'] as const) {
       const blocks = conceptReference('galaxy.monuments', language)?.blocks;
-      const table = blocks?.find(block => block.kind === 'table' && block.columns.includes('Easy'));
+      const easy = language === 'en' ? 'Easy' : 'Kolay';
+      const hard = language === 'en' ? 'Hard' : 'Zor';
+      const table = blocks?.find(block => block.kind === 'table' && block.columns.includes(easy));
       if (table?.kind !== 'table') throw new Error('Missing monument difficulty comparison');
-      expect(table.columns).toContain('Hard');
+      expect(table.columns).toContain(hard);
       expect(table.rows.some(row => row.includes(number(1550, language)) && row.includes(number(7270, language)))).toBe(true);
       expect(table.rows.at(-1)).toEqual([language === 'en' ? 'Probe loss chance' : 'Sonda kayıp şansı',
         language === 'en' ? '75%' : '%75', language === 'en' ? '75%' : '%75']);
       const article = getWikiArticle('galaxy.monuments');
       const text = article?.sections[language].flatMap(section => section.blocks.flatMap(block => block.kind === 'text' ? [block.text] : [])).join(' ');
       expect(text).toMatch(language === 'en' ? /including cargo.*return home/i : /kargo dahil.*eve dön/i);
+      if (language === 'tr') expect(text).not.toMatch(/\bEasy\b|\bHard\b/);
     }
   });
   it('compares Shipyard levels by time saved from each preceding level, for all units', () => {

@@ -1,5 +1,5 @@
 import { VIEW, GALAXY } from '@astera/rules';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { HpRadiationSourceView, PublicMonument } from '../src/api/schemas.js';
 import { MonumentFocus } from '../src/galaxy/FocusPanel.js';
@@ -82,6 +82,21 @@ describe('public monument navigation', () => {
   it.each([['EASY', 1, 2], ['HARD', 2, 5]] as const)('states the %s radiation level and real HP rate before inspection', (difficulty, level, rate) => {
     render(<MonumentFocus monument={{ ...target, difficulty, radiationHpPerMinute: rate }} onInspect={vi.fn()} onClose={vi.fn()} />);
     expect(screen.getByText(`Radiation level ${String(level)}: ${rate.toFixed(1)} HP per ship per minute`)).toBeInTheDocument();
+  });
+  it('translates an open finder to Turkish while retaining the selected monument identity and rank', async () => {
+    const targets = Array.from({ length: 8 }, (_, index) => ({ ...target, id: `monument-${String(index + 1)}`,
+      ordinal: index + 1, difficulty: index < 4 ? 'HARD' as const : 'EASY' as const }));
+    const select = vi.fn();
+    render(<GalaxyReadout counts={{ worlds: 2, fleetsAway: 0, rocks: 0, pirates: 0, wrecks: 0, monuments: 8 }}
+      targets={monumentFinderTargets(targets, i18n.t)} onFocusTarget={select} />);
+    fireEvent.click(screen.getByRole('button', { name: '8 monuments' }));
+    try {
+      await act(async () => { await i18n.changeLanguage('tr'); });
+      const list = screen.getByRole('list');
+      expect(within(list).getAllByRole('heading').map(heading => heading.textContent)).toEqual(['Zor', 'Kolay']);
+      fireEvent.click(within(list).getAllByRole('button')[7]!);
+      expect(select).toHaveBeenCalledWith({ kind: 'monument', id: 'monument-8' });
+    } finally { await act(async () => { await i18n.changeLanguage('en'); }); }
   });
   it('keeps a large Hard monument fully inside its navigation leash even without a cloud', () => {
     const hard = { position: { x: 6000, y: 6000, z: 6000 }, difficulty: 'HARD' as const };

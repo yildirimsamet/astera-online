@@ -197,7 +197,7 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
     [t('Cooldown after a short trip', 'Kısa seferden sonra yeniden gönderim beklemesi'), `${n(PROSPECTOR.shortTripCooldownMinutes)} min`],
   ])];
   if (id === 'galaxy.pirates') blocks = [table(t('Pirate levels · capture chance after a decisive win', 'Korsan seviyeleri · kesin zaferden sonra ele geçirme şansı'), [t('Level', 'Seviye'), t('Pirate damage multiplier', 'Korsan hasar çarpanı'), t('Captured ship chance', 'Ele geçirilen gemi şansı')], ([1, 2, 3, 4] as const).map(level => [n(level), `${n(PIRATE.damageMult[level])}×`, percent(PIRATE.captureChance[level], language)]))];
-  if (id === 'galaxy.monuments') blocks = [table(t('Monument types', 'Anıt türleri'), [t('Rule', 'Kural'), 'Easy', 'Hard'], [
+  if (id === 'galaxy.monuments') blocks = [table(t('Monument types', 'Anıt türleri'), [t('Rule', 'Kural'), t('Easy', 'Kolay'), t('Hard', 'Zor')], [
     [t('Monuments per galaxy', 'Galaksi başına anıt'), n(MONUMENT_SEASON_DEFAULTS.count / 2), n(MONUMENT_SEASON_DEFAULTS.count / 2)],
     [t('Commander tiers allowed to send', 'Yeni filo gönderebilen komutan tier’ları'), '1–3', t('Everyone', 'Herkes')],
     [t('Deuterium per minute per monument', 'Anıt başına dakikalık döteryum'), n(MONUMENT_BALANCE.EASY.productionPerMinute), n(MONUMENT_BALANCE.HARD.productionPerMinute)],

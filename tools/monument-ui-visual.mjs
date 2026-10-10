@@ -61,7 +61,8 @@ export async function verifyMonumentUi(output) {
       const dialog = page.getByRole('dialog');
       await dialog.waitFor();
       await dialog.getByText(target.difficulty === 'EASY' ? /1[.,]550/ : /7[.,]270/).waitFor();
-      await dialog.getByText(target.difficulty === 'EASY' ? /Easy.*1.*3/ : /Hard/).first().waitFor();
+      const difficultyLabel = target.difficulty === 'EASY' ? (language === 'tr' ? 'Kolay' : 'Easy') : (language === 'tr' ? 'Zor' : 'Hard');
+      await dialog.getByText(new RegExp(target.difficulty === 'EASY' ? `${difficultyLabel}.*1.*3` : difficultyLabel)).first().waitFor();
       const result = await dialog.evaluate((element) => {
         const heading = element.querySelector('h2');
         return { title: heading?.textContent, titleFits: heading.scrollWidth <= heading.clientWidth,

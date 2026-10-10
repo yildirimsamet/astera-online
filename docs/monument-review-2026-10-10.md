@@ -120,10 +120,12 @@ bazında tier ve sefer denetimini, gemisiz lider koordinasyonunu ve hazırlık
 sırasında tier değişmesini kapsıyor. Gemi kaybı, kaynak paylaşımı, kapasite,
 klan üyeliği ve sezon kapanışı regresyonları da tam normal testlere dahildir.
 
-Genel çeviri kontrolündeki iki uyuşmazlık da incelendi. `Easy` ve `Hard`,
-kullanıcının seçtiği ortak sınıf adları olarak korunuyor; Türkçe erişim
-kuralları ve açıklamalar çevrili. Bu iki ad mevcut, açıklama gerektiren özel
-isim istisna listesine eklendi; diğer çeviri kontrolleri değiştirilmedi.
+Sınıf adları son kullanıcı talimatıyla oyunun altı dilinde çevriliyor:
+Türkçe Kolay/Zor, İngilizce Easy/Hard, Almanca Leicht/Schwer,
+İspanyolca Fácil/Difícil, Fransızca Facile/Difficile ve Japonca イージー/ハード.
+Türkçe erişim/hata mesajları ve Wiki karşılaştırması aynı adları kullanıyor.
+İki sınıf adı çeviri istisna listesinden çıkarıldı. Açık anıt listesinde dil
+değişimi ve değişmeyen anıt kimliği/sırası ayrıca regresyonla kontrol ediliyor.
 Önceki başarısızlık `out/asteroid-density-20261010/web-green.log` içinde
 kayıtlıdır; dosyanın adına rağmen o koşu başarılı değildir.
 

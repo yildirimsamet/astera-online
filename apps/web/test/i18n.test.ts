@@ -289,10 +289,6 @@ const RESEARCH_DETAIL_KEYS = {
 const IDENTICAL_ON_PURPOSE = new Set([
   // A commander's name, a bullet and the monument's own (translated) name: no words of its own.
   'monument.honoured',
-  // Owner-chosen monument class names (2026-10-10): Easy and Hard stay the same
-  // in Turkish; their access rules and descriptions are translated.
-  'monument.easy',
-  'monument.hard',
   // The player explicitly names this channel DM in both languages.
   'chat.dm.title',
   // The build-time tag is the formatted duration and nothing else — `duration()`
@@ -958,6 +954,20 @@ describe('numbers and clocks follow the language', () => {
 });
 
 describe('every key the tree holds actually resolves', () => {
+  it.each([
+    ['en', 'Easy', 'Hard'], ['tr', 'Kolay', 'Zor'], ['de', 'Leicht', 'Schwer'],
+    ['es', 'Fácil', 'Difícil'], ['fr', 'Facile', 'Difficile'], ['ja', 'イージー', 'ハード'],
+  ] as const)('uses the same localized monument class names in %s headings and access rules', (language, easy, hard) => {
+    const t = i18n.getFixedT(language);
+    expect(t('monument.easy')).toBe(easy);
+    expect(t('monument.hard')).toBe(hard);
+    expect(t('monument.easyAccess')).toContain(easy);
+    expect(t('monument.hardAccess')).toContain(hard);
+    if (language !== 'en') {
+      expect(t('monument.tierBlocked', { tier: 4 })).not.toMatch(/\bEasy\b|\bHard\b/);
+      expect(t('errors.MONUMENT_TIER_FORBIDDEN')).not.toMatch(/\bEasy\b|\bHard\b/);
+    }
+  });
   /**
    * The belt to the type system's braces.
    *

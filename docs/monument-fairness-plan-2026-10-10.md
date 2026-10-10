@@ -127,6 +127,8 @@ geri çekme bu kuralla uyumlu çalışır. Normal kurallar, sunucu/API ve
 arayüz kontrolleri uygulanır; hedefli oyun testleri geçmiştir.
 
 Sağ üstteki anıt listesinde Hard grubu üstte, Easy grubu altta bulunur.
+Sınıf adları oyuncunun diline çevrilir; Türkçede üstte Zor, altta Kolay
+görünür. Erişim uyarıları ve Türkçe Wiki de aynı adları kullanır.
 Her grubun içinde kalıcı anıt sırası korunur. Oyuncu adları harita, liste,
 odak kartı, anıt ekranı ve raporlarda aynı isim kaynağından gelir.
 Önceki sezon veya ilgili sıra yoksa anıtın özgün adı gösterilir.
