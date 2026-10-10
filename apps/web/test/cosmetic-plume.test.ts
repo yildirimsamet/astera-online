@@ -35,3 +35,19 @@ it('gives Titan a shorter restrained rocket volume with a cheaper fixed geometry
   expect(geometry.getAttribute('aEnvelope').getX(0)).toBe(0);
   geometry.dispose(); original.dispose();
 });
+
+it('gives Tempest a tight arc channel and Prism a beam that fans out downstream, both closing at the tail', () => {
+  for (const style of ['tempest', 'prism'] as const) {
+    const geometry = createPlumeGeometry(style);
+    expect(geometry.index!.count / 3, style).toBeLessThanOrEqual(1536);
+    expect(plumeRadius(1, style), style).toBe(0);
+    expect(plumeRadius(0, style), style).toBeLessThan(plumeRadius(.2, style));
+    geometry.computeBoundingBox();
+    expect(geometry.boundingBox!.max.z, style).toBeLessThan(0);
+    geometry.dispose();
+  }
+  expect(plumeRadius(.6, 'prism')).toBeGreaterThan(plumeRadius(.15, 'prism') * 1.3);
+  expect(plumeRadius(.6, 'prism')).toBeGreaterThan(plumeRadius(.6, 'aurora'));
+  expect(plumeRadius(.3, 'tempest')).toBeLessThan(plumeRadius(.3, 'aurora'));
+  expect(plumeRadius(.3, 'tempest')).toBeGreaterThan(plumeRadius(.3, 'singularity'));
+});

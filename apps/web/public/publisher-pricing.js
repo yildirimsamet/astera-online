@@ -4,9 +4,13 @@ const PRICE_KEYS = new Set([
   'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'planet-japan', 'bundle',
   'ship-red-dragon', 'ship-scorpion', 'ship-shark', 'ship-stingray', 'probe-ufo',
   'ring-aurora', 'ring-helios', 'ring-singularity',
+  'ring-saturn', 'ring-prism', 'ring-inferno', 'ring-nebula',
   'engine-aurora', 'engine-helios', 'engine-singularity', 'engine-titan',
+  'engine-tempest', 'engine-prism',
   'flag-aurora', 'flag-helios', 'flag-singularity', 'flag-reaper',
   'flag-ravager', 'flag-serpent', 'flag-phoenix', 'flag-ironfang',
+  'flag-sovereign', 'flag-kraken', 'flag-oni', 'flag-voideye', 'flag-valkyrie',
+  'flag-scarab', 'flag-stag', 'flag-horizon', 'flag-tiger', 'flag-scorpion',
 ]);
 
 /** @param {unknown} value */

@@ -6,7 +6,11 @@ import { realpathSync } from 'node:fs';
 import { chromium } from 'playwright';
 const fromCli = createRequire(`${realpathSync('node_modules/@gltf-transform/cli')}/`);
 const sharp = fromCli('sharp');
-const ids = ['ring-aurora', 'ring-helios', 'ring-singularity', 'engine-aurora', 'engine-helios', 'engine-singularity', 'engine-titan', 'flag-vanguard', 'flag-orbit', 'flag-aurora', 'flag-helios', 'flag-singularity', 'flag-reaper', 'flag-ravager', 'flag-serpent', 'flag-phoenix', 'flag-ironfang', 'probe-ufo'];
+const ids = ['ring-aurora', 'ring-helios', 'ring-singularity', 'ring-saturn', 'ring-prism', 'ring-inferno', 'ring-nebula',
+  'engine-aurora', 'engine-helios', 'engine-singularity', 'engine-titan', 'engine-tempest', 'engine-prism',
+  'flag-vanguard', 'flag-orbit', 'flag-bastion', 'flag-meridian', 'flag-aurora', 'flag-helios', 'flag-singularity', 'flag-reaper', 'flag-ravager', 'flag-serpent', 'flag-phoenix', 'flag-ironfang',
+  'flag-sovereign', 'flag-kraken', 'flag-oni', 'flag-voideye', 'flag-valkyrie', 'flag-scarab', 'flag-stag', 'flag-horizon', 'flag-tiger', 'flag-scorpion',
+  'probe-ufo'];
 
 export async function verifyCosmeticCollections(output) {
   await mkdir(output, { recursive: true });

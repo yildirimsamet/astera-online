@@ -4,6 +4,9 @@ import { BufferGeometry, Float32BufferAttribute } from 'three';
 /** A narrow ignition throat, expanding plasma envelope, then a closed soft tip. */
 export function plumeRadius(t: number, style: CosmeticStyle = 'aurora'): number {
   if (style === 'titan') return (.04 + .14 * Math.sin(Math.PI * Math.pow(t, .74))) * Math.pow(1 - t, .65);
+  // Tempest: a tight channel the arcs can wrap. Prism: a beam that fans out as it disperses.
+  if (style === 'tempest') return (.045 + .17 * Math.sin(Math.PI * Math.pow(t, .6))) * Math.pow(1 - t, .5);
+  if (style === 'prism') return (.05 + .3 * Math.pow(t, .8)) * Math.pow(1 - t, .5);
   const base = (.055 + .24 * Math.sin(Math.PI * Math.pow(t, .65))) * Math.pow(1 - t, .55);
   if (style === 'singularity') return base * .5;
   if (style === 'helios') return base * (.35 + .65 * Math.pow(.5 + .5 * Math.cos(t * Math.PI * 12), 2));
@@ -13,6 +16,7 @@ export function plumeOpacity(t: number): number {
   const smooth = (x: number) => { const v = Math.max(0, Math.min(1, x)); return v * v * (3 - 2 * v); };
   return smooth(t / .07) * (1 - smooth((t - .65) / .35));
 }
+const PLUME_LENGTH: Partial<Record<CosmeticStyle, number>> = { titan: 1.85, singularity: 2.65, helios: 2.2, tempest: 2.4, prism: 2.6 };
 /** UV.x wraps the nozzle; UV.y runs from nozzle to tail. No exposed card edges. */
 export function createPlumeGeometry(style: CosmeticStyle = 'aurora'): BufferGeometry {
   const positions: number[] = [], uv: number[] = [], opacity: number[] = [], indices: number[] = [];
@@ -23,7 +27,7 @@ export function createPlumeGeometry(style: CosmeticStyle = 'aurora'): BufferGeom
       const t = ring / rings, radius = plumeRadius(t, style) * (shell === 0 ? 1 : .22);
       for (let side = 0; side <= sides; side++) {
         const angle = side / sides * Math.PI * 2;
-        positions.push(Math.cos(angle) * radius, Math.sin(angle) * radius, -.48 - t * (style === 'titan' ? 1.85 : style === 'singularity' ? 2.65 : style === 'helios' ? 2.2 : 2.35));
+        positions.push(Math.cos(angle) * radius, Math.sin(angle) * radius, -.48 - t * (PLUME_LENGTH[style] ?? 2.35));
         uv.push(side / sides + shell * 2, t);
         opacity.push(plumeOpacity(t));
         if (ring < rings && side < sides) {

@@ -4,14 +4,45 @@ import { COSMETIC_IDS, COSMETICS, cosmeticById, cosmeticsInCategory, canEquipCos
 describe('multi-category cosmetics', () => {
   it('keeps stable unique identities and separates cosmetic slots', () => {
     expect(new Set(COSMETIC_IDS).size).toBe(COSMETIC_IDS.length);
-    expect(cosmeticsInCategory('RING')).toHaveLength(3);
-    expect(cosmeticsInCategory('ENGINE')).toHaveLength(4);
+    expect(cosmeticsInCategory('RING')).toHaveLength(7);
+    expect(cosmeticsInCategory('ENGINE')).toHaveLength(6);
     expect(cosmeticById('engine-titan')).toMatchObject({ category: 'ENGINE', style: 'titan', free: false });
-    expect(cosmeticsInCategory('FLAG').filter(item => !item.free)).toHaveLength(8);
-    expect(cosmeticsInCategory('FLAG').filter(item => item.free)).toHaveLength(2);
+    expect(cosmeticsInCategory('FLAG').filter(item => !item.free)).toHaveLength(18);
+    expect(cosmeticsInCategory('FLAG').filter(item => item.free)).toHaveLength(4);
     expect(cosmeticsInCategory('SHIP')).toHaveLength(4);
     expect(cosmeticsInCategory('MINER')).toEqual([]);
     expect(cosmeticById('probe-ufo')).toMatchObject({ category: 'PROBE', model: '/assets/models/probes/probe_ufo.glb' });
+  });
+  it('adds the second premium wave as their own styles, never as recolours of an existing one', () => {
+    const wave = [
+      ['ring-saturn', 'RING', 'saturn'], ['ring-prism', 'RING', 'prism'],
+      ['ring-inferno', 'RING', 'inferno'], ['ring-nebula', 'RING', 'nebula'],
+      ['engine-tempest', 'ENGINE', 'tempest'], ['engine-prism', 'ENGINE', 'prism'],
+      ['flag-sovereign', 'FLAG', 'sovereign'], ['flag-kraken', 'FLAG', 'kraken'],
+      ['flag-oni', 'FLAG', 'oni'], ['flag-voideye', 'FLAG', 'voideye'],
+      ['flag-valkyrie', 'FLAG', 'valkyrie'], ['flag-scarab', 'FLAG', 'scarab'],
+      ['flag-stag', 'FLAG', 'stag'], ['flag-horizon', 'FLAG', 'horizon'],
+      ['flag-tiger', 'FLAG', 'tiger'], ['flag-scorpion', 'FLAG', 'scorpion'],
+    ] as const;
+    for (const [id, category, style] of wave) {
+      expect(cosmeticById(id), id).toMatchObject({ category, style, free: false });
+      expect(canEquipCosmetic(id, category, []), id).toBe(false);
+      expect(canEquipCosmetic(id, category, [id]), id).toBe(true);
+    }
+    for (const category of ['RING', 'ENGINE', 'FLAG'] as const) {
+      const styles = cosmeticsInCategory(category).map(item => item.style);
+      expect(new Set(styles).size, category).toBe(styles.length);
+      const accents = cosmeticsInCategory(category).filter(item => !item.free).map(item => item.accent);
+      expect(new Set(accents).size, category).toBe(accents.length);
+    }
+  });
+  it('includes two plain standards beside the original two, and never sells them', () => {
+    for (const id of ['flag-bastion', 'flag-meridian']) {
+      expect(cosmeticById(id)).toMatchObject({ category: 'FLAG', free: true });
+      expect(canEquipCosmetic(id, 'FLAG', [])).toBe(true);
+    }
+    expect(cosmeticsInCategory('FLAG').filter(item => item.free).map(item => item.id))
+      .toEqual(['flag-vanguard', 'flag-orbit', 'flag-bastion', 'flag-meridian']);
   });
   it('binds the four commissioned models to their approved hulls, never to another hull', () => {
     for (const [id, hull, name] of [

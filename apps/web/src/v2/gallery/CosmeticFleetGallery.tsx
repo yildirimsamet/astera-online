@@ -26,7 +26,7 @@ function FleetRenderProbe() {
 }
 
 /** The actual in-game formation renderer, including its instanced exhaust and clan standard. */
-export function CosmeticFleetGallery({ shipSkins, engineId }: { shipSkins?: ShipCosmeticEquipment; engineId?: string }) {
+export function CosmeticFleetGallery({ shipSkins, engineId, flagId }: { shipSkins?: ShipCosmeticEquipment; engineId?: string; flagId?: string }) {
   const pending = useMemo<PendingThread[]>(() => {
     const now = serverNow();
     const arriveAt = new Date(now + 30 * 60_000);
@@ -40,7 +40,7 @@ export function CosmeticFleetGallery({ shipSkins, engineId }: { shipSkins?: Ship
       <ambientLight intensity={1.3} /><directionalLight position={[3, 5, 4]} intensity={3} />
       <Suspense fallback={null}>
         <OwnFleets pending={pending} nodes={[]} focusedKey={null} onSelect={() => undefined}
-          appearance={shipSkins ? { shipSkins } : { engineId: engineId ?? 'engine-aurora', flagId: 'flag-helios' }} />
+          appearance={shipSkins ? { shipSkins } : { engineId: engineId ?? 'engine-aurora', flagId: flagId ?? 'flag-helios' }} />
         <FleetRenderProbe />
       </Suspense>
       <OrbitControls enablePan={false} />

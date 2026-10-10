@@ -1,8 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { z } from 'zod';
 import { COSMETICS } from '@astera/rules';
 import { hydratePublisherPricing } from '../public/publisher-pricing.js';
+
+/** Only offers with a live provider product are published; catalogued items without one show as coming soon. */
+const onSale = new Set(Object.keys(z.record(z.string(), z.unknown())
+  .parse(JSON.parse(readFileSync(resolve(process.cwd(), '../../config/polar-cosmetics.production.json'), 'utf8')))));
 
 const markup = `<!doctype html><html lang="tr"><body>
   <span data-offer-price="planet-lava">€2.99</span>
@@ -31,7 +37,9 @@ describe('publisher pricing from the live catalog', () => {
   it.each(['pricing.html', 'fiyatlar.html'])('publishes every paid cosmetic with its EUR fallback in %s', async filename => {
     const markup = await readFile(resolve(process.cwd(), 'public', filename), 'utf8');
     const document = new DOMParser().parseFromString(markup, 'text/html');
-    for (const item of COSMETICS.filter(item => item.category !== 'PLANET' && !item.free)) {
+    const published = COSMETICS.filter(item => item.category !== 'PLANET' && !item.free && onSale.has(item.id));
+    expect(published).toHaveLength(20);
+    for (const item of published) {
       const amount = item.category === 'SHIP' || item.category === 'PROBE' ? '3.99' : item.category === 'ENGINE' ? '2.49' : '1.99';
       expect(document.querySelector(`[data-offer-price="${item.id}"]`)?.textContent).toContain(amount);
     }

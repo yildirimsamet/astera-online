@@ -17,7 +17,7 @@ export async function verifyCosmeticMotion(output) {
   try {
     await page.goto(`${process.env.WEB ?? 'http://localhost:5173'}/v2-gallery.html?view=skin-shop&lng=en`);
     await page.getByRole('button', { name: /^Engines/ }).click();
-    for (const [id, name] of [['engine-aurora','Aurora Drive'], ['engine-helios','Solar Forge'], ['engine-singularity','Void Pulse'], ['engine-titan','Titan Drive']]) {
+    for (const [id, name] of [['engine-aurora','Aurora Drive'], ['engine-helios','Solar Forge'], ['engine-singularity','Void Pulse'], ['engine-titan','Titan Drive'], ['engine-tempest','Tempest Drive'], ['engine-prism','Prism Drive']]) {
       await page.getByRole('button', { name: new RegExp(name) }).click();
       const stage = page.locator(`[data-cosmetic-stage="${id}"][data-cosmetic-ready="true"]`);
       await stage.waitFor({ timeout: 60000 });
