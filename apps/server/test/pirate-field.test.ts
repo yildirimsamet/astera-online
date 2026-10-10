@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { orbitFingerprint } from '../../../packages/rules/test/orbitFingerprint.js';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { fleetCount, fleetEntries, pirateActive, pirateRoster, seededFrom } from '@astera/rules';
@@ -78,11 +78,10 @@ describe('the private pirate field', () => {
       everything that decides WHICH contact this is. `packages/rules/test/pirates.test.ts` holds
       the same narrowing for the pure schedule.
     */
-    const identity = (lane: typeof field): string => createHash('sha256')
-      .update(JSON.stringify(lane.map(({ hoard: _hoard, ...rest }) => rest)))
-      .digest('hex');
+    // Match the rules fingerprints: only derived radius/period tolerate final-bit runtime drift.
+    const identity = (lane: typeof field): string => orbitFingerprint(lane.map(({ hoard: _hoard, ...rest }) => rest));
     expect(identity(field.slice(0, establishedLength)))
-      .toBe('3fdfc07f7ac59694fcb0c38ff282a2671f7a6b15666b91b686467798282750aa');
+      .toBe('9078135d444c0c643d7935bc85bd9541229ee8d64a9ae4228fe03e17f96a87c7');
   });
 
   it('can retain the complete established lane during a rolling activation', () => {

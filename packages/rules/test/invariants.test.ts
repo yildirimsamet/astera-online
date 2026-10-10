@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { orbitFingerprint } from './orbitFingerprint.js';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
@@ -372,8 +372,9 @@ describe('the asteroid field', () => {
       ships at the new-season reset because live orbit geometry may not jump.
     */
     const laneShape = rocks.slice(0, establishedCount).map(({ ore: _ore, ...rest }) => rest);
-    expect(createHash('sha256').update(JSON.stringify(laneShape)).digest('hex'))
-      .toBe('b97e1d18f95df83725064a5758afd5b0f99156830537c4eb2cafb5de5726f15e');
+    // 12 significant digits only for derived radius/period; all other fields stay exact.
+    expect(orbitFingerprint(laneShape))
+      .toBe('47d29a2522020e05d72803121677e581893b9b2686e396e127db8d41bd9f084c');
     for (const index of [0, 1, Math.floor(baseCount / 2), baseCount - 1]) {
       expect(rocks[index]?.appearsAt).toBeGreaterThanOrEqual(index * baseInterval);
       expect(rocks[index]?.appearsAt).toBeLessThan((index + 1) * baseInterval);

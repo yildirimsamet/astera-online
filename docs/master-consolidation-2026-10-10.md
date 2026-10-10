@@ -53,3 +53,29 @@ This diagnostic improvement does not change or waive test results.
 Verification results and the final source comparison are recorded below after
 the checks complete. Production migration, calendar adoption, application deploy
 and live charges remain outside this consolidation.
+
+## CI diagnosis
+
+The initial CI failure was three historical orbit digest tests. The combined
+release adds a fourth in the stored-hour generation fixture; the private pirate
+field digest has the same defect. Reproducing all five fixtures in Node 22.23.3
+and local Node 24.11.0 matches their original digests exactly. All identity,
+roster, index, window, resource and other fields match; only 1,261 radius and
+997 period values differ, by at most 9.095e-13. Their `Math.pow` derived
+floating-point results differ in the final binary bits across runtimes.
+
+Keep runtime generation unchanged. Canonicalize only radius and period to 12
+significant digits in the test fingerprints, retaining all other fields exactly.
+The historical fixtures then have identical digests on both runtimes. Regression
+cases must continue rejecting meaningful orbit changes, integer identity/roster
+changes and even last-bit changes to unrelated RNG draws and window values.
+Existing exact prefix comparisons remain in place.
+
+Proof: [cross-runtime fixture measurements](evidence/orbit-runtime-fingerprints-2026-10-10.json).
+The dynamic-hour and private-pirate golden tests were observed red on Node 22
+before correction. Afterwards the full rules suite passed on both Node 22.23.3
+and Node 24.11.0: **112 files, 2,031 tests** each. The private pirate file passed
+all 13 tests on Node 22. Sequential workspace typecheck and root lint passed.
+The complete combined server/web release gate and production-restore rehearsal
+remain separate qualification steps; these targeted results do not claim their
+completion. No application generator or production geometry was changed.

@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { orbitFingerprint } from './orbitFingerprint.js';
 import { describe, expect, it } from 'vitest';
 import {
   ASTEROID_DYNAMIC, ASTEROID_SHOWER_FRONT_LOAD, DEUTERIUM, GALAXY,
@@ -14,8 +14,9 @@ const generate = (generation?: AsteroidGeneration) => generateAsteroidHour({
 
 describe('legacy dynamic generation inputs', () => {
   it('preserves the exact pre-release RNG order and all 100 complete specs', () => {
-    expect(createHash('sha256').update(JSON.stringify(generate())).digest('hex'))
-      .toBe('2759085aad824def42d27fd762772ed65a569449bfe7523f6089cd9fe0f931f4');
+    // Keep RNG draws and all identity/resource fields exact across supported runtimes.
+    expect(orbitFingerprint(generate()))
+      .toBe('dde57e2b385e56bf89fc12f0def15148b71c4fdc49d2ec6b13659f9479ac4716');
   });
 
   it('copies the generation inputs when an hour opens rather than retaining mutable arrays', () => {

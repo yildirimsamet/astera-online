@@ -1,0 +1,112 @@
+{
+  "versions": {
+    "local24": "v24.11.0",
+    "ci22": "v22.23.3"
+  },
+  "scope": "All historical asteroid, shower and pure/keyed pirate digest fixtures; no runtime generation changes",
+  "normalization": {
+    "fields": [
+      "radius",
+      "period"
+    ],
+    "significantDigits": 12,
+    "otherFields": "Exact JSON values"
+  },
+  "differences": {
+    "count": 2258,
+    "radius": 1261,
+    "period": 997,
+    "maxAbsoluteDifference": 9.094947017729282e-13,
+    "otherFieldChanges": 0
+  },
+  "hashes": {
+    "local24": {
+      "dynamicFrozen": {
+        "raw": "2759085aad824def42d27fd762772ed65a569449bfe7523f6089cd9fe0f931f4",
+        "orbit12": "dde57e2b385e56bf89fc12f0def15148b71c4fdc49d2ec6b13659f9479ac4716"
+      },
+      "keyedPirate": {
+        "raw": "3fdfc07f7ac59694fcb0c38ff282a2671f7a6b15666b91b686467798282750aa",
+        "orbit12": "9078135d444c0c643d7935bc85bd9541229ee8d64a9ae4228fe03e17f96a87c7"
+      },
+      "asteroid": {
+        "raw": "b97e1d18f95df83725064a5758afd5b0f99156830537c4eb2cafb5de5726f15e",
+        "orbit12": "47d29a2522020e05d72803121677e581893b9b2686e396e127db8d41bd9f084c"
+      },
+      "showerBase": {
+        "raw": "eb3a14767ee42c1001f59105cc17e966302de8be6955469db6bfc2e5a0668a3e",
+        "orbit12": "04b77ebb7b4bca35db8e5e242e65c6b54e65529513040b9c35cb0b0aa3f4e2ae"
+      },
+      "showerAdded": {
+        "raw": "abe533d4210d24d0df93f154eb7ad35b512de345a06064990bd7344b18ecdf5a",
+        "orbit12": "f7c5a754c0cb31f030372c34ce8bbde0fce0e4657309cefeb4bc7c1588462dee"
+      },
+      "pirateEstablished": {
+        "raw": "92ec597af89a97125b0020fc991472e051fa9c3a29e518d896a0d2065a688684",
+        "orbit12": "abeded8ba38f7f7903e96661c7994f2149615acd314c6aa763c1b42cd434e2d0"
+      },
+      "pirateIncreased": {
+        "raw": "59a5ddacb746963f25e417d3dba8865f7a4872de1d00014276ef962a10058d03",
+        "orbit12": "e30f6f2f1591b13bfd2bba4aa6e3df5bd8223930056e3e4e556ec8c3beaf0148"
+      }
+    },
+    "ci22": {
+      "dynamicFrozen": {
+        "raw": "b1aa5cef6df4576d64b3c61f90b19c41ebb0927381c0818e3dbbad57c8261c11",
+        "orbit12": "dde57e2b385e56bf89fc12f0def15148b71c4fdc49d2ec6b13659f9479ac4716"
+      },
+      "keyedPirate": {
+        "raw": "dcd682c41d94580f54517b644314d646bd3537fc030de49c3195a68cb9cdeabc",
+        "orbit12": "9078135d444c0c643d7935bc85bd9541229ee8d64a9ae4228fe03e17f96a87c7"
+      },
+      "asteroid": {
+        "raw": "98a7227f3cbe4d64b370d9c575df5953258aecc14381e12046e306fb4a2670d6",
+        "orbit12": "47d29a2522020e05d72803121677e581893b9b2686e396e127db8d41bd9f084c"
+      },
+      "showerBase": {
+        "raw": "caa5edbd14be496542f6e8da6af6106896569d95ef5421aba2e258bc910e0bfd",
+        "orbit12": "04b77ebb7b4bca35db8e5e242e65c6b54e65529513040b9c35cb0b0aa3f4e2ae"
+      },
+      "showerAdded": {
+        "raw": "2d377758188746aed45fd69de024ea14ae16ce125fcb8f21c41e78ea1247144a",
+        "orbit12": "f7c5a754c0cb31f030372c34ce8bbde0fce0e4657309cefeb4bc7c1588462dee"
+      },
+      "pirateEstablished": {
+        "raw": "f3ed2a983ae72b9ecc4c7ea226b3ca949511081141af7eafbff1c0b6fddf02b5",
+        "orbit12": "abeded8ba38f7f7903e96661c7994f2149615acd314c6aa763c1b42cd434e2d0"
+      },
+      "pirateIncreased": {
+        "raw": "520492fb890a7e1cf04874d378ae8b7b0b97b9ba0c7353f3ea03bc43b178e95b",
+        "orbit12": "e30f6f2f1591b13bfd2bba4aa6e3df5bd8223930056e3e4e556ec8c3beaf0148"
+      }
+    }
+  },
+  "examples": [
+    {
+      "path": ".dynamicFrozen[50].radius",
+      "local24": 3679.1987443493667,
+      "ci22": 3679.1987443493663
+    },
+    {
+      "path": ".dynamicFrozen[50].period",
+      "local24": 56.652096501155384,
+      "ci22": 56.65209650115538
+    },
+    {
+      "path": ".dynamicFrozen[89].radius",
+      "local24": 2479.9834854168907,
+      "ci22": 2479.983485416891
+    },
+    {
+      "path": ".keyedPirate[5].radius",
+      "local24": 3471.8883856953967,
+      "ci22": 3471.888385695397
+    }
+  ],
+  "redEvidence": {
+    "originalRulesCI": "https://github.com/yildirimsamet/astera-online/actions/runs/38036858394",
+    "dynamicFixtureNode22": "1 failure, exact digest b1aa5cef6df4576d64b3c61f90b19c41ebb0927381c0818e3dbbad57c8261c11",
+    "keyedPirateNode22": "1 failure, exact digest dcd682c41d94580f54517b644314d646bd3537fc030de49c3195a68cb9cdeabc",
+    "fingerprintRegressionBeforeHelper": "1 failed suite: helper absent"
+  }
+}

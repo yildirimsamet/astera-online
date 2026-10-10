@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { orbitFingerprint } from './orbitFingerprint.js';
 import { describe, expect, it } from 'vitest';
 import {
   GALAXY_EVENTS,
@@ -773,13 +773,12 @@ describe('Asteroid Shower bonus lane', () => {
       2026-09-25: RE-TAKEN FOR RADIUS 4500 and the 25% rock slowdown. Radius and
       period move only with the new-season reset; indices, appearances and lives do not.
     */
-    const laneShape = (rocks: readonly AsteroidSpec[]): string => createHash('sha256')
-      .update(JSON.stringify(rocks.map(({ ore: _ore, ...rest }) => rest)))
-      .digest('hex');
+    // Canonicalize final-bit radius/period drift across Node 22/24, retaining all other fields.
+    const laneShape = (rocks: readonly AsteroidSpec[]): string => orbitFingerprint(rocks.map(({ ore: _ore, ...rest }) => rest));
     expect(laneShape(base.slice(0, establishedCount)))
-      .toBe('eb3a14767ee42c1001f59105cc17e966302de8be6955469db6bfc2e5a0668a3e');
+      .toBe('04b77ebb7b4bca35db8e5e242e65c6b54e65529513040b9c35cb0b0aa3f4e2ae');
     expect(laneShape(showered.slice(0, establishedCount + establishedBonus)))
-      .toBe('abe533d4210d24d0df93f154eb7ad35b512de345a06064990bd7344b18ecdf5a');
+      .toBe('f7c5a754c0cb31f030372c34ce8bbde0fce0e4657309cefeb4bc7c1588462dee');
     expect(showered.length - base.length).toBe(expandedBonus);
     const bonus = [
       ...showered.slice(establishedCount, establishedCount + establishedBonus),

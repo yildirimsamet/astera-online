@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { orbitFingerprint } from './orbitFingerprint.js';
 import { describe, expect, it } from 'vitest';
 import {
   resolveCombat,
@@ -628,13 +628,12 @@ describe('the pirate schedule', () => {
       tripped it exactly that way). Everything that decides WHICH contact this is — index, level,
       roster, orbit and window — is still in the hash.
     */
-    const identity = (field: typeof established): string => createHash('sha256')
-      .update(JSON.stringify(field.map(({ hoard: _hoard, ...rest }) => rest)))
-      .digest('hex');
+    // Only derived radius/period tolerate measured final-bit runtime differences.
+    const identity = (field: typeof established): string => orbitFingerprint(field.map(({ hoard: _hoard, ...rest }) => rest));
     expect(identity(established))
-      .toBe('92ec597af89a97125b0020fc991472e051fa9c3a29e518d896a0d2065a688684');
+      .toBe('abeded8ba38f7f7903e96661c7994f2149615acd314c6aa763c1b42cd434e2d0');
     expect(identity(increased))
-      .toBe('59a5ddacb746963f25e417d3dba8865f7a4872de1d00014276ef962a10058d03');
+      .toBe('e30f6f2f1591b13bfd2bba4aa6e3df5bd8223930056e3e4e556ec8c3beaf0148');
     // And the prize is still deterministic for a given lane, which the roster above pins.
     expect(established[0]!.hoard).toEqual(increased[0]!.hoard);
   });
