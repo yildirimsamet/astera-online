@@ -2197,3 +2197,83 @@ byte. The freeze covers stored dynamic hours; legacy derived seasons still requi
 Local proof and exact test commands are in
 [the fix report](asteroid-spawn-fix-2026-10-09.md). This task did not execute a production
 deploy, migration, calendar adoption or restart.
+
+## Full master release preparation — 10 October 2026
+
+The release collects the asteroid correction, store/inventory review, Polar wave two,
+approved ring simplifications, colony abandonment, monument fleet recall, temporary
+session recovery and chat explanations. The separate `komutan-gemisi` and `ui-v2`
+worktrees remain excluded. The owner cancelled the proposed monument rate update:
+retain **4 HP/minute and 10 deuterium/minute**, with no rate-adoption command or migration.
+
+Read-only production inspection at 08:38 UTC found all three APIs, the singleton
+worker, the checkout and public client on `8a4ae26856b1610cdc2d8bf0a70cc019e9bdb154`.
+Health and host-capacity checks passed; failed events, overdue pending/processing jobs
+and overdue missions were zero. There were 20 recently active real commanders and
+16 in-flight missions. These are inspection-time counts; refresh them before rollout.
+The live fixed-calendar shards are **EU-1, EU-2 and WAIT-1**. Stage is a different,
+older release and is not evidence that this complete candidate has passed rehearsal.
+
+Only migration **0146** is pending (146 applied, 147 expected). It adds a nullable
+JSONB column without a backfill or new event kind. Rehearse it on a fresh production
+restore and prove old/new image compatibility before selecting the rolling path.
+Do not repeat historical migration batches, wipes, forced cutoffs or season changes.
+
+Use this combined order with the general gates above:
+
+1. Finish ordinary rules/server/web tests, sequential local typecheck, root lint,
+   the server image and production web build on one clean, pushed SHA. Test fingerprints
+   must work on production's Node 22 as well as local Node 24; the measured final-bit
+   orbit differences are test-encoding differences, not a reason to change live geometry.
+2. Retain the old image by ID, webroot, nginx configuration and a mode-600 runtime
+   environment backup. Take a fresh consistent dump into a separate private release
+   directory, verify its checksum and restore it. Avoid backup retention pruning during
+   preparation. At a fixed read instant, compare complete asteroid specs/opaque IDs,
+   claims and mining targets between the retained image before migration and the new
+   image after migration. Require exact equality, not rounded fingerprints, for this
+   same-platform production rehearsal. Also compare durable table counts and queue rows.
+3. Measure migration locking, boot the retained image against the migrated restore,
+   exercise the new API/client on the restore, and rehearse calendar adoption there.
+   The new calendar changes future shower arrivals only; opened hours, claims, mining
+   targets and processed lifecycle markers must remain intact. A real stop condition
+   still invokes Rule 12 before any production stop or migration.
+4. Migrate production once with the pinned image. Roll API1, API2, API3 and then the
+   singleton worker while retaining the existing **20-extra Polar mapping**. Require
+   matching image/revision, schema and health across all four roles before activation.
+   Keep that compatible image as the new-item payment/refund rollback floor.
+5. Activate `config/polar-cosmetics.production.json` (**36 extras, 46 offers total**) by
+   replacing only the runtime `POLAR_COSMETIC_PRODUCTS` value. Preserve live credentials,
+   enabled flag, return URL, existing planet/bundle IDs and webhook subscriptions.
+   Recreate API1, API2, API3 and then the worker on the same image; restart alone does
+   not read the new environment. Verify regional pricing and compatibility with an
+   already-open old client. Use existing sandbox proof for paid/refund/redelivery checks.
+6. With every role on that image, dry-run and then apply `adopt-event-calendar` to all
+   three live fixed-calendar shards, including WAIT-1. Review the actual cutovers from
+   the command rather than assuming the next hour. Do not use `restamp`, reset the queue
+   or delete existing rocks. Publish the staged web only after those cutovers and any
+   retained old shower extending past them have ended, so its guide matches the sky.
+7. Publish through the existing atomic/old-asset-preserving procedure. Verify the public
+   SHA, CSP nonce, assets, pricing pages, inventory/store, session recovery, colony
+   abandonment and monument recall. Perform destructive gameplay smoke checks only
+   on the disposable restore, not on real commanders. Observe the first new hour on
+   every live shard: one stored row, one next-hour job, non-null generation, v11 effects,
+   expected lane counts, no failed/stranded work and unchanged old mining targets.
+
+Rollback combines both feature boundaries. Keep the additive column. Once any new
+Polar checkout intent exists, the receiver must remain wave-two-compatible even if
+new sales close. Calendar adoption is stored data; image rollback alone does not undo
+it. Restore future calendar windows/jobs only at an unplanned hour boundary, preserving
+opened hours and processed occurrences. Never restore an old whole database over
+newer player writes.
+
+Preparation is not a production deploy. Record the accepted SHA, build IDs, restore
+comparison, measured migration/compatibility result, cutovers and acceptance evidence
+before applying this sequence to the live stack.
+
+Preparation evidence so far: the 08:50 UTC production dump restored successfully
+into a private disposable `_test` database. Counts for all 18 inspected tables matched
+the exact exported snapshot, including 356 planned asteroid hours, 3,572 claims,
+11,583 mining runs and 52,350 queue rows; dump checksum validation passed. This proves
+the backup restore, not migration/image compatibility. Read-only Polar inspection
+also verified all 36 configured extras, both configured currencies and the one live
+raw webhook subscription. No live checkout, charge or provider change was made.
