@@ -34,10 +34,15 @@ jobs:
         run: |
           python3 - <<'PYTHON'
           import os
+          import re
           from pathlib import Path
           log = Path(os.environ['RUNNER_TEMP']) / 'astera-tests.log'
           if log.exists():
               text = '\n'.join(log.read_text(errors='replace').splitlines()[-80:])
+              text = re.sub(r'\x1b\[[0-9;]*m', '', text)
+              # GitHub truncates long annotations. Keep the final failure visible,
+              # including when the log contains multibyte text or color escapes.
+              text = text.encode('utf-8')[-3000:].decode('utf-8', errors='replace')
               text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
               print(f'::error title=Ordinary test failure::{text}')
           PYTHON
