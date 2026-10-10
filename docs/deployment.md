@@ -58,10 +58,11 @@ and the rollback boundary. It is deliberately not a release history.
   realtime events **and cache invalidations**; serving cached reads after missing an invalidation
   can return false world state. `/health` therefore returns 503 for `stream: not listening` on an
   API. The worker intentionally has no LISTEN socket, so that value is expected on port 3210.
-- Production admits at most two live galaxies, each with 300 real-player seats, filled strictly
-  in order. EU-1 carries a temporary owner-set `player_cap=350` for the current season only —
-  see "Live galaxy acceptance", which is where the expectation of a red row is recorded. Each new galaxy also has 38 tier-1, 19 tier-2 and 8 tier-3 neutral worlds (D209); those 65
-  worlds do not consume player seats.
+- Production admits two main live galaxies, filled strictly in order, plus the waiting
+  room. The 10 October 2026 read-only inspection measured `player_cap=1000` on EU-1,
+  EU-2 and WAIT-1; older 300/350-seat acceptance records below are historical. This
+  release does not change capacity. Each new galaxy also has 38 tier-1, 19 tier-2 and
+  8 tier-3 neutral worlds (D209); those 65 worlds do not consume player seats.
 - The certified host budget assumes HoofyWood and Candely remain stopped. Astera deployment has
   no authority to delete their containers or volumes, and they must not be restarted casually
   while this capacity contract is in force.
@@ -2237,10 +2238,21 @@ Use this combined order with the general gates above:
    The new calendar changes future shower arrivals only; opened hours, claims, mining
    targets and processed lifecycle markers must remain intact. A real stop condition
    still invokes Rule 12 before any production stop or migration.
-4. Migrate production once with the pinned image. Roll API1, API2, API3 and then the
+4. Migrate production once with the pinned image, bounding lock acquisition to one
+   second and statements to 30 seconds. Construct a private one-off environment from
+   the intended runtime configuration, adding `lock_timeout=1000&statement_timeout=30000`
+   to its `DATABASE_URL` query parameters. Keep the normal runtime URL unchanged and
+   never print the credentials. If a reader holds the table, require a nonzero exit
+   and an unchanged journal; inspect the blocker and retry after it releases. Do not
+   terminate player transactions or silently increase the timeout.
+   Roll API1, API2, API3 and then the
    singleton worker while retaining the existing **20-extra Polar mapping**. Require
    matching image/revision, schema and health across all four roles before activation.
    Keep that compatible image as the new-item payment/refund rollback floor.
+   The live webhook endpoint's secret matches the VPS `.env`, while all four existing
+   processes still carry an older value. Use the provider-confirmed file value when
+   recreating them; copying the old process environment wholesale would retain the
+   signature mismatch. Preserve the endpoint, subscription, token and return URL.
 5. Activate `config/polar-cosmetics.production.json` (**36 extras, 46 offers total**) by
    replacing only the runtime `POLAR_COSMETIC_PRODUCTS` value. Preserve live credentials,
    enabled flag, return URL, existing planet/bundle IDs and webhook subscriptions.
@@ -2270,10 +2282,46 @@ Preparation is not a production deploy. Record the accepted SHA, build IDs, rest
 comparison, measured migration/compatibility result, cutovers and acceptance evidence
 before applying this sequence to the live stack.
 
-Preparation evidence so far: the 08:50 UTC production dump restored successfully
+Preparation evidence: the 08:50 UTC production dump restored successfully
 into a private disposable `_test` database. Counts for all 18 inspected tables matched
 the exact exported snapshot, including 356 planned asteroid hours, 3,572 claims,
 11,583 mining runs and 52,350 queue rows; dump checksum validation passed. This proves
-the backup restore, not migration/image compatibility. Read-only Polar inspection
+the backup restore. Read-only Polar inspection
 also verified all 36 configured extras, both configured currencies and the one live
 raw webhook subscription. No live checkout, charge or provider change was made.
+
+Actual-image rehearsal on that restore then applied migration 0146 and required exact
+equality for **3,736 complete asteroid specs/public IDs, 3,572 claims, 14 active mining
+runs, 1,272 pending queue rows and 648 calendar rows**. Both retained and new APIs
+answered preview with HTTP 200 against the expanded schema. The new worker processed
+56 copied-world events with zero unknown kinds or handler failures. The exact DDL
+took **5.084 ms** on a second restore. A held reader produced SQLSTATE `55P03` after
+**1,017 ms** with the image's actual database client; the migration CLI failed without
+changing the journal or 356 stored hours, then succeeded after the reader released.
+The command's roughly 27 seconds include Node startup and are not the table-lock time.
+
+Calendar dry run left the copy unchanged. Adoption replaced only 150 unplanned future
+windows and their lifecycle jobs, retaining earlier fields, claims, mining targets and
+all 225 processed lifecycle jobs. Repeating adoption changed nothing. At the rehearsal's
+10:00 UTC cutover, each of EU-1, EU-2 and WAIT-1 opened exactly one v11 hour with a
+non-null v1 generation snapshot and one next-hour job; opening it again preserved the
+same row. Those cutovers and populations describe the copy, not a live application.
+The actual production command must report its own cutovers.
+
+The new image's pricing service and isolated HTTP API quoted **46 offers**, with the
+existing 30 product IDs and prices unchanged. A real Turkey geolocation returned TRY
+for configured extras; loopback returned EUR. All four free standards stayed unpriced.
+Checkout remained disabled throughout this rehearsal.
+
+Ordinary qualification completed with **10,949 passing tests and 30 existing skips**:
+rules 112 files/2,031 tests (both Node 22.23.3 and 24.11.0), server 214 files/3,189
+passing tests (five disjoint batches covering every ordinary file), and web 417
+files/5,729 passing tests on Node 22.23.3. Economy simulations and snowball audits
+were excluded under the owner rule. Sequential workspace typecheck and root lint
+passed. The combined store discovery regression had retained a two-standard
+expectation after two more free standards shipped; its corrected four-standard
+assertion also checks Bastion and Meridian. It was observed red before correction
+and green afterwards. No application code changed during this qualification.
+
+Sanitized measurements and application source hashes are retained in
+[the full release preflight evidence](evidence/full-release-preflight-2026-10-10.json).

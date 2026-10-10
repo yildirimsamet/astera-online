@@ -1,0 +1,319 @@
+{
+  "date": "2026-10-10",
+  "applicationSourceCommit": "4ccbb8faf3614d85bb0d64807145b28f119ebe91",
+  "applicationTrees": {
+    "apps/server/src": "152d2405583bb08846e599e117afdc42fb6cb434",
+    "apps/web/src": "42fe052d01cf32b38fe6a68affb4eaae38c44225",
+    "packages/rules/src": "13258f3f94a08d7391b0c8f5555467cc92389c14",
+    "Dockerfile": "4a6745bea3cd4962c6133f994480468df32970b2",
+    "docker-compose.prod.yml": "36b43bfe5c69068c8c9e2dc2019e386f6952b6f9",
+    "pnpm-lock.yaml": "6bb76c4a83430d6514842d7a6c43d36efbc2745f",
+    "package.json": "2dc068d46de6ae393c5bf6442325bb0077efa82b"
+  },
+  "qualification": {
+    "ordinary": {
+      "rules": {
+        "files": 112,
+        "passed": 2031,
+        "runtimes": [
+          "22.23.3",
+          "24.11.0"
+        ]
+      },
+      "server": {
+        "files": 214,
+        "passed": 3189,
+        "skipped": 1,
+        "coverage": "Five disjoint completed batches; every ordinary server file covered exactly once."
+      },
+      "web": {
+        "files": 417,
+        "passedFiles": 416,
+        "skippedFiles": 1,
+        "passed": 5729,
+        "skipped": 29,
+        "runtime": "22.23.3"
+      },
+      "totalPassed": 10949,
+      "totalSkipped": 30,
+      "longEconomyTestsRun": false,
+      "localParallelWorkers": 1,
+      "localNice": 10
+    },
+    "typecheck": "passed sequentially",
+    "lint": "passed, including the corrected store discovery test",
+    "storeRegression": {
+      "red": "Old expectation of two free standards failed on local Node 24 and CI Node 22.",
+      "green": "Four included standards, including Bastion and Meridian, passed on Node 22; full web suite also passed.",
+      "runtimeCodeChanged": false
+    },
+    "privateLogChecksums": {
+      "out/deployment-preparation-20261010/store-discovery-red.log": "a5280bccc063d5f4829c8f87fd60b603b3c521e3748d40f3f46d61135a45fb79",
+      "out/deployment-preparation-20261010/store-discovery-green-node22.log": "bf62dafc8104666b389bc849092f0d2c61741aed7afbfa3f42a4c82aba2958ce",
+      "out/deployment-preparation-20261010/web-full-node22.log": "b9debf4bb319762e7035e102019facd1fc461094163a3de6c59e3445b55d5f4e",
+      "out/deployment-preparation-20261010/server-remaining-tests.log": "fd82c8f3ea89931830d74de68e0c078a4c477f2da6126229b359a8b621b6f8a4",
+      "/tmp/astera-release-rules-node22.log": "d946f12c7bfba440926e6cc1fc1a3066fec981d8c18e38f345edd2eeba1edd3b",
+      "/tmp/astera-release-rules-node24.log": "de25695a955291cc340f752997f23aaac4b36a1cafca8fbd60a8b2a8d4aee49b",
+      "/tmp/astera-release-typecheck.log": "81b74ecbce3bc025a9c0a12bc00c3517b886cc2e02983eb89729e2375f6a16ac",
+      "/tmp/astera-release-lint.log": "c7eb38165cacf2e943c47d3d4040ead9f32c7d4d5463390d28c3e90328e6f966",
+      "out/chat-recognition/server-batch-1.log": "9dbe86a602e4e72052c1ed78b04dd3892f059cc6990ac264cc29d34258ffa7bc",
+      "out/chat-recognition/server-batch-2.log": "6bebeaa0a0a72923bcb910b9f9f5292b24546d378a9feeb2b792a82e38a2eb44",
+      "out/chat-recognition/server-batch-3.log": "515e656d217ae1097da26b9f510b4337dee8c97591f09230f099c1bfc667e0fb",
+      "out/chat-recognition/server-batch-4.log": "00e4a0a760430470a0eccdc561bf972b7894ccc343bb3f457caf07cab74f1092",
+      "out/deployment-preparation-20261010/final-lint.log": "37cccb1ce341a2a3784fcd237b6de4675c50d7177c9df8e7ce3a29b5804e6b4b",
+      "out/deployment-preparation-20261010/final-typecheck.log": "a59b249d3af2756b2f1223809c0c46203eef2392fa2af4d07cc91430a193bc1c"
+    }
+  },
+  "restore": {
+    "directory": "/home/yildirim/backups/astera-full-prep-20261010-7rzd11dk",
+    "database": "astera_release_prep_20261010085052_test",
+    "snapshotCountsMatch": true,
+    "sourceAndRestoreCounts": {
+      "accounts": 1416,
+      "players": 528,
+      "planets": 661,
+      "seasons": 26,
+      "monuments": 15,
+      "hp_radiation_sources": 15,
+      "asteroid_spawn_hours": 356,
+      "asteroid_claims": 3572,
+      "mining_runs": 11583,
+      "missions": 9918,
+      "scheduled_events": 52350,
+      "galaxy_event_occurrences": 648,
+      "cosmetic_entitlements": 33,
+      "polar_skin_orders": 8,
+      "polar_webhook_events": 9,
+      "account_rewards": 160,
+      "season_reward_entitlements": 6,
+      "build_orders": 11013
+    },
+    "dumpBytes": 15974184,
+    "sha256": "def991bd78468197589a8d289ea6eb8a4016e5f18d2d4400c6c48df5d60856c3",
+    "durationSeconds": 18.21,
+    "productionMigrated": false,
+    "productionRolesChanged": false,
+    "rehearsalMigrationApplied": false
+  },
+  "actualImages": {
+    "sha": "4ccbb8faf3614d85bb0d64807145b28f119ebe91",
+    "database": "astera_release_prep_20261010085052_test",
+    "appliedMigrations": 147,
+    "migrationSeconds": 20.142,
+    "nodeVersions": [
+      "v22.23.3",
+      "v22.23.3"
+    ],
+    "exactStateDigest": "fe6b21185c9754094112a77e39f25341e3fec269a173616ce2cc3fc137b239d0",
+    "storedHours": 356,
+    "completeAsteroidSpecs": 3736,
+    "claims": 3572,
+    "activeMiningRuns": 14,
+    "pendingQueueRows": 1272,
+    "calendarRows": 648,
+    "everySpecIdClaimRunAndPendingQueueRowUnchanged": true,
+    "comparisonRejectsCorruption": true,
+    "copiedWorldWorker": {
+      "healthOk": true,
+      "processed": 56,
+      "unknownEvents": 0,
+      "handlerFailures": 0
+    },
+    "oldImageOnNewSchema": {
+      "healthOk": true,
+      "previewStatus": 200,
+      "commit": "8a4ae26856b1610cdc2d8bf0a70cc019e9bdb154"
+    },
+    "newImageOnNewSchema": {
+      "healthOk": true,
+      "previewStatus": 200,
+      "commit": "4ccbb8faf3614d85bb0d64807145b28f119ebe91"
+    },
+    "productionMigrated": false,
+    "productionRolesChanged": false
+  },
+  "calendarAdoptionCopyOnly": {
+    "sha": "4ccbb8faf3614d85bb0d64807145b28f119ebe91",
+    "database": "astera_release_prep_20261010085052_test",
+    "dryRunStateUnchanged": true,
+    "repeatAdoptionUnchanged": true,
+    "existingFieldsIdsClaimsRunsUnchanged": true,
+    "processedLifecycleRowsUnchanged": true,
+    "processedLifecycleJobCount": 225,
+    "onlyUnplannedFutureCalendarAndLifecycleJobsChanged": true,
+    "changedWindows": 150,
+    "newWindows": 150,
+    "cutovers": [
+      {
+        "code": "EU-1",
+        "at": "2026-10-10T10:00:00.000Z",
+        "removed": 50,
+        "added": 50
+      },
+      {
+        "code": "EU-2",
+        "at": "2026-10-10T10:00:00.000Z",
+        "removed": 50,
+        "added": 50
+      },
+      {
+        "code": "WAIT-1",
+        "at": "2026-10-10T10:00:00.000Z",
+        "removed": 50,
+        "added": 50
+      }
+    ],
+    "futureHourProof": {
+      "disposableDatabase": true,
+      "futureHourOpens": [
+        {
+          "code": "EU-1",
+          "hour": "2026-10-10T10:00:00.000Z",
+          "eligiblePlayers": 0,
+          "activePlayers": 23,
+          "previousHoursUsed": 5,
+          "showerVersion": 11,
+          "showerMultiplier": 3,
+          "storedRows": 1,
+          "generationVersion": 1,
+          "laneCount": 2,
+          "rocks": 47,
+          "duplicateOpenUnchanged": true,
+          "nextHourJobs": 1
+        },
+        {
+          "code": "EU-2",
+          "hour": "2026-10-10T10:00:00.000Z",
+          "eligiblePlayers": 0,
+          "activePlayers": 0,
+          "previousHoursUsed": 5,
+          "showerVersion": 11,
+          "showerMultiplier": 3,
+          "storedRows": 1,
+          "generationVersion": 1,
+          "laneCount": 0,
+          "rocks": 0,
+          "duplicateOpenUnchanged": true,
+          "nextHourJobs": 1
+        },
+        {
+          "code": "WAIT-1",
+          "hour": "2026-10-10T10:00:00.000Z",
+          "eligiblePlayers": 0,
+          "activePlayers": 1,
+          "previousHoursUsed": 5,
+          "showerVersion": 11,
+          "showerMultiplier": 3,
+          "storedRows": 1,
+          "generationVersion": 1,
+          "laneCount": 2,
+          "rocks": 3,
+          "duplicateOpenUnchanged": true,
+          "nextHourJobs": 1
+        }
+      ],
+      "allEarlierHourRowsUnchanged": true,
+      "oldHourDigest": "4d73125e201381d1b86c89bff09a1024ea940208c67c36ddfa243177e4b6e6e7",
+      "claimsAndAllMiningRunsUnchanged": true
+    },
+    "productionCalendarChanged": false,
+    "productionRolesChanged": false
+  },
+  "migrationLocksCopyOnly": {
+    "sha": "4ccbb8faf3614d85bb0d64807145b28f119ebe91",
+    "database": "astera_release_prep_20261010085053_test",
+    "exactDDLMilliseconds": 5.084,
+    "lockTimeoutMilliseconds": 1000,
+    "statementTimeoutMilliseconds": 30000,
+    "heldReaderBlocksDDL": true,
+    "blockedMigrationExitedNonzero": true,
+    "blockedAttemptJournalAndRowsUnchanged": true,
+    "driverStartupSettingsAndSQLState": {
+      "lockTimeout": "1s",
+      "statementTimeout": "30s",
+      "sqlState": "55P03",
+      "blockedDDLMilliseconds": 1017,
+      "rolledBack": true
+    },
+    "blockedCommandSecondsIncludingNodeStartup": 26.598,
+    "retrySucceededAfterReaderReleased": true,
+    "retryCommandSecondsIncludingNodeStartup": 26.693,
+    "oldHoursAfterRetry": 356,
+    "productionDDLApplied": false,
+    "productionRolesChanged": false
+  },
+  "pricingCopyOnly": {
+    "sha": "4ccbb8faf3614d85bb0d64807145b28f119ebe91",
+    "readOnly": true,
+    "productionEnvironmentChanged": false,
+    "productionRolesChanged": false,
+    "proof": {
+      "checkoutDisabled": true,
+      "readOnly": true,
+      "liveCharges": 0,
+      "liveCheckouts": 0,
+      "preservedProductIds": 30,
+      "freeStandardsNotPriced": true,
+      "regions": [
+        {
+          "countryCode": "ZZ",
+          "offers": 46,
+          "legacyOffers": 30,
+          "existingPricesUnchanged": true,
+          "allConfiguredExtraPricesMatch": true
+        },
+        {
+          "countryCode": "TR",
+          "offers": 46,
+          "legacyOffers": 30,
+          "existingPricesUnchanged": true,
+          "allConfiguredExtraPricesMatch": true
+        }
+      ],
+      "shadowHttp": {
+        "offers": 46,
+        "countryCode": "ZZ",
+        "newRingEUR": 199,
+        "newEngineEUR": 249,
+        "shopClosed": true,
+        "freeFlagsUnpriced": true
+      }
+    }
+  },
+  "webhookConfiguration": {
+    "endpointFormat": "raw",
+    "runtimeAndFileEqual": false,
+    "providerMatchesRuntime": false,
+    "providerMatchesFile": true
+  },
+  "productionCapacity": [
+    {
+      "code": "EU-1",
+      "player_cap": 1000,
+      "status": "live",
+      "starts_at": "2026-10-04T18:56:16.282+00:00",
+      "ends_at": "2026-11-03T18:56:16.282+00:00"
+    },
+    {
+      "code": "EU-2",
+      "player_cap": 1000,
+      "status": "live",
+      "starts_at": "2026-10-04T18:56:16.282+00:00",
+      "ends_at": "2026-11-03T18:56:16.282+00:00"
+    },
+    {
+      "code": "WAIT-1",
+      "player_cap": 1000,
+      "status": "live",
+      "starts_at": "2026-10-04T18:56:16.282+00:00",
+      "ends_at": "2026-11-03T18:56:16.282+00:00"
+    }
+  ],
+  "productionChangesDuringTheseMeasurements": {
+    "deployment": false,
+    "migration": false,
+    "calendarAdoption": false,
+    "charges": 0,
+    "checkoutCreated": 0
+  }
+}

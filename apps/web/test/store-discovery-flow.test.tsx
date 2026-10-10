@@ -74,5 +74,8 @@ it('keeps collection counts in their categories rather than showing a conflictin
   expect(await screen.findByRole('tab', { name: 'Inventory' })).toHaveAttribute('aria-selected', 'true');
   expect(screen.getByRole('button', { name: 'Planets 02' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Planet rings 01' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Clan standards 02' })).toBeInTheDocument();
+  const standards = screen.getByRole('button', { name: 'Clan standards 04' });
+  fireEvent.click(standards);
+  expect(screen.getByRole('button', { name: /^Bastion/ })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Meridian/ })).toBeInTheDocument();
 });
