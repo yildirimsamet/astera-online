@@ -325,6 +325,57 @@ describe('monument public facts and private manifests over HTTP', () => {
     expect(await f.db.select().from(monumentShipLots)).toEqual([]);
   });
 
+  it.each([3, 4, 5])('handles %s real concurrent home updates without duplicating radiation losses or retrying forever', async conflicts => {
+    await hold(0);
+    const originalLots = await f.db.select().from(monumentShipLots);
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'ZONE',
+      x: 0, y: 0, z: 0, radius: 20_000, mode: 'EMIT', intensityHpPerMinute: 1000, activeFrom: f.clock.now() });
+    f.clock.advance(3);
+    const readRosters = monumentService.readMonumentRosters;
+    const snapshots = new WeakSet<object>();
+    let updates = 0;
+    const snapshot = vi.spyOn(monumentService, 'readMonumentRosters').mockImplementation(async (tx, ids, extra) => {
+      const result = await readRosters(tx, ids, extra);
+      if (!snapshots.has(tx) && updates < conflicts) {
+        snapshots.add(tx);
+        updates += 1;
+        // Commit a genuine competing writer after this snapshot, before its FOR UPDATE.
+        await f.db.update(planets).set({ name: `Concurrent home ${String(updates)}` }).where(eq(planets.id, f.planetIds[0]!));
+      }
+      return result;
+    });
+    try {
+      const response = await app.inject({ method: 'GET', url: conflicts === 4 ? `/api/monuments/${m.id}` : '/api/monuments', headers: auth });
+      if (conflicts === 5) {
+        expect(response.statusCode, response.body).toBe(500);
+        expect(updates).toBe(5);
+        expect(await f.db.select().from(monumentShipLots)).toEqual(originalLots);
+        expect(await f.db.select().from(notifications)).toEqual([]);
+        return;
+      }
+      expect(response.statusCode, response.body).toBe(200);
+      expect(updates).toBe(conflicts);
+      const view = monumentsSchema.parse(response.json());
+      expect(view.waves).toEqual([]);
+      expect(view.monuments[0]?.used).toBe(0);
+      expect((await f.db.select().from(notifications)).filter(row => row.kind === 'radiation_lost')).toHaveLength(1);
+      expect(await f.db.select().from(monumentShipLots)).toEqual([]);
+    } finally { snapshot.mockRestore(); }
+  });
+
+  it('does not retry an unrelated manifest failure or change the physical fleet', async () => {
+    await hold(0);
+    const originalLots = await f.db.select().from(monumentShipLots);
+    const snapshot = vi.spyOn(monumentService, 'readMonumentRosters').mockRejectedValue(new Error('Unrelated manifest failure'));
+    try {
+      const response = await app.inject({ method: 'GET', url: '/api/monuments', headers: auth });
+      expect(response.statusCode, response.body).toBe(500);
+      expect(snapshot).toHaveBeenCalledTimes(1);
+      expect(await f.db.select().from(monumentShipLots)).toEqual(originalLots);
+      expect(await f.db.select().from(notifications)).toEqual([]);
+    } finally { snapshot.mockRestore(); }
+  });
+
   it('publishes an empty garrison return time only if it fits before the season cutoff', async () => {
     await f.db.update(monuments).set({ emptySince: f.clock.now() }).where(eq(monuments.id, m.id));
     let view = await app.inject({ method: 'GET', url: '/api/monuments', headers: auth });

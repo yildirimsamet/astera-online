@@ -95,6 +95,27 @@ Kanıt: `/tmp/astera-monument-finder-refresh-red.log`,
 `/tmp/astera-monument-finder-refresh-final.log`,
 `/tmp/astera-monument-cr-manual-final.log`.
 
+### 6. Yayın sonrasında eşzamanlı gezegen güncellemesiyle anıt okumasının 500 dönmesi
+
+Production loglarında 19:43:58 ve 19:45:16 UTC'de iki gerçek anıt listesi
+isteği başarısız oldu. PostgreSQL `40001`, tutarlı görünümün gezegen
+kilidini almadan önce başka bir işlemin o gezegeni güncellediğini gösterdi.
+Hata zaten tanınıyordu; aralıksız üç yeniden deneme çakışmayı tüketemedi.
+Başarısız işlemler geri alındı; filo veya kaynak çoğalması gözlenmedi.
+
+Gerçek PostgreSQL üzerinde her görünüm snapshot'ından sonra ayrı bir
+gezegen güncellemesi commit eden regresyonlar önce aynı 500'ü üretti.
+Liste ve detay okuması artık en çok beş kez deneniyor; yalnız `40001`
+sonrasında 10/20/40/80 ms bekleyip yeni bir işlem açılıyor. Tutarlı
+snapshot, kilit sırası ve aynı oyun saati korunuyor. Gönderim ve geri
+çekme kuralları değişmiyor.
+
+Üç/dört ardışık çakışmada okumanın tamamlanması, fiziksel radyasyon
+kaybının yalnız bir kez işlenmesi, beş çakışmada sınırda durup bütün
+filoyu koruması ve ilgisiz hatanın tekrar denenmemesi kontrol ediliyor.
+Kanıt: `/tmp/astera-monument-concurrent-read-red.log`,
+`/tmp/astera-monument-concurrent-read-green.log`.
+
 ## Kapsamı genişletilen testler
 
 | Konu | Kontrol |

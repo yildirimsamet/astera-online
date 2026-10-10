@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -32,11 +33,14 @@ function serializationFailure(error: unknown): boolean {
   return 'cause' in error && serializationFailure(error.cause);
 }
 
-/** A view spans several manifest queries. Retry an overdue transition against a fresh snapshot if another writer won. */
+/** Keep one manifest snapshot; let competing writers finish before retrying a due transition in a fresh transaction. */
 async function consistentMonumentRead<T>(db: Db, read: (tx: Tx) => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     try { return await db.transaction(read, { isolationLevel: 'repeatable read' }); }
-    catch (error) { if (attempt >= 2 || !serializationFailure(error)) throw error; }
+    catch (error) {
+      if (attempt >= 4 || !serializationFailure(error)) throw error;
+      await delay(10 * 2 ** attempt);
+    }
   }
 }
 
