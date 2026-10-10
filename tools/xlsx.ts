@@ -1,4 +1,4 @@
-import { zipSync, strToU8 } from '/home/yildirim/Desktop/Coding/MyProjects/blindspace/node_modules/.pnpm/fflate@0.8.3/node_modules/fflate/esm/index.mjs';
+import { zipSync, strToU8 } from 'fflate';
 import { writeFileSync } from 'node:fs';
 
 export type Cell = string | number | null;
