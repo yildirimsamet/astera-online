@@ -67,7 +67,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Asteroidenschauer",
-      summary: "Jede Stunde erscheint ein Asteroid pro Kommandant, der zuletzt gespielt hat. Während des Schauers entstehen entsprechend mehr. Bereits vorhandene Asteroiden bleiben bis zu ihrem Ablauf bestehen.",
+      summary: "Die normale Rate beträgt {{rate}} Asteroiden pro aktivem Kommandanten und Stunde. Ein Schauer multipliziert diese Rate während des Ereignisses. Die Hälfte der zusätzlichen Asteroiden verteilt sich auf die ersten {{frontMinutes}} Minuten. Asteroiden bleiben, bis sie abgebaut sind oder ihre Zeit abläuft.",
     },
     trade: {
       title: "Handelsschiff",

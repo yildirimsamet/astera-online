@@ -103,7 +103,7 @@ describe('opening an hour', () => {
     expect(row?.activePlayers).toBe(2);
     expect(row?.levelWeights).toEqual(ASTEROID_DYNAMIC.levelWeights);
     const snapshot = await loadMiningSnapshot(f.db, f.seasonId, new Date(hour.getTime() + HOUR));
-    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(2 * ASTEROID_DYNAMIC.perPlayerPerHour);
+    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(Math.round(2 * ASTEROID_DYNAMIC.perPlayerPerHour));
   });
 
   it('multiplies the hour by the shower that covers it', async () => {
@@ -122,7 +122,7 @@ describe('opening an hour', () => {
 
     await openAsteroidHour(f.db, { seasonId: f.seasonId, hourStartsAt: hour, now: hour });
     const snapshot = await loadMiningSnapshot(f.db, f.seasonId, new Date(hour.getTime() + HOUR));
-    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(3 * ASTEROID_DYNAMIC.perPlayerPerHour * 10);
+    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(Math.round(3 * ASTEROID_DYNAMIC.perPlayerPerHour * 10));
   });
 
   /** The same rounded population sizes both normal hours and shower bonuses. */
@@ -145,7 +145,7 @@ describe('opening an hour', () => {
 
     await openAsteroidHour(f.db, { seasonId: f.seasonId, hourStartsAt: hour, now: hour });
     const snapshot = await loadMiningSnapshot(f.db, f.seasonId, new Date(hour.getTime() + HOUR));
-    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(2 * ASTEROID_DYNAMIC.perPlayerPerHour * 10);
+    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(Math.round(2 * ASTEROID_DYNAMIC.perPlayerPerHour * 10));
   });
 
   it('opens each hour once and queues exactly one next hour', async () => {
@@ -434,11 +434,11 @@ describe('adopting the working-week calendar on a live season', () => {
       expect(row.definitionVersion).toBe(GALAXY_EVENTS.definitions[row.kind].version);
       if (row.kind === 'ASTEROID_SHOWER') expect(minutesSince(row.startsAt, row.endsAt)).toBe(30);
     }
-    // Friday 21:00 opens the weekday convoy, Saturday 20:00 the x5 shower.
+    // Friday 21:00 opens the weekday convoy, Saturday 20:00 the x4 shower.
     expect(reshaped.find((row) => row.startsAt.getTime() === cutover.getTime())?.kind)
       .toBe('INTERGALACTIC_CONVOY');
     expect(reshaped.find((row) => row.startsAt.getTime() === at(3, 20).getTime()
-      && row.kind === 'ASTEROID_SHOWER')?.effect).toEqual({ asteroidSpawnMultiplier: 5 });
+      && row.kind === 'ASTEROID_SHOWER')?.effect).toEqual({ asteroidSpawnMultiplier: 4 });
 
     // Removed windows took their queue moments with them; new ones brought theirs.
     const moments = await db.select().from(scheduledEvents).where(and(

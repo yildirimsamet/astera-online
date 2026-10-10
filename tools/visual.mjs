@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--event-chips')) {
+  const { verifyEventChips } = await import('./event-chips-visual.mjs');
+  await verifyEventChips(process.argv[2] ?? 'out/event-chips');
+  process.exit(0);
+}
+
 if (process.argv.includes('--shop-showcase')) {
   const { verifyShopShowcase } = await import('./shop-showcase-visual.mjs');
   await verifyShopShowcase(process.argv[2] ?? 'out/shop-showcase-static/visuals');

@@ -183,12 +183,16 @@ describe('arızalar gelmeye başlar', () => {
   it('tüm arızalar onarıldıktan sonra aynı sayaç hızıyla yeniden arıza çıkarır', async () => {
     await arm();
     const [firstTimer] = await pendingOf(f, 'fault_spawn');
+    // This case needs repair to finish before the next spawn. Random event IDs can
+    // legitimately draw a burst shorter than the repair; this seed draws 40 minutes.
+    const cause = '00000000-0000-4000-8000-0000000000f1';
+    await f.db.update(scheduledEvents).set({ id: cause }).where(eq(scheduledEvents.id, firstTimer!.id));
     f.clock.set(new Date(firstTimer!.resolveAt.getTime() + 1000));
     await worker().tick();
     const [firstFault] = await faultsOf(f, colony);
     expect(firstFault).toBeDefined();
     const [secondTimer] = await pendingOf(f, 'fault_spawn');
-    expect(secondTimer!.id).not.toBe(firstTimer!.id);
+    expect(secondTimer!.id).not.toBe(cause);
 
     const { readyAt } = await startFaultRepair(f.db, colony, firstFault!.id, f.clock, f.playerIds[0]!);
     f.clock.set(new Date(readyAt.getTime() + 1000));

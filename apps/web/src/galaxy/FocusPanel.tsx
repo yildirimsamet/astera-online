@@ -7,6 +7,7 @@ import {
   DEATH_STAR,
   FEATURE_FLAGS,
   HULLS,
+  MONUMENT_BALANCE,
   MULTI_WORLD,
   SETTLEMENT_CLAIM_MINUTES,
   SETTLEMENT_PRIORITY_MINUTES,
@@ -150,7 +151,9 @@ export function MonumentFocus({ monument, onInspect, onClose }: {
   return <Shell title={monumentName(monument.ordinal)} eyebrow={controller}
     summary={<><span className="block">{t('monument.capacityShort', { used: full(monument.used), total: full(monument.capacity) })}</span>
       <span className="block text-v2-deut">{t('monument.production', { rate: decimal(monument.productionPerMinute) })}</span>
-      <span className="block text-v2-warn">{t('monument.radiationRate', { rate: decimal(monument.radiationHpPerMinute) })}</span></>}
+      <span className="block text-v2-warn">{monument.difficulty === 'LEGACY'
+        ? t('monument.radiationRate', { rate: decimal(monument.radiationHpPerMinute) })
+        : t('monument.radiationLevelRate', { level: MONUMENT_BALANCE[monument.difficulty].radiationLevel, rate: decimal(monument.radiationHpPerMinute) })}</span></>}
     open={false} onToggle={onInspect} onClose={onClose}>{null}</Shell>;
 }
 
@@ -252,12 +255,14 @@ function Shell({
             className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
           >
             {art}
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-micro uppercase tracking-wide text-v2-ink-3">{eyebrow}</span>
-              <span className="block truncate text-body font-semibold text-v2-ink">{title}</span>
-            </span>
-            <span className="min-w-0 shrink-0 text-right text-micro leading-tight text-v2-ink-2">
-              {summary}
+            <span className="flex min-w-0 flex-1 flex-col items-stretch gap-1">
+              <span className="min-w-0 flex-1">
+                <span className="block break-words text-micro uppercase tracking-wide text-v2-ink-3">{eyebrow}</span>
+                <span className="block break-words text-body font-semibold text-v2-ink">{title}</span>
+              </span>
+              <span className="min-w-0 break-words text-left text-micro leading-tight text-v2-ink-2">
+                {summary}
+              </span>
             </span>
             <span aria-hidden className="grid size-7 shrink-0 place-items-center text-v2-ink-3">
               <Icon id="i-chev" className={`size-3.5 transition-transform ${open ? 'rotate-90' : '-rotate-90'}`} />

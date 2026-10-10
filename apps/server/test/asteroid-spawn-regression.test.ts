@@ -8,6 +8,7 @@ import { z } from 'zod';
 import {
   ASTEROID_DYNAMIC,
   GALAXY,
+  LEGACY_ASTEROID_GENERATION,
   dynamicAsteroidHourOf,
   planAsteroidHour,
   type AsteroidSpec,
@@ -207,6 +208,21 @@ async function v10EveningCalendar(f: World) {
   }).where(eq(galaxyEventOccurrences.id, occurrence.id));
 }
 
+/** A genuinely stored pre-release hour: new defaults must never resize or retime it. */
+async function frozenV10Hour(f: World) {
+  await v10EveningCalendar(f);
+  const fromMinute = minutesSince(START, HOUR);
+  await f.db.insert(asteroidSpawnHours).values({
+    seasonId: f.seasonId, hourStartsAt: HOUR, spawnFrom: HOUR,
+    eligiblePlayers: 36, activePlayers: 35, createdAt: HOUR,
+    levelWeights: ASTEROID_DYNAMIC.levelWeights, generation: LEGACY_ASTEROID_GENERATION,
+    lanes: [
+      { fromMinute, untilMinute: fromMinute + 30, count: 105, frontCount: 44 },
+      { fromMinute: fromMinute + 30, untilMinute: fromMinute + 60, count: 18, frontCount: 0 },
+    ],
+  });
+}
+
 async function deplete(f: World, rocks: readonly Pick<AsteroidSpec, 'index' | 'ore'>[]) {
   await f.db.insert(asteroidClaims).values(rocks.map((rock) => ({
     seasonId: f.seasonId, index: rock.index, oreTaken: rock.ore, updatedAt: f.clock.now(),
@@ -214,37 +230,66 @@ async function deplete(f: World, rocks: readonly Pick<AsteroidSpec, 'index' | 'o
 }
 
 describe('controls: real worker and field', () => {
-  it('reproduces the old v9 60-minute x3 evening as 105 total rocks', async () => {
+  it('applies the new base rate to an unplanned old v9 60-minute x3 evening', async () => {
     const f = await world();
     await oldEveningCalendar(f);
     await boot(f);
     const hour = await currentHour(f);
-    expect(hour.lanes.map((lane) => lane.count)).toEqual([105]);
-    evidence('old-v9-evening', { durationMinutes: 60, multiplier: 3, supply: hour.activePlayers, hourRocks: 105 });
+    expect(hour.lanes.map((lane) => lane.count)).toEqual([79]);
+    evidence('old-v9-evening', { durationMinutes: 60, multiplier: 3, supply: hour.activePlayers, hourRocks: 79 });
   });
 
-  it('produces 53 shower rocks + 18 normal rocks, including the smaller opening burst', async () => {
+  it('produces 26 shower rocks + 13 normal rocks, reserving seven bonus rocks for ten minutes', async () => {
     const f = await world();
     await boot(f);
     const hour = await currentHour(f);
     expect(hour.eligiblePlayers).toBe(36);
     expect(hour.activePlayers).toBe(35);
-    expect(hour.lanes.map((lane) => [lane.count, lane.frontCount])).toEqual([[53, 18], [18, 0]]);
+    expect(hour.lanes.map((lane) => [lane.count, lane.frontCount])).toEqual([[26, 7], [13, 0]]);
+    expect(hour.generation?.frontLoadMinutes).toBe(10);
     f.clock.set(new Date(HOUR.getTime() + 5 * 60_000));
     const five = await currentVisible(f);
-    expect(five.length).toBeGreaterThanOrEqual(18);
+    f.clock.set(new Date(HOUR.getTime() + 10 * 60_000));
+    const ten = await currentVisible(f);
+    expect(ten.length).toBeGreaterThanOrEqual(7);
+    expect(ten.length).toBeGreaterThan(five.length);
     const snapshot = await loadMiningSnapshot(f.db, f.seasonId, f.clock.now());
     const rocks = fromCurrentHour(f, snapshot.asteroids);
-    expect(rocks).toHaveLength(71);
-    expect(rocks.slice(0, 18).every((rock) => rock.appearsAt <= minutesSince(START, f.clock.now()))).toBe(true);
+    expect(rocks).toHaveLength(39);
+    expect(rocks.slice(0, 7).every((rock) => rock.appearsAt <= minutesSince(START, f.clock.now()))).toBe(true);
     f.clock.set(new Date(HOUR.getTime() + 30 * 60_000));
-    expect(await currentVisible(f)).toHaveLength(53);
+    expect(await currentVisible(f)).toHaveLength(26);
     const allVisible = projectVisibleAsteroids(await loadMiningSnapshot(f.db, f.seasonId, f.clock.now()), f.clock.now());
     evidence('current-weekday-shower', {
       eligible: hour.eligiblePlayers, supply: hour.activePlayers,
-      shower: 53, normal: 18, firstFiveMinutes: five.length,
+      shower: 26, normal: 13, firstFiveMinutes: five.length, firstTenMinutes: ten.length,
       visibleIncludingPreviousHoursAtHalfHour: allVisible.length,
     });
+  });
+
+  it('replays the 32-population Saturday incident with 48 shower rocks and 12 normal rocks', async () => {
+    const at = new Date('2026-10-10T17:00:00.000Z');
+    const f = await world(32, false, at);
+    await boot(f);
+    const hour = await currentHour(f);
+    expect(hour.activePlayers).toBe(32);
+    expect(hour.lanes.map(lane => [lane.count, lane.frontCount])).toEqual([[48, 18], [12, 0]]);
+    expect(hour.generation?.frontLoadMinutes).toBe(10);
+    const rocks = fromCurrentHour(f, (await loadMiningSnapshot(f.db, f.seasonId, at)).asteroids);
+    expect(rocks).toHaveLength(60);
+    const from = minutesSince(START, at);
+    expect(rocks.slice(0, 18).some(rock => rock.appearsAt >= from + 5)).toBe(true);
+    expect(rocks.slice(0, 18).every(rock => rock.appearsAt < from + 10)).toBe(true);
+    f.clock.set(new Date(at.getTime() + 5 * 60_000));
+    const five = (await currentVisible(f)).length;
+    f.clock.set(new Date(at.getTime() + 10 * 60_000));
+    const ten = (await currentVisible(f)).length;
+    f.clock.set(new Date(at.getTime() + 30 * 60_000));
+    expect(await currentVisible(f)).toHaveLength(48);
+    f.clock.set(new Date(at.getTime() + 59.999 * 60_000));
+    expect(await currentVisible(f)).toHaveLength(60);
+    evidence('saturday-density-32', { supply: 32, multiplier: 4, shower: 48, normal: 12,
+      reservedFirstTenMinutes: 18, actualFirstFiveMinutes: five, actualFirstTenMinutes: ten });
   });
 
   it('plans the same new supply even when the previous stock has already been depleted', async () => {
@@ -256,8 +301,8 @@ describe('controls: real worker and field', () => {
     expect(projectVisibleAsteroids(await loadMiningSnapshot(f.db, f.seasonId, f.clock.now()), f.clock.now())).toHaveLength(0);
     await boot(f);
     const hour = await currentHour(f);
-    expect(hour.lanes.map((lane) => [lane.count, lane.frontCount])).toEqual([[53, 18], [18, 0]]);
-    evidence('stock-does-not-affect-new-supply', { previousStockDepleted: stock.length, newShower: 53, newNormal: 18 });
+    expect(hour.lanes.map((lane) => [lane.count, lane.frontCount])).toEqual([[26, 7], [13, 0]]);
+    evidence('stock-does-not-affect-new-supply', { previousStockDepleted: stock.length, newShower: 26, newNormal: 13 });
   });
 
   it('keeps one frozen hour through repeated boots and duplicate deliveries to two workers', async () => {
@@ -290,8 +335,8 @@ describe('controls: real worker and field', () => {
   });
 
   it.each([
-    { late: 4.99, count: 71, front: 18 },
-    { late: 5.01, count: 62, front: 0 },
+    { late: 4.99, count: 39, front: 7 },
+    { late: 5.01, count: 35, front: 0 },
   ])('repairs a missing hour at minute $late: $count rocks, front=$front', async ({ late, count, front }) => {
     const f = await world();
     f.clock.set(new Date(HOUR.getTime() + late * 60_000));
@@ -300,14 +345,14 @@ describe('controls: real worker and field', () => {
     const immediate = (await currentVisible(f)).length;
     expect(hour.lanes.reduce((sum, lane) => sum + lane.count, 0)).toBe(count);
     expect(hour.lanes[0]!.frontCount).toBe(front);
-    if (front > 0) expect(immediate).toBeGreaterThanOrEqual(front - 1);
+    if (front > 0) expect(immediate).toBeLessThan(count);
     else expect(immediate).toBe(0);
     evidence('missing-hour-late-boot', { lateMinutes: late, plannedRocks: count, immediateRocks: immediate, front });
   });
 
   it('continues frozen v10 births after 40 + 20 removals without reviving a removed index', async () => {
     const f = await world();
-    await v10EveningCalendar(f);
+    await frozenV10Hour(f);
     await boot(f);
     f.clock.set(new Date(HOUR.getTime() + 30 * 60_000));
     const original = await currentVisible(f);
@@ -367,8 +412,8 @@ describe('controls: real worker and field', () => {
     const occurrence = await shower(f);
     const hour = await currentHour(f);
     expect(minutesSince(occurrence.startsAt, occurrence.endsAt)).toBe(30);
-    expect(hour.lanes.map((lane) => lane.count)).toEqual([53, 18]);
-    evidence('safe-calendar-adoption', { durationMinutes: 30, showerRocks: 53, hourRocks: 71 });
+    expect(hour.lanes.map((lane) => lane.count)).toEqual([26, 13]);
+    evidence('safe-calendar-adoption', { durationMinutes: 30, showerRocks: 26, hourRocks: 39 });
   });
 
   it('decays a contiguous recent population and produces zero with no population history', async () => {
@@ -409,12 +454,12 @@ describe('invariants: runtime safeguards', () => {
       unsafeRestampRejected: true, version: occurrence.definitionVersion, effect: occurrence.effect,
       durationMinutes: minutesSince(occurrence.startsAt, occurrence.endsAt),
       workerPlannedRocks: count, actualGeneratedRocks: generatedCount,
-      expectedCurrentDefinitionHourRocks: 71,
+      expectedCurrentDefinitionHourRocks: 39,
     });
-    expect(occurrence.definitionVersion).toBe(11);
-    expect(occurrence.effect).toEqual({ asteroidSpawnMultiplier: 3 });
+    expect(occurrence.definitionVersion).toBe(12);
+    expect(occurrence.effect).toEqual({ asteroidSpawnMultiplier: 2 });
     expect(minutesSince(occurrence.startsAt, occurrence.endsAt)).toBe(30);
-    expect(count, 'adoption must replace the complete future window').toBe(71);
+    expect(count, 'adoption must replace the complete future window').toBe(39);
   });
 
   it('rejects a changed future half-hour shower once its containing hour is frozen', async () => {
@@ -484,8 +529,8 @@ describe('invariants: runtime safeguards', () => {
       await Promise.allSettled([opening, stamping]);
     }
     expect(await calendarShape(f)).toEqual(before);
-    expect((await currentHour(f)).lanes.reduce((sum, lane) => sum + lane.count, 0)).toBe(10);
-    evidence('calendar-worker-race-worker-first', { operation, oldHourRocks: 10, frozenHourPreserved: true });
+    expect((await currentHour(f)).lanes.reduce((sum, lane) => sum + lane.count, 0)).toBe(7);
+    evidence('calendar-worker-race-worker-first', { operation, oldHourRocks: 7, frozenHourPreserved: true });
   });
 
   it('uses the new effect when restamp commits before a concurrently opening worker', async () => {
@@ -505,8 +550,8 @@ describe('invariants: runtime safeguards', () => {
     } finally {
       await Promise.allSettled([opening]);
     }
-    expect((await currentHour(f)).lanes.reduce((sum, lane) => sum + lane.count, 0)).toBe(5);
-    evidence('restamp-worker-race-restamp-first', { newHourRocks: 5, multiplier: 2 });
+    expect((await currentHour(f)).lanes.reduce((sum, lane) => sum + lane.count, 0)).toBe(3);
+    evidence('restamp-worker-race-restamp-first', { newHourRocks: 3, multiplier: 2 });
   });
 
   it('keeps an unchanged pending half-hour shower a no-op inside its frozen hour', async () => {
@@ -546,7 +591,7 @@ describe('invariants: runtime safeguards', () => {
     expect(calendarAfter.filter((row) => row.startsAt < cutover))
       .toEqual(calendarBefore.filter((row) => row.startsAt < cutover));
     expect(calendarAfter.filter((row) => row.kind === 'ASTEROID_SHOWER' && row.startsAt >= cutover)
-      .every((row) => row.definitionVersion === 11)).toBe(true);
+      .every((row) => row.definitionVersion === 12)).toBe(true);
     expect(await f.db.select().from(asteroidSpawnHours).where(eq(asteroidSpawnHours.seasonId, f.seasonId)))
       .toEqual(hoursBefore);
     expect((await loadMiningSnapshot(f.db, f.seasonId, plannedAt)).asteroids).toEqual(fieldBefore.asteroids);
@@ -610,7 +655,7 @@ describe('invariants: runtime safeguards', () => {
 
     // An already matching processed occurrence needs no write and remains a no-op.
     await f.db.update(galaxyEventOccurrences).set({
-      definitionVersion: 11, effect: { asteroidSpawnMultiplier: 3 },
+      definitionVersion: 12, effect: { asteroidSpawnMultiplier: 2 },
     }).where(where);
     const matching = await calendarShape(f);
     expect(await f.db.transaction((tx) => restampFutureOccurrences(tx, command))).toBe(0);
@@ -674,7 +719,7 @@ describe('invariants: runtime safeguards', () => {
 
   it.each([false, true])('keeps depleted rocks stable through a fresh-image settings change (legacy row=%s)', async (legacy) => {
     const f = await world();
-    await v10EveningCalendar(f);
+    await frozenV10Hour(f);
     await boot(f);
     if (legacy) await f.db.update(asteroidSpawnHours).set({ generation: null }).where(eq(asteroidSpawnHours.seasonId, f.seasonId));
     f.clock.set(new Date(HOUR.getTime() + 30 * 60_000));

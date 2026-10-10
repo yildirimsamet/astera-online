@@ -12,6 +12,8 @@
 * ce ne sont pas des erreurs, mais les règles du jeu.
   */
   export const errors = {
+  MONUMENT_TIER_FORBIDDEN: "Les monuments faciles acceptent les niveaux 1–3 ; choisis un monument difficile",
+  MONUMENT_FLEET_ACTIVE: "Seuls les cargos peuvent être ajoutés jusqu’au retour de tous tes vaisseaux, cargos compris.",
   CAPITAL_CANNOT_BE_ABANDONED: "Tu ne peux pas abandonner ta capitale. Sélectionne une colonie.",
   COLONY_ABANDON_BLOCKED: "Des missions ou un changement de propriétaire sont en cours. Vérifie les raisons et attends leur fin.",
   SKIN_NOT_OWNED: 'Cette apparence ne figure pas dans ton inventaire. Choisis-en une que tu possèdes.',

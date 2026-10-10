@@ -24,7 +24,15 @@ describe('legacy dynamic generation inputs', () => {
     expect(generation.oreByLevel).toEqual(GALAXY.asteroidOreByLevel);
     expect(generation.oreByLevel).not.toBe(GALAXY.asteroidOreByLevel);
     expect(generation.levelUnlockByDay).not.toBe(ASTEROID_DYNAMIC.levelUnlockByDay);
-    expect(generate(generation)).toEqual(generate());
+    expect(generation.frontLoadMinutes).toBe(10);
+    const before = generate(generation);
+    const descriptor = Object.getOwnPropertyDescriptor(ASTEROID_SHOWER_FRONT_LOAD, 'minutes')!;
+    try {
+      Object.defineProperty(ASTEROID_SHOWER_FRONT_LOAD, 'minutes', { value: 1 });
+      expect(generate(generation)).toEqual(before);
+    } finally {
+      Object.defineProperty(ASTEROID_SHOWER_FRONT_LOAD, 'minutes', descriptor);
+    }
   });
 
   it('keeps every existing spec identical when all mutable generation settings change', () => {

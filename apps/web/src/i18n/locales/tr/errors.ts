@@ -11,6 +11,8 @@
  */
 
 export const errors = {
+  MONUMENT_TIER_FORBIDDEN: "Easy anıtlar Tier 1–3’e açıktır; bir Hard anıt seç",
+  MONUMENT_FLEET_ACTIVE: "Kargo dahil bütün gemilerin eve dönene kadar yalnız yük gemisi ekleyebilirsin.",
   CAPITAL_CANNOT_BE_ABANDONED: "Ana gezegenini terk edemezsin. Bir koloni seç.",
   COLONY_ABANDON_BLOCKED: "Bu kolonide görevler veya bir sahiplik geçişi sürüyor. Engel nedenlerini kontrol et ve tamamlanmalarını bekle.",
   SKIN_NOT_OWNED: 'Bu görünüm envanterinde yok. Envanterindeki bir görünümü seç.',

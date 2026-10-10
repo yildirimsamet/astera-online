@@ -14,6 +14,8 @@
  */
 
 export const errors = {
+  MONUMENT_TIER_FORBIDDEN: "イージーの記念碑はティア1–3専用です。ハードの記念碑を選んでください",
+  MONUMENT_FLEET_ACTIVE: "貨物船を含む自分の全艦船が帰還するまで、追加で派遣できるのは貨物船だけです。",
   CAPITAL_CANNOT_BE_ABANDONED: "首都は放棄できません。植民地を選択してください。",
   COLONY_ABANDON_BLOCKED: "この植民地には進行中の任務または所有権の変更があります。理由を確認し、完了を待ってください。",
   SKIN_NOT_OWNED: 'この外観はインベントリにありません。所有している外観を選んでください。',

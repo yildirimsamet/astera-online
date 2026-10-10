@@ -1,16 +1,15 @@
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { MONUMENT_SEASON_DEFAULTS } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
+import { MONUMENT_SEASON_DEFAULTS } from '@astera/rules';
 
 const honoreeRow = z.object({ rank: z.coerce.number().int(), name: z.string().nullable() });
 
 /**
- * LAST SEASON'S FIVE NAMES, ONE PER MONUMENT. Owner decision, 2026-10-06: "Geçen sezondaki ilk
- * 5 kişinin adı gerekli her yerde anıtların önüne yazılacak" — "Vantasia • Kadim Yıldız Geçidi".
+ * Last season's top eight, one name per monument (owner, 2026-10-10).
  *
  * Index N − 1 is monument N, and it holds the commander who finished rank N (owner: rank N to
- * monument N; the five monuments are identical). `null` where nobody finished that rank: the
+ * monument N; the first five keep their identities across layout changes). `null` where nobody finished that rank: the
  * monument keeps its plain name.
  *
  * THIS GALAXY'S LAST SEASON: the season the cycle before this one ran on the SAME shard,

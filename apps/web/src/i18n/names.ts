@@ -30,10 +30,11 @@ export const buildingName = (id: BuildingId): string => i18n.t(`vocabulary.build
 
 const MONUMENT_NAME_KEYS = [
   'monument.names.one', 'monument.names.two', 'monument.names.three', 'monument.names.four', 'monument.names.five',
+  'monument.names.six', 'monument.names.seven', 'monument.names.eight',
 ] as const;
 
 /**
- * LAST SEASON'S FIVE, ONE PER MONUMENT. Owner decision, 2026-10-06: "Vantasia • Kadim Yıldız
+ * LAST SEASON'S EIGHT, ONE PER MONUMENT. Owner decision, 2026-10-10: "Vantasia • Kadim Yıldız
  * Geçidi" wherever a monument is named. Index N − 1 is monument N; `/api/season` states them
  * (`useSeason` hands them here as the payload arrives, before React reads it), and a rank
  * nobody finished leaves its monument plain.
@@ -45,12 +46,12 @@ export function setMonumentHonorees(names: readonly (string | null)[]): void {
 
 /** The commander monument N is named for, or null while that rank stands unclaimed. */
 export function monumentHonoree(ordinal: number | undefined): string | null {
-  if (ordinal === undefined || !Number.isInteger(ordinal) || MONUMENT_NAME_KEYS[ordinal - 1] === undefined) return null;
+  if (ordinal === undefined || !Number.isInteger(ordinal) || ordinal < 1 || ordinal > MONUMENT_NAME_KEYS.length) return null;
   const name = honorees[ordinal - 1]?.trim() ?? '';
   return name === '' ? null : name;
 }
 
-/** Public ordinals identify the five supplied models; missing legacy identities stay readable. */
+/** Public ordinals identify the eight landmarks; missing legacy identities stay readable. */
 export function monumentName(ordinal: number | undefined): string {
   if (ordinal === undefined || !Number.isInteger(ordinal)) {
     return i18n.t('monument.genericTitle');

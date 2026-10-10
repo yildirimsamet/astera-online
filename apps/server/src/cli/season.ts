@@ -17,6 +17,7 @@ import { addMinutes, systemClock } from '../clock.js';
 import { accounts, players, seasons } from '../db/schema.js';
 import { hashPassword } from '../auth/password.js';
 import { createSeason, liveSeason } from '../services/season.js';
+import { adoptMonumentLayout } from '../services/monumentAdoption.js';
 import {
   restampFutureOccurrences,
   syncMissingFixedOccurrences,
@@ -77,6 +78,11 @@ season adopt-event-calendar [--yes] [--shard CODE]
                                    derived field first so no rock in the sky moves.
                                    Never touches an opened window or the merchant.
                                    Dry run unless --yes; safe to run twice.
+season adopt-monuments --shard CODE [--yes]
+                                   adopt four Easy and four Hard monuments in one
+                                   LIVE galaxy. Requires no held monuments, active
+                                   fleets, probes or joint operations. Dry run unless
+                                   --yes; safe to run twice. Keeps target IDs/history.
 
   --shard CODE      shard code, for 'create'   (default: EU-1)
   --seed N          galaxy seed / seed base    (default: random)
@@ -176,6 +182,22 @@ async function main(): Promise<void> {
         await runMigrations(db);
         console.log('migrations applied');
         return;
+      }
+
+      case 'adopt-monuments': {
+        if (!values.shard) throw new Error('adopt-monuments requires an explicit --shard CODE');
+        const live = await liveSeason(db, values.shard);
+        if (!live) throw new Error(`no live season on ${values.shard}`);
+        const result = await adoptMonumentLayout(db, { seasonId: live.season.id, clock: systemClock, apply: values.yes === true });
+        console.log(`${values.shard}: ${result.status}; held=${String(result.held)}, fleets=${String(result.fleets)}, `
+          + `probes=${String(result.probes)}, operations=${String(result.operations)}`);
+        if (result.applied) console.log('Applied four Easy and four Hard monuments. Existing IDs and history were preserved.');
+        else if (result.status === 'BUSY') {
+          console.log('Nothing was written. Wait until monument activity ends, then run the command again.');
+          if (values.yes === true) process.exitCode = 1;
+        } else if (result.status === 'ALREADY_UPDATED') console.log('The monument layout is already updated. Nothing was written.');
+        else console.log('Nothing was written; pass --yes to apply.');
+        break;
       }
 
       case 'bootstrap': {

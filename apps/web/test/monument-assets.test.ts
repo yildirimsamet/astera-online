@@ -4,11 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 const models = [
-  ['monument_abandoned_space_wreckage', 1],
-  ['monument_abandoned_station', 3],
-  ['monument_ancient_observatory', 3],
-  ['monument_ancient_stargate', 1],
-  ['monument_shattered_world_ship', 3],
+  ['monument_abandoned_space_wreckage', 1, true, false],
+  ['monument_abandoned_station', 3, true, true],
+  ['monument_ancient_observatory', 3, true, true],
+  ['monument_ancient_stargate', 1, true, false],
+  ['monument_shattered_world_ship', 3, true, true],
+  ['monument_fragmented_dyson_sphere', 1, true, false],
+  ['monument_sleeping_guard', 3, true, true],
+  ['monument_ancient_war_cemetery', 3, false, false],
 ] as const;
 
 const textureInfo = z.object({
@@ -67,20 +70,24 @@ function webpDimensions(bytes: Buffer): readonly [number, number] {
 const served = (name: string) => resolve('public/assets/models/monuments', `${name}.glb`);
 
 describe('monument runtime model budgets', () => {
-  it.each(models)('%s preserves its material inside the geometry and texture budgets', (name, textureCount) => {
+  it.each(models)('%s preserves its material inside the geometry and texture budgets', (name, textureCount, doubleSided, tiled) => {
     const path = served(name);
     expect(existsSync(path), `Missing optimized monument: ${path}`).toBe(true);
     const { document, binary } = glb(path);
     const triangles = document.meshes.reduce((total, mesh) => total + mesh.primitives.reduce(
       (sum, primitive) => sum + document.accessors[primitive.indices]!.count / 3, 0,
     ), 0);
-    expect(triangles).toBeGreaterThanOrEqual(4_000);
-    expect(triangles).toBeLessThanOrEqual(5_000);
+    // The owner's visual review requested more of the guardian's armour detail.
+    // Only this model has a larger geometry budget; its textures stay unchanged.
+    const guardian = name === 'monument_sleeping_guard';
+    expect(triangles).toBeGreaterThanOrEqual(guardian ? 6_500 : 4_000);
+    expect(triangles).toBeLessThanOrEqual(guardian ? 7_500 : 5_000);
     expect(statSync(path).size).toBeLessThanOrEqual(1.3 * 1024 * 1024);
     expect(document.extensionsRequired).toContain('EXT_meshopt_compression');
     expect(document.extensionsRequired).toContain('EXT_texture_webp');
     expect(document.materials).toHaveLength(1);
-    expect(document.materials[0]?.doubleSided).toBe(true);
+    expect(document.extensionsRequired).not.toContain('KHR_draco_mesh_compression');
+    expect(document.materials[0]?.doubleSided ?? false).toBe(doubleSided);
     expect(document.images).toHaveLength(textureCount);
     for (const image of document.images) {
       expect(image.mimeType).toBe('image/webp');
@@ -91,7 +98,7 @@ describe('monument runtime model budgets', () => {
       expect(Math.max(width, height)).toBeLessThanOrEqual(textureCount === 1 ? 2_048 : 1_536);
     }
     const material = document.materials[0]!;
-    if (textureCount === 3) {
+    if (tiled) {
       for (const info of [
         material.normalTexture,
         material.pbrMetallicRoughness.baseColorTexture,
@@ -105,7 +112,7 @@ describe('monument runtime model budgets', () => {
     }
   });
 
-  it('keeps the five-model mean near a one-megabyte transfer', () => {
+  it('keeps the eight-model mean near a one-megabyte transfer', () => {
     const bytes = models.reduce((sum, [name]) => sum + statSync(served(name)).size, 0);
     expect(bytes / models.length).toBeLessThanOrEqual(1.1 * 1024 * 1024);
   });

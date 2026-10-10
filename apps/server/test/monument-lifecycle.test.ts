@@ -42,8 +42,8 @@ describe('monument reclaim and placement references', () => {
     expect(await f.db.select().from(monumentWaves)).toHaveLength(0);
     expect(await f.db.select().from(monumentShipLots)).toHaveLength(0);
     expect(await f.db.select().from(hpRadiationSources).where(eq(hpRadiationSources.seasonId, f.seasonId))).toHaveLength(0);
-    expect(await f.db.select().from(monuments)).toHaveLength(5);
-    expect(await f.db.select().from(hpRadiationSources)).toHaveLength(5);
+    expect(await f.db.select().from(monuments)).toHaveLength(8);
+    expect(await f.db.select().from(hpRadiationSources)).toHaveLength(8);
     expect((await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId)))[0]?.status).toBe('wiped');
   });
 

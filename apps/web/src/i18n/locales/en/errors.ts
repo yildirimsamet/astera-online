@@ -14,6 +14,8 @@
  */
 
 export const errors = {
+  MONUMENT_TIER_FORBIDDEN: "Easy monuments accept tiers 1–3; choose a Hard monument",
+  MONUMENT_FLEET_ACTIVE: "Only cargo can be added until all your ships, including cargo, return home.",
   CAPITAL_CANNOT_BE_ABANDONED: "You cannot abandon your capital. Select a colony instead.",
   COLONY_ABANDON_BLOCKED: "This colony has active missions or an ownership transition. Check the reasons and wait until they finish.",
   SKIN_NOT_OWNED: 'This appearance is not in your inventory. Choose one you own.',

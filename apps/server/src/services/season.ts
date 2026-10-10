@@ -21,6 +21,8 @@ import {
   type GalaxySpec,
   type NeutralTier,
   MONUMENT_SEASON_DEFAULTS,
+  MONUMENT_BALANCE,
+  monumentDifficulty,
 } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
 import {
@@ -257,20 +259,23 @@ async function seedApprovedMonuments(
   season: typeof seasons.$inferSelect,
   settledAt: Date,
 ): Promise<void> {
-  const rows = await tx.insert(monuments).values(MONUMENT_SEASON_DEFAULTS.positions.map((position, index) => ({
-    seasonId: season.id,
-    ordinal: index + 1,
-    x: position.x,
-    y: position.y,
-    z: position.z,
-    capacity: MONUMENT_SEASON_DEFAULTS.capacity,
-    productionPerMinute: MONUMENT_SEASON_DEFAULTS.productionPerMinute,
-    garrison: { ...MONUMENT_SEASON_DEFAULTS.garrison },
-    garrisonTemplate: { ...MONUMENT_SEASON_DEFAULTS.garrison },
-    garrisonTech: { ...MONUMENT_SEASON_DEFAULTS.garrisonTech },
-    garrisonDamage: [],
-    settledAt,
-  }))).returning({ id: monuments.id, ordinal: monuments.ordinal, x: monuments.x, y: monuments.y, z: monuments.z });
+  const rows = await tx.insert(monuments).values(MONUMENT_SEASON_DEFAULTS.positions.map((position, index) => {
+    const difficulty = monumentDifficulty(index + 1);
+    const balance = MONUMENT_BALANCE[difficulty];
+    return {
+      seasonId: season.id,
+      ordinal: index + 1,
+      difficulty,
+      ...position,
+      capacity: balance.capacity,
+      productionPerMinute: balance.productionPerMinute,
+      garrison: { ...balance.garrison },
+      garrisonTemplate: { ...balance.garrison },
+      garrisonTech: { ...MONUMENT_SEASON_DEFAULTS.garrisonTech },
+      garrisonDamage: [],
+      settledAt,
+    };
+  })).returning({ id: monuments.id, ordinal: monuments.ordinal, x: monuments.x, y: monuments.y, z: monuments.z });
   if (rows.length !== MONUMENT_SEASON_DEFAULTS.count) {
     throw new Error(`approved monument deal created ${String(rows.length)} targets`);
   }
@@ -282,7 +287,7 @@ async function seedApprovedMonuments(
     y: row.y,
     z: row.z,
     radius: MONUMENT_SEASON_DEFAULTS.cloudRadius,
-    intensityHpPerMinute: MONUMENT_SEASON_DEFAULTS.intensityHpPerMinute,
+    intensityHpPerMinute: MONUMENT_BALANCE[monumentDifficulty(row.ordinal)].intensityHpPerMinute,
     mode: 'EMIT' as const,
     activeFrom: season.startsAt,
     activeUntil: null,

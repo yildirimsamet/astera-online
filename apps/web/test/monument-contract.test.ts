@@ -13,6 +13,12 @@ const quote = { fuel: 120, arriveAt: at, travelMinutes: 50, room: { used: 0, res
     health: [{ hull: 'CITADEL', count: 2, maxHp: 2000, remainingHp: 1500, damageBp: 2500, remainderBp: 0 }] } };
 
 describe('monument wire and mutation contract', () => {
+  it('accepts all eight ordinals and preserves personal tier and fleet restrictions', () => {
+    const view = monumentsSchema.parse({ ...catalog, monuments: [{ ...catalog.monuments[0], ordinal: 8,
+      difficulty: 'EASY', sendAccess: { playerTier: 4, tierAllowed: false, cargoOnly: true } }] });
+    expect(view.monuments[0]).toMatchObject({ ordinal: 8, difficulty: 'EASY',
+      sendAccess: { playerTier: 4, tierAllowed: false, cargoOnly: true } });
+  });
   it('marks the clan monument target through the existing endpoint without a fake planet', async () => {
     const fetch: typeof globalThis.fetch = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ operation: null }), { status: 400 })));
     const api = new Api({ fetch });

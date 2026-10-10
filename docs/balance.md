@@ -646,12 +646,16 @@ shower        5 starts/full Türkiye day · 60 min · ×5 new arrivals · 120 mi
 quiet hours   Türkiye 00:00–08:00 target 1 of 5 starts, hard cap 2; not a blackout
 ```
 
-Current dynamic seasons use **1 rock per active commander per hour**. Fixed shower windows in
-Türkiye time use definition v11 (owner approved 2026-10-09): 12:30–13:00 ×2 and
-20:00–20:30 ×3 on weekdays; 13:00–13:30 ×3 and 20:00–20:30 ×5 on weekends. This halves
-v10's multipliers while retaining its 30-minute windows. Live seasons adopt the complete
-future calendar from the next hour boundary; already-planned hours keep their stored lanes.
-At supply 35, a weekday evening hour opens 53 shower + 18 normal rocks = 71 (v10: 123).
+The table above describes the legacy derived field. Current dynamic seasons use
+**0.75 rocks per active commander per hour**. Fixed shower windows in Türkiye time use
+definition v12 (owner approved 2026-10-10): 12:30–13:00 ×2 and 20:00–20:30 ×2 on weekdays;
+13:00–13:30 ×2 and 20:00–20:30 ×4 on weekends. Starts and 30-minute durations remain unchanged.
+Half the bonus rocks are spread over the first ten minutes; the rest are sampled across
+the whole window. Live seasons adopt the complete future calendar from the next unplanned
+hour boundary; already-planned hours keep their stored lanes and generation settings.
+At supply 32, a weekday evening hour opens 24 shower + 12 normal rocks = 36, and a weekend
+evening opens 48 + 12 = 60. Lane counts round to whole rocks. These are new arrivals;
+older stock remains until depleted or expired.
 Generation inputs are now frozen with each hour; old null-snapshot rows read immutable v1
 settings. Supply smoothing excludes samples older than the preceding five actual hours.
 

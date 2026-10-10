@@ -1,4 +1,4 @@
-import { MOBILE_HULLS, MONUMENT_PROBE_LOSS_CHANCE, PROBE, combatValue, fleetCount, fleetEntries, hangarLoad, type Fleet, type HullId } from '@astera/rules';
+import { HULLS, MOBILE_HULLS, MONUMENT_BALANCE, MONUMENT_PROBE_LOSS_CHANCE, PROBE, combatValue, fleetCount, fleetEntries, hangarLoad, type Fleet, type HullId } from '@astera/rules';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +39,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
   const actions = useMonumentActions();
   const notifications = useNotifications();
   const now = useNow();
-  const [fleet, setFleet] = useState<Fleet>({});
+  const [chosenFleet, setFleet] = useState<Fleet>({});
   const [shield, setShield] = useState(false);
   const [radiation, setRadiation] = useState(false);
   const [probeConfirmation, setProbeConfirmation] = useState(0);
@@ -47,6 +47,11 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
   const friendly = target?.controller.kind === 'PLAYER' ? target.controller.playerId === playerId
     : target?.controller.kind === 'CLAN' && target.controller.clanId === clanId;
   const purpose = friendly ? 'REINFORCE' : 'ATTACK';
+  const tierBlocked = target?.sendAccess?.tierAllowed === false;
+  const cargoOnly = target?.sendAccess?.cargoOnly === true;
+  const fleet: Fleet = useMemo(() => cargoOnly
+    ? Object.fromEntries(fleetEntries(chosenFleet).filter(([hull]) => HULLS[hull].family === 'CARGO')) : chosenFleet,
+  [cargoOnly, chosenFleet]);
   const picked = fleetCount(fleet);
   const pickedBulk = hangarLoad(fleet);
   // D212: Silent Space closes every monument wave; the server would refuse the quote too.
@@ -56,12 +61,13 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
   const quoteReady = JSON.stringify(quotedFleet) === JSON.stringify(fleet);
   const quote = useQuery({ queryKey: [...keys.monuments, 'quote', monumentId, origin.planet.id, purpose, quotedFleet],
     queryFn: () => api.quoteMonument(monumentId, { originPlanetId: origin.planet.id, purpose, fleet: quotedFleet }),
-    enabled: !locked && !silentSpace && target !== undefined && picked > 0 && quoteReady, retry: false, staleTime: 0 });
+    enabled: !locked && !silentSpace && !tierBlocked && target !== undefined && picked > 0 && quoteReady, retry: false, staleTime: 0 });
   const sendKey = useConfirmationKey(JSON.stringify({ monumentId, ...input }));
   const probeKey = useConfirmationKey(`${monumentId}:${origin.planet.id}:${String(probeConfirmation)}`);
   const consentMissing = (quote.data?.shieldWouldDrop === true && !shield)
     || ((quote.data?.outboundForecast.destroyed ?? 0) > 0 && !radiation);
   const refusal = silentSpace ? t('faults.launchBlock.SILENT_SPACE')
+    : tierBlocked ? t('monument.tierBlocked', { tier: target.sendAccess?.playerTier })
     : !target ? t('monument.missing') : picked === 0 ? t('monument.choose')
     : actions.send.isPending ? t('monument.sending') : !quoteReady || quote.isFetching ? t('monument.quoting')
       : quote.error ? describeError(quote.error) : !quote.data ? t('monument.quoting')
@@ -87,9 +93,13 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
       {view.isPending && <p className="text-caption text-v2-ink-2">{t('monument.loading')}</p>}
       {view.error && <p role="alert" className="text-caption text-v2-warn">{describeError(view.error)}</p>}
       {target && <Plate className="p-3">
+        {target.difficulty !== 'LEGACY' && <p className={`mb-2 text-caption font-semibold ${target.difficulty === 'HARD' ? 'text-v2-hostile' : 'text-v2-self'}`}>
+          {t(target.difficulty === 'EASY' ? 'monument.easyAccess' : 'monument.hardAccess')}</p>}
         <p className="font-v2-mono text-caption text-v2-ink">{t('monument.capacity', { used: full(target.used), reserved: full(target.reserved), total: full(target.capacity) })}</p>
         <p className="mt-1 text-caption font-semibold text-v2-deut">{t('monument.production', { rate: decimal(target.productionPerMinute) })}</p>
-        <p className="mt-1 text-micro text-v2-warn">{t('monument.radiationRate', { rate: decimal(target.radiationHpPerMinute) })}</p>
+        <p className="mt-1 text-micro text-v2-warn">{target.difficulty === 'LEGACY'
+          ? t('monument.radiationRate', { rate: decimal(target.radiationHpPerMinute) })
+          : t('monument.radiationLevelRate', { level: MONUMENT_BALANCE[target.difficulty].radiationLevel, rate: decimal(target.radiationHpPerMinute) })}</p>
         {target.emptySince && target.controller.kind === 'NEUTRAL' && <p className="mt-1 text-micro text-v2-ink-2">{t('monument.emptySince', { time: duration(Math.max(0, (now - target.emptySince.getTime()) / 60_000)) })}</p>}
         {target.respawnAt && target.controller.kind === 'NEUTRAL' && <p className="mt-1 text-micro text-v2-ink-2">{target.respawnAt.getTime() > now
           ? t('monument.respawnAt', { time: countdown(target.respawnAt.getTime() - now) }) : t('monument.respawnDue')}</p>}
@@ -106,14 +116,20 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
       </section>}
       <section className="flex flex-col gap-2">
         <h3 className="text-caption font-semibold text-v2-ink">{t('monument.launch', { world: origin.planet.name })} · {t(friendly ? 'monument.reinforce' : 'monument.attack')}</h3>
+        {target?.difficulty !== undefined && target.difficulty !== 'LEGACY' && <p className={`text-micro leading-snug ${tierBlocked ? 'text-v2-warn' : 'text-v2-ink-2'}`}>
+          {tierBlocked ? t('monument.tierBlocked', { tier: target.sendAccess?.playerTier })
+            : t(cargoOnly ? 'monument.cargoOnly' : 'monument.initialFleetRule')}</p>}
         {MOBILE_HULLS.filter((hull) => (origin.fleet[hull] ?? 0) > 0).map((hull) => <div key={hull} className="flex min-w-0 items-center gap-2 border-b border-v2-line py-2">
           <img src={HULL_ART[hull] ?? undefined} alt="" className="size-8 shrink-0 object-contain" />
           <div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-v2-ink">{hullName(hull)}</p>
             <p className="text-micro text-v2-ink-3">{t('launch.atHome', { count: origin.fleet[hull] ?? 0 })}</p></div>
-          <QuantityStepper look="v2" min={0} max={origin.fleet[hull] ?? 0} value={fleet[hull] ?? 0} onChange={(count) => { change(hull, count); }}
-            valueLabel={`${hullName(hull)} · ${t('launch.quantity', { name: hullName(hull) })}`}
-            decreaseLabel={t('launch.fewer', { name: hullName(hull) })} increaseLabel={t('launch.more', { name: hullName(hull) })}
-            maxLabel={t('launch.max', { name: hullName(hull) })} maxText={t('launch.maxShort')} />
+          <fieldset disabled={tierBlocked || (cargoOnly && HULLS[hull].family !== 'CARGO')} className="min-w-0 border-0 p-0 disabled:opacity-50">
+            <QuantityStepper key={cargoOnly && HULLS[hull].family !== 'CARGO' ? 'blocked' : 'initial'} look="v2"
+              min={0} max={origin.fleet[hull] ?? 0} value={fleet[hull] ?? 0} onChange={(count) => { change(hull, count); }}
+              valueLabel={`${hullName(hull)} · ${t('launch.quantity', { name: hullName(hull) })}`}
+              decreaseLabel={t('launch.fewer', { name: hullName(hull) })} increaseLabel={t('launch.more', { name: hullName(hull) })}
+              maxLabel={t('launch.max', { name: hullName(hull) })} maxText={t('launch.maxShort')} />
+          </fieldset>
         </div>)}
         {picked > 0 && quoteReady && !quote.isFetching && quote.data && <Plate className="flex flex-col gap-1 p-3">
           <p className="text-micro text-v2-ink-2">{t('monument.selectedBulk', { bulk: full(pickedBulk) })}</p>

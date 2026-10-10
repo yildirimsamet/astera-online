@@ -12,8 +12,9 @@ import { drawnHpClouds } from '../src/lib/radiation.js';
 import { GalaxyReadout } from '../src/v2/hud/GalaxyCorners.js';
 import { readsForShardEvent } from '../src/session/shardEvents.js';
 import { keys } from '../src/api/keys.js';
+import { monumentScale } from '../src/galaxy/MonumentModel.js';
 
-const target: PublicMonument = { id: 'monument-1', ordinal: 1, position: { x: 0, y: 7000, z: 0 },
+const target: PublicMonument = { id: 'monument-1', ordinal: 1, difficulty: 'LEGACY', position: { x: 0, y: 7000, z: 0 },
   controller: { kind: 'NEUTRAL' }, capacity: 7270, used: 120, productionPerMinute: 60, radiationHpPerMinute: 4, emptySince: null, respawnAt: null };
 const at = new Date('2026-10-04T12:00:00Z');
 const cloud: HpRadiationSourceView = { id: 'cloud', mode: 'EMIT', center: target.position, radius: 1500,
@@ -56,6 +57,35 @@ describe('public monument navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: /5.*monument/i }));
     fireEvent.click(screen.getByRole('button', { name: /Abandoned Space Wreckage/ }));
     expect(select).toHaveBeenCalledWith({ kind: 'monument', id: target.id });
+  });
+  it('groups Hard above Easy, keeps rank numbers and honoured names, and focuses the selected eighth target', () => {
+    setMonumentHonorees(['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth']);
+    try {
+      const arrived = [8, 3, 5, 1, 7, 4, 6, 2].map(ordinal => ({ ...target, id: `monument-${String(ordinal)}`,
+        ordinal, difficulty: ordinal <= 4 ? 'HARD' as const : 'EASY' as const }));
+      const select = vi.fn();
+      render(<GalaxyReadout counts={{ worlds: 2, fleetsAway: 0, rocks: 0, pirates: 0, wrecks: 0, monuments: 8 }}
+        targets={monumentFinderTargets(arrived, i18n.t)} onFocusTarget={select} />);
+      fireEvent.click(screen.getByRole('button', { name: '8 monuments' }));
+      const list = screen.getByRole('list');
+      expect(within(list).getAllByRole('heading').map(heading => heading.textContent)).toEqual(['Hard', 'Easy']);
+      const rows = within(list).getAllByRole('button');
+      expect(rows).toHaveLength(8);
+      expect(rows.map(row => row.textContent.slice(0, 2))).toEqual(['01', '02', '03', '04', '05', '06', '07', '08']);
+      expect(rows[0]).toHaveTextContent('First • Abandoned Space Wreckage');
+      expect(rows[7]).toHaveTextContent('Eighth • Ancient War Cemetery');
+      fireEvent.click(rows[7]!);
+      expect(select).toHaveBeenCalledWith({ kind: 'monument', id: 'monument-8' });
+      expect(screen.queryByRole('list')).toBeNull();
+    } finally { setMonumentHonorees([]); }
+  });
+  it.each([['EASY', 1, 2], ['HARD', 2, 5]] as const)('states the %s radiation level and real HP rate before inspection', (difficulty, level, rate) => {
+    render(<MonumentFocus monument={{ ...target, difficulty, radiationHpPerMinute: rate }} onInspect={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByText(`Radiation level ${String(level)}: ${rate.toFixed(1)} HP per ship per minute`)).toBeInTheDocument();
+  });
+  it('keeps a large Hard monument fully inside its navigation leash even without a cloud', () => {
+    const hard = { position: { x: 6000, y: 6000, z: 6000 }, difficulty: 'HARD' as const };
+    expect(monumentNavigationRadius([hard], [])).toBeGreaterThanOrEqual(Math.hypot(6000, 6000, 6000) / VIEW.scale + monumentScale('HARD') / 2);
   });
   /**
    * THE FINDER READS IN LAST SEASON'S ORDER (owner, 2026-10-07): "sıralama geçen sezondaki ilk 5

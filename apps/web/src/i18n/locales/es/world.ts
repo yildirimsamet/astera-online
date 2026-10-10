@@ -67,7 +67,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Lluvia de asteroides",
-      summary: "Cada hora aparece un asteroide por cada comandante que haya jugado durante la hora anterior. Durante la lluvia aparecen más; los asteroides que ya estaban siguen ahí hasta que desaparecen.",
+      summary: "La tasa normal es de {{rate}} asteroides por comandante activo y hora. La lluvia multiplica esta tasa mientras está activa. La mitad de los asteroides adicionales se reparte entre los primeros {{frontMinutes}} minutos. Permanecen hasta agotarse o desaparecer.",
     },
     trade: {
       title: "Buque comercial",

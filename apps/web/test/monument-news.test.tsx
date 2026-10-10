@@ -21,6 +21,20 @@ const notice = (kind: string, payload: unknown): NotificationView => ({ id: 'n1'
 const target = { targetKind: 'MONUMENT', monumentId: id, monumentOrdinal: 3 };
 
 describe('monument reports and actionable news', () => {
+  it.each([[6, 'Fragmented Dyson Sphere'], [7, 'Sleeping Guardian'], [8, 'Ancient War Cemetery']] as const)(
+    'keeps the new monument %i actionable in inbound news, probe deliveries and native battle reports', (ordinal, name) => {
+      const added = { ...target, monumentOrdinal: ordinal };
+      const inbound = notice('monument_inbound', { ...added, arriveAt: new Date(at.getTime() + 60_000).toISOString() });
+      expect(activeMonumentInbound(inbound, id, at.getTime())).toBe(true);
+      expect(notificationIdentity(inbound)).toEqual({ label: name, monumentId: id });
+      expect(describeNotification(inbound, at.getTime())).toContain(name);
+      const delivered = notice('probe_report', { ...added, observedAt: at.toISOString(), deliveredAt: at.toISOString(), accuracy: 1 });
+      expect(notificationIdentity(delivered)).toEqual({ label: name, monumentId: id });
+      expect(describeNotification(delivered, at.getTime())).toContain(name);
+      const view = reportsSchema.parse({ reports: [{ ...wire, monument: { ...wire.monument, ordinal } }], rivals: [] });
+      expect(reportFor(view.reports, 'battle-3')).toMatchObject({ monument: { ordinal } });
+    });
+
   it('names a monument radiation casualty and the physical cargo destroyed with its ships', () => {
     const event = notice('radiation_lost', { ...target, lost: 4, left: 0, lostDeuterium: 125.5 });
     expect(describeNotification(event, at.getTime())).toMatch(/Ancient Observatory.*4.*125.5/);

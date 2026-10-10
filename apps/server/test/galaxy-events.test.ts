@@ -272,11 +272,11 @@ describe('persisted galaxy events', () => {
           eq(galaxyEventOccurrences.seasonId, season.id),
           eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
         ));
-      // The weekday evening x3: START is a Wednesday, so day 0 holds one.
+      // The weekday evening x2: START is a Wednesday, so day 0 holds one.
       const addedWindowRows = showers.filter((row) =>
         minutesSince(START, row.startsAt) % (24 * 60) === 20 * 60
         && 'asteroidSpawnMultiplier' in row.effect
-        && row.effect.asteroidSpawnMultiplier === 3);
+        && row.effect.asteroidSpawnMultiplier === 2);
       const removedIds = addedWindowRows.map((row) => row.id);
       expect(removedIds.length).toBeGreaterThan(0);
       await db.delete(scheduledEvents).where(inArray(scheduledEvents.refId, removedIds));
@@ -368,15 +368,15 @@ describe('persisted galaxy events', () => {
           eq(galaxyEventOccurrences.seasonId, season.id),
           eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
         ));
-      // The x3 lane, taken by its local hour and weekday multiplier so the
+      // The x2 lane, taken by its local hour and weekday multiplier so the
       // test names the window an operator would recognise on the calendar.
       const removed = showers.filter((row) =>
         minutesSince(START, row.startsAt) % (24 * 60) === 20 * 60
         && 'asteroidSpawnMultiplier' in row.effect
-        && row.effect.asteroidSpawnMultiplier === 3);
+        && row.effect.asteroidSpawnMultiplier === 2);
       expect(removed.length).toBeGreaterThan(0);
       expect(removed.every((row) => 'asteroidSpawnMultiplier' in row.effect
-        && row.effect.asteroidSpawnMultiplier === 3)).toBe(true);
+        && row.effect.asteroidSpawnMultiplier === 2)).toBe(true);
       const removedIds = removed.map((row) => row.id);
       await db.delete(scheduledEvents).where(inArray(scheduledEvents.refId, removedIds));
       await db.delete(galaxyEventOccurrences).where(inArray(galaxyEventOccurrences.id, removedIds));
@@ -474,9 +474,8 @@ describe('persisted galaxy events', () => {
     */
     const showerFigures = showers.map((row) =>
       'asteroidSpawnMultiplier' in row.effect ? row.effect.asteroidSpawnMultiplier : NaN);
-    expect(showerFigures.filter((value) => value === 2)).toHaveLength(weekdays);
-    expect(showerFigures.filter((value) => value === 3)).toHaveLength(days);
-    expect(showerFigures.filter((value) => value === 5)).toHaveLength(weekendDays);
+    expect(showerFigures.filter((value) => value === 2)).toHaveLength(weekdays * 2 + weekendDays);
+    expect(showerFigures.filter((value) => value === 4)).toHaveLength(weekendDays);
     expect(showers.every((row) => minutesSince(row.startsAt, row.endsAt) === 30)).toBe(true);
     expect(merchants.every((row) => 'rate' in row.effect
       && row.effect.rate.deuterium === TRADE.rate.deuterium)).toBe(true);

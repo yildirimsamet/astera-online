@@ -9,11 +9,13 @@ export async function verifyMonumentUi(output) {
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const results = [];
   try {
-    for (const [label, viewport, language, ordinal, empty] of [
+    for (const [label, viewport, language, ordinal, empty, cargoOnly = false, tierBlocked = false] of [
       ['desktop-en', { width: 1280, height: 900 }, 'en', 1, false],
       ['mobile-en', { width: 350, height: 812 }, 'en', 1, false],
       ['mobile-tr', { width: 350, height: 812 }, 'tr', 5, false],
       ['mobile-tr-empty', { width: 350, height: 812 }, 'tr', 5, true],
+      ['mobile-en-cargo', { width: 350, height: 812 }, 'en', 2, false, true],
+      ['mobile-tr-tier4', { width: 350, height: 812 }, 'tr', 8, false, false, true],
     ]) {
       const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
       await context.addInitScript((language) => { localStorage.setItem('astera.language', language); }, language);
@@ -25,7 +27,7 @@ export async function verifyMonumentUi(output) {
       const catalogResponse = await context.request.get(`${web}/api/monuments`, { headers: { authorization: `Bearer ${session.accessToken}` } });
       if (!catalogResponse.ok()) throw new Error(`Catalog failed: ${catalogResponse.status()}`);
       const catalog = await catalogResponse.json();
-      if (catalog.monuments.length !== 5) throw new Error('The local season lacks five monuments');
+      if (catalog.monuments.length !== 8) throw new Error('The local season lacks four Easy and four Hard monuments');
       const target = catalog.monuments.find((row) => row.ordinal === ordinal);
       const page = await context.newPage();
       const errors = [];
@@ -35,8 +37,9 @@ export async function verifyMonumentUi(output) {
         target.used = 0;
         target.emptySince = new Date(Date.now() - 600_000).toISOString();
         target.respawnAt = new Date(Date.now() + 23 * 3600_000 + 50 * 60_000).toISOString();
-        await page.route(/\/api\/monuments(?:\?|$)/, (route) => route.fulfill({ json: catalog }));
       }
+      target.sendAccess = { playerTier: tierBlocked ? 4 : 3, tierAllowed: !tierBlocked, cargoOnly };
+      await page.route(/\/api\/monuments(?:\?|$)/, (route) => route.fulfill({ json: catalog }));
       await page.goto(web, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => window.__galaxy?.scene.getObjectByName('monument-model-5'), undefined, { timeout: 60_000 });
       // The real scene keeps its default selected planet. Freeze animation only for reliable software-GPU readback.
@@ -47,9 +50,9 @@ export async function verifyMonumentUi(output) {
       catch (error) { if (error.name !== 'TimeoutError') throw error; }
       if (await cover.isVisible()) await cover.getByRole('button', { name: language === 'en' ? 'Close' : 'Kapat', exact: true }).click();
       await cover.waitFor({ state: 'detached' });
-      await page.getByRole('button', { name: language === 'en' ? '5 monuments' : '5 anıt', exact: true }).click();
+      await page.getByRole('button', { name: language === 'en' ? '8 monuments' : '8 anıt', exact: true }).click();
       const finder = page.locator('#galaxy-target-list');
-      if (await finder.getByRole('button').count() !== 5) throw new Error('Finder did not expose all five monuments');
+      if (await finder.getByRole('button').count() !== 8) throw new Error('Finder did not expose all eight monuments');
       const names = await finder.getByRole('button').allTextContents();
       if (names.some((name) => /Monument \d|Anıt \d/.test(name))) throw new Error('Finder still uses generic ordinal names');
       await page.screenshot({ path: join(output, `${label}-finder.png`) });
@@ -57,7 +60,8 @@ export async function verifyMonumentUi(output) {
       await page.locator('[data-focus-rail] button[aria-expanded="false"]').click();
       const dialog = page.getByRole('dialog');
       await dialog.waitFor();
-      await dialog.getByText(/7[.,]270/).waitFor();
+      await dialog.getByText(target.difficulty === 'EASY' ? /1[.,]550/ : /7[.,]270/).waitFor();
+      await dialog.getByText(target.difficulty === 'EASY' ? /Easy.*1.*3/ : /Hard/).first().waitFor();
       const result = await dialog.evaluate((element) => {
         const heading = element.querySelector('h2');
         return { title: heading?.textContent, titleFits: heading.scrollWidth <= heading.clientWidth,
@@ -67,9 +71,15 @@ export async function verifyMonumentUi(output) {
       });
       if (!result.pageFits || !result.panelFits || !result.buttonReachable || errors.length > 0) throw new Error(JSON.stringify({ label, ...result, errors }));
       if (empty && !(await dialog.textContent()).includes('Garnizonun dönüşüne')) throw new Error('Empty state lacks the garrison return time');
+      if (tierBlocked && !(await dialog.getByRole('textbox').evaluateAll(inputs => inputs.length > 0 && inputs.every(input => input.matches(':disabled'))))) {
+        throw new Error('Tier-ineligible Easy fleet selection is enabled');
+      }
+      if (cargoOnly && !(await dialog.getByRole('textbox').evaluateAll(inputs => inputs.some(input => input.matches(':disabled')) && inputs.some(input => !input.matches(':disabled'))))) {
+        throw new Error('Cargo-only support does not separate cargo from the initial fleet');
+      }
       await page.screenshot({ path: join(output, `${label}-sheet.png`) });
-      results.push({ label, fixture: empty, names, ...result });
-      console.log(`PASS ${label}: five named targets, ${result.title}, title fits: ${result.titleFits}`);
+      results.push({ label, fixture: empty || cargoOnly || tierBlocked, difficulty: target.difficulty, cargoOnly, tierBlocked, names, ...result });
+      console.log(`PASS ${label}: eight named targets, ${target.difficulty}, ${result.title}, title fits: ${result.titleFits}`);
       await context.close();
     }
   } finally { await browser.close(); }

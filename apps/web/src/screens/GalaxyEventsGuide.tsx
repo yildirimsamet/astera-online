@@ -1,4 +1,6 @@
 import {
+  ASTEROID_DYNAMIC,
+  ASTEROID_SHOWER_FRONT_LOAD,
   GALAXY_EVENTS,
   type GalaxyEventDays,
   type GalaxyEventKind,
@@ -6,6 +8,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useGalaxyEvents } from '../api/queries.js';
 import { serverNow } from '../lib/clock.js';
+import { decimal } from '../lib/format.js';
 import { duration, useNow } from '../lib/time.js';
 import { CargoIcon, CrystalIcon, GalaxyIcon } from '../ui/icons/index.js';
 import { Sheet } from '../ui/kit/Sheet.js';
@@ -145,7 +148,10 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
             tone="crystal"
             icon={<CrystalIcon className="size-5" />}
             title={t('galaxy.eventsGuide.asteroid.title')}
-            summary={t('galaxy.eventsGuide.asteroid.summary')}
+            summary={t('galaxy.eventsGuide.asteroid.summary', {
+              rate: decimal(ASTEROID_DYNAMIC.perPlayerPerHour, 2),
+              frontMinutes: ASTEROID_SHOWER_FRONT_LOAD.minutes,
+            })}
           >
             {asteroidGroups.map((group) => (
               <DayRow key={group.days} label={dayLabel(group.days)}>

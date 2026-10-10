@@ -16,12 +16,16 @@ export async function prepareMonumentModel(source, target, triangleCeiling, erro
   const { ALL_EXTENSIONS } = fromCli('@gltf-transform/extensions');
   const { compactPrimitive, dequantize, prune, weld } = fromCli('@gltf-transform/functions');
   const { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } = fromCli('meshoptimizer');
+  const draco = fromCli('draco3dgltf');
   await Promise.all([MeshoptDecoder.ready, MeshoptEncoder.ready, MeshoptSimplifier.ready]);
   const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({
     'meshopt.decoder': MeshoptDecoder,
     'meshopt.encoder': MeshoptEncoder,
+    'draco3d.decoder': await draco.createDecoderModule(),
   });
   const document = await io.read(source);
+  // Incoming masters may use Draco; runtime models use Meshopt exclusively.
+  document.getRoot().listExtensionsUsed().find(extension => extension.extensionName === 'KHR_draco_mesh_compression')?.dispose();
   await document.transform(dequantize(), weld());
   const primitives = document.getRoot().listMeshes().flatMap((mesh) => mesh.listPrimitives());
   if (primitives.length !== 1) throw new Error(`${source}: expected one static monument primitive`);

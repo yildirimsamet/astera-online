@@ -3,7 +3,8 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HULLS, MONUMENT_CAPACITY, distance, interpolatePosition, seededFrom, travelExact, type Vec3 } from '@astera/rules';
+import { HULLS, MONUMENT_BALANCE, MONUMENT_CAPACITY, MONUMENT_SEASON_DEFAULTS, distance, interpolatePosition, monumentDifficulty, seededFrom, travelExact, type Vec3 } from '@astera/rules';
+import { galaxySchema, monumentsSchema, monumentSendSchema } from '../../web/src/api/schemas.js';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { clanWarOperations, hpRadiationSources, monumentProbes, monuments, monumentShipLots, monumentWaves, notifications, planets, radiationSources, seasons, units } from '../src/db/schema.js';
@@ -67,6 +68,106 @@ async function outbound() {
   await f.db.update(monuments).set({ controllerPlayerId: null }).where(eq(monuments.id, m.id));
   return { ...own, route };
 }
+
+describe('Easy / Hard HTTP contracts and personal dispatch boundaries', () => {
+  it('publishes radiation levels on monument clouds without relabelling zones or the legacy four-HP cloud', async () => {
+    const sources = await f.db.insert(hpRadiationSources).values([
+      { seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id, x: m.x, y: m.y, z: m.z,
+        radius: 1000, intensityHpPerMinute: 2, mode: 'EMIT', activeFrom: f.clock.now() },
+      { seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id, x: m.x, y: m.y, z: m.z,
+        radius: 1000, intensityHpPerMinute: 5, mode: 'EMIT', activeFrom: f.clock.now() },
+      { seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id, x: m.x, y: m.y, z: m.z,
+        radius: 1000, intensityHpPerMinute: 4, mode: 'EMIT', activeFrom: f.clock.now() },
+      { seasonId: f.seasonId, anchorKind: 'ZONE', x: 0, y: 0, z: 0,
+        radius: 100, intensityHpPerMinute: 2, mode: 'EMIT', activeFrom: f.clock.now() },
+      { seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id, x: m.x, y: m.y, z: m.z,
+        radius: 1000, intensityHpPerMinute: 2, mode: 'SHELTER', activeFrom: f.clock.now() },
+    ]).returning();
+    const response = await app.inject({ method: 'GET', url: '/api/galaxy', headers: auth });
+    expect(response.statusCode, response.body).toBe(200);
+    const clouds = galaxySchema.parse(response.json()).hpRadiation;
+    if (!clouds) throw new Error('Expected HP radiation in the galaxy response');
+    expect(clouds.find(row => row.id === sources[0]!.id)).toMatchObject({ intensityHpPerMinute: 2, level: 1 });
+    expect(clouds.find(row => row.id === sources[1]!.id)).toMatchObject({ intensityHpPerMinute: 5, level: 2 });
+    for (const source of sources.slice(2)) expect(clouds.find(row => row.id === source.id)).not.toHaveProperty('level');
+  });
+  it('parses all eight real targets and private access with the actual client schemas without publishing private access', async () => {
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 10);
+    await f.db.update(monuments).set({ difficulty: 'HARD', ...MONUMENT_SEASON_DEFAULTS.positions[0] }).where(eq(monuments.id, m.id));
+    await f.db.insert(monuments).values(MONUMENT_SEASON_DEFAULTS.positions.slice(1).map((position, index) => {
+      const ordinal = index + 2;
+      const difficulty = monumentDifficulty(ordinal);
+      const balance = MONUMENT_BALANCE[difficulty];
+      return { seasonId: f.seasonId, ordinal, difficulty, ...position, capacity: balance.capacity,
+        productionPerMinute: balance.productionPerMinute, garrison: { ...balance.garrison }, settledAt: f.clock.now() };
+    }));
+    const list = await app.inject({ method: 'GET', url: '/api/monuments', headers: auth });
+    expect(list.statusCode, list.body).toBe(200);
+    const view = monumentsSchema.parse(list.json());
+    expect(view.monuments).toHaveLength(8);
+    expect(view.monuments.filter(row => row.difficulty === 'EASY')).toHaveLength(4);
+    expect(view.monuments.filter(row => row.difficulty === 'HARD')).toHaveLength(4);
+    for (const row of view.monuments) expect(row.sendAccess).toEqual({ playerTier: 4, tierAllowed: row.difficulty === 'HARD', cargoOnly: false });
+    const eighth = view.monuments.find(row => row.ordinal === 8)!;
+    const detail = await app.inject({ method: 'GET', url: `/api/monuments/${eighth.id}`, headers: auth });
+    expect(monumentsSchema.parse(detail.json()).monuments).toEqual([eighth]);
+    const galaxy = await app.inject({ method: 'GET', url: '/api/galaxy', headers: auth });
+    expect(galaxy.statusCode, galaxy.body).toBe(200);
+    expect(galaxySchema.parse(galaxy.json()).monuments).toHaveLength(8);
+    expect(galaxy.body).not.toContain('sendAccess');
+  });
+
+  it('replays an accepted initial dispatch before checking the now-active personal cycle', async () => {
+    await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
+    await giveUnits(f.db, f.planetIds[0]!, { CITADEL: 4, ARGOSY: 2 });
+    const headers = key();
+    const url = `/api/monuments/${m.id}/send`;
+    const payload = { ...launchBody(), acknowledgeShieldLoss: true };
+    const responses = await Promise.all([post(url, payload, headers), post(url, payload, headers)]);
+    for (const response of responses) expect(response.statusCode, response.body).toBe(200);
+    expect(responses[0].json()).toEqual(responses[1].json());
+    expect(monumentSendSchema.parse(responses[0].json()).wave.status).toBe('OUTBOUND');
+    expect(await f.db.select().from(monumentWaves)).toHaveLength(1);
+    const rejected = await post(url, payload);
+    expect(rejected.statusCode, rejected.body).toBe(409);
+    expect(rejected.json()).toMatchObject({ error: 'MONUMENT_FLEET_ACTIVE' });
+  });
+
+  it('keeps recall available after Easy becomes tier-ineligible, while refusing new cargo atomically', async () => {
+    await f.db.update(monuments).set({ difficulty: 'EASY', capacity: 1550 }).where(eq(monuments.id, m.id));
+    const own = await hold(0);
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 10);
+    const before = await f.db.select().from(units);
+    const fuel = (await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!)))[0]!.deuterium;
+    const denied = await post(`/api/monuments/${m.id}/send`, {
+      originPlanetId: f.planetIds[0]!, purpose: 'REINFORCE', fleet: { ARGOSY: 1 }, acknowledgeShieldLoss: true,
+    });
+    expect(denied.statusCode, denied.body).toBe(403);
+    expect(denied.json()).toMatchObject({ error: 'MONUMENT_TIER_FORBIDDEN', params: { tier: 4, maxTier: 3 } });
+    expect(await f.db.select().from(units)).toEqual(before);
+    expect((await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!)))[0]!.deuterium).toBe(fuel);
+    const recalled = await post(`/api/monuments/waves/${own.id}/recall`, { all: true });
+    expect(recalled.statusCode, recalled.body).toBe(200);
+    expect(recalled.json()).toMatchObject({ wave: { status: 'RETURNING' } });
+  });
+
+  it('reopens combat access on an overdue final return without a worker tick', async () => {
+    await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
+    const own = await outbound();
+    f.clock.advance(0.1);
+    const turned = await post(`/api/monuments/waves/${own.id}/recall`, { all: true });
+    expect(turned.statusCode, turned.body).toBe(200);
+    const homeAt = turned.json<{ wave: { arriveAt: string } }>().wave.arriveAt;
+    f.clock.set(new Date(homeAt));
+    const read = await app.inject({ method: 'GET', url: '/api/monuments', headers: auth });
+    expect(read.statusCode, read.body).toBe(200);
+    const view = monumentsSchema.parse(read.json());
+    expect(view.waves).toEqual([]);
+    expect(view.monuments[0]?.sendAccess?.cargoOnly).toBe(false);
+    const again = await post(`/api/monuments/${m.id}/send`, { ...launchBody(), acknowledgeShieldLoss: true });
+    expect(again.statusCode, again.body).toBe(200);
+  });
+});
 
 describe('whole monument flight recall regressions over HTTP', () => {
   it('recalls every survivor atomically even when a cached cohort dies before the request', async () => {

@@ -54,7 +54,7 @@ const POLICY = {
   sattelites: { texture: 256, simplify: true, ratio: 0.5, error: 0.01 },
   /** The one thing a player watches long enough to notice a bad silhouette. */
   ships: { texture: 512, simplify: false },
-  /** Five public structures, drawn much larger than a hull. Keep their tiled material maps. */
+  /** Public structures, drawn much larger than a hull. Keep their authored material maps. */
   monuments: { texture: 1280, simplify: false },
   /**
    * The mining craft. Same class of object as a ship — it flies, it is followed,
@@ -239,6 +239,11 @@ const PATH_POLICY = {
   // Its densely split inner ring needs a slightly larger combined attribute
   // error bound to reach 5k; this includes normal/UV error, not just geometry.
   'monuments/monument_ancient_stargate.glb': { texture: 2048, simplify: false, error: 0.1 },
+  // Owner visual review: retain more guardian armour geometry without enlarging
+  // its maps. This single landmark gets a 7.5k cap; all others stay at 5k.
+  'monuments/monument_sleeping_guard.glb': { texture: 1280, simplify: false, triangleCeiling: 7500, error: 0.03 },
+  // Authored seams hold the cemetery at 7.4k with the default error bound.
+  'monuments/monument_ancient_war_cemetery.glb': { texture: 1280, simplify: false, error: 0.1 },
   // The new Germany, France, Spain and Japan masters are 960-triangle unit
   // spheres. Preserve their already light full geometry and spend the galaxy
   // budget on a smaller texture and an approximately 200-triangle distant tier.

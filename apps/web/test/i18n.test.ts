@@ -289,6 +289,10 @@ const RESEARCH_DETAIL_KEYS = {
 const IDENTICAL_ON_PURPOSE = new Set([
   // A commander's name, a bullet and the monument's own (translated) name: no words of its own.
   'monument.honoured',
+  // Owner-chosen monument class names (2026-10-10): Easy and Hard stay the same
+  // in Turkish; their access rules and descriptions are translated.
+  'monument.easy',
+  'monument.hard',
   // The player explicitly names this channel DM in both languages.
   'chat.dm.title',
   // The build-time tag is the formatted duration and nothing else — `duration()`

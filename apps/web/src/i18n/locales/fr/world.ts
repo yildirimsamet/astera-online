@@ -73,7 +73,7 @@ export const galaxy = {
     asteroid: {
       title: "Pluie d’Astéroïdes",
       summary:
-        "Au début de chaque heure, 1 astéroïde apparaît pour chaque commandant ayant joué pendant l’heure précédente. Pendant la pluie, ce nombre est multiplié par le coefficient de l’événement ; les astéroïdes déjà apparus restent jusqu’à leur disparition normale.",
+        "Le taux normal est de {{rate}} astéroïde par commandant actif et par heure. La pluie multiplie ce taux pendant sa durée. La moitié des astéroïdes supplémentaires apparaît sur les {{frontMinutes}} premières minutes. Les astéroïdes restent jusqu’à épuisement ou expiration.",
     },
     trade: {
       title: "Vaisseau marchand",

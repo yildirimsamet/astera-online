@@ -24,19 +24,25 @@ describe('named monument targets', () => {
     expect(monumentModelUrl(4)).toContain('monument_ancient_stargate.glb');
   });
 
+  it('names the three added models after the supplied structures in English and Turkish', async () => {
+    expect([6, 7, 8].map(monumentName)).toEqual(['Fragmented Dyson Sphere', 'Sleeping Guardian', 'Ancient War Cemetery']);
+    await i18n.changeLanguage('tr');
+    expect([6, 7, 8].map(monumentName)).toEqual(['Parçalanmış Dyson Küresi', 'Uyuyan Muhafız', 'Kadim Savaş Mezarlığı']);
+  });
+
   it('uses localized names in Turkish and keeps missing identities readable', async () => {
     await i18n.changeLanguage('tr');
     expect([1, 2, 3, 4, 5].map(monumentName)).toEqual([
       'Terk Edilmiş Uzay Enkazı', 'Terk Edilmiş İstasyon', 'Kadim Gözlemevi',
       'Kadim Yıldız Geçidi', 'Parçalanmış Dünya Gemisi',
     ]);
-    for (const ordinal of [undefined, 0, 1.5, 6]) expect(monumentName(ordinal)).toBe('Anıt');
+    for (const ordinal of [undefined, 0, 1.5, 9]) expect(monumentName(ordinal)).toBe('Anıt');
   });
 
   it.each(['en', 'tr', 'de', 'es', 'fr', 'ja'])('has a complete name catalog in %s', async (language) => {
     await i18n.changeLanguage(language);
-    for (let ordinal = 1; ordinal <= 5; ordinal += 1) {
-      const key = ['one', 'two', 'three', 'four', 'five'][ordinal - 1];
+    for (let ordinal = 1; ordinal <= 8; ordinal += 1) {
+      const key = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'][ordinal - 1];
       expect(i18n.exists(`monument.names.${key}`, { lng: language, fallbackLng: false })).toBe(true);
       expect(monumentName(ordinal)).not.toMatch(/^(?:Monument|Anıt) \d$|monument\./);
     }
@@ -44,10 +50,19 @@ describe('named monument targets', () => {
 });
 
 /**
- * LAST SEASON'S FIVE, IN FRONT OF THE FIVE NAMES. Owner decision, 2026-10-06: "Vantasia • Kadim
+ * LAST SEASON'S EIGHT, IN FRONT OF THE EIGHT NAMES. Owner decision, 2026-10-10: "Vantasia • Kadim
  * Yıldız Geçidi" everywhere a monument is named — rank N on monument N, from `/api/season`.
  */
-describe('monuments named after last season\'s five', () => {
+describe('monuments named after last season\'s eight', () => {
+  it('honours ranks six through eight on the added models and ignores ninth place', async () => {
+    setMonumentHonorees(['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine']);
+    expect([6, 7, 8].map(monumentName)).toEqual([
+      'Six • Fragmented Dyson Sphere', 'Seven • Sleeping Guardian', 'Eight • Ancient War Cemetery',
+    ]);
+    await i18n.changeLanguage('tr');
+    expect(monumentName(8)).toBe('Eight • Kadim Savaş Mezarlığı');
+    expect(monumentName(9)).toBe('Anıt');
+  });
   it('puts the commander in front of the monument, and leaves an unclaimed rank plain', async () => {
     setMonumentHonorees(['Vantasia', null, 'Yasin', null, 'Nova']);
     expect(monumentName(1)).toBe('Vantasia • Abandoned Space Wreckage');

@@ -883,7 +883,7 @@ export function GalaxyView({
           : t('focus.debris.titleOver', { planet: planets.find((world) => world.id === field.planetId)?.name ?? '' }),
         detail: t('galaxy.targetResources', { amount: compact(field.alloy + field.crystal + field.deuterium) }),
       })),
-    ], [galaxy.data?.monuments, asteroids, knownPirates, pirateList.data?.pirates, planets, t, wrecks]);
+    ], [galaxy.data?.monuments, season.data?.monumentHonorees, asteroids, knownPirates, pirateList.data?.pirates, planets, t, wrecks]);
   const interceptions = useMemo(() => traffic.data?.interceptions ?? [], [traffic.data]);
   const interceptionImpacts = useMemo(
     () => traffic.data?.interceptionImpacts ?? [],

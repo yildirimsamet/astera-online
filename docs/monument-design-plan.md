@@ -1,5 +1,11 @@
 # Monument — ürün kararları ve geliştirme taslağı
 
+2026-10-10 güncellemesi: güncel 4 Easy + 4 Hard ayarları, sekiz model,
+kişisel filo kuralı ve yerel doğrulama için
+[anıt güncelleme kaydı](monument-fairness-plan-2026-10-10.md) ve
+[kod incelemesi](monument-review-2026-10-10.md) esas alınır. Aşağıdaki metin
+ilk beş anıtın 2026-10-04 tarihli tasarım ve uygulama geçmişidir.
+
 Tarih: 2026-10-04. Güncel durum: A–F kapsamındaki native filo, sezon, API, UI, model ve harita bağlantıları uygulanmıştır; ikinci bağımsız incelemenin düzeltmeleri ve hedefli regresyonları tamamlanmıştır. Son görsel kontrol ve genel test kapısı kapanış kaydına eklenecektir. `MULTI_WORLD.rulesetVersion = 16`: yeni sezonlar beş anıt ve beş HP radyasyon bulutuyla açılır; mevcut 14–15 sezonları geriye dönük değiştirilmez. Canlı `MONUMENT-LOCAL` sezonda özellik test edilebilir. Sahibin son talimatıyla sezon ekonomisi simülatörü, snowball audit ve kalibrasyon bu işin kapanış kapsamından çıkarılmıştır; doğrulama komutu `pnpm verify --exclude-sims` olacaktır. Radyasyon görseli ve son %25 şeffaflık değişikliği sahibi tarafından onaylanmıştır.
 
 ## 1. Amaç ve kapsam

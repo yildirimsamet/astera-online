@@ -5,6 +5,7 @@ import type { Focus } from '../../galaxy/FocusPanel.jsx';
 import { EVENT_NAME } from '../../lib/nowLine.js';
 import { duration } from '../../lib/time.js';
 import { Icon, type IconId } from '../icons.js';
+import type { MonumentDifficulty } from '@astera/rules';
 
 /**
  * THE GALAXY'S CORNERS. Owner feedback, 2026-09-24.
@@ -31,6 +32,8 @@ export interface GalaxyTarget {
   id: string;
   label: string;
   detail: string;
+  difficulty?: MonumentDifficulty;
+  ordinal?: number;
 }
 
 export function GalaxyReadout({ online, onlineToday, counts, targets = [], onFocusTarget }: {
@@ -64,6 +67,10 @@ export function GalaxyReadout({ online, onlineToday, counts, targets = [], onFoc
     }
   }, [openKind, targets]);
   const listed = openKind === null ? [] : targets.filter((target) => target.kind === openKind);
+  if (openKind === 'monument') {
+    const order = (target: GalaxyTarget) => target.difficulty === 'HARD' ? 0 : target.difficulty === 'EASY' ? 1 : 2;
+    listed.sort((a, b) => order(a) - order(b) || (a.ordinal ?? 0) - (b.ordinal ?? 0));
+  }
   const countLabel = openKind === 'monument' ? t('monument.finder', { count: counts.monuments ?? 0 }) : openKind === 'asteroid'
     ? t('galaxy.rocks', { count: counts.rocks })
     : openKind === 'contact'
@@ -115,6 +122,9 @@ export function GalaxyReadout({ online, onlineToday, counts, targets = [], onFoc
         >
           {listed.map((target, index) => (
             <li key={target.id}>
+              {(target.difficulty === 'HARD' || target.difficulty === 'EASY') && listed[index - 1]?.difficulty !== target.difficulty &&
+                <h3 className={`px-2 pb-1 pt-2 text-caption font-semibold ${target.difficulty === 'HARD' ? 'text-v2-hostile' : 'text-v2-self'}`}>
+                  {t(target.difficulty === 'HARD' ? 'monument.hard' : 'monument.easy')}</h3>}
               <button
                 type="button"
                 onClick={() => {
@@ -123,12 +133,12 @@ export function GalaxyReadout({ online, onlineToday, counts, targets = [], onFoc
                 }}
                 className="flex min-h-10 w-full items-center gap-2 rounded-chip px-2 py-1 text-left hover:bg-v2-raise focus-visible:bg-v2-raise"
               >
-                <span className="font-v2-mono text-micro text-v2-ink-3">{String(index + 1).padStart(2, '0')}</span>
+                <span className="font-v2-mono text-micro text-v2-ink-3">{String(target.ordinal ?? index + 1).padStart(2, '0')}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-caption text-v2-ink">{target.label}</span>
+                  <span className="block break-words text-caption text-v2-ink">{target.label}</span>
                   <span className="block truncate text-micro text-v2-ink-3">{target.detail}</span>
                 </span>
-                <Icon id="i-mark" className="size-3.5 shrink-0 text-v2-self" />
+                <Icon id="i-mark" className={`size-3.5 shrink-0 ${target.difficulty === 'HARD' ? 'text-v2-hostile' : 'text-v2-self'}`} />
               </button>
             </li>
           ))}
@@ -193,16 +203,18 @@ export function EventChips({
       {events.map((event) => {
         const name = t(EVENT_NAME[event.kind]);
         const left = duration(Math.max(0, event.endsAt.getTime() - now) / 60_000);
+        const multiplier = event.kind === 'ASTEROID_SHOWER' ? `${String(event.asteroidSpawnMultiplier)}x` : null;
         return (
           <button
             key={event.id}
             type="button"
-            aria-label={`${name} · ${left}`}
+            aria-label={`${name}${multiplier === null ? '' : ` · ${multiplier}`} · ${left}`}
             onClick={() => { onOpen(event); }}
             className="pointer-events-auto flex h-7 items-center gap-1 rounded-full border border-v2-line-hi bg-v2-panel/60 px-1 font-v2-ui"
           >
             <Icon id={EVENT_ICON[event.kind]} className="size-3.5 text-v2-self" />
             <span className="text-micro text-v2-ink-2">{name}</span>
+            {multiplier !== null && <span className="font-v2-mono text-micro font-semibold text-v2-self">{multiplier}</span>}
             <span className="font-v2-mono text-micro font-semibold text-v2-ink">{left}</span>
           </button>
         );

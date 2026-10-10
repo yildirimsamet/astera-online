@@ -165,8 +165,8 @@ export const hazeAlpha = (pctPerMinute: number): number =>
   0.75 * Math.min(0.09, 0.018 + 0.014 * Math.log2(1 + Math.max(0, pctPerMinute)));
 
 /** HP clouds use a different unit scale; four HP/min is the season baseline. */
-export const hpHazeAlpha = (hpPerMinute: number): number =>
-  0.75 * Math.min(0.09, 0.018 + 0.014 * Math.log2(1 + Math.max(0, hpPerMinute) / 4));
+export const hpHazeAlpha = (hpPerMinute: number, level?: 1 | 2): number =>
+  (level === 1 ? 0.55 : 1) * 0.75 * Math.min(0.09, 0.018 + 0.014 * Math.log2(1 + Math.max(0, hpPerMinute) / 4));
 
 /** The clouds on the disc now: lit and emitting. A shelter cancels a dose; it is not a cloud. */
 export const drawnClouds = (views: readonly RadiationSourceView[], nowMs: number): RadiationSourceView[] =>

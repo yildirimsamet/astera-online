@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import {
-  HULLS, applyMonumentHpDose, combatValue, distance, fleetCount, fleetPace, fleetSpeedMult, fleetTravelExact,
+  HULLS, applyMonumentHpDose, combatValue, coreTier, distance, fleetCount, fleetPace, fleetSpeedMult, fleetTravelExact,
   hangarLoad, hpLethalAtMs, hpRadiationApplies, hullTech, interpolatePosition, monumentCargoCapacity,
-  produceMonumentDeuterium, recallMonumentShips, segmentsExposureHp, settleMonumentHold,
+  monumentTierEligible, produceMonumentDeuterium, recallMonumentShips, segmentsExposureHp, settleMonumentHold,
   type Fleet, type HpRadiationSource, type MonumentShipLot, type Segment, type Vec3,
 } from '@astera/rules';
 import type { Tx } from '../db/client.js';
@@ -17,6 +17,7 @@ import { hpSourcesForSeason } from './radiationSources.js';
 import { GameError, lockSeason, orbitOf } from './planet.js';
 import { lockWorlds, safeHomePlanet } from './ownership.js';
 import { monumentRouteSchema } from './monumentBoundaries.js';
+import { peakCoreLevels } from './player.js';
 
 interface Reader { playerId: string; seasonId: string; at: Date; adminUsernames: readonly string[] }
 const activeStatuses = ['OUTBOUND', 'HOLD', 'RETURNING'] as const;
@@ -147,7 +148,7 @@ export async function publicMonumentFacts(tx: Tx, targets: readonly PublicMonume
     const reserved = waves.filter((wave) => wave.status === 'OUTBOUND' && wave.purpose === 'REINFORCE'
       && (wave.playerId === m.controllerPlayerId || (m.controllerClanId !== null && memberships.get(wave.playerId) === m.controllerClanId)))
       .reduce((sum, wave) => sum + wave.reservedBulk, 0);
-    return { id: m.id, ordinal: m.ordinal, position: { x: m.x, y: m.y, z: m.z }, controller,
+    return { id: m.id, ordinal: m.ordinal, difficulty: m.difficulty, position: { x: m.x, y: m.y, z: m.z }, controller,
       capacity: m.capacity, used: lots.filter((lot) => held.has(lot.waveId)).reduce((sum, lot) => sum + hangarLoad({ [lot.hull]: lot.count }), 0),
       reserved, productionPerMinute: m.productionPerMinute,
       // Persisted windows have millisecond precision. This instantaneous sample
@@ -308,9 +309,15 @@ export async function readMonuments(tx: Tx, input: Reader, monumentId?: string) 
   const probes = ids.length === 0 ? [] : await tx.select().from(monumentProbes).where(and(eq(monumentProbes.playerId, input.playerId),
     inArray(monumentProbes.monumentId, ids), inArray(monumentProbes.status, ['OUTBOUND', 'RETURNING'])));
   const reports = await readMonumentProbeReports(tx, input.playerId);
+  const peakCore = (await peakCoreLevels(tx, [input.playerId])).get(input.playerId) ?? 1;
+  const activePersonalTargets = new Set(targets.filter(target => target.waves.some(wave => wave.playerId === input.playerId
+    && activeStatuses.some(status => status === wave.status))).map(target => target.monument.id));
   return { serverNow: input.at.toISOString(), monuments: ids.map((id) => {
     const fact = factsById.get(id);
-    return fact ? { ...fact, reserved: reservedByMonument.get(id) ?? 0 } : null;
+    return fact ? { ...fact, reserved: reservedByMonument.get(id) ?? 0, sendAccess: {
+      playerTier: coreTier(peakCore), tierAllowed: monumentTierEligible(fact.difficulty, peakCore),
+      cargoOnly: fact.difficulty !== 'LEGACY' && activePersonalTargets.has(id),
+    } } : null;
   }).filter((fact): fact is NonNullable<typeof fact> => fact !== null), waves: await ownWaves(tx, targets, input),
     probes: probes.map((probe) => ({ id: probe.id, monumentId: probe.monumentId, originPlanetId: probe.originPlanetId,
       status: probe.status, departAt: probe.departAt.toISOString(), arriveAt: probe.arriveAt.toISOString(), homeAt: probe.homeAt?.toISOString() ?? null,

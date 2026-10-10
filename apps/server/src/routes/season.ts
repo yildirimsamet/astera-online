@@ -485,7 +485,7 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       /** Up to `RIVAL.max` marks, each carrying the slot the disc colours it by. D183. */
       rivals: await rivalsOf(app.db, row.playerId),
       /**
-       * LAST SEASON'S TOP FIVE, ONE PER MONUMENT (owner, 2026-10-06): index N − 1 names
+       * LAST SEASON'S TOP EIGHT, ONE PER MONUMENT (owner, 2026-10-10): index N − 1 names
        * monument N, null where nobody finished that rank. Public — the archive prints them.
        */
       monumentHonorees: await monumentHonorees(app.db, row.season.id),

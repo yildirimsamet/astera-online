@@ -4,6 +4,20 @@ import { getWikiArticle } from '../src/wiki/catalog.js';
 import { conceptReference, number, subjectReference } from '../src/wiki/facts.js';
 
 describe('Wiki values a new player can interpret', () => {
+  it('compares Easy and Hard monuments and explains the personal fleet cycle', () => {
+    for (const language of ['en', 'tr'] as const) {
+      const blocks = conceptReference('galaxy.monuments', language)?.blocks;
+      const table = blocks?.find(block => block.kind === 'table' && block.columns.includes('Easy'));
+      if (table?.kind !== 'table') throw new Error('Missing monument difficulty comparison');
+      expect(table.columns).toContain('Hard');
+      expect(table.rows.some(row => row.includes(number(1550, language)) && row.includes(number(7270, language)))).toBe(true);
+      expect(table.rows.at(-1)).toEqual([language === 'en' ? 'Probe loss chance' : 'Sonda kayıp şansı',
+        language === 'en' ? '75%' : '%75', language === 'en' ? '75%' : '%75']);
+      const article = getWikiArticle('galaxy.monuments');
+      const text = article?.sections[language].flatMap(section => section.blocks.flatMap(block => block.kind === 'text' ? [block.text] : [])).join(' ');
+      expect(text).toMatch(language === 'en' ? /including cargo.*return home/i : /kargo dahil.*eve dön/i);
+    }
+  });
   it('compares Shipyard levels by time saved from each preceding level, for all units', () => {
     for (const language of ['en', 'tr'] as const) {
       const reference = subjectReference({ kind: 'building', id: 'SHIPYARD' }, language);

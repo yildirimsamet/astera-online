@@ -30,6 +30,7 @@ import type {
   Grade,
   HullId,
   MobileHullId,
+  MonumentDifficulty,
   Segment,
   GalaxyEventKind as ScheduledGalaxyEventKind,
   AsteroidHourLane,
@@ -2076,6 +2077,8 @@ export const monuments = pgTable('monuments', {
   id: uuid('id').primaryKey().defaultRandom(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
   ordinal: integer('ordinal').notNull(),
+  /** Existing live targets retain their rules until the explicit idle-season adoption. */
+  difficulty: text('difficulty').$type<MonumentDifficulty>().notNull().default('LEGACY'),
   x: doublePrecision('x').notNull(),
   y: doublePrecision('y').notNull(),
   z: doublePrecision('z').notNull(),
@@ -2097,7 +2100,8 @@ export const monuments = pgTable('monuments', {
   uniqueIndex('monuments_id_season_idx').on(t.id, t.seasonId),
   index('monuments_controller_player_idx').on(t.controllerPlayerId),
   index('monuments_controller_clan_idx').on(t.controllerClanId),
-  check('monuments_ordinal_check', sql`${t.ordinal} BETWEEN 1 AND 5`),
+  check('monuments_ordinal_check', sql`${t.ordinal} BETWEEN 1 AND 8`),
+  check('monuments_difficulty_check', sql`${t.difficulty} IN ('LEGACY', 'EASY', 'HARD')`),
   check('monuments_amounts_check', sql`${t.capacity} > 0 AND ${t.generation} >= 0
     AND ${t.productionPerMinute} >= 0 AND ${t.productionPerMinute} < 'Infinity'::float8`),
   check('monuments_position_check', sql`${t.x} > '-Infinity'::float8 AND ${t.x} < 'Infinity'::float8

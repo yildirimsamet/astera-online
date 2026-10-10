@@ -63,7 +63,7 @@ describe('galaxy events guide', () => {
   /**
    * A WORKING WEEK AND A WEEKEND, READ AS TWO ROWS. Owner instruction, 2026-09-16.
    *
-   * The same 20:00 start is a x3 shower on a Wednesday and a x5 one on a Saturday,
+   * The same 20:00 start is a x2 shower on a Wednesday and a x4 one on a Saturday,
    * so a flat list of pills could not say which is which. Each lane now states the
    * kind of day beside its windows; the merchant, which runs every day, says so.
    */
@@ -80,8 +80,8 @@ describe('galaxy events guide', () => {
     };
 
     expect(rowsIn('Asteroid Yağmuru')).toEqual([
-      ['Hafta içi', ['12:30–13:00×2', '20:00–20:30×3']],
-      ['Hafta sonu', ['13:00–13:30×3', '20:00–20:30×5']],
+      ['Hafta içi', ['12:30–13:00×2', '20:00–20:30×2']],
+      ['Hafta sonu', ['13:00–13:30×2', '20:00–20:30×4']],
     ]);
     expect(rowsIn('Galaksilerarası Konvoy')).toEqual([
       ['Hafta içi', ['21:00–24:00']],
@@ -95,8 +95,9 @@ describe('galaxy events guide', () => {
 
   it('states the per-commander spawn rule and the convoy’s four-hour prize', () => {
     render(<GalaxyEventsGuide onClose={vi.fn()} />);
-    expect(screen.getByText(/son bir saatte oynayan her komutan için 1 asteroid/i))
+    expect(screen.getByText(/saatte 0,75 asteroid/i))
       .toBeInTheDocument();
+    expect(screen.getByText(/ilk 10 dakikaya/i)).toBeInTheDocument();
     expect(screen.getByText(/4 saatlik üretimine kadar/i)).toBeInTheDocument();
   });
 

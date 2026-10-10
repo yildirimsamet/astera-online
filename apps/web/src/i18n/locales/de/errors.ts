@@ -14,6 +14,8 @@
  */
 
 export const errors = {
+  MONUMENT_TIER_FORBIDDEN: "Leichte Monumente sind für Stufen 1–3; wähle ein schweres Monument",
+  MONUMENT_FLEET_ACTIVE: "Bis alle deine Schiffe einschließlich Frachtschiffen zu Hause sind, kannst du nur Frachtschiffe nachschicken.",
   CAPITAL_CANNOT_BE_ABANDONED: "Du kannst deine Hauptstadt nicht aufgeben. Wähle eine Kolonie.",
   COLONY_ABANDON_BLOCKED: "Diese Kolonie hat aktive Missionen oder einen Besitzwechsel. Prüfe die Gründe und warte auf den Abschluss.",
   SKIN_NOT_OWNED: 'Dieses Aussehen ist nicht in deinem Inventar. Wähle eines, das du besitzt.',

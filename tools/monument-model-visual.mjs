@@ -1,10 +1,27 @@
 /** Real GLTF loading and bounds at phone/desktop sizes, compared with the untouched masters. */
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { chromium } from 'playwright';
+import { prepareMonumentModel } from './monument-models.mjs';
 
 export async function verifyMonumentModels(output) {
   await mkdir(output, { recursive: true });
+  const masters = new Map();
+  const sourceDir = 'assets/source/models/monuments';
+  for (const name of await readdir(sourceDir)) {
+    if (!name.endsWith('.glb')) continue;
+    const source = join(sourceDir, name);
+    const bytes = await readFile(source);
+    const json = JSON.parse(bytes.toString('utf8', 20, 20 + bytes.readUInt32LE(12)));
+    if (json.extensionsRequired?.includes('KHR_draco_mesh_compression')) {
+      // The client deliberately has no Draco loader. Decode the immutable
+      // master offline, keeping every triangle for the visual comparison.
+      const decoded = join(output, `master-${name}`);
+      await prepareMonumentModel(source, decoded, Number.MAX_SAFE_INTEGER);
+      masters.set(name, decoded);
+    } else masters.set(name, source);
+  }
+  if (masters.size !== 8) throw new Error('Expected eight supplied monument masters');
   const browser = await chromium.launch({
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
   });
@@ -21,14 +38,14 @@ export async function verifyMonumentModels(output) {
         try {
           if (master) {
             await page.route('**/assets/models/monuments/*.glb', (route) => route.fulfill({
-              path: join('assets/source/models/monuments', basename(new URL(route.request().url()).pathname)),
+              path: masters.get(basename(new URL(route.request().url()).pathname)),
               contentType: 'model/gltf-binary',
             }));
           }
           await page.goto(`${process.env.WEB ?? 'http://127.0.0.1:5199'}/v2-gallery.html?view=monument-models`, { waitUntil: 'networkidle' });
           const buttons = page.locator('[aria-label="Choose monument"]').getByRole('button');
-          if (await buttons.count() !== 5) throw new Error('Monument selector is missing a model');
-          for (let ordinal = 1; ordinal <= 5; ordinal += 1) {
+          if (await buttons.count() !== 8) throw new Error('Monument selector is missing a model');
+          for (let ordinal = 1; ordinal <= 8; ordinal += 1) {
             await buttons.nth(ordinal - 1).click();
             await page.waitForFunction((expected) =>
               document.body.dataset.monumentReady === 'true'
@@ -41,10 +58,13 @@ export async function verifyMonumentModels(output) {
               outlineTriangles: Number(document.body.dataset.monumentOutlineTriangles),
               overflow: document.documentElement.scrollWidth > window.innerWidth,
             }));
-            if (!Number.isFinite(scene.size) || Math.abs(scene.size / scene.ship - 3) > 0.001) {
-              throw new Error(`Monument ${ordinal}: the visible model is not three times the trade ship (${scene.size}/${scene.ship} = ${scene.size / scene.ship})`);
+            const multiple = ordinal <= 4 ? 5 : 3;
+            if (!Number.isFinite(scene.size) || Math.abs(scene.size / scene.ship - multiple) > 0.001) {
+              throw new Error(`Monument ${ordinal}: the visible model is not ${multiple} times the trade ship (${scene.size}/${scene.ship} = ${scene.size / scene.ship})`);
             }
-            if (!master && (scene.triangles < 4_000 || scene.triangles > 5_000)) {
+            const minimum = ordinal === 7 ? 6_500 : 4_000;
+            const ceiling = ordinal === 7 ? 7_500 : 5_000;
+            if (!master && (scene.triangles < minimum || scene.triangles > ceiling)) {
               throw new Error(`Monument ${ordinal}: rendered geometry exceeds its triangle budget`);
             }
             if (scene.overflow || errors.length > 0) throw new Error(`Monument ${ordinal}: ${JSON.stringify({ ...scene, errors })}`);

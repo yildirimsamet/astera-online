@@ -155,7 +155,7 @@ export function useSeason() {
     queryKey: keys.season,
     queryFn: async () => {
       const season = await api.season();
-      // Every surface names a monument through `monumentName`; it learns last season's five here.
+      // Every surface names a monument through `monumentName`; it learns last season's eight here.
       setMonumentHonorees(season.monumentHonorees ?? []);
       return season;
     },

@@ -14,6 +14,7 @@ import { isotopeProfile } from './research.js';
 import { distance, travelExact } from './travel.js';
 import type { Resources, SatelliteSet, Vec3 } from './types.js';
 import type { PlannedGalaxyEvent } from './galaxyEvents.js';
+import { LEGACY_ASTEROID_GENERATION } from './asteroidGeneration.js';
 
 export interface PlanetSlot extends Vec3 {
   index: number;
@@ -717,10 +718,13 @@ export function withAsteroidShowerLanes(
     claim, a flight and a drawn target with it. `restampFutureOccurrences` is the
     only door onto the new shape, and it refuses a window that has opened.
   */
-  const frontLoadFor = (occurrence: PlannedGalaxyEvent): AsteroidLaneFrontLoad | undefined =>
-    occurrence.definitionVersion >= ASTEROID_SHOWER_FRONT_LOAD.fromDefinitionVersion
-      ? { share: ASTEROID_SHOWER_FRONT_LOAD.share, minutes: ASTEROID_SHOWER_FRONT_LOAD.minutes }
-      : undefined;
+  const frontLoadFor = (occurrence: PlannedGalaxyEvent): AsteroidLaneFrontLoad | undefined => {
+    if (occurrence.definitionVersion < ASTEROID_SHOWER_FRONT_LOAD.fromDefinitionVersion) return undefined;
+    if (occurrence.definitionVersion < ASTEROID_SHOWER_FRONT_LOAD.tenMinuteFromDefinitionVersion) {
+      return { share: 0.5, minutes: LEGACY_ASTEROID_GENERATION.frontLoadMinutes };
+    }
+    return { share: ASTEROID_SHOWER_FRONT_LOAD.share, minutes: ASTEROID_SHOWER_FRONT_LOAD.minutes };
+  };
 
   // Recreate every pre-increase shower lane first. This entire prefix is the
   // live field: changing its count would move claims and flights to another rock.

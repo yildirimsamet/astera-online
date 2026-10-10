@@ -186,7 +186,7 @@ export function Sheet({
           tabIndex={-1}
           data-scrim=""
           {...dismiss}
-          className={`pointer-events-auto absolute inset-0 bg-v2-void/60 ${FRAME[placement].scrim}`}
+          className={`pointer-events-auto absolute inset-0 ${FRAME[placement].scrim}`}
         />
       )}
       <div

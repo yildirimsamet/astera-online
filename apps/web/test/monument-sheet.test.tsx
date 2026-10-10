@@ -32,7 +32,7 @@ const held = { id: waveId, monumentId: id, playerId: 'self', originPlanetId: 'ho
   returnForecast: { homePlanetId: 'home', arriveAt: later, minutes: 60, doseHp: 100, destroyed: 0,
     deuterium: 300, lostDeuterium: 0, lots: [cargoLot] } };
 
-function show(view: unknown = catalog, quoteDelay = 0, locked = false) {
+function show(view: unknown = catalog, quoteDelay = 0, locked = false, onClanTarget?: (monumentId: string) => void) {
   const requests: { path: string; body: string; key: string | null }[] = [];
   const fetch: typeof globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const path = typeof url === 'string' ? url : url instanceof URL ? url.pathname : url.url;
@@ -52,7 +52,7 @@ function show(view: unknown = catalog, quoteDelay = 0, locked = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const origin = planetView({ fleet: { CITADEL: 2, ARGOSY: 2, PROSPECTOR: 3 } }, { id: 'home', deuterium: 1000 });
   const surface = (isLocked: boolean) => <QueryClientProvider client={client}><ApiProvider api={api}>
-    <SeasonLockProvider locked={isLocked}><MonumentSheet monumentId={id} origin={origin} playerId="self" clanId={null} onClose={vi.fn()} /></SeasonLockProvider>
+    <SeasonLockProvider locked={isLocked}><MonumentSheet monumentId={id} origin={origin} playerId="self" clanId={null} onClose={vi.fn()} onClanTarget={onClanTarget} /></SeasonLockProvider>
   </ApiProvider></QueryClientProvider>;
   const rendered = render(surface(locked));
   return { requests, client, freeze: () => { rendered.rerender(surface(true)); } };
@@ -61,6 +61,92 @@ function hold(button: HTMLElement): void { fireEvent.keyDown(button, { key: 'Ent
 const send = (): HTMLElement => within(screen.getByTestId('monument-send')).getByRole('button');
 
 describe('monument decision surface, through the real client and cache', () => {
+  it.each([['EASY', 1, 2], ['HARD', 2, 5]] as const)('shows %s radiation level without changing the agreed per-ship dose', async (difficulty, level, rate) => {
+    show({ ...catalog, monuments: [{ ...monument, difficulty, radiationHpPerMinute: rate }] });
+    await screen.findByText(`Radiation level ${String(level)}: ${rate.toFixed(1)} HP per ship per minute`);
+  });
+  it('names the eighth monument for last season\'s eighth commander', async () => {
+    setMonumentHonorees([null, null, null, null, null, null, null, 'Eighth']);
+    try {
+      show({ ...catalog, monuments: [{ ...monument, ordinal: 8, difficulty: 'EASY' }] });
+      await screen.findByText('Named for Eighth, rank 8 last season.');
+      expect(screen.getByRole('dialog')).toHaveTextContent('Eighth • Ancient War Cemetery');
+    } finally { setMonumentHonorees([]); }
+  });
+  it('keeps clan coordination available when the commander cannot send their own fleet to Easy', async () => {
+    const onClanTarget = vi.fn();
+    show({ ...catalog, monuments: [{ ...monument, difficulty: 'EASY',
+      sendAccess: { playerTier: 4, tierAllowed: false, cargoOnly: false } }] }, 0, false, onClanTarget);
+    const mark = await screen.findByRole('button', { name: /clan target/i });
+    expect(mark).toBeEnabled();
+    await userEvent.setup().click(mark);
+    expect(onClanTarget).toHaveBeenCalledWith(id);
+    expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeDisabled();
+    expect(send()).toBeDisabled();
+  });
+
+  it('keeps cargo dispatch usable if another launch closes the personal combat cycle while this sheet is open', async () => {
+    const initial = { ...catalog, monuments: [{ ...monument, difficulty: 'HARD',
+      sendAccess: { playerTier: 3, tierAllowed: true, cargoOnly: false } }] };
+    const { client, requests } = show(initial);
+    const combat = await screen.findByRole('textbox', { name: /citadel.*quantity/i });
+    const cargo = screen.getByRole('textbox', { name: /argosy.*quantity/i });
+    fireEvent.change(combat, { target: { value: '1' } });
+    fireEvent.change(cargo, { target: { value: '1' } });
+    await screen.findByText(/Outbound radiation: 500/i);
+    client.setQueryData(keys.monuments, monumentsSchema.parse({ ...initial, monuments: [{ ...initial.monuments[0],
+      sendAccess: { playerTier: 3, tierAllowed: true, cargoOnly: true } }] }));
+    await waitFor(() => expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeDisabled());
+    expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toHaveValue('0');
+    expect(cargo).toHaveValue('1');
+    expect(cargo).toBeEnabled();
+    await waitFor(() => { expect(requests.filter(request => request.path.endsWith('/quote')).at(-1)?.body)
+      .toContain('"fleet":{"ARGOSY":1}'); });
+    expect(requests.filter(request => request.path.endsWith('/quote')).at(-1)?.body).not.toContain('CITADEL');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: /shield/i }));
+    await user.click(screen.getByRole('checkbox', { name: /radiation/i }));
+    await waitFor(() => expect(send()).toBeEnabled());
+    hold(send());
+    await waitFor(() => { expect(requests.find(request => request.path.endsWith('/send'))?.body)
+      .toContain('"fleet":{"ARGOSY":1}'); });
+    expect(requests.find(request => request.path.endsWith('/send'))?.body).not.toContain('CITADEL');
+  });
+
+  it('explains Easy tier access before selection and disables new dispatch for an ineligible commander', async () => {
+    show({ ...catalog, monuments: [{ ...monument, difficulty: 'EASY',
+      sendAccess: { playerTier: 4, tierAllowed: false, cargoOnly: false } }] });
+    await screen.findByText(/Easy.*tiers 1.*3/i);
+    expect(screen.getByRole('dialog')).toHaveTextContent(/tier 4.*Hard/i);
+    expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeDisabled();
+    expect(send()).toBeDisabled();
+  });
+
+  it('explains the cargo-inclusive return requirement and keeps cargo available during a personal cycle', async () => {
+    show({ ...catalog, monuments: [{ ...monument, difficulty: 'HARD',
+      sendAccess: { playerTier: 3, tierAllowed: true, cargoOnly: true } }] });
+    await screen.findByText(/all your ships.*cargo.*return home/i);
+    expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: /argosy.*quantity/i })).toBeEnabled();
+  });
+
+  it('keeps physical recall usable for an existing Easy holder after tier four blocks every new ship', async () => {
+    const { requests } = show({ ...catalog, monuments: [{ ...monument, difficulty: 'EASY',
+      controller: { kind: 'PLAYER', playerId: 'self', name: 'Commander' },
+      sendAccess: { playerTier: 4, tierAllowed: false, cargoOnly: true } }], waves: [held] });
+    const card = await screen.findByTestId(`monument-wave-${waveId}`);
+    const recall = within(card).getByRole('textbox', { name: /argosy.*recall/i });
+    expect(recall).toBeEnabled();
+    expect(screen.getByRole('textbox', { name: /argosy.*argosy quantity/i })).toBeDisabled();
+    expect(send()).toBeDisabled();
+    fireEvent.change(recall, { target: { value: '1' } });
+    await waitFor(() => expect(within(card).getByRole('button', { name: /hold.*recall/i })).toBeEnabled());
+    hold(within(card).getByRole('button', { name: /hold.*recall/i }));
+    await waitFor(() => { expect(requests.find(request => request.path.endsWith('/recall'))?.body)
+      .toBe(JSON.stringify({ selections: [{ lotId, count: 1 }] })); });
+    expect(requests.some(request => request.path.endsWith('/send'))).toBe(false);
+  });
+
   it('quotes only the last quantity in a burst and keeps commit disabled during the wait', async () => {
     const { requests } = show();
     const count = await screen.findByRole('textbox', { name: /citadel.*quantity/i });

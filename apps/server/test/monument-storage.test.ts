@@ -73,7 +73,7 @@ describe('monument persistence foundation', () => {
 
   it('rejects invalid or repeated monument ordinals and malformed geometry/rates', async () => {
     await expect(f.db.insert(monuments).values(monumentInput())).rejects.toMatchObject({ cause: { code: '23505' } });
-    for (const over of [{ ordinal: 0 }, { ordinal: 6 }, { capacity: -1 }, { productionPerMinute: -1 }, { productionPerMinute: Number.NaN }, { x: Number.POSITIVE_INFINITY }, { y: Number.NaN }]) {
+    for (const over of [{ ordinal: 0 }, { ordinal: 9 }, { capacity: -1 }, { productionPerMinute: -1 }, { productionPerMinute: Number.NaN }, { x: Number.POSITIVE_INFINITY }, { y: Number.NaN }]) {
       await expect(f.db.insert(monuments).values({ ...monumentInput(), ordinal: 2, ...over })).rejects.toMatchObject({ cause: { code: '23514' } });
     }
   });

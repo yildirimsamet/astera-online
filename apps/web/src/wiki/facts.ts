@@ -2,7 +2,7 @@ import {
   ABUSE, ANTI_STRATEGIC, BUILD, COMBAT, CORE_TOP_LEVEL, DEATH_STAR, DEUTERIUM,
   DISRUPTION, ECON, ESCAPE, FAULT, HANGAR, HULLS, INSTRUMENT_MAX_LEVEL, MULTI_WORLD,
   PROBE, PROSPECTOR, PIRATE, RESEARCH_PROJECTS, SEASON, SHIP_DAMAGE, SALVAGE, CLAN,
-  CLAN_SUPPORT, CLAN_LEVEL_MAX, GALAXY_EVENTS, TRADE, MONUMENT_SEASON_DEFAULTS,
+  CLAN_SUPPORT, CLAN_LEVEL_MAX, GALAXY_EVENTS, TRADE, MONUMENT_BALANCE, MONUMENT_PROBE_LOSS_CHANCE, MONUMENT_SEASON_DEFAULTS,
   CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION, INACTIVITY_MS, SILENT_SPACE, SETTLEMENT_CLAIM_MINUTES, SETTLEMENT_PRIORITY_MINUTES, TRAVEL,
   alloyRate, buildingCost, buildingMinutes, crystalRate, deuteriumRate,
   flightSlots, groundSlots, hangarCapacity, hullBulk, shipyardTimeReduction, instrumentCost, radarRange,
@@ -197,12 +197,15 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
     [t('Cooldown after a short trip', 'Kısa seferden sonra yeniden gönderim beklemesi'), `${n(PROSPECTOR.shortTripCooldownMinutes)} min`],
   ])];
   if (id === 'galaxy.pirates') blocks = [table(t('Pirate levels · capture chance after a decisive win', 'Korsan seviyeleri · kesin zaferden sonra ele geçirme şansı'), [t('Level', 'Seviye'), t('Pirate damage multiplier', 'Korsan hasar çarpanı'), t('Captured ship chance', 'Ele geçirilen gemi şansı')], ([1, 2, 3, 4] as const).map(level => [n(level), `${n(PIRATE.damageMult[level])}×`, percent(PIRATE.captureChance[level], language)]))];
-  if (id === 'galaxy.monuments') blocks = [pairs(language, t('Default monument reference', 'Temel anıt referansı'), [
-    [t('Monuments per galaxy', 'Galaksi başına anıt'), n(MONUMENT_SEASON_DEFAULTS.count)],
-    [t('Deuterium per minute per monument', 'Anıt başına dakikalık döteryum'), n(MONUMENT_SEASON_DEFAULTS.productionPerMinute)],
-    [t('Hull strength lost per ship per minute (HP)', 'Gemi başına dakikalık dayanım kaybı (HP)'), n(MONUMENT_SEASON_DEFAULTS.intensityHpPerMinute)],
-    [t('Holding fleet capacity', 'Anıtta kalan filo kapasitesi'), n(MONUMENT_SEASON_DEFAULTS.capacity)],
-    [t('Probe loss chance', 'Sonda kayıp şansı'), '90%'],
+  if (id === 'galaxy.monuments') blocks = [table(t('Monument types', 'Anıt türleri'), [t('Rule', 'Kural'), 'Easy', 'Hard'], [
+    [t('Monuments per galaxy', 'Galaksi başına anıt'), n(MONUMENT_SEASON_DEFAULTS.count / 2), n(MONUMENT_SEASON_DEFAULTS.count / 2)],
+    [t('Commander tiers allowed to send', 'Yeni filo gönderebilen komutan tier’ları'), '1–3', t('Everyone', 'Herkes')],
+    [t('Deuterium per minute per monument', 'Anıt başına dakikalık döteryum'), n(MONUMENT_BALANCE.EASY.productionPerMinute), n(MONUMENT_BALANCE.HARD.productionPerMinute)],
+    [t('Radiation level', 'Radyasyon seviyesi'), n(MONUMENT_BALANCE.EASY.radiationLevel), n(MONUMENT_BALANCE.HARD.radiationLevel)],
+    [t('Hull strength lost per ship per minute (HP)', 'Gemi başına dakikalık dayanım kaybı (HP)'), n(MONUMENT_BALANCE.EASY.intensityHpPerMinute), n(MONUMENT_BALANCE.HARD.intensityHpPerMinute)],
+    [t('Holding fleet capacity', 'Anıtta kalan filo kapasitesi'), n(MONUMENT_BALANCE.EASY.capacity), n(MONUMENT_BALANCE.HARD.capacity)],
+    [t('Initial neutral garrison', 'İlk tarafsız garnizon'), `${n(MONUMENT_BALANCE.EASY.garrison.STRONGHOLD)} ${t('Stronghold', 'Hisar')}`, `${n(MONUMENT_BALANCE.HARD.garrison.LEVIATHAN)} Leviathan`],
+    [t('Probe loss chance', 'Sonda kayıp şansı'), percent(MONUMENT_PROBE_LOSS_CHANCE, language), percent(MONUMENT_PROBE_LOSS_CHANCE, language)],
   ])];
   if (id === 'clan.membership') blocks = [pairs(language, t('Membership reference', 'Üyelik referansı'), [
     [t('Members including leader', 'Lider dahil üyeler'), n(CLAN.maxMembers)], [t('Founder capital Core', "Kurucu ana gezegen Çekirdeği"), n(CLAN.founderCoreLevel)],

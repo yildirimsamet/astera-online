@@ -18,8 +18,7 @@ import {
  * denilmemeli. Her saat başı aktif oyuncuya bakılır ve önümüzdeki 1 saat ne kadar
  * atılacağı belirlenir. Asteroid show etkinliklerinde aynı logic katsayı ile çarpılır."*
  *
- * Revised 2026-09-17 to one rock per active commander per hour:
- * 20 active commanders → 20 rocks that hour; 30 active during a x5 shower → 150.
+ * Revised 2026-10-10 to 0.75 rocks per active commander per hour.
  *
  * *"İlk gün sadece level 1-2, ikinci gün level 1-2-3, üçüncü gün level 1-2-3-4,
  * dördüncü gün artık hepsi"* — the level ladder opens one rung a day.
@@ -30,8 +29,8 @@ const lanesTotal = (lanes: readonly AsteroidHourLane[]) =>
   lanes.reduce((sum, lane) => sum + lane.count, 0);
 
 describe('the dynamic field, as figures', () => {
-  it('is one rock an hour per commander active in the last hour', () => {
-    expect(ASTEROID_DYNAMIC.perPlayerPerHour).toBe(1);
+  it('is 0.75 rocks an hour per commander active in the last hour', () => {
+    expect(ASTEROID_DYNAMIC.perPlayerPerHour).toBe(0.75);
     expect(ASTEROID_DYNAMIC.activeWindowMinutes).toBe(60);
   });
 
@@ -87,20 +86,20 @@ describe('the dynamic field, as figures', () => {
 describe('planning one hour', () => {
   const plain = { hourStartsAtMinute: 600, spawnFromMinute: 600, seasonEndsAtMinute: 99_999, showers: [] };
 
-  it('spawns twenty rocks for twenty commanders in an ordinary hour', () => {
+  it('spawns fifteen rocks for twenty commanders in an ordinary hour', () => {
     const lanes = planAsteroidHour({ ...plain, activePlayers: 20 });
-    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 660, count: 20, frontCount: 0 }]);
+    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 660, count: 15, frontCount: 0 }]);
   });
 
-  it('spawns one hundred fifty for thirty commanders under a x5 shower', () => {
+  it('rounds the full-hour x5 plan to 113 rocks for thirty commanders', () => {
     const lanes = planAsteroidHour({
       ...plain,
       activePlayers: 30,
       showers: [{ startsAtMinute: 600, endsAtMinute: 660, multiplier: 5 }],
     });
-    expect(lanesTotal(lanes)).toBe(150);
+    expect(lanesTotal(lanes)).toBe(113);
     // Half of the shower's BONUS arrives in its opening minutes, as before.
-    expect(lanes[0]!.frontCount).toBe(Math.round((150 - 30) * ASTEROID_SHOWER_FRONT_LOAD.share));
+    expect(lanes[0]!.frontCount).toBe(45);
   });
 
   it('spawns nothing in an hour nobody played', () => {
@@ -116,8 +115,8 @@ describe('planning one hour', () => {
     const shower = { startsAtMinute: 630, endsAtMinute: 690, multiplier: 3 };
     const first = planAsteroidHour({ ...plain, activePlayers: 10, showers: [shower] });
     expect(first).toEqual([
-      { fromMinute: 600, untilMinute: 630, count: 5, frontCount: 0 },
-      { fromMinute: 630, untilMinute: 660, count: 15, frontCount: 5 },
+      { fromMinute: 600, untilMinute: 630, count: 4, frontCount: 0 },
+      { fromMinute: 630, untilMinute: 660, count: 11, frontCount: 4 },
     ]);
     const second = planAsteroidHour({
       ...plain,
@@ -127,20 +126,20 @@ describe('planning one hour', () => {
       showers: [shower],
     });
     expect(second).toEqual([
-      { fromMinute: 660, untilMinute: 690, count: 15, frontCount: 0 },
-      { fromMinute: 690, untilMinute: 720, count: 5, frontCount: 0 },
+      { fromMinute: 660, untilMinute: 690, count: 11, frontCount: 0 },
+      { fromMinute: 690, untilMinute: 720, count: 4, frontCount: 0 },
     ]);
   });
 
   it('pays a late hour only for the minutes it has left', () => {
     const lanes = planAsteroidHour({ ...plain, spawnFromMinute: 620, activePlayers: 30 });
-    expect(lanes).toEqual([{ fromMinute: 620, untilMinute: 660, count: 20, frontCount: 0 }]);
+    expect(lanes).toEqual([{ fromMinute: 620, untilMinute: 660, count: 15, frontCount: 0 }]);
     expect(planAsteroidHour({ ...plain, spawnFromMinute: 660, activePlayers: 30 })).toEqual([]);
   });
 
   it('stops at the season’s end', () => {
     const lanes = planAsteroidHour({ ...plain, seasonEndsAtMinute: 615, activePlayers: 20 });
-    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 615, count: 5, frontCount: 0 }]);
+    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 615, count: 4, frontCount: 0 }]);
   });
 
   it('ignores a shower that ended before the hour or opens after it', () => {
@@ -152,7 +151,7 @@ describe('planning one hour', () => {
         { startsAtMinute: 660, endsAtMinute: 720, multiplier: 10 },
       ],
     });
-    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 660, count: 5, frontCount: 0 }]);
+    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 660, count: 4, frontCount: 0 }]);
   });
 
   it('refuses a count it cannot trust', () => {

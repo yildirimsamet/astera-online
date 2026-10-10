@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActiveGalaxyEvent } from '../../src/api/schemas.js';
@@ -57,6 +57,21 @@ describe('the events running now', () => {
     render(<EventChips events={[trade, shower]} now={NOW} onOpen={vi.fn()} />);
     expect(screen.getByRole('button', { name: /trade ship.*47m/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /asteroid shower.*1h 30m/i })).toBeInTheDocument();
+  });
+
+  it('shows the actual shower multiplier in the primary color before its remaining time', async () => {
+    const onOpen = vi.fn();
+    const { rerender } = render(<EventChips events={[trade, shower]} now={NOW} onOpen={onOpen} />);
+    const chip = screen.getByRole('button', { name: /asteroid shower.*2x.*1h 30m/i });
+    expect(within(chip).getByText('2x')).toHaveClass('text-v2-self');
+    expect(chip.textContent).toMatch(/Asteroid shower2x1h 30m/i);
+    expect(within(screen.getByRole('button', { name: /trade ship/i })).queryByText(/\dx/)).toBeNull();
+    await userEvent.click(chip);
+    expect(onOpen).toHaveBeenCalledWith(shower);
+    const oldCalendarEvent: ActiveGalaxyEvent = { ...shower, asteroidSpawnMultiplier: 5 };
+    rerender(<EventChips events={[oldCalendarEvent]} now={NOW} onOpen={onOpen} />);
+    expect(screen.getByRole('button', { name: /asteroid shower.*5x/i })).toBeInTheDocument();
+    expect(screen.queryByText('2x')).toBeNull();
   });
 
   it('hands the pressed event to its host', async () => {

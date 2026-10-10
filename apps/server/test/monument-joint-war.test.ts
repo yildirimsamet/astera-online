@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLAN, hangarLoad, MONUMENT_CAPACITY, MONUMENT_SEASON_DEFAULTS, type Fleet } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
@@ -11,9 +11,12 @@ import { markClanWarMonumentTarget, openOperation, quoteClanWarContribution, rea
 import { forceRecoveryShield } from '../src/services/attackProtection.js';
 import { baysInUse } from '../src/services/flight.js';
 import { closeSeasonMonuments } from '../src/services/monumentSeasonClose.js';
+import { sendMonument } from '../src/services/monument.js';
+import { recallMonument } from '../src/services/monumentMovement.js';
 import { wipeAllServers } from '../src/services/servers.js';
 import { EventWorker } from '../src/worker/loop.js';
-import { fuelUp, giveNewcomerShield, giveUnits, grant, levelWorld, seedWorld, setLevel, testDb, testEnv, type Fixture } from './helpers.js';
+import { EventBus, type StreamEvent } from '../src/stream/bus.js';
+import { TEST_DATABASE_URL, fuelUp, giveNewcomerShield, giveUnits, grant, levelWorld, seedWorld, setLevel, testDb, testEnv, type Fixture } from './helpers.js';
 
 let f: Fixture;
 let m: typeof monuments.$inferSelect;
@@ -65,6 +68,124 @@ beforeEach(async () => {
 afterAll(async () => { await (await testDb()).close(); });
 
 describe('the existing clan preparation with a real monument target', () => {
+  it.each([true, false])('refreshes the personal monument cycle of every departing participant (leader sends ships: %s)', async (leaderParticipates) => {
+    await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
+    await mark();
+    if (leaderParticipates) await stage();
+    else {
+      await send(1);
+      const staging = await f.db.select().from(missions).where(eq(missions.status, 'in_flight'));
+      await arrive(new Date(Math.max(...staging.map(row => row.arriveAt.getTime()))).toISOString());
+    }
+    const bus = new EventBus(TEST_DATABASE_URL, silent);
+    const seen: StreamEvent[] = [];
+    await bus.start();
+    const unsubscribe = bus.observe(event => { seen.push(event); });
+    try {
+      await start();
+      // War delivery proves the commit reached LISTEN, without waiting for the
+      // client's sixty-second polling fallback or a monument arrival.
+      await vi.waitFor(() => { expect(seen.filter(event => event.kind === 'private:clan-war')).toHaveLength(2); }, { timeout: 2000 });
+      const refreshed = seen.flatMap(event => 'playerId' in event && event.kind === 'private:monument' ? [event.playerId] : []);
+      expect(refreshed.sort()).toEqual((leaderParticipates ? f.playerIds.slice(0, 2) : f.playerIds.slice(1, 2)).sort());
+      const native = await f.db.select().from(monumentWaves);
+      expect(native.every(wave => wave.status === 'OUTBOUND')).toBe(true);
+      expect(native).toHaveLength(leaderParticipates ? 2 : 1);
+    } finally {
+      unsubscribe();
+      await bus.stop();
+    }
+  });
+
+  it('opens a fresh personal cycle at joint launch when a delayed return already reached home', async () => {
+    await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
+    await mark();
+    await stage();
+    await giveUnits(f.db, f.planetIds[0]!, { RAMPART: 1 });
+    const solo = await f.db.transaction(tx => sendMonument(tx, { senderPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!,
+      monumentId: m.id, purpose: 'ATTACK', fleet: { RAMPART: 1 }, acknowledgeShieldLoss: true, clock: f.clock }));
+    f.clock.advance(0.1);
+    const returning = await f.db.transaction(tx => recallMonument(tx, { playerId: f.playerIds[0]!, waveId: solo.wave.id, all: true, clock: f.clock }));
+    f.clock.set(new Date(returning.wave.arriveAt!.getTime() + 1));
+    // No worker tick or separate monument read has delivered this overdue return.
+    expect((await f.db.select().from(monumentWaves))[0]?.status).toBe('RETURNING');
+    await expect(start()).resolves.toMatchObject({ participants: 2 });
+    const native = await f.db.select().from(monumentWaves);
+    expect(native.find(wave => wave.id === solo.wave.id)?.status).toBe('HOME');
+    expect(native.filter(wave => wave.status === 'OUTBOUND')).toHaveLength(2);
+  });
+
+  it('opens a fresh personal cycle when radiation destroyed the last solo ships before their ETA', async () => {
+    await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
+    await mark();
+    await stage();
+    await giveUnits(f.db, f.planetIds[0]!, { RAMPART: 1 });
+    const solo = await f.db.transaction(tx => sendMonument(tx, { senderPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!,
+      monumentId: m.id, purpose: 'ATTACK', fleet: { RAMPART: 1 }, acknowledgeShieldLoss: true, clock: f.clock }));
+    const activeFrom = f.clock.now();
+    f.clock.advance(0.1);
+    expect(f.clock.now().getTime()).toBeLessThan(solo.wave.arriveAt!.getTime());
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'ZONE',
+      x: 3500, y: 0, z: 0, radius: 20_000, intensityHpPerMinute: 1_000_000,
+      mode: 'EMIT', activeFrom, activeUntil: f.clock.now() });
+    await expect(start()).resolves.toMatchObject({ participants: 2 });
+    const native = await f.db.select().from(monumentWaves);
+    expect(native.find(wave => wave.id === solo.wave.id)?.status).toBe('LOST');
+    expect(native.filter(wave => wave.status === 'OUTBOUND')).toHaveLength(2);
+  });
+
+  it.each(['before marking', 'before launch'] as const)('keeps fleet-free Easy coordination when the leader reaches tier four %s', async (when) => {
+    await f.db.update(monuments).set({ difficulty: 'EASY' }).where(eq(monuments.id, m.id));
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', when === 'before marking' ? 10 : 9);
+    await setLevel(f.db, f.planetIds[1]!, 'CORE', 9);
+    await mark();
+    await send(1);
+    const staging = await f.db.select().from(missions).where(eq(missions.status, 'in_flight'));
+    await arrive(new Date(Math.max(...staging.map(row => row.arriveAt.getTime()))).toISOString());
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 10);
+    await expect(send(0)).rejects.toMatchObject({ code: 'MONUMENT_TIER_FORBIDDEN' });
+    const launched = await start();
+    expect(launched.participants).toBe(1);
+    const native = await f.db.select().from(monumentWaves);
+    expect(native).toHaveLength(1);
+    expect(native[0]).toMatchObject({ playerId: f.playerIds[1], status: 'OUTBOUND' });
+  });
+
+  it('rejects a participant who reaches tier four after staging for Easy, before any joint fleet departs', async () => {
+    await f.db.update(monuments).set({ difficulty: 'EASY' }).where(eq(monuments.id, m.id));
+    for (const index of [0, 1]) await setLevel(f.db, f.planetIds[index]!, 'CORE', 9);
+    await mark();
+    await stage();
+    await setLevel(f.db, f.planetIds[1]!, 'CORE', 10);
+    await expect(start()).rejects.toMatchObject({ code: 'MONUMENT_TIER_FORBIDDEN' });
+    expect(await f.db.select().from(monumentWaves)).toHaveLength(0);
+    expect((await f.db.select().from(clanWarOperations))[0]?.status).toBe('ASSEMBLING');
+  });
+
+  it('prevents a staged joint attack from adding to a personal fleet launched separately', async () => {
+    await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
+    await mark();
+    await stage();
+    await giveUnits(f.db, f.planetIds[0]!, { RAMPART: 1 });
+    const personal = await f.db.transaction(tx => sendMonument(tx, { senderPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!,
+      monumentId: m.id, purpose: 'ATTACK', fleet: { RAMPART: 1 }, acknowledgeShieldLoss: true, clock: f.clock }));
+    await expect(start()).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
+    expect((await f.db.select().from(monumentWaves)).map(wave => wave.id)).toEqual([personal.wave.id]);
+  });
+
+  it('accepts all initial contributions in the same Hard joint launch as one personal fleet per participant', async () => {
+    await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
+    await mark();
+    await stage();
+    await giveUnits(f.db, f.planetIds[0]!, fleet);
+    await send(0);
+    await start();
+    const native = await f.db.select().from(monumentWaves);
+    expect(native).toHaveLength(3);
+    expect(native.every(wave => wave.status === 'OUTBOUND')).toBe(true);
+    expect(new Set(native.map(wave => wave.jointOperationId)).size).toBe(1);
+  });
+
   it('rejects a shielded member contribution without consent at the HTTP boundary, before staging any ships', async () => {
     await mark();
     const shieldUntil = new Date(f.clock.now().getTime() + 3_600_000);

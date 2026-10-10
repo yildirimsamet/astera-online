@@ -1,5 +1,6 @@
-import { HULLS, MOBILE_HULLS, combatValue } from './hulls.js';
+import { HULLS, MOBILE_HULLS, combatValue, fleetEntries } from './hulls.js';
 import { hangarCapacity } from './economy.js';
+import { coreTier } from './loot.js';
 import {
   applyHpDose,
   hpLethalAtMs,
@@ -9,25 +10,46 @@ import {
 } from './radiationHp.js';
 import type { Segment } from './radiation.js';
 import { cargoMult, type TechLevels } from './tech.js';
-import type { MobileHullId, Vec3 } from './types.js';
+import type { Fleet, MobileHullId, Vec3 } from './types.js';
 
-/** The approved first monument season deal; only a ruleset-16 season consumes it. */
-const monumentRing = (radius: number): readonly Vec3[] => Array.from({ length: 5 }, (_, index) => {
-  const angle = (index * 2 * Math.PI) / 5;
-  return { x: radius * Math.cos(angle), y: radius * Math.sin(angle), z: 0 };
-});
+export type MonumentDifficulty = 'LEGACY' | 'EASY' | 'HARD';
+
+export const MONUMENT_BALANCE = {
+  EASY: { capacity: hangarCapacity(5), radiationLevel: 1, intensityHpPerMinute: 2, productionPerMinute: 3, garrison: { STRONGHOLD: 3 } },
+  HARD: { capacity: hangarCapacity(10), radiationLevel: 2, intensityHpPerMinute: 5, productionPerMinute: 8, garrison: { LEVIATHAN: 10 } },
+} as const;
+
+/** Each set of four forms a tetrahedron; together they cover the eight cube corners. */
+const monumentSphere = (radius: number): readonly Vec3[] => {
+  const coordinate = radius / Math.sqrt(3);
+  return ([
+    [1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1],
+    [-1, -1, -1], [-1, 1, 1], [1, -1, 1], [1, 1, -1],
+  ] as const).map(([x, y, z]) => ({ x: x * coordinate, y: y * coordinate, z: z * coordinate }));
+};
 
 export const MONUMENT_SEASON_DEFAULTS = {
-  count: 5,
+  count: 8,
   radius: 6_000,
   cloudRadius: 1_000,
-  intensityHpPerMinute: 4,
-  productionPerMinute: 10,
-  capacity: hangarCapacity(10),
-  garrison: { LEVIATHAN: 10 },
+  ...MONUMENT_BALANCE.HARD,
   garrisonTech: {},
-  positions: monumentRing(6_000),
+  positions: monumentSphere(6_000),
 } as const;
+
+export function monumentDifficulty(ordinal: number): 'EASY' | 'HARD' {
+  if (!Number.isSafeInteger(ordinal) || ordinal < 1 || ordinal > MONUMENT_SEASON_DEFAULTS.count) throw new RangeError('bad monument ordinal');
+  return ordinal <= 4 ? 'HARD' : 'EASY';
+}
+
+export function monumentTierEligible(difficulty: MonumentDifficulty, peakCoreLevel: number): boolean {
+  return difficulty !== 'EASY' || coreTier(peakCoreLevel) <= 3;
+}
+
+/** Cargo may circulate; every other hull belongs to the initial personal fleet. */
+export function monumentAdditionalFleetAllowed(fleet: Fleet, hasActiveFleet: boolean): boolean {
+  return !hasActiveFleet || fleetEntries(fleet).every(([hull]) => HULLS[hull].family === 'CARGO');
+}
 
 /**
  * A physical group of identical ships. Every member has the same damage and

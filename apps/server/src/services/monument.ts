@@ -19,6 +19,9 @@ import {
   hullTech,
   normalizeMonumentLots,
   normalizeHpDamage,
+  coreTier,
+  monumentTierEligible,
+  monumentAdditionalFleetAllowed,
   settleMonumentHold,
   type HpRadiationSource,
   type HpDoseOutcome,
@@ -43,12 +46,29 @@ import { schedule } from '../worker/queue.js';
 import { scheduleFlightBoundary, scheduleHoldBoundary } from './monumentBoundaries.js';
 import { hpSourcesForSeason } from './radiationSources.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
+import { peakCoreLevels } from './player.js';
 export { hpSourcesForSeason } from './radiationSources.js';
 
 type MonumentRow = typeof monuments.$inferSelect;
 type WaveRow = typeof monumentWaves.$inferSelect;
 type UnitRow = typeof units.$inferSelect;
 const activeStatuses = ['OUTBOUND', 'HOLD', 'RETURNING'] as const;
+
+export async function assertMonumentTierAccess(tx: Tx, monument: MonumentRow, playerId: string): Promise<void> {
+  if (monument.difficulty !== 'EASY') return;
+  const peak = (await peakCoreLevels(tx, [playerId])).get(playerId) ?? 1;
+  if (!monumentTierEligible(monument.difficulty, peak)) throw new GameError('MONUMENT_TIER_FORBIDDEN',
+    'Easy monuments accept tiers 1–3; choose a Hard monument', 403, { tier: coreTier(peak), maxTier: 3 });
+}
+
+/** The target lock serializes a personal initial dispatch across all origins and launch paths. */
+export async function assertMonumentFleetDispatch(tx: Tx, locked: LockedMonument, playerId: string, fleet: Fleet): Promise<void> {
+  if (locked.monument.difficulty === 'LEGACY') return;
+  await assertMonumentTierAccess(tx, locked.monument, playerId);
+  const active = locked.waves.some(wave => wave.playerId === playerId && activeStatuses.some(status => status === wave.status));
+  if (!monumentAdditionalFleetAllowed(fleet, active)) throw new GameError('MONUMENT_FLEET_ACTIVE',
+    'Only cargo can be added until all your ships, including cargo, return home.', 409);
+}
 const identitySchema = z.string().uuid();
 const techSchema = z.record(z.enum(RESEARCH_PROJECT_IDS), z.number().int().nonnegative().safe());
 const mobileHullSchema = z.enum(['DART', ...MOBILE_HULLS]);
@@ -445,6 +465,7 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
     || (locked.monument.controllerClanId !== null && memberships.get(input.senderPlayerId) === locked.monument.controllerClanId);
   if (input.purpose === 'REINFORCE' && !friendly) throw new GameError('MONUMENT_NOT_FRIENDLY', 'Reinforce a monument your side controls', 403);
   if (input.purpose === 'ATTACK' && friendly) throw new GameError('MONUMENT_FRIENDLY_FIRE', 'Your side already controls that monument', 403);
+  await assertMonumentFleetDispatch(tx, locked, input.senderPlayerId, fleet);
   const holdIds = new Set(locked.waves.filter((wave) => wave.status === 'HOLD').map((wave) => wave.id));
   const used = locked.lots.filter((lot) => holdIds.has(lot.waveId)).reduce((n, lot) => n + hangarLoad({ [lot.hull]: lot.count }), 0);
   const isFriend = (playerId: string): boolean => locked.monument.controllerPlayerId === playerId

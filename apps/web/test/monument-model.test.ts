@@ -2,18 +2,26 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { FLEET_V2_ASSET_MANIFEST } from '../src/ui/fleet-v2-assets.js';
 import { CRAFT_SCALE } from '../src/galaxy/scene.js';
-import { MONUMENT_FOG, MONUMENT_GLOW, MONUMENT_MODELS, MONUMENT_SCALE, monumentModel, monumentModelUrl } from '../src/galaxy/MonumentModel.js';
+import { MONUMENT_FOG, MONUMENT_MODELS, MONUMENT_SCALE, monumentGlow, monumentScale, monumentModel, monumentModelUrl, monumentFocusDistance } from '../src/galaxy/MonumentModel.js';
 import { TRADE_SHIP_SCALE } from '../src/galaxy/TradeShip.js';
 
 describe('monument presentation', () => {
-  it('maps all five public ordinals to the supplied runtime models', () => {
-    expect(MONUMENT_MODELS).toHaveLength(5);
-    expect(new Set(MONUMENT_MODELS).size).toBe(5);
+  it('maps all eight public ordinals to distinct supplied runtime models', () => {
+    expect(MONUMENT_MODELS).toHaveLength(8);
+    expect(new Set(MONUMENT_MODELS).size).toBe(8);
     MONUMENT_MODELS.forEach((model, index) => { expect(monumentModelUrl(index + 1)).toBe(model); });
     expect(MONUMENT_MODELS.every((url) => url.startsWith('/assets/models/monuments/'))).toBe(true);
   });
 
-  it.each([0, 6, -1, 1.5, NaN, Infinity])('rejects invalid ordinal %s', (ordinal) => {
+  it('uses the three new models without changing the original five identities', () => {
+    expect([6, 7, 8].map(monumentModelUrl)).toEqual([
+      '/assets/models/monuments/monument_fragmented_dyson_sphere.glb',
+      '/assets/models/monuments/monument_sleeping_guard.glb',
+      '/assets/models/monuments/monument_ancient_war_cemetery.glb',
+    ]);
+  });
+
+  it.each([0, 9, -1, 1.5, NaN, Infinity])('rejects invalid ordinal %s', (ordinal) => {
     expect(() => monumentModelUrl(ordinal)).toThrow();
   });
 
@@ -25,8 +33,18 @@ describe('monument presentation', () => {
     expect(MONUMENT_SCALE / largestOwnedHull).toBeGreaterThanOrEqual(3);
   });
 
-  it('uses a restrained neon rim colour shared by every monument model', () => {
-    expect(MONUMENT_GLOW).toMatch(/^#[0-9a-f]{6}$/i);
+  it.each([
+    ['EASY', 3, '#58f4b3'], ['HARD', 5, '#ff4b4b'], ['LEGACY', 3, '#8be7ff'],
+  ] as const)('draws %s at %s trade ships with its own rim colour', (difficulty, multiple, colour) => {
+    expect(monumentScale(difficulty) / TRADE_SHIP_SCALE).toBeCloseTo(multiple, 9);
+    expect(monumentGlow(difficulty)).toBe(colour);
+    const source = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 0.5), new THREE.MeshStandardMaterial());
+    const bounds = new THREE.Box3().setFromObject(monumentModel(source, difficulty)).getSize(new THREE.Vector3());
+    expect(Math.max(bounds.x, bounds.y, bounds.z) / TRADE_SHIP_SCALE).toBeCloseTo(multiple, 7);
+    // Fit the entire model in the narrow phone viewport above the focus rail.
+    const distance = monumentFocusDistance(difficulty);
+    const halfHeight = distance * Math.tan(Math.PI / 8);
+    expect(halfHeight * (350 / 812)).toBeGreaterThan(monumentScale(difficulty) / 2);
   });
 
   it('keeps public landmarks readable at the galaxy-wide zoom', () => {

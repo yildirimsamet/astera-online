@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pendingSchema } from '../src/api/schemas.js';
+import { hpRadiationSourceSchema, pendingSchema } from '../src/api/schemas.js';
 import { drawnClouds, hazeAlpha, hpHazeAlpha, radiationAt, routeRadiation, routeHpRadiation, transferHpRadiation, toHpRadiationSources, toRadiationSources } from '../src/lib/radiation.js';
 import { HULLS, hullTech } from '@astera/rules';
 
@@ -148,6 +148,16 @@ describe('the moment the server says a cloud finishes the commander\'s own wing 
 });
 
 describe('the haze on the disc', () => {
+  it('makes level one lighter and preserves level two and unclassified cloud opacity', () => {
+    const first = hpRadiationSourceSchema.parse({ ...cloud(), intensityHpPerMinute: 2, level: 1 });
+    const second = hpRadiationSourceSchema.parse({ ...cloud(), intensityHpPerMinute: 5, level: 2 });
+    expect(first).toMatchObject({ level: 1 });
+    expect(second).toMatchObject({ level: 2 });
+    expect(hpHazeAlpha(first.intensityHpPerMinute, first.level)).toBeCloseTo(hpHazeAlpha(2) * 0.55, 12);
+    expect(hpHazeAlpha(second.intensityHpPerMinute, second.level)).toBe(hpHazeAlpha(5));
+    expect(hpHazeAlpha(2, 1)).toBeLessThan(hpHazeAlpha(5, 2) * 0.6);
+    expect(hpHazeAlpha(4)).toBeCloseTo(0.024, 12);
+  });
   it('grows with the dose a minute, and never hides the worlds behind it', () => {
     const alphas = [0, 0.1, 0.5, 1, 3, 10, 100].map(hazeAlpha);
     for (let i = 1; i < alphas.length; i++) expect(alphas[i]).toBeGreaterThanOrEqual(alphas[i - 1]!);
@@ -157,7 +167,7 @@ describe('the haze on the disc', () => {
   });
 
   it('scales HP clouds by their configured intensity instead of drawing every cloud equally', () => {
-    const alphas = [0, 1, 4, 10, 100].map(hpHazeAlpha);
+    const alphas = [0, 1, 4, 10, 100].map(rate => hpHazeAlpha(rate));
     for (let i = 1; i < alphas.length; i++) expect(alphas[i]).toBeGreaterThanOrEqual(alphas[i - 1]!);
     expect(hpHazeAlpha(0)).toBeGreaterThan(0);
     expect(hpHazeAlpha(4)).toBeLessThan(hpHazeAlpha(100));

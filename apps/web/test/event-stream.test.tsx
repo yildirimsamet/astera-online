@@ -120,6 +120,17 @@ describe('the event stream', () => {
     expect(asked).toContain('notifications');
   });
 
+  it('refreshes monument waves and dispatch access when a participant enters the personal cycle', () => {
+    mountCaughtUp();
+    fire('private:monument');
+    act(() => { vi.advanceTimersByTime(COALESCE_MS + 1); });
+    expect(asked).toContain('monuments');
+    expect(asked).toContain('planet');
+    expect(asked).toContain('pending');
+    expect(asked).toContain('clan');
+    expect(asked).not.toContain('leaderboard');
+  });
+
   it('refreshes only announcements immediately when an operator publishes', () => {
     mountCaughtUp();
     fire('global:announcement');

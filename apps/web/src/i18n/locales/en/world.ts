@@ -67,7 +67,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Asteroid Shower",
-      summary: "Every hour, 1 asteroid arrives for each commander who played in the last hour. A shower multiplies that for its window; existing asteroids remain until they expire.",
+      summary: "The normal spawn rate is {{rate}} asteroids per active commander per hour. A shower multiplies this rate during its window. Half the bonus rocks are spread over the first {{frontMinutes}} minutes. Rocks remain until depleted or expired.",
     },
     trade: {
       title: "Trade Ship",

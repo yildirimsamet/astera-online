@@ -2718,8 +2718,8 @@ export const GALAXY_EVENTS = {
     ASTEROID_SHOWER: {
       schedule: 'FIXED_DAILY',
       /**
-       * VERSION 11 halves version-10 multipliers after the 2026-10-09 spawn audit,
-       * retaining the thirty-minute windows. Weekday/weekend starts stay unchanged.
+       * VERSION 12: weekday x2/x2, weekend x2/x4 (owner, 2026-10-10).
+       * Thirty-minute windows and weekday/weekend starts stay unchanged.
        * The definition version lets calendar adoption identify stale future rows.
        *
        * A SHOWER NO LONGER SIZES A LANE OF ITS OWN. Under the dynamic field
@@ -2731,16 +2731,16 @@ export const GALAXY_EVENTS = {
        * creation; the running galaxy adopts this shape through the operator command
        * `pnpm season adopt-event-calendar`, which never touches a window that opened.
        */
-      version: 11,
+      version: 12,
       windows: [
         { days: 'WEEKDAY', startsAtLocalMinute: 12 * 60 + 30, endsAtLocalMinute: 13 * 60,
           effect: { asteroidSpawnMultiplier: 2 } },
         { days: 'WEEKDAY', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 20 * 60 + 30,
-          effect: { asteroidSpawnMultiplier: 3 } },
+          effect: { asteroidSpawnMultiplier: 2 } },
         { days: 'WEEKEND', startsAtLocalMinute: 13 * 60, endsAtLocalMinute: 13 * 60 + 30,
-          effect: { asteroidSpawnMultiplier: 3 } },
+          effect: { asteroidSpawnMultiplier: 2 } },
         { days: 'WEEKEND', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 20 * 60 + 30,
-          effect: { asteroidSpawnMultiplier: 5 } },
+          effect: { asteroidSpawnMultiplier: 4 } },
       ],
     },
     TRADE_SHIP: {
@@ -2818,15 +2818,15 @@ export const GALAXY_EVENTS = {
  * x3 / x5 / x10 windows; fog and sensor reach then made one commander's share of
  * that smaller still.
  *
- * HALF THE HOUR'S BONUS IN THE FIRST FIVE MINUTES, and the other half across the
- * remaining fifty-five. The hourly TOTAL does not move — this is a redistribution,
+ * HALF THE WINDOW'S BONUS IN THE FIRST TEN MINUTES (owner, 2026-10-10); the rest
+ * remains sampled across the whole window. The TOTAL does not move — this is a redistribution,
  * not a bigger event — so nothing about the season's supply, the monthly allowance
  * or the shower's own multiplier changes.
  *
- * SPREAD ACROSS THE FIVE MINUTES RATHER THAN DROPPED AT MINUTE ZERO. A single
+ * SPREAD ACROSS TEN MINUTES RATHER THAN DROPPED AT MINUTE ZERO. A single
  * instant carrying half an hour's rocks is a lottery for whoever happens to be
  * looking at the second it fires, and `interface.md`'s "Now" is about the moment
- * arriving on time, not about one commander winning it. Five minutes is long enough
+ * arriving on time, not about one commander winning it. Ten minutes is long enough
  * to open the game and short enough that the growth reads as sudden.
  *
  * IT IS GATED ON THE OCCURRENCE'S DEFINITION VERSION, NOT ON A DATE. A calendar is
@@ -2838,10 +2838,12 @@ export const GALAXY_EVENTS = {
 export const ASTEROID_SHOWER_FRONT_LOAD = {
   /** Occurrences stamped at or above this definition version are front-loaded. */
   fromDefinitionVersion: 5,
+  /** Legacy calendars before v12 keep their original five-minute distribution. */
+  tenMinuteFromDefinitionVersion: 12,
   /** Share of a window's bonus rocks that arrive inside `minutes`. */
   share: 0.5,
   /** How long the front of the window is, in minutes from its start. */
-  minutes: 5,
+  minutes: 10,
 } as const;
 
 /**
@@ -2866,14 +2868,14 @@ export const ASTEROID_SHOWER_FRONT_LOAD = {
  */
 export const ASTEROID_DYNAMIC = {
   /** Rocks per active commander per hour, before any shower. Owner's number. */
-  perPlayerPerHour: 1,
+  perPlayerPerHour: 0.75,
   /** A commander counts as active for the next hour if they played in this window. */
   activeWindowMinutes: 60,
   /**
    * WHO COUNTS TOWARD THE SKY, AND HOW FAST THAT FIGURE MAY MOVE. Plan §15.6 — *"Sybil sınırı
    * şart"*.
    *
-   * Paying the galaxy one rock per active commander is the right rule and an open door: accounts
+   * Paying the galaxy per active commander is the right rule and an open door: accounts
    * are free, so a raw headcount of whoever logged in pays for accounts rather than for players.
    *
    * BOTH GATES, NOT EITHER. The plan writes "24 saat / küçük Core eşiği"; read as OR it defends

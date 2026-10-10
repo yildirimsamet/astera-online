@@ -781,7 +781,8 @@ race and visible mining route begin for both of them.
 **The field follows the people playing it (2026-09-16).** At the top of every hour the worker
 counts eligible human commanders plus half the active, non-retired bots, rounding that bot
 remainder down. They must have played in the last 60 minutes. It fixes that hour's spawn at
-**1 rock per commander**, at random instants and random levels. Ore is the level table
+**0.75 rocks per commander per hour** (owner, 2026-10-10), at random instants and random
+levels, rounding each lane to whole rocks. Ore is the level table
 (800–4,000) with no monthly cap; levels open one rung a day (day 1: L1–2, day 2: L1–3, day 3:
 L1–4, day 4+: all). Within the unlocked range the L1–5 weights are 44%, 26%, 17%, 9% and 4%; the
 rarest level is 20% less common than before. A quiet night is no longer a free farm and a busy evening is no longer an empty
@@ -794,25 +795,28 @@ keep their derived field up to the hour they adopted it.
 
 **Asteroid Shower is a public opportunity window (D149/D201, reshaped 2026-09-16).** The owner's
 audience is 30–40-year-olds with jobs, and six showers a day paid whoever could attend six. Weekdays
-(Mon–Fri, TRT): 12:30–13:00 ×2 and 20:00–20:30 ×3. Weekends: 13:00–13:30 ×3 and 20:00–20:30 ×5.
-Definition v11 (2026-10-09) halves v10's multipliers without changing its half-hour windows.
-Live calendars adopt this only for future windows from the next hour boundary; already-planned
+(Mon–Fri, TRT): 12:30–13:00 ×2 and 20:00–20:30 ×2. Weekends: 13:00–13:30 ×2 and 20:00–20:30 ×4.
+Definition v12 (owner, 2026-10-10) keeps the existing half-hour starts and durations.
+Live calendars adopt this only for future windows from the next unplanned hour boundary; already-planned
 hours remain intact.
 A shower multiplies the hourly per-player spawn for the part of each hour it covers, and half of its
-bonus still arrives in its first five minutes. Ruleset 4–7 seasons retain their random calendar. The
+bonus arrives across its first ten minutes. Ruleset 4–7 seasons retain their random calendar. The
 end stops only bonus arrivals;
 rocks already in the galaxy retain their ordinary 2.5–5 hour life and mining flights continue. Signals,
 the Chronicle and the galaxy status chip announce the public lifecycle, while D143 still hides every
-undiscovered coordinate and the API never publishes the future calendar.
+undiscovered coordinate and the API never publishes the future calendar. The active shower chip
+shows its actual multiplier in the primary color beside the remaining time.
 
-**Half of a window's bonus now lands in its first five minutes (2026-09-14).** The hourly total is
+**Half of a window's bonus lands across its first ten minutes (2026-10-10; originally five
+minutes in definition v5).** The hourly total is
 unchanged — this is a redistribution, not a bigger event. What it fixes is that the banner used to
 arrive before the rocks did: spread evenly over sixty minutes, the field at the instant of the
 announcement held exactly what it had held a second earlier, so a commander who opened the game on
-the signal was told the truth by the copy and lied to by the disc. It is spread ACROSS the five
+the signal was told the truth by the copy and lied to by the disc. It is spread ACROSS the ten
 minutes rather than dropped at minute zero, because a single instant carrying half an hour's rocks
 is a lottery for whoever happens to be looking. A window that has already opened keeps the arrival
-times its rocks were derived under.
+times its rocks were derived under. Stored five-minute snapshots and derived calendars v5–v11
+retain their original timing when v12 ships.
 
 **A laden craft flies home at half the speed it went out (D117, halved from a third on
 2026-09-14).** The trip out is a race and stays one; the trip back is the price of having won it.

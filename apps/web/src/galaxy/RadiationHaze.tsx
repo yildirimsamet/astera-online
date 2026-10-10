@@ -18,6 +18,8 @@ import { paintRadiationVolume } from './radiationVolume.js';
 
 const COLOUR = new THREE.Color('#b5d58b');
 const COOL_COLOUR = new THREE.Color('#7eaf98');
+const LEVEL_ONE_COLOUR = new THREE.Color('#e5cf73');
+const LEVEL_ONE_COOL_COLOUR = new THREE.Color('#bfa95f');
 
 const vertex = /* glsl */ `
   out vec3 vLocal;
@@ -77,16 +79,17 @@ function Cloud({ cloud, volume, geometry }: {
 }) {
   const centre = useMemo(() => toWorld(cloud.center), [cloud.center]);
   const radius = cloud.radius / VIEW.scale;
-  const alpha = 'intensityHpPerMinute' in cloud ? hpHazeAlpha(cloud.intensityHpPerMinute) : hazeAlpha(cloud.intensityPctPerMinute);
+  const level = 'intensityHpPerMinute' in cloud ? cloud.level : undefined;
+  const alpha = 'intensityHpPerMinute' in cloud ? hpHazeAlpha(cloud.intensityHpPerMinute, level) : hazeAlpha(cloud.intensityPctPerMinute);
   const uniforms = useMemo(() => ({
     uDensity: { value: volume },
-    uColour: { value: COLOUR },
-    uCoolColour: { value: COOL_COLOUR },
+    uColour: { value: level === 1 ? LEVEL_ONE_COLOUR : COLOUR },
+    uCoolColour: { value: level === 1 ? LEVEL_ONE_COOL_COLOUR : COOL_COLOUR },
     uEye: { value: new THREE.Vector3() },
     uAlpha: { value: alpha },
     uTime: { value: 0 },
     uPhase: { value: cloud.center.x * 0.017 + cloud.center.z * 0.029 },
-  }), [alpha, volume, cloud.center.x, cloud.center.z]);
+  }), [alpha, level, volume, cloud.center.x, cloud.center.z]);
 
   useFrame(({ camera }, delta) => {
     uniforms.uTime.value += delta;

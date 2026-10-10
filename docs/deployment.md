@@ -2347,3 +2347,92 @@ public artwork to match its SHA-256 and verify the release marker and CSP nonce.
 Check TR/EN at 350px and desktop width: one image, no showcase Canvas or autonomous
 animation, stable bounds during image loading/failure, and working Shop/Inventory
 destinations. Background galaxy rendering is outside the focused showcase harness.
+
+## Easy / Hard monuments — 10 October 2026
+
+This release adds migration `0147_monument_difficulty`. Existing monument rows
+receive `LEGACY`, retaining their original layout and dispatch rules until the
+explicit adoption below. New ruleset-16 seasons deal eight targets: four Hard and
+four Easy at the eight corners of a sphere-inscribed cube. The first five IDs and
+their honoree identities remain stable when an existing season adopts the deal.
+
+Deploy the migration, every API replica, the singleton worker and the web client
+before adopting a live galaxy. An older API must not remain able to accept combat
+reinforcements. Older clients accept only five ordinals; players need the updated
+client before the eight-target deal is activated. Do not downgrade to the old
+five-target build after adoption without a separate compatibility change.
+
+At the chosen quiet window, inspect one explicitly named live galaxy:
+
+```bash
+pnpm --filter @astera/server season adopt-monuments --shard EU-1
+pnpm --filter @astera/server season adopt-monuments --shard EU-1 --yes
+```
+
+The first command previews. The second rechecks atomically under an exclusive
+season lock. `BUSY` means player control, an outbound/held/returning monument fleet,
+an active monument probe or a preparing/attacking joint operation exists; nothing
+is written, and an application request exits unsuccessfully. Wait and retry.
+`ALREADY_UPDATED` is an idempotent no-op. Repeat explicitly for another galaxy
+only when its own quiet window is suitable.
+
+Adoption preserves closed radiation history, closes old active monument clouds at
+cutover, and opens the new clouds from that timestamp. It never re-prices a past
+flight. It updates neutral garrisons and their respawn templates together, clears
+stale pending loss/respawn events and refreshes the map and private monument read.
+Details and the accepted edge cases are in
+[the monument update record](monument-fairness-plan-2026-10-10.md).
+
+## Asteroid density and event multiplier — 10 October 2026
+
+The base arrival rate is now **0.75 rocks per eligible active commander per hour**.
+Population eligibility and the six-hour smoothing window remain the same. Half of
+the shower's **bonus** rocks are distributed over its first **10 minutes**; the
+remaining arrivals are sampled across the whole window. Counts are rounded to whole
+rocks per lane. Rock lifetimes remain 2.5–5 hours, so existing stock can still be visible.
+
+**Shower definition v12** keeps the existing starts and 30-minute durations:
+
+| Türkiye time | Weekday | Weekend |
+| --- | --- | --- |
+| Lunch | 12:30–13:00 ×2 | 13:00–13:30 ×2 |
+| Evening | 20:00–20:30 ×2 | 20:00–20:30 ×4 |
+
+For a smoothed population of 32, an ordinary hour plans 24 rocks. A half-hour ×2
+shower plans 24 rocks (6 reserved for the first 10 minutes), followed by 12 ordinary
+rocks in the other half-hour. A half-hour ×4 shower plans 48 rocks (18 reserved),
+followed by 12 ordinary rocks: **60 for the hour**, compared with the old Saturday
+evening's 96. These are arrivals for that hour, not the total visible field.
+
+Stored hour plans and generation snapshots stay frozen: the new rate and ten-minute
+setting apply only when the new worker opens an unplanned hour. Existing five-minute
+snapshots and null-snapshot rows retain their original birth times, IDs, ore and mining
+targets. Derived calendars v5–v11 also retain their five-minute distribution; v4 and
+earlier retain their original uniform distribution. Do not rewrite those rows.
+
+This adjustment introduces no schema migration. Inventory other pending migrations
+when preparing a combined release, and follow the existing pinned-image runbook.
+After every API and the singleton worker runs the matching image, preview and apply
+the existing calendar adoption to **all live fixed-calendar shards**:
+
+```bash
+compose=(docker compose -f docker-compose.prod.yml)
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  adopt-event-calendar
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  adopt-event-calendar --yes
+```
+
+Review each reported cutover. Adoption changes only unplanned future windows; opened
+hours, future hours already committed and processed lifecycle markers remain protected.
+Publish the matching web after the reported cutovers and any retained old shower have
+ended, so the weekly guide agrees with the sky. The active-event chip reads the actual
+stored event effect and can correctly show a retained 5x window during transition.
+Changing the image alone does not update a live season's stored future calendar.
+Do not use a restamp, queue reset or season wipe for this change.
+
+After cutover, require one row per hour, one next-hour job, a non-null generation
+snapshot with `frontLoadMinutes: 10`, v12 calendar effects, and lane counts matching
+the measured population. Check unchanged depleted claims and mining targets. A repeat
+adoption must make no changes. Rollback must preserve the additive generation column
+and frozen hour rows; image rollback does not reverse the stored calendar adoption.

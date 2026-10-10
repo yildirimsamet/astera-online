@@ -73,6 +73,7 @@ import { Satellites, Shields } from './Satellites.jsx';
 import { MiningFlights } from './MiningFlights.jsx';
 import { OwnershipFilaments } from './OwnershipFilaments.jsx';
 import { RadiationHaze } from './RadiationHaze.js';
+import { monumentFocusDistance } from './MonumentModel.js';
 import { SensorRings, type ReachRing } from './SensorRings.jsx';
 import {
   DISC_RADIUS,
@@ -537,7 +538,7 @@ export function GalaxyCanvas({
    */
   const approach = focus === null || focus.kind === 'planet'
     ? null
-    : focus.kind === 'monument' ? 20 : focus.kind === 'intergalacticConvoy'
+    : focus.kind === 'monument' ? monumentFocusDistance(monuments.find(row => row.id === focus.id)?.difficulty ?? 'LEGACY') : focus.kind === 'intergalacticConvoy'
       ? CONVOY_FOCUS_DISTANCE
       : CRAFT_DISTANCE;
 

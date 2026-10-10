@@ -483,7 +483,7 @@ export const okSchema = z.object({ ok: z.boolean() });
 
 export const seasonSchema = z.object({
   seasonId: z.string(),
-  /** Last season's top five, index N − 1 naming monument N (2026-10-06). Older servers omit it. */
+  /** Last season's top eight, index N − 1 naming monument N (2026-10-10). Older servers omit it. */
   monumentHonorees: z.array(z.string().nullable()).optional(),
   shard: z.string(),
   /** Added after the first season payload; old servers remain readable. */
@@ -1243,11 +1243,13 @@ export type RadiationSourceView = z.infer<typeof radiationSourceSchema>;
 /** Ruleset 16 clouds carry HP, independently of the legacy percentage model. */
 export const hpRadiationSourceSchema = radiationSourceSchema.omit({ intensityPctPerMinute: true }).extend({
   intensityHpPerMinute: z.number().finite().nonnegative(),
+  level: z.union([z.literal(1), z.literal(2)]).optional(),
 });
 export type HpRadiationSourceView = z.infer<typeof hpRadiationSourceSchema>;
 
 export const publicMonumentSchema = z.object({
-  id: z.string(), ordinal: z.number().int().min(1).max(5), position: vec3,
+  id: z.string(), ordinal: z.number().int().min(1).max(8), position: vec3,
+  difficulty: z.enum(['LEGACY', 'EASY', 'HARD']).default('LEGACY'),
   controller: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('NEUTRAL') }),
     z.object({ kind: z.literal('PLAYER'), playerId: z.string(), name: z.string() }),
@@ -1261,7 +1263,10 @@ export const publicMonumentSchema = z.object({
 });
 export type PublicMonument = z.infer<typeof publicMonumentSchema>;
 /** Private monument reads expose only the caller's own outbound reservation. */
-const privateMonumentSchema = publicMonumentSchema.extend({ reserved: z.number().finite().nonnegative() });
+const privateMonumentSchema = publicMonumentSchema.extend({
+  reserved: z.number().finite().nonnegative(),
+  sendAccess: z.object({ playerTier: z.number().int().positive(), tierAllowed: z.boolean(), cargoOnly: z.boolean() }).optional(),
+});
 const monumentLotSchema = z.object({
   id: z.string(), hull: hullId, count: z.number().int().positive(),
   damageBp: z.number().int().min(0).max(9999), remainderBp: z.number().finite().min(0).lt(1),
@@ -1821,10 +1826,10 @@ const clanWarOperationSchema = z.object({
   closeReason: z.enum(['BATTLE', 'MONUMENT', 'LEADER_CANCEL', 'EXPIRED', 'TARGET_CHANGED', 'FAILED']).nullable(),
   leaderPlayerId: z.string(),
   target: z.union([
-    z.object({ kind: z.literal('PLANET').optional(), monumentId: z.null().optional(), monumentOrdinal: z.number().int().min(1).max(5).nullable().optional(), playerId: z.string(),
+    z.object({ kind: z.literal('PLANET').optional(), monumentId: z.null().optional(), monumentOrdinal: z.number().int().min(1).max(8).nullable().optional(), playerId: z.string(),
       username: z.string(), planetId: z.string(), planetName: z.string(), position: vec3 }),
     z.object({ kind: z.literal('MONUMENT'), monumentId: z.string(), playerId: z.null(),
-      monumentOrdinal: z.number().int().min(1).max(5).nullable().optional(), username: z.string(), planetId: z.null(), planetName: z.string(), position: vec3 }),
+      monumentOrdinal: z.number().int().min(1).max(8).nullable().optional(), username: z.string(), planetId: z.null(), planetName: z.string(), position: vec3 }),
   ]),
   staging: z.object({ planetId: z.string(), name: z.string(), position: vec3 }),
   createdAt: z.coerce.date(), expiresAt: z.coerce.date(),
@@ -2362,7 +2367,7 @@ export const unlockable = z.enum(['TELESCOPE', 'RADAR', 'EXPLORER', 'VEIL']);
 
 const pendingThread = z.object({
   monumentId: z.string().optional(),
-  monumentOrdinal: z.number().int().min(1).max(5).optional(),
+  monumentOrdinal: z.number().int().min(1).max(8).optional(),
   /** Klan Savunma Desteği: a `transfer` that is a support wave's leg. Optional for a rolling deploy. */
   clanSupport: z.boolean().optional(),
   /**
@@ -2829,7 +2834,7 @@ const strategicBattleReport = z.object({
 
 const monumentBattleReport = z.object({
   kind: z.literal('MONUMENT'), id: z.string(), at: z.coerce.date(),
-  monument: z.object({ id: z.string(), ordinal: z.number().int().min(1).max(5), position: publicMonumentSchema.shape.position }),
+  monument: z.object({ id: z.string(), ordinal: z.number().int().min(1).max(8), position: publicMonumentSchema.shape.position }),
   attacking: z.boolean(), grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']), control: z.enum(['ATTACKER', 'DEFENDER', 'EMPTY']),
   roundCount: z.number().int().nonnegative(), yourFleet: fleet, yourSurvivors: fleet, yourLosses: fleet,
   yourDamage: z.array(monumentLotSchema.pick({ hull: true, count: true, damageBp: true, remainderBp: true })),

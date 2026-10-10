@@ -14,6 +14,8 @@
  */
 
 export const errors = {
+  MONUMENT_TIER_FORBIDDEN: "Los monumentos fáciles admiten niveles 1–3; elige un monumento difícil",
+  MONUMENT_FLEET_ACTIVE: "Solo puedes añadir cargueros hasta que todas tus naves, incluidos los cargueros, vuelvan a casa.",
   CAPITAL_CANNOT_BE_ABANDONED: "No puedes abandonar tu capital. Selecciona una colonia.",
   COLONY_ABANDON_BLOCKED: "Esta colonia tiene misiones activas o un cambio de propietario. Comprueba los motivos y espera a que terminen.",
   SKIN_NOT_OWNED: 'Esta apariencia no está en tu inventario. Elige una que tengas.',

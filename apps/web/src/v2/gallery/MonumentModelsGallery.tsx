@@ -7,6 +7,7 @@ import { orientedCraft } from '../../galaxy/model.js';
 import { TRADE_SHIP_SCALE } from '../../galaxy/TradeShip.js';
 import { MODEL, MODEL_FACING } from '../../ui/assets.js';
 import { monumentName } from '../../i18n/names.js';
+import { monumentDifficulty } from '@astera/rules';
 
 function ComparisonShip() {
   const { scene } = useGLTF(MODEL.tradeShip, false);
@@ -81,7 +82,7 @@ export function MonumentModelsGallery() {
     <main className="min-h-dvh bg-v2-void text-v2-ink">
       <header className="space-y-2 p-3">
         <h1 className="text-title">Monuments</h1>
-        <p className="text-caption text-v2-ink-2">Monument: 3× trade ship · Drag to inspect the silhouette.</p>
+        <p className="text-caption text-v2-ink-2">Easy: 3× trade ship · Hard: 5× trade ship · Drag to inspect the silhouette.</p>
         <div className="flex flex-wrap gap-1" aria-label="Choose monument">
           {MONUMENT_MODELS.map((url, index) => (
             <button
@@ -101,7 +102,7 @@ export function MonumentModelsGallery() {
           <Camera />
           <Suspense fallback={null}>
             <group key={ordinal}>
-              <group position={[-1.5, 0, 0]}><MonumentModel ordinal={ordinal} /></group>
+              <group position={[-1.5, 0, 0]}><MonumentModel ordinal={ordinal} difficulty={monumentDifficulty(ordinal)} /></group>
               <ComparisonShip />
               <Ready ordinal={ordinal} />
             </group>

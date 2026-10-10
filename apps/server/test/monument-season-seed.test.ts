@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MONUMENT_SEASON_DEFAULTS } from '@astera/rules';
+import { MONUMENT_BALANCE, MONUMENT_SEASON_DEFAULTS, monumentDifficulty } from '@astera/rules';
 import { hpRadiationSources, monuments } from '../src/db/schema.js';
 import { createSeason } from '../src/services/season.js';
 import { seedWorld, testDb, type Fixture } from './helpers.js';
@@ -26,7 +26,7 @@ describe('the approved monument season deal', () => {
     expect(await f.db.select().from(monuments).where(eq(monuments.seasonId, f.seasonId))).toEqual([]);
   });
 
-  it('deals five deterministic monuments and one HP cloud per monument for ruleset 16', async () => {
+  it('deals four Easy and four Hard spherical monuments with their own HP cloud for ruleset 16', async () => {
     const { season } = await createSeason(f.db, {
       shardCode: 'MONUMENT-SEED-16', seed: 917, startsAt: f.clock.now(), rulesetVersion: 16,
     });
@@ -38,16 +38,21 @@ describe('the approved monument season deal', () => {
     expect(rows.map((row) => ({ ordinal: row.ordinal, x: row.x, y: row.y, z: row.z }))).toEqual(
       MONUMENT_SEASON_DEFAULTS.positions.map((position, index) => ({ ...position, ordinal: index + 1 })),
     );
-    expect(rows.every((row) => row.capacity === MONUMENT_SEASON_DEFAULTS.capacity
-      && row.productionPerMinute === MONUMENT_SEASON_DEFAULTS.productionPerMinute
-      && row.garrisonTemplate.LEVIATHAN === MONUMENT_SEASON_DEFAULTS.garrison.LEVIATHAN
-      && Object.keys(row.garrisonTech).length === 0)).toBe(true);
+    expect(rows.filter(row => row.difficulty === 'EASY')).toHaveLength(4);
+    expect(rows.filter(row => row.difficulty === 'HARD')).toHaveLength(4);
+    for (const row of rows) {
+      const difficulty = monumentDifficulty(row.ordinal);
+      const balance = MONUMENT_BALANCE[difficulty];
+      expect(row).toMatchObject({ difficulty, capacity: balance.capacity,
+        productionPerMinute: balance.productionPerMinute, garrison: balance.garrison,
+        garrisonTemplate: balance.garrison, garrisonTech: {} });
+    }
     expect(clouds).toHaveLength(rows.length);
     expect(clouds.map((cloud) => ({ anchorId: cloud.anchorId, radius: cloud.radius,
       intensity: cloud.intensityHpPerMinute, activeFrom: cloud.activeFrom }))
       .sort((a, b) => (a.anchorId ?? '').localeCompare(b.anchorId ?? ''))).toEqual(
       rows.map((row) => ({ anchorId: row.id, radius: MONUMENT_SEASON_DEFAULTS.cloudRadius,
-        intensity: MONUMENT_SEASON_DEFAULTS.intensityHpPerMinute, activeFrom: season.startsAt }))
+        intensity: MONUMENT_BALANCE[monumentDifficulty(row.ordinal)].intensityHpPerMinute, activeFrom: season.startsAt }))
         .sort((a, b) => a.anchorId.localeCompare(b.anchorId)),
     );
   });

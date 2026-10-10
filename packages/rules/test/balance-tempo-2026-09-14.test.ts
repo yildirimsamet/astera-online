@@ -255,11 +255,11 @@ describe('the Asteroid Shower front load', () => {
     ];
   };
 
-  it('ships the new behaviour as a new definition version', () => {
+  it('versions the ten-minute default while retaining the original half-bonus share', () => {
     expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version)
-      .toBeGreaterThanOrEqual(ASTEROID_SHOWER_FRONT_LOAD.fromDefinitionVersion);
+      .toBeGreaterThanOrEqual(ASTEROID_SHOWER_FRONT_LOAD.tenMinuteFromDefinitionVersion);
     expect(ASTEROID_SHOWER_FRONT_LOAD.share).toBe(0.5);
-    expect(ASTEROID_SHOWER_FRONT_LOAD.minutes).toBe(5);
+    expect(ASTEROID_SHOWER_FRONT_LOAD.minutes).toBe(10);
   });
 
   it('adds the same number of rocks as the version it replaces', () => {

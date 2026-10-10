@@ -122,7 +122,7 @@ import { locationIsKnown } from './locationSight.js';
 import { galaxyTraffic, sensorPosts, type Contact } from './traffic.js';
 import { rememberedWorlds } from './intel.js';
 import { schedule } from '../worker/queue.js';
-import { publishPrivate, publishShard } from '../stream/bus.js';
+import { publish, publishPrivate, publishShard } from '../stream/bus.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 import type { ClanActor } from './clan.js';
 /*
@@ -132,8 +132,9 @@ import type { ClanActor } from './clan.js';
   module scope, and neither does.
 */
 import { resolveClanWarBattle } from './clanWarSettlement.js';
-import { lockMonuments, hpSourcesForSeason, type LockedMonument } from './monument.js';
+import { lockMonuments, hpSourcesForSeason, assertMonumentFleetDispatch, type LockedMonument } from './monument.js';
 import { advanceLockedMonument, monumentEndpoints, monumentHomes } from './monumentArrival.js';
+import { resolveMonumentReturn, settleMonumentFlight } from './monumentMovement.js';
 import { lockWorlds } from './ownership.js';
 import { scheduleFlightBoundary } from './monumentBoundaries.js';
 import { assertSeasonOutsideSilentSpace, markProgress } from './waitingRoom.js';
@@ -219,6 +220,16 @@ async function prepareWarMonuments(tx: Tx, operation: ClanWarOperationRow | null
   for (const target of locked) {
     const homes = await monumentHomes(tx, target, endpoints.homeIds, worlds);
     await advanceLockedMonument(tx, target, homes, at, input.adminUsernames ?? []);
+    // A delayed worker must not keep a participant's completed personal cycle
+    // closed. These endpoints were locked above, before any target/clan locks.
+    for (const wave of target.waves.filter(row => playersToLock.includes(row.playerId))) {
+      if (wave.status === 'RETURNING' && wave.arriveAt !== null && wave.arriveAt <= at && wave.arriveAt < target.season.endsAt) {
+        const landed = await resolveMonumentReturn(tx, { waveId: wave.id, generation: wave.generation, at });
+        if (landed) Object.assign(wave, landed.wave);
+      } else if (wave.status === 'OUTBOUND' || wave.status === 'RETURNING') {
+        await settleMonumentFlight(tx, target, wave.id, at);
+      }
+    }
   }
   return new Map(locked.map((target) => [target.monument.id, target]));
 }
@@ -1238,7 +1249,7 @@ async function gatherContribution(
   // Origin and staging together, in id order, before anything takes the clan row.
   const standing = await activeClanMembership(tx, input.actor.playerId);
   const pending = standing ? await openOperation(tx, standing.clanId) : null;
-  await prepareWarMonuments(tx, pending, now, { extraPlayerIds: [input.actor.playerId],
+  const preparedMonuments = await prepareWarMonuments(tx, pending, now, { extraPlayerIds: [input.actor.playerId],
     extraWorldIds: [input.originPlanetId], adminUsernames: input.adminUsernames });
 
   const origin = await loadLocked(tx, input.originPlanetId, input.clock, {
@@ -1291,6 +1302,15 @@ async function gatherContribution(
     ? (await tx.select().from(monuments).where(eq(monuments.id, operation.targetMonumentId)).limit(1))[0]
     : (await tx.select().from(planets).where(eq(planets.id, clanWarPlanetTarget(operation).planetId)).limit(1))[0];
   if (!staging || !target) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
+  if (operation.targetKind === 'MONUMENT' && operation.targetMonumentId !== null) {
+    const prepared = preparedMonuments.get(operation.targetMonumentId);
+    if (!prepared) throw new GameError('MONUMENT_NOT_FOUND', 'No such monument', 404);
+    try { await assertMonumentFleetDispatch(tx, prepared, input.actor.playerId, input.fleet); }
+    catch (error) {
+      if (!(error instanceof GameError)) throw error;
+      refuse(error.code, error.message);
+    }
+  }
   await assertClanWarSeason(tx, {
     operation,
     actorSeasonId: input.actor.seasonId,
@@ -2717,6 +2737,13 @@ async function startMonumentClanWar(tx: Tx, input: {
     throw new GameError('CLAN_WAR_NO_COMBAT_FLEET', 'A combined attack needs at least one combat hull', 409);
   }
   const fighters = [...new Set(pool.map((wave) => wave.playerId))].sort();
+  for (const playerId of fighters) {
+    const personal: Fleet = {};
+    for (const contribution of pool.filter(row => row.playerId === playerId)) {
+      for (const [hull, count] of fleetEntries(contribution.fleet)) personal[hull] = (personal[hull] ?? 0) + count;
+    }
+    await assertMonumentFleetDispatch(tx, target, playerId, personal);
+  }
   for (const playerId of [...new Set([...fighters, operation.leaderPlayerId])]) {
     const membership = await activeClanMembership(tx, playerId);
     const [player] = await tx.select({ seasonId: players.seasonId }).from(players).where(eq(players.id, playerId));
@@ -2789,6 +2816,9 @@ async function startMonumentClanWar(tx: Tx, input: {
     .where(eq(clanWarOperations.id, operation.id)).returning();
   for (const playerId of holders) await notify(tx, { playerId, kind: 'monument_inbound', at: now, refId: nativeIds[0]!,
     payload: { targetKind: 'MONUMENT', monumentId: target.monument.id, monumentOrdinal: target.monument.ordinal, waveId: nativeIds[0]!, arriveAt: arriveAt.toISOString() } });
+  // The clan-war event refreshes preparation; each departing owner's monument
+  // waves and personal dispatch access must also update without waiting for a poll.
+  for (const playerId of fighters) await publish(tx, playerId, 'private:monument');
   await publishShard(tx, operation.seasonId, 'launch');
   await publishWar(tx, clan.id);
   return { missionId: nativeIds[0]!, arriveAt: arriveAt.toISOString(), resolveAt: arriveAt.toISOString(), participants: fighters.length,
