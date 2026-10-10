@@ -95,6 +95,14 @@ const show = (
 };
 
 describe('the pending strip', () => {
+  it('recalls the monument fleet through the native lane from the flight list', async () => {
+    show([thread({ id: 'wave-1', kind: 'monument', monumentId: 'monument-1', recallable: true,
+      monumentRecall: { minutes: 8 } })]);
+    await userEvent.click(screen.getByRole('button', { name: /open flights/i }));
+    await userEvent.click(screen.getByRole('button', { name: /recall fleet/i }));
+    const recalled: unknown = recallFleet.mock.lastCall?.[0];
+    expect(recalled).toEqual({ missionId: 'wave-1', monument: true });
+  });
   it.each([
     { arriveAt: new Date(0) },
     { recalledAt: undefined },

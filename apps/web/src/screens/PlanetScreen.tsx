@@ -137,6 +137,7 @@ import { BaseQueues } from '../v2/shell/BaseQueues.js';
 import { REPAIR_STATION_ITEM } from '../lib/repairStation.js';
 import { RepairStationCard, RepairStationSheet } from './RepairStation.js';
 import { ClanSupportBay, DefencePostureCard } from './ClanSupportBay.js';
+import { ColonyAbandonment } from './ColonyAbandonment.js';
 
 /**
  * MY PLANET.
@@ -493,6 +494,7 @@ export function PlanetScreen({
 
         {!lesson && <div className="flex flex-col gap-2 px-2 pt-2">
           <PlanetHero planet={data} />
+          <ColonyAbandonment planet={data} />
         </div>}
 
         <div className="flex flex-col gap-2 px-2">

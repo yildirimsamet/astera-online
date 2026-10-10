@@ -1,0 +1,71 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server
+
+ ✓ test/galaxy-events.test.ts (21 tests) 18533ms
+   ✓ persisted galaxy events > keeps legacy random future event times private 2108ms
+   ✓ persisted galaxy events > does not promise a fixed event after its season was frozen early 573ms
+   ✓ persisted galaxy events > restamping a live calendar > raises the windows that have not opened and refuses to touch the rest 534ms
+   ✓ persisted galaxy events > restamping a live calendar > changes nothing on a season that already carries the current figures 524ms
+   ✓ persisted galaxy events > restamping a live calendar > touches only the kind it was asked for 564ms
+   ✓ persisted galaxy events > restamping a live calendar > restamps each season through its own frozen ruleset config 1721ms
+   ✓ persisted galaxy events > syncing a new fixed window into a live calendar > appends the active and future windows without moving any existing asteroid sequence 523ms
+   ✓ persisted galaxy events > syncing a new fixed window into a live calendar > visibly grows the live field at a frozen instant when the open window is appended 953ms
+   ✓ persisted galaxy events > creates the frozen three-merchant ruleset-5 calendar and four-merchant ruleset-6 calendar 1580ms
+   ✓ persisted galaxy events > atomically seeds all three immutable lanes and their lifecycle queue pairs 565ms
+   ✓ persisted galaxy events > lets all three kinds legitimately hold sequence zero 467ms
+   ✓ persisted galaxy events > adds merchants only at the trade-ship boundary and never moves the shower calendar 1595ms
+   ✓ persisted galaxy events > composes an asteroid field the trade lane cannot touch 967ms
+   ✓ persisted galaxy events > composes bonus lanes while preserving every pre-increase asteroid 1598ms
+   ✓ persisted galaxy events > repairs a missing lifecycle row without duplicating the rest 548ms
+   ✓ persisted galaxy events > delivers start and end exactly once to every player 590ms
+   ✓ persisted galaxy events > serializes lifecycle fanout behind an in-flight membership change 592ms
+   ✓ persisted galaxy events > evaluates join backfill after a lifecycle transition that won the audience lock 885ms
+   ✓ persisted galaxy events > shows only active occurrences and backfills a joining player 538ms
+   ✓ persisted galaxy events > delivers a trade ship start and end exactly once to every player 573ms
+   ✓ persisted galaxy events > publishes an active trade ship with its orbit and nothing outside the window 526ms
+ ✓ test/asteroid-dynamic.test.ts (16 tests) 21071ms
+   ✓ opening an hour > counts active people and rounds down an unpaired active bot 2153ms
+   ✓ opening an hour > multiplies the hour by the shower that covers it 652ms
+   ✓ opening an hour > sizes a shower against active people plus rounded bot pairs 680ms
+   ✓ opening an hour > opens each hour once and queues exactly one next hour 944ms
+   ✓ opening an hour > keeps the legacy weights for an hour row that predates the new balance 737ms
+   ✓ opening an hour > pays a late hour only for the minutes it has left, and never backfills a lost one 693ms
+   ✓ opening an hour > does nothing on a season still on the derived field 750ms
+   ✓ opening an hour > repairs a missing hour at worker start, once 657ms
+   ✓ opening an hour > carries only the hours whose rocks can still matter 690ms
+   ✓ mining a dynamic rock > flies to a rock of a stored hour by its public id and brings its ore home 1111ms
+   ✓ season creation > deals a season at the current ruleset onto the dynamic field from its first instant 2290ms
+   ✓ adopting the working-week calendar on a live season > keeps every rock already in the sky exactly where and what it was 3351ms
+   ✓ adopting the working-week calendar on a live season > replaces every window from the cutover hour on and leaves the rest alone 1307ms
+   ✓ adopting the working-week calendar on a live season > freezes the old shower calendar the derived field was built from 1451ms
+   ✓ adopting the working-week calendar on a live season > changes nothing the second time it is run 1301ms
+   ✓ adopting the working-week calendar on a live season > opens the first dynamic hour at the cutover for the people who are playing 2288ms
+ ✓ test/asteroid-supply.test.ts (22 tests) 25488ms
+   ✓ who counts toward the asteroid supply > counts everybody who was there when the season opened 3650ms
+   ✓ who counts toward the asteroid supply > counts a commander who has both the day and the Core 1076ms
+   ✓ who counts toward the asteroid supply > refuses one that has the day but not the Core 1164ms
+   ✓ who counts toward the asteroid supply > refuses one that has the Core but not the day 1234ms
+   ✓ who counts toward the asteroid supply > still asks whether they played at all 999ms
+   ✓ who counts toward the asteroid supply > excludes retired bots and rounds down a single active bot 1002ms
+   ✓ who counts toward the asteroid supply > counts half of active bots without letting them bypass human gates at full weight 1119ms
+   ✓ who counts toward the asteroid supply > adds half of 0 active bots, rounding odd remainders down 2165ms
+   ✓ who counts toward the asteroid supply > adds half of 1 active bots, rounding odd remainders down 2130ms
+   ✓ who counts toward the asteroid supply > adds half of 2 active bots, rounding odd remainders down 1699ms
+   ✓ who counts toward the asteroid supply > adds half of 3 active bots, rounding odd remainders down 1461ms
+   ✓ who counts toward the asteroid supply > adds half of 4 active bots, rounding odd remainders down 1671ms
+   ✓ who counts toward the asteroid supply > keeps retired bots out of a larger active population 688ms
+   ✓ who counts toward the asteroid supply > counts a commander whose account is older than the season, however late they arrived 638ms
+   ✓ who counts toward the asteroid supply > still gates an account opened after the season did 588ms
+   ✓ who counts toward the asteroid supply > does not wave an old bot account through as a veteran 629ms
+   ✓ who counts toward the asteroid supply > does not wave a bot through as a founder 576ms
+   ✓ what an asteroid hour writes down > stores the raw eligible count beside the figure it spawned against 610ms
+   ✓ what an asteroid hour writes down > spawns the first hour against its own count 580ms
+   ✓ what an asteroid hour writes down > spawns against the raw count through the founding day 587ms
+   ✓ what an asteroid hour writes down > averages again once the founding day is over 598ms
+   ✓ what an asteroid hour writes down > backfills the hours written before the column existed, so the window does not collapse 616ms
+
+ Test Files  3 passed (3)
+      Tests  59 passed (59)
+   Start at  22:20:46
+   Duration  70.01s (transform 1.37s, setup 0ms, collect 4.09s, tests 65.09s, environment 1ms, prepare 226ms)
+

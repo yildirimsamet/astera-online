@@ -153,6 +153,11 @@ resource transaction, API and UI regressions remain required. `pnpm test` and
 Direct `packages/sim` and server audit discovery is also disabled unless
 `ASTERA_INCLUDE_LONG_TESTS=1` is set by an explicitly authorized run.
 
+**Owner rule, 2026-10-09 (local PC):** Run checks sequentially, one workspace and one Vitest
+worker at a time (`--workspace-concurrency=1`, `--maxWorkers=1 --minWorkers=1
+--no-file-parallelism`). Use `nice -n 10` for tests. Avoid simultaneous test/typecheck/lint
+runs; keep the owner's PC responsive.
+
 `pnpm lint` gives type-aware ESLint a 6 GB Node heap through the root script. The full workspace
 regularly exceeds Node's 2 GB default; do not bypass the script with a bare `eslint .` invocation.
 

@@ -123,7 +123,8 @@ export function FlightRow({
   const pace = paceShown(item.pace);
   const turnable = onRecall !== undefined && item.leg !== 'return'
     && (item.recallMission !== undefined || item.recall !== undefined);
-  const home = item.span ? recallPreview(item.span.from, now) : null;
+  const home = item.recallMinutes !== undefined ? { backInMs: item.recallMinutes * 60_000 }
+    : item.span ? recallPreview(item.span.from, now) : null;
   const hostile = item.incoming;
   const detail = [
     item.detail,

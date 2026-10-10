@@ -1,4 +1,5 @@
 export const monument = {
+  recallFlightRule: "Rufe vor der Ankunft die gesamte Flotte von ihrer aktuellen Position zurück. Verbrauchter Treibstoff wird nicht erstattet.",
   "newsRadiation": "{{name}} · Strahlung zerstörte {{count}} Schiffe und {{cargo}} Deuterium · {{left}} Schiffe übrig",
   "genericTitle": "Weltraummonument",
   "look": "{{name}} ansehen",

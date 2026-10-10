@@ -1,0 +1,6 @@
+
+> astera@ lint /tmp/astera-asteroid-fix-20261009
+> node --max-old-space-size=6144 node_modules/eslint/bin/eslint.js . "--ignore-pattern" "**/*" "--ignore-pattern" "!apps/" "--ignore-pattern" "!apps/server/" "--ignore-pattern" "!apps/server/src/" "--ignore-pattern" "!apps/server/src/services/" "--ignore-pattern" "!apps/server/src/services/galaxyEvents.ts" "--ignore-pattern" "!apps/server/test/" "--ignore-pattern" "!apps/server/test/asteroid-spawn-regression.test.ts"
+
+
+Recorded exit code: 0; expected: 0

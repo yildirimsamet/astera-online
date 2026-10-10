@@ -1,0 +1,12 @@
+[
+  {
+    "check": "web-lint",
+    "exit_code": 0,
+    "log": "docs/evidence/asteroid-spawn-fix-isolated-web-lint-2026-10-09.txt"
+  },
+  {
+    "check": "ordinary-tests",
+    "exit_code": -15,
+    "log": "docs/evidence/asteroid-spawn-fix-isolated-ordinary-tests-2026-10-09.txt"
+  }
+]

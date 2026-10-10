@@ -454,6 +454,8 @@ export const leaderboard = {
 export const chat = {
   previousSeasonPlace: "Previous season · place {{rank}}",
   supporterBadge: "Astera supporter",
+  supporterExplanation: "Supports Astera Online.",
+  previousSeasonExplanation: "Finished the previous season in place {{rank}}.",
   eyebrow: 'Live channels',
   title: 'Chat',
   launcher: 'Open galaxy chat',

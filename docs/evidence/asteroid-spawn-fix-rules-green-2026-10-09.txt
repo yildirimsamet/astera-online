@@ -1,0 +1,79 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/packages/rules
+
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > ships the requested Asteroid Shower production defaults
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > stamps the night figure on a night shower and the day figure on the rest
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > draws the same windows whatever the two multipliers are
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > refuses a night multiplier that is not a multiplier
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > plans exactly five events per full Türkiye day with one or at most two at night
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > is deterministic and preserves the configured cooldown across local midnight
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > keeps a 14-day arbitrary-start season at seventy occurrences
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > rejects an impossible calendar instead of silently dropping events
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > rejects an impossible TRADE_SHIP calendar too, rather than dropping one
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > rejects configured cross-kind overlaps but allows touching half-open windows
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > deals the same shower calendar whether or not trade ships are planned
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > defaults to every kind the ruleset has
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > seeds a shower-only calendar for a season that predates the trade ship
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > numbers each kind from zero in its own start order
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > lets the two kinds overlap, because packing both without that is pointless
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > plans three trade ships a full Türkiye day at their own cooldown
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > keeps a trade ship's own cooldown out of the shower's arithmetic
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > appends the Intergalactic Convoy kind without moving the existing order
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > makes the fixed convoy calendar the boundary for newly created seasons
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > versions both reshaped lanes so a dealt row says which calendar it came from
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > deals a weekday: lunch and evening showers, one evening convoy
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > deals a weekend: bigger showers and two convoys
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > counts a whole week as five weekdays and a two-day weekend
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > keeps every convoy at the route contract’s duration and caps it at four hours
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > halves the v10 shower multipliers and limits each window to thirty minutes
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > writes only complete fixed windows inside arbitrary season boundaries
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > matches a fixed effect only at an authored start minute on its own kind of day
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > lets windows on different kinds of day share hours, and no others
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > rejects wrapping, overlapping, fractional and out-of-day fixed windows
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > keeps frozen calendar shapes for old rulesets and gates kinds by their first boundary
+ ✓ test/galaxy-events.test.ts > Asteroid Shower bonus lane > adds the occurrence’s own multiple of the hourly rate, and moves no existing rock
+ ✓ test/galaxy-events.test.ts > Asteroid Shower bonus lane > sizes each shower from its own figure and never renumbers an earlier one
+ ✓ test/galaxy-events.test.ts > Asteroid Shower bonus lane > ignores TRADE_SHIP rows instead of turning every trade window into a shower
+ ✓ test/galaxy-events.test.ts > the legacy ruleset-7 merchant’s four random windows a day > states the rule on the definition rather than in the planner
+ ✓ test/galaxy-events.test.ts > the legacy ruleset-7 merchant’s four random windows a day > puts exactly one of every four inside 01:00–08:00, on every whole day
+ ✓ test/galaxy-events.test.ts > the legacy ruleset-7 merchant’s four random windows a day > never opens one in the hour after midnight
+ ✓ test/galaxy-events.test.ts > the legacy ruleset-7 merchant’s four random windows a day > leaves the shower on the calendar-wide quiet-hours rule
+ ✓ test/asteroid-dynamic.test.ts > the dynamic field, as figures > is one rock an hour per commander active in the last hour
+ ✓ test/asteroid-dynamic.test.ts > the dynamic field, as figures > opens the level ladder one rung a day
+ ✓ test/asteroid-dynamic.test.ts > the dynamic field, as figures > makes each higher level progressively rarer without changing the old derived field
+ ✓ test/asteroid-dynamic.test.ts > the dynamic field, as figures > uses the dynamic weights when a rock level is rolled
+ ✓ test/asteroid-dynamic.test.ts > the dynamic field, as figures > can re-derive an already-open hour with the weights stored beside it
+ ✓ test/asteroid-dynamic.test.ts > planning one hour > spawns twenty rocks for twenty commanders in an ordinary hour
+ ✓ test/asteroid-dynamic.test.ts > planning one hour > spawns one hundred fifty for thirty commanders under a x5 shower
+ ✓ test/asteroid-dynamic.test.ts > planning one hour > spawns nothing in an hour nobody played
+ ✓ test/asteroid-dynamic.test.ts > planning one hour > multiplies only the part of the hour a shower covers
+ ✓ test/asteroid-dynamic.test.ts > planning one hour > pays a late hour only for the minutes it has left
+ ✓ test/asteroid-dynamic.test.ts > planning one hour > stops at the season’s end
+ ✓ test/asteroid-dynamic.test.ts > planning one hour > ignores a shower that ended before the hour or opens after it
+ ✓ test/asteroid-dynamic.test.ts > planning one hour > refuses a count it cannot trust
+ ✓ test/asteroid-dynamic.test.ts > generating one hour > makes exactly the planned rocks, with their own index range
+ ✓ test/asteroid-dynamic.test.ts > generating one hour > keeps every rock inside its lane, and the front inside its opening minutes
+ ✓ test/asteroid-dynamic.test.ts > generating one hour > arrives at random instants rather than on an even grid
+ ✓ test/asteroid-dynamic.test.ts > generating one hour > is the same hour every time it is derived, and a different one from another stream
+ ✓ test/asteroid-dynamic.test.ts > generating one hour > pays the level table, whole packets, no monthly cap
+ ✓ test/asteroid-dynamic.test.ts > generating one hour > holds each day’s rocks under that day’s top rung
+ ✓ test/asteroid-dynamic.test.ts > generating one hour > never names a legacy index as a dynamic hour
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > states both gates rather than hiding them inline
+ ✓ test/asteroid-supply.test.ts > how fast the supply figure may move > is the last hour when there is no history to average with
+ ✓ test/asteroid-supply.test.ts > how fast the supply figure may move > averages the window, so one spike cannot move the sky
+ ✓ test/asteroid-supply.test.ts > how fast the supply figure may move > lets a genuine rise through, over hours rather than in one
+ ✓ test/asteroid-supply.test.ts > how fast the supply figure may move > reads only as far back as the window
+ ✓ test/asteroid-supply.test.ts > how fast the supply figure may move > never returns a fraction of a commander, or a negative one
+ ✓ test/asteroid-supply.test.ts > how fast the supply figure may move > feeds the hour planner exactly as the raw count did
+ ✓ test/asteroid-generation-freeze.test.ts > legacy dynamic generation inputs > preserves the exact pre-release RNG order and all 100 complete specs
+ ✓ test/asteroid-generation-freeze.test.ts > legacy dynamic generation inputs > copies the generation inputs when an hour opens rather than retaining mutable arrays
+ ✓ test/asteroid-generation-freeze.test.ts > legacy dynamic generation inputs > keeps every existing spec identical when all mutable generation settings change
+ ✓ test/asteroid-balance-2026-09-17.test.ts > 2026-09-17 asteroid balance > halves the actual budgeted ore of the established field
+ ✓ test/asteroid-balance-2026-09-17.test.ts > 2026-09-17 asteroid balance > opens one normal rock per active commander each hour
+ ✓ test/asteroid-balance-2026-09-17.test.ts > 2026-09-17 asteroid balance > defines reduced half-hour showers for future calendar adoption
+
+ Test Files  5 passed (5)
+      Tests  70 passed (70)
+   Start at  22:58:28
+   Duration  2.25s (transform 546ms, setup 0ms, collect 1.10s, tests 267ms, environment 1ms, prepare 298ms)
+

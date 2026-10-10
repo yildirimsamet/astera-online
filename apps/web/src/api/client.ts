@@ -26,6 +26,8 @@ import {
   announcementPublishedSchema,
   announcementsPageSchema,
   claimSchema,
+  colonyAbandonmentSchema,
+  colonyAbandonedSchema,
   type ClaimIntent,
   clanAidLaunchSchema,
   clanAidPolicySchema,
@@ -237,6 +239,9 @@ export interface MonumentSendInput {
   acknowledgeRadiationLoss?: boolean;
 }
 export interface MonumentRecallSelection { lotId: string; count: number }
+export type FlightRecallInput =
+  | { missionId: string; pirate?: boolean; monument?: never }
+  | { missionId: string; pirate?: never; monument: true };
 
 export interface IntergalacticConvoyLaunchInput {
   originPlanetId: string;
@@ -369,7 +374,7 @@ export class Api {
 
   /* ── identity ─────────────────────────────────────────────── */
 
-  /** Exchange the refresh cookie for a live token. False means "no session". */
+  /** Exchange the refresh cookie for a live token. Only a rejected session returns false. */
   async restore(): Promise<boolean> {
     this.refreshing ??= (async () => {
       try {
@@ -379,9 +384,12 @@ export class Api {
         });
         this.token = session.accessToken;
         return true;
-      } catch {
+      } catch (error) {
+        // A rate limit or outage says nothing about the cookie's validity. Keep
+        // the current identity and let the caller report the retryable failure.
+        if (!(error instanceof ApiError) || error.status !== 401) throw error;
         this.token = null;
-    this.placement = null;
+        this.placement = null;
         return false;
       } finally {
         this.refreshing = null;
@@ -538,6 +546,12 @@ export class Api {
   setRival = (planetId: string | null) =>
     this.send('/api/rival', rivalSetSchema, { method: 'POST', body: { planetId } });
   planets = () => this.send('/api/planets', planetsSchema);
+  colonyAbandonment = (planetId: string) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/abandon`, colonyAbandonmentSchema);
+  abandonColony = (planetId: string) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/abandon`, colonyAbandonedSchema, {
+      method: 'POST', body: { confirm: true },
+    });
   planet = (planetId?: string) => this.send(
     planetId ? `/api/planets/${encodeURIComponent(planetId)}` : '/api/planet',
     planetSchema,
@@ -576,6 +590,10 @@ export class Api {
     this.send(`/api/monuments/waves/${encodeURIComponent(waveId)}/recall/quote`, monumentRecallQuoteSchema, { method: 'POST', body: { selections } });
   recallMonument = (waveId: string, selections: readonly MonumentRecallSelection[], key: string) =>
     this.send(`/api/monuments/waves/${encodeURIComponent(waveId)}/recall`, monumentRecallSchema, { method: 'POST', body: { selections }, idempotencyKey: key });
+  /** A wave can turn home in full once; its identity survives renders, retries and remounts. */
+  recallMonumentFlight = (waveId: string) =>
+    this.send(`/api/monuments/waves/${encodeURIComponent(waveId)}/recall`, monumentRecallSchema,
+      { method: 'POST', body: { all: true }, idempotencyKey: `monument-flight-recall:${waveId}` });
   leaderboard = gatedRead(() => this.send('/api/leaderboard', leaderboardSchema), BIG_READ_GAP_MS);
   seasonArchive = (cursor?: number) => this.send(
     `/api/season-archive?limit=12${cursor === undefined ? '' : `&cursor=${String(cursor)}`}`,

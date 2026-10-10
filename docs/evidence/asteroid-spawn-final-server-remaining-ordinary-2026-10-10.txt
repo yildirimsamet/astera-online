@@ -1,0 +1,1209 @@
+
+ RUN  v2.1.9 /tmp/astera-asteroid-fix-20261009/apps/server
+
+ ✓ test/neutral-colony-d209.test.ts (21 tests) 19454ms
+   ✓ D209 caretaker seeding > seeds only the staged 15 / 8 / 3 opening, each with its template garrison, dome and shield 1062ms
+   ✓ D209 caretaker reinforcement > rebuilds a tier 2 dome up to its template level 886ms
+   ✓ D209 caretaker reinforcement > rebuilds a tier 3 dome up to its template level 773ms
+   ✓ D209 caretaker reinforcement > seeds the tier 1 dome but never rebuilds it after destruction 739ms
+   ✓ D209 free reinforcement > rebuilds a destroyed tier 2 garrison and dome in full without spending its stores 856ms
+   ✓ D209 free reinforcement > rebuilds a destroyed tier 3 garrison and dome in full without spending its stores 834ms
+   ✓ D209 free reinforcement > tops up a partial garrison without adding past the template 1191ms
+   ✓ D209 free reinforcement > never lets a building shortfall hold the garrison back 778ms
+   ✓ D209 free reinforcement > waits out an open claim instead of re-arming a world somebody is racing to settle 763ms
+   ✓ D209 free reinforcement > does not refill a neutral Aegis while its EMP lock is active 775ms
+   ✓ D209 capture stock > opens a settled tier 1 world on exactly the capture stock, with empty works and no founding cargo 936ms
+   ✓ D209 capture stock > opens a settled tier 2 world on exactly the capture stock, with empty works and no founding cargo 903ms
+   ✓ D209 capture stock > opens a settled tier 3 world on exactly the capture stock, with empty works and no founding cargo 918ms
+   ✓ D209 capture stock > never hands a caretaker garrison to the commander who settles the world 878ms
+   ✓ D209 capture stock > limits caretaker stand-down to a neutral capture, preserving home rows on an owned transfer 778ms
+   ✓ D209 capture stock > writes no research to the commander who takes a world 873ms
+   ✓ D209 colony capacity reads the capital Core > opens no slot for a tall colony while the capital is short, and counts the capital thresholds once it grows 756ms
+   ✓ D209 colony capacity reads the capital Core > refuses a settlement when only a captured world is tall enough 815ms
+   ✓ D209 research reads the capital Core > times research funded from a taller colony by the capital Core 2284ms
+   ✓ D209 research reads the capital Core > gates the Stockpile’s Core on the capital, whichever world pays 834ms
+   ✓ D209 research reads the capital Core > reports the capital Core on the research menu of every world 812ms
+ ✓ test/clan-war-recall.test.ts (20 tests) 30392ms
+   ✓ recalling your own wave > lets a wave still in the air finish its leg, then turn round 3935ms
+   ✓ recalling your own wave > sends a staged wave home immediately, and gives the ships back 1680ms
+   ✓ recalling your own wave > stands the leader capital wave down on the spot 1594ms
+   ✓ recalling your own wave > is somebody else’s to give, never yours 1327ms
+   ✓ recalling your own wave > answers a repeated recall with the state, not a second return 1386ms
+   ✓ recalling your own wave > frees the clan hangar the moment it is ordered back 1279ms
+   ✓ recalling your own wave > keeps the flight bay until the ships are actually home 1455ms
+   ✓ recalling your own wave > takes no extra fuel and gives none back 1584ms
+   ✓ closing an operation with waves in it > returns every wave on a leader cancel, and finishes when the last lands 1910ms
+   ✓ closing an operation with waves in it > orders a wave still in the air back, and it turns round when it lands 1290ms
+   ✓ closing an operation with waves in it > sends a staged wave home when the target’s day runs out 1325ms
+   ✓ closing an operation with waves in it > refuses a new target until the last wave is home 1421ms
+   ✓ closing an operation with waves in it > completes immediately when a recall empties the pool of a closing operation 1360ms
+   ✓ membership during an operation > holds a contributor in the clan until the outcome is settled 1312ms
+   ✓ membership during an operation > holds them even after their own wave has come home 1360ms
+   ✓ membership during an operation > lets a member who committed nothing come and go 1239ms
+   ✓ membership during an operation > blocks a leadership handover and a disband while the pool stands 1395ms
+   ✓ membership during an operation > blocks a leadership handover and a disband as soon as a target is marked 1090ms
+   ✓ membership during an operation > lets everybody move again once the operation is settled, even mid-flight 1320ms
+   ✓ membership during an operation > lets a commander leave a clan that never opened an operation 1121ms
+ ✓ test/chat.test.ts (17 tests) 18103ms
+   ✓ galaxy chat > requires auth and never accepts a client-authored identity 3116ms
+   ✓ galaxy chat > trims content, preserves Unicode and accepts exactly 280 characters 1029ms
+   ✓ galaxy chat > uses canonical account identity and never a stale season name 1104ms
+   ✓ galaxy chat > returns the current clan tag on sent and listed messages, then removes it when membership ends 828ms
+   ✓ galaxy chat > never publishes an undiscovered author location through chat 985ms
+   ✓ galaxy chat > limits one player to five committed messages in a rolling ten seconds 840ms
+   ✓ galaxy chat > gives concurrent authors distinct ordered read instants 862ms
+   ✓ galaxy chat > paginates newest-first pages chronologically with a stable cursor 947ms
+   ✓ galaxy chat > paginates equal-timestamp concurrent messages without gaps or duplicates 763ms
+   ✓ galaxy chat > isolates seasons in reads, unread counts and cursors 1293ms
+   ✓ galaxy chat > counts only other commanders and keeps the newest read marker under races 873ms
+   ✓ galaxy chat > keeps histories and read markers separate for each chat language 894ms
+   ✓ galaxy chat > applies the message burst limit across all chat languages 803ms
+   ✓ galaxy chat > rejects unread markers outside the caller season and malformed page limits 1233ms
+   ✓ galaxy chat > publishes shard:chat after commit 1033ms
+   ✓ who is speaking with authority > marks an admin’s message and leaves an ordinary commander’s unmarked 752ms
+   ✓ who is speaking with authority > marks it on the posted message too, so the sender sees it immediately 741ms
+ ✓ test/radiation-service.test.ts (16 tests) 18754ms
+   ✓ a radiation source > refuses percentage sources in a fixed-HP season instead of accepting an ineffective cloud 2960ms
+   ✓ a radiation source > refuses backdating or an already-ended HP source without rewriting historical exposure 844ms
+   ✓ a radiation source > schedules the first HOLD casualty when an operator adds a cloud without charging time before its creation 810ms
+   ✓ a radiation source > keeps HP source history separate, supports monument anchors, and refuses ruleset 15 722ms
+   ✓ a radiation source > cancels a future HP source without a negative window, damage or a surviving loss timer 778ms
+   ✓ a radiation source > settles exposure before an operator ends the source and preserves that wound on subsequent reads 1285ms
+   ✓ a radiation source > stands on a world's centre, or on a point in space 1021ms
+   ✓ a radiation source > is refused in a season dealt before ship damage 962ms
+   ✓ a radiation source > is refused when it cannot exist, or names a world of another season 966ms
+   ✓ a radiation source > ends without being deleted, and stays ended at the moment it first ended 1038ms
+   ✓ a radiation source > reads as the rules package's source 916ms
+   ✓ a radiation source > goes with the galaxy when it is wiped 1788ms
+   ✓ a flight settling its dose > writes what a cloud hurt on the flight, and leaves every ship flying 1092ms
+   ✓ a flight settling its dose > takes the ships a cloud finished out of `units` and off the flight 1273ms
+   ✓ a flight settling its dose > takes the ships it finished out of the commander's wealth at once 1164ms
+   ✓ a flight settling its dose > takes nothing where no cloud stood while it flew, or before the rule 1108ms
+ ✓ test/clan-support-battle.test.ts (12 tests) 69931ms
+   ✓ a raid on a supported world > fights host and wave as one line, and writes each one’s survivors back to its owner 6879ms
+   ✓ a raid on a supported world > moves only the host, by the transfer the support multiplied, and keeps the ladder zero-sum 5155ms
+   ✓ a raid on a supported world > leaves the transfer ordinary when the wave brought nothing that fires 5736ms
+   ✓ a raid on a supported world > puts a host with nothing of its own at the ×5 ceiling when the line breaks 6743ms
+   ✓ a raid on a supported world > divides a host’s win by the support it was given 5936ms
+   ✓ a raid on a supported world > never lifts a supported line, however lopsided the raid 6367ms
+   ✓ a raid on a supported world > sends a wave that drifted out of the tier band home before the shooting 4700ms
+   ✓ a raid on a supported world > loses a wave the raid wipes out 5279ms
+   ✓ the posture alone decides the retreat > lifts an ESCAPE world from a crushing raid, as before 5304ms
+   ✓ the posture alone decides the retreat > holds a HOLD world — and a SUPPORT world nobody has supported yet 8142ms
+   ✓ a world nobody supports > settles exactly as an ordinary raid always has 2009ms
+   ✓ the supporter’s player row in the lock order > is waited for before the attacker’s ledger is taken, not after 7657ms
+ ✓ test/build-queue.test.ts (17 tests) 16445ms
+   ✓ ordinary build queues > commits now and creates the hull only at the named instant 2893ms
+   ✓ ordinary build queues > reads gates through earlier orders in the same queue 999ms
+   ✓ ordinary build queues > requires the Uplink to occupy an active slot and projects a queued Core reopening it 762ms
+   ✓ ordinary build queues > caps each queue at three while allowing the other queue to run 925ms
+   ✓ ordinary build queues > refunds half on cancel and pulls the tail forward 860ms
+   ✓ ordinary build queues > keeps the running head fixed when a middle order is cancelled 913ms
+   ✓ ordinary build queues > cannot cancel a queued prerequisite out from under a dependent order 791ms
+   ✓ ordinary build queues > fully refunds a dependent tail when the system abandons its prerequisite 774ms
+   ✓ ordinary build queues > serialises concurrent placements into three unique slots and refuses the fourth 833ms
+   ✓ ordinary build queues > refuses an order that cannot finish before the season and spends nothing 683ms
+   ✓ ordinary build queues > reserves the exact season deadline for freeze instead of racing it 606ms
+   ✓ ordinary build queues > never lets a build id cancel an order belonging to another planet 1440ms
+   ✓ ordinary build queues > returns everything and records failure when the system abandons an order 702ms
+   ✓ ordinary build queues > repairs an overdue order whose event row disappeared 754ms
+   ✓ ordinary build queues > counts committed resources at full value and writes off only the cancel fee 711ms
+   ✓ ordinary build queues > applies a delivered completion event only once 1124ms
+   ✓ ordinary build queues > keeps the stored building unchanged until completion 665ms
+ ✓ test/hangar.test.ts (21 tests) 28064ms
+   ✓ the Hangar > quotes and charges the Hangar-specific upgrade price 3327ms
+   ✓ the Hangar > building a ship > refuses the order that would not fit, and names the figures 1392ms
+   ✓ the Hangar > building a ship > fills a world to exactly its ceiling and no further 1492ms
+   ✓ the Hangar > building a ship > charges the room the hull actually takes, not one per ship 1100ms
+   ✓ the Hangar > building a ship > counts what is already in the yard queue 1073ms
+   ✓ the Hangar > building a ship > counts craft that are away from home 1183ms
+   ✓ the Hangar > building a ship > raising the Hangar makes room 1436ms
+   ✓ the Hangar > building a ship > treats a world with no Hangar row as standing at the base rung 1115ms
+   ✓ the Hangar > raising the Hangar > raises a rung at a Core that would once have refused it 1130ms
+   ✓ the Hangar > raising the Hangar > raises rung after rung without the Core moving at all 1189ms
+   ✓ the Hangar > raising the Hangar > lets a world buy the rungs past six, and stops at ten 1239ms
+   ✓ the Hangar > raising the Hangar > still refuses a rung nobody can pay for 1249ms
+   ✓ the Hangar > ground emplacements > refuses a gun the world has no room to stand 1124ms
+   ✓ the Hangar > ground emplacements > raising the Core opens more ground 1219ms
+   ✓ the Hangar > ground emplacements > spends neither pool on the other 1365ms
+   ✓ the Hangar > arriving by transfer > refuses a launch the destination has no room for 1150ms
+   ✓ the Hangar > arriving by transfer > lands a squadron the destination can hold 1292ms
+   ✓ the Hangar > arriving by transfer > sends home a squadron whose destination filled in the air 1516ms
+   ✓ the Hangar > a world already over its ceiling > keeps everything a capture handed it 1301ms
+   ✓ the Hangar > a world already over its ceiling > builds nothing, receives nothing, and loses nothing 1078ms
+   ✓ the Hangar > reports both ceilings and both loads to the client 1072ms
+ ✓ test/asteroid-supply.test.ts (22 tests) 37143ms
+   ✓ who counts toward the asteroid supply > counts everybody who was there when the season opened 3628ms
+   ✓ who counts toward the asteroid supply > counts a commander who has both the day and the Core 1118ms
+   ✓ who counts toward the asteroid supply > refuses one that has the day but not the Core 1320ms
+   ✓ who counts toward the asteroid supply > refuses one that has the Core but not the day 1184ms
+   ✓ who counts toward the asteroid supply > still asks whether they played at all 1098ms
+   ✓ who counts toward the asteroid supply > excludes retired bots and rounds down a single active bot 1118ms
+   ✓ who counts toward the asteroid supply > counts half of active bots without letting them bypass human gates at full weight 1306ms
+   ✓ who counts toward the asteroid supply > adds half of 0 active bots, rounding odd remainders down 2530ms
+   ✓ who counts toward the asteroid supply > adds half of 1 active bots, rounding odd remainders down 2277ms
+   ✓ who counts toward the asteroid supply > adds half of 2 active bots, rounding odd remainders down 2770ms
+   ✓ who counts toward the asteroid supply > adds half of 3 active bots, rounding odd remainders down 3075ms
+   ✓ who counts toward the asteroid supply > adds half of 4 active bots, rounding odd remainders down 2715ms
+   ✓ who counts toward the asteroid supply > keeps retired bots out of a larger active population 1330ms
+   ✓ who counts toward the asteroid supply > counts a commander whose account is older than the season, however late they arrived 1258ms
+   ✓ who counts toward the asteroid supply > still gates an account opened after the season did 1416ms
+   ✓ who counts toward the asteroid supply > does not wave an old bot account through as a veteran 1145ms
+   ✓ who counts toward the asteroid supply > does not wave a bot through as a founder 1582ms
+   ✓ what an asteroid hour writes down > stores the raw eligible count beside the figure it spawned against 1289ms
+   ✓ what an asteroid hour writes down > spawns the first hour against its own count 1242ms
+   ✓ what an asteroid hour writes down > spawns against the raw count through the founding day 1225ms
+   ✓ what an asteroid hour writes down > averages again once the founding day is over 1273ms
+   ✓ what an asteroid hour writes down > backfills the hours written before the column existed, so the window does not collapse 1215ms
+ ✓ test/silent-space-waiting-room.test.ts (32 tests) 52161ms
+   ✓ departure after 30 hours without development or combat > moves a commander who keeps logging in but orders nothing 5165ms
+   ✓ departure after 30 hours without development or combat > keeps a commander whose last order is younger than 30 hours, then moves them 2047ms
+   ✓ departure after 30 hours without development or combat > is inclusive at exactly 30 hours and refuses one minute earlier 1578ms
+   ✓ departure after 30 hours without development or combat > gives a commander back from Silent Space a full 30 hours before the next departure 1699ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > a building upgrade stamps the order instant 1334ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > a ship order stamps the order instant 1577ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > a ground-defence order stamps the order instant 1369ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > an instrument stamps the order instant 986ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > a satellite stamps the order instant 958ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > a research stamps the order instant 1209ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > an attack stamps the order instant 1490ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > a Death Star order stamps the order instant 1012ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > an Interceptor order stamps the order instant 1281ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > a Death Star launch stamps the order instant 1192ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > a login does not 1064ms
+   ✓ departure after 30 hours without development or combat > what resets the clock > a collection does not 1404ms
+   ✓ departure after 30 hours without development or combat > publishes the departure instant to the commander and none inside Silent Space 2173ms
+   ✓ inside Silent Space > refuses a world attack and leaves the fleet at home 2757ms
+   ✓ inside Silent Space > refuses a Death Star and leaves the fleet at home 3128ms
+   ✓ inside Silent Space > refuses asteroid mining and leaves the fleet at home 2199ms
+   ✓ inside Silent Space > refuses a wreck harvest and leaves the fleet at home 1390ms
+   ✓ inside Silent Space > refuses a pirate raid and leaves the fleet at home 1378ms
+   ✓ inside Silent Space > refuses a merchant run and leaves the fleet at home 1409ms
+   ✓ inside Silent Space > refuses a convoy strike and leaves the fleet at home 1311ms
+   ✓ inside Silent Space > refuses a monument wave and leaves the fleet at home 1360ms
+   ✓ inside Silent Space > refuses a monument quote and leaves the fleet at home 1329ms
+   ✓ inside Silent Space > refuses a clan war monument mark and leaves the fleet at home 1354ms
+   ✓ inside Silent Space > refuses a clan war mark and leaves the fleet at home 1251ms
+   ✓ inside Silent Space > still flies ships between the commander’s own worlds 1700ms
+   ✓ inside Silent Space > lets a probe read the same half-pace works the owner’s own tick writes 1328ms
+   ✓ inside Silent Space > tells a commander coming back what accrued at the half pace 1323ms
+   ✓ inside Silent Space > runs the works at half pace under the same ceilings, and says so 1389ms
+ ✓ test/world-memory.test.ts (12 tests) 17470ms
+   ✓ a fleet refreshes what its owner remembers > remembers a world it has only ever raided 3300ms
+   ✓ a fleet refreshes what its owner remembers > names the commander who held the world at the fight, not the one at the probe 1373ms
+   ✓ a fleet refreshes what its owner remembers > records the development and hardware the fleet found 1574ms
+   ✓ a fleet refreshes what its owner remembers > freezes again the moment the fleet leaves 1156ms
+   ✓ a fleet refreshes what its owner remembers > never resolves the world it remembers 1123ms
+   ✓ a fleet refreshes what its owner remembers > keeps the newest look when a probe lands after a raid 1305ms
+   ✓ a fleet refreshes what its owner remembers > gives the defender no record of the attacker’s world 1085ms
+   ✓ a fleet refreshes what its owner remembers > writes exactly one bounded pointer per target, however many raids land 1689ms
+   ✓ a fleet refreshes what its owner remembers > records the world even when the raid bounces off protection 1126ms
+   ✓ a fleet refreshes what its owner remembers > records the rock a losing settlement flew to 1453ms
+   ✓ a fleet refreshes what its owner remembers > serves the new record immediately, with the projection cache on 1181ms
+   ✓ a fleet refreshes what its owner remembers > leaves every other commander’s map exactly as it was 1092ms
+ ✓ test/claim-priority.test.ts (10 tests) 14810ms
+   ✓ the first hour of a claim belongs to the raider who opened it > opens the claim with its first hour reserved for the commander whose raid broke the guard 1677ms
+   ✓ the first hour of a claim belongs to the raider who opened it > reserves nothing for a raider with no free colony slot 1169ms
+   ✓ the first hour of a claim belongs to the raider who opened it > refuses a rival whose Couriers would land inside the hour, and lets the raider take the world 1277ms
+   ✓ the first hour of a claim belongs to the raider who opened it > lets a rival leave early when their Couriers land exactly as the hour ends 1201ms
+   ✓ the first hour of a claim belongs to the raider who opened it > opens the race to everyone once the hour has passed 1132ms
+   ✓ the first hour of a claim belongs to the raider who opened it > keeps the hour with whoever opened the claim, until a closed one is reopened 1382ms
+   ✓ the first hour of a claim belongs to the raider who opened it > turns back a stranger's settlement that lands inside someone else's hour 1250ms
+   ✓ the first hour of a claim belongs to the raider who opened it > gives the hour to exactly one raider when two guards fall in the same instant 1117ms
+   ✓ the first hour of a claim belongs to the raider who opened it > opens the hour to everyone once the raider's account is deleted 2626ms
+   ✓ the first hour of a claim belongs to the raider who opened it > tells every commander when the hour ends, and only the raider that it is theirs 1956ms
+ ✓ test/broadcast.test.ts (15 tests) 31142ms
+   ✓ the shard broadcast > announces a newly seated commander so open galaxy views gain the planet 3955ms
+   ✓ the shard broadcast > announces a raid leaving, so the disc shows it at once 1510ms
+   ✓ the shard broadcast > refreshes Telescope truth only for commanders watching the world that launched 1678ms
+   ✓ the shard broadcast > announces a probe leaving — it is a contact like any other 2115ms
+   ✓ the shard broadcast > announces a mining run, because a race nobody sees is not a race 2861ms
+   ✓ the shard broadcast > announces a raid resolving, to everybody and not just its attacker 2875ms
+   ✓ the shard broadcast > announces a satellite going up — hardware in orbit is public 1976ms
+   ✓ the shard broadcast > says nothing when a ground instrument is raised 2547ms
+   ✓ the shard broadcast > says nothing when an upgrade does not change the public silhouette 1897ms
+   ✓ the shard broadcast > announces the one upgrade that does change it 2393ms
+   ✓ the shard broadcast > says nothing when ships are built 1772ms
+   ✓ the shard broadcast > does not announce a launch the server refused 1678ms
+   ✓ the shard broadcast > announces a stranded flight being swept out of the sky 2719ms
+   ✓ the shard broadcast > publishes into an empty galaxy without complaint 1156ms
+ ✓ test/monument-movement.test.ts (14 tests) 20650ms
+   ✓ physical monument recalls and returns > settles production first and splits exactly the selected ships, cargo, damage and root bay 5663ms
+   ✓ physical monument recalls and returns > keeps cargo-only control after the last combat ship is recalled and produces nothing for it 1317ms
+   ✓ physical monument recalls and returns > reuses the original wave on full recall, clears control now and schedules the actual return 1282ms
+   ✓ physical monument recalls and returns > refuses selecting another owner, another wave, repeated lots or unavailable counts 1625ms
+   ✓ physical monument recalls and returns > cannot duplicate a recalled ship when two partial recalls race for its last count 1190ms
+   ✓ physical monument recalls and returns > turns an outbound wave from its true halfway position with carried HP damage intact 1221ms
+   ✓ physical monument recalls and returns > settles a flown prefix only once, with old and new historical source rates 1149ms
+   ✓ physical monument recalls and returns > loses a dead cargo ship’s own load during a return and terminates a wholly lost wave at its real last death 1029ms
+   ✓ physical monument recalls and returns > lands cargo and exact wounds once; stale and replayed return events create nothing 1368ms
+   ✓ physical monument recalls and returns > claims a returning wave once when two arrival handlers race, and the loser is a no-op 945ms
+   ✓ physical monument recalls and returns > refuses return delivery before its ETA and rolls a partial transfer back atomically 1049ms
+   ✓ physical monument recalls and returns > preserves research/cargo provenance on every recalled lot 1101ms
+   ✓ physical monument recalls and returns > refuses a recall before the already-paid cursor rather than turning the wing from a past position 805ms
+   ✓ physical monument recalls and returns > rejects a malformed physical route with a domain error before charging HP 892ms
+ ✓ test/silent-space-safety.test.ts (25 tests) 23989ms
+   ✓ keeps ordinary exit ceasefires when a MEMBER moves 2943ms
+   ✓ keeps ordinary exit ceasefires when a LEADER moves 941ms
+   ✓ waits for committed research before freezing 637ms
+   ✓ waits for committed pirate before freezing 622ms
+   ✓ folds the whole cycle story once and rolls over waiting worlds and return applications 2239ms
+   ✓ preserves reports but detaches their spatial evidence after a round trip 1096ms
+   ✓ enforces one result per account and cycle across different galaxies 673ms
+   ✓ retargets an unclaimed build and delivers its hull once after moving 928ms
+   ✓ defers previously claimed pending events without moving assets 729ms
+   ✓ defers previously claimed processing events without moving assets 689ms
+   ✓ defers previously claimed failed events without moving assets 890ms
+   ✓ preserves the departure cursor when returns consume the whole batch 1070ms
+   ✓ does not wait on a busy commander while expiring return applications 910ms
+   ✓ returns B past blocked A, then remembers A ahead of C in the next tour 1978ms
+   ✓ serializes return and new admission at the last reserved seat 1083ms
+   ✓ keeps an incoming attack flight in its original galaxy 651ms
+   ✓ keeps an incoming probe flight in its original galaxy 698ms
+   ✓ keeps an incoming return flight in its original galaxy 683ms
+   ✓ keeps an incoming transfer flight in its original galaxy 751ms
+   ✓ keeps an incoming settlement flight in its original galaxy 665ms
+   ✓ keeps an incoming death_star flight in its original galaxy 657ms
+   ✓ keeps an incoming clan_transfer flight in its original galaxy 689ms
+   ✓ keeps an incoming clan_war flight in its original galaxy 1071ms
+   ✓ keeps an incoming clan_support flight in its original galaxy 682ms
+ ✓ test/asteroid-fog.test.ts (22 tests) 18338ms
+   ✓ private asteroid field identity > is deterministic for one private season key 396ms
+   ✓ private asteroid field identity > changes the complete schedule when only the private key changes 307ms
+   ✓ private asteroid field identity > keeps every generated orbit inside the galaxy and preserves speed-derived periods 443ms
+   ✓ durable sensor history > opens a base-radius epoch and is idempotent when nothing changed 2202ms
+   ✓ durable sensor history > closes the old epoch at the exact level-change instant and opens the new reach 753ms
+   ✓ durable sensor history > falls back to base reach when Uplink is lost without erasing old discoveries 695ms
+   ✓ durable sensor history > closes the previous owner and opens an independent epoch for the new owner 636ms
+   ✓ durable sensor history > closes the epoch without opening another when a world becomes controller-less 653ms
+   ✓ durable sensor history > the season owns an independent private asteroid key 638ms
+   ✓ durable sensor history > rejects overlapping open epochs for one world at the database boundary 647ms
+   ✓ durable sensor history > stores no impossible non-positive reach 678ms
+   ✓ automatic sensor epoch lifecycle > opens the initial base sensor epoch in the same join transaction 2212ms
+   ✓ automatic sensor epoch lifecycle > refreshes the epoch at the exact Telescope completion instant 2717ms
+   ✓ automatic sensor epoch lifecycle > uses the promised completion instant when a delayed worker applies Telescope later 2412ms
+   ✓ automatic sensor epoch lifecycle > moves future sensing to the new owner inside the control-transfer transaction 2685ms
+ ✓ test/preview.test.ts (13 tests) 19389ms
+   ✓ preview > is readable with no account at all 2478ms
+   ✓ preview > takes no seat, no account and no planet 2320ms
+   ✓ preview > refuses when every galaxy is full, rather than rehearsing something unclaimable 1524ms
+   ✓ preview > follows the frontier rather than offering a choice 2197ms
+   ✓ preview > names the reserved world exactly as the join will name it 1121ms
+   ✓ preview > draws the reserved world among the real ones, at tier 1 1106ms
+   ✓ preview > carries the real commanders, by name and position 1595ms
+   ✓ preview > publishes exactly the public shape and nothing else 1441ms
+   ✓ preview > resolves only the neighbourhood of the seat it is offering 1120ms
+   ✓ preview > never carries a fleet reading, which is the one thing /api/galaxy adds 1078ms
+   ✓ preview > publishes satellite types and a shield boolean, never a level 1388ms
+   ✓ preview > carries the traffic, so one payload and a clock keep the disc moving 1030ms
+   ✓ preview > hands over the seed and the season clock the disc is rebuilt from 970ms
+ ✓ test/prospector.test.ts (13 tests) 16443ms
+   ✓ the Prospector cap > building > refuses an order that would take a world past the cap 3193ms
+   ✓ the Prospector cap > building > counts craft that are away, not only the ones standing at home 1393ms
+   ✓ the Prospector cap > planet-to-planet transfer > rejects a mixed fleet containing a Prospector before reserving craft 1034ms
+   ✓ the Prospector cap > planet-to-planet transfer > still transfers an ordinary fleet 1166ms
+   ✓ the Prospector cap > planet-to-planet transfer > cannot smuggle one into an attack fleet 973ms
+   ✓ the Prospector cap > a world that is already over the line > keeps the craft a capture handed it 855ms
+   ✓ the Prospector cap > a world that is already over the line > builds nothing and rejects a transfer without losing existing craft 889ms
+   ✓ a Prospector does not fight > leaves them untouched when the defence is overrun 1082ms
+   ✓ a Prospector does not fight > leaves them untouched when the defence holds 1016ms
+   ✓ a Prospector does not fight > leaves a world defended only by miners undefended 1054ms
+   ✓ a Prospector does not fight > loots a world whose only craft are miners even when its Aegis is charged 1084ms
+   ✓ a Prospector does not fight > leaves no wreckage behind, because nothing of theirs died 1529ms
+   ✓ a Prospector does not fight > keeps them through a Death Star as well 1165ms
+ ✓ test/bots-seed.test.ts (23 tests) 49413ms
+   ✓ bot roster > does not fill or warn about a waiting galaxy roster 3433ms
+   ✓ bot roster > takes the name the owner typed and keeps its casing 913ms
+   ✓ bot roster > refuses a name that is already flying 983ms
+   ✓ bot roster > hands out ordinals in order and never reuses a live one 961ms
+   ✓ bot roster > retires a commander without touching anybody else 1066ms
+   ✓ seating bots on a live galaxy > never seats a bot on Kestrel EU-2 984ms
+   ✓ seating bots on a live galaxy > never runs an already-seated bot after its galaxy becomes excluded 1206ms
+   ✓ seating bots on a live galaxy > gives a bot the same opening a person gets 1164ms
+   ✓ seating bots on a live galaxy > seats bots on their own band, just inside every person 1622ms
+   ✓ seating bots on a live galaxy > never gives the roster more seats than the galaxy reserves for it 773ms
+   ✓ seating bots on a live galaxy > seats the whole pool it has and asks for no more 1255ms
+   ✓ seating bots on a live galaxy > never invents a name to reach the target 3148ms
+   ✓ seating bots on a live galaxy > says the roster is short once, not once a minute 3919ms
+   ✓ seating bots on a live galaxy > says it again when the shortfall actually moves 3560ms
+   ✓ seating bots on a live galaxy > refuses a name a real commander is already flying under 859ms
+   ✓ seating bots on a live galaxy > leaves no orphan account behind when the profile cannot be written 933ms
+   ✓ seating bots on a live galaxy > is idempotent, and two sweeps at once seat each bot once 3194ms
+   ✓ seating bots on a live galaxy > leaves a galaxy that is not live alone 1121ms
+   ✓ presence > counts an awake bot in the galaxy population 1855ms
+   ✓ presence > leaves the galaxy empty during Türkiye quiet hours 1277ms
+   ✓ presence > does not take the whole roster's turns in one tick 5912ms
+   ✓ presence > clears the backlog rather than starving anybody 7617ms
+   ✓ presence > does not act for a bot that is asleep 1657ms
+ ✓ test/monument-settlement.test.ts (17 tests) 16500ms
+   ✓ transactional monument HOLD settlement > counts physically carried production in Wealth and removes lost ships and their cargo exactly once 3240ms
+   ✓ transactional monument HOLD settlement > combines an owner’s waves, writes real cargo and is idempotent at the same or an earlier instant 1252ms
+   ✓ transactional monument HOLD settlement > serializes real concurrent transactions without double production or lost sub-bp damage 846ms
+   ✓ transactional monument HOLD settlement > persists carried fractional health and technology without healing or rounding cargo 841ms
+   ✓ transactional monument HOLD settlement > reweights at a combat ship’s actual death, leaving cargo-only control alive with zero income 855ms
+   ✓ transactional monument HOLD settlement > destroys a dead cargo ship’s own load and marks a fully annihilated wave LOST 857ms
+   ✓ transactional monument HOLD settlement > uses historical source windows, not the current intensity for past time 908ms
+   ✓ transactional monument HOLD settlement > does not produce in OUTBOUND or RETURNING waves or touch their manifest 765ms
+   ✓ transactional monument HOLD settlement > predicts the next individual ship loss and never schedules beyond the season cutoff 909ms
+   ✓ transactional monument HOLD settlement > predicts the first casualty rather than the death of the whole HOLD fleet 781ms
+   ✓ transactional monument HOLD settlement > never advances production past an unresolved earlier arrival 777ms
+   ✓ transactional monument HOLD settlement > clips both production and radiation to season end, including the explicit freeze path 785ms
+   ✓ transactional monument HOLD settlement > refuses a manifest–units count mismatch atomically 712ms
+   ✓ transactional monument HOLD settlement > refuses a manifest–units owner mismatch atomically 681ms
+   ✓ transactional monument HOLD settlement > refuses a manifest–units origin mismatch atomically 774ms
+   ✓ transactional monument HOLD settlement > rejects cargo overflow and invalid research snapshots before any write 755ms
+   ✓ transactional monument HOLD settlement > refuses HOLD added after an unadvanced cursor and rolls all writes back on caller failure 752ms
+ ✓ test/fleet-escape.test.ts (22 tests) 23476ms
+   ✓ the fleet escape on a raid > lifts the ships off an exactly 3.5-to-one raid and leaves every one of them home 3116ms
+   ✓ the fleet escape on a raid > fights instead of escaping against 60 Darts, below 3.5-to-one 968ms
+   ✓ the fleet escape on a raid > fights instead of escaping against 69 Darts, below 3.5-to-one 890ms
+   ✓ the fleet escape on a raid > counts online ground guns when comparing the forces 915ms
+   ✓ the fleet escape on a raid > ignores EMP-disabled guns in the ratio and preserves them after the escape 915ms
+   ✓ the fleet escape on a raid > enforces the five-ship floor with 4 ships in the current ruleset 964ms
+   ✓ the fleet escape on a raid > enforces the five-ship floor with 5 ships in the current ruleset 1270ms
+   ✓ the fleet escape on a raid > reads the escape toggle at battle time, including a change while the raid is in flight 1281ms
+   ✓ the fleet escape on a raid > serialises two first deliveries of the same raid before charging fuel 870ms
+   ✓ the fleet escape on a raid > replayed and simultaneous deliveries cannot charge the lift or write the report twice 854ms
+   ✓ the fleet escape on a raid > burns the lift out of the tank before the raider loads 971ms
+   ✓ the fleet escape on a raid > strands the fleet when the tank is one drop short, and the fight stands 1019ms
+   ✓ the fleet escape on a raid > fights a two-to-one raid exactly as it always did 898ms
+   ✓ the fleet escape on a raid > keeps a running season on the rule it was dealt 892ms
+   ✓ the fleet escape on a raid > leaves the guns to fight the raid alone when the ships run 1075ms
+   ✓ the fleet escape on a raid > tells the defender what ran and what it burned, and the raider only that it ran 1117ms
+   ✓ the fleet escape on a raid > never tells the raider that the tank was dry 915ms
+   ✓ the fleet escape on a raid > says so in both notifications, and the raider hears only that the ships ran 870ms
+   ✓ the fleet escape on a raid > tells a stranded defender why, and the raider nothing 909ms
+   ✓ the fleet escape on a raid > adds nothing to a fight the rule never came into 920ms
+   ✓ the fleet escape on a raid > tells the planet screen which rule this season was dealt 773ms
+   ✓ the fleet escape on a raid > sends the raider home with what it carried, like any other win 1064ms
+ ✓ test/bots-population-worker.test.ts (16 tests) 37934ms
+   ✓ population driven bot worker > adds only four bots per half hour toward real-player demand 5307ms
+   ✓ population driven bot worker > does not seat bots in an empty galaxy 2492ms
+   ✓ population driven bot worker > seats a bot without waking it when no real player is active 2048ms
+   ✓ population driven bot worker > warns when demand exists but the name pool is empty 1640ms
+   ✓ population driven bot worker > reports a larger roster shortfall when the demand target increases 1626ms
+   ✓ population driven bot worker > reports a roster shortfall again after the pool has recovered and emptied 2500ms
+   ✓ population driven bot worker > does not turn a retired bot into a real player 1931ms
+   ✓ population driven bot worker > keeps an awake bot working after humans disappear for five minutes 2452ms
+   ✓ population driven bot worker > reports demand and actual activity for each galaxy 2912ms
+   ✓ population driven bot worker > does not report a bot as awake after its worker has stopped refreshing presence 1943ms
+   ✓ population driven bot worker > does not claim a turn if another worker ends the session after the awake read 1855ms
+   ✓ population driven bot worker > gives a newly started session its first turn within five minutes 2393ms
+   ✓ population driven bot worker > spaces later decisions by seven to twenty-three minutes inside the protected hour 2098ms
+   ✓ population driven bot worker > lets concurrent workers seat and activate each account only once 2448ms
+   ✓ population driven bot worker > applies one gradual reduction when two sweeps overlap in a five-minute bucket 2214ms
+   ✓ population driven bot worker > replaces a stale prior-season session with the current player identity 2067ms
+ ✓ test/clan-support-send.test.ts (20 tests) 58471ms
+   ✓ a wave in a season without clan defence > is refused outright 3151ms
+   ✓ a clean send > flies a mission, keeps the ships in the sender’s Hangar and pays the round trip once 3426ms
+   ✓ a clean send > takes a flight bay at the origin for as long as the wave is out 2941ms
+   ✓ a clean send > lets one sender stand several waves at one world 3021ms
+   ✓ a clean send > promises a stay of twelve hours from arrival 2850ms
+   ✓ every refusal, listed together on the quote > refuses support to your own world 2505ms
+   ✓ every refusal, listed together on the quote > refuses a host outside the sender’s clan 2940ms
+   ✓ every refusal, listed together on the quote > refuses a sender still adapting to the clan 2687ms
+   ✓ every refusal, listed together on the quote > refuses a sender behind the newcomer shield 2738ms
+   ✓ every refusal, listed together on the quote > refuses a world whose posture is not SUPPORT 2873ms
+   ✓ every refusal, listed together on the quote > refuses a sender outside the host’s tier band 2608ms
+   ✓ every refusal, listed together on the quote > refuses a wave the host’s support bay cannot hold 2919ms
+   ✓ every refusal, listed together on the quote > refuses a world with every bay in use 3375ms
+   ✓ every refusal, listed together on the quote > refuses an empty tank 2735ms
+   ✓ every refusal, listed together on the quote > refuses a mining craft — support is a fighting line 2664ms
+   ✓ every refusal, listed together on the quote > refuses more ships than stand at home 2549ms
+   ✓ every refusal, listed together on the quote > refuses a wave that could not get home before the galaxy ends 2672ms
+   ✓ every refusal, listed together on the quote > clips the stay so the flight home lands inside the season 2403ms
+   ✓ two senders racing for the last of the room > lets exactly one of them in 2982ms
+   ✓ the HTTP surface > replays one idempotency key as one wave and one fuel charge 4421ms
+ ✓ test/clan-support-legs.test.ts (15 tests) 53770ms
+   ✓ arriving > stands the wave at the host for twelve hours and moves its room from reserved to used 4128ms
+   ✓ arriving > turns back untouched if the host closed support while it flew 3993ms
+   ✓ the sender’s recall > turns a wave in flight once — home in the time it had flown, nothing refunded 3603ms
+   ✓ the sender’s recall > refuses a recall in the instant the wave is landing 3376ms
+   ✓ the sender’s recall > sends a standing wave home from the host and frees the room at once 3546ms
+   ✓ the sender’s recall > refuses anybody else’s recall 3690ms
+   ✓ the host’s send-back > sends a standing wave home and tells the sender why 3484ms
+   ✓ the host’s send-back > turns an inbound wave in space 3696ms
+   ✓ the host’s send-back > refuses anybody but the host 3550ms
+   ✓ the host’s send-back > answers a wave that does not exist 3268ms
+   ✓ twelve hours up > sends the wave home on its own and tells both sides 3266ms
+   ✓ twelve hours up > does nothing to a wave the host already sent back in the same instant 3759ms
+   ✓ membership ends the arrangement > sends a leaving sender’s waves home 3508ms
+   ✓ membership ends the arrangement > sends every wave at a leaving host home, and the leaver’s own waves too 3371ms
+   ✓ a leg that fails in the worker > puts the wave back at its origin intact 3519ms
+ ✓ test/clan-support-lifecycle.test.ts (10 tests) 37072ms
+   ✓ a host world changing hands > sends every wave there home and drops the posture back to the retreat 5092ms
+   ✓ a host world changing hands > does the same when the colony secedes 3713ms
+   ✓ a sender’s origin world changing hands > re-anchors the wave on the sender’s capital: the new owner inherits neither ships nor a bay 4114ms
+   ✓ three hands on one wave at once > lets the sender, the host and a clan change race without a deadlock — one turn home 3584ms
+   ✓ the reclaim sweep > treats a live wave as business on both ends 3446ms
+   ✓ the season’s close > closes a season whose ladder moved through a supported line 4385ms
+   ✓ the season’s close > refuses to close a season whose support journal was tampered with 3766ms
+   ✓ the season’s close > books the host’s statistics with the host’s own losses, and the supporter’s with theirs 3885ms
+   ✓ a clan the system dissolves > drops every member’s supporting world back to the retreat and sends their waves home 1751ms
+   ✓ a clan the system dissolves > leaves the arrangement alone when an active member takes the lead instead 3325ms
+ ✓ test/monument-season-close.test.ts (11 tests) 14162ms
+   ✓ physical monument fleets at the season boundary > lands a wave whose ETA equals the exclusive closing instant without fighting at that instant 3866ms
+   ✓ physical monument fleets at the season boundary > includes a delayed PvP battle and each participant’s own losses in the closing audit and season statistics 1196ms
+   ✓ physical monument fleets at the season boundary > closes HOLD without waiting for a flight and delivers precise cargo and damaged dock lots directly once 1093ms
+   ✓ physical monument fleets at the season boundary > charges only the actual OUTBOUND prefix through cutoff and gives no HOLD income or invented return dose 1035ms
+   ✓ physical monument fleets at the season boundary > charges only the actual RETURNING prefix through cutoff and gives no HOLD income or invented return dose 1105ms
+   ✓ physical monument fleets at the season boundary > never revives a ship or its physical load that radiation destroyed before cutoff 938ms
+   ✓ physical monument fleets at the season boundary > resolves a delayed friendly arrival at its ETA and pays each owner only their real HOLD interval 1074ms
+   ✓ physical monument fleets at the season boundary > lands an overdue return at its actual ETA without charging radiation after it already reached home 906ms
+   ✓ physical monument fleets at the season boundary > rolls the whole close back if a fleet’s stored physical path is corrupt 987ms
+   ✓ physical monument fleets at the season boundary > uses the actual early cutoff on forced closure and serializes duplicate closure requests 1029ms
+   ✓ physical monument fleets at the season boundary > terminates native events atomically and makes their old delivery inert after the season froze 923ms
+ ✓ test/repair-station.test.ts (13 tests) 15812ms
+   ✓ the Repair Station > repairs a lot for the damaged share of its price and time, and brings the ships home whole 3447ms
+   ✓ the Repair Station > repairs every waiting lot with one order 951ms
+   ✓ the Repair Station > runs repairs one after another, three at most, beside the yard 1252ms
+   ✓ the Repair Station > gives back half on a cancel, rounded down, and the ships wait again 1150ms
+   ✓ the Repair Station > gives everything back when the server gives up on a repair 949ms
+   ✓ the Repair Station > takes Industrial's share off the bill and the time 973ms
+   ✓ the Repair Station > repairs at a world whose Shipyard could never have built the hull 894ms
+   ✓ the Repair Station > refuses what it cannot do, and says why 1057ms
+   ✓ the Repair Station > does not exist in a season dealt before the rule 871ms
+   ✓ the Repair Station > never pays twice or books one lot twice when two taps race 958ms
+   ✓ the Repair Station > never refunds twice when two cancels race 1297ms
+   ✓ the Repair Station > lets the ships wait again in the capital when their colony secedes mid-repair 1070ms
+   ✓ the Repair Station > prices every waiting lot on the planet view, before anybody pays 933ms
+ ✓ test/monument-membership.test.ts (11 tests) 14411ms
+   ✓ monument membership changes > returns dormant members’ HOLD fleets when reclaiming their idle leader dissolves the clan 3476ms
+   ✓ monument membership changes > keeps the monument and member fleet in place when an active member succeeds the reclaimed leader 1053ms
+   ✓ monument membership changes > keeps an operator exempt when leaving settles a delayed hostile arrival first 1476ms
+   ✓ monument membership changes > settles old production and returns only a leaving member’s own damaged ships and cargo 1040ms
+   ✓ monument membership changes > applies the same personal return when kicked by the clan leader 1052ms
+   ✓ monument membership changes > rolls every attempted wave change back when a non-leader tries to kick another member 994ms
+   ✓ monument membership changes > returns every member on disband and starts the target’s empty period once 1133ms
+   ✓ monument membership changes > lets manual recall and leaving race without deadlock, duplicate ships or duplicate return legs 1036ms
+   ✓ monument membership changes > releases a member at two monuments under one ordered target/clan/player lock batch 1098ms
+   ✓ monument membership changes > promotes a solo monument to clan control when its holder accepts a membership 928ms
+   ✓ monument membership changes > does the same on clan creation without transferring ships or their cargo to the clan 1117ms
+ ✓ test/clan-war-damage.test.ts (6 tests) 15589ms
+   ✓ persistent damage in a joint war > docks the defender at once and sends each wave home with its own damage 5038ms
+   ✓ persistent damage in a joint war > leaves a season dealt before the rule exactly as it was 2104ms
+   ✓ radiation in a joint war > loses a wave on its way to the staging world, and nobody else's 1871ms
+   ✓ radiation in a joint war > never fights when the strike leg finished the pool 2235ms
+   ✓ radiation in a joint war > loses a wave on the way home, and the haul it carried 2301ms
+   ✓ the season after a joint war > closes, its ledgers reproduced from the war's own journal 2027ms
+ ✓ test/asteroid-api-security.test.ts (13 tests) 16990ms
+   ✓ asteroid API fog and launch authority > serves two commanders different asteroid sets from the same shared field 3685ms
+   ✓ asteroid API fog and launch authority > does not contaminate the second caller when the first caller warmed the projection cache 1057ms
+   ✓ asteroid API fog and launch authority > allows a launch exactly after discovery and returns only the opaque id 1104ms
+   ✓ asteroid API fog and launch authority > wakes the commander’s other live clients when a mining run launches 1074ms
+   ✓ asteroid API fog and launch authority > wakes the commander’s other live clients when a salvage run launches 1018ms
+   ✓ asteroid API fog and launch authority > keeps every owned mining run in status when another controlled world is selected 1056ms
+   ✓ asteroid API fog and launch authority > gives the same refusal for another player’s known id and a fabricated id 1121ms
+   ✓ asteroid API fog and launch authority > does not reveal whether a hidden id is rich, empty, active or interceptable 1002ms
+   ✓ asteroid API fog and launch authority > rejects the old raw numeric index at the request boundary 915ms
+   ✓ asteroid API fog and launch authority > refuses a valid id before the first earned contact 1025ms
+   ✓ asteroid API fog and launch authority > does not publish the private field key in either season or field payloads 958ms
+   ✓ asteroid API fog and launch authority > does not let another commander discover a hidden rock by following a mining route 1387ms
+   ✓ asteroid API fog and launch authority > keeps an already discovered race visible while its craft returns after the rock expires 1564ms
+ ✓ test/clan-support-schema.test.ts (17 tests) 17890ms
+   ✓ the additive clan defence schema > keeps the original enum segments and the database order after additive extensions 3204ms
+   ✓ the world’s defence posture > starts every world at ESCAPE — the retreat a season has always had 961ms
+   ✓ the world’s defence posture > accepts the three postures and refuses anything else 931ms
+   ✓ the support wave row > stores a wave and starts it OUTBOUND 1063ms
+   ✓ the support wave row > refuses two waves parked in the same unit location 1220ms
+   ✓ the support wave row > refuses a commander supporting themself 1142ms
+   ✓ the support wave row > refuses negative room, fuel or battle counts 835ms
+   ✓ the support wave row > refuses a status or a reason outside the authored machine 896ms
+   ✓ the support wave row > refuses a status whose timestamps contradict it 847ms
+   ✓ the support wave row > accepts the legal lifecycle in order 896ms
+   ✓ the report binder and the defence audit > defaults every report to one defender 816ms
+   ✓ the report binder and the defence audit > lets a supported battle store a corrected swing beside its raw exchange 926ms
+   ✓ the report binder and the defence audit > still refuses a corrected swing on an unsupported, non-joint battle 839ms
+   ✓ the report binder and the defence audit > refuses a defender count below one 752ms
+   ✓ the report binder and the defence audit > keeps one result per commander per report, and only the host carries lost loot 807ms
+   ✓ the report binder and the defence audit > keeps one Dominion journal row per commander per side, from two defenders up 863ms
+   ✓ the probe report > stores a support reading and the posture, both optional 881ms
+ ✓ test/dominion.test.ts (19 tests) 4041ms
+   ✓ Dominion numeric boundary > guards the permanent JSON copies with the same exact integer contract 2966ms
+   ✓ Dominion podium projection > keeps a scoped world off the podium when it is fourth galaxy-wide 1048ms
+ ✓ test/message-interactions.test.ts (6 tests) 10918ms
+   ✓ message reactions and replies > keeps one reaction per commander and a quoted reply in general chat 3734ms
+   ✓ message reactions and replies > limits clan interaction to messages visible since joining 1470ms
+   ✓ message reactions and replies > does not react after a concurrent clan departure 1096ms
+   ✓ message reactions and replies > keeps replies and reactions inside their DM participants and blocks writes while unavailable 1414ms
+   ✓ message reactions and replies > serializes DM reactions with a concurrent block 1552ms
+   ✓ message reactions and replies > does not react after a concurrent transfer to Silent Space 1641ms
+ ✓ test/probe-motion.test.ts (5 tests) 23643ms
+   ✓ a probe on the disc > publishes every window inside the flight it describes 5412ms
+   ✓ a probe on the disc > does not publish its destination until the final approach 14512ms
+   ✓ a probe on the disc > never moves backwards along its leg, in either payload 1358ms
+   ✓ a probe on the disc > turns round at the target rather than at the world it left 1076ms
+   ✓ a probe on the disc > flies home without going backwards either 1266ms
+ ✓ test/monument-events.test.ts (9 tests) 11527ms
+   ✓ native monument boundary events and durable scoring audit > registers all native arrival, loss and respawn handlers 3752ms
+   ✓ native monument boundary events and durable scoring audit > schedules the first individual HOLD death, handles an outage and starts respawn from the real final death 1199ms
+   ✓ native monument boundary events and durable scoring audit > restores the configured healthy neutral fleet exactly at 24 hours, without changing owned ships or replaying 920ms
+   ✓ native monument boundary events and durable scoring audit > never lets an old respawn event override a monument that has been held again 837ms
+   ✓ native monument boundary events and durable scoring audit > schedules a flying ship’s first death and releases a wholly lost return bay without waiting for ETA 896ms
+   ✓ native monument boundary events and durable scoring audit > delivers a returning fleet through its native handler without duplicated load 966ms
+   ✓ native monument boundary events and durable scoring audit > does not schedule losses or respawns beyond the actual season cutoff 899ms
+   ✓ native monument boundary events and durable scoring audit > rejects malformed native event payloads without settling or leaking ships 754ms
+   ✓ native monument boundary events and durable scoring audit > freezes personal Dominion from immutable monument shares after their source target is gone 1295ms
+ ✓ test/attack-recall.test.ts (16 tests) 19344ms
+   ✓ recalling an attack > turns a raid around and brings every ship home, with no battle at the target 3413ms
+   ✓ recalling an attack > takes exactly as long to come back as it had already flown 1082ms
+   ✓ recalling an attack > keeps the fuel paid at launch spent, and refunds none of it 938ms
+   ✓ recalling an attack > always fits at home, however full the hangar is 974ms
+   ✓ recalling an attack > lets a raid turn only once 1308ms
+   ✓ recalling an attack > still turns a second before it arrives: there is no last-minute lock 1017ms
+   ✓ recalling an attack > refuses once the fleet has reached the target 1087ms
+   ✓ recalling an attack > refuses another commander’s raid 964ms
+   ✓ recalling an attack > does not count against the repeat-attack limit, because nothing was fought 973ms
+   ✓ recalling an attack > stops warning the defender about a fleet that is no longer coming 1023ms
+   ✓ recalling an attack > is not a hostile flight once it has turned 992ms
+   ✓ recalling an attack > offers the recall on your own outbound raid, and names a turned one after where it turned back from 1009ms
+   ✓ recalling an attack > tells the owner it is home, from the world it turned back from, with nothing in the hold 1185ms
+   ✓ recalling an attack > stops blocking the recovery shield once it has turned 1040ms
+   ✓ recalling an attack > is no longer a hostile flight between the two when a clan weighs a recruit 1334ms
+   ✓ recalling an attack > reads the turned fleet as home at its new landing 994ms
+ ✓ test/monument-probe.test.ts (10 tests) 11359ms
+   ✓ a monument probe and its private arrival snapshot > uses the normal probe price and serializes a same-target cooldown race 3084ms
+   ✓ a monument probe and its private arrival snapshot > refuses a foreign origin without paying or making a probe 925ms
+   ✓ a monument probe and its private arrival snapshot > keeps a lost probe’s exact enemy roster out of storage and out of all intel reads 822ms
+   ✓ a monument probe and its private arrival snapshot > stores exact counts at arrival and exposes them only on one successful return to their observer 1062ms
+   ✓ a monument probe and its private arrival snapshot > reconciles an earlier probe before a later HOLD read loses the defenders to radiation 1091ms
+   ✓ a monument probe and its private arrival snapshot > does not allow an early or stale event to observe or deliver a fleet 757ms
+   ✓ a monument probe and its private arrival snapshot > blocks removal while in flight and removes terminal probe/event FKs during cleanup 950ms
+   ✓ a monument probe and its private arrival snapshot > cuts all monument probe states at season close without inventing a report for a lost or unreached probe 888ms
+   ✓ a monument probe and its private arrival snapshot > reanchors a probe from a lost colony without changing its paid route or observer 882ms
+   ✓ a monument probe and its private arrival snapshot > makes an old native probe event inert after the season froze 885ms
+ ✓ test/first-game-shield.test.ts (14 tests) 18227ms
+   ✓ one first-game shield per new human account > grants 72 hours on the first successful join and consumes the account entitlement 3162ms
+   ✓ one first-game shield per new human account > keeps existing accounts and legacy inserts at 24 hours 687ms
+   ✓ one first-game shield per new human account > blocks raids after 24 hours and still requires consent to surrender a three-day shield 1896ms
+   ✓ one first-game shield per new human account > does not renew or extend the shield on an idempotent retry 874ms
+   ✓ one first-game shield per new human account > retains the consumed entitlement across a season wipe and grants 24 hours next time 1760ms
+   ✓ one first-game shield per new human account > gives concurrent same-galaxy requests the same 72-hour shield 1008ms
+   ✓ one first-game shield per new human account > atomically consumes the entitlement when two galaxies race for the same account 1141ms
+   ✓ one first-game shield per new human account > keeps the entitlement when the galaxy is full or the season is ended 1152ms
+   ✓ one first-game shield per new human account > rolls back the entitlement if capital creation fails after it was claimed 842ms
+   ✓ one first-game shield per new human account > keeps server-controlled bot seats on the ordinary 24-hour shield 1040ms
+   ✓ one first-game shield per new human account > gates new eligibility in the register HTTP path 1097ms
+   ✓ one first-game shield per new human account > gates new eligibility in the claim HTTP path 1532ms
+   ✓ one first-game shield per new human account > honours an already-granted entitlement even on a replica with registration disabled 1273ms
+   ✓ one first-game shield per new human account > migrates pre-existing accounts without awarding or changing a shield 750ms
+ ✓ test/trade-fog.test.ts (6 tests) 9402ms
+   ✓ a convoy on the disc > does not exist for a commander whose circles do not cover it 3562ms
+   ✓ a convoy on the disc > is a moving question mark inside a Radar circle, with no roster and no line 1184ms
+   ✓ a convoy on the disc > is a fleet with an exact manifest inside a Telescope circle 1156ms
+   ✓ a convoy on the disc > publishes a bearing, never the rendezvous it is flying to 1141ms
+   ✓ a convoy on the disc > reaches its owner through the mission strip and not through traffic 1096ms
+   ✓ a convoy on the disc > stays with its commander when the pad it left changes hands 1241ms
+ ✓ test/silent-space-transfer.test.ts (11 tests) 16229ms
+   ✓ moves an existing inactive commander without replacing worlds, fleet, stock or activity 3313ms
+   ✓ drops the rival marks on both sides when a commander changes galaxy 1099ms
+   ✓ leaves the marks of commanders who did not move 1285ms
+   ✓ returns to the exact vacated address and preserves the commander through both moves 1324ms
+   ✓ rechecks activity and refuses ended or incompatible seasons 844ms
+   ✓ moves all colonies and preserves their fleet 1330ms
+   ✓ retains an inactive defender while somebody else is attacking it 1155ms
+   ✓ runs one bounded sweep across replicas per five minutes and picks existing inactive players 1093ms
+   ✓ gives queued returns a turn even while more inactive commanders await departure 1600ms
+   ✓ reserves departed addresses for queued returns while keeping unused seats open 1727ms
+   ✓ closes a vacancy consumed by a new player when no return is queued 1441ms
+ ✓ test/dm.test.ts (7 tests) 11466ms
+   ✓ seasonal direct messages > requires authentication and exposes only a participant’s conversations 3846ms
+   ✓ seasonal direct messages > keeps one thread per pair, trims Unicode and counts unread per recipient 1180ms
+   ✓ seasonal direct messages > blocks either direction without erasing an existing conversation 1078ms
+   ✓ seasonal direct messages > disables sending during Silent Space and resumes the same history on return 1369ms
+   ✓ seasonal direct messages > does not accept forged sender, another season, or an alien cursor 1005ms
+   ✓ seasonal direct messages > limits DM bursts and allows sending again after the window 1273ms
+   ✓ seasonal direct messages > clears player DM history at season rollover while preserving the operator archive 1707ms
+ ✓ test/rival.test.ts (10 tests) 13782ms
+   ✓ seasonal rival marker > keeps up to five marks, each in its own fixed slot 3346ms
+   ✓ seasonal rival marker > clears the mark that was pressed and leaves the rest where they are 1162ms
+   ✓ seasonal rival marker > marks a commander once, however many of their worlds are pressed 1037ms
+   ✓ seasonal rival marker > refuses a sixth mark rather than silently dropping the oldest 2489ms
+   ✓ seasonal rival marker > still moves after a Death Star has landed between the pair 927ms
+   ✓ seasonal rival marker > clears a mark whose world has left the galaxy, and keeps the rest 909ms
+   ✓ seasonal rival marker > clears every mark when the body names no world 924ms
+   ✓ seasonal rival marker > still moves after a battle and after a probe reading 857ms
+   ✓ seasonal rival marker > refuses self and a planet outside the caller’s current galaxy 1026ms
+   ✓ seasonal rival marker > requires authentication and rejects extra client-authored state 1079ms
+ ✓ test/pirate-field.test.ts (13 tests) 10648ms
+   ✓ the private pirate field > is the same lane every time the season key is read 2986ms
+   ✓ the private pirate field > appends each denser lane after every established opaque target 1294ms
+   ✓ the private pirate field > hands out an opaque handle and never the index behind it 440ms
+   ✓ what a pirate has left > reads an untouched pirate as its full roster 1094ms
+   ✓ what a pirate has left > subtracts what other commanders already destroyed, and never goes negative 411ms
+   ✓ what a pirate has left > loads the season lane with its stored damage applied 2253ms
+   ✓ what a pirate has left > treats a destroyed pirate as gone even while its orbit is still live 470ms
+   ✓ what a pirate has left > stands up only the pirates whose life covers this instant 390ms
+   ✓ what a pirate has left > hides only extra contacts until every process understands their handles 993ms
+ ✓ test/silent-space-neutral-reset.test.ts (8 tests) 17120ms
+   ✓ leaves an original T1 neutral while the developed colony travels with its commander 3933ms
+   ✓ leaves an original T2 neutral while the developed colony travels with its commander 1819ms
+   ✓ leaves an original T3 neutral while the developed colony travels with its commander 1709ms
+   ✓ can reset the same address again after somebody captures the replacement 1802ms
+   ✓ returns above capacity using the neutral address and preserves the developed colony 1651ms
+   ✓ shares three departure colony sites between two applicants and refuses a captured site 3652ms
+   ✓ uses another available neutral site when one has an incoming fleet 1539ms
+   ✓ leaves live wreckage at its source until it expires before moving its world 1008ms
+ ✓ test/death-star-loyalty.test.ts (12 tests) 17509ms
+   ✓ a Death Star hit on a colony > takes twenty points and leaves a loyal colony with its commander 3900ms
+   ✓ a Death Star hit on a colony > keeps a colony above twenty, by the margin it had 1341ms
+   ✓ a Death Star hit on a colony > turns a colony at exactly twenty NEUTRAL — nobody gains it 1329ms
+   ✓ a Death Star hit on a colony > turns a colony below twenty NEUTRAL and never below zero 1385ms
+   ✓ a Death Star hit on a colony > reads loyalty as it stands at the hit, faults and all 1223ms
+   ✓ a Death Star hit on a colony > takes loyalty from a colony too young to break 1189ms
+   ✓ a Death Star hit on a colony > settles two weapons landing together one after the other 1230ms
+   ✓ a Death Star hit on a colony > puts the loyalty it took on both commanders’ notifications 1168ms
+   ✓ a Death Star hit on a colony > leaves a capital’s loyalty alone and records none 1141ms
+   ✓ a Death Star hit on a colony > costs nothing when the weapon is shot down on the way 1184ms
+   ✓ a Death Star hit on a colony > puts the loyalty it took on both commanders’ reports 1318ms
+   ✓ a Death Star hit on a colony > puts no loyalty on the report of a capital strike 1090ms
+ ✓ test/monument-storage.test.ts (13 tests) 13062ms
+   ✓ monument persistence foundation > stores a genuine monument target without a target planet or changed planet layout 3045ms
+   ✓ monument persistence foundation > stores exact sub-bp damage and fractional cargo separately from wave ownership/research 865ms
+   ✓ monument persistence foundation > ties partial return fragments to the original wave without creating another bay identity 726ms
+   ✓ monument persistence foundation > prevents a cross-season monument target even when both seasons exist 804ms
+   ✓ monument persistence foundation > rejects invalid or repeated monument ordinals and malformed geometry/rates 725ms
+   ✓ monument persistence foundation > does not accept invalid owners/origins or reused unit parking locations 768ms
+   ✓ monument persistence foundation > requires consistent lifecycle timestamps and refuses negative reservations/fuel 767ms
+   ✓ monument persistence foundation > refuses impossible health, count, nonfinite cargo and cargo on combat hulls 936ms
+   ✓ monument persistence foundation > rolls back a wave and its manifest together when persistence fails 839ms
+   ✓ monument persistence foundation > cascades target/wave/manifest cleanup and refuses an origin deletion before reanchoring 939ms
+   ✓ monument persistence foundation > keeps HP source history after the monument is deleted, with its exact active interval 923ms
+   ✓ monument persistence foundation > refuses malformed source rate, geometry, anchor and historical windows 972ms
+   ✓ monument persistence foundation > can run the migration again without erasing physical cargo 742ms
+ ✓ test/newcomer-shield.test.ts (12 tests) 14350ms
+   ✓ the newcomer shield > is stamped on every commander who joins, whoever they are 3990ms
+   ✓ the newcomer shield > refuses a raid on a shielded commander, before anything is spent 1023ms
+   ✓ the newcomer shield > lets the raid through the moment the day is over 910ms
+   ✓ the newcomer shield > does not stop a probe 870ms
+   ✓ the newcomer shield > asks before it spends a shielded commander’s own shield 862ms
+   ✓ the newcomer shield > drops the shield once the commander accepts, and flies the raid 965ms
+   ✓ the newcomer shield > does not come back for the rest of the window 1004ms
+   ✓ the newcomer shield > never asks a commander who has no shield to give up 898ms
+   ✓ the newcomer shield > refuses a Death Star aimed at a shielded commander 948ms
+   ✓ the newcomer shield > asks before a strike spends the attacker’s own shield, then spends it 973ms
+   ✓ the newcomer shield > binds a commander who acknowledges, whoever is playing them 1012ms
+   ✓ the newcomer shield > names the target’s shield rather than the attacker’s when both are up 886ms
+ ✓ test/paddleLive.test.ts (8 tests) 10013ms
+   ✓ live Paddle skin sales > maps the nine existing live prices and never exposes a sandbox catalog 3285ms
+   ✓ live Paddle skin sales > serves the public payment-link page only the live client token 939ms
+   ✓ live Paddle skin sales > continues processing signed notifications when new skin sales are paused 912ms
+   ✓ live Paddle skin sales > creates one trusted bundle transaction and grants all four skins only after a signed completion 912ms
+   ✓ live Paddle skin sales > does not open a second checkout for an elemental skin already in a pending bundle 1323ms
+   ✓ live Paddle skin sales > revokes refunded Paddle rights and unequips skins without deleting order or manual rights 918ms
+   ✓ live Paddle skin sales > rejects malformed, stale and incorrect webhook signatures 839ms
+   ✓ live Paddle skin sales > shows location based prices and fixes transaction currency to match the chosen offer 878ms
+ ✓ test/stream.test.ts (10 tests) 12705ms
+   ✓ the event stream > fences an old placement before forwarding any later shard frame 3325ms
+   ✓ the event stream > carries what happened to this commander 1433ms
+   ✓ the event stream > wakes a connected commander when an operator grants a reward 1050ms
+   ✓ the event stream > refreshes rewards on another open device when a probe launches 947ms
+   ✓ the event stream > refreshes rewards on another open device when a raid launches 1051ms
+   ✓ the event stream > carries what happened in this galaxy 1006ms
+   ✓ the event stream > carries both on the same socket 1082ms
+   ✓ the event stream > does not carry another galaxy's events 984ms
+   ✓ the event stream > releases both subscriptions when the client goes away 967ms
+   ✓ the event stream > refuses a connection with no credential 850ms
+ ✓ test/event-bus-reconnect.test.ts (5 tests) 7796ms
+   ✓ event bus reconnect > forgets one commander’s probe memory the moment a report lands 3305ms
+   ✓ event bus reconnect > ignores every other private event 916ms
+   ✓ event bus reconnect > refreshes one commander’s sensor reach when their build completes 933ms
+   ✓ event bus reconnect > drops cached sensor reach as soon as an impact lowers Core 867ms
+   ✓ event bus reconnect > bypasses a dead listener and clears every projection before reuse 1761ms
+ ✓ test/trade-audit.test.ts (3 tests) 6872ms
+   ✓ the merchant lane under pressure > never lets two simultaneous launches spend the same store twice 3854ms
+   ✓ the merchant lane under pressure > debits exactly the offer plus fuel, and credits exactly the haul 1515ms
+   ✓ the merchant lane under pressure > frees an idle seat whose convoy flew from a world that has since changed hands 1496ms
+ ✓ test/bots-judgement.test.ts (19 tests) 5168ms
+   ✓ a raid on a world > commits more of the line only as far as the wall asks, and the lines agree 717ms
+   ✓ a raid on a world > lets a bold habit settle for breaking a wall a careful one would leave alone 1243ms
+   ✓ a raid on a world > counts the clan support standing at the world into the wall 1101ms
+   ✓ a raid on a world > refuses a fight that costs more of the wing than the habit pays 696ms
+   ✓ a raid on a world > stays home when the haul does not pay for the fuel 546ms
+   ✓ a raid on a world > assumes an unmeasured dome is as strong as the world can hold 500ms
+ ✓ test/tier-band.test.ts (15 tests) 17110ms
+   ✓ the development band at launch > the band itself > lets two commanders of the same tier fight 3243ms
+   ✓ the development band at launch > the band itself > lets a commander reach one tier up 1110ms
+   ✓ the development band at launch > the band itself > refuses a target two tiers up 872ms
+   ✓ the development band at launch > the band itself > refuses a target two tiers down — this is the beginner the band protects 956ms
+   ✓ the development band at launch > the band itself > refuses before anything is spent — the fleet stays home and the tank is full 1029ms
+   ✓ the development band at launch > whose development is measured > refuses a raid flown out of a small colony by a large commander 949ms
+   ✓ the development band at launch > whose development is measured > refuses a raid aimed at a small colony held by a large commander 1079ms
+   ✓ the development band at launch > whose development is measured > allows a raid on a small colony whose owner is inside the band 1273ms
+   ✓ the development band at launch > peakCoreLevels > reports the tallest Core each commander holds 1042ms
+   ✓ the development band at launch > peakCoreLevels > floors a commander who holds nothing at level 1 1021ms
+   ✓ the development band at launch > peakCoreLevels > asks nothing of the database for an empty list 843ms
+   ✓ the development band at launch > a Death Star strike > refuses a target two tiers up, and the weapon stays on the pad 974ms
+   ✓ the development band at launch > a Death Star strike > refuses a target two tiers down 926ms
+   ✓ the development band at launch > a Death Star strike > lets a strike one tier apart through 919ms
+   ✓ the development band at launch > a Death Star strike > measures the commander behind a small colony, not the colony struck 864ms
+ ✓ test/community.test.ts (16 tests) 7480ms
+   ✓ announcements, feedback and admin authority > exposes admin status from the out-of-band allow-list and protects both admin routes 3011ms
+   ✓ announcements, feedback and admin authority > publishes only sanitized HTML and rejects a script without writing a row 823ms
+   ✓ announcements, feedback and admin authority > broadcasts a committed announcement once to every live account 814ms
+   ✓ announcements, feedback and admin authority > hides an admin commander and planet from every other galaxy response 966ms
+   ✓ announcements, feedback and admin authority > keeps read state isolated per account 922ms
+   ✓ announcements, feedback and admin authority > stores feedback as plain text and a SQL-shaped message cannot change the schema 923ms
+ ✓ test/pirate-recall.test.ts (7 tests) 6862ms
+   ✓ calling a pirate raid back > turns an outbound raid home from where it is, once 2695ms
+   ✓ calling a pirate raid back > brings every ship home with nothing fought or taken, and says it was called back 817ms
+   ✓ calling a pirate raid back > cannot turn once the engagement begins 610ms
+   ✓ calling a pirate raid back > answers only to the commander who launched it 558ms
+   ✓ calling a pirate raid back > settles radiation up to the turn on a ruleset that prices it 622ms
+   ✓ calling a pirate raid back > is offered on the flight list only while it can still turn 609ms
+   ✓ calling a pirate raid back > over HTTP > turns the raid for its commander and refuses a malformed id 943ms
+ ✓ test/chat-supporters.test.ts (10 tests) 13203ms
+   ✓ manually assigned permanent chat supporters > requires admin authorization and rejects malformed or authority-forging bodies 3653ms
+   ✓ manually assigned permanent chat supporters > reports an unknown account without granting a right 952ms
+   ✓ manually assigned permanent chat supporters > case-folds the username and stores the manual right on the account, without admin authority or skin ownership 1001ms
+   ✓ manually assigned permanent chat supporters > serializes concurrent grants, keeps repeat grants stable, and can revoke then regrant 946ms
+   ✓ manually assigned permanent chat supporters > allows a grant before an account joins a galaxy 907ms
+   ✓ manually assigned permanent chat supporters > retains the account badge across a new season/player and display-name changes 1272ms
+   ✓ manually assigned permanent chat supporters > decorates immediate posts and existing general history, and removes revoked badges 1065ms
+   ✓ manually assigned permanent chat supporters > decorates immediate posts and existing clan history, and removes revoked badges 1164ms
+   ✓ manually assigned permanent chat supporters > decorates immediate posts and existing dm history, and removes revoked badges 1114ms
+   ✓ manually assigned permanent chat supporters > does not award supporter status merely because a planet skin was purchased 1114ms
+ ✓ test/manual-asteroids.test.ts (13 tests) 14184ms
+   ✓ operator-only asteroid batches > previews the exact batch without writing and commits the same ids afterwards 3659ms
+   ✓ operator-only asteroid batches > adds exactly ten immediately while preserving every existing rock and natural spawn input 983ms
+   ✓ operator-only asteroid batches > serializes concurrent retries of the same batch without spawning twenty 853ms
+   ✓ operator-only asteroid batches > keeps opaque targets, ore already claimed and a launched craft unchanged 1067ms
+   ✓ operator-only asteroid batches > keeps distinct concurrent batches and resolves an earlier retry after later additions 1025ms
+   ✓ operator-only asteroid batches > works with an empty natural lane without inventing active commanders 775ms
+   ✓ operator-only asteroid batches > rejects invalid count 0 without changing the hour 857ms
+   ✓ operator-only asteroid batches > rejects invalid count -1 without changing the hour 991ms
+   ✓ operator-only asteroid batches > rejects invalid count 1.5 without changing the hour 815ms
+   ✓ operator-only asteroid batches > rejects invalid count 101 without changing the hour 871ms
+   ✓ operator-only asteroid batches > rejects invalid count NaN without changing the hour 739ms
+   ✓ operator-only asteroid batches > refuses a full index span without changing existing lanes 767ms
+   ✓ operator-only asteroid batches > refuses an hour not opened by the normal worker and an ended season 772ms
+ ✓ test/clan-support-reads.test.ts (9 tests) 33136ms
+   ✓ the sender’s own pages > lists the wave on the Fleet page and draws its flight on the pending strip 4358ms
+   ✓ the probe > reads the posture exactly and the standing support as a reading of its own 4152ms
+   ✓ the probe > leaves a wave out of the reading once it has drifted out of the band 3531ms
+   ✓ the probe > reads an ESCAPE world with no support line at all 3449ms
+   ✓ the probe > reads neither in a season without clan defence 3002ms
+   ✓ the battle report > reaches the supporter, who reads it as a defender of their own wave 3940ms
+   ✓ the battle report > shows the host only their own ships as theirs, and the line beside them 3564ms
+   ✓ the battle report > tells the raider who stood there and what each lost — never what each kept 3580ms
+   ✓ the battle report > keeps it from a clanmate who was not in the line 3549ms
+ ✓ test/silent-space-manual.test.ts (10 tests) 12264ms
+   ✓ names the commander, the worlds they hold and the galaxy they would leave 2768ms
+   ✓ refuses a name that is not exactly one commander 910ms
+   ✓ refuses a commander who is already out of the main galaxy 1089ms
+   ✓ moves an active commander who asked, with worlds, fleet and a return address intact 1204ms
+   ✓ still refuses an owner-requested move while a fleet is in the air, and writes nothing 1063ms
+   ✓ defers an owner-requested move for an active joint-war leader 846ms
+   ✓ defers an owner-requested move for an active joint-war target 939ms
+   ✓ defers an owner-requested move for an active joint-war contributor 845ms
+   ✓ does not waive the activity clock for the sweep or for an ordinary transfer 993ms
+   ✓ leaves a return address the ordinary application can bring the commander home to 1599ms
+ ✓ test/monument-reports.test.ts (4 tests) 6297ms
+   ✓ monument participant reports and result delivery > announces a physical return only after landing, with actual cargo and target identity, once 3271ms
+   ✓ monument participant reports and result delivery > shows a native NPC report when there is no planet battle, retaining target identity after cleanup 999ms
+   ✓ monument participant reports and result delivery > serves only each participant’s own roster, wounds, loot and points and sends one result per owner 1015ms
+   ✓ monument participant reports and result delivery > freezes opponent commander and clan identity into the report and result notice 1006ms
+ ✓ test/ratelimit.test.ts (7 tests) 3084ms
+   ✓ rate limiting > refuses a login once the address has spent its attempts 772ms
+   ✓ rate limiting > answers with a game error code and the seconds to wait 323ms
+   ✓ rate limiting > stops one address from taking every seat in the galaxy 391ms
+   ✓ rate limiting > counts signing in and signing up separately 362ms
+   ✓ rate limiting > never rate-limits the health check 591ms
+   ✓ rate limiting > takes an API replica out of health while its LISTEN channel is down 395ms
+ ✓ test/intergalactic-convoy-schema.test.ts (8 tests) 8981ms
+   ✓ the additive convoy schema > appends every enum value without moving existing values 2869ms
+   ✓ the additive convoy schema > round-trips coordinates at double precision and keeps unresolved rewards null 1179ms
+   ✓ the additive convoy schema > holds one flight bay for both active legs and releases it only when done 1031ms
+   ✓ the additive convoy schema > allows one active run per physical world across occurrences 739ms
+   ✓ the additive convoy schema > allows a world to raid each occurrence only once, even after done 759ms
+   ✓ the additive convoy schema > keeps the two database locks authoritative under concurrent insertion 876ms
+   ✓ the additive convoy schema > requires resolved reward state outside outbound and distinguishes empty awards 786ms
+   ✓ the additive convoy schema > rejects invalid quality, timestamp order and negative resource snapshots 733ms
+ ✓ test/faults.test.ts (15 tests) 14814ms
+   ✓ arıza satırının kendisi > aynı arıza aynı dünyada iki kez duramaz 3028ms
+   ✓ arıza satırının kendisi > aynı arıza iki ayrı dünyada durabilir 943ms
+   ✓ arıza satırının kendisi > sekizi birden durabilir 1071ms
+   ✓ arıza satırının kendisi > üç onarım aynı anda koşar, dördüncü aynı yuvayı alamaz 786ms
+   ✓ arıza satırının kendisi > onarılmayan arızalar yuva tutmaz 788ms
+   ✓ arıza satırının kendisi > yarım bir onarım yazılamaz — yuva, başlangıç ve bitiş birlikte gider 773ms
+   ✓ arıza satırının kendisi > yuva numarası üçe kadardır 905ms
+   ✓ kilidin altında okumak > arızasız bir dünya boş liste taşır 755ms
+   ✓ kilidin altında okumak > duran arızalar kilidin altında görünür 778ms
+   ✓ istemciye ne gidiyor > her arıza kendi tabı, kendi item’ı ve kendi fiyatıyla yayınlanır 813ms
+   ✓ istemciye ne gidiyor > koşan bir onarım bitiş anını taşır ve iptal edilemez olduğunu söyler 837ms
+   ✓ istemciye ne gidiyor > sadakat ve kalan süre kolonide yayınlanır 809ms
+   ✓ istemciye ne gidiyor > ana gezegende sadakat yoktur — orada arıza da olmaz 825ms
+   ✓ istemciye ne gidiyor > çekirdek kapısının altındaki koloni savaş sadakatini gösterir, arıza taşımaz 804ms
+   ✓ istemciye ne gidiyor > çekirdek kapısı altına düşen kolonide eski arıza sadakati düşürmez 891ms
+ ✓ test/clan-support-posture.test.ts (12 tests) 34085ms
+   ✓ the posture is the season’s rule from ruleset 15 only > refuses any change in a season dealt before clan defence 3325ms
+   ✓ the two toggles > opens every world on the retreat, with support locked outside a clan 2823ms
+   ✓ the two toggles > refuses both on at once — the one state the rule forbids 3002ms
+   ✓ the two toggles > refuses support to a commander with no clan, and lets them hold 2946ms
+   ✓ the two toggles > opens support for a member — even one still adapting — and closes the retreat with it 3459ms
+   ✓ the two toggles > refuses a world the caller does not hold 2777ms
+   ✓ leaving the clan drops a supporting world back to the retreat > on leave — a HOLD world stays held, a SUPPORT world returns to ESCAPE 2953ms
+   ✓ leaving the clan drops a supporting world back to the retreat > leaves a HOLD world alone and tells nobody 3126ms
+   ✓ leaving the clan drops a supporting world back to the retreat > on a kick 3092ms
+   ✓ leaving the clan drops a supporting world back to the retreat > on a disband, for every member 3208ms
+   ✓ the clan presence > says which clanmate worlds take clan support 1208ms
+   ✓ the clan presence > tells every clanmate when a world opens or closes its door, and nobody else 2155ms
+ ✓ test/npc-battle-damage.test.ts (2 tests) 3101ms
+   ✓ a raid on a caretaker world > brings the raider's damage home and leaves the caretaker nothing to carry 1768ms
+   ✓ a raid on a pirate > flies the hunters home damaged and judges them on landing 1322ms
+ ✓ test/ship-damage-storage.test.ts (9 tests) 10688ms
+   ✓ the Repair Station dock > holds only ships above the free-repair line and short of destruction 3254ms
+   ✓ the Repair Station dock > lands a fleet: the patched go home, the damaged go to the dock, none made or lost 894ms
+   ✓ the Repair Station dock > lands an undamaged fleet exactly as a landing always did 857ms
+   ✓ the Repair Station dock > keeps two landings apart even when their damage is the same 775ms
+   ✓ the Repair Station dock > moves a defender's badly damaged ships off the line and leaves the lightly hit at home 789ms
+   ✓ the Repair Station dock > refuses to dock ships the world does not have at home 861ms
+   ✓ the Repair Station dock > counts docked ships as owned, never as away 810ms
+   ✓ the Repair Station dock > lets a galaxy be wiped with ships in the dock and a repair running 1573ms
+   ✓ the Repair Station dock > lets a commander be deleted with ships in the dock and a repair running 854ms
+ ✓ test/season-rank-rewards.test.ts (5 tests) 12012ms
+   ✓ next-season Dominion rewards > leaves bot and zero-Dominion places empty instead of promoting lower commanders 3189ms
+   ✓ next-season Dominion rewards > does not create rank rewards for a Silent Space season 1009ms
+   ✓ next-season Dominion rewards > grants and binds the configured rewards exactly once on a forced wipe 1688ms
+   ✓ next-season Dominion rewards > binds the entitlement to the immediate successor and pays concurrent joins exactly once 2524ms
+   ✓ next-season Dominion rewards > expires an unclaimed entitlement when its immediate successor cycle ends 3583ms
+ ✓ test/mission-pace.test.ts (9 tests) 12425ms
+   ✓ the pace a launch is flown at > flies at full speed when no pace is chosen 3585ms
+   ✓ the pace a launch is flown at > lands later in exact proportion to the pace, and records it 1093ms
+   ✓ the pace a launch is flown at > charges identical fuel however slowly it is flown 1038ms
+   ✓ the pace a launch is flown at > refuses a pace that is not on the ladder 1015ms
+   ✓ the pace a launch is flown at > refuses a pace that would keep the fleet in the air past the ceiling 1376ms
+   ✓ the pace a launch is flown at > sends the survivors home at the pace they went out 1373ms
+   ✓ the pace a launch is flown at > estimates a slow raid home on the equally slow way back 993ms
+   ✓ the pace a launch is flown at > refuses a slow raid whose slow way home would land after the season ends 961ms
+   ✓ the pace a launch is flown at > accepts a slow raid whose slow way home lands before the season ends 983ms
+ ✓ test/brand-recall.test.ts (13 tests) 15036ms
+   ✓ a single brand quiz per new account > atomically enrolls a newly registered account 3323ms
+   ✓ a single brand quiz per new account > preserves the first-game shield flag true and the quiz enrollment clock 914ms
+   ✓ a single brand quiz per new account > preserves the first-game shield flag false and the quiz enrollment clock 996ms
+   ✓ a single brand quiz per new account > does not enroll an existing commander by reading their status 886ms
+   ✓ a single brand quiz per new account > refuses an early answer and an unenrolled account 854ms
+   ✓ a single brand quiz per new account > a wrong answer grants nothing and permits another attempt 997ms
+   ✓ a single brand quiz per new account > pays exactly once when two correct requests race, including deuterium 1013ms
+   ✓ a single brand quiz per new account > dismissal survives reloads and cannot later be exchanged for a reward 951ms
+   ✓ a single brand quiz per new account > cannot pay into another account’s planet 945ms
+   ✓ a single brand quiz per new account > returns the authoritative planet on retry after a lost acknowledgement without paying again 960ms
+   ✓ a single brand quiz per new account > does not consume a reward while its capital is recovering 897ms
+   ✓ a single brand quiz per new account > requires an owned capital for a payout but lets an enrolled account skip without one 921ms
+   ✓ a single brand quiz per new account > serializes a skip racing a correct claim without paying after a skip 1361ms
+ ✓ test/monument-ownership.test.ts (7 tests) 10444ms
+   ✓ monument origin ownership > moves a terminal root with its active recall fragment so origin cleanup cannot cascade away the fragment 3480ms
+   ✓ monument origin ownership > keeps OUTBOUND ships, cargo and their bay personal when the origin colony changes hands 1146ms
+   ✓ monument origin ownership > keeps HOLD ships, cargo and their bay personal when the origin colony changes hands 1085ms
+   ✓ monument origin ownership > keeps RETURNING ships, cargo and their bay personal when the origin colony changes hands 1169ms
+   ✓ monument origin ownership > moves the anchor to the capital on secession without healing, recalling or repricing the load 1206ms
+   ✓ monument origin ownership > lets secession and a physical recall race without deadlock, duplicate load or lost ships 1367ms
+   ✓ monument origin ownership > rolls the anchor and physical units back when the expected colony controller is stale 978ms
+ ✓ test/crossfire.test.ts (5 tests) 9750ms
+   ✓ a raid lands while my own fleet is still outbound > leaves the outbound wing in the air when the garrison survives 4035ms
+   ✓ a raid lands while my own fleet is still outbound > keeps the outbound wing when the garrison is wiped out 1475ms
+   ✓ a raid lands while my own fleet is still outbound > still publishes the outbound thread, with its path, after the battle 1446ms
+   ✓ a raid lands while my own fleet is still outbound > keeps a Death Star in flight when its own world is raided 1471ms
+   ✓ a raid lands while my own fleet is still outbound > lands the returning wing back into the launchable garrison 1304ms
+ ✓ test/chat-podium.test.ts (8 tests) 11628ms
+   ✓ previous-season chat podium > marks exactly the previous top three without needing a reward claim 3507ms
+   ✓ previous-season chat podium > returns no podium for an empty page 1129ms
+   ✓ previous-season chat podium > does not retain an older podium into the following season 1154ms
+   ✓ previous-season chat podium > retains the frozen MAIN podium when that shard is repurposed as Silent Space 1288ms
+   ✓ previous-season chat podium > does not award a Silent Space or unfinished season podium 1000ms
+   ✓ previous-season chat podium > includes the same podium in general chat post and history 1251ms
+   ✓ previous-season chat podium > includes the podium in clan chat post and history 1129ms
+   ✓ previous-season chat podium > includes the podium in DM post and history 1137ms
+ ✓ test/raid-damage.test.ts (3 tests) 6703ms
+   ✓ persistent damage on a raid > docks the defender's badly damaged ship at once and the raider's when it lands 4152ms
+   ✓ persistent damage on a raid > patches a lightly damaged defender on the spot and says so 1295ms
+   ✓ persistent damage on a raid > leaves a season dealt before the rule exactly as it was 1245ms
+ ✓ test/prospector-dispatch.test.ts (6 tests) 9975ms
+   ✓ independent Prospector dispatch > can send both craft separately to the same asteroid 3871ms
+   ✓ independent Prospector dispatch > can send both craft separately to the same debris 1128ms
+   ✓ independent Prospector dispatch > does not hold the unused craft while a debris craft rests 1374ms
+   ✓ independent Prospector dispatch > never transfers a Prospector between worlds 929ms
+   ✓ independent Prospector dispatch > keeps staggered debris cooldowns separate and never spends a resting craft 1460ms
+   ✓ independent Prospector dispatch > can reuse the landed debris craft while another craft returns from that asteroid 1196ms
+ ✓ test/bots-population-policy.test.ts (21 tests) 112ms
+ ✓ test/schema-drift.test.ts (5 tests) 7742ms
+   ✓ a database that is behind the build > reports nothing pending once the migrations have run 3274ms
+   ✓ a database that is behind the build > refuses to start, and says how to fix it 1116ms
+   ✓ a database that is behind the build > treats a database it cannot read as completely un-migrated 1032ms
+   ✓ the worker when its housekeeping is broken > still resolves due events when the stranded sweep throws 1244ms
+   ✓ the worker when its housekeeping is broken > releases a flight whose event row has vanished 1066ms
+ ✓ test/monument-honorees.test.ts (6 tests) 10295ms
+   ✓ the names the monuments carry > names monument N after last season's rank N, and stops at five 3951ms
+   ✓ the names the monuments carry > leaves a monument unnamed when last season had fewer commanders 1255ms
+   ✓ the names the monuments carry > names nothing in a galaxy with no previous season 1213ms
+   ✓ the names the monuments carry > reads only a season that is over 1217ms
+   ✓ the names the monuments carry > names the monuments after this galaxy's own last season, not another galaxy's 1205ms
+   ✓ the names the monuments carry > hands the names to every client with the season 1440ms
+ ✓ test/landing-damage.test.ts (5 tests) 8410ms
+   ✓ landing a damaged fleet > docks a transfer's badly damaged ships at the world it reaches 3630ms
+   ✓ landing a damaged fleet > splits a round trip by hull: the staying hulls land their damage, the returning carry theirs 1208ms
+   ✓ landing a damaged fleet > brings a recalled flight home with what it carries 1086ms
+   ✓ landing a damaged fleet > carries the damage onto a reroute when the world it flew to is gone 1324ms
+   ✓ landing a damaged fleet > never repairs a stranded fleet for free when the server gives up on its leg 1144ms
+ ✓ test/return-lifecycle-races.test.ts (5 tests) 8135ms
+   ✓ CR: admission checks the deadline after waiting for commander lock 3151ms
+   ✓ CR: one bootstrap shares a cycle under a progressing clock 1571ms
+   ✓ wipe and presence serialize without a player/application deadlock 1602ms
+   ✓ presence expires priority when its player lock wait crosses expiry 976ms
+   ✓ enqueue expires priority when its player lock wait crosses expiry 825ms
+ ✓ test/intergalactic-convoy-field.test.ts (6 tests) 3369ms
+   ✓ the authenticated active event projection > publishes a fixed-clock convoy when the season began between whole minutes 1392ms
+   ✓ the authenticated active event projection > publishes a route only while its ruleset-8 occurrence is active 1203ms
+ ✓ test/fleet-v2-cutover.test.ts (1 test) 5733ms
+   ✓ Fleet V2 offline season cutover > reclaims accounts into a v4 successor and completes the Fleet V2 smoke route 5719ms
+ ✓ test/transfer-pace.test.ts (9 tests) 9251ms
+   ✓ the pace a transfer is flown at > flies at full speed when no pace is chosen 2776ms
+   ✓ the pace a transfer is flown at > lands later in exact proportion to the pace, and records it 811ms
+   ✓ the pace a transfer is flown at > flies the returning group home at the pace the transfer went out 1004ms
+   ✓ the pace a transfer is flown at > charges the same homeward fuel however slowly it is flown 790ms
+   ✓ the pace a transfer is flown at > refuses a pace that is not on the ladder 738ms
+   ✓ the pace a transfer is flown at > refuses a pace that would keep the fleet up past the ceiling 860ms
+   ✓ the pace a transfer is flown at > names a bad pace before an empty tank 805ms
+   ✓ the pace a transfer is flown at > names a too-slow pace before an empty tank 704ms
+   ✓ the pace a transfer is flown at > still refuses a legal pace on an empty tank for the fuel 754ms
+ ✓ test/pirate-dynamic.test.ts (6 tests) 9877ms
+   ✓ a ruleset-9 season > stores the hour’s pirate lane sized to the people who played 2033ms
+   ✓ a ruleset-9 season > sizes the hour to people plus half of the active bots 1478ms
+   ✓ a ruleset-9 season > publishes exactly the stored pirates, and resolves each by its handle and its index 1246ms
+   ✓ a ruleset-9 season > is the same pirates on every read of the same hour 1399ms
+   ✓ a ruleset-9 season > carries no derived lane at all 1202ms
+   ✓ a season created before ruleset 9 > writes no pirate lane and keeps its derived per-seat field 2512ms
+ ✓ test/raid-ledger.test.ts (6 tests) 7011ms
+   ✓ a settled raid, in the books > charges the fuel the launch actually paid, and never a recomputed one 2865ms
+   ✓ a settled raid, in the books > separates what came home from what stopped existing 885ms
+   ✓ a settled raid, in the books > keeps what the defender lost out of the attacker books 846ms
+   ✓ a settled raid, in the books > answers nothing for a mission that never settled a battle 691ms
+   ✓ a settled raid, in the books > refuses a raid that was not flown at a commander 885ms
+   ✓ a settled raid, in the books > refuses a PvP-looking report with nobody on the other side of it 831ms
+ ✓ test/dev-up.test.ts (6 tests) 10784ms
+   ✓ pnpm start galaxy preparation without ripgrep > keeps an already-live monument season and reaches the playable banner 2116ms
+   ✓ pnpm start galaxy preparation without ripgrep > creates a missing rehearsal once and prints the updated status 2127ms
+   ✓ pnpm start galaxy preparation without ripgrep > fully consumes long CLI output without causing EPIPE 2299ms
+   ✓ pnpm start galaxy preparation without ripgrep > does not open a local rehearsal in production 2095ms
+   ✓ pnpm start galaxy preparation without ripgrep > does not open a local rehearsal in test 2089ms
+ ✓ test/bots-as-people.test.ts (3 tests) 8994ms
+   ✓ a bot’s first day > is shielded exactly as a person’s is 3034ms
+   ✓ a bot’s first day > is waited out: no raid leaves while the bot’s own shield stands 4588ms
+   ✓ a battle between two bots > moves Dominion, taken by one and lost by the other 1360ms
+ ✓ test/clan-support-joint.test.ts (1 test) 3812ms
+   ✓ a joint war meets a supported line > fights both pools, books both teams and keeps the ladder exactly zero-sum 3800ms
+ ✓ test/monument-lifecycle.test.ts (5 tests) 5832ms
+   ✓ monument reclaim and placement references > clears every monument target, historical HP source and wave before a frozen season wipe removes players and worlds 2848ms
+   ✓ monument reclaim and placement references > keeps every active flight or HOLD wave out of reclaim and account demolition 721ms
+   ✓ monument reclaim and placement references > defers Silent Space movement while a HOLD or flight exists and moves only after the wave is terminal 834ms
+   ✓ monument reclaim and placement references > removes terminal personal wave FKs and native wave events before demolishing an origin 781ms
+   ✓ monument reclaim and placement references > refuses a direct demolition that bypassed the active-wave guard 641ms
+ ✓ test/construction-speed.test.ts (6 tests) 6068ms
+   ✓ the surface build ladder, through the real queue > shortens a building by the rung the commander holds 2513ms
+   ✓ the surface build ladder, through the real queue > shortens an instrument by the same rung 596ms
+   ✓ the surface build ladder, through the real queue > shortens a satellite by the same rung 665ms
+   ✓ the surface build ladder, through the real queue > builds the Uplink in five minutes, less the robot rung, for 1,000 / 500 626ms
+   ✓ the surface build ladder, through the real queue > leaves a hull in the yard untouched 673ms
+   ✓ the surface build ladder, through the real queue > quotes the shortened figure back on the planet view 988ms
+ ✓ test/monument-traffic.test.ts (4 tests) 4828ms
+   ✓ native monument flights through the existing public sensor fog > shows no contact outside sensors and only an anonymous bearing inside Radar 2617ms
+   ✓ native monument flights through the existing public sensor fog > identifies the actual airborne roster with Telescope without disclosing HOLD, wounds, cargo or route endpoints 776ms
+   ✓ native monument flights through the existing public sensor fog > uses the real return route and discards a whole dead wing even when the worker is late 739ms
+   ✓ native monument flights through the existing public sensor fog > shows a native probe as an earned probe bearing and never publishes its observation 684ms
+ ✓ test/polar-checkout-api.test.ts (5 tests) 17ms
+ ✓ test/clan-aid-sybil.test.ts (5 tests) 6625ms
+   ✓ a shielded commander may not ship their grant away > lets an unshielded commander send aid as before 2714ms
+   ✓ a shielded commander may not ship their grant away > refuses aid out of a commander still behind the newcomer shield 1035ms
+   ✓ a shielded commander may not ship their grant away > lets them send the moment the shield lapses 1084ms
+   ✓ a shielded commander may not ship their grant away > tells the sender in the quote that their shield holds the aid back 822ms
+   ✓ a shielded commander may not ship their grant away > still lets a shielded commander receive aid 961ms
+ ✓ test/chat-archive.test.ts (4 tests) 7603ms
+   ✓ the chat archive > keeps the galaxy and the clan conversation through a forced wipe 2990ms
+   ✓ the chat archive > keeps the archive of every earlier season when the next one is wiped 1784ms
+   ✓ the chat archive > erases what a deleted person said, and only that 955ms
+   ✓ erasing a person who recorded a performance session > takes the recordings with the account 1867ms
+ ✓ test/chronicle.test.ts (5 tests) 4892ms
+   ✓ Galaxy Chronicle > keeps one public snapshot per source and exposes no combat intel 2503ms
+   ✓ Galaxy Chronicle > reads only the last 24 hours and cursor-pages same-instant rows without loss 610ms
+   ✓ Galaxy Chronicle > records only a public Core tier crossing, not every Core level 664ms
+   ✓ Galaxy Chronicle > repairs missing live-season Act beats after the enum migration, exactly once 567ms
+   ✓ Galaxy Chronicle > publishes each scheduled season act at its authored instant exactly once 542ms
+ ✓ test/bots-repair.test.ts (4 tests) 6303ms
+   ✓ a bot and its Repair Station > repairs what waits in the dock, and does it before it buys a ship 2706ms
+   ✓ a bot and its Repair Station > repairs the lots it can pay for when it cannot pay for them all 1032ms
+   ✓ a bot and its Repair Station > does nothing and loses nothing when it can pay for none 1305ms
+   ✓ a bot and its Repair Station > counts a docked craft as its own, so it does not buy a second 1253ms
+ ✓ test/radiation-api.test.ts (4 tests) 5003ms
+   ✓ radiation on the wire > shows every cloud a flight could still be crossing, and not one long gone 2622ms
+   ✓ radiation on the wire > shows no cloud in a season dealt before the rule 742ms
+   ✓ radiation on the wire > refuses a lethal launch with the count, and flies it once acknowledged 817ms
+   ✓ radiation on the wire > takes the same acknowledgement on a transfer 810ms
+ ✓ test/trade-field.test.ts (7 tests) 2618ms
+   ✓ the season trade lane > moves neither a rock nor a pirate 2106ms
+   ✓ the season trade lane > leaves the baseline field alone when the calendar is merchants only 506ms
+ ✓ test/hp-landing-storage.test.ts (5 tests) 4327ms
+   ✓ precise HP landing persistence and normal repairs > lands exact twenty percent at home and stores the positive fraction above it in the dock 2131ms
+   ✓ precise HP landing persistence and normal repairs > keeps distinct carried fractions apart and preserves a barely surviving ship 541ms
+   ✓ precise HP landing persistence and normal repairs > enforces the real threshold and rejects malformed fractions in PostgreSQL 551ms
+   ✓ precise HP landing persistence and normal repairs > uses exact fractional cost and duration through the ordinary queued repair, then releases the same ship whole 562ms
+   ✓ precise HP landing persistence and normal repairs > rolls the physical landing and its exact health metadata back together 536ms
+ ✓ test/return-queue.test.ts (9 tests) 8672ms
+   ✓ retries and concurrent requests preserve one durable application and sequence 2559ms
+   ✓ cancel and reapply move to the tail without renumbering somebody else 838ms
+   ✓ expires the old queue position before accepting a fresh application at 48 hours 727ms
+   ✓ rejects stale placement and another commander’s cancellation 677ms
+   ✓ refuses admission at the season deadline even if its status is still live 736ms
+   ✓ presence at hour 47 extends only a still-valid application 975ms
+   ✓ presence at hour 48 extends only a still-valid application 775ms
+   ✓ presence at hour 49 extends only a still-valid application 711ms
+   ✓ reports a failed presence transaction and lets the next request retry 660ms
+ ✓ test/dock-ownership.test.ts (3 tests) 3812ms
+   ✓ the dock when a colony changes hands > flies a seceding colony's docked ships to its commander's capital, still theirs 2374ms
+   ✓ the dock when a colony changes hands > lets a lot under repair wait again at the capital, tied to no order of the world left behind 787ms
+   ✓ the dock when a colony changes hands > hands a captured colony's docked ships to the captor, exactly as its standing ships 645ms
+ ✓ test/dock-reads.test.ts (5 tests) 5540ms
+   ✓ the Repair Station dock, as the rest of the game reads it > reads a world with ships in the dock as a world whose fleet is home 2666ms
+   ✓ the Repair Station dock, as the rest of the game reads it > files a probe report that says the fleet is home 751ms
+   ✓ the Repair Station dock, as the rest of the game reads it > keeps docked ships out of the garrison every launch lane and the defending line read 705ms
+   ✓ the Repair Station dock, as the rest of the game reads it > refuses to send a docked ship on a raid 583ms
+   ✓ the Repair Station dock, as the rest of the game reads it > lets an idle commander with ships in the dock move to Silent Space, dock and all 827ms
+ ✓ test/repair-api.test.ts (5 tests) 5302ms
+   ✓ POST /api/planets/:planetId/repairs > starts a repair on the named lots and answers with the whole world 2480ms
+   ✓ POST /api/planets/:planetId/repairs > starts one repair on everything waiting 751ms
+   ✓ POST /api/planets/:planetId/repairs > refuses a body that is neither, both, or something else 670ms
+   ✓ POST /api/planets/:planetId/repairs > takes a hand-picked list up to the bound the client reads, and refuses one longer 734ms
+   ✓ POST /api/planets/:planetId/repairs > refuses another commander's world and a stranger with no session 663ms
+ ✓ test/bots-identities.test.ts (6 tests) 5633ms
+   ✓ owner supplied bot identities > contains 70 Turkish, 10 French, 10 German, and 10 Spanish unique names 2341ms
+   ✓ owner supplied bot identities > updates old commanders in place, creates missing ones, and is safe to rerun 789ms
+   ✓ owner supplied bot identities > does not change any identity when a requested name belongs to a person 645ms
+   ✓ owner supplied bot identities > retires a renamed commander by its visible name 594ms
+   ✓ owner supplied bot identities > keeps a deliberately retired listed commander retired 678ms
+   ✓ owner supplied bot identities > runs the roster sync after migration and before starting the worker 585ms
+ ✓ test/perf-sessions.test.ts (5 tests) 5107ms
+   ✓ recording a performance session > stores the admin’s recording whole, against their account 2155ms
+   ✓ recording a performance session > refuses anybody who is not an admin 702ms
+   ✓ recording a performance session > refuses a malformed recording 670ms
+   ✓ recording a performance session > takes two hours of seconds and refuses more 695ms
+   ✓ recording a performance session > carries a full two hours in one request 880ms
+ ✓ test/polar-catalog.test.ts (9 tests) 71ms
+ ✓ test/research-industrial.test.ts (4 tests) 4151ms
+   ✓ Industrial research > waits for Shipyard Automation 2, not merely for the project 2176ms
+   ✓ Industrial research > can queue behind the second rung that opens it, and falls with it 639ms
+   ✓ Industrial research > does not fall with a third rung it never needed 692ms
+   ✓ Industrial research > does not exist in a season dealt before the Repair Station 637ms
+ ✓ test/fleet-v2-server-contract.test.ts (7 tests) 11ms
+ ✓ test/monument-silent-space.test.ts (2 tests) 3844ms
+   ✓ keeps a delayed operator monument battle exempt during manual Silent Space clan dissolution 2910ms
+   ✓ keeps a delayed operator monument battle exempt during sweep Silent Space clan dissolution 928ms
+ ✓ test/neutral-census.test.ts (3 tests) 3056ms
+   ✓ staged neutral census > opens only twenty percent and schedules the first census three days later 885ms
+   ✓ staged neutral census > opens unmet demand once, records it publicly and queues the next day 1559ms
+   ✓ staged neutral census > repairs a missing census chain idempotently 605ms
+ ✓ test/placement-http.test.ts (3 tests) 3990ms
+   ✓ rejects old browser intents after relocation and publishes the current placement on me 2251ms
+   ✓ keeps the galaxy placement stable throughout an authenticated handler 637ms
+   ✓ invalidates a warm commander projection even before the transfer notification arrives 1095ms
+ ✓ test/galaxy-record.test.ts (4 tests) 4ms
+ ✓ test/return-api.test.ts (3 tests) 3768ms
+   ✓ authenticates status and never offers MAIN a return application 2265ms
+   ✓ publishes verified placement and accepts an idempotent application through the client contract 816ms
+   ✓ rejects stale placement and invalid intent 682ms
+ ✓ test/polar-pricing.test.ts (5 tests) 31ms
+ ✓ test/polar-env.test.ts (3 tests) 13ms
+ ✓ test/paddle-env.test.ts (6 tests) 11ms
+ ✓ test/monument-season-seed.test.ts (3 tests) 4739ms
+   ✓ the approved monument season deal > opens new default seasons with monuments while preserving an existing season’s deal 2741ms
+   ✓ the approved monument season deal > deals five deterministic monuments and one HP cloud per monument for ruleset 16 1023ms
+   ✓ the approved monument season deal > does not backfill monuments into a ruleset 15 season 969ms
+ ✓ test/radiation-cli.test.ts (5 tests) 8ms
+ ✓ test/bots-per-galaxy.test.ts (9 tests) 3951ms
+   ✓ seating to the configured roster > seats only as many as the operator asked for 2980ms
+   ✓ seating to the configured roster > is what the worker passes on 958ms
+ ✓ test/async-cache.test.ts (5 tests) 7ms
+ ✓ test/waiting-servers.test.ts (4 tests) 4583ms
+   ✓ provisions once under two concurrent requests and preserves the source period 2200ms
+   ✓ opens another waiting shard when the first has no commander seats 586ms
+   ✓ does not replay old calendar events when provisioned mid-period 1234ms
+   ✓ does not create a waiting season after the source deadline or operational limit 556ms
+ ✓ test/pirate-estimate.test.ts (2 tests) 2183ms
+   ✓ pirate summary ETA is a combat estimate > quotes the warship even when the hauler can arrive earlier, retaining both selected-fleet rows 1845ms
+   ✓ pirate summary ETA is a combat estimate > has no attack ETA with only haulers at home 333ms
+ ✓ test/silent-space-worker.test.ts (4 tests) 3317ms
+   ✓ runs maintenance independently, once per five minutes, and waits on stop 1903ms
+   ✓ keeps the five minute cadence after failures and never enables destructive reclaim 467ms
+   ✓ does not start maintenance when disabled 473ms
+   ✓ does not spend the next five-minute opportunity before the persisted lease is due 468ms
+ ✓ test/bots-worker.test.ts (2 tests) 3695ms
+   ✓ bots on the worker tick > does nothing at all while the feature is off 2324ms
+   ✓ bots on the worker tick > seats the roster and reports its turns once it is on 1364ms
+ ✓ test/season-wipe-faults.test.ts (2 tests) 3842ms
+   ✓ wipes a sealed colony with a fault (repairing: false) and preserves its commander record and reward 2743ms
+   ✓ wipes a sealed colony with a fault (repairing: true) and preserves its commander record and reward 1093ms
+ ✓ test/bots-ceasefire.test.ts (5 tests) 6ms
+ ✓ test/runtime-metrics.test.ts (3 tests) 17ms
+ ✓ test/monument-bays.test.ts (3 tests) 3515ms
+   ✓ monument launch bay identity > holds one ordinary bay throughout HOLD and all partial return fragments 2386ms
+   ✓ monument launch bay identity > keeps the bay while any fragment is away even when the root is HOME or LOST 570ms
+   ✓ monument launch bay identity > does not count a completed root or another origin’s launches 552ms
+ ✓ test/presence.test.ts (2 tests) 2880ms
+   ✓ galaxy population > counts the whole day as well as the live window 2179ms
+   ✓ galaxy population > drops a commander from the day figure once a day has passed 697ms
+ ✓ test/thousand-seats-migration.test.ts (1 test) 2053ms
+   ✓ reopens every open sensor epoch on the ×1.5 ladder and keeps the old interval 2047ms
+ ✓ test/capacity-people.test.ts (3 tests) 2515ms
+   ✓ the seats a galaxy counts > never lets a bot take a person’s seat 967ms
+   ✓ the seats a galaxy counts > still seats a bot in a galaxy full of people 796ms
+   ✓ the seats a galaxy counts > lists a galaxy by the people in it 746ms
+ ✓ test/bots-worker-isolation.test.ts (1 test) 2111ms
+   ✓ a bot sweep that throws > never stops the event queue 2105ms
+ ✓ test/fault-migration.test.ts (2 tests) 2845ms
+   ✓ arms every established live colony past the Core gate exactly once 2257ms
+   ✓ does not backfill a second timer onto a colony already armed at runtime 581ms
+ ✓ test/fleet-ceiling.test.ts (3 tests) 3436ms
+   ✓ the ground ceiling > refuses a gun the world has no room to stand 2053ms
+   ✓ the ground ceiling > raising the Core opens more ground 689ms
+   ✓ the ground ceiling > spends neither pool on the other 685ms
+ ✓ test/placement-schema.test.ts (2 tests) 3186ms
+   ✓ initializes a main placement without granting a new activity timestamp 2286ms
+   ✓ groups matching period boundaries without changing a legacy period 896ms
+ ✓ test/transfer-events.test.ts (18 tests) 5ms
+ ✓ test/placement-locks.test.ts (2 tests) 2856ms
+   ✓ planet mutation rejects a placement changed while waiting for the source season lock 2190ms
+   ✓ worlds mutation rejects a placement changed while waiting for the source season lock 660ms
+ ✓ test/return-queue-schema.test.ts (3 tests) 3676ms
+   ✓ allows only one queued application per commander even under concurrent insertion 2524ms
+   ✓ enforces durable sequence uniqueness per target and preserves bigint precision 572ms
+   ✓ requires a closed timestamp for terminal applications 574ms
+ ✓ test/cosmetic-traffic.test.ts (3 tests) 3ms
+ ✓ test/mining-migration.test.ts (1 test) 2064ms
+   ✓ backfills legacy mining owners without overwriting launch attribution or inventing a neutral owner 2059ms
+ ✓ test/country-migration.test.ts (1 test) 234ms
+ ✓ test/transfer-sensors.test.ts (3 tests) 3786ms
+   ✓ separates identical coordinates across seasons after 0 minutes 2505ms
+   ✓ separates identical coordinates across seasons after 1 minutes 682ms
+   ✓ never returns a source galaxy sensor epoch in a target query 595ms
+ ✓ test/planet-names.test.ts (3 tests) 6ms
+ ✓ test/bot-ceiling.test.ts (3 tests) 3ms
+ ✓ test/hangar-migration.test.ts (1 test) 2181ms
+   ✓ seeds every world with the Hangar its Core opens, and overwrites no Hangar already there 2175ms
+ ✓ test/asteroid-generation.test.ts (5 tests) 12ms
+ ✓ test/monument-delivery-precision.test.ts (2 tests) 2443ms
+   ✓ delivered monument deuterium precision > keeps fractional physical cargo when added to a populated home store 1946ms
+   ✓ delivered monument deuterium precision > keeps the same precision if incoming cargo is buffered above the store 491ms
+ ✓ test/signup-limit.test.ts (2 tests) 7ms
+ ✓ test/waiting-admission.test.ts (2 tests) 2599ms
+   ✓ never advertises a waiting shard, even with an official ordinal or no MAIN shards 1937ms
+   ✓ rejects direct new commander admission into a waiting shard 657ms
+ ✓ test/monument-transfer-policy.test.ts (3 tests) 3ms
+ ✓ test/inactivity-bridge.test.ts (1 test) 2504ms
+   ✓ keeps an inactive commander and world after the old destructive maintenance interval 2495ms
+ ✓ test/academy-schema.test.ts (1 test) 4ms
+
+ Test Files  150 passed (150)
+      Tests  1236 passed (1236)
+   Start at  01:28:27
+   Duration  1826.78s (transform 4.61s, setup 0ms, collect 154.13s, tests 1634.53s, environment 37ms, prepare 11.53s)
+
+
+Recorded exit code: 0; expected: 0

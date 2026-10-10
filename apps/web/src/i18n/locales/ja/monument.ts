@@ -1,4 +1,5 @@
 export const monument = {
+  recallFlightRule: "到着前なら、艦隊全体を現在の位置から帰還させられます。消費した燃料は返還されません。",
   "newsRadiation": "{{name}} · 放射線で{{count}}隻と重水素{{cargo}}を喪失 · 残存{{left}}隻",
   "genericTitle": "宇宙モニュメント",
   "look": "{{name}}を見る",

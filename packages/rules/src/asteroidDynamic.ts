@@ -1,5 +1,6 @@
 import { ASTEROID_DYNAMIC, ASTEROID_SHOWER_FRONT_LOAD, GALAXY } from './constants.js';
-import { asteroidOrbitRadius, type AsteroidSpec } from './galaxy.js';
+import { orbitRadius, type AsteroidSpec } from './galaxy.js';
+import { LEGACY_ASTEROID_GENERATION, type AsteroidGeneration } from './asteroidGeneration.js';
 import { isotopeProfile } from './research.js';
 
 /**
@@ -15,6 +16,10 @@ import { isotopeProfile } from './research.js';
  */
 
 const DAY_MINUTES = 24 * 60;
+// Persisted index protocol and pre-snapshot weights; never read mutable settings for these.
+const INDEX_BASE = 10_000_000;
+const INDEX_SPAN_PER_HOUR = 100_000;
+const LEGACY_LEVEL_WEIGHTS = Object.freeze([0, 0.44, 0.26, 0.17, 0.09, 0.04]);
 
 /** A shower as the planner needs it: season minutes and its multiplier. */
 export interface AsteroidHourShower {
@@ -37,10 +42,10 @@ export interface AsteroidHourLane {
 }
 
 /** The top rung a rock appearing on this season day may roll. */
-export function asteroidMaxLevelOnDay(day: number): number {
-  const ladder = ASTEROID_DYNAMIC.levelUnlockByDay;
+export function asteroidMaxLevelOnDay(day: number, generation?: AsteroidGeneration): number {
+  const ladder = generation?.levelUnlockByDay ?? ASTEROID_DYNAMIC.levelUnlockByDay;
   const index = Math.min(Math.max(0, Math.floor(day)), ladder.length - 1);
-  return ladder[index] ?? GALAXY.asteroidOreByLevel.length - 1;
+  return ladder[index] ?? (generation?.oreByLevel ?? GALAXY.asteroidOreByLevel).length - 1;
 }
 
 /** The public index of the `offset`-th rock of hour `hourOrdinal`. */
@@ -48,16 +53,16 @@ export function dynamicAsteroidIndex(hourOrdinal: number, offset: number): numbe
   if (!Number.isInteger(hourOrdinal) || hourOrdinal < 0) {
     throw new RangeError('hourOrdinal must be a non-negative integer');
   }
-  if (!Number.isInteger(offset) || offset < 0 || offset >= ASTEROID_DYNAMIC.indexSpanPerHour) {
+  if (!Number.isInteger(offset) || offset < 0 || offset >= INDEX_SPAN_PER_HOUR) {
     throw new RangeError('offset must fit the hour index span');
   }
-  return ASTEROID_DYNAMIC.indexBase + hourOrdinal * ASTEROID_DYNAMIC.indexSpanPerHour + offset;
+  return INDEX_BASE + hourOrdinal * INDEX_SPAN_PER_HOUR + offset;
 }
 
 /** The hour a dynamic index belongs to, or null for a rock of the derived field. */
 export function dynamicAsteroidHourOf(index: number): number | null {
-  if (!Number.isInteger(index) || index < ASTEROID_DYNAMIC.indexBase) return null;
-  return Math.floor((index - ASTEROID_DYNAMIC.indexBase) / ASTEROID_DYNAMIC.indexSpanPerHour);
+  if (!Number.isInteger(index) || index < INDEX_BASE) return null;
+  return Math.floor((index - INDEX_BASE) / INDEX_SPAN_PER_HOUR);
 }
 
 /**
@@ -68,9 +73,9 @@ export function dynamicAsteroidHourOf(index: number): number | null {
  * empty one. The window IS the cap: a spike is divided by it, and a real rise still arrives — over
  * hours rather than at once.
  *
- * `recent` is the figure each of the previous hours spawned against, newest first; an hour with no
- * history behind it simply is its own figure. Only `windowHours - 1` of them are read, so the
- * window cannot silently widen as a season gets longer.
+ * `recent` contains raw eligible counts from the preceding actual hours, newest first;
+ * callers exclude stale rows. An hour with no history uses its own count. Only
+ * `windowHours - 1` samples are read; smoothed output is never fed back into the mean.
  */
 export function supplyPopulation(eligibleNow: number, recent: readonly number[]): number {
   if (!Number.isInteger(eligibleNow) || eligibleNow < 0) {
@@ -160,6 +165,8 @@ export interface GenerateAsteroidHourInput {
   lanes: readonly AsteroidHourLane[];
   /** Frozen when the hour opens, so balance changes cannot reroll a live rock. */
   levelWeights?: readonly number[];
+  /** All remaining generation inputs, frozen with the hour; absent only for legacy callers. */
+  generation?: AsteroidGeneration;
   /** One stream for this hour alone; the server keys it off the season secret. */
   rng: () => number;
   /** The season's isotope seed, so spectroscopy reads a dynamic rock like any other. */
@@ -169,31 +176,32 @@ export interface GenerateAsteroidHourInput {
 /** Every rock of one stored hour, in index order. */
 export function generateAsteroidHour(input: GenerateAsteroidHourInput): AsteroidSpec[] {
   const { rng } = input;
+  const generation = input.generation ?? LEGACY_ASTEROID_GENERATION;
   const rocks: AsteroidSpec[] = [];
   for (const lane of input.lanes) {
     const span = lane.untilMinute - lane.fromMinute;
-    const front = Math.min(span, ASTEROID_SHOWER_FRONT_LOAD.minutes);
+    const front = Math.min(span, generation.frontLoadMinutes);
     for (let laneIndex = 0; laneIndex < lane.count; laneIndex += 1) {
       const index = dynamicAsteroidIndex(input.hourOrdinal, rocks.length);
       // Random instants, not an even grid: "rastgele aralıklarla".
       const appearsAt = lane.fromMinute + rng() * (laneIndex < lane.frontCount ? front : span);
-      const radius = asteroidOrbitRadius(rng());
-      const speed = GALAXY.asteroidSpeedMin
-        + rng() * (GALAXY.asteroidSpeedMax - GALAXY.asteroidSpeedMin);
+      const radius = orbitRadius(rng(), generation.orbitMin, generation.orbitMax);
+      const speed = generation.speedMin
+        + rng() * (generation.speedMax - generation.speedMin);
       const level = rollLevelUpTo(
         rng(),
-        asteroidMaxLevelOnDay(appearsAt / DAY_MINUTES),
-        input.levelWeights ?? ASTEROID_DYNAMIC.levelWeights,
+        asteroidMaxLevelOnDay(appearsAt / DAY_MINUTES, generation),
+        input.levelWeights ?? LEGACY_LEVEL_WEIGHTS,
       );
-      const life = (GALAXY.asteroidLifeHoursMin
-        + rng() * (GALAXY.asteroidLifeHoursMax - GALAXY.asteroidLifeHoursMin)) * 60;
-      const crystalShare = GALAXY.asteroidCrystalShareMin
-        + rng() * (GALAXY.asteroidCrystalShareMax - GALAXY.asteroidCrystalShareMin);
-      const isotope = isotopeProfile(input.isotopeSeed, index, appearsAt);
+      const life = (generation.lifeHoursMin
+        + rng() * (generation.lifeHoursMax - generation.lifeHoursMin)) * 60;
+      const crystalShare = generation.crystalShareMin
+        + rng() * (generation.crystalShareMax - generation.crystalShareMin);
+      const isotope = isotopeProfile(input.isotopeSeed, index, appearsAt, generation.isotope);
       rocks.push({
         index,
         level,
-        ore: GALAXY.asteroidOreByLevel[level] ?? 0,
+        ore: generation.oreByLevel[level] ?? 0,
         crystalShare,
         deuteriumShare: isotope.deuteriumShare,
         isotopeRich: isotope.rich,

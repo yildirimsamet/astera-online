@@ -1,0 +1,104 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server
+
+ × test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > does not attach a new multiplier to the old 60-minute window 2363ms
+   → promise resolved "1" instead of rejecting
+ × test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > rejects a changed future half-hour shower once its containing hour is frozen 579ms
+   → promise resolved "1" instead of rejecting
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > ignores population samples more than six actual hours old after an outage
+[asteroid-repro] {"scenario":"stale-population-after-outage","seatedCommanders":50,"eligibleNow":0,"youngestHistoryHoursOld":24,"supply":42,"workerPlannedRocks":42,"actualVisibleRocksAfterTheHour":42}
+
+ × test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > ignores population samples more than six actual hours old after an outage 1474ms
+   → an empty galaxy must not use yesterday’s samples as the last six hours: expected 42 to be +0 // Object.is equality
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > keeps depleted stored-hour rocks depleted in a fresh process with a new ore table
+[asteroid-repro] {"scenario":"new-image-ore-table","depletedBefore":105,"revivedAfter":105,"unchangedClaimSample":{"index":21900000,"ore":1600,"oreTaken":1600,"visible":false},"newImageSample":{"index":21900000,"ore":3200,"oreTaken":1600,"visible":true}}
+
+ × test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > keeps depleted stored-hour rocks depleted in a fresh process with a new ore table 3179ms
+   → persisted depletion must survive a balance change: expected [ { index: 21900000, …(3) }, …(104) ] to have a length of +0 but got 105
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > does not attach a new multiplier to the old 60-minute window
+AssertionError: promise resolved "1" instead of rejecting
+
+- Expected: 
+[Error: rejected promise]
+
++ Received: 
+1
+
+ ❯ test/diagnostics/asteroid-spawn.repro.ts:356:8
+    354|     await expect(f.db.transaction((tx) => restampFutureOccurrences(tx,…
+    355|       now, seasonId: f.seasonId, kinds: ['ASTEROID_SHOWER'],
+    356|     }))).rejects.toThrow('adopt-event-calendar');
+       |        ^
+    357|     expect(await calendarShape(f)).toEqual(before);
+    358|     expect(await f.db.select().from(scheduledEvents).orderBy(asc(sched…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > rejects a changed future half-hour shower once its containing hour is frozen
+AssertionError: promise resolved "1" instead of rejecting
+
+- Expected: 
+[Error: rejected promise]
+
++ Received: 
+1
+
+ ❯ test/diagnostics/asteroid-spawn.repro.ts:395:8
+    393|     await expect(f.db.transaction((tx) => restampFutureOccurrences(tx,…
+    394|       now: new Date(at.getTime() + 10 * 60_000), seasonId: f.seasonId,…
+    395|     }))).rejects.toThrow('adopt-event-calendar');
+       |        ^
+    396|     expect(await calendarShape(f)).toEqual(before);
+    397|     expect(await currentHour(f)).toEqual(frozen);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > ignores population samples more than six actual hours old after an outage
+AssertionError: an empty galaxy must not use yesterday’s samples as the last six hours: expected 42 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 42
+
+ ❯ test/diagnostics/asteroid-spawn.repro.ts:420:106
+    418|     });
+    419|     expect(hour.eligiblePlayers).toBe(0);
+    420|     expect(hour.activePlayers, 'an empty galaxy must not use yesterday…
+       |                                                                                                          ^
+    421|   });
+    422| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > keeps depleted stored-hour rocks depleted in a fresh process with a new ore table
+AssertionError: persisted depletion must survive a balance change: expected [ { index: 21900000, …(3) }, …(104) ] to have a length of +0 but got 105
+
+- Expected
++ Received
+
+- 0
++ 105
+
+ ❯ test/diagnostics/asteroid-spawn.repro.ts:444:103
+    442|       unchangedClaimSample: before[0], newImageSample: after[0],
+    443|     });
+    444|     expect(after.filter((rock) => rock.visible), 'persisted depletion …
+       |                                                                                                       ^
+    445|   });
+    446| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 10 skipped (14)
+   Start at  22:52:53
+   Duration  9.87s (transform 1.27s, setup 0ms, collect 2.09s, tests 7.60s, environment 0ms, prepare 52ms)
+
+undefined
+/home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run --config vitest.asteroid-repro.config.ts --reporter=verbose --maxWorkers=1 --minWorkers=1 --no-file-parallelism -t invariants:

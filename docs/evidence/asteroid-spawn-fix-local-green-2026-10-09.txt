@@ -1,0 +1,71 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server
+
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > reproduces the old v9 60-minute x3 evening as 105 total rocks
+[asteroid-repro] {"scenario":"old-v9-evening","durationMinutes":60,"multiplier":3,"supply":35,"hourRocks":105}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > reproduces the old v9 60-minute x3 evening as 105 total rocks 1844ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > produces 53 shower rocks + 18 normal rocks, including the smaller opening burst
+[asteroid-repro] {"scenario":"current-weekday-shower","eligible":36,"supply":35,"shower":53,"normal":18,"firstFiveMinutes":22,"visibleIncludingPreviousHoursAtHalfHour":162}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > produces 53 shower rocks + 18 normal rocks, including the smaller opening burst 1455ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > plans the same new supply even when the previous stock has already been depleted
+[asteroid-repro] {"scenario":"stock-does-not-affect-new-supply","previousStockDepleted":131,"newShower":53,"newNormal":18}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > plans the same new supply even when the previous stock has already been depleted 1454ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > keeps one frozen hour through repeated boots and duplicate deliveries to two workers
+[asteroid-repro] {"scenario":"restart-and-duplicate-delivery","restarts":5,"duplicateDeliveries":2,"totalRocks":71,"nextHourJobs":1}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > keeps one frozen hour through repeated boots and duplicate deliveries to two workers 2795ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > repairs a missing hour at minute 4.99: 71 rocks, front=18
+[asteroid-repro] {"scenario":"missing-hour-late-boot","lateMinutes":4.99,"plannedRocks":71,"immediateRocks":22,"front":18}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > repairs a missing hour at minute 4.99: 71 rocks, front=18 1454ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > repairs a missing hour at minute 5.01: 62 rocks, front=+0
+[asteroid-repro] {"scenario":"missing-hour-late-boot","lateMinutes":5.01,"plannedRocks":62,"immediateRocks":0,"front":0}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > repairs a missing hour at minute 5.01: 62 rocks, front=+0 1351ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > continues frozen v10 births after 40 + 20 removals without reviving a removed index
+[asteroid-repro] {"scenario":"remove-and-continue","before":105,"after40":65,"afterAnother20":45,"later":63,"newNormalRocks":18,"removedIndexesRevived":0}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > continues frozen v10 births after 40 + 20 removals without reviving a removed index 1379ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > leaves a partly mined rock visible after a real mining arrival
+[asteroid-repro] {"scenario":"partial-mining","rockOre":800,"mined":700,"remaining":100,"stillVisible":true}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > leaves a partly mined rock visible after a real mining arrival 1478ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > adopts the full future calendar shape and preserves the 30-minute shower
+[asteroid-repro] {"scenario":"safe-calendar-adoption","durationMinutes":30,"showerRocks":53,"hourRocks":71}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > adopts the full future calendar shape and preserves the 30-minute shower 1400ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > decays a contiguous recent population and produces zero with no population history
+[asteroid-repro] {"scenario":"population-controls","noCurrentPlayersRecent50":42,"noCurrentPlayersNoHistory":0}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > decays a contiguous recent population and produces zero with no population history 1093ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > does not attach a new multiplier to the old 60-minute window
+[asteroid-repro] {"scenario":"restamp-duration-mismatch","unsafeRestampRejected":true,"version":11,"effect":{"asteroidSpawnMultiplier":3},"durationMinutes":30,"workerPlannedRocks":71,"actualGeneratedRocks":71,"expectedCurrentDefinitionHourRocks":71}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > does not attach a new multiplier to the old 60-minute window 1810ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > rejects a changed future half-hour shower once its containing hour is frozen
+[asteroid-repro] {"scenario":"future-window-in-frozen-hour","unsafeRestampRejected":true,"frozenLanes":[{"count":2,"fromMinute":6603.728633333333,"frontCount":0,"untilMinute":6633.728633333333},{"count":8,"fromMinute":6633.728633333333,"frontCount":3,"untilMinute":6663.728633333333}]}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > rejects a changed future half-hour shower once its containing hour is frozen 744ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > ignores population samples more than six actual hours old after an outage
+[asteroid-repro] {"scenario":"stale-population-after-outage","seatedCommanders":50,"eligibleNow":0,"youngestHistoryHoursOld":24,"supply":0,"workerPlannedRocks":0,"actualVisibleRocksAfterTheHour":0}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > ignores population samples more than six actual hours old after an outage 1733ms
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > includes only the preceding five actual hours (sample age=5) 583ms
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > includes only the preceding five actual hours (sample age=6) 549ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=$0)
+[asteroid-repro] {"scenario":"new-image-ore-table","depletedBefore":105,"revivedAfter":0,"unchangedClaimSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false},"newImageSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false}}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=$0) 3680ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=$0)
+[asteroid-repro] {"scenario":"new-image-ore-table","depletedBefore":105,"revivedAfter":0,"unchangedClaimSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false},"newImageSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false}}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=$0) 4119ms
+
+ Test Files  1 passed (1)
+      Tests  17 passed (17)
+   Start at  22:59:07
+   Duration  31.51s (transform 1.45s, setup 0ms, collect 2.36s, tests 28.93s, environment 0ms, prepare 62ms)
+

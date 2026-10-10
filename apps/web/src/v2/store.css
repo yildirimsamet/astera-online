@@ -1,3 +1,73 @@
+@layer components {
+  .shop-showcase-hero {
+    background: linear-gradient(115deg, var(--color-v2-deep) 28%, var(--color-v2-store-ground));
+  }
+  .shop-showcase-light {
+    background: radial-gradient(ellipse at 90% 40%, color-mix(in srgb, var(--color-v2-store-glow) 14.12%, transparent), transparent 65%);
+    animation: shop-showcase-breathe 7s ease-in-out infinite;
+  }
+  .shop-showcase-scene {
+    width: 64%;
+    height: 100%;
+    right: 0;
+    top: 0;
+  }
+  .shop-showcase-scene canvas { pointer-events: none; }
+  .shop-showcase-copy { width: 48%; }
+  .shop-showcase-poster-world {
+    position: absolute;
+    left: 50%; top: 48%;
+    width: 68px; height: 68px;
+    border-radius: 50%;
+    object-fit: cover;
+    transform: translate(-50%, -50%);
+  }
+  .shop-showcase-poster-ring {
+    position: absolute;
+    left: 50%; top: 48%;
+    width: 106px; height: 45px;
+    border: 2px solid var(--color-v2-premium);
+    border-radius: 50%;
+    transform: translate(-50%, -50%) rotate(-16deg);
+  }
+  .shop-showcase-poster-dragon {
+    position: absolute;
+    right: 2%; bottom: 5%;
+    width: 105px;
+    mix-blend-mode: lighten;
+  }
+  .shop-showcase-poster-flag { position: absolute; right: 22%; bottom: 42%; }
+  .shop-showcase-poster-probe { position: absolute; left: 2%; top: 10%; mix-blend-mode: lighten; }
+}
+
+@layer utilities {
+  .cosmetic-navigation [role='tablist'] {
+    border-color: color-mix(in srgb, var(--color-v2-premium) 25%, var(--color-v2-line));
+    background: var(--color-v2-deep);
+    padding: 4px;
+  }
+  .cosmetic-navigation [role='tab'] {
+    min-height: 44px;
+    font-weight: 600;
+    transition: color 160ms, background-color 160ms;
+  }
+  .cosmetic-navigation [aria-selected='true'] {
+    color: var(--color-v2-premium);
+    background: color-mix(in srgb, var(--color-v2-premium) 12%, var(--color-v2-deep));
+    --tw-ring-color: color-mix(in srgb, var(--color-v2-premium) 35%, transparent);
+  }
+  .cosmetic-navigation [role='tab']:hover { color: var(--color-v2-premium); }
+  .cosmetic-navigation [role='tab']:focus-visible {
+    outline: 2px solid var(--color-v2-premium);
+    outline-offset: -2px;
+  }
+}
+
+@keyframes shop-showcase-breathe {
+  0%, 100% { opacity: .5; transform: scale(.94); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
 /**
  * THE STORE, ALIVE (owner, 2026-09-25: "kımıl kımıl hareketli canlı etkileyici stunning bir
  * tasarım"). Everything here moves slowly and quietly — a nebula that drifts, the look's own

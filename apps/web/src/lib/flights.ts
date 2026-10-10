@@ -1,12 +1,25 @@
 import { fleetCount } from '@astera/rules';
+import type { FlightRecallInput } from '../api/client.js';
 import type { Contact, MiningRun, PendingThread } from '../api/schemas.js';
 import type { Focus } from '../galaxy/FocusPanel.js';
 import type { CraftFocus } from '../galaxy/ownCraft.js';
 import { threadKey } from '../galaxy/threadKey.js';
 import i18n from '../i18n/index.js';
 import { monumentName } from '../i18n/names.js';
+import { serverNow } from './clock.js';
 
 export type FlightFocus = CraftFocus | Extract<Focus, { kind: 'contact' | 'monument' }>;
+
+/** Keep every flight surface on the same native recall lane without generating writes during render. */
+export function flightRecallInput(thread: PendingThread, now = serverNow()): FlightRecallInput | undefined {
+  if (thread.recallable !== true || thread.id === undefined || thread.kind === 'incoming'
+    || thread.leg === 'return' || thread.arriveAt.getTime() <= now) return undefined;
+  if (thread.kind === 'monument') {
+    if (!thread.monumentRecall) return undefined;
+    return { missionId: thread.id, monument: true };
+  }
+  return { missionId: thread.id, ...(thread.kind === 'pirate' ? { pirate: true } : {}) };
+}
 
 /** Use the same visible craft target in the Fleet page and the timers sheet. */
 export function flightFocus(thread: PendingThread, index: number, contacts: readonly Contact[]): FlightFocus | undefined {

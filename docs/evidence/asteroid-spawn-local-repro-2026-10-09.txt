@@ -1,0 +1,126 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server
+
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > reproduces the old v9 60-minute x3 evening as 105 total rocks
+[asteroid-repro] {"scenario":"old-v9-evening","durationMinutes":60,"multiplier":3,"supply":35,"hourRocks":105}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > reproduces the old v9 60-minute x3 evening as 105 total rocks 4899ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > reproduces 105 shower rocks + 18 normal rocks, including the first-five-minute burst
+[asteroid-repro] {"scenario":"current-weekday-shower","eligible":36,"supply":35,"shower":105,"normal":18,"firstFiveMinutes":56,"visibleIncludingPreviousHoursAtHalfHour":214}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > reproduces 105 shower rocks + 18 normal rocks, including the first-five-minute burst 5003ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > plans the same new supply even when the previous stock has already been depleted
+[asteroid-repro] {"scenario":"stock-does-not-affect-new-supply","previousStockDepleted":131,"newShower":105,"newNormal":18}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > plans the same new supply even when the previous stock has already been depleted 4642ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > keeps one frozen hour through repeated boots and duplicate deliveries to two workers
+[asteroid-repro] {"scenario":"restart-and-duplicate-delivery","restarts":5,"duplicateDeliveries":2,"totalRocks":123,"nextHourJobs":1}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > keeps one frozen hour through repeated boots and duplicate deliveries to two workers 8061ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > repairs a missing hour at minute 4.99: 123 rocks, front=44
+[asteroid-repro] {"scenario":"missing-hour-late-boot","lateMinutes":4.99,"plannedRocks":123,"immediateRocks":56,"front":44}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > repairs a missing hour at minute 4.99: 123 rocks, front=44 5177ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > repairs a missing hour at minute 5.01: 105 rocks, front=+0
+[asteroid-repro] {"scenario":"missing-hour-late-boot","lateMinutes":5.01,"plannedRocks":105,"immediateRocks":0,"front":0}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > repairs a missing hour at minute 5.01: 105 rocks, front=+0 4750ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > continues planned births after 40 + 20 removals without reviving a removed index
+[asteroid-repro] {"scenario":"remove-and-continue","before":105,"after40":65,"afterAnother20":45,"later":63,"newNormalRocks":18,"removedIndexesRevived":0}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > continues planned births after 40 + 20 removals without reviving a removed index 5051ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > leaves a partly mined rock visible after a real mining arrival
+[asteroid-repro] {"scenario":"partial-mining","rockOre":800,"mined":700,"remaining":100,"stillVisible":true}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > leaves a partly mined rock visible after a real mining arrival 4946ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > adopts the full future calendar shape and preserves the 30-minute shower
+[asteroid-repro] {"scenario":"safe-calendar-adoption","durationMinutes":30,"showerRocks":105,"hourRocks":123}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > adopts the full future calendar shape and preserves the 30-minute shower 3850ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > decays a contiguous recent population and produces zero with no population history
+[asteroid-repro] {"scenario":"population-controls","noCurrentPlayersRecent50":42,"noCurrentPlayersNoHistory":0}
+
+ ✓ test/diagnostics/asteroid-spawn.repro.ts > controls: real worker and field > decays a contiguous recent population and produces zero with no population history 2593ms
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > does not attach a new multiplier to the old 60-minute window
+[asteroid-repro] {"scenario":"restamp-duration-mismatch","changed":1,"appended":0,"version":10,"effect":{"asteroidSpawnMultiplier":6},"durationMinutes":60,"workerPlannedRocks":210,"expectedCurrentDefinitionHourRocks":123}
+
+ × test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > does not attach a new multiplier to the old 60-minute window 4188ms
+   → v10 must not run for the old v9 hour: expected 210 to be 123 // Object.is equality
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > ignores population samples more than six actual hours old after an outage
+[asteroid-repro] {"scenario":"stale-population-after-outage","eligibleNow":0,"youngestHistoryHoursOld":24,"supply":42,"workerPlannedRocks":42}
+
+ × test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > ignores population samples more than six actual hours old after an outage 1484ms
+   → an empty galaxy must not use yesterday’s samples as the last six hours: expected 42 to be +0 // Object.is equality
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > keeps depleted stored-hour rocks depleted in a fresh process with a new ore table
+[asteroid-repro] {"scenario":"new-image-ore-table","depletedBefore":105,"revivedAfter":105,"unchangedClaimSample":{"index":21900000,"ore":1600,"oreTaken":1600,"visible":false},"newImageSample":{"index":21900000,"ore":3200,"oreTaken":1600,"visible":true}}
+
+ × test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > keeps depleted stored-hour rocks depleted in a fresh process with a new ore table 12119ms
+   → persisted depletion must survive a balance change: expected [ { index: 21900000, …(3) }, …(104) ] to have a length of +0 but got 105
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > does not attach a new multiplier to the old 60-minute window
+AssertionError: v10 must not run for the old v9 hour: expected 210 to be 123 // Object.is equality
+
+- Expected
++ Received
+
+- 123
++ 210
+
+ ❯ test/diagnostics/asteroid-spawn.repro.ts:368:59
+    366|     });
+    367|     expect(occurrence.effect).toEqual({ asteroidSpawnMultiplier: 6 });
+    368|     expect(count, 'v10 must not run for the old v9 hour').toBe(123);
+       |                                                           ^
+    369|   });
+    370| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > ignores population samples more than six actual hours old after an outage
+AssertionError: an empty galaxy must not use yesterday’s samples as the last six hours: expected 42 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 42
+
+ ❯ test/diagnostics/asteroid-spawn.repro.ts:382:106
+    380|     });
+    381|     expect(hour.eligiblePlayers).toBe(0);
+    382|     expect(hour.activePlayers, 'an empty galaxy must not use yesterday…
+       |                                                                                                          ^
+    383|   });
+    384| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > keeps depleted stored-hour rocks depleted in a fresh process with a new ore table
+AssertionError: persisted depletion must survive a balance change: expected [ { index: 21900000, …(3) }, …(104) ] to have a length of +0 but got 105
+
+- Expected
++ Received
+
+- 0
++ 105
+
+ ❯ test/diagnostics/asteroid-spawn.repro.ts:406:103
+    404|       unchangedClaimSample: before[0], newImageSample: after[0],
+    405|     });
+    406|     expect(after.filter((rock) => rock.visible), 'persisted depletion …
+       |                                                                                                       ^
+    407|   });
+    408| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 10 passed (13)
+   Start at  22:06:53
+   Duration  76.39s (transform 5.32s, setup 0ms, collect 8.95s, tests 66.78s, environment 0ms, prepare 171ms)
+
+undefined
+/home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run --config vitest.asteroid-repro.config.ts --reporter=verbose

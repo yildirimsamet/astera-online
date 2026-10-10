@@ -1,0 +1,59 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/web
+
+ ✓ test/galaxy-events-guide.test.tsx > galaxy events guide > leads with the next event countdown and labels device-local clock times 362ms
+ ✓ test/galaxy-events-guide.test.tsx > galaxy events guide > does not invent a countdown when the server has no public upcoming event
+ ✓ test/galaxy-events-guide.test.tsx > galaxy events guide > shows every recurring event in Turkish and labels the Türkiye clock
+ ✓ test/galaxy-events-guide.test.tsx > galaxy events guide > renders the full fixed schedule from the live rules
+ × test/galaxy-events-guide.test.tsx > galaxy events guide > groups each lane by the kind of day it runs on
+   → expected [ [ 'Hafta içi', …(1) ], …(1) ] to deeply equal [ [ 'Hafta içi', …(1) ], …(1) ]
+ ✓ test/galaxy-events-guide.test.tsx > galaxy events guide > states the per-commander spawn rule and the convoy’s four-hour prize
+ ✓ test/galaxy-events-guide.test.tsx > galaxy events guide > explains the reward and interaction rules without technical language
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/galaxy-events-guide.test.tsx > galaxy events guide > groups each lane by the kind of day it runs on
+AssertionError: expected [ [ 'Hafta içi', …(1) ], …(1) ] to deeply equal [ [ 'Hafta içi', …(1) ], …(1) ]
+
+- Expected
++ Received
+
+  Array [
+    Array [
+      "Hafta içi",
+      Array [
+-       "12:30–13:00×4",
+-       "20:00–20:30×6",
++       "12:30–13:00×2",
++       "20:00–20:30×3",
+      ],
+    ],
+    Array [
+      "Hafta sonu",
+      Array [
+-       "13:00–13:30×6",
+-       "20:00–20:30×10",
++       "13:00–13:30×3",
++       "20:00–20:30×5",
+      ],
+    ],
+  ]
+
+ ❯ test/galaxy-events-guide.test.tsx:82:40
+     80|     };
+     81| 
+     82|     expect(rowsIn('Asteroid Yağmuru')).toEqual([
+       |                                        ^
+     83|       ['Hafta içi', ['12:30–13:00×4', '20:00–20:30×6']],
+     84|       ['Hafta sonu', ['13:00–13:30×6', '20:00–20:30×10']],
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  23:06:52
+   Duration  7.00s (transform 3.57s, setup 3.65s, collect 1.61s, tests 620ms, environment 667ms, prepare 166ms)
+
+undefined
+/home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/galaxy-events-guide.test.tsx --reporter=verbose --maxWorkers=1 --minWorkers=1 --no-file-parallelism

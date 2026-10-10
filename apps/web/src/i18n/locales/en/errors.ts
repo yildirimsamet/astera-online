@@ -14,6 +14,14 @@
  */
 
 export const errors = {
+  CAPITAL_CANNOT_BE_ABANDONED: "You cannot abandon your capital. Select a colony instead.",
+  COLONY_ABANDON_BLOCKED: "This colony has active missions or an ownership transition. Check the reasons and wait until they finish.",
+  SKIN_NOT_OWNED: 'This appearance is not in your inventory. Choose one you own.',
+  SKIN_SLOT_MISMATCH: 'This appearance does not fit the selected type or ship. Choose a matching appearance.',
+  SKIN_ALREADY_OWNED: 'You already own at least one appearance in this offer. Check your inventory.',
+  SKIN_SHOP_CLOSED: 'This product cannot be purchased right now. Check again later.',
+  SKIN_CHECKOUT_IN_PROGRESS: 'Another checkout for this appearance is open. Complete it or wait for it to expire.',
+  SKIN_CHECKOUT_STARTING: 'Checkout is being prepared. Try again shortly.',
   REPAIR_LOT_NOT_FOUND: "Those damaged ships are no longer waiting here.",
   REPAIR_LOT_BUSY: "Those ships are already being repaired.",
   REPAIR_NOTHING_WAITING: "No damaged ship is waiting to be repaired here.",

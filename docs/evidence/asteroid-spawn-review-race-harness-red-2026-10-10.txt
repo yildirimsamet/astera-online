@@ -1,0 +1,100 @@
+
+ RUN  v2.1.9 /tmp/astera-asteroid-fix-20261009/apps/server
+
+ × test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when restamp waited for its commit 6204ms
+   → Concurrent action never reached the PostgreSQL lock barrier
+ × test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when adopt waited for its commit 6224ms
+   → Concurrent action never reached the PostgreSQL lock barrier
+ × test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=0) 1141ms
+   → expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T11:00:00.000Z
+ × test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=7) 861ms
+   → expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T18:00:00.000Z
+ × test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > preserves a started shower when adoption waited across the boundary before its hour job ran 743ms
+   → expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T11:00:00.000Z
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when restamp waited for its commit
+ FAIL  test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when adopt waited for its commit
+Error: Concurrent action never reached the PostgreSQL lock barrier
+ ❯ blockedBackend test/asteroid-spawn-regression.test.ts:176:9
+    174|     await delay(50);
+    175|   }
+    176|   throw new Error('Concurrent action never reached the PostgreSQL lock…
+       |         ^
+    177| }
+    178| 
+ ❯ test/asteroid-spawn-regression.test.ts:465:9
+ ❯ scope ../../../../home/yildirim/Desktop/Coding/MyProjects/blindspace/node_modules/.pnpm/postgres@3.4.9/node_modules/postgres/src/index.js:260:18
+ ❯ sql.begin ../../../../home/yildirim/Desktop/Coding/MyProjects/blindspace/node_modules/.pnpm/postgres@3.4.9/node_modules/postgres/src/index.js:243:14
+ ❯ test/asteroid-spawn-regression.test.ts:448:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=0)
+AssertionError: expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T11:00:00.000Z
+
+- Expected
++ Received
+
+- 2026-10-10T11:00:00.000Z
++ 2026-10-10T10:00:00.000Z
+
+ ❯ test/asteroid-spawn-regression.test.ts:533:31
+    531|     }));
+    532|     const cutover = new Date(plannedAt.getTime() + HOUR_MS);
+    533|     expect(report?.cutoverAt).toEqual(cutover);
+       |                               ^
+    534|     const calendarAfter = await calendarShape(f);
+    535|     expect(calendarAfter.filter((row) => row.startsAt < cutover))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=7)
+AssertionError: expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T18:00:00.000Z
+
+- Expected
++ Received
+
+- 2026-10-10T18:00:00.000Z
++ 2026-10-10T10:00:00.000Z
+
+ ❯ test/asteroid-spawn-regression.test.ts:533:31
+    531|     }));
+    532|     const cutover = new Date(plannedAt.getTime() + HOUR_MS);
+    533|     expect(report?.cutoverAt).toEqual(cutover);
+       |                               ^
+    534|     const calendarAfter = await calendarShape(f);
+    535|     expect(calendarAfter.filter((row) => row.startsAt < cutover))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > preserves a started shower when adoption waited across the boundary before its hour job ran
+AssertionError: expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T11:00:00.000Z
+
+- Expected
++ Received
+
+- 2026-10-10T11:00:00.000Z
++ 2026-10-10T10:00:00.000Z
+
+ ❯ test/asteroid-spawn-regression.test.ts:565:31
+    563|       now: new Date(f.at.getTime() - 1), seasonId: f.seasonId,
+    564|     }));
+    565|     expect(report?.cutoverAt).toEqual(new Date(f.at.getTime() + HOUR_M…
+       |                               ^
+    566|     const [after] = await f.db.select().from(galaxyEventOccurrences).w…
+    567|     expect(after).toEqual(started);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 20 skipped (25)
+   Start at  00:24:00
+   Duration  18.33s (transform 1.86s, setup 0ms, collect 2.91s, tests 15.18s, environment 0ms, prepare 67ms)
+
+undefined
+/tmp/astera-asteroid-fix-20261009/apps/server:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run --config vitest.asteroid-repro.config.ts --reporter=verbose -t keeps committed hours|preserves a started shower|protects a concurrently opening worker hour --maxWorkers=1 --minWorkers=1 --no-file-parallelism
+
+Recorded exit code: 1

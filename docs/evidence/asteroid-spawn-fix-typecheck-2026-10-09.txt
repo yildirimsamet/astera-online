@@ -1,0 +1,45 @@
+Scope: 4 of 5 workspace projects
+
+> @astera/rules@0.1.0 typecheck /home/yildirim/Desktop/Coding/MyProjects/blindspace/packages/rules
+> tsc --noEmit
+
+
+> @astera/server@0.1.0 typecheck /home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server
+> tsc --noEmit
+
+src/services/colonyAbandonment.ts(107,45): error TS2353: Object literal may only specify known properties, and 'mutate' does not exist in type '{ requireLive?: boolean | undefined; expectedPlayerId?: string | undefined; }'.
+test/colony-abandonment.test.ts(25,46): error TS2322: Type 'unknown' is not assignable to type 'InjectPayload | undefined'.
+test/colony-abandonment.test.ts(56,17): error TS2339: Property 'statusCode' does not exist on type 'void & Promise<Response> & Chain'.
+test/colony-abandonment.test.ts(56,29): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(actual: any, message?: string | undefined): Assertion<any>', gave the following error.
+    Argument of type '(body: InjectPayload) => Chain' is not assignable to parameter of type 'string'.
+  Overload 2 of 2, '(val: any, message?: string | undefined): Assertion', gave the following error.
+    Argument of type '(body: InjectPayload) => Chain' is not assignable to parameter of type 'string'.
+test/colony-abandonment.test.ts(57,17): error TS2339: Property 'json' does not exist on type 'void & Promise<Response> & Chain'.
+test/colony-abandonment.test.ts(82,19): error TS2339: Property 'statusCode' does not exist on type 'void & Promise<Response> & Chain'.
+test/colony-abandonment.test.ts(82,31): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(actual: any, message?: string | undefined): Assertion<any>', gave the following error.
+    Argument of type '(body: InjectPayload) => Chain' is not assignable to parameter of type 'string'.
+  Overload 2 of 2, '(val: any, message?: string | undefined): Assertion', gave the following error.
+    Argument of type '(body: InjectPayload) => Chain' is not assignable to parameter of type 'string'.
+test/colony-abandonment.test.ts(83,19): error TS2339: Property 'json' does not exist on type 'void & Promise<Response> & Chain'.
+test/colony-abandonment.test.ts(98,34): error TS2339: Property 'statusCode' does not exist on type 'void & Promise<Response> & Chain'.
+test/colony-abandonment.test.ts(117,52): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { kind: SQL<unknown> | BuildOrderKind | Placeholder<string, any>; slot: number | SQL<unknown> | Placeholder<string, any>; planetId: string | ... 1 more ... | Placeholder<...>; ... 8 more ...; status?: SQL<...> | ... 2 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'amount' does not exist in type '{ kind: SQL<unknown> | BuildOrderKind | Placeholder<string, any>; slot: number | SQL<unknown> | Placeholder<string, any>; planetId: string | ... 1 more ... | Placeholder<...>; ... 8 more ...; status?: SQL<...> | ... 2 more ... | undefined; }'.
+  Overload 2 of 2, '(values: { kind: SQL<unknown> | BuildOrderKind | Placeholder<string, any>; slot: number | SQL<unknown> | Placeholder<string, any>; planetId: string | ... 1 more ... | Placeholder<...>; ... 8 more ...; status?: SQL<...> | ... 2 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'planetId' does not exist in type '{ kind: SQL<unknown> | BuildOrderKind | Placeholder<string, any>; slot: number | SQL<unknown> | Placeholder<string, any>; planetId: string | ... 1 more ... | Placeholder<...>; ... 8 more ...; status?: SQL<...> | ... 2 more ... | undefined; }[]'.
+test/colony-abandonment.test.ts(122,27): error TS2339: Property 'statusCode' does not exist on type 'void & Promise<Response> & Chain'.
+test/colony-abandonment.test.ts(145,29): error TS2339: Property 'statusCode' does not exist on type 'void & Promise<Response> & Chain'.
+test/colony-abandonment.test.ts(157,27): error TS2339: Property 'statusCode' does not exist on type 'void & Promise<Response> & Chain'.
+test/colony-abandonment.test.ts(188,27): error TS2339: Property 'statusCode' does not exist on type 'void & Promise<Response> & Chain'.
+test/colony-abandonment.test.ts(193,27): error TS2339: Property 'statusCode' does not exist on type 'void & Promise<Response> & Chain'.
+test/colony-abandonment.test.ts(215,31): error TS2339: Property 'statusCode' does not exist on type 'void & Promise<Response> & Chain'.
+test/colony-abandonment.test.ts(307,27): error TS2339: Property 'statusCode' does not exist on type 'void & Promise<Response> & Chain'.
+/home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @astera/server@0.1.0 typecheck: `tsc --noEmit`
+Exit status 2
+
+> @astera/web@0.1.0 typecheck /home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/web
+> tsc --noEmit
+

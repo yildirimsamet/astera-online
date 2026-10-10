@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MONUMENT_CAPACITY, seededFrom } from '@astera/rules';
+import { HULLS, MONUMENT_CAPACITY, distance, interpolatePosition, seededFrom, travelExact, type Vec3 } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { clanWarOperations, hpRadiationSources, monumentProbes, monuments, monumentShipLots, monumentWaves, notifications, planets, radiationSources, seasons, units } from '../src/db/schema.js';
@@ -57,6 +57,100 @@ async function hold(index: number, cargo = 200, target = m) {
   await giveUnits(f.db, f.planetIds[index]!, { CITADEL: 2, ARGOSY: 2 }, `monument:${id}`);
   return { id, lots };
 }
+
+async function outbound() {
+  const own = await hold(0);
+  const route = [{ from: { x: 3500, y: 0, z: 0 }, to: { x: m.x, y: m.y, z: m.z },
+    startMs: f.clock.now().getTime(), endMs: f.clock.now().getTime() + 20 * 60_000 }];
+  await f.db.update(monumentWaves).set({ status: 'OUTBOUND', heldAt: null,
+    arriveAt: new Date(route[0]!.endMs), route }).where(eq(monumentWaves.id, own.id));
+  await f.db.update(monuments).set({ controllerPlayerId: null }).where(eq(monuments.id, m.id));
+  return { ...own, route };
+}
+
+describe('whole monument flight recall regressions over HTTP', () => {
+  it('recalls every survivor atomically even when a cached cohort dies before the request', async () => {
+    const own = await outbound();
+    await f.db.update(monumentShipLots).set({ damageBp: 9900 }).where(eq(monumentShipLots.id, own.lots[0]!.id));
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id,
+      x: m.x, y: m.y, z: m.z, radius: 20_000, mode: 'EMIT', intensityHpPerMinute: HULLS.CITADEL.hp * 0.05, activeFrom: f.clock.now() });
+    const cached = await app.inject({ method: 'GET', url: '/api/monuments', headers: auth });
+    expect(cached.statusCode, cached.body).toBe(200);
+    expect(cached.json()).toMatchObject({ waves: [{ fleet: { CITADEL: 2, ARGOSY: 2 } }] });
+    f.clock.advance(1);
+    const url = `/api/monuments/waves/${own.id}/recall`;
+    const stale = await post(url, { selections: own.lots.map(lot => ({ lotId: lot.id, count: lot.count })) });
+    expect(stale.statusCode, stale.body).toBe(400);
+    expect(stale.json()).toMatchObject({ error: 'BAD_MONUMENT_RECALL' });
+    const turned = await post(url, { all: true });
+    expect(turned.statusCode, turned.body).toBe(200);
+    expect(turned.json()).toMatchObject({ wave: { id: own.id, status: 'RETURNING', reservedBulk: 0 } });
+    const remaining = await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, own.id));
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]).toMatchObject({ hull: 'ARGOSY', count: 2, deuterium: 200 });
+    expect(remaining[0]!.damageBp).toBeGreaterThan(0);
+    const ships = await f.db.select().from(units).where(eq(units.location, `monument:${own.id}`));
+    expect(ships).toMatchObject([{ hull: 'ARGOSY', count: 2 }]);
+  });
+
+  it('replays simultaneous and later whole-fleet retries without a second turn', async () => {
+    const own = await outbound();
+    f.clock.advance(1);
+    const url = `/api/monuments/waves/${own.id}/recall`;
+    const headers = { ...auth, 'idempotency-key': `monument-flight-recall:${own.id}` };
+    const replies = await Promise.all([post(url, { all: true }, headers), post(url, { all: true }, headers)]);
+    for (const reply of replies) expect(reply.statusCode, reply.body).toBe(200);
+    expect(replies[0].json()).toEqual(replies[1].json());
+    const before = await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, own.id));
+    f.clock.advance(5);
+    const replay = await post(url, { all: true }, headers);
+    expect(replay.statusCode, replay.body).toBe(200);
+    expect(replay.json()).toEqual(replies[0].json());
+    expect(await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, own.id))).toEqual(before);
+    expect(await f.db.select().from(monumentWaves)).toHaveLength(1);
+    expect((await f.db.select().from(monumentShipLots)).reduce((sum, lot) => sum + lot.count, 0)).toBe(4);
+  });
+
+  it('rejects another owner and ambiguous or malformed whole-fleet commands', async () => {
+    const own = await outbound();
+    const url = `/api/monuments/waves/${own.id}/recall`;
+    expect((await post(url, { all: true }, { ...other, 'idempotency-key': randomUUID() })).statusCode).toBe(403);
+    for (const payload of [{ all: false }, { all: 'true' }, { all: true, selections: [] },
+      { all: true, selections: [{ lotId: own.lots[0]!.id, count: 1 }] }, {}, { all: true, waveId: own.id }]) {
+      expect((await post(url, payload)).statusCode).toBe(400);
+    }
+    expect((await f.db.select().from(monumentWaves))[0]?.status).toBe('OUTBOUND');
+  });
+
+  it('refuses a wholly dead flight without returning or recreating ships', async () => {
+    const own = await outbound();
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id,
+      x: m.x, y: m.y, z: m.z, radius: 20_000, mode: 'EMIT', intensityHpPerMinute: 100_000, activeFrom: f.clock.now() });
+    f.clock.advance(1);
+    const response = await post(`/api/monuments/waves/${own.id}/recall`, { all: true });
+    expect(response.statusCode, response.body).toBe(409);
+    expect(response.json()).toMatchObject({ error: 'MONUMENT_NOT_RECALLABLE' });
+    expect((await f.db.select().from(monumentWaves)).filter(wave => wave.status === 'RETURNING')).toEqual([]);
+  });
+
+  it('exposes native home/speed facts that predict the actual turn between reads, including at launch', async () => {
+    const own = await outbound();
+    const initial = await app.inject({ method: 'GET', url: '/api/monuments', headers: auth });
+    expect(initial.statusCode, initial.body).toBe(200);
+    const forecast = initial.json<{ waves: { returnForecast: { homePosition: Vec3; speed: number; minutes: number } }[] }>().waves[0]!.returnForecast;
+    expect(forecast).toMatchObject({ minutes: 0, homePosition: own.route[0]!.from });
+    expect(forecast.speed).toBeGreaterThan(0);
+    f.clock.advance(0.5);
+    const now = f.clock.now().getTime();
+    const leg = own.route[0]!;
+    const position = interpolatePosition(leg.from, leg.to, leg.startMs, leg.endMs, now);
+    const predicted = travelExact(distance(position, forecast.homePosition), forecast.speed);
+    const turned = await post(`/api/monuments/waves/${own.id}/recall`, { all: true });
+    expect(turned.statusCode, turned.body).toBe(200);
+    const actual = turned.json<{ wave: { arriveAt: string } }>().wave.arriveAt;
+    expect(Math.abs(Date.parse(actual) - now - predicted * 60_000)).toBeLessThanOrEqual(1);
+  });
+});
 
 describe('monument public facts and private manifests over HTTP', () => {
   it('delivers an overdue surviving probe on read even when its owner has no monument fleet', async () => {

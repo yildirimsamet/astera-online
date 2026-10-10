@@ -1,4 +1,10 @@
 export const skins = {
+  priceLoading: 'Cargando precios…',
+  pricingError: 'No se pudieron cargar los precios. Vuelve a intentarlo para ver los precios actuales.',
+  priceUnavailable: 'Precio no disponible',
+  retryPrices: 'Recargar precios',
+  checkoutStarting: 'Abriendo el pago…',
+  showcaseDescription: 'Aspectos de planetas, naves y efectos.',
   "productengine-titan": "Impulso Titán",
   "storytitanENGINE": "Encendido blanco azulado, combustión naranja turbulenta y una estela de brasas.",
   "shipFits": "Para {{hull}}",
@@ -75,7 +81,7 @@ export const skins = {
   "storysingularityFLAG": "Una calavera cornuda vigila desde un estandarte violeta de puntas afiladas.",
   "storyvanguardFLAG": "Un estandarte clásico para una flota unida.",
   "storyorbitFLAG": "Una insignia orbital para los comandantes que mantienen la línea.",
-  "storyufoPROBE": "Finas luces azul hielo y cálidos detalles dorados sobre un platillo metálico.",
+  "storyufoPROBE": "Finas luces azul hielo y detalles dorados sobre un platillo metálico. Un suave haz blanco se abre bajo el platillo.",
   openInventory: 'Tu inventario · {{count}} propiedad',
   /** The store sells (owner, 2026-09-25): price, press, the set, and only true claims. */
   premium: 'Premium',

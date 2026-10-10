@@ -1,0 +1,4 @@
+
+> astera@ lint /tmp/astera-asteroid-fix-20261009
+> node --max-old-space-size=6144 node_modules/eslint/bin/eslint.js . "--ignore-pattern" "**/*" "--ignore-pattern" "!apps/" "--ignore-pattern" "!apps/server/" "--ignore-pattern" "!apps/server/**" "--ignore-pattern" "**/node_modules/**" "--ignore-pattern" "**/dist/**" "--ignore-pattern" "**/drizzle/**" "--ignore-pattern" "**/out/**"
+

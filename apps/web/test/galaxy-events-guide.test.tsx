@@ -63,7 +63,7 @@ describe('galaxy events guide', () => {
   /**
    * A WORKING WEEK AND A WEEKEND, READ AS TWO ROWS. Owner instruction, 2026-09-16.
    *
-   * The same 20:00 start is a x6 shower on a Wednesday and a x10 one on a Saturday,
+   * The same 20:00 start is a x3 shower on a Wednesday and a x5 one on a Saturday,
    * so a flat list of pills could not say which is which. Each lane now states the
    * kind of day beside its windows; the merchant, which runs every day, says so.
    */
@@ -80,8 +80,8 @@ describe('galaxy events guide', () => {
     };
 
     expect(rowsIn('Asteroid Yağmuru')).toEqual([
-      ['Hafta içi', ['12:30–13:00×4', '20:00–20:30×6']],
-      ['Hafta sonu', ['13:00–13:30×6', '20:00–20:30×10']],
+      ['Hafta içi', ['12:30–13:00×2', '20:00–20:30×3']],
+      ['Hafta sonu', ['13:00–13:30×3', '20:00–20:30×5']],
     ]);
     expect(rowsIn('Galaksilerarası Konvoy')).toEqual([
       ['Hafta içi', ['21:00–24:00']],

@@ -1,4 +1,10 @@
 export const skins = {
+  priceLoading: 'Fiyatlar yükleniyor…',
+  pricingError: 'Fiyatlar yüklenemedi. Güncel fiyatları görmek için tekrar dene.',
+  priceUnavailable: 'Fiyat alınamadı',
+  retryPrices: 'Fiyatları yenile',
+  checkoutStarting: 'Ödeme ekranı açılıyor…',
+  showcaseDescription: 'Gezegen, gemi ve efekt görünümleri.',
   "productengine-titan": "Titan İtkisi",
   "storytitanENGINE": "Mavi-beyaz ateşleme, türbülanslı turuncu yanma gövdesi ve kor gibi sönen bir iz.",
   "shipFits": "{{hull}} için",
@@ -75,7 +81,7 @@ export const skins = {
   "storysingularityFLAG": "Mor, keskin uçlu sancaktan bakan boynuzlu kafatası.",
   "storyvanguardFLAG": "Birlikte hareket eden filolar için klasik sancak.",
   "storyorbitFLAG": "Savunma hattını tutan komutanlar için yörünge arması.",
-  "storyufoPROBE": "Metal disk üzerinde ince buz mavisi panel ışıkları ve sıcak altın ayrıntılar.",
+  "storyufoPROBE": "Metal disk üzerinde buz mavisi panel ışıkları ve altın ayrıntılar. Altından beyaz bir ışık huzmesi yayılır.",
   openInventory: 'Envanterin · {{count}} skin',
   /** The store sells (owner, 2026-09-25): price, press, the set, and only true claims. */
   premium: 'Premium',

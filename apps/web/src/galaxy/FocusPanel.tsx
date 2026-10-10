@@ -3393,7 +3393,7 @@ export function ThreadFocus({
         {t(thread.leg === 'return'
           ? 'focus.thread.returning'
           : recallable
-            ? 'focus.thread.recallable'
+            ? thread.kind === 'monument' ? 'monument.recallFlightRule' : 'focus.thread.recallable'
             : thread.kind === 'pirate' ? 'focus.thread.outboundPirate' : 'focus.thread.outbound')}
       </p>
       {thread.monumentId && onFocusMonument && <button type="button" className="mt-3 min-h-10 w-full rounded-control border border-v2-line px-3 text-caption font-semibold text-v2-self"

@@ -610,26 +610,36 @@ export interface IsotopeProfile {
   deuteriumShare: number;
 }
 
+/** The isotope inputs are persisted with dynamic asteroid hours. Preserve the v1 hash above. */
+export interface IsotopeGenerationParameters {
+  frontierStartsAtMinutes: number;
+  isotopeCadence: number;
+  isotopeBonusCadence: number;
+  isotopeShareMin: number;
+  isotopeShareMax: number;
+}
+
 export function isotopeProfile(
   seed: number,
   asteroidIndex: number,
   appearsAtMinutes: number,
+  parameters: IsotopeGenerationParameters = DEUTERIUM,
 ): IsotopeProfile {
-  const eligible = appearsAtMinutes >= DEUTERIUM.frontierStartsAtMinutes;
+  const eligible = appearsAtMinutes >= parameters.frontierStartsAtMinutes;
   // The primary lane preserves the bounded one-in-five field. One seed-shifted
   // bonus seam every ten lanes raises spawn supply without remapping the whole
   // galaxy or creating an unlucky drought. The index keeps this stateless.
-  const lane = isotopeHash(seed, 0) % DEUTERIUM.isotopeCadence;
-  const primary = asteroidIndex % DEUTERIUM.isotopeCadence === lane;
-  const bonusCycle = isotopeHash(seed, 1) % DEUTERIUM.isotopeBonusCadence;
-  const bonusSlot = (lane + Math.floor(DEUTERIUM.isotopeCadence / 2))
-    % DEUTERIUM.isotopeCadence;
+  const lane = isotopeHash(seed, 0) % parameters.isotopeCadence;
+  const primary = asteroidIndex % parameters.isotopeCadence === lane;
+  const bonusCycle = isotopeHash(seed, 1) % parameters.isotopeBonusCadence;
+  const bonusSlot = (lane + Math.floor(parameters.isotopeCadence / 2))
+    % parameters.isotopeCadence;
   const bonus = asteroidIndex % (
-    DEUTERIUM.isotopeCadence * DEUTERIUM.isotopeBonusCadence
-  ) === bonusCycle * DEUTERIUM.isotopeCadence + bonusSlot;
+    parameters.isotopeCadence * parameters.isotopeBonusCadence
+  ) === bonusCycle * parameters.isotopeCadence + bonusSlot;
   const rich = eligible && (primary || bonus);
-  const minPercent = Math.round(DEUTERIUM.isotopeShareMin * 100);
-  const maxPercent = Math.round(DEUTERIUM.isotopeShareMax * 100);
+  const minPercent = Math.round(parameters.isotopeShareMin * 100);
+  const maxPercent = Math.round(parameters.isotopeShareMax * 100);
   const concentration = minPercent
     + isotopeHash(seed ^ 0xa341316c, asteroidIndex) % (maxPercent - minPercent + 1);
   return { rich, deuteriumShare: rich ? concentration / 100 : 0 };

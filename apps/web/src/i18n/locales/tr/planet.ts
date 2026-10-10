@@ -11,6 +11,37 @@
  */
 
 export const planet = {
+  abandon: {
+    "action": "Koloniyi terk et",
+    "title": "Koloniyi terk edecek misin?",
+    "cancel": "Vazgeç",
+    "confirm": "Evet, koloniyi terk et",
+    "pending": "Terk ediliyor…",
+    "irreversible": "Bu koloni tarafsız olur ve koloni kotanda bir yer açılır. Bu işlemi geri alamazsın.",
+    "keeps": "Binalar, uydular, kaynaklar ve yer savunmaları gezegende kalır. Hazır Ölüm Yıldızları ve önleme mühimmatı da gezegende kalır.",
+    "ships": "Gezegendeki ve onarımdaki gemiler ana gezegenine taşınır. Hasarları korunur.",
+    "queue": "İnşaat, üretim ve gemi onarım emirleri kaynak iadesi olmadan iptal edilir.",
+    "rule": "Önce bu koloniyle bağlantılı bütün uçuşların ve görevlerin tamamlanması gerekir.",
+    "checking": "Aktif görevler kontrol ediliyor…",
+    "blocked": "Bu koloniyi şu anda terk edemezsin",
+    "recheck": "Tekrar kontrol et",
+    "checkFailed": "Aktif görevler kontrol edilemedi. Bağlantın geldiğinde tekrar kontrol et.",
+    "success": "{{planet}} kolonisini terk ettin · gezegen artık tarafsız",
+    "reasons": {
+      "FLIGHT": "Bu koloniyle bağlantılı bir uçuş sürüyor. Uçuş tamamlanınca tekrar dene.",
+      "MINING": "Kazı veya enkaz toplama görevi sürüyor. Gemilerin dönmesini bekle.",
+      "PIRATE": "Korsan akını sürüyor. Filonun dönmesini bekle.",
+      "TRADE": "Ticaret görevi sürüyor. Gemilerin dönmesini bekle.",
+      "CONVOY": "Galaksiler arası konvoy görevi sürüyor. Filonun dönmesini bekle.",
+      "CLAN_WAR": "Bu koloninin gemileri klan ortak savaşına katılıyor. Gemilerini geri çağır veya dönüşlerini bekle.",
+      "CLAN_SUPPORT": "Destek gemileri yolda, konuşlanmış veya dönüşte. Gönderdiğin desteği geri çağır ya da buradaki desteği geri gönder; sonra inişi bekle.",
+      "MONUMENT": "Bu koloninin anıt filosu veya sondası uzakta. Filoyu geri çağır veya sondanın dönüşünü bekle.",
+      "STRATEGIC": "Stratejik üretim, saldırı veya önleme sürüyor. Tamamlanmasını bekle.",
+      "AWAY_SHIPS": "Bu koloninin bazı gemileri hâlâ uzakta. Bütün gemilerin dönmesini bekle.",
+      "RECOVERY": "Koloni toparlanıyor veya işgal koruması altında. Bu sürenin bitmesini bekle.",
+      "SECESSION": "Koloninin sadakati sıfıra indi ve koloni kopuyor. Sahiplik güncellemesini bekle."
+    }
+  },
   recovery: "Toparlanma sürüyor · sistemler {{duration}} sonra açılır",
   empActive: "EMP · Aegis sıfırda ve {{duration}} boyunca yenilenemez; yer savunmaları ateş etmez ve hasar almaz.",
   capacityNext: "{{name}} ile dünya başına {{total}}",

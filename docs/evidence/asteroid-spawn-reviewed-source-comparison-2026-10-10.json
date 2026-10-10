@@ -1,0 +1,127 @@
+[
+  {
+    "path": "apps/server/drizzle/0146_asteroid_generation_snapshot.sql",
+    "identical": true,
+    "sha256": "9b4f6c5a1bf5737bb2b91f0c71a8d0c70d18967e32d22030a00479275a8ce05e"
+  },
+  {
+    "path": "apps/server/drizzle/meta/0146_snapshot.json",
+    "identical": true,
+    "sha256": "a7183794135e6b7558ce73355de1532270715e86dedca4a2502ac19ee77daf69"
+  },
+  {
+    "path": "apps/server/drizzle/meta/_journal.json",
+    "identical": true,
+    "sha256": "062168864cc6cbdd40cf1ab597acc7fa4ccba8832002186516055a5d223e559b"
+  },
+  {
+    "path": "apps/server/src/cli/manualAsteroids.ts",
+    "identical": true,
+    "sha256": "479d6cd9d11cdf6acda98b13a39e6fd8047229af901020066be86a58e3432f13"
+  },
+  {
+    "path": "apps/server/src/db/schema.ts",
+    "identical": true,
+    "sha256": "8f6118dcb6baa0b70597eeb11cea71057a4e693c9bebc3d4ad28473456d83eb0"
+  },
+  {
+    "path": "apps/server/src/services/asteroidField.ts",
+    "identical": true,
+    "sha256": "a00e49b0c0159ea8b8e2fadd423373a11101a7ec57444b82a710ec87f5bef3b4"
+  },
+  {
+    "path": "apps/server/src/services/asteroidGeneration.ts",
+    "identical": true,
+    "sha256": "674c298f6109cca050c1a4dfa8edf966a473c093b014fdd7d5bb7f0287d2e797"
+  },
+  {
+    "path": "apps/server/src/services/asteroidSpawn.ts",
+    "identical": true,
+    "sha256": "76ba748e8f6dccfa28dad22467eb82e84a90eeb5789557d543f5236a16305479"
+  },
+  {
+    "path": "apps/server/src/services/galaxyEvents.ts",
+    "identical": true,
+    "sha256": "768a6f0f32ee82b5ffdf8067824e6262cb20c2e33555e1ef02e3d9e4ac49eaaf"
+  },
+  {
+    "path": "apps/server/src/services/mining.ts",
+    "identical": true,
+    "sha256": "b5809a86c7c8c35f8249f4d2a7ee5796b43192dfab5dd165bd5f0a37d0b4749b"
+  },
+  {
+    "path": "apps/server/test/asteroid-dynamic.test.ts",
+    "identical": true,
+    "sha256": "3b31f9ea150096d5b49a68b527d2db7b36c9db4454403df10489b3b66106ae4e"
+  },
+  {
+    "path": "apps/server/test/asteroid-generation.test.ts",
+    "identical": true,
+    "sha256": "8da4d7deb7cbb59a32f87d014d6178e47f0c3eaf2bc4e67f1f90763fb39d2091"
+  },
+  {
+    "path": "apps/server/test/asteroid-spawn-regression.test.ts",
+    "identical": true,
+    "sha256": "55f9517829856d42bcc18b6c4468c7e56dfeefac0e0433e6bdab0197791c0410"
+  },
+  {
+    "path": "apps/server/test/galaxy-events.test.ts",
+    "identical": true,
+    "sha256": "2c9de9f8a11bf21388ceac97582ab1ab1bc879145a20fa61a89d9124ae9c6ec8"
+  },
+  {
+    "path": "apps/server/vitest.asteroid-repro.config.ts",
+    "identical": true,
+    "sha256": "895fb300047c427ff7cb8af9185ad0ed03d0efaedb95bde33fb0615c78d0dfcf"
+  },
+  {
+    "path": "apps/web/test/galaxy-events-guide.test.tsx",
+    "identical": true,
+    "sha256": "afdaa7582d23ddc3ec6bb088c1e047d7ab1a2df58c22e0a5e690ba2279ad2b7a"
+  },
+  {
+    "path": "packages/rules/src/asteroidDynamic.ts",
+    "identical": true,
+    "sha256": "6caab3c0bb73f49e84cfcc7743f1eba7517c2b6848706063e06c40664b6dec6c"
+  },
+  {
+    "path": "packages/rules/src/asteroidGeneration.ts",
+    "identical": true,
+    "sha256": "ac37b30fb5fa6c5452c2c36108da721699b66a0733d2fbba0839b6cc7bdbe05c"
+  },
+  {
+    "path": "packages/rules/src/constants.ts",
+    "identical": true,
+    "sha256": "0ab031e419f9ddba4b0eceb2d8f2aff824da5c0883e4c6a1498daa03b8255563"
+  },
+  {
+    "path": "packages/rules/src/galaxyEvents.ts",
+    "identical": true,
+    "sha256": "df6f6f6017fd6366ccf22eb3f9de4aa40ada56e47fcaa0d49e126c14702328b6"
+  },
+  {
+    "path": "packages/rules/src/index.ts",
+    "identical": true,
+    "sha256": "972a406c72bafcc2e5aee9a4402f9b1e7e542f98be2fd84cba1d91340acc71c9"
+  },
+  {
+    "path": "packages/rules/src/research.ts",
+    "identical": true,
+    "sha256": "e6cfea600a590f27fd7335be2f0f001d58f0969d3a4ff2dd5fc00e1307542ef8"
+  },
+  {
+    "path": "packages/rules/test/asteroid-balance-2026-09-17.test.ts",
+    "identical": true,
+    "sha256": "74dd112931eb13935d7159fab83d9700ca6ca4ef78e3b87dded1c24e988e04e6"
+  },
+  {
+    "path": "packages/rules/test/asteroid-generation-freeze.test.ts",
+    "identical": true,
+    "sha256": "201215d58c837dce374b1222a7603760fa78e25c6c9169aedb0b45d554b4e540"
+  },
+  {
+    "path": "packages/rules/test/galaxy-events.test.ts",
+    "identical": true,
+    "sha256": "2c0ac640114fd2dfe7158ee588cf86fb580a995ef0c7d6474be7144a6637c7c9"
+  }
+]

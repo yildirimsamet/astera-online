@@ -1,6 +1,7 @@
 import { CHAT, CLAN, REACTION_EMOJIS, type ReactionEmoji } from '@astera/rules';
 import {
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -8,6 +9,7 @@ import {
   type SyntheticEvent,
   type UIEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   useChatMessages,
@@ -41,6 +43,14 @@ import { Trophy, type Place } from '../ui/Medal.js';
 
 const PODIUM_BORDER: Record<Place, string> = { 1: 'border-rank-gold/35', 2: 'border-rank-silver/35', 3: 'border-rank-copper/35' };
 const PODIUM_INK: Record<Place, string> = { 1: 'text-rank-gold', 2: 'text-rank-silver', 3: 'text-rank-copper' };
+const RECOGNITION_BUTTON = 'relative -my-1 inline-flex min-h-7 min-w-6 shrink-0 touch-manipulation items-center justify-center self-center rounded-cell after:absolute after:-inset-1 hover:bg-v2-line/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-current';
+
+interface RecognitionHint {
+  key: string;
+  explanation: string;
+  ink: string;
+  position: { bottom: number; left: number; width: number };
+}
 
 interface MessageRow {
   id: string;
@@ -501,6 +511,9 @@ function ChannelPanel({
   const [actionMessageId, setActionMessageId] = useState<string | null>(null);
   const [pickerMessageId, setPickerMessageId] = useState<string | null>(null);
   const [pickerBelow, setPickerBelow] = useState(false);
+  const recognitionHintId = useId();
+  const [recognitionHint, setRecognitionHint] = useState<RecognitionHint | null>(null);
+  const recognitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reaction = useMessageReaction();
   const clearHold = () => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
@@ -510,7 +523,54 @@ function ChannelPanel({
     setActionMessageId(messageId);
     setPickerMessageId(null);
   };
-  useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
+  useEffect(() => () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    if (recognitionTimer.current !== null) clearTimeout(recognitionTimer.current);
+  }, []);
+
+  const explainRecognition = (button: HTMLButtonElement, messageId: string, recognition: 'supporter' | Place): void => {
+    if (recognitionTimer.current !== null) clearTimeout(recognitionTimer.current);
+    const rect = button.getBoundingClientRect();
+    const width = Math.min(220, Math.max(0, window.innerWidth - 16));
+    setRecognitionHint({
+      key: `${messageId}:${recognition}`,
+      explanation: recognition === 'supporter' ? t('chat.supporterExplanation') : t('chat.previousSeasonExplanation', { rank: recognition }),
+      ink: recognition === 'supporter' ? 'text-chat-supporter-ink' : PODIUM_INK[recognition],
+      position: {
+        bottom: window.innerHeight - rect.top + 8,
+        left: Math.min(Math.max(8, rect.left + rect.width / 2 - width / 2), Math.max(8, window.innerWidth - width - 8)),
+        width,
+      },
+    });
+    recognitionTimer.current = setTimeout(() => {
+      setRecognitionHint(null);
+      recognitionTimer.current = null;
+    }, 2_000);
+  };
+
+  useEffect(() => {
+    if (recognitionHint === null) return;
+    const dismiss = (): void => {
+      if (recognitionTimer.current !== null) clearTimeout(recognitionTimer.current);
+      recognitionTimer.current = null;
+      setRecognitionHint(null);
+    };
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      dismiss();
+    };
+    document.addEventListener('pointerdown', dismiss, true);
+    document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('scroll', dismiss, true);
+    window.addEventListener('resize', dismiss);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss, true);
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('scroll', dismiss, true);
+      window.removeEventListener('resize', dismiss);
+    };
+  }, [recognitionHint]);
   useEffect(() => {
     if (!actionMessageId && !pickerMessageId) return;
     const closeOnOutsidePress = (event: PointerEvent) => {
@@ -691,18 +751,23 @@ function ChannelPanel({
                         <span data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : 'text-v2-ink'}`}>{commanderLabel(message.username, message.clanTag)}</span>
                       )}
                       {message.supporter === true && (
-                        <span data-chat-supporter-icon role="img" aria-label={t('chat.supporterBadge')}
-                          title={t('chat.supporterBadge')} className="shrink-0 self-center text-chat-supporter-ink">
+                        <button type="button" data-chat-supporter-icon aria-label={t('chat.supporterBadge')}
+                          aria-describedby={recognitionHint?.key === `${message.id}:supporter` ? recognitionHintId : undefined}
+                          onClick={(event) => { explainRecognition(event.currentTarget, message.id, 'supporter'); }}
+                          onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}
+                          className={`${RECOGNITION_BUTTON} text-chat-supporter-ink`}>
                           <HeartIcon className="size-3.5" />
-                        </span>
+                        </button>
                       )}
                       {message.previousSeasonRank !== undefined && (
-                        <span data-chat-podium-icon role="img"
+                        <button type="button" data-chat-podium-icon
                           aria-label={t('chat.previousSeasonPlace', { rank: message.previousSeasonRank })}
-                          title={t('chat.previousSeasonPlace', { rank: message.previousSeasonRank })}
-                          className={`shrink-0 self-center ${PODIUM_INK[message.previousSeasonRank]}`}>
+                          aria-describedby={recognitionHint?.key === `${message.id}:${message.previousSeasonRank}` ? recognitionHintId : undefined}
+                          onClick={(event) => { if (message.previousSeasonRank !== undefined) explainRecognition(event.currentTarget, message.id, message.previousSeasonRank); }}
+                          onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}
+                          className={`${RECOGNITION_BUTTON} [&_svg]:text-current ${PODIUM_INK[message.previousSeasonRank]}`}>
                           <Trophy won size={14} />
-                        </span>
+                        </button>
                       )}
                       <time className="ml-auto shrink-0 font-v2-mono text-micro text-v2-ink-3" dateTime={message.createdAt.toISOString()}>
                         {chatRelativeTime(message.createdAt, now, t)}
@@ -761,6 +826,14 @@ function ChannelPanel({
           </ol>
         )}
       </div>
+
+      {recognitionHint !== null && createPortal(
+        <span id={recognitionHintId} role="tooltip" aria-live="polite"
+          className={`pointer-events-none fixed z-[100] rounded-control border border-current/35 bg-v2-raise px-3 py-2 text-left font-v2-ui text-label leading-snug shadow-xl ${recognitionHint.ink}`}
+          style={recognitionHint.position}>
+          <span className="text-v2-ink">{recognitionHint.explanation}</span>
+        </span>, document.body,
+      )}
 
       <form onSubmit={submit} className="shrink-0 border-t border-v2-line px-3 py-2">
         {disabledReason ? <p role="status" className="mb-2 text-micro text-v2-warn">{disabledReason}</p> : null}

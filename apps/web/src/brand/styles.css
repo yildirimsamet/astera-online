@@ -37,6 +37,41 @@
   .brand-masthead-rule { height: 1px; flex: 1; background: linear-gradient(90deg, color-mix(in srgb, var(--color-v2-self) 25%, transparent), transparent); }
   .brand-masthead-address { white-space: nowrap; font-family: var(--font-v2-mono); font-size: 8px; letter-spacing: -.02em; color: var(--color-v2-ink-2); }
   .brand-masthead-address span { color: var(--color-v2-self); }
+  .brand-masthead-with-shop { height: 44px; }
+  .brand-masthead-shop {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    min-height: 44px;
+    color: var(--color-v2-premium);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .brand-masthead-shop-face {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid color-mix(in srgb, var(--color-v2-premium) 40%, transparent);
+    border-radius: var(--radius-control);
+    background: linear-gradient(115deg, color-mix(in srgb, var(--color-v2-premium) 13%, var(--color-v2-deep)), var(--color-v2-deep));
+    box-shadow: inset 0 1px color-mix(in srgb, var(--color-v2-premium) 9%, transparent);
+    font-size: 12px;
+    font-weight: 650;
+    transition: border-color 160ms, background-color 160ms;
+  }
+  .brand-masthead-shop:hover .brand-masthead-shop-face {
+    border-color: var(--color-v2-premium);
+    background: color-mix(in srgb, var(--color-v2-premium) 18%, var(--color-v2-deep));
+  }
+  .brand-masthead-shop:focus-visible {
+    outline: 2px solid var(--color-v2-premium);
+    outline-offset: 2px;
+    border-radius: var(--radius-control);
+  }
+  .brand-masthead-shop:active .brand-masthead-shop-face { transform: translateY(1px); }
   .brand-return-card {
     position: fixed;
     z-index: 35;

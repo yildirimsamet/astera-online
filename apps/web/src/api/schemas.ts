@@ -1066,6 +1066,20 @@ export const planetsSchema = z.object({
   planets: z.array(planetSchema),
 });
 
+export const colonyAbandonmentReasonSchema = z.enum([
+  'FLIGHT', 'MINING', 'PIRATE', 'TRADE', 'CONVOY', 'CLAN_WAR', 'CLAN_SUPPORT',
+  'MONUMENT', 'STRATEGIC', 'AWAY_SHIPS', 'RECOVERY', 'SECESSION',
+]);
+export const colonyAbandonmentSchema = z.object({
+  planetId: z.string(),
+  allowed: z.boolean(),
+  reasons: z.array(colonyAbandonmentReasonSchema),
+}).refine(state => state.allowed === (state.reasons.length === 0));
+export const colonyAbandonedSchema = z.object({
+  abandonedPlanetId: z.string(),
+  capital: planetSchema,
+});
+
 /**
  * EVERY MUTATION ANSWERS WITH THE WHOLE WORLD. D53.
  *
@@ -1256,6 +1270,8 @@ const monumentLotSchema = z.object({
 });
 const monumentReturnForecastSchema = z.object({
   homePlanetId: z.string(), arriveAt: z.coerce.date(), minutes: z.number().nonnegative(),
+  /** Native return modifiers let moving flights update their preview between reads. */
+  homePosition: vec3.optional(), speed: z.number().finite().nonnegative().optional(),
   doseHp: z.number().nonnegative(), destroyed: z.number().int().nonnegative(),
   deuterium: z.number().nonnegative(), lostDeuterium: z.number().nonnegative(), lots: z.array(monumentLotSchema),
 });
@@ -2428,6 +2444,10 @@ const pendingThread = z.object({
    * predates the field.
    */
   recallable: z.boolean().optional(),
+  /** Native monument flights recall their current survivors through a whole-wave intent. */
+  monumentRecall: z.object({
+    minutes: z.number().finite().nonnegative(),
+  }).optional(),
   /**
    * THE PACE THIS LEG FLIES AT, 1 = full speed. YOUR OWN CRAFT ONLY. Spec S1.
    *

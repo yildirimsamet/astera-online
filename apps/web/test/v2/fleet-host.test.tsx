@@ -111,6 +111,18 @@ describe('the wired Fleet page', () => {
     expect(recallMining).not.toHaveBeenCalled();
   });
 
+  it('turns an entire outbound monument fleet with the native return forecast', async () => {
+    rows = [{ ...raid, kind: 'monument', monumentId: 'monument-1',
+      monumentRecall: { minutes: 9 } }];
+    host();
+    const button = screen.getByRole('button', { name: /^recall/i });
+    expect(button).toHaveAccessibleName('Recall · If recalled, home in 9m 00s');
+    await userEvent.click(button);
+    const recalled: unknown = recallFlight.mock.lastCall?.[0];
+    expect(recalled).toEqual({ missionId: 'mission-1', monument: true });
+    expect(recallMining).not.toHaveBeenCalled();
+  });
+
   it('turns a Prospector run through the mining recall', async () => {
     runs = [{
       id: 'run-1',

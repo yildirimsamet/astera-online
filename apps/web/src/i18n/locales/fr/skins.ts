@@ -1,4 +1,10 @@
 export const skins = {
+  priceLoading: 'Chargement des prix…',
+  pricingError: 'Les prix n’ont pas pu être chargés. Réessaie pour voir les prix actuels.',
+  priceUnavailable: 'Prix indisponible',
+  retryPrices: 'Recharger les prix',
+  checkoutStarting: 'Ouverture du paiement…',
+  showcaseDescription: 'Apparences de planètes, de vaisseaux et effets.',
   "productengine-titan": "Propulsion Titan",
   "storytitanENGINE": "Un allumage bleu-blanc, une combustion orange turbulente et une traînée de braises.",
   "shipFits": "Pour {{hull}}",
@@ -75,7 +81,7 @@ export const skins = {
   "storysingularityFLAG": "Un crâne cornu veille sur un étendard violet aux pointes acérées.",
   "storyvanguardFLAG": "Une bannière classique pour une flotte unie.",
   "storyorbitFLAG": "Un insigne orbital pour les commandants qui tiennent la ligne.",
-  "storyufoPROBE": "De fines lumières bleu glacier et des détails dorés sur une soucoupe métallique.",
+  "storyufoPROBE": "De fines lumières bleu glacier et des détails dorés sur une soucoupe métallique. Un doux faisceau blanc s’élargit sous la soucoupe.",
   openInventory: "Ton inventaire · {{count}} apparences",
   /** The store sells (owner, 2026-09-25): price, press, the set, and only true claims. */
   premium: 'Premium',

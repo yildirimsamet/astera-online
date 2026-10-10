@@ -1,0 +1,38 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server
+
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > ignores population samples more than six actual hours old after an outage
+[asteroid-repro] {"scenario":"stale-population-after-outage","seatedCommanders":50,"eligibleNow":0,"youngestHistoryHoursOld":24,"supply":42,"workerPlannedRocks":42}
+
+ × test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > ignores population samples more than six actual hours old after an outage 6724ms
+   → an empty galaxy must not use yesterday’s samples as the last six hours: expected 42 to be +0 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > ignores population samples more than six actual hours old after an outage
+AssertionError: an empty galaxy must not use yesterday’s samples as the last six hours: expected 42 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 42
+
+ ❯ test/diagnostics/asteroid-spawn.repro.ts:385:106
+    383|     });
+    384|     expect(hour.eligiblePlayers).toBe(0);
+    385|     expect(hour.activePlayers, 'an empty galaxy must not use yesterday…
+       |                                                                                                          ^
+    386|   });
+    387| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 skipped (13)
+   Start at  22:14:50
+   Duration  21.47s (transform 8.87s, setup 0ms, collect 13.47s, tests 6.74s, environment 6ms, prepare 341ms)
+
+undefined
+/home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run --config vitest.asteroid-repro.config.ts -t ignores population --reporter=verbose

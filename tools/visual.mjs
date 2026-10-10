@@ -17,6 +17,30 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--chat-recognition')) {
+  const { verifyChatRecognition } = await import('./chat-recognition-visual.mjs');
+  await verifyChatRecognition(process.argv[2] ?? 'out/chat-recognition');
+  process.exit(0);
+}
+
+if (process.argv.includes('--session-recovery')) {
+  const { verifySessionRecovery } = await import('./session-recovery-visual.mjs');
+  await verifySessionRecovery(process.argv[2] ?? 'out/session-recovery');
+  process.exit(0);
+}
+
+if (process.argv.includes('--ufo-probe')) {
+  const { verifyUfoProbe } = await import('./ufo-probe-visual.mjs');
+  await verifyUfoProbe(process.argv[2] ?? 'out/ufo-probe');
+  process.exit(0);
+}
+
+if (process.argv.includes('--colony-abandonment')) {
+  const { verifyColonyAbandonment } = await import('./colony-abandonment-visual.mjs');
+  await verifyColonyAbandonment(process.argv[2] ?? 'out/colony-abandonment');
+  process.exit(0);
+}
+
 if (process.argv.includes('--planet-selection')) {
   const { verifyPlanetSelection } = await import('./planet-selection-visual.mjs');
   await verifyPlanetSelection(process.argv[2] ?? 'out/planet-selection');
@@ -92,6 +116,12 @@ if (process.argv.includes('--skin-shop')) {
 if (process.argv.includes('--rewards')) {
   const { verifyRewards } = await import('./rewards-visual.mjs');
   await verifyRewards(process.argv[2] ?? 'out/rewards-v2');
+  process.exit(0);
+}
+
+if (process.argv.includes('--monument-recall')) {
+  const { verifyMonumentRecall } = await import('./monument-recall-visual.mjs');
+  await verifyMonumentRecall(process.argv[2] ?? 'out/monument-recall');
   process.exit(0);
 }
 

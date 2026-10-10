@@ -88,6 +88,8 @@ import {
   chroniclePageSchema,
   claimSchema,
   collectSchema,
+  colonyAbandonmentSchema,
+  colonyAbandonedSchema,
   galaxySchema,
   instrumentRaiseSchema,
   intelSchema,
@@ -281,6 +283,17 @@ describe('every payload the client parses', () => {
     expect(res.statusCode, `${url} answered ${String(res.statusCode)}: ${res.body.slice(0, 300)}`).toBe(200);
     return res.json();
   };
+
+  it('parses colony abandonment eligibility and the confirmed capital snapshot', async () => {
+    const colony = f.planetIds[2]!;
+    await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: f.playerIds[0]! }).where(eq(planets.id, colony));
+    await f.db.update(units).set({ ownerPlayerId: f.playerIds[0]! }).where(eq(units.planetId, colony));
+    expect(colonyAbandonmentSchema.parse(await get(`/api/planets/${colony}/abandon`)))
+      .toEqual({ planetId: colony, allowed: true, reasons: [] });
+    const result = await app.inject({ method: 'POST', url: `/api/planets/${colony}/abandon`, headers: auth, payload: { confirm: true } });
+    expect(result.statusCode, result.body).toBe(200);
+    expect(colonyAbandonedSchema.parse(result.json())).toMatchObject({ abandonedPlanetId: colony, capital: { planet: { id: f.planetIds[0] } } });
+  });
 
   /** Arrange one real, non-isotope target inside this commander's current eyes. */
   const exposeMineableAsteroid = async (): Promise<{ appearsAt: number; radius: number }> => {

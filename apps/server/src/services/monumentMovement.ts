@@ -245,9 +245,13 @@ export async function beginMonumentReturn(tx: Tx, locked: LockedMonument, wave: 
   return { wave: returning, lots: recalled };
 }
 
-const recallSchema = z.object({ playerId: z.string().uuid(), waveId: z.string().uuid(),
-  selections: z.array(z.object({ lotId: z.string().uuid(), count: z.number().int().positive().max(2_147_483_647) })).nonempty().max(10_000),
-});
+const recallIdentity = z.object({ playerId: z.string().uuid(), waveId: z.string().uuid() });
+const recallSchema = z.union([
+  recallIdentity.extend({ selections: z.array(z.object({ lotId: z.string().uuid(), count: z.number().int().positive().max(2_147_483_647) })).nonempty().max(10_000), all: z.never().optional() }),
+  recallIdentity.extend({ all: z.literal(true), selections: z.never().optional() }),
+]);
+type RecallCommand = { selections: readonly { lotId: string; count: number }[]; all?: never }
+  | { all: true; selections?: never };
 
 export async function resolveMonumentFlightLoss(tx: Tx, input: { waveId: string; generation: number; at: Date }): Promise<void> {
   const [identity] = await tx.select().from(monumentWaves).where(eq(monumentWaves.id, input.waveId));
@@ -262,7 +266,7 @@ export async function resolveMonumentFlightLoss(tx: Tx, input: { waveId: string;
   }
 }
 
-export async function recallMonument(tx: Tx, input: { playerId: string; waveId: string; selections: readonly { lotId: string; count: number }[]; clock: Clock }): Promise<MonumentReturn> {
+export async function recallMonument(tx: Tx, input: { playerId: string; waveId: string; clock: Clock } & RecallCommand): Promise<MonumentReturn> {
   const parsed = recallSchema.safeParse(input);
   if (!parsed.success) throw new GameError('BAD_MONUMENT_RECALL', 'Choose valid owned ships to recall', 400);
   const movement = await lockMovement(tx, input.waveId, input.playerId);
@@ -279,7 +283,11 @@ export async function recallMonument(tx: Tx, input: { playerId: string; waveId: 
     const flight = await settleMonumentFlight(tx, locked, current.id, at);
     if (flight.wave.status === 'LOST') throw new GameError('BAD_MONUMENT_RECALL', 'Those ships were lost', 409);
   }
-  return beginMonumentReturn(tx, locked, current, parsed.data.selections, home, at, 'RECALLED');
+  // A whole-flight intent selects survivors only after settlement, under the same locks.
+  const selections = parsed.data.all === true
+    ? locked.lots.filter(lot => lot.waveId === current.id).map(lot => ({ lotId: lot.id, count: lot.count }))
+    : parsed.data.selections;
+  return beginMonumentReturn(tx, locked, current, selections, home, at, 'RECALLED');
 }
 
 /** Generation/ETA/status claim and physical landing are one commit; replay is a no-op. */

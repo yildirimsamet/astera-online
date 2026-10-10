@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fleetCount, hpRadiationApplies } from '@astera/rules';
+import type { FlightRecallInput } from '../api/client.js';
 import {
   useMining,
   usePending,
@@ -15,6 +16,7 @@ import {
   arrivalOf,
   contactFor,
   flightFocus,
+  flightRecallInput,
   flightTitle,
   incomingDetail,
   runArrival,
@@ -170,6 +172,7 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
   const items: AirborneItem[] = [
     ...threads.map((thread, index): AirborneItem => {
       const focus = flightFocus(thread, index, seen);
+      const recallMission = flightRecallInput(thread, now);
       return {
         key: `thread:${threadKey(thread, index)}`,
         title: flightTitle(thread),
@@ -200,13 +203,8 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
           control: the fog is enforced in the contact query, not here.
         */
         ...(focus ? { focus } : {}),
-        /*
-          THE SERVER'S WORD, NOT A GUESS. `recallable` is only ever set on a transfer, a raid (K8)
-          or a pirate raid that is still turnable on this tick, and never twice.
-        */
-        ...(thread.recallable === true && thread.id !== undefined
-          ? { recallMission: { missionId: thread.id, ...(thread.kind === 'pirate' ? { pirate: true } : {}) } }
-          : {}),
+        ...(recallMission ? { recallMission } : {}),
+        ...(thread.monumentRecall ? { recallMinutes: thread.monumentRecall.minutes } : {}),
       };
     }),
     ...runs.map((run): AirborneItem => ({
@@ -414,8 +412,9 @@ export interface AirborneItem {
   span: { from: number; to: number } | null;
   focus?: StripFocus;
   recall?: { runId: string; originPlanetId: string | undefined };
-  /** A transfer the SERVER says may still be turned around. Owner decision, 2026-09-21. */
-  recallMission?: { missionId: string; pirate?: boolean };
+  recallMission?: FlightRecallInput;
+  /** Native return forecast; radiation and surviving hull speeds can change the way home. */
+  recallMinutes?: number;
 }
 
 /**

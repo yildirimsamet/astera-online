@@ -78,6 +78,19 @@ colony costs 20 loyalty, and a colony at 20 or less secedes through the ordinary
 NEUTRAL, fleet home, nobody credited. Capitals have no loyalty. This supersedes both the former
 second-impact transfer and D167's temporary release deadline.
 
+Voluntary abandonment (owner, 2026-10-09) frees one colony slot after explicit
+confirmation. The colony becomes neutral with its buildings, satellites, resources
+and ground defences intact; mobile ships at home or in repair move to the capital
+with their damage. Paid construction, production and repair orders are cancelled
+without a refund. This uses the existing loyalty secession teardown and does not
+restore the planet's initial template. A capital cannot be abandoned.
+Any connected active flight, including an undetected arrival, blocks abandonment.
+Mining, salvage, pirates, trade, convoys, joint war contributions, stationed support,
+monument fleets/probes, active strategic work and pending interceptions also block
+it, as do away ships, recovery/protection and pending loyalty secession. Conditions
+are checked again under the world's launch locks when confirmation is submitted.
+See `docs/colony-abandonment-plan.md` for state and concurrency coverage.
+
 Ownership is public spatial structure as well as a label (D122). The galaxy always joins the
 caller's capital and colonies with faint white filaments. Focusing another commander's
 non-neutral world temporarily joins every world that commander controls, so a scattered domain
@@ -766,18 +779,25 @@ list to enumerate. Once two commanders have independently found the same rock, t
 race and visible mining route begin for both of them.
 
 **The field follows the people playing it (2026-09-16).** At the top of every hour the worker
-counts the non-bot commanders who played in the last 60 minutes and fixes that hour's spawn at
+counts eligible human commanders plus half the active, non-retired bots, rounding that bot
+remainder down. They must have played in the last 60 minutes. It fixes that hour's spawn at
 **1 rock per commander**, at random instants and random levels. Ore is the level table
 (800–4,000) with no monthly cap; levels open one rung a day (day 1: L1–2, day 2: L1–3, day 3:
 L1–4, day 4+: all). Within the unlocked range the L1–5 weights are 44%, 26%, 17%, 9% and 4%; the
 rarest level is 20% less common than before. A quiet night is no longer a free farm and a busy evening is no longer an empty
-sky. The lane counts and level weights are stored with the hour (`asteroid_spawn_hours`), so a
-rock never moves when a later balance pass changes the distribution. Seasons created before this
+sky. The lane counts, level weights and full generation settings are stored with the hour
+(`asteroid_spawn_hours`), so a rock never moves or regains mined ore when a later balance pass
+changes those parameters. Null-snapshot hours use immutable pre-2026-10-09 v1 settings.
+The rolling population uses the current raw count and only the preceding five actual hours,
+with the founding-day exemption retained. Seasons created before this
 keep their derived field up to the hour they adopted it.
 
 **Asteroid Shower is a public opportunity window (D149/D201, reshaped 2026-09-16).** The owner's
 audience is 30–40-year-olds with jobs, and six showers a day paid whoever could attend six. Weekdays
-(Mon–Fri, TRT): 12:30–13:30 ×2 and 20:00–21:00 ×3. Weekends: 13:00–14:00 ×3 and 20:00–21:00 ×5.
+(Mon–Fri, TRT): 12:30–13:00 ×2 and 20:00–20:30 ×3. Weekends: 13:00–13:30 ×3 and 20:00–20:30 ×5.
+Definition v11 (2026-10-09) halves v10's multipliers without changing its half-hour windows.
+Live calendars adopt this only for future windows from the next hour boundary; already-planned
+hours remain intact.
 A shower multiplies the hourly per-player spawn for the part of each hour it covers, and half of its
 bonus still arrives in its first five minutes. Ruleset 4–7 seasons retain their random calendar. The
 end stops only bonus arrivals;

@@ -1,0 +1,113 @@
+
+ RUN  v2.1.9 /tmp/astera-asteroid-fix-20261009/apps/server
+
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when restamp waited for its commit
+[asteroid-repro] {"scenario":"calendar-worker-race-worker-first","operation":"restamp","oldHourRocks":10,"frozenHourPreserved":true}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when restamp waited for its commit 794ms
+ × test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when adopt waited for its commit 637ms
+   → expected { status: 'fulfilled', …(1) } to match object { status: 'fulfilled', …(1) }
+(4 matching properties omitted from actual)
+ × test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=0) 567ms
+   → expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T11:00:00.000Z
+ × test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=7) 522ms
+   → expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T18:00:00.000Z
+ × test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > preserves a started shower when adoption waited across the boundary before its hour job ran 514ms
+   → expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T11:00:00.000Z
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when adopt waited for its commit
+AssertionError: expected { status: 'fulfilled', …(1) } to match object { status: 'fulfilled', …(1) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+    "status": "fulfilled",
+    "value": Array [
+      Object {
+-       "cutoverAt": 2026-10-09T10:00:00.000Z,
++       "cutoverAt": 2026-10-09T09:00:00.000Z,
+      },
+    ],
+  }
+
+ ❯ test/asteroid-spawn-regression.test.ts:471:30
+    469|       });
+    470|       await opening;
+    471|       expect(await stamping).toMatchObject(operation === 'restamp'
+       |                              ^
+    472|         ? { status: 'rejected', reason: { message: expect.stringContai…
+    473|         : { status: 'fulfilled', value: [{ cutoverAt: new Date(f.at.ge…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=0)
+AssertionError: expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T11:00:00.000Z
+
+- Expected
++ Received
+
+- 2026-10-10T11:00:00.000Z
++ 2026-10-10T10:00:00.000Z
+
+ ❯ test/asteroid-spawn-regression.test.ts:536:31
+    534|     }));
+    535|     const cutover = new Date(plannedAt.getTime() + HOUR_MS);
+    536|     expect(report?.cutoverAt).toEqual(cutover);
+       |                               ^
+    537|     const calendarAfter = await calendarShape(f);
+    538|     expect(calendarAfter.filter((row) => row.startsAt < cutover))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=7)
+AssertionError: expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T18:00:00.000Z
+
+- Expected
++ Received
+
+- 2026-10-10T18:00:00.000Z
++ 2026-10-10T10:00:00.000Z
+
+ ❯ test/asteroid-spawn-regression.test.ts:536:31
+    534|     }));
+    535|     const cutover = new Date(plannedAt.getTime() + HOUR_MS);
+    536|     expect(report?.cutoverAt).toEqual(cutover);
+       |                               ^
+    537|     const calendarAfter = await calendarShape(f);
+    538|     expect(calendarAfter.filter((row) => row.startsAt < cutover))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > preserves a started shower when adoption waited across the boundary before its hour job ran
+AssertionError: expected 2026-10-10T10:00:00.000Z to deeply equal 2026-10-10T11:00:00.000Z
+
+- Expected
++ Received
+
+- 2026-10-10T11:00:00.000Z
++ 2026-10-10T10:00:00.000Z
+
+ ❯ test/asteroid-spawn-regression.test.ts:568:31
+    566|       now: new Date(f.at.getTime() - 1), seasonId: f.seasonId,
+    567|     }));
+    568|     expect(report?.cutoverAt).toEqual(new Date(f.at.getTime() + HOUR_M…
+       |                               ^
+    569|     const [after] = await f.db.select().from(galaxyEventOccurrences).w…
+    570|     expect(after).toEqual(started);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed | 20 skipped (25)
+   Start at  00:25:25
+   Duration  5.35s (transform 1.38s, setup 0ms, collect 2.13s, tests 3.04s, environment 0ms, prepare 50ms)
+
+undefined
+/tmp/astera-asteroid-fix-20261009/apps/server:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run --config vitest.asteroid-repro.config.ts --reporter=verbose -t keeps committed hours|preserves a started shower|protects a concurrently opening worker hour --maxWorkers=1 --minWorkers=1 --no-file-parallelism
+
+Recorded exit code: 1

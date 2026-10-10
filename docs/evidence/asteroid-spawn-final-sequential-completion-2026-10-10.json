@@ -1,0 +1,58 @@
+[
+  {
+    "step": "restamp-final-typecheck",
+    "exit_code": 0,
+    "expected_exit": 0,
+    "log": "docs/evidence/asteroid-spawn-restamp-final-typecheck-2026-10-10.txt",
+    "completed_utc": "2026-10-09T22:28:05.308328+00:00"
+  },
+  {
+    "step": "restamp-final-lint",
+    "exit_code": 0,
+    "expected_exit": 0,
+    "log": "docs/evidence/asteroid-spawn-restamp-final-lint-2026-10-10.txt",
+    "completed_utc": "2026-10-09T22:28:16.431092+00:00"
+  },
+  {
+    "step": "manual-final-restamp",
+    "exit_code": 1,
+    "expected_exit": 1,
+    "log": "docs/evidence/asteroid-spawn-manual-final-restamp-2026-10-10.txt",
+    "completed_utc": "2026-10-09T22:28:19.318548+00:00"
+  },
+  {
+    "step": "manual-final-unchanged-after-restamp",
+    "exit_code": 0,
+    "expected_exit": 0,
+    "log": "docs/evidence/asteroid-spawn-manual-final-unchanged-after-restamp-2026-10-10.txt",
+    "completed_utc": "2026-10-09T22:28:22.521075+00:00"
+  },
+  {
+    "step": "manual-final-adoption-repeat",
+    "exit_code": 0,
+    "expected_exit": 0,
+    "log": "docs/evidence/asteroid-spawn-manual-final-adoption-repeat-2026-10-10.txt",
+    "completed_utc": "2026-10-09T22:28:25.541019+00:00"
+  },
+  {
+    "step": "manual-final-unchanged-after-adoption",
+    "exit_code": 0,
+    "expected_exit": 0,
+    "log": "docs/evidence/asteroid-spawn-manual-final-unchanged-after-adoption-2026-10-10.txt",
+    "completed_utc": "2026-10-09T22:28:27.078749+00:00"
+  },
+  {
+    "step": "final-server-remaining-ordinary",
+    "exit_code": 0,
+    "expected_exit": 0,
+    "log": "docs/evidence/asteroid-spawn-final-server-remaining-ordinary-2026-10-10.txt",
+    "completed_utc": "2026-10-09T22:58:54.939386+00:00"
+  },
+  {
+    "step": "final-web-ordinary",
+    "exit_code": 0,
+    "expected_exit": 0,
+    "log": "docs/evidence/asteroid-spawn-final-web-ordinary-2026-10-10.txt",
+    "completed_utc": "2026-10-09T23:09:29.966245+00:00"
+  }
+]

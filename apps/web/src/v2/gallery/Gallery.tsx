@@ -1,5 +1,7 @@
 import { CosmeticFleetGallery } from './CosmeticFleetGallery.jsx';
+import { UfoProbeGallery } from './UfoProbeGallery.js';
 import { CosmeticTrialGallery } from './CosmeticTrialGallery.jsx';
+import { StoreDiscoveryGallery } from './StoreDiscoveryGallery.js';
 import { PlanetSelectionGallery } from './PlanetSelectionGallery.jsx';
 import { CosmeticPreview } from '../../screens/CosmeticPreview.jsx';
 import { cosmeticById } from '@astera/rules';
@@ -717,6 +719,7 @@ function Views({ view }: { view: string }) {
   if (view === 'leaderboard-archive') return <GalleryCommander page="leaderboard-archive" />;
   if (view === 'country-picker') return <GalleryCountryPicker />;
   if (view === 'cosmetic-fleet') return <CosmeticFleetGallery />;
+  if (view === 'ufo-probe-flight') return <UfoProbeGallery />;
   if (view === 'cosmetic-fleet-titan') return <CosmeticFleetGallery engineId="engine-titan" />;
   if (view.startsWith('cosmetic-fleet:')) {
     const [engineId, flagId] = view.slice('cosmetic-fleet:'.length).split(':');
@@ -1021,6 +1024,7 @@ function Views({ view }: { view: string }) {
 }
 
 export function Gallery({ view }: { view: string | null }) {
+  if (view === 'store-discovery') return <StoreDiscoveryGallery />;
   if (view === 'cosmetic-trial') return <CosmeticTrialGallery />;
   if (view === 'planet-selection') return <PlanetSelectionGallery />;
   if (view === 'monument-models') return <MonumentModelsGallery />;

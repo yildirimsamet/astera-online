@@ -178,6 +178,13 @@ would match. Choosing a world from the header's active-world dropdown is the sam
 instruction: it activates and frames that world, clears the old camera subject and keeps the
 bottom rail hidden.
 
+Colony management places **Abandon colony** below the planet overview. The first
+tap opens a named confirmation explaining what stays, which ships move home,
+cancelled work and the irreversible ownership change. Confirmation remains
+disabled while conditions are checked or blocked. The sheet lists each reason and
+offers **Check again**; hidden incoming flights expose only a general flight
+reason. Successful abandonment removes the colony and selects the capital.
+
 Storage capacity is not a hostile state. A full Alloy or Crystal meter keeps its
 resource hue and closes with a hard end-cap; threat red remains reserved for an
 attack, disruption, recovery or another state that can harm the commander. The
@@ -431,6 +438,11 @@ refreshes an open ladder immediately; a public world update refreshes it too, be
 capitals the caller can place on the map changes with it.
 
 Galaxy Chat belongs directly to the disc and identifies people only by commander username.
+Supporter hearts and previous-season podium cups are tappable buttons beside the
+author. Each opens a short explanation above the icon for two seconds; another
+badge replaces it, and a repeated tap restarts the two seconds. The explanation
+names the exact previous-season place or support for Astera Online, supports
+keyboard activation and Escape, and stays outside the scrolling message log.
 Its permanent way in is a compact control at the lower-right of the Galaxy viewport, not a
 commander-menu row.
 The newest page opens at the bottom, scrolling to the top loads older pages through the cursor

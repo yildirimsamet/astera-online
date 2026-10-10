@@ -396,7 +396,12 @@ const strategicResult = z.object({
 const colonyEvent = z.object({ targetPlanetId: z.string() });
 
 /** A secession (`loyalty.ts`) names the world it lost; older rows may not. */
-const colonySeceded = z.object({ planetName: z.string().optional() });
+const colonySeceded = z.object({ planetName: z.string().optional(), cause: z.string().optional() });
+const wasAbandoned = (notification: NotificationView): boolean => {
+  if (notification.kind !== 'colony_lost') return false;
+  const parsed = colonySeceded.safeParse(notification.payload);
+  return parsed.success && parsed.data.cause === 'ABANDONED';
+};
 
 /**
  * ONE BROKEN THING, NAMED. Koloni arızaları.
@@ -1186,12 +1191,17 @@ export function describeNotification(notification: NotificationView, now: number
     }
 
     /*
-      ONLY A SECESSION SENDS THIS NOW, whether neglect or a Death Star brought loyalty to
-      zero. It used to blame "a strategic strike" for a colony its own commander let fall.
+      Voluntary abandonment and loyalty secession share the ownership teardown but
+      name different choices. Older payloads remain loyalty losses.
     */
     case 'colony_lost': {
       const parsed = colonySeceded.safeParse(notification.payload);
       const planet = parsed.success ? parsed.data.planetName : undefined;
+      if (parsed.success && parsed.data.cause === 'ABANDONED') {
+        return planet
+          ? i18n.t('notifications.colonyAbandoned', { planet })
+          : i18n.t('notifications.colonyAbandonedUnnamed');
+      }
       return planet
         ? i18n.t('notifications.colonyLost', { planet })
         : i18n.t('notifications.colonyLostUnnamed');
@@ -1320,7 +1330,7 @@ export function describeNotification(notification: NotificationView, now: number
 export const isUrgent = (notification: NotificationView): boolean =>
   notification.kind === 'incoming_fleet' ||
   notification.kind === 'strategic_incoming' ||
-  notification.kind === 'colony_lost' ||
+  (notification.kind === 'colony_lost' && !wasAbandoned(notification)) ||
   notification.kind === 'raided' ||
   notification.kind === 'raid_result' ||
   notification.kind === 'galaxy_event_started' ||
@@ -1334,6 +1344,7 @@ export const isUrgent = (notification: NotificationView): boolean =>
  * player to read red as "something happened" rather than as "something is wrong".
  */
 export const isAlarming = (notification: NotificationView): boolean => {
+  if (wasAbandoned(notification)) return false;
   if (notification.kind === 'monument_inbound' || notification.kind === 'monument_probe_lost') return true;
   const result = monumentResult.safeParse(notification.payload);
   if (notification.kind === 'raid_result' && result.success) return result.data.survivors === 0 || result.data.dominion < 0;
@@ -1396,6 +1407,8 @@ const isPirateNews = (notification: NotificationView): boolean => {
 export function signalFamily(notification: NotificationView): SignalFamily {
   if (notification.kind === 'monument_inbound' || notification.kind === 'monument_probe_lost') return 'threat';
   switch (notification.kind) {
+    case 'colony_lost':
+      return wasAbandoned(notification) ? 'note' : 'threat';
     case 'galaxy_event_started':
     case 'galaxy_event_ended':
       return 'world';
@@ -1412,7 +1425,6 @@ export function signalFamily(notification: NotificationView): SignalFamily {
     case 'incoming_fleet':
     case 'strategic_incoming':
     case 'raided':
-    case 'colony_lost':
     case 'settlement_lost':
     case 'colony_loyalty_warning':
     case 'radiation_lost':

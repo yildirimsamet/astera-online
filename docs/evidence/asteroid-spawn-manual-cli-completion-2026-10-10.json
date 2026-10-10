@@ -1,0 +1,62 @@
+[
+  {
+    "step": "pre-migration",
+    "exit_code": 0,
+    "expected_exit": 0
+  },
+  {
+    "step": "migrate CLI",
+    "exit_code": 0,
+    "expected_exit": 0
+  },
+  {
+    "step": "post-migration",
+    "exit_code": 0,
+    "expected_exit": 0
+  },
+  {
+    "step": "prepare-calendar",
+    "exit_code": 0,
+    "expected_exit": 0
+  },
+  {
+    "step": "restamp CLI rejected",
+    "exit_code": 1,
+    "expected_exit": 1
+  },
+  {
+    "step": "after-restamp-rejection",
+    "exit_code": 0,
+    "expected_exit": 0
+  },
+  {
+    "step": "adopt-event-calendar CLI dry run",
+    "exit_code": 0,
+    "expected_exit": 0
+  },
+  {
+    "step": "after-dry-run",
+    "exit_code": 0,
+    "expected_exit": 0
+  },
+  {
+    "step": "adopt-event-calendar CLI apply",
+    "exit_code": 0,
+    "expected_exit": 0
+  },
+  {
+    "step": "after-adoption",
+    "exit_code": 0,
+    "expected_exit": 0
+  },
+  {
+    "step": "adopt-event-calendar CLI repeat",
+    "exit_code": 0,
+    "expected_exit": 0
+  },
+  {
+    "step": "after-repeat",
+    "exit_code": 0,
+    "expected_exit": 0
+  }
+]

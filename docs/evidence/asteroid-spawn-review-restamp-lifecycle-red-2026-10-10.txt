@@ -1,0 +1,40 @@
+
+ RUN  v2.1.9 /tmp/astera-asteroid-fix-20261009/apps/server
+
+ × test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > refuses to restamp a processed shower (start) before its delayed hour opens 1432ms
+   → promise resolved "1" instead of rejecting
+ × test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > refuses to restamp a processed shower (end) before its delayed hour opens 888ms
+   → promise resolved "1" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > refuses to restamp a processed shower (start) before its delayed hour opens
+ FAIL  test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > refuses to restamp a processed shower (end) before its delayed hour opens
+AssertionError: promise resolved "1" instead of rejecting
+
+- Expected: 
+[Error: rejected promise]
+
++ Received: 
+1
+
+ ❯ test/asteroid-spawn-regression.test.ts:605:81
+    603|     const jobsBefore = await f.db.select().from(scheduledEvents).order…
+    604|     const command = { now: new Date(f.at.getTime() - 1), seasonId: f.s…
+    605|     await expect(f.db.transaction((tx) => restampFutureOccurrences(tx,…
+       |                                                                                 ^
+    606|       .rejects.toThrow('adopt-event-calendar');
+    607|     expect(await calendarShape(f)).toEqual(before);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 26 skipped (28)
+   Start at  01:23:50
+   Duration  5.51s (transform 1.81s, setup 0ms, collect 2.93s, tests 2.33s, environment 0ms, prepare 71ms)
+
+undefined
+/tmp/astera-asteroid-fix-20261009/apps/server:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run --config vitest.asteroid-repro.config.ts --reporter=verbose -t refuses to restamp a processed shower --maxWorkers=1 --minWorkers=1 --no-file-parallelism
+
+Recorded exit code: 1

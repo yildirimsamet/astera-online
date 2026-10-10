@@ -1,0 +1,17 @@
+Scope: 4 of 5 workspace projects
+
+> @astera/rules@0.1.0 typecheck /tmp/astera-asteroid-fix-20261009/packages/rules
+> tsc --noEmit
+
+
+> @astera/server@0.1.0 typecheck /tmp/astera-asteroid-fix-20261009/apps/server
+> tsc --noEmit
+
+
+> @astera/web@0.1.0 typecheck /tmp/astera-asteroid-fix-20261009/apps/web
+> tsc --noEmit
+
+
+> @astera/sim@0.1.0 typecheck /tmp/astera-asteroid-fix-20261009/packages/sim
+> tsc --noEmit
+

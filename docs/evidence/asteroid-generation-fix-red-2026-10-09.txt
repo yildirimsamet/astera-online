@@ -1,0 +1,50 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/packages/rules
+
+ ✓ test/asteroid-generation-freeze.test.ts > legacy dynamic generation inputs > preserves the exact pre-release RNG order and all 100 complete specs
+ × test/asteroid-generation-freeze.test.ts > legacy dynamic generation inputs > copies the generation inputs when an hour opens rather than retaining mutable arrays
+   → currentAsteroidGeneration is not a function
+ × test/asteroid-generation-freeze.test.ts > legacy dynamic generation inputs > keeps every existing spec identical when all mutable generation settings change
+   → expected false to be true // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/asteroid-generation-freeze.test.ts > legacy dynamic generation inputs > copies the generation inputs when an hour opens rather than retaining mutable arrays
+TypeError: currentAsteroidGeneration is not a function
+ ❯ test/asteroid-generation-freeze.test.ts:22:24
+     20| 
+     21|   it('copies the generation inputs when an hour opens rather than reta…
+     22|     const generation = currentAsteroidGeneration();
+       |                        ^
+     23|     expect(generation.oreByLevel).toEqual(GALAXY.asteroidOreByLevel);
+     24|     expect(generation.oreByLevel).not.toBe(GALAXY.asteroidOreByLevel);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/asteroid-generation-freeze.test.ts > legacy dynamic generation inputs > keeps every existing spec identical when all mutable generation settings change
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/asteroid-generation-freeze.test.ts:52:10
+     50|       });
+     51|       expect(generate().every((rock, index) => JSON.stringify(rock) ==…
+     52|         .toBe(true);
+       |          ^
+     53|     } finally {
+     54|       for (const original of originals) Object.defineProperties(origin…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed (3)
+   Start at  22:53:58
+   Duration  766ms (transform 440ms, setup 0ms, collect 571ms, tests 16ms, environment 0ms, prepare 52ms)
+
+undefined
+/home/yildirim/Desktop/Coding/MyProjects/blindspace/packages/rules:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/asteroid-generation-freeze.test.ts --reporter=verbose --maxWorkers=1 --minWorkers=1 --no-file-parallelism

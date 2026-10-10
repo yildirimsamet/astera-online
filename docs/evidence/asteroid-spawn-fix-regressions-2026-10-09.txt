@@ -1,0 +1,230 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server
+
+ ✓ test/mining.test.ts > mining > the Prospector > needs a Shipyard, and nothing in orbit — a drill is a craft 2634ms
+ ✓ test/mining.test.ts > mining > the Prospector > is rationed to two > refuses the third, and says how many you hold 809ms
+ ✓ test/mining.test.ts > mining > the Prospector > is rationed to two > allows exactly the cap in a single build and refuses one more 826ms
+ ✓ test/mining.test.ts > mining > the Prospector > is rationed to two > counts craft that are away, not just the ones standing at home 935ms
+ ✓ test/mining.test.ts > mining > the Prospector > is rationed to two > two simultaneous builds cannot both take the last slot 700ms
+ ✓ test/mining.test.ts > mining > the Prospector > is rationed to two > does not ration any other hull 641ms
+ ✓ test/mining.test.ts > mining > the Prospector > never makes a planet read AWAY when it leaves 686ms
+ ✓ test/mining.test.ts > mining > the Prospector > cannot be sent on an attack by any route 570ms
+ ✓ test/mining.test.ts > mining > interception > aims where the rock will be, and both arrive together 680ms
+ ✓ test/mining.test.ts > mining > interception > refuses a rock that will leave before the craft could reach it 598ms
+ ✓ test/mining.test.ts > mining > interception > refuses a rock that is not in the disc at all 654ms
+ ✓ test/mining.test.ts > mining > a complete run > takes ore home into the works, where it can still be raided 699ms
+ ✓ test/mining.test.ts > mining > a complete run > never takes more than the squadron can carry 705ms
+ ✓ test/mining.test.ts > mining > a complete run > reports what would not fit rather than losing it silently 718ms
+ ✓ test/mining.test.ts > mining > a complete run > is idempotent — resolving an arrival twice claims ore once 638ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > belongs to the current controller when its launch world changes hands 717ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > merges a failed recalled return after a concurrent home-garrison update 805ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > does not mutate an outbound flight in a frozen season 621ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > does not let an obsolete arrival failure teleport the recalled craft home 712ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > a stale outbound event cannot hide a recalled run whose return event is missing 693ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > rechecks target contact after waiting for the origin planet lock 742ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > takes the season lock before the flight row and does not deadlock season administration 794ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > serializes duplicate recalls without creating two return jobs or two craft 801ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > turns at its current position, flies home, and never claims the asteroid 709ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > cannot be recalled at the target instant, even if its worker is late 633ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > cannot be recalled after it has mined or by another commander 673ms
+ ✓ test/mining.test.ts > mining > an outbound Prospector recall > can recall a debris run without taking wreckage or earning a short-run rest 712ms
+ ✓ test/mining.test.ts > mining > the race for a rock > turns a drill for home and says so when the rock is already empty 709ms
+ ✓ test/mining.test.ts > mining > the race for a rock > says nothing when the rock still had ore in it 719ms
+ ✓ test/mining.test.ts > mining > the race for a rock > chronicles an exhausted isotope without naming who took its Deuterium 637ms
+ ✓ test/mining.test.ts > mining > the race for a rock > turns every later squadron around the instant the first strips the rock 748ms
+ ✓ test/mining.test.ts > mining > the race for a rock > allows a second independent run at a rock already being worked 740ms
+ ✓ test/mining.test.ts > mining > the race for a rock > refuses a rock that has already been stripped 610ms
+ ✓ test/mining.test.ts > mining > the visible field > shows only rocks that can already be mined 563ms
+ ✓ test/mining.test.ts > mining > the visible field > drops a rock from the field once it has been stripped 616ms
+ ✓ test/mining.test.ts > mining > the visible field > carries ore sized by level, and a level in range 629ms
+ ✓ test/mining.test.ts > mining > rockNow agrees with the generated field 606ms
+ ✓ test/mining.test.ts > mining > a run whose launch world seceded > lands its craft and its ore at the commander’s capital, and closes 718ms
+ ✓ test/mining.test.ts > mining > a run whose launch world seceded > leaves nothing for a neutral world: the caretaker is given no craft and no ore 801ms
+ ✓ test/mining.test.ts > mining > a run whose launch world seceded > is recovered by the stranded sweep once its return event is gone — the runs already stuck in a live galaxy 708ms
+ ✓ test/mining.test.ts > mining > a run whose launch world seceded > recovers through the failed-event path too 715ms
+ ✓ test/mining.test.ts > mining > the trip home > admits the faster laden round trip only when it fits before season end 717ms
+ ✓ test/mining.test.ts > mining > the trip home > keeps a stored legacy arrival and starts its laden return at the new speed 667ms
+ ✓ test/mining.test.ts > mining > the trip home > lands an already returning legacy craft at its persisted home instant 681ms
+ ✓ test/mining.test.ts > mining > the trip home > keeps a partial alloy-only haul at laden speed 823ms
+ ✓ test/mining.test.ts > mining > the trip home > keeps a partial crystal-only haul at laden speed 938ms
+ ✓ test/mining.test.ts > mining > the trip home > keeps a partial deuterium-only haul at laden speed 652ms
+ ✓ test/mining.test.ts > mining > the trip home > puts no cooldown on a real asteroid trip shorter than a minute 762ms
+ ✓ test/mining.test.ts > mining > the trip home > returns empty from an exhausted asteroid at normal speed, even after a restart 687ms
+ ✓ test/mining.test.ts > mining > the trip home > returns empty from an exhausted debris at normal speed, even after a restart 688ms
+ ✓ test/mining.test.ts > mining > the trip home > starts from the promised meeting instant after a delayed worker restart 704ms
+ ✓ test/mining.test.ts > mining > the trip home > is flown at a third of the outbound speed 670ms
+ ✓ test/mining.test.ts > mining > the trip home > is just as slow coming back from a wreck field 674ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > keeps legacy random future event times private 1915ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > does not promise a fixed event after its season was frozen early 1060ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > restamping a live calendar > raises the windows that have not opened and refuses to touch the rest 585ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > restamping a live calendar > changes nothing on a season that already carries the current figures 622ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > restamping a live calendar > touches only the kind it was asked for 612ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > restamping a live calendar > restamps each season through its own frozen ruleset config 1782ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > syncing a new fixed window into a live calendar > appends the active and future windows without moving any existing asteroid sequence 578ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > syncing a new fixed window into a live calendar > visibly grows the live field at a frozen instant when the open window is appended 1009ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > creates the frozen three-merchant ruleset-5 calendar and four-merchant ruleset-6 calendar 1716ms
+ × test/galaxy-events.test.ts > persisted galaxy events > atomically seeds all three immutable lanes and their lifecycle queue pairs 566ms
+   → expected [] to have a length of 22 but got +0
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > lets all three kinds legitimately hold sequence zero 568ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > adds merchants only at the trade-ship boundary and never moves the shower calendar 1631ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > composes an asteroid field the trade lane cannot touch 1003ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > composes bonus lanes while preserving every pre-increase asteroid 1711ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > repairs a missing lifecycle row without duplicating the rest 613ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > delivers start and end exactly once to every player 610ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > serializes lifecycle fanout behind an in-flight membership change 675ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > evaluates join backfill after a lifecycle transition that won the audience lock 739ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > shows only active occurrences and backfills a joining player 966ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > delivers a trade ship start and end exactly once to every player 777ms
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > publishes an active trade ship with its orbit and nothing outside the window 1036ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > reproduces the old v9 60-minute x3 evening as 105 total rocks
+[asteroid-repro] {"scenario":"old-v9-evening","durationMinutes":60,"multiplier":3,"supply":35,"hourRocks":105}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > reproduces the old v9 60-minute x3 evening as 105 total rocks 3031ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > produces 53 shower rocks + 18 normal rocks, including the smaller opening burst
+[asteroid-repro] {"scenario":"current-weekday-shower","eligible":36,"supply":35,"shower":53,"normal":18,"firstFiveMinutes":22,"visibleIncludingPreviousHoursAtHalfHour":162}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > produces 53 shower rocks + 18 normal rocks, including the smaller opening burst 2377ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > plans the same new supply even when the previous stock has already been depleted
+[asteroid-repro] {"scenario":"stock-does-not-affect-new-supply","previousStockDepleted":131,"newShower":53,"newNormal":18}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > plans the same new supply even when the previous stock has already been depleted 2521ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > keeps one frozen hour through repeated boots and duplicate deliveries to two workers
+[asteroid-repro] {"scenario":"restart-and-duplicate-delivery","restarts":5,"duplicateDeliveries":2,"totalRocks":71,"nextHourJobs":1}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > keeps one frozen hour through repeated boots and duplicate deliveries to two workers 2988ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > repairs a missing hour at minute 4.99: 71 rocks, front=18
+[asteroid-repro] {"scenario":"missing-hour-late-boot","lateMinutes":4.99,"plannedRocks":71,"immediateRocks":22,"front":18}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > repairs a missing hour at minute 4.99: 71 rocks, front=18 1981ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > repairs a missing hour at minute 5.01: 62 rocks, front=+0
+[asteroid-repro] {"scenario":"missing-hour-late-boot","lateMinutes":5.01,"plannedRocks":62,"immediateRocks":0,"front":0}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > repairs a missing hour at minute 5.01: 62 rocks, front=+0 2267ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > continues frozen v10 births after 40 + 20 removals without reviving a removed index
+[asteroid-repro] {"scenario":"remove-and-continue","before":105,"after40":65,"afterAnother20":45,"later":63,"newNormalRocks":18,"removedIndexesRevived":0}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > continues frozen v10 births after 40 + 20 removals without reviving a removed index 2788ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > leaves a partly mined rock visible after a real mining arrival
+[asteroid-repro] {"scenario":"partial-mining","rockOre":800,"mined":700,"remaining":100,"stillVisible":true}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > leaves a partly mined rock visible after a real mining arrival 3071ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > adopts the full future calendar shape and preserves the 30-minute shower
+[asteroid-repro] {"scenario":"safe-calendar-adoption","durationMinutes":30,"showerRocks":53,"hourRocks":71}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > adopts the full future calendar shape and preserves the 30-minute shower 2585ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > decays a contiguous recent population and produces zero with no population history
+[asteroid-repro] {"scenario":"population-controls","noCurrentPlayersRecent50":42,"noCurrentPlayersNoHistory":0}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > decays a contiguous recent population and produces zero with no population history 2041ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > does not attach a new multiplier to the old 60-minute window
+[asteroid-repro] {"scenario":"restamp-duration-mismatch","unsafeRestampRejected":true,"version":11,"effect":{"asteroidSpawnMultiplier":3},"durationMinutes":30,"workerPlannedRocks":71,"actualGeneratedRocks":71,"expectedCurrentDefinitionHourRocks":71}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > does not attach a new multiplier to the old 60-minute window 2641ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > rejects a changed future half-hour shower once its containing hour is frozen
+[asteroid-repro] {"scenario":"future-window-in-frozen-hour","unsafeRestampRejected":true,"frozenLanes":[{"count":2,"fromMinute":6603.728633333333,"frontCount":0,"untilMinute":6633.728633333333},{"count":8,"fromMinute":6633.728633333333,"frontCount":3,"untilMinute":6663.728633333333}]}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > rejects a changed future half-hour shower once its containing hour is frozen 1169ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > ignores population samples more than six actual hours old after an outage
+[asteroid-repro] {"scenario":"stale-population-after-outage","seatedCommanders":50,"eligibleNow":0,"youngestHistoryHoursOld":24,"supply":0,"workerPlannedRocks":0,"actualVisibleRocksAfterTheHour":0}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > ignores population samples more than six actual hours old after an outage 3196ms
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > includes only the preceding five actual hours (sample age=5) 1263ms
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > includes only the preceding five actual hours (sample age=6) 881ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > uses the captured settings of a newly opened hour in every subsequent process
+[asteroid-repro] {"scenario":"new-hour-snapshot","storedOreByLevel":[0,1600,3200,4800,6400,8000],"currentDefaultOre":[0,800,1600,2400,3200,4000],"revived":0}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > uses the captured settings of a newly opened hour in every subsequent process 5779ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=false)
+[asteroid-repro] {"scenario":"new-image-ore-table","depletedBefore":105,"revivedAfter":0,"unchangedClaimSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false},"newImageSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false}}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=false) 7421ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=true)
+[asteroid-repro] {"scenario":"new-image-ore-table","depletedBefore":105,"revivedAfter":0,"unchangedClaimSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false},"newImageSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false}}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=true) 6807ms
+ ✓ test/asteroid-dynamic.test.ts > opening an hour > counts active people and rounds down an unpaired active bot 3257ms
+ ✓ test/asteroid-dynamic.test.ts > opening an hour > multiplies the hour by the shower that covers it 1017ms
+ ✓ test/asteroid-dynamic.test.ts > opening an hour > sizes a shower against active people plus rounded bot pairs 1006ms
+ ✓ test/asteroid-dynamic.test.ts > opening an hour > opens each hour once and queues exactly one next hour 955ms
+ ✓ test/asteroid-dynamic.test.ts > opening an hour > keeps the legacy weights for an hour row that predates the new balance 1004ms
+ ✓ test/asteroid-dynamic.test.ts > opening an hour > pays a late hour only for the minutes it has left, and never backfills a lost one 1034ms
+ ✓ test/asteroid-dynamic.test.ts > opening an hour > does nothing on a season still on the derived field 924ms
+ ✓ test/asteroid-dynamic.test.ts > opening an hour > repairs a missing hour at worker start, once 1021ms
+ ✓ test/asteroid-dynamic.test.ts > opening an hour > carries only the hours whose rocks can still matter 982ms
+ ✓ test/asteroid-dynamic.test.ts > mining a dynamic rock > flies to a rock of a stored hour by its public id and brings its ore home 1245ms
+ ✓ test/asteroid-dynamic.test.ts > season creation > deals a season at the current ruleset onto the dynamic field from its first instant 3142ms
+ ✓ test/asteroid-dynamic.test.ts > adopting the working-week calendar on a live season > keeps every rock already in the sky exactly where and what it was 4259ms
+ ✓ test/asteroid-dynamic.test.ts > adopting the working-week calendar on a live season > replaces every window from the cutover hour on and leaves the rest alone 2046ms
+ ✓ test/asteroid-dynamic.test.ts > adopting the working-week calendar on a live season > freezes the old shower calendar the derived field was built from 1655ms
+ ✓ test/asteroid-dynamic.test.ts > adopting the working-week calendar on a live season > changes nothing the second time it is run 1713ms
+ ✓ test/asteroid-dynamic.test.ts > adopting the working-week calendar on a live season > opens the first dynamic hour at the cutover for the people who are playing 3397ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > counts everybody who was there when the season opened 6275ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > counts a commander who has both the day and the Core 1232ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > refuses one that has the day but not the Core 1122ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > refuses one that has the Core but not the day 1236ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > still asks whether they played at all 1044ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > excludes retired bots and rounds down a single active bot 1107ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > counts half of active bots without letting them bypass human gates at full weight 1137ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > adds half of 0 active bots, rounding odd remainders down 2532ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > adds half of 1 active bots, rounding odd remainders down 2398ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > adds half of 2 active bots, rounding odd remainders down 2272ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > adds half of 3 active bots, rounding odd remainders down 2476ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > adds half of 4 active bots, rounding odd remainders down 2346ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > keeps retired bots out of a larger active population 1119ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > counts a commander whose account is older than the season, however late they arrived 1014ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > still gates an account opened after the season did 1111ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > does not wave an old bot account through as a veteran 937ms
+ ✓ test/asteroid-supply.test.ts > who counts toward the asteroid supply > does not wave a bot through as a founder 987ms
+ ✓ test/asteroid-supply.test.ts > what an asteroid hour writes down > stores the raw eligible count beside the figure it spawned against 1082ms
+ ✓ test/asteroid-supply.test.ts > what an asteroid hour writes down > spawns the first hour against its own count 934ms
+ ✓ test/asteroid-supply.test.ts > what an asteroid hour writes down > spawns against the raw count through the founding day 1215ms
+ ✓ test/asteroid-supply.test.ts > what an asteroid hour writes down > averages again once the founding day is over 1427ms
+ ✓ test/asteroid-supply.test.ts > what an asteroid hour writes down > backfills the hours written before the column existed, so the window does not collapse 1009ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > previews the exact batch without writing and commits the same ids afterwards 4114ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > adds exactly ten immediately while preserving every existing rock and natural spawn input 1269ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > serializes concurrent retries of the same batch without spawning twenty 1043ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > keeps opaque targets, ore already claimed and a launched craft unchanged 1194ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > keeps distinct concurrent batches and resolves an earlier retry after later additions 965ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > works with an empty natural lane without inventing active commanders 1014ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > rejects invalid count 0 without changing the hour 1011ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > rejects invalid count -1 without changing the hour 1053ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > rejects invalid count 1.5 without changing the hour 1257ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > rejects invalid count 101 without changing the hour 939ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > rejects invalid count NaN without changing the hour 997ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > refuses a full index span without changing existing lanes 1046ms
+ ✓ test/manual-asteroids.test.ts > operator-only asteroid batches > refuses an hour not opened by the normal worker and an ended season 988ms
+ ✓ test/asteroid-generation.test.ts > persisted asteroid generation > reads a pre-migration row with immutable legacy inputs
+ ✓ test/asteroid-generation.test.ts > persisted asteroid generation > rejects corrupt or unsupported persisted settings: {"version":2}
+ ✓ test/asteroid-generation.test.ts > persisted asteroid generation > rejects corrupt or unsupported persisted settings: {"oreByLevel":[]}
+ ✓ test/asteroid-generation.test.ts > persisted asteroid generation > rejects corrupt or unsupported persisted settings: {"lifeHoursMin":6,"lifeHoursMax":1}
+ ✓ test/asteroid-generation.test.ts > persisted asteroid generation > includes the full generation snapshot in the cached hour while preserving public IDs
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/galaxy-events.test.ts > persisted galaxy events > atomically seeds all three immutable lanes and their lifecycle queue pairs
+AssertionError: expected [] to have a length of 22 but got +0
+
+- Expected
++ Received
+
+- 22
++ 0
+
+ ❯ test/galaxy-events.test.ts:477:58
+    475|     const showerFigures = showers.map((row) =>
+    476|       'asteroidSpawnMultiplier' in row.effect ? row.effect.asteroidSpa…
+    477|     expect(showerFigures.filter((value) => value === 4)).toHaveLength(…
+       |                                                          ^
+    478|     expect(showerFigures.filter((value) => value === 6)).toHaveLength(…
+    479|     expect(showerFigures.filter((value) => value === 10)).toHaveLength…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 6 passed (7)
+      Tests  1 failed | 147 passed (148)
+   Start at  23:02:38
+   Duration  207.72s (transform 1.64s, setup 0ms, collect 9.16s, tests 196.52s, environment 2ms, prepare 598ms)
+
+undefined
+/home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/asteroid-spawn-regression.test.ts test/asteroid-generation.test.ts test/asteroid-dynamic.test.ts test/asteroid-supply.test.ts test/galaxy-events.test.ts test/manual-asteroids.test.ts test/mining.test.ts --reporter=verbose --maxWorkers=1 --minWorkers=1 --no-file-parallelism

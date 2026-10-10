@@ -44,7 +44,7 @@ import type {
   FeedbackKind,
   ClanWar,
 } from './schemas.js';
-import type { ClanAidInput, IntergalacticConvoyLaunchInput, MonumentRecallSelection, MonumentSendInput } from './client.js';
+import type { ClanAidInput, FlightRecallInput, IntergalacticConvoyLaunchInput, MonumentRecallSelection, MonumentSendInput } from './client.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
 import { latestPlanetSnapshot, markPlanetPrediction, readPlanetSnapshot, settlePlanetPrediction, takeDeferredPlanetRead } from './planetCache.js';
@@ -2304,7 +2304,7 @@ export function useHarvest() {
 
 /** Turn only an outbound Prospector run around and apply its physical return leg. */
 /**
- * CALL A TRANSFER OR A RAID BACK. Owner decisions 2026-09-21 and 2026-09-23 (K8).
+ * Call an owned outbound fleet through its native recall lane.
  *
  * NO OPTIMISTIC UPDATE, unlike the mining recall beside it. A turn-around rewrites the flight's
  * arrival and its whole drawn leg, and the honest version of that picture is the one the server
@@ -2315,14 +2315,13 @@ export function useRecallFlight() {
   const api = useApi();
   const invalidate = useInvalidator();
   return useMutation({
-    /*
-      ONE RECALL FOR EVERY OUTBOUND FLEET. A pirate raid lives in its own table, so the flight
-      list marks it and the request goes to its own lane (owner, 2026-10-08).
-    */
-    mutationFn: async ({ missionId, pirate }: { missionId: string; pirate?: boolean }) =>
-      pirate === true ? api.recallPirateRaid(missionId) : api.recallFlight(missionId),
-    onSuccess: (_result, { pirate }) => {
-      invalidate(['pending'], ['planet'], ['planets'], ...(pirate === true ? [keys.pirates] : []));
+    mutationFn: async ({ missionId, pirate, monument }: FlightRecallInput) => {
+      if (monument) return api.recallMonumentFlight(missionId);
+      return pirate === true ? api.recallPirateRaid(missionId) : api.recallFlight(missionId);
+    },
+    onSuccess: (_result, { pirate, monument }) => {
+      invalidate(keys.pending, keys.planet, keys.planets, ...(pirate === true ? [keys.pirates] : []),
+        ...(monument ? [keys.monuments, keys.galaxy, keys.traffic, keys.notifications, keys.reports, keys.clanWar, keys.season] : []));
     },
   });
 }

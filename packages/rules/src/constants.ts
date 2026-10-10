@@ -2718,8 +2718,8 @@ export const GALAXY_EVENTS = {
     ASTEROID_SHOWER: {
       schedule: 'FIXED_DAILY',
       /**
-       * VERSION 10 doubles every version-9 multiplier and shortens each shower to
-       * thirty minutes (owner, 2026-10-05). Weekday/weekend starts stay unchanged.
+       * VERSION 11 halves version-10 multipliers after the 2026-10-09 spawn audit,
+       * retaining the thirty-minute windows. Weekday/weekend starts stay unchanged.
        * The definition version lets calendar adoption identify stale future rows.
        *
        * A SHOWER NO LONGER SIZES A LANE OF ITS OWN. Under the dynamic field
@@ -2731,16 +2731,16 @@ export const GALAXY_EVENTS = {
        * creation; the running galaxy adopts this shape through the operator command
        * `pnpm season adopt-event-calendar`, which never touches a window that opened.
        */
-      version: 10,
+      version: 11,
       windows: [
         { days: 'WEEKDAY', startsAtLocalMinute: 12 * 60 + 30, endsAtLocalMinute: 13 * 60,
-          effect: { asteroidSpawnMultiplier: 4 } },
+          effect: { asteroidSpawnMultiplier: 2 } },
         { days: 'WEEKDAY', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 20 * 60 + 30,
-          effect: { asteroidSpawnMultiplier: 6 } },
+          effect: { asteroidSpawnMultiplier: 3 } },
         { days: 'WEEKEND', startsAtLocalMinute: 13 * 60, endsAtLocalMinute: 13 * 60 + 30,
-          effect: { asteroidSpawnMultiplier: 6 } },
+          effect: { asteroidSpawnMultiplier: 3 } },
         { days: 'WEEKEND', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 20 * 60 + 30,
-          effect: { asteroidSpawnMultiplier: 10 } },
+          effect: { asteroidSpawnMultiplier: 5 } },
       ],
     },
     TRADE_SHIP: {

@@ -1,8 +1,12 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AsteroidView, MiningRun, PendingThread } from '../src/api/schemas.js';
 import { ContactFocus, RunFocus, ThreadFocus } from '../src/galaxy/FocusPanel.js';
 import { countdown, duration, minutesLeft } from '../src/lib/time.js';
+
+const NOW = Date.parse('2026-10-10T12:00:00Z');
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW); });
+afterEach(() => { vi.useRealTimers(); });
 
 /**
  * ONE CRAFT, ONE CLOCK.
@@ -14,7 +18,7 @@ import { countdown, duration, minutesLeft } from '../src/lib/time.js';
  * of them moved. `minutesLeft` is the single derivation both now use.
  */
 describe('a flight in the interface', () => {
-  const arriveAt = new Date(Date.now() + 11 * 60_000 + 10_000);
+  const arriveAt = new Date(NOW + 11 * 60_000 + 10_000);
 
   const thread = (over: Partial<PendingThread> = {}): PendingThread => ({
     kind: 'fleet',
@@ -106,6 +110,8 @@ describe('a run of your own', () => {
     expect(screen.getByText(/meets the rock in/i)).toBeInTheDocument();
     const expected = countdown(r.arriveAt.getTime() - Date.now());
     expect(screen.getByText(expected)).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(screen.getByText(countdown(r.arriveAt.getTime() - Date.now()))).toBeInTheDocument();
   });
 
   it('never tells a salvage run that its rock has passed', () => {

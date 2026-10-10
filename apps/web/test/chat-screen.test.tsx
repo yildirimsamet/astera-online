@@ -8,6 +8,7 @@ import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/keys.js';
 import i18n, { currentLanguage } from '../src/i18n/index.js';
 import { ChatScreen } from '../src/screens/ChatScreen.js';
+import { LANGUAGES } from '../src/i18n/languages.js';
 
 const at = new Date('2026-08-22T08:00:00.000Z');
 const scrollIntoView = vi.fn();
@@ -81,6 +82,8 @@ beforeAll(() => {
 });
 
 afterEach(async () => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
   localStorage.removeItem('astera.chat.language.v1');
   await i18n.changeLanguage('en');
 });
@@ -757,5 +760,120 @@ describe('permanent supporter recognition', () => {
     expect(document.querySelector('[data-chat-supporter-icon]')).not.toBeNull();
     act(() => { client.setQueryData(keys.clanChat, initial); });
     await waitFor(() => { expect(document.querySelector('[data-chat-supporter-icon]')).toBeNull(); });
+  });
+});
+
+describe('chat recognition explanations', () => {
+  const recognized = () => ({ ...initial, pages: [{ ...initial.pages[0], messages: [
+    { ...initial.pages[0]!.messages[0], supporter: true, previousSeasonRank: 1 },
+    { ...initial.pages[0]!.messages[1], previousSeasonRank: 2 },
+    { ...initial.pages[0]!.messages[2], previousSeasonRank: 3 },
+  ] }] });
+
+  it('opens the supporter explanation above its button without focusing the author or opening message actions', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('innerWidth', 350);
+    const { onFocusPlanet } = show(vi.fn(), 'general', recognized());
+    const button = screen.getByRole('button', { name: 'Astera supporter' });
+    vi.spyOn(button, 'getBoundingClientRect').mockReturnValue(new DOMRect(326, 300, 16, 16));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(button).not.toHaveAttribute('title');
+    fireEvent.pointerDown(button);
+    act(() => { vi.advanceTimersByTime(450); });
+    fireEvent.contextMenu(button);
+    fireEvent.click(button);
+
+    const hint = screen.getByRole('tooltip');
+    expect(hint).toHaveTextContent('Supports Astera Online.');
+    expect(button).toHaveAttribute('aria-describedby', hint.id);
+    expect(hint).toHaveAttribute('aria-live', 'polite');
+    expect(hint.parentElement).toBe(document.body);
+    expect(Number.parseFloat(hint.style.left)).toBeGreaterThanOrEqual(8);
+    expect(Number.parseFloat(hint.style.left) + Number.parseFloat(hint.style.width)).toBeLessThanOrEqual(342);
+    expect(Number.parseFloat(hint.style.bottom)).toBeGreaterThan(window.innerHeight - 300);
+    expect(onFocusPlanet).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-chat-message-actions]')).toBeNull();
+  });
+
+  it.each([1, 2, 3])('explains the exact previous-season place %s', (rank) => {
+    show(vi.fn(), 'general', recognized());
+    fireEvent.click(screen.getByRole('button', { name: `Previous season · place ${rank}` }));
+    expect(screen.getByRole('tooltip')).toHaveTextContent(`Finished the previous season in place ${rank}.`);
+  });
+
+  it('closes at two seconds and lets a repeated tap restart those two seconds', () => {
+    vi.useFakeTimers();
+    show(vi.fn(), 'general', recognized());
+    const button = screen.getByRole('button', { name: 'Astera supporter' });
+    fireEvent.click(button);
+    act(() => { vi.advanceTimersByTime(1_500); });
+    fireEvent.click(button);
+    act(() => { vi.advanceTimersByTime(1_999); });
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Supports Astera Online.');
+    act(() => { vi.advanceTimersByTime(1); });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(button).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('replaces the previous explanation and cancels its old closing timer', () => {
+    vi.useFakeTimers();
+    show(vi.fn(), 'general', recognized());
+    const heart = screen.getByRole('button', { name: 'Astera supporter' });
+    fireEvent.click(heart);
+    act(() => { vi.advanceTimersByTime(1_000); });
+    fireEvent.click(screen.getByRole('button', { name: 'Previous season · place 1' }));
+    expect(screen.getAllByRole('tooltip')).toHaveLength(1);
+    expect(heart).not.toHaveAttribute('aria-describedby');
+    act(() => { vi.advanceTimersByTime(1_000); });
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Finished the previous season in place 1.');
+    act(() => { vi.advanceTimersByTime(1_000); });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('supports keyboard activation and Escape without opening message actions', async () => {
+    show(vi.fn(), 'general', recognized());
+    screen.getByRole('button', { name: 'Astera supporter' }).focus();
+    const user = userEvent.setup();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Supports Astera Online.');
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    fireEvent(screen.getByRole('button', { name: 'Astera supporter' }), escape);
+    expect(escape.defaultPrevented).toBe(true);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(document.querySelector('[data-chat-message-actions]')).toBeNull();
+  });
+
+  it.each(['outside', 'scroll', 'resize'] as const)('dismisses an explanation on %s', (action) => {
+    show(vi.fn(), 'general', recognized());
+    fireEvent.click(screen.getByRole('button', { name: 'Astera supporter' }));
+    expect(screen.getByRole('tooltip')).toBeInTheDocument();
+    if (action === 'outside') fireEvent.pointerDown(document.body);
+    else if (action === 'scroll') fireEvent.scroll(screen.getByRole('log'));
+    else fireEvent(window, new Event('resize'));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('removes the explanation and its timer when chat closes', () => {
+    vi.useFakeTimers();
+    const { unmount } = show(vi.fn(), 'general', recognized());
+    fireEvent.click(screen.getByRole('button', { name: 'Astera supporter' }));
+    unmount();
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    act(() => { vi.advanceTimersByTime(2_000); });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it.each(LANGUAGES)('explains both independent badges in %s', async (language) => {
+    await i18n.changeLanguage(language);
+    show(vi.fn(), 'general', recognized());
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('chat.supporterBadge') }));
+    const supporter = i18n.t('chat.supporterExplanation');
+    expect(supporter).not.toContain('chat.');
+    expect(screen.getByRole('tooltip')).toHaveTextContent(supporter);
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('chat.previousSeasonPlace', { rank: 2 }) }));
+    const podium = i18n.t('chat.previousSeasonExplanation', { rank: 2 });
+    expect(podium).not.toContain('chat.');
+    expect(screen.getByRole('tooltip')).toHaveTextContent(podium);
+    expect(podium).toContain('2');
   });
 });

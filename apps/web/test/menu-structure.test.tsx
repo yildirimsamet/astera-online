@@ -99,6 +99,7 @@ describe('the menu groups what it offers', () => {
 
     const headings = [...view.container.querySelectorAll('h2')].map((node) => node.textContent);
     expect(headings).toEqual([
+      i18n.t('menu.skinsShopLabel'),
       i18n.t('menu.seasonHeading'),
       i18n.t('menu.asteraHeading'),
       i18n.t('menu.helpHeading'),
@@ -133,6 +134,9 @@ describe('the menu groups what it offers', () => {
     const rows = [...view.container.querySelectorAll('[data-menu-row]')];
     expect(rows).toHaveLength(2);
     expect(follows(rows[0], view.container.querySelector('[data-menu-group]'))).toBe(true);
+    const store = screen.getByRole('region', { name: i18n.t('skins.collection') });
+    expect(follows(rows[1], store)).toBe(true);
+    expect(follows(store, view.container.querySelector('[data-menu-group]'))).toBe(true);
   });
 
   it('draws no urgent row when nothing is urgent', () => {

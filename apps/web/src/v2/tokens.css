@@ -56,6 +56,10 @@
   --color-v2-radiation: #d8f04a;
   --color-v2-premium: #e6c77e;
 
+  /* Cosmetic showcase decoration, separate from gameplay relationship colours. */
+  --color-v2-store-ground: #201816;
+  --color-v2-store-glow: #a44a23;
+
   /* ── sky ─ decoration only, never a meaning: the still sky behind the world and the
      research map (StarField). Star temperatures and the nebula's two drifts. */
   --color-v2-sky-cool: #cfe3ff;

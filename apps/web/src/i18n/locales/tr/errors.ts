@@ -11,6 +11,14 @@
  */
 
 export const errors = {
+  CAPITAL_CANNOT_BE_ABANDONED: "Ana gezegenini terk edemezsin. Bir koloni seç.",
+  COLONY_ABANDON_BLOCKED: "Bu kolonide görevler veya bir sahiplik geçişi sürüyor. Engel nedenlerini kontrol et ve tamamlanmalarını bekle.",
+  SKIN_NOT_OWNED: 'Bu görünüm envanterinde yok. Envanterindeki bir görünümü seç.',
+  SKIN_SLOT_MISMATCH: 'Bu görünüm seçilen tür veya gemiye uymuyor. Uygun bir görünüm seç.',
+  SKIN_ALREADY_OWNED: 'Bu üründeki görünümlerden en az birine zaten sahipsin. Envanterini kontrol et.',
+  SKIN_SHOP_CLOSED: 'Bu ürün şu anda satın alınamıyor. Daha sonra tekrar kontrol et.',
+  SKIN_CHECKOUT_IN_PROGRESS: 'Bu görünüm için başka bir ödeme işlemi açık. Mevcut ödeme işlemini tamamla veya süresinin dolmasını bekle.',
+  SKIN_CHECKOUT_STARTING: 'Ödeme hazırlanıyor. Biraz sonra tekrar dene.',
   REPAIR_LOT_NOT_FOUND: "Bu hasarlı gemiler artık burada beklemiyor.",
   REPAIR_LOT_BUSY: "Bu gemiler zaten onarılıyor.",
   REPAIR_NOTHING_WAITING: "Burada onarım bekleyen hasarlı gemi yok.",

@@ -1,4 +1,5 @@
 export const monument = {
+  recallFlightRule: "Before arrival, recall the entire fleet from its current position. Spent fuel is not refunded.",
   "newsRadiation": "{{name}} · radiation destroyed {{count}} ships and {{cargo}} deuterium · {{left}} ships remain",
   "genericTitle": "Monument",
   "look": "Look at {{name}}",

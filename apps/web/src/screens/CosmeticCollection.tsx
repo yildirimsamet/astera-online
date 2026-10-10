@@ -21,12 +21,14 @@ export function CosmeticCategories({ active, onChange, owned, inventory }: {
   </nav>;
 }
 
-export function CosmeticCollection({ category, inventory, owned, equipment, onOpenOther, onEquip, busy = false, error, purchase, canEquipFlag = true, onTry, initialId }: {
+export function CosmeticCollection({ category, inventory, owned, equipment, onOpenOther, onEquip, busy = false, error, purchase, canEquipFlag = true, onTry, initialId, prices, purchaseError }: {
   onTry?: (id: CosmeticId) => void; initialId?: CosmeticId;
   category: CosmeticCategory; inventory: boolean; owned: readonly string[];
   equipment: CosmeticEquipment;
   onOpenOther: () => void; onEquip?: (category: CosmeticCategory, id: CosmeticId | null, hull?: MobileHullId) => void;
   canEquipFlag?: boolean; busy?: boolean; error?: string; purchase?: (id: CosmeticId) => ReactNode;
+  prices?: Readonly<Partial<Record<CosmeticId, { formatted: string }>>>;
+  purchaseError?: { itemId: CosmeticId | 'bundle'; message: string };
 }) {
   const { t } = useTranslation();
   const items = cosmeticsInCategory(category).filter(item => !inventory || item.free || owned.includes(item.id));
@@ -41,6 +43,7 @@ export function CosmeticCollection({ category, inventory, owned, equipment, onOp
   </section>;
   const isOwned = selected.free || owned.includes(selected.id);
   const equipped = worn(selected);
+  const failure = error ?? (purchaseError?.itemId === selected.id ? purchaseError.message : undefined);
   const canRestore = selected.category === 'SHIP' ? Boolean(selected.hull && equipment.SHIP?.[selected.hull]) : Boolean(equipment[selected.category]);
   const equip = (id: CosmeticId | null) => {
     if (selected.hull) onEquip?.(category, id, selected.hull);
@@ -56,7 +59,11 @@ export function CosmeticCollection({ category, inventory, owned, equipment, onOp
       <CosmeticPreview id={selected.id} />
       <div className="relative px-4 pb-4">
         <p className="mb-1 text-micro text-v2-ink-3">{t('skins.dragHint')}</p>
-        <h2 className="text-figure font-semibold tracking-wide" style={{ color: selected.accent }}>{t(cosmeticCopy(selected.id).nameKey)}</h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 className="text-figure font-semibold tracking-wide" style={{ color: selected.accent }}>{t(cosmeticCopy(selected.id).nameKey)}</h2>
+          {!inventory && !isOwned && <p className="font-v2-mono text-figure font-semibold text-v2-premium">{prices?.[selected.id]?.formatted ?? '—'}</p>}
+        </div>
+        {!inventory && !isOwned && <p className="mt-1 text-micro text-v2-ink-3">{t('skins.oneTime')}</p>}
         <p className="mt-1.5 text-caption leading-relaxed text-v2-ink-2">{t(cosmeticCopy(selected.id).storyKey)}</p>
         {selected.hull && <p className="mt-3 w-fit rounded-control border border-v2-line-hi bg-v2-panel px-3 py-2 text-caption font-semibold text-v2-ink">{t('skins.shipFits', { hull: hullLabel(selected.hull) })}</p>}
       </div>
@@ -72,7 +79,7 @@ export function CosmeticCollection({ category, inventory, owned, equipment, onOp
     </div> : isOwned ? <button type="button" onClick={onOpenOther} className="min-h-11 w-full rounded-control border border-v2-premium/60 px-3 text-caption font-semibold text-v2-premium">{t('menu.skinsInventoryLabel')}</button>
       : purchase ? purchase(selected.id) : <button type="button" disabled className="min-h-11 w-full rounded-control border border-v2-line-hi text-caption text-v2-ink-3">{t('skins.onSaleSoon')}</button>}
     {inventory && category === 'FLAG' && !canEquipFlag && <p className="mt-2 text-caption text-v2-ink-3">{t('skins.flagLeaderOnly')}</p>}
-    {error && <p role="alert" className="mt-2 text-caption text-v2-warn">{error}</p>}
+    {failure && <p role="alert" className="mt-2 rounded-control border border-v2-warn/30 bg-v2-warn/5 px-3 py-2 text-caption text-v2-warn">{failure}</p>}
     <p className="mt-3 text-micro text-v2-ink-3">{t('skins.cosmeticOnly')}</p>
     <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
       {items.map(item => <button key={item.id} type="button" aria-pressed={item.id === selected.id}
@@ -80,7 +87,9 @@ export function CosmeticCollection({ category, inventory, owned, equipment, onOp
         <img src={cosmeticCard(item.id)} alt="" loading="lazy" className="aspect-[1.5] w-full object-cover" />
         <span className="block px-2.5 py-2 text-caption font-semibold" style={{ color: item.accent }}>{t(cosmeticCopy(item.id).nameKey)}</span>
         {item.hull && <span className="block px-2.5 pb-2 text-micro text-v2-ink-2">{t('skins.shipFits', { hull: hullLabel(item.hull) })}</span>}
-        <span className="block px-2.5 pb-2 text-micro text-v2-ink-3">{t(worn(item) ? 'skins.equipped' : item.free ? 'skins.included' : owned.includes(item.id) ? 'skins.owned' : 'skins.inspect')}</span>
+        {!inventory && !item.free && !owned.includes(item.id) && prices?.[item.id] ?
+          <span className="block px-2.5 pb-2 font-v2-mono text-caption font-semibold text-v2-premium">{prices[item.id]?.formatted}</span> :
+          <span className="block px-2.5 pb-2 text-micro text-v2-ink-3">{t(worn(item) ? 'skins.equipped' : item.free ? 'skins.included' : owned.includes(item.id) ? 'skins.owned' : 'skins.inspect')}</span>}
       </button>)}
     </div>
   </section>;

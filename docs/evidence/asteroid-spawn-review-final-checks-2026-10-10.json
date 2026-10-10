@@ -1,0 +1,17 @@
+[
+  {
+    "check": "review-final-incident-green",
+    "exit_code": 0,
+    "log": "docs/evidence/asteroid-spawn-review-final-incident-green-2026-10-10.txt"
+  },
+  {
+    "check": "review-final-server-typecheck",
+    "exit_code": 0,
+    "log": "docs/evidence/asteroid-spawn-review-final-server-typecheck-2026-10-10.txt"
+  },
+  {
+    "check": "review-final-source-lint",
+    "exit_code": 0,
+    "log": "docs/evidence/asteroid-spawn-review-final-source-lint-2026-10-10.txt"
+  }
+]

@@ -2090,3 +2090,110 @@ red (`intel-states` fog key list) fixed in it and re-run green with the galaxy-r
 `season.test.ts` "TAX holds its band" reads 0.0325 against the 0.035 floor with the first hour on,
 and passes with it off — the rule's own effect, measured, reported to the owner, and shipped on the
 owner's instruction ("her şeyi deploy et"). The band was not widened (1a).
+
+## Asteroid spawn correction — 2026-10-09
+
+This release adds migration **0146_asteroid_generation_snapshot**; the journal now has
+147 entries. Inventory and apply every pending migration in order, including earlier
+release entries. The new migration adds one nullable JSONB column to
+`asteroid_spawn_hours`, without a default, backfill, queue change or season reset.
+
+The incident audit found the production v10 shower matching its stored plan, rather
+than duplicate queue deliveries. At supply 35, its 30-minute weekday evening ×6
+window produced 105 shower rocks and another 18 normal rocks later in the hour.
+This release halves future shower multipliers and fixes the following hazards:
+
+- Population smoothing reads the current raw count and only the preceding five actual
+  hours. An outage no longer makes yesterday's five stored counts stand in for that window.
+  Founding-day behavior and smoothing over available recent samples remain intact.
+- `restamp` refuses a shower whose stored duration differs from its ruleset's authored
+  shape. It also refuses a changed shower whose containing asteroid hour is already
+  planned, even when the shower starts later in that hour. A rejection rolls back the
+  transaction. A changed shower also rejects an already-processed start or end marker
+  when its hour job is delayed; an unchanged definition stays a no-op. Use full calendar
+  adoption for this release.
+- Every new asteroid hour stores its complete generation settings and algorithm version.
+  Old rows with null `generation` use the immutable pre-release v1 settings. The RNG order,
+  indexes, public IDs, claims, birth/expiry times and mining targets remain unchanged.
+  Subsequent balance constants cannot replenish the ore of a depleted stored-hour rock.
+  The field cache and manual bonus command use the same stored snapshot.
+- Calendar adoption rechecks committed hours and processed lifecycle markers after it
+  obtains the season lock. If the command waited across an hour boundary, its captured
+  clock cannot re-deal the worker's newly opened hour. It also preserves an occurrence
+  whose end was delivered while its start still waits for retry. The cutover advances
+  beyond every protected hour, including an unexpectedly preplanned future hour.
+
+**Shower definition v11** retains all starts and 30-minute durations:
+
+| Türkiye time | Weekday | Weekend |
+| --- | --- | --- |
+| Lunch | 12:30–13:00 ×2 | 13:00–13:30 ×3 |
+| Evening | 20:00–20:30 ×3 | 20:00–20:30 ×5 |
+
+For supply 35, the future weekday evening hour becomes **53 + 18 = 71** rocks
+(previously 123), with 18 reserved for the shower's first five minutes (previously 44).
+The weekend evening becomes **88 + 18 = 106** (previously 193). Existing rocks can
+remain visible for their remaining 2.5–5-hour lifetime, and partially mined rocks remain
+until depleted or expired. This release reduces future arrivals; it does not erase stock.
+The web events guide and Wiki read these values from the shared rules package.
+
+**Release order:**
+
+1. Follow steps 1–6 of this runbook with one clean, pinned commit and prebuilt server/web
+   artifacts. On a disposable production restore, rehearse all pending migrations and
+   boot the retained old image against the migrated copy. Migration 0146 is expand-only;
+   it introduces no event kind and old writers may leave the new column null. Measure its
+   table lock on that restored copy; local tests are not a production timing measurement.
+   Apply Rule 12 if this or another pending migration has an actual stop condition.
+2. Before the rehearsal migration, record every existing asteroid spec/public ID, its
+   claims and all active mining targets at a fixed read time. Require identical values
+   after migration and with the new image, using the same DB/key/time. Keep the retained
+   image, webroot, database backup and pre-adoption calendar/queue snapshot.
+3. Migrate once with the pinned new image using the runbook's one-off migration command.
+   The new image requires the column before it boots. Roll all three APIs and the
+   singleton worker to that same image; verify all four health documents and
+   `pendingMigrations = 0`. The unchanged ore/orbit/lifetime settings allow the rolling
+   interval; do not combine this with another asteroid generator balance change.
+4. Only after every role matches, run the calendar dry run, review its next-hour cutover,
+   and apply it for **all live fixed-calendar shards**:
+
+   ```bash
+   compose=(docker compose -f docker-compose.prod.yml)
+   "${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+     adopt-event-calendar
+   "${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+     adopt-event-calendar --yes
+   ```
+
+   The whole future window shape/effect adopts from the reported next unplanned hour
+   boundary. If an hour or lifecycle boundary was committed while the command waited,
+   or a future hour is already planned, the report may move the cutover later. Opened hours
+   stay frozen, including a 12:30 shower already planned at 12:00. Do not use `restamp`,
+   `sync-events`, a wipe or a queue reset for this rollout. Ordinary later deploys do not
+   require repeating calendar adoption unless the event definitions change again.
+   Investigate an unexpectedly distant cutover's queue timestamps and planned rows;
+   keep those frozen rows intact. Publish the matching web after the reported cutover
+   boundaries and after any retained old shower that extends beyond a boundary has ended.
+   Adoption preserves a retained occurrence's whole window. This keeps the weekly guide
+   from labeling a still-running old window with the new multiplier. Until then, the
+   active-event API continues reporting that old occurrence's actual stored effect.
+5. Observe one newly opened hour after cutover: one row per season/hour, one next-hour job,
+   raw/rolling counts limited to the actual window, v11 calendar multipliers, non-null
+   generation snapshot, and lane counts matching `planAsteroidHour`. Check worker errors,
+   failed/stranded events, unchanged depleted claims and active mining arrivals. A global
+   rock count can include earlier hours and normal births; compare the individual hour's
+   plan rather than expecting the whole map to empty immediately.
+
+**Rollback:** retain the additive column. Existing opened hours and their claims must not be
+resized or deleted. Coordinate retained images/web with a reviewed restoration of calendar
+windows and lifecycle jobs from the next hour boundary, only where no asteroid hour has
+already been planned. Keep a pending half-hour window intact if its containing hour is
+frozen, and retain already-processed lifecycle occurrences. Restoring images alone leaves
+v11 in the stored calendar. Do not restore a whole old DB over newer player writes. If a
+later release changes generation parameters or algorithms, old images do not understand
+those snapshots: first prove compatibility, and retain the v1 algorithm/fallback byte for
+byte. The freeze covers stored dynamic hours; legacy derived seasons still require Rule 13.
+
+Local proof and exact test commands are in
+[the fix report](asteroid-spawn-fix-2026-10-09.md). This task did not execute a production
+deploy, migration, calendar adoption or restart.

@@ -1,0 +1,116 @@
+import assert from 'node:assert/strict';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { and, asc, eq, sql } from 'drizzle-orm';
+import { createDb } from './src/db/client.ts';
+import { assertSchemaCurrent, pendingMigrations } from './src/db/migrate.ts';
+import { asteroidSpawnHours, asteroidClaims, galaxyEventOccurrences, miningRuns, players, scheduledEvents, seasons, shards } from './src/db/schema.ts';
+import { privateAsteroidHour } from './src/services/asteroidField.ts';
+import { floorHour, hourOrdinalOf, openAsteroidHour } from './src/services/asteroidSpawn.ts';
+import { loadMiningSnapshot } from './src/services/mining.ts';
+
+const url = new URL(process.env.DATABASE_URL);
+assert.equal(url.hostname, '127.0.0.1');
+assert.equal(url.pathname, '/astera_asteroid_repro_manual_20261010_test');
+const connection = createDb(url.href, { max: 2, applicationName: 'astera-local-review-rehearsal' });
+const { db } = connection;
+const stage = process.argv[2];
+const fixedRead = new Date('2026-10-09T17:30:00.000Z');
+const file = (name) => new URL(`../../docs/evidence/asteroid-manual-${name}-20261010.json`, import.meta.url);
+const save = (name, value) => writeFileSync(file(name), JSON.stringify(value, null, 2));
+const read = (name) => JSON.parse(readFileSync(file(name), 'utf8'));
+const digest = (value) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+try {
+  const [season] = await db.select().from(seasons);
+  assert(season);
+  const [shard] = await db.select().from(shards).where(eq(shards.id, season.shardId));
+  assert.equal(shard.code, 'EU-ASTEROID-REPRO');
+  const hours = () => db.execute(sql`
+    select hour_starts_at as "hourStartsAt", lanes, level_weights as "levelWeights"
+    from asteroid_spawn_hours where season_id = ${season.id} order by hour_starts_at
+  `);
+  const state = async (beforeMigration = false) => {
+    const rows = await hours();
+    const rocks = beforeMigration
+      ? rows.flatMap((row) => privateAsteroidHour(season.asteroidKey, {
+        hourOrdinal: hourOrdinalOf(season.startsAt, new Date(row.hourStartsAt)),
+        lanes: row.lanes, levelWeights: row.levelWeights,
+      }))
+      : (await loadMiningSnapshot(db, season.id, fixedRead)).asteroids;
+    return JSON.parse(JSON.stringify({
+      hours: rows, rocks,
+      claims: await db.select().from(asteroidClaims).where(eq(asteroidClaims.seasonId, season.id)).orderBy(asc(asteroidClaims.index)),
+      runs: await db.select().from(miningRuns).where(eq(miningRuns.seasonId, season.id)).orderBy(asc(miningRuns.id)),
+      calendar: await db.select().from(galaxyEventOccurrences).where(eq(galaxyEventOccurrences.seasonId, season.id)).orderBy(asc(galaxyEventOccurrences.id)),
+      queue: await db.select().from(scheduledEvents).where(eq(scheduledEvents.seasonId, season.id)).orderBy(asc(scheduledEvents.id)),
+    }));
+  };
+  if (stage === 'pre-migration') {
+    const [column] = await db.execute(sql`select exists(select 1 from information_schema.columns where table_schema = 'public' and table_name = 'asteroid_spawn_hours' and column_name = 'generation') as present`);
+    if (column.present) {
+      const [nonNull] = await db.execute(sql`select count(*)::int as n from asteroid_spawn_hours where generation is not null`);
+      assert.equal(nonNull.n, 0, 'This pre-release fixture must contain legacy null hours only');
+      await db.execute(sql`alter table asteroid_spawn_hours drop column generation`);
+      await db.execute(sql`delete from drizzle.__drizzle_migrations where created_at = 1791575820183`);
+    }
+    assert.equal(await pendingMigrations(db), 1);
+    await assert.rejects(assertSchemaCurrent(db), /1 migration/);
+    const before = await state(true);
+    save('pre-migration', before);
+    console.log(JSON.stringify({ stage, pendingMigrations: 1, rocks: before.rocks.length, claims: before.claims.length, schemaGuardRejected: true }));
+  } else if (stage === 'post-migration') {
+    assert.equal(await pendingMigrations(db), 0);
+    await assertSchemaCurrent(db);
+    const after = await state();
+    assert.deepEqual(after, read('pre-migration'));
+    const [nonNull] = await db.execute(sql`select count(*)::int as n from asteroid_spawn_hours where generation is not null`);
+    assert.equal(nonNull.n, 0);
+    console.log(JSON.stringify({ stage, pendingMigrations: 0, rocks: after.rocks.length, claims: after.claims.length, everySpecClaimAndQueueRowUnchanged: true }));
+  } else if (stage === 'prepare-calendar') {
+    const lunch = new Date('2026-10-10T10:00:00.000Z');
+    assert(lunch > new Date(), 'This deliberate future-hour fixture must remain in the future');
+    const evening = new Date('2026-10-10T17:00:00.000Z');
+    for (const { at, multiplier, duration } of [{ at: lunch, multiplier: 6, duration: 60 }, { at: evening, multiplier: 10, duration: 30 }]) {
+      const [event] = await db.update(galaxyEventOccurrences).set({
+        definitionVersion: 10, effect: { asteroidSpawnMultiplier: multiplier },
+        endsAt: new Date(at.getTime() + duration * 60_000),
+      }).where(and(eq(galaxyEventOccurrences.seasonId, season.id), eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'), eq(galaxyEventOccurrences.startsAt, at))).returning();
+      assert(event);
+      await db.update(scheduledEvents).set({ resolveAt: event.endsAt })
+        .where(and(eq(scheduledEvents.refId, event.id), eq(scheduledEvents.kind, 'galaxy_event_end')));
+    }
+    await db.update(players).set({ lastActiveAt: lunch }).where(eq(players.seasonId, season.id));
+    await openAsteroidHour(db, { seasonId: season.id, hourStartsAt: floorHour(lunch), now: lunch });
+    const [planned] = await db.select().from(asteroidSpawnHours).where(and(eq(asteroidSpawnHours.seasonId, season.id), eq(asteroidSpawnHours.hourStartsAt, lunch)));
+    assert(planned.generation);
+    save('before-calendar', await state());
+    console.log(JSON.stringify({ stage, preplannedHour: lunch.toISOString(), plannedRocks: planned.lanes.reduce((sum, lane) => sum + lane.count, 0), expectedCutover: '2026-10-10T11:00:00.000Z' }));
+  } else if (stage === 'after-restamp-rejection' || stage === 'after-dry-run') {
+    assert.deepEqual(await state(), read('before-calendar'));
+    console.log(JSON.stringify({ stage, everyStoredRowAndSpecUnchanged: true }));
+  } else if (stage === 'after-adoption') {
+    const before = read('before-calendar');
+    const after = await state();
+    assert.deepEqual(after.hours, before.hours);
+    assert.deepEqual(after.rocks, before.rocks);
+    assert.deepEqual(after.claims, before.claims);
+    assert.deepEqual(after.runs, before.runs);
+    const cutover = '2026-10-10T11:00:00.000Z';
+    assert.deepEqual(after.calendar.filter((row) => row.startsAt < cutover), before.calendar.filter((row) => row.startsAt < cutover));
+    const protectedIds = new Set(before.calendar.filter((row) => row.startsAt < cutover).map((row) => row.id));
+    assert.deepEqual(after.queue.filter((row) => row.kind === 'asteroid_hour' || protectedIds.has(row.refId)), before.queue.filter((row) => row.kind === 'asteroid_hour' || protectedIds.has(row.refId)));
+    const evening = after.calendar.find((row) => row.kind === 'ASTEROID_SHOWER' && row.startsAt === '2026-10-10T17:00:00.000Z');
+    assert.equal(evening.definitionVersion, 11);
+    assert.equal(evening.effect.asteroidSpawnMultiplier, 5);
+    assert.equal(new Date(evening.endsAt) - new Date(evening.startsAt), 30 * 60_000);
+    save('after-calendar', after);
+    console.log(JSON.stringify({ stage, rocks: after.rocks.length, claims: after.claims.length, activeMiningRunsInFixture: after.runs.length, everySpecAndClaimUnchanged: true, protectedJobsUnchanged: true, futureEveningMultiplier: 5, rockDigest: digest(after.rocks) }));
+  } else if (stage === 'after-repeat') {
+    assert.deepEqual(await state(), read('after-calendar'));
+    console.log(JSON.stringify({ stage, everyStoredRowAndSpecUnchanged: true }));
+  } else {
+    throw new Error(`Unknown rehearsal stage ${stage}`);
+  }
+} finally {
+  await connection.close();
+}

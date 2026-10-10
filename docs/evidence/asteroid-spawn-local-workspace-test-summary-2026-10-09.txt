@@ -1,0 +1,15 @@
+packages/rules test:  Test Files  110 passed (110)
+packages/rules test:       Tests  2023 passed (2023)
+apps/web test:  FAIL  test/battle-report-clarity.test.tsx > battle clarity in tr > shows a fleet wipe as a loss even if the defence was breached
+apps/web test:  FAIL  test/country.test.tsx > the country picker > carries the selected country into the registration claim
+apps/web test:  FAIL  test/dm-screen.test.tsx > direct messages in chat > offers emoji reactions and a quoted reply on a held DM message
+apps/web test: Error: Test timed out in 5000ms.
+apps/web test:  FAIL  test/menu-structure.test.tsx > the menu groups what it offers > names each group, in the order a commander reads them
+apps/web test: AssertionError: expected [ 'Shop', 'This season', …(4) ] to deeply equal [ 'This season', 'Astera team', …(3) ]
+apps/web test:  FAIL  test/skins-screen.test.tsx > skin inventory > opens included standards when the commander owns no purchased planet looks
+apps/web test:  FAIL  test/v2/tokens.test.ts > v2 code names colours only through tokens > writes no raw hex or rgb literal outside tokens.css
+apps/web test: AssertionError: expected [ 'src/v2/store.css' ] to deeply equal []
+apps/web test:  Test Files  6 failed | 400 passed | 1 skipped (407)
+apps/web test:       Tests  6 failed | 5606 passed | 29 skipped (5641)
+apps/web test: Failed
+Exit status 1

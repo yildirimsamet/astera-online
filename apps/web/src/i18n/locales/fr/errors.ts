@@ -12,6 +12,14 @@
 * ce ne sont pas des erreurs, mais les règles du jeu.
   */
   export const errors = {
+  CAPITAL_CANNOT_BE_ABANDONED: "Tu ne peux pas abandonner ta capitale. Sélectionne une colonie.",
+  COLONY_ABANDON_BLOCKED: "Des missions ou un changement de propriétaire sont en cours. Vérifie les raisons et attends leur fin.",
+  SKIN_NOT_OWNED: 'Cette apparence ne figure pas dans ton inventaire. Choisis-en une que tu possèdes.',
+  SKIN_SLOT_MISMATCH: 'Cette apparence ne convient pas au type ou au vaisseau sélectionné. Choisis une apparence adaptée.',
+  SKIN_ALREADY_OWNED: 'Tu possèdes déjà au moins une apparence de cette offre. Vérifie ton inventaire.',
+  SKIN_SHOP_CLOSED: 'Ce produit ne peut pas être acheté pour le moment. Réessaie plus tard.',
+  SKIN_CHECKOUT_IN_PROGRESS: 'Un autre paiement est ouvert pour cette apparence. Termine-le ou attends son expiration.',
+  SKIN_CHECKOUT_STARTING: 'Le paiement est en préparation. Réessaie dans un instant.',
   REPAIR_LOT_NOT_FOUND: "Ces vaisseaux endommagés n’attendent plus ici.",
   REPAIR_LOT_BUSY: "Ces vaisseaux sont déjà en réparation.",
   REPAIR_NOTHING_WAITING: "Aucun vaisseau endommagé n’attend de réparation ici.",

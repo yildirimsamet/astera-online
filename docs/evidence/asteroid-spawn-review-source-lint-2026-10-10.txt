@@ -1,0 +1,15 @@
+
+> astera@ lint /tmp/astera-asteroid-fix-20261009
+> node --max-old-space-size=6144 node_modules/eslint/bin/eslint.js . "--ignore-pattern" "**/*" "--ignore-pattern" "!apps/" "--ignore-pattern" "!apps/server/" "--ignore-pattern" "!apps/server/src/" "--ignore-pattern" "!apps/server/src/services/" "--ignore-pattern" "!apps/server/src/services/galaxyEvents.ts" "--ignore-pattern" "!apps/server/test/" "--ignore-pattern" "!apps/server/test/asteroid-spawn-regression.test.ts"
+
+
+/tmp/astera-asteroid-fix-20261009/apps/server/test/asteroid-spawn-regression.test.ts
+  467:68  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+  472:43  error  Unsafe assignment of an `any` value                                                @typescript-eslint/no-unsafe-assignment
+
+✖ 2 problems (2 errors, 0 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+
+ ELIFECYCLE  Command failed with exit code 1.
+
+Recorded exit code: 1

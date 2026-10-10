@@ -1,0 +1,12 @@
+[
+  {
+    "check": "review-typecheck",
+    "exit_code": 0,
+    "log": "docs/evidence/asteroid-spawn-review-typecheck-2026-10-10.txt"
+  },
+  {
+    "check": "review-source-lint",
+    "exit_code": 1,
+    "log": "docs/evidence/asteroid-spawn-review-source-lint-2026-10-10.txt"
+  }
+]

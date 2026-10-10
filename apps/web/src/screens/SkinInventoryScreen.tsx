@@ -13,6 +13,7 @@ import { Waiting } from '../ui/kit/index.js';
 import { PLANET_SKIN_CATALOG } from '../ui/skinCatalog.js';
 import { Button, EmptyState, Note, SectionHead } from '../v2/kit/Surface.js';
 import { Icon } from '../v2/icons.js';
+import { CosmeticNavigation } from './CosmeticNavigation.js';
 
 type Collection = z.infer<typeof skinCollectionSchema>;
 
@@ -30,16 +31,12 @@ export function SkinInventoryContent(props: Parameters<typeof PlanetInventoryCon
   cosmeticPending?: boolean;
   cosmeticError?: string;
 }) {
-  const { t } = useTranslation();
   const [chosenCategory, setCategory] = useState<CosmeticCategory>('PLANET');
   const owned = props.collection.ownedCosmeticIds ?? props.collection.ownedSkinIds;
   const categories = cosmeticCategoriesFor(owned);
   const category = categories.includes(chosenCategory) ? chosenCategory : categories[0] ?? 'PLANET';
   return <div className="min-h-full bg-v2-void font-v2-ui text-v2-ink">
-    <header className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-3 pt-3">
-      <h2 className="text-body font-semibold">{t('menu.skinsInventoryLabel')} · {owned.length}</h2>
-      <button type="button" onClick={props.onOpenShop} className="min-h-10 rounded-control border border-v2-premium/50 px-3 text-caption text-v2-premium">{t('menu.skinsShopLabel')}</button>
-    </header>
+    <CosmeticNavigation active="inventory" onShop={props.onOpenShop} onInventory={() => undefined} />
     <CosmeticCategories active={category} onChange={setCategory} owned={owned} inventory />
     {category === 'PLANET' ? <PlanetInventoryContent {...props} /> : <CosmeticCollection key={category}
       category={category} inventory owned={owned} equipment={props.collection.equipment ?? {}}
@@ -80,10 +77,10 @@ function PlanetInventoryContent({
         <>
           {/* WHAT YOU OWN, AT A GLANCE: the looks, how many of the collection, and the way to more. */}
           <section aria-label={t('skins.ownedSkins')}
-            className="flex items-center gap-2.5 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
+            className="flex flex-wrap items-center gap-2.5 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
             <span aria-hidden className="flex shrink-0 -space-x-2">
               {owned.map((id) => (
-                <img key={id} src={PLANET_SKIN_CATALOG[id].image} alt="" loading="lazy" decoding="async"
+                <img key={id} src={PLANET_SKIN_CATALOG[id].image} alt="" width={28} height={28} loading="lazy" decoding="async"
                   className="size-7 rounded-full border-2 border-v2-panel object-cover" />
               ))}
             </span>
@@ -104,7 +101,7 @@ function PlanetInventoryContent({
             {collection.planets.map((planet) => (
               <article key={planet.id} aria-label={planet.name} className="rounded-control border border-v2-line bg-v2-panel p-2.5">
                 <div className="flex items-center gap-2.5">
-                  <img src={planet.skinId ? PLANET_SKIN_CATALOG[planet.skinId].image : planetArt(planet.id)} alt=""
+                  <img src={planet.skinId ? PLANET_SKIN_CATALOG[planet.skinId].image : planetArt(planet.id)} alt="" width={44} height={44}
                     className="size-11 shrink-0 rounded-full bg-v2-deep object-cover" />
                   <div className="min-w-0">
                     <p className="truncate text-body font-semibold text-v2-ink">{planet.name}</p>
@@ -173,11 +170,11 @@ function LookChip({ label, text, art, worn, busy, waiting, onPick }: {
       aria-busy={busy}
       disabled={worn || waiting}
       onClick={onPick}
-      className={`flex h-8 items-center gap-1 rounded-full border pl-0.5 pr-2 text-micro font-semibold transition-colors ${
+      className={`flex min-h-11 items-center gap-1 rounded-pill border pl-1 pr-2.5 text-caption font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-v2-self ${
         worn ? 'border-v2-self bg-v2-self/10 text-v2-ink' : 'border-v2-line-hi bg-v2-deep text-v2-ink-2 hover:border-v2-ink-3 hover:text-v2-ink'
       } ${busy ? 'animate-pulse border-v2-self/70 text-v2-ink' : ''} ${waiting && !worn && !busy ? 'opacity-50' : ''}`}
     >
-      <img src={art} alt="" loading="lazy" decoding="async" className="size-6 rounded-full object-cover" />
+      <img src={art} alt="" width={28} height={28} loading="lazy" decoding="async" className="size-7 rounded-full object-cover" />
       <span>{text}</span>
       {worn && <Icon id="i-check" className="size-3 text-v2-self" />}
     </button>

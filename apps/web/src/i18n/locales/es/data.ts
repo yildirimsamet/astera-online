@@ -629,6 +629,8 @@ export const notifications = {
     INEFFECTIVE: 'Impacto de la Estrella de la Muerte · sin efecto',
   },
   colonyCaptured: 'Colonia asegurada · la protección de ocupación está activa',
+  colonyAbandoned: "Has abandonado {{planet}} · la colonia ahora es neutral",
+  colonyAbandonedUnnamed: "Has abandonado una colonia · ahora es neutral",
   colonyLost: "{{planet}} se separó y quedó neutral",
   colonyLostUnnamed: "Una colonia se separó y quedó neutral",
   deathStarColony: "Impacto EMP · lealtad de la colonia {{before}} % → {{after}} %",

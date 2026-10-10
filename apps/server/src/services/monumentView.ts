@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import {
-  HULLS, applyMonumentHpDose, combatValue, distance, fleetCount, fleetSpeedMult, fleetTravelExact,
+  HULLS, applyMonumentHpDose, combatValue, distance, fleetCount, fleetPace, fleetSpeedMult, fleetTravelExact,
   hangarLoad, hpLethalAtMs, hpRadiationApplies, hullTech, interpolatePosition, monumentCargoCapacity,
   produceMonumentDeuterium, recallMonumentShips, segmentsExposureHp, settleMonumentHold,
   type Fleet, type HpRadiationSource, type MonumentShipLot, type Segment, type Vec3,
@@ -215,10 +215,12 @@ async function returnForecast(tx: Tx, target: LockedMonument, wave: typeof monum
   const [home] = await tx.select().from(planets).where(eq(planets.id, homeId));
   if (!home) throw new GameError('PLANET_NOT_OWNED', 'Your return world changed', 409);
   const fleet = fleetOf(lots);
-  if (at >= target.season.endsAt) return { homePlanetId: homeId, arriveAt: target.season.endsAt.toISOString(), minutes: 0,
+  const homePosition = { x: home.x, y: home.y, z: home.z };
+  if (at >= target.season.endsAt) return { homePlanetId: homeId, homePosition, speed: 0, arriveAt: target.season.endsAt.toISOString(), minutes: 0,
     doseHp: 0, destroyed: 0, deuterium: lots.reduce((sum, lot) => sum + lot.deuterium, 0), lots: lots.map(lotHealth), lostDeuterium: 0 };
   const position = monumentWavePosition(wave, target.monument, at);
-  const minutes = fleetTravelExact(distance(position, home), fleet, { boost: fleetSpeedMult(await orbitOf(tx, homeId)), tech: wave.tech });
+  const modifiers = { boost: fleetSpeedMult(await orbitOf(tx, homeId)), tech: wave.tech };
+  const minutes = fleetTravelExact(distance(position, home), fleet, modifiers);
   const arriveAt = wave.status === 'RETURNING' && wave.arriveAt !== null ? wave.arriveAt : addMinutes(at, minutes);
   const route: Segment[] = wave.status === 'RETURNING' ? monumentRouteSchema.parse(wave.route)
     : [{ from: position, to: { x: home.x, y: home.y, z: home.z }, startMs: at.getTime(), endMs: arriveAt.getTime() }];
@@ -226,7 +228,7 @@ async function returnForecast(tx: Tx, target: LockedMonument, wave: typeof monum
     activeUntilMs: Math.min(source.activeUntilMs ?? target.season.endsAt.getTime(), target.season.endsAt.getTime()) }));
   const doseHp = segmentsExposureHp(route, sources);
   const forecast = applyMonumentHpDose(lots, doseHp);
-  return { homePlanetId: homeId, arriveAt: arriveAt.toISOString(), minutes: Math.max(0, (arriveAt.getTime() - at.getTime()) / 60_000),
+  return { homePlanetId: homeId, homePosition, speed: fleetPace(fleet, modifiers), arriveAt: arriveAt.toISOString(), minutes: Math.max(0, (arriveAt.getTime() - at.getTime()) / 60_000),
     doseHp, destroyed: forecast.destroyed.reduce((sum, lot) => sum + lot.count, 0),
     deuterium: forecast.lots.reduce((sum, lot) => sum + lot.deuterium, 0), lots: forecast.lots.map(lotHealth), lostDeuterium: forecast.lostDeuterium };
 }

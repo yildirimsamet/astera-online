@@ -1,4 +1,10 @@
 export const skins = {
+  priceLoading: 'Preise werden geladen…',
+  pricingError: 'Die Preise konnten nicht geladen werden. Versuche es erneut, um die aktuellen Preise zu sehen.',
+  priceUnavailable: 'Preis nicht verfügbar',
+  retryPrices: 'Preise neu laden',
+  checkoutStarting: 'Zahlungsseite wird geöffnet…',
+  showcaseDescription: 'Planetenlooks, Schiffskins und Effekte.',
   "productengine-titan": "Titanschub",
   "storytitanENGINE": "Blauweiße Zündung, turbulente orange Verbrennung und eine ausglühende Spur.",
   "shipFits": "Für {{hull}}",
@@ -75,7 +81,7 @@ export const skins = {
   "storysingularityFLAG": "Ein gehörnter Schädel wacht auf einer violetten, scharf geschnittenen Standarte.",
   "storyvanguardFLAG": "Ein klassisches Banner für eine vereinte Flotte.",
   "storyorbitFLAG": "Ein Orbitalzeichen für die Kommandanten, die die Stellung halten.",
-  "storyufoPROBE": "Feine eisblaue Panellichter und warme Golddetails auf einer metallischen Untertasse.",
+  "storyufoPROBE": "Feine eisblaue Panellichter und Golddetails auf einer metallischen Untertasse. Darunter breitet sich ein sanfter weißer Lichtkegel aus.",
   openInventory: 'Ihr Inventar · {{count}} im Besitz',
   /** The store sells (owner, 2026-09-25): price, press, the set, and only true claims. */
   premium: 'Premium',

@@ -1,8 +1,14 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
+import { Api } from '../src/api/client.js';
+import { ApiProvider } from '../src/api/context.js';
+import { keys } from '../src/api/keys.js';
+import { useRecallFlight } from '../src/api/queries.js';
 import { monumentsSchema } from '../src/api/schemas.js';
 import { monumentPendingThreads } from '../src/lib/monumentFlights.js';
-import { flightTitle } from '../src/lib/flights.js';
+import { flightRecallInput, flightTitle } from '../src/lib/flights.js';
 import { bombardmentTarget, legStandoff } from '../src/galaxy/scene.js';
 import { FleetPage } from '../src/v2/hud/FleetPage.js';
 import { ThreadFocus } from '../src/galaxy/FocusPanel.js';
@@ -37,7 +43,8 @@ describe('native monument flights in the existing fleet surfaces', () => {
       fleet: { ARGOSY: 1 }, arriveAt: new Date(arrive), path: { from: wave.route[0]!.from, to: wave.route[0]!.to,
         departAt: new Date(at), arriveAt: new Date(arrive) } });
     expect(thread?.targetPlanetId).toBeUndefined();
-    expect(thread?.recallable).toBeUndefined();
+    expect(thread?.recallable).toBe(true);
+    expect(thread?.monumentRecall).toEqual({ minutes: 60 });
     expect(bombardmentTarget(thread!, [])).toBeUndefined();
     expect(legStandoff(thread!, [])).toEqual({ start: 0, end: 0 });
     expect(flightTitle(thread!)).toContain('Abandoned Station');
@@ -49,6 +56,36 @@ describe('native monument flights in the existing fleet surfaces', () => {
       from: { x: 5123, y: 0, z: 0 }, to: { x: 3500, y: 0, z: 0 } }] }] });
     expect(monumentPendingThreads(returning)[0]?.path?.from.x).toBe(5123);
     expect(monumentPendingThreads(returning)[0]?.leg).toBe('return');
+    expect(monumentPendingThreads(returning)[0]?.recallable).toBeUndefined();
+    expect(monumentPendingThreads(returning)[0]?.monumentRecall).toBeUndefined();
+  });
+  it.each(['ATTACK', 'REINFORCE'])('offers the whole surviving %s wave until arrival', (purpose) => {
+    const manifest = monumentsSchema.parse({ ...view, waves: [{ ...wave, purpose,
+      fleet: { ARGOSY: 3 }, lots: [{ ...lot, count: 2 }, { ...lot, id: 'second-lot', count: 1, damageBp: 5000 }] }] });
+    expect(flightRecallInput(monumentPendingThreads(manifest)[0]!, new Date(at).getTime()))
+      .toEqual({ missionId: id, monument: true });
+    expect(monumentPendingThreads(manifest, new Date(arrive).getTime())[0]?.recallable).toBeUndefined();
+    expect(monumentPendingThreads(manifest, new Date(arrive).getTime() + 1)[0]?.monumentRecall).toBeUndefined();
+  });
+  it('never offers a recall for an empty roster, a faded wave or a monument probe', () => {
+    const empty = monumentsSchema.parse({ ...view, waves: [{ ...wave, fleet: {}, lots: [] }] });
+    expect(monumentPendingThreads(empty)[0]?.recallable).toBeUndefined();
+    const faded = monumentsSchema.parse({ ...view, waves: [{ ...wave, fadeAt: at }] });
+    expect(monumentPendingThreads(faded)).toEqual([]);
+    const probes = monumentsSchema.parse({ ...view, waves: [], probes: [{ id, monumentId: id, originPlanetId: id,
+      status: 'OUTBOUND', departAt: at, arriveAt: arrive, homeAt: null, route: wave.route }] });
+    expect(monumentPendingThreads(probes)[0]?.recallable).toBeUndefined();
+    expect(monumentPendingThreads(probes)[0]?.monumentRecall).toBeUndefined();
+  });
+  it('offers recall on the selected outbound fleet with the monument return rule', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(new Date(at).getTime());
+    const onRecall = vi.fn();
+    render(<ThreadFocus thread={monumentPendingThreads(view)[0]!} minutesRemaining={60}
+      open onToggle={vi.fn()} onClose={vi.fn()} onRecall={onRecall} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Recall fleet' }));
+    expect(onRecall).toHaveBeenCalledOnce();
+    expect(screen.getByText(/current position.*fuel/i)).toBeInTheDocument();
+    expect(screen.queryByText(/takes as long as it has flown/i)).not.toBeInTheDocument();
   });
   it('renders HOLD as its own fleet group with physical cargo and a detail route', () => {
     const focus = vi.fn();
@@ -59,5 +96,37 @@ describe('native monument flights in the existing fleet surfaces', () => {
     expect(screen.getByTestId('monument-hold-group')).toHaveTextContent(/125.5.*300/);
     fireEvent.click(screen.getByRole('button', { name: /Abandoned Station/ }));
     expect(focus).toHaveBeenCalledWith(id);
+  });
+});
+
+describe('recalling a native monument flight through the shared action', () => {
+  it('uses the native endpoint, preserves the retry key and refreshes the physical views', async () => {
+    const requests: { url: string; body: unknown; key: string | null }[] = [];
+    const fetch = vi.fn<typeof globalThis.fetch>((input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      requests.push({ url, body: typeof init?.body === 'string' ? JSON.parse(init.body) as unknown : null,
+        key: new Headers(init?.headers).get('idempotency-key') });
+      return Promise.resolve(new Response(JSON.stringify(requests.length === 1
+        ? { error: 'INTERNAL', message: 'Try again' }
+        : { wave: { id, monumentId: id, status: 'RETURNING' } }), { status: requests.length === 1 ? 503 : 200 }));
+    });
+    const client = new QueryClient();
+    const affected = [keys.monuments, keys.pending, keys.planet, keys.planets, keys.galaxy, keys.traffic];
+    for (const key of affected) client.setQueryData(key, {});
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>
+      <ApiProvider api={new Api({ fetch })}>{children}</ApiProvider></QueryClientProvider>;
+    const { result } = renderHook(() => useRecallFlight(), { wrapper });
+    const input = flightRecallInput(monumentPendingThreads(view)[0]!, new Date(at).getTime())!;
+    await act(async () => { await expect(result.current.mutateAsync(input)).rejects.toThrow(); });
+    expect(affected.every(key => client.getQueryState(key)?.isInvalidated === false)).toBe(true);
+    await act(async () => { await result.current.mutateAsync(flightRecallInput(monumentPendingThreads(view)[0]!, new Date(at).getTime())!); });
+    expect(requests).toHaveLength(2);
+    for (const request of requests) {
+      expect(request.url).toMatch(new RegExp(`/api/monuments/waves/${id}/recall$`));
+      expect(request.body).toEqual({ all: true });
+      expect(request.key).toBe(`monument-flight-recall:${id}`);
+    }
+    expect(affected.every(key => client.getQueryState(key)?.isInvalidated === true)).toBe(true);
+    client.clear();
   });
 });

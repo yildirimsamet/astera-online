@@ -74,6 +74,7 @@ import {
 import { threadKey } from '../galaxy/threadKey.js';
 import { MonumentSheet } from './MonumentSheet.js';
 import { monumentPendingThreads } from '../lib/monumentFlights.js';
+import { flightRecallInput } from '../lib/flights.js';
 import type { PlanetGroup } from '../lib/directives.js';
 import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
@@ -1607,8 +1608,9 @@ export function GalaxyView({
               thread={thread}
               recalling={recallFlight.isPending}
               onRecall={() => {
-                if (thread.id === undefined) return;
-                recallFlight.mutate({ missionId: thread.id, ...(thread.kind === 'pirate' ? { pirate: true } : {}) }, {
+                const input = flightRecallInput(thread);
+                if (!input) return;
+                recallFlight.mutate(input, {
                   onSuccess: () => { say(t('pendingStrip.recallFleetStarted')); },
                   onError: (error) => { say(describe(error), 'error'); },
                 });
@@ -1956,7 +1958,7 @@ export function GalaxyView({
           detents={['full']}
           bleed
           {...menuBack}
-          eyebrow={t('menu.asteraHeading')}
+          eyebrow={t('skins.collection')}
           title={t('menu.skinsShopLabel')}
           onClose={() => { onPanel(null); }}
         >
@@ -1971,7 +1973,7 @@ export function GalaxyView({
           detents={['full']}
           bleed
           {...menuBack}
-          eyebrow={t('menu.asteraHeading')}
+          eyebrow={t('skins.collection')}
           title={t('menu.skinsInventoryLabel')}
           onClose={() => { onPanel(null); }}
         >

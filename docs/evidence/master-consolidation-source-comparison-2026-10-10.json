@@ -1,0 +1,726 @@
+{
+  "date": "2026-10-10",
+  "baseMaster": "19c46efeb8a2e75aec992fdea40182aa349f6a50",
+  "worktrees": {
+    "asteroid-fix": {
+      "head": "8a4ae26856b1610cdc2d8bf0a70cc019e9bdb154",
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "disposition": "identical",
+          "masterSha256": "34fbd0a964cb496b0749bdde80361f05fae38acc973e518fff03b70c38f1a3dc"
+        },
+        {
+          "path": "apps/server/drizzle/0146_asteroid_generation_snapshot.sql",
+          "disposition": "identical",
+          "masterSha256": "9b4f6c5a1bf5737bb2b91f0c71a8d0c70d18967e32d22030a00479275a8ce05e"
+        },
+        {
+          "path": "apps/server/drizzle/meta/0146_snapshot.json",
+          "disposition": "identical",
+          "masterSha256": "a7183794135e6b7558ce73355de1532270715e86dedca4a2502ac19ee77daf69"
+        },
+        {
+          "path": "apps/server/drizzle/meta/_journal.json",
+          "disposition": "identical",
+          "masterSha256": "062168864cc6cbdd40cf1ab597acc7fa4ccba8832002186516055a5d223e559b"
+        },
+        {
+          "path": "apps/server/review-operator-rehearsal-20261010.mjs",
+          "disposition": "historical local fixture harness preserved byte-for-byte as evidence; not runtime code",
+          "masterSha256": "8a667d3d8dfedcf8aff381a05999acbd630d57cd0dcff6934ce1a023e0c45f41",
+          "masterPath": "docs/evidence/asteroid-operator-rehearsal-2026-10-10.mjs.txt"
+        },
+        {
+          "path": "apps/server/src/cli/manualAsteroids.ts",
+          "disposition": "identical",
+          "masterSha256": "479d6cd9d11cdf6acda98b13a39e6fd8047229af901020066be86a58e3432f13"
+        },
+        {
+          "path": "apps/server/src/db/schema.ts",
+          "disposition": "identical",
+          "masterSha256": "8f6118dcb6baa0b70597eeb11cea71057a4e693c9bebc3d4ad28473456d83eb0"
+        },
+        {
+          "path": "apps/server/src/services/asteroidField.ts",
+          "disposition": "identical",
+          "masterSha256": "a00e49b0c0159ea8b8e2fadd423373a11101a7ec57444b82a710ec87f5bef3b4"
+        },
+        {
+          "path": "apps/server/src/services/asteroidGeneration.ts",
+          "disposition": "identical",
+          "masterSha256": "674c298f6109cca050c1a4dfa8edf966a473c093b014fdd7d5bb7f0287d2e797"
+        },
+        {
+          "path": "apps/server/src/services/asteroidSpawn.ts",
+          "disposition": "identical",
+          "masterSha256": "76ba748e8f6dccfa28dad22467eb82e84a90eeb5789557d543f5236a16305479"
+        },
+        {
+          "path": "apps/server/src/services/galaxyEvents.ts",
+          "disposition": "identical",
+          "masterSha256": "768a6f0f32ee82b5ffdf8067824e6262cb20c2e33555e1ef02e3d9e4ac49eaaf"
+        },
+        {
+          "path": "apps/server/src/services/mining.ts",
+          "disposition": "identical",
+          "masterSha256": "b5809a86c7c8c35f8249f4d2a7ee5796b43192dfab5dd165bd5f0a37d0b4749b"
+        },
+        {
+          "path": "apps/server/test/asteroid-dynamic.test.ts",
+          "disposition": "identical",
+          "masterSha256": "3b31f9ea150096d5b49a68b527d2db7b36c9db4454403df10489b3b66106ae4e"
+        },
+        {
+          "path": "apps/server/test/asteroid-generation.test.ts",
+          "disposition": "identical",
+          "masterSha256": "8da4d7deb7cbb59a32f87d014d6178e47f0c3eaf2bc4e67f1f90763fb39d2091"
+        },
+        {
+          "path": "apps/server/test/asteroid-spawn-regression.test.ts",
+          "disposition": "identical",
+          "masterSha256": "55f9517829856d42bcc18b6c4468c7e56dfeefac0e0433e6bdab0197791c0410"
+        },
+        {
+          "path": "apps/server/test/galaxy-events.test.ts",
+          "disposition": "identical",
+          "masterSha256": "2c9de9f8a11bf21388ceac97582ab1ab1bc879145a20fa61a89d9124ae9c6ec8"
+        },
+        {
+          "path": "apps/server/vitest.asteroid-repro.config.ts",
+          "disposition": "identical",
+          "masterSha256": "895fb300047c427ff7cb8af9185ad0ed03d0efaedb95bde33fb0615c78d0dfcf"
+        },
+        {
+          "path": "apps/web/test/galaxy-events-guide.test.tsx",
+          "disposition": "identical",
+          "masterSha256": "afdaa7582d23ddc3ec6bb088c1e047d7ab1a2df58c22e0a5e690ba2279ad2b7a"
+        },
+        {
+          "path": "docs/asteroid-spawn-fix-2026-10-09.md",
+          "disposition": "identical",
+          "masterSha256": "dbebab0d677296bd5af60fe091266b391cbbcf89f31a41cdfc716aff74b681dc"
+        },
+        {
+          "path": "docs/asteroid-spawn-local-repro-2026-10-09.md",
+          "disposition": "identical",
+          "masterSha256": "66faf06e3d13a5375b3bf3956c27d3cec3c606c784565b10ee5057d3dcdef72f"
+        },
+        {
+          "path": "docs/asteroid-spawn-prod-review-2026-10-09.md",
+          "disposition": "identical",
+          "masterSha256": "cad600c8b064a59cf0e04476dbf61cbf97c9d8784efff602fd7d2afcdd068d33"
+        },
+        {
+          "path": "docs/balance.md",
+          "disposition": "identical",
+          "masterSha256": "10ba8a966851ba02aff7daf838711d7b0bad2cd4e15db7b3c4116fe84f9b2ef7"
+        },
+        {
+          "path": "docs/deployment.md",
+          "disposition": "worktree patch present alongside newer master changes",
+          "masterSha256": "7c87569d5b7f258b5bb0a9ac6127f946eae09dad11ef97fd4315736edaceb70a"
+        },
+        {
+          "path": "docs/evidence/asteroid-generation-fix-red-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "64e7f3134610eae154a30e82c7f4073fa65def2822b7281ea4056a01c3c4292f"
+        },
+        {
+          "path": "docs/evidence/asteroid-manual-after-calendar-20261010.json",
+          "disposition": "identical",
+          "masterSha256": "572f59173d9fdf4009a6fa0917e4386d54a7bf8eda052b22ed8a5852de02e0a5"
+        },
+        {
+          "path": "docs/evidence/asteroid-manual-before-calendar-20261010.json",
+          "disposition": "identical",
+          "masterSha256": "55fdffecd4223d8fc250e1aad42df6979957436f2e12ea1c2ae38779eb0021e6"
+        },
+        {
+          "path": "docs/evidence/asteroid-manual-pre-migration-20261010.json",
+          "disposition": "identical",
+          "masterSha256": "0a0337b25cd5eb2a16666eef4e85682a0aa348468167426cf558444701897602"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-final-ordinary-coverage-2026-10-10.json",
+          "disposition": "identical",
+          "masterSha256": "d7382682adced82c5b790547d2146edc779e6177cfd16179003b24588630c4b4"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-final-sequential-completion-2026-10-10.json",
+          "disposition": "identical",
+          "masterSha256": "b15886bb52703c01f7864725542fc73d1e21eebda725f2b0389c2a4f5d6f7fe4"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-final-server-remaining-ordinary-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "78d5ea0f03e49bdfe92f58d1976de90b690eea4affbe052d2ef1ebaf85511d1e"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-final-web-ordinary-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "833b4320b972848fe34573cf1e3f2d657b16226700c72ab987e555aab8d09304"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-calendar-green-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "2115cb11a8ce9312e131110d4ab8b112366932b77d94833208c5bef9101de936"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-isolated-completion-2026-10-09.json",
+          "disposition": "identical",
+          "masterSha256": "80b31fc30598cad11f661c881f784e1414398feccb3f545e14fe852fa81f8042"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-isolated-ordinary-tests-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "9ce4173a0bf7c84a023e9d9976e1372855060d97df14d0ca66d99d9664eb285d"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-isolated-rules-tools-lint-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "a95ed70f5962d6db253a4e0583e88d937f6ed266a1bdeca766935428f4e639f8"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-isolated-server-lint-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "f7cc6da7f9eebaebf551d851d93db3c6ed7d9d8f3fdd63dc201b716c440bdbbe"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-isolated-typecheck-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "de44b507d0abb03c9338ec714eb4fcc5230eb0024b4820a0a046e15e9eb9e4e9"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-isolated-web-lint-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "3e95fde2ea5072cc1d85a7e564756e1407d2d1f3b5ace66bded9ce049e2c2608"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-local-green-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "3d36c8882f5b2db8714d93fc15acde8d406e3d6be07c61b1cd8cdc3e779c1584"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-red-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "786825986124d2ab825c699331c470658a30338e82ab01b9414f84e91243019b"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-regressions-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "a93304d8513e7e3554baee76b736ec7e51add7894d97bc80b366ea28be3775e4"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-rules-green-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "ebde2f891eb472f21910617e144690387d99ede9609f4d1e9c57eac56ec62e98"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-rules-red-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "e6f0ef0a4d5a9d2a9aed7c06fd746b4345369803fb5d8a824e075c9f448be9fa"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-server-lint-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "90e7f3d059e5dc4b6742e4d3b31cea015024cc1875eda26b79493272a2f7ce64"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-typecheck-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "47513dc130a0e366a7a231600479bd072b51ab6f5dfe6a04d3d22a43411b9e52"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-fix-web-red-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "cd84badb10fd2368e6715fbfd0361781450355308be519591e4b8e9248db11fb"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-local-invariants-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "45318196bbb4fd5f4f5a2a00c333b7428321e624cbada8d0e96c7be935d30e27"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-local-outage-repro-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "6321a075116cad048689d8fbc831030cdbc4d3481d41f08f727930c89e436cbb"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-local-regressions-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "fd91dff0f79114e1f0327fbe5d008826e3122a1fe67372957de45b7cbb89ef6c"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-local-repro-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "cc9551e9eb61ce398158996f76c3e34212f2f07ec714e171a9393aa12fdd68b2"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-local-workspace-test-summary-2026-10-09.txt",
+          "disposition": "identical",
+          "masterSha256": "1ab0bdaeca0842fe0a9c11f4a1de6edd04f2d1809905d8d988b13460edd8e5c6"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-manual-cli-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "360fab14100df12a195f36237d748c64d685d55659b7f07a311064459d7f6bec"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-manual-cli-completion-2026-10-10.json",
+          "disposition": "identical",
+          "masterSha256": "f199794ec0f24252bf34602f4cd3c112471630abe535a7cc201861148864b9b0"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-manual-cli-initial-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "d75320fa89a39ae977ad09cbf76d005fc82bc0dc5b0a8380a84becb075f3d24c"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-manual-final-adoption-repeat-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "62a70ad89a29750abcdd350c408d9091ac675cd6e4a363195d6bb3b3bf220d1c"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-manual-final-restamp-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "bbd95ba07cd4ae4e123881a9995c3406a5df84563b7b398546691338482f4e2d"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-manual-final-unchanged-after-adoption-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "f53259ebfd35bf022a8c5f2d22fa49b7b1dc3cbff31e2b79b8eb3ef03bb09254"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-manual-final-unchanged-after-restamp-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "f53259ebfd35bf022a8c5f2d22fa49b7b1dc3cbff31e2b79b8eb3ef03bb09254"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-restamp-final-lint-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "304293d4a2b93ee8577d7e381847aaaf2d1b85cb73fdc7ad38a4c7eab83fd0e4"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-restamp-final-typecheck-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "06909ee7990b90e463a3e5ec5391deb09ff018e2ef76ba5274b8bce4af4ff28b"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-adoption-red-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "c9ff6e92948affecfd3b647277e67decc7bf0b8c69bd8a50847303d816e68840"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-checks-2026-10-10.json",
+          "disposition": "identical",
+          "masterSha256": "ad5372d0f1f1382b906598a97ed644c0de64b2744927b50e09a51c02da2f5009"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-final-checks-2026-10-10.json",
+          "disposition": "identical",
+          "masterSha256": "2f244dabc22235af737c4a87cc2f43729bff91bf8db227006fb4c7151f36b638"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-final-incident-green-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "22803594934063ae4687fcfd8e89a73b83657aeae0405e5e4ff87240bebeacf5"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-final-server-typecheck-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "6797f9274f9346f40d4e65d822cde476f9e9f38833a6f9fa70b34beae8c741d9"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-final-source-lint-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "1a513e187e83d63f9fbd6e14b6a2febbca1afbc3083124dc2cd9987b7a947a7c"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-green-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "632b13e37d265c0d4fd6bdc4be99a63eddce5deef89e3a55d30982d8363e2146"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-lifecycle-red-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "9d827f2e08251d6107033a1497b4f9746e88936f4c3478ccb887c4038477783a"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-partial-ordinary-completion-2026-10-10.json",
+          "disposition": "identical",
+          "masterSha256": "1c67dfa85df70be05bbe8f76462a764ab816752926edbb7608f1b898a713e4f8"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-partial-ordinary-tests-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "b6593ecfae06b67e631f1dc99c54740b26b765ef5dadfd7ac3c208ae7d4ef029"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-race-harness-red-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "e3e1da89ed205078e7cd686f0b2392ddc723bfb02af2d3e304396c0bf8d9cd83"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-restamp-lifecycle-green-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "3f4de7699fd184e9c3b9ad57914d0420e146d86c67ea33cbaa780c52ca8dfca9"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-restamp-lifecycle-green-raw-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "b312ac0714408511f420aa38d2041612ca7998e9d8afbb6f192344c2ce3a7233"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-restamp-lifecycle-red-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "b5bf2c867e14881cfea2a00c0b4bb9cf2ce84a603a4b9c383fd09717efcb7c5a"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-retained-ordinary-2026-10-10.json",
+          "disposition": "identical",
+          "masterSha256": "dcf4d49543d57791989cfab110ab931a21274bd31abe0ec60191fb5dde940c78"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-source-lint-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "6156c25c31fb5d04bdec924ed82302e070cf36ce7a12ea1dd074d79e3a7f6823"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-source-lint-green-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "1a513e187e83d63f9fbd6e14b6a2febbca1afbc3083124dc2cd9987b7a947a7c"
+        },
+        {
+          "path": "docs/evidence/asteroid-spawn-review-typecheck-2026-10-10.txt",
+          "disposition": "identical",
+          "masterSha256": "67cf3cca25665e6b05720814e09db587362933ffbcc2b168128ceea8043dcce2"
+        },
+        {
+          "path": "docs/game-design.md",
+          "disposition": "worktree patch present alongside newer master changes",
+          "masterSha256": "563950e735c0f304fc1acfcb2711a6f6864470ff53d29edd1e911e7ea90777f5"
+        },
+        {
+          "path": "node_modules",
+          "disposition": "generated symlink; excluded"
+        },
+        {
+          "path": "packages/rules/src/asteroidDynamic.ts",
+          "disposition": "identical",
+          "masterSha256": "6caab3c0bb73f49e84cfcc7743f1eba7517c2b6848706063e06c40664b6dec6c"
+        },
+        {
+          "path": "packages/rules/src/asteroidGeneration.ts",
+          "disposition": "identical",
+          "masterSha256": "ac37b30fb5fa6c5452c2c36108da721699b66a0733d2fbba0839b6cc7bdbe05c"
+        },
+        {
+          "path": "packages/rules/src/constants.ts",
+          "disposition": "identical",
+          "masterSha256": "0ab031e419f9ddba4b0eceb2d8f2aff824da5c0883e4c6a1498daa03b8255563"
+        },
+        {
+          "path": "packages/rules/src/galaxyEvents.ts",
+          "disposition": "identical",
+          "masterSha256": "df6f6f6017fd6366ccf22eb3f9de4aa40ada56e47fcaa0d49e126c14702328b6"
+        },
+        {
+          "path": "packages/rules/src/index.ts",
+          "disposition": "identical",
+          "masterSha256": "972a406c72bafcc2e5aee9a4402f9b1e7e542f98be2fd84cba1d91340acc71c9"
+        },
+        {
+          "path": "packages/rules/src/research.ts",
+          "disposition": "identical",
+          "masterSha256": "e6cfea600a590f27fd7335be2f0f001d58f0969d3a4ff2dd5fc00e1307542ef8"
+        },
+        {
+          "path": "packages/rules/test/asteroid-balance-2026-09-17.test.ts",
+          "disposition": "identical",
+          "masterSha256": "74dd112931eb13935d7159fab83d9700ca6ca4ef78e3b87dded1c24e988e04e6"
+        },
+        {
+          "path": "packages/rules/test/asteroid-generation-freeze.test.ts",
+          "disposition": "identical",
+          "masterSha256": "201215d58c837dce374b1222a7603760fa78e25c6c9169aedb0b45d554b4e540"
+        },
+        {
+          "path": "packages/rules/test/galaxy-events.test.ts",
+          "disposition": "identical",
+          "masterSha256": "2c0ac640114fd2dfe7158ee588cf86fb580a995ef0c7d6474be7144a6637c7c9"
+        }
+      ]
+    },
+    "store-review": {
+      "head": "8a4ae26856b1610cdc2d8bf0a70cc019e9bdb154",
+      "files": [
+        {
+          "path": "CLAUDE.md",
+          "disposition": "identical",
+          "masterSha256": "34fbd0a964cb496b0749bdde80361f05fae38acc973e518fff03b70c38f1a3dc"
+        },
+        {
+          "path": "apps/web/public/assets/images/cosmetics/probe-ufo.webp",
+          "disposition": "identical",
+          "masterSha256": "2b4a3b96a7c0635116411c63fcba3d5d7481e36a2b08261684a64b0aca022b62"
+        },
+        {
+          "path": "apps/web/src/brand/Identity.tsx",
+          "disposition": "identical",
+          "masterSha256": "3a3288913eb3614041cd5895147d9cac9ceb79ce022e1f54bf13bd9f49a4fcd2"
+        },
+        {
+          "path": "apps/web/src/brand/styles.css",
+          "disposition": "identical",
+          "masterSha256": "5201bea6f539a711f490ccd1d62f872f430064041610c47db93cf0f086ff0763"
+        },
+        {
+          "path": "apps/web/src/galaxy/Fleets.tsx",
+          "disposition": "identical",
+          "masterSha256": "39963306551cf8de581c0c483138ab740e04e4d98d243a64b16f71c31f071bd1"
+        },
+        {
+          "path": "apps/web/src/galaxy/GalaxyCanvas.tsx",
+          "disposition": "identical",
+          "masterSha256": "400821de0385bcaadd396d5f5bc615e16f6a2bba53f5e7f034edf3dce97d6977"
+        },
+        {
+          "path": "apps/web/src/galaxy/ProbeSkinBeam.tsx",
+          "disposition": "identical",
+          "masterSha256": "779dfb0ead38fa82a3e1829b2c672c08cf7c57ad1e94b3f3c8953e6b4de8dc9f"
+        },
+        {
+          "path": "apps/web/src/galaxy/probeSkinBeam.ts",
+          "disposition": "identical",
+          "masterSha256": "7d24df51d5426250b26d4b857f831ec91351698e85c4bd2e9ed52365fc7e201e"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/de/errors.ts",
+          "disposition": "store translations present; colony translations additionally retained",
+          "masterSha256": "b06005fc2d994cedb3f75f3f1f1ea9c394283d39d90b17f38f10e40f94a00f5d"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/de/skins.ts",
+          "disposition": "worktree patch present alongside newer master changes",
+          "masterSha256": "b36103ba6cc6e0ecd64366884d1a5ad9914137e2c781da6451698d6c63ad4bb2"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/en/errors.ts",
+          "disposition": "store translations present; colony translations additionally retained",
+          "masterSha256": "9811d62fc4fb3b5970003e58a58345bcba073bc58f73f8ff412594ab88e45108"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/en/skins.ts",
+          "disposition": "worktree patch present alongside newer master changes",
+          "masterSha256": "4599cfecfd3ecce93eb154daadffb43ab9a5d1d9c9d8dbf32b5efc6607011029"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/es/errors.ts",
+          "disposition": "store translations present; colony translations additionally retained",
+          "masterSha256": "aaeb9f12a05106baa6da19eea5e02320d9ebfaba26cab46ff89abb2a4ab6e76c"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/es/skins.ts",
+          "disposition": "worktree patch present alongside newer master changes",
+          "masterSha256": "6c72f9f955250b8eb77ef4a1453223f61d69cd6336ea1f2c491038e04f912b61"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/fr/errors.ts",
+          "disposition": "store translations present; colony translations additionally retained",
+          "masterSha256": "0bfacdc3b79d5c2ead5125db5e591b46a4f3d2ce41125cb3b67ce6230087fc76"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/fr/skins.ts",
+          "disposition": "worktree patch present alongside newer master changes",
+          "masterSha256": "e82fd24f2ba40a2f5f3b7b1def684cf6a18470cd0005f0ef56801cb057109e9a"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/ja/errors.ts",
+          "disposition": "store translations present; colony translations additionally retained",
+          "masterSha256": "f30d2d389412cd5c18199fc4a07707eb4d45de500f9710cc1aa9fd82e8a488af"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/ja/skins.ts",
+          "disposition": "worktree patch present alongside newer master changes",
+          "masterSha256": "c39b096214581acd46fe6260e89eeb0d3e2c8b4f84ec55b0dd27849b5eae146b"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/tr/errors.ts",
+          "disposition": "store translations present; colony translations additionally retained",
+          "masterSha256": "f1eae394dbd4cd9efcc43454bc603682370e0daa8dc76183123ed520fec14eb7"
+        },
+        {
+          "path": "apps/web/src/i18n/locales/tr/skins.ts",
+          "disposition": "worktree patch present alongside newer master changes",
+          "masterSha256": "a371f1029bb193c61e018cd759b0e6a57943287fb9dff56936b28cbce4e5d007"
+        },
+        {
+          "path": "apps/web/src/screens/CosmeticCollection.tsx",
+          "disposition": "identical",
+          "masterSha256": "7bdc462e2a0a8dfb4acae9a4b4a5162a2774d6930d55ae586040e4cd695d22a8"
+        },
+        {
+          "path": "apps/web/src/screens/CosmeticNavigation.tsx",
+          "disposition": "identical",
+          "masterSha256": "6c5748cb75d99208631bb737df2e7a92e5c4e16295044144a3d680ed90feae86"
+        },
+        {
+          "path": "apps/web/src/screens/CosmeticPreview.tsx",
+          "disposition": "identical",
+          "masterSha256": "2c27a38385784dfdaa5aa8793f62568e40002f32106cabf901c5d22b6171c0d7"
+        },
+        {
+          "path": "apps/web/src/screens/GalaxyView.tsx",
+          "disposition": "worktree patch present alongside newer master changes",
+          "masterSha256": "9060c592623367b7767a14677c815960498586fb7419e88a6d4f7c402a88aeb5"
+        },
+        {
+          "path": "apps/web/src/screens/SkinInventoryScreen.tsx",
+          "disposition": "identical",
+          "masterSha256": "5e76d31f65e96f45689aa6bdd68db5bb72012b70fdac94c875daf96d654292f4"
+        },
+        {
+          "path": "apps/web/src/screens/SkinsScreen.tsx",
+          "disposition": "identical",
+          "masterSha256": "e41e6cad355f7062681fa81451e1a1eecb22d97cdf3e52e1a0b88f5aab8c47f3"
+        },
+        {
+          "path": "apps/web/src/shell/MenuPanel.tsx",
+          "disposition": "identical",
+          "masterSha256": "5afdf9b3c6e70b9701c20e85feaa494e54cebad1e489d023dfd2b1e525d2a4ed"
+        },
+        {
+          "path": "apps/web/src/shell/ShopShowcase.tsx",
+          "disposition": "identical",
+          "masterSha256": "75a074cef606c701eb9852bc235994eac4d42d0f030b5fd8bfec3100e4e363d0"
+        },
+        {
+          "path": "apps/web/src/shell/ShopShowcasePoster.tsx",
+          "disposition": "identical",
+          "masterSha256": "82d674fab2632c0ecdb09a7181697786db84ce06f46a99f987f77a1dbb1bde28"
+        },
+        {
+          "path": "apps/web/src/shell/ShopShowcaseScene.tsx",
+          "disposition": "identical",
+          "masterSha256": "78a1c87a7eab80c54eda32d2606195323f20af0a8ff6e0fcbc9b62a7e9574d94"
+        },
+        {
+          "path": "apps/web/src/v2/gallery/Gallery.tsx",
+          "disposition": "store galleries retained alongside new cosmetic fleet gallery parameters; reviewed",
+          "masterSha256": "9da90587845dcdefdfb6d8a65c0b2eda74d2e67d7d963948240d20366dfb8a26"
+        },
+        {
+          "path": "apps/web/src/v2/gallery/StoreDiscoveryGallery.tsx",
+          "disposition": "identical",
+          "masterSha256": "e58280124945cc4a77f90a41c67244aa905b03aab61beaf08f38586879a5abe8"
+        },
+        {
+          "path": "apps/web/src/v2/gallery/UfoProbeGallery.tsx",
+          "disposition": "identical",
+          "masterSha256": "309a464dbae5b954eecf655b5a497c3a8643965a5b4028f51fa3200c06ffb7c1"
+        },
+        {
+          "path": "apps/web/src/v2/gallery/storeDiscoveryApi.ts",
+          "disposition": "identical",
+          "masterSha256": "66048f06210c988e1d0cf332affda7100b844f6e76f7f256c9d40e970a482953"
+        },
+        {
+          "path": "apps/web/src/v2/shell/GameShell.tsx",
+          "disposition": "identical",
+          "masterSha256": "978789df2e5894952f3d9f4c31b777cb7a5744a3ae87ce775124a154cc9c5f44"
+        },
+        {
+          "path": "apps/web/src/v2/shell/HudTop.tsx",
+          "disposition": "identical",
+          "masterSha256": "c5dedefd79a58d0e6d0f8b878990a4064ab2655bad4f47c2fa580b558932ec1f"
+        },
+        {
+          "path": "apps/web/src/v2/store.css",
+          "disposition": "identical",
+          "masterSha256": "a45200060268a532fc956ea3a594de54113faeb95a5b013a02e3a60f08ffaabd"
+        },
+        {
+          "path": "apps/web/src/v2/tokens.css",
+          "disposition": "identical",
+          "masterSha256": "3d57bf334eff11d6060431ff0eedb261d76b6525680e63a73f36fd04f717b12f"
+        },
+        {
+          "path": "apps/web/test/menu-structure.test.tsx",
+          "disposition": "identical",
+          "masterSha256": "50dd8cac315118095ab188c75b93fba58d21118ae4455c1442ce047ac0b51522"
+        },
+        {
+          "path": "apps/web/test/probe-skin-beam.test.ts",
+          "disposition": "identical",
+          "masterSha256": "bc69e88fe986e41569503ad17501ed832df55560fa0fae7acab6b176f533dea8"
+        },
+        {
+          "path": "apps/web/test/skin-inventory-api.test.tsx",
+          "disposition": "identical",
+          "masterSha256": "8afa9eb2bba0906c1e6f446f5140b5d893bfb861a6eaccc2451eed68db0460fc"
+        },
+        {
+          "path": "apps/web/test/skins-screen.test.tsx",
+          "disposition": "identical",
+          "masterSha256": "84f62aa8904a4675454ee1045398ef1bae4c4e8b378bd8329dafb539f9b7af69"
+        },
+        {
+          "path": "apps/web/test/store-discovery-api.test.ts",
+          "disposition": "identical",
+          "masterSha256": "b7f395a74bc1b26a66f8079ec2d32a870a51d58d3997eda5194b01a92a564d38"
+        },
+        {
+          "path": "apps/web/test/store-discovery-flow.test.tsx",
+          "disposition": "identical",
+          "masterSha256": "24a2d0252c8dc394026e1266c2fb79f530296f51bd7571ba3e156b8aa7002b41"
+        },
+        {
+          "path": "apps/web/test/store-purchase-ux.test.tsx",
+          "disposition": "identical",
+          "masterSha256": "1373679377bc156bb53b2fcdc56e6078e5d92cabe56a6ad7d5c63024a32792b6"
+        },
+        {
+          "path": "apps/web/test/ux-writing-errors.test.ts",
+          "disposition": "identical",
+          "masterSha256": "0845c7351ac1bb6931e60dc64e7abfc13ccc51b6b97c2943f1c87674ddc78eba"
+        },
+        {
+          "path": "apps/web/test/v2/hud-top.test.tsx",
+          "disposition": "identical",
+          "masterSha256": "d3a77bf7369435a1de8f3c693e8ebd2d7d038deccd0345f7847470a921378681"
+        },
+        {
+          "path": "node_modules",
+          "disposition": "generated symlink; excluded"
+        },
+        {
+          "path": "packages/rules/node_modules",
+          "disposition": "generated symlink; excluded"
+        },
+        {
+          "path": "packages/sim/node_modules",
+          "disposition": "generated symlink; excluded"
+        }
+      ]
+    },
+    "polar-wave2": {
+      "head": "19c46efeb8a2e75aec992fdea40182aa349f6a50",
+      "disposition": "clean; its HEAD is already an ancestor of master"
+    }
+  },
+  "excluded": {
+    "komutan-gemisi": {
+      "head": "00a8d149a2ae3aa34201d413737afafb9f547930",
+      "trackedPatchSha256": "8c6ffe39a88e41cdaef1d770178f95667ff8ae58819887d700f2bebabb6d8685",
+      "pendingPaths": 124,
+      "unchanged": true
+    },
+    "ui-v2": {
+      "head": "4cd3a46c3b9a0d1585ecc982c5422055434202fc",
+      "trackedPatchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "pendingPaths": 0,
+      "unchanged": true
+    }
+  }
+}

@@ -1,4 +1,5 @@
 export const monument = {
+  recallFlightRule: "Avant son arrivée, rappelle toute la flotte depuis sa position actuelle. Le carburant dépensé n’est pas remboursé.",
   "newsRadiation": "{{name}} · le rayonnement a détruit {{count}} vaisseaux et {{cargo}} deutérium · {{left}} vaisseaux restants",
   "genericTitle": "Monument spatial",
   "look": "Voir {{name}}",

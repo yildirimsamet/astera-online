@@ -31,6 +31,7 @@ import { buildDeathStar, buildInterceptor, launchDeathStar } from '../services/s
 import { setDefencePosture } from '../services/clanSupport.js';
 import { launchSettlement, launchTransfer, recallFlight } from '../services/movement.js';
 import { cancelBuildOrder } from '../services/buildQueue.js';
+import { abandonColony, colonyAbandonment } from '../services/colonyAbandonment.js';
 
 /**
  * Five structures. The Orbital Ring is not one of them any more (D22): satellites
@@ -167,6 +168,17 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
   app.get('/api/planet', { preHandler: requireAuth }, async (req) => {
     const planetId = await myPlanet(req.accountId!);
     return app.db.transaction(async (tx) => planetView(tx, planetId, app.clock));
+  });
+
+  app.get('/api/planets/:planetId/abandon', { preHandler: requireAuth }, async req => {
+    const owner = await explicitPlanet(req.accountId!, req.params);
+    return colonyAbandonment(app.db, owner.planetId, owner.playerId, app.clock);
+  });
+
+  app.post('/api/planets/:planetId/abandon', { preHandler: requireAuth }, async req => {
+    z.object({ confirm: z.literal(true) }).strict().parse(req.body);
+    const owner = await explicitPlanet(req.accountId!, req.params);
+    return abandonColony(app.db, owner.planetId, owner.playerId, app.clock);
   });
 
   /**

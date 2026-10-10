@@ -1,0 +1,6 @@
+
+> @astera/server@0.1.0 typecheck /tmp/astera-asteroid-fix-20261009/apps/server
+> tsc --noEmit
+
+
+Recorded exit code: 0; expected: 0

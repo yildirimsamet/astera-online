@@ -4,6 +4,37 @@
  */
 
 export const planet = {
+  abandon: {
+    "action": "Abandon colony",
+    "title": "Abandon this colony?",
+    "cancel": "Keep colony",
+    "confirm": "Yes, abandon colony",
+    "pending": "Abandoning…",
+    "irreversible": "This colony becomes neutral and frees one colony slot. You cannot undo this action.",
+    "keeps": "Buildings, satellites, resources and ground defences stay on the planet. Ready Death Stars and interceptor charges also stay.",
+    "ships": "Ships at home and in repair move to your capital. Their damage stays.",
+    "queue": "Construction, production and repair orders are cancelled without a refund.",
+    "rule": "All flights and missions connected to this colony must finish first.",
+    "checking": "Checking active missions…",
+    "blocked": "You cannot abandon this colony yet",
+    "recheck": "Check again",
+    "checkFailed": "Could not check active missions. Check again when your connection returns.",
+    "success": "You abandoned {{planet}} · the colony is now neutral",
+    "reasons": {
+      "FLIGHT": "A flight connected to this colony is still active. Wait until it finishes.",
+      "MINING": "A mining or salvage mission is still active. Wait for the craft to return.",
+      "PIRATE": "A pirate raid is still active. Wait for the fleet to return.",
+      "TRADE": "A trade mission is still active. Wait for the ships to return.",
+      "CONVOY": "An intergalactic convoy mission is still active. Wait for the fleet to return.",
+      "CLAN_WAR": "This colony has ships in a joint clan operation. Recall them or wait for their return.",
+      "CLAN_SUPPORT": "Support ships are travelling, stationed or returning. Recall sent support or return hosted support, then wait for landing.",
+      "MONUMENT": "This colony has a monument fleet or probe away. Recall the fleet or wait for the probe to return.",
+      "STRATEGIC": "Strategic production, a strike or an interception is still active. Wait until it finishes.",
+      "AWAY_SHIPS": "Some ships from this colony are still away. Wait until all ships return.",
+      "RECOVERY": "This colony is recovering or under occupation protection. Wait until that period ends.",
+      "SECESSION": "This colony has reached zero loyalty and is separating. Wait for the ownership update."
+    }
+  },
   recovery: "Recovery in progress · systems return in {{duration}}",
   empActive: "EMP · Aegis at zero and unable to regenerate; ground defences cannot fire or take damage for {{duration}}.",
   capacityNext: "With {{name}}: {{total}} per world",

@@ -1,0 +1,798 @@
+
+ RUN  v2.1.9 /tmp/astera-asteroid-fix-20261009/apps/web
+
+stderr | test/focus-actions.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/focus-actions.test.tsx (68 tests) 3045ms
+stderr | test/launch-sheet.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/launch-sheet.test.tsx (61 tests) 4108ms
+stderr | test/battle-report-detail.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/battle-report-detail.test.tsx (70 tests) 3143ms
+ ✓ test/build-sheet.test.tsx (58 tests) 10325ms
+   ✓ strategic hardware hierarchy > keeps the Death Star forge on the Tactical tab 622ms
+   ✓ the quantity picker > never offers more ships than the Hangar has room for 435ms
+   ✓ the quantity picker > draws the room this order takes, in your colour 344ms
+   ✓ the quantity picker > offers minus, plus and Max around a typed quantity for a warship 346ms
+   ✓ the quantity picker > never offers more Prospectors than a planet may hold 366ms
+   ✓ the quantity picker > shrinks the offer as craft are built 373ms
+   ✓ the quantity picker > increments large warship orders one at a time 328ms
+   ✓ the quantity picker > builds the number that was chosen 357ms
+   ✓ the Hangar row > names no Core requirement, at any Core 302ms
+ ✓ test/bombardment.test.ts (65 tests) 30ms
+ ✓ test/resource-state.test.tsx (78 tests) 4366ms
+ ✓ test/research-panel.test.tsx (70 tests) 6708ms
+   ✓ every project is reachable > draws a star for every project, and each opens its card 323ms
+   ✓ every project is reachable > opens a clear, item-specific explanation for every project 1012ms
+   ✓ a closed door states its reason > leaves no row shut and silent for a brand new commander 342ms
+   ✓ the open-then-decide grammar > opens every project before it offers a commitment 1027ms
+ ✓ test/i18n.test.ts (84 tests) 318ms
+ ✓ test/transfer-sheet.test.tsx (45 tests) 3054ms
+   ✓ remembering only transfer return choices > restores the last choices on reopen without restoring fleet, cargo or pace 431ms
+ ✓ test/chat-screen.test.tsx (57 tests) 3835ms
+   ✓ galaxy chat surface > opens actions by long press and sends a quoted General reply 698ms
+ ✓ test/predict.test.ts (42 tests) 19ms
+ ✓ test/trade-sheet.test.tsx (37 tests) 2956ms
+   ✓ switching which good you give > leaves no state behind, in any order of switches 395ms
+stderr | test/intel-screen.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/intel-screen.test.tsx (53 tests) 1264ms
+ ✓ test/orbit.test.tsx (48 tests) 4956ms
+   ✓ the orbit surface > places every item under the outcome a player is looking for 376ms
+   ✓ the compact row and sheet grammar > opens every item kind before it offers a commitment 708ms
+stderr | test/onboarding.test.tsx > reaching the way out > keeps leaderboard and rewards as named menu rows after Intel moves to the disc
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/onboarding.test.tsx (31 tests) 2427ms
+   ✓ reaching the way out > keeps leaderboard and rewards as named menu rows after Intel moves to the disc 790ms
+ ✓ test/session-surface.test.tsx (52 tests) 158ms
+stderr | test/planet-skins.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/planet-skins.test.ts (26 tests) 215ms
+ ✓ test/public-site-readiness.test.tsx (140 tests) 741ms
+ ✓ test/item-sheet.test.tsx (52 tests) 1142ms
+ ✓ test/clan-war-panel.test.tsx (25 tests) 2744ms
+   ✓ clan war decision surface > shows own HP loss and requires its consent before contributing, resetting consent when the fleet changes 1118ms
+   ✓ clan war decision surface > quotes the wave by itself once ships are picked, with no button to press 423ms
+   ✓ clan war decision surface > holds the send until a protected commander acknowledges the shield, then sends on the hold 448ms
+stderr | test/academy-screen.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/academy-screen.test.tsx (40 tests) 1006ms
+stderr | test/planet-visuals.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/planet-visuals.test.ts (24 tests) 12ms
+stderr | test/sky.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/sky.test.ts (34 tests) 2917ms
+   ✓ the stars > is the same sky every time, so a visual regression is a comparison 742ms
+   ✓ the stars > colours every star from the blackbody locus 1583ms
+ ✓ test/trade-balance.test.ts (32 tests) 41ms
+ ✓ test/signals.test.ts (32 tests) 43ms
+ ✓ test/skins-screen.test.tsx (35 tests) 2929ms
+   ✓ the skin store > lets the player inspect the actual look, and its shielded look 535ms
+ ✓ test/flight.test.ts (30 tests) 39ms
+ ✓ test/music.test.tsx (30 tests) 168ms
+ ✓ test/v2/game-shell.test.tsx (26 tests) 2782ms
+   ✓ the shell on a desk > shows a world or a flight from the outline on the galaxy, leaving the page that was open 303ms
+   ✓ the v2 shell > closes the timers sheet on every move the shell makes 521ms
+ ✓ test/follow.test.ts (62 tests) 44ms
+ ✓ test/rewards-surface.test.tsx (20 tests) 1588ms
+   ✓ the concise reward ladder > measures progress toward the next unearned goal while keeping earned rewards claimable 361ms
+ ✓ test/model.test.ts (43 tests) 138ms
+ ✓ test/clan-screen.test.tsx (14 tests) 2650ms
+   ✓ clan command surface > answers why a clan matters and shows the exact founding gate 385ms
+   ✓ clan command surface > enables founding only for an eligible clanless commander with a valid identity 352ms
+ ✓ test/repair-station-sheet.test.tsx (26 tests) 14124ms
+   ✓ the Repair Station card > is not there in a season dealt before the Repair Station 1260ms
+   ✓ the Repair Station card > sits under the Shipyard and the Hangar, before the Hangar room 525ms
+   ✓ the Repair Station card > says what waits, what is under repair and how full the queue is 394ms
+   ✓ the Repair Station card > says no ship at this world is damaged when nothing waits 368ms
+   ✓ the Repair Station card > opens the station itself, not a level-up sheet 880ms
+   ✓ the Repair Station card > opens straight onto the station when a door outside names it 461ms
+   ✓ the Repair Station card > is not opened by a door in a season dealt before the Repair Station 437ms
+   ✓ the Repair Station menu > lists every waiting lot, chosen, with its damage and its price against a new ship 512ms
+   ✓ the Repair Station menu > keeps a lot under repair out of the choice and shows it with its job 513ms
+   ✓ the Repair Station menu > repairs exactly the ships that were chosen 710ms
+   ✓ the Repair Station menu > prices the choice beside the button, and moves it as the choice moves 826ms
+   ✓ the Repair Station menu > will not start with nothing chosen, and says what to do 669ms
+   ✓ the Repair Station menu > holds the repair while three jobs already run, and says why 530ms
+   ✓ the Repair Station menu > says when the purse will cover a repair it cannot pay for yet 560ms
+   ✓ the Repair Station menu > says a fuel shortfall is short, since fuel has no rate to wait on 478ms
+   ✓ the Repair Station menu > holds the commit while a start is on its way 476ms
+   ✓ the Repair Station menu > says why the server refused a repair 561ms
+   ✓ the Repair Station menu > says when a repair ordered now would start behind the queue 451ms
+   ✓ the Repair Station menu > says a job past its end is finishing, and draws no wait behind it 462ms
+   ✓ the Repair Station menu > says nothing of a wait on an empty lane 465ms
+   ✓ the Repair Station menu > shows the queue in order, with when each job ends or starts 414ms
+   ✓ the Repair Station menu > lists the ships a mixed job is repairing 415ms
+   ✓ the Repair Station menu > cancels a job only after the confirm that names the refund 935ms
+   ✓ the Repair Station menu > teaches the rule where it is used: the line always, the arithmetic one tap deeper 388ms
+stderr | test/irreversible-confirm.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/irreversible-confirm.test.tsx (20 tests) 1578ms
+stderr | test/menu-structure.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/menu-structure.test.tsx (18 tests) 1553ms
+ ✓ test/interceptor-control.test.tsx (26 tests) 5197ms
+   ✓ where it lives > keeps the battery visible in Defend 504ms
+   ✓ what it says it needs > reads as available when every requirement is met 314ms
+   ✓ a hull gated on research > sends the Tempest's fix to the research surface 876ms
+   ✓ a hull gated on research > sends the Nullifier's fix to the same place 516ms
+ ✓ test/rehearsal.test.ts (28 tests) 371ms
+ ✓ test/notification-routes.test.tsx (34 tests) 818ms
+ ✓ test/session-machine.test.tsx (24 tests) 1514ms
+ ✓ test/api-client.test.ts (19 tests) 106ms
+ ✓ test/academy-api.test.ts (19 tests) 251ms
+ ✓ test/art.test.ts (23 tests) 83ms
+ ✓ test/frames.test.ts (22 tests) 103ms
+ ✓ test/signals-surface.test.tsx (17 tests) 1198ms
+stderr | test/intel-render.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/intel-render.test.ts (23 tests) 32ms
+ ✓ test/season-archive.test.tsx (11 tests) 2631ms
+   ✓ season archive surface > keeps the live leaderboard rows non-inspectable 480ms
+   ✓ season archive surface > opens completed rows and compares sealed stats to the cohort average 831ms
+ ✓ test/pending-strip.test.tsx (25 tests) 1266ms
+ ✓ test/v2/sheet.test.tsx (26 tests) 1133ms
+ ✓ test/squadrons.test.ts (33 tests) 57ms
+ ✓ test/intel-surface.test.tsx (25 tests) 388ms
+ ✓ test/shard-events.test.ts (32 tests) 69ms
+ ✓ test/force-compare.test.tsx (32 tests) 969ms
+ ✓ test/gains.test.ts (37 tests) 556ms
+stderr | test/country.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/country.test.tsx (20 tests) 8756ms
+   ✓ the country picker > keeps its search field at a comfortable touch height 1016ms
+   ✓ the country picker > opens above the game dock when launched from a sheet 1547ms
+   ✓ the country picker > keeps the current country first and returns a new selection 2435ms
+   ✓ the country picker > folds Turkish dotted and dotless i while searching local country names 822ms
+   ✓ the country picker > carries the selected country into the registration claim 1257ms
+   ✓ the country picker > updates the commander country from the account menu 378ms
+stderr | test/fog.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/fog.test.tsx (26 tests) 231ms
+ ✓ test/brand-install.test.tsx (25 tests) 641ms
+ ✓ test/directives.test.ts (23 tests) 60ms
+ ✓ test/world-selector.test.tsx (10 tests) 354ms
+ ✓ test/planet-sheet-layout.test.tsx (21 tests) 1931ms
+   ✓ the fleet tab puts the orbit satellites last > draws the orbit band after the mining band 322ms
+ ✓ test/dm-screen.test.tsx (13 tests) 1466ms
+stderr | test/battle-report-clarity.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/battle-report-clarity.test.tsx (22 tests) 1061ms
+ ✓ test/japanese-language.test.ts (20 tests) 31ms
+ ✓ test/event-stream.test.tsx (21 tests) 61ms
+ ✓ test/monument-sheet.test.tsx (18 tests) 2253ms
+   ✓ monument decision surface, through the real client and cache > quotes only the last quantity in a burst and keeps commit disabled during the wait 428ms
+   ✓ monument decision surface, through the real client and cache > stops selected recall quote POSTs when the open season freezes and physical lots refresh 314ms
+   ✓ monument decision surface, through the real client and cache > automatically quotes the picked fleet and requires both explicit consents 322ms
+   ✓ monument decision surface, through the real client and cache > disables commit while a changed fleet is still being quoted 389ms
+stderr | test/v2/report-scene.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/v2/report-scene.test.tsx (23 tests) 422ms
+ ✓ test/probe-readings.test.ts (32 tests) 60ms
+ ✓ test/v2/context-slot.test.tsx (18 tests) 394ms
+stderr | test/academy-launch-hand.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/academy-launch-hand.test.tsx (17 tests) 181ms
+ ✓ test/tutorial-hand.test.tsx (14 tests) 88ms
+ ✓ test/flight-visual.test.ts (19 tests) 39ms
+ ✓ test/arrival-wakeup.test.tsx (18 tests) 46ms
+stderr | test/pirate-focus.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/pirate-focus.test.tsx (19 tests) 335ms
+stderr | test/orbit-visuals.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/orbit-visuals.test.ts (25 tests) 11ms
+stderr | test/craft-picker.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/craft-picker.test.tsx (32 tests) 772ms
+stderr | test/v2/target-dossier.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/v2/target-dossier.test.tsx (22 tests) 2147ms
+stderr | test/focus-density.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/focus-density.test.tsx (15 tests) 777ms
+ ✓ test/optimistic.test.tsx (8 tests) 501ms
+ ✓ test/community-screens.test.tsx (10 tests) 555ms
+ ✓ test/onboarding-gate.test.tsx (22 tests) 188ms
+stderr | test/fleet-escape.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/fleet-escape.test.tsx (28 tests) 543ms
+ ✓ test/wiki-publication.test.tsx (13 tests) 7374ms
+   ✓ the published Wiki contract > covers every current rule catalogue in both languages with useful content 2942ms
+   ✓ the published Wiki contract > renders complete metadata, semantic headings, breadcrumbs and static navigation for every page 3556ms
+   ✓ the published Wiki contract > generates the entire sitemap and physical static HTML from the same page manifest 660ms
+stderr | test/menu-guide.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/menu-guide.test.tsx (16 tests) 538ms
+ ✓ test/fleet-v2-assets.test.ts (12 tests) 98ms
+ ✓ test/deployment-publish.test.ts (13 tests) 134ms
+stderr | test/ownership-filaments.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/ownership-filaments.test.ts (16 tests) 20ms
+ ✓ test/v2/fleet-page.test.tsx (21 tests) 436ms
+stderr | test/dyson-wreck.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/dyson-wreck.test.ts (14 tests) 11ms
+ ✓ test/clan-aid-fuel.test.tsx (8 tests) 1996ms
+   ✓ the fuel a clan gift burns > draws the flight against the tank while the convoy is packed 312ms
+ ✓ test/attack-band.test.tsx (28 tests) 16ms
+stderr | test/battle-report-cases.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/battle-report-cases.test.tsx (13 tests) 734ms
+stderr | test/battle-report-door.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/battle-report-door.test.tsx (11 tests) 447ms
+ ✓ test/order-time.test.ts (18 tests) 7ms
+ ✓ test/radiation-lib.test.ts (19 tests) 13ms
+ ✓ test/v2/force-ruler.test.tsx (23 tests) 298ms
+ ✓ test/api-bodies.test.ts (44 tests) 33ms
+ ✓ test/v2/away.test.tsx (15 tests) 879ms
+ ✓ test/mining-launch-race.test.tsx (5 tests) 408ms
+ ✓ test/structural.test.ts (34 tests) 14ms
+ ✓ test/clan-support-bay.test.tsx (16 tests) 342ms
+ ✓ test/v2/hud-top.test.tsx (12 tests) 500ms
+ ✓ test/arrivals.test.tsx (12 tests) 39ms
+ ✓ test/brand-recall-host.test.tsx (11 tests) 561ms
+stderr | test/ship-list-density.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/ship-list-density.test.tsx (10 tests) 345ms
+ ✓ test/fault-door.test.tsx (17 tests) 1992ms
+   ✓ arızalı satırın kapısı > bozuk bir gemi satırı onarım sheetini açar, tersaneyi değil 645ms
+ ✓ test/palette.test.ts (33 tests) 10ms
+ ✓ test/v2/now-line.test.tsx (12 tests) 272ms
+stderr | test/intergalactic-convoy-visual.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/intergalactic-convoy-visual.test.ts (12 tests) 540ms
+   ✓ the Intergalactic Convoy presentation > gives every craft bounded longitudinal motion without ever swapping rank order 528ms
+ ✓ test/worlds-panel.test.tsx (11 tests) 617ms
+stderr | test/newcomer-shield.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/newcomer-shield.test.tsx (10 tests) 478ms
+ ✓ test/trade-wiring.test.ts (15 tests) 34ms
+stderr | test/silent-space-waiting-room.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/silent-space-waiting-room.test.tsx (12 tests) 214ms
+stderr | test/engagement-window.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/engagement-window.test.tsx (15 tests) 39ms
+ ✓ test/planet-lod.test.ts (18 tests) 8ms
+ ✓ test/v2/view-sheet.test.tsx (16 tests) 371ms
+ ✓ test/planet-labels.test.ts (20 tests) 32ms
+stderr | test/focus-sheet-owner-fixes.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/focus-sheet-owner-fixes.test.tsx (13 tests) 160ms
+ ✓ test/leaderboard.test.tsx (14 tests) 3461ms
+   ✓ the Dominion leaderboard > renders a hundred rows with identity, planet and score 529ms
+   ✓ the Dominion leaderboard > hides the nearby-rival strip while searching so results stay unambiguous 341ms
+   ✓ the Dominion leaderboard > searches commander, planet and clan identity without changing authoritative ranks 476ms
+ ✓ test/launch-preview.test.ts (16 tests) 7ms
+stderr | test/v2/launch-composer.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/v2/launch-composer.test.tsx (13 tests) 797ms
+stderr | test/sensor-rings.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/sensor-rings.test.ts (14 tests) 6ms
+ ✓ test/turkish-copy.test.ts (13 tests) 11ms
+ ✓ test/quantity-stepper.test.tsx (12 tests) 346ms
+ ✓ test/hitbox-debug.test.tsx (26 tests) 66ms
+ ✓ test/hull-row-counts.test.tsx (8 tests) 1070ms
+   ✓ a hull row says where its craft are > shows every unmet hull prerequisite at once 501ms
+ ✓ test/h5-ads.test.ts (14 tests) 13ms
+stderr | test/strategic-offline.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ↓ test/strategic-offline.test.tsx (29 tests | 29 skipped)
+ ✓ test/locked-rows.test.tsx (7 tests) 1457ms
+   ✓ every locked row on the planet sheet > locks something, or this test is measuring nothing 450ms
+   ✓ pressing the reason > takes a Shipyard-gated hull to the Shipyard 351ms
+ ✓ test/surface-vocabulary.test.ts (2 tests) 4ms
+ ✓ test/consent-notice.test.tsx (15 tests) 194ms
+ ✓ test/render-quality.test.tsx (13 tests) 18ms
+stderr | test/intergalactic-convoy-sheet.test.tsx > the intergalactic convoy commitment surface > keeps the selected fleet while committing the exact quote with one key
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+
+stderr | test/intergalactic-convoy-sheet.test.tsx > the intergalactic convoy commitment surface > shows lethal HP exposure on the real moving route and sends its own consent
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+
+stderr | test/intergalactic-convoy-sheet.test.tsx > the intergalactic convoy commitment surface > shows lethal HP exposure on the real moving route and sends its own consent
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+
+stderr | test/intergalactic-convoy-sheet.test.tsx > the intergalactic convoy commitment surface > recalculates after Max and minus, including removing a hull from a mixed wing
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+
+stderr | test/intergalactic-convoy-sheet.test.tsx > the intergalactic convoy commitment surface > recalculates after Max and minus, including removing a hull from a mixed wing
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+
+stderr | test/intergalactic-convoy-sheet.test.tsx > the intergalactic convoy commitment surface > can clear a selected hull by entering "0" and select it again
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+
+stderr | test/intergalactic-convoy-sheet.test.tsx > the intergalactic convoy commitment surface > can clear a selected hull by entering "" and select it again
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+
+stderr | test/intergalactic-convoy-sheet.test.tsx > the intergalactic convoy commitment surface > requires a wing after removing every ship and firepower when only transports remain
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+[["galaxy"]]: No queryFn was passed as an option, and no default queryFn was found. The queryFn parameter is only optional when using a default queryFn. More info here: https://tanstack.com/query/latest/docs/framework/react/guides/default-query-function
+
+ ✓ test/intergalactic-convoy-sheet.test.tsx (6 tests) 596ms
+stderr | test/monument-news.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/monument-news.test.tsx (10 tests) 248ms
+ ✓ test/repair-station-lib.test.ts (15 tests) 8ms
+stderr | test/clan-support-report.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/clan-support-report.test.tsx (4 tests) 375ms
+stderr | test/garbage-collector.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/garbage-collector.test.tsx (12 tests) 286ms
+ ✓ test/academy-world.test.ts (28 tests) 39ms
+ ✓ test/fleet-cards.test.tsx (12 tests) 126ms
+ ✓ test/preload.test.ts (14 tests) 336ms
+ ✓ test/capacity-bar.test.tsx (15 tests) 144ms
+ ✓ test/consent.test.ts (20 tests) 10ms
+ ✓ test/research-gains.test.ts (13 tests) 33ms
+ ✓ test/clan-support-intel.test.tsx (11 tests) 559ms
+ ✓ test/v2/now-line-rules.test.ts (15 tests) 6ms
+ ✓ test/cosmetic-categories.test.tsx (8 tests) 450ms
+ ✓ test/planet-pick.test.ts (11 tests) 14ms
+ ✓ test/gpu-context.test.ts (12 tests) 31ms
+ ✓ test/returning-door.test.tsx (8 tests) 257ms
+ ✓ test/v2/fleet-host.test.tsx (9 tests) 361ms
+ ✓ test/v2/outline.test.tsx (11 tests) 301ms
+ ✓ test/monument-contract.test.ts (7 tests) 17ms
+ ✓ test/production-csp.test.ts (7 tests) 8ms
+ ✓ test/error-boundary.test.tsx (9 tests) 167ms
+stderr | test/disc.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/disc.test.ts (11 tests) 6ms
+stderr | test/trade-focus.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/trade-focus.test.tsx (10 tests) 201ms
+ ✓ test/wiki-reading.test.ts (8 tests) 39ms
+ ✓ test/queue-strip.test.tsx (12 tests) 178ms
+stderr | test/radiation-launch.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/radiation-launch.test.tsx (7 tests) 536ms
+ ✓ test/v2/top-bar.test.tsx (9 tests) 313ms
+ ✓ test/counter-in-shipyard.test.tsx (5 tests) 1348ms
+   ✓ the class on a shipyard row > separates hulls the family bands put together and vice versa 331ms
+   ✓ the whole cycle, one tap deeper > draws all three rungs on a hull sheet, with this hull lit 333ms
+ ✓ test/viewport-zoom.test.ts (10 tests) 30ms
+ ✓ test/v2/hold-button.test.tsx (16 tests) 297ms
+ ✓ test/away-story.test.ts (15 tests) 9ms
+stderr | test/monument-map.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/monument-map.test.tsx (8 tests) 142ms
+stderr | test/focus-clocks.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/focus-clocks.test.tsx (7 tests) 75ms
+ ✓ test/v2/orbit-ring.test.tsx (13 tests) 593ms
+stderr | test/rival-dossier.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/rival-dossier.test.tsx (6 tests) 1015ms
+ ✓ test/v2/works-line.test.tsx (9 tests) 170ms
+ ✓ test/planet-firepower.test.tsx (10 tests) 217ms
+ ✓ test/chronicle-screen.test.tsx (7 tests) 173ms
+ ✓ test/crash-report.test.ts (13 tests) 15ms
+ ✓ test/spend-bar.test.tsx (19 tests) 114ms
+ ✓ test/v2/desk-wiring.test.ts (13 tests) 5ms
+ ✓ test/clock.test.ts (12 tests) 5ms
+ ✓ test/admin-skin-grant.test.tsx (5 tests) 481ms
+ ✓ test/target-gone.test.ts (10 tests) 25ms
+ ✓ test/v2/dock.test.tsx (12 tests) 244ms
+ ✓ test/v2/collect-rules.test.ts (14 tests) 6ms
+ ✓ test/v2/hud-dock.test.tsx (8 tests) 167ms
+stderr | test/trade-ship.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/trade-ship.test.ts (11 tests) 5ms
+ ✓ test/stage-deployment.test.ts (4 tests) 317ms
+ ✓ test/clan-war-cache.test.tsx (2 tests) 35ms
+stderr | test/pirate-recall.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/pirate-recall.test.tsx (5 tests) 182ms
+ ✓ test/planet-rates.test.tsx (9 tests) 470ms
+ ✓ test/season-recap.test.tsx (8 tests) 208ms
+ ✓ test/crossing.test.ts (13 tests) 8ms
+ ✓ test/clan-war-contract.test.ts (7 tests) 14ms
+ ✓ test/constellation.test.ts (10 tests) 12ms
+ ✓ test/progression-state.test.tsx (12 tests) 110ms
+stderr | test/death-star-impact.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/death-star-impact.test.ts (6 tests) 12ms
+ ✓ test/flight-modifiers.test.ts (9 tests) 5ms
+ ✓ test/perf-recorder.test.ts (10 tests) 16ms
+ ✓ test/v2/queue-lane.test.tsx (13 tests) 156ms
+ ✓ test/faults.test.tsx (8 tests) 118ms
+ ✓ test/launch-race.test.tsx (2 tests) 134ms
+ ✓ test/survivor-bar.test.tsx (13 tests) 197ms
+ ✓ test/adsense.test.ts (8 tests) 8ms
+ ✓ test/publisher-pricing.test.ts (7 tests) 83ms
+ ✓ test/v2/queue-sheet.test.tsx (7 tests) 279ms
+ ✓ test/counter-mark.test.tsx (11 tests) 81ms
+ ✓ test/analytics.test.ts (5 tests) 22ms
+stderr | test/season-end.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/season-end.test.tsx (10 tests) 102ms
+ ✓ test/brand-install-profile.test.ts (19 tests) 9ms
+ ✓ test/settlement-sheet.test.tsx (3 tests) 124ms
+ ✓ test/monument-assets.test.ts (6 tests) 15ms
+ ✓ test/toast.test.tsx (6 tests) 118ms
+stderr | test/craft-focus-recall.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/craft-focus-recall.test.tsx (18 tests) 230ms
+ ✓ test/v2/context-slot-host.test.ts (12 tests) 6ms
+ ✓ test/order-time-row.test.tsx (8 tests) 112ms
+ ✓ test/flight-bar.test.tsx (10 tests) 54ms
+ ✓ test/v2/resource-meter.test.tsx (15 tests) 151ms
+stderr | test/unreachable.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/unreachable.test.tsx (4 tests) 133ms
+stderr | test/disc-sizes.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/disc-sizes.test.ts (8 tests) 4ms
+ ✓ test/galaxy-events-guide.test.tsx (7 tests) 242ms
+stderr | test/cosmetic-trial-flow.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/cosmetic-trial-flow.test.tsx (2 tests) 642ms
+   ✓ tries a store ring on either owned world, compares, returns to the same product and restores live data on ownership loss 589ms
+ ✓ test/recovery-boost.test.tsx (7 tests) 141ms
+stderr | test/monument-flights.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/monument-flights.test.tsx (4 tests) 118ms
+ ✓ test/admin-supporters.test.tsx (4 tests) 326ms
+ ✓ test/clan-support-contract.test.ts (5 tests) 9ms
+ ✓ test/wiki-sheet.test.tsx (6 tests) 555ms
+ ✓ test/verify-command.test.ts (13 tests) 695ms
+ ✓ test/v2/matchup-line.test.tsx (12 tests) 58ms
+ ✓ test/perf-session.test.ts (6 tests) 16ms
+stderr | test/focus-hook-order.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/focus-hook-order.test.tsx (2 tests) 156ms
+ ✓ test/colonization-state.test.ts (8 tests) 4ms
+ ✓ test/v2/freshness.test.tsx (25 tests) 98ms
+ ✓ test/settlement-block.test.ts (8 tests) 4ms
+ ✓ test/render-cost.test.ts (4 tests) 4ms
+ ✓ test/onboarding-skip.test.tsx (3 tests) 770ms
+   ✓ skipping the onboarding rehearsal > claims all four opening orders even when skipped immediately 702ms
+ ✓ test/v2/tokens.test.ts (25 tests) 20ms
+ ✓ test/own-craft-focus.test.ts (8 tests) 4ms
+ ✓ test/player-facing-copy.test.ts (159 tests) 53ms
+ ✓ test/stray-click.test.tsx (8 tests) 31ms
+ ✓ test/sheet-dismiss.test.tsx (7 tests) 109ms
+ ✓ test/v2/outline-rules.test.ts (6 tests) 5ms
+ ✓ test/clan-support-notice.test.ts (6 tests) 11ms
+ ✓ test/accordion-memory.test.ts (8 tests) 27ms
+ ✓ test/v2/research-constellation.test.tsx (8 tests) 412ms
+ ✓ test/clan-support-sheet.test.tsx (4 tests) 230ms
+ ✓ test/planet-surface.test.ts (7 tests) 6ms
+stderr | test/now-playing.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/now-playing.test.tsx (5 tests) 238ms
+ ✓ test/bloom-finite-guard.test.ts (8 tests) 18ms
+ ✓ test/planet-tier.test.tsx (11 tests) 498ms
+stderr | test/monument-names.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/monument-names.test.ts (11 tests) 77ms
+ ✓ test/meteor.test.ts (6 tests) 10ms
+ ✓ test/v2/store-bar.test.tsx (10 tests) 76ms
+ ✓ test/silent-space.test.tsx (6 tests) 158ms
+ ✓ test/v2/shortcuts.test.ts (10 tests) 24ms
+ ✓ test/brand-installed-pwa.test.ts (14 tests) 11ms
+ ✓ test/admin-perf.test.tsx (2 tests) 222ms
+stderr | test/quality-switch.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/quality-switch.test.tsx (4 tests) 213ms
+ ✓ test/v2/base-queues.test.tsx (5 tests) 188ms
+ ✓ test/v2/star-field.test.tsx (7 tests) 365ms
+ ✓ test/asteroid-contract.test.ts (13 tests) 10ms
+stderr | test/intergalactic-convoy-focus.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/intergalactic-convoy-focus.test.tsx (7 tests) 139ms
+ ✓ test/season-live.test.tsx (2 tests) 210ms
+ ✓ test/visual-harness.test.ts (9 tests) 4ms
+ ✓ test/academy-engagement.test.ts (4 tests) 4ms
+ ✓ test/v2/commander-card.test.tsx (7 tests) 44ms
+ ✓ test/research-clarity.test.ts (8 tests) 21ms
+stderr | test/launch-forecast-memo.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/launch-forecast-memo.test.tsx (1 test) 268ms
+ ✓ test/v2/room-bar.test.tsx (8 tests) 103ms
+stderr | test/radiation-focus.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/radiation-focus.test.tsx (5 tests) 145ms
+ ✓ test/v2/segmented.test.tsx (7 tests) 148ms
+ ✓ test/brand-loading.test.tsx (12 tests) 154ms
+ ✓ test/probe-scale.test.ts (9 tests) 5ms
+ ✓ test/hull-rank.test.ts (8 tests) 8ms
+ ✓ test/clan-support-fleet.test.tsx (4 tests) 146ms
+stderr | test/shield-instances.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/shield-instances.test.ts (6 tests) 5ms
+ ✓ test/cosmetic-assets.test.ts (2 tests) 50ms
+stderr | test/dyson-ladder.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/dyson-ladder.test.ts (5 tests) 4ms
+ ✓ test/death-star-colony-copy.test.ts (7 tests) 9ms
+ ✓ test/v2/bell-host.test.tsx (4 tests) 147ms
+ ✓ test/repair-copy.test.ts (14 tests) 8ms
+ ✓ test/icons.test.tsx (144 tests) 181ms
+ ✓ test/radiation-notice.test.ts (11 tests) 10ms
+ ✓ test/row-name-fit.test.tsx (3 tests) 59ms
+ ✓ test/v2/dock-rules.test.ts (6 tests) 5ms
+ ✓ test/v2/chat-host.test.tsx (7 tests) 112ms
+ ✓ test/v2/context-slot-rules.test.ts (7 tests) 4ms
+ ✓ test/asteroid-field-wakeup.test.tsx (7 tests) 26ms
+ ✓ test/v2/upgrade-card.test.tsx (5 tests) 145ms
+ ✓ test/convoy-engagement-placement.test.ts (5 tests) 4ms
+ ✓ test/range-band.test.tsx (6 tests) 83ms
+ ✓ test/v2/fleet-page-rules.test.ts (11 tests) 6ms
+stderr | test/strategic-interception.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/strategic-interception.test.ts (6 tests) 5ms
+stderr | test/sensor-shaders.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/sensor-shaders.test.ts (9 tests) 4ms
+ ✓ test/v2/slot-memory.test.ts (7 tests) 6ms
+ ✓ test/galaxy-events-contract.test.ts (4 tests) 7ms
+stderr | test/monument-model.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/monument-model.test.ts (11 tests) 8ms
+ ✓ test/clan-support-factor.test.ts (4 tests) 22ms
+ ✓ test/clan-support-errors.test.ts (22 tests) 12ms
+ ✓ test/clipboard.test.ts (5 tests) 14ms
+ ✓ test/interface-accessibility.test.tsx (7 tests) 213ms
+ ✓ test/v2/icons.test.tsx (47 tests) 21ms
+ ✓ test/loot-estimate.test.ts (5 tests) 4ms
+ ✓ test/payment-link-page.test.ts (3 tests) 18ms
+ ✓ test/v2/galaxy-corners.test.tsx (5 tests) 125ms
+ ✓ test/mining-view.test.ts (7 tests) 4ms
+ ✓ test/planet-loyalty.test.tsx (6 tests) 328ms
+ ✓ test/academy-storage.test.ts (5 tests) 13ms
+ ✓ test/v2/slot-suggestion.test.ts (5 tests) 23ms
+ ✓ test/sensor-reach-storage.test.tsx (9 tests) 27ms
+ ✓ test/rendezvous-marks.test.ts (6 tests) 5ms
+stderr | test/battle-visuals.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/battle-visuals.test.tsx (1 test) 199ms
+ ✓ test/fleet-clan-flag.test.ts (14 tests) 6ms
+stderr | test/radar-posts.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/radar-posts.test.ts (4 tests) 3ms
+ ✓ test/v2/shell-route.test.ts (7 tests) 4ms
+ ✓ test/formation-hull-instances.test.ts (4 tests) 4ms
+ ✓ test/exhaust-lift.test.ts (3 tests) 3ms
+ ✓ test/target-reading.test.tsx (3 tests) 105ms
+ ✓ test/repair-notice.test.ts (5 tests) 21ms
+ ✓ test/v2/bell-sheet.test.tsx (5 tests) 129ms
+ ✓ test/view-memo.test.ts (5 tests) 4ms
+ ✓ test/rungs.test.tsx (8 tests) 41ms
+ ✓ test/target-estimates.test.ts (7 tests) 4ms
+ ✓ test/room.test.ts (3 tests) 6ms
+stderr | test/academy-replay.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/academy-replay.test.tsx (1 test) 67ms
+ ✓ test/gated-read.test.ts (4 tests) 8ms
+ ✓ test/v2/media.test.tsx (5 tests) 20ms
+ ✓ test/skin-preview-still.test.tsx (2 tests) 32ms
+ ✓ test/planet-asset-versions.test.ts (2 tests) 25ms
+stderr | test/skins-purchase-error.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/skins-purchase-error.test.tsx (2 tests) 188ms
+stderr | test/route-geometry.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/route-geometry.test.tsx (5 tests) 19ms
+ ✓ test/cosmetic-trial.test.ts (4 tests) 4ms
+stderr | test/asteroid-visuals.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/asteroid-visuals.test.ts (6 tests) 5ms
+ ✓ test/ux-writing-errors.test.ts (24 tests) 14ms
+stderr | test/planet-model-cache.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/planet-model-cache.test.ts (4 tests) 15ms
+ ✓ test/long-test-policy.test.ts (6 tests) 4016ms
+   ✓ excludes the server snowball audit without explicit opt-in (undefined) 640ms
+   ✓ excludes the server snowball audit without explicit opt-in (0) 653ms
+   ✓ excludes the server snowball audit without explicit opt-in (true) 823ms
+   ✓ permits the snowball audit when the dedicated long-test command opts in 658ms
+   ✓ keeps direct or recursive simulation test discovery empty without explicit opt-in 622ms
+   ✓ discovers the simulation suite only with explicit opt-in 619ms
+ ✓ test/i18n-keys-used.test.ts (2 tests) 30ms
+ ✓ test/duration-precise.test.ts (11 tests) 7ms
+ ✓ test/dominion-schema.test.ts (3 tests) 5ms
+stderr | test/skins-shopier-missing.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/skins-shopier-missing.test.tsx (2 tests) 205ms
+ ✓ test/v2/fonts.test.ts (4 tests) 4ms
+ ✓ test/v2/class-emblem.test.tsx (8 tests) 72ms
+ ✓ test/rewards-attention.test.tsx (2 tests) 125ms
+ ✓ test/fleet-groups.test.ts (5 tests) 4ms
+ ✓ test/brand-recall-state.test.ts (5 tests) 7ms
+ ✓ test/v2/right-cover.test.ts (7 tests) 4ms
+ ✓ test/scene-boundaries.test.ts (5 tests) 4ms
+ ✓ test/v2/charge-tally.test.tsx (5 tests) 61ms
+ ✓ test/movement-error-copy.test.ts (12 tests) 8ms
+ ✓ test/store-full-tone.test.tsx (1 test) 110ms
+ ✓ test/v2/use-request.test.ts (4 tests) 20ms
+ ✓ test/cosmetic-plume.test.ts (4 tests) 8ms
+ ✓ test/report-scene-rules.test.ts (4 tests) 4ms
+ ✓ test/radiation-hp-preview.test.tsx (2 tests) 85ms
+ ✓ test/v2/need-bar.test.tsx (4 tests) 82ms
+ ✓ test/flight-rate.test.ts (10 tests) 4ms
+ ✓ test/rich-content.test.tsx (2 tests) 89ms
+ ✓ test/visual-baseline.test.ts (5 tests) 3ms
+ ✓ test/chat-type-scale.test.tsx (3 tests) 3ms
+stderr | test/planet-label-identity.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/planet-label-identity.test.tsx (4 tests) 77ms
+ ✓ test/planet-occlusion.test.ts (6 tests) 6ms
+stderr | test/v2/gallery.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/v2/gallery.test.tsx (7 tests) 433ms
+ ✓ test/radiation-volume.test.ts (3 tests) 104ms
+ ✓ test/ship-cosmetics.test.ts (3 tests) 3ms
+ ✓ test/galaxy-targets.test.ts (4 tests) 3ms
+ ✓ test/minute-tick.test.ts (3 tests) 4ms
+ ✓ test/v2/base-switch.test.tsx (2 tests) 93ms
+ ✓ test/research-queue-orders.test.ts (3 tests) 3ms
+ ✓ test/target-reading-pirate.test.tsx (1 test) 20ms
+ ✓ test/clan-rival-cache.test.tsx (1 test) 21ms
+ ✓ test/vault-depth-row.test.tsx (3 tests) 55ms
+ ✓ test/sharpness.test.ts (1 test) 44ms
+ ✓ test/day-clock.test.ts (4 tests) 19ms
+ ✓ test/ship-skin-drive.test.ts (2 tests) 7ms
+ ✓ test/opening-cover.test.tsx (4 tests) 22ms
+ ✓ test/raid-recall-notice.test.ts (2 tests) 19ms
+stderr | test/galaxy-fault-icon.test.tsx
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/galaxy-fault-icon.test.tsx (2 tests) 28ms
+ ✓ test/chat-time.test.ts (3 tests) 6ms
+ ✓ test/fps-meter.test.ts (4 tests) 3ms
+ ✓ test/intel-refresh.test.tsx (1 test) 22ms
+stderr | test/wreck-focus.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/wreck-focus.test.ts (2 tests) 2ms
+ ✓ test/v2/bell-rules.test.ts (4 tests) 7ms
+ ✓ test/chat-recognition-schema.test.ts (9 tests) 6ms
+ ✓ test/strategic-progress.test.ts (4 tests) 3ms
+ ✓ test/cosmetic-trial-shop.test.tsx (1 test) 170ms
+ ✓ test/afford.test.ts (4 tests) 3ms
+ ✓ test/clan-target-decision.test.ts (2 tests) 3ms
+ ✓ test/class-names.test.ts (2 tests) 7ms
+ ✓ test/academy-session.test.tsx (1 test) 70ms
+ ✓ test/skin-store.test.ts (3 tests) 15ms
+ ✓ test/v2/base-works.test.ts (3 tests) 4ms
+stderr | test/pirate-presentation.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/pirate-presentation.test.ts (2 tests) 3ms
+ ✓ test/research-need.test.ts (4 tests) 3ms
+ ✓ test/cosmetic-trial-bar.test.tsx (1 test) 86ms
+ ✓ test/pending-pace.test.ts (3 tests) 8ms
+ ✓ test/volley-occlusion.test.ts (4 tests) 3ms
+ ✓ test/no-reduced-motion.test.ts (1 test) 86ms
+ ✓ test/academy-visual-fixture.test.ts (2 tests) 3ms
+ ✓ test/cosmetic-model.test.ts (1 test) 6ms
+ ✓ test/fps-readout.test.tsx (2 tests) 30ms
+ ✓ test/language-switch.test.tsx (1 test) 122ms
+ ✓ test/cosmetic-effects.test.ts (2 tests) 2ms
+ ✓ test/fault-blocks.test.ts (3 tests) 2ms
+ ✓ test/skin-asset-boundary.test.tsx (1 test) 26ms
+ ✓ test/fleet-v2-web-contract.test.ts (2 tests) 4ms
+ ✓ test/asteroid-signal.test.ts (2 tests) 3ms
+ ✓ test/frame-allocations.test.ts (1 test) 2ms
+ ✓ test/servers-capacity-copy.test.ts (2 tests) 4ms
+ ✓ test/format-factor.test.ts (2 tests) 16ms
+ ✓ test/clan-support-flight.test.ts (1 test) 4ms
+stderr | test/perf-panel-code.test.ts
+THREE.WARNING: Multiple instances of Three.js being imported.
+
+ ✓ test/perf-panel-code.test.ts (1 test) 2ms
+ ✓ test/rank-badge.test.tsx (3 tests) 30ms
+ ✓ test/pirate-refusal-copy.test.ts (1 test) 3ms
+ ✓ test/cosmetic-trial-cover.test.ts (1 test) 2ms
+ ✓ test/wiki-routing.test.ts (28 tests) 244ms
+
+ Test Files  407 passed | 1 skipped (408)
+      Tests  5626 passed | 29 skipped (5655)
+   Start at  01:58:55
+   Duration  634.26s (transform 9.43s, setup 128.29s, collect 98.64s, tests 187.41s, environment 146.24s, prepare 22.92s)
+
+
+Recorded exit code: 0; expected: 0

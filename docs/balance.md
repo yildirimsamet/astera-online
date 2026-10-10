@@ -647,9 +647,13 @@ quiet hours   Türkiye 00:00–08:00 target 1 of 5 starts, hard cap 2; not a bla
 ```
 
 Current dynamic seasons use **1 rock per active commander per hour**. Fixed shower windows in
-Türkiye time are 12:30–13:30 ×2 and 20:00–21:00 ×3 on weekdays; 13:00–14:00 ×3 and
-20:00–21:00 ×5 on weekends. These values are stamped only into unopened occurrences;
-already-open hours and windows keep their stored generation inputs.
+Türkiye time use definition v11 (owner approved 2026-10-09): 12:30–13:00 ×2 and
+20:00–20:30 ×3 on weekdays; 13:00–13:30 ×3 and 20:00–20:30 ×5 on weekends. This halves
+v10's multipliers while retaining its 30-minute windows. Live seasons adopt the complete
+future calendar from the next hour boundary; already-planned hours keep their stored lanes.
+At supply 35, a weekday evening hour opens 53 shower + 18 normal rocks = 71 (v10: 123).
+Generation inputs are now frozen with each hour; old null-snapshot rows read immutable v1
+settings. Supply smoothing excludes samples older than the preceding five actual hours.
 
 The current asteroid ore ladder is half its prior value at every level. Pirate ship capture
 is 40% / 28% / 16% / 12% by level, or 30.12% across the level distribution on decisive wins.

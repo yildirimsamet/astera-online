@@ -22,6 +22,7 @@ const sendBody = z.object({ originPlanetId: z.string().uuid(), purpose: z.enum([
   acknowledgeShieldLoss: z.boolean().default(false), acknowledgeRadiationLoss: z.boolean().default(false),
 }).strict();
 const recallBody = z.object({ selections: z.array(z.object({ lotId: z.string().uuid(), count: z.number().int().positive().max(2_147_483_647) }).strict()).nonempty().max(10_000) }).strict();
+const recallCommand = z.union([recallBody, z.object({ all: z.literal(true) }).strict()]);
 const probeBody = z.object({ originPlanetId: z.string().uuid() }).strict();
 const keyOf = (req: FastifyRequest): string => z.string().min(8).max(128).parse(req.headers['idempotency-key']);
 
@@ -94,7 +95,7 @@ export function registerMonumentRoutes(app: FastifyInstance): void {
   });
   app.post('/api/monuments/waves/:waveId/recall', { preHandler: requireAuth }, async (req) => {
     const { waveId } = waveParam.parse(req.params);
-    const body = recallBody.parse(req.body);
+    const body = recallCommand.parse(req.body);
     const self = await reader(req);
     return idempotentMutation(app.db, { playerId: self.playerId, operation: 'monument.recall', key: keyOf(req), body: { waveId, ...body }, now: self.at }, async (tx) => {
       const [wave] = await tx.select({ monumentId: monumentWaves.monumentId }).from(monumentWaves)

@@ -877,6 +877,18 @@ function fixedEndAt<Effect>(
   return startsAt + window.endsAtLocalMinute - window.startsAtLocalMinute;
 }
 
+/** The authored end of a window, shared by planning and the operator restamp guard. */
+export function plannedEndAtFor(
+  kind: GalaxyEventKind,
+  startsAtUnixMinute: number,
+  config: GalaxyEventsConfig,
+): number {
+  const definition = config.definitions[kind];
+  return definition.schedule === 'RANDOM_DAILY'
+    ? startsAtUnixMinute + definition.durationMinutes
+    : fixedEndAt<unknown>(startsAtUnixMinute, config, definition);
+}
+
 /**
  * Turn one kind's start instants into its occurrence rows.
  *

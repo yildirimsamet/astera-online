@@ -629,6 +629,8 @@ export const notifications = {
     INEFFECTIVE: 'Einschlag des Todessterns · keine Auswirkung',
   },
   colonyCaptured: 'Kolonie gesichert · Besatzungsschutz ist aktiv',
+  colonyAbandoned: "Du hast {{planet}} aufgegeben · die Kolonie ist jetzt neutral",
+  colonyAbandonedUnnamed: "Du hast eine Kolonie aufgegeben · sie ist jetzt neutral",
   colonyLost: "{{planet}} ist abgefallen und neutral geworden",
   colonyLostUnnamed: "Eine Kolonie ist abgefallen und neutral geworden",
   deathStarColony: "EMP-Treffer · Loyalität der Kolonie {{before}} % → {{after}} %",

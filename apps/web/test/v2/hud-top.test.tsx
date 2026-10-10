@@ -66,6 +66,15 @@ beforeEach(() => {
 });
 
 describe('the wired top of the shell', () => {
+  it('opens the shop directly from the brand strip without routing through the commander menu', async () => {
+    const onShop = vi.fn();
+    const on = handlers();
+    render(<HudTop commander="Samet" {...on} onShop={onShop} />, { wrapper: ToastProvider });
+    await userEvent.click(screen.getByRole('button', { name: 'Shop' }));
+    expect(onShop).toHaveBeenCalledTimes(1);
+    expect(on.onCommander).not.toHaveBeenCalled();
+  });
+
   it('includes native monument flights on the Now line without a planet mission', () => {
     planet = { ...planet, rulesetVersion: 16 };
     const now = Date.now(), arriveAt = new Date(now + 9 * 60_000), id = '00000000-0000-4000-8000-000000000001';

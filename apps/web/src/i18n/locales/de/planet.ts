@@ -4,6 +4,37 @@
  */
 
 export const planet = {
+  abandon: {
+    "action": "Kolonie aufgeben",
+    "title": "Diese Kolonie aufgeben?",
+    "cancel": "Kolonie behalten",
+    "confirm": "Ja, Kolonie aufgeben",
+    "pending": "Wird aufgegeben…",
+    "irreversible": "Diese Kolonie wird neutral und gibt einen Kolonieplatz frei. Du kannst diese Aktion nicht rückgängig machen.",
+    "keeps": "Gebäude, Satelliten, Ressourcen und Bodenverteidigung bleiben auf dem Planeten. Bereite Todessterne und Abfangladungen bleiben ebenfalls dort.",
+    "ships": "Stationierte Schiffe und Schiffe in Reparatur werden auf deine Hauptstadt verlegt. Ihr Schaden bleibt erhalten.",
+    "queue": "Bau-, Produktions- und Reparaturaufträge werden ohne Erstattung abgebrochen.",
+    "rule": "Alle Flüge und Missionen dieser Kolonie müssen zuerst abgeschlossen sein.",
+    "checking": "Aktive Missionen werden geprüft…",
+    "blocked": "Du kannst diese Kolonie noch nicht aufgeben",
+    "recheck": "Erneut prüfen",
+    "checkFailed": "Aktive Missionen konnten nicht geprüft werden. Prüfe erneut, wenn die Verbindung wieder verfügbar ist.",
+    "success": "Du hast {{planet}} aufgegeben · die Kolonie ist jetzt neutral",
+    "reasons": {
+      "FLIGHT": "Ein Flug mit Verbindung zu dieser Kolonie ist noch aktiv. Warte, bis er abgeschlossen ist.",
+      "MINING": "Eine Bergbau- oder Bergungsmission ist noch aktiv. Warte auf die Rückkehr der Schiffe.",
+      "PIRATE": "Ein Piratenangriff ist noch aktiv. Warte auf die Rückkehr der Flotte.",
+      "TRADE": "Eine Handelsmission ist noch aktiv. Warte auf die Rückkehr der Schiffe.",
+      "CONVOY": "Eine intergalaktische Konvoimission ist noch aktiv. Warte auf die Rückkehr der Flotte.",
+      "CLAN_WAR": "Schiffe dieser Kolonie nehmen an einer gemeinsamen Clanoperation teil. Rufe sie zurück oder warte auf ihre Rückkehr.",
+      "CLAN_SUPPORT": "Unterstützungsschiffe fliegen, sind stationiert oder kehren zurück. Rufe gesendete Unterstützung zurück oder schicke stationierte Unterstützung heim. Warte dann auf die Landung.",
+      "MONUMENT": "Eine Monumentflotte oder Sonde dieser Kolonie ist unterwegs. Rufe die Flotte zurück oder warte auf die Sonde.",
+      "STRATEGIC": "Strategische Produktion, ein Angriff oder ein Abfangvorgang ist noch aktiv. Warte auf den Abschluss.",
+      "AWAY_SHIPS": "Einige Schiffe dieser Kolonie sind noch unterwegs. Warte, bis alle zurückkehren.",
+      "RECOVERY": "Diese Kolonie erholt sich oder steht unter Besatzungsschutz. Warte auf das Ende dieses Zeitraums.",
+      "SECESSION": "Die Loyalität dieser Kolonie ist auf null gefallen und sie löst sich ab. Warte auf die Aktualisierung des Besitzes."
+    }
+  },
   recovery: "Wiederherstellung läuft · Systeme kehren in {{duration}} zurück",
   empActive: "EMP · Aegis bei null und für {{duration}} ohne Regeneration; Bodenverteidigungen feuern nicht und erleiden keinen Schaden.",
   capacityNext: "Mit {{name}}: {{total}} pro Welt",

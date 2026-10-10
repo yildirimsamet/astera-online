@@ -55,6 +55,7 @@ function harness(routes: Route) {
 
     const key = Object.keys(routes).find((route) => path.endsWith(route));
     const body = key === undefined ? REFUSED : routes[key];
+    if (body instanceof Response) return Promise.resolve(body.clone());
     if (body === REFUSED || body === undefined) {
       return Promise.resolve(
         new Response(JSON.stringify({ error: 'UNAUTHENTICATED', message: 'Sign in first' }), {
@@ -118,6 +119,47 @@ describe('the session machine', () => {
     const { wrapper } = harness({});
     const { result } = renderHook(() => useSession(), { wrapper });
     expect(result.current.session.phase).toBe('ready');
+    await waitFor(() => { expect(result.current.session.phase).toBe('landing'); });
+    expect(window.sessionStorage.getItem('astera:ready-session')).toBeNull();
+  });
+
+  it.each(['/api/auth/refresh', '/api/auth/me'] as const)('keeps the resumed galaxy when %s is rate limited', async (route) => {
+    const remembered = JSON.stringify(placed['/api/auth/me']);
+    window.sessionStorage.setItem('astera:ready-session', remembered);
+    const { wrapper, api, queries } = harness({ ...placed, [route]: new Response(JSON.stringify({
+      error: 'RATE_LIMITED', message: 'Try again in 12 seconds', params: { seconds: 12 },
+    }), { status: 429 }) });
+    queries.setQueryData(['planet'], { name: 'Already loaded galaxy' });
+    const operation = vi.spyOn(api, route === '/api/auth/refresh' ? 'restore' : 'me');
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    await waitFor(() => { expect(operation).toHaveBeenCalled(); });
+    await act(async () => { await Promise.allSettled([operation.mock.results[0]?.value]); });
+    expect(result.current.session.phase).toBe('ready');
+    expect(window.sessionStorage.getItem('astera:ready-session')).toBe(remembered);
+    expect(queries.getQueryData(['planet'])).toEqual({ name: 'Already loaded galaxy' });
+  });
+
+  it.each(['/api/auth/refresh', '/api/auth/me'] as const)('shows a retryable rate limit on a cold %s and recovers without signing in', async (route) => {
+    const routes: Route = { ...placed, [route]: new Response(JSON.stringify({
+      error: 'RATE_LIMITED', message: 'Try again in 12 seconds', params: { seconds: 12 },
+    }), { status: 429 }) };
+    const { wrapper, calls } = harness(routes);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => {
+      expect(result.current.session).toEqual({ phase: 'blocked', message: i18n.t('errors.RATE_LIMITED', { seconds: 12 }) });
+    });
+
+    routes[route] = placed[route];
+    act(() => { result.current.retry(); });
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+    expect(calls).not.toContain('POST /api/auth/login');
+  });
+
+  it('removes a resumed galaxy when the profile also rejects the renewed credential', async () => {
+    window.sessionStorage.setItem('astera:ready-session', JSON.stringify(placed['/api/auth/me']));
+    const { wrapper } = harness({ ...placed, '/api/auth/me': REFUSED });
+    const { result } = renderHook(() => useSession(), { wrapper });
     await waitFor(() => { expect(result.current.session.phase).toBe('landing'); });
     expect(window.sessionStorage.getItem('astera:ready-session')).toBeNull();
   });
@@ -461,12 +503,8 @@ describe('the session machine', () => {
 
     const { result } = renderHook(() => useSession(), { wrapper });
 
-    // `restore()` swallows its own failure and reports "no session", which is the
-    // right answer for a 401 and the wrong one for a dead upstream — so the phase
-    // that matters here is that the player is offered the door rather than an
-    // error they cannot act on.
     await waitFor(() => {
-      expect(result.current.session.phase).toBe('landing');
+      expect(result.current.session).toEqual({ phase: 'blocked', message: i18n.t('errors.unreachable') });
     });
   });
 });

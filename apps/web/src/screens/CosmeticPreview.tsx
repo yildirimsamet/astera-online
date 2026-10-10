@@ -10,11 +10,12 @@ import { HULL_MODEL, MODEL_FACING, planetModel } from '../ui/assets.js';
 import type { Facing } from '../galaxy/model.js';
 import { normalizedCosmeticModel } from '../galaxy/cosmeticModel.js';
 import { ShipSkinDrive } from './ShipSkinDrive.jsx';
+import { ProbeSkinBeam } from '../galaxy/ProbeSkinBeam.js';
 
-export function CosmeticModel({ url, facing }: { url: string; facing?: Facing }) {
+export function CosmeticModel({ url, facing, still = false }: { url: string; facing?: Facing; still?: boolean }) {
   const { scene } = useGLTF(url, false);
   const model = useMemo(() => normalizedCosmeticModel(scene, facing), [scene, facing]);
-  return <primitive object={model} />;
+  return <group><primitive object={model} /><ProbeSkinBeam url={url} bodySize={1.7} still={still} /></group>;
 }
 
 function PreviewReady({ onReady }: { onReady: () => void }) {
@@ -27,6 +28,7 @@ export function CosmeticPreview({ id, still = false, inspectionView, productCard
   const { t } = useTranslation();
   const item = cosmeticById(id);
   const shipId = SHIP_SKIN_IDS.find(skinId => skinId === id);
+  const ufo = id === 'probe-ufo';
   const [readyId, setReadyId] = useState<string | null>(null);
   const markReady = useCallback(() => { setReadyId(id); }, [id]);
   if (!item) return null;
@@ -38,7 +40,7 @@ export function CosmeticPreview({ id, still = false, inspectionView, productCard
       <SkinAssetBoundary key={id} fallback={<Html center>{t('skins.modelUnavailable')}</Html>}>
         <Suspense fallback={<Html center>…</Html>}>
           <PreviewReady key={id} onReady={markReady} />
-          <Bounds fit={Boolean(item.model) || item.category === 'ENGINE'} observe clip margin={inspectionView ? 1.3 : productCard ? .8 : 1} maxDuration={0}>
+          <Bounds fit={Boolean(item.model) || item.category === 'ENGINE'} observe clip margin={inspectionView || ufo ? 1.3 : productCard ? .8 : 1} maxDuration={0}>
           {item.category === 'RING' ? <group>
             <CosmeticModel url={planetModel('cosmetic-preview', 'full')} />
             <mesh scale={1.017}><sphereGeometry args={[.87, 48, 32]} /><meshBasicMaterial color="#497ba2" transparent opacity={.075} side={THREE.BackSide} depthWrite={false} /></mesh>
@@ -48,13 +50,13 @@ export function CosmeticPreview({ id, still = false, inspectionView, productCard
             <CosmeticEngine id={id} still={still} />
           </group> : item.category === 'FLAG' ? <group scale={1.55}><CosmeticFlag id={id} still={still} /></group>
             : item.model ? <group scale={1.45} rotation={[0, shipId && !inspectionView ? -.75 : 0, 0]}>
-              <CosmeticModel url={item.previewModel ?? item.model} facing={shipId ? MODEL_FACING[item.model] : undefined} />
+              <CosmeticModel url={item.previewModel ?? item.model} facing={shipId ? MODEL_FACING[item.model] : undefined} still={still} />
               {shipId && <group scale={1.7}><ShipSkinDrive id={shipId} still={still} /></group>}
             </group> : null}
           </Bounds>
         </Suspense>
       </SkinAssetBoundary>
-      <OrbitControls makeDefault enablePan={false} enableDamping autoRotate={!still && item.category !== 'ENGINE'} autoRotateSpeed={.4} minDistance={shipId ? 1.5 : 3.5} maxDistance={inspectionView ? 14 : 8} />
+      <OrbitControls makeDefault enablePan={false} enableDamping autoRotate={!still && item.category !== 'ENGINE'} autoRotateSpeed={.4} minDistance={shipId ? 1.5 : 3.5} maxDistance={inspectionView ? 14 : ufo ? 12 : 8} />
     </Canvas>
   </div>;
 }

@@ -124,9 +124,11 @@ describe('the skin store', () => {
     expect(onPurchase).toHaveBeenCalledWith('planet-japan');
   });
 
-  it('keeps the Paddle press waiting, not vanished, while its checkout is being created', () => {
+  it('keeps the payment press visible with explicit progress while its checkout is being created', () => {
     shop({ pending: true });
-    expect(screen.getByRole('button', { name: /buy.*€2\.99/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Opening checkout…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Opening checkout…' })).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getAllByText('€2.99').length).toBeGreaterThan(0);
     expect(shopier()).toBeInTheDocument();
   });
 
@@ -393,7 +395,7 @@ describe('skin inventory', () => {
     expect(screen.queryByRole('button', { name: /^planets/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^clan standards/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('group')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('menu.skinsShopLabel') }));
+    fireEvent.click(screen.getByRole('tab', { name: i18n.t('menu.skinsShopLabel') }));
     expect(onOpenShop).toHaveBeenCalledTimes(1);
   });
 

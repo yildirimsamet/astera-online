@@ -162,15 +162,17 @@ export function useSession() {
       }
       await settle(await api.me());
     } catch (err) {
-      forgetReady();
-      setResumed(false);
-      // A cold start that cannot reach the API is not a signed-out player, and
-      // showing them the login form would teach them their account was lost.
-      if (err instanceof ApiError && err.code === 'UNREACHABLE') {
-        setSession({ phase: 'blocked', message: messageOf(err) });
+      if (err instanceof ApiError && err.status === 401) {
+        forgetReady();
+        setResumed(false);
+        setSession({ phase: 'landing', error: messageOf(err) });
         return;
       }
-      setSession({ phase: 'landing', error: messageOf(err) });
+      // Temporary refresh/profile failures must not eject a resumed commander
+      // or discard their world. Existing queries can recover on their next read;
+      // a cold visitor gets the localized failure and the existing retry action.
+      setSession((current) => current.phase === 'ready'
+        ? current : { phase: 'blocked', message: messageOf(err) });
     }
   }, [api, settle]);
 

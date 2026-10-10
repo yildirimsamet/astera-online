@@ -391,6 +391,8 @@ export const leaderboard = {
 export const chat = {
   previousSeasonPlace: "Önceki sezon · {{rank}}. sıra",
   supporterBadge: "Astera destekçisi",
+  supporterExplanation: "Astera Online'a destek veren oyuncu.",
+  previousSeasonExplanation: "Önceki sezonu {{rank}}. sırada tamamladı.",
   eyebrow: 'Canlı kanallar',
   title: 'Sohbet',
   launcher: 'Galaksi sohbetini aç',

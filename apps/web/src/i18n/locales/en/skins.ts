@@ -1,4 +1,10 @@
 export const skins = {
+  showcaseDescription: 'Planet looks, ship skins and effects.',
+  priceLoading: 'Loading prices…',
+  pricingError: 'Prices could not be loaded. Retry to see the current prices.',
+  priceUnavailable: 'Price unavailable',
+  retryPrices: 'Retry prices',
+  checkoutStarting: 'Opening checkout…',
   "productengine-titan": "Titan Drive",
   "storytitanENGINE": "Blue-white ignition, turbulent orange combustion and a fading ember trail.",
   "shipFits": "For {{hull}}",
@@ -75,7 +81,7 @@ export const skins = {
   "storysingularityFLAG": "A horned skull watches from a violet, blade-cut standard.",
   "storyvanguardFLAG": "A classic standard for a united fleet.",
   "storyorbitFLAG": "An orbital insignia for the commanders who hold the line.",
-  "storyufoPROBE": "Fine ice-blue panel lights and warm gold details across a metallic saucer.",
+  "storyufoPROBE": "Fine ice-blue panel lights and gold details across a metallic saucer. A soft white beam fans out beneath it.",
   openInventory: 'Your inventory · {{count}} owned',
   /** The store sells (owner, 2026-09-25): price, press, the set, and only true claims. */
   premium: 'Premium',

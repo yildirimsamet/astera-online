@@ -4,6 +4,37 @@
  */
 
 export const planet = {
+  abandon: {
+    "action": "Abandonar colonia",
+    "title": "¿Abandonar esta colonia?",
+    "cancel": "Conservar colonia",
+    "confirm": "Sí, abandonar colonia",
+    "pending": "Abandonando…",
+    "irreversible": "Esta colonia se vuelve neutral y libera una plaza de colonia. No puedes deshacer esta acción.",
+    "keeps": "Los edificios, satélites, recursos y defensas terrestres permanecen en el planeta. Las Estrellas de la Muerte listas y las cargas interceptoras también se quedan.",
+    "ships": "Las naves estacionadas y en reparación se trasladan a tu capital. Conservan sus daños.",
+    "queue": "Las órdenes de construcción, producción y reparación se cancelan sin reembolso.",
+    "rule": "Todos los vuelos y misiones relacionados con esta colonia deben terminar primero.",
+    "checking": "Comprobando misiones activas…",
+    "blocked": "Todavía no puedes abandonar esta colonia",
+    "recheck": "Comprobar de nuevo",
+    "checkFailed": "No se pudieron comprobar las misiones activas. Inténtalo cuando vuelva la conexión.",
+    "success": "Has abandonado {{planet}} · la colonia ahora es neutral",
+    "reasons": {
+      "FLIGHT": "Un vuelo relacionado con esta colonia sigue activo. Espera a que termine.",
+      "MINING": "Una misión minera o de recuperación sigue activa. Espera a que vuelvan las naves.",
+      "PIRATE": "Un ataque a piratas sigue activo. Espera a que vuelva la flota.",
+      "TRADE": "Una misión comercial sigue activa. Espera a que vuelvan las naves.",
+      "CONVOY": "Una misión de convoy intergaláctico sigue activa. Espera a que vuelva la flota.",
+      "CLAN_WAR": "Esta colonia tiene naves en una operación conjunta del clan. Retíralas o espera a que regresen.",
+      "CLAN_SUPPORT": "Hay naves de apoyo viajando, estacionadas o regresando. Retira el apoyo enviado o devuelve el recibido y espera a que aterrice.",
+      "MONUMENT": "Una flota o sonda de esta colonia está en una misión de monumento. Retira la flota o espera a la sonda.",
+      "STRATEGIC": "Una producción estratégica, ataque o interceptación sigue activa. Espera a que termine.",
+      "AWAY_SHIPS": "Algunas naves de esta colonia siguen fuera. Espera a que regresen todas.",
+      "RECOVERY": "Esta colonia se recupera o tiene protección de ocupación. Espera a que termine ese período.",
+      "SECESSION": "La lealtad de esta colonia ha llegado a cero y se está separando. Espera la actualización de propiedad."
+    }
+  },
   recovery: "Recuperación en curso · los sistemas regresan en {{duration}}",
   empActive: "EMP · Égida a cero y sin regeneración durante {{duration}}; las defensas terrestres no disparan ni reciben daño.",
   capacityNext: "Con {{name}}: {{total}} por mundo",

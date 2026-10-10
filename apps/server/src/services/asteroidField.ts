@@ -3,10 +3,12 @@ import {
   asteroidActive,
   orbitDiscoveredAt,
   generateAsteroidHour,
+  LEGACY_ASTEROID_GENERATION,
   generateAsteroidSchedule,
   nextAsteroidDiscoveryAt,
   withAsteroidShowerLanes,
   type AsteroidHourLane,
+  type AsteroidGeneration,
   type AsteroidSpec,
   type PlannedGalaxyEvent,
   type SensorEpoch,
@@ -146,9 +148,11 @@ export function privateAsteroidHour(
     hourOrdinal: number;
     lanes: readonly AsteroidHourLane[];
     levelWeights: readonly number[];
+    generation?: AsteroidGeneration;
   },
 ): AsteroidSpec[] {
-  const cacheKey = `${key}:${String(hour.hourOrdinal)}:${JSON.stringify(hour.lanes)}:${JSON.stringify(hour.levelWeights)}`;
+  const generation = hour.generation ?? LEGACY_ASTEROID_GENERATION;
+  const cacheKey = `${key}:${String(hour.hourOrdinal)}:${JSON.stringify(hour.lanes)}:${JSON.stringify(hour.levelWeights)}:${JSON.stringify(generation)}`;
   const cached = hourCache.get(cacheKey);
   if (cached) {
     hourCache.delete(cacheKey);
@@ -159,6 +163,7 @@ export function privateAsteroidHour(
     hourOrdinal: hour.hourOrdinal,
     lanes: hour.lanes,
     levelWeights: hour.levelWeights,
+    generation,
     rng: dynamicHourRng(key, hour.hourOrdinal),
     isotopeSeed: keyedRng(key).isotopeSeed,
   });
@@ -194,6 +199,7 @@ export function composeSeasonAsteroidField(input: {
     hourOrdinal: number;
     lanes: readonly AsteroidHourLane[];
     levelWeights: readonly number[];
+    generation?: AsteroidGeneration;
   }[];
   nowMinutes: number;
   lookbackMinutes: number;

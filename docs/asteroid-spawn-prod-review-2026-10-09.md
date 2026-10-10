@@ -232,6 +232,11 @@ sabitlenmeli; yeni değerler yalnız yeni saatlere uygulanmalı.
 
 **Doğrulama**
 
+Sonraki owner isteğiyle gerçek PostgreSQL ve worker üzerinden yerel tekrar üretim yapıldı.
+Bugünkü arz davranışı ve üç uygulama açığının ayrı kanıtları,
+[yerel tekrar üretim raporunda](asteroid-spawn-local-repro-2026-10-09.md) ve tekrar
+çalıştırılabilir diagnostic testlerinde bulunuyor.
+
 - Saf kurallardaki odaklı beş dosya: 70/70 test geçti.
 - Yerel deterministik kontroller: v9/v10 toplamları, yanlış süreli restamp örneği,
   özdeş çakışmanın dinamik üretimi katlamaması, nüfus düşüşü ve ore değişimiyle yeniden

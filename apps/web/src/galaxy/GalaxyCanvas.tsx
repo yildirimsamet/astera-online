@@ -1189,9 +1189,8 @@ function Labels({
               */}
               {claimTag(claimLabelOf(node, serverNow()), t)}
             </span>}
-            {!detail && <GalaxyPlanetName node={node} compact />}
-            <GalaxyCommanderName node={node} compact={!detail} />
-            {detail && <GalaxyPlanetName node={node} />}
+            <GalaxyCommanderName node={node} />
+            <GalaxyPlanetName node={node} compact={!detail} />
             {/*
               A RECORD SAYS WHEN IT WAS TAKEN, AND WHAT IT IS. D127 · D151.
 
@@ -1231,7 +1230,7 @@ function Labels({
 export function GalaxyPlanetName({ node, compact = false }: { node: PlanetNode; compact?: boolean }) {
   const { t } = useTranslation();
   return (
-    <span className={`${compact ? `font-v2-ui text-caption font-semibold ${node.isOwned ? 'text-v2-self' : 'text-v2-ink'}` : 'legend text-micro'} flex max-w-full items-center gap-1.5`}>
+    <span className={`${compact ? 'font-v2-ui' : 'legend'} text-micro font-normal text-v2-ink-2 flex max-w-full items-center gap-1.5`}>
       <span className="truncate">{node.name}</span>
       {node.isOwned && node.faulty ? (
         <span
@@ -1248,10 +1247,10 @@ export function GalaxyPlanetName({ node, compact = false }: { node: PlanetNode; 
 }
 
 /** The flag is the same earned/frozen identity as the commander printed beside it. */
-export function GalaxyCommanderName({ node, compact = false }: { node: PlanetNode; compact?: boolean }) {
+export function GalaxyCommanderName({ node }: { node: PlanetNode }) {
   const { i18n } = useTranslation();
   if (node.intel === 'UNKNOWN' || node.kind === 'NEUTRAL' || !node.owner) return null;
-  return <span className={`${compact ? 'font-v2-ui text-micro text-v2-ink-2' : `name text-caption ${node.isClanmate || node.stance === 'window' ? 'text-opportunity' : 'text-bone'}`} flex max-w-full items-center gap-1.5`}>
+  return <span className="name text-caption text-bone flex max-w-full items-center gap-1.5">
     {node.dominionRank ? <RankBadge rank={node.dominionRank} /> : null}
     <span className="min-w-0 truncate">{commanderLabel(node.owner, node.clan?.tag)}</span>
     {node.country && <Flag code={node.country} language={i18n.language} size="small" className="shrink-0" />}

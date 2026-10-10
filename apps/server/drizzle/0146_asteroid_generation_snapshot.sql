@@ -1,0 +1,1 @@
+ALTER TABLE "asteroid_spawn_hours" ADD COLUMN "generation" jsonb;

@@ -2,11 +2,13 @@ import { and, desc, eq, gt, gte, isNotNull, isNull, lt, lte, sql } from 'drizzle
 import { z } from 'zod';
 import {
   ASTEROID_DYNAMIC,
+  currentAsteroidGeneration,
   MULTI_WORLD,
   planAsteroidHour,
   supplyPopulation,
   planPirateHour,
   type AsteroidHourLane,
+  type AsteroidGeneration,
   type PirateHourLane,
 } from '@astera/rules';
 import { minutesSince } from '../clock.js';
@@ -25,6 +27,7 @@ import {
 import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { isPerson } from './people.js';
+import { parseAsteroidGeneration } from './asteroidGeneration.js';
 
 /**
  * THE DYNAMIC ASTEROID FIELD'S CLOCK. Owner instruction, 2026-09-16:
@@ -151,6 +154,8 @@ export async function countEligibleCommanders(
  * The window reads the RAW counts each hour recorded, never the smoothed figures they produced:
  * averaging its own output filters twice and a genuine rise would crawl toward the truth without
  * ever arriving. See `supplyPopulation`.
+ * Only the preceding five actual hour boundaries count. LIMIT alone would reuse
+ * yesterday's population after an outage, even when nobody is still playing.
  *
  * NOT DURING THE FOUNDING DAY. Owner decision, 2026-09-27. A new season's first hour opens before
  * anybody has joined it and is written at zero; averaged in, that zero held back ~40% of the rocks
@@ -172,6 +177,9 @@ async function rollingSupply(
     .from(asteroidSpawnHours)
     .where(and(
       eq(asteroidSpawnHours.seasonId, season.id),
+      gte(asteroidSpawnHours.hourStartsAt, new Date(
+        hourStart.getTime() - (ASTEROID_DYNAMIC.supply.windowHours - 1) * HOUR_MS,
+      )),
       lt(asteroidSpawnHours.hourStartsAt, hourStart),
     ))
     .orderBy(desc(asteroidSpawnHours.hourStartsAt))
@@ -278,6 +286,7 @@ export async function openAsteroidHour(
       eligiblePlayers,
       lanes,
       levelWeights: ASTEROID_DYNAMIC.levelWeights,
+      generation: parseAsteroidGeneration(currentAsteroidGeneration()),
       pirateLane,
       createdAt: input.now,
     }).onConflictDoNothing().returning({ seasonId: asteroidSpawnHours.seasonId });
@@ -344,11 +353,13 @@ export async function loadAsteroidHours(
   hourStartsAt: Date;
   lanes: AsteroidHourLane[];
   levelWeights: number[];
+  generation: AsteroidGeneration;
 }[]> {
   const rows = await db.select({
     hourStartsAt: asteroidSpawnHours.hourStartsAt,
     lanes: asteroidSpawnHours.lanes,
     levelWeights: asteroidSpawnHours.levelWeights,
+    generation: asteroidSpawnHours.generation,
   }).from(asteroidSpawnHours).where(and(
     eq(asteroidSpawnHours.seasonId, seasonId),
     gte(asteroidSpawnHours.hourStartsAt, new Date(now.getTime() - FIELD_LOOKBACK_HOURS * HOUR_MS)),
@@ -357,6 +368,7 @@ export async function loadAsteroidHours(
     hourStartsAt: row.hourStartsAt,
     lanes: lanesSchema.parse(row.lanes),
     levelWeights: levelWeightsSchema.parse(row.levelWeights),
+    generation: parseAsteroidGeneration(row.generation),
   }));
 }
 

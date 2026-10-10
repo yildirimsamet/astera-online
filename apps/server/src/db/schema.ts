@@ -33,6 +33,7 @@ import type {
   Segment,
   GalaxyEventKind as ScheduledGalaxyEventKind,
   AsteroidHourLane,
+  AsteroidGeneration,
   PirateHourLane,
   AsteroidShowerEffect,
   PlannedGalaxyEvent,
@@ -3674,6 +3675,8 @@ export const asteroidSpawnHours = pgTable('asteroid_spawn_hours', {
   /** Frozen generation input; changing balance must not reroll an existing rock. */
   levelWeights: jsonb('level_weights').$type<readonly number[]>().notNull()
     .default(sql`'[0, 0.4, 0.27, 0.18, 0.1, 0.05]'::jsonb`),
+  /** Null only for old-image hours; the reader uses the immutable pre-release v1 fallback. */
+  generation: jsonb('generation').$type<AsteroidGeneration>(),
   /**
    * The hour's dynamic pirate lane (`PIRATE.dynamic`, ruleset 9+), written once with
    * the rock lanes. Null in a season on the derived per-seat lane, and in any hour

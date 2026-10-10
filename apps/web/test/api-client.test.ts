@@ -170,6 +170,125 @@ describe('the API client', () => {
     expect(api.accessToken).toBeNull();
   });
 
+  describe('temporary refresh failures', () => {
+    const rateLimit = { error: 'RATE_LIMITED', message: 'Try again in 12 seconds', params: { seconds: 12 } };
+    const me = { ...SESSION, isAdmin: false, placement: { shard: 'EU-1', shardName: 'Vantage', planetName: 'Kestrel-12' } };
+
+    it.each([429, 503])('preserves the credential and placement after a refresh HTTP %s', async (status) => {
+      const placements: (string | null)[] = [];
+      const failure = status === 429 ? rateLimit : { error: 'UNREACHABLE', message: 'Try again later' };
+      const fetch = vi.fn<typeof globalThis.fetch>((url, init) => {
+        const path = pathOf(url);
+        if (path === '/api/auth/login') return json(SESSION);
+        if (path === '/api/auth/refresh') return json(failure, status);
+        placements.push(new Headers(init?.headers).get('x-placement'));
+        return Promise.resolve(new Response(JSON.stringify(me), { headers: { 'x-placement': 'placement-1' } }));
+      });
+      const api = new Api({ fetch });
+      await api.login('vantage', 'password');
+      await api.me();
+
+      await expect(api.restore()).rejects.toMatchObject({ code: failure.error, status });
+      expect(api.accessToken).toBe(SESSION.accessToken);
+      await api.me();
+      expect(placements).toEqual([null, 'placement-1']);
+    });
+
+    it('preserves the credential when the refresh connection fails', async () => {
+      const failure = new TypeError('Failed to fetch');
+      const fetch = vi.fn<typeof globalThis.fetch>((url) => pathOf(url) === '/api/auth/login'
+        ? json(SESSION) : Promise.reject(failure));
+      const api = new Api({ fetch });
+      await api.login('vantage', 'password');
+
+      await expect(api.restore()).rejects.toBe(failure);
+      expect(api.accessToken).toBe(SESSION.accessToken);
+    });
+
+    it('shares a rejected refresh and allows a later attempt to recover', async () => {
+      let finish: ((response: Response) => void) | undefined;
+      const fetch = vi.fn<typeof globalThis.fetch>(() => new Promise<Response>((resolve) => { finish = resolve; }));
+      const api = new Api({ fetch });
+      const attempts = Promise.allSettled([api.restore(), api.restore(), api.restore()]);
+      expect(fetch).toHaveBeenCalledOnce();
+      finish?.(await json(rateLimit, 429));
+
+      const results = await attempts;
+      expect(results.map((result) => result.status)).toEqual(['rejected', 'rejected', 'rejected']);
+      const recovery = api.restore();
+      expect(fetch).toHaveBeenCalledTimes(2);
+      finish?.(await json(SESSION));
+      await expect(recovery).resolves.toBe(true);
+      expect(api.accessToken).toBe(SESSION.accessToken);
+    });
+
+    it('reports the refresh rate limit without retrying an expired monument write', async () => {
+      const keys: (string | null)[] = [];
+      let limited = true;
+      let refreshed = false;
+      const fetch = vi.fn<typeof globalThis.fetch>((url, init) => {
+        const path = pathOf(url);
+        if (path === '/api/auth/login') return json(SESSION);
+        if (path === '/api/auth/refresh') {
+          if (limited) return json(rateLimit, 429);
+          refreshed = true;
+          return json(SESSION);
+        }
+        keys.push(new Headers(init?.headers).get('idempotency-key'));
+        if (!refreshed) return json({ error: 'UNAUTHENTICATED', message: 'Sign in first' }, 401);
+        return json({ probe: { id: 'probe-1', monumentId: 'monument-1', status: 'OUTBOUND',
+          departAt: '2026-10-10T12:00:00.000Z', arriveAt: '2026-10-10T12:01:00.000Z' },
+        lossProbability: 0.75, price: { alloy: 100, crystal: 50, deuterium: 0 } });
+      });
+      const api = new Api({ fetch });
+      await api.login('vantage', 'password');
+
+      await expect(api.probeMonument('monument-1', 'planet-1', 'same-probe-confirmation')).rejects.toMatchObject({
+        code: 'RATE_LIMITED', status: 429, params: { seconds: 12 },
+      });
+      expect(keys).toEqual(['same-probe-confirmation']);
+      expect(api.accessToken).toBe(SESSION.accessToken);
+
+      limited = false;
+      await expect(api.probeMonument('monument-1', 'planet-1', 'same-probe-confirmation')).resolves.toMatchObject({ probe: { id: 'probe-1' } });
+      expect(keys).toEqual(['same-probe-confirmation', 'same-probe-confirmation', 'same-probe-confirmation']);
+    });
+
+    it('keeps a live session when the monument write itself is rate limited', async () => {
+      const paths: string[] = [];
+      const fetch = vi.fn<typeof globalThis.fetch>((url) => {
+        const path = pathOf(url);
+        paths.push(path);
+        return path === '/api/auth/login' ? json(SESSION) : json(rateLimit, 429);
+      });
+      const api = new Api({ fetch });
+      await api.login('vantage', 'password');
+
+      await expect(api.probeMonument('monument-1', 'planet-1', 'probe-confirmation')).rejects.toMatchObject({ code: 'RATE_LIMITED', status: 429 });
+      expect(paths).toEqual(['/api/auth/login', '/api/monuments/monument-1/probe']);
+      expect(api.accessToken).toBe(SESSION.accessToken);
+    });
+
+    it('clears the credential and placement only when refresh rejects the session', async () => {
+      const placements: (string | null)[] = [];
+      const fetch = vi.fn<typeof globalThis.fetch>((url, init) => {
+        const path = pathOf(url);
+        if (path === '/api/auth/login') return json(SESSION);
+        if (path === '/api/auth/refresh') return json({ error: 'BAD_SESSION', message: 'Session expired' }, 401);
+        placements.push(new Headers(init?.headers).get('x-placement'));
+        return Promise.resolve(new Response(JSON.stringify(me), { headers: { 'x-placement': 'placement-1' } }));
+      });
+      const api = new Api({ fetch });
+      await api.login('vantage', 'password');
+      await api.me();
+
+      await expect(api.restore()).resolves.toBe(false);
+      expect(api.accessToken).toBeNull();
+      await api.me();
+      expect(placements).toEqual([null, null]);
+    });
+  });
+
   it('keeps the machine code so the UI can act on the refusal, not just print it', async () => {
     const fetch = vi.fn(() =>
       json({ error: 'BASH_LIMIT', message: 'You have hit this planet too many times recently' }, 403),

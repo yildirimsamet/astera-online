@@ -7,6 +7,17 @@ import { LANGUAGES } from '../src/i18n/languages.js';
 afterEach(async () => { await i18n.changeLanguage('en'); });
 
 describe('a player error explains only what the client can verify', () => {
+  it.each(LANGUAGES)('explains cosmetic ownership and checkout refusals in %s', async (language) => {
+    await i18n.changeLanguage(language);
+    for (const code of ['SKIN_NOT_OWNED', 'SKIN_SLOT_MISMATCH', 'SKIN_ALREADY_OWNED', 'SKIN_SHOP_CLOSED', 'SKIN_CHECKOUT_IN_PROGRESS', 'SKIN_CHECKOUT_STARTING'] as const) {
+      const result = describeError(new ApiError(code, 'private diagnostic', 403));
+      expect(result).toBe(i18n.t(`errors.${code}`));
+      expect(result).not.toBe(i18n.t('errors.unknown'));
+      expect(result).not.toBe(`errors.${code}`);
+      expect(result).not.toContain('private diagnostic');
+    }
+  });
+
   it.each(LANGUAGES)('does not expose unknown server or JavaScript diagnostics in %s', async (language) => {
     await i18n.changeLanguage(language);
     const diagnostics = 'TypeError: payload validation failed at /internal/transactions';

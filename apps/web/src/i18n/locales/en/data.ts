@@ -629,6 +629,8 @@ export const notifications = {
     INEFFECTIVE: 'Death Star impact · no effect',
   },
   colonyCaptured: 'Colony secured · occupation protection is active',
+  colonyAbandoned: "You abandoned {{planet}} · the colony is now neutral",
+  colonyAbandonedUnnamed: "You abandoned a colony · it is now neutral",
   colonyLost: "{{planet}} seceded and turned neutral",
   colonyLostUnnamed: "A colony seceded and turned neutral",
   deathStarColony: "EMP impact · colony loyalty {{before}}% → {{after}}%",

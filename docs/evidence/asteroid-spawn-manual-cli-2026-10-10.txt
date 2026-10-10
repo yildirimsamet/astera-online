@@ -1,0 +1,58 @@
+Dedicated local clone: astera_asteroid_repro_manual_20261010_test. Source: local incident fixture only. No production data or connection.
+
+Step: pre-migration
+{"stage":"pre-migration","pendingMigrations":1,"rocks":299,"claims":105,"schemaGuardRejected":true}
+Recorded exit code: 0; expected: 0
+
+Step: migrate CLI
+migrations applied
+Recorded exit code: 0; expected: 0
+
+Step: post-migration
+{"stage":"post-migration","pendingMigrations":0,"rocks":299,"claims":105,"everySpecClaimAndQueueRowUnchanged":true}
+Recorded exit code: 0; expected: 0
+
+Step: prepare-calendar
+{"stage":"prepare-calendar","preplannedHour":"2026-10-10T10:00:00.000Z","plannedRocks":216,"expectedCutover":"2026-10-10T11:00:00.000Z"}
+Recorded exit code: 0; expected: 0
+
+Step: restamp CLI rejected
+Cannot restamp ASTEROID_SHOWER at 2026-10-10T10:00:00.000Z: stored window differs from its authored shape or its asteroid hour is already frozen. Use adopt-event-calendar.
+Recorded exit code: 1; expected: 1
+
+Step: after-restamp-rejection
+{"stage":"after-restamp-rejection","everyStoredRowAndSpecUnchanged":true}
+Recorded exit code: 0; expected: 0
+
+Step: adopt-event-calendar CLI dry run
+season f303a36e-8eb3-45f1-9541-523af60aa2fe: cutover 2026-10-10T11:00:00.000Z, 1 window(s) removed, 1 added.
+Nothing was written; pass --yes to apply.
+Recorded exit code: 0; expected: 0
+
+Step: after-dry-run
+{"stage":"after-dry-run","everyStoredRowAndSpecUnchanged":true}
+Recorded exit code: 0; expected: 0
+
+Step: adopt-event-calendar CLI apply
+season f303a36e-8eb3-45f1-9541-523af60aa2fe: cutover 2026-10-10T11:00:00.000Z, 1 window(s) removed, 1 added.
+Recorded exit code: 0; expected: 0
+
+Step: after-adoption
+{"stage":"after-adoption","rocks":515,"claims":105,"activeMiningRunsInFixture":0,"everySpecAndClaimUnchanged":true,"protectedJobsUnchanged":true,"futureEveningMultiplier":5,"rockDigest":"67c655815808e300ab7f7b92efadc747ab069fe6589c5e16dce042d6ff532f5d"}
+Recorded exit code: 0; expected: 0
+
+Step: adopt-event-calendar CLI repeat
+season f303a36e-8eb3-45f1-9541-523af60aa2fe: cutover 2026-10-10T11:00:00.000Z, 0 window(s) removed, 0 added.
+Recorded exit code: 0; expected: 0
+
+Step: after-repeat
+{"stage":"after-repeat","everyStoredRowAndSpecUnchanged":true}
+Recorded exit code: 0; expected: 0
+
+Latest reviewed code: CLI repeat
+season f303a36e-8eb3-45f1-9541-523af60aa2fe: cutover 2026-10-10T11:00:00.000Z, 0 window(s) removed, 0 added.
+Recorded exit code: 0
+
+Latest reviewed code: unchanged state
+{"stage":"after-repeat","everyStoredRowAndSpecUnchanged":true}
+Recorded exit code: 0

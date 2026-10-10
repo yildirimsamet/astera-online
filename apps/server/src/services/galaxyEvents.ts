@@ -1,11 +1,12 @@
 import { createHmac } from 'node:crypto';
-import { and, asc, eq, gt, inArray, isNull, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or } from 'drizzle-orm';
 import {
   MULTI_WORLD,
   galaxyEventConfigForRuleset,
   galaxyEventKindsForRuleset,
   generateGalaxyEventSchedule,
   plannedEffectFor,
+  plannedEndAtFor,
   type GalaxyEventKind,
   type IntergalacticConvoyEffect,
   type IntergalacticConvoySpec,
@@ -20,6 +21,7 @@ import { addMinutes, minutesSince } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
   galaxyEventOccurrences,
+  asteroidSpawnHours,
   notifications,
   players,
   scheduledEvents,
@@ -143,6 +145,10 @@ function calendarRng(asteroidKey: string, kind: GalaxyEventKind): () => number {
  * that own none either.
  *
  * The strict `>` is deliberate: an occurrence starting exactly now has opened.
+ * A changed shower also has to retain its authored duration and own no already-planned
+ * asteroid hour or processed lifecycle marker. A future 12:30 window may be frozen
+ * by the 12:00 hour's plan; lifecycle work may finish before a delayed hour job.
+ * Shape changes use `adoptLiveEventCalendar`, never an effect-only restamp.
  *
  * THE KIND IS AN ARGUMENT AND HAS NO DEFAULT. A calendar holds more than one lane
  * and their definitions move on their own schedules: `TRADE_SHIP` went to version
@@ -161,7 +167,11 @@ export async function restampFutureOccurrences(
 ): Promise<number> {
   if (input.kinds.length === 0) return 0;
   const rows = await tx
-    .select({ occurrence: galaxyEventOccurrences, rulesetVersion: seasons.rulesetVersion })
+    .select({
+      occurrence: galaxyEventOccurrences,
+      rulesetVersion: seasons.rulesetVersion,
+      dynamicFrom: seasons.asteroidDynamicFrom,
+    })
     .from(galaxyEventOccurrences)
     .innerJoin(seasons, eq(seasons.id, galaxyEventOccurrences.seasonId))
     .where(and(
@@ -178,11 +188,40 @@ export async function restampFutureOccurrences(
     const row = joined.occurrence;
     const kind = row.kind;
     const config = galaxyEventConfigForRuleset(joined.rulesetVersion);
+    const incompatible = () => new Error(
+      `Cannot restamp ${kind} at ${row.startsAt.toISOString()}: stored window differs from ` +
+      'its authored shape, its asteroid hour is already frozen, or its lifecycle was already processed. Use adopt-event-calendar.',
+    );
+    if (kind === 'ASTEROID_SHOWER') {
+      let expectedEnd: number;
+      try {
+        expectedEnd = Math.round(plannedEndAtFor(kind, row.startsAt.getTime() / 60_000, config) * 60_000);
+      } catch (error) {
+        if (error instanceof RangeError) throw incompatible();
+        throw error;
+      }
+      if (row.endsAt.getTime() !== expectedEnd) throw incompatible();
+    }
     const wanted = plannedEffectFor(kind, row.startsAt.getTime() / 60_000, config);
     const version = config.definitions[kind].version;
     if (JSON.stringify(row.effect) === JSON.stringify(wanted)
       && row.definitionVersion === version) {
       continue;
+    }
+    if (kind === 'ASTEROID_SHOWER'
+      && (row.startProcessedAt !== null || row.endProcessedAt !== null)) {
+      throw incompatible();
+    }
+    // FOR UPDATE above also locks the joined season, excluding the hour worker's
+    // FOR SHARE. A 12:30 window may still be pending inside an already-planned 12:00 hour.
+    if (kind === 'ASTEROID_SHOWER' && joined.dynamicFrom !== null) {
+      const [frozenHour] = await tx.select({ at: asteroidSpawnHours.hourStartsAt })
+        .from(asteroidSpawnHours).where(and(
+          eq(asteroidSpawnHours.seasonId, row.seasonId),
+          gte(asteroidSpawnHours.hourStartsAt, floorHour(row.startsAt)),
+          lt(asteroidSpawnHours.hourStartsAt, row.endsAt),
+        )).limit(1);
+      if (frozenHour) throw incompatible();
     }
     await tx
       .update(galaxyEventOccurrences)
@@ -328,8 +367,9 @@ const ADOPTED_KINDS = ['ASTEROID_SHOWER', 'INTERGALACTIC_CONVOY'] as const;
  * A RESET. Owner instruction, 2026-09-16: *"productiondaki aktif sezon'a reset atmadan
  * deploy etmemiz lazım."*
  *
- * EVERYTHING HAPPENS AT ONE HOUR BOUNDARY — the next one, or the one a previous run
- * already chose. From that instant the season's showers and convoys are the current
+ * EVERYTHING HAPPENS AT ONE HOUR BOUNDARY — the next unplanned one, or the one a previous run
+ * already chose. Hours and lifecycle boundaries committed while this command waited for its
+ * season lock can push that boundary later. From that instant the showers and convoys are the current
  * weekday/weekend windows and its new rocks come from stored hours. Before it, nothing
  * moves: every window that has opened (or opens before the boundary) keeps its row,
  * and the merchant is not touched at all.
@@ -357,9 +397,30 @@ export async function adoptLiveEventCalendar(
   for (const season of live) {
     if (season.rulesetVersion < MULTI_WORLD.fixedGalaxyEventScheduleRulesetVersion) continue;
     const nextHour = new Date(floorHour(input.now).getTime() + HOUR_MS);
-    const cutoverAt = season.asteroidDynamicFrom !== null && season.asteroidDynamicFrom > input.now
+    let cutoverAt = season.asteroidDynamicFrom !== null && season.asteroidDynamicFrom > input.now
       ? season.asteroidDynamicFrom
       : nextHour;
+
+    // `now` was captured before taking the season lock. The worker may have crossed
+    // its hour boundary while we waited; do not re-deal an hour it already committed.
+    if (season.asteroidDynamicFrom !== null) {
+      const [lastFrozen] = await tx.select({ at: asteroidSpawnHours.hourStartsAt })
+        .from(asteroidSpawnHours).where(and(
+          eq(asteroidSpawnHours.seasonId, season.id),
+          gte(asteroidSpawnHours.hourStartsAt, cutoverAt),
+        )).orderBy(desc(asteroidSpawnHours.hourStartsAt)).limit(1);
+      if (lastFrozen) cutoverAt = new Date(lastFrozen.at.getTime() + HOUR_MS);
+    }
+    // Lifecycle fanout also locks the season. Preserve an announced start or end,
+    // including an end delivered while a failed start still waits for retry.
+    const [lastProcessed] = await tx.select({ at: galaxyEventOccurrences.startsAt })
+      .from(galaxyEventOccurrences).where(and(
+        eq(galaxyEventOccurrences.seasonId, season.id),
+        inArray(galaxyEventOccurrences.kind, [...ADOPTED_KINDS]),
+        gte(galaxyEventOccurrences.startsAt, cutoverAt),
+        or(isNotNull(galaxyEventOccurrences.startProcessedAt), isNotNull(galaxyEventOccurrences.endProcessedAt)),
+      )).orderBy(desc(galaxyEventOccurrences.startsAt)).limit(1);
+    if (lastProcessed) cutoverAt = new Date(floorHour(lastProcessed.at).getTime() + HOUR_MS);
 
     let frozen = false;
     if (season.asteroidDynamicFrom === null) {

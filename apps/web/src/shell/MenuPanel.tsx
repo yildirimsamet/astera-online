@@ -48,6 +48,7 @@ import { CountryPicker } from '../v2/identity/CountryPicker.js';
 import { InstallButton } from '../brand/Install.js';
 import { Flag } from '../v2/identity/Flag.js';
 import { countryName } from '../v2/identity/country.js';
+import { ShopShowcase } from './ShopShowcase.js';
 
 /**
  * THE MENU — everything the game has that is not the galaxy.
@@ -185,10 +186,6 @@ export function MenuPanel({
 
   return (
     <div data-v2-commander-menu className="flex flex-col gap-5 px-1 pb-3 font-v2-ui text-v2-ink">
-      <div className="flex items-center justify-between gap-2 border-b border-v2-line pb-3">
-        <div className="min-w-0"><p className="brand-small">Astera Online</p><p className="mt-1 select-all font-v2-mono text-micro text-v2-ink-2">asteraonline.space</p></div>
-        <InstallButton compact />
-      </div>
       {/**
        * RANK ONE — WHAT IS WAITING ON YOU, and only ever that.
        *
@@ -222,6 +219,8 @@ export function MenuPanel({
           )}
         </div>
       )}
+
+      <ShopShowcase onShop={() => { onOpen('skin-shop'); }} onInventory={() => { onOpen('skin-inventory'); }} />
 
       {/*
         RANK TWO — ONE CHIP PER MARK, WEARING ITS OWN COLOUR. D183.
@@ -310,18 +309,6 @@ export function MenuPanel({
       </MenuGroup>
 
       <MenuGroup label={t('menu.asteraHeading')}>
-        <MenuTile
-          icon={<GalaxyIcon className="size-5" />}
-          label={t('menu.skinsShopLabel')}
-          hint={t('menu.skinsShopHint')}
-          onClick={() => { onOpen('skin-shop'); }}
-        />
-        <MenuTile
-          icon={<RewardIcon className="size-5" />}
-          label={t('menu.skinsInventoryLabel')}
-          hint={t('menu.skinsInventoryHint')}
-          onClick={() => { onOpen('skin-inventory'); }}
-        />
         <MenuTile
           icon={<BellIcon className="size-5" />}
           label={t('menu.announcementsLabel')}
@@ -451,6 +438,10 @@ export function MenuPanel({
         backwards.
       */}
       <Section label={t('menu.accountHeading')}>
+        <div className="flex items-center justify-between gap-2 border-b border-v2-line pb-3">
+          <div className="min-w-0"><p className="brand-small">Astera Online</p><p className="mt-1 select-all font-v2-mono text-micro text-v2-ink-2">asteraonline.space</p></div>
+          <InstallButton compact />
+        </div>
         {onCountryChange && (
           <div className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-panel">
             <SettingRow label={t('country.label')} title={countryName(country, i18n.resolvedLanguage ?? 'en')}>

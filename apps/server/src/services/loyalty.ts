@@ -211,6 +211,7 @@ export async function secedeColony(
   planetId: string,
   now: Date,
   notificationRefId: string,
+  cause: 'SECESSION' | 'ABANDONED' = 'SECESSION',
 ): Promise<boolean> {
   const [initial] = await tx.select({ kind: planets.kind }).from(planets).where(eq(planets.id, planetId));
   if (initial?.kind !== 'COLONY') return false;
@@ -400,7 +401,7 @@ export async function secedeColony(
     // One LOSS, not one planet for all time. The same event may be redelivered and
     // must dedupe; the same world may legitimately be lost again after recapture.
     refId: notificationRefId,
-    payload: { planetId, planetName: world.name, cause: 'SECESSION' },
+    payload: { planetId, planetName: world.name, cause },
   });
 
   /*

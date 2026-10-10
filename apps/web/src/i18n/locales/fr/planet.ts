@@ -11,6 +11,37 @@
 * L’onglet dit « ce qui se trouve ici » ; la phrase dessous dit « ce que tu décides ici ».
   */
 export const planet = {
+  abandon: {
+    "action": "Abandonner la colonie",
+    "title": "Abandonner cette colonie ?",
+    "cancel": "Garder la colonie",
+    "confirm": "Oui, abandonner",
+    "pending": "Abandon en cours…",
+    "irreversible": "Cette colonie devient neutre et libère une place de colonie. Tu ne peux pas annuler cette action.",
+    "keeps": "Les bâtiments, satellites, ressources et défenses terrestres restent sur la planète. Les Étoiles de la Mort prêtes et les charges d’interception y restent aussi.",
+    "ships": "Les vaisseaux sur place ou en réparation rejoignent ta capitale. Leurs dégâts sont conservés.",
+    "queue": "Les ordres de construction, production et réparation sont annulés sans remboursement.",
+    "rule": "Tous les vols et missions liés à cette colonie doivent d’abord se terminer.",
+    "checking": "Vérification des missions actives…",
+    "blocked": "Tu ne peux pas encore abandonner cette colonie",
+    "recheck": "Vérifier à nouveau",
+    "checkFailed": "Impossible de vérifier les missions actives. Réessaie quand la connexion revient.",
+    "success": "Tu as abandonné {{planet}} · la colonie est désormais neutre",
+    "reasons": {
+      "FLIGHT": "Un vol lié à cette colonie est encore actif. Attends qu’il se termine.",
+      "MINING": "Une mission minière ou de récupération est encore active. Attends le retour des vaisseaux.",
+      "PIRATE": "Un raid pirate est encore actif. Attends le retour de la flotte.",
+      "TRADE": "Une mission commerciale est encore active. Attends le retour des vaisseaux.",
+      "CONVOY": "Une mission de convoi intergalactique est encore active. Attends le retour de la flotte.",
+      "CLAN_WAR": "Des vaisseaux de cette colonie participent à une opération commune du clan. Rappelle-les ou attends leur retour.",
+      "CLAN_SUPPORT": "Des renforts voyagent, sont stationnés ou reviennent. Rappelle les renforts envoyés ou renvoie ceux accueillis, puis attends leur arrivée.",
+      "MONUMENT": "Une flotte ou une sonde de cette colonie est au monument. Rappelle la flotte ou attends le retour de la sonde.",
+      "STRATEGIC": "Une production stratégique, une attaque ou une interception est encore active. Attends sa fin.",
+      "AWAY_SHIPS": "Certains vaisseaux de cette colonie sont encore absents. Attends leur retour.",
+      "RECOVERY": "Cette colonie se rétablit ou bénéficie de la protection d’occupation. Attends la fin de cette période.",
+      "SECESSION": "La loyauté de cette colonie est à zéro et elle fait sécession. Attends la mise à jour du propriétaire."
+    }
+  },
   recovery: "Récupération en cours · systèmes disponibles dans {{duration}}",
   empActive: "EMP · Aegis à zéro et sans régénération pendant {{duration}} ; les défenses terrestres ne tirent pas et ne subissent aucun dégât.",
   capacityNext: "Avec {{name}} : {{total}} par monde",

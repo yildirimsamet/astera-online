@@ -2,6 +2,7 @@ import { cosmeticById } from '@astera/rules';
 import type { ShipCosmeticEquipment } from '@astera/rules';
 import { shipHullModels } from './shipCosmetics.js';
 import { FleetCosmeticFlag, FormationCosmeticEngines } from './CosmeticEffects.jsx';
+import { ProbeSkinBeam } from './ProbeSkinBeam.js';
 import {
   Suspense,
   useEffect,
@@ -333,6 +334,7 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
     <group scale={scale} name="craft-hull">
       <primitive object={outline} name="craft-silhouette-rim" />
       <primitive object={model} />
+      <ProbeSkinBeam url={url} />
     </group>
   );
 }

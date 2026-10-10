@@ -14,6 +14,14 @@
  */
 
 export const errors = {
+  CAPITAL_CANNOT_BE_ABANDONED: "No puedes abandonar tu capital. Selecciona una colonia.",
+  COLONY_ABANDON_BLOCKED: "Esta colonia tiene misiones activas o un cambio de propietario. Comprueba los motivos y espera a que terminen.",
+  SKIN_NOT_OWNED: 'Esta apariencia no está en tu inventario. Elige una que tengas.',
+  SKIN_SLOT_MISMATCH: 'Esta apariencia no corresponde al tipo o la nave seleccionados. Elige una apariencia compatible.',
+  SKIN_ALREADY_OWNED: 'Ya tienes al menos una apariencia de esta oferta. Revisa tu inventario.',
+  SKIN_SHOP_CLOSED: 'Este producto no se puede comprar ahora. Vuelve a comprobarlo más tarde.',
+  SKIN_CHECKOUT_IN_PROGRESS: 'Hay otro pago abierto para esta apariencia. Complétalo o espera a que caduque.',
+  SKIN_CHECKOUT_STARTING: 'Se está preparando el pago. Inténtalo de nuevo en un momento.',
   REPAIR_LOT_NOT_FOUND: "Esas naves dañadas ya no esperan aquí.",
   REPAIR_LOT_BUSY: "Esas naves ya se están reparando.",
   REPAIR_NOTHING_WAITING: "Aquí no hay ninguna nave dañada esperando reparación.",

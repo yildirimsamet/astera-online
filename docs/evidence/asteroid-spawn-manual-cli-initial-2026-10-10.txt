@@ -1,0 +1,28 @@
+
+Step: clone-only-local-fixture
+CREATE DATABASE
+Recorded exit code: 0; expected: 0
+
+Step: pre-migration
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ undefined
+- 'EU-ASTEROID-REPRO'
+
+    at file:///tmp/astera-asteroid-fix-20261009/apps/server/review-operator-rehearsal-20261010.mjs:26:10
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: 'EU-ASTEROID-REPRO',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.11.0
+Recorded exit code: 1; expected: 0

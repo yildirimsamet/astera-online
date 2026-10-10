@@ -702,6 +702,8 @@ export const notifications = {
     INEFFECTIVE: 'Ölüm Yıldızı darbesi · etkisiz kaldı',
   },
   colonyCaptured: 'Koloni kuruldu · işgal koruması aktif',
+  colonyAbandoned: "{{planet}} kolonisini terk ettin · gezegen artık tarafsız",
+  colonyAbandonedUnnamed: "Bir koloniyi terk ettin · gezegen artık tarafsız",
   colonyLost: "{{planet}} koptu ve tarafsız oldu",
   colonyLostUnnamed: "Bir koloni koptu ve tarafsız oldu",
   deathStarColony: "EMP darbesi · koloni sadakati %{{before}} → %{{after}}",

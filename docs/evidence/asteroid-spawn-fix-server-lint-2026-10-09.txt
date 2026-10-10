@@ -1,0 +1,11 @@
+
+> astera@ lint /home/yildirim/Desktop/Coding/MyProjects/blindspace
+> node --max-old-space-size=6144 node_modules/eslint/bin/eslint.js . "--ignore-pattern" "**/*" "--ignore-pattern" "!apps/" "--ignore-pattern" "!apps/server/" "--ignore-pattern" "!apps/server/src/" "--ignore-pattern" "!apps/server/src/services/" "--ignore-pattern" "!apps/server/src/cli/" "--ignore-pattern" "!apps/server/src/db/" "--ignore-pattern" "!apps/server/test/" "--ignore-pattern" "!apps/server/src/services/asteroid*.ts" "--ignore-pattern" "!apps/server/src/services/galaxyEvents.ts" "--ignore-pattern" "!apps/server/src/services/mining.ts" "--ignore-pattern" "!apps/server/src/cli/manualAsteroids.ts" "--ignore-pattern" "!apps/server/src/db/schema.ts" "--ignore-pattern" "!apps/server/test/asteroid-*.test.ts" "--ignore-pattern" "!apps/server/test/galaxy-events.test.ts" "--ignore-pattern" "!apps/server/vitest.asteroid-repro.config.ts"
+
+
+/home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server/test/asteroid-spawn-regression.test.ts
+  30:3  error  'syncMissingFixedOccurrences' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+✖ 1 problem (1 error, 0 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.

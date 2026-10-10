@@ -7,6 +7,7 @@ import type { Db } from '../db/client.js';
 import { asteroidSpawnHours, seasons } from '../db/schema.js';
 import { asteroidId, privateAsteroidHour } from '../services/asteroidField.js';
 import { floorHour, hourOrdinalOf } from '../services/asteroidSpawn.js';
+import { parseAsteroidGeneration } from '../services/asteroidGeneration.js';
 import { publishShard } from '../stream/bus.js';
 
 const batchSchema = z.object({
@@ -41,6 +42,7 @@ export async function appendManualAsteroids(db: Db, input: z.infer<typeof batchS
 
     const atMinute = minutesSince(season.startsAt, batch.at);
     const ordinal = hourOrdinalOf(season.startsAt, hourStartsAt);
+    const generation = parseAsteroidGeneration(hour.generation);
     const prior = hour.lanes.findIndex((lane) => lane.fromMinute === atMinute && lane.untilMinute === atMinute);
     if (prior >= 0 && hour.lanes[prior]?.count !== batch.count) {
       throw new Error('This manual batch already exists with a different count');
@@ -48,12 +50,14 @@ export async function appendManualAsteroids(db: Db, input: z.infer<typeof batchS
     const offset = hour.lanes.slice(0, prior >= 0 ? prior : undefined).reduce((sum, lane) => sum + lane.count, 0);
     if (offset + batch.count > ASTEROID_DYNAMIC.indexSpanPerHour) throw new Error('Manual batch exceeds the hour index span');
     const original = privateAsteroidHour(season.asteroidKey, {
-      hourOrdinal: ordinal, lanes: hour.lanes, levelWeights: hour.levelWeights,
+      hourOrdinal: ordinal, lanes: hour.lanes, levelWeights: hour.levelWeights, generation,
     });
     const lanes = prior >= 0 ? hour.lanes : [...hour.lanes, {
       fromMinute: atMinute, untilMinute: atMinute, count: batch.count, frontCount: batch.count,
     }];
-    const extended = privateAsteroidHour(season.asteroidKey, { hourOrdinal: ordinal, lanes, levelWeights: hour.levelWeights });
+    const extended = privateAsteroidHour(season.asteroidKey, {
+      hourOrdinal: ordinal, lanes, levelWeights: hour.levelWeights, generation,
+    });
     if (!isDeepStrictEqual(original, extended.slice(0, original.length))) {
       throw new Error('Manual batch would change an existing asteroid');
     }

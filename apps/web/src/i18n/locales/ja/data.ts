@@ -629,6 +629,8 @@ export const notifications = {
     INEFFECTIVE: "デス・スター 影響・影響なし",
   },
   colonyCaptured: "コロニーは確保されました · 占領保護は有効です",
+  colonyAbandoned: "{{planet}}を放棄しました · 植民地は中立になりました",
+  colonyAbandonedUnnamed: "植民地を放棄しました · 中立になりました",
   colonyLost: "{{planet}}が離脱し、中立になりました",
   colonyLostUnnamed: "植民地が離脱し、中立になりました",
   deathStarColony: "EMP着弾 · 植民地の忠誠度 {{before}}% → {{after}}%",

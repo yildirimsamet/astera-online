@@ -1,4 +1,5 @@
 export const monument = {
+  recallFlightRule: "Varmadan önce filonun tamamını mevcut konumundan geri çağırabilirsin. Harcanan yakıt iade edilmez.",
   "newsRadiation": "{{name}} · radyasyonda {{count}} gemi ve {{cargo}} döteryum kaybedildi · {{left}} gemi kaldı",
   "genericTitle": "Anıt",
   "look": "{{name}} konumuna bak",

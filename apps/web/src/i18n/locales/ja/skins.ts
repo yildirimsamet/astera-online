@@ -1,4 +1,10 @@
 export const skins = {
+  priceLoading: '価格を読み込み中…',
+  pricingError: '価格を読み込めませんでした。再試行して現在の価格を確認してください。',
+  priceUnavailable: '価格を取得できません',
+  retryPrices: '価格を再読み込み',
+  checkoutStarting: '支払い画面を開いています…',
+  showcaseDescription: '惑星や艦船の外観とエフェクト。',
   "productengine-titan": "タイタン・ドライブ",
   "storytitanENGINE": "青白い点火核から乱流する橙色の燃焼へ。余熱の尾が静かに消える。",
   "shipFits": "{{hull}}用",
@@ -75,7 +81,7 @@ export const skins = {
   "storysingularityFLAG": "鋭く切られた紫の旗から見つめる角のある髑髏。",
   "storyvanguardFLAG": "結束した艦隊のためのクラシックな旗です。",
   "storyorbitFLAG": "防衛線を守る司令官のための軌道紋章です。",
-  "storyufoPROBE": "金属の円盤に繊細なアイスブルーのパネルライトと温かな金色の装飾。",
+  "storyufoPROBE": "金属の円盤に繊細なアイスブルーのパネルライトと金色の装飾。下方へ柔らかな白い光が広がります。",
   openInventory: "所持スキン・{{count}}種類",
   /** The store sells (owner, 2026-09-25): price, press, the set, and only true claims. */
   premium: "プレミアム",

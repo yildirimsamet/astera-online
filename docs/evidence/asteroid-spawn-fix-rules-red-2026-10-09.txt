@@ -1,0 +1,420 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/packages/rules
+
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > ships the requested Asteroid Shower production defaults
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > stamps the night figure on a night shower and the day figure on the rest
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > draws the same windows whatever the two multipliers are
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > refuses a night multiplier that is not a multiplier
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > plans exactly five events per full Türkiye day with one or at most two at night
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > is deterministic and preserves the configured cooldown across local midnight
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > keeps a 14-day arbitrary-start season at seventy occurrences
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > rejects an impossible calendar instead of silently dropping events
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > rejects an impossible TRADE_SHIP calendar too, rather than dropping one
+ ✓ test/galaxy-events.test.ts > galaxy event calendar > rejects configured cross-kind overlaps but allows touching half-open windows
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > deals the same shower calendar whether or not trade ships are planned
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > defaults to every kind the ruleset has
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > seeds a shower-only calendar for a season that predates the trade ship
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > numbers each kind from zero in its own start order
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > lets the two kinds overlap, because packing both without that is pointless
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > plans three trade ships a full Türkiye day at their own cooldown
+ ✓ test/galaxy-events.test.ts > a multi-kind calendar > keeps a trade ship's own cooldown out of the shower's arithmetic
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > appends the Intergalactic Convoy kind without moving the existing order
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > makes the fixed convoy calendar the boundary for newly created seasons
+ × test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > versions both reshaped lanes so a dealt row says which calendar it came from
+   → expected 10 to be 11 // Object.is equality
+ × test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > deals a weekday: lunch and evening showers, one evening convoy
+   → expected [ { kind: 'TRADE_SHIP', …(3) }, …(6) ] to deeply equal [ { kind: 'TRADE_SHIP', …(3) }, …(6) ]
+ × test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > deals a weekend: bigger showers and two convoys
+   → expected [ { …(4) }, …(3) ] to deeply equal [ { …(4) }, …(3) ]
+ × test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > counts a whole week as five weekdays and a two-day weekend
+   → expected [ Array(4) ] to deeply equal [ Array(4) ]
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > keeps every convoy at the route contract’s duration and caps it at four hours
+ × test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > halves the v10 shower multipliers and limits each window to thirty minutes
+   → expected [ [ 'WEEKDAY', 750, 780, 4 ], …(3) ] to deeply equal [ [ 'WEEKDAY', 750, 780, 2 ], …(3) ]
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > writes only complete fixed windows inside arbitrary season boundaries
+ × test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > matches a fixed effect only at an authored start minute on its own kind of day
+   → expected { asteroidSpawnMultiplier: 6 } to deeply equal { asteroidSpawnMultiplier: 3 }
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > lets windows on different kinds of day share hours, and no others
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > rejects wrapping, overlapping, fractional and out-of-day fixed windows
+ ✓ test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > keeps frozen calendar shapes for old rulesets and gates kinds by their first boundary
+ ✓ test/galaxy-events.test.ts > Asteroid Shower bonus lane > adds the occurrence’s own multiple of the hourly rate, and moves no existing rock
+ ✓ test/galaxy-events.test.ts > Asteroid Shower bonus lane > sizes each shower from its own figure and never renumbers an earlier one
+ ✓ test/galaxy-events.test.ts > Asteroid Shower bonus lane > ignores TRADE_SHIP rows instead of turning every trade window into a shower
+ ✓ test/galaxy-events.test.ts > the legacy ruleset-7 merchant’s four random windows a day > states the rule on the definition rather than in the planner
+ ✓ test/galaxy-events.test.ts > the legacy ruleset-7 merchant’s four random windows a day > puts exactly one of every four inside 01:00–08:00, on every whole day
+ ✓ test/galaxy-events.test.ts > the legacy ruleset-7 merchant’s four random windows a day > never opens one in the hour after midnight
+ ✓ test/galaxy-events.test.ts > the legacy ruleset-7 merchant’s four random windows a day > leaves the shower on the calendar-wide quiet-hours rule
+ × test/asteroid-generation-freeze.test.ts > legacy dynamic generation inputs > keeps every existing spec identical when all mutable generation settings change
+   → expected false to be true // Object.is equality
+ ✓ test/asteroid-balance-2026-09-17.test.ts > 2026-09-17 asteroid balance > halves the actual budgeted ore of the established field
+ ✓ test/asteroid-balance-2026-09-17.test.ts > 2026-09-17 asteroid balance > opens one normal rock per active commander each hour
+ × test/asteroid-balance-2026-09-17.test.ts > 2026-09-17 asteroid balance > defines reduced half-hour showers for future calendar adoption
+   → expected 10 to be 11 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/asteroid-balance-2026-09-17.test.ts > 2026-09-17 asteroid balance > defines reduced half-hour showers for future calendar adoption
+AssertionError: expected 10 to be 11 // Object.is equality
+
+- Expected
++ Received
+
+- 11
++ 10
+
+ ❯ test/asteroid-balance-2026-09-17.test.ts:28:63
+     26| 
+     27|   it('defines reduced half-hour showers for future calendar adoption',…
+     28|     expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBe(11);
+       |                                                               ^
+     29|     expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows.map((wind…
+     30|       window.days,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  test/asteroid-generation-freeze.test.ts > legacy dynamic generation inputs > keeps every existing spec identical when all mutable generation settings change
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/asteroid-generation-freeze.test.ts:37:10
+     35|       });
+     36|       expect(generate().every((rock, index) => JSON.stringify(rock) ==…
+     37|         .toBe(true);
+       |          ^
+     38|     } finally {
+     39|       for (const original of originals) Object.defineProperties(origin…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > versions both reshaped lanes so a dealt row says which calendar it came from
+AssertionError: expected 10 to be 11 // Object.is equality
+
+- Expected
++ Received
+
+- 11
++ 10
+
+ ❯ test/galaxy-events.test.ts:486:63
+    484|    */
+    485|   it('versions both reshaped lanes so a dealt row says which calendar …
+    486|     expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBe(11);
+       |                                                               ^
+    487|     // 2026-09-25: both voyages run 180 minutes in the radius-4500 gal…
+    488|     expect(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version).toB…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > deals a weekday: lunch and evening showers, one evening convoy
+AssertionError: expected [ { kind: 'TRADE_SHIP', …(3) }, …(6) ] to deeply equal [ { kind: 'TRADE_SHIP', …(3) }, …(6) ]
+
+- Expected
++ Received
+
+  Array [
+    Object {
+      "effect": Object {
+        "rate": Object {
+          "alloy": 1,
+          "crystal": 2,
+          "deuterium": 32,
+        },
+      },
+      "endsAtMinute": 240,
+      "kind": "TRADE_SHIP",
+      "startsAtMinute": 60,
+    },
+    Object {
+      "effect": Object {
+        "rate": Object {
+          "alloy": 1,
+          "crystal": 2,
+          "deuterium": 32,
+        },
+      },
+      "endsAtMinute": 600,
+      "kind": "TRADE_SHIP",
+      "startsAtMinute": 420,
+    },
+    Object {
+      "effect": Object {
+-       "asteroidSpawnMultiplier": 2,
++       "asteroidSpawnMultiplier": 4,
+      },
+      "endsAtMinute": 780,
+      "kind": "ASTEROID_SHOWER",
+      "startsAtMinute": 750,
+    },
+    Object {
+      "effect": Object {
+        "rate": Object {
+          "alloy": 1,
+          "crystal": 2,
+          "deuterium": 32,
+        },
+      },
+      "endsAtMinute": 1080,
+      "kind": "TRADE_SHIP",
+      "startsAtMinute": 900,
+    },
+    Object {
+      "effect": Object {
+-       "asteroidSpawnMultiplier": 3,
++       "asteroidSpawnMultiplier": 6,
+      },
+      "endsAtMinute": 1230,
+      "kind": "ASTEROID_SHOWER",
+      "startsAtMinute": 1200,
+    },
+    Object {
+      "effect": Object {
+        "rate": Object {
+          "alloy": 1,
+          "crystal": 2,
+          "deuterium": 32,
+        },
+      },
+      "endsAtMinute": 1440,
+      "kind": "TRADE_SHIP",
+      "startsAtMinute": 1260,
+    },
+    Object {
+      "effect": Object {
+        "formationVersion": 1,
+        "fullRewardForceRatio": 1,
+        "resourceCapHours": 4,
+        "rewardPoolVersion": 1,
+        "routeVersion": 1,
+        "shipCountWeights": Array [
+          0.8,
+          0.17,
+          0.03,
+        ],
+        "shipDropChanceAtFullQuality": 0.15,
+        "shipDropFullFirepower": 5780,
+        "shipTierWeights": Array [
+          0.55,
+          0.27,
+          0.13,
+          0.05,
+        ],
+      },
+      "endsAtMinute": 1440,
+      "kind": "INTERGALACTIC_CONVOY",
+      "startsAtMinute": 1260,
+    },
+  ]
+
+ ❯ test/galaxy-events.test.ts:501:18
+    499|     }));
+    500| 
+    501|     expect(rows).toEqual([
+       |                  ^
+    502|       { kind: 'TRADE_SHIP', startsAtMinute: 60, endsAtMinute: 240,
+    503|         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > deals a weekend: bigger showers and two convoys
+AssertionError: expected [ { …(4) }, …(3) ] to deeply equal [ { …(4) }, …(3) ]
+
+- Expected
++ Received
+
+  Array [
+    Object {
+      "effect": Object {
+        "formationVersion": 1,
+        "fullRewardForceRatio": 1,
+        "resourceCapHours": 4,
+        "rewardPoolVersion": 1,
+        "routeVersion": 1,
+        "shipCountWeights": Array [
+          0.8,
+          0.17,
+          0.03,
+        ],
+        "shipDropChanceAtFullQuality": 0.15,
+        "shipDropFullFirepower": 5780,
+        "shipTierWeights": Array [
+          0.55,
+          0.27,
+          0.13,
+          0.05,
+        ],
+      },
+      "endsAtMinute": 900,
+      "kind": "INTERGALACTIC_CONVOY",
+      "startsAtMinute": 720,
+    },
+    Object {
+      "effect": Object {
+-       "asteroidSpawnMultiplier": 3,
++       "asteroidSpawnMultiplier": 6,
+      },
+      "endsAtMinute": 810,
+      "kind": "ASTEROID_SHOWER",
+      "startsAtMinute": 780,
+    },
+    Object {
+      "effect": Object {
+-       "asteroidSpawnMultiplier": 5,
++       "asteroidSpawnMultiplier": 10,
+      },
+      "endsAtMinute": 1230,
+      "kind": "ASTEROID_SHOWER",
+      "startsAtMinute": 1200,
+    },
+    Object {
+      "effect": Object {
+        "formationVersion": 1,
+        "fullRewardForceRatio": 1,
+        "resourceCapHours": 4,
+        "rewardPoolVersion": 1,
+        "routeVersion": 1,
+        "shipCountWeights": Array [
+          0.8,
+          0.17,
+          0.03,
+        ],
+        "shipDropChanceAtFullQuality": 0.15,
+        "shipDropFullFirepower": 5780,
+        "shipTierWeights": Array [
+          0.55,
+          0.27,
+          0.13,
+          0.05,
+        ],
+      },
+      "endsAtMinute": 1380,
+      "kind": "INTERGALACTIC_CONVOY",
+      "startsAtMinute": 1200,
+    },
+  ]
+
+ ❯ test/galaxy-events.test.ts:532:10
+    530|       endsAtMinute: event.endsAtMinute,
+    531|       effect: event.effect,
+    532|     }))).toEqual([
+       |          ^
+    533|       { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 720, endsAtMinut…
+    534|         effect: convoyWindowAt(1).effect },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > counts a whole week as five weekdays and a two-day weekend
+AssertionError: expected [ Array(4) ] to deeply equal [ Array(4) ]
+
+- Expected
++ Received
+
+  Array [
+    Object {
+-     "asteroidSpawnMultiplier": 3,
++     "asteroidSpawnMultiplier": 6,
+    },
+    Object {
+-     "asteroidSpawnMultiplier": 5,
++     "asteroidSpawnMultiplier": 10,
+    },
+    Object {
+-     "asteroidSpawnMultiplier": 3,
++     "asteroidSpawnMultiplier": 6,
+    },
+    Object {
+-     "asteroidSpawnMultiplier": 5,
++     "asteroidSpawnMultiplier": 10,
+    },
+  ]
+
+ ❯ test/galaxy-events.test.ts:562:57
+    560|     const weekendShowers = of('ASTEROID_SHOWER').filter((event) =>
+    561|       event.startsAtMinute >= saturdayStart && event.startsAtMinute < …
+    562|     expect(weekendShowers.map((event) => event.effect)).toEqual([
+       |                                                         ^
+    563|       { asteroidSpawnMultiplier: 3 }, { asteroidSpawnMultiplier: 5 },
+    564|       { asteroidSpawnMultiplier: 3 }, { asteroidSpawnMultiplier: 5 },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > halves the v10 shower multipliers and limits each window to thirty minutes
+AssertionError: expected [ [ 'WEEKDAY', 750, 780, 4 ], …(3) ] to deeply equal [ [ 'WEEKDAY', 750, 780, 2 ], …(3) ]
+
+- Expected
++ Received
+
+  Array [
+    Array [
+      "WEEKDAY",
+      750,
+      780,
+-     2,
++     4,
+    ],
+    Array [
+      "WEEKDAY",
+      1200,
+      1230,
+-     3,
++     6,
+    ],
+    Array [
+      "WEEKEND",
+      780,
+      810,
+-     3,
++     6,
+    ],
+    Array [
+      "WEEKEND",
+      1200,
+      1230,
+-     5,
++     10,
+    ],
+  ]
+
+ ❯ test/galaxy-events.test.ts:594:9
+    592|       window.endsAtLocalMinute,
+    593|       window.effect.asteroidSpawnMultiplier,
+    594|     ])).toEqual([
+       |         ^
+    595|       ['WEEKDAY', 12 * 60 + 30, 13 * 60, 2],
+    596|       ['WEEKDAY', 20 * 60, 20 * 60 + 30, 3],
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  test/galaxy-events.test.ts > the ruleset-8 fixed public-event calendar > matches a fixed effect only at an authored start minute on its own kind of day
+AssertionError: expected { asteroidSpawnMultiplier: 6 } to deeply equal { asteroidSpawnMultiplier: 3 }
+
+- Expected
++ Received
+
+  Object {
+-   "asteroidSpawnMultiplier": 3,
++   "asteroidSpawnMultiplier": 6,
+  }
+
+ ❯ test/galaxy-events.test.ts:625:8
+    623|     const saturdayEvening = wednesdayEvening + 3 * DAY_MINUTES;
+    624|     expect(plannedEffectFor('ASTEROID_SHOWER', wednesdayEvening, GALAX…
+    625|       .toEqual({ asteroidSpawnMultiplier: 3 });
+       |        ^
+    626|     expect(plannedEffectFor('ASTEROID_SHOWER', saturdayEvening, GALAXY…
+    627|       .toEqual({ asteroidSpawnMultiplier: 5 });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+ Test Files  3 failed (3)
+      Tests  8 failed | 33 passed (41)
+   Start at  22:53:13
+   Duration  1.42s (transform 420ms, setup 0ms, collect 695ms, tests 231ms, environment 1ms, prepare 163ms)
+
+undefined
+/home/yildirim/Desktop/Coding/MyProjects/blindspace/packages/rules:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/asteroid-generation-freeze.test.ts test/asteroid-balance-2026-09-17.test.ts test/galaxy-events.test.ts --reporter=verbose --maxWorkers=1 --minWorkers=1 --no-file-parallelism

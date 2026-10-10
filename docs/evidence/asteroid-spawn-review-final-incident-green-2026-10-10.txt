@@ -1,0 +1,100 @@
+
+ RUN  v2.1.9 /tmp/astera-asteroid-fix-20261009/apps/server
+
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > reproduces the old v9 60-minute x3 evening as 105 total rocks
+[asteroid-repro] {"scenario":"old-v9-evening","durationMinutes":60,"multiplier":3,"supply":35,"hourRocks":105}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > reproduces the old v9 60-minute x3 evening as 105 total rocks 1770ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > produces 53 shower rocks + 18 normal rocks, including the smaller opening burst
+[asteroid-repro] {"scenario":"current-weekday-shower","eligible":36,"supply":35,"shower":53,"normal":18,"firstFiveMinutes":22,"visibleIncludingPreviousHoursAtHalfHour":162}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > produces 53 shower rocks + 18 normal rocks, including the smaller opening burst 1279ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > plans the same new supply even when the previous stock has already been depleted
+[asteroid-repro] {"scenario":"stock-does-not-affect-new-supply","previousStockDepleted":131,"newShower":53,"newNormal":18}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > plans the same new supply even when the previous stock has already been depleted 1410ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > keeps one frozen hour through repeated boots and duplicate deliveries to two workers
+[asteroid-repro] {"scenario":"restart-and-duplicate-delivery","restarts":5,"duplicateDeliveries":2,"totalRocks":71,"nextHourJobs":1}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > keeps one frozen hour through repeated boots and duplicate deliveries to two workers 2183ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > repairs a missing hour at minute 4.99: 71 rocks, front=18
+[asteroid-repro] {"scenario":"missing-hour-late-boot","lateMinutes":4.99,"plannedRocks":71,"immediateRocks":22,"front":18}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > repairs a missing hour at minute 4.99: 71 rocks, front=18 1335ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > repairs a missing hour at minute 5.01: 62 rocks, front=+0
+[asteroid-repro] {"scenario":"missing-hour-late-boot","lateMinutes":5.01,"plannedRocks":62,"immediateRocks":0,"front":0}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > repairs a missing hour at minute 5.01: 62 rocks, front=+0 1399ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > continues frozen v10 births after 40 + 20 removals without reviving a removed index
+[asteroid-repro] {"scenario":"remove-and-continue","before":105,"after40":65,"afterAnother20":45,"later":63,"newNormalRocks":18,"removedIndexesRevived":0}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > continues frozen v10 births after 40 + 20 removals without reviving a removed index 1327ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > leaves a partly mined rock visible after a real mining arrival
+[asteroid-repro] {"scenario":"partial-mining","rockOre":800,"mined":700,"remaining":100,"stillVisible":true}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > leaves a partly mined rock visible after a real mining arrival 1465ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > adopts the full future calendar shape and preserves the 30-minute shower
+[asteroid-repro] {"scenario":"safe-calendar-adoption","durationMinutes":30,"showerRocks":53,"hourRocks":71}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > adopts the full future calendar shape and preserves the 30-minute shower 1296ms
+stdout | test/asteroid-spawn-regression.test.ts > controls: real worker and field > decays a contiguous recent population and produces zero with no population history
+[asteroid-repro] {"scenario":"population-controls","noCurrentPlayersRecent50":42,"noCurrentPlayersNoHistory":0}
+
+ ✓ test/asteroid-spawn-regression.test.ts > controls: real worker and field > decays a contiguous recent population and produces zero with no population history 1018ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > does not attach a new multiplier to the old 60-minute window
+[asteroid-repro] {"scenario":"restamp-duration-mismatch","unsafeRestampRejected":true,"version":11,"effect":{"asteroidSpawnMultiplier":3},"durationMinutes":30,"workerPlannedRocks":71,"actualGeneratedRocks":71,"expectedCurrentDefinitionHourRocks":71}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > does not attach a new multiplier to the old 60-minute window 1277ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > rejects a changed future half-hour shower once its containing hour is frozen
+[asteroid-repro] {"scenario":"future-window-in-frozen-hour","unsafeRestampRejected":true,"frozenLanes":[{"count":2,"fromMinute":6603.728633333333,"frontCount":0,"untilMinute":6633.728633333333},{"count":8,"fromMinute":6633.728633333333,"frontCount":3,"untilMinute":6663.728633333333}]}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > rejects a changed future half-hour shower once its containing hour is frozen 604ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when restamp waited for its commit
+[asteroid-repro] {"scenario":"calendar-worker-race-worker-first","operation":"restamp","oldHourRocks":10,"frozenHourPreserved":true}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when restamp waited for its commit 722ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when adopt waited for its commit
+[asteroid-repro] {"scenario":"calendar-worker-race-worker-first","operation":"adopt","oldHourRocks":10,"frozenHourPreserved":true}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > protects a concurrently opening worker hour when adopt waited for its commit 692ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > uses the new effect when restamp commits before a concurrently opening worker
+[asteroid-repro] {"scenario":"restamp-worker-race-restamp-first","newHourRocks":5,"multiplier":2}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > uses the new effect when restamp commits before a concurrently opening worker 650ms
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps an unchanged pending half-hour shower a no-op inside its frozen hour 607ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=0)
+[asteroid-repro] {"scenario":"adoption-protects-committed-hour","hoursAhead":0,"cutoverAt":"2026-10-10T11:00:00.000Z"}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=0) 639ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=7)
+[asteroid-repro] {"scenario":"adoption-protects-committed-hour","hoursAhead":7,"cutoverAt":"2026-10-10T18:00:00.000Z"}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps committed hours when an adoption command captured time before the boundary (hours ahead=7) 632ms
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > preserves a processed shower (start) when adoption waited across the boundary before its hour job ran 579ms
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > preserves a processed shower (end) when adoption waited across the boundary before its hour job ran 584ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > ignores population samples more than six actual hours old after an outage
+[asteroid-repro] {"scenario":"stale-population-after-outage","seatedCommanders":50,"eligibleNow":0,"youngestHistoryHoursOld":24,"supply":0,"workerPlannedRocks":0,"actualVisibleRocksAfterTheHour":0}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > ignores population samples more than six actual hours old after an outage 1578ms
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > includes only the preceding five actual hours (sample age=5) 516ms
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > includes only the preceding five actual hours (sample age=6) 534ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > uses the captured settings of a newly opened hour in every subsequent process
+[asteroid-repro] {"scenario":"new-hour-snapshot","storedOreByLevel":[0,1600,3200,4800,6400,8000],"currentDefaultOre":[0,800,1600,2400,3200,4000],"revived":0}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > uses the captured settings of a newly opened hour in every subsequent process 2855ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=false)
+[asteroid-repro] {"scenario":"new-image-ore-table","depletedBefore":105,"revivedAfter":0,"unchangedClaimSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false},"newImageSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false}}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=false) 3491ms
+stdout | test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=true)
+[asteroid-repro] {"scenario":"new-image-ore-table","depletedBefore":105,"revivedAfter":0,"unchangedClaimSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false},"newImageSample":{"index":21900000,"level":2,"ore":1600,"crystalShare":0.35961571665480735,"deuteriumShare":0,"isotopeRich":false,"radius":4374.9310983183195,"period":77.16610333237988,"phase":5.7487678769028,"inclination":1.5986572877933525,"ascendingNode":0.37508908243442707,"speed":356.2250989722088,"appearsAt":7085.929992876584,"expiresAt":7246.470032748869,"oreTaken":1600,"visible":false}}
+
+ ✓ test/asteroid-spawn-regression.test.ts > invariants: runtime safeguards > keeps depleted rocks stable through a fresh-image settings change (legacy row=true) 3497ms
+
+ Test Files  1 passed (1)
+      Tests  26 passed (26)
+   Start at  00:41:08
+   Duration  36.38s (transform 1.38s, setup 0ms, collect 2.22s, tests 33.95s, environment 0ms, prepare 61ms)
+
+
+Recorded exit code: 0

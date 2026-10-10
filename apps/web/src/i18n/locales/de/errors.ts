@@ -14,6 +14,14 @@
  */
 
 export const errors = {
+  CAPITAL_CANNOT_BE_ABANDONED: "Du kannst deine Hauptstadt nicht aufgeben. Wähle eine Kolonie.",
+  COLONY_ABANDON_BLOCKED: "Diese Kolonie hat aktive Missionen oder einen Besitzwechsel. Prüfe die Gründe und warte auf den Abschluss.",
+  SKIN_NOT_OWNED: 'Dieses Aussehen ist nicht in deinem Inventar. Wähle eines, das du besitzt.',
+  SKIN_SLOT_MISMATCH: 'Dieses Aussehen passt nicht zum gewählten Typ oder Schiff. Wähle ein passendes Aussehen.',
+  SKIN_ALREADY_OWNED: 'Du besitzt bereits mindestens ein Aussehen aus diesem Angebot. Prüfe dein Inventar.',
+  SKIN_SHOP_CLOSED: 'Dieses Produkt kann derzeit nicht gekauft werden. Schau später noch einmal nach.',
+  SKIN_CHECKOUT_IN_PROGRESS: 'Für dieses Aussehen ist bereits eine Zahlung offen. Schließe sie ab oder warte, bis sie abläuft.',
+  SKIN_CHECKOUT_STARTING: 'Die Zahlung wird vorbereitet. Versuche es gleich noch einmal.',
   REPAIR_LOT_NOT_FOUND: "Diese beschädigten Schiffe warten hier nicht mehr.",
   REPAIR_LOT_BUSY: "Diese Schiffe werden bereits repariert.",
   REPAIR_NOTHING_WAITING: "Hier wartet kein beschädigtes Schiff auf Reparatur.",

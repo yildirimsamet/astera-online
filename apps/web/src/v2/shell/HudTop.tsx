@@ -32,6 +32,8 @@ export interface HudTopProps {
   commander: string;
   /** The commander chip: the Commander page (today's menu). */
   onCommander: () => void;
+  /** A direct store entrance in the brand strip, beside the wordmark. */
+  onShop?: () => void;
   /** The gift: open claimable rewards directly. */
   onRewards: () => void;
   /** The world mark: the Worlds sheet. */
@@ -55,7 +57,7 @@ export interface HudTopProps {
  * presentational pieces never fetch. The stores are projected so the meters move
  * between fetches the way the old header's did.
  */
-export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy, onBell, nowOpen, onNow, onFocusCraft, tabs }: HudTopProps) {
+export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, onEconomy, onBell, nowOpen, onNow, onFocusCraft, tabs }: HudTopProps) {
   const { t } = useTranslation();
   const now = useNow(1_000);
   const { activePlanetId, capitalPlanetId, worlds } = useWorld();
@@ -156,7 +158,7 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
 
   return (
     <div className="relative shrink-0">
-      <BrandMasthead />
+      <BrandMasthead onShop={onShop} />
       <TopBar
         commander={commander}
         shield={shieldUntil ? { until: shieldUntil.getTime(), kind: season?.shieldKind ?? 'NEWCOMER' } : null}

@@ -24,6 +24,9 @@ import {
 import { Icon } from '../v2/icons.js';
 import { navigateToPolarCheckout } from '../lib/polarCheckout.js';
 import { SkinPreview } from './SkinPreview.jsx';
+import { CosmeticNavigation } from './CosmeticNavigation.js';
+import { ApiError } from '../api/client.js';
+import { describeError } from '../i18n/errors.js';
 
 type Collection = z.infer<typeof skinCollectionSchema>;
 type Pricing = z.infer<typeof polarPricingSchema>;
@@ -66,20 +69,27 @@ export function SkinShopContent(props: Parameters<typeof PlanetShopContent>[0]) 
   const { t } = useTranslation();
   const [category, setCategory] = useState<CosmeticCategory>(props.initialId ? cosmeticById(props.initialId)?.category ?? 'PLANET' : 'PLANET');
   const owned = props.collection.ownedCosmeticIds ?? props.collection.ownedSkinIds;
+  const pricingReady = !props.pricingState || props.pricingState === 'ready';
+  const unavailable = props.enabled && !pricingReady
+    ? t(props.pricingState === 'loading' ? 'skins.priceLoading' : 'skins.priceUnavailable')
+    : t('skins.onSaleSoon');
   return <div className="min-h-full bg-v2-void font-v2-ui text-v2-ink">
-    <header className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-3 pt-3">
-      <h2 className="text-body font-semibold">{t('menu.skinsShopLabel')}</h2>
-      <button type="button" onClick={props.onOpenInventory} className="min-h-10 rounded-control border border-v2-line-hi px-3 text-caption text-v2-ink-2">{t('menu.skinsInventoryLabel')} · {owned.length}</button>
-    </header>
+    <CosmeticNavigation active="shop" onShop={() => undefined} onInventory={props.onOpenInventory} />
     <CosmeticCategories active={category} onChange={setCategory} owned={owned} inventory={false} />
+    {props.enabled && !pricingReady && <div role={props.pricingState === 'error' ? 'alert' : 'status'}
+      className="mx-auto mb-3 flex max-w-2xl items-center gap-3 px-3">
+      <p className="min-w-0 flex-1 text-caption text-v2-ink-2">{t(props.pricingState === 'error' ? 'skins.pricingError' : 'skins.priceLoading')}</p>
+      {props.pricingState === 'error' && props.onRetryPricing && <button type="button" onClick={props.onRetryPricing}
+        className="min-h-11 shrink-0 rounded-control border border-v2-premium/40 px-3 text-caption font-semibold text-v2-premium">{t('skins.retryPrices')}</button>}
+    </div>}
     {category === 'PLANET' ? <PlanetShopContent {...props} /> : <CosmeticCollection key={category}
       category={category} inventory={false} owned={owned} onTry={props.onTry} initialId={props.initialId} equipment={props.collection.equipment ?? {}} onOpenOther={props.onOpenInventory}
-      error={props.purchaseError ? t('skins.checkoutError') : undefined}
-      purchase={id => props.enabled && props.onPurchase && props.prices?.[id] ? <button type="button" disabled={props.pending}
+      prices={props.prices} purchaseError={props.purchaseError}
+      purchase={id => props.enabled && pricingReady && props.onPurchase && props.prices?.[id] ? <button type="button" disabled={props.pending} aria-busy={props.pending}
         onClick={() => { void props.onPurchase?.(id); }}
         className="v2-store-shimmer min-h-11 w-full rounded-control bg-v2-premium px-3 text-caption font-semibold text-v2-void disabled:opacity-50">
-        {t('skins.buy', { price: props.prices[id].formatted })}
-      </button> : <button type="button" disabled className="min-h-11 w-full rounded-control border border-v2-line-hi text-caption text-v2-ink-3">{t('skins.onSaleSoon')}</button>} />}
+        {props.pending ? t('skins.checkoutStarting') : t('skins.buy', { price: props.prices[id].formatted })}
+      </button> : <button type="button" disabled className="min-h-11 w-full rounded-control border border-v2-line-hi text-caption text-v2-ink-3">{unavailable}</button>} />}
   </div>;
 }
 
@@ -93,7 +103,8 @@ function PlanetShopContent({
   countryCode,
   enabled = false,
   pending = false,
-  purchaseError = false,
+  purchaseError,
+  pricingState = 'ready',
   onPurchase = () => undefined,
 }: {
   collection: Collection;
@@ -107,7 +118,9 @@ function PlanetShopContent({
   enabled?: boolean;
   /** A checkout is being created: its press waits rather than vanishing. */
   pending?: boolean;
-  purchaseError?: boolean;
+  purchaseError?: { itemId: ItemId; message: string };
+  pricingState?: 'loading' | 'error' | 'ready';
+  onRetryPricing?: () => void;
   onPurchase?: (itemId: ItemId) => void | Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -134,6 +147,7 @@ function PlanetShopContent({
   };
   const money = (itemId: ItemId, amounts: Readonly<Record<Currency, number>>): string => {
     const quote = quoteFor(itemId);
+    if (enabled && pricingState !== 'ready' && !quote) return '—';
     const fallbackCurrency = EUR_ONLY_COUNTRY_SKINS.has(itemId) ? 'EUR' : currency;
     return quote?.formatted ?? priceText(amounts[fallbackCurrency], fallbackCurrency, locale);
   };
@@ -141,8 +155,11 @@ function PlanetShopContent({
   const look = PLANET_SKIN_CATALOG[selected];
   const name = t(look.nameKey);
   const mine = owned.has(selected);
-  const buyReady = enabled && Boolean(quoteFor(selected)) && Boolean(onPurchase);
-  const bundleReady = enabled && Boolean(prices.bundle) && Boolean(onPurchase);
+  const buyReady = enabled && pricingState === 'ready' && Boolean(quoteFor(selected)) && Boolean(onPurchase);
+  const bundleReady = enabled && pricingState === 'ready' && Boolean(prices.bundle) && Boolean(onPurchase);
+  const unavailable = enabled && pricingState !== 'ready'
+    ? t(pricingState === 'loading' ? 'skins.priceLoading' : 'skins.priceUnavailable')
+    : t('skins.onSaleSoon');
   const buy = (): void => { void onPurchase(selected); };
   const bundleBuy = (): void => { void onPurchase('bundle'); };
   const offerSet = activeCollection === 'elemental' && SKIN_COLLECTIONS.elemental.ids.every((id) => !owned.has(id));
@@ -176,9 +193,6 @@ function PlanetShopContent({
             <Icon id="i-spark" className="size-3" />
             {t('skins.premium')} · {look.edition}/{skinEditionTotal(activeCollection)}
           </span>
-          <button type="button" onClick={onOpenInventory} className="text-caption font-semibold text-v2-ink-2 underline decoration-v2-line-hi underline-offset-4">
-            {t('skins.openInventory', { count: collection.ownedSkinIds.length })}
-          </button>
         </header>
 
         <div role="tablist" aria-label={t('skins.collections')} className="mt-3 grid grid-cols-2 gap-2">
@@ -267,17 +281,20 @@ function PlanetShopContent({
               {t('skins.wearIt')}
             </button>
           ) : buyReady ? (
-            <button type="button" onClick={buy} disabled={pending} className={`${buyClass} disabled:opacity-60`}>
-              {t('skins.buy', { price: money(selected, SKIN_PRICE) })}
+            <button type="button" onClick={buy} disabled={pending} aria-busy={pending} className={`${buyClass} disabled:opacity-60`}>
+              {pending ? t('skins.checkoutStarting') : t('skins.buy', { price: money(selected, SKIN_PRICE) })}
             </button>
           ) : shopier ? (
             <ShopierPress href={shopier} price={lira(SKIN_PRICE.TRY)} className={buyClass} />
           ) : (
             <button type="button" disabled className="flex h-11 flex-1 items-center justify-center rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink-2">
-              {t('skins.onSaleSoon')}
+              {unavailable}
             </button>
           )}
         </div>
+        {purchaseError?.itemId === selected && <p role="alert" className="mt-2 rounded-control border border-v2-warn/30 bg-v2-warn/5 px-3 py-2 text-caption text-v2-warn">
+          {purchaseError.message}
+        </p>}
         {/* Shopier is a separate manual route, with the name to write in its order. */}
         {shopier && (
           <section aria-label={t('skins.shopierAlternative')} className="mt-2 grid gap-1.5 rounded-control border border-v2-line bg-v2-deep/60 p-2.5">
@@ -362,12 +379,12 @@ function PlanetShopContent({
             </div>
             <div className="mt-3 grid gap-1.5">
               {bundleReady ? (
-                <button type="button" onClick={bundleBuy} disabled={pending} className={`${buyClass} w-full disabled:opacity-60`}>
-                  {t('skins.bundleBuy', { price: money('bundle', BUNDLE_PRICE) })}
+                <button type="button" onClick={bundleBuy} disabled={pending} aria-busy={pending} className={`${buyClass} w-full disabled:opacity-60`}>
+                  {pending ? t('skins.checkoutStarting') : t('skins.bundleBuy', { price: money('bundle', BUNDLE_PRICE) })}
                 </button>
               ) : bundleShopier === null ? (
                 <button type="button" disabled className="flex h-11 w-full items-center justify-center rounded-control border border-v2-line-hi text-caption font-semibold text-v2-ink-2">
-                  {t('skins.onSaleSoon')}
+                  {unavailable}
                 </button>
               ) : null}
               {bundleShopier !== null && (
@@ -378,6 +395,7 @@ function PlanetShopContent({
                   <ShopierNote commander={commander} />
                 </section>
               )}
+              {purchaseError?.itemId === 'bundle' && <p role="alert" className="text-caption text-v2-warn">{purchaseError.message}</p>}
             </div>
           </section>
         )}
@@ -397,12 +415,9 @@ function PlanetShopContent({
           ))}
         </ul>
 
-        <p className="mt-4 flex items-start gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2 text-micro leading-snug text-v2-ink-3">
+        {(canPay || !enabled || pricingState === 'ready') && <p className="mt-4 flex items-start gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2 text-micro leading-snug text-v2-ink-3">
           <Icon id="i-lock" className="mt-0.5 size-3 shrink-0" />
           <span>{t(canPay ? 'skins.trust' : 'skins.trustSoon', { commander })}</span>
-        </p>
-        {purchaseError && <p role="alert" className="mt-2 rounded-control border border-v2-hostile/50 bg-v2-hostile/10 px-3 py-2 text-caption text-v2-ink">
-          {t('skins.checkoutError')}
         </p>}
       </div>
     </div>
@@ -443,19 +458,22 @@ export default function SkinsScreen({ commander, onOpenInventory, onTry, initial
   const shop = usePolarShop();
   const pricing = usePolarPricing();
   const purchase = usePurchasePolarSkin();
-  const [checkoutFailed, setCheckoutFailed] = useState(false);
+  const [checkoutFailure, setCheckoutFailure] = useState<{ itemId: ItemId; reason: unknown } | null>(null);
   const onPurchase = async (itemId: ItemId): Promise<void> => {
     if (!shop.data?.enabled) return;
-    setCheckoutFailed(false);
+    setCheckoutFailure(null);
     try {
       const created = await purchase.mutateAsync(itemId);
       navigateToPolarCheckout(created.url);
-    } catch { setCheckoutFailed(true); }
+    } catch (reason) { setCheckoutFailure({ itemId, reason }); }
   };
   if (collection.isPending) return <p className="p-4 text-body text-dim">{t('skins.collection')}…</p>;
   if (!collection.data) return <p className="p-4 text-body text-dim">{t('skins.loadError')}</p>;
   return <SkinShopContent collection={collection.data} commander={commander} onOpenInventory={onOpenInventory} onTry={onTry} initialId={initialId}
     prices={pricing.data?.prices} countryCode={pricing.data?.countryCode ?? 'ZZ'}
     enabled={Boolean(shop.data?.enabled)} pending={purchase.isPending}
-    purchaseError={checkoutFailed} onPurchase={onPurchase} />;
+    purchaseError={checkoutFailure ? { itemId: checkoutFailure.itemId,
+      message: checkoutFailure.reason instanceof ApiError ? describeError(checkoutFailure.reason) : t('skins.checkoutError') } : undefined}
+    pricingState={pricing.isPending || (pricing.isFetching && !pricing.data) ? 'loading' : pricing.isError ? 'error' : 'ready'}
+    onRetryPricing={() => { void pricing.refetch(); }} onPurchase={onPurchase} />;
 }

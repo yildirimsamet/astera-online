@@ -14,6 +14,14 @@
  */
 
 export const errors = {
+  CAPITAL_CANNOT_BE_ABANDONED: "首都は放棄できません。植民地を選択してください。",
+  COLONY_ABANDON_BLOCKED: "この植民地には進行中の任務または所有権の変更があります。理由を確認し、完了を待ってください。",
+  SKIN_NOT_OWNED: 'この外観はインベントリにありません。所有している外観を選んでください。',
+  SKIN_SLOT_MISMATCH: 'この外観は選択した種類や船に対応していません。対応する外観を選んでください。',
+  SKIN_ALREADY_OWNED: 'この商品の外観を少なくとも1つすでに所有しています。インベントリを確認してください。',
+  SKIN_SHOP_CLOSED: 'この商品は現在購入できません。後でもう一度確認してください。',
+  SKIN_CHECKOUT_IN_PROGRESS: 'この外観の別の決済が進行中です。完了するか、有効期限が切れるまでお待ちください。',
+  SKIN_CHECKOUT_STARTING: '決済を準備しています。少し待ってからもう一度お試しください。',
   REPAIR_LOT_NOT_FOUND: "あの損傷した船はもうここでは待っていません。",
   REPAIR_LOT_BUSY: "それらの船はすでに修理中です。",
   REPAIR_NOTHING_WAITING: "ここには修理を待っている損傷した船はありません。",

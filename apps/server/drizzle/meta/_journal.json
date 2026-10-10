@@ -1023,6 +1023,13 @@
       "when": 1791500667839,
       "tag": "0145_cosmetic_equipment",
       "breakpoints": true
+    },
+    {
+      "idx": 146,
+      "version": "7",
+      "when": 1791575820183,
+      "tag": "0146_asteroid_generation_snapshot",
+      "breakpoints": true
     }
   ]
 }

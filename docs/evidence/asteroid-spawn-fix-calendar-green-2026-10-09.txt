@@ -1,0 +1,10 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server
+
+ ✓ test/galaxy-events.test.ts > persisted galaxy events > atomically seeds all three immutable lanes and their lifecycle queue pairs 1051ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 20 skipped (21)
+   Start at  23:10:24
+   Duration  4.16s (transform 1.79s, setup 0ms, collect 2.84s, tests 1.06s, environment 0ms, prepare 72ms)
+

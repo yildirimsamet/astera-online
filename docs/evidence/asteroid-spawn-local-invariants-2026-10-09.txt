@@ -1,0 +1,86 @@
+
+ RUN  v2.1.9 /home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server
+
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > does not attach a new multiplier to the old 60-minute window
+[asteroid-repro] {"scenario":"restamp-duration-mismatch","changed":1,"appended":0,"version":10,"effect":{"asteroidSpawnMultiplier":6},"durationMinutes":60,"workerPlannedRocks":210,"actualGeneratedRocks":210,"expectedCurrentDefinitionHourRocks":123}
+
+ × test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > does not attach a new multiplier to the old 60-minute window 1621ms
+   → v10 must not run for the old v9 hour: expected 210 to be 123 // Object.is equality
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > ignores population samples more than six actual hours old after an outage
+[asteroid-repro] {"scenario":"stale-population-after-outage","seatedCommanders":50,"eligibleNow":0,"youngestHistoryHoursOld":24,"supply":42,"workerPlannedRocks":42,"actualVisibleRocksAfterTheHour":42}
+
+ × test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > ignores population samples more than six actual hours old after an outage 1523ms
+   → an empty galaxy must not use yesterday’s samples as the last six hours: expected 42 to be +0 // Object.is equality
+stdout | test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > keeps depleted stored-hour rocks depleted in a fresh process with a new ore table
+[asteroid-repro] {"scenario":"new-image-ore-table","depletedBefore":105,"revivedAfter":105,"unchangedClaimSample":{"index":21900000,"ore":1600,"oreTaken":1600,"visible":false},"newImageSample":{"index":21900000,"ore":3200,"oreTaken":1600,"visible":true}}
+
+ × test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > keeps depleted stored-hour rocks depleted in a fresh process with a new ore table 3077ms
+   → persisted depletion must survive a balance change: expected [ { index: 21900000, …(3) }, …(104) ] to have a length of +0 but got 105
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > does not attach a new multiplier to the old 60-minute window
+AssertionError: v10 must not run for the old v9 hour: expected 210 to be 123 // Object.is equality
+
+- Expected
++ Received
+
+- 123
++ 210
+
+ ❯ test/diagnostics/asteroid-spawn.repro.ts:372:59
+    370|     });
+    371|     expect(occurrence.effect).toEqual({ asteroidSpawnMultiplier: 6 });
+    372|     expect(count, 'v10 must not run for the old v9 hour').toBe(123);
+       |                                                           ^
+    373|   });
+    374| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > ignores population samples more than six actual hours old after an outage
+AssertionError: an empty galaxy must not use yesterday’s samples as the last six hours: expected 42 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 42
+
+ ❯ test/diagnostics/asteroid-spawn.repro.ts:394:106
+    392|     });
+    393|     expect(hour.eligiblePlayers).toBe(0);
+    394|     expect(hour.activePlayers, 'an empty galaxy must not use yesterday…
+       |                                                                                                          ^
+    395|   });
+    396| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  test/diagnostics/asteroid-spawn.repro.ts > invariants: known runtime bugs (expected RED, no production fixes) > keeps depleted stored-hour rocks depleted in a fresh process with a new ore table
+AssertionError: persisted depletion must survive a balance change: expected [ { index: 21900000, …(3) }, …(104) ] to have a length of +0 but got 105
+
+- Expected
++ Received
+
+- 0
++ 105
+
+ ❯ test/diagnostics/asteroid-spawn.repro.ts:418:103
+    416|       unchangedClaimSample: before[0], newImageSample: after[0],
+    417|     });
+    418|     expect(after.filter((rock) => rock.visible), 'persisted depletion …
+       |                                                                                                       ^
+    419|   });
+    420| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 10 skipped (13)
+   Start at  22:26:02
+   Duration  8.57s (transform 1.35s, setup 0ms, collect 2.17s, tests 6.23s, environment 0ms, prepare 52ms)
+
+undefined
+/home/yildirim/Desktop/Coding/MyProjects/blindspace/apps/server:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run --config vitest.asteroid-repro.config.ts -t invariants: --reporter=verbose

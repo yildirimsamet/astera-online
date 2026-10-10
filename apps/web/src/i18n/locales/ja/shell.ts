@@ -454,6 +454,8 @@ export const leaderboard = {
 export const chat = {
   previousSeasonPlace: "前シーズン · {{rank}}位",
   supporterBadge: "Astera支援者",
+  supporterExplanation: "Astera Onlineを支援しているプレイヤーです。",
+  previousSeasonExplanation: "前シーズンを{{rank}}位で終えたプレイヤーです。",
   eyebrow: "ライブ チャンネル",
   title: "チャット",
   launcher: "ギャラクシーチャットを開く",
