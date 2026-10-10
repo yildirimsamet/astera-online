@@ -149,7 +149,7 @@ export const skins = {
   "productring-prism": "Prizma Halesi",
   "storyprismRING": "Kristal parçalardan bir kuşak yavaşça döner ve parıldayan elmas tozuna gökkuşağı yansımaları saçar.",
   "productring-inferno": "Cehennem Ateşi",
-  "storyinfernoRING": "Dalgalı plazma gezegenin çevresinde döner. Güneş yayları kuşaktan yükselip geri düşer.",
+  "storyinfernoRING": "Dalgalı plazma gezegenin çevresinde döner; kızgın iç kenarı ateşli ışık şeritleri sarar.",
   "productring-nebula": "Bulutsu Peçesi",
   "storynebulaRING": "Minyatür bir sarmal gökada: gül ve mor kollar, karanlık toz şeritleri ve göz kırpan yıldızlar.",
   "productengine-tempest": "Fırtına İtkisi",

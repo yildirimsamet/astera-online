@@ -149,7 +149,7 @@ export const skins = {
   "productring-prism": "Prismenhalo",
   "storyprismRING": "Ein Gürtel aus Kristallsplittern dreht sich langsam und streut Regenbogenkanten über glitzernden Diamantstaub.",
   "productring-inferno": "Inferno",
-  "storyinfernoRING": "Turbulentes Plasma umkreist die Welt, während Sonnenbögen aus dem Gürtel aufsteigen und zurückfallen.",
+  "storyinfernoRING": "Turbulentes Plasma umkreist die Welt; feurige Filamente ziehen sich um einen weißglühenden inneren Rand.",
   "productring-nebula": "Nebelschleier",
   "storynebulaRING": "Eine Spiralgalaxie im Kleinen: rosa und violette Arme, dunkle Staubbänder und funkelnde Sterne.",
   "productengine-tempest": "Sturmschub",

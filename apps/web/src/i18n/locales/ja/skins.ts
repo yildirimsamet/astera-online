@@ -149,7 +149,7 @@ export const skins = {
   "productring-prism": "プリズム・ヘイロー",
   "storyprismRING": "水晶の破片の帯がゆっくり回り、きらめくダイヤモンドダストに虹色の輝きを散らす。",
   "productring-inferno": "インフェルノ",
-  "storyinfernoRING": "荒れ狂うプラズマが惑星を巡り、太陽のアーチが帯から立ち上っては落ちる。",
+  "storyinfernoRING": "荒れ狂うプラズマが惑星を巡り、白熱する内縁の周りに炎の筋を描く。",
   "productring-nebula": "ネビュラ・ヴェール",
   "storynebulaRING": "小さな渦巻銀河。ローズとバイオレットの腕、暗いダストレーン、またたく星々。",
   "productengine-tempest": "テンペスト・ドライブ",

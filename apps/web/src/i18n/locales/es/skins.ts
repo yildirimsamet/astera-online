@@ -149,7 +149,7 @@ export const skins = {
   "productring-prism": "Halo prismático",
   "storyprismRING": "Un cinturón de fragmentos de cristal gira despacio y esparce reflejos de arcoíris sobre polvo de diamante.",
   "productring-inferno": "Infierno",
-  "storyinfernoRING": "Un plasma turbulento rodea el mundo mientras arcos solares se elevan del cinturón y vuelven a caer.",
+  "storyinfernoRING": "Un plasma turbulento rodea el mundo y dibuja filamentos de fuego alrededor de un borde interior incandescente.",
   "productring-nebula": "Velo de nebulosa",
   "storynebulaRING": "Una galaxia espiral en miniatura: brazos rosa y violeta, franjas de polvo oscuro y estrellas titilantes.",
   "productengine-tempest": "Impulso Tempestad",

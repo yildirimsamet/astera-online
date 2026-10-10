@@ -149,7 +149,7 @@ export const skins = {
   "productring-prism": "Prism Halo",
   "storyprismRING": "A belt of crystal shards turns slowly, scattering rainbow edges over glittering diamond dust.",
   "productring-inferno": "Inferno",
-  "storyinfernoRING": "Turbulent plasma circles the world while solar arcs rise from the belt and fall back.",
+  "storyinfernoRING": "Turbulent plasma circles the world, tracing fiery filaments around a white-hot inner rim.",
   "productring-nebula": "Nebula Veil",
   "storynebulaRING": "A miniature spiral galaxy: rose and violet arms, dark dust lanes and twinkling stars.",
   "productengine-tempest": "Tempest Drive",

@@ -86,7 +86,6 @@ export const saturnFragment = `
 /** A rainbow diamond-dust belt under the crystal shards. */
 export const prismDustFragment = `
   uniform float uTime;
-  uniform float uVeil;
   varying vec2 vPlane;
   ${NOISE}
   void main() {
@@ -102,7 +101,7 @@ export const prismDustFragment = `
     vec3 colour = mix(vec3(.72, .9, 1.15), spectrum(t * 1.3 + angle * .16 + uTime * .025) * 1.25, .65);
     vec2 cell = floor(vec2(atan(moving.y, moving.x) * 170.0, t * 70.0));
     float glitter = step(.982, hash21(cell)) * pow(.5 + .5 * sin(uTime * 3.4 + hash21(cell + 3.0) * 50.0), 10.0);
-    float alpha = (body * (.08 + .26 * smoothstep(.35, .8, swirl) + grooves * .18) + glitter * body * 1.2) * (1.0 - uVeil * .55);
+    float alpha = body * (.08 + .26 * smoothstep(.35, .8, swirl) + grooves * .18) + glitter * body * 1.2;
     if (alpha < .005) discard;
     gl_FragColor = vec4(colour + glitter * .8, alpha);
     ${OUTPUT}
@@ -140,7 +139,6 @@ export const infernoFragment = `
 /** A miniature spiral galaxy: two winding arms with thin dust lanes, pink star-forming knots, a warm core. */
 export const nebulaFragment = `
   uniform float uTime;
-  uniform float uVeil;
   varying vec2 vPlane;
   ${NOISE}
   void main() {
@@ -148,7 +146,7 @@ export const nebulaFragment = `
     float t = ${across(RING_SPANS.nebula)};
     float body = smoothstep(0.0, .14, t) * (1.0 - smoothstep(.42, 1.0, t));
     float angle = atan(vPlane.y, vPlane.x);
-    float phase = 2.0 * (angle + log(r) * 2.8 - uTime * .04 + uVeil * 1.3);
+    float phase = 2.0 * (angle + log(r) * 2.8 - uTime * .04);
     float arms = pow(.5 + .5 * cos(phase), 3.0);
     float lanes = pow(.5 + .5 * cos(phase - .75), 26.0);
     vec2 moving = spin(vPlane, -uTime * .03);
@@ -166,7 +164,7 @@ export const nebulaFragment = `
     colour += vec3(1.45, .42, 1.0) * knots + vec3(1.2) * knotCore + vec3(1.3, .95, .75) * core;
     vec2 cell = floor(moving * 52.0);
     float star = step(.992, hash21(cell)) * (.4 + .6 * hash21(cell + 2.0)) * (.65 + .35 * sin(uTime * 2.0 + hash21(cell + 1.0) * 30.0));
-    float alpha = (clamp(density * .82 + knots * .45 * body + core * .5, 0.0, .95) + star * body * 1.1) * (1.0 - uVeil * .5);
+    float alpha = clamp(density * .82 + knots * .45 * body + core * .5, 0.0, .95) + star * body * 1.1;
     if (alpha < .006) discard;
     gl_FragColor = vec4(colour + star * 1.2, alpha);
     ${OUTPUT}
@@ -202,43 +200,6 @@ export const shardFragment = `
     // Dark glass bodies, so the thin-film colour on their edges is what the eye catches.
     vec3 colour = vec3(.06, .14, .26) * (.5 + .5 * facing) + film * (.12 + edge * 1.9) + vec3(.5, .7, 1.0) * pow(facing, 24.0) * .9 + vec3(1.4) * flash;
     gl_FragColor = vec4(colour, 1.0);
-    ${OUTPUT}
-  }
-`;
-
-/** Solar prominences: half-torus arcs that rise and fall over the inferno belt. */
-export const prominenceVertex = `
-  attribute float aPhase;
-  varying float vPhase;
-  varying float vFacing;
-  varying vec2 vUv;
-  uniform float uTime;
-  void main() {
-    vUv = uv;
-    vPhase = aPhase;
-    vec3 p = position;
-    p.y *= .55 + .45 * sin(uTime * .55 + aPhase * 6.0);
-    vec4 view = modelViewMatrix * instanceMatrix * vec4(p, 1.0);
-    vFacing = abs(dot(normalize(normalMatrix * mat3(instanceMatrix) * normal), normalize(-view.xyz)));
-    gl_Position = projectionMatrix * view;
-  }
-`;
-export const prominenceFragment = `
-  uniform float uTime;
-  varying float vPhase;
-  varying float vFacing;
-  varying vec2 vUv;
-  ${NOISE}
-  void main() {
-    float feet = smoothstep(0.0, .1, vUv.x) * (1.0 - smoothstep(.9, 1.0, vUv.x));
-    float flow = noise21(vec2(vUv.x * 9.0 - uTime * 1.4, vUv.y * 3.0 + vPhase * 10.0));
-    float core = pow(vFacing, 1.6);
-    float heat = feet * core * (.5 + .7 * flow) * (.75 + .25 * sin(uTime * .55 + vPhase * 6.0));
-    vec3 colour = mix(vec3(1.1, .16, .02), vec3(1.6, .62, .08), smoothstep(.2, .55, heat));
-    colour = mix(colour, vec3(1.75, 1.35, .75), smoothstep(.6, .95, heat));
-    float alpha = smoothstep(.05, .5, heat) * .85;
-    if (alpha < .01) discard;
-    gl_FragColor = vec4(colour, alpha);
     ${OUTPUT}
   }
 `;
