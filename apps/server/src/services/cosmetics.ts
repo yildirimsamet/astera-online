@@ -1,5 +1,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
-import { cosmeticById, type CosmeticId, planetSkinById, type PlanetSkinId } from '@astera/rules';
+import { COSMETIC_CATEGORIES, MOBILE_HULLS, cosmeticById, type CosmeticEquipment, type CosmeticId,
+  planetSkinById, type PlanetSkinId, type ShipCosmeticEquipment } from '@astera/rules';
 import type { Db, Queryable } from '../db/client.js';
 import { accounts, planets, cosmeticEntitlements, players, clanMemberships } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
@@ -8,8 +9,21 @@ import { commanderForAccount } from './ownership.js';
 import { accountCosmeticEquipment, clanCosmeticFlags } from './cosmeticEquipment.js';
 import { normaliseUsername } from '../auth/credentials.js';
 
+/** Frozen inventory vocabulary of clients released before wave two. Never expand this list. */
+export const LEGACY_COSMETIC_IDS = [
+  'planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert', 'planet-turkey',
+  'planet-germany', 'planet-france', 'planet-spain', 'planet-japan',
+  'ring-aurora', 'ring-helios', 'ring-singularity',
+  'engine-aurora', 'engine-helios', 'engine-singularity', 'engine-titan',
+  'flag-vanguard', 'flag-orbit', 'flag-aurora', 'flag-helios', 'flag-singularity',
+  'flag-reaper', 'flag-ravager', 'flag-serpent', 'flag-phoenix', 'flag-ironfang',
+  'probe-ufo', 'ship-red-dragon', 'ship-scorpion', 'ship-shark', 'ship-stingray',
+] as const satisfies readonly CosmeticId[];
+
 /** Rights are account scoped; planet choices belong to a seasonal world. */
-export async function skinCollection(db: Queryable, accountId: string) {
+export async function skinCollection(db: Queryable, accountId: string, supportedCosmetics?: ReadonlySet<string>) {
+  // This limits the response vocabulary only. Ownership and equipment validation still use all rights.
+  const supports = (id: string): boolean => supportedCosmetics?.has(id) ?? true;
   const rights = await db.select({ skinId: cosmeticEntitlements.cosmeticId })
     .from(cosmeticEntitlements)
     .where(and(eq(cosmeticEntitlements.accountId, accountId), isNull(cosmeticEntitlements.revokedAt)));
@@ -21,19 +35,34 @@ export async function skinCollection(db: Queryable, accountId: string) {
     .innerJoin(players, eq(players.id, planets.controllerPlayerId))
     .where(eq(players.accountId, accountId));
   const equipment = await accountCosmeticEquipment(db, [accountId]);
+  const equipped = equipment.get(accountId) ?? {};
+  const visibleEquipment: CosmeticEquipment = {};
+  for (const category of COSMETIC_CATEGORIES) {
+    if (category === 'SHIP') continue;
+    const id = equipped[category];
+    if (id && supports(id)) visibleEquipment[category] = id;
+  }
+  const ships: ShipCosmeticEquipment = {};
+  for (const hull of MOBILE_HULLS) {
+    const id = equipped.SHIP?.[hull];
+    if (id && supports(id)) ships[hull] = id;
+  }
+  if (Object.keys(ships).length) visibleEquipment.SHIP = ships;
   const [membership] = await db.select({ clanId: clanMemberships.clanId, role: clanMemberships.role, seasonId: players.seasonId })
     .from(players).innerJoin(clanMemberships, and(eq(clanMemberships.playerId, players.id), isNull(clanMemberships.leftAt)))
     .where(eq(players.accountId, accountId)).limit(1);
   const clanFlags = membership ? await clanCosmeticFlags(db, membership.seasonId) : new Map<string, string>();
+  const clanFlagId = membership ? clanFlags.get(membership.clanId) ?? null : null;
   return {
-    clanFlagId: membership ? clanFlags.get(membership.clanId) ?? null : null,
+    clanFlagId: clanFlagId && !supports(clanFlagId)
+      ? supports('flag-vanguard') ? 'flag-vanguard' : null : clanFlagId,
     canEquipFlag: membership?.role === 'LEADER',
-    ownedCosmeticIds: rights.map(right => right.skinId).filter((id): id is CosmeticId => cosmeticById(id) !== null),
-    equipment: equipment.get(accountId) ?? {},
-    ownedSkinIds: rights.map((right) => right.skinId).filter((id): id is PlanetSkinId => planetSkinById(id) !== null),
+    ownedCosmeticIds: rights.map(right => right.skinId).filter((id): id is CosmeticId => cosmeticById(id) !== null && supports(id)),
+    equipment: visibleEquipment,
+    ownedSkinIds: rights.map((right) => right.skinId).filter((id): id is PlanetSkinId => planetSkinById(id) !== null && supports(id)),
     planets: worlds.map((world) => ({
       ...world,
-      skinId: world.skinId && planetSkinById(world.skinId) ? world.skinId : null,
+      skinId: world.skinId && planetSkinById(world.skinId) && supports(world.skinId) ? world.skinId : null,
     })),
   };
 }

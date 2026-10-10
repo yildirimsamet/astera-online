@@ -214,26 +214,27 @@ collecting (Prism halo + drive; Amber Scorpion standard + Scorpion hull).
   carry a painted gash so they still read when the texture is minified.
 - **Rings.** Saturn's Crown (real C/B/A anatomy from a 1D profile texture, Cassini and Encke
   gaps, Keplerian shear, ~26° obliquity), Prism Halo (120 instanced crystal needles, thin-film
-  edges, rainbow dust and a crossing veil), Inferno (ridged plasma filaments, white-hot rim, eight
-  instanced prominence arcs), Nebula Veil (two logarithmic arms, dust lanes, star-forming knots,
-  warm core, crossing veil). Flat belts read as lines from many camera angles in the spherical
-  galaxy, so each new ring has obliquity, a crossing veil or vertical undulation.
+  edges and rainbow dust), Inferno (ridged plasma filaments and a white-hot rim), Nebula Veil
+  (two logarithmic arms, dust lanes, star-forming knots and a warm core). The owner requested
+  removal of Inferno's eight raised arcs and the diagonal secondary Prism/Nebula belts on
+  10 October. Main belts keep their obliquity or vertical undulation; Prism retains its crystals.
 - **Drives.** Tempest (four forked bolts re-seeded twelve times a second; bolt paths are computed
   per tube ring in the vertex stage, so the jagged polyline costs vertices, not pixels) and Prism
   (white core dispersing into travelling spectral bands, light rings and glitter).
 - **Budgets.** Every new look compiles its own program (`cosmeticShaders.ts`); legacy products
   keep the shared program unchanged. Belts are annuli (no discarded plane pixels), noise is
   three octaves, drives stay at 1,536 triangles per craft in one instanced draw, Prism shards
-  are one 960-triangle draw, prominences one 2,240-triangle draw. Ring spans live in
+  are one 960-triangle draw. Ring spans live in
   `RING_SPANS` and feed both geometry and shaders.
 
-**Sale status.** The sixteen paid items are catalogued and visible in the shop as "on sale
-soon": they have no Polar mapping yet, so they have no quote. The owner creates the Polar
-products. For each item: add `{ productId, eurAmount, tryAmount }` to
-`config/polar-cosmetics.{sandbox,production}.json` and the matching env templates, add its
-`data-offer-price` entry to `pricing.html` and `fiyatlar.html`, and remove its ID from
-`AWAITING_POLAR_PRODUCTS` in `apps/server/test/polar-catalog.test.ts`. The tests then require
-the category price and the public listing. `publisher-pricing.js` already accepts these IDs.
+**Sale status (10 October).** All sixteen paid products now exist in sandbox and production
+with their individual artwork and approved regional prices. Both catalogue JSON files and
+env templates include all 36 paid non-planet cosmetics; both public price pages list all 46
+offers including planets and the bundle. Included standards remain free. The server still
+grants purchases only through verified Polar payment events and revokes them on full refund.
+Application production activation requires the documented runtime mapping and rollout; the
+provider catalogue alone does not activate the in-game offers. Integration evidence and
+rollback constraints: [Polar second-wave release](polar-wave2-integration-2026-10-10.md).
 
 Verification: all 36 real product renders and the 350px/1280px shop layouts pass with no
 JavaScript or shader errors; both new drives pass the stationary-camera motion check

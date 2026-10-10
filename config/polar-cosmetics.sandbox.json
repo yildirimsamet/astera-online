@@ -98,5 +98,85 @@
     "productId": "77f888ba-1e4c-4629-a576-589abdb09543",
     "eurAmount": 399,
     "tryAmount": 9900
+  },
+  "ring-saturn": {
+    "productId": "0b152604-8483-4e02-ace1-b4be122071fc",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "ring-prism": {
+    "productId": "92c655c7-7520-403f-8f30-222646e5a549",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "ring-inferno": {
+    "productId": "5e5c2436-118d-4c6f-9732-0ec02b2d15ef",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "ring-nebula": {
+    "productId": "77963c56-8fdb-4f63-ba14-d5bfb684796d",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "engine-tempest": {
+    "productId": "2a300d6b-7ef4-448e-b09b-38c90c6c8304",
+    "eurAmount": 249,
+    "tryAmount": 6900
+  },
+  "engine-prism": {
+    "productId": "aeaf4686-2c24-4182-a573-91f0c01d5664",
+    "eurAmount": 249,
+    "tryAmount": 6900
+  },
+  "flag-sovereign": {
+    "productId": "7a58a5b4-9a53-4ec2-aa91-845a760370e7",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-kraken": {
+    "productId": "f7f164d0-b035-4173-b508-4e08f171d5af",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-oni": {
+    "productId": "98703b5f-70d3-411c-ba71-0917ff73b81c",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-voideye": {
+    "productId": "a1bc4ae1-a533-44b4-be28-abf66e0ae0a0",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-valkyrie": {
+    "productId": "099563a2-4bb2-4c2b-b3ec-6237408c385f",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-scarab": {
+    "productId": "d1675055-d88f-4c31-a1d7-bd65ec5a209b",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-stag": {
+    "productId": "193dfbf4-d750-4221-ac8c-29b80af034ed",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-horizon": {
+    "productId": "49ba0ca0-21f7-4ff8-b690-10022297baf4",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-tiger": {
+    "productId": "3fa61172-e8ba-4203-b42a-30a7cc9e04f3",
+    "eurAmount": 199,
+    "tryAmount": 4900
+  },
+  "flag-scorpion": {
+    "productId": "94b3dede-af22-4733-916b-a8dd21d3f7a1",
+    "eurAmount": 199,
+    "tryAmount": 4900
   }
 }

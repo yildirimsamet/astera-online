@@ -1,0 +1,189 @@
+{
+  "date": "2026-10-10",
+  "environment": "sandbox",
+  "isolatedDatabase": "astera_polar_wave2_manual_20261010_test",
+  "liveCharges": 0,
+  "paid": [
+    {
+      "itemId": "flag-sovereign",
+      "currency": "try",
+      "totalAmount": 4900,
+      "status": "paid"
+    },
+    {
+      "itemId": "engine-tempest",
+      "currency": "try",
+      "totalAmount": 6900,
+      "status": "paid"
+    },
+    {
+      "itemId": "ring-saturn",
+      "currency": "eur",
+      "totalAmount": 199,
+      "status": "paid"
+    }
+  ],
+  "fullRefunds": [
+    {
+      "itemId": "flag-sovereign",
+      "currency": "try",
+      "totalAmount": 4900,
+      "refundedAmount": 4083,
+      "refundedTaxAmount": 817,
+      "status": "refunded"
+    },
+    {
+      "itemId": "engine-tempest",
+      "currency": "try",
+      "totalAmount": 6900,
+      "refundedAmount": 5750,
+      "refundedTaxAmount": 1150,
+      "status": "refunded"
+    },
+    {
+      "itemId": "ring-saturn",
+      "currency": "eur",
+      "totalAmount": 199,
+      "refundedAmount": 166,
+      "refundedTaxAmount": 33,
+      "status": "refunded"
+    }
+  ],
+  "currentInventoryAfterPayments": [
+    "ring-aurora",
+    "ring-saturn",
+    "engine-tempest",
+    "flag-sovereign"
+  ],
+  "legacyInventoryAfterPayments": [
+    "ring-aurora"
+  ],
+  "currentInventoryAfterRefunds": [
+    "ring-aurora"
+  ],
+  "currentInventoryAfterPaidRedelivery": [
+    "ring-aurora"
+  ],
+  "latePaidRedeliveries": 3,
+  "successfulWebhookDeliveries": 9,
+  "temporaryReceiverUnavailableAttempts": 10,
+  "recoveredAfterReceiverRestart": true,
+  "temporaryEndpointDeleted": true,
+  "temporaryProcessesStopped": true,
+  "artwork": [
+    {
+      "environment": "sandbox",
+      "itemId": "ring-inferno",
+      "productId": "5e5c2436-118d-4c6f-9732-0ec02b2d15ef",
+      "sha256": "746d8c27b2598d69333380de740e52d296137f9d34e2fa48c70d1ee951686455",
+      "pricesUnchanged": true
+    },
+    {
+      "environment": "sandbox",
+      "itemId": "ring-nebula",
+      "productId": "77963c56-8fdb-4f63-ba14-d5bfb684796d",
+      "sha256": "09286b429a7dd228798a45e47b9b4ce74c46031da0b65100e021bf7a2b7879c8",
+      "pricesUnchanged": true
+    },
+    {
+      "environment": "sandbox",
+      "itemId": "ring-prism",
+      "productId": "92c655c7-7520-403f-8f30-222646e5a549",
+      "sha256": "7b5acdd96f2f40912ae60752d88ecd89c3ff56b029282cdbe4dd6ac8abebeb74",
+      "pricesUnchanged": true
+    },
+    {
+      "environment": "production",
+      "itemId": "ring-inferno",
+      "productId": "84213ea3-231c-404a-9481-28a696af7fd3",
+      "sha256": "746d8c27b2598d69333380de740e52d296137f9d34e2fa48c70d1ee951686455",
+      "pricesUnchanged": true
+    },
+    {
+      "environment": "production",
+      "itemId": "ring-nebula",
+      "productId": "dde1d54d-f74a-45f2-b823-ac2961df9e8d",
+      "sha256": "09286b429a7dd228798a45e47b9b4ce74c46031da0b65100e021bf7a2b7879c8",
+      "pricesUnchanged": true
+    },
+    {
+      "environment": "production",
+      "itemId": "ring-prism",
+      "productId": "ded03e7c-818f-4cb7-91d7-ea2756c0d3b5",
+      "sha256": "7b5acdd96f2f40912ae60752d88ecd89c3ff56b029282cdbe4dd6ac8abebeb74",
+      "pricesUnchanged": true
+    }
+  ],
+  "visualChecks": {
+    "rings": [
+      {
+        "id": "ring-inferno",
+        "errors": []
+      },
+      {
+        "id": "ring-nebula",
+        "errors": []
+      },
+      {
+        "id": "ring-prism",
+        "errors": []
+      },
+      {
+        "width": 350,
+        "errors": []
+      },
+      {
+        "width": 1280,
+        "errors": []
+      }
+    ],
+    "pricing": [
+      {
+        "width": 350,
+        "page": "pricing.html",
+        "offers": 46,
+        "overflow": false,
+        "imageFailures": 0,
+        "countryCode": "ZZ",
+        "errors": []
+      },
+      {
+        "width": 350,
+        "page": "fiyatlar.html",
+        "offers": 46,
+        "overflow": false,
+        "imageFailures": 0,
+        "countryCode": "ZZ",
+        "errors": []
+      },
+      {
+        "width": 1280,
+        "page": "pricing.html",
+        "offers": 46,
+        "overflow": false,
+        "imageFailures": 0,
+        "countryCode": "ZZ",
+        "errors": []
+      },
+      {
+        "width": 1280,
+        "page": "fiyatlar.html",
+        "offers": 46,
+        "overflow": false,
+        "imageFailures": 0,
+        "countryCode": "ZZ",
+        "errors": []
+      }
+    ]
+  },
+  "webhooks": {
+    "sandbox": {
+      "endpointCount": 2,
+      "originalEndpointsUnchanged": true
+    },
+    "production": {
+      "endpointCount": 1,
+      "originalEndpointsUnchanged": true
+    }
+  }
+}

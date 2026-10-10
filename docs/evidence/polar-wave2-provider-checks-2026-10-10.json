@@ -1,0 +1,212 @@
+{
+  "environment": "sandbox",
+  "observedAt": "2026-10-10T06:15:25.544308+00:00",
+  "checkouts": [
+    {
+      "itemId": "ring-saturn",
+      "productId": "0b152604-8483-4e02-ace1-b4be122071fc",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "ring-saturn",
+      "productId": "0b152604-8483-4e02-ace1-b4be122071fc",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "ring-prism",
+      "productId": "92c655c7-7520-403f-8f30-222646e5a549",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "ring-prism",
+      "productId": "92c655c7-7520-403f-8f30-222646e5a549",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "ring-inferno",
+      "productId": "5e5c2436-118d-4c6f-9732-0ec02b2d15ef",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "ring-inferno",
+      "productId": "5e5c2436-118d-4c6f-9732-0ec02b2d15ef",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "ring-nebula",
+      "productId": "77963c56-8fdb-4f63-ba14-d5bfb684796d",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "ring-nebula",
+      "productId": "77963c56-8fdb-4f63-ba14-d5bfb684796d",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "engine-tempest",
+      "productId": "2a300d6b-7ef4-448e-b09b-38c90c6c8304",
+      "currency": "EUR",
+      "totalAmount": 249
+    },
+    {
+      "itemId": "engine-tempest",
+      "productId": "2a300d6b-7ef4-448e-b09b-38c90c6c8304",
+      "currency": "TRY",
+      "totalAmount": 6900
+    },
+    {
+      "itemId": "engine-prism",
+      "productId": "aeaf4686-2c24-4182-a573-91f0c01d5664",
+      "currency": "EUR",
+      "totalAmount": 249
+    },
+    {
+      "itemId": "engine-prism",
+      "productId": "aeaf4686-2c24-4182-a573-91f0c01d5664",
+      "currency": "TRY",
+      "totalAmount": 6900
+    },
+    {
+      "itemId": "flag-sovereign",
+      "productId": "7a58a5b4-9a53-4ec2-aa91-845a760370e7",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "flag-sovereign",
+      "productId": "7a58a5b4-9a53-4ec2-aa91-845a760370e7",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "flag-kraken",
+      "productId": "f7f164d0-b035-4173-b508-4e08f171d5af",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "flag-kraken",
+      "productId": "f7f164d0-b035-4173-b508-4e08f171d5af",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "flag-oni",
+      "productId": "98703b5f-70d3-411c-ba71-0917ff73b81c",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "flag-oni",
+      "productId": "98703b5f-70d3-411c-ba71-0917ff73b81c",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "flag-voideye",
+      "productId": "a1bc4ae1-a533-44b4-be28-abf66e0ae0a0",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "flag-voideye",
+      "productId": "a1bc4ae1-a533-44b4-be28-abf66e0ae0a0",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "flag-valkyrie",
+      "productId": "099563a2-4bb2-4c2b-b3ec-6237408c385f",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "flag-valkyrie",
+      "productId": "099563a2-4bb2-4c2b-b3ec-6237408c385f",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "flag-scarab",
+      "productId": "d1675055-d88f-4c31-a1d7-bd65ec5a209b",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "flag-scarab",
+      "productId": "d1675055-d88f-4c31-a1d7-bd65ec5a209b",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "flag-stag",
+      "productId": "193dfbf4-d750-4221-ac8c-29b80af034ed",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "flag-stag",
+      "productId": "193dfbf4-d750-4221-ac8c-29b80af034ed",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "flag-horizon",
+      "productId": "49ba0ca0-21f7-4ff8-b690-10022297baf4",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "flag-horizon",
+      "productId": "49ba0ca0-21f7-4ff8-b690-10022297baf4",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "flag-tiger",
+      "productId": "3fa61172-e8ba-4203-b42a-30a7cc9e04f3",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "flag-tiger",
+      "productId": "3fa61172-e8ba-4203-b42a-30a7cc9e04f3",
+      "currency": "TRY",
+      "totalAmount": 4900
+    },
+    {
+      "itemId": "flag-scorpion",
+      "productId": "94b3dede-af22-4733-916b-a8dd21d3f7a1",
+      "currency": "EUR",
+      "totalAmount": 199
+    },
+    {
+      "itemId": "flag-scorpion",
+      "productId": "94b3dede-af22-4733-916b-a8dd21d3f7a1",
+      "currency": "TRY",
+      "totalAmount": 4900
+    }
+  ],
+  "providerCatalogues": {
+    "sandbox": {
+      "activeOffers": 46,
+      "newPaidCosmetics": 16,
+      "originalOffersUnchanged": 30
+    },
+    "production": {
+      "activeOffers": 46,
+      "newPaidCosmetics": 16,
+      "originalOffersUnchanged": 30
+    }
+  },
+  "productionApplicationDeployed": false,
+  "liveCardCharged": false
+}

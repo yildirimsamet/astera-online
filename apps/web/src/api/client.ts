@@ -1,4 +1,4 @@
-import type { CosmeticCategory, CosmeticId, MobileHullId } from '@astera/rules';
+import { COSMETIC_IDS, type CosmeticCategory, type CosmeticId, type MobileHullId } from '@astera/rules';
 import { cosmeticEquipSchema } from './schemas.js';
 import { returnStatusSchema } from './schemas.js';
 import type { z } from 'zod';
@@ -187,6 +187,7 @@ export interface ApiDeps {
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  headers?: Readonly<Record<string, string>>;
   /**
    * The payload as an OBJECT. `send` serialises it — do not pre-encode.
    *
@@ -304,6 +305,7 @@ export class Api {
     const res = await this.http(`${this.baseUrl}${path}`, {
       method: opts.method ?? 'GET',
       headers: {
+        ...opts.headers,
         ...(opts.body === undefined ? {} : { 'content-type': 'application/json' }),
         ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
         ...(sentPlacement ? { 'x-placement': sentPlacement } : {}),
@@ -547,7 +549,9 @@ export class Api {
   galaxy = gatedRead(() => this.send('/api/galaxy', galaxySchema), BIG_READ_GAP_MS);
   equipCosmetic = (category: CosmeticCategory, cosmeticId: CosmeticId | null, hull?: MobileHullId) =>
     this.send('/api/cosmetics/equip', cosmeticEquipSchema, { method: 'POST', body: { category, cosmeticId, ...(hull ? { hull } : {}) } });
-  skins = () => this.send('/api/skins', skinCollectionSchema);
+  skins = () => this.send('/api/skins', skinCollectionSchema, {
+    headers: { 'x-astera-cosmetics': COSMETIC_IDS.join(',') },
+  });
   skinShop = () => this.send('/api/skins/shop', skinShopSchema);
   skinPricing = () => this.send('/api/skins/pricing', skinPricingSchema);
   purchaseSkin = (itemId: PlanetSkinId | 'bundle') =>

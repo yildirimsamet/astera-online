@@ -4,7 +4,7 @@ import { COSMETIC_IDS, COSMETIC_CATEGORIES, MOBILE_HULLS, PLANET_SKIN_IDS, type 
 import { requireAuth } from './auth.js';
 import { isAdminAccount } from '../services/admin.js';
 import { GameError } from '../services/planet.js';
-import { equipPlanetSkin, grantPlanetSkin, skinCollection } from '../services/cosmetics.js';
+import { LEGACY_COSMETIC_IDS, equipPlanetSkin, grantPlanetSkin, skinCollection } from '../services/cosmetics.js';
 import { usernameSchema } from '../auth/credentials.js';
 import { equipCosmetic } from '../services/cosmeticEquipment.js';
 import { setSupporterStatus } from '../services/supporters.js';
@@ -19,6 +19,7 @@ const grantBody = z.object({
   orderRef: z.string().trim().min(3).max(120),
 }).strict();
 const supporterBody = z.object({ username: usernameSchema, supporter: z.boolean() }).strict();
+const cosmeticCatalogueHeader = z.string().max(4096).optional();
 
 async function requireAdmin(req: FastifyRequest): Promise<void> {
   await requireAuth(req);
@@ -38,8 +39,11 @@ export function registerCosmeticRoutes(app: FastifyInstance): void {
     const body = grantBody.extend({ skinId: z.enum(COSMETIC_IDS) }).parse(req.body);
     return grantPlanetSkin(app.db, req.accountId!, body.username, body.skinId, body.orderRef);
   });
-  app.get('/api/skins', { preHandler: requireAuth }, (req) =>
-    skinCollection(app.db, req.accountId!));
+  app.get('/api/skins', { preHandler: requireAuth }, (req) => {
+    const declaration = cosmeticCatalogueHeader.parse(req.headers['x-astera-cosmetics']);
+    const ids = declaration?.split(',').map(id => id.trim()).filter(Boolean);
+    return skinCollection(app.db, req.accountId!, new Set(ids?.length ? ids : LEGACY_COSMETIC_IDS));
+  });
   app.post('/api/skins/planets/:planetId', {
     preHandler: requireAuth,
     config: { rateLimit: { max: 30, timeWindow: '1 minute' } },

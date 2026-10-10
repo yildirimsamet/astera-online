@@ -1744,13 +1744,74 @@ after: `EU-1` 21 colonies + 44 neutrals = 65, `orphaned_neutral_state` 0, both v
 the colony site reopened as `Neutral T1-455`, fleet and stock unchanged, unemitted transfers 0,
 all four processes healthy and unrestarted.
 
+## Polar second cosmetic wave — 10 October 2026
+
+PR #2 is merged as `6e6a562`. The 16 new paid appearances exist in both Polar environments:
+four rings, two engines and ten standards. The two new included standards remain free.
+Each environment now has 46 offers (nine planets, the bundle, 36 other paid cosmetics).
+Rings/standards cost EUR 1.99 or TRY 49; engines cost EUR 2.49 or TRY 69. Original product
+IDs and prices are retained. This task provisions products and prepares code; it does not
+deploy the production application. See [release evidence](polar-wave2-integration-2026-10-10.md).
+
+The release also removes Inferno's raised arcs and the secondary crossing Nebula/Prism
+belts at the owner's request. Keep its three refreshed WebP thumbnails with the matching
+client assets. Both Polar environments already use these same revised product images.
+
+There is no database migration for this catalogue release. Use the existing rolling runbook
+and qualify the complete release diff independently of this note. On the VPS, Compose reads
+`~/astera/.env`; editing `.env.production.example` or a separate `.env.production` does not
+update running containers.
+
+1. Retain the running image, webroot and a private copy of the runtime `.env` alongside the
+   runbook's rollback artifacts. Use mode 600 for the environment backup; never paste tokens
+   or webhook secrets into logs or Git.
+2. First roll the qualified new image across all three APIs and the worker while retaining
+   the current twenty-extra mapping. This compatibility stage keeps the current offers and
+   installs the new catalogue/webhook enum plus the inventory compatibility view. Verify
+   health and runtime commit, then retain that running image under a distinct
+   `astera-server:polar-wave2-compatible-<release sha>` tag. It is the rollback floor for
+   any new-item checkout created after activation.
+3. Replace only `POLAR_COSMETIC_PRODUCTS` in the runtime `.env` with the compact JSON from
+   `config/polar-cosmetics.production.json`. Keep `POLAR_ENV=production`, the existing live
+   token, enabled checkout flag, return URL and live webhook secret. Keep the ten existing
+   `POLAR_PRODUCT_*` planet/bundle IDs. Sandbox product IDs cannot be used in production.
+   The mapping must contain 36 paid extras and exclude Vanguard, Orbital Guard, Bastion and
+   Meridian. The committed production template contains the matching mapping for reference.
+4. Recreate all three APIs on the qualified new image, one at a time using the existing
+   health/drain procedure, and then the worker. Recreate containers through Compose so the
+   updated environment is read; `docker restart` retains the previous environment. Keep
+   the existing production webhook URL and subscription unchanged (`order.paid`,
+   `order.refunded`, `checkout.expired`, raw payload).
+5. Before publishing the new webroot, require healthy new-image APIs and verify
+   `/api/skins/polar-pricing` exposes all 46 offers with the expected EUR/TRY regional
+   prices. Then publish the new hashed client assets and both public price pages. The new
+   client declares its known cosmetic IDs on inventory reads; old open tabs receive the
+   frozen pre-wave-two view. Rights remain stored and appear when the client updates.
+6. Verify one new product per category in the store, the included standards, and delivery
+   monitoring. Do not use a real card solely for deployment verification; sandbox payment,
+   refund and redelivery qualification is recorded in the linked evidence.
+
+**Rollback boundary.** Before any new-item checkout intent exists, an old-catalogue rollback
+requires restoring its matching old `POLAR_COSMETIC_PRODUCTS` as well as the old image/webroot:
+the old environment parser rejects the new IDs. Once a new checkout intent exists (including
+a pending checkout that could be paid later), never return the webhook receiver to a
+pre-wave-two image. Its old item enum ignores a new-item payment/refund after recording the
+webhook as seen, so a subsequent retry would not repair delivery. Restore the retained compatibility image and its old mapping/webroot to close new sales
+while still processing already-created new-item orders, or forward-fix. That receiver
+uses the product stored on the intent and does not need a current sale mapping to
+fulfil or refund the intent. Disabling new
+checkouts cannot cancel already-open hosted checkouts. Do not delete purchase intents,
+entitlements or webhook receipts as a rollback shortcut.
+
+
 ## Remaining operational gaps
 
 - `deploy/deploy.sh` is not a production release gate; the manual sequence remains canonical.
 - There is no external alerting or paging for `/health`, queue failure, LISTEN/cache invalidation
   loss, Valkey readiness or unknown worker events.
-- There is no explicit client/API version handshake or forced-reload path. Until one exists,
-  breaking route changes require a one-release compatibility window for already-open tabs.
+- There is no general client/API version handshake or forced-reload path. Cosmetic inventory
+  now declares known IDs; other breaking route changes still require a one-release
+  compatibility window for already-open tabs.
 - The five-minute cutoff is production-rehearsed but remains an explicit SQL owner operation; it
   is not a first-class fail-closed CLI command.
 - Capacity soak is an isolated, long-running qualification and is not part of the ordinary deploy

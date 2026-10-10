@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react';
-import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { z } from 'zod';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
@@ -14,10 +12,6 @@ import { LandingScreen } from '../src/screens/LandingScreen.js';
 import { wikiSitemap } from '../src/wiki/publication.js';
 import { wikiPages } from '../src/wiki/catalog.js';
 import { PUBLISHER_ORIGIN, publisherPaths, publisherUrl } from '../src/lib/publisherPages.js';
-
-/** Catalogued cosmetics without a live Polar product are shown in game as coming soon, never priced here. */
-const LIVE_POLAR_OFFERS = new Set(Object.keys(z.record(z.string(), z.unknown())
-  .parse(JSON.parse(readFileSync(resolve(process.cwd(), '../../config/polar-cosmetics.production.json'), 'utf8')))));
 
 vi.mock('../src/landing/LandingScene.jsx', () => ({
   LandingScene: () => <div data-testid="landing-scene" />,
@@ -295,7 +289,7 @@ describe('the legal set says what it has to say', () => {
       expect(offers.sort()).toEqual([
         'planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert',
         'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'planet-japan', 'bundle',
-        ...COSMETICS.filter(item => item.category !== 'PLANET' && !item.free && LIVE_POLAR_OFFERS.has(item.id)).map(item => item.id),
+        ...COSMETICS.filter(item => item.category !== 'PLANET' && !item.free).map(item => item.id),
       ].sort());
       expect(page.querySelector('script[src="/publisher-pricing.js"]')).not.toBeNull();
       expect(page.querySelector('[data-pricing-status]')).not.toBeNull();
