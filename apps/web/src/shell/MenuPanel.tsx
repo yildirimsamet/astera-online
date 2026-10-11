@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { playSound, setEffectsEnabled, setEffectsVolume, useEffectsEnabled, useEffectsVolume } from '../lib/sound.js';
 import { useAnnouncements, useRewards } from '../api/queries.js';
 import {
   formatTrackTime,
@@ -392,6 +393,7 @@ export function MenuPanel({
             <LanguageSwitch compact />
           </SettingRow>
           <SoundSetting />
+          <EffectsSetting />
           <NowPlaying />
           <QualitySetting />
           <FpsSetting />
@@ -783,6 +785,33 @@ function SettingRow({
  * is playing" — is the toggle's accessible name now, so nothing is lost to anyone
  * who needs it read and the row costs one line instead of three.
  */
+function EffectsSetting() {
+  const { t } = useTranslation();
+  const on = useEffectsEnabled();
+  const volume = useEffectsVolume();
+  const percent = Math.round(volume * 100);
+  return (
+    <SettingRow label={t('menu.effectsLabel')}>
+      <div className="flex items-center gap-2">
+        <button type="button" aria-pressed={on}
+          aria-label={`${t('menu.effectsLabel')}. ${t(on ? 'menu.effectsOn' : 'menu.effectsOff')}`}
+          onClick={() => { setEffectsEnabled(!on); if (!on) playSound('confirm'); }}
+          className={`grid size-9 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-deep transition-colors ${on ? 'text-v2-self' : 'text-v2-ink-3'}`}>
+          {on ? <SpeakerOnIcon className="size-[18px]" /> : <SpeakerOffIcon className="size-[18px]" />}
+        </button>
+        <input type="range" min={0} max={100} step={1} value={percent}
+          aria-label={t('menu.effectsVolumeLabel')}
+          style={{ '--slider-fill': `${String(percent)}%`, '--slider-tone': 'var(--color-v2-self)' } as CSSProperties}
+          onChange={(event) => { setEffectsVolume(event.currentTarget.valueAsNumber / 100); }}
+          onPointerUp={() => { playSound('confirm'); }} className="slider min-w-0 flex-1" />
+        <output className="w-8 shrink-0 text-right font-v2-mono text-micro text-v2-self">
+          {t('menu.volumeValue', { volume: percent })}
+        </output>
+      </div>
+    </SettingRow>
+  );
+}
+
 function SoundSetting() {
   const { t } = useTranslation();
   const on = useMusicEnabled();

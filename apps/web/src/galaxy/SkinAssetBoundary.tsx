@@ -3,6 +3,7 @@ import { Component, type ReactNode } from 'react';
 interface Props {
   children: ReactNode;
   fallback: ReactNode;
+  onError?: () => void;
 }
 
 interface State { failed: boolean }
@@ -13,6 +14,10 @@ export class SkinAssetBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(): State {
     return { failed: true };
+  }
+
+  override componentDidCatch(): void {
+    this.props.onError?.();
   }
 
   override render(): ReactNode {

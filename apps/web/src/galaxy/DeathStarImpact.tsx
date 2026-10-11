@@ -5,6 +5,7 @@ import { DEATH_STAR } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { FullRate } from './frames.jsx';
+import { playSceneSound } from './audio.js';
 import {
   ringTexture,
   publicEffectIntensity,
@@ -20,6 +21,7 @@ export interface DeathStarImpactEvent {
   position: Vec3Tuple;
   radius: number;
   intensity: number;
+  sound?: 'shield' | 'strategic';
 }
 
 /** The clock, rather than a timer callback, decides whether the event exists. */
@@ -200,9 +202,15 @@ function Impact({ event }: { event: DeathStarImpactEvent }) {
   const arcs = useRef<(THREE.Mesh | null)[]>([]);
   const light = useRef<THREE.PointLight>(null);
   const ring = useMemo(ringTexture, []);
+  const heard = useRef(false);
+  const soundPosition = useMemo(() => new THREE.Vector3(...event.position), [event.position]);
 
-  useFrame((_state, delta) => {
+  useFrame(({ camera }, delta) => {
     const elapsed = Math.max(0, serverNow() - event.at) / DEATH_STAR_IMPACT_MS;
+    if (!heard.current) {
+      heard.current = true;
+      if (elapsed < 0.12) playSceneSound(event.sound ?? 'strategic', soundPosition, camera, event.intensity, `strategic:${event.id}`);
+    }
     if (root.current) root.current.visible = elapsed < 1;
     const opening = Math.min(1, elapsed * 12);
     const fade = Math.max(0, 1 - elapsed);

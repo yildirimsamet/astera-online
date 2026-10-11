@@ -7,6 +7,13 @@ import { LANGUAGES } from '../src/i18n/languages.js';
 afterEach(async () => { await i18n.changeLanguage('en'); });
 
 describe('a player error explains only what the client can verify', () => {
+  it.each(LANGUAGES)('explains an unknown moderation username in %s', async language => {
+    await i18n.changeLanguage(language);
+    const result = describeError(new ApiError('ACCOUNT_NOT_FOUND', 'private diagnostic', 404));
+    expect(result).not.toBe(i18n.t('errors.unknown'));
+    expect(result).not.toContain('private diagnostic');
+    expect(result).toBe(i18n.t('errors.ACCOUNT_NOT_FOUND'));
+  });
   it.each(LANGUAGES)('explains cosmetic ownership and checkout refusals in %s', async (language) => {
     await i18n.changeLanguage(language);
     for (const code of ['SKIN_NOT_OWNED', 'SKIN_SLOT_MISMATCH', 'SKIN_ALREADY_OWNED', 'SKIN_SHOP_CLOSED', 'SKIN_CHECKOUT_IN_PROGRESS', 'SKIN_CHECKOUT_STARTING'] as const) {

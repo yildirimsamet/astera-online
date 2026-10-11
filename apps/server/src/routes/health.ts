@@ -274,6 +274,7 @@ export function registerHealthRoutes(
       rateLimit: app.rateLimitBackend.status(),
       database: {
         configuredProcessPoolMax: app.dbPoolMax,
+        configuredPlacementPoolMax: app.placementPoolMax,
         maxConnections: database?.maxConnections ?? null,
         asteraConnections: database?.asteraConnections ?? null,
         active: database?.active ?? null,
@@ -281,6 +282,8 @@ export function registerHealthRoutes(
         waiting: database?.waiting ?? null,
         poolAcquireMs: runtime.databasePool.acquireMs,
         poolAcquireErrors: runtime.databasePool.acquireErrors,
+        placementTransactionStartMs: runtime.placementPool.transactionStartMs,
+        placementTransactionStartErrors: runtime.placementPool.transactionStartErrors,
       },
     };
   });

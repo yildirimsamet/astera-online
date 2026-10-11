@@ -1,3 +1,4 @@
+import { adminOps } from './admin.js';
 export const community = {
   announcements: {
     eyebrow: "Du commandement d’Astera",
@@ -26,6 +27,7 @@ export const community = {
     sent: "Bien reçu. Merci de nous aider à façonner Astera.",
   },
   admin: {
+    ops: adminOps,
     eyebrow: "Opérations",
     title: "Panneau d’administration",
     menuLabel: "Panneau d’administration",

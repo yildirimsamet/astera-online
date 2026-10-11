@@ -1,4 +1,16 @@
 export const brand = {
+  fullscreen: {
+    title: 'Pantalla completa',
+    enter: 'Abrir pantalla completa',
+    exit: 'Salir de pantalla completa',
+    already: 'La pantalla completa ya está activa',
+    appActive: 'La vista de aplicación ya está activa',
+    unsupported: 'Tu navegador no puede mostrar esta página en pantalla completa. Puedes usar las opciones siguientes.',
+    enterFailed: 'No se pudo abrir la pantalla completa. Vuelve a pulsar el botón o usa las opciones siguientes.',
+    exitFailed: 'No se pudo cerrar la pantalla completa. Vuelve a pulsar el botón o usa el control de salida del navegador.',
+    launchApp: 'Después, abre el juego desde su icono en la pantalla de inicio para jugar sin la barra de direcciones.',
+    desktopHelp: 'Elige Pantalla completa en el menú del navegador. Usa el mismo menú o Esc para salir de esa vista.',
+  },
   "returnTitle": "Vuelve al juego fácilmente",
   "returnHint": "Añade el juego a tu pantalla de inicio para abrirlo otra vez fácilmente.",
   "returnHintDesktop": "Guarda el juego en marcadores o instálalo para abrirlo otra vez fácilmente.",

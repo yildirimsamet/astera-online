@@ -64,6 +64,7 @@ import {
 } from './StrategicInterception.jsx';
 import { PlanetField, rivalColour } from './PlanetField.jsx';
 import { SCENE_LIGHT } from './planetSurface.js';
+import { SpaceLighting } from './SpaceLighting.js';
 import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from './SceneWarmup.js';
 
 /** The rig's per-frame scratch for a tracked subject's drift (never allocated in the loop). */
@@ -690,6 +691,8 @@ export function GalaxyCanvas({
           at 0.35 the side away from the key read as a hole. */}
       <ambientLight intensity={SCENE_LIGHT.ambient} />
       <directionalLight position={[-8, 12, 9]} intensity={SCENE_LIGHT.key} />
+      <directionalLight position={[10, -3, -12]} intensity={0.48} color="#91b5de" />
+      <SpaceLighting />
 
       <Sky />
       <Core />

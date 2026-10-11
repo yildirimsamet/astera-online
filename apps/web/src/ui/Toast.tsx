@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { playSound } from '../lib/sound.js';
 import { describeError } from '../i18n/errors.js';
 import { Icon } from '../v2/icons.js';
 
@@ -72,6 +73,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const head = message?.id;
   const dwell = message?.tone === 'error' ? ERROR_DWELL_MS : DWELL_MS;
+  useEffect(() => {
+    if (head !== undefined) playSound(message?.tone === 'error' ? 'alert' : 'confirm');
+  }, [head, message?.tone]);
   useEffect(() => {
     if (head === undefined) return;
     const id = setTimeout(() => {

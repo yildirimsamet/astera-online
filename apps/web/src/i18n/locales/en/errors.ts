@@ -14,6 +14,8 @@
  */
 
 export const errors = {
+  ACCOUNT_NOT_FOUND: 'Account not found. Check the username.',
+  CHAT_MUTED: "Your permission to send messages in this channel has been restricted.",
   MONUMENT_TIER_FORBIDDEN: "Easy monuments accept tiers 1–3; choose a Hard monument",
   MONUMENT_FLEET_ACTIVE: "Only cargo can be added until all your ships, including cargo, return home.",
   CAPITAL_CANNOT_BE_ABANDONED: "You cannot abandon your capital. Select a colony instead.",

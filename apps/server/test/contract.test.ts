@@ -19,6 +19,7 @@ import {
 } from '@astera/rules';
 import {
   accountRewards,
+  battleReports,
   cosmeticEntitlements,
   buildings,
   botProfiles,
@@ -1359,6 +1360,43 @@ describe('every payload the client parses', () => {
 
   it('GET /api/reports parses', async () => {
     reportsSchema.parse(await get('/api/reports?limit=20'));
+  });
+
+  it('GET /api/reports keeps old fractional damage readable alongside newer battles for both players', async () => {
+    const [mine, theirs] = f.planetIds as [string, string];
+    const earlier = new Date(f.clock.now().getTime() - 60_000);
+    const attackerDamage = [{ hull: 'CATACLYSM' as const, count: 1, damageBp: 0, remainderBp: 0.8857506709106965 }];
+    const defenderDamage = [{ hull: 'DART' as const, count: 1, damageBp: 2000, remainderBp: Number.MIN_VALUE }];
+    const missionValues = {
+      fuelPaid: 1, seasonId: f.seasonId, kind: 'attack' as const, status: 'resolved' as const,
+      ownerPlayerId: f.playerIds[0]!, originPlanetId: mine, targetPlanetId: theirs,
+      fleet: { CATACLYSM: 1 }, distance: 100,
+    };
+    const [oldMission, newMission] = await f.db.insert(missions).values([
+      { ...missionValues, departAt: earlier, arriveAt: earlier },
+      { ...missionValues, departAt: f.clock.now(), arriveAt: f.clock.now() },
+    ]).returning();
+    const reportValues = {
+      seasonId: f.seasonId, attackerPlayerId: f.playerIds[0]!, defenderPlayerId: f.playerIds[1]!,
+      targetPlanetId: theirs, targetKind: 'PLAYER' as const, grade: 'PARTIAL' as const,
+      rounds: [], loot: { alloy: 0, crystal: 0, deuterium: 0 }, attackerLosses: {}, defenderLosses: {},
+      attackerFleet: { CATACLYSM: 1 }, defenderFleet: { DART: 1 },
+    };
+    await f.db.insert(battleReports).values([
+      { ...reportValues, missionId: oldMission!.id, attackerDamage, defenderDamage, createdAt: earlier },
+      { ...reportValues, missionId: newMission!.id, createdAt: f.clock.now() },
+    ]);
+
+    const attacker = reportsSchema.parse(await get('/api/reports?limit=50'));
+    expect(attacker.reports).toMatchObject([{ missionId: newMission!.id }, { missionId: oldMission!.id }]);
+    expect(attacker.reports[1]).toMatchObject({ attacking: true, yourDamage: attackerDamage });
+
+    const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+    const response = await app.inject({ method: 'GET', url: '/api/reports?limit=50',
+      headers: { authorization: `Bearer ${await tokens.issueAccess(f.accountIds[1]!)}` } });
+    expect(response.statusCode).toBe(200);
+    const defender = reportsSchema.parse(response.json());
+    expect(defender.reports[1]).toMatchObject({ attacking: false, yourDamage: defenderDamage });
   });
 
   /**

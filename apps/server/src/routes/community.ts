@@ -25,7 +25,7 @@ const feedbackBody = z.object({
   message: z.string().trim().min(3).max(2_000),
 }).strict();
 
-async function requireAdmin(req: FastifyRequest): Promise<void> {
+export async function requireAdmin(req: FastifyRequest): Promise<void> {
   await requireAuth(req);
   if (!await isAdminAccount(req.server.db, req.accountId!, req.server.adminUsernames)) {
     throw new GameError('ADMIN_FORBIDDEN', 'Admin access is required', 403);

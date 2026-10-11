@@ -2,6 +2,7 @@ import wordmark from './wordmark.svg?raw';
 import sigil from './sigil.svg?raw';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../v2/icons.js';
+import { FullscreenButton } from './FullscreenButton.js';
 const wordmarkMarkup = { __html: wordmark };
 const sigilMarkup = { __html: sigil };
 
@@ -25,13 +26,15 @@ export function BrandMasthead({ onShop }: { onShop?: () => void }) {
     </div>
     <span className="brand-masthead-rule" aria-hidden="true" />
     {onShop ? (
-      <button type="button" data-shop-button className="brand-masthead-shop" onClick={onShop}>
-        <span className="brand-masthead-shop-face">
-          <Icon id="i-spark" className="size-3.5" />
-          <span>{t('menu.skinsShopLabel')}</span>
-          <Icon id="i-chev" className="size-3" />
-        </span>
-      </button>
+      <div className="brand-masthead-actions">
+        <button type="button" data-shop-button className="brand-masthead-shop" onClick={onShop}>
+          <span className="brand-masthead-shop-face">
+            <span>{t('menu.skinsShopLabel')}</span>
+            <Icon id="i-chev" className="size-3" />
+          </span>
+        </button>
+        <FullscreenButton />
+      </div>
     ) : <span className="brand-masthead-address">asteraonline<span>.space</span></span>}
   </div>;
 }

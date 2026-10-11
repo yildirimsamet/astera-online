@@ -8,6 +8,8 @@ import {
   HANGAR,
   HULLS,
   PROSPECTOR,
+  SALVAGE,
+  SHIELD_BREAKER,
   groundSlots,
   hangarCapacity,
   hullBulk,
@@ -19,7 +21,7 @@ import type { PlanetView } from '../src/api/schemas.js';
 import { openAllBands, planetView } from './fixtures.js';
 import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
 import { duration } from '../src/lib/time.js';
-import { compact, factor } from '../src/lib/format.js';
+import { compact, factor, full } from '../src/lib/format.js';
 
 /**
  * HOW MANY, AND THE ONE HULL WHERE THE ANSWER IS NOT "AS MANY AS YOU CAN AFFORD".
@@ -926,6 +928,41 @@ describe('the matchup on a hull sheet', () => {
     expect(document.querySelector('[data-counter-cycle] [data-rung]')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: /class cycle/i }));
     expect(document.querySelector('[data-counter-cycle] [data-rung="SKIRMISHER"]')).toHaveAttribute('data-current', 'true');
+  });
+});
+
+describe('special ship roles before crafting', () => {
+  it('explains active Aegis damage and its limit without opening How it works, even while research is locked', async () => {
+    show();
+    await openSheet('Nullifier');
+    const role = screen.getByRole('region', { name: 'Special role' });
+    expect(role).toBeVisible();
+    expect(role).toHaveTextContent(`Active Aegis · ${factor(1 + SHIELD_BREAKER.bonusShieldDamageMult)} damage`);
+    expect(role).toHaveTextContent(/bonus damage hits only the shield/i);
+    expect(role).toHaveTextContent(/shield is empty.*normal attack/i);
+    expect(document.querySelector('[data-item-detail]')).toBeNull();
+    const how = screen.getByRole('button', { name: /how it works/i });
+    const matchup = document.querySelector('[data-counter-cycle]');
+    expect(how.compareDocumentPosition(role) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(matchup && role.compareDocumentPosition(matchup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('states the per-survivor salvage ceiling and attack-only limits without describing it as loot cargo', async () => {
+    show();
+    await openSheet('Garbage Collector');
+    const role = screen.getByRole('region', { name: 'Special role' });
+    expect(role).toBeVisible();
+    expect(role).toHaveTextContent(`Up to ${full(SALVAGE.perCollector)} resources per surviving ship`);
+    expect(role).toHaveTextContent(/combat ships.*battle.*wreck.*home/i);
+    expect(role).toHaveTextContent(/no loot cargo.*no salvage while defending/i);
+    expect(role).toHaveTextContent(/cannot.*asteroids.*debris fields/i);
+    expect(document.querySelector('[data-item-detail]')).toBeNull();
+  });
+
+  it('preserves the existing ordinary hull sheet without a special role section', async () => {
+    show();
+    await openSheet('Dart');
+    expect(screen.queryByRole('region', { name: 'Special role' })).not.toBeInTheDocument();
   });
 });
 

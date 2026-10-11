@@ -3,6 +3,24 @@ import { DatabasePoolProbe, type ReservablePool } from '../src/services/database
 import { RuntimeMetrics } from '../src/services/runtimeMetrics.js';
 
 describe('database pool capacity telemetry', () => {
+  it('separates placement transaction startup from the gameplay pool probe', () => {
+    const metrics = new RuntimeMetrics();
+    try {
+      metrics.observeDatabaseAcquire(2);
+      metrics.observePlacementTransactionStart(37);
+      metrics.observePlacementTransactionStartError();
+
+      const status = metrics.status();
+      expect(status.databasePool).toMatchObject({ acquireErrors: 0, acquireMs: { samples: 1, p95: 2 } });
+      expect(status.placementPool).toEqual({
+        transactionStartErrors: 1,
+        transactionStartMs: { samples: 1, p50: 37, p95: 37, p99: 37, max: 37 },
+      });
+    } finally {
+      metrics.close();
+    }
+  });
+
   it('measures a real reservation and releases it immediately', async () => {
     const metrics = new RuntimeMetrics();
     let releases = 0;

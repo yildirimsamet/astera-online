@@ -288,6 +288,8 @@ const PATH_POLICY = {
 /** The first path segment under SOURCE names the kind. */
 const policyFor = (relPath) => {
   const canonical = relPath.replaceAll('\\', '/');
+  // Authored hard edges are the silhouette; already only 2,136 triangles.
+  if (canonical === 'debris/metal-wreck-v1.glb') return { texture: 256, simplify: false };
   return PATH_POLICY[canonical] ??
   (FLEET_V2_MODEL_PATHS.has(canonical) ? { texture: 768, simplify: false } : undefined) ??
   POLICY[relPath.split(/[\\/]/)[0]] ??

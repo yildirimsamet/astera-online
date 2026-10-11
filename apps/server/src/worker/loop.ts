@@ -232,7 +232,9 @@ export class EventWorker {
       }
     }
 
-    const due = await claimDue(this.db, this.opts.batch, now);
+    // Repairs and bot turns may take time: claim everything due when we actually
+    // reach the queue, rather than waiting another poll for that elapsed window.
+    const due = await claimDue(this.db, this.opts.batch, this.clock.now());
     let processed = 0;
     let failed = 0;
     let abandoned = 0;
@@ -363,11 +365,19 @@ export class EventWorker {
     if (this.timer) return;
     this.stopped = false;
     const run = async () => {
-      if (this.running || this.stopped) return;
+      // The batch loop checks stopped before every claim, including the first.
+      if (this.running) return;
       this.running = true;
       try {
-        const result = await this.tick();
-        if (result.claimed > 0) this.log.info(result, 'worker tick');
+        while (!this.stopped) {
+          const result = await this.tick();
+          if (result.claimed > 0) this.log.info(result, 'worker tick');
+          // Full successful batches imply possible backlog. Failed events retain
+          // the normal poll delay so immediate draining cannot burn their retries.
+          if (result.claimed === 0 || result.claimed < this.opts.batch || result.failed > 0) break;
+          // Keep batches sequential while allowing shutdown and HTTP to progress.
+          await new Promise<void>(resolve => setImmediate(resolve));
+        }
       } catch (err) {
         this.log.error({ err }, 'worker tick failed');
       } finally {

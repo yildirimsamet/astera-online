@@ -17,6 +17,30 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--premium')) {
+  const { capturePremiumVisuals } = await import('./premium-visual.mjs');
+  await capturePremiumVisuals(process.argv[2] ?? 'out/premium');
+  process.exit(0);
+}
+
+if (process.argv.includes('--fullscreen')) {
+  const { verifyFullscreen } = await import('./fullscreen-visual.mjs');
+  await verifyFullscreen(process.argv[2] ?? 'out/fullscreen');
+  process.exit(0);
+}
+
+if (process.argv.includes('--special-ships')) {
+  const { verifySpecialShips } = await import('./special-ships-visual.mjs');
+  await verifySpecialShips(process.argv[2] ?? 'out/special-ships');
+  process.exit(0);
+}
+
+if (process.argv.includes('--admin-operations')) {
+  const { verifyAdminOperations } = await import('./admin-operations-visual.mjs');
+  await verifyAdminOperations(process.argv[2] ?? 'out/admin-operations');
+  process.exit(0);
+}
+
 if (process.argv.includes('--event-chips')) {
   const { verifyEventChips } = await import('./event-chips-visual.mjs');
   await verifyEventChips(process.argv[2] ?? 'out/event-chips');

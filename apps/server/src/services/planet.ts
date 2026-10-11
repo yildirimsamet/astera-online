@@ -252,7 +252,7 @@ export function economyAt(
 }
 
 /** Rows to levels, with every building present at zero and nothing else present. */
-function buildingLevelsFrom(rows: readonly { type: string; level: number }[]): BuildingLevels {
+export function buildingLevelsFrom(rows: readonly { type: string; level: number }[]): BuildingLevels {
   const levels = Object.fromEntries(BUILDING_IDS.map((b) => [b, 0])) as BuildingLevels;
   for (const row of rows) {
     if (!KNOWN_BUILDINGS.has(row.type)) continue;

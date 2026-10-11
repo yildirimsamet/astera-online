@@ -17,6 +17,7 @@ import { markersFor, slotOffset } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
+import { MiningPulse } from './MiningPulse.js';
 
 /**
  * PROSPECTORS, IN TRANSIT. D19.
@@ -148,6 +149,7 @@ function Run({
 
   return (
     <>
+      <MiningPulse run={run} nodes={nodes} />
       <lineSegments geometry={line} frustumCulled={false}>
         <lineBasicMaterial
           color={STYLE.colour}

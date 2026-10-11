@@ -370,6 +370,14 @@ export const planet = {
   },
 
   buildSheet: {
+    specialRole: {
+      title: '特殊な役割',
+      nullifierEffect: '稼働中のAegis · ダメージ{{multiplier}}',
+      nullifierLimit: '追加ダメージはシールドにのみ与え、艦船や地上砲には移りません。シールドが尽きると通常攻撃を使います。',
+      collectorEffect: '生存した1隻につき最大{{amount}}の資源',
+      collectorUse: '戦闘艦と一緒に攻撃艦隊へ加えてください。その戦闘の残骸を回収し、資源を持ち帰ります。',
+      collectorLimit: '戦利品の積載量は増えず、防衛時には回収しません。小惑星や残骸フィールドには派遣できません。',
+    },
     eyebrowGround: "地上防衛・惑星から移動しません",
     eyebrowMobile: "移動可能な艦船",
     howMany: "建造数",

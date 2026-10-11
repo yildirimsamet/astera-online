@@ -51,6 +51,11 @@ export interface RuntimeStatus {
     acquireErrors: number;
     acquireMs: ReturnType<SampleWindow['summary']>;
   };
+  placementPool: {
+    transactionStartErrors: number;
+    /** Actual request wait through pool acquisition and BEGIN, before lease queries. */
+    transactionStartMs: ReturnType<SampleWindow['summary']>;
+  };
   routes: Record<string, {
     requests: number;
     errors: number;
@@ -81,6 +86,8 @@ export class RuntimeMetrics {
   private readonly gc = new SampleWindow();
   private readonly databaseAcquire = new SampleWindow();
   private databaseAcquireErrors = 0;
+  private readonly placementTransactionStart = new SampleWindow();
+  private placementTransactionStartErrors = 0;
   private readonly routes = new Map<string, RouteSamples>();
   private readonly refusals = new Map<string, Map<string, number>>();
   private readonly operations = new Map<string, Map<string, number>>();
@@ -133,6 +140,14 @@ export class RuntimeMetrics {
     this.databaseAcquireErrors += 1;
   }
 
+  observePlacementTransactionStart(latencyMs: number): void {
+    this.placementTransactionStart.add(latencyMs);
+  }
+
+  observePlacementTransactionStartError(): void {
+    this.placementTransactionStartErrors += 1;
+  }
+
   status(): RuntimeStatus {
     const memory = process.memoryUsage();
     const cpu = process.cpuUsage(this.startedCpu);
@@ -178,6 +193,10 @@ export class RuntimeMetrics {
       databasePool: {
         acquireErrors: this.databaseAcquireErrors,
         acquireMs: this.databaseAcquire.summary(),
+      },
+      placementPool: {
+        transactionStartErrors: this.placementTransactionStartErrors,
+        transactionStartMs: this.placementTransactionStart.summary(),
       },
       routes,
       refusals: this.nestedStatus(this.refusals),

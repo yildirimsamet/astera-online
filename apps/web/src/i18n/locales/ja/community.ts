@@ -1,3 +1,4 @@
+import { adminOps } from './admin.js';
 export const community = {
   announcements: {
     eyebrow: "アステラコマンドより",
@@ -19,6 +20,7 @@ export const community = {
     sent: "受信しました。アステラの造形にご協力いただきありがとうございます。",
   },
   admin: {
+    ops: adminOps,
     eyebrow: "オペレーション",
     title: "管理パネル",
     menuLabel: "管理パネル",

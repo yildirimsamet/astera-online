@@ -370,6 +370,14 @@ export const planet = {
   },
 
   buildSheet: {
+    specialRole: {
+      title: 'Besondere Aufgabe',
+      nullifierEffect: 'Aktive Aegis · {{multiplier}} Schaden',
+      nullifierLimit: 'Der Zusatzschaden trifft nur den Schild; er geht nie auf Schiffe oder Bodengeschütze über. Ohne Schild nutzt das Schiff seinen normalen Angriff.',
+      collectorEffect: 'Bis zu {{amount}} Ressourcen pro überlebendem Schiff',
+      collectorUse: 'Schicke ihn mit Kampfschiffen in einer Angriffsflotte. Er sammelt die Trümmer dieses Gefechts und bringt die Ressourcen nach Hause.',
+      collectorLimit: 'Er erhöht den Beutefrachtraum nicht und sammelt bei der Verteidigung keine Trümmer. Du kannst ihn nicht zu Asteroiden oder Trümmerfeldern schicken.',
+    },
     eyebrowGround: "Bodenverteidigung · geht nie",
     eyebrowMobile: "Mobiler Rumpf",
     howMany: "Wie viele",

@@ -1,18 +1,19 @@
 import { and, count, desc, eq, gt, gte, isNull, lt, or, sql } from 'drizzle-orm';
 import { CLAN, SEASON, clanChatMessageIsValid } from '@astera/rules';
-import { addMinutes } from '../clock.js';
+import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { accounts, clanMemberships, clanMessages, clans, planets, players, seasons } from '../db/schema.js';
 import { publishPrivate } from '../stream/bus.js';
 import { activeClanMembership, activeClanPlayerIds, lockClanPlayers } from './clanCombat.js';
 import { clanActor } from './clan.js';
+import { assertChatAllowed } from './chatModeration.js';
 import { GameError, lockSeason } from './planet.js';
 import { messageDecorations, authorRecognition, type PodiumPlace, type ReactionView, type ReplyPreview } from './messageDecorations.js';
 
 export interface ClanMessageView {
   id: string;
   authorPlayerId: string;
-  planetId: string;
+  planetId?: string;
   username: string;
   clanTag: string | null;
   content: string;
@@ -22,18 +23,26 @@ export interface ClanMessageView {
   reactions: ReactionView[];
   previousSeasonRank?: PodiumPlace;
   supporter?: boolean;
+  admin?: boolean;
 }
 
 export async function readClanChat(
   db: Db,
   accountId: string,
-  input: { before?: string; limit: number; now: Date },
+  input: { before?: string; limit: number; now: Date; adminClanId?: string },
+  adminUsernames: ReadonlySet<string> = new Set(),
 ): Promise<{ messages: ClanMessageView[]; nextBefore: string | null }> {
   const actor = await clanActor(db, accountId);
   const [season] = await db.select().from(seasons).where(eq(seasons.id, actor.seasonId));
-  assertClanChatOpen(season, input.now);
-  const membership = await activeClanMembership(db, actor.playerId);
+  if (!input.adminClanId) assertClanChatOpen(season, input.now);
+  const membership = input.adminClanId
+    ? { clanId: input.adminClanId, joinedAt: new Date(0) }
+    : await activeClanMembership(db, actor.playerId);
   if (!membership) throw new GameError('NOT_IN_CLAN', 'You do not belong to a clan', 403);
+  if (input.adminClanId) {
+    const [clan] = await db.select({ id: clans.id }).from(clans).where(eq(clans.id, input.adminClanId)).limit(1);
+    if (!clan) throw new GameError('CLAN_NOT_FOUND', 'Clan not found', 404);
+  }
   let cursor: { createdAt: Date; id: string } | undefined;
   if (input.before) {
     const [found] = await db.select({ createdAt: clanMessages.createdAt, id: clanMessages.id })
@@ -50,6 +59,7 @@ export async function readClanChat(
     authorPlayerId: clanMessages.authorPlayerId,
     planetId: planets.id,
     username: accounts.displayName,
+    login: accounts.username,
     clanTag: clans.tag,
     content: clanMessages.content,
     replyToMessageId: clanMessages.replyToMessageId,
@@ -79,8 +89,11 @@ export async function readClanChat(
   const nextBefore = rows.length > input.limit ? page.at(-1)?.id ?? null : null;
   const decorations = await messageDecorations(db, 'clan', page, actor.playerId, membership.joinedAt);
   return {
-    messages: [...page].reverse().map(({ replyToMessageId: _replyToMessageId, ...message }) => ({
+    messages: [...page].reverse().map(({ replyToMessageId: _replyToMessageId, login, planetId, ...message }) => ({
       ...message,
+      // Open clients still require a string. An empty ID reveals no admin world.
+      planetId: !adminUsernames.has(login) || message.authorPlayerId === actor.playerId ? planetId : '',
+      admin: adminUsernames.has(login),
       createdAt: message.createdAt.toISOString(),
       self: message.authorPlayerId === actor.playerId,
       ...(decorations.get(message.id) ?? { replyTo: null, reactions: [] }),
@@ -103,18 +116,27 @@ function assertClanChatOpen(
 
 export async function postClanChat(
   tx: Tx,
-  input: { playerId: string; content: string; now: Date; replyToMessageId?: string },
+  input: { playerId: string; content: string; clock: Clock; replyToMessageId?: string; adminClanId?: string },
+  adminUsernames: ReadonlySet<string> = new Set(),
 ): Promise<ClanMessageView> {
+  const now = input.clock.now();
   const content = input.content.trim();
   if (!clanChatMessageIsValid(content)) {
     throw new GameError('BAD_CLAN_MESSAGE', 'Write between one and 280 characters', 400);
   }
   const actor = await clanActorForPlayer(tx, input.playerId);
-  const season = await lockSeason(tx, actor.seasonId, false);
-  assertClanChatOpen(season, input.now);
+  const [selectedClan] = input.adminClanId ? await tx.select({ seasonId: clans.seasonId }).from(clans)
+    .where(and(eq(clans.id, input.adminClanId), isNull(clans.disbandedAt))).limit(1) : [];
+  if (input.adminClanId && !selectedClan) throw new GameError('CLAN_NOT_FOUND', 'Clan not found', 404);
+  const seasonId = selectedClan?.seasonId ?? actor.seasonId;
+  const season = await lockSeason(tx, seasonId, false);
+  assertClanChatOpen(season, now);
   await lockClanPlayers(tx, [input.playerId]);
-  const membership = await activeClanMembership(tx, input.playerId);
+  const membership = input.adminClanId ? { clanId: input.adminClanId, joinedAt: new Date(0) }
+    : await activeClanMembership(tx, input.playerId);
   if (!membership) throw new GameError('NOT_IN_CLAN', 'You do not belong to a clan', 403);
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`clan-chat:${membership.clanId}`}))`);
+  await assertChatAllowed(tx, actor.accountId, 'clan', input.clock);
   const [replyTo] = input.replyToMessageId ? await tx.select({
     id: clanMessages.id, content: clanMessages.content, username: accounts.displayName,
   }).from(clanMessages)
@@ -125,14 +147,13 @@ export async function postClanChat(
   if (input.replyToMessageId && !replyTo) throw new GameError('CLAN_MESSAGE_NOT_VISIBLE', 'That message is not visible', 404);
   const [clan] = await tx.select({ tag: clans.tag }).from(clans)
     .where(and(eq(clans.id, membership.clanId), isNull(clans.disbandedAt)));
-  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`clan-chat:${membership.clanId}`}))`);
   const [latest] = await tx.select({ createdAt: clanMessages.createdAt })
     .from(clanMessages).where(eq(clanMessages.clanId, membership.clanId))
     .orderBy(desc(clanMessages.createdAt), desc(clanMessages.id)).limit(1);
-  const createdAt = latest && latest.createdAt >= input.now
+  const createdAt = latest && latest.createdAt >= now
     ? new Date(latest.createdAt.getTime() + 1)
-    : input.now;
-  const cutoff = new Date(input.now.getTime() - CLAN.chatWindowSeconds * 1_000);
+    : now;
+  const cutoff = new Date(now.getTime() - CLAN.chatWindowSeconds * 1_000);
   const [rate] = await tx.select({ value: count() }).from(clanMessages).where(and(
     eq(clanMessages.authorPlayerId, input.playerId),
     gt(clanMessages.createdAt, cutoff),
@@ -144,7 +165,7 @@ export async function postClanChat(
     });
   }
   const [message] = await tx.insert(clanMessages).values({
-    seasonId: actor.seasonId,
+    seasonId,
     clanId: membership.clanId,
     authorPlayerId: input.playerId,
     content,
@@ -168,6 +189,7 @@ export async function postClanChat(
     clanTag: clan?.tag ?? null,
     createdAt: message.createdAt.toISOString(),
     self: true,
+    admin: adminUsernames.has(actor.login),
     replyTo: replyTo ?? null, reactions: [],
     ...recognition,
   };
@@ -175,6 +197,8 @@ export async function postClanChat(
 
 async function clanActorForPlayer(tx: Tx, playerId: string) {
   const [row] = await tx.select({
+    accountId: accounts.id,
+    login: accounts.username,
     seasonId: players.seasonId,
     displayName: accounts.displayName,
     planetId: planets.id,

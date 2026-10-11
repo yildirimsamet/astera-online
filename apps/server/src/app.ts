@@ -42,6 +42,7 @@ import { registerChronicleRoutes } from './routes/chronicle.js';
 import { registerGalaxyEventRoutes } from './routes/galaxyEvents.js';
 import { registerClanRoutes } from './routes/clan.js';
 import { registerCommunityRoutes } from './routes/community.js';
+import { registerAdminRoutes } from './routes/admin.js';
 import { registerCosmeticRoutes } from './routes/cosmetics.js';
 import { registerPaddleRoutes } from './routes/paddle.js';
 import { registerPolarRoutes } from './routes/polar.js';
@@ -90,6 +91,7 @@ declare module 'fastify' {
     streams: StreamRegistry;
     sseMaxBufferBytes: number;
     dbPoolMax: number;
+    placementPoolMax: number;
     limits: RouteLimits;
     /** Canonical usernames configured out of band; never writable through the API. */
     adminUsernames: ReadonlySet<string>;
@@ -144,7 +146,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
      */
     trustProxy: opts.env.TRUST_PROXY,
   });
-  const closePlacementGate = installPlacementGate(app, opts.env.DATABASE_URL);
+  const closePlacementGate = installPlacementGate(app, opts.env.DATABASE_URL, opts.env.PLACEMENT_POOL_MAX);
   const tokens = new TokenService(
     opts.env.JWT_SECRET,
     opts.env.ACCESS_TOKEN_MINUTES,
@@ -202,6 +204,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   app.decorate('streams', streams);
   app.decorate('sseMaxBufferBytes', opts.env.SSE_MAX_BUFFER_BYTES);
   app.decorate('dbPoolMax', opts.env.DB_POOL_MAX);
+  app.decorate('placementPoolMax', opts.env.PLACEMENT_POOL_MAX);
   app.decorate('limits', {
     auth: {
       max: opts.env.RATE_LIMIT_AUTH_MAX,
@@ -420,6 +423,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerGalaxyEventRoutes(app);
     registerClanRoutes(app);
     registerCommunityRoutes(app);
+    registerAdminRoutes(app);
     registerCosmeticRoutes(app);
     registerPaddleRoutes(app, opts.env);
     registerPolarRoutes(app, opts.env);

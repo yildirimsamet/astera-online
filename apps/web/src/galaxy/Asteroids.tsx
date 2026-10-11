@@ -2,6 +2,7 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { AsteroidView } from '../api/schemas.js';
 import { ASTEROID_MODELS } from '../ui/assets.js';
 import { asteroidRadius, asteroidVisualSeed, asteroidWorldPosition } from './scene.js';
@@ -9,6 +10,8 @@ import { unitModel } from './model.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
+import { LOCAL_REFERENCE_ART, REFERENCE_ASTEROIDS } from './referenceArt.js';
+import { SkinAssetBoundary } from './SkinAssetBoundary.js';
 import {
   asteroidBodyColour,
   asteroidRimColour,
@@ -19,10 +22,10 @@ import {
 const MIN_TOUCH = 0.42;
 
 /** A narrow expansion of the real rock silhouette, matching the craft rim language. */
-export const ASTEROID_RIM_EXPANSION = 0.045;
+export const ASTEROID_RIM_EXPANSION = 0.014;
 
 /** Bright enough to find at a glance without turning the silhouette into a solid halo. */
-export const ASTEROID_RIM_OPACITY = 0.72;
+export const ASTEROID_RIM_OPACITY = 0.38;
 
 /**
  * THE FIELD — rocks crossing the disc. D19.
@@ -59,11 +62,12 @@ export const ASTEROID_RIM_OPACITY = 0.72;
 const TAIL_FRACTION = 1 / 24;
 
 /** Model files, chosen per rock so the field does not look stamped. */
-const MODELS = ASTEROID_MODELS;
+const MODELS = LOCAL_REFERENCE_ART ? REFERENCE_ASTEROIDS : ASTEROID_MODELS;
 for (const url of MODELS) useGLTF.preload(url, false);
 
 interface Bucket {
   url: string;
+  fallbackUrl: string;
   rocks: AsteroidView[];
 }
 
@@ -79,7 +83,7 @@ export function Asteroids({
   onSelect: (id: string) => void;
 }) {
   const buckets = useMemo<Bucket[]>(() => {
-    const out: Bucket[] = MODELS.map((url) => ({ url, rocks: [] }));
+    const out: Bucket[] = MODELS.map((url, index) => ({ url, fallbackUrl: ASTEROID_MODELS[index % ASTEROID_MODELS.length]!, rocks: [] }));
     for (const rock of asteroids) {
       // Deterministic per rock, so the same rock keeps the same body all season.
       out[asteroidVisualSeed(rock.id) % MODELS.length]!.rocks.push(rock);
@@ -91,16 +95,17 @@ export function Asteroids({
 
   return (
     <>
-      {/* Its own boundary: a model still loading costs this group, never the whole disc. */}
+      {/* An optional pack failure keeps the same selectable rocks with the owned mesh. */}
       {buckets.map((bucket) => (
-        <Suspense key={bucket.url} fallback={null}>
-          <RockBucket
-            bucket={bucket}
-            seasonStart={seasonStart}
-            focusedId={focusedId}
-            onSelect={onSelect}
-          />
-        </Suspense>
+        <SkinAssetBoundary key={bucket.url} fallback={
+          <Suspense fallback={null}>
+            <RockBucket bucket={{ ...bucket, url: bucket.fallbackUrl }} seasonStart={seasonStart} focusedId={focusedId} onSelect={onSelect} />
+          </Suspense>
+        }>
+          <Suspense fallback={null}>
+            <RockBucket bucket={bucket} seasonStart={seasonStart} focusedId={focusedId} onSelect={onSelect} />
+          </Suspense>
+        </SkinAssetBoundary>
       ))}
       <Tails asteroids={asteroids} seasonStart={seasonStart} />
     </>
@@ -137,6 +142,34 @@ function RockBucket({
   // for these quantised models means a rock 65,534 units across.
   const source = useMemo(() => unitModel(scene), [scene]);
   const hits = useRef<THREE.InstancedMesh>(null);
+  const crystals = useRef<THREE.InstancedMesh>(null);
+  const richCount = bucket.rocks.filter((rock) => rock.isotopeRich).length;
+  const surface = useMemo(() => {
+    const material = source?.material.clone();
+    if (material instanceof THREE.MeshStandardMaterial) {
+      material.metalness = 0;
+      material.roughness = 0.88;
+    }
+    return material ?? null;
+  }, [source]);
+  const crystalGeometry = useMemo(() => {
+    const tips = [
+      { at: [0.48, 0.62, 0.18], rotation: -0.4 },
+      { at: [0.63, 0.5, 0.05], rotation: -0.8 },
+      { at: [-0.36, 0.66, -0.14], rotation: 0.3 },
+    ];
+    const parts = tips.map(({ at, rotation }, i) => {
+      const geometry = new THREE.ConeGeometry(0.075, 0.28 + i * 0.04, 5);
+      geometry.rotateZ(rotation);
+      geometry.translate(at[0]!, at[1]!, at[2]!);
+      return geometry;
+    });
+    const merged = mergeGeometries(parts);
+    parts.forEach((part) => { part.dispose(); });
+    return merged;
+  }, []);
+  useEffect(() => () => { surface?.dispose(); }, [surface]);
+  useEffect(() => () => { crystalGeometry.dispose(); }, [crystalGeometry]);
 
   const rimMaterial = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
@@ -187,7 +220,8 @@ function RockBucket({
     if (!node) return;
     const edge = rim.current;
     bucket.rocks.forEach((rock, i) => {
-      const lit = rock.id === focusedId ? 1.9 : 1;
+      // Focus strengthens the contour; a restrained body keeps craters and crystals legible.
+      const lit = rock.id === focusedId ? 1.12 : 0.85;
       node.setColorAt(i, tint.setRGB(...asteroidBodyColour(rock.isotopeRich, lit)));
       edge?.setColorAt(i, tint.set(asteroidRimColour(rock.isotopeRich))
         .multiplyScalar(rock.id === focusedId ? 1.45 : 1));
@@ -209,6 +243,7 @@ function RockBucket({
 
     const hit = hits.current;
     const edge = rim.current;
+    let richIndex = 0;
 
     bucket.rocks.forEach((rock, i) => {
       const seed = asteroidVisualSeed(rock.id);
@@ -239,6 +274,7 @@ function RockBucket({
       dummy.updateMatrix();
       node.setMatrixAt(i, dummy.matrix);
       edge?.setMatrixAt(i, dummy.matrix);
+      if (rock.isotopeRich) crystals.current?.setMatrixAt(richIndex++, dummy.matrix);
 
       if (hit) {
         // The hit target does not tumble — a rotating sphere is the same sphere,
@@ -252,6 +288,7 @@ function RockBucket({
 
     node.instanceMatrix.needsUpdate = true;
     if (edge) edge.instanceMatrix.needsUpdate = true;
+    if (crystals.current) crystals.current.instanceMatrix.needsUpdate = true;
     if (hit) {
       hit.instanceMatrix.needsUpdate = true;
       /**
@@ -267,7 +304,7 @@ function RockBucket({
     }
   });
 
-  if (!source) return null;
+  if (!source || !surface) return null;
 
   const pick = (event: ThreeEvent<PointerEvent>): void => {
     if (!wasTap()) return;
@@ -297,12 +334,19 @@ function RockBucket({
         // drift straight off these matrices, because a screenshot cannot tell a
         // slow orbit from a stopped one.
         name="asteroid-rocks"
-        args={[source.geometry, source.material, bucket.rocks.length]}
+        args={[source.geometry, surface, bucket.rocks.length]}
+        dispose={null}
         // Every bucket spans the whole disc, so a bounding sphere is either fully
         // in or fully out and a grazing frustum can drop the lot — the same trap
         // the planet field had to be rescued from.
         frustumCulled={false}
       />
+      {richCount > 0 && (
+        <instancedMesh ref={crystals} name="isotope-crystal-outcrops"
+          args={[crystalGeometry, undefined, richCount]} frustumCulled={false} raycast={() => null}>
+          <meshStandardMaterial color="#9ac77c" emissive="#203c16" emissiveIntensity={0.22} metalness={0.18} roughness={0.34} />
+        </instancedMesh>
+      )}
 
       {/*
         A separate, generous, invisible hit target.

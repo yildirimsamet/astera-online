@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite';
 import { adsensePlugin } from './src/lib/adsense.js';
 import { wikiPlugin } from './wikiPlugin.js';
 import { openingScreenPlugin } from './openingScreenPlugin.js';
+import { fileURLToPath } from 'node:url';
+import { referenceArtPlugin } from './src/lib/referenceArtPlugin.js';
 
 /**
  * Everything is served same-origin in dev, through this proxy.
@@ -23,8 +25,11 @@ const apiProxy = {
   },
 };
 
-export default defineConfig({
-  plugins: [react(), tailwindcss(), openingScreenPlugin(), adsensePlugin(), wikiPlugin()],
+export default defineConfig(({ command }) => {
+  const references = command === 'serve' ? referenceArtPlugin(fileURLToPath(new URL('../..', import.meta.url))) : null;
+  return {
+  plugins: [react(), tailwindcss(), openingScreenPlugin(), adsensePlugin(), wikiPlugin(), references],
+  define: { 'import.meta.env.VITE_ASTERA_REFERENCE_ART': JSON.stringify(references ? 'true' : 'false') },
   /**
    * THE CSP NONCE PLACEHOLDER, FILLED IN PER REQUEST BY NGINX.
    *
@@ -66,4 +71,5 @@ export default defineConfig({
   // source file being saved halfway through a Playwright frame sequence.
   preview: { host: true, proxy: apiProxy },
   build: { target: 'es2022' },
+  };
 });

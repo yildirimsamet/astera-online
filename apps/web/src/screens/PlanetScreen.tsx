@@ -12,6 +12,8 @@ import {
   FAULT,
   FAULT_KINDS,
   PROSPECTOR,
+  SALVAGE,
+  SHIELD_BREAKER,
   buildingCost,
   counteredBy,
   counters,
@@ -2947,6 +2949,22 @@ function BuildSheet({
           </p>
           {explained && <p data-item-detail className="text-caption leading-snug text-v2-ink-3">{hullDetail(hull)}</p>}
         </div>
+
+        {(hull === 'NULLIFIER' || hull === 'GARBAGE_COLLECTOR') && (
+          <section aria-label={t('planet.buildSheet.specialRole.title')} data-special-role
+            className="flex flex-col gap-2 rounded-control border border-v2-self/45 bg-v2-self/5 px-3 py-2.5">
+            <h3 className="flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wide text-v2-self">
+              <Icon id={hull === 'NULLIFIER' ? 'i-shield' : 'i-collect'} className="size-3.5 shrink-0" />
+              {t('planet.buildSheet.specialRole.title')}
+            </h3>
+            <p className="text-caption font-semibold leading-snug text-v2-ink">{hull === 'NULLIFIER'
+              ? t('planet.buildSheet.specialRole.nullifierEffect', { multiplier: factor(1 + SHIELD_BREAKER.bonusShieldDamageMult) })
+              : t('planet.buildSheet.specialRole.collectorEffect', { amount: full(SALVAGE.perCollector) })}</p>
+            {hull === 'GARBAGE_COLLECTOR' && <p className="text-caption leading-snug text-v2-ink-2">{t('planet.buildSheet.specialRole.collectorUse')}</p>}
+            <p className="text-caption leading-snug text-v2-ink-2">{t(hull === 'NULLIFIER'
+              ? 'planet.buildSheet.specialRole.nullifierLimit' : 'planet.buildSheet.specialRole.collectorLimit')}</p>
+          </section>
+        )}
 
         {/*
           THE RULE WHERE THE HULL IS CHOSEN. D124: the multipliers existed on one

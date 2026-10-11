@@ -216,7 +216,7 @@ describe('ruleset-v3 clans', () => {
     await expect(f.db.transaction((tx) => postClanChat(tx, {
       playerId: f.playerIds[1]!,
       content: 'Reporting in.',
-      now: f.clock.now(),
+      clock: f.clock,
     }))).resolves.toMatchObject({ content: 'Reporting in.' });
     await expect(quoteClanAid(f.db, {
       senderPlayerId: f.playerIds[0]!,
@@ -259,7 +259,7 @@ describe('ruleset-v3 clans', () => {
     const message = await f.db.transaction((tx) => postClanChat(tx, {
       playerId: f.playerIds[0]!,
       content: 'Rally at the rim.',
-      now: f.clock.now(),
+      clock: f.clock,
     }));
     expect(await readClanBadge(f.db, f.accountIds[1]!, f.clock.now()))
       .toMatchObject({ clanChatUnread: 1, attentionCount: 1 });
@@ -278,7 +278,7 @@ describe('ruleset-v3 clans', () => {
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
     const sent = await f.db.transaction((tx) => postClanChat(tx, {
-      playerId: f.playerIds[1]!, content: 'Here', now: f.clock.now(),
+      playerId: f.playerIds[1]!, content: 'Here', clock: f.clock,
     }));
     expect(sent.clanTag).toBe('OG');
     const read = async () => (await readClanChat(f.db, f.accountIds[0]!, {
@@ -1073,14 +1073,14 @@ describe('ruleset-v3 clans', () => {
     const f = await setup(3);
     const { result } = await foundClan(f);
     await f.db.transaction((tx) => postClanChat(tx, {
-      playerId: f.playerIds[0]!, content: 'Before you joined', now: f.clock.now(),
+      playerId: f.playerIds[0]!, content: 'Before you joined', clock: f.clock,
     }));
     f.clock.advance(1);
     await joinClan(f, result.clanId, 0, 1);
     const messages = [];
     for (const content of ['One', 'Two', 'Three']) {
       messages.push(await f.db.transaction((tx) => postClanChat(tx, {
-        playerId: f.playerIds[0]!, content, now: f.clock.now(),
+        playerId: f.playerIds[0]!, content, clock: f.clock,
       })));
     }
     const page = await readClanChat(f.db, f.accountIds[1]!, { limit: 2, now: f.clock.now() });
@@ -1095,17 +1095,17 @@ describe('ruleset-v3 clans', () => {
 
     for (let index = 0; index < CLAN.chatBurst; index += 1) {
       await f.db.transaction((tx) => postClanChat(tx, {
-        playerId: f.playerIds[1]!, content: `Burst ${String(index)}`, now: f.clock.now(),
+        playerId: f.playerIds[1]!, content: `Burst ${String(index)}`, clock: f.clock,
       }));
     }
     await expect(f.db.transaction((tx) => postClanChat(tx, {
-      playerId: f.playerIds[1]!, content: 'One too many', now: f.clock.now(),
+      playerId: f.playerIds[1]!, content: 'One too many', clock: f.clock,
     }))).rejects.toMatchObject({ code: 'CLAN_CHAT_RATE_LIMIT' });
 
     await f.db.update(seasons).set({ status: 'frozen', endsAt: f.clock.now() })
       .where(eq(seasons.id, f.seasonId));
     await expect(f.db.transaction((tx) => postClanChat(tx, {
-      playerId: f.playerIds[0]!, content: 'Afterglow', now: f.clock.now(),
+      playerId: f.playerIds[0]!, content: 'Afterglow', clock: f.clock,
     }))).resolves.toMatchObject({ content: 'Afterglow' });
     f.clock.advance(SEASON.afterglowMinutes + 1);
     await expect(readClanChat(f.db, f.accountIds[1]!, { limit: 20, now: f.clock.now() }))

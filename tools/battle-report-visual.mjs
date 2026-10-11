@@ -31,6 +31,15 @@ const sample = {
 };
 
 function fixture(kind) {
+  if (kind === 'fractional' || kind === 'fractional-defender') return { ...sample,
+    attacking: kind === 'fractional', grade: 'PARTIAL', dominion: 0, dominionBreakdown: null,
+    yourFleet: { CATACLYSM: 2, DART: 1 }, yourLosses: {}, theirLosses: {},
+    rounds: [{ ...rounds[0], attackerLosses: {}, defenderLosses: {} }],
+    yourDamage: [
+      { hull: 'CATACLYSM', count: 1, damageBp: 0, remainderBp: 0.8857506709106965 },
+      { hull: 'CATACLYSM', count: 1, damageBp: 2000, remainderBp: Number.MIN_VALUE },
+      { hull: 'DART', count: 1, damageBp: 2000, remainderBp: 0 },
+    ] };
   if (kind === 'defender' || kind === 'legacy') return { ...sample, attacking: false,
     grade: kind === 'legacy' ? 'DECISIVE' : 'REPELLED', dominion: 38680,
     dominionBreakdown: null, yourFleet: kind === 'legacy' ? {} : { ...enemyLosses, RAMPART: 30 },
@@ -55,9 +64,6 @@ export async function verifyBattleReports(out) {
   const querySource = await (await fetch(`${web}/src/api/queries.ts`)).text();
   const queryModule = querySource.match(/from "([^"]*\/@tanstack_react-query\.js[^"]*)"/)?.[1];
   if (!queryModule) throw new Error('Cannot resolve the app\u2019s React Query module');
-  const launchSource = await (await fetch(`${web}/src/screens/LaunchSheet.tsx`)).text();
-  const toastModule = launchSource.match(/from "([^"]*\/Toast\.tsx[^"]*)"/)?.[1];
-  if (!toastModule) throw new Error('Cannot resolve the app\u2019s toast module');
   const browser = await chromium.launch();
   try {
     for (const language of ['tr', 'en']) {
@@ -68,9 +74,9 @@ export async function verifyBattleReports(out) {
         page.on('pageerror', error => { errors.push(error.message); console.error(error.message); });
         // Refuse all network API traffic; all reads below use in-memory fixtures.
         await page.route(url => url.pathname.startsWith('/api/'), route => route.abort());
-        for (const kind of ['attacker', 'defender', 'partial', 'walkover', 'mutual', 'legacy', 'launch']) {
+        for (const kind of ['attacker', 'defender', 'partial', 'walkover', 'mutual', 'legacy', 'fractional', 'fractional-defender', 'launch']) {
           await page.route('**/battle-design-preview', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="root"></div>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>:root { --v2-top-h: 0px; --v2-dock-h: 0px; }</style></head><body><div id="root"></div>
 <script type="module">
 import RefreshRuntime from '/@react-refresh';
 RefreshRuntime.injectIntoGlobalHook(window); window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => type => type;
@@ -82,15 +88,15 @@ const { ApiProvider } = await import('/src/api/context.tsx');
 const { Api } = await import('/src/api/client.ts');
 const { BattleReports } = await import('/src/screens/BattleReports.tsx');
 const { LaunchSheet } = await import('/src/screens/LaunchSheet.tsx');
-const { ToastProvider } = await import('${toastModule}');
+const { ToastProvider } = await import('/src/ui/Toast.tsx');
 const { planetView } = await import('/test/fixtures.ts');
 const { reportsSchema, intelSchema } = await import('/src/api/schemas.ts');
 const i18n = (await import('/src/i18n/index.ts')).default;
 await import('/src/styles.css'); await i18n.changeLanguage('${language}');
 const data = reportsSchema.parse({ reports: [${JSON.stringify(fixture(kind))}], rivals: [] });
 const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
-client.setQueryData(['reports'], data); client.setQueryData(['season'], { shieldUntil: null });
-const api = new Api(); api.reports = async () => data; api.season = async () => ({ shieldUntil: null });
+client.setQueryData(['reports'], data); client.setQueryData(['season'], { shieldUntil: null, rivals: [] });
+const api = new Api(); api.reports = async () => data; api.season = async () => ({ shieldUntil: null, rivals: [] });
 const planet = planetView({ fleet: ${JSON.stringify(wing)} }, { deuterium: 20000 });
 const intel = intelSchema.parse({ watching: [], radarLog: [], probeCost: { alloy: 50, crystal: 30, deuterium: 0 },
   probeReports: [{ targetPlanetId: 'design-target', targetName: 'Örnek-91', targetUsername: 'ÖrnekRakip',
@@ -119,7 +125,7 @@ createRoot(document.getElementById('root')).render(React.createElement(QueryClie
             for (const hull of ['DART', 'PIKE', 'WARDEN', 'RAMPART', 'COURIER', 'WAYFARER']) {
               await page.locator('[data-hull-row="' + hull + '"] [data-count-max] button').click();
             }
-            await page.locator('[data-sheet-scroll]').evaluate(body => body.scrollTo({ top: 0 }));
+            await page.locator('[data-sheet-body]').evaluate(body => body.scrollTo({ top: 0 }));
           }
           await page.waitForTimeout(450);
           await page.screenshot({ path: `${prefix}.png` });
@@ -132,6 +138,37 @@ createRoot(document.getElementById('root')).render(React.createElement(QueryClie
             await page.screenshot({ path: `${prefix}-force.png` });
             await page.locator('[data-combat-round="2"]').scrollIntoViewIfNeeded();
             await page.screenshot({ path: `${prefix}-rounds.png` });
+          }
+          if (kind === 'fractional' || kind === 'fractional-defender') {
+            const damage = page.locator('[data-report-damage]');
+            await damage.scrollIntoViewIfNeeded();
+            const box = await damage.boundingBox();
+            if (!box || box.y < 0 || box.y + box.height > viewport.height) {
+              throw new Error(`Fractional damage is outside the viewport: ${prefix}: ${JSON.stringify(box)}`);
+            }
+            const rows = await damage.locator('li').allTextContents();
+            const expected = await page.evaluate(async () => {
+              const i18n = (await import('/src/i18n/index.ts')).default;
+              const { hullLabel } = await import('/src/i18n/names.ts');
+              return [
+                i18n.t('reportScene.damageLot', { name: hullLabel('CATACLYSM'), count: 1, pct: 1 }),
+                i18n.t('reportScene.damageLot', { name: hullLabel('CATACLYSM'), count: 1, pct: 21 }),
+                i18n.t('reportScene.damageLot', { name: hullLabel('DART'), count: 1, pct: 20 }),
+              ];
+            });
+            if (rows.length !== expected.length || expected.some((text, index) => !rows[index].includes(text))) {
+              throw new Error(`Incorrect fractional damage: ${prefix}: ${JSON.stringify(rows)}`);
+            }
+            if (kind === 'fractional-defender') {
+              const labels = await page.evaluate(async () => {
+                const i18n = (await import('/src/i18n/index.ts')).default;
+                return { dock: i18n.t('reportScene.toDock'), patched: i18n.t('reportScene.patched') };
+              });
+              if (!rows[0].includes(labels.patched) || !rows[1].includes(labels.dock) || !rows[2].includes(labels.patched)) {
+                throw new Error(`Incorrect fractional repair destination: ${prefix}`);
+              }
+            }
+            await page.screenshot({ path: `${prefix}-damage.png` });
           }
           if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw new Error(`Overflow: ${prefix}`);
           console.log(`Captured ${prefix}.png`);

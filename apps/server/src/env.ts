@@ -11,6 +11,8 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   /** Request-pool budget per process; LISTEN uses one additional connection. */
   DB_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
+  /** Separate HTTP placement leases; each handler may also need the request pool. */
+  PLACEMENT_POOL_MAX: z.coerce.number().int().min(1).max(50).default(2),
   /**
    * Rotating this invalidates every session. Must be set in production.
    *

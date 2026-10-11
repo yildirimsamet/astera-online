@@ -63,7 +63,7 @@ export function ArtWell({
         <img
           src={src}
           alt={alt}
-          className={`socket-art size-[86%] object-contain transition-[filter,opacity] duration-300 ${
+          className={`socket-art ${src.startsWith('/assets/images/premium/') ? 'premium-art size-full' : 'size-[86%]'} object-contain transition-[filter,opacity] duration-300 ${
             locked ? 'opacity-40 grayscale' : ''
           }`}
           // Art below the fold on a phone should not compete with the first paint.

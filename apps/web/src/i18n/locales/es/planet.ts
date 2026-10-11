@@ -370,6 +370,14 @@ export const planet = {
   },
 
   buildSheet: {
+    specialRole: {
+      title: 'Función especial',
+      nullifierEffect: 'Aegis activo · {{multiplier}} daño',
+      nullifierLimit: 'El daño adicional solo golpea el escudo; nunca pasa a las naves ni a los cañones terrestres. Sin escudo, usa su ataque normal.',
+      collectorEffect: 'Hasta {{amount}} recursos por nave superviviente',
+      collectorUse: 'Añádelo a una flota de ataque con naves de combate. Recoge los restos de esa batalla y lleva los recursos a casa.',
+      collectorLimit: 'No aumenta la capacidad de botín ni recoge restos al defender. No puedes enviarlo a asteroides ni a campos de escombros.',
+    },
     eyebrowGround: "Defensa terrestre · nunca sale",
     eyebrowMobile: "Casco móvil",
     howMany: "¿Cuantos",

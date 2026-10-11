@@ -1,4 +1,16 @@
 export const brand = {
+  fullscreen: {
+    title: 'Tam ekran',
+    enter: 'Tam ekranı aç',
+    exit: 'Tam ekrandan çık',
+    already: 'Tam ekran zaten açık',
+    appActive: 'Uygulama görünümü zaten açık',
+    unsupported: 'Tarayıcın bu sayfayı tam ekrana alamıyor. Aşağıdaki seçenekleri kullanabilirsin.',
+    enterFailed: 'Tam ekran açılamadı. Düğmeyi tekrar dene veya aşağıdaki seçenekleri kullan.',
+    exitFailed: 'Tam ekran kapatılamadı. Düğmeyi tekrar dene veya tarayıcının çıkış kontrolünü kullan.',
+    launchApp: 'Ardından oyunu ana ekranındaki simgesinden aç. Tarayıcının adres çubuğu görünmeden oynayabilirsin.',
+    desktopHelp: 'Tarayıcı menüsünden Tam ekranı seç. Bu görünümden çıkmak için aynı menüyü veya Esc tuşunu kullan.',
+  },
   "returnTitle": "Oyuna kolayca geri dön",
   "returnHint": "Oyunu ana ekranına ekleyerek tekrar kolayca açabilirsin.",
   "returnHintDesktop": "Oyunu yer imlerine ekleyerek veya yükleyerek tekrar kolayca açabilirsin.",

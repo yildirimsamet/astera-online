@@ -1,4 +1,4 @@
-import { Suspense, useLayoutEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -50,6 +50,9 @@ const RING_RATIO = 1.5;
 /** ...but never closer than this, so the band always clears the surface. */
 const MIN_CLEARANCE = 0.22;
 
+export const wreckBandRadius = (planetRadius: number): number =>
+  Math.max(planetRadius * RING_RATIO, planetRadius + MIN_CLEARANCE);
+
 /** Half-thickness of the tap target. Proportional too, with a thumb-sized floor. */
 const TUBE_RATIO = 0.28;
 const MIN_TUBE = 0.24;
@@ -57,10 +60,8 @@ const MIN_TUBE = 0.24;
 /**
  * The model's own axis, and what has to happen to it.
  *
- * The ring is authored in the YZ plane — its bounding box is 0.21 thick in X
- * against 0.95 and 0.97 in the other two — so its axis is +X. The disc's worlds
- * are laid out around +Y, so a quarter turn about Z stands the ring up the right
- * way. Measured off the file rather than guessed; see the note in `models.mjs`.
+ * The industrial wreck is authored in the YZ plane, with its axis along +X.
+ * A quarter turn about Z places the hollow band around the world's +Y axis.
  */
 const LIE_FLAT: readonly [number, number, number] = [0, 0, Math.PI / 2];
 
@@ -194,7 +195,7 @@ function Wreck({
    * compact, dense cluster (outer radius ~0.42, flatten = 1.6) with the inner hole closed up.
    */
   const isVoid = wreck.planetId === null;
-  const baseRingRadius = Math.max(planetRadius * RING_RATIO, planetRadius + MIN_CLEARANCE);
+  const baseRingRadius = wreckBandRadius(planetRadius);
   const ringRadius = isVoid ? 0.35 : baseRingRadius;
   const tube = isVoid ? 0.4 : Math.max(ringRadius * TUBE_RATIO, MIN_TUBE);
   const flatten = isVoid ? 1 : FLATTEN;
@@ -208,7 +209,7 @@ function Wreck({
    * planet like a chain of tyres. The asset is an annulus already built out of
    * dozens of small pieces — one object, placed once.
    *
-   * That also makes it cheap: 2,087 triangles per field rather than 29,000.
+   * The merged industrial wreck uses one material and 2,136 triangles per field.
    */
   const { scene } = useGLTF(MODEL.debris, false);
   const source = useMemo(() => unitModel(scene), [scene]);
@@ -237,8 +238,10 @@ function Wreck({
     const m = source.material.clone();
     m.side = THREE.DoubleSide;
     m.transparent = true;
+    m.forceSinglePass = true;
     return m;
   }, [source]);
+  useEffect(() => () => { material?.dispose(); }, [material]);
 
   useLayoutEffect(() => {
     if (!material) return;
@@ -248,7 +251,7 @@ function Wreck({
     material.opacity = 0.3 + life * 0.55;
     if ('emissive' in material && material.emissive instanceof THREE.Color) {
       material.emissive.set(focused ? '#ffb44d' : '#000000');
-      if ('emissiveIntensity' in material) material.emissiveIntensity = focused ? 0.6 : 0;
+      if ('emissiveIntensity' in material) material.emissiveIntensity = focused ? 0.16 : 0;
     }
     material.needsUpdate = true;
   }, [material, life, focused]);
@@ -294,6 +297,8 @@ function Wreck({
         <mesh
           geometry={source.geometry}
           material={material}
+          raycast={() => null}
+          dispose={null}
           rotation={LIE_FLAT}
           scale={[(ringRadius + tube) * flatten, ringRadius + tube, ringRadius + tube]}
         />

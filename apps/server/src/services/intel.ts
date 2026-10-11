@@ -470,6 +470,13 @@ export async function readTelescopes(
 
   const truth = await fleetTruthFor(db, eligible.map((r) => r.planet.id), now);
   const views: WatchView[] = [];
+  const confirmations: {
+    observerPlanetId: string;
+    slot: number;
+    targetPlanetId: string;
+    status: Exclude<FleetStatus, 'UNKNOWN'>;
+    confirmedAt: Date;
+  }[] = [];
   for (const row of eligible) {
     const myTelescope = levelOf(levels, row.watch.observerPlanetId, 'TELESCOPE');
     const target = row.planet;
@@ -515,15 +522,13 @@ export async function readTelescopes(
        */
       const advance = confirmedAt.getTime() - (row.watch.lastConfirmedAt?.getTime() ?? -Infinity);
       if (advance >= CONFIRM_GRANULARITY_MS) {
-        await db
-          .update(watches)
-          .set({ lastStatus: reading.status, lastConfirmedAt: confirmedAt })
-          .where(
-            and(
-              eq(watches.observerPlanetId, row.watch.observerPlanetId),
-              eq(watches.slot, row.watch.slot),
-            ),
-          );
+        confirmations.push({
+          observerPlanetId: row.watch.observerPlanetId,
+          slot: row.watch.slot,
+          targetPlanetId: target.id,
+          status: reading.status,
+          confirmedAt,
+        });
       }
     }
 
@@ -536,6 +541,35 @@ export async function readTelescopes(
       reading,
       cooldownUntil: row.watch.cooldownUntil,
     });
+  }
+  if (confirmations.length > 0) {
+    const values = sql.join(confirmations.map(confirmation => sql`(
+      ${confirmation.observerPlanetId}::uuid, ${confirmation.slot}::integer,
+      ${confirmation.targetPlanetId}::uuid, ${confirmation.status}::text,
+      ${confirmation.confirmedAt.toISOString()}::timestamptz
+    )`), sql`, `);
+    // One round trip for every slot. Lock in primary-key order, then recheck the
+    // assignment and throttle so a concurrent retarget/read cannot corrupt history.
+    await db.execute(sql`
+      WITH observed (observer_planet_id, slot, target_planet_id, status, confirmed_at) AS (
+        VALUES ${values}
+      ), confirmed AS MATERIALIZED (
+        SELECT w.observer_planet_id, w.slot, observed.status, observed.confirmed_at
+          FROM watches AS w
+          JOIN observed ON w.observer_planet_id = observed.observer_planet_id AND w.slot = observed.slot
+         WHERE w.observer_player_id = ${playerId}::uuid
+           AND w.target_planet_id = observed.target_planet_id
+           AND w.detached_at IS NULL
+           AND (w.last_confirmed_at IS NULL OR w.last_confirmed_at <= observed.confirmed_at
+             - ${CONFIRM_GRANULARITY_MS}::double precision * interval '1 millisecond')
+         ORDER BY w.observer_planet_id, w.slot
+         FOR UPDATE OF w
+      )
+      UPDATE watches AS w
+         SET last_status = confirmed.status, last_confirmed_at = confirmed.confirmed_at
+        FROM confirmed
+       WHERE w.observer_planet_id = confirmed.observer_planet_id AND w.slot = confirmed.slot
+    `);
   }
   return views;
 }

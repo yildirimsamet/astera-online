@@ -28,6 +28,7 @@ export type ShellRoute = (
 ) => void;
 
 export interface GameShellProps {
+  isAdmin?: boolean;
   accountId?: string;
   commander: string;
   /** The page open over the galaxy, owned by the app. */
@@ -75,7 +76,7 @@ export interface GameShellProps {
  * and pages dock to the right (both sheet kits). The keyboard works at every width:
  * 1–5 the tabs, Space the selection, Esc lets go (`shortcutOf`).
  */
-export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet, onFocusCraft, galaxy }: GameShellProps) {
+export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet, onFocusCraft, galaxy, isAdmin = false }: GameShellProps) {
   const [bell, setBell] = useState<{ tab: BellTab; justRead: ReadonlySet<string> } | null>(null);
   const [fleetOpen, setFleetOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -289,6 +290,7 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
 
       {chatOpen && (
         <ChatHost
+          isAdmin={isAdmin}
           onClose={() => { setChatOpen(false); }}
           onFocusPlanet={onFocusPlanet}
           {...(chatChannel ? { channel: chatChannel } : {})}

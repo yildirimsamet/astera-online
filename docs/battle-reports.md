@@ -136,3 +136,23 @@ work exactly as D95 specifies.
 
 Held down by `packages/rules/test/aegis-grade.test.ts` and the Prospector server integration test,
 including the report, loot-bearing return leg and unchanged shield.
+
+## Fractional HP damage and report availability — 11 October 2026
+
+The read-only production investigation of Vantasia's missing Yasin report found the
+report persisted and its notification delivered. An older Sainthorum report contained
+`damageBp: 0, remainderBp: 0.8857506709106965`, which is valid HP damage. The client's
+minimum of one whole basis point rejected the entire 50-report response.
+
+Required behavior: preserve fractional damage, accept integer basis points in 0..9999
+and an optional finite remainder in [0, 1), and retain legacy reports without a
+remainder or damage array. Negative/fractional integer components, destroyed hulls,
+invalid remainders and invalid counts must still fail validation. Both players must
+read their own damage, and a notification must open its battle despite fractional
+damage elsewhere in the history.
+
+The report must show positive fractional damage as positive and use the HP repair
+boundary, including a positive remainder above exactly 20%. Changes are limited to
+the client report contract and damage presentation, with real API and UI regressions;
+combat, ownership, score, rewards and stored reports remain unchanged. The fix needs
+the new web bundle on deployment; it requires no database migration or report rewrite.

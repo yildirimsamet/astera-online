@@ -291,7 +291,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
     readClanChat(app.db, req.accountId!, {
       ...cursorQuery.parse(req.query),
       now: app.clock.now(),
-    }));
+    }, app.adminUsernames));
 
   app.post('/api/clan/aid/quote', { preHandler: requireAuth }, async (req) => {
     const body = aidBody.parse(req.body);
@@ -650,8 +650,8 @@ export function registerClanRoutes(app: FastifyInstance): void {
       key: idempotencyKey(req),
       body,
       now,
-    }, (tx) => postClanChat(tx, { playerId: actor.playerId, content: body.content, now,
-      replyToMessageId: body.replyToMessageId }))
+    }, (tx) => postClanChat(tx, { playerId: actor.playerId, content: body.content, clock: app.clock,
+      replyToMessageId: body.replyToMessageId }, app.adminUsernames))
       .then((message) => ({ message }));
   });
 

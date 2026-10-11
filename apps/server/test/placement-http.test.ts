@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
-import { afterAll, afterEach, expect, it } from 'vitest';
+import { afterAll, afterEach, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { players } from '../src/db/schema.js';
 import { seedWorld, testDb, testEnv } from './helpers.js';
@@ -37,6 +37,68 @@ it('keeps the galaxy placement stable throughout an authenticated handler', asyn
   const authorization = `Bearer ${await built.app.tokens.issueAccess(f.accountIds[0]!)}`;
   expect((await built.app.inject({ url: '/api/placement-test', headers: { authorization } })).statusCode).toBe(200);
   expect(locked).toBe(true);
+});
+
+it.each<{ configuration: Record<string, string>; capacity: number }>([
+  { configuration: {}, capacity: 2 },
+  { configuration: { PLACEMENT_POOL_MAX: '3' }, capacity: 3 },
+])('bounds concurrent handlers at $capacity and releases queued requests', async ({ configuration, capacity }) => {
+  const f = await seedWorld(1);
+  built = buildApp({ env: testEnv(configuration), db: f.db, clock: f.clock, logger: pino({ level: 'silent' }) });
+  const { requireAuth } = await import('../src/routes/auth.js');
+  let release = () => { /* assigned synchronously by the promise constructor */ };
+  const held = new Promise<void>(resolve => { release = resolve; });
+  let entered = 0;
+  let requested = 0;
+  built.app.get('/api/placement-capacity-test', {
+    preHandler: [requireAuth, (_req, _reply, done) => { requested += 1; done(); }],
+  }, async () => {
+    entered += 1;
+    await held;
+    return { ok: true };
+  });
+  const authorization = `Bearer ${await built.app.tokens.issueAccess(f.accountIds[0]!)}`;
+  const requests = Array.from({ length: capacity + 1 }, () =>
+    built!.app.inject({ url: '/api/placement-capacity-test', headers: { authorization } }).then(response => response),
+  );
+  try {
+    await vi.waitFor(() => {
+      expect(requested).toBe(capacity + 1);
+      expect(entered).toBe(capacity);
+    }, { timeout: 2000 });
+    expect(built.metrics.status().placementPool.transactionStartMs.samples).toBe(capacity);
+  } finally {
+    release();
+    await Promise.all(requests);
+  }
+  const responses = await Promise.all(requests);
+  expect(responses.every(response => response.statusCode === 200)).toBe(true);
+  expect(built.metrics.status().placementPool).toMatchObject({
+    transactionStartErrors: 0, transactionStartMs: { samples: capacity + 1 },
+  });
+  const metrics = await built.app.inject('/metrics');
+  expect(metrics.json()).toMatchObject({ database: {
+    configuredPlacementPoolMax: capacity,
+    placementTransactionStartErrors: 0,
+    placementTransactionStartMs: { samples: capacity + 1 },
+  } });
+});
+
+it('releases a failed handler lease without counting it as a transaction startup failure', async () => {
+  const f = await seedWorld(1);
+  built = buildApp({ env: testEnv({ PLACEMENT_POOL_MAX: '1' }), db: f.db, clock: f.clock, logger: pino({ level: 'silent' }) });
+  const { requireAuth } = await import('../src/routes/auth.js');
+  let attempts = 0;
+  built.app.get('/api/placement-failure-test', { preHandler: requireAuth }, () => {
+    if (++attempts === 1) throw new Error('handler failed');
+    return Promise.resolve({ ok: true });
+  });
+  const authorization = `Bearer ${await built.app.tokens.issueAccess(f.accountIds[0]!)}`;
+  expect((await built.app.inject({ url: '/api/placement-failure-test', headers: { authorization } })).statusCode).toBe(500);
+  expect((await built.app.inject({ url: '/api/placement-failure-test', headers: { authorization } })).statusCode).toBe(200);
+  expect(built.metrics.status().placementPool).toMatchObject({
+    transactionStartErrors: 0, transactionStartMs: { samples: 2 },
+  });
 });
 it('invalidates a warm commander projection even before the transfer notification arrives', async () => {
   const f = await seedWorld(1);

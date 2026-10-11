@@ -90,7 +90,7 @@ export function registerServerRoutes(app: FastifyInstance): void {
     }
 
     const target = await resolveJoinTarget(app.db, code, app.clock);
-    const joined = await joinSeason(app.db, req.accountId!, target.seasonId, app.clock);
+    const joined = await joinSeason(app.db, req.accountId!, target.seasonId, app.clock, undefined, 'COMMANDER', app.adminUsernames);
 
     const [planet] = await app.db
       .select({ name: planets.name })
