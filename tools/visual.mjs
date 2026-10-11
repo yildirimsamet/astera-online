@@ -35,6 +35,12 @@ if (process.argv.includes('--pace-fuel')) {
   process.exit(0);
 }
 
+if (process.argv.includes('--galaxy-readout')) {
+  const { verifyGalaxyReadout } = await import('./galaxy-readout-visual.mjs');
+  await verifyGalaxyReadout(process.argv[2] ?? 'out/galaxy-readout');
+  process.exit(0);
+}
+
 if (process.argv.includes('--special-ships')) {
   const { verifySpecialShips } = await import('./special-ships-visual.mjs');
   await verifySpecialShips(process.argv[2] ?? 'out/special-ships');

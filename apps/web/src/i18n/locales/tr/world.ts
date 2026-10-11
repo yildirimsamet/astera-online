@@ -11,8 +11,7 @@
 export const galaxy = {
   settlementAway: "{{world}} için yerleşim görevi yola çıktı",
   deathStarAway: "Ölüm Yıldızı {{world}} yönüne fırlatıldı",
-  online: "{{count}} çevrimiçi",
-  onlineToday: "24 saatte {{count}}",
+  onlineToday: "24 saatte {{count}} çevrimiçi",
   worlds: "{{count}} gezegen",
   fleetAway_one: " · {{count}} filo dışarıda",
   fleetAway_other: " · {{count}} filo dışarıda",

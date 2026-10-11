@@ -6,14 +6,8 @@
 export const galaxy = {
   settlementAway: "Settlement dispatched for {{world}}",
   deathStarAway: "Death Star launched toward {{world}}",
-  /**
-   * Its own key rather than a reuse of the server list's, because nothing is
-   * shared between surfaces (D55): this one sits at 8px in the corner of the
-   * disc and the other is a row in a list, and they are free to diverge.
-   */
-  online: "{{count}} online",
-  /** The same population over a day, so an off-peak galaxy still reads as inhabited. */
-  onlineToday: "{{count}} in 24h",
+  /** Rolling daily activity; the map deliberately omits the instantaneous count. */
+  onlineToday: "{{count}} online in 24h",
   worlds: "{{count}} worlds",
   fleetAway_one: " · {{count}} fleet away",
   fleetAway_other: " · {{count}} fleets away",

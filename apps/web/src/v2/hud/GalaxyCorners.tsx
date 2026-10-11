@@ -36,8 +36,7 @@ export interface GalaxyTarget {
   ordinal?: number;
 }
 
-export function GalaxyReadout({ online, onlineToday, counts, targets = [], onFocusTarget }: {
-  online?: number;
+export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget }: {
   onlineToday?: number;
   counts: { worlds: number; fleetsAway: number; rocks: number; pirates: number; wrecks: number; monuments?: number };
   targets?: readonly GalaxyTarget[];
@@ -99,11 +98,11 @@ export function GalaxyReadout({ online, onlineToday, counts, targets = [], onFoc
       data-galaxy-readout
       className="pointer-events-none relative flex max-w-[58vw] flex-col items-end gap-0.5 text-right font-v2-ui [text-shadow:0_1px_3px_var(--color-v2-void)]"
     >
-      {online !== undefined && (
+      {/* Owner, 2026-10-11: daily activity only; live counts reveal quiet attack windows. */}
+      {onlineToday !== undefined && (
         <p className="flex items-center gap-1.5 text-caption text-v2-ink-2">
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-v2-self" />
-          <span>{t('galaxy.online', { count: online })}</span>
-          {onlineToday !== undefined && <span className="text-v2-ink-3">{t('galaxy.onlineToday', { count: onlineToday })}</span>}
+          <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-v2-self" />
+          <span>{t('galaxy.onlineToday', { count: onlineToday })}</span>
         </p>
       )}
       <p data-testid="view-caption" className="font-v2-mono text-micro leading-snug text-v2-ink grid grid-cols-2">

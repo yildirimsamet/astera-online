@@ -101,19 +101,31 @@ describe('the galaxy readout', () => {
     expect(rockCount).not.toHaveAttribute('aria-controls');
   });
 
-  it('says who is in it, now and today', () => {
-    render(<GalaxyReadout online={6} onlineToday={41} counts={counts} />);
-    expect(screen.getByText('6 online')).toBeInTheDocument();
-    expect(screen.getByText('41 in 24h')).toBeInTheDocument();
+  it('shows only activity over the last 24 hours, even when a live count is available', () => {
+    const population = { online: 6, onlineToday: 41 };
+    render(<GalaxyReadout {...population} counts={counts} />);
+    expect(screen.getByText('41 online in 24h')).toBeInTheDocument();
+    expect(screen.queryByText('6 online')).toBeNull();
   });
 
-  it('omits a figure an older server does not send', () => {
-    render(<GalaxyReadout online={6} counts={counts} />);
-    expect(screen.queryByText(/24h/)).toBeNull();
+  it('shows the daily count independently of an instantaneous count', () => {
+    render(<GalaxyReadout onlineToday={100} counts={counts} />);
+    expect(screen.getByText('100 online in 24h')).toBeInTheDocument();
+  });
+
+  it('preserves a measured daily zero', () => {
+    render(<GalaxyReadout onlineToday={0} counts={counts} />);
+    expect(screen.getByText('0 online in 24h')).toBeInTheDocument();
+  });
+
+  it('omits unknown daily activity without falling back to a live count', () => {
+    const population = { online: 6 };
+    render(<GalaxyReadout {...population} counts={counts} />);
+    expect(screen.queryByText(/online|24h/)).toBeNull();
   });
 
   it('counts what is out there, leaving out what is not', () => {
-    render(<GalaxyReadout online={6} counts={counts} />);
+    render(<GalaxyReadout counts={counts} />);
     const caption = screen.getByTestId('view-caption');
     expect(caption).toHaveTextContent(/212 worlds/);
     expect(caption).toHaveTextContent(/rock/i);
@@ -179,9 +191,9 @@ describe('the view sheet', () => {
   });
 
   it('speaks Turkish, and so does the readout', async () => {
-    render(<><ViewSheet {...props()} /><GalaxyReadout online={6} counts={{ worlds: 212, fleetsAway: 0, rocks: 0, pirates: 0, wrecks: 0 }} /></>);
+    render(<><ViewSheet {...props()} /><GalaxyReadout onlineToday={100} counts={{ worlds: 212, fleetsAway: 0, rocks: 0, pirates: 0, wrecks: 0 }} /></>);
     await act(async () => { await i18n.changeLanguage('tr'); });
-    expect(screen.getByText('6 çevrimiçi')).toBeInTheDocument();
+    expect(screen.getByText('24 saatte 100 çevrimiçi')).toBeInTheDocument();
     expect(within(screen.getByRole('dialog')).getByRole('switch', { name: /Teleskop menzili/ })).toBeInTheDocument();
     await act(async () => { await i18n.changeLanguage('en'); });
   });

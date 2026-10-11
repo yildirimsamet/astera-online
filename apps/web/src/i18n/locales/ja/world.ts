@@ -6,14 +6,8 @@
 export const galaxy = {
   settlementAway: "{{world}}に向けて入植隊を派遣しました",
   deathStarAway: "{{world}}に向けてデス・スターが発射されました",
-  /**
-   * Its own key rather than a reuse of the server list's, because nothing is
-   * shared between surfaces (D55): this one sits at 8px in the corner of the
-   * disc and the other is a row in a list, and they are free to diverge.
-   */
-  online: "{{count}}人がオンライン",
-  /** The same population over a day, so an off-peak galaxy still reads as inhabited. */
-  onlineToday: "過去24時間に{{count}}人",
+  /** Rolling daily activity; the map deliberately omits the instantaneous count. */
+  onlineToday: "過去24時間に{{count}}人がオンライン",
   worlds: "{{count}}個の惑星",
   fleetAway_one: " · 出航中の艦隊{{count}}隊",
   fleetAway_other: " · 出航中の艦隊{{count}}隊",

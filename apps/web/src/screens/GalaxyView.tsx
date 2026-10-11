@@ -1179,9 +1179,8 @@ export function GalaxyView({
   const chatButton = showGuidance && showChat
     ? <ChatChip unread={chatUnread + dmUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} />
     : null;
-  /** The galaxy's readout: who is in it and what it holds (top right). */
+  /** Daily activity and the galaxy's objects (top right). */
   const galaxyReadout = {
-    ...(season.data?.online === undefined ? {} : { online: season.data.online }),
     ...(season.data?.onlineToday === undefined ? {} : { onlineToday: season.data.onlineToday }),
     counts: {
       worlds: planets.length,
