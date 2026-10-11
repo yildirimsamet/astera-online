@@ -4,19 +4,8 @@ on: { push: { branches: [master, main] }, pull_request: {} }
 jobs:
   verify:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: astera
-          POSTGRES_PASSWORD: astera
-          POSTGRES_DB: astera_test
-        ports: ['5433:5432']
-        options: >-
-          --health-cmd "pg_isready -U astera"
-          --health-interval 2s --health-timeout 3s --health-retries 20
     env:
-      DATABASE_URL: postgres://astera:astera@localhost:5433/astera_test
+      ASTERA_INCLUDE_LONG_TESTS: '0'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -25,10 +14,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
-      # Ordinary rules, UI and persistence tests. Owner rule (2026-10-09):
+      # Ordinary rules and UI tests. Persistence tests run below on isolated databases.
+      # Owner rule (2026-10-09):
       # economy simulations and snowball audits require an explicit request.
       - shell: bash
-        run: pnpm test 2>&1 | tee "$RUNNER_TEMP/astera-tests.log"
+        run: pnpm --filter @astera/rules --filter @astera/web -r run test 2>&1 | tee "$RUNNER_TEMP/astera-tests.log"
       - name: Expose test failure details
         if: failure()
         run: |
@@ -46,3 +36,64 @@ jobs:
               text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
               print(f'::error title=Ordinary test failure::{text}')
           PYTHON
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tests-rules-web
+          path: ${{ runner.temp }}/astera-tests.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  server:
+    name: Server tests (${{ matrix.shard }}/8)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    # Every shard owns its PostgreSQL service. Files within a shard stay sequential
+    # because their fixtures truncate shared tables; no test is skipped by sharding.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: astera
+          POSTGRES_PASSWORD: astera
+          POSTGRES_DB: astera_test
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U astera"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgres://astera:astera@localhost:5433/astera_test
+      ASTERA_INCLUDE_LONG_TESTS: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - shell: bash
+        run: pnpm --filter @astera/server run test --shard=${{ matrix.shard }}/8 --maxWorkers=1 --minWorkers=1 --no-file-parallelism 2>&1 | tee "$RUNNER_TEMP/astera-tests.log"
+      - name: Expose test failure details
+        if: failure()
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          import re
+          from pathlib import Path
+          log = Path(os.environ['RUNNER_TEMP']) / 'astera-tests.log'
+          if log.exists():
+              text = '\n'.join(log.read_text(errors='replace').splitlines()[-80:])
+              text = re.sub(r'\x1b\[[0-9;]*m', '', text)
+              text = text.encode('utf-8')[-3000:].decode('utf-8', errors='replace')
+              text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print(f'::error title=Server test failure::{text}')
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tests-server-${{ matrix.shard }}
+          path: ${{ runner.temp }}/astera-tests.log
+          if-no-files-found: ignore
+          retention-days: 7
