@@ -1,186 +1,50 @@
-# Deployment
+# Astera Online — Production deployment
 
-Production VPS: `ssh yildirim@hoofywood.com`
+Production: `https://asteraonline.space` · VPS: `ssh yildirim@hoofywood.com` · checkout: `~/astera`.
+Use `docker-compose.prod.yml` only. The development Compose uses tmpfs and an unsuitable database password.
 
-Stage rehearsal and the owner-requested forced season transition are prepared in
-[`deployment-stage-rollout.md`](deployment-stage-rollout.md); its recorded inventory is a
-point-in-time inspection, not evidence of a completed deployment.
+This compact runbook consolidates the supplied notes through 10 October 2026. Inspection and rehearsal records are point-in-time evidence, not proof that a release is deployed. Refresh the actual SHA, migration journal, flags and live shards before each release. Repository-relative links below refer to supporting files in the project.
 
-Astera Online is live at `https://asteraonline.space`. This is the production runbook: it
-describes the topology that actually runs, the evidence required before opening it to players,
-and the rollback boundary. It is deliberately not a release history.
+## 1. Production contract and non-negotiable gates
 
-> A green command is not a deploy. A deploy is the intended, pushed commit running on every
-> process, against the intended schema, with the world still internally consistent and the
-> public client serving the same release.
+| Component | Contract |
+| --- | --- |
+| Nginx | Only public entry; `/` static, `/api` least-connection balancing |
+| APIs | Exactly `astera-api1-prod`, `astera-api2-prod`, `astera-api3-prod`; host ports 3200/3201/3202 |
+| Worker | Exactly one `astera-worker-prod`; health port 3210; do not scale casually |
+| PostgreSQL 16 | `astera-postgres-prod`, host port 5545; durable world and transactional event bus |
+| Valkey | `astera-valkey-prod`; disposable shared rate-limit counters only |
+| Network | Published application/database ports bind to `127.0.0.1`; single origin, `SameSite=Lax`, `credentials: 'same-origin'`, no CORS |
+| Realtime | SSE `/api/stream`; `api.`, `www.` and `socket.` redirect to apex |
+| Shards | Two MAIN galaxies filled in ordinal order, plus WAITING; EU-1/EU-2/WAIT-1 had `player_cap=1000` on 10 October |
+| Neutral pool | MAIN seed: 65 worlds, tiers 38/19/8; played MAIN galaxies conserve neutrals + colonies = 65 |
 
-> **Downtime is a cost, not a ritual.** Nothing in the definition above requires the site to
-> stop. Take a stop only when the release cannot be applied while serving, and say which rule
-> forced it — the world is live and real people are in it. The rolling path still costs at most
-> one failed request per replica; step 7 says why, and why it is not retried away.
+An API without PostgreSQL LISTEN is unready: it loses both realtime and cache invalidations. `stream="not listening"` is expected only on the worker.
 
-> **AND A STOP IS NOT THE OPERATOR'S DECISION TO TAKE.** When step 6 finds a genuine stop
-> condition, the deploy pauses there and the owner is asked, with the count of commanders
-> mid-session in front of them, BEFORE anything is stopped or migrated. Rule 12.
+Keep `PLACEMENT_POOL_MAX=2` per API (six total), separate from `API_DB_POOL_MAX`; the worker opens no placement connections. Budget gameplay, placement, worker and LISTEN connections against PostgreSQL's ceiling. Compare `database.configuredPlacementPoolMax`, `database.placementTransactionStartMs` p95/p99 and `database.placementTransactionStartErrors` with route latency and gameplay-pool probes before changing capacity. Startup timing includes connection establishment through BEGIN, excluding galaxy lock/handler. Increase only after representative isolated qualification, retaining a rollback to two.
 
-## Current production contract
+Release gates:
 
-```
-          443 ┌────────────────────────────────────────────────┐
-   ───────────│ nginx on the host                              │
-              │ / → static · /api → least_conn upstream       │
-              └───────────────┬────────────────────────────────┘
-                    ┌─────────┼─────────┐
-                    ▼         ▼         ▼
-          astera-api1-prod astera-api2-prod astera-api3-prod   ROLE=api
-                 :3200            :3201            :3202
-                    └─────────┼─────────┘
-                              ▼
-                    astera-postgres-prod              PostgreSQL 16
-                              ▲
-                              │
-                    astera-worker-prod :3210          ROLE=worker
+1. Use one clean, pushed full SHA. Checkout, selected `origin/master`, OCI revision, all four runtime commits/image IDs and public `release.txt` must agree.
+2. Build server and web before any interruption. Migrate explicitly once with that exact image; never through application startup.
+3. Restore a fresh dump to a disposable database and rehearse migrations before production mutation. Retain the previous image by ID, webroot, Nginx configuration, private runtime `.env` and verified dump through observation. Secrets/backups use mode 600; never print or commit credentials.
+4. Choose rolling, worker-only interruption or full quiescence from schema locks, actual old/new read/write compatibility, event kinds and feature gates. No DDL does **not** prove compatibility; a successful old-image boot does **not** prove its writes work.
+5. A required interruption beyond the ordinary compatible roll needs prior owner authorization. Report the measured reason, recently active commander count, expected cost and immediate benefit before stopping affected roles or applying the associated DDL. Previous release approvals are not blanket approvals.
+6. Require valid `.ok=true` health on all four processes, schema/queue/world consistency and external acceptance. Do not treat a successful command or `Deployed` message as acceptance.
+7. Validate APIs/worker before web publication. Preserve old hashed assets and API compatibility for already-open tabs; use aliases or a tested reload path before removing old routes.
+8. Season changes, wipes, repairs, bot activation and live-world adoption are explicit operations, not hidden deployment side effects.
+9. Never restore an old database over newer player writes as routine rollback. Additive rolling migrations normally stay in place; prove any code rollback compatible with both schema and newly stored data.
+10. Review changes to `packages/rules/src/galaxy.ts`, `pirates.ts`, `GALAXY.asteroid*` and `GALAXY_EVENTS`. Derived fields can change on the first new-image read without DDL. Stored dynamic hours are protected by their generation snapshots; legacy derived seasons still need fixed-time comparison.
 
-                    astera-valkey-prod                rate limits only
-```
+`deploy/deploy.sh` remains noncanonical for production. Later notes record individual improvements, but do not establish all required gates (worktree review, immutable identity, restore rehearsal, prebuilt client, blocking acceptance and external checks). Use the manual sequence.
 
-- There are exactly three stateless API replicas and exactly one worker. Never scale the worker
-  casually: a second one buys no API capacity and duplicates housekeeping work.
-- Every published application/database port is bound to `127.0.0.1`. Nginx is the only public
-  entry point. The API replicas use 3200/3201/3202, worker health uses 3210 and PostgreSQL uses
-  5545 on the host.
-- The client and API use one origin. Refresh cookies are `SameSite=Lax`, requests use
-  `credentials: 'same-origin'`, and there is no CORS. `api.`, `www.` and `socket.` redirect to
-  the apex; realtime is SSE at `/api/stream`, not a separate socket service.
-- PostgreSQL is the durable world and transactional event bus. Valkey contains only disposable,
-  shared rate-limit counters. It is not a gameplay cache or source of truth.
-- An API replica without its PostgreSQL `LISTEN` connection is not ready. The connection carries
-  realtime events **and cache invalidations**; serving cached reads after missing an invalidation
-  can return false world state. `/health` therefore returns 503 for `stream: not listening` on an
-  API. The worker intentionally has no LISTEN socket, so that value is expected on port 3210.
-- Production admits two main live galaxies, filled strictly in order, plus the waiting
-  room. The 10 October 2026 read-only inspection measured `player_cap=1000` on EU-1,
-  EU-2 and WAIT-1; older 300/350-seat acceptance records below are historical. This
-  release does not change capacity. Each new galaxy also has 38 tier-1, 19 tier-2 and
-  8 tier-3 neutral worlds (D209); those 65 worlds do not consume player seats.
-- The certified host budget assumes HoofyWood and Candely remain stopped. Astera deployment has
-  no authority to delete their containers or volumes, and they must not be restarted casually
-  while this capacity contract is in force.
+## 2. Qualify, inventory and retain rollback
 
-The production Compose file is `docker-compose.prod.yml`. Never substitute `docker-compose.yml`:
-that file is for development, uses tmpfs and has a trivial database password.
+Use root `pnpm verify`/`pnpm lint` (6 GB ESLint heap), plus `pnpm build`. Review the complete diff and migration journal; changed public response contracts require `apps/server/test/contract.test.ts` coverage. Run `tools/loop-check.mjs`, `tools/movement.mjs` and `tools/visual.mjs` only against an isolated disposable API/database. Raise rate limits only there. `visual:baseline` is the write-free exception for an existing dev stack; shared-state timeouts or stale selectors do not establish a product regression.
 
-Authenticated HTTP handlers hold a shared placement lease in a separate pool.
-`PLACEMENT_POOL_MAX` defaults to **2 per API process**, independently of
-`API_DB_POOL_MAX`. `/metrics` reports `database.configuredPlacementPoolMax`,
-`database.placementTransactionStartMs` and `database.placementTransactionStartErrors`.
-Startup measures actual requests from entering the pool through BEGIN; it includes
-connection establishment, and excludes the galaxy lock and handler. Compare its
-p95/p99 with route latency and the gameplay-pool probe before increasing capacity.
-Budget all API placement pools, gameplay pools, the worker and LISTEN connections
-against PostgreSQL's connection ceiling. The worker-only process serves no gated
-API routes and does not open placement connections. Production remains at two;
-adjust only after a representative isolated capacity run, with a rollback to two.
+Economy/season simulations, snowball audits and calibration run **only on explicit request**. Ordinary verification or “all tests” does not authorize them. Defaults exclude them; explicit long-run commands are `pnpm verify --include-long-tests` and `pnpm test:long`; `--exclude-sims` remains compatible.
 
-## Release rules
-
-These are stop conditions, not suggestions.
-
-1. **One immutable input.** Deploy a clean, pushed full commit SHA. The VPS HEAD,
-   `origin/master`, OCI image revision, runtime metrics commit, all four application container
-   image IDs, and the public web release marker must identify that same SHA.
-2. **Build before downtime.** Build both the server image and web artifact before blocking
-   traffic. A client build that begins after API restart can fail and leave a new API serving an
-   old client.
-3. **Prove rollback before mutation.** A dump that merely exists is not a rollback. Restore it
-   into a disposable database and, when migrations exist, run the new image's migrations against
-   that restored copy before touching production.
-4. **A dump is only a rollback boundary if nothing wrote after it.** On the **quiesced path**
-   that means blocking public writes, stopping every API and the worker, and only then taking
-   the final dump: never restore a backup over a world that has accepted newer player writes.
-   On the **rolling path** there is no such boundary to protect, because a release that applies
-   no DDL never rolls the database back — it rolls the IMAGE and the WEBROOT back, and both are
-   retained by rule 10. Rehearse the restore anyway (step 5): it is what proves the dump is
-   complete and the data shape is valid.
-5. **No process spans a migration it cannot survive.** An old worker can consume a newly
-   backfilled event kind as unknown and complete it before the new worker sees it; an old
-   replica can query a column a contraction has removed. That is what forces a stop — **not the
-   mere existence of a migration.** Most DDL is EXPAND-ONLY (new tables, nullable columns,
-   added enum values, dropped constraints, new indexes) and old code runs against it untouched,
-   which is why `pendingMigrations` clamps at zero and an old image boots cleanly against a
-   database AHEAD of its journal. Which kind this release is, is measured in step 5b against a
-   restored copy — never assumed from the migration count in either direction.
-6. **Migrate with the image that will run.** Migrations are an explicit one-off command, never an
-   application startup side effect and never N replicas racing the same DDL.
-7. **API before web, and never a mixed web artifact.** Validate the three APIs and singleton
-   worker on the new image before publishing the already-built client. The public must never be
-   able to request an `index.html` from one build and an asset directory from another. Stopping
-   Nginx is one way to guarantee that and it is the right one when the files are replaced IN
-   PLACE. Swapping a fully-built directory in by rename is another, and it closes the window
-   without a stop: two renames on one filesystem, `index.html` and its assets moving together.
-8. **Health is blocking.** All four `/health` documents must parse and have `.ok == true`. A 200
-   from one route or a script printing `Deployed` is not evidence.
-9. **A season transition is separate.** Shortening a deadline, freezing, recapping and rolling
-   over the world are owner operations after a successful code deploy, never hidden inside it.
-10. **Keep the way back.** Retain the previous image by ID, the previous webroot, the previous
-    Nginx vhost and the verified final dump until the release has passed its observation window.
-11. **Already-open clients are part of the release.** A phone can keep the previous JavaScript
-    bundle alive across a deploy. Do not remove or rename an API route that bundle calls in the
-    same release unless the server keeps a compatibility alias or the client has a tested
-    version-mismatch reload path. A successful cold-browser smoke does not cover this case.
-12. **Taking the world down requires the owner to say so, in advance.** If step 6 finds a real
-    stop condition, the deploy STOPS THERE. Report which condition it is, how it was measured,
-    and how many commanders are mid-session — that number is what the stop costs — and wait for
-    an explicit decision before stopping Nginx, stopping any application role, or applying DDL
-    to production. "The runbook said to" is not consent, and neither is an instruction to
-    deploy: an operator told to ship has been told the destination, not the price. The rolling
-    path needs no such approval, because it takes nothing away from anyone.
-13. **A `packages/rules` change can rewrite the live galaxy, and no step in this document would
-    catch it.** The asteroid field, the pirate lane and the event lanes are DERIVED, never stored
-    (A5): every rock a commander sees is computed per request from the season's `asteroid_key`,
-    the persisted calendar rows and the code in the image. There is no table, so there is no
-    migration, so step 5b measures nothing and rule 5 never fires — and the new sky is live on the
-    first request the new image serves. Measured on a 30-day season: raising
-    `GALAXY.asteroidSpawnPerHour` from 10.35 to 15.525 (`0c01c65`) put ~19 extra rocks into the
-    disc at EVERY instant, including instants already in the past, so they do not fade in — they
-    are simply there when the page reloads. The same is true of anything that moves
-    `quantiseDailyOre`'s budget, because a rock with no ore is invisible (`oreRemaining > 0`) and a
-    budget change decides which rocks have any. If the release touches
-    `packages/rules/src/galaxy.ts`, `packages/rules/src/pirates.ts` or the `GALAXY.asteroid*` /
-    `GALAXY_EVENTS` constants, say so in the release note: players will meet it the moment traffic
-    reopens, and "nothing in the migration list" is not evidence that the world did not change.
-
-### Why `deploy/deploy.sh` is not the production path yet
-
-Do not use `deploy/deploy.sh` for a live release. It is useful development scaffolding, but it
-currently:
-
-- hard-resets without first requiring the operator to review tracked and untracked VPS files;
-- builds a mutable `astera-server` tag and records `unknown` unless
-  `ASTERA_GIT_COMMIT` was supplied from outside;
-- has no database backup or restore rehearsal;
-- starts and exposes the new API before building the web client;
-- reloads Nginx before internal acceptance;
-- only warns when `.ok` is false and still prints `Deployed`;
-- has no external smoke or public release-identity check; and
-- permits an uncommitted working tree through `--local`.
-
-Until those properties change, the manual fail-closed sequence below is canonical. Do not quote
-the script's final line as proof of deployment.
-
-## Production deploy, in order
-
-The root `pnpm verify` and `pnpm lint` commands run type-aware ESLint with a 6 GB Node heap.
-Use those root scripts during qualification; a bare `eslint .` falls back to Node's smaller
-default heap and can fail for memory reasons without identifying an application regression.
-
-Owner rule (2026-10-09): economy/season simulations, snowball audits and similarly long
-studies/calibration run only when the user explicitly requests those tests. Default
-`pnpm verify` and `pnpm test` exclude them. Ordinary release verification, “all tests”
-and historical commands below do not authorize long runs. Only after an explicit request
-use `pnpm verify --include-long-tests` or `pnpm test:long`; `--exclude-sims` stays compatible.
-
-### 1. Qualify the commit locally
+A red gate needs a clean-baseline comparison of exact failing tests/messages, not “known red.” An identical baseline set may be recorded under the existing baseline policy; a new/changed failure blocks release unless specifically resolved or accepted. Never widen balance bands to pass. Historical bot failures describe real behavior, not harmless simulator indicators; old failure counts are not current evidence.
 
 ```bash
 git status --short
@@ -189,100 +53,6 @@ test "$(git rev-parse HEAD)" = "$(git rev-parse origin/master)"
 pnpm verify
 pnpm build
 ```
-
-Review the complete diff, including migrations and documentation. If a public response shape
-changed, its route must be covered in `apps/server/test/contract.test.ts`. Run the real-HTTP and
-browser harnesses against an isolated scratch database, never production:
-
-```bash
-node tools/loop-check.mjs
-node tools/movement.mjs
-node tools/visual.mjs
-```
-
-Set higher `RATE_LIMIT_*` values only on that throwaway API if a harness would otherwise hit a
-429. A production release starts only after the commit is pushed.
-
-#### 1a. When the gate is red for reasons the release does not touch
-
-Measured on 2026-09-07, qualifying `4f40076`. Recorded because it is the situation the
-step above does not describe and the one an operator will actually meet: `pnpm verify`
-does not pass on this repository, and it has not for some time.
-
-**Nine failures, none of them this release's.** Six in `packages/sim`
-(`season.test.ts` ARR on all five fixed seeds, plus `fleet-v2-balance.test.ts` research
-pacing) and three in `apps/server/test/bots-turn.test.ts`. Every one of them reproduces
-IDENTICALLY on a clean tree — same names, same count — which is the only evidence that
-settles authorship. Take that measurement before drawing any conclusion:
-
-```bash
-git stash push -u -m qualify-check
-pnpm --filter @astera/sim test; pnpm --filter @astera/server exec vitest run test/bots-turn.test.ts
-git stash pop
-```
-
-**The rule this produces.** A red gate is not automatically a stop, and it is not
-automatically ignorable either. What decides it is whether the failing set is IDENTICAL
-before and after the change. If it is, the release regresses nothing and blocking it
-means production can never receive any fix until an unrelated blocker is cleared — which
-is how a repository ends up shipping nothing. If the set GREW, or a failure changed its
-message, the release owns it and the deploy stops. Record the before/after counts in the
-release notes either way; a bare "verify is known-red" is not a qualification.
-
-**The sim six are the documented D134 blocker** (`CLAUDE.md`, "Current blocker") and are
-indicator-only: the simulator's bots still use async-era `loginsPerDay`. Do not tune
-against them and do not widen a band to clear the gate.
-
-**The bots three are NOT an indicator, and they describe live behaviour.** Production
-carries `BOTS_ENABLED=true` in `.env`, so the server-played commanders these tests
-describe are running in the world right now: the tests assert that a bot never queues a
-Core past `BOTS.coreCeiling` and never opens a raid lane on a world that owns no
-warship, and both assertions currently fail. That is a standing production defect
-sitting in the qualification gate rather than in an issue, which is exactly where a
-defect goes unnoticed. It is unrelated to any rendering release and must not be fixed
-inside one — but it must not be re-discovered from scratch at every deploy either.
-
-#### 1b. The browser harness needs the scratch database step 1 asks for
-
-`node tools/visual.mjs` does not qualify a release when it is pointed at a running
-development stack, and it will look like a product failure when it is. Two consecutive
-runs against the shared dev server on 2026-09-07 timed out at DIFFERENT places — the
-first on the onboarding "Claim the planet" button, the second some way further on, at
-`[data-disc-control="worlds"]` after three screenshots had already been captured. A
-harness that gets further on the second attempt is racing state it did not create, not
-finding a regression: it claims a seat and drives onboarding, and a dev database that is
-already seeded and already has this session's account in it is not the isolated database
-the step above specifies.
-
-So bring up an API against a throwaway database for the harnesses, and read a timeout
-against a shared dev server as "not qualified" rather than as "broken". `visual:baseline`
-is the exception and is safe against a running dev stack: it opens the write-free
-rehearsal, takes no seat, creates no account, and fails if the page makes an unexpected
-API call — which is why its renderer counters, not the harness's screenshots, are what
-the CR step compares.
-
-The 2026-09-08 Silent Space qualification also reproduced the `worlds` timeout on a fresh
-scratch database. Inspection found an additional deterministic cause: D163 replaced
-`data-disc-control="worlds"` with the direct `home` control. The visual harness now presses
-that existing control; the camera assertions remain unchanged. A scratch database is still
-required, but cannot by itself repair a stale selector.
-
-#### 1c. Say which path the release is on, and say it from the diff
-
-The quiesced/rolling decision is Rule 5's, and it is measured, not assumed. Read it off
-the diff before going near the VPS:
-
-```bash
-git diff --name-only "$deployed_sha..HEAD" | grep -iE 'migration|drizzle|\.sql'
-```
-
-No match means no DDL, which means the rolling path, which means Rule 12's approval
-requirement does not apply — a rolling release takes nothing away from anyone and the
-database is not the rollback boundary (the image and the webroot are, retained by Rule
-10). A match does NOT immediately mean a stop either: most DDL is expand-only, and Rule
-5's point is that which kind it is gets measured in step 5b against a restored copy.
-
-### 2. Inventory the VPS before changing it
 
 ```bash
 ssh yildirim@hoofywood.com
@@ -299,21 +69,13 @@ df -h /
 free -h
 ```
 
-Review every VPS worktree entry. `.env` is intentionally untracked/ignored; an operator backup
-such as `.env.bak.*` may also be present. Preserve them. Never use `git clean`, and never assume an
-untracked file is disposable.
-
-Before replacing the mutable server tag, retain the exact image currently running and record the
-current runtime commit:
+Review every tracked and untracked VPS entry before checkout/reset. Preserve `.env`, `.env.bak.*` and unknown files; never use `git clean`. Retain artifacts under unique names without overwriting a previous rollback.
 
 ```bash
 previous_commit="$(curl -fsS http://127.0.0.1:3200/metrics | jq -er '.service.commit')"
 previous_image_id="$(docker inspect astera-api1-prod --format '{{.Image}}')"
 docker tag "$previous_image_id" "astera-server:rollback-$previous_commit"
 ```
-
-Also retain the public files and Nginx route. Use a unique timestamp and do not overwrite a prior
-rollback copy:
 
 ```bash
 rollback_stamp="$(date -u +%Y%m%d-%H%M%S)"
@@ -324,37 +86,13 @@ sudo cp -a /var/www/astera "$web_rollback"
 sudo cp -a /etc/nginx/sites-available/astera "$nginx_rollback"
 ```
 
-### 3. Reserve the certified host budget
+Also make a private mode-600 runtime `.env` backup. Compose reads `~/astera/.env`; changing `.env.production.example` or a separate `.env.production` does not change production.
 
-Record the other stacks before stopping them. Use `stop`, never `down`; their volumes are outside
-this release and must remain untouched.
+HoofyWood and Candely must remain stopped for the certified host budget; preserve their containers/volumes. If they are running, resolve the capacity conflict before proceeding. Run `./deploy/host-capacity-preflight.sh` and require zero failures: 3 APIs + 1 worker, memory ceilings, six-core/10-GiB/20-GiB host floors, PostgreSQL ceiling 100, container/Nginx file limits and `worker_connections >= 8192`. `./deploy/configure-capacity-host.sh` is a one-time mutating adjustment, not a routine gate.
 
-```bash
-docker ps --format '{{.Names}} {{.Status}}' > "$HOME/pre-astera-containers.txt"
-(cd ~/candely && docker compose stop)
-(cd ~/hoofywood && docker compose -f docker-compose.prod.yml stop)
+## 3. Pin and build both artifacts
 
-cd ~/astera
-./deploy/host-capacity-preflight.sh
-```
-
-The preflight is read-only and must report zero failures. It checks the 3 API + 1 worker topology,
-memory ceilings, six-core/10-GiB/20-GiB host floors, PostgreSQL's 100-connection ceiling, container
-and Nginx file limits, `worker_connections >= 8192`, and absence of HoofyWood or Candely containers
-from the capacity budget.
-
-The one-time Nginx host adjustment is:
-
-```bash
-./deploy/configure-capacity-host.sh
-./deploy/host-capacity-preflight.sh
-```
-
-Do not run the mutating configurator routinely; the second command is the ordinary gate.
-
-### 4. Pin the VPS checkout and build both artifacts
-
-Only after the worktree inventory is understood:
+Only after the worktree review:
 
 ```bash
 git checkout master
@@ -371,9 +109,7 @@ test "$(docker image inspect astera-server:latest \
   --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$release_sha"
 ```
 
-Build the client to a private staging directory before downtime. `VITE_GA_ID` is inlined at build
-time; changing it requires a rebuild, not a restart. The release marker makes the public artifact
-auditable.
+Build the web privately. `VITE_GA_ID` is compiled in and requires a rebuild when changed. Keep the staging directory until external acceptance.
 
 ```bash
 web_stage="$(mktemp -d "/tmp/astera-web-${release_sha:0:12}.XXXXXXXX")"
@@ -392,12 +128,9 @@ find "$web_stage" -type f \
   -size +1k -exec gzip -9 -k -f {} +
 ```
 
-Do not delete `web_stage` until external acceptance succeeds.
+## 4. Rehearse backup, migration and compatibility
 
-### 5. Rehearse backup restore and migrations while production still serves
-
-Ensure PostgreSQL and Valkey are healthy, create a fresh dump, validate its checksum, and restore
-it into a disposable database:
+Confirm PostgreSQL/Valkey healthy. Use a fresh consistent private release dump; avoid retention pruning during preparation. The ordinary helper is below; preserve release backups outside its rotating set.
 
 ```bash
 "${compose[@]}" up -d postgres valkey
@@ -418,14 +151,9 @@ gunzip -c "$backup_file" | docker exec -i astera-postgres-prod \
   psql -v ON_ERROR_STOP=1 -U astera -d "$restore_db"
 ```
 
-Compare release-relevant counts and invariants between `astera` and the restored database. At a
-minimum inspect accounts, live seasons, players, missions and the migration journal; every
-migration that backfills or contracts a column needs its own zero-null/assertion query.
+Record the original journal and compare durable counts/invariants: accounts, live seasons, players, worlds, missions and queue rows. Add zero-null/backfill assertions for affected columns. Compare against the dump's snapshot, accounting for ongoing production writes rather than requiring a moving live database to match.
 
-Then prove the **new image** can migrate the restored production shape:
-
-The `-T` plus `</dev/null` pairing is deliberate for remote heredoc deployments; step 8b explains
-the failure mode.
+Run the candidate migration on the restore:
 
 ```bash
 POSTGRES_DB="$restore_db" "${compose[@]}" run -T --rm --no-deps api1 \
@@ -435,79 +163,23 @@ docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera -d "$restore_
   'select count(*) as applied_migrations from drizzle.__drizzle_migrations;'
 ```
 
-This proves three different things: the dump is complete enough to restore, the old data shape is
-valid, and the intended image can perform every pending migration. None can substitute for the
-others.
+Boot the retained old image against the migrated restore (isolated loopback port/database), require health, inspect logs and exercise affected **reads and writes**. `/api/preview` must answer without 5xx; `409 NO_FRONTIER` can be valid on a copy. Also exercise the new image/client and affected worker event handlers. Never attach a rehearsal worker to production.
 
-#### 5b. Prove the OLD image survives the NEW schema — the measurement rule 5 needs
+The schema guard is one-way: new code rejects a journal behind it; old code may boot against an incompatible newer schema because `pendingMigrations` clamps at zero. In particular, health does not exercise the `season_cycles.ordinal` or result-cycle INSERT paths. Measure locking and backfill effects as well as boot compatibility. Delete only the identified disposable probe/database after evidence is retained.
 
-Keep the restored, now-migrated database and point the RETAINED image at it. **The schema guard
-is one-way** — a new image refuses a database behind its journal, but nothing refuses an old image
-a database ahead of it, and `pendingMigrations` clamps at zero precisely so an old replica keeps
-booting. That clamp is what makes a rolling migration legal, and it is also what makes this test
-the only evidence that the release is expand-only.
+For asteroid changes, compare complete specs/public IDs, claims and active mining targets at the same DB/key/time before migration and after the new image. Require exact same-platform equality; cross-Node last-bit test-encoding differences do not justify changing live geometry.
 
-```bash
-probe='astera-oldimage-probe'
-net="$(docker inspect astera-api1-prod \
-  --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}')"
-pgpw="$(sed -n 's/^POSTGRES_PASSWORD=//p' .env | tail -n 1)"
+## 5. Select the path and capture the live snapshot
 
-docker rm -f "$probe" 2>/dev/null || true
-docker run -d --rm --name "$probe" --network "$net" -p 127.0.0.1:3399:3399 \
-  -e "DATABASE_URL=postgres://astera:$pgpw@astera-postgres-prod:5432/$restore_db" \
-  -e "JWT_SECRET=$(sed -n 's/^JWT_SECRET=//p' .env | tail -n 1)" \
-  -e ROLE=api -e PORT=3399 \
-  "astera-server:rollback-$previous_commit"
-
-probe_health=''
-for attempt in $(seq 1 60); do
-  probe_health="$(curl -sS http://127.0.0.1:3399/health || true)"
-  jq -e '.ok == true' <<< "$probe_health" >/dev/null 2>&1 && break
-  sleep 1
-done
-jq -e '.ok == true' <<< "$probe_health" >/dev/null
-docker logs "$probe" 2>&1 | rg -i 'error|migration|behind' || true
-curl -sS -o /dev/null -w 'preview: %{http_code}\n' http://127.0.0.1:3399/api/preview
-docker stop "$probe"
-docker exec astera-postgres-prod dropdb -U astera --force "$restore_db"
-```
-
-Required: `.ok == true`, no migration complaint in the log, and `/api/preview` ANSWERS rather than
-5xx — a 409 `NO_FRONTIER` on a restored copy with no open galaxy is a valid answer. Read the log
-even when health is green: a boot that survived and a boot that was clean are different facts.
-
-**If this passes, the DDL is expand-only and step 6's first row is false.** If it fails, old and
-new code cannot both be live, the release forces a stop, and rule 12 applies before anything else
-happens.
-
-### 6. Decide whether this release needs a stop
-
-Ask it once, in writing, and answer it from the release rather than from habit. **A stop is
-forced only if one of these is true:**
-
-| Forces a stop | How to check it, not guess it |
+| Condition | Path |
 | --- | --- |
-| The release applies DDL **that old code cannot survive** | TWO measurements, not one. Step 5 ran `migrate` against the restored shape with the NEW image: if the applied count did not move there is no DDL at all. If it moved, step 5b booted the OLD image against that migrated database and required `.ok == true`. Expand-only DDL passes and **does not force a stop**; a contraction — a dropped or renamed column, a narrowed type, a `NOT NULL` on something old code still writes empty — fails it and does |
-| Old and new server code cannot both be live | A removed or reshaped API route, a changed event `kind`, a payload an old replica would reject. `git diff "$previous_commit..$release_sha" -- apps/server/src/routes \| rg '^-\s+app\.(get\|post\|put\|delete\|patch)'` finds a removed route; `git diff` on the `event_kind` enum finds a kind an old worker would meet as unknown. A NEW enum value that no live season can produce yet is not this |
-| The worker must not process events under old code | Follows from a failed 5b or a new event `kind`; nothing else. A new `mission_kind` an old worker can never encounter — because the feature that creates it is gated off in every live season — is not this either |
-| A data repair, backfill or season operation is part of the release | Rule 9 keeps season transitions out of a deploy; a repair is an owner operation with its own plan |
+| Mixed versions compatible; migrations, if any, preserve affected reads/writes and fit lock budget | Rolling; migrate before new processes boot |
+| Only worker/CLI writers are incompatible, APIs remain safe | Owner-approved worker interruption around migration; use feature-specific order below |
+| APIs incompatible, unsafe locks, incompatible live payloads or world repair/reset | Owner-approved quiesced plan; do not improvise |
 
-Two failure modes, and they are not symmetric. Reading "there is a migration, therefore stop" costs
-real people their session for nothing. Reading "it will probably be fine" corrupts a live world.
-5b is what turns both guesses into a measurement, and it costs one container and about a minute.
+New enum values matter when a live producer can emit them. A migration backfill may emit new jobs even if its SQL is additive. Keep incompatible feature producers gated until every consumer understands them. Review old-client routes, payloads, worker kinds and CLI writes; migration count alone selects no path.
 
-**If none is true, take the rolling path (step 7)** and skip step 8. It needs no approval: it takes
-nothing away from anyone.
-
-**If any is true, STOP AND ASK — RULE 12.** Do not continue into step 8 on an instruction to
-deploy. Report, in one message: which row is true, the measurement that made it true, the
-active-commander count from the snapshot below, and what the release actually delivers to those
-players today. A feature gated behind a season boundary they will not reach for days is a very
-different trade from a fix they are waiting on, and the person who owns the world is the one who
-weighs it. Both paths converge on step 9.
-
-Record what is live either way; the same snapshot is the after-comparison on both paths:
+Record health, in-flight work and recently active commanders immediately before rollout:
 
 ```bash
 for port in 3200 3201 3202 3210; do
@@ -521,14 +193,20 @@ docker exec astera-postgres-prod psql -U astera -d astera -tAc \
          (select count(*) from players where last_active_at > now() - interval '15 minutes') as active;"
 ```
 
-That last column is a count of real people mid-session. It is the number a stop costs.
+The 15-minute activity count is an operational proxy, not an exact count of open sessions. Retain it for the owner decision and post-release comparison.
 
-### 7. Rolling path — the default
+## 6. Rolling deployment
 
-Nginx balances `least_conn` across `127.0.0.1:3200/3201/3202` with `max_fails=2 fail_timeout=5s`,
-so it routes around a replica that is restarting. Replace them **one at a time**, and require each
-one healthy and reporting the release SHA before touching the next. Never roll two at once: two
-down out of three is a capacity event even when it is not an outage.
+If pending migrations passed the compatibility/lock rehearsal, apply them once with the pinned new image **before** rolling:
+
+```bash
+"${compose[@]}" run -T --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate </dev/null
+```
+
+For remote `ssh ... 'bash -s'` heredocs, both `-T` and `</dev/null` are required: disabling the TTY does not stop a child consuming the rest of the script. Use the package-local `tsx`; the production image does not install root `tsx`.
+
+Run release-specific post-migration assertions. Apply staged flags/feature prerequisites from section 11 before rolling. Replace one API at a time, require health/image/SHA before the next, and normally roll the singleton worker last. Abort immediately on a failed gate; the snippets are an ordered runbook, not a script to paste without error handling.
 
 ```bash
 new_image_id="$(docker image inspect astera-server:latest --format '{{.Id}}')"
@@ -536,380 +214,49 @@ export ASTERA_GIT_COMMIT="$release_sha"
 
 roll() {
   local name="$1" port="$2" health=''
-  docker compose -f docker-compose.prod.yml up -d --no-build --no-deps "$name"
+  docker compose -f docker-compose.prod.yml up -d --no-build --no-deps "$name" || return 1
   for attempt in $(seq 1 90); do
     health="$(curl -sS "http://127.0.0.1:$port/health" || true)"
     jq -e '.ok == true' <<< "$health" >/dev/null 2>&1 && break
     sleep 1
   done
-  jq -e '.ok == true' <<< "$health" >/dev/null
-  test "$(docker inspect "astera-${name}-prod" --format '{{.Image}}')" = "$new_image_id"
-  test "$(curl -fsS "http://127.0.0.1:$port/metrics" | jq -er '.service.commit')" = "$release_sha"
+  jq -e '.ok == true' <<< "$health" >/dev/null || return 1
+  test "$(docker inspect "astera-${name}-prod" --format '{{.Image}}')" = "$new_image_id" || return 1
+  test "$(curl -fsS "http://127.0.0.1:$port/metrics" | jq -er '.service.commit')" = "$release_sha" || return 1
   test "$(curl -sS -o /dev/null -w '%{http_code}' https://asteraonline.space/)" = 200
 }
 
-roll api1 3200 && sleep 3
-roll api2 3201 && sleep 3
-roll api3 3202 && sleep 3
-roll worker 3210
+roll api1 3200 || exit 1
+sleep 3
+roll api2 3201 || exit 1
+sleep 3
+roll api3 3202 || exit 1
+sleep 3
+roll worker 3210 || exit 1
 ```
 
-**It is no-downtime, not no-error, and the difference is one request per replica.** Nginx OSS has
-no active health check: it ejects an upstream only after `max_fails` failures inside
-`fail_timeout`, so the first request to reach a replica in the instant between its container
-stopping and nginx noticing gets a 502. Measured on the D117 release, which rolled three replicas
-while 15 commanders were playing: exactly one 502, on a `POST /api/planets/:id/collect`.
+Nginx uses `least_conn`, `max_fails=2 fail_timeout=5s`; passive failure detection can produce transient 502s during replacement. The source recorded one such failure in a prior rollout; it does not establish a universal one-request upper bound. Do not enable automatic mutation replay without working idempotency keys (`request_log` is not wired into that path). A worker restart briefly delays queued events; inspect recovery rather than hiding failures with restarts.
 
-That request cannot be retried for the player. `proxy_next_upstream` would replay it on a healthy
-replica, but these are MUTATIONS and `request_log` is not wired into the write path yet — replaying
-a collect or an order without an idempotency key is how one tap becomes two. So the honest
-statement is: a rolling release costs at most one failed request per replica, the player sees an
-error and taps again, and the fix is idempotency keys rather than a retry directive. Quiescing
-does not avoid this either; it turns one failed request into several minutes of them.
+Run internal acceptance (section 8), complete any required staged activation, then publish (section 9).
 
-The worker is a singleton, so it has a real gap of roughly ten to twenty seconds and there is no
-way to roll it. That gap is not user-facing: a scheduled event is claimed with `SKIP LOCKED` and
-simply runs that much late, which is the same lateness `WORKER_POLL_MS` already admits. Roll it
-LAST, so the APIs are already answering on the new image when it comes back.
+### Full quiescence, only when authorized
 
-#### First-game shield: two-phase activation when adding the account entitlement
+1. Have server/web artifacts, rollback copies, rehearsal evidence and pre-stop snapshot ready.
+2. Stop Nginx and verify no 80/443 listener, then gracefully stop `api1 api2 api3 worker`; verify no legacy/orphan application process remains. Keep PostgreSQL/Valkey up.
+3. Alternatively serve a prebuilt maintenance page with Nginx still running. Verify it through HTTPS (`curl -kfsS --resolve asteraonline.space:443:127.0.0.1 https://asteraonline.space/`); HTTP alone may only test a redirect. A page is not quiescence: stop and verify every writer. `/api` returns upstream errors unless explicitly intercepted.
+4. Take a **new final dump after all writers stop**, checksum it and restore/rehearse this exact dump for a schema-changing release. This is the rollback boundary.
+5. Run migrations once with the new image and `-T ... </dev/null>`, then release-specific assertions. Start the exact new worker/APIs and require section 8 acceptance before reopening.
+6. Publish the prepared web and validated vhost while Nginx is stopped, then start Nginx; with maintenance mode, switch back only after acceptance.
 
-Migration `0142_first_game_shield` adds a non-null account boolean with default `false`.
-Existing accounts and legacy writers stay on the normal 24-hour shield; only new human
-registrations opt into a one-time 72-hour shield. The first successful placement consumes
-the entitlement in the same transaction as the player and capital. Season wipes do not
-reset it. No historical account or player backfill is needed.
+Use an abort handler matched to the current phase. Before migration, restore the old serving state; after incompatible migration, follow the verified rollback plan before starting old roles. Never blindly restart old code against a changed schema. Keep maintenance/rollback directories uniquely named.
 
-After proving the expand-only migration against the restored copy and old image, migrate
-production with the new image. Persist and export `FIRST_GAME_SHIELD_ENABLED=false`, then
-roll API1 → API2 → API3 → worker. Require all four processes healthy on the new image and
-with this setting `false` before activation. This prevents a new replica from registering
-an eligible account whose first join is then handled by old code that cannot consume it.
-
-Once all four processes understand the entitlement, persist and export
-`FIRST_GAME_SHIELD_ENABLED=true` and repeat the same roll. The setting gates registration
-only: every upgraded replica honours an existing entitlement even while its own registration
-setting remains false. Require all four settings true before publishing the web guides.
-Future releases can use a single roll after this compatibility deployment is complete.
-
-#### D211: two-phase activation when upgrading from the 6/hour pirate lane
-
-The established prefix is unchanged, but an OLD worker cannot resolve an additional index.
-Do not expose additional contacts while any old process is still running. Before the four
-`roll` calls above, export `PIRATE_SPAWN_INCREASE_ENABLED=false`; Compose passes it to APIs
-and worker. They derive the complete new field and accept its handles, but the contact and
-traffic projections (and bot selection) publish only established targets.
-
-After the first four rolls, require every process healthy, on `release_sha` and `new_image_id`,
-and with the switch set to `false` in its environment. Only then export
-`PIRATE_SPAWN_INCREASE_ENABLED=true` and repeat the same API1 → API2 → API3 → worker roll.
-The second roll may mix visibility settings, but never field knowledge: even a still-staged
-process can accept and settle an additional handle exposed by an enabled replica. Check the
-final switch is `true` everywhere before publishing web or claiming the increase is live.
-No database write, season operation or world stop is needed. If the compatibility roll is
-incomplete, leave contacts hidden and investigate; never activate early. Future releases may
-use the ordinary single roll once the complete field is already running everywhere.
-
-#### 2026-09-14: the pirate doubling and the recovery shield
-
-The 2026-09-14 balance package adds two more switches, both defaulting to `true` in Compose and
-both meaning "read nothing new" when exported as `false`.
-
-`PIRATE_SPAWN_SURGE_ENABLED` is the D211 rule again for the THIRD lane, which carries the
-0.03 → 0.06 per-seat doubling. It NESTS with `PIRATE_SPAWN_INCREASE_ENABLED`: while that one is
-`false` this one changes nothing, because a process that cannot resolve the +50% lane certainly
-cannot resolve the lane after it. Roll exactly as above — four rolls with it `false`, then four
-with it `true` — and check the switch is `true` everywhere before claiming the density is live.
-
-`RECOVERY_SHIELD_ENABLED` covers the six-hour shield a heavy PvP defeat buys. Migration `0078`
-is expand-only (three nullable columns: `players.recovery_shield_until`,
-`battle_reports.raidable_before`, `battle_reports.recovery_shield_until`), so it may be applied
-before the roll with nothing reading it. Export `RECOVERY_SHIELD_ENABLED=false` for the first
-roll: every process then writes the columns' migration and reads neither, so no instance can
-refuse a launch for a window another instance does not know about. Activate it on the second
-roll. Turning it back to `false` afterwards is a clean rollback — no window is granted and no
-stored instant protects anybody — but a shield already granted simply stops being honoured, so
-prefer doing it at a quiet hour. The first-day shield (D183) is a separate column and is
-unaffected in either direction.
-
-The rest of the 2026-09-14 package — drill hold, asteroid ore quantisation, research and
-instrument prices, fuel, build times, the Asteroid Shower front load — is pure rules and needs
-no switch. It DOES need a new ruleset/season boundary: the asteroid field is re-derived from the
-season key on every read, so re-pricing ore changes what a live season's rocks carry. Existing
-flights keep the `hold_each` they launched with, existing queues keep their `ready_at`, and an
-Asteroid Shower window that has already opened keeps its old arrival spread — only occurrences
-restamped to definition version 5 (`season events restamp`, which refuses a window that has
-opened) are front-loaded.
-
-#### 2026-09-15: the season archive, the rank rewards and the reworked shield
-
-**Migrations `0079`–`0086` are expand-only in every statement but ONE, and that one decides the
-order of this release.** `0079` finishes with
-
-```sql
-ALTER TABLE "season_cycles" ALTER COLUMN "ordinal" SET NOT NULL;
-```
-
-on a column with no default. The previously shipped image writes `season_cycles` with only
-`starts_at` / `ends_at` (`createSeasonIn`, through `INSERT ... ON CONFLICT`, whose tuple is still
-checked against NOT NULL before the conflict is detected), so between `migrate` and the worker's
-replacement that insert fails `23502`. It is step 6's "DDL old code cannot survive" row, and
-step 5b will NOT catch it: booting the old image only proves `/health`, not this write path.
-
-**The writers are the worker and the CLI, never an API replica.** `createSeasonIn` is reached from
-`onSeasonEnd`/`onSeasonRollover` (season rollover), from the Silent Space maintenance job
-(`ensureWaitingSeason`) and from `season`/bootstrap CLI commands. No HTTP route reaches it. So the
-release does not need a site stop — it needs the singleton worker recreated around the migration
-rather than after it, exactly as migration `0064` did:
-
-1. build both artefacts, prove rollback (steps 1–5b unchanged);
-2. **stop `astera-worker-prod`**;
-3. run `migrate` with the new image;
-4. **start the new worker** and require it healthy on `release_sha`;
-5. roll API1 → API2 → API3 one at a time as usual;
-6. publish the staged webroot.
-
-APIs keep serving throughout; the cost is the worker's own restart window, which this release pays
-anyway. Do not run the ordinary rolling order — a rollover or a Silent Space placement landing in
-the gap leaves a failed maintenance job until the worker is replaced.
-
-The rest of the DDL is genuinely expand-only: nullable columns (`planets.stats_owner_player_id`,
-`mining_runs.owner_player_id`, `season_results.stats`, `battle_reports.recovery_loss_hours`),
-columns with defaults (`season_results.public_id`, `average_eligible`, the three `stats_version`
-columns, `reward_program_version`, `planets.season_telemetry`) and two new tables
-(`season_telemetry_segments`, `season_reward_entitlements`).
-
-**`0081` rewrites every `planets` row** (`UPDATE planets SET stats_owner_player_id = player_id`).
-The table is small at production scale and the added `season_telemetry` default does not rewrite
-it (PostgreSQL 11+), but the `UPDATE` takes row locks — another reason to hold it in the quiet
-window the worker stop already creates.
-
-**The shield rule changed shape, not switch.** `RECOVERY_SHIELD_ENABLED` still gates the whole
-feature and still rolls back cleanly. What changed is what "heavy" means: production-hours instead
-of a share of raidable stock plus a twentieth of storage (`docs/balance.md`). `battle_reports`
-gains `recovery_loss_hours` so the bar can be re-measured from live data; the previously shipped
-`raidable_before` column is kept and still written as context.
-
-#### 2026-09-16: two new event windows, and the calendar command they need
-
-Pure rules — no migration, no switch, no stop. `GALAXY_EVENTS` gains an ASTEROID_SHOWER at
-23:00–24:00 TRT (x5, definition version 5 → 6) and an INTERGALACTIC_CONVOY at 12:00–14:00 TRT
-(definition version 2 → 3). Both are rule 13 releases: the shipped image deals the new calendar to
-any season CREATED after it, and reaches a running galaxy through nothing at all.
-
-**A live season needs two commands, and they are not optional — without them the deploy changes the
-sky for nobody.** Run them AFTER the roll, one kind at a time (the command has no "every lane"
-mode, deliberately), dry run first:
-
-```bash
-compose=(docker compose -f docker-compose.prod.yml)
-for kind in ASTEROID_SHOWER INTERGALACTIC_CONVOY; do
-  "${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-    sync-events --shard EU-1 --kind "$kind"
-done
-# Expect one appended window per remaining day, per kind. Re-run with --yes to apply.
-```
-
-**Pick the hour.** `sync-events` appends a window whose end is still in the future, including one
-that is open right now — see "Raising a public event on a live season" for what that costs at a
-frozen instant. The shower is the one to be careful with: run it outside 23:00–24:00 and outside
-every other shower window, and the new lane arrives on its own clock the next day. The convoy
-carries no asteroids, so its timing only decides whether one crossing starts mid-flight.
-
-The convoy window is 12:00–14:00 and not the 12:00–13:00 that was asked for, because
-`intergalacticConvoySpec` refuses any duration but `INTERGALACTIC_CONVOY.durationMinutes`: the
-formation's speed is the diameter divided by that figure and `resourceCapHours: 2` prices the
-reward against the same clock. Owner decision, recorded beside the constant.
-
-#### Publish the staged webroot
-
-Then swap the client by rename rather than by copy. Stage on the SAME filesystem as the live root
-or the rename is a copy and the window comes back:
-
-```bash
-sudo rm -rf /var/www/astera-next
-sudo cp -a "$web_stage" /var/www/astera-next
-# Open tabs may still import chunks from older builds. Carry their immutable
-# assets into the candidate without overwriting the current build's assets.
-sudo rsync -a --ignore-existing /var/www/astera/assets/ /var/www/astera-next/assets/
-sudo chown -R www-data:www-data /var/www/astera-next
-sudo chmod -R a+rX /var/www/astera-next
-test -f /var/www/astera-next/index.html
-test "$(cat /var/www/astera-next/release.txt)" = "$release_sha"
-
-sudo rm -rf /var/www/astera-previous
-sudo mv /var/www/astera /var/www/astera-previous
-sudo mv /var/www/astera-next  /var/www/astera
-sudo systemctl reload nginx
-```
-
-`/var/www/astera-previous` is the rolling path's rule-10 webroot copy; keep it for the observation
-window. The `reload` is not what publishes the files — Nginx stats the root per request — it is
-there to drop any open descriptor on the directory that has just been moved aside.
-
-If the vhost itself changed, install and validate it as in step 10 **AFTER the rename**, and
-restore the saved copy if `nginx -t` fails. A vhost that fails validation on the rolling path is a
-stop condition: do not reload a broken configuration over a live site.
-
-**The rename goes first, and the order is load-bearing.** The webroot and the vhost fail in
-opposite directions:
-
-| | Result |
-| --- | --- |
-| New webroot + old vhost | **Harmless.** The old policy carries no nonce source, so the browser ignores the `nonce` attribute on the new page's script tags and `'self'` allows them exactly as before. |
-| Old webroot + new vhost | **A blank game.** `'strict-dynamic'` makes `'self'` and every host source ignored, so a page whose script tags carry no nonce has nothing left to allow them. Every script is refused, with no server-side symptom at all. |
-
-The same rule runs backwards on a rollback: **restore the vhost before the webroot.** Putting the
-previous client back under the current vhost is the blank-game case above.
-
-`deploy/deploy.sh` publishes the client and only then installs the vhost, and
-`apps/web/test/deployment-publish.test.ts` holds that order so it cannot drift back.
-
-Skip step 8 entirely. Continue at step 9.
-
-### 8. Quiesced path — when step 6 forced a stop
-
-The step 6 snapshot is your before-picture. The default path stops Nginx first so no new mutation
-can enter, then stops every application role gracefully. PostgreSQL and Valkey stay up.
-
-If the owner requires a maintenance page instead of a refused connection, atomically replace the
-static webroot with a prebuilt maintenance directory on the same filesystem and leave Nginx up.
-Prove the page through the TLS vhost **before** stopping the applications:
-
-```bash
-test -f "$maintenance_source/index.html"
-maintenance_stamp="$(date -u +%Y%m%d-%H%M%S)"
-live_webroot="/var/www/astera-live-before-maintenance-$maintenance_stamp"
-maintenance_used="/var/www/astera-maintenance-used-$maintenance_stamp"
-
-sudo cp -a "$maintenance_source" "/var/www/astera-maintenance-stage-$maintenance_stamp"
-sudo mv /var/www/astera "$live_webroot"
-sudo mv "/var/www/astera-maintenance-stage-$maintenance_stamp" /var/www/astera
-
-curl -kfsS --resolve asteraonline.space:443:127.0.0.1 \
-  https://asteraonline.space/ | rg -F 'Kısa bir güncelleme'
-```
-
-Do not test that page with only `curl -H 'Host: asteraonline.space' http://127.0.0.1/`: the HTTP
-vhost returns a 301 before Nginx reads `index.html`, so a text assertion fails even when the swap
-is correct. `--resolve` exercises the actual HTTPS server block without depending on public DNS.
-The static page covers navigation at `/`; `/api` continues to use its upstream and will return 502
-while every API replica is stopped unless the maintenance vhost explicitly intercepts that path.
-
-Install an EXIT trap that moves `$live_webroot` back and starts the stopped application roles on
-any abort. On success, restore the project webroot only after all four health checks pass, then
-archive the used maintenance directory as `$maintenance_used`. A maintenance page is presentation,
-not quiescence: all three APIs and the worker must still be stopped and verified below. When using
-this variant, skip the Nginx stop/listener block and begin at `"${compose[@]}" stop`; Nginx must
-remain up to serve the page.
-
-```bash
-sudo systemctl stop nginx
-if sudo ss -ltnp | rg -q ':(80|443)\b'; then
-  echo 'public listeners still exist; stop here' >&2
-  exit 1
-fi
-
-"${compose[@]}" stop api1 api2 api3 worker
-docker ps --format '{{.Names}}' | rg '^astera-(api|worker)' && {
-  echo 'an application process still spans the migration' >&2
-  exit 1
-}
-```
-
-Trust the listener/process checks, not only a systemd label. A stopped Nginx unit can remain in a
-`failed` state; `reset-failed` before the later start is harmless. An unexpected legacy or orphan
-application container is a blocker until its image and purpose are identified.
-
-#### 8b. Take the final quiesced backup and migrate production
-
-The final dump is the rollback boundary because no newer player write can exist after it:
-
-```bash
-./deploy/backup.sh
-final_backup=''
-for candidate in "$HOME"/backups/astera-*.sql.gz; do
-  [[ -e "$candidate" ]] || continue
-  [[ -z "$final_backup" || "$candidate" -nt "$final_backup" ]] && final_backup="$candidate"
-done
-test -n "$final_backup"
-chmod 600 "$final_backup"
-gzip -t "$final_backup"
-sha256sum "$final_backup" | tee "$final_backup.sha256"
-```
-
-For a schema-changing release, restore this exact final dump to the disposable database and run
-the migration rehearsal once more. The database is small; the extra downtime is cheaper than
-discovering that the only rollback artifact differs from the one tested before quiescence.
-
-When this sequence is sent to `ssh host 'bash -s'` as a heredoc, every one-off Compose container
-must have stdin redirected from `/dev/null`. `docker compose run -T` disables pseudo-TTY
-allocation; it does **not** detach stdin. Without the redirect the child container can consume the
-rest of the remote script, silently skipping health/web acceptance and falling into an EXIT trap.
-Use both `-T` and `</dev/null` as shown here.
-
-```bash
-final_restore_db="astera_final_restore_${release_sha:0:10}"
-docker exec astera-postgres-prod createdb -U astera "$final_restore_db"
-gunzip -c "$final_backup" | docker exec -i astera-postgres-prod \
-  psql -v ON_ERROR_STOP=1 -U astera -d "$final_restore_db"
-POSTGRES_DB="$final_restore_db" "${compose[@]}" run -T --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate </dev/null
-docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera \
-  -d "$final_restore_db" -c \
-  'select count(*) as applied_migrations from drizzle.__drizzle_migrations;'
-docker exec astera-postgres-prod dropdb -U astera --force "$final_restore_db"
-```
-
-Apply migrations to production only after that succeeds:
-
-```bash
-"${compose[@]}" run -T --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate </dev/null
-```
-
-Run the release-specific post-migration assertions now. A migration command returning zero proves
-that its SQL committed; it does not prove a backfill selected every intended row.
-
-#### 8c. Start the exact image
-
-On the rolling path this already happened in step 7; go to step 9.
-
-```bash
-"${compose[@]}" up -d --no-build worker api1 api2 api3
-
-for container in astera-api1-prod astera-api2-prod astera-api3-prod astera-worker-prod; do
-  test "$(docker inspect "$container" --format '{{.Image}}')" = "$new_image_id"
-done
-
-for port in 3200 3201 3202 3210; do
-  health=''
-  for attempt in $(seq 1 60); do
-    health="$(curl -sS "http://127.0.0.1:$port/health" || true)"
-    jq -e '.ok == true' <<< "$health" >/dev/null 2>&1 && break
-    sleep 1
-  done
-  jq -e '.ok == true' <<< "$health" >/dev/null
-  jq . <<< "$health"
-done
-
-for port in 3200 3201 3202 3210; do
-  test "$(curl -fsS "http://127.0.0.1:$port/metrics" | jq -er '.service.commit')" \
-    = "$release_sha"
-done
-```
-
-### 9. Require internal acceptance — BOTH PATHS
-
-Expected health contract:
+## 8. Internal and galaxy acceptance
 
 | Process | Required |
 | --- | --- |
-| API 3200/3201/3202 | `.ok=true`, database/queue/stream `ok`, shared rate limiter `ready` |
-| Worker 3210 | `.ok=true`, queue `ok`, `stream="not listening"`, `unknownEvents=0` |
-| All four | Same image ID and full runtime commit |
-
-Also require zero failed events and no overdue state before exposing traffic:
+| API 3200/3201/3202 | Valid `.ok=true`, database/queue/stream `ok`, shared limiter `ready` |
+| Worker 3210 | Valid `.ok=true`, queue `ok`, `stream="not listening"`, `unknownEvents=0` |
+| All four | Intended image ID, full runtime SHA, current schema (`pendingMigrations=0`) and intended flags |
 
 ```bash
 docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera -d astera -c \
@@ -918,122 +265,9 @@ docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera -d astera -c 
     from missions where status='in_flight' and arrive_at < now() - interval '2 minutes';"
 ```
 
-`processing` may be a claim interrupted by a stop or by the worker roll, and should return through
-the reaper; do not hide it with a restart. `failed`, a growing queue lag, stranded state or an
-unknown worker event is a stop and investigation, not an automatic restart condition.
+A stopped worker's `processing` claims should recover through the reaper. Failed/unknown events, growing lag or stranded work require investigation, not repeated restarts.
 
-### 10. Install Nginx, publish web, then reopen traffic — QUIESCED PATH ONLY
-
-The rolling path published its client by rename in step 7 and never stopped Nginx. This section is
-the in-place replacement, which is why it requires Nginx to be down.
-
-Install the repository vhost and validate the whole host configuration. Restore the saved vhost
-if validation fails. Pre-existing warnings must be understood; an unexpected warning is not
-automatically safe merely because `nginx -t` exits zero.
-
-```bash
-sudo install -o root -g root -m 0644 deploy/nginx/astera.conf \
-  /etc/nginx/sites-available/astera
-if ! sudo nginx -t; then
-  sudo cp -a "$nginx_rollback" /etc/nginx/sites-available/astera
-  sudo nginx -t
-  exit 1
-fi
-
-sudo bash deploy/publish-web.sh "$web_stage" /var/www/astera
-sudo chown -R www-data:www-data /var/www/astera
-
-sudo systemctl reset-failed nginx
-sudo systemctl start nginx
-sudo systemctl is-active --quiet nginx
-```
-
-Nginx remains stopped throughout publication. The helper keeps old hashed assets for open tabs,
-copies new assets before replacing `index.html`, and discards a stale precompressed index.
-`--chmod=D755,F644` is required: Docker's local output can leave the staging root mode 0700,
-while Nginx runs as `www-data`.
-
-### 11. Prove the release from outside — BOTH PATHS
-
-```bash
-test "$(curl -fsS -H 'Cache-Control: no-cache' \
-  https://asteraonline.space/release.txt)" = "$release_sha"
-
-curl -fsS https://asteraonline.space/ \
-  | rg -o 'index-[A-Za-z0-9_-]+\.js'
-curl -fsS -D - -o /dev/null https://asteraonline.space/api/preview \
-  | rg -i '^x-server-time:'
-curl -fsS https://asteraonline.space/api/servers | jq
-```
-
-**The CSP nonce is a release check, not a detail.** `index.html` ships every script tag stamped
-with a `__CSP_NONCE__` placeholder (`apps/web/vite.config.ts`, `html.cspNonce`) and Nginx rewrites
-it per request with `sub_filter`, so the `script-src 'nonce-…' 'strict-dynamic'` header and the
-document agree. A page served with the placeholder intact carries no valid nonce: **every script
-on it is refused and the game is a blank screen**, with nothing failing on the server and nothing
-in `/health`. Three things must hold, and the third is the one that proves the other two:
-
-```bash
-# 1. The module exists. Without it `nginx -t` fails; with a different nginx build
-#    it may be absent entirely. On Debian/Ubuntu: sudo apt install nginx-full
-nginx -V 2>&1 | rg -o -- '--with-http_sub_module'
-
-# 2. No precompressed index can bypass the filter.
-test ! -f /var/www/astera/index.html.gz
-
-# 3. The served page and the served header carry the SAME nonce, and it changes
-#    on every request.
-curl -fsS -D /tmp/h https://asteraonline.space/ > /tmp/p
-rg -o "nonce-[0-9a-f]{32}" /tmp/h
-rg -o 'nonce="[0-9a-f]{32}"' /tmp/p | head -1
-rg -q '__CSP_NONCE__' /tmp/p && echo 'BROKEN: placeholder was not substituted'
-curl -fsS https://asteraonline.space/ | rg -o 'nonce="[0-9a-f]{32}"' | head -1  # must differ
-rm -f /tmp/h /tmp/p
-```
-
-`deploy/deploy.sh` runs checks 1 and 3 itself and refuses to finish if either fails. On the manual
-path they are yours to run.
-
-Also open the site once in a clean browser profile with the console visible. Zero CSP violations,
-the publisher pages reachable from the footer, and the privacy notice appearing before any
-`_ga` or advertising cookie exists is what an AdSense/H5 review looks at, and none of it shows up
-in a `curl`.
-
-`/api/preview` must remain write-free and take no seat. Do not create a test account in a live
-galaxy. Without `x-server-time`, phones fall back to their device clock and draw movement at
-different instants.
-
-Finally rerun internal health, queue/overdue checks, `host-capacity-preflight.sh`, database
-connection metrics, and the live-shard query below. Compare the in-flight/build counts with the
-step 6 snapshot. On the rolling path they should be higher, not equal: the world kept running,
-and a set of counts that did NOT move while players were active is itself worth investigating. Remove only obsolete **stateless** containers after all checks pass; retain the
-old image, web copy, Nginx copy and final dump.
-
-Also inspect the first observation window by status, route and client rather than looking only for
-5xx. In particular, a cluster of 404s on routes that existed in the previous client means an
-already-open tab is running against the new API. `NO_PLANET` responses concentrated at a season
-rollover are expected, but route-not-found responses from an old bundle are a compatibility bug.
-Do not dismiss all 4xx as player mistakes.
-
-```bash
-sudo awk '$7 ~ /^\/api\// {status[$9]++} END {for (s in status) print s, status[s]}' \
-  /var/log/nginx/access.log | sort -n
-
-sudo awk '$7 ~ /^\/api\// && $9 == 404 {key=$1 " " $6 " " $7; count[key]++} \
-  END {for (k in count) print count[k], k}' /var/log/nginx/access.log | sort -nr
-```
-
-The deployment is complete only at this point. The season remains untouched.
-
-The staging directory was created by the explicit `mktemp` command above and can now be removed:
-
-```bash
-rm -rf -- "$web_stage"
-```
-
-## Live galaxy acceptance
-
-This query verifies the capacity contract directly rather than inferring it from a healthy API:
+Inspect live MAIN and WAITING rows separately; exactly two MAIN galaxies does not mean only two total live rows. The latest supplied capacity inspection is 1000 on EU-1/EU-2/WAIT-1; refresh it without silently changing capacity. Historical 300/350 assertions and old 51-world pools are not current gates.
 
 ```sql
 SELECT sh.ordinal,
@@ -1054,40 +288,9 @@ SELECT sh.ordinal,
  ORDER BY sh.ordinal;
 ```
 
-Required: exactly two rows, ordinals 1 and 2; and `player_cap=300` on both.
+Require each season's intended creation ruleset, allowing mixed rulesets across rollover. A code deploy alone does not upgrade a season. MAIN joins expose only the lowest non-full ordinal as `open`; later galaxies stay `locked`. EU-2 is human-only: zero joined bot profiles.
 
-**EU-1 IS TEMPORARILY 350 AND THIS ROW IS EXPECTED TO READ RED.** Owner instruction,
-2026-09-08: EU-1 filled at 300 and the cap was raised to open seats now, on a live season,
-rather than waiting for a rollover. It is a stored column on one shard — nothing in the
-rules moved — so `SERVERS.capacity` still reads 300 and every derived figure with it: the
-neutral pool, `MULTI_WORLD.capitalSlots`, `PIRATE.spawnPerHour`, and the cap a new season
-or a rollover writes. A rollover therefore takes EU-1 back to 300 on its own; the bump
-only lasts as long as this season, which is what "temporary" means here.
-
-Read the row as `player_cap=300` on EU-2 and `player_cap=350` on EU-1 until the owner says
-otherwise, and check the acceptance the raised cap actually needs instead:
-
-```sql
-SELECT count(*) AS worlds_inside_the_window
-  FROM planets p
-  JOIN seasons s ON s.id = p.season_id AND s.status = 'live'
-  JOIN shards sh ON sh.id = s.shard_id AND sh.code = 'EU-1'
- WHERE p.kind <> 'CAPITAL' AND p.slot_index < sh.player_cap;
-```
-
-A non-zero answer is CORRECT and is the whole reason the cap could not simply be raised:
-neutral worlds are drawn from slot indexes at or above `MULTI_WORLD.capitalSlots` (300), so
-a window wider than 300 contains some of them. `occupiedSlots` counts every world when it
-answers "which addresses are taken" and `seatedCommanders` counts capitals when it answers
-"how many seats are gone" — the deploy that raises the cap must already carry both, or
-`pickSpawnSlot` keeps offering a built-on slot and the front door answers `SHARD_FULL` on a
-galaxy with empty seats. Real seats are therefore `player_cap` minus that count.
-
-**The 65 / 38 / 19 / 8 pool (D209; 51 / 30 / 15 / 6 before it) is a SEEDING fact, not a standing one, and only a galaxy nobody has
-settled still shows it.** A settlement captures a neutral world: the row becomes a `COLONY`, its
-`neutral_planet_state` is detached, and the neutral count falls by one for the rest of the season.
-Requiring 65 on a played galaxy fails every deploy into a world where the game has happened. What
-must hold is the CONSERVATION — measured, not eyeballed:
+For each current MAIN galaxy require neutrals + colonies = 65; all capitals/colonies controlled, neutrals uncontrolled and `orphaned_neutral_state=0`. Fresh MAIN galaxies have tiers 38/19/8; played galaxies need conservation, not 65 remaining neutrals. WAITING has no 65-world acceptance constant.
 
 ```sql
 SELECT sh.code, p.kind, count(*) AS worlds,
@@ -1102,80 +305,187 @@ SELECT count(*) AS orphaned_neutral_state
  WHERE p.kind <> 'NEUTRAL';
 ```
 
-Require `neutrals + colonies = 65` per live shard, every `CAPITAL` and `COLONY` controlled, every
-`NEUTRAL` uncontrolled, and `orphaned_neutral_state = 0`. A fresh galaxy satisfies it at 65/0; a
-played one at, say, 42/23. A pool that does NOT add to 65 is a world that has lost or gained a
-planet, which is the failure the flat count was reaching for and never actually tested.
+When checking capacity/slot changes, distinguish occupied addresses (all worlds) from seated commanders (capitals). Noncapital worlds inside a capital slot window can reduce usable addresses; do not infer free spawn slots from player count alone.
 
-`ruleset_version` is whatever `MULTI_WORLD.rulesetVersion` was in the code that CREATED the season,
-so it is a fact about the galaxy's birthday rather than an acceptance constant. Seasons opened
-before D114 are `2` and stay `2` for their whole life; D114 seasons are `3`, which remains the
-boundary where clans begin; Fleet Catalog V2 seasons are `4`. `assertClanRuleset` therefore still
-answers `CLANS_NEXT_SEASON` only below v3, while the offline Fleet V2 cutover below requires v4.
-A deploy alone switches neither feature on: the rollover that follows it does. Require the version
-to match the code that opened the row, and expect a mixed pair across a rollover. Capital count is
-the current real population,
-not a fixed acceptance value. `/api/servers` must show only the lowest non-full ordinal as `open`;
-the next remains `locked` until the frontier fills.
+## 9. Publish web and verify externally
 
-## Turning on the commanders the server plays — D159
+Preserve old hashed assets for open tabs. Stage on the same filesystem as `/var/www/astera`; do not copy over a live mixed artifact. The source's two-rename sequence below keeps files together but has a brief missing-root interval; it is not a single atomic exchange. If strict uninterrupted publication is required, use a separately validated atomic publication mechanism.
 
-Kestrel (`EU-2`) is explicitly human-only. `BOTS.excludedShardCodes` prevents the worker from
-seating any roster account there; production acceptance must report zero joined bot profiles on
-its live season.
+Use unique/verified staging and previous paths; do not delete unknown rollback directories.
 
-A separate, explicitly authorized owner operation, and deliberately two steps: the roster is
-synchronized from the owner's fixed list and the switch is thrown afterwards. `BOTS_ENABLED`
-defaults to `false`, so a deploy never starts seating anybody on its own.
+```bash
+test ! -e /var/www/astera-next
+sudo cp -a "$web_stage" /var/www/astera-next
+# Open tabs may still import chunks from older builds. Carry their immutable
+# assets into the candidate without overwriting the current build's assets.
+sudo rsync -a --ignore-existing /var/www/astera/assets/ /var/www/astera-next/assets/
+sudo chown -R www-data:www-data /var/www/astera-next
+sudo chmod -R a+rX /var/www/astera-next
+test -f /var/www/astera-next/index.html
+test "$(cat /var/www/astera-next/release.txt)" = "$release_sha"
 
-1. **Migrate first.** `bot_profiles` arrives in `0057`; session and retirement columns arrive
-   in `0115`. The ordinary rule applies — migrations
-   before the new image (`assertSchemaCurrent` refuses otherwise).
-2. **Name them.** `deploy/deploy.sh` runs `bots sync` after migration and before the worker starts.
-   It applies the 100 names in `services/bots/identities.ts` and their TR/FR/DE/ES country codes
-   to existing bot accounts, keeps their account and player IDs, and creates missing accounts.
-   It is safe to rerun: unchanged accounts stay unchanged. A name held by a human account
-   makes the transaction fail rather than quietly using a different name. To inspect on the VPS:
+test ! -e /var/www/astera-previous
+sudo mv /var/www/astera /var/www/astera-previous
+sudo mv /var/www/astera-next  /var/www/astera
+sudo systemctl reload nginx
+```
 
-   ```bash
-   pnpm bots list
-   ```
+If those paths already exist, preserve/rename them deliberately before continuing. Verify no stale `index.html.gz` is in the candidate.
 
-   The sync creates random, unprinted login passwords for new accounts; these commanders
-   never sign in. Retired accounts stay retired. `bots add` remains for manual additions;
-   if the active pool exceeds the 100 supplied names, the next sync fails rather than
-   assigning a name the owner did not supply.
-3. **Throw the switch.** `BOTS_ENABLED=true` in `.env`, then restart the worker alone — the API
-   replicas never read it:
+**Forward CSP order: new webroot before new vhost. Rollback: old vhost before old webroot.** A nonce-requiring `'strict-dynamic'` vhost with an old nonce-free page produces a blank game despite green health. Validate Nginx before reload; restore the retained vhost if validation fails. The example's reload alone does not install a changed vhost.
 
-   ```bash
-   docker compose -f docker-compose.prod.yml up -d worker
-   ```
-4. **Confirm.** `/health` reports total `seated` and `awake` plus per-galaxy real-player counts,
-   targets and actual bot counts. For 100 real players, the initial seat target is 25, capped by
-   `BOTS_PER_GALAXY`. At most four new bots join each galaxy per 30 minutes. Awake demand follows
-   real players active in the last five minutes, with a one-hour minimum bot session and gradual
-   reductions. `awake` is zero between 01:00 and 08:00 Türkiye time. `/api/season` `online` counts
-   awake bots alongside active people.
+For quiesced in-place publication, keep Nginx stopped, validate/install `deploy/nginx/astera.conf`, run `sudo bash deploy/publish-web.sh "$web_stage" /var/www/astera`, ensure `www-data` access (`D755,F644`), then start Nginx. The helper retains old hashed assets and discards a precompressed index.
 
-To stop: `BOTS_ENABLED=false` and restart the worker. The worlds stay exactly where they are and
-go quiet. The Silent Space bridge disables destructive inactivity reclaim for humans and bots;
-no automatic transfer is active yet. `pnpm bots retire "<name>"` takes one off the roster without touching anything it owns.
+External gates:
 
-## Manual five-minute season cutoff
+```bash
+test "$(curl -fsS -H 'Cache-Control: no-cache' \
+  https://asteraonline.space/release.txt)" = "$release_sha"
 
-This is a separate, explicitly authorized owner operation. It was exercised successfully in
-production: active fleets/builds were allowed to settle, late galaxies deferred their freeze, and
-rollover waited until every live galaxy was frozen before atomically opening two successors.
+curl -fsS https://asteraonline.space/ \
+  | rg -o 'index-[A-Za-z0-9_-]+\.js'
+curl -fsS -D - -o /dev/null https://asteraonline.space/api/preview \
+  | rg -i '^x-server-time:'
+curl -fsS https://asteraonline.space/api/servers | jq
+```
 
-Do not use `season wipe --yes` for the normal lifecycle; that skips the scheduled deadline and
-afterglow. Do not reuse the one-off legacy ten-galaxy insert from the capacity cutover. Current
-seasons already have one `season_end` and one `season_rollover` event each, so shorten those rows
-in place.
+Require `ngx_http_sub_module` (`nginx -V`), no served `__CSP_NONCE__`, no `index.html.gz` bypass, identical nonce in CSP header and document, and a different nonce on the next request. On Debian/Ubuntu, use an Nginx build with the sub module (e.g. `nginx-full`). Check actual values, not just successful extraction.
 
-Take a fresh backup first. Confirm the current code still uses a 5-minute afterglow, then run the
-following interactively. It fails unless exactly two live seasons and exactly one pending end and
-rollover event per season exist:
+Open a clean browser with console visible: no CSP violations, publisher/footer pages reachable and privacy notice before analytics/advertising cookies. Also test an already-open old client. `/api/preview` must remain write-free and seat-free; do not create production test accounts. Require `x-server-time` so device clocks do not distort movement.
+
+Rerun all health, queue, overdue, connection-budget, live-shard and host-preflight checks. Compare work counts with the pre-roll snapshot, allowing normal completions and new activity; counts need not monotonically increase. Observe statuses by route/client, including old-route 404 clusters. Rollover `NO_PLANET` differs from a removed-route compatibility bug.
+
+Retain rollback artifacts through the observation window. Remove only identified obsolete stateless containers and the explicitly created web staging directory after acceptance. Record SHA, image IDs, schema, rehearsal/lock results, cutovers and acceptance; only then is deployment complete.
+
+## 10. Rollback boundaries
+
+| State | Permitted response |
+| --- | --- |
+| Code-only compatible rollout | Retag retained image as `astera-server:latest`, set expected rollback SHA/image for checks, roll safely, restore matching vhost/web/environment |
+| Additive migration with compatible old code/data | Retain schema; prove old reads, writes and newly stored data remain compatible before code rollback |
+| Quiesced, migration applied, no later writes | Stop new roles; restore verified final dump and matched old image/config/web; run full acceptance before reopening |
+| New player writes accepted | Forward fix or proven compatible code revert; destructive restore requires explicit owner decision about lost interval |
+| New Polar intent, adopted calendar or monument deal | Apply the stricter feature boundary in section 11 |
+
+Restore a changed vhost, validate and reload it **before** putting an old nonce-free webroot back. Do not rewrite Git history on the VPS; permanent code reversions are new pushed commits through the same gates. Never prune release backups/images in their creation session.
+
+## 11. Feature-specific rollout and rollback constraints
+
+These apply only when the selected diff/journal requires them. Do not replay historical migrations, wipes, approvals or activations merely because they appear here.
+
+### Polar cosmetic wave two
+
+Production mapping: `config/polar-cosmetics.production.json`, 36 paid extras / 46 offers total (nine planets, bundle, 36 extras). Four free standards — Vanguard, Orbital Guard, Bastion, Meridian — remain unmapped. Rings/standards: EUR 1.99 or TRY 49; engines: EUR 2.49 or TRY 69. Retain existing planet/bundle IDs/prices and matching revised Inferno/Nebula/Prism thumbnails. Details: [Polar evidence](polar-wave2-integration-2026-10-10.md).
+
+1. Retain private runtime `.env`, image, web and vhost. Roll the new compatible image with the existing **20-extra mapping** first. Require all four roles healthy on it; retain `astera-server:polar-wave2-compatible-<release sha>` as the receiver rollback floor.
+2. Replace **only** runtime `POLAR_COSMETIC_PRODUCTS` with the 36-extra production mapping. Preserve `POLAR_ENV=production`, live token, enabled checkout flag, return URL, existing `POLAR_PRODUCT_*` IDs and webhook secret. No sandbox IDs.
+3. Recreate API1 → API2 → API3 → worker using Compose; `docker restart` keeps old environment. Preserve the raw webhook endpoint/subscription: `order.paid`, `order.refunded`, `checkout.expired`.
+4. Require `/api/skins/polar-pricing` to expose 46 offers with regional prices; test old-tab inventory compatibility before publishing store/client/price pages. New clients send known cosmetic IDs; old clients receive the frozen prior view, without losing stored rights. Check a new item per category and free standards; use sandbox payment/refund/redelivery evidence, not a real card for smoke.
+
+The 10 October inspection found the provider secret matched VPS `.env` while running processes held an older value. Reconfirm and use the provider-confirmed configuration; do not copy stale process environments wholesale.
+
+Before any new-item intent, rollback must pair old image/web with old mapping (old parser rejects new IDs). **After even a pending new-item checkout intent exists, never downgrade the webhook receiver below wave-two compatibility.** The old receiver may mark a webhook seen before ignoring the new item, defeating retries. Close new sales using the retained compatible image with old mapping/web, or forward-fix; existing intents contain the product needed for fulfilment/refund. Disabling checkout does not cancel hosted pending checkouts. Never delete intents, entitlements or receipts as rollback.
+
+### Asteroid snapshots and calendar adoption
+
+Migration `0146_asteroid_generation_snapshot` adds nullable JSONB `asteroid_spawn_hours.generation`, without backfill/new event kind. Inventory all pending journal entries rather than assuming 0146 is the only one. Rehearse exact geometry/ID/claim/target preservation and measure locks. For the documented 0146 rollout, use a private one-off `DATABASE_URL` with `lock_timeout=1000&statement_timeout=30000`, preserving existing query parameters and normal runtime URL. Never print credentials. A held reader must cause a nonzero migration exit and unchanged journal; inspect/retry after release, without killing player transactions or silently extending timeout.
+
+New hours freeze full generation settings/algorithm. Null snapshots retain immutable pre-release v1 behavior; keep RNG order, IDs, ore, birth/expiry and claims unchanged. Preserve that fallback byte-for-byte. Generation or algorithm changes require explicit old-image compatibility proof. Population smoothing uses current raw eligibility plus the preceding five **actual** hours, not stale rows across outages. Raw eligibility includes eligible humans + floor(active non-retired bots / 2); `eligible_players` is raw, `active_players` may be smoothed after founding day.
+
+Latest supplied adjustment is **definition v12**, superseding the v10/v11 tables:
+
+| Türkiye time | Weekday | Weekend |
+| --- | --- | --- |
+| Lunch | 12:30–13:00 ×2 | 13:00–13:30 ×2 |
+| Evening | 20:00–20:30 ×2 | 20:00–20:30 ×4 |
+
+Base arrivals: 0.75 rocks per eligible active commander/hour. Half the shower **bonus** is reserved for its first 10 minutes; the remainder samples the whole window, rounded per lane. Lifetimes remain 2.5–5 hours. At smoothed population 32: ordinary hour 24; half-hour ×2 gives 24 shower + 12 ordinary (6 reserved); ×4 gives 48 + 12 (18 reserved). These are arrivals, not total visible stock.
+
+Existing stored hours remain frozen. Existing five-minute and null snapshots retain old birth times/IDs/ore/targets; derived v5–v11 calendars retain five-minute distribution, v4 and earlier uniform distribution. Do not rewrite/deplete/refill them through changed constants.
+
+After migrating and proving every API/worker on the matching image, perform the separately authorized calendar operation for **all live fixed-calendar shards**, including WAIT-1:
+
+```bash
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  adopt-event-calendar
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  adopt-event-calendar --yes
+```
+
+Review the dry-run counts and each actual cutover. Adoption protects committed/future-planned hours, opened windows and processed lifecycle markers after acquiring the season lock; the cutover may be later than the next hour. Investigate distant boundaries without clearing protected rows. It preserves a retained occurrence's whole window, including a half-hour shower whose containing hour is already planned, and end-processed/start-pending occurrences.
+
+For legacy-to-dynamic adoption it snapshots `asteroid_legacy_calendar`, sets `asteroid_dynamic_from`, preserves existing derived IDs/claims/flights, suppresses legacy births from cutover and starts hourly planning. Future shower/convoy windows/jobs adopt current definitions; opened windows and merchant rows remain untouched.
+
+Publish the matching guide only after reported cutovers **and retained old showers extending past them** end. The active-event chip correctly displays the actual old stored multiplier meanwhile. Observe a new hour per shard: exactly one row, one next-hour job, non-null generation with `frontLoadMinutes: 10`, v12 effects, expected measured-population lanes, unchanged depleted claims/mining targets and no failed/stranded work. Repeat adoption must be a no-op.
+
+Do not use `restamp`, `sync-events`, a wipe or queue reset for this rollout. Routine later deploys do not repeat adoption unless definitions change.
+
+Rollback retains the additive column and frozen hours/claims. Image rollback does not reverse stored calendars: restore reviewed future windows/jobs only at an unplanned boundary, preserving opened/planned hours and processed occurrences. Never restore a whole older DB over player activity. Supporting detail: [asteroid fix](asteroid-spawn-fix-2026-10-09.md).
+
+### Easy / Hard monuments
+
+Migration `0147_monument_difficulty` gives existing rows `LEGACY`, preserving old layout/dispatch until adoption. New ruleset-16 seasons deal eight targets (four Hard/four Easy) at cube corners on the sphere. Existing-season adoption preserves the first five IDs/honoree identities.
+
+Deploy migration, all APIs, worker **and updated clients** before activation: old APIs can accept prohibited combat reinforcements; old clients accept only five ordinals. Merely publishing web does not update already-open tabs. Verify that client compatibility prerequisite before adopting; do not downgrade to the five-target build afterward without a compatibility change.
+
+At each explicitly named galaxy's quiet window:
+
+```bash
+pnpm --filter @astera/server season adopt-monuments --shard EU-1
+pnpm --filter @astera/server season adopt-monuments --shard EU-1 --yes
+```
+
+Preview first; apply rechecks under exclusive season lock. `BUSY` refuses without writes if player control, outbound/held/returning monument fleets, probes or preparing/attacking joint operations exist. Wait; never clear blockers manually. `ALREADY_UPDATED` is a no-op. Repeat separately for another galaxy.
+
+Adoption preserves closed radiation history, closes old active clouds at cutover, starts new clouds then, updates neutral garrisons plus respawn templates, clears stale pending loss/respawn jobs and refreshes reads. Past flights are not repriced. The cancelled rate update stays cancelled: **4 HP/minute, 10 deuterium/minute**; no rate adoption. Details: [monument update](monument-fairness-plan-2026-10-10.md).
+
+### Silent Space
+
+Specification: `docs/handoffs/sessiz-uzay-entegrasyon-plani.md`. Keep `SILENT_SPACE_ENABLED=false` during mixed API versions. After all-role/web acceptance, recreate only the worker with `SILENT_SPACE_ENABLED=true`, `SILENT_SPACE_BATCH=5`, `SILENT_SPACE_MAX_SHARDS=16`.
+
+D212 migrations 0143 (`last_progress_at`, backfilled from `last_active_at`) and 0144 (`pirate_raids.recalled_at`) are additive. Estimate the first 30-hour eligibility wave from the actual predicate, not “last login” shorthand:
+
+```sql
+SELECT count(*) FROM players p
+JOIN seasons s ON s.id=p.season_id JOIN shards h ON h.id=s.shard_id
+WHERE h.role='MAIN' AND s.status='live'
+AND greatest(p.last_progress_at,p.joined_at,p.main_entered_at)
+    <= now()-interval '30 hours';
+```
+
+Batch 5 per five minutes permits 60/hour; maximum batch is 20. Do not change `WORKER_POLL_MS`; the maintenance lease retains due time across restarts. Check first/subsequent maintenance, audit/outbox, placement/world consistency, late fleets and queues. Unexpected errors: disable transfers and forward-fix; keep existing WAITING placements playable, without old-DB restore.
+
+MAIN colony departure sites return to neutrals; eligible returns reuse them and may exceed player capacity, capitals have a safe fallback, new joins stay capped. HTTP shared placement leases/exclusive transfer fencing and `/me`/`placement_changed` reconciliation must prevent stale-world writes. The notice records explicit return intent; season reset still applies.
+
+### Compatibility switches when crossing older boundaries
+
+| Feature | Required staged activation |
+| --- | --- |
+| `FIRST_GAME_SHIELD_ENABLED` / migration 0142 | Migrate; persist/export false; roll all four and verify false; persist/export true; roll all four again before guides. Existing accounts retain 24h; only new human registrations gain one-time 72h entitlement, consumed transactionally at first placement, not reset by wipes. No historical backfill. |
+| `PIRATE_SPAWN_INCREASE_ENABLED` (D211) | First roll false everywhere so all code can resolve new handles without exposing them; then true everywhere in a second roll. Never expose a lane while old consumers remain. |
+| `PIRATE_SPAWN_SURGE_ENABLED` | Same two-phase rule for the third lane; nested under the increase switch. |
+| `RECOVERY_SHIELD_ENABLED` / migration 0078 | First roll false, then activate after all code understands nullable shield fields. Disabling also stops honoring already-granted recovery shields; first-day shield is separate. |
+
+Verify both runtime SHA/image and flag values at each phase; ordinary future releases use one roll once compatibility is universal. Existing stored flight `arrive_at`, launched mining `hold_each`, queue `ready_at`, claim deadlines and shield deadlines remain authoritative; newly computed returns/claims/defeats may use new rules immediately. The 0141 priority migration adds nullable claim-priority fields: new qualifying decisive claims reserve 60 minutes for their raider; pre-existing null claims remain public.
+
+### Historical migrations that need more than green health
+
+| Boundary | Preserve this constraint if still pending |
+| --- | --- |
+| 0064 result cycle | Check no account/cycle duplicates; rehearse IDs/counts/activity/coordinates/periods. Old worker INSERT misses new NOT NULL cycle field: approved worker stop → migrate → new worker with transfers off → APIs/web. |
+| 0079–0086 season archive | `season_cycles.ordinal SET NOT NULL` has no default; old worker/CLI INSERT fails even with ON CONFLICT. Approved worker stop → migrate → new healthy worker → APIs/web. 0081 updates every planet and takes row locks. |
+| 0089–0093 faults/dynamic fields | Migration arms `fault_spawn` for live Core 6+ colonies; old worker can consume unknown jobs. Approved worker stop → migrate → all APIs → new worker. Activate `asteroid_hour` only after all roles through calendar adoption; do not reset live seasons. |
+| 0127–0140 initial monuments | Keep applied 0138/0139 identities/order. Measure 0130 deuterium double-precision lock/rewrite on restore. Approved worker stop → migrate → APIs → new worker; no ruleset-16 creation/rollover until all know monument event kinds. Old images are unsafe with active monument fleets. |
+
+Historical five-monument acceptance is valid only for the LEGACY deal; adopted/new eight-target galaxies follow the Easy/Hard section. Do not replay old batches or rely on historical journal totals.
+
+## 12. Separate owner operations
+
+Use fresh backups, a restored-copy rehearsal, dry run and explicit target where supplied. Never use these commands to repair a failing deployment gate.
+
+### Season cutoff, emergency wipe and forward rulesets
+
+Normal cutoff shortens existing lifecycle rows; `season wipe --yes` skips that lifecycle. Verify the current afterglow is still five minutes. The guarded transaction below expects exactly two live seasons and four pending lifecycle rows. **It predates WAITING live seasons**: if inventory includes WAIT-1 it must fail; do not weaken its count checks or silently omit a shard. Prepare/rehearse an explicit MAIN/WAITING lifecycle plan for the actual world before applying a cutoff.
 
 ```sql
 BEGIN;
@@ -1258,362 +568,58 @@ SELECT s.id, s.status, s.ends_at, e.kind, e.status, e.resolve_at
 COMMIT;
 ```
 
-After the cutoff, watch all four health endpoints and lifecycle events. A season may remain `live`
-past `ends_at` while a committed mission, mining run, build or strategic build finishes; the
-worker retries the freeze every second. Rollover likewise retries until all live seasons are
-frozen. Never delete that work to force the deadline.
+After cutoff, monitor all health/lifecycle rows. Committed missions/mining/builds/strategic builds may defer freeze; worker retries each second and rollover waits for all applicable seasons. Never delete work to meet a deadline. Accept the intended successor ruleset/current seed contract, old seasons wiped, no old live work, no failed/processing lifecycle jobs, and one pending end/rollover plus expected acts per successor. Account identity, results and both-channel `chat_archive` survive; disposable world rows do not.
 
-After rollover require: two new live ruleset-v4 seasons; old seasons `wiped`; no live missions/builds from
-the old world; no failed/processing lifecycle events; one pending end, one pending rollover and
-the expected season-act events per successor; and the 300 + 30/15/6 query above. Account identity,
-season results and `chat_archive` (both chat channels, copied by the wipe before it clears them —
-2026-09-27) survive; disposable player/world rows do not.
-
-### Owner-authorized emergency wipe
-
-This is not the normal lifecycle above. Use it only when the owner explicitly accepts that every
-remaining seasonal job and disposable world row will be destroyed. Record the last deployed SHA,
-take the ordinary rehearsed release backup first, and keep the previous image/webroot. Once a new
-season accepts writes, restoring the pre-wipe dump loses those writes and is a disaster-recovery
-decision rather than an ordinary rollback.
-
-The wipe must run on a **fully quiesced application**, even though `wipeAllServers` itself uses one
-transaction and an advisory lock. Stopping only the worker is insufficient: a live API can insert
-a mission, request/audit row, watch or other planet child after that table was cleared and before
-`planets` is deleted. The resulting foreign-key race presents only as `Failed query: delete from
-"planets"`; the transaction rolls back, but the reset does not happen.
-
-1. Publish and prove the maintenance page using the HTTPS check in step 8.
-2. Stop `api1`, `api2`, `api3` **and** `worker`; verify no matching container is running.
-3. Take and checksum a new backup now that no writer exists. This is the wipe boundary.
-4. Run the exact release image with stdin detached:
-
-   ```bash
-   "${compose[@]}" run -T --rm --no-deps api1 \
-     apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts wipe --yes </dev/null
-   ```
-
-5. Require the command to report the expected old-season/player counts and exactly `EU-1, EU-2`
-   opened. Before reopening traffic, prove two live seasons, no frozen seasons, the intended
-   ruleset, one pending end/rollover per successor, valid event windows and no failed/processing
-   queue rows.
-6. Start the worker, require healthy queue/zero unknown events, then start and prove all three APIs.
-   Restore the project webroot only after those checks pass.
-
-If the same planet deletion error persists with all four application containers stopped, do not
-disable the constraint or delete tables by hand. Inspect every foreign key whose parent is
-`planets` in `pg_constraint` and compare its child table with the explicit child-before-parent list
-in `wipeAllServers`; a newly added seasonal table is missing from that list and needs a tested code
-fix. Re-running against live writers does not diagnose that distinction.
-
-### Fleet Catalog V2 season-boundary cutover (ruleset v4)
-
-Fleet V2 is an offline catalog boundary, not a rolling-compatible application deploy. Ruleset-v3
-seasons may contain Wasp/Lance/Bulwark/Hauler/Runner/Breacher in units, missions, reports and
-commander research; ruleset-v4 code deliberately has no live translator for those meanings.
-
-1. Let every v3 galaxy freeze and finish its five-minute readable afterglow. Record the release
-   SHA, server image digest, web asset release, each ending season id/ruleset and final result count.
-2. Close public traffic and stop **all** API/worker replicas. Verify no process can claim an event or
-   accept a player mutation; leaving one worker alive invalidates the backup boundary.
-3. Take the final quiesced dump, checksum it and restore it to a disposable database exactly as in
-   steps 5 and 8b above. On that restored copy, run the new image's migrations and
-   `season wipe --yes --seed <recorded rehearsal seed>`.
-4. On the restored copy require two live seasons with `ruleset_version = 4`, 65 neutral worlds per
-   successor, no unknown hull rows, no players/missions/research/reports from the old world, and the
-   expected pending lifecycle rows. Run the focused executable smoke:
-
-   ```bash
-   pnpm --filter @astera/server test -- fleet-v2-cutover.test.ts season-lifecycle.test.ts
-   ```
-
-   It performs account reclaim → exactly two queued Darts → Engineering research → another Yard
-   build → attack → engagement → battle report → return using only Fleet V2 hulls.
-5. Only after the restore rehearsal succeeds, run the same new-image `season wipe --yes` command
-   against the still-offline production database. Repeat the v4/count/unknown-ID queries before any
-   listener starts.
-6. Start workers first and require healthy lifecycle queues, then start APIs and open traffic. Watch
-   unknown-hull/schema/event failures and complete one real claim/onboarding smoke.
-
-Ruleset-v4 successors also seed D149's immutable galaxy-event calendar. For each exact 14-day
-successor require 70 `galaxy_event_occurrences`, 70 `galaxy_event_start` jobs and 70
-`galaxy_event_end` jobs before traffic opens. Verify every `dedupe_key` is unique, every occurrence
-ends after it starts, and no occurrence crosses the season boundary. Do not backfill an already-live
-season created by a pre-D149 image. The API exposes only currently active rows, never this future
-calendar. At the first live start/end, observe one Chronicle row, one notification per current
-player and one `galaxy-event` shard invalidation; worker delay may delay those deliveries but must
-not change the clock-derived asteroid effect.
-
-Ruleset 8 is a separate forward boundary. Apply additive migration `0075_quiet_guardsmen.sql`, then
-deploy convoy-aware workers/server and the strict-schema web client before creating any ruleset-8
-season. A complete 30-day TRT-aligned season must contain 120 Asteroid Shower, 120 Trade Ship and
-60 Intergalactic Convoy occurrences, with two lifecycle jobs per row. Do not backfill a ruleset-7
-live season. Rollback with active convoy runs is drain-first: close new launches, keep an
-arrival/return-capable worker until every run is `done`, and leave the additive enum/table in place.
-
-Ruleset 11 (taktik geri çekilme, 2026-09-23) is also a forward boundary. Apply additive migration
-`0112_tiresome_magus.sql` (`battle_reports.fleet_escape jsonb`, nullable), then deploy the
-escape-aware worker/server and the web client before creating any ruleset-11 season. A live
-ruleset-10 season never runs the rule — the gate is `fleetEscapeApplies(season.rulesetVersion)` —
-so the image may go out mid-season. Waiting shards copy their source season's ruleset, so a Silent
-Space opened during a ruleset-10 cycle stays returnable. Rollback leaves the column in place; an
-older image reading a ruleset-11 season simply fights every raid in full.
-
-`season wipe --yes` opens successors at `clock.now()` and currently has no `--starts-at` option.
-An owner-requested immediate wipe at an arbitrary TRT minute is therefore still an exact 30-day
-season, but it is not a TRT-day-aligned season: the planner deliberately omits a fixed event window
-unless the whole half-open window fits inside the season. For example, a start late in the 21:00
-Trade Ship window yields 119 complete Trade Ship occurrences while Asteroid Shower and Convoy may
-still yield 120 and 60. That means the lane is scheduled, not disabled. If 120/120/60 is a hard
-acceptance requirement, arrange the transition at 00:00 TRT; do not invent an off-schedule row,
-extend `ends_at`, or move season timestamps after players have joined merely to make the count
-green. Always print each kind's count plus its first start and last end so the distinction is
-visible.
-
-During the canary, read the `/metrics` response at
-`runtime.routes["POST /api/intergalactic-convoy/launch"]` for status distribution,
-`runtime.refusals["POST /api/intergalactic-convoy/launch"]` for stable refusal codes, and
-`runtime.operations["intergalactic-convoy.launch"]` for accepted versus replayed commands.
-These are bounded process-local counters and contain no account/player/world identifier; aggregate
-them across replicas before setting alert thresholds.
-
-Before traffic reopens, an abort restores the verified final dump and the recorded v3 image/web
-release. After a v4 season accepts any player write, restoring v3 would discard player decisions;
-rollback is forbidden and the response is a forward fix. There is no in-place hull mapping or
-partial per-galaxy activation path.
-
-## Rollback
-
-The schema guard is **one-way**: a new image refuses to start when the database is behind its
-migration journal. It does not prove that an old image is safe against a newer database. Never
-assume a previous container will reject an incompatible forward schema.
-
-- **A rolling release, which by definition applied no DDL:** the database was never touched, so
-  the rollback is the image and the client and nothing else. Retag the retained
-  `astera-server:rollback-$previous_commit` as `astera-server:latest`, roll the four containers
-  back one at a time exactly as step 7 rolled them forward, then rename
-  `/var/www/astera-previous` back over `/var/www/astera` and reload Nginx. It costs no downtime
-  either, and it is the reason the rolling path keeps a previous webroot under its own name
-  rather than under the timestamped `/var/www/astera-releases/` copy taken in step 2. Both exist;
-  either will do.
-
-  **`deploy/deploy.sh` now leaves the same three artifacts**, so a rollback does not depend on
-  which path the release took: `astera-server:rollback-<previous sha>` (the image to retag as
-  `:latest`), `/var/www/astera-previous` (the client that was serving), and
-  `/etc/nginx/sites-available/astera.pre-<new sha>-<stamp>` (the vhost that was loaded). The two
-  shas answer different questions on purpose — the image names the commit it takes you back TO,
-  the vhost names the release it came BEFORE. All three are taken before anything is replaced.
-
-  **If the vhost changed in the release being rolled back, restore the vhost FIRST**, then the
-  webroot — the mirror image of the forward order, and for the same reason. The current vhost's
-  `script-src 'nonce-…' 'strict-dynamic'` ignores `'self'`, so the moment an older client whose
-  script tags carry no nonce is renamed back under it, every script on the page is refused and
-  the game is blank with nothing failing server-side. Restore `astera.conf`, `sudo nginx -t`,
-  reload, and only then rename the webroot back.
-- **Before migrations:** retag/restart the retained old image and restore the prior web/Nginx
-  files. The database has not changed.
-- **After migration but before public traffic:** keep Nginx stopped, stop new processes, recreate
-  the production database from the verified final dump, retag the retained image as
-  `astera-server:latest`, start the old topology, restore web/Nginx, then run full acceptance.
-- **After new writes were accepted:** restoring the pre-release dump discards player decisions.
-  Prefer a forward fix or a migration-compatible code revert. A destructive restore requires an
-  explicit owner decision about the lost interval.
-
-Never rewrite Git history on the VPS. For a code-only failure, revert forward in Git, push, and
-deploy that new SHA through the same gates. Do not prune rollback images or dumps in the same
-session that created them.
-
-## Raising a public event on a live season
-
-A season's event calendar is dealt once, at season creation, and every occurrence freezes its own
-effect on its row. Nothing re-deals a live calendar — `seedGalaxyEventCalendar` has exactly one
-caller — so shipping a new figure in `GALAXY_EVENTS` reaches only seasons created after it. To move
-a season that is already running:
+Emergency wipe requires explicit acceptance of destroying remaining seasonal jobs/worlds. Prove maintenance, stop **all three APIs and worker**, verify no writers, take/checksum the final backup, then:
 
 ```bash
-compose=(docker compose -f docker-compose.prod.yml)
-
-# Dry run first — it is the real transaction, rolled back.
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  restamp --shard EU-1 --kind ASTEROID_SHOWER
-# reads: "N pending window(s) would change. Nothing was written; pass --yes to apply."
-
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  restamp --shard EU-1 --kind ASTEROID_SHOWER --yes
-```
-
-Changing an existing window's effect is different from adding a brand-new fixed window. For a
-new window, append the missing current and future occurrences after the code deploy:
-
-```bash
-compose=(docker compose -f docker-compose.prod.yml)
-
-# Dry run first.
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  sync-events --shard EU-1 --kind ASTEROID_SHOWER
-
-# Apply only after the reported count matches the remaining daily windows.
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  sync-events --shard EU-1 --kind ASTEROID_SHOWER --yes
-```
-
-`sync-events` never renumbers an existing occurrence. New rows take sequence numbers after the
-live lane's current maximum, even when the newly authored clock window is earlier in the day.
-That append-only rule preserves every existing asteroid id. A window already in progress is
-included while its end is still in the future, so the worker publishes it on its next tick;
-fully ended windows are never backfilled. The command is idempotent and defaults to a rollback-only
-dry run.
-
-The binary path is not decoration: the image installs with `--prod --filter @astera/server...`,
-so there is no root `tsx` to load — `node --import tsx` fails to resolve at `/app`. Every CLI
-call in this document uses the package's own binary for the same reason the `CMD` does.
-
-**Name the kind.** The command has no "every lane" mode on purpose: definitions move on their own
-schedules, and sweeping them all would rewrite a merchant's rate and stamp today's version onto a
-window dealt under an older one.
-
-**`restamp` will only ever touch a window that has not opened, and that restriction is the whole
-safety argument.** A shower's bonus rocks are appended to the field after everything already in it,
-so a lane's SIZE fixes the index of every rock in every later lane. A rock's public id is an HMAC of
-that index, `asteroid_claims` is keyed by it, and an in-flight `mining_runs.asteroid_index` resolves
-through it — so resizing a lane whose rocks are already in the sky moves a commander's claim, and a
-drill already on its way, onto a different rock. Nothing throws; the damage is silent. A window that
-has not opened owns no rocks yet.
-
-**`sync-events` is the deliberate exception, and it is the one players see.** It appends any window
-whose END is still in the future, which includes the one that is open RIGHT NOW. Appending is
-index-safe for the reason above — new rows take sequence numbers after the live maximum, so no
-existing id moves — but index-safe is not invisible. The field is derived, so every rock of that
-lane whose `appearsAt` is already in the past exists the moment the transaction commits.
-
-Measured against the test database, appending a live x10 window forty minutes past its start WITH
-THE CLOCK FROZEN — nothing about time moved between the two readings:
-
-| | live rocks in the galaxy | seen by one commander (Telescope 1) |
-| --- | --- | --- |
-| before `sync-events --yes` | 80 | 33 |
-| after | 195 | 78 |
-
-So run it OUTSIDE a shower window unless there is a reason not to. The next daily occurrence then
-opens on its own clock and ramps across its hour, which is what the calendar and the front load
-(`ASTEROID_SHOWER_FRONT_LOAD`) were shaped for. Run inside one and the galaxy roughly doubles at a
-frozen instant, with no banner explaining it — an owner watching the disc reads that as a bug, and
-has. `apps/server/test/galaxy-events.test.ts` pins the size of that step so it cannot move
-unnoticed.
-
-Two consequences worth stating before running it:
-
-- The change is live on the next read — the composed field's cache key contains each occurrence's
-  effect, so no restart is needed and no process serves a stale calendar.
-- It is not a season operation under rule 9 and needs no stop, but it IS a deliberate world change:
-  run it after the code deploy that ships the new figure, never before, or the restamped rows will
-  disagree with the definition the running image would have dealt.
-
-## Capacity qualification
-
-Capacity qualification is not a production smoke test. Run it against the isolated fixture; the
-tool refuses production database names/origins. A normal deploy does not become a 600-player
-capacity result merely because four health endpoints are green.
-
-```bash
-CAPACITY_PASSWORD='<staging-only-secret>' ./deploy/capacity.sh 300 99300
-
-CAPACITY_PASSWORD='<staging-only-secret>' pnpm capacity:test -- \
-  --database-url postgres://astera_capacity:capacity_only@127.0.0.1:5645/astera_capacity \
-  --base-urls http://127.0.0.1:3380 \
-  --login-base-urls http://127.0.0.1:3300,http://127.0.0.1:3301,http://127.0.0.1:3302 \
-  --metrics-urls http://127.0.0.1:3300/metrics,http://127.0.0.1:3301/metrics,http://127.0.0.1:3302/metrics,http://127.0.0.1:3310/metrics \
-  --users 300 --connections 300 --scenario normal --duration-seconds 3600 \
-  --report artifacts/capacity/normal-300-60m.json
-
-CAPACITY_PASSWORD='<staging-only-secret>' ./deploy/capacity.sh 600 99600
-
-CAPACITY_PASSWORD='<staging-only-secret>' pnpm capacity:test -- \
-  --database-url postgres://astera_capacity:capacity_only@127.0.0.1:5645/astera_capacity \
-  --base-urls http://127.0.0.1:3380 \
-  --login-base-urls http://127.0.0.1:3300,http://127.0.0.1:3301,http://127.0.0.1:3302 \
-  --metrics-urls http://127.0.0.1:3300/metrics,http://127.0.0.1:3301/metrics,http://127.0.0.1:3302/metrics,http://127.0.0.1:3310/metrics \
-  --users 600 --connections 600 --scenario normal --duration-seconds 3600 \
-  --wave-launches 100 --reconnect-at-seconds 1200 \
-  --report artifacts/capacity/normal-600-60m.json
-
-CAPACITY_PASSWORD='<staging-only-secret>' pnpm capacity:test -- \
-  --database-url postgres://astera_capacity:capacity_only@127.0.0.1:5645/astera_capacity \
-  --base-urls http://127.0.0.1:3380 \
-  --login-base-urls http://127.0.0.1:3300,http://127.0.0.1:3301,http://127.0.0.1:3302 \
-  --metrics-urls http://127.0.0.1:3300/metrics,http://127.0.0.1:3301/metrics,http://127.0.0.1:3302/metrics,http://127.0.0.1:3310/metrics \
-  --users 600 --connections 750 --scenario quiet --duration-seconds 600 \
-  --report artifacts/capacity/overflow-750-10m.json
-```
-
-A report is invalid unless the worktree is clean; HEAD, OCI revision, runtime commit and all four
-container image IDs agree; exactly 3 API + 1 worker is observed; every requested metrics endpoint
-and client schema parses; semantic samples are non-zero; and host, database reconciliation,
-rate-limit, LISTEN/cache and queue gates pass. This is what prevents an HTTP-only tool from
-incorrectly printing success.
-
-`capacity:client` is a headed 390×844 hardware-GPU diagnostic, not Android proof. Headless
-Chromium normally uses SwiftShader, so its frame result is not an acceptance signal.
-
-## First install
-
-```bash
-git clone git@github.com:yildirimsamet/astera-online.git ~/astera
-cd ~/astera
-cp .env.production.example .env
-chmod 600 .env
-```
-
-Fill `POSTGRES_PASSWORD` and `JWT_SECRET`, set the loopback ports, and optionally set
-`VITE_GA_ID`. Rotating `JWT_SECRET` signs every player out.
-
-Start durable dependencies, build the pinned image, migrate, and bootstrap exactly two empty
-galaxies. `bootstrap` takes no arguments in production; `--unattended` is development-only.
-
-```bash
-export ASTERA_GIT_COMMIT="$(git rev-parse HEAD)"
-compose=(docker compose -f docker-compose.prod.yml)
-"${compose[@]}" up -d postgres valkey
-"${compose[@]}" build api1
 "${compose[@]}" run -T --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate </dev/null
-"${compose[@]}" run -T --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts bootstrap </dev/null
-"${compose[@]}" up -d worker api1 api2 api3
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts wipe --yes </dev/null
 ```
 
-Then build/publish the web artifact and run internal plus external acceptance using steps 4 and
-8–10 above. A first install has no rollback copy, which makes its backup and acceptance gates more
-important, not less.
+Verify expected old counts, exactly EU-1/EU-2 opened, intended ruleset, no frozen seasons, valid windows/lifecycle rows and no failed/processing jobs. Start healthy worker then APIs; restore web last. A persistent `delete from planets` FK error with all writers stopped requires checking `pg_constraint` against `wipeAllServers` child-before-parent coverage and a tested fix; never disable constraints/delete tables manually.
 
-The vhost needs `ngx_http_sub_module`, which Debian and Ubuntu ship in `nginx-full` (the default
-for the `nginx` metapackage) and `nginx-extras`, but not in `nginx-light`. Without it `nginx -t`
-fails on the `sub_filter` line in `location = /index.html`, and that is the good outcome — the bad
-one is an Nginx that starts and serves the page with its CSP nonce placeholder unsubstituted, so
-every script on it is refused. Check before installing the vhost:
+Forward boundaries:
 
-```bash
-nginx -V 2>&1 | rg -o -- '--with-http_sub_module' || sudo apt install nginx-full
-```
+- Fleet V2 v3→v4 has **no live hull translator**. Drain/freeze and finish afterglow, quiesce all roles, take final dump, rehearse new migrations + `wipe --yes --seed <recorded seed>` on restore, and run `fleet-v2-cutover.test.ts` / `season-lifecycle.test.ts`. Require two v4 successors, 65 neutrals each, no old hull/player/mission/research/report rows and expected lifecycle jobs. Then execute the matching offline cutover. Once new writes exist, use a forward fix; no partial galaxy activation/hull mapping.
+- Ruleset 8: migration 0075, convoy-aware worker/server and strict client **before** new seasons. Do not backfill v7. With active convoy runs, close new launches and keep capable arrival/return worker until every run is `done`; retain additive enum/table.
+- Ruleset 11: migration 0112 nullable `battle_reports.fleet_escape`, escape-aware server/worker/web before creation. v10 remains gated off; WAITING copies source ruleset. Older code on v11 fights full raids, so rollback changes gameplay even if schema-compatible.
+- Event counts depend on the authored schedule, duration and start alignment. Historical exact-14-day 70-row and aligned-30-day 120/120/60 expectations are not universal current gates. Print per-kind counts, first start/last end, unique dedupe keys, positive windows contained within season and paired lifecycle jobs. `wipe` has no `--starts-at`; arbitrary-minute starts can omit partial windows. Never fabricate events or move joined seasons to meet old counts.
 
-The TLS certificate must exist before enabling the 443 vhost:
+Observe new events for Chronicle, notification and shard invalidation delivery; delayed workers must not change clock-derived effects. Convoy canary metrics: `runtime.routes["POST /api/intergalactic-convoy/launch"]`, `runtime.refusals[...]`, `runtime.operations["intergalactic-convoy.launch"]`; aggregate process-local counters across replicas.
 
-```bash
-sudo certbot certonly --webroot -w /var/www/html \
-  -d asteraonline.space -d www.asteraonline.space \
-  -d api.asteraonline.space -d socket.asteraonline.space
-sudo install -o root -g root -m 0644 deploy/nginx/astera.conf \
-  /etc/nginx/sites-available/astera
-sudo ln -s /etc/nginx/sites-available/astera /etc/nginx/sites-enabled/astera
-sudo nginx -t && sudo systemctl reload nginx
-```
+### Legacy calendar commands
 
-Certbot renewal needs a deploy hook that reloads Nginx after writing a new certificate. Verify it
-with `sudo certbot renew --cert-name asteraonline.space --dry-run`.
+For compatible legacy definitions only, `restamp --shard EU-1 --kind ASTEROID_SHOWER` updates unopened eligible windows; `sync-events` with the same target appends missing not-yet-ended windows. Both dry-run by default; review counts before `--yes`, after matching code is deployed. Always name a kind; no blanket lane operation.
 
-## Routine operations
+`restamp` must refuse changed duration, an already-planned containing hour and changed windows with processed lifecycle markers. Resizing an exposed lane can silently shift asteroid indexes, HMAC IDs, claims and mining targets. `sync-events` appends sequence numbers without renumbering but can instantly expose past-due births inside an open shower; run outside shower windows unless that visible change is intended. These commands are **not substitutes** for current `adopt-event-calendar`, and must not append new shower/convoy definitions beside unadopted old ones.
 
-Health, logs and season status:
+### Bots
+
+Activation is separate: migrate bot schema (0057, 0115 when pending), synchronize the owner's fixed roster through `bots sync`, inspect `pnpm bots list`, then set `BOTS_ENABLED=true` and recreate the worker only. Sync preserves identities, applies 100 supplied names/countries, refuses human-name collisions/excess pool, does not reactivate retired accounts and never prints random passwords.
+
+EU-2 remains human-only. Inspect health seated/awake and per-galaxy human/target/bot counts. Documented behavior: target 25 bots at 100 humans subject to `BOTS_PER_GALAXY`, maximum four joins/galaxy/30 minutes, five-minute human activity demand, one-hour minimum bot session and no awake bots 01:00–08:00 TRT. Disable through false + worker recreation; worlds remain. `pnpm bots retire "<name>"` retires without destroying holdings. Preserve existing configuration on ordinary deploys; historical defaults do not override it.
+
+### Account deletion and manual Silent Space transfer
+
+Use package-local CLI through `"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts`:
+
+| Operation | Dry run, then separately append `--yes` |
+| --- | --- |
+| Requested account erasure | `delete-account 'ExactName'` |
+| Requested manual transfer | `silent-space 'ExactName'` |
+
+Rehearse a fresh backup first, verify resolved identity (display names may collide), counts and MAIN conservation. Erasure deletes the account plus both sides' battle reports/probe/watch history; count collateral history before applying. Captured colonies return to their original seeded neutral slot/tier/profile/name; nonseeded departure addresses stay empty. Refusals: `WORLD_BUSY`, `BOT_ACCOUNT` (retire instead), `ANNOUNCEMENT_AUTHOR`, `TRANSFER_HISTORY`, `RETURN_QUEUED`; never bypass them.
+
+Manual transfer waives only activity age. World IDs, buildings, stock, fleet and research move; ordinary in-game return remains available under current placement policy. `FLIGHT`, `EVENT`, `EFFECT`, `UNITS`, `CAPACITY`, `CONTENTION` refuse without writes. Wait for completion, never clear blockers. Rehearsal snapshots can show overdue `EVENT` solely because time advanced after the dump. MAIN pool remains 65 and orphaned state zero; WAITING pool is not 65. Historical return-address anecdotes do not override the current activation policy.
+
+## 13. First install, routine operations and capacity
+
+First install: clone `git@github.com:yildirimsamet/astera-online.git` into `~/astera`, copy `.env.production.example` to mode-600 `.env`, set `POSTGRES_PASSWORD`, `JWT_SECRET`, loopback ports and optional GA ID. Rotating JWT secret signs everyone out. Pin/build the image, start PostgreSQL/Valkey, run explicit migrate then `bootstrap` (no production arguments; `--unattended` is development-only), start worker/APIs, build/publish web and run all acceptance.
+
+Require Nginx sub module and TLS certificate before enabling 443. Certbot webroot `/var/www/html` must serve the challenge; certificate covers apex, `www.`, `api.`, `socket.`. Install/enable `deploy/nginx/astera.conf`, validate before reload, configure renewal reload hook and verify `sudo certbot renew --cert-name asteraonline.space --dry-run`.
+
+Routine commands:
 
 ```bash
 cd ~/astera
@@ -1623,828 +629,26 @@ docker compose -f docker-compose.prod.yml run -T --rm --no-deps api1 \
   apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts status </dev/null
 ```
 
-Nightly backup, retaining the last fourteen dumps:
-
-```bash
-./deploy/backup.sh
-```
+Nightly backup: `./deploy/backup.sh` (retains fourteen dumps). Cron:
 
 ```cron
 17 3 * * * cd /home/yildirim/astera && ./deploy/backup.sh >> /home/yildirim/backups/astera-backup.log 2>&1
 ```
 
-Grant the hand-checked @JoinAstera reward by exact, case-sensitive public display name. The command
-is idempotent and only unlocks the grant; the player claims it in the rewards panel. The old
-`astera-api-prod` container no longer exists.
+Grant the hand-checked @JoinAstera reward with package CLI `reward 'ExactCaseSensitiveName'`. It unlocks an account-level, cross-season idempotent grant for in-game claim, including between seasons. Use `api1`, not removed `astera-api-prod`; SSH `exec` uses `-T`.
 
-It is idempotent ACROSS SEASONS as well (D104): the grant is written against the account, so a
-commander paid in an earlier galaxy is reported as already holding it, and one who is between
-galaxies with no world at all can still be granted it ready for the next.
+Capacity qualification runs only on isolated fixtures, never production. Existing benchmark profiles: normal 300 users/connections for 3600s; normal 600/600 for 3600s with 100 wave launches and reconnect at 1200s; quiet 600 users/750 connections for 600s. Use `deploy/capacity.sh` / `pnpm capacity:test`, the staging-only secret, dedicated `astera_capacity` DB on 5645, balanced API 3380, login/metrics replicas 3300/3301/3302 and worker metrics 3310. Preserve JSON reports. These historical profiles do not certify today's 1000-seat setting.
 
-```bash
-# On the VPS:
-docker compose -f docker-compose.prod.yml exec api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts reward 'WARRIOR'
+A valid result needs clean/pinned source, matching OCI/runtime/images, exactly 3 APIs/1 worker, all metrics/client schemas parsed, nonzero semantic samples and passing host, DB reconciliation, rate-limit, LISTEN/cache and queue gates. `capacity:client` is headed 390×844 hardware-GPU diagnostics; headless SwiftShader or emulation is not Android/iPhone hardware proof. Capacity soak is separate from ordinary deployment; obtain explicit authorization for long studies under the owner test rule.
 
-# From another machine over SSH (no pseudo-TTY):
-ssh yildirim@hoofywood.com \
-  "cd ~/astera && docker compose -f docker-compose.prod.yml exec -T api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts reward 'WARRIOR'"
-```
+## 14. Release-specific acceptance and retained evidence
 
-### Erasing one person who asked to be erased
+- The 10 October full-master preparation included asteroid correction, store/inventory, Polar wave two, ring simplifications, colony abandonment, monument recall, temporary session recovery and chat explanations. `komutan-gemisi` and `ui-v2` worktrees were excluded. Qualify the actual selected diff independently.
+- Combined release order: ordinary gates → restored-copy/lock/compatibility proof → pending migrations → all-role compatibility roll with old Polar mapping → retain receiver floor → new mapping and second roll → applicable calendar adoption → wait for cutovers/retained showers → web publication → feature/external acceptance. Apply monument adoption separately after its client prerequisites.
+- Destructive gameplay smoke belongs on the restore, not real commanders. Check store/inventory, regional pricing pages, session recovery, colony abandonment, monument recall and old-client behavior.
+- Static shop showcase is client-only: transparent 512×512 WebP (95,750 bytes), no showcase Canvas/lazy scene/breathing animation; retain full product previews. Check artifact SHA-256, TR/EN at 350px and desktop, stable loading/failure bounds and working Shop/Inventory links. It alone requires no migration, Polar remapping or calendar adoption, but all release identities still match.
+- Historical preflight: 10 October 08:38 UTC production was `8a4ae26856b1610cdc2d8bf0a70cc019e9bdb154`, healthy, 20 recently active commanders/16 missions; refresh before use. Restore and actual-image rehearsal proved 0146 compatibility and lock timeout, exact stored-object preservation, idempotent adoption, 46 offers and ordinary tests (10,949 passed/30 skips). These are preparation evidence, not deployment or current-population proof. Later 0147/v12 changes require their own qualification. See [full preflight](evidence/full-release-preflight-2026-10-10.json) and [stage plan](deployment-stage-rollout.md).
 
-A separate, explicitly authorized owner operation, and the only one that removes an account.
-`reclaim` takes a season presence and keeps the account because the commander is expected
-back; this takes the person. There is no route and no UI: what is being confirmed is a human
-request that no server-side check can verify.
+Remaining gaps: manual canonical release gate; no external paging for health/queue/LISTEN/Valkey/unknown events; no general old-client version handshake (cosmetic inventory alone declares IDs); manual SQL cutoff lacks a first-class fail-closed CLI; isolated capacity soak is outside ordinary deploy.
 
-Dry run first — it prints who would go and everything they hold, because the one failure this
-command must not have is deleting the wrong person on a name collision:
-
-```bash
-compose=(docker compose -f docker-compose.prod.yml)
-
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  delete-account 'nosferatu'
-# reads: WOULD DELETE … / worlds … / Nothing was written.
-
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  delete-account 'nosferatu' --yes
-```
-
-**Take a fresh dump and rehearse it on a restored copy first.** There is no undo: the command
-runs in one transaction against a live world, and the nightly dump is the whole of the way
-back. Restore into a disposable database exactly as step 5 does, run the command there, and
-compare the conservation query below before touching production.
-
-**A CAPTURED COLONY IS HANDED BACK, NOT DELETED.** A colony deleted outright is a world that
-has left the galaxy — one fewer thing to fight over for the rest of the season, and
-`neutrals + colonies = 65` permanently red on every later deploy. The command re-seeds each
-colony's address from the season's own generator: same slot, same tier, same profile seed,
-same name it was born with. An address the generator never put a neutral at — a Silent Space
-departure site — is left empty, because re-seeding one there would make a 66th world. Verify
-with the conservation query in "Live galaxy acceptance"; the capital count falls by one and
-the caretaker pool does not move.
-
-**IT TAKES OTHER PEOPLE'S HISTORY WITH IT, and that is stated rather than hidden.** Every
-`battle_report` naming this commander goes, on both sides, and so does every probe reading and
-telescope watch other commanders held on the removed world. It is the same trade a wipe and a
-reclaim each make, it is the only one the schema allows, and the person asked. Count it before
-running, so the answer is a number rather than a surprise:
-
-```sql
-SELECT count(*) FROM battle_reports
- WHERE attacker_player_id = :player OR defender_player_id = :player;
-```
-
-It refuses, in words rather than a constraint name, on: anything still in the air
-(`WORLD_BUSY` — let it land and run again), a commander the server plays (`BOT_ACCOUNT` — use
-`pnpm bots retire`), an author of public news (`ANNOUNCEMENT_AUTHOR`), an account with Silent
-Space move history other return addresses hang off (`TRANSFER_HISTORY`), and a queued return
-application (`RETURN_QUEUED`). Nothing is written on any of them.
-
-## Moving one commander into Silent Space by hand
-
-Silent Space is otherwise entered by absence alone — the five-minute sweep reads
-`inactivityEligible` and nothing else decides. This is the one door absence cannot open: a
-commander who is playing right now and has asked, in a message, to be taken out of the main
-galaxy. The server cannot verify that request, so the operator answers it, exactly as with
-`delete-account`.
-
-```bash
-cd ~/astera
-compose=(docker compose -f docker-compose.prod.yml)
-
-# Dry run first. It resolves the name and prints who would move and what they hold.
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  silent-space 'CommanderName'
-# reads: WOULD MOVE … / out of … / worlds … / Nothing was written.
-
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  silent-space 'CommanderName' --yes
-```
-
-**IT IS NOT A DELETION AND NOT A TRAPDOOR.** Nothing is destroyed: world ids, buildings,
-stock, fleet and research travel with the commander, the capital and colony addresses they
-leave become their return addresses, and the ordinary return application brings them home to
-those addresses from inside the game, with no operator involved. The dry run exists for the
-same reason `delete-account`'s does — `display_name` is not unique, and two matches stop the
-command rather than pick one.
-
-**`--yes` WAIVES THE ACTIVITY CLOCK AND NOTHING ELSE.** Every other fence still refuses, and a
-refusal is a status with nothing written: `FLIGHT` (a fleet, mining run, raid, trade or convoy
-in the air, theirs or somebody's aimed at them), `EVENT` (an unfinished build or research, or
-an event already overdue), `EFFECT` (recovery, an occupation window, a live wreck), `UNITS`,
-`CAPACITY`, `CONTENTION`. Let it land and run again — never clear a fence to force the move.
-
-Verify with the conservation query in "Live galaxy acceptance". The capital count on the MAIN
-shard falls by one, each colony site reopens as a caretaker world, so `neutrals + colonies`
-is unchanged at 65, and `orphaned_neutral_state` stays 0. The Silent Space shard gains the
-commander and their worlds; its own pool is not a 65 and is not an acceptance figure.
-
-**Rehearse on a restored copy first.** It runs in one transaction against a live world and the
-nightly dump is the whole of the way back. Restore into a disposable database exactly as step 5
-does and run it there. A frozen snapshot has one artefact worth knowing about: events that were
-in the future when the dump was taken are overdue by the time the rehearsal runs, so the
-rehearsal can answer `EVENT` where production would not.
-
-First use, 2026-09-15: `CaptainZovi`, at their own request, out of Vantage (`EU-1`) and into
-`WAIT-1` on transfer `663f07d2-35d9-4873-a00b-e8ff7d8fb512`. Rehearsed on a copy restored from
-`astera-20260915-135156.sql.gz`, including the return, which put the same world ids back on
-`EU-1` — at pooled addresses rather than the ones they left, which is the design. Production
-after: `EU-1` 21 colonies + 44 neutrals = 65, `orphaned_neutral_state` 0, both vacancies open,
-the colony site reopened as `Neutral T1-455`, fleet and stock unchanged, unemitted transfers 0,
-all four processes healthy and unrestarted.
-
-## Polar second cosmetic wave — 10 October 2026
-
-PR #2 is merged as `6e6a562`. The 16 new paid appearances exist in both Polar environments:
-four rings, two engines and ten standards. The two new included standards remain free.
-Each environment now has 46 offers (nine planets, the bundle, 36 other paid cosmetics).
-Rings/standards cost EUR 1.99 or TRY 49; engines cost EUR 2.49 or TRY 69. Original product
-IDs and prices are retained. This task provisions products and prepares code; it does not
-deploy the production application. See [release evidence](polar-wave2-integration-2026-10-10.md).
-
-The release also removes Inferno's raised arcs and the secondary crossing Nebula/Prism
-belts at the owner's request. Keep its three refreshed WebP thumbnails with the matching
-client assets. Both Polar environments already use these same revised product images.
-
-There is no database migration for this catalogue release. Use the existing rolling runbook
-and qualify the complete release diff independently of this note. On the VPS, Compose reads
-`~/astera/.env`; editing `.env.production.example` or a separate `.env.production` does not
-update running containers.
-
-1. Retain the running image, webroot and a private copy of the runtime `.env` alongside the
-   runbook's rollback artifacts. Use mode 600 for the environment backup; never paste tokens
-   or webhook secrets into logs or Git.
-2. First roll the qualified new image across all three APIs and the worker while retaining
-   the current twenty-extra mapping. This compatibility stage keeps the current offers and
-   installs the new catalogue/webhook enum plus the inventory compatibility view. Verify
-   health and runtime commit, then retain that running image under a distinct
-   `astera-server:polar-wave2-compatible-<release sha>` tag. It is the rollback floor for
-   any new-item checkout created after activation.
-3. Replace only `POLAR_COSMETIC_PRODUCTS` in the runtime `.env` with the compact JSON from
-   `config/polar-cosmetics.production.json`. Keep `POLAR_ENV=production`, the existing live
-   token, enabled checkout flag, return URL and live webhook secret. Keep the ten existing
-   `POLAR_PRODUCT_*` planet/bundle IDs. Sandbox product IDs cannot be used in production.
-   The mapping must contain 36 paid extras and exclude Vanguard, Orbital Guard, Bastion and
-   Meridian. The committed production template contains the matching mapping for reference.
-4. Recreate all three APIs on the qualified new image, one at a time using the existing
-   health/drain procedure, and then the worker. Recreate containers through Compose so the
-   updated environment is read; `docker restart` retains the previous environment. Keep
-   the existing production webhook URL and subscription unchanged (`order.paid`,
-   `order.refunded`, `checkout.expired`, raw payload).
-5. Before publishing the new webroot, require healthy new-image APIs and verify
-   `/api/skins/polar-pricing` exposes all 46 offers with the expected EUR/TRY regional
-   prices. Then publish the new hashed client assets and both public price pages. The new
-   client declares its known cosmetic IDs on inventory reads; old open tabs receive the
-   frozen pre-wave-two view. Rights remain stored and appear when the client updates.
-6. Verify one new product per category in the store, the included standards, and delivery
-   monitoring. Do not use a real card solely for deployment verification; sandbox payment,
-   refund and redelivery qualification is recorded in the linked evidence.
-
-**Rollback boundary.** Before any new-item checkout intent exists, an old-catalogue rollback
-requires restoring its matching old `POLAR_COSMETIC_PRODUCTS` as well as the old image/webroot:
-the old environment parser rejects the new IDs. Once a new checkout intent exists (including
-a pending checkout that could be paid later), never return the webhook receiver to a
-pre-wave-two image. Its old item enum ignores a new-item payment/refund after recording the
-webhook as seen, so a subsequent retry would not repair delivery. Restore the retained compatibility image and its old mapping/webroot to close new sales
-while still processing already-created new-item orders, or forward-fix. That receiver
-uses the product stored on the intent and does not need a current sale mapping to
-fulfil or refund the intent. Disabling new
-checkouts cannot cancel already-open hosted checkouts. Do not delete purchase intents,
-entitlements or webhook receipts as a rollback shortcut.
-
-
-## Remaining operational gaps
-
-- `deploy/deploy.sh` is not a production release gate; the manual sequence remains canonical.
-- There is no external alerting or paging for `/health`, queue failure, LISTEN/cache invalidation
-  loss, Valkey readiness or unknown worker events.
-- There is no general client/API version handshake or forced-reload path. Cosmetic inventory
-  now declares known IDs; other breaking route changes still require a one-release
-  compatibility window for already-open tabs.
-- The five-minute cutoff is production-rehearsed but remains an explicit SQL owner operation; it
-  is not a first-class fail-closed CLI command.
-- Capacity soak is an isolated, long-running qualification and is not part of the ordinary deploy
-  sequence. Rerun it before claiming a new capacity result after a capacity-sensitive change.
-
-
-## Silent Space activation release
-
-Final behavior is specified in `docs/handoffs/sessiz-uzay-entegrasyon-plani.md`.
-The activation release builds on the previously deployed bridge. It adds HTTP
-placement fences, cycle result uniqueness, history isolation and the final colony return
-policy. MAIN departure colony sites reset to neutral; eligible returns reuse those sites
-and may exceed player capacity. Capital addresses have a safe fallback; new joins stay capped.
-
-Run the five-minute worker with `SILENT_SPACE_ENABLED=false` throughout mixed-version rollout.
-After qualification and four-process/web acceptance, set these worker values and recreate
-only the worker:
-
-```dotenv
-SILENT_SPACE_ENABLED=true
-SILENT_SPACE_BATCH=5
-SILENT_SPACE_MAX_SHARDS=16
-```
-
-**D212 (2026-10-07/08).** Migrations 0143 (`players.last_progress_at`, backfilled from
-`last_active_at`) and 0144 (`pirate_raids.recalled_at`) are expand-only. Keep the existing rule:
-`SILENT_SPACE_ENABLED=false` while API instances are mixed, so every order is stamped by new
-code before the 30-hour sweep runs. The first sweeps after enabling take every MAIN commander
-whose last login is older than 30 hours; at `SILENT_SPACE_BATCH=5` per five minutes that is 60
-an hour (`SILENT_SPACE_BATCH` accepts up to 20 for a faster first wave). Measure the wave first:
-`select count(*) from players p join seasons s on s.id = p.season_id join shards h on h.id =
-s.shard_id where h.role = 'MAIN' and s.status = 'live' and greatest(p.last_progress_at,
-p.joined_at, p.main_entered_at) <= now() - interval '30 hours'`.
-
-Do not change WORKER_POLL_MS. The maintenance lease persists its next due time across restarts.
-Inspect first and subsequent maintenance results, audit/outbox, placement/world consistency,
-queue failures and late fleet events. Unexpected failures mean disable transfers and forward-fix,
-never restore an old dump over subsequent player activity. Existing WAITING placements stay playable.
-
-**Local qualification (2026-10-08).** The local release was integrated with deployed
-`f2d8c97`; migration 0142 and the entire deployed journal prefix remain unchanged. Workspace
-types, root lint and production build passed. Rules: 2007 passed; server: 3008 passed,
-one existing skip; web: 5519 passed, 29 existing skips. Stale reward-count, resolved-world
-country-key, text and Wiki-link assertions were updated to the intended behavior; the
-reward check now compares every persisted reward record, and the fog allowlist stays exact.
-One overlong Wiki metadata description was shortened without changing its gameplay explanation.
-Economy simulations, snowball audit and calibration remain excluded as authorized below.
-The clean deployed baseline and this candidate produce the identical TAX failure: 0.0325
-against the 0.035 floor, with identical per-seed values. No balance band was changed.
-Isolated HTTP loop, two-client movement and real-browser checks passed for the game shell,
-EN/TR Wiki, seven opening-screen sizes, map identity labels, six-language rewards/transfer,
-Silent Space and the real-time brand quiz/payout/reload flow. Harnesses now wait for the
-opening cover and the intentional return-card delay; the loading review resizes one mounted
-screen to avoid Chromium's repeated development-module request limit.
-
-Migration 0064 backfills season_results.cycle_id and enforces one result per account/cycle.
-Preflight must find no duplicate account/cycle results. Rehearse on a fresh restored dump;
-compare player/world IDs, counts, activity, coordinates and period boundaries before/after.
-Old worker result INSERT is incompatible with the new NOT NULL field: stop the singleton
-worker for migration, resume the new worker with transfers off, roll APIs one at a time,
-then swap the prepared web artifact. The owner explicitly approved a short interruption if
-necessary; keep nginx/site serving if the documented compatibility checks pass.
-
-The HTTP placement gate adds two pool connections per API (six across three replicas).
-Include them in host connection-budget acceptance. Active HTTP responses hold shared galaxy
-leases; transfer takes the exclusive side with fail-fast contention handling. Existing clients
-reconcile via /me and placement_changed; stale actions cannot mutate a moved world.
-
-The notice appears once per placement/device and can be reopened from Menu → Silent Space.
-It submits only explicit return intent. Season reset still applies. Known baseline failures:
-six owner-authorized simulator skips; three unchanged bots-turn assertions. Do not hide new
-failures behind these. Actual qualification and activation evidence is appended below.
-
-## Working-week calendar, dynamic asteroids and the six-hour shield — 2026-09-16
-
-Owner requirement: **no reset of the live season.** Everything below is expand-only or gated
-behind an operator command, so the ordinary release rules apply.
-
-**What ships (merged master).** Migration `0089` adds colony faults, `planets.loyalty DEFAULT 100
-NOT NULL`, and four worker event kinds. `0090` adds nullable season-close markers. `0091` adds
-`battle_reports.colony_faults DEFAULT []`. `0092` adds `planets.recovery_boost_until`. `0093` adds
-the `asteroid_hour` event kind, dynamic-field season columns and `asteroid_spawn_hours`. The
-journal order is `0089`–`0093`; do not use the pre-merge branch numbering. Existing colonies
-start at 100 loyalty. After the migrations commit, `runMigrations` arms a `fault_spawn` event
-for every live colony already at Core 6 or higher; it does not create a fault immediately.
-
-**Step 6 reading.** The DDL is expand-only, but the migration command's fault backfill can
-produce `fault_spawn` while the old worker is still live. That worker does not know the kind and
-could consume it as unknown. **Stop the singleton worker before migrating production, roll all
-three APIs to the new image, then start the new worker**, while keeping the APIs serving. This
-also prevents a new fault from becoming active while an old API still permits the affected
-action. This is Rule 12's worker-stop condition: report the active-commander count and obtain
-owner approval before either the stop or production DDL. `asteroid_hour` remains gated by
-`adopt-event-calendar`; run that command only after every API and the worker runs the new image.
-
-**Until the command runs, the live season keeps its old windows and derived field.** The new
-server may apply the six-hour recovery shield, but the new weekly event times are not live.
-Shield deadlines granted before this release retain their stored deadline, and their struck
-worlds have no boost marker; the six-hour/+100% rule applies to defeats settled by the new code.
-Count active old shields in the preflight so this transition is explicit.
-
-**Adopt the live season only as a separately approved operator action after all four server
-roles are on the new image, ideally before publishing the new web artifact.** Inventory every
-live shard. The command below intentionally omits `--shard`, so it adopts them all; use a shard
-filter only if that shard's calendar can safely differ from the public guide. The web events guide
-uses the code's schedule, while an unadopted live season still follows its old persisted calendar.
-Do not publish a guide that promises the new windows while leaving populated shards unadopted.
-
-```bash
-compose=(docker compose -f docker-compose.prod.yml)
-
-# Dry run: the real transaction, rolled back. Reports the cutover hour and the row counts.
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  adopt-event-calendar
-
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  adopt-event-calendar --yes
-```
-
-What it does, in one transaction, at the NEXT hour boundary (the cutover):
-
-- copies the season's shower rows into `seasons.asteroid_legacy_calendar` and sets
-  `asteroid_dynamic_from`. The derived field is read from that copy from now on, so **every rock
-  already in the sky keeps its index, its id, its claims and the craft flying at it**. Derived rocks
-  that would have appeared at or after the cutover are never born;
-- removes every shower and convoy row starting at or after the cutover that does not match the
-  current definitions, with its queue moments, and deals the weekday/weekend windows from the cutover
-  on. Windows that opened before the cutover and every merchant row are untouched;
-- queues the first `asteroid_hour` at the cutover. The worker then opens one hour per hour.
-
-It is idempotent (a second run reports `0 removed, 0 added`). **Do not run `restamp` or
-`sync-events` for `ASTEROID_SHOWER` or `INTERGALACTIC_CONVOY` on a season that has not adopted:**
-`restamp` refuses the old window starts (`plannedEffectFor` finds no matching window), and
-`sync-events` would append the new windows BESIDE the old ones and re-deal the derived field.
-
-**Verify after the cutover hour:**
-
-```bash
-docker exec astera-postgres-prod psql -U astera -d astera -tAc \
- "select hour_starts_at, active_players, jsonb_array_length(lanes)
-    from asteroid_spawn_hours order by hour_starts_at desc limit 3;"
-```
-
-For releases from 2026-10-05, the raw eligible population is eligible active people plus
-`floor(active non-retired bots / 2)`. Asteroid `active_players` may reflect the existing rolling
-average after the founding day; `eligible_players` records the raw figure. Pirate hours use
-the same eligible population. Already recorded hours retain their population and object IDs.
-
-## Monument release — 2026-10-04
-
-Feature contract and review: `monument-design-plan.md` and the final section of
-`monument-code-review.md`. New seasons default to ruleset 16 and atomically deal five
-monuments with five fixed-HP clouds. Existing ruleset 14–15 seasons retain their rules;
-do not rewrite their version or backfill monuments. `MONUMENT-LOCAL` is a development
-shard and is not seeded by a production process.
-
-Schema journal now contains **141 migrations**, ending at
-`0140_monument_return_notice`. Apply the complete ordered `0127`–`0140` chain with
-the new image's migration command. Do not rename applied `0138`/`0139` journal entries.
-The local database has 141/141 applied; that is not a production migration rehearsal.
-
-Two release conditions need operational attention:
-
-1. `0130` changes `planets.deuterium` and `buffer_deuterium` to double precision so
-   physical cargo can preserve fractional production. `ALTER TABLE` can lock/rewrite
-   the populated table. Measure it on the restored production backup using the existing
-   preflight steps; use the release runbook's required maintenance sequence if the
-   observed lock/rewrite cannot fit the serving budget. No production timing is claimed
-   by the unit or local tests.
-2. The new worker knows `monument_arrival`, `monument_loss`, `monument_respawn` and
-   `monument_probe`; old code does not. Stop the singleton worker for the migration/
-   version cutover, migrate with the new image, roll all APIs, then start the new worker.
-   Do not open a ruleset-16 season or allow rollover until all these roles run the new
-   code. Publish the matching web artifact as part of that release. Once a ruleset-16
-   season has active fleets, rolling only the worker/API back to the old image is unsafe;
-   use the production runbook's tested restore procedure if rollback is necessary.
-
-Preflight must be green with `pnpm verify --exclude-sims`. The owner explicitly excluded
-season-economy simulations, snowball audit and calibration; this command still checks
-workspace types/lint and all other rules/web/server tests. Historical baseline failures
-are not proof of a passing release gate. Review the final recorded result before shipping.
-
-After rollout, check `/health`, `pendingMigrations = 0`, new live-season version 16,
-exactly five monument rows and five monument-anchored HP clouds, public galaxy target
-visibility, a normal planet launch, and worker failure/stranded-flight counters. Test a
-monument quote/send/recall with the release test commander, including capacity-return
-news. Keep `/health` and the worker log visible during this smoke. Production execution
-and maintenance approval remain part of the existing deployment runbook; this feature
-review did not deploy or stop production.
-
-## Chat, input and spawn follow-ups — 2026-10-05
-
-This patch adds no migration and does not require a season reset. The web changes include
-16 px editable controls, remembered Telescope/Radar range toggles, the Core/tier information
-box, double-click message actions, and room colour across the entire chat sheet. It also
-includes the pending chat podium, craft-detail recalls, landmark occlusion and HUD fixes.
-
-Active bots contribute half their number to future asteroid and pirate hours, rounding an
-odd remainder down. Retired/inactive bots stay excluded and human eligibility gates remain.
-The four current asteroid shower windows use definition version 10, at the same starts:
-
-| Türkiye time | Weekday | Weekend |
-| --- | --- | --- |
-| Lunch | 12:30–13:00 ×4 | 13:00–13:30 ×6 |
-| Evening | 20:00–20:30 ×6 | 20:00–20:30 ×10 |
-
-**Changing the image does not rewrite a live season's stored calendar.** Once all APIs and
-the worker run the matching code, use the existing `adopt-event-calendar` dry run and `--yes`
-commands above before publishing the matching events guide. Adopt every live fixed-calendar
-shard. Future windows change from the next hour boundary; opened windows, existing asteroid
-IDs, claims and flights remain intact. The command is idempotent. Do not use a wipe,
-`restamp` or `sync-events` for this calendar change. Restore a matching stored calendar as
-well as images if this change needs rollback.
-
-Local validation excludes economy simulations and snowball audits; the recorded evidence is
-in `out/seven-followups-20261005`. Mobile browser emulation checks focus scale and computed
-control sizes; it does not claim an actual iPhone hardware test. The owner authorized the
-complete rollout on 2026-10-05. Use the rolling path, retain the previous image/webroot and
-rehearse the backup restore and calendar adoption before applying it to production.
-
-## Owner list 2026-10-06 — eleven fixes
-
-No migration and no season operation: the rolling path, with the image and the webroot as the
-rollback (rule 10). `/api/season` gains an additive `monumentHonorees` field; an already-open
-client ignores it (rule 11).
-
-**Rule 13 — the live season changes on the first request the new image serves.** No row moves;
-the code reading them does:
-
-- Every cargo hold (Courier/Wayfarer/Atlas/Argosy) flies 2.5× (`TRANSPORT_SPEED_MULT`); the
-  Prospector flies 1237.5 (2× September); the merchant keeps its pace.
-- A paced flight now comes home at its own pace: raid survivors, a transfer's returning group and
-  clan joint-war survivors. Flights already in the air keep their stored `arrive_at`; a raid still
-  outbound at deploy time will come home on the NEW rule when it lands.
-- The public claim window is a fixed 90 minutes (was derived, 81). Claims already open keep their
-  stored `claim_until`.
-- A pirate whose warships are all down loses its holds too (`pirateOverrun`): DECISIVE, wreckage,
-  hoard. `pirates.ts` changed only for this; the derived lane (rosters, positions) is untouched.
-- The launch ruler's success lines and the bots' raid judgement count a mutual wipe as no success.
-- Monuments carry this galaxy's previous-season top five ("Name • Monument").
-
-Client-only: the Dyson far tier is the simplified ring (`dyson_1_lod.glb`), bloom's luminance
-pass discards non-finite pixels (`finiteGuard.ts`), the timers sheet lists the whole queue, the
-desk outline selects a world, and the recall line states what is true of each flight.
-
-## Owner decision 2026-10-07 — the raider's first hour on a claim
-
-**One migration, expand-only:** `0141_claim_priority` adds two nullable columns to
-`neutral_planet_state` (`claim_priority_player_id` → `players.id ON DELETE SET NULL`,
-`claim_priority_until`). The old image neither reads nor writes them, so step 5b passes and the
-rolling path stands (rule 5). `/api/galaxy` gains an additive `neutral.claimPriorityUntil` and a
-per-caller `claimPriorityMine`; an already-open client ignores both (rule 11). The colony-slot chip
-fix of the same day ships with it (client only).
-
-**Rule 13 — the live season changes on the first request the new image serves.** A claim opened by
-a decisive raid from then on gives its first 60 minutes (`SETTLEMENT_PRIORITY_MINUTES`) to that
-raider alone, if they had a free colony slot; a stranger's settlement is refused at launch
-(`CLAIM_PRIORITY`) when it would land inside the hour, and turned back if it ever arrives inside
-one. Claims already open at deploy time have null columns and stay open to everyone.
-
-**Order on the rolling path.** The new image refuses a database behind its journal, so production
-is migrated FIRST, with the new image as a one-off (rule 6), after step 5b has booted the retained
-image against the migrated restore. The `ADD CONSTRAINT … FOREIGN KEY` briefly takes a
-`SHARE ROW EXCLUSIVE` lock on `players` and validates an all-null column — milliseconds. Until the
-worker is rolled (last), a claim opened by the old worker carries no hour; that is the same
-"open to everyone" a pre-deploy claim has.
-
-**Client only, same release:** the Fleet page's home and Hangar views take a press on a world's name
-to that world (selected, as the desk outline does); the galaxy's monument finder lists the five in
-last season's rank order (rank N stands on monument N).
-
-**Qualification (1a).** rules 1988/1988; web 5252 green, the one red is
-`resource-state.test.tsx`, red at HEAD; server 201/202 files green on the release candidate, the one
-red (`intel-states` fog key list) fixed in it and re-run green with the galaxy-route files (285);
-`snowball-audit` 14 red, inside its known 13–14 at HEAD. **The sim set grew by one:**
-`season.test.ts` "TAX holds its band" reads 0.0325 against the 0.035 floor with the first hour on,
-and passes with it off — the rule's own effect, measured, reported to the owner, and shipped on the
-owner's instruction ("her şeyi deploy et"). The band was not widened (1a).
-
-## Asteroid spawn correction — 2026-10-09
-
-This release adds migration **0146_asteroid_generation_snapshot**; the journal now has
-147 entries. Inventory and apply every pending migration in order, including earlier
-release entries. The new migration adds one nullable JSONB column to
-`asteroid_spawn_hours`, without a default, backfill, queue change or season reset.
-
-The incident audit found the production v10 shower matching its stored plan, rather
-than duplicate queue deliveries. At supply 35, its 30-minute weekday evening ×6
-window produced 105 shower rocks and another 18 normal rocks later in the hour.
-This release halves future shower multipliers and fixes the following hazards:
-
-- Population smoothing reads the current raw count and only the preceding five actual
-  hours. An outage no longer makes yesterday's five stored counts stand in for that window.
-  Founding-day behavior and smoothing over available recent samples remain intact.
-- `restamp` refuses a shower whose stored duration differs from its ruleset's authored
-  shape. It also refuses a changed shower whose containing asteroid hour is already
-  planned, even when the shower starts later in that hour. A rejection rolls back the
-  transaction. A changed shower also rejects an already-processed start or end marker
-  when its hour job is delayed; an unchanged definition stays a no-op. Use full calendar
-  adoption for this release.
-- Every new asteroid hour stores its complete generation settings and algorithm version.
-  Old rows with null `generation` use the immutable pre-release v1 settings. The RNG order,
-  indexes, public IDs, claims, birth/expiry times and mining targets remain unchanged.
-  Subsequent balance constants cannot replenish the ore of a depleted stored-hour rock.
-  The field cache and manual bonus command use the same stored snapshot.
-- Calendar adoption rechecks committed hours and processed lifecycle markers after it
-  obtains the season lock. If the command waited across an hour boundary, its captured
-  clock cannot re-deal the worker's newly opened hour. It also preserves an occurrence
-  whose end was delivered while its start still waits for retry. The cutover advances
-  beyond every protected hour, including an unexpectedly preplanned future hour.
-
-**Shower definition v11** retains all starts and 30-minute durations:
-
-| Türkiye time | Weekday | Weekend |
-| --- | --- | --- |
-| Lunch | 12:30–13:00 ×2 | 13:00–13:30 ×3 |
-| Evening | 20:00–20:30 ×3 | 20:00–20:30 ×5 |
-
-For supply 35, the future weekday evening hour becomes **53 + 18 = 71** rocks
-(previously 123), with 18 reserved for the shower's first five minutes (previously 44).
-The weekend evening becomes **88 + 18 = 106** (previously 193). Existing rocks can
-remain visible for their remaining 2.5–5-hour lifetime, and partially mined rocks remain
-until depleted or expired. This release reduces future arrivals; it does not erase stock.
-The web events guide and Wiki read these values from the shared rules package.
-
-**Release order:**
-
-1. Follow steps 1–6 of this runbook with one clean, pinned commit and prebuilt server/web
-   artifacts. On a disposable production restore, rehearse all pending migrations and
-   boot the retained old image against the migrated copy. Migration 0146 is expand-only;
-   it introduces no event kind and old writers may leave the new column null. Measure its
-   table lock on that restored copy; local tests are not a production timing measurement.
-   Apply Rule 12 if this or another pending migration has an actual stop condition.
-2. Before the rehearsal migration, record every existing asteroid spec/public ID, its
-   claims and all active mining targets at a fixed read time. Require identical values
-   after migration and with the new image, using the same DB/key/time. Keep the retained
-   image, webroot, database backup and pre-adoption calendar/queue snapshot.
-3. Migrate once with the pinned new image using the runbook's one-off migration command.
-   The new image requires the column before it boots. Roll all three APIs and the
-   singleton worker to that same image; verify all four health documents and
-   `pendingMigrations = 0`. The unchanged ore/orbit/lifetime settings allow the rolling
-   interval; do not combine this with another asteroid generator balance change.
-4. Only after every role matches, run the calendar dry run, review its next-hour cutover,
-   and apply it for **all live fixed-calendar shards**:
-
-   ```bash
-   compose=(docker compose -f docker-compose.prod.yml)
-   "${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-     adopt-event-calendar
-   "${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-     adopt-event-calendar --yes
-   ```
-
-   The whole future window shape/effect adopts from the reported next unplanned hour
-   boundary. If an hour or lifecycle boundary was committed while the command waited,
-   or a future hour is already planned, the report may move the cutover later. Opened hours
-   stay frozen, including a 12:30 shower already planned at 12:00. Do not use `restamp`,
-   `sync-events`, a wipe or a queue reset for this rollout. Ordinary later deploys do not
-   require repeating calendar adoption unless the event definitions change again.
-   Investigate an unexpectedly distant cutover's queue timestamps and planned rows;
-   keep those frozen rows intact. Publish the matching web after the reported cutover
-   boundaries and after any retained old shower that extends beyond a boundary has ended.
-   Adoption preserves a retained occurrence's whole window. This keeps the weekly guide
-   from labeling a still-running old window with the new multiplier. Until then, the
-   active-event API continues reporting that old occurrence's actual stored effect.
-5. Observe one newly opened hour after cutover: one row per season/hour, one next-hour job,
-   raw/rolling counts limited to the actual window, v11 calendar multipliers, non-null
-   generation snapshot, and lane counts matching `planAsteroidHour`. Check worker errors,
-   failed/stranded events, unchanged depleted claims and active mining arrivals. A global
-   rock count can include earlier hours and normal births; compare the individual hour's
-   plan rather than expecting the whole map to empty immediately.
-
-**Rollback:** retain the additive column. Existing opened hours and their claims must not be
-resized or deleted. Coordinate retained images/web with a reviewed restoration of calendar
-windows and lifecycle jobs from the next hour boundary, only where no asteroid hour has
-already been planned. Keep a pending half-hour window intact if its containing hour is
-frozen, and retain already-processed lifecycle occurrences. Restoring images alone leaves
-v11 in the stored calendar. Do not restore a whole old DB over newer player writes. If a
-later release changes generation parameters or algorithms, old images do not understand
-those snapshots: first prove compatibility, and retain the v1 algorithm/fallback byte for
-byte. The freeze covers stored dynamic hours; legacy derived seasons still require Rule 13.
-
-Local proof and exact test commands are in
-[the fix report](asteroid-spawn-fix-2026-10-09.md). This task did not execute a production
-deploy, migration, calendar adoption or restart.
-
-## Full master release preparation — 10 October 2026
-
-The release collects the asteroid correction, store/inventory review, Polar wave two,
-approved ring simplifications, colony abandonment, monument fleet recall, temporary
-session recovery and chat explanations. The separate `komutan-gemisi` and `ui-v2`
-worktrees remain excluded. The owner cancelled the proposed monument rate update:
-retain **4 HP/minute and 10 deuterium/minute**, with no rate-adoption command or migration.
-
-Read-only production inspection at 08:38 UTC found all three APIs, the singleton
-worker, the checkout and public client on `8a4ae26856b1610cdc2d8bf0a70cc019e9bdb154`.
-Health and host-capacity checks passed; failed events, overdue pending/processing jobs
-and overdue missions were zero. There were 20 recently active real commanders and
-16 in-flight missions. These are inspection-time counts; refresh them before rollout.
-The live fixed-calendar shards are **EU-1, EU-2 and WAIT-1**. Stage is a different,
-older release and is not evidence that this complete candidate has passed rehearsal.
-
-Only migration **0146** is pending (146 applied, 147 expected). It adds a nullable
-JSONB column without a backfill or new event kind. Rehearse it on a fresh production
-restore and prove old/new image compatibility before selecting the rolling path.
-Do not repeat historical migration batches, wipes, forced cutoffs or season changes.
-
-Use this combined order with the general gates above:
-
-1. Finish ordinary rules/server/web tests, sequential local typecheck, root lint,
-   the server image and production web build on one clean, pushed SHA. Test fingerprints
-   must work on production's Node 22 as well as local Node 24; the measured final-bit
-   orbit differences are test-encoding differences, not a reason to change live geometry.
-2. Retain the old image by ID, webroot, nginx configuration and a mode-600 runtime
-   environment backup. Take a fresh consistent dump into a separate private release
-   directory, verify its checksum and restore it. Avoid backup retention pruning during
-   preparation. At a fixed read instant, compare complete asteroid specs/opaque IDs,
-   claims and mining targets between the retained image before migration and the new
-   image after migration. Require exact equality, not rounded fingerprints, for this
-   same-platform production rehearsal. Also compare durable table counts and queue rows.
-3. Measure migration locking, boot the retained image against the migrated restore,
-   exercise the new API/client on the restore, and rehearse calendar adoption there.
-   The new calendar changes future shower arrivals only; opened hours, claims, mining
-   targets and processed lifecycle markers must remain intact. A real stop condition
-   still invokes Rule 12 before any production stop or migration.
-4. Migrate production once with the pinned image, bounding lock acquisition to one
-   second and statements to 30 seconds. Construct a private one-off environment from
-   the intended runtime configuration, adding `lock_timeout=1000&statement_timeout=30000`
-   to its `DATABASE_URL` query parameters. Keep the normal runtime URL unchanged and
-   never print the credentials. If a reader holds the table, require a nonzero exit
-   and an unchanged journal; inspect the blocker and retry after it releases. Do not
-   terminate player transactions or silently increase the timeout.
-   Roll API1, API2, API3 and then the
-   singleton worker while retaining the existing **20-extra Polar mapping**. Require
-   matching image/revision, schema and health across all four roles before activation.
-   Keep that compatible image as the new-item payment/refund rollback floor.
-   The live webhook endpoint's secret matches the VPS `.env`, while all four existing
-   processes still carry an older value. Use the provider-confirmed file value when
-   recreating them; copying the old process environment wholesale would retain the
-   signature mismatch. Preserve the endpoint, subscription, token and return URL.
-5. Activate `config/polar-cosmetics.production.json` (**36 extras, 46 offers total**) by
-   replacing only the runtime `POLAR_COSMETIC_PRODUCTS` value. Preserve live credentials,
-   enabled flag, return URL, existing planet/bundle IDs and webhook subscriptions.
-   Recreate API1, API2, API3 and then the worker on the same image; restart alone does
-   not read the new environment. Verify regional pricing and compatibility with an
-   already-open old client. Use existing sandbox proof for paid/refund/redelivery checks.
-6. With every role on that image, dry-run and then apply `adopt-event-calendar` to all
-   three live fixed-calendar shards, including WAIT-1. Review the actual cutovers from
-   the command rather than assuming the next hour. Do not use `restamp`, reset the queue
-   or delete existing rocks. Publish the staged web only after those cutovers and any
-   retained old shower extending past them have ended, so its guide matches the sky.
-7. Publish through the existing atomic/old-asset-preserving procedure. Verify the public
-   SHA, CSP nonce, assets, pricing pages, inventory/store, session recovery, colony
-   abandonment and monument recall. Perform destructive gameplay smoke checks only
-   on the disposable restore, not on real commanders. Observe the first new hour on
-   every live shard: one stored row, one next-hour job, non-null generation, v11 effects,
-   expected lane counts, no failed/stranded work and unchanged old mining targets.
-
-Rollback combines both feature boundaries. Keep the additive column. Once any new
-Polar checkout intent exists, the receiver must remain wave-two-compatible even if
-new sales close. Calendar adoption is stored data; image rollback alone does not undo
-it. Restore future calendar windows/jobs only at an unplanned hour boundary, preserving
-opened hours and processed occurrences. Never restore an old whole database over
-newer player writes.
-
-Preparation is not a production deploy. Record the accepted SHA, build IDs, restore
-comparison, measured migration/compatibility result, cutovers and acceptance evidence
-before applying this sequence to the live stack.
-
-Preparation evidence: the 08:50 UTC production dump restored successfully
-into a private disposable `_test` database. Counts for all 18 inspected tables matched
-the exact exported snapshot, including 356 planned asteroid hours, 3,572 claims,
-11,583 mining runs and 52,350 queue rows; dump checksum validation passed. This proves
-the backup restore. Read-only Polar inspection
-also verified all 36 configured extras, both configured currencies and the one live
-raw webhook subscription. No live checkout, charge or provider change was made.
-
-Actual-image rehearsal on that restore then applied migration 0146 and required exact
-equality for **3,736 complete asteroid specs/public IDs, 3,572 claims, 14 active mining
-runs, 1,272 pending queue rows and 648 calendar rows**. Both retained and new APIs
-answered preview with HTTP 200 against the expanded schema. The new worker processed
-56 copied-world events with zero unknown kinds or handler failures. The exact DDL
-took **5.084 ms** on a second restore. A held reader produced SQLSTATE `55P03` after
-**1,017 ms** with the image's actual database client; the migration CLI failed without
-changing the journal or 356 stored hours, then succeeded after the reader released.
-The command's roughly 27 seconds include Node startup and are not the table-lock time.
-
-Calendar dry run left the copy unchanged. Adoption replaced only 150 unplanned future
-windows and their lifecycle jobs, retaining earlier fields, claims, mining targets and
-all 225 processed lifecycle jobs. Repeating adoption changed nothing. At the rehearsal's
-10:00 UTC cutover, each of EU-1, EU-2 and WAIT-1 opened exactly one v11 hour with a
-non-null v1 generation snapshot and one next-hour job; opening it again preserved the
-same row. Those cutovers and populations describe the copy, not a live application.
-The actual production command must report its own cutovers.
-
-The new image's pricing service and isolated HTTP API quoted **46 offers**, with the
-existing 30 product IDs and prices unchanged. A real Turkey geolocation returned TRY
-for configured extras; loopback returned EUR. All four free standards stayed unpriced.
-Checkout remained disabled throughout this rehearsal.
-
-Ordinary qualification completed with **10,949 passing tests and 30 existing skips**:
-rules 112 files/2,031 tests (both Node 22.23.3 and 24.11.0), server 214 files/3,189
-passing tests (five disjoint batches covering every ordinary file), and web 417
-files/5,729 passing tests on Node 22.23.3. Economy simulations and snowball audits
-were excluded under the owner rule. Sequential workspace typecheck and root lint
-passed. The combined store discovery regression had retained a two-standard
-expectation after two more free standards shipped; its corrected four-standard
-assertion also checks Bastion and Meridian. It was observed red before correction
-and green afterwards. No application code changed during this qualification.
-
-Sanitized measurements and application source hashes are retained in
-[the full release preflight evidence](evidence/full-release-preflight-2026-10-10.json).
-
-## Static menu shop showcase — 10 October 2026
-
-The menu entrance now uses one transparent 512×512 WebP (95,750 bytes): lava with
-the Inferno ring and a Red Dragon carrying a Phoenix clan standard. Its showcase
-Canvas, lazy model scene and background breathing animation are removed. Full shop
-product previews retain their existing behavior. A failed image is hidden without
-moving the card or disabling either destination.
-
-This release changes only the web client and its verification harnesses. There is
-no schema, server, rules, calendar or runtime configuration change. Use the rolling
-path with a clean, pushed commit; retain the previous image, webroot and private
-configuration backup. Keep all four runtime revisions and the public release marker
-on that commit under rule 1. Do not repeat calendar adoption or edit Polar mappings.
-
-Carry old hashed assets into the new webroot so already-open tabs can finish loading
-their previous client. They receive the still artwork after a normal reload. Before
-publication, check the new image and prebuilt web artifact; afterwards require the
-public artwork to match its SHA-256 and verify the release marker and CSP nonce.
-Check TR/EN at 350px and desktop width: one image, no showcase Canvas or autonomous
-animation, stable bounds during image loading/failure, and working Shop/Inventory
-destinations. Background galaxy rendering is outside the focused showcase harness.
-
-## Easy / Hard monuments — 10 October 2026
-
-This release adds migration `0147_monument_difficulty`. Existing monument rows
-receive `LEGACY`, retaining their original layout and dispatch rules until the
-explicit adoption below. New ruleset-16 seasons deal eight targets: four Hard and
-four Easy at the eight corners of a sphere-inscribed cube. The first five IDs and
-their honoree identities remain stable when an existing season adopts the deal.
-
-Deploy the migration, every API replica, the singleton worker and the web client
-before adopting a live galaxy. An older API must not remain able to accept combat
-reinforcements. Older clients accept only five ordinals; players need the updated
-client before the eight-target deal is activated. Do not downgrade to the old
-five-target build after adoption without a separate compatibility change.
-
-At the chosen quiet window, inspect one explicitly named live galaxy:
-
-```bash
-pnpm --filter @astera/server season adopt-monuments --shard EU-1
-pnpm --filter @astera/server season adopt-monuments --shard EU-1 --yes
-```
-
-The first command previews. The second rechecks atomically under an exclusive
-season lock. `BUSY` means player control, an outbound/held/returning monument fleet,
-an active monument probe or a preparing/attacking joint operation exists; nothing
-is written, and an application request exits unsuccessfully. Wait and retry.
-`ALREADY_UPDATED` is an idempotent no-op. Repeat explicitly for another galaxy
-only when its own quiet window is suitable.
-
-Adoption preserves closed radiation history, closes old active monument clouds at
-cutover, and opens the new clouds from that timestamp. It never re-prices a past
-flight. It updates neutral garrisons and their respawn templates together, clears
-stale pending loss/respawn events and refreshes the map and private monument read.
-Details and the accepted edge cases are in
-[the monument update record](monument-fairness-plan-2026-10-10.md).
-
-## Asteroid density and event multiplier — 10 October 2026
-
-The base arrival rate is now **0.75 rocks per eligible active commander per hour**.
-Population eligibility and the six-hour smoothing window remain the same. Half of
-the shower's **bonus** rocks are distributed over its first **10 minutes**; the
-remaining arrivals are sampled across the whole window. Counts are rounded to whole
-rocks per lane. Rock lifetimes remain 2.5–5 hours, so existing stock can still be visible.
-
-**Shower definition v12** keeps the existing starts and 30-minute durations:
-
-| Türkiye time | Weekday | Weekend |
-| --- | --- | --- |
-| Lunch | 12:30–13:00 ×2 | 13:00–13:30 ×2 |
-| Evening | 20:00–20:30 ×2 | 20:00–20:30 ×4 |
-
-For a smoothed population of 32, an ordinary hour plans 24 rocks. A half-hour ×2
-shower plans 24 rocks (6 reserved for the first 10 minutes), followed by 12 ordinary
-rocks in the other half-hour. A half-hour ×4 shower plans 48 rocks (18 reserved),
-followed by 12 ordinary rocks: **60 for the hour**, compared with the old Saturday
-evening's 96. These are arrivals for that hour, not the total visible field.
-
-Stored hour plans and generation snapshots stay frozen: the new rate and ten-minute
-setting apply only when the new worker opens an unplanned hour. Existing five-minute
-snapshots and null-snapshot rows retain their original birth times, IDs, ore and mining
-targets. Derived calendars v5–v11 also retain their five-minute distribution; v4 and
-earlier retain their original uniform distribution. Do not rewrite those rows.
-
-This adjustment introduces no schema migration. Inventory other pending migrations
-when preparing a combined release, and follow the existing pinned-image runbook.
-After every API and the singleton worker runs the matching image, preview and apply
-the existing calendar adoption to **all live fixed-calendar shards**:
-
-```bash
-compose=(docker compose -f docker-compose.prod.yml)
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  adopt-event-calendar
-"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  adopt-event-calendar --yes
-```
-
-Review each reported cutover. Adoption changes only unplanned future windows; opened
-hours, future hours already committed and processed lifecycle markers remain protected.
-Publish the matching web after the reported cutovers and any retained old shower have
-ended, so the weekly guide agrees with the sky. The active-event chip reads the actual
-stored event effect and can correctly show a retained 5x window during transition.
-Changing the image alone does not update a live season's stored future calendar.
-Do not use a restamp, queue reset or season wipe for this change.
-
-After cutover, require one row per hour, one next-hour job, a non-null generation
-snapshot with `frontLoadMinutes: 10`, v12 calendar effects, and lane counts matching
-the measured population. Check unchanged depleted claims and mining targets. A repeat
-adoption must make no changes. Rollback must preserve the additive generation column
-and frozen hour rows; image rollback does not reverse the stored calendar adoption.
+Deployment sürecini gereksiz uzatma. Gerekli kontrol testler vs tabiki yapman önemli.

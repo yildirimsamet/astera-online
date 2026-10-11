@@ -89,7 +89,7 @@ export function WorksLine({ state, fill, fullInMinutes, pending, onCollect, onOp
         );
       })}
     </button>
-    {tip && waiting.length > 0 && <span role="note" className="pointer-events-none absolute left-0 top-full z-30 mt-12 rounded-control border border-v2-line-hi bg-v2-deep/95 px-2 py-1 text-micro text-v2-ink shadow-md"><span aria-hidden="true" className="mr-1">☝</span>{t('statusBar.works.firstTip')}</span>}
+    {tip && waiting.length > 0 && <span role="note" className="pointer-events-none absolute left-0 top-full z-30 mt-0 rounded-control border border-v2-line-hi bg-v2-deep/95 px-2 py-1 text-micro text-v2-ink shadow-md"><span aria-hidden="true" className="mr-1">☝</span>{t('statusBar.works.firstTip')}</span>}
     </div>
   );
 }

@@ -198,4 +198,4 @@ talimatlar kapsam içindedir. Bu standart yazım kuralıdır; mekanikleri kod ve
 
 ## One thing to remember
 
-> **Build a multiplayer game that leaves players wondering, “What happened?” after they close it.**
+> **Build a multiplayer game that leaves players wondering, “What happened?” after they close it. AAA+ Premium Visual Quality Optimized for browser**
