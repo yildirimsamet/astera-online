@@ -117,12 +117,11 @@ describe('TradeShip.tsx, by its source', () => {
    * exhaust reads the lift the hull is drawn at — and this is the same rule at
    * zero lift: the plume belongs to the craft, not to whoever remembers it.
    */
-  it('burns a plume behind the hull, at the proportions every craft uses', () => {
+  it('uses the merchant model’s calibrated engines at its drawn size', () => {
     expect(source).toContain('<Exhaust');
-    expect(source).toContain('TRADE_SHIP_SCALE * 0.8');
-    expect(source).toContain('TRADE_SHIP_SCALE * 0.46');
-    // Behind the nose, which `posedCraft` has already turned onto +Z.
-    expect(source).toMatch(/position=\{\[0, 0, -TRADE_SHIP_SCALE \* 0\.42\]\}/);
+    expect(source).toContain('url={MODEL.tradeShip}');
+    expect(source).toContain('scale={TRADE_SHIP_SCALE}');
+    expect(source).not.toContain('-TRADE_SHIP_SCALE * 0.42');
   });
 
   it('preloads with Draco off, exactly like every other craft in the galaxy', () => {

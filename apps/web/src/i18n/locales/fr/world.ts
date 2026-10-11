@@ -13,7 +13,7 @@
 export const galaxy = {
   settlementAway: "Mission de colonisation lancée vers {{world}}",
   deathStarAway: "Étoile de la Mort lancée vers {{world}}",
-  onlineToday: "{{count}} en ligne sur les dernières 24 h",
+  onlineToday: "<0>{{count}}</0> en ligne sur les dernières 24 h",
   worlds: "{{count}} planètes",
   fleetAway_one: " · {{count}} flotte en vol",
   fleetAway_other: " · {{count}} flottes en vol",

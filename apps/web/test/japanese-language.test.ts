@@ -112,7 +112,7 @@ describe('Japanese language support', () => {
     expect(i18n.t('units.daysHours', { d: 1, h: 2 })).toBe('1日2時間');
     expect(i18n.t('units.minutesSeconds', { m: 2, s: 34 })).toBe('2分34秒');
     expect(ja.now.work).toBe('作業完了');
-    expect(i18n.t('galaxy.onlineToday', { count: 100 })).toBe('過去24時間に100人がオンライン');
+    expect(i18n.t('galaxy.onlineToday', { count: 100 })).toBe('過去24時間に<0>100</0>人がオンライン');
     expect(ja.galaxy.worlds).toContain('惑星');
     expect(ja.directives.undefendedShieldedTitle).toContain('シールドが切れるまで');
   });

@@ -328,9 +328,9 @@ describe('the facing table', () => {
    * at 45° or at 90° the round would crab across its own trail, which is exactly
    * what a wrong facing looks like in play.
    */
-  it('declares the missile at the bearing its geometry was measured at', () => {
+  it('declares the accepted replacement missile on its baked canonical nose axis', () => {
     const facing = MODEL_FACING[MODEL.missile];
-    expect(facing).toEqual([0.8332, -0.044, 0.5512]);
+    expect(facing).toBe('+z');
   });
 
   it('declares the Death Star at its measured diagonal bearing', () => {

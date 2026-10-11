@@ -39,7 +39,7 @@ export async function verifyAdminOperations(output) {
           const body = init?.body ? JSON.parse(init.body) : undefined;
           review.calls.push({ path: url.pathname, body });
           let answer;
-          if (url.pathname === '/api/admin/players') answer = { measuredAt: now, onlineWindowMinutes: 5, nextBefore: null,
+          if (url.pathname === '/api/admin/players') answer = { total: 1234, measuredAt: now, onlineWindowMinutes: 5, nextBefore: null,
             players: ['İzci', 'AndromedaCommanderWithALongName'].map((displayName, index) => ({ playerId: `player-${index}`, username: `commander${index}`, displayName,
               seasonId, galaxy: 'Andromeda', galaxyCode: 'andromeda', lastActiveAt: now, mutes: [],
               resources: { storage: { alloy: 1234567890, crystal: 987654, deuterium: 54321 }, buffer: { alloy: 1234, crystal: 567, deuterium: 89 } },
@@ -71,6 +71,7 @@ export async function verifyAdminOperations(output) {
       }, language);
       await page.getByRole('tab', { name: language === 'tr' ? 'Oyuncular' : 'Players' }).click();
       await page.getByText('İzci', { exact: true }).waitFor();
+      await page.getByLabel(language === 'tr' ? 'Toplam çevrim içi komutan: 1.234' : 'Total online commanders: 1,234').waitFor();
       const measure = async name => {
         const geometry = await page.evaluate(() => ({ fits: document.documentElement.scrollWidth <= innerWidth,
           overflow: [...document.querySelectorAll('article')].some(element => element.scrollWidth > element.clientWidth + 1) }));

@@ -16,6 +16,7 @@ const DURATIONS = ['5m', '15m', '1h', '4h', '1d', 'permanent'] as const;
 export function AdminPlayersPanel() {
   const { t } = useTranslation();
   const players = useAdminPlayers();
+  const onlineTotal = players.isError ? undefined : players.data?.pages[0]?.total;
   const scopes = useAdminChatScopes();
   const { mute, mask } = useAdminModeration();
   const [username, setUsername] = useState('');
@@ -44,7 +45,11 @@ export function AdminPlayersPanel() {
 
   return <div className="flex flex-col gap-5 pt-1">
     <section className="flex flex-col gap-2">
-      <SectionHead label={t('community.admin.ops.online')} aside={<Button size="sm" disabled={players.isFetching} onClick={() => { void players.refetch(); }}>{t('community.admin.ops.refresh')}</Button>} />
+      <SectionHead label={t('community.admin.ops.online')} aside={<span className="inline-flex items-center gap-2">
+        {onlineTotal !== undefined ? <span aria-label={t('community.admin.ops.onlineTotal', { total: full(onlineTotal) })}
+          className="rounded-chip border border-v2-line-hi bg-v2-deep px-2 py-0.5 font-v2-mono text-body font-semibold tabular-nums text-v2-ink">{full(onlineTotal)}</span> : null}
+        <Button size="sm" disabled={players.isFetching} onClick={() => { void players.refetch(); }}>{t('community.admin.ops.refresh')}</Button>
+      </span>} />
       <p className="text-micro text-v2-ink-3">{t('community.admin.ops.onlineWindow', { minutes: players.data?.pages[0]?.onlineWindowMinutes ?? 5 })}</p>
       {players.isError ? <Unreachable what={t('community.admin.ops.online')} onRetry={() => { void players.refetch(); }} />
         : !players.data ? <Waiting>{t('community.admin.ops.loading')}</Waiting>

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LOCAL_REFERENCE_ART } from './referenceArt.js';
+import { atlasFrame } from './atlas.js';
 
 /** Public combat VFX outside every sensor circle: readable spectacle, not local glare. */
 export const DISTANT_EFFECT_INTENSITY = 0.35;
@@ -262,14 +262,15 @@ export function smokeTexture(): THREE.Texture | null {
 let plume: Cache | undefined;
 
 /** One MiB on the GPU, shared by every blast. Frame offsets belong to owned clones. */
-export const EXPLOSION_ATLAS = LOCAL_REFERENCE_ART ? '/__ref/dist/fx/explosion.webp' : '/assets/vfx/premium/explosion-v1.webp';
-export const EXPLOSION_GRID = LOCAL_REFERENCE_ART ? 8 : 4;
-export const EXPLOSION_FRAMES = LOCAL_REFERENCE_ART ? 64 : 16;
+export const EXPLOSION_ATLAS = '/assets/vfx/premium-v2/explosion.webp';
+export const EXPLOSION_GRID = 8;
+export const EXPLOSION_FRAMES = 64;
+export const SMOKE_ATLAS = '/assets/vfx/premium-v2/smoke.webp';
+export const SHOCK_ATLAS = '/assets/vfx/premium-v2/shock.webp';
+export const TRAIL_MAP = '/assets/vfx/premium-v2/trail.webp';
 
 export function explosionFrame(texture: THREE.Texture, progress: number): void {
-  const frame = Math.min(EXPLOSION_FRAMES - 1, Math.max(0, Math.floor(progress * EXPLOSION_FRAMES)));
-  texture.offset.set((frame % EXPLOSION_GRID) / EXPLOSION_GRID,
-    1 - (Math.floor(frame / EXPLOSION_GRID) + 1) / EXPLOSION_GRID);
+  atlasFrame(texture, progress, EXPLOSION_GRID);
 }
 
 let engine: Cache | undefined;

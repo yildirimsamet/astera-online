@@ -1,0 +1,15 @@
+[
+  {
+    "name": "wreck-plate-gd-v3",
+    "source": "galaxy-division/models/glb/Art/Debris/Meshes/SM_Debris_11.glb",
+    "ceiling": 156,
+    "originalTriangles": 156,
+    "triangles": 156,
+    "bytes": 220440,
+    "textureSizes": {
+      "nativeAlbedo": 512,
+      "nativeNormal": 512,
+      "nativeOrm": 256
+    }
+  }
+]

@@ -115,11 +115,12 @@ export async function verifyShipSkins(output) {
     const titanFleet = page.locator('[data-fleet-ready="true"]');
     await titanFleet.waitFor({ timeout: 60000 });
     const batches = JSON.parse(await titanFleet.getAttribute('data-exhaust-batches'));
-    assert.deepEqual(batches, [{ count: 16, triangles: 800, singlePass: true }]);
+    // Eight Darts × two ports, four Vipers × four ports, four Couriers × two ports.
+    assert.deepEqual(batches, [{ count: 40, triangles: 800, singlePass: true }]);
     await page.locator('canvas').screenshot({ path: `${output}/titan-fleet.png` });
     assert.deepEqual(errors, []);
     results.push({ titanBatches: batches });
-    console.log('PASS Titan: 16 ship engines in one 800-triangle instanced batch');
+    console.log('PASS Titan: 40 motor ports in one 800-triangle instanced batch');
   } catch (error) {
     await page?.screenshot({ path: `${output}/failure.png` }).catch(() => undefined);
     await writeFile(`${output}/failure.json`, JSON.stringify({ errors, message: error.message }, null, 2));

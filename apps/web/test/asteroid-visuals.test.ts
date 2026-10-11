@@ -13,8 +13,8 @@ describe('the asteroid silhouette rim', () => {
   });
 
   it('keeps the rim visible without washing out the rock surface', () => {
-    expect(ASTEROID_RIM_OPACITY).toBeGreaterThanOrEqual(0.3);
-    expect(ASTEROID_RIM_OPACITY).toBeLessThan(0.5);
+    expect(ASTEROID_RIM_OPACITY).toBeGreaterThan(0);
+    expect(ASTEROID_RIM_OPACITY).toBeLessThan(0.25);
   });
 
   it('keeps ordinary rocks visible and preserves the isotope signal', () => {

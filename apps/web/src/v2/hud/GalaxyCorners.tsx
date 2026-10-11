@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import type { ActiveGalaxyEvent } from '../../api/schemas.js';
 import type { Focus } from '../../galaxy/FocusPanel.jsx';
 import { EVENT_NAME } from '../../lib/nowLine.js';
@@ -102,7 +102,8 @@ export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget
       {onlineToday !== undefined && (
         <p className="flex items-center gap-1.5 text-caption text-v2-ink-2">
           <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-v2-self" />
-          <span>{t('galaxy.onlineToday', { count: onlineToday })}</span>
+          <span><Trans i18nKey="galaxy.onlineToday" count={onlineToday}
+            components={[<strong key="count" className="font-bold text-v2-ink" />]} /></span>
         </p>
       )}
       <p data-testid="view-caption" className="font-v2-mono text-micro leading-snug text-v2-ink grid grid-cols-2">

@@ -9,6 +9,7 @@ import { unitModel } from './model.js';
 import { toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial } from './hitboxDebug.jsx';
+import { SkinAssetBoundary } from './SkinAssetBoundary.js';
 
 /**
  * WRECKAGE ON THE DISC. D32.
@@ -50,9 +51,6 @@ const RING_RATIO = 1.5;
 /** ...but never closer than this, so the band always clears the surface. */
 const MIN_CLEARANCE = 0.22;
 
-export const wreckBandRadius = (planetRadius: number): number =>
-  Math.max(planetRadius * RING_RATIO, planetRadius + MIN_CLEARANCE);
-
 /** Half-thickness of the tap target. Proportional too, with a thumb-sized floor. */
 const TUBE_RATIO = 0.28;
 const MIN_TUBE = 0.24;
@@ -60,8 +58,10 @@ const MIN_TUBE = 0.24;
 /**
  * The model's own axis, and what has to happen to it.
  *
- * The industrial wreck is authored in the YZ plane, with its axis along +X.
- * A quarter turn about Z places the hollow band around the world's +Y axis.
+ * The ring is authored in the YZ plane — its bounding box is 0.21 thick in X
+ * against 0.95 and 0.97 in the other two — so its axis is +X. The disc's worlds
+ * are laid out around +Y, so a quarter turn about Z stands the ring up the right
+ * way. Measured off the file rather than guessed; see the note in `models.mjs`.
  */
 const LIE_FLAT: readonly [number, number, number] = [0, 0, Math.PI / 2];
 
@@ -161,6 +161,7 @@ export function Wrecks({
     <>
       {/* Its own boundary: a model still loading costs this group, never the whole disc. */}
       {placed.map(({ w, at, radius }) => (
+        <SkinAssetBoundary key={w.id} fallback={null}>
         <Suspense key={w.id} fallback={null}>
           <Wreck
             wreck={w}
@@ -172,6 +173,7 @@ export function Wrecks({
             }}
           />
         </Suspense>
+        </SkinAssetBoundary>
       ))}
     </>
   );
@@ -195,7 +197,7 @@ function Wreck({
    * compact, dense cluster (outer radius ~0.42, flatten = 1.6) with the inner hole closed up.
    */
   const isVoid = wreck.planetId === null;
-  const baseRingRadius = wreckBandRadius(planetRadius);
+  const baseRingRadius = Math.max(planetRadius * RING_RATIO, planetRadius + MIN_CLEARANCE);
   const ringRadius = isVoid ? 0.35 : baseRingRadius;
   const tube = isVoid ? 0.4 : Math.max(ringRadius * TUBE_RATIO, MIN_TUBE);
   const flatten = isVoid ? 1 : FLATTEN;
@@ -209,7 +211,7 @@ function Wreck({
    * planet like a chain of tyres. The asset is an annulus already built out of
    * dozens of small pieces — one object, placed once.
    *
-   * The merged industrial wreck uses one material and 2,136 triangles per field.
+   * That also makes it cheap: 2,087 triangles per field rather than 29,000.
    */
   const { scene } = useGLTF(MODEL.debris, false);
   const source = useMemo(() => unitModel(scene), [scene]);
@@ -241,6 +243,7 @@ function Wreck({
     m.forceSinglePass = true;
     return m;
   }, [source]);
+
   useEffect(() => () => { material?.dispose(); }, [material]);
 
   useLayoutEffect(() => {
@@ -291,6 +294,8 @@ function Wreck({
     onSelect();
   };
 
+  const pickTube = isVoid ? tube : Math.min(tube, ringRadius - planetRadius - 0.08);
+
   return (
     <group ref={group} position={at} rotation={[attitude.tiltX, attitude.spin, attitude.tiltZ]}>
       {source && material && (
@@ -312,7 +317,7 @@ function Wreck({
         open for the planet's own hit test.
       */}
       <mesh onPointerUp={pick} rotation={[Math.PI / 2, 0, 0]} frustumCulled={false} renderOrder={-1}>
-        <torusGeometry args={[ringRadius, tube, 6, 24]} />
+        <torusGeometry args={[ringRadius, pickTube, 6, 24]} />
         <HitboxMaterial kind="wreck" />
       </mesh>
     </group>

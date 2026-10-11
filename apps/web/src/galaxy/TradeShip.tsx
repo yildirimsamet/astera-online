@@ -169,28 +169,7 @@ export function TradeShip({
         glow={TRADE_SHIP_GLOW}
         focused={focused}
       />
-      {/*
-        A FOUR-TIMES-SIZE FREIGHTER WAS FLYING WITH DEAD ENGINES. Owner report:
-        *"geminin kıçında motor alevi yok?"*
-
-        `Hull` draws the model and nothing else; the plume is a separate component
-        that every other craft in the galaxy mounts behind it, and the merchant
-        reused the first and forgot the second. The offsets are the ones
-        `Fleets.tsx` uses at all four of its call sites, taken off this craft's own
-        drawn scale so the flame grows with the hull — `posedCraft` has already
-        turned the authored nose onto +Z, so the stern is -Z.
-
-        No lift term: the merchant has no `MODEL_POSE` entry, so `hullPoseLift` is
-        zero for it and the hull sits at its own origin. The moment it is given a
-        pose, this offset has to read that lift too (D154).
-      */}
-      <group position={[0, 0, -TRADE_SHIP_SCALE * 0.42]}>
-        <Exhaust
-          colour={TRADE_SHIP_FLAME}
-          length={TRADE_SHIP_SCALE * 0.8}
-          width={TRADE_SHIP_SCALE * 0.46}
-        />
-      </group>
+      <Exhaust url={MODEL.tradeShip} colour={TRADE_SHIP_FLAME} scale={TRADE_SHIP_SCALE} />
       {onSelect && (
         <mesh name="trade-ship-hit" onPointerUp={pick} renderOrder={-1}>
           <sphereGeometry args={[TRADE_SHIP_HIT_RADIUS, 8, 6]} />

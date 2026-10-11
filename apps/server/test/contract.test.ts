@@ -19,6 +19,7 @@ import {
   TRAFFIC,
 } from '@astera/rules';
 import {
+  accounts,
   accountRewards,
   battleReports,
   cosmeticEntitlements,
@@ -34,6 +35,7 @@ import {
   notifications,
   pirateRaids,
   planets,
+  players,
   probeReports,
   shards,
   seasons,
@@ -148,6 +150,7 @@ import {
   interceptorBuildSchema,
 } from '../../web/src/api/schemas.js';
 import { describeNotification } from '../../web/src/lib/notifications.js';
+import { adminPlayersSchema } from '../../web/src/api/adminSchemas.js';
 import {
   SHARD_PREFIX as CLIENT_SHARD_PREFIX,
   isShardEvent,
@@ -205,6 +208,24 @@ describe('every payload the client parses', () => {
   let app: FastifyInstance;
   let built: ReturnType<typeof buildApp>;
   let auth: { authorization: string };
+
+  it('parses the admin players total with the client contract on every page', async () => {
+    await built.close();
+    await f.db.update(accounts).set({ username: 'operator' }).where(eq(accounts.id, f.accountIds[0]!));
+    await f.db.update(players).set({ lastActiveAt: f.clock.now() });
+    built = buildApp({ env: testEnv({ ADMIN_USERNAMES: 'operator' }), logger: silent, db: f.db, clock: f.clock });
+    app = built.app;
+    await app.ready();
+    const first = await app.inject({ method: 'GET', url: '/api/admin/players?limit=1', headers: auth });
+    expect(first.statusCode).toBe(200);
+    const page = adminPlayersSchema.parse(first.json());
+    expect(page).toMatchObject({ total: 3 });
+    expect(page.players).toHaveLength(1);
+    expect(page.nextBefore).not.toBeNull();
+    const next = await app.inject({ method: 'GET', url: `/api/admin/players?limit=1&before=${page.nextBefore!}`, headers: auth });
+    expect(next.statusCode).toBe(200);
+    expect(adminPlayersSchema.parse(next.json())).toMatchObject({ total: 3 });
+  });
 
   it('parses account cosmetics and equipment while preserving the legacy planet collection contract', async () => {
     const initial = await app.inject({ method: 'GET', url: '/api/skins', headers: auth });

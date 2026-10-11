@@ -252,6 +252,8 @@ export interface GalaxyCanvasProps {
   centerSignal?: number;
   /** A local cosmetic trial explicitly asks for a close view of this owned world. */
   inspectionPlanetId?: string;
+  /** Local asset review may start closer to small debris and rocks. */
+  reviewFocusDistance?: number;
   /**
    * Open on the whole disc, with nothing selected. D56.
    *
@@ -345,6 +347,7 @@ export function GalaxyCanvas({
   homeSignal,
   centerSignal = 0,
   inspectionPlanetId,
+  reviewFocusDistance,
   aim = null,
   openWide = false,
   wideDistance = WHOLE_DISC_DISTANCE,
@@ -928,7 +931,8 @@ export function GalaxyCanvas({
         centerSignal={centerSignal}
         subject={subject}
         focusKey={focusKey}
-        approach={approach}
+        approach={reviewFocusDistance !== undefined && Number.isFinite(reviewFocusDistance)
+          ? Math.max(1.2, reviewFocusDistance) : approach}
         inspectionRadius={focus?.kind === 'planet' && focus.id === inspectionPlanetId ? nodes.find(node => node.id === inspectionPlanetId)?.radius : undefined}
         exactApproach={coachTap !== null || focus?.kind === 'intergalacticConvoy' || focus?.kind === 'monument'}
         openWide={openWide}

@@ -38,4 +38,11 @@ describe('every model loader has a boundary of its own', () => {
     const hull = fleets.slice(fleets.indexOf('export function Hull('), fleets.indexOf('export function Hull(') + 900);
     expect(hull).toMatch(/<Suspense fallback=\{null\}>\s*<LoadedHull /);
   });
+
+  it('keeps mining travel and engines while mounting no rejected extraction visual', () => {
+    const mining = source('MiningFlights.tsx');
+    expect(mining).not.toContain('MiningPulse');
+    expect(mining).toContain('<EngineJets');
+    expect(mining).toContain('runPosition(run, home, serverNow(), nodes)');
+  });
 });

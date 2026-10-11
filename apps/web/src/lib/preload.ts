@@ -82,8 +82,9 @@ export const LANDING_ASSETS: readonly string[] = [
  * lazy and arrive only when an identified formation needs them. Card/icon bytes
  * are included because the opening Shipyard names the craft immediately.
  *
- * Measured pre-V2 GALAXY_ASSETS transfer: 1,786,315 bytes. The filesystem test
- * keeps this active list at or below that fixed baseline.
+ * The pre-V2 transfer reference was 1,786,315 bytes. The approved native asteroid
+ * selection brings the current opening list to 1,796,305 bytes; the filesystem
+ * test caps it at 1.8 MB. Wrecks and combat effects are loaded separately.
  */
 export const FLEET_V2_OPENING_ASSETS: readonly string[] = [
   ...new Set([

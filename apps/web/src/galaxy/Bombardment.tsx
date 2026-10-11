@@ -3,12 +3,15 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { MODEL, MODEL_FACING } from '../ui/assets.js';
-import { orientedCraft } from './model.js';
+import { atlasFrame, ownedAtlas } from './atlas.js';
+import { orientedCraft, unitModel, type UnitModel } from './model.js';
+import { bombardmentLayers } from './strategicLayers.js';
 import {
   fireTexture,
   EXPLOSION_ATLAS,
-  EXPLOSION_GRID,
-  explosionFrame,
+  SMOKE_ATLAS,
+  SHOCK_ATLAS,
+  TRAIL_MAP,
   plumeTexture,
   publicEffectIntensity,
   ringTexture,
@@ -70,25 +73,15 @@ import { SkinAssetBoundary } from './SkinAssetBoundary.js';
  * their own trails. The aim is now a quaternion built from the local direction,
  * solved once per round because a straight line does not change its mind.
  *
- * WHAT THE FIRE IS MADE OF is in `vfx.ts`: four baked, coloured, noisy textures
- * rather than one smooth grey blob, which is where almost all of the difference
- * between this and a placeholder lives.
+ * The fire and cooling smoke use the original Galaxy Division flipbooks. Each
+ * round owns its atlas transform, so concurrent surface hits animate independently.
  */
 
 /** Drawn on the last queue, over the worlds, like every other craft in the scene. */
 const VFX_ORDER = 1000;
 
-/**
- * How wide the burst grows, as a share of the world's radius.
- *
- * A HIT, NOT A CLOUD. Photographed at 0.62 the halo grew to a full planet radius
- * and read as fog hanging off the limb rather than as something landing on the
- * surface — a billboard centred on the impact hangs half of anything that big
- * outside the silhouette. A third of a radius is a mark on the face that is still
- * unmistakable from the distance a squadron is watched at, and it leaves the world
- * recognisable underneath it.
- */
-const BLAST_SIZE = 0.34;
+/** Local fire lobes and ejecta grow to a visible surface rupture, scaled to the world. */
+const BLAST_SIZE = 0.48;
 
 /** Quads down the streak. */
 const TRAIL_STEPS = 9;
@@ -241,17 +234,30 @@ function Round(props: RoundProps) {
   );
 }
 
-function TexturedRound(props: RoundProps) {
-  const atlas = useTexture(EXPLOSION_ATLAS);
-  return <RoundEffect {...props} atlas={atlas} />;
+const IMPACT_FRAGMENT = '/assets/models/debris/wreck-plate-gd-v3.glb';
+
+/** Called for a known approaching raid; loader caches share every subsequent round. */
+export function prewarmBombardment(): void {
+  useGLTF.preload(MODEL.missile, false);
+  useGLTF.preload(IMPACT_FRAGMENT, false);
+  useTexture.preload([EXPLOSION_ATLAS, SMOKE_ATLAS, SHOCK_ATLAS, TRAIL_MAP]);
 }
 
-function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, atlas }: RoundProps & { atlas?: THREE.Texture }) {
+function TexturedRound(props: RoundProps) {
+  const { scene } = useGLTF(IMPACT_FRAGMENT, false);
+  const fragment = useMemo(() => unitModel(scene), [scene]);
+  const maps = useTexture([EXPLOSION_ATLAS, SMOKE_ATLAS, SHOCK_ATLAS, TRAIL_MAP]);
+  return <RoundEffect {...props} atlas={maps[0]} smokeAtlas={maps[1]} shockAtlas={maps[2]} trailMap={maps[3]} fragment={fragment ?? undefined} />;
+}
+
+function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, atlas, smokeAtlas, shockAtlas, trailMap, fragment }: RoundProps & { atlas?: THREE.Texture; smokeAtlas?: THREE.Texture; shockAtlas?: THREE.Texture; trailMap?: THREE.Texture; fragment?: UnitModel }) {
   const body = useRef<THREE.Group>(null);
   const strip = useRef<THREE.Mesh>(null);
   const trailMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const flash = useRef<THREE.Sprite>(null);
   const fireball = useRef<THREE.Sprite>(null);
+  const sideFire = useRef<(THREE.Sprite | null)[]>([]);
+  const debris = useRef<THREE.InstancedMesh>(null);
   const shock = useRef<THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>>(null);
   const smoke = useRef<THREE.Sprite>(null);
   const muzzle = useRef<THREE.Sprite>(null);
@@ -259,17 +265,19 @@ function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, 
   const nozzle = useRef<THREE.Sprite>(null);
 
   const fire = useMemo(() => fireTexture(), []);
-  const explosion = useMemo(() => {
-    if (!atlas) return null;
-    const texture = atlas.clone();
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.minFilter = THREE.LinearFilter;
-    texture.generateMipmaps = false;
-    texture.repeat.set(1 / EXPLOSION_GRID, 1 / EXPLOSION_GRID);
-    explosionFrame(texture, 0);
-    return texture;
-  }, [atlas]);
-  useEffect(() => () => { explosion?.dispose(); }, [explosion]);
+  const bitMaterial = useMemo(() => {
+    const material = fragment?.material.clone() ?? new THREE.MeshStandardMaterial({ metalness: 0.72, roughness: 0.68 });
+    material.transparent = true; material.depthWrite = false; material.depthTest = false;
+    return material;
+  }, [fragment]);
+  const bitPose = useMemo(() => new THREE.Object3D(), []);
+  const bitTint = useMemo(() => new THREE.Color(), []);
+  useEffect(() => () => { bitMaterial.dispose(); }, [bitMaterial]);
+  const explosion = useMemo(() => atlas ? ownedAtlas(atlas, 8) : null, [atlas]);
+  const smokeSheet = useMemo(() => smokeAtlas ? ownedAtlas(smokeAtlas, 8) : null, [smokeAtlas]);
+  const secondary = useMemo(() => atlas ? [ownedAtlas(atlas, 8), ownedAtlas(atlas, 8)] : [], [atlas]);
+  const shockSheet = useMemo(() => shockAtlas ? ownedAtlas(shockAtlas, 4) : null, [shockAtlas]);
+  useEffect(() => () => { explosion?.dispose(); smokeSheet?.dispose(); shockSheet?.dispose(); secondary.forEach((map) => { map.dispose(); }); }, [explosion, smokeSheet, shockSheet, secondary]);
   const shockMap = useMemo(() => ringTexture(), []);
   const sparkMap = useMemo(() => sparkTexture(), []);
   const plumeMap = useMemo(() => plumeTexture(), []);
@@ -398,6 +406,8 @@ function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, 
     if (ribbon) ribbon.visible = flying !== null;
     if (flash.current) flash.current.visible = burning !== null;
     if (fireball.current) fireball.current.visible = burning !== null;
+    sideFire.current.forEach((node) => { if (node) node.visible = burning !== null; });
+    if (debris.current) debris.current.visible = burning !== null;
     if (shock.current) shock.current.visible = burning !== null && burning < 0.42;
     if (smoke.current) smoke.current.visible = burning !== null && burning > 0.12;
     if (embers.current) embers.current.visible = burning !== null;
@@ -492,52 +502,62 @@ function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, 
 
     if (burning !== null) {
       /**
-       * FOUR LAYERS ON ONE CLOCK, each on its own curve. That is what makes this an
-       * explosion rather than a light being turned down:
-       *
-       *   FLASH   white, huge for an instant, gone inside a sixth of the burn.
-       *   FIREBALL the body of it, bursting outward and cooling.
-       *   SHOCK   a ring leaving the impact faster than the fire, and out first.
-       *   EMBERS  thrown outward, still travelling when everything else is dark.
+       * One authoritative burn stages a hard flash, turbulent fire, ash and
+       * incandescent metal ejecta. The source flipbook supplies real fire detail;
+       * the envelope preserves its energetic middle instead of fading it at once.
        */
       const t = burning;
+      const phases = bombardmentLayers(t);
       const wide = radius * BLAST_SIZE;
 
       if (flash.current) {
-        const punch = Math.max(0, 1 - t / 0.16);
-        const s = wide * (0.5 + t * 2.2);
+        const s = wide * (1.1 + t * 4.2);
         flash.current.scale.set(s, s, 1);
-        flash.current.material.opacity = punch ** 1.4 * intensity;
+        flash.current.material.opacity = phases.flash * intensity;
       }
 
       if (fireball.current) {
-        if (explosion) explosionFrame(explosion, t);
+        if (explosion) atlasFrame(explosion, phases.fireProgress, 8);
         // Eased outward, so it bursts and then swells rather than growing evenly.
-        const s = wide * (0.45 + 1.15 * Math.sqrt(t));
+        const s = wide * (0.85 + 1.6 * Math.sqrt(t));
         fireball.current.scale.set(s, s, 1);
-        fireball.current.material.opacity = (1 - t) ** 1.6 * intensity;
+        fireball.current.material.opacity = phases.fire * intensity;
         // A slow turn, so two impacts in the same second are not one picture twice.
         fireball.current.material.rotation = shot.launchAt * 3.1 + t * 0.6;
       }
 
+      sideFire.current.forEach((node, i) => {
+        if (!node) return;
+        const age = Math.max(0, t - (i + 1) * 0.07);
+        const map = secondary[i];
+        if (map) atlasFrame(map, age / 0.78, 8);
+        const angle = shot.launchAt * 3.7 + i * 2.3;
+        const displacement = wide * (0.1 + Math.sqrt(age) * 0.35);
+        node.position.set(Math.cos(angle) * displacement, Math.sin(angle) * displacement, surfaceNormal[2] * wide * age * 0.3);
+        const scale = wide * (0.68 + Math.sqrt(age) * 1.1);
+        node.scale.setScalar(scale);
+        node.material.opacity = (t > (i + 1) * 0.07 ? phases.fire : 0) * 0.72 * intensity;
+        node.material.rotation = angle + age * 0.15;
+      });
+
       if (shock.current) {
+        if (shockSheet) atlasFrame(shockSheet, t / 0.42, 4);
         const shockTime = Math.min(1, t / 0.42);
-        const s = wide * (0.35 + 2.1 * shockTime ** 0.55);
+        const s = wide * (0.35 + 2.4 * shockTime ** 0.55);
         shock.current.scale.set(s, s, 1);
-        shock.current.material.opacity = 0.48 * (1 - shockTime) ** 2.7 * intensity;
+        shock.current.material.opacity = 0.17 * (1 - shockTime) ** 2.7 * intensity;
       }
 
       if (smoke.current) {
-        const appear = Math.max(0, Math.min(1, (t - 0.1) / 0.22));
-        const fade = (1 - t) ** 0.8;
-        const s = wide * (0.55 + 1.25 * t ** 0.65);
+        if (smokeSheet) atlasFrame(smokeSheet, phases.smokeProgress, 8);
+        const s = wide * (0.85 + 2.1 * t ** 0.65);
         smoke.current.scale.set(s, s, 1);
         smoke.current.position.set(
           surfaceNormal[0] * wide * 0.42 * t,
           surfaceNormal[1] * wide * 0.42 * t,
           surfaceNormal[2] * wide * 0.42 * t,
         );
-        smoke.current.material.opacity = appear * fade * 0.42 * intensity;
+        smoke.current.material.opacity = phases.smoke * 0.68 * intensity;
         smoke.current.material.rotation = shot.flight * 4.7 - t * 0.34;
       }
 
@@ -554,8 +574,24 @@ function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, 
           );
         }
         position.needsUpdate = true;
-        embers.current.material.opacity = (1 - t) ** 2 * intensity;
-        embers.current.material.size = size * 0.5 * (1 - t * 0.6);
+        embers.current.material.opacity = phases.ejecta * 0.45 * intensity;
+        embers.current.material.size = size * 0.16 * (1 - t * 0.6);
+      }
+      if (debris.current) {
+        const reach = wide * (0.1 + t * 3.6);
+        for (let i = 0; i < 6; i++) {
+          const dir = spray[i]!;
+          bitPose.position.set(impact[0] + dir[0] * reach, impact[1] + dir[1] * reach, impact[2] + dir[2] * reach);
+          bitPose.rotation.set(shot.launchAt + t * (i + 2), i * 1.9 + t * 5, i + t * (i - 3));
+          const scale = wide * (0.022 + (i % 3) * 0.012);
+          bitPose.scale.set(scale * 1.4, scale, scale * 0.75);
+          bitPose.updateMatrix(); debris.current.setMatrixAt(i, bitPose.matrix);
+          const heat = Math.max(0, 1 - t / 0.45);
+          debris.current.setColorAt(i, bitTint.setRGB(0.3 + heat * 2.2, 0.3 + heat * 0.7, 0.32 + heat * 0.08));
+        }
+        bitMaterial.opacity = phases.ejecta * intensity;
+        debris.current.instanceMatrix.needsUpdate = true;
+        if (debris.current.instanceColor) debris.current.instanceColor.needsUpdate = true;
       }
     }
   });
@@ -572,7 +608,7 @@ function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, 
       >
         <meshBasicMaterial
           ref={trailMaterial}
-          {...(plumeMap ? { map: plumeMap } : {})}
+          map={trailMap ?? plumeMap}
           vertexColors
           transparent
           opacity={0.95 * intensity}
@@ -628,7 +664,7 @@ function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, 
           renderOrder={VFX_ORDER}
         >
           <meshBasicMaterial
-            {...(shockMap ? { map: shockMap } : {})}
+            map={shockSheet ?? shockMap}
             transparent
             opacity={0}
             depthWrite={false}
@@ -648,9 +684,15 @@ function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, 
             blending={THREE.AdditiveBlending}
           />
         </sprite>
-        <sprite ref={smoke} visible={false} renderOrder={VFX_ORDER + 1}>
+        {[0, 1].map((i) => (
+          <sprite key={i} ref={(node) => { sideFire.current[i] = node; }} visible={false} renderOrder={VFX_ORDER + 1}>
+            <spriteMaterial map={secondary[i] ?? fire} transparent opacity={0} depthWrite={false} depthTest={false} blending={THREE.AdditiveBlending} />
+          </sprite>
+        ))}
+        <sprite ref={smoke} visible={false} renderOrder={VFX_ORDER}>
           <spriteMaterial
-            {...(smokeMap ? { map: smokeMap } : {})}
+            map={smokeSheet ?? smokeMap}
+            color="#626975"
             transparent
             opacity={0}
             depthWrite={false}
@@ -671,6 +713,7 @@ function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, 
         </sprite>
       </group>
 
+      {fragment ? <instancedMesh ref={debris} args={[fragment.geometry, bitMaterial, 6]} name="missile-metal-ejecta" frustumCulled={false} visible={false} renderOrder={VFX_ORDER + 1} raycast={() => null} /> : null}
       <points
         ref={embers}
         geometry={emberGeometry}
@@ -697,9 +740,7 @@ function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, 
 /**
  * The round itself.
  *
- * Its nose is the one in the game that is not on a principal axis — the model
- * arrived lying at 56.5° in its own XZ plane — so the facing is a measured bearing
- * rather than a compass point. See `MODEL_FACING`.
+ * Its source mesh uses the measured +Z compilation declared in MODEL_FACING.
  */
 function Warhead({ size }: { size: number }) {
   const { scene } = useGLTF(MODEL.missile, false);

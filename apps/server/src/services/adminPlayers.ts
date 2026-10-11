@@ -11,6 +11,9 @@ const zero = (): Resources => ({ alloy: 0, crystal: 0, deuterium: 0 });
 export async function listAdminPlayers(db: Db, input: { before?: string; limit: number }, now: Date) {
   return db.transaction(async tx => {
     const onlineSince = new Date(now.getTime() - SERVERS.onlineWindowMinutes * 60_000);
+    const online = and(isPerson, gte(players.lastActiveAt, onlineSince));
+    const [summary] = await tx.select({ total: count() }).from(players).where(online);
+    const total = summary?.total ?? 0;
     const rows = await tx.select({
       playerId: players.id, username: accounts.username, displayName: accounts.displayName,
       accountId: accounts.id, seasonId: players.seasonId, galaxy: shards.name, galaxyCode: shards.code,
@@ -19,10 +22,10 @@ export async function listAdminPlayers(db: Db, input: { before?: string; limit: 
       .innerJoin(accounts, eq(accounts.id, players.accountId))
       .innerJoin(seasons, eq(seasons.id, players.seasonId))
       .innerJoin(shards, eq(shards.id, seasons.shardId))
-      .where(and(isPerson, gte(players.lastActiveAt, onlineSince), input.before ? gt(players.id, input.before) : undefined))
+      .where(and(online, input.before ? gt(players.id, input.before) : undefined))
       .orderBy(asc(players.id)).limit(input.limit + 1);
     const page = rows.slice(0, input.limit);
-    if (page.length === 0) return { players: [], nextBefore: null, measuredAt: now, onlineWindowMinutes: SERVERS.onlineWindowMinutes };
+    if (page.length === 0) return { total, players: [], nextBefore: null, measuredAt: now, onlineWindowMinutes: SERVERS.onlineWindowMinutes };
     const ids = page.map(row => row.playerId);
     const holdings = await tx.select({ world: planets, season: seasons, role: shards.role }).from(planets)
       .innerJoin(seasons, eq(seasons.id, planets.seasonId))
@@ -65,6 +68,7 @@ export async function listAdminPlayers(db: Db, input: { before?: string; limit: 
     const miningByOwner = new Map(mining.map(row => [row.owner, row]));
     const piratesByOwner = new Map(pirates.map(row => [row.owner, row]));
     return {
+      total,
       players: page.map(({ accountId, ...row }) => ({ ...row,
         resources: resources.get(row.playerId) ?? { storage: zero(), buffer: zero() },
         activity: { asteroidDispatches: miningByOwner.get(row.playerId)?.dispatches ?? 0,

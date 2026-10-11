@@ -1,6 +1,7 @@
 export const adminOps = {
   "playersTab": "Oyuncular",
   "online": "Çevrim içi komutanlar",
+  "onlineTotal": "Toplam çevrim içi komutan: {{total}}",
   "onlineWindow": "Son {{minutes}} dakikadaki etkinlik · tüm galaksiler",
   "measured": "Ölçüm saati: {{time}}",
   "refresh": "Yenile",

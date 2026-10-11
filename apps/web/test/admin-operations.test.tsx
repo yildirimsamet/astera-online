@@ -15,22 +15,23 @@ const scopes = {
   clans: [{ id: clanId, seasonId, name: 'Orion', tag: 'ORI', galaxy: 'Andromeda', galaxyCode: 'andromeda' },
     { id: secondClan, seasonId, name: 'Lyra', tag: 'LYR', galaxy: 'Andromeda', galaxyCode: 'andromeda' }],
 };
-const players = { measuredAt: '2026-10-11T08:00:00Z', onlineWindowMinutes: 5, nextBefore: null, players: [{
+const players = { measuredAt: '2026-10-11T08:00:00Z', onlineWindowMinutes: 5, total: 1, nextBefore: null as string | null, players: [{
   playerId: 'commander', username: 'izci', displayName: 'İzci', seasonId, galaxy: 'Andromeda', galaxyCode: 'andromeda',
   lastActiveAt: '2026-10-11T07:59:00Z', mutes: [],
   resources: { storage: { alloy: 1234, crystal: 456, deuterium: 78 }, buffer: { alloy: 12, crystal: 34, deuterium: 0 } },
   activity: { asteroidDispatches: 4, minersSent: 20, pirateDispatches: 3, pirateShipsSent: 17 },
 }] };
 
-function show(chat = false, failure = false) {
+function show(chat = false, failure = false, playerPages: (Omit<typeof players, 'total'> & { total?: number })[] = [players], playerStatus = 200) {
   const calls: { url: string; body: unknown }[] = [];
+  let playerRequest = 0;
   const fetch: typeof globalThis.fetch = (input, init) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     const body: unknown = typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
     calls.push({ url, body });
     let response: unknown = {};
     let status = 200;
-    if (url.startsWith('/api/admin/players')) response = players;
+    if (url.startsWith('/api/admin/players')) { response = playerPages[Math.min(playerRequest++, playerPages.length - 1)]; status = playerStatus; }
     else if (url === '/api/admin/clans') response = scopes;
     else if (url === '/api/admin/chat/mute') { response = failure ? { error: 'ACCOUNT_NOT_FOUND', message: 'Account not found' }
       : { username: 'izci', channels: ['clan', 'dm'], duration: '15m', expiresAt: '2026-10-11T08:15:00Z' }; status = failure ? 404 : 200; }
@@ -56,6 +57,39 @@ function show(chat = false, failure = false) {
 }
 
 describe('admin player operations', () => {
+  it('shows the full online total before more pages are loaded and keeps it while paging', async () => {
+    const second = { ...players.players[0]!, playerId: 'second', username: 'ikinci', displayName: 'Second' };
+    show(false, false, [{ ...players, total: 2, nextBefore: 'commander' }, { ...players, total: 2, players: [second] }]);
+    expect(screen.queryByLabelText(/Total online commanders/)).not.toBeInTheDocument();
+    expect(await screen.findByLabelText('Total online commanders: 2')).toHaveTextContent('2');
+    expect(screen.queryByText('Second')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Load more commanders' }));
+    expect(await screen.findByText('Second')).toBeInTheDocument();
+    expect(screen.getByLabelText('Total online commanders: 2')).toHaveTextContent('2');
+  });
+
+  it('refreshes the count and preserves a measured zero', async () => {
+    show(false, false, [players, { ...players, total: 0, players: [] }]);
+    expect(await screen.findByLabelText('Total online commanders: 1')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    expect(await screen.findByLabelText('Total online commanders: 0')).toHaveTextContent('0');
+    expect(screen.queryByLabelText('Total online commanders: 1')).not.toBeInTheDocument();
+    expect(screen.getByText('No commanders are online in this activity window.')).toBeInTheDocument();
+  });
+
+  it('does not present a failed measurement as zero online players', async () => {
+    show(false, false, [players], 503);
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Total online commanders/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the list usable against an older server without inventing a total', async () => {
+    const { total: _total, ...legacy } = players;
+    show(false, false, [legacy]);
+    expect(await screen.findByText('İzci')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Total online commanders/)).not.toBeInTheDocument();
+  });
+
   it('shows scoped resources/activity and submits exactly the checked mute channels and selected duration', async () => {
     const { calls } = show();
     expect(await screen.findByText('İzci')).toBeInTheDocument();

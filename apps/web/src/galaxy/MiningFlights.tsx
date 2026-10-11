@@ -17,7 +17,8 @@ import { markersFor, slotOffset } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
-import { MiningPulse } from './MiningPulse.js';
+import { EngineJets, type EngineUnit } from './EngineJets.js';
+import { nativeEngineAnchors } from './engineAnchors.js';
 
 /**
  * PROSPECTORS, IN TRANSIT. D19.
@@ -129,6 +130,15 @@ function Run({
     () => markersFor({ PROSPECTOR: run.craft }),
     [run.craft],
   );
+  const aimDistance = useRef(1000);
+  const engines = useMemo<EngineUnit[]>(() => markers.map((_, index) => ({
+    at: slotOffset(index, STYLE.scale * 1.5),
+    nozzles: nativeEngineAnchors(MODEL.drill) ?? [],
+    size: STYLE.scale,
+    colour: STYLE.flame,
+    intensity: 0.8,
+    widthFactor: 1, lengthFactor: 1,
+  })), [markers]);
 
   /** One buffer for the life of the run, written both ends per frame. See `useLine`. */
   const line = useLine();
@@ -149,7 +159,6 @@ function Run({
 
   return (
     <>
-      <MiningPulse run={run} nodes={nodes} />
       <lineSegments geometry={line} frustumCulled={false}>
         <lineBasicMaterial
           color={STYLE.colour}
@@ -176,6 +185,7 @@ function Run({
         </mesh>
 
         <Suspense fallback={null}>
+          <EngineJets units={engines} aimDistance={aimDistance} name="mining-engine-jets" />
           {markers.map((marker, i) => (
             <Craft key={marker.ordinal} offset={slotOffset(i, STYLE.scale * 1.5)} />
           ))}

@@ -7,7 +7,7 @@ export const galaxy = {
   settlementAway: "{{world}}に向けて入植隊を派遣しました",
   deathStarAway: "{{world}}に向けてデス・スターが発射されました",
   /** Rolling daily activity; the map deliberately omits the instantaneous count. */
-  onlineToday: "過去24時間に{{count}}人がオンライン",
+  onlineToday: "過去24時間に<0>{{count}}</0>人がオンライン",
   worlds: "{{count}}個の惑星",
   fleetAway_one: " · 出航中の艦隊{{count}}隊",
   fleetAway_other: " · 出航中の艦隊{{count}}隊",

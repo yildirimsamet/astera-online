@@ -249,8 +249,10 @@ describe('Fleet V2 opening preload', () => {
     expect((opening ?? []).filter((url) => fleetModels.has(url))).toEqual([dartModel]);
   });
 
-  it('does not exceed the measured pre-V2 galaxy transfer budget', () => {
+  it('keeps the approved opening model selection within 1.8 MB', () => {
     const bytes = (opening ?? []).reduce((total, url) => total + statSync(served(url)).size, 0);
-    expect(bytes).toBeLessThanOrEqual(1_786_315);
+    // The native asteroid maps add 40,252 B to the measured 1,756,053 B selection.
+    // Wrecks, missile impacts and isotope bodies load separately from this list.
+    expect(bytes).toBeLessThanOrEqual(1_800_000);
   });
 });

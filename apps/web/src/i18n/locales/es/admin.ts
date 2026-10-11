@@ -1,6 +1,7 @@
 export const adminOps = {
   "playersTab": "Jugadores",
   "online": "Comandantes en línea",
+  "onlineTotal": "Total de comandantes en línea: {{total}}",
   "onlineWindow": "Actividad de los últimos {{minutes}} minutos · todas las galaxias",
   "measured": "Medido a las {{time}}",
   "refresh": "Actualizar",

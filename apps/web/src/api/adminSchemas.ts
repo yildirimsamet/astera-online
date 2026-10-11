@@ -12,6 +12,8 @@ export type AdminMaskInput = { username: string; count: number } & (
 
 const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
 export const adminPlayersSchema = z.object({
+  // An older API can still serve its list during rollout; its unknown total stays omitted.
+  total: z.number().int().nonnegative().optional(),
   measuredAt: z.coerce.date(), onlineWindowMinutes: z.number(), nextBefore: z.string().nullable(),
   players: z.array(z.object({
     playerId: z.string(), username: z.string(), displayName: z.string(), seasonId: z.string(),

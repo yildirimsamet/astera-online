@@ -65,7 +65,7 @@ export async function capturePremiumVisuals(output) {
         await page.goto(`${web}/v2-gallery.html?view=premium-space&lng=tr`);
         await page.locator('[data-premium-scene-ready="true"]').waitFor({ timeout: 120_000 });
         for (const [label, name] of [
-          ['Metal enkaz', 'wreck'], ['İzotop asteroidi', 'isotope'], ['Filo', 'fleet'], ['Anıt', 'station'],
+          ['Enkaz', 'wreck'], ['İzotop asteroidi', 'isotope'], ['Filo', 'fleet'], ['Anıt', 'station'],
         ]) {
           await page.getByRole('button', { name: label, exact: true }).click();
           await page.waitForTimeout(1800);
@@ -82,7 +82,7 @@ export async function capturePremiumVisuals(output) {
         await page.getByRole('button', { name: 'Stratejik çarpma', exact: true }).click();
         await page.waitForTimeout(2300);
         await shot(page, `strategic-${width}`);
-        await page.getByRole('button', { name: 'Metal enkaz', exact: true }).click();
+        await page.getByRole('button', { name: 'Enkaz', exact: true }).click();
         await page.waitForTimeout(1800);
         await page.getByRole('button', { name: 'Madencilik', exact: true }).click();
         await page.waitForTimeout(2800);

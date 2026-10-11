@@ -3,10 +3,11 @@ import { useTexture } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { createPlumeGeometry } from './cosmeticPlume.js';
-import { cosmeticById, type CosmeticStyle } from '@astera/rules';
+import { cosmeticById, type CosmeticStyle, type ShipCosmeticEquipment } from '@astera/rules';
 import type { Marker } from './Squadrons.js';
-import { hullVisualScale, formationAimDirection } from './flightVisual.js';
-import { hullPoseLift } from '../ui/assets.js';
+import { formationAimDirection } from './flightVisual.js';
+import { formationEngineUnits } from './engineUnits.js';
+import { useReferenceShipFailures } from './referenceArt.js';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
 import { cosmeticEffectRecipe, effectProgram, fleetFlagPose } from './cosmeticEffects.js';
 import { prismShardTransforms, RING_SPANS, saturnRingProfile } from './cosmeticRings.js';
@@ -40,7 +41,8 @@ export function EffectSurface({ style, kind, still = false, banner, colour, seco
   });
   // Saturn's ice is lit material, not light: it blends over (and partly hides) the world behind.
   const solid = kind > 1.5 || (kind < .5 && style === 'saturn');
-  return <shaderMaterial ref={material} uniforms={uniforms} vertexShader={program.vertexShader} fragmentShader={program.fragmentShader}
+  // Changing shader source alone leaves Three's compiled program cached on this material.
+  return <shaderMaterial key={`${style}:${String(kind)}`} ref={material} uniforms={uniforms} vertexShader={program.vertexShader} fragmentShader={program.fragmentShader}
     transparent side={THREE.DoubleSide} depthWrite={kind > 1.5} depthTest toneMapped={false}
     forceSinglePass={kind < 1.5}
     blending={solid ? THREE.NormalBlending : THREE.AdditiveBlending} />;
@@ -171,33 +173,42 @@ function FlagFabric({ id, style, still }: { id: string; style: CosmeticStyle; st
   return <EffectSurface style={style} kind={2} still={still} banner={banner} />;
 }
 
-/** One volumetric envelope per craft, instanced in a single draw per formation. */
-export function FormationCosmeticEngines({ id, markers, slots, scale, aimDistance }: {
-  id: string; markers: readonly Marker[]; slots: readonly Vec3Tuple[]; scale: number; aimDistance: RefObject<number>;
+/** One envelope per real motor port, instanced in a single draw per formation. */
+export function FormationCosmeticEngines({ id, markers, slots, scale, aimDistance, shipSkins }: {
+  id: string; markers: readonly Marker[]; slots: readonly Vec3Tuple[]; scale: number; aimDistance: RefObject<number>; shipSkins?: ShipCosmeticEquipment;
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const item = cosmeticById(id);
-  const work = useMemo(() => ({ root: new THREE.Object3D(), direction: [0, 0, 1] as Vec3Tuple, target: new THREE.Vector3() }), []);
-  const count = markers.length;
-  const geometry = useMemo(() => createPlumeGeometry(item?.style), [item?.style]);
+  const work = useMemo(() => ({ root: new THREE.Object3D(), direction: [0, 0, 1] as Vec3Tuple, target: new THREE.Vector3(), forward: new THREE.Vector3(0, 0, 1), rotation: new THREE.Quaternion() }), []);
+  const failureVersion = useReferenceShipFailures();
+  const units = useMemo(() => formationEngineUnits(markers, slots, scale, shipSkins), [markers, slots, scale, shipSkins, failureVersion]);
+  const count = units.reduce((total, unit) => total + unit.nozzles.length, 0);
+  const geometry = useMemo(() => {
+    const plume = createPlumeGeometry(item?.style);
+    plume.translate(0, 0, .48);
+    return plume;
+  }, [item?.style]);
   useEffect(() => () => { geometry.dispose(); }, [geometry]);
   useFrame(() => {
     if (!mesh.current) return;
-    markers.forEach((marker, i) => {
-      const slot = slots[i] ?? [0, 0, 0];
-      const size = hullVisualScale(marker.hull, scale);
-      const direction = formationAimDirection(slot, aimDistance.current, work.direction);
-      work.root.position.set(slot[0], slot[1] + hullPoseLift(marker.hull) * size, slot[2]);
-      work.target.set(work.root.position.x + direction[0], work.root.position.y + direction[1], work.root.position.z + direction[2]);
-      work.root.lookAt(work.target);
-      work.root.scale.setScalar(size);
-      work.root.updateMatrix();
-      mesh.current!.setMatrixAt(i, work.root.matrix);
-    });
+    let index = 0;
+    for (const unit of units) {
+      const direction = formationAimDirection(unit.at, aimDistance.current, work.direction);
+      work.rotation.setFromUnitVectors(work.forward, work.target.set(...direction));
+      work.root.quaternion.copy(work.rotation);
+      work.root.scale.set(unit.size * .26 * unit.widthFactor, unit.size * .26 * unit.widthFactor, unit.size * .24 * unit.lengthFactor);
+      for (const nozzle of unit.nozzles) {
+        work.root.position.set(...nozzle).multiplyScalar(unit.size).applyQuaternion(work.rotation);
+        work.root.position.x += unit.at[0]; work.root.position.y += unit.at[1]; work.root.position.z += unit.at[2];
+        work.root.updateMatrix();
+        mesh.current.setMatrixAt(index++, work.root.matrix);
+      }
+    }
     mesh.current.instanceMatrix.needsUpdate = true;
   });
   if (item?.category !== 'ENGINE' || !item.style || count === 0) return null;
-  return <instancedMesh name="formation-cosmetic-exhaust" ref={mesh} args={[geometry, undefined, count]} frustumCulled={false}>
+  // The opaque hull writes depth at order 999; flame must draw after it to respect near/far visibility.
+  return <instancedMesh name="formation-cosmetic-exhaust" ref={mesh} args={[geometry, undefined, count]} frustumCulled={false} renderOrder={1000}>
     <EffectSurface style={item.style} kind={1} />
   </instancedMesh>;
 }

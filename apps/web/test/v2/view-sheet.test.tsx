@@ -104,18 +104,18 @@ describe('the galaxy readout', () => {
   it('shows only activity over the last 24 hours, even when a live count is available', () => {
     const population = { online: 6, onlineToday: 41 };
     render(<GalaxyReadout {...population} counts={counts} />);
-    expect(screen.getByText('41 online in 24h')).toBeInTheDocument();
+    expect(screen.getByText(/online in 24h/)).toHaveTextContent('41 online in 24h');
     expect(screen.queryByText('6 online')).toBeNull();
   });
 
   it('shows the daily count independently of an instantaneous count', () => {
     render(<GalaxyReadout onlineToday={100} counts={counts} />);
-    expect(screen.getByText('100 online in 24h')).toBeInTheDocument();
+    expect(screen.getByText(/online in 24h/)).toHaveTextContent('100 online in 24h');
   });
 
   it('preserves a measured daily zero', () => {
     render(<GalaxyReadout onlineToday={0} counts={counts} />);
-    expect(screen.getByText('0 online in 24h')).toBeInTheDocument();
+    expect(screen.getByText(/online in 24h/)).toHaveTextContent('0 online in 24h');
   });
 
   it('omits unknown daily activity without falling back to a live count', () => {
@@ -193,7 +193,7 @@ describe('the view sheet', () => {
   it('speaks Turkish, and so does the readout', async () => {
     render(<><ViewSheet {...props()} /><GalaxyReadout onlineToday={100} counts={{ worlds: 212, fleetsAway: 0, rocks: 0, pirates: 0, wrecks: 0 }} /></>);
     await act(async () => { await i18n.changeLanguage('tr'); });
-    expect(screen.getByText('24 saatte 100 çevrimiçi')).toBeInTheDocument();
+    expect(screen.getByText(/24 saatte/)).toHaveTextContent('24 saatte 100 çevrimiçi');
     expect(within(screen.getByRole('dialog')).getByRole('switch', { name: /Teleskop menzili/ })).toBeInTheDocument();
     await act(async () => { await i18n.changeLanguage('en'); });
   });

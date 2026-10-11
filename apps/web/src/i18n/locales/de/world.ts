@@ -7,7 +7,7 @@ export const galaxy = {
   settlementAway: "Siedlungsflotte nach {{world}} entsandt",
   deathStarAway: "Todesstern startete in Richtung {{world}}",
   /** Rolling daily activity; the map deliberately omits the instantaneous count. */
-  onlineToday: "{{count}} online in den letzten 24 Std.",
+  onlineToday: "<0>{{count}}</0> online in den letzten 24 Std.",
   worlds: "{{count}} Welten",
   fleetAway_one: " · {{count}} Flotte unterwegs",
   fleetAway_other: " · {{count}} Flotten unterwegs",

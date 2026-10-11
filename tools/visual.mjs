@@ -17,6 +17,11 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--engine-attachments')) {
+  await import('./engine-attachment-review.mjs');
+  process.exit(0);
+}
+
 if (process.argv.includes('--premium')) {
   const { capturePremiumVisuals } = await import('./premium-visual.mjs');
   await capturePremiumVisuals(process.argv[2] ?? 'out/premium');

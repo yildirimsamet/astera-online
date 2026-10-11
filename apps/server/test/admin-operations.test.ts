@@ -5,7 +5,7 @@ import { pino } from 'pino';
 import { z } from 'zod';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
-import { accounts, chatMessages, clanMemberships, clanMessages, clans, miningRuns, pirateRaids, planets, players } from '../src/db/schema.js';
+import { accounts, botProfiles, chatMessages, clanMemberships, clanMessages, clans, miningRuns, pirateRaids, planets, players } from '../src/db/schema.js';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 import { assertChatAllowed, setChatMute } from '../src/services/chatModeration.js';
 import { createSeason } from '../src/services/season.js';
@@ -287,12 +287,43 @@ describe('admin operations and channel moderation', () => {
     f.clock.set(now);
     const response = await request({ method: 'GET', url: '/api/admin/players' });
     expect(response.statusCode).toBe(200);
-    const page = response.json<{ players: { playerId: string; resources: { storage: { alloy: number }; buffer: { alloy: number } }; activity: { asteroidDispatches: number; minersSent: number; pirateDispatches: number; pirateShipsSent: number } }[] }>();
+    const page = response.json<{ total: number; players: { playerId: string; resources: { storage: { alloy: number }; buffer: { alloy: number } }; activity: { asteroidDispatches: number; minersSent: number; pirateDispatches: number; pirateShipsSent: number } }[] }>();
+    expect(page.total).toBe(2);
     expect(page.players.map(row => row.playerId)).not.toContain(f.playerIds[2]);
     const target = page.players.find(row => row.playerId === f.playerIds[1]);
     expect(target?.resources.storage.alloy).toBe(before.alloy);
     expect(target?.activity).toEqual({ asteroidDispatches: 2, minersSent: 8, pirateDispatches: 1, pirateShipsSent: 7 });
     const after = (await f.db.select().from(planets).where(and(eq(planets.id, f.planetIds[1]!), eq(planets.controllerPlayerId, f.playerIds[1]!))))[0]!;
     expect(after).toEqual(before);
+  });
+
+  it('counts online players across galaxies independently of page size and cursor', async () => {
+    const otherSeason = await createSeason(f.db, { shardCode: 'online-count-galaxy', seed: 87,
+      startsAt: f.clock.now(), playerCap: 3, rulesetVersion: 4 });
+    await f.db.update(players).set({ seasonId: otherSeason.season.id }).where(eq(players.id, f.playerIds[2]!));
+    const first = await request({ method: 'GET', url: '/api/admin/players?limit=1' });
+    expect(first.statusCode).toBe(200);
+    const firstPage = first.json<{ total: number; nextBefore: string; players: { playerId: string }[] }>();
+    expect(firstPage.total).toBe(3);
+    expect(firstPage.players).toHaveLength(1);
+    const next = await request({ method: 'GET', url: `/api/admin/players?limit=1&before=${firstPage.nextBefore}` });
+    expect(next.json<{ total: number }>().total).toBe(3);
+    const beyond = await request({ method: 'GET', url: '/api/admin/players?before=ffffffff-ffff-4fff-bfff-ffffffffffff' });
+    expect(beyond.json()).toMatchObject({ total: 3, players: [], nextBefore: null });
+  });
+
+  it('counts only human online players and includes the exact activity boundary', async () => {
+    await f.db.insert(botProfiles).values({ accountId: f.accountIds[2]!, ordinal: 0, persona: 'RAIDER',
+      nextActionAt: f.clock.now(), createdAt: f.clock.now() });
+    const boundary = new Date(f.clock.now().getTime() - 5 * 60_000);
+    await f.db.update(players).set({ lastActiveAt: boundary }).where(eq(players.id, f.playerIds[1]!));
+    const first = await request({ method: 'GET', url: '/api/admin/players' });
+    expect(first.json<{ total: number }>().total).toBe(2);
+    await f.db.update(players).set({ lastActiveAt: new Date(boundary.getTime() - 1) }).where(eq(players.id, f.playerIds[1]!));
+    const next = await request({ method: 'GET', url: '/api/admin/players' });
+    expect(next.json<{ total: number }>().total).toBe(1);
+    await f.db.update(players).set({ lastActiveAt: new Date(boundary.getTime() - 1) }).where(eq(players.id, f.playerIds[0]!));
+    const empty = await request({ method: 'GET', url: '/api/admin/players' });
+    expect(empty.json()).toMatchObject({ total: 0, players: [], nextBefore: null });
   });
 });

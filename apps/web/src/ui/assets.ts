@@ -275,7 +275,7 @@ export const MODEL = {
    * it is aimed, it flies nose-first, and it has a facing like anything else that
    * is pointed somewhere.
    */
-  missile: '/assets/models/missiles/ship_missile.glb',
+  missile: '/assets/models/missiles/rocket-premium-v2.glb',
   /**
    * One chunk of wreckage. D32.
    *
@@ -283,7 +283,7 @@ export const MODEL = {
    * none. It is drawn instanced and tumbling in a ring around a planet that has
    * just been fought over.
    */
-  debris: '/assets/models/debris/metal-wreck-v1.glb',
+  debris: '/assets/models/debris/debris.glb',
 } as const;
 
 /**
@@ -314,20 +314,8 @@ export const MODEL_FACING: Record<string, Facing> = {
    * level that pitch before the parent aims its canonical +Z at the route.
    */
   [MODEL.drill]: noseVector(0.8652, -0.5010, 0.0208),
-  /**
-   * THE ONE NOSE IN THE GAME THAT IS NOT ON AN AXIS. D44.
-   *
-   * Measured rather than eyeballed, and it had to be: the body lies at 56.5° in
-   * its own XZ plane, so the six-sided render shows a missile in EVERY horizontal
-   * view and none of the four compass answers is right. A principal-component fit
-   * over all 4,103 vertices gives an axis of (0.833, −0.044, 0.551) and settles
-   * which end is the nose by cross-section — the +axis end closes to a radius of
-   * 0.05 where the other flares to 0.14 for the fins and the nozzle.
-   *
-   * The small −Y component is part of the source geometry and must be corrected;
-   * otherwise a route may be straight while the visible missile climbs through it.
-   */
-  [MODEL.missile]: noseVector(0.8332, -0.044, 0.5512),
+  /** GD Rocket_1 is exported nose-first onto +Z; its fins and nozzle face aft. */
+  [MODEL.missile]: '+z',
   /**
    * The strategic hull is diagonal too. A fit over its 12,490 vertices gives the
    * long axis (0.710, 0.408, -0.574); the pointed end in the six-side render is
@@ -452,10 +440,12 @@ export const PROP_MODELS: readonly string[] = [MODEL.debris];
 
 /** Three bodies, so a field of fifty rocks does not look stamped from one mould. */
 export const ASTEROID_MODELS = [
-  '/assets/models/asteroids/asteroid_1.glb',
-  '/assets/models/asteroids/asteroid_2.glb',
-  '/assets/models/asteroids/asteroid_3.glb',
+  '/assets/models/asteroids/atria-premium-v2.glb',
+  '/assets/models/asteroids/stone-premium-v2.glb',
+  '/assets/models/asteroids/atria-large-premium-v2.glb',
 ] as const;
+
+export const ISOTOPE_MODEL = '/assets/models/asteroids/isotope-premium-v2.glb';
 
 /**
  * THE FOUR SATELLITES, AS REAL GEOMETRY. D25.

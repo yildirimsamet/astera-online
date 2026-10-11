@@ -1,6 +1,7 @@
 export const adminOps = {
   "playersTab": "プレイヤー",
   "online": "オンラインの司令官",
+  "onlineTotal": "オンライン司令官の合計：{{total}}",
   "onlineWindow": "過去{{minutes}}分間の活動 · 全銀河",
   "measured": "測定時刻：{{time}}",
   "refresh": "更新",

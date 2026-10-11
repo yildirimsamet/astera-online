@@ -5,7 +5,6 @@ import {
   isReferenceShip,
   markReferenceShipFailed,
   referenceHullId,
-  referenceShipNozzles,
   referenceShipScene,
   useReferenceShipFailures,
 } from './referenceArt.js';
@@ -22,7 +21,7 @@ import {
   type RefObject,
 } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
-import { Billboard, useGLTF } from '@react-three/drei';
+import { Billboard, useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   INTERGALACTIC_CONVOY,
@@ -42,8 +41,11 @@ import {
 } from '../ui/assets.js';
 import { Bombardment, bombardmentIntensity } from './Bombardment.jsx';
 import { returnVolleyFrame } from './volley.js';
-import { softGlow } from './Environment.jsx';
-import { engineTexture } from './vfx.js';
+import { TRAIL_MAP } from './vfx.js';
+import { EngineJets, type EngineUnit } from './EngineJets.js';
+import { nativeEngineAnchors } from './engineAnchors.js';
+import { formationEngineUnits } from './engineUnits.js';
+import { StrategicExhaust } from './StrategicExhaust.jsx';
 import { configureOpaqueTransparentBody, posedCraft } from './model.js';
 import {
   concealedVolley,
@@ -83,7 +85,6 @@ import {
   formationLayout,
   hullVisualScale,
 } from './flightVisual.js';
-import { fireTexture } from './vfx.js';
 import { threadKey } from './threadKey.js';
 import {
   bucketFormationHulls,
@@ -306,8 +307,8 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
   }, [scene, url, fog, foreground]);
 
   /*
-    THE RIM IS A HINT, NOT A FRAME (owner, 2026-09-24): half as thick as it was (0.035 of
-    the unit hull) and a quarter dimmer, so the craft itself is what the eye lands on.
+    Owner, 2026-10-12: halve the previous 0.008 rim width and reduce opacity by 25%.
+    The same values are used by the instanced hulls below.
   */
   const { outline, outlineMaterials } = useMemo(() => {
     const clone = model.clone(true);
@@ -317,7 +318,7 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
       const material = new THREE.ShaderMaterial({
         uniforms: {
           uColour: { value: new THREE.Color(glow) },
-          uOpacity: { value: focused ? 0.65 : 0.42 },
+          uOpacity: { value: focused ? 0.4875 : 0.315 },
         },
         transparent: true,
         depthWrite: false,
@@ -325,7 +326,7 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
         blending: THREE.AdditiveBlending,
         vertexShader: `
           void main() {
-            vec3 expanded = position + normal * 0.008;
+            vec3 expanded = position + normal * 0.004;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(expanded, 1.0);
           }
         `,
@@ -344,7 +345,7 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
       owned.push(material);
     });
     return { outline: clone, outlineMaterials: owned };
-  }, [model, glow, focused, foreground]);
+  }, [model, url, glow, focused, foreground]);
 
   useEffect(
     () => () => {
@@ -384,6 +385,11 @@ function formationHullParts(scene: THREE.Object3D, url: string): FormationHullPa
     });
   });
   return parts;
+}
+
+/** All tiers share the full material; geometry-only derivatives carry no paint of their own. */
+export function formationLodParts(scene: THREE.Object3D, url: string, full: readonly FormationHullPart[]): FormationHullPart[] {
+  return formationHullParts(scene, url).map((part, index) => ({ ...part, material: full[index]?.material ?? part.material }));
 }
 
 /** Body and outline are submitted once per hull type inside this formation. */
@@ -454,9 +460,7 @@ function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused,
   // LOD geometry has the same authored axes and pose as its source model.
   const lowParts = useMemo(() => {
     if (lowScene === scene) return fullParts;
-    const parts = formationHullParts(lowScene, url);
-    // Prepared reference LODs carry geometry only; both tiers use the one full texture set.
-    return isReferenceShip(url) ? parts.map((part, index) => ({ ...part, material: fullParts[index]?.material ?? part.material })) : parts;
+    return formationLodParts(lowScene, url, fullParts);
   }, [lowScene, scene, url, fullParts]);
   return (
     <group name={`formation-hulls-${hull.toLowerCase()}`}>
@@ -521,7 +525,7 @@ function FormationHullPartMesh({
     const material = new THREE.ShaderMaterial({
       uniforms: {
         uColour: { value: new THREE.Color(glow) },
-        uOpacity: { value: focused ? 0.65 : 0.42 },
+        uOpacity: { value: focused ? 0.4875 : 0.315 },
       },
       transparent: true,
       depthWrite: false,
@@ -529,7 +533,7 @@ function FormationHullPartMesh({
       blending: THREE.AdditiveBlending,
       vertexShader: `
         void main() {
-          vec4 expanded = vec4(position + normal * 0.008, 1.0);
+          vec4 expanded = vec4(position + normal * 0.004, 1.0);
           #ifdef USE_INSTANCING
             expanded = instanceMatrix * expanded;
           #endif
@@ -629,7 +633,7 @@ function FormationHullPartMesh({
  * a bright core and a soft edge — volume, not a shape. Short on purpose: a long
  * plume reads as a comet, and this is a craft.
  */
-/** Drawn after the worlds, on a cleared depth buffer. See `Hull`. */
+/** Last in the transparent queue, still depth-tested against the worlds. */
 const SHIP_ORDER = 999;
 
 /**
@@ -656,224 +660,22 @@ function materialsOf(mesh: THREE.Mesh): THREE.Material[] {
 
 
 
-/**
- * A funnel: widest where it leaves the hull, tapering to nothing behind.
- *
- * Enough overlapping steps that the soft edges merge into one continuous shape
- * rather than reading as a string of beads — four was too few and each puff was
- * separately visible. The falloff is squared so the taper closes quickly near the
- * tail, which is what a thruster actually looks like.
- */
-const PLUME_STEPS = 13;
-
-const plumeShape = (i: number) => {
-  const t = i / (PLUME_STEPS - 1);
-  const expansion = Math.sin(Math.PI * Math.min(1, t * 1.08));
-  return {
-    at: t,
-    // A rocket plume leaves a small throat, expands after the nozzle and then
-    // loses density. Starting at full width was the source of the blue bubbles.
-    size: (0.32 + expansion * 0.68) * (1 - t * 0.78),
-    alpha: (0.31 + Math.max(0, Math.cos(t * Math.PI * 6)) * 0.075) * (1 - t) ** 1.55 + 0.01,
-    // Toward white at the nozzle: an engine's core is hotter than its edge, and
-    // hotter reads as whiter.
-    white: 0.55 * (1 - t) ** 2,
-  };
-};
-
-export function Exhaust({ colour, length, width }: {
+/** Native jet attachments share the same posed model space in flights and inspection. */
+export function Exhaust({ url, colour, scale }: {
+  url: string;
   colour: string;
-  length: number;
-  width: number;
+  scale: number;
 }) {
-  const group = useRef<THREE.Group>(null);
-  const glow = useMemo(() => engineTexture() ?? softGlow(), []);
-
-  const puffs = useMemo(
-    () =>
-      Array.from({ length: PLUME_STEPS }, (_, i) => {
-        const puff = plumeShape(i);
-        return {
-          ...puff,
-          tint: new THREE.Color(colour).lerp(new THREE.Color('#ffffff'), puff.white),
-        };
-      }),
-    [colour],
-  );
-
-  // Engines are not steady. Two frequencies that do not divide into each other, so
-  // the flicker never settles into a visible loop.
-  useFrame(({ clock }) => {
-    const node = group.current;
-    if (!node) return;
-    const t = clock.elapsedTime;
-    const pulse = 1 + Math.sin(t * 17) * 0.09 + Math.sin(t * 6.3) * 0.06;
-    node.scale.set(1, 1, pulse);
-  });
-
-  return (
-    <group ref={group}>
-      {puffs.map((puff, i) => (
-        <sprite
-          key={i}
-          renderOrder={SHIP_ORDER + 1}
-          position={[0, 0, -length * puff.at]}
-          scale={[width * puff.size, width * puff.size, 1]}
-        >
-          <spriteMaterial
-            map={glow}
-            color={puff.tint}
-            transparent
-            opacity={puff.alpha}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-          />
-        </sprite>
-      ))}
-    </group>
-  );
-}
-
-/**
- * The Death Star is a strategic missile, not another small drive with a red tint.
- * Two interleaved additive volumes make a hot blue/white throat inside a much
- * fuller yellow-orange-red exhaust. The irregular offsets and independent pulse
- * keep the plume turbulent without allocating particles on every frame.
- */
-function StrategicExhaust({ scale }: { scale: number }) {
-  const root = useRef<THREE.Group>(null);
-  const outer = useRef<THREE.Group>(null);
-  const outerSprites = useRef<(THREE.Sprite | null)[]>([]);
-  const coreSprites = useRef<(THREE.Sprite | null)[]>([]);
-  const glow = useMemo(() => softGlow(), []);
-  const fire = useMemo(fireTexture, []);
-  const outerHot = useMemo(() => new THREE.Color('#fff5df'), []);
-  const outerTail = useMemo(() => new THREE.Color('#ff3b2f'), []);
-  const puffs = useMemo(() => {
-    return Array.from({ length: 24 }, (_, i) => {
-      const t = i / 23;
-      const colour = new THREE.Color('#fff5df').lerp(new THREE.Color('#ff3b2f'), t ** 1.2);
-      const turbulence = Math.sin(i * 8.173) * 0.05 * t;
-      return {
-        t,
-        colour,
-        x: turbulence,
-        y: Math.cos(i * 5.731) * 0.04 * t,
-        size: (0.32 + Math.sin(Math.PI * Math.min(1, t * 1.18)) * 0.8) * (1 - t * 0.45),
-        opacity: 0.32 * (1 - t) ** 0.8 + 0.035,
-      };
-    });
-  }, []);
-  const core = useMemo(
-    () => Array.from({ length: 16 }, (_, i) => {
-      const t = i / 15;
-      return {
-        t,
-        colour: new THREE.Color(t < 0.28 ? '#dffaff' : t < 0.58 ? '#fff7cf' : '#ffbd48'),
-        size: (0.28 + Math.sin(Math.PI * t) * 0.32) * (1 - t * 0.55),
-        opacity: 0.88 * (1 - t) ** 1.2,
-      };
-    }),
-    [],
-  );
-
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime;
-    if (root.current) {
-      root.current.scale.z = 1 + Math.sin(t * 19.1) * 0.1 + Math.sin(t * 7.7) * 0.06;
-    }
-    if (outer.current) {
-      const breath = 1 + Math.sin(t * 13.4) * 0.055;
-      outer.current.scale.set(breath, breath, 1);
-    }
-    for (let i = 0; i < puffs.length; i++) {
-      const sprite = outerSprites.current[i];
-      if (!sprite) continue;
-      const flow = (puffs[i]!.t + t * (0.85 + (i % 4) * 0.04)) % 1;
-      const widen = 0.035 + flow * 0.14;
-      sprite.position.set(
-        scale * (Math.sin(i * 8.173 + t * 9.1) * widen),
-        scale * (Math.cos(i * 5.731 + t * 7.3) * widen * 0.72),
-        -scale * 0.85 * flow,
-      );
-      const size = (0.32 + Math.sin(Math.PI * Math.min(1, flow * 1.18)) * 0.8)
-        * (1 - flow * 0.45);
-      sprite.scale.set(scale * 1.1 * size, scale * 1.1 * size, 1);
-      const material = sprite.material;
-      material.opacity = 0.32 * (1 - flow) ** 0.8 + 0.035;
-      material.color.copy(outerHot).lerp(outerTail, flow ** 1.2);
-    }
-    for (let i = 0; i < core.length; i++) {
-      const sprite = coreSprites.current[i];
-      if (!sprite) continue;
-      const flow = (core[i]!.t + t * (1.2 + (i % 3) * 0.05)) % 1;
-      sprite.position.set(
-        scale * Math.sin(i * 3.7 + t * 12.2) * 0.02 * flow,
-        scale * Math.cos(i * 4.1 + t * 10.8) * 0.016 * flow,
-        -scale * 0.45 * flow,
-      );
-      const size = (0.28 + Math.sin(Math.PI * flow) * 0.32) * (1 - flow * 0.55);
-      sprite.scale.set(scale * 0.6 * size, scale * 0.6 * size, 1);
-      sprite.material.opacity = 0.88 * (1 - flow) ** 1.2;
-    }
-  });
-
-  return (
-    <group
-      ref={root}
-      position={[0, 0, -scale * 0.48]}
-      name="death-star-rocket-exhaust"
-    >
-      <pointLight color="#78cfff" intensity={3.5} distance={scale * 3} decay={2} />
-      <pointLight
-        color="#ff4b21"
-        intensity={6}
-        distance={scale * 4.5}
-        decay={2}
-        position={[0, 0, -scale * 0.4]}
-      />
-      <group ref={outer}>
-        {puffs.map((puff, i) => (
-          <sprite
-            ref={(node) => { outerSprites.current[i] = node; }}
-            key={`outer-${String(i)}`}
-            renderOrder={SHIP_ORDER + 1}
-            position={[scale * puff.x, scale * puff.y, -scale * 0.85 * puff.t]}
-            scale={[scale * 1.1 * puff.size, scale * 1.1 * puff.size, 1]}
-          >
-            <spriteMaterial
-              map={fire}
-              color={puff.colour}
-              transparent
-              opacity={puff.opacity}
-              depthWrite={false}
-              blending={THREE.AdditiveBlending}
-              toneMapped={false}
-            />
-          </sprite>
-        ))}
-      </group>
-      {core.map((puff, i) => (
-        <sprite
-          ref={(node) => { coreSprites.current[i] = node; }}
-          key={`core-${String(i)}`}
-          renderOrder={SHIP_ORDER + 2}
-          position={[0, 0, -scale * 0.45 * puff.t]}
-          scale={[scale * 0.6 * puff.size, scale * 0.6 * puff.size, 1]}
-        >
-          <spriteMaterial
-            map={glow}
-            color={puff.colour}
-            transparent
-            opacity={puff.opacity}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            toneMapped={false}
-          />
-        </sprite>
-      ))}
-    </group>
-  );
+  const aim = useRef(1000);
+  const units = useMemo<EngineUnit[]>(() => [{
+    at: [0, 0, 0], nozzles: nativeEngineAnchors(url) ?? [[0, 0, -0.42]],
+    size: scale, colour, intensity: 0.8,
+    widthFactor: 1, lengthFactor: 1,
+  }], [url, colour, scale]);
+  if (units[0]?.nozzles.length === 0) return null;
+  return <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
+    <EngineJets units={units} aimDistance={aim} name="craft-engine-jets" />
+  </Suspense></SkinAssetBoundary>;
 }
 
 /**
@@ -1176,7 +978,7 @@ function Flight({
         <Suspense fallback={null}>
           {markers ? (
             <>
-              {appearance?.engineId && <FormationCosmeticEngines id={appearance.engineId} markers={markers} slots={slots} scale={style.scale} aimDistance={formationAim} />}
+              {appearance?.engineId && <FormationCosmeticEngines id={appearance.engineId} markers={markers} slots={slots} scale={style.scale} aimDistance={formationAim} shipSkins={appearance.shipSkins} />}
               <FormationLightField
                 customEngine={Boolean(appearance?.engineId)}
                 shipSkins={appearance?.shipSkins}
@@ -1218,13 +1020,11 @@ function Flight({
               {isDeathStar ? (
                 <StrategicExhaust scale={style.scale * STRATEGIC_HULL_SCALE_MULT} />
               ) : (
-                <group position={[0, 0, -style.scale * 0.42]}>
-                  <Exhaust
-                    colour={style.flame}
-                    length={style.scale * 0.8}
-                    width={style.scale * 0.46}
-                  />
-                </group>
+                <Exhaust
+                  url={appearance?.probeId ? cosmeticById(appearance.probeId)?.model ?? MODEL.probe : MODEL.probe}
+                  colour={style.flame}
+                  scale={style.scale}
+                />
               )}
             </>
           )}
@@ -1308,16 +1108,11 @@ function Flight({
 }
 
 /**
- * Every soft light in a formation in one GPU draw.
- *
- * The previous shape was one sprite per exhaust puff, one neon sprite and five
- * pip sprites PER DRAWN CRAFT. A nine-marker raid therefore spent 135 transparent
- * draw calls before it fired a single round. These point buffers preserve the
- * exact same world positions and count semantics, while the GPU expands all of
- * them into camera-facing quads in two calls: one soft additive field, one pip
- * field. No per-frame React work and no per-craft material instances.
+ * Native thruster particles for the entire formation share one instanced draw.
+ * URL-specific attachment points follow the aimed hull; equipped cosmetics keep
+ * their separate engines. Existing pip and rank fields retain their count semantics.
  */
-function FormationLightField({
+export function FormationLightField({
   markers,
   slots,
   scale,
@@ -1340,168 +1135,15 @@ function FormationLightField({
   customEngine?: boolean;
   shipSkins?: ShipCosmeticEquipment;
 }) {
-  const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
   const failureVersion = useReferenceShipFailures();
-  const nozzles = useMemo(() => markers.map(marker => {
-    const reference = referenceShipNozzles(shipHullModels(marker.hull, shipSkins).model);
-    const lift = hullPoseLift(marker.hull);
-    return reference ? reference.map(at => at.add(new THREE.Vector3(0, lift, 0))) : [new THREE.Vector3(0, lift, -0.42)];
-  }), [markers, shipSkins, failureVersion]);
-  const forward = useMemo(() => new THREE.Vector3(0, 0, 1), []);
-  const direction = useMemo(() => new THREE.Vector3(), []);
-  const rotation = useMemo(() => new THREE.Quaternion(), []);
-  const nozzle = useMemo(() => new THREE.Vector3(), []);
-  const lights = useMemo(() => {
-    const count = nozzles.reduce((sum, anchors) => sum + anchors.length * PLUME_STEPS, 0);
-    const positions = new Float32Array(count * 3);
-    const colours = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    const alphas = new Float32Array(count);
-    const pulses = new Float32Array(count);
-    const energies = new Float32Array(count);
-    const white = new THREE.Color('#ffffff');
-    let cursor = 0;
-
-    const put = (
-      position: Vec3Tuple,
-      colour: THREE.Color,
-      size: number,
-      alpha: number,
-      pulse: number,
-      energy: number,
-    ): void => {
-      positions.set(position, cursor * 3);
-      colours.set([colour.r, colour.g, colour.b], cursor * 3);
-      sizes[cursor] = size;
-      alphas[cursor] = alpha;
-      pulses[cursor] = pulse;
-      energies[cursor] = energy;
-      cursor += 1;
-    };
-
-    markers.forEach((marker, markerIndex) => {
-      const slot = slots[markerIndex] ?? [0, 0, 0];
-      const authoredScale = hullVisualScale(marker.hull, scale);
-      const flameColour = new THREE.Color(HULL_LIGHT[marker.hull].flame);
-      for (const anchor of nozzles[markerIndex]!) {
-        for (let i = 0; i < PLUME_STEPS; i += 1) {
-          const puff = plumeShape(i);
-          const tint = flameColour.clone().lerp(white, puff.white);
-          put(
-            [slot[0] + anchor.x * authoredScale, slot[1] + anchor.y * authoredScale, slot[2] + authoredScale * (anchor.z - 0.8 * puff.at)],
-            tint,
-            authoredScale * 0.46 * puff.size,
-            puff.alpha,
-            0.12,
-            (0.65 + puff.white * 1.15) * intensity,
-          );
-        }
-      }
-    });
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));
-    geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    geometry.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
-    geometry.setAttribute('aPulse', new THREE.BufferAttribute(pulses, 1));
-    geometry.setAttribute('aEnergy', new THREE.BufferAttribute(energies, 1));
-    return geometry;
-  }, [intensity, markers, slots, scale, nozzles]);
-
-  const glowMaterial = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        uniforms: {
-          uTime: { value: 0 },
-          uProjectionScale: { value: 700 },
-          uMotion: { value: 1 },
-          uDensity: { value: engineTexture() ?? softGlow() },
-        },
-        vertexColors: true,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        vertexShader: `
-          attribute float aSize;
-          attribute float aAlpha;
-          attribute float aPulse;
-          attribute float aEnergy;
-          varying vec3 vColour;
-          varying float vAlpha;
-          uniform float uTime;
-          uniform float uProjectionScale;
-          uniform float uMotion;
-          void main() {
-            vColour = color * aEnergy;
-            vAlpha = aAlpha;
-            vec4 mv = modelViewMatrix * vec4(position, 1.0);
-            float beat = 1.0 + uMotion * aPulse * (sin(uTime * 17.0 + position.x * 5.0) + sin(uTime * 6.3));
-            gl_PointSize = max(1.0, aSize * beat * uProjectionScale / max(0.01, -mv.z));
-            gl_Position = projectionMatrix * mv;
-          }
-        `,
-        fragmentShader: `
-          varying vec3 vColour;
-          varying float vAlpha;
-          uniform sampler2D uDensity;
-          void main() {
-            float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
-            float soft = texture2D(uDensity, gl_PointCoord).a;
-            float core = 1.0 + pow(max(0.0, 1.0 - d), 3.0) * 0.15;
-            gl_FragColor = vec4(vColour * core, vAlpha * soft);
-          }
-        `,
-      }),
-    [],
-  );
-
-  useFrame(({ clock, camera, size: viewport, gl }) => {
-    const positions = lights.getAttribute('position') as THREE.BufferAttribute;
-    let cursor = 0;
-    markers.forEach((marker, markerIndex) => {
-      const slot = slots[markerIndex] ?? [0, 0, 0];
-      const authoredScale = hullVisualScale(marker.hull, scale);
-      formationAimDirection(slot, aimDistance.current, aimed);
-      direction.set(...aimed);
-      rotation.setFromUnitVectors(forward, direction);
-      for (const anchor of nozzles[markerIndex]!) {
-        nozzle.copy(anchor).multiplyScalar(authoredScale).applyQuaternion(rotation);
-        for (let i = 0; i < PLUME_STEPS; i += 1) {
-          const puff = plumeShape(i);
-          const behind = authoredScale * 0.8 * puff.at;
-          positions.setXYZ(
-            cursor,
-            slot[0] + nozzle.x - aimed[0] * behind,
-            slot[1] + nozzle.y - aimed[1] * behind,
-            slot[2] + nozzle.z - aimed[2] * behind,
-          );
-          cursor += 1;
-        }
-      }
-    });
-    positions.needsUpdate = true;
-    glowMaterial.uniforms.uTime!.value = clock.elapsedTime;
-    glowMaterial.uniforms.uMotion!.value = 1;
-    const perspective = camera as THREE.PerspectiveCamera;
-    const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
-    glowMaterial.uniforms.uProjectionScale!.value =
-      (viewport.height * gl.getPixelRatio()) / (2 * Math.tan(fov / 2));
-  });
-
-  useEffect(() => () => { lights.dispose(); }, [lights]);
-  useEffect(() => () => { glowMaterial.dispose(); }, [glowMaterial]);
+  const units = useMemo(() => formationEngineUnits(markers, slots, scale, shipSkins, intensity),
+    [markers, slots, scale, shipSkins, failureVersion, intensity]);
 
   return (
     <>
-      <points
-        geometry={lights}
-        material={glowMaterial}
-        frustumCulled={false}
-        renderOrder={SHIP_ORDER + 1}
-        name={name}
-        visible={!customEngine}
-      />
+      {!customEngine && <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
+        <EngineJets units={units} aimDistance={aimDistance} name={name} />
+      </Suspense></SkinAssetBoundary>}
       {showPips && (
         <>
           <FormationPips markers={markers} slots={slots} scale={scale} focused={focused} />
@@ -1951,10 +1593,11 @@ const WAKE_LENGTH = 6.4;
 const WAKE_PEAK = 0.11;
 
 /** Soft-edged energy shed behind a drive, shared by solo and formation ribbons. */
-function makeWakeMaterial(): THREE.ShaderMaterial {
+function makeWakeMaterial(map: THREE.Texture): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
+      uMap: { value: map },
       uMotion: { value: 1 },
     },
     vertexColors: true,
@@ -1973,6 +1616,7 @@ function makeWakeMaterial(): THREE.ShaderMaterial {
       }
     `,
     fragmentShader: `
+      uniform sampler2D uMap;
       uniform float uTime;
       uniform float uMotion;
       varying vec2 vUv;
@@ -1982,7 +1626,8 @@ function makeWakeMaterial(): THREE.ShaderMaterial {
         float softEdge = 1.0 - smoothstep(0.18, 1.0, across);
         float tail = pow(max(0.0, 1.0 - vUv.y), 2.35);
         float breakup = 0.94 + uMotion * 0.06 * sin(uTime * 7.3 - vUv.y * 24.0);
-        float alpha = softEdge * tail * breakup * 0.32;
+        float fibers = texture2D(uMap, vec2(vUv.x, fract(vUv.y * 0.8 - uTime * 0.18))).r;
+        float alpha = softEdge * tail * breakup * (0.18 + fibers * 0.25);
         gl_FragColor = vec4(vColour * (0.55 + tail * 0.85), alpha);
       }
     `,
@@ -1999,7 +1644,8 @@ export function Wake({
   lengthScale?: number;
 }) {
   const mesh = useRef<THREE.Mesh>(null);
-  const material = useMemo(() => makeWakeMaterial(), []);
+  const wakeMap = useTexture(TRAIL_MAP);
+  const material = useMemo(() => makeWakeMaterial(wakeMap), [wakeMap]);
 
   /** Colours and indices never change; only the vertices move. Built once. */
   const geometry = useMemo(() => {
@@ -2101,7 +1747,8 @@ export function FormationWakes({
   longitudinalOffset?: (markerIndex: number, elapsedSeconds: number) => number;
 }) {
   const mesh = useRef<THREE.Mesh>(null);
-  const material = useMemo(() => makeWakeMaterial(), []);
+  const wakeMap = useTexture(TRAIL_MAP);
+  const material = useMemo(() => makeWakeMaterial(wakeMap), [wakeMap]);
   const geometry = useMemo(() => {
     const verticesPerWake = WAKE_SEGMENTS * 2;
     const positions = new Float32Array(markers.length * verticesPerWake * 3);
@@ -3084,7 +2731,7 @@ function Foreign({
                 current either way (the rock lane's rule), and a dimmed ship reads as
                 a rendering fault rather than as a sentence about sight.
               */}
-              {contact.kind === 'fleet' && contact.appearance?.engineId && <FormationCosmeticEngines id={contact.appearance.engineId} markers={markers} slots={slots} scale={style.scale} aimDistance={formationAim} />}
+              {contact.kind === 'fleet' && contact.appearance?.engineId && <FormationCosmeticEngines id={contact.appearance.engineId} markers={markers} slots={slots} scale={style.scale} aimDistance={formationAim} shipSkins={contact.appearance.shipSkins} />}
               {contact.kind === 'pirate' ? (
                 <PirateEngineFlames
                   markers={markers}
@@ -3153,13 +2800,11 @@ function Foreign({
               {contact.kind === 'death_star' ? (
                 <StrategicExhaust scale={style.scale * STRATEGIC_HULL_SCALE_MULT} />
               ) : (
-                <group position={[0, 0, -style.scale * 0.42]}>
-                  <Exhaust
-                    colour={style.flame}
-                    length={style.scale * 0.7}
-                    width={style.scale * 0.4}
-                  />
-                </group>
+                <Exhaust
+                  url={contact.appearance?.probeId ? cosmeticById(contact.appearance.probeId)?.model ?? MODEL.probe : MODEL.probe}
+                  colour={style.flame}
+                  scale={style.scale}
+                />
               )}
             </>
           )}

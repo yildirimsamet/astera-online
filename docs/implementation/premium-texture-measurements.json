@@ -1,0 +1,36 @@
+{
+  "effects": [
+    {
+      "name": "burst.webp",
+      "bytes": 15102
+    },
+    {
+      "name": "dust.webp",
+      "bytes": 258520
+    },
+    {
+      "name": "explosion.webp",
+      "bytes": 72662
+    },
+    {
+      "name": "shock.webp",
+      "bytes": 25430
+    },
+    {
+      "name": "smoke.webp",
+      "bytes": 88074
+    },
+    {
+      "name": "thruster-grunge.webp",
+      "bytes": 4376
+    },
+    {
+      "name": "thruster-noise.webp",
+      "bytes": 5064
+    },
+    {
+      "name": "trail.webp",
+      "bytes": 8560
+    }
+  ]
+}

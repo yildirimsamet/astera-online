@@ -39,7 +39,7 @@ export async function verifyGalaxyReadout(output) {
                 online: live, onlineToday: count,
                 counts: {worlds:212, fleetsAway:3, rocks:9, pirates:1, wrecks:1, monuments:8},
               }));
-              window.dailyLabel = count => i18n.t('galaxy.onlineToday', {count});
+              window.dailyLabel = count => i18n.t('galaxy.onlineToday', {count}).replace(/<[^>]+>/g, '');
               window.showDaily(100, 6);
             </script></body></html>`,
         }));
@@ -55,8 +55,11 @@ export async function verifyGalaxyReadout(output) {
             const row = element.parentElement;
             const dot = row.querySelector('[aria-hidden="true"]');
             const bounds = row.getBoundingClientRect();
+            const number = element.querySelector('strong');
             return {
               text: row.textContent, color: getComputedStyle(element).color,
+              number: number?.textContent, numberColor: number ? getComputedStyle(number).color : undefined,
+              numberWeight: number ? getComputedStyle(number).fontWeight : undefined,
               dotColor: getComputedStyle(dot).backgroundColor,
               dotWidth: dot.getBoundingClientRect().width,
               dotRadius: getComputedStyle(dot).borderRadius,
@@ -65,6 +68,9 @@ export async function verifyGalaxyReadout(output) {
           });
           assert.equal(measured.text, label);
           assert.equal(measured.color, 'rgb(164, 177, 205)');
+          assert.equal(measured.number, String(count));
+          assert(Number(measured.numberWeight) >= 700);
+          assert.notEqual(measured.numberColor, measured.color);
           assert.equal(measured.dotColor, 'rgb(46, 230, 200)');
           assert.equal(measured.dotWidth, 6);
           assert.equal(measured.fits, true, `${language} ${width}px daily activity must fit`);

@@ -1,0 +1,80 @@
+[
+  {
+    "name": "missile",
+    "source": "galaxy-division/models/glb/Gameplay/Weapons/Missiles/Meshes/SM_Rocket_1.glb",
+    "maps": [
+      "galaxy-division/textures/models/Gameplay/Weapons/Missiles/Textures/T_Rocket_1_D.png"
+    ],
+    "facing": "+x",
+    "output": "assets/models/missiles/rocket-premium-v2.glb",
+    "size": 256,
+    "original": 256,
+    "triangles": 256,
+    "lowTriangles": null,
+    "bytes": 12688
+  },
+  {
+    "name": "atria",
+    "source": "galaxy-division/models/glb/Art/Asteroids/AsteroidsAtria/Meshes/SM_AsteroidAtria_1.glb",
+    "maps": [
+      "galaxy-division/textures/models/Art/Asteroids/AsteroidsAtria/Textures/T_AsteroidAtria_D.png",
+      "galaxy-division/textures/models/Art/Asteroids/AsteroidsAtria/Textures/T_AsteroidAtria_N.png"
+    ],
+    "output": "assets/models/asteroids/atria-premium-v2.glb",
+    "size": 256,
+    "mineral": false,
+    "rock": true,
+    "original": 745,
+    "triangles": 745,
+    "lowTriangles": null,
+    "bytes": 58592
+  },
+  {
+    "name": "stone",
+    "source": "galaxy-division/models/glb/Art/Asteroids/AsteroidsStone/Meshes/SM_AsteroidStone_1.glb",
+    "maps": [
+      "galaxy-division/textures/models/Art/Asteroids/AsteroidsStone/Textures/T_AsteroidStone_D.png",
+      "galaxy-division/textures/models/Art/Asteroids/AsteroidsStone/Textures/T_AsteroidStone_N.png"
+    ],
+    "output": "assets/models/asteroids/stone-premium-v2.glb",
+    "size": 256,
+    "mineral": false,
+    "rock": true,
+    "original": 802,
+    "triangles": 802,
+    "lowTriangles": null,
+    "bytes": 57200
+  },
+  {
+    "name": "atria-large",
+    "source": "galaxy-division/models/glb/Art/Asteroids/AsteroidsAtria/Meshes/SM_AsteroidAtria_4.glb",
+    "maps": [
+      "galaxy-division/textures/models/Art/Asteroids/AsteroidsAtria/Textures/T_AsteroidAtria_D.png",
+      "galaxy-division/textures/models/Art/Asteroids/AsteroidsAtria/Textures/T_AsteroidAtria_N.png"
+    ],
+    "output": "assets/models/asteroids/atria-large-premium-v2.glb",
+    "size": 256,
+    "mineral": false,
+    "rock": true,
+    "original": 1354,
+    "triangles": 1354,
+    "lowTriangles": null,
+    "bytes": 64972
+  },
+  {
+    "name": "isotope",
+    "source": "galaxy-division/models/glb/Art/Asteroids/AsteroidsCrystal/Meshes/SM_AsteroidCrystal_Small_2.glb",
+    "maps": [
+      "galaxy-division/textures/models/Art/Asteroids/AsteroidsCrystal/Textures/T_AsteroidCrystal_D.png",
+      "galaxy-division/textures/models/Art/Asteroids/AsteroidsCrystal/Textures/T_AsteroidCrystal_N.png"
+    ],
+    "output": "assets/models/asteroids/isotope-premium-v2.glb",
+    "size": 256,
+    "mineral": true,
+    "rock": true,
+    "original": 976,
+    "triangles": 976,
+    "lowTriangles": null,
+    "bytes": 50008
+  }
+]

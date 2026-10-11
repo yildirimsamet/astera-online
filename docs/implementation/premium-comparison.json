@@ -1,0 +1,204 @@
+[
+  {
+    "name": "missile",
+    "previous": {
+      "bytes": 56480,
+      "triangles": 2245,
+      "primitives": 1,
+      "images": 1,
+      "textureDimensions": [
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        }
+      ],
+      "textureRgbaBytes": 262144
+    },
+    "now": {
+      "bytes": 12688,
+      "triangles": 256,
+      "primitives": 1,
+      "images": 1,
+      "textureDimensions": [
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        }
+      ],
+      "textureRgbaBytes": 262144
+    },
+    "lowTriangles": null,
+    "source": "galaxy-division/models/glb/Gameplay/Weapons/Missiles/Meshes/SM_Rocket_1.glb"
+  },
+  {
+    "name": "atria",
+    "previous": {
+      "bytes": 56196,
+      "triangles": 1410,
+      "primitives": 1,
+      "images": 3,
+      "textureDimensions": [
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        }
+      ],
+      "textureRgbaBytes": 786432
+    },
+    "now": {
+      "bytes": 58592,
+      "triangles": 745,
+      "primitives": 1,
+      "images": 2,
+      "textureDimensions": [
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        }
+      ],
+      "textureRgbaBytes": 524288
+    },
+    "lowTriangles": null,
+    "source": "galaxy-division/models/glb/Art/Asteroids/AsteroidsAtria/Meshes/SM_AsteroidAtria_1.glb"
+  },
+  {
+    "name": "stone",
+    "previous": {
+      "bytes": 35096,
+      "triangles": 1618,
+      "primitives": 1,
+      "images": 3,
+      "textureDimensions": [
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        }
+      ],
+      "textureRgbaBytes": 786432
+    },
+    "now": {
+      "bytes": 57200,
+      "triangles": 802,
+      "primitives": 1,
+      "images": 2,
+      "textureDimensions": [
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        }
+      ],
+      "textureRgbaBytes": 524288
+    },
+    "lowTriangles": null,
+    "source": "galaxy-division/models/glb/Art/Asteroids/AsteroidsStone/Meshes/SM_AsteroidStone_1.glb"
+  },
+  {
+    "name": "atria-large",
+    "previous": {
+      "bytes": 49220,
+      "triangles": 1874,
+      "primitives": 1,
+      "images": 3,
+      "textureDimensions": [
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        }
+      ],
+      "textureRgbaBytes": 786432
+    },
+    "now": {
+      "bytes": 64972,
+      "triangles": 1354,
+      "primitives": 1,
+      "images": 2,
+      "textureDimensions": [
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        }
+      ],
+      "textureRgbaBytes": 524288
+    },
+    "lowTriangles": null,
+    "source": "galaxy-division/models/glb/Art/Asteroids/AsteroidsAtria/Meshes/SM_AsteroidAtria_4.glb"
+  },
+  {
+    "name": "isotope",
+    "previous": null,
+    "now": {
+      "bytes": 50008,
+      "triangles": 976,
+      "primitives": 1,
+      "images": 2,
+      "textureDimensions": [
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        },
+        {
+          "width": 256,
+          "height": 256,
+          "format": "webp"
+        }
+      ],
+      "textureRgbaBytes": 524288
+    },
+    "lowTriangles": null,
+    "source": "galaxy-division/models/glb/Art/Asteroids/AsteroidsCrystal/Meshes/SM_AsteroidCrystal_Small_2.glb"
+  }
+]
