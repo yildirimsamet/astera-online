@@ -308,10 +308,11 @@ describe('the research renders', () => {
       .toEqual([]);
   });
 
-  /** And the lab renders come from the lab, not from a hull or a resource table. */
-  it('draws every research project from the lab folder', () => {
-    const borrowed = RESEARCH_PROJECT_IDS.filter((id) => !RESEARCH_ART[id].includes('/lab/'));
-    expect(borrowed).toEqual([]);
+  /** Each research render belongs to the dedicated premium research collection. */
+  it('draws every research project from the premium research collection', () => {
+    for (const id of RESEARCH_PROJECT_IDS) {
+      expect(RESEARCH_ART[id]).toMatch(/^\/assets\/images\/premium\/research\/[a-z0-9-]+\.webp$/u);
+    }
   });
 });
 
