@@ -9,7 +9,7 @@
 import { parseArgs } from 'node:util';
 import { randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { GALAXY_EVENT_KINDS, SEASON, SERVERS, rewardId, type GalaxyEventKind } from '@astera/rules';
+import { GALAXY_EVENT_KINDS, MULTI_WORLD, SEASON, SERVERS, rewardId, type GalaxyEventKind } from '@astera/rules';
 import { createDb } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
 import { loadDotEnv, loadEnv } from '../env.js';
@@ -35,6 +35,7 @@ import {
   wipeAllServers,
 } from '../services/servers.js';
 import { forceSeasonEnd } from '../worker/handlers.js';
+import { bootstrapLocalWorld } from './localWorld.js';
 
 /** The @JoinAstera bonus, which is the only hand-checked reward there is. */
 const SOCIAL_REWARD = rewardId('SOCIAL', 1);
@@ -42,6 +43,8 @@ const SOCIAL_REWARD = rewardId('SOCIAL', 1);
 const USAGE = `
 season migrate                     apply pending migrations
 season bootstrap [options]         open all ${String(SERVERS.count)} galaxies (idempotent)
+season local-bootstrap [options]   refresh obsolete LOCAL development worlds and
+                                   open today's ruleset; preserve accounts
 season create [options]            open ONE galaxy on a named shard
 season status                      every galaxy, its population and who is on it
 season wipe --yes [options]        END EVERYTHING. Seal permanent season records,
@@ -89,7 +92,8 @@ season adopt-monuments --shard CODE [--yes]
   --days N          season length              (default: ${String(SEASON.days)})
   --cap N           planets per galaxy         (default: ${String(SERVERS.capacity)})
   --count N         galaxies, for 'bootstrap'  (default: ${String(SERVERS.count)})
-  --ruleset N       explicit season ruleset (use 16 to deal the approved monuments)
+  --ruleset N       explicit season ruleset (default: ${String(MULTI_WORLD.rulesetVersion)};
+                    local-bootstrap always uses the current default)
   --unattended N    DEV AID ONLY: place N inert commanders on the FIRST open galaxy
                     so a solo developer has something to scout and raid.
   --id ID           reward tier, for 'reward'    (default: ${SOCIAL_REWARD})
@@ -200,15 +204,22 @@ async function main(): Promise<void> {
         break;
       }
 
-      case 'bootstrap': {
+      case 'bootstrap':
+      case 'local-bootstrap': {
+        if (command === 'local-bootstrap' && values.ruleset !== undefined) {
+          throw new Error('local-bootstrap always uses the current ruleset; omit --ruleset.');
+        }
         const capacity = galaxyCapacity(values.cap, env.NODE_ENV === 'production');
-        const result = await bootstrapServers(db, systemClock, {
+        const options = {
           count: galaxyCount(values.count),
           capacity,
           days: num(values.days, SEASON.days),
           ...(values.seed === undefined ? {} : { seedBase: num(values.seed, 0) }),
-          ...(values.ruleset === undefined ? {} : { rulesetVersion: num(values.ruleset, 15) }),
-        });
+          ...(values.ruleset === undefined ? {} : { rulesetVersion: num(values.ruleset, MULTI_WORLD.rulesetVersion) }),
+        };
+        const result = command === 'local-bootstrap'
+          ? await bootstrapLocalWorld(db, systemClock, env, options)
+          : await bootstrapServers(db, systemClock, options);
         console.log(
           [
             `opened     ${result.created.join(', ') || '(none)'}`,
@@ -279,7 +290,7 @@ async function main(): Promise<void> {
           startsAt: systemClock.now(),
           days: num(values.days, SEASON.days),
           playerCap: capacity,
-          ...(values.ruleset === undefined ? {} : { rulesetVersion: num(values.ruleset, 15) }),
+          ...(values.ruleset === undefined ? {} : { rulesetVersion: num(values.ruleset, MULTI_WORLD.rulesetVersion) }),
         });
 
         console.log(
@@ -578,7 +589,7 @@ async function main(): Promise<void> {
           capacity: galaxyCapacity(values.cap, env.NODE_ENV === 'production'),
           days: num(values.days, SEASON.days),
           ...(values.seed === undefined ? {} : { seedBase: num(values.seed, 0) }),
-          ...(values.ruleset === undefined ? {} : { rulesetVersion: num(values.ruleset, 15) }),
+          ...(values.ruleset === undefined ? {} : { rulesetVersion: num(values.ruleset, MULTI_WORLD.rulesetVersion) }),
         });
         console.log(
           [

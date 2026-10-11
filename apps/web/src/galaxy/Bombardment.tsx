@@ -1,11 +1,14 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
+import { useGLTF, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { MODEL, MODEL_FACING } from '../ui/assets.js';
 import { orientedCraft } from './model.js';
 import {
   fireTexture,
+  EXPLOSION_ATLAS,
+  EXPLOSION_GRID,
+  explosionFrame,
   plumeTexture,
   publicEffectIntensity,
   ringTexture,
@@ -25,6 +28,8 @@ import {
 } from './volley.js';
 import { serverNow } from '../lib/clock.js';
 import { FullRate } from './frames.jsx';
+import { playSceneSound } from './audio.js';
+import { SkinAssetBoundary } from './SkinAssetBoundary.js';
 
 /**
  * THE TEN SECONDS A RAID TAKES TO LAND. D44, made public by D52.
@@ -215,15 +220,7 @@ export function Bombardment({
  * while it flies, the fire while it burns, and never both. Splitting them would
  * compute the same impact point twice and leave two schedules to keep in step.
  */
-function Round({
-  shot,
-  from,
-  distance,
-  radius,
-  size,
-  arriveAt,
-  intensity,
-}: {
+interface RoundProps {
   shot: Shot;
   from: readonly [number, number, number];
   distance: number;
@@ -232,7 +229,24 @@ function Round({
   size: number;
   arriveAt: number;
   intensity: number;
-}) {
+}
+
+/** Optional artwork loading or failure keeps the existing fire effect on screen. */
+function Round(props: RoundProps) {
+  const fallback = <RoundEffect {...props} />;
+  return (
+    <SkinAssetBoundary fallback={fallback}>
+      <Suspense fallback={fallback}><TexturedRound {...props} /></Suspense>
+    </SkinAssetBoundary>
+  );
+}
+
+function TexturedRound(props: RoundProps) {
+  const atlas = useTexture(EXPLOSION_ATLAS);
+  return <RoundEffect {...props} atlas={atlas} />;
+}
+
+function RoundEffect({ shot, from, distance, radius, size, arriveAt, intensity, atlas }: RoundProps & { atlas?: THREE.Texture }) {
   const body = useRef<THREE.Group>(null);
   const strip = useRef<THREE.Mesh>(null);
   const trailMaterial = useRef<THREE.MeshBasicMaterial>(null);
@@ -245,6 +259,17 @@ function Round({
   const nozzle = useRef<THREE.Sprite>(null);
 
   const fire = useMemo(() => fireTexture(), []);
+  const explosion = useMemo(() => {
+    if (!atlas) return null;
+    const texture = atlas.clone();
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.minFilter = THREE.LinearFilter;
+    texture.generateMipmaps = false;
+    texture.repeat.set(1 / EXPLOSION_GRID, 1 / EXPLOSION_GRID);
+    explosionFrame(texture, 0);
+    return texture;
+  }, [atlas]);
+  useEffect(() => () => { explosion?.dispose(); }, [explosion]);
   const shockMap = useMemo(() => ringTexture(), []);
   const sparkMap = useMemo(() => sparkTexture(), []);
   const plumeMap = useMemo(() => plumeTexture(), []);
@@ -360,6 +385,7 @@ function Round({
   const tail = useMemo(() => new THREE.Vector3(), []);
   const eye = useMemo(() => new THREE.Vector3(), []);
   const side = useMemo(() => new THREE.Vector3(), []);
+  const heard = useRef({ launch: false, impact: false });
 
   useFrame(({ camera }) => {
     const seconds = (serverNow() - arriveAt) / 1000;
@@ -375,6 +401,20 @@ function Round({
     if (shock.current) shock.current.visible = burning !== null && burning < 0.42;
     if (smoke.current) smoke.current.visible = burning !== null && burning > 0.12;
     if (embers.current) embers.current.visible = burning !== null;
+    if (flying !== null && !heard.current.launch) {
+      heard.current.launch = true;
+      if (flying < 0.16 && muzzle.current) {
+        muzzle.current.getWorldPosition(here);
+        playSceneSound('weapon', here, camera, intensity, `weapon:${arriveAt}:${shot.launchAt}:${from.join(',')}`);
+      }
+    }
+    if (burning !== null && !heard.current.impact) {
+      heard.current.impact = true;
+      if (burning < 0.16 && fireball.current) {
+        fireball.current.getWorldPosition(here);
+        playSceneSound('impact', here, camera, intensity, `impact:${arriveAt}:${shot.launchAt}:${from.join(',')}`);
+      }
+    }
 
     const sinceLaunch = seconds - shot.launchAt;
     if (muzzle.current) {
@@ -471,6 +511,7 @@ function Round({
       }
 
       if (fireball.current) {
+        if (explosion) explosionFrame(explosion, t);
         // Eased outward, so it bursts and then swells rather than growing evenly.
         const s = wide * (0.45 + 1.15 * Math.sqrt(t));
         fireball.current.scale.set(s, s, 1);
@@ -599,7 +640,7 @@ function Round({
         </mesh>
         <sprite ref={fireball} visible={false} renderOrder={VFX_ORDER + 1}>
           <spriteMaterial
-            {...(fire ? { map: fire } : {})}
+            map={explosion ?? fire}
             transparent
             opacity={0}
             depthWrite={false}

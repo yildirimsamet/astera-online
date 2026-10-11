@@ -369,6 +369,14 @@ export const planet = {
   },
 
   buildSheet: {
+    specialRole: {
+      title: 'Özel görevi',
+      nullifierEffect: 'Aktif Aegis · {{multiplier}} hasar',
+      nullifierLimit: 'Ek hasar yalnız kalkana vurur; gemilere veya yer savunmalarına geçmez. Kalkan bitince normal saldırısını kullanır.',
+      collectorEffect: 'Sağ kalan gemi başına en fazla {{amount}} kaynak',
+      collectorUse: 'Saldırı filosuna savaş gemileriyle ekle. O savaşın enkazını toplar ve kaynakları eve getirir.',
+      collectorLimit: 'Yağma kapasitesi eklemez; savunmada enkaz toplamaz. Asteroitlere veya enkaz sahalarına gönderilemez.',
+    },
     eyebrowGround: "Yer savunması · hiç kalkmaz",
     eyebrowMobile: "Hareketli gövde",
     howMany: "Kaç tane",

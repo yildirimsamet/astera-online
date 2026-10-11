@@ -14,6 +14,8 @@
  */
 
 export const errors = {
+  ACCOUNT_NOT_FOUND: 'アカウントが見つかりません。ユーザー名を確認してください。',
+  CHAT_MUTED: "このチャンネルへの投稿権限が制限されています。",
   MONUMENT_TIER_FORBIDDEN: "イージーの記念碑はティア1–3専用です。ハードの記念碑を選んでください",
   MONUMENT_FLEET_ACTIVE: "貨物船を含む自分の全艦船が帰還するまで、追加で派遣できるのは貨物船だけです。",
   CAPITAL_CANNOT_BE_ABANDONED: "首都は放棄できません。植民地を選択してください。",

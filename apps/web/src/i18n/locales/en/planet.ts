@@ -370,6 +370,14 @@ export const planet = {
   },
 
   buildSheet: {
+    specialRole: {
+      title: 'Special role',
+      nullifierEffect: 'Active Aegis · {{multiplier}} damage',
+      nullifierLimit: 'Bonus damage hits only the shield; it never spills into ships or ground guns. When the shield is empty, it uses its normal attack.',
+      collectorEffect: 'Up to {{amount}} resources per surviving ship',
+      collectorUse: 'Add it to an attacking fleet with combat ships. It collects that battle’s wreck and brings the resources home.',
+      collectorLimit: 'Adds no loot cargo and collects no salvage while defending. It cannot be sent to asteroids or debris fields.',
+    },
     eyebrowGround: "Ground defence · never leaves",
     eyebrowMobile: "Mobile hull",
     howMany: "How many",

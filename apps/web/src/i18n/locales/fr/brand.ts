@@ -1,4 +1,16 @@
 export const brand = {
+  fullscreen: {
+    title: 'Plein écran',
+    enter: 'Passer en plein écran',
+    exit: 'Quitter le plein écran',
+    already: 'Le plein écran est déjà actif',
+    appActive: 'La vue application est déjà active',
+    unsupported: 'Ton navigateur ne peut pas afficher cette page en plein écran. Tu peux utiliser les options ci-dessous.',
+    enterFailed: 'Le plein écran n’a pas pu s’ouvrir. Réessaie avec le bouton ou utilise les options ci-dessous.',
+    exitFailed: 'Le plein écran n’a pas pu se fermer. Réessaie avec le bouton ou utilise la commande de sortie du navigateur.',
+    launchApp: 'Ouvre ensuite le jeu depuis son icône sur l’écran d’accueil pour jouer sans la barre d’adresse du navigateur.',
+    desktopHelp: 'Choisis Plein écran dans le menu du navigateur. Utilise le même menu ou Échap pour quitter cette vue.',
+  },
   "returnTitle": "Retrouve facilement le jeu",
   "returnHint": "Ajoute le jeu à ton écran d’accueil pour le rouvrir facilement.",
   "returnHintDesktop": "Ajoute le jeu à tes favoris ou installe-le pour le rouvrir facilement.",

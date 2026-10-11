@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LOCAL_REFERENCE_ART } from './referenceArt.js';
 
 /** Public combat VFX outside every sensor circle: readable spectacle, not local glare. */
 export const DISTANT_EFFECT_INTENSITY = 0.35;
@@ -16,10 +17,8 @@ export const publicEffectIntensity = (effectOnly: boolean): number =>
  * hundred live particles by a wide margin, and a shaped, coloured texture beats a
  * smooth radial gradient by more than any amount of extra geometry can.
  *
- * WHY NOT COMMISSION SPRITE SHEETS. `KNOWN RISKS` is explicit that 3D scope creep
- * is a real danger and that this project uses assets that exist and commissions
- * nothing mid-phase. Procedural textures cost one canvas each, ship in the bundle
- * for free, and can be re-tuned by editing a number rather than by re-ordering art.
+ * The animated explosion is an original offline bake (`tools/premium-assets.mjs`).
+ * The smaller support maps stay procedural and cached once per session.
  *
  * WHY THE COLOUR IS BAKED IN. A sprite's `color` MULTIPLIES its map, so a single
  * white blob can only ever be tinted one colour — which is exactly why the first
@@ -261,6 +260,42 @@ export function smokeTexture(): THREE.Texture | null {
 /* ── the plume ──────────────────────────────────────────────── */
 
 let plume: Cache | undefined;
+
+/** One MiB on the GPU, shared by every blast. Frame offsets belong to owned clones. */
+export const EXPLOSION_ATLAS = LOCAL_REFERENCE_ART ? '/__ref/dist/fx/explosion.webp' : '/assets/vfx/premium/explosion-v1.webp';
+export const EXPLOSION_GRID = LOCAL_REFERENCE_ART ? 8 : 4;
+export const EXPLOSION_FRAMES = LOCAL_REFERENCE_ART ? 64 : 16;
+
+export function explosionFrame(texture: THREE.Texture, progress: number): void {
+  const frame = Math.min(EXPLOSION_FRAMES - 1, Math.max(0, Math.floor(progress * EXPLOSION_FRAMES)));
+  texture.offset.set((frame % EXPLOSION_GRID) / EXPLOSION_GRID,
+    1 - (Math.floor(frame / EXPLOSION_GRID) + 1) / EXPLOSION_GRID);
+}
+
+let engine: Cache | undefined;
+
+/** Fine turbulent density in a white map; each engine keeps its own semantic tint. */
+export function engineTexture(): THREE.Texture | null {
+  if (engine !== undefined) return engine;
+  const made = surface(128);
+  if (!made) return (engine = null);
+  const { canvas, ctx } = made;
+  const noise = noiseField(128, 11, 0x73da5e);
+  const image = ctx.createImageData(128, 128);
+  for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
+    const i = y * 128 + x;
+    const dx = (x + 0.5) / 64 - 1, dy = (y + 0.5) / 64 - 1;
+    const r = Math.hypot(dx, dy);
+    const turbulence = ((noise[i] ?? 0.5) - 0.5) * 0.22 * r;
+    const edge = Math.max(0, 1 - r - turbulence);
+    const hot = Math.min(1, edge ** 1.7 * (0.7 + (noise[i] ?? 0.5) * 0.6));
+    const p = i * 4;
+    image.data[p] = image.data[p + 1] = image.data[p + 2] = 255;
+    image.data[p + 3] = Math.round(hot * 255);
+  }
+  ctx.putImageData(image, 0, 0);
+  return (engine = finish(canvas));
+}
 
 /**
  * THE STREAK A ROUND DRAGS, AS A TEXTURE RATHER THAN AS A COLOUR.

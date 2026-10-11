@@ -40,6 +40,7 @@ import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Segmented } from '../v2/kit/Segmented.js';
 import { EmptyState } from '../v2/kit/Surface.js';
 import { Trophy, type Place } from '../ui/Medal.js';
+import { useAdminChatScopes, useAdminClanChat, useAdminPostClanChat } from '../api/adminQueries.js';
 
 const PODIUM_BORDER: Record<Place, string> = { 1: 'border-rank-gold/35', 2: 'border-rank-silver/35', 3: 'border-rank-copper/35' };
 const PODIUM_INK: Record<Place, string> = { 1: 'text-rank-gold', 2: 'text-rank-silver', 3: 'text-rank-copper' };
@@ -88,11 +89,13 @@ export function ChatScreen({
   onFocusPlanet,
   initialChannel = 'general',
   initialClanDraft = '',
+  isAdmin = false,
 }: {
   onFocusPlanet: (planetId: string) => void;
   initialChannel?: ChatChannel;
   /** A line handed in to the clan composer (a report told to the clan, M4); the reader sends it. */
   initialClanDraft?: string;
+  isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
   const [channel, setChannel] = useState<ChatChannel>(initialChannel);
@@ -105,7 +108,7 @@ export function ChatScreen({
   const inClan = badge.data?.membership !== null && badge.data?.membership !== undefined;
   const general = useChatMessages(chatLanguage);
   const generalUnreadQuery = useChatUnread(chatLanguage);
-  const clan = useClanChat(inClan);
+  const clan = useClanChat(inClan && !isAdmin);
   const postGeneral = usePostChat(chatLanguage);
   const markGeneral = useMarkChatRead(chatLanguage);
   const clanActions = useClanActions();
@@ -232,6 +235,8 @@ export function ChatScreen({
           )
         ) : channel === 'dm' ? (
           <DmPanel />
+        ) : isAdmin ? (
+          <AdminClanChannel onFocusPlanet={onFocusPlanet} />
         ) : !inClan ? (
           <div className="px-2 py-6">
             <EmptyState icon={<ClanIcon className="size-6" />} title={t('chat.clanLocked')}>
@@ -271,6 +276,46 @@ export function ChatScreen({
       </div>
     </div>
   );
+}
+
+function AdminClanChannel({ onFocusPlanet }: { onFocusPlanet: (id: string) => void }) {
+  const { t } = useTranslation();
+  const scopes = useAdminChatScopes();
+  const [selected, setSelected] = useState('');
+  const clanId = scopes.data?.clans.some(clan => clan.id === selected) ? selected : scopes.data?.clans[0]?.id ?? '';
+  if (scopes.isError) return <Unreachable what={t('community.admin.ops.channels')} onRetry={() => { void scopes.refetch(); }} />;
+  if (!scopes.data) return <Waiting>{t('community.admin.ops.loading')}</Waiting>;
+  if (!clanId) return <div className="p-3"><EmptyState title={t('community.admin.ops.noClans')} /></div>;
+  return <>
+    <div className="shrink-0 border-b border-v2-line px-3 py-2">
+      <label className="flex flex-col gap-1 text-micro text-v2-ink-3">{t('community.admin.ops.clanChannel')}
+        <select className="h-9 w-full rounded-control border border-v2-line-hi bg-v2-deep px-2 text-caption text-v2-ink outline-none focus:border-v2-self" value={clanId} onChange={event => { setSelected(event.currentTarget.value); }}>
+          {scopes.data.clans.map(clan => <option key={clan.id} value={clan.id}>[{clan.tag}] {clan.name} · {clan.galaxy}</option>)}
+        </select>
+      </label>
+      <p className="mt-1 text-micro text-v2-ink-3">{t('community.admin.ops.clanChatHint')}</p>
+    </div>
+    <AdminSelectedClanChat key={clanId} clanId={clanId} onFocusPlanet={onFocusPlanet} />
+  </>;
+}
+
+function AdminSelectedClanChat({ clanId, onFocusPlanet }: { clanId: string; onFocusPlanet: (id: string) => void }) {
+  const { t } = useTranslation();
+  const chat = useAdminClanChat(clanId);
+  const post = useAdminPostClanChat(clanId);
+  const [draft, setDraft] = useState('');
+  const [reply, setReply] = useState<MessageRow | null>(null);
+  const messages = useMemo(() => [...(chat.data?.pages ?? [])].reverse().flatMap(page => page.messages), [chat.data?.pages]);
+  if (chat.isError) return <Unreachable what={t('clan.chat.heading')} onRetry={() => { void chat.refetch(); }} />;
+  if (!chat.data) return <Waiting>{t('clan.chat.waiting')}</Waiting>;
+  return <ChannelPanel messages={messages} listLabel={t('clan.chat.list')} empty={t('clan.chat.empty')}
+    loadingOlder={t('clan.chat.loadingOlder')} placeholder={t('clan.chat.placeholder')}
+    draft={draft} onDraft={setDraft} replyTarget={reply} onReplyTarget={setReply} onFocusPlanet={onFocusPlanet}
+    hasNextPage={chat.hasNextPage} fetchingOlder={chat.isFetchingNextPage} onOlder={() => chat.fetchNextPage()}
+    onMarkRead={() => { /* Admin reads never change a member's read marker. */ }}
+    posting={post.isPending} postError={post.error}
+    onPost={(content, replyToMessageId, done) => { post.mutate({ content, ...(replyToMessageId ? { replyToMessageId } : {}) }, { onSuccess: done }); }}
+    maxChars={CLAN.chatMaxChars} tone="clan" canReact={false} />;
 }
 
 function DmPanel() {
@@ -475,6 +520,7 @@ function ChannelPanel({
   maxChars,
   tone,
   disabledReason = null,
+  canReact = true,
 }: {
   messages: readonly MessageRow[];
   listLabel: string;
@@ -497,6 +543,7 @@ function ChannelPanel({
   maxChars: number;
   tone: 'general' | 'clan' | 'dm';
   disabledReason?: string | null;
+  canReact?: boolean;
 }) {
   const { t } = useTranslation();
   const now = useNow(30_000);
@@ -731,12 +778,12 @@ function ChannelPanel({
                     <div className="flex items-baseline gap-2">
                       {message.self ? (
                         <strong data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-chat-admin-ink' : selfInk}`}>{commanderLabel(message.username, message.clanTag)}</strong>
-                      ) : message.planetId !== undefined ? (
+                      ) : message.planetId ? (
                         <button
                           type="button"
                           onClick={() => {
                             const planetId = message.planetId;
-                            if (planetId === undefined) return;
+                            if (!planetId) return;
                             haptic('tap');
                             onFocusPlanet(planetId);
                           }}
@@ -786,7 +833,7 @@ function ChannelPanel({
                   {message.reactions?.length ? (
                     <div className="relative z-10 -mt-1 ml-2 flex flex-wrap gap-1" aria-label={t('chat.reactions')}>
                       {message.reactions.map((item) => (
-                        <button key={item.emoji} type="button" disabled={disabledReason !== null || reaction.isPending}
+                        <button key={item.emoji} type="button" disabled={!canReact || disabledReason !== null || reaction.isPending}
                           aria-label={t('chat.reactionCount', { emoji: item.emoji, count: item.count })}
                           aria-pressed={item.mine}
                           className={`relative min-h-7 rounded-pill border bg-v2-deep px-2 py-0.5 text-micro leading-none shadow-sm after:absolute after:inset-x-0 after:-inset-y-1.5 ${item.mine ? 'border-v2-self text-v2-self' : 'border-v2-line-hi text-v2-ink-2'}`}
@@ -797,20 +844,20 @@ function ChannelPanel({
                   ) : null}
                   {actionMessageId === message.id && !disabledReason ? (
                     <div data-chat-message-actions className={`absolute ${message.self ? 'right-0' : 'left-0'} z-20 mt-1 flex w-full min-w-24 items-center justify-between rounded-pill border border-v2-line-hi bg-v2-raise/95 p-0.5 shadow-lg ${message.reactions?.length ? 'top-1/2' : 'top-1/2'} !py-0`}>
-                      <button type="button" aria-label={t('chat.addReaction')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
+                      {canReact ? <button type="button" aria-label={t('chat.addReaction')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
                         onClick={(event) => {
                           const log = history.current;
                           const row = event.currentTarget.closest('[data-chat-row]');
                           if (log && row) setPickerBelow(row.getBoundingClientRect().top - log.getBoundingClientRect().top < 72);
                           setPickerMessageId(pickerMessageId === message.id ? null : message.id);
                         }}
-                      >☺</button>
+                      >☺</button> : null}
                       <button type="button" aria-label={t('chat.reply')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self !py-0"
                         onClick={() => { onReplyTarget(message); setActionMessageId(null); setPickerMessageId(null); composer.current?.focus(); }}
                       >↩</button>
                     </div>
                   ) : null}
-                  {pickerMessageId === message.id && !disabledReason ? (
+                  {canReact && pickerMessageId === message.id && !disabledReason ? (
                     <div data-chat-reaction-picker className={`absolute ${message.self ? 'right-0' : 'left-0'} z-30 grid w-max grid-cols-6 gap-0.5 rounded-pill border border-v2-line-hi bg-v2-raise p-1 shadow-xl ${pickerBelow ? 'bottom-1/2 mt-14' : 'bottom-1/2'}`} role="group" aria-label={t('chat.chooseReaction')}>
                       {REACTION_EMOJIS.map((emoji) => (
                         <button key={emoji} type="button" aria-label={t('chat.reactWith', { emoji })}

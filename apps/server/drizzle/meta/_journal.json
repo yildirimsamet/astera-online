@@ -1037,6 +1037,20 @@
       "when": 1791631231224,
       "tag": "0147_monument_difficulty",
       "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1791701641156,
+      "tag": "0148_admin_chat_moderation",
+      "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1791702488938,
+      "tag": "0149_admin_activity_indexes",
+      "breakpoints": true
     }
   ]
 }

@@ -21,10 +21,12 @@ import { Segmented } from '../v2/kit/Segmented.js';
 import { Icon } from '../v2/icons.js';
 import { PLANET_SKIN_CATALOG, SKIN_COLLECTIONS } from '../ui/skinCatalog.js';
 import { HeartIcon } from '../ui/icons/index.js';
+import { AdminPlayersPanel } from './AdminPlayersPanel.js';
 
-type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SUPPORTERS';
+type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SUPPORTERS' | 'PLAYERS';
 
 const ADMIN_TAB_ID: Record<AdminTab, string> = {
+  PLAYERS: 'admin-players-tab',
   COMPOSE: 'admin-compose-tab',
   FEEDBACK: 'admin-feedback-tab',
   PERF: 'admin-perf-tab',
@@ -53,6 +55,7 @@ export default function AdminPanel() {
           onChange={setTab}
           tabId={(id) => ADMIN_TAB_ID[id]}
           options={[
+            { id: 'PLAYERS', label: t('community.admin.ops.playersTab') },
             { id: 'COMPOSE', label: t('community.admin.composeTab') },
             { id: 'FEEDBACK', label: t('community.admin.feedbackTab') },
             { id: 'PERF', label: t('community.admin.perfTab') },
@@ -66,7 +69,7 @@ export default function AdminPanel() {
         aria-labelledby={ADMIN_TAB_ID[tab]}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-6"
       >
-        {tab === 'COMPOSE' ? <AnnouncementComposer />
+        {tab === 'PLAYERS' ? <AdminPlayersPanel /> : tab === 'COMPOSE' ? <AnnouncementComposer />
           : tab === 'FEEDBACK' ? <AdminFeedbackList />
             : tab === 'PERF' ? <PerfRecorderPanel />
               : tab === 'SKINS' ? <SkinGrantForm /> : <SupporterForm />}

@@ -14,6 +14,8 @@
  */
 
 export const errors = {
+  ACCOUNT_NOT_FOUND: 'Konto nicht gefunden. Prüfe den Benutzernamen.',
+  CHAT_MUTED: "Deine Berechtigung zum Senden in diesem Kanal wurde eingeschränkt.",
   MONUMENT_TIER_FORBIDDEN: "Leichte Monumente sind für Stufen 1–3; wähle ein schweres Monument",
   MONUMENT_FLEET_ACTIVE: "Bis alle deine Schiffe einschließlich Frachtschiffen zu Hause sind, kannst du nur Frachtschiffe nachschicken.",
   CAPITAL_CANNOT_BE_ABANDONED: "Du kannst deine Hauptstadt nicht aufgeben. Wähle eine Kolonie.",

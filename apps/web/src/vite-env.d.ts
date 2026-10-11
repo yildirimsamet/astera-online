@@ -15,6 +15,8 @@
 interface ImportMetaEnv {
   /** Google Analytics 4 measurement id, `G-XXXXXXXXXX`. Unset means no analytics. */
   readonly VITE_GA_ID?: string;
+  /** Local reference archive, supplied by the development server only. */
+  readonly VITE_ASTERA_REFERENCE_ART?: string;
 }
 
 interface ImportMeta {

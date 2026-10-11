@@ -1,4 +1,16 @@
 export const brand = {
+  fullscreen: {
+    title: 'Vollbild',
+    enter: 'Vollbild öffnen',
+    exit: 'Vollbild verlassen',
+    already: 'Vollbild ist bereits aktiv',
+    appActive: 'App-Ansicht ist bereits aktiv',
+    unsupported: 'Dein Browser kann diese Seite nicht im Vollbild anzeigen. Du kannst die folgenden Möglichkeiten nutzen.',
+    enterFailed: 'Vollbild konnte nicht geöffnet werden. Versuche es erneut oder nutze die folgenden Möglichkeiten.',
+    exitFailed: 'Vollbild konnte nicht geschlossen werden. Versuche es erneut oder nutze die Ausstiegsfunktion deines Browsers.',
+    launchApp: 'Öffne das Spiel anschließend über sein Symbol auf dem Startbildschirm, um ohne die Adressleiste zu spielen.',
+    desktopHelp: 'Wähle Vollbild im Browsermenü. Verlasse diese Ansicht über dasselbe Menü oder mit Esc.',
+  },
   "returnTitle": "Finde leicht zurück",
   "returnHint": "Füge das Spiel deinem Startbildschirm hinzu, um es leicht wieder zu öffnen.",
   "returnHintDesktop": "Setze ein Lesezeichen oder installiere das Spiel, um es leicht wieder zu öffnen.",

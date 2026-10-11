@@ -1,6 +1,15 @@
 import { cosmeticById } from '@astera/rules';
 import type { ShipCosmeticEquipment } from '@astera/rules';
 import { shipHullModels } from './shipCosmetics.js';
+import {
+  isReferenceShip,
+  markReferenceShipFailed,
+  referenceHullId,
+  referenceShipNozzles,
+  referenceShipScene,
+  useReferenceShipFailures,
+} from './referenceArt.js';
+import { SkinAssetBoundary } from './SkinAssetBoundary.js';
 import { FleetCosmeticFlag, FormationCosmeticEngines } from './CosmeticEffects.jsx';
 import { ProbeSkinBeam } from './ProbeSkinBeam.js';
 import {
@@ -25,6 +34,7 @@ import {
 import type { Contact, PendingThread } from '../api/schemas.js';
 import {
   HULL_MODEL,
+  HULL_LOD_MODEL,
   MODEL,
   MODEL_FACING,
   MODEL_POSE,
@@ -33,6 +43,7 @@ import {
 import { Bombardment, bombardmentIntensity } from './Bombardment.jsx';
 import { returnVolleyFrame } from './volley.js';
 import { softGlow } from './Environment.jsx';
+import { engineTexture } from './vfx.js';
 import { configureOpaqueTransparentBody, posedCraft } from './model.js';
 import {
   concealedVolley,
@@ -253,6 +264,11 @@ interface HullProps {
   foreground?: boolean;
 }
 
+function craftPose(url: string) {
+  const hull = referenceHullId(url);
+  return hull ? { rotation: [0, 0, 0] as const, height: hullPoseLift(hull) } : MODEL_POSE[url];
+}
+
 function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }: HullProps) {
   const { scene } = useGLTF(url, false);
 
@@ -260,7 +276,7 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
     // Centred, turned so the NOSE runs down +Z, and normalised into a unit box —
     // so `lookAt` points the nose and `scale` is a real world size. The facing is
     // declared per model; a bounding box cannot tell a fuselage from a wingspan.
-    const clone = posedCraft(scene, MODEL_FACING[url] ?? '+z', MODEL_POSE[url]);
+    const clone = posedCraft(referenceShipScene(scene, url), isReferenceShip(url) ? '-z' : MODEL_FACING[url] ?? '+z', craftPose(url));
     clone.traverse((node) => {
       if (!isMesh(node)) return;
       node.renderOrder = foreground ? SHIP_ORDER : 0;
@@ -273,11 +289,18 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
        * buffer here so a craft stayed visible behind a planet; it then drew
        * straight through the planet. A craft behind a world is hidden by it.
        */
-      for (const material of materialsOf(node)) {
+      const materials = materialsOf(node).map((sourceMaterial) => {
+        // The GLTF cache owns the source material. Fog and finish belong to this hull.
+        const material = sourceMaterial.clone();
         configureOpaqueTransparentBody(material);
         material.depthTest = true;
-        (material as THREE.Material & { fog?: boolean }).fog = fog;
-      }
+        if ('fog' in material) material.fog = fog;
+        if (material instanceof THREE.MeshStandardMaterial) {
+          material.roughness = Math.max(0.38, Math.min(0.86, material.roughness));
+        }
+        return material;
+      });
+      node.material = Array.isArray(node.material) ? materials : materials[0]!;
     });
     return clone;
   }, [scene, url, fog, foreground]);
@@ -294,7 +317,7 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
       const material = new THREE.ShaderMaterial({
         uniforms: {
           uColour: { value: new THREE.Color(glow) },
-          uOpacity: { value: (focused ? 0.94 : 0.72) * 0.75 },
+          uOpacity: { value: focused ? 0.65 : 0.42 },
         },
         transparent: true,
         depthWrite: false,
@@ -302,7 +325,7 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
         blending: THREE.AdditiveBlending,
         vertexShader: `
           void main() {
-            vec3 expanded = position + normal * 0.0175;
+            vec3 expanded = position + normal * 0.008;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(expanded, 1.0);
           }
         `,
@@ -329,6 +352,9 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
     },
     [outlineMaterials],
   );
+  useEffect(() => () => {
+    model.traverse((node) => { if (isMesh(node)) materialsOf(node).forEach((material) => { material.dispose(); }); });
+  }, [model]);
 
   return (
     <group scale={scale} name="craft-hull">
@@ -346,7 +372,7 @@ interface FormationHullPart {
 }
 
 function formationHullParts(scene: THREE.Object3D, url: string): FormationHullPart[] {
-  const model = posedCraft(scene, MODEL_FACING[url] ?? '+z', MODEL_POSE[url]);
+  const model = posedCraft(referenceShipScene(scene, url), isReferenceShip(url) ? '-z' : MODEL_FACING[url] ?? '+z', craftPose(url));
   model.updateWorldMatrix(true, true);
   const parts: FormationHullPart[] = [];
   model.traverse((node) => {
@@ -394,28 +420,44 @@ function FormationHulls({
   );
 }
 
-function FormationHullBucket({
-  hull,
-  members,
-  scale,
-  aimDistance,
-  focused,
-  shipSkins,
-}: {
+interface FormationHullBucketProps {
   hull: Marker['hull'];
   members: readonly FormationHullMember[];
   scale: number;
   aimDistance: RefObject<number>;
   focused: boolean;
   shipSkins?: ShipCosmeticEquipment;
-}) {
+}
+
+function FormationHullBucket(props: FormationHullBucketProps) {
+  const { hull, shipSkins } = props;
   const { model: url, lodModel: lowUrl } = shipHullModels(hull, shipSkins);
-  const loaded = useGLTF([url, lowUrl], false);
+  return (
+    <SkinAssetBoundary key={`${url}:${lowUrl}`} onError={() => { markReferenceShipFailed(url); }} fallback={
+      <Suspense fallback={null}>
+        <LoadedFormationHullBucket {...props} url={HULL_MODEL[hull]} lowUrl={HULL_LOD_MODEL[hull]} />
+      </Suspense>
+    }>
+      <Suspense fallback={null}>
+        <LoadedFormationHullBucket {...props} url={url} lowUrl={lowUrl} />
+      </Suspense>
+    </SkinAssetBoundary>
+  );
+}
+
+function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused, url, lowUrl }:
+  FormationHullBucketProps & { url: string; lowUrl: string }) {
+  const loaded = useGLTF(url === lowUrl ? [url] : [url, lowUrl], false);
   const scene = loaded[0]!.scene;
-  const lowScene = loaded[1]!.scene;
+  const lowScene = (loaded[1] ?? loaded[0])!.scene;
   const fullParts = useMemo(() => formationHullParts(scene, url), [scene, url]);
   // LOD geometry has the same authored axes and pose as its source model.
-  const lowParts = useMemo(() => formationHullParts(lowScene, url), [lowScene, url]);
+  const lowParts = useMemo(() => {
+    if (lowScene === scene) return fullParts;
+    const parts = formationHullParts(lowScene, url);
+    // Prepared reference LODs carry geometry only; both tiers use the one full texture set.
+    return isReferenceShip(url) ? parts.map((part, index) => ({ ...part, material: fullParts[index]?.material ?? part.material })) : parts;
+  }, [lowScene, scene, url, fullParts]);
   return (
     <group name={`formation-hulls-${hull.toLowerCase()}`}>
       {fullParts.map((part, index) => (
@@ -470,6 +512,7 @@ function FormationHullPartMesh({
     const clones = source.map((material) => {
       const clone = material.clone();
       configureOpaqueTransparentBody(clone);
+      if (clone instanceof THREE.MeshStandardMaterial) clone.roughness = Math.max(0.38, Math.min(0.86, clone.roughness));
       return clone;
     });
     return Array.isArray(part.material) ? clones : clones[0]!;
@@ -478,7 +521,7 @@ function FormationHullPartMesh({
     const material = new THREE.ShaderMaterial({
       uniforms: {
         uColour: { value: new THREE.Color(glow) },
-        uOpacity: { value: focused ? 0.94 : 0.72 },
+        uOpacity: { value: focused ? 0.65 : 0.42 },
       },
       transparent: true,
       depthWrite: false,
@@ -486,7 +529,7 @@ function FormationHullPartMesh({
       blending: THREE.AdditiveBlending,
       vertexShader: `
         void main() {
-          vec4 expanded = vec4(position + normal * 0.035, 1.0);
+          vec4 expanded = vec4(position + normal * 0.008, 1.0);
           #ifdef USE_INSTANCING
             expanded = instanceMatrix * expanded;
           #endif
@@ -631,7 +674,7 @@ const plumeShape = (i: number) => {
     // A rocket plume leaves a small throat, expands after the nozzle and then
     // loses density. Starting at full width was the source of the blue bubbles.
     size: (0.32 + expansion * 0.68) * (1 - t * 0.78),
-    alpha: 0.31 * (1 - t) ** 1.55 + 0.01,
+    alpha: (0.31 + Math.max(0, Math.cos(t * Math.PI * 6)) * 0.075) * (1 - t) ** 1.55 + 0.01,
     // Toward white at the nozzle: an engine's core is hotter than its edge, and
     // hotter reads as whiter.
     white: 0.55 * (1 - t) ** 2,
@@ -644,7 +687,7 @@ export function Exhaust({ colour, length, width }: {
   width: number;
 }) {
   const group = useRef<THREE.Group>(null);
-  const glow = useMemo(() => softGlow(), []);
+  const glow = useMemo(() => engineTexture() ?? softGlow(), []);
 
   const puffs = useMemo(
     () =>
@@ -1136,6 +1179,7 @@ function Flight({
               {appearance?.engineId && <FormationCosmeticEngines id={appearance.engineId} markers={markers} slots={slots} scale={style.scale} aimDistance={formationAim} />}
               <FormationLightField
                 customEngine={Boolean(appearance?.engineId)}
+                shipSkins={appearance?.shipSkins}
                 markers={markers}
                 slots={slots}
                 scale={style.scale}
@@ -1283,6 +1327,7 @@ function FormationLightField({
   name = 'formation-lights',
   intensity = 1,
   customEngine = false,
+  shipSkins,
 }: {
   markers: readonly Marker[];
   slots: readonly Vec3Tuple[];
@@ -1293,10 +1338,21 @@ function FormationLightField({
   name?: string;
   intensity?: number;
   customEngine?: boolean;
+  shipSkins?: ShipCosmeticEquipment;
 }) {
   const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
+  const failureVersion = useReferenceShipFailures();
+  const nozzles = useMemo(() => markers.map(marker => {
+    const reference = referenceShipNozzles(shipHullModels(marker.hull, shipSkins).model);
+    const lift = hullPoseLift(marker.hull);
+    return reference ? reference.map(at => at.add(new THREE.Vector3(0, lift, 0))) : [new THREE.Vector3(0, lift, -0.42)];
+  }), [markers, shipSkins, failureVersion]);
+  const forward = useMemo(() => new THREE.Vector3(0, 0, 1), []);
+  const direction = useMemo(() => new THREE.Vector3(), []);
+  const rotation = useMemo(() => new THREE.Quaternion(), []);
+  const nozzle = useMemo(() => new THREE.Vector3(), []);
   const lights = useMemo(() => {
-    const count = markers.length * PLUME_STEPS;
+    const count = nozzles.reduce((sum, anchors) => sum + anchors.length * PLUME_STEPS, 0);
     const positions = new Float32Array(count * 3);
     const colours = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
@@ -1326,20 +1382,20 @@ function FormationLightField({
     markers.forEach((marker, markerIndex) => {
       const slot = slots[markerIndex] ?? [0, 0, 0];
       const authoredScale = hullVisualScale(marker.hull, scale);
-      // The plume starts where the hull's tail actually is. See `hullPoseLift`.
-      const lift = hullPoseLift(marker.hull) * authoredScale;
       const flameColour = new THREE.Color(HULL_LIGHT[marker.hull].flame);
-      for (let i = 0; i < PLUME_STEPS; i += 1) {
-        const puff = plumeShape(i);
-        const tint = flameColour.clone().lerp(white, puff.white);
-        put(
-          [slot[0], slot[1] + lift, slot[2] - authoredScale * (0.42 + 0.8 * puff.at)],
-          tint,
-          authoredScale * 0.46 * puff.size,
-          puff.alpha,
-          0.12,
-          (0.65 + puff.white * 1.15) * intensity,
-        );
+      for (const anchor of nozzles[markerIndex]!) {
+        for (let i = 0; i < PLUME_STEPS; i += 1) {
+          const puff = plumeShape(i);
+          const tint = flameColour.clone().lerp(white, puff.white);
+          put(
+            [slot[0] + anchor.x * authoredScale, slot[1] + anchor.y * authoredScale, slot[2] + authoredScale * (anchor.z - 0.8 * puff.at)],
+            tint,
+            authoredScale * 0.46 * puff.size,
+            puff.alpha,
+            0.12,
+            (0.65 + puff.white * 1.15) * intensity,
+          );
+        }
       }
     });
 
@@ -1351,7 +1407,7 @@ function FormationLightField({
     geometry.setAttribute('aPulse', new THREE.BufferAttribute(pulses, 1));
     geometry.setAttribute('aEnergy', new THREE.BufferAttribute(energies, 1));
     return geometry;
-  }, [intensity, markers, slots, scale]);
+  }, [intensity, markers, slots, scale, nozzles]);
 
   const glowMaterial = useMemo(
     () =>
@@ -1360,6 +1416,7 @@ function FormationLightField({
           uTime: { value: 0 },
           uProjectionScale: { value: 700 },
           uMotion: { value: 1 },
+          uDensity: { value: engineTexture() ?? softGlow() },
         },
         vertexColors: true,
         transparent: true,
@@ -1387,9 +1444,10 @@ function FormationLightField({
         fragmentShader: `
           varying vec3 vColour;
           varying float vAlpha;
+          uniform sampler2D uDensity;
           void main() {
             float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
-            float soft = smoothstep(1.0, 0.08, d);
+            float soft = texture2D(uDensity, gl_PointCoord).a;
             float core = 1.0 + pow(max(0.0, 1.0 - d), 3.0) * 0.15;
             gl_FragColor = vec4(vColour * core, vAlpha * soft);
           }
@@ -1404,18 +1462,22 @@ function FormationLightField({
     markers.forEach((marker, markerIndex) => {
       const slot = slots[markerIndex] ?? [0, 0, 0];
       const authoredScale = hullVisualScale(marker.hull, scale);
-      const lift = hullPoseLift(marker.hull) * authoredScale;
       formationAimDirection(slot, aimDistance.current, aimed);
-      for (let i = 0; i < PLUME_STEPS; i += 1) {
-        const puff = plumeShape(i);
-        const behind = authoredScale * (0.42 + 0.8 * puff.at);
-        positions.setXYZ(
-          cursor,
-          slot[0] - aimed[0] * behind,
-          slot[1] + lift - aimed[1] * behind,
-          slot[2] - aimed[2] * behind,
-        );
-        cursor += 1;
+      direction.set(...aimed);
+      rotation.setFromUnitVectors(forward, direction);
+      for (const anchor of nozzles[markerIndex]!) {
+        nozzle.copy(anchor).multiplyScalar(authoredScale).applyQuaternion(rotation);
+        for (let i = 0; i < PLUME_STEPS; i += 1) {
+          const puff = plumeShape(i);
+          const behind = authoredScale * 0.8 * puff.at;
+          positions.setXYZ(
+            cursor,
+            slot[0] + nozzle.x - aimed[0] * behind,
+            slot[1] + nozzle.y - aimed[1] * behind,
+            slot[2] + nozzle.z - aimed[2] * behind,
+          );
+          cursor += 1;
+        }
       }
     });
     positions.needsUpdate = true;
@@ -1427,13 +1489,8 @@ function FormationLightField({
       (viewport.height * gl.getPixelRatio()) / (2 * Math.tan(fov / 2));
   });
 
-  useEffect(
-    () => () => {
-      lights.dispose();
-      glowMaterial.dispose();
-    },
-    [lights, glowMaterial],
-  );
+  useEffect(() => () => { lights.dispose(); }, [lights]);
+  useEffect(() => () => { glowMaterial.dispose(); }, [glowMaterial]);
 
   return (
     <>
@@ -3055,6 +3112,7 @@ function Foreign({
               ) : (
                 <FormationLightField
                   customEngine={Boolean(contact.appearance?.engineId)}
+                  shipSkins={contact.kind === 'fleet' ? contact.appearance?.shipSkins : undefined}
                   markers={markers}
                   slots={slots}
                   scale={style.scale}

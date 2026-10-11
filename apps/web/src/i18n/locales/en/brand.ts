@@ -1,4 +1,16 @@
 export const brand = {
+  fullscreen: {
+    title: 'Fullscreen',
+    enter: 'Enter fullscreen',
+    exit: 'Exit fullscreen',
+    already: 'Fullscreen is already active',
+    appActive: 'App view is already active',
+    unsupported: 'Your browser cannot put this page in fullscreen. You can use the options below.',
+    enterFailed: 'Fullscreen could not open. Try the button again, or use the options below.',
+    exitFailed: 'Fullscreen could not close. Try the button again, or use your browser’s exit control.',
+    launchApp: 'Then open the game from its home screen icon to play without the browser address bar.',
+    desktopHelp: 'Choose Full Screen from your browser’s menu. Use the same menu or Esc to leave that view.',
+  },
   "returnTitle": "Keep your way back",
   "returnHint": "Add the game to your home screen to open it again easily.",
   "returnHintDesktop": "Bookmark or install the game to open it again easily.",

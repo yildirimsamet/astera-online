@@ -1,11 +1,12 @@
+import { useId } from 'react';
+
 /**
  * A STILL SKY BEHIND A SECTION. Owner, 2026-09-24: the mock's research map and the world
  * at the top of its Base sit on the galaxy — scattered stars, a haze of nebula. Only
  * those two sections; never a whole scrolling page.
  *
- * STILL AND CHEAP ON PURPOSE. The live scene is right behind the page, but showing it
- * through a blur costs the GPU every frame of a scroll on a phone; this is two hundred
- * and twenty circles and four gradients, drawn once. It is the same sky every time
+ * STILL AND CHEAP ON PURPOSE. Original compressed nebula plate + sharp SVG stars,
+ * painted once without a live scene or blur. It is the same sky every time
  * (a seeded stream, never `Math.random`), so the page never reshuffles on a rerender.
  *
  * ROUND ON ANY PANEL. No `viewBox`: the stars are placed in percentages and sized in
@@ -60,26 +61,29 @@ const STARS: readonly Star[] = (() => {
 const haze = (variable: string, share: number): string =>
   `color-mix(in srgb, var(${variable}) ${String(share)}%, transparent)`;
 const NEBULA = [
-  `radial-gradient(60% 32% at 16% 20%, ${haze('--color-v2-sky-blue', 22)}, transparent 70%)`,
-  `radial-gradient(50% 30% at 88% 66%, ${haze('--color-v2-sky-violet', 19)}, transparent 70%)`,
+  `linear-gradient(180deg, ${haze('--color-v2-sky-shade', 18)}, ${haze('--color-v2-sky-shade', 46)})`,
+  `radial-gradient(60% 32% at 16% 20%, ${haze('--color-v2-sky-blue', 8)}, transparent 70%)`,
+  `radial-gradient(50% 30% at 88% 66%, ${haze('--color-v2-sky-violet', 7)}, transparent 70%)`,
   `radial-gradient(40% 22% at 60% 38%, ${haze('--color-v2-self', 7)}, transparent 75%)`,
   `radial-gradient(90% 30% at 40% 52%, ${haze('--color-v2-sky-drift', 16)}, transparent 75%)`,
+  'url("/assets/images/premium/nebula-v1.webp")',
 ].join(', ');
 
 export function StarField({ className = '' }: { className?: string }) {
+  const glowId = useId();
   return (
-    <div data-sky aria-hidden="true" className={`pointer-events-none overflow-hidden bg-v2-deep ${className}`} style={{ backgroundImage: NEBULA }}>
+    <div data-sky aria-hidden="true" className={`pointer-events-none overflow-hidden bg-v2-deep ${className}`} style={{ backgroundImage: NEBULA, backgroundSize: 'cover', backgroundPosition: 'center' }}>
       <svg width="100%" height="100%" className="block">
         {/* A soft falloff, never a disc: a ring around a dot would read as a project star. */}
         <defs>
-          <radialGradient id="v2-sky-glow">
+          <radialGradient id={glowId}>
             <stop offset="0%" style={{ stopColor: 'var(--color-v2-sky-cool)', stopOpacity: 0.3 }} />
             <stop offset="100%" style={{ stopColor: 'var(--color-v2-sky-cool)', stopOpacity: 0 }} />
           </radialGradient>
         </defs>
         {STARS.map((star, index) => (
           <g key={index}>
-            {star.glow && <circle cx={`${String(star.x)}%`} cy={`${String(star.y)}%`} r={star.r * 4} fill="url(#v2-sky-glow)" />}
+            {star.glow && <circle cx={`${String(star.x)}%`} cy={`${String(star.y)}%`} r={star.r * 4} fill={`url(#${glowId})`} />}
             <circle cx={`${String(star.x)}%`} cy={`${String(star.y)}%`} r={star.r} style={{ fill: star.tone }} opacity={star.o} />
           </g>
         ))}

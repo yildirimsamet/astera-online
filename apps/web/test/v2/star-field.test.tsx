@@ -23,9 +23,17 @@ describe('the star field', () => {
   });
 
   it('is the same sky every time it is drawn', () => {
-    const first = render(<StarField />).container.innerHTML;
-    const second = render(<StarField />).container.innerHTML;
-    expect(second).toBe(first);
+    const first = render(<StarField />).container;
+    const second = render(<StarField />).container;
+    const firstId = first.querySelector('radialGradient')!.id;
+    const secondId = second.querySelector('radialGradient')!.id;
+    expect(firstId).not.toBe('');
+    expect(secondId).not.toBe(firstId);
+    expect(first.querySelector('circle[fill]')).toHaveAttribute('fill', `url(#${firstId})`);
+    expect(second.querySelector('circle[fill]')).toHaveAttribute('fill', `url(#${secondId})`);
+    // Stars and haze stay deterministic; each mounted sky owns its SVG reference.
+    expect(second.innerHTML.replaceAll(secondId, 'sky-glow'))
+      .toBe(first.innerHTML.replaceAll(firstId, 'sky-glow'));
   });
 
   /**

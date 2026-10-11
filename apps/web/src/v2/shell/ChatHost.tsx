@@ -12,13 +12,14 @@ import { Sheet } from '../kit/Sheet.js';
  * unread, as the old launcher did; a world named in a message flies the camera there
  * after the page closes, so the move is seen.
  */
-export function ChatHost({ onClose, onFocusPlanet, channel, draft }: {
+export function ChatHost({ onClose, onFocusPlanet, channel, draft, isAdmin = false }: {
   onClose: () => void;
   onFocusPlanet: (planetId: string) => void;
   /** The room it was asked to open on (the war room's "Clan chat", E9); unread decides otherwise. */
   channel?: ChatChannel;
   /** A clan line to start the composer with (a report told to the clan, M4). */
   draft?: string;
+  isAdmin?: boolean;
 }) {
   const { t } = useTranslation();
   const generalUnread = useChatUnread().data?.count ?? 0;
@@ -29,6 +30,7 @@ export function ChatHost({ onClose, onFocusPlanet, channel, draft }: {
     <Sheet title={t('bell.chat')} onClose={onClose} detents={['full']} contained fixedHeight>
       <div className="min-h-0 flex-1">
         <ChatScreen
+          isAdmin={isAdmin}
           initialChannel={channel ?? (dmUnread > 0 ? 'dm' : generalUnread === 0 && clanUnread > 0 ? 'clan' : 'general')}
           {...(draft ? { initialClanDraft: draft } : {})}
           onFocusPlanet={(planetId) => {

@@ -1,6 +1,7 @@
 import { pino } from 'pino';
 import { buildApp } from './app.js';
 import { assertSchemaCurrent } from './db/migrate.js';
+import { provisionAdminCapitals } from './services/adminCapital.js';
 import { loadDotEnv, loadEnv } from './env.js';
 import { ensureNeutralCensusEvents, ensureSeasonActs } from './services/season.js';
 import { ensureGalaxyEventLifecycleEvents } from './services/galaxyEvents.js';
@@ -33,6 +34,8 @@ async function main(): Promise<void> {
    * which one.
    */
   await assertSchemaCurrent(db);
+  const adminCapitals = await provisionAdminCapitals(db, new Set(env.ADMIN_USERNAMES), systemClock);
+  if (adminCapitals > 0) log.info({ adminCapitals }, 'provisioned hidden admin capitals');
 
   if (env.ROLE === 'worker' || env.ROLE === 'both') {
     const actsScheduled = await ensureSeasonActs(db);

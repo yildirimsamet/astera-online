@@ -9,6 +9,7 @@ import { ServersScreen } from './screens/ServersScreen.jsx';
 import { GalaxyView, type Panel, type PanelStop } from './screens/GalaxyView.jsx';
 import { LoadingScreen } from './shell/LoadingScreen.js';
 import { useAmbientMusic } from './lib/music.js';
+import { useSoundEffects } from './lib/sound.js';
 import { WorldProvider } from './api/world.js';
 import { Button } from './ui/kit/index.js';
 import { GameShell } from './v2/shell/GameShell.js';
@@ -86,6 +87,7 @@ export function App() {
    * from the top each time a player signs in.
    */
   useAmbientMusic();
+  useSoundEffects();
 
   useEventStream(ready && !academyReplay, rollover);
   useLiveAlerts(ready && !academyReplay);
@@ -207,6 +209,7 @@ export function App() {
         `StatusBar` and `PendingStrip` here; the rehearsal still draws those until F2.6.
       */}
       <GameShell
+        isAdmin={session.me.isAdmin}
         accountId={session.me.accountId}
         commander={session.me.displayName}
         panel={panel}

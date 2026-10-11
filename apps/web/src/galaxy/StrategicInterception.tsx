@@ -131,6 +131,7 @@ export function strategicInterceptionImpactEvents(
       position: toWorld(interception.collision),
       radius: Math.max(0.32, (target?.radius ?? 0.82) * 0.48),
       intensity: 1,
+      sound: 'shield',
     });
   }
   for (const impact of impacts) {
@@ -141,6 +142,7 @@ export function strategicInterceptionImpactEvents(
       position: toWorld(impact.collision),
       radius: 0.4,
       intensity: publicEffectIntensity(impact.effectOnly),
+      sound: 'shield',
     });
   }
   return [...events.values()].sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));

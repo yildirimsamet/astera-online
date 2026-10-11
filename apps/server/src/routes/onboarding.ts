@@ -188,7 +188,7 @@ const seatIn = async (
   step?: number,
 ): Promise<Seated> => {
   const target = await resolveJoinTarget(app.db, shardCode, app.clock);
-  return { target, joined: await joinSeason(app.db, accountId, target.seasonId, app.clock, step) };
+  return { target, joined: await joinSeason(app.db, accountId, target.seasonId, app.clock, step, 'COMMANDER', app.adminUsernames) };
 };
 
 /**

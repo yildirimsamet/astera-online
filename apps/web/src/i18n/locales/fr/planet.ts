@@ -368,6 +368,14 @@ export const planet = {
     unitsQueued: "{{count}} {{name}} ajoutés à la file",
   },
   buildSheet: {
+    specialRole: {
+      title: 'Rôle spécial',
+      nullifierEffect: 'Aegis actif · {{multiplier}} dégâts',
+      nullifierLimit: 'Les dégâts supplémentaires touchent uniquement le bouclier, jamais les vaisseaux ou les canons au sol. Sans bouclier, il utilise son attaque normale.',
+      collectorEffect: 'Jusqu’à {{amount}} ressources par vaisseau survivant',
+      collectorUse: 'Ajoute-le à une flotte d’attaque avec des vaisseaux de combat. Il récupère les débris de cette bataille et ramène les ressources.',
+      collectorLimit: 'Il n’augmente pas la capacité de butin et ne récupère rien en défense. Tu ne peux pas l’envoyer vers des astéroïdes ou des champs de débris.',
+    },
     eyebrowGround: "Défense terrestre · ne décolle jamais",
     eyebrowMobile: "Coque mobile",
     howMany: "Combien",

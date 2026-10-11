@@ -1,3 +1,4 @@
+import { adminOps } from './admin.js';
 export const community = {
   announcements: {
     eyebrow: 'Astera komutasından',
@@ -19,6 +20,7 @@ export const community = {
     sent: 'Ulaştı. Astera’yı şekillendirmemize yardım ettiğin için teşekkürler.',
   },
   admin: {
+    ops: adminOps,
     eyebrow: 'Operasyon',
     title: 'Admin paneli',
     menuLabel: 'Admin paneli',

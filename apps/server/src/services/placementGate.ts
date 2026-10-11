@@ -1,5 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
+import { performance } from 'node:perf_hooks';
 import { createDb } from '../db/client.js';
 import { players } from '../db/schema.js';
 import { GameError } from './planet.js';
@@ -7,18 +8,24 @@ import { GameError } from './planet.js';
 /**
  * Hold a shared galaxy lease through every authenticated HTTP handler. Transfers
  * take the exclusive side before world locks, so a multi-query response cannot
- * straddle relocation. A separate two-connection pool avoids exhausting the
- * gameplay pool with leases whose handlers themselves need gameplay connections.
+ * straddle relocation. A separate pool (two connections by default) avoids
+ * exhausting gameplay connections with leases whose handlers need that pool too.
  * Streams have their own per-frame placement fence and must never hold this lease.
  */
-export function installPlacementGate(app: FastifyInstance, url: string): () => Promise<void> {
-  const pool = createDb(url, { max: 2, applicationName: 'astera-placement-gate' });
+export function installPlacementGate(app: FastifyInstance, url: string, max = 2): () => Promise<void> {
+  const pool = createDb(url, { max, applicationName: 'astera-placement-gate' });
   app.addHook('onRoute', route => {
     if (!route.url.startsWith('/api/') || route.url === '/api/stream') return;
     const handler = route.handler;
     route.handler = async function (req, reply) {
       if (!req.accountId) return handler.call(this, req, reply);
+      const startedAt = performance.now();
+      let transactionStarted = false;
       return pool.db.transaction(async tx => {
+        transactionStarted = true;
+        // Includes connection establishment and BEGIN, not the galaxy lock or handler.
+        // Observe real requests instead of adding a competing probe to this small pool.
+        app.metrics.observePlacementTransactionStart(performance.now() - startedAt);
         const [initial] = await tx.select().from(players).where(eq(players.accountId, req.accountId!));
         if (!initial) return handler.call(this, req, reply);
         await tx.execute(sql`select pg_advisory_xact_lock_shared(hashtextextended(${`placement:${initial.seasonId}`}, 0))`);
@@ -37,6 +44,9 @@ export function installPlacementGate(app: FastifyInstance, url: string): () => P
         app.projections.reconcilePlacement(req.accountId!, placement);
         void reply.header('x-placement', placement);
         return handler.call(this, req, reply);
+      }).catch((error: unknown) => {
+        if (!transactionStarted) app.metrics.observePlacementTransactionStartError();
+        throw error;
       });
     };
   });

@@ -10,6 +10,7 @@ import { placeBuildingUpgrade } from './build.js';
 import { publishShard } from '../stream/bus.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 import { peopleIn } from './people.js';
+import { equipAdminCapital } from './adminCapital.js';
 import {
   lockGalaxyEventAudience,
   notifyActiveGalaxyEventsForPlayer,
@@ -180,6 +181,7 @@ export async function joinSeason(
   clock: Clock,
   academyStep?: number,
   seat: JoinSeat = 'COMMANDER',
+  adminUsernames: ReadonlySet<string> = new Set(),
 ): Promise<JoinResult> {
   // Validate before even looking for a placement. Only creation consumes it.
   const academy = academyStep === undefined ? null : academyExitCheckpoint(academyStep);
@@ -329,6 +331,8 @@ export async function joinSeason(
             await placeBuildingUpgrade(tx, await loadLocked(tx, planet.id, clock), academy.queue.building);
           }
         }
+
+        if (account && adminUsernames.has(account.username)) await equipAdminCapital(tx, planet.id, clock);
 
         const seasonReward = await deliverSeasonRankReward(tx, {
           accountId,

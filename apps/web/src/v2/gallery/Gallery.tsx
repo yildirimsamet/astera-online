@@ -4,7 +4,7 @@ import { CosmeticTrialGallery } from './CosmeticTrialGallery.jsx';
 import { StoreDiscoveryGallery } from './StoreDiscoveryGallery.js';
 import { PlanetSelectionGallery } from './PlanetSelectionGallery.jsx';
 import { CosmeticPreview } from '../../screens/CosmeticPreview.jsx';
-import { cosmeticById } from '@astera/rules';
+import { cosmeticById, RESEARCH_PROJECTS } from '@astera/rules';
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
@@ -61,6 +61,9 @@ import { SeasonArchiveScreen } from '../../screens/SeasonArchiveScreen.js';
 import { CountryPicker } from '../identity/CountryPicker.js';
 import { SkinShopContent } from '../../screens/SkinsScreen.js';
 import { useTranslation } from 'react-i18next';
+import { useSoundEffects } from '../../lib/sound.js';
+import { PremiumSpaceGallery } from './PremiumSpaceGallery.js';
+import { ResearchPanel } from '../../screens/ResearchPanel.js';
 import { WikiScreen } from '../../screens/WikiScreen.js';
 import { SkinPreview } from '../../screens/SkinPreview.js';
 import { DonateScreen } from '../../screens/DonateScreen.js';
@@ -219,7 +222,7 @@ const launchIntel: IntelView = {
  * commander has no damaged ship, so the card and its sheet are photographed here.
  * `empty` draws the station with nothing in it; `open` names the row the sheet opens on.
  */
-function GalleryBase({ empty = false, open = false }: { empty?: boolean; open?: boolean }) {
+function GalleryBase({ empty = false, open = false, production = false }: { empty?: boolean; open?: boolean; production?: boolean }) {
   const client = useQueryClient();
   useState(() => {
     const order = (id: string, slot: number, subject: string, count: number, from: number, to: number) => ({
@@ -250,7 +253,7 @@ function GalleryBase({ empty = false, open = false }: { empty?: boolean; open?: 
   });
   return (
     <Sheet title="Thistle" eyebrow="Samet" quietTitle onClose={noop} detents={['full']} bleed>
-      <PlanetScreen focusGroup="reach" {...(open ? { focusItem: 'REPAIR_STATION' } : {})} />
+      <PlanetScreen focusGroup={production ? 'grow' : 'reach'} {...(open ? { focusItem: 'REPAIR_STATION' } : {})} />
     </Sheet>
   );
 }
@@ -692,6 +695,21 @@ function GalleryRewards({ state }: { state: string }) {
   </Sheet></div></QueryClientProvider>;
 }
 
+function GalleryResearch() {
+  const client = useQueryClient();
+  useState(() => {
+    const fixture = planetView({ academyStep: null, buildings: { CORE: 15, SHIPYARD: 9, HANGAR: 6 } },
+      { alloy: 90_000, crystal: 40_000, deuterium: 15_000 });
+    client.setQueryData(keys.planet, { ...fixture, research: fixture.research.map((project) => ({
+      ...project, discovered: true, available: true, availableAt: new Date('2026-01-01'), level: 1,
+      maxLevel: RESEARCH_PROJECTS[project.id].maxLevel,
+      completed: RESEARCH_PROJECTS[project.id].maxLevel === 1,
+    })) });
+    return null;
+  });
+  return <Sheet title="Araştırma" eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']} bleed><ResearchPanel /></Sheet>;
+}
+
 function Views({ view }: { view: string }) {
   const { t } = useTranslation();
   if (view === 'wiki') return <div className="wiki-gallery"><Sheet detents={['full']} bleed quietTitle eyebrow="Astera Online" title="Wiki" onClose={noop}><WikiScreen language={i18n.resolvedLanguage} /></Sheet></div>;
@@ -699,6 +717,8 @@ function Views({ view }: { view: string }) {
   if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
   if (view === 'intel') return <GalleryIntel />;
   if (view === 'base-fleet') return <GalleryBase />;
+  if (view === 'base-production') return <GalleryBase production />;
+  if (view === 'base-research') return <GalleryResearch />;
   if (view === 'base-fleet-empty') return <GalleryBase empty />;
   if (view === 'repair-station') return <GalleryBase open />;
   if (view === 'strategic-forge') return <GalleryStrategic tab="tactical" />;
@@ -1024,6 +1044,8 @@ function Views({ view }: { view: string }) {
 }
 
 export function Gallery({ view }: { view: string | null }) {
+  useSoundEffects();
+  if (view === 'premium-space') return <PremiumSpaceGallery />;
   if (view === 'store-discovery') return <StoreDiscoveryGallery />;
   if (view === 'cosmetic-trial') return <CosmeticTrialGallery />;
   if (view === 'planet-selection') return <PlanetSelectionGallery />;
@@ -1044,7 +1066,7 @@ export function Gallery({ view }: { view: string | null }) {
   }
   if (view) {
     return (
-      <div className="min-h-dvh bg-v2-void">
+      <div className="min-h-dvh bg-v2-void [--v2-top-h:3.25rem] [--v2-dock-h:0px]">
         <TopBar {...topBar} />
         <Views view={view} />
       </div>

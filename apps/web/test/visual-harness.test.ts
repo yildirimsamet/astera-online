@@ -7,6 +7,20 @@ import { academy } from '../src/i18n/locales/en/academy.js';
 const harness = readFileSync(resolve(import.meta.dirname, '../../../tools/visual.mjs'), 'utf8');
 
 describe('the visual verification journey', () => {
+  it('verifies document fullscreen, external exit and visible fallback over game panels', () => {
+    expect(harness).toContain("process.argv.includes('--fullscreen')");
+    const fullscreen = readFileSync(resolve(import.meta.dirname, '../../../tools/fullscreen-visual.mjs'), 'utf8');
+    expect(fullscreen).toContain('[350, 1280]');
+    expect(fullscreen).toContain('fullscreenElement');
+    expect(fullscreen).toContain('elementFromPoint');
+  });
+  it('offers an isolated admin journey for online resources, moderation and selected clan chat', () => {
+    expect(harness).toContain("process.argv.includes('--admin-operations')");
+    const admin = readFileSync(resolve(import.meta.dirname, '../../../tools/admin-operations-visual.mjs'), 'utf8');
+    expect(admin).toContain('[350, 1280]');
+    expect(admin).toContain('scrollWidth');
+    expect(admin).toContain('checkbox');
+  });
   it('can enter through both current English training doors', () => {
     const selector = /const trainingDoor = page\.getByRole\('button', \{ name: \/([^/]+)\/([a-z]*) \}\)/.exec(harness);
     if (!selector) throw new Error('Missing training-door selector');

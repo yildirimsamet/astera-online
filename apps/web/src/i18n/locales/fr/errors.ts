@@ -12,6 +12,8 @@
 * ce ne sont pas des erreurs, mais les règles du jeu.
   */
   export const errors = {
+  ACCOUNT_NOT_FOUND: 'Compte introuvable. Vérifie le nom d’utilisateur.',
+  CHAT_MUTED: "Ton droit d’envoyer des messages dans ce canal est restreint.",
   MONUMENT_TIER_FORBIDDEN: "Les monuments faciles acceptent les niveaux 1–3 ; choisis un monument difficile",
   MONUMENT_FLEET_ACTIVE: "Seuls les cargos peuvent être ajoutés jusqu’au retour de tous tes vaisseaux, cargos compris.",
   CAPITAL_CANNOT_BE_ABANDONED: "Tu ne peux pas abandonner ta capitale. Sélectionne une colonie.",

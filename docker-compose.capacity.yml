@@ -20,6 +20,7 @@ x-capacity-api: &capacity-api
     PORT: 3200
     DATABASE_URL: postgres://astera_capacity:capacity_only@postgres:5432/astera_capacity
     DB_POOL_MAX: 8
+    PLACEMENT_POOL_MAX: ${PLACEMENT_POOL_MAX:-2}
     JWT_SECRET: ${CAPACITY_JWT_SECRET:-capacity-jwt-secret-never-used-outside-loopback}
     TRUST_PROXY: 'true'
     LOG_LEVEL: warn

@@ -6,6 +6,7 @@ import { accounts, chatMessages, chatReadMarkers, clanMemberships, clans, planet
 import { GameError } from './planet.js';
 import { locationIsKnown, type LocationSight } from './locationSight.js';
 import { publishShard } from '../stream/bus.js';
+import { assertChatAllowed } from './chatModeration.js';
 import { messageDecorations, authorRecognition, type PodiumPlace, type ReactionView, type ReplyPreview } from './messageDecorations.js';
 
 export interface ChatMessageView {
@@ -129,7 +130,7 @@ export async function readChat(
     messages: page.reverse().map((row) => {
       const self = row.authorPlayerId === me.player.id;
       const { x, y, z, planetId, login, replyToMessageId: _replyToMessageId, ...message } = row;
-      const canLocate = locationIsKnown(planetId, { x, y, z }, self, sight);
+      const canLocate = (self || !adminUsernames.has(login)) && locationIsKnown(planetId, { x, y, z }, self, sight);
       return {
         ...message,
         ...(canLocate ? { planetId } : {}),
@@ -163,6 +164,7 @@ export async function postChat(
   const requestedAt = clock.now();
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`chat:${me.player.seasonId}`}))`);
+    await assertChatAllowed(tx, accountId, 'general', clock);
     const [replyTo] = replyToMessageId ? await tx.select({
       id: chatMessages.id, content: chatMessages.content, username: accounts.displayName,
     }).from(chatMessages)

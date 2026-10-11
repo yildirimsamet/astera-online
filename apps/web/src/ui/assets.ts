@@ -175,50 +175,25 @@ export const HULL_ART: Record<HullId, string | null> = {
   PROSPECTOR: `${BASE}/drills/drill_1.png`,
 };
 
-/** Owner-supplied Frontier menu art. The source filename keeps its original spelling. */
-/**
- * ONE COMMISSIONED RENDER PER PROJECT. Owner's art drop.
- *
- * EVERY ROW USED TO BORROW. Nine of the fifteen wore something else's picture —
- * a doctrine wore the hull it teaches, the economy ladders wore the building or
- * resource they lift, and three separate rows all wore the Death Star. That was
- * the honest answer while no lab render existed, and it made the screen read as a
- * list of other screens: two rows with the same picture are two rows the eye has
- * to disambiguate by reading, which is the opposite of what art on a decision
- * surface is for.
- *
- * The filenames are the owner's and are used verbatim, spelling and all —
- * `bullwark`, `syntesis`, `grind` and the older `iotope` are how the files are
- * actually named on disk, and a map that quietly "corrects" them resolves to
- * nothing. `art.test.ts` resolves every path below against `public/`, so a
- * mistyped entry is a failing test rather than a missing picture in the game.
- */
+/** Original cinematic hardware renders. Lossless masters and prompts: assets/source/premium/research. */
+const RESEARCH_BASE = `${BASE}/premium/research`;
 export const RESEARCH_ART: Record<ResearchProjectId, string> = {
-  ISOTOPE_SPECTROMETRY: `${BASE}/lab/iotope_spectrometry.png`,
-  DENSE_FUEL_CELLS: `${BASE}/lab/dense_fuel_cells.png`,
-  GRAVITIC_CHARGES: `${BASE}/lab/gravitational_charges.png`,
-  DEUTERIUM_SYNTHESIS: `${BASE}/lab/deuterium_syntesis.png`,
-  /* The three economy ladders. */
-  YARD_AUTOMATION: `${BASE}/lab/yard_automation.png`,
-  AI_ROBOTS: `${BASE}/lab/ai_robots.png`,
-  PROSPECTOR_HOLDS: `${BASE}/lab/prospector_holds.png`,
-  CARGO_HOLDS: `${BASE}/lab/cargo_holds.png`,
-  /* Fleet V2's permission root and its three bounded stat ladders. D148. */
-  STARSHIP_ENGINEERING: `${BASE}/lab/starship_engineering.png`,
-  SHIP_POWER: `${BASE}/lab/ship_power.png`,
-  SHIP_ARMOR: `${BASE}/lab/ship_armor.png`,
-  SHIP_PROPULSION: `${BASE}/lab/ship_propulsion.png`,
-  EMPLACEMENT_DOCTRINE: `${BASE}/lab/emplacement_doctrine.png`,
-  /* The strategic act. */
-  INTERCEPTION_GRID: `${BASE}/lab/interception_grind.png`,
-  STRATEGIC_STOCKPILE: `${BASE}/lab/strategic_stockpile.png`,
-  /**
-   * NO LAB RENDER HAS BEEN COMMISSIONED FOR INDUSTRIAL YET (Kalıcı gemi hasarı, 2026-09-30).
-   * The laboratory itself stands in, rather than Yard Automation's render: the two sit
-   * side by side in the industry band, and two identical pictures there would read as
-   * one project twice.
-   */
-  INDUSTRIAL: `${BASE}/lab/lab.png`,
+  ISOTOPE_SPECTROMETRY: `${RESEARCH_BASE}/isotope-spectrometry-v1.webp`,
+  DENSE_FUEL_CELLS: `${RESEARCH_BASE}/dense-fuel-cells-v1.webp`,
+  GRAVITIC_CHARGES: `${RESEARCH_BASE}/gravitic-charges-v1.webp`,
+  DEUTERIUM_SYNTHESIS: `${RESEARCH_BASE}/deuterium-synthesis-v1.webp`,
+  YARD_AUTOMATION: `${RESEARCH_BASE}/yard-automation-v1.webp`,
+  AI_ROBOTS: `${RESEARCH_BASE}/ai-robots-v1.webp`,
+  PROSPECTOR_HOLDS: `${RESEARCH_BASE}/prospector-holds-v1.webp`,
+  CARGO_HOLDS: `${RESEARCH_BASE}/cargo-holds-v1.webp`,
+  STARSHIP_ENGINEERING: `${RESEARCH_BASE}/starship-engineering-v1.webp`,
+  SHIP_POWER: `${RESEARCH_BASE}/ship-power-v1.webp`,
+  SHIP_ARMOR: `${RESEARCH_BASE}/ship-armor-v1.webp`,
+  SHIP_PROPULSION: `${RESEARCH_BASE}/ship-propulsion-v1.webp`,
+  EMPLACEMENT_DOCTRINE: `${RESEARCH_BASE}/emplacement-doctrine-v1.webp`,
+  INTERCEPTION_GRID: `${RESEARCH_BASE}/interception-grid-v1.webp`,
+  STRATEGIC_STOCKPILE: `${RESEARCH_BASE}/strategic-stockpile-v1.webp`,
+  INDUSTRIAL: `${RESEARCH_BASE}/industrial-v1.webp`,
 };
 
 export const PROBE_ART = `${BASE}/ships/explorer_ship.png`;
@@ -308,7 +283,7 @@ export const MODEL = {
    * none. It is drawn instanced and tumbling in a ring around a planet that has
    * just been fought over.
    */
-  debris: '/assets/models/debris/debris.glb',
+  debris: '/assets/models/debris/metal-wreck-v1.glb',
 } as const;
 
 /**

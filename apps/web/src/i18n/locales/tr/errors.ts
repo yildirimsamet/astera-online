@@ -11,6 +11,8 @@
  */
 
 export const errors = {
+  ACCOUNT_NOT_FOUND: 'Hesap bulunamadı. Kullanıcı adını kontrol et.',
+  CHAT_MUTED: "Bu kanalda mesaj gönderme iznin kısıtlandı.",
   MONUMENT_TIER_FORBIDDEN: "Kolay anıtlar Tier 1–3’e açıktır; bir zor anıt seç",
   MONUMENT_FLEET_ACTIVE: "Kargo dahil bütün gemilerin eve dönene kadar yalnız yük gemisi ekleyebilirsin.",
   CAPITAL_CANNOT_BE_ABANDONED: "Ana gezegenini terk edemezsin. Bir koloni seç.",

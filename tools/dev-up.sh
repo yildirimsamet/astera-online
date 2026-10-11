@@ -20,8 +20,8 @@
 # WHY THE DATABASE IS SET UP EVERY TIME. `docker-compose.yml` puts the dev
 # database on **tmpfs** — speed over durability, deliberately — so every fresh
 # container starts empty. Migration and bootstrap are therefore not a first-run
-# step, they are part of starting up, and both are idempotent: an already-migrated
-# database applies nothing and an already-open galaxy reports `already up`.
+# step, they are part of starting up. Current worlds are kept; obsolete local
+# rulesets or monument layouts are reset, preserving accounts.
 #
 # "BUILD" MEANS TYPECHECK HERE, and that is not a shortcut. Only `apps/web` emits
 # anything (`vite build`), and the dev server on :5173 serves from source and never
@@ -129,7 +129,7 @@ type_errors=0
 if [[ "$do_build" -eq 0 ]]; then
   warn 'skipped by --skip-build'
 else
-  if pnpm -s typecheck; then
+  if nice -n 10 pnpm -s --workspace-concurrency=1 -r typecheck; then
     ok 'rules · sim · server · web — no type errors'
   else
     type_errors=1
@@ -169,22 +169,12 @@ ok 'schema is current'
 # ── 6. the world ────────────────────────────────────────────────────────────
 step 'Opening the galaxies'
 
-# Idempotent: an existing galaxy comes back as `already up`. A tmpfs database
-# that has just been created has none, so this is what makes the very first
-# request to /api/preview answer instead of 409 NO_FRONTIER.
-pnpm -s --filter @astera/server season bootstrap
-# Read the complete output before checking it: a missing search tool or an early
-# pipe close must not turn a failed status read into permission to create a season.
+# Local worlds must follow today's code, even when the tmpfs container survives
+# a checkout/update. The CLI checks NODE_ENV and the database host before reset;
+# the ordinary production bootstrap keeps its immutable live-season rulesets.
+pnpm -s --filter @astera/server season local-bootstrap
+# A failed status read must stop bring-up before starting either server.
 season_status=$(pnpm -s --filter @astera/server season status)
-# Keep the monument rehearsal available on every disposable local database. The
-# official EU seasons retain their dealt rulesets; this scratch door is explicit
-# ruleset 16 so a fresh `pnpm start` never silently opens a pre-monument galaxy.
-if [[ "${NODE_ENV:-development}" != 'production' && "${NODE_ENV:-development}" != 'test' ]] \
-  && ! grep -F 'MONUMENT-LOCAL' <<< "$season_status" >/dev/null; then
-  pnpm -s --filter @astera/server season create \
-    --shard MONUMENT-LOCAL --seed 16005 --days 30 --cap 60 --ruleset 16
-  season_status=$(pnpm -s --filter @astera/server season status)
-fi
 printf '%s\n' "$season_status"
 
 # ── 7. the processes ────────────────────────────────────────────────────────
@@ -216,7 +206,7 @@ $setsid pnpm --filter @astera/server dev >>"$LOG" 2>&1 &
 api_pid=$!
 # `--strictPort` so a port that is taken is an ERROR rather than a silent move to
 # :5174. Step 1 catches the ordinary case; this catches the race between them.
-$setsid pnpm --filter @astera/web dev -- --strictPort --port "$WEB_PORT" >>"$LOG" 2>&1 &
+$setsid pnpm --filter @astera/web dev --host 0.0.0.0 --strictPort --port "$WEB_PORT" >>"$LOG" 2>&1 &
 web_pid=$!
 
 stop_tree() {

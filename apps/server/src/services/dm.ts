@@ -8,6 +8,7 @@ import {
 } from '../db/schema.js';
 import { CHANNEL, publish } from '../stream/bus.js';
 import { GameError } from './planet.js';
+import { assertChatAllowed } from './chatModeration.js';
 import { messageDecorations, authorRecognition } from './messageDecorations.js';
 
 interface Commander {
@@ -215,6 +216,7 @@ export async function postDm(db: Db, accountId: string, recipientPlayerId: strin
       throw new GameError('DM_UNAVAILABLE', 'Both commanders must be in the same live galaxy', 409);
     }
     await lockDmPair(tx, me.id, recipientPlayerId);
+    await assertChatAllowed(tx, accountId, 'dm', clock);
     if (await isBlocked(tx, me.id, recipientPlayerId)) {
       throw new GameError('DM_BLOCKED', 'This conversation cannot receive messages', 403);
     }

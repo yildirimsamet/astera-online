@@ -47,7 +47,11 @@ case "$*" in
   --version) echo 9.15.4 ;;
   'install --frozen-lockfile') exit 0 ;;
   '-s --filter @astera/server season migrate') echo 'migrations applied' ;;
-  '-s --filter @astera/server season bootstrap') echo 'already up EU-1, EU-2' ;;
+  '-s --filter @astera/server season local-bootstrap')
+    if [[ "$NODE_ENV" != development ]]; then echo 'local-bootstrap requires development mode and a loopback database' >&2; exit 1; fi
+    [[ "$DEV_EXISTING" == 1 ]] || touch "$DEV_CREATED_FILE"
+    echo 'already up EU-1, EU-2; prepared MONUMENT-LOCAL'
+    ;;
   '-s --filter @astera/server season status')
     if [[ "$DEV_STATUS_FAILURE" == 1 ]]; then echo 'status database unavailable' >&2; exit 42; fi
     DEV_CREATED=0
@@ -55,11 +59,7 @@ case "$*" in
     export DEV_CREATED
     exec node "$DEV_STATUS_WRITER"
     ;;
-  '-s --filter @astera/server season create --shard MONUMENT-LOCAL --seed 16005 --days 30 --cap 60 --ruleset 16')
-    if [[ "$DEV_EXISTING" == 1 || -f "$DEV_CREATED_FILE" ]]; then echo 'MONUMENT-LOCAL already has a live season' >&2; exit 1; fi
-    touch "$DEV_CREATED_FILE"
-    ;;
-  '--filter @astera/server dev'|'--filter @astera/web dev -- --strictPort --port 5173') exec sleep 0.5 ;;
+  '--filter @astera/server dev'|'--filter @astera/web dev --host 0.0.0.0 --strictPort --port 5173') exec sleep 0.5 ;;
   *) echo "unexpected command: $*" >&2; exit 99 ;;
 esac`);
     const result = spawnSync('/bin/bash', ['tools/dev-up.sh', '--skip-build'], {
@@ -87,14 +87,14 @@ esac`);
 }
 
 const statusCommand = '-s --filter @astera/server season status';
-const createCommand = '-s --filter @astera/server season create --shard MONUMENT-LOCAL --seed 16005 --days 30 --cap 60 --ruleset 16';
+const bootstrapCommand = '-s --filter @astera/server season local-bootstrap';
 
 describe('pnpm start galaxy preparation without ripgrep', () => {
   it('keeps an already-live monument season and reaches the playable banner', () => {
     const result = start({ existing: true });
     expect(result.stderr).toBe('');
     expect(result.status).toBe(0);
-    expect(result.calls).not.toContain(createCommand);
+    expect(result.calls.filter(call => call === bootstrapCommand)).toHaveLength(1);
     expect(result.stdout).toContain('ASTERA IS UP');
     expect(result.calls.filter(call => call === statusCommand)).toHaveLength(1);
   });
@@ -103,17 +103,17 @@ describe('pnpm start galaxy preparation without ripgrep', () => {
     const result = start();
     expect(result.stderr).toBe('');
     expect(result.status).toBe(0);
-    expect(result.calls.filter(call => call === createCommand)).toHaveLength(1);
-    expect(result.calls.filter(call => call === statusCommand)).toHaveLength(2);
+    expect(result.calls.filter(call => call === bootstrapCommand)).toHaveLength(1);
+    expect(result.calls.filter(call => call === statusCommand)).toHaveLength(1);
     expect(result.stdout).toContain('MONUMENT-LOCAL');
     expect(result.stdout).toContain('ASTERA IS UP');
   });
 
-  it('stops before creating a season or starting processes when status fails', () => {
+  it('stops before starting processes when the prepared world status fails', () => {
     const result = start({ statusFailure: true });
     expect(result.status).toBe(42);
     expect(result.stderr).toContain('status database unavailable');
-    expect(result.calls).not.toContain(createCommand);
+    expect(result.calls.filter(call => call === bootstrapCommand)).toHaveLength(1);
     expect(result.calls.some(call => call.includes(' dev'))).toBe(false);
   });
 
@@ -122,14 +122,14 @@ describe('pnpm start galaxy preparation without ripgrep', () => {
     expect(result.stderr).toBe('');
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('status output complete');
-    expect(result.calls).not.toContain(createCommand);
+    expect(result.calls.filter(call => call === bootstrapCommand)).toHaveLength(1);
   });
 
-  it.each(['production', 'test'])('does not open a local rehearsal in %s', nodeEnv => {
+  it.each(['production', 'test'])('rejects local bring-up in %s before starting processes', nodeEnv => {
     const result = start({ nodeEnv });
-    expect(result.stderr).toBe('');
-    expect(result.status).toBe(0);
-    expect(result.calls).not.toContain(createCommand);
-    expect(result.calls.filter(call => call === statusCommand)).toHaveLength(1);
+    expect(result.stderr).toContain('local-bootstrap requires development mode');
+    expect(result.status).toBe(1);
+    expect(result.calls).not.toContain(statusCommand);
+    expect(result.calls.some(call => call.includes(' dev'))).toBe(false);
   });
 });

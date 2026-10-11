@@ -1963,7 +1963,8 @@ const clanMessageSchema = z.object({
   ...messageInteractionSchema,
   id: z.string(),
   authorPlayerId: z.string(),
-  planetId: z.string(),
+  planetId: z.string().optional(),
+  admin: z.boolean().optional(),
   username: z.string(),
   clanTag: z.string().nullable().optional(),
   content: z.string(),
@@ -2711,7 +2712,9 @@ const ordinaryBattleReport = z.object({
       yourDamage: z.array(z.object({
         hull: hullId,
         count: z.number().int().min(1),
-        damageBp: z.number().int().min(1).max(9999),
+        // HP wounds can be smaller than one basis point; legacy reports omit the remainder.
+        damageBp: z.number().int().min(0).max(9999),
+        remainderBp: z.number().finite().min(0).lt(1).optional(),
       })).default([]),
       /**
        * Defender only: what this defeat broke on the colony. Koloni arızaları.

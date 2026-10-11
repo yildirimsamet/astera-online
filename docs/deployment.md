@@ -70,6 +70,18 @@ and the rollback boundary. It is deliberately not a release history.
 The production Compose file is `docker-compose.prod.yml`. Never substitute `docker-compose.yml`:
 that file is for development, uses tmpfs and has a trivial database password.
 
+Authenticated HTTP handlers hold a shared placement lease in a separate pool.
+`PLACEMENT_POOL_MAX` defaults to **2 per API process**, independently of
+`API_DB_POOL_MAX`. `/metrics` reports `database.configuredPlacementPoolMax`,
+`database.placementTransactionStartMs` and `database.placementTransactionStartErrors`.
+Startup measures actual requests from entering the pool through BEGIN; it includes
+connection establishment, and excludes the galaxy lock and handler. Compare its
+p95/p99 with route latency and the gameplay-pool probe before increasing capacity.
+Budget all API placement pools, gameplay pools, the worker and LISTEN connections
+against PostgreSQL's connection ceiling. The worker-only process serves no gated
+API routes and does not open placement connections. Production remains at two;
+adjust only after a representative isolated capacity run, with a rollback to two.
+
 ## Release rules
 
 These are stop conditions, not suggestions.

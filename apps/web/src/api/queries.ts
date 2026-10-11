@@ -1,3 +1,4 @@
+import { playSound } from '../lib/sound.js';
 import type { CosmeticCategory, CosmeticId, MobileHullId } from '@astera/rules';
 import { useEffect, useMemo, useRef } from 'react';
 import {
@@ -1955,6 +1956,7 @@ export function useCompleteResearch() {
       rollback(context);
     },
     onSuccess: async (result) => {
+      playSound('confirm');
       await apply(result.planet);
       invalidate(keys.mining, keys.leaderboard);
     },
@@ -2038,6 +2040,7 @@ export function useProbe() {
     mutationFn: (targetPlanetId: string, context) => api.probe(targetPlanetId, planetMutationOrigin(context) ?? undefined),
     onMutate: lane.enter,
     onSuccess: async () => {
+      playSound('launch');
       await Promise.all([keys.planet, keys.planets]
         .map((queryKey) => client.invalidateQueries({ queryKey })));
       invalidate(keys.intel, keys.pending, keys.rewards);
@@ -2166,6 +2169,7 @@ export function useRaidPirate() {
     ) => api.raidPirate(pirateId, fleet, planetMutationOrigin(context) ?? undefined, quotedMinutes, acknowledgeRadiationLoss),
     onMutate: lane.enter,
     onSuccess: async (result) => {
+      playSound('launch');
       await Promise.all([
         applyPlanet(result.planet),
         client.cancelQueries({ queryKey: keys.pending }),
@@ -2215,6 +2219,7 @@ export function useLaunchTrade(originPlanetId: string) {
     }, context) => api.trade(occurrenceId, fleet, give, want, requiredPlanetMutationOrigin(context), acknowledgeRadiationLoss),
     onMutate: lane.enter,
     onSuccess: async (result) => {
+      playSound('cargo');
       await Promise.all([
         apply(result.planet),
         client.cancelQueries({ queryKey: keys.pending }),
@@ -2254,6 +2259,7 @@ export function useLaunchIntergalacticConvoy(originPlanetId: string) {
       }
     },
     onSuccess: async (result) => {
+      playSound('launch');
       await apply(result.planet);
       client.setQueryData(keys.pending, { pending: result.pending });
       invalidate(
@@ -2281,7 +2287,7 @@ export function useMine() {
     mutationFn: ({ asteroidId, craft }: { asteroidId: string; craft: number }, context) =>
       api.mine(asteroidId, craft, planetMutationOrigin(context) ?? undefined),
     onMutate: lane.enter,
-    onSuccess: apply,
+    onSuccess: (result) => { playSound('launch'); return apply(result); },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
@@ -2297,7 +2303,7 @@ export function useHarvest() {
     mutationFn: ({ fieldId, craft }: { fieldId: string; craft: number }, context) =>
       api.harvest(fieldId, craft, planetMutationOrigin(context) ?? undefined),
     onMutate: lane.enter,
-    onSuccess: apply,
+    onSuccess: (result) => { playSound('launch'); return apply(result); },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
@@ -2383,6 +2389,7 @@ export function useLaunch() {
     },
     onMutate: lane.enter,
     onSuccess: async (result) => {
+      playSound('launch');
       /**
        * THE SQUADRON IS ON THE DISC BEFORE THE SHEET HAS FINISHED CLOSING. D53.
        *
@@ -2429,6 +2436,7 @@ export function useTransfer(originPlanetId: string) {
     }, context) => api.transfer(requiredPlanetMutationOrigin(context), targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation),
     onMutate: lane.enter,
     onSuccess: async (result) => {
+      playSound('cargo');
       await Promise.all([
         apply(result.planet),
         client.cancelQueries({ queryKey: keys.pending }),
@@ -2515,6 +2523,7 @@ export function useLaunchDeathStar() {
     mutationFn: (targetPlanetId: string, context) => api.launchDeathStar(requiredPlanetMutationOrigin(context), targetPlanetId),
     onMutate: lane.enter,
     onSuccess: async (result) => {
+      playSound('launch');
       await Promise.all([
         apply(result.planet),
         client.cancelQueries({ queryKey: keys.pending }),

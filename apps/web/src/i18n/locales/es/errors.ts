@@ -14,6 +14,8 @@
  */
 
 export const errors = {
+  ACCOUNT_NOT_FOUND: 'No se encontró la cuenta. Revisa el nombre de usuario.',
+  CHAT_MUTED: "Tu permiso para enviar mensajes en este canal está restringido.",
   MONUMENT_TIER_FORBIDDEN: "Los monumentos fáciles admiten niveles 1–3; elige un monumento difícil",
   MONUMENT_FLEET_ACTIVE: "Solo puedes añadir cargueros hasta que todas tus naves, incluidos los cargueros, vuelvan a casa.",
   CAPITAL_CANNOT_BE_ABANDONED: "No puedes abandonar tu capital. Selecciona una colonia.",

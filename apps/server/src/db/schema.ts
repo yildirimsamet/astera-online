@@ -3871,6 +3871,7 @@ export const pirateRaids = pgTable('pirate_raids', {
 }, (t) => [
   index('pirate_raids_planet_idx').on(t.planetId, t.status),
   index('pirate_raids_season_idx').on(t.seasonId, t.status),
+  index('pirate_raids_owner_depart_idx').on(t.ownerPlayerId, t.departAt),
   /**
    * ONE RAID PER WORLD PER PIRATE, and the database is what guarantees it.
    *
@@ -4166,6 +4167,7 @@ export const miningRuns = pgTable('mining_runs', {
 }, (t) => [
   index('mining_planet_idx').on(t.planetId, t.status),
   index('mining_season_idx').on(t.seasonId, t.status),
+  index('mining_owner_depart_idx').on(t.ownerPlayerId, t.departAt),
   // Multiple independent craft may share a target. Origin-lock inventory and
   // bay checks, not target uniqueness, enforce launch capacity.
   check(
@@ -4294,6 +4296,28 @@ export const silentSpaceMaintenance = pgTable('silent_space_maintenance', {
   lastRunAt: timestamp('last_run_at', { withTimezone: true }),
   lastResult: jsonb('last_result').$type<Record<string, unknown>>(),
 });
+
+/** Account-scoped, independently selected chat restrictions. Null expiry means permanent. */
+export const chatMutes = pgTable('chat_mutes', {
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  channel: text('channel').$type<'general' | 'clan' | 'dm'>().notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  actorAccountId: uuid('actor_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+}, (t) => [
+  primaryKey({ columns: [t.accountId, t.channel] }),
+  check('chat_mutes_channel_check', sql`${t.channel} IN ('general', 'clan', 'dm')`),
+]);
+
+/** Operator-only history; original masked text never appears in public projections. */
+export const adminActions = pgTable('admin_actions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  actorAccountId: uuid('actor_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  targetAccountId: uuid('target_account_id').references(() => accounts.id, { onDelete: 'cascade' }),
+  action: text('action').notNull(),
+  details: jsonb('details').$type<Record<string, unknown>>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [index('admin_actions_target_idx').on(t.targetAccountId, t.createdAt)]);
 
 /**
  * Permanent purchase/grant ledger for every cosmetic kind (planet skins today).

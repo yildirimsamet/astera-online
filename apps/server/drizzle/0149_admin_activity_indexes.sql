@@ -1,0 +1,2 @@
+CREATE INDEX "mining_owner_depart_idx" ON "mining_runs" USING btree ("owner_player_id","depart_at");--> statement-breakpoint
+CREATE INDEX "pirate_raids_owner_depart_idx" ON "pirate_raids" USING btree ("owner_player_id","depart_at");

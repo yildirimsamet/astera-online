@@ -18,6 +18,7 @@ import type {
   TransferReturnPlan,
 } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
+import { adminChatScopesSchema, adminPlayersSchema, adminMuteSchema, adminMaskSchema, type AdminMuteInput, type AdminMaskInput } from './adminSchemas.js';
 import {
   adminFeedbackPageSchema,
   skinGrantedSchema,
@@ -464,6 +465,13 @@ export class Api {
   sendFeedback = (kind: FeedbackKind, message: string) =>
     this.send('/api/feedback', feedbackSubmittedSchema, { method: 'POST', body: { kind, message } });
   adminFeedback = () => this.send('/api/admin/feedback', adminFeedbackPageSchema);
+  adminPlayers = (before?: string) => this.send(`/api/admin/players${before ? `?before=${encodeURIComponent(before)}` : ''}`, adminPlayersSchema);
+  adminChatScopes = () => this.send('/api/admin/clans', adminChatScopesSchema);
+  adminMute = (input: AdminMuteInput) => this.send('/api/admin/chat/mute', adminMuteSchema, { method: 'POST', body: { ...input } });
+  adminMask = (input: AdminMaskInput) => this.send('/api/admin/chat/mask', adminMaskSchema, { method: 'POST', body: { ...input } });
+  adminClanChat = (clanId: string, before?: string) => this.send(`/api/admin/clans/${encodeURIComponent(clanId)}/chat${before ? `?before=${encodeURIComponent(before)}` : ''}`, clanChatPageSchema);
+  adminPostClanChat = (clanId: string, content: string, replyToMessageId?: string) =>
+    this.send(`/api/admin/clans/${encodeURIComponent(clanId)}/chat`, clanChatPostSchema, { method: 'POST', body: { content, ...(replyToMessageId ? { replyToMessageId } : {}) } });
   postPerfSession = (session: PerfPayload) =>
     this.send('/api/admin/perf', perfSessionSavedSchema, { method: 'POST', body: { ...session } });
   /** Records a look paid for elsewhere; the same order again is a harmless replay. */

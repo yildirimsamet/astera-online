@@ -67,6 +67,7 @@
   --color-v2-sky-blue: #2e78aa;
   --color-v2-sky-violet: #7846b4;
   --color-v2-sky-drift: #284682;
+  --color-v2-sky-shade: #050b12;
 
   /* ── type ─ one family, width as hierarchy (K3); sizes stay on the current scale */
   --font-v2-ui: 'Archivo Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;

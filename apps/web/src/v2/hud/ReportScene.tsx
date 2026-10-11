@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { FAULT, HULLS, needsDock } from '@astera/rules';
+import { FAULT, HULLS, needsHpDock } from '@astera/rules';
 import type { BattleReport } from '../../api/schemas.js';
 import { combatClassLabel, hullLabel } from '../../i18n/names.js';
 import { serverNow } from '../../lib/clock.js';
@@ -257,14 +257,15 @@ export function ReportScene({
           <p className="text-caption font-semibold text-v2-ink">{t('reportScene.damageTitle')}</p>
           <ul className="mt-0.5">
             {report.yourDamage.map((lot) => (
-              <li key={`${lot.hull}:${String(lot.damageBp)}`} className="flex items-baseline gap-2 text-caption text-v2-ink-2">
+              <li key={`${lot.hull}:${String(lot.damageBp)}:${String(lot.remainderBp ?? 0)}`} className="flex items-baseline gap-2 text-caption text-v2-ink-2">
                 <span className="min-w-0 flex-1 truncate">
-                  {t('reportScene.damageLot', { name: hullLabel(lot.hull), count: lot.count, pct: damagePct(lot.damageBp) })}
+                  {/* Round the remainder first so even subnormal HP wounds stay visible. */}
+                  {t('reportScene.damageLot', { name: hullLabel(lot.hull), count: lot.count, pct: damagePct(lot.damageBp + Math.ceil(lot.remainderBp ?? 0)) })}
                 </span>
                 {/* A defender's were judged at the fight; a raider's wait for the landing. */}
                 {!report.attacking && (
-                  <span className={`shrink-0 text-micro ${needsDock(lot.damageBp) ? 'text-v2-warn' : 'text-v2-self'}`}>
-                    {t(needsDock(lot.damageBp) ? 'reportScene.toDock' : 'reportScene.patched')}
+                  <span className={`shrink-0 text-micro ${needsHpDock(lot) ? 'text-v2-warn' : 'text-v2-self'}`}>
+                    {t(needsHpDock(lot) ? 'reportScene.toDock' : 'reportScene.patched')}
                   </span>
                 )}
               </li>

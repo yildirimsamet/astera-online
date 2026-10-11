@@ -602,7 +602,9 @@ function ConstellationCard({
             src={art}
             alt=""
             aria-hidden
-            className={`size-14 shrink-0 object-contain ${spec.level === 0 ? 'opacity-45 grayscale' : ''}`}
+            className={`premium-art size-14 shrink-0 object-contain ${spec.level === 0 ? 'opacity-45 grayscale' : ''}`}
+            loading="lazy"
+            decoding="async"
           />
         )}
         <div className="grid min-w-0 flex-1 gap-1">
@@ -781,7 +783,8 @@ function ProjectSheet({
           <img
             src={RESEARCH_ART[spec.id]}
             alt={spec.name}
-            className={`relative z-[1] h-36 object-contain ${spec.level === 0 ? 'opacity-45 grayscale' : ''}`}
+            className={`premium-art relative z-[1] h-36 object-contain ${spec.level === 0 ? 'opacity-45 grayscale' : ''}`}
+            decoding="async"
           />
         </div>
         <p className="legend mt-2 text-crystal/85">{spec.tag}</p>
