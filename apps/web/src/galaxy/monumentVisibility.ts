@@ -28,7 +28,7 @@ export function createMonumentVisibility(initial: ReadonlySet<string> = new Set<
   return {
     update(camera: Camera, captions: readonly Caption[], planets: readonly PlanetBody[]): ReadonlySet<string> {
       camera.updateWorldMatrix(true, false);
-      if (!subjects || subjects.captions !== captions || subjects.planets !== planets) {
+      if (subjects?.captions !== captions || subjects.planets !== planets) {
         if (subjects?.planets !== planets) {
           spheres = planets.map(planet => new Sphere(new Vector3(...planet.position), planet.radius * PLANET_SKIN_BODY_SCALE));
         }

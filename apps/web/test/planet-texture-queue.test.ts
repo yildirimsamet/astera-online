@@ -123,8 +123,8 @@ describe('planet texture preparation without a batch upload in one frame', () =>
     const gl = uploader(); const bad = new THREE.Texture(); const good = new THREE.Texture();
     gl.initTexture.mockImplementation(map => { if (map === bad) throw new Error('Context unavailable'); });
     const stop = queuePlanetTextures(gl, [bad, good]);
-    expect(() => runIdle()).not.toThrow();
-    expect(() => runIdle()).not.toThrow();
+    expect(() => { runIdle(); }).not.toThrow();
+    expect(() => { runIdle(); }).not.toThrow();
     expect(gl.initTexture).toHaveBeenLastCalledWith(good);
     expect(idle.size).toBe(0);
     stop();

@@ -76,6 +76,14 @@ listeners. Full-detail preparation has two approaching targets plus the existing
 opening-world preparation. Previously visited models remain in the existing
 session cache; this change introduces no GPU eviction policy.
 
+The checked-in light assets have 256×128 colour maps: preparing all sixteen
+requires approximately 2.67 MiB for RGBA8 texels and mipmaps, excluding driver
+overhead. Light preparation leaves their normal/roughness maps unbound. Full
+looks have 1024×512 colour and two 1024×1024 detail maps (about 13.33 MiB per
+look under the same estimate), which is why full preparation follows only the
+opening world and two approaching looks. These are asset-derived estimates,
+not measurements of the phone's GPU memory.
+
 Caption occlusion deliberately uses the 0.96-radius body envelope instead of the
 old padded pointer geometry. It can reveal captions beside a planet's limb that
 the oversized touch volume previously hid. Planet selection geometry is unchanged.
