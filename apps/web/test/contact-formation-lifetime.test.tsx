@@ -1,4 +1,6 @@
 import { renderHook } from '@testing-library/react';
+import type * as Drei from '@react-three/drei';
+import type * as Fiber from '@react-three/fiber';
 import { Children, isValidElement, type ComponentProps, type ReactElement, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,12 +12,12 @@ import type { Vec3Tuple } from '../src/galaxy/scene.js';
 
 // Run the actual hook lifecycles and real Three resources without a WebGL context.
 vi.mock('@react-three/fiber', async (original) => ({
-  ...await original<typeof import('@react-three/fiber')>(),
+  ...await original<typeof Fiber>(),
   useFrame: vi.fn(),
 }));
 const assets = vi.hoisted(() => ({ read: vi.fn<() => { scene: THREE.Group }[]>() }));
 vi.mock('@react-three/drei', async (original) => ({
-  ...await original<typeof import('@react-three/drei')>(),
+  ...await original<typeof Drei>(),
   useGLTF: Object.assign(() => assets.read(), { preload: vi.fn() }),
 }));
 
@@ -43,9 +45,9 @@ function evaluate<P>(element: ReactElement<P>): ReactNode {
   return element.type(element.props);
 }
 
-type ForeignProps = { contact: Contact; nodes: []; focused: boolean; onSelect: () => void };
+interface ForeignProps { contact: Contact; nodes: []; focused: boolean; onSelect: () => void }
 type FormationProps = ComponentProps<typeof FormationWakes> & { focused: boolean; showPips: boolean };
-type DrawProps = { geometry: THREE.BufferGeometry; material: THREE.ShaderMaterial; name?: string };
+interface DrawProps { geometry: THREE.BufferGeometry; material: THREE.ShaderMaterial; name?: string }
 
 function draw(tree: ReactNode, name?: string): DrawProps {
   for (const child of Children.toArray(tree)) {
