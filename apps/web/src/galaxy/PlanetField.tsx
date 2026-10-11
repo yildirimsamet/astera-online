@@ -21,7 +21,7 @@ import {
   planetSkinLod,
   type PlanetSkinBillboardMode,
 } from './PlanetSkinModel.jsx';
-import { approachingFull, groupPlanetsByLod, lodFor, screenRadius, type PlanetLod } from './planetLod.js';
+import { approachingFull, groupPlanetsByLod, lodFor, screenRadius, selectPlanetWarmupTargets, type PlanetLod } from './planetLod.js';
 import { seat, settleMembers } from './planetPick.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 import { createViewMemo, viewChanged } from './viewMemo.js';
@@ -74,7 +74,8 @@ export function PlanetField({
 }) {
   const { png: defaults, models: skinGroups } = useMemo(() => partitionPlanetSkins(nodes), [nodes]);
   const skinNodes = useMemo(() => skinGroups.flatMap((group) => group.nodes), [skinGroups]);
-  const lods = usePlanetLods(defaults);
+  const warmId = (defaults.find((node) => node.stance === 'self') ?? defaults[0])?.id;
+  const { lods, warmups } = usePlanetLods(defaults, warmId);
   /*
     THE FAR AND LIGHT MODEL OF EVERY LOOK ON THE DISC, UP FRONT (~50 KB a look): the
     models a zoom moves most worlds between are in the cache before the camera asks for
@@ -101,8 +102,19 @@ export function PlanetField({
     return counts;
   }, [defaults]);
 
-  // The world whose shaders and maps are warmed first: the commander's own, where the camera starts.
-  const warmId = (defaults.find((node) => node.stance === 'self') ?? defaults[0])?.id;
+  // Sixteen shared light looks at most: their files are already preloaded, and a first
+  // galaxy-wide zoom must not upload all their colour maps inside its first draw.
+  const lightWarmups = useMemo(() => {
+    const seen = new Set(warmId === undefined ? [] : [planetLook(warmId)]);
+    const ids: string[] = [];
+    for (const node of defaults) {
+      const look = planetLook(node.id);
+      if (seen.has(look)) continue;
+      seen.add(look);
+      ids.push(node.id);
+    }
+    return ids;
+  }, [defaults, warmId]);
 
   return (
     <>
@@ -111,10 +123,22 @@ export function PlanetField({
       ))}
       {warmId !== undefined && (
         // Its own boundary: warming a model never holds up, or hides, anything drawn.
-        <Suspense fallback={null}>
-          <PlanetWarmup id={warmId} />
-        </Suspense>
+        <SkinAssetBoundary key={`warm:${warmId}`} fallback={null}>
+          <Suspense fallback={null}>
+            <PlanetWarmup id={warmId} />
+          </Suspense>
+        </SkinAssetBoundary>
       )}
+      {lightWarmups.map(id => (
+        <SkinAssetBoundary key={`warm:${planetModel(id, 'lite')}`} fallback={null}>
+          <Suspense fallback={null}><PlanetWarmup id={id} lod="lite" /></Suspense>
+        </SkinAssetBoundary>
+      ))}
+      {warmups.map(id => (
+        <SkinAssetBoundary key={`warm:${planetModel(id, 'full')}`} fallback={null}>
+          <Suspense fallback={null}><PlanetWarmup id={id} lod="full" /></Suspense>
+        </SkinAssetBoundary>
+      ))}
       {tiers.map((group) => {
         // A model that fails, or is still on its way, leaves these worlds on their card —
         // rendered from the same model, so the stand-in is the same world.
@@ -185,10 +209,12 @@ export function PlanetField({
  * field a handful of times, not every frame. Until the first measurement every world is a
  * speck, which is the render it always was.
  */
-function usePlanetLods(nodes: readonly PlanetNode[]): ReadonlyMap<string, PlanetLod> {
+function usePlanetLods(nodes: readonly PlanetNode[], openingId?: string) {
   const camera = useThree((state) => state.camera);
   const height = useThree((state) => state.size.height);
   const [lods, setLods] = useState<ReadonlyMap<string, PlanetLod>>(() => new Map());
+  const [warmups, setWarmups] = useState<readonly string[]>([]);
+  const warming = useRef<readonly string[]>([]);
   const held = useRef(lods);
   const memo = useRef(createViewMemo());
   const at = useMemo(() => new THREE.Vector3(), []);
@@ -196,6 +222,7 @@ function usePlanetLods(nodes: readonly PlanetNode[]): ReadonlyMap<string, Planet
   const fetched = useRef(new Set<string>());
 
   useFrame(() => {
+    camera.updateWorldMatrix(true, false);
     if (!viewChanged(memo.current, camera, nodes, height)) return;
     const fov = camera instanceof THREE.PerspectiveCamera ? camera.fov : 45;
     const next = new Map<string, PlanetLod>();
@@ -216,6 +243,14 @@ function usePlanetLods(nodes: readonly PlanetNode[]): ReadonlyMap<string, Planet
         }
       }
     }
+    const targets = selectPlanetWarmupTargets(nodes, camera, height, openingId);
+    if (targets.length !== warming.current.length || targets.some((id, i) => {
+      const kept = warming.current[i];
+      return kept === undefined || planetLook(id) !== planetLook(kept);
+    })) {
+      warming.current = targets;
+      startTransition(() => { setWarmups(targets); });
+    }
     if (!changed) return;
     held.current = next;
     /*
@@ -227,7 +262,7 @@ function usePlanetLods(nodes: readonly PlanetNode[]): ReadonlyMap<string, Planet
     startTransition(() => { setLods(next); });
   });
 
-  return lods;
+  return { lods, warmups };
 }
 
 /** The one-hour tactical blackout: an electrical cage replaces the Aegis dome. */
@@ -870,7 +905,6 @@ function PlanetInstances({
       <instancedMesh
         ref={ref}
         name="planet-worlds"
-        userData={{ planetOccluder: true }}
         args={[undefined, undefined, count]}
         onPointerUp={pick}
         /**

@@ -755,7 +755,7 @@ export function GalaxyCanvas({
         */}
         {/* Radiation (K3): a haze where the dose is, behind the worlds it may wrap. */}
         <RadiationHaze {...(radiation ? { clouds: radiation } : {})} hpClouds={hpRadiation} />
-        <Monuments monuments={monuments} focusedId={focus?.kind === 'monument' ? focus.id : null}
+        <Monuments monuments={monuments} planets={nodes} focusedId={focus?.kind === 'monument' ? focus.id : null}
           onSelect={(id) => { onFocus({ kind: 'monument', id }); }} />
         {sensors && sensors.length > 0 && (
           <SensorRings

@@ -15,6 +15,7 @@ import type { PlanetNode, Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial } from './hitboxDebug.jsx';
 import { sphereInFrustum } from './frustum.js';
+import { queuePlanetTextures } from './planetTextureQueue.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 import { PlanetSkinAttachments } from './PlanetSkinAttachments.jsx';
 import {
@@ -129,61 +130,45 @@ const dressFull: Dress = (source) => ({ material: planetSurface(source, true), u
 /** A default world seen small: the colour map alone, matte, a night floor (`planetSurface`). */
 const dressLite: Dress = (source) => ({ material: planetSurface(source, false), uniforms: null });
 
-/**
- * THE FIRST CLOSE LOOK COSTS NO FRAME (code review, 2026-09-25). The first world drawn
- * on its light or full model compiled that dress's shader, and the first full model of a
- * look uploaded three 1024 maps — both inside one frame, a stall of up to a few hundred
- * milliseconds on a phone while hopping from world to world.
- *
- * So both dresses are compiled up front on one world's own model, with the scene's lights,
- * off the frame where the browser can (`compileAsync`). A shader is shared by every look
- * dressed alike, so one world warms them all — and it is the cached material the worlds
- * will draw with (`cachedDress`). That world's full maps are then uploaded while the page
- * is idle: the commander's own, where the camera starts.
- */
-export function PlanetWarmup({ id }: { id: string }) {
-  const liteUrl = planetModel(id, 'lite');
-  const fullUrl = planetModel(id, 'full');
-  const lite = useGLTF(liteUrl, false);
-  const full = useGLTF(fullUrl, false);
+/** Prepare the opening world's two dresses, or one look's next tier before it is drawn. */
+export function PlanetWarmup({ id, lod }: { id: string; lod?: 'lite' | 'full' }) {
+  if (lod) return <WarmPlanetModel id={id} lod={lod} />;
+  return <><WarmPlanetModel id={id} lod="lite" /><WarmPlanetModel id={id} lod="full" /></>;
+}
+
+function WarmPlanetModel({ id, lod }: { id: string; lod: 'lite' | 'full' }) {
+  const url = planetModel(id, lod);
+  const model = useGLTF(url, false);
   const gl = useThree((state) => state.gl);
   const camera = useThree((state) => state.camera);
   const scene = useThree((state) => state.scene);
 
   useEffect(() => {
+    const mesh = firstMesh(model.scene);
+    const source = mesh && (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material);
+    if (!mesh || !source) return;
+    const { material } = cachedDress(url, lod, source, lod === 'full' ? dressFull : dressLite);
     const probes = new THREE.Group();
     const maps: THREE.Texture[] = [];
-    for (const [url, key, dress, model] of [
-      [liteUrl, 'lite', dressLite, lite.scene],
-      [fullUrl, 'full', dressFull, full.scene],
-    ] as const) {
-      const mesh = firstMesh(model);
-      const source = mesh && (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material);
-      if (!mesh || !source) continue;
-      const { material } = cachedDress(url, key, source, dress);
-      // Instanced and coloured as the worlds are, so the program compiled is the one they use.
-      const probe = new THREE.InstancedMesh(cachedGeometry(url, mesh), material, 1);
-      probe.setColorAt(0, new THREE.Color(1, 1, 1));
-      probes.add(probe);
-      if (key === 'full' && material instanceof THREE.MeshStandardMaterial) {
-        for (const map of [material.map, material.normalMap, material.roughnessMap]) if (map) maps.push(map);
-      }
+    // Instanced and coloured as the worlds are, so the prepared program matches their draw.
+    const probe = new THREE.InstancedMesh(cachedGeometry(url, mesh), material, 1);
+    probe.setColorAt(0, new THREE.Color(1, 1, 1));
+    probes.add(probe);
+    if (material instanceof THREE.MeshStandardMaterial) {
+      for (const map of [material.map, material.normalMap, material.roughnessMap]) if (map) maps.push(map);
     }
     let live = true;
-    let idle = 0;
-    // Safari still has no idle callback; a short timeout is the next best quiet moment.
-    const supportsIdle = 'requestIdleCallback' in window;
-    void gl.compileAsync(probes, camera, scene).then(() => {
-      if (!live) return;
-      const upload = () => { for (const map of maps) gl.initTexture(map); };
-      idle = supportsIdle ? window.requestIdleCallback(upload, { timeout: 2000 }) : window.setTimeout(upload, 200);
-    });
-    return () => {
-      live = false;
-      if (supportsIdle) window.cancelIdleCallback(idle);
-      else window.clearTimeout(idle);
-    };
-  }, [gl, camera, scene, lite.scene, full.scene, liteUrl, fullUrl]);
+    let cancel: () => void = () => undefined;
+    // Programs retain the cached live material. Only this temporary mesh belongs to preparation.
+    let preparation: Promise<THREE.Object3D>;
+    try { preparation = gl.compileAsync(probes, camera, scene); }
+    catch { probe.dispose(); return; }
+    void preparation.then(
+      () => { probe.dispose(); if (live) cancel = queuePlanetTextures(gl, maps); },
+      () => { probe.dispose(); },
+    );
+    return () => { live = false; cancel(); };
+  }, [gl, camera, scene, model.scene, url, lod]);
 
   return null;
 }
@@ -396,7 +381,6 @@ function LoadedPlanetSkinModel({
         <instancedMesh
           ref={hits}
           name="planet-skin-hits"
-          userData={{ planetOccluder: true }}
           args={[undefined, undefined, nodes.length]}
           frustumCulled={false}
           onPointerUp={select}
@@ -533,7 +517,6 @@ function ModelInstances({
         <instancedMesh
           ref={hits}
           name={`${name}-hits`}
-          userData={{ planetOccluder: true }}
           args={[undefined, undefined, capacity]}
           frustumCulled={false}
           onPointerUp={select}

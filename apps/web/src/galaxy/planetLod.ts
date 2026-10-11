@@ -1,4 +1,7 @@
-import { planetModel } from '../ui/assets.js';
+import { Frustum, Matrix4, PerspectiveCamera, Vector3, type Camera } from 'three';
+import { planetLook, planetModel } from '../ui/assets.js';
+import type { PlanetNode } from './scene.js';
+import { sphereInFrustum } from './frustum.js';
 
 /**
  * WHICH MODEL A WORLD IS DRAWN WITH (F9 · K7). A model at every distance — owner,
@@ -46,6 +49,38 @@ const PREFETCH_FULL = 0.6;
 
 export function approachingFull(px: number, lod: PlanetLod): boolean {
   return lod === 'lite' && px >= PLANET_LOD.full * PREFETCH_FULL;
+}
+
+/** Full-detail preparation follows at most two visible approaches, bounded by shared look rather than world count. */
+export function selectPlanetWarmupTargets(
+  nodes: readonly Pick<PlanetNode, 'id' | 'position' | 'radius'>[],
+  camera: Camera,
+  height: number,
+  openingId?: string,
+): string[] {
+  if (height <= 0 || nodes.length === 0) return [];
+  camera.updateWorldMatrix(true, false);
+  const frustum = new Frustum().setFromProjectionMatrix(new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  const origin = camera.getWorldPosition(new Vector3());
+  const position = new Vector3();
+  const fov = camera instanceof PerspectiveCamera ? camera.fov : 45;
+  const candidates: { id: string; px: number }[] = [];
+  for (const node of nodes) {
+    const px = screenRadius(node.radius, origin.distanceTo(position.fromArray(node.position)), fov, height);
+    if (px < PLANET_LOD.full * PREFETCH_FULL || !sphereInFrustum(frustum, node.position, node.radius)) continue;
+    candidates.push({ id: node.id, px });
+  }
+  candidates.sort((a, b) => b.px - a.px);
+  const seen = new Set(openingId === undefined ? [] : [planetLook(openingId)]);
+  const targets: string[] = [];
+  for (const candidate of candidates) {
+    const look = planetLook(candidate.id);
+    if (seen.has(look)) continue;
+    seen.add(look);
+    targets.push(candidate.id);
+    if (targets.length === 2) break;
+  }
+  return targets;
 }
 
 /** A world's radius on screen, in pixels: its radius over the distance, in half-viewport units. */

@@ -2,45 +2,29 @@ import { toWorld } from '@astera/rules';
 import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef, useState } from 'react';
-import { Raycaster, Vector2, Vector3, type Object3D } from 'three';
 import { useTranslation } from 'react-i18next';
 import type { PublicMonument } from '../api/schemas.js';
 import { MonumentModel, monumentScale } from './MonumentModel.js';
 import { monumentName } from '../i18n/names.js';
 import { markHit, wasTap } from './tap.js';
+import { createMonumentVisibility } from './monumentVisibility.js';
+import type { PlanetNode } from './scene.js';
 
-export function Monuments({ monuments, focusedId, onSelect }: {
-  monuments: readonly PublicMonument[]; focusedId: string | null; onSelect: (id: string) => void;
+export function Monuments({ monuments, planets, focusedId, onSelect }: {
+  monuments: readonly PublicMonument[]; planets: readonly PlanetNode[];
+  focusedId: string | null; onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
   const lastHidden = useRef<ReadonlySet<string>>(hidden);
-  const trace = useMemo(() => {
-    const occluders: Object3D[] = [];
-    return { ray: new Raycaster(), point: new Vector3(), projected: new Vector3(), screen: new Vector2(), occluders };
-  }, []);
-  useFrame(({ camera, scene }) => {
-    if (monuments.length === 0) return;
-    camera.updateMatrixWorld();
-    // Trace only planets: transparent sensor fields and padded craft pickers must not hide a caption.
-    trace.occluders.length = 0;
-    scene.traverse((object) => {
-      const data: unknown = object.userData;
-      if (typeof data === 'object' && data !== null && Reflect.get(data, 'planetOccluder') === true) {
-        trace.occluders.push(object);
-      }
-    });
-    const next = new Set<string>();
-    for (const monument of monuments) {
-      const [x, y, z] = toWorld(monument.position);
-      trace.point.set(x, y + monumentScale(monument.difficulty) / 2 + 0.35, z);
-      trace.projected.copy(trace.point).project(camera);
-      trace.screen.set(trace.projected.x, trace.projected.y);
-      trace.ray.setFromCamera(trace.screen, camera);
-      const nearest = trace.ray.intersectObjects(trace.occluders, false)[0];
-      if (nearest && nearest.distance < trace.point.distanceTo(trace.ray.ray.origin)) next.add(monument.id);
-    }
-    if (next.size !== lastHidden.current.size || [...next].some((id) => !lastHidden.current.has(id))) {
+  const trace = useMemo(() => createMonumentVisibility(hidden), []);
+  const captions = useMemo(() => monuments.map(monument => {
+    const [x, y, z] = toWorld(monument.position);
+    return { id: monument.id, position: [x, y + monumentScale(monument.difficulty) / 2 + 0.35, z] as const };
+  }), [monuments]);
+  useFrame(({ camera }) => {
+    const next = trace.update(camera, captions, planets);
+    if (next !== lastHidden.current) {
       lastHidden.current = next;
       setHidden(next);
     }

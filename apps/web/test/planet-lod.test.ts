@@ -187,7 +187,7 @@ describe('the full model is ready before it is needed', () => {
     expect(field).toMatch(/<Suspense fallback=\{null\}>\s*<PlanetWarmup /);
   });
 
-  it('uploads the home world’s full maps while idle', () => {
-    expect(model).toMatch(/gl\.initTexture\(/);
+  it('routes prepared maps through the shared idle queue', () => {
+    expect(model).toMatch(/queuePlanetTextures\(gl, maps\)/);
   });
 });
