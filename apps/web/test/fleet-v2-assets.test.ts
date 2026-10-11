@@ -69,9 +69,10 @@ const triangleCount = (document: GlbDocument): number =>
   ), 0);
 
 describe('Fleet V2 canonical assets', () => {
-  it('starts full and low hull requests together instead of waterfalling', () => {
+  it('starts distinct full and low hull requests together and deduplicates shared URLs', () => {
     const source = readFileSync('src/galaxy/Fleets.tsx', 'utf8');
-    expect(source).toContain('useGLTF([url, lowUrl], false)');
+    expect(source).toContain('useGLTF(url === lowUrl ? [url] : [url, lowUrl], false)');
+    expect(source).toContain('const lowScene = (loaded[1] ?? loaded[0])!.scene;');
   });
 
   it('declares one exhaustive entry for each craftable mobile hull', () => {

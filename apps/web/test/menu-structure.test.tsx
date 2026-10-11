@@ -237,11 +237,13 @@ describe('the menu groups what it offers', () => {
 
     const plate = view.container.querySelector('[data-device-settings]');
     expect(plate).not.toBeNull();
-    expect(plate?.querySelectorAll('[data-setting-row]')).toHaveLength(5);
+    expect(plate?.querySelectorAll('[data-setting-row]')).toHaveLength(6);
 
     // Every control that was there before is still there, and still live.
     expect(screen.getByRole('combobox', { name: i18n.t('settings.choose') })).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: i18n.t('menu.volumeLabel') })).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: i18n.t('menu.effectsVolumeLabel') })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: new RegExp(i18n.t('menu.effectsLabel')) })).toBeInTheDocument();
     expect(screen.getByRole('tablist', { name: i18n.t('menu.qualityLabel') })).toBeInTheDocument();
     expect(plate?.querySelector('[data-consent-settings]')).not.toBeNull();
     expect(screen.getByRole('button', { name: new RegExp(i18n.t('menu.fpsLabel')) })).toBeInTheDocument();

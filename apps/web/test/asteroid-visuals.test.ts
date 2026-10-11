@@ -12,9 +12,9 @@ describe('the asteroid silhouette rim', () => {
     expect(ASTEROID_RIM_EXPANSION).toBeLessThan(0.1);
   });
 
-  it('keeps the neon rim plainly visible against the dark galaxy', () => {
-    expect(ASTEROID_RIM_OPACITY).toBeGreaterThanOrEqual(0.7);
-    expect(ASTEROID_RIM_OPACITY).toBeLessThan(0.85);
+  it('keeps the rim visible without washing out the rock surface', () => {
+    expect(ASTEROID_RIM_OPACITY).toBeGreaterThanOrEqual(0.3);
+    expect(ASTEROID_RIM_OPACITY).toBeLessThan(0.5);
   });
 
   it('keeps ordinary rocks visible and preserves the isotope signal', () => {
@@ -34,8 +34,10 @@ describe('the asteroid silhouette rim', () => {
   it('keeps the rim behind nearer worlds and leaves the rock body on the opaque path', () => {
     const source = readFileSync('src/galaxy/Asteroids.tsx', 'utf8');
     expect(source).toContain('depthTest: true');
-    expect(source).toContain('args={[source.geometry, source.material, bucket.rocks.length]}');
-    expect(source).not.toContain('bodyMaterial');
+    expect(source).toContain('source?.material.clone()');
+    expect(source).toContain('args={[source.geometry, surface, bucket.rocks.length]}');
+    expect(source).toContain('surface?.dispose()');
+    expect(source).not.toMatch(/(?:source\.material|material)\.transparent\s*=\s*true/u);
   });
 });
 
