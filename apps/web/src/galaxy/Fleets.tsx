@@ -289,16 +289,16 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
        * buffer here so a craft stayed visible behind a planet; it then drew
        * straight through the planet. A craft behind a world is hidden by it.
        */
-      const materials = materialsOf(node).map((material) => {
+      const materials = materialsOf(node).map((sourceMaterial) => {
         // The GLTF cache owns the source material. Fog and finish belong to this hull.
-        const owned = material.clone();
-        configureOpaqueTransparentBody(owned);
-        owned.depthTest = true;
-        if ('fog' in owned) owned.fog = fog;
-        if (owned instanceof THREE.MeshStandardMaterial) {
-          owned.roughness = Math.max(0.38, Math.min(0.86, owned.roughness));
+        const material = sourceMaterial.clone();
+        configureOpaqueTransparentBody(material);
+        material.depthTest = true;
+        if ('fog' in material) material.fog = fog;
+        if (material instanceof THREE.MeshStandardMaterial) {
+          material.roughness = Math.max(0.38, Math.min(0.86, material.roughness));
         }
-        return owned;
+        return material;
       });
       node.material = Array.isArray(node.material) ? materials : materials[0]!;
     });

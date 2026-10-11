@@ -98,11 +98,11 @@ export function Asteroids({
       {/* An optional pack failure keeps the same selectable rocks with the owned mesh. */}
       {buckets.map((bucket) => (
         <SkinAssetBoundary key={bucket.url} fallback={
-          <Suspense fallback={null}>
+          <Suspense key={bucket.fallbackUrl} fallback={null}>
             <RockBucket bucket={{ ...bucket, url: bucket.fallbackUrl }} seasonStart={seasonStart} focusedId={focusedId} onSelect={onSelect} />
           </Suspense>
         }>
-          <Suspense fallback={null}>
+          <Suspense key={bucket.url} fallback={null}>
             <RockBucket bucket={bucket} seasonStart={seasonStart} focusedId={focusedId} onSelect={onSelect} />
           </Suspense>
         </SkinAssetBoundary>

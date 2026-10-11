@@ -52,7 +52,7 @@ export function AdminPlayersPanel() {
             <p className="text-micro text-v2-ink-3">{t('community.admin.ops.measured', { time: players.data.pages[0]?.measuredAt.toLocaleTimeString() })}</p>
             {players.data.pages.every(page => page.players.length === 0) ? <Note>{t('community.admin.ops.empty')}</Note> : null}
             <div className="grid gap-2 md:grid-cols-2">
-              {players.data.pages.flatMap(page => page.players).map(player => <article key={player.playerId} className="min-w-0 rounded-control border border-v2-line-hi bg-v2-plate p-3">
+              {players.data.pages.flatMap(page => page.players).map(player => <article key={player.playerId} className="min-w-0 rounded-control border border-v2-line-hi bg-v2-panel p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0"><h3 className="break-words text-caption font-semibold text-v2-ink">{player.displayName}</h3><p className="break-words text-micro text-v2-ink-3">@{player.username} · {player.galaxy}</p></div>
                   <Button size="sm" disabled={busy} ariaLabel={t('community.admin.ops.moderate', { name: player.displayName })} onClick={() => {
