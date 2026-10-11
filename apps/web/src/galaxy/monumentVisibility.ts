@@ -1,14 +1,17 @@
 import { Raycaster, Sphere, Vector2, Vector3, type Camera } from 'three';
-import type { PlanetNode, Vec3Tuple } from './scene.js';
+import type { Vec3Tuple } from './scene.js';
 import { PLANET_SKIN_BODY_SCALE } from './planetSkinAttachments.js';
 import { createViewMemo, viewChanged } from './viewMemo.js';
 
 interface Caption {
   id: string;
-  position: Vec3Tuple;
+  position: Readonly<Vec3Tuple>;
 }
 
-type PlanetBody = Pick<PlanetNode, 'position' | 'radius'>;
+interface PlanetBody {
+  position: Readonly<Vec3Tuple>;
+  radius: number;
+}
 
 /** Body spheres keep caption visibility independent of touch-target padding and LOD mesh churn. */
 export function createMonumentVisibility(initial: ReadonlySet<string> = new Set<string>()) {
