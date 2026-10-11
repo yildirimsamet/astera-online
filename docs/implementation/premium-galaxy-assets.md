@@ -84,6 +84,15 @@ Admin and galaxy readouts were also reviewed at mobile and desktop widths; all s
 readout languages passed the numeric emphasis and layout checks. No economy
 simulations or snowball studies are authorized or run.
 
+Release integration preserves the fleet resource-lifetime and zoom preparation
+changes already deployed at `d7d2e90`. The native engine now disposes its geometry
+and material independently: changing motor count must not dispose a shader still
+in use, and replacing cached textures must not dispose its retained geometry.
+Both regression cases and the existing formation lifecycle check failed before
+that correction and passed afterwards. The focused integration run passed all
+128 tests across 14 files. The hook harness loads the new textured wake and actual
+EngineJets resources while retaining its existing allocation/disposal assertions.
+
 Review artifacts are local, ignored outputs under `out/premium-assets/engine-calibration`.
 The initial sheets contain the original models without flames; the final sheets use
 live Hull, FormationLightField, Exhaust and StrategicExhaust components. Diagnostic

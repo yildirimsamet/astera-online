@@ -63,7 +63,8 @@ export function EngineJets({ units, aimDistance, name = 'formation-lights' }: {
   const rotation = useMemo(() => new THREE.Quaternion(), []), world = useMemo(() => new THREE.Quaternion(), []), cameraLocal = useMemo(() => new THREE.Quaternion(), []);
   const axis = useMemo(() => new THREE.Vector3(), []), nozzle = useMemo(() => new THREE.Vector3(), []), offset = useMemo(() => new THREE.Vector3(), []), tint = useMemo(() => new THREE.Color(), []);
   const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
-  useEffect(() => () => { geometry.dispose(); material.dispose(); }, [geometry, material]);
+  useEffect(() => () => { geometry.dispose(); }, [geometry]);
+  useEffect(() => () => { material.dispose(); }, [material]);
   useFrame(({ clock, camera }) => {
     const node = stream.current;
     if (!node) return;

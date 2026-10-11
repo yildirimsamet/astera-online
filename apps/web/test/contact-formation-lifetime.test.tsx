@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Contact } from '../src/api/schemas.js';
 import { shareStructure } from '../src/api/structural.js';
 import { FormationWakes, Traffic, Wake } from '../src/galaxy/Fleets.js';
+import { EngineJets, type EngineUnit } from '../src/galaxy/EngineJets.js';
 import { markersFor } from '../src/galaxy/Squadrons.js';
 import type { Vec3Tuple } from '../src/galaxy/scene.js';
 
@@ -15,10 +16,14 @@ vi.mock('@react-three/fiber', async (original) => ({
   ...await original<typeof Fiber>(),
   useFrame: vi.fn(),
 }));
-const assets = vi.hoisted(() => ({ read: vi.fn<() => { scene: THREE.Group }[]>() }));
+const assets = vi.hoisted(() => ({
+  read: vi.fn<() => { scene: THREE.Group }[]>(),
+  texture: vi.fn<(input: string | string[]) => THREE.Texture | THREE.Texture[]>(),
+}));
 vi.mock('@react-three/drei', async (original) => ({
   ...await original<typeof Drei>(),
   useGLTF: Object.assign(() => assets.read(), { preload: vi.fn() }),
+  useTexture: Object.assign((input: string | string[]) => assets.texture(input), { preload: vi.fn() }),
 }));
 
 function component<P>(tree: ReactNode, name: string): ReactElement<P> {
@@ -60,6 +65,19 @@ function draw(tree: ReactNode, name?: string): DrawProps {
   throw new Error(`Missing draw ${name ?? ''}`);
 }
 
+function isGeometry(value: unknown): value is THREE.BufferGeometry {
+  return value instanceof THREE.BufferGeometry;
+}
+
+function instancedDraw(tree: ReactNode): DrawProps & { count: number } {
+  if (!isValidElement<{ args?: readonly unknown[] }>(tree)) throw new Error('Missing instanced draw');
+  const [geometry, material, count] = tree.props.args ?? [];
+  if (!isGeometry(geometry) || !(material instanceof THREE.ShaderMaterial) || typeof count !== 'number') {
+    throw new Error('Invalid instanced resources');
+  }
+  return { geometry, material, count };
+}
+
 const contact = (patch: Partial<Contact> = {}): Contact => ({
   id: 'formation-contact', kind: 'fleet', fleet: { DART: 13, PIKE: 10 },
   from: { x: 0, y: 0, z: 0 }, to: { x: 100, y: 20, z: 30 },
@@ -77,10 +95,24 @@ function useFormation(value: Contact, focused = false) {
   const lights = evaluate(component<FormationProps>(tree, 'FormationLightField'));
   const pips = evaluate(component<FormationProps>(lights, 'FormationPips'));
   const ranks = evaluate(component<FormationProps>(lights, 'FormationRanks'));
-  return { markers: wakes.markers, slots: wakes.slots, wake: draw(FormationWakes(wakes)), lights: draw(lights), pips: draw(pips), ranks: draw(ranks) };
+  const jets = evaluate(component<ComponentProps<typeof EngineJets>>(lights, 'EngineJets'));
+  return { markers: wakes.markers, slots: wakes.slots, wake: draw(FormationWakes(wakes)), lights: instancedDraw(jets), pips: draw(pips), ranks: draw(ranks) };
 }
 
 beforeEach(() => {
+  // Mirror useTexture's shared cache while leaving real GPU resource lifetimes observable.
+  const textures = new Map<string, THREE.Texture>();
+  assets.texture.mockImplementation(input => {
+    const load = (url: string) => {
+      let texture = textures.get(url);
+      if (!texture) {
+        texture = new THREE.Texture();
+        textures.set(url, texture);
+      }
+      return texture;
+    };
+    return typeof input === 'string' ? load(input) : input.map(load);
+  });
   // The atlas texture is real; glyph rasterization is irrelevant to its lifetime.
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
 });
@@ -159,6 +191,57 @@ describe('contact formation allocations', () => {
 });
 
 describe('independent resource lifetimes', () => {
+  const engine: EngineUnit = { at: [0, 0, 0], nozzles: [[0, 0, -0.4]], size: 1,
+    colour: '#aabbcc', intensity: 1, widthFactor: 1, lengthFactor: 1 };
+  function useJets(units: readonly EngineUnit[]) {
+    return instancedDraw(EngineJets({ units, aimDistance: { current: 100 } }));
+  }
+
+  it('retains the engine shader and cached maps when the number of motors changes', () => {
+    const { result, rerender, unmount } = renderHook(({ units }) => useJets(units), { initialProps: { units: [engine] } });
+    const first = result.current;
+    const geometryDispose = vi.spyOn(first.geometry, 'dispose');
+    const materialDispose = vi.spyOn(first.material, 'dispose');
+    const grunge: unknown = first.material.uniforms.uGrunge!.value;
+    if (!(grunge instanceof THREE.Texture)) throw new Error('Missing cached engine map');
+    const textureDispose = vi.spyOn(grunge, 'dispose');
+    expect(first.count).toBe(24);
+    rerender({ units: [engine, engine] });
+    expect(result.current.count).toBe(48);
+    expect(result.current.geometry).not.toBe(first.geometry);
+    expect(result.current.material).toBe(first.material);
+    expect(geometryDispose).toHaveBeenCalledOnce();
+    expect(materialDispose).not.toHaveBeenCalled();
+    const secondDispose = vi.spyOn(result.current.geometry, 'dispose');
+    rerender({ units: [] });
+    expect(result.current.count).toBe(0);
+    expect(secondDispose).toHaveBeenCalledOnce();
+    expect(materialDispose).not.toHaveBeenCalled();
+    const finalDispose = vi.spyOn(result.current.geometry, 'dispose');
+    unmount();
+    expect(finalDispose).toHaveBeenCalledOnce();
+    expect(materialDispose).toHaveBeenCalledOnce();
+    expect(textureDispose).not.toHaveBeenCalled();
+  });
+
+  it('retains the engine buffer when texture replacement rebuilds its shader', () => {
+    const { result, rerender, unmount } = renderHook(() => useJets([engine]));
+    const first = result.current;
+    const geometryDispose = vi.spyOn(first.geometry, 'dispose');
+    const materialDispose = vi.spyOn(first.material, 'dispose');
+    assets.texture.mockReturnValue([new THREE.Texture(), new THREE.Texture()]);
+    rerender();
+    expect(result.current.geometry).toBe(first.geometry);
+    expect(result.current.material).not.toBe(first.material);
+    expect(materialDispose).toHaveBeenCalledOnce();
+    expect(geometryDispose).not.toHaveBeenCalled();
+    const finalDispose = vi.spyOn(result.current.material, 'dispose');
+    unmount();
+    expect(geometryDispose).toHaveBeenCalledOnce();
+    expect(materialDispose).toHaveBeenCalledOnce();
+    expect(finalDispose).toHaveBeenCalledOnce();
+  });
+
   it.each([false, true])('retains body materials when focus replaces the outline (array: %s)', (array) => {
     const sources = [new THREE.MeshStandardMaterial(), new THREE.MeshStandardMaterial()];
     const geometry = new THREE.BoxGeometry();
