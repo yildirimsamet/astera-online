@@ -60,11 +60,13 @@ compilation rejection. A separate renderer-throw regression also failed before
 its background failure handler was added. The new queue/visibility modules and bounded target
 selector were also observed failing before they existed.
 
-After implementation, 52 focused tests across six files passed, including the
-existing LOD and model-cache regressions. The run used `nice -n 10`, one worker
-and no file parallelism: 10.04 seconds total, 134 ms in test bodies. A test-harness
+All 54 focused cases across six files passed in 7.95 seconds, including the existing
+LOD and model-cache regressions, with `nice -n 10`, one worker and no file parallelism. A test-harness
 cleanup order issue was corrected before recording the existing-code failures.
-The final preparation suite also covers a synchronous renderer throw (six cases).
+Final review also covers synchronous renderer failure, both opening-world tiers,
+and context loss while uploads are still pending, including a new subscriber
+during the loss. The CI typecheck exposed writable coordinate types on the two
+read-only selectors; both now accept immutable coordinate tuples without casts.
 
 Review: meshes used only for compilation are released after resolution or
 rejection; cached model geometry/material remain owned by the existing cache.
@@ -80,6 +82,8 @@ the oversized touch volume previously hid. Planet selection geometry is unchange
 World and caption snapshots follow React's immutable input arrays; their positions
 are rebuilt on data changes, independently of render-model mounting.
 
-Full type/lint/test checks are pending on CI. No production change has been made
-for these two fixes. Actual phone improvement and visual verification require
-the same live admin first-zoom capture after publishing the reviewed change.
+Full type/lint/test checks and the production web build run on CI
+([workflow](../.github/workflows/ci.yml)); the result for the final master commit
+is the release gate. No production change has been made for these two fixes.
+Actual phone improvement and visual verification require the same live admin
+first-zoom capture after publishing the reviewed change.

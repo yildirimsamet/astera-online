@@ -76,6 +76,15 @@ describe('planet preparation is isolated from drawing and component lifetime', (
     expect(idle.size).toBe(0);
   });
 
+  it('still prepares both opening-world tiers and deduplicates a map shared by them', async () => {
+    render(<PlanetWarmup id={id} />);
+    expect(compile).toHaveBeenCalledTimes(2);
+    await act(async () => { await Promise.resolve(); });
+    runIdle(); runIdle(); runIdle();
+    expect(upload.mock.calls).toEqual(maps.map(map => [map]));
+    expect(idle.size).toBe(0);
+  });
+
   it('cancels queued uploads on unmount while retaining the shared geometry and material', async () => {
     const view = render(<PlanetWarmup id={id} lod="full" />);
     const probe = compile.mock.calls[0]?.[0].children[0];

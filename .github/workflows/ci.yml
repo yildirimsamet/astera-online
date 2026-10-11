@@ -14,6 +14,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
+      - name: Build production web client
+        run: pnpm --filter @astera/web build
       # Ordinary rules and UI tests. Persistence tests run below on isolated databases.
       # Owner rule (2026-10-09):
       # economy simulations and snowball audits require an explicit request.

@@ -1,6 +1,5 @@
 import { Frustum, Matrix4, PerspectiveCamera, Vector3, type Camera } from 'three';
 import { planetLook, planetModel } from '../ui/assets.js';
-import type { PlanetNode } from './scene.js';
 import { sphereInFrustum } from './frustum.js';
 
 /**
@@ -53,7 +52,7 @@ export function approachingFull(px: number, lod: PlanetLod): boolean {
 
 /** Full-detail preparation follows at most two visible approaches, bounded by shared look rather than world count. */
 export function selectPlanetWarmupTargets(
-  nodes: readonly Pick<PlanetNode, 'id' | 'position' | 'radius'>[],
+  nodes: readonly { id: string; position: readonly [number, number, number]; radius: number }[],
   camera: Camera,
   height: number,
   openingId?: string,

@@ -131,15 +131,21 @@ describe('planet texture preparation without a batch upload in one frame', () =>
   });
 
   it('pauses on context loss, re-prepares live maps after restoration and removes listeners on cleanup', () => {
-    const gl = uploader(); const map = new THREE.Texture();
-    const stop = queuePlanetTextures(gl, [map]);
+    const gl = uploader(); const map = new THREE.Texture(); const waiting = new THREE.Texture();
+    const stop = queuePlanetTextures(gl, [map, waiting]);
     runIdle();
+    expect(idle.size).toBe(1);
     gl.domElement.dispatchEvent(new Event('webglcontextlost'));
     expect(idle.size).toBe(0);
+    expect(cancel).toHaveBeenCalledOnce();
+    const added = new THREE.Texture();
+    const stopAdded = queuePlanetTextures(gl, [added]);
+    expect(idle.size).toBe(0);
+    expect(gl.initTexture).toHaveBeenCalledTimes(1);
     gl.domElement.dispatchEvent(new Event('webglcontextrestored'));
-    runIdle();
-    expect(gl.initTexture).toHaveBeenCalledTimes(2);
-    stop();
+    runIdle(); runIdle(); runIdle();
+    expect(gl.initTexture.mock.calls).toEqual([[map], [map], [waiting], [added]]);
+    stop(); stopAdded();
     gl.domElement.dispatchEvent(new Event('webglcontextrestored'));
     expect(idle.size).toBe(0);
   });
