@@ -558,8 +558,8 @@ function FormationHullPartMesh({
   useEffect(() => () => {
     const materials = Array.isArray(bodyMaterial) ? bodyMaterial : [bodyMaterial];
     materials.forEach((material) => { material.dispose(); });
-    outlineMaterial.dispose();
-  }, [bodyMaterial, outlineMaterial]);
+  }, [bodyMaterial]);
+  useEffect(() => () => { outlineMaterial.dispose(); }, [outlineMaterial]);
 
   useFrame(({ camera }) => {
     const bodies = body.current;
@@ -1630,13 +1630,8 @@ function FormationPips({
     material.uniforms.uPixelRatio!.value = gl.getPixelRatio();
   });
 
-  useEffect(
-    () => () => {
-      geometry.dispose();
-      material.dispose();
-    },
-    [geometry, material],
-  );
+  useEffect(() => () => { geometry.dispose(); }, [geometry]);
+  useEffect(() => () => { material.dispose(); }, [material]);
 
   return (
     <points
@@ -1887,13 +1882,8 @@ function FormationRanks({
     material.uniforms.uPixelRatio!.value = gl.getPixelRatio();
   });
 
-  useEffect(
-    () => () => {
-      geometry.dispose();
-      material.dispose();
-    },
-    [geometry, material],
-  );
+  useEffect(() => () => { geometry.dispose(); }, [geometry]);
+  useEffect(() => () => { material.dispose(); }, [material]);
 
   if (geometry.getAttribute('position').count === 0) return null;
 
@@ -2039,13 +2029,8 @@ export function Wake({
 
   // Freed with the craft. One strip is small; a season's worth of squadrons that
   // each left one behind is not. See `useLine` for the same reasoning at length.
-  useEffect(
-    () => () => {
-      geometry.dispose();
-      material.dispose();
-    },
-    [geometry, material],
-  );
+  useEffect(() => () => { geometry.dispose(); }, [geometry]);
+  useEffect(() => () => { material.dispose(); }, [material]);
 
   const eye = useMemo(() => new THREE.Vector3(), []);
   const side = useMemo(() => new THREE.Vector3(), []);
@@ -2214,13 +2199,8 @@ export function FormationWakes({
     material.uniforms.uMotion!.value = 1;
   });
 
-  useEffect(
-    () => () => {
-      geometry.dispose();
-      material.dispose();
-    },
-    [geometry, material],
-  );
+  useEffect(() => () => { geometry.dispose(); }, [geometry]);
+  useEffect(() => () => { material.dispose(); }, [material]);
 
   return (
     <mesh
@@ -2883,7 +2863,12 @@ function Foreign({
       ? { ...base, neon: THREAT_NEON, flame: THREAT_FLAME }
       : base;
   }, [contact.kind, contact.inbound]);
-  const markers = useMemo(() => contactMarkers(contact), [contact]);
+  // Polling advances the flight window, while structural sharing retains the fleet.
+  // Only formation inputs should rebuild slots, hull buckets and GPU buffers.
+  const markers = useMemo(
+    () => contactMarkers(contact),
+    [contact.kind, contact.fleet, contact.craft, contact.mass],
+  );
   /*
     EXACT-COUNT PIPS BELONG TO ACTUAL SIGHT. D123.
     A pirate inside Telescope reach carries a real manifest exactly as a player's
