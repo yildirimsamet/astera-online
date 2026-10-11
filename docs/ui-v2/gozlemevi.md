@@ -68,7 +68,7 @@ Astera tarayıcıda ve telefonda oynanan, 30 günlük sezonlarla dönen kalıcı
 
 ### Hareket
 
-- Uçuş hızı: Tam, %75, %50, %25, %10; yakıt değişmez, hiçbir filo 12 saatten fazla havada kalmaz
+- Uçuş hızı: Tam, %75, %50, %25, %10. Kişisel akın ve transferlerde yuvarlama öncesi yakıt tasarrufu sırasıyla %0, %12,5, %25, %37,5, %45; ortak klan saldırıları peşin ödenen yakıtı korur. Yavaşlatılan her uçuş ayağı en fazla 12 saat; tam hızdaki uzun uçuşlar serbest.
 - Geri çağırma: yoldayken bir kez; filo uçtuğu süre kadar sürede döner
 - Transfer: kendi dünyaların arasında yarı yakıt, varışta 5 dk bekleme
 - Uçuş yuvası: aynı anda 3 + Çekirdek/3 sefer
@@ -792,8 +792,8 @@ Her bileşen için amaç, veri, davranış ve kabul testleri. Test adları öner
 #### B10 · Hız seçici
 
 - **Yeniden kullan:** `LaunchSheet`'teki mevcut hız satırı (`data-launch-pace`), seçenekler `allowedPaces`'ten.
-- **Görünüm:** "Uçuş hızı", altında "yakıt aynı · en çok 12 sa"; Tam · %75 · %50 · %25 · %10. Seçim varış satırını anında günceller. Korsan hedefinde gösterilmez.
-- **Testler:** İzin verilmeyen hız seçilemez · varış süresi hızla ölçeklenir · yakıt değişmez.
+- **Görünüm:** "Uçuş hızı", altında "daha az yakıt · yavaş uçuş ≤12 sa"; Tam · %75 · %50 · %25 · %10. Kontrolün yanında seçilen yakıt, tam hız bedeli, kesin döteryum tasarrufu, varış süresi ve ek süre birlikte gösterilir. Tam hızda fayda açıklanır; yuvarlama tasarrufu sıfırlarsa açıkça söylenir. Filo/rota değişiminde tam hıza dönüş açıklanır. Korsan hedefinde gösterilmez.
+- **Testler:** İzin verilmeyen hız seçilemez · varış süresi hızla ölçeklenir · kişisel yakıt indirimi yuvarlamadan önce uygulanır · önizleme sunucuyla aynı bedeli kullanır · transfer yükü yakıta yer bırakır ve azaltma açıklanır · ortak klan saldırısında tasarruf vaat edilmez.
 
 #### B11 · Uçuş satırı (Filo)
 

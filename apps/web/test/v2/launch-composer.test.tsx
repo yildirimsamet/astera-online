@@ -195,7 +195,7 @@ describe('the launch composer', () => {
     open('world');
     await pick('2');
     const pace = document.querySelector<HTMLElement>('[data-launch-pace]')!;
-    expect(pace).toHaveTextContent(/same fuel · slower legs ≤12h/i);
+    expect(pace).toHaveTextContent(/less fuel · slower legs ≤12h/i);
     expect(pace).not.toHaveTextContent(/slower lands later/i);
   });
 

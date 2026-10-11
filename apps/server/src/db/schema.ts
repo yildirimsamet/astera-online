@@ -1673,8 +1673,8 @@ export const missions = pgTable('missions', {
    * flew at whatever their hulls do, and a fleet that took nine hours on purpose is a different
    * decision from one that took nine hours because it is slow.
    *
-   * RETURN LEGS ARE ALWAYS 1. A commander chooses when their raid ARRIVES; the way home is not
-   * a decision they still hold, and an attack cannot be recalled.
+   * Planned returns retain the outbound choice (owner, 2026-10-06). A recall instead
+   * takes as long to get home as was already flown; it does not choose a new pace.
    *
    * DEFAULTS TO 1, which is what every flight before this column flew.
    */

@@ -106,7 +106,7 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
     is the arrival the strike flies. A rung that stops being legal falls back to full speed.
   */
   const strikeMinutes = operation.pool.strikeMinutes ?? null;
-  const strikePaces = strikeMinutes === null ? [] : pacesForMinutes(strikeMinutes);
+  const strikePaces = strikeMinutes === null ? [] : operation.pool.paces ?? pacesForMinutes(strikeMinutes);
   const strikePace = strikePaces.includes(wantedPace) ? wantedPace : 1;
   const radiation = operation.radiationByPace.find((forecast) => forecast.pace === strikePace);
   const ownRadiationLoss = radiation?.own.some((forecast) => forecast.destroyed > 0) ?? false;
@@ -161,6 +161,7 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
               <PaceRow data-clan-pace paces={strikePaces} pace={strikePace} onChange={(pace) => {
                 setWantedPace(pace); setAcknowledgeRadiation(false);
               }}
+                reset={strikePaces.length > 0 && strikePace !== wantedPace}
                 hint={t('clanWar.paceHint')} />
             </>
           )}

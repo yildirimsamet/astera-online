@@ -193,7 +193,7 @@ export function useLaunchPlan({
   const [refused, setRefused] = useState<RadiationRefusal | null>(null);
   const endpoint = target.kind === 'world' ? target.world.position : route?.rendezvous;
   const arriveMs = departMs + (route?.oneWayMinutes ?? 0) * 60_000;
-  const homeMs = departMs + (route?.exposureMinutes ?? 0) * 60_000;
+  const homeMs = departMs + (route?.exposureMinutes ?? 0) * 60_000 + ENGAGEMENT_MS;
   const hpQuote = hpModel && route !== null && endpoint && !lesson ? routeHpRadiation({ fleet: sending, tech: mods.tech,
     path: [{ from: planet.planet.position, to: endpoint, startMs: departMs, endMs: arriveMs },
       { from: endpoint, to: endpoint, startMs: arriveMs, endMs: arriveMs + ENGAGEMENT_MS },
@@ -439,7 +439,9 @@ export function useLaunchPlan({
 
   return {
     sending, set, roomFor, allowance, lesson, season, spendsShield, pirate, mods,
-    paces, pace, setWantedPace, route, total, salvageRoom, baysFree, tooLate, busy, radiation,
+    paces, pace, setWantedPace, route, fullSpeedRoute: unpaced,
+    paceReset: paces.length > 0 && pace !== wantedPace,
+    total, salvageRoom, baysFree, tooLate, busy, radiation,
     shipyardRevolt, holding, needsWarship, canSend, away, atHome, recordAge, opposing,
     lines, matchups, hint, loss, escape, notes, refusal, commit,
     /** What the probe read of the wall, for the matchup line (B6); null where nobody looked. */

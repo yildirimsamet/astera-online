@@ -380,7 +380,7 @@ export async function launchAttack(
       );
     }
 
-    const fuel = missionFuel(requested, dist, 2);
+    const fuel = missionFuel(requested, dist, 2, 'HOSTILE', chosenPace);
     // A raid carries no hold on the way out, so the whole store is the tank.
     assertFuel(fuel, origin.deuterium);
     // The Beacon in orbit, if there is one. D25.

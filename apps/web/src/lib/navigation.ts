@@ -121,7 +121,7 @@ export function planRoute(
     oneWayMinutes: oneWay,
     exposureMinutes: exposureMinutes(oneWay),
     cargo: fleetCargo(sending, mods.tech),
-    fuel: missionFuel(sending, dist, 2),
+    fuel: missionFuel(sending, dist, 2, 'HOSTILE', mods.pace ?? 1),
     homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),
   };
 }

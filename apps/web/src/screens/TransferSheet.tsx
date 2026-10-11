@@ -28,7 +28,7 @@ import {
 } from '../lib/radiation.js';
 import type { PlanetView } from '../api/schemas.js';
 import { hullName } from '../i18n/names.js';
-import { compact } from '../lib/format.js';
+import { compact, full } from '../lib/format.js';
 import { clockTime, duration, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { PaceRow } from '../ui/PaceRow.js';
@@ -171,6 +171,7 @@ export function TransferSheet({
   const cooling = cooldownUntil !== null && cooldownUntil.getTime() > now;
   const [fleet, setFleet] = useState<Fleet>({});
   const [cargo, setCargo] = useState({ alloy: 0, crystal: 0, deuterium: 0 });
+  const [cargoAdjustment, setCargoAdjustment] = useState<{ before: number; after: number } | null>(null);
   const [returnPlan, setReturnPlan] = useState<TransferReturnPlan>(readTransferReturnPlan);
   /**
    * THE ORIGIN'S OWN MODIFIERS — the ladder and the Beacon. D180.
@@ -250,9 +251,20 @@ export function TransferSheet({
    * the worse half — a screen causing a refusal it cannot explain.
    */
   const fuel = fleetCount(fleet) > 0
+    ? missionFuel(fleet, span, 1, 'HOMEWARD', pace)
+      + (fleetCount(returningFleet) > 0 ? missionFuel(returningFleet, span, 1, 'HOMEWARD', pace) : 0)
+    : 0;
+  const fullFuel = fleetCount(fleet) > 0
     ? missionFuel(fleet, span, 1, 'HOMEWARD')
       + (fleetCount(returningFleet) > 0 ? missionFuel(returningFleet, span, 1, 'HOMEWARD') : 0)
     : 0;
+  const availableCargoDeuterium = Math.max(0, Math.floor(planet.planet.deuterium - fuel));
+  // Settle before commit, including a pace fallback or a live route/stock update.
+  // Persist the reduction so slowing down again never silently adds cargo.
+  if (cargo.deuterium > availableCargoDeuterium) {
+    setCargo({ ...cargo, deuterium: availableCargoDeuterium });
+    setCargoAdjustment({ before: cargo.deuterium, after: availableCargoDeuterium });
+  }
   const spendableDeuterium = planet.planet.deuterium - cargo.deuterium;
   const fuelled = spendableDeuterium >= fuel;
   /*
@@ -276,30 +288,15 @@ export function TransferSheet({
     const max = planet.fleet[id] ?? 0;
     const next = { ...fleet, [id]: Math.max(0, Math.min(max, value)) };
     setFleet(next);
-    /*
-      A HEAVIER CONVOY BURNS MORE, AND THE LOAD FOLLOWS ITS CEILING DOWN.
-      Packing the hold to the limit and then adding a hull is the one way back
-      into the state the ceiling exists to remove — a screen offering a launch the
-      server will refuse — because the flight got dearer after the load was set.
-    */
-    const nextReturning = transferReturningFleet(next, returnPlan);
-    const nextFuel = missionFuel(next, span, 1, 'HOMEWARD')
-      + (fleetCount(nextReturning) > 0 ? missionFuel(nextReturning, span, 1, 'HOMEWARD') : 0);
-    const room = Math.max(0, planet.planet.deuterium - nextFuel);
-    setCargo((current) => fitCargo(
-      { ...current, deuterium: Math.min(current.deuterium, room) },
-      fleetCargo(next, mods.tech),
-    ));
+    setCargoAdjustment(null);
+    setCargo((current) => fitCargo(current, fleetCargo(next, mods.tech)));
   };
 
   const setReturnChoice = (group: keyof TransferReturnPlan, choice: TransferReturnPlan[typeof group]) => {
     const next = { ...returnPlan, [group]: choice };
     setReturnPlan(next);
     rememberTransferReturnPlan(next);
-    const nextReturning = transferReturningFleet(fleet, next);
-    const nextFuel = missionFuel(fleet, span, 1, 'HOMEWARD')
-      + (fleetCount(nextReturning) > 0 ? missionFuel(nextReturning, span, 1, 'HOMEWARD') : 0);
-    setCargo((current) => ({ ...current, deuterium: Math.min(current.deuterium, Math.max(0, planet.planet.deuterium - nextFuel)) }));
+    setCargoAdjustment(null);
   };
 
   /**
@@ -495,6 +492,33 @@ export function TransferSheet({
           <p className="px-1 text-micro text-v2-ink-3">{t('transfer.returnHint')}</p>
         </section>
 
+        {/* Choose fuel and travel time before packing deuterium into the hold. */}
+        <PaceRow data-transfer-pace paces={paces} pace={pace} onChange={(next) => {
+          setWantedPace(next); setCargoAdjustment(null);
+        }} hint={t('transfer.paceHint')} reset={fleetCount(fleet) > 0 && pace !== wantedPace}
+          comparison={{ fuel, fullFuel, minutes: eta,
+            fullMinutes: fleetCount(fleet) > 0 ? fleetTravelExact(span, fleet, mods) : 0 }} />
+
+        <dl className="grid grid-cols-2 gap-1.5">
+          <div data-transfer-eta className="rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
+            <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{t('transfer.eta')}</dt>
+            <dd className="mt-0.5 font-v2-mono text-caption text-v2-ink">{eta > 0 ? duration(eta) : '—'}</dd>
+            {landsAt && <dd className="font-v2-mono text-micro text-v2-ink-3">{t('now.at', { time: landsAt })}</dd>}
+            {homeAt && (
+              <dd data-transfer-return-eta className="mt-1 text-micro text-v2-self">
+                {t('transfer.returnEta', { duration: duration(eta + returnMinutes), time: homeAt })}
+              </dd>
+            )}
+          </div>
+          <div className="rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
+            <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{t('transfer.capacity')}</dt>
+            {/* An em dash rather than `0 / 0`: this mission has no hold at all, which is not a limit. */}
+            <dd className={`mt-0.5 font-v2-mono text-caption ${loaded > capacity ? 'text-v2-hostile' : 'text-v2-ink'}`}>
+              {capacity > 0 ? `${compact(loaded)} / ${compact(capacity)}` : '—'}
+            </dd>
+          </div>
+        </dl>
+
         <section className="grid gap-1.5">
           <h3 className="px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('transfer.cargo')}</h3>
           {/*
@@ -538,6 +562,7 @@ export function TransferSheet({
                     value={cargo[resource]}
                     onChange={(event) => {
                       const value = Math.max(0, Math.floor(event.currentTarget.valueAsNumber || 0));
+                      setCargoAdjustment(null);
                       setCargo((current) => ({ ...current, [resource]: value }));
                     }}
                     style={{ '--slider-fill': `${String(fill)}%` } as CSSProperties}
@@ -547,30 +572,11 @@ export function TransferSheet({
               );
             })}
           </div>
+          {cargoAdjustment && <p data-transfer-cargo-adjusted role="status" className="px-1 text-micro leading-snug text-v2-warn">
+            {t('transfer.cargoFuelAdjusted', { before: full(cargoAdjustment.before), after: full(cargoAdjustment.after) })}
+          </p>}
         </section>
 
-        {/* The rungs over the figures they move; a transfer is slowed to stay in the air, not to land on time. */}
-        <PaceRow data-transfer-pace paces={paces} pace={pace} onChange={setWantedPace} hint={t('transfer.paceHint')} />
-
-        <dl className="grid grid-cols-2 gap-1.5">
-          <div data-transfer-eta className="rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
-            <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{t('transfer.eta')}</dt>
-            <dd className="mt-0.5 font-v2-mono text-caption text-v2-ink">{eta > 0 ? duration(eta) : '—'}</dd>
-            {landsAt && <dd className="font-v2-mono text-micro text-v2-ink-3">{t('now.at', { time: landsAt })}</dd>}
-            {homeAt && (
-              <dd data-transfer-return-eta className="mt-1 text-micro text-v2-self">
-                {t('transfer.returnEta', { duration: duration(eta + returnMinutes), time: homeAt })}
-              </dd>
-            )}
-          </div>
-          <div className="rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
-            <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{t('transfer.capacity')}</dt>
-            {/* An em dash rather than `0 / 0`: this mission has no hold at all, which is not a limit. */}
-            <dd className={`mt-0.5 font-v2-mono text-caption ${loaded > capacity ? 'text-v2-hostile' : 'text-v2-ink'}`}>
-              {capacity > 0 ? `${compact(loaded)} / ${compact(capacity)}` : '—'}
-            </dd>
-          </div>
-        </dl>
 
         {fuel > 0 && (
           <div data-transfer-fuel className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">

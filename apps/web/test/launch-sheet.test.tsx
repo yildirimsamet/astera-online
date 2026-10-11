@@ -15,6 +15,8 @@ import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
 import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
 import {
+  distance,
+  missionFuel,
   academyLessonFleet,
   fleetCargo,
   forecastLines,
@@ -1329,12 +1331,48 @@ describe('how much of a wall the wing takes', () => {
 });
 
 describe('choosing how fast to fly', () => {
+  it('shows the fuel/time trade-off and enables a slower affordable launch', async () => {
+    const far = { ...target, position: { x: 4_000, y: 0, z: 0 } };
+    const fleet = { DART: 20 };
+    const fullFuel = missionFuel(fleet, 4_000, 2);
+    const fuel = missionFuel(fleet, 4_000, 2, 'HOSTILE', 0.5);
+    const view = render(<LaunchSheet target={{ kind: 'world', world: far }}
+      planet={planetView({ fleet }, { deuterium: fuel })} onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper });
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '20');
+    expect(view.container.querySelector('[data-hold-refused]')).toHaveTextContent('Not enough deuterium');
+    const pace = view.container.querySelector<HTMLElement>('[data-launch-pace]')!;
+    await user.click(within(pace).getByRole('radio', { name: '50%' }));
+    expect(view.container.querySelector('[data-hold-refused]')).toBeNull();
+    expect(view.container.querySelector('[data-hold]')).toBeEnabled();
+    expect(within(pace).getByText(new RegExp(`${String(fullFuel - fuel)} deuterium saved`))).toBeVisible();
+    expect(pace.querySelector('[data-pace-delay]')).toHaveTextContent(/later/i);
+    expect(view.container.querySelector('[data-launch-meters] [data-spend-amount]')).toHaveTextContent(String(fuel));
+    await user.click(within(pace).getByRole('radio', { name: 'Full' }));
+    expect(view.container.querySelector('[data-hold-refused]')).toHaveTextContent('Not enough deuterium');
+  });
+
+  it('explains when a fleet change forces the speed back to full', async () => {
+    const far = { ...target, position: { x: 6_000, y: 0, z: 0 } };
+    const view = render(<LaunchSheet target={{ kind: 'world', world: far }}
+      planet={planetView({ fleet: { DART: 2, CITADEL: 1 } }, { deuterium: 50_000 })}
+      onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper });
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '1');
+    await user.click(within(view.container.querySelector<HTMLElement>('[data-launch-pace]')!).getByRole('radio', { name: '10%' }));
+    await user.type(screen.getByRole('textbox', { name: /citadel quantity/i }), '1');
+    expect(within(view.container.querySelector<HTMLElement>('[data-launch-pace]')!).getByRole('radio', { name: 'Full' })).toBeChecked();
+    expect(view.container.querySelector('[data-pace-reset]')).toHaveTextContent(/full speed.*flight.*limit/i);
+    const expected = missionFuel({ DART: 1, CITADEL: 1 }, distance({ x: 0, y: 0, z: 0 }, far.position), 2);
+    expect(view.container.querySelector('[data-pace-fuel]')).toHaveTextContent(String(expected));
+  });
+
   /**
    * THE PACE ROW. Owner decision, 2026-09-21.
    *
    * The choice is worth nothing if the player cannot see what it buys, so the rungs are not the
    * surface — the ARRIVAL is. Picking one moves the one-way figure the sheet already quotes, and
-   * the row states the two rules a commander needs at that moment: slower costs the same fuel, and
+   * the row states the two rules a commander needs at that moment: slower saves fuel, and
    * nothing may stay in the air past twelve hours.
    */
   it('offers the flight speeds this particular flight may take, and moves the arrival with them', async () => {

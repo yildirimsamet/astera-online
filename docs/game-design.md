@@ -216,8 +216,9 @@ Deuterium is otherwise unchanged: fully raidable above the vault floor, the same
 any other material, and consumed by repeatable losable hulls rather than turned into permanent
 background power.
 
-**And every launch burns it (T6).** The charge is `fuel mass x distance`, rounded up once per
-leg. Fuel mass starts from the hull's production-resource value and is tilted modestly by its
+**And every launch burns it (T6).** The charge is `fuel mass x distance x lane share x pace share`, rounded up once per
+leg. Pace share defaults to 1; personal raids and owned-world transfers use
+`1 - 0.5 x (1 - pace)` (owner, 2026-10-11). Fuel mass starts from the hull's production-resource value and is tilted modestly by its
 reference trip. The later 10–30% tier surcharge was removed on 2026-09-18. D125 and D126 made distance an *information* cost; this
 makes the same axis an *economic* one.
 
@@ -657,7 +658,9 @@ reset continues. Activation status and measured acceptance are recorded in deplo
 ### Flight speed, recall and the landing pause (Faz 2A, owner decisions 2026-09-21)
 
 - **Pace.** Every world-to-world launch — raid, transfer and the clan joint strike — may fly at
-  100 / 75 / 50 / 25 / 10 % speed. A slower rung lands later and burns exactly the same fuel. No
+  100 / 75 / 50 / 25 / 10 % speed. Personal raids and owned-world transfers save
+  0 / 12.5 / 25 / 37.5 / 45 % fuel before per-leg rounding, trading fuel for later
+  arrival. Joint clan strikes retain their prepaid fuel charge. No
   paced flight leg may stay up past 12 hours (full speed is always allowed, however long). Since
   2026-10-06 the way home is flown at the same pace as the way out — raid survivors, a transfer's
   returning group and a clan strike's survivors (owner: "Bacakların eşit yarı yarıya bölünmesi
@@ -675,7 +678,8 @@ reset continues. Activation status and measured acceptance are recorded in deplo
 - **The landing pause.** A world that has just received a transfer cannot send a transfer out for
   five minutes (`TRANSFER_COOLDOWN_MINUTES`). Attacks are not held by it; a recall is never caught.
 - **Homeward fuel.** A transfer between a commander's own worlds pays half the hostile rate
-  (`FUEL.laneShare.HOMEWARD`); raids pay full at every pace.
+  (`FUEL.laneShare.HOMEWARD`), then applies the personal-flight pace discount.
+  Raids apply the pace discount to the HOSTILE rate.
 - **World transfer cargo and return.** Every mobile ship with a hold can carry resources between
   owned worlds. Haulers and other ships each choose independently whether to stay at the target or
   return after unloading. The default sends Haulers home and leaves other ships at the target.

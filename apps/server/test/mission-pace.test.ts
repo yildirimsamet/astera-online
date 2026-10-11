@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { COMBAT, TRAVEL, UNAIDED, distance, fleetTravelExact, missionFuel } from '@astera/rules';
-import { missions, planets, seasons } from '../src/db/schema.js';
+import { missions, neutralPlanetState, planets, seasons, units } from '../src/db/schema.js';
 import { fleetTruthFor } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -29,9 +29,8 @@ afterAll(async () => {
  * included.
  *
  * The item exists for the commander who is asleep or at work — the chat logs lose people when
- * their FLEET dies, not when their mines are emptied — and it buys that with TIME ONLY. A pace
- * that also cut fuel would be the global fuel cut this plan measured and killed: an attacker
- * would fly slow, pay less, and distance would stop being protection.
+ * their FLEET dies, not when their mines are emptied. Slower personal flights now
+ * also save fuel (owner, 2026-10-11).
  */
 describe('the pace a launch is flown at', () => {
   let f: Fixture;
@@ -77,21 +76,75 @@ describe('the pace a launch is flown at', () => {
       f.db, attacker, defender, { DART: 5 }, f.clock, undefined, false, 0.5,
     );
     const fullSpeed = fleetTravelExact(dist, { DART: 5 }, UNAIDED);
-    expect(minutesBetween(departedAt, slow.arriveAt)).toBeCloseTo(fullSpeed * 2, 5);
+    // Database timestamps store whole milliseconds, unlike the continuous travel rule.
+    expect(Math.abs(minutesBetween(departedAt, slow.arriveAt) - fullSpeed * 2)).toBeLessThan(1 / 60_000);
 
     const [row] = await f.db.select().from(missions).where(eq(missions.id, slow.missionId));
     expect(row?.pace).toBe(0.5);
   });
 
-  /** The owner's constraint: this item moves the clock and nothing else. */
-  it('charges identical fuel however slowly it is flown', async () => {
+  it('discounts fuel at the chosen pace', async () => {
+    await placeAt(f.db, attacker, { x: 0 });
+    await placeAt(f.db, defender, { x: 4_000 });
     const dist = await spanBetween(attacker, defender);
     const slow = await launchAttack(
       f.db, attacker, defender, { DART: 5 }, f.clock, undefined, false, 0.25,
     );
     const [row] = await f.db.select().from(missions).where(eq(missions.id, slow.missionId));
-    // The round trip at the undiscounted rate: the pace never reaches this figure.
-    expect(row?.fuelPaid).toBe(missionFuel({ DART: 5 }, dist, 2));
+    expect(row?.fuelPaid).toBe(missionFuel({ DART: 5 }, dist, 2, 'HOSTILE', 0.25));
+    expect(row?.fuelPaid).toBeLessThan(missionFuel({ DART: 5 }, dist, 2));
+  });
+
+  it('launches with exactly enough discounted fuel when full speed is unaffordable', async () => {
+    await placeAt(f.db, attacker, { x: 0 });
+    await placeAt(f.db, defender, { x: 4_000 });
+    const dist = await spanBetween(attacker, defender);
+    const fuel = missionFuel({ DART: 5 }, dist, 2, 'HOSTILE', 0.5);
+    expect(fuel).toBeLessThan(missionFuel({ DART: 5 }, dist, 2));
+    await f.db.update(planets).set({ deuterium: fuel, lastTickAt: f.clock.now() }).where(eq(planets.id, attacker));
+    await expect(launchAttack(f.db, attacker, defender, { DART: 5 }, f.clock)).rejects.toMatchObject({ code: 'INSUFFICIENT_FUEL' });
+    const launched = await launchAttack(f.db, attacker, defender, { DART: 5 }, f.clock, undefined, false, 0.5);
+    const [row] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
+    const [origin] = await f.db.select().from(planets).where(eq(planets.id, attacker));
+    expect(row?.fuelPaid).toBe(fuel);
+    expect(origin?.deuterium).toBe(0);
+  });
+
+  it('rolls back an unaffordable slowed launch', async () => {
+    const fuel = missionFuel({ DART: 5 }, await spanBetween(attacker, defender), 2, 'HOSTILE', 0.5);
+    await f.db.update(planets).set({ deuterium: fuel - 1, lastTickAt: f.clock.now() }).where(eq(planets.id, attacker));
+    await expect(launchAttack(f.db, attacker, defender, { DART: 5 }, f.clock, undefined, false, 0.5))
+      .rejects.toMatchObject({ code: 'INSUFFICIENT_FUEL' });
+    const [origin] = await f.db.select().from(planets).where(eq(planets.id, attacker));
+    expect(origin?.deuterium).toBe(fuel - 1);
+    expect(await f.db.select().from(missions)).toHaveLength(0);
+  });
+
+  it('serializes concurrent launches against a tank that funds only one slowed flight', async () => {
+    f = await seedWorld(3);
+    attacker = f.planetIds[0]!;
+    defender = f.planetIds[1]!;
+    const otherTarget = f.planetIds[2]!;
+    await setLevel(f.db, attacker, 'CORE', 6);
+    await giveUnits(f.db, attacker, { DART: 50 });
+    await grant(f.db, defender, 20_000, 2_000);
+    await grant(f.db, otherTarget, 20_000, 2_000);
+    f.clock.advance(250);
+    await placeAt(f.db, attacker, { x: 0, y: 0, z: 0 });
+    await placeAt(f.db, defender, { x: 4_000, y: 0, z: 0 });
+    await placeAt(f.db, otherTarget, { x: -4_000, y: 0, z: 0 });
+    const fuel = missionFuel({ DART: 5 }, await spanBetween(attacker, defender), 2, 'HOSTILE', 0.5);
+    await f.db.update(planets).set({ deuterium: fuel, lastTickAt: f.clock.now() }).where(eq(planets.id, attacker));
+    const results = await Promise.allSettled([
+      launchAttack(f.db, attacker, defender, { DART: 5 }, f.clock, undefined, false, 0.5),
+      launchAttack(f.db, attacker, otherTarget, { DART: 5 }, f.clock, undefined, false, 0.5),
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    const failed = results.find((result) => result.status === 'rejected');
+    expect(failed?.status === 'rejected' ? failed.reason : null).toMatchObject({ code: 'INSUFFICIENT_FUEL' });
+    const [origin] = await f.db.select().from(planets).where(eq(planets.id, attacker));
+    expect(origin?.deuterium).toBe(0);
+    expect(await f.db.select().from(missions)).toHaveLength(1);
   });
 
   it('refuses a pace that is not on the ladder', async () => {
@@ -138,6 +191,33 @@ describe('the pace a launch is flown at', () => {
     expect(home?.pace).toBe(0.5);
     expect(minutesBetween(home!.departAt, home!.arriveAt)).toBeCloseTo(outbound, 3);
   });
+
+  it.each(['neutral', 'protected', 'became-owned'] as const)(
+    'keeps the chosen pace on the return from a %s target', async (kind) => {
+      if (kind === 'neutral') {
+        await f.db.update(planets).set({ kind: 'NEUTRAL', controllerPlayerId: null }).where(eq(planets.id, defender));
+        await f.db.insert(neutralPlanetState).values({ planetId: defender, tier: 1,
+          profileSeed: 1, economyAnchorAt: f.clock.now() });
+        await f.db.delete(units).where(eq(units.planetId, defender));
+      }
+      const departedAt = f.clock.now();
+      const launched = await launchAttack(f.db, attacker, defender, { DART: 5 }, f.clock, undefined, false, 0.25);
+      const outbound = minutesBetween(departedAt, launched.arriveAt);
+      if (kind === 'protected') await f.db.update(planets).set({
+        protectedUntil: new Date(launched.arriveAt.getTime() + 3_600_000),
+      }).where(eq(planets.id, defender));
+      if (kind === 'became-owned') await f.db.update(planets).set({
+        kind: 'COLONY', controllerPlayerId: f.playerIds[0]!,
+      }).where(eq(planets.id, defender));
+      f.clock.set(settledAt(launched.arriveAt));
+      const worker = new EventWorker(f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent);
+      await worker.tick();
+      const [home] = await f.db.select().from(missions).where(eq(missions.kind, 'return'));
+      expect(home).toBeTruthy();
+      expect(home!.pace).toBe(0.25);
+      expect(minutesBetween(home!.departAt, home!.arriveAt)).toBeCloseTo(outbound, 3);
+    },
+  );
 
   /**
    * THE SCOUT IS TOLD WHEN THE FLEET WILL REALLY BE HOME: the way back takes as long as the way

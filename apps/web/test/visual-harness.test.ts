@@ -7,6 +7,15 @@ import { academy } from '../src/i18n/locales/en/academy.js';
 const harness = readFileSync(resolve(import.meta.dirname, '../../../tools/visual.mjs'), 'utf8');
 
 describe('the visual verification journey', () => {
+  it('checks personal-flight fuel and time comparisons on narrow phones in every language', () => {
+    expect(harness).toContain("process.argv.includes('--pace-fuel')");
+    const pace = readFileSync(resolve(import.meta.dirname, '../../../tools/pace-fuel-visual.mjs'), 'utf8');
+    expect(pace).toContain("['tr', 'en', 'de', 'es', 'fr', 'ja']");
+    expect(pace).toContain('[350, 1188]');
+    expect(pace).toContain('[data-pace-saving]');
+    expect(pace).toContain('[data-pace-delay]');
+    expect(pace).toContain('scrollWidth');
+  });
   it('verifies document fullscreen, external exit and visible fallback over game panels', () => {
     expect(harness).toContain("process.argv.includes('--fullscreen')");
     const fullscreen = readFileSync(resolve(import.meta.dirname, '../../../tools/fullscreen-visual.mjs'), 'utf8');

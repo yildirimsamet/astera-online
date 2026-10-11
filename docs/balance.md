@@ -30,8 +30,11 @@ and this profile win.
   `0.471 / 0.8775 / 1.498` world units; the geometric size ramp and development ratios are retained.
 - **Fuel:** the fleet-wide value rate is `0.00495`, 10% below the former `0.0055` rate after the
   slowdown; the Collector's special fuel mass is `200` (card rate `20` deuterium, reduced
-  from `90` by owner instruction 2026-10-07). Chosen travel pace
-  still changes arrival time without an additional fuel discount.
+  from `90` by owner instruction 2026-10-07). Owner 2026-10-11: chosen pace now
+  discounts personal raids and owned-world transfers by half the speed reduction
+  (`1 - 0.5 × (1 - pace)`): 75 / 50 / 25 / 10% speed saves 12.5 / 25 / 37.5 / 45%
+  before per-leg rounding. The HOMEWARD half-rate multiplies with it. Prepaid joint
+  clan strikes and full-speed-only tasks keep their existing fuel pricing.
 - **Colonies and orbit:** capital Core `9 / 13 / 16` opens the three colony slots. Every
   world gets its first satellite slot at Core `1`; further slots open at `9 / 15 / 18`.
 - **Events:** the convoy lasts 180 minutes and crosses the full diameter through the centre; trade

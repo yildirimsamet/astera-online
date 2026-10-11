@@ -1,5 +1,6 @@
 import { FUEL, SALVAGE } from './constants.js';
 import { HULLS, fleetEntries, hullRoundTrip } from './hulls.js';
+import { isMissionPace } from './travel.js';
 import type { Fleet, HullId } from './types.js';
 import { resourceValue } from './valuation.js';
 
@@ -66,7 +67,7 @@ export function fuelMass(fleet: Fleet): number {
  * copy would disagree the first time either moved, and the symptom would be a
  * screen promising a launch the server then refuses.
  *
- * MASS × DISTANCE, PER LEG, AND NOTHING ELSE.
+ * MASS × DISTANCE × LANE SHARE × CHOSEN PACE SHARE, PER LEG.
  *
  * MASS starts from economic hull expense A + 2C + 32D times FUEL.perValue, tilted
  * by pivotRoundTrip / referenceRoundTrip.
@@ -79,9 +80,8 @@ export function fuelMass(fleet: Fleet): number {
  * launch with no decision in it.
  *
  * FULL FUEL OR NO LAUNCH — owner instruction. A one-way budget is not a cheaper
- * raid, it is a stranded fleet, and P3 already says a launched fleet cannot be
- * recalled. The caller passes the legs the mission will actually fly and pays for
- * all of them before it leaves.
+ * raid, it is a stranded fleet. The caller passes the legs the mission will
+ * actually fly and pays for all of them before it leaves; recalling does not refund it.
  */
 export type FuelLane = keyof typeof FUEL.laneShare;
 
@@ -98,11 +98,15 @@ export function missionFuel(
    * drop and `fuelMass` stays the whole integer the rest of this file relies on.
    */
   lane: FuelLane = 'HOSTILE',
+  /** Personal raids/transfers opt in; prepaid clan strikes and other callers keep full pricing. */
+  pace = 1,
 ): number {
+  if (!isMissionPace(pace)) throw new RangeError('fuel pace must be a supported mission speed');
+  const paceShare = 1 - FUEL.paceDiscountShare * (1 - pace);
   const mass = fuelMass(fleet);
   if (mass <= 0) return 0;
   const span = Math.max(0, distance);
-  return Math.ceil((mass * span * FUEL.laneShare[lane]) / FUEL.scale) * legs;
+  return Math.ceil((mass * span * FUEL.laneShare[lane] * paceShare) / FUEL.scale) * legs;
 }
 
 /**

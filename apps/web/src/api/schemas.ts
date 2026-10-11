@@ -1,4 +1,4 @@
-import { COSMETIC_IDS, COSMETIC_CATEGORIES, SHIP_SKIN_IDS } from '@astera/rules';
+import { COSMETIC_IDS, COSMETIC_CATEGORIES, SHIP_SKIN_IDS, isMissionPace } from '@astera/rules';
 import { z } from 'zod';
 import { CHAT_LANGUAGES, COUNTRY_CODES, FAULT_KINDS, PLANET_SKIN_IDS, REACTION_EMOJIS } from '@astera/rules';
 import type {
@@ -1850,7 +1850,9 @@ const clanWarOperationSchema = z.object({
   pool: z.object({ combatHulls: z.number().int().nonnegative(),
     waves: z.number().int().nonnegative(), participants: z.number().int().nonnegative(),
     /** The combined leg at full speed for the staged pool; what the leader's pace rungs divide. */
-    strikeMinutes: z.number().nonnegative().nullable().default(null) }),
+    strikeMinutes: z.number().nonnegative().nullable().default(null),
+    /** All planned paced legs fit the ceiling; absent on older server responses. */
+    paces: z.array(z.number().refine(isMissionPace)).nullable().default(null) }),
 });
 
 export const clanWarSchema = z.object({

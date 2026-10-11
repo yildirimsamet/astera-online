@@ -29,6 +29,12 @@ if (process.argv.includes('--fullscreen')) {
   process.exit(0);
 }
 
+if (process.argv.includes('--pace-fuel')) {
+  const { verifyPaceFuel } = await import('./pace-fuel-visual.mjs');
+  await verifyPaceFuel(process.argv[2] ?? 'out/pace-fuel');
+  process.exit(0);
+}
+
 if (process.argv.includes('--special-ships')) {
   const { verifySpecialShips } = await import('./special-ships-visual.mjs');
   await verifySpecialShips(process.argv[2] ?? 'out/special-ships');

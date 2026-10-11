@@ -156,6 +156,21 @@ describe('the published Wiki contract', () => {
     expect(readFileSync(resolve(process.cwd(), 'public/robots.txt'), 'utf8')).not.toMatch(/Disallow: \/wiki/);
   });
 
+  it('explains personal-flight fuel savings and the prepaid clan exception', () => {
+    const article = getWikiArticle('fleet.flights');
+    if (!article) throw new Error('Missing flight guide');
+    const prose = (language: 'en' | 'tr') => article.sections[language]
+      .flatMap(section => section.blocks.flatMap(block => block.kind === 'text' ? [block.text] : [])).join(' ');
+    expect(prose('en')).toMatch(/personal raids and transfers.*less fuel/i);
+    expect(prose('en')).toMatch(/50%.*25%/i);
+    expect(prose('en')).toMatch(/joint clan strikes.*unchanged/i);
+    expect(prose('en')).not.toContain('it does not reduce fuel cost');
+    expect(prose('tr')).toMatch(/kişisel akın.*transfer.*az yakıt/i);
+    expect(prose('tr')).toMatch(/%50.*%25/i);
+    expect(prose('tr')).toMatch(/ortak klan saldırılarının.*değişmez/i);
+    expect(prose('tr')).not.toContain('yakıt bedelini azaltmaz');
+  });
+
   it('explains the slower-pace ceiling without capping a full-speed crossing', () => {
     const article = getWikiArticle('fleet.flights');
     if (!article) throw new Error('Missing flight guide');

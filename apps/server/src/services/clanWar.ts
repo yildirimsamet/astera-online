@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { and, count, eq, gt, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, count, eq, gt, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import {
   ABUSE,
   CLAN,
   MULTI_WORLD,
+  TRAVEL,
   COMBAT_HULLS,
   ENGAGEMENT_MS,
   HULLS,
@@ -42,6 +43,7 @@ import {
   type HpDamageLots,
   type HpRadiationSource,
   type Segment,
+  type Vec3,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import { commitGameError } from './idempotency.js';
@@ -288,6 +290,8 @@ export interface ClanWarOperationView {
      * divide. Null while nothing is staged or the operation is no longer gathering.
      */
     strikeMinutes: number | null;
+    /** Legal speeds for the combined leg and every planned direct return. */
+    paces: readonly MissionPace[];
   };
 }
 
@@ -471,36 +475,55 @@ export async function projectOperation(
     strikeTarget = targetAt;
   }
   const radiationByPace: ClanWarOperationView['radiationByPace'] = [];
+  let strikePaces: readonly MissionPace[] = [];
   if (strikeMinutes !== null && strikeTarget && staging[0]) {
-    const [season] = await db.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons)
-      .where(eq(seasons.id, operation.seasonId));
-    if (season && hpRadiationApplies(season.rulesetVersion)) {
-      const ids = [...new Set(staged.map((wave) => wave.originPlanetId))];
-      const [sources, homes, orbitRows, cores] = await Promise.all([
-        hpSourcesForSeason(db, operation.seasonId),
-        db.select({ id: planets.id, x: planets.x, y: planets.y, z: planets.z }).from(planets)
-          .where(inArray(planets.id, ids)),
+    // Returns can be longer than staging→target. Use each wave's safe home and
+    // its own engines/Beacon for both the ladder and the radiation forecast.
+    const homeLegs = new Map<string, { home: Vec3; minutes: number }>();
+    let longestLeg = strikeMinutes;
+    if (operation.targetKind === 'PLANET') {
+      const origins = [...new Set(staged.map((wave) => wave.originPlanetId))];
+      const owners = [...new Set(staged.map((wave) => wave.playerId))];
+      const homes = await db.select({ id: planets.id, kind: planets.kind,
+        controllerPlayerId: planets.controllerPlayerId, x: planets.x, y: planets.y, z: planets.z })
+        .from(planets).where(or(inArray(planets.id, origins),
+          and(eq(planets.kind, 'CAPITAL'), inArray(planets.controllerPlayerId, owners))));
+      const ids = homes.map((home) => home.id);
+      const [orbitRows, cores] = await Promise.all([
         db.select({ planetId: satellites.planetId, slot: satellites.slot, type: satellites.type })
           .from(satellites).where(inArray(satellites.planetId, ids)),
         db.select({ planetId: buildings.planetId, level: buildings.level }).from(buildings)
           .where(and(inArray(buildings.planetId, ids), eq(buildings.type, 'CORE'))),
       ]);
-      for (const pace of pacesForMinutes(strikeMinutes)) {
+      for (const wave of staged) {
+        const home = homes.find((row) => row.id === wave.originPlanetId && row.controllerPlayerId === wave.playerId)
+          ?? homes.find((row) => row.kind === 'CAPITAL' && row.controllerPlayerId === wave.playerId);
+        if (!home) continue;
+        const minutes = fleetTravelExact(distance(strikeTarget, home), wave.fleet, {
+          tech: wave.tech, boost: fleetSpeedMult(orbitFromRows(
+            orbitRows.filter((row) => row.planetId === home.id),
+            cores.find((row) => row.planetId === home.id)?.level ?? 1)),
+        });
+        homeLegs.set(wave.id, { home, minutes });
+        longestLeg = Math.max(longestLeg, minutes);
+      }
+    }
+    strikePaces = pacesForMinutes(longestLeg);
+    const [season] = await db.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons)
+      .where(eq(seasons.id, operation.seasonId));
+    if (season && hpRadiationApplies(season.rulesetVersion)) {
+      const sources = await hpSourcesForSeason(db, operation.seasonId);
+      for (const pace of strikePaces) {
         const own: WarRadiationForecast[] = [];
         const missing = new Map<string, { playerId: string; username: string; count: number }>();
         const arriveAt = addMinutes(now, strikeMinutes / pace);
         for (const wave of staged) {
           const path = [flightSegment(staging[0], strikeTarget, now, arriveAt)];
-          const home = homes.find((row) => row.id === wave.originPlanetId);
-          if (operation.targetKind === 'PLANET' && home) {
+          const back = homeLegs.get(wave.id);
+          if (back) {
             const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
-            const back = fleetTravelExact(distance(strikeTarget, home), wave.fleet, {
-              tech: wave.tech, boost: fleetSpeedMult(orbitFromRows(
-                orbitRows.filter((row) => row.planetId === home.id),
-                cores.find((row) => row.planetId === home.id)?.level ?? 0)),
-            });
             path.push(flightSegment(strikeTarget, strikeTarget, arriveAt, resolveAt),
-              flightSegment(strikeTarget, home, resolveAt, addMinutes(resolveAt, back)));
+              flightSegment(strikeTarget, back.home, resolveAt, addMinutes(resolveAt, back.minutes / pace)));
           }
           const forecast = warRadiationForecast(wave.fleet, wave.damage, wave.tech, path, sources);
           if (!forecast) continue;
@@ -525,6 +548,7 @@ export async function projectOperation(
     waves: pooled.length,
     participants: new Set(pooled.map((wave) => wave.playerId)).size,
     strikeMinutes,
+    paces: strikePaces,
   };
   let startShieldWouldDrop: ClanWarOperationView['startShieldWouldDrop'] = null;
   if (operation.status === 'ASSEMBLING' && viewerPlayerId === operation.leaderPlayerId) {
@@ -2609,6 +2633,10 @@ export async function startClanWar(
       tech: wave.tech,
       pace: chosenPace,
     });
+    if (chosenPace < 1 && back > TRAVEL.pacedFlightCapMinutes) {
+      throw new GameError('PACE_TOO_SLOW',
+        'at that speed a returning wave would be in the air past the twelve-hour ceiling', 400);
+    }
     if (addMinutes(resolveAt, back) > season.endsAt) {
       throw new GameError(
         'CLAN_WAR_SEASON_TOO_SHORT',

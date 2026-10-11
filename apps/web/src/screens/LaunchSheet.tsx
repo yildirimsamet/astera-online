@@ -95,7 +95,7 @@ export function LaunchSheet({
   const { t } = useTranslation();
   const {
     sending, set, roomFor, allowance, lesson, season, spendsShield, pirate, mods, radiation,
-    paces, pace, setWantedPace, route, total, salvageRoom, baysFree, tooLate, busy,
+    paces, pace, setWantedPace, route, fullSpeedRoute, paceReset, total, salvageRoom, baysFree, tooLate, busy,
     holding, away, atHome, recordAge, opposing, lines, loss, escape, notes, refusal,
     commit, classReading, report,
   } = useLaunchPlan({ target, planet, intel, reports, onLaunched, onAim });
@@ -366,10 +366,15 @@ export function LaunchSheet({
 
         {/*
           HOW FAST TO FLY IT (B10) — and the arrival figure below is what it moves. The
-          two rules a player needs here are on the row: the fuel does not move, and
+          two rules a player needs here are on the row: slower saves fuel, and
           nothing may stay up past the ceiling. Hidden when only full speed is legal.
         */}
-        <PaceRow data-launch-pace paces={paces} pace={pace} onChange={setWantedPace} brief={t('launch.paceBrief')} />
+        <PaceRow data-launch-pace paces={paces} pace={pace} onChange={setWantedPace}
+          brief={t('launch.paceBrief')} reset={paceReset}
+          {...(route && fullSpeedRoute && !lesson && target.kind === 'world' ? {
+            comparison: { fuel: route.fuel, fullFuel: fullSpeedRoute.fuel,
+              minutes: route.oneWayMinutes, fullMinutes: fullSpeedRoute.oneWayMinutes },
+          } : {})} />
 
         {/*
           THE FLIGHT IN FIGURES (the mock's five). Arrival is the one figure quoted to the

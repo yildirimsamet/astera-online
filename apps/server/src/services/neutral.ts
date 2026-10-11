@@ -13,6 +13,7 @@ import {
   fleetEntries,
   fleetSpeedMult,
   fleetTravelExact,
+  missionPaceOf,
   garrisonOf,
   productionMult,
   resolveCombat,
@@ -428,7 +429,7 @@ export async function resolveNeutralBattle(
     const home = fleetTravelExact(
       mission.distance,
       result.attackerSurvivors,
-      { boost: fleetSpeedMult(attackerOrbit), tech: mission.tech ?? {} },
+      { boost: fleetSpeedMult(attackerOrbit), tech: mission.tech ?? {}, pace: missionPaceOf(mission.pace) },
     );
     const arriveAt = addMinutes(clock.now(), home);
     const [returnMission] = await tx.insert(missions).values({
@@ -445,6 +446,7 @@ export async function resolveNeutralBattle(
       damage: attackerDamage.length > 0 ? attackerDamage : null,
       tech: mission.tech,
       distance: mission.distance,
+      pace: missionPaceOf(mission.pace),
       departAt: clock.now(),
       arriveAt,
     }).returning();
@@ -483,7 +485,7 @@ export async function returnAttackUntouched(
     fleetTravelExact(
       mission.distance,
       fleet,
-      { boost: fleetSpeedMult(attackerOrbit), tech: mission.tech ?? {} },
+      { boost: fleetSpeedMult(attackerOrbit), tech: mission.tech ?? {}, pace: missionPaceOf(mission.pace) },
     ),
   );
   const [ret] = await tx.insert(missions).values({
@@ -500,6 +502,7 @@ export async function returnAttackUntouched(
     damage: mission.damage,
     tech: mission.tech,
     distance: mission.distance,
+    pace: missionPaceOf(mission.pace),
     departAt: clock.now(),
     arriveAt,
   }).returning();

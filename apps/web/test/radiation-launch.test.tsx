@@ -11,7 +11,7 @@ import { LaunchSheet } from '../src/screens/LaunchSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
-import { HULLS } from '@astera/rules';
+import { ENGAGEMENT_MS, HULLS } from '@astera/rules';
 
 /**
  * RADIATION ON THE LAUNCH SHEET. Plan D10 · F10.
@@ -75,6 +75,19 @@ const line = () => document.querySelector('[data-radiation-warning]');
 beforeEach(async () => { await i18n.changeLanguage('en'); });
 
 describe('radiation on the launch sheet', () => {
+  it.each([1, 0.5, 0.1])('warns about a return loss caused by the engagement delay at %s speed', async (pace) => {
+    // The ship survives the two flying legs alone but dies after the battle wait.
+    const flightMinutes = minutes * 2 / pace;
+    const intensity = HULLS.DART.hp / (flightMinutes + ENGAGEMENT_MS / 120_000);
+    const { launch } = show(null, intensity * minutes);
+    await pick();
+    if (pace < 1) await userEvent.setup().click(screen.getByRole('radio', { name: `${String(pace * 100)}%` }));
+    expect(line()).toHaveTextContent(/destroys 1 ship/);
+    hold();
+    await waitFor(() => { expect(launch).toHaveBeenCalled(); });
+    expect(launch.mock.calls[0]?.[5]).toBe(true);
+  });
+
   it('shows the new HP route loss and carries its held consent without using the legacy percent clouds', async () => {
     const { launch } = show(null, HULLS.DART.hp * 2);
     await pick();

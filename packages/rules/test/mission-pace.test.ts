@@ -7,6 +7,7 @@ import {
   allowedPaces,
   exposureMinutes,
   fleetPace,
+  fuelMass,
   fleetTravelExact,
   isMissionPace,
   missionFuel,
@@ -23,10 +24,7 @@ import type { Fleet } from '../src/types.js';
  * and that is the target audience. A fleet told to take nine hours is a fleet that is not standing
  * in the hangar when the raid lands.
  *
- * IT CHANGES THE CLOCK AND NOTHING ELSE. Not fuel: `missionFuel` is mass × distance and has no
- * tempo term, and giving it one would be the global fuel cut this plan already measured and
- * killed — an attacker would simply fly slow and pay less, and distance would stop being
- * protection.
+ * Slower personal flights trade time for fuel savings (owner, 2026-10-11).
  */
 describe('the pace a commander may choose', () => {
   const wing: Fleet = { DART: 40 };
@@ -54,12 +52,46 @@ describe('the pace a commander may choose', () => {
     expect(half).toBeCloseTo(full * 2, 9);
   });
 
-  /** The owner's constraint, and the one this whole item is allowed to touch: time, not money. */
-  it('costs exactly the same fuel however slowly it is flown', () => {
-    expect(missionFuel(wing, 500, 2)).toBe(missionFuel(wing, 500, 2));
-    // There is no pace argument to pass: the signature itself is the guarantee.
-    expect(missionFuel.length).toBe(3);
+  it('applies every chosen pace on top of the commander’s propulsion and Beacon', () => {
+    const mods = { boost: 1.3, tech: { SHIP_PROPULSION: 2 } };
+    const full = fleetTravelExact(500, wing, mods);
+    expect(full).toBeLessThan(fleetTravelExact(500, wing, UNAIDED));
+    for (const pace of MISSION_PACES) {
+      expect(fleetTravelExact(500, wing, { ...mods, pace })).toBeCloseTo(full / pace, 9);
+    }
+    expect(allowedPaces(500, wing, { ...mods, pace: 0.1 })).toEqual(allowedPaces(500, wing, mods));
   });
+
+  it.each([[1, 1], [0.75, 0.875], [0.5, 0.75], [0.25, 0.625], [0.1, 0.55]])(
+    'charges pace %s before rounding each leg', (pace, share) => {
+      for (const lane of ['HOSTILE', 'HOMEWARD'] as const) {
+        for (const legs of [1, 2] as const) {
+          const raw = fuelMass(wing) * 537 * FUEL.laneShare[lane] / FUEL.scale;
+          expect(missionFuel(wing, 537, legs, lane, pace)).toBe(Math.ceil(raw * share) * legs);
+        }
+      }
+    },
+  );
+
+  it('keeps tiny flights paid, while empty, immobile and zero-distance flights cost zero', () => {
+    expect(missionFuel(wing, 0.001, 2, 'HOMEWARD', 0.1)).toBe(2);
+    expect(missionFuel({}, 500, 2, 'HOSTILE', 0.1)).toBe(0);
+    expect(missionFuel({ BASTION: 1 }, 500, 2, 'HOSTILE', 0.1)).toBe(0);
+    expect(missionFuel(wing, 0, 2, 'HOSTILE', 0.1)).toBe(0);
+  });
+
+  it.each([0, -1, 2, 0.37, NaN, Infinity])('rejects an invalid fuel pace %s', (pace) => {
+    expect(() => missionFuel(wing, 500, 2, 'HOSTILE', pace)).toThrow(RangeError);
+    expect(() => missionFuel({}, 0, 1, 'HOSTILE', pace)).toThrow(RangeError);
+  });
+
+  it('never increases fuel by slowing down, even across rounding boundaries', () => {
+    for (const span of [0, 0.001, 1, 17, 537, 400_000]) {
+      const charges = MISSION_PACES.map((pace) => missionFuel(wing, span, 2, 'HOSTILE', pace));
+      expect(charges).toEqual([...charges].sort((a, b) => b - a));
+    }
+  });
+
 });
 
 describe('how slow a flight may be told to go', () => {
@@ -126,6 +158,12 @@ describe('how slow an already-timed leg may be told to go', () => {
     expect(pacesForMinutes(TRAVEL.pacedFlightCapMinutes * 3)).toEqual([1]);
   });
 
+  it.each(MISSION_PACES.slice(1))('includes pace %s exactly at the ceiling and excludes it one millisecond past', (pace) => {
+    const full = TRAVEL.pacedFlightCapMinutes * pace;
+    expect(pacesForMinutes(full)).toContain(pace);
+    expect(pacesForMinutes(full + 1 / 60_000)).not.toContain(pace);
+  });
+
   it('offers nothing for a leg that cannot be flown', () => {
     expect(pacesForMinutes(Infinity)).toEqual([]);
     expect(pacesForMinutes(Number.NaN)).toEqual([]);
@@ -134,11 +172,6 @@ describe('how slow an already-timed leg may be told to go', () => {
 
 /**
  * WHAT IT COSTS TO MOVE A FLEET BETWEEN YOUR OWN WORLDS. Owner decision, 2026-09-21: half.
- *
- * THE DISCOUNT IS ON THE LANE, NEVER ON THE SPEED. A global cut was measured and killed — it
- * breaks distance-as-protection and inflates every merchant price with it — so the one flight
- * that gets cheaper is the one that reaches nobody else: a commander moving their own ships
- * between their own worlds. An attack pays the undiscounted rate at every pace.
  *
  * HALF RATHER THAN FREE. A nightly fleetsave has to be affordable or the whole mobility package
  * is a control nobody can use; free would take the decision out of it and make parking the fleet
@@ -163,13 +196,7 @@ describe('the lane a flight is flown in', () => {
     expect(missionFuel(wing, 0.001, 1, 'HOMEWARD')).toBeGreaterThan(0);
   });
 
-  it('leaves the pace out of the price in either lane', () => {
-    for (const lane of ['HOSTILE', 'HOMEWARD'] as const) {
-      expect(missionFuel(wing, 500, 2, lane)).toBe(missionFuel(wing, 500, 2, lane));
-    }
-    // Three required parameters: the lane is the only thing that was added, and it is optional.
-    expect(missionFuel.length).toBe(3);
-  });
+
 });
 
 /**

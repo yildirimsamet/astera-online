@@ -3,7 +3,7 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { TRAVEL, UNAIDED, distance, fleetTravelExact, missionFuel } from '@astera/rules';
 import { missions, planets } from '../src/db/schema.js';
-import { launchTransfer } from '../src/services/movement.js';
+import { launchTransfer, recallFlight } from '../src/services/movement.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   fuelUp,
@@ -103,12 +103,40 @@ describe('the pace a transfer is flown at', () => {
     expect(Math.abs((back!.arriveAt.getTime() - back!.departAt.getTime()) - outbound)).toBeLessThanOrEqual(1);
   });
 
-  /** Time, never money — and the homeward rate, whatever the pace. */
-  it('charges the same homeward fuel however slowly it is flown', async () => {
+  it('combines the homeward and pace discounts', async () => {
     const dist = await span();
     const launched = await send(0.25);
     const [row] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
-    expect(row?.fuelPaid).toBe(missionFuel({ DART: 10 }, dist, 1, 'HOMEWARD'));
+    expect(row?.fuelPaid).toBe(missionFuel({ DART: 10 }, dist, 1, 'HOMEWARD', 0.25));
+  });
+
+  it('charges only the selected returning group and reserves discounted fuel before cargo', async () => {
+    const dist = await span();
+    const fleet = { DART: 10, COURIER: 2 };
+    await giveUnits(f.db, mine, fleet);
+    const fuel = missionFuel(fleet, dist, 1, 'HOMEWARD', 0.5)
+      + missionFuel({ COURIER: 2 }, dist, 1, 'HOMEWARD', 0.5);
+    const cargo = { ...EMPTY, deuterium: 100 };
+    await f.db.update(planets).set({ deuterium: fuel + 100, lastTickAt: f.clock.now() }).where(eq(planets.id, mine));
+    await expect(launchTransfer(f.db, f.playerIds[0]!, mine, colony, fleet, cargo, f.clock, 1, { cargoShips: 'RETURN', otherShips: 'STAY' }))
+      .rejects.toMatchObject({ code: 'INSUFFICIENT_FUEL' });
+    const launched = await launchTransfer(f.db, f.playerIds[0]!, mine, colony, fleet, cargo, f.clock, 0.5, { cargoShips: 'RETURN', otherShips: 'STAY' });
+    const [row] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
+    const [origin] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    expect(row?.fuelPaid).toBe(fuel);
+    expect(row?.cargo?.deuterium).toBe(100);
+    expect(origin?.deuterium).toBe(0);
+  });
+
+  it('recalls a slowed transfer without refunding or charging fuel again', async () => {
+    const launched = await send(0.5);
+    const [before] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const [out] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
+    await recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!);
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const [recalled] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
+    expect(after?.deuterium).toBe(before?.deuterium);
+    expect(recalled?.fuelPaid).toBe(out?.fuelPaid);
   });
 
   it('refuses a pace that is not on the ladder', async () => {

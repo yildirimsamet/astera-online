@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
-import { ABUSE, CLAN, MULTI_WORLD, TRAVEL, fleetSpeed, travelExact } from '@astera/rules';
+import { ABUSE, CLAN, COMBAT, MULTI_WORLD, TRAVEL, UNAIDED, fleetSpeed, fleetTravelExact, pacesForMinutes, travelExact } from '@astera/rules';
 import {
   attackCommitments,
   clanCeasefires,
@@ -9,6 +9,7 @@ import {
   clanWarContributions,
   clanWarMissions,
   clanWarOperations,
+  hpRadiationSources,
   missions,
   planets,
   players,
@@ -42,6 +43,7 @@ import {
   giveUnits,
   grant,
   levelWorld,
+  placeAt,
   seedWorld,
   setLevel,
   testDb,
@@ -912,6 +914,42 @@ describe('choosing when the joint strike lands', () => {
     await expect(startAt(f, 0.1)).rejects.toMatchObject({ code: 'PACE_TOO_SLOW' });
     expect((await operationRow(f)).status).toBe('ASSEMBLING');
     expect(await f.db.select().from(attackCommitments)).toHaveLength(0);
+  });
+
+  it('checks and publishes the ceiling for the longest contributor return, too', async () => {
+    const f = await setup();
+    await placeAt(f.db, f.planetIds[0]!, { x: 0, y: 0, z: 0 });
+    await placeAt(f.db, f.planetIds[1]!, { x: -30_000, y: 0, z: 0 });
+    await placeAt(f.db, f.planetIds[2]!, { x: 1_000, y: 0, z: 0 });
+    await readyOperation(f);
+    await send(f, 1, f.planetIds[1]!, { DART: 15 });
+    await landStaging(f);
+    const full = (await strikeMinutes(f))!;
+    const back = fleetTravelExact(31_000, { DART: 15 }, UNAIDED);
+    expect(full / 0.1).toBeLessThan(TRAVEL.pacedFlightCapMinutes);
+    expect(back / 0.1).toBeGreaterThan(TRAVEL.pacedFlightCapMinutes);
+    await expect(startAt(f, 0.1)).rejects.toMatchObject({ code: 'PACE_TOO_SLOW' });
+    const projection = await projectOperation(f.db, await operationRow(f), f.playerIds[0], f.clock.now());
+    expect(projection).toMatchObject({ pool: { paces: pacesForMinutes(back) } });
+    expect((await operationRow(f)).status).toBe('ASSEMBLING');
+    expect(await f.db.select().from(attackCommitments)).toHaveLength(0);
+  });
+
+  it('forecasts radiation on the return at the chosen strike speed', async () => {
+    const f = await setup();
+    await f.db.update(seasons).set({ rulesetVersion: 16 }).where(eq(seasons.id, f.seasonId));
+    await placeAt(f.db, f.planetIds[0]!, { x: 0, y: 0, z: 0 });
+    await placeAt(f.db, f.planetIds[2]!, { x: 1_000, y: 0, z: 0 });
+    await readyOperation(f);
+    await send(f, 0, f.planetIds[0]!, { DART: 15 });
+    await landStaging(f);
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'ZONE',
+      x: 0, y: 0, z: 0, radius: 100_000, intensityHpPerMinute: 1, mode: 'EMIT', activeFrom: f.clock.now() });
+    const projection = await projectOperation(f.db, await operationRow(f), f.playerIds[0], f.clock.now());
+    const full = projection.pool.strikeMinutes!;
+    const half = projection.radiationByPace.find((row) => row.pace === 0.5);
+    expect(half?.own).toHaveLength(1);
+    expect(half!.own[0]!.doseHp).toBeCloseTo(2 * full / 0.5 + COMBAT.engagementSeconds / 60, 3);
   });
 
   it('takes the pace over HTTP instead of rejecting the field', async () => {

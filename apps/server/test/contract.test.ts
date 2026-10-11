@@ -11,6 +11,7 @@ import {
   SATELLITE_IDS,
   SENSOR, MULTI_WORLD,
   CLAN, DEATH_STAR, DISRUPTION, GALAXY_EVENTS, REWARD_CHAINS, SHIELD, TRADE, alloyRate, flightSlots,
+  MISSION_PACES,
   groundLoad,
   groundSlots, hangarCapacity, hangarCeiling, hangarLoad, rewardId, shieldHp,
   asteroidPosition,
@@ -21,6 +22,7 @@ import {
   accountRewards,
   battleReports,
   cosmeticEntitlements,
+  clanMemberships,
   buildings,
   botProfiles,
   clanLootShares,
@@ -41,7 +43,7 @@ import {
 } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
-import { launchProbe } from '../src/services/intel.js';
+import { launchProbe, rememberWorld } from '../src/services/intel.js';
 import { launchMining } from '../src/services/mining.js';
 import { privatePirateField, pirateId } from '../src/services/pirateField.js';
 import { refreshSensorEpoch, sensorHistoryForPlayer } from '../src/services/sensorHistory.js';
@@ -81,6 +83,10 @@ import {
   clanSeenSchema,
   clanSettingsSchema,
   clanStrengthSchema,
+  clanWarSchema,
+  clanWarTargetResultSchema,
+  clanWarContributionResultSchema,
+  clanWarStartResultSchema,
   chatPageSchema,
   chatPostSchema,
   chatReadSchema,
@@ -1729,6 +1735,38 @@ describe('every payload the client parses', () => {
     expect(parsed.type).toBe('FOUNDRY');
     expect(parsed.slot).toBeGreaterThanOrEqual(0);
     expect(parsed).not.toHaveProperty('level');
+  });
+
+  it('parses joint strike speeds before staging, after staging and after launch', async () => {
+    const [origin, target] = f.planetIds as [string, string];
+    await f.db.update(seasons).set({ rulesetVersion: MULTI_WORLD.clanJointWarRulesetVersion })
+      .where(eq(seasons.id, f.seasonId));
+    await setLevel(f.db, origin, 'CORE', CLAN.founderCoreLevel);
+    await levelWorld(f.db, f.planetIds);
+    await placeAt(f.db, origin, { x: 0, y: 0, z: 0 });
+    await placeAt(f.db, target, { x: 1_000, y: 0, z: 0 });
+    clanCreatedSchema.parse(await clanPost('/api/clan/create', {
+      name: 'Pace Guard', tag: 'PAC', description: 'Bring everyone home.', recruiting: true,
+    }));
+    const joinedAt = new Date(f.clock.now().getTime() - 13 * 3_600_000);
+    await f.db.update(clanMemberships).set({ joinedAt,
+      matureAt: new Date(joinedAt.getTime() + CLAN.adaptationMinutes * 60_000) });
+    await f.db.transaction((tx) => rememberWorld(tx, {
+      observerPlayerId: f.playerIds[0]!, targetPlanetId: target, seasonId: f.seasonId,
+      seenAt: f.clock.now(), source: 'PROBE',
+    }));
+    const marked = clanWarTargetResultSchema.parse(await clanPost('/api/clan/war/target', { targetPlanetId: target }));
+    expect(marked.operation.pool).toMatchObject({ strikeMinutes: null, paces: [] });
+    const staged = clanWarContributionResultSchema.parse(await clanPost('/api/clan/war/contributions', {
+      originPlanetId: origin, fleet: { DART: 4 }, acknowledgeShieldLoss: true,
+    }));
+    expect(staged.war.pool.paces).toEqual(MISSION_PACES);
+    const read = clanWarSchema.parse(await get('/api/clan/war'));
+    expect(read.operation?.pool.paces).toEqual(MISSION_PACES);
+    const launched = clanWarStartResultSchema.parse(await clanPost('/api/clan/war/start', {
+      acknowledgeShieldLoss: true, pace: 0.5,
+    }));
+    expect(launched.operation.pool).toMatchObject({ strikeMinutes: null, paces: [] });
   });
 
   it('POST /api/fleet/launch parses', async () => {

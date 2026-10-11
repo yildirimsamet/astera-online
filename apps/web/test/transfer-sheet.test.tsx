@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HULLS, TRANSFER_CARGO_HULLS, combatValue, garrisonOf, hangarCapacity, hullBulk, missionFuel } from '@astera/rules';
 import { ApiError } from '../src/api/client.js';
-import { compact } from '../src/lib/format.js';
+import { full, compact } from '../src/lib/format.js';
 import { TransferSheet } from '../src/screens/TransferSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
@@ -718,6 +718,78 @@ describe('the garrison left behind', () => {
  * until the raid has passed — was the one launch that could not be slowed.
  */
 describe('choosing how fast a transfer flies', () => {
+  it('quotes the chosen speed and explains cargo reserved for fuel when speed increases', async () => {
+    const far = { ...target, position: { x: 6_000, y: 0, z: 0 } };
+    const fleet = { COURIER: 2 };
+    const view = render(<ToastProvider><TransferSheet target={far}
+      planet={planetView({ fleet }, { id: 'capital-1', deuterium: 100 })}
+      onClose={vi.fn()} onLaunched={vi.fn()} /></ToastProvider>);
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: /courier quantity/i }), '2');
+    const pace = view.container.querySelector<HTMLElement>('[data-transfer-pace]')!;
+    await user.click(within(pace).getByRole('radio', { name: '50%' }));
+    const fuel = missionFuel(fleet, 6_000, 2, 'HOMEWARD', 0.5);
+    const fullFuel = missionFuel(fleet, 6_000, 2, 'HOMEWARD');
+    expect(fuel).toBeLessThan(fullFuel);
+    expect(pace.querySelector('[data-pace-saving]')).toHaveTextContent(`${String(fullFuel - fuel)} deuterium saved`);
+    const slider = screen.getByRole('slider', { name: /deuterium/i });
+    expect(pace.compareDocumentPosition(slider) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(slider).toHaveAttribute('max', String(100 - fuel));
+    fireEvent.change(slider, { target: { value: String(100 - fuel) } });
+    await user.click(within(pace).getByRole('radio', { name: 'Full' }));
+    expect(slider).toHaveValue(String(100 - fullFuel));
+    expect(view.container.querySelector('[data-transfer-cargo-adjusted]')).toHaveTextContent(/fuel reserved/i);
+    expect(view.container.querySelector('[data-transfer-cargo-adjusted]')).toHaveTextContent(String(100 - fuel));
+    expect(view.container.querySelector('[data-transfer-cargo-adjusted]')).toHaveTextContent(String(100 - fullFuel));
+    await user.click(within(pace).getByRole('radio', { name: '50%' }));
+    expect(slider).toHaveValue(String(100 - fullFuel));
+  });
+
+  it('recalculates savings for return choices and fleet size', async () => {
+    const far = { ...target, position: { x: 4_000, y: 0, z: 0 } };
+    const view = render(<ToastProvider><TransferSheet target={far}
+      planet={planetView({ fleet: { COURIER: 2, DART: 2 } }, { id: 'capital-1', deuterium: 50_000 })}
+      onClose={vi.fn()} onLaunched={vi.fn()} /></ToastProvider>);
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: /courier quantity/i }), '2');
+    await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '2');
+    const pace = view.container.querySelector<HTMLElement>('[data-transfer-pace]')!;
+    await user.click(within(pace).getByRole('radio', { name: '50%' }));
+    const verify = (dart: number, returns: boolean) => {
+      const fleet = { COURIER: 2, DART: dart };
+      const fuel = missionFuel(fleet, 4_000, 1, 'HOMEWARD', 0.5)
+        + (returns ? missionFuel({ COURIER: 2 }, 4_000, 1, 'HOMEWARD', 0.5) : 0);
+      const fullFuel = missionFuel(fleet, 4_000, 1, 'HOMEWARD')
+        + (returns ? missionFuel({ COURIER: 2 }, 4_000, 1, 'HOMEWARD') : 0);
+      expect(pace.querySelector('[data-pace-fuel]')).toHaveTextContent(full(fuel));
+      expect(pace.querySelector('[data-pace-saving]')).toHaveTextContent(`${full(fullFuel - fuel)} deuterium saved`);
+    };
+    verify(2, true);
+    await user.click(screen.getByRole('radio', { name: /haulers.*stay/i }));
+    verify(2, false);
+    await user.click(screen.getByRole('button', { name: 'Fewer Dart' }));
+    verify(1, false);
+  });
+
+  it('trims cargo and explains a forced full-speed fallback when the target changes', async () => {
+    const planet = planetView({ fleet: { COURIER: 2 } }, { id: 'capital-1', deuterium: 100 });
+    const near = { ...target, position: { x: 4_000, y: 0, z: 0 } };
+    const far = { ...target, position: { x: 1_000_000, y: 0, z: 0 } };
+    const renderSheet = (destination: typeof target) => <ToastProvider><TransferSheet target={destination}
+      planet={planet} onClose={vi.fn()} onLaunched={vi.fn()} /></ToastProvider>;
+    const view = render(renderSheet(near));
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: /courier quantity/i }), '2');
+    await user.click(within(view.container.querySelector<HTMLElement>('[data-transfer-pace]')!).getByRole('radio', { name: '50%' }));
+    const slider = screen.getByRole('slider', { name: /deuterium/i });
+    fireEvent.change(slider, { target: { value: slider.getAttribute('max') } });
+    view.rerender(renderSheet(far));
+    expect(view.container.querySelector('[data-pace-reset]')).toHaveTextContent(/full speed.*flight.*limit/i);
+    expect(slider).toHaveValue('0');
+    expect(view.container.querySelector('[data-transfer-cargo-adjusted]')).toHaveTextContent(/fuel reserved/i);
+    expect(view.container.querySelector('[data-hold-refused]')).toHaveTextContent('Not enough deuterium');
+  });
+
   beforeEach(() => { mutate.mockReset(); });
 
   const open = () => render(
@@ -749,14 +821,14 @@ describe('choosing how fast a transfer flies', () => {
     expect(eta.textContent).not.toBe(atFullSpeed);
   });
 
-  /** Why anyone would slow a transfer, on the row: the fleetsave, and the same fuel. */
+  /** The benefit belongs at the speed control. */
   it('says what a slower transfer buys where the choice is made', async () => {
     const user = userEvent.setup();
     const view = open();
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     const row = view.container.querySelector<HTMLElement>('[data-transfer-pace]')!;
     expect(row).toHaveTextContent(/cannot be raided/i);
-    expect(row).toHaveTextContent(/fuel stays unchanged/i);
+    expect(row).toHaveTextContent(/less fuel/i);
     expect(row).toHaveTextContent(/each slower flight leg must fit within 12 hours/i);
   });
 

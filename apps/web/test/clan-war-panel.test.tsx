@@ -323,6 +323,24 @@ describe('choosing when the joint strike lands', () => {
     await waitFor(() => { expect(started).toHaveBeenCalledWith(false, 0.75); });
   });
 
+  it('offers only server-approved speeds when a contributor has a longer return leg', () => {
+    const war = clanWarSchema.parse({ ...timed(60), operation: {
+      ...timed(60).operation!, pool: { ...timed(60).operation!.pool, paces: [1, 0.75, 0.5] },
+    } });
+    show(war, 'LEADER', [origin]);
+    const row = within(document.querySelector<HTMLElement>('[data-clan-pace]')!);
+    expect(row.getAllByRole('radio')).toHaveLength(3);
+    expect(row.queryByRole('radio', { name: '25%' })).not.toBeInTheDocument();
+    expect(row.queryByRole('radio', { name: '10%' })).not.toBeInTheDocument();
+  });
+
+  it('rejects a server speed outside the shared ladder at the API boundary', () => {
+    const war = timed(60);
+    expect(clanWarSchema.safeParse({ ...war, operation: {
+      ...war.operation!, pool: { ...war.operation!.pool, paces: [1, 0.37] },
+    } }).success).toBe(false);
+  });
+
   it('shows no speeds until a wave is staged to time', () => {
     show(timed(null), 'LEADER', [origin]);
     expect(document.querySelector('[data-clan-pace]')).toBeNull();

@@ -341,8 +341,8 @@ export async function launchTransfer(
       flight the discount is for: it reaches nobody else, so cutting its price cannot cut the price
       of reach. `FUEL.laneShare` states the whole argument.
     */
-    const fuel = missionFuel(fleet, dist, 1, 'HOMEWARD')
-      + (fleetCount(returning) > 0 ? missionFuel(returning, dist, 1, 'HOMEWARD') : 0);
+    const fuel = missionFuel(fleet, dist, 1, 'HOMEWARD', chosenPace)
+      + (fleetCount(returning) > 0 ? missionFuel(returning, dist, 1, 'HOMEWARD', chosenPace) : 0);
     /*
       THE CARGO IS ALREADY SPOKEN FOR. T6.
 

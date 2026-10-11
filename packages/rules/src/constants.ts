@@ -1861,10 +1861,12 @@ export const FUEL = {
    * control nobody can use; free would take the decision out of it entirely and make parking the
    * fleet in the air the costless default.
    *
-   * AN ATTACK PAYS THE SAME RATE AT EVERY CHOSEN PACE. The September 2026 fleet
-   * slowdown reduced the fleet-wide base rate separately; distance remains priced.
+   * Personal raids and transfers additionally apply the chosen-pace discount below.
+   * Prepaid joint clan strikes retain full-speed fuel pricing.
    */
   laneShare: { HOSTILE: 1, HOMEWARD: 0.5 } as const,
+  /** Owner, 2026-10-11: save half the speed reduction; 50% speed saves 25% before leg rounding. */
+  paceDiscountShare: 0.5,
   /**
    * WHAT A UNIT OF HULL VALUE COSTS TO MOVE. D195, owner instruction, replacing
    * D153's tier ladder outright.

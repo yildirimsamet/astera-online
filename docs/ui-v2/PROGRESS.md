@@ -138,8 +138,8 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   yakıt tek satır (`SpendBar inline`) ve **cetvelle birlikte yapışkan kalır — D183 sahip düzeltmesi maketten önce
   gelir, bu yüzden özet yakıtı ikinci kez yazmaz**; sınıf satırı yapışkan başlığın dışına (maketteki yeri); gemiler
   tek sıra, tersane sırasıyla (aileler akordiyonu ve gemi başı istatistik şeridi/lejantı kalktı — maket; statlar
-  tersanede), yük gemisi satırı "N kargo/gemi" / "+N kargo" der; hız satırında kısa kural ("yakıt aynı · en çok
-  12 sa", `PaceRow brief`); özet 5 hücre: Varış (saat), Dönüş (saat + açıkta süresi), Kargo (+ sondadan "ganimet
+  tersanede), yük gemisi satırı "N kargo/gemi" / "+N kargo" der; hız satırında kısa kural ("daha az yakıt · yavaş uçuş ≤12 sa",
+  `PaceRow brief`) ve 2026-10-11 sahip kararıyla tam hıza göre kesin yakıt tasarrufu/ek süre karşılaştırması; özet 5 hücre: Varış (saat), Dönüş (saat + açıkta süresi), Kargo (+ sondadan "ganimet
   ~X–Y"), Uçuş yuvası ("n / N · bu sefer 1"), Evde kalan (birim + güç, `homePowerAfter`); fiyat satırı
   "{dünya} {süre} zayıf kalır — filo dönene kadar." Galeri `launch` görünümü sonda okumasıyla çizilir.
 - [x] **M4a Savaş raporu** (E6) — `ReportScene` sinematik kahraman (büyük dünya görseli kenardan kesik, "Savaş
