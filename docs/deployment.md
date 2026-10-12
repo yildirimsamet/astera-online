@@ -65,7 +65,7 @@ Release gates:
 
 ## 2. Qualify, inventory and retain rollback
 
-Use root `pnpm verify`/`pnpm lint` (6 GB ESLint heap), plus `pnpm build`. Review the complete diff and migration journal; changed public response contracts require `apps/server/test/contract.test.ts` coverage. Run `tools/loop-check.mjs`, `tools/movement.mjs` and `tools/visual.mjs` only against an isolated disposable API/database. Raise rate limits only there. `visual:baseline` is the write-free exception for an existing dev stack; shared-state timeouts or stale selectors do not establish a product regression.
+Use root `pnpm verify`/`pnpm lint` (maximum 4 GiB Node heap on the owner's PC), plus `pnpm build`. Do not use 6 GiB or raise the heap ceiling. Run checks sequentially; use the complete sequential lint grouping in `docs/engineering-standards.md` when necessary. Review the complete diff and migration journal; changed public response contracts require `apps/server/test/contract.test.ts` coverage. Run `tools/loop-check.mjs`, `tools/movement.mjs` and `tools/visual.mjs` only against an isolated disposable API/database. Raise rate limits only there. `visual:baseline` is the write-free exception for an existing dev stack; shared-state timeouts or stale selectors do not establish a product regression.
 
 Economy/season simulations, snowball audits and calibration run **only on explicit request**. Ordinary verification or “all tests” does not authorize them. Defaults exclude them; explicit long-run commands are `pnpm verify --include-long-tests` and `pnpm test:long`; `--exclude-sims` remains compatible.
 

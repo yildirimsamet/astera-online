@@ -1,3 +1,4 @@
+import { refreshQueries } from '../api/refreshQueries.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -45,7 +46,7 @@ export function Academy({ onClaim, onSignIn, onLeave, replay = false }: {
     setWorld(next);
     if (!replay) saveAcademy(next);
     client.setQueryData(keys.planet, academyPlanet(next));
-    void client.invalidateQueries();
+    void refreshQueries(client);
   }, [client, replay]);
   const api = useMemo(() => new Api({ fetch: academyFetch(() => live.current, write) }), [write]);
   useEffect(() => {
@@ -53,7 +54,7 @@ export function Academy({ onClaim, onSignIn, onLeave, replay = false }: {
       const before = live.current;
       const after = advanceAcademy(before, serverNow());
       if (after !== before) write(after);
-      else if (after.flight) void client.invalidateQueries();
+      else if (after.flight) void refreshQueries(client);
     }, 500);
     return () => { window.clearInterval(timer); client.clear(); };
   }, [client, write]);

@@ -1,6 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AsyncCache } from '../src/services/asyncCache.js';
 
+it('invalidates only the addressed caller, including a pending fill', async () => {
+  const cache = new AsyncCache<string>(4, 1000);
+  const pending = deferred<string>();
+  const load = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue('fresh');
+  const read = cache.get('alice:season', load);
+  await cache.get('bob:season', () => Promise.resolve('bob'));
+  cache.invalidatePrefix('alice:');
+  pending.resolve('stale');
+  await expect(read).resolves.toBe('fresh');
+  expect(await cache.get('bob:season', () => Promise.resolve('wrong'))).toBe('bob');
+  expect(cache.status()).toMatchObject({ entries: 2, invalidations: 1 });
+});
+
 function deferred<T>() {
   let resolve: (value: T) => void = () => undefined;
   const promise = new Promise<T>((done) => {

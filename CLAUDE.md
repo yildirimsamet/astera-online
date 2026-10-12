@@ -158,8 +158,11 @@ worker at a time (`--workspace-concurrency=1`, `--maxWorkers=1 --minWorkers=1
 --no-file-parallelism`). Use `nice -n 10` for tests. Avoid simultaneous test/typecheck/lint
 runs; keep the owner's PC responsive.
 
-`pnpm lint` gives type-aware ESLint a 6 GB Node heap through the root script. The full workspace
-regularly exceeds Node's 2 GB default; do not bypass the script with a bare `eslint .` invocation.
+**Owner rule, 2026-10-13 (local PC):** Node heap must never exceed 4 GiB
+(`--max-old-space-size=4096` maximum). Do not use 6 GiB or raise the ceiling to make
+a check pass. Heap is not total process memory; monitor RSS and keep the PC responsive.
+Run memory-heavy lint coverage in sequential groups through `pnpm lint` if needed;
+all files must still be checked. See `docs/engineering-standards.md` for commands.
 
 - Ban `any`/compiler-silencing casts; parse untrusted boundaries with Zod.
 - Diagnose root cause before changing code/tests.

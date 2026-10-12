@@ -1,3 +1,4 @@
+import { refreshQueries } from '../api/refreshQueries.js';
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../api/context.js';
@@ -127,7 +128,11 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
 
 
     const shard = shardCoalescer((reads) => {
-      for (const key of reads) void client.invalidateQueries({ queryKey: key });
+      // Traffic has its own single consistency-delayed pass below. Reading it
+      // here too caused every shard launch to request it at both 250 and 500 ms.
+      for (const key of reads) {
+        if (key[0] !== keys.traffic[0]) void refreshQueries(client, { queryKey: key });
+      }
     });
 
     /**
@@ -139,7 +144,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
      * you about it".
      */
     const resync = (): void => {
-      for (const key of LIVE_READS) void client.invalidateQueries({ queryKey: key });
+      for (const key of LIVE_READS) void refreshQueries(client, { queryKey: key });
     };
 
     // Browsers throttle timers and can suspend the event stream while a tab is in
@@ -170,14 +175,16 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
     // (`shardEvents.ts`): it reads once, never sooner than `CONSISTENCY_MS` after.
 
     let trafficConsistencyTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleTrafficConsistencyRead = (): void => {
+    const scheduleTrafficConsistencyRead = (jitter = false): void => {
       if (trafficConsistencyTimer !== null) return;
       trafficConsistencyTimer = setTimeout(() => {
         trafficConsistencyTimer = null;
         if (!controller.signal.aborted) {
-          void client.invalidateQueries({ queryKey: keys.traffic });
+          void refreshQueries(client, { queryKey: keys.traffic });
         }
-      }, STRATEGIC_SIGHT_CONSISTENCY_MS);
+      // Ordinary shard fan-out is spread across replicas/clients; urgent private
+      // strategic sight retains its immediate read and fixed repair deadline.
+      }, STRATEGIC_SIGHT_CONSISTENCY_MS + (jitter ? Math.random() * 250 : 0));
     };
 
     let reconnectResyncTimer: ReturnType<typeof setTimeout> | null = null;
@@ -198,7 +205,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       }
       if (isGlobalEvent(kind)) {
         for (const key of readsForGlobalEvent(kind)) {
-          void client.invalidateQueries({ queryKey: key });
+          void refreshQueries(client, { queryKey: key });
         }
         return;
       }
@@ -217,13 +224,10 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
        */
       if (isShardEvent(kind)) {
         shard.note(kind);
-        // PostgreSQL delivers the shard wake and each replica's projection-cache
-        // invalidation independently. The first coalesced read can therefore reach
-        // a replica while its old traffic snapshot is still warm. Re-read only for
-        // shard kinds that actually move traffic, after the same short consistency
-        // window used by strategic sight.
+        // Read once after replica caches can observe the commit, instead of an
+        // early read followed by another from every client in the galaxy.
         if (readsForShardEvent(kind).some((key) => key[0] === keys.traffic[0])) {
-          scheduleTrafficConsistencyRead();
+          scheduleTrafficConsistencyRead(true);
         }
         return;
       }
@@ -240,7 +244,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       if (isPrivateEvent(kind)) {
         const reads = readsForPrivateEvent(kind);
         if (reads) {
-          for (const key of reads) void client.invalidateQueries({ queryKey: key });
+          for (const key of reads) void refreshQueries(client, { queryKey: key });
           if (kind === 'private:strategic-sight') {
             scheduleTrafficConsistencyRead();
           }
@@ -267,15 +271,13 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
     /** Resolves early on abort, so a 30-second backoff cannot outlive the tab. */
     const pause = (ms: number): Promise<void> =>
       new Promise((resolve) => {
-        const timer = setTimeout(resolve, ms);
-        controller.signal.addEventListener(
-          'abort',
-          () => {
-            clearTimeout(timer);
-            resolve();
-          },
-          { once: true },
-        );
+        if (controller.signal.aborted) { resolve(); return; }
+        const onAbort = (): void => { clearTimeout(timer); resolve(); };
+        const timer = setTimeout(() => {
+          controller.signal.removeEventListener('abort', onAbort);
+          resolve();
+        }, ms);
+        controller.signal.addEventListener('abort', onAbort, { once: true });
       });
 
     void (async () => {

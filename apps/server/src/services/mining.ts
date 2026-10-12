@@ -168,7 +168,10 @@ export async function loadMiningSnapshot(
   const field = await fieldOf(db, seasonId, now);
   const oldest = new Date(now.getTime() - DEBRIS.decayMinutes * 60_000);
   const [claims, debris] = await Promise.all([
-    db.select().from(asteroidClaims).where(eq(asteroidClaims.seasonId, seasonId)),
+    field.asteroids.length === 0 ? Promise.resolve([]) : db.select().from(asteroidClaims).where(and(
+      eq(asteroidClaims.seasonId, seasonId),
+      inArray(asteroidClaims.index, field.asteroids.map(rock => rock.index)),
+    )),
     db
       .select()
       .from(debrisFields)

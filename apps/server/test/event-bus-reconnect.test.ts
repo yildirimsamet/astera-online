@@ -31,7 +31,9 @@ describe('event bus reconnect', () => {
     f = await seedWorld(1);
     bus = new EventBus(TEST_DATABASE_URL, silent, {
       heartbeatMs: 25,
-      heartbeatTimeoutMs: 75,
+      // Filling every cache can briefly queue the heartbeat on a one-worker,
+      // CPU-limited test database. Test socket loss, not fixture scheduling noise.
+      heartbeatTimeoutMs: 300,
       // Leave a deterministic window in which the dead socket is observable and
       // a commit can happen without its NOTIFY reaching this replica.
       reconnectBackoffSeconds: 0.8,
@@ -188,12 +190,14 @@ describe('event bus reconnect', () => {
        */
       projections.sensorsFor(f.playerIds[0]!, f.planetIds),
       projections.rememberedFor(f.playerIds[0]!),
+      projections.historyFor(f.playerIds[0]!, f.seasonId),
     ]);
     expect(before[0]?.name).not.toBe('After reconnect');
     expect(projections.status()).toMatchObject({
       commander: { entries: 1 },
       sensors: { entries: 1 },
       remembered: { entries: 1 },
+      sensorHistory: { entries: 1 },
       publicGalaxy: { entries: 1 },
       traffic: { entries: 1 },
       mining: { entries: 1 },
@@ -209,6 +213,7 @@ describe('event bus reconnect', () => {
       commander: { entries: 0 },
       sensors: { entries: 0 },
       remembered: { entries: 0 },
+      sensorHistory: { entries: 0 },
       publicGalaxy: { entries: 0 },
       traffic: { entries: 0 },
       mining: { entries: 0 },

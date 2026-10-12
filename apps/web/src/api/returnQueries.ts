@@ -1,3 +1,4 @@
+import { refreshQueries } from './refreshQueries.js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
@@ -12,6 +13,6 @@ export function useApplyToReturn() {
   const queries = useQueryClient();
   return useMutation({ mutationFn: api.applyToReturn,
     onSuccess: (status) => { queries.setQueryData(keys.returnStatus, status); },
-    onError: () => { void queries.invalidateQueries({ queryKey: keys.returnStatus }); },
+    onError: () => { void refreshQueries(queries, { queryKey: keys.returnStatus }); },
   });
 }

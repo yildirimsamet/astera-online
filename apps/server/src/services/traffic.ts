@@ -589,15 +589,15 @@ export async function loadTrafficSnapshot(
     db
       .select({ run: miningRuns })
       .from(miningRuns)
-      .where(and(eq(miningRuns.seasonId, seasonId), ne(miningRuns.status, 'done'))),
+      .where(and(eq(miningRuns.seasonId, seasonId), inArray(miningRuns.status, ['outbound', 'returning']))),
     db
       .select({ raid: pirateRaids })
       .from(pirateRaids)
-      .where(and(eq(pirateRaids.seasonId, seasonId), ne(pirateRaids.status, 'done'))),
+      .where(and(eq(pirateRaids.seasonId, seasonId), inArray(pirateRaids.status, ['outbound', 'returning']))),
     db
       .select({ run: tradeRuns })
       .from(tradeRuns)
-      .where(and(eq(tradeRuns.seasonId, seasonId), ne(tradeRuns.status, 'done'))),
+      .where(and(eq(tradeRuns.seasonId, seasonId), inArray(tradeRuns.status, ['outbound', 'returning']))),
     db
       .select({ run: intergalacticConvoyRuns })
       .from(intergalacticConvoyRuns)

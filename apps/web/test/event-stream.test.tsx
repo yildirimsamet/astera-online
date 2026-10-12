@@ -61,6 +61,7 @@ describe('the event stream', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     onEvent = null;
     closeSocket = null;
     asked = [];
@@ -137,6 +138,12 @@ describe('the event stream', () => {
     expect(asked).toEqual(['announcements']);
   });
 
+  it('refreshes only sight projections when a private sensor epoch changes', () => {
+    mountCaughtUp();
+    fire('private:sensors');
+    expect(asked.sort()).toEqual(['galaxy', 'mining', 'pirates', 'traffic']);
+  });
+
   it('rechecks strategic sight after replica caches have observed the interception', () => {
     mountCaughtUp();
     fire('private:strategic-sight');
@@ -163,24 +170,24 @@ describe('the event stream', () => {
     expect(asked).toEqual([]);
 
     act(() => {
-      vi.advanceTimersByTime(COALESCE_MS);
+      vi.advanceTimersByTime(STRATEGIC_SIGHT_CONSISTENCY_MS);
     });
     expect(asked).toEqual(['traffic']);
   });
 
-  it('rechecks traffic after replica caches observe a shard launch', () => {
+  it('reads traffic once after replica caches observe a shard launch', () => {
     mountCaughtUp();
     fire('shard:launch');
 
     act(() => {
       vi.advanceTimersByTime(COALESCE_MS);
     });
-    expect(asked).toEqual(['traffic']);
+    expect(asked).toEqual([]);
 
     act(() => {
       vi.advanceTimersByTime(STRATEGIC_SIGHT_CONSISTENCY_MS - COALESCE_MS);
     });
-    expect(asked).toEqual(['traffic', 'traffic']);
+    expect(asked).toEqual(['traffic']);
   });
 
   it('collapses a burst from a busy galaxy into one pass', () => {
@@ -189,7 +196,7 @@ describe('the event stream', () => {
     fire('shard:arrival');
 
     act(() => {
-      vi.advanceTimersByTime(COALESCE_MS);
+      vi.advanceTimersByTime(STRATEGIC_SIGHT_CONSISTENCY_MS);
     });
     // Seven events, two lists, each read once.
     expect(asked.sort()).toEqual(['mining', 'traffic']);

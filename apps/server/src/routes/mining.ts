@@ -15,7 +15,6 @@ import {
   projectVisibleDebris,
 } from '../services/mining.js';
 import { projectPlayerAsteroidField } from '../services/asteroidField.js';
-import { sensorHistoryForPlayer } from '../services/sensorHistory.js';
 import { requireAuth } from './auth.js';
 import { ownedPlanet } from '../services/ownership.js';
 import type { Queryable } from '../db/client.js';
@@ -154,7 +153,7 @@ export function registerMiningRoutes(app: FastifyInstance): void {
   const fieldView = async (seasonId: string, playerId: string, revealIsotopes: boolean) => {
     const now = app.clock.now();
     const snapshot = await app.projections.miningSnapshot(seasonId, now);
-    const epochs = await sensorHistoryForPlayer(app.db, playerId, seasonId, snapshot.startsAt);
+    const epochs = await app.projections.historyFor(playerId, seasonId);
     const field = projectPlayerAsteroidField(
       snapshot,
       snapshot.asteroidKey,

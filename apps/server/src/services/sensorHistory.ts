@@ -4,6 +4,7 @@ import type { Queryable } from '../db/client.js';
 import { minutesSince } from '../clock.js';
 import { planetFaults, planets, seasons, sensorEpochs } from '../db/schema.js';
 import { instrumentLevels, levelOf } from './intel.js';
+import { publish } from '../stream/bus.js';
 
 /**
  * Close/open a world's post only when season, owner, position or effective reach changed.
@@ -66,8 +67,7 @@ export async function refreshSensorEpoch(
     }
   }
 
-  if (world.playerId === null) return;
-  await db.insert(sensorEpochs).values({
+  if (world.playerId !== null) await db.insert(sensorEpochs).values({
     seasonId: world.seasonId,
     playerId: world.playerId,
     planetId,
@@ -77,6 +77,12 @@ export async function refreshSensorEpoch(
     reach,
     startsAt: now,
   });
+  // Publish from the history writer: builds, faults, repairs, captures and
+  // relocation must all invalidate the same private facts on every replica.
+  // Closing an epoch also changes the previous owner's discovery boundary.
+  for (const playerId of new Set([open?.playerId, world.playerId])) {
+    if (playerId) await publish(db, playerId, 'private:sensors');
+  }
 }
 
 /** Convert durable wall-clock rows once at the rules boundary. */

@@ -52,10 +52,23 @@ ESLint 9 flat config, `typescript-eslint` **strictTypeChecked + stylisticTypeChe
 type-aware — which catches unsafe `any` flow, floating promises, misused promises and
 unnecessary conditions that reveal a wrong mental model.
 
-Always run lint through `pnpm lint`. The root script starts ESLint with
-`--max-old-space-size=4096`; type-aware analysis of the complete workspace repeatedly exceeds
-Node's 2 GB default heap. `pnpm verify` and `pnpm build` inherit the same safe limit because both
-call that script.
+Always run lint through `pnpm lint`. The root script caps ESLint at
+`--max-old-space-size=4096`. **Owner rule, 13 October 2026: never exceed a 4 GiB
+Node heap on the local PC; 6 GiB is prohibited.** Total RSS also includes native
+memory, so a 4 GiB heap is not a 4 GiB process limit. Monitor RSS, keep checks
+sequential and use a smaller heap when necessary. `pnpm verify` and `pnpm build`
+inherit the same ceiling. Never raise it to pass a check.
+
+When one full lint process puts pressure on the PC, these three sequential root
+invocations cover the same files while releasing each group's type programs:
+
+```bash
+nice -n 10 pnpm lint --ignore-pattern 'apps/web/**' --ignore-pattern 'packages/sim/**' --ignore-pattern 'tools/**'
+nice -n 10 pnpm lint --ignore-pattern 'apps/server/**' --ignore-pattern 'packages/**' --ignore-pattern 'tools/**'
+nice -n 10 pnpm lint --ignore-pattern 'apps/**' --ignore-pattern 'packages/rules/**'
+```
+
+Require all three to pass; a failed or skipped group is not a green lint result.
 
 **The architectural boundary is a lint rule.** `packages/rules` may not import a Node builtin,
 another workspace package, `Math.random`, `Date.now` or `new Date`. **If the rules ever acquire
