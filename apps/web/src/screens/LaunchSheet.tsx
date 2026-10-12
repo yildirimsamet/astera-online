@@ -29,6 +29,7 @@ import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Figure, Figures } from '../v2/kit/Figure.js';
 import { MatchupLine } from '../v2/kit/MatchupLine.js';
 import { Sheet } from '../v2/kit/Sheet.js';
+import { PirateProfitCard } from '../ui/PirateProfitCard.js';
 
 /**
  * WHAT A FLEET CAN BE COMMITTED AT. D150.
@@ -97,7 +98,7 @@ export function LaunchSheet({
     sending, set, roomFor, allowance, lesson, season, spendsShield, pirate, mods, radiation,
     paces, pace, setWantedPace, route, fullSpeedRoute, paceReset, total, salvageRoom, baysFree, tooLate, busy,
     holding, away, atHome, recordAge, opposing, lines, loss, escape, notes, refusal,
-    commit, classReading, report,
+    commit, classReading, report, pirateProfit, pirateProfitState,
   } = useLaunchPlan({ target, planet, intel, reports, onLaunched, onAim });
 
   /**
@@ -350,6 +351,9 @@ export function LaunchSheet({
           <div>{(lessonOrder ?? order).map(row)}</div>
           {atHome === 0 && <p className="px-1 text-caption text-v2-ink-3">{t('launch.noShips')}</p>}
         </section>
+
+        {pirate && !lesson && <PirateProfitCard forecast={pirateProfit} state={pirateProfitState}
+          radiation={radiation?.kind === 'HP' && radiation.doseHp > 0} />}
 
         {/* WHAT THE COLLECTORS WILL LIFT, IF THEY LIVE (D200), and a pirate's one handicap (D124). */}
         {salvageRoom > 0 && (

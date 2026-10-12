@@ -634,6 +634,28 @@ export const focus = {
  * not a usable rule (D124), and this is the only surface any of them appear on.
  */
 export const pirate = {
+  profit: {
+    title: "Estimated net return",
+    net: "Net return",
+    range: "Estimated range",
+    PROFIT: "Likely profitable",
+    RISK: "Profit is uncertain",
+    LOSS: "Likely to lose resources",
+    empty: "Choose ships to estimate your return.",
+    unavailable: "Reward information is unavailable; profit cannot be estimated.",
+    pending: "Updating the estimate…",
+    loot: "Loot brought home",
+    salvage: "Collector recovery",
+    loss: "Lost ships",
+    repair: "Paid repairs",
+    fuel: "Round-trip fuel",
+    uncertain: "Estimates are not guaranteed. Other raids can reduce the reward before you arrive.",
+    exclusions: "Captured ships and uncollected public wreckage are excluded.",
+    value: "The verdict compares resources by their production value.",
+    cargo: "Surviving holds may leave some loot behind.",
+    losses: "Ship losses are possible with this fleet.",
+    radiation: "Known flight radiation is included. Return speed and the route may change.",
+  },
   title: "Pirate fleet",
   /** Level and callsign together. The callsign is season-unique and leaks no index. */
   name: "Pirate fleet L{{level}}-{{callsign}}",

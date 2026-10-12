@@ -1,11 +1,11 @@
 import { and, eq } from 'drizzle-orm';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { PIRATE, dynamicPirateHourOf, dynamicPirateIndex } from '@astera/rules';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PIRATE, currentPirateGeneration, dynamicPirateHourOf, dynamicPirateIndex, fleetEntries, HULLS } from '@astera/rules';
 import { FixedClock } from '../src/clock.js';
 import { asteroidSpawnHours, botProfiles, players } from '../src/db/schema.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
-import { openAsteroidHour } from '../src/services/asteroidSpawn.js';
+import { openAsteroidHour, pirateLaneSchema } from '../src/services/asteroidSpawn.js';
 import {
   loadPirateSnapshot,
   pirateId,
@@ -25,7 +25,11 @@ import { makeAccount, testDb, truncateAll } from './helpers.js';
 
 const START = new Date('2026-09-01T21:00:00.000Z');
 
-beforeEach(async () => { await truncateAll((await testDb()).db); });
+beforeEach(async () => {
+  vi.stubEnv('PIRATE_BALANCE_V2_ENABLED', 'false');
+  await truncateAll((await testDb()).db);
+});
+afterEach(() => { vi.unstubAllEnvs(); });
 afterAll(async () => { await (await testDb()).close(); });
 
 async function seasonWith(people: number, rulesetVersion: number, code: string) {
@@ -54,6 +58,39 @@ const pirateLaneOf = async (seasonId: string) => {
 };
 
 describe('a ruleset-9 season', () => {
+  it('opens balanced hours in this same season without changing previously dealt targets', async () => {
+    const { db, clock, season } = await seasonWith(10, 16, 'EU-DYN-V2');
+    await openAsteroidHour(db, { seasonId: season.id, hourStartsAt: START, now: clock.now() });
+    const old = await loadPirateSnapshot(db, season.id, new Date(START.getTime() + 61 * 60_000));
+    vi.stubEnv('PIRATE_BALANCE_V2_ENABLED', 'true');
+    await openAsteroidHour(db, { seasonId: season.id, hourStartsAt: START, now: clock.now() });
+    expect(await pirateLaneOf(season.id)).toEqual({ fromMinute: 0, untilMinute: 60, count: 3 });
+    const next = new Date(START.getTime() + 60 * 60_000);
+    await openAsteroidHour(db, { seasonId: season.id, hourStartsAt: next, now: next });
+    const [row] = await db.select().from(asteroidSpawnHours).where(and(
+      eq(asteroidSpawnHours.seasonId, season.id), eq(asteroidSpawnHours.hourStartsAt, next),
+    ));
+    expect(row?.pirateLane).toEqual({ fromMinute: 60, untilMinute: 120, count: 3, generation: currentPirateGeneration() });
+    const current = await loadPirateSnapshot(db, season.id, new Date(START.getTime() + 121 * 60_000));
+    expect(current.pirates.filter(p => dynamicPirateHourOf(p.index) === 0)).toEqual(old.pirates);
+    const added = current.pirates.filter(p => dynamicPirateHourOf(p.index) === 1);
+    expect(added).toHaveLength(3);
+    expect(added.every(p => fleetEntries(p.roster).every(([id]) => HULLS[id].atk > 0))).toBe(true);
+    for (const p of added) expect(await pirateSpecAt(db, season.id, p.index)).toEqual(p);
+  });
+
+  it('accepts old lanes and frozen v2 inputs, and rejects corrupt reward ranges', () => {
+    const base = { fromMinute: 0, untilMinute: 60, count: 3 };
+    expect(pirateLaneSchema.parse(base)).toEqual(base);
+    const generation = currentPirateGeneration();
+    expect(pirateLaneSchema.parse({ ...base, generation })).toEqual({ ...base, generation });
+    for (const invalid of [
+      { ...generation, version: 3 }, { ...generation, oreValueMult: -1 },
+      { ...generation, alloyShare: 1.01 }, { ...generation, oreByLevel: [0, 1] },
+      { ...generation, deuteriumByLevel: [0, 1, 2, 3, -1] },
+    ]) expect(pirateLaneSchema.safeParse({ ...base, generation: invalid }).success).toBe(false);
+  });
+
   it('stores the hour’s pirate lane sized to the people who played', async () => {
     const { db, clock, season } = await seasonWith(10, 9, 'EU-DYN-A');
     await openAsteroidHour(db, { seasonId: season.id, hourStartsAt: START, now: clock.now() });

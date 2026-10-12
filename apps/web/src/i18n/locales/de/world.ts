@@ -633,6 +633,28 @@ export const focus = {
  * not a usable rule (D124), and this is the only surface any of them appear on.
  */
 export const pirate = {
+  profit: {
+    title: "Geschätzter Nettoertrag",
+    net: "Nettoertrag",
+    range: "Geschätzter Bereich",
+    PROFIT: "Wahrscheinlich profitabel",
+    RISK: "Gewinn ist ungewiss",
+    LOSS: "Wahrscheinlich Ressourcenverlust",
+    empty: "Wähle Schiffe, um den Ertrag zu schätzen.",
+    unavailable: "Belohnungsdaten fehlen; der Gewinn kann nicht geschätzt werden.",
+    pending: "Schätzung wird aktualisiert…",
+    loot: "Heimgebrachte Beute",
+    salvage: "Bergung durch Sammler",
+    loss: "Verlorene Schiffe",
+    repair: "Bezahlte Reparaturen",
+    fuel: "Treibstoff für beide Wege",
+    uncertain: "Schätzungen sind keine Garantie. Andere Angriffe können die Belohnung vor deiner Ankunft verringern.",
+    exclusions: "Erbeutete Schiffe und nicht geborgene öffentliche Trümmer sind nicht eingerechnet.",
+    value: "Die Einschätzung vergleicht Ressourcen nach ihrem Produktionswert.",
+    cargo: "Die Laderäume der Überlebenden könnten für die Beute nicht ausreichen.",
+    losses: "Diese Flotte könnte Schiffe verlieren.",
+    radiation: "Bekannte Flugstrahlung ist eingerechnet. Rückfluggeschwindigkeit und Route können sich ändern.",
+  },
   title: "Piratenflotte",
   /** Level and callsign together. The callsign is season-unique and leaks no index. */
   name: "Piratenflotte L{{level}}-{{callsign}}",

@@ -98,7 +98,7 @@ describe('the frontier price', () => {
     expect(seedLanes.size).toBeGreaterThan(1);
   });
 
-  it('rolls each rich rock deterministically across the inclusive 10–25% range', () => {
+  it('rolls each rich rock deterministically across the inclusive 12–28% range', () => {
     const shares: number[] = [];
     for (let seed = 1; seed <= 50; seed += 1) {
       for (let index = 0; index < 200; index += 1) {
@@ -111,11 +111,11 @@ describe('the frontier price', () => {
         shares.push(profile.deuteriumShare);
       }
     }
-    expect(new Set(shares).size).toBe(16);
+    expect(new Set(shares).size).toBe(17);
     expect(shares.reduce((sum, share) => sum + share, 0) / shares.length)
-      .toBeGreaterThanOrEqual(0.16);
+      .toBeGreaterThanOrEqual(0.19);
     expect(shares.reduce((sum, share) => sum + share, 0) / shares.length)
-      .toBeLessThanOrEqual(0.19);
+      .toBeLessThanOrEqual(0.21);
   });
 
   it('replaces the rolled share of ordinary ore with Deuterium instead of creating value', () => {
@@ -127,10 +127,10 @@ describe('the frontier price', () => {
   });
 
   it('keeps Alloy non-negative at the richest legal Crystal and isotope shares', () => {
-    expect(claimOre(10_000, 2_000, 0.65, 0.25)).toMatchObject({
-      alloy: 200,
+    expect(claimOre(10_000, 2_000, 0.65, DEUTERIUM.isotopeShareMax)).toMatchObject({
+      alloy: 140,
       crystal: 1300,
-      deuterium: 500,
+      deuterium: 560,
       taken: 2000,
     });
   });

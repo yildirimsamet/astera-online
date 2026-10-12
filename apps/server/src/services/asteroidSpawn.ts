@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   ASTEROID_DYNAMIC,
   currentAsteroidGeneration,
+  currentPirateGeneration,
   MULTI_WORLD,
   planAsteroidHour,
   supplyPopulation,
@@ -275,6 +276,7 @@ export async function openAsteroidHour(
         hourStartsAtMinute: minutesSince(season.startsAt, hourStart),
         spawnFromMinute: minutesSince(season.startsAt, spawnFrom),
         seasonEndsAtMinute: minutesSince(season.startsAt, season.endsAt),
+        ...(process.env.PIRATE_BALANCE_V2_ENABLED === 'false' ? {} : { generation: currentPirateGeneration() }),
       })
       : null;
 
@@ -391,6 +393,14 @@ export const pirateLaneSchema = z.object({
   fromMinute: z.number().finite(),
   untilMinute: z.number().finite(),
   count: z.number().int().nonnegative(),
+  generation: z.object({
+    version: z.literal(2),
+    oreValueMult: z.number().finite().nonnegative(),
+    oreByLevel: z.array(z.number().finite().nonnegative()).length(5),
+    deuteriumByLevel: z.array(z.number().finite().nonnegative()).length(5),
+    alloyShare: z.number().finite().min(0).max(1),
+    fuelMult: z.number().finite().nonnegative(),
+  }).strict().optional(),
 }).strict();
 
 /**

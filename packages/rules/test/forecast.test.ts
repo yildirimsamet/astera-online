@@ -13,6 +13,9 @@ import {
   pirateOverrun,
   pirateStats,
   resolveCombat,
+  resolveBattle,
+  soloStack,
+  fleetValue,
   wallKnowledgeOf,
   type Fleet,
   type ForecastInput,
@@ -67,6 +70,21 @@ const grade = (sending: Fleet, wall: Fleet, input: ForecastInput) => {
 const spread = (s: { low: number; high: number }) => s.high / Math.max(1, s.low);
 
 describe('the lines a wing is drawn against', () => {
+  it('agrees with HP battle casualties at the mean roll for identified pirate crews', () => {
+    const crew: Fleet = { PALADIN: 3 };
+    const input: ForecastInput = blind({ pirate: true,
+      defenderDamageMult: pirateStats(4).damageMult, wall: { kind: 'EXACT', fleet: crew } });
+    const firepower = combatValue(crew);
+    for (const count of [1, 2, 3, 4, 5, 6, 8, 12]) {
+      const wing: Fleet = { CORSAIR: count, ARGOSY: 1 };
+      const battle = pirateOverrun(resolveBattle([soloStack(wing, { tech: {} })],
+        [{ stackId: 'pirate', playerId: '', fleet: crew, tech: { tech: {}, damageMult: pirateStats(4).damageMult } }],
+        0, flat, 'HP_PLANET'));
+      const forecast = forecastLoss(wing, { low: firepower, high: firepower }, input);
+      expect(forecast.low).toBeCloseTo(battle.attackerLossValue / fleetValue(wing), 8);
+      expect(forecast.high).toBe(forecast.low);
+    }
+  });
   it('never clears more than it breaks', () => {
     fc.assert(fc.property(
       fc.record({

@@ -1,0 +1,5103 @@
+{
+  "version": 1,
+  "rulesetVersion": 16,
+  "sourceHashes": {
+    "tools/pirate-profit-audit.ts": "cc7142858cf349eb038f504632697aac0af59d636d57da74e522b47b472a9b0f",
+    "tools/pirate-profit-audit.test.ts": "bd70c85a7fc410c95f728d4aff2a444b37de5370b0291768932cc5fe52ce155c",
+    "packages/rules/src/constants.ts": "d1fe93ee59c506172524fa5679f6950ae248409130ec1a52186cea38165df6c1",
+    "packages/rules/src/hulls.ts": "d587ad08c4f3c36b354cdc57e50d47898c6a273d93da2fca38e3f1687cd792bb",
+    "packages/rules/src/combat.ts": "1e049642bf5c0b259a54af2e37dbcf4cf0d71ec76e647f33d65a88d3c2a44761",
+    "packages/rules/src/tempo.ts": "5760b7393970eede2ece873271bb0ef2dbe728164d1d21f204266801541d75a8",
+    "packages/rules/src/economy-profile.ts": "78aebcada452fe8794bc21949f889d220460454d8f64c7d504440352ff1d2274",
+    "packages/rules/src/economy.ts": "9aefb9b43c6e07fbcf12c74c3fb3c803997d7edc2d04977038881f99ef9a9b70",
+    "packages/rules/src/pirates.ts": "e92838e5629edf4a2d31b0e5dd1223f6f8514713422214ad6d5a9c668eb8d1ca",
+    "packages/rules/src/fuel.ts": "0ab076704d6fcbb900c76c5fcf2f04865e8df7e08056e493286c5f6d7a2f9cff",
+    "packages/rules/src/hpDamage.ts": "91c47302a5cde176f92f91a697c2f8932f8325f7d2e6a96219c0c9bc9323bb8c",
+    "packages/rules/src/loot.ts": "ddc14824674a3fbae04a68d85abd857192389a83cb3a2f0dbf79a55caff99c9b",
+    "packages/rules/src/tech.ts": "b776822323746eceabd1dd1a041a81d1c64d006f33d3e3bcdf19ff33ec62fdf5",
+    "packages/rules/src/salvage.ts": "b6e6300b7cff8738bb1bfabe232bcb779c0f7b182483975bdd82b81e63ea3e39",
+    "packages/rules/src/valuation.ts": "03e641b18e8c348f3568fb4722463ef938eda6d4262c8a5ee38ed14703e68d43",
+    "apps/server/src/services/pirateRaid.ts": "b8165d65fa7999dadd4293df237a9ddbfd6fff2d7b8d12b8bae2e29a78e4c4c1",
+    "apps/server/src/services/asteroidSpawn.ts": "76ba748e8f6dccfa28dad22467eb82e84a90eeb5789557d543f5236a16305479"
+  },
+  "assumptions": {
+    "countPerLevel": 256,
+    "planningSamples": 8,
+    "validationSamples": 32,
+    "tech": {
+      "SHIP_POWER": 2,
+      "SHIP_ARMOR": 2,
+      "SHIP_PROPULSION": 2,
+      "STARSHIP_ENGINEERING": 2,
+      "CARGO_HOLDS": 2
+    },
+    "shipyard": 6,
+    "distance": 1000,
+    "radiation": "clear route, no pre-existing damage",
+    "information": "identified crew; choose among four T4 pure gun types and a three-class mix",
+    "forceGrid": [
+      0.75,
+      1,
+      1.25,
+      1.5,
+      2,
+      2.5,
+      3,
+      4,
+      5,
+      8
+    ],
+    "collector": "one collector added to profit fleet, no guaranteed public recovery",
+    "capital": "dispatched fleet cost reported separately; research/building capital not amortized",
+    "validation": "independent seeds, clustered 95% intervals across pirate crews",
+    "supply": "shared galaxy supply, constant smoothed eligible count every hour, all levels weighted",
+    "caveat": "No live telemetry, visibility, contention, expiry, progression, hangar/bay saturation, intercept wait or return radiation; supply numbers are scenario potentials, not observed server inflow."
+  },
+  "normal": [
+    {
+      "level": 1,
+      "cohort": "normal",
+      "uniqueDraws": 256,
+      "planningSamples": 8,
+      "validationSamples": 32,
+      "meanPirateShips": 3.46484375,
+      "meanPirateHoard": {
+        "alloy": 1871.62890625,
+        "crystal": 1020.6171875,
+        "deuterium": 9.12109375
+      },
+      "meanPirateRecipe": {
+        "alloy": 1308.4765625,
+        "crystal": 561.83984375,
+        "deuterium": 0
+      },
+      "meanPirateFirepower": 1419.36328125,
+      "rows": [
+        {
+          "policy": "lean",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 1122.6171875,
+            "crystal": 612.0234375,
+            "deuterium": 5.47265625
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "repairMinutes": 0,
+          "replacementMinutes": 0,
+          "fuel": 15.921875,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 392.5429687499876,
+            "crystal": 168.55195312499828,
+            "deuterium": 0
+          },
+          "expectedCapture": {
+            "alloy": 150.23901041667077,
+            "crystal": 64.27283854166568,
+            "deuterium": 0
+          },
+          "net": {
+            "alloy": 1122.6171875,
+            "crystal": 612.0234375,
+            "deuterium": -10.44921875
+          },
+          "netAE": 2012.2890625,
+          "netWithCaptureAE": 2291.0737499999605,
+          "netP10AE": 784,
+          "netP50AE": 1969,
+          "netP90AE": 3266,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 5838.765625,
+            "crystal": 2359.8359375,
+            "deuterium": 20.046875
+          },
+          "dispatchedCapitalAE": 11199.9375,
+          "straightRoundTripMinutes": 12.82444444444636,
+          "meanNet95AE": [
+            1898.5201148465464,
+            2126.0580101534533
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 7.9609375,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -2.48828125
+              },
+              "netAE": 2267.0390625
+            },
+            {
+              "distance": 2500,
+              "fuel": 37.265625,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -31.79296875
+              },
+              "netAE": 1329.2890625
+            },
+            {
+              "distance": 4000,
+              "fuel": 59.859375,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -54.38671875
+              },
+              "netAE": 606.2890625
+            }
+          ]
+        },
+        {
+          "policy": "profit",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 1122.6171875,
+            "crystal": 612.0234375,
+            "deuterium": 5.47265625
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "repairMinutes": 0,
+          "replacementMinutes": 0,
+          "fuel": 12.4765625,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 392.5429687499876,
+            "crystal": 168.55195312499828,
+            "deuterium": 0
+          },
+          "expectedCapture": {
+            "alloy": 150.23901041667077,
+            "crystal": 64.27283854166568,
+            "deuterium": 0
+          },
+          "net": {
+            "alloy": 1122.6171875,
+            "crystal": 612.0234375,
+            "deuterium": -7.00390625
+          },
+          "netAE": 2122.5390625,
+          "netWithCaptureAE": 2401.3237499999436,
+          "netP10AE": 912,
+          "netP50AE": 2097,
+          "netP90AE": 3330,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 5920.9140625,
+            "crystal": 2381.6328125,
+            "deuterium": 20.6328125
+          },
+          "dispatchedCapitalAE": 11344.4296875,
+          "straightRoundTripMinutes": 17.5077777777782,
+          "meanNet95AE": [
+            2011.4669178351749,
+            2233.6112071648254
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 6.4765625,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -1.00390625
+              },
+              "netAE": 2314.5390625
+            },
+            {
+              "distance": 2500,
+              "fuel": 28.953125,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -23.48046875
+              },
+              "netAE": 1595.2890625
+            },
+            {
+              "distance": 4000,
+              "fuel": 45.4375,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -39.96484375
+              },
+              "netAE": 1067.7890625
+            }
+          ]
+        },
+        {
+          "policy": "safe",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 1122.6171875,
+            "crystal": 612.0234375,
+            "deuterium": 5.47265625
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "repairMinutes": 0,
+          "replacementMinutes": 0,
+          "fuel": 15.921875,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 392.5429687499876,
+            "crystal": 168.55195312499828,
+            "deuterium": 0
+          },
+          "expectedCapture": {
+            "alloy": 150.23901041667077,
+            "crystal": 64.27283854166568,
+            "deuterium": 0
+          },
+          "net": {
+            "alloy": 1122.6171875,
+            "crystal": 612.0234375,
+            "deuterium": -10.44921875
+          },
+          "netAE": 2012.2890625,
+          "netWithCaptureAE": 2291.0737499999605,
+          "netP10AE": 784,
+          "netP50AE": 1969,
+          "netP90AE": 3266,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 5838.765625,
+            "crystal": 2359.8359375,
+            "deuterium": 20.046875
+          },
+          "dispatchedCapitalAE": 11199.9375,
+          "straightRoundTripMinutes": 12.82444444444636,
+          "meanNet95AE": [
+            1898.5201148465464,
+            2126.0580101534533
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 7.9609375,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -2.48828125
+              },
+              "netAE": 2267.0390625
+            },
+            {
+              "distance": 2500,
+              "fuel": 37.265625,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -31.79296875
+              },
+              "netAE": 1329.2890625
+            },
+            {
+              "distance": 4000,
+              "fuel": 59.859375,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -54.38671875
+              },
+              "netAE": 606.2890625
+            }
+          ]
+        },
+        {
+          "policy": "oversized",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 1122.6171875,
+            "crystal": 612.0234375,
+            "deuterium": 5.47265625
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "repairMinutes": 0,
+          "replacementMinutes": 0,
+          "fuel": 18.7890625,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 392.5429687499876,
+            "crystal": 168.55195312499828,
+            "deuterium": 0
+          },
+          "expectedCapture": {
+            "alloy": 150.23901041667077,
+            "crystal": 64.27283854166568,
+            "deuterium": 0
+          },
+          "net": {
+            "alloy": 1122.6171875,
+            "crystal": 612.0234375,
+            "deuterium": -13.31640625
+          },
+          "netAE": 1920.5390625,
+          "netWithCaptureAE": 2199.3237499999886,
+          "netP10AE": 912,
+          "netP50AE": 1891,
+          "netP90AE": 3210,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 10495.01171875,
+            "crystal": 4114.21875,
+            "deuterium": 39.40234375
+          },
+          "dispatchedCapitalAE": 19984.32421875,
+          "straightRoundTripMinutes": 19.741111111112073,
+          "meanNet95AE": [
+            1817.5788607777852,
+            2023.4992642222148
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 9.84375,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -4.37109375
+              },
+              "netAE": 2206.7890625
+            },
+            {
+              "distance": 2500,
+              "fuel": 44.53125,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -39.05859375
+              },
+              "netAE": 1096.7890625
+            },
+            {
+              "distance": 4000,
+              "fuel": 71.3828125,
+              "net": {
+                "alloy": 1122.6171875,
+                "crystal": 612.0234375,
+                "deuterium": -65.91015625
+              },
+              "netAE": 237.5390625
+            }
+          ]
+        },
+        {
+          "policy": "collector",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 1122.6171875,
+            "crystal": 612.0234375,
+            "deuterium": 5.47265625
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "repairMinutes": 0,
+          "replacementMinutes": 0,
+          "fuel": 52.4765625,
+          "salvage": {
+            "alloy": 392.21875,
+            "crystal": 168.0703125,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 392.21875,
+            "crystal": 168.0703125,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 392.5429687499876,
+            "crystal": 168.55195312499828,
+            "deuterium": 0
+          },
+          "expectedCapture": {
+            "alloy": 150.23901041667077,
+            "crystal": 64.27283854166568,
+            "deuterium": 0
+          },
+          "net": {
+            "alloy": 1514.8359375,
+            "crystal": 780.09375,
+            "deuterium": -47.00390625
+          },
+          "netAE": 1570.8984375,
+          "netWithCaptureAE": 1849.6831250000064,
+          "netP10AE": -1,
+          "netP50AE": 1536,
+          "netP90AE": 3138,
+          "negativeNetPct": 14.0625,
+          "dispatchedCapital": {
+            "alloy": 18920.9140625,
+            "crystal": 8881.6328125,
+            "deuterium": 20.6328125
+          },
+          "dispatchedCapitalAE": 37344.4296875,
+          "straightRoundTripMinutes": 17.5077777777782,
+          "meanNet95AE": [
+            1426.1192979427838,
+            1715.6775770572162
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 26.4765625,
+              "net": {
+                "alloy": 1514.8359375,
+                "crystal": 780.09375,
+                "deuterium": -21.00390625
+              },
+              "netAE": 2402.8984375
+            },
+            {
+              "distance": 2500,
+              "fuel": 128.953125,
+              "net": {
+                "alloy": 1514.8359375,
+                "crystal": 780.09375,
+                "deuterium": -123.48046875
+              },
+              "netAE": -876.3515625
+            },
+            {
+              "distance": 4000,
+              "fuel": 205.4375,
+              "net": {
+                "alloy": 1514.8359375,
+                "crystal": 780.09375,
+                "deuterium": -199.96484375
+              },
+              "netAE": -3323.8515625
+            }
+          ]
+        }
+      ],
+      "representative": {
+        "crew": {
+          "WARDEN": 1,
+          "PIKE": 2
+        },
+        "fleets": {
+          "lean": {
+            "CORSAIR": 1,
+            "COURIER": 1
+          },
+          "profit": {
+            "CATACLYSM": 1,
+            "COURIER": 1
+          },
+          "safe": {
+            "CORSAIR": 1,
+            "COURIER": 1
+          },
+          "oversized": {
+            "CITADEL": 2
+          },
+          "collector": {
+            "CATACLYSM": 1,
+            "COURIER": 1,
+            "GARBAGE_COLLECTOR": 1
+          }
+        }
+      }
+    },
+    {
+      "level": 2,
+      "cohort": "normal",
+      "uniqueDraws": 256,
+      "planningSamples": 8,
+      "validationSamples": 32,
+      "meanPirateShips": 3.6015625,
+      "meanPirateHoard": {
+        "alloy": 3938.296875,
+        "crystal": 2147.89453125,
+        "deuterium": 16.71875
+      },
+      "meanPirateRecipe": {
+        "alloy": 2746.828125,
+        "crystal": 1179.28515625,
+        "deuterium": 8.74609375
+      },
+      "meanPirateFirepower": 3039.8515625,
+      "rows": [
+        {
+          "policy": "lean",
+          "trials": 8192,
+          "decisivePct": 99.96337890625,
+          "partialPct": 0.03662109375,
+          "fullDecisiveLootPct": 99.96337890625,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 2361.8475341796875,
+            "crystal": 1287.9229736328125,
+            "deuterium": 10.0283203125
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 317.9305419921875,
+            "crystal": 122.3443603515625,
+            "deuterium": 1.359130859375
+          },
+          "repairMinutes": 0.9949835086843554,
+          "replacementMinutes": 0,
+          "fuel": 16.2421875,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 823.9619750976386,
+            "crystal": 353.74951171875006,
+            "deuterium": 2.6236083984374767
+          },
+          "expectedCapture": {
+            "alloy": 213.84559765625,
+            "crystal": 91.69486393229157,
+            "deuterium": 0.6694365234375098
+          },
+          "net": {
+            "alloy": 2043.9169921875,
+            "crystal": 1165.57861328125,
+            "deuterium": -7.572998046875
+          },
+          "netAE": 4132.73828125,
+          "netWithCaptureAE": 4551.395575520766,
+          "netP10AE": 1750,
+          "netP50AE": 3933,
+          "netP90AE": 6907,
+          "negativeNetPct": 0.15869140625,
+          "dispatchedCapital": {
+            "alloy": 6415.8125,
+            "crystal": 2629.90625,
+            "deuterium": 25.0625
+          },
+          "dispatchedCapitalAE": 12477.625,
+          "straightRoundTripMinutes": 12.907777777779637,
+          "meanNet95AE": [
+            3892.8783437525485,
+            4372.598218747452
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 8.1328125,
+              "net": {
+                "alloy": 2043.9169921875,
+                "crystal": 1165.57861328125,
+                "deuterium": 0.536376953125
+              },
+              "netAE": 4392.23828125
+            },
+            {
+              "distance": 2500,
+              "fuel": 39.8125,
+              "net": {
+                "alloy": 2043.9169921875,
+                "crystal": 1165.57861328125,
+                "deuterium": -31.143310546875
+              },
+              "netAE": 3378.48828125
+            },
+            {
+              "distance": 4000,
+              "fuel": 63.765625,
+              "net": {
+                "alloy": 2043.9169921875,
+                "crystal": 1165.57861328125,
+                "deuterium": -55.096435546875
+              },
+              "netAE": 2611.98828125
+            }
+          ]
+        },
+        {
+          "policy": "profit",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 2362.5546875,
+            "crystal": 1288.30859375,
+            "deuterium": 10.03125
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 2.1629638671875,
+            "crystal": 0.832763671875,
+            "deuterium": 0.01025390625
+          },
+          "repairMinutes": 0.00676920684353667,
+          "replacementMinutes": 0,
+          "fuel": 14.1875,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 824.0484374999824,
+            "crystal": 353.78554687500014,
+            "deuterium": 2.6238281249999766
+          },
+          "expectedCapture": {
+            "alloy": 213.93853906250004,
+            "crystal": 91.73354166666655,
+            "deuterium": 0.6697031250000103
+          },
+          "net": {
+            "alloy": 2360.3917236328125,
+            "crystal": 1287.475830078125,
+            "deuterium": -4.16650390625
+          },
+          "netAE": 4802.0152587890625,
+          "netWithCaptureAE": 5220.851381184821,
+          "netP10AE": 2231,
+          "netP50AE": 4754,
+          "netP90AE": 7505,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 7347.95703125,
+            "crystal": 2979.484375,
+            "deuterium": 28.83984375
+          },
+          "dispatchedCapitalAE": 14229.80078125,
+          "straightRoundTripMinutes": 19.56777777777869,
+          "meanNet95AE": [
+            4559.243953465458,
+            5044.786564112667
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 7.8203125,
+              "net": {
+                "alloy": 2360.3917236328125,
+                "crystal": 1287.475830078125,
+                "deuterium": 2.20068359375
+              },
+              "netAE": 5005.7652587890625
+            },
+            {
+              "distance": 2500,
+              "fuel": 32.75,
+              "net": {
+                "alloy": 2360.3917236328125,
+                "crystal": 1287.475830078125,
+                "deuterium": -22.72900390625
+              },
+              "netAE": 4208.0152587890625
+            },
+            {
+              "distance": 4000,
+              "fuel": 52.1953125,
+              "net": {
+                "alloy": 2360.3917236328125,
+                "crystal": 1287.475830078125,
+                "deuterium": -42.17431640625
+              },
+              "netAE": 3585.7652587890625
+            }
+          ]
+        },
+        {
+          "policy": "safe",
+          "trials": 8192,
+          "decisivePct": 99.96337890625,
+          "partialPct": 0.03662109375,
+          "fullDecisiveLootPct": 99.96337890625,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 2361.8475341796875,
+            "crystal": 1287.9229736328125,
+            "deuterium": 10.0283203125
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 317.9305419921875,
+            "crystal": 122.3443603515625,
+            "deuterium": 1.359130859375
+          },
+          "repairMinutes": 0.9949835086843554,
+          "replacementMinutes": 0,
+          "fuel": 16.2421875,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 823.9619750976386,
+            "crystal": 353.74951171875006,
+            "deuterium": 2.6236083984374767
+          },
+          "expectedCapture": {
+            "alloy": 213.84559765625,
+            "crystal": 91.69486393229157,
+            "deuterium": 0.6694365234375098
+          },
+          "net": {
+            "alloy": 2043.9169921875,
+            "crystal": 1165.57861328125,
+            "deuterium": -7.572998046875
+          },
+          "netAE": 4132.73828125,
+          "netWithCaptureAE": 4551.395575520766,
+          "netP10AE": 1750,
+          "netP50AE": 3933,
+          "netP90AE": 6907,
+          "negativeNetPct": 0.15869140625,
+          "dispatchedCapital": {
+            "alloy": 6415.8125,
+            "crystal": 2629.90625,
+            "deuterium": 25.0625
+          },
+          "dispatchedCapitalAE": 12477.625,
+          "straightRoundTripMinutes": 12.907777777779637,
+          "meanNet95AE": [
+            3892.8783437525485,
+            4372.598218747452
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 8.1328125,
+              "net": {
+                "alloy": 2043.9169921875,
+                "crystal": 1165.57861328125,
+                "deuterium": 0.536376953125
+              },
+              "netAE": 4392.23828125
+            },
+            {
+              "distance": 2500,
+              "fuel": 39.8125,
+              "net": {
+                "alloy": 2043.9169921875,
+                "crystal": 1165.57861328125,
+                "deuterium": -31.143310546875
+              },
+              "netAE": 3378.48828125
+            },
+            {
+              "distance": 4000,
+              "fuel": 63.765625,
+              "net": {
+                "alloy": 2043.9169921875,
+                "crystal": 1165.57861328125,
+                "deuterium": -55.096435546875
+              },
+              "netAE": 2611.98828125
+            }
+          ]
+        },
+        {
+          "policy": "oversized",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 2362.5546875,
+            "crystal": 1288.30859375,
+            "deuterium": 10.03125
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "repairMinutes": 0,
+          "replacementMinutes": 0,
+          "fuel": 34.28125,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 824.0484374999824,
+            "crystal": 353.78554687500014,
+            "deuterium": 2.6238281249999766
+          },
+          "expectedCapture": {
+            "alloy": 213.93853906250004,
+            "crystal": 91.73354166666655,
+            "deuterium": 0.6697031250000103
+          },
+          "net": {
+            "alloy": 2362.5546875,
+            "crystal": 1288.30859375,
+            "deuterium": -24.25
+          },
+          "netAE": 4163.171875,
+          "netWithCaptureAE": 4582.007997395755,
+          "netP10AE": 1911,
+          "netP50AE": 4035,
+          "netP90AE": 6570,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 20833.6015625,
+            "crystal": 8126.140625,
+            "deuterium": 79.953125
+          },
+          "dispatchedCapitalAE": 39644.3828125,
+          "straightRoundTripMinutes": 20.274444444445397,
+          "meanNet95AE": [
+            3937.77399076697,
+            4388.56975923303
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 17.609375,
+              "net": {
+                "alloy": 2362.5546875,
+                "crystal": 1288.30859375,
+                "deuterium": -7.578125
+              },
+              "netAE": 4696.671875
+            },
+            {
+              "distance": 2500,
+              "fuel": 84.0390625,
+              "net": {
+                "alloy": 2362.5546875,
+                "crystal": 1288.30859375,
+                "deuterium": -74.0078125
+              },
+              "netAE": 2570.921875
+            },
+            {
+              "distance": 4000,
+              "fuel": 134.5703125,
+              "net": {
+                "alloy": 2362.5546875,
+                "crystal": 1288.30859375,
+                "deuterium": -124.5390625
+              },
+              "netAE": 953.921875
+            }
+          ]
+        },
+        {
+          "policy": "collector",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 2362.5546875,
+            "crystal": 1288.30859375,
+            "deuterium": 10.03125
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 2.1629638671875,
+            "crystal": 0.832763671875,
+            "deuterium": 0.01025390625
+          },
+          "repairMinutes": 0.00676920684353667,
+          "replacementMinutes": 0,
+          "fuel": 54.1875,
+          "salvage": {
+            "alloy": 823.6171875,
+            "crystal": 353.3828125,
+            "deuterium": 2.109375
+          },
+          "npcSalvage": {
+            "alloy": 823.6171875,
+            "crystal": 353.3828125,
+            "deuterium": 2.109375
+          },
+          "npcWreckCreated": {
+            "alloy": 824.0484374999824,
+            "crystal": 353.78554687500014,
+            "deuterium": 2.6238281249999766
+          },
+          "expectedCapture": {
+            "alloy": 213.93853906250004,
+            "crystal": 91.73354166666655,
+            "deuterium": 0.6697031250000103
+          },
+          "net": {
+            "alloy": 3184.0089111328125,
+            "crystal": 1640.858642578125,
+            "deuterium": -42.05712890625
+          },
+          "netAE": 5119.8980712890625,
+          "netWithCaptureAE": 5538.734193684819,
+          "netP10AE": 1696,
+          "netP50AE": 5036,
+          "netP90AE": 8721,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 20347.95703125,
+            "crystal": 9479.484375,
+            "deuterium": 28.83984375
+          },
+          "dispatchedCapitalAE": 40229.80078125,
+          "straightRoundTripMinutes": 19.707777777778773,
+          "meanNet95AE": [
+            4796.288146861403,
+            5443.507995716722
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 27.8203125,
+              "net": {
+                "alloy": 3184.0089111328125,
+                "crystal": 1640.858642578125,
+                "deuterium": -15.68994140625
+              },
+              "netAE": 5963.6480712890625
+            },
+            {
+              "distance": 2500,
+              "fuel": 132.75,
+              "net": {
+                "alloy": 3184.0089111328125,
+                "crystal": 1640.858642578125,
+                "deuterium": -120.61962890625
+              },
+              "netAE": 2605.8980712890625
+            },
+            {
+              "distance": 4000,
+              "fuel": 212.1953125,
+              "net": {
+                "alloy": 3184.0089111328125,
+                "crystal": 1640.858642578125,
+                "deuterium": -200.06494140625
+              },
+              "netAE": 63.6480712890625
+            }
+          ]
+        }
+      ],
+      "representative": {
+        "crew": {
+          "SENTINEL": 1,
+          "TALON": 1,
+          "RAMPART": 1
+        },
+        "fleets": {
+          "lean": {
+            "CORSAIR": 1,
+            "COURIER": 2
+          },
+          "profit": {
+            "CITADEL": 1,
+            "COURIER": 2
+          },
+          "safe": {
+            "CORSAIR": 1,
+            "COURIER": 2
+          },
+          "oversized": {
+            "CITADEL": 3,
+            "COURIER": 1
+          },
+          "collector": {
+            "CITADEL": 1,
+            "COURIER": 2,
+            "GARBAGE_COLLECTOR": 1
+          }
+        }
+      }
+    },
+    {
+      "level": 3,
+      "cohort": "normal",
+      "uniqueDraws": 256,
+      "planningSamples": 8,
+      "validationSamples": 32,
+      "meanPirateShips": 3.59375,
+      "meanPirateHoard": {
+        "alloy": 8248.3671875,
+        "crystal": 4498.90625,
+        "deuterium": 31.11328125
+      },
+      "meanPirateRecipe": {
+        "alloy": 5876.56640625,
+        "crystal": 2339.99609375,
+        "deuterium": 24.09375
+      },
+      "meanPirateFirepower": 6832.3828125,
+      "rows": [
+        {
+          "policy": "lean",
+          "trials": 8192,
+          "decisivePct": 99.7314453125,
+          "partialPct": 0.2685546875,
+          "fullDecisiveLootPct": 99.70703125,
+          "noDestroyedShipPct": 93.603515625,
+          "loot": {
+            "alloy": 4942.528076171875,
+            "crystal": 2695.6361083984375,
+            "deuterium": 18.642822265625
+          },
+          "lossCost": {
+            "alloy": 325.229736328125,
+            "crystal": 125.0888671875,
+            "deuterium": 1.282958984375
+          },
+          "lostShips": 0.06396484375,
+          "repair": {
+            "alloy": 2244.0950927734375,
+            "crystal": 863.3758544921875,
+            "deuterium": 9.2288818359375
+          },
+          "repairMinutes": 7.024246772333344,
+          "replacementMinutes": 1.0181622172510856,
+          "fuel": 20.7109375,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 1761.443481445322,
+            "crystal": 701.4047607422013,
+            "deuterium": 7.223437500000144
+          },
+          "expectedCapture": {
+            "alloy": 266.15972037760395,
+            "crystal": 105.67725032552143,
+            "deuterium": 1.0728274739583339
+          },
+          "net": {
+            "alloy": 2373.2032470703125,
+            "crystal": 1707.17138671875,
+            "deuterium": -12.5799560546875
+          },
+          "netAE": 5384.9874267578125,
+          "netWithCaptureAE": 5896.832126953261,
+          "netP10AE": 543,
+          "netP50AE": 4847,
+          "netP90AE": 10640,
+          "negativeNetPct": 6.21337890625,
+          "dispatchedCapital": {
+            "alloy": 8862.17578125,
+            "crystal": 3675.4765625,
+            "deuterium": 40.22265625
+          },
+          "dispatchedCapitalAE": 17500.25390625,
+          "straightRoundTripMinutes": 13.86419444444555,
+          "meanNet95AE": [
+            4905.255678302855,
+            5864.71917521277
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 10.546875,
+              "net": {
+                "alloy": 2373.2032470703125,
+                "crystal": 1707.17138671875,
+                "deuterium": -2.4158935546875
+              },
+              "netAE": 5710.2374267578125
+            },
+            {
+              "distance": 2500,
+              "fuel": 50.40625,
+              "net": {
+                "alloy": 2373.2032470703125,
+                "crystal": 1707.17138671875,
+                "deuterium": -42.2752685546875
+              },
+              "netAE": 4434.7374267578125
+            },
+            {
+              "distance": 4000,
+              "fuel": 80.9296875,
+              "net": {
+                "alloy": 2373.2032470703125,
+                "crystal": 1707.17138671875,
+                "deuterium": -72.7987060546875
+              },
+              "netAE": 3457.9874267578125
+            }
+          ]
+        },
+        {
+          "policy": "profit",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 4948.6171875,
+            "crystal": 2698.95703125,
+            "deuterium": 18.66796875
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 107.972412109375,
+            "crystal": 41.560302734375,
+            "deuterium": 0.4691162109375
+          },
+          "repairMinutes": 0.33792348709823544,
+          "replacementMinutes": 0,
+          "fuel": 31.171875,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 1762.9699218750086,
+            "crystal": 701.9988281250137,
+            "deuterium": 7.2281250000001425
+          },
+          "expectedCapture": {
+            "alloy": 266.9340416666667,
+            "crystal": 105.9755833333338,
+            "deuterium": 1.075177083333334
+          },
+          "net": {
+            "alloy": 4840.644775390625,
+            "crystal": 2657.396728515625,
+            "deuterium": -12.9730224609375
+          },
+          "netAE": 9740.301513671875,
+          "netWithCaptureAE": 10253.592388671685,
+          "netP10AE": 5086,
+          "netP50AE": 9205,
+          "netP90AE": 14568,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 15661.78125,
+            "crystal": 6276.09375,
+            "deuterium": 65.5390625
+          },
+          "dispatchedCapitalAE": 30311.21875,
+          "straightRoundTripMinutes": 18.49111111111145,
+          "meanNet95AE": [
+            9284.274583056807,
+            10196.328444286943
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 16.0078125,
+              "net": {
+                "alloy": 4840.644775390625,
+                "crystal": 2657.396728515625,
+                "deuterium": 2.1910400390625
+              },
+              "netAE": 10225.551513671875
+            },
+            {
+              "distance": 2500,
+              "fuel": 75.9453125,
+              "net": {
+                "alloy": 4840.644775390625,
+                "crystal": 2657.396728515625,
+                "deuterium": -57.7464599609375
+              },
+              "netAE": 8307.551513671875
+            },
+            {
+              "distance": 4000,
+              "fuel": 121.59375,
+              "net": {
+                "alloy": 4840.644775390625,
+                "crystal": 2657.396728515625,
+                "deuterium": -103.3948974609375
+              },
+              "netAE": 6846.801513671875
+            }
+          ]
+        },
+        {
+          "policy": "safe",
+          "trials": 8192,
+          "decisivePct": 99.7314453125,
+          "partialPct": 0.2685546875,
+          "fullDecisiveLootPct": 99.70703125,
+          "noDestroyedShipPct": 99.84130859375,
+          "loot": {
+            "alloy": 4942.528076171875,
+            "crystal": 2695.6361083984375,
+            "deuterium": 18.642822265625
+          },
+          "lossCost": {
+            "alloy": 8.045654296875,
+            "crystal": 3.094482421875,
+            "deuterium": 0.03173828125
+          },
+          "lostShips": 0.0015869140625,
+          "repair": {
+            "alloy": 2384.0555419921875,
+            "crystal": 917.2470703125,
+            "deuterium": 9.8126220703125
+          },
+          "repairMinutes": 7.4623644646646206,
+          "replacementMinutes": 0.025187647619912792,
+          "fuel": 21.1328125,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 1761.443481445322,
+            "crystal": 701.4047607422013,
+            "deuterium": 7.223437500000144
+          },
+          "expectedCapture": {
+            "alloy": 266.15972037760395,
+            "crystal": 105.67725032552143,
+            "deuterium": 1.0728274739583339
+          },
+          "net": {
+            "alloy": 2550.4268798828125,
+            "crystal": 1775.2945556640625,
+            "deuterium": -12.3343505859375
+          },
+          "netAE": 5706.3167724609375,
+          "netWithCaptureAE": 6218.161472656336,
+          "netP10AE": 795,
+          "netP50AE": 5315,
+          "netP90AE": 11036,
+          "negativeNetPct": 4.4189453125,
+          "dispatchedCapital": {
+            "alloy": 9074.98046875,
+            "crystal": 3758.765625,
+            "deuterium": 40.80078125
+          },
+          "dispatchedCapitalAE": 17898.13671875,
+          "straightRoundTripMinutes": 14.071111111112321,
+          "meanNet95AE": [
+            5240.786970120703,
+            6171.846574801172
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 10.8125,
+              "net": {
+                "alloy": 2550.4268798828125,
+                "crystal": 1775.2945556640625,
+                "deuterium": -2.0140380859375
+              },
+              "netAE": 6036.5667724609375
+            },
+            {
+              "distance": 2500,
+              "fuel": 51.375,
+              "net": {
+                "alloy": 2550.4268798828125,
+                "crystal": 1775.2945556640625,
+                "deuterium": -42.5765380859375
+              },
+              "netAE": 4738.5667724609375
+            },
+            {
+              "distance": 4000,
+              "fuel": 82.4609375,
+              "net": {
+                "alloy": 2550.4268798828125,
+                "crystal": 1775.2945556640625,
+                "deuterium": -73.6624755859375
+              },
+              "netAE": 3743.8167724609375
+            }
+          ]
+        },
+        {
+          "policy": "oversized",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 4948.6171875,
+            "crystal": 2698.95703125,
+            "deuterium": 18.66796875
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 129.873046875,
+            "crystal": 49.99267578125,
+            "deuterium": 0.563720703125
+          },
+          "repairMinutes": 0.40647741323121744,
+          "replacementMinutes": 0,
+          "fuel": 72.859375,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 1762.9699218750086,
+            "crystal": 701.9988281250137,
+            "deuterium": 7.2281250000001425
+          },
+          "expectedCapture": {
+            "alloy": 266.9340416666667,
+            "crystal": 105.9755833333338,
+            "deuterium": 1.075177083333334
+          },
+          "net": {
+            "alloy": 4818.744140625,
+            "crystal": 2648.96435546875,
+            "deuterium": -54.755126953125
+          },
+          "netAE": 8364.5087890625,
+          "netWithCaptureAE": 8877.799664062382,
+          "netP10AE": 4318,
+          "netP50AE": 7774,
+          "netP90AE": 13124,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 44359.2890625,
+            "crystal": 17232.2265625,
+            "deuterium": 173.546875
+          },
+          "dispatchedCapitalAE": 84377.2421875,
+          "straightRoundTripMinutes": 20.907777777778737,
+          "meanNet95AE": [
+            7948.16560523762,
+            8780.85197288738
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 36.875,
+              "net": {
+                "alloy": 4818.744140625,
+                "crystal": 2648.96435546875,
+                "deuterium": -18.770751953125
+              },
+              "netAE": 9516.0087890625
+            },
+            {
+              "distance": 2500,
+              "fuel": 180.609375,
+              "net": {
+                "alloy": 4818.744140625,
+                "crystal": 2648.96435546875,
+                "deuterium": -162.505126953125
+              },
+              "netAE": 4916.5087890625
+            },
+            {
+              "distance": 4000,
+              "fuel": 288.8984375,
+              "net": {
+                "alloy": 4818.744140625,
+                "crystal": 2648.96435546875,
+                "deuterium": -270.794189453125
+              },
+              "netAE": 1451.2587890625
+            }
+          ]
+        },
+        {
+          "policy": "collector",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 4948.6171875,
+            "crystal": 2698.95703125,
+            "deuterium": 18.66796875
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 107.972412109375,
+            "crystal": 41.560302734375,
+            "deuterium": 0.4691162109375
+          },
+          "repairMinutes": 0.33792348709823544,
+          "replacementMinutes": 0,
+          "fuel": 71.171875,
+          "salvage": {
+            "alloy": 1762.4921875,
+            "crystal": 701.53125,
+            "deuterium": 6.7890625
+          },
+          "npcSalvage": {
+            "alloy": 1762.4921875,
+            "crystal": 701.53125,
+            "deuterium": 6.7890625
+          },
+          "npcWreckCreated": {
+            "alloy": 1762.9699218750086,
+            "crystal": 701.9988281250137,
+            "deuterium": 7.2281250000001425
+          },
+          "expectedCapture": {
+            "alloy": 266.9340416666667,
+            "crystal": 105.9755833333338,
+            "deuterium": 1.075177083333334
+          },
+          "net": {
+            "alloy": 6603.136962890625,
+            "crystal": 3358.927978515625,
+            "deuterium": -46.1839599609375
+          },
+          "netAE": 11843.106201171875,
+          "netWithCaptureAE": 12356.397076171834,
+          "netP10AE": 5464,
+          "netP50AE": 11290,
+          "netP90AE": 18617,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 28661.78125,
+            "crystal": 12776.09375,
+            "deuterium": 65.5390625
+          },
+          "dispatchedCapitalAE": 56311.21875,
+          "straightRoundTripMinutes": 19.07444444444523,
+          "meanNet95AE": [
+            11218.110800983957,
+            12468.101601359793
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 36.0078125,
+              "net": {
+                "alloy": 6603.136962890625,
+                "crystal": 3358.927978515625,
+                "deuterium": -11.0198974609375
+              },
+              "netAE": 12968.356201171875
+            },
+            {
+              "distance": 2500,
+              "fuel": 175.9453125,
+              "net": {
+                "alloy": 6603.136962890625,
+                "crystal": 3358.927978515625,
+                "deuterium": -150.9573974609375
+              },
+              "netAE": 8490.356201171875
+            },
+            {
+              "distance": 4000,
+              "fuel": 281.59375,
+              "net": {
+                "alloy": 6603.136962890625,
+                "crystal": 3358.927978515625,
+                "deuterium": -256.6058349609375
+              },
+              "netAE": 5109.606201171875
+            }
+          ]
+        }
+      ],
+      "representative": {
+        "crew": {
+          "LEVIATHAN": 1,
+          "WAYFARER": 1,
+          "STRONGHOLD": 1,
+          "TALON": 1,
+          "WARDEN": 1
+        },
+        "fleets": {
+          "lean": {
+            "CORSAIR": 1,
+            "WAYFARER": 2
+          },
+          "profit": {
+            "CITADEL": 3,
+            "COURIER": 5
+          },
+          "safe": {
+            "CORSAIR": 1,
+            "WAYFARER": 2
+          },
+          "oversized": {
+            "CITADEL": 6,
+            "WAYFARER": 1
+          },
+          "collector": {
+            "CITADEL": 3,
+            "COURIER": 5,
+            "GARBAGE_COLLECTOR": 1
+          }
+        }
+      }
+    },
+    {
+      "level": 4,
+      "cohort": "normal",
+      "uniqueDraws": 256,
+      "planningSamples": 8,
+      "validationSamples": 32,
+      "meanPirateShips": 3.46484375,
+      "meanPirateHoard": {
+        "alloy": 16909.96484375,
+        "crystal": 9223.3671875,
+        "deuterium": 59.35546875
+      },
+      "meanPirateRecipe": {
+        "alloy": 12076.765625,
+        "crystal": 4755.6953125,
+        "deuterium": 61.09375
+      },
+      "meanPirateFirepower": 14049.38671875,
+      "rows": [
+        {
+          "policy": "lean",
+          "trials": 8192,
+          "decisivePct": 99.7314453125,
+          "partialPct": 0.146484375,
+          "fullDecisiveLootPct": 99.64599609375,
+          "noDestroyedShipPct": 76.11083984375,
+          "loot": {
+            "alloy": 10123.748901367188,
+            "crystal": 5521.6766357421875,
+            "deuterium": 35.53662109375
+          },
+          "lossCost": {
+            "alloy": 1530.19482421875,
+            "crystal": 588.573486328125,
+            "deuterium": 6.036376953125
+          },
+          "lostShips": 0.2884521484375,
+          "repair": {
+            "alloy": 3721.7513427734375,
+            "crystal": 1431.906494140625,
+            "deuterium": 15.2235107421875
+          },
+          "repairMinutes": 11.649837378231329,
+          "replacementMinutes": 4.790496826171914,
+          "fuel": 37.484375,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 3618.003149413999,
+            "crystal": 1424.7010253906565,
+            "deuterium": 18.29934082031255
+          },
+          "expectedCapture": {
+            "alloy": 433.1126916503803,
+            "crystal": 170.2179040527404,
+            "deuterium": 2.1516984863281454
+          },
+          "net": {
+            "alloy": 4871.802734375,
+            "crystal": 3501.1966552734375,
+            "deuterium": -23.2076416015625
+          },
+          "netAE": 11131.551513671875,
+          "netWithCaptureAE": 11973.954364990303,
+          "netP10AE": 2529,
+          "netP50AE": 9348,
+          "netP90AE": 23121,
+          "negativeNetPct": 2.5146484375,
+          "dispatchedCapital": {
+            "alloy": 16758.2265625,
+            "crystal": 6874.92578125,
+            "deuterium": 85.0703125
+          },
+          "dispatchedCapitalAE": 33230.328125,
+          "straightRoundTripMinutes": 14.671887152778533,
+          "meanNet95AE": [
+            10145.068211605228,
+            12118.034815738522
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 19.1484375,
+              "net": {
+                "alloy": 4871.802734375,
+                "crystal": 3501.1966552734375,
+                "deuterium": -4.8717041015625
+              },
+              "netAE": 11718.301513671875
+            },
+            {
+              "distance": 2500,
+              "fuel": 92.171875,
+              "net": {
+                "alloy": 4871.802734375,
+                "crystal": 3501.1966552734375,
+                "deuterium": -77.8951416015625
+              },
+              "netAE": 9381.551513671875
+            },
+            {
+              "distance": 4000,
+              "fuel": 147.6875,
+              "net": {
+                "alloy": 4871.802734375,
+                "crystal": 3501.1966552734375,
+                "deuterium": -133.4107666015625
+              },
+              "netAE": 7605.051513671875
+            }
+          ]
+        },
+        {
+          "policy": "profit",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 98.13232421875,
+          "loot": {
+            "alloy": 10145.59765625,
+            "crystal": 5533.59375,
+            "deuterium": 35.61328125
+          },
+          "lossCost": {
+            "alloy": 109.6934814453125,
+            "crystal": 42.197998046875,
+            "deuterium": 0.4327392578125
+          },
+          "lostShips": 0.0186767578125,
+          "repair": {
+            "alloy": 1489.9912109375,
+            "crystal": 573.4013671875,
+            "deuterium": 6.2681884765625
+          },
+          "repairMinutes": 4.663635761636708,
+          "replacementMinutes": 0.343423887740733,
+          "fuel": 72.4921875,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 3623.029687499935,
+            "crystal": 1426.7085937500312,
+            "deuterium": 18.328125000000043
+          },
+          "expectedCapture": {
+            "alloy": 434.3931328124897,
+            "crystal": 170.71998437500636,
+            "deuterium": 2.15789062500002
+          },
+          "net": {
+            "alloy": 8545.912963867188,
+            "crystal": 4917.994384765625,
+            "deuterium": -43.579833984375
+          },
+          "netAE": 16987.347045898438,
+          "netWithCaptureAE": 17832.23264746132,
+          "netP10AE": 9956,
+          "netP50AE": 15365,
+          "netP90AE": 28160,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 37244.26171875,
+            "crystal": 14709.765625,
+            "deuterium": 162.09765625
+          },
+          "dispatchedCapitalAE": 71850.91796875,
+          "straightRoundTripMinutes": 17.941111111110995,
+          "meanNet95AE": [
+            16106.016758582111,
+            17868.677333214764
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 36.78125,
+              "net": {
+                "alloy": 8545.912963867188,
+                "crystal": 4917.994384765625,
+                "deuterium": -7.868896484375
+              },
+              "netAE": 18130.097045898438
+            },
+            {
+              "distance": 2500,
+              "fuel": 179.6328125,
+              "net": {
+                "alloy": 8545.912963867188,
+                "crystal": 4917.994384765625,
+                "deuterium": -150.720458984375
+              },
+              "netAE": 13558.847045898438
+            },
+            {
+              "distance": 4000,
+              "fuel": 287.5234375,
+              "net": {
+                "alloy": 8545.912963867188,
+                "crystal": 4917.994384765625,
+                "deuterium": -258.611083984375
+              },
+              "netAE": 10106.347045898438
+            }
+          ]
+        },
+        {
+          "policy": "safe",
+          "trials": 8192,
+          "decisivePct": 99.81689453125,
+          "partialPct": 0.01220703125,
+          "fullDecisiveLootPct": 99.74365234375,
+          "noDestroyedShipPct": 99.4140625,
+          "loot": {
+            "alloy": 10127.4228515625,
+            "crystal": 5523.6805419921875,
+            "deuterium": 35.5537109375
+          },
+          "lossCost": {
+            "alloy": 31.56298828125,
+            "crystal": 12.140625,
+            "deuterium": 0.12451171875
+          },
+          "lostShips": 0.005859375,
+          "repair": {
+            "alloy": 4944.24169921875,
+            "crystal": 1902.28857421875,
+            "deuterium": 20.2427978515625
+          },
+          "repairMinutes": 15.476507765937836,
+          "replacementMinutes": 0.09881307912427335,
+          "fuel": 40.2734375,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 3617.467529296811,
+            "crystal": 1424.4759887695623,
+            "deuterium": 18.292529296875045
+          },
+          "expectedCapture": {
+            "alloy": 433.57484912108356,
+            "crystal": 170.393741699225,
+            "deuterium": 2.1530102539062708
+          },
+          "net": {
+            "alloy": 5151.6181640625,
+            "crystal": 3609.2513427734375,
+            "deuterium": -25.0870361328125
+          },
+          "netAE": 11567.335693359375,
+          "netWithCaptureAE": 12410.594354004097,
+          "netP10AE": 3253,
+          "netP50AE": 9934,
+          "netP90AE": 23243,
+          "negativeNetPct": 0.29296875,
+          "dispatchedCapital": {
+            "alloy": 18328.86328125,
+            "crystal": 7473.2734375,
+            "deuterium": 91.12890625
+          },
+          "dispatchedCapitalAE": 36191.53515625,
+          "straightRoundTripMinutes": 15.229173611111756,
+          "meanNet95AE": [
+            10627.664357084688,
+            12507.007029634062
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 20.578125,
+              "net": {
+                "alloy": 5151.6181640625,
+                "crystal": 3609.2513427734375,
+                "deuterium": -5.3917236328125
+              },
+              "netAE": 12197.585693359375
+            },
+            {
+              "distance": 2500,
+              "fuel": 99.1640625,
+              "net": {
+                "alloy": 5151.6181640625,
+                "crystal": 3609.2513427734375,
+                "deuterium": -83.9776611328125
+              },
+              "netAE": 9682.835693359375
+            },
+            {
+              "distance": 4000,
+              "fuel": 158.7265625,
+              "net": {
+                "alloy": 5151.6181640625,
+                "crystal": 3609.2513427734375,
+                "deuterium": -143.5401611328125
+              },
+              "netAE": 7776.835693359375
+            }
+          ]
+        },
+        {
+          "policy": "oversized",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 100,
+          "loot": {
+            "alloy": 10145.59765625,
+            "crystal": 5533.59375,
+            "deuterium": 35.61328125
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "lostShips": 0,
+          "repair": {
+            "alloy": 1699.68359375,
+            "crystal": 654.124755859375,
+            "deuterium": 7.08154296875
+          },
+          "repairMinutes": 5.320311576937608,
+          "replacementMinutes": 0,
+          "fuel": 144.3515625,
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcWreckCreated": {
+            "alloy": 3623.029687499935,
+            "crystal": 1426.7085937500312,
+            "deuterium": 18.328125000000043
+          },
+          "expectedCapture": {
+            "alloy": 434.3931328124897,
+            "crystal": 170.71998437500636,
+            "deuterium": 2.15789062500002
+          },
+          "net": {
+            "alloy": 8445.9140625,
+            "crystal": 4879.468994140625,
+            "deuterium": -115.81982421875
+          },
+          "netAE": 14498.61767578125,
+          "netWithCaptureAE": 15343.503277344045,
+          "netP10AE": 7709,
+          "netP50AE": 12625,
+          "netP90AE": 25404,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 87330.8515625,
+            "crystal": 33868.60546875,
+            "deuterium": 347.1640625
+          },
+          "dispatchedCapitalAE": 166177.3125,
+          "straightRoundTripMinutes": 20.307777777778522,
+          "meanNet95AE": [
+            13640.695058793943,
+            15356.540292768557
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 72.6328125,
+              "net": {
+                "alloy": 8445.9140625,
+                "crystal": 4879.468994140625,
+                "deuterium": -44.10107421875
+              },
+              "netAE": 16793.61767578125
+            },
+            {
+              "distance": 2500,
+              "fuel": 359.0703125,
+              "net": {
+                "alloy": 8445.9140625,
+                "crystal": 4879.468994140625,
+                "deuterium": -330.53857421875
+              },
+              "netAE": 7627.61767578125
+            },
+            {
+              "distance": 4000,
+              "fuel": 574.6796875,
+              "net": {
+                "alloy": 8445.9140625,
+                "crystal": 4879.468994140625,
+                "deuterium": -546.14794921875
+              },
+              "netAE": 728.11767578125
+            }
+          ]
+        },
+        {
+          "policy": "collector",
+          "trials": 8192,
+          "decisivePct": 100,
+          "partialPct": 0,
+          "fullDecisiveLootPct": 100,
+          "noDestroyedShipPct": 98.13232421875,
+          "loot": {
+            "alloy": 10145.59765625,
+            "crystal": 5533.59375,
+            "deuterium": 35.61328125
+          },
+          "lossCost": {
+            "alloy": 109.6934814453125,
+            "crystal": 42.197998046875,
+            "deuterium": 0.4327392578125
+          },
+          "lostShips": 0.0186767578125,
+          "repair": {
+            "alloy": 1489.9912109375,
+            "crystal": 573.4013671875,
+            "deuterium": 6.2681884765625
+          },
+          "repairMinutes": 4.663635761636708,
+          "replacementMinutes": 0.343423887740733,
+          "fuel": 112.4921875,
+          "salvage": {
+            "alloy": 3489.19921875,
+            "crystal": 1372.99609375,
+            "deuterium": 16.975830078125
+          },
+          "npcSalvage": {
+            "alloy": 3467.9100342044276,
+            "crystal": 1364.8074576347794,
+            "deuterium": 16.893133884244044
+          },
+          "npcWreckCreated": {
+            "alloy": 3623.029687499935,
+            "crystal": 1426.7085937500312,
+            "deuterium": 18.328125000000043
+          },
+          "expectedCapture": {
+            "alloy": 434.3931328124897,
+            "crystal": 170.71998437500636,
+            "deuterium": 2.15789062500002
+          },
+          "net": {
+            "alloy": 12035.112182617188,
+            "crystal": 6290.990478515625,
+            "deuterium": -66.60400390625
+          },
+          "netAE": 22485.765014648438,
+          "netWithCaptureAE": 23330.65061621129,
+          "netP10AE": 12801,
+          "netP50AE": 20562,
+          "netP90AE": 37252,
+          "negativeNetPct": 0,
+          "dispatchedCapital": {
+            "alloy": 50244.26171875,
+            "crystal": 21209.765625,
+            "deuterium": 162.09765625
+          },
+          "dispatchedCapitalAE": 97850.91796875,
+          "straightRoundTripMinutes": 18.79111111111183,
+          "meanNet95AE": [
+            21335.919414937136,
+            23635.61061435974
+          ],
+          "distanceSensitivity": [
+            {
+              "distance": 500,
+              "fuel": 56.78125,
+              "net": {
+                "alloy": 12035.112182617188,
+                "crystal": 6290.990478515625,
+                "deuterium": -10.89306640625
+              },
+              "netAE": 24268.515014648438
+            },
+            {
+              "distance": 2500,
+              "fuel": 279.6328125,
+              "net": {
+                "alloy": 12035.112182617188,
+                "crystal": 6290.990478515625,
+                "deuterium": -233.74462890625
+              },
+              "netAE": 17137.265014648438
+            },
+            {
+              "distance": 4000,
+              "fuel": 447.5234375,
+              "net": {
+                "alloy": 12035.112182617188,
+                "crystal": 6290.990478515625,
+                "deuterium": -401.63525390625
+              },
+              "netAE": 11764.765014648438
+            }
+          ]
+        }
+      ],
+      "representative": {
+        "crew": {
+          "CITADEL": 1,
+          "PRAETORIAN": 1,
+          "PIKE": 1
+        },
+        "fleets": {
+          "lean": {
+            "CITADEL": 2,
+            "COURIER": 7
+          },
+          "profit": {
+            "CATACLYSM": 2,
+            "CORSAIR": 2,
+            "PALADIN": 2,
+            "WAYFARER": 2
+          },
+          "safe": {
+            "CITADEL": 2,
+            "COURIER": 7
+          },
+          "oversized": {
+            "CITADEL": 12,
+            "WAYFARER": 1
+          },
+          "collector": {
+            "CATACLYSM": 2,
+            "CORSAIR": 2,
+            "PALADIN": 2,
+            "WAYFARER": 2,
+            "GARBAGE_COLLECTOR": 1
+          }
+        }
+      }
+    }
+  ],
+  "warOnly": {
+    "level": 4,
+    "cohort": "war-only",
+    "uniqueDraws": 256,
+    "planningSamples": 8,
+    "validationSamples": 32,
+    "meanPirateShips": 3.25390625,
+    "meanPirateHoard": {
+      "alloy": 15346.0546875,
+      "crystal": 8370.3203125,
+      "deuterium": 57.421875
+    },
+    "meanPirateRecipe": {
+      "alloy": 11032.39453125,
+      "crystal": 4257.8046875,
+      "deuterium": 41.04296875
+    },
+    "meanPirateFirepower": 15331.2421875,
+    "rows": [
+      {
+        "policy": "lean",
+        "trials": 8192,
+        "decisivePct": 99.32861328125,
+        "partialPct": 0.48828125,
+        "fullDecisiveLootPct": 99.27978515625,
+        "noDestroyedShipPct": 66.7236328125,
+        "loot": {
+          "alloy": 9158.43115234375,
+          "crystal": 4995.1417236328125,
+          "deuterium": 34.2764892578125
+        },
+        "lossCost": {
+          "alloy": 2225.908447265625,
+          "crystal": 856.462646484375,
+          "deuterium": 8.793212890625
+        },
+        "lostShips": 0.419677734375,
+        "repair": {
+          "alloy": 3846.466064453125,
+          "crystal": 1479.942626953125,
+          "deuterium": 15.7340087890625
+        },
+        "repairMinutes": 12.039242589217936,
+        "replacementMinutes": 6.964453763740377,
+        "fuel": 37.84375,
+        "salvage": {
+          "alloy": 0,
+          "crystal": 0,
+          "deuterium": 0
+        },
+        "npcSalvage": {
+          "alloy": 0,
+          "crystal": 0,
+          "deuterium": 0
+        },
+        "npcWreckCreated": {
+          "alloy": 3298.515161132858,
+          "crystal": 1273.0115478515684,
+          "deuterium": 12.270300292968743
+        },
+        "expectedCapture": {
+          "alloy": 421.73451269529914,
+          "crystal": 162.70309033203566,
+          "deuterium": 1.5785444335937422
+        },
+        "net": {
+          "alloy": 3086.056640625,
+          "crystal": 2658.7364501953125,
+          "deuterium": -28.094482421875
+        },
+        "netAE": 7504.506103515625,
+        "netWithCaptureAE": 8302.160218749861,
+        "netP10AE": 1746,
+        "netP50AE": 6865,
+        "netP90AE": 14386,
+        "negativeNetPct": 3.8818359375,
+        "dispatchedCapital": {
+          "alloy": 17017.5859375,
+          "crystal": 6926.16796875,
+          "deuterium": 85.0625
+        },
+        "dispatchedCapitalAE": 33591.921875,
+        "straightRoundTripMinutes": 14.787559027778428,
+        "meanNet95AE": [
+          6803.783705095884,
+          8205.228501935366
+        ],
+        "distanceSensitivity": [
+          {
+            "distance": 500,
+            "fuel": 19.3359375,
+            "net": {
+              "alloy": 3086.056640625,
+              "crystal": 2658.7364501953125,
+              "deuterium": -9.586669921875
+            },
+            "netAE": 8096.756103515625
+          },
+          {
+            "distance": 2500,
+            "fuel": 93.203125,
+            "net": {
+              "alloy": 3086.056640625,
+              "crystal": 2658.7364501953125,
+              "deuterium": -83.453857421875
+            },
+            "netAE": 5733.006103515625
+          },
+          {
+            "distance": 4000,
+            "fuel": 149.4296875,
+            "net": {
+              "alloy": 3086.056640625,
+              "crystal": 2658.7364501953125,
+              "deuterium": -139.680419921875
+            },
+            "netAE": 3933.756103515625
+          }
+        ]
+      },
+      {
+        "policy": "profit",
+        "trials": 8192,
+        "decisivePct": 100,
+        "partialPct": 0,
+        "fullDecisiveLootPct": 100,
+        "noDestroyedShipPct": 98.27880859375,
+        "loot": {
+          "alloy": 9207.29296875,
+          "crystal": 5021.79296875,
+          "deuterium": 34.453125
+        },
+        "lossCost": {
+          "alloy": 96.23486328125,
+          "crystal": 37.018310546875,
+          "deuterium": 0.379638671875
+        },
+        "lostShips": 0.0172119140625,
+        "repair": {
+          "alloy": 1780.676025390625,
+          "crystal": 685.2528076171875,
+          "deuterium": 7.474609375
+        },
+        "repairMinutes": 5.573529473020521,
+        "replacementMinutes": 0.3012830157612637,
+        "fuel": 77.953125,
+        "salvage": {
+          "alloy": 0,
+          "crystal": 0,
+          "deuterium": 0
+        },
+        "npcSalvage": {
+          "alloy": 0,
+          "crystal": 0,
+          "deuterium": 0
+        },
+        "npcWreckCreated": {
+          "alloy": 3309.718359375045,
+          "crystal": 1277.3414062500065,
+          "deuterium": 12.31289062499998
+        },
+        "expectedCapture": {
+          "alloy": 424.81003124998654,
+          "crystal": 163.89152343750374,
+          "deuterium": 1.5902187499999916
+        },
+        "net": {
+          "alloy": 7330.382080078125,
+          "crystal": 4299.5218505859375,
+          "deuterium": -51.354248046875
+        },
+        "netAE": 14286.08984375,
+        "netWithCaptureAE": 15089.56992187512,
+        "netP10AE": 9330,
+        "netP50AE": 13138,
+        "netP90AE": 20698,
+        "negativeNetPct": 0,
+        "dispatchedCapital": {
+          "alloy": 39516.953125,
+          "crystal": 15556.26171875,
+          "deuterium": 166.953125
+        },
+        "dispatchedCapitalAE": 75971.9765625,
+        "straightRoundTripMinutes": 17.57544444444441,
+        "meanNet95AE": [
+          13678.579123415866,
+          14893.600564084134
+        ],
+        "distanceSensitivity": [
+          {
+            "distance": 500,
+            "fuel": 39.5078125,
+            "net": {
+              "alloy": 7330.382080078125,
+              "crystal": 4299.5218505859375,
+              "deuterium": -12.908935546875
+            },
+            "netAE": 15516.33984375
+          },
+          {
+            "distance": 2500,
+            "fuel": 193.4296875,
+            "net": {
+              "alloy": 7330.382080078125,
+              "crystal": 4299.5218505859375,
+              "deuterium": -166.830810546875
+            },
+            "netAE": 10590.83984375
+          },
+          {
+            "distance": 4000,
+            "fuel": 309.5234375,
+            "net": {
+              "alloy": 7330.382080078125,
+              "crystal": 4299.5218505859375,
+              "deuterium": -282.924560546875
+            },
+            "netAE": 6875.83984375
+          }
+        ]
+      },
+      {
+        "policy": "safe",
+        "trials": 8192,
+        "decisivePct": 99.71923828125,
+        "partialPct": 0.146484375,
+        "fullDecisiveLootPct": 99.64599609375,
+        "noDestroyedShipPct": 99.5361328125,
+        "loot": {
+          "alloy": 9192.354614257812,
+          "crystal": 5013.6456298828125,
+          "deuterium": 34.3963623046875
+        },
+        "lossCost": {
+          "alloy": 25.99267578125,
+          "crystal": 9.99853515625,
+          "deuterium": 0.1025390625
+        },
+        "lostShips": 0.004638671875,
+        "repair": {
+          "alloy": 5488.21630859375,
+          "crystal": 2111.5792236328125,
+          "deuterium": 22.4761962890625
+        },
+        "repairMinutes": 17.179274976134927,
+        "replacementMinutes": 0.08137547692587217,
+        "fuel": 42.4921875,
+        "salvage": {
+          "alloy": 0,
+          "crystal": 0,
+          "deuterium": 0
+        },
+        "npcSalvage": {
+          "alloy": 0,
+          "crystal": 0,
+          "deuterium": 0
+        },
+        "npcWreckCreated": {
+          "alloy": 3304.8145385742637,
+          "crystal": 1275.4437744140685,
+          "deuterium": 12.294250488281238
+        },
+        "expectedCapture": {
+          "alloy": 423.65909521483064,
+          "crystal": 163.44586523437894,
+          "deuterium": 1.5859174804687413
+        },
+        "net": {
+          "alloy": 3678.1456298828125,
+          "crystal": 2892.06787109375,
+          "deuterium": -30.674560546875
+        },
+        "netAE": 8480.695434570312,
+        "netWithCaptureAE": 9281.995619628862,
+        "netP10AE": 2908,
+        "netP50AE": 7419,
+        "netP90AE": 16549,
+        "negativeNetPct": 0.30517578125,
+        "dispatchedCapital": {
+          "alloy": 19443.99609375,
+          "crystal": 7872.19921875,
+          "deuterium": 92.16796875
+        },
+        "dispatchedCapitalAE": 38137.76953125,
+        "straightRoundTripMinutes": 15.690824652778197,
+        "meanNet95AE": [
+          7833.5547789580505,
+          9127.836090182574
+        ],
+        "distanceSensitivity": [
+          {
+            "distance": 500,
+            "fuel": 21.734375,
+            "net": {
+              "alloy": 3678.1456298828125,
+              "crystal": 2892.06787109375,
+              "deuterium": -9.916748046875
+            },
+            "netAE": 9144.945434570312
+          },
+          {
+            "distance": 2500,
+            "fuel": 104.84375,
+            "net": {
+              "alloy": 3678.1456298828125,
+              "crystal": 2892.06787109375,
+              "deuterium": -93.026123046875
+            },
+            "netAE": 6485.4454345703125
+          },
+          {
+            "distance": 4000,
+            "fuel": 167.875,
+            "net": {
+              "alloy": 3678.1456298828125,
+              "crystal": 2892.06787109375,
+              "deuterium": -156.057373046875
+            },
+            "netAE": 4468.4454345703125
+          }
+        ]
+      },
+      {
+        "policy": "oversized",
+        "trials": 8192,
+        "decisivePct": 100,
+        "partialPct": 0,
+        "fullDecisiveLootPct": 100,
+        "noDestroyedShipPct": 99.69482421875,
+        "loot": {
+          "alloy": 9207.29296875,
+          "crystal": 5021.79296875,
+          "deuterium": 34.453125
+        },
+        "lossCost": {
+          "alloy": 19.3389892578125,
+          "crystal": 7.440185546875,
+          "deuterium": 0.0762939453125
+        },
+        "lostShips": 0.0030517578125,
+        "repair": {
+          "alloy": 1967.1251220703125,
+          "crystal": 757.0377197265625,
+          "deuterium": 8.1654052734375
+        },
+        "repairMinutes": 6.15751057975905,
+        "replacementMinutes": 0.0605472298555596,
+        "fuel": 153.125,
+        "salvage": {
+          "alloy": 0,
+          "crystal": 0,
+          "deuterium": 0
+        },
+        "npcSalvage": {
+          "alloy": 0,
+          "crystal": 0,
+          "deuterium": 0
+        },
+        "npcWreckCreated": {
+          "alloy": 3309.718359375045,
+          "crystal": 1277.3414062500065,
+          "deuterium": 12.31289062499998
+        },
+        "expectedCapture": {
+          "alloy": 424.81003124998654,
+          "crystal": 163.89152343750374,
+          "deuterium": 1.5902187499999916
+        },
+        "net": {
+          "alloy": 7220.828857421875,
+          "crystal": 4257.3150634765625,
+          "deuterium": -126.91357421875
+        },
+        "netAE": 11674.224609375,
+        "netWithCaptureAE": 12477.704687500092,
+        "netP10AE": 7359,
+        "netP50AE": 10528,
+        "netP90AE": 17364,
+        "negativeNetPct": 0,
+        "dispatchedCapital": {
+          "alloy": 94141.09375,
+          "crystal": 36413.359375,
+          "deuterium": 371.9375
+        },
+        "dispatchedCapitalAE": 178869.8125,
+        "straightRoundTripMinutes": 20.474444444445425,
+        "meanNet95AE": [
+          11143.367658549967,
+          12205.081560200033
+        ],
+        "distanceSensitivity": [
+          {
+            "distance": 500,
+            "fuel": 76.921875,
+            "net": {
+              "alloy": 7220.828857421875,
+              "crystal": 4257.3150634765625,
+              "deuterium": -50.71044921875
+            },
+            "netAE": 14112.724609375
+          },
+          {
+            "distance": 2500,
+            "fuel": 380.8828125,
+            "net": {
+              "alloy": 7220.828857421875,
+              "crystal": 4257.3150634765625,
+              "deuterium": -354.67138671875
+            },
+            "netAE": 4385.974609375
+          },
+          {
+            "distance": 4000,
+            "fuel": 609.625,
+            "net": {
+              "alloy": 7220.828857421875,
+              "crystal": 4257.3150634765625,
+              "deuterium": -583.41357421875
+            },
+            "netAE": -2933.775390625
+          }
+        ]
+      },
+      {
+        "policy": "collector",
+        "trials": 8192,
+        "decisivePct": 100,
+        "partialPct": 0,
+        "fullDecisiveLootPct": 100,
+        "noDestroyedShipPct": 98.27880859375,
+        "loot": {
+          "alloy": 9207.29296875,
+          "crystal": 5021.79296875,
+          "deuterium": 34.453125
+        },
+        "lossCost": {
+          "alloy": 96.23486328125,
+          "crystal": 37.018310546875,
+          "deuterium": 0.379638671875
+        },
+        "lostShips": 0.0172119140625,
+        "repair": {
+          "alloy": 1780.676025390625,
+          "crystal": 685.2528076171875,
+          "deuterium": 7.474609375
+        },
+        "repairMinutes": 5.573529473020521,
+        "replacementMinutes": 0.3012830157612637,
+        "fuel": 117.953125,
+        "salvage": {
+          "alloy": 3236.5037841796875,
+          "crystal": 1248.892822265625,
+          "deuterium": 11.57861328125
+        },
+        "npcSalvage": {
+          "alloy": 3218.2600150955027,
+          "crystal": 1241.8764396706295,
+          "deuterium": 11.507692699670628
+        },
+        "npcWreckCreated": {
+          "alloy": 3309.718359375045,
+          "crystal": 1277.3414062500065,
+          "deuterium": 12.31289062499998
+        },
+        "expectedCapture": {
+          "alloy": 424.81003124998654,
+          "crystal": 163.89152343750374,
+          "deuterium": 1.5902187499999916
+        },
+        "net": {
+          "alloy": 10566.885864257812,
+          "crystal": 5548.4146728515625,
+          "deuterium": -79.775634765625
+        },
+        "netAE": 19110.894897460938,
+        "netWithCaptureAE": 19914.374975585826,
+        "netP10AE": 11636,
+        "netP50AE": 17589,
+        "netP90AE": 28567,
+        "negativeNetPct": 0,
+        "dispatchedCapital": {
+          "alloy": 52516.953125,
+          "crystal": 22056.26171875,
+          "deuterium": 166.953125
+        },
+        "dispatchedCapitalAE": 101971.9765625,
+        "straightRoundTripMinutes": 18.607777777778395,
+        "meanNet95AE": [
+          18263.041334272282,
+          19958.748460649593
+        ],
+        "distanceSensitivity": [
+          {
+            "distance": 500,
+            "fuel": 59.5078125,
+            "net": {
+              "alloy": 10566.885864257812,
+              "crystal": 5548.4146728515625,
+              "deuterium": -21.330322265625
+            },
+            "netAE": 20981.144897460938
+          },
+          {
+            "distance": 2500,
+            "fuel": 293.4296875,
+            "net": {
+              "alloy": 10566.885864257812,
+              "crystal": 5548.4146728515625,
+              "deuterium": -255.252197265625
+            },
+            "netAE": 13495.644897460938
+          },
+          {
+            "distance": 4000,
+            "fuel": 469.5234375,
+            "net": {
+              "alloy": 10566.885864257812,
+              "crystal": 5548.4146728515625,
+              "deuterium": -431.345947265625
+            },
+            "netAE": 7860.6448974609375
+          }
+        ]
+      }
+    ],
+    "representative": {
+      "crew": {
+        "CORSAIR": 2
+      },
+      "fleets": {
+        "lean": {
+          "CATACLYSM": 2,
+          "ATLAS": 1
+        },
+        "profit": {
+          "CATACLYSM": 2,
+          "CORSAIR": 2,
+          "PALADIN": 2,
+          "WAYFARER": 2
+        },
+        "safe": {
+          "CATACLYSM": 2,
+          "ATLAS": 1
+        },
+        "oversized": {
+          "CATACLYSM": 5,
+          "CORSAIR": 5,
+          "PALADIN": 5,
+          "COURIER": 4
+        },
+        "collector": {
+          "CATACLYSM": 2,
+          "CORSAIR": 2,
+          "PALADIN": 2,
+          "WAYFARER": 2,
+          "GARBAGE_COLLECTOR": 1
+        }
+      }
+    }
+  },
+  "weightedPolicyMeans": [
+    {
+      "policy": "lean",
+      "loot": {
+        "alloy": 2812.049471435547,
+        "crystal": 1533.5193029785155,
+        "deuterium": 11.314462890624998
+      },
+      "net": {
+        "alloy": 1886.5556079101561,
+        "crystal": 1177.4587463378907,
+        "deuterium": -10.862974853515624
+      },
+      "npcSalvage": {
+        "alloy": 0,
+        "crystal": 0,
+        "deuterium": 0
+      },
+      "npcWreckCreated": {
+        "alloy": 994.1529755859239,
+        "crystal": 407.9551611328164,
+        "deuterium": 3.3682551269531475
+      },
+      "expectedCapture": {
+        "alloy": 209.98787206787216,
+        "crystal": 87.3683948657227,
+        "deuterium": 0.5445587963867232
+      }
+    },
+    {
+      "policy": "profit",
+      "loot": {
+        "alloy": 2814.8870703125,
+        "crystal": 1535.066953125,
+        "deuterium": 11.325234374999999
+      },
+      "net": {
+        "alloy": 2682.825218505859,
+        "crystal": 1484.244313964844,
+        "deuterium": -9.78744140625
+      },
+      "npcSalvage": {
+        "alloy": 0,
+        "crystal": 0,
+        "deuterium": 0
+      },
+      "npcWreckCreated": {
+        "alloy": 994.8055312499861,
+        "crystal": 408.21343359375396,
+        "deuterium": 3.371179687500022
+      },
+      "expectedCapture": {
+        "alloy": 210.24476320312613,
+        "crystal": 87.46884375000005,
+        "deuterium": 0.5454951562500047
+      }
+    },
+    {
+      "policy": "safe",
+      "loot": {
+        "alloy": 2812.3066479492186,
+        "crystal": 1533.6595764160156,
+        "deuterium": 11.315659179687499
+      },
+      "net": {
+        "alloy": 1938.0429418945312,
+        "crystal": 1197.284744873047,
+        "deuterium": -10.950323486328124
+      },
+      "npcSalvage": {
+        "alloy": 0,
+        "crystal": 0,
+        "deuterium": 0
+      },
+      "npcWreckCreated": {
+        "alloy": 994.1154821777208,
+        "crystal": 407.9394085693398,
+        "deuterium": 3.3677783203125222
+      },
+      "expectedCapture": {
+        "alloy": 210.0202230908214,
+        "crystal": 87.38070350097664,
+        "deuterium": 0.544650620117192
+      }
+    },
+    {
+      "policy": "oversized",
+      "loot": {
+        "alloy": 2814.8870703125,
+        "crystal": 1535.066953125,
+        "deuterium": 11.325234374999999
+      },
+      "net": {
+        "alloy": 2672.5320703125,
+        "crystal": 1480.2795385742188,
+        "deuterium": -31.230693359375
+      },
+      "npcSalvage": {
+        "alloy": 0,
+        "crystal": 0,
+        "deuterium": 0
+      },
+      "npcWreckCreated": {
+        "alloy": 994.8055312499861,
+        "crystal": 408.21343359375396,
+        "deuterium": 3.371179687500022
+      },
+      "expectedCapture": {
+        "alloy": 210.24476320312613,
+        "crystal": 87.46884375000005,
+        "deuterium": 0.5454951562500047
+      }
+    },
+    {
+      "policy": "collector",
+      "loot": {
+        "alloy": 2814.8870703125,
+        "crystal": 1535.066953125,
+        "deuterium": 11.325234374999999
+      },
+      "net": {
+        "alloy": 3667.9013513183595,
+        "crystal": 1888.2761499023438,
+        "deuterium": -46.744289550781254
+      },
+      "npcSalvage": {
+        "alloy": 983.5858898943098,
+        "crystal": 403.4586314094346,
+        "deuterium": 3.037363121897083
+      },
+      "npcWreckCreated": {
+        "alloy": 994.8055312499861,
+        "crystal": 408.21343359375396,
+        "deuterium": 3.371179687500022
+      },
+      "expectedCapture": {
+        "alloy": 210.24476320312613,
+        "crystal": 87.46884375000005,
+        "deuterium": 0.5454951562500047
+      }
+    }
+  ],
+  "supply": [
+    {
+      "peoplePerHour": 10,
+      "activeBotsPerHour": 0,
+      "eligible": 10,
+      "perHour": 3,
+      "total": 72,
+      "level4PerDay": 5.040000000000001,
+      "uptake": [
+        {
+          "attemptedFraction": 0.25,
+          "raidsPerDay": 18,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 50616.890485839845,
+                "crystal": 27603.347453613278,
+                "deuterium": 203.66033203124996
+              },
+              "netPerDay": {
+                "alloy": 33958.00094238281,
+                "crystal": 21194.257434082032,
+                "deuterium": -195.53354736328123
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 17894.75356054663,
+                "crystal": 7343.192900390695,
+                "deuterium": 60.62859228515666
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 3779.781697221699,
+                "crystal": 1572.6311075830088,
+                "deuterium": 9.802058334961018
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 50667.967265625,
+                "crystal": 27631.205156250002,
+                "deuterium": 203.85421874999997
+              },
+              "netPerDay": {
+                "alloy": 48290.85393310546,
+                "crystal": 26716.39765136719,
+                "deuterium": -176.1739453125
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 17906.49956249975,
+                "crystal": 7347.841804687571,
+                "deuterium": 60.68123437500039
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 3784.4057376562705,
+                "crystal": 1574.4391875000008,
+                "deuterium": 9.818912812500084
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 50621.519663085935,
+                "crystal": 27605.87237548828,
+                "deuterium": 203.68186523437498
+              },
+              "netPerDay": {
+                "alloy": 34884.77295410156,
+                "crystal": 21551.125407714844,
+                "deuterium": -197.10582275390624
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 17894.078679198974,
+                "crystal": 7342.909354248116,
+                "deuterium": 60.6200097656254
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 3780.364015634785,
+                "crystal": 1572.8526630175795,
+                "deuterium": 9.803711162109456
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 50667.967265625,
+                "crystal": 27631.205156250002,
+                "deuterium": 203.85421874999997
+              },
+              "netPerDay": {
+                "alloy": 48105.577265625,
+                "crystal": 26645.03169433594,
+                "deuterium": -562.15248046875
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 17906.49956249975,
+                "crystal": 7347.841804687571,
+                "deuterium": 60.68123437500039
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 3784.4057376562705,
+                "crystal": 1574.4391875000008,
+                "deuterium": 9.818912812500084
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 50667.967265625,
+                "crystal": 27631.205156250002,
+                "deuterium": 203.85421874999997
+              },
+              "netPerDay": {
+                "alloy": 66022.22432373046,
+                "crystal": 33988.97069824219,
+                "deuterium": -841.3972119140626
+              },
+              "npcSalvagePerDay": {
+                "alloy": 17704.54601809758,
+                "crystal": 7262.255365369822,
+                "deuterium": 54.6725361941475
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 17906.49956249975,
+                "crystal": 7347.841804687571,
+                "deuterium": 60.68123437500039
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 3784.4057376562705,
+                "crystal": 1574.4391875000008,
+                "deuterium": 9.818912812500084
+              }
+            }
+          ]
+        },
+        {
+          "attemptedFraction": 0.5,
+          "raidsPerDay": 36,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 101233.78097167969,
+                "crystal": 55206.694907226556,
+                "deuterium": 407.32066406249993
+              },
+              "netPerDay": {
+                "alloy": 67916.00188476562,
+                "crystal": 42388.514868164064,
+                "deuterium": -391.06709472656246
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 35789.50712109326,
+                "crystal": 14686.38580078139,
+                "deuterium": 121.25718457031331
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 7559.563394443398,
+                "crystal": 3145.2622151660175,
+                "deuterium": 19.604116669922035
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 101335.93453125,
+                "crystal": 55262.410312500004,
+                "deuterium": 407.70843749999995
+              },
+              "netPerDay": {
+                "alloy": 96581.70786621093,
+                "crystal": 53432.79530273438,
+                "deuterium": -352.347890625
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 35812.9991249995,
+                "crystal": 14695.683609375143,
+                "deuterium": 121.36246875000079
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 7568.811475312541,
+                "crystal": 3148.8783750000016,
+                "deuterium": 19.63782562500017
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 101243.03932617187,
+                "crystal": 55211.74475097656,
+                "deuterium": 407.36373046874996
+              },
+              "netPerDay": {
+                "alloy": 69769.54590820312,
+                "crystal": 43102.25081542969,
+                "deuterium": -394.2116455078125
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 35788.15735839795,
+                "crystal": 14685.818708496232,
+                "deuterium": 121.2400195312508
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 7560.72803126957,
+                "crystal": 3145.705326035159,
+                "deuterium": 19.607422324218913
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 101335.93453125,
+                "crystal": 55262.410312500004,
+                "deuterium": 407.70843749999995
+              },
+              "netPerDay": {
+                "alloy": 96211.15453125,
+                "crystal": 53290.06338867188,
+                "deuterium": -1124.3049609375
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 35812.9991249995,
+                "crystal": 14695.683609375143,
+                "deuterium": 121.36246875000079
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 7568.811475312541,
+                "crystal": 3148.8783750000016,
+                "deuterium": 19.63782562500017
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 101335.93453125,
+                "crystal": 55262.410312500004,
+                "deuterium": 407.70843749999995
+              },
+              "netPerDay": {
+                "alloy": 132044.44864746093,
+                "crystal": 67977.94139648438,
+                "deuterium": -1682.7944238281252
+              },
+              "npcSalvagePerDay": {
+                "alloy": 35409.09203619516,
+                "crystal": 14524.510730739645,
+                "deuterium": 109.345072388295
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 35812.9991249995,
+                "crystal": 14695.683609375143,
+                "deuterium": 121.36246875000079
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 7568.811475312541,
+                "crystal": 3148.8783750000016,
+                "deuterium": 19.63782562500017
+              }
+            }
+          ]
+        },
+        {
+          "attemptedFraction": 1,
+          "raidsPerDay": 72,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 202467.56194335938,
+                "crystal": 110413.38981445311,
+                "deuterium": 814.6413281249999
+              },
+              "netPerDay": {
+                "alloy": 135832.00376953123,
+                "crystal": 84777.02973632813,
+                "deuterium": -782.1341894531249
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 71579.01424218652,
+                "crystal": 29372.77160156278,
+                "deuterium": 242.51436914062663
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 15119.126788886795,
+                "crystal": 6290.524430332035,
+                "deuterium": 39.20823333984407
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 202671.8690625,
+                "crystal": 110524.82062500001,
+                "deuterium": 815.4168749999999
+              },
+              "netPerDay": {
+                "alloy": 193163.41573242185,
+                "crystal": 106865.59060546877,
+                "deuterium": -704.69578125
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 71625.998249999,
+                "crystal": 29391.367218750285,
+                "deuterium": 242.72493750000157
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 15137.622950625082,
+                "crystal": 6297.756750000003,
+                "deuterium": 39.27565125000034
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 202486.07865234374,
+                "crystal": 110423.48950195312,
+                "deuterium": 814.7274609374999
+              },
+              "netPerDay": {
+                "alloy": 139539.09181640623,
+                "crystal": 86204.50163085938,
+                "deuterium": -788.423291015625
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 71576.3147167959,
+                "crystal": 29371.637416992464,
+                "deuterium": 242.4800390625016
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 15121.45606253914,
+                "crystal": 6291.410652070318,
+                "deuterium": 39.214844648437825
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 202671.8690625,
+                "crystal": 110524.82062500001,
+                "deuterium": 815.4168749999999
+              },
+              "netPerDay": {
+                "alloy": 192422.3090625,
+                "crystal": 106580.12677734376,
+                "deuterium": -2248.609921875
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 71625.998249999,
+                "crystal": 29391.367218750285,
+                "deuterium": 242.72493750000157
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 15137.622950625082,
+                "crystal": 6297.756750000003,
+                "deuterium": 39.27565125000034
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 202671.8690625,
+                "crystal": 110524.82062500001,
+                "deuterium": 815.4168749999999
+              },
+              "netPerDay": {
+                "alloy": 264088.89729492186,
+                "crystal": 135955.88279296877,
+                "deuterium": -3365.5888476562504
+              },
+              "npcSalvagePerDay": {
+                "alloy": 70818.18407239032,
+                "crystal": 29049.02146147929,
+                "deuterium": 218.69014477659
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 71625.998249999,
+                "crystal": 29391.367218750285,
+                "deuterium": 242.72493750000157
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 15137.622950625082,
+                "crystal": 6297.756750000003,
+                "deuterium": 39.27565125000034
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "peoplePerHour": 30,
+      "activeBotsPerHour": 60,
+      "eligible": 60,
+      "perHour": 15,
+      "total": 360,
+      "level4PerDay": 25.200000000000003,
+      "uptake": [
+        {
+          "attemptedFraction": 0.25,
+          "raidsPerDay": 90,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 253084.4524291992,
+                "crystal": 138016.73726806638,
+                "deuterium": 1018.3016601562499
+              },
+              "netPerDay": {
+                "alloy": 169790.00471191405,
+                "crystal": 105971.28717041017,
+                "deuterium": -977.6677368164062
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 89473.76780273314,
+                "crystal": 36715.96450195347,
+                "deuterium": 303.14296142578326
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 18898.908486108496,
+                "crystal": 7863.155537915043,
+                "deuterium": 49.01029167480509
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 253339.83632812498,
+                "crystal": 138156.02578125,
+                "deuterium": 1019.2710937499999
+              },
+              "netPerDay": {
+                "alloy": 241454.26966552733,
+                "crystal": 133581.98825683596,
+                "deuterium": -880.8697265625
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 89532.49781249875,
+                "crystal": 36739.209023437856,
+                "deuterium": 303.406171875002
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 18922.028688281353,
+                "crystal": 7872.195937500004,
+                "deuterium": 49.09456406250042
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 253107.59831542967,
+                "crystal": 138029.3618774414,
+                "deuterium": 1018.4093261718749
+              },
+              "netPerDay": {
+                "alloy": 174423.86477050782,
+                "crystal": 107755.62703857422,
+                "deuterium": -985.5291137695311
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 89470.39339599486,
+                "crystal": 36714.54677124058,
+                "deuterium": 303.100048828127
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 18901.820078173925,
+                "crystal": 7864.263315087897,
+                "deuterium": 49.018555810547284
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 253339.83632812498,
+                "crystal": 138156.02578125,
+                "deuterium": 1019.2710937499999
+              },
+              "netPerDay": {
+                "alloy": 240527.886328125,
+                "crystal": 133225.1584716797,
+                "deuterium": -2810.76240234375
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 89532.49781249875,
+                "crystal": 36739.209023437856,
+                "deuterium": 303.406171875002
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 18922.028688281353,
+                "crystal": 7872.195937500004,
+                "deuterium": 49.09456406250042
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 253339.83632812498,
+                "crystal": 138156.02578125,
+                "deuterium": 1019.2710937499999
+              },
+              "netPerDay": {
+                "alloy": 330111.12161865237,
+                "crystal": 169944.85349121093,
+                "deuterium": -4206.986059570313
+              },
+              "npcSalvagePerDay": {
+                "alloy": 88522.73009048788,
+                "crystal": 36311.27682684911,
+                "deuterium": 273.3626809707375
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 89532.49781249875,
+                "crystal": 36739.209023437856,
+                "deuterium": 303.406171875002
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 18922.028688281353,
+                "crystal": 7872.195937500004,
+                "deuterium": 49.09456406250042
+              }
+            }
+          ]
+        },
+        {
+          "attemptedFraction": 0.5,
+          "raidsPerDay": 180,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 506168.9048583984,
+                "crystal": 276033.47453613277,
+                "deuterium": 2036.6033203124998
+              },
+              "netPerDay": {
+                "alloy": 339580.0094238281,
+                "crystal": 211942.57434082034,
+                "deuterium": -1955.3354736328124
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 178947.53560546628,
+                "crystal": 73431.92900390695,
+                "deuterium": 606.2859228515665
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 37797.81697221699,
+                "crystal": 15726.311075830086,
+                "deuterium": 98.02058334961018
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 506679.67265624995,
+                "crystal": 276312.0515625,
+                "deuterium": 2038.5421874999997
+              },
+              "netPerDay": {
+                "alloy": 482908.53933105466,
+                "crystal": 267163.9765136719,
+                "deuterium": -1761.739453125
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 179064.9956249975,
+                "crystal": 73478.41804687571,
+                "deuterium": 606.812343750004
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 37844.057376562705,
+                "crystal": 15744.391875000008,
+                "deuterium": 98.18912812500083
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 506215.19663085934,
+                "crystal": 276058.7237548828,
+                "deuterium": 2036.8186523437498
+              },
+              "netPerDay": {
+                "alloy": 348847.72954101564,
+                "crystal": 215511.25407714845,
+                "deuterium": -1971.0582275390623
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 178940.78679198973,
+                "crystal": 73429.09354248116,
+                "deuterium": 606.200097656254
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 37803.64015634785,
+                "crystal": 15728.526630175795,
+                "deuterium": 98.03711162109457
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 506679.67265624995,
+                "crystal": 276312.0515625,
+                "deuterium": 2038.5421874999997
+              },
+              "netPerDay": {
+                "alloy": 481055.77265625,
+                "crystal": 266450.3169433594,
+                "deuterium": -5621.5248046875
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 179064.9956249975,
+                "crystal": 73478.41804687571,
+                "deuterium": 606.812343750004
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 37844.057376562705,
+                "crystal": 15744.391875000008,
+                "deuterium": 98.18912812500083
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 506679.67265624995,
+                "crystal": 276312.0515625,
+                "deuterium": 2038.5421874999997
+              },
+              "netPerDay": {
+                "alloy": 660222.2432373047,
+                "crystal": 339889.70698242186,
+                "deuterium": -8413.972119140626
+              },
+              "npcSalvagePerDay": {
+                "alloy": 177045.46018097576,
+                "crystal": 72622.55365369823,
+                "deuterium": 546.725361941475
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 179064.9956249975,
+                "crystal": 73478.41804687571,
+                "deuterium": 606.812343750004
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 37844.057376562705,
+                "crystal": 15744.391875000008,
+                "deuterium": 98.18912812500083
+              }
+            }
+          ]
+        },
+        {
+          "attemptedFraction": 1,
+          "raidsPerDay": 360,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 1012337.8097167969,
+                "crystal": 552066.9490722655,
+                "deuterium": 4073.2066406249996
+              },
+              "netPerDay": {
+                "alloy": 679160.0188476562,
+                "crystal": 423885.1486816407,
+                "deuterium": -3910.670947265625
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 357895.07121093257,
+                "crystal": 146863.8580078139,
+                "deuterium": 1212.571845703133
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 75595.63394443398,
+                "crystal": 31452.622151660173,
+                "deuterium": 196.04116669922035
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 1013359.3453124999,
+                "crystal": 552624.103125,
+                "deuterium": 4077.0843749999995
+              },
+              "netPerDay": {
+                "alloy": 965817.0786621093,
+                "crystal": 534327.9530273438,
+                "deuterium": -3523.47890625
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 358129.991249995,
+                "crystal": 146956.83609375142,
+                "deuterium": 1213.624687500008
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 75688.11475312541,
+                "crystal": 31488.783750000017,
+                "deuterium": 196.37825625000167
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 1012430.3932617187,
+                "crystal": 552117.4475097656,
+                "deuterium": 4073.6373046874996
+              },
+              "netPerDay": {
+                "alloy": 697695.4590820313,
+                "crystal": 431022.5081542969,
+                "deuterium": -3942.1164550781245
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 357881.57358397945,
+                "crystal": 146858.18708496232,
+                "deuterium": 1212.400195312508
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 75607.2803126957,
+                "crystal": 31457.05326035159,
+                "deuterium": 196.07422324218913
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 1013359.3453124999,
+                "crystal": 552624.103125,
+                "deuterium": 4077.0843749999995
+              },
+              "netPerDay": {
+                "alloy": 962111.5453125,
+                "crystal": 532900.6338867188,
+                "deuterium": -11243.049609375
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 358129.991249995,
+                "crystal": 146956.83609375142,
+                "deuterium": 1213.624687500008
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 75688.11475312541,
+                "crystal": 31488.783750000017,
+                "deuterium": 196.37825625000167
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 1013359.3453124999,
+                "crystal": 552624.103125,
+                "deuterium": 4077.0843749999995
+              },
+              "netPerDay": {
+                "alloy": 1320444.4864746095,
+                "crystal": 679779.4139648437,
+                "deuterium": -16827.944238281252
+              },
+              "npcSalvagePerDay": {
+                "alloy": 354090.9203619515,
+                "crystal": 145245.10730739645,
+                "deuterium": 1093.45072388295
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 358129.991249995,
+                "crystal": 146956.83609375142,
+                "deuterium": 1213.624687500008
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 75688.11475312541,
+                "crystal": 31488.783750000017,
+                "deuterium": 196.37825625000167
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "peoplePerHour": 100,
+      "activeBotsPerHour": 0,
+      "eligible": 100,
+      "perHour": 25,
+      "total": 600,
+      "level4PerDay": 42.00000000000001,
+      "uptake": [
+        {
+          "attemptedFraction": 0.25,
+          "raidsPerDay": 150,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 421807.42071533203,
+                "crystal": 230027.89544677731,
+                "deuterium": 1697.1694335937498
+              },
+              "netPerDay": {
+                "alloy": 282983.34118652344,
+                "crystal": 176618.8119506836,
+                "deuterium": -1629.4462280273435
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 149122.94633788857,
+                "crystal": 61193.27416992246,
+                "deuterium": 505.23826904297215
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 31498.180810180824,
+                "crystal": 13105.259229858406,
+                "deuterium": 81.68381945800849
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 422233.060546875,
+                "crystal": 230260.04296875,
+                "deuterium": 1698.7851562499998
+              },
+              "netPerDay": {
+                "alloy": 402423.78277587885,
+                "crystal": 222636.6470947266,
+                "deuterium": -1468.1162109375
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 149220.8296874979,
+                "crystal": 61232.015039063095,
+                "deuterium": 505.6769531250033
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 31536.71448046892,
+                "crystal": 13120.326562500008,
+                "deuterium": 81.8242734375007
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 421845.9971923828,
+                "crystal": 230048.93646240234,
+                "deuterium": 1697.3488769531248
+              },
+              "netPerDay": {
+                "alloy": 290706.4412841797,
+                "crystal": 179592.71173095706,
+                "deuterium": -1642.5485229492185
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 149117.32232665812,
+                "crystal": 61190.911285400965,
+                "deuterium": 505.16674804687835
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 31503.033463623207,
+                "crystal": 13107.105525146495,
+                "deuterium": 81.6975930175788
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 422233.060546875,
+                "crystal": 230260.04296875,
+                "deuterium": 1698.7851562499998
+              },
+              "netPerDay": {
+                "alloy": 400879.810546875,
+                "crystal": 222041.9307861328,
+                "deuterium": -4684.60400390625
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 149220.8296874979,
+                "crystal": 61232.015039063095,
+                "deuterium": 505.6769531250033
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 31536.71448046892,
+                "crystal": 13120.326562500008,
+                "deuterium": 81.8242734375007
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 422233.060546875,
+                "crystal": 230260.04296875,
+                "deuterium": 1698.7851562499998
+              },
+              "netPerDay": {
+                "alloy": 550185.2026977539,
+                "crystal": 283241.42248535156,
+                "deuterium": -7011.643432617188
+              },
+              "npcSalvagePerDay": {
+                "alloy": 147537.88348414647,
+                "crystal": 60518.79471141519,
+                "deuterium": 455.6044682845625
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 149220.8296874979,
+                "crystal": 61232.015039063095,
+                "deuterium": 505.6769531250033
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 31536.71448046892,
+                "crystal": 13120.326562500008,
+                "deuterium": 81.8242734375007
+              }
+            }
+          ]
+        },
+        {
+          "attemptedFraction": 0.5,
+          "raidsPerDay": 300,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 843614.8414306641,
+                "crystal": 460055.79089355463,
+                "deuterium": 3394.3388671874995
+              },
+              "netPerDay": {
+                "alloy": 565966.6823730469,
+                "crystal": 353237.6239013672,
+                "deuterium": -3258.892456054687
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 298245.89267577714,
+                "crystal": 122386.54833984491,
+                "deuterium": 1010.4765380859443
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 62996.36162036165,
+                "crystal": 26210.51845971681,
+                "deuterium": 163.36763891601697
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 844466.12109375,
+                "crystal": 460520.0859375,
+                "deuterium": 3397.5703124999995
+              },
+              "netPerDay": {
+                "alloy": 804847.5655517577,
+                "crystal": 445273.2941894532,
+                "deuterium": -2936.232421875
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 298441.6593749958,
+                "crystal": 122464.03007812619,
+                "deuterium": 1011.3539062500066
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 63073.42896093784,
+                "crystal": 26240.653125000015,
+                "deuterium": 163.6485468750014
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 843691.9943847656,
+                "crystal": 460097.8729248047,
+                "deuterium": 3394.6977539062495
+              },
+              "netPerDay": {
+                "alloy": 581412.8825683594,
+                "crystal": 359185.4234619141,
+                "deuterium": -3285.097045898437
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 298234.64465331624,
+                "crystal": 122381.82257080193,
+                "deuterium": 1010.3334960937567
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 63006.066927246415,
+                "crystal": 26214.21105029299,
+                "deuterium": 163.3951860351576
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 844466.12109375,
+                "crystal": 460520.0859375,
+                "deuterium": 3397.5703124999995
+              },
+              "netPerDay": {
+                "alloy": 801759.62109375,
+                "crystal": 444083.8615722656,
+                "deuterium": -9369.2080078125
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 298441.6593749958,
+                "crystal": 122464.03007812619,
+                "deuterium": 1011.3539062500066
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 63073.42896093784,
+                "crystal": 26240.653125000015,
+                "deuterium": 163.6485468750014
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 844466.12109375,
+                "crystal": 460520.0859375,
+                "deuterium": 3397.5703124999995
+              },
+              "netPerDay": {
+                "alloy": 1100370.4053955078,
+                "crystal": 566482.8449707031,
+                "deuterium": -14023.286865234377
+              },
+              "npcSalvagePerDay": {
+                "alloy": 295075.76696829294,
+                "crystal": 121037.58942283038,
+                "deuterium": 911.208936569125
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 298441.6593749958,
+                "crystal": 122464.03007812619,
+                "deuterium": 1011.3539062500066
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 63073.42896093784,
+                "crystal": 26240.653125000015,
+                "deuterium": 163.6485468750014
+              }
+            }
+          ]
+        },
+        {
+          "attemptedFraction": 1,
+          "raidsPerDay": 600,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 1687229.6828613281,
+                "crystal": 920111.5817871093,
+                "deuterium": 6788.677734374999
+              },
+              "netPerDay": {
+                "alloy": 1131933.3647460938,
+                "crystal": 706475.2478027344,
+                "deuterium": -6517.784912109374
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 596491.7853515543,
+                "crystal": 244773.09667968983,
+                "deuterium": 2020.9530761718886
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 125992.7232407233,
+                "crystal": 52421.03691943362,
+                "deuterium": 326.73527783203394
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 1688932.2421875,
+                "crystal": 921040.171875,
+                "deuterium": 6795.140624999999
+              },
+              "netPerDay": {
+                "alloy": 1609695.1311035154,
+                "crystal": 890546.5883789064,
+                "deuterium": -5872.46484375
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 596883.3187499916,
+                "crystal": 244928.06015625238,
+                "deuterium": 2022.7078125000132
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 126146.85792187568,
+                "crystal": 52481.30625000003,
+                "deuterium": 327.2970937500028
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 1687383.9887695312,
+                "crystal": 920195.7458496094,
+                "deuterium": 6789.395507812499
+              },
+              "netPerDay": {
+                "alloy": 1162825.7651367188,
+                "crystal": 718370.8469238282,
+                "deuterium": -6570.194091796874
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 596469.2893066325,
+                "crystal": 244763.64514160386,
+                "deuterium": 2020.6669921875134
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 126012.13385449283,
+                "crystal": 52428.42210058598,
+                "deuterium": 326.7903720703152
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 1688932.2421875,
+                "crystal": 921040.171875,
+                "deuterium": 6795.140624999999
+              },
+              "netPerDay": {
+                "alloy": 1603519.2421875,
+                "crystal": 888167.7231445312,
+                "deuterium": -18738.416015625
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 596883.3187499916,
+                "crystal": 244928.06015625238,
+                "deuterium": 2022.7078125000132
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 126146.85792187568,
+                "crystal": 52481.30625000003,
+                "deuterium": 327.2970937500028
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 1688932.2421875,
+                "crystal": 921040.171875,
+                "deuterium": 6795.140624999999
+              },
+              "netPerDay": {
+                "alloy": 2200740.8107910156,
+                "crystal": 1132965.6899414062,
+                "deuterium": -28046.573730468754
+              },
+              "npcSalvagePerDay": {
+                "alloy": 590151.5339365859,
+                "crystal": 242075.17884566076,
+                "deuterium": 1822.41787313825
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 596883.3187499916,
+                "crystal": 244928.06015625238,
+                "deuterium": 2022.7078125000132
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 126146.85792187568,
+                "crystal": 52481.30625000003,
+                "deuterium": 327.2970937500028
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "peoplePerHour": 100,
+      "activeBotsPerHour": 200,
+      "eligible": 200,
+      "perHour": 50,
+      "total": 1200,
+      "level4PerDay": 84.00000000000001,
+      "uptake": [
+        {
+          "attemptedFraction": 0.25,
+          "raidsPerDay": 300,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 843614.8414306641,
+                "crystal": 460055.79089355463,
+                "deuterium": 3394.3388671874995
+              },
+              "netPerDay": {
+                "alloy": 565966.6823730469,
+                "crystal": 353237.6239013672,
+                "deuterium": -3258.892456054687
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 298245.89267577714,
+                "crystal": 122386.54833984491,
+                "deuterium": 1010.4765380859443
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 62996.36162036165,
+                "crystal": 26210.51845971681,
+                "deuterium": 163.36763891601697
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 844466.12109375,
+                "crystal": 460520.0859375,
+                "deuterium": 3397.5703124999995
+              },
+              "netPerDay": {
+                "alloy": 804847.5655517577,
+                "crystal": 445273.2941894532,
+                "deuterium": -2936.232421875
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 298441.6593749958,
+                "crystal": 122464.03007812619,
+                "deuterium": 1011.3539062500066
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 63073.42896093784,
+                "crystal": 26240.653125000015,
+                "deuterium": 163.6485468750014
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 843691.9943847656,
+                "crystal": 460097.8729248047,
+                "deuterium": 3394.6977539062495
+              },
+              "netPerDay": {
+                "alloy": 581412.8825683594,
+                "crystal": 359185.4234619141,
+                "deuterium": -3285.097045898437
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 298234.64465331624,
+                "crystal": 122381.82257080193,
+                "deuterium": 1010.3334960937567
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 63006.066927246415,
+                "crystal": 26214.21105029299,
+                "deuterium": 163.3951860351576
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 844466.12109375,
+                "crystal": 460520.0859375,
+                "deuterium": 3397.5703124999995
+              },
+              "netPerDay": {
+                "alloy": 801759.62109375,
+                "crystal": 444083.8615722656,
+                "deuterium": -9369.2080078125
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 298441.6593749958,
+                "crystal": 122464.03007812619,
+                "deuterium": 1011.3539062500066
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 63073.42896093784,
+                "crystal": 26240.653125000015,
+                "deuterium": 163.6485468750014
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 844466.12109375,
+                "crystal": 460520.0859375,
+                "deuterium": 3397.5703124999995
+              },
+              "netPerDay": {
+                "alloy": 1100370.4053955078,
+                "crystal": 566482.8449707031,
+                "deuterium": -14023.286865234377
+              },
+              "npcSalvagePerDay": {
+                "alloy": 295075.76696829294,
+                "crystal": 121037.58942283038,
+                "deuterium": 911.208936569125
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 298441.6593749958,
+                "crystal": 122464.03007812619,
+                "deuterium": 1011.3539062500066
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 63073.42896093784,
+                "crystal": 26240.653125000015,
+                "deuterium": 163.6485468750014
+              }
+            }
+          ]
+        },
+        {
+          "attemptedFraction": 0.5,
+          "raidsPerDay": 600,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 1687229.6828613281,
+                "crystal": 920111.5817871093,
+                "deuterium": 6788.677734374999
+              },
+              "netPerDay": {
+                "alloy": 1131933.3647460938,
+                "crystal": 706475.2478027344,
+                "deuterium": -6517.784912109374
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 596491.7853515543,
+                "crystal": 244773.09667968983,
+                "deuterium": 2020.9530761718886
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 125992.7232407233,
+                "crystal": 52421.03691943362,
+                "deuterium": 326.73527783203394
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 1688932.2421875,
+                "crystal": 921040.171875,
+                "deuterium": 6795.140624999999
+              },
+              "netPerDay": {
+                "alloy": 1609695.1311035154,
+                "crystal": 890546.5883789064,
+                "deuterium": -5872.46484375
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 596883.3187499916,
+                "crystal": 244928.06015625238,
+                "deuterium": 2022.7078125000132
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 126146.85792187568,
+                "crystal": 52481.30625000003,
+                "deuterium": 327.2970937500028
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 1687383.9887695312,
+                "crystal": 920195.7458496094,
+                "deuterium": 6789.395507812499
+              },
+              "netPerDay": {
+                "alloy": 1162825.7651367188,
+                "crystal": 718370.8469238282,
+                "deuterium": -6570.194091796874
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 596469.2893066325,
+                "crystal": 244763.64514160386,
+                "deuterium": 2020.6669921875134
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 126012.13385449283,
+                "crystal": 52428.42210058598,
+                "deuterium": 326.7903720703152
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 1688932.2421875,
+                "crystal": 921040.171875,
+                "deuterium": 6795.140624999999
+              },
+              "netPerDay": {
+                "alloy": 1603519.2421875,
+                "crystal": 888167.7231445312,
+                "deuterium": -18738.416015625
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 596883.3187499916,
+                "crystal": 244928.06015625238,
+                "deuterium": 2022.7078125000132
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 126146.85792187568,
+                "crystal": 52481.30625000003,
+                "deuterium": 327.2970937500028
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 1688932.2421875,
+                "crystal": 921040.171875,
+                "deuterium": 6795.140624999999
+              },
+              "netPerDay": {
+                "alloy": 2200740.8107910156,
+                "crystal": 1132965.6899414062,
+                "deuterium": -28046.573730468754
+              },
+              "npcSalvagePerDay": {
+                "alloy": 590151.5339365859,
+                "crystal": 242075.17884566076,
+                "deuterium": 1822.41787313825
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 596883.3187499916,
+                "crystal": 244928.06015625238,
+                "deuterium": 2022.7078125000132
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 126146.85792187568,
+                "crystal": 52481.30625000003,
+                "deuterium": 327.2970937500028
+              }
+            }
+          ]
+        },
+        {
+          "attemptedFraction": 1,
+          "raidsPerDay": 1200,
+          "policies": [
+            {
+              "policy": "lean",
+              "lootPerDay": {
+                "alloy": 3374459.3657226562,
+                "crystal": 1840223.1635742185,
+                "deuterium": 13577.355468749998
+              },
+              "netPerDay": {
+                "alloy": 2263866.7294921875,
+                "crystal": 1412950.4956054688,
+                "deuterium": -13035.569824218748
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 1192983.5707031086,
+                "crystal": 489546.19335937966,
+                "deuterium": 4041.906152343777
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 251985.4464814466,
+                "crystal": 104842.07383886725,
+                "deuterium": 653.4705556640679
+              }
+            },
+            {
+              "policy": "profit",
+              "lootPerDay": {
+                "alloy": 3377864.484375,
+                "crystal": 1842080.34375,
+                "deuterium": 13590.281249999998
+              },
+              "netPerDay": {
+                "alloy": 3219390.262207031,
+                "crystal": 1781093.1767578127,
+                "deuterium": -11744.9296875
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 1193766.6374999832,
+                "crystal": 489856.12031250476,
+                "deuterium": 4045.4156250000265
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 252293.71584375136,
+                "crystal": 104962.61250000006,
+                "deuterium": 654.5941875000055
+              }
+            },
+            {
+              "policy": "safe",
+              "lootPerDay": {
+                "alloy": 3374767.9775390625,
+                "crystal": 1840391.4916992188,
+                "deuterium": 13578.791015624998
+              },
+              "netPerDay": {
+                "alloy": 2325651.5302734375,
+                "crystal": 1436741.6938476565,
+                "deuterium": -13140.388183593748
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 1192938.578613265,
+                "crystal": 489527.2902832077,
+                "deuterium": 4041.333984375027
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 252024.26770898566,
+                "crystal": 104856.84420117196,
+                "deuterium": 653.5807441406304
+              }
+            },
+            {
+              "policy": "oversized",
+              "lootPerDay": {
+                "alloy": 3377864.484375,
+                "crystal": 1842080.34375,
+                "deuterium": 13590.281249999998
+              },
+              "netPerDay": {
+                "alloy": 3207038.484375,
+                "crystal": 1776335.4462890625,
+                "deuterium": -37476.83203125
+              },
+              "npcSalvagePerDay": {
+                "alloy": 0,
+                "crystal": 0,
+                "deuterium": 0
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 1193766.6374999832,
+                "crystal": 489856.12031250476,
+                "deuterium": 4045.4156250000265
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 252293.71584375136,
+                "crystal": 104962.61250000006,
+                "deuterium": 654.5941875000055
+              }
+            },
+            {
+              "policy": "collector",
+              "lootPerDay": {
+                "alloy": 3377864.484375,
+                "crystal": 1842080.34375,
+                "deuterium": 13590.281249999998
+              },
+              "netPerDay": {
+                "alloy": 4401481.621582031,
+                "crystal": 2265931.3798828125,
+                "deuterium": -56093.14746093751
+              },
+              "npcSalvagePerDay": {
+                "alloy": 1180303.0678731718,
+                "crystal": 484150.3576913215,
+                "deuterium": 3644.8357462765
+              },
+              "npcWreckCreatedPerDay": {
+                "alloy": 1193766.6374999832,
+                "crystal": 489856.12031250476,
+                "deuterium": 4045.4156250000265
+              },
+              "expectedCapturedAssetsPerDay": {
+                "alloy": 252293.71584375136,
+                "crystal": 104962.61250000006,
+                "deuterium": 654.5941875000055
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "referenceProduction": [
+    {
+      "level": 3,
+      "onePlanetPerDay": {
+        "alloy": 8759.451772990229,
+        "crystal": 3503.7807091960913,
+        "deuterium": 251.13935742648826
+      }
+    },
+    {
+      "level": 6,
+      "onePlanetPerDay": {
+        "alloy": 21568.300228562286,
+        "crystal": 8627.320091424914,
+        "deuterium": 576.9667335016389
+      }
+    },
+    {
+      "level": 9,
+      "onePlanetPerDay": {
+        "alloy": 31056.569551828776,
+        "crystal": 14614.85625968413,
+        "deuterium": 938.5562031040095
+      }
+    },
+    {
+      "level": 12,
+      "onePlanetPerDay": {
+        "alloy": 42485.907730784544,
+        "crystal": 21242.953865392272,
+        "deuterium": 1325.5214753226905
+      }
+    }
+  ],
+  "repeatedPartial": {
+    "originalCrew": {
+      "PALADIN": 5
+    },
+    "originalHoard": {
+      "alloy": 44044,
+      "crystal": 24024,
+      "deuterium": 170
+    },
+    "raids": [
+      {
+        "attacker": {
+          "CORSAIR": 3,
+          "ARGOSY": 2
+        },
+        "before": {
+          "PALADIN": 5
+        },
+        "result": {
+          "grade": "PARTIAL",
+          "survived": true,
+          "fullLoot": true,
+          "attackerSurvivors": {
+            "CORSAIR": 1,
+            "ARGOSY": 2
+          },
+          "defenderSurvivors": {
+            "PALADIN": 2
+          },
+          "attackerLosses": {
+            "CORSAIR": 2
+          },
+          "capital": {
+            "alloy": 35230,
+            "crystal": 14300,
+            "deuterium": 320
+          },
+          "loot": {
+            "alloy": 13213,
+            "crystal": 7207,
+            "deuterium": 51
+          },
+          "lossCost": {
+            "alloy": 10140,
+            "crystal": 3900,
+            "deuterium": 40
+          },
+          "repair": {
+            "alloy": 1345,
+            "crystal": 518,
+            "deuterium": 6
+          },
+          "repairMinutes": 4.209188841398635,
+          "replacementMinutes": 31.74418604651163,
+          "fuel": 62,
+          "wreckCreated": {
+            "alloy": 8745.3,
+            "crystal": 3364.2,
+            "deuterium": 34.5
+          },
+          "npcWreckCreated": {
+            "alloy": 5703.3,
+            "crystal": 2194.2,
+            "deuterium": 22.5
+          },
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "publicWreck": {
+            "alloy": 8745.3,
+            "crystal": 3364.2,
+            "deuterium": 34.5
+          },
+          "expectedCapture": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "net": {
+            "alloy": 1728,
+            "crystal": 2789,
+            "deuterium": -57
+          },
+          "netWithCapture": {
+            "alloy": 1728,
+            "crystal": 2789,
+            "deuterium": -57
+          },
+          "straightRoundTripMinutes": 12.997111111111112
+        }
+      },
+      {
+        "attacker": {
+          "CORSAIR": 1,
+          "ARGOSY": 2
+        },
+        "before": {
+          "PALADIN": 2
+        },
+        "result": {
+          "grade": "PARTIAL",
+          "survived": true,
+          "fullLoot": true,
+          "attackerSurvivors": {
+            "CORSAIR": 0,
+            "ARGOSY": 2
+          },
+          "defenderSurvivors": {
+            "PALADIN": 1
+          },
+          "attackerLosses": {
+            "CORSAIR": 1
+          },
+          "capital": {
+            "alloy": 25090,
+            "crystal": 10400,
+            "deuterium": 280
+          },
+          "loot": {
+            "alloy": 13213,
+            "crystal": 7207,
+            "deuterium": 51
+          },
+          "lossCost": {
+            "alloy": 5070,
+            "crystal": 1950,
+            "deuterium": 20
+          },
+          "repair": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "repairMinutes": 0,
+          "replacementMinutes": 15.872093023255815,
+          "fuel": 38,
+          "wreckCreated": {
+            "alloy": 3422.1,
+            "crystal": 1316.4,
+            "deuterium": 13.5
+          },
+          "npcWreckCreated": {
+            "alloy": 1901.1,
+            "crystal": 731.4,
+            "deuterium": 7.5
+          },
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "publicWreck": {
+            "alloy": 3422.1,
+            "crystal": 1316.4,
+            "deuterium": 13.5
+          },
+          "expectedCapture": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "net": {
+            "alloy": 8143,
+            "crystal": 5257,
+            "deuterium": -7
+          },
+          "netWithCapture": {
+            "alloy": 8143,
+            "crystal": 5257,
+            "deuterium": -7
+          },
+          "straightRoundTripMinutes": 12.997111111111112
+        }
+      },
+      {
+        "attacker": {
+          "CORSAIR": 1,
+          "ARGOSY": 2
+        },
+        "before": {
+          "PALADIN": 1
+        },
+        "result": {
+          "grade": "DECISIVE",
+          "survived": true,
+          "fullLoot": true,
+          "attackerSurvivors": {
+            "CORSAIR": 1,
+            "ARGOSY": 2
+          },
+          "defenderSurvivors": {
+            "PALADIN": 0
+          },
+          "attackerLosses": {},
+          "capital": {
+            "alloy": 25090,
+            "crystal": 10400,
+            "deuterium": 280
+          },
+          "loot": {
+            "alloy": 26426,
+            "crystal": 14414,
+            "deuterium": 102
+          },
+          "lossCost": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "repair": {
+            "alloy": 2965,
+            "crystal": 1141,
+            "deuterium": 12
+          },
+          "repairMinutes": 9.279183559389635,
+          "replacementMinutes": 0,
+          "fuel": 38,
+          "wreckCreated": {
+            "alloy": 1901.1,
+            "crystal": 731.4,
+            "deuterium": 7.5
+          },
+          "npcWreckCreated": {
+            "alloy": 1901.1,
+            "crystal": 731.4,
+            "deuterium": 7.5
+          },
+          "salvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "npcSalvage": {
+            "alloy": 0,
+            "crystal": 0,
+            "deuterium": 0
+          },
+          "publicWreck": {
+            "alloy": 1901.1,
+            "crystal": 731.4,
+            "deuterium": 7.5
+          },
+          "expectedCapture": {
+            "alloy": 760.4399999999999,
+            "crystal": 292.56,
+            "deuterium": 3
+          },
+          "net": {
+            "alloy": 23461,
+            "crystal": 13273,
+            "deuterium": 52
+          },
+          "netWithCapture": {
+            "alloy": 24221.44,
+            "crystal": 13565.56,
+            "deuterium": 55
+          },
+          "straightRoundTripMinutes": 12.997111111111112
+        }
+      }
+    ],
+    "receipts": {
+      "alloy": 52852,
+      "crystal": 28828,
+      "deuterium": 204
+    },
+    "net": {
+      "alloy": 33332,
+      "crystal": 21319,
+      "deuterium": -12
+    },
+    "straightMinutes": 38.99133333333334,
+    "minimumPirateLifeMinutes": 120,
+    "directLootRatio": 1.1999765526539465
+  }
+}

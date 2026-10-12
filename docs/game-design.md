@@ -208,7 +208,8 @@ is a decision rather than an accrual. Isotope Spectrometry still reveals them, a
 pay for advanced Fleet V2 hulls, the last research rungs and a Death Star. What they no longer
 are is the bigger number, and the Frontier act now has to compete on risk and timing instead of
 on volume. From the season's 35th hour, exactly 11 of each 50 asteroid indexes (22%) are
-isotope-rich; their 10–25% Deuterium concentration is unchanged. The plant's curve is still
+isotope-rich; newly opened hours now use 12–28% Deuterium concentration (12 October 2026).
+Persisted older hours retain their original concentration. The plant's curve is still
 flatter than alloy's or crystal's, and the test now asserts
 where the two cross rather than that they never do.
 
@@ -806,7 +807,7 @@ hours remain intact.
 A shower multiplies the hourly per-player spawn for the part of each hour it covers, and half of its
 bonus arrives across its first ten minutes. Ruleset 4–7 seasons retain their random calendar. The
 end stops only bonus arrivals;
-rocks already in the galaxy retain their ordinary 2.5–5 hour life and mining flights continue. Signals,
+new rocks use 1–2 hour lives; older stored hours retain their original 2.5–5 hour lives and mining flights continue. Signals,
 the Chronicle and the galaxy status chip announce the public lifecycle, while D143 still hides every
 undiscovered coordinate and the API never publishes the future calendar. The active shower chip
 shows its actual multiplier in the primary color beside the remaining time.

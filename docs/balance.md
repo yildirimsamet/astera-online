@@ -685,6 +685,35 @@ find, not a speed comparison.
 
 ### Pirates (D150 · D155)
 
+**12 October 2026 — current hourly balance.** Newly opened hours persist v2 generation
+inputs in the running season. Crews contain 2–5 armed ships, with an own-level spine and
+no transports. Raw A+C is `min(floor(fleetValue × 0.4), [600,1200,2500,5000][level])`, split
+65%/35%; D is `min(reference one-leg fuel × 40, [50,100,200,333][level])`.
+The shared reward ledger caps **all arrivals together** at the first 60% decisive budget,
+after cargo limits; partial raids do not recreate it. Historical payments are backfilled,
+without removing anything already earned.
+
+128 crews/level, 8 planning and 32 independent validation rolls, matching-tier legal
+fleets, 1,000-unit clear route, no Collector or captured hull in net income:
+
+| Level | Mean net A+C | Mean net D | First-payment A+C ceiling | D ceiling |
+| --- | ---: | ---: | ---: | ---: |
+| 1 | 168 | 19 | 360 | 30 |
+| 2 | 331 | 37 | 720 | 60 |
+| 3 | 448 | 75 | 1,500 | 120 |
+| 4 | 1,475 | 114 | 3,000 | 199 |
+
+Net deducts fuel, replacements and paid repair. Mean A+2C+32D profit roughly doubles
+with each rung, as does the sampled crew's firepower. Cargo, distance, bad composition,
+repair and competing arrivals can leave a loss. Capture rates remain 0.40/0.28/0.16/0.12;
+collectors and captured hulls are separate gains, not part of the requested base profit.
+See [task/review record](pve-rebalance-2026-10-12.md) and
+[calibration evidence](evidence/pirate-balanced-calibration-2026-10-12.json).
+
+**Historical measurements below predate this rebalance.** The current season uses
+0.25 pirates per eligible active commander/hour, rounded with a one-pirate floor;
+the per-seat lanes below only serve old static seasons. Existing hours remain frozen.
+
 ```
 spawn         0.06 per seat per hour — 18 candidates/h at 300 seats, in three
               append-only lanes (0.02 + 0.01 + 0.03); admitted after the daily supply cap

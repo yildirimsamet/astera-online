@@ -1090,6 +1090,8 @@ describe('every payload the client parses', () => {
     expect(seen!.level).toBe(field[found!.index]!.level);
     expect(seen!.damageMult).toBe(PIRATE.damageMult[field[found!.index]!.level]);
     expect(Object.keys(seen!.fleet ?? {}).length).toBeGreaterThan(0);
+    expect(seen!.hoard).toEqual(field[found!.index]!.hoard);
+    expect(seen!.lootPaid).toEqual({ alloy: 0, crystal: 0, deuterium: 0 });
     expect(seen!.expiresInMinutes).toBeGreaterThan(0);
     // No orbit, under any name: those five numbers ARE the route.
     const wire = JSON.stringify(seen);

@@ -3165,6 +3165,9 @@ export const piratesSchema = z.object({
     damageMult: z.number().optional(),
     mass: massClass.optional(),
     silhouette: z.literal('pirate').optional(),
+    /** Original hoard and prior payments, only for identified crews. Optional during rollout. */
+    hoard: resources.optional(),
+    lootPaid: resources.optional(),
   })),
 });
 

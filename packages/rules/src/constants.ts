@@ -482,8 +482,8 @@ export const DEUTERIUM = {
   isotopeBonusCadence: 10,
   isotopeRate: 11 / 50,
   /** Inclusive seeded range; replaces ore rather than increasing total value. D102. */
-  isotopeShareMin: 0.10,
-  isotopeShareMax: 0.25,
+  isotopeShareMin: 0.12,
+  isotopeShareMax: 0.28,
   /** A shield must absorb this share of normal outgoing damage to reveal D95. */
   graviticDiscoveryShieldShare: 0.25,
 } as const;
@@ -2486,8 +2486,8 @@ export const GALAXY = {
    * in twice a day meets a few, and short enough that the field turns over instead
    * of accumulating.
    */
-  asteroidLifeHoursMin: 2.5,
-  asteroidLifeHoursMax: 5,
+  asteroidLifeHoursMin: 1,
+  asteroidLifeHoursMax: 2,
 
   /**
    * Ore carried, by level. PROVISIONAL.
@@ -2515,9 +2515,10 @@ export const GALAXY = {
    * ladder of prizes so much as one prize and four consolations; five even steps
    * from four holds to twenty read as a choice at every rung. The 2026-09-18 ore
    * halving first made that two through ten; the 2026-09-20 hold halving restores
-   * the current ladder to four through twenty bare holds.
+   * the ladder to four through twenty bare holds. Owner's 2026-10-12 rebalance
+   * halves it again to two through ten for newly opened hours.
    */
-  asteroidOreByLevel: [0, 800, 1600, 2400, 3200, 4000] as readonly number[],
+  asteroidOreByLevel: [0, 400, 800, 1200, 1600, 2000] as readonly number[],
 
   /**
    * THE UNIT A ROCK'S YIELD IS COUNTED IN. Owner instruction, 2026-09-14.
@@ -3186,6 +3187,19 @@ const PIRATE_SPAWN_PER_SEAT_PER_HOUR = PIRATE_INCREASED_SPAWN_PER_SEAT_PER_HOUR 
 const PIRATE_SPEED_MULT = 0.70;
 
 export const PIRATE = {
+  /**
+   * Owner's 2026-10-12 budget. Captured in newly opened hours, so the running
+   * season can adopt it without changing a contact or a raid already in flight.
+   * Ore is Alloy + Crystal. The decisive 60% share caps L4 ore at 3k and D at 199.
+   * Actual profit still pays fleet losses, repair and both flight legs.
+   */
+  balanced: {
+    oreValueMult: 0.4,
+    oreByLevel: [0, 600, 1200, 2500, 5000] as readonly number[],
+    deuteriumByLevel: [0, 50, 100, 200, 333] as readonly number[],
+    alloyShare: 0.65,
+    fuelMult: 40,
+  },
   /**
    * HOW FAR THE REAL RENDEZVOUS MAY SIT FROM THE ONE THE PLAYER READ. D183.
    *

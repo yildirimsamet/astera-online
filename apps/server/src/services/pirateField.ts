@@ -7,12 +7,14 @@ import {
   generatePirateHour,
   generatePirateSchedule,
   pirateDiscovered,
+  remainingPirateLoot,
   type Fleet,
   type PirateHourLane,
   type HullId,
   type PirateLaneStage,
   type PirateSpec,
   type SensorEpoch,
+  type Resources,
 } from '@astera/rules';
 import { minutesSince } from '../clock.js';
 import { GameError } from './planet.js';
@@ -259,6 +261,7 @@ export interface PirateStateRow {
   losses: Fleet;
   destroyedAt: Date | null;
   destroyedByPlayerId: string | null;
+  lootPaid: Resources;
 }
 
 /**
@@ -277,6 +280,8 @@ export interface PirateSnapshot {
   spec: (index: number) => PirateSpec | undefined;
   /** The crew still aboard pirate `index`. */
   livingRosterOf: (index: number) => Fleet;
+  /** Unpaid reward budget, after previous raids, for reads and bot planning. */
+  remainingLootOf: (index: number) => Resources;
   destroyedAt: (index: number) => Date | null;
   /** Every pirate that is in the disc at `now` and has not been wiped out. */
   standing: (now: Date) => PirateSpec[];
@@ -294,6 +299,7 @@ export async function loadPirateSnapshot(
     losses: row.losses,
     destroyedAt: row.destroyedAt,
     destroyedByPlayerId: row.destroyedByPlayerId,
+    lootPaid: row.lootPaid,
   }]));
   if (dynamicPirates(season)) {
     const pirates = (await loadPirateHours(db, season, now))
@@ -335,6 +341,11 @@ function snapshotOf(
       return spec ? livingRoster(spec.roster, state.get(index)?.losses) : {};
     },
     destroyedAt: (index) => state.get(index)?.destroyedAt ?? null,
+    remainingLootOf: (index) => {
+      const spec = byIndex.get(index);
+      const zero = { alloy: 0, crystal: 0, deuterium: 0 };
+      return spec ? remainingPirateLoot(spec.hoard, state.get(index)?.lootPaid ?? zero) : zero;
+    },
     standing: (at) => activePirates(pirates, minutesSince(season.startsAt, at))
       .filter((spec) => spec.index < visibleLength && state.get(spec.index)?.destroyedAt == null),
   };

@@ -23,9 +23,55 @@ import {
   forecastLoss,
   shieldHp,
   wallKnowledgeOf,
+  type Fleet,
+  type TechLevels,
   type ForecastInput,
 } from '@astera/rules';
 import { hullLabel } from '../src/i18n/names.js';
+
+describe('pirate profit updates with the committed fleet', () => {
+  const pirate: PirateContact = {
+    id: 'pirate-profit', callsign: 'VEX7', zone: 'IDENTIFIED', at: { x: 400, y: 0, z: 0 },
+    expiresInMinutes: 180, reachMinutes: 12,
+    reach: [
+      { hull: 'CITADEL', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } },
+      { hull: 'DART', minutes: 16, distance: 900, at: { x: 900, y: 0, z: 0 } },
+    ], level: 4, fleet: { PALADIN: 1, STRONGHOLD: 1, TEMPEST: 1, WARDEN: 1, TALON: 1 }, damageMult: 0.85,
+    hoard: { alloy: 3250, crystal: 1750, deuterium: 333 }, lootPaid: { alloy: 0, crystal: 0, deuterium: 0 },
+  };
+  const tech: TechLevels = { SHIP_POWER: 2, SHIP_ARMOR: 2, CARGO_HOLDS: 2, STARSHIP_ENGINEERING: 2 };
+  const open = (contact = pirate, fleet: Fleet = { CATACLYSM: 2, CORSAIR: 2, CITADEL: 2, PALADIN: 2, DART: 1 }) => render(
+    <LaunchSheet target={{ kind: 'pirate', pirate: contact }} planet={planetView({ fleet, rulesetVersion: 16,
+      research: planetView().research.map(row => ({ ...row, level: tech[row.id] ?? 0 })) }, { deuterium: 500_000 })}
+      onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper },
+  );
+
+  it('shows a loss for a weak wing and recomputes the net haul after a stronger selection', async () => {
+    open();
+    expect(screen.getByText(/choose ships.*estimate/i)).toBeVisible();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /max dart/i }));
+    expect(await screen.findByText(/likely to lose resources/i)).toBeVisible();
+    expect(document.querySelector('[data-profit-net="alloy"]')).toHaveTextContent('−');
+    const dart = screen.getByRole('textbox', { name: /dart quantity/i });
+    await user.clear(dart); await user.type(dart, '0'); await user.tab();
+    await openAllBands(user);
+    for (const hull of ['Cataclysm', 'Corsair', 'Citadel', 'Paladin']) {
+      await user.click(screen.getByRole('button', { name: `Max ${hull}` }));
+    }
+    expect(await screen.findByText(/likely profitable/i)).toBeVisible();
+    expect(document.querySelector('[data-profit-net="alloy"]')).toHaveTextContent('+');
+    expect(document.querySelector('[data-profit-net="deuterium"]')).not.toBeNull();
+  });
+
+  it('keeps missing rolling-deploy reward metadata unknown', async () => {
+    const { hoard: _hoard, lootPaid: _paid, ...older } = pirate;
+    open(older);
+    await userEvent.setup().click(screen.getByRole('button', { name: /max citadel/i }));
+    expect(screen.getByText(/reward information is unavailable/i)).toBeVisible();
+    expect(document.querySelector('[data-profit-net]')).toBeNull();
+  });
+});
 
 const target: GalaxyPlanet = {
   id: 'p2',

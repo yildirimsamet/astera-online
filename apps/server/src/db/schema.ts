@@ -3717,6 +3717,8 @@ export const pirateState = pgTable('pirate_state', {
   index: integer('index').notNull(),
   /** Cumulative hulls destroyed across every commander who has hit it. */
   losses: jsonb('losses').$type<Fleet>().notNull().default({}),
+  /** Hoard already loaded by all raids, excluding separately recovered wreckage. */
+  lootPaid: jsonb('loot_paid').$type<Resources>().notNull().default({ alloy: 0, crystal: 0, deuterium: 0 }),
   /** Set once, by the raid that wiped it out. */
   destroyedAt: timestamp('destroyed_at', { withTimezone: true }),
   destroyedByPlayerId: uuid('destroyed_by_player_id').references(() => players.id),

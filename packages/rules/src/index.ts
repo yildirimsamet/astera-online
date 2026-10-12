@@ -66,3 +66,6 @@ export * from './raid-ledger.js';
 export * from './raid-trials.js';
 export * from './navy-package.js';
 export * from './cosmeticCatalog.js';
+export * from './pirateGeneration.js';
+export * from './pirateLoot.js';
+export * from './pirateProfit.js';

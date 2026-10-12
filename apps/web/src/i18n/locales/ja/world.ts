@@ -634,6 +634,28 @@ export const focus = {
  * not a usable rule (D124), and this is the only surface any of them appear on.
  */
 export const pirate = {
+  profit: {
+    title: "推定純利益",
+    net: "純利益",
+    range: "推定範囲",
+    PROFIT: "利益が出る見込み",
+    RISK: "利益は不確実",
+    LOSS: "資源を失う見込み",
+    empty: "艦艇を選ぶと利益を推定できます。",
+    unavailable: "報酬の情報がないため、利益を推定できません。",
+    pending: "推定を更新中…",
+    loot: "持ち帰る戦利品",
+    salvage: "回収艦による回収",
+    loss: "失った艦艇の費用",
+    repair: "有料修理",
+    fuel: "往復の燃料",
+    uncertain: "推定は保証ではありません。到着前に他の攻撃で報酬が減る可能性があります。",
+    exclusions: "拿捕する艦艇と未回収の公共残骸は含めません。",
+    value: "資源の生産価値を比較して判断します。",
+    cargo: "生き残った艦艇の貨物室では、戦利品をすべて運べない可能性があります。",
+    losses: "この艦隊は艦艇を失う可能性があります。",
+    radiation: "判明している飛行中の放射線を含みます。帰還速度や経路は変わる場合があります。",
+  },
   title: "海賊船団",
   /** Level and callsign together. The callsign is season-unique and leaks no index. */
   name: "海賊船隊L {{level}} - {{callsign}}",

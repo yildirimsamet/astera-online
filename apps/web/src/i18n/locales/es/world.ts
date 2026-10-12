@@ -633,6 +633,28 @@ export const focus = {
  * not a usable rule (D124), and this is the only surface any of them appear on.
  */
 export const pirate = {
+  profit: {
+    title: "Ganancia neta estimada",
+    net: "Ganancia neta",
+    range: "Intervalo estimado",
+    PROFIT: "Probablemente rentable",
+    RISK: "La ganancia es incierta",
+    LOSS: "Probable pérdida de recursos",
+    empty: "Elige naves para estimar la ganancia.",
+    unavailable: "Faltan datos de la recompensa; no se puede estimar la ganancia.",
+    pending: "Actualizando la estimación…",
+    loot: "Botín que llega a casa",
+    salvage: "Recuperación del recolector",
+    loss: "Naves perdidas",
+    repair: "Reparaciones pagadas",
+    fuel: "Combustible de ida y vuelta",
+    uncertain: "La estimación no es una garantía. Otros ataques pueden reducir la recompensa antes de que llegues.",
+    exclusions: "Se excluyen las naves capturadas y los escombros públicos no recogidos.",
+    value: "La valoración compara los recursos según su valor de producción.",
+    cargo: "Las bodegas supervivientes podrían no cargar todo el botín.",
+    losses: "Esta flota podría perder naves.",
+    radiation: "Se incluye la radiación de vuelo conocida. La velocidad de regreso y la ruta pueden cambiar.",
+  },
   title: "Flota pirata",
   /** Level and callsign together. The callsign is season-unique and leaks no index. */
   name: "Flota pirata L{{level}}-{{callsign}}",

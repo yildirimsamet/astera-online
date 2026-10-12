@@ -5,6 +5,31 @@ Use `docker-compose.prod.yml` only. The development Compose uses tmpfs and an un
 
 This compact runbook consolidates the supplied notes through 10 October 2026. Inspection and rehearsal records are point-in-time evidence, not proof that a release is deployed. Refresh the actual SHA, migration journal, flags and live shards before each release. Repository-relative links below refer to supporting files in the project.
 
+### 12 October PvE balance: same-season compatibility roll
+
+This change adopts the balance through **new hour snapshots**; it needs no season reset or ruleset bump.
+Do not rewrite old hours, pirate handles, rosters, hoards, asteroid ore or flight deadlines.
+
+1. Rehearse `0150_pirate_reward_ledger` on an isolated restore. Retain the normal verified backup/image/webroot.
+2. Set `PIRATE_BALANCE_V2_ENABLED=false` for all API and worker processes for the compatibility roll.
+3. Stop and drain **every old settlement worker** before migration/backfill. Its old payout code would not update
+   the new ledger. The migration totals the hoard loaded in battle reports, excluding salvage and captured ships;
+   reports preserve loads lost later in return radiation. Do not claw back historical resources.
+4. Apply migration; roll all APIs and the single worker to code that understands optional pirate v2 inputs.
+   Start the updated worker with the flag still false. Verify API health, queue settlement and identified pirate
+   `hoard`/`lootPaid` responses. Older clients accept the added fields; newer clients keep missing reward data unknown.
+5. After every process understands v2, set the flag true and recreate the worker/API containers with that environment.
+   The **next unopened hour** adopts armed-only pirate crews and the new payout profile. Reopening an existing hour
+   remains a no-op. Old API images reject the new stored lane key, so do not expose v2 hours before step 4 is complete.
+6. New asteroid hours use 400/800/1200/1600/2000 total ore, 1–2 hour lives and 12–28% isotope D.
+   Older snapshots keep their previous values. Retain the twelve-hour read window through the transition.
+
+After the ledger migration, settlement-worker rollback must already retain the ledger-aware payout code:
+an older worker neither reads nor updates `loot_paid`, even while the v2 generation flag is false.
+After activation, API rollback must also understand stored v2 snapshots. Retain the compatible image.
+Turning the flag off affects future hours only; it does not make an older parser compatible with already stored v2 rows.
+No production deployment is claimed by this repository change. Evidence/checks: [PvE task record](pve-rebalance-2026-10-12.md).
+
 ## 1. Production contract and non-negotiable gates
 
 | Component | Contract |
@@ -399,7 +424,7 @@ Latest supplied adjustment is **definition v12**, superseding the v10/v11 tables
 | Lunch | 12:30–13:00 ×2 | 13:00–13:30 ×2 |
 | Evening | 20:00–20:30 ×2 | 20:00–20:30 ×4 |
 
-Base arrivals: 0.75 rocks per eligible active commander/hour. Half the shower **bonus** is reserved for its first 10 minutes; the remainder samples the whole window, rounded per lane. Lifetimes remain 2.5–5 hours. At smoothed population 32: ordinary hour 24; half-hour ×2 gives 24 shower + 12 ordinary (6 reserved); ×4 gives 48 + 12 (18 reserved). These are arrivals, not total visible stock.
+Base arrivals: 0.75 rocks per eligible active commander/hour. Half the shower **bonus** is reserved for its first 10 minutes; the remainder samples the whole window, rounded per lane. New hours use 1–2 hour lifetimes; older hour snapshots retain 2.5–5 hours. At smoothed population 32: ordinary hour 24; half-hour ×2 gives 24 shower + 12 ordinary (6 reserved); ×4 gives 48 + 12 (18 reserved). These are arrivals, not total visible stock.
 
 Existing stored hours remain frozen. Existing five-minute and null snapshots retain old birth times/IDs/ore/targets; derived v5–v11 calendars retain five-minute distribution, v4 and earlier uniform distribution. Do not rewrite/deplete/refill them through changed constants.
 

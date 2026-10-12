@@ -576,6 +576,28 @@ export const focus = {
 
 /** Korsan filoları. D150. Türkçe doğal yazılır; `İ` naif case-fold edilmez. */
 export const pirate = {
+  profit: {
+    title: "Tahmini net kazanç",
+    net: "Net kazanç",
+    range: "Tahmini aralık",
+    PROFIT: "Muhtemelen kârlı",
+    RISK: "Kâr belirsiz",
+    LOSS: "Bu filo zarar edebilir",
+    empty: "Kâr tahmini için gemi seç.",
+    unavailable: "Ödül bilgisi henüz yok; kâr hesaplanamıyor.",
+    pending: "Tahmin güncelleniyor…",
+    loot: "Eve gelen ganimet",
+    salvage: "Hurdacı kazancı",
+    loss: "Kayıp gemi bedeli",
+    repair: "Ücretli onarım",
+    fuel: "Gidiş-dönüş yakıtı",
+    uncertain: "Tahmin garanti değildir. Diğer saldırılar sen varmadan ödülü azaltabilir.",
+    exclusions: "Ele geçirilebilecek gemiler ve toplanmayan enkaz hesaba katılmadı.",
+    value: "Kâr yorumu kaynakların üretim değerine göre yapılır.",
+    cargo: "Sağ kalan gemilerin kargosu tüm ganimete yetmeyebilir.",
+    losses: "Bu filoda gemi kaybı riski var.",
+    radiation: "Bilinen uçuş radyasyonu dahil. Dönüş hızı ve rota değişebilir.",
+  },
   title: "Korsan filosu",
   name: "Korsan filosu S{{level}}-{{callsign}}",
   level: "Seviye {{level}}",

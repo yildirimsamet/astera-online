@@ -848,17 +848,25 @@ function Views({ view }: { view: string }) {
     );
   }
   if (view === 'launch' || view === 'launch-pirate') {
+    const pirateTech = { SHIP_POWER: 2, SHIP_ARMOR: 2, CARGO_HOLDS: 2, STARSHIP_ENGINEERING: 2 };
+    const pirateWorld = planetView({ rulesetVersion: 16,
+      fleet: { DART: 1, CATACLYSM: 2, CORSAIR: 2, CITADEL: 2, PALADIN: 2, GARBAGE_COLLECTOR: 1 },
+      research: launchWorld.research.map(row => ({ ...row, level:
+        row.id === 'SHIP_POWER' || row.id === 'SHIP_ARMOR' || row.id === 'CARGO_HOLDS' || row.id === 'STARSHIP_ENGINEERING'
+          ? pirateTech[row.id] : 0 })),
+    }, { alloy: 40000, crystal: 20000, deuterium: 12000 });
     return (
       <LaunchSheet
-        planet={launchWorld}
+        planet={view === 'launch' ? launchWorld : pirateWorld}
         {...(view === 'launch' ? { intel: launchIntel } : {})}
         target={view === 'launch'
           ? { kind: 'world', world: rival }
           : { kind: 'pirate', pirate: {
               id: 'pirate-1', callsign: 'VEX7', zone: 'IDENTIFIED', at: { x: 400, y: 0, z: 0 },
               expiresInMinutes: 180, reachMinutes: 12,
-              reach: [{ hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }],
-              level: 2, fleet: { VIPER: 3, COURIER: 1 }, damageMult: 0.65, mass: 'MEDIUM' } }}
+              reach: (['DART', 'CITADEL', 'GARBAGE_COLLECTOR'] as const).map(hull => ({ hull, minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } })),
+              level: 4, fleet: { PALADIN: 1, STRONGHOLD: 1, TEMPEST: 1, WARDEN: 1, TALON: 1 }, damageMult: 0.85, mass: 'MEDIUM',
+              hoard: { alloy: 3250, crystal: 1750, deuterium: 333 }, lootPaid: { alloy: 0, crystal: 0, deuterium: 0 } } }}
         onClose={noop}
         onLaunched={noop}
       />

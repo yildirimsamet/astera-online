@@ -1,6 +1,5 @@
 import { and, eq, gt, inArray } from 'drizzle-orm';
 import {
-  DEBRIS,
   ENGAGEMENT_STANDOFF,
   HULLS,
   MOBILE_HULLS,
@@ -13,13 +12,14 @@ import {
   fleetSpeed,
   fleetSpeedMult,
   fleetTravelExact,
-  computeLoot,
+  claimPirateLoot,
   interceptOrbit,
   missionFuel,
   pirateActive,
   pirateCapture,
   piratePosition,
   pirateOverrun,
+  pirateBattleWreck,
   pirateStats,
   resolveCombat,
   resolveBattle,
@@ -179,7 +179,7 @@ export async function launchPirateRaid(
    * waits for the orbit to come round, and a fleet leaving a moment too late misses
    * that narrow window and is quoted the next lap.
    *
-   * A raid cannot be recalled (P3), so this is the one surface that must never
+   * Calling a raid back does not refund its prepaid fuel, so the launch must never
    * commit a fleet to a number the player never saw. Optional because a caller may
    * genuinely not have one (the simulator, a bot, an older client); when it is
    * given, the launch is refused rather than flown at a different answer.
@@ -315,8 +315,7 @@ export async function launchPirateRaid(
      *
      * The fleet flies home from the rendezvous point to the world it left, so the
      * two legs are the same straight line and `legs: 2` is exact — no extra rule.
-     * Nothing is refunded if the raid fails: a launched fleet cannot be recalled,
-     * and a quote that could be undone is not a decision.
+     * Nothing is refunded if the raid fails or its commander calls it back.
      */
     const reach = distance(origin, hit.at);
     const fuel = missionFuel(requested, reach, 2);
@@ -619,10 +618,9 @@ async function settleArrival(
   const survived = fleetCount(result.attackerSurvivors) > 0;
 
   const loot = survived
-    ? computeLoot(
+    ? claimPirateLoot(
         spec.hoard,
-        { alloy: 0, crystal: 0, deuterium: 0 },
-        { alloy: 0, crystal: 0, deuterium: 0 },
+        state!.lootPaid,
         result.grade,
         // WHAT THEY CAN CARRY, and the real throttle on this whole feature: cargo
         // room is bought with combat power on the way out. T8/D150.
@@ -644,14 +642,20 @@ async function settleArrival(
    * lesson because the ore was sitting on a wreck rather than on a world.
    */
   const uncapped = survived
-    ? computeLoot(
+    ? claimPirateLoot(
         spec.hoard,
-        { alloy: 0, crystal: 0, deuterium: 0 },
-        { alloy: 0, crystal: 0, deuterium: 0 },
+        state!.lootPaid,
         result.grade,
         Number.MAX_SAFE_INTEGER,
       )
     : null;
+  if (loot !== null) {
+    await tx.update(pirateState).set({ lootPaid: {
+      alloy: state!.lootPaid.alloy + loot.alloy,
+      crystal: state!.lootPaid.crystal + loot.crystal,
+      deuterium: state!.lootPaid.deuterium + loot.deuterium,
+    } }).where(and(eq(pirateState.seasonId, raid.seasonId), eq(pirateState.index, raid.pirateIndex)));
+  }
   const cargoLimited =
     loot !== null
     && uncapped !== null
@@ -682,7 +686,7 @@ async function settleArrival(
     A squadron annihilated here has no collector left to lift anything.
   */
   const { salvage, field: wreck } = settleWreck(
-    voidWreck(result.attackerLosses, result.defenderLosses),
+    pirateBattleWreck(result.attackerLosses, result.defenderLosses),
     result.attackerSurvivors,
   );
   const lifted = salvage.alloy + salvage.crystal + salvage.deuterium > 0;
@@ -962,7 +966,10 @@ async function turnRaidsFromDestroyedPirate(
       eq(pirateRaids.pirateIndex, winner.pirateIndex),
       eq(pirateRaids.status, 'outbound'),
       gt(pirateRaids.arriveAt, now),
-    ));
+    ))
+    // An overdue arrival can already own this raid while waiting on our pirate row.
+    // Leave it to observe the kill itself instead of creating a raid ↔ pirate deadlock.
+    .for('update', { skipLocked: true });
   const [season] = await tx.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons).where(eq(seasons.id, winner.seasonId));
 
   let turned = false;
@@ -1209,48 +1216,6 @@ export async function resolvePirateReturn(
     ships: fleetCount(returning),
     delivered: loot,
     capturedHull,
-  };
-}
-
-/** Value of the destroyed hulls that were not ground emplacements. */
-const flyingValue = (fleet: Fleet): number =>
-  fleetEntries(fleet)
-    .filter(([id]) => !HULLS[id].ground)
-    .reduce(
-      (sum, [id, n]) => sum + n * (HULLS[id].alloy + HULLS[id].crystal + HULLS[id].deuterium),
-      0,
-    );
-
-/** What one material contributed to the wreck, so the field splits the way the losses did. */
-const flyingMaterial = (fleet: Fleet, material: 'alloy' | 'crystal' | 'deuterium'): number =>
-  fleetEntries(fleet)
-    .filter(([id]) => !HULLS[id].ground)
-    .reduce((sum, [id, n]) => sum + n * HULLS[id][material], 0);
-
-/**
- * THE WRECK A PIRATE BATTLE MAKES, AT THE RENDEZVOUS.
- *
- * Both sides, priced by `DEBRIS.share` off the same two loss lists the report
- * carries — a pirate's hulls are ordinary Fleet V2 hulls and there is no reason
- * their remains behave differently from a player's.
- *
- * SPLIT BY MATERIAL rather than dumped into alloy, the same way both world-battle
- * paths do it: what a Prospector brings back has to resemble what died.
- */
-function voidWreck(attackerLosses: Fleet, pirateLosses: Fleet): Resources {
-  const alloy = flyingMaterial(attackerLosses, 'alloy') + flyingMaterial(pirateLosses, 'alloy');
-  const crystal =
-    flyingMaterial(attackerLosses, 'crystal') + flyingMaterial(pirateLosses, 'crystal');
-  const deuterium =
-    flyingMaterial(attackerLosses, 'deuterium') + flyingMaterial(pirateLosses, 'deuterium');
-  const total = alloy + crystal + deuterium;
-  if (total <= 0) return { alloy: 0, crystal: 0, deuterium: 0 };
-  const wreck =
-    (flyingValue(attackerLosses) + flyingValue(pirateLosses)) * DEBRIS.share;
-  return {
-    alloy: (wreck * alloy) / total,
-    crystal: (wreck * crystal) / total,
-    deuterium: (wreck * deuterium) / total,
   };
 }
 

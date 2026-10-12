@@ -80,6 +80,8 @@ x-api: &api
     # one changes nothing, because a process that cannot read the +50% lane
     # certainly cannot read the lane after it.
     PIRATE_SPAWN_SURGE_ENABLED: ${PIRATE_SPAWN_SURGE_ENABLED:-true}
+    # Keep false until every API and worker can parse the stored v2 pirate inputs.
+    PIRATE_BALANCE_V2_ENABLED: ${PIRATE_BALANCE_V2_ENABLED:-true}
     # The recovery shield (2026-09-14). False means the columns are written by the
     # migration and read by nobody: no window is granted and no stored instant
     # refuses a launch, so a fleet mid-roll cannot have one instance enforcing a

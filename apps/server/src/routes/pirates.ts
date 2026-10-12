@@ -47,7 +47,8 @@ const raidBody = z.object({
  * PIRATES — the third target class. D150.
  *
  * `GET` answers with pirates this commander has identified by Telescope, and nothing else: no
- * orbital elements, no raw lane index, no hoard figure. The fog is applied in the
+ * orbital elements or raw lane index. Identified crews include their reward ledger
+ * for a preflight economic estimate. The fog is applied in the
  * query through `pirateZone` — live sight off `sensorZone`, floored at IDENTIFIED
  * by D158/D160's discovery memory — so what this route hands over is exactly what
  * the disc draws, including the marks memory is holding open.
@@ -245,6 +246,8 @@ export function registerPirateRoutes(app: FastifyInstance): void {
         fleet: crew,
         mass: massClass(crew),
         damageMult: PIRATE.damageMult[spec.level],
+        hoard: spec.hoard,
+        lootPaid: snapshot.state.get(spec.index)?.lootPaid ?? { alloy: 0, crystal: 0, deuterium: 0 },
       }];
     });
 

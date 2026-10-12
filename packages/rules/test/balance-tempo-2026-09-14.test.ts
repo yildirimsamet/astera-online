@@ -55,7 +55,7 @@ describe('the drill and the rock it meets', () => {
 
   it('states every level of the ore table as a positive multiple of the packet', () => {
     const table = GALAXY.asteroidOreByLevel;
-    expect(table).toEqual([0, 800, 1600, 2400, 3200, 4000]);
+    expect(table).toEqual([0, 400, 800, 1200, 1600, 2000]);
     for (let level = 1; level < table.length; level++) {
       const ore = table[level]!;
       expect(ore % GALAXY.asteroidOreQuantum).toBe(0);

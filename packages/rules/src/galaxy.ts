@@ -451,15 +451,16 @@ function appendAsteroidLane(
       : [laneIndex - frontCount, tailInterval, appearsAtOffset + frontSpan];
     const appearsAt = from + slot * interval + jitter * interval;
     const life =
-      (GALAXY.asteroidLifeHoursMin +
-        rng() * (GALAXY.asteroidLifeHoursMax - GALAXY.asteroidLifeHoursMin)) *
+      (LEGACY_ASTEROID_GENERATION.lifeHoursMin +
+        rng() * (LEGACY_ASTEROID_GENERATION.lifeHoursMax - LEGACY_ASTEROID_GENERATION.lifeHoursMin)) *
       60;
 
-    const isotope = isotopeProfile(seed, index, appearsAt);
+    // Derived pre-hour seasons have no stored snapshot; retain their exact targets.
+    const isotope = isotopeProfile(seed, index, appearsAt, LEGACY_ASTEROID_GENERATION.isotope);
     asteroids.push({
       index,
       level,
-      ore: GALAXY.asteroidOreByLevel[level] ?? 0,
+      ore: LEGACY_ASTEROID_GENERATION.oreByLevel[level] ?? 0,
       crystalShare:
         GALAXY.asteroidCrystalShareMin +
         rng() * (GALAXY.asteroidCrystalShareMax - GALAXY.asteroidCrystalShareMin),

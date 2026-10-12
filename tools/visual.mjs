@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--pirate-profit')) {
+  const { verifyPirateProfit } = await import('./pirate-profit-visual.mjs');
+  await verifyPirateProfit(process.argv[2] ?? 'out/pirate-profit');
+  process.exit(0);
+}
+
 if (process.argv.includes('--engine-attachments')) {
   await import('./engine-attachment-review.mjs');
   process.exit(0);

@@ -13,6 +13,7 @@ import {
   ECON,
   FLEET_SPEED_FACTOR,
   GALAXY,
+  LEGACY_ASTEROID_GENERATION,
   SEASON,
   HULLS,
   INSTRUMENT_COST_MULT,
@@ -412,7 +413,8 @@ describe('the asteroid field', () => {
    */
   it('holds a steady population, and never empties the sky', () => {
     const span = SEASON.days * 24 * 60;
-    const meanLife = ((GALAXY.asteroidLifeHoursMin + GALAXY.asteroidLifeHoursMax) / 2) * 60;
+    // generateGalaxy is the frozen derived field; new hourly snapshots have their own lifetime.
+    const meanLife = ((LEGACY_ASTEROID_GENERATION.lifeHoursMin + LEGACY_ASTEROID_GENERATION.lifeHoursMax) / 2) * 60;
     const expected = (GALAXY.asteroidSpawnPerHour / 60) * meanLife;
 
     const populations: number[] = [];

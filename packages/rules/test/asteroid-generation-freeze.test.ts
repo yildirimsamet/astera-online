@@ -2,7 +2,8 @@ import { orbitFingerprint } from './orbitFingerprint.js';
 import { describe, expect, it } from 'vitest';
 import {
   ASTEROID_DYNAMIC, ASTEROID_SHOWER_FRONT_LOAD, DEUTERIUM, GALAXY,
-  currentAsteroidGeneration, generateAsteroidHour, mulberry32, type AsteroidGeneration,
+  currentAsteroidGeneration, generateAsteroidHour, generateAsteroidSchedule, LEGACY_ASTEROID_GENERATION,
+  mulberry32, type AsteroidGeneration,
 } from '../src/index.js';
 
 const generate = (generation?: AsteroidGeneration) => generateAsteroidHour({
@@ -13,6 +14,49 @@ const generate = (generation?: AsteroidGeneration) => generateAsteroidHour({
 });
 
 describe('legacy dynamic generation inputs', () => {
+  it('keeps legacy derived targets identical across later lifetime, ore and isotope changes', () => {
+    const before = generateAsteroidSchedule(mulberry32(123), 1440, 123);
+    const galaxyDescriptors = Object.getOwnPropertyDescriptors(GALAXY);
+    const isotopeDescriptors = Object.getOwnPropertyDescriptors(DEUTERIUM);
+    try {
+      Object.defineProperties(GALAXY, {
+        asteroidOreByLevel: { value: [0, 400, 800, 1200, 1600, 2000] },
+        asteroidLifeHoursMin: { value: 1 }, asteroidLifeHoursMax: { value: 2 },
+      });
+      Object.defineProperties(DEUTERIUM, {
+        isotopeShareMin: { value: 0.12 }, isotopeShareMax: { value: 0.28 },
+      });
+      expect(orbitFingerprint(generateAsteroidSchedule(mulberry32(123), 1440, 123))).toBe(orbitFingerprint(before));
+    } finally {
+      Object.defineProperties(GALAXY, galaxyDescriptors);
+      Object.defineProperties(DEUTERIUM, isotopeDescriptors);
+    }
+  });
+
+  it('deals new hourly rocks with half the ore, one-to-two-hour lives and a modest isotope lift', () => {
+    const generation = currentAsteroidGeneration();
+    expect(generation.oreByLevel).toEqual([0, 400, 800, 1200, 1600, 2000]);
+    expect([generation.lifeHoursMin, generation.lifeHoursMax]).toEqual([1, 2]);
+    expect([generation.isotope.isotopeShareMin, generation.isotope.isotopeShareMax]).toEqual([0.12, 0.28]);
+    const rocks = generate(generation);
+    const previous = generate({ ...LEGACY_ASTEROID_GENERATION, frontLoadMinutes: generation.frontLoadMinutes });
+    expect(new Set(rocks.map(rock => rock.level))).toEqual(new Set([1, 2, 3, 4, 5]));
+    expect(rocks.some(rock => rock.isotopeRich)).toBe(true);
+    for (const [index, rock] of rocks.entries()) {
+      expect(rock.ore).toBe(400 * rock.level);
+      expect(rock.expiresAt - rock.appearsAt).toBeGreaterThanOrEqual(60);
+      expect(rock.expiresAt - rock.appearsAt).toBeLessThanOrEqual(120);
+      expect(rock.crystalShare).toBe(previous[index]!.crystalShare);
+      expect(rock.appearsAt).toBe(previous[index]!.appearsAt);
+      expect(rock.isotopeRich).toBe(previous[index]!.isotopeRich);
+      expect(rock.crystalShare + rock.deuteriumShare).toBeLessThan(1);
+      if (rock.isotopeRich) {
+        expect(rock.deuteriumShare).toBeGreaterThanOrEqual(0.12);
+        expect(rock.deuteriumShare).toBeLessThanOrEqual(0.28);
+      } else expect(rock.deuteriumShare).toBe(0);
+    }
+  });
+
   it('preserves the exact pre-release RNG order and all 100 complete specs', () => {
     // Keep RNG draws and all identity/resource fields exact across supported runtimes.
     expect(orbitFingerprint(generate()))

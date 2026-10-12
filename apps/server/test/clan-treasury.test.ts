@@ -499,7 +499,8 @@ describe('what a donation is worth once given', () => {
     const outsider = await publicClan(f.db, f.accountIds[2]!, clanId);
     expect(outsider.level).toBe(1);
     expect(JSON.stringify(outsider)).not.toContain('treasury');
-    expect(JSON.stringify(outsider)).not.toContain('400');
+    // UUIDs may contain "400"; only the numeric donation must stay private.
+    expect(Object.values(outsider)).not.toContain(400);
   });
 
   it('shows no level on a public profile from an older season', async () => {

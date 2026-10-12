@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   allowedPaces,
@@ -8,6 +8,9 @@ import {
   fleetCount,
   salvageCapacity,
   hpRadiationApplies,
+  forecastPirateProfit,
+  segmentsExposureHp,
+  type PirateProfitInput,
   type Fleet,
   type MobileHullId,
 } from '@astera/rules';
@@ -30,6 +33,7 @@ import {
 } from './radiation.js';
 import { ACADEMY_LEG_SECONDS, academyLessonFleet } from '@astera/rules';
 import type { LaunchTarget } from '../screens/LaunchSheet.js';
+import type { PirateProfitState } from '../ui/PirateProfitCard.js';
 import { describe, useToast } from '../ui/Toast.js';
 
 /**
@@ -209,6 +213,29 @@ export function useLaunchPlan({
     : null;
   /** Wreck the chosen collectors can lift, if they come through the fight. D200. */
   const salvageRoom = salvageCapacity(sending);
+  const reward = pirate?.hoard;
+  const paid = pirate?.lootPaid;
+  const pirateLevel = pirate?.level;
+  const profitRuleset = planet.rulesetVersion ?? season.data?.rulesetVersion;
+  const outboundHp = hpModel && route !== null && endpoint && !lesson
+    ? segmentsExposureHp([
+      { from: planet.planet.position, to: endpoint, startMs: departMs, endMs: arriveMs },
+      { from: endpoint, to: endpoint, startMs: arriveMs, endMs: arriveMs + ENGAGEMENT_MS },
+    ], hpSources) : 0;
+  const returnHp = hpQuote ? Math.max(0, hpQuote.doseHp - outboundHp) : 0;
+  const profitInput = useMemo<PirateProfitInput | null>(() => {
+    if (lesson || total === 0 || route === null || !pirate?.fleet || !reward || !paid || profitRuleset === undefined
+      || (pirateLevel !== 1 && pirateLevel !== 2 && pirateLevel !== 3 && pirateLevel !== 4)) return null;
+    return { attacker: sending, crew: pirate.fleet, level: pirateLevel, tech: mods.tech,
+      rulesetVersion: profitRuleset, hoard: reward, paid, fuel: route.fuel,
+      radiation: { outboundHp, returnHp } };
+  }, [lesson, total, sending, pirate?.fleet, pirateLevel, mods.tech, profitRuleset, route?.fuel,
+    reward?.alloy, reward?.crystal, reward?.deuterium, paid?.alloy, paid?.crystal, paid?.deuterium,
+    outboundHp, returnHp]);
+  const deferredProfit = useDeferredValue(profitInput);
+  const pirateProfit = useMemo(() => deferredProfit ? forecastPirateProfit(deferredProfit) : null, [deferredProfit]);
+  const pirateProfitState: PirateProfitState = total === 0 ? 'empty' : profitInput === null ? 'unavailable'
+    : deferredProfit !== profitInput ? 'pending' : 'ready';
   /**
    * A LAUNCH TAKES A FLIGHT BAY, and this screen never said so. D28.
    *
@@ -345,7 +372,7 @@ export function useLaunchPlan({
     reports,
     tech: mods.tech,
     wing: sending,
-    rulesetVersion: season.data?.rulesetVersion ?? 0,
+    rulesetVersion: planet.rulesetVersion ?? season.data?.rulesetVersion ?? 0,
   });
 
   /**
@@ -441,7 +468,7 @@ export function useLaunchPlan({
     sending, set, roomFor, allowance, lesson, season, spendsShield, pirate, mods,
     paces, pace, setWantedPace, route, fullSpeedRoute: unpaced,
     paceReset: paces.length > 0 && pace !== wantedPace,
-    total, salvageRoom, baysFree, tooLate, busy, radiation,
+    total, salvageRoom, baysFree, tooLate, busy, radiation, pirateProfit, pirateProfitState,
     shipyardRevolt, holding, needsWarship, canSend, away, atHome, recordAge, opposing,
     lines, matchups, hint, loss, escape, notes, refusal, commit,
     /** What the probe read of the wall, for the matchup line (B6); null where nobody looked. */

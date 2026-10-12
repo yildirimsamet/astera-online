@@ -175,6 +175,11 @@ describe('what is not worth asking the engine', () => {
 });
 
 describe('a raid on a pirate', () => {
+  it('passes over a crew whose shared reward has already been loaded by earlier raids', () => {
+    const plan = planPirateRaid({ ...base, crew: { DART: 2 }, damageMult: 1,
+      hoard: { alloy: 0, crystal: 0, deuterium: 0 }, nerve: careful });
+    expect(plan).toBeNull();
+  });
   const crewOf = (level: 'weak' | 'strong'): Fleet => (level === 'weak' ? { DART: 1 } : { DART: 400, PIKE: 200 });
 
   it('leaves a crew it cannot beat alone', () => {

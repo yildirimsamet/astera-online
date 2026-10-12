@@ -587,6 +587,28 @@ export const focus = {
 } as const;
 /** Flottes pirates. D150. Écrit naturellement en français. */
 export const pirate = {
+  profit: {
+    title: "Gain net estimé",
+    net: "Gain net",
+    range: "Fourchette estimée",
+    PROFIT: "Probablement rentable",
+    RISK: "Le gain est incertain",
+    LOSS: "Perte de ressources probable",
+    empty: "Choisis des vaisseaux pour estimer le gain.",
+    unavailable: "Les données de récompense manquent ; le gain ne peut pas être estimé.",
+    pending: "Mise à jour de l’estimation…",
+    loot: "Butin rapporté",
+    salvage: "Récupération du collecteur",
+    loss: "Vaisseaux perdus",
+    repair: "Réparations payantes",
+    fuel: "Carburant aller-retour",
+    uncertain: "L’estimation n’est pas une garantie. D’autres attaques peuvent réduire la récompense avant ton arrivée.",
+    exclusions: "Les vaisseaux capturés et les débris publics non récupérés sont exclus.",
+    value: "L’évaluation compare les ressources selon leur valeur de production.",
+    cargo: "Les soutes survivantes pourraient ne pas emporter tout le butin.",
+    losses: "Cette flotte risque de perdre des vaisseaux.",
+    radiation: "Le rayonnement de vol connu est inclus. La vitesse de retour et la route peuvent changer.",
+  },
   title: "Flotte pirate",
   name: "Flotte pirate N{{level}}-{{callsign}}",
   level: "Niveau {{level}}",

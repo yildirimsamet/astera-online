@@ -6,6 +6,7 @@ import { orbitDiscoveredAt, orbitRadius } from './galaxy.js';
 import { missionFuel } from './fuel.js';
 import { orbitPosition } from './galaxy.js';
 import { mulberry32 } from './rng.js';
+import type { PirateGeneration } from './pirateGeneration.js';
 import type { OrbitElements, SensorEpoch } from './galaxy.js';
 import type { CombatResult } from './combat.js';
 import { sensorZone, type SensorSphere, type SensorZone } from './sight.js';
@@ -113,13 +114,15 @@ const pick = <T,>(from: readonly T[], rng: Rng): T => from[Math.floor(rng() * fr
  * pirate" becomes a delivery rather than a fight. The spine is what makes a level
  * badge mean something a player can price before committing a fleet.
  *
- * THE REST IS FREE, INCLUDING TRANSPORTS. A Support hull in the roster is not
+ * New hourly snapshots keep every slot armed (owner, 2026-10-12). Legacy hours
+ * retain their original transport draws so already flying raids keep their targets.
+ * In those legacy crews a Support hull is not
  * filler: it flies behind the line under `combat.ts`'s escort rule, so it is
  * still there to be captured when the guns are gone — and a captured Atlas is one
  * of the better things this feature can hand somebody.
  */
-export function pirateRoster(level: PirateLevel, rng: Rng): Fleet {
-  const pool = poolFor(level);
+export function pirateRoster(level: PirateLevel, rng: Rng, generation?: PirateGeneration): Fleet {
+  const pool = generation ? poolFor(level).filter(id => HULLS[id].atk > 0) : poolFor(level);
   const spine = spineFor(level);
   const size = PIRATE.sizeMin + Math.floor(rng() * (PIRATE.sizeMax - PIRATE.sizeMin + 1));
 
@@ -142,9 +145,9 @@ export function pirateRoster(level: PirateLevel, rng: Rng): Fleet {
  * some hidden table would be a number only the server knows, which is exactly the
  * kind of rule D124 refuses.
  *
- * DEUTERIUM IS THE SMALLEST SHARE ON PURPOSE. It is also fuel, so paying raids in
- * it would quietly make the next raid free, and the launch decision is supposed to
- * cost something every time.
+ * New hourly snapshots cap deuterium by level and price it against the crew's
+ * reference fuel. The owner's net-profit target includes a modest fuel surplus;
+ * the launch still prepays both legs. Legacy hours retain their original pricing.
  */
 function hoardAtValue(value: number, valueMult: number): Resources {
   const worth = value * valueMult;
@@ -155,7 +158,15 @@ function hoardAtValue(value: number, valueMult: number): Resources {
   };
 }
 
-export function pirateHoard(roster: Fleet): Resources {
+export function pirateHoard(roster: Fleet, generation?: PirateGeneration): Resources {
+  if (generation) {
+    const level = Math.max(0, ...fleetEntries(roster).map(([id]) => HULLS[id].tier ?? 0));
+    const ore = Math.min(generation.oreByLevel[level] ?? 0, Math.floor(fleetValue(roster) * generation.oreValueMult));
+    const alloy = Math.floor(ore * generation.alloyShare);
+    return { alloy, crystal: ore - alloy,
+      deuterium: Math.min(generation.deuteriumByLevel[level] ?? 0,
+        missionFuel(roster, FUEL.reference, 1) * generation.fuelMult) };
+  }
   /*
     THE ORE OFF ITS VALUE, THE FUEL OFF ITS THIRST. Owner decision, 2026-09-22.
 
@@ -405,7 +416,7 @@ function rollLevel(roll: number): PirateLevel {
  * fourth draw into a season minute, which is the only thing the two callers place
  * differently.
  */
-function drawPirate(rng: Rng, appearsAt: (roll: number) => number): Omit<PirateSpec, 'index'> {
+function drawPirate(rng: Rng, appearsAt: (roll: number) => number, generation?: PirateGeneration): Omit<PirateSpec, 'index'> {
   const radius = orbitRadius(rng(), PIRATE.orbitMin, PIRATE.orbitMax);
   const speed = PIRATE.speedMin + rng() * (PIRATE.speedMax - PIRATE.speedMin);
   const level = rollLevel(rng());
@@ -417,11 +428,11 @@ function drawPirate(rng: Rng, appearsAt: (roll: number) => number): Omit<PirateS
   // angle itself uniformly would crowd every orbital plane around the poles.
   const inclination = Math.acos(rng() * 2 - 1);
   const ascendingNode = rng() * Math.PI * 2;
-  const roster = pirateRoster(level, rng);
+  const roster = pirateRoster(level, rng, generation);
   return {
     level,
     roster,
-    hoard: pirateHoard(roster),
+    hoard: pirateHoard(roster, generation),
     radius,
     period: (2 * Math.PI * radius) / speed,
     phase,
@@ -598,6 +609,8 @@ export interface PirateHourLane {
   fromMinute: number;
   untilMinute: number;
   count: number;
+  /** Frozen for new hours; absent only on the original generation. */
+  generation?: PirateGeneration;
 }
 
 export interface PlanPirateHourInput {
@@ -607,6 +620,7 @@ export interface PlanPirateHourInput {
   /** When spawning may begin: the hour start, or later if the hour opened late. */
   spawnFromMinute: number;
   seasonEndsAtMinute: number;
+  generation?: PirateGeneration;
 }
 
 /** The hour's lane, or null when no part of the hour is inside the season. */
@@ -626,7 +640,8 @@ export function planPirateHour(input: PlanPirateHourInput): PirateHourLane | nul
   if (count > PIRATE.dynamic.indexSpanPerHour) {
     throw new RangeError('The hour would spawn more pirates than its index span holds');
   }
-  return { fromMinute: from, untilMinute: until, count };
+  return { fromMinute: from, untilMinute: until, count,
+    ...(input.generation ? { generation: input.generation } : {}) };
 }
 
 /** The public index of the `offset`-th pirate of hour `hourOrdinal`. */
@@ -658,6 +673,6 @@ export function generatePirateHour(input: {
   return Array.from({ length: lane.count }, (_, offset) => ({
     index: dynamicPirateIndex(input.hourOrdinal, offset),
     // Random instants inside the hour, like the rocks: no even grid to read.
-    ...drawPirate(rng, (roll) => lane.fromMinute + roll * span),
+    ...drawPirate(rng, (roll) => lane.fromMinute + roll * span, lane.generation),
   }));
 }

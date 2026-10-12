@@ -3,6 +3,7 @@ import {
   ASTEROID_DYNAMIC,
   ASTEROID_SHOWER_FRONT_LOAD,
   GALAXY,
+  currentAsteroidGeneration,
   asteroidMaxLevelOnDay,
   dynamicAsteroidHourOf,
   dynamicAsteroidIndex,
@@ -211,7 +212,7 @@ describe('generating one hour', () => {
   });
 
   it('pays the level table, whole packets, no monthly cap', () => {
-    for (const rock of hour()) {
+    for (const rock of hour(7, { generation: currentAsteroidGeneration() })) {
       expect(rock.ore).toBe(GALAXY.asteroidOreByLevel[rock.level]);
       expect(rock.ore % GALAXY.asteroidOreQuantum).toBe(0);
       expect(rock.expiresAt - rock.appearsAt).toBeGreaterThanOrEqual(GALAXY.asteroidLifeHoursMin * HOUR);

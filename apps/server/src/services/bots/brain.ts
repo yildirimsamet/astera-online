@@ -23,7 +23,6 @@ import {
   hullBulk,
   mulberry32,
   piratePosition,
-  pirateHoard,
   pirateStats,
   shieldHp,
   plantCeiling,
@@ -1055,7 +1054,7 @@ async function raidPirate(
       deuterium: view.planet.deuterium,
       crew,
       damageMult: pirateStats(spec.level).damageMult,
-      hoard: pirateHoard(crew),
+      hoard: snapshot.remainingLootOf(spec.index),
     }, budget);
     if (!plan) continue;
     if (await attempt(did, 'pirate', log, () =>

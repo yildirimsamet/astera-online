@@ -199,6 +199,7 @@ export function planPirateRaid(input: Common & {
   readonly hoard: { alloy: number; crystal: number; deuterium: number };
 }, budget: ForecastBudget = { left: BOTS.forecastsPerTurn }): RaidPlan | null {
   if (fleetCount(input.crew) === 0) return null;
+  if (input.hoard.alloy + input.hoard.crystal + input.hoard.deuterium <= 0) return null;
   const forecast: ForecastInput = {
     attackerTech: input.tech,
     defenderTech: {},
