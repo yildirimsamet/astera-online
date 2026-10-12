@@ -1,5 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
+import { academyFetch } from '../src/onboarding/academyFetch.js';
+import { openAcademy } from '../src/onboarding/academyWorld.js';
 
 const readers = [
   ['traffic', (api: Api, signal: AbortSignal) => api.traffic({ signal })],
@@ -36,4 +38,23 @@ it('preserves cancellation during response-body parsing instead of reporting a s
   await Promise.resolve();
   controller.abort();
   expect(await result).toMatchObject({ name: 'AbortError' });
+});
+
+it('keeps cancellation-compatible reads working in the private Academy transport', async () => {
+  const world = openAcademy(Date.now());
+  const api = new Api({ fetch: academyFetch(() => world, () => undefined) });
+  const controller = new AbortController();
+  expect((await api.planet(undefined, { signal: controller.signal })).planet.id).toBe(world.preview.reserved.id);
+  expect((await api.miningField({ signal: controller.signal })).asteroids).toBeDefined();
+  expect((await api.miningStatus(undefined, { signal: controller.signal })).runs).toBeDefined();
+});
+
+it('does not read or advance the Academy world when its local request is already aborted', async () => {
+  const read = vi.fn(() => openAcademy(Date.now()));
+  const write = vi.fn();
+  const controller = new AbortController();
+  controller.abort();
+  await expect(academyFetch(read, write)('/api/planet', { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' });
+  expect(read).not.toHaveBeenCalled();
+  expect(write).not.toHaveBeenCalled();
 });

@@ -27,6 +27,6 @@ describe('clan membership rival cache', () => {
       await view.result.current.accept.mutateAsync({ requestId: 'request', acknowledgeHostile: false });
     });
 
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: keys.season });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: keys.season }, { cancelRefetch: false });
   });
 });

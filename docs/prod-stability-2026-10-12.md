@@ -73,7 +73,10 @@ correct visitor IP and post-deploy observation before considering work complete.
   galaxies, cancellation, removal and replacement are review boundaries.
 - Frequently refreshed HTTP readers consume TanStack Query's cancellation signal,
   including both WorldProvider readers found during review. Body cancellation
-  remains an abort instead of being converted to a schema error.
+  remains an abort instead of being converted to a schema error. The private
+  Academy transport consumes cancellation before reading its world; it does not
+  attach a cross-realm signal to its parsing-only Request. The signal regression
+  and the existing mining lesson reproduce and cover this compatibility path.
 - Traffic narrows mining, raid and trade status predicates to the two active
   states, using the existing indexes. Mining claims are bounded to retained
   targets. Traffic computes asteroid discovery only for actual flight targets;
