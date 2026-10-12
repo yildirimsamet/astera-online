@@ -371,7 +371,10 @@ describe('controls: real worker and field', () => {
     evidence('remove-and-continue', { before: 105, after40: 65, afterAnother20: 45, later: later.length, newNormalRocks: 18, removedIndexesRevived: 0 });
   });
 
-  it('leaves a partly mined rock visible after a real mining arrival', async () => {
+  it.each([
+    { level: 1, ore: 400, remaining: 0 },
+    { level: 2, ore: 800, remaining: 100 },
+  ])('settles a level $level rock and leaves $remaining ore visible after a real mining arrival', async ({ level, ore, remaining: expectedRemaining }) => {
     const f = await world();
     await boot(f);
     const mine = f.planetIds[0]!;
@@ -383,9 +386,9 @@ describe('controls: real worker and field', () => {
     await giveSatellite(f.db, mine, 'DERRICK');
     await placeAt(f.db, mine, { x: 0 });
     f.clock.set(new Date(HOUR.getTime() + 30 * 60_000));
-    const rock = (await currentVisible(f)).find((candidate) => candidate.level === 1)!;
+    const rock = (await currentVisible(f)).find((candidate) => candidate.level === level)!;
     expect(rock).toBeDefined();
-    expect(rock.ore).toBe(800);
+    expect(rock.ore).toBe(ore);
     const run = await launchMining(f.db, mine, rock.index, 1, f.clock);
     expect(run.capacity).toBe(700); // Reproduce the single-craft capacity observed in production.
     f.clock.set(settledAt(run.arriveAt));
@@ -394,12 +397,12 @@ describe('controls: real worker and field', () => {
     const [claim] = await f.db.select().from(asteroidClaims).where(and(
       eq(asteroidClaims.seasonId, f.seasonId), eq(asteroidClaims.index, rock.index),
     ));
-    expect(claim!.oreTaken).toBe(run.capacity);
+    expect(claim!.oreTaken).toBe(ore - expectedRemaining);
     expect(landed!.status).toBe('returning');
     const snapshot = await loadMiningSnapshot(f.db, f.seasonId, f.clock.now());
     const remaining = projectVisibleAsteroids(snapshot, f.clock.now()).find((candidate) => candidate.index === rock.index);
-    expect(remaining?.oreRemaining).toBe(800 - run.capacity);
-    evidence('partial-mining', { rockOre: 800, mined: claim!.oreTaken, remaining: remaining?.oreRemaining, stillVisible: remaining !== undefined });
+    expect(remaining?.oreRemaining).toBe(expectedRemaining === 0 ? undefined : expectedRemaining);
+    evidence('mining-arrival', { rockOre: ore, mined: claim!.oreTaken, remaining: remaining?.oreRemaining, stillVisible: remaining !== undefined });
   });
 
   it('adopts the full future calendar shape and preserves the 30-minute shower', async () => {

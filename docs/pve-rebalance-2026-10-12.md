@@ -142,6 +142,13 @@ kabulü tamamlanmadan üretim tamamlandı sayılmayacak.
    test kırmızıydı. Sayısal bağış değeri artık `Object.values` içinde sayı olarak
    aranıyor; `treasury` alanının gizliliği ayrıca doğrulanmaya devam ediyor.
    Aynı hedefli gizlilik testi düzeltmeden sonra **yeşil**.
+8. **Madencilik regresyonunda eski kaynak varsayımı:** tam CI'nın ikinci server
+   shard'ı, yeni seviye 1 kayasını hâlâ 800 kaynak sayan testte kırmızı çalıştı
+   (`expected 400 to be 800`). Üretim hesabı doğruydu; 700 kapasiteli tek gemi
+   artık bu kayayı tamamen tüketir. Regresyon yeni seviye 1 için 400/400 ve
+   seviye 2 için 800/700/100 kalan şeklinde iki gerçek varışa ayrıldı.
+   İki durum da gerçek DB/worker üzerinden **2/2 yeşil**; tükenen kaya gizleniyor,
+   kısmen kazılmış kaya kalan 100 kaynakla görünür kalıyor.
 
 ### Doğrulanmayan şüphe ve kapsanan durumlar
 

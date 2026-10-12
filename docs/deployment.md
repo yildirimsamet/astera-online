@@ -190,6 +190,10 @@ docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera -d "$restore_
 
 Boot the retained old image against the migrated restore (isolated loopback port/database), require health, inspect logs and exercise affected **reads and writes**. `/api/preview` must answer without 5xx; `409 NO_FRONTIER` can be valid on a copy. Also exercise the new image/client and affected worker event handlers. Never attach a rehearsal worker to production.
 
+Compare preserved targets and durable counts before starting the restore's worker. Then keep the
+compatible candidate worker running while probing both API images: pending events age during the
+rehearsal, and an API correctly reports an unhealthy queue if no worker drains that isolated copy.
+
 The schema guard is one-way: new code rejects a journal behind it; old code may boot against an incompatible newer schema because `pendingMigrations` clamps at zero. In particular, health does not exercise the `season_cycles.ordinal` or result-cycle INSERT paths. Measure locking and backfill effects as well as boot compatibility. Delete only the identified disposable probe/database after evidence is retained.
 
 For asteroid changes, compare complete specs/public IDs, claims and active mining targets at the same DB/key/time before migration and after the new image. Require exact same-platform equality; cross-Node last-bit test-encoding differences do not justify changing live geometry.
