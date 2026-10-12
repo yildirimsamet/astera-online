@@ -1,3 +1,5 @@
+import { monumentPosition } from './monumentMotion.js';
+import { priceMonumentReturn } from '@astera/rules';
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
@@ -28,7 +30,7 @@ import { tellMonumentRadiationLoss } from './monumentRadiationLoss.js';
 import { hpSourcesForSeason, lockMonument, settleLockedMonument, type LockedMonument } from './monument.js';
 import { lockWorlds, safeHomePlanet } from './ownership.js';
 import { GameError, loadLocked, orbitOf, recomputePlayerWealth, saveResources, setUnits } from './planet.js';
-import { landHpShips, type HpDockReport } from './shipDamage.js';
+import { dockNotice, landHpShips, type HpDockReport } from './shipDamage.js';
 import { publish, publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { monumentRouteSchema, scheduleFlightBoundary } from './monumentBoundaries.js';
@@ -59,6 +61,7 @@ export async function replaceWaveLots(tx: Tx, locked: LockedMonument, wave: Wave
   if (normalized.length > 0) await tx.insert(monumentShipLots).values(normalized.map((lot) => ({
     id: lot.id, waveId: wave.id, hull: lot.hull, count: lot.count,
     damageBp: lot.damageBp, remainderBp: lot.remainderBp, deuterium: lot.deuterium,
+    returnFuelReserve: lot.returnFuelReserve ?? 0, fuelRefund: lot.fuelRefund ?? 0,
   })));
   locked.lots = [...locked.lots.filter((lot) => lot.waveId !== wave.id), ...normalized];
 }
@@ -159,7 +162,7 @@ export async function beginMonumentReturn(tx: Tx, locked: LockedMonument, wave: 
     if (!(error instanceof RangeError)) throw error;
     throw new GameError('BAD_MONUMENT_RECALL', error.message, 400);
   }
-  let position: Vec3 = { x: locked.monument.x, y: locked.monument.y, z: locked.monument.z };
+  let position: Vec3 = monumentPosition(locked.monument,locked.season,at);
   if (wave.status === 'OUTBOUND') {
     const path = monumentRouteSchema.parse(wave.route);
     const segment = path.find((leg) => at.getTime() <= leg.endMs) ?? path[path.length - 1]!;
@@ -171,6 +174,8 @@ export async function beginMonumentReturn(tx: Tx, locked: LockedMonument, wave: 
   const minutes = fleetTravelExact(distance(position, home), fleet, { boost: fleetSpeedMult(orbit), tech: wave.tech });
   if (!Number.isFinite(minutes)) throw new GameError('BAD_MONUMENT_RECALL', 'Those ships cannot return', 400);
   const arriveAt = addMinutes(at, minutes);
+  const pricedReturn = priceMonumentReturn(split.recalled, distance(position, home));
+  split.recalled = pricedReturn.lots;
   const route = [{ from: position, to: { x: home.x, y: home.y, z: home.z }, startMs: at.getTime(), endMs: arriveAt.getTime() }];
   let returning: WaveRow;
   let recalled: MonumentShipLot[];
@@ -204,6 +209,7 @@ export async function beginMonumentReturn(tx: Tx, locked: LockedMonument, wave: 
     await tx.insert(monumentShipLots).values(recalled.map((lot) => ({
       id: lot.id, waveId: id, hull: lot.hull, count: lot.count,
       damageBp: lot.damageBp, remainderBp: lot.remainderBp, deuterium: lot.deuterium,
+      returnFuelReserve: lot.returnFuelReserve ?? 0, fuelRefund: lot.fuelRefund ?? 0,
     })));
     locked.lots.push(...recalled);
     locked.waves.push(fragment);
@@ -238,6 +244,7 @@ export async function beginMonumentReturn(tx: Tx, locked: LockedMonument, wave: 
   if (wave.status === 'OUTBOUND') await scheduleFlightBoundary(tx, wave, split.remaining, sources, locked.season.endsAt);
   await completeMonumentJoint(tx, wave.jointOperationId, at);
   await settleLockedMonument(tx, locked, at);
+  if (pricedReturn.fuel > 0) await recomputePlayerWealth(tx, wave.playerId);
   if (reason !== 'RECALLED') await notify(tx, { playerId: wave.playerId, kind: 'monument_returning', refId: returning.id, at,
     payload: { targetKind: 'MONUMENT', monumentId: locked.monument.id, monumentOrdinal: locked.monument.ordinal,
       reason, craft: fleetCount(fleet), arriveAt: arriveAt.toISOString() } });
@@ -308,7 +315,8 @@ export async function resolveMonumentReturn(tx: Tx, input: { waveId: string; gen
     fleet: fleetOf(loss.lots), damage: loss.lots, at });
   await tx.delete(units).where(and(eq(units.planetId, wave.originPlanetId), eq(units.location, wave.unitLocation)));
   await tx.delete(monumentShipLots).where(eq(monumentShipLots.waveId, wave.id));
-  await saveResources(tx, home.id, { alloy: destination.alloy, crystal: destination.crystal, deuterium: destination.deuterium + deliveredDeuterium });
+  const fuelRefund = loss.lots.reduce((sum, lot) => sum + (lot.fuelRefund ?? 0), 0);
+  await saveResources(tx, home.id, { alloy: destination.alloy, crystal: destination.crystal, deuterium: destination.deuterium + deliveredDeuterium + fuelRefund });
   wave.status = 'HOME';
   wave.resolvedAt = at;
   wave.reservedBulk = 0;
@@ -317,7 +325,8 @@ export async function resolveMonumentReturn(tx: Tx, input: { waveId: string; gen
   await recomputePlayerWealth(tx, wave.playerId);
   await notify(tx, { playerId: wave.playerId, kind: 'fleet_returned', refId: wave.id, at,
     payload: { trip: 'monument', targetKind: 'MONUMENT', monumentId: locked.monument.id, monumentOrdinal: locked.monument.ordinal,
-      craft: loss.lots.reduce((sum, lot) => sum + lot.count, 0), deuterium: deliveredDeuterium, reason: wave.returnReason, dock } });
+      craft: loss.lots.reduce((sum, lot) => sum + lot.count, 0), deuterium: deliveredDeuterium, fuelRefund,
+      reason: wave.returnReason, dock, ...dockNotice(dock) } });
   await publish(tx, wave.playerId, 'private:monument');
   await publishShard(tx, wave.seasonId, 'arrival');
   return { wave, deliveredDeuterium, dock };

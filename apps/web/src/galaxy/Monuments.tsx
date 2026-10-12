@@ -1,4 +1,6 @@
-import { toWorld } from '@astera/rules';
+import type { Group } from 'three';
+import { serverNow } from '../lib/clock.js';
+import { toWorld, motionPositionAt } from '@astera/rules';
 import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef, useState } from 'react';
@@ -15,6 +17,7 @@ export function Monuments({ monuments, planets, focusedId, onSelect }: {
   focusedId: string | null; onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const groups = useRef(new Map<string,Group>());
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
   const lastHidden = useRef<ReadonlySet<string>>(hidden);
   const trace = useMemo(() => createMonumentVisibility(hidden), []);
@@ -23,13 +26,21 @@ export function Monuments({ monuments, planets, focusedId, onSelect }: {
     return { id: monument.id, position: [x, y + monumentScale(monument.difficulty) / 2 + 0.35, z] as const };
   }), [monuments]);
   useFrame(({ camera }) => {
-    const next = trace.update(camera, captions, planets);
+    const now=serverNow();
+    for(const monument of monuments){
+      if(!monument.motion)continue;
+      const [x,y,z]=toWorld(motionPositionAt(monument.motion,now));
+      groups.current.get(monument.id)?.position.set(x,y,z);
+      const caption=captions.find(c=>c.id===monument.id);
+      if(caption)caption.position=[x,y+monumentScale(monument.difficulty)/2+0.35,z];
+    }
+    const next = trace.update(camera, captions, planets, monuments.some(m=>m.motion)?Math.floor(now/250):undefined);
     if (next !== lastHidden.current) {
       lastHidden.current = next;
       setHidden(next);
     }
   });
-  return <>{monuments.map((monument) => <group key={monument.id} position={toWorld(monument.position)}
+  return <>{monuments.map((monument) => <group key={monument.id} ref={group=>{if(group)groups.current.set(monument.id,group);else groups.current.delete(monument.id);}} position={toWorld(monument.position)}
     name={`monument-${monument.id}`} onClick={(event) => {
       if (!wasTap()) return;
       event.stopPropagation(); markHit(); onSelect(monument.id);

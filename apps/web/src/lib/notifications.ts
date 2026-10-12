@@ -257,6 +257,7 @@ const returned = z.discriminatedUnion('trip', [
    */
   z.object({
     trip: z.literal('recalled'),
+    fuelRefund: z.number().finite().nonnegative().optional(),
     craft: z.number(),
     craftKind: z.enum(['fleet', 'probe']).optional(),
     ...dockFields,
@@ -513,6 +514,11 @@ const dockClauses = (dock: { docked?: number | undefined; autoRepaired?: number 
 const withDock = (line: string, dock: { docked?: number | undefined; autoRepaired?: number | undefined }): string =>
   [line, ...dockClauses(dock)].join(JOIN());
 
+const withFuel = (line: string, amount: number | undefined, kind: 'refund' | 'lost'): string =>
+  amount !== undefined && amount > 0
+    ? `${line}${JOIN()}${i18n.t(kind === 'refund' ? 'monument.newsFuelRefund' : 'monument.newsFuelBurned', { amount: decimal(amount, 3) })}`
+    : line;
+
 /**
  * DECISIVE, PARTIAL or REPELLED, in the player's language.
  *
@@ -554,7 +560,7 @@ export interface NotificationIdentity {
 }
 
 const monumentTarget = z.object({ monumentId: z.string().uuid(), monumentOrdinal: z.number().int().min(1).max(8).optional() });
-const monumentResult = monumentTarget.extend({ targetKind: z.literal('MONUMENT'), attacking: z.boolean(),
+const monumentResult = monumentTarget.extend({ lostFuel: z.number().finite().nonnegative().optional(), targetKind: z.literal('MONUMENT'), attacking: z.boolean(),
   grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']), control: z.enum(['ATTACKER', 'DEFENDER', 'EMPTY']),
   survivors: z.number().int().nonnegative(), unitsLost: z.number().int().nonnegative(),
   lootDeuterium: z.number().finite().nonnegative(), dominion: z.number().int().safe(),
@@ -690,9 +696,9 @@ export function describeNotification(notification: NotificationView, now: number
   if (native) {
     const name = native.label;
     if (notification.kind === 'radiation_lost') {
-      const parsed = monumentTarget.extend({ lost: z.number().int().positive(), left: z.number().int().nonnegative(), lostDeuterium: z.number().finite().nonnegative() }).safeParse(notification.payload);
-      return parsed.success ? i18n.t('monument.newsRadiation', { name, count: parsed.data.lost, left: parsed.data.left,
-        cargo: decimal(parsed.data.lostDeuterium, 3) }) : null;
+      const parsed = monumentTarget.extend({ lost: z.number().int().positive(), left: z.number().int().nonnegative(), lostDeuterium: z.number().finite().nonnegative(), lostFuel: z.number().finite().nonnegative().optional() }).safeParse(notification.payload);
+      return parsed.success ? withFuel(i18n.t('monument.newsRadiation', { name, count: parsed.data.lost, left: parsed.data.left,
+        cargo: decimal(parsed.data.lostDeuterium, 3) }), parsed.data.lostFuel, 'lost') : null;
     }
     if (notification.kind === 'monument_inbound') {
       const parsed = monumentTarget.extend({ arriveAt: z.coerce.date() }).safeParse(notification.payload);
@@ -716,8 +722,8 @@ export function describeNotification(notification: NotificationView, now: number
     if (notification.kind === 'raid_result') {
       const parsed = monumentResult.safeParse(notification.payload);
       if (!parsed.success) return null;
-      const sentence = i18n.t('monument.newsBattle', { name, outcome: i18n.t(`monument.reportControl.${parsed.data.control}`),
-        left: parsed.data.survivors, lost: parsed.data.unitsLost, points: String(parsed.data.dominion) });
+      const sentence = withFuel(i18n.t('monument.newsBattle', { name, outcome: i18n.t(`monument.reportControl.${parsed.data.control}`),
+        left: parsed.data.survivors, lost: parsed.data.unitsLost, points: String(parsed.data.dominion) }), parsed.data.lostFuel, 'lost');
       if (parsed.data.opponents.length === 0) return sentence;
       const opponents = parsed.data.opponents.map((opponent) => opponent.kind === 'NEUTRAL'
         ? i18n.t('monument.neutral')
@@ -725,8 +731,10 @@ export function describeNotification(notification: NotificationView, now: number
       return `${sentence} · ${i18n.t('monument.newsOpponents', { names: opponents })}`;
     }
     if (notification.kind === 'fleet_returned') {
-      const parsed = monumentTarget.extend({ trip: z.literal('monument'), craft: z.number().int().nonnegative(), deuterium: z.number().finite().nonnegative() }).safeParse(notification.payload);
-      return parsed.success ? i18n.t('monument.newsHome', { name, count: parsed.data.craft, cargo: decimal(parsed.data.deuterium, 3) }) : null;
+      const parsed = monumentTarget.extend({ trip: z.literal('monument'), craft: z.number().int().nonnegative(), deuterium: z.number().finite().nonnegative(),
+        fuelRefund: z.number().finite().nonnegative().optional(), ...dockFields }).safeParse(notification.payload);
+      return parsed.success ? withDock(withFuel(i18n.t('monument.newsHome', { name, count: parsed.data.craft,
+        cargo: decimal(parsed.data.deuterium, 3) }), parsed.data.fuelRefund, 'refund'), parsed.data) : null;
     }
   }
   switch (notification.kind) {
@@ -988,7 +996,7 @@ export function describeNotification(notification: NotificationView, now: number
       }
       if (trip.trip === 'recalled') {
         if (trip.craftKind === 'probe') return i18n.t('notifications.probeLost');
-        return withDock(i18n.t('notifications.recalled', { count: trip.craft }), trip);
+        return withDock(withFuel(i18n.t('notifications.recalled', { count: trip.craft }), trip.fuelRefund, 'refund'), trip);
       }
       if (trip.trip === 'trade') {
         /*

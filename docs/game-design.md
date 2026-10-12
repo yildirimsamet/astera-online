@@ -462,7 +462,36 @@ of the full hull. Ground guns and NPC crews carry nothing (D1).
 - **Why.** A won raid used to be free after the losses; now the part-hit ship is a bill, so a
   fight's cost is felt the day after too — without adding a system to manage between fights.
 
-### Radyasyon — clouds on the map (owner decisions K3–K4; ruleset 14)
+### Radyasyon — sabit HP hasarı (kesin kullanıcı kararı, 2026-10-12)
+
+**Radyasyon hasarı gemi başına sabit HP/dakika olarak hesaplanır.** Aynı kaynak, koruma ve
+maruz kalma koşullarındaki gemiler aynı miktarda HP kaybeder. Gemi canı yüksekse daha uzun
+dayanır; canı düşükse daha erken kaybedilir. Anıt seviyesi ve koruma araştırması etkin HP/dk
+değerini belirleyebilir; geminin temel, azami veya kalan HP'si hasar oranını belirlemez.
+
+- **Gemi HP'sinin yüzdesi kadar radyasyon hasarı uygulanmayacak. Sabit HP + gemi HP'sinden
+  türetilen yüzdelik hasar da kullanılmayacak.** Örneğin aynı korumayla 4 HP/dk alan 100 HP'lik
+  gemi 25, 1.000 HP'lik gemi 250 dakika dayanır. Aynı yüzdeyi ikisine uygulayıp aynı anda
+  öldürmek, radyasyona karşı yüksek canın avantajını ortadan kaldırır; bu istenmiyor.
+- **Gerekçe:** kaynak radyasyonunun gücü ve geminin canı ayrı anlamlarını korumalı. Sabit ve
+  yüzdelik hasarı karıştırmak, ileride başka sistemlerde eklenecek yüzdelerle etkileşimi,
+  çarpan sırasını, hata ayıklamayı ve bakımı zorlaştırır. Karma model bilinçli olarak reddedildi.
+- **Denge hedefi:** bütün gövdeleri aynı veya benzer ölüm süresine sıkıştırmak değil;
+  yüksek HP avantajını koruyarak araştırmasız zor, araştırmayla kolaylaşan fakat gece boyunca
+  başıboş farmı ödüllendirmeyen sabit HP/dk oranları bulmak. Önceki 1–2 saatlik ortak tavan
+  varsayımı kullanıcı kararı değildir.
+- Koruma araştırmasının seviyeleri, oranları ve fiyatları ayrıca kalibre edilecek. Diğer
+  sistemlerdeki yüzdeler bu kararı değiştirmez. Hasarın kayıt için can oranına dönüştürülmesi
+  (`damageBp` / `remainderBp`), hasar dozunun gemi HP'sinden türetilmesi anlamına gelmez.
+- Gerçek hasar, ölüm zamanı tahmini ve oyuncuya gösterilen HP/dk aynı ortak kurala dayanmalı.
+  Önceki karma model hesapları [ilk kalibrasyon raporunda](monument-radiation-research-calibration-2026-10-12.md)
+  **reddedilmiş inceleme** olarak saklanır; uygulama planı değildir. Bu karar notu oyun kodunu
+  veya aktif sezon verisini değiştirmez.
+
+#### Tarihsel model — clouds on the map (K3–K4; ruleset 14, eski yüzde modeli)
+
+Aşağıdaki bölüm eski ruleset davranışının kaydıdır; yeni radyasyon geliştirmeleri için
+üstteki sabit HP kararı geçerlidir. Eski sezonların kaydı geriye dönük değiştirilmez.
 
 **A cloud takes a fixed share of every ship's full hull per minute spent inside it.** There is no
 tick: a flight is straight segments at constant speed, the time in each sphere is solved exactly,
@@ -759,6 +788,16 @@ weapon's Core gate is the first level of tier 4, and while the strike sat outsid
 tier 6 one who was refused a raid back. Pirates, transfers and neutral worlds — a Death Star at a neutral world included —
 are outside it entirely. The check is made at launch only; a fleet already in the air is not turned back when either
 commander's tier moves.
+
+**Ordinary raids involving tier 1–3 commanders have a twelve-hour battle-time cooldown**
+(owner, 2026-10-12). If either commander is tier 1–3, each direction is independent:
+one ordinary raid may be sent, and the next may be sent twelve hours after the battle
+resolves. All worlds of that commander share the allowance. An unresolved outbound
+raid reserves it; recall or destruction before battle creates no cooldown. Both tiers
+are read at each new launch. When both commanders are tier 4+, the existing three
+attacks per twelve hours remains. Death Stars and joint clan operations do not use
+this new allowance. Existing clan quotas and joint-operation personal quota accounting
+are unchanged.
 
 The player sees the band's inputs where they choose a target: the dossier header sets their own tier (their most
 developed world, never fogged) beside the world's, and one tap opens the rule and the range it reaches. It never states a

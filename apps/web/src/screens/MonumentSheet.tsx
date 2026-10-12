@@ -1,4 +1,5 @@
-import { HULLS, MOBILE_HULLS, MONUMENT_BALANCE, MONUMENT_PROBE_LOSS_CHANCE, PROBE, combatValue, fleetCount, fleetEntries, hangarLoad, type Fleet, type HullId } from '@astera/rules';
+import { MonumentRoutePreview } from './MonumentRoutePreview.js';
+import { MOBILE_HULLS, MONUMENT_BALANCE, MONUMENT_PROBE_LOSS_CHANCE, PROBE, combatValue, fleetCount, fleetEntries, hangarLoad, type Fleet, type HullId } from '@astera/rules';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +40,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
   const actions = useMonumentActions();
   const notifications = useNotifications();
   const now = useNow();
-  const [chosenFleet, setFleet] = useState<Fleet>({});
+  const [fleet, setFleet] = useState<Fleet>({});
   const [shield, setShield] = useState(false);
   const [radiation, setRadiation] = useState(false);
   const [probeConfirmation, setProbeConfirmation] = useState(0);
@@ -48,10 +49,6 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
     : target?.controller.kind === 'CLAN' && target.controller.clanId === clanId;
   const purpose = friendly ? 'REINFORCE' : 'ATTACK';
   const tierBlocked = target?.sendAccess?.tierAllowed === false;
-  const cargoOnly = target?.sendAccess?.cargoOnly === true;
-  const fleet: Fleet = useMemo(() => cargoOnly
-    ? Object.fromEntries(fleetEntries(chosenFleet).filter(([hull]) => HULLS[hull].family === 'CARGO')) : chosenFleet,
-  [cargoOnly, chosenFleet]);
   const picked = fleetCount(fleet);
   const pickedBulk = hangarLoad(fleet);
   // D212: Silent Space closes every monument wave; the server would refuse the quote too.
@@ -61,7 +58,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
   const quoteReady = JSON.stringify(quotedFleet) === JSON.stringify(fleet);
   const quote = useQuery({ queryKey: [...keys.monuments, 'quote', monumentId, origin.planet.id, purpose, quotedFleet],
     queryFn: () => api.quoteMonument(monumentId, { originPlanetId: origin.planet.id, purpose, fleet: quotedFleet }),
-    enabled: !locked && !silentSpace && !tierBlocked && target !== undefined && picked > 0 && quoteReady, retry: false, staleTime: 0 });
+    enabled: !locked && !silentSpace && !tierBlocked && target !== undefined && picked > 0 && quoteReady, retry: false, staleTime: 0, refetchInterval: target?.motion ? 5000 : false });
   const sendKey = useConfirmationKey(JSON.stringify({ monumentId, ...input }));
   const probeKey = useConfirmationKey(`${monumentId}:${origin.planet.id}:${String(probeConfirmation)}`);
   const consentMissing = (quote.data?.shieldWouldDrop === true && !shield)
@@ -69,7 +66,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
   const refusal = silentSpace ? t('faults.launchBlock.SILENT_SPACE')
     : tierBlocked ? t('monument.tierBlocked', { tier: target.sendAccess?.playerTier })
     : !target ? t('monument.missing') : picked === 0 ? t('monument.choose')
-    : actions.send.isPending ? t('monument.sending') : !quoteReady || quote.isFetching ? t('monument.quoting')
+    : actions.send.isPending ? t('monument.sending') : !quoteReady ? t('monument.quoting')
       : quote.error ? describeError(quote.error) : !quote.data ? t('monument.quoting')
         : consentMissing ? t('monument.consent') : quote.data.fuel > origin.planet.deuterium ? t('monument.insufficientFuel')
           : quote.data.bays.used >= quote.data.bays.total ? t('monument.fullBays') : null;
@@ -93,6 +90,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
       {view.isPending && <p className="text-caption text-v2-ink-2">{t('monument.loading')}</p>}
       {view.error && <p role="alert" className="text-caption text-v2-warn">{describeError(view.error)}</p>}
       {target && <Plate className="p-3">
+        {target.motion && <p className="mb-2 text-micro text-v2-ink-2">{t('monument.motionRule')}</p>}
         {target.difficulty !== 'LEGACY' && <p className={`mb-2 text-caption font-semibold ${target.difficulty === 'HARD' ? 'text-v2-hostile' : 'text-v2-self'}`}>
           {t(target.difficulty === 'EASY' ? 'monument.easyAccess' : 'monument.hardAccess')}</p>}
         <p className="font-v2-mono text-caption text-v2-ink">{t('monument.capacity', { used: full(target.used), reserved: full(target.reserved), total: full(target.capacity) })}</p>
@@ -118,22 +116,27 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
         <h3 className="text-caption font-semibold text-v2-ink">{t('monument.launch', { world: origin.planet.name })} · {t(friendly ? 'monument.reinforce' : 'monument.attack')}</h3>
         {target?.difficulty !== undefined && target.difficulty !== 'LEGACY' && <p className={`text-micro leading-snug ${tierBlocked ? 'text-v2-warn' : 'text-v2-ink-2'}`}>
           {tierBlocked ? t('monument.tierBlocked', { tier: target.sendAccess?.playerTier })
-            : t(cargoOnly ? 'monument.cargoOnly' : 'monument.initialFleetRule')}</p>}
+            : t('monument.initialFleetRule')}</p>}
         {MOBILE_HULLS.filter((hull) => (origin.fleet[hull] ?? 0) > 0).map((hull) => <div key={hull} className="flex min-w-0 items-center gap-2 border-b border-v2-line py-2">
           <img src={HULL_ART[hull] ?? undefined} alt="" className="size-8 shrink-0 object-contain" />
           <div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-v2-ink">{hullName(hull)}</p>
             <p className="text-micro text-v2-ink-3">{t('launch.atHome', { count: origin.fleet[hull] ?? 0 })}</p></div>
-          <fieldset disabled={tierBlocked || (cargoOnly && HULLS[hull].family !== 'CARGO')} className="min-w-0 border-0 p-0 disabled:opacity-50">
-            <QuantityStepper key={cargoOnly && HULLS[hull].family !== 'CARGO' ? 'blocked' : 'initial'} look="v2"
+          <fieldset disabled={tierBlocked} className="min-w-0 border-0 p-0 disabled:opacity-50">
+            <QuantityStepper key={hull} look="v2"
               min={0} max={origin.fleet[hull] ?? 0} value={fleet[hull] ?? 0} onChange={(count) => { change(hull, count); }}
               valueLabel={`${hullName(hull)} · ${t('launch.quantity', { name: hullName(hull) })}`}
               decreaseLabel={t('launch.fewer', { name: hullName(hull) })} increaseLabel={t('launch.more', { name: hullName(hull) })}
               maxLabel={t('launch.max', { name: hullName(hull) })} maxText={t('launch.maxShort')} />
           </fieldset>
         </div>)}
-        {picked > 0 && quoteReady && !quote.isFetching && quote.data && <Plate className="flex flex-col gap-1 p-3">
+        {picked > 0 && quote.data && target?.motion && <MonumentRoutePreview from={origin.planet.position} motion={target.motion} arriveAt={quote.data.arriveAt.getTime()} now={now} />}
+        {picked > 0 && quoteReady && quote.data && <Plate className="flex flex-col gap-1 p-3">
           <p className="text-micro text-v2-ink-2">{t('monument.selectedBulk', { bulk: full(pickedBulk) })}</p>
           <p className="text-caption text-v2-ink">{t('monument.fuel', { amount: full(quote.data.fuel) })}</p>
+          {quote.data.returnFuelReserve !== undefined && <>
+            <p className="text-micro text-v2-ink-2">{t('monument.fuelBreakdown', { outbound: full(quote.data.outboundFuel ?? 0), reserve: full(quote.data.returnFuelReserve) })}</p>
+            <p className="text-micro leading-snug text-v2-ink-3">{t('monument.fuelReserveRule')}</p>
+          </>}
           <p className="text-caption text-v2-ink">{t('monument.arrival', { time: countdown(quote.data.arriveAt.getTime() - now) })}</p>
           <p className="text-micro text-v2-ink-2">{t('monument.bays', { used: quote.data.bays.used, total: quote.data.bays.total })}</p>
           {friendly && <p className="text-micro text-v2-ink-2">{t('monument.room', { after: full(quote.data.room.after), total: full(quote.data.room.total) })}</p>}
@@ -180,10 +183,11 @@ export function MonumentWaveCard({ wave }: { wave: MonumentWave }) {
   const quoteReady = JSON.stringify(quotedSelections) === JSON.stringify(selections);
   const canRecall = wave.status !== 'RETURNING';
   const quote = useQuery({ queryKey: [...keys.monuments, 'recall-quote', wave.id, quotedSelections, wave.lots],
-    queryFn: () => api.quoteMonumentRecall(wave.id, quotedSelections), enabled: !locked && canRecall && selections.length > 0 && quoteReady, retry: false });
+    queryFn: () => api.quoteMonumentRecall(wave.id, quotedSelections), enabled: !locked && canRecall && selections.length > 0 && quoteReady,
+    retry: false, refetchInterval: canRecall ? 5000 : false });
   const key = useConfirmationKey(JSON.stringify({ waveId: wave.id, selections }));
   const refusal = selections.length === 0 ? t('monument.recallChoose') : actions.recall.isPending ? t('monument.recalling')
-    : !quoteReady || quote.isFetching || !quote.data ? (quoteReady && quote.error ? describeError(quote.error) : t('monument.quoting')) : null;
+    : !quoteReady || !quote.data || quote.isError ? (quoteReady && quote.error ? describeError(quote.error) : t('monument.quoting')) : null;
   return <section className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3" data-testid={`monument-wave-${wave.id}`}>
     <div className="flex items-center justify-between gap-2"><span className="text-caption font-semibold text-v2-self">{t(`monument.status.${wave.status}`)}</span>
       {wave.arriveAt && <span className="font-v2-mono text-micro text-v2-ink-2">{countdown(wave.arriveAt.getTime() - now)}</span>}</div>
@@ -200,12 +204,18 @@ export function MonumentWaveCard({ wave }: { wave: MonumentWave }) {
         valueLabel={t('monument.recallQuantity', { name: hullName(lot.hull) })} decreaseLabel={t('monument.recallLess', { name: hullName(lot.hull) })}
         increaseLabel={t('monument.recallMore', { name: hullName(lot.hull) })} maxLabel={t('monument.recallMax', { name: hullName(lot.hull) })} maxText={t('launch.maxShort')} />}
     </div>)}
+    <p className="text-micro font-semibold text-v2-ink">{t('monument.returnAll')}</p>
     <p className="text-micro text-v2-ink-2">{t('monument.returnSummary', { time: duration(wave.returnForecast.minutes), cargo: decimal(wave.returnForecast.deuterium), loss: wave.returnForecast.destroyed })}</p>
+    {(wave.returnForecast.fuelRefund ?? 0) > 0 && <p className="text-micro text-v2-deut">{t('monument.fuelRefund', { amount: decimal(wave.returnForecast.fuelRefund ?? 0, 3) })}</p>}
     <p className="text-micro text-v2-ink-3">{t('monument.currentFleet')}</p>
     {canRecall && <>
-      {selections.length > 0 && quoteReady && !quote.isFetching && quote.data && <div data-testid="monument-recall-forecast" className="text-micro text-v2-ink-2">
+      {selections.length > 0 && quoteReady && quote.data && <div data-testid="monument-recall-forecast" className="flex flex-col gap-1 rounded-control border border-v2-line p-2 text-micro text-v2-ink-2">
+        <p className="font-semibold text-v2-self">{t('monument.returnSelected', { count: fleetCount(quote.data.fleet) })}</p>
         <p>{t('monument.recallCargo', { cargo: decimal(quote.data.deuterium), arrives: decimal(quote.data.arrivalDeuterium) })}</p>
         <p>{t('monument.returnSummary', { time: duration(quote.data.minutes), cargo: decimal(quote.data.arrivalDeuterium), loss: quote.data.destroyed })}</p>
+        {quote.data.arrivalLots.map(lot => <p key={lot.id}>{t('monument.health', { name: `${hullName(lot.hull)} × ${full(lot.count)}`, remaining: decimal(lot.remainingHp), max: decimal(lot.maxHp) })}</p>)}
+        {quote.data.returnFuel !== undefined && <p>{t('monument.returnFuel', { amount: full(quote.data.returnFuel) })}</p>}
+        {(quote.data.fuelRefund ?? 0) > 0 && <p className="text-v2-deut">{t('monument.fuelRefund', { amount: decimal(quote.data.fuelRefund ?? 0, 3) })}</p>}
       </div>}
       <HoldButton label={t('monument.recall')} disabledReason={refusal} onCommit={() => { actions.recall.mutate({ waveId: wave.id, selections, key }, { onSuccess: () => { setCounts({}); } }); }} />
       {actions.recall.error && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.recall.error)}</p>}

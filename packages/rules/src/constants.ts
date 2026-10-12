@@ -852,6 +852,13 @@ export const INSTRUMENT_COST_DISCOUNT = {
 /** Sensor-only price growth; keeps the new L6–L8 reach upgrades attainable. */
 export const SENSOR_INSTRUMENT_COST_GROWTH = 1.75;
 
+/** Owner-approved Aegis table, 2026-10-12. Opening price and per-upgrade growth. */
+export const AEGIS_COST = {
+  alloy: 197,
+  crystal: 148,
+  growth: 1.6,
+} as const;
+
 /**
  * WHAT EACH SATELLITE COSTS, AND WHAT IT DOES. D25.
  *
@@ -2064,31 +2071,14 @@ export const PROSPECTOR = {
 } as const;
 
 /**
- * PROVISIONAL — shield curve is settled by playtest.
- *
- * CUT FROM 700 TO 40, AND THE REASON IS D22 RATHER THAN TASTE.
- *
- * The old figure was only ever survivable because almost nobody could afford an
- * Aegis: it competed for one Orbital Ring slot, and the season simulator's own
- * archetypes mostly spent that slot on something else, so the median planet in the
- * galaxy had no shield at all. Under that accident, a first-level shield worth 994
- * hit points — more than forty Wasps — never showed up in the aggregate.
- *
- * The moment satellites stopped being rationed, it did. Measured across the three
- * gate seeds: the share of the galaxy running an Aegis went from 18% to 67%, the
- * median shield from 0 to about 5,700, and raid returns from 1.33–1.42 down to
- * 0.60–0.73 against a floor of 1.30 — raiding destroyed more value than it earned,
- * which ends the core loop. Repricing the satellite does not touch it (an Aegis at
- * five times the price is still bought); the shield itself was mispriced.
- *
- * WHAT 40 MEANS IN PLAY. A new Aegis absorbs 57 points — a couple of Wasps — and a
- * developed one a few hundred, against ground defence measured in the same units.
- * It is a buffer that buys a round, regenerates for free and can never be
- * destroyed outright. It is no longer a wall that makes a planet unraidable for
- * the price of one satellite.
+ * Owner-approved Aegis capacity curve, 2026-10-12: 150 HP at level 1, then
+ * +50% per level. Capacity is rounded once from the exponential, not repeatedly.
+ * Migration 0152 preserves existing charge ratios and historical investment.
+ * Aegis still requires a defending line and regenerates without spending resources.
  */
 export const SHIELD = {
-  base: 60,
+  /** Capacity at level 1; absent hardware still has zero capacity. */
+  base: 150,
   mult: 1.5,
   /**
    * 0.05 → 0.40 AT D63, and it is the same decision as everything else on this
@@ -2143,6 +2133,9 @@ export const DISRUPTION = {
 export const ABUSE = {
   bashLimit: 3,
   bashWindowMinutes: 720,
+  /** Ordinary raids only; the clock starts when combat resolves, not at launch. */
+  personalRaidProtectedTier: 3,
+  personalRaidCooldownMinutes: 720,
 
   /**
    * HOW MANY DEVELOPMENT TIERS APART TWO COMMANDERS MAY STILL FIGHT. D168.
@@ -3465,8 +3458,10 @@ export const MULTI_WORLD = {
    * 14 → 15 on 2026-10-02: Klan Savunma Desteği and the defence posture
    * (`clanDefenseRulesetVersion`, owner decision K11 — with the next season).
    * 15 → 16 on 2026-10-04: monuments and fixed HP radiation, for new seasons only.
+   * 16 → 17: shared two-axis monument motion and entity radiation in new seasons.
+   * Live v16 seasons adopt the same behavior through a separate explicit idle cutover.
    */
-  rulesetVersion: 16,
+  rulesetVersion: 17,
   /** Monument and fixed HP radiation are dealt together, after every adapter is complete. */
   monumentRulesetVersion: 16,
   /**

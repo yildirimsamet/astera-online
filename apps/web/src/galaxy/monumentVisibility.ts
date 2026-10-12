@@ -23,16 +23,16 @@ export function createMonumentVisibility(initial: ReadonlySet<string> = new Set<
   const hit = new Vector3();
   let spheres: Sphere[] = [];
   let hidden = initial;
-  let subjects: { captions: readonly Caption[]; planets: readonly PlanetBody[] } | null = null;
+  let subjects: { captions: readonly Caption[]; planets: readonly PlanetBody[]; revision:number | undefined } | null = null;
 
   return {
-    update(camera: Camera, captions: readonly Caption[], planets: readonly PlanetBody[]): ReadonlySet<string> {
+    update(camera: Camera, captions: readonly Caption[], planets: readonly PlanetBody[], revision?:number): ReadonlySet<string> {
       camera.updateWorldMatrix(true, false);
-      if (subjects?.captions !== captions || subjects.planets !== planets) {
+      if (subjects?.captions !== captions || subjects.planets !== planets || subjects.revision !== revision) {
         if (subjects?.planets !== planets) {
           spheres = planets.map(planet => new Sphere(new Vector3(...planet.position), planet.radius * PLANET_SKIN_BODY_SCALE));
         }
-        subjects = { captions, planets };
+        subjects = { captions, planets, revision };
       }
       if (!viewChanged(view, camera, subjects, 0)) return hidden;
       const next = new Set<string>();

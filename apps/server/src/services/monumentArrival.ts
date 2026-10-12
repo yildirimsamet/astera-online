@@ -1,3 +1,4 @@
+import { monumentPosition } from './monumentMotion.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq, inArray } from 'drizzle-orm';
 import {
@@ -206,7 +207,7 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
   const aShares = allocateMonumentDominion(transfer, aBefore.map((lot) => ({ playerId: lot.playerId, fleet: { [lot.hull]: lot.count } })));
   const dShares = allocateMonumentDominion(-transfer, dBefore.map((lot) => ({ playerId: lot.playerId, fleet: { [lot.hull]: lot.count } })));
   const [battle] = await tx.insert(monumentBattles).values({ seasonId: locked.season.id, monumentId: locked.monument.id, triggerWaveId: incoming.id,
-    monumentOrdinal: locked.monument.ordinal, monumentPosition: { x: locked.monument.x, y: locked.monument.y, z: locked.monument.z },
+    monumentOrdinal: locked.monument.ordinal, monumentPosition: monumentPosition(locked.monument,locked.season,at),
     attackerFleet: fleetOf(aBefore), defenderFleet: neutral ? locked.monument.garrison : fleetOf(dBefore),
     attackerSurvivors: result.attackerSurvivors, defenderSurvivors: result.defenderSurvivors, grade: result.grade,
     rounds: result.rounds, control: result.control, lootDeuterium, lootValue, attackerLossValue: result.attackerLossValue,
@@ -240,6 +241,11 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
   }
   await tx.insert(monumentBattleParticipants).values(participants);
   for (const participant of participants) {
+    const ownBefore = (participant.side === 'ATTACK' ? aBefore : dBefore).filter(lot => lot.playerId === participant.playerId);
+    const ownAfter = after.filter(lot => lot.playerId === participant.playerId);
+    const lostFuel = Math.max(0,
+      ownBefore.reduce((sum, lot) => sum + (lot.returnFuelReserve ?? 0) + (lot.fuelRefund ?? 0), 0)
+      - ownAfter.reduce((sum, lot) => sum + (lot.returnFuelReserve ?? 0) + (lot.fuelRefund ?? 0), 0));
     const opposingRows = participants.filter((row) => row.side !== participant.side);
     const opponents = opposingRows.length > 0
       ? [...new Map(opposingRows.map((row) => [row.playerId, {
@@ -253,7 +259,7 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
       payload: { targetKind: 'MONUMENT', monumentId: battle.monumentId, monumentOrdinal: battle.monumentOrdinal,
         attacking: participant.side === 'ATTACK', grade: battle.grade, control: battle.control,
         survivors: fleetCount(participant.survivors), unitsLost: fleetCount(participant.losses),
-        lootDeuterium: participant.lootDeuterium, dominion: participant.dominionDelta, opponents } });
+        lootDeuterium: participant.lootDeuterium, lostFuel, dominion: participant.dominionDelta, opponents } });
   }
   if (eligible) await bookClanScores(tx, locked, battle, participants);
   for (const wave of [...incomingWaves, ...defenders]) {

@@ -1,3 +1,6 @@
+import { fleetPace } from '@astera/rules';
+import { monumentFlight, monumentRadiationTarget, monumentHoldPath, monumentMotionStart } from './monumentMotion.js';
+import { reserveMonumentHome } from './monumentFuel.js';
 import { randomUUID } from 'node:crypto';
 import { and, asc, eq, inArray, isNull, lt } from 'drizzle-orm';
 import { z } from 'zod';
@@ -8,7 +11,6 @@ import {
   fleetCount,
   fleetEntries,
   fleetSpeedMult,
-  fleetTravelExact,
   hangarLoad,
   missionFuel,
   hpLethalAtMs,
@@ -21,15 +23,15 @@ import {
   normalizeHpDamage,
   coreTier,
   monumentTierEligible,
-  monumentAdditionalFleetAllowed,
   settleMonumentHold,
   type HpRadiationSource,
   type HpDoseOutcome,
   type MonumentHoldSettlement,
   type MonumentShipLot,
   type Fleet,
+  type Vec3,
 } from '@astera/rules';
-import { addMinutes, type Clock } from '../clock.js';
+import { type Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
 import { clanMemberships, clans, monuments, monumentProbes, monumentShipLots, monumentWaves, planets, units, type seasons } from '../db/schema.js';
 import { GameError, assertSeasonOpenThrough, assertWorldOperational, loadLocked, readPlanetState, lockSeason, recomputePlayerWealth, saveResources, setUnits } from './planet.js';
@@ -61,13 +63,10 @@ export async function assertMonumentTierAccess(tx: Tx, monument: MonumentRow, pl
     'Easy monuments accept tiers 1–3; choose a Hard monument', 403, { tier: coreTier(peak), maxTier: 3 });
 }
 
-/** The target lock serializes a personal initial dispatch across all origins and launch paths. */
-export async function assertMonumentFleetDispatch(tx: Tx, locked: LockedMonument, playerId: string, fleet: Fleet): Promise<void> {
+/** Tier eligibility is checked on every dispatch, including joint and repeated support. */
+export async function assertMonumentFleetDispatch(tx: Tx, locked: LockedMonument, playerId: string): Promise<void> {
   if (locked.monument.difficulty === 'LEGACY') return;
   await assertMonumentTierAccess(tx, locked.monument, playerId);
-  const active = locked.waves.some(wave => wave.playerId === playerId && activeStatuses.some(status => status === wave.status));
-  if (!monumentAdditionalFleetAllowed(fleet, active)) throw new GameError('MONUMENT_FLEET_ACTIVE',
-    'Only cargo can be added until all your ships, including cargo, return home.', 409);
 }
 const identitySchema = z.string().uuid();
 const techSchema = z.record(z.enum(RESEARCH_PROJECT_IDS), z.number().int().nonnegative().safe());
@@ -182,7 +181,7 @@ export function projectMonumentHold(target: LockedMonument, at: Date, sources: r
   const holdIds = new Set(target.waves.filter((wave) => wave.status === 'HOLD').map((wave) => wave.id));
   const lots = target.lots.filter((lot) => holdIds.has(lot.waveId));
   const projection = settleMonumentHold(lots, { fromMs: target.monument.settledAt.getTime(), toMs,
-    position: target.monument, productionPerMinute: target.monument.productionPerMinute, sources });
+    position: target.monument, target: monumentRadiationTarget(target.monument, target.season), productionPerMinute: target.monument.productionPerMinute, sources });
   if (projection.destroyed.length > 0) return true;
   target.lots = [...target.lots.filter((lot) => !holdIds.has(lot.waveId)), ...projection.lots];
   target.monument.settledAt = new Date(toMs);
@@ -228,9 +227,8 @@ export interface MonumentSettlement extends MonumentHoldSettlement {
 }
 
 /** Exact loss boundary for a stationary cohort; null means it survives the cutoff. */
-function lossTime(lot: MonumentShipLot, monument: MonumentRow, sources: readonly HpRadiationSource[], fromMs: number, toMs: number): number | null {
-  const position = { x: monument.x, y: monument.y, z: monument.z };
-  return hpLethalAtMs([{ from: position, to: position, startMs: fromMs, endMs: toMs }], sources, lot);
+function lossTime(lot: MonumentShipLot, monument: MonumentRow, sources: readonly HpRadiationSource[], fromMs: number, toMs: number, season: LockedMonument['season']): number | null {
+  return hpLethalAtMs(monumentHoldPath(monument, season, fromMs, toMs), sources, lot);
 }
 
 /**
@@ -256,7 +254,7 @@ export async function settleLockedMonument(tx: Tx, locked: LockedMonument, at: D
   const holdLots = locked.lots.filter((lot) => holdIds.has(lot.waveId));
   const sources = await hpSourcesForSeason(tx, season.id);
   const result = settleMonumentHold(holdLots, {
-    fromMs, toMs, position: { x: monument.x, y: monument.y, z: monument.z },
+    fromMs, toMs, position: monument, target: monumentRadiationTarget(monument, season),
     productionPerMinute: monument.productionPerMinute, sources,
   });
   if (toMs > fromMs) {
@@ -283,7 +281,7 @@ export async function settleLockedMonument(tx: Tx, locked: LockedMonument, at: D
       wave.radiationSettledAt = new Date(toMs);
       if (remaining.length === 0) {
         const death = Math.max(...holdLots.filter((lot) => lot.waveId === wave.id)
-          .map((lot) => lossTime(lot, monument, sources, fromMs, toMs) ?? toMs));
+          .map((lot) => lossTime(lot, monument, sources, fromMs, toMs, season) ?? toMs));
         wave.status = 'LOST';
         wave.resolvedAt = new Date(death);
         wave.reservedBulk = 0;
@@ -296,7 +294,7 @@ export async function settleLockedMonument(tx: Tx, locked: LockedMonument, at: D
     }
   }
   if (result.lots.length === 0 && (monument.controllerPlayerId !== null || monument.controllerClanId !== null)) {
-    const emptyAt = holdLots.length === 0 ? fromMs : Math.max(...holdLots.map((lot) => lossTime(lot, monument, sources, fromMs, toMs) ?? toMs));
+    const emptyAt = holdLots.length === 0 ? fromMs : Math.max(...holdLots.map((lot) => lossTime(lot, monument, sources, fromMs, toMs, season) ?? toMs));
     monument.controllerPlayerId = null;
     monument.controllerClanId = null;
     monument.emptySince = new Date(emptyAt);
@@ -318,12 +316,12 @@ export async function settleLockedMonument(tx: Tx, locked: LockedMonument, at: D
     const destroyed = result.destroyed.filter(lot => lot.waveId === wave.id);
     if (destroyed.length === 0) continue;
     const ids = new Set(destroyed.map(lot => lot.id));
-    const death = Math.max(...holdLots.filter(lot => ids.has(lot.id)).map(lot => lossTime(lot, monument, sources, fromMs, toMs) ?? toMs));
+    const death = Math.max(...holdLots.filter(lot => ids.has(lot.id)).map(lot => lossTime(lot, monument, sources, fromMs, toMs, season) ?? toMs));
     await tellMonumentRadiationLoss(tx, monument, wave, destroyed, result.lots.filter(lot => lot.waveId === wave.id), new Date(death));
   }
   let nextLoss: number | null = null;
   for (const lot of result.lots) {
-    const death = lossTime(lot, monument, sources, toMs, season.endsAt.getTime());
+    const death = lossTime(lot, monument, sources, toMs, season.endsAt.getTime(), season);
     if (death !== null) nextLoss = Math.min(nextLoss ?? death, death);
   }
   const nextLossAt = nextLoss === null ? null : new Date(nextLoss);
@@ -363,7 +361,10 @@ const sendSchema = z.object({
 
 export interface MonumentQuote {
   fuel: number;
+  outboundFuel?: number;
+  returnFuelReserve?: number;
   arriveAt: string;
+  targetPosition: Vec3;
   travelMinutes: number;
   room: { used: number; reserved: number; total: number; after: number };
   bays: { used: number; total: number };
@@ -392,13 +393,13 @@ function friendlyHoldForecast(
         id: randomUUID(), playerId, waveId: previewWaveId, deuterium: 0, tech }));
   });
   const existing = settleMonumentHold(locked.lots.filter((lot) => holdIds.has(lot.waveId)), {
-    fromMs: locked.monument.settledAt.getTime(), toMs: arriveAt.getTime(), position: locked.monument,
+    fromMs: locked.monument.settledAt.getTime(), toMs: arriveAt.getTime(), position: locked.monument, target: monumentRadiationTarget(locked.monument, locked.season),
     productionPerMinute: locked.monument.productionPerMinute, sources,
   }).lots;
   const held = [...existing, ...previewLots];
   const production = produceMonumentDeuterium(held, locked.monument.productionPerMinute).shares
     .find((share) => share.playerId === playerId)?.deuterium ?? 0;
-  const path = [{ from: locked.monument, to: locked.monument, startMs: arriveAt.getTime(), endMs: locked.season.endsAt.getTime() }];
+  const path = monumentHoldPath(locked.monument,locked.season,arriveAt.getTime(),locked.season.endsAt.getTime());
   const lossTimes = previewLots.map((lot) => hpLethalAtMs(path, sources, lot)).filter((time): time is number => time !== null);
   // The forecast describes the new wave only. Existing HOLD losses remain on
   // their own live cards, so an arrival preview cannot imply a combat result.
@@ -465,7 +466,7 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
     || (locked.monument.controllerClanId !== null && memberships.get(input.senderPlayerId) === locked.monument.controllerClanId);
   if (input.purpose === 'REINFORCE' && !friendly) throw new GameError('MONUMENT_NOT_FRIENDLY', 'Reinforce a monument your side controls', 403);
   if (input.purpose === 'ATTACK' && friendly) throw new GameError('MONUMENT_FRIENDLY_FIRE', 'Your side already controls that monument', 403);
-  await assertMonumentFleetDispatch(tx, locked, input.senderPlayerId, fleet);
+  await assertMonumentFleetDispatch(tx, locked, input.senderPlayerId);
   const holdIds = new Set(locked.waves.filter((wave) => wave.status === 'HOLD').map((wave) => wave.id));
   const used = locked.lots.filter((lot) => holdIds.has(lot.waveId)).reduce((n, lot) => n + hangarLoad({ [lot.hull]: lot.count }), 0);
   const isFriend = (playerId: string): boolean => locked.monument.controllerPlayerId === playerId
@@ -476,13 +477,16 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
   if (friendly && used + reserved + bulk > locked.monument.capacity) throw new GameError('MONUMENT_CAPACITY_FULL', 'That monument has no room for this reinforcement', 409, {
     used, reserved, needed: bulk, total: locked.monument.capacity,
   });
-  const dist = distance(origin, locked.monument);
-  const fuel = missionFuel(fleet, dist, 2);
-  assertFuel(fuel, origin.deuterium);
   const tech = await techOf(tx, input.senderPlayerId);
-  const travelMinutes = fleetTravelExact(dist, fleet, { boost: fleetSpeedMult(origin.orbit), tech });
-  if (!Number.isFinite(travelMinutes) || fleetCount(fleet) === 0) throw new GameError('BAD_FLEET', 'That fleet cannot travel', 400);
-  const arriveAt = addMinutes(origin.now, travelMinutes);
+  const speed = fleetPace(fleet, { boost: fleetSpeedMult(origin.orbit), tech });
+  if (!(speed > 0) || fleetCount(fleet) === 0) throw new GameError('BAD_FLEET', 'That fleet cannot travel', 400);
+  const meeting = monumentFlight(origin,locked.monument,locked.season,speed,origin.now);
+  const {arriveAt} = meeting;
+  const travelMinutes = meeting.minutes;
+  const reserve = monumentMotionStart(locked.season) ? await reserveMonumentHome(tx, input.senderPlayerId, locked.monument, fleet) : null;
+  const outboundFuel = missionFuel(fleet, distance(origin, meeting.at), 1);
+  const fuel = reserve ? outboundFuel + reserve.total : outboundFuel * 2;
+  assertFuel(fuel, origin.deuterium);
   // A native monument wave must reach the target while the season is still
   // open. Once it has arrived, the season-close adapter can transfer it home
   // at the cutoff without inventing a new return flight.
@@ -498,7 +502,7 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
   // quote exposes the same decision that the commit will enforce.
   const protections = await protectionsOf(tx, [input.senderPlayerId], origin.now);
   const sources = await hpSourcesForSeason(tx, origin.seasonId);
-  const doseHp = segmentsExposureHp([{ from: origin, to: locked.monument, startMs: origin.now.getTime(), endMs: arriveAt.getTime() }], sources);
+  const doseHp = segmentsExposureHp([{ from: origin, to: meeting.at, startMs: origin.now.getTime(), endMs: arriveAt.getTime() }], sources);
   const arrival = applyHpDose(fleet, null, doseHp, tech);
   const health = fleetEntries(fleet).map(([hull, count]) => {
     const maxHp = HULLS[hull].hp * hullTech(tech, hull).hp;
@@ -509,13 +513,15 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
   });
   const quote: MonumentQuote = {
     fuel, arriveAt: arriveAt.toISOString(), travelMinutes,
+    ...(reserve ? { outboundFuel, returnFuelReserve: reserve.total } : {}),
     room: { used, reserved: friendly ? reserved : 0, total: locked.monument.capacity, after: used + (friendly ? reserved + bulk : 0) },
     bays: await baysOf(tx, origin.planetId, origin.buildings.CORE),
     shieldWouldDrop: protections.get(input.senderPlayerId) != null,
     ...(friendly ? { holdForecast: friendlyHoldForecast(locked, input.senderPlayerId, arrival, tech, arriveAt, sources) } : {}),
+    targetPosition: meeting.at,
     outboundForecast: { doseHp, destroyed: fleetCount(arrival.destroyed), fleet: arrival.fleet, health },
   };
-  return { locked, origin, fleet, tech, bulk, fuel, arriveAt, pvp, quote };
+  return { locked, origin, fleet, tech, bulk, fuel, arriveAt, pvp, quote, targetAt: meeting.at, reserve };
 }
 
 export async function quoteMonument(tx: Tx, input: MonumentSendInput): Promise<MonumentQuote> {
@@ -534,7 +540,7 @@ export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ 
     seasonId: origin.seasonId, monumentId: locked.monument.id, playerId: input.senderPlayerId, originPlanetId: origin.planetId,
     // The UUID is allocated before the insert so the physical location is explicit.
     ...newWaveIdentity(), purpose: input.purpose, sentFleet: fleet, tech: context.tech,
-    route: [{ from: { x: origin.x, y: origin.y, z: origin.z }, to: { x: locked.monument.x, y: locked.monument.y, z: locked.monument.z }, startMs: origin.now.getTime(), endMs: context.arriveAt.getTime() }],
+    route: [{ from: { x: origin.x, y: origin.y, z: origin.z }, to: context.targetAt, startMs: origin.now.getTime(), endMs: context.arriveAt.getTime() }],
     reservedBulk: input.purpose === 'REINFORCE' ? context.bulk : 0, fuelPaid: context.fuel,
     sentAt: origin.now, arriveAt: context.arriveAt, radiationSettledAt: origin.now,
   }).returning();
@@ -546,6 +552,7 @@ export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ 
   await setUnits(tx, origin.planetId, fleet, wave.unitLocation, input.senderPlayerId);
   const manifest = await tx.insert(monumentShipLots).values(MOBILE_HULLS.flatMap((hull) => (fleet[hull] ?? 0) > 0 ? [{
     waveId: wave.id, hull, count: fleet[hull]!, damageBp: 0, remainderBp: 0, deuterium: 0,
+    returnFuelReserve: (context.reserve?.perShip[hull] ?? 0) * fleet[hull]!, fuelRefund: 0,
   }] : [])).returning();
   await saveResources(tx, origin.planetId, { alloy: origin.alloy, crystal: origin.crystal, deuterium: origin.deuterium - context.fuel });
   await recomputePlayerWealth(tx, input.senderPlayerId);

@@ -1,4 +1,4 @@
-import { HULLS, MOBILE_HULLS, combatValue, fleetEntries } from './hulls.js';
+import { HULLS, MOBILE_HULLS, combatValue } from './hulls.js';
 import { hangarCapacity } from './economy.js';
 import { coreTier } from './loot.js';
 import {
@@ -8,9 +8,9 @@ import {
   type HpDamageLots,
   type HpRadiationSource,
 } from './radiationHp.js';
-import type { Segment } from './radiation.js';
+import type { RadiationTarget, Segment } from './radiation.js';
 import { cargoMult, type TechLevels } from './tech.js';
-import type { Fleet, MobileHullId, Vec3 } from './types.js';
+import type { MobileHullId, Vec3 } from './types.js';
 
 export type MonumentDifficulty = 'LEGACY' | 'EASY' | 'HARD';
 
@@ -46,11 +46,6 @@ export function monumentTierEligible(difficulty: MonumentDifficulty, peakCoreLev
   return difficulty !== 'EASY' || coreTier(peakCoreLevel) <= 3;
 }
 
-/** Cargo may circulate; every other hull belongs to the initial personal fleet. */
-export function monumentAdditionalFleetAllowed(fleet: Fleet, hasActiveFleet: boolean): boolean {
-  return !hasActiveFleet || fleetEntries(fleet).every(([hull]) => HULLS[hull].family === 'CARGO');
-}
-
 /**
  * A physical group of identical ships. Every member has the same damage and
  * carries the same fraction of this lot's total deuterium. Unequal health or
@@ -68,6 +63,9 @@ export interface MonumentShipLot {
   readonly damageBp: number;
   readonly remainderBp: number;
   readonly deuterium: number;
+  /** Escrow belongs to these ships. Lost ships burn it; successful returns refund the remainder. */
+  readonly returnFuelReserve?: number;
+  readonly fuelRefund?: number;
   readonly tech: TechLevels;
 }
 
@@ -120,6 +118,8 @@ export function normalizeMonumentLots(lots: readonly MonumentShipLot[]): Monumen
     const capacity = monumentCargoCapacity(row);
     assertAmount(row.deuterium);
     if (row.deuterium > capacity) throw new RangeError('monument cargo exceeds its physical hold');
+    assertAmount(row.returnFuelReserve ?? 0);
+    assertAmount(row.fuelRefund ?? 0);
     applyHpDose({ [row.hull]: row.count }, [row], 0, row.tech);
     out.push({ ...row, tech: { ...row.tech } });
   }
@@ -281,6 +281,8 @@ export function splitMonumentBattleSurvivors(
       damageBp: preserve ? source.damageBp : row.damageBp,
       remainderBp: preserve ? source.remainderBp : row.remainderBp,
       deuterium: source.deuterium * (row.count / source.count),
+      ...(source.returnFuelReserve === undefined ? {} : { returnFuelReserve: source.returnFuelReserve * (row.count / source.count) }),
+      ...(source.fuelRefund === undefined ? {} : { fuelRefund: source.fuelRefund * (row.count / source.count) }),
     };
     return { ...kept, deuterium: Math.min(monumentCargoCapacity(kept), kept.deuterium) };
   });
@@ -323,8 +325,14 @@ export function recallMonumentShips(
       continue;
     }
     const taken = row.deuterium * (selection.count / row.count);
-    recalled.push({ ...row, id: selection.returnLotId, count: selection.count, deuterium: taken });
-    if (selection.count < row.count) remaining.push({ ...row, count: row.count - selection.count, deuterium: row.deuterium - taken });
+    const fuelShare = selection.count / row.count;
+    const reserve = (row.returnFuelReserve ?? 0) * fuelShare;
+    const refund = (row.fuelRefund ?? 0) * fuelShare;
+    recalled.push({ ...row, id: selection.returnLotId, count: selection.count, deuterium: taken,
+      ...(row.returnFuelReserve === undefined ? {} : { returnFuelReserve: reserve }), ...(row.fuelRefund === undefined ? {} : { fuelRefund: refund }) });
+    if (selection.count < row.count) remaining.push({ ...row, count: row.count - selection.count, deuterium: row.deuterium - taken,
+      ...(row.returnFuelReserve === undefined ? {} : { returnFuelReserve: row.returnFuelReserve - reserve }),
+      ...(row.fuelRefund === undefined ? {} : { fuelRefund: row.fuelRefund - refund }) });
   }
   return { remaining, recalled: recalled.sort(canonical) };
 }
@@ -354,6 +362,7 @@ export interface MonumentHoldWindow {
   fromMs: number;
   toMs: number;
   position: Vec3;
+  target?: RadiationTarget;
   productionPerMinute: number;
   sources: readonly HpRadiationSource[];
 }
@@ -374,7 +383,7 @@ export function settleMonumentHold(lots: readonly MonumentShipLot[], window: Mon
     throw new RangeError('bad monument HOLD window');
   }
   assertAmount(productionPerMinute);
-  const segment = (startMs: number, endMs: number): Segment[] => [{ from: position, to: position, startMs, endMs }];
+  const segment = (startMs: number, endMs: number): Segment[] => [{ from: position, to: position, startMs, endMs, ...(window.target ? { target: window.target } : {}) }];
   // Validate geometry/history even for an empty or zero-duration holding.
   segmentsExposureHp(segment(fromMs, toMs), sources);
   let rows = normalizeMonumentLots(lots);

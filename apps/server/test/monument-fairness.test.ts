@@ -51,47 +51,51 @@ beforeEach(async () => {
 });
 afterAll(async () => { await (await testDb()).close(); });
 
-describe('personal monument fleet cycle', () => {
-  it('closes the second combat dispatch while the first is still outbound, including quote', async () => {
+describe('repeated monument reinforcements', () => {
+  it('allows a second combat dispatch and quote while the first is outbound', async () => {
     await send();
-    await expect(send(0, { DART: 1 })).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
-    await expect(f.db.transaction(tx => quoteMonument(tx, request(0, { DART: 1 })))).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
+    await expect(send(0, { DART: 1 })).resolves.toMatchObject({wave:{status:'OUTBOUND'}});
+    expect((await f.db.transaction(tx => quoteMonument(tx, request(0, { DART: 1 })))).fuel).toBeGreaterThan(0);
   });
 
-  it('serializes simultaneous initial fleets even with ample ships, fuel, bays and monument room', async () => {
+  it('serializes both valid simultaneous fleets with ample ships, fuel and bays', async () => {
     const results = await Promise.allSettled([send(0, { DART: 1 }), send(0, { DART: 1 })]);
-    expect(results.filter(row => row.status === 'fulfilled')).toHaveLength(1);
-    const rejected = results.find(row => row.status === 'rejected');
-    expect(rejected?.status === 'rejected' ? rejected.reason : null).toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
+    expect(results.filter(row => row.status === 'fulfilled')).toHaveLength(2);
+  });
+  it('cannot allocate the same final combat ship to two simultaneous support waves',async()=>{
+    await giveUnits(f.db,f.planetIds[0]!,{DART:1});
+    const results=await Promise.allSettled([send(0,{DART:1}),send(0,{DART:1})]);
+    expect(results.filter(row=>row.status==='fulfilled')).toHaveLength(1);
+    expect(await f.db.select().from(monumentWaves)).toHaveLength(1);
+    const [home]=await f.db.select().from(units).where(and(eq(units.planetId,f.planetIds[0]!),eq(units.location,'home'),eq(units.hull,'DART')));
+    expect(home?.count??0).toBe(0);
   });
 
-  it('serializes one player launching from two different controlled worlds', async () => {
+  it('allows one player to reinforce from two controlled worlds', async () => {
     await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: f.playerIds[0]! }).where(eq(planets.id, f.planetIds[1]!));
     const results = await Promise.allSettled(f.planetIds.map(originPlanetId => f.db.transaction(tx =>
       sendMonument(tx, { ...request(0, { DART: 1 }), originPlanetId }))));
-    expect(results.filter(row => row.status === 'fulfilled')).toHaveLength(1);
-    const rejected = results.find(row => row.status === 'rejected');
-    expect(rejected?.status === 'rejected' ? rejected.reason : null).toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
-    expect(await f.db.select().from(monumentWaves)).toHaveLength(1);
+    expect(results.filter(row => row.status === 'fulfilled')).toHaveLength(2);
+    expect(await f.db.select().from(monumentWaves)).toHaveLength(2);
   });
 
-  it('counts an initial cargo-only launch as the personal cycle and never charges for a blocked mixed support', async () => {
+  it('charges and allocates real mixed support after an earlier cargo launch', async () => {
     await park(1, { DART: 1 });
     await makeClan();
     await send(0, { COURIER: 1 }, 'REINFORCE');
     const beforeShips = await f.db.select().from(units);
     const beforeFuel = (await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!)))[0]!.deuterium;
-    await expect(send(0, { DART: 1, COURIER: 1 }, 'REINFORCE')).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
-    expect(await f.db.select().from(units)).toEqual(beforeShips);
-    expect((await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!)))[0]!.deuterium).toBe(beforeFuel);
+    await expect(send(0, { DART: 1, COURIER: 1 }, 'REINFORCE')).resolves.toMatchObject({wave:{status:'OUTBOUND'}});
+    expect(await f.db.select().from(units)).not.toEqual(beforeShips);
+    expect((await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!)))[0]!.deuterium).toBeLessThan(beforeFuel);
     await expect(send(0, { COURIER: 1 }, 'REINFORCE')).resolves.toMatchObject({ wave: { status: 'OUTBOUND' } });
   });
 
-  it('blocks another combat launch after recalling the whole initial outbound fleet until it really lands', async () => {
+  it('allows new combat dispatch while an earlier recalled fleet is returning', async () => {
     const initial = await send(0, { DART: 2, COURIER: 1 });
     f.clock.advance(0.1);
     const turned = await f.db.transaction(tx => recallMonument(tx, { playerId: f.playerIds[0]!, waveId: initial.wave.id, all: true, clock: f.clock }));
-    await expect(send()).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
+    await expect(send()).resolves.toMatchObject({wave:{status:'OUTBOUND'}});
     f.clock.set(turned.wave.arriveAt!);
     await f.db.transaction(tx => resolveMonumentReturn(tx, { waveId: turned.wave.id, generation: turned.wave.generation, at: f.clock.now() }));
     await expect(send()).resolves.toMatchObject({ wave: { status: 'OUTBOUND' } });
@@ -122,19 +126,20 @@ describe('personal monument fleet cycle', () => {
     const held = await f.db.select().from(monumentShipLots);
     expect(held.filter(lot => heldIds.has(lot.waveId)).reduce((sum, lot) => sum + hangarLoad({ [lot.hull]: lot.count }), 0)).toBeLessThanOrEqual(capacity);
     expect(waves.some(wave => wave.playerId === f.playerIds[0] && wave.status === 'RETURNING' && wave.returnReason === 'CAPACITY')).toBe(true);
-    await expect(send(0, { DART: 1 }, 'REINFORCE')).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
+    await f.db.update(monuments).set({capacity:held.filter(lot=>heldIds.has(lot.waveId)).reduce((sum,lot)=>sum+hangarLoad({[lot.hull]:lot.count}),0)}).where(eq(monuments.id,target.id));
+    await expect(send(0, { DART: 1 }, 'REINFORCE')).rejects.toMatchObject({ code: 'MONUMENT_CAPACITY_FULL' });
   });
 
-  it('blocks combat replacement even if only the owner cargo remains and allows cargo support', async () => {
+  it('allows combat replacement and mixed support while only cargo remains', async () => {
     await park(0, { COURIER: 1 });
-    await expect(send(0, { RAMPART: 1 }, 'REINFORCE')).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
-    await expect(send(0, { COURIER: 1, DART: 1 }, 'REINFORCE')).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
+    expect((await f.db.transaction(tx=>quoteMonument(tx,request(0, { RAMPART: 1 }, 'REINFORCE')))).fuel).toBeGreaterThan(0);
+    expect((await f.db.transaction(tx=>quoteMonument(tx,request(0, { COURIER: 1, DART: 1 }, 'REINFORCE')))).fuel).toBeGreaterThan(0);
     await giveUnits(f.db, f.planetIds[0]!, { GARBAGE_COLLECTOR: 1 });
-    await expect(send(0, { GARBAGE_COLLECTOR: 1 }, 'REINFORCE')).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
+    expect((await f.db.transaction(tx=>quoteMonument(tx,request(0, { GARBAGE_COLLECTOR: 1 }, 'REINFORCE')))).fuel).toBeGreaterThan(0);
     expect((await send(0, { COURIER: 1 }, 'REINFORCE')).wave.status).toBe('OUTBOUND');
   });
 
-  it('waits for the final personal cargo to arrive home, independently of continued clan control', async () => {
+  it('allows support throughout partial recalls and continued clan control', async () => {
     const waveId = await park(0, { DART: 3, COURIER: 1 });
     await park(1, { DART: 1 });
     await makeClan();
@@ -142,22 +147,22 @@ describe('personal monument fleet cycle', () => {
     const combat = lots.find(lot => lot.hull === 'DART')!;
     const recalled = await f.db.transaction(tx => recallMonument(tx, { playerId: f.playerIds[0]!, waveId,
       selections: [{ lotId: combat.id, count: combat.count }], clock: f.clock }));
-    await expect(send(0, { DART: 1 }, 'REINFORCE')).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
+    expect((await f.db.transaction(tx=>quoteMonument(tx,request(0, { DART: 1 }, 'REINFORCE')))).fuel).toBeGreaterThan(0);
     f.clock.set(recalled.wave.arriveAt!);
     await f.db.transaction(tx => resolveMonumentReturn(tx, { waveId: recalled.wave.id, generation: recalled.wave.generation, at: f.clock.now() }));
-    await expect(send(0, { DART: 1 }, 'REINFORCE')).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
+    expect((await f.db.transaction(tx=>quoteMonument(tx,request(0, { DART: 1 }, 'REINFORCE')))).fuel).toBeGreaterThan(0);
     const last = await f.db.transaction(tx => recallMonument(tx, { playerId: f.playerIds[0]!, waveId, all: true, clock: f.clock }));
-    await expect(send(0, { DART: 1 }, 'REINFORCE')).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
+    expect((await f.db.transaction(tx=>quoteMonument(tx,request(0, { DART: 1 }, 'REINFORCE')))).fuel).toBeGreaterThan(0);
     f.clock.set(last.wave.arriveAt!);
     await f.db.transaction(tx => resolveMonumentReturn(tx, { waveId: last.wave.id, generation: last.wave.generation, at: f.clock.now() }));
     expect((await send(0, { DART: 1 }, 'REINFORCE')).wave.status).toBe('OUTBOUND');
   });
 
-  it('lets a new clan member join but applies the same personal rule from that launch', async () => {
+  it('allows repeated combat support from a new clan member', async () => {
     await park(0, { DART: 1 });
     await makeClan();
     await send(1, { DART: 1 }, 'REINFORCE');
-    await expect(send(1, { DART: 1 }, 'REINFORCE')).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
+    expect((await f.db.transaction(tx=>quoteMonument(tx,request(1, { DART: 1 }, 'REINFORCE')))).fuel).toBeGreaterThan(0);
   });
 
   it('keeps hostile attack size unrestricted and does not block a separate monument', async () => {
@@ -184,7 +189,7 @@ describe('Easy commander access', () => {
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 10);
     const view = await f.db.transaction(tx => readMonuments(tx, { playerId: f.playerIds[0]!, seasonId: f.seasonId,
       at: f.clock.now(), adminUsernames: [] }));
-    expect(view.monuments[0]).toMatchObject({ difficulty: 'EASY', sendAccess: { playerTier: 4, tierAllowed: false, cargoOnly: true } });
+    expect(view.monuments[0]).toMatchObject({ difficulty: 'EASY', sendAccess: { playerTier: 4, tierAllowed: false, cargoOnly: false } });
     const publicView = await f.db.transaction(tx => readPublicMonumentFacts(tx, f.seasonId, f.clock.now()));
     expect(publicView[0]).toMatchObject({ difficulty: 'EASY' });
     expect(publicView[0]).not.toHaveProperty('sendAccess');

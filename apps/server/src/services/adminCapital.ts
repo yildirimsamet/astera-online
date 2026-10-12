@@ -29,7 +29,7 @@ export async function equipAdminCapital(tx: Tx, planetId: string, clock: Clock):
   else await tx.insert(satellites).values({ planetId, type: 'TELESCOPE', level: max, slot: nextSlot++ });
   let uplink = rows.find(row => row.type === 'UPLINK');
   if (!uplink) {
-    uplink = { planetId, type: 'UPLINK', level: 1, slot: nextSlot };
+    uplink = { planetId, type: 'UPLINK', level: 1, slot: nextSlot, aegisInvestedValue: null };
     await tx.insert(satellites).values(uplink);
   }
   // Preserve all installed hardware. Put Uplink in the first orbit slot so Core's

@@ -14,10 +14,10 @@
  */
 
 export const errors = {
+  MONUMENT_UNREACHABLE: "この艦隊はシーズン終了までに記念碑に到着できません。より速い艦船を選んでください。",
   ACCOUNT_NOT_FOUND: 'アカウントが見つかりません。ユーザー名を確認してください。',
   CHAT_MUTED: "このチャンネルへの投稿権限が制限されています。",
   MONUMENT_TIER_FORBIDDEN: "イージーの記念碑はティア1–3専用です。ハードの記念碑を選んでください",
-  MONUMENT_FLEET_ACTIVE: "貨物船を含む自分の全艦船が帰還するまで、追加で派遣できるのは貨物船だけです。",
   CAPITAL_CANNOT_BE_ABANDONED: "首都は放棄できません。植民地を選択してください。",
   COLONY_ABANDON_BLOCKED: "この植民地には進行中の任務または所有権の変更があります。理由を確認し、完了を待ってください。",
   SKIN_NOT_OWNED: 'この外観はインベントリにありません。所有している外観を選んでください。',
@@ -92,6 +92,8 @@ export const errors = {
   RESEARCH_CANNOT_BE_CANCELLED: "開始した研究はキャンセルできません",
   RESEARCH_QUEUE_FULL: "3 つの研究プロジェクトがすでにキューに入れられています。 1 つが完了するまで待ってから、別のを追加します。",
   BUILD_ORDER_NOT_FOUND: "この生産注文は有効ではありません。現在の生産待ち一覧を確認してください。",
+  PERSONAL_RAID_COOLDOWN: "{{until}}以降、この司令官に再び襲撃を送れます（あなたの現地時間）。",
+  PERSONAL_RAID_PENDING: "この司令官への襲撃がすでに移動中です。結果を待つか呼び戻してください。",
   BASH_LIMIT: "最近、この惑星を短時間に何度も襲撃しました。しばらく待ってください。",
   TIER_BAND: "その司令官はあなたより2ティア以上上です。攻撃の可否は双方が持つ最も発展した惑星で判定します。",
   TIER_BAND_WEAK: "その司令官はあなたより2ティア以上下です。攻撃の可否は双方が持つ最も発展した惑星で判定します。",

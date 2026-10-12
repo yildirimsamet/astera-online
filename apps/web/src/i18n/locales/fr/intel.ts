@@ -597,7 +597,7 @@ export const dossier = {
   developmentValue: "palier {{tier}}",
   developmentVersus: "palier {{tier}} · toi {{mine}}",
   developmentBandNote:
-    "Raids et frappes d’Étoile de la Mort ne sont permis qu’entre commandants séparés d’au plus un palier, chacun mesuré sur son monde le plus développé. Le tien est au palier {{mine}} : tu peux atteindre les paliers {{low}}–{{high}}. Ce monde n’est peut-être pas son plus développé.",
+    "Raids et frappes d’Étoile de la Mort ne sont permis qu’entre commandants séparés d’au plus un palier, chacun mesuré sur son monde le plus développé. Le tien est au palier {{mine}} : tu peux atteindre les paliers {{low}}–{{high}}. Ce monde n’est peut-être pas son plus développé. Si un commandant est de palier 1–3, chacun peut envoyer un raid individuel contre l’autre, puis doit attendre 12 heures après le combat avant d’en envoyer un autre. Un raid en route réserve ce droit ; son rappel ne lance pas le délai. Les Étoiles de la Mort et les opérations communes de clan sont exclues.",
   hardwareLabel: "Satellites en orbite",
   hardwareNote:
     "Tu vois le matériel. Une sonde suffit pour découvrir ce qu’il permet.",

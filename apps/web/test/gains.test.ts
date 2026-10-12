@@ -73,6 +73,10 @@ const at = (level: number): BuildingLevels => ({
 });
 
 describe('every upgrade row states something that actually changes', () => {
+  it('shows the new Aegis capacity at installation and at the first neutral Nullifier breakpoint', () => {
+    expect(instrumentGain('AEGIS', 0)).toMatchObject({ now: '0', next: '150' });
+    expect(instrumentGain('AEGIS', 6)).toMatchObject({ now: '1,139', next: '1,709' });
+  });
   /**
    * THE VAULT ROW STATES BOTH ITS JOBS, AND THIS TEST IS WHY. D190.
    *

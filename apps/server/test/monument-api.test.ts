@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HULLS, MONUMENT_BALANCE, MONUMENT_CAPACITY, MONUMENT_SEASON_DEFAULTS, distance, interpolatePosition, monumentDifficulty, seededFrom, travelExact, type Vec3 } from '@astera/rules';
-import { galaxySchema, monumentsSchema, monumentSendSchema } from '../../web/src/api/schemas.js';
+import { galaxySchema, monumentsSchema, monumentRecallQuoteSchema, monumentSendSchema } from '../../web/src/api/schemas.js';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { clanWarOperations, hpRadiationSources, monumentProbes, monuments, monumentShipLots, monumentWaves, notifications, planets, radiationSources, seasons, units } from '../src/db/schema.js';
@@ -70,6 +70,29 @@ async function outbound() {
 }
 
 describe('Easy / Hard HTTP contracts and personal dispatch boundaries', () => {
+  it('carries motion, escrow and a priced partial recall through the actual client schemas', async () => {
+    await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    const sent = await post(`/api/monuments/${m.id}/send`, { ...launchBody(), acknowledgeShieldLoss: true });
+    expect(sent.statusCode, sent.body).toBe(200);
+    const launch = monumentSendSchema.parse(sent.json());
+    expect(launch.quote.returnFuelReserve).toBeGreaterThan(0);
+    expect(launch.quote.fuel).toBe(launch.quote.outboundFuel! + launch.quote.returnFuelReserve!);
+    const detail = await app.inject({ method: 'GET', url: `/api/monuments/${m.id}`, headers: auth });
+    expect(detail.statusCode, detail.body).toBe(200);
+    const view = monumentsSchema.parse(detail.json());
+    expect(view.monuments[0]?.motion).toMatchObject({ periodYMs: 8 * 3600_000, periodXMs: 16 * 3600_000 });
+    const wave = view.waves.find(row => row.id === launch.wave.id)!;
+    expect(wave.lots.reduce((sum, lot) => sum + (lot.returnFuelReserve ?? 0), 0)).toBe(launch.quote.returnFuelReserve);
+    f.clock.advance(1);
+    const recall = await post(`/api/monuments/waves/${wave.id}/recall/quote`, {
+      selections: [{ lotId: wave.lots[0]!.id, count: 1 }],
+    });
+    expect(recall.statusCode, recall.body).toBe(200);
+    const price = monumentRecallQuoteSchema.parse(recall.json());
+    expect(price.returnFuel).toBeGreaterThan(0);
+    expect(price.fuelRefund).toBeGreaterThan(0);
+    expect(price.arrivalLots).toHaveLength(1);
+  });
   it('publishes radiation levels on monument clouds without relabelling zones or the legacy four-HP cloud', async () => {
     const sources = await f.db.insert(hpRadiationSources).values([
       { seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id, x: m.x, y: m.y, z: m.z,
@@ -117,7 +140,7 @@ describe('Easy / Hard HTTP contracts and personal dispatch boundaries', () => {
     expect(galaxy.body).not.toContain('sendAccess');
   });
 
-  it('replays an accepted initial dispatch before checking the now-active personal cycle', async () => {
+  it('deduplicates one dispatch and allows a new independent support dispatch', async () => {
     await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
     await giveUnits(f.db, f.planetIds[0]!, { CITADEL: 4, ARGOSY: 2 });
     const headers = key();
@@ -128,9 +151,9 @@ describe('Easy / Hard HTTP contracts and personal dispatch boundaries', () => {
     expect(responses[0].json()).toEqual(responses[1].json());
     expect(monumentSendSchema.parse(responses[0].json()).wave.status).toBe('OUTBOUND');
     expect(await f.db.select().from(monumentWaves)).toHaveLength(1);
-    const rejected = await post(url, payload);
-    expect(rejected.statusCode, rejected.body).toBe(409);
-    expect(rejected.json()).toMatchObject({ error: 'MONUMENT_FLEET_ACTIVE' });
+    const second = await post(url, payload);
+    expect(second.statusCode, second.body).toBe(200);
+    expect(await f.db.select().from(monumentWaves)).toHaveLength(2);
   });
 
   it('keeps recall available after Easy becomes tier-ineligible, while refusing new cargo atomically', async () => {

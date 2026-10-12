@@ -197,6 +197,7 @@ export function ClanWaveSheet({ operation, worlds, onClose, onSent }: {
                 <Figure label={t('clanWar.figHome')} value={countdown(quote.travel.earliestHome.getTime() - now)} />
               )}
             </Figures>
+            {quote.fuel.reserved && <p className="text-micro leading-snug text-v2-ink-2">{t('monument.clanFuelReserveRule')}</p>}
             {quote.latestStartAt && (
               <p className="text-micro text-v2-ink-3">{t('clanWar.latestStart', { time: countdown(quote.latestStartAt.getTime() - now) })}</p>
             )}

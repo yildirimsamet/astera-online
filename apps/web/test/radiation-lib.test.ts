@@ -19,6 +19,14 @@ const cloud = (over: Partial<{ intensityPctPerMinute: number; activeUntil: Date 
 });
 
 describe('HP radiation on the complete physical route', () => {
+  it('keeps an entity aura harmless in flight and preserves its occupied target on the wire', () => {
+    const view = hpRadiationSourceSchema.parse({ id: 'entity', center: at(0), radius: 1000, mode: 'EMIT',
+      intensityHpPerMinute: 1000, activeFrom: new Date(0), activeUntil: null,
+      target: { kind: 'MONUMENT', id: 'monument-a' } });
+    const sources = toHpRadiationSources([view]);
+    expect(routeHpRadiation({ fleet: { DART: 1 }, tech: {}, path: [{ from: at(0), to: at(100), startMs: 0, endMs: MIN }] }, sources)).toBeNull();
+    expect(sources[0]?.target).toEqual({ kind: 'MONUMENT', id: 'monument-a' });
+  });
   it('gives staying ships only the outbound dose and returning ships both physical legs', () => {
     const source = { id: 'hp', center: at(0), radius: 1000, mode: 'EMIT' as const,
       intensityHpPerMinute: HULLS.DART.hp * 0.6, activeFrom: new Date(0), activeUntil: null };

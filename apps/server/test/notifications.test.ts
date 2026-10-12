@@ -1,7 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { CORE_TOP_LEVEL, MULTI_WORLD, SERVERS, radarLead, radarRange } from '@astera/rules';
+import { ABUSE, CORE_TOP_LEVEL, MULTI_WORLD, SERVERS, radarLead, radarRange } from '@astera/rules';
 import {
   buildings,
   clanMemberships,
@@ -674,8 +674,8 @@ describe('the unlock cascade', () => {
     const worker = makeWorker(f);
     await worker.tick();
 
-    // Let the survivors get home: one fleet per target, both legs.
-    f.clock.advance(240);
+    // Let the survivors get home and clear the lower-tier personal raid cooldown.
+    f.clock.advance(ABUSE.personalRaidCooldownMinutes + 1);
     await worker.tick();
 
     const second = await launchAttack(

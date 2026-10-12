@@ -7,13 +7,15 @@ import { advanceLockedMonument, monumentEndpoints, monumentHomes } from './monum
 import { saveWave, settleMonumentFlight } from './monumentMovement.js';
 import { lockWorlds, safeHomePlanet } from './ownership.js';
 import { GameError, loadLocked, recomputePlayerWealth, saveResources } from './planet.js';
-import { landHpShips } from './shipDamage.js';
+import { dockNotice, landHpShips } from './shipDamage.js';
 import { publish, publishShard } from '../stream/bus.js';
 import { closeMonumentProbes } from './monumentProbe.js';
+import { notify } from './notifications.js';
 import { completeMonumentJoint } from './monumentJoint.js';
 
 interface Delivery {
   wave: typeof monumentWaves.$inferSelect;
+  ordinal: number;
   lots: MonumentShipLot[];
   homeId: string;
   at: Date;
@@ -24,11 +26,11 @@ async function deliver(tx: Tx, input: Delivery): Promise<void> {
   const world = await loadLocked(tx, homeId, { now: () => at }, { expectedPlayerId: wave.playerId, requireLive: false });
   const fleet: Fleet = {};
   for (const lot of lots) fleet[lot.hull] = (fleet[lot.hull] ?? 0) + lot.count;
-  await landHpShips(tx, { planetId: homeId, ownerPlayerId: wave.playerId, fleet, damage: lots, at });
+  const dock = await landHpShips(tx, { planetId: homeId, ownerPlayerId: wave.playerId, fleet, damage: lots, at });
   await tx.delete(units).where(and(eq(units.planetId, wave.originPlanetId), eq(units.location, wave.unitLocation)));
   await tx.delete(monumentShipLots).where(eq(monumentShipLots.waveId, wave.id));
   await saveResources(tx, homeId, { alloy: world.alloy, crystal: world.crystal,
-    deuterium: world.deuterium + lots.reduce((sum, lot) => sum + lot.deuterium, 0) });
+    deuterium: world.deuterium + lots.reduce((sum, lot) => sum + lot.deuterium + (lot.returnFuelReserve ?? 0) + (lot.fuelRefund ?? 0), 0) });
   wave.status = 'HOME';
   wave.resolvedAt = at;
   wave.returnReason = 'FREEZE';
@@ -36,6 +38,12 @@ async function deliver(tx: Tx, input: Delivery): Promise<void> {
   wave.generation += 1;
   await saveWave(tx, wave);
   await completeMonumentJoint(tx, wave.jointOperationId, at);
+  await notify(tx, { playerId: wave.playerId, kind: 'fleet_returned', refId: wave.id, at,
+    payload: { trip: 'monument', targetKind: 'MONUMENT', monumentId: wave.monumentId, monumentOrdinal: input.ordinal,
+      craft: lots.reduce((sum, lot) => sum + lot.count, 0),
+      deuterium: lots.reduce((sum, lot) => sum + lot.deuterium, 0),
+      fuelRefund: lots.reduce((sum, lot) => sum + (lot.returnFuelReserve ?? 0) + (lot.fuelRefund ?? 0), 0),
+      reason: 'FREEZE', ...dockNotice(dock) } });
   await publish(tx, wave.playerId, 'private:monument');
 }
 
@@ -77,7 +85,7 @@ export async function closeSeasonMonuments(tx: Tx, input: { seasonId: string; cu
       }
       const homeId = await safeHomePlanet(tx, wave.playerId, wave.originPlanetId);
       if (worlds.get(homeId)?.controllerPlayerId !== wave.playerId) throw new GameError('PLACEMENT_CHANGED', 'The closing fleet has no locked safe home', 409);
-      deliveries.push({ wave, at, homeId, lots: target.lots.filter((lot) => lot.waveId === wave.id) });
+      deliveries.push({ wave, ordinal: target.monument.ordinal, at, homeId, lots: target.lots.filter((lot) => lot.waveId === wave.id) });
     }
   }
   // A delayed return that reached home before the boundary is delivered first.

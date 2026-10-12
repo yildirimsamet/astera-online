@@ -3,6 +3,7 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import {
+  ABUSE,
   COMBAT,
   DEBRIS,
   HULLS,
@@ -619,7 +620,8 @@ describe('battle reports', () => {
 
       // Let the survivors dock: a fleet still in the air is committed to that
       // world and the second launch would be refused before it could be measured.
-      f.clock.advance(60);
+      // The low-tier personal raid allowance must also be available again.
+      f.clock.advance(ABUSE.personalRaidCooldownMinutes + 1);
       await worker().tick();
 
       /*

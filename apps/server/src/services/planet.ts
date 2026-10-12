@@ -11,6 +11,7 @@ import {
   crystalRate,
   deuteriumRate,
   productionMult,
+  investedInInstrument,
   satelliteSlots,
   wealth,
   dockLocation,
@@ -36,6 +37,7 @@ import {
   buildings,
   buildOrders,
   clanLootShares,
+  clanWarContributions,
   missions,
   monumentShipLots,
   monumentWaves,
@@ -842,6 +844,7 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
     committedResearch,
     [unclaimedClanLoot],
     [monumentCargo],
+    contributionFuel,
   ] = await Promise.all([
     tx.select().from(buildings).where(inArray(buildings.planetId, worldIds)),
     tx.select().from(satellites).where(inArray(satellites.planetId, worldIds)),
@@ -887,17 +890,19 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
       })
       .from(clanLootShares)
       .where(eq(clanLootShares.playerId, playerId)),
-    tx.select({ deuterium: sql<number>`coalesce(sum(${monumentShipLots.deuterium}), 0)::float8` })
+    tx.select({ deuterium: sql<number>`coalesce(sum(${monumentShipLots.deuterium} + ${monumentShipLots.returnFuelReserve} + ${monumentShipLots.fuelRefund}), 0)::float8` })
       .from(monumentShipLots).innerJoin(monumentWaves, eq(monumentShipLots.waveId, monumentWaves.id))
       .where(and(eq(monumentWaves.playerId, playerId), inArray(monumentWaves.status, ['OUTBOUND', 'HOLD', 'RETURNING']))),
+    tx.select({ fleet: clanWarContributions.fleet, budget: clanWarContributions.monumentFuelBudget })
+      .from(clanWarContributions).where(and(eq(clanWarContributions.playerId, playerId),
+        inArray(clanWarContributions.status, ['OUTBOUND', 'STAGED', 'RECALL_ORDERED', 'RETURNING']))),
   ]);
 
   let value = 0;
   for (const world of worlds) {
     const levels = buildingLevelsFrom(buildingRows.filter((row) => row.planetId === world.id));
-    const { instruments, orbit } = installedFrom(
-      satelliteRows.filter((row) => row.planetId === world.id),
-    );
+    const installed = satelliteRows.filter((row) => row.planetId === world.id);
+    const { instruments, orbit } = installedFrom(installed);
     value += wealth({
       buildings: levels,
       instruments,
@@ -908,6 +913,11 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
       crystal: world.crystal + world.bufferCrystal,
       deuterium: world.deuterium + world.bufferDeuterium,
     });
+    // Catalogue prices quote new upgrades; an existing Aegis retains what was paid.
+    const aegis = installed.find((row) => row.type === 'AEGIS');
+    if (aegis?.aegisInvestedValue !== null && aegis?.aegisInvestedValue !== undefined) {
+      value += aegis.aegisInvestedValue - investedInInstrument('AEGIS', aegis.level);
+    }
   }
   for (const unit of unitRows) {
     if (unit.count <= 0) continue;
@@ -937,6 +947,12 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
     value += unclaimedClanLoot.alloy + unclaimedClanLoot.crystal + unclaimedClanLoot.deuterium;
   }
   if (monumentCargo) value += monumentCargo.deuterium;
+  for (const row of contributionFuel) {
+    if (!row.budget) continue;
+    for (const [hull, count] of Object.entries(row.fleet) as [HullId, number][]) {
+      value += count * ((row.budget.outbound.perShip[hull] ?? 0) + (row.budget.homeward.perShip[hull] ?? 0));
+    }
+  }
   value = Math.round(value);
   await tx.update(players).set({ wealth: value }).where(eq(players.id, playerId));
   return value;

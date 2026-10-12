@@ -9,6 +9,7 @@ import {
   SATELLITE_IDS,
   cancelRefund,
   coreTier,
+  investedInInstrument,
   satelliteSlots,
   type BuildQueueId,
   type BuildingId,
@@ -677,6 +678,7 @@ async function applyOrderEffect(tx: Tx, planet: LockedPlanet, order: BuildOrder)
         planet.planetId,
         order.subject,
         (planet.instruments[order.subject] ?? 0) + 1,
+        order.cost,
       );
       if (order.subject === 'RADAR') {
         await wakeInboundRadarWarnings(tx, planet.planetId, planet.now);
@@ -733,16 +735,22 @@ async function writeInstalled(
   planetId: string,
   type: string,
   level: number,
+  cost?: Resources,
 ): Promise<number> {
   const existing = await tx.select().from(satellites).where(eq(satellites.planetId, planetId));
-  const slot = existing.find((row) => row.type === type)?.slot
+  const installed = existing.find((row) => row.type === type);
+  const slot = installed?.slot
     ?? (existing.length > 0 ? Math.max(...existing.map((row) => row.slot)) + 1 : 0);
+  const investment = type === 'AEGIS' && cost !== undefined
+    ? { aegisInvestedValue: (installed?.aegisInvestedValue ?? investedInInstrument('AEGIS', installed?.level ?? 0))
+      + cost.alloy + cost.crystal + cost.deuterium }
+    : {};
   await tx
     .insert(satellites)
-    .values({ planetId, slot, type, level })
+    .values({ planetId, slot, type, level, ...investment })
     .onConflictDoUpdate({
       target: [satellites.planetId, satellites.slot],
-      set: { type, level },
+      set: { type, level, ...investment },
     });
   return slot;
 }

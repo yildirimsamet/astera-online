@@ -14,10 +14,10 @@
  */
 
 export const errors = {
+  MONUMENT_UNREACHABLE: "Diese Flotte erreicht das Monument nicht vor Saisonende. Wähle schnellere Schiffe.",
   ACCOUNT_NOT_FOUND: 'Konto nicht gefunden. Prüfe den Benutzernamen.',
   CHAT_MUTED: "Deine Berechtigung zum Senden in diesem Kanal wurde eingeschränkt.",
   MONUMENT_TIER_FORBIDDEN: "Leichte Monumente sind für Stufen 1–3; wähle ein schweres Monument",
-  MONUMENT_FLEET_ACTIVE: "Bis alle deine Schiffe einschließlich Frachtschiffen zu Hause sind, kannst du nur Frachtschiffe nachschicken.",
   CAPITAL_CANNOT_BE_ABANDONED: "Du kannst deine Hauptstadt nicht aufgeben. Wähle eine Kolonie.",
   COLONY_ABANDON_BLOCKED: "Diese Kolonie hat aktive Missionen oder einen Besitzwechsel. Prüfe die Gründe und warte auf den Abschluss.",
   SKIN_NOT_OWNED: 'Dieses Aussehen ist nicht in deinem Inventar. Wähle eines, das du besitzt.',
@@ -92,6 +92,8 @@ export const errors = {
   RESEARCH_CANNOT_BE_CANCELLED: 'Gestartete Recherchen können nicht abgebrochen werden',
   RESEARCH_QUEUE_FULL: '3 Forschungsprojekte stehen bereits in der Warteschlange. Warten Sie, bis einer fertig ist, bevor Sie einen weiteren hinzufügen.',
   BUILD_ORDER_NOT_FOUND: "Dieser Produktionsauftrag ist nicht mehr aktiv. Prüfe die aktuelle Warteschlange.",
+  PERSONAL_RAID_COOLDOWN: "Du kannst diesen Kommandanten nach {{until}} erneut überfallen (deine Ortszeit).",
+  PERSONAL_RAID_PENDING: "Ein Überfall auf diesen Kommandanten ist bereits unterwegs. Warte oder rufe ihn zurück.",
   BASH_LIMIT: 'Du bist in letzter Zeit zu oft auf diesem Planeten gelandet',
   TIER_BAND: "Dieser Kommandant liegt mehr als eine Stufe über Ihnen – verglichen wird die am weitesten entwickelte Welt beider Seiten",
   TIER_BAND_WEAK: "Dieser Kommandant liegt mehr als eine Stufe unter Ihnen – verglichen wird die am weitesten entwickelte Welt beider Seiten",

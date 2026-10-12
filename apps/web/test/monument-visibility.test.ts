@@ -13,6 +13,13 @@ const captions = [{ id: 'monument', position: [0, 0, -10] as const }];
 const planets = [{ position: [0, 0, 0] as const, radius: 1 }];
 
 describe('monument captions depend on opaque planet bodies and the view', () => {
+  it('invalidates a moving caption with a stationary camera and reused objects',()=>{
+    const visibility=createMonumentVisibility(),view=camera();
+    const moving=[{id:'moving',position:[0,0,-10] as [number,number,number]}];
+    expect(visibility.update(view,moving,planets,1).has('moving')).toBe(true);
+    moving[0]!.position=[4,0,-10];
+    expect(visibility.update(view,moving,planets,2).has('moving')).toBe(false);
+  });
   it('hides a caption behind a planet and keeps one in front of it visible', () => {
     const visibility = createMonumentVisibility();
     expect(visibility.update(camera(), captions, planets).has('monument')).toBe(true);

@@ -98,7 +98,11 @@ describe('physical monument fleets at the season boundary', () => {
     expect(await f.db.select().from(shipDamageLots)).toHaveLength(1);
   });
 
-  it.each(['OUTBOUND', 'RETURNING'] as const)('charges only the actual %s prefix through cutoff and gives no HOLD income or invented return dose', async (status) => {
+  it.each([
+    ['OUTBOUND', 16, 3000.5], ['RETURNING', 16, 3000.5],
+    ['OUTBOUND', 17, 2000.5], ['RETURNING', 17, 2000.5],
+  ] as const)('settles the %s prefix under ruleset %i without HOLD income or invented return dose', async (status, rulesetVersion, expectedDamage) => {
+    await f.db.update(seasons).set({ rulesetVersion }).where(eq(seasons.id, f.seasonId));
     await f.db.delete(units).where(eq(units.location, wave.unitLocation));
     await f.db.delete(monumentWaves).where(eq(monumentWaves.id, wave.id));
     await f.db.update(monuments).set({ controllerPlayerId: null }).where(eq(monuments.id, m.id));
@@ -109,7 +113,7 @@ describe('physical monument fleets at the season boundary', () => {
     await close();
     expect((await f.db.select().from(monumentWaves))[0]).toMatchObject({ status: 'HOME', radiationSettledAt: at(10), fuelPaid: 18, returnReason: 'FREEZE' });
     const cargoDock = (await f.db.select().from(shipDamageLots)).find((lot) => lot.hull === 'COURIER')!;
-    expect(cargoDock.damageBp + cargoDock.remainderBp).toBeCloseTo(3000.5, 8);
+    expect(cargoDock.damageBp + cargoDock.remainderBp).toBeCloseTo(expectedDamage, 8);
     expect((await f.db.select().from(planets).where(eq(planets.id, wave.originPlanetId)))[0]!.deuterium - before.deuterium).toBeCloseTo(0.125, 8);
     expect(await f.db.select().from(monumentBattles)).toHaveLength(0);
   });

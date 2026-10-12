@@ -4,7 +4,16 @@ import { getWikiArticle } from '../src/wiki/catalog.js';
 import { conceptReference, number, subjectReference } from '../src/wiki/facts.js';
 
 describe('Wiki values a new player can interpret', () => {
-  it('compares Easy and Hard monuments and explains the personal fleet cycle', () => {
+  it('publishes the new Aegis invoice and capacity together in English and Turkish', () => {
+    for (const language of ['en', 'tr'] as const) {
+      const table = subjectReference({ kind: 'instrument', id: 'AEGIS' }, language).blocks
+        .find(block => block.kind === 'table');
+      if (table?.kind !== 'table') throw new Error('Missing Aegis table');
+      expect(table.rows[0]).toEqual([number(1, language), number(197, language), number(148, language), number(0, language), number(150, language)]);
+      expect(table.rows[7]).toEqual([number(8, language), number(5288, language), number(3973, language), number(0, language), number(2563, language)]);
+    }
+  });
+  it('compares Easy and Hard monuments and explains repeated support and per-ship refunds', () => {
     for (const language of ['en', 'tr'] as const) {
       const blocks = conceptReference('galaxy.monuments', language)?.blocks;
       const easy = language === 'en' ? 'Easy' : 'Kolay';
@@ -17,7 +26,12 @@ describe('Wiki values a new player can interpret', () => {
         language === 'en' ? '75%' : '%75', language === 'en' ? '75%' : '%75']);
       const article = getWikiArticle('galaxy.monuments');
       const text = article?.sections[language].flatMap(section => section.blocks.flatMap(block => block.kind === 'text' ? [block.text] : [])).join(' ');
-      expect(text).toMatch(language === 'en' ? /including cargo.*return home/i : /kargo dahil.*eve dön/i);
+      expect(text).toMatch(language === 'en'
+        ? /combat and cargo reinforcements while earlier fleets are outbound, holding or returning/i
+        : /filolar yoldayken, anıtta beklerken veya dönerken savaş ve yük gemisi desteği/i);
+      expect(text).toMatch(language === 'en'
+        ? /unused reserve is refunded only when it reaches home; ships that never return lose their share/i
+        : /kullanılmayan payı yalnız o gemi eve varınca iade edilir; dönemeyen geminin payı yanar/i);
       if (language === 'tr') expect(text).not.toMatch(/\bEasy\b|\bHard\b/);
     }
   });

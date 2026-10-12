@@ -1,11 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
-import { monumentQuoteSchema, monumentsSchema, clanWarTargetResultSchema } from '../src/api/schemas.js';
+import { monumentQuoteSchema, monumentsSchema, clanWarTargetResultSchema, hpRadiationSourceSchema } from '../src/api/schemas.js';
+import { monumentMotion } from '@astera/rules';
+import { toHpRadiationSources } from '../src/lib/radiation.js';
 import { keys } from '../src/api/keys.js';
 import { readsForPrivateEvent } from '../src/session/shardEvents.js';
 
 const id = '00000000-0000-4000-8000-000000000001';
 const at = '2026-10-04T12:00:00.000Z';
+it('keeps public aura motion cosmetic and preserves the damage target',()=>{
+  const motion=monumentMotion({x:6000,y:0,z:0},123456);
+  const view=monumentsSchema.parse({...catalog,monuments:[{...catalog.monuments[0],motion}]});
+  expect(view.monuments[0]!.motion).toEqual(motion);
+  const source=hpRadiationSourceSchema.parse({id,mode:'EMIT',center:motion.origin,motion,target:{kind:'MONUMENT',id},radius:1000,intensityHpPerMinute:5,activeFrom:at,activeUntil:null});
+  expect(source.motion).toEqual(motion);
+  expect(toHpRadiationSources([source])[0]!.target).toEqual({kind:'MONUMENT',id});
+  expect(toHpRadiationSources([source])[0]).not.toHaveProperty('motion');
+});
 const catalog = { serverNow: at, monuments: [{ id, ordinal: 1, position: { x: 6000, y: 0, z: 0 },
   controller: { kind: 'NEUTRAL' }, capacity: 7270, used: 0, reserved: 0, productionPerMinute: 60, emptySince: null }], waves: [], probes: [], probeReports: [] };
 const quote = { fuel: 120, arriveAt: at, travelMinutes: 50, room: { used: 0, reserved: 0, total: 7270, after: 0 },
@@ -13,6 +24,10 @@ const quote = { fuel: 120, arriveAt: at, travelMinutes: 50, room: { used: 0, res
     health: [{ hull: 'CITADEL', count: 2, maxHp: 2000, remainingHp: 1500, damageBp: 2500, remainderBp: 0 }] } };
 
 describe('monument wire and mutation contract', () => {
+  it('preserves the outbound price and the return reserve separately', () => {
+    expect(monumentQuoteSchema.parse({ ...quote, fuel: 120, outboundFuel: 40, returnFuelReserve: 80 }))
+      .toMatchObject({ fuel: 120, outboundFuel: 40, returnFuelReserve: 80 });
+  });
   it('accepts all eight ordinals and preserves personal tier and fleet restrictions', () => {
     const view = monumentsSchema.parse({ ...catalog, monuments: [{ ...catalog.monuments[0], ordinal: 8,
       difficulty: 'EASY', sendAccess: { playerTier: 4, tierAllowed: false, cargoOnly: true } }] });

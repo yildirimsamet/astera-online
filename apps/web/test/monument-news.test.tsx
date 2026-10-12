@@ -40,6 +40,10 @@ describe('monument reports and actionable news', () => {
     expect(describeNotification(event, at.getTime())).toMatch(/Ancient Observatory.*4.*125.5/);
     expect(notificationIdentity(event)?.monumentId).toBe(id);
   });
+  it('reports the lost ships’ burned fuel shares separately from their cargo', () => {
+    const event = notice('radiation_lost', { ...target, lost: 4, left: 0, lostDeuterium: 125.5, lostFuel: 83.75 });
+    expect(describeNotification(event, at.getTime())).toMatch(/125.5.*fuel.*83.75/i);
+  });
   it('opens a probe delivery directly on its monument and a battle on its own report', () => {
     news = [notice('probe_report', { ...target, observedAt: '2026-10-04T11:00:00.000Z', deliveredAt: at.toISOString(), accuracy: 1 })];
     const focus = vi.fn(), go = vi.fn();
@@ -103,6 +107,24 @@ describe('monument reports and actionable news', () => {
     const event = notice('fleet_returned', { ...target, trip: 'monument', craft: 3, deuterium: 17.125 });
     expect(describeNotification(event, at.getTime())).toMatch(/Ancient Observatory.*3.*17.125/);
     expect(notificationIdentity(event)?.monumentId).toBe(id);
+  });
+  it('reports the paid fuel refund separately from delivered cargo on a successful return', () => {
+    const event = notice('fleet_returned', { ...target, trip: 'monument', craft: 3, deuterium: 17.125, fuelRefund: 83.75 });
+    expect(describeNotification(event, at.getTime())).toMatch(/17.125.*fuel.*83.75/i);
+  });
+  it('reports the reserved fuel refunded when a monument preparation is cancelled', () => {
+    const event = notice('fleet_returned', { trip: 'recalled', craft: 3, craftKind: 'fleet', fuelRefund: 83.75 });
+    expect(describeNotification(event, at.getTime())).toMatch(/3.*fuel.*83.75/i);
+  });
+  it('explains which returning ships need repair and which were patched free', () => {
+    const event = notice('fleet_returned', { ...target, trip: 'monument', craft: 3, deuterium: 0,
+      docked: 2, autoRepaired: 1 });
+    expect(describeNotification(event, at.getTime())).toMatch(/2.*Repair Station.*1.*patched/i);
+  });
+  it('reports the fuel share burned with ships destroyed in combat', () => {
+    const event = notice('raid_result', { ...target, attacking: true, grade: 'REPELLED', control: 'DEFENDER',
+      survivors: 0, unitsLost: 3, lootDeuterium: 0, dominion: -123, lostFuel: 83.75 });
+    expect(describeNotification(event, at.getTime())).toMatch(/fuel.*83.75/i);
   });
   it('announces a capacity return immediately with its reason and ETA, without claiming the fleet is home', () => {
     const event = notice('monument_returning', { ...target, reason: 'CAPACITY', craft: 2,

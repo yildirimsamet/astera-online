@@ -32,6 +32,7 @@ import { hpSourcesForSeason } from './radiationSources.js';
 import { reconcileMonumentTargets } from './monumentView.js';
 import { settleLockedMonument, type LockedMonument } from './monument.js';
 import { scheduleFlightBoundary } from './monumentBoundaries.js';
+import { monumentMotionStart } from './monumentMotion.js';
 
 /**
  * RADIATION ON THE SERVER. Owner decisions K3 · K4, 2026-09-29 (`plan.md` F9).
@@ -486,6 +487,9 @@ export async function addHpRadiationSource(
     if (!season) throw new GameError('RADIATION_BAD_SOURCE', 'No such season');
     if (!hpRadiationApplies(season.rulesetVersion)) {
       throw new GameError('RADIATION_UNAVAILABLE', 'Fixed HP radiation is not dealt in this season', 403);
+    }
+    if (monumentMotionStart(season) && source.anchor.kind === 'ZONE') {
+      throw new GameError('RADIATION_BAD_SOURCE', 'Radiation must belong to a planet or monument in this ruleset', 400);
     }
     const now = clock.now();
     const activeFrom = source.activeFrom ?? now;

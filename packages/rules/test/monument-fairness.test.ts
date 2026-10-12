@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   MONUMENT_BALANCE, MONUMENT_SEASON_DEFAULTS, monumentTierEligible,
-  monumentAdditionalFleetAllowed,
 } from '../src/index.js';
 
 describe('Easy and Hard monuments', () => {
@@ -34,12 +33,4 @@ describe('Easy and Hard monuments', () => {
     expect(monumentTierEligible('LEGACY', 30)).toBe(true);
   });
 
-  it('allows an initial fleet, then only cargo until all personal ships return', () => {
-    expect(monumentAdditionalFleetAllowed({ DART: 2, COURIER: 1 }, false)).toBe(true);
-    expect(monumentAdditionalFleetAllowed({ DART: 1 }, true)).toBe(false);
-    expect(monumentAdditionalFleetAllowed({ RAMPART: 1 }, true)).toBe(false);
-    expect(monumentAdditionalFleetAllowed({ COURIER: 2, ARGOSY: 1 }, true)).toBe(true);
-    expect(monumentAdditionalFleetAllowed({ COURIER: 1, DART: 1 }, true)).toBe(false);
-    expect(monumentAdditionalFleetAllowed({ GARBAGE_COLLECTOR: 1 }, true)).toBe(false);
-  });
 });

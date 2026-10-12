@@ -14,7 +14,7 @@ export async function verifyMonumentUi(output) {
       ['mobile-en', { width: 350, height: 812 }, 'en', 1, false],
       ['mobile-tr', { width: 350, height: 812 }, 'tr', 5, false],
       ['mobile-tr-empty', { width: 350, height: 812 }, 'tr', 5, true],
-      ['mobile-en-cargo', { width: 350, height: 812 }, 'en', 2, false, true],
+      ['mobile-en-support', { width: 350, height: 812 }, 'en', 2, false, true],
       ['mobile-tr-tier4', { width: 350, height: 812 }, 'tr', 8, false, false, true],
     ]) {
       const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
@@ -38,7 +38,7 @@ export async function verifyMonumentUi(output) {
         target.emptySince = new Date(Date.now() - 600_000).toISOString();
         target.respawnAt = new Date(Date.now() + 23 * 3600_000 + 50 * 60_000).toISOString();
       }
-      target.sendAccess = { playerTier: tierBlocked ? 4 : 3, tierAllowed: !tierBlocked, cargoOnly };
+      target.sendAccess = { playerTier: tierBlocked ? 4 : 3, tierAllowed: !tierBlocked, cargoOnly: false };
       await page.route(/\/api\/monuments(?:\?|$)/, (route) => route.fulfill({ json: catalog }));
       await page.goto(web, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => window.__galaxy?.scene.getObjectByName('monument-model-5'), undefined, { timeout: 60_000 });
@@ -75,8 +75,8 @@ export async function verifyMonumentUi(output) {
       if (tierBlocked && !(await dialog.getByRole('textbox').evaluateAll(inputs => inputs.length > 0 && inputs.every(input => input.matches(':disabled'))))) {
         throw new Error('Tier-ineligible Easy fleet selection is enabled');
       }
-      if (cargoOnly && !(await dialog.getByRole('textbox').evaluateAll(inputs => inputs.some(input => input.matches(':disabled')) && inputs.some(input => !input.matches(':disabled'))))) {
-        throw new Error('Cargo-only support does not separate cargo from the initial fleet');
+      if (cargoOnly && !(await dialog.getByRole('textbox').evaluateAll(inputs => inputs.length > 0 && inputs.every(input => !input.matches(':disabled'))))) {
+        throw new Error('Repeated support incorrectly blocks a mobile hull');
       }
       await page.screenshot({ path: join(output, `${label}-sheet.png`) });
       results.push({ label, fixture: empty || cargoOnly || tierBlocked, difficulty: target.difficulty, cargoOnly, tierBlocked, names, ...result });

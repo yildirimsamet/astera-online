@@ -614,21 +614,19 @@ describe('what an instrument costs', () => {
 
   /**
    * THE THREE DETECTORS SHARED ONE PRICE UNTIL 2026-09-14, and now two of them do.
-   * The owner took a quarter off the two instruments that LOOK — Telescope and
-   * Radar — and left the two that hide alone, so the Aegis and the Veil are what
-   * the flat detector price still is. `INSTRUMENT_COST_DISCOUNT` is the statement.
+   * Telescope and Radar retain their discounts. Veil retains its old curve;
+   * the October Aegis table has its own regression test.
    */
-  it('keeps the two counter-measures on one price, which is the undiscounted one', () => {
-    for (let level = 0; level <= 4; level++) {
-      expect(instrumentCost('VEIL', level)).toEqual(instrumentCost('AEGIS', level));
-    }
+  it('keeps the Veil on its undiscounted curve', () => {
+    expect(instrumentCost('VEIL', 0)).toEqual({ alloy: 197, crystal: 148, deuterium: 0 });
+    expect(instrumentCost('VEIL', 4)).toEqual({ alloy: 25540, crystal: 19155, deuterium: 0 });
     expect(instrumentCost('RADAR', 0)).toEqual({ alloy: 118, crystal: 89, deuterium: 0 });
   });
 
-  /** The whole layer must not get dearer: ARR is the open band and this is a lever on it. */
-  it('leaves the two counter-measures exactly where the flat price left them', () => {
+  /** The Aegis has its own +60% price curve after the October owner decision. */
+  it('keeps the Aegis entry price and adopts its own gentler curve', () => {
     expect(instrumentCost('AEGIS', 0)).toEqual({ alloy: 197, crystal: 148, deuterium: 0 });
-    expect(instrumentCost('AEGIS', 4)).toEqual({ alloy: 25540, crystal: 19155, deuterium: 0 });
+    expect(instrumentCost('AEGIS', 4)).toEqual({ alloy: 1291, crystal: 970, deuterium: 0 });
   });
 
   it('lowers the entry price of both instruments that see', () => {
@@ -637,11 +635,11 @@ describe('what an instrument costs', () => {
   });
 
   it('softens the high-level sensor curve so levels six through eight remain reachable', () => {
-    const total = (id: 'TELESCOPE' | 'RADAR' | 'AEGIS', level: number) => {
+    const total = (id: 'TELESCOPE' | 'RADAR' | 'VEIL', level: number) => {
       const cost = instrumentCost(id, level);
       return cost.alloy + cost.crystal;
     };
-    expect(total('RADAR', 7)).toBeLessThan(total('AEGIS', 7) * 0.3);
-    expect(total('TELESCOPE', 7)).toBeLessThan(total('AEGIS', 7) * 0.45);
+    expect(total('RADAR', 7)).toBeLessThan(total('VEIL', 7) * 0.3);
+    expect(total('TELESCOPE', 7)).toBeLessThan(total('VEIL', 7) * 0.45);
   });
 });

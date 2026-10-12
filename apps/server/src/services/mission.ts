@@ -33,6 +33,7 @@ import {
 } from '../db/schema.js';
 import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
+import { assertPersonalRaidAvailable } from './personalRaid.js';
 import {
   assertSeasonOpenThrough,
   assertWorldOperational,
@@ -301,6 +302,10 @@ export async function launchAttack(
     let preparedClanAttack: Awaited<ReturnType<typeof prepareClanAttack>> | null = null;
     if (target.kind !== 'NEUTRAL' && them) {
       const { attackerPeak, defenderPeak } = await assertTierBand(tx, me.id, them.id);
+      await assertPersonalRaidAvailable(tx, {
+        attackerPlayerId: me.id, defenderPlayerId: them.id,
+        attackerPeak, defenderPeak, now: origin.now,
+      });
 
       const [ruleset] = await tx.select({ version: seasons.rulesetVersion })
         .from(seasons).where(eq(seasons.id, origin.seasonId));

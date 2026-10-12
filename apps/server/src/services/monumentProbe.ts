@@ -1,3 +1,4 @@
+import { monumentFlight, monumentPosition } from './monumentMotion.js';
 import { and, desc, eq, gt, inArray, isNotNull } from 'drizzle-orm';
 import { MONUMENT_PROBE_LOSS_CHANCE, PROBE, distance, fleetEntries, hpRadiationApplies, monumentProbeSurvives, seededFrom, travelExact, type Fleet } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
@@ -35,11 +36,12 @@ export async function launchMonumentProbe(tx: Tx, input: {
   if (recent) throw new GameError('PROBE_COOLDOWN', 'That monument was probed too recently', 409,
     { until: addMinutes(recent.departAt, PROBE.retargetCooldownMinutes).toISOString() });
   if (origin.alloy < PROBE.alloy || origin.crystal < PROBE.crystal) throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources for a probe', 400, { context: 'probe' });
-  const flightMinutes = travelExact(distance(origin, locked.monument), PROBE.speed);
-  const arriveAt = addMinutes(origin.now, flightMinutes);
-  assertSeasonOpenThrough(origin, addMinutes(arriveAt, flightMinutes));
+  const meeting = monumentFlight(origin,locked.monument,locked.season,PROBE.speed,origin.now);
+  const flightMinutes = meeting.minutes;
+  const arriveAt = meeting.arriveAt;
+  assertSeasonOpenThrough(origin, addMinutes(arriveAt, travelExact(distance(meeting.at,origin),PROBE.speed)));
   const [probe] = await tx.insert(monumentProbes).values({ seasonId: season.id, monumentId: target.id, playerId: input.playerId,
-    originPlanetId: input.originPlanetId, departAt: origin.now, arriveAt, outboundRoute: [flightSegment(origin, locked.monument, origin.now, arriveAt)] }).returning();
+    originPlanetId: input.originPlanetId, departAt: origin.now, arriveAt, outboundRoute: [flightSegment(origin, meeting.at, origin.now, arriveAt)] }).returning();
   if (!probe) throw new Error('monument probe insert returned no row');
   await saveResources(tx, origin.planetId, { alloy: origin.alloy - PROBE.alloy, crystal: origin.crystal - PROBE.crystal, deuterium: origin.deuterium });
   await recomputePlayerWealth(tx, input.playerId);
@@ -65,9 +67,9 @@ export async function observeLockedMonumentProbe(tx: Tx, locked: LockedMonument,
     const homeId = await safeHomePlanet(tx, probe.playerId, probe.originPlanetId);
     const [home] = await tx.select({ x: planets.x, y: planets.y, z: planets.z }).from(planets).where(eq(planets.id, homeId));
     if (!home) throw new GameError('PLACEMENT_CHANGED', 'The probe needs a safe home', 409);
-    const homeAt = addMinutes(at, travelExact(distance(locked.monument, home), PROBE.speed));
+    const homeAt = addMinutes(at, travelExact(distance(monumentPosition(locked.monument,locked.season,at), home), PROBE.speed));
     await tx.update(monumentProbes).set({ status: 'RETURNING', snapshotFleet: Object.fromEntries(fleetEntries(fleet)), observedAt: at,
-      homeAt, returnRoute: [flightSegment(locked.monument, home, at, homeAt)] }).where(and(eq(monumentProbes.id, probe.id), eq(monumentProbes.status, 'OUTBOUND')));
+      homeAt, returnRoute: [flightSegment(monumentPosition(locked.monument,locked.season,at), home, at, homeAt)] }).where(and(eq(monumentProbes.id, probe.id), eq(monumentProbes.status, 'OUTBOUND')));
     await schedule(tx, { seasonId: probe.seasonId, kind: 'monument_probe', refId: probe.id, payload: { leg: 'HOME' },
       dedupeKey: `monument-probe:home:${probe.id}`, resolveAt: homeAt });
   }

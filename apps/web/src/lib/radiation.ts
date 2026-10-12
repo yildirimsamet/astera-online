@@ -71,7 +71,7 @@ export interface HpRouteRadiation {
 export type RouteRadiation = PctRouteRadiation | HpRouteRadiation;
 
 export const toHpRadiationSources = (views: readonly HpRadiationSourceView[]): HpRadiationSource[] =>
-  views.map(view => ({ id: view.id, mode: view.mode, center: view.center, radius: view.radius,
+  views.map(view => ({ id: view.id, mode: view.mode, center: view.center, radius: view.radius, ...(view.target ? { target: view.target } : {}),
     intensityHpPerMinute: view.intensityHpPerMinute, activeFromMs: view.activeFrom.getTime(), activeUntilMs: view.activeUntil?.getTime() ?? null }));
 
 /** Exact own-ship health on known flight segments. Combat may add another wound. */

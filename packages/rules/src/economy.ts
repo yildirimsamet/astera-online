@@ -9,6 +9,7 @@ import { robotSpeedMult, yardSpeedMult } from './tech.js';
 import type { TechLevels } from './tech.js';
 import {
   ABUSE,
+  AEGIS_COST,
   BUILD,
   DISRUPTION,
   FAULT,
@@ -250,9 +251,17 @@ export function buildingCost(type: BuildingId, level: number): Resources {
  * D22 and the economy cutover stopped consulting it.
  *
  * Telescope stays dearer than Radar. Both seeing instruments use a gentler level
- * growth than the two counter-measures so the added L6–L8 reach remains attainable.
+ * growth than the Veil so the added L6–L8 reach remains attainable. Aegis uses its
+ * own owner-approved opening price and 1.6x growth (October 2026).
  */
 export function instrumentCost(id: InstrumentId, level: number): Resources {
+  if (id === 'AEGIS') {
+    return {
+      alloy: Math.round(AEGIS_COST.alloy * AEGIS_COST.growth ** level),
+      crystal: Math.round(AEGIS_COST.crystal * AEGIS_COST.growth ** level),
+      deuterium: 0,
+    };
+  }
   const growth = id === 'TELESCOPE' || id === 'RADAR'
     ? SENSOR_INSTRUMENT_COST_GROWTH
     : 2;
@@ -512,7 +521,7 @@ export const vaultProtects = (
 };
 
 export const shieldHp = (level: number): number =>
-  level <= 0 ? 0 : Math.round(SHIELD.base * Math.pow(SHIELD.mult, level));
+  level <= 0 ? 0 : Math.round(SHIELD.base * Math.pow(SHIELD.mult, level - 1));
 
 /**
  * THE THREE BUILDINGS THAT PRODUCE. Named as a type so a payback question cannot be asked of a

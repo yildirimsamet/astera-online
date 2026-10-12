@@ -31,6 +31,7 @@ import type {
   HullId,
   MobileHullId,
   MonumentDifficulty,
+  MonumentFuelReserves,
   Segment,
   GalaxyEventKind as ScheduledGalaxyEventKind,
   AsteroidHourLane,
@@ -480,6 +481,8 @@ export const seasons = pgTable('seasons', {
   status: seasonStatus('status').notNull().default('pending'),
   startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
   endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+  /** Explicit idle-season cutover; does not change unrelated season rules. */
+  monumentMotionStartsAt: timestamp('monument_motion_starts_at', { withTimezone: true }),
   /** Immutable: v1 capitals, v2 multi-world, v3 seasonal clans. */
   rulesetVersion: integer('ruleset_version').notNull().default(1),
   /** Zero is a legacy/partial season; newer versions promise the full sealed metric set. */
@@ -1575,6 +1578,8 @@ export const satellites = pgTable('satellites', {
   slot: integer('slot').notNull(),
   type: text('type').notNull(),
   level: integer('level').notNull().default(1),
+  /** Paid Aegis investment; preserves old invoices across the October price cut. Null uses current catalogue value. */
+  aegisInvestedValue: doublePrecision('aegis_invested_value'),
 }, (t) => [primaryKey({ columns: [t.planetId, t.slot] })]);
 
 /** Immutable sensor-post history used to award asteroid discoveries exactly once. */
@@ -2252,9 +2257,13 @@ export const monumentShipLots = pgTable('monument_ship_lots', {
   damageBp: integer('damage_bp').notNull(),
   remainderBp: doublePrecision('remainder_bp').notNull(),
   deuterium: doublePrecision('deuterium').notNull(),
+  returnFuelReserve: doublePrecision('return_fuel_reserve').notNull().default(0),
+  fuelRefund: doublePrecision('fuel_refund').notNull().default(0),
 }, (t) => [
   index('monument_ship_lots_wave_idx').on(t.waveId),
   check('monument_ship_lots_count_check', sql`${t.count} > 0`),
+  check('monument_ship_lots_fuel_check', sql`${t.returnFuelReserve} >= 0 AND ${t.returnFuelReserve} < 'Infinity'::float8
+    AND ${t.fuelRefund} >= 0 AND ${t.fuelRefund} < 'Infinity'::float8`),
   check('monument_ship_lots_damage_check', sql`${t.damageBp} BETWEEN 0 AND 9999
     AND ${t.remainderBp} >= 0 AND ${t.remainderBp} < 1`),
   check('monument_ship_lots_cargo_check', sql`${t.deuterium} >= 0 AND ${t.deuterium} < 'Infinity'::float8
@@ -3055,6 +3064,7 @@ export const clanWarContributions = pgTable('clan_war_contributions', {
   /** Deuterium taken once, up front, for every leg this wave will ever fly. */
   fuelPaid: real('fuel_paid').notNull(),
   fuelLegs: jsonb('fuel_legs').$type<ClanWarFuelLeg[]>().notNull(),
+  monumentFuelBudget: jsonb('monument_fuel_budget').$type<{ outbound: MonumentFuelReserves; homeward: MonumentFuelReserves }>(),
   status: text('status').$type<ClanWarContributionStatus>().notNull().default('OUTBOUND'),
   /** Consent for the actual PvP monument dispatch; staging itself spends no shield. */
   shieldLossAcknowledged: boolean('shield_loss_acknowledged').notNull().default(false),

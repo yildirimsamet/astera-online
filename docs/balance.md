@@ -526,10 +526,16 @@ for the same reason `worldWeight` has three: a continuous size is a number no ey
 
 ```
 instrumentCost(id, L) = upgradeCost(L × 2) × mult      TELESCOPE ×3 · RADAR/AEGIS/VEIL ×2
-shieldHp(L)           = 60 × 1.5^L, regen 35%/hour
+AEGIS upgrade L→L+1   = round(197 × 1.6^L) alloy + round(148 × 1.6^L) crystal
+shieldHp(L)           = L <= 0 ? 0 : round(150 × 1.5^(L−1)), regen 35%/hour
 ```
 
-`INSTRUMENT_LEVEL_WORTH` is **2**. At 1 the whole information layer is bought out by day two, which
+**Aegis exception, owner decision 2026-10-12:** level 1 starts at 150 HP; each next
+level adds 50% capacity and 60% upgrade cost. No deuterium cost. Existing fill ratios
+and historical investment are preserved by migration `0152_aegis_balance`; queued
+orders keep paid invoices and deadlines. [Task and rollout](aegis-balance-2026-10-12.md).
+
+`INSTRUMENT_LEVEL_WORTH` is **2** (legacy reference; Aegis uses the exception above). At 1 the whole information layer is bought out by day two, which
 makes the fog uniform and therefore decorative. At 2 the four instruments cost about one L15 building
 step, while Telescope L1 still costs 165 alloy and the door stays open.
 
@@ -1750,3 +1756,19 @@ both sit just under the measurement, so a further fall still fails.
 realised exchange of the fight, and a repair is a later purchase, like rebuilding), and in v1
 radiation losses do not enter the season's `shipsLost`. Both are revisited when radiation goes
 live.
+
+## Radyasyon kalibrasyonu kısıtı — sabit HP/dk (kesin kullanıcı kararı, 2026-10-12)
+
+Radyasyon, aynı kaynak ve koruma koşullarında her gemiden aynı sabit HP/dk miktarını götürür.
+Gemi canı yüksekse daha uzun dayanır. **Gemi HP'sine bağlı yüzdesel hasar ve sabit HP +
+yüzdesel HP hasarı karışımı kullanılmayacak.** Ayrıntılı gerekçe ve kapsam:
+[Game Design: sabit HP hasarı](game-design.md#radyasyon--sabit-hp-hasarı-kesin-kullanıcı-kararı-2026-10-12).
+
+Yüksek HP'nin radyasyona karşı avantajı korunmalı. Kalibrasyon, bütün gemileri aynı veya
+benzer sürede öldürmeye zorlanmamalı. Karma model, ilerideki yüzdelik etkilerle etkileşim,
+hata ayıklama ve bakım yükünü artırdığı için reddedildi. Koruma araştırması etkin sabit
+HP/dk hasarını azaltacak; nihai seviyeler, oranlar ve fiyatlar henüz kesinleşmedi.
+
+[İlk incelemedeki](monument-radiation-research-calibration-2026-10-12.md) karma oranlar ve
+bunlardan türeyen süre/farm sonuçları arşivdir, uygulanacak denge değildir. Bu not mevcut
+2/5 HP/dk oranını, oyun kodunu veya aktif sezon verisini değiştirmez.

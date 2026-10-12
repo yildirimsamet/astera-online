@@ -1229,6 +1229,9 @@ export const brandRecallAnswerSchema = z.object({
  * flight can be up — so the launch quote and the fade on the disc read the same windows
  * the server settles with.
  */
+export const monumentMotionSchema = z.object({
+  origin:vec3, epochMs:z.number().finite(), periodYMs:z.number().finite().positive(), periodXMs:z.number().finite().positive(), stopAtMs:z.number().finite().optional(),
+});
 export const radiationSourceSchema = z.object({
   id: z.string(),
   mode: z.enum(['EMIT', 'SHELTER']),
@@ -1244,11 +1247,13 @@ export type RadiationSourceView = z.infer<typeof radiationSourceSchema>;
 export const hpRadiationSourceSchema = radiationSourceSchema.omit({ intensityPctPerMinute: true }).extend({
   intensityHpPerMinute: z.number().finite().nonnegative(),
   level: z.union([z.literal(1), z.literal(2)]).optional(),
+  motion:monumentMotionSchema.optional(),
+  target: z.object({ kind: z.enum(['PLANET', 'MONUMENT']), id: z.string().min(1) }).optional(),
 });
 export type HpRadiationSourceView = z.infer<typeof hpRadiationSourceSchema>;
 
 export const publicMonumentSchema = z.object({
-  id: z.string(), ordinal: z.number().int().min(1).max(8), position: vec3,
+  id: z.string(), ordinal: z.number().int().min(1).max(8), position: vec3, motion:monumentMotionSchema.optional(),
   difficulty: z.enum(['LEGACY', 'EASY', 'HARD']).default('LEGACY'),
   controller: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('NEUTRAL') }),
@@ -1272,6 +1277,7 @@ const monumentLotSchema = z.object({
   damageBp: z.number().int().min(0).max(9999), remainderBp: z.number().finite().min(0).lt(1),
   maxHp: z.number().positive(), remainingHp: z.number().nonnegative(),
   deuterium: z.number().nonnegative(), cargoCapacity: z.number().nonnegative(),
+  returnFuelReserve: z.number().finite().nonnegative().optional(), fuelRefund: z.number().finite().nonnegative().optional(),
 });
 const monumentReturnForecastSchema = z.object({
   homePlanetId: z.string(), arriveAt: z.coerce.date(), minutes: z.number().nonnegative(),
@@ -1279,6 +1285,7 @@ const monumentReturnForecastSchema = z.object({
   homePosition: vec3.optional(), speed: z.number().finite().nonnegative().optional(),
   doseHp: z.number().nonnegative(), destroyed: z.number().int().nonnegative(),
   deuterium: z.number().nonnegative(), lostDeuterium: z.number().nonnegative(), lots: z.array(monumentLotSchema),
+  returnFuel: z.number().finite().nonnegative().optional(), fuelRefund: z.number().finite().nonnegative().optional(),
 });
 export const monumentWaveSchema = z.object({
   id: z.string(), monumentId: z.string(), playerId: z.string(), originPlanetId: z.string(),
@@ -1306,6 +1313,8 @@ export const monumentsSchema = z.object({
 });
 export type Monuments = z.infer<typeof monumentsSchema>;
 export const monumentQuoteSchema = z.object({
+  targetPosition:vec3.optional(),
+  outboundFuel: z.number().finite().nonnegative().optional(), returnFuelReserve: z.number().finite().nonnegative().optional(),
   fuel: z.number().nonnegative(), arriveAt: z.coerce.date(), travelMinutes: z.number().nonnegative(),
   room: z.object({ used: z.number().nonnegative(), reserved: z.number().nonnegative(), total: z.number().nonnegative(), after: z.number().nonnegative() }),
   bays: z.object({ used: z.number().int().nonnegative(), total: z.number().int().nonnegative() }), shieldWouldDrop: z.boolean(),
@@ -1321,6 +1330,7 @@ export const monumentProbeLaunchSchema = z.object({ probe: monumentProbeSchema, 
 export const monumentRecallQuoteSchema = z.object({
   fleet, deuterium: z.number().nonnegative(), arriveAt: z.coerce.date(), minutes: z.number().nonnegative(),
   doseHp: z.number().nonnegative(), destroyed: z.number().int().nonnegative(), arrivalDeuterium: z.number().nonnegative(),
+  returnFuel: z.number().finite().nonnegative().optional(), fuelRefund: z.number().finite().nonnegative().optional(),
   lots: z.array(monumentLotSchema), arrivalLots: z.array(monumentLotSchema),
 });
 export const monumentRecallSchema = z.object({ wave: monumentMutationWaveSchema });
@@ -1851,6 +1861,7 @@ const clanWarOperationSchema = z.object({
     waves: z.number().int().nonnegative(), participants: z.number().int().nonnegative(),
     /** The combined leg at full speed for the staged pool; what the leader's pace rungs divide. */
     strikeMinutes: z.number().nonnegative().nullable().default(null),
+    meetings:z.array(z.object({pace:z.number(),minutes:z.number().nonnegative(),position:vec3})).default([]),
     /** All planned paced legs fit the ceiling; absent on older server responses. */
     paces: z.array(z.number().refine(isMissionPace)).nullable().default(null) }),
 });
@@ -1870,6 +1881,7 @@ export const clanWarQuoteSchema = z.object({
   ok: z.boolean(), refusals: z.array(z.object({ code: z.string(), message: z.string() })),
   sourceKind: z.enum(['PHYSICAL', 'LEADER_CAPITAL']), bulk: z.number().nonnegative(),
   fuel: z.object({
+    reserved: z.boolean().optional(),
     legs: z.array(z.object({ leg: z.enum(['ORIGIN_TO_STAGING', 'STAGING_TO_TARGET',
       'TARGET_TO_ORIGIN', 'TARGET_TO_STAGING']), distance: z.number().nonnegative(),
       fuel: z.number().nonnegative() })),

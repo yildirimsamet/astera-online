@@ -14,10 +14,10 @@
  */
 
 export const errors = {
+  MONUMENT_UNREACHABLE: "La flota no puede alcanzar el monumento antes del fin de temporada. Elige naves más rápidas.",
   ACCOUNT_NOT_FOUND: 'No se encontró la cuenta. Revisa el nombre de usuario.',
   CHAT_MUTED: "Tu permiso para enviar mensajes en este canal está restringido.",
   MONUMENT_TIER_FORBIDDEN: "Los monumentos fáciles admiten niveles 1–3; elige un monumento difícil",
-  MONUMENT_FLEET_ACTIVE: "Solo puedes añadir cargueros hasta que todas tus naves, incluidos los cargueros, vuelvan a casa.",
   CAPITAL_CANNOT_BE_ABANDONED: "No puedes abandonar tu capital. Selecciona una colonia.",
   COLONY_ABANDON_BLOCKED: "Esta colonia tiene misiones activas o un cambio de propietario. Comprueba los motivos y espera a que terminen.",
   SKIN_NOT_OWNED: 'Esta apariencia no está en tu inventario. Elige una que tengas.',
@@ -92,6 +92,8 @@ export const errors = {
   RESEARCH_CANNOT_BE_CANCELLED: 'La investigación iniciada no se puede cancelar',
   RESEARCH_QUEUE_FULL: '3 proyectos de investigación ya están en cola. Espere a que termine uno antes de agregar otro.',
   BUILD_ORDER_NOT_FOUND: "Este pedido de producción ya no está activo. Consulta la cola actual.",
+  PERSONAL_RAID_COOLDOWN: "Puedes volver a atacar a este comandante después de {{until}} (tu hora local).",
+  PERSONAL_RAID_PENDING: "Ya tienes un ataque en camino hacia este comandante. Espera o retíralo.",
   BASH_LIMIT: 'Has golpeado este planeta demasiadas veces recientemente.',
   TIER_BAND: "Ese comandante está más de un nivel por encima de ti: se compara el mundo más desarrollado de cada lado.",
   TIER_BAND_WEAK: "Ese comandante está más de un nivel por debajo de ti: se compara el mundo más desarrollado de cada lado.",

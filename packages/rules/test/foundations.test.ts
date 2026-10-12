@@ -375,8 +375,8 @@ describe('shieldHp', () => {
   });
 
   it('starts at the base and grows by the multiplier', () => {
-    expect(shieldHp(1)).toBe(Math.round(SHIELD.base * SHIELD.mult));
-    expect(shieldHp(2)).toBe(Math.round(SHIELD.base * SHIELD.mult ** 2));
+    expect(shieldHp(1)).toBe(SHIELD.base);
+    expect(shieldHp(2)).toBe(Math.round(SHIELD.base * SHIELD.mult));
   });
 
   it('is strictly increasing, so a level is never wasted', () => {
@@ -386,9 +386,7 @@ describe('shieldHp', () => {
   });
 
   /**
-   * D22, and the reason `SHIELD.base` is 40 rather than 700: a first-level Aegis
-   * must not absorb a raiding fleet. Two thirds of the galaxy holds a shield now
-   * that satellites are unrationed, so a wall at level one ends raiding outright.
+   * The October opening capacity still remains below ten basic combat hulls.
    */
   it('a first-level shield is worth well under a small raiding fleet', () => {
     const tenDarts = 10 * HULLS.DART.hp;

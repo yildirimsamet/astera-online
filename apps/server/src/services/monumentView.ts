@@ -1,9 +1,11 @@
+import { monumentPosition, motionOfMonument, monumentHoldPath, monumentRadiationTarget } from './monumentMotion.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import {
   HULLS, applyMonumentHpDose, combatValue, coreTier, distance, fleetCount, fleetPace, fleetSpeedMult, fleetTravelExact,
   hangarLoad, hpLethalAtMs, hpRadiationApplies, hullTech, interpolatePosition, monumentCargoCapacity,
   monumentTierEligible, produceMonumentDeuterium, recallMonumentShips, segmentsExposureHp, settleMonumentHold,
+  priceMonumentReturn,
   type Fleet, type HpRadiationSource, type MonumentShipLot, type Segment, type Vec3,
 } from '@astera/rules';
 import type { Tx } from '../db/client.js';
@@ -148,12 +150,12 @@ export async function publicMonumentFacts(tx: Tx, targets: readonly PublicMonume
     const reserved = waves.filter((wave) => wave.status === 'OUTBOUND' && wave.purpose === 'REINFORCE'
       && (wave.playerId === m.controllerPlayerId || (m.controllerClanId !== null && memberships.get(wave.playerId) === m.controllerClanId)))
       .reduce((sum, wave) => sum + wave.reservedBulk, 0);
-    return { id: m.id, ordinal: m.ordinal, difficulty: m.difficulty, position: { x: m.x, y: m.y, z: m.z }, controller,
+    return { id: m.id, ordinal: m.ordinal, difficulty: m.difficulty, position: monumentPosition(m,season,at), motion: motionOfMonument(m,season), controller,
       capacity: m.capacity, used: lots.filter((lot) => held.has(lot.waveId)).reduce((sum, lot) => sum + hangarLoad({ [lot.hull]: lot.count }), 0),
       reserved, productionPerMinute: m.productionPerMinute,
       // Persisted windows have millisecond precision. This instantaneous sample
       // shares the exact sphere/shelter rules used to settle a ship's actual dose.
-      radiationHpPerMinute: segmentsExposureHp([{ from: m, to: m, startMs: at.getTime(), endMs: at.getTime() + 1 }],
+      radiationHpPerMinute: segmentsExposureHp(monumentHoldPath(m,season,at.getTime(),at.getTime()+1),
         sourcesBySeason.get(m.seasonId) ?? []) * 60_000,
       emptySince: m.emptySince?.toISOString() ?? null,
       respawnAt: m.emptySince !== null && m.controllerPlayerId === null && m.controllerClanId === null
@@ -197,8 +199,8 @@ export async function readPublicMonumentFacts(tx: Tx, seasonId: string, at: Date
   return facts.map(({ reserved: _reserved, ...fact }) => fact);
 }
 
-export function monumentWavePosition(wave: typeof monumentWaves.$inferSelect, target: Vec3, at: Date): Vec3 {
-  if (wave.status === 'HOLD') return { x: target.x, y: target.y, z: target.z };
+export function monumentWavePosition(wave: typeof monumentWaves.$inferSelect, target: Vec3, at: Date, season?: LockedMonument['season']): Vec3 {
+  if (wave.status === 'HOLD') return season?monumentPosition(target,season,at):{ x: target.x, y: target.y, z: target.z };
   const route = monumentRouteSchema.parse(wave.route);
   const leg = route.find((row) => row.endMs >= at.getTime()) ?? route[route.length - 1]!;
   return interpolatePosition(leg.from, leg.to, leg.startMs, leg.endMs, at.getTime());
@@ -208,7 +210,8 @@ const lotHealth = (lot: MonumentShipLot) => {
   const maxHp = HULLS[lot.hull].hp * hullTech(lot.tech, lot.hull).hp;
   return { id: lot.id, hull: lot.hull, count: lot.count, damageBp: lot.damageBp, remainderBp: lot.remainderBp,
     maxHp, remainingHp: maxHp * (1 - (lot.damageBp + lot.remainderBp) / 10_000),
-    deuterium: lot.deuterium, cargoCapacity: monumentCargoCapacity(lot) };
+    deuterium: lot.deuterium, cargoCapacity: monumentCargoCapacity(lot),
+    returnFuelReserve: lot.returnFuelReserve ?? 0, fuelRefund: lot.fuelRefund ?? 0 };
 };
 
 async function returnForecast(tx: Tx, target: LockedMonument, wave: typeof monumentWaves.$inferSelect, lots: MonumentShipLot[], at: Date) {
@@ -218,8 +221,9 @@ async function returnForecast(tx: Tx, target: LockedMonument, wave: typeof monum
   const fleet = fleetOf(lots);
   const homePosition = { x: home.x, y: home.y, z: home.z };
   if (at >= target.season.endsAt) return { homePlanetId: homeId, homePosition, speed: 0, arriveAt: target.season.endsAt.toISOString(), minutes: 0,
-    doseHp: 0, destroyed: 0, deuterium: lots.reduce((sum, lot) => sum + lot.deuterium, 0), lots: lots.map(lotHealth), lostDeuterium: 0 };
-  const position = monumentWavePosition(wave, target.monument, at);
+    doseHp: 0, destroyed: 0, deuterium: lots.reduce((sum, lot) => sum + lot.deuterium, 0), lots: lots.map(lotHealth), lostDeuterium: 0,
+    returnFuel: 0, fuelRefund: lots.reduce((sum, lot) => sum + (lot.returnFuelReserve ?? 0) + (lot.fuelRefund ?? 0), 0) };
+  const position = monumentWavePosition(wave, target.monument, at,target.season);
   const modifiers = { boost: fleetSpeedMult(await orbitOf(tx, homeId)), tech: wave.tech };
   const minutes = fleetTravelExact(distance(position, home), fleet, modifiers);
   const arriveAt = wave.status === 'RETURNING' && wave.arriveAt !== null ? wave.arriveAt : addMinutes(at, minutes);
@@ -228,10 +232,12 @@ async function returnForecast(tx: Tx, target: LockedMonument, wave: typeof monum
   const sources = (await hpSourcesForSeason(tx, target.season.id)).map((source) => ({ ...source, activeFromMs: Math.max(at.getTime(), source.activeFromMs),
     activeUntilMs: Math.min(source.activeUntilMs ?? target.season.endsAt.getTime(), target.season.endsAt.getTime()) }));
   const doseHp = segmentsExposureHp(route, sources);
-  const forecast = applyMonumentHpDose(lots, doseHp);
+  const priced = wave.status === 'RETURNING' ? { lots, fuel: 0 } : priceMonumentReturn(lots, distance(position, home));
+  const forecast = applyMonumentHpDose(priced.lots, doseHp);
   return { homePlanetId: homeId, homePosition, speed: fleetPace(fleet, modifiers), arriveAt: arriveAt.toISOString(), minutes: Math.max(0, (arriveAt.getTime() - at.getTime()) / 60_000),
     doseHp, destroyed: forecast.destroyed.reduce((sum, lot) => sum + lot.count, 0),
-    deuterium: forecast.lots.reduce((sum, lot) => sum + lot.deuterium, 0), lots: forecast.lots.map(lotHealth), lostDeuterium: forecast.lostDeuterium };
+    deuterium: forecast.lots.reduce((sum, lot) => sum + lot.deuterium, 0), lots: forecast.lots.map(lotHealth), lostDeuterium: forecast.lostDeuterium,
+    returnFuel: priced.fuel, fuelRefund: forecast.lots.reduce((sum, lot) => sum + (lot.fuelRefund ?? 0), 0) };
 }
 
 async function ownWaves(tx: Tx, targets: readonly LockedMonument[], input: Reader) {
@@ -246,7 +252,7 @@ async function ownWaves(tx: Tx, targets: readonly LockedMonument[], input: Reade
       const lots = target.lots.filter((lot) => lot.waveId === wave.id);
       const rate = flowing.lots.filter((lot) => lot.waveId === wave.id)
         .reduce((sum, lot) => sum + lot.deuterium - (lots.find((before) => before.id === lot.id)?.deuterium ?? 0), 0);
-      const segment: Segment[] = [{ from: target.monument, to: target.monument, startMs: at.getTime(), endMs: target.season.endsAt.getTime() }];
+      const segment = monumentHoldPath(target.monument,target.season,at.getTime(),target.season.endsAt.getTime());
       const forecastSources = sources.map(source => ({ ...source, activeFromMs: Math.max(at.getTime(), source.activeFromMs),
         activeUntilMs: Math.min(source.activeUntilMs ?? target.season.endsAt.getTime(), target.season.endsAt.getTime()) }))
         .filter(source => source.activeUntilMs >= source.activeFromMs);
@@ -264,7 +270,7 @@ async function ownWaves(tx: Tx, targets: readonly LockedMonument[], input: Reade
       else if (wave.status === 'HOLD' && ownerLots.some((lot) => monumentCargoCapacity(lot) > 0)
         && until > at.getTime() && combatValue(fleetOf(ownerLots)) > 0) {
         const fullAt = (toMs: number): boolean => {
-          const preview = settleMonumentHold(allHeld, { fromMs: at.getTime(), toMs, position: target.monument,
+          const preview = settleMonumentHold(allHeld, { fromMs: at.getTime(), toMs, position: target.monument, target: monumentRadiationTarget(target.monument, target.season),
             productionPerMinute: target.monument.productionPerMinute, sources });
           return preview.lots.filter((lot) => lot.waveId === wave.id).every((lot) => monumentCargoCapacity(lot) - lot.deuterium < 1e-7);
         };
@@ -277,7 +283,7 @@ async function ownWaves(tx: Tx, targets: readonly LockedMonument[], input: Reade
       result.push({ id: wave.id, monumentId: wave.monumentId, playerId: wave.playerId, originPlanetId: wave.originPlanetId,
         rootWaveId: wave.rootWaveId, jointOperationId: wave.jointOperationId, status: wave.status, purpose: wave.purpose,
         heldAt: wave.heldAt?.toISOString() ?? null, sentAt: wave.sentAt.toISOString(), arriveAt: wave.arriveAt?.toISOString() ?? null,
-        position: monumentWavePosition(wave, target.monument, at), route: wave.route, tech: wave.tech,
+        position: monumentWavePosition(wave, target.monument, at,target.season), route: wave.route, tech: wave.tech,
         fleet: fleetOf(lots), lots: lots.map(lotHealth), deuterium: lots.reduce((sum, lot) => sum + lot.deuterium, 0),
         productionPerMinute: wave.status === 'HOLD' && at < target.season.endsAt ? rate : 0, fillsAt: fillsAt === null ? null : new Date(fillsAt).toISOString(),
         nextLossAt: nextLoss.length === 0 ? null : new Date(Math.min(...nextLoss)).toISOString(),
@@ -310,13 +316,11 @@ export async function readMonuments(tx: Tx, input: Reader, monumentId?: string) 
     inArray(monumentProbes.monumentId, ids), inArray(monumentProbes.status, ['OUTBOUND', 'RETURNING'])));
   const reports = await readMonumentProbeReports(tx, input.playerId);
   const peakCore = (await peakCoreLevels(tx, [input.playerId])).get(input.playerId) ?? 1;
-  const activePersonalTargets = new Set(targets.filter(target => target.waves.some(wave => wave.playerId === input.playerId
-    && activeStatuses.some(status => status === wave.status))).map(target => target.monument.id));
   return { serverNow: input.at.toISOString(), monuments: ids.map((id) => {
     const fact = factsById.get(id);
     return fact ? { ...fact, reserved: reservedByMonument.get(id) ?? 0, sendAccess: {
       playerTier: coreTier(peakCore), tierAllowed: monumentTierEligible(fact.difficulty, peakCore),
-      cargoOnly: fact.difficulty !== 'LEGACY' && activePersonalTargets.has(id),
+      cargoOnly: false,
     } } : null;
   }).filter((fact): fact is NonNullable<typeof fact> => fact !== null), waves: await ownWaves(tx, targets, input),
     probes: probes.map((probe) => ({ id: probe.id, monumentId: probe.monumentId, originPlanetId: probe.originPlanetId,
@@ -342,5 +346,6 @@ export async function quoteMonumentRecall(tx: Tx, input: Reader & { waveId: stri
   const forecast = await returnForecast(tx, target, wave, selected, input.at);
   return { fleet: fleetOf(selected), deuterium: selected.reduce((sum, lot) => sum + lot.deuterium, 0), arriveAt: forecast.arriveAt,
     minutes: forecast.minutes, doseHp: forecast.doseHp, destroyed: forecast.destroyed, arrivalDeuterium: forecast.deuterium,
+    returnFuel: forecast.returnFuel, fuelRefund: forecast.fuelRefund,
     lots: selected.map(lotHealth), arrivalLots: forecast.lots };
 }

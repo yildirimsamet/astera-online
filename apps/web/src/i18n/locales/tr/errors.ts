@@ -11,10 +11,10 @@
  */
 
 export const errors = {
+  MONUMENT_UNREACHABLE: "Filo sezon bitmeden bu anıta yetişemiyor. Daha hızlı gemiler seç.",
   ACCOUNT_NOT_FOUND: 'Hesap bulunamadı. Kullanıcı adını kontrol et.',
   CHAT_MUTED: "Bu kanalda mesaj gönderme iznin kısıtlandı.",
   MONUMENT_TIER_FORBIDDEN: "Kolay anıtlar Tier 1–3’e açıktır; bir zor anıt seç",
-  MONUMENT_FLEET_ACTIVE: "Kargo dahil bütün gemilerin eve dönene kadar yalnız yük gemisi ekleyebilirsin.",
   CAPITAL_CANNOT_BE_ABANDONED: "Ana gezegenini terk edemezsin. Bir koloni seç.",
   COLONY_ABANDON_BLOCKED: "Bu kolonide görevler veya bir sahiplik geçişi sürüyor. Engel nedenlerini kontrol et ve tamamlanmalarını bekle.",
   SKIN_NOT_OWNED: 'Bu görünüm envanterinde yok. Envanterindeki bir görünümü seç.',
@@ -88,6 +88,8 @@ export const errors = {
   RESEARCH_CANNOT_BE_CANCELLED: 'Başlayan araştırma iptal edilemez',
   RESEARCH_QUEUE_FULL: 'Sırada zaten 3 araştırma var. Yenisini eklemek için birinin bitmesini bekle.',
   BUILD_ORDER_NOT_FOUND: "Bu üretim siparişi artık etkin değil. Güncel üretim sırasını kontrol et.",
+  PERSONAL_RAID_COOLDOWN: "Bu komutana {{until}} sonrasında yeniden akın gönderebilirsin (yerel saatin).",
+  PERSONAL_RAID_PENDING: "Bu komutana doğru giden bir akının var. Sonuçlanmasını bekle veya geri çağır.",
   BASH_LIMIT: 'Bu gezegene son zamanlarda fazla yüklendin',
   TIER_BAND: 'Bu komutan senden bir kademeden fazla yukarıda — saldırıda iki tarafın en gelişmiş dünyası karşılaştırılır',
   TIER_BAND_WEAK: 'Bu komutan senden bir kademeden fazla aşağıda — saldırıda iki tarafın en gelişmiş dünyası karşılaştırılır',

@@ -169,15 +169,14 @@ describe('instrument prices', () => {
     });
   }
 
-  it('leaves the Aegis and the Veil at the undiscounted detector price', () => {
+  it('leaves the Veil at the undiscounted detector price', () => {
     for (let level = 0; level < 5; level++) {
-      expect(instrumentCost('AEGIS', level)).toEqual(instrumentCost('VEIL', level));
       for (const resource of RESOURCES) {
-        expect(instrumentCost('AEGIS', level)[resource])
+        expect(instrumentCost('VEIL', level)[resource])
           .toBeGreaterThanOrEqual(instrumentCost('RADAR', level)[resource]);
       }
     }
-    // The Aegis is exactly the pre-discount Radar, which is what "unchanged" means.
+    // The opening Aegis price remains the same after its October curve change.
     expect(instrumentCost('AEGIS', 0)).toEqual({ alloy: 197, crystal: 148, deuterium: 0 });
   });
 });

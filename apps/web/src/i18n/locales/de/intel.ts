@@ -586,7 +586,7 @@ export const dossier = {
   developmentValue: 'Stufe {{tier}}',
   developmentVersus: 'Stufe {{tier}} · du {{mine}}',
   developmentBandNote:
-    "Überfälle und Todesstern-Angriffe sind nur zwischen Kommandanten erlaubt, die höchstens eine Stufe auseinanderliegen; gezählt wird jeweils die am weitesten entwickelte Welt. Deine ist Stufe {{mine}}, du erreichst also die Stufen {{low}}–{{high}}. Dies ist vielleicht nicht ihre am weitesten entwickelte Welt.",
+    "Überfälle und Todesstern-Angriffe sind nur zwischen Kommandanten erlaubt, die höchstens eine Stufe auseinanderliegen; gezählt wird jeweils die am weitesten entwickelte Welt. Deine ist Stufe {{mine}}, du erreichst also die Stufen {{low}}–{{high}}. Dies ist vielleicht nicht ihre am weitesten entwickelte Welt. Ist einer der Kommandanten auf Stufe 1–3, darf jeder einen einzelnen Überfall auf den anderen senden und muss danach 12 Stunden ab dem Kampf warten. Ein anfliegender Überfall reserviert dieses Recht; ein Rückruf startet keine Wartezeit. Todessterne und gemeinsame Clanoperationen sind ausgenommen.",
 
   hardwareLabel: 'Satelliten im Orbit',
   hardwareNote: 'Sie können die Hardware sehen. Was es kann, kostet eine Sonde.',

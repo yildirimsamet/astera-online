@@ -532,7 +532,7 @@ export const dossier = {
   developmentValue: '{{tier}}. kademe',
   developmentVersus: '{{tier}}. kademe · sen {{mine}}',
   developmentBandNote:
-    "Akın ve Ölüm Yıldızı yalnızca aralarında en fazla 1 kademe fark olan komutanlar arasında mümkün; iki tarafın da en gelişmiş dünyası sayılır. Seninki {{mine}}. kademe, yani {{low}}–{{high}}. kademedeki komutanlara ulaşabilirsin. Bu dünya, sahibinin en gelişmiş dünyası olmayabilir.",
+    "Akın ve Ölüm Yıldızı yalnızca aralarında en fazla 1 kademe fark olan komutanlar arasında mümkün; iki tarafın da en gelişmiş dünyası sayılır. Seninki {{mine}}. kademe, yani {{low}}–{{high}}. kademedeki komutanlara ulaşabilirsin. Bu dünya, sahibinin en gelişmiş dünyası olmayabilir. Taraflardan biri 1–3. kademedeyse her tarafın diğerine bir bireysel akın hakkı vardır. Yeni akın için savaştan sonra 12 saat beklenir. Yoldaki akın hakkı ayırır; geri çağrı bekleme süresi başlatmaz. Ölüm Yıldızı ve ortak klan operasyonları bu sınırın dışındadır.",
 
   hardwareLabel: 'Yörüngedeki uydular',
   hardwareNote: 'Donanımı görüyorsun. Ne işe yaradığını öğrenmek bir sondaya bakar.',

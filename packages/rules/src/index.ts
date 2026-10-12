@@ -29,6 +29,8 @@ export * from './radiation.js';
 export * from './radiationHp.js';
 export * from './hpDamage.js';
 export * from './monument.js';
+export * from './monumentMotion.js';
+export * from './monumentFuel.js';
 export * from './monumentCapacity.js';
 export * from './monumentCombat.js';
 export * from './monumentProbe.js';

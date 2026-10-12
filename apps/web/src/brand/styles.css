@@ -37,7 +37,7 @@
   .brand-masthead-rule { height: 1px; flex: 1; background: linear-gradient(90deg, color-mix(in srgb, var(--color-v2-self) 25%, transparent), transparent); }
   .brand-masthead-address { white-space: nowrap; font-family: var(--font-v2-mono); font-size: 8px; letter-spacing: -.02em; color: var(--color-v2-ink-2); }
   .brand-masthead-address span { color: var(--color-v2-self); }
-  .brand-masthead-with-shop { height: 44px; }
+  .brand-masthead-with-shop { height: 38px; padding-right: 0; }
   .brand-masthead-actions { display: flex; flex-shrink: 0; align-items: center; gap: 4px; }
   .brand-masthead-shop {
     display: flex;

@@ -1,3 +1,5 @@
+import { monumentFlight, monumentPosition, monumentMotionStart } from './monumentMotion.js';
+import { reserveMonumentHome } from './monumentFuel.js';
 import { randomUUID } from 'node:crypto';
 import { and, count, eq, gt, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import {
@@ -5,6 +7,8 @@ import {
   CLAN,
   MULTI_WORLD,
   TRAVEL,
+  MISSION_PACES,
+  fleetPace,
   COMBAT_HULLS,
   ENGAGEMENT_MS,
   HULLS,
@@ -30,6 +34,8 @@ import {
   fleetEntries,
   isMissionPace,
   jointWarFuelLegs,
+  monumentFuelReserves,
+  priceMonumentReturn,
   pacesForMinutes,
   MOBILE_HULLS,
   normalizeHpDamage,
@@ -290,6 +296,7 @@ export interface ClanWarOperationView {
      * divide. Null while nothing is staged or the operation is no longer gathering.
      */
     strikeMinutes: number | null;
+    meetings: { pace:MissionPace; minutes:number; position:Vec3 }[];
     /** Legal speeds for the combined leg and every planned direct return. */
     paces: readonly MissionPace[];
   };
@@ -395,7 +402,7 @@ export async function projectOperation(
       .where(eq(planets.id, operation.stagingPlanetId))
       .limit(1),
     operation.targetMonumentId === null ? Promise.resolve([]) : db
-      .select({ ordinal: monuments.ordinal })
+      .select()
       .from(monuments)
       .where(eq(monuments.id, operation.targetMonumentId))
       .limit(1),
@@ -464,6 +471,8 @@ export async function projectOperation(
   const staged = waves.filter((wave) => wave.status === 'STAGED');
   let strikeMinutes: number | null = null;
   let strikeTarget: { x: number; y: number; z: number } | undefined;
+  const [motionSeason] = await db.select().from(seasons).where(eq(seasons.id,operation.seasonId));
+  const meetings: {pace:MissionPace;minutes:number;position:Vec3}[]=[];
   if (operation.status === 'ASSEMBLING' && staged.length > 0 && staging[0]) {
     const targetAt = operation.targetKind === 'MONUMENT'
       ? { x: operation.targetX, y: operation.targetY, z: operation.targetZ }
@@ -471,7 +480,15 @@ export async function projectOperation(
         .where(eq(planets.id, clanWarPlanetTarget(operation).planetId)).limit(1))[0];
     const speed = await strikeSpeed(db, operation.stagingPlanetId, staged);
     const minutes = targetAt ? travelExact(distance(staging[0], targetAt), speed) : Infinity;
-    strikeMinutes = Number.isFinite(minutes) ? minutes : null;
+    if(operation.targetKind==='MONUMENT'&&monumentTarget[0]&&motionSeason){
+      for(const pace of MISSION_PACES){
+        try {
+          const meeting=monumentFlight(staging[0],monumentTarget[0],motionSeason,speed*pace,now);
+          if(pace===1||meeting.minutes<=TRAVEL.pacedFlightCapMinutes)meetings.push({pace,minutes:meeting.minutes,position:meeting.at});
+        }catch(error){if(!(error instanceof GameError)||error.code!=='MONUMENT_UNREACHABLE')throw error;}
+      }
+    }
+    strikeMinutes = operation.targetKind==='MONUMENT' ? meetings.find(m=>m.pace===1)?.minutes ?? null : Number.isFinite(minutes) ? minutes : null;
     strikeTarget = targetAt;
   }
   const radiationByPace: ClanWarOperationView['radiationByPace'] = [];
@@ -508,7 +525,7 @@ export async function projectOperation(
         longestLeg = Math.max(longestLeg, minutes);
       }
     }
-    strikePaces = pacesForMinutes(longestLeg);
+    strikePaces = operation.targetKind==='MONUMENT'?meetings.map(m=>m.pace):pacesForMinutes(longestLeg);
     const [season] = await db.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons)
       .where(eq(seasons.id, operation.seasonId));
     if (season && hpRadiationApplies(season.rulesetVersion)) {
@@ -516,9 +533,11 @@ export async function projectOperation(
       for (const pace of strikePaces) {
         const own: WarRadiationForecast[] = [];
         const missing = new Map<string, { playerId: string; username: string; count: number }>();
-        const arriveAt = addMinutes(now, strikeMinutes / pace);
+        const movingMeeting=meetings.find(m=>m.pace===pace);
+        const aim=movingMeeting?.position??strikeTarget;
+        const arriveAt = addMinutes(now, movingMeeting?.minutes??strikeMinutes / pace);
         for (const wave of staged) {
-          const path = [flightSegment(staging[0], strikeTarget, now, arriveAt)];
+          const path = [flightSegment(staging[0], aim, now, arriveAt)];
           const back = homeLegs.get(wave.id);
           if (back) {
             const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
@@ -548,6 +567,7 @@ export async function projectOperation(
     waves: pooled.length,
     participants: new Set(pooled.map((wave) => wave.playerId)).size,
     strikeMinutes,
+    meetings,
     paces: strikePaces,
   };
   let startShieldWouldDrop: ClanWarOperationView['startShieldWouldDrop'] = null;
@@ -581,7 +601,7 @@ export async function projectOperation(
       username: operation.targetKind === 'MONUMENT' ? '' : target[0]?.username ?? 'Former commander',
       planetId: operation.targetPlanetId,
       planetName: operation.targetPlanetName,
-      position: { x: operation.targetX, y: operation.targetY, z: operation.targetZ },
+      position: monumentTarget[0]&&motionSeason?monumentPosition(monumentTarget[0],motionSeason,now):{ x: operation.targetX, y: operation.targetY, z: operation.targetZ },
     },
     staging: {
       planetId: operation.stagingPlanetId,
@@ -1162,7 +1182,7 @@ export interface ClanWarContributionQuote {
   sourceKind: ClanWarContributionSource;
   /** Room this wave takes out of the Klan Hangarı, in the same units a Hangar uses. */
   bulk: number;
-  fuel: { legs: ClanWarFuelLegQuote[]; total: number; available: number };
+  fuel: { legs: ClanWarFuelLegQuote[]; total: number; available: number; reserved?: boolean };
   travel: {
     stagingMinutes: number;
     /** This wave's own pace over the combat leg. The real strike flies at its slowest ship. */
@@ -1218,6 +1238,7 @@ function assertMobileAttackFleet(fleet: Fleet): void {
 }
 
 interface ContributionContext {
+  monumentFuelBudget: (typeof clanWarContributions.$inferSelect)['monumentFuelBudget'];
   radiation: WarRadiationForecast | null;
   operation: ClanWarOperationRow;
   clan: typeof clans.$inferSelect & { level: number };
@@ -1329,7 +1350,7 @@ async function gatherContribution(
   if (operation.targetKind === 'MONUMENT' && operation.targetMonumentId !== null) {
     const prepared = preparedMonuments.get(operation.targetMonumentId);
     if (!prepared) throw new GameError('MONUMENT_NOT_FOUND', 'No such monument', 404);
-    try { await assertMonumentFleetDispatch(tx, prepared, input.actor.playerId, input.fleet); }
+    try { await assertMonumentFleetDispatch(tx, prepared, input.actor.playerId); }
     catch (error) {
       if (!(error instanceof GameError)) throw error;
       refuse(error.code, error.message);
@@ -1373,9 +1394,18 @@ async function gatherContribution(
 
   const tech = await techOf(tx, input.actor.playerId);
   const originToStaging = distance(origin, staging);
-  const stagingToTarget = distance(staging, target);
-  const targetToOrigin = distance(target, origin);
 
+  const originPace = { boost: fleetSpeedMult(origin.orbit), tech };
+  const stagingPace = { boost: fleetSpeedMult(await orbitOfWorld(tx, staging.id)), tech };
+  const stagingMinutes = sourceKind === 'LEADER_CAPITAL'
+    ? 0
+    : fleetTravelExact(originToStaging, input.fleet, originPace);
+  const stagingAt = addMinutes(now, stagingMinutes);
+  const meeting = operation.targetKind === 'MONUMENT' ? monumentFlight(staging,target,season,fleetPace(input.fleet,stagingPace),stagingAt) : null;
+  const flightTarget = meeting?.at ?? target;
+  const stagingToTarget=distance(staging,flightTarget);
+  const targetToOrigin=distance(flightTarget,origin);
+  const combinedMinutes = meeting?.minutes ?? fleetTravelExact(stagingToTarget, input.fleet, stagingPace);
   const legs = sourceKind === 'LEADER_CAPITAL'
     ? jointWarFuelLegs(input.fleet, [
       { leg: JOINT_WAR_STAGING_LEGS[0]!, distance: stagingToTarget },
@@ -1386,19 +1416,27 @@ async function gatherContribution(
       { leg: JOINT_WAR_PHYSICAL_LEGS[1]!, distance: stagingToTarget },
       { leg: JOINT_WAR_PHYSICAL_LEGS[2]!, distance: targetToOrigin },
     ]);
-
-  const originPace = { boost: fleetSpeedMult(origin.orbit), tech };
-  const stagingPace = { boost: fleetSpeedMult(await orbitOfWorld(tx, staging.id)), tech };
-  const stagingMinutes = sourceKind === 'LEADER_CAPITAL'
-    ? 0
-    : fleetTravelExact(originToStaging, input.fleet, originPace);
-  const combinedMinutes = fleetTravelExact(stagingToTarget, input.fleet, stagingPace);
+  // The combined departure may happen hours later. Reserve each still-unknown
+  // leg at its geometric maximum; invoice it only once its real route is fixed.
+  const targetRadius = Math.hypot(target.x, target.y, target.z);
+  const stagingRadius = Math.hypot(staging.x, staging.y, staging.z);
+  // OUTBOUND recall can start at another member’s staging world, outside our own home disc.
+  const returnBoundPoint = stagingRadius > targetRadius ? staging : target;
+  const monumentFuelBudget = operation.targetKind === 'MONUMENT' && monumentMotionStart(season)
+    ? { outbound: monumentFuelReserves(input.fleet, targetRadius + stagingRadius),
+        homeward: await reserveMonumentHome(tx, input.actor.playerId, returnBoundPoint, input.fleet) }
+    : null;
+  if (monumentFuelBudget) {
+    legs.legs = legs.legs.map(leg => ({ ...leg, fuel: leg.leg === 'STAGING_TO_TARGET'
+      ? monumentFuelBudget.outbound.total : leg.leg === 'TARGET_TO_ORIGIN' || leg.leg === 'TARGET_TO_STAGING'
+        ? monumentFuelBudget.homeward.total : leg.fuel }));
+    legs.total = legs.legs.reduce((sum, leg) => sum + leg.fuel, 0);
+  }
   const returnMinutes = fleetTravelExact(
     sourceKind === 'LEADER_CAPITAL' ? stagingToTarget : targetToOrigin,
     input.fleet,
     originPace,
   );
-  const stagingAt = addMinutes(now, stagingMinutes);
 
   /*
     THREE DEADLINES, AND A WAVE HAS TO CLEAR ALL OF THEM BEFORE IT IS ACCEPTED.
@@ -1519,7 +1557,7 @@ async function gatherContribution(
   const owned = await totalUnitsOf(tx, origin.planetId);
   const radiation = hpRadiationApplies(origin.rulesetVersion) ? warRadiationForecast(input.fleet, null, tech, [
     ...sourceKind === 'PHYSICAL' ? [flightSegment(origin, staging, now, stagingAt)] : [],
-    flightSegment(staging, target, stagingAt, addMinutes(stagingAt, combinedMinutes)),
+    flightSegment(staging, flightTarget, stagingAt, addMinutes(stagingAt, combinedMinutes)),
     ...operation.targetKind === 'PLANET' ? [
       flightSegment(target, target, addMinutes(stagingAt, combinedMinutes), addMinutes(stagingAt, combinedMinutes + engagementMinutes)),
       flightSegment(target, origin, addMinutes(stagingAt, combinedMinutes + engagementMinutes), battleHomeAt),
@@ -1539,6 +1577,7 @@ async function gatherContribution(
     tech,
     legs: legs.legs,
     fuel: legs.total,
+    monumentFuelBudget,
     bulk,
     stagingMinutes,
     combinedMinutes,
@@ -1598,6 +1637,7 @@ export async function quoteClanWarContribution(
       sourceKind: context.sourceKind,
       bulk: context.bulk,
       fuel: {
+        ...(context.monumentFuelBudget ? { reserved: true } : {}),
         legs: context.legs,
         total: context.fuel,
         available: Math.floor(fuelAvailable(context.origin.deuterium)),
@@ -1646,12 +1686,13 @@ export interface ClanWarContributionResult {
 /**
  * COMMIT ONE WAVE. Everything it will ever be charged happens here, once.
  *
- * FUEL FOR EVERY LEG IS TAKEN NOW AND NEVER GIVEN BACK. Owner decision, and the
+ * LEGACY PLANET OPERATIONS PREPAY EVERY LEG WITHOUT REFUNDS. This follows the
  * same rule the ordinary raid has had since T6: a fleet in the air has no access
  * to a store, so a one-way budget is not a cheaper operation, it is a stranded
  * fleet. A recall that flies a shorter route is not refunded and a cancellation
  * that flies a longer one is not surcharged — both are the operation's weather
- * rather than the player's decision, and pricing them would make this quote a lie.
+ * rather than the player's decision. Moving-monument contributions instead reserve
+ * the unknown legs and refund unused shares only when their own ships reach home.
  *
  * THE SHIPS STAY ON THEIR OWN WORLD, in a row of their own. They are off the home
  * stack — so they do not defend it and cannot be launched again — while still
@@ -1730,6 +1771,7 @@ export async function sendClanWarContribution(
     reservedBulk: context.bulk,
     fuelPaid: context.fuel,
     fuelLegs: context.legs,
+    monumentFuelBudget: context.monumentFuelBudget,
     status: instant ? 'STAGED' : 'OUTBOUND',
     sentAt: now,
     stagedAt: instant ? now : null,
@@ -1887,7 +1929,7 @@ async function landContribution(
   fleet: Fleet,
   destinationPlanetId: string,
   now: Date,
-): Promise<DockReport> {
+): Promise<DockReport & { fuelRefund: number }> {
   // Free when the caller already holds it, which every path is arranged to do.
   await lockWarWorlds(tx, [destinationPlanetId]);
   await tx.delete(units).where(and(
@@ -1903,10 +1945,19 @@ async function landContribution(
     at: now,
   });
   await tx.update(clanWarContributions)
-    .set({ status: 'HOME', resolvedAt: now })
+    .set({ status: 'HOME', resolvedAt: now, monumentFuelBudget: null })
     .where(eq(clanWarContributions.id, contribution.id));
+  const budget = contribution.monumentFuelBudget;
+  let fuelRefund = 0;
+  if (budget) {
+    // A lost hull cannot pass its unused allowance to a survivor.
+    fuelRefund = fleetEntries(fleet).reduce((sum, [hull, count]) => sum + count
+      * ((budget.outbound.perShip[hull] ?? 0) + (budget.homeward.perShip[hull] ?? 0)), 0);
+    await tx.update(planets).set({ deuterium: sql`${planets.deuterium} + ${fuelRefund}` })
+      .where(eq(planets.id, destinationPlanetId));
+  }
   if (fleetChangesWatch(fleet)) await publishWatchChanges(tx, [destinationPlanetId]);
-  return report;
+  return { ...report, fuelRefund };
 }
 
 /**
@@ -1923,9 +1974,10 @@ async function landContribution(
  * lands (`resolveSupportArrival`). The alternative is a fleet whose position on
  * the disc reverses mid-flight, which no other lane in the game does.
  *
- * NO FUEL CHANGES HANDS EITHER WAY. Every leg was paid at dispatch. A recall that
+ * LEGACY PLANET OPERATIONS: every leg was paid at dispatch. A recall that
  * flies a shorter route is not refunded and a cancellation that flies a longer one
- * is not surcharged — see `sendClanWarContribution` for why.
+ * is not surcharged. Moving-monument contributions price this real return from
+ * their reserve and carry the unused share to home.
  */
 export async function planContributionReturn(
   tx: Tx,
@@ -1973,7 +2025,13 @@ export async function planContributionReturn(
   */
   if (contribution.sourceKind === 'LEADER_CAPITAL'
     && input.fromPlanetId === operation.stagingPlanetId) {
-    await landContribution(tx, contribution, input.fleet, contribution.originPlanetId, now);
+    const landed = await landContribution(tx, contribution, input.fleet, contribution.originPlanetId, now);
+    if (contribution.monumentFuelBudget) {
+      await recomputePlayerWealth(tx, contribution.playerId);
+      await notify(tx, { playerId: contribution.playerId, kind: 'fleet_returned', refId: contribution.id, at: now,
+        payload: { trip: 'recalled', craft: fleetCount(input.fleet), craftKind: 'fleet',
+          fuelRefund: landed.fuelRefund, ...dockNotice(landed) } });
+    }
     return;
   }
 
@@ -1990,7 +2048,7 @@ export async function planContributionReturn(
 
     `safeHomePlanet` is the ordinary fallback every other lane uses: a commander who
     lost the world their fleet left from lands at their capital instead. No extra
-    fuel is taken for the longer leg and none is given back for a shorter one.
+    fuel is taken from home; monument reserves pay the actual route.
   */
   const destinationPlanetId = await safeHomePlanet(
     tx,
@@ -2002,6 +2060,23 @@ export async function planContributionReturn(
   if (!from || !to) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
 
   const span = distance(from, to);
+  let monumentFuelBudget = contribution.monumentFuelBudget;
+  if (monumentFuelBudget) {
+    const budget = monumentFuelBudget;
+    const priced = priceMonumentReturn(MOBILE_HULLS.flatMap((hull) => {
+      const count = input.fleet[hull] ?? 0;
+      if (count <= 0) return [];
+      return [{
+        id: hull, playerId: contribution.playerId, waveId: contribution.id, hull, count,
+        damageBp: 0, remainderBp: 0, deuterium: 0, tech: contribution.tech,
+        returnFuelReserve: count * ((budget.outbound.perShip[hull] ?? 0) + (budget.homeward.perShip[hull] ?? 0)),
+      }];
+    }), span);
+    // Keep the pending refund on its own hulls until they actually reach home.
+    monumentFuelBudget = { outbound: { perShip: {}, total: 0 }, homeward: {
+      perShip: Object.fromEntries(priced.lots.map(lot => [lot.hull, (lot.fuelRefund ?? 0) / lot.count])), total: priced.refund,
+    } };
+  }
   const leg = contribution.status === 'IN_BATTLE' ? 'BATTLE_RETURN' : 'SUPPORT_RETURN';
   const pace: MissionPace = leg === 'BATTLE_RETURN' ? input.pace ?? 1 : 1;
   const arriveAt = addMinutes(now, fleetTravelExact(span, input.fleet, {
@@ -2059,8 +2134,9 @@ export async function planContributionReturn(
     contribution.playerId,
   );
   await tx.update(clanWarContributions)
-    .set({ status: 'RETURNING', returnAt: arriveAt })
+    .set({ status: 'RETURNING', returnAt: arriveAt, monumentFuelBudget })
     .where(eq(clanWarContributions.id, contribution.id));
+  if (monumentFuelBudget) await recomputePlayerWealth(tx, contribution.playerId);
   await publishShard(tx, operation.seasonId, 'launch');
 }
 
@@ -2766,11 +2842,7 @@ async function startMonumentClanWar(tx: Tx, input: {
   }
   const fighters = [...new Set(pool.map((wave) => wave.playerId))].sort();
   for (const playerId of fighters) {
-    const personal: Fleet = {};
-    for (const contribution of pool.filter(row => row.playerId === playerId)) {
-      for (const [hull, count] of fleetEntries(contribution.fleet)) personal[hull] = (personal[hull] ?? 0) + count;
-    }
-    await assertMonumentFleetDispatch(tx, target, playerId, personal);
+    await assertMonumentFleetDispatch(tx, target, playerId);
   }
   for (const playerId of [...new Set([...fighters, operation.leaderPlayerId])]) {
     const membership = await activeClanMembership(tx, playerId);
@@ -2785,9 +2857,10 @@ async function startMonumentClanWar(tx: Tx, input: {
     const needed = pool.filter((wave) => wave.sourceKind === 'LEADER_CAPITAL' && wave.originPlanetId === originId).length;
     if (bay.used + needed > bay.total) throw new GameError('NO_FREE_BAY', 'Your home has no free flight bay', 409);
   }
-  const minutes = travelExact(distance(staging, target.monument), await strikeSpeed(tx, staging.id, pool));
-  if (!Number.isFinite(minutes) || !pacesForMinutes(minutes).includes(pace)) throw new GameError('PACE_TOO_SLOW', 'Choose a faster flight speed', 400);
-  const arriveAt = addMinutes(now, minutes / pace);
+  const meeting = monumentFlight(staging,target.monument,target.season,(await strikeSpeed(tx,staging.id,pool))*pace,now);
+  const minutes = meeting.minutes;
+  if (pace !== 1 && minutes > TRAVEL.pacedFlightCapMinutes) throw new GameError('PACE_TOO_SLOW', 'Choose a faster flight speed', 400);
+  const arriveAt = meeting.arriveAt;
   if (arriveAt >= target.season.endsAt) throw new GameError('CLAN_WAR_SEASON_TOO_SHORT', 'That strike cannot arrive before this galaxy closes', 409);
   const holders = [...new Set(target.waves.filter((wave) => wave.status === 'HOLD').map((wave) => wave.playerId))];
   if (holders.length > 0) {
@@ -2807,7 +2880,7 @@ async function startMonumentClanWar(tx: Tx, input: {
   }
   const sources = await hpSourcesForSeason(tx, operation.seasonId);
   for (const wave of pool) requireWaveRadiation(wave, input,
-    [flightSegment(staging, target.monument, now, arriveAt)], sources);
+    [flightSegment(staging, meeting.at, now, arriveAt)], sources);
   const nativeIds: string[] = [];
   for (const contribution of pool) {
     const physical = await tx.select().from(units).where(and(eq(units.planetId, contribution.originPlanetId), eq(units.location, contribution.unitLocation))).for('update');
@@ -2821,7 +2894,7 @@ async function startMonumentClanWar(tx: Tx, input: {
       jointContributionId: contribution.id, unitLocation, purpose: 'ATTACK',
       sentFleet: contribution.fleet, tech: contribution.tech, fuelPaid: contribution.fuelPaid, sentAt: now, arriveAt,
       radiationSettledAt: now, route: [{ from: { x: staging.x, y: staging.y, z: staging.z },
-        to: { x: target.monument.x, y: target.monument.y, z: target.monument.z }, startMs: now.getTime(), endMs: arriveAt.getTime() }] }).returning();
+        to: meeting.at, startMs: now.getTime(), endMs: arriveAt.getTime() }] }).returning();
     if (!wave) throw new Error('joint monument wave insert returned no row');
     const damage = normalizeHpDamage(contribution.fleet, contribution.damage);
     const manifest = MOBILE_HULLS.flatMap((hull) => {
@@ -2830,10 +2903,19 @@ async function startMonumentClanWar(tx: Tx, input: {
       return [...wounded.map((lot) => ({ waveId: wave.id, hull, count: lot.count, damageBp: lot.damageBp,
         remainderBp: lot.remainderBp ?? 0, deuterium: 0 })), ...(healthy > 0 ? [{ waveId: wave.id, hull, count: healthy, damageBp: 0, remainderBp: 0, deuterium: 0 }] : [])];
     });
-    const stored = await tx.insert(monumentShipLots).values(manifest).returning();
+    const budget = contribution.monumentFuelBudget;
+    const priced = budget ? priceMonumentReturn(manifest.map((lot, index) => ({ ...lot, id: String(index),
+      playerId: contribution.playerId, tech: contribution.tech,
+      returnFuelReserve: (budget.outbound.perShip[lot.hull] ?? 0) * lot.count,
+    })), distance(staging, meeting.at)) : null;
+    const refunds = new Map(priced?.lots.map(lot => [lot.id, lot.fuelRefund ?? 0]) ?? []);
+    const stored = await tx.insert(monumentShipLots).values(manifest.map((lot, index) => ({ ...lot,
+      returnFuelReserve: (budget?.homeward.perShip[lot.hull] ?? 0) * lot.count,
+      fuelRefund: refunds.get(String(index)) ?? 0,
+    }))).returning();
     await tx.delete(units).where(and(eq(units.planetId, contribution.originPlanetId), eq(units.location, contribution.unitLocation)));
     await setUnits(tx, contribution.originPlanetId, contribution.fleet, unitLocation, contribution.playerId);
-    await tx.update(clanWarContributions).set({ status: 'TRANSFERRED', reservedBulk: 0, battleAt: arriveAt }).where(eq(clanWarContributions.id, contribution.id));
+    await tx.update(clanWarContributions).set({ status: 'TRANSFERRED', reservedBulk: 0, battleAt: arriveAt, monumentFuelBudget: null }).where(eq(clanWarContributions.id, contribution.id));
     await schedule(tx, { seasonId: operation.seasonId, kind: 'monument_arrival', refId: wave.id,
       resolveAt: arriveAt, dedupeKey: `monument-arrival:${wave.id}:0`, payload: { generation: 0 } });
     await scheduleFlightBoundary(tx, wave, stored.map((lot) => ({ ...lot, playerId: wave.playerId, tech: wave.tech })), sources, target.season.endsAt);
@@ -2846,7 +2928,10 @@ async function startMonumentClanWar(tx: Tx, input: {
     payload: { targetKind: 'MONUMENT', monumentId: target.monument.id, monumentOrdinal: target.monument.ordinal, waveId: nativeIds[0]!, arriveAt: arriveAt.toISOString() } });
   // The clan-war event refreshes preparation; each departing owner's monument
   // waves and personal dispatch access must also update without waiting for a poll.
-  for (const playerId of fighters) await publish(tx, playerId, 'private:monument');
+  for (const playerId of fighters) {
+    await recomputePlayerWealth(tx, playerId);
+    await publish(tx, playerId, 'private:monument');
+  }
   await publishShard(tx, operation.seasonId, 'launch');
   await publishWar(tx, clan.id);
   return { missionId: nativeIds[0]!, arriveAt: arriveAt.toISOString(), resolveAt: arriveAt.toISOString(), participants: fighters.length,
@@ -3105,7 +3190,7 @@ async function resolveReturnArrival(
           salvageDeuterium: salvage.deuterium,
           ...dockNotice(landed),
         }
-      : { trip: 'recalled', craft: fleetCount(dosed.fleet), craftKind: 'fleet', ...dockNotice(landed) },
+      : { trip: 'recalled', craft: fleetCount(dosed.fleet), craftKind: 'fleet', fuelRefund: landed.fuelRefund, ...dockNotice(landed) },
     at: now,
     refId: mission.id,
   });
@@ -3139,12 +3224,12 @@ export async function abandonClanWarLeg(
     const destinationPlanetId = await safeHomePlanet(
       tx, contribution.playerId, contribution.originPlanetId,
     );
-    await landContribution(tx, contribution, contribution.fleet, destinationPlanetId, now);
+    const landed = await landContribution(tx, contribution, contribution.fleet, destinationPlanetId, now);
     await recomputePlayerWealth(tx, contribution.playerId);
     await notify(tx, {
       playerId: contribution.playerId,
       kind: 'fleet_returned',
-      payload: { trip: 'recalled', craft: fleetCount(contribution.fleet), craftKind: 'fleet' },
+      payload: { trip: 'recalled', craft: fleetCount(contribution.fleet), craftKind: 'fleet', fuelRefund: landed.fuelRefund, ...dockNotice(landed) },
       at: now,
       refId: mission.id,
     });

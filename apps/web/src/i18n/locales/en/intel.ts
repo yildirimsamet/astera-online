@@ -586,7 +586,7 @@ export const dossier = {
   developmentValue: 'Tier {{tier}}',
   developmentVersus: 'Tier {{tier}} · you {{mine}}',
   developmentBandNote:
-    "Raids and Death Star strikes are only allowed between commanders at most one tier apart, each measured on their most developed world. Yours is tier {{mine}}, so you can reach tiers {{low}}–{{high}}. This may not be their most developed world.",
+    "Raids and Death Star strikes are only allowed between commanders at most one tier apart, each measured on their most developed world. Yours is tier {{mine}}, so you can reach tiers {{low}}–{{high}}. This may not be their most developed world. If either commander is tier 1–3, each may send one individual raid against the other, then must wait 12 hours after the battle before sending another. Outbound raids reserve this right; recall does not start the wait. Death Stars and joint clan operations are excluded.",
 
   hardwareLabel: 'Satellites in orbit',
   hardwareNote: 'You can see the hardware. What it can do costs a probe.',

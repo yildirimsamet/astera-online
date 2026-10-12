@@ -1213,7 +1213,7 @@ describe('instrument pricing carries the choice between them', () => {
   });
 
   /** Telescope keeps a premium over Radar; both sensors receive the live discount. */
-  it('prices Telescope above Radar and both sensors below the countermeasures', () => {
+  it('prices Telescope above Radar, with the Veil premium and the separate Aegis curve', () => {
     expect(INSTRUMENT_COST_MULT.TELESCOPE).toBeGreaterThan(INSTRUMENT_COST_MULT.RADAR);
     const telescope = instrumentCost('TELESCOPE', 2);
     const radar = instrumentCost('RADAR', 2);
@@ -1221,9 +1221,9 @@ describe('instrument pricing carries the choice between them', () => {
     const veil = instrumentCost('VEIL', 2);
     expect(telescope.alloy).toBeGreaterThan(radar.alloy);
     expect(telescope.crystal).toBeGreaterThan(radar.crystal);
-    expect(telescope.alloy).toBeLessThan(aegis.alloy);
-    expect(telescope.crystal).toBeLessThan(aegis.crystal);
-    expect(veil).toEqual(aegis);
+    expect(telescope.alloy).toBeLessThan(veil.alloy);
+    expect(telescope.crystal).toBeLessThan(veil.crystal);
+    expect(aegis).toEqual({ alloy: 504, crystal: 379, deuterium: 0 });
   });
 
   it('never gets cheaper as it goes up', () => {

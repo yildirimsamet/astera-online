@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { MULTI_WORLD, SENSOR } from '@astera/rules';
+import { ABUSE, MULTI_WORLD, SENSOR } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -308,7 +308,7 @@ describe('a fleet refreshes what its owner remembers', () => {
   it('writes exactly one bounded pointer per target, however many raids land', async () => {
     await raid(far);
     await comeHome();
-    f.clock.advance(120);
+    f.clock.advance(ABUSE.personalRaidCooldownMinutes + 1);
     await raid(far);
 
     const rows = await f.db

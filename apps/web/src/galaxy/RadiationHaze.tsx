@@ -1,4 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { motionPositionAt } from '@astera/rules';
+import { serverNow } from '../lib/clock.js';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { VIEW, toWorld } from '@astera/rules';
@@ -77,6 +79,7 @@ function Cloud({ cloud, volume, geometry }: {
   volume: THREE.Data3DTexture;
   geometry: THREE.SphereGeometry;
 }) {
+  const mesh=useRef<THREE.Mesh>(null);
   const centre = useMemo(() => toWorld(cloud.center), [cloud.center]);
   const radius = cloud.radius / VIEW.scale;
   const level = 'intensityHpPerMinute' in cloud ? cloud.level : undefined;
@@ -93,15 +96,17 @@ function Cloud({ cloud, volume, geometry }: {
 
   useFrame(({ camera }, delta) => {
     uniforms.uTime.value += delta;
+    const moving='motion' in cloud&&cloud.motion?toWorld(motionPositionAt(cloud.motion,serverNow())):centre;
+    mesh.current?.position.set(...moving);
     uniforms.uEye.value.set(
-      camera.position.x - centre[0],
-      camera.position.y - centre[1],
-      camera.position.z - centre[2],
+      camera.position.x - moving[0],
+      camera.position.y - moving[1],
+      camera.position.z - moving[2],
     ).divideScalar(radius);
   });
 
   return (
-    <mesh name={`radiation-haze-${cloud.id}`} position={centre} scale={radius} geometry={geometry} renderOrder={-30} frustumCulled={false}>
+    <mesh ref={mesh} name={`radiation-haze-${cloud.id}`} position={centre} scale={radius} geometry={geometry} renderOrder={-30} frustumCulled={false}>
       <shaderMaterial
         name="RadiationHaze"
         vertexShader={vertex}

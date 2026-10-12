@@ -1,3 +1,4 @@
+import { motionPositionAt } from '@astera/rules';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react';
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
@@ -410,7 +411,7 @@ export function GalaxyCanvas({
 
     if (focus.kind === 'monument') {
       const monument = monuments.find((row) => row.id === focus.id);
-      return monument ? () => toWorld(monument.position) : null;
+      return monument ? () => toWorld(monument.motion?motionPositionAt(monument.motion,serverNow()):monument.position) : null;
     }
 
     if (focus.kind === 'asteroid' && seasonStart) {

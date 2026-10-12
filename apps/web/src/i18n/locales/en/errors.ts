@@ -14,10 +14,10 @@
  */
 
 export const errors = {
+  MONUMENT_UNREACHABLE: "This fleet cannot reach the monument before the season ends. Choose faster ships.",
   ACCOUNT_NOT_FOUND: 'Account not found. Check the username.',
   CHAT_MUTED: "Your permission to send messages in this channel has been restricted.",
   MONUMENT_TIER_FORBIDDEN: "Easy monuments accept tiers 1–3; choose a Hard monument",
-  MONUMENT_FLEET_ACTIVE: "Only cargo can be added until all your ships, including cargo, return home.",
   CAPITAL_CANNOT_BE_ABANDONED: "You cannot abandon your capital. Select a colony instead.",
   COLONY_ABANDON_BLOCKED: "This colony has active missions or an ownership transition. Check the reasons and wait until they finish.",
   SKIN_NOT_OWNED: 'This appearance is not in your inventory. Choose one you own.',
@@ -92,6 +92,8 @@ export const errors = {
   RESEARCH_CANNOT_BE_CANCELLED: 'Started research cannot be cancelled',
   RESEARCH_QUEUE_FULL: '3 research projects are already queued. Wait for one to finish before adding another.',
   BUILD_ORDER_NOT_FOUND: "This production order is no longer active. Check the current queue.",
+  PERSONAL_RAID_COOLDOWN: "You can raid this commander again after {{until}} (your local time).",
+  PERSONAL_RAID_PENDING: "You already have a raid on its way to this commander. Wait for it or recall it.",
   BASH_LIMIT: 'You have hit this planet too many times recently',
   TIER_BAND: "That commander is more than one tier above you — attacks compare each side's most developed world",
   TIER_BAND_WEAK: "That commander is more than one tier below you — attacks compare each side's most developed world",

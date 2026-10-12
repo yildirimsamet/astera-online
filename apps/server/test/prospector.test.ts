@@ -303,7 +303,7 @@ describe('a Prospector does not fight', () => {
     expect(loot).toBeGreaterThan(0);
     expect(returning?.loot).toEqual(report.loot);
     expect((await homeFleetAt(f, defender)).PROSPECTOR).toBe(PROSPECTOR.max);
-    expect((await f.db.select().from(planets).where(eq(planets.id, defender)))[0]?.shield).toBe(203);
+    expect((await f.db.select().from(planets).where(eq(planets.id, defender)))[0]?.shield).toBe(Math.round(before.shield));
     const [after] = await f.db.select().from(planets).where(eq(planets.id, defender));
     if (!after || !returning) throw new Error('missing settled world or return');
     for (const [stock, buffer] of [

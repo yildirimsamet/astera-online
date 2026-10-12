@@ -586,7 +586,7 @@ export const dossier = {
   developmentValue: 'Nivel {{tier}}',
   developmentVersus: 'Nivel {{tier}} · tú {{mine}}',
   developmentBandNote:
-    "Las incursiones y los ataques de la Estrella de la Muerte solo se permiten entre comandantes separados por un nivel como máximo, contando el mundo más desarrollado de cada uno. El tuyo es nivel {{mine}}, así que alcanzas los niveles {{low}}–{{high}}. Puede que este no sea su mundo más desarrollado.",
+    "Las incursiones y los ataques de la Estrella de la Muerte solo se permiten entre comandantes separados por un nivel como máximo, contando el mundo más desarrollado de cada uno. El tuyo es nivel {{mine}}, así que alcanzas los niveles {{low}}–{{high}}. Puede que este no sea su mundo más desarrollado. Si uno de los comandantes es de nivel 1–3, cada uno puede enviar un ataque individual contra el otro y debe esperar 12 horas desde la batalla para enviar otro. El ataque en camino reserva este derecho; retirarlo no inicia la espera. Las Estrellas de la Muerte y las operaciones conjuntas del clan quedan excluidas.",
 
   hardwareLabel: 'Satélites en órbita',
   hardwareNote: 'Puedes ver el hardware. Lo que puede hacer cuesta una investigación.',

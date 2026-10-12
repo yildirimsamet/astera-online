@@ -269,6 +269,9 @@ describe('the return payload', () => {
     // This purse is big enough to lift the reader's Core a tier above its
     // neighbour's, which would refuse the raids below. D168; see `levelWorld`.
     await levelWorld(f.db, f.planetIds);
+    // Repeated raids in this crowded-recap fixture use the tier-4 allowance.
+    await setLevel(f.db, mine, 'CORE', 10);
+    await setLevel(f.db, theirs, 'CORE', 10);
     for (let i = 0; i < 3; i++) {
       await raid(f, theirs, mine, 20);
       f.clock.advance(1);

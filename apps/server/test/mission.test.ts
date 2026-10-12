@@ -172,6 +172,9 @@ describe('launching a fleet', () => {
     });
 
     it('stops the fourth raid on the same target inside the window', async () => {
+      // Both commanders are tier 4: tier 1–3 now has a separate battle-time cooldown.
+      await setLevel(f.db, attacker, 'CORE', 10);
+      await setLevel(f.db, defender, 'CORE', 10);
       const worker = new EventWorker(
         f.db,
         f.clock,

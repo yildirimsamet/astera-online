@@ -157,7 +157,7 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
           {strikeMinutes !== null && (
             <>
               <p data-clan-strike-eta className="text-caption text-v2-ink-2">{t('clanWar.strikeEta', {
-                time: duration(strikeMinutes / strikePace) })}</p>
+                time: duration(operation.pool.meetings.find(m=>m.pace===strikePace)?.minutes ?? strikeMinutes / strikePace) })}</p>
               <PaceRow data-clan-pace paces={strikePaces} pace={strikePace} onChange={(pace) => {
                 setWantedPace(pace); setAcknowledgeRadiation(false);
               }}

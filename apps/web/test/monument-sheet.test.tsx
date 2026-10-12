@@ -32,16 +32,17 @@ const held = { id: waveId, monumentId: id, playerId: 'self', originPlanetId: 'ho
   returnForecast: { homePlanetId: 'home', arriveAt: later, minutes: 60, doseHp: 100, destroyed: 0,
     deuterium: 300, lostDeuterium: 0, lots: [cargoLot] } };
 
-function show(view: unknown = catalog, quoteDelay = 0, locked = false, onClanTarget?: (monumentId: string) => void) {
+function show(view: unknown = catalog, quoteDelay = 0, locked = false, onClanTarget?: (monumentId: string) => void,
+  pricing: { send?: unknown; recall?: unknown } = {}) {
   const requests: { path: string; body: string; key: string | null }[] = [];
   const fetch: typeof globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const path = typeof url === 'string' ? url : url instanceof URL ? url.pathname : url.url;
     const body = typeof init?.body === 'string' ? init.body : '';
     if (init?.method === 'POST') requests.push({ path, body, key: new Headers(init.headers).get('idempotency-key') });
     if (path.endsWith('/quote') && quoteDelay > 0) await new Promise((resolve) => setTimeout(resolve, quoteDelay));
-    const result = path.endsWith('/recall/quote') ? { fleet: { ARGOSY: 1 }, deuterium: 150, arriveAt: later, minutes: 60,
+    const result = path.endsWith('/recall/quote') ? pricing.recall ?? { fleet: { ARGOSY: 1 }, deuterium: 150, arriveAt: later, minutes: 60,
       doseHp: 100, destroyed: 0, arrivalDeuterium: 150, lots: [{ ...cargoLot, count: 1, deuterium: 150, cargoCapacity: 300 }], arrivalLots: [] }
-      : path.endsWith('/quote') ? quote
+      : path.endsWith('/quote') ? pricing.send ?? quote
         : path.endsWith('/send') ? { wave: { id: waveId, monumentId: id, status: 'OUTBOUND' }, quote }
           : path.endsWith('/recall') ? { wave: { id: waveId, monumentId: id, status: 'RETURNING' } }
             : path.endsWith('/probe') ? { probe: { id: waveId, monumentId: id, status: 'OUTBOUND', departAt: at, arriveAt: later },
@@ -61,6 +62,47 @@ function hold(button: HTMLElement): void { fireEvent.keyDown(button, { key: 'Ent
 const send = (): HTMLElement => within(screen.getByTestId('monument-send')).getByRole('button');
 
 describe('monument decision surface, through the real client and cache', () => {
+  it('separates outbound spending and return escrow, including the rule for each lost ship', async () => {
+    show(catalog, 0, false, undefined, { send: { ...quote, fuel: 920, outboundFuel: 120, returnFuelReserve: 800 } });
+    const quantity = await screen.findByRole('textbox', { name: /citadel.*quantity/i });
+    fireEvent.change(quantity, { target: { value: '1' } });
+    await screen.findByText(/Fuel: 920 deuterium/);
+    expect(screen.getByText(/Outbound: 120.*return reserve: 800 deuterium/)).toBeVisible();
+    expect(screen.getByText(/Each ship receives its unused share upon reaching home.*never return lose their share/)).toBeVisible();
+  });
+  it('distinguishes the selected partial refund from the whole fleet and shows arrival health', async () => {
+    show({ ...catalog, waves: [{ ...held, returnForecast: { ...held.returnForecast, fuelRefund: 190 } }] }, 0, false, undefined,
+      { recall: { fleet: { ARGOSY: 1 }, deuterium: 150, arriveAt: later, minutes: 60, doseHp: 112.5, destroyed: 0,
+        arrivalDeuterium: 150, returnFuel: 5, fuelRefund: 83.75, lots: [cargoLot],
+        arrivalLots: [{ ...cargoLot, count: 1, damageBp: 3333, remainderBp: 1 / 3,
+          remainingHp: 900, deuterium: 150, cargoCapacity: 300 }] } });
+    const card = await screen.findByTestId(`monument-wave-${waveId}`);
+    fireEvent.change(within(card).getByRole('textbox', { name: /argosy.*recall/i }), { target: { value: '1' } });
+    const forecast = await screen.findByTestId('monument-recall-forecast');
+    expect(within(forecast).getByText('Selected return · 1 ship')).toBeVisible();
+    expect(forecast).toHaveTextContent(/Fuel for this return: 5 deuterium/);
+    expect(forecast).toHaveTextContent(/Fuel refund on home arrival: 83.750 deuterium/);
+    expect(forecast).toHaveTextContent(/Argosy.*900.0.*1,350.0 HP on arrival/);
+    expect(forecast).not.toHaveTextContent(/190/);
+    expect(card).toHaveTextContent(/Whole fleet return/);
+  });
+  it('keeps the flight price visible while a moving target quote refreshes in the background', async () => {
+    const motion = { origin: monument.position, epochMs: Date.now(), periodYMs: 8 * 3600_000, periodXMs: 16 * 3600_000 };
+    const { requests } = show({ ...catalog, monuments: [{ ...monument, motion }] }, 400);
+    const quantity = await screen.findByRole('textbox', { name: /citadel.*quantity/i });
+    fireEvent.change(quantity, { target: { value: '1' } });
+    await screen.findByText(/Fuel: 120 deuterium/);
+    await waitFor(() => { expect(requests.filter(row => row.path.endsWith('/quote'))).toHaveLength(2); }, { timeout: 6500 });
+    expect(screen.getByText(/Fuel: 120 deuterium/)).toBeVisible();
+  }, 10_000);
+  it.each(['HOLD', 'OUTBOUND'])('refreshes a selected %s return quote as time passes without any roster change', async status => {
+    const { requests } = show({ ...catalog, waves: [{ ...held, status }] });
+    const quantity = await screen.findByRole('textbox', { name: /argosy.*recall quantity/i });
+    fireEvent.change(quantity, { target: { value: '1' } });
+    const quotes = () => requests.filter(request => request.path.endsWith('/recall/quote'));
+    await waitFor(() => { expect(quotes()).toHaveLength(1); });
+    await waitFor(() => { expect(quotes().length).toBeGreaterThanOrEqual(2); }, { timeout: 6500 });
+  }, 10_000);
   it.each([['EASY', 1, 2], ['HARD', 2, 5]] as const)('shows %s radiation level without changing the agreed per-ship dose', async (difficulty, level, rate) => {
     show({ ...catalog, monuments: [{ ...monument, difficulty, radiationHpPerMinute: rate }] });
     await screen.findByText(`Radiation level ${String(level)}: ${rate.toFixed(1)} HP per ship per minute`);
@@ -85,7 +127,7 @@ describe('monument decision surface, through the real client and cache', () => {
     expect(send()).toBeDisabled();
   });
 
-  it('keeps cargo dispatch usable if another launch closes the personal combat cycle while this sheet is open', async () => {
+  it('keeps combat and cargo selections usable during other active dispatches', async () => {
     const initial = { ...catalog, monuments: [{ ...monument, difficulty: 'HARD',
       sendAccess: { playerTier: 3, tierAllowed: true, cargoOnly: false } }] };
     const { client, requests } = show(initial);
@@ -96,21 +138,21 @@ describe('monument decision surface, through the real client and cache', () => {
     await screen.findByText(/Outbound radiation: 500/i);
     client.setQueryData(keys.monuments, monumentsSchema.parse({ ...initial, monuments: [{ ...initial.monuments[0],
       sendAccess: { playerTier: 3, tierAllowed: true, cargoOnly: true } }] }));
-    await waitFor(() => expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeDisabled());
-    expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toHaveValue('0');
+    await waitFor(() => expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeEnabled());
+    expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toHaveValue('1');
     expect(cargo).toHaveValue('1');
     expect(cargo).toBeEnabled();
     await waitFor(() => { expect(requests.filter(request => request.path.endsWith('/quote')).at(-1)?.body)
-      .toContain('"fleet":{"ARGOSY":1}'); });
-    expect(requests.filter(request => request.path.endsWith('/quote')).at(-1)?.body).not.toContain('CITADEL');
+      .toContain('"CITADEL":1'); });
+    expect(requests.filter(request => request.path.endsWith('/quote')).at(-1)?.body).toContain('CITADEL');
     const user = userEvent.setup();
     await user.click(screen.getByRole('checkbox', { name: /shield/i }));
     await user.click(screen.getByRole('checkbox', { name: /radiation/i }));
     await waitFor(() => expect(send()).toBeEnabled());
     hold(send());
     await waitFor(() => { expect(requests.find(request => request.path.endsWith('/send'))?.body)
-      .toContain('"fleet":{"ARGOSY":1}'); });
-    expect(requests.find(request => request.path.endsWith('/send'))?.body).not.toContain('CITADEL');
+      .toContain('"CITADEL":1'); });
+    expect(requests.find(request => request.path.endsWith('/send'))?.body).toContain('CITADEL');
   });
 
   it('explains Easy tier access before selection and disables new dispatch for an ineligible commander', async () => {
@@ -122,11 +164,11 @@ describe('monument decision surface, through the real client and cache', () => {
     expect(send()).toBeDisabled();
   });
 
-  it('explains the cargo-inclusive return requirement and keeps cargo available during a personal cycle', async () => {
+  it('explains repeated support and keeps combat and cargo available', async () => {
     show({ ...catalog, monuments: [{ ...monument, difficulty: 'HARD',
       sendAccess: { playerTier: 3, tierAllowed: true, cargoOnly: true } }] });
-    await screen.findByText(/all your ships.*cargo.*return home/i);
-    expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeDisabled();
+    await screen.findByText(/send.*combat.*cargo.*again/i);
+    expect(screen.getByRole('textbox', { name: /citadel.*quantity/i })).toBeEnabled();
     expect(screen.getByRole('textbox', { name: /argosy.*quantity/i })).toBeEnabled();
   });
 

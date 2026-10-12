@@ -18,7 +18,7 @@ describe('the approved monument season deal', () => {
     const current = await createSeason(f.db, {
       shardCode: 'MONUMENT-DEFAULT', seed: 919, startsAt: f.clock.now(),
     });
-    expect(current.season.rulesetVersion).toBe(16);
+    expect(current.season.rulesetVersion).toBe(17);
     expect(await f.db.select().from(monuments).where(eq(monuments.seasonId, current.season.id)))
       .toHaveLength(MONUMENT_SEASON_DEFAULTS.count);
     expect(await f.db.select().from(hpRadiationSources).where(eq(hpRadiationSources.seasonId, current.season.id)))

@@ -148,7 +148,8 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
   if (id === 'combat.eligibility') blocks = [pairs(language, t('PvP boundaries', 'PvP sınırları'), [
     [t('Development tier', 'Gelişim kademesi'), t('Highest owned Core level ÷ 3, rounded up', 'Sahip olduğun en yüksek Çekirdek seviyesi ÷ 3; yukarı yuvarlanır')],
     [t('Maximum tier difference', 'İzin verilen kademe farkı'), `±${n(ABUSE.tierBand)}`],
-    [t('Personal raids on one commander', 'Aynı komutana kişisel akın sınırı'), `${n(ABUSE.bashLimit)} / ${hours(ABUSE.bashWindowMinutes / 60, language)}`],
+    [t('Either commander tier 1–3: wait after battle', 'Taraflardan biri 1–3. kademe: savaştan sonra bekleme'), hours(ABUSE.personalRaidCooldownMinutes / 60, language)],
+    [t('Personal raids when both commanders are tier 4+', 'İki komutan da 4+ kademedeyken kişisel akın'), `${n(ABUSE.bashLimit)} / ${hours(ABUSE.bashWindowMinutes / 60, language)}`],
     [t('Clan raids on one commander', 'Aynı komutana klan akını sınırı'), `${n(CLAN.attackLimit)} / ${hours(CLAN.attackWindowMinutes / 60, language)}`],
     [t('Newcomer shield', 'Yeni oyuncu kalkanı'), hours(ABUSE.newcomerShieldHours, language)],
     [t('Recovery shield when granted', 'Verildiğinde toparlanma kalkanı'), hours(ABUSE.recoveryShieldHours, language)],

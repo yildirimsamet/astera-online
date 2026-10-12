@@ -11,6 +11,7 @@ export async function tellMonumentRadiationLoss(tx: Tx, target: { id: string; or
   await notify(tx, { playerId: wave.playerId, kind: 'radiation_lost', refId: randomUUID(), at,
     payload: { targetKind: 'MONUMENT', monumentId: target.id, monumentOrdinal: target.ordinal, waveId: wave.id,
       lost: destroyed.reduce((sum, lot) => sum + lot.count, 0), left: survivors.reduce((sum, lot) => sum + lot.count, 0),
-      lostDeuterium: destroyed.reduce((sum, lot) => sum + lot.deuterium, 0) } });
+      lostDeuterium: destroyed.reduce((sum, lot) => sum + lot.deuterium, 0),
+      lostFuel: destroyed.reduce((sum, lot) => sum + (lot.returnFuelReserve ?? 0) + (lot.fuelRefund ?? 0), 0) } });
   await publish(tx, wave.playerId, 'private:monument');
 }

@@ -24,12 +24,20 @@ import type { Fleet, Vec3 } from './types.js';
  * HP model in `radiationHp.ts` shares this geometry, while keeping its dose separate.
  */
 
-/** Spatial and historical coverage shared by percentage and HP rulesets. */
+/** A fleet takes entity radiation only while explicitly occupying this target. */
+export interface RadiationTarget {
+  kind: 'PLANET' | 'MONUMENT';
+  id: string;
+}
+
+/** Historical coverage; untagged sources retain the older static sphere model. */
 export interface RadiationField {
   id: string;
   /** EMIT doses; SHELTER cancels every EMIT for the time it covers. */
   mode: 'EMIT' | 'SHELTER';
   center: Vec3;
+  /** Entity damage ignores visual coordinates and radius. */
+  target?: RadiationTarget;
   radius: number;
   activeFromMs: number;
   /** `null` while it has not been ended. Ending a source never rewrites the past. */
@@ -47,6 +55,8 @@ export interface Segment {
   to: Vec3;
   startMs: number;
   endMs: number;
+  /** Present only for time spent waiting at a target, never for a flight leg. */
+  target?: RadiationTarget;
 }
 
 const MINUTE_MS = 60_000;
@@ -108,7 +118,10 @@ export function sphereInterval(segment: Segment, center: Vec3, radius: number): 
 
 /** A source's part of a segment: inside it, and while it is live. */
 function liveInterval(segment: Segment, source: RadiationField): [number, number] | null {
-  const inside = sphereInterval(segment, source.center, source.radius);
+  const inside: [number, number] | null = source.target
+    ? segment.target?.kind === source.target.kind && segment.target.id === source.target.id
+      ? [segment.startMs, segment.endMs] : null
+    : sphereInterval(segment, source.center, source.radius);
   if (!inside) return null;
   const lo = Math.max(inside[0], source.activeFromMs);
   const hi = Math.min(inside[1], source.activeUntilMs ?? Number.POSITIVE_INFINITY);
@@ -183,6 +196,7 @@ export function segmentsUntil(segments: readonly Segment[], untilMs: number): Se
       continue;
     }
     cut.push({
+      ...(segment.target ? { target: segment.target } : {}),
       from: segment.from,
       to: interpolatePosition(segment.from, segment.to, segment.startMs, segment.endMs, untilMs),
       startMs: segment.startMs,

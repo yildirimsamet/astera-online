@@ -58,6 +58,11 @@ describe('the recovery shield', () => {
   const worker = () =>
     new EventWorker(f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent);
 
+  // Multiple pre-shield raids are legal only when both commanders are tier 4+.
+  const tierFourCommanders = async () => {
+    for (const world of [mine, theirs]) await setLevel(f.db, world, 'CORE', 10);
+  };
+
   const recoveryOf = async (playerId: string): Promise<Date | null> => {
     const [row] = await f.db
       .select({ until: players.recoveryShieldUntil })
@@ -325,6 +330,7 @@ describe('the recovery shield', () => {
     await giveUnits(f.db, mine, { DART: 480, COURIER: 120 });
     await fuelUp(f.db, mine, 5_000_000);
     await levelWorld(f.db, f.planetIds);
+    await tierFourCommanders();
 
     const first = await launchAttack(f.db, mine, theirs, HEAVY, f.clock);
     const second = await launchAttack(f.db, mine, colony, HEAVY, f.clock);
@@ -402,6 +408,7 @@ describe('the recovery shield', () => {
 
   it('lets the raid through the moment the eight hours are over', async () => {
     await overwhelm();
+    await tierFourCommanders();
     f.clock.advance(ABUSE.recoveryShieldHours * 60 + 1);
     await giveUnits(f.db, mine, { DART: 10 });
     const launched = await launchAttack(f.db, mine, theirs, { DART: 10 }, f.clock);
@@ -513,6 +520,7 @@ describe('the recovery shield', () => {
     await giveUnits(f.db, mine, { DART: 480, COURIER: 120 });
     await fuelUp(f.db, mine, 5_000_000);
     await levelWorld(f.db, f.planetIds);
+    await tierFourCommanders();
 
     const first = await launchAttack(f.db, mine, theirs, HEAVY, f.clock);
     const second = await launchAttack(f.db, mine, colony, HEAVY, f.clock);
@@ -606,6 +614,7 @@ describe('the recovery shield', () => {
     await giveUnits(f.db, mine, { DART: 480, COURIER: 120 });
     await fuelUp(f.db, mine, 5_000_000);
     await levelWorld(f.db, f.planetIds);
+    await tierFourCommanders();
 
     const first = await launchAttack(f.db, mine, theirs, HEAVY, f.clock);
     const second = await launchAttack(f.db, mine, colony, HEAVY, f.clock);

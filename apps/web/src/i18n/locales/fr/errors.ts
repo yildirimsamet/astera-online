@@ -12,10 +12,10 @@
 * ce ne sont pas des erreurs, mais les règles du jeu.
   */
   export const errors = {
+  MONUMENT_UNREACHABLE: "Cette flotte ne peut pas atteindre le monument avant la fin de saison. Choisissez des vaisseaux plus rapides.",
   ACCOUNT_NOT_FOUND: 'Compte introuvable. Vérifie le nom d’utilisateur.',
   CHAT_MUTED: "Ton droit d’envoyer des messages dans ce canal est restreint.",
   MONUMENT_TIER_FORBIDDEN: "Les monuments faciles acceptent les niveaux 1–3 ; choisis un monument difficile",
-  MONUMENT_FLEET_ACTIVE: "Seuls les cargos peuvent être ajoutés jusqu’au retour de tous tes vaisseaux, cargos compris.",
   CAPITAL_CANNOT_BE_ABANDONED: "Tu ne peux pas abandonner ta capitale. Sélectionne une colonie.",
   COLONY_ABANDON_BLOCKED: "Des missions ou un changement de propriétaire sont en cours. Vérifie les raisons et attends leur fin.",
   SKIN_NOT_OWNED: 'Cette apparence ne figure pas dans ton inventaire. Choisis-en une que tu possèdes.',
@@ -88,6 +88,8 @@
   RESEARCH_CANNOT_BE_CANCELLED: 'Une recherche déjà commencée ne peut pas être annulée',
   RESEARCH_QUEUE_FULL: 'Il y a déjà 3 recherches dans la file. Attends que l’une d’elles se termine avant d’en ajouter une nouvelle.',
   BUILD_ORDER_NOT_FOUND: "Cette commande de production n’est plus active. Vérifie la file actuelle.",
+  PERSONAL_RAID_COOLDOWN: "Tu peux attaquer à nouveau ce commandant après {{until}} (ton heure locale).",
+  PERSONAL_RAID_PENDING: "Un de tes raids se dirige déjà vers ce commandant. Attends ou rappelle-le.",
   BASH_LIMIT: 'Tu as attaqué cette planète trop souvent récemment',
   TIER_BAND: 'Ce commandant a plus d’un palier d’avance sur toi : on compare le monde le plus développé de chaque camp',
   TIER_BAND_WEAK: 'Ce commandant a plus d’un palier de retard sur toi : on compare le monde le plus développé de chaque camp',

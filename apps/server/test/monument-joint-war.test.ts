@@ -2,13 +2,15 @@ import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CLAN, hangarLoad, MONUMENT_CAPACITY, MONUMENT_SEASON_DEFAULTS, type Fleet } from '@astera/rules';
+import { CLAN, hangarLoad, MONUMENT_CAPACITY, MONUMENT_SEASON_DEFAULTS, monumentMotion, motionPositionAt, distance, missionFuel, monumentFuelReserves, priceMonumentReturn, type Fleet } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { accounts, clanMemberships, clanWarContributions, clanWarOperations, clans, hpRadiationSources, missions, monumentBattleParticipants, monumentBattles, monuments, monumentShipLots, monumentWaves, notifications, planets, players, seasons, units } from '../src/db/schema.js';
 import { acceptClanRequest, applyToClan, clanActor, createClan } from '../src/services/clan.js';
-import { markClanWarMonumentTarget, openOperation, quoteClanWarContribution, readClanWar, sendClanWarContribution, startClanWar } from '../src/services/clanWar.js';
+import { cancelClanWarOperation, markClanWarMonumentTarget, openOperation, quoteClanWarContribution, readClanWar, recallClanWarContribution, sendClanWarContribution, startClanWar } from '../src/services/clanWar.js';
 import { forceRecoveryShield } from '../src/services/attackProtection.js';
+import { recomputePlayerWealth } from '../src/services/planet.js';
+import { activateMonumentMotion } from '../src/services/monumentMotionAdoption.js';
 import { baysInUse } from '../src/services/flight.js';
 import { closeSeasonMonuments } from '../src/services/monumentSeasonClose.js';
 import { sendMonument } from '../src/services/monument.js';
@@ -68,6 +70,151 @@ beforeEach(async () => {
 afterAll(async () => { await (await testDb()).close(); });
 
 describe('the existing clan preparation with a real monument target', () => {
+  it('refuses an idle activation while an empty monument preparation remains open', async () => {
+    await mark();
+    expect(await activateMonumentMotion(f.db, { seasonId: f.seasonId, clock: f.clock, apply: true, adminUsernames: [] }))
+      .toMatchObject({ applied: false, status: 'BUSY', fleets: 0, operations: 1 });
+  });
+  it('continues counting prepaid but unused fuel as the owner’s wealth while preparing', async () => {
+    await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    await mark();
+    const before = await f.db.transaction(tx => recomputePlayerWealth(tx, f.playerIds[0]!));
+    await send(0);
+    const after = await f.db.transaction(tx => recomputePlayerWealth(tx, f.playerIds[0]!));
+    expect(after).toBeCloseTo(before, 8);
+  });
+  it('removes the actual strike fuel from cached wealth when the reserved clan wave departs', async () => {
+    await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    await mark();
+    await send(0);
+    const before = await f.db.transaction(tx => recomputePlayerWealth(tx, f.playerIds[0]!));
+    await start();
+    const [native] = await f.db.select().from(monumentWaves).where(eq(monumentWaves.playerId, f.playerIds[0]!));
+    const spent = missionFuel(fleet, distance(native!.route[0]!.from, native!.route[0]!.to), 1);
+    const [owner] = await f.db.select({ wealth: players.wealth }).from(players).where(eq(players.id, f.playerIds[0]!));
+    expect(owner!.wealth).toBe(before - spent);
+  });
+  it('covers an immediate outbound recall from a teammate’s out-of-disc staging world', async () => {
+    await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    await f.db.update(planets).set({ x: 8000, y: 0, z: 0 }).where(eq(planets.id, f.planetIds[0]!));
+    await f.db.update(planets).set({ x: -4500, y: 0, z: 0 }).where(eq(planets.id, f.planetIds[1]!));
+    await mark();
+    await stage();
+    const [member] = await f.db.select().from(clanWarContributions).where(eq(clanWarContributions.playerId, f.playerIds[1]!));
+    expect(member?.monumentFuelBudget?.homeward.total).toBe(monumentFuelReserves(fleet, 12_500).total);
+    await start();
+    const [native] = await f.db.select().from(monumentWaves).where(eq(monumentWaves.jointContributionId, member!.id));
+    await expect(f.db.transaction(tx => recallMonument(tx, { playerId: f.playerIds[1]!, waveId: native!.id,
+      all: true, clock: f.clock }))).resolves.toMatchObject({ wave: { status: 'RETURNING' } });
+  });
+  it('reserves both unknown monument legs and transfers only actual outbound leftovers to each native fleet', async () => {
+    await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    await mark();
+    const quote = await quoteClanWarContribution(f.db, { actor: await actor(0), originPlanetId: f.planetIds[0]!, fleet, clock: f.clock });
+    expect(quote.fuel.reserved).toBe(true);
+    await stage();
+    const contributions = await f.db.select().from(clanWarContributions);
+    expect(contributions.every(row => (row.monumentFuelBudget?.homeward.total ?? 0) > 0)).toBe(true);
+    f.clock.advance(60);
+    await start();
+    for (const contribution of contributions) {
+      const [native] = await f.db.select().from(monumentWaves).where(eq(monumentWaves.jointContributionId, contribution.id));
+      const lots = await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, native!.id));
+      const budget = contribution.monumentFuelBudget!;
+      expect(lots.reduce((sum, lot) => sum + lot.returnFuelReserve, 0)).toBe(budget.homeward.total);
+      expect(lots.reduce((sum, lot) => sum + lot.fuelRefund, 0)).toBeCloseTo(
+        budget.outbound.total - missionFuel(contribution.fleet, distance(native!.route[0]!.from, native!.route[0]!.to), 1), 8);
+      const [transferred] = await f.db.select().from(clanWarContributions).where(eq(clanWarContributions.id, contribution.id));
+      expect(transferred?.monumentFuelBudget).toBeNull();
+    }
+  });
+  it('returns all unused leader-capital reserves when cancelling without ever departing, only once', async () => {
+    await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    await mark();
+    const [before] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+    await send(0);
+    const [reserved] = await f.db.select().from(clanWarContributions);
+    expect(reserved?.monumentFuelBudget?.outbound.total).toBeGreaterThan(0);
+    await f.db.transaction(async tx => cancelClanWarOperation(tx, { actor: await actor(0), clock: f.clock }));
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+    expect(after?.deuterium).toBeCloseTo(before!.deuterium, 8);
+    expect((await f.db.select().from(clanWarContributions))[0]).toMatchObject({ status: 'HOME', monumentFuelBudget: null });
+    const [receipt] = (await f.db.select().from(notifications)).filter(row => row.kind === 'fleet_returned');
+    expect(receipt?.payload).toMatchObject({ trip: 'recalled',
+      fuelRefund: reserved!.monumentFuelBudget!.outbound.total + reserved!.monumentFuelBudget!.homeward.total });
+    await readClanWar(f.db, await actor(0), f.clock.now());
+    expect((await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!)))[0]?.deuterium).toBeCloseTo(after!.deuterium, 8);
+  });
+  it('keeps the correct hull’s fuel share when a wounded manifest contains more than ten cohorts', async () => {
+    await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    await mark();
+    const many = { CITADEL: 12, ARGOSY: 1 };
+    await giveUnits(f.db, f.planetIds[0]!, many);
+    const sent = await f.db.transaction(async tx => sendClanWarContribution(tx, { actor: await actor(0),
+      originPlanetId: f.planetIds[0]!, fleet: many, acknowledgeShieldLoss: true, clock: f.clock }));
+    await f.db.update(clanWarContributions).set({ damage: Array.from({ length: 11 }, (_, index) => ({
+      hull: 'CITADEL' as const, count: 1, damageBp: (index + 1) * 100, remainderBp: 0,
+    })) }).where(eq(clanWarContributions.id, sent.contributionId));
+    const [contribution] = await f.db.select().from(clanWarContributions).where(eq(clanWarContributions.id, sent.contributionId));
+    await start();
+    const [native] = await f.db.select().from(monumentWaves).where(eq(monumentWaves.jointContributionId, contribution!.id));
+    const stored = await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, native!.id));
+    expect(stored.length).toBeGreaterThan(10);
+    const budget = contribution!.monumentFuelBudget!;
+    const expected = priceMonumentReturn(Object.entries(many).map(([hull, count]) => ({
+      id: hull, playerId: contribution!.playerId, waveId: native!.id, hull: hull as 'CITADEL' | 'ARGOSY', count,
+      damageBp: 0, remainderBp: 0, deuterium: 0, tech: contribution!.tech,
+      returnFuelReserve: budget.outbound.perShip[hull as 'CITADEL' | 'ARGOSY']! * count,
+    })), distance(native!.route[0]!.from, native!.route[0]!.to));
+    for (const row of expected.lots) {
+      expect(stored.filter(lot => lot.hull === row.hull).reduce((sum, lot) => sum + lot.fuelRefund, 0))
+        .toBeCloseTo(row.fuelRefund!, 8);
+    }
+  });
+  it('keeps a recalled physical contribution’s unused allowance until its real return lands', async () => {
+    await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    await mark();
+    await stage();
+    const [before] = await f.db.select().from(clanWarContributions).where(eq(clanWarContributions.playerId, f.playerIds[1]!));
+    const wealth = await f.db.transaction(tx => recomputePlayerWealth(tx, f.playerIds[1]!));
+    await f.db.transaction(async tx => recallClanWarContribution(tx, { actor: await actor(1), contributionId: before!.id, clock: f.clock }));
+    const [returning] = await f.db.select().from(clanWarContributions).where(eq(clanWarContributions.id, before!.id));
+    const [returnMission] = await f.db.select().from(missions).where(and(eq(missions.ownerPlayerId, f.playerIds[1]!), eq(missions.status, 'in_flight')));
+    const refund = before!.monumentFuelBudget!.outbound.total + before!.monumentFuelBudget!.homeward.total
+      - missionFuel(fleet, returnMission!.distance, 1);
+    expect(returning).toMatchObject({ status: 'RETURNING', monumentFuelBudget: { outbound: { total: 0 }, homeward: { total: refund } } });
+    expect(refund).toBeGreaterThan(0);
+    const [owner] = await f.db.select({ wealth: players.wealth }).from(players).where(eq(players.id, f.playerIds[1]!));
+    expect(owner!.wealth).toBe(wealth - missionFuel(fleet, returnMission!.distance, 1));
+    // Settle ordinary income before the arrival, so the only remaining credit is the refund.
+    f.clock.set(returnMission!.arriveAt);
+    const { loadLocked } = await import('../src/services/planet.js');
+    const home = await f.db.transaction(tx => loadLocked(tx, f.planetIds[1]!, f.clock));
+    await new EventWorker(f.db, f.clock, { pollMs: 1, batch: 100, staleMinutes: 5 }, silent).tick();
+    const [landed] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[1]!));
+    expect(landed!.deuterium - home.deuterium).toBeCloseTo(refund, 8);
+    expect((await f.db.select().from(clanWarContributions).where(eq(clanWarContributions.id, before!.id)))[0])
+      .toMatchObject({ status: 'HOME', monumentFuelBudget: null });
+    const [receipt] = (await f.db.select().from(notifications)).filter(row => row.kind === 'fleet_returned' && row.playerId === f.playerIds[1]);
+    expect(receipt?.payload).toMatchObject({ trip: 'recalled', fuelRefund: refund });
+  });
+  it('launches all participants to the same moving meeting at the quoted selected pace', async () => {
+    await f.db.update(seasons).set({rulesetVersion:17}).where(eq(seasons.id,f.seasonId));
+    await mark();
+    await stage();
+    const view=await readClanWar(f.db,await actor(0),f.clock.now());
+    const selected=view.operation!.pool.meetings.find(m=>m.pace===0.5)!;
+    expect(selected).toBeDefined();
+    const started=await f.db.transaction(async tx=>startClanWar(tx,{actor:await actor(0),pace:0.5,acknowledgeShieldLoss:true,clock:f.clock}));
+    const rows=await f.db.select().from(monumentWaves);
+    const [season]=await f.db.select().from(seasons).where(eq(seasons.id,f.seasonId));
+    expect(rows).toHaveLength(2);
+    for(const wave of rows){
+      expect(wave.arriveAt!.toISOString()).toBe(started.arriveAt);
+      expect(distance(wave.route[0]!.to,motionPositionAt(monumentMotion(m,season!.startsAt.getTime()),wave.arriveAt!.getTime()))).toBeLessThan(1e-5);
+      expect(distance(wave.route[0]!.to,selected.position)).toBeLessThan(1e-5);
+    }
+  });
   it.each([true, false])('refreshes the personal monument cycle of every departing participant (leader sends ships: %s)', async (leaderParticipates) => {
     await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
     await mark();
@@ -162,15 +309,17 @@ describe('the existing clan preparation with a real monument target', () => {
     expect((await f.db.select().from(clanWarOperations))[0]?.status).toBe('ASSEMBLING');
   });
 
-  it('prevents a staged joint attack from adding to a personal fleet launched separately', async () => {
+  it('allows a joint attack alongside an earlier personal fleet', async () => {
     await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
     await mark();
     await stage();
     await giveUnits(f.db, f.planetIds[0]!, { RAMPART: 1 });
     const personal = await f.db.transaction(tx => sendMonument(tx, { senderPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!,
       monumentId: m.id, purpose: 'ATTACK', fleet: { RAMPART: 1 }, acknowledgeShieldLoss: true, clock: f.clock }));
-    await expect(start()).rejects.toMatchObject({ code: 'MONUMENT_FLEET_ACTIVE' });
-    expect((await f.db.select().from(monumentWaves)).map(wave => wave.id)).toEqual([personal.wave.id]);
+    await expect(start()).resolves.toMatchObject({participants:2});
+    const rows=await f.db.select().from(monumentWaves);
+    expect(rows).toHaveLength(3);
+    expect(rows.some(wave=>wave.id===personal.wave.id)).toBe(true);
   });
 
   it('accepts all initial contributions in the same Hard joint launch as one personal fleet per participant', async () => {

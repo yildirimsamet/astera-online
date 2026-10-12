@@ -58,6 +58,14 @@ export function describeError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.code === 'UNREACHABLE') return i18n.t('errors.unreachable');
     if (err.code === 'STREAM_FAILED') return i18n.t('errors.streamFailed');
+    if (err.code === 'PERSONAL_RAID_COOLDOWN') {
+      const until = err.params?.until;
+      const at = typeof until === 'string' ? Date.parse(until) : NaN;
+      if (!Number.isFinite(at)) return i18n.t('errors.unknown');
+      return i18n.t('errors.PERSONAL_RAID_COOLDOWN', {
+        until: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'medium' }).format(at),
+      });
+    }
     if (isKnown(err.code)) {
       // `context` rides in with the params, so a code with two wordings — a
       // locked galaxy with or without a frontier to point at — resolves to

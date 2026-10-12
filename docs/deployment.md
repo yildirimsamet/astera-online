@@ -5,6 +5,29 @@ Use `docker-compose.prod.yml` only. The development Compose uses tmpfs and an un
 
 This compact runbook consolidates the supplied notes through 10 October 2026. Inspection and rehearsal records are point-in-time evidence, not proof that a release is deployed. Refresh the actual SHA, migration journal, flags and live shards before each release. Repository-relative links below refer to supporting files in the project.
 
+### 12 October monuments: idle same-season motion activation
+
+Migration `0153_monument_motion_fuel` adds a separate motion epoch and per-ship fuel
+escrow. Update every API and worker before enabling motion. While all monuments are
+idle, preview `pnpm season activate-monument-motion --shard CODE`; apply with `--yes`
+only in the authorized release. The transaction also rejects outbound/returning
+fleets, probes and open monument clan preparations. It preserves season rules,
+target IDs and initial coordinates; retries do not reset the phase. Once moving
+missions exist, deleting the epoch or rolling back to static routing is unsupported.
+See the [implementation and activation plan](moving-monuments-two-axis-plan-2026-10-12.md)
+and [review evidence](moving-monuments-code-review-2026-10-12.md).
+
+### 12 October Aegis: same-season charge and price cutover
+
+Migration `0152_aegis_balance` preserves existing fill ratios and historical
+investment while adopting level-1 150 HP, +50% capacity and +60% upgrade cost per
+level. All old API/worker writers must be drained before migration; an old writer
+would clamp converted charge to the previous maximum. This requires a coordinated
+cutover, not a mixed-version roll. Queue invoices/deadlines remain unchanged.
+Follow the [Aegis release sequence and rollback limits](aegis-balance-2026-10-12.md)
+and the release gates below. No season reset or production deployment is performed
+by the repository change.
+
 ### 12 October PvE balance: same-season compatibility roll
 
 This change adopts the balance through **new hour snapshots**; it needs no season reset or ruleset bump.

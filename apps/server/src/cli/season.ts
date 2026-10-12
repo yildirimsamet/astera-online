@@ -18,6 +18,7 @@ import { accounts, players, seasons } from '../db/schema.js';
 import { hashPassword } from '../auth/password.js';
 import { createSeason, liveSeason } from '../services/season.js';
 import { adoptMonumentLayout } from '../services/monumentAdoption.js';
+import { activateMonumentMotion } from '../services/monumentMotionAdoption.js';
 import {
   restampFutureOccurrences,
   syncMissingFixedOccurrences,
@@ -86,6 +87,11 @@ season adopt-monuments --shard CODE [--yes]
                                    LIVE galaxy. Requires no held monuments, active
                                    fleets, probes or joint operations. Dry run unless
                                    --yes; safe to run twice. Keeps target IDs/history.
+
+season activate-monument-motion --shard CODE [--yes]
+                                   start 8h/16h motion in an idle LIVE galaxy.
+                                   Refuses active fleets, probes and joint operations.
+                                   Dry run unless --yes; does not reset season rules.
 
   --shard CODE      shard code, for 'create'   (default: EU-1)
   --seed N          galaxy seed / seed base    (default: random)
@@ -204,6 +210,18 @@ async function main(): Promise<void> {
         break;
       }
 
+      case 'activate-monument-motion': {
+        if (!values.shard) throw new Error('activate-monument-motion requires an explicit --shard CODE');
+        const live = await liveSeason(db, values.shard);
+        if (!live) throw new Error(`no live season on ${values.shard}`);
+        const result = await activateMonumentMotion(db, { seasonId: live.season.id, clock: systemClock,
+          apply: values.yes === true, adminUsernames: env.ADMIN_USERNAMES });
+        console.log(`${values.shard}: ${result.status}; start=${result.startsAt.toISOString()}; fleets=${String(result.fleets)}, probes=${String(result.probes)}, operations=${String(result.operations)}`);
+        if (result.applied) console.log('Applied motion and entity radiation. Current coordinates, season and history were preserved.');
+        else console.log('Nothing was written.');
+        if (result.status === 'BUSY' && values.yes === true) process.exitCode = 1;
+        break;
+      }
       case 'bootstrap':
       case 'local-bootstrap': {
         if (command === 'local-bootstrap' && values.ruleset !== undefined) {
