@@ -363,6 +363,8 @@ If those paths already exist, preserve/rename them deliberately before continuin
 
 **Forward CSP order: new webroot before new vhost. Rollback: old vhost before old webroot.** A nonce-requiring `'strict-dynamic'` vhost with an old nonce-free page produces a blank game despite green health. Validate Nginx before reload; restore the retained vhost if validation fails. The example's reload alone does not install a changed vhost.
 
+If the vhost changes, install and validate it **AFTER the rename**, then reload Nginx.
+
 For quiesced in-place publication, keep Nginx stopped, validate/install `deploy/nginx/astera.conf`, run `sudo bash deploy/publish-web.sh "$web_stage" /var/www/astera`, ensure `www-data` access (`D755,F644`), then start Nginx. The helper retains old hashed assets and discards a precompressed index.
 
 External gates:

@@ -149,6 +149,11 @@ kabulü tamamlanmadan üretim tamamlandı sayılmayacak.
    seviye 2 için 800/700/100 kalan şeklinde iki gerçek varışa ayrıldı.
    İki durum da gerçek DB/worker üzerinden **2/2 yeşil**; tükenen kaya gizleniyor,
    kısmen kazılmış kaya kalan 100 kaynakla görünür kalıyor.
+9. **Yayın kılavuzunun CSP regresyonu:** ilk CI'nın web turu, kısaltılmış kılavuzda
+   vhost'un yeni webroot'tan sonra kurulmasını açıkça söyleyen `AFTER the rename`
+   cümlesini arıyordu. Kılavuz doğru sırayı zaten açıklıyordu; öngörülen adım
+   açık cümleyle tekrar belirtildi. Testin koruduğu yayın sırası değiştirilmedi;
+   yayın/nonce/rollback dosyasının **13/13 testi yeşil**.
 
 ### Doğrulanmayan şüphe ve kapsanan durumlar
 
