@@ -110,6 +110,7 @@ export function useOpeningViews({ controls, covered, ready, settled, wideDistanc
     }
     invalidate();
   }, 1.5);
-  useLayoutEffect(() => () => { restore(); work.finish('cancelled'); }, []);
+  // Effect replay also runs cleanup; only the live camera owner may finish the barrier.
+  useLayoutEffect(() => () => { restore(); active.current = false; }, []);
   return active;
 }

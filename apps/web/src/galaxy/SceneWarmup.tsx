@@ -79,12 +79,17 @@ export function SceneRenderGate() {
 
 /** The ready signal follows the composer's actual draw, never just its download. */
 export function FirstSceneFrame({ ready, onDrawn, settled }: { ready: boolean; onDrawn: () => void; settled?: RefObject<boolean> }) {
+  const gl = useThree(state => state.gl);
   const fired = useRef(false);
   const drawnFrame = useRef(0);
   useFrame(() => {
-    if (!ready || fired.current || settled?.current === false) return;
+    if (!ready || fired.current || settled?.current === false || gl.getContext().isContextLost()) return;
     fired.current = true;
-    drawnFrame.current = requestAnimationFrame(onDrawn);
+    drawnFrame.current = requestAnimationFrame(() => {
+      // A context can disappear between the draw and this next-frame callback.
+      if (gl.getContext().isContextLost()) { fired.current = false; return; }
+      onDrawn();
+    });
   }, 2);
   useEffect(() => () => { cancelAnimationFrame(drawnFrame.current); }, []);
   return null;

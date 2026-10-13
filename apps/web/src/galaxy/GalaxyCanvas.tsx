@@ -850,7 +850,7 @@ export function GalaxyCanvas({
           rivals={rivals}
         />
         {gpu.live && <SceneWarmup key={gpu.epoch} dataReady={openingDataReady} onCompiled={onCompiled} />}
-        <FirstSceneFrame settled={openingSettled} ready={prepared && openingDataReady} onDrawn={() => {
+        <FirstSceneFrame settled={openingSettled} ready={prepared && openingDataReady && gpu.live} onDrawn={() => {
           sceneReady.current = true;
           if (openingCovered && openingMark.current && openingSettled.current) {
             openingMark.current.dataset.academyHomeReady = 'true';

@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PerspectiveCamera } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { StrictMode } from 'react';
 import { createOpeningPreparation } from '../src/galaxy/openingPreparation.js';
 import { useOpeningViews, useOpeningWork, OpeningWork } from '../src/galaxy/OpeningViews.js';
 const fiber = vi.hoisted(() => ({ frames: new Map<number, () => void>(), invalidate: vi.fn() }));
@@ -35,6 +36,31 @@ beforeEach(() => {
   vi.spyOn(performance, 'now').mockImplementation(() => now);
 });
 describe('hidden camera preparation', () => {
+  it('survives StrictMode effect replay without cancelling the opening barrier', () => {
+    const camera = new PerspectiveCamera();
+    const controls = new OrbitControls(camera, document.createElement('canvas'));
+    controls.target.set(10, 0, 0);
+    camera.position.set(10, 6, 8);
+    controls.update();
+    const work = createOpeningPreparation(true);
+    const pending = work.begin();
+    const settled = { current: false };
+    const view = renderHook(() => useOpeningViews({
+      controls: { current: controls }, covered: true, ready: true, settled,
+      wideDistance: 100, homeDistance: 7, work,
+    }), { wrapper: StrictMode });
+    try {
+      expect(work.result).toBe(null);
+      expect(work.size).toBe(1);
+      frame(0); frame(16); frame(32);
+      expect(settled.current).toBe(false);
+      expect(camera.position.length()).toBeCloseTo(100);
+      pending();
+      frame(48); frame(64); frame(80); frame(96); frame(112); frame(128);
+      expect(work.result).toBe('ready');
+      expect(camera.position.distanceTo(controls.target)).toBeCloseTo(7);
+    } finally { view.unmount(); controls.dispose(); }
+  });
   it('restores on GPU loss and does not sweep again on recovery', () => {
     const { camera, controls, settled, view } = setup();
     frame(0);
