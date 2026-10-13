@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 export async function verifyPlanetSkinGlow(output) {
+  const countries = process.argv.includes('--country-skins');
   await mkdir(output, { recursive: true });
   const web = process.env.WEB ?? 'http://localhost:5173';
   const source = await (await fetch(`${web}/src/v2/gallery/main.tsx`)).text();
@@ -48,8 +49,8 @@ export async function verifyPlanetSkinGlow(output) {
                 import(${JSON.stringify(react[1])}), import(${JSON.stringify(dom[1])}),
                 import('/src/galaxy/GalaxyCanvas.tsx'), import('/src/galaxy/scene.ts'),
               ]);
-              const ids = ['planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert'];
-              const names = ['LAV', 'BUZ', 'TOKSIK', 'COL'];
+              const ids = ${JSON.stringify(countries ? ['planet-turkey', 'planet-germany', 'planet-france', 'planet-japan'] : ['planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert'])};
+              const names = ids.map(id => id.slice('planet-'.length).toUpperCase());
               const planets = ids.flatMap((id, index) => ['NORMAL', 'DEFAULT', 'RECOVERY_SHIELD'].map((status, row) => ({
                 id: id + ':' + status, name: names[index], owner: status === 'DEFAULT' ? 'NORMAL' : names[index],
                 kind: 'COLONY', isSelf: false, isOwned: false, coreTier: 2, coreLevel: 6,
