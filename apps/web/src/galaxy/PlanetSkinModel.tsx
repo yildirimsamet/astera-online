@@ -558,8 +558,7 @@ function ModelInstances({
         args={[geometry, dressed.material, capacity]}
         frustumCulled={false}
         raycast={() => null}
-        // The geometry and material are the session's (`cachedGeometry`), not the mesh's.
-        dispose={null}
+        // Cached assets arrive through args; Fiber frees only this mesh's instance buffers.
       />
       {onSelect && (
         <instancedMesh
