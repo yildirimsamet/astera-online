@@ -78,6 +78,8 @@ changes in those shared files belong to separate work.
 Regressions: new `apps/server/test/death-star-burst.test.ts` and
 `apps/web/test/planet-impact-material.test.ts`; additions in
 `apps/server/test/contract.test.ts` and `apps/web/test/death-star-impact.test.ts`.
+The live renderer's `planet-visibility.test.tsx` evaluator now traverses the
+grouping fragment while retaining its compaction, picking and matrix assertions.
 Notification dispatch already existed and was verified, not implemented here.
 
 When isolating this change, copy only these hunks from shared dirty files and

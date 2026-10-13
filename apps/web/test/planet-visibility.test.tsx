@@ -1,4 +1,4 @@
-import { Children, isValidElement, type ComponentProps, type ReactElement, type ReactNode, type RefObject } from 'react';
+import { Children, Fragment, isValidElement, type ComponentProps, type ReactElement, type ReactNode, type RefObject } from 'react';
 import { renderHook } from '@testing-library/react';
 import { useFrame, type RootState, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -33,6 +33,9 @@ function isComponent<P>(type: ReactElement<P>['type']): type is (props: P) => Re
   return typeof type === 'function' && !String(type).startsWith('class');
 }
 function evaluate<P>(element: ReactElement<P>): ReactNode {
+  if (element.type === Fragment && isValidElement<{ children?: ReactNode }>(element)) {
+    return Children.map(element.props.children, child => isValidElement(child) ? evaluate(child) : child);
+  }
   if (!isComponent(element.type)) throw new Error('Expected a function');
   return element.type(element.props);
 }
