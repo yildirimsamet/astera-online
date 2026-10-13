@@ -48,9 +48,11 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       const [initial] = await tx.select().from(players).where(eq(players.id, playerId));
       const [targetBefore] = await tx.select().from(seasons).where(eq(seasons.id, targetSeasonId));
       if (!initial || !targetBefore || initial.seasonId === targetSeasonId) defer('PLACEMENT');
+      // Wait for in-flight writes inside this transaction's `lock_timeout` (150 ms)
+      // rather than deferring the move the instant one holds the shared side; a
+      // longer hold raises 55P03, which still defers as CONTENTION below.
       for (const seasonId of [initial.seasonId, targetSeasonId].sort()) {
-        const [lease] = await tx.execute<{ acquired: boolean }>(sql`select pg_try_advisory_xact_lock(hashtextextended(${`placement:${seasonId}`}, 0)) as acquired`);
-        if (!lease?.acquired) defer('CONTENTION');
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`placement:${seasonId}`}, 0))`);
       }
       // Lifecycle first; NOWAIT prevents a transfer from holding up the world queue.
       const [lifecycle] = await tx.execute<{ acquired: boolean }>(sql`select pg_try_advisory_xact_lock(83202488) as acquired`);

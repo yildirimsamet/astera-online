@@ -232,7 +232,7 @@ export interface SeedOptions {
  * Derived from `seed` so two fixtures asking for different seeds still get
  * different worlds.
  */
-const pinnedKey = (seed: number): string =>
+export const pinnedKey = (seed: number): string =>
   `00000000-0000-4000-8000-${String(seed).padStart(12, '0').slice(-12)}`;
 
 export async function seedWorld(

@@ -44,6 +44,33 @@ it('reads commander research and clan membership once for a multi-world response
   expect((await built.app.inject({ url: `/api/planets/${f.planetIds[2]!}`, headers: { authorization } })).statusCode).toBe(403);
 });
 
+it('loads every further world concurrently once the commander snapshot is known', async () => {
+  // Resource analysis follow-up 2026-10-14: worlds were loaded one after another,
+  // ~8 dependent round trips each, inside one snapshot that does not need the order.
+  const f = await seedWorld(3);
+  await f.db.update(schema.seasons).set({ rulesetVersion: 15 }).where(eq(schema.seasons.id, f.seasonId));
+  for (const id of [f.planetIds[1]!, f.planetIds[2]!]) {
+    await f.db.update(schema.planets).set({ kind: 'COLONY', controllerPlayerId: f.playerIds[0]! })
+      .where(eq(schema.planets.id, id));
+  }
+  built = buildApp({ db, env: testEnv(), clock: f.clock, logger: pino({ level: 'silent' }) });
+  const authorization = `Bearer ${await built.app.tokens.issueAccess(f.accountIds[0]!)}`;
+  const events: string[] = [];
+  const load = viewModule.loadPlanetViewData;
+  vi.spyOn(viewModule, 'loadPlanetViewData').mockImplementation(async (...args) => {
+    events.push(`start:${args[1]}`);
+    const data = await load(...args);
+    events.push(`end:${args[1]}`);
+    return data;
+  });
+  const response = await built.app.inject({ url: '/api/planets', headers: { authorization } });
+  expect(response.statusCode).toBe(200);
+  const colonies = [f.planetIds[1]!, f.planetIds[2]!];
+  const firstColonyEnd = Math.min(...colonies.map(id => events.indexOf(`end:${id}`)));
+  for (const id of colonies) expect(events.indexOf(`start:${id}`)).toBeLessThan(firstColonyEnd);
+  expect(events.slice(0, 2)).toEqual([`start:${f.planetIds[0]!}`, `end:${f.planetIds[0]!}`]);
+});
+
 it('reads each world unit inventory once when preparing a private view', async () => {
   const f = await seedWorld(1);
   queries.length = 0;

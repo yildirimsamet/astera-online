@@ -142,10 +142,16 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
         a.kind === b.kind ? a.id.localeCompare(b.id) : a.kind === 'CAPITAL' ? -1 : 1,
       );
       const views: PlanetViewData[] = [];
-      // One clock instant and commander snapshot for the whole response.
+      // One clock instant and commander snapshot for the whole response. The first
+      // world brings the commander; the rest share it and load together, pipelined
+      // on this snapshot, instead of one after another.
       const now = app.clock.now();
-      for (const world of worlds) {
-        views.push(await loadPlanetViewData(tx, world.id, { now: () => now }, views[0]?.commander, READ_ONLY));
+      const at = { now: () => now };
+      const [first, ...rest] = worlds;
+      if (first) {
+        const head = await loadPlanetViewData(tx, first.id, at, undefined, READ_ONLY);
+        views.push(head, ...await Promise.all(rest.map((world) =>
+          loadPlanetViewData(tx, world.id, at, head.commander, READ_ONLY))));
       }
       return {
         playerId: commander.playerId,

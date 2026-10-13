@@ -39,6 +39,10 @@ echo "wrote $OUT ($(du -h "$OUT" | cut -f1))"
 
 # Retention. Sorted by name, which is chronological because the stamp is.
 mapfile -t old < <(ls -1 "$DEST"/astera-*.sql.gz 2>/dev/null | head -n -"$KEEP")
+# `if`, not `&&`: a false test as the loop's last command made a good backup exit 1.
 for f in "${old[@]:-}"; do
-  [[ -n "$f" ]] && rm -f "$f" && echo "pruned $(basename "$f")"
+  if [[ -n "$f" ]]; then
+    rm -f "$f"
+    echo "pruned $(basename "$f")"
+  fi
 done
