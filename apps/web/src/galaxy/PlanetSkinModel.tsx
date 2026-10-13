@@ -1,6 +1,7 @@
 import { Suspense, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
+import { useGltfPair } from './useGltfPair.js';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { PlanetSkinStatus } from '@astera/rules';
@@ -274,12 +275,9 @@ function LoadedPlanetSkinModel({
   freezeRotation: boolean;
   onRendered?: () => void;
 }) {
-  const loaded = useGLTF(
-    [visual.modelUrl, visual.lowModelUrl],
-    false,
-  );
-  const scene = loaded[0]!.scene;
-  const lowScene = loaded[1]!.scene;
+  const [full, low] = useGltfPair(visual.modelUrl, visual.lowModelUrl);
+  const scene = full.scene;
+  const lowScene = low.scene;
   const model = useMemo(() => firstMesh(scene), [scene]);
   const lowModel = useMemo(() => firstMesh(lowScene), [lowScene]);
   const geometry = useMemo(() => model ? unitPlanetGeometry(model) : null, [model]);

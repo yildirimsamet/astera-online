@@ -18,7 +18,7 @@ vi.mock('@react-three/fiber', async (original) => ({
   useFrame: vi.fn(),
 }));
 const assets = vi.hoisted(() => ({
-  read: vi.fn<() => { scene: THREE.Group }[]>(),
+  read: vi.fn<() => { scene: THREE.Group }>(),
   texture: vi.fn<(input: string | string[]) => THREE.Texture | THREE.Texture[]>(),
 }));
 vi.mock('@react-three/drei', async (original) => ({
@@ -248,7 +248,7 @@ describe('independent resource lifetimes', () => {
     const geometry = new THREE.BoxGeometry();
     const scene = new THREE.Group();
     scene.add(new THREE.Mesh(geometry, array ? sources : sources[0]));
-    assets.read.mockReturnValue([{ scene }]);
+    assets.read.mockReturnValue({ scene });
     const sourceDisposals = sources.map(source => vi.spyOn(source, 'dispose'));
     const sourceGeometryDispose = vi.spyOn(geometry, 'dispose');
     const value = contact({ fleet: { DART: 10 } });

@@ -24,6 +24,7 @@ import {
 } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Billboard, useGLTF, useTexture } from '@react-three/drei';
+import { useGltfPair } from './useGltfPair.js';
 import * as THREE from 'three';
 import {
   INTERGALACTIC_CONVOY,
@@ -455,9 +456,9 @@ function FormationHullBucket(props: FormationHullBucketProps) {
 
 function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused, url, lowUrl }:
   FormationHullBucketProps & { url: string; lowUrl: string }) {
-  const loaded = useGLTF(url === lowUrl ? [url] : [url, lowUrl], false);
-  const scene = loaded[0]!.scene;
-  const lowScene = (loaded[1] ?? loaded[0])!.scene;
+  const [full, low] = useGltfPair(url, lowUrl);
+  const scene = full.scene;
+  const lowScene = low.scene;
   const fullParts = useMemo(() => formationHullParts(scene, url), [scene, url]);
   // LOD geometry has the same authored axes and pose as its source model.
   const lowParts = useMemo(() => {
