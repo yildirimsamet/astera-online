@@ -3,6 +3,12 @@
 Base: production web `1b176fed5d5ba95ecf76c1d1dd9180072b4e5c51`.
 Branch: `perf/galaxy-render-isolation`. Do not merge pending master changes into this release.
 
+Deployment selection: `perf/galaxy-render-release` carries these reviewed changes
+on actual production `b8d6ed0e056f959cb1a40b2609c694ec701629bc`, preserving its
+already-published planet visual fixes. Pending master changes are excluded.
+The temporary recording control has been removed from both local testing and
+the release source. No application-source harness or baseline remains.
+
 Order: postprocessing isolation, planet/shield compaction, formation visibility.
 Keep art, quality, LOD thresholds, clocks, picking and gameplay unchanged.
 

@@ -6,7 +6,23 @@ master checkout is excluded. This review includes the three original renderer
 changes, covered opening preparation, the seven-second deadline, preload and
 GLTF cache changes, instance-buffer ownership, recording metadata and the new
 surface-query optimization. The temporary recording button remains a separate
-local testing change.
+local testing change during recording; it has now been removed entirely.
+
+## Production release selection
+
+The actual production SHA at deployment preparation was
+`b8d6ed0e056f959cb1a40b2609c694ec701629bc`. Its two newer commits update elemental
+skin clarity and preserve country textures/focus portraits. To retain that
+already-published work without importing pending master changes, all 13 reviewed
+renderer commits were cherry-picked onto this production SHA in the separate
+`perf/galaxy-render-release` worktree. There were no conflicts; the skin tests
+retain the newer production expectations. Server, rules, migrations, Dockerfile,
+Compose and Nginx sources are byte-identical to current production.
+
+The temporary `GalaxyPerfControl` component and its import/mount are removed.
+No temporary browser harnesses or baseline modules remain in application source.
+The permanent admin recorder, FPS controls and opening-result diagnostic are
+retained. They are existing or intentional diagnostics, not testing overlays.
 
 ## Confirmed findings and fixes
 
