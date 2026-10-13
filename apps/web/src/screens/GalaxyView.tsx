@@ -1247,6 +1247,7 @@ export function GalaxyView({
         focus={focus}
         onReady={onReady}
         openingDataReady={dataSettled}
+        openingCovered={covered}
         onFocus={onFocus}
         homeSignal={homeSignal}
         centerSignal={centerSignal}

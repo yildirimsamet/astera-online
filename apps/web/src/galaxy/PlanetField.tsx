@@ -1,5 +1,6 @@
+import { OpeningAssetPending, useOpeningWork } from './OpeningViews.js';
 import { WorldCosmeticRing } from './CosmeticEffects.jsx';
-import { Suspense, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -155,7 +156,7 @@ export function PlanetField({
         */
         return (
           <SkinAssetBoundary key={group.url} fallback={<Suspense fallback={null}>{render}</Suspense>}>
-            <Suspense fallback={<Suspense fallback={null}>{render}</Suspense>}>
+            <Suspense fallback={<><OpeningAssetPending /><Suspense fallback={null}>{render}</Suspense></>}>
               <DefaultPlanetModel
                 url={group.url}
                 lod={group.lod}
@@ -178,7 +179,7 @@ export function PlanetField({
           key={`${group.skinId}:${group.status}`}
           fallback={<SkinBillboards nodes={group.nodes} onSelect={onSelect} mode="near" />}
         >
-          <Suspense fallback={<SkinBillboards nodes={group.nodes} onSelect={onSelect} mode="near" />}>
+          <Suspense fallback={<><OpeningAssetPending /><SkinBillboards nodes={group.nodes} onSelect={onSelect} mode="near" /></>}>
             <PlanetSkinModel
               skinId={group.skinId}
               status={group.status}
@@ -212,6 +213,8 @@ export function PlanetField({
 function usePlanetLods(nodes: readonly PlanetNode[], openingId?: string) {
   const camera = useThree((state) => state.camera);
   const height = useThree((state) => state.size.height);
+  const [pending, startTransition] = useTransition();
+  useOpeningWork(pending);
   const [lods, setLods] = useState<ReadonlyMap<string, PlanetLod>>(() => new Map());
   const [warmups, setWarmups] = useState<readonly string[]>([]);
   const warming = useRef<readonly string[]>([]);

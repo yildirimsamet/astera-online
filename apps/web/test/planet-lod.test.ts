@@ -152,7 +152,7 @@ describe('a tier change never empties the disc', () => {
   });
 
   it('keeps a stand-in card’s own loading inside the group', () => {
-    expect(field).toMatch(/<Suspense fallback=\{<Suspense fallback=\{null\}>\{render\}<\/Suspense>\}>/);
+    expect(field).toContain('<Suspense fallback={<><OpeningAssetPending /><Suspense fallback={null}>{render}</Suspense></>}>');
   });
 
   it('loads the far and light models of every look up front, the full ones on demand', () => {

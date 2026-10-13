@@ -115,3 +115,49 @@ Final checks after CR fix:
 - The isolated server test database was removed after the successful run.
 - Full-suite logs, final regression/build logs and visual evidence are retained in
   `out/render-performance/` in this worktree. No production deployment performed.
+
+## Covered opening preparation (2026-10-13)
+
+The phone recording `66994b88-5318-4b84-b3dd-32bf2eefaefa` reports a 401.7 ms
+stall at second 4 and a maximum render submission duration of 388.1 ms. This is
+consistent with first-use resource work, but does not identify shader compilation,
+texture upload, driver work or JS allocation as the root cause.
+
+The gameplay cover now permits one hidden camera preparation sequence after the
+existing shader/data gates: whole-disc view, intermediate view, then the intended
+opening view. These are actual frames through the same LOD, culling and composer
+paths, using the same resolution and quality. No separate renderer, permanent
+maximum-detail scene or visible camera tour is created. Academy home framing lands
+at the existing HOME_DISTANCE under the cover; explicit wide/tutorial framing is
+preserved. Canvases without a cover opt out.
+
+`openingViewSequence.ts` requires two rendered frames and a 150 ms quiet interval
+per stage, using render/resource counters and pending React LOD transitions. Each
+stage has a 1200 ms soft deadline evaluated on rendered frames. This is bounded
+best-effort preparation, not a GPU fence or proof that every lazy asset has loaded.
+Normal asynchronous loading continues after a deadline. A blocked main thread can
+exceed these soft deadlines. Existing cover deadlines remain in force.
+
+The rig pauses during preparation. Cover expiry, context loss and unmount restore
+the intended opening camera and controls; context recovery does not repeat the
+tour. Finishing the sequence releases camera ownership, so later user movements
+are not reset by cleanup. The ready callback waits for the home stage to draw.
+
+Expected tradeoff: some first-use work moves into loading, which may take longer
+and briefly allocate resources used by the overview. Sustained FPS improvement is
+not promised. Resources disposed on a later LOD change may still need preparation
+again, and later arrivals/assets cannot be covered by a startup-only sequence.
+Acceptance on the S22 requires cold and warm launches of both builds with matching
+quality, camera gestures and scene: compare time to interactive, first zoom-out
+stall, subsequent zooms, heap and a longer thermal run. Browser software rendering
+is a correctness check, not a mobile performance measurement.
+
+Validation: the full web run passed 6058 tests with 29 skipped; its only failure
+was the old literal JSX assertion for the nested planet fallback. The assertion
+was updated to retain the nested-boundary check alongside the pending-work marker.
+The subsequent 9-file focused run passed all 52 tests, including the updated
+assertion and new camera/ready-gate cases. A Chromium/SwiftShader fixture rendered
+204 real `PlanetField` worlds with the production composer, observed distances
+180 → 35 → 7, released the cover only at home, and reported no page errors.
+`tools/visual.mjs --loading` also passed seven viewport sizes and its existing
+6× CPU loading-animation check. Artifacts are in ignored `out/render-performance/`.

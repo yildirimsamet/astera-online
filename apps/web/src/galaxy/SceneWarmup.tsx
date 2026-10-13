@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -78,11 +78,11 @@ export function SceneRenderGate() {
 }
 
 /** The ready signal follows the composer's actual draw, never just its download. */
-export function FirstSceneFrame({ ready, onDrawn }: { ready: boolean; onDrawn: () => void }) {
+export function FirstSceneFrame({ ready, onDrawn, settled }: { ready: boolean; onDrawn: () => void; settled?: RefObject<boolean> }) {
   const fired = useRef(false);
   const drawnFrame = useRef(0);
   useFrame(() => {
-    if (!ready || fired.current) return;
+    if (!ready || fired.current || settled?.current === false) return;
     fired.current = true;
     drawnFrame.current = requestAnimationFrame(onDrawn);
   }, 2);

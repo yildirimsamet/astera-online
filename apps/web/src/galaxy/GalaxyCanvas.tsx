@@ -66,6 +66,7 @@ import { PlanetField, rivalColour } from './PlanetField.jsx';
 import { SCENE_LIGHT } from './planetSurface.js';
 import { SpaceLighting } from './SpaceLighting.js';
 import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from './SceneWarmup.js';
+import { OpeningWork, useOpeningViews } from './OpeningViews.js';
 
 /** The rig's per-frame scratch for a tracked subject's drift (never allocated in the loop). */
 const TRACK_DRIFT = new THREE.Vector3();
@@ -316,6 +317,8 @@ export interface GalaxyCanvasProps {
   onReady?: () => void;
   /** Do not certify an empty scene while its opening API payloads are pending. */
   openingDataReady?: boolean;
+  /** Only prepare camera views while the parent cover actually hides the scene. */
+  openingCovered?: boolean;
 }
 
 export function GalaxyCanvas({
@@ -357,8 +360,11 @@ export function GalaxyCanvas({
   allowFocus,
   onReady,
   openingDataReady = true,
+  openingCovered = false,
 }: GalaxyCanvasProps) {
   const sceneReady = useRef(false);
+  const openingSettled = useRef(!openingCovered);
+  const openingWork = useMemo(() => new Set<symbol>(), []);
   const openingMark = useRef<HTMLSpanElement>(null);
   const nodes = useMemo(() => planetNodes(planets), [planets]);
   const navigationRadius = useMemo(() => monumentNavigationRadius(monuments, hpRadiation), [monuments, hpRadiation]);
@@ -704,6 +710,7 @@ export function GalaxyCanvas({
       <Meteors shower={meteorShower} />
       <Disc />
 
+      <OpeningWork.Provider value={openingWork}>
       <GalaxyVisualPhase>
       <Suspense fallback={null}>
         {/* Wreckage is independent of the rock field — a battle can leave one on a
@@ -842,9 +849,16 @@ export function GalaxyCanvas({
           rivals={rivals}
         />
         {gpu.live && <SceneWarmup key={gpu.epoch} dataReady={openingDataReady} onCompiled={onCompiled} />}
-        <FirstSceneFrame ready={prepared && openingDataReady} onDrawn={() => { sceneReady.current = true; onReady?.(); }} />
+        <FirstSceneFrame settled={openingSettled} ready={prepared && openingDataReady} onDrawn={() => {
+          sceneReady.current = true;
+          if (openingCovered && openingMark.current && openingSettled.current) {
+            openingMark.current.dataset.academyHomeReady = 'true';
+          }
+          onReady?.();
+        }} />
       </Suspense>
       </GalaxyVisualPhase>
+      </OpeningWork.Provider>
 
       {/*
         Bloom is the difference between "lights" and "light". It is the one
@@ -917,6 +931,10 @@ export function GalaxyCanvas({
         {...(sightRadius !== undefined ? { sightRadius } : {})}
         openingHome={openingHome}
         sceneReady={sceneReady}
+        openingSettled={openingSettled}
+        openingCovered={openingCovered}
+        openingPrepared={prepared && openingDataReady && gpu.live}
+        openingWork={openingWork}
         openingMark={openingMark}
       />
       {/* E11: a page docked on the right does not hide the camera's subject. */}
@@ -1278,6 +1296,10 @@ function Rig({
   sightRadius,
   openingHome,
   sceneReady,
+  openingSettled,
+  openingCovered,
+  openingPrepared,
+  openingWork,
   openingMark,
 }: {
   navigationRadius: number;
@@ -1330,9 +1352,16 @@ function Rig({
   sightRadius?: number;
   openingHome: boolean;
   sceneReady: RefObject<boolean>;
+  openingSettled: RefObject<boolean>;
+  openingCovered: boolean;
+  openingPrepared: boolean;
+  openingWork: Set<symbol>;
   openingMark: RefObject<HTMLSpanElement | null>;
 }) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);
+  const preparing = useOpeningViews({ controls: ref, covered: openingCovered, ready: openingPrepared,
+    settled: openingSettled, wideDistance: Math.min(wideDistance, navigationRadius / 1.15 * 3),
+    homeDistance: openingHome && !openWide && !sightRadius ? HOME_DISTANCE : null, work: openingWork });
   const invalidate = useThree((state) => state.invalidate);
   const size = useThree((state) => state.size);
   const approach = inspectionRadius === undefined ? focusApproach : planetInspectionDistance(inspectionRadius, size.width, size.height);
@@ -1486,7 +1515,7 @@ function Rig({
       controls.target.set(homeX, homeY, homeZ);
       controls.object.position.set(...initialHomeCameraPosition(homeX, homeY, homeZ));
       controls.update();
-      if (openingHome) goTo(homeX, homeY, homeZ, HOME_DISTANCE, true, 2, true);
+      if (openingHome && openingSettled.current) goTo(homeX, homeY, homeZ, HOME_DISTANCE, true, 2, true);
       invalidate();
       return;
     }
@@ -1506,7 +1535,7 @@ function Rig({
 
   useFrame((_, delta) => {
     const controls = ref.current;
-    if (!controls) return;
+    if (!controls || preparing.current) return;
 
     /**
      * KEEP UP WITH A MOVING SUBJECT.
