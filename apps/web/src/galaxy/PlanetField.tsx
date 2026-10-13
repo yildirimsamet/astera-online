@@ -1,6 +1,6 @@
-import { OpeningAssetPending, useOpeningWork } from './OpeningViews.js';
+import { OpeningAssetPending, OpeningWork, useOpeningWork } from './OpeningViews.js';
 import { WorldCosmeticRing } from './CosmeticEffects.jsx';
-import { Suspense, useTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useTransition, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -75,6 +75,8 @@ export function PlanetField({
 }) {
   const { png: defaults, models: skinGroups } = useMemo(() => partitionPlanetSkins(nodes), [nodes]);
   const skinNodes = useMemo(() => skinGroups.flatMap((group) => group.nodes), [skinGroups]);
+  const openingWork = useContext(OpeningWork);
+  const onPreparationError = useCallback(() => { openingWork?.begin()('failed'); }, [openingWork]);
   const warmId = (defaults.find((node) => node.stance === 'self') ?? defaults[0])?.id;
   const { lods, warmups } = usePlanetLods(defaults, warmId);
   /*
@@ -117,6 +119,8 @@ export function PlanetField({
     return ids;
   }, [defaults, warmId]);
 
+  const farWarmups = warmId === undefined ? lightWarmups : [warmId, ...lightWarmups];
+
   return (
     <>
       {nodes.filter(node => node.ringId && node.intel !== 'UNKNOWN').map(node => (
@@ -124,20 +128,25 @@ export function PlanetField({
       ))}
       {warmId !== undefined && (
         // Its own boundary: warming a model never holds up, or hides, anything drawn.
-        <SkinAssetBoundary key={`warm:${warmId}`} fallback={null}>
-          <Suspense fallback={null}>
+        <SkinAssetBoundary key={`warm:${warmId}`} fallback={null} onError={onPreparationError}>
+          <Suspense fallback={<OpeningAssetPending />}>
             <PlanetWarmup id={warmId} />
           </Suspense>
         </SkinAssetBoundary>
       )}
+      {farWarmups.map(id => (
+        <SkinAssetBoundary key={`warm:${planetModel(id, 'far')}`} fallback={null} onError={onPreparationError}>
+          <Suspense fallback={<OpeningAssetPending />}><PlanetWarmup id={id} lod="far" /></Suspense>
+        </SkinAssetBoundary>
+      ))}
       {lightWarmups.map(id => (
-        <SkinAssetBoundary key={`warm:${planetModel(id, 'lite')}`} fallback={null}>
-          <Suspense fallback={null}><PlanetWarmup id={id} lod="lite" /></Suspense>
+        <SkinAssetBoundary key={`warm:${planetModel(id, 'lite')}`} fallback={null} onError={onPreparationError}>
+          <Suspense fallback={<OpeningAssetPending />}><PlanetWarmup id={id} lod="lite" /></Suspense>
         </SkinAssetBoundary>
       ))}
       {warmups.map(id => (
-        <SkinAssetBoundary key={`warm:${planetModel(id, 'full')}`} fallback={null}>
-          <Suspense fallback={null}><PlanetWarmup id={id} lod="full" /></Suspense>
+        <SkinAssetBoundary key={`warm:${planetModel(id, 'full')}`} fallback={null} onError={onPreparationError}>
+          <Suspense fallback={<OpeningAssetPending />}><PlanetWarmup id={id} lod="full" /></Suspense>
         </SkinAssetBoundary>
       ))}
       {tiers.map((group) => {

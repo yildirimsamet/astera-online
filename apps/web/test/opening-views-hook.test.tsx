@@ -2,12 +2,13 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PerspectiveCamera } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { createOpeningPreparation } from '../src/galaxy/openingPreparation.js';
 import { useOpeningViews, useOpeningWork, OpeningWork } from '../src/galaxy/OpeningViews.js';
 const fiber = vi.hoisted(() => ({ frames: new Map<number, () => void>(), invalidate: vi.fn() }));
 vi.mock('@react-three/fiber', () => ({
   useFrame: (callback: () => void, priority: number) => { fiber.frames.set(priority, callback); },
   useThree: (select: (value: unknown) => unknown) => select({
-    gl: { info: { memory: { geometries: 1, textures: 1 }, programs: [], render: { calls: 1, triangles: 1 } } },
+    gl: { domElement: document.createElement('canvas'), info: { memory: { geometries: 1, textures: 1 }, programs: [], render: { calls: 1, triangles: 1 } } },
     invalidate: fiber.invalidate,
   }),
 }));
@@ -25,7 +26,7 @@ function setup() {
   const settled = { current: false };
   const view = renderHook(({ covered, ready }) => useOpeningViews({
     controls: { current: controls }, covered, ready, settled,
-    wideDistance: 100, homeDistance: 7, work: new Set(),
+    wideDistance: 100, homeDistance: 7, work: createOpeningPreparation(true),
   }), { initialProps: { covered: true, ready: true } });
   return { camera, controls, settled, view };
 }
@@ -84,7 +85,7 @@ describe('hidden camera preparation', () => {
 
 describe('opening resource ownership', () => {
   it('tracks pending work per canvas and releases it on completion and unmount', () => {
-    const work = new Set<symbol>();
+    const work = createOpeningPreparation(true);
     const view = renderHook(({ pending }) => { useOpeningWork(pending); }, {
       initialProps: { pending: true },
       wrapper: ({ children }) => <OpeningWork.Provider value={work}>{children}</OpeningWork.Provider>,

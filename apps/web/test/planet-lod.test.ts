@@ -184,10 +184,10 @@ describe('the full model is ready before it is needed', () => {
   it('compiles the planet shaders off the frame, on the materials the worlds will use', () => {
     expect(model).toMatch(/gl\.compileAsync\(/);
     expect(model).toMatch(/cachedDress\(/);
-    expect(field).toMatch(/<Suspense fallback=\{null\}>\s*<PlanetWarmup /);
+    expect(field).toMatch(/<Suspense fallback=\{<OpeningAssetPending \/>\}>\s*<PlanetWarmup /);
   });
 
   it('routes prepared maps through the shared idle queue', () => {
-    expect(model).toMatch(/queuePlanetTextures\(gl, maps\)/);
+    expect(model).toMatch(/queuePlanetTextures\(gl, maps,/);
   });
 });

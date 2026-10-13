@@ -66,6 +66,7 @@ import { PlanetField, rivalColour } from './PlanetField.jsx';
 import { SCENE_LIGHT } from './planetSurface.js';
 import { SpaceLighting } from './SpaceLighting.js';
 import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from './SceneWarmup.js';
+import { createOpeningPreparation, type OpeningPreparation } from './openingPreparation.js';
 import { OpeningWork, useOpeningViews } from './OpeningViews.js';
 
 /** The rig's per-frame scratch for a tracked subject's drift (never allocated in the loop). */
@@ -364,7 +365,7 @@ export function GalaxyCanvas({
 }: GalaxyCanvasProps) {
   const sceneReady = useRef(false);
   const openingSettled = useRef(!openingCovered);
-  const openingWork = useMemo(() => new Set<symbol>(), []);
+  const openingWork = useMemo(() => createOpeningPreparation(openingCovered), []);
   const openingMark = useRef<HTMLSpanElement>(null);
   const nodes = useMemo(() => planetNodes(planets), [planets]);
   const navigationRadius = useMemo(() => monumentNavigationRadius(monuments, hpRadiation), [monuments, hpRadiation]);
@@ -1355,7 +1356,7 @@ function Rig({
   openingSettled: RefObject<boolean>;
   openingCovered: boolean;
   openingPrepared: boolean;
-  openingWork: Set<symbol>;
+  openingWork: OpeningPreparation;
   openingMark: RefObject<HTMLSpanElement | null>;
 }) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);

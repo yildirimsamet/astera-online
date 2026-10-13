@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useOpeningCover } from '../src/lib/openingCover.js';
 import { LoadingScreen } from '../src/shell/LoadingScreen.js';
 
 describe('branded loading with truthful progress', () => {
@@ -57,4 +58,20 @@ describe('branded loading with truthful progress', () => {
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', String(pct));
     expect(screen.getByText(`${String(pct)}%`)).toBeInTheDocument();
   });
+});
+
+
+it('removes the galaxy cover at seven seconds without extending the deadline by a fade', () => {
+  vi.useFakeTimers();
+  function Opening() {
+    const covered = useOpeningCover(false);
+    return <><LoadingScreen caption="Preparing" visible={covered} immediateExit /><div data-testid="scene">Still loading</div></>;
+  }
+  render(<Opening />);
+  act(() => { vi.advanceTimersByTime(6999); });
+  expect(screen.getByRole('status')).toBeInTheDocument();
+  act(() => { vi.advanceTimersByTime(1); });
+  expect(screen.queryByRole('status', { hidden: true })).not.toBeInTheDocument();
+  expect(screen.getByTestId('scene')).toBeInTheDocument();
+  vi.useRealTimers();
 });

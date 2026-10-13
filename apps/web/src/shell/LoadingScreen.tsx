@@ -3,7 +3,9 @@ import { AsteraWordmark } from '../brand/Identity.js';
 import { OpeningScene } from '../brand/OpeningScene.js';
 
 /** Caption settling never gates readiness; the departing cover immediately releases input. */
-export function LoadingScreen({ caption, progress, visible = true }: { caption: string; progress?: number; visible?: boolean }) {
+export function LoadingScreen({ caption, progress, visible = true, immediateExit = false }: {
+  caption: string; progress?: number; visible?: boolean; immediateExit?: boolean;
+}) {
   const [shownCaption, setShownCaption] = useState(caption);
   const [present, setPresent] = useState(visible);
   useEffect(() => {
@@ -13,12 +15,13 @@ export function LoadingScreen({ caption, progress, visible = true }: { caption: 
   }, [caption, shownCaption]);
   useEffect(() => {
     if (visible) { setPresent(true); return; }
+    if (immediateExit) { setPresent(false); return; }
     const timer = window.setTimeout(() => { setPresent(false); }, 180);
     return () => { window.clearTimeout(timer); };
-  }, [visible]);
+  }, [visible, immediateExit]);
   const known = caption === shownCaption && progress !== undefined && Number.isFinite(progress);
   const pct = Math.round(Math.min(1, Math.max(0, progress ?? 0)) * 100);
-  if (!visible && !present) return null;
+  if (!visible && (immediateExit || !present)) return null;
 
   return <main data-loading-screen data-departing={!visible} className="brand-loading" role="status" aria-live="polite" aria-busy={visible} aria-hidden={!visible}>
     <div className="brand-loading-composition">

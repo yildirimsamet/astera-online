@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { Suspense, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -17,6 +17,8 @@ import { HitboxMaterial } from './hitboxDebug.jsx';
 import { createInstanceVisibility, updateVisibleMembers } from './instanceVisibility.js';
 import { useVisualFrame } from './visualFrame.js';
 import { sphereInFrustum } from './frustum.js';
+import { OpeningWork } from './OpeningViews.js';
+import type { PreparationResult } from './openingPreparation.js';
 import { queuePlanetTextures } from './planetTextureQueue.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 import { PlanetSkinAttachments } from './PlanetSkinAttachments.jsx';
@@ -133,44 +135,85 @@ const dressFull: Dress = (source) => ({ material: planetSurface(source, true), u
 const dressLite: Dress = (source) => ({ material: planetSurface(source, false), uniforms: null });
 
 /** Prepare the opening world's two dresses, or one look's next tier before it is drawn. */
-export function PlanetWarmup({ id, lod }: { id: string; lod?: 'lite' | 'full' }) {
+export function PlanetWarmup({ id, lod }: { id: string; lod?: PlanetLod }) {
   if (lod) return <WarmPlanetModel id={id} lod={lod} />;
   return <><WarmPlanetModel id={id} lod="lite" /><WarmPlanetModel id={id} lod="full" /></>;
 }
 
-function WarmPlanetModel({ id, lod }: { id: string; lod: 'lite' | 'full' }) {
+function WarmPlanetModel({ id, lod }: { id: string; lod: PlanetLod }) {
   const url = planetModel(id, lod);
   const model = useGLTF(url, false);
   const gl = useThree((state) => state.gl);
   const camera = useThree((state) => state.camera);
   const scene = useThree((state) => state.scene);
 
+  const work = useContext(OpeningWork);
+  const openingTask = useRef<(result?: PreparationResult) => void>(() => undefined);
+  // Register at commit, before another frame can certify an empty barrier.
+  useLayoutEffect(() => {
+    const finish = work?.begin() ?? (() => undefined);
+    openingTask.current = finish;
+    return () => { finish('cancelled'); };
+  }, [gl, camera, scene, model.scene, url, lod, work]);
+
   useEffect(() => {
-    const mesh = firstMesh(model.scene);
-    const source = mesh && (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material);
-    if (!mesh || !source) return;
-    const { material } = cachedDress(url, lod, source, lod === 'full' ? dressFull : dressLite);
-    const probes = new THREE.Group();
-    const maps: THREE.Texture[] = [];
-    // Instanced and coloured as the worlds are, so the prepared program matches their draw.
-    const probe = new THREE.InstancedMesh(cachedGeometry(url, mesh), material, 1);
-    probe.setColorAt(0, new THREE.Color(1, 1, 1));
-    probes.add(probe);
-    if (material instanceof THREE.MeshStandardMaterial) {
-      for (const map of [material.map, material.normalMap, material.roughnessMap]) if (map) maps.push(map);
-    }
     let live = true;
-    let cancel: () => void = () => undefined;
-    // Programs retain the cached live material. Only this temporary mesh belongs to preparation.
-    let preparation: Promise<THREE.Object3D>;
-    try { preparation = gl.compileAsync(probes, camera, scene); }
-    catch { probe.dispose(); return; }
-    void preparation.then(
-      () => { probe.dispose(); if (live) cancel = queuePlanetTextures(gl, maps); },
-      () => { probe.dispose(); },
-    );
-    return () => { live = false; cancel(); };
-  }, [gl, camera, scene, model.scene, url, lod]);
+    let generation = 0;
+    let finish = openingTask.current;
+    let cancelTextures: () => void = () => undefined;
+    const prepare = () => {
+      const current = ++generation;
+      const done = finish;
+      const mesh = firstMesh(model.scene);
+      const source = mesh && (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material);
+      if (!mesh || !source) { done('failed'); return; }
+      const { material } = cachedDress(url, lod === 'full' ? 'full' : 'lite', source, lod === 'full' ? dressFull : dressLite);
+      const probes = new THREE.Group();
+      const maps: THREE.Texture[] = [];
+      const probe = new THREE.InstancedMesh(cachedGeometry(url, mesh), material, 1);
+      probe.setColorAt(0, new THREE.Color(1, 1, 1));
+      probes.add(probe);
+      if (material instanceof THREE.MeshStandardMaterial) {
+        for (const map of [material.map, material.normalMap, material.roughnessMap]) if (map) maps.push(map);
+      }
+      let preparation: Promise<THREE.Object3D>;
+      try { preparation = gl.compileAsync(probes, camera, scene); }
+      catch { probe.dispose(); done('failed'); return; }
+      void preparation.then(
+        () => {
+          probe.dispose();
+          if (!live || current !== generation) return;
+          if (gl.getContext().isContextLost()) { done('context-lost'); return; }
+          const textures = queuePlanetTextures(gl, maps, () => work?.covered ?? false);
+          cancelTextures = textures.cancel;
+          void textures.ready.then(done);
+        },
+        () => { probe.dispose(); if (live && current === generation) done('failed'); },
+      );
+    };
+    const lost = () => {
+      generation += 1;
+      cancelTextures();
+      finish('context-lost');
+    };
+    const restored = () => {
+      if (!live) return;
+      cancelTextures();
+      finish = work?.begin() ?? (() => undefined);
+      prepare();
+    };
+    gl.domElement.addEventListener('webglcontextlost', lost);
+    gl.domElement.addEventListener('webglcontextrestored', restored);
+    prepare();
+    return () => {
+      live = false;
+      generation += 1;
+      cancelTextures();
+      finish('cancelled');
+      gl.domElement.removeEventListener('webglcontextlost', lost);
+      gl.domElement.removeEventListener('webglcontextrestored', restored);
+    };
+  }, [gl, camera, scene, model.scene, url, lod, work]);
 
   return null;
 }

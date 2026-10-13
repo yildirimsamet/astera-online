@@ -2,20 +2,19 @@ import { createContext, useContext, useLayoutEffect, useRef, type RefObject } fr
 import { useFrame, useThree } from '@react-three/fiber';
 import type { Vector3, Camera } from 'three';
 
+import type { OpeningPreparation, OpeningResult } from './openingPreparation.js';
 import { createOpeningViews } from './openingViewSequence.js';
 
 interface OpeningControls { target: Vector3; object: Camera; enabled: boolean; update: () => unknown }
 
 /** Pending React LOD work belongs to this canvas, never to another preview. */
-export const OpeningWork = createContext<Set<symbol> | null>(null);
+export const OpeningWork = createContext<OpeningPreparation | null>(null);
 export function useOpeningWork(pending: boolean) {
   const work = useContext(OpeningWork);
-  const token = useRef(Symbol());
   useLayoutEffect(() => {
     if (!work || !pending) return;
-    const id = token.current;
-    work.add(id);
-    return () => { work.delete(id); };
+    const finish = work.begin();
+    return () => { finish('cancelled'); };
   }, [work, pending]);
 }
 
@@ -33,7 +32,7 @@ export function useOpeningViews({ controls, covered, ready, settled, wideDistanc
   settled: RefObject<boolean>;
   wideDistance: number;
   homeDistance: number | null;
-  work: Set<symbol>;
+  work: OpeningPreparation;
 }) {
   const gl = useThree(state => state.gl);
   const invalidate = useThree(state => state.invalidate);
@@ -50,13 +49,18 @@ export function useOpeningViews({ controls, covered, ready, settled, wideDistanc
     c.update();
     saved.current = null;
   };
+  const finish = (result: OpeningResult) => {
+    work.finish(result);
+    gl.domElement.dataset.galaxyPreparation = work.result ?? result;
+    settled.current = true;
+  };
   // Restore camera state synchronously if the parent cover times out.
   useLayoutEffect(() => {
     if (settled.current || (covered && (ready || !active.current))) return;
     machine.current.beforeFrame(covered, ready);
     restore();
     active.current = false;
-    settled.current = true;
+    finish(machine.current.result ?? (covered ? 'context-lost' : 'timeout'));
     invalidate();
   }, [covered, ready, settled, invalidate]);
   // Before LOD selection (0), after OrbitControls' damping update (-1).
@@ -67,7 +71,7 @@ export function useOpeningViews({ controls, covered, ready, settled, wideDistanc
     if (!covered || (active.current && !ready)) {
       if (step === 'restore') restore();
       active.current = false;
-      settled.current = true;
+      finish(machine.current.result ?? (covered ? 'context-lost' : 'timeout'));
       invalidate();
       return;
     }
@@ -99,15 +103,13 @@ export function useOpeningViews({ controls, covered, ready, settled, wideDistanc
   // After the real composer (1). Each stage includes the normal visual/culling path.
   useFrame(() => {
     if (!active.current || !ready) return;
-    const info = gl.info;
-    const signature = `${info.memory.geometries}:${info.memory.textures}:${info.programs?.length ?? 0}:${info.render.calls}:${info.render.triangles}`;
-    if (machine.current.afterFrame(performance.now(), signature, work.size > 0)) {
+    if (machine.current.afterFrame(work.size > 0, work.revision)) {
       restore();
       active.current = false;
-      settled.current = true;
+      finish('ready');
     }
     invalidate();
   }, 1.5);
-  useLayoutEffect(() => () => { restore(); }, []);
+  useLayoutEffect(() => () => { restore(); work.finish('cancelled'); }, []);
   return active;
 }

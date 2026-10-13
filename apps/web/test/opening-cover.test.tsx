@@ -30,7 +30,7 @@ describe('the galaxy opening cover', () => {
   it('opens by the hard deadline even when the canvas never signals ready', () => {
     vi.useFakeTimers();
     const { result } = renderHook(() => useOpeningCover(false));
-    act(() => { vi.advanceTimersByTime(19_999); });
+    act(() => { vi.advanceTimersByTime(6_999); });
     expect(result.current).toBe(true);
     act(() => { vi.advanceTimersByTime(1); });
     expect(result.current).toBe(false);

@@ -5,26 +5,33 @@ describe('covered opening views', () => {
   it('draws wide, intermediate and home views before releasing the cover', () => {
     const views = createOpeningViews();
     expect(views.beforeFrame(true, true)).toBe('wide');
-    expect(views.afterFrame(0, 'a', false)).toBe(false);
-    expect(views.afterFrame(200, 'a', false)).toBe(false);
+    expect(views.afterFrame(false, 0)).toBe(false);
+    expect(views.afterFrame(false, 0)).toBe(false);
     expect(views.beforeFrame(true, true)).toBe('middle');
-    views.afterFrame(210, 'a', false);
-    views.afterFrame(410, 'a', false);
+    views.afterFrame(false, 0);
+    views.afterFrame(false, 0);
     expect(views.beforeFrame(true, true)).toBe('home');
-    views.afterFrame(420, 'a', false);
-    expect(views.afterFrame(620, 'a', false)).toBe(true);
+    views.afterFrame(false, 0);
+    expect(views.afterFrame(false, 0)).toBe(true);
     expect(views.beforeFrame(true, true)).toBe(null);
   });
-  it('waits for LOD transitions and resource changes, but bounds each stage', () => {
+  it('never advances while work is pending, even after many frames', () => {
     const views = createOpeningViews();
     views.beforeFrame(true, true);
-    views.afterFrame(0, 'a', true);
-    views.afterFrame(200, 'a', true);
+    for (let i = 0; i < 1000; i++) views.afterFrame(true, 1);
     expect(views.beforeFrame(true, true)).toBe(null);
-    views.afterFrame(300, 'b', false);
+    views.afterFrame(false, 2);
     expect(views.beforeFrame(true, true)).toBe(null);
-    views.afterFrame(350, 'c', false);
-    views.afterFrame(1200, 'd', true);
+    views.afterFrame(false, 2);
+    expect(views.beforeFrame(true, true)).toBe('middle');
+  });
+  it('requires two fresh draws after a newly registered task settles', () => {
+    const views = createOpeningViews();
+    views.beforeFrame(true, true);
+    views.afterFrame(false, 0);
+    views.afterFrame(false, 2);
+    expect(views.beforeFrame(true, true)).toBe(null);
+    views.afterFrame(false, 2);
     expect(views.beforeFrame(true, true)).toBe('middle');
   });
   it('never moves before readiness and restores home when the cover expires or GPU is lost', () => {
@@ -32,10 +39,12 @@ describe('covered opening views', () => {
     expect(views.beforeFrame(true, false)).toBe(null);
     expect(views.beforeFrame(true, true)).toBe('wide');
     expect(views.beforeFrame(false, true)).toBe('restore');
+    expect(views.result).toBe('timeout');
     expect(views.beforeFrame(true, true)).toBe(null);
     const lost = createOpeningViews();
     lost.beforeFrame(true, true);
     expect(lost.beforeFrame(true, false)).toBe('restore');
+    expect(lost.result).toBe('context-lost');
   });
   it('does not run after a cover expired before preparation', () => {
     const views = createOpeningViews();

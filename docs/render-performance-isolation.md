@@ -131,12 +131,27 @@ maximum-detail scene or visible camera tour is created. Academy home framing lan
 at the existing HOME_DISTANCE under the cover; explicit wide/tutorial framing is
 preserved. Canvases without a cover opt out.
 
-`openingViewSequence.ts` requires two rendered frames and a 150 ms quiet interval
-per stage, using render/resource counters and pending React LOD transitions. Each
-stage has a 1200 ms soft deadline evaluated on rendered frames. This is bounded
-best-effort preparation, not a GPU fence or proof that every lazy asset has loaded.
-Normal asynchronous loading continues after a deadline. A blocked main thread can
-exceed these soft deadlines. Existing cover deadlines remain in force.
+`openingViewSequence.ts` now waits for the per-canvas preparation barrier and
+two actual frames after its revision settles. Counter stability and the former
+1200 ms stage timeout no longer certify readiness. `WarmPlanetModel` registers at
+layout commit, compiles the actual cached material, then waits for the texture
+queue's explicit completion result. Warmup Suspense boundaries also participate,
+including the existing unique far/lite looks and the bounded nearby full looks.
+
+The texture queue deduplicates by renderer and texture, returns an explicit result
+(`ready`, `failed`, `cancelled`, `context-lost`) and retains independent owners.
+While covered it submits at most one texture per 16 ms timer; after uncovering it
+returns to the existing idle scheduling (or the 50 ms timer fallback). Texture
+version changes require another submission. Completion means upload commands were
+submitted; it is not a GPU fence.
+
+The opening cover has a seven-second deadline from mount, including network time.
+The old secondary 15-second galaxy timer was removed. Galaxy loading exits without
+its 180 ms fade so the fade does not extend that deadline. Timeout restores the
+opening camera, releases the preparation barrier and preserves background work;
+it does not certify successful preparation. `canvas.dataset.galaxyPreparation`
+records `ready`, `failed`, `timeout`, `context-lost` or `cancelled` for inspection.
+As with any JS timer, a blocked main thread can delay dispatch of the deadline.
 
 The rig pauses during preparation. Cover expiry, context loss and unmount restore
 the intended opening camera and controls; context recovery does not repeat the
@@ -161,3 +176,68 @@ assertion and new camera/ready-gate cases. A Chromium/SwiftShader fixture render
 180 → 35 → 7, released the cover only at home, and reported no page errors.
 `tools/visual.mjs --loading` also passed seven viewport sizes and its existing
 6× CPU loading-animation check. Artifacts are in ignored `out/render-performance/`.
+
+
+## Explicit completion validation (2026-10-13)
+
+The new phone recording `e6787380-b430-4ae9-bc24-1444e57a70ee` still measured
+318.1 ms on first zoom-out and 175.7 ms on the second. Its textures rose from 153
+to 234 and shader programs from 114 to 117 after opening. This established that
+preparation was incomplete; it did not isolate which driver/shader/upload work
+accounted for each stall.
+
+Core and integration checks cover completion, shared owners, partial failure,
+version changes during upload, cancellation, context loss/restoration, late
+compilation after timeout and seven-second removal with the scene left mounted.
+The 17-file focused regression run had 114 passing tests and two stale literal
+source assertions. Those assertions were updated for the tracked Suspense fallback
+and the queue's loading-mode argument; the subsequent 8-file run passed 77 tests.
+Final web typecheck and lint passed.
+
+The final full web run passed all 456 active test files: 6,078 tests passed and
+29 were skipped (one entire file was skipped). The production build passed and
+is available on the local phone preview; the existing large-chunk warning remains.
+
+Chromium/SwiftShader rendered 204 actual `PlanetField` worlds and the normal
+composer, completed the three views and reported `ready` without page errors.
+A shader preparation was then deliberately held: the cover left at 7040 ms under
+software rendering, the camera returned home, the result remained `timeout`, and
+releasing the held job still submitted its textures in the background. These are
+correctness checks, not S22 performance results. Artifacts remain in ignored
+`out/render-performance/`. The temporary galaxy recording control is kept as a
+local testing change so it can be removed independently before deployment.
+
+## Latest phone recording comparison (2026-10-13)
+
+The latest recording is `a6da2384-0ffb-4831-ad0d-c086b63fa2aa`, started at
+16:40:40 Istanbul time. Compared with the preceding `e6787380` recording:
+
+| Recorded metric | Previous (8 samples) | Latest (11 samples) |
+| --- | ---: | ---: |
+| Average FPS | 36.4 | 50.3 |
+| Minimum sampled FPS | 19 | 27 |
+| Longest stall | 318.1 ms | 292.9 ms |
+| Gaps over 50 ms | 16 | 9 |
+| Gaps over 250 ms | 2 | 1 |
+| Total Long Task time | 1,235 ms | 545 ms |
+| Maximum draw calls | 848 | 620 |
+| Maximum triangles | 1,259,368 | 852,620 |
+
+The first overview still stalls at second 3: 292.9 ms, with a 278.8 ms render
+submission maximum. The later return to the overview at seconds 9–11 has a
+maximum gap of 50.2 ms, versus 175.7 ms during the preceding record's later
+overview at seconds 6–8. The latest home return at second 7 still has a 117.2 ms
+gap. Texture counts rise from 170 at second 1 to 220 by second 10, so resources
+continue to be introduced after loading. These observations do not identify the
+specific work responsible for the remaining stalls.
+
+This is not a matched A/B test: the scene changed from 198 planets, 174 shields,
+63–64 contacts and 10 pirates to 199 planets, 176 shields, 48–49 contacts and
+8 pirates; cache, thermal state and camera timing are not controlled. The quality,
+viewport and DPR match, but lower scene load also affects the result. The record
+does not contain `galaxyPreparation`, so it cannot distinguish a completed opening
+from the seven-second timeout. Do not attribute all FPS/draw/triangle reductions
+to the warmup change or conclude that first-zoom preparation is solved.
+
+The read-only server export is retained as
+`out/render-performance/phone-20261013T134040-comparison.jsonl` in this worktree.

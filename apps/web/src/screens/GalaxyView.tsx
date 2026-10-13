@@ -702,27 +702,7 @@ export function GalaxyView({
   const covered = useOpeningCover(assets.ready && dataSettled && drawn);
 
 
-  /**
-   * THERE IS ALWAYS A DEADLINE, for the reason `preload.ts` gives: a cover with no
-   * way out is a game that cannot be reached. `onReady` needs a working WebGL
-   * context and a frame loop, and neither is something a player can fix.
-   *
-   * ARMED ONLY ONCE EVERYTHING ELSE IS IN, so it measures the thing it is actually
-   * a net for. Started at mount it was really a timer on the network — a slow
-   * first fetch spent the whole allowance before the canvas had been given
-   * anything to draw, and the net fired over an empty disc, which is precisely
-   * what it exists to prevent.
-   */
-  const armed = assets.ready && dataSettled;
-  useEffect(() => {
-    if (drawn || !armed) return;
-    const timer = setTimeout(() => {
-      setDrawn(true);
-    }, 15_000);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [drawn, armed]);
+  // The opening cover owns one seven-second deadline from mount.
 
   /**
    * THE SOONEST THIS WORLD COULD BE ALONGSIDE THE MERCHANT, AND IT IS A BEST CASE.
@@ -2283,7 +2263,7 @@ export function GalaxyView({
         />
       )}
 
-      <LoadingScreen visible={covered}
+      <LoadingScreen visible={covered} immediateExit
           caption={
             !dataSettled
               ? t('loading.sweeping')
