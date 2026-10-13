@@ -1,5 +1,6 @@
 import type { PlanetPaletteId, SkinAttachment } from '@astera/rules';
 import * as THREE from 'three';
+import { MeshBVH } from 'three-mesh-bvh';
 
 export interface PlanetSkinAttachmentAsset extends SkinAttachment {
   readonly palette: PlanetPaletteId;
@@ -148,8 +149,10 @@ export function planetSurfaceProbes(
 ): readonly PlanetSurfaceProbe[] {
   const cached = SURFACE_PROBES.get(geometry);
   if (cached) return cached;
-  const target = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
-  const ray = new THREE.Raycaster();
+  // This temporary tree leaves shared render indices/bounds untouched. No global raycast override.
+  const options = { indirect: true, setBoundingBox: false };
+  const surface = new MeshBVH(geometry, options);
+  const ray = new THREE.Ray();
   const from = new THREE.Vector3();
   const directions: THREE.Vector3[] = [];
   const candidates: ({ direction: THREE.Vector3; radius: number; normal: THREE.Vector3 } | null)[] = [];
@@ -165,7 +168,12 @@ export function planetSurfaceProbes(
     directions.push(direction);
     from.copy(direction).multiplyScalar(4);
     ray.set(from, direction.clone().negate());
-    const hit = ray.intersectObject(target, false)[0];
+    // Native Mesh applies its identity inverse matrix, which normalises the ray again.
+    ray.direction.normalize();
+    const hits = surface.raycast(ray, THREE.DoubleSide);
+    // Native Mesh visits faces in index order; preserve its tie at a shared edge/vertex.
+    hits.sort((a, b) => a.distance - b.distance || (a.faceIndex ?? 0) - (b.faceIndex ?? 0));
+    const hit = hits[0];
     const radius = hit?.point.dot(direction) ?? -1;
     const normal = hit?.face?.normal.clone().normalize();
     candidates.push(
@@ -174,8 +182,6 @@ export function planetSurfaceProbes(
         : null,
     );
   }
-  target.material.dispose();
-
   const invalid = directions.filter((_, index) => candidates[index] === null);
   const valid = candidates.filter((candidate): candidate is NonNullable<typeof candidate> =>
     candidate !== null);
