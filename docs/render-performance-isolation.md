@@ -241,3 +241,119 @@ to the warmup change or conclude that first-zoom preparation is solved.
 
 The read-only server export is retained as
 `out/render-performance/phone-20261013T134040-comparison.jsonl` in this worktree.
+
+## Follow-up after the 50-second phone recording (2026-10-13)
+
+Recording `d95c6d12-7d30-4fb0-a658-6af138627ec8` averages 48 FPS. Seconds 6–30
+average 51.6 FPS with no Long Tasks. Menu/shop/inventory samples 31–37 average
+36.4 FPS and account for 1,313 of the total 2,227 ms of Long Tasks (59%). Their
+maximum galaxy render submission time is only 18.4 ms. Seconds 43–44 instead
+contain 201.9/184.1 ms render submissions, with shader counts rising 104 → 110
+and textures 224 → 239. These are distinct investigation targets; the recording
+cannot identify the responsible JS stack, decoding job, shader or driver call.
+The first overview still stalls for 309.8 ms after the loading screen is gone.
+
+Three concrete defects were reproduced separately from that correlation:
+
+1. `fetchAsset` in `lib/preload.ts` recognised images only when their whole URL
+   ended in an image extension. Actual planet URLs end in `.png?v=<hash>`, so
+   their image/decode preparation was bypassed. Classification now examines the
+   path before query/fragment while keeping the original fetch/image URL.
+   Tests cover pending decode, failed decode/request, browsers without decode,
+   and model URLs whose query/fragment looks like an image filename.
+2. `ModelInstances` in `PlanetSkinModel.tsx` used `dispose={null}` to protect
+   cached geometry/material, also suppressing `InstancedMesh.dispose`. In the
+   installed Fiber reconciler, assets supplied through constructor `args` are
+   not child instances. Normal mesh disposal therefore frees its instance buffers
+   without disposing those assets. Real WebGL instrumentation over four removals
+   showed live buffers growing 6 → 12 before the fix; afterwards each mount/removal
+   remains 6 → 4 and eight instance buffers are deleted in total. Geometry and
+   material dispose counts remain zero. Real reconciler tests additionally cover
+   capacity reconstruction and reuse on remount for full and far tiers.
+3. Fiber caches `useGLTF(url)` under a different key from `useGLTF([url, lodUrl])`.
+   The skin and formation loaders used pairs, while preloads and previews used
+   individual URLs. Both actual components invoked the file loader again after
+   individual preloading. `useGltfPair` starts both individual preloads before
+   reading either hook, preserving parallel loading and sharing their parsed
+   results. Browser file-loader counts for a country planet and Pike formation
+   changed from two to one per URL. Unit tests exercise the real Suspense cache,
+   overlapping requests, identical tiers, replacement and either tier failing.
+
+Four before/after browser captures (full/far default worlds, country skin, Pike
+formation) have zero changed pixels, with no page errors. This verifies those
+views and resource ownership; it does not establish an S22 FPS/thermal gain or
+prove these defects caused every recorded stall. No LOD threshold, resolution,
+effect, animation, model or gameplay behavior was reduced.
+
+Recordings now capture the opening result when the galaxy's recording starts:
+`ctx.opening` is 0 unknown, 1 ready, 2 timeout, 3 failed, 4 context-lost or
+5 cancelled. The button still appears after loading. This metadata distinguishes
+completed preparation from the seven-second fallback without recording under
+the cover. It is compatible with the server's existing numeric context schema.
+
+HTTP checks of actual versioned planet image/model URLs found production returns
+`public, max-age=31536000, immutable`, while the local Vite preview returns
+`no-cache` with ETags (conditional requests return 304). Browser cache reuse and
+model parsing/GPU preparation are different costs; file-loader counters above
+do not claim every invocation downloaded another network body. No HTTP cache
+configuration or service worker was changed.
+
+Evidence is in ignored `out/render-performance/`: `phone-20261013T135117*.json*`,
+`phone-cache-headers-20261013.json`, `planet-lifetime-{before,after}.json`,
+`gltf-cache-{before,after}.json`, before/after PNGs and the red/green test logs.
+The focused change regressions passed 89 tests, followed by 33 passing tests
+covering recording metadata and final cache/lifetime behavior. Web typecheck
+passed. Full web regressions and the final build are recorded below when complete.
+
+The next phone record (`776a3bb6-3701-4975-ac4f-6ec9360e1197`, 34 samples)
+confirms `opening=2`: this opening used the seven-second timeout, not successful
+preparation. First-five-second maximum gap is 167.4 ms versus 309.8 ms previously,
+but the overall FPS is lower (34.5 versus 48). Menu/shop/inventory is now open for
+14 of 34 samples, versus 7 of 50; those samples average 28 FPS and contribute
+2,232 of 3,192 ms of Long Tasks. The maximum draw count/triangles also increased
+to 727/1,122,033 from 570/849,733, with 49–50 contacts versus 37–39 and different
+camera usage. These are not controlled A/B results or evidence that all stalls
+are fixed. The next investigation must time the store's own renderer and JS work,
+which the galaxy submission timer does not include.
+
+During the local build replacement, the old lazy store URL
+`SkinsScreen-BwqZG015.js` disappeared; Vite serves HTML for it, while the current
+`SkinsScreen-egfcM7Ep.js` returns JavaScript. The reported dynamic-module error
+cleared after reload, consistent with a tab holding the old import map. Current
+JS/CSS chunks are archived under ignored `out/render-performance/phone-hashed-assets`
+for retention on later local builds. No application auto-reload behavior was added.
+
+## Session-wide review and follow-up fixes (2026-10-13)
+
+The detailed findings, affected functions, evidence, risk and validation are in
+[`render-performance-session-review.md`](render-performance-session-review.md).
+The review covers every renderer change against the pinned production base.
+
+An actual shop CPU profile identified the 384 native surface raycasts as a
+485 ms first-use cost within a 515 ms Long Task. The equivalent local BVH query
+preserves all samples and placement rules, with zero changed pixels for eight
+normal/recovery elemental captures. Fresh geometry queries measured 403–513 ms
+before and 8–22 ms after on desktop software rendering, not the S22.
+
+New failing regressions also confirmed premature first-frame readiness during
+context loss, permanent barrier cancellation during StrictMode replay and idle
+starvation of background texture preparation. All three are fixed; the new
+five-file regression group passes 46 tests. Native browser context loss and
+restoration plus StrictMode preparation pass without page errors. On canvas
+unmount, camera ownership is restored/released and its barrier is discarded;
+effect cleanup no longer terminally cancels a barrier reused by effect replay.
+
+Full web coverage was completed after an interrupted run by checking the
+remaining files and changed regressions sequentially. Reconciled coverage is
+460 files: 459 pass, one intentionally skipped; 6,113 passing tests and 29
+skipped. The final 81-file group passes 366 tests; subsequent type-fixture
+corrections pass their 26 behavior tests. Final web typecheck passes. No gameplay,
+quality, LOD threshold, resolution or visual effect was reduced.
+
+Final web lint and production build pass. The original six-view comparison was
+repeated with unchanged draw/triangle results and zero changed pixels in every
+view, without page errors. The standard seven-viewport loading check also passes
+its 6× CPU check (p95 16.8 ms). The refreshed local phone build retains prior
+hashed JS/CSS chunks to preserve lazy imports in open tabs; reload selects the
+new code. The preview remains on port 4188 with the production API proxy. No
+production deployment has been performed.
