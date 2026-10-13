@@ -1308,6 +1308,8 @@ export const planets = pgTable('planets', {
   recoveryUntil: timestamp('recovery_until', { withTimezone: true }),
   /** Tactical EMP blackout. Production continues; Aegis and ground fire-control do not. */
   empUntil: timestamp('emp_until', { withTimezone: true }),
+  /** Successful strikes in the current continuous EMP window; reset on the next fresh hit. */
+  empHits: integer('emp_hits').notNull().default(0),
   /**
    * WHEN THIS WORLD STOPS WORKING DOUBLE. Owner instruction, 2026-09-16.
    *

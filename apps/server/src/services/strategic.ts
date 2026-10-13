@@ -477,6 +477,9 @@ export async function applyDeathStarStrike(
     : null;
   const shieldDestroyed = owned?.shield ?? neutral?.shield ?? target.shield;
   const empUntil = addMinutes(now, DEATH_STAR.empMinutes);
+  // The target row is locked: bursts from different launch worlds cannot lose increments.
+  const empHits = target.empUntil !== null && target.empUntil > now
+    ? Math.max(1, target.empHits) + 1 : 1;
   /*
     AND A COLONY PAYS IN LOYALTY. Owner, 2026-10-01.
 
@@ -487,15 +490,19 @@ export async function applyDeathStarStrike(
     knows how: fleet home, guns to the caretaker, nobody credited.
   */
   const loyaltyBefore = owned?.kind === 'COLONY' ? owned.loyalty : null;
-  const loyaltyAfter = loyaltyBefore === null
+  const remainingLoyalty = loyaltyBefore === null
     ? null
     : Math.max(0, loyaltyBefore - DEATH_STAR.colonyLoyaltyLoss);
+  // PostgreSQL `real` rounds an exact 20.01 slightly upwards at the threshold.
+  const loyaltyAfter = remainingLoyalty !== null && remainingLoyalty <= DEATH_STAR.colonyLoyaltyZeroTolerance + 1e-6
+    ? 0 : remainingLoyalty;
 
   await tx
     .update(planets)
     .set({
       shield: 0,
       empUntil,
+      empHits,
       lastTickAt: now,
       ...(loyaltyAfter === null ? {} : { loyalty: loyaltyAfter }),
     })

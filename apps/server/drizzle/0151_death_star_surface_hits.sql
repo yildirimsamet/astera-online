@@ -1,0 +1,1 @@
+ALTER TABLE "planets" ADD COLUMN "emp_hits" integer DEFAULT 0 NOT NULL;

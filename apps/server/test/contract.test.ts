@@ -501,6 +501,13 @@ describe('every payload the client parses', () => {
     expect(parsed.planets.some((p) => p.shielded)).toBe(true);
   });
 
+  it('GET /api/galaxy carries the authoritative successive EMP hit count', async () => {
+    const id = f.planetIds[0]!;
+    await f.db.update(planets).set({ empHits: 5, empUntil: new Date(f.clock.now().getTime() + 3_600_000) }).where(eq(planets.id, id));
+    const parsed = galaxySchema.parse(await get('/api/galaxy'));
+    expect(parsed.planets.find(planet => planet.id === id)?.state).toMatchObject({ kind: 'EMP', hits: 5 });
+  });
+
   it('GET /api/leaderboard marks only the caller as a bot for reward eligibility', async () => {
     await f.db.insert(botProfiles).values({
       accountId: f.accountIds[0]!,

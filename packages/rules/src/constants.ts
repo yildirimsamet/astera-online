@@ -3741,6 +3741,8 @@ export const DEATH_STAR = {
    * NEUTRAL, not to the attacker. Capitals have no loyalty and lose none.
    */
   colonyLoyaltyLoss: 20,
+  /** Ignore sub-hundredth regeneration residue after a strike; five rapid hits can finish a colony. */
+  colonyLoyaltyZeroTolerance: 0.01,
   /** Recent resolved impacts remain public this long so reconnecting tabs see the event. */
   impactSeconds: 8,
   probeVisibilityAccuracy: 0.75,

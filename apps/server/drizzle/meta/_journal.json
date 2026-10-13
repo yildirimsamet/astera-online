@@ -1058,6 +1058,13 @@
       "when": 1791765063642,
       "tag": "0150_pirate_reward_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1791924752284,
+      "tag": "0151_death_star_surface_hits",
+      "breakpoints": true
     }
   ]
 }

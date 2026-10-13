@@ -9,6 +9,7 @@ import { planetModel } from '../ui/assets.js';
 import { planetSkinVisual } from '../ui/planetSkins.js';
 import { createCountryRecoveryMaterial, createPlanetSkinMaterial } from './planetSkinMaterial.js';
 import { planetSurface, solidPlanetMaterial } from './planetSurface.js';
+import { addPlanetImpact, planetImpactGroups } from './planetImpactMaterial.js';
 import type { PlanetLod } from './planetLod.js';
 import { placeBodies, placePickSpheres, seat, settleMembers } from './planetPick.js';
 import { bodyLight } from './PlanetField.jsx';
@@ -30,7 +31,7 @@ import {
   planetSkinRotation,
 } from './planetSkinAttachments.js';
 
-type SkinNode = Pick<PlanetNode, 'id' | 'position' | 'radius' | 'stance' | 'intel'>;
+type SkinNode = Pick<PlanetNode, 'id' | 'position' | 'radius' | 'stance' | 'intel'> & { state?: PlanetNode['state'] };
 
 export type PlanetSkinLod = 'full' | 'low' | 'billboard';
 export type PlanetSkinBillboardMode = 'all' | 'near' | 'far';
@@ -128,6 +129,13 @@ interface Dressed {
   uniforms: { time: { value: number } } | null;
 }
 type Dress = (source: THREE.Material) => Dressed;
+
+function impactDress(dressed: Dressed, level: number): Dressed {
+  if (level === 0) return dressed;
+  const time = dressed.uniforms?.time ?? { value: 0 };
+  addPlanetImpact(dressed.material, level, time);
+  return { material: dressed.material, uniforms: { time } };
+}
 
 /** A default world at full detail: matte, every detail map, a night floor (`planetSurface`). */
 const dressFull: Dress = (source) => ({ material: planetSurface(source, true), uniforms: null });
@@ -241,22 +249,26 @@ export function PlanetSkinModel({
   onRendered?: () => void;
 }) {
   const visual = useMemo(() => planetSkinVisual(skinId, status), [skinId, status]);
+  const groups = useMemo(() => planetImpactGroups(nodes), [nodes]);
   if (!visual) return null;
   return (
-    <LoadedPlanetSkinModel
+    <>{groups.map(group => <LoadedPlanetSkinModel
+      key={group.level}
+      impactLevel={group.level}
       visual={visual}
       status={status}
-      nodes={nodes}
+      nodes={group.nodes}
       onSelect={onSelect}
       galaxyLod={galaxyLod}
       previewPhaseOffset={previewPhaseOffset}
       freezeRotation={freezeRotation}
       onRendered={onRendered}
-    />
+    />)}</>
   );
 }
 
 function LoadedPlanetSkinModel({
+  impactLevel,
   visual,
   status,
   nodes,
@@ -266,6 +278,7 @@ function LoadedPlanetSkinModel({
   freezeRotation,
   onRendered,
 }: {
+  impactLevel: number;
   visual: NonNullable<ReturnType<typeof planetSkinVisual>>;
   status: PlanetSkinStatus;
   nodes: readonly SkinNode[];
@@ -289,16 +302,16 @@ function LoadedPlanetSkinModel({
     if (!model) return null;
     const source = Array.isArray(model.material) ? model.material[0] : model.material;
     if (!source) return null;
-    if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
-    return { material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null };
-  }, [model, visual]);
+    if (visual.finish.kind === 'PALETTE') return impactDress(createPlanetSkinMaterial(source, visual.finish), impactLevel);
+    return impactDress({ material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null }, impactLevel);
+  }, [model, visual, impactLevel]);
   const lowDressed = useMemo(() => {
     if (!lowModel) return null;
     const source = Array.isArray(lowModel.material) ? lowModel.material[0] : lowModel.material;
     if (!source) return null;
-    if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
-    return { material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null };
-  }, [lowModel, visual]);
+    if (visual.finish.kind === 'PALETTE') return impactDress(createPlanetSkinMaterial(source, visual.finish), impactLevel);
+    return impactDress({ material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null }, impactLevel);
+  }, [lowModel, visual, impactLevel]);
   const fullBody = useRef<THREE.InstancedMesh>(null);
   const lowBody = useRef<THREE.InstancedMesh>(null);
   const hits = useRef<THREE.InstancedMesh>(null);
@@ -454,22 +467,26 @@ export function DefaultPlanetModel({
   capacity: number;
   onSelect?: (id: string) => void;
 }) {
+  const groups = useMemo(() => planetImpactGroups(nodes), [nodes]);
   return (
-    <ModelInstances
+    <>{groups.map(group => <ModelInstances
+      key={group.level}
+      impactLevel={group.level}
       name={`planet-models-${lod}`}
       modelUrl={url}
       // Only a world the camera is close to binds its detail maps; a speck and a planet do not.
       dress={lod === 'full' ? dressFull : dressLite}
       dressKey={lod === 'full' ? 'full' : 'lite'}
       turning={lod !== 'far'}
-      nodes={nodes}
+      nodes={group.nodes}
       capacity={Math.max(capacity, nodes.length)}
       onSelect={onSelect}
-    />
+    />)}</>
   );
 }
 
 function ModelInstances({
+  impactLevel,
   name,
   modelUrl,
   dress,
@@ -479,6 +496,7 @@ function ModelInstances({
   onSelect,
   turning = true,
 }: {
+  impactLevel: number;
   name: string;
   modelUrl: string;
   dress: Dress;
@@ -497,8 +515,9 @@ function ModelInstances({
     if (!model) return null;
     const source = Array.isArray(model.material) ? model.material[0] : model.material;
     if (!source) return null;
-    return cachedDress(modelUrl, dressKey, source, dress);
-  }, [model, modelUrl, dressKey, dress]);
+    return cachedDress(modelUrl, impactLevel > 0 ? `${dressKey}:impact:${impactLevel}` : dressKey, source,
+      material => impactDress(dress(material), impactLevel));
+  }, [model, modelUrl, dressKey, dress, impactLevel]);
   const body = useRef<THREE.InstancedMesh>(null);
   const hits = useRef<THREE.InstancedMesh>(null);
   const tint = useMemo(() => new THREE.Color(), []);
