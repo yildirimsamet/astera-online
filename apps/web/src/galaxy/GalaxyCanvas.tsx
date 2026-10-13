@@ -1,6 +1,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react';
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
+import { GalaxyVisualPhase } from './visualFrame.js';
 import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
 import { useGpuContext } from './gpuContext.js';
 import { ViewOffset } from './ViewOffset.js';
@@ -703,6 +704,7 @@ export function GalaxyCanvas({
       <Meteors shower={meteorShower} />
       <Disc />
 
+      <GalaxyVisualPhase>
       <Suspense fallback={null}>
         {/* Wreckage is independent of the rock field — a battle can leave one on a
             day when nothing is crossing the disc. D32. */}
@@ -842,6 +844,7 @@ export function GalaxyCanvas({
         {gpu.live && <SceneWarmup key={gpu.epoch} dataReady={openingDataReady} onCompiled={onCompiled} />}
         <FirstSceneFrame ready={prepared && openingDataReady} onDrawn={() => { sceneReady.current = true; onReady?.(); }} />
       </Suspense>
+      </GalaxyVisualPhase>
 
       {/*
         Bloom is the difference between "lights" and "light". It is the one

@@ -14,6 +14,8 @@ import { bodyLight } from './PlanetField.jsx';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial } from './hitboxDebug.jsx';
+import { createInstanceVisibility, updateVisibleMembers } from './instanceVisibility.js';
+import { useVisualFrame } from './visualFrame.js';
 import { sphereInFrustum } from './frustum.js';
 import { queuePlanetTextures } from './planetTextureQueue.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
@@ -460,36 +462,39 @@ function ModelInstances({
   const hits = useRef<THREE.InstancedMesh>(null);
   const tint = useMemo(() => new THREE.Color(), []);
   const invalidate = useThree((state) => state.invalidate);
+  const visible = useMemo(() => createInstanceVisibility<SkinNode>(), []);
 
   useLayoutEffect(() => {
     const mesh = body.current;
     if (!mesh) return;
-    // Drawn as many as are in this tier now; the mesh holds room for the whole look.
-    mesh.count = nodes.length;
-    // Placed here, with the members, and measured for the raycaster (`planetPick.ts`).
+    // Picking keeps the complete, stable node order and its original touch area.
     if (hits.current) placePickSpheres(hits.current, nodes);
-    // A tier that does not turn is placed here once; a turning one each frame below.
-    if (!turning) placeBodies(mesh, nodes, 0);
-    nodes.forEach((node, i) => {
-      const light = bodyLight(node.stance, node.intel);
-      const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
-      mesh.setColorAt(i, tint.setRGB(light * cool[0]!, light * cool[1]!, light * cool[2]!));
-    });
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.count = 0;
+    visible.view.primed = false;
+    visible.members.length = 0;
+    // Allocate colour before compilation, including an initially offscreen bucket.
+    mesh.setColorAt(0, tint.setRGB(1, 1, 1));
     if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
-    // The disc draws on demand: worlds that joined this tier as the camera came to rest
-    // are placed by the next frame, so ask for one rather than wait for the next move.
     invalidate();
-    // A new capacity or geometry is a new mesh, and a new mesh has to be placed again.
-  }, [nodes, tint, dressed, invalidate, capacity, geometry, turning]);
+  }, [nodes, tint, dressed, invalidate, capacity, geometry, visible, turning]);
 
-  useFrame(({ clock }) => {
+  useVisualFrame(({ camera, clock }) => {
     if (dressed?.uniforms) dressed.uniforms.time.value = clock.elapsedTime;
-    // A speck is placed with its members and never turns (`placeBodies`).
-    if (!turning) return;
     const mesh = body.current;
     if (!mesh) return;
-    placeBodies(mesh, nodes, clock.elapsedTime);
+    const changed = updateVisibleMembers(visible, camera, mesh, nodes, PLANET_SKIN_BODY_SCALE);
+    if (changed) {
+      mesh.count = visible.members.length;
+      visible.members.forEach((node, i) => {
+        const light = bodyLight(node.stance, node.intel);
+        const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
+        mesh.setColorAt(i, tint.setRGB(light * cool[0]!, light * cool[1]!, light * cool[2]!));
+      });
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      if (!turning) placeBodies(mesh, visible.members, 0);
+    }
+    if (!turning) return;
+    if (mesh.count > 0) placeBodies(mesh, visible.members, clock.elapsedTime);
   });
 
   if (!geometry || !dressed || nodes.length === 0 || capacity === 0) return null;
