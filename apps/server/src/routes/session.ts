@@ -18,9 +18,6 @@ const seenBody = z.object({ ids: z.array(z.string().uuid()).max(200).optional() 
 /** The instant the return story was read (`asOf`): the window closes up to there. S3. */
 const returnSeenBody = z.object({ asOf: z.coerce.date() });
 
-/** Long enough to be cheap, short enough that proxies do not time the socket out. */
-const HEARTBEAT_MS = 25_000;
-
 export function registerSessionRoutes(app: FastifyInstance): void {
   const me = async (accountId: string): Promise<string> => {
     const rows = await app.db
@@ -200,8 +197,12 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       }
       return true;
     };
-    // Serialize frames under a placement read lock: no old-shard frame may
-    // cross a committed transfer. Bound the pending queue as well as the socket.
+    // Serialize event frames behind a placement check: no old-shard frame may follow
+    // a committed transfer. A plain read is enough — a transfer bumps the version and
+    // publishes `placement_changed` in one transaction, so a frame that passes an
+    // uncommitted move is only a refetch hint the gate then refuses with 409. The row
+    // lock this used to take cost every frame an xid and a WAL flush (resource
+    // analysis 2026-10-13). Bound the pending queue as well as the socket.
     let pendingBytes = 0;
     let delivery = Promise.resolve();
     const enqueue = (frame: string): void => {
@@ -215,18 +216,16 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       }
       delivery = delivery.then(async () => {
         if (reply.raw.destroyed || reply.raw.writableEnded) return;
-        await app.db.transaction(async (tx) => {
-          const [current] = await tx.select({ seasonId: players.seasonId,
-            placementVersion: players.placementVersion }).from(players)
-            .where(eq(players.id, playerId)).for('share');
-          if (current?.seasonId !== seasonId || current.placementVersion !== placementVersion) {
-            write('event: placement_changed\ndata: {"kind":"placement_changed"}\n\n');
-            cleanup('client');
-            reply.raw.end();
-            return;
-          }
-          write(frame);
-        });
+        const [current] = await app.db.select({ seasonId: players.seasonId,
+          placementVersion: players.placementVersion }).from(players)
+          .where(eq(players.id, playerId));
+        if (current?.seasonId !== seasonId || current.placementVersion !== placementVersion) {
+          write('event: placement_changed\ndata: {"kind":"placement_changed"}\n\n');
+          cleanup('client');
+          reply.raw.end();
+          return;
+        }
+        write(frame);
       }).catch((err: unknown) => {
         app.log.warn({ err, playerId }, 'stream placement check failed');
         cleanup('error');
@@ -244,9 +243,11 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     const unsubscribeShard = app.bus.subscribeShard(seasonId, send);
     const unsubscribeGlobal = app.bus.subscribeGlobal(send);
 
+    // A comment line that only keeps proxies from idling the socket out. It says
+    // nothing about any galaxy, so it needs no placement check and no database.
     const heartbeat = setInterval(() => {
-      enqueue(`: ping\n\n`);
-    }, HEARTBEAT_MS);
+      write(`: ping\n\n`);
+    }, app.sseHeartbeatMs);
 
     const lease = app.streams.open(() => {
       cleanup('shutdown');

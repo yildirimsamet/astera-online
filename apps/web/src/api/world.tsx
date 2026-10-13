@@ -56,7 +56,6 @@ export function WorldProvider({ children }: { children: ReactNode }) {
     staleTime: 15_000,
     // SSE is primary; this also heals a missed credit while the stream is down.
     refetchInterval: 60_000,
-    refetchOnWindowFocus: true,
   });
   const data = worldsQuery.data;
   const storageKey = data ? `astera:world:v1:${data.seasonId}:${data.playerId}` : null;

@@ -14,6 +14,12 @@ const schema = z.object({
   /** Separate HTTP placement leases; each handler may also need the request pool. */
   PLACEMENT_POOL_MAX: z.coerce.number().int().min(1).max(50).default(2),
   /**
+   * API roles only: PostgreSQL ends a transaction left idle this long, so a hung
+   * handler cannot hold row locks or a placement connection indefinitely. The
+   * worker and CLIs run long transactions of their own and are not bounded.
+   */
+  DB_IDLE_IN_TRANSACTION_TIMEOUT_MS: z.coerce.number().int().min(100).max(600_000).default(30_000),
+  /**
    * Rotating this invalidates every session. Must be set in production.
    *
    * `SHARD_CODE` used to sit here and is gone (D21). One process now serves all ten
@@ -188,6 +194,8 @@ const schema = z.object({
   MINING_CACHE_TTL_MS: z.coerce.number().int().min(250).max(60_000).default(5_000),
   /** A slow phone is disconnected before its SSE socket can grow without bound. */
   SSE_MAX_BUFFER_BYTES: z.coerce.number().int().min(4096).max(1_048_576).default(65_536),
+  /** Keeps proxies from idling the stream out; a comment line, never a database read. */
+  SSE_HEARTBEAT_MS: z.coerce.number().int().min(100).max(60_000).default(25_000),
   LOG_LEVEL: z.string().default('info'),
 });
 

@@ -23,7 +23,7 @@ import { shareStructure } from '../src/api/structural.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { HudTop } from '../src/v2/shell/HudTop.js';
 import { RewardsScreen } from '../src/screens/RewardsScreen.js';
-import { useEventStream } from '../src/session/useEventStream.js';
+import { RESUME_RESYNC_MS, useEventStream } from '../src/session/useEventStream.js';
 import { useArrivals } from '../src/session/useArrivals.js';
 import { planetView } from './fixtures.js';
 
@@ -273,19 +273,56 @@ describe('one resource snapshot per owned world', () => {
     });
   });
 
-  it('refreshes stock on returning to the tab even inside the usual stale window', async () => {
+  /*
+    RETURNING AFTER A REAL ABSENCE, NOT ON EVERY FOCUS. Resource analysis 2026-10-13.
+    While the page stays visible the stream is live and the works are projected from
+    their rates, so a bare `focus` re-read every payload for nothing. A hide long
+    enough to have missed something still refreshes stock inside the stale window.
+  */
+  const setVisibility = (state: 'hidden' | 'visible'): void => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: state });
+    document.dispatchEvent(new Event('visibilitychange', { bubbles: true }));
+  };
+
+  it('refreshes stock on returning after a long absence even inside the usual stale window', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(epoch);
+    let latest = capital;
+    api.stream = vi.fn<Api['stream']>().mockReturnValue(new Promise(() => undefined));
+    api.planet = vi.fn().mockImplementation(() => Promise.resolve(latest));
+    api.planets = vi.fn().mockImplementation(() => Promise.resolve(list([latest, colony])));
+    const view = render(<LiveReadings />, { wrapper });
+    try {
+      await act(async () => { await vi.advanceTimersByTimeAsync(10); });
+      expect(screen.getByLabelText('header')).toHaveTextContent('"alloy":1505');
+      latest = stamped('capital', 0, 0, 0, epoch + 1_000);
+      act(() => { setVisibility('hidden'); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(RESUME_RESYNC_MS + 1_000); });
+      act(() => { setVisibility('visible'); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(10); });
+      expect(screen.getByLabelText('header')).toHaveTextContent('"alloy":0');
+      expect(screen.getByLabelText('owned world')).toHaveTextContent('"deuterium":0');
+    } finally {
+      view.unmount();
+      Reflect.deleteProperty(document, 'visibilityState');
+    }
+  });
+
+  it('does not re-read stock when a visible page merely regains focus', async () => {
     let latest = capital;
     api.stream = vi.fn<Api['stream']>().mockReturnValue(new Promise(() => undefined));
     api.planet = vi.fn().mockImplementation(() => Promise.resolve(latest));
     api.planets = vi.fn().mockImplementation(() => Promise.resolve(list([latest, colony])));
     render(<LiveReadings />, { wrapper });
     await waitFor(() => { expect(screen.getByLabelText('header')).toHaveTextContent('"alloy":1505'); });
+    const planetReads = vi.mocked(api.planet).mock.calls.length;
+    const listReads = vi.mocked(api.planets).mock.calls.length;
     latest = stamped('capital', 0, 0, 0, epoch + 1_000);
     act(() => { window.dispatchEvent(new Event('focus')); });
-    await waitFor(() => {
-      expect(screen.getByLabelText('header')).toHaveTextContent('"alloy":0');
-      expect(screen.getByLabelText('owned world')).toHaveTextContent('"deuterium":0');
-    });
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(vi.mocked(api.planet).mock.calls.length).toBe(planetReads);
+    expect(vi.mocked(api.planets).mock.calls.length).toBe(listReads);
+    expect(screen.getByLabelText('header')).toHaveTextContent('"alloy":1505');
   });
 
   it('heals a missed incoming credit without an SSE event or another player action', async () => {

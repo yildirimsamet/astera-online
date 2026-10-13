@@ -90,6 +90,7 @@ declare module 'fastify' {
     metrics: RuntimeMetrics;
     streams: StreamRegistry;
     sseMaxBufferBytes: number;
+    sseHeartbeatMs: number;
     dbPoolMax: number;
     placementPoolMax: number;
     limits: RouteLimits;
@@ -131,9 +132,13 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   // into every route signature in the app; pino satisfies this interface anyway.
   const log: FastifyBaseLogger = opts.logger ?? pino({ level: opts.env.LOG_LEVEL });
 
+  const idleBound = opts.env.ROLE === 'api'
+    ? { idleInTransactionTimeoutMs: opts.env.DB_IDLE_IN_TRANSACTION_TIMEOUT_MS }
+    : {};
   const owned = opts.db ? null : createDb(opts.env.DATABASE_URL, {
     max: opts.env.DB_POOL_MAX,
     applicationName: `astera-${opts.env.ROLE}`,
+    ...idleBound,
   });
   const db = opts.db ?? owned!.db;
 
@@ -146,7 +151,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
      */
     trustProxy: opts.env.TRUST_PROXY,
   });
-  const closePlacementGate = installPlacementGate(app, opts.env.DATABASE_URL, opts.env.PLACEMENT_POOL_MAX);
+  const closePlacementGate = installPlacementGate(app, opts.env.DATABASE_URL, opts.env.PLACEMENT_POOL_MAX, idleBound);
   const tokens = new TokenService(
     opts.env.JWT_SECRET,
     opts.env.ACCESS_TOKEN_MINUTES,
@@ -203,6 +208,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   const streams = new StreamRegistry();
   app.decorate('streams', streams);
   app.decorate('sseMaxBufferBytes', opts.env.SSE_MAX_BUFFER_BYTES);
+  app.decorate('sseHeartbeatMs', opts.env.SSE_HEARTBEAT_MS);
   app.decorate('dbPoolMax', opts.env.DB_POOL_MAX);
   app.decorate('placementPoolMax', opts.env.PLACEMENT_POOL_MAX);
   app.decorate('limits', {

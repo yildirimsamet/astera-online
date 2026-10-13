@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { LazyMotion, domMax } from 'motion/react';
 import { lockViewportZoom } from './lib/viewport.js';
 import { I18nextProvider } from 'react-i18next';
@@ -14,7 +14,7 @@ import { syncDocumentLanguage } from './i18n/document.js';
 import { startAnalytics } from './lib/analytics.js';
 import { configureH5Ads } from './lib/h5.js';
 import { Api } from './api/client.js';
-import { shareStructure } from './api/structural.js';
+import { createQueryClient } from './api/queryClient.js';
 import { ApiProvider } from './api/context.js';
 import { ToastProvider } from './ui/Toast.js';
 import { ErrorBoundary } from './shell/ErrorBoundary.js';
@@ -59,29 +59,7 @@ if (import.meta.env.DEV || import.meta.env.VITE_VISUAL_TEST === '1') {
   (window as unknown as { __api?: Api }).__api = api;
 }
 
-const client = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // The server is the only authority; a failed read is worth one more try and
-      // then a visible failure, never a silent stale render.
-      retry: 1,
-      refetchOnReconnect: true,
-      /**
-       * IDENTITY ACROSS A REFETCH, WHICH THE DEFAULT COULD NOT GIVE US.
-       *
-       * Every payload the disc draws from carries `Date` instants, and React
-       * Query's own walker treats a Date as a leaf compared by reference — so a
-       * refetch that read back exactly what it already held still produced brand
-       * new arrays of brand new objects. Every memo below them re-ran, every
-       * `BufferGeometry` built from one was rebuilt, and the camera re-framed
-       * itself on data that had not moved.
-       *
-       * One clause fixes it for the whole client at once. See `api/structural.ts`.
-       */
-      structuralSharing: shareStructure,
-    },
-  },
-});
+const client = createQueryClient();
 
 /**
  * Scenario harnesses sometimes commit a mutation outside the page, then need the

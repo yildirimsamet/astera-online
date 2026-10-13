@@ -110,33 +110,5 @@ it('releases the world lock before rendering and retains the captured state', as
   expect(queries).toHaveLength(0);
 });
 
-it.each(['/api/planets', '/api/planets/:id'])('acquires the season before world locks on %s', async url => {
-  const f = await seedWorld(1);
-  built = buildApp({ db, env: testEnv(), clock: f.clock, logger: pino({ level: 'silent' }) });
-  const app = built.app;
-  const authorization = `Bearer ${await app.tokens.issueAccess(f.accountIds[0]!)}`;
-  let pending: Promise<{ statusCode: number }> | undefined;
-  let lockError: unknown;
-  try {
-    await f.db.transaction(async tx => {
-      await tx.select({ id: schema.seasons.id }).from(schema.seasons)
-        .where(eq(schema.seasons.id, f.seasonId)).for('update');
-      const [holder] = await tx.execute<{ pid: number }>(query`select pg_backend_pid() as pid`);
-      pending = app.inject({ url: url.replace(':id', f.planetIds[0]!), headers: { authorization } })
-        .then(response => response);
-      await vi.waitFor(async () => {
-        const [row] = await tx.execute<{ waiting: boolean }>(query`
-          select exists (select 1 from pg_stat_activity
-            where ${holder!.pid} = any(pg_blocking_pids(pid))) as waiting
-        `);
-        expect(row?.waiting).toBe(true);
-      }, { timeout: 3000 });
-      // A season lifecycle writer must still be able to acquire its world's row.
-      // World-first GET locks would create the inverse edge in a deadlock cycle.
-      await tx.execute(query`select id from planets where id=${f.planetIds[0]} for update nowait`);
-    });
-  } catch (error) { lockError = error; }
-  const response = await pending;
-  expect(lockError).toBeUndefined();
-  expect(response?.statusCode).toBe(200);
-});
+// Owned-world GETs no longer lock the season or a world at all; the stronger
+// rule (they never wait for a lifecycle writer) is in planet-read-locks.test.ts.

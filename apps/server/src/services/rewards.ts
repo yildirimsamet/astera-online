@@ -28,7 +28,7 @@ import {
 import {
   GameError,
   assertWorldOperational,
-  loadLocked,
+  readPlanetSnapshot,
   refreshWealth,
   saveResources,
   withPlanetLock,
@@ -346,11 +346,12 @@ async function standingOf(tx: Tx, planet: LockedPlanet): Promise<Standing> {
   };
 }
 
+/** A read: one read-only snapshot, no world lock and no persisted tick (resource analysis 2026-10-13). */
 export async function rewardsView(db: Db, planetId: string, clock: Clock): Promise<RewardsView> {
   return db.transaction(async (tx) => {
-    const planet = await loadLocked(tx, planetId, clock, { requireLive: false });
+    const planet = await readPlanetSnapshot(tx, planetId, clock);
     return assemble(tx, await standingOf(tx, planet));
-  });
+  }, { isolationLevel: 'repeatable read', accessMode: 'read only' });
 }
 
 /**

@@ -10,7 +10,7 @@ import {
   FEATURE_FLAGS,
   type HullId,
 } from '@astera/rules';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { planets } from '../db/schema.js';
 import { startFaultRepair } from '../services/faultRepair.js';
 import { startRepair } from '../services/repair.js';
@@ -26,7 +26,7 @@ import { launchAttack } from '../services/mission.js';
 import { requireAuth } from './auth.js';
 import { completeResearch } from '../services/research.js';
 import { capitalPlanet, commanderForAccount, ownedPlanet } from '../services/ownership.js';
-import { GameError, lockSeason } from '../services/planet.js';
+import { GameError } from '../services/planet.js';
 import { buildDeathStar, buildInterceptor, launchDeathStar } from '../services/strategic.js';
 import { setDefencePosture } from '../services/clanSupport.js';
 import { launchSettlement, launchTransfer, recallFlight } from '../services/movement.js';
@@ -120,34 +120,32 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     return ownedPlanet(app.db, accountId, planetId);
   };
 
+  /**
+   * A PRIVATE VIEW IS A READ. Resource analysis 2026-10-13.
+   *
+   * These GETs used to take the season SHARE and every owned world FOR UPDATE, then
+   * persist the lazy tick. A resync asks for all three together, so a commander's own
+   * reads queued behind each other and the worker queued behind them. The economy is
+   * a pure function of the stored row and the clock, and every mutation ticks under
+   * its own lock first, so one read-only snapshot gives the same figures with no lock,
+   * no write and no lock-order hazard against lifecycle writers.
+   */
+  const VIEW_SNAPSHOT = { isolationLevel: 'repeatable read', accessMode: 'read only' } as const;
+  const READ_ONLY = { readOnly: true } as const;
+
   app.get('/api/planets', { preHandler: requireAuth }, async (req) => {
     const captured = await app.db.transaction(async (tx) => {
       const commander = await commanderForAccount(tx, req.accountId!);
-      // Lifecycle writers take season before world; never hold a world while waiting for season.
-      await lockSeason(tx, commander.seasonId, false);
-      /**
-       * A PRIVATE VIEW ADVANCES LAZY ECONOMY, SO THIS IS AN UPDATE LOCK.
-       *
-       * The first multi-world version took SHARE on every owned row and then
-       * `planetView` called `loadLocked`, upgrading each one to UPDATE. Two reads
-       * arriving together could both hold SHARE and wait forever for the other
-       * upgrade; PostgreSQL correctly killed one with 40P01 and the client saw a
-       * transient 500. Acquire the final lock mode up front, in the same ascending
-       * planet order every multi-world mutation uses. There is then no lock
-       * conversion and no opposite ordering with settlement or transfer.
-       */
-      const locked = await tx.select().from(planets)
-        .where(eq(planets.controllerPlayerId, commander.playerId))
-        .orderBy(asc(planets.id))
-        .for('update');
-      const worlds = locked.toSorted((a, b) =>
+      const owned = await tx.select({ id: planets.id, kind: planets.kind }).from(planets)
+        .where(eq(planets.controllerPlayerId, commander.playerId));
+      const worlds = owned.toSorted((a, b) =>
         a.kind === b.kind ? a.id.localeCompare(b.id) : a.kind === 'CAPITAL' ? -1 : 1,
       );
       const views: PlanetViewData[] = [];
       // One clock instant and commander snapshot for the whole response.
       const now = app.clock.now();
       for (const world of worlds) {
-        views.push(await loadPlanetViewData(tx, world.id, { now: () => now }, views[0]?.commander));
+        views.push(await loadPlanetViewData(tx, world.id, { now: () => now }, views[0]?.commander, READ_ONLY));
       }
       return {
         playerId: commander.playerId,
@@ -155,7 +153,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
         capitalPlanetId: worlds.find((world) => world.kind === 'CAPITAL')?.id ?? null,
         planets: views,
       };
-    });
+    }, VIEW_SNAPSHOT);
     return { ...captured, planets: captured.planets.map(buildPlanetView) };
   });
 
@@ -163,19 +161,19 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(req.params);
     return app.db.transaction(async (tx) => {
       const commander = await commanderForAccount(tx, req.accountId!);
-      await lockSeason(tx, commander.seasonId, false);
-      const locked = await tx.select({ id: planets.id }).from(planets).where(and(
+      const [owned] = await tx.select({ id: planets.id }).from(planets).where(and(
         eq(planets.id, planetId),
         eq(planets.controllerPlayerId, commander.playerId),
-      )).for('update');
-      if (!locked[0]) throw new GameError('PLANET_NOT_OWNED', 'You no longer control that world', 403);
-      return loadPlanetViewData(tx, planetId, app.clock);
-    }).then(buildPlanetView);
+      ));
+      if (!owned) throw new GameError('PLANET_NOT_OWNED', 'You no longer control that world', 403);
+      return loadPlanetViewData(tx, planetId, app.clock, undefined, READ_ONLY);
+    }, VIEW_SNAPSHOT).then(buildPlanetView);
   });
 
   app.get('/api/planet', { preHandler: requireAuth }, async (req) => {
     const planetId = await myPlanet(req.accountId!);
-    return app.db.transaction(tx => loadPlanetViewData(tx, planetId, app.clock)).then(buildPlanetView);
+    return app.db.transaction(tx => loadPlanetViewData(tx, planetId, app.clock, undefined, READ_ONLY), VIEW_SNAPSHOT)
+      .then(buildPlanetView);
   });
 
   app.get('/api/planets/:planetId/abandon', { preHandler: requireAuth }, async req => {

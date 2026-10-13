@@ -1065,6 +1065,13 @@
       "when": 1791924752284,
       "tag": "0151_death_star_surface_hits",
       "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1791924753284,
+      "tag": "0152_resource_read_indexes",
+      "breakpoints": true
     }
   ]
 }

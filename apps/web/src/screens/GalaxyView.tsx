@@ -389,8 +389,6 @@ export function GalaxyView({
   const pending = usePending();
   const traffic = useTraffic();
   const mining = useMining();
-  /** The caller's own fog-filtered sightings, for the disc tally. D150. */
-  const pirateList = usePirates();
   const reports = useReports();
   const setRival = useSetRival();
   const mine = useMine();
@@ -587,6 +585,11 @@ export function GalaxyView({
    * pirate dies, so the sheet always reads the current server entry.
    */
   const [attackingPirateId, setAttackingPirateId] = useState<string | null>(null);
+  /**
+   * The caller's own fog-filtered sightings, for the disc tally and the pirate launch
+   * sheet. D150. Live (traffic pace) only while that sheet is open.
+   */
+  const pirateList = usePirates({ live: attackingPirateId !== null });
   /**
    * WHERE THE OPEN SHEET WOULD SEND THE WING IT HAS SELECTED. D155.
    *
@@ -2309,7 +2312,8 @@ function PirateFocusHost({
   open: boolean;
   onToggle: () => void;
 }) {
-  const pirates = usePirates();
+  // The focus quotes reach and opens the launch sheet: read at the traffic pace.
+  const pirates = usePirates({ live: true });
   const planet = usePlanet();
   const pending = usePending();
 

@@ -146,6 +146,31 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
   }
 }
 
+/**
+ * A FINISHED BUILD OR RESEARCH IS ABOUT ONE WORLD. Resource analysis 2026-10-13.
+ *
+ * These player events arrived unrouted, so each one re-read all of `LIVE_READS`.
+ * What they move is the world and its commander: levels, queues, research and the
+ * reward progress counted off them. A sensor change publishes `private:sensors` and a
+ * public change publishes `shard:world`, so traffic, mining field and the public map
+ * have their own events. `galaxy` stays on a build so the owner's own world redraws
+ * at once rather than on the heavy lane.
+ *
+ * `null` means "not one of these" and the caller keeps the full resync.
+ */
+export function readsForPlayerEvent(kind: string): readonly (readonly string[])[] | null {
+  switch (kind) {
+    case 'build_complete':
+      return [keys.planet, keys.planets, keys.pending, keys.rewards, keys.galaxy];
+    case 'research_complete':
+      return [keys.planet, keys.planets, keys.pending, keys.rewards, keys.miningStatus];
+    case 'death_star_ready':
+      return [keys.planet, keys.planets, keys.pending];
+    default:
+      return null;
+  }
+}
+
 /** The prefix the server namespaces player-private clan kinds with. Matches `bus.ts`. */
 export const PRIVATE_PREFIX = 'private:';
 
