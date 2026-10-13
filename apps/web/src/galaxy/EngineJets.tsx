@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useGalaxyCulling, useVisualFrame } from './visualFrame.js';
+import { createLocalVisibility, localSphereVisible, engineUnitsRadius } from './formationVisibility.js';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Vec3Tuple } from './scene.js';
@@ -65,9 +66,14 @@ export function EngineJets({ units, aimDistance, name = 'formation-lights' }: {
   const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
   useEffect(() => () => { geometry.dispose(); }, [geometry]);
   useEffect(() => () => { material.dispose(); }, [material]);
-  useFrame(({ clock, camera }) => {
+  const culling = useGalaxyCulling();
+  const visibility = useMemo(createLocalVisibility, []);
+  const radius = useMemo(() => engineUnitsRadius(units), [units]);
+  useVisualFrame(({ clock, camera }) => {
     const node = stream.current;
     if (!node) return;
+    node.visible = !culling || localSphereVisible(visibility, camera, node, radius);
+    if (!node.visible) return;
     node.getWorldQuaternion(world);
     cameraLocal.copy(world).invert().multiply(camera.quaternion);
     const ages = geometry.getAttribute('aAge'), alpha = geometry.getAttribute('aAlpha'), colours = geometry.getAttribute('aTint');

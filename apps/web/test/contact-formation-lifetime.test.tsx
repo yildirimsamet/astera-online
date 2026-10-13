@@ -1,13 +1,14 @@
 import { renderHook } from '@testing-library/react';
 import type * as Drei from '@react-three/drei';
 import type * as Fiber from '@react-three/fiber';
-import { Children, isValidElement, type ComponentProps, type ReactElement, type ReactNode } from 'react';
+import { Children, isValidElement, type ComponentProps, type ReactElement, type ReactNode, type RefObject } from 'react';
 import * as THREE from 'three';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Contact } from '../src/api/schemas.js';
 import { shareStructure } from '../src/api/structural.js';
 import { FormationWakes, Traffic, Wake } from '../src/galaxy/Fleets.js';
 import { EngineJets, type EngineUnit } from '../src/galaxy/EngineJets.js';
+import { GalaxyVisualPhase } from '../src/galaxy/visualFrame.js';
 import { markersFor } from '../src/galaxy/Squadrons.js';
 import type { Vec3Tuple } from '../src/galaxy/scene.js';
 
@@ -332,4 +333,78 @@ describe('independent resource lifetimes', () => {
     second.unmount();
     expect(dispose).toHaveBeenCalledOnce();
   });
+});
+
+describe('offscreen formation buffers', () => {
+  it('stops jet uploads offscreen and restores the current animation on re-entry', async () => {
+    const { useFrame } = await import('@react-three/fiber');
+    const units: EngineUnit[] = [{ at: [0, 0, 0], nozzles: [[0, 0, 0]], size: 1, colour: '#fff', intensity: 1, widthFactor: 1, lengthFactor: 1 }];
+    const { result } = renderHook(() => EngineJets({ units, aimDistance: { current: 100 } }), { wrapper: GalaxyVisualPhase });
+    const element = result.current;
+    if (!isValidElement<{ args: [THREE.BufferGeometry, THREE.Material, number]; ref: RefObject<THREE.InstancedMesh | null> }>(element)) throw new Error('Missing jet draw');
+    const node = new THREE.InstancedMesh(...element.props.args);
+    element.props.ref.current = node;
+    const parent = new THREE.Group(); parent.add(node); parent.position.z = -10;
+    const camera = new THREE.PerspectiveCamera(60, 1, 1, 100);
+    const callback = vi.mocked(useFrame).mock.lastCall![0];
+    const state = { camera, clock: { elapsedTime: 1 } } as Fiber.RootState;
+    callback(state, 0);
+    const version = node.instanceMatrix.version;
+    const initial = node.instanceMatrix.array.slice();
+    parent.position.x = 100;
+    state.clock.elapsedTime = 5;
+    callback(state, 0);
+    expect(node.visible).toBe(false);
+    expect(node.instanceMatrix.version).toBe(version);
+    parent.position.x = 0;
+    state.clock.elapsedTime = 10;
+    callback(state, 0);
+    expect(node.visible).toBe(true);
+    expect(node.instanceMatrix.version).toBeGreaterThan(version);
+    expect(node.instanceMatrix.array).not.toEqual(initial);
+    expect((node.material as THREE.ShaderMaterial).uniforms.uTime?.value).toBe(10);
+  });
+
+  it('stops wake uploads offscreen but retains unbounded caller animation', async () => {
+    const { useFrame } = await import('@react-three/fiber');
+    const props = { markers: markersFor({ DART: 1 }), slots: [[0, 0, 0] as Vec3Tuple], scale: 1, aimDistance: { current: 100 } };
+    const { result, rerender } = renderHook(({ animated }) => FormationWakes({ ...props, longitudinalOffset: animated ? () => 0 : undefined }), { initialProps: { animated: false }, wrapper: GalaxyVisualPhase });
+    const element = result.current;
+    if (!isValidElement<DrawProps & { ref: RefObject<THREE.Mesh | null> }>(element)) throw new Error('Missing wake draw');
+    const node = new THREE.Mesh(element.props.geometry, element.props.material);
+    element.props.ref.current = node;
+    node.position.set(100, 0, -10);
+    const camera = new THREE.PerspectiveCamera(60, 1, 1, 100);
+    const state = { camera, clock: { elapsedTime: 1 } } as Fiber.RootState;
+    const positions = node.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const version = positions.version;
+    vi.mocked(useFrame).mock.lastCall![0](state, 0);
+    expect(node.visible).toBe(false);
+    expect(positions.version).toBe(version);
+    rerender({ animated: true });
+    vi.mocked(useFrame).mock.lastCall![0](state, 0);
+    expect(node.visible).toBe(true);
+    expect(positions.version).toBeGreaterThan(version);
+  });
+});
+
+it('does not use a stale parent pose to hide engines in automatic-render previews', async () => {
+  const { useFrame } = await import('@react-three/fiber');
+  const units: EngineUnit[] = [{ at: [0, 0, 0], nozzles: [[0, 0, 0]], size: 1, colour: '#fff', intensity: 1, widthFactor: 1, lengthFactor: 1 }];
+  // A gallery has no GalaxyVisualPhase: both child and parent use priority 0.
+  const { result } = renderHook(() => EngineJets({ units, aimDistance: { current: 100 } }));
+  const element = result.current;
+  if (!isValidElement<{ args: [THREE.BufferGeometry, THREE.Material, number]; ref: RefObject<THREE.InstancedMesh | null> }>(element)) throw new Error('Missing jet draw');
+  const node = new THREE.InstancedMesh(...element.props.args);
+  element.props.ref.current = node;
+  const parent = new THREE.Group(); parent.add(node); parent.position.set(100, 0, -10);
+  const camera = new THREE.PerspectiveCamera(60, 1, 1, 100);
+  const state = { camera, clock: { elapsedTime: 1 } } as Fiber.RootState;
+  const [callback, priority] = vi.mocked(useFrame).mock.lastCall!;
+  expect(priority).toBe(0);
+  // Child effects subscribe before the parent's movement effect at equal priority.
+  callback(state, 0);
+  parent.position.x = 0;
+  parent.updateMatrixWorld(true);
+  expect(node.visible).toBe(true);
 });
