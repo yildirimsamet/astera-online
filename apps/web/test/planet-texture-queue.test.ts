@@ -3,20 +3,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queuePlanetTextures } from '../src/galaxy/planetTextureQueue.js';
 
 const idle = new Map<number, IdleRequestCallback>();
+const idleOptions = new Map<number, IdleRequestOptions | undefined>();
 let next = 0;
-const request = vi.fn((callback: IdleRequestCallback) => {
+const request = vi.fn((callback: IdleRequestCallback, options?: IdleRequestOptions) => {
   const id = ++next;
   idle.set(id, callback);
+  idleOptions.set(id, options);
   return id;
 });
 const cancel = vi.fn((id: number) => { idle.delete(id); });
 
-function runIdle(budget = 20) {
+function runIdle(budget = 20, didTimeout = false) {
   const entry = idle.entries().next().value;
   if (!entry) throw new Error('No pending idle callback');
   const [id, callback] = entry;
   idle.delete(id);
-  callback({ didTimeout: false, timeRemaining: () => budget });
+  callback({ didTimeout, timeRemaining: () => budget });
 }
 
 function uploader() {
@@ -24,9 +26,9 @@ function uploader() {
 }
 
 beforeEach(() => {
-  vi.useFakeTimers();
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date', 'performance'] });
   vi.clearAllMocks();
-  idle.clear();
+  idle.clear(); idleOptions.clear();
   next = 0;
   vi.stubGlobal('requestIdleCallback', request);
   vi.stubGlobal('cancelIdleCallback', cancel);
@@ -160,6 +162,34 @@ describe('planet texture preparation without a batch upload in one frame', () =>
 
 
 describe('explicit texture completion', () => {
+  it('bounds idle starvation after loading and submits just one texture at the timeout', async () => {
+    const gl = uploader();
+    const task = queuePlanetTextures(gl, [new THREE.Texture(), new THREE.Texture()]);
+    expect(idleOptions.get(next)?.timeout).toBe(1000);
+    runIdle(0);
+    expect(gl.initTexture).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1000);
+    runIdle(0, true);
+    expect(gl.initTexture).toHaveBeenCalledOnce();
+    expect(idle.size).toBe(1);
+    runIdle();
+    await expect(task.ready).resolves.toBe('ready');
+    task.cancel();
+  });
+  it('does not restart the starvation deadline when idle slots repeatedly have insufficient budget', () => {
+    const gl = uploader();
+    const task = queuePlanetTextures(gl, [new THREE.Texture()]);
+    for (let i = 0; i < 3; i++) {
+      vi.advanceTimersByTime(250);
+      runIdle(0);
+      expect(gl.initTexture).not.toHaveBeenCalled();
+    }
+    expect(idleOptions.get(next)?.timeout).toBe(250);
+    vi.advanceTimersByTime(250);
+    runIdle(0);
+    expect(gl.initTexture).toHaveBeenCalledOnce();
+    task.cancel();
+  });
   it('resolves only after every unique texture is submitted', async () => {
     const gl = uploader(); const a = new THREE.Texture(); const b = new THREE.Texture();
     const task = queuePlanetTextures(gl, [a, a, b]);

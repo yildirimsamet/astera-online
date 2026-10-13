@@ -24,6 +24,7 @@ interface PendingTexture { owners: Set<Request>; pending: boolean }
 interface TextureQueue { add: (maps: readonly Texture[], loading: () => boolean) => TexturePreparation }
 const queues = new WeakMap<TextureUploader, TextureQueue>();
 const ordinaryLoading = () => false;
+const IDLE_UPLOAD_TIMEOUT_MS = 1_000;
 
 /** One renderer, one scheduled slot, at most one texture upload per turn. */
 function createQueue(gl: TextureUploader): TextureQueue {
@@ -31,6 +32,7 @@ function createQueue(gl: TextureUploader): TextureQueue {
   const requests = new Set<Request>();
   let prepared = new WeakMap<Texture, number>();
   let scheduled: { id: number; kind: 'idle' | 'timer' | 'loading' } | null = null;
+  let idleWaitStarted: number | null = null;
   let paused = gl.getContext?.().isContextLost() ?? false;
   const hasIdle = typeof window.requestIdleCallback === 'function' && typeof window.cancelIdleCallback === 'function';
   const requestIdle = hasIdle ? window.requestIdleCallback.bind(window) : null;
@@ -40,6 +42,7 @@ function createQueue(gl: TextureUploader): TextureQueue {
     if (scheduled.kind === 'idle') cancelIdle?.(scheduled.id);
     else window.clearTimeout(scheduled.id);
     scheduled = null;
+    idleWaitStarted = null;
   };
   const hasPending = () => {
     for (const item of textures.values()) if (item.pending) return true;
@@ -96,11 +99,14 @@ function createQueue(gl: TextureUploader): TextureQueue {
         upload();
       }, 16) };
     } else if (requestIdle) {
+      const waitingSince = idleWaitStarted ??= performance.now();
       scheduled = { kind: 'idle', id: requestIdle(deadline => {
         scheduled = null;
-        if (deadline.timeRemaining() < 4) { schedule(); return; }
+        const overdue = performance.now() - waitingSince >= IDLE_UPLOAD_TIMEOUT_MS;
+        if (!deadline.didTimeout && !overdue && deadline.timeRemaining() < 4) { schedule(); return; }
+        idleWaitStarted = null;
         upload();
-      }) };
+      }, { timeout: Math.max(1, IDLE_UPLOAD_TIMEOUT_MS - (performance.now() - waitingSince)) }) };
     } else {
       scheduled = { kind: 'timer', id: window.setTimeout(() => {
         scheduled = null;
