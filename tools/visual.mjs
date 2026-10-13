@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--planet-skin-glow')) {
+  const { verifyPlanetSkinGlow } = await import('./planet-skin-glow-visual.mjs');
+  await verifyPlanetSkinGlow(process.argv[2] ?? 'out/planet-skin-glow');
+  process.exit(0);
+}
+
 if (process.argv.includes('--pirate-profit')) {
   const { verifyPirateProfit } = await import('./pirate-profit-visual.mjs');
   await verifyPirateProfit(process.argv[2] ?? 'out/pirate-profit');

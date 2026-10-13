@@ -55,10 +55,10 @@ const LOW_MODEL_URLS: Record<PlanetBaseModelId, string> = {
   'country-japan': skinAsset('models/planets/country/planet_japan-lod.glb'),
 };
 
-/** The crack mask is read from each model's own base colour map. */
+/** Lift emission at map scale without widening the crack mask or losing the crust. */
 const MODEL_TUNING: Record<'intact-planet' | 'fractured-planet', PlanetModelTuning> = {
-  'intact-planet': { heat: 2.4, threshold: 0.28, spread: 3, rimStrength: 0.8 },
-  'fractured-planet': { heat: 1.6, threshold: 0.5, spread: 1.5, rimStrength: 0.6 },
+  'intact-planet': { heat: 3, threshold: 0.28, spread: 3, rimStrength: 1.1 },
+  'fractured-planet': { heat: 2, threshold: 0.5, spread: 1.5, rimStrength: 0.8 },
 };
 
 /** First-release looks, measured and tuned in stash@{2}'s planet test page. */
@@ -125,7 +125,7 @@ export function planetSkinVisual(id: string, status: PlanetSkinStatus = 'NORMAL'
           kind: 'PALETTE',
           palette: PALETTES[recipe.finish.paletteId],
           tuning: recipe.finish.paletteId === 'desert'
-            ? { ...tuned, heat: 0, rimStrength: 0.45 }
+            ? { ...tuned, heat: 0, rimStrength: 0.75 }
             : tuned,
         },
     includedAttachments: recipe.includedAttachments,

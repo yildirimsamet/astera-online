@@ -138,8 +138,8 @@ describe('first planet skin visuals', () => {
         expect(struck.finish.palette).toEqual(normal.finish.palette);
         expect(normal.finish.tuning.threshold).toBe(0.28);
         expect(struck.finish.tuning.threshold).toBe(0.5);
-        expect(normal.finish.tuning.heat).toBe(id === 'planet-desert' ? 0 : 2.4);
-        expect(struck.finish.tuning.heat).toBe(id === 'planet-desert' ? 0 : 1.6);
+        expect(normal.finish.tuning.heat).toBe(id === 'planet-desert' ? 0 : 3);
+        expect(struck.finish.tuning.heat).toBe(id === 'planet-desert' ? 0 : 2);
       }
       for (const visual of [normal, struck]) {
         expect(visual?.modelUrl).toMatch(/^\/assets\/models\/[a-z0-9_]+\.glb$/);
