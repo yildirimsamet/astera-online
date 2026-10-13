@@ -90,9 +90,14 @@ export function setPerfGalaxyContext(context: Record<string, number> | null): vo
  * in every sample. The first recording could not say why draw calls jumped at the
  * end; the camera's range, a focused subject and an open sheet can.
  */
-export function setPerfExtra(key: 'camera' | 'focus' | 'panel', value: number): void {
+export function setPerfExtra(key: 'camera' | 'focus' | 'panel' | 'opening', value: number): void {
   extras[key] = value;
 }
+
+/** Stable wire codes: 0 unknown; existing entries must never be reordered. */
+const PREPARATION_RESULTS: readonly string[] = ['ready', 'timeout', 'failed', 'context-lost', 'cancelled'];
+export const perfPreparationCode = (result: string | undefined): number =>
+  PREPARATION_RESULTS.indexOf(result ?? '') + 1;
 
 /** One frame the galaxy drew: its CPU submission time and what it drew. */
 export function perfGalaxyFrame(renderMs: number, counts: RendererCounts): void {

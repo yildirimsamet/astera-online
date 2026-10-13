@@ -110,7 +110,7 @@ import { useTranslation } from 'react-i18next';
 import { FaultMark } from '../ui/marks.js';
 import { FLIGHT_FPS, HoldRate } from './frames.js';
 import { galaxyFrames, useFpsMeterEnabled } from '../lib/fpsMeter.js';
-import { perfGalaxyFrame, setPerfExtra, setPerfGalaxyContext, usePerfSession } from '../lib/perfSession.js';
+import { perfGalaxyFrame, perfPreparationCode, setPerfExtra, setPerfGalaxyContext, usePerfSession } from '../lib/perfSession.js';
 import { anythingInFlight } from './flightRate.js';
 
 /**
@@ -1958,6 +1958,8 @@ function PerfProbe({ context, focused }: { context: Record<string, number>; focu
 
   useEffect(() => {
     if (!recording) return undefined;
+    // The button appears after loading; retain why loading ended in this recording.
+    setPerfExtra('opening', perfPreparationCode(gl.domElement.dataset.galaxyPreparation));
     const info = gl.info;
     const autoReset = info.autoReset;
     info.autoReset = false;
