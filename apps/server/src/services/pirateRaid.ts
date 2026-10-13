@@ -60,7 +60,7 @@ import { techOf } from './researchState.js';
 import { flightPrefix, flightSegment, settleSpecialFlightRadiation } from './specialFlightRadiation.js';
 import { assertRadiationSafe } from './radiation.js';
 import { pendingThreads, type PendingThread } from './session.js';
-import { planetView, type PlanetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import {
   livingRoster,
   loadPirateSnapshot,
@@ -397,9 +397,9 @@ export async function launchPirateRaid(
       // Deliberately sequential on this one transaction connection: each is the
       // projection its own GET uses, and no second request can race the launch.
       pending: await pendingThreads(tx, planetId, origin.now),
-      planet: await planetView(tx, planetId, clock),
+      planet: await loadPlanetViewData(tx, planetId, clock),
     };
-  });
+  }).then(buildPlanetResult);
 }
 
 async function ownWorldIds(tx: Tx, playerId: string): Promise<string[]> {

@@ -52,7 +52,7 @@ import { schedule } from '../worker/queue.js';
 import { publishReward, publishShard } from '../stream/bus.js';
 import { pendingThreads, type PendingThread } from './session.js';
 import { inboundRadarLead } from './radar.js';
-import { planetView, type PlanetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { lockWorlds } from './ownership.js';
 import { prepareClanAttack, recordClanAttack } from './clanCombat.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
@@ -558,9 +558,9 @@ export async function launchAttack(
        * moment the next refetch landed.
        */
       pending: await pendingThreads(tx, originPlanetId, origin.now),
-      planet: await planetView(tx, originPlanetId, clock),
+      planet: await loadPlanetViewData(tx, originPlanetId, clock),
     };
-  });
+  }).then(buildPlanetResult);
 }
 
 function describeRefusal(reason?: string): string {

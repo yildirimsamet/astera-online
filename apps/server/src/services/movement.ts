@@ -67,7 +67,7 @@ import {
 } from './planet.js';
 import { landShips } from './shipDamage.js';
 import { assertRadiationSafe, flightWitness, settleMissionRadiation, tellRadiationLoss } from './radiation.js';
-import { planetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult } from './planetView.js';
 import { pendingThreads } from './session.js';
 import { techOf } from './researchState.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
@@ -407,9 +407,9 @@ export async function launchTransfer(
       missionId: mission.id,
       arriveAt,
       pending: await pendingThreads(tx, originPlanetId, origin.now),
-      planet: await planetView(tx, originPlanetId, clock),
+      planet: await loadPlanetViewData(tx, originPlanetId, clock),
     };
-  });
+  }).then(buildPlanetResult);
 }
 
 /**
@@ -540,9 +540,9 @@ export async function launchSettlement(
       missionId: mission.id,
       arriveAt,
       pending: await pendingThreads(tx, originPlanetId, origin.now),
-      planet: await planetView(tx, originPlanetId, clock),
+      planet: await loadPlanetViewData(tx, originPlanetId, clock),
     };
-  });
+  }).then(buildPlanetResult);
 }
 
 /** Exact shared founding manifest; exported so route/service tests cannot restate it. */

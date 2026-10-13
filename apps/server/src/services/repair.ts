@@ -11,7 +11,7 @@ import type { Db } from '../db/client.js';
 import { shipDamageLots } from '../db/schema.js';
 import { buildQueueContext, placeBuildOrder } from './buildQueue.js';
 import { GameError, assertWorldOperational, withPlanetLock } from './planet.js';
-import { planetView, type PlanetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { asTech } from './researchState.js';
 import { dockLotsOf } from './shipDamage.js';
 
@@ -84,6 +84,6 @@ export async function startRepair(
     await tx.update(shipDamageLots).set({ repairOrderId: order.id })
       .where(inArray(shipDamageLots.id, chosen.map((lot) => lot.id)));
 
-    return { orderId: order.id, planet: await planetView(tx, planetId, clock) };
-  }, expectedPlayerId);
+    return { orderId: order.id, planet: await loadPlanetViewData(tx, planetId, clock) };
+  }, expectedPlayerId).then(buildPlanetResult);
 }

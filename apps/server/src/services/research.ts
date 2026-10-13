@@ -15,7 +15,7 @@ import {
   scheduledEvents,
 } from '../db/schema.js';
 import { schedule } from '../worker/queue.js';
-import { planetView, type PlanetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { markProgress } from './waitingRoom.js';
 import {
   GameError,
@@ -177,8 +177,8 @@ export async function completeResearch(
     });
     await recomputePlayerWealth(tx, planet.playerId);
     await markProgress(tx, planet.playerId, planet.now); // D212
-    return { projectId, planet: await planetView(tx, planetId, clock) };
-  });
+    return { projectId, planet: await loadPlanetViewData(tx, planetId, clock) };
+  }).then(buildPlanetResult);
 }
 
 function researchDependsOn(later: typeof researchOrders.$inferSelect, earlier: typeof researchOrders.$inferSelect): boolean {

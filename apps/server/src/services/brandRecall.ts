@@ -4,7 +4,7 @@ import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { accountRewards, planets, players } from '../db/schema.js';
 import { assertWorldOperational, GameError, refreshWealth, saveResources, withPlanetLock } from './planet.js';
-import { planetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult } from './planetView.js';
 
 const emptyReward = { alloy: 0, crystal: 0, deuterium: 0 };
 const enrollment = (accountId: string) => and(eq(accountRewards.accountId, accountId), eq(accountRewards.rewardId, BRAND_RECALL.rewardId));
@@ -36,7 +36,7 @@ export async function answerBrandRecall(db: Db, accountId: string, answer: strin
   return withPlanetLock(db, owner.planetId, clock, async (tx, planet) => {
     const [row] = await tx.select().from(accountRewards).where(enrollment(accountId)).limit(1);
     if (!row) throw new GameError('RECALL_UNAVAILABLE', 'This quiz is only available to new commanders', 404);
-    if (row.claimedAt) return { correct: answer === BRAND_RECALL.answer, completed: true, granted: emptyReward, planet: await planetView(tx, owner.planetId, clock) };
+    if (row.claimedAt) return { correct: answer === BRAND_RECALL.answer, completed: true, granted: emptyReward, planet: await loadPlanetViewData(tx, owner.planetId, clock) };
     if (planet.now.getTime() - row.createdAt.getTime() < BRAND_RECALL.delayMs) {
       throw new GameError('RECALL_TOO_EARLY', 'Play for three minutes before answering this quiz');
     }
@@ -56,6 +56,6 @@ export async function answerBrandRecall(db: Db, accountId: string, answer: strin
     };
     await saveResources(tx, owner.planetId, next);
     await refreshWealth(tx, planet);
-    return { correct: true, completed: true, granted: BRAND_RECALL.reward, planet: await planetView(tx, owner.planetId, clock) };
-  }, owner.playerId);
+    return { correct: true, completed: true, granted: BRAND_RECALL.reward, planet: await loadPlanetViewData(tx, owner.planetId, clock) };
+  }, owner.playerId).then(result => result.planet === undefined ? result : buildPlanetResult(result));
 }

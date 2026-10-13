@@ -458,17 +458,22 @@ export async function loadLocked(
   clock: Clock,
   options: { requireLive?: boolean; expectedPlayerId?: string } = {},
 ): Promise<LockedPlanet> {
-  return loadPlanetState(tx, planetId, clock, { ...options, mutate: true });
+  return (await loadPlanetState(tx, planetId, clock, { ...options, mutate: true })).planet;
 }
 
 /** Quotes use the same economy/loyalty projection without persisting a tick or acquiring the world row. */
 export async function readPlanetState(tx: Tx, planetId: string, clock: Clock,
   options: { requireLive?: boolean; expectedPlayerId?: string } = {}): Promise<LockedPlanet> {
-  return loadPlanetState(tx, planetId, clock, { ...options, mutate: false });
+  return (await loadPlanetState(tx, planetId, clock, { ...options, mutate: false })).planet;
+}
+
+/** Private views need the whole inventory; command paths keep their home-only read. */
+export async function loadPlanetViewState(tx: Tx, planetId: string, clock: Clock) {
+  return loadPlanetState(tx, planetId, clock, { requireLive: false, mutate: true, allUnits: true });
 }
 
 async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
-  options: { requireLive?: boolean; expectedPlayerId?: string; mutate: boolean }): Promise<LockedPlanet> {
+  options: { requireLive?: boolean; expectedPlayerId?: string; mutate: boolean; allUnits?: boolean }) {
   // Resolve the parent first without locking the child, then take locks in the
   // global season → planet order. The pre-read locates a lock, not authority.
   const [identity] = await tx
@@ -494,7 +499,8 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
   const [buildingRows, satelliteRows, unitRows, faultRows, [shard]] = await Promise.all([
     tx.select().from(buildings).where(eq(buildings.planetId, planetId)),
     tx.select().from(satellites).where(eq(satellites.planetId, planetId)),
-    tx.select().from(units).where(and(eq(units.planetId, planetId), eq(units.location, 'home'))),
+    tx.select().from(units).where(and(eq(units.planetId, planetId),
+      options.allUnits ? undefined : eq(units.location, 'home'))),
     tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)),
     tx.select({ role: shards.role }).from(shards).where(eq(shards.id, season.shardId)),
   ]);
@@ -529,7 +535,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
   const homeFleet: Fleet = {};
   const ground: Fleet = {};
   for (const u of unitRows) {
-    if (u.count <= 0) continue;
+    if (u.count <= 0 || u.location !== 'home') continue;
     (HULLS[u.hull].ground ? ground : homeFleet)[u.hull] = u.count;
   }
 
@@ -630,7 +636,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
       .where(eq(planets.id, planetId));
   }
 
-  return {
+  const planet: LockedPlanet = {
     planetId: row.id,
     playerId: row.controllerPlayerId,
     kind: row.kind,
@@ -670,6 +676,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     nowMinutes,
     now,
   };
+  return { planet, unitRows, faultRows };
 }
 
 /** Run `fn` with the planet locked and freshly ticked. */

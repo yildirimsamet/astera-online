@@ -31,50 +31,30 @@ import {
   SILENT_SPACE,
   silentSpaceDueAt,
   type BuildingId,
+  type Fleet,
+  dockLocation,
+  clanDefenseApplies,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
-import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, planetFaults, players, strategicAssets } from '../db/schema.js';
+import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, players, strategicAssets } from '../db/schema.js';
 import { baysOf } from './flight.js';
-import { awayFleet, loadLocked, totalUnitsOf, type LockedPlanet } from './planet.js';
-import { asTech, researchCoreLevel, researchView } from './researchState.js';
+import { loadPlanetViewState, GameError, type LockedPlanet } from './planet.js';
+import { asTech, buildResearchView, loadResearchViewData } from './researchState.js';
 import { dockLotsOf, dockView, shipsOfLots } from './shipDamage.js';
 import { colonyStanding } from './ownership.js';
-import { defencePostureView } from './defencePosture.js';
+import { buildDefencePostureView } from './defencePosture.js';
+import { activeClanMembership } from './clanCombat.js';
 import { clanSupportBayView } from './clanSupportView.js';
 import {
   activeResearchOrders,
-  projectedResearchLevels,
   researchOrderView,
 } from './researchQueue.js';
 
 /**
- * EVERYTHING A COMMANDER KNOWS ABOUT THEIR OWN WORLD, IN ONE PLACE. D53.
- *
- * This was the body of `GET /api/planet` and nothing else could reach it, which is
- * why every mutation in the game cost TWO round trips: the action, and then the
- * refetch that told the interface what the action had done. On a phone that is
- * three to eight hundred milliseconds of a dead button after a tap — in a game
- * whose whole construction model is "instant on payment, no build timers".
- *
- * So it is a function now, and every mutation returns it. The action and its
- * result arrive together, the client writes the payload straight into the cache,
- * and there is no second request at all.
- *
- * IT IS FREE WHERE IT IS CALLED. A mutation is already inside the transaction and
- * already holds this planet's row lock, so the second `loadLocked` re-locks a row
- * it owns — and its economy advance is a no-op, because the first call moved
- * `lastTickAt` to now and the guard inside it declines to write twice. What is
- * left is four small indexed reads, against a whole HTTP request with its own
- * auth, its own transaction and the same four reads.
- *
- * WHY IT RE-READS RATHER THAN BUILDING FROM THE MUTATION'S OWN OBJECT. The point
- * of this payload is that it is exactly what the next `GET /api/planet` would say.
- * A mutation mutates a `LockedPlanet` in memory for its own arithmetic, but it
- * does not maintain every derived list on it — `buildUnits` writes unit rows and
- * leaves `homeFleet` alone — so building the answer from that object would ship a
- * view that disagrees with the database in a way nothing would catch until the
- * next refetch silently corrected it on screen.
+ * Capture private response facts under the existing transaction locks, then render
+ * without a database handle. Mutation callers must capture AFTER their writes;
+ * reusing their arithmetic LockedPlanet can omit changed units or queue rows.
  */
 type StrategicRow = typeof strategicAssets.$inferSelect;
 
@@ -124,41 +104,112 @@ function departureOf(
   return at < p.seasonEndsAt.getTime() ? new Date(at) : null;
 }
 
-export async function planetView(tx: Tx, planetId: string, clock: Clock) {
-  const p = await loadLocked(tx, planetId, clock, { requireLive: false });
-  /**
-   * TWO KINDS OF ASSET, TWO KEYS. T12.
-   *
-   * This read was `limit 1` over the whole table, written when a world could only
-   * ever hold a Death Star. T10 put the interceptor charge in the same table, so
-   * from the moment a charge became buildable the newest row won — and a charge
-   * started after a weapon reported itself as the weapon, hiding a READY Death
-   * Star from its own owner and from the launch control that reads this field.
-   */
-  const strategicOfType = (type: 'DEATH_STAR' | 'INTERCEPTOR') => tx
-    .select()
-    .from(strategicAssets)
-    .where(and(
-      eq(strategicAssets.planetId, planetId),
-      eq(strategicAssets.type, type),
-      inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
-    ))
-    .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id));
-  const [[player], weapons, interceptorRows, queued, researchQueue, colonies] = await Promise.all([
+/** Shared only across worlds in one transaction, never across requests or writes. */
+async function loadCommanderViewData(tx: Tx, p: LockedPlanet) {
+  const [[player], researchData, researchQueue, colonies, membership] = await Promise.all([
     tx.select().from(players).where(eq(players.id, p.playerId)),
-    strategicOfType('DEATH_STAR'),
-    strategicOfType('INTERCEPTOR'),
-    tx
-      .select()
-      .from(buildOrders)
-      .where(and(eq(buildOrders.planetId, planetId), eq(buildOrders.status, 'BUILDING')))
-      .orderBy(asc(buildOrders.queue), asc(buildOrders.slot)),
+    loadResearchViewData(tx, p.playerId),
     activeResearchOrders(tx, p.playerId),
     colonyStanding(tx, p.playerId),
+    clanDefenseApplies(p.rulesetVersion) ? activeClanMembership(tx, p.playerId) : null,
   ]);
-  const pad = weapons.toSorted(padOrder);
-  const interceptors = interceptorRows.toSorted(padOrder);
+  const queuedResearch = new Map(researchData.rows.map(row => [row.projectId, row.level]));
+  for (const order of researchQueue) {
+    queuedResearch.set(order.projectId, Math.max(queuedResearch.get(order.projectId) ?? 0, order.level));
+  }
+  return { playerId: p.playerId, seasonId: p.seasonId, player, researchData, researchQueue,
+    colonies, hasMembership: membership !== null, queuedResearch };
+}
 
+export async function loadPlanetViewData(
+  tx: Tx, planetId: string, clock: Clock,
+  shared?: Awaited<ReturnType<typeof loadCommanderViewData>>,
+) {
+  const { planet: p, unitRows, faultRows } = await loadPlanetViewState(tx, planetId, clock);
+  if (shared && (shared.playerId !== p.playerId || shared.seasonId !== p.seasonId)) {
+    throw new GameError('PLACEMENT_CHANGED', 'World ownership changed; refresh and try again', 409);
+  }
+  const commander = shared ?? await loadCommanderViewData(tx, p);
+  const [assets, queued] = await Promise.all([
+    tx.select().from(strategicAssets).where(and(
+      eq(strategicAssets.planetId, planetId),
+      inArray(strategicAssets.type, ['DEATH_STAR', 'INTERCEPTOR']),
+      inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
+    )).orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id)),
+    tx.select().from(buildOrders)
+      .where(and(eq(buildOrders.planetId, planetId), eq(buildOrders.status, 'BUILDING')))
+      .orderBy(asc(buildOrders.queue), asc(buildOrders.slot)),
+  ]);
+  const [activeConvoy] = await tx.select({ id: intergalacticConvoyRuns.id })
+    .from(intergalacticConvoyRuns)
+    .where(and(
+      eq(intergalacticConvoyRuns.planetId, planetId),
+      ne(intergalacticConvoyRuns.status, 'done'),
+    ))
+    .limit(1);
+  /**
+   * THIS WORLD HAS ALREADY SPENT ITS ONE STRIKE AT THE CONVOY THAT IS UP. D201.
+   *
+   * A world may strike each occurrence exactly once, ever — the DB says so with a
+   * unique index on `(planet_id, occurrence_id)` — and a crossing lasts three hours
+   * while a round trip rarely lasts one. So the ordinary case is a commander whose
+   * fleet is safely home, inside the same window, looking at a control that has
+   * nothing left to spend. Publishing only `convoyLaunchLocked` (which clears the
+   * moment the fleet lands) re-armed that control and let them pick a wing, read a
+   * quote and commit, to be answered with `CONVOY_ALREADY_RAIDED`.
+   *
+   * A rule the player cannot SEE is not a usable rule (D124), so the state travels
+   * with the world rather than living only in the refusal. It names no occurrence
+   * and no run: it is one boolean about the convoy that is public right now.
+   */
+  const [spentConvoy] = await tx.select({ id: intergalacticConvoyRuns.id })
+    .from(intergalacticConvoyRuns)
+    .innerJoin(
+      galaxyEventOccurrences,
+      eq(galaxyEventOccurrences.id, intergalacticConvoyRuns.occurrenceId),
+    )
+    .where(and(
+      eq(intergalacticConvoyRuns.planetId, planetId),
+      // An abandoned outbound run released its ration; the control stays live.
+      isNull(intergalacticConvoyRuns.abandonedAt),
+      lte(galaxyEventOccurrences.startsAt, p.now),
+      gt(galaxyEventOccurrences.endsAt, p.now),
+    ))
+    .limit(1);
+
+  const [dockLots, flight, clanSupport] = await Promise.all([
+    dockLotsOf(tx, planetId, unitRows),
+    baysOf(tx, planetId, p.buildings.CORE),
+    clanSupportBayView(tx, { planetId, rulesetVersion: p.rulesetVersion }),
+  ]);
+  return { p, commander, assets, queued, activeConvoy, spentConvoy, unitRows, faultRows,
+    dockLots, flight, clanSupport };
+}
+
+export type PlanetViewData = Awaited<ReturnType<typeof loadPlanetViewData>>;
+
+/** Apply to the transaction promise, so rendering never prolongs its world locks. */
+export function buildPlanetResult<T extends { planet: PlanetViewData }>(result: T) {
+  const { planet, ...rest } = result;
+  return { ...rest, planet: buildPlanetView(planet) };
+}
+
+/** No queries or writes: safe to run after the capturing transaction commits. */
+export function buildPlanetView(data: PlanetViewData) {
+  const { p, commander, assets, queued, activeConvoy, spentConvoy, unitRows, faultRows,
+    dockLots, flight, clanSupport } = data;
+  const { player, researchData, researchQueue, colonies, hasMembership, queuedResearch } = commander;
+  const pad = assets.filter(row => row.type === 'DEATH_STAR').toSorted(padOrder);
+  const interceptors = assets.filter(row => row.type === 'INTERCEPTOR').toSorted(padOrder);
+  const owned: Fleet = {};
+  const fleetAway: Fleet = {};
+  for (const row of unitRows) {
+    owned[row.hull] = (owned[row.hull] ?? 0) + row.count;
+    if (row.count > 0 && row.location !== 'home' && !row.location.startsWith(dockLocation(''))) {
+      fleetAway[row.hull] = (fleetAway[row.hull] ?? 0) + row.count;
+    }
+  }
+  const research = buildResearchView(p, researchData, queuedResearch);
   /**
    * THE RATES THE ECONOMY ACTUALLY RUNS AT — Foundry included. D52a.
    *
@@ -214,58 +265,6 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     deuterium: Math.min(Math.floor(p.deuterium), vaultCapacity.deuterium),
   };
   const shieldMax = shieldHp(p.effectiveInstruments.AEGIS ?? 0);
-  /**
-   * The levels the construction queue will have reached once it drains. T7.
-   *
-   * Levels rather than a set of ids, because a project can be a ladder: what the
-   * screen needs to know is not "will this be done" but "which rung will it be on",
-   * and the two questions only look alike while every ceiling is one. The order's
-   * `count` carries its target level.
-   */
-  const queuedResearch = await projectedResearchLevels(tx, p.playerId, researchQueue);
-  const [activeConvoy] = await tx.select({ id: intergalacticConvoyRuns.id })
-    .from(intergalacticConvoyRuns)
-    .where(and(
-      eq(intergalacticConvoyRuns.planetId, planetId),
-      ne(intergalacticConvoyRuns.status, 'done'),
-    ))
-    .limit(1);
-  /**
-   * THIS WORLD HAS ALREADY SPENT ITS ONE STRIKE AT THE CONVOY THAT IS UP. D201.
-   *
-   * A world may strike each occurrence exactly once, ever — the DB says so with a
-   * unique index on `(planet_id, occurrence_id)` — and a crossing lasts three hours
-   * while a round trip rarely lasts one. So the ordinary case is a commander whose
-   * fleet is safely home, inside the same window, looking at a control that has
-   * nothing left to spend. Publishing only `convoyLaunchLocked` (which clears the
-   * moment the fleet lands) re-armed that control and let them pick a wing, read a
-   * quote and commit, to be answered with `CONVOY_ALREADY_RAIDED`.
-   *
-   * A rule the player cannot SEE is not a usable rule (D124), so the state travels
-   * with the world rather than living only in the refusal. It names no occurrence
-   * and no run: it is one boolean about the convoy that is public right now.
-   */
-  const [spentConvoy] = await tx.select({ id: intergalacticConvoyRuns.id })
-    .from(intergalacticConvoyRuns)
-    .innerJoin(
-      galaxyEventOccurrences,
-      eq(galaxyEventOccurrences.id, intergalacticConvoyRuns.occurrenceId),
-    )
-    .where(and(
-      eq(intergalacticConvoyRuns.planetId, planetId),
-      // An abandoned outbound run released its ration; the control stays live.
-      isNull(intergalacticConvoyRuns.abandonedAt),
-      lte(galaxyEventOccurrences.startsAt, p.now),
-      gt(galaxyEventOccurrences.endsAt, p.now),
-    ))
-    .limit(1);
-
-  // Every craft this world owns, home or away — both ceilings are ownership rules.
-  const owned = await totalUnitsOf(tx, planetId);
-
-  const research = await researchView(tx, p, queuedResearch);
-  // Read once: the ships in the dock are the lots' ships (plan I2), so both fields come from it.
-  const dockLots = await dockLotsOf(tx, planetId);
   return {
     planet: {
       id: p.planetId,
@@ -389,24 +388,20 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     /** Two immediate seasonal projects; discovery is derived, never stored. D93/D94. */
     research,
     /** The Core that gates and times research on EVERY world: the capital's. D209. */
-    researchCore: await researchCoreLevel(tx, p.playerId),
+    researchCore: colonies.capitalCore,
     /** One commander lane, identical whichever controlled world funded the view. */
     researchQueue: researchQueue.map(researchOrderView),
     /**
      * WHAT IS BROKEN, AND WHAT PUTTING IT RIGHT COSTS. Koloni arızaları.
      *
-     * Read again here rather than taken from `loadLocked`, which carries only the
-     * KINDS. Five of the eight are enforced at a flight bay, a battle or a sensor post
-     * and none of those needs a repair timestamp; making every transaction in the game
-     * carry one so a screen could draw it is the wrong way round. This is a screen
-     * read, and a screen read may pay for its own query.
+     * Reuse the rows captured while advancing the economy under the world lock.
      *
      * THE PRICE IS SERVER-SIDE, like every other price on this payload. The client
      * imports `repairCost` and could work it out, but a surface that mixes computed
      * and authoritative figures is one modifier away from quoting a number the repair
      * endpoint will refuse.
      */
-    faults: (await tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)))
+    faults: faultRows
       .map((fault) => ({
         id: fault.id,
         kind: fault.kind,
@@ -471,7 +466,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
      *
      * Yours only, and no fog question arises — it is your own planet's units.
      */
-    fleetAway: await awayFleet(tx, planetId),
+    fleetAway,
     /**
      * Your own ships waiting in the Repair Station. Kalıcı gemi hasarı.
      *
@@ -491,10 +486,9 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
      *
      * Counted here rather than derived on the client, because the client cannot
      * see other people's craft and would have to guess — and because the count is
-     * already free: this handler holds the planet lock that `assertFreeBay` reads
-     * under.
+     * captured under the same planet lock that `assertFreeBay` reads under.
      */
-    flight: await baysOf(tx, planetId, p.buildings.CORE),
+    flight,
     convoyLaunchLocked: activeConvoy !== undefined,
     convoyOccurrenceSpent: spentConvoy !== undefined,
     /**
@@ -554,16 +548,15 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
      * there is nothing to choose. `supportLocked` says why the support toggle is
      * greyed, so the page can tell the commander rather than just refuse.
      */
-    defencePosture: await defencePostureView(tx, {
-      playerId: p.playerId,
+    defencePosture: buildDefencePostureView({
       posture: p.defencePosture,
       rulesetVersion: p.rulesetVersion,
-    }),
+    }, hasMembership),
     /**
      * THE HANGAR'S "KLAN DESTEĞİ" BAY: what clanmates have standing here or flying in,
      * and the room it has (the world's own Hangar room, owner K1). Null before ruleset 15.
      */
-    clanSupport: await clanSupportBayView(tx, { planetId, rulesetVersion: p.rulesetVersion }),
+    clanSupport,
     score: {
       wealth: player?.wealth ?? 0,
       dominion: dominion({
@@ -572,6 +565,11 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       }),
     },
   };
+}
+
+/** Transaction-supplied callers (including durable idempotent responses) render inside their transaction. */
+export async function planetView(tx: Tx, planetId: string, clock: Clock) {
+  return buildPlanetView(await loadPlanetViewData(tx, planetId, clock));
 }
 
 function buildOrderView(order: typeof buildOrders.$inferSelect) {

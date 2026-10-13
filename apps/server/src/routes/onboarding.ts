@@ -8,7 +8,7 @@ import { buildOrders, missions, planets, units } from '../db/schema.js';
 import { authenticate, registerAccount } from '../services/account.js';
 import { placeBuildingUpgrade, placeUnitBuild } from '../services/build.js';
 import { GameError, withPlanetLock, type LockedPlanet } from '../services/planet.js';
-import { planetView } from '../services/planetView.js';
+import { loadPlanetViewData, buildPlanetView } from '../services/planetView.js';
 import { joinSeason } from '../services/player.js';
 import { currentPlacement, listServers, resolveJoinTarget } from '../services/servers.js';
 import { onboardingIntentSchema } from '../schemas/fleet.js';
@@ -135,8 +135,8 @@ export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEn
        * exception.
        */
       planet: await app.db.transaction(async (tx) =>
-        planetView(tx, joined.planetId, app.clock),
-      ),
+        loadPlanetViewData(tx, joined.planetId, app.clock),
+      ).then(buildPlanetView),
     };
   });
 }

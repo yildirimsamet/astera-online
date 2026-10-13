@@ -35,7 +35,7 @@ import {
   recomputePlayerWealth,
   saveResources,
 } from './planet.js';
-import { planetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult } from './planetView.js';
 import { pendingThreads } from './session.js';
 import { inboundRadarLead } from './radar.js';
 import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
@@ -119,8 +119,8 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
       payload: { expectedReadyAt: readyAt.toISOString() },
       resolveAt: readyAt,
     });
-    return { assetId: asset.id, readyAt, planet: await planetView(tx, planetId, clock) };
-  });
+    return { assetId: asset.id, readyAt, planet: await loadPlanetViewData(tx, planetId, clock) };
+  }).then(buildPlanetResult);
 }
 
 /**
@@ -223,8 +223,8 @@ export async function buildInterceptor(
       payload: { expectedReadyAt: readyAt.toISOString() },
       resolveAt: readyAt,
     });
-    return { assetId: asset.id, readyAt, planet: await planetView(tx, planetId, clock) };
-  });
+    return { assetId: asset.id, readyAt, planet: await loadPlanetViewData(tx, planetId, clock) };
+  }).then(buildPlanetResult);
 }
 
 export async function launchDeathStar(
@@ -412,9 +412,9 @@ export async function launchDeathStar(
       missionId: mission.id,
       arriveAt,
       pending: await pendingThreads(tx, originPlanetId, origin.now),
-      planet: await planetView(tx, originPlanetId, clock),
+      planet: await loadPlanetViewData(tx, originPlanetId, clock),
     };
-  });
+  }).then(buildPlanetResult);
 }
 /**
  * Apply the tactical EMP payload.

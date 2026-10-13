@@ -10,7 +10,7 @@ import {
 import { idempotentMutation } from '../services/idempotency.js';
 import { commanderForAccount, capitalPlanet } from '../services/ownership.js';
 import { GameError } from '../services/planet.js';
-import { planetView } from '../services/planetView.js';
+import { loadPlanetViewData, buildPlanetResult } from '../services/planetView.js';
 import { pendingThreads } from '../services/session.js';
 import { requireAuth } from './auth.js';
 
@@ -90,10 +90,10 @@ async function freshProjection(
       eq(planets.controllerPlayerId, playerId),
     )).limit(1);
     const projectionPlanetId = stillMine?.id ?? (await capitalPlanet(tx, playerId)).id;
-    const planet = await planetView(tx, projectionPlanetId, app.clock);
+    const planet = await loadPlanetViewData(tx, projectionPlanetId, app.clock);
     const pending = await pendingThreads(tx, projectionPlanetId, app.clock.now());
     return { planet, pending };
-  });
+  }).then(buildPlanetResult);
 }
 
 export function registerIntergalacticConvoyRoutes(app: FastifyInstance): void {
