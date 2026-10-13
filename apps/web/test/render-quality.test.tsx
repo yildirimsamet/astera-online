@@ -147,7 +147,8 @@ describe('the canvas spends what the preset says', () => {
    * catch, because it only appears after a player changes the setting.
    */
   it('replaces the composer when the resolution ceiling changes', () => {
-    const composer = canvas.slice(canvas.indexOf('<EffectComposer'));
+    const source = readFileSync('src/galaxy/GalaxyPostprocessing.tsx', 'utf8');
+    const composer = source.slice(source.indexOf('<EffectComposer'));
     /*
       THE CEILING IS IN THE KEY; IT IS NO LONGER THE WHOLE KEY. A lost WebGL
       context is the second thing that has to rebuild this composer — a phone
@@ -155,7 +156,7 @@ describe('the canvas spends what the preset says', () => {
       the old one allocated died with the old one (`gpuContext.ts`). So the
       assertion is that the ceiling participates, not that it is alone.
     */
-    expect(composer.slice(0, composer.indexOf('>'))).toMatch(/key=\{[^}]*preset\.dprCap/);
+    expect(composer.slice(0, composer.indexOf('>'))).toMatch(/key=\{[^}]*dprCap/);
   });
 });
 
@@ -182,6 +183,7 @@ describe('the composer applies no tone mapping', () => {
   /** A mounted element, never the docblock that explains why there is not one. */
   it('mounts no tone mapping effect', () => {
     expect(canvas).not.toMatch(/^\s*<ToneMapping/m);
+    expect(source('src/galaxy/GalaxyPostprocessing.tsx')).not.toMatch(/^\s*<ToneMapping/m);
   });
 
   it('sets none on the renderer either, where it would be silently overridden', () => {

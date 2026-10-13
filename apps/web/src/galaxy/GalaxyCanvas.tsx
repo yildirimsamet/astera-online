@@ -1,8 +1,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react';
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
-import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
-import { guardBloomRef } from './finiteGuard.js';
+import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
 import { useGpuContext } from './gpuContext.js';
 import { ViewOffset } from './ViewOffset.js';
 import * as THREE from 'three';
@@ -878,38 +877,13 @@ export function GalaxyCanvas({
       <RedrawOnRestore epoch={gpu.epoch} />
       <WideScreenFov />
       <SceneRenderGate />
-      {gpu.live && (
-      <EffectComposer
-        enabled={prepared}
-        key={`${String(preset.dprCap)}-${String(gpu.epoch)}`}
-        enableNormalPass={false}
-        frameBufferType={THREE.HalfFloatType}
-        /*
-          COVERAGE SAMPLES, FROM THE PRESET — still far under the package default
-          of eight on every full-screen mobile buffer, and never zero.
-
-          This is what draws a rock's tail and the hairline on a world's limb at
-          all: both are thin geometry that falls under one pixel of coverage, and
-          multisampling is the only thing that renders a quarter-covered pixel at a
-          quarter strength instead of dropping it. `lib/quality.ts` carries why it
-          went UP when the resolution came down, and why the cheapest preset is the
-          one that needs it most.
-        */
+      <GalaxyPostprocessing
+        live={gpu.live}
+        epoch={gpu.epoch}
+        dprCap={preset.dprCap}
         multisampling={preset.multisampling}
-      >
-        {/* `guardBloomRef`: no pixel that is not finite reaches the mip chain (black blocks, 2026-10-06). */}
-        <Bloom
-          ref={guardBloomRef}
-          intensity={0.62}
-          luminanceThreshold={0.78}
-          luminanceSmoothing={0.22}
-          mipmapBlur
-          radius={0.72}
-          levels={6}
-        />
-        <Vignette eskil={false} offset={0.24} darkness={0.62} />
-      </EffectComposer>
-      )}
+        prepared={prepared}
+      />
 
       {/*
         THE LESSON'S TAP TARGET, ON THE SUBJECT RATHER THAN ON THE MIDDLE.

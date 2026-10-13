@@ -62,7 +62,7 @@ describe('one antialiasing pass, not two', () => {
 
     // Only a canvas that hands its scene to a composer is under this rule.
     expect(source, `${path} no longer uses an EffectComposer — revisit this test`)
-      .toMatch(/<EffectComposer/);
+      .toMatch(/<(?:EffectComposer|GalaxyPostprocessing)/);
 
     const glProp = /gl=\{\{([^}]*)\}\}/.exec(source);
     expect(glProp, `${path} has no gl={{...}} prop to check`).not.toBeNull();
