@@ -113,7 +113,9 @@ export type Loader = (url: string) => Promise<void>;
  * the HTTP cache so drei's own loader finds the model already there.
  */
 export const fetchAsset: Loader = async (url) => {
-  if (/\.(png|jpg|jpeg|webp|avif|gif)$/i.test(url)) {
+  // Versioned images must still warm decoded pixels, while keeping their cache URL.
+  const pathname = url.split(/[?#]/, 1)[0] ?? url;
+  if (/\.(png|jpg|jpeg|webp|avif|gif)$/i.test(pathname)) {
     await new Promise<void>((resolve) => {
       const image = new Image();
       image.onload = () => {

@@ -1,16 +1,17 @@
 import { StrictMode, createElement, type ReactNode } from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   FLEET_V2_OPENING_ASSETS,
   GALAXY_ASSETS,
   LANDING_ASSETS,
   PRELOAD_DEADLINE_MS,
+  fetchAsset,
   preloadAll,
   usePreload,
   type Loader,
 } from '../src/lib/preload.js';
-import { FLEET_V2_ASSET_MANIFEST } from '../src/ui/assets.js';
+import { FLEET_V2_ASSET_MANIFEST, PLANET_ART } from '../src/ui/assets.js';
 
 /**
  * THE WAIT AT THE FRONT DOOR. D23.
@@ -27,6 +28,86 @@ import { FLEET_V2_ASSET_MANIFEST } from '../src/ui/assets.js';
 
 const settled = (): Loader => () => Promise.resolve();
 const never = (): Loader => () => new Promise<void>(() => undefined);
+
+describe('preparing the actual versioned asset URLs', () => {
+  const images: PreloadImage[] = [];
+  class PreloadImage {
+    src = '';
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    decode = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    constructor() { images.push(this); }
+  }
+  const body = vi.fn<() => Promise<ArrayBuffer>>();
+  const fetch = vi.fn();
+  beforeEach(() => {
+    images.length = 0;
+    body.mockReset().mockResolvedValue(new ArrayBuffer(0));
+    fetch.mockReset().mockResolvedValue({ arrayBuffer: body });
+    vi.stubGlobal('Image', PreloadImage);
+    vi.stubGlobal('fetch', fetch);
+  });
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it.each([
+    PLANET_ART[0]!,
+    '/assets/cover.png#preview',
+    'https://example.com/cover.WEBP?v=abc#preview',
+  ])('decodes an image before declaring it prepared: %s', async (url) => {
+    const complete = vi.fn();
+    const prepared = fetchAsset(url).then(complete);
+    expect(images).toHaveLength(1);
+    const image = images[0]!;
+    expect(image.src).toBe(url);
+    let finishDecode: (() => void) | undefined;
+    image.decode.mockImplementation(() => new Promise<void>(resolve => { finishDecode = resolve; }));
+    image.onload?.();
+    await Promise.resolve();
+    expect(complete).not.toHaveBeenCalled();
+    finishDecode?.();
+    await prepared;
+    expect(complete).toHaveBeenCalledOnce();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('settles a versioned image if decoding fails', async () => {
+    const prepared = fetchAsset(PLANET_ART[0]!);
+    expect(images).toHaveLength(1);
+    const image = images[0]!;
+    image.decode.mockRejectedValue(new Error('decode failed'));
+    image.onload?.();
+    await expect(prepared).resolves.toBeUndefined();
+  });
+
+  it('settles a versioned image if its network request fails', async () => {
+    const prepared = fetchAsset(PLANET_ART[0]!);
+    expect(images).toHaveLength(1);
+    images[0]!.onerror?.();
+    await expect(prepared).resolves.toBeUndefined();
+  });
+
+  it('settles after load in browsers without image.decode', async () => {
+    const prepared = fetchAsset(PLANET_ART[0]!);
+    expect(images).toHaveLength(1);
+    const image = images[0]!;
+    Reflect.deleteProperty(image, 'decode');
+    image.onload?.();
+    await expect(prepared).resolves.toBeUndefined();
+  });
+
+  it.each([
+    '/assets/model.glb?v=abc',
+    '/assets/model.glb?preview=cover.png',
+    '/assets/model.glb#cover.png',
+  ])('preserves model URLs and their HTTP cache reuse: %s', async (url) => {
+    const prepared = fetchAsset(url);
+    expect(images).toHaveLength(0);
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledWith(url, { cache: 'force-cache' });
+    await prepared;
+    expect(body).toHaveBeenCalledOnce();
+  });
+});
 
 describe('counting what has loaded', () => {
   it('reports after every asset, in a fraction of the real list', async () => {
