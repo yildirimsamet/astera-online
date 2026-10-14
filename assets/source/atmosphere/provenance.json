@@ -1,0 +1,873 @@
+{
+  "date": "2026-10-14",
+  "records": [
+    {
+      "id": "core-t1",
+      "source": "assets/source/atmosphere/core-t1-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/core-t1-v1.webp",
+      "origin": "Original Astera artwork generated with image_gen from its own T1 architecture",
+      "bytes": 81958,
+      "sha256": "8e7e5627909dc2b4b6fbca7f06d473e50fdcfddc38176ad4cdea4986e1a519ca"
+    },
+    {
+      "id": "refinery-t1",
+      "source": "assets/source/atmosphere/refinery-t1-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/refinery-t1-v1.webp",
+      "origin": "Original Astera artwork generated with image_gen from its own T1 architecture",
+      "bytes": 81524,
+      "sha256": "7bedd600b463891d548f19f591f209f2218860e65a03ecee8cc9bfac9a7be1a4"
+    },
+    {
+      "id": "extractor-t1",
+      "source": "assets/source/atmosphere/extractor-t1-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/extractor-t1-v1.webp",
+      "origin": "Original Astera artwork generated with image_gen from its own T1 architecture",
+      "bytes": 96860,
+      "sha256": "44242e93f902842764143a7bef8f3e5987a94391fa3ffb58d6499d60ebd06ee5"
+    },
+    {
+      "id": "deuterium-t1",
+      "source": "assets/source/atmosphere/deuterium-t1-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/deuterium-t1-v1.webp",
+      "origin": "Original Astera artwork generated with image_gen from its own T1 architecture",
+      "bytes": 97766,
+      "sha256": "792e92ba234791d5e3384af069297cbf45faf5f80dd36502ca510664bea5dc2d"
+    },
+    {
+      "id": "shipyard-t1",
+      "source": "assets/source/atmosphere/shipyard-t1-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/shipyard-t1-v1.webp",
+      "origin": "Original Astera artwork generated with image_gen from its own T1 architecture",
+      "bytes": 93666,
+      "sha256": "ac978d0ae1ad838395440d29906fcf4de6e13ac298d50f3be7a73f3658213a50"
+    },
+    {
+      "id": "hangar-t1",
+      "source": "assets/source/atmosphere/hangar-t1-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/hangar-t1-v1.webp",
+      "origin": "Original Astera artwork generated with image_gen from its own T1 architecture",
+      "bytes": 90192,
+      "sha256": "6a9db06c525c3cba6aca8e0eb0ccfac100164d46fa7ea380f292e54e1123f9d2"
+    },
+    {
+      "id": "fleet",
+      "source": "assets/source/atmosphere/Capsule_Exp_Ships.jpg",
+      "served": "apps/web/public/assets/images/atmosphere/fleet-v1.webp",
+      "origin": "Stellar Dominion 5.4.0 extracted APK; reuse authorized by owner",
+      "bytes": 24994,
+      "sha256": "1ed720f0aa73adf7a47437b3bb20ce2a7c7e39756583f1fee6fe1c529b5b1bb5"
+    },
+    {
+      "id": "intel",
+      "source": "assets/source/atmosphere/BG_Commander.jpg",
+      "served": "apps/web/public/assets/images/atmosphere/intel-v1.webp",
+      "origin": "Stellar Dominion 5.4.0 extracted APK; reuse authorized by owner",
+      "bytes": 61160,
+      "sha256": "39f75e65d4c493de6a36ae268e0fcb8ce92e395ed84c96e8c76321767033451a"
+    },
+    {
+      "id": "clan",
+      "source": "assets/source/atmosphere/Achievement_Strategy.jpg",
+      "served": "apps/web/public/assets/images/atmosphere/clan-v1.webp",
+      "origin": "Stellar Dominion 5.4.0 extracted APK; reuse authorized by owner",
+      "bytes": 67238,
+      "sha256": "df705271f2f427565e33effcf790dc7bfbe803c3dc0937d26c571a013e7a9d4a"
+    },
+    {
+      "id": "announcements",
+      "source": "assets/source/atmosphere/Banner_Mail_News.jpg",
+      "served": "apps/web/public/assets/images/atmosphere/announcements-v1.webp",
+      "origin": "Stellar Dominion 5.4.0 extracted APK; reuse authorized by owner",
+      "bytes": 49434,
+      "sha256": "83b1c2ac3fee53697f27086f4fa04c64aa1841d579d0ac5bc053b6b8f1350d18"
+    },
+    {
+      "id": "rewards",
+      "source": "assets/source/atmosphere/Banner_Exp_Resources.jpg",
+      "served": "apps/web/public/assets/images/atmosphere/rewards-v1.webp",
+      "origin": "Stellar Dominion 5.4.0 extracted APK; reuse authorized by owner",
+      "bytes": 43262,
+      "sha256": "fd09510e5f3a83ccaa9310d8a2b48fd98416e6fd0dbea9fe8184ad194b56ee86"
+    },
+    {
+      "id": "season",
+      "source": "assets/source/atmosphere/BG_OffSeason.jpg",
+      "served": "apps/web/public/assets/images/atmosphere/season-v1.webp",
+      "origin": "Stellar Dominion 5.4.0 extracted APK; reuse authorized by owner",
+      "bytes": 57410,
+      "sha256": "75755c946d8a6c789adce303002760770ffdca259fd2947e0bf54670ea57f7ce"
+    },
+    {
+      "id": "research",
+      "source": "assets/source/atmosphere/Sensor_T2.jpg",
+      "served": "apps/web/public/assets/images/atmosphere/research-v1.webp",
+      "origin": "Stellar Dominion 5.4.0 extracted APK; reuse authorized by owner",
+      "bytes": 93836,
+      "sha256": "59571fc0d0cf35f48ec60e3eb24021ce34a04967e155505bbc4c09bbcd649359"
+    },
+    {
+      "id": "commander",
+      "source": "assets/source/atmosphere/astera-orbital-deck-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/commander-v1.webp",
+      "origin": "Original Astera artwork generated with image_gen",
+      "bytes": 90958,
+      "sha256": "97b4f6719b409cceae7de46e4731740434a9926d63824cd4d084822a5666daea"
+    },
+    {
+      "id": "harpoon-t2-v2",
+      "source": "assets/source/atmosphere/harpoon-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/harpoon-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 72852,
+      "sha256": "ca645f4cd8e874c370ad4ad403268819234e4c34c387a8deddc7b801c58cc784"
+    },
+    {
+      "id": "vault-t3-v2",
+      "source": "assets/source/atmosphere/vault-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/vault-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 90894,
+      "sha256": "7430a2ac17c8978274e616ea74d60b543894a040e8cbef8366014146c3e90461"
+    },
+    {
+      "id": "larger-battery-t1-v2",
+      "source": "assets/source/atmosphere/larger-battery-t1-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/larger-battery-t1-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 92318,
+      "sha256": "9197017ab36fa351f057c75a5d376c7050db835d5f59e93c25248b8dc8f167ed"
+    },
+    {
+      "id": "refinery-t3-v2",
+      "source": "assets/source/atmosphere/refinery-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/refinery-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 106544,
+      "sha256": "3fae8b502062581bf57454e827b6dee17ee756433998d7e46625535d08c1d837"
+    },
+    {
+      "id": "beacon-v2",
+      "source": "assets/source/atmosphere/beacon-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/beacon-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 56152,
+      "sha256": "668de89d67a26d230a085d4e86301cd07147dc8e5715785c7bcb35e7a49909bb"
+    },
+    {
+      "id": "shield-t3-v2",
+      "source": "assets/source/atmosphere/shield-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/shield-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 94628,
+      "sha256": "4fd62d1a53083cf56f52e4082f0bd34fe923c08b1061e1334a743f94576ef345"
+    },
+    {
+      "id": "shipyard-t2-v2",
+      "source": "assets/source/atmosphere/shipyard-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/shipyard-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 110200,
+      "sha256": "567bcd98485c7d02db15d3b631a7ed21a7d6e69fb1fcd8dc6ac5a9ebb1a22574"
+    },
+    {
+      "id": "veil-t1-v2",
+      "source": "assets/source/atmosphere/veil-t1-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/veil-t1-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 72422,
+      "sha256": "2a306935df767b859e8446fb1abf4712134ef18883d7318454bdf4daec5cbb88"
+    },
+    {
+      "id": "larger-battery-t2-v2",
+      "source": "assets/source/atmosphere/larger-battery-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/larger-battery-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 101962,
+      "sha256": "f29b331a2ae6a10a27fa7c77deee6cdac4c6832078cc8ea05faf4ff078035175"
+    },
+    {
+      "id": "close-battery-t2-v2",
+      "source": "assets/source/atmosphere/close-battery-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/close-battery-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 73774,
+      "sha256": "95a39fb827fa66c1ccc16147c0e523ef1e37419aa83233c80fac743f4e40755b"
+    },
+    {
+      "id": "vault-t2-v2",
+      "source": "assets/source/atmosphere/vault-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/vault-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 85050,
+      "sha256": "442158e4eac9aa91fe2b1cf358f4a3ec12fca72fb103d62c84e5005175150734"
+    },
+    {
+      "id": "uplink-v2",
+      "source": "assets/source/atmosphere/uplink-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/uplink-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 66768,
+      "sha256": "67376addf959c3e41c7cc063adb3124eab4c898c943cc8c42c6e089d35af4367"
+    },
+    {
+      "id": "harpoon-t1-v2",
+      "source": "assets/source/atmosphere/harpoon-t1-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/harpoon-t1-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 75128,
+      "sha256": "ffaa2e7a3fd4b9913da154d7eade36e5dddefb283053fe0b541c8d78c463e92d"
+    },
+    {
+      "id": "veil-t2-v2",
+      "source": "assets/source/atmosphere/veil-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/veil-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 83188,
+      "sha256": "313bc35f3f75fabcc5bf5534e53b4040d97cd66eded52c41d8cfd28e216b0ad1"
+    },
+    {
+      "id": "repair-v2",
+      "source": "assets/source/atmosphere/repair-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/repair-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 109356,
+      "sha256": "fdd517a2784a86e169db5b6950349dc029c8f562c76aea002e0d6127ceb6e0b2"
+    },
+    {
+      "id": "larger-battery-t3-v2",
+      "source": "assets/source/atmosphere/larger-battery-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/larger-battery-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 99400,
+      "sha256": "f69c95b572c37cf6c5b2b40b464d8d51a21af20e3ed6c70e2c3606c94442115c"
+    },
+    {
+      "id": "scope-t2-v2",
+      "source": "assets/source/atmosphere/scope-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/scope-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 80920,
+      "sha256": "7960d4a39bfc15398494883cc700f8ff69ccdbb8277e1289f752d17c08e1c9a3"
+    },
+    {
+      "id": "scope-t1-v2",
+      "source": "assets/source/atmosphere/scope-t1-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/scope-t1-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 76618,
+      "sha256": "f4c75a8b916207c268d98347c28c1d28732970a3529528a1c1d096a749ae5ddc"
+    },
+    {
+      "id": "radar-t3-v2",
+      "source": "assets/source/atmosphere/radar-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/radar-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 86032,
+      "sha256": "6f47f605991492a67474479aa266a6ee7d69e3bb42e1bf640abdf55ab3b36b49"
+    },
+    {
+      "id": "shield-t1-v2",
+      "source": "assets/source/atmosphere/shield-t1-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/shield-t1-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 104370,
+      "sha256": "3875ce0c6fa97611d26411042d59c6e9ba0f4d17cf62cce32f6b19addf0d10c3"
+    },
+    {
+      "id": "extractor-t3-v2",
+      "source": "assets/source/atmosphere/extractor-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/extractor-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 123980,
+      "sha256": "0ffcdbd8067abbc77b9f8770da195e733606e982002492d8d046a83a4835759c"
+    },
+    {
+      "id": "vault-t1-v2",
+      "source": "assets/source/atmosphere/vault-t1-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/vault-t1-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 83044,
+      "sha256": "33f7549e54ac5d7971b7a5096b5df2a0d58160dd63260abf9e30f3eab6d25adc"
+    },
+    {
+      "id": "hangar-t2-v2",
+      "source": "assets/source/atmosphere/hangar-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/hangar-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 97928,
+      "sha256": "fdab965bfda6d43add56303626a35ca26d0b7fee1c77768e5849a0bf9c42de92"
+    },
+    {
+      "id": "extractor-t2-v2",
+      "source": "assets/source/atmosphere/extractor-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/extractor-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 114098,
+      "sha256": "d4e5a47d878f14a1ce5f6c3e1de0a2de6ca633819f724549d61eea60ee19af02"
+    },
+    {
+      "id": "derrick-v2",
+      "source": "assets/source/atmosphere/derrick-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/derrick-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 67656,
+      "sha256": "5ac11b6592628d64323fc140e2895db34af1ee1016edd82588c20e72a7223cfc"
+    },
+    {
+      "id": "veil-t3-v2",
+      "source": "assets/source/atmosphere/veil-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/veil-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 103938,
+      "sha256": "d02f91a030e2dd1c373bc0ac6f62bb0dce9c62b4d0ea52faacfbcdec7027a98d"
+    },
+    {
+      "id": "hangar-t3-v2",
+      "source": "assets/source/atmosphere/hangar-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/hangar-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 103338,
+      "sha256": "3382aac05a1e24608932609b0207817498e263388e9b7d545255fa71d3a18df9"
+    },
+    {
+      "id": "radar-t1-v2",
+      "source": "assets/source/atmosphere/radar-t1-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/radar-t1-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 74784,
+      "sha256": "ea6284f3bbfb29738b9985821cb3b5f7c722867a199a2c68e25676a58624b547"
+    },
+    {
+      "id": "close-battery-t1-v2",
+      "source": "assets/source/atmosphere/close-battery-t1-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/close-battery-t1-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 88204,
+      "sha256": "dd800bba6a957382c8d7c494cda452ec83590fa5aee9e8009bb100e456a675a1"
+    },
+    {
+      "id": "close-battery-t3-v2",
+      "source": "assets/source/atmosphere/close-battery-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/close-battery-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 88250,
+      "sha256": "b06a64791085ed14587de6771bdcd77e7a56725042b004018f31c0cd9139e03c"
+    },
+    {
+      "id": "deuterium-t3-v2",
+      "source": "assets/source/atmosphere/deuterium-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/deuterium-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 98352,
+      "sha256": "5ce8045f4969c62fd74748dc868484a7930341e9dc63b5e0f705a03cd61391b9"
+    },
+    {
+      "id": "shield-t2-v2",
+      "source": "assets/source/atmosphere/shield-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/shield-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 86660,
+      "sha256": "a59d53329873e232113ac4520ed769ab3a310b25989b3074f289fb2999943512"
+    },
+    {
+      "id": "shipyard-t3-v2",
+      "source": "assets/source/atmosphere/shipyard-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/shipyard-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 127382,
+      "sha256": "d2ed5114d948de7cfa0f5f0803ec4cbbb9b7a3dfc6094c0123569aff2c03727f"
+    },
+    {
+      "id": "refinery-t2-v2",
+      "source": "assets/source/atmosphere/refinery-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/refinery-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 111320,
+      "sha256": "6151ae139ce20bd08ba20420b94797bdcd446a80a3a57654de29ed314a55abf3"
+    },
+    {
+      "id": "deuterium-t2-v2",
+      "source": "assets/source/atmosphere/deuterium-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/deuterium-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 115228,
+      "sha256": "50cd64753153a6a00ed8900c3ab712d2bcc84259fd461dd6fb1dafc63d8866fc"
+    },
+    {
+      "id": "commander-room-v2",
+      "source": "assets/source/atmosphere/commander-room-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/commander-room-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 58486,
+      "sha256": "de9b1fdcd5fb0ec3f33ab25de1069637de34d9c95d7f387401cfe962cfc3ec40"
+    },
+    {
+      "id": "radar-t2-v2",
+      "source": "assets/source/atmosphere/radar-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/radar-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 61742,
+      "sha256": "c3a7e1e49805e889bb470c96ee43ed3a3539af629a133cc48a34725ea1bfc303"
+    },
+    {
+      "id": "strategic-v2",
+      "source": "assets/source/atmosphere/strategic-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/strategic-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 91414,
+      "sha256": "2d9aa45593e90dd872eecddbac55b5ea8291174ac00a4a6a8083cc33b60a98e4"
+    },
+    {
+      "id": "scope-t3-v2",
+      "source": "assets/source/atmosphere/scope-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/scope-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 83252,
+      "sha256": "9f86c1d91bcbc17f3663d192ccb9f9eeab663f2c5faa3948f015d085deed5019"
+    },
+    {
+      "id": "harpoon-t3-v2",
+      "source": "assets/source/atmosphere/harpoon-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/harpoon-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 85556,
+      "sha256": "a941a4aeb085e1841002cbfad68df63723337afb4648cae3e158fd477592d17e"
+    },
+    {
+      "id": "core-t3-v2",
+      "source": "assets/source/atmosphere/core-t3-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/core-t3-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 97386,
+      "sha256": "56ea36277c34cf5abecc4244aa2a1c0c46ebc2a2a6b504a1c744841da699c479"
+    },
+    {
+      "id": "foundry-v2",
+      "source": "assets/source/atmosphere/foundry-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/foundry-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 67236,
+      "sha256": "04e4b99049ea2ce8886ac1fd5b594fe6147cada8ccca07757f3a819c8c7a96e1"
+    },
+    {
+      "id": "core-t2-v2",
+      "source": "assets/source/atmosphere/core-t2-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/core-t2-v2.webp",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "bytes": 94432,
+      "sha256": "7cf48482026ead0283ba09095d4c627cf817bcd5b37aa0ea6344189a7474f074"
+    },
+    {
+      "id": "interceptor-v4",
+      "source": "assets/source/atmosphere/interceptor-v4.png",
+      "served": "apps/web/public/assets/images/atmosphere/interceptor-v4.webp",
+      "origin": "Original Astera scene; incoming enemy nose down-left, defender interceptors up-right; built-in image_gen direction and identity corrections",
+      "bytes": 89668,
+      "sha256": "35e5717b04ba795c58b8e3f4c04fb78e17b221c8db49a5444b4e7d8e3bd8e070"
+    },
+    {
+      "id": "feedback-v1",
+      "source": "assets/source/atmosphere/feedback-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/feedback-v1.webp",
+      "origin": "Original Astera menu scene generated with built-in image_gen",
+      "bytes": 35184,
+      "sha256": "f6e3c9ff735a9406a9fcf3e729f0df2a4e14cbc07e29e5e54c25b27dc7dc1ebc"
+    },
+    {
+      "id": "donate-v1",
+      "source": "assets/source/atmosphere/donate-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/donate-v1.webp",
+      "origin": "Original Astera menu scene generated with built-in image_gen",
+      "bytes": 46438,
+      "sha256": "bcd6be29afede9c00f06aaf4f0ded9a22cc77ea255abc50a423fd7b31295d42c"
+    },
+    {
+      "id": "academy-v1",
+      "source": "assets/source/atmosphere/academy-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/academy-v1.webp",
+      "origin": "Original Astera menu scene generated with built-in image_gen",
+      "bytes": 38306,
+      "sha256": "9f23204d21948de8f34162c95ab0d6b9b489a9af73c2d35a2148a248b552c53a"
+    },
+    {
+      "id": "galaxy-account-v1",
+      "source": "assets/source/atmosphere/galaxy-account-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/galaxy-account-v1.webp",
+      "origin": "Original Astera menu scene generated with built-in image_gen",
+      "bytes": 43510,
+      "sha256": "87dec1d22f86e5d025a4e747f811d2e89af48164a5ef6c1e093a93539d69f073"
+    },
+    {
+      "id": "season-account-v1",
+      "source": "assets/source/atmosphere/season-account-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/season-account-v1.webp",
+      "origin": "Original Astera menu scene generated with built-in image_gen",
+      "bytes": 20136,
+      "sha256": "4031e033e1952677cc6e9458e0e4ea11ee1066553573cc491576da393d99fbf3"
+    },
+    {
+      "id": "inventory-v1",
+      "source": "assets/source/atmosphere/inventory-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/inventory-v1.webp",
+      "origin": "Original Astera menu scene generated with built-in image_gen",
+      "bytes": 36646,
+      "sha256": "2934b17829c330092d50a6a442a80573150ece3ebfd3f42f25da3c5396066878"
+    },
+    {
+      "id": "dart-scene-v1",
+      "source": "assets/source/atmosphere/dart-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/dart-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 65652,
+      "sha256": "ed2c31f6b22b23988e1869237c53e5b989f1b333574208a292cd1d4234a5cc74"
+    },
+    {
+      "id": "pike-scene-v1",
+      "source": "assets/source/atmosphere/pike-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/pike-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 62906,
+      "sha256": "e8eb243880e8df1ec1b10c21d719bf1e55b912a9726ab58fd915be3bf1701294"
+    },
+    {
+      "id": "rampart-scene-v1",
+      "source": "assets/source/atmosphere/rampart-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/rampart-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 71010,
+      "sha256": "b5b82876c6cb58dfe8bb63d29446da163d10f39615efe110835ce2fc9c49c918"
+    },
+    {
+      "id": "warden-scene-v1",
+      "source": "assets/source/atmosphere/warden-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/warden-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 68680,
+      "sha256": "05337cdbf01b4249ab8521d40845d2f2f977d98c4ba8173d7300e0e711b71969"
+    },
+    {
+      "id": "courier-scene-v1",
+      "source": "assets/source/atmosphere/courier-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/courier-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 70188,
+      "sha256": "173c934a4294c4f6635c199491360b5636e5f9719b348520ae2e7cd41f72c314"
+    },
+    {
+      "id": "viper-scene-v1",
+      "source": "assets/source/atmosphere/viper-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/viper-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 76138,
+      "sha256": "0c9fbd7b61554fe3a996e0272e890043507370b4510b43a4feae0959af6e71d1"
+    },
+    {
+      "id": "talon-scene-v1",
+      "source": "assets/source/atmosphere/talon-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/talon-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 54596,
+      "sha256": "1f23ae5e943807cf4ee05849dd7a0ae2e41740bff9ff1be94637c2f6628100ad"
+    },
+    {
+      "id": "stronghold-scene-v1",
+      "source": "assets/source/atmosphere/stronghold-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/stronghold-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 70814,
+      "sha256": "cef12494f71eae71a0310bbccdb72dd3b7586d2ee9699e02bf78df1caf32c52d"
+    },
+    {
+      "id": "sentinel-scene-v1",
+      "source": "assets/source/atmosphere/sentinel-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/sentinel-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 68502,
+      "sha256": "8af5188a02937f54e041b98861161280e140fac5292711e3d4ac454b6ea4e5e6"
+    },
+    {
+      "id": "wayfarer-scene-v1",
+      "source": "assets/source/atmosphere/wayfarer-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/wayfarer-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 84314,
+      "sha256": "f6e50d9f02fb138d66ba19d3b211ed062e96cfd2c01391afaa898e288fc3cc62"
+    },
+    {
+      "id": "tempest-scene-v1",
+      "source": "assets/source/atmosphere/tempest-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/tempest-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 68716,
+      "sha256": "4f475f90e228cffb2d7b662de6625f76aa6c9b0aa694d42e066173a376af868d"
+    },
+    {
+      "id": "ballista-scene-v1",
+      "source": "assets/source/atmosphere/ballista-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/ballista-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 71936,
+      "sha256": "508c6198e4e2d5371eeee74be28e179e9e7befc979b45352d34ebf2a200f9b41"
+    },
+    {
+      "id": "leviathan-scene-v1",
+      "source": "assets/source/atmosphere/leviathan-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/leviathan-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 82542,
+      "sha256": "ee592c1a1e4cf64df2503d85b072a4a80912a27068e4caeea479d1293d2ee950"
+    },
+    {
+      "id": "praetorian-scene-v1",
+      "source": "assets/source/atmosphere/praetorian-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/praetorian-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 73092,
+      "sha256": "f754888b630e4ca9336f8cec9605bd4f37e5182809771daba4dffe4f2df3ecc6"
+    },
+    {
+      "id": "atlas-scene-v1",
+      "source": "assets/source/atmosphere/atlas-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/atlas-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 82968,
+      "sha256": "347b140770959d7f2a7f5b0a5ec80188368f8ccc236447871edc8274b465201f"
+    },
+    {
+      "id": "nullifier-scene-v1",
+      "source": "assets/source/atmosphere/nullifier-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/nullifier-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 54112,
+      "sha256": "3895e5257646ed65ca8f1733f1c9d598e887a3536a8dbb93e939c8161c20fbf4"
+    },
+    {
+      "id": "garbage-collector-scene-v1",
+      "source": "assets/source/atmosphere/garbage-collector-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/garbage-collector-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 66636,
+      "sha256": "620d54ee389db4e52a65e9f87c2c47095e8b982942bbbb159d4c758a82a29e67"
+    },
+    {
+      "id": "cataclysm-scene-v1",
+      "source": "assets/source/atmosphere/cataclysm-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/cataclysm-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 73060,
+      "sha256": "7919d6ec9e78c6288986da76a0282044b6aedbeb6e4b5f224c785bac79a6f566"
+    },
+    {
+      "id": "corsair-scene-v1",
+      "source": "assets/source/atmosphere/corsair-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/corsair-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 52236,
+      "sha256": "ac71870034e3b63c476ce80dff0b8a4dca80195af37be1ae83dfcd6c6e13513f"
+    },
+    {
+      "id": "citadel-scene-v1",
+      "source": "assets/source/atmosphere/citadel-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/citadel-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 91714,
+      "sha256": "f60e735eba0796e69c0a894cb3ef9ee54832a6dc4e586e069636c90249c823d9"
+    },
+    {
+      "id": "paladin-scene-v1",
+      "source": "assets/source/atmosphere/paladin-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/paladin-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 72956,
+      "sha256": "32d48a05d00d98813b2592e882d5f7e8d7b11a3b9ed237092d243293dc46d319"
+    },
+    {
+      "id": "argosy-scene-v1",
+      "source": "assets/source/atmosphere/argosy-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/argosy-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 68688,
+      "sha256": "6edaab140fdb71d15445af24bfb941e625d71453eabdb53679eff61ab7e740cf"
+    },
+    {
+      "id": "prospector-scene-v1",
+      "source": "assets/source/atmosphere/prospector-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/prospector-scene-v1.webp",
+      "origin": "Original Astera foreground spacecraft scene generated with built-in image_gen from exact own hull reference",
+      "bytes": 98726,
+      "sha256": "1ed58f24929e98eee2a8d44526c175b6ecc7b0b7c8d6f9f7b50a3d130da0fd00"
+    },
+    {
+      "id": "research-yard-automation-scene-v1",
+      "source": "assets/source/atmosphere/research-yard-automation-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-yard-automation-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 129154,
+      "sha256": "adca137d6b0fb9d4035cb3e755e414bc9f686572fa1770773623a328966f812d"
+    },
+    {
+      "id": "research-ai-robots-scene-v1",
+      "source": "assets/source/atmosphere/research-ai-robots-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-ai-robots-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 109600,
+      "sha256": "bf4d4df190e872530326844276a102971f149ab0d88fd622f6c7b3eaa7431fef"
+    },
+    {
+      "id": "research-prospector-holds-scene-v1",
+      "source": "assets/source/atmosphere/research-prospector-holds-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-prospector-holds-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 139634,
+      "sha256": "49f875d7bbf762af16280bdaf3dba3c209c2e0d3e80a52ab8ab40d0218c38c38"
+    },
+    {
+      "id": "research-cargo-holds-scene-v1",
+      "source": "assets/source/atmosphere/research-cargo-holds-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-cargo-holds-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 148402,
+      "sha256": "0f0e4ec2158f8e5ded630ead58b98a77dded5f6bc22aeed4369037251fbafbdc"
+    },
+    {
+      "id": "research-starship-engineering-scene-v1",
+      "source": "assets/source/atmosphere/research-starship-engineering-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-starship-engineering-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 141824,
+      "sha256": "156d5a3cf3d41fbb0b35608bcb88d259de9f5ee63af3367e5a17a274836f2f38"
+    },
+    {
+      "id": "research-ship-power-scene-v1",
+      "source": "assets/source/atmosphere/research-ship-power-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-ship-power-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 142974,
+      "sha256": "0265350774028537fc7e6180f1a093e37b3044be5a74d174a7132023096be917"
+    },
+    {
+      "id": "research-ship-armor-scene-v1",
+      "source": "assets/source/atmosphere/research-ship-armor-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-ship-armor-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 110842,
+      "sha256": "77f276065a51ce503a03369f6b3fff8c402abc99cf3cc325ef418aa3a8efc445"
+    },
+    {
+      "id": "research-ship-propulsion-scene-v1",
+      "source": "assets/source/atmosphere/research-ship-propulsion-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-ship-propulsion-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 122824,
+      "sha256": "5b24ac7173da09772b79b4439b9933d720f1353059246fe097b97638dbf19666"
+    },
+    {
+      "id": "research-emplacement-doctrine-scene-v1",
+      "source": "assets/source/atmosphere/research-emplacement-doctrine-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-emplacement-doctrine-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 113422,
+      "sha256": "5f98bfc41ed973a81891b288cc1762a8ee8cf0250a6338baa1778184587af29a"
+    },
+    {
+      "id": "research-interception-grid-scene-v1",
+      "source": "assets/source/atmosphere/research-interception-grid-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-interception-grid-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 118142,
+      "sha256": "3cd00b65c9008f2e2e2311e4488a1fbdf40d7a89afc52e9754573d85a1a5f9c4"
+    },
+    {
+      "id": "research-strategic-stockpile-scene-v1",
+      "source": "assets/source/atmosphere/research-strategic-stockpile-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-strategic-stockpile-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 109758,
+      "sha256": "f325a4867d8884e47ac17348ea6e0ea6333c5e91bc2f8fe94641448562ad2689"
+    },
+    {
+      "id": "research-industrial-scene-v1",
+      "source": "assets/source/atmosphere/research-industrial-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-industrial-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 131060,
+      "sha256": "f9a3de3563b5833b55b96872351d2ff69edddc9b579c07eb5e60861176ba5171"
+    },
+    {
+      "id": "research-isotope-spectrometry-scene-v2",
+      "source": "assets/source/atmosphere/research-isotope-spectrometry-scene-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-isotope-spectrometry-scene-v2.webp",
+      "origin": "Built-in image_gen edit: deuterium energy changed to canonical green #8eea36; scene geometry and composition preserved",
+      "bytes": 80476,
+      "sha256": "6eeb4eb3cd00ba2c230808a554272c154260474f5bab544d83e51f892f69adb3"
+    },
+    {
+      "id": "research-dense-fuel-cells-scene-v2",
+      "source": "assets/source/atmosphere/research-dense-fuel-cells-scene-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-dense-fuel-cells-scene-v2.webp",
+      "origin": "Built-in image_gen edit: deuterium energy changed to canonical green #8eea36; scene geometry and composition preserved",
+      "bytes": 102850,
+      "sha256": "2bfa1aec35f0d4747d36cf03e13c60d2cbe74975e969ea3162168f9e5eda36f2"
+    },
+    {
+      "id": "research-gravitic-charges-scene-v2",
+      "source": "assets/source/atmosphere/research-gravitic-charges-scene-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-gravitic-charges-scene-v2.webp",
+      "origin": "Built-in image_gen edit: deuterium energy changed to canonical green #8eea36; scene geometry and composition preserved",
+      "bytes": 121578,
+      "sha256": "f34f1a27c4855652183824d2221bcec0916bc7c422df96767e95b243acbc8260"
+    },
+    {
+      "id": "research-deuterium-synthesis-scene-v2",
+      "source": "assets/source/atmosphere/research-deuterium-synthesis-scene-v2.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-deuterium-synthesis-scene-v2.webp",
+      "origin": "Built-in image_gen edit: deuterium energy changed to canonical green #8eea36; scene geometry and composition preserved",
+      "bytes": 112240,
+      "sha256": "1880e50f19f8c60bf149edad039c0c0dd6d11a06f53472fad588a746a5909f4e"
+    }
+  ],
+  "policy": "Complete images only. No overlaid object PNG. Tiers without a matching complete scene keep their original art.",
+  "rejectedDrafts": [
+    {
+      "id": "interceptor-v2",
+      "source": "assets/source/atmosphere/interceptor-v2.png",
+      "origin": "Original Astera artwork generated with built-in image_gen; exact hardware tier reference, or original commander observation room",
+      "sha256": "3b9f05a001e3fd9541ecaaf1e58030a1921ad7a2caa8fbb4d94ec563ced306be",
+      "rejection": "Incoming target faced away from planet; replaced by v4."
+    }
+  ],
+  "supersededRecords": [
+    {
+      "id": "research-isotope-spectrometry-scene-v1",
+      "source": "assets/source/atmosphere/research-isotope-spectrometry-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-isotope-spectrometry-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 78784,
+      "sha256": "404f35c5a4f9e1f5ad559252edb6a1dc8cdd0dcbe314d0f053f9a546aa4ad103"
+    },
+    {
+      "id": "research-dense-fuel-cells-scene-v1",
+      "source": "assets/source/atmosphere/research-dense-fuel-cells-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-dense-fuel-cells-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 103574,
+      "sha256": "f9c31265cf0cb9374b31ab98c74a453cd9f743b8c5f63d7ffc7140227d601fc4"
+    },
+    {
+      "id": "research-gravitic-charges-scene-v1",
+      "source": "assets/source/atmosphere/research-gravitic-charges-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-gravitic-charges-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 121916,
+      "sha256": "37e19ab3b229976ce936a1ca8e066c2ce718807897cd3c2507e2d14490ff904e"
+    },
+    {
+      "id": "research-deuterium-synthesis-scene-v1",
+      "source": "assets/source/atmosphere/research-deuterium-synthesis-scene-v1.png",
+      "served": "apps/web/public/assets/images/atmosphere/research-deuterium-synthesis-scene-v1.webp",
+      "origin": "Original Astera research environment generated with built-in image_gen; topical landscape, own game art direction",
+      "bytes": 112462,
+      "sha256": "1ca03ce6629fb6fcf7477505096dfc0a269da6b9ea6bf06187ddc26561e40246"
+    }
+  ]
+}

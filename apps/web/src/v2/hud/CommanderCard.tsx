@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { duration } from '../../lib/time.js';
 import type { CountryCode } from '@astera/rules';
+import { ATMOSPHERE } from '../../ui/atmosphere.js';
+import { AtmosphereImage } from '../../ui/AtmosphereArt.js';
 import { Flag } from '../identity/Flag.js';
 
 const DAY_MS = 86_400_000;
@@ -66,7 +68,8 @@ export function CommanderCard({ name, country, clan, galaxy, seasonDay: day, ran
   ];
 
   return (
-    <section aria-label={t('menu.profile.label')} data-commander-card className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui">
+    <section aria-label={t('menu.profile.label')} data-commander-card className="scene-panel commander-observation flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui">
+      <AtmosphereImage art={ATMOSPHERE.commanderRoom} />
       <div className="flex items-center gap-2.5">
         <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-control border border-v2-self/70 bg-v2-raise text-body font-bold text-v2-ink">
           {initials(name)}

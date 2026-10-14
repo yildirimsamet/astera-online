@@ -1,5 +1,6 @@
 import { globSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
+import { runInNewContext } from 'node:vm';
 import { lockViewportZoom } from '../src/lib/viewport.js';
 
 /**
@@ -140,5 +141,71 @@ describe('page zoom is refused and the disc keeps its gestures', () => {
   it('leaves the disc asking for every gesture it is given', () => {
     const canvas = readFileSync('src/galaxy/GalaxyCanvas.tsx', 'utf8');
     expect(canvas).toContain("touchAction: 'none'");
+  });
+});
+
+
+describe('loading viewport before and after the app bundle arrives', () => {
+  let release: (() => void) | undefined;
+  afterEach(() => {
+    release?.();
+    document.dispatchEvent(new Event('astera:viewport-ready'));
+    document.querySelector('[data-loading-screen]')?.remove();
+  });
+  function cover() {
+    const node = document.createElement('main');
+    node.setAttribute('data-loading-screen', '');
+    document.body.append(node);
+    return node;
+  }
+  function boot() {
+    const html = readFileSync('index.html', 'utf8');
+    const script = /<script[^>]*data-viewport-boot[^>]*>([\s\S]*?)<\/script>/.exec(html)?.[1];
+    expect(script, 'the first HTML must guard zoom before deferred modules load').toBeTruthy();
+    if (!script) throw new Error('Missing boot viewport guard');
+    runInNewContext(script, { window, document });
+  }
+  it('blocks the first-frame pinch before any app JavaScript has loaded', () => {
+    cover(); boot();
+    const wheel = new WheelEvent('wheel', { ctrlKey: true, cancelable: true });
+    window.dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(true);
+    const gesture = new Event('gesturestart', { cancelable: true });
+    document.dispatchEvent(gesture);
+    expect(gesture.defaultPrevented).toBe(true);
+    const scroll = new WheelEvent('wheel', { cancelable: true });
+    window.dispatchEvent(scroll);
+    expect(scroll.defaultPrevented).toBe(false);
+  });
+  it('releases the temporary guard after the permanent viewport lock is installed', () => {
+    cover(); boot();
+    release = lockViewportZoom();
+    release(); release = undefined;
+    const wheel = new WheelEvent('wheel', { ctrlKey: true, cancelable: true });
+    window.dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(false);
+  });
+  it('protects the static opening frame and React cover with the same critical touch rule', () => {
+    const css = readFileSync('src/brand/opening.css', 'utf8');
+    expect(/\.brand-loading\s*\{([^}]*)\}/s.exec(css)?.[1]).toMatch(/touch-action:\s*none/);
+  });
+  it.each(['+', '=', '-'])('refuses keyboard zoom %s only while loading is covered', key => {
+    const node = cover();
+    release = lockViewportZoom();
+    const zoom = new KeyboardEvent('keydown', { key, ctrlKey: true, cancelable: true });
+    window.dispatchEvent(zoom);
+    expect(zoom.defaultPrevented).toBe(true);
+    node.remove();
+    const readyZoom = new KeyboardEvent('keydown', { key, ctrlKey: true, cancelable: true });
+    window.dispatchEvent(readyZoom);
+    expect(readyZoom.defaultPrevented).toBe(false);
+  });
+  it('keeps zoom reset and browser shortcuts available while loading', () => {
+    cover(); boot(); release = lockViewportZoom();
+    for (const key of ['0', 'r', 'l']) {
+      const event = new KeyboardEvent('keydown', { key, ctrlKey: true, cancelable: true });
+      window.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    }
   });
 });

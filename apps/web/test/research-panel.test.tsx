@@ -9,6 +9,8 @@ import {
   RESEARCH_PROJECT_IDS,
   type ResearchProjectId,
 } from '@astera/rules';
+import { RESEARCH_ART } from '../src/ui/assets.js';
+import { RESEARCH_SCENES } from '../src/ui/atmosphere.js';
 import { ResearchPanel } from '../src/screens/ResearchPanel.js';
 import i18n from '../src/i18n/index.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -150,6 +152,8 @@ const pick = (view: View, id: ResearchProjectId): HTMLElement => {
   return card!;
 };
 
+const scrollSelection = vi.fn<(options?: boolean | ScrollIntoViewOptions) => void>();
+
 const progression = (view: View, id: ResearchProjectId): string | null =>
   pick(view, id).getAttribute('data-progression-state');
 
@@ -176,11 +180,45 @@ beforeEach(async () => {
   // jsdom has no layout, so it has no `scrollIntoView`. `chat-screen.test.tsx`
   // stubs it the same way; the component calls it unguarded, as `PlanetScreen`
   // has since it gained the same "go to the thing blocking you" behaviour.
-  Element.prototype.scrollIntoView = vi.fn();
+  scrollSelection.mockClear();
+  Element.prototype.scrollIntoView = scrollSelection;
   await i18n.changeLanguage('en');
 });
 
 describe('every project is reachable', () => {
+  it('scrolls the committed selected card into view, including a second tap on the same star', () => {
+    const view = show();
+    const scroll = scrollSelection;
+    expect(scroll).not.toHaveBeenCalled();
+    for (const id of ['INDUSTRIAL', 'YARD_AUTOMATION', 'YARD_AUTOMATION'] as const) {
+      const before = scroll.mock.calls.length;
+      const card = pick(view, id);
+      expect(scroll.mock.calls.length).toBe(before + 1);
+      expect(scroll.mock.lastCall).toEqual([{ behavior: 'smooth', block: 'nearest' }]);
+      expect(scroll.mock.contexts.at(-1)).toBe(card);
+    }
+  });
+
+  it('does not scroll a focused opening or an unrelated click', () => {
+    const view = show({}, {}, { focus: 'INDUSTRIAL' });
+    const scroll = scrollSelection;
+    expect(scroll).not.toHaveBeenCalled();
+    fireEvent.click(view.container);
+    expect(scroll).not.toHaveBeenCalled();
+  });
+
+  it('uses the selected project image as its one complete background and follows selection changes', () => {
+    const view = show();
+    for (const id of ['YARD_AUTOMATION', 'INDUSTRIAL'] as const) {
+      const card = pick(view, id);
+      expect(card.querySelectorAll('img[data-atmosphere-image]')).toHaveLength(1);
+      expect(card.querySelector('img[data-atmosphere-image]')).toHaveAttribute('src', RESEARCH_SCENES[id].src);
+      expect(card.querySelector('img[data-atmosphere-image]')).toHaveAttribute('aria-hidden', 'true');
+      expect([...card.querySelectorAll('img:not([data-atmosphere-image])')].some(image => image.getAttribute('src') === RESEARCH_ART[id])).toBe(false);
+      expect(within(card).getByRole('button', { name: /^research$/i })).toBeEnabled();
+    }
+  });
+
   /**
    * THE STRATEGIC PAIR IS LIVE RESEARCH. Owner, 2026-10-01: the Grid and the Stockpile
    * are capacities that change an outcome, not a dim corner of the map that never opens.

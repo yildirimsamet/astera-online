@@ -91,7 +91,7 @@ export function QueueLane({ label, orders, now, onOpen }: QueueLaneProps) {
   const free = Math.max(0, BUILD.queueDepth - orders.length);
 
   return (
-    <div role="group" aria-labelledby={labelId} className="flex flex-col gap-1">
+    <div data-queue-lane role="group" aria-labelledby={labelId} className="flex flex-col gap-1">
       <p id={labelId} className="font-v2-ui text-micro uppercase tracking-wide text-v2-ink-3">{label}</p>
       <div className="grid grid-cols-3 gap-1.5">
         {orders.map((order) => {

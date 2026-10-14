@@ -31,6 +31,14 @@ export interface IconProps {
   title?: string;
 }
 
+/** Personal chat silence, separate from a moderator's ban. */
+export function MuteIcon(props: IconProps) {
+  return <Glyph {...props}>
+    <path d="m10 6 4-3v18l-4-3H5V6Z" />
+    <path d="m17 9 5 6m0-6-5 6" />
+  </Glyph>;
+}
+
 /**
  * 1.75, not the 1.5 the brief first specified.
  *

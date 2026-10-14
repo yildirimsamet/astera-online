@@ -7,6 +7,7 @@ import { useRequest } from '../lib/useRequest.js';
 import { useSensorReach } from '../lib/useSensorReach.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
+import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
 import { CommanderHost } from '../v2/shell/CommanderHost.js';
@@ -1767,7 +1768,7 @@ export function GalaxyView({
       {panel === 'research' && (
         <V2Sheet
           detents={['full']}
-          quietTitle
+          headerArt={ATMOSPHERE.research}
           eyebrow={t('research.eyebrow')}
           title={t('research.title')}
           onClose={() => {
@@ -1861,6 +1862,7 @@ export function GalaxyView({
           detents={['full']}
           {...menuBack}
           eyebrow={t('rewards.eyebrow')}
+          headerArt={ATMOSPHERE.rewards}
           title={t('rewards.title')}
           onClose={() => {
             onPanel(null);
@@ -1876,6 +1878,7 @@ export function GalaxyView({
           bleed
           {...menuBack}
           eyebrow={t('leaderboard.eyebrow')}
+          headerArt={ATMOSPHERE.season}
           title={t('leaderboard.title')}
           onClose={() => {
             onPanel(null);
@@ -1895,6 +1898,7 @@ export function GalaxyView({
           detents={['full']}
           {...menuBack}
           eyebrow={t('community.announcements.eyebrow')}
+          headerArt={ATMOSPHERE.announcements}
           title={t('community.announcements.title')}
           onClose={() => { onPanel(null); }}
         >
@@ -1989,6 +1993,7 @@ export function GalaxyView({
           detents={['fit']}
           placement="page"
           eyebrow={t('clan.outside.eyebrow')}
+          headerArt={ATMOSPHERE.clan}
           title={t('clan.title')}
           onClose={() => { setClanInitialTab('overview'); onPanel(null); }}
         >
@@ -2033,6 +2038,7 @@ export function GalaxyView({
           detents={['fit']}
           placement="page"
           eyebrow={t('galaxy.panelIntelEyebrow')}
+          headerArt={ATMOSPHERE.intel}
           title={t('galaxy.panelIntelTitle')}
           onClose={() => {
             onPanel(null);

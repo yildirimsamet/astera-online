@@ -49,6 +49,24 @@ describe('where a sheet settles', () => {
 });
 
 describe('the sheet', () => {
+  it('keeps the name, back, close and detent controls functional over decorative header art', async () => {
+    const close = vi.fn();
+    const back = vi.fn();
+    const view = render(<Sheet title="Fleet" headerArt={{ src: '/fleet.webp', position: '65% 40%' }} onClose={close} onBack={back}>body</Sheet>);
+    const dialog = screen.getByRole('dialog', { name: 'Fleet' });
+    const art = dialog.querySelector('[data-sheet-art] img');
+    expect(art).toHaveAttribute('src', '/fleet.webp');
+    expect(art).toHaveAttribute('aria-hidden', 'true');
+    await userEvent.click(screen.getByRole('button', { name: 'Expand' }));
+    expect(dialog).toHaveAttribute('data-detent', 'full');
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(back).toHaveBeenCalledOnce();
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(close).toHaveBeenCalledOnce();
+    view.rerender(<Sheet title="Base" quietTitle headerArt={{ src: '/ignored.webp' }} onClose={close}>body</Sheet>);
+    expect(screen.getByRole('dialog').querySelector('[data-sheet-art]')).toBeNull();
+  });
+
   /**
    * A PAGE THAT HEADS ITSELF (M4, the report's hero): the title stays the dialog's name
    * and the header's words stay for a reader, but nothing is drawn twice.

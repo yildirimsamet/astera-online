@@ -534,6 +534,29 @@ async function openSheet(name: string): Promise<void> {
 }
 
 describe('fleet holdings beside each hull name', () => {
+  it('keeps only identity, class icon, holdings, cost and time on the compact hull card', () => {
+    const view = show({ fleet: { DART: 5 }, fleetAway: { DART: 6 } });
+    const row = view.container.querySelector('#row-DART')!;
+    expect(row).toHaveTextContent('Dart');
+    expect(row).toHaveTextContent('5 in');
+    expect(row).toHaveTextContent('6 out');
+    expect(row).not.toHaveTextContent('Fragile speed raider');
+    expect(row).not.toHaveTextContent('High speed reduces');
+    expect(row).not.toHaveTextContent('Skirmisher');
+    expect(row.querySelector('[data-class="SKIRMISHER"] svg')).not.toBeNull();
+    expect(row.querySelector('[data-card-copy]')).not.toHaveTextContent(/requires|affordable in/i);
+  });
+
+  it('uses the same new spacecraft scene in the hull detail while preserving the full description', async () => {
+    const view = show();
+    await openSheet('Dart');
+    const hero = view.container.querySelector('[data-build-art]')!;
+    expect(hero.querySelectorAll('img')).toHaveLength(1);
+    expect(hero.querySelector('img')).toHaveAttribute('src', '/assets/images/atmosphere/dart-scene-v1.webp');
+    expect(hero.querySelector('img')).toHaveAttribute('data-scene-fit', 'contain');
+    expect(screen.getByRole('dialog', { name: 'Dart' })).toHaveTextContent(/High speed reduces/i);
+  });
+
   /**
    * THE ROW NAMES WHAT IS AWAY, AND NOTHING ELSE.
    *

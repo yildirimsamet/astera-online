@@ -117,7 +117,7 @@ describe('the Intergalactic Convoy presentation', () => {
     expect(CONVOY_WIND_STREAKS).toBeGreaterThanOrEqual(8);
     expect(CONVOY_WIND_STREAKS).toBeLessThanOrEqual(16);
     expect(CONVOY_WIND_OPACITY).toBeGreaterThan(0);
-    expect(CONVOY_WIND_OPACITY).toBeLessThanOrEqual(0.4);
+    expect(CONVOY_WIND_OPACITY).toBeLessThanOrEqual(0.2);
   });
 
   it('lays the lines out the same way every time, beside and between the lanes, each on its own beat', () => {
@@ -166,9 +166,12 @@ describe('the Intergalactic Convoy presentation', () => {
 describe('IntergalacticConvoy.tsx, by its source', () => {
   const source = readFileSync('src/galaxy/IntergalacticConvoy.tsx', 'utf8');
 
-  it('adds a shared formation wake and instanced drive cores without pulse rings', () => {
+  it('shares ordinary native engine flames in one formation draw without drive spheres', () => {
     expect(source).toContain('<FormationWakes');
-    expect(source).toContain('<ConvoyDriveLights');
+    expect(source).toContain('<FormationLightField');
+    expect(source).toContain('showPips={false}');
+    expect(source).not.toContain('ConvoyDriveLights');
+    expect(source).not.toContain('<sphereGeometry');
     expect(source).toContain('name="intergalactic-convoy-wakes"');
     expect(source).toContain('name="intergalactic-convoy-drives"');
     expect(source).not.toContain('ConvoyPulseRings');
@@ -182,14 +185,16 @@ describe('IntergalacticConvoy.tsx, by its source', () => {
     expect(source).toContain('new THREE.ShaderMaterial({');
     expect(source).toContain('attribute vec4 aStreak;');
     expect(source).toContain('uniform float uTime;');
-    expect(source).toContain('fract(aStreak.z + uTime * uSpeed)');
+    expect(source).toContain('fract(aStreak.z + uTime * uSpeed *');
     expect(source).not.toContain('float flowNoise');
     expect(source).not.toContain('float flowFbm');
     expect(source).not.toContain('aFlow');
     expect(source).toContain('smoothstep');
+    expect(source).toMatch(/uWidth: \{ value: .* \* 0\.0012 \}/);
+    expect(source).toContain('exp(-vAcross * vAcross * 4.5)');
     expect(source).not.toContain('<lineSegments');
     expect(source).not.toContain('<lineBasicMaterial');
-    expect(source).toContain('<instancedMesh');
+    expect(source).toContain('forceSinglePass: true');
     expect(source).not.toContain('useState');
     expect(source).not.toContain('<Exhaust');
   });

@@ -21,6 +21,8 @@ import {
 import type { UseMutationResult } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { ATMOSPHERE } from '../ui/atmosphere.js';
+import { AtmosphereImage } from '../ui/AtmosphereArt.js';
 import {
   useClanActions,
   useClanAid,
@@ -253,7 +255,8 @@ function ClanHeader({ home }: { home: ClanMemberHome }) {
     crew is and what the clan has won together.
   */
   return (
-    <header className="mx-3 mt-1 flex items-center gap-3 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5">
+    <header className="clan-command-head mx-3 mt-1 flex items-center gap-3 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5">
+      <AtmosphereImage art={ATMOSPHERE.clan} />
       <span className="grid size-12 shrink-0 place-items-center rounded-control border border-v2-ally/60 bg-v2-ally/10 px-1 text-center font-v2-mono text-micro font-bold text-v2-ally">
         {home.clan.tag}
       </span>
@@ -1106,6 +1109,7 @@ function ClanSeats({ members, now }: { members: readonly Member[]; now: number }
                 key={slot}
                 role="listitem"
                 aria-label={t('clan.seats.openLabel', { slot: slot + 1 })}
+                data-clan-seat
                 className="grid min-w-0 place-items-center rounded-control border border-dashed border-v2-line px-1 py-3"
               >
                 <span className="grid size-8 place-items-center rounded-full border border-v2-line text-caption text-v2-ink-3">+</span>
@@ -1119,6 +1123,7 @@ function ClanSeats({ members, now }: { members: readonly Member[]; now: number }
               key={slot}
               role="listitem"
               aria-label={t('clan.seats.memberLabel', { slot: slot + 1, name: member.username })}
+              data-clan-seat
               title={member.username}
               className="min-w-0 rounded-control border border-v2-self/20 bg-v2-self/5 px-1 py-3 text-center"
             >

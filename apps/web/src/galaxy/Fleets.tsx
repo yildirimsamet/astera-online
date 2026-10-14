@@ -1136,6 +1136,8 @@ export function FormationLightField({
   intensity = 1,
   customEngine = false,
   shipSkins,
+  longitudinalOffset,
+  longitudinalOffsetBound,
 }: {
   markers: readonly Marker[];
   slots: readonly Vec3Tuple[];
@@ -1147,6 +1149,8 @@ export function FormationLightField({
   intensity?: number;
   customEngine?: boolean;
   shipSkins?: ShipCosmeticEquipment;
+  longitudinalOffset?: (markerIndex: number, elapsedSeconds: number) => number;
+  longitudinalOffsetBound?: number;
 }) {
   const failureVersion = useReferenceShipFailures();
   const units = useMemo(() => formationEngineUnits(markers, slots, scale, shipSkins, intensity),
@@ -1155,7 +1159,7 @@ export function FormationLightField({
   return (
     <>
       {!customEngine && <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
-        <EngineJets units={units} aimDistance={aimDistance} name={name} />
+        <EngineJets units={units} aimDistance={aimDistance} name={name} longitudinalOffset={longitudinalOffset} longitudinalOffsetBound={longitudinalOffsetBound} />
       </Suspense></SkinAssetBoundary>}
       {showPips && (
         <>

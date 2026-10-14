@@ -154,6 +154,18 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); });
 
 describe('the Repair Station card', () => {
+  it('shows one complete repair bay scene in the opened station while preserving its readings', async () => {
+    show();
+    const station = await openStation();
+    const hero = station.querySelector('[data-repair-hero]');
+    expect(hero).not.toBeNull();
+    expect(hero?.querySelectorAll('img')).toHaveLength(1);
+    expect(hero?.querySelector('img[data-atmosphere-image]')).toHaveAttribute('src', '/assets/images/atmosphere/repair-v2.webp');
+    expect(hero?.querySelector('img')).toHaveAttribute('alt', '');
+    expect(hero).toHaveTextContent(/Waiting/);
+    expect(hero).toHaveTextContent(/Under repair/);
+  });
+
   it('is not there in a season dealt before the Repair Station', () => {
     show(world({ rulesetVersion: MULTI_WORLD.shipDamageRulesetVersion - 1 }));
     expect(document.getElementById('row-REPAIR_STATION')).toBeNull();

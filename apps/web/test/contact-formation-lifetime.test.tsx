@@ -336,10 +336,10 @@ describe('independent resource lifetimes', () => {
 });
 
 describe('offscreen formation buffers', () => {
-  it('stops jet uploads offscreen and restores the current animation on re-entry', async () => {
+  it.each([false, true])('stops jet uploads offscreen and restores the current animation on re-entry (bounded drift: %s)', async drifting => {
     const { useFrame } = await import('@react-three/fiber');
     const units: EngineUnit[] = [{ at: [0, 0, 0], nozzles: [[0, 0, 0]], size: 1, colour: '#fff', intensity: 1, widthFactor: 1, lengthFactor: 1 }];
-    const { result } = renderHook(() => EngineJets({ units, aimDistance: { current: 100 } }), { wrapper: GalaxyVisualPhase });
+    const { result } = renderHook(() => EngineJets({ units, aimDistance: { current: 100 }, longitudinalOffset: drifting ? () => 0.25 : undefined, longitudinalOffsetBound: drifting ? 0.25 : undefined }), { wrapper: GalaxyVisualPhase });
     const element = result.current;
     if (!isValidElement<{ args: [THREE.BufferGeometry, THREE.Material, number]; ref: RefObject<THREE.InstancedMesh | null> }>(element)) throw new Error('Missing jet draw');
     const node = new THREE.InstancedMesh(...element.props.args);
@@ -407,4 +407,29 @@ it('does not use a stale parent pose to hide engines in automatic-render preview
   parent.position.x = 0;
   parent.updateMatrixWorld(true);
   expect(node.visible).toBe(true);
+});
+
+
+it('keeps every engine particle attached to a drifting convoy hull without rebuilding the draw', async () => {
+  const { useFrame } = await import('@react-three/fiber');
+  const units: EngineUnit[] = [{ at: [0, 0, 0], nozzles: [[0, 0, -0.42]], size: 1, colour: '#fff', intensity: 1, widthFactor: 1, lengthFactor: 1 }];
+  const drift = vi.fn((index: number, seconds: number) => index + seconds * 0.25);
+  const { result, rerender } = renderHook(({ drifting }) => EngineJets({ units, aimDistance: { current: 100 }, longitudinalOffset: drifting ? drift : undefined }), { initialProps: { drifting: false } });
+  const element = result.current;
+  if (!isValidElement<{ args: [THREE.BufferGeometry, THREE.Material, number]; ref: RefObject<THREE.InstancedMesh | null> }>(element)) throw new Error('Missing jet draw');
+  const node = new THREE.InstancedMesh(...element.props.args);
+  element.props.ref.current = node;
+  const state = { camera: new THREE.PerspectiveCamera(60, 1, 0.1, 100), clock: { elapsedTime: 1 } } as Fiber.RootState;
+  vi.mocked(useFrame).mock.lastCall![0](state, 0);
+  const initial = node.instanceMatrix.array.slice();
+  const resources = instancedDraw(result.current);
+  rerender({ drifting: true });
+  expect(instancedDraw(result.current).geometry).toBe(resources.geometry);
+  expect(instancedDraw(result.current).material).toBe(resources.material);
+  vi.mocked(useFrame).mock.lastCall![0](state, 0);
+  expect(drift).toHaveBeenCalledWith(0, 1);
+  for (let i = 0; i < node.count; i++) {
+    expect(node.instanceMatrix.array[i * 16 + 14]! - initial[i * 16 + 14]!).toBeCloseTo(0.25, 5);
+  }
+  expect(units[0]!.at).toEqual([0, 0, 0]);
 });

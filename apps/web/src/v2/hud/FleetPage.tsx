@@ -10,6 +10,7 @@ import { Icon, type IconId } from '../icons.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
 import { Segmented } from '../kit/Segmented.js';
 import { Sheet } from '../kit/Sheet.js';
+import { ATMOSPHERE } from '../../ui/atmosphere.js';
 
 export type FleetTab = 'air' | 'home' | 'room';
 
@@ -392,7 +393,7 @@ export function FleetPage({
   const { t } = useTranslation();
   return (
     // As tall as what it holds, a page at most (owner, 2026-09-25); a column on a wide screen.
-    <Sheet title={t('dock.fleet')} onClose={onClose} detents={['fit']} placement="page">
+    <Sheet title={t('dock.fleet')} headerArt={ATMOSPHERE.fleet} onClose={onClose} detents={['fit']} placement="page">
       <div className="flex flex-col gap-2.5 pt-1">
         <Segmented
           label={t('fleetPage.views')}

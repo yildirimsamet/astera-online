@@ -53,6 +53,8 @@ import { QueueSheet } from '../kit/QueueSheet.js';
 import { ResourceMeter } from '../kit/ResourceMeter.js';
 import { Segmented } from '../kit/Segmented.js';
 import { Sheet } from '../kit/Sheet.js';
+import { ATMOSPHERE } from '../../ui/atmosphere.js';
+import { CommanderCard } from '../hud/CommanderCard.js';
 import { Api } from '../../api/client.js';
 import { ApiProvider } from '../../api/context.js';
 import { MenuPanel } from '../../shell/MenuPanel.js';
@@ -374,7 +376,7 @@ function GalleryIntel() {
     return null;
   });
   return (
-    <Sheet title="Intel" eyebrow="What you know" onClose={noop} detents={['full']} bleed>
+    <Sheet title="Intel" headerArt={ATMOSPHERE.intel} eyebrow="What you know" onClose={noop} detents={['full']} bleed>
       <IntelScreen
         rivals={[
           { planetId: 'p-kestrel', slot: 0, owner: 'VEX', name: 'Kestrel', lost: false },
@@ -472,7 +474,7 @@ function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid'
     return null;
   });
   return (
-    <Sheet title="Clan" eyebrow="Seasonal clans" onClose={noop} detents={['full']} bleed>
+    <Sheet title="Clan" headerArt={ATMOSPHERE.clan} eyebrow="Seasonal clans" onClose={noop} detents={['full']} bleed>
       <WorldProvider>
         <ClanScreen initialTab={tab} onOpenClanChat={noop} />
       </WorldProvider>
@@ -558,16 +560,19 @@ function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboar
       <ApiProvider api={api}>
         {page === 'menu' ? (
           <Sheet title="Commander" eyebrow="Your account" onClose={noop} detents={['full']} bleed>
-            <div className="p-3">
-              <MenuPanel galaxy="Vantage" shard="EU-1" endsAt={new Date(NOW + 11 * 60 * MIN)} country="TR" onOpen={noop} onSignOut={noop} />
+            <div className="flex flex-col gap-4 p-3">
+              <CommanderCard name="Kestrel Sable" country="TR" clan={{ tag: 'NOVA', name: 'Nova Kolektif' }}
+                galaxy="Vantage" seasonDay={9} rank={{ place: 14, of: 212 }} worlds={{ held: 2, max: 4 }}
+                shield={{ until: NOW + 180 * MIN, kind: 'NEWCOMER' }} now={NOW} />
+              <MenuPanel galaxy="Vantage" shard="EU-1" endsAt={new Date(NOW + 11 * 60 * MIN)} country="TR" onOpen={noop} onSignOut={noop} onReplayAcademy={noop} />
             </div>
           </Sheet>
         ) : page === 'leaderboard' ? (
-          <Sheet title="Dominion" eyebrow="Season ladder" onClose={noop} detents={['full']} bleed>
+          <Sheet title="Dominion" headerArt={ATMOSPHERE.season} eyebrow="Season ladder" onClose={noop} detents={['full']} bleed>
             <LeaderboardScreen onFocusPlanet={noop} />
           </Sheet>
         ) : (
-          <Sheet title="Dominion" eyebrow="Season archive" onClose={noop} detents={['full']} bleed>
+          <Sheet title="Dominion" headerArt={ATMOSPHERE.season} eyebrow="Season archive" onClose={noop} detents={['full']} bleed>
             <SeasonArchiveScreen onFocusPlanet={noop} initialSeasonId={ARCHIVE_ID} />
           </Sheet>
         )}
@@ -690,7 +695,7 @@ function GalleryRewards({ state }: { state: string }) {
     next.setQueryData(keys.planet, planetView({}, { alloy: 5500, crystal: 2500 }));
     return next;
   });
-  return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
+  return <QueryClientProvider client={client}><div className="[--v2-top-h:3rem]"><Sheet detents={['full']} headerArt={ATMOSPHERE.rewards} title={t('rewards.title')} eyebrow={t('rewards.eyebrow')} onClose={noop}>
     <RewardsScreen commander="Samet_The_Long_Commander_Name" />
   </Sheet></div></QueryClientProvider>;
 }
@@ -707,7 +712,7 @@ function GalleryResearch() {
     })) });
     return null;
   });
-  return <Sheet title="Araştırma" eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']} bleed><ResearchPanel /></Sheet>;
+  return <Sheet title="Araştırma" headerArt={ATMOSPHERE.research} eyebrow="Astera · örnek veriler" onClose={noop} detents={['full']} bleed><ResearchPanel /></Sheet>;
 }
 
 function Views({ view }: { view: string }) {

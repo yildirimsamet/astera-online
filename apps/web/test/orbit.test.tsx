@@ -443,14 +443,25 @@ describe('the reach surface', () => {
     expect(screen.getByText(/only to revealed asteroids or debris fields/i)).toBeInTheDocument();
   });
 
-  it('tags every Fleet V2 hull with what it is', async () => {
+  it('keeps every hull identity compact and explains capital roles in its detail sheet', async () => {
+    const user = userEvent.setup();
     show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 6 } }, 'reach');
-    await openAllBands(screen, userEvent.setup());
+    await openAllBands(screen, user);
     for (const id of FLEET_V2_HULLS) {
-      expect(document.querySelector(`[data-hull-id="${id}"]`), id)
-        .toHaveTextContent(HULLS[id].tier === 4 ? /capital/i : /./);
+      const row = document.querySelector(`[data-hull-id="${id}"]`);
+      if (!(row instanceof HTMLElement)) throw new Error(`${id} row must render`);
+      expect(within(row).getByRole('heading')).toHaveTextContent(/./);
+      expect(within(row).getByTestId('hull-tier')).toHaveTextContent(`Lv${HULLS[id].tier}`);
+      expect(row.querySelector(`[data-class="${HULLS[id].cls}"] svg`), id).not.toBeNull();
+      expect(row.querySelector('[data-card-copy]')).not.toHaveTextContent(/capital/i);
+      if (HULLS[id].tier === 4) {
+        await user.click(within(row).getByRole('button', { name: /about/i }));
+        const detail = screen.getByRole('dialog');
+        expect(detail, id).toHaveTextContent(/capital/i);
+        await user.click(within(detail).getByRole('button', { name: 'Close' }));
+      }
     }
-  });
+  }, 15_000);
 
   /**
    * D25 removed the Drill satellite; a Prospector is gated by the Shipyard like

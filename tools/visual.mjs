@@ -17,6 +17,24 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--chat-personal-mutes')) {
+  const { verifyPersonalChatMutes } = await import('./chat-personal-mutes-visual.mjs');
+  await verifyPersonalChatMutes(process.argv[2] ?? 'out/chat-personal-mutes');
+  process.exit(0);
+}
+
+if (process.argv.includes('--atmosphere-motion')) {
+  const { verifyAtmosphereMotion } = await import('./atmosphere-motion-visual.mjs');
+  await verifyAtmosphereMotion(process.argv[2] ?? 'out/atmosphere-motion');
+  process.exit(0);
+}
+
+if (process.argv.includes('--atmosphere')) {
+  const { captureAtmosphere } = await import('./atmosphere-visual.mjs');
+  await captureAtmosphere(process.argv[2] ?? 'out/atmosphere');
+  process.exit(0);
+}
+
 if (process.argv.includes('--planet-skin-glow')) {
   const { verifyPlanetSkinGlow } = await import('./planet-skin-glow-visual.mjs');
   await verifyPlanetSkinGlow(process.argv[2] ?? 'out/planet-skin-glow');

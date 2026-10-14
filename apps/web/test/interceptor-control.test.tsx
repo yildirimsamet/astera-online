@@ -138,15 +138,16 @@ describe('where it lives', () => {
     expect(view.container.querySelector('[data-interceptor-state]')).toBeNull();
   });
 
-  it('uses the commissioned anti-strategic battery menu render', () => {
+  it('uses the complete interception scene while keeping the original commissioned hardware available', () => {
     const view = show(armed());
-    const art = block(view).querySelector<HTMLImageElement>('img[data-interceptor-art]');
+    const art = block(view).querySelector<HTMLImageElement>('img[data-atmosphere-image]');
 
     expect(STRATEGIC_ART.interceptor).toBe(
       '/assets/images/general/anti-strategic-battery.png',
     );
     expect(art).not.toBeNull();
-    expect(art).toHaveAttribute('src', STRATEGIC_ART.interceptor);
+    expect(art).toHaveAttribute('src', '/assets/images/atmosphere/interceptor-v4.webp');
+    expect(art).toHaveAttribute('aria-hidden', 'true');
   });
 });
 

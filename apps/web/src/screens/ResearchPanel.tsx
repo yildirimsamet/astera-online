@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BUILD,
@@ -17,7 +17,9 @@ import { researchQueueOrders } from '../lib/orders.js';
 import { serverNow } from '../lib/clock.js';
 import { clockTime, untilReady, useNow } from '../lib/time.js';
 import { useProjected } from '../lib/projection.js';
-import { HULL_ART, RESEARCH_ART } from '../ui/assets.js';
+import { RESEARCH_SCENES } from '../ui/atmosphere.js';
+import { AtmosphereImage } from '../ui/AtmosphereArt.js';
+import { HULL_ART } from '../ui/assets.js';
 import { hullLabel } from '../i18n/names.js';
 import { researchGain, type Gain } from '../lib/gains.js';
 import { ActionButton, Price, TimeCost } from '../ui/Action.js';
@@ -91,7 +93,13 @@ export function ResearchPanel({ onNeed, focus }: {
    * sending the player to the planet sheet is what `TAB_OF` once did by accident,
    * and it landed them on a tab with no research on it at all.
    */
-  const [picked, setPicked] = useState<ResearchProjectId | null>(focus ?? null);
+  const [selection, setSelection] = useState<{ id: ResearchProjectId | null; scroll: boolean }>({ id: focus ?? null, scroll: false });
+  const picked = selection.id;
+  const selectedCard = useRef<HTMLElement>(null);
+  const setPicked = (id: ResearchProjectId | null): void => { setSelection({ id, scroll: true }); };
+  useEffect(() => {
+    if (selection.scroll) selectedCard.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [selection]);
 
   /**
    * WAKE ON THE MOMENTS THIS SCREEN'S OWN PAYLOAD ALREADY NAMES. D52 · D53.
@@ -482,7 +490,8 @@ export function ResearchPanel({ onNeed, focus }: {
       {chosenSpec && (
         <ConstellationCard
           spec={chosenSpec.spec}
-          art={RESEARCH_ART[chosen]}
+          cardRef={selectedCard}
+          art={RESEARCH_SCENES[chosen].src}
           takes={orderMinutes('RESEARCH', chosenSpec.state.cost, planet, 1, { research: chosen, level: chosenSpec.level + 1 })}
           held={held}
           pending={research.isPending}
@@ -554,6 +563,7 @@ export function ResearchPanel({ onNeed, focus }: {
  * appears when there is nothing in front of it.
  */
 function ConstellationCard({
+  cardRef,
   spec,
   art,
   takes,
@@ -564,6 +574,7 @@ function ConstellationCard({
   onOpen,
   onAct,
 }: {
+  cardRef: RefObject<HTMLElement | null>;
   spec: SheetSpec;
   art: string | undefined;
   takes: number | undefined;
@@ -591,22 +602,13 @@ function ConstellationCard({
   const shown = opens?.hulls.slice(0, 4) ?? [];
   return (
     <section
+      ref={cardRef}
       data-constellation-card={spec.id}
       data-progression-state={state}
-      className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3"
+      className="scene-panel research-selection-scene flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3"
     >
+      {art && <AtmosphereImage art={{ src: art, position: '60% 46%' }} />}
       <div className="flex items-start gap-3">
-        {/* Grey means "you do not have this": the sheet's rule and its number (`ItemSheet`). */}
-        {art && (
-          <img
-            src={art}
-            alt=""
-            aria-hidden
-            className={`premium-art size-14 shrink-0 object-contain ${spec.level === 0 ? 'opacity-45 grayscale' : ''}`}
-            loading="lazy"
-            decoding="async"
-          />
-        )}
         <div className="grid min-w-0 flex-1 gap-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <h3 className="v2-name min-w-0 text-caption">{spec.name}</h3>
@@ -654,46 +656,48 @@ function ConstellationCard({
           )}
         </div>
       )}
-      {!spec.completed && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <Price cost={spec.cost} held={held} layout="row" />
-          {takes === undefined ? null : <TimeCost minutes={takes} />}
-        </div>
-      )}
-      <div className="grid grid-cols-[auto_1fr] gap-2">
-        <button
-          type="button"
-          data-open-item
-          onClick={onOpen}
-          className="min-h-10 rounded-control border border-v2-line-hi bg-v2-raise/60 px-3 text-caption font-semibold text-v2-ink"
-        >
-          {t('research.details')}
-        </button>
-        {door ? (
-          door.onFix ? (
-            <button
-              type="button"
-              onClick={door.onFix}
-              className="min-h-10 rounded-control border border-v2-warn/50 px-3 py-1.5 text-left text-caption leading-snug font-semibold text-v2-warn"
-            >
-              <span data-blocked-reason>{door.reason}</span> →
-            </button>
-          ) : (
-            <p className="flex min-h-10 items-center rounded-control border border-v2-line px-3 py-1.5 text-caption leading-snug text-v2-ink-2">
-              <span data-blocked-reason>{door.reason}</span>
-            </p>
-          )
-        ) : (
+      <div data-research-footer className="mt-auto grid gap-2 pt-3">
+        {!spec.completed && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <Price cost={spec.cost} held={held} layout="row" />
+            {takes === undefined ? null : <TimeCost minutes={takes} />}
+          </div>
+        )}
+        <div className="grid grid-cols-[auto_1fr] gap-2">
           <button
             type="button"
-            data-primary
-            disabled={spec.completed !== undefined || spec.queued !== undefined || short || pending}
-            onClick={onAct}
-            className="min-h-10 rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3"
+            data-open-item
+            onClick={onOpen}
+            className="min-h-10 rounded-control border border-v2-line-hi bg-v2-raise/60 px-3 text-caption font-semibold text-v2-ink"
           >
-            {spec.completed ?? spec.queued ?? (short ? t('research.cannotAfford') : t('research.act'))}
+            {t('research.details')}
           </button>
-        )}
+          {door ? (
+            door.onFix ? (
+              <button
+                type="button"
+                onClick={door.onFix}
+                className="min-h-10 rounded-control border border-v2-warn/50 px-3 py-1.5 text-left text-caption leading-snug font-semibold text-v2-warn"
+              >
+                <span data-blocked-reason>{door.reason}</span> →
+              </button>
+            ) : (
+              <p className="flex min-h-10 items-center rounded-control border border-v2-line px-3 py-1.5 text-caption leading-snug text-v2-ink-2">
+                <span data-blocked-reason>{door.reason}</span>
+              </p>
+            )
+          ) : (
+            <button
+              type="button"
+              data-primary
+              disabled={spec.completed !== undefined || spec.queued !== undefined || short || pending}
+              onClick={onAct}
+              className="min-h-10 rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3"
+            >
+              {spec.completed ?? spec.queued ?? (short ? t('research.cannotAfford') : t('research.act'))}
+            </button>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -773,7 +777,7 @@ function ProjectSheet({
           WHICH rung is held. Without it a doctrine at 1 and at 4 are the same
           picture with no way to tell them apart.
         */}
-        <div className="item-portrait flex h-48 items-center justify-center overflow-hidden">
+        <div data-research-portrait className="item-portrait flex h-48 items-center justify-center overflow-hidden">
           <span aria-hidden className="item-portrait-orbit" />
           {spec.maxLevel > 1 && (
             <span aria-hidden className="item-portrait-index num">
@@ -781,9 +785,9 @@ function ProjectSheet({
             </span>
           )}
           <img
-            src={RESEARCH_ART[spec.id]}
+            src={RESEARCH_SCENES[spec.id].src}
             alt={spec.name}
-            className={`premium-art relative z-[1] h-36 object-contain ${spec.level === 0 ? 'opacity-45 grayscale' : ''}`}
+            className={`relative z-[1] h-full w-full object-cover ${spec.level === 0 ? 'opacity-45 grayscale' : ''}`}
             decoding="async"
           />
         </div>
