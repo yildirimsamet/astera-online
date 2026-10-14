@@ -1,0 +1,29 @@
+{
+  "mode": "Built-in image_gen",
+  "jobs": [
+    {
+      "id": "feedback-v1",
+      "prompt": "Create one original ASTERA ONLINE premium realistic space strategy menu background, landscape cinematic panorama. One coherent environment, rich graphite and steel construction, beautiful physically credible light, subtle atmosphere and NASA-scale space. This image will be used on a small wide dark menu tile behind text: leave the lower third and left area calm and dark, put recognizable subject in the central-right horizontal band so it survives a wide crop. Restrained amber/teal instrument highlights, no excessive neon, cartoon, logos, readable words, numbers, baked UI, emblems, fantasy or collage. Topic: a subspace communication and diagnostics room on a space station, a focused console and radio transmitter hardware, a small abstract signal light beyond a window, the player's channel for observations and suggestions; believable physical equipment, no people or message text."
+    },
+    {
+      "id": "donate-v1",
+      "prompt": "Create one original ASTERA ONLINE premium realistic space strategy menu background, landscape cinematic panorama. One coherent environment, rich graphite and steel construction, beautiful physically credible light, subtle atmosphere and NASA-scale space. This image will be used on a small wide dark menu tile behind text: leave the lower third and left area calm and dark, put recognizable subject in the central-right horizontal band so it survives a wide crop. Restrained amber/teal instrument highlights, no excessive neon, cartoon, logos, readable words, numbers, baked UI, emblems, fantasy or collage. Topic: building and maintaining a shared orbital habitat, collaborative support for a living space civilization, construction drones and a robotic service gantry fitting a warm illuminated habitat module into a larger station over a planet; hopeful warm copper light, no coins, payment icons or hearts."
+    },
+    {
+      "id": "academy-v1",
+      "prompt": "Create one original ASTERA ONLINE premium realistic space strategy menu background, landscape cinematic panorama. One coherent environment, rich graphite and steel construction, beautiful physically credible light, subtle atmosphere and NASA-scale space. This image will be used on a small wide dark menu tile behind text: leave the lower third and left area calm and dark, put recognizable subject in the central-right horizontal band so it survives a wide crop. Restrained amber/teal instrument highlights, no excessive neon, cartoon, logos, readable words, numbers, baked UI, emblems, fantasy or collage. Topic: a command academy flight and strategy simulator, an empty training cockpit overlooking a projected miniature star system and ship navigation exercise, convincing physical simulator rig and instrument surfaces, softly illuminated cyan and white tabletop orbital paths without text; educational, calm and futuristic."
+    },
+    {
+      "id": "galaxy-account-v1",
+      "prompt": "Create one original ASTERA ONLINE premium realistic space strategy menu background, landscape cinematic panorama. One coherent environment, rich graphite and steel construction, beautiful physically credible light, subtle atmosphere and NASA-scale space. This image will be used on a small wide dark menu tile behind text: leave the lower third and left area calm and dark, put recognizable subject in the central-right horizontal band so it survives a wide crop. Restrained amber/teal instrument highlights, no excessive neon, cartoon, logos, readable words, numbers, baked UI, emblems, fantasy or collage. Topic: a magnificent natural spiral galaxy viewed from a deep-space observatory, broad luminous dust lanes sweeping across the middle horizontal band, detailed gold-blue stars, a faint graphite observatory rim in the foreground, genuine astronomical scale, realistic subtle light not an oversaturated fantasy vortex."
+    },
+    {
+      "id": "season-account-v1",
+      "prompt": "Create one original ASTERA ONLINE premium realistic space strategy menu background, landscape cinematic panorama. One coherent environment, rich graphite and steel construction, beautiful physically credible light, subtle atmosphere and NASA-scale space. This image will be used on a small wide dark menu tile behind text: leave the lower third and left area calm and dark, put recognizable subject in the central-right horizontal band so it survives a wide crop. Restrained amber/teal instrument highlights, no excessive neon, cartoon, logos, readable words, numbers, baked UI, emblems, fantasy or collage. Topic: the passage of an orbital season: enormous quiet planet at a dawn terminator, a thin precise orbital station ring arcing in front of the sun with warm gold illumination, curved orbit and planetary horizon sweeping horizontally through center; a believable celestial cycle, no clock face, hourglass or numbers."
+    },
+    {
+      "id": "inventory-v1",
+      "prompt": "Create one original ASTERA ONLINE premium realistic space strategy menu background, landscape cinematic panorama. One coherent environment, rich graphite and steel construction, beautiful physically credible light, subtle atmosphere and NASA-scale space. This image will be used on a small wide dark menu tile behind text: leave the lower third and left area calm and dark, put recognizable subject in the central-right horizontal band so it survives a wide crop. Restrained amber/teal instrument highlights, no excessive neon, cartoon, logos, readable words, numbers, baked UI, emblems, fantasy or collage. Topic: a refined space station cosmetic collection showroom, elegant illuminated display bays containing a few differently finished spacecraft scale models and a small planet-surface holographic exhibit, dark polished steel, tiny warm gold and cool white exhibit lights, a collected appearance gallery rather than a cargo warehouse, no people."
+    }
+  ]
+}

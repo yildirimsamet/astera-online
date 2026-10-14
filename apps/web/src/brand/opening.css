@@ -1,6 +1,7 @@
 /* Shared by first HTML and React. No downloads, canvas or per-frame JavaScript. */
 .brand-loading {
   position: fixed; inset: 0; z-index: 70; overflow: hidden;
+  touch-action: none;
   display: grid; place-items: center; box-sizing: border-box;
   padding: max(20px, env(safe-area-inset-top)) 24px max(72px, env(safe-area-inset-bottom));
   color: #e6eeed; background: #030607;

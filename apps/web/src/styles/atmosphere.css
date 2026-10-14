@@ -1,0 +1,250 @@
+/* Local section materials. The shell, menu ground, HUD and dock keep their actual theme. */
+.atmosphere-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(.85);
+}
+
+.sheet-art-head {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.sheet-art-head [data-sheet-art] {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.sheet-art-head [data-sheet-art]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgb(4 6 11 / 85%), rgb(4 6 11 / 40%) 65%, rgb(4 6 11 / 25%)),
+    linear-gradient(0deg, var(--color-v2-panel), transparent 45%);
+}
+.sheet-art-head header { position: relative; }
+.sheet-art-head header > button {
+  background-color: rgb(4 6 11 / 65%);
+  border-radius: var(--radius-control);
+}
+.sheet-art-head header p { color: var(--color-v2-ink-2); }
+
+.menu-art-tile { isolation: isolate; overflow: hidden; }
+.menu-art-tile .atmosphere-image { z-index: -2; }
+.menu-art-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(0deg, rgb(4 6 11 / 90%), transparent 80%),
+    linear-gradient(90deg, rgb(4 6 11 / 30%), transparent);
+}
+.menu-art-tile > span:first-of-type { background-color: rgb(8 13 24 / 85%); }
+.menu-art-tile > span:last-of-type { text-shadow: 0 1px 3px var(--color-v2-void); }
+.menu-art-tile [data-menu-badge] {
+  z-index: 1;
+  background-color: var(--color-v2-deep);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-v2-self) 35%, transparent);
+}
+
+/* One complete image spans the whole card, including behind its translucent readings. */
+[data-layout='card'] [data-art]:has(.building-scene-art) {
+  position: static;
+  z-index: auto;
+  overflow: visible;
+  background: none;
+}
+.building-scene-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 28%;
+  filter: brightness(.85);
+  pointer-events: none;
+}
+[data-layout='card'] [data-art]:has(.building-scene-art)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(0deg, rgb(8 13 24 / 25%), transparent 70%);
+}
+[data-layout='card'] [data-art]:has(.building-scene-art) ~ [data-card-copy] {
+  background: rgb(13 20 35 / 75%);
+  border-top: 1px solid rgb(109 137 181 / 12%);
+  backdrop-filter: blur(3px);
+}
+[data-layout='card']:has(.building-scene-art) [data-card-copy] [class*='ink-3'] {
+  color: var(--color-v2-ink-2);
+}
+[data-layout='card']:has(.building-scene-art) [data-open-item] { z-index: 2; }
+[data-layout='card'] [data-art] > span { z-index: 1; }
+[data-layout='card'] [data-art]:has(.building-scene-art) [data-art-lock] {
+  bottom: auto;
+  height: 96px;
+}
+[data-layout='card'] [data-art] img[data-art-state='locked'] { filter: grayscale(1) brightness(.85); }
+
+/* Subject-specific single-scene cards. Their text remains above a dim material veil. */
+.scene-panel { position: relative; isolation: isolate; overflow: hidden; }
+.scene-panel > .atmosphere-image { z-index: -2; }
+.scene-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgb(8 13 24 / 87%), rgb(8 13 24 / 65%) 65%, rgb(8 13 24 / 42%));
+}
+.scene-panel [class~='text-v2-ink-3'] { color: var(--color-v2-ink-2); }
+.repair-scene::before { background: linear-gradient(0deg, rgb(8 13 24 / 94%), rgb(8 13 24 / 70%) 45%, rgb(8 13 24 / 12%) 85%); }
+.repair-scene [data-repair-copy] { align-self: flex-end; }
+.repair-scene button > svg { align-self: flex-end; margin-bottom: 28px; }
+.tactical-scene { min-height: 260px; justify-content: flex-end; }
+.tactical-scene::before { background: linear-gradient(0deg, rgb(8 13 24 / 94%), rgb(8 13 24 / 72%) 42%, rgb(8 13 24 / 16%) 85%); }
+
+/* A material accent is a section identifier. Selection/action still uses self turquoise. */
+[data-base-surface] { --section-material: var(--color-v2-line-hi); }
+[data-base-surface='grow'] { --section-material: color-mix(in srgb, var(--color-v2-alloy) 55%, var(--color-v2-line-hi)); }
+[data-base-surface='orbit'] { --section-material: var(--color-v2-sky-violet); }
+[data-base-surface='defend'] { --section-material: var(--color-v2-neutral); }
+[data-base-surface='tactical'] { --section-material: color-mix(in srgb, var(--color-v2-alloy) 28%, var(--color-v2-neutral)); }
+[data-base-surface='reach'] { --section-material: var(--color-v2-sky-cool); }
+[data-base-surface] [data-layout='card'] {
+  border-color: color-mix(in srgb, var(--section-material) 30%, var(--color-v2-line));
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--section-material) 5%, transparent), transparent 75%);
+}
+[data-base-surface] [data-layout='card'][data-highlighted] {
+  border-color: color-mix(in srgb, var(--color-v2-self) 60%, transparent);
+}
+[data-base-surface] [data-row-line='name'] {
+  box-shadow: 0 1px color-mix(in srgb, var(--section-material) 14%, transparent);
+}
+#planet-tab-grow { --tab-material: var(--color-v2-alloy); }
+#planet-tab-orbit { --tab-material: var(--color-v2-sky-violet); }
+#planet-tab-defend { --tab-material: var(--color-v2-neutral); }
+#planet-tab-tactical { --tab-material: color-mix(in srgb, var(--color-v2-alloy) 40%, var(--color-v2-neutral)); }
+#planet-tab-reach { --tab-material: var(--color-v2-sky-cool); }
+[id^='planet-tab-'] { box-shadow: inset 0 2px color-mix(in srgb, var(--tab-material) 60%, transparent); }
+
+[data-queue-lane] {
+  padding-inline: 6px;
+  border: 1px solid var(--color-v2-line);
+  border-radius: var(--radius-control);
+  background-image: linear-gradient(100deg, color-mix(in srgb, var(--color-v2-line-hi) 10%, transparent), transparent);
+}
+[data-queue-lane] > p { color: var(--color-v2-ink-2); }
+
+[data-constellation-card] {
+  border-color: color-mix(in srgb, var(--color-v2-sky-violet) 45%, var(--color-v2-line));
+  background-image: linear-gradient(120deg, color-mix(in srgb, var(--color-v2-sky-violet) 10%, transparent), transparent);
+}
+[data-constellation] [data-region] { color: var(--color-v2-ink-2); }
+
+.clan-command-head { position: relative; isolation: isolate; overflow: hidden; }
+.clan-command-head > .atmosphere-image { z-index: -2; }
+.clan-command-head::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgb(8 13 24 / 95%), rgb(8 13 24 / 65%) 60%, rgb(8 13 24 / 35%));
+}
+.clan-command-head [class*='ink-3'] { color: var(--color-v2-ink-2); }
+[data-clan-seat] {
+  background-image: linear-gradient(145deg, color-mix(in srgb, var(--color-v2-ally) 8%, transparent), transparent);
+}
+.reward-summary {
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--color-v2-premium) 7%, transparent), transparent);
+}
+.reward-summary [class*='ink-3'] { color: var(--color-v2-ink-2); }
+
+/* The card's top inset belongs inside the painted header, so no empty strip remains. */
+[data-sheet-panel][data-placement='card']:has(> .sheet-art-head) { padding-top: 0; }
+[data-sheet-panel][data-placement='card'] > .sheet-art-head { padding-top: 8px; }
+.menu-account-scene { min-height: 88px; }
+.menu-account-scene::before { background: linear-gradient(90deg, rgb(8 13 24 / 85%), rgb(8 13 24 / 50%)); }
+.inventory-scene::before { background: linear-gradient(90deg, rgb(8 13 24 / 90%), rgb(8 13 24 / 60%)); }
+
+.research-selection-scene { min-height: 220px; scroll-margin-block: 12px; }
+.research-selection-scene::before {
+  background: linear-gradient(90deg, rgb(8 13 24 / 93%), rgb(8 13 24 / 78%) 50%, rgb(8 13 24 / 48%)),
+    linear-gradient(0deg, rgb(8 13 24 / 90%), transparent 65%);
+}
+.repair-hero::before { background: linear-gradient(0deg, rgb(8 13 24 / 95%), rgb(8 13 24 / 65%) 45%, rgb(8 13 24 / 12%) 85%); }
+
+/* A ship's complete silhouette wins over a full-card crop. Match its source ratio. */
+[data-layout='card'] [data-art]:has([data-scene-fit='contain']) {
+  position: relative;
+  flex-shrink: 0;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+}
+.building-scene-art[data-scene-fit='contain'], [data-build-scene] .building-scene-art {
+  object-fit: contain;
+  object-position: center;
+}
+[data-layout='card'] [data-art]:has([data-scene-fit='contain']) [data-art-lock] { height: 100%; }
+[data-layout='card'][data-summary='hull']:has(.building-scene-art) [data-card-copy] {
+  flex: 0 0 auto;
+  gap: 5px;
+  padding: 9px 10px 8px;
+  background: linear-gradient(150deg, rgb(20 31 48 / 96%), rgb(8 13 24 / 96%));
+  border-top-color: color-mix(in srgb, var(--color-v2-self) 20%, var(--color-v2-line));
+}
+[data-summary='hull'] [data-row-line='name'] { gap: 4px; box-shadow: none; }
+[data-summary='hull'] [data-row-line='name'] h3 {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--color-v2-ink);
+}
+[data-summary='hull'] [data-row-line='name'] h3 svg { width: 12px; height: 12px; flex-shrink: 0; }
+[data-summary='hull'] [data-row-line='name'] p { font-size: 9px; line-height: 1.4; }
+[data-summary='hull'] [data-card-price] {
+  margin-top: 2px;
+  padding-top: 7px;
+  column-gap: 5px;
+  row-gap: 4px;
+  border-top: 1px solid var(--color-v2-line);
+}
+[data-summary='hull'] [data-card-price] .price { margin-left: 0; justify-content: flex-start; }
+[data-hull-family-group] > button { padding-block: 12px; }
+[data-hull-family-group] > button h3 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-v2-ink);
+}
+[data-hull-family-group] > button > div > span:not(:first-of-type),
+[data-hull-family-group] > button > div > svg { color: var(--color-v2-self); }
+
+[data-summary='hull'] [data-card-copy] [data-testid='order-time'] {
+  margin-left: auto;
+  padding-left: 6px;
+  border-left: 1px solid var(--color-v2-line-hi);
+  color: var(--color-v2-ink-2);
+}
+
+/* The landscape portrait keeps its rung visible above the complete scene. */
+[data-research-portrait] .item-portrait-index {
+  z-index: 2;
+  right: 8px;
+  bottom: 8px;
+  padding: 4px 7px;
+  border: 1px solid var(--color-v2-line-hi);
+  border-radius: var(--radius-control);
+  color: var(--color-v2-ink);
+  background: rgb(4 6 11 / 80%);
+  font-size: 14px;
+  letter-spacing: normal;
+}
+[data-research-portrait] .item-portrait-index::before { content: 'L'; margin-right: 2px; }

@@ -1,11 +1,11 @@
+import { OpeningAssetPending, OpeningWork, useOpeningWork } from './OpeningViews.js';
 import { WorldCosmeticRing } from './CosmeticEffects.jsx';
-import { Suspense, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useTransition, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { planetArt, planetLook, planetModel } from '../ui/assets.js';
 import { LIMB_PEAK, limbTexture, softGlow } from './Environment.jsx';
-import { fireTexture, smokeTexture } from './vfx.js';
 import { STANCE_LIGHT, rivalSlotOf, type PlanetNode, type Stance } from './scene.js';
 import type { RivalMark } from '../api/schemas.js';
 import { markHit, wasTap } from './tap.js';
@@ -74,6 +74,8 @@ export function PlanetField({
 }) {
   const { png: defaults, models: skinGroups } = useMemo(() => partitionPlanetSkins(nodes), [nodes]);
   const skinNodes = useMemo(() => skinGroups.flatMap((group) => group.nodes), [skinGroups]);
+  const openingWork = useContext(OpeningWork);
+  const onPreparationError = useCallback(() => { openingWork?.begin()('failed'); }, [openingWork]);
   const warmId = (defaults.find((node) => node.stance === 'self') ?? defaults[0])?.id;
   const { lods, warmups } = usePlanetLods(defaults, warmId);
   /*
@@ -116,6 +118,8 @@ export function PlanetField({
     return ids;
   }, [defaults, warmId]);
 
+  const farWarmups = warmId === undefined ? lightWarmups : [warmId, ...lightWarmups];
+
   return (
     <>
       {nodes.filter(node => node.ringId && node.intel !== 'UNKNOWN').map(node => (
@@ -123,20 +127,25 @@ export function PlanetField({
       ))}
       {warmId !== undefined && (
         // Its own boundary: warming a model never holds up, or hides, anything drawn.
-        <SkinAssetBoundary key={`warm:${warmId}`} fallback={null}>
-          <Suspense fallback={null}>
+        <SkinAssetBoundary key={`warm:${warmId}`} fallback={null} onError={onPreparationError}>
+          <Suspense fallback={<OpeningAssetPending />}>
             <PlanetWarmup id={warmId} />
           </Suspense>
         </SkinAssetBoundary>
       )}
+      {farWarmups.map(id => (
+        <SkinAssetBoundary key={`warm:${planetModel(id, 'far')}`} fallback={null} onError={onPreparationError}>
+          <Suspense fallback={<OpeningAssetPending />}><PlanetWarmup id={id} lod="far" /></Suspense>
+        </SkinAssetBoundary>
+      ))}
       {lightWarmups.map(id => (
-        <SkinAssetBoundary key={`warm:${planetModel(id, 'lite')}`} fallback={null}>
-          <Suspense fallback={null}><PlanetWarmup id={id} lod="lite" /></Suspense>
+        <SkinAssetBoundary key={`warm:${planetModel(id, 'lite')}`} fallback={null} onError={onPreparationError}>
+          <Suspense fallback={<OpeningAssetPending />}><PlanetWarmup id={id} lod="lite" /></Suspense>
         </SkinAssetBoundary>
       ))}
       {warmups.map(id => (
-        <SkinAssetBoundary key={`warm:${planetModel(id, 'full')}`} fallback={null}>
-          <Suspense fallback={null}><PlanetWarmup id={id} lod="full" /></Suspense>
+        <SkinAssetBoundary key={`warm:${planetModel(id, 'full')}`} fallback={null} onError={onPreparationError}>
+          <Suspense fallback={<OpeningAssetPending />}><PlanetWarmup id={id} lod="full" /></Suspense>
         </SkinAssetBoundary>
       ))}
       {tiers.map((group) => {
@@ -155,7 +164,7 @@ export function PlanetField({
         */
         return (
           <SkinAssetBoundary key={group.url} fallback={<Suspense fallback={null}>{render}</Suspense>}>
-            <Suspense fallback={<Suspense fallback={null}>{render}</Suspense>}>
+            <Suspense fallback={<><OpeningAssetPending /><Suspense fallback={null}>{render}</Suspense></>}>
               <DefaultPlanetModel
                 url={group.url}
                 lod={group.lod}
@@ -178,7 +187,7 @@ export function PlanetField({
           key={`${group.skinId}:${group.status}`}
           fallback={<SkinBillboards nodes={group.nodes} onSelect={onSelect} mode="near" />}
         >
-          <Suspense fallback={<SkinBillboards nodes={group.nodes} onSelect={onSelect} mode="near" />}>
+          <Suspense fallback={<><OpeningAssetPending /><SkinBillboards nodes={group.nodes} onSelect={onSelect} mode="near" /></>}>
             <PlanetSkinModel
               skinId={group.skinId}
               status={group.status}
@@ -190,8 +199,6 @@ export function PlanetField({
         </SkinAssetBoundary>
       ))}
       <Atmospheres nodes={nodes} />
-      <EmpFields nodes={nodes} />
-      <RecoveryScars nodes={nodes} />
       <Highlights
         nodes={nodes}
         selectedId={selectedId}
@@ -212,6 +219,8 @@ export function PlanetField({
 function usePlanetLods(nodes: readonly PlanetNode[], openingId?: string) {
   const camera = useThree((state) => state.camera);
   const height = useThree((state) => state.size.height);
+  const [pending, startTransition] = useTransition();
+  useOpeningWork(pending);
   const [lods, setLods] = useState<ReadonlyMap<string, PlanetLod>>(() => new Map());
   const [warmups, setWarmups] = useState<readonly string[]>([]);
   const warming = useRef<readonly string[]>([]);
@@ -263,173 +272,6 @@ function usePlanetLods(nodes: readonly PlanetNode[], openingId?: string) {
   });
 
   return { lods, warmups };
-}
-
-/** The one-hour tactical blackout: an electrical cage replaces the Aegis dome. */
-function EmpFields({ nodes }: { nodes: readonly PlanetNode[] }) {
-  const affected = nodes.filter((node) => node.state.kind === 'EMP');
-  return <>{affected.map((node) => <EmpField key={node.id} node={node} />)}</>;
-}
-
-function EmpField({ node }: { node: PlanetNode }) {
-  const root = useRef<THREE.Group>(null);
-  const shell = useRef<THREE.Mesh>(null);
-  const rings = useRef<(THREE.Mesh | null)[]>([]);
-
-  useFrame(({ clock }, delta) => {
-    if (root.current) root.current.rotation.y += delta * 0.24;
-    if (shell.current) {
-      const pulse = 0.94 + Math.sin(clock.elapsedTime * 2.8 + seededUnit(node.id, 7) * 6) * 0.06;
-      shell.current.scale.setScalar(pulse);
-      (shell.current.material as THREE.MeshBasicMaterial).opacity = 0.2 + pulse * 0.08;
-    }
-    rings.current.forEach((ring, i) => {
-      if (!ring) return;
-      ring.rotation.x += delta * (0.22 + i * 0.08);
-      ring.rotation.z -= delta * (0.32 + i * 0.06);
-      (ring.material as THREE.MeshBasicMaterial).opacity = 0.35
-        + Math.sin(clock.elapsedTime * (2 + i * 0.4) + i) * 0.15;
-    });
-  });
-
-  return (
-    <group ref={root} position={node.position} name={`emp-field-${node.id}`}>
-      <mesh ref={shell} scale={node.radius * 1.16} renderOrder={8}>
-        <icosahedronGeometry args={[1, 2]} />
-        <meshBasicMaterial
-          color="#55efff"
-          wireframe
-          transparent
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-          toneMapped={false}
-        />
-      </mesh>
-      {[0, 1, 2].map((i) => (
-        <mesh
-          key={i}
-          ref={(mesh) => { rings.current[i] = mesh; }}
-          rotation={[i * 0.8, i * 1.1, i * 0.55]}
-          scale={node.radius * (1.23 + i * 0.05)}
-          renderOrder={9}
-        >
-          <torusGeometry args={[1, 0.012, 6, 48, Math.PI * 1.55]} />
-          <meshBasicMaterial
-            color={i === 2 ? '#a895ff' : '#7cf8ff'}
-            transparent
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            toneMapped={false}
-          />
-        </mesh>
-      ))}
-      <pointLight color="#58eaff" intensity={0.85} distance={node.radius * 3.2} decay={2} />
-    </group>
-  );
-}
-
-/** Six hours of strategic damage must remain visible for the whole galaxy. */
-function RecoveryScars({ nodes }: { nodes: readonly PlanetNode[] }) {
-  const damaged = nodes.filter((node) => node.state.kind === 'RECOVERY');
-  return <>{damaged.map((node) => <RecoveryScar key={node.id} node={node} />)}</>;
-}
-
-function seededUnit(text: string, index: number): number {
-  let value = 2166136261 ^ index;
-  for (let i = 0; i < text.length; i++) value = Math.imul(value ^ text.charCodeAt(i), 16777619);
-  value = Math.imul(value ^ (value >>> 16), 0x85ebca6b);
-  return ((value ^ (value >>> 13)) >>> 0) / 0x1_0000_0000;
-}
-
-function RecoveryScar({ node }: { node: PlanetNode }) {
-  const root = useRef<THREE.Group>(null);
-  const smokeSprites = useRef<(THREE.Sprite | null)[]>([]);
-  const emberSprites = useRef<(THREE.Sprite | null)[]>([]);
-  const camera = useThree((state) => state.camera);
-  const smoke = useMemo(smokeTexture, []);
-  const fire = useMemo(fireTexture, []);
-  const cracks = useMemo(() => {
-    const points: number[] = [];
-    for (let ray = 0; ray < 7; ray++) {
-      const angle = seededUnit(node.id, ray) * Math.PI * 2;
-      let x = (seededUnit(node.id, ray + 20) - 0.5) * 0.12;
-      let y = (seededUnit(node.id, ray + 40) - 0.5) * 0.12;
-      for (let segment = 1; segment <= 3; segment++) {
-        const distance = 0.2 + segment * (0.17 + seededUnit(node.id, ray * 7 + segment) * 0.05);
-        const nx = Math.cos(angle + (seededUnit(node.id, ray * 11 + segment) - 0.5) * 0.32) * distance;
-        const ny = Math.sin(angle + (seededUnit(node.id, ray * 13 + segment) - 0.5) * 0.32) * distance;
-        points.push(x, y, 0, nx, ny, 0);
-        x = nx;
-        y = ny;
-      }
-    }
-    return new Float32Array(points);
-  }, [node.id]);
-
-  useFrame(({ clock }) => {
-    root.current?.quaternion.copy(camera.quaternion);
-    const time = clock.elapsedTime;
-    smokeSprites.current.forEach((sprite, i) => {
-      if (!sprite) return;
-      const phase = (seededUnit(node.id, i + 70) + time * (0.035 + i * 0.0015)) % 1;
-      const side = (seededUnit(node.id, i + 90) - 0.5) * node.radius * 0.7;
-      sprite.position.set(
-        side + Math.sin(time * 0.7 + i) * node.radius * 0.06,
-        node.radius * (0.15 + phase * 2.15),
-        0.04,
-      );
-      const size = node.radius * (0.38 + phase * 0.95);
-      sprite.scale.set(size, size, 1);
-      sprite.material.opacity = Math.sin(phase * Math.PI) * 0.3;
-      sprite.material.rotation = time * (i % 2 === 0 ? 0.045 : -0.04) + i;
-    });
-    emberSprites.current.forEach((sprite, i) => {
-      if (!sprite) return;
-      const pulse = 0.5 + Math.sin(time * (3.4 + i * 0.37) + i * 1.9) * 0.5;
-      sprite.material.opacity = 0.2 + pulse * 0.52;
-      const size = node.radius * (0.13 + pulse * 0.08);
-      sprite.scale.set(size, size, 1);
-    });
-  });
-
-  return (
-    <group ref={root} position={node.position} name={`recovery-scar-${node.id}`}>
-      <mesh position={[0, 0, 0.025]} renderOrder={3}>
-        <circleGeometry args={[node.radius * 0.93, 48]} />
-        <meshBasicMaterial color="#140406" transparent opacity={0.27} depthWrite={false} />
-      </mesh>
-      <lineSegments position={[0, 0, 0.04]} scale={node.radius} renderOrder={5}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[cracks, 3]} />
-        </bufferGeometry>
-        <lineBasicMaterial color="#ff6a32" transparent opacity={0.9} depthWrite={false} />
-      </lineSegments>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <sprite
-          key={`ember-${String(i)}`}
-          ref={(sprite) => { emberSprites.current[i] = sprite; }}
-          position={[
-            (seededUnit(node.id, i + 110) - 0.5) * node.radius * 1.15,
-            (seededUnit(node.id, i + 130) - 0.5) * node.radius * 1.05,
-            0.05,
-          ]}
-          renderOrder={6}
-        >
-          <spriteMaterial map={fire} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
-        </sprite>
-      ))}
-      {[0, 1, 2, 3, 4, 5].map((i) => (
-        <sprite
-          key={`smoke-${String(i)}`}
-          ref={(sprite) => { smokeSprites.current[i] = sprite; }}
-          renderOrder={4}
-        >
-          <spriteMaterial map={smoke} color="#5d3033" transparent depthWrite={false} />
-        </sprite>
-      ))}
-      <pointLight color="#ff351f" intensity={1.6} distance={node.radius * 3.5} decay={2} />
-    </group>
-  );
 }
 
 /**

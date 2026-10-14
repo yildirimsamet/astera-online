@@ -2,11 +2,14 @@ import { act, cleanup, render } from '@testing-library/react';
 import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlanetWarmup } from '../src/galaxy/PlanetSkinModel.js';
+import { OpeningWork } from '../src/galaxy/OpeningViews.js';
+import { createOpeningPreparation } from '../src/galaxy/openingPreparation.js';
 import { planetLook } from '../src/ui/assets.js';
 
 interface WarmupState {
   gl: {
     domElement: HTMLCanvasElement;
+    getContext: () => { isContextLost: () => boolean };
     compileAsync: (scene: THREE.Object3D, camera: THREE.Camera, targetScene?: THREE.Scene) => Promise<THREE.Object3D>;
     initTexture: (texture: THREE.Texture) => void;
   };
@@ -51,11 +54,11 @@ beforeEach(() => {
   })));
   context.load.mockReturnValue({ scene: model });
   compile.mockImplementation(probes => Promise.resolve(probes));
-  context.read.mockReturnValue({ gl: { domElement: document.createElement('canvas'), compileAsync: compile, initTexture: upload }, camera: new THREE.PerspectiveCamera(), scene: new THREE.Scene() });
+  context.read.mockReturnValue({ gl: { domElement: document.createElement('canvas'), getContext: () => ({ isContextLost: () => false }), compileAsync: compile, initTexture: upload }, camera: new THREE.PerspectiveCamera(), scene: new THREE.Scene() });
   vi.stubGlobal('requestIdleCallback', (callback: IdleRequestCallback) => { const key = ++next; idle.set(key, callback); return key; });
   vi.stubGlobal('cancelIdleCallback', (key: number) => { idle.delete(key); });
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe('planet preparation is isolated from drawing and component lifetime', () => {
   it('compiles first, then uploads only one full-detail map per idle callback', async () => {
@@ -122,5 +125,58 @@ describe('planet preparation is isolated from drawing and component lifetime', (
     expect(() => render(<PlanetWarmup id={id} lod="full" />)).not.toThrow();
     expect(upload).not.toHaveBeenCalled();
     expect(idle.size).toBe(0);
+  });
+});
+
+
+describe('opening waits for actual planet work', () => {
+  it('registers before compiling and releases only after all texture submissions', async () => {
+    vi.useFakeTimers();
+    const work = createOpeningPreparation(true);
+    render(<OpeningWork.Provider value={work}><PlanetWarmup id={id} lod="full" /></OpeningWork.Provider>);
+    expect(work.size).toBe(1);
+    await act(async () => { await Promise.resolve(); });
+    expect(work.size).toBe(1);
+    await act(async () => { vi.advanceTimersByTime(16); await Promise.resolve(); });
+    expect(upload).toHaveBeenCalledOnce(); expect(work.size).toBe(1);
+    await act(async () => { vi.advanceTimersByTime(32); await Promise.resolve(); });
+    expect(upload).toHaveBeenCalledTimes(3); expect(work.size).toBe(0);
+    expect(work.failed).toBe(false);
+  });
+  it('continues background preparation after the cover times out', async () => {
+    let finish: ((value: THREE.Object3D) => void) | undefined;
+    compile.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    const work = createOpeningPreparation(true);
+    render(<OpeningWork.Provider value={work}><PlanetWarmup id={id} lod="full" /></OpeningWork.Provider>);
+    expect(work.size).toBe(1);
+    work.finish('timeout');
+    await act(async () => { finish?.(new THREE.Group()); await Promise.resolve(); });
+    runIdle(); runIdle(); runIdle();
+    expect(upload).toHaveBeenCalledTimes(3);
+    expect(work.result).toBe('timeout');
+  });
+  it('releases the opening on compilation failure without claiming success', async () => {
+    compile.mockRejectedValue(new Error('compilation failed'));
+    const work = createOpeningPreparation(true);
+    render(<OpeningWork.Provider value={work}><PlanetWarmup id={id} lod="lite" /></OpeningWork.Provider>);
+    await act(async () => { await Promise.resolve(); });
+    expect(work.size).toBe(0); expect(work.failed).toBe(true);
+    expect(upload).not.toHaveBeenCalled();
+  });
+  it('ignores an old-context compile completion and prepares again on restore', async () => {
+    let finish: ((value: THREE.Object3D) => void) | undefined;
+    compile.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const work = createOpeningPreparation(true);
+    render(<OpeningWork.Provider value={work}><PlanetWarmup id={id} lod="lite" /></OpeningWork.Provider>);
+    const canvas = context.read().gl.domElement;
+    act(() => { canvas.dispatchEvent(new Event('webglcontextlost')); });
+    expect(work.size).toBe(0);
+    work.finish('context-lost');
+    await act(async () => { finish?.(new THREE.Group()); await Promise.resolve(); });
+    expect(idle.size).toBe(0);
+    await act(async () => { canvas.dispatchEvent(new Event('webglcontextrestored')); await Promise.resolve(); });
+    expect(compile).toHaveBeenCalledTimes(2);
+    runIdle(); expect(upload).toHaveBeenCalledOnce();
+    expect(work.result).toBe('context-lost');
   });
 });

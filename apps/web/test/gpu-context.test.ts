@@ -134,6 +134,7 @@ describe('a lost GPU context is survived, not crashed on', () => {
 
 describe('the composer is not mounted against a dead context', () => {
   const canvasSource = readFileSync('src/galaxy/GalaxyCanvas.tsx', 'utf8');
+  const composerSource = readFileSync('src/galaxy/GalaxyPostprocessing.tsx', 'utf8');
 
   /**
    * The crash is in `EffectComposer`'s constructor path, so the fix is that the
@@ -141,13 +142,15 @@ describe('the composer is not mounted against a dead context', () => {
    * as a prop would still construct it.
    */
   it('gates the composer on a live context', () => {
-    expect(canvasSource).toMatch(/\{\s*gpu\.live\s*&&\s*\(?\s*<EffectComposer/);
+    expect(canvasSource).toContain('live={gpu.live}');
+    expect(composerSource).toMatch(/return live \? \(\s*<EffectComposer/);
   });
 
   /** And rebuilds it on the far side, because the restored context is a new one. */
   it('keys the composer on the epoch as well as the resolution ceiling', () => {
     const key = /key=\{`?\$\{[^}]*dprCap[^}]*\}[^`]*\$\{[^}]*epoch[^}]*\}`?\}/;
-    expect(canvasSource).toMatch(key);
+    expect(composerSource).toMatch(key);
+    expect(canvasSource).toContain('epoch={gpu.epoch}');
   });
 
   it('watches the canvas the renderer was created with', () => {

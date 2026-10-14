@@ -145,6 +145,26 @@ describe('the public Death Star impact', () => {
     expect(isDeathStarImpactVisible(10_000, 10_000 + DEATH_STAR_IMPACT_MS)).toBe(false);
   });
 
+  it.each([200, 300, 1000])('keeps all five same-target impacts independent with %i ms spacing', spacing => {
+    const pending: PendingThread[] = Array.from({ length: 5 }, (_, index) => ({
+      id: `burst-${index}`, kind: 'death_star', leg: 'outbound', targetName: 'Target', minutesRemaining: 1,
+      arriveAt: new Date(path.arriveAt.getTime() + index * spacing),
+      path: { ...path, arriveAt: new Date(path.arriveAt.getTime() + index * spacing) },
+    }));
+    const candidates = deathStarImpactCandidates(pending, [], nodes);
+    expect(candidates).toHaveLength(5);
+    expect(new Set(candidates.map(event => event.id)).size).toBe(5);
+    const now = path.arriveAt.getTime() + 4 * spacing + 1;
+    expect(candidates.every(event => isDeathStarImpactVisible(event.at, now))).toBe(true);
+    const retained = mergeRetainedDeathStarImpacts(candidates, [], now);
+    expect(retained.map(event => event.id)).toEqual(pending.map(mission => mission.id));
+    // The first effect expiring must leave the other four on screen.
+    expect(mergeRetainedDeathStarImpacts(retained, [], path.arriveAt.getTime() + DEATH_STAR_IMPACT_MS))
+      .toHaveLength(4);
+    expect(mergeRetainedDeathStarImpacts(retained, [], path.arriveAt.getTime() + 4 * spacing + DEATH_STAR_IMPACT_MS))
+      .toEqual([]);
+  });
+
   it('retains a known impact when a resolving traffic refetch removes its mission', () => {
     const event = {
       id: 'mission-1',

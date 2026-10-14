@@ -119,7 +119,11 @@ type NotificationList = z.infer<typeof notificationsSchema>;
 const NET_MS = 60_000;
 /** SSE is primary; this only heals a missed global event after a broken connection. */
 const ANNOUNCEMENT_FALLBACK_MS = 5 * 60_000;
-const READ = { staleTime: 15_000, refetchOnWindowFocus: true } as const;
+/**
+ * Coming back to the tab is the event stream's lifecycle pass (`useEventStream`), so
+ * live reads do not also refetch on focus: the two together sent every read twice.
+ */
+const READ = { staleTime: 15_000 } as const;
 
 /**
  * The galaxy's clock — and, since D60, how many people are in it.
@@ -175,7 +179,6 @@ export function useGalaxyEvents() {
     queryFn: api.galaxyEvents,
     staleTime: NET_MS,
     refetchInterval: NET_MS,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -248,7 +251,6 @@ export function useGalaxy() {
     queryFn: api.galaxy,
     staleTime: 15_000,
     refetchInterval: NET_MS,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -352,7 +354,6 @@ export function usePending() {
     queryFn: api.pending,
     staleTime: 30_000,
     refetchInterval: NET_MS,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -411,7 +412,6 @@ export function useTraffic() {
     queryFn: api.traffic,
     staleTime: TRAFFIC_MS,
     refetchInterval: TRAFFIC_MS,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -496,14 +496,12 @@ export function useMining() {
     queryFn: api.miningField,
     staleTime: 15_000,
     refetchInterval: NET_MS,
-    refetchOnWindowFocus: true,
   });
   const status = useQuery({
     queryKey: activePlanetId ? keys.miningStatusById(activePlanetId) : keys.miningStatus,
     queryFn: ({ signal }) => api.miningStatus(activePlanetId ?? undefined, { signal }),
     staleTime: 15_000,
     refetchInterval: NET_MS,
-    refetchOnWindowFocus: true,
   });
   useAsteroidFieldWake(field.data?.nextFieldChangeAt);
   const data = useMemo(
@@ -1209,7 +1207,6 @@ export function useAnnouncements(enabled = true) {
     enabled,
     staleTime: 30_000,
     refetchInterval: ANNOUNCEMENT_FALLBACK_MS,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -2125,14 +2122,14 @@ function useApplyMiningResult(activePlanetId: string | null) {
  * after they leave sight, but the roster, rendezvous and deadline keep changing.
  * A dead pirate leaves the list, so no earlier read may be merged forward.
  */
-export function usePirates() {
+export function usePirates(options: { live?: boolean } = {}) {
   const api = useApi();
   const { activePlanetId } = useWorld();
   return useQuery({
     queryKey: activePlanetId ? keys.piratesFrom(activePlanetId) : keys.pirates,
     queryFn: ({ signal }) => api.pirates(activePlanetId ?? undefined, { signal }),
     /*
-      AT THE TRAFFIC PACE, NOT THE ORDINARY ONE. D183.
+      AT THE TRAFFIC PACE WHILE SOMEBODY IS AIMING, NOT THE ORDINARY ONE. D183.
 
       This payload carries a RENDEZVOUS TABLE — an instantaneous solve against a
       moving target — and at a minute's staleness it can name a different lap of
@@ -2140,10 +2137,15 @@ export function usePirates() {
       moves on the disc is read at, and a pirate is one of the things that moves.
       The launch still carries the quote and the server still refuses a drifted one;
       this is what keeps that refusal rare rather than routine.
+
+      That only matters while a pirate's focus or its launch sheet is open, so only
+      those observers ask for `live`. Every other one — the disc tally — rides the
+      `shard:pirate` events and the one-minute net: solving the table every five
+      seconds for every commander was 10% of production requests (resource analysis
+      2026-10-13). Observers share the query; each keeps its own interval.
     */
     staleTime: 5_000,
-    refetchInterval: TRAFFIC_MS,
-    refetchOnWindowFocus: true,
+    refetchInterval: options.live === true ? TRAFFIC_MS : NET_MS,
   });
 }
 

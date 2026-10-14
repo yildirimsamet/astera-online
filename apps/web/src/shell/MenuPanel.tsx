@@ -50,6 +50,8 @@ import { InstallButton } from '../brand/Install.js';
 import { Flag } from '../v2/identity/Flag.js';
 import { countryName } from '../v2/identity/country.js';
 import { ShopShowcase } from './ShopShowcase.js';
+import { ATMOSPHERE, type AtmosphereArt } from '../ui/atmosphere.js';
+import { AtmosphereImage } from '../ui/AtmosphereArt.js';
 
 /**
  * THE MENU — everything the game has that is not the galaxy.
@@ -290,6 +292,7 @@ export function MenuPanel({
        */}
       <MenuGroup label={t('menu.seasonHeading')}>
         <MenuTile
+          art={ATMOSPHERE.commander}
           icon={<LeaderboardIcon className="size-5" />}
           label={t('menu.leaderboardLabel')}
           hint={t('menu.leaderboardHint')}
@@ -300,6 +303,7 @@ export function MenuPanel({
         <MenuTile
           icon={<RewardIcon className="size-5" />}
           label={t('menu.rewardsLabel')}
+          art={ATMOSPHERE.rewards}
           hint={t('menu.rewardsHint')}
           attention={waiting > 0}
           {...(waiting > 0 ? { badge: t('menu.rewardsWaiting', { count: waiting }) } : {})}
@@ -313,6 +317,7 @@ export function MenuPanel({
         <MenuTile
           icon={<BellIcon className="size-5" />}
           label={t('menu.announcementsLabel')}
+          art={ATMOSPHERE.announcements}
           hint={t('menu.announcementsHint')}
           attention={announcementWaiting > 0}
           {...(announcementWaiting > 0
@@ -325,6 +330,7 @@ export function MenuPanel({
         <MenuTile
           icon={<SendIcon className="size-5" />}
           label={t('menu.feedbackLabel')}
+          art={ATMOSPHERE.feedback}
           hint={t('menu.feedbackHint')}
           onClick={() => {
             onOpen('feedback');
@@ -334,6 +340,7 @@ export function MenuPanel({
         <MenuTile
           icon={<HeartIcon className="size-5" />}
           label={t('community.donate.menuLabel')}
+          art={ATMOSPHERE.donate}
           hint={t('community.donate.menuHint')}
           attention
           onClick={() => {
@@ -357,6 +364,7 @@ export function MenuPanel({
         <MenuTile
           icon={<GuideIcon className="size-5" />}
           label={t('menu.guideLabel')}
+          art={ATMOSPHERE.intel}
           hint={t('menu.guideHint')}
           onClick={() => { onOpen('wiki'); }}
         />
@@ -364,6 +372,7 @@ export function MenuPanel({
           <MenuTile
             icon={<GuideIcon className="size-5" />}
             label={t('academy.replay')}
+          art={ATMOSPHERE.academy}
             hint={t('academy.replayHint')}
             onClick={onReplayAcademy}
           />
@@ -460,7 +469,8 @@ export function MenuPanel({
           </div>
         )}
         <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-1 rounded-control border border-v2-line bg-v2-panel p-3">
+          <div data-menu-galaxy className="scene-panel menu-account-scene flex flex-col gap-1 rounded-control border border-v2-line bg-v2-panel p-3">
+            <AtmosphereImage art={ATMOSPHERE.galaxyAccount} />
             <p className="v2-legend">{t('galaxy.commander.galaxyLabel')}</p>
             <p className="truncate text-caption font-semibold text-v2-ink">
               {galaxy ?? t('galaxy.commander.galaxyUnknown')}
@@ -469,7 +479,8 @@ export function MenuPanel({
               <p className="text-label text-v2-ink-3">{shard}</p>
             )}
           </div>
-          <div className="flex flex-col gap-1 rounded-control border border-v2-line bg-v2-panel p-3">
+          <div data-menu-season className="scene-panel menu-account-scene flex flex-col gap-1 rounded-control border border-v2-line bg-v2-panel p-3">
+            <AtmosphereImage art={ATMOSPHERE.seasonAccount} />
             <p className="v2-legend">
               {ended ? t('seasonRecap.seasonLabel') : t('galaxy.commander.endsLabel')}
             </p>
@@ -567,6 +578,7 @@ function MenuGroup({ label, children }: { label: string; children: ReactNode }) 
  * furniture saying what the shape has said.
  */
 function MenuTile({
+  art,
   icon,
   label,
   hint,
@@ -575,6 +587,7 @@ function MenuTile({
   onClick,
   href,
 }: {
+  art?: AtmosphereArt;
   icon: ReactNode;
   label: string;
   hint: string;
@@ -610,8 +623,9 @@ function MenuTile({
       */
       aria-label={`${label}. ${hint}`}
       data-menu-tile
-      className="group relative flex min-h-20 flex-col items-start justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5 text-left transition-colors hover:border-v2-line-hi hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self active:bg-v2-raise"
+      className={`group relative flex min-h-20 flex-col items-start justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5 text-left transition-colors hover:border-v2-line-hi hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self active:bg-v2-raise ${art ? 'menu-art-tile' : ''}`}
     >
+      {art && <AtmosphereImage art={art} />}
       <span
         data-attention={attention || undefined}
         className={`grid size-8 shrink-0 place-items-center rounded-control border transition-colors ${
@@ -632,7 +646,7 @@ function MenuTile({
         saying THAT something is waiting.
       */}
       {badge === undefined ? null : (
-        <span className="absolute right-2 top-2 rounded-chip bg-v2-self/15 px-1.5 py-0.5 font-v2-mono text-micro leading-none text-v2-self">
+        <span data-menu-badge className="absolute right-2 top-2 rounded-chip bg-v2-self/15 px-1.5 py-0.5 font-v2-mono text-micro leading-none text-v2-self">
           {badge}
         </span>
       )}

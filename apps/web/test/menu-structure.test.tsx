@@ -86,6 +86,42 @@ beforeEach(async () => {
 });
 
 describe('the menu groups what it offers', () => {
+  it('adds subject art to destinations while retaining independent names, badges and routing', async () => {
+    const onOpen = vi.fn();
+    const view = show({ onOpen });
+    const tiles = [...view.container.querySelectorAll('[data-menu-tile]')];
+    expect(tiles.filter(tile => tile.querySelector('[data-atmosphere-image]'))).toHaveLength(6);
+    const rewards = screen.getByRole('button', { name: named(i18n.t('menu.rewardsLabel'), i18n.t('menu.rewardsHint')) });
+    expect(rewards.querySelector('img')).toHaveAttribute('alt', '');
+    fireEvent.click(rewards);
+    expect(onOpen).toHaveBeenCalledWith('rewards');
+    await waitFor(() => { expect(rewards).toBeVisible(); });
+  });
+
+  it('gives feedback, support and academy their own decorative scene without changing their destinations', () => {
+    const onOpen = vi.fn(), onReplayAcademy = vi.fn();
+    show({ onOpen, onReplayAcademy });
+    for (const [label, destination] of [[i18n.t('menu.feedbackLabel'), 'feedback'], [i18n.t('community.donate.menuLabel'), 'donate']] as const) {
+      const tile = screen.getByRole('button', { name: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.`) });
+      expect(tile.querySelector('img[data-atmosphere-image]')).toHaveAttribute('aria-hidden', 'true');
+      fireEvent.click(tile);
+      expect(onOpen).toHaveBeenCalledWith(destination);
+    }
+    const academy = screen.getByRole('button', { name: named(i18n.t('academy.replay'), i18n.t('academy.replayHint')) });
+    expect(academy.querySelector('img[data-atmosphere-image]')).not.toBeNull();
+    fireEvent.click(academy);
+    expect(onReplayAcademy).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the galaxy and season values readable over separate decorative scenes', () => {
+    const view = show();
+    for (const selector of ['[data-menu-galaxy]', '[data-menu-season]']) {
+      const panel = view.container.querySelector(selector);
+      expect(panel?.querySelector('img[data-atmosphere-image]')).toHaveAttribute('alt', '');
+      expect(panel?.querySelector('p')).not.toHaveAttribute('aria-hidden');
+    }
+  });
+
   /**
    * A HEADING PER GROUP, AND THE ORDER IS THE RANKING.
    *

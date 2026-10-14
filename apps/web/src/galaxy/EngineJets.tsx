@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useGalaxyCulling, useVisualFrame } from './visualFrame.js';
+import { createLocalVisibility, localSphereVisible, engineUnitsRadius } from './formationVisibility.js';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Vec3Tuple } from './scene.js';
@@ -18,8 +19,10 @@ export interface EngineUnit {
 const PARTICLES = 24;
 
 /** Velocity-aligned native GD grunge, one draw for all engines in a formation. */
-export function EngineJets({ units, aimDistance, name = 'formation-lights' }: {
+export function EngineJets({ units, aimDistance, name = 'formation-lights', longitudinalOffset, longitudinalOffsetBound }: {
   units: readonly EngineUnit[]; aimDistance: RefObject<number>; name?: string;
+  longitudinalOffset?: (unitIndex: number, elapsedSeconds: number) => number;
+  longitudinalOffsetBound?: number;
 }) {
   const [grunge, noise] = useTexture(['/assets/vfx/premium-v2/thruster-grunge.webp', '/assets/vfx/premium-v2/thruster-noise.webp']);
   const stream = useRef<THREE.InstancedMesh>(null);
@@ -63,25 +66,33 @@ export function EngineJets({ units, aimDistance, name = 'formation-lights' }: {
   const rotation = useMemo(() => new THREE.Quaternion(), []), world = useMemo(() => new THREE.Quaternion(), []), cameraLocal = useMemo(() => new THREE.Quaternion(), []);
   const axis = useMemo(() => new THREE.Vector3(), []), nozzle = useMemo(() => new THREE.Vector3(), []), offset = useMemo(() => new THREE.Vector3(), []), tint = useMemo(() => new THREE.Color(), []);
   const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
+  const animatedAt = useMemo<Vec3Tuple>(() => [0, 0, 0], []);
   useEffect(() => () => { geometry.dispose(); }, [geometry]);
   useEffect(() => () => { material.dispose(); }, [material]);
-  useFrame(({ clock, camera }) => {
+  const culling = useGalaxyCulling();
+  const visibility = useMemo(createLocalVisibility, []);
+  const radius = useMemo(() => longitudinalOffset && longitudinalOffsetBound === undefined ? Infinity : engineUnitsRadius(units) + Math.abs(longitudinalOffsetBound ?? 0), [units, longitudinalOffset, longitudinalOffsetBound]);
+  useVisualFrame(({ clock, camera }) => {
     const node = stream.current;
     if (!node) return;
+    node.visible = !culling || localSphereVisible(visibility, camera, node, radius);
+    if (!node.visible) return;
     node.getWorldQuaternion(world);
     cameraLocal.copy(world).invert().multiply(camera.quaternion);
     const ages = geometry.getAttribute('aAge'), alpha = geometry.getAttribute('aAlpha'), colours = geometry.getAttribute('aTint');
     let cursor = 0;
     for (let u = 0; u < units.length; u++) {
       const unit = units[u]!;
-      formationAimDirection(unit.at, aimDistance.current, aimed);
+      animatedAt[0] = unit.at[0]; animatedAt[1] = unit.at[1];
+      animatedAt[2] = unit.at[2] + (longitudinalOffset?.(u, clock.elapsedTime) ?? 0);
+      formationAimDirection(animatedAt, aimDistance.current, aimed);
       direction.set(...aimed); rotation.setFromUnitVectors(forward, direction);
       axis.copy(direction).negate().applyQuaternion(world).applyQuaternion(scratch.quaternion.copy(camera.quaternion).invert());
       const angle = Math.atan2(axis.y, axis.x) - Math.PI / 2;
       tint.set(unit.colour);
       for (const anchor of unit.nozzles) {
         nozzle.set(...anchor).multiplyScalar(unit.size).applyQuaternion(rotation);
-        nozzle.x += unit.at[0]; nozzle.y += unit.at[1]; nozzle.z += unit.at[2];
+        nozzle.x += animatedAt[0]; nozzle.y += animatedAt[1]; nozzle.z += animatedAt[2];
         for (let i = 0; i < PARTICLES; i++) {
           jetParticle(i, PARTICLES, clock.elapsedTime + u * 0.137, particle);
           offset.set(particle.x * 0.6 * unit.widthFactor, particle.y * 0.6 * unit.widthFactor,

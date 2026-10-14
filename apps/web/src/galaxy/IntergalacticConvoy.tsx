@@ -1,12 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { INTERGALACTIC_CONVOY, convoyFormationSlots, type MobileHullId } from '@astera/rules';
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { FLEET_V2_ASSET_MANIFEST } from '../ui/fleet-v2-assets.js';
-import { hullPoseLift } from '../ui/assets.js';
 import { serverNow } from '../lib/clock.js';
-import { FormationWakes, Hull } from './Fleets.jsx';
+import { FormationLightField, FormationWakes, Hull } from './Fleets.jsx';
 import {
   CRAFT_SCALE,
   SCALE,
@@ -23,7 +22,7 @@ export const CONVOY_DRIFT_AMPLITUDE =
   (Math.min(...INTERGALACTIC_CONVOY.formation.rankGaps) / SCALE) * 0.12;
 /** Speed lines streaming past the convoy (owner, 2026-09-24: the silk veil was ugly). */
 export const CONVOY_WIND_STREAKS = 12;
-export const CONVOY_WIND_OPACITY = 0.32;
+export const CONVOY_WIND_OPACITY = 0.17;
 
 const FORMATION_VERSION = 1;
 const FOCUS_FOV_RADIANS = Math.PI / 4;
@@ -81,7 +80,7 @@ export function convoyPickBox(slots: readonly VisualSlot[]): {
 }
 
 /** How fast the air streams past, in convoy spans per second. */
-const WIND_SPEED = 0.55;
+const WIND_SPEED = 0.42;
 
 /** One speed line: across the lanes (in half-widths), its height, its beat, and its length (in spans). */
 export interface ConvoyStreak { lateral: number; lift: number; phase: number; length: number }
@@ -99,7 +98,7 @@ export function convoyStreaks(count: number): ConvoyStreak[] {
       lateral: -1.2 + across * 2.4 + jitter,
       lift: ((index % 3) - 1) * 0.02,
       phase: (index * 0.618_033_988_75) % 1,
-      length: 0.18 + ((index * 0.381_966_011) % 1) * 0.22,
+      length: 0.12 + ((index * 0.381_966_011) % 1) * 0.14,
     };
   });
 }
@@ -119,13 +118,14 @@ const WIND_VERTEX_SHADER = `
   void main() {
     float span = uFront - uBack;
     float reach = aStreak.w * span;
-    float progress = fract(aStreak.z + uTime * uSpeed);
+    float progress = fract(aStreak.z + uTime * uSpeed * (0.86 + aStreak.z * 0.28));
     // The air streams from the nose (+Z) to the tail (-Z): the head leads, the line trails it.
     float head = mix(uFront, uBack - reach, progress);
     vAlong = position.z;
     vAcross = position.x;
-    vLife = sin(3.14159265 * progress);
-    vec3 line = vec3(aStreak.x * uHalfWidth + position.x * uWidth, aStreak.y, head + position.z * reach);
+    vLife = smoothstep(0.0, 0.16, progress) * (1.0 - smoothstep(0.72, 1.0, progress));
+    float bend = sin(position.z * 3.14159265) * sin(uTime * 0.65 + aStreak.z * 6.2831853) * uWidth * 0.7;
+    vec3 line = vec3(aStreak.x * uHalfWidth + position.x * uWidth + bend, aStreak.y, head + position.z * reach);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(line, 1.0);
   }
 `;
@@ -138,8 +138,8 @@ const WIND_FRAGMENT_SHADER = `
 
   void main() {
     // A sharp head, a long fading tail, soft sides: a streak, not a bar.
-    float taper = smoothstep(0.0, 0.12, vAlong) * (1.0 - smoothstep(0.3, 1.0, vAlong));
-    float edge = 1.0 - smoothstep(0.35, 1.0, abs(vAcross));
+    float taper = smoothstep(0.0, 0.18, vAlong) * pow(1.0 - vAlong, 1.5);
+    float edge = exp(-vAcross * vAcross * 4.5) * (1.0 - smoothstep(0.7, 1.0, abs(vAcross)));
     float alpha = uOpacity * vLife * taper * edge;
     if (alpha < 0.002) discard;
     gl_FragColor = vec4(vec3(0.74, 0.85, 0.95), alpha);
@@ -224,8 +224,8 @@ function ConvoyWind({ slots, focused }: {
       uFront: { value: bounds.front },
       uBack: { value: bounds.back },
       uHalfWidth: { value: bounds.halfWidth },
-      // A couple of pixels at focus range, sub-pixel from across the disc.
-      uWidth: { value: (bounds.front - bounds.back) * 0.004 },
+      // A soft hairline at focus range; ships carry the brighter engine signal.
+      uWidth: { value: (bounds.front - bounds.back) * 0.0012 },
       uOpacity: { value: CONVOY_WIND_OPACITY },
     },
     vertexShader: WIND_VERTEX_SHADER,
@@ -233,6 +233,7 @@ function ConvoyWind({ slots, focused }: {
     transparent: true,
     depthWrite: false,
     side: THREE.DoubleSide,
+    forceSinglePass: true,
     blending: THREE.AdditiveBlending,
     toneMapped: false,
   }), [bounds]);
@@ -244,10 +245,8 @@ function ConvoyWind({ slots, focused }: {
       : CONVOY_WIND_OPACITY;
   });
 
-  useEffect(() => () => {
-    geometry.dispose();
-    material.dispose();
-  }, [geometry, material]);
+  useEffect(() => () => { geometry.dispose(); }, [geometry]);
+  useEffect(() => () => { material.dispose(); }, [material]);
 
   return (
     <mesh
@@ -258,75 +257,6 @@ function ConvoyWind({ slots, focused }: {
       raycast={() => null}
       renderOrder={995}
     />
-  );
-}
-
-function ConvoyDriveLights({ slots, focused }: {
-  slots: readonly VisualSlot[];
-  focused: boolean;
-}) {
-  const mesh = useRef<THREE.InstancedMesh>(null);
-  const material = useRef<THREE.MeshBasicMaterial>(null);
-  const transform = useMemo(() => new THREE.Object3D(), []);
-  const tint = useMemo(() => new THREE.Color(), []);
-
-  useLayoutEffect(() => {
-    const node = mesh.current;
-    if (!node) return;
-    slots.forEach((slot, index) => {
-      // Instance colours preserve each hull's authored drive identity while the
-      // whole bank remains one draw call.
-      node.setColorAt(
-        index,
-        tint.set(FLEET_V2_ASSET_MANIFEST[slot.hull].light.color).multiplyScalar(1.6),
-      );
-    });
-    if (node.instanceColor) node.instanceColor.needsUpdate = true;
-  }, [slots, tint]);
-
-  useFrame(({ clock }) => {
-    const node = mesh.current;
-    if (!node) return;
-    slots.forEach((slot, index) => {
-      const drawnScale = CONVOY_HULL_SCALE * FLEET_V2_ASSET_MANIFEST[slot.hull].scale;
-      const beat = 1 + Math.sin(clock.elapsedTime * 5.2 + index * 1.73) * 0.16;
-      transform.position.set(
-        slot.position[0],
-        slot.position[1] + hullPoseLift(slot.hull) * drawnScale,
-        slot.position[2]
-          + convoyLongitudinalOffset(index, clock.elapsedTime)
-          - drawnScale * 0.47,
-      );
-      transform.scale.setScalar(drawnScale * 0.13 * beat);
-      transform.updateMatrix();
-      node.setMatrixAt(index, transform.matrix);
-    });
-    node.instanceMatrix.needsUpdate = true;
-    if (material.current) {
-      material.current.opacity = (focused ? 0.94 : 0.7)
-        + Math.sin(clock.elapsedTime * 3.4) * 0.06;
-    }
-  });
-
-  return (
-    <instancedMesh
-      ref={mesh}
-      name="intergalactic-convoy-drives"
-      args={[undefined, undefined, slots.length]}
-      frustumCulled={false}
-      raycast={() => null}
-      renderOrder={997}
-    >
-      <sphereGeometry args={[1, 10, 8]} />
-      <meshBasicMaterial
-        ref={material}
-        transparent
-        opacity={focused ? 0.94 : 0.7}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        toneMapped={false}
-      />
-    </instancedMesh>
   );
 }
 
@@ -427,7 +357,18 @@ export function IntergalacticConvoy({
         aimDistance={wakeAimDistance}
         longitudinalOffset={convoyLongitudinalOffset}
       />
-      <ConvoyDriveLights slots={visualSlots} focused={focused} />
+      <FormationLightField
+        name="intergalactic-convoy-drives"
+        markers={markers}
+        slots={wakeSlots}
+        scale={CONVOY_HULL_SCALE}
+        aimDistance={wakeAimDistance}
+        focused={focused}
+        showPips={false}
+        intensity={0.8}
+        longitudinalOffset={convoyLongitudinalOffset}
+        longitudinalOffsetBound={CONVOY_DRIFT_AMPLITUDE}
+      />
       {slots.map((slot, index) => {
         const asset = FLEET_V2_ASSET_MANIFEST[slot.hull];
         return (

@@ -98,7 +98,7 @@ export interface PublicWorld {
   attackProtectedUntil: Date | null;
   state:
     | { kind: 'NORMAL' }
-    | { kind: 'EMP'; until: Date }
+    | { kind: 'EMP'; until: Date; hits?: number }
     | { kind: 'RECOVERY'; until: Date }
     | { kind: 'PROTECTED'; until: Date };
   neutral?: {
@@ -321,7 +321,7 @@ export async function publicWorlds(
       .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
     const empActive = r.planet.empUntil !== null && r.planet.empUntil > now;
     const state = empActive
-      ? { kind: 'EMP' as const, until: r.planet.empUntil! }
+      ? { kind: 'EMP' as const, until: r.planet.empUntil!, hits: Math.max(1, r.planet.empHits) }
       : r.planet.recoveryUntil && r.planet.recoveryUntil > now
         ? { kind: 'RECOVERY' as const, until: r.planet.recoveryUntil }
       : shieldedUntil

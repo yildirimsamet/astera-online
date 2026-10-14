@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { claimEscape, dragStep, nextDetent, type Detent } from '../../lib/sheet.js';
 import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 import { Icon } from '../icons.js';
+import { AtmosphereImage } from '../../ui/AtmosphereArt.js';
+import type { AtmosphereArt } from '../../ui/atmosphere.js';
 
 /**
  * Peek and half are ceilings: a sheet with little in it is only as tall as its
@@ -55,6 +57,10 @@ const PAGE: readonly Detent[] = ['half', 'full'];
 
 export interface SheetProps {
   title: string;
+  /** A compact action beside the heading, such as the chat's personal mute list. */
+  titleAction?: ReactNode;
+  /** Subject-specific art stays behind the named header; quiet/peek surfaces remain compact. */
+  headerArt?: AtmosphereArt;
   eyebrow?: string;
   /** What stands before the title on its line: the launch's "→ [owner]" (E3). */
   lead?: ReactNode;
@@ -107,9 +113,11 @@ export interface SheetProps {
  */
 export function Sheet({
   title,
+  titleAction,
   eyebrow,
   lead,
   quietTitle = false,
+  headerArt,
   onClose,
   onBack,
   detents = PAGE,
@@ -199,7 +207,8 @@ export function Sheet({
         data-sheet-panel=""
         className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col overflow-hidden rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
       >
-        <div className="shrink-0 touch-none" {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
+        <div className={`shrink-0 touch-none ${headerArt && !quietTitle && detent !== 'peek' ? 'sheet-art-head' : ''}`} {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
+          {headerArt && !quietTitle && detent !== 'peek' && <div data-sheet-art=""><AtmosphereImage art={headerArt} /></div>}
           {placement !== 'card' && <button
             type="button"
             aria-label={t(atTop ? 'handle.collapse' : 'handle.expand')}
@@ -230,7 +239,12 @@ export function Sheet({
             )}
             <div className={quietTitle ? 'contents' : 'min-w-0 flex-1 px-1 pt-1'}>
               {eyebrow && <p className={quietTitle ? 'sr-only' : 'truncate text-micro uppercase tracking-wide text-v2-ink-3'}>{eyebrow}</p>}
-              {lead ? (
+              {titleAction ? (
+                <div className="flex min-w-0 items-center gap-2">
+                  <h2 className="truncate text-figure font-semibold text-v2-ink">{title}</h2>
+                  {titleAction}
+                </div>
+              ) : lead ? (
                 <h2 className="flex min-w-0 items-center gap-1.5 text-figure font-semibold text-v2-ink">
                   {lead}
                   <span className="truncate">{title}</span>

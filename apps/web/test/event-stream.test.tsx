@@ -6,6 +6,7 @@ import type { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import {
   RECONNECT_RESYNC_MAX_MS,
+  RESUME_RESYNC_MS,
   STRATEGIC_SIGHT_CONSISTENCY_MS,
   useEventStream,
 } from '../src/session/useEventStream.js';
@@ -111,6 +112,21 @@ describe('the event stream', () => {
     expect(asked).toContain('notifications');
     expect(asked).toContain('traffic');
     expect(asked.length).toBeGreaterThan(6);
+  });
+
+  /**
+   * A FINISHED BUILD OR RESEARCH IS ABOUT ONE WORLD. Resource analysis 2026-10-13.
+   * They arrived unrouted and re-read all twenty-seven payloads; sensor and public
+   * world changes already have their own events (`private:sensors`, `shard:world`).
+   */
+  it.each([
+    ['build_complete', ['galaxy', 'pending', 'planet', 'planets', 'rewards']],
+    ['research_complete', ['mining', 'pending', 'planet', 'planets', 'rewards']],
+    ['death_star_ready', ['pending', 'planet', 'planets']],
+  ])('refreshes only the world reads when %s', (kind, expected) => {
+    mountCaughtUp();
+    fire(kind);
+    expect([...new Set(asked)].sort()).toEqual(expected);
   });
 
   it('puts a returned probe onto both the Intel screen and the galaxy immediately', () => {
@@ -239,15 +255,44 @@ describe('the event stream', () => {
     expect(asked).toEqual([]);
   });
 
-  it('resyncs immediately when a suspended page is shown again', () => {
+  const restored = (): Event => {
+    const event = new Event('pageshow');
+    Object.defineProperty(event, 'persisted', { value: true });
+    return event;
+  };
+
+  it('resyncs immediately when a suspended page is restored from the back-forward cache', () => {
     mountCaughtUp();
     act(() => {
-      window.dispatchEvent(new Event('pageshow'));
+      window.dispatchEvent(restored());
       vi.advanceTimersByTime(0);
     });
     expect(asked).toContain('traffic');
     expect(asked).toContain('pending');
     expect(asked).toContain('galaxy');
+  });
+
+  it('ignores focus and an ordinary pageshow while the page stays visible', () => {
+    mountCaughtUp();
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event('pageshow'));
+      vi.advanceTimersByTime(0);
+    });
+    expect(asked).toEqual([]);
+  });
+
+  it('does not resync after a hide shorter than the resume threshold', () => {
+    mountCaughtUp();
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    act(() => { document.dispatchEvent(new Event('visibilitychange')); });
+    act(() => { vi.advanceTimersByTime(RESUME_RESYNC_MS - 1_000); });
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      vi.advanceTimersByTime(0);
+    });
+    expect(asked).toEqual([]);
   });
 
   it('coalesces visible lifecycle edges and ignores them while hidden', () => {
@@ -260,13 +305,14 @@ describe('the event stream', () => {
       vi.advanceTimersByTime(0);
     });
     expect(asked).toEqual([]);
+    act(() => { vi.advanceTimersByTime(RESUME_RESYNC_MS); });
 
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'));
       window.dispatchEvent(new Event('focus'));
       window.dispatchEvent(new Event('online'));
-      window.dispatchEvent(new Event('pageshow'));
+      window.dispatchEvent(restored());
       vi.advanceTimersByTime(0);
     });
     expect(asked.filter((key) => key === 'planet')).toHaveLength(1);
@@ -280,7 +326,7 @@ describe('the event stream', () => {
     act(() => {
       window.dispatchEvent(new Event('focus'));
       window.dispatchEvent(new Event('online'));
-      window.dispatchEvent(new Event('pageshow'));
+      window.dispatchEvent(restored());
       vi.advanceTimersByTime(0);
     });
     expect(asked).toEqual([]);

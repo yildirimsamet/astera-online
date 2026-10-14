@@ -20,7 +20,7 @@ it('shows its still artwork immediately without loading a renderer in a WebGL-ca
   expect(renderer.mounted).not.toHaveBeenCalled();
   expect(view.container.querySelectorAll('canvas')).toHaveLength(0);
   const images = view.container.querySelectorAll('img');
-  expect(images).toHaveLength(1);
+  expect(images).toHaveLength(2);
   expect(images[0]).toHaveAttribute('alt', '');
   expect(images[0]).toHaveAttribute('loading', 'eager');
   expect(screen.getAllByRole('button')).toHaveLength(2);
@@ -30,7 +30,7 @@ it('offers the same artwork and working destinations before image decoding finis
   vi.stubGlobal('WebGLRenderingContext', undefined);
   const onShop = vi.fn(), onInventory = vi.fn();
   const view = render(<ShopShowcase onShop={onShop} onInventory={onInventory} />);
-  await waitFor(() => { expect(view.container.querySelectorAll('img')).toHaveLength(1); });
+  await waitFor(() => { expect(view.container.querySelectorAll('img')).toHaveLength(2); });
   const [shop, inventory] = screen.getAllByRole('button');
   shop!.click();
   expect(onShop).toHaveBeenCalledTimes(1);
@@ -54,4 +54,17 @@ it('hides a failed decorative image while keeping the shop entrance usable', () 
   expect(onShop).toHaveBeenCalledTimes(1);
   fireEvent.load(image!);
   expect(image).toBeVisible();
+});
+
+it('keeps inventory usable if its own decorative gallery scene fails', () => {
+  const onInventory = vi.fn();
+  const view = render(<ShopShowcase onShop={vi.fn()} onInventory={onInventory} />);
+  const inventory = screen.getAllByRole('button')[1]!;
+  const art = inventory.querySelector('img[data-atmosphere-image]');
+  expect(art).toHaveAttribute('alt', '');
+  fireEvent.error(art!);
+  expect(inventory.querySelector('img')).toBeNull();
+  fireEvent.click(inventory);
+  expect(onInventory).toHaveBeenCalledOnce();
+  expect(view.container.querySelector('canvas')).toBeNull();
 });

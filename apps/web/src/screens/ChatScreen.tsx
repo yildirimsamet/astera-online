@@ -31,11 +31,12 @@ import {
 import { describeError } from '../i18n/errors.js';
 import { currentLanguage } from '../i18n/index.js';
 import { isLanguage, LANGUAGES, LANGUAGE_LABEL, type Language } from '../i18n/languages.js';
+import { isChatMessageVisible, type ChatMuteAuthor, type MutedChatPlayer } from '../lib/chatMutes.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
 import { commanderLabel } from '../lib/identity.js';
 import { haptic } from '../lib/haptics.js';
 import { useNow } from '../lib/time.js';
-import { ClanIcon, CloseIcon, HeartIcon, PlusIcon, SendIcon } from '../ui/icons/index.js';
+import { ClanIcon, CloseIcon, HeartIcon, MuteIcon, PlusIcon, SendIcon } from '../ui/icons/index.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Segmented } from '../v2/kit/Segmented.js';
 import { EmptyState } from '../v2/kit/Surface.js';
@@ -74,6 +75,7 @@ interface MessageRow {
 export type ChatChannel = 'general' | 'clan' | 'dm';
 
 const CHAT_LANGUAGE_STORAGE_KEY = 'astera.chat.language.v1';
+const NO_PERSONAL_MUTES: readonly MutedChatPlayer[] = [];
 
 function initialChatLanguage(): Language {
   try {
@@ -90,12 +92,16 @@ export function ChatScreen({
   initialChannel = 'general',
   initialClanDraft = '',
   isAdmin = false,
+  mutedPlayers = NO_PERSONAL_MUTES,
+  onMute,
 }: {
   onFocusPlanet: (planetId: string) => void;
   initialChannel?: ChatChannel;
   /** A line handed in to the clan composer (a report told to the clan, M4); the reader sends it. */
   initialClanDraft?: string;
   isAdmin?: boolean;
+  mutedPlayers?: readonly MutedChatPlayer[];
+  onMute?: (author: ChatMuteAuthor) => void;
 }) {
   const { t } = useTranslation();
   const [channel, setChannel] = useState<ChatChannel>(initialChannel);
@@ -209,6 +215,8 @@ export function ChatScreen({
             <ChannelPanel
               key={chatLanguage}
               messages={generalMessages}
+              mutedPlayers={mutedPlayers}
+              onMute={onMute}
               listLabel={t('chat.list')}
               empty={t('chat.empty')}
               loadingOlder={t('chat.loadingOlder')}
@@ -251,6 +259,8 @@ export function ChatScreen({
           <ChannelPanel
             key="clan"
             messages={clanMessages}
+            mutedPlayers={mutedPlayers}
+            onMute={onMute}
             listLabel={t('clan.chat.list')}
             empty={t('clan.chat.empty')}
             loadingOlder={t('clan.chat.loadingOlder')}
@@ -521,6 +531,8 @@ function ChannelPanel({
   tone,
   disabledReason = null,
   canReact = true,
+  mutedPlayers = NO_PERSONAL_MUTES,
+  onMute,
 }: {
   messages: readonly MessageRow[];
   listLabel: string;
@@ -544,9 +556,17 @@ function ChannelPanel({
   tone: 'general' | 'clan' | 'dm';
   disabledReason?: string | null;
   canReact?: boolean;
+  mutedPlayers?: readonly MutedChatPlayer[];
+  onMute?: (author: ChatMuteAuthor) => void;
 }) {
   const { t } = useTranslation();
   const now = useNow(30_000);
+  // Keep the original history for read cursors and pagination; only its visible rows change.
+  const visibleMessages = useMemo(() => {
+    if (tone === 'dm' || mutedPlayers.length === 0) return messages;
+    const mutedIds = new Set(mutedPlayers.map(player => player.playerId));
+    return messages.filter(message => isChatMessageVisible(message, mutedIds));
+  }, [messages, mutedPlayers, tone]);
   const history = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
   const marked = useRef<string | null>(null);
@@ -730,11 +750,20 @@ function ChannelPanel({
             {loadingOlder}
           </div>
         ) : null}
-        {messages.length === 0 ? (
-          <div className="py-6"><EmptyState title={empty} /></div>
+        {visibleMessages.length === 0 ? (
+          <div className="py-6">
+            <EmptyState title={messages.length === 0 ? empty : t('chat.personalMutes.hiddenEmpty')} />
+            {messages.length > 0 && hasNextPage && (
+              <button type="button" disabled={fetchingOlder}
+                className="mx-auto mt-3 flex min-h-9 items-center rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-self disabled:opacity-50"
+                onClick={() => { if (history.current) loadOlder(history.current); }}>
+                {t('chat.older')}
+              </button>
+            )}
+          </div>
         ) : (
           <ol className={`flex flex-col gap-2.5 mt-2.5 pt-2.5 ${actionMessageId ? 'pb-3' : 'pb-3'}`}>
-            {messages.map((message) => (
+            {visibleMessages.map((message) => (
               <li key={message.id} data-chat-row={message.id} className={`relative flex items-start ${message.self ? 'justify-end' : ''} ${actionMessageId === message.id ? 'z-20' : ''}`}>
                 <div className="relative min-w-0 max-w-[84%]">
                   <div
@@ -852,6 +881,16 @@ function ChannelPanel({
                           setPickerMessageId(pickerMessageId === message.id ? null : message.id);
                         }}
                       >☺</button> : null}
+                      {onMute && tone !== 'dm' && !message.self && message.admin !== true ? (
+                        <button type="button" data-chat-mute aria-label={t('chat.personalMutes.mute', { name: message.username })}
+                          className="grid size-7 place-items-center rounded-full text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
+                          onClick={() => {
+                            onMute(message);
+                            setActionMessageId(null); setPickerMessageId(null);
+                            if (replyTarget?.authorPlayerId === message.authorPlayerId) onReplyTarget(null);
+                          }}
+                        ><MuteIcon className="size-4" /></button>
+                      ) : null}
                       <button type="button" aria-label={t('chat.reply')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self !py-0"
                         onClick={() => { onReplyTarget(message); setActionMessageId(null); setPickerMessageId(null); composer.current?.focus(); }}
                       >↩</button>

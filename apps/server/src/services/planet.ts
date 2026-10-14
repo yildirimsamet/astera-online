@@ -424,11 +424,17 @@ export async function lockSeason(
   seasonId: string,
   requireLive = true,
 ): Promise<typeof seasons.$inferSelect> {
-  const [season] = await tx
-    .select()
-    .from(seasons)
-    .where(eq(seasons.id, seasonId))
-    .for('share');
+  return seasonRow(tx, seasonId, requireLive, true);
+}
+
+async function seasonRow(
+  tx: Tx,
+  seasonId: string,
+  requireLive: boolean,
+  lock: boolean,
+): Promise<typeof seasons.$inferSelect> {
+  const query = tx.select().from(seasons).where(eq(seasons.id, seasonId));
+  const [season] = lock ? await query.for('share') : await query;
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
   if (requireLive && season.status !== 'live') {
     throw new GameError('SEASON_FROZEN', 'That season is over', 409);
@@ -463,19 +469,41 @@ export async function loadLocked(
   return (await loadPlanetState(tx, planetId, clock, { ...options, mutate: true })).planet;
 }
 
+/**
+ * For a GET inside a read-only transaction: the same projection with no season or
+ * world lock and nothing persisted. PostgreSQL refuses row locks in a read-only
+ * transaction, which is why this cannot simply be `readPlanetState`.
+ */
+export async function readPlanetSnapshot(tx: Tx, planetId: string, clock: Clock): Promise<LockedPlanet> {
+  return (await loadPlanetState(tx, planetId, clock, { requireLive: false, mutate: false, lockSeason: false })).planet;
+}
+
 /** Quotes use the same economy/loyalty projection without persisting a tick or acquiring the world row. */
 export async function readPlanetState(tx: Tx, planetId: string, clock: Clock,
   options: { requireLive?: boolean; expectedPlayerId?: string } = {}): Promise<LockedPlanet> {
   return (await loadPlanetState(tx, planetId, clock, { ...options, mutate: false })).planet;
 }
 
-/** Private views need the whole inventory; command paths keep their home-only read. */
-export async function loadPlanetViewState(tx: Tx, planetId: string, clock: Clock) {
-  return loadPlanetState(tx, planetId, clock, { requireLive: false, mutate: true, allUnits: true });
+/**
+ * Private views need the whole inventory; command paths keep their home-only read.
+ *
+ * `readOnly` is for the owned-world GETs: the economy is a pure function of the row
+ * and the clock, and every mutation ticks under its own lock first, so a view takes
+ * no season or world lock and persists nothing. Mutation responses keep the locked
+ * path because they render inside the transaction that already holds the world.
+ */
+export async function loadPlanetViewState(tx: Tx, planetId: string, clock: Clock,
+  options: { readOnly?: boolean } = {}) {
+  const readOnly = options.readOnly === true;
+  return loadPlanetState(tx, planetId, clock, {
+    requireLive: false, mutate: !readOnly, lockSeason: !readOnly, allUnits: true,
+  });
 }
 
 async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
-  options: { requireLive?: boolean; expectedPlayerId?: string; mutate: boolean; allUnits?: boolean }) {
+  options: {
+    requireLive?: boolean; expectedPlayerId?: string; mutate: boolean; allUnits?: boolean; lockSeason?: boolean;
+  }) {
   // Resolve the parent first without locking the child, then take locks in the
   // global season → planet order. The pre-read locates a lock, not authority.
   const [identity] = await tx
@@ -484,7 +512,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     .where(eq(planets.id, planetId));
   if (!identity) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);
 
-  const season = await lockSeason(tx, identity.seasonId, options.requireLive ?? true);
+  const season = await seasonRow(tx, identity.seasonId, options.requireLive ?? true, options.lockSeason ?? true);
   const query = tx.select().from(planets).where(eq(planets.id, planetId));
   const [row] = options.mutate ? await query.for('update') : await query;
   if (!row) throw new GameError('PLANET_NOT_FOUND', 'No such planet', 404);

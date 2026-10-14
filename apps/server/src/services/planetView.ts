@@ -124,8 +124,9 @@ async function loadCommanderViewData(tx: Tx, p: LockedPlanet) {
 export async function loadPlanetViewData(
   tx: Tx, planetId: string, clock: Clock,
   shared?: Awaited<ReturnType<typeof loadCommanderViewData>>,
+  options: { readOnly?: boolean } = {},
 ) {
-  const { planet: p, unitRows, faultRows } = await loadPlanetViewState(tx, planetId, clock);
+  const { planet: p, unitRows, faultRows } = await loadPlanetViewState(tx, planetId, clock, options);
   if (shared && (shared.playerId !== p.playerId || shared.seasonId !== p.seasonId)) {
     throw new GameError('PLACEMENT_CHANGED', 'World ownership changed; refresh and try again', 409);
   }

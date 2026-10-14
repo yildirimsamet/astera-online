@@ -2,6 +2,8 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { createInstanceVisibility, updateVisibleMembers } from './instanceVisibility.js';
+import { useVisualFrame } from './visualFrame.js';
 import { SATELLITE_IDS, type SatelliteId } from '@astera/rules';
 import { SATELLITE_MODEL, SATELLITE_NEON } from '../ui/assets.js';
 import { configureOpaqueTransparentBody, unitModel } from './model.js';
@@ -618,7 +620,8 @@ export const SHIELD_SEGMENTS = [24, 16] as const;
  * ORDER-FREE, which is what makes one draw safe for transparent shells: they are
  * additive with no depth write, and addition does not care which dome went first.
  * Not frustum-culled as a whole — its instances span the disc, and a bounding
- * sphere for all of them would never be off screen anyway.
+ * sphere for all of them would never be off screen anyway. Individual domes are
+ * compacted against the current view, including their maximum animated radius.
  */
 export function Shields({
   nodes,
@@ -673,23 +676,37 @@ export function Shields({
   );
   useEffect(() => () => { material.dispose(); }, [material]);
 
+  const visible = useMemo(() => createInstanceVisibility<ShieldInstance>(), []);
+  const place = useMemo(() => new THREE.Object3D(), []);
   useLayoutEffect(() => {
+    if (mesh.current) mesh.current.count = 0;
+    visible.view.primed = false;
+    visible.members.length = 0;
+  }, [domes, geometry, visible]);
+
+  useVisualFrame(({ camera, clock }) => {
+    const time = material.uniforms.uTime;
+    if (time) time.value = clock.elapsedTime;
     const node = mesh.current;
-    if (!node) return;
-    const place = new THREE.Object3D();
-    domes.forEach((dome, i) => {
-      place.position.set(dome.position[0], dome.position[1], dome.position[2]);
+    // Maximum shader breath, so the animated limb cannot pop at a screen edge.
+    if (!node || !updateVisibleMembers(visible, camera, node, domes, 1.012)) return;
+    const colour = geometry.getAttribute('aColour');
+    const opacity = geometry.getAttribute('aOpacity');
+    const breath = geometry.getAttribute('aBreath');
+    const phase = geometry.getAttribute('aPhase');
+    visible.members.forEach((dome, i) => {
+      place.position.set(...dome.position);
       place.scale.setScalar(dome.radius);
       place.updateMatrix();
       node.setMatrixAt(i, place.matrix);
+      colour.setXYZ(i, ...dome.colour);
+      opacity.setX(i, dome.opacity);
+      breath.setX(i, dome.breathes ? 1 : 0);
+      phase.setX(i, dome.phase);
     });
-    node.count = domes.length;
+    node.count = visible.members.length;
     node.instanceMatrix.needsUpdate = true;
-  }, [domes, geometry]);
-
-  useFrame(({ clock }) => {
-    const time = material.uniforms.uTime;
-    if (time) time.value = clock.elapsedTime;
+    colour.needsUpdate = opacity.needsUpdate = breath.needsUpdate = phase.needsUpdate = true;
   });
 
   if (domes.length === 0) return null;

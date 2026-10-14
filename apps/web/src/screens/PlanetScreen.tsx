@@ -84,7 +84,6 @@ import { useProjected, type Projected } from '../lib/projection.js';
 import {
   HULL_ART,
   SATELLITE_ART,
-  STRATEGIC_ART,
   buildingArt,
   groundArt,
   instrumentArt,
@@ -117,8 +116,10 @@ import { useOrderDuration } from '../ui/Action.js';
 import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { DefenceReadings, PlanetHero } from '../ui/PlanetHero.js';
 import { EscapeReadout } from '../ui/EscapeReadout.js';
+import { ATMOSPHERE } from '../ui/atmosphere.js';
+import { AtmosphereImage, CardArtwork } from '../ui/AtmosphereArt.js';
 import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
-import { ClassChip, CounterCycle } from '../ui/CounterMark.js';
+import { CounterCycle } from '../ui/CounterMark.js';
 import { orderMinutes } from '../lib/orderTime.js';
 import { useAccordion } from '../lib/accordion.js';
 import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
@@ -524,6 +525,7 @@ export function PlanetScreen({
         <div className="flex flex-col gap-4 px-2">
           <div
             id={`planet-panel-${active}`}
+            data-base-surface={active}
             role="tabpanel"
             aria-labelledby={`planet-tab-${active}`}
             className={recovering ? 'pointer-events-none opacity-50' : ''}
@@ -829,15 +831,11 @@ function DeathStarForge({
       data-strategic-state={primary?.status ?? 'LOCKED'}
       data-strategic-count={weapons.length}
       data-strategic-capacity={stockpile}
-      className={`flex flex-col gap-2.5 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
+      className={`scene-panel tactical-scene flex flex-col gap-2.5 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
     >
+      <AtmosphereImage art={ATMOSPHERE.strategic} />
       <div className="flex items-start gap-3">
-        <img
-          src={STRATEGIC_ART.deathStar}
-          alt=""
-          aria-hidden
-          className={`size-[70px] shrink-0 object-contain ${live ? '' : 'opacity-60 grayscale'}`}
-        />
+
         <div className="min-w-0 flex-1">
           <p className="flex items-center justify-between gap-2">
             <span className={TACTICAL_HEADING}>{t('planet.deathStar.eyebrow')}</span>
@@ -1777,16 +1775,11 @@ function InterceptorBattery({
   return (
     <section
       data-interceptor-state={state}
-      className={`flex flex-col gap-2.5 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
+      className={`scene-panel tactical-scene flex flex-col gap-2.5 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
     >
+      <AtmosphereImage art={ATMOSPHERE.interceptor} />
       <div className="flex items-start gap-3">
-        <img
-          data-interceptor-art
-          src={STRATEGIC_ART.interceptor}
-          alt=""
-          aria-hidden
-          className={`size-[70px] shrink-0 object-contain ${charges.length > 0 ? '' : 'opacity-60 grayscale'}`}
-        />
+
         <div className="min-w-0 flex-1">
           <p className="flex items-center justify-between gap-2">
             <span className={TACTICAL_HEADING}>{t('planet.interceptor.eyebrow')}</span>
@@ -2090,7 +2083,8 @@ function Reach({
             A Prospector has a class too and it means the same thing on a run, so
             no hull is excluded.
           */
-          nameBadge={<ClassChip cls={hullSpec.cls} />}
+          summary="hull"
+          nameBadge={<span data-class={hullSpec.cls} aria-hidden="true" title={combatClassLabel(hullSpec.cls)}><ClassEmblem cls={hullSpec.cls} decorative /></span>}
           /*
             ONLY THE HALF THE ROW DOES NOT ALREADY SAY.
 
@@ -2333,13 +2327,13 @@ function Reach({
               open={open}
               onToggle={() => { if (!lesson) families.toggle(family); }}
             />
-            {open ? <div className="grid grid-cols-2 gap-2">{HULLS_BY_FAMILY[family].map(hull)}</div> : null}
+            {open ? <div className="grid grid-cols-2 gap-3">{HULLS_BY_FAMILY[family].map(hull)}</div> : null}
           </section>
         );
       })}
 
       <Band label={t('planet.reach.miningBand')} note={t('planet.reach.miningNote')} />
-      <div className="grid grid-cols-2 gap-2">{hull('PROSPECTOR')}</div>
+      <div className="grid grid-cols-2 gap-3">{hull('PROSPECTOR')}</div>
 
       {/*
         THE TWO ORBITAL SATELLITES, LAST, BESIDE THE CRAFT THEY SERVE. D170.
@@ -2930,7 +2924,7 @@ function BuildSheet({
                 : t('planet.reach.hullLocationCounts', { home, away })}
             </span>
           </div>
-          {art && <img src={art} alt={hullLabel(hull)} className="mx-auto mt-1 h-24 w-40 object-contain" />}
+          {art && <div data-build-scene role="img" aria-label={hullLabel(hull)} className="relative mt-2 grid aspect-[3/2] place-items-center overflow-hidden rounded-control"><CardArtwork src={art} locked={false} unowned={false} /></div>}
           <p className="text-center text-caption text-v2-ink-2">{hullTag(hull)}</p>
           <HullStats hull={hull} />
         </section>

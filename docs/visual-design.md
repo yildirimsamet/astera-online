@@ -43,7 +43,10 @@ that mark; neutral T1/T2/T3 worlds communicate increasing threat through scale, 
 activity and light density without exposing exact stock or garrison. Recovery uses a fractured,
 cooling shell and an exact countdown; occupation protection uses a clean protective dome.
 Death Star traffic always uses its dedicated model and impact language, never the ordinary
-raid missile volley. Every viewer plays impact and control transfer at the server timestamp.
+raid missile volley. Its one-hour EMP aftermath uses red glowing surface fissures shaded into
+the 3D body's local surface coordinates, so the damage rotates and occludes with the planet. Successive successful
+hits add fissures up to five visual levels; no electrical cage or orbiting coloured rings.
+Every viewer plays impact and control transfer at the server timestamp.
 Craft, probe, Prospector drill and orbital satellite readability comes from a thin additive
 back-face rim following the model's actual silhouette; camera-facing circular neon markers are
 not used. Drive colour belongs to hull identity: ordinary combat hulls are cold, Runner is

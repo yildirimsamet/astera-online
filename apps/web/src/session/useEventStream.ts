@@ -8,6 +8,7 @@ import {
   isPrivateEvent,
   isShardEvent,
   readsForGlobalEvent,
+  readsForPlayerEvent,
   readsForPrivateEvent,
   readsForShardEvent,
   shardCoalescer,
@@ -31,6 +32,9 @@ export const RECONNECT_RESYNC_MAX_MS = 5000;
  * has not invalidated its projection cache yet.
  */
 export const STRATEGIC_SIGHT_CONSISTENCY_MS = 500;
+
+/** A hide shorter than this cannot have outlived what the stream and the polls cover. */
+export const RESUME_RESYNC_MS = 15_000;
 
 /**
  * Every read a player event can move — and the same set a RECONNECTION moves.
@@ -59,6 +63,8 @@ const LIVE_READS = [
   keys.traffic,
   keys.miningField,
   keys.miningStatus,
+  // The lane moves while a tab is away; it no longer refetches on focus by itself.
+  keys.pirates,
   keys.rewards,
   keys.chatMessages,
   keys.chatUnread,
@@ -150,8 +156,15 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
     // Browsers throttle timers and can suspend the event stream while a tab is in
     // the background. Returning to the game is therefore an explicit resync edge,
     // not something left to query staleness or the sixty-second safety net.
+    //
+    // ONLY WHEN SOMETHING COULD HAVE BEEN MISSED (resource analysis 2026-10-13). A
+    // visible page has a live stream, so `focus` proves nothing; a hide shorter than
+    // `RESUME_RESYNC_MS` is covered by the stream and the polls. A long hide, a
+    // back-forward restore (`pageshow` with `persisted`) and a network return are the
+    // edges that can hide a lost event. Each used to resync the whole client.
     let lifecycleResyncTimer: ReturnType<typeof setTimeout> | null = null;
     let lastLifecycleResync = 0;
+    let hiddenAt: number | null = document.visibilityState === 'hidden' ? Date.now() : null;
     const scheduleLifecycleResync = (): void => {
       if (document.visibilityState === 'hidden' || lifecycleResyncTimer !== null) return;
       lifecycleResyncTimer = setTimeout(() => {
@@ -164,11 +177,19 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       }, 0);
     };
     const onVisibility = (): void => {
-      if (document.visibilityState === 'visible') scheduleLifecycleResync();
+      if (document.visibilityState === 'hidden') {
+        hiddenAt ??= Date.now();
+        return;
+      }
+      const away = hiddenAt === null ? 0 : Date.now() - hiddenAt;
+      hiddenAt = null;
+      if (away >= RESUME_RESYNC_MS) scheduleLifecycleResync();
+    };
+    const onPageShow = (event: Event): void => {
+      if ('persisted' in event && event.persisted === true) scheduleLifecycleResync();
     };
     document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('focus', scheduleLifecycleResync);
-    window.addEventListener('pageshow', scheduleLifecycleResync);
+    window.addEventListener('pageshow', onPageShow);
     window.addEventListener('online', scheduleLifecycleResync);
 
     // A changed world's cross-replica consistency is the heavy lane's own delay now
@@ -252,6 +273,12 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
         }
       }
 
+      const worldReads = readsForPlayerEvent(kind);
+      if (worldReads) {
+        for (const key of worldReads) void refreshQueries(client, { queryKey: key });
+        return;
+      }
+
       /**
        * EVERY read that a resolved event can change — and `traffic` and `mining`
        * were missing from it.
@@ -323,8 +350,7 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       if (lifecycleResyncTimer !== null) clearTimeout(lifecycleResyncTimer);
       if (trafficConsistencyTimer !== null) clearTimeout(trafficConsistencyTimer);
       document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('focus', scheduleLifecycleResync);
-      window.removeEventListener('pageshow', scheduleLifecycleResync);
+      window.removeEventListener('pageshow', onPageShow);
       window.removeEventListener('online', scheduleLifecycleResync);
       shard.cancel();
     };

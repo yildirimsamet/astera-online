@@ -1,6 +1,6 @@
 {
-  "id": "25d7a750-10a6-4191-9f55-20cfc0d01b62",
-  "prevId": "e40f4161-3379-4a5b-87fc-cfe6e8ae516d",
+  "id": "e40f4161-3379-4a5b-87fc-cfe6e8ae516d",
+  "prevId": "bb79b31f-eb58-4696-b284-48393d50cb92",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -4796,12 +4796,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "monument_fuel_budget": {
-          "name": "monument_fuel_budget",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "status": {
           "name": "status",
           "type": "text",
@@ -9197,6 +9191,33 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "missions_owner_kind_depart_idx": {
+          "name": "missions_owner_kind_depart_idx",
+          "columns": [
+            {
+              "expression": "owner_player_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "depart_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -9934,20 +9955,6 @@
           "type": "double precision",
           "primaryKey": false,
           "notNull": true
-        },
-        "return_fuel_reserve": {
-          "name": "return_fuel_reserve",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "fuel_refund": {
-          "name": "fuel_refund",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
         }
       },
       "indexes": {
@@ -9989,10 +9996,6 @@
         "monument_ship_lots_count_check": {
           "name": "monument_ship_lots_count_check",
           "value": "\"monument_ship_lots\".\"count\" > 0"
-        },
-        "monument_ship_lots_fuel_check": {
-          "name": "monument_ship_lots_fuel_check",
-          "value": "\"monument_ship_lots\".\"return_fuel_reserve\" >= 0 AND \"monument_ship_lots\".\"return_fuel_reserve\" < 'Infinity'::float8\n    AND \"monument_ship_lots\".\"fuel_refund\" >= 0 AND \"monument_ship_lots\".\"fuel_refund\" < 'Infinity'::float8"
         },
         "monument_ship_lots_damage_check": {
           "name": "monument_ship_lots_damage_check",
@@ -11955,6 +11958,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'ESCAPE'"
+        },
+        "emp_hits": {
+          "name": "emp_hits",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         }
       },
       "indexes": {
@@ -15001,12 +15011,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "monument_motion_starts_at": {
-          "name": "monument_motion_starts_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "ruleset_version": {
           "name": "ruleset_version",
           "type": "integer",
@@ -16483,7 +16487,23 @@
           "default": 0
         }
       },
-      "indexes": {},
+      "indexes": {
+        "units_location_idx": {
+          "name": "units_location_idx",
+          "columns": [
+            {
+              "expression": "location",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "units_planet_id_planets_id_fk": {
           "name": "units_planet_id_planets_id_fk",

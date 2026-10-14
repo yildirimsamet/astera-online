@@ -1,0 +1,25 @@
+{
+  "mode": "Built-in image_gen edit",
+  "jobs": [
+    {
+      "id": "research-isotope-spectrometry-scene-v2",
+      "reference": "/home/yildirim/Desktop/Coding/MyProjects/blindspace-ui-atmosphere/assets/source/atmosphere/research-isotope-spectrometry-scene-v1.png",
+      "prompt": "Edit the supplied Astera Online research card scene. Preserve its exact landscape 3:2 framing, camera, architecture, machinery geometry, realism, texture quality, dark left-hand negative space, contrast, amber practical work lights, planet/starfield and all composition. Change ONLY the research machine's active fuel/energy/laser/containment glows and their matching reflections from violet/cyan/blue to the game's unmistakable bright deuterium lime-green (#8eea36, with green-white hot highlights). Every central reactor chamber, fuel tube, scanning beam and research energy effect must read as GREEN deuterium technology. Green rather than turquoise, no purple energy, no blue energy in the apparatus. Naturally blue distant planetary sky may stay blue. Local realistic green light spill only, not an overall green tint. No text, added objects, redesign, watermark or border. Retain the exact refined premium environmental scene."
+    },
+    {
+      "id": "research-dense-fuel-cells-scene-v2",
+      "reference": "/home/yildirim/Desktop/Coding/MyProjects/blindspace-ui-atmosphere/assets/source/atmosphere/research-dense-fuel-cells-scene-v1.png",
+      "prompt": "Edit the supplied Astera Online research card scene. Preserve its exact landscape 3:2 framing, camera, architecture, machinery geometry, realism, texture quality, dark left-hand negative space, contrast, amber practical work lights, planet/starfield and all composition. Change ONLY the research machine's active fuel/energy/laser/containment glows and their matching reflections from violet/cyan/blue to the game's unmistakable bright deuterium lime-green (#8eea36, with green-white hot highlights). Every central reactor chamber, fuel tube, scanning beam and research energy effect must read as GREEN deuterium technology. Green rather than turquoise, no purple energy, no blue energy in the apparatus. Naturally blue distant planetary sky may stay blue. Local realistic green light spill only, not an overall green tint. No text, added objects, redesign, watermark or border. Retain the exact refined premium environmental scene."
+    },
+    {
+      "id": "research-gravitic-charges-scene-v2",
+      "reference": "/home/yildirim/Desktop/Coding/MyProjects/blindspace-ui-atmosphere/assets/source/atmosphere/research-gravitic-charges-scene-v1.png",
+      "prompt": "Edit the supplied Astera Online research card scene. Preserve its exact landscape 3:2 framing, camera, architecture, machinery geometry, realism, texture quality, dark left-hand negative space, contrast, amber practical work lights, planet/starfield and all composition. Change ONLY the research machine's active fuel/energy/laser/containment glows and their matching reflections from violet/cyan/blue to the game's unmistakable bright deuterium lime-green (#8eea36, with green-white hot highlights). Every central reactor chamber, fuel tube, scanning beam and research energy effect must read as GREEN deuterium technology. Green rather than turquoise, no purple energy, no blue energy in the apparatus. Naturally blue distant planetary sky may stay blue. Local realistic green light spill only, not an overall green tint. No text, added objects, redesign, watermark or border. Retain the exact refined premium environmental scene."
+    },
+    {
+      "id": "research-deuterium-synthesis-scene-v2",
+      "reference": "/home/yildirim/Desktop/Coding/MyProjects/blindspace-ui-atmosphere/assets/source/atmosphere/research-deuterium-synthesis-scene-v1.png",
+      "prompt": "Edit the supplied Astera Online research card scene. Preserve its exact landscape 3:2 framing, camera, architecture, machinery geometry, realism, texture quality, dark left-hand negative space, contrast, amber practical work lights, planet/starfield and all composition. Change ONLY the research machine's active fuel/energy/laser/containment glows and their matching reflections from violet/cyan/blue to the game's unmistakable bright deuterium lime-green (#8eea36, with green-white hot highlights). Every central reactor chamber, fuel tube, scanning beam and research energy effect must read as GREEN deuterium technology. Green rather than turquoise, no purple energy, no blue energy in the apparatus. Naturally blue distant planetary sky may stay blue. Local realistic green light spill only, not an overall green tint. No text, added objects, redesign, watermark or border. Retain the exact refined premium environmental scene."
+    }
+  ]
+}

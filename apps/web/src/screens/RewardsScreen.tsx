@@ -78,7 +78,7 @@ export function RewardsScreen({ commander }: { commander: string }) {
   };
 
   return <div data-v2-rewards className="flex flex-col gap-3 pb-5 pt-2 font-v2-ui text-v2-ink">
-    <div className="grid grid-cols-2 divide-x divide-v2-line rounded-control border border-v2-line bg-v2-deep">
+    <div className="reward-summary grid grid-cols-2 divide-x divide-v2-line rounded-control border border-v2-line bg-v2-deep">
       <div className="p-3">
         <p className="text-micro text-v2-ink-3">{t('rewards.summaryReady')}</p>
         <p className={`mt-1 text-readout font-semibold leading-none tabular-nums ${ready.length > 0 ? 'text-v2-self' : 'text-v2-ink-2'}`}>{full(ready.length)}</p>

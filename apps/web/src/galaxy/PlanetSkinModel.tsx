@@ -1,6 +1,7 @@
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { Suspense, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
+import { useGltfPair } from './useGltfPair.js';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { PlanetSkinStatus } from '@astera/rules';
@@ -8,13 +9,18 @@ import { planetModel } from '../ui/assets.js';
 import { planetSkinVisual } from '../ui/planetSkins.js';
 import { createCountryRecoveryMaterial, createPlanetSkinMaterial } from './planetSkinMaterial.js';
 import { planetSurface, solidPlanetMaterial } from './planetSurface.js';
+import { addPlanetImpact, planetImpactGroups } from './planetImpactMaterial.js';
 import type { PlanetLod } from './planetLod.js';
 import { placeBodies, placePickSpheres, seat, settleMembers } from './planetPick.js';
 import { bodyLight } from './PlanetField.jsx';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial } from './hitboxDebug.jsx';
+import { createInstanceVisibility, updateVisibleMembers } from './instanceVisibility.js';
+import { useVisualFrame } from './visualFrame.js';
 import { sphereInFrustum } from './frustum.js';
+import { OpeningWork } from './OpeningViews.js';
+import type { PreparationResult } from './openingPreparation.js';
 import { queuePlanetTextures } from './planetTextureQueue.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 import { PlanetSkinAttachments } from './PlanetSkinAttachments.jsx';
@@ -25,7 +31,7 @@ import {
   planetSkinRotation,
 } from './planetSkinAttachments.js';
 
-type SkinNode = Pick<PlanetNode, 'id' | 'position' | 'radius' | 'stance' | 'intel'>;
+type SkinNode = Pick<PlanetNode, 'id' | 'position' | 'radius' | 'stance' | 'intel'> & { state?: PlanetNode['state'] };
 
 export type PlanetSkinLod = 'full' | 'low' | 'billboard';
 export type PlanetSkinBillboardMode = 'all' | 'near' | 'far';
@@ -124,6 +130,13 @@ interface Dressed {
 }
 type Dress = (source: THREE.Material) => Dressed;
 
+function impactDress(dressed: Dressed, level: number): Dressed {
+  if (level === 0) return dressed;
+  const time = dressed.uniforms?.time ?? { value: 0 };
+  addPlanetImpact(dressed.material, level, time);
+  return { material: dressed.material, uniforms: { time } };
+}
+
 /** A default world at full detail: matte, every detail map, a night floor (`planetSurface`). */
 const dressFull: Dress = (source) => ({ material: planetSurface(source, true), uniforms: null });
 
@@ -131,44 +144,85 @@ const dressFull: Dress = (source) => ({ material: planetSurface(source, true), u
 const dressLite: Dress = (source) => ({ material: planetSurface(source, false), uniforms: null });
 
 /** Prepare the opening world's two dresses, or one look's next tier before it is drawn. */
-export function PlanetWarmup({ id, lod }: { id: string; lod?: 'lite' | 'full' }) {
+export function PlanetWarmup({ id, lod }: { id: string; lod?: PlanetLod }) {
   if (lod) return <WarmPlanetModel id={id} lod={lod} />;
   return <><WarmPlanetModel id={id} lod="lite" /><WarmPlanetModel id={id} lod="full" /></>;
 }
 
-function WarmPlanetModel({ id, lod }: { id: string; lod: 'lite' | 'full' }) {
+function WarmPlanetModel({ id, lod }: { id: string; lod: PlanetLod }) {
   const url = planetModel(id, lod);
   const model = useGLTF(url, false);
   const gl = useThree((state) => state.gl);
   const camera = useThree((state) => state.camera);
   const scene = useThree((state) => state.scene);
 
+  const work = useContext(OpeningWork);
+  const openingTask = useRef<(result?: PreparationResult) => void>(() => undefined);
+  // Register at commit, before another frame can certify an empty barrier.
+  useLayoutEffect(() => {
+    const finish = work?.begin() ?? (() => undefined);
+    openingTask.current = finish;
+    return () => { finish('cancelled'); };
+  }, [gl, camera, scene, model.scene, url, lod, work]);
+
   useEffect(() => {
-    const mesh = firstMesh(model.scene);
-    const source = mesh && (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material);
-    if (!mesh || !source) return;
-    const { material } = cachedDress(url, lod, source, lod === 'full' ? dressFull : dressLite);
-    const probes = new THREE.Group();
-    const maps: THREE.Texture[] = [];
-    // Instanced and coloured as the worlds are, so the prepared program matches their draw.
-    const probe = new THREE.InstancedMesh(cachedGeometry(url, mesh), material, 1);
-    probe.setColorAt(0, new THREE.Color(1, 1, 1));
-    probes.add(probe);
-    if (material instanceof THREE.MeshStandardMaterial) {
-      for (const map of [material.map, material.normalMap, material.roughnessMap]) if (map) maps.push(map);
-    }
     let live = true;
-    let cancel: () => void = () => undefined;
-    // Programs retain the cached live material. Only this temporary mesh belongs to preparation.
-    let preparation: Promise<THREE.Object3D>;
-    try { preparation = gl.compileAsync(probes, camera, scene); }
-    catch { probe.dispose(); return; }
-    void preparation.then(
-      () => { probe.dispose(); if (live) cancel = queuePlanetTextures(gl, maps); },
-      () => { probe.dispose(); },
-    );
-    return () => { live = false; cancel(); };
-  }, [gl, camera, scene, model.scene, url, lod]);
+    let generation = 0;
+    let finish = openingTask.current;
+    let cancelTextures: () => void = () => undefined;
+    const prepare = () => {
+      const current = ++generation;
+      const done = finish;
+      const mesh = firstMesh(model.scene);
+      const source = mesh && (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material);
+      if (!mesh || !source) { done('failed'); return; }
+      const { material } = cachedDress(url, lod === 'full' ? 'full' : 'lite', source, lod === 'full' ? dressFull : dressLite);
+      const probes = new THREE.Group();
+      const maps: THREE.Texture[] = [];
+      const probe = new THREE.InstancedMesh(cachedGeometry(url, mesh), material, 1);
+      probe.setColorAt(0, new THREE.Color(1, 1, 1));
+      probes.add(probe);
+      if (material instanceof THREE.MeshStandardMaterial) {
+        for (const map of [material.map, material.normalMap, material.roughnessMap]) if (map) maps.push(map);
+      }
+      let preparation: Promise<THREE.Object3D>;
+      try { preparation = gl.compileAsync(probes, camera, scene); }
+      catch { probe.dispose(); done('failed'); return; }
+      void preparation.then(
+        () => {
+          probe.dispose();
+          if (!live || current !== generation) return;
+          if (gl.getContext().isContextLost()) { done('context-lost'); return; }
+          const textures = queuePlanetTextures(gl, maps, () => work?.covered ?? false);
+          cancelTextures = textures.cancel;
+          void textures.ready.then(done);
+        },
+        () => { probe.dispose(); if (live && current === generation) done('failed'); },
+      );
+    };
+    const lost = () => {
+      generation += 1;
+      cancelTextures();
+      finish('context-lost');
+    };
+    const restored = () => {
+      if (!live) return;
+      cancelTextures();
+      finish = work?.begin() ?? (() => undefined);
+      prepare();
+    };
+    gl.domElement.addEventListener('webglcontextlost', lost);
+    gl.domElement.addEventListener('webglcontextrestored', restored);
+    prepare();
+    return () => {
+      live = false;
+      generation += 1;
+      cancelTextures();
+      finish('cancelled');
+      gl.domElement.removeEventListener('webglcontextlost', lost);
+      gl.domElement.removeEventListener('webglcontextrestored', restored);
+    };
+  }, [gl, camera, scene, model.scene, url, lod, work]);
 
   return null;
 }
@@ -195,22 +249,26 @@ export function PlanetSkinModel({
   onRendered?: () => void;
 }) {
   const visual = useMemo(() => planetSkinVisual(skinId, status), [skinId, status]);
+  const groups = useMemo(() => planetImpactGroups(nodes), [nodes]);
   if (!visual) return null;
   return (
-    <LoadedPlanetSkinModel
+    <>{groups.map(group => <LoadedPlanetSkinModel
+      key={group.level}
+      impactLevel={group.level}
       visual={visual}
       status={status}
-      nodes={nodes}
+      nodes={group.nodes}
       onSelect={onSelect}
       galaxyLod={galaxyLod}
       previewPhaseOffset={previewPhaseOffset}
       freezeRotation={freezeRotation}
       onRendered={onRendered}
-    />
+    />)}</>
   );
 }
 
 function LoadedPlanetSkinModel({
+  impactLevel,
   visual,
   status,
   nodes,
@@ -220,6 +278,7 @@ function LoadedPlanetSkinModel({
   freezeRotation,
   onRendered,
 }: {
+  impactLevel: number;
   visual: NonNullable<ReturnType<typeof planetSkinVisual>>;
   status: PlanetSkinStatus;
   nodes: readonly SkinNode[];
@@ -229,12 +288,9 @@ function LoadedPlanetSkinModel({
   freezeRotation: boolean;
   onRendered?: () => void;
 }) {
-  const loaded = useGLTF(
-    [visual.modelUrl, visual.lowModelUrl],
-    false,
-  );
-  const scene = loaded[0]!.scene;
-  const lowScene = loaded[1]!.scene;
+  const [full, low] = useGltfPair(visual.modelUrl, visual.lowModelUrl);
+  const scene = full.scene;
+  const lowScene = low.scene;
   const model = useMemo(() => firstMesh(scene), [scene]);
   const lowModel = useMemo(() => firstMesh(lowScene), [lowScene]);
   const geometry = useMemo(() => model ? unitPlanetGeometry(model) : null, [model]);
@@ -246,16 +302,16 @@ function LoadedPlanetSkinModel({
     if (!model) return null;
     const source = Array.isArray(model.material) ? model.material[0] : model.material;
     if (!source) return null;
-    if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
-    return { material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null };
-  }, [model, visual]);
+    if (visual.finish.kind === 'PALETTE') return impactDress(createPlanetSkinMaterial(source, visual.finish), impactLevel);
+    return impactDress({ material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null }, impactLevel);
+  }, [model, visual, impactLevel]);
   const lowDressed = useMemo(() => {
     if (!lowModel) return null;
     const source = Array.isArray(lowModel.material) ? lowModel.material[0] : lowModel.material;
     if (!source) return null;
-    if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
-    return { material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null };
-  }, [lowModel, visual]);
+    if (visual.finish.kind === 'PALETTE') return impactDress(createPlanetSkinMaterial(source, visual.finish), impactLevel);
+    return impactDress({ material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null }, impactLevel);
+  }, [lowModel, visual, impactLevel]);
   const fullBody = useRef<THREE.InstancedMesh>(null);
   const lowBody = useRef<THREE.InstancedMesh>(null);
   const hits = useRef<THREE.InstancedMesh>(null);
@@ -411,22 +467,26 @@ export function DefaultPlanetModel({
   capacity: number;
   onSelect?: (id: string) => void;
 }) {
+  const groups = useMemo(() => planetImpactGroups(nodes), [nodes]);
   return (
-    <ModelInstances
+    <>{groups.map(group => <ModelInstances
+      key={group.level}
+      impactLevel={group.level}
       name={`planet-models-${lod}`}
       modelUrl={url}
       // Only a world the camera is close to binds its detail maps; a speck and a planet do not.
       dress={lod === 'full' ? dressFull : dressLite}
       dressKey={lod === 'full' ? 'full' : 'lite'}
       turning={lod !== 'far'}
-      nodes={nodes}
+      nodes={group.nodes}
       capacity={Math.max(capacity, nodes.length)}
       onSelect={onSelect}
-    />
+    />)}</>
   );
 }
 
 function ModelInstances({
+  impactLevel,
   name,
   modelUrl,
   dress,
@@ -436,6 +496,7 @@ function ModelInstances({
   onSelect,
   turning = true,
 }: {
+  impactLevel: number;
   name: string;
   modelUrl: string;
   dress: Dress;
@@ -454,42 +515,46 @@ function ModelInstances({
     if (!model) return null;
     const source = Array.isArray(model.material) ? model.material[0] : model.material;
     if (!source) return null;
-    return cachedDress(modelUrl, dressKey, source, dress);
-  }, [model, modelUrl, dressKey, dress]);
+    return cachedDress(modelUrl, impactLevel > 0 ? `${dressKey}:impact:${impactLevel}` : dressKey, source,
+      material => impactDress(dress(material), impactLevel));
+  }, [model, modelUrl, dressKey, dress, impactLevel]);
   const body = useRef<THREE.InstancedMesh>(null);
   const hits = useRef<THREE.InstancedMesh>(null);
   const tint = useMemo(() => new THREE.Color(), []);
   const invalidate = useThree((state) => state.invalidate);
+  const visible = useMemo(() => createInstanceVisibility<SkinNode>(), []);
 
   useLayoutEffect(() => {
     const mesh = body.current;
     if (!mesh) return;
-    // Drawn as many as are in this tier now; the mesh holds room for the whole look.
-    mesh.count = nodes.length;
-    // Placed here, with the members, and measured for the raycaster (`planetPick.ts`).
+    // Picking keeps the complete, stable node order and its original touch area.
     if (hits.current) placePickSpheres(hits.current, nodes);
-    // A tier that does not turn is placed here once; a turning one each frame below.
-    if (!turning) placeBodies(mesh, nodes, 0);
-    nodes.forEach((node, i) => {
-      const light = bodyLight(node.stance, node.intel);
-      const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
-      mesh.setColorAt(i, tint.setRGB(light * cool[0]!, light * cool[1]!, light * cool[2]!));
-    });
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.count = 0;
+    visible.view.primed = false;
+    visible.members.length = 0;
+    // Allocate colour before compilation, including an initially offscreen bucket.
+    mesh.setColorAt(0, tint.setRGB(1, 1, 1));
     if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
-    // The disc draws on demand: worlds that joined this tier as the camera came to rest
-    // are placed by the next frame, so ask for one rather than wait for the next move.
     invalidate();
-    // A new capacity or geometry is a new mesh, and a new mesh has to be placed again.
-  }, [nodes, tint, dressed, invalidate, capacity, geometry, turning]);
+  }, [nodes, tint, dressed, invalidate, capacity, geometry, visible, turning]);
 
-  useFrame(({ clock }) => {
+  useVisualFrame(({ camera, clock }) => {
     if (dressed?.uniforms) dressed.uniforms.time.value = clock.elapsedTime;
-    // A speck is placed with its members and never turns (`placeBodies`).
-    if (!turning) return;
     const mesh = body.current;
     if (!mesh) return;
-    placeBodies(mesh, nodes, clock.elapsedTime);
+    const changed = updateVisibleMembers(visible, camera, mesh, nodes, PLANET_SKIN_BODY_SCALE);
+    if (changed) {
+      mesh.count = visible.members.length;
+      visible.members.forEach((node, i) => {
+        const light = bodyLight(node.stance, node.intel);
+        const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
+        mesh.setColorAt(i, tint.setRGB(light * cool[0]!, light * cool[1]!, light * cool[2]!));
+      });
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      if (!turning) placeBodies(mesh, visible.members, 0);
+    }
+    if (!turning) return;
+    if (mesh.count > 0) placeBodies(mesh, visible.members, clock.elapsedTime);
   });
 
   if (!geometry || !dressed || nodes.length === 0 || capacity === 0) return null;
@@ -510,8 +575,7 @@ function ModelInstances({
         args={[geometry, dressed.material, capacity]}
         frustumCulled={false}
         raycast={() => null}
-        // The geometry and material are the session's (`cachedGeometry`), not the mesh's.
-        dispose={null}
+        // Cached assets arrive through args; Fiber frees only this mesh's instance buffers.
       />
       {onSelect && (
         <instancedMesh

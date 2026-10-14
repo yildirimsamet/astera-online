@@ -98,10 +98,8 @@ describe('first planet skin visuals', () => {
     expect([...SKIN_COLLECTIONS.elemental.ids, ...SKIN_COLLECTIONS.country.ids]).toEqual(PLANET_SKIN_IDS);
   });
 
-  it('starts full and low planet requests together instead of waterfalling', () => {
-    const source = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
-    expect(source).toMatch(/useGLTF\(\s*\[visual\.modelUrl, visual\.lowModelUrl\],\s*false,?\s*\)/);
-  });
+  // Parallel fetching and reuse across individual/pair consumers are exercised
+  // through the real Suspense cache in gltf-pair-cache.test.tsx.
 
   it('compacts off-screen 3D skin instances before uploading their matrices', () => {
     const source = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');

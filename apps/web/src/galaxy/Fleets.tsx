@@ -1,3 +1,5 @@
+import { useGalaxyCulling, useVisualFrame } from './visualFrame.js';
+import { createLocalVisibility, localSphereVisible, hullPartRadius } from './formationVisibility.js';
 import { cosmeticById } from '@astera/rules';
 import type { ShipCosmeticEquipment } from '@astera/rules';
 import { shipHullModels } from './shipCosmetics.js';
@@ -22,6 +24,7 @@ import {
 } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Billboard, useGLTF, useTexture } from '@react-three/drei';
+import { useGltfPair } from './useGltfPair.js';
 import * as THREE from 'three';
 import {
   INTERGALACTIC_CONVOY,
@@ -453,9 +456,9 @@ function FormationHullBucket(props: FormationHullBucketProps) {
 
 function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused, url, lowUrl }:
   FormationHullBucketProps & { url: string; lowUrl: string }) {
-  const loaded = useGLTF(url === lowUrl ? [url] : [url, lowUrl], false);
-  const scene = loaded[0]!.scene;
-  const lowScene = (loaded[1] ?? loaded[0])!.scene;
+  const [full, low] = useGltfPair(url, lowUrl);
+  const scene = full.scene;
+  const lowScene = low.scene;
   const fullParts = useMemo(() => formationHullParts(scene, url), [scene, url]);
   // LOD geometry has the same authored axes and pose as its source model.
   const lowParts = useMemo(() => {
@@ -565,11 +568,21 @@ function FormationHullPartMesh({
   }, [bodyMaterial]);
   useEffect(() => () => { outlineMaterial.dispose(); }, [outlineMaterial]);
 
-  useFrame(({ camera }) => {
+  const culling = useGalaxyCulling();
+  const visibility = useMemo(createLocalVisibility, []);
+  const radius = useMemo(() => {
+    const partRadius = hullPartRadius(part.geometry, part.matrix);
+    return members.reduce((bound, member) => Math.max(bound,
+      Math.hypot(...member.offset) + Math.abs(hullVisualScale(member.marker.hull, scale)) * partRadius), 0);
+  }, [members, part, scale]);
+  useVisualFrame(({ camera }) => {
     const bodies = body.current;
     const rims = outline.current;
     if (!bodies || !rims) return;
-    bodies.updateWorldMatrix(true, false);
+    const visible = !culling || localSphereVisible(visibility, camera, bodies, radius);
+    bodies.visible = rims.visible = visible;
+    if (!visible) return;
+    if (!culling) bodies.updateWorldMatrix(true, false);
     const parentScale = bodies.matrixWorld.getMaxScaleOnAxis();
     let count = 0;
     members.forEach((member) => {
@@ -1123,6 +1136,8 @@ export function FormationLightField({
   intensity = 1,
   customEngine = false,
   shipSkins,
+  longitudinalOffset,
+  longitudinalOffsetBound,
 }: {
   markers: readonly Marker[];
   slots: readonly Vec3Tuple[];
@@ -1134,6 +1149,8 @@ export function FormationLightField({
   intensity?: number;
   customEngine?: boolean;
   shipSkins?: ShipCosmeticEquipment;
+  longitudinalOffset?: (markerIndex: number, elapsedSeconds: number) => number;
+  longitudinalOffsetBound?: number;
 }) {
   const failureVersion = useReferenceShipFailures();
   const units = useMemo(() => formationEngineUnits(markers, slots, scale, shipSkins, intensity),
@@ -1142,7 +1159,7 @@ export function FormationLightField({
   return (
     <>
       {!customEngine && <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
-        <EngineJets units={units} aimDistance={aimDistance} name={name} />
+        <EngineJets units={units} aimDistance={aimDistance} name={name} longitudinalOffset={longitudinalOffset} longitudinalOffsetBound={longitudinalOffsetBound} />
       </Suspense></SkinAssetBoundary>}
       {showPips && (
         <>
@@ -1784,10 +1801,22 @@ export function FormationWakes({
   const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
   const animatedSlot = useMemo<Vec3Tuple>(() => [0, 0, 0], []);
 
-  useFrame(({ camera, clock }) => {
+  const culling = useGalaxyCulling();
+  const visibility = useMemo(createLocalVisibility, []);
+  const radius = useMemo(() => {
+    // Arbitrary caller animation has no declared bound: keep drawing it.
+    if (longitudinalOffset) return Infinity;
+    // Envelope <= 1.14; flutter extends either edge by at most another 22%.
+    return markers.reduce((bound, marker, index) => Math.max(bound,
+      Math.hypot(...(slots[index] ?? [0, 0, 0])) + Math.abs(hullVisualScale(marker.hull, scale))
+        * (Math.abs(hullPoseLift(marker.hull)) + WAKE_LENGTH + WAKE_WIDTH * 1.14 * 1.22)), 0);
+  }, [markers, slots, scale, longitudinalOffset]);
+  useVisualFrame(({ camera, clock }) => {
     const node = mesh.current;
     if (!node) return;
-    node.updateWorldMatrix(true, false);
+    node.visible = !culling || localSphereVisible(visibility, camera, node, radius);
+    if (!node.visible) return;
+    if (!culling) node.updateWorldMatrix(true, false);
     eye.copy(camera.position);
     node.worldToLocal(eye);
     side.set(0, 0, 1).cross(eye);

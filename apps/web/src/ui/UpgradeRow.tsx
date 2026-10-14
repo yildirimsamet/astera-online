@@ -8,6 +8,7 @@ import { duration } from '../lib/time.js';
 import { ActionButton, Price, ResourceAmounts, TimeCost, type Verb } from './Action.js';
 import { FaultMark, LockMark } from './marks.js';
 import { useAcademyLesson } from '../onboarding/lessonScope.js';
+import { CardArtwork } from './AtmosphereArt.js';
 
 /**
  * One decision, presented as a decision.
@@ -108,7 +109,10 @@ export function UpgradeRow({
   faulty = false,
   flash = false,
   layout = 'row',
+  summary,
 }: {
+  /** Hull cards keep only identity, class glyph, holdings and purchase figures. */
+  summary?: 'hull';
   art?: string | null;
   /** The art one level from now, when it visibly changes. */
   nextArt?: string | null;
@@ -270,8 +274,10 @@ export function UpgradeRow({
     return (
       <div
         data-layout="card"
+        data-summary={summary}
         data-progression-state={completed ? 'complete' : queued ? 'queued' : locked ? 'locked' : unowned ? 'available-unowned' : 'owned'}
         data-faulty={faulty ? '' : undefined}
+        data-highlighted={highlighted ? '' : undefined}
         className={`group relative flex h-full flex-col overflow-hidden rounded-control border bg-v2-panel font-v2-ui ${
           highlighted ? 'border-v2-self/60 ring-1 ring-v2-self/40' : 'border-v2-line'
         } ${faulty ? 'bg-v2-ink/[0.04]' : ''} ${flash ? 'sweep' : ''}`}
@@ -281,7 +287,7 @@ export function UpgradeRow({
             type="button"
             aria-label={t('upgradeRow.about', { name })}
             data-open-item
-            className="absolute inset-0 z-0 outline-none transition-colors hover:bg-v2-ink/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v2-self/70"
+            className="absolute inset-0 z-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v2-self/70"
             onClick={() => {
               haptic('tap');
               onOpen();
@@ -293,26 +299,18 @@ export function UpgradeRow({
             <FaultMark />
           </span>
         )}
-        {/* THE RENDER ON TOP, at the size it was drawn for (never a favicon). */}
+        {/* The complete scene fills the card; this well reserves its unobstructed view. */}
         <div
           data-art
           className="pointer-events-none relative z-10 grid h-[96px] place-items-center bg-[radial-gradient(60%_60%_at_50%_45%,rgb(46_60_96/45%),transparent_75%)]"
         >
           {art ? (
-            <img
-              src={art}
-              alt=""
-              aria-hidden
-              className={`size-[84px] object-contain transition-transform duration-300 group-hover:scale-[1.04] ${
-                artLocked ? 'opacity-20' : unowned ? 'opacity-65' : ''
-              }`}
-              loading="lazy"
-            />
+            <CardArtwork src={art} locked={artLocked} unowned={unowned} />
           ) : (
             <span className={artLocked ? 'opacity-20' : unowned ? 'opacity-65' : ''}>{mark}</span>
           )}
           {artLocked && (
-            <span className="absolute inset-0 flex items-center justify-center">
+            <span data-art-lock className="absolute inset-0 flex items-center justify-center">
               <LockMark />
             </span>
           )}
@@ -322,14 +320,14 @@ export function UpgradeRow({
             </span>
           )}
         </div>
-        <div className="pointer-events-none relative z-10 flex flex-1 flex-col gap-1 px-2 pb-2 pt-1.5">
+        <div data-card-copy className="pointer-events-none relative z-10 flex flex-1 flex-col gap-1 px-2 pb-2 pt-1.5">
           {/* THE NAME WHOLE: it wraps, it is never cut. */}
           {/*
             WHAT IT IS AND WHERE IT IS, IN ONE GLANCE (D195c, owner: "Dart (Lv1) - 3 in 4
             out"): a hull's tier and its holding sit right under its name, as on the row.
           */}
           <div data-row-line="name" className="flex flex-col gap-0.5">
-            <h3 className="v2-name text-caption leading-tight [overflow-wrap:anywhere]">{name}</h3>
+            <h3 className="v2-name flex items-center gap-1.5 text-caption leading-tight [overflow-wrap:anywhere]">{summary === 'hull' && nameBadge}{name}</h3>
             {(tierMark !== undefined || nameAside) && (
               <p className="font-v2-mono text-micro text-v2-ink-3">
                 {tierMark !== undefined && <span data-testid="hull-tier">{tierMark}</span>}
@@ -338,13 +336,15 @@ export function UpgradeRow({
               </p>
             )}
           </div>
-          {(nameBadge !== undefined || tag) && (
+          {summary !== 'hull' && (nameBadge !== undefined || tag) && (
             <div className="flex flex-wrap items-center gap-1">
               {nameBadge}
               {tag && <p className="text-micro leading-snug text-v2-ink-3">{tag}</p>}
             </div>
           )}
-          {inactive ? (
+          {summary === 'hull' ? (
+            (completed ?? queued ?? blocked) && <span role="status" className="sr-only">{completed ?? queued ?? blocked?.reason}</span>
+          ) : inactive ? (
             <p className="text-micro leading-snug text-v2-warn">{inactive}</p>
           ) : blocked && !acknowledging ? (
             blocked.onFix ? (
@@ -357,7 +357,7 @@ export function UpgradeRow({
                   haptic('tap');
                   blocked.onFix?.();
                 }}
-                className="pointer-events-auto relative z-[1] -mx-1 flex items-start gap-1 rounded-chip px-1 text-left text-micro leading-snug text-v2-warn hover:bg-v2-warn/10"
+                className="pointer-events-auto relative z-[1] -mx-1 flex items-start gap-1 rounded-chip px-1 text-left text-micro leading-snug text-v2-warn"
               >
                 <span>{blocked.reason}</span>
                 <span aria-hidden className="shrink-0">→</span>
@@ -385,13 +385,13 @@ export function UpgradeRow({
           ) : (
             <p className="text-micro leading-snug text-v2-ink-3">{role}</p>
           )}
-          {!completed && (!queued || queuedActionable) && (
-            <div className="mt-auto flex flex-wrap items-center gap-x-1 gap-y-0.5 pt-0.5">
+          {(summary === 'hull' || (!completed && (!queued || queuedActionable))) && (
+            <div data-card-price className="mt-auto flex flex-wrap items-center gap-x-1 gap-y-0.5 pt-0.5">
               <Price cost={cost} held={held} layout="row" />
               {takes === undefined ? null : <TimeCost minutes={takes} />}
             </div>
           )}
-          {!affordable && !blocked && (!queued || queuedActionable) && waitMinutes !== null && (
+          {summary !== 'hull' && !affordable && !blocked && (!queued || queuedActionable) && waitMinutes !== null && (
             <p className="text-micro leading-snug text-v2-ink-3">
               <Trans
                 i18nKey="upgradeRow.affordableIn"
@@ -532,7 +532,7 @@ export function UpgradeRow({
             </span>
           )}
           {artLocked && (
-            <span className="absolute inset-0 flex items-center justify-center">
+            <span data-art-lock className="absolute inset-0 flex items-center justify-center">
               <LockMark />
             </span>
           )}

@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next';
+import { ATMOSPHERE } from '../ui/atmosphere.js';
+import { AtmosphereImage } from '../ui/AtmosphereArt.js';
 import { Icon } from '../v2/icons.js';
 import { ShopShowcasePoster } from './ShopShowcasePoster.js';
 
@@ -35,8 +37,9 @@ export function ShopShowcase({ onShop, onInventory }: {
         type="button"
         onClick={onInventory}
         aria-label={`${t('menu.skinsInventoryLabel')}. ${t('menu.skinsInventoryHint')}`}
-        className="group flex min-h-12 w-full items-center gap-2.5 border-t border-v2-premium/20 bg-v2-panel/70 px-3 py-2 text-left transition-colors hover:bg-v2-raise focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-v2-premium v2-split:min-h-14 v2-split:px-4 v2-split:py-2.5"
+        className="scene-panel inventory-scene group flex min-h-12 w-full items-center gap-2.5 border-t border-v2-premium/20 bg-v2-panel/70 px-3 py-2 text-left transition-colors hover:bg-v2-raise focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-v2-premium v2-split:min-h-14 v2-split:px-4 v2-split:py-2.5"
       >
+        <AtmosphereImage art={ATMOSPHERE.inventory} />
         <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-control border border-v2-line-hi bg-v2-deep text-v2-ink-2 v2-split:size-8"><Icon id="i-base" className="size-4" /></span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-caption font-semibold text-v2-ink">{t('menu.skinsInventoryLabel')}</span>

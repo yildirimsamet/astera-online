@@ -152,7 +152,7 @@ describe('a tier change never empties the disc', () => {
   });
 
   it('keeps a stand-in card’s own loading inside the group', () => {
-    expect(field).toMatch(/<Suspense fallback=\{<Suspense fallback=\{null\}>\{render\}<\/Suspense>\}>/);
+    expect(field).toContain('<Suspense fallback={<><OpeningAssetPending /><Suspense fallback={null}>{render}</Suspense></>}>');
   });
 
   it('loads the far and light models of every look up front, the full ones on demand', () => {
@@ -184,10 +184,10 @@ describe('the full model is ready before it is needed', () => {
   it('compiles the planet shaders off the frame, on the materials the worlds will use', () => {
     expect(model).toMatch(/gl\.compileAsync\(/);
     expect(model).toMatch(/cachedDress\(/);
-    expect(field).toMatch(/<Suspense fallback=\{null\}>\s*<PlanetWarmup /);
+    expect(field).toMatch(/<Suspense fallback=\{<OpeningAssetPending \/>\}>\s*<PlanetWarmup /);
   });
 
   it('routes prepared maps through the shared idle queue', () => {
-    expect(model).toMatch(/queuePlanetTextures\(gl, maps\)/);
+    expect(model).toMatch(/queuePlanetTextures\(gl, maps,/);
   });
 });

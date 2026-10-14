@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import i18n from '../src/i18n/index.js';
@@ -56,8 +57,9 @@ interface Shut {
   fix: boolean;
 }
 
-const sweep = (): Shut[] => {
+const sweep = async (): Promise<Shut[]> => {
   const shut: Shut[] = [];
+  const user = userEvent.setup();
   for (const tab of TABS) {
     current = planetView(
       { buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 } },
@@ -71,10 +73,21 @@ const sweep = (): Shut[] => {
         </ToastProvider>
       </QueryClientProvider>,
     );
-    for (const row of view.container.querySelectorAll('[id^="row-"]')) {
+    await openAllBands(screen, user);
+    for (const row of view.container.querySelectorAll<HTMLElement>('[id^="row-"]')) {
       const state = row.querySelector('[data-progression-state]')
         ?.getAttribute('data-progression-state');
       if (state !== 'locked') continue;
+      // Hull cards now reserve the requirements and their destination for the
+      // detail sheet. Verify that door instead of putting the removed copy back.
+      if (row.querySelector('[data-summary="hull"]')) {
+        await user.click(within(row).getByRole('button', { name: /about/i }));
+        const detail = screen.getByRole('dialog');
+        const gate = detail.querySelector<HTMLButtonElement>('[data-lock-state="closed"]');
+        shut.push({ tab, id: row.id.slice('row-'.length), reason: gate?.textContent.trim() ?? '', fix: gate !== null && !gate.disabled });
+        await user.click(within(detail).getByRole('button', { name: 'Close' }));
+        continue;
+      }
       shut.push({
         tab,
         id: row.id.slice('row-'.length),
@@ -95,24 +108,24 @@ beforeEach(async () => {
 });
 
 describe('every locked row on the planet sheet', () => {
-  it('locks something, or this test is measuring nothing', () => {
-    expect(sweep().length).toBeGreaterThan(3);
-  });
+  it('locks something, or this test is measuring nothing', async () => {
+    expect((await sweep()).length).toBeGreaterThan(3);
+  }, 15_000);
 
-  it('states a reason on every one of them', () => {
-    const silent = sweep().filter((row) => row.reason.length === 0);
+  it('states a reason on every one of them, in the hull detail for compact cards', async () => {
+    const silent = (await sweep()).filter((row) => row.reason.length === 0);
     expect(silent.map((row) => `${row.tab}/${row.id}`)).toEqual([]);
-  });
+  }, 15_000);
 
   /**
    * The reason names another part of the game — a Core level, a Shipyard, a
    * research project — so there has to be a way to go there. Only a clock has no
    * fix, and a clock says "in 3h", which is the shape excluded here.
    */
-  it('offers a way to the thing that would open it', () => {
-    const stranded = sweep().filter((row) => !row.fix && !/\bin\b|opens/i.test(row.reason));
+  it('offers a way to the thing that would open it', async () => {
+    const stranded = (await sweep()).filter((row) => !row.fix && !/\bin\b|opens/i.test(row.reason));
     expect(stranded.map((row) => `${row.tab}/${row.id}: ${row.reason}`)).toEqual([]);
-  });
+  }, 15_000);
 });
 
 /**
@@ -142,9 +155,13 @@ describe('pressing the reason', () => {
     const view = openTab('reach', bare);
     // The Courier sits in the Cargo band, and the tab's families fold shut.
     await openAllBands(screen, userEvent.setup());
-    const fix = view.container.querySelector<HTMLElement>('#row-COURIER [data-has-fix]');
+    const row = view.container.querySelector<HTMLElement>('#row-COURIER')!;
+    await userEvent.click(within(row).getByRole('button', { name: /about/i }));
+    const detail = screen.getByRole('dialog', { name: 'Courier' });
+    const fix = detail.querySelector<HTMLElement>('[data-lock-state="closed"]');
     expect(fix).not.toBeNull();
     await userEvent.click(fix!);
+    expect(screen.queryByRole('dialog', { name: 'Courier' })).toBeNull();
 
     // The Shipyard is on this same tab, so it is scrolled to and lit rather than
     // opened: a highlighted row is how this screen says "here it is".
@@ -175,9 +192,13 @@ describe('pressing the reason', () => {
         </ToastProvider>
       </QueryClientProvider>,
     );
-    const fix = view.container.querySelector<HTMLElement>('#row-TEMPEST [data-has-fix]');
+    const row = view.container.querySelector<HTMLElement>('#row-TEMPEST')!;
+    await userEvent.click(within(row).getByRole('button', { name: /about/i }));
+    const detail = screen.getByRole('dialog', { name: 'Tempest' });
+    const fix = detail.querySelector<HTMLElement>('[data-lock-state="closed"]');
     expect(fix).not.toBeNull();
     await userEvent.click(fix!);
+    expect(screen.queryByRole('dialog', { name: 'Tempest' })).toBeNull();
 
     expect(onOpenResearch).toHaveBeenCalledOnce();
     expect(onOpenResearch).toHaveBeenCalledWith('STARSHIP_ENGINEERING');

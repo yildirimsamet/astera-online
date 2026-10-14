@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   perfGalaxyFrame,
+  perfPreparationCode,
   perfSessionState,
   resetPerfSession,
   retryPerfSession,
@@ -19,6 +20,13 @@ import {
  */
 
 const info = { calls: 150, triangles: 90_000, geometries: 60, textures: 40, programs: 25 };
+
+it.each([
+  ['ready', 1], ['timeout', 2], ['failed', 3], ['context-lost', 4], ['cancelled', 5],
+  [undefined, 0], ['unrecognised', 0],
+] as const)('records opening result %s with stable numeric code %s', (result, expected) => {
+  expect(perfPreparationCode(result)).toBe(expected);
+});
 
 describe('a performance recording', () => {
   beforeEach(() => {
@@ -107,8 +115,9 @@ describe('a performance recording', () => {
     setPerfExtra('camera', 42);
     setPerfExtra('focus', 1);
     setPerfExtra('panel', 1);
+    setPerfExtra('opening', perfPreparationCode('timeout'));
     vi.advanceTimersByTime(1000);
     await stopPerfSession(send);
-    expect(send.mock.calls[0]![0].samples[0]?.ctx).toEqual({ planets: 1230, camera: 42, focus: 1, panel: 1 });
+    expect(send.mock.calls[0]![0].samples[0]?.ctx).toEqual({ planets: 1230, camera: 42, focus: 1, panel: 1, opening: 2 });
   });
 });

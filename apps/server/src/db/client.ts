@@ -10,11 +10,16 @@ export type Queryable = Db | Tx;
 
 export function createDb(
   url: string,
-  opts: { max?: number; applicationName?: string } = {},
+  opts: { max?: number; applicationName?: string; idleInTransactionTimeoutMs?: number } = {},
 ) {
   const sql = postgres(url, {
     max: opts.max ?? 10,
-    connection: { application_name: opts.applicationName ?? 'astera' },
+    connection: {
+      application_name: opts.applicationName ?? 'astera',
+      ...(opts.idleInTransactionTimeoutMs === undefined
+        ? {}
+        : { idle_in_transaction_session_timeout: opts.idleInTransactionTimeoutMs }),
+    },
     // Timestamps come back as Date objects; the clock helpers do the rest.
     transform: undefined,
     // Postgres NOTICEs are noise here — schema DDL emits them constantly during

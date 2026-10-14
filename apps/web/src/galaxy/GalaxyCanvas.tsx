@@ -2,8 +2,8 @@ import { motionPositionAt } from '@astera/rules';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react';
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
-import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
-import { guardBloomRef } from './finiteGuard.js';
+import { GalaxyVisualPhase } from './visualFrame.js';
+import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
 import { useGpuContext } from './gpuContext.js';
 import { ViewOffset } from './ViewOffset.js';
 import * as THREE from 'three';
@@ -67,6 +67,8 @@ import { PlanetField, rivalColour } from './PlanetField.jsx';
 import { SCENE_LIGHT } from './planetSurface.js';
 import { SpaceLighting } from './SpaceLighting.js';
 import { FirstSceneFrame, SceneRenderGate, SceneWarmup } from './SceneWarmup.js';
+import { createOpeningPreparation, type OpeningPreparation } from './openingPreparation.js';
+import { OpeningWork, useOpeningViews } from './OpeningViews.js';
 
 /** The rig's per-frame scratch for a tracked subject's drift (never allocated in the loop). */
 const TRACK_DRIFT = new THREE.Vector3();
@@ -109,7 +111,7 @@ import { useTranslation } from 'react-i18next';
 import { FaultMark } from '../ui/marks.js';
 import { FLIGHT_FPS, HoldRate } from './frames.js';
 import { galaxyFrames, useFpsMeterEnabled } from '../lib/fpsMeter.js';
-import { perfGalaxyFrame, setPerfExtra, setPerfGalaxyContext, usePerfSession } from '../lib/perfSession.js';
+import { perfGalaxyFrame, perfPreparationCode, setPerfExtra, setPerfGalaxyContext, usePerfSession } from '../lib/perfSession.js';
 import { anythingInFlight } from './flightRate.js';
 
 /**
@@ -317,6 +319,8 @@ export interface GalaxyCanvasProps {
   onReady?: () => void;
   /** Do not certify an empty scene while its opening API payloads are pending. */
   openingDataReady?: boolean;
+  /** Only prepare camera views while the parent cover actually hides the scene. */
+  openingCovered?: boolean;
 }
 
 export function GalaxyCanvas({
@@ -358,8 +362,11 @@ export function GalaxyCanvas({
   allowFocus,
   onReady,
   openingDataReady = true,
+  openingCovered = false,
 }: GalaxyCanvasProps) {
   const sceneReady = useRef(false);
+  const openingSettled = useRef(!openingCovered);
+  const openingWork = useMemo(() => createOpeningPreparation(openingCovered), []);
   const openingMark = useRef<HTMLSpanElement>(null);
   const nodes = useMemo(() => planetNodes(planets), [planets]);
   const navigationRadius = useMemo(() => monumentNavigationRadius(monuments, hpRadiation), [monuments, hpRadiation]);
@@ -705,6 +712,8 @@ export function GalaxyCanvas({
       <Meteors shower={meteorShower} />
       <Disc />
 
+      <OpeningWork.Provider value={openingWork}>
+      <GalaxyVisualPhase>
       <Suspense fallback={null}>
         {/* Wreckage is independent of the rock field — a battle can leave one on a
             day when nothing is crossing the disc. D32. */}
@@ -842,8 +851,16 @@ export function GalaxyCanvas({
           rivals={rivals}
         />
         {gpu.live && <SceneWarmup key={gpu.epoch} dataReady={openingDataReady} onCompiled={onCompiled} />}
-        <FirstSceneFrame ready={prepared && openingDataReady} onDrawn={() => { sceneReady.current = true; onReady?.(); }} />
+        <FirstSceneFrame settled={openingSettled} ready={prepared && openingDataReady && gpu.live} onDrawn={() => {
+          sceneReady.current = true;
+          if (openingCovered && openingMark.current && openingSettled.current) {
+            openingMark.current.dataset.academyHomeReady = 'true';
+          }
+          onReady?.();
+        }} />
       </Suspense>
+      </GalaxyVisualPhase>
+      </OpeningWork.Provider>
 
       {/*
         Bloom is the difference between "lights" and "light". It is the one
@@ -879,38 +896,13 @@ export function GalaxyCanvas({
       <RedrawOnRestore epoch={gpu.epoch} />
       <WideScreenFov />
       <SceneRenderGate />
-      {gpu.live && (
-      <EffectComposer
-        enabled={prepared}
-        key={`${String(preset.dprCap)}-${String(gpu.epoch)}`}
-        enableNormalPass={false}
-        frameBufferType={THREE.HalfFloatType}
-        /*
-          COVERAGE SAMPLES, FROM THE PRESET — still far under the package default
-          of eight on every full-screen mobile buffer, and never zero.
-
-          This is what draws a rock's tail and the hairline on a world's limb at
-          all: both are thin geometry that falls under one pixel of coverage, and
-          multisampling is the only thing that renders a quarter-covered pixel at a
-          quarter strength instead of dropping it. `lib/quality.ts` carries why it
-          went UP when the resolution came down, and why the cheapest preset is the
-          one that needs it most.
-        */
+      <GalaxyPostprocessing
+        live={gpu.live}
+        epoch={gpu.epoch}
+        dprCap={preset.dprCap}
         multisampling={preset.multisampling}
-      >
-        {/* `guardBloomRef`: no pixel that is not finite reaches the mip chain (black blocks, 2026-10-06). */}
-        <Bloom
-          ref={guardBloomRef}
-          intensity={0.62}
-          luminanceThreshold={0.78}
-          luminanceSmoothing={0.22}
-          mipmapBlur
-          radius={0.72}
-          levels={6}
-        />
-        <Vignette eskil={false} offset={0.24} darkness={0.62} />
-      </EffectComposer>
-      )}
+        prepared={prepared}
+      />
 
       {/*
         THE LESSON'S TAP TARGET, ON THE SUBJECT RATHER THAN ON THE MIDDLE.
@@ -941,6 +933,10 @@ export function GalaxyCanvas({
         {...(sightRadius !== undefined ? { sightRadius } : {})}
         openingHome={openingHome}
         sceneReady={sceneReady}
+        openingSettled={openingSettled}
+        openingCovered={openingCovered}
+        openingPrepared={prepared && openingDataReady && gpu.live}
+        openingWork={openingWork}
         openingMark={openingMark}
       />
       {/* E11: a page docked on the right does not hide the camera's subject. */}
@@ -1302,6 +1298,10 @@ function Rig({
   sightRadius,
   openingHome,
   sceneReady,
+  openingSettled,
+  openingCovered,
+  openingPrepared,
+  openingWork,
   openingMark,
 }: {
   navigationRadius: number;
@@ -1354,9 +1354,16 @@ function Rig({
   sightRadius?: number;
   openingHome: boolean;
   sceneReady: RefObject<boolean>;
+  openingSettled: RefObject<boolean>;
+  openingCovered: boolean;
+  openingPrepared: boolean;
+  openingWork: OpeningPreparation;
   openingMark: RefObject<HTMLSpanElement | null>;
 }) {
   const ref = useRef<ComponentRef<typeof OrbitControls>>(null);
+  const preparing = useOpeningViews({ controls: ref, covered: openingCovered, ready: openingPrepared,
+    settled: openingSettled, wideDistance: Math.min(wideDistance, navigationRadius / 1.15 * 3),
+    homeDistance: openingHome && !openWide && !sightRadius ? HOME_DISTANCE : null, work: openingWork });
   const invalidate = useThree((state) => state.invalidate);
   const size = useThree((state) => state.size);
   const approach = inspectionRadius === undefined ? focusApproach : planetInspectionDistance(inspectionRadius, size.width, size.height);
@@ -1510,7 +1517,7 @@ function Rig({
       controls.target.set(homeX, homeY, homeZ);
       controls.object.position.set(...initialHomeCameraPosition(homeX, homeY, homeZ));
       controls.update();
-      if (openingHome) goTo(homeX, homeY, homeZ, HOME_DISTANCE, true, 2, true);
+      if (openingHome && openingSettled.current) goTo(homeX, homeY, homeZ, HOME_DISTANCE, true, 2, true);
       invalidate();
       return;
     }
@@ -1530,7 +1537,7 @@ function Rig({
 
   useFrame((_, delta) => {
     const controls = ref.current;
-    if (!controls) return;
+    if (!controls || preparing.current) return;
 
     /**
      * KEEP UP WITH A MOVING SUBJECT.
@@ -1952,6 +1959,8 @@ function PerfProbe({ context, focused }: { context: Record<string, number>; focu
 
   useEffect(() => {
     if (!recording) return undefined;
+    // The button appears after loading; retain why loading ended in this recording.
+    setPerfExtra('opening', perfPreparationCode(gl.domElement.dataset.galaxyPreparation));
     const info = gl.info;
     const autoReset = info.autoReset;
     info.autoReset = false;

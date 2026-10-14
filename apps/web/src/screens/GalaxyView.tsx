@@ -7,6 +7,7 @@ import { useRequest } from '../lib/useRequest.js';
 import { useSensorReach } from '../lib/useSensorReach.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
+import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
 import { CommanderHost } from '../v2/shell/CommanderHost.js';
@@ -389,8 +390,6 @@ export function GalaxyView({
   const pending = usePending();
   const traffic = useTraffic();
   const mining = useMining();
-  /** The caller's own fog-filtered sightings, for the disc tally. D150. */
-  const pirateList = usePirates();
   const reports = useReports();
   const setRival = useSetRival();
   const mine = useMine();
@@ -588,6 +587,11 @@ export function GalaxyView({
    */
   const [attackingPirateId, setAttackingPirateId] = useState<string | null>(null);
   /**
+   * The caller's own fog-filtered sightings, for the disc tally and the pirate launch
+   * sheet. D150. Live (traffic pace) only while that sheet is open.
+   */
+  const pirateList = usePirates({ live: attackingPirateId !== null });
+  /**
    * WHERE THE OPEN SHEET WOULD SEND THE WING IT HAS SELECTED. D155.
    *
    * Lifted out of `LaunchSheet` because the rendezvous is a point in the GALAXY
@@ -702,27 +706,7 @@ export function GalaxyView({
   const covered = useOpeningCover(assets.ready && dataSettled && drawn);
 
 
-  /**
-   * THERE IS ALWAYS A DEADLINE, for the reason `preload.ts` gives: a cover with no
-   * way out is a game that cannot be reached. `onReady` needs a working WebGL
-   * context and a frame loop, and neither is something a player can fix.
-   *
-   * ARMED ONLY ONCE EVERYTHING ELSE IS IN, so it measures the thing it is actually
-   * a net for. Started at mount it was really a timer on the network — a slow
-   * first fetch spent the whole allowance before the canvas had been given
-   * anything to draw, and the net fired over an empty disc, which is precisely
-   * what it exists to prevent.
-   */
-  const armed = assets.ready && dataSettled;
-  useEffect(() => {
-    if (drawn || !armed) return;
-    const timer = setTimeout(() => {
-      setDrawn(true);
-    }, 15_000);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [drawn, armed]);
+  // The opening cover owns one seven-second deadline from mount.
 
   /**
    * THE SOONEST THIS WORLD COULD BE ALONGSIDE THE MERCHANT, AND IT IS A BEST CASE.
@@ -1247,6 +1231,7 @@ export function GalaxyView({
         focus={focus}
         onReady={onReady}
         openingDataReady={dataSettled}
+        openingCovered={covered}
         onFocus={onFocus}
         homeSignal={homeSignal}
         centerSignal={centerSignal}
@@ -1783,7 +1768,7 @@ export function GalaxyView({
       {panel === 'research' && (
         <V2Sheet
           detents={['full']}
-          quietTitle
+          headerArt={ATMOSPHERE.research}
           eyebrow={t('research.eyebrow')}
           title={t('research.title')}
           onClose={() => {
@@ -1877,6 +1862,7 @@ export function GalaxyView({
           detents={['full']}
           {...menuBack}
           eyebrow={t('rewards.eyebrow')}
+          headerArt={ATMOSPHERE.rewards}
           title={t('rewards.title')}
           onClose={() => {
             onPanel(null);
@@ -1892,6 +1878,7 @@ export function GalaxyView({
           bleed
           {...menuBack}
           eyebrow={t('leaderboard.eyebrow')}
+          headerArt={ATMOSPHERE.season}
           title={t('leaderboard.title')}
           onClose={() => {
             onPanel(null);
@@ -1911,6 +1898,7 @@ export function GalaxyView({
           detents={['full']}
           {...menuBack}
           eyebrow={t('community.announcements.eyebrow')}
+          headerArt={ATMOSPHERE.announcements}
           title={t('community.announcements.title')}
           onClose={() => { onPanel(null); }}
         >
@@ -2005,6 +1993,7 @@ export function GalaxyView({
           detents={['fit']}
           placement="page"
           eyebrow={t('clan.outside.eyebrow')}
+          headerArt={ATMOSPHERE.clan}
           title={t('clan.title')}
           onClose={() => { setClanInitialTab('overview'); onPanel(null); }}
         >
@@ -2049,6 +2038,7 @@ export function GalaxyView({
           detents={['fit']}
           placement="page"
           eyebrow={t('galaxy.panelIntelEyebrow')}
+          headerArt={ATMOSPHERE.intel}
           title={t('galaxy.panelIntelTitle')}
           onClose={() => {
             onPanel(null);
@@ -2282,7 +2272,7 @@ export function GalaxyView({
         />
       )}
 
-      <LoadingScreen visible={covered}
+      <LoadingScreen visible={covered} immediateExit
           caption={
             !dataSettled
               ? t('loading.sweeping')
@@ -2328,7 +2318,8 @@ function PirateFocusHost({
   open: boolean;
   onToggle: () => void;
 }) {
-  const pirates = usePirates();
+  // The focus quotes reach and opens the launch sheet: read at the traffic pace.
+  const pirates = usePirates({ live: true });
   const planet = usePlanet();
   const pending = usePending();
 

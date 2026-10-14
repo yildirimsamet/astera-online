@@ -61,6 +61,27 @@
       html,body{margin:0;background:#04060b}
       /* ASTERA_OPENING_CSS */
     </style>
+    <!-- Protect the first paint while the application bundle is still downloading.
+         The permanent viewport guard takes over before React replaces this cover. -->
+    <script nonce="__CSP_NONCE__" data-viewport-boot>
+      (() => {
+        const covered = () => document.querySelector('[data-loading-screen]:not([data-departing="true"])');
+        const gesture = event => { if (covered()) event.preventDefault(); };
+        const wheel = event => { if (event.ctrlKey && covered()) event.preventDefault(); };
+        const keyboard = event => {
+          if ((event.ctrlKey || event.metaKey) && ['+', '=', '-'].includes(event.key) && covered()) event.preventDefault();
+        };
+        const gestures = ['gesturestart', 'gesturechange', 'gestureend'];
+        for (const type of gestures) document.addEventListener(type, gesture, { passive: false });
+        window.addEventListener('wheel', wheel, { passive: false });
+        window.addEventListener('keydown', keyboard);
+        document.addEventListener('astera:viewport-ready', () => {
+          for (const type of gestures) document.removeEventListener(type, gesture);
+          window.removeEventListener('wheel', wheel);
+          window.removeEventListener('keydown', keyboard);
+        }, { once: true });
+      })();
+    </script>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

@@ -1,4 +1,6 @@
 import { HULLS, SHIP_DAMAGE } from '@astera/rules';
+import { ATMOSPHERE } from '../ui/atmosphere.js';
+import { AtmosphereImage } from '../ui/AtmosphereArt.js';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useCancelRepair, useStartRepair } from '../api/queries.js';
@@ -18,7 +20,6 @@ import {
   type RepairDock,
 } from '../lib/repairStation.js';
 import { countdown, duration, durationPrecise, useNow } from '../lib/time.js';
-import { REPAIR_STATION_ART } from '../ui/assets.js';
 import { CancelConfirm } from '../ui/QueueStrip.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { Icon } from '../v2/icons.js';
@@ -41,12 +42,6 @@ import { Sheet } from '../v2/kit/Sheet.js';
  */
 
 interface Held { alloy: number; crystal: number; deuterium: number }
-
-/** The warm light of the bay behind its render: decoration, never a meaning. */
-const BAY_GLOW = {
-  backgroundImage:
-    'radial-gradient(60% 60% at 50% 55%, color-mix(in srgb, var(--color-v2-sky-warm) 16%, transparent), transparent 72%)',
-};
 
 /** How much of the hull is gone, as a thin bar that fills with the damage. */
 function DamageBar({ damageBp }: { damageBp: number }) {
@@ -130,31 +125,20 @@ export function RepairStationCard({
   return (
     <div
       id="row-REPAIR_STATION"
-      className={`col-span-2 overflow-hidden rounded-control border bg-v2-panel font-v2-ui ${
+      className={`scene-panel repair-scene col-span-2 overflow-hidden rounded-control border bg-v2-panel font-v2-ui ${
         highlighted ? 'border-v2-self/60 ring-1 ring-v2-self/40' : 'border-v2-line'
       }`}
     >
+      <AtmosphereImage art={ATMOSPHERE.repair} />
       <button
         type="button"
         onClick={() => {
           haptic('tap');
           onOpen();
         }}
-        className="group flex w-full items-stretch gap-3 p-2 text-left outline-none transition-colors hover:bg-v2-ink/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v2-self/70"
+        className="group flex min-h-[240px] w-full items-stretch gap-3 p-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v2-self/70"
       >
-        <span
-          className="grid w-[92px] shrink-0 place-items-center rounded-control bg-v2-deep/70"
-          style={BAY_GLOW}
-        >
-          <img
-            src={REPAIR_STATION_ART}
-            alt=""
-            aria-hidden
-            loading="lazy"
-            className="size-[84px] scale-[1.18] object-contain transition-transform duration-300 group-hover:scale-[1.24]"
-          />
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-1 py-0.5">
+        <span data-repair-copy className="flex min-w-0 flex-1 flex-col gap-1 py-0.5">
           <span className="flex items-baseline gap-2">
             <span className="v2-name min-w-0 flex-1 text-caption leading-tight">{t('repairStation.title')}</span>
             <span className={`shrink-0 font-v2-mono text-micro ${summary.full ? 'text-v2-warn' : 'text-v2-ink-3'}`}>
@@ -187,7 +171,7 @@ export function RepairStationCard({
             {head && <RunningClock order={head} />}
           </span>
         </span>
-        <Icon id="i-chev" className="size-4 shrink-0 self-center text-v2-ink-3 transition-transform group-hover:translate-x-0.5" />
+        <Icon id="i-chev" className="size-4 shrink-0 self-center text-v2-ink-3" />
       </button>
     </div>
   );
@@ -458,13 +442,13 @@ export function RepairStationSheet({ planet, held, onClose }: {
     >
       <div className="flex flex-col gap-3 pt-1">
         {/* WHAT IT IS AND WHAT IS IN IT. */}
-        <section className="relative flex flex-col gap-2 rounded-control border border-v2-line bg-v2-deep px-3 pb-3 pt-2.5" style={BAY_GLOW}>
+        <section data-repair-hero className="scene-panel repair-hero flex min-h-[250px] flex-col justify-end gap-2 rounded-control border border-v2-line bg-v2-deep px-3 pb-3 pt-2.5">
+          <AtmosphereImage art={ATMOSPHERE.repair} />
           {pct < 100 && (
             <span className="absolute left-2.5 top-2.5 rounded-chip border border-v2-self/40 bg-v2-deep/80 px-1.5 py-0.5 font-v2-mono text-micro text-v2-self">
               {t('repairStation.industrialChip', { industrial: researchName('INDUSTRIAL'), off: 100 - pct })}
             </span>
           )}
-          <img src={REPAIR_STATION_ART} alt={t('repairStation.title')} className="mx-auto h-28 w-40 scale-110 object-contain" />
           <p className="text-center text-caption text-v2-ink-2">{t('repairStation.tagline')}</p>
           <div className="grid grid-cols-3 gap-1.5">
             <Stat label={t('repairStation.statWaiting')} value={full(summary.waitingShips)} tone={summary.waitingShips > 0 ? 'warn' : 'ink'} />

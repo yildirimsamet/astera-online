@@ -290,6 +290,7 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
 
       {chatOpen && (
         <ChatHost
+          accountId={accountId}
           isAdmin={isAdmin}
           onClose={() => { setChatOpen(false); }}
           onFocusPlanet={onFocusPlanet}

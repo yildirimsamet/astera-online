@@ -7,6 +7,7 @@ import { full } from '../../lib/format.js';
 import { clockTime, duration } from '../../lib/time.js';
 import { Icon, type IconId } from '../icons.js';
 import { Sheet } from '../kit/Sheet.js';
+import { ATMOSPHERE } from '../../ui/atmosphere.js';
 
 /**
  * THE MARK EACH LINE STANDS BEHIND (the mock's square): red only for a threat to you
@@ -143,6 +144,7 @@ export function AwaySheet({
   return (
     <Sheet
       title={t('away.title')}
+      headerArt={ATMOSPHERE.season}
       eyebrow={t('away.eyebrow', { duration: duration(story.awayMinutes) })}
       detents={['fit']}
       placement="card"

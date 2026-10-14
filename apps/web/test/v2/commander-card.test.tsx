@@ -31,6 +31,15 @@ const props = (over: Partial<CommanderCardProps> = {}): CommanderCardProps => ({
 const cell = (label: string): string | null | undefined => screen.getByText(label).nextElementSibling?.textContent;
 
 describe('the commander card', () => {
+  it('has one decorative observation-room scene without changing the profile readings', () => {
+    const { container } = render(<CommanderCard {...props()} />);
+    const art = container.querySelector('img[data-atmosphere-image]');
+    expect(art).toHaveAttribute('src', '/assets/images/atmosphere/commander-room-v2.webp');
+    expect(art).toHaveAttribute('alt', '');
+    expect(art).toHaveAttribute('aria-hidden', 'true');
+    expect(cell('Rank')).toBe('14 / 212');
+    expect(cell('Worlds')).toBe('2 / 4');
+  });
   it('is the avatar, the clan, and where and when this season is', () => {
     render(<CommanderCard {...props()} />);
     expect(screen.getByText('KS')).toBeInTheDocument();

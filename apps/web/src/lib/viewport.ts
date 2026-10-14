@@ -42,14 +42,24 @@ export function lockViewportZoom(): () => void {
     if (event.ctrlKey) event.preventDefault();
   };
 
+  // Keyboard zoom is useful on ready pages, but must not leave a loading game
+  // with an enlarged viewport. Keep Ctrl/Cmd+0 available to restore a prior zoom.
+  const refuseLoadingZoom = (event: KeyboardEvent): void => {
+    if ((event.ctrlKey || event.metaKey) && ['+', '=', '-'].includes(event.key)
+      && document.querySelector('[data-loading-screen]:not([data-departing="true"])')) event.preventDefault();
+  };
+
   // Safari fires these on the document; they are not in any standard, so they are
   // registered by name rather than through a typed map.
   const GESTURES = ['gesturestart', 'gesturechange', 'gestureend'] as const;
   for (const type of GESTURES) document.addEventListener(type, refuse, { passive: false });
   window.addEventListener('wheel', refusePinch, { passive: false });
+  window.addEventListener('keydown', refuseLoadingZoom);
+  document.dispatchEvent(new Event('astera:viewport-ready'));
 
   return () => {
     for (const type of GESTURES) document.removeEventListener(type, refuse);
     window.removeEventListener('wheel', refusePinch);
+    window.removeEventListener('keydown', refuseLoadingZoom);
   };
 }

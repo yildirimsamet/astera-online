@@ -135,7 +135,7 @@ describe('the baked sky', () => {
    * ceiling sits under the LOWEST threshold any canvas that draws this sky uses.
    */
   it('keeps the gas under every bloom threshold that draws it', () => {
-    const thresholds = ['src/galaxy/GalaxyCanvas.tsx', 'src/landing/LandingScene.tsx'].map(
+    const thresholds = ['src/galaxy/GalaxyPostprocessing.tsx', 'src/landing/LandingScene.tsx'].map(
       (path) => {
         const source = readFileSync(resolve(process.cwd(), path), 'utf8');
         const match = /luminanceThreshold=\{([0-9.]+)\}/.exec(source);

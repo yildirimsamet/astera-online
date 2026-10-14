@@ -1311,6 +1311,8 @@ export const planets = pgTable('planets', {
   recoveryUntil: timestamp('recovery_until', { withTimezone: true }),
   /** Tactical EMP blackout. Production continues; Aegis and ground fire-control do not. */
   empUntil: timestamp('emp_until', { withTimezone: true }),
+  /** Successful strikes in the current continuous EMP window; reset on the next fresh hit. */
+  empHits: integer('emp_hits').notNull().default(0),
   /**
    * WHEN THIS WORLD STOPS WORKING DOUBLE. Owner instruction, 2026-09-16.
    *
@@ -1610,7 +1612,12 @@ export const units = pgTable('units', {
   hull: text('hull').$type<HullId>().notNull(),
   location: text('location').notNull().default('home'),
   count: integer('count').notNull().default(0),
-}, (t) => [primaryKey({ columns: [t.planetId, t.hull, t.location] })]);
+}, (t) => [
+  primaryKey({ columns: [t.planetId, t.hull, t.location] }),
+  // Physical fleets aboard named flights (`pirate:`, `trade:`, waves) are read by
+  // location alone; the primary key leads with planet_id and cannot serve that.
+  index('units_location_idx').on(t.location),
+]);
 
 /* ── movement ───────────────────────────────────────────────── */
 
@@ -1742,6 +1749,9 @@ export const missions = pgTable('missions', {
   index('missions_status_arrive_idx').on(t.status, t.arriveAt),
   index('missions_origin_idx').on(t.originPlanetId),
   index('missions_target_idx').on(t.targetPlanetId),
+  // A commander's own recent launches (probe cooldowns, launch counts). `status` is
+  // useless here: almost every row is `resolved`, so the status index scans them all.
+  index('missions_owner_kind_depart_idx').on(t.ownerPlayerId, t.kind, t.departAt),
 ]);
 
 /** Counted at attack launch, never inferred from a later report. D114. */

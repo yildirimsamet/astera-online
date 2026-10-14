@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { cachedDress, cachedGeometry } from '../src/galaxy/PlanetSkinModel.js';
@@ -39,12 +38,6 @@ describe('a dressed material', () => {
     expect(dressed).toBe(2);
   });
 
-  it('is never disposed with a mesh that goes away', () => {
-    const model = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
-    // The default worlds' tiers (a skin's own materials are its own, and go with it).
-    const cached = model.slice(model.indexOf('function ModelInstances('));
-    expect(cached).not.toMatch(/geometry\?\.dispose\(\)/);
-    expect(cached).not.toMatch(/dressed\?\.material\.dispose\(\)/);
-    expect(cached).toMatch(/dispose=\{null\}/);
-  });
+  // Actual removal/reconstruction and shared-asset ownership are covered by
+  // planet-instance-lifetime.test.tsx using Fiber's real reconciler.
 });

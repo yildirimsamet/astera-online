@@ -1483,7 +1483,7 @@ export const galaxySchema = z.object({
       supportOpen: z.boolean().optional(),
       state: z.discriminatedUnion('kind', [
         z.object({ kind: z.literal('NORMAL') }),
-        z.object({ kind: z.literal('EMP'), until: z.coerce.date() }),
+        z.object({ kind: z.literal('EMP'), until: z.coerce.date(), hits: z.number().int().positive().optional() }),
         z.object({ kind: z.literal('RECOVERY'), until: z.coerce.date() }),
         z.object({ kind: z.literal('PROTECTED'), until: z.coerce.date() }),
       ]).default({ kind: 'NORMAL' }),
