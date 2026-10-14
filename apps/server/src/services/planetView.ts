@@ -130,8 +130,15 @@ export async function loadPlanetViewData(
   if (shared && (shared.playerId !== p.playerId || shared.seasonId !== p.seasonId)) {
     throw new GameError('PLACEMENT_CHANGED', 'World ownership changed; refresh and try again', 409);
   }
-  const commander = shared ?? await loadCommanderViewData(tx, p);
-  const [assets, queued] = await Promise.all([
+  /*
+    ONE PASS, NOT FIVE. Resource analysis follow-up 2026-10-14.
+
+    Everything below reads the same snapshot and depends only on the world state
+    above, so it is issued together and pipelined on this transaction's connection
+    instead of waiting for each answer in turn.
+  */
+  const [commander, assets, queued, [activeConvoy], [spentConvoy], dockLots, flight, clanSupport] = await Promise.all([
+    shared ?? loadCommanderViewData(tx, p),
     tx.select().from(strategicAssets).where(and(
       eq(strategicAssets.planetId, planetId),
       inArray(strategicAssets.type, ['DEATH_STAR', 'INTERCEPTOR']),
@@ -140,45 +147,42 @@ export async function loadPlanetViewData(
     tx.select().from(buildOrders)
       .where(and(eq(buildOrders.planetId, planetId), eq(buildOrders.status, 'BUILDING')))
       .orderBy(asc(buildOrders.queue), asc(buildOrders.slot)),
-  ]);
-  const [activeConvoy] = await tx.select({ id: intergalacticConvoyRuns.id })
-    .from(intergalacticConvoyRuns)
-    .where(and(
-      eq(intergalacticConvoyRuns.planetId, planetId),
-      ne(intergalacticConvoyRuns.status, 'done'),
-    ))
-    .limit(1);
-  /**
-   * THIS WORLD HAS ALREADY SPENT ITS ONE STRIKE AT THE CONVOY THAT IS UP. D201.
-   *
-   * A world may strike each occurrence exactly once, ever — the DB says so with a
-   * unique index on `(planet_id, occurrence_id)` — and a crossing lasts three hours
-   * while a round trip rarely lasts one. So the ordinary case is a commander whose
-   * fleet is safely home, inside the same window, looking at a control that has
-   * nothing left to spend. Publishing only `convoyLaunchLocked` (which clears the
-   * moment the fleet lands) re-armed that control and let them pick a wing, read a
-   * quote and commit, to be answered with `CONVOY_ALREADY_RAIDED`.
-   *
-   * A rule the player cannot SEE is not a usable rule (D124), so the state travels
-   * with the world rather than living only in the refusal. It names no occurrence
-   * and no run: it is one boolean about the convoy that is public right now.
-   */
-  const [spentConvoy] = await tx.select({ id: intergalacticConvoyRuns.id })
-    .from(intergalacticConvoyRuns)
-    .innerJoin(
-      galaxyEventOccurrences,
-      eq(galaxyEventOccurrences.id, intergalacticConvoyRuns.occurrenceId),
-    )
-    .where(and(
-      eq(intergalacticConvoyRuns.planetId, planetId),
-      // An abandoned outbound run released its ration; the control stays live.
-      isNull(intergalacticConvoyRuns.abandonedAt),
-      lte(galaxyEventOccurrences.startsAt, p.now),
-      gt(galaxyEventOccurrences.endsAt, p.now),
-    ))
-    .limit(1);
-
-  const [dockLots, flight, clanSupport] = await Promise.all([
+    tx.select({ id: intergalacticConvoyRuns.id })
+      .from(intergalacticConvoyRuns)
+      .where(and(
+        eq(intergalacticConvoyRuns.planetId, planetId),
+        ne(intergalacticConvoyRuns.status, 'done'),
+      ))
+      .limit(1),
+    /**
+     * THIS WORLD HAS ALREADY SPENT ITS ONE STRIKE AT THE CONVOY THAT IS UP. D201.
+     *
+     * A world may strike each occurrence exactly once, ever — the DB says so with a
+     * unique index on `(planet_id, occurrence_id)` — and a crossing lasts three hours
+     * while a round trip rarely lasts one. So the ordinary case is a commander whose
+     * fleet is safely home, inside the same window, looking at a control that has
+     * nothing left to spend. Publishing only `convoyLaunchLocked` (which clears the
+     * moment the fleet lands) re-armed that control and let them pick a wing, read a
+     * quote and commit, to be answered with `CONVOY_ALREADY_RAIDED`.
+     *
+     * A rule the player cannot SEE is not a usable rule (D124), so the state travels
+     * with the world rather than living only in the refusal. It names no occurrence
+     * and no run: it is one boolean about the convoy that is public right now.
+     */
+    tx.select({ id: intergalacticConvoyRuns.id })
+      .from(intergalacticConvoyRuns)
+      .innerJoin(
+        galaxyEventOccurrences,
+        eq(galaxyEventOccurrences.id, intergalacticConvoyRuns.occurrenceId),
+      )
+      .where(and(
+        eq(intergalacticConvoyRuns.planetId, planetId),
+        // An abandoned outbound run released its ration; the control stays live.
+        isNull(intergalacticConvoyRuns.abandonedAt),
+        lte(galaxyEventOccurrences.startsAt, p.now),
+        gt(galaxyEventOccurrences.endsAt, p.now),
+      ))
+      .limit(1),
     dockLotsOf(tx, planetId, unitRows),
     baysOf(tx, planetId, p.buildings.CORE),
     clanSupportBayView(tx, { planetId, rulesetVersion: p.rulesetVersion }),

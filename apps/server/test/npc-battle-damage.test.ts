@@ -16,6 +16,7 @@ import {
   notifications,
   pirateRaids,
   planets,
+  seasons,
   units,
 } from '../src/db/schema.js';
 import { FixedClock } from '../src/clock.js';
@@ -27,7 +28,7 @@ import { joinSeason } from '../src/services/player.js';
 import { createSeason } from '../src/services/season.js';
 import { dockLotsOf } from '../src/services/shipDamage.js';
 import { EventWorker } from '../src/worker/loop.js';
-import { fuelUp, giveUnits, grant, makeAccount, setLevel, settledAt, testDb, truncateAll } from './helpers.js';
+import { fuelUp, giveUnits, grant, makeAccount, pinnedKey, setLevel, settledAt, testDb, truncateAll } from './helpers.js';
 
 /**
  * KALICI GEMİ HASARI AGAINST THE GALAXY'S OWN FORCES. `plan.md` F3 (D1).
@@ -117,9 +118,19 @@ describe('a raid on a pirate', () => {
     const start = new Date('2026-09-01T21:00:00.000Z');
     const clock = new FixedClock(new Date(start.getTime() + 5 * 60_000));
     const { season } = await createSeason(db, {
-      shardCode: 'EU-DMG-P', seed: 4513, startsAt: start, playerCap: 60,
+      shardCode: 'EU-DMG-P', seed: 4514, startsAt: start, playerCap: 60,
       rulesetVersion: MULTI_WORLD.shipDamageRulesetVersion,
     });
+    /*
+      THE PIRATE LANE IS DERIVED FROM THE SEASON KEY, SO THE KEY IS PINNED. 2026-10-14.
+
+      `asteroidKey` is `defaultRandom()`, so an unpinned season dealt a different first
+      pirate every run: across 40 keys, 2 could wipe this wing and some left it unhurt,
+      which is how this test went red intermittently. Pinned, it deals the same level-1
+      crew every run; against it 60 Darts survived with a part-hit ship in 50,000 of
+      50,000 combat seeds (`resolveCombat`, the raid id being the only other input).
+    */
+    await db.update(seasons).set({ asteroidKey: pinnedKey(4514) }).where(eq(seasons.id, season.id));
     const joined = [];
     for (let i = 0; i < 8; i++) {
       joined.push(await joinSeason(db, (await makeAccount(db, `Hunter${String(i)}`)).id, season.id, clock));
@@ -130,6 +141,8 @@ describe('a raid on a pirate', () => {
     const snapshot = await loadPirateSnapshot(db, season.id, new Date(start.getTime() + 61 * 60_000));
     const spec = snapshot.pirates[0];
     if (!spec) throw new Error('the hour dealt no pirate');
+    expect({ level: spec.level, roster: spec.roster }, 'the pinned key deals the measured pirate')
+      .toEqual({ level: 1, roster: { PIKE: 1, DART: 1 } });
     const minute = Math.ceil(spec.appearsAt) + 2;
     const at = piratePosition(spec, minute);
     const mine = joined[0]!.planetId;
