@@ -190,6 +190,7 @@ export interface ApiDeps {
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  signal?: AbortSignal;
   headers?: Readonly<Record<string, string>>;
   /**
    * The payload as an OBJECT. `send` serialises it — do not pre-encode.
@@ -297,6 +298,7 @@ export class Api {
     schema: z.ZodType<T, z.ZodTypeDef, unknown>,
     opts: RequestOptions = {},
   ): Promise<T> {
+    opts.signal?.throwIfAborted();
     /**
      * EVERY ANSWER CARRIES THE SERVER'S CLOCK, so the offset costs no request. D52.
      *
@@ -320,16 +322,22 @@ export class Api {
       ...(opts.body === undefined ? {} : { body: JSON.stringify(opts.body) }),
       // Sends the refresh cookie. Same-origin in dev via the Vite proxy.
       credentials: 'same-origin',
+      ...(opts.signal === undefined ? {} : { signal: opts.signal }),
     });
     noteServerTime(res.headers.get('x-server-time'), res.headers.get('date'), sentAt, Date.now());
 
     if (res.status === 401 && (opts.retryOnExpiry ?? true)) {
+      opts.signal?.throwIfAborted();
       if (await this.restore()) {
         return this.send(path, schema, { ...opts, retryOnExpiry: false });
       }
     }
 
-    const body: unknown = await res.json().catch(() => null);
+    const body: unknown = await res.json().catch(() => {
+      opts.signal?.throwIfAborted();
+      return null;
+    });
+    opts.signal?.throwIfAborted();
     const receivedPlacement = res.headers.get('x-placement');
     if (path === '/api/auth/me' && res.ok) {
       if (sentPlacement !== this.placement && receivedPlacement !== this.placement) {
@@ -553,16 +561,17 @@ export class Api {
   galaxyEvents = () => this.send('/api/galaxy/events', activeGalaxyEventsSchema);
   setRival = (planetId: string | null) =>
     this.send('/api/rival', rivalSetSchema, { method: 'POST', body: { planetId } });
-  planets = () => this.send('/api/planets', planetsSchema);
+  planets = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/planets', planetsSchema, options);
   colonyAbandonment = (planetId: string) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/abandon`, colonyAbandonmentSchema);
   abandonColony = (planetId: string) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/abandon`, colonyAbandonedSchema, {
       method: 'POST', body: { confirm: true },
     });
-  planet = (planetId?: string) => this.send(
+  planet = (planetId?: string, options?: Pick<RequestOptions, 'signal'>) => this.send(
     planetId ? `/api/planets/${encodeURIComponent(planetId)}` : '/api/planet',
     planetSchema,
+    options,
   );
   /**
    * The whole galaxy and the whole ladder, each read at most once every five
@@ -586,8 +595,8 @@ export class Api {
     this.send(`/api/skins/planets/${encodeURIComponent(planetId)}`, skinEquipSchema, {
       method: 'POST', body: { skinId },
     });
-  traffic = () => this.send('/api/galaxy/traffic', trafficSchema);
-  monuments = () => this.send('/api/monuments', monumentsSchema);
+  traffic = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/galaxy/traffic', trafficSchema, options);
+  monuments = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/monuments', monumentsSchema, options);
   quoteMonument = (monumentId: string, input: MonumentSendInput) =>
     this.send(`/api/monuments/${encodeURIComponent(monumentId)}/quote`, monumentQuoteSchema, { method: 'POST', body: { ...input } });
   sendMonument = (monumentId: string, input: MonumentSendInput, key: string) =>
@@ -948,11 +957,12 @@ export class Api {
     miningSchema,
   );
 
-  miningField = () => this.send('/api/mining/field', miningFieldSchema);
+  miningField = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/mining/field', miningFieldSchema, options);
 
-  miningStatus = (planetId?: string) => this.send(
+  miningStatus = (planetId?: string, options?: Pick<RequestOptions, 'signal'>) => this.send(
     `/api/mining/status${planetId ? `?planetId=${encodeURIComponent(planetId)}` : ''}`,
     miningStatusSchema,
+    options,
   );
 
   mine = (asteroidId: string, craft: number, originPlanetId?: string) =>
@@ -975,9 +985,10 @@ export class Api {
    * the request rather than being applied afterwards: a rendezvous solved from the
    * wrong world is a number that does not describe any launch the player can make.
    */
-  pirates = (originPlanetId?: string) => this.send(
+  pirates = (originPlanetId?: string, options?: Pick<RequestOptions, 'signal'>) => this.send(
     `/api/pirates${originPlanetId ? `?originPlanetId=${encodeURIComponent(originPlanetId)}` : ''}`,
     piratesSchema,
+    options,
   );
 
   /** IRREVERSIBLE, like every launch. The server has no recall. P3. */
@@ -1064,7 +1075,7 @@ export class Api {
   acknowledgeReturn = (asOf: Date) =>
     this.send('/api/session/return/seen', returnSeenSchema, { method: 'POST', body: { asOf: asOf.toISOString() } });
   /** Safe to poll — unlike `returnPayload`, reading this changes nothing. */
-  pending = () => this.send('/api/session/pending', pendingSchema);
+  pending = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/session/pending', pendingSchema, options);
   unlocks = () => this.send('/api/session/unlocks', unlocksSchema);
   notifications = () => this.send('/api/notifications?limit=30', notificationsSchema);
 

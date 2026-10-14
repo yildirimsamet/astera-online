@@ -279,10 +279,12 @@ export function discoveredAsteroidIndexes(
   snapshot: AsteroidProjectionSnapshot,
   epochs: readonly SensorEpoch[],
   now: Date,
+  onlyIndexes?: ReadonlySet<number>,
 ): ReadonlySet<number> {
   const nowMinutes = minutesSince(snapshot.startsAt, now);
   return new Set(snapshot.asteroids
     .filter((rock) => {
+      if (onlyIndexes !== undefined && !onlyIndexes.has(rock.index)) return false;
       // The field drops an expired rock, but traffic may still contain a craft
       // returning from it. Test discovery at the last instant the rock existed so
       // an already earned public race does not vanish halfway through its return.

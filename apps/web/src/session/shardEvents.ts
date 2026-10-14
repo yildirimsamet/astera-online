@@ -168,6 +168,8 @@ export const isPrivateEvent = (kind: string): boolean => kind.startsWith(PRIVATE
  */
 export function readsForPrivateEvent(kind: string): readonly (readonly string[])[] | null {
   switch (kind.slice(PRIVATE_PREFIX.length)) {
+    case 'sensors':
+      return [keys.traffic, keys.miningField, keys.pirates, keys.galaxy];
     case 'monument':
       return [keys.monuments, keys.pending, keys.planet, keys.planets, keys.notifications, keys.reports, keys.galaxy, keys.traffic, keys.clanWar];
     /** A world this commander watches launched or recovered combat craft. */

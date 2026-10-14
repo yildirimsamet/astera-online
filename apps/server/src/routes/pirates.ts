@@ -22,7 +22,6 @@ import { planets, players, units } from '../db/schema.js';
 import { GameError, orbitOf } from '../services/planet.js';
 import { ownedPlanet } from '../services/ownership.js';
 import { pirateCallsign, pirateId } from '../services/pirateField.js';
-import { sensorHistoryForPlayer } from '../services/sensorHistory.js';
 import { launchPirateRaid, recallPirateRaid } from '../services/pirateRaid.js';
 import { techOf } from '../services/researchState.js';
 import { requireAuth } from './auth.js';
@@ -95,7 +94,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
       app.projections.pirateSnapshot(self.seasonId, now),
       app.projections.sensorsFor(self.playerId, self.planetIds),
       // The commander's own sensor history: what memory is still holding open. D158.
-      sensorHistoryForPlayer(app.db, self.playerId, self.seasonId),
+      app.projections.historyFor(self.playerId, self.seasonId),
     ]);
     const nowMinutes = minutesSince(snapshot.startsAt, now);
 

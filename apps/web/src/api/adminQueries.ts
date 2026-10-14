@@ -1,3 +1,4 @@
+import { refreshQueries } from './refreshQueries.js';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from './context.js';
 import type { AdminMaskInput, AdminMuteInput } from './adminSchemas.js';
@@ -21,13 +22,13 @@ export function useAdminModeration() {
   const client = useQueryClient();
   return {
     mute: useMutation({ mutationFn: (input: AdminMuteInput) => api.adminMute(input),
-      onSuccess: () => { void client.invalidateQueries({ queryKey: ['admin', 'players'] }); },
+      onSuccess: () => { void refreshQueries(client, { queryKey: ['admin', 'players'] }); },
     }),
     mask: useMutation({ mutationFn: (input: AdminMaskInput) => api.adminMask(input),
       onSuccess: () => {
-        void client.invalidateQueries({ queryKey: ['chat'] });
-        void client.invalidateQueries({ queryKey: ['clan', 'chat'] });
-        void client.invalidateQueries({ queryKey: ['admin', 'clanChat'] });
+        void refreshQueries(client, { queryKey: ['chat'] });
+        void refreshQueries(client, { queryKey: ['clan', 'chat'] });
+        void refreshQueries(client, { queryKey: ['admin', 'clanChat'] });
       },
     }),
   };
@@ -45,6 +46,6 @@ export function useAdminPostClanChat(clanId: string) {
   const client = useQueryClient();
   return useMutation({ mutationFn: (input: { content: string; replyToMessageId?: string }) =>
     api.adminPostClanChat(clanId, input.content, input.replyToMessageId),
-  onSuccess: () => { void client.invalidateQueries({ queryKey: ['admin', 'clanChat', clanId] }); },
+  onSuccess: () => { void refreshQueries(client, { queryKey: ['admin', 'clanChat', clanId] }); },
   });
 }

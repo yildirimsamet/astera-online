@@ -32,7 +32,7 @@ import type { Db, Tx } from '../db/client.js';
 import { buildQueueContext, placeBuildOrder } from './buildQueue.js';
 import { asTech } from './researchState.js';
 import { assertHullProductionAccess } from './hullAccess.js';
-import { planetView, type PlanetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import {
   GameError,
   assertWorldOperational,
@@ -173,9 +173,9 @@ export async function collectWorks(
       bufferAlloy: result.state.bufferAlloy,
       bufferCrystal: result.state.bufferCrystal,
       bufferDeuterium: result.state.bufferDeuterium,
-      planet: await planetView(tx, planetId, clock),
+      planet: await loadPlanetViewData(tx, planetId, clock),
     };
-  }, expectedPlayerId);
+  }, expectedPlayerId).then(buildPlanetResult);
 }
 
 /** Place one building commitment inside an already-held planet transaction. */
@@ -264,9 +264,9 @@ export async function upgradeBuilding(
       level,
       alloy: planet.alloy,
       crystal: planet.crystal,
-      planet: await planetView(tx, planetId, clock),
+      planet: await loadPlanetViewData(tx, planetId, clock),
     };
-  }, expectedPlayerId);
+  }, expectedPlayerId).then(buildPlanetResult);
 }
 
 /** Place one hull batch inside an already-held planet transaction. */
@@ -393,9 +393,9 @@ export async function buildUnits(
       built: count,
       alloy: planet.alloy,
       crystal: planet.crystal,
-      planet: await planetView(tx, planetId, clock),
+      planet: await loadPlanetViewData(tx, planetId, clock),
     };
-  }, expectedPlayerId);
+  }, expectedPlayerId).then(buildPlanetResult);
 }
 
 /**
@@ -463,8 +463,8 @@ export async function raiseInstrument(
       ),
     });
 
-    return { type, level: level + 1, planet: await planetView(tx, planetId, clock) };
-  }, expectedPlayerId);
+    return { type, level: level + 1, planet: await loadPlanetViewData(tx, planetId, clock) };
+  }, expectedPlayerId).then(buildPlanetResult);
 }
 
 /** The two that hang off the Uplink. The Aegis and the Veil stand on their own. */
@@ -514,6 +514,6 @@ export async function installSatellite(
         type, context.projected.buildings.CORE, asTech(context.projected.research),
       ),
     });
-    return { type, slot, planet: await planetView(tx, planetId, clock) };
-  }, expectedPlayerId);
+    return { type, slot, planet: await loadPlanetViewData(tx, planetId, clock) };
+  }, expectedPlayerId).then(buildPlanetResult);
 }

@@ -1,6 +1,6 @@
 import { planetArt } from './assets.js';
 import i18n from '../i18n/index.js';
-import type { PlanetSkinId } from '@astera/rules';
+import { planetSkinById } from '@astera/rules';
 import { PLANET_SKIN_CATALOG } from './skinCatalog.js';
 
 /**
@@ -28,8 +28,9 @@ export function PlanetSigil({
   size?: number;
   shielded?: boolean;
   dark?: boolean;
-  skinId?: PlanetSkinId | null;
+  skinId?: string | null;
 }) {
+  const skin = skinId ? planetSkinById(skinId) : null;
   return (
     <div
       className="relative shrink-0"
@@ -48,9 +49,9 @@ export function PlanetSigil({
         />
       )}
 
-      {skinId ? (
+      {skin ? (
         <span className="absolute inset-0 overflow-hidden rounded-full">
-          <img src={PLANET_SKIN_CATALOG[skinId].image} alt="" aria-hidden loading="lazy"
+          <img src={PLANET_SKIN_CATALOG[skin.id].image} alt="" aria-hidden loading="lazy"
             className="size-full scale-[1.18] object-cover"
             style={dark ? { filter: 'brightness(0.62) saturate(0.72)' } : undefined} />
         </span>

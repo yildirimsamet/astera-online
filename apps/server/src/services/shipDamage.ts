@@ -71,13 +71,13 @@ export function dockNotice(report: DockReport): { docked?: number; autoRepaired?
 }
 
 /** Every lot waiting at this world, oldest first, with the ships `units` holds for it. */
-export async function dockLotsOf(tx: Queryable, planetId: string): Promise<DockedLot[]> {
+export async function dockLotsOf(tx: Queryable, planetId: string, inventory?: readonly (typeof units.$inferSelect)[]): Promise<DockedLot[]> {
   const lots = await tx.select().from(shipDamageLots)
     .where(eq(shipDamageLots.planetId, planetId))
     .orderBy(asc(shipDamageLots.createdAt), asc(shipDamageLots.id));
   if (lots.length === 0) return [];
 
-  const rows = await tx.select().from(units).where(and(
+  const rows = inventory ?? await tx.select().from(units).where(and(
     eq(units.planetId, planetId),
     inArray(units.location, lots.map((lot) => dockLocation(lot.id))),
   ));

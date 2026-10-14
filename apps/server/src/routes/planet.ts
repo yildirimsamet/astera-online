@@ -14,7 +14,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { planets } from '../db/schema.js';
 import { startFaultRepair } from '../services/faultRepair.js';
 import { startRepair } from '../services/repair.js';
-import { planetView } from '../services/planetView.js';
+import { loadPlanetViewData, buildPlanetView, type PlanetViewData } from '../services/planetView.js';
 import {
   buildUnits,
   collectWorks,
@@ -26,7 +26,7 @@ import { launchAttack } from '../services/mission.js';
 import { requireAuth } from './auth.js';
 import { completeResearch } from '../services/research.js';
 import { capitalPlanet, commanderForAccount, ownedPlanet } from '../services/ownership.js';
-import { GameError } from '../services/planet.js';
+import { GameError, lockSeason } from '../services/planet.js';
 import { buildDeathStar, buildInterceptor, launchDeathStar } from '../services/strategic.js';
 import { setDefencePosture } from '../services/clanSupport.js';
 import { launchSettlement, launchTransfer, recallFlight } from '../services/movement.js';
@@ -121,8 +121,10 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
   };
 
   app.get('/api/planets', { preHandler: requireAuth }, async (req) => {
-    return app.db.transaction(async (tx) => {
+    const captured = await app.db.transaction(async (tx) => {
       const commander = await commanderForAccount(tx, req.accountId!);
+      // Lifecycle writers take season before world; never hold a world while waiting for season.
+      await lockSeason(tx, commander.seasonId, false);
       /**
        * A PRIVATE VIEW ADVANCES LAZY ECONOMY, SO THIS IS AN UPDATE LOCK.
        *
@@ -141,8 +143,12 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       const worlds = locked.toSorted((a, b) =>
         a.kind === b.kind ? a.id.localeCompare(b.id) : a.kind === 'CAPITAL' ? -1 : 1,
       );
-      const views = [];
-      for (const world of worlds) views.push(await planetView(tx, world.id, app.clock));
+      const views: PlanetViewData[] = [];
+      // One clock instant and commander snapshot for the whole response.
+      const now = app.clock.now();
+      for (const world of worlds) {
+        views.push(await loadPlanetViewData(tx, world.id, { now: () => now }, views[0]?.commander));
+      }
       return {
         playerId: commander.playerId,
         seasonId: commander.seasonId,
@@ -150,24 +156,26 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
         planets: views,
       };
     });
+    return { ...captured, planets: captured.planets.map(buildPlanetView) };
   });
 
   app.get('/api/planets/:planetId', { preHandler: requireAuth }, async (req) => {
     const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(req.params);
     return app.db.transaction(async (tx) => {
       const commander = await commanderForAccount(tx, req.accountId!);
+      await lockSeason(tx, commander.seasonId, false);
       const locked = await tx.select({ id: planets.id }).from(planets).where(and(
         eq(planets.id, planetId),
         eq(planets.controllerPlayerId, commander.playerId),
       )).for('update');
       if (!locked[0]) throw new GameError('PLANET_NOT_OWNED', 'You no longer control that world', 403);
-      return planetView(tx, planetId, app.clock);
-    });
+      return loadPlanetViewData(tx, planetId, app.clock);
+    }).then(buildPlanetView);
   });
 
   app.get('/api/planet', { preHandler: requireAuth }, async (req) => {
     const planetId = await myPlanet(req.accountId!);
-    return app.db.transaction(async (tx) => planetView(tx, planetId, app.clock));
+    return app.db.transaction(tx => loadPlanetViewData(tx, planetId, app.clock)).then(buildPlanetView);
   });
 
   app.get('/api/planets/:planetId/abandon', { preHandler: requireAuth }, async req => {

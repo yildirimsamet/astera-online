@@ -1,3 +1,4 @@
+import { refreshQueries } from '../api/refreshQueries.js';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -41,9 +42,9 @@ export function RecallHost({ accountId, paused = false }: { accountId: string; p
       if (response.completed) {
         progress.current = saveRecall(accountId, { ...progress.current, quizDone: true });
         client.setQueryData(key, { ...status.data, eligible: true, completed: true });
-        void client.invalidateQueries({ queryKey: keys.rewards });
-        void client.invalidateQueries({ queryKey: keys.leaderboard });
-        void client.invalidateQueries({ queryKey: keys.galaxy });
+        void refreshQueries(client, { queryKey: keys.rewards });
+        void refreshQueries(client, { queryKey: keys.leaderboard });
+        void refreshQueries(client, { queryKey: keys.galaxy });
         if (value === null) setSurface(null);
       }
     },

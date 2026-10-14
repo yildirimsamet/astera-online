@@ -52,7 +52,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const worldsQuery = useQuery({
     queryKey: keys.planets,
-    queryFn: ({ signal }) => readWorldSnapshots(queryClient, api.planets, signal),
+    queryFn: ({ signal }) => readWorldSnapshots(queryClient, () => api.planets({ signal }), signal),
     staleTime: 15_000,
     // SSE is primary; this also heals a missed credit while the stream is down.
     refetchInterval: 60_000,
@@ -65,7 +65,7 @@ export function WorldProvider({ children }: { children: ReactNode }) {
   const worlds = useQueries({
     queries: (data?.planets ?? []).map((world) => ({
       queryKey: keys.planetById(world.planet.id),
-      queryFn: () => readPlanetSnapshot(queryClient, keys.planetById(world.planet.id), () => api.planet(world.planet.id)),
+      queryFn: ({ signal }: { signal: AbortSignal }) => readPlanetSnapshot(queryClient, keys.planetById(world.planet.id), () => api.planet(world.planet.id, { signal })),
       enabled: false,
       initialData: world,
       initialDataUpdatedAt: worldsQuery.dataUpdatedAt,

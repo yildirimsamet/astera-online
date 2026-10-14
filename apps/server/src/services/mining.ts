@@ -64,7 +64,7 @@ import { hasResearch, techOf } from './researchState.js';
 import type { TechLevels } from '@astera/rules';
 import { publicPlanetIdentity, recordGalaxyEvent } from './chronicle.js';
 import { pendingThreads, type PendingThread } from './session.js';
-import { planetView, type PlanetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { assertOutsideSilentSpace } from './waitingRoom.js';
 
 /**
@@ -168,7 +168,10 @@ export async function loadMiningSnapshot(
   const field = await fieldOf(db, seasonId, now);
   const oldest = new Date(now.getTime() - DEBRIS.decayMinutes * 60_000);
   const [claims, debris] = await Promise.all([
-    db.select().from(asteroidClaims).where(eq(asteroidClaims.seasonId, seasonId)),
+    field.asteroids.length === 0 ? Promise.resolve([]) : db.select().from(asteroidClaims).where(and(
+      eq(asteroidClaims.seasonId, seasonId),
+      inArray(asteroidClaims.index, field.asteroids.map(rock => rock.index)),
+    )),
     db
       .select()
       .from(debrisFields)
@@ -358,13 +361,13 @@ async function launchViews(
   tx: Tx,
   origin: LockedPlanet,
   clock: Clock,
-): Promise<Pick<MiningLaunch, 'mining' | 'pending' | 'planet'>> {
+) {
   // Deliberately sequential on one transaction connection. Each is the same
   // projection its GET endpoint uses, but no second HTTP request or second DB
   // snapshot can race the launch.
   const mining = await miningStatusAfterLaunch(tx, origin);
   const pending = await pendingThreads(tx, origin.planetId, origin.now);
-  const planet = await planetView(tx, origin.planetId, clock);
+  const planet = await loadPlanetViewData(tx, origin.planetId, clock);
   return { mining, pending, planet };
 }
 
@@ -576,7 +579,7 @@ export async function launchMining(
       capacity: holdEach * craft,
       ...await launchViews(tx, origin, clock),
     };
-  });
+  }).then(buildPlanetResult);
 }
 
 /**
@@ -694,7 +697,7 @@ export async function recallMining(
       homeAt,
       ...await launchViews(tx, origin, clock),
     };
-  });
+  }).then(buildPlanetResult);
 }
 
 /**
@@ -1544,7 +1547,7 @@ export async function launchHarvest(
       capacity: holdEach * craft,
       ...await launchViews(tx, origin, clock),
     };
-  });
+  }).then(buildPlanetResult);
 }
 
 /**

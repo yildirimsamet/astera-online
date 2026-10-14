@@ -1,3 +1,4 @@
+import { refreshQueries } from './refreshQueries.js';
 import { playSound } from '../lib/sound.js';
 import type { CosmeticCategory, CosmeticId, MobileHullId } from '@astera/rules';
 import { useEffect, useMemo, useRef } from 'react';
@@ -212,7 +213,7 @@ export function usePlanet() {
   const key = activePlanetId ? keys.planetById(activePlanetId) : keys.planet;
   return useQuery({
     queryKey: key,
-    queryFn: () => readPlanetSnapshot(client, key, () => api.planet(activePlanetId ?? undefined)),
+    queryFn: ({ signal }) => readPlanetSnapshot(client, key, () => api.planet(activePlanetId ?? undefined, { signal })),
     ...READ,
   });
 }
@@ -299,7 +300,7 @@ export function useEquipCosmetic() {
   return useMutation({
     mutationFn: ({ category, cosmeticId, hull }: { category: CosmeticCategory; cosmeticId: CosmeticId | null; hull?: MobileHullId }) => api.equipCosmetic(category, cosmeticId, hull),
     onSuccess: async () => {
-      await Promise.all([cache.invalidateQueries({ queryKey: keys.skins }), cache.invalidateQueries({ queryKey: keys.galaxy })]);
+      await Promise.all([refreshQueries(cache, { queryKey: keys.skins }), refreshQueries(cache, { queryKey: keys.galaxy })]);
     },
   });
 }
@@ -312,10 +313,10 @@ export function useEquipSkin() {
       api.equipSkin(planetId, skinId),
     onSuccess: async () => {
       await Promise.all([
-        cache.invalidateQueries({ queryKey: keys.skins }),
-        cache.invalidateQueries({ queryKey: keys.galaxy }),
-        cache.invalidateQueries({ queryKey: keys.planet }),
-        cache.invalidateQueries({ queryKey: keys.leaderboard }),
+        refreshQueries(cache, { queryKey: keys.skins }),
+        refreshQueries(cache, { queryKey: keys.galaxy }),
+        refreshQueries(cache, { queryKey: keys.planet }),
+        refreshQueries(cache, { queryKey: keys.leaderboard }),
       ]);
     },
   });
@@ -481,7 +482,7 @@ export function useAsteroidFieldWake(at: Date | null | undefined): void {
     if (instant === undefined || firedAt.current === instant) return;
     const timer = window.setTimeout(() => {
       firedAt.current = instant;
-      void client.invalidateQueries({ queryKey: keys.miningField });
+      void refreshQueries(client, { queryKey: keys.miningField });
     }, Math.max(0, instant - serverNow()) + FIELD_WAKE_GRACE_MS);
     return () => { window.clearTimeout(timer); };
   }, [client, instant]);
@@ -499,7 +500,7 @@ export function useMining() {
   });
   const status = useQuery({
     queryKey: activePlanetId ? keys.miningStatusById(activePlanetId) : keys.miningStatus,
-    queryFn: () => api.miningStatus(activePlanetId ?? undefined),
+    queryFn: ({ signal }) => api.miningStatus(activePlanetId ?? undefined, { signal }),
     staleTime: 15_000,
     refetchInterval: NET_MS,
     refetchOnWindowFocus: true,
@@ -723,7 +724,7 @@ export function useMonumentActions() {
   const lane = usePlanetInputLane();
   const refresh = async (): Promise<void> => {
     await Promise.all([keys.monuments, keys.galaxy, keys.planet, keys.planets, keys.pending,
-      keys.traffic, keys.notifications, keys.reports, keys.clanWar, keys.season].map((queryKey) => client.invalidateQueries({ queryKey })));
+      keys.traffic, keys.notifications, keys.reports, keys.clanWar, keys.season].map((queryKey) => refreshQueries(client, { queryKey })));
   };
   return {
     send: useMutation({
@@ -750,9 +751,9 @@ export function useClanWarActions() {
   const lane = usePlanetInputLane();
   const applyPlanet = useApplyPlanet();
   const refresh = (): void => {
-    void client.invalidateQueries({ queryKey: keys.clanWar });
-    void client.invalidateQueries({ queryKey: keys.pending });
-    void client.invalidateQueries({ queryKey: keys.traffic });
+    void refreshQueries(client, { queryKey: keys.clanWar });
+    void refreshQueries(client, { queryKey: keys.pending });
+    void refreshQueries(client, { queryKey: keys.traffic });
   };
   return {
     target: useMutation({ mutationFn: (planetId: string) => api.markClanWarTarget(planetId),
@@ -794,13 +795,13 @@ export function useClanWarActions() {
       mutationFn: (input: { planetId: string; resources: Resources }) => api.donateClanTreasury(input),
       onMutate: ({ planetId }) => lane.enter(planetId),
       onSuccess: () => Promise.all([keys.clanWar, keys.planets, keys.planet]
-        .map((queryKey) => client.invalidateQueries({ queryKey }))),
+        .map((queryKey) => refreshQueries(client, { queryKey }))),
       onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
     }),
     upgrade: useMutation({ mutationFn: (level: number) => api.upgradeClanLevel(level),
       onSuccess: () => {
-        void client.invalidateQueries({ queryKey: keys.clanWar });
-        void client.invalidateQueries({ queryKey: keys.clanLeaderboard });
+        void refreshQueries(client, { queryKey: keys.clanWar });
+        void refreshQueries(client, { queryKey: keys.clanLeaderboard });
       } }),
   };
 }
@@ -824,10 +825,10 @@ export function useClanSupportActions() {
   const applyPlanet = useApplyPlanet();
   const lane = usePlanetInputLane();
   const refresh = (): void => {
-    void client.invalidateQueries({ queryKey: keys.clanSupport });
-    void client.invalidateQueries({ queryKey: keys.planet });
-    void client.invalidateQueries({ queryKey: keys.planets });
-    void client.invalidateQueries({ queryKey: keys.pending });
+    void refreshQueries(client, { queryKey: keys.clanSupport });
+    void refreshQueries(client, { queryKey: keys.planet });
+    void refreshQueries(client, { queryKey: keys.planets });
+    void refreshQueries(client, { queryKey: keys.pending });
   };
   return {
     quote: useMutation({ mutationFn: (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet }) =>
@@ -858,7 +859,7 @@ export function useSetDefencePosture() {
     onMutate: ({ planetId }) => lane.enter(planetId),
     onSuccess: async (result) => {
       await applyPlanet(result.planet);
-      if (result.returnedWaves > 0) void client.invalidateQueries({ queryKey: keys.clanSupport });
+      if (result.returnedWaves > 0) void refreshQueries(client, { queryKey: keys.clanSupport });
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
@@ -900,13 +901,13 @@ export function useClanActions() {
   const capitalLane = usePlanetMutationLane(capitalPlanetId);
   const originLane = usePlanetInputLane();
   const refreshClan = (): void => {
-    void client.invalidateQueries({ queryKey: ['clan'] });
+    void refreshQueries(client, { queryKey: ['clan'] });
   };
   const refreshPublicClan = (): void => {
     refreshClan();
-    void client.invalidateQueries({ queryKey: keys.galaxy });
-    void client.invalidateQueries({ queryKey: keys.leaderboard });
-    void client.invalidateQueries({ queryKey: keys.season });
+    void refreshQueries(client, { queryKey: keys.galaxy });
+    void refreshQueries(client, { queryKey: keys.leaderboard });
+    void refreshQueries(client, { queryKey: keys.season });
   };
 
   const create = useMutation({
@@ -965,7 +966,7 @@ export function useClanActions() {
     onSuccess: async (result) => {
       await applyPlanet(result.planet);
       refreshClan();
-      void client.invalidateQueries({ queryKey: keys.leaderboard });
+      void refreshQueries(client, { queryKey: keys.leaderboard });
     },
     onSettled: (_data, _error, _vars, turn) => { capitalLane.leave(turn); },
   });
@@ -976,8 +977,8 @@ export function useClanActions() {
     onSuccess: async (result) => {
       await applyPlanet(result.planet);
       refreshClan();
-      void client.invalidateQueries({ queryKey: keys.pending });
-      void client.invalidateQueries({ queryKey: keys.traffic });
+      void refreshQueries(client, { queryKey: keys.pending });
+      void refreshQueries(client, { queryKey: keys.traffic });
     },
     onSettled: (_data, _error, _vars, turn) => { originLane.leave(turn); },
   });
@@ -999,7 +1000,7 @@ export function useClanActions() {
           pages: [{ ...first, messages: [...first.messages, message] }, ...current.pages.slice(1)],
         };
       });
-      void client.invalidateQueries({ queryKey: keys.clanBadge });
+      void refreshQueries(client, { queryKey: keys.clanBadge });
     },
   });
   const readChat = useMutation({
@@ -1023,11 +1024,11 @@ export function useClanActions() {
     onError: (_error, _messageId, context) => {
       if (context?.previous !== undefined) client.setQueryData(keys.clanBadge, context.previous);
     },
-    onSettled: () => { void client.invalidateQueries({ queryKey: keys.clanBadge }); },
+    onSettled: () => { void refreshQueries(client, { queryKey: keys.clanBadge }); },
   });
   const seen = useMutation({
     mutationFn: () => api.markClanSeen(),
-    onSuccess: () => { void client.invalidateQueries({ queryKey: keys.clanBadge }); },
+    onSuccess: () => { void refreshQueries(client, { queryKey: keys.clanBadge }); },
   });
 
   return {
@@ -1141,8 +1142,8 @@ export function usePostDm() {
         if (!first || first.messages.some((row) => row.id === message.id)) return current;
         return { ...current, pages: [{ ...first, messages: [...first.messages, message] }, ...current.pages.slice(1)] };
       });
-      void client.invalidateQueries({ queryKey: keys.dmConversations });
-      void client.invalidateQueries({ queryKey: keys.dmUnread });
+      void refreshQueries(client, { queryKey: keys.dmConversations });
+      void refreshQueries(client, { queryKey: keys.dmUnread });
     },
   });
 }
@@ -1157,7 +1158,7 @@ export function useMessageReaction() {
     onSuccess: (_result, { channel }) => {
       const key = channel === 'general' ? keys.chatMessages
         : channel === 'clan' ? keys.clanChat : keys.dmMessages;
-      void client.invalidateQueries({ queryKey: key });
+      void refreshQueries(client, { queryKey: key });
     },
   });
 }
@@ -1169,8 +1170,8 @@ export function useMarkDmRead() {
     mutationFn: ({ conversationId, messageId }: { conversationId: string; messageId: string }) =>
       api.markDmRead(conversationId, messageId),
     onSettled: () => {
-      void client.invalidateQueries({ queryKey: keys.dmConversations });
-      void client.invalidateQueries({ queryKey: keys.dmUnread });
+      void refreshQueries(client, { queryKey: keys.dmConversations });
+      void refreshQueries(client, { queryKey: keys.dmUnread });
     },
   });
 }
@@ -1182,9 +1183,9 @@ export function useSetDmBlock() {
     mutationFn: ({ targetPlayerId, blocked }: { targetPlayerId: string; blocked: boolean }) =>
       blocked ? api.blockDm(targetPlayerId) : api.unblockDm(targetPlayerId),
     onSettled: () => {
-      void client.invalidateQueries({ queryKey: keys.dmConversations });
-      void client.invalidateQueries({ queryKey: keys.dmMessages });
-      void client.invalidateQueries({ queryKey: ['dm', 'contacts'] });
+      void refreshQueries(client, { queryKey: keys.dmConversations });
+      void refreshQueries(client, { queryKey: keys.dmMessages });
+      void refreshQueries(client, { queryKey: ['dm', 'contacts'] });
     },
   });
 }
@@ -1228,7 +1229,7 @@ export function useMarkAnnouncementsRead() {
           }
         : current);
     },
-    onSettled: () => { void client.invalidateQueries({ queryKey: keys.announcements }); },
+    onSettled: () => { void refreshQueries(client, { queryKey: keys.announcements }); },
   });
 }
 
@@ -1252,7 +1253,7 @@ export function usePublishAnnouncement() {
     mutationFn: ({ title, bodyHtml }: { title: string; bodyHtml: string }) =>
       api.publishAnnouncement(title, bodyHtml),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: keys.announcements });
+      await refreshQueries(client, { queryKey: keys.announcements });
     },
   });
 }
@@ -1280,7 +1281,7 @@ export function usePostChat(language: ChatLanguage = currentLanguage()) {
           pages: [{ ...first, messages: [...first.messages, message] }, ...current.pages.slice(1)],
         };
       });
-      void client.invalidateQueries({ queryKey: keys.chatUnreadFor(language) });
+      void refreshQueries(client, { queryKey: keys.chatUnreadFor(language) });
     },
   });
 }
@@ -1296,7 +1297,7 @@ export function useMarkChatRead(language: ChatLanguage = currentLanguage()) {
       client.setQueryData(keys.chatUnreadFor(language), { count: 0 });
     },
     onSettled: () => {
-      void client.invalidateQueries({ queryKey: keys.chatUnreadFor(language) });
+      void refreshQueries(client, { queryKey: keys.chatUnreadFor(language) });
     },
   });
 }
@@ -1359,7 +1360,7 @@ export function useMarkSeen() {
       );
     },
     onSettled: () => {
-      void client.invalidateQueries({ queryKey: keys.notifications });
+      void refreshQueries(client, { queryKey: keys.notifications });
     },
   });
 }
@@ -1407,7 +1408,7 @@ function useRefetchOnArrival(
       .flatMap((at) => settleOffsets.map((offset) =>
         setTimeout(
           () => {
-            for (const key of targets.current) void client.invalidateQueries({ queryKey: key });
+            for (const key of targets.current) void refreshQueries(client, { queryKey: key });
           },
           at - now + offset,
         ),
@@ -1529,7 +1530,7 @@ export function useFleetArrivals(pending: readonly PendingThread[] | undefined):
 function useInvalidator() {
   const client = useQueryClient();
   return (...groups: readonly (readonly string[])[]) => {
-    for (const key of groups) void client.invalidateQueries({ queryKey: key });
+    for (const key of groups) void refreshQueries(client, { queryKey: key });
   };
 }
 
@@ -1799,8 +1800,8 @@ function useOptimisticPlanet() {
       try {
         if (context && takeDeferredPlanetRead(context.optimistic)) {
           await Promise.all([
-            client.invalidateQueries({ queryKey: context.key, exact: true }),
-            client.invalidateQueries({ queryKey: keys.planets }),
+            refreshQueries(client, { queryKey: context.key, exact: true }),
+            refreshQueries(client, { queryKey: keys.planets }),
           ]);
         }
       } finally {
@@ -1880,7 +1881,7 @@ export function useRepairFault() {
       api.repairFault(planetId, faultId),
     onMutate: ({ planetId }) => lane.enter(planetId),
     onSuccess: () => Promise.all([keys.planet, keys.planets]
-      .map((queryKey) => client.invalidateQueries({ queryKey }))),
+      .map((queryKey) => refreshQueries(client, { queryKey }))),
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
@@ -2042,7 +2043,7 @@ export function useProbe() {
     onSuccess: async () => {
       playSound('launch');
       await Promise.all([keys.planet, keys.planets]
-        .map((queryKey) => client.invalidateQueries({ queryKey })));
+        .map((queryKey) => refreshQueries(client, { queryKey })));
       invalidate(keys.intel, keys.pending, keys.rewards);
     },
     onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
@@ -2129,7 +2130,7 @@ export function usePirates() {
   const { activePlanetId } = useWorld();
   return useQuery({
     queryKey: activePlanetId ? keys.piratesFrom(activePlanetId) : keys.pirates,
-    queryFn: () => api.pirates(activePlanetId ?? undefined),
+    queryFn: ({ signal }) => api.pirates(activePlanetId ?? undefined, { signal }),
     /*
       AT THE TRAFFIC PACE, NOT THE ORDINARY ONE. D183.
 

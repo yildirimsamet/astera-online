@@ -34,7 +34,7 @@ import { tradeShipOccurrence } from './galaxyEvents.js';
 import { validateTransferFleet } from './movement.js';
 import { notify } from './notifications.js';
 import { safeHomePlanet } from './ownership.js';
-import { planetView, type PlanetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { schedule } from '../worker/queue.js';
 import { pendingThreads, type PendingThread } from './session.js';
 import { techOf } from './researchState.js';
@@ -393,9 +393,9 @@ export async function launchTrade(
       // Deliberately sequential on this one transaction connection: each is the
       // projection its own GET uses, and no second request can race the launch.
       pending: await pendingThreads(tx, planetId, origin.now),
-      planet: await planetView(tx, planetId, clock),
+      planet: await loadPlanetViewData(tx, planetId, clock),
     };
-  });
+  }).then(buildPlanetResult);
 }
 
 /**

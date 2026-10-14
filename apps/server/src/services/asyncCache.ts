@@ -99,6 +99,12 @@ export class AsyncCache<T> {
     if (this.entries.delete(key)) this.invalidations += 1;
   }
 
+  invalidatePrefix(prefix: string): void {
+    for (const key of this.entries.keys()) {
+      if (key.startsWith(prefix)) this.invalidate(key);
+    }
+  }
+
   clear(): void {
     for (const entry of this.entries.values()) {
       if (entry.pending) this.invalidatedFills.add(entry.token);

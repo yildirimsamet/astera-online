@@ -53,7 +53,7 @@ import {
   withPlanetLock,
   type LockedPlanet,
 } from './planet.js';
-import { planetView, type PlanetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { markProgress } from './waitingRoom.js';
 import { researchLevels } from './researchState.js';
 import { releaseRepairedLots } from './shipDamage.js';
@@ -400,8 +400,8 @@ export async function cancelBuildOrder(
     });
     await reflowQueue(tx, planetId, order.queue, planet.now, head?.id !== order.id);
     await refreshWealth(tx, planet);
-    return { orderId, refund, planet: await planetView(tx, planetId, clock) };
-  }, expectedPlayerId);
+    return { orderId, refund, planet: await loadPlanetViewData(tx, planetId, clock) };
+  }, expectedPlayerId).then(buildPlanetResult);
 }
 
 /**

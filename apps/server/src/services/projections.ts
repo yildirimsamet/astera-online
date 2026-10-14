@@ -1,4 +1,6 @@
 import type { Db, Queryable } from '../db/client.js';
+import type { SensorEpoch } from '@astera/rules';
+import { sensorHistoryForPlayer } from './sensorHistory.js';
 import { PRIVATE_PREFIX, type EventBus, type StreamEvent } from '../stream/bus.js';
 import { AsyncCache, type AsyncCacheStats } from './asyncCache.js';
 import { publicWorlds, type PublicWorld } from './publicGalaxy.js';
@@ -26,6 +28,7 @@ export interface ProjectionStatus {
   commander: AsyncCacheStats;
   sensors: AsyncCacheStats;
   remembered: AsyncCacheStats;
+  sensorHistory: AsyncCacheStats;
   publicGalaxy: AsyncCacheStats;
   traffic: AsyncCacheStats;
   mining: AsyncCacheStats;
@@ -87,6 +90,7 @@ export class Projections {
    * reads to bypass; the waking client must see the committed report immediately.
    */
   private readonly remembered: AsyncCache<RememberedWorlds>;
+  private readonly sensorHistory: AsyncCache<SensorEpoch[]>;
   private readonly stopObserving: () => void;
   private readonly stopObservingResets: () => void;
 
@@ -111,6 +115,7 @@ export class Projections {
       config.commanderTtlMs,
       usable,
     );
+    this.sensorHistory = new AsyncCache<SensorEpoch[]>(config.maxAccounts, config.commanderTtlMs, usable);
     this.publicGalaxy = new AsyncCache<PublicWorld[]>(
       config.maxSeasons,
       config.publicTtlMs,
@@ -176,6 +181,11 @@ export class Projections {
     return this.remembered.get(playerId, () => rememberedWorlds(this.db, playerId));
   }
 
+  historyFor(playerId: string, seasonId: string): Promise<SensorEpoch[]> {
+    return this.sensorHistory.get(`${playerId}:${seasonId}`,
+      () => sensorHistoryForPlayer(this.db, playerId, seasonId));
+  }
+
   trafficSnapshot(seasonId: string, now: Date = new Date()): Promise<TrafficSnapshot> {
     return this.traffic.get(seasonId, () => loadTrafficSnapshot(this.db, seasonId, now));
   }
@@ -215,6 +225,7 @@ export class Projections {
       commander: this.commanders.status(),
       sensors: this.sensors.status(),
       remembered: this.remembered.status(),
+      sensorHistory: this.sensorHistory.status(),
       publicGalaxy: this.publicGalaxy.status(),
       traffic: this.traffic.status(),
       mining: this.mining.status(),
@@ -242,6 +253,7 @@ export class Projections {
     this.commanders.clear();
     this.sensors.clear();
     this.remembered.clear();
+    this.sensorHistory.clear();
     this.publicGalaxy.clear();
     this.traffic.clear();
     this.mining.clear();
@@ -252,6 +264,10 @@ export class Projections {
     // Global operator content has no bearing on game projections.
     if ('global' in event) return;
     if ('playerId' in event) {
+      if (event.kind === 'private:sensors') {
+        this.sensors.invalidate(event.playerId);
+        this.sensorHistory.invalidatePrefix(`${event.playerId}:`);
+      }
       /**
        * A PROBE CAME HOME, SO ONE COMMANDER'S MAP JUST CHANGED. D127.
        *
@@ -280,7 +296,12 @@ export class Projections {
       // Ground instruments are private hardware, so their completion deliberately
       // has no shard event. The addressed event is enough to refresh this owner's
       // reach without advertising to the rest of the galaxy what they just built.
-      if (event.kind === 'build_complete') this.sensors.invalidate(event.playerId);
+      if (event.kind === 'build_complete' || event.kind === 'colony_fault' || event.kind === 'fault_repair_complete') {
+        this.sensors.invalidate(event.playerId);
+        // Older worker images do not emit private:sensors yet. These addressed
+        // wakes keep the new cache correct throughout a compatible rolling deploy.
+        this.sensorHistory.invalidatePrefix(`${event.playerId}:`);
+      }
       // The row is shared by season but the launch instant is private to the two
       // participants and commanders whose effective Telescope covers it. The
       // event therefore cannot carry a shard id; clearing this bounded cache is
@@ -307,12 +328,14 @@ export class Projections {
       this.commanders.clear();
       this.sensors.clear();
       this.remembered.clear();
+      this.sensorHistory.clear();
     }
     if (kind === 'shard:impact') {
       // The event intentionally names no target. An impact can lower Core and
       // therefore clamp either sensor, so clearing the small player-keyed cache is
       // the only safe invalidation that does not add information to the event.
       this.sensors.clear();
+      this.sensorHistory.clear();
     }
     if (
       kind === 'shard:world'

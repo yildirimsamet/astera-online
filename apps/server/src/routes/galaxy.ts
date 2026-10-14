@@ -20,7 +20,6 @@ import {
 } from '../services/traffic.js';
 import { discoveredAsteroidIndexes } from '../services/asteroidField.js';
 import { discoveredPirateIndexes } from '../services/pirateField.js';
-import { sensorHistoryForPlayer } from '../services/sensorHistory.js';
 import { readClanPresence } from '../services/clan.js';
 import { adminPlayerIdsInSeason } from '../services/admin.js';
 import { locationIsKnown } from '../services/locationSight.js';
@@ -383,7 +382,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       app.projections.trafficSnapshot(self.seasonId, now),
       app.projections.sensorsFor(self.playerId, self.planetIds),
       app.projections.miningSnapshot(self.seasonId, now),
-      sensorHistoryForPlayer(app.db, self.playerId, self.seasonId),
+      app.projections.historyFor(self.playerId, self.seasonId),
       app.projections.pirateSnapshot(self.seasonId, now),
     ]);
 
@@ -395,7 +394,10 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         self.playerId,
         self.planetIds,
         sensors,
-        discoveredAsteroidIndexes(mining, epochs, now),
+        // Traffic needs discovery only for rocks with actual flights. Solving
+        // every retained orbit for every caller repeats the field endpoint's work.
+        discoveredAsteroidIndexes(mining, epochs, now, new Set(snapshot.miningRows.flatMap(({ run }) =>
+          run.asteroidIndex === null ? [] : [run.asteroidIndex]))),
         pirates,
         discoveredPirateIndexes(pirates, epochs, now),
       ),

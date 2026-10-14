@@ -34,7 +34,7 @@ import {
   withPlanetLock,
   type LockedPlanet,
 } from './planet.js';
-import { planetView } from './planetView.js';
+import { type planetView, loadPlanetViewData, buildPlanetResult } from './planetView.js';
 import { publishReward } from '../stream/bus.js';
 
 /**
@@ -483,9 +483,9 @@ export async function claimReward(
     return {
       granted: { alloy: tier.alloy, crystal: tier.crystal, deuterium: tier.deuterium },
       rewards: await assemble(tx, standing),
-      planet: await planetView(tx, planetId, clock),
+      planet: await loadPlanetViewData(tx, planetId, clock),
     };
-  });
+  }).then(buildPlanetResult);
 }
 
 /**

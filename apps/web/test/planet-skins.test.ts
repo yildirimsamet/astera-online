@@ -138,8 +138,8 @@ describe('first planet skin visuals', () => {
         expect(struck.finish.palette).toEqual(normal.finish.palette);
         expect(normal.finish.tuning.threshold).toBe(0.28);
         expect(struck.finish.tuning.threshold).toBe(0.5);
-        expect(normal.finish.tuning.heat).toBe(id === 'planet-desert' ? 0 : 2.4);
-        expect(struck.finish.tuning.heat).toBe(id === 'planet-desert' ? 0 : 1.6);
+        expect(normal.finish.tuning.heat).toBe(id === 'planet-desert' ? 0 : 3);
+        expect(struck.finish.tuning.heat).toBe(id === 'planet-desert' ? 0 : 2);
       }
       for (const visual of [normal, struck]) {
         expect(visual?.modelUrl).toMatch(/^\/assets\/models\/[a-z0-9_]+\.glb$/);
@@ -216,15 +216,17 @@ describe('first planet skin visuals', () => {
     }
   });
 
-  it('adds visible scars to a struck country world without discarding its flag texture', () => {
+  it('preserves the authored country material during recovery without adding glowing cracks', () => {
     const map = new THREE.Texture();
-    const source = new THREE.MeshStandardMaterial({ map });
+    const source = new THREE.MeshStandardMaterial({ map, metalness: 0.35, roughness: 0.8 });
     const damaged = createCountryRecoveryMaterial(source);
-    const shader = { fragmentShader: '#include <map_fragment>\n#include <emissivemap_fragment>' };
-    damaged.onBeforeCompile(shader as never, {} as never);
+    expect(damaged).not.toBe(source);
     expect(damaged.map).toBe(map);
-    expect(shader.fragmentShader).toContain('countryScar');
-    expect(shader.fragmentShader).toContain('totalEmissiveRadiance');
+    expect(damaged.onBeforeCompile.toString()).toBe(source.onBeforeCompile.toString());
+    expect(damaged.emissive.equals(source.emissive)).toBe(true);
+    expect(damaged.emissiveIntensity).toBe(source.emissiveIntensity);
+    expect(damaged.metalness).toBe(source.metalness);
+    expect(damaged.roughness).toBe(source.roughness);
     damaged.dispose();
     source.dispose();
     map.dispose();

@@ -1,3 +1,4 @@
+import { refreshQueries } from '../api/refreshQueries.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../api/context.js';
@@ -329,7 +330,7 @@ export function useSession() {
       }
       return current;
     });
-    void queries.invalidateQueries({ queryKey: keys.leaderboard });
+    void refreshQueries(queries, { queryKey: keys.leaderboard });
   }, [api, queries]);
 
 

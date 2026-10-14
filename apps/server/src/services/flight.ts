@@ -137,36 +137,24 @@ export const isHostileMission = (
   || (mission.kind === 'clan_war' && clanWarLeg === 'COMBINED_ATTACK')
 );
 
-/** Craft this planet currently has off the ground, across every kind of flight. */
+/**
+ * One statement counts every flight lane without eight database round trips.
+ * A run/wave consumes one bay regardless of craft count. Physical clan waves
+ * keep their bay until home/lost; leader-capital contributions never depart.
+ * Monument fragments share their root's bay until the last fragment returns.
+ */
 export async function baysInUse(tx: Queryable, planetId: string): Promise<number> {
-  const [flights] = await tx
+  const flights = tx
     .select({ n: sql<number>`count(*)::int` })
     .from(missions)
     .where(minesOf(planetId));
-
-  /**
-   * A mining run is ONE bay however many Prospectors are in it.
-   *
-   * A squadron is a single decision — where to send it and how much to commit —
-   * and charging per craft would price the decision by its size rather than by the
-   * fact that it was made.
-   */
-  const [mining] = await tx
+  const mining = tx
     .select({ n: sql<number>`count(*)::int` })
     .from(miningRuns)
     .where(
       and(eq(miningRuns.planetId, planetId), inArray(miningRuns.status, ['outbound', 'returning'])),
     );
-
-  /**
-   * A PIRATE RAID IS A BAY, LIKE EVERY OTHER FLIGHT. D28 · D150.
-   *
-   * Bays are the ONE scarcity governing how much a world can have committed at
-   * once, and a target class that did not consume one would let a commander keep
-   * their raid budget while farming pirates on the side — which is exactly the
-   * "resources replace players as the fun" regression the design watches for.
-   */
-  const [pirate] = await tx
+  const pirate = tx
     .select({ n: sql<number>`count(*)::int` })
     .from(pirateRaids)
     .where(
@@ -175,25 +163,13 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
         inArray(pirateRaids.status, ['outbound', 'returning']),
       ),
     );
-
-  /**
-   * A TRADE CONVOY IS A BAY, LIKE EVERY OTHER FLIGHT. D28 · D156.
-   *
-   * The merchant deliberately has no quota, no fee and no per-world convoy limit —
-   * the owner ruled all three out — which makes THIS the brake, together with hold
-   * size and prepaid fuel. A flight table that is not counted here does not consume
-   * a bay at all, so a commander would keep their whole raid budget while running
-   * convoys on the side, and D28's single scarcity would be punctured by the one
-   * lane that was given no scarcity of its own.
-   */
-  const [trade] = await tx
+  const trade = tx
     .select({ n: sql<number>`count(*)::int` })
     .from(tradeRuns)
     .where(
       and(eq(tradeRuns.planetId, planetId), inArray(tradeRuns.status, ['outbound', 'returning'])),
     );
-
-  const [convoy] = await tx
+  const convoy = tx
     .select({ n: sql<number>`count(*)::int` })
     .from(intergalacticConvoyRuns)
     .where(
@@ -202,16 +178,7 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
         inArray(intergalacticConvoyRuns.status, ['outbound', 'returning']),
       ),
     );
-
-  /**
-   * ONE CONTRIBUTED WAVE IS ONE BAY AT THE WORLD IT LEFT, FOR ITS WHOLE LIFE.
-   *
-   * Outbound, waiting in escrow, in the battle and on the way home are all the
-   * same commitment: those ships are out. `LEADER_CAPITAL` waves take none —
-   * they never leave the staging world, so there is nothing for a bay to hold —
-   * and a wave that is `HOME` or `LOST` has released it.
-   */
-  const [contributed] = await tx
+  const contributed = tx
     .select({ n: sql<number>`count(*)::int` })
     .from(clanWarContributions)
     .where(and(
@@ -219,39 +186,21 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
       eq(clanWarContributions.sourceKind, 'PHYSICAL'),
       notInArray(clanWarContributions.status, ['HOME', 'LOST', 'TRANSFERRED']),
     ));
-
-  /**
-   * A CLAN SUPPORT WAVE IS ONE BAY AT THE WORLD IT LEFT, FOR ITS WHOLE LIFE. Owner K8.
-   *
-   * Out, standing at the host, and on the way back are one commitment: those ships are
-   * away. Counting the wave rather than its missions keeps the stay itself in the bay —
-   * a parked wave has no mission in the air — and never counts a leg twice.
-   */
-  const [supporting] = await tx
+  const supporting = tx
     .select({ n: sql<number>`count(*)::int` })
     .from(clanSupportWaves)
     .where(and(
       eq(clanSupportWaves.originPlanetId, planetId),
       notInArray(clanSupportWaves.status, ['HOME', 'LOST']),
     ));
-
-  // One dispatch keeps one bay until its root AND every partial recall are home
-  // or lost. A completed root can still have a physical fragment on its way back.
-  const [monument] = await tx.select({
+  const monument = tx.select({
     n: sql<number>`count(distinct coalesce(${monumentWaves.rootWaveId}, ${monumentWaves.id}))::int`,
   }).from(monumentWaves).where(and(
     eq(monumentWaves.originPlanetId, planetId),
     notInArray(monumentWaves.status, ['HOME', 'LOST']),
   ));
-
-  return (flights?.n ?? 0)
-    + (mining?.n ?? 0)
-    + (pirate?.n ?? 0)
-    + (trade?.n ?? 0)
-    + (convoy?.n ?? 0)
-    + (contributed?.n ?? 0)
-    + (supporting?.n ?? 0)
-    + (monument?.n ?? 0);
+  const [row] = await tx.execute<{ used: number }>(sql`select ((${flights}) + (${mining}) + (${pirate}) + (${trade}) + (${convoy}) + (${contributed}) + (${supporting}) + (${monument}))::int as used`);
+  return row?.used ?? 0;
 }
 
 export interface BayCount {

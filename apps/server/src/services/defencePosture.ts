@@ -32,9 +32,17 @@ export async function defencePostureView(
 ): Promise<DefencePostureView | null> {
   if (!clanDefenseApplies(input.rulesetVersion)) return null;
   const membership = await activeClanMembership(db, input.playerId);
+  return buildDefencePostureView(input, membership !== null);
+}
+
+export function buildDefencePostureView(
+  input: { posture: DefencePosture; rulesetVersion: number },
+  hasMembership: boolean,
+): DefencePostureView | null {
+  if (!clanDefenseApplies(input.rulesetVersion)) return null;
   return {
     posture: input.posture,
     ...togglesOf(input.posture),
-    supportLocked: membership === null ? 'NOT_IN_CLAN' : null,
+    supportLocked: hasMembership ? null : 'NOT_IN_CLAN',
   };
 }

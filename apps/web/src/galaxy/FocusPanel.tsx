@@ -979,7 +979,7 @@ export function PlanetFocus({
 
   return (
     <Shell
-      art={<PlanetSigil seed={target.id} size={40} dark={known.kind === 'none'} />}
+      art={<PlanetSigil seed={target.id} skinId={target.skin?.id} size={40} dark={known.kind === 'none'} />}
       eyebrow={anonymous
         ? t('focus.planet.unsurveyedEyebrow')
         : t('focus.planet.location', { planet: target.name })}
@@ -1438,7 +1438,7 @@ function OwnedPlanetFocus({
 
   return (
     <Shell
-      art={<PlanetSigil seed={target.id} size={40} />}
+      art={<PlanetSigil seed={target.id} skinId={target.skin?.id} size={40} />}
       eyebrow={t(target.kind === 'CAPITAL'
         ? 'focus.planet.yourCapital'
         : 'focus.planet.yourColony')}

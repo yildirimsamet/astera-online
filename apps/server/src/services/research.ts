@@ -15,7 +15,7 @@ import {
   scheduledEvents,
 } from '../db/schema.js';
 import { schedule } from '../worker/queue.js';
-import { planetView, type PlanetView } from './planetView.js';
+import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { markProgress } from './waitingRoom.js';
 import {
   GameError,
@@ -31,6 +31,15 @@ import { safeHomePlanet } from './ownership.js';
 export interface CompleteResearchResult {
   projectId: ResearchProjectId;
   planet: PlanetView;
+}
+
+async function lockResearchQueue(tx: Tx, playerId: string): Promise<void> {
+  // Research writers serialize independently of planet-first settlements. An
+  // exclusive player row lock blocks report FK checks and wealth updates while
+  // research waits for their world, forming a deadlock. KEY SHARE still fences
+  // deletion and the previous release's FOR UPDATE during a rolling deployment.
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`research-queue:${playerId}`}, 0))`);
+  await tx.select({ id: players.id }).from(players).where(eq(players.id, playerId)).for('key share');
 }
 
 /**
@@ -57,12 +66,7 @@ export async function completeResearch(
       throw new GameError('PLANET_NOT_OWNED', 'You do not control that world', 403);
     }
 
-    // One lock for one commander-wide lane. It is always taken before the planet.
-    await tx
-      .select({ id: players.id })
-      .from(players)
-      .where(eq(players.id, world.playerId))
-      .for('update');
+    await lockResearchQueue(tx, world.playerId);
 
     const planet = await loadLocked(tx, planetId, clock, {
       expectedPlayerId: expectedPlayerId ?? world.playerId,
@@ -173,8 +177,8 @@ export async function completeResearch(
     });
     await recomputePlayerWealth(tx, planet.playerId);
     await markProgress(tx, planet.playerId, planet.now); // D212
-    return { projectId, planet: await planetView(tx, planetId, clock) };
-  });
+    return { projectId, planet: await loadPlanetViewData(tx, planetId, clock) };
+  }).then(buildPlanetResult);
 }
 
 function researchDependsOn(later: typeof researchOrders.$inferSelect, earlier: typeof researchOrders.$inferSelect): boolean {
@@ -244,11 +248,7 @@ export async function applyResearchCompletion(
   if (candidate?.status !== 'BUILDING') return null;
   if (candidate.readyAt.toISOString() !== expectedReadyAt) return null;
 
-  await tx
-    .select({ id: players.id })
-    .from(players)
-    .where(eq(players.id, candidate.playerId))
-    .for('update');
+  await lockResearchQueue(tx, candidate.playerId);
   const [applied] = await tx
     .update(researchOrders)
     .set({ status: 'COMPLETED' })
@@ -296,11 +296,7 @@ export async function abandonResearchOrder(
   return db.transaction(async (tx) => {
     const [order] = await tx.select().from(researchOrders).where(eq(researchOrders.id, orderId));
     if (order?.status !== 'BUILDING') return false;
-    await tx
-      .select({ id: players.id })
-      .from(players)
-      .where(eq(players.id, order.playerId))
-      .for('update');
+    await lockResearchQueue(tx, order.playerId);
     const queue = await activeResearchOrders(tx, order.playerId);
     const abandoned = queue.filter((candidate) =>
       candidate.id === order.id || researchDependsOn(candidate, order));
@@ -318,9 +314,8 @@ export async function abandonResearchOrder(
       refund.deuterium += candidate.cost.deuterium;
       refunds.set(refundPlanetId, refund);
     }
-    // Player is already locked. Multiple refund worlds follow the global
-    // ascending-id planet lock order, so recovery cannot deadlock another
-    // multi-world mutation.
+    // The queue lease does not block player FK checks or wealth updates.
+    // Refund worlds still follow the global ascending-id planet lock order.
     const refundWorlds = new Map<string, Awaited<ReturnType<typeof loadLocked>>>();
     for (const planetId of [...refunds.keys()].sort()) {
       refundWorlds.set(

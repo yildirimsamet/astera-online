@@ -17,7 +17,11 @@ export function academyFetch(
   now: () => number = serverNow,
 ): typeof globalThis.fetch {
   return async (input, init) => {
-    const request = input instanceof Request ? input : new Request(new URL(String(input), 'https://academy.invalid'), init);
+    const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+    signal?.throwIfAborted();
+    // This private adapter performs no network work. Consume cancellation here
+    // rather than attaching a caller-realm signal to a parsing-only Request.
+    const request = input instanceof Request ? input : new Request(new URL(String(input), 'https://academy.invalid'), { ...init, signal: null });
     const path = new URL(request.url).pathname;
     const method = (init?.method ?? request.method).toUpperCase();
     const time = now();

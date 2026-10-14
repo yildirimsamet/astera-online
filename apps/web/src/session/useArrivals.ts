@@ -1,3 +1,4 @@
+import { refreshQueries } from '../api/refreshQueries.js';
 import { useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '../api/queries.js';
@@ -111,7 +112,7 @@ export function useArrivals(instants: readonly (Date | null | undefined)[]): voi
         keys.reports,
         keys.notifications,
       ]) {
-        void client.invalidateQueries({ queryKey });
+        void refreshQueries(client, { queryKey });
       }
     };
 

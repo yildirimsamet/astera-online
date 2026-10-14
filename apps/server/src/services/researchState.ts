@@ -109,6 +109,11 @@ export async function researchView(
   planet: LockedPlanet,
   projectedLevels: ResearchLevels = new Map(),
 ) {
+  return buildResearchView(planet, await loadResearchViewData(db, planet.playerId), projectedLevels);
+}
+
+/** Commander-scoped facts; reuse only within the current response snapshot. */
+export async function loadResearchViewData(db: Queryable, playerId: string) {
   const attackerDamage = sql<number>`(
     SELECT COALESCE(SUM((round ->> 'attackerDamage')::double precision), 0)
     FROM jsonb_array_elements(${battleReports.rounds}) AS round
@@ -121,13 +126,13 @@ export async function researchView(
         completedAt: playerResearch.completedAt,
       })
       .from(playerResearch)
-      .where(eq(playerResearch.playerId, planet.playerId)),
+      .where(eq(playerResearch.playerId, playerId)),
     db
       .select({ id: battleReports.id })
       .from(battleReports)
       .where(
         and(
-          eq(battleReports.attackerPlayerId, planet.playerId),
+          eq(battleReports.attackerPlayerId, playerId),
           eq(battleReports.cargoLimited, true),
         ),
       )
@@ -137,7 +142,7 @@ export async function researchView(
       .from(battleReports)
       .where(
         and(
-          eq(battleReports.attackerPlayerId, planet.playerId),
+          eq(battleReports.attackerPlayerId, playerId),
           gt(battleReports.shieldAbsorbed, 0),
           sql`${attackerDamage} > 0`,
           sql`${battleReports.shieldAbsorbed} >= ${attackerDamage}
@@ -146,6 +151,15 @@ export async function researchView(
       )
       .limit(1),
   ]);
+  return { rows, cargoInsight, shieldInsight };
+}
+
+export function buildResearchView(
+  planet: LockedPlanet,
+  data: Awaited<ReturnType<typeof loadResearchViewData>>,
+  projectedLevels: ResearchLevels = new Map(),
+) {
+  const { rows, cargoInsight, shieldInsight } = data;
   const completedAt = new Map(rows.map((row) => [row.projectId, row.completedAt]));
   const held = new Map(rows.map((row) => [row.projectId, row.level]));
   /** Held, plus whatever the construction queue ahead of this order will finish. */
