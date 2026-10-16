@@ -6,7 +6,10 @@ import {
   convoyProductionCap,
   fleetCargo,
   fleetCount,
+  partitionCombatFleet,
+  splitHealthFleet,
   quoteIntergalacticConvoyReward,
+  honorConvoyResources,
   type BuildingLevels,
   type Fleet,
   type HullId,
@@ -30,6 +33,7 @@ import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { RadiationPreview } from '../ui/RadiationPreview.js';
+import { HonorEffectQuote } from '../ui/HonorBenefits.js';
 import { lethalAfterRefusal, radiationRefusalCount, routeHpRadiation, toHpRadiationSources, type RadiationRefusal } from '../lib/radiation.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Sheet } from '../v2/kit/Sheet.js';
@@ -60,6 +64,12 @@ export function IntergalacticConvoySheet({
   const launchBlock = launchFault(planet.faults, 'fleet', planet.silentSpace === true);
   const now = useNow(5_000);
   const [fleet, setFleet] = useState<Fleet>({});
+  const combatReady = useMemo(() => planet.fleetCombatReady ?? partitionCombatFleet(planet.fleet, planet.fleetDamage).eligible,
+    [planet.fleet, planet.fleetDamage, planet.fleetCombatReady]);
+  const selectedHealth = useMemo(() => {
+    try { return splitHealthFleet(planet.fleet, planet.fleetDamage, fleet, true); }
+    catch (error) { if (!(error instanceof RangeError)) throw error; return null; }
+  }, [planet.fleet, planet.fleetDamage, fleet]);
   const mods = flightModifiers(planet);
   const nowMinutes = (now - seasonStart.getTime()) / 60_000;
   const firepower = combatValue(fleet);
@@ -69,7 +79,7 @@ export function IntergalacticConvoySheet({
     event,
     nowMinutes,
     fleet,
-    planet.fleet,
+    combatReady,
     planet.ground,
     mods,
   );
@@ -80,7 +90,8 @@ export function IntergalacticConvoySheet({
   const arrival = now + (route?.oneWayMinutes ?? 0) * 60_000;
   const engagementEnd = seasonStart.getTime() + (route?.engagementEndsAtMinute ?? 0) * 60_000;
   const home = seasonStart.getTime() + (route?.homeAtMinute ?? 0) * 60_000;
-  const hpQuote = route?.rendezvous ? routeHpRadiation({ fleet, tech: mods.tech,
+  const hpQuote = route?.rendezvous && selectedHealth ? routeHpRadiation({ fleet, tech: mods.tech,
+    damage: selectedHealth.selectedDamage,
     path: [{ from: planet.planet.position, to: route.rendezvous, startMs: now, endMs: arrival },
       { from: route.rendezvous, to: route.engagementEnd, startMs: arrival, endMs: engagementEnd },
       { from: route.engagementEnd, to: planet.planet.position, startMs: engagementEnd, endMs: home }] }, hpSources) : null;
@@ -107,6 +118,8 @@ export function IntergalacticConvoySheet({
         effect: event.rewardPolicy,
       })
     : null;
+  const baseReward = quote?.resourceReward ?? ZERO;
+  const reward = planet.honorBenefits && quote ? honorConvoyResources(baseReward, quote.cargo, planet.honorBenefits) : baseReward;
 
   useEffect(() => {
     onAim?.(route?.rendezvous ?? null);
@@ -114,8 +127,8 @@ export function IntergalacticConvoySheet({
   }, [onAim, route?.rendezvous?.x, route?.rendezvous?.y, route?.rendezvous?.z]);
 
   const owned = useMemo(
-    () => MOBILE_HULLS.filter((hull) => (planet.fleet[hull] ?? 0) > 0),
-    [planet.fleet],
+    () => MOBILE_HULLS.filter((hull) => (combatReady[hull] ?? 0) > 0),
+    [combatReady],
   );
   const ships = fleetCount(fleet);
   const windowOpen = now < event.endsAt.getTime();
@@ -130,6 +143,7 @@ export function IntergalacticConvoySheet({
     ? t(`faults.launchBlock.${launchBlock}`)
     : planet.convoyOccurrenceSpent === true
       ? t('convoy.alreadyStruck')
+    : selectedHealth === null ? t('repairStation.maintenance.stale')
     : ships === 0
       ? t('convoy.chooseFleet')
       : firepower <= 0
@@ -148,7 +162,7 @@ export function IntergalacticConvoySheet({
   const minutesLeft = Math.max(0, (event.endsAt.getTime() - now) / 60_000);
 
   const setShip = (hull: HullId, count: number): void => {
-    const available = planet.fleet[hull] ?? 0;
+    const available = combatReady[hull] ?? 0;
     setFleet((current) => {
       // A removed hull must be absent: convoy quotes and launch accept positive counts only.
       const { [hull]: _removed, ...remaining } = current;
@@ -174,7 +188,7 @@ export function IntergalacticConvoySheet({
       event,
       (quotedAt - seasonStart.getTime()) / 60_000,
       fleet,
-      planet.fleet,
+      combatReady,
       planet.ground,
       mods,
     );
@@ -189,6 +203,7 @@ export function IntergalacticConvoySheet({
       quotedFlightSeconds: fresh.oneWayMinutes * 60,
       quotedArriveAt: new Date(quotedAt + fresh.oneWayMinutes * 60_000),
       idempotencyKey: createIdempotencyKey(),
+      ...(planet.honorBenefits ? { expectedHonorTier: planet.honorBenefits.tier } : {}),
       ...(radiation && radiation.destroyed > 0 ? { acknowledgeRadiationLoss: true } : {}),
     }, {
       onSuccess: (result) => {
@@ -231,7 +246,7 @@ export function IntergalacticConvoySheet({
       <h3 className="mt-4 px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('convoy.fleetHeading')}</h3>
       <div className="mt-1">
         {owned.map((hull) => {
-          const available = planet.fleet[hull] ?? 0;
+          const available = combatReady[hull] ?? 0;
           const art = HULL_ART[hull];
           return (
             <div key={hull} data-hull-row={hull} className={`border-b border-v2-line/70 px-1 py-2 last:border-b-0 ${(fleet[hull] ?? 0) > 0 ? 'bg-v2-self/5' : ''}`}>
@@ -265,6 +280,7 @@ export function IntergalacticConvoySheet({
         })}
       </div>
 
+      <div className="mt-3"><HonorEffectQuote kind="convoy" value={planet.honorBenefits} base={baseReward} net={reward} /></div>
       <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 rounded-control border border-v2-line bg-v2-deep/40 px-3 py-2.5">
         <Reading label={t('convoy.firepower')} value={full(firepower)} />
         <Reading label={t('convoy.cargo')} value={full(cargo)} />
@@ -303,7 +319,7 @@ export function IntergalacticConvoySheet({
             <img src={RESOURCE_ART[good]} alt={t(`trade.${good}`)} className="size-4 object-contain" />
             <span className="font-v2-mono text-v2-ink-3">{full(productionCap[good])}</span>
             <span className="font-v2-mono text-v2-ink-2">{full(quote?.rawResourceReward[good] ?? ZERO[good])}</span>
-            <span className="min-w-14 text-right font-v2-mono text-v2-ink">{full(quote?.resourceReward[good] ?? ZERO[good])}</span>
+            <span className="min-w-14 text-right font-v2-mono text-v2-ink">{full(reward[good])}</span>
           </div>
         ))}
       </div>

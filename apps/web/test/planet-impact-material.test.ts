@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planetImpactGroups, planetImpactLevel } from '../src/galaxy/planetImpactMaterial.js';
+import { planetEmbers, planetImpactGroups, planetImpactLevel } from '../src/galaxy/planetImpactMaterial.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 
 const state = (hits: number): GalaxyPlanet['state'] => ({ kind: 'EMP', until: new Date(1_000), hits });
@@ -18,5 +18,15 @@ describe('surface damage from the public hit count', () => {
     const groups = planetImpactGroups(nodes);
     expect(groups.map(group => [group.level, group.nodes.map(node => node.id)])).toEqual([[0, ['healthy']], [1, ['first']], [5, ['fifth', 'sixth']]]);
     expect(nodes[0]?.state.kind).toBe('NORMAL');
+  });
+  /**
+   * THE MARK THAT SURVIVES THE ZOOM. Owner, 2026-10-16: from the whole disc a player should be
+   * able to say "that world took a Death Star". Only a world under EMP carries it, and how
+   * hard it burns follows the same bounded hit count as the fissures.
+   */
+  it('marks only the worlds under EMP, burning with their bounded hit count', () => {
+    const nodes = [{ id: 'calm', state: { kind: 'NORMAL' as const } }, { id: 'shielded', state: { kind: 'PROTECTED' as const, until: new Date(1_000) } },
+      { id: 'struck', state: state(2) }, { id: 'pounded', state: state(9) }];
+    expect(planetEmbers(nodes).map(({ node, level }) => [node.id, level])).toEqual([['struck', 2], ['pounded', 5]]);
   });
 });

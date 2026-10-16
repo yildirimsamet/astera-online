@@ -5,6 +5,87 @@ Use `docker-compose.prod.yml` only. The development Compose uses tmpfs and an un
 
 This compact runbook consolidates the supplied notes through 10 October 2026. Inspection and rehearsal records are point-in-time evidence, not proof that a release is deployed. Refresh the actual SHA, migration journal, flags and live shards before each release. Repository-relative links below refer to supporting files in the project.
 
+### 15 October radiation bombs: prepared, not deployed
+
+The current local implementation adds migration `0166_radiation_bomb` and the
+read index `0168_radiation_source_read_index`, and history retention migration
+`0169_radiation_history_retention`; keep the complete intervening
+migration journal, including changes belonging to other tasks. Do not renumber
+the already deployed prefix. The synthetic 153→170 migration rehearsal and
+same-season activation evidence are recorded in
+[the radiation bomb review](radiation-bomb-review-2026-10-15.md).
+
+Publish compatible API, worker and web builds together before activation and
+refresh already open browser sessions. Old code does not understand the new
+strategic inventory, event and notification enum values. The release also needs
+the manual-maintenance implementation: damaged ships remain in their hangars,
+and radiation cancels paid repair work with its original invoice fully refunded.
+Retain a verified private backup and a compatible rollback image as described
+below; no production activation has been performed as part of implementation.
+
+For an existing live HP-radiation season, entity radiation/moving monuments must
+already be active. After the coordinated migration and image update, preview
+the intended shard; apply only as part of an authorized release:
+
+```bash
+pnpm season activate-radiation-bombs --shard CODE
+pnpm season activate-radiation-bombs --shard CODE --yes
+```
+
+Preview writes nothing. Activation preserves the season ruleset and previous
+source history, starts home/dock/support exposure and the combined 50 HP/min cap
+at a single new epoch, and refunds only repairs at currently irradiated worlds.
+There is no retroactive home damage. A shelter that removes actual exposure
+keeps its repairs running. Retrying returns `ALREADY_ACTIVE`, without another
+refund or epoch reset. New current-ruleset seasons activate automatically.
+Once new bomb data exists, rollback must understand that data; clearing the
+epoch or starting an old worker is not a supported rollback.
+
+The separate joint-war assembly-pool radiation policy is awaiting the owner's
+answer; defence support is already included. Resolve that gameplay decision and
+finish the review's remaining regression gates before calling the release ready.
+
+### 13 October tempo: coordinated same-season release
+
+Migration `0155_tempo_slowdown` adds a separate tempo epoch; it does not raise an
+existing season's ruleset. New seasons use the reduced tempo immediately. Preserve
+every historical NPC row, earned resource and committed player flight/queue timestamp.
+
+The fleet and NPC speed constants change with the image, so **do not roll API/worker
+versions while NPC raids or merchant convoys are active**. Rehearse the preview from
+the new build against a migrated database copy and the intended shard. In production,
+block new launches through maintenance and let the old worker finish both outbound and
+returning pirate raids/trade runs. Then stop every API and worker writer before
+migrating and applying the cutover. Keep maintenance active during the image switch.
+
+```bash
+pnpm season migrate
+pnpm season activate-tempo-slowdown --shard CODE
+pnpm season activate-tempo-slowdown --shard CODE --yes
+```
+
+In a rehearsal copy the new schema is needed before preview. In production migrate
+with old writers stopped, preview again, and apply while the galaxy is idle. If the
+final preview says `BUSY`, do not start the new API/worker yet; preserve those runs and
+complete them with the compatible old worker, keeping new launches blocked, before
+retrying. A refused activation writes nothing. The exclusive season lock closes the
+check/dispatch race.
+
+The epoch retires pirate contacts that appeared before activation and cancels the
+current merchant appearance for new dispatch; the next scheduled window and subsequent
+pirates use their `20%` slower orbits. NPC history is retained. The production lazy tick
+uses old output before the epoch and new output afterwards, retaining outage, recovery
+and leak accounting. Store/Works capacities and accumulated resources are preserved.
+Vault leakage also slows `20%` after the epoch, preserving its ratio to production;
+pre-cutover leakage retains its previous rate and the total leak budget stays unchanged.
+The work rate falls `20%` (`×1.25` duration), including colony repair crews; Beacon grants
+`20%` speed. Existing paid orders retain their committed completion timestamps.
+
+Start only the updated API/worker and publish the matching web build. Refresh open
+clients so quotes and satellite descriptions use the new values. Repeat activation
+returns `ALREADY_ACTIVE` and never resets the epoch. After activation, rollback requires
+restoring a compatible database snapshot or code that understands this boundary.
+
 ### 12 October monuments: idle same-season motion activation
 
 Migration `0153_monument_motion_fuel` adds a separate motion epoch and per-ship fuel
@@ -16,6 +97,51 @@ target IDs and initial coordinates; retries do not reset the phase. Once moving
 missions exist, deleting the epoch or rolling back to static routing is unsupported.
 See the [implementation and activation plan](moving-monuments-two-axis-plan-2026-10-12.md)
 and [review evidence](moving-monuments-code-review-2026-10-12.md).
+
+### 12 October radiation shielding: explicit idle-season calibration
+
+**Prepared, not deployed or activated.** Migration `0154_monument_radiation_shielding`
+adds a separate radiation cutover timestamp and explicit source levels. It tags only
+authored historical Easy/Hard base sources; their rates and time windows do not change.
+New v18 seasons use level 1 = 9 and level 2 = 12.5 HP/min. Existing live seasons retain
+their rates and cannot buy shielding until the explicit cutover below.
+
+Stop workers for the coordinated migration/API update, then start only compatible
+workers. Do not create/roll over v18 seasons or activate shielding while an old API
+or worker remains. A legacy base source seeded by an old image after migration is
+recognized by its exact authored label and original 2/5 rate; arbitrary emitters
+are not inferred from intensity alone.
+
+Update all API and worker roles before activation. Adopt the Easy/Hard layout and
+activate monument motion first if needed. With every monument idle, preview and
+then apply **only in a separately authorized release**:
+
+Publish the compatible web build before activation and refresh existing browser
+sessions. The pre-release client has a strict research-ID enum and cannot parse
+the new `RADIATION_SHIELDING` row or a wave snapshot carrying it. This feature does
+not add a global forced-client-update protocol; publishing assets alone does not
+replace JavaScript already running in an open tab. Include that refresh boundary
+in the coordinated release before opening the research.
+
+```bash
+pnpm season activate-monument-radiation --shard CODE
+pnpm season activate-monument-radiation --shard CODE --yes
+```
+
+The exclusive season lock serializes new launches with the idle check. OUTBOUND,
+HOLD and RETURNING monument fleets, travelling probes and ASSEMBLING/ATTACKING/RETURNING
+monument clan operations all block activation. `BUSY` writes nothing; never clear
+blockers manually. Missing/duplicate/mislevelled base sources refuse activation.
+Custom unlevelled emitters and shelters are preserved. On success, old base sources
+end at the cutover, new calibrated sources start then, and the research opens in the
+same transaction. Repeat runs return `ALREADY_ACTIVE`. Season rules, motion epoch,
+target identities, ownership, production (3/8 D/min), fuel contracts and history remain.
+
+Shielding has four levels, requires capital Core 3 and uses the existing commander
+research queue. Every dispatch freezes its own level; an existing garrison is never
+upgraded mid-stay. After activation or v18 creation, do not remove the cutover timestamp
+or run an image that lacks shielding settlement/prediction and the new research ID.
+Rehearse restore and cutover on a copy before the authorized release.
 
 ### 12 October Aegis: same-season charge and price cutover
 

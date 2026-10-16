@@ -1,4 +1,41 @@
 export const monument = {
+  battleResult: {
+  "control": {
+    "attacking": {
+      "ATTACKER": "Your side captured the monument.",
+      "DEFENDER": "Monument not captured.",
+      "EMPTY": "Neither side controls the monument after the battle."
+    },
+    "defending": {
+      "ATTACKER": "Your side lost control of the monument.",
+      "DEFENDER": "Your side retained control of the monument.",
+      "EMPTY": "Neither side controls the monument after the battle."
+    }
+  },
+  "grade": {
+    "attacking": {
+      "DECISIVE": "Defence cleared.",
+      "PARTIAL": "Partial success.",
+      "REPELLED": "Attack repelled."
+    },
+    "defending": {
+      "DECISIVE": "Defence overcome.",
+      "PARTIAL": "The defence suffered partial losses.",
+      "REPELLED": "Attack repelled."
+    }
+  },
+  "wiped": "Your entire fleet was destroyed.",
+  "rulesTitle": "Battle rules",
+  "roundRule": "Combat lasts at most {{rounds}} rounds. Cargo ships are protected while armed ships survive.",
+  "captureRule": "Capture requires clearing the whole defence and retaining an armed ship able to fight. Cargo alone can retain existing control.",
+  "partialRule": "Partial success requires destroying at least {{threshold}} of the defending fleet’s resource value. Damaged survivors are not destroyed ships. Grade and score do not determine monument control."
+},
+  radiationLossForecast: "First radiation loss in {{time}}, before battle damage.",
+  radiationCargoForecast: "First cargo loss in {{time}}, before battle damage.",
+  protectedRate: "Shielding {{level}} · {{rate}} HP/min per ship",
+  cargoLossAt: "First cargo loss in {{time}}. Its loaded deuterium is lost.",
+  dispatchProtection: "Your dispatched fleet · shielding {{level}}: {{rate}} HP/min per ship while stationed.",
+  shieldingSnapshot: "Research completed later does not change this fleet’s protection.",
   returnAll: "Whole fleet return",
   returnSelected_one: "Selected return · {{count}} ship",
   returnSelected_other: "Selected return · {{count}} ships",
@@ -19,8 +56,8 @@ export const monument = {
   hard: "Hard",
   radiationLevelRate: "Radiation level {{level}}: {{rate}} HP per ship per minute",
   easyAccess: "Easy · tiers 1–3",
-  hardAccess: "Hard · all tiers",
-  tierBlocked: "Your tier {{tier}} can send fleets to Hard monuments only.",
+  hardAccess: "Hard · tiers 4+",
+  tierBlocked: "Your tier {{tier}}: choose Easy (1–3) or Hard (4+), according to your tier.",
   initialFleetRule: "You can send combat and cargo ships again. Each support fleet needs fuel, a flight bay and room at the monument.",
   recallFlightRule: "Before arrival, recall selected ships from their current position. Spent outbound fuel is not refunded. Unused return reserves are refunded when ships reach home.",
   "newsRadiation": "{{name}} · radiation destroyed {{count}} ships and {{cargo}} deuterium · {{left}} ships remain",
@@ -78,6 +115,8 @@ export const monument = {
   "holdForecast": "After arrival: {{rate}} deuterium/min · next ship loss {{time}}",
   "noLoss": "none forecast",
   "attackOutcome": "After victory, higher-tier ships take monument capacity first. Ships that do not fit return home. A fleet with only cargo ships earns no deuterium.",
+  "reinforceRule": "If your side loses the monument on the way, the fleet does not turn back. It fights a rival or the garrison. If the monument is empty, an armed ship takes it.",
+  "arrivalOutcome": {"JOIN":"On arrival, as things stand: joins your side. Ships that do not fit return.","FIGHT":"On arrival, as things stand: fights the rival fleet holding it.","GARRISON":"On arrival, as things stand: fights the neutral garrison.","CAPTURE":"On arrival, as things stand: takes the empty monument. Cargo alone cannot take it and returns."},
   "losses": "{{count}} ships lost on the outbound route",
   "health": "{{name}}: {{remaining}} / {{max}} HP on arrival",
   "shield": "I agree to lose my shield on this dispatch",

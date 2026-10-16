@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
-import { CLAN, MULTI_WORLD, SERVERS, UNAIDED, distance, escapeFuel, fleetTravelExact, fleetValue } from '@astera/rules';
+import { CLAN, MULTI_WORLD, SERVERS, UNAIDED, distance, pvpBalanceForTier, escapeFuel, fleetTravelExact, fleetValue } from '@astera/rules';
 import {
   battleReports,
   clanRaidRoster,
@@ -212,6 +212,35 @@ describe('a combined strike settling', () => {
     expect(new Set(await clanWarEscrowPlanetIds(f.db, launched.missionId))).toEqual(
       new Set([f.planetIds[0]!, f.planetIds[1]!]),
     );
+  });
+
+  it.each([7, 10])('joint raids freeze the profile for defender Core %i', async core => {
+    const f = await setup();
+    for (const world of f.planetIds) await setLevel(f.db, world, 'CORE', core);
+    await readyOperation(f);
+    await armDefender(f);
+    await send(f, 0, f.planetIds[0]!, { DART: 30, COURIER: 3 });
+    await send(f, 1, f.planetIds[1]!, { DART: 20, COURIER: 2 });
+    await land(f);
+    await start(f);
+    const travelling = await f.db.select().from(missions).where(eq(missions.status, 'in_flight'));
+    f.clock.set(new Date(Math.max(...travelling.map(row => row.arriveAt.getTime())) + 20_000));
+    const before = await f.db.transaction(tx => planetView(tx, f.planetIds[2]!, f.clock));
+    // The view rounds stock and buffers for display; battle accounting uses the raw ledger.
+    const [raw] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[2]!));
+    await workerFor(f).tick();
+    const [report] = await f.db.select().from(battleReports);
+    const balance = pvpBalanceForTier(core === 7 ? 3 : 4);
+    expect(report!.pvpBalance).toEqual(balance);
+    const p = before.planet;
+    const expected = (['alloy', 'crystal', 'deuterium'] as const).reduce((sum, resource) => {
+      const buffer = resource === 'alloy' ? raw!.bufferAlloy : resource === 'crystal' ? raw!.bufferCrystal : raw!.bufferDeuterium;
+      return sum + Math.floor(Math.max(0, raw![resource] - p.vaultCapacity[resource]) * balance.lootDecisive)
+        + Math.floor(buffer * balance.lootDecisive * balance.lootBufferShare);
+    }, 0);
+    expect(report!.raidableBefore).toBe(expected);
+    const total = report!.loot.alloy + report!.loot.crystal + report!.loot.deuterium;
+    expect(total).toBeLessThanOrEqual(expected);
   });
 
   it('writes one report bound to the operation and one result per commander', async () => {
@@ -651,11 +680,11 @@ describe('joint-war lifecycle guards', () => {
     await readyOperation(f);
     await send(f, 1, f.planetIds[1]!, { DART: 12 });
     await land(f);
-    const empty = { runIds: [], raidIds: [], tradeIds: [], convoyIds: [] };
+    const empty = { runIds: [], raidIds: [], tradeIds: [], convoyIds: [], bombIds: [] };
     const guarded = [];
     for (const index of [0, 1, 2]) {
       guarded.push(await f.db.transaction((tx) => busy(
-        tx, [f.planetIds[index]!], f.playerIds[index]!, empty,
+        tx, [f.planetIds[index]!], f.playerIds[index]!, empty, f.clock.now(),
       )));
     }
     expect(guarded).toEqual([true, true, true]);

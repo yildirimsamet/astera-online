@@ -18,7 +18,49 @@ const cloud = (over: Partial<{ intensityPctPerMinute: number; activeUntil: Date 
   activeFrom: new Date(0), activeUntil: null, ...over,
 });
 
+it('includes carried wounds when quoting older percentage radiation', () => {
+  const route = { fleet: { DART: 1 }, from: at(0), to: at(100), departMs: 0, arriveMs: MIN,
+    damage: [{ hull: 'DART' as const, count: 1, damageBp: 9900, remainderBp: 0.5 }] };
+  expect(routeRadiation(route, toRadiationSources([cloud({ intensityPctPerMinute: 1 })]))?.destroyed).toBe(1);
+});
+
 describe('HP radiation on the complete physical route', () => {
+  it('accepts L3 and carries the season cap into the same client dose projection', () => {
+    const views = ['a', 'b', 'c'].map(id => hpRadiationSourceSchema.parse({
+      id, center: at(0), radius: 1000, mode: 'EMIT', intensityHpPerMinute: 18,
+      level: 3, activeFrom: new Date(0), activeUntil: new Date(60 * MIN),
+      totalCapFrom: new Date(0).toISOString(), target: { kind: 'PLANET', id: 'world' },
+    }));
+    const sources = toHpRadiationSources(views);
+    expect(sources[0]?.totalCapFromMs).toBe(0);
+    const quote = routeHpRadiation({ fleet: { CITADEL: 1 }, tech: {}, path: [{
+      from: at(0), to: at(0), startMs: 0, endMs: MIN, target: { kind: 'PLANET', id: 'world' },
+    }] }, sources);
+    expect(quote?.doseHp).toBeCloseTo(50);
+    expect(hpRadiationSourceSchema.safeParse({ ...views[0], level: 4 }).success).toBe(false);
+  });
+  it('keeps initial transfer wounds separate between staying and returning groups', () => {
+    const sources = toHpRadiationSources([{ id: 'hp', center: at(0), radius: 1000, mode: 'EMIT',
+      intensityHpPerMinute: HULLS.DART.hp * 0.3, activeFrom: new Date(0), activeUntil: null }]);
+    const path = [{ from: at(0), to: at(100), startMs: 0, endMs: MIN },
+      { from: at(100), to: at(0), startMs: MIN, endMs: 2 * MIN }];
+    const quote = transferHpRadiation({ fleet: { DART: 2 }, returning: { DART: 1 }, tech: {}, path,
+      damage: [{ hull: 'DART', count: 2, damageBp: 5000, remainderBp: 0.25 }] }, sources);
+    expect(quote?.destroyed).toBe(1);
+    expect(quote?.lots).toMatchObject([{ hull: 'DART', count: 1, returning: false }]);
+    expect(quote?.lots[0]?.healthPct).toBeCloseTo(19.9975, 6);
+  });
+  it('quotes the protected HP actually removed, on both legs, exactly once', () => {
+    const path = [{ from: at(0), to: at(0), startMs: 0, endMs: MIN },
+      { from: at(0), to: at(0), startMs: MIN, endMs: 2 * MIN }];
+    const sources = toHpRadiationSources([{ id: 'hp', center: at(0), radius: 1000, mode: 'EMIT',
+      intensityHpPerMinute: 12.5, activeFrom: new Date(0), activeUntil: null }]);
+    const tech = { RADIATION_SHIELDING: 4, SHIP_ARMOR: 5 };
+    const quoted = transferHpRadiation({ fleet: { ARGOSY: 2 }, returning: { ARGOSY: 1 }, tech, path }, sources);
+    expect(quoted?.doseHp).toBeCloseTo(5.25, 10);
+    expect(quoted?.returnDoseHp).toBeCloseTo(5.25, 10);
+    for (const row of quoted?.lots ?? []) expect(row.maxHp - row.remainingHp).toBeCloseTo(row.returning ? 10.5 : 5.25, 9);
+  });
   it('keeps an entity aura harmless in flight and preserves its occupied target on the wire', () => {
     const view = hpRadiationSourceSchema.parse({ id: 'entity', center: at(0), radius: 1000, mode: 'EMIT',
       intensityHpPerMinute: 1000, activeFrom: new Date(0), activeUntil: null,

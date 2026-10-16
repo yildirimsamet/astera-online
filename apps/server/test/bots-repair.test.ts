@@ -7,8 +7,10 @@ import { addBot } from '../src/services/bots/roster.js';
 import { ensureBotSeats } from '../src/services/bots/sweep.js';
 import { runBotTurn, type BotSeat } from '../src/services/bots/brain.js';
 import { planetView } from '../src/services/planetView.js';
-import { landShips } from '../src/services/shipDamage.js';
-import { grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { grant, landAndDockShips, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { landHpShips } from '../src/services/shipDamage.js';
+import { prepareHonorSeason } from '../src/services/honorLedger.js';
+import { enableHonorBenefits } from '../src/services/honorBenefits.js';
 
 /**
  * A BOT REPAIRS BEFORE IT BUYS. Kalıcı gemi hasarı, `plan.md` F7.
@@ -50,13 +52,13 @@ const seatOf = async (): Promise<BotSeat> => {
 const viewOf = () => f.db.transaction((tx) => planetView(tx, seat.planetId, f.clock));
 
 const dockShips = (fleet: Record<string, number>, damage: { hull: 'BALLISTA' | 'PROSPECTOR' | 'DART'; count: number; damageBp: number }[]) =>
-  f.db.transaction((tx) => landShips(tx, {
+  landAndDockShips(f.db, {
     planetId: seat.planetId,
     ownerPlayerId: seat.playerId,
     fleet,
     damage,
     at: f.clock.now(),
-  }));
+  }, f.clock);
 
 /** Only what a store holds: the bot's own planet row, set outright. */
 const store = (alloy: number, crystal: number, deuterium: number) =>
@@ -76,6 +78,26 @@ beforeEach(async () => {
 });
 
 describe('a bot and its Repair Station', () => {
+  it('keeps ordinary bot repairs working when the Honor economic program is enabled', async () => {
+    await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'ACTIVE', f.clock));
+    await enableHonorBenefits(f.db, f.seasonId, f.clock, true);
+    await dockShips({ BALLISTA: 2 }, [{ hull: 'BALLISTA', count: 2, damageBp: 6400 }]);
+    await grant(f.db, seat.planetId, 200_000, 80_000);
+    const { did } = await runBotTurn(f.db, f.clock, seat, silent);
+    expect(did).toContain('repair');
+    expect((await viewOf()).queues.REPAIR).toHaveLength(1);
+  });
+  it('uses an explicit workshop action to repair ships that returned wounded to the hangar', async () => {
+    await f.db.transaction(tx => landHpShips(tx, { planetId: seat.planetId, ownerPlayerId: seat.playerId,
+      fleet: { BALLISTA: 2 }, damage: [{ hull: 'BALLISTA', count: 2, damageBp: 1000, remainderBp: 0.25 }],
+      at: f.clock.now() }));
+    await grant(f.db, seat.planetId, 200_000, 80_000);
+    const { did } = await runBotTurn(f.db, f.clock, seat, silent);
+    expect(did).toContain('repair');
+    const view = await viewOf();
+    expect(view.dock.lots.filter(lot => lot.hull === 'BALLISTA')).toMatchObject([{ count: 2, repairing: true }]);
+    expect(view.fleetDamage.filter(lot => lot.hull === 'BALLISTA')).toEqual([]);
+  });
   it('repairs what waits in the dock, and does it before it buys a ship', async () => {
     await dockShips({ BALLISTA: 2 }, [{ hull: 'BALLISTA', count: 2, damageBp: 6400 }]);
     await grant(f.db, seat.planetId, 200_000, 80_000);

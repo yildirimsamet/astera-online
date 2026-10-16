@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { act, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { planetSchema } from '../src/api/schemas.js';
 import { DefenceReadings, PlanetHero } from '../src/ui/PlanetHero.js';
 import { PLANET_SKIN_CATALOG } from '../src/ui/skinCatalog.js';
 import i18n from '../src/i18n/index.js';
@@ -7,6 +8,55 @@ import { planetView } from './fixtures.js';
 
 beforeEach(async () => {
   await i18n.changeLanguage('en');
+});
+
+afterEach(() => { vi.useRealTimers(); });
+
+describe('colony building protection', () => {
+  it('freezes the remaining protection on vacation and resumes at its exact end', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-16T12:00:00Z'));
+    render(<PlanetHero planet={planetView({
+      loyalty: { value: 100, minutesLeft: null },
+      vacationUntil: new Date('2026-10-17T12:00:00Z'),
+      faultProtectedUntil: new Date('2026-10-18T00:00:00Z'),
+    })} />);
+    expect(screen.getByTestId('fault-protection')).toHaveTextContent('Fault protection paused · 12h 00m remaining');
+    act(() => {
+      vi.setSystemTime(new Date('2026-10-16T18:00:00Z'));
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.getByTestId('fault-protection')).toHaveTextContent('Fault protection paused · 12h 00m remaining');
+    act(() => {
+      vi.setSystemTime(new Date('2026-10-17T12:00:00Z'));
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.getByTestId('fault-protection')).toHaveTextContent('No new faults for 11h 59m');
+    expect(screen.getByTestId('fault-protection')).not.toHaveTextContent('paused');
+  });
+
+  it('shows the authoritative countdown and expires without refreshing', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-15T12:00:00Z'));
+    const planet = planetSchema.parse({ ...planetView({ loyalty: { value: 100, minutesLeft: null } }),
+      faultProtectedUntil: '2026-10-16T00:00:00Z' });
+    render(<PlanetHero planet={planet} />);
+    expect(screen.getByTestId('fault-protection')).toHaveTextContent('No new faults for 12h 00m');
+    expect(screen.getByTestId('fault-protection')).toHaveTextContent('Start any building upgrade to renew 12 hours of protection on this colony.');
+    act(() => {
+      vi.setSystemTime(new Date('2026-10-16T00:00:00Z'));
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.getByTestId('fault-protection')).toHaveTextContent('Start any building upgrade');
+    expect(screen.getByTestId('fault-protection')).not.toHaveTextContent('No new faults for');
+  });
+
+  it('explains the rule on an unprotected colony and stays hidden on a capital', () => {
+    const view = render(<PlanetHero planet={planetView({ loyalty: { value: 100, minutesLeft: null } })} />);
+    expect(screen.getByTestId('fault-protection')).toHaveTextContent('Start any building upgrade');
+    view.rerender(<PlanetHero planet={planetView()} />);
+    expect(screen.queryByTestId('fault-protection')).toBeNull();
+  });
 });
 
 describe('the planet hero states colony loyalty', () => {

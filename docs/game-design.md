@@ -13,15 +13,22 @@ terms: `glossary.md`.
 > galaxy; Fleet V2 preserves those systems while replacing the ordinary space hulls. Public galaxy
 > events and the first Asteroid Shower are implemented for newly created ruleset-v4 seasons.
 
-## Current season geometry and tempo (2026-09-25)
+## Current season geometry and tempo (2026-10-13)
 
 The next season uses a radius-`4,500` galaxy with a `450` minimum pair distance: 1,000 player
 addresses, 100 bot addresses and 130 neutral addresses. Neutrals are staged (`15/8/3` initial
 T1/T2/T3 openings, followed by one opening per free colony slot at the census cadence) while the
-full authored address pool remains deterministic. Player mobile hulls are slowed to `75%` of their
-profile speed and pirate fleets to `70%`; cargo holds fly `2.5×` their slowed profile speed
-(2026-10-06). The Prospector travels at `1237.5`, returns laden at `618.75`, and chases rocks in the
-`262.5–562.5` range — `2×` its September speed (owner 2026-10-06); asteroid lifetime is unchanged. The same update enlarges all three
+full authored address pool remains deterministic. Player mobile hulls use `60%` of their
+profile speed; pirate and merchant anchors also take the additional `20%` slowdown.
+Cargo holds fly `2.5×` their slowed profile speed (2026-10-06). The Prospector travels at `990`,
+returns laden at `495`, and chases rocks in the `262.5–562.5` range; Probe speed is `2632.5`,
+Death Star speed `1500` and Radiation Bomb speed `1300` (owner 2026-10-16), and the Beacon grants
+`20%` extra speed. These craft figures use
+the catalogue scale; flight converts through the shared distance factor. All producer levels
+make `20%` less per hour while keeping their Store and Works resource capacities. Production,
+research and repair work runs `20%` slower (`×1.25` duration). Active seasons preserve pre-release
+income and retire existing pirate/merchant contacts at the explicit idle cutover described in
+`deployment.md`. Asteroid lifetime is unchanged. The earlier geometry update enlarges all three
 planet size anchors and the intervening Core-level ramp by `30%`, preserving their proportions.
 
 The convoy clock is 180 minutes. Trade ships use four 180-minute daily windows: `01–04`, `07–10`,
@@ -318,8 +325,8 @@ composition are applied.
 
 | Grade | Condition | Loot |
 |---|---|---|
-| `DECISIVE` | No defending units stand at contact, or none survive after the shield is depleted | 60% of raidable stock |
-| `PARTIAL` | ≥42% of defender value destroyed | 30% |
+| `DECISIVE` | No defending units stand at contact, or none survive after the shield is depleted | Tier 1–3 defender: 25% of unprotected stock + 15% of Works; otherwise 60% + 30% |
+| `PARTIAL` | ≥42% of defender value destroyed | Half of the decisive stock and Works shares |
 | `REPELLED` | Below that | Nothing |
 
 Three grades rather than win/lose: binary outcomes make marginal attacks worthless and punish
@@ -328,6 +335,11 @@ good-but-imperfect reads.
 A defending colony loses 30 loyalty on a decisive defeat and 15 on a partial defeat,
 even below the Core fault gate. A repelled attack costs no loyalty. Loyalty cannot fall
 below zero; at zero the colony secedes.
+
+Starting any building upgrade protects only that colony against all new faults for
+at least 12 hours, including attack-induced faults. Each accepted building order
+renews this window immediately; completion is not required. Existing faults still
+need repairs. Combat damage and battle loyalty loss remain in effect.
 
 **An Aegis covers a defending line; it is not one.** If no combat hull or ground gun stands at
 the world, the raid is a zero-round DECISIVE walkover and takes the ordinary decisive haul. The
@@ -466,8 +478,16 @@ of the full hull. Ground guns and NPC crews carry nothing (D1).
 
 **Radyasyon hasarı gemi başına sabit HP/dakika olarak hesaplanır.** Aynı kaynak, koruma ve
 maruz kalma koşullarındaki gemiler aynı miktarda HP kaybeder. Gemi canı yüksekse daha uzun
-dayanır; canı düşükse daha erken kaybedilir. Anıt seviyesi ve koruma araştırması etkin HP/dk
+dayanır; canı düşükse daha erken kaybedilir. Radyasyon seviyesi ve koruma araştırması etkin HP/dk
 değerini belirleyebilir; geminin temel, azami veya kalan HP'si hasar oranını belirlemez.
+
+- **Radyasyon seviyesi ile koruma araştırması seviyesi ayrı kavramlar.** Her radyasyon
+  seviyesinin ortak, sabit bir temel HP/dk değeri olacak. HARD anıtlar radyasyon 2 kullanır;
+  bu kalibrasyonda seviye 2'nin temel hasarı 12,5 HP/dk esas alınır. Koruma 0…4 ile aynı
+  seviye 2 radyasyonun alınan hasarı 12,5 → 10,5 → 8,5 → 6,5 → 5,25 HP/dk olur;
+  kaynağın seviyesi değişmez. Radyasyon 1 için temel 9 HP/dk kullanılır. Radyasyon 3 henüz
+  hiçbir yerde yok; bu çalışma ona yeni değer/kaynak atamaz. Aynı seviyeyi kullanan
+  başka hedefler ayrı, anıta özgü bir hasar tablosu kullanmayacak.
 
 - **Gemi HP'sinin yüzdesi kadar radyasyon hasarı uygulanmayacak. Sabit HP + gemi HP'sinden
   türetilen yüzdelik hasar da kullanılmayacak.** Örneğin aynı korumayla 4 HP/dk alan 100 HP'lik
@@ -480,13 +500,21 @@ değerini belirleyebilir; geminin temel, azami veya kalan HP'si hasar oranını 
   yüksek HP avantajını koruyarak araştırmasız zor, araştırmayla kolaylaşan fakat gece boyunca
   başıboş farmı ödüllendirmeyen sabit HP/dk oranları bulmak. Önceki 1–2 saatlik ortak tavan
   varsayımı kullanıcı kararı değildir.
+- **Kullanıcının seçtiği referans:** HARD anıtta tam canlı Korsan, radyasyon koruması 0 ve
+  Gemi Zırhı 0 ile yaklaşık 2 saat; yeni koruma ve mevcut Gemi Zırhı maksimumken yaklaşık
+  6 saat dayanmalı. Canlar 1.508 / 1.885 HP; saniyesi saniyesine eşitleme gerekmiyor.
+  Altı saat yalnız yeni koruma araştırmasının sonucu değildir. Başka gövdelerin farklı
+  HP'leri nedeniyle daha kısa veya uzun dayanması bu hedefe aykırı değildir.
 - Koruma araştırmasının seviyeleri, oranları ve fiyatları ayrıca kalibre edilecek. Diğer
   sistemlerdeki yüzdeler bu kararı değiştirmez. Hasarın kayıt için can oranına dönüştürülmesi
   (`damageBp` / `remainderBp`), hasar dozunun gemi HP'sinden türetilmesi anlamına gelmez.
 - Gerçek hasar, ölüm zamanı tahmini ve oyuncuya gösterilen HP/dk aynı ortak kurala dayanmalı.
-  Önceki karma model hesapları [ilk kalibrasyon raporunda](monument-radiation-research-calibration-2026-10-12.md)
-  **reddedilmiş inceleme** olarak saklanır; uygulama planı değildir. Bu karar notu oyun kodunu
-  veya aktif sezon verisini değiştirmez.
+  [Güncel kalibrasyon raporu](monument-radiation-research-calibration-2026-10-12.md) yalnız
+  sabit HP modelini hesaplar. Ortak kaynak tablosunda radyasyon 2 için 12,5 HP/dk esas
+  alınır. Radyasyon 1 için 9 HP/dk ve dört araştırma basamağı öneridir; fiyat/erişim ve
+  özellikle üretim tercihi kesinleşmiş ayar değildir.
+  Önceki karma hesaplar araçtan ve güncel rapordan çıkarıldı. Bu karar notu oyun kodunu veya
+  aktif sezon verisini değiştirmez.
 
 #### Tarihsel model — clouds on the map (K3–K4; ruleset 14, eski yüzde modeli)
 
@@ -662,6 +690,33 @@ decision — eyes, or production, or faster drills.
 because deterrence only works if it is legible. How strong it is still costs a probe.
 
 ## Silent Space — D174, D212
+
+### Tatil modu — owner decisions 2026-10-15
+
+Menu → Vacation mode pauses and protects the capital and every colony together for
+1–7 whole 24-hour days. No partial selection or partial payment. Every incoming and
+outgoing mission must finish, including clan war contributions and support ships in
+both directions. Development queues may remain and retain their unfinished work.
+
+For each world, round its current Command Core to `2 × ceil(level / 2)` and use that
+level's basic hourly Deuterium Refinery output. Each vacation day costs 12 hours for
+the capital plus 6 hours for each colony; round the final sum up. The entire payment
+comes from the capital's Store first, then its Works. Insufficient combined capital
+deuterium refuses the entire purchase, regardless of colony balances.
+
+All worlds refuse attacks and probes. Production, development, repairs, faults,
+loyalty and personal damage processes stop. Gameplay mutations, launches, resource
+collection and transfers are closed; chat and existing reports remain readable.
+The commander cannot move to Silent Space while vacationing. The common season and
+galaxy-event calendar continues.
+
+Vacation must end **at least 24 hours before the season end**. No vacation is sold
+in the final 24 hours, and delayed development must still finish within the season.
+Early return is allowed at any time without refund. Early and scheduled return lift
+protection immediately, resume work from its remaining duration, restore normal
+production/fault/loyalty behavior and start a fresh 30-hour Silent Space clock.
+Vacation time never becomes catch-up production, healing or damage. Implementation
+and acceptance cases: `docs/tier4-vacation-plan.md`.
 
 **D212 (owner, 2026-10-07): Silent Space is a waiting room.** A MAIN commander moves after 30
 hours without starting an attack (any combat launch: world, Death Star, joint war wave, monument,
@@ -926,7 +981,17 @@ flies as it always did, because a newcomer nobody can read is a newcomer nobody 
 The protected commander's permanent HUD also names their own raid immunity and counts down the
 time left; the launch confirmation explains that choosing to attack spends it.
 
-### The recovery shield — eight hours after a heavy defeat (reworked 2026-09-20)
+### The recovery shield — commander tiers (updated 2026-10-16)
+
+Owner, 2026-10-16: a defending commander whose highest currently controlled Core
+is 1–9 (tier 1–3) receives 12 hours of recovery protection at 2 average net
+production hours lost within the last 8 hours. Tier 4+ retains the 4-hour threshold,
+6-hour history and 8-hour shield described below. All worlds count toward commander
+tier; a small colony cannot lower it. The struck world's existing +50% output boost
+lasts with its granted window. Colony battle faults retain the standard
+4-hour loss / 6-hour history condition. New battle reports freeze the applied profile;
+legacy reports retain standard explanations. The following original rationale applies
+to the tier 4+ profile.
 
 The first day answers "what protects somebody who has not started yet". This answers the question
 it cannot: **what happens to a commander who has already committed to the war and just lost
@@ -1114,7 +1179,7 @@ calibration.
 
 A clan is a five-commander seasonal team inside one galaxy. Founding one is a late-opening
 commitment rather than a free menu action: the capital must have Command Core 7 and burns
-7,500 Alloy plus 3,000 Crystal (owner price, 2026-09-25). A 12-hour adaptation period makes recruitment legible and
+2,000 Alloy plus 1,000 Crystal (owner price, 2026-10-16). A 12-hour adaptation period makes recruitment legible and
 closes join/leave exploits while still giving the new member their tag, friendly-fire safety
 and private chat at once.
 General, clan, and direct messages support one emoji reaction per commander per message and

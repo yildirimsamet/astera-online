@@ -53,6 +53,7 @@ import {
   setUnits,
 } from './planet.js';
 import { landShips } from './shipDamage.js';
+import { takeHomeHealth } from './homeHealth.js';
 import { flightWitness, settleMissionRadiation, tellRadiationLoss } from './radiation.js';
 import { planetView } from './planetView.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
@@ -364,6 +365,7 @@ export async function quoteClanAid(
   if (target?.seasonId !== origin.seasonId) {
     throw new GameError('CLAN_AID_TARGET', 'Choose a world that clanmate controls', 404);
   }
+  if (target.vacationUntil && target.vacationUntil > input.now) throw new GameError('TARGET_VACATION', 'That commander is on vacation.', 409);
   const [orbit, coreLevel, tech] = await Promise.all([
     orbitOf(db, origin.id),
     db.select({ level: buildings.level }).from(buildings).where(and(
@@ -446,6 +448,8 @@ async function reserveAidFleet(
     missionId: string;
   },
 ): Promise<void> {
+  const damage = await takeHomeHealth(tx, input.originPlanetId, input.fleet);
+  await tx.update(missions).set({ damage: damage.length ? damage : null }).where(eq(missions.id, input.missionId));
   const remaining: Fleet = { ...input.home };
   for (const [hull, quantity] of Object.entries(input.fleet) as [HullId, number][]) {
     if ((input.home[hull] ?? 0) < quantity) {
@@ -571,7 +575,7 @@ export async function launchClanAid(
     refId: mission.id,
     resolveAt: arriveAt,
   });
-  await recomputePlayerWealth(tx, input.senderPlayerId);
+  await recomputePlayerWealth(tx, input.senderPlayerId, origin.now);
   await publishPrivate(tx, input.senderPlayerId, 'aid');
   await publishPrivate(tx, input.recipientPlayerId, 'aid');
   await publishShard(tx, origin.seasonId, 'launch');
@@ -660,7 +664,7 @@ export async function resolveClanAid(
     that can hurt it. The last ship takes the load with it and the commitment ends where
     it stood: delivered if the outbound leg had already landed, otherwise undelivered.
   */
-  const dosed = await settleMissionRadiation(tx, arriving, { rulesetVersion });
+  const dosed = await settleMissionRadiation(tx, arriving, { rulesetVersion, observedAt: now });
   await tellRadiationLoss(tx, flightWitness(dosed.mission), dosed, now);
   if (fleetCount(dosed.destroyed) > 0 && fleetCount(dosed.fleet) === 0) {
     const delivered = commitment.resolvedAt !== null;
@@ -668,7 +672,7 @@ export async function resolveClanAid(
       ? { status: 'DELIVERED' }
       : { status: 'RETURNED', resolvedAt: now })
       .where(eq(clanAidCommitments.missionId, rootMissionId));
-    await recomputePlayerWealth(tx, commitment.senderPlayerId);
+    await recomputePlayerWealth(tx, commitment.senderPlayerId, now);
     await publishPrivate(tx, commitment.senderPlayerId, 'aid');
     await publishPrivate(tx, commitment.recipientPlayerId, 'aid');
     return delivered ? 'DELIVERED' : 'RETURNED';
@@ -699,6 +703,7 @@ export async function resolveClanAid(
       fleet: mission.fleet,
       damage: mission.damage,
       at: now,
+      radiationAt: mission.arriveAt,
     });
     const cargo = mission.cargo ?? ZERO;
     await tx.update(planets).set({
@@ -711,7 +716,7 @@ export async function resolveClanAid(
       ? { status: 'DELIVERED' }
       : { status: 'RETURNED', resolvedAt: now })
       .where(eq(clanAidCommitments.missionId, rootMissionId));
-    await recomputePlayerWealth(tx, commitment.senderPlayerId);
+    await recomputePlayerWealth(tx, commitment.senderPlayerId, now);
     await publishPrivate(tx, commitment.senderPlayerId, 'aid');
     await publishPrivate(tx, commitment.recipientPlayerId, 'aid');
     return delivered ? 'DELIVERED' : 'RETURNED';
@@ -742,7 +747,7 @@ export async function resolveClanAid(
     }).where(eq(planets.id, target.id));
     if (delivery) {
       await startAidReturn(tx, mission, commitment, now, ZERO, true);
-      await recomputePlayerWealth(tx, commitment.recipientPlayerId);
+      await recomputePlayerWealth(tx, commitment.recipientPlayerId, now);
       await publishPrivate(tx, commitment.senderPlayerId, 'aid');
       await publishPrivate(tx, commitment.recipientPlayerId, 'aid');
       return 'RETURNING';
@@ -755,11 +760,12 @@ export async function resolveClanAid(
       fleet: mission.fleet,
       damage: mission.damage,
       at: now,
+      radiationAt: mission.arriveAt,
     });
     await tx.update(clanAidCommitments).set({ status: 'DELIVERED', resolvedAt: now })
       .where(eq(clanAidCommitments.missionId, rootMissionId));
-    await recomputePlayerWealth(tx, commitment.senderPlayerId);
-    await recomputePlayerWealth(tx, commitment.recipientPlayerId);
+    await recomputePlayerWealth(tx, commitment.senderPlayerId, now);
+    await recomputePlayerWealth(tx, commitment.recipientPlayerId, now);
     await publishPrivate(tx, commitment.senderPlayerId, 'aid');
     await publishPrivate(tx, commitment.recipientPlayerId, 'aid');
     return 'DELIVERED';

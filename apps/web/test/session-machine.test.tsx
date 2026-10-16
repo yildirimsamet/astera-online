@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api, ApiError } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
+import { keys } from '../src/api/keys.js';
 import type { ClaimResult } from '../src/api/schemas.js';
 import { useSession } from '../src/session/useSession.js';
 import { planetView } from './fixtures.js';
@@ -285,9 +286,9 @@ describe('the session machine', () => {
     expect(session.error).toBeTruthy();
   });
 
-  it('takes a chosen galaxy through to the game', async () => {
+  it('takes a chosen galaxy through to the game and clears the previous season vacation locks', async () => {
     let hasPlanet = false;
-    const { wrapper } = harness({
+    const { wrapper, queries } = harness({
       '/api/auth/refresh': SESSION,
       '/api/session/return': RETURN,
       '/api/servers/EU-1/join': {
@@ -314,11 +315,16 @@ describe('the session machine', () => {
       expect(result.current.session.phase).toBe('servers');
     });
 
+    const oldVacation = new Date(Date.now() + 86_400_000);
+    queries.setQueryData(keys.planet, planetView({ vacationUntil: oldVacation }));
+    queries.setQueryData(keys.vacation, { active: { id: 'old-vacation', endsAt: oldVacation } });
     hasPlanet = true;
     await act(async () => {
       await result.current.chooseServer('EU-1');
     });
     expect(result.current.session.phase).toBe('ready');
+    expect(queries.getQueryData(keys.vacation)).toBeUndefined();
+    expect(queries.getQueryData(keys.planet)).toBeUndefined();
   });
 
   it('leaves the vanished planet immediately and reconciles its permanent record', async () => {

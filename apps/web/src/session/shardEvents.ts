@@ -193,6 +193,8 @@ export const isPrivateEvent = (kind: string): boolean => kind.startsWith(PRIVATE
  */
 export function readsForPrivateEvent(kind: string): readonly (readonly string[])[] | null {
   switch (kind.slice(PRIVATE_PREFIX.length)) {
+    case 'honor':
+      return [keys.reports, keys.planet, keys.planets, keys.leaderboard];
     case 'sensors':
       return [keys.traffic, keys.miningField, keys.pirates, keys.galaxy];
     case 'monument':
@@ -200,9 +202,13 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
     /** A world this commander watches launched or recovered combat craft. */
     case 'sight':
       return [keys.galaxy, keys.intel];
-    /** An entitled commander can now render the eight-second interceptor scene. */
+    /**
+     * An entitled commander can now render the eight-second interceptor scene — and the
+     * weapon it hunts has already left the participants' own lists (the attacker's craft,
+     * the defender's siren), which `pending` carries (owner, 2026-10-16).
+     */
     case 'strategic-sight':
-      return [keys.traffic];
+      return [keys.traffic, keys.pending];
     /** A mission began or an operator granted a reward while this commander was online. */
     case 'reward':
       return [keys.rewards];

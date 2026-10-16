@@ -6,6 +6,13 @@
  * değil, tek bir tezgâh.
  */
 export const research = {
+  shieldingCeiling: "Seviye {{level}}: {{rate}} HP/dk",
+  shieldingName: "Radyasyon Kalkanı",
+  shieldingTag: "Gemilerin radyasyon hasarını azaltır",
+  shieldingRole: "Gemilerini gezegen ve anıt radyasyonundan korur. Dört araştırma seviyesi vardır.",
+  shieldingDetail: "Bu araştırma yalnız gemileri korur; savaş hasarını azaltmaz. Gezegende Aegis ek koruma sağlar. Anıtta yalnız geminin radyasyon koruması geçerlidir. Kendi gezegenlerinde duran gemiler komutanın güncel araştırma seviyesini kullanır. Gönderilen filolarda koruma, kalkıştaki seviyeye göre belirlenir; sonraki araştırmalar bu filoları güçlendirmez. Araştırma için ana gezegende Çekirdek 3 gerekir.",
+  shieldingRateLabel: "Seviye 2 radyasyon · HP/dk",
+  shieldingScope: "Gönderilen filonun koruması kalkışta kaydedilir. Her radyasyon seviyesinde etkilidir.",
   eyebrow: "Komutan",
   title: "Araştırma",
   premise:
@@ -102,7 +109,7 @@ export const research = {
   industrialRole:
     "Bütün Tamirhanelerde gemi onarımının bedelini ve süresini azaltır.",
   industrialDetail:
-    "1. seviyede normal onarım bedeli ve süresinin %75’i, 2. seviyede %50’si kullanılır. Etki bütün gezegenlerinde geçerlidir. Yeni gemi üretimini hızlandırmaz. %20 veya daha az hasarlı gemiler inişte zaten ücretsiz onarılır.",
+    "1. seviyede normal onarım bedeli ve süresinin %75’i, 2. seviyede %50’si kullanılır. Etki bütün gezegenlerinde geçerlidir. Yeni gemi üretimini hızlandırmaz.",
   holdsName: "Kazıcı Ambarları",
   holdsTag: "Kazıcılar daha çok taşır",
   holdsRole:
@@ -148,9 +155,9 @@ export const research = {
     "Etki, mevcut Tabya, Zıpkın ve Kirpi yer savunmalarına da uygulanır. Savunmalar, savaş başladığında tamamlanmış araştırma seviyesini kullanır. Yer kapasitesi, ücretsiz yeniden kurulum ve sınıf eşleşmeleri değişmez. Hareketli gemilere bonus eklemez.",
 
   gridName: "Önleme Ağı",
-  gridTag: "Dünya başına dört önleyici şarj",
-  gridRole: "Her gezegende önleyici şarj kapasitesini 2’den 4’e çıkarır.",
-  gridDetail: "Araştırma kapasiteyi artırır; ücretsiz şarj vermez. Her şarj, Anten ve Radar 3 bulunan gezegende üretilmelidir. Çalışan sensörler bir Ölüm Yıldızının önlenmesini tetikleyebilir; atışta bir şarj tüketilir. Kapasite artışı, şarjlar hazırsa işe yarar.",
+  gridTag: "Gezegen başına en fazla altı önleyici şarj",
+  gridRole: "İki araştırma seviyesi, her gezegenin şarj kapasitesini artırır: 2 → 4 → 6.",
+  gridDetail: "Her araştırma seviyesi 2 yuva ekler; ücretsiz şarj vermez. Her şarj, etkin Anten ve Radar 3 bulunan gezegende üretilir. Bir önleme bir şarj tüketir ve bir Ölüm Yıldızını veya radyasyon bombasını durdurur. Yalnız hedef gezegenin bataryası ateş eder.",
   stockpileName: "Stratejik Stok",
   stockpileTag: "Dünya başına iki Ölüm Yıldızı",
   stockpileRole: "Her gezegende Ölüm Yıldızı kapasitesini 1’den 2’ye çıkarır. Her silah ayrı üretilir ve ödenir.",

@@ -34,17 +34,23 @@ export async function monumentHonorees(db: Queryable, seasonId: string): Promise
        ORDER BY previous_season.closed_at DESC NULLS LAST, previous_season.starts_at DESC
        LIMIT 1
     )
-    SELECT r.final_rank AS rank, r.recap ->> 'commanderName' AS name
+    SELECT CASE WHEN h.mode = 'ACTIVE' THEN r.honor_rank ELSE r.final_rank END AS rank,
+           r.recap ->> 'commanderName' AS name
       FROM previous
       JOIN season_results r ON r.season_id = previous.id
-     WHERE r.final_rank BETWEEN 1 AND ${count}
-     ORDER BY r.final_rank
+      LEFT JOIN honor_seasons h ON h.season_id = previous.id
+     WHERE CASE WHEN h.mode = 'ACTIVE' THEN r.honor_rank ELSE r.final_rank END BETWEEN 1 AND ${count}
+       AND (h.mode IS DISTINCT FROM 'ACTIVE' OR r.honor_score > 0)
+     ORDER BY rank, name
   `);
   const names: (string | null)[] = Array.from({ length: count }, () => null);
   for (const raw of rows) {
     const row = honoreeRow.parse(raw);
     const name = row.name?.trim() ?? '';
-    if (name !== '' && row.rank >= 1 && row.rank <= count) names[row.rank - 1] = name;
+    if (name !== '' && row.rank >= 1 && row.rank <= count) {
+      const previous = names[row.rank - 1];
+      names[row.rank - 1] = previous ? `${previous} · ${name}` : name;
+    }
   }
   return names;
 }

@@ -95,7 +95,8 @@ describe('every class a screen writes resolves to something', () => {
     // `/40` is an opacity, `[…]` is an arbitrary value the lint rule polices.
     const base = rest.split('/')[0] ?? '';
     if (KEYWORD.test(base) || base.startsWith('[') || /^\d/.test(base)) return false;
-    if (kind === 'bg' && base.startsWith('gradient')) return false;
+    // Tailwind 4 names directional gradients `bg-linear-to-*`.
+    if (kind === 'bg' && (base.startsWith('gradient') || /^linear-to-(t|tr|r|br|b|bl|l|tl)$/.test(base))) return false;
     // Size, position and repeat of an image ground are keywords, not colours.
     if (kind === 'bg' && BG_IMAGE.test(base)) return false;
     if (kind === 'text') return !(colours.has(base) || sizes.has(base) || TEXT_LAYOUT.test(base));

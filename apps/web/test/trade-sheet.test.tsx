@@ -3,7 +3,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TRADE, UNAIDED, combatValue, garrisonOf, quoteTrade, transferCargoCapacity } from '@astera/rules';
+import { TRADE, UNAIDED, combatValue, garrisonOf, quoteTrade, transferCargoCapacity,
+  HONOR_BENEFIT_THRESHOLDS_V1, honorBenefits } from '@astera/rules';
 import { compact } from '../src/lib/format.js';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
@@ -199,6 +200,14 @@ describe('planTradeRoute', () => {
 /* ── the owner's worked example ──────────────────────────────── */
 
 describe('the counter opens on a trade that already works', () => {
+  it('shows the Honor commission and net return beside the trade decision', () => {
+    sheet({ planet: trader({ honorBenefits: { version: 1, score: -25_000_000, thresholds: HONOR_BENEFIT_THRESHOLDS_V1,
+      ...honorBenefits(-25_000_000, HONOR_BENEFIT_THRESHOLDS_V1) } }) });
+    expect(screen.getByText('Honor commission: 7%')).toBeVisible();
+    expect(screen.getByText('Net haul')).toBeVisible();
+    expect(screen.getByText('Gross return')).toBeVisible();
+    expect(screen.getByText('Cargo space is reserved for the gross exchange before commission.')).toBeVisible();
+  });
   /**
    * OWNER REPORT: *"Her şeyi doğru ayarlamalıyım ki en alttaki buton aktif olsun.
    * Kullanıcıya mı bırakacağız bunları? Oranlar belli."*
@@ -595,7 +604,7 @@ describe('committing the convoy', () => {
    * it said — nothing can be recalled, what stays home — is on the sheet before the
    * press, because a price read after the decision is not decision support.
    */
-  it('says before the hold that nothing can be recalled, and has no second step', async () => {
+  it('explains recall and the spent fuel before the hold, with no second step', async () => {
     sheet();
     const user = userEvent.setup();
     expect(screen.queryByText(/A launched convoy cannot be recalled/i)).toBeNull();
@@ -603,7 +612,7 @@ describe('committing the convoy', () => {
     await user.click(screen.getByRole('button', { name: /max atlas/i }));
     await user.click(screen.getByRole('button', { name: /^Deuterium$/i }));
 
-    expect(screen.getByText(/A launched convoy cannot be recalled/i)).toBeInTheDocument();
+    expect(screen.getByText(/recall.*before.*merchant.*fuel.*not refunded/i)).toBeInTheDocument();
     expect(commit()).toHaveAttribute('data-hold');
     await user.click(commit());
     expect(screen.queryByRole('button', { name: /back/i })).toBeNull();

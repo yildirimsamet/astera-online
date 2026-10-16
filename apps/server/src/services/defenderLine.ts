@@ -7,7 +7,7 @@ import {
   hangarLoad,
   normalizeLots,
   normalizeHpDamage,
-  hpRadiationApplies,
+  partitionCombatFleet,
   shipDamageApplies,
   withinTierBand,
   type HpDamageLot,
@@ -104,18 +104,18 @@ export async function standStations(
       await loseWave(tx, wave, input.now);
       continue;
     }
-    const lots = !damageRule ? [] : hpRadiationApplies(input.rulesetVersion)
-      ? normalizeHpDamage(fleet, wave.damage) : normalizeLots(wave.damage);
+    const lots = !damageRule ? [] : normalizeHpDamage(fleet, wave.damage);
+    const ready = partitionCombatFleet(fleet, lots);
     stations.push({
       wave,
       fleet,
-      power: combatValue(fleet),
+      power: combatValue(ready.eligible),
       stack: {
         stackId: wave.id,
         playerId: wave.senderPlayerId,
-        fleet,
+        fleet: ready.eligible,
         tech: { tech: await supportFlightTech(tx, wave) },
-        ...(lots.length > 0 ? { damage: lots } : {}),
+        ...(ready.damage.length > 0 ? { damage: ready.damage } : {}),
       },
     });
   }
@@ -124,13 +124,13 @@ export async function standStations(
 
 /** One for the host, plus one per commander who stood at least one ship in the line. */
 export const defenderCountOf = (stations: readonly Station[]): number =>
-  1 + new Set(stations.filter((station) => fleetCount(station.fleet) > 0).map((s) => s.wave.senderPlayerId)).size;
+  1 + new Set(stations.filter((station) => fleetCount(station.stack.fleet) > 0).map((s) => s.wave.senderPlayerId)).size;
 
 /** The whole line as it stood: the host's own and every wave's ships. */
 export function lineOf(hostLine: Fleet, stations: readonly Station[]): Fleet {
   const out: Fleet = { ...hostLine };
   for (const station of stations) {
-    for (const [hull, n] of fleetEntries(station.fleet)) out[hull] = (out[hull] ?? 0) + n;
+    for (const [hull, n] of fleetEntries(station.stack.fleet)) out[hull] = (out[hull] ?? 0) + n;
   }
   return out;
 }
@@ -143,23 +143,27 @@ export async function settleStations(
   for (const station of input.stations) {
     const outcome = input.outcomes.find((row) => row.stackId === station.wave.id);
     if (!outcome) throw new Error(`support wave ${station.wave.id} left the battle unrecorded`);
-    if (fleetCount(outcome.survivors) === 0) {
+    const excluded = partitionCombatFleet(station.fleet, station.wave.damage);
+    const physical: Fleet = { ...outcome.survivors };
+    for (const [hull, count] of fleetEntries(excluded.excluded)) physical[hull] = (physical[hull] ?? 0) + count;
+    if (fleetCount(physical) === 0) {
       await loseWave(tx, station.wave, input.now);
       continue;
     }
     // Every hull the wave stood with is written, so one wiped out is zeroed rather than kept.
     const remaining: Fleet = {};
-    for (const hull of Object.keys(station.fleet) as HullId[]) remaining[hull] = outcome.survivors[hull] ?? 0;
+    for (const hull of Object.keys(station.fleet) as HullId[]) remaining[hull] = physical[hull] ?? 0;
     await setUnits(tx, station.wave.originPlanetId, remaining, station.wave.unitLocation, station.wave.senderPlayerId);
+    const wounds = normalizeHpDamage(physical, [...outcome.survivorDamage, ...excluded.excludedDamage]);
     const damage = input.damageRule
-      ? (outcome.survivorDamage.length > 0 ? outcome.survivorDamage : null)
+      ? (wounds.length > 0 ? wounds : null)
       : station.wave.damage;
     await tx.update(clanSupportWaves).set({
       damage,
-      reservedBulk: hangarLoad(outcome.survivors),
-      battles: station.wave.battles + 1,
+      reservedBulk: hangarLoad(physical),
+      battles: station.wave.battles + (fleetCount(station.stack.fleet) > 0 ? 1 : 0),
     }).where(eq(clanSupportWaves.id, station.wave.id));
-    await recomputePlayerWealth(tx, station.wave.senderPlayerId);
+    await recomputePlayerWealth(tx, station.wave.senderPlayerId, input.now);
     await publishSupport(tx, station.wave);
   }
 }
@@ -179,12 +183,13 @@ function bySupporter(stations: readonly Station[], outcomes: readonly DefenderOu
     for (const [hull, n] of fleetEntries(from)) into[hull] = (into[hull] ?? 0) + n;
   };
   for (const station of stations) {
+    if (fleetCount(station.stack.fleet) === 0) continue;
     const outcome = outcomes.find((row) => row.stackId === station.wave.id);
     const row = rows.get(station.wave.senderPlayerId) ?? {
       playerId: station.wave.senderPlayerId, power: 0, sent: {}, losses: {}, survivors: {}, lossValue: 0, damage: [],
     };
     row.power += station.power;
-    add(row.sent, station.fleet);
+    add(row.sent, station.stack.fleet);
     if (outcome) {
       add(row.losses, outcome.losses);
       add(row.survivors, outcome.survivors);

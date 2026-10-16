@@ -7,6 +7,9 @@ import { SHIP_SKIN_DRIVES } from './shipSkinDrive.js';
  * Do not add hullPoseLift again. Evidence: out/premium-assets/engine-calibration.
  */
 const ANCHORS: Readonly<Record<string, readonly Vec3Tuple[]>> = {
+  '/assets/models/missiles/radiation-bomb-l1.glb': [[0, 0, -1.04 / 2.2]],
+  '/assets/models/missiles/radiation-bomb-l2.glb': [[0, 0, -1.04 / 2.2]],
+  '/assets/models/missiles/radiation-bomb-l3.glb': [[0, 0, -1.04 / 2.2]],
   '/assets/models/ships/dart.glb': [[0.1435, 0.2618, -0.495], [-0.1246, 0.2618, -0.49]],
   '/assets/models/ships/pike.glb': [[0.1029, 0.1621, -0.5], [-0.1029, 0.1621, -0.5]],
   '/assets/models/ships/rampart.glb': [[0, 0.1281, -0.363]],

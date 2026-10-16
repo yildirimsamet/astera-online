@@ -50,6 +50,14 @@ export function MuteIcon(props: IconProps) {
  */
 const STROKE = 1.75;
 
+/** Honor's shared insignia: an ascending star held by an open orbital wreath. */
+export function HonorIcon(props: IconProps) {
+  return <Glyph {...props}>
+    <path d="m12 2.5 2.1 5.9 5.4 2.1-5.4 2.1L12 18.5l-2.1-5.9-5.4-2.1 5.4-2.1Z" />
+    <path d="M2.5 13.5a9.5 9.5 0 0 0 6 7.5m13-7.5a9.5 9.5 0 0 1-6 7.5" />
+  </Glyph>;
+}
+
 function Glyph({
   children,
   className = 'size-5',

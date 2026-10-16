@@ -15,6 +15,7 @@ import { planets } from '../db/schema.js';
 import { startFaultRepair } from '../services/faultRepair.js';
 import { startRepair } from '../services/repair.js';
 import { loadPlanetViewData, buildPlanetView, type PlanetViewData } from '../services/planetView.js';
+import { maintenanceAction } from '../services/maintenance.js';
 import {
   buildUnits,
   collectWorks,
@@ -28,10 +29,12 @@ import { completeResearch } from '../services/research.js';
 import { capitalPlanet, commanderForAccount, ownedPlanet } from '../services/ownership.js';
 import { GameError } from '../services/planet.js';
 import { buildDeathStar, buildInterceptor, launchDeathStar } from '../services/strategic.js';
+import { buildRadiationBomb, launchRadiationBomb } from '../services/radiationBomb.js';
 import { setDefencePosture } from '../services/clanSupport.js';
 import { launchSettlement, launchTransfer, recallFlight } from '../services/movement.js';
 import { cancelBuildOrder } from '../services/buildQueue.js';
 import { abandonColony, colonyAbandonment } from '../services/colonyAbandonment.js';
+import { honorTargetPreview } from '../services/honorTarget.js';
 
 /**
  * Five structures. The Orbital Ring is not one of them any more (D22): satellites
@@ -77,6 +80,7 @@ const MOBILE = zodEnum(ALL_HULL_IDS.filter(
   (id) => !HULLS[id].ground && id !== 'PROSPECTOR',
 ));
 const HULL = zodEnum(ALL_HULL_IDS);
+const BOMB_LEVEL = z.union([z.literal(1), z.literal(2), z.literal(3)]);
 const RESEARCH = zodEnum(RESEARCH_PROJECT_IDS);
 
 const launchBody = z.object({
@@ -211,14 +215,14 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
   });
 
   app.post('/api/planet/upgrade', { preHandler: requireAuth }, async (req) => {
-    const { type } = z.object({ type: BUILDING }).strict().parse(req.body);
+    const { type, confirmedLevel } = z.object({ type: BUILDING, confirmedLevel: z.number().int().positive().optional() }).strict().parse(req.body);
     const planetId = await myPlanet(req.accountId!);
-    return upgradeBuilding(app.db, planetId, type, app.clock);
+    return upgradeBuilding(app.db, planetId, type, app.clock, undefined, { confirmedLevel });
   });
   app.post('/api/planets/:planetId/upgrade', { preHandler: requireAuth }, async (req) => {
-    const { type } = z.object({ type: BUILDING }).strict().parse(req.body);
+    const { type, confirmedLevel } = z.object({ type: BUILDING, confirmedLevel: z.number().int().positive().optional() }).strict().parse(req.body);
     const owner = await explicitPlanet(req.accountId!, req.params);
-    return upgradeBuilding(app.db, owner.planetId, type, app.clock, owner.playerId);
+    return upgradeBuilding(app.db, owner.planetId, type, app.clock, owner.playerId, { confirmedLevel });
   });
 
   app.post('/api/planet/build', { preHandler: requireAuth }, async (req) => {
@@ -317,6 +321,15 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     return installSatellite(app.db, owner.planetId, type, app.clock, owner.playerId);
   });
 
+  app.post('/api/planets/:planetId/radiation-bombs/build', { preHandler: requireAuth }, async (req) => {
+    if (!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED) {
+      throw new GameError('STRATEGIC_UNAVAILABLE', 'No such crafting route', 404);
+    }
+    const { level } = z.object({ level: BOMB_LEVEL }).strict().parse(req.body);
+    const owner = await explicitPlanet(req.accountId!, req.params);
+    return buildRadiationBomb(app.db, owner.planetId, level, app.clock, owner.playerId);
+  });
+
   app.post('/api/planets/:planetId/death-star/build', { preHandler: requireAuth }, async (req) => {
     if (!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED) {
       throw new GameError('STRATEGIC_UNAVAILABLE', 'No such crafting route', 404);
@@ -393,11 +406,44 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
   app.post('/api/planets/:planetId/repairs', { preHandler: requireAuth }, async (req) => {
     const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(req.params);
     const request = z.union([
-      z.object({ lotIds: z.array(z.string().uuid()).min(1).max(SHIP_DAMAGE.repairLotsPerOrder) }).strict(),
-      z.object({ all: z.literal(true) }).strict(),
+      z.object({ lotIds: z.array(z.string().uuid()).min(1).max(SHIP_DAMAGE.repairLotsPerOrder),
+        expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
+      z.object({ all: z.literal(true), expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
+      z.object({ lots: z.array(z.object({ id: z.string().uuid(), count: z.number().int().positive().max(2_147_483_647),
+        damageBp: z.number().int().min(0).max(9999), remainderBp: z.number().min(0).lt(1),
+      }).strict()).min(1).max(SHIP_DAMAGE.repairLotsPerOrder),
+        expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional() }).strict(),
     ]).parse(req.body ?? {});
     const owner = await ownedPlanet(app.db, req.accountId!, planetId);
-    return startRepair(app.db, owner.planetId, request, app.clock, owner.playerId);
+    const key = req.headers['idempotency-key'] === undefined ? undefined : z.string().min(8).max(128).parse(req.headers['idempotency-key']);
+    if ('lots' in request && key === undefined) throw new GameError('REPAIR_RETRY_KEY_REQUIRED', 'Confirm this repair with a retry key', 400);
+    return startRepair(app.db, owner.planetId, request, app.clock, owner.playerId, key);
+  });
+
+  app.post('/api/planets/:planetId/maintenance', { preHandler: requireAuth }, async (req) => {
+    const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(req.params);
+    const key = z.string().min(8).max(128).parse(req.headers['idempotency-key']);
+    const count = z.number().int().positive().max(2_147_483_647);
+    const mobileHull = zodEnum(ALL_HULL_IDS.filter((id) => !HULLS[id].ground));
+    const body = z.object({ action: z.enum(['DOCK', 'RETURN', 'SCRAP']), selection: z.discriminatedUnion('source', [
+      z.object({ source: z.literal('HOME'), groups: z.array(z.object({ hull: mobileHull, count,
+        damageBp: z.number().int().min(0).max(9999), remainderBp: z.number().finite().min(0).lt(1).default(0),
+      }).strict()).min(1).max(SHIP_DAMAGE.repairLotsPerOrder) }).strict(),
+      z.object({ source: z.literal('DOCK'), lots: z.array(z.object({ id: z.string().uuid(), count,
+        damageBp: z.number().int().min(0).max(9999).optional(), remainderBp: z.number().finite().min(0).lt(1).optional(),
+      }).strict())
+        .min(1).max(SHIP_DAMAGE.repairLotsPerOrder) }).strict(),
+    ]) }).strict().refine(body => body.action !== 'SCRAP' || body.selection.source !== 'DOCK'
+      || body.selection.lots.every(lot => lot.damageBp !== undefined && lot.remainderBp !== undefined),
+    { message: 'Scrapping needs the selected ships’ health quote' }).parse(req.body);
+    const owner = await ownedPlanet(app.db, req.accountId!, planetId);
+    return maintenanceAction(app.db, owner.playerId, owner.planetId, body.action, body.selection, key, app.clock);
+  });
+
+  app.get('/api/honor/targets/:targetPlanetId', { preHandler: requireAuth }, async (req) => {
+    const { targetPlanetId } = z.object({ targetPlanetId: z.string().uuid() }).parse(req.params);
+    const owner = await commanderForAccount(app.db, req.accountId!);
+    return honorTargetPreview(app.db, owner.playerId, targetPlanetId, app.clock, app.adminUsernames);
   });
 
   /**
@@ -420,7 +466,20 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.acknowledgeShieldLoss ?? false,
       body.pace,
       body.acknowledgeRadiation ?? false,
+      app.adminUsernames,
     );
+  });
+
+  app.post('/api/radiation-bombs/launch', { preHandler: requireAuth }, async (req) => {
+    const body = z.object({
+      originPlanetId: z.string().uuid(),
+      level: BOMB_LEVEL,
+      target: z.object({ kind: z.enum(['PLANET', 'MONUMENT']), id: z.string().uuid() }).strict(),
+      acknowledgeShieldLoss: z.boolean().optional(),
+    }).strict().parse(req.body);
+    const key = z.string().min(8).max(128).parse(req.headers['idempotency-key']);
+    const owner = await ownedPlanet(app.db, req.accountId!, body.originPlanetId);
+    return launchRadiationBomb(app.db, { ...body, key, playerId: owner.playerId, clock: app.clock, adminUsernames: app.adminUsernames });
   });
 
   app.post('/api/death-star/launch', { preHandler: requireAuth }, async (req) => {
@@ -438,6 +497,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       app.clock,
       owner.playerId,
       body.acknowledgeShieldLoss ?? false,
+      app.adminUsernames,
     );
   });
 

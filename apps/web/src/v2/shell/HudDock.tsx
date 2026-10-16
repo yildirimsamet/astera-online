@@ -1,5 +1,4 @@
-import { useEffect, useRef } from 'react';
-import { useClanBadge, useMarkSeen, useMining, useNotifications, usePending, usePlanet } from '../../api/queries.js';
+import { useClanBadge, useMining, useNotifications, usePending, usePlanet } from '../../api/queries.js';
 import { dockBadges, isReportSignal, type DockTab } from '../../lib/dock.js';
 import { useNow } from '../../lib/time.js';
 import { Dock } from '../hud/Dock.js';
@@ -26,33 +25,13 @@ export function HudDock({ active, onSelect, over = false, bar = false }: {
   const runs = useMining().data?.runs ?? [];
   const notifications = useNotifications().data?.notifications ?? [];
   const clan = useClanBadge().data;
-  const markSeen = useMarkSeen();
-  const requested = useRef<Set<string>>(new Set());
-
-  // Visiting Intel reads its report signals, even if the feed arrives after the page opens.
-  // Keep other signals unread for the bell. A failed write is reconciled by useMarkSeen;
-  // leaving and reopening Intel retries those ids.
-  useEffect(() => {
-    if (active !== 'intel') {
-      requested.current.clear();
-      return;
-    }
-    const fresh = notifications
-      .filter((note) => !note.seen && isReportSignal(note.kind) && !requested.current.has(note.id))
-      .map((note) => note.id);
-    if (fresh.length === 0) return;
-    fresh.forEach((id) => { requested.current.add(id); });
-    markSeen.mutate(fresh);
-  }, [active, notifications, markSeen.mutate]);
-
   const badges = dockBadges({
     now,
     threads,
     runs,
     faults: (planet.data?.faults ?? []).filter((fault) => fault.repair === null).length,
-    // The page itself is the read action, so its badge clears on the same tap,
-    // before the optimistic mutation has finished.
-    unseenReports: active === 'intel' ? 0 : notifications.filter((note) => !note.seen && isReportSignal(note.kind)).length,
+    // Only the visible report surface can acknowledge reports.
+    unseenReports: notifications.filter((note) => !note.seen && isReportSignal(note.kind)).length,
     // Clan chat has its own unread badge on the chat button; keep the Clan count
     // for requests and unclaimed resources that its page actually shows.
     clanAttention: Math.max(0, (clan?.attentionCount ?? 0) - (clan?.clanChatUnread ?? 0)),

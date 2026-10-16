@@ -11,6 +11,7 @@
  * hooks concern to begin with.
  */
 export const keys = {
+  vacation: ['vacation'],
   returnStatus: ['return-status'],
   servers: ['servers'],
   season: ['season'],
@@ -24,9 +25,12 @@ export const keys = {
   skinPricing: ['skins', 'pricing'],
   polarShop: ['skins', 'polar-shop'],
   polarPricing: ['skins', 'polar-pricing'],
+  shopierShop: ['skins', 'shopier-shop'],
+  shopierQueue: ['admin', 'shopier-orders'],
   galaxyEvents: ['galaxy', 'events'],
   intel: ['intel'],
   leaderboard: ['leaderboard'],
+  honorTarget: (planetId: string) => ['honor-target', planetId] as const,
   seasonArchive: ['season-archive'],
   archivedLeaderboard: (seasonId: string) => ['season-archive', 'leaderboard', seasonId] as const,
   seasonCommanderProfile: (resultId: string) => ['season-archive', 'profile', resultId] as const,

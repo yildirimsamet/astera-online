@@ -365,15 +365,19 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
      * asserted in `intel-states.test.ts`, and it is two fields.
      * `country` travels with the known commander identity; the same intel suite
      * checks that unknown worlds expose none and probe memories keep their snapshot.
+     * A resolved world's `vacation` is only the visible protection flag;
+     * the owner's private vacation end time must remain absent.
      */
     expect(keys.sort()).toEqual(
       [
         'attackProtectedUntil', 'controller', 'country', 'coreLevel', 'coreTier', 'fleet', 'id', 'intel',
         'isCapital', 'isOwned', 'isSelf', 'kind', 'name', 'owner', 'position', 'satellites',
-        'shielded', 'state', 'dominionRank',
+        'shielded', 'state', 'dominionRank', 'vacation',
       ].sort(),
     );
     expect(target.intel).toBe('RESOLVED');
+    expect(target).toHaveProperty('vacation', false);
+    expect(target).not.toHaveProperty('vacationUntil');
   });
 
   /**

@@ -5,10 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { type PlanetSkinId, type PlanetSkinStatus } from '@astera/rules';
 import type { z } from 'zod';
 import type { polarPricingSchema, skinCollectionSchema } from '../api/schemas.js';
-import { usePolarPricing, usePolarShop, usePurchasePolarSkin, useSkins } from '../api/queries.js';
+import { usePolarPricing, usePolarShop, usePurchasePolarSkin, useShopierCode, useShopierShop, useSkins } from '../api/queries.js';
 import {
   BUNDLE_PRICE,
-  SHOPIER_LINKS,
   SKIN_PRICE,
   bundleSaving,
   priceText,
@@ -27,6 +26,7 @@ import { SkinPreview } from './SkinPreview.jsx';
 import { CosmeticNavigation } from './CosmeticNavigation.js';
 import { ApiError } from '../api/client.js';
 import { describeError } from '../i18n/errors.js';
+import { ShopierPayButton, ShopierProgress, shopierPrice, useShopierCheckout, type ShopierOffer } from './ShopierCheckout.js';
 
 type Collection = z.infer<typeof skinCollectionSchema>;
 type Pricing = z.infer<typeof polarPricingSchema>;
@@ -63,7 +63,9 @@ const STARS = [
  * account's for good, and its shielded look comes with it.
  * No invented counts, no invented scarcity.
  *
- * Polar creates a hosted checkout through the authenticated server route.
+ * Polar creates a hosted checkout through the authenticated server route. In Turkey, an item
+ * with a Shopier product is paid there first (owner 2026-10-16: Polar's fixed fee takes half of
+ * a ₺49–99 sale) and Polar stays below it as the second way.
  */
 export function SkinShopContent(props: Parameters<typeof PlanetShopContent>[0]) {
   const { t } = useTranslation();
@@ -73,6 +75,23 @@ export function SkinShopContent(props: Parameters<typeof PlanetShopContent>[0]) 
   const unavailable = props.enabled && !pricingReady
     ? t(props.pricingState === 'loading' ? 'skins.priceLoading' : 'skins.priceUnavailable')
     : t('skins.onSaleSoon');
+  const checkout = useShopierCheckout(props.shopier);
+  const purchase = (id: CosmeticId) => {
+    const lira = props.countryCode === 'TR' ? props.shopier?.prices[id] : undefined;
+    const quote = props.prices?.[id];
+    const polar = props.enabled && pricingReady && props.onPurchase && quote ? <button type="button" disabled={props.pending} aria-busy={props.pending}
+      onClick={() => { void props.onPurchase?.(id); }}
+      className={lira === undefined ? 'v2-store-shimmer min-h-11 w-full rounded-control bg-v2-premium px-3 text-caption font-semibold text-v2-void disabled:opacity-50' : `${SECOND_PRESS} disabled:opacity-50`}>
+      {props.pending ? t('skins.checkoutStarting') : t('skins.buy', { price: quote.formatted })}
+    </button> : null;
+    if (lira === undefined) return polar ?? <button type="button" disabled className="min-h-11 w-full rounded-control border border-v2-line-hi text-caption text-v2-ink-3">{unavailable}</button>;
+    return <div className="grid gap-1.5">
+      <ShopierPayButton amount={lira} state={checkout.of(id)} onPress={() => { void checkout.start(id); }}
+        className="v2-store-shimmer min-h-11 w-full rounded-control bg-v2-premium px-3 text-caption font-semibold text-v2-void" />
+      <ShopierProgress state={checkout.of(id)} />
+      {polar}
+    </div>;
+  };
   return <div className="min-h-full bg-v2-void font-v2-ui text-v2-ink">
     <CosmeticNavigation active="shop" onShop={() => undefined} onInventory={props.onOpenInventory} />
     <CosmeticCategories active={category} onChange={setCategory} owned={owned} inventory={false} />
@@ -84,12 +103,7 @@ export function SkinShopContent(props: Parameters<typeof PlanetShopContent>[0]) 
     </div>}
     {category === 'PLANET' ? <PlanetShopContent {...props} /> : <CosmeticCollection key={category}
       category={category} inventory={false} owned={owned} onTry={props.onTry} initialId={props.initialId} equipment={props.collection.equipment ?? {}} onOpenOther={props.onOpenInventory}
-      prices={props.prices} purchaseError={props.purchaseError}
-      purchase={id => props.enabled && pricingReady && props.onPurchase && props.prices?.[id] ? <button type="button" disabled={props.pending} aria-busy={props.pending}
-        onClick={() => { void props.onPurchase?.(id); }}
-        className="v2-store-shimmer min-h-11 w-full rounded-control bg-v2-premium px-3 text-caption font-semibold text-v2-void disabled:opacity-50">
-        {props.pending ? t('skins.checkoutStarting') : t('skins.buy', { price: props.prices[id].formatted })}
-      </button> : <button type="button" disabled className="min-h-11 w-full rounded-control border border-v2-line-hi text-caption text-v2-ink-3">{unavailable}</button>} />}
+      prices={props.prices} purchaseError={props.purchaseError} purchase={purchase} />}
   </div>;
 }
 
@@ -106,6 +120,7 @@ function PlanetShopContent({
   purchaseError,
   pricingState = 'ready',
   onPurchase = () => undefined,
+  shopier,
 }: {
   collection: Collection;
   commander: string;
@@ -122,6 +137,8 @@ function PlanetShopContent({
   pricingState?: 'loading' | 'error' | 'ready';
   onRetryPricing?: () => void;
   onPurchase?: (itemId: ItemId) => void | Promise<void>;
+  /** Shopier is open: its lira prices and the code request. Offered only in Turkey. */
+  shopier?: ShopierOffer;
 }) {
   const { t } = useTranslation();
   const owned = new Set(collection.ownedSkinIds);
@@ -145,13 +162,17 @@ function PlanetShopContent({
     const quote = prices[itemId];
     return EUR_ONLY_COUNTRY_SKINS.has(itemId) && quote?.currencyCode !== 'EUR' ? undefined : quote;
   };
+  const checkout = useShopierCheckout(shopier);
+  const shopierAmount = (itemId: ItemId): number | undefined =>
+    countryCode === 'TR' && !EUR_ONLY_COUNTRY_SKINS.has(itemId) ? shopier?.prices[itemId] : undefined;
   const money = (itemId: ItemId, amounts: Readonly<Record<Currency, number>>): string => {
     const quote = quoteFor(itemId);
+    const lira = shopierAmount(itemId);
+    if (!quote && lira !== undefined) return shopierPrice(lira, locale);
     if (enabled && pricingState !== 'ready' && !quote) return '—';
     const fallbackCurrency = EUR_ONLY_COUNTRY_SKINS.has(itemId) ? 'EUR' : currency;
     return quote?.formatted ?? priceText(amounts[fallbackCurrency], fallbackCurrency, locale);
   };
-  const lira = (amount: number): string => priceText(amount, 'TRY', locale);
   const look = PLANET_SKIN_CATALOG[selected];
   const name = t(look.nameKey);
   const mine = owned.has(selected);
@@ -163,11 +184,9 @@ function PlanetShopContent({
   const buy = (): void => { void onPurchase(selected); };
   const bundleBuy = (): void => { void onPurchase('bundle'); };
   const offerSet = activeCollection === 'elemental' && SKIN_COLLECTIONS.elemental.ids.every((id) => !owned.has(id));
-  const shopierAllowed = (itemId: ItemId): boolean => !EUR_ONLY_COUNTRY_SKINS.has(itemId)
-    && (!countryCode || (countryCode === 'TR' && prices[itemId]?.currencyCode === 'TRY'));
-  const shopier = mine || !shopierAllowed(selected) ? null : SHOPIER_LINKS[selected];
-  const bundleShopier = shopierAllowed('bundle') ? SHOPIER_LINKS.bundle : null;
-  const canPay = buyReady || bundleReady || shopier !== null || (offerSet && bundleShopier !== null);
+  const lira = mine ? undefined : shopierAmount(selected);
+  const bundleLira = shopierAmount('bundle');
+  const canPay = buyReady || bundleReady || lira !== undefined || (offerSet && bundleLira !== undefined);
 
   const stageStyle = { '--look': look.accent, '--look-glow': look.glow } as CSSProperties;
   const buyClass = 'v2-store-shimmer flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-control bg-v2-premium px-3 text-caption font-bold text-v2-void';
@@ -280,12 +299,12 @@ function PlanetShopContent({
             <button type="button" onClick={onOpenInventory} className="flex h-11 flex-1 items-center justify-center rounded-control border border-v2-self/60 bg-v2-self/15 px-3 text-caption font-bold text-v2-ink">
               {t('skins.wearIt')}
             </button>
+          ) : lira !== undefined ? (
+            <ShopierPayButton amount={lira} state={checkout.of(selected)} onPress={() => { void checkout.start(selected); }} className={buyClass} />
           ) : buyReady ? (
             <button type="button" onClick={buy} disabled={pending} aria-busy={pending} className={`${buyClass} disabled:opacity-60`}>
               {pending ? t('skins.checkoutStarting') : t('skins.buy', { price: money(selected, SKIN_PRICE) })}
             </button>
-          ) : shopier ? (
-            <ShopierPress href={shopier} price={lira(SKIN_PRICE.TRY)} className={buyClass} />
           ) : (
             <button type="button" disabled className="flex h-11 flex-1 items-center justify-center rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink-2">
               {unavailable}
@@ -295,13 +314,12 @@ function PlanetShopContent({
         {purchaseError?.itemId === selected && <p role="alert" className="mt-2 rounded-control border border-v2-warn/30 bg-v2-warn/5 px-3 py-2 text-caption text-v2-warn">
           {purchaseError.message}
         </p>}
-        {/* Shopier is a separate manual route, with the name to write in its order. */}
-        {shopier && (
-          <section aria-label={t('skins.shopierAlternative')} className="mt-2 grid gap-1.5 rounded-control border border-v2-line bg-v2-deep/60 p-2.5">
-            {buyReady && <h4 className="text-caption font-semibold text-v2-ink-2">{t('skins.shopierAlternative')}</h4>}
-            {buyReady && <ShopierPress href={shopier} price={lira(SKIN_PRICE.TRY)} className={SHOPIER_SECOND} />}
-            <ShopierNote commander={commander} />
-          </section>
+        {/* After the Shopier press: its code and steps. Polar stays below as the second way. */}
+        {lira !== undefined && <ShopierProgress state={checkout.of(selected)} />}
+        {lira !== undefined && buyReady && (
+          <button type="button" onClick={buy} disabled={pending} aria-busy={pending} className={`mt-2 ${SECOND_PRESS} disabled:opacity-60`}>
+            {pending ? t('skins.checkoutStarting') : t('skins.buy', { price: money(selected, SKIN_PRICE) })}
+          </button>
         )}
 
         {/* The collection is visible together so players can compare looks and ownership. */}
@@ -378,22 +396,20 @@ function PlanetShopContent({
               </div>
             </div>
             <div className="mt-3 grid gap-1.5">
-              {bundleReady ? (
+              {bundleLira !== undefined ? <>
+                <ShopierPayButton amount={bundleLira} state={checkout.of('bundle')} onPress={() => { void checkout.start('bundle'); }} className={`${buyClass} w-full`} />
+                <ShopierProgress state={checkout.of('bundle')} />
+                {bundleReady && <button type="button" onClick={bundleBuy} disabled={pending} aria-busy={pending} className={`${SECOND_PRESS} disabled:opacity-60`}>
+                  {pending ? t('skins.checkoutStarting') : t('skins.bundleBuy', { price: money('bundle', BUNDLE_PRICE) })}
+                </button>}
+              </> : bundleReady ? (
                 <button type="button" onClick={bundleBuy} disabled={pending} aria-busy={pending} className={`${buyClass} w-full disabled:opacity-60`}>
                   {pending ? t('skins.checkoutStarting') : t('skins.bundleBuy', { price: money('bundle', BUNDLE_PRICE) })}
                 </button>
-              ) : bundleShopier === null ? (
+              ) : (
                 <button type="button" disabled className="flex h-11 w-full items-center justify-center rounded-control border border-v2-line-hi text-caption font-semibold text-v2-ink-2">
                   {unavailable}
                 </button>
-              ) : null}
-              {bundleShopier !== null && (
-                <section aria-label={t('skins.shopierAlternative')} className="mt-1 grid gap-1.5 rounded-control border border-v2-line bg-v2-deep/60 p-2.5">
-                  {bundleReady && <h4 className="text-caption font-semibold text-v2-ink-2">{t('skins.shopierAlternative')}</h4>}
-                  <ShopierPress href={bundleShopier} price={lira(BUNDLE_PRICE.TRY)}
-                    className={bundleReady ? SHOPIER_SECOND : `${buyClass} w-full`} />
-                  <ShopierNote commander={commander} />
-                </section>
               )}
               {purchaseError?.itemId === 'bundle' && <p role="alert" className="text-caption text-v2-warn">{purchaseError.message}</p>}
             </div>
@@ -424,33 +440,8 @@ function PlanetShopContent({
   );
 }
 
-/** A quiet alternative to the primary Polar payment. */
-const SHOPIER_SECOND = 'flex h-10 w-full items-center justify-center gap-1.5 rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink-2 transition-colors hover:bg-v2-raise hover:text-v2-ink';
-
-/** A Shopier product page, in a new tab: it is somewhere else, and the store stays open here. */
-function ShopierPress({ href, price, className }: { href: string; price: string; className: string }) {
-  const { t } = useTranslation();
-  return (
-    <a href={href} target="_blank" rel="noreferrer noopener" className={className}>
-      {t('skins.shopierBuy', { price })}
-    </a>
-  );
-}
-
-/**
- * WHAT SHOPIER CANNOT KNOW. Its page has no idea which commander is buying, so the look is
- * granted by hand from the order — and the order is only matched if the note names the
- * commander. Said where the press is, because a buyer reads nothing after it.
- */
-function ShopierNote({ commander }: { commander: string }) {
-  const { t } = useTranslation();
-  return (
-    <p className="flex items-start gap-1.5 text-micro leading-snug text-v2-ink-2">
-      <Icon id="i-warn" className="mt-0.5 size-3 shrink-0 text-v2-warn" />
-      <span>{t('skins.shopierNote', { commander })}</span>
-    </p>
-  );
-}
+/** The quieter second way to pay, under the first. */
+const SECOND_PRESS = 'flex h-10 w-full items-center justify-center gap-1.5 rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink-2 transition-colors hover:bg-v2-raise hover:text-v2-ink';
 
 export default function SkinsScreen({ commander, onOpenInventory, onTry, initialId }: { commander: string; onOpenInventory: () => void; onTry?: (id: CosmeticId) => void; initialId?: CosmeticId }) {
   const { t } = useTranslation();
@@ -458,6 +449,8 @@ export default function SkinsScreen({ commander, onOpenInventory, onTry, initial
   const shop = usePolarShop();
   const pricing = usePolarPricing();
   const purchase = usePurchasePolarSkin();
+  const shopierShop = useShopierShop();
+  const shopierCode = useShopierCode();
   const [checkoutFailure, setCheckoutFailure] = useState<{ itemId: ItemId; reason: unknown } | null>(null);
   const onPurchase = async (itemId: ItemId): Promise<void> => {
     if (!shop.data?.enabled) return;
@@ -475,5 +468,6 @@ export default function SkinsScreen({ commander, onOpenInventory, onTry, initial
     purchaseError={checkoutFailure ? { itemId: checkoutFailure.itemId,
       message: checkoutFailure.reason instanceof ApiError ? describeError(checkoutFailure.reason) : t('skins.checkoutError') } : undefined}
     pricingState={pricing.isPending || (pricing.isFetching && !pricing.data) ? 'loading' : pricing.isError ? 'error' : 'ready'}
-    onRetryPricing={() => { void pricing.refetch(); }} onPurchase={onPurchase} />;
+    onRetryPricing={() => { void pricing.refetch(); }} onPurchase={onPurchase}
+    shopier={shopierShop.data?.enabled ? { prices: shopierShop.data.prices, requestCode: itemId => shopierCode.mutateAsync(itemId) } : undefined} />;
 }

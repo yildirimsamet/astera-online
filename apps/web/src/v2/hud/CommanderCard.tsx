@@ -4,6 +4,7 @@ import type { CountryCode } from '@astera/rules';
 import { ATMOSPHERE } from '../../ui/atmosphere.js';
 import { AtmosphereImage } from '../../ui/AtmosphereArt.js';
 import { Flag } from '../identity/Flag.js';
+import { RankingScores } from '../../ui/RankingScores.js';
 
 const DAY_MS = 86_400_000;
 
@@ -36,6 +37,7 @@ export interface CommanderCardProps {
   seasonDay: number | null;
   /** Your place on the ladder and how many stand on it; null while unranked. */
   rank: { place: number; of: number } | null;
+  honor?: { score: number; dominion: number };
   /** Worlds held against the most a commander can hold (a capital and three colonies). */
   worlds: { held: number; max: number };
   shield: { until: number; kind: 'NEWCOMER' | 'RECOVERY' } | null;
@@ -54,7 +56,7 @@ export interface CommanderCardProps {
  * was taken in, the worlds against the most one commander may hold, the shield as
  * the time until you can be attacked. The name is the sheet's title, just above.
  */
-export function CommanderCard({ name, country, clan, galaxy, seasonDay: day, rank, worlds, shield, now }: CommanderCardProps) {
+export function CommanderCard({ name, country, clan, galaxy, seasonDay: day, rank, honor, worlds, shield, now }: CommanderCardProps) {
   const { t, i18n } = useTranslation();
   const shieldLeft = shield === null ? 0 : shield.until - now;
   const where = [galaxy, day === null ? null : t('menu.profile.seasonDay', { day })]
@@ -62,7 +64,7 @@ export function CommanderCard({ name, country, clan, galaxy, seasonDay: day, ran
     .join(' · ');
 
   const cells: readonly (readonly [string, string])[] = [
-    [t('menu.profile.rank'), rank === null ? '—' : `${String(rank.place)} / ${String(rank.of)}`],
+    [t(honor ? 'leaderboard.honorRank' : 'menu.profile.rank'), rank === null ? '—' : `${String(rank.place)} / ${String(rank.of)}`],
     [t('menu.profile.worlds'), `${String(worlds.held)} / ${String(worlds.max)}`],
     [t('menu.profile.shield'), shieldLeft > 0 ? duration(shieldLeft / 60_000) : t('menu.profile.shieldNone')],
   ];
@@ -90,6 +92,9 @@ export function CommanderCard({ name, country, clan, galaxy, seasonDay: day, ran
           {where.length > 0 && <span className="truncate text-caption text-v2-ink-3">{where}</span>}
         </div>
       </div>
+      {honor ? <div className="flex justify-end border-y border-v2-self/20 bg-v2-self/5 px-2 py-2">
+        <RankingScores honor={honor.score} dominion={honor.dominion} />
+      </div> : null}
       <dl className="grid grid-cols-3 gap-1.5">
         {cells.map(([label, value]) => (
           <div key={label} className="flex min-w-0 flex-col gap-0.5 rounded-control bg-v2-deep/60 px-2 py-1.5">

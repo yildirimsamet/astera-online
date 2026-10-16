@@ -72,7 +72,8 @@ export function planetLabelWidth(node: PlanetNode, detail: boolean): number {
   if (detail) return 180;
   if (node.intel === 'REMEMBERED') return 150;
   const ownerWidth = node.kind === 'NEUTRAL' ? 0
-    : textCells(commanderLabel(node.owner, node.clan?.tag)) * 5.5 + (node.country ? 16 : 0) + (node.dominionRank ? 16 : 0);
+    : textCells(commanderLabel(node.owner, node.clan?.tag)) * 5.5 + (node.country ? 16 : 0)
+      + (node.honorRanking ? node.honorRank ? 30 : 0 : node.dominionRank ? 16 : 0);
   return Math.min(150, Math.max(64, textCells(node.name) * 6 + 12, ownerWidth + 12));
 }
 
@@ -81,7 +82,7 @@ export function planetLabelRank(node: PlanetNode, selectedId: string | null, riv
   if (node.id === selectedId) return 0;
   if (node.isOwned) return 1;
   if (node.isClanmate) return 2;
-  if (node.dominionRank) return 3;
+  if (node.honorRanking ? node.honorRank : node.dominionRank) return 3;
   if (rivalSlotOf(node, rivals) !== null) return 4;
   if (node.state.kind === 'RECOVERY' || node.state.kind === 'EMP' || (node.claimUntil?.getTime() ?? 0) > now) return 5;
   return node.stance === 'window' ? 6 : 7;

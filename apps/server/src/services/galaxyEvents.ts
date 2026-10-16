@@ -762,6 +762,16 @@ export async function lockGalaxyEventAudience(
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
 }
 
+/** Existing NPC contacts are retired at the explicit idle cutover; future windows stay scheduled. */
+function retiredMerchant(
+  occurrence: Pick<typeof galaxyEventOccurrences.$inferSelect, 'kind' | 'startsAt'>,
+  tempoStartsAt: Date | null,
+  seasonStartsAt: Date,
+): boolean {
+  return occurrence.kind === 'TRADE_SHIP' && tempoStartsAt !== null
+    && tempoStartsAt > seasonStartsAt && occurrence.startsAt <= tempoStartsAt;
+}
+
 /** Authenticated, active-only surface. Future occurrence timestamps never leave the server. */
 export async function activeGalaxyEvents(
   db: Db,
@@ -773,6 +783,7 @@ export async function activeGalaxyEvents(
       seasonId: players.seasonId,
       seasonStartsAt: seasons.startsAt,
       asteroidKey: seasons.asteroidKey,
+      tempoStartsAt: seasons.tempoStartsAt,
     })
     .from(players)
     .innerJoin(seasons, eq(players.seasonId, seasons.id))
@@ -794,7 +805,7 @@ export async function activeGalaxyEvents(
       asc(galaxyEventOccurrences.id),
     );
 
-  return rows.map((row): ActiveGalaxyEventView => {
+  return rows.filter(row => !retiredMerchant(row, me.tempoStartsAt, me.seasonStartsAt)).map((row): ActiveGalaxyEventView => {
     const base = { id: row.id, startsAt: row.startsAt, endsAt: row.endsAt };
     const parsed = occurrenceEffect(row);
     if (parsed.kind === 'ASTEROID_SHOWER') {
@@ -926,6 +937,7 @@ export async function tradeShipOccurrence(
       occurrence: galaxyEventOccurrences,
       seasonStartsAt: seasons.startsAt,
       asteroidKey: seasons.asteroidKey,
+      tempoStartsAt: seasons.tempoStartsAt,
     })
     .from(galaxyEventOccurrences)
     .innerJoin(seasons, eq(seasons.id, galaxyEventOccurrences.seasonId))
@@ -937,6 +949,7 @@ export async function tradeShipOccurrence(
   if (!row) return null;
   const parsed = occurrenceEffect(row.occurrence);
   if (parsed.kind !== 'TRADE_SHIP') return null;
+  if (retiredMerchant(row.occurrence, row.tempoStartsAt, row.seasonStartsAt)) return null;
   return tradeShipOf(row.asteroidKey, {
     sequence: row.occurrence.sequence,
     kind: parsed.kind,
@@ -1087,6 +1100,11 @@ export async function processGalaxyEventLifecycle(
       input.processedAt,
     );
     if (!occurrence) return;
+    if (occurrence.kind === 'TRADE_SHIP') {
+      const [season] = await tx.select({ startsAt: seasons.startsAt, tempoStartsAt: seasons.tempoStartsAt })
+        .from(seasons).where(eq(seasons.id, occurrence.seasonId));
+      if (season && retiredMerchant(occurrence, season.tempoStartsAt, season.startsAt)) return;
+    }
     await notifySeason(tx, occurrence, input.lifecycle);
     await recordGalaxyEvent(tx, {
       seasonId: occurrence.seasonId,
@@ -1106,15 +1124,17 @@ export async function notifyActiveGalaxyEventsForPlayer(
   input: { playerId: string; seasonId: string; at: Date },
 ): Promise<void> {
   const rows = await tx
-    .select()
+    .select({ occurrence: galaxyEventOccurrences, tempoStartsAt: seasons.tempoStartsAt, seasonStartsAt: seasons.startsAt })
     .from(galaxyEventOccurrences)
+    .innerJoin(seasons, eq(seasons.id, galaxyEventOccurrences.seasonId))
     .where(and(
       eq(galaxyEventOccurrences.seasonId, input.seasonId),
       lte(galaxyEventOccurrences.startsAt, input.at),
       gt(galaxyEventOccurrences.endsAt, input.at),
     ));
-  if (rows.length === 0) return;
-  await tx.insert(notifications).values(rows.map((occurrence) => ({
+  const active = rows.filter(row => !retiredMerchant(row.occurrence, row.tempoStartsAt, row.seasonStartsAt));
+  if (active.length === 0) return;
+  await tx.insert(notifications).values(active.map(({ occurrence }) => ({
     playerId: input.playerId,
     kind: 'galaxy_event_started' as const,
     refId: occurrence.id,

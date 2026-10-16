@@ -1,4 +1,6 @@
 export const clanWar = {
+  criticalReason: "Retirad las flotas con naves al 5% de vida o menos antes de iniciar el ataque.",
+  stagingRadiation: "Las naves en espera reciben daño por radiación en el planeta de reunión.",
   radiationMember: "{{name}}: la radiación destruiría {{count}} naves. Retira la oleada y vuelve a enviarla aceptando tu propia pérdida.",
   radiationMemberRequired: "Un miembro debe aceptar su pérdida por radiación",
   tab: 'Guerra', purpose: 'Un objetivo. Varios comandantes. Un ataque conjunto.',

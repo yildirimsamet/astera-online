@@ -19,6 +19,11 @@ import { hashPassword } from '../auth/password.js';
 import { createSeason, liveSeason } from '../services/season.js';
 import { adoptMonumentLayout } from '../services/monumentAdoption.js';
 import { activateMonumentMotion } from '../services/monumentMotionAdoption.js';
+import { activateMonumentRadiation } from '../services/monumentRadiationAdoption.js';
+import { activateRadiationBombs } from '../services/radiationBombAdoption.js';
+import { activateTempoSlowdown } from '../services/tempoAdoption.js';
+import { activateHonorShadow, openHonorRanking } from '../services/honorActivation.js';
+import { enableHonorBenefits } from '../services/honorBenefits.js';
 import {
   restampFutureOccurrences,
   syncMissingFixedOccurrences,
@@ -93,6 +98,37 @@ season activate-monument-motion --shard CODE [--yes]
                                    Refuses active fleets, probes and joint operations.
                                    Dry run unless --yes; does not reset season rules.
 
+season activate-tempo-slowdown --shard CODE [--yes]
+                                   preserve earned production and retire existing NPC targets;
+                                   refuses active pirate raids or merchant convoys
+
+season activate-radiation-bombs --shard CODE [--yes]
+                                   enable bombs, parked-ship exposure and the 50 HP/min cap
+                                   from one explicit instant. Entity radiation is required.
+                                   Dry run unless --yes; preserves old source history.
+
+season activate-monument-radiation --shard CODE [--yes]
+                                   adopt 9/12.5 HP/min and radiation shielding after
+                                   motion is active. Requires idle fleets/probes/ops.
+                                   Dry run unless --yes; preserves source history.
+
+season honor-open --season UUID [--yes]
+                                   open an announced Honor race after shadow observation.
+                                   Starts competitive points/budgets at zero, preserves
+                                   military history and excludes already sent attacks.
+                                   Dry run unless --yes; retries never reset the race.
+
+season honor-shadow --season UUID [--yes]
+                                   collect invisible Honor evidence in ONE open
+                                   main season. Dry run unless --yes. Existing
+                                   Dominion ranking and prizes stay in effect.
+                                   Cannot activate ranked Honor or change a catalogue.
+
+season honor-benefits --season UUID [--yes]
+                                   enable frozen Honor economic tiers in one active
+                                   Honor season. Dry run unless --yes. Existing paid
+                                   repairs and launched flights keep their terms.
+
   --shard CODE      shard code, for 'create'   (default: EU-1)
   --seed N          galaxy seed / seed base    (default: random)
   --days N          season length              (default: ${String(SEASON.days)})
@@ -165,6 +201,7 @@ async function main(): Promise<void> {
     allowPositionals: true,
     options: {
       shard: { type: 'string' },
+      season: { type: 'string' },
       seed: { type: 'string' },
       days: { type: 'string' },
       cap: { type: 'string' },
@@ -188,6 +225,38 @@ async function main(): Promise<void> {
 
   try {
     switch (command) {
+      case 'honor-benefits': {
+        if (!values.season || positionals.length !== 1
+          || Object.keys(values).some(key => key !== 'season' && key !== 'yes')) {
+          throw new Error('Usage: season honor-benefits --season UUID [--yes]');
+        }
+        const result = await enableHonorBenefits(db, values.season, systemClock, values.yes === true);
+        console.log(JSON.stringify(result));
+        console.log(result.applied ? 'Honor economic program enabled. Existing orders and flights keep their terms.' : 'Nothing was written; pass --yes to apply.');
+        break;
+      }
+      case 'honor-open': {
+        if (!values.season || positionals.length !== 1
+          || Object.keys(values).some(key => key !== 'season' && key !== 'yes')) {
+          throw new Error('Usage: season honor-open --season UUID [--yes]');
+        }
+        const result = await openHonorRanking(db, { seasonId: values.season, clock: systemClock, apply: values.yes === true });
+        console.log(JSON.stringify(result));
+        if (result.applied) console.log('Honor ranking opened with zero competitive points and budgets. Observation history and Dominion are preserved.');
+        else console.log(result.status === 'ALREADY_ACTIVE' ? 'Already active. Nothing was written.' : 'Announce the rules and opening before applying. Nothing was written; pass --yes to apply.');
+        break;
+      }
+      case 'honor-shadow': {
+        if (!values.season || positionals.length !== 1
+          || Object.keys(values).some(key => key !== 'season' && key !== 'yes')) {
+          throw new Error('Usage: season honor-shadow --season UUID [--yes]');
+        }
+        const result = await activateHonorShadow(db, { seasonId: values.season, clock: systemClock, apply: values.yes === true });
+        console.log(JSON.stringify(result));
+        if (result.applied) console.log('SHADOW evidence collection started. Player ranking and season prizes remain unchanged.');
+        else console.log(result.status === 'ALREADY_ENABLED' ? 'Already enabled. Nothing was written.' : 'Nothing was written; pass --yes to apply.');
+        break;
+      }
       case 'migrate': {
         await runMigrations(db);
         console.log('migrations applied');
@@ -219,6 +288,35 @@ async function main(): Promise<void> {
         console.log(`${values.shard}: ${result.status}; start=${result.startsAt.toISOString()}; fleets=${String(result.fleets)}, probes=${String(result.probes)}, operations=${String(result.operations)}`);
         if (result.applied) console.log('Applied motion and entity radiation. Current coordinates, season and history were preserved.');
         else console.log('Nothing was written.');
+        if (result.status === 'BUSY' && values.yes === true) process.exitCode = 1;
+        break;
+      }
+      case 'activate-radiation-bombs': {
+        if (!values.shard) throw new Error('activate-radiation-bombs requires an explicit --shard CODE');
+        const live = await liveSeason(db, values.shard);
+        if (!live) throw new Error(`no live season on ${values.shard}`);
+        const result = await activateRadiationBombs(db, { seasonId: live.season.id, clock: systemClock, apply: values.yes === true });
+        console.log(`${values.shard}: ${result.status}; start=${result.startsAt.toISOString()}; planets=${String(result.planets)}`);
+        console.log(result.applied ? 'Activated radiation bombs. Season rules, earned resources and source history were preserved.' : 'Nothing was written.');
+        break;
+      }
+      case 'activate-monument-radiation': {
+        if (!values.shard) throw new Error('activate-monument-radiation requires an explicit --shard CODE');
+        const live = await liveSeason(db, values.shard);
+        if (!live) throw new Error(`no live season on ${values.shard}`);
+        const result = await activateMonumentRadiation(db, { seasonId: live.season.id, clock: systemClock, apply: values.yes === true });
+        console.log(`${values.shard}: ${result.status}; start=${result.startsAt.toISOString()}; monuments=${String(result.monuments)}; fleets=${String(result.fleets)}, probes=${String(result.probes)}, operations=${String(result.operations)}`);
+        console.log(result.applied ? 'Applied calibrated source windows and shielding research. Season rules and history were preserved.' : 'Nothing was written.');
+        if (result.status === 'BUSY' && values.yes === true) process.exitCode = 1;
+        break;
+      }
+      case 'activate-tempo-slowdown': {
+        if (!values.shard) throw new Error('activate-tempo-slowdown requires an explicit --shard CODE');
+        const live = await liveSeason(db, values.shard);
+        if (!live) throw new Error(`no live season on ${values.shard}`);
+        const result = await activateTempoSlowdown(db, { seasonId: live.season.id, clock: systemClock, apply: values.yes === true });
+        console.log(`${values.shard}: ${result.status}; start=${result.startsAt.toISOString()}; pirate raids=${String(result.pirateRaids)}, trade runs=${String(result.tradeRuns)}`);
+        console.log(result.applied ? 'Applied tempo cutover. Earned production and historical NPC records were preserved.' : 'Nothing was written.');
         if (result.status === 'BUSY' && values.yes === true) process.exitCode = 1;
         break;
       }

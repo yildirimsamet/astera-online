@@ -163,6 +163,7 @@ runs; keep the owner's PC responsive.
 a check pass. Heap is not total process memory; monitor RSS and keep the PC responsive.
 Run memory-heavy lint coverage in sequential groups through `pnpm lint` if needed;
 all files must still be checked. See `docs/engineering-standards.md` for commands.
+This owner rule overrides any older 6 GiB guidance still present in local docs.
 
 - Ban `any`/compiler-silencing casts; parse untrusted boundaries with Zod.
 - Diagnose root cause before changing code/tests.

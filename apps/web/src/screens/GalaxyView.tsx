@@ -1040,6 +1040,7 @@ export function GalaxyView({
   useArrivals(
     useMemo(
       () => [
+        planet.data?.vacationUntil,
         ...threads.map((t) => t.arriveAt),
         /**
          * AND THE INSTANT THE BATTLE IS ACTUALLY SETTLED. D44, D45.
@@ -1078,7 +1079,7 @@ export function GalaxyView({
           c.engagement ? [c.engagement.arriveAt, c.engagement.endsAt] : [],
         ),
       ],
-      [threads, runs, traffic.data],
+      [threads, runs, traffic.data, planet.data?.vacationUntil],
     ),
   );
 
@@ -1198,7 +1199,7 @@ export function GalaxyView({
   const menuBack = returnsToMenu(panel) ? { onBack: () => { onPanel('menu'); } } : {};
 
   return (
-    <SeasonLockProvider locked={season.data?.status === 'frozen'}>
+    <SeasonLockProvider locked={season.data?.status === 'frozen'} vacation={Boolean(planet.data?.vacationUntil && planet.data.vacationUntil.getTime() > now)}>
     <div className="absolute inset-0 overflow-hidden">
       <GalaxyCanvas
         cosmeticAppearance={{ engineId: cosmetics.data?.equipment?.ENGINE,

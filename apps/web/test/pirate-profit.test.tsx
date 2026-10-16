@@ -18,13 +18,14 @@ describe('pirate profit decision card', () => {
     expect(within(card).getByText(/lost ships/i)).toBeVisible();
     expect(within(card).getByText(/not guaranteed/i)).toBeVisible();
     expect(within(card).getByText(/captured ships.*excluded/i)).toBeVisible();
-    expect(card.querySelector('[data-profit-net="deuterium"]')).toHaveTextContent('+119');
+    // Even small surviving wounds are a paid expense.
+    expect(card.querySelector('[data-profit-net="deuterium"]')).toHaveTextContent('+118');
   });
 
   it('warns of a loss and keeps negative deuterium visible when the selected fleet costs too much fuel', () => {
     render(<PirateProfitCard forecast={forecastPirateProfit({ ...input, fuel: 10000 })} state="ready" />);
     expect(screen.getByText(/likely to lose resources/i)).toBeVisible();
-    expect(document.querySelector('[data-profit-net="deuterium"]')).toHaveTextContent('−9,801');
+    expect(document.querySelector('[data-profit-net="deuterium"]')).toHaveTextContent('−9,802');
   });
 
   it('rounds fractional expenses symmetrically without showing a negative half-unit as positive income', () => {

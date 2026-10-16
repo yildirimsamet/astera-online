@@ -7,8 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { seasons } from '../src/db/schema.js';
-import { landShips } from '../src/services/shipDamage.js';
-import { grant, seedWorld, setLevel, testDb, testEnv, type Fixture } from './helpers.js';
+import { grant, landAndDockShips, seedWorld, setLevel, testDb, testEnv, type Fixture } from './helpers.js';
 
 /**
  * THE REPAIR STATION OVER HTTP. `plan.md` F4.
@@ -38,13 +37,13 @@ describe('POST /api/planets/:planetId/repairs', () => {
       .where(eq(seasons.id, f.seasonId));
     await setLevel(f.db, f.planetIds[0]!, 'SHIPYARD', 4);
     await grant(f.db, f.planetIds[0]!, 200_000, 100_000);
-    await f.db.transaction((tx) => landShips(tx, {
+    await landAndDockShips(f.db, {
       planetId: f.planetIds[0]!,
       ownerPlayerId: f.playerIds[0]!,
       fleet: { BALLISTA: 1 },
       damage: [{ hull: 'BALLISTA', count: 1, damageBp: 6400 }],
       at: f.clock.now(),
-    }));
+    }, f.clock);
     const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
     app = built.app;
     closeApp = built.close;

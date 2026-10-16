@@ -4,6 +4,78 @@
  */
 
 export const planet = {
+  tacticalStock: {
+    "stock": "Stock {{used}}/{{total}}",
+    "charges": "Charges {{used}}/{{total}}",
+    "ready": "Ready: {{count}}",
+    "loading": "Building: {{count}}",
+    "paused": "Paused: {{count}}",
+    "flight": "In flight: {{count}}",
+    "empty": "Empty"
+  },
+
+  radiationProtection: {
+    aegisReduction: "Aegis absorbs {{rate}} HP/min.",
+    "planet": "Planet radiation protection",
+    "planetInfo": "About planet radiation protection",
+    "aegisSource": "Aegis · Level {{level}}. Each active level reduces radiation damage to ships on this planet by 1 HP/min.",
+    "planetScope": "Protects ships in the hangar, workshop and visiting clan fleets. Each ship’s own radiation protection further reduces the remaining damage. Aegis does not protect ships at monuments.",
+    "emptyShield": "At 0 HP, Aegis provides no radiation protection. Protection returns once it has at least 1 HP.",
+    "restores": "Protection returns in {{time}}",
+    "ship": "Ship radiation protection",
+    "shipInfo": "About ship radiation protection",
+    "immune": "Immune",
+    "immuneInfo": "Mining craft and ground defences take no radiation damage.",
+    "shipResearch": "Radiation Shielding · Level {{level}}: reduces radiation damage to this ship by {{percent}}%.",
+    "shipScope": "This protection also works at monuments. On a planet, Aegis provides additional protection."
+},
+  radiationBomb: {
+    colonyEffects: "Colonies: −{{loyalty}} loyalty points · up to {{faults}} new faults.",
+    colonyRules: "These extra effects apply only to colonies. At zero loyalty, the colony becomes neutral. New faults require Core level 6 or higher on the target colony and no fault protection. Active faults cannot repeat. Aegis does not prevent loyalty loss or faults.",
+    colonyResult: "Colony loyalty {{before}}% → {{after}}%.",
+    colonySeceded: "Colony loyalty reached zero; the colony becomes neutral.",
+    faultResult: "New faults: {{faults}}.",
+    strengthLabel: "Before protection",
+    durationLabel: "Effect duration",
+    honor: 'When Honor is active, actual damage earns at most 2.5 Honor per bomb. Pressuring weak targets can cost Honor.',
+    sources: 'Radiation sources',
+    "refund": "Repairs cancelled and fully refunded.",
+    "intercepted": "L{{level}} radiation bomb intercepted.",
+
+  "radiation": "Radiation",
+  "unit": "HP/min",
+  "rate": "{{rate}} HP/min",
+  "perShip": "Unprotected damage · up to 50 HP/min",
+  "protectedRate": "After protection: {{rate}} HP/min per ship",
+  "decrease": "In {{time}} → {{rate}} HP/min",
+  "permanent": "Persistent radiation",
+  "title": "Radiation Bomb",
+  "level": "Level {{level}}",
+  "build": "Build L{{level}}",
+  "ready": "Ready to launch",
+  "building": "Building · {{time}}",
+  "paused": "Production paused",
+  "flying": "In flight · stock occupied",
+  "empty": "Stock empty · 0/1",
+  "stock": "One per level. Levels build in parallel; a flying bomb keeps its slot.",
+  "effect": "Each bomb creates 30 minutes of radiation at its target. Damage from multiple hits adds up. Total radiation damage is capped at 50 HP/min before protection.",
+  "workshop": "Repairs and dismantling stop when radiation exceeds Aegis protection. Ongoing repairs are cancelled and all paid resources are refunded.",
+  "launch": "Launch L{{level}}",
+  "flight": "Flight: {{time}}",
+  "noRecall": "Cannot be recalled. If the planet becomes attack-protected before impact, the bomb has no effect.",
+  "target": "Target: {{target}}",
+  "launched": "Radiation bomb launched",
+  "started": "Radiation bomb production started",
+  "need": "Requires Core 13 and Shipyard 5",
+  "noBomb": "Build a bomb on this planet first.",
+  "environment": "Base radiation",
+  "bombSource": "Bomb · L{{level}}",
+  "sourceEnd": "{{time}} remaining",
+  "launchTitle": "Radiation strike",
+  "impact": "Radiation impact",
+  "hit": "L{{level}} hit. Radiation lasts 30 minutes.",
+  "ineffective": "The target was protected at impact. The bomb was consumed."
+},
   abandon: {
     "action": "Abandon colony",
     "title": "Abandon this colony?",
@@ -46,6 +118,7 @@ export const planet = {
    * it. `docs/interface.md` I1 — every requirement is a door and names itself.
    */
   interceptor: {
+    capacity: "Capacity: {{used}} / {{total}} charges",
     eyebrow: "Anti-strategic battery",
     tally: "{{used}} of {{total}} charges loaded",
     none: "No charge loaded",
@@ -55,20 +128,22 @@ export const planet = {
     noRadar: "Loaded · Radar ring is offline",
     build: "Load charge",
     started: "Charge loading",
-    hint: "Destroys the first Death Star that enters the timed Radar ring or is identified in Telescope sight. Spent when it fires.",
-    colonyHint: "Every Death Star that gets through costs this colony {{loss}} loyalty; at {{loss}} or less it secedes.",
+    hint: "Stops one Death Star or radiation bomb at the Radar interception ring or when identified in Telescope sight. Each shot spends one charge from the target planet’s battery.",
+    colonyHint: "Every Death Star that gets through costs this colony {{loss}} loyalty and breaks 1 random fault.",
     readyHint:
-      "Armed. It destroys the next Death Star that enters the Radar interception ring or is identified in Telescope sight.",
+      "Stops one Death Star or radiation bomb at the Radar interception ring or when identified in Telescope sight. Each shot spends one charge from the target planet’s battery.",
     noRadarHint:
       "The charge remains loaded, but this world has no Radar interception ring. Restore its Uplink and Radar 3; Telescope sight from another world can still trigger it.",
     needRadar: "Radar L{{level}}",
     needUplink: "Uplink in orbit",
     needOperational: "World operational",
     buildTime: "{{duration}} · one charge · spent on firing",
-    buildSecond: 'Load the second charge',
+    buildSecond: "Load another charge",
   },
 
   deathStar: {
+    empDuration: "EMP duration",
+    loyaltyDamage: "Loyalty per colony hit",
     eyebrow: "Tactical EMP weapon",
     tally: "{{used}} of {{total}} weapons held",
     none: "No Death Star on this world",
@@ -78,9 +153,7 @@ export const planet = {
     stock: "{{ready}} ready · {{building}} building · {{held}}/{{capacity}}",
     build: "Build",
     started: "Death Star construction started",
-    dangerHint: "EMP: Aegis drops to zero and cannot regenerate for 1 hour. Ground defences cannot fire or take damage during that hour. A colony also loses {{loss}} loyalty, and at {{loss}} or less it secedes and turns neutral.",
-    readyHint:
-      "Ready: drain an enemy Aegis and disable its ground defences for 1 hour. The defences cannot fire or take damage.",
+    hint: "Drops the target's Aegis to zero. For 1 hour the Aegis does not refill and ground defences sit out every fight. Each hit on a colony takes {{loss}} loyalty and breaks 1 random fault. Hit a colony at 100 loyalty {{hits}} times in a row and it falls and turns neutral.",
     needCore: "Core L{{level}}",
     needShipyard: "Shipyard L{{level}}",
     needOperational: "World operational",
@@ -650,11 +723,11 @@ export const launch = {
   radiationHpStays: "Stays at the destination.",
   radiationHpDose: "Flight radiation: {{hp}} HP per ship.",
   radiationHpHealth: "{{count}}× {{hull}} · {{health}}% HP · {{hp}} / {{max}} HP",
-  radiationHpDock: "Requires repair at the Repair Station after landing.",
-  radiationHpFree: "Patched free on landing.",
+  radiationHpDock: "Survivors keep their wounds. Move them into the workshop yourself for paid repair.",
+  radiationHpFree: "Survivors keep their wounds. Move them into the workshop yourself for paid repair.",
   radiationHpCombat: "Combat may add damage.",
-  radiationDock: "The route crosses radiation: each ship takes ~{{pct}}% of its hull. Over 20% waits in the Repair Station.",
-  radiationPatched: "The route crosses radiation: each ship takes ~{{pct}}% of its hull, patched free on landing.",
+  radiationDock: "The route crosses radiation: each ship loses about {{pct}}% of its hull. Surviving wounds remain until paid repair.",
+  radiationPatched: "The route crosses radiation: each ship loses about {{pct}}% of its hull. Surviving wounds remain until paid repair.",
   fleetsave: "Ships in flight cannot be raided. Your planet can.",
   range: "range {{d}}",
   arrive: "Arrival",
@@ -744,6 +817,12 @@ export const capacity = {
  * like a catastrophe when they are a Tuesday.
  */
 export const faults = {
+  protection: {
+    paused: "Fault protection paused · {{time}} remaining",
+    active: "No new faults for {{time}}",
+    rule: "Start any building upgrade to renew 12 hours of protection on this colony.",
+    existing: "Existing faults still need repairs. Battle damage and loyalty loss still apply.",
+  },
   title: "Faults",
   mark: "Fault present",
   launchBlock: {
@@ -800,7 +879,7 @@ export const faults = {
     title: "The repair",
     crew: "the crew",
     parts: "parts",
-    takes: "Repairs take 5–15 minutes. The exact duration is set when repairs start.",
+    takes: "Repairs take {{min}}–{{max}} minutes. The exact duration is set when repairs start.",
   },
   repair: "Start repair",
   running: "A crew is on it · {{time}}",

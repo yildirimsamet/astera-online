@@ -41,6 +41,18 @@ afterEach(async () => {
 });
 
 describe('the personal season ending', () => {
+  it('celebrates the Honor place first while preserving the independent Dominion score', () => {
+    render(<SeasonRecap result={result({ finalRank: 9, honorRank: 2, honorScore: 120_500_000 })} galaxy="Vantage" players={50} onClose={vi.fn()} />);
+    expect(screen.getByRole('heading', { name: 'Vanguard' })).toBeInTheDocument();
+    expect(screen.getByText('Honor rank')).toBeInTheDocument();
+    expect(screen.getByText('120.5')).toBeInTheDocument();
+    expect(screen.getByText('+184')).toBeInTheDocument();
+  });
+  it('does not crown a zero-Honor tied first place as a season champion', () => {
+    render(<SeasonRecap result={result({ finalRank: 1, honorRank: 1, honorScore: 0 })} galaxy="Vantage" onClose={vi.fn()} />);
+    expect(screen.getByRole('heading', { name: 'Commander' })).toBeInTheDocument();
+    expect(screen.queryByText('Sovereign of Vantage')).not.toBeInTheDocument();
+  });
   it('keeps Explore only during the frozen season afterglow, not over a live successor', () => {
     expect(seasonRecapShowsPrimaryAction({ status: 'live', result: null })).toBe(false);
     expect(seasonRecapShowsPrimaryAction({ status: 'frozen', result: result() })).toBe(true);

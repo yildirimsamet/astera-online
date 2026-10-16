@@ -24,6 +24,7 @@ export function yardstickOf(planet: PlanetView): Yardstick {
     p.vaultCapacity,
     'DECISIVE',
     Number.MAX_SAFE_INTEGER,
+    planet.pvpBalance,
   );
   const home: Fleet = {};
   for (const [hull, count] of [...fleetEntries(planet.fleet), ...fleetEntries(planet.ground)]) {

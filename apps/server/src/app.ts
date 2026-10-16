@@ -19,6 +19,7 @@ import { TokenService } from './auth/tokens.js';
 import { GameError } from './services/planet.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerPlanetRoutes } from './routes/planet.js';
+import { registerVacationRoutes } from './routes/vacation.js';
 import { registerRewardRoutes } from './routes/rewards.js';
 import { registerBrandRecallRoutes } from './routes/brandRecall.js';
 import { registerIntelRoutes } from './routes/intel.js';
@@ -46,6 +47,7 @@ import { registerAdminRoutes } from './routes/admin.js';
 import { registerCosmeticRoutes } from './routes/cosmetics.js';
 import { registerPaddleRoutes } from './routes/paddle.js';
 import { registerPolarRoutes } from './routes/polar.js';
+import { registerShopierRoutes } from './routes/shopier.js';
 import { Presence } from './services/presence.js';
 import { Projections } from './services/projections.js';
 import { RateLimitBackend } from './services/rateLimitBackend.js';
@@ -412,6 +414,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerOnboardingRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
     registerSeasonRoutes(app);
     registerPlanetRoutes(app);
+    registerVacationRoutes(app);
     registerRewardRoutes(app);
     registerIntelRoutes(app);
     registerGalaxyRoutes(app);
@@ -433,6 +436,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerCosmeticRoutes(app);
     registerPaddleRoutes(app, opts.env);
     registerPolarRoutes(app, opts.env);
+    registerShopierRoutes(app, opts.env);
   });
 
   return {

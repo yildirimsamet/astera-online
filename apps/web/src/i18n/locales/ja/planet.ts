@@ -4,6 +4,78 @@
  */
 
 export const planet = {
+  tacticalStock: {
+    "stock": "在庫 {{used}}/{{total}}",
+    "charges": "装填 {{used}}/{{total}}",
+    "ready": "準備完了：{{count}}",
+    "loading": "生産中：{{count}}",
+    "paused": "一時停止：{{count}}",
+    "flight": "飛行中：{{count}}",
+    "empty": "空き"
+  },
+
+  radiationProtection: {
+    aegisReduction: "Aegisの防護：{{rate}} HP/分。",
+    "planet": "惑星の放射線防護",
+    "planetInfo": "惑星の放射線防護について",
+    "aegisSource": "Aegis · レベル{{level}}。有効レベルごとに、この惑星の艦船が受ける放射線ダメージを1 HP/分軽減します。",
+    "planetScope": "格納庫、修理施設、この惑星で待機するクラン艦隊の艦船を防護します。各艦の放射線防護が残りのダメージをさらに軽減します。記念碑の艦船にはAegisの防護は届きません。",
+    "emptyShield": "Aegisが0 HPの間、放射線防護は無効です。1 HP以上になると防護が戻ります。",
+    "restores": "防護復帰まで{{time}}",
+    "ship": "艦船の放射線防護",
+    "shipInfo": "艦船の放射線防護について",
+    "immune": "影響なし",
+    "immuneInfo": "採掘機と地上防衛施設は放射線ダメージを受けません。",
+    "shipResearch": "放射線防護 · レベル{{level}}：この艦船の放射線ダメージを{{percent}}%軽減します。",
+    "shipScope": "この防護は記念碑でも有効です。惑星ではAegisによる追加の防護を受けられます。"
+},
+  radiationBomb: {
+    colonyEffects: "植民地：忠誠度 −{{loyalty}}ポイント · 新たな故障は最大{{faults}}件。",
+    colonyRules: "これらの追加効果は植民地のみに適用されます。忠誠度がゼロになると植民地は中立になります。新たな故障には、標的の植民地でコアレベル6以上かつ故障保護がないことが必要です。発生中の故障は重複しません。Aegisは忠誠度の低下や故障を防ぎません。",
+    colonyResult: "植民地の忠誠度：{{before}}% → {{after}}%。",
+    colonySeceded: "忠誠度がゼロになり、植民地は中立になります。",
+    faultResult: "新たな故障：{{faults}}。",
+    strengthLabel: "防護前のダメージ",
+    durationLabel: "効果時間",
+    honor: 'Honorが有効な場合、実際のダメージによる獲得量は爆弾1発につき最大2.5 Honorです。弱い相手への攻撃でHonorを失うことがあります。',
+    sources: '放射線源',
+    "refund": "修理を中止し、全額返金しました。",
+    "intercepted": "L{{level}}放射線爆弾が迎撃されました。",
+
+  "radiation": "放射線",
+  "unit": "HP/分",
+  "rate": "{{rate}} HP/分",
+  "perShip": "防護前のダメージ · 最大50 HP/分",
+  "protectedRate": "防護後：各艦{{rate}} HP/分",
+  "decrease": "{{time}}後 → {{rate}} HP/分",
+  "permanent": "恒久的な放射線",
+  "title": "放射線爆弾",
+  "level": "レベル{{level}}",
+  "build": "L{{level}}を生産",
+  "ready": "発射準備完了",
+  "building": "生産中 · {{time}}",
+  "paused": "生産停止中",
+  "flying": "飛行中 · 在庫枠使用中",
+  "empty": "在庫なし · 0/1",
+  "stock": "各レベル1発。並行生産でき、飛行中も在庫枠を使用します。",
+  "effect": "各爆弾は命中した場所に30分間の放射線を発生させます。複数の命中によるダメージは加算されます。防護前の合計ダメージは最大50 HP/分です。",
+  "workshop": "放射線がAegisの防護を上回ると、修理と解体が停止します。進行中の修理は取り消され、支払った資源は全額返還されます。",
+  "launch": "L{{level}}を発射",
+  "flight": "飛行：{{time}}",
+  "noRecall": "呼び戻し不可。命中前に惑星が攻撃保護を得た場合、効果はありません。",
+  "target": "目標：{{target}}",
+  "launched": "放射線爆弾を発射しました",
+  "started": "放射線爆弾の生産を開始しました",
+  "need": "コア13と造船所5が必要",
+  "noBomb": "先にこの惑星で爆弾を生産してください。",
+  "environment": "基礎放射線",
+  "bombSource": "爆弾 · L{{level}}",
+  "sourceEnd": "残り{{time}}",
+  "launchTitle": "放射線攻撃",
+  "impact": "放射線爆弾命中",
+  "hit": "L{{level}}が命中。放射線は30分間続きます。",
+  "ineffective": "命中時に目標が保護されていました。爆弾は消費されました。"
+},
   abandon: {
     "action": "植民地を放棄",
     "title": "この植民地を放棄しますか？",
@@ -46,6 +118,7 @@ export const planet = {
    * it. `docs/interface.md` I1 — every requirement is a door and names itself.
    */
   interceptor: {
+    capacity: "容量：{{used}} / {{total}} 発",
     eyebrow: "戦略兵器迎撃砲台",
     tally: "{{used}}/{{total}}発を装填済み",
     none: "迎撃弾は未装填",
@@ -55,20 +128,22 @@ export const planet = {
     noRadar: "装填済み · レーダー迎撃範囲は停止中",
     build: "迎撃弾を装填",
     started: "迎撃弾の装填開始",
-    hint: "レーダーの迎撃範囲に入るか、望遠鏡で確認された最初のデス・スターを破壊します。発射すると消費されます。",
-    colonyHint: "突破したデス・スター1基につき、この植民地の忠誠度は{{loss}}低下します。忠誠度が{{loss}}以下になると離脱します。",
+    hint: "レーダー迎撃範囲に入るか望遠鏡で識別されたデス・スターまたは放射線爆弾を1つ止めます。発射ごとに標的の惑星の迎撃弾を1発消費します。",
+    colonyHint: "突破したデス・スター1基につき、この植民地の忠誠度は{{loss}}下がり、ランダムな故障が1件発生します。",
     readyHint:
-      "装填済み。レーダーの迎撃範囲に入るか、望遠鏡で確認された次のデス・スターを破壊します。",
+      "レーダー迎撃範囲に入るか望遠鏡で識別されたデス・スターまたは放射線爆弾を1つ止めます。発射ごとに標的の惑星の迎撃弾を1発消費します。",
     noRadarHint:
       "迎撃弾は装填済みですが、この惑星のレーダー迎撃範囲は使えません。アップリンクとレーダーL3を復旧してください。別の惑星の望遠鏡が標的を捉えれば発射できます。",
     needRadar: "レーダー L{{level}}",
     needUplink: "軌道上のアップリンク",
     needOperational: "惑星の機能が稼働中",
     buildTime: "{{duration}} · 迎撃弾1発 · 発射時に消費",
-    buildSecond: "2発目を装填",
+    buildSecond: "次の迎撃弾を装填",
   },
 
   deathStar: {
+    empDuration: "EMP効果時間",
+    loyaltyDamage: "命中ごとのコロニー忠誠度",
     eyebrow: "戦術EMP兵器",
     tally: "{{used}}/{{total}}基を保有",
     none: "この惑星にデス・スターはありません",
@@ -78,9 +153,7 @@ export const planet = {
     stock: "{{ready}}基発射可能 · {{building}}基建造中 · {{held}}/{{capacity}}",
     build: "建造",
     started: "デス・スターの建造を開始",
-    dangerHint: "EMP：イージスは0になり、1時間再生できません。その間、地上防衛は攻撃も被弾もできません。植民地の忠誠度も{{loss}}低下し、{{loss}}以下になると離脱して中立になります。",
-    readyHint:
-      "発射可能：敵のイージスを0にし、地上防衛を1時間停止させます。停止中は攻撃も被弾もできません。",
+    hint: "目標のイージスを0にします。1時間イージスは回復せず、地上防衛は戦闘に参加しません。植民地への命中1回ごとに忠誠度が{{loss}}下がり、ランダムな故障が1件発生します。忠誠度100の植民地に{{hits}}回続けて命中させると、植民地は陥落して中立になります。",
     needCore: "司令中枢L{{level}}",
     needShipyard: "造船所 L{{level}}",
     needOperational: "惑星の機能が稼働中",
@@ -650,11 +723,11 @@ export const launch = {
   radiationHpStays: "目的地に残ります。",
   radiationHpDose: "飛行中の放射線：1隻あたり {{hp}} HP。",
   radiationHpHealth: "{{count}}× {{hull}} · HP {{health}}% · {{hp}} / {{max}} HP",
-  radiationHpDock: "着陸後に修理ステーションでの修理が必要です。",
-  radiationHpFree: "着陸時に無料で修理されます。",
+  radiationHpDock: "生き残った艦船には損傷が残ります。有料修理をするには手動で修理工場へ移動してください。",
+  radiationHpFree: "生き残った艦船には損傷が残ります。有料修理をするには手動で修理工場へ移動してください。",
   radiationHpCombat: "戦闘で追加の損傷を受ける可能性があります。",
-  radiationDock: "ルートは放射線を横断します: 各船は船体の ~{{pct}}% を占めます。 20% 以上が修理ステーションで待機しています。",
-  radiationPatched: "ルートは放射線を横断します。各船は船体の ~{{pct}}% を占め、着陸時にパッチが外れます。",
+  radiationDock: "この航路は放射線を通過します。各艦船は船体の約{{pct}}%を失います。生き残った艦船の損傷は有料修理まで残ります。",
+  radiationPatched: "この航路は放射線を通過します。各艦船は船体の約{{pct}}%を失います。生き残った艦船の損傷は有料修理まで残ります。",
   fleetsave: "飛行中の船は襲撃されませんが、惑星は襲撃される可能性があります。",
   range: "範囲 {{d}}",
   arrive: "到着",
@@ -744,6 +817,12 @@ export const capacity = {
  * like a catastrophe when they are a Tuesday.
  */
 export const faults = {
+  protection: {
+    paused: "故障保護は一時停止中 · 残り{{time}}",
+    active: "あと{{time}}は新たな故障なし",
+    rule: "このコロニーで建物のアップグレードを開始すると、故障保護が12時間に更新されます。",
+    existing: "既存の故障には修理が必要です。戦闘ダメージと忠誠度の低下は引き続き発生します。",
+  },
   title: "故障",
   mark: "故障あり",
   launchBlock: {
@@ -800,7 +879,7 @@ export const faults = {
     title: "修理",
     crew: "修理班",
     parts: "部品",
-    takes: "修理には5～15分かかります。正確な所要時間は修理開始時に決まります。",
+    takes: "修理には{{min}}～{{max}}分かかります。正確な所要時間は修理開始時に決まります。",
   },
   repair: "修理を開始",
   running: "修理班が作業中 · {{time}}",

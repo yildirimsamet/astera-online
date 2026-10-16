@@ -13,7 +13,7 @@ import { giveInstrument, grant, seedWorld, setLevel, testDb, type Fixture } from
 afterAll(async () => { await (await testDb()).close(); });
 
 async function adopt(f: Fixture) {
-  const migration = readFileSync(new URL('../drizzle/0152_aegis_balance.sql', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../drizzle/0153_aegis_balance.sql', import.meta.url), 'utf8');
   await f.db.transaction(async (tx) => {
     for (const statement of migration.split('--> statement-breakpoint')) {
       if (statement.trim()) await tx.execute(sql.raw(statement));

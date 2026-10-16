@@ -1,3 +1,4 @@
+import { commanderPvpBalance } from './pvpBalance.js';
 import { and, eq } from 'drizzle-orm';
 import {
   DEBRIS,
@@ -27,14 +28,18 @@ import {
   type Fleet,
   type JointAttackerStack,
   type Resources,
-  normalizeLots,
   normalizeHpDamage,
   shipDamageApplies,
   hpRadiationApplies,
+  partitionCombatFleet,
+  shipCanFight,
   missionPaceOf,
+  shieldHp,
   type HpDamageLot,
 } from '@astera/rules';
 import { dockDamaged, dockNotice, shipsIn } from './shipDamage.js';
+import { honorDefenceNavy } from './honorNavy.js';
+import { settlePlanetHonor } from './honorPlanetBattle.js';
 import { settleWaveRadiation, tellRadiationLoss } from './radiation.js';
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
@@ -194,7 +199,7 @@ export async function resolveClanWarBattle(
   */
   const waves: typeof fighting = [];
   for (const row of fighting) {
-    const dosed = await settleWaveRadiation(tx, row, mission, input.rulesetVersion);
+    const dosed = await settleWaveRadiation(tx, row, mission, input.rulesetVersion, now);
     await tellRadiationLoss(tx, { playerId: row.playerId, refId: mission.id, toPlanetId: mission.targetPlanetId },
       dosed, now);
     waves.push(dosed.wave);
@@ -294,7 +299,8 @@ export async function resolveClanWarBattle(
   });
   const defenderTech = await techOf(tx, defender.playerId);
   const defenceDark = !defenceOnline(defender.faults, defender.empUntil, defender.now);
-  const defenders = garrisonOf(defender.homeFleet, defenceDark ? {} : defender.ground);
+  const homePartition = partitionCombatFleet(defender.homeFleet, defender.homeDamage);
+  const defenders = garrisonOf(homePartition.eligible, defenceDark ? {} : defender.ground);
 
   /*
     SEEDED FROM THE MISSION, exactly as every other battle in the game: a joint
@@ -312,9 +318,12 @@ export async function resolveClanWarBattle(
     rulesetVersion: input.rulesetVersion,
     now: defender.now,
   });
+  const defenceNavy = await honorDefenceNavy(tx, mission.seasonId, [defender.playerId, ...supporterIds]);
   const raid = resolveRaid({
     stacks,
     line: defenders,
+    homeDamage: homePartition.damage.filter((lot) => !NON_COMBATANT_HULLS.includes(lot.hull)),
+    maintenance: true,
     shield: defenceDark ? 0 : defender.shield,
     rng: () => seededFrom(mission.id),
     defender: { tech: defenderTech },
@@ -344,7 +353,7 @@ export async function resolveClanWarBattle(
     // A ship that lifted off is as absent from the survivors as a Prospector.
     defenderHome[hull] = NON_COMBATANT_HULLS.includes(hull) || (escaped[hull] ?? 0) > 0
       ? standing
-      : hostOutcome.survivors[hull] ?? 0;
+      : (hostOutcome.survivors[hull] ?? 0) + (homePartition.excluded[hull] ?? 0);
   }
   for (const [hull, standing] of fleetEntries(defender.ground)) {
     defenderHome[hull] = defenceDark
@@ -364,12 +373,14 @@ export async function resolveClanWarBattle(
   const defenderDock = await dockDamaged(tx, {
     planetId: defender.planetId,
     ownerPlayerId: defender.playerId,
-    lots: damageRule ? hostOutcome.survivorDamage : [],
+    lots: damageRule ? [...hostOutcome.survivorDamage, ...defender.homeDamage.filter((lot) =>
+      NON_COMBATANT_HULLS.includes(lot.hull) || (escaped[lot.hull] ?? 0) > 0 || !shipCanFight(lot))] : [],
     at: defender.now,
   });
   await settleStations(tx, { stations, outcomes: result.defenders, damageRule, now: defender.now });
 
   // The lift burned before anything reached a hold (see the raid lane).
+  const pvpBalance = await commanderPvpBalance(tx, defender.playerId);
   const exposedStock = {
     alloy: defender.alloy,
     crystal: defender.crystal,
@@ -403,18 +414,19 @@ export async function resolveClanWarBattle(
     };
   });
   const totalCargo = survivorCargo.reduce((sum, share) => sum + share.cargo, 0);
-  const loot = computeLoot(exposedStock, exposedBuffer, vaultFloor, result.grade, totalCargo);
+  const loot = computeLoot(exposedStock, exposedBuffer, vaultFloor, result.grade, totalCargo, pvpBalance);
   const uncappedLoot = computeLoot(
     exposedStock,
     exposedBuffer,
     vaultFloor,
     result.grade,
     Number.MAX_SAFE_INTEGER,
+    pvpBalance,
   );
   const lootUnits = loot.alloy + loot.crystal + loot.deuterium;
   const cargoLimited =
     uncappedLoot.alloy + uncappedLoot.crystal + uncappedLoot.deuterium > lootUnits;
-  const raidableBefore = raidableStock(exposedStock, exposedBuffer, vaultFloor, 'DECISIVE');
+  const raidableBefore = raidableStock(exposedStock, exposedBuffer, vaultFloor, 'DECISIVE', pvpBalance);
   const shieldAbsorbed = result.rounds.reduce((sum, round) => sum + round.shieldAbsorbed, 0);
 
   await saveResources(tx, defender.planetId, {
@@ -432,6 +444,7 @@ export async function resolveClanWarBattle(
   const recovery = await grantRecoveryShield(tx, {
     playerId: defender.playerId,
     planetId: defender.planetId,
+    balance: pvpBalance,
     lootLost: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
     fleetLost,
     now: defender.now,
@@ -658,6 +671,7 @@ export async function resolveClanWarBattle(
     dominionEligible: scoreEligible,
     raidableBefore: Math.round(raidableBefore),
     recoveryLossHours: recovery.hours,
+    pvpBalance,
     recoveryShieldUntil: recovery.until,
     createdAt: defender.now,
   }).returning({ id: battleReports.id });
@@ -698,9 +712,7 @@ export async function resolveClanWarBattle(
     loot: lootByPlayer.get(playerId) ?? { ...NOTHING },
     salvage: salvageByPlayer.get(playerId) ?? { ...NOTHING },
     hullDamage: damageByPlayer.get(playerId) ?? 0,
-    damage: hpRadiationApplies(input.rulesetVersion)
-      ? normalizeHpDamage(survivedByPlayer.get(playerId) ?? {}, carriedByPlayer.get(playerId))
-      : normalizeLots(carriedByPlayer.get(playerId)),
+    damage: normalizeHpDamage(survivedByPlayer.get(playerId) ?? {}, carriedByPlayer.get(playerId)),
     dominionRaw: weights.find((weight) => weight.playerId === playerId)?.raw ?? 0,
     dominionDelta: deltaByPlayer.get(playerId) ?? 0,
     createdAt: now,
@@ -822,8 +834,8 @@ export async function resolveClanWarBattle(
 
   /* ── and everyone is told ─────────────────────────────────────── */
 
-  await recomputeWealth(tx, defender.planetId);
-  for (const playerId of participantIds) await recomputePlayerWealth(tx, playerId);
+  await recomputeWealth(tx, defender.planetId, now);
+  for (const playerId of participantIds) await recomputePlayerWealth(tx, playerId, now);
 
   const defenderIdentity = await identityOfPlanet(tx, defender.planetId);
   if (defenderIdentity) {
@@ -948,6 +960,20 @@ export async function resolveClanWarBattle(
     targetPlanetId: mission.targetPlanetId,
     seasonId: mission.seasonId,
     seenAt: defender.now,
+  });
+  await settlePlanetHonor(tx, { source: 'CLAN_WAR', seasonId: mission.seasonId, missionId: mission.id,
+    hostPlanetId: defender.planetId, hostPlayerId: defender.playerId, at: now, adminUsernames: input.adminUsernames,
+    attack: waves.map(wave => {
+      const outcome = result.contributions.find(row => row.contributionId === wave.id);
+      const sent = outcome?.sent ?? {};
+      return { id: wave.playerId, sent, active: partitionCombatFleet(sent, wave.damage).eligible,
+        losses: outcome?.losses ?? {}, rebuilt: {}, lootLost: NOTHING };
+    }),
+    defence: result.defenders.map(outcome => ({ id: outcome.playerId, defenceNavy: defenceNavy.get(outcome.playerId),
+      sent: outcome.sent, active: outcome.sent, losses: outcome.losses,
+      rebuilt: outcome.stackId === 'host' ? result.defenceSalvage : {},
+      lootLost: outcome.stackId === 'host' ? loot : NOTHING })),
+    shieldCapacity: shieldHp(defender.effectiveInstruments.AEGIS ?? 0), shieldAbsorbed: result.shieldProtectedArmed ?? 0,
   });
 }
 

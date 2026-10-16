@@ -84,6 +84,7 @@ describe('the hit-box colour key', () => {
       mining: 'miner',
       harvest: 'miner',
       death_star: 'deathStar',
+      radiation_bomb: 'deathStar',
       pirate: 'pirate',
     });
   });

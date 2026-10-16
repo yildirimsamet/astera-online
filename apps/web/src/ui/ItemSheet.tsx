@@ -35,6 +35,7 @@ import { useOrderDuration } from './Action.js';
 import { BUILDING_TOP, SATELLITE_ART, buildingArt, instrumentArt } from './assets.js';
 import type { Blocked } from './UpgradeRow.js';
 import { CoreTierInfo } from './CoreTierInfo.js';
+import { PlanetRadiationProtection } from './PlanetRadiationProtection.js';
 
 /**
  * WHAT ONE MORE LEVEL BUYS, AND WHAT THIS THING BECOMES. D1 (docs/ui-v2/design-mocks).
@@ -219,6 +220,7 @@ export function ItemSheet({
           </div>
 
           {item.kind === 'building' && item.id === 'CORE' && <CoreTierInfo level={durableLevel} />}
+          {item.kind === 'instrument' && item.id === 'AEGIS' && <PlanetRadiationProtection planet={planet} />}
 
           {inactiveOpensAt !== null && (
             <p role="status" className="text-caption leading-snug text-v2-warn">

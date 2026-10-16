@@ -4,6 +4,78 @@
  */
 
 export const planet = {
+  tacticalStock: {
+    "stock": "Bestand {{used}}/{{total}}",
+    "charges": "Ladungen {{used}}/{{total}}",
+    "ready": "Bereit: {{count}}",
+    "loading": "Im Bau: {{count}}",
+    "paused": "Pausiert: {{count}}",
+    "flight": "Im Flug: {{count}}",
+    "empty": "Leer"
+  },
+
+  radiationProtection: {
+    aegisReduction: "Aegis-Schutz: {{rate}} HP/min.",
+    "planet": "Strahlenschutz des Planeten",
+    "planetInfo": "Über den Strahlenschutz des Planeten",
+    "aegisSource": "Aegis · Stufe {{level}}. Jede aktive Stufe verringert den Strahlungsschaden an Schiffen auf diesem Planeten um 1 HP/min.",
+    "planetScope": "Schützt Schiffe im Hangar, in der Werkstatt und besuchende Clanflotten. Der eigene Strahlungsschutz jedes Schiffs verringert den übrigen Schaden zusätzlich. Aegis schützt keine Schiffe an Monumenten.",
+    "emptyShield": "Bei 0 HP bietet Aegis keinen Strahlenschutz. Ab mindestens 1 HP kehrt er zurück.",
+    "restores": "Schutz kehrt in {{time}} zurück",
+    "ship": "Strahlenschutz des Schiffs",
+    "shipInfo": "Über den Strahlenschutz des Schiffs",
+    "immune": "Immun",
+    "immuneInfo": "Bergbaugeräte und Bodenverteidigung erleiden keinen Strahlenschaden.",
+    "shipResearch": "Strahlenschutz · Stufe {{level}}: senkt den Strahlenschaden dieses Schiffs um {{percent}}%.",
+    "shipScope": "Dieser Schutz gilt auch an Monumenten. Auf einem Planeten bietet Aegis zusätzlichen Schutz."
+},
+  radiationBomb: {
+    colonyEffects: "Kolonien: −{{loyalty}} Loyalitätspunkte · bis zu {{faults}} neue Störungen.",
+    colonyRules: "Diese Zusatzeffekte gelten nur für Kolonien. Bei null Loyalität wird die Kolonie neutral. Neue Störungen erfordern Kernstufe 6 oder höher auf der Zielkolonie und keinen Störungsschutz. Aktive Störungen wiederholen sich nicht. Aegis verhindert weder Loyalitätsverlust noch Störungen.",
+    colonyResult: "Kolonieloyalität {{before}}% → {{after}}%.",
+    colonySeceded: "Die Kolonieloyalität hat null erreicht; die Kolonie wird neutral.",
+    faultResult: "Neue Störungen: {{faults}}.",
+    strengthLabel: "Schaden vor Schutz",
+    durationLabel: "Wirkungsdauer",
+    honor: 'Bei aktivem Honor bringt tatsächlicher Schaden höchstens 2,5 Honor pro Bombe. Druck auf schwache Ziele kann Honor kosten.',
+    sources: 'Strahlungsquellen',
+    "refund": "Reparaturen abgebrochen und vollständig erstattet.",
+    "intercepted": "Strahlungsbombe L{{level}} abgefangen.",
+
+  "radiation": "Strahlung",
+  "unit": "HP/min",
+  "rate": "{{rate}} HP/min",
+  "perShip": "Schaden ohne Schutz · höchstens 50 HP/min",
+  "protectedRate": "Nach Schutz: {{rate}} HP/min je Schiff",
+  "decrease": "In {{time}} → {{rate}} HP/min",
+  "permanent": "Dauerhafte Strahlung",
+  "title": "Strahlungsbombe",
+  "level": "Stufe {{level}}",
+  "build": "L{{level}} bauen",
+  "ready": "Startbereit",
+  "building": "Im Bau · {{time}}",
+  "paused": "Bau pausiert",
+  "flying": "Im Flug · Vorratsplatz belegt",
+  "empty": "Vorrat leer · 0/1",
+  "stock": "Eine je Stufe. Stufen werden parallel gebaut; fliegende Bomben belegen ihren Platz.",
+  "effect": "Jede Bombe erzeugt am Ziel 30 Minuten lang Strahlung. Der Schaden mehrerer Treffer addiert sich. Vor dem Schutz beträgt der gesamte Strahlungsschaden höchstens 50 HP/min.",
+  "workshop": "Reparaturen und Zerlegen stoppen, wenn die Strahlung den Aegis-Schutz übersteigt. Laufende Reparaturen werden abgebrochen und alle bezahlten Ressourcen erstattet.",
+  "launch": "L{{level}} starten",
+  "flight": "Flug: {{time}}",
+  "noRecall": "Kein Rückruf. Erhält der Planet vor dem Treffer Angriffsschutz, bleibt die Bombe wirkungslos.",
+  "target": "Ziel: {{target}}",
+  "launched": "Strahlungsbombe gestartet",
+  "started": "Bau der Strahlungsbombe begonnen",
+  "need": "Kern 13 und Werft 5 erforderlich",
+  "noBomb": "Baue zuerst eine Bombe auf diesem Planeten.",
+  "environment": "Grundstrahlung",
+  "bombSource": "Bombe · L{{level}}",
+  "sourceEnd": "Noch {{time}}",
+  "launchTitle": "Strahlungsangriff",
+  "impact": "Strahlungstreffer",
+  "hit": "L{{level}} hat getroffen. Strahlung hält 30 Minuten an.",
+  "ineffective": "Das Ziel war beim Treffer geschützt. Die Bombe wurde verbraucht."
+},
   abandon: {
     "action": "Kolonie aufgeben",
     "title": "Diese Kolonie aufgeben?",
@@ -46,6 +118,7 @@ export const planet = {
    * it. `docs/interface.md` I1 — every requirement is a door and names itself.
    */
   interceptor: {
+    capacity: "Kapazität: {{used}} / {{total}} Ladungen",
     eyebrow: "Antistrategische Batterie",
     tally: "{{used}} von {{total}} Ladungen geladen",
     none: "Keine Gebühr geladen",
@@ -55,20 +128,22 @@ export const planet = {
     noRadar: "Geladen · Radarring ist offline",
     build: "Ladung laden",
     started: "Ladung wird geladen",
-    hint: "Zerstört den ersten Todesstern, der in den zeitgesteuerten Radarring eintritt oder im Sichtfeld des Teleskops identifiziert wird. Wird ausgegeben, wenn es feuert.",
-    colonyHint: "Jeder Todesstern, der durchkommt, kostet diese Kolonie {{loss}} Loyalität; bei {{loss}} oder weniger fällt sie ab.",
+    hint: "Stoppt einen Todesstern oder eine Strahlungsbombe im Radar-Abfangring oder bei Identifizierung im Teleskopsichtfeld. Jeder Schuss verbraucht eine Ladung der Batterie des Zielplaneten.",
+    colonyHint: "Jeder Todesstern, der durchkommt, kostet diese Kolonie {{loss}} Loyalität und löst 1 zufällige Störung aus.",
     readyHint:
-      "Bewaffnet. Es zerstört den nächsten Todesstern, der in den Radar-Abfangring eintritt oder im Sichtfeld des Teleskops identifiziert wird.",
+      "Stoppt einen Todesstern oder eine Strahlungsbombe im Radar-Abfangring oder bei Identifizierung im Teleskopsichtfeld. Jeder Schuss verbraucht eine Ladung der Batterie des Zielplaneten.",
     noRadarHint:
       "Die Ladung bleibt geladen, aber diese Welt hat keinen Radar-Abfangring. Stellen Sie Uplink und Radar 3 wieder her. Ein Teleskopblick aus einer anderen Welt kann es immer noch auslösen.",
     needRadar: "Radar L{{level}}",
     needUplink: "Uplink im Orbit",
     needOperational: "Welt betriebsbereit",
     buildTime: "{{duration}} · eine Ladung · für das Schießen aufgewendet",
-    buildSecond: 'Zweite Ladung laden',
+    buildSecond: "Weitere Ladung laden",
   },
 
   deathStar: {
+    empDuration: "EMP-Dauer",
+    loyaltyDamage: "Kolonieloyalität pro Treffer",
     eyebrow: "Taktische EMP-Waffe",
     tally: "{{used}} von {{total}} Waffen vorhanden",
     none: "Kein Todesstern auf dieser Welt",
@@ -78,9 +153,7 @@ export const planet = {
     stock: "{{ready}} bereit · {{building}} Gebäude · {{held}}/{{capacity}}",
     build: "Build",
     started: "Der Bau des Todessterns hat begonnen",
-    dangerHint: "EMP: Die Aegis fällt auf null und regeneriert sich 1 Stunde lang nicht. Bodenverteidigungen feuern in dieser Zeit nicht und erleiden keinen Schaden. Eine Kolonie verliert zudem {{loss}} Loyalität; bei {{loss}} oder weniger fällt sie ab und wird neutral.",
-    readyHint:
-      "Bereit: Die Aegis des Ziels fällt auf null und regeneriert sich 1 Stunde lang nicht; Bodenverteidigungen feuern nicht und erleiden keinen Schaden.",
+    hint: "Setzt die Aegis des Ziels auf null. 1 Stunde lang lädt sich die Aegis nicht auf und Bodenverteidigungen nehmen an keinem Kampf teil. Jeder Treffer auf eine Kolonie kostet {{loss}} Loyalität und löst 1 zufällige Störung aus. Triffst du eine Kolonie mit 100 Loyalität {{hits}}-mal hintereinander, fällt sie und wird neutral.",
     needCore: "Kern L{{level}}",
     needShipyard: "Werft L{{level}}",
     needOperational: "Welt betriebsbereit",
@@ -646,11 +719,11 @@ export const launch = {
   radiationHpStays: "Bleibt am Ziel.",
   radiationHpDose: "Flugstrahlung: {{hp}} HP pro Schiff.",
   radiationHpHealth: "{{count}}× {{hull}} · {{health}}% HP · {{hp}} / {{max}} HP",
-  radiationHpDock: "Nach der Landung ist eine Reparatur in der Reparaturstation nötig.",
-  radiationHpFree: "Bei Landung kostenlos repariert.",
+  radiationHpDock: "Überlebende Schiffe behalten ihre Schäden. Bringe sie selbst zur bezahlten Reparatur in die Werkstatt.",
+  radiationHpFree: "Überlebende Schiffe behalten ihre Schäden. Bringe sie selbst zur bezahlten Reparatur in die Werkstatt.",
   radiationHpCombat: "Kampf kann weiteren Schaden verursachen.",
-  radiationDock: "Die Route kreuzt Strahlung: Jedes Schiff verliert ~{{pct}} % seiner Hülle. Über 20 % wartet in der Reparaturstation.",
-  radiationPatched: "Die Route kreuzt Strahlung: Jedes Schiff verliert ~{{pct}} % seiner Hülle, bei der Landung kostenlos repariert.",
+  radiationDock: "Die Route kreuzt Strahlung: Jedes Schiff verliert etwa {{pct}}% seiner Hülle. Schäden bleiben bis zur bezahlten Reparatur.",
+  radiationPatched: "Die Route kreuzt Strahlung: Jedes Schiff verliert etwa {{pct}}% seiner Hülle. Schäden bleiben bis zur bezahlten Reparatur.",
   fleetsave: "Schiffe im Flug können nicht überfallen werden. Ihr Planet kann.",
   range: "Entfernung {{d}}",
   arrive: "Ankunft",
@@ -740,6 +813,12 @@ export const capacity = {
  * like a catastrophe when they are a Tuesday.
  */
 export const faults = {
+  protection: {
+    paused: "Störungsschutz pausiert · {{time}} verbleibend",
+    active: "Keine neuen Störungen für {{time}}",
+    rule: "Starte einen beliebigen Gebäudeausbau, um den Störungsschutz dieser Kolonie auf 12 Stunden zu erneuern.",
+    existing: "Bestehende Störungen müssen repariert werden. Kampfschaden und Loyalitätsverlust gelten weiterhin.",
+  },
   title: "Fehler",
   mark: "Fehler liegt vor",
   launchBlock: {
@@ -796,7 +875,7 @@ export const faults = {
     title: "Die Reparatur",
     crew: "die Crew",
     parts: "Teile",
-    takes: "Die Reparatur dauert 5–15 Minuten. Die genaue Dauer steht beim Start fest.",
+    takes: "Die Reparatur dauert {{min}}–{{max}} Minuten. Die genaue Dauer steht beim Start fest.",
   },
   repair: "Reparatur starten",
   running: "Eine Crew ist dabei · {{time}}",

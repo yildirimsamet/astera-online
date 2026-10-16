@@ -21,6 +21,15 @@ import { applyBuildCompletion } from '../src/services/buildQueue.js';
 import { privateAsteroidField } from '../src/services/asteroidField.js';
 import { privatePirateField } from '../src/services/pirateField.js';
 import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
+import { landHpShips } from '../src/services/shipDamage.js';
+import { maintenanceAction } from '../src/services/maintenance.js';
+
+/** Explicit workshop fixture: landing itself always keeps wounds in the hangar. */
+export async function landAndDockShips(db: Db, input: Parameters<typeof landHpShips>[1], clock: FixedClock) {
+  await db.transaction(tx => landHpShips(tx, input));
+  return maintenanceAction(db, input.ownerPlayerId, input.planetId, 'DOCK',
+    { source: 'HOME', groups: input.damage ?? [] }, randomUUID(), clock);
+}
 
 /** The length every test world opens at. Named so a test can match a period on purpose. D194. */
 export const TEST_SEASON_DAYS = 14;
@@ -84,7 +93,8 @@ export async function testDb(): Promise<{ db: Db; close: () => Promise<void> }> 
 /** Wipe everything between tests. CASCADE handles the foreign-key order. */
 export async function truncateAll(db: Db): Promise<void> {
   await db.execute(sql`
-    TRUNCATE polar_reversals, polar_webhook_events, polar_skin_orders,
+    TRUNCATE shopier_webhook_events, shopier_orders, shopier_purchase_codes,
+             polar_reversals, polar_webhook_events, polar_skin_orders,
              paddle_reversals, paddle_webhook_events, paddle_skin_orders,
              main_vacancies, commander_transfers, silent_space_maintenance, return_applications, return_queue_counters, announcement_reads, announcements, feedback_entries, perf_sessions,
              account_rewards, reward_grants, request_log, notifications, scan_events,

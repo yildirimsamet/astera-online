@@ -11,12 +11,17 @@ import {
   seededFrom,
   selectMonumentHold,
   splitMonumentBattleSurvivors,
+  partitionCombatFleet,
   type Fleet,
   type HpDamageLot,
   type MonumentShipLot,
 } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
-import { accounts, clans, clanScoreEvents, monumentBattles, monumentBattleParticipants, monumentProbes, monuments, monumentWaves, players, type planets } from '../db/schema.js';
+import { accounts, clans, clanScoreEvents, honorSeasons, monumentBattles, monumentBattleParticipants, monumentProbes, monuments, monumentWaves, players, type planets } from '../db/schema.js';
+import { honorDefenceNavy } from './honorNavy.js';
+import { monumentHonorCommitment } from './honorCommitment.js';
+import { honorBattleEvidence, type HonorBattleStack } from './honorBattleEvidence.js';
+import { deferHonor } from './honorDeferred.js';
 import { adminPlayerIdsInSeason } from './admin.js';
 import { addDominionCounters } from './dominion.js';
 import { lockMonument, settleLockedMonument, type LockedMonument } from './monument.js';
@@ -91,7 +96,7 @@ async function finishDeadWave(tx: Tx, wave: Wave, at: Date): Promise<void> {
   await saveWave(tx, wave);
 }
 
-async function chooseHold(tx: Tx, locked: LockedMonument, homes: ReadonlyMap<string, World>, incomingWaves: readonly Wave[], at: Date): Promise<void> {
+async function chooseHold(tx: Tx, locked: LockedMonument, homes: ReadonlyMap<string, World>, incomingWaves: readonly Wave[], at: Date, observedAt: Date): Promise<void> {
   // A friendly arrival may join the side, but it never re-auctions ships that
   // already paid for HOLD. The tier/power selector is only allowed to choose
   // among this arrival's own lots; otherwise a late reinforcement could evict
@@ -123,12 +128,13 @@ async function chooseHold(tx: Tx, locked: LockedMonument, homes: ReadonlyMap<str
     if (selections.length === 0) continue;
     const home = homes.get(wave.id);
     if (!home) throw new GameError('PLACEMENT_CHANGED', 'The return world changed; refresh and try again', 409);
-    await beginMonumentReturn(tx, locked, wave, selections, home, at, 'CAPACITY');
+    await beginMonumentReturn(tx, locked, wave, selections, home, at, 'CAPACITY', observedAt);
   }
   // This also runs for friendly reinforcements. A newcomer was absent from the
   // original hostile launch; the unique notice key preserves existing warnings.
+  // Any purpose counts: a reinforcement whose side lost the target fights on arrival.
   const holders = new Set(locked.waves.filter((wave) => wave.status === 'HOLD').map((wave) => wave.playerId));
-  for (const pending of locked.waves.filter((wave) => wave.status === 'OUTBOUND' && wave.purpose === 'ATTACK'
+  for (const pending of locked.waves.filter((wave) => wave.status === 'OUTBOUND'
     && wave.arriveAt !== null && wave.arriveAt > at && !friendly(locked, wave))) {
     for (const playerId of holders) await notify(tx, { playerId, kind: 'monument_inbound', at, refId: pending.id,
       payload: { targetKind: 'MONUMENT', monumentId: locked.monument.id, monumentOrdinal: locked.monument.ordinal,
@@ -163,7 +169,7 @@ async function bookClanScores(tx: Tx, locked: LockedMonument, battle: Battle, pa
   }
 }
 
-async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly Wave[], homes: ReadonlyMap<string, World>, at: Date, adminUsernames: ReadonlySet<string>): Promise<Battle> {
+async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly Wave[], homes: ReadonlyMap<string, World>, at: Date, adminUsernames: ReadonlySet<string>, observedAt: Date): Promise<Battle> {
   const incoming = incomingWaves[0]!;
   const incomingIds = new Set(incomingWaves.map((wave) => wave.id));
   const aBefore = locked.lots.filter((lot) => incomingIds.has(lot.waveId));
@@ -171,12 +177,13 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
   const defenderIds = new Set(defenders.map((wave) => wave.id));
   const dBefore = locked.lots.filter((lot) => defenderIds.has(lot.waveId));
   const neutral = dBefore.length === 0 && fleetCount(locked.monument.garrison) > 0;
+  const defenceNavy = await honorDefenceNavy(tx, locked.season.id, dBefore.map(lot => lot.playerId));
   const result = resolveMonumentCombat(aBefore.map((lot) => ({ contributionId: lot.id, playerId: lot.playerId,
     fleet: { [lot.hull]: lot.count }, damage: [lot], tech: { tech: lot.tech } })),
   neutral ? [{ stackId: `neutral:${locked.monument.id}`, playerId: `neutral:${locked.monument.id}`,
-    fleet: locked.monument.garrison, damage: locked.monument.garrisonDamage, tech: { tech: locked.monument.garrisonTech } }]
+    fleet: locked.monument.garrison, damage: locked.monument.garrisonDamage, tech: { tech: locked.monument.garrisonTech }, maintenanceExempt: true }]
     : dBefore.map((lot) => ({ stackId: lot.id, playerId: lot.playerId, fleet: { [lot.hull]: lot.count }, damage: [lot], tech: { tech: lot.tech } })),
-  seededFrom('monument-battle', incoming.id));
+  seededFrom('monument-battle', incoming.id), true);
   const survivors: MonumentShipLot[] = [];
   const aDead: MonumentShipLot[] = [];
   const dDead: MonumentShipLot[] = [];
@@ -251,7 +258,7 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
       ? [...new Map(opposingRows.map((row) => [row.playerId, {
         kind: 'PLAYER' as const, name: row.commanderName, clanName: row.clanName, clanTag: row.clanTag,
       }])).values()]
-      : participant.side === 'ATTACK'
+      : participant.side === 'ATTACK' && neutral
         ? [{ kind: 'NEUTRAL' as const, name: 'Neutral garrison', clanName: null, clanTag: null }]
         : [];
     await bookPersonalScore(tx, participant.playerId, participant.dominionDelta);
@@ -280,9 +287,11 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
     m.emptySince = null;
     m.generation += 1;
     await saveControl(tx, locked);
-    await chooseHold(tx, locked, homes, incomingWaves.filter((wave) => wave.status !== 'LOST'), at);
+    await chooseHold(tx, locked, homes, incomingWaves.filter((wave) => wave.status !== 'LOST'), at, observedAt);
   } else {
-    if (result.control === 'EMPTY') {
+    // An already empty target keeps its clock; cargo that could not capture it
+    // must not postpone the neutral garrison's return.
+    if (result.control === 'EMPTY' && (neutral || dBefore.length > 0 || m.emptySince === null)) {
       m.controllerClanId = null;
       m.controllerPlayerId = null;
       m.emptySince = at;
@@ -292,14 +301,37 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
     for (const incoming of incomingWaves.filter((wave) => after.some((lot) => lot.waveId === wave.id))) {
       const home = homes.get(incoming.id);
       if (!home) throw new GameError('PLACEMENT_CHANGED', 'The return world changed; refresh and try again', 409);
-      await beginMonumentReturn(tx, locked, incoming, after.filter((lot) => lot.waveId === incoming.id).map((lot) => ({ lotId: lot.id, count: lot.count })), home, at, 'DEFEAT');
+      await beginMonumentReturn(tx, locked, incoming, after.filter((lot) => lot.waveId === incoming.id).map((lot) => ({ lotId: lot.id, count: lot.count })), home, at, 'DEFEAT', observedAt);
     }
   }
   for (const playerId of [...new Set([...aBefore, ...dBefore].map((lot) => lot.playerId))].sort()) {
-    await recomputePlayerWealth(tx, playerId);
+    await recomputePlayerWealth(tx, playerId, observedAt);
     await publish(tx, playerId, 'private:monument');
   }
   await publishShard(tx, locked.season.id, 'control');
+  const [honorConfig] = await tx.select().from(honorSeasons).where(eq(honorSeasons.seasonId, locked.season.id));
+  if (honorConfig && dBefore.length > 0) {
+    const intent = await monumentHonorCommitment(tx, { seasonId: locked.season.id,
+      sourceId: incoming.jointOperationId ?? incoming.id, defence: dBefore.map(lot => lot.playerId),
+      at: observedAt, adminUsernames });
+    // Pre-activation waves still fight normally, without fabricated Honor.
+    if (!intent) return battle;
+    const destroyedCargo = dDead.reduce((sum, lot) => sum + lot.deuterium, 0);
+    const members = (ids: readonly string[], before: readonly MonumentShipLot[], dead: readonly MonumentShipLot[], attacking: boolean): HonorBattleStack[] =>
+      ids.map(id => {
+        const own = before.filter(lot => lot.playerId === id), lost = dead.filter(lot => lot.playerId === id);
+        const sent = fleetOf(own);
+        const damage = own.map(lot => ({ hull: lot.hull, count: lot.count, damageBp: lot.damageBp, remainderBp: lot.remainderBp }));
+        const taken = !attacking && result.control === 'ATTACKER' && destroyedCargo > 0
+          ? lootDeuterium * lost.reduce((sum, lot) => sum + lot.deuterium, 0) / destroyedCargo : 0;
+        return { id, ...(!attacking ? { defenceNavy: defenceNavy.get(id) } : {}), sent, active: partitionCombatFleet(sent, damage).eligible, losses: fleetOf(lost), rebuilt: {},
+          lootLost: { alloy: 0, crystal: 0, deuterium: taken } };
+      });
+    deferHonor(tx, locked.season.id, honorBattleEvidence({ catalogue: honorConfig.catalogue, commitment: intent,
+      source: 'MONUMENT', id: battle.id, at: at.getTime(),
+      attack: members(intent.attack.map(member => member.id), aBefore, aDead, true),
+      defence: members(intent.defence.map(member => member.id), dBefore, dDead, false) }));
+  }
   return battle;
 }
 
@@ -320,7 +352,7 @@ export async function advanceMonument(tx: Tx, input: { monumentId: string; at: D
   return scope;
 }
 
-export async function advanceLockedMonument(tx: Tx, locked: LockedMonument, homes: ReadonlyMap<string, World>, at: Date, adminUsernames: readonly string[], closing = false): Promise<Battle[]> {
+export async function advanceLockedMonument(tx: Tx, locked: LockedMonument, homes: ReadonlyMap<string, World>, at: Date, adminUsernames: readonly string[], closing = false, observedAt = at): Promise<Battle[]> {
   const cutoff = new Date(Math.min(at.getTime(), locked.season.endsAt.getTime()));
   const beforeCutoff = (arrival: Date) => arrival < cutoff || (arrival.getTime() === cutoff.getTime() && !closing && cutoff < locked.season.endsAt);
   const due = locked.waves.filter((wave) => wave.status === 'OUTBOUND' && wave.arriveAt !== null && beforeCutoff(wave.arriveAt))
@@ -342,7 +374,7 @@ export async function advanceLockedMonument(tx: Tx, locked: LockedMonument, home
   for (const arrival of arrivals) {
     const at = arrival.at;
     if (at < locked.monument.settledAt) throw new GameError('MONUMENT_TIMELINE_INVALID', 'An arrival precedes the target’s settled roster', 409);
-    await settleLockedMonument(tx, locked, at);
+    await settleLockedMonument(tx, locked, at, observedAt);
     await restoreMonumentGarrison(tx, locked, at);
     if (arrival.kind === 'PROBE') {
       await observeLockedMonumentProbe(tx, locked, arrival.probe);
@@ -351,25 +383,20 @@ export async function advanceLockedMonument(tx: Tx, locked: LockedMonument, home
     const incoming: Wave[] = [];
     for (const wave of arrival.waves) {
       if (wave.status !== 'OUTBOUND') continue;
-      const flight = await settleMonumentFlight(tx, locked, wave.id, at);
+      const flight = await settleMonumentFlight(tx, locked, wave.id, at, observedAt);
       if (flight.wave.status !== 'LOST') incoming.push(wave);
     }
+    // Arrival meets the target as it is now, whatever the launch purpose was:
+    // a control change in flight never turns a fleet back (owner, 2026-10-15).
     if (incoming.length > 0) {
       if (friendly(locked, incoming[0]!)) {
-        await chooseHold(tx, locked, homes, incoming, at);
+        await chooseHold(tx, locked, homes, incoming, at, observedAt);
         for (const wave of incoming) await publish(tx, wave.playerId, 'private:monument');
-      } else if (incoming[0]!.purpose === 'REINFORCE') {
-        for (const wave of incoming) {
-          const home = homes.get(wave.id);
-          if (!home) throw new GameError('PLACEMENT_CHANGED', 'The return world changed; refresh and try again', 409);
-          await beginMonumentReturn(tx, locked, wave, locked.lots.filter((lot) => lot.waveId === wave.id)
-            .map((lot) => ({ lotId: lot.id, count: lot.count })), home, at, 'CONTROL_CHANGED');
-        }
-      } else battles.push(await battleAt(tx, locked, incoming, homes, at, new Set(adminUsernames)));
+      } else battles.push(await battleAt(tx, locked, incoming, homes, at, new Set(adminUsernames), observedAt));
     }
     await completeMonumentJoint(tx, arrival.waves[0]!.jointOperationId, at);
   }
-  await settleLockedMonument(tx, locked, cutoff);
+  await settleLockedMonument(tx, locked, cutoff, observedAt);
   await restoreMonumentGarrison(tx, locked, cutoff);
   return battles;
 }

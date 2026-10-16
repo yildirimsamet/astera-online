@@ -5,7 +5,7 @@ import { useRepairFault } from '../api/queries.js';
 import { useToast } from '../ui/Toast.js';
 import { FaultMark } from '../ui/marks.js';
 import { SpendBar } from '../ui/SpendBar.js';
-import { full } from '../lib/format.js';
+import { decimal, full } from '../lib/format.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { Button, Sheet } from '../ui/kit/index.js';
 import { productionPaceOf } from '../lib/gains.js';
@@ -135,8 +135,8 @@ export function FaultSheet({
         ) : (
           <div className="flex flex-col gap-1.5">
             {/*
-              THE WARNING GOES ABOVE THE BUTTON, not in a confirm behind it. Five to
-              fifteen minutes is too short to be worth a second tap, and a rule the
+              THE WARNING GOES ABOVE THE BUTTON, not in a confirm behind it. The repair
+              range is too short to be worth a second tap, and a rule the
               player reads before acting is a rule; one they meet afterwards is a trap.
             */}
             <p className="text-micro text-faint">{t('faults.noCancel')}</p>
@@ -215,8 +215,8 @@ export function FaultSheet({
             )}
             <p className="text-caption text-faint">
               {t('faults.price.takes', {
-                min: FAULT.repairMinMinutes,
-                max: FAULT.repairMaxMinutes,
+                min: decimal(FAULT.repairMinMinutes, 2),
+                max: decimal(FAULT.repairMaxMinutes, 2),
               })}
             </p>
           </section>

@@ -38,7 +38,7 @@ export async function equipAdminCapital(tx: Tx, planetId: string, clock: Clock):
     await tx.delete(satellites).where(and(eq(satellites.planetId, planetId), inArray(satellites.slot, [firstOrbit.slot, uplink.slot])));
     await tx.insert(satellites).values([{ ...firstOrbit, slot: uplink.slot }, { ...uplink, slot: firstOrbit.slot }]);
   }
-  await recomputeWealth(tx, planetId);
+  await recomputeWealth(tx, planetId, clock.now());
   await refreshSensorEpoch(tx, planetId, clock.now());
   await publishShard(tx, planet.seasonId, 'world');
   return true;

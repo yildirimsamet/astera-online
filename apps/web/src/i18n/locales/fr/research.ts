@@ -7,6 +7,13 @@
 * pas une file indépendante, mais un seul poste de travail.
   */
 export const research = {
+  shieldingCeiling: "Niveau {{level}} : {{rate}} HP/min",
+  shieldingName: "Protection antiradiation",
+  shieldingTag: "Réduit les dégâts de radiation des vaisseaux",
+  shieldingRole: "Protège vos vaisseaux de la radiation sur les planètes et aux monuments. La recherche possède quatre niveaux.",
+  shieldingDetail: "Cette recherche protège uniquement les vaisseaux ; elle ne réduit pas les dégâts de combat. Sur une planète, Aegis apporte une protection supplémentaire. Aux monuments, seule la protection du vaisseau s’applique. Les vaisseaux sur vos propres planètes utilisent le niveau actuel de leur commandant. Les flottes envoyées conservent leur protection du départ ; les recherches suivantes ne les renforcent pas. La recherche exige un Noyau 3 sur votre capitale.",
+  shieldingRateLabel: "Radiation niveau 2 · HP/min",
+  shieldingScope: "La protection de la flotte est enregistrée au départ. Elle agit contre tous les niveaux de radiation.",
   eyebrow: "Commandant",
   title: "Recherche",
   premise:
@@ -98,7 +105,7 @@ export const research = {
   industrialRole:
     "Réduit le coût et la durée de chaque réparation à la Station de réparation",
   industrialDetail:
-    "Réduit le prix et la durée des réparations sur toutes tes planètes. Le niveau 1 applique 75 % du prix et du temps normaux ; le niveau 2 applique 50 %. La construction des vaisseaux n’accélère pas. Les dégâts de 20 % ou moins sont déjà réparés gratuitement à l’arrivée.",
+    "Réduit le prix et la durée des réparations sur toutes tes planètes. Le niveau 1 applique 75 % du prix et du temps normaux ; le niveau 2 applique 50 %. La construction des vaisseaux n’accélère pas.",
   holdsName: "Soutes de Prospecteur",
   holdsTag: "Les Prospecteurs transportent davantage",
   holdsRole:
@@ -142,9 +149,9 @@ export const research = {
   groundDoctrineDetail:
     "Augmente l’attaque et la résistance du Bastion, du Harpon et du Épine sur toutes tes planètes. Capacité au sol et récupération restent inchangées. La défense utilise le niveau de recherche au début du combat.",
   gridName: "Réseau d’Interception",
-  gridTag: "Quatre charges d’interception par monde",
-  gridRole: "Fait passer de 2 à 4 les charges d’interception que chacun de tes mondes peut détenir.",
-  gridDetail: "Porte la limite de charges d’interception de 2 à 4 par planète. Leur préparation exige Liaison montante et Radar 3 sur cette planète. Une charge détruit une Étoile de la mort identifiée au Télescope ou interceptée dans l’anneau Radar au bon moment. Les capteurs doivent fonctionner. Chaque interception consomme une charge.",
+  gridTag: "Jusqu’à six charges d’interception par planète",
+  gridRole: "Deux niveaux de recherche augmentent la capacité de chaque planète : 2 → 4 → 6.",
+  gridDetail: "Chaque niveau ajoute 2 places, sans offrir de charges gratuites. Construis chaque charge sur une planète avec une Liaison montante active et un Radar 3. Une interception consomme une charge et arrête une Étoile de la mort ou une bombe radiologique. Seule la batterie de la planète ciblée tire.",
   stockpileName: "Réserve Stratégique",
   stockpileTag: "Deux Étoiles de la Mort par monde",
   stockpileRole: "Fait passer de 1 à 2 les Étoiles de la Mort que chacun de tes mondes peut détenir. La seconde commence quand la première est terminée.",

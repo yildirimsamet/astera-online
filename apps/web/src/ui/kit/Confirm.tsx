@@ -57,6 +57,7 @@ export function Confirm({
   confirmLabel,
   backLabel,
   pending = false,
+  confirmVariant = 'commit',
   onConfirm,
   onClose,
 }: {
@@ -82,6 +83,8 @@ export function Confirm({
    */
   backLabel: string;
   pending?: boolean;
+  /** Informational progression consent does not need destructive-action styling. */
+  confirmVariant?: 'primary' | 'commit';
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -109,7 +112,7 @@ export function Confirm({
             {backLabel}
           </Button>
           <Button
-            variant="commit"
+            variant={confirmVariant}
             size="lg"
             disabled={pending}
             onClick={onConfirm}

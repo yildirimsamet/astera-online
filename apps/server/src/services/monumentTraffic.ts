@@ -31,7 +31,7 @@ export async function loadMonumentTraffic(db: Queryable, seasonId: string): Prom
   const [waves, probes, sources] = await Promise.all([
     db.select().from(monumentWaves).where(and(eq(monumentWaves.seasonId, seasonId), inArray(monumentWaves.status, ['OUTBOUND', 'RETURNING']))),
     db.select().from(monumentProbes).where(and(eq(monumentProbes.seasonId, seasonId), inArray(monumentProbes.status, ['OUTBOUND', 'RETURNING']))),
-    hpSourcesForSeason(db, seasonId),
+    hpSourcesForSeason(db, seasonId, { targets: [] }),
   ]);
   const [lots, parked] = waves.length === 0 ? [[], []] : await Promise.all([
     db.select().from(monumentShipLots).where(inArray(monumentShipLots.waveId, waves.map(wave => wave.id))),

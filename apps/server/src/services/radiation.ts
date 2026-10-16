@@ -1,15 +1,16 @@
 import { and, asc, eq, gt, isNull, or } from 'drizzle-orm';
 import { z } from 'zod';
 import {
-  applyDose,
+  applyMaintenanceDoseBp,
   applyHpDose,
+  protectedRadiationHp,
   hpRadiationApplies,
   hpWingLethalAtMs,
   fleetCount,
-  transferStayingFleet,
   missionSegments,
   segmentsDoseBp,
   segmentsExposureHp,
+  splitHealthFleet,
   shipDamageApplies,
   wingLethalAtMs,
   TRAVEL,
@@ -33,6 +34,8 @@ import { reconcileMonumentTargets } from './monumentView.js';
 import { settleLockedMonument, type LockedMonument } from './monument.js';
 import { scheduleFlightBoundary } from './monumentBoundaries.js';
 import { monumentMotionStart } from './monumentMotion.js';
+import { lockWorlds } from './ownership.js';
+import { beginPlanetRadiationBoundary, schedulePlanetRadiation, settlePlanetRadiationAt } from './planetRadiation.js';
 
 /**
  * RADIATION ON THE SERVER. Owner decisions K3 · K4, 2026-09-29 (`plan.md` F9).
@@ -129,7 +132,11 @@ export async function settleFlightRadiation(tx: Tx, input: {
   if (!shipDamageApplies(input.rulesetVersion)) return untouched;
 
   const hp = hpRadiationApplies(input.rulesetVersion);
-  const sources = hp ? await hpSourcesForSeason(tx, input.seasonId) : [];
+  const sources = hp ? await hpSourcesForSeason(tx, input.seasonId, {
+    targets: input.path.flatMap(segment => segment.target ? [segment.target] : []),
+    ...(input.fromMs === undefined ? {} : { from: new Date(input.fromMs) }),
+    ...(input.path.length === 0 ? {} : { until: new Date(Math.max(...input.path.map(segment => segment.endMs))) }),
+  }) : [];
   const unpaid = sources.flatMap((source) => {
     const activeFromMs = Math.max(source.activeFromMs, input.fromMs ?? Number.NEGATIVE_INFINITY);
     return source.activeUntilMs === null || source.activeUntilMs > activeFromMs ? [{ ...source, activeFromMs }] : [];
@@ -137,14 +144,15 @@ export async function settleFlightRadiation(tx: Tx, input: {
   const doseHp = hp ? segmentsExposureHp(input.path, unpaid) : 0;
   const doseBp = hp ? 0 : segmentsDoseBp(input.path, await sourcesForSeason(tx, input.seasonId));
   if (doseHp === 0 && doseBp === 0) return untouched;
-  const outcome = hp ? applyHpDose(fleet, input.damage, doseHp, input.tech ?? {}) : applyDose(fleet, input.damage, doseBp);
+  const outcome = hp ? applyHpDose(fleet, input.damage, doseHp, input.tech ?? {}) : applyMaintenanceDoseBp(fleet, input.damage, doseBp);
   for (const [hull, lost] of Object.entries(outcome.destroyed) as [HullId, number][]) {
     const left = (fleet[hull] ?? 0) - lost;
     const row = and(eq(units.planetId, input.planetId), eq(units.hull, hull), eq(units.location, input.location));
     if (left > 0) await tx.update(units).set({ count: left }).where(row);
     else await tx.delete(units).where(row);
   }
-  return { fleet: outcome.fleet, damage: outcome.lots, destroyed: outcome.destroyed, doseBp, doseHp };
+  return { fleet: outcome.fleet, damage: outcome.lots, destroyed: outcome.destroyed, doseBp,
+    doseHp: protectedRadiationHp(doseHp, input.tech ?? {}) };
 }
 
 /**
@@ -155,7 +163,7 @@ export async function settleFlightRadiation(tx: Tx, input: {
 export async function settleMissionRadiation(
   tx: Tx,
   mission: MissionRow,
-  where: { storagePlanetId?: string; rulesetVersion: number; location?: string },
+  where: { storagePlanetId?: string; rulesetVersion: number; location?: string; observedAt?: Date },
 ): Promise<FlightDose & { mission: MissionRow }> {
   if (hpRadiationApplies(where.rulesetVersion)) {
     const [current] = await tx.select().from(missions).where(eq(missions.id, mission.id)).for('update');
@@ -192,7 +200,7 @@ export async function settleMissionRadiation(
     path.at(-1)?.endMs ?? mission.departAt.getTime())) : mission.radiationSettledAt;
   await tx.update(missions).set({ fleet: settled.fleet, damage, radiationSettledAt }).where(eq(missions.id, mission.id));
   // Wealth counts what a commander owns, and a finished ship is owned no more.
-  if (Object.keys(settled.destroyed).length > 0) await recomputePlayerWealth(tx, mission.ownerPlayerId);
+  if (Object.keys(settled.destroyed).length > 0) await recomputePlayerWealth(tx, mission.ownerPlayerId, where.observedAt);
   return { ...settled, mission: { ...mission, fleet: settled.fleet, damage, radiationSettledAt } };
 }
 
@@ -218,7 +226,9 @@ export const flightWitness = (mission: MissionRow): LossWitness => ({
 export async function tellRadiationLoss(tx: Tx, to: LossWitness, dose: FlightDose, at: Date): Promise<void> {
   const lost = Object.values(dose.destroyed).reduce((sum, n) => sum + n, 0);
   if (lost === 0) return;
-  const [world] = await tx.select({ name: planets.name }).from(planets).where(eq(planets.id, to.toPlanetId));
+  const [world] = await tx.select({ name: planets.name, silentFrom: seasons.radiationBombStartsAt }).from(planets)
+    .innerJoin(seasons, eq(seasons.id, planets.seasonId)).where(eq(planets.id, to.toPlanetId));
+  if (world?.silentFrom && at >= world.silentFrom) return;
   await notify(tx, {
     playerId: to.playerId,
     kind: 'radiation_lost',
@@ -245,6 +255,7 @@ export async function settleWaveRadiation(
   wave: WaveRow,
   mission: MissionRow,
   rulesetVersion: number,
+  observedAt?: Date,
 ): Promise<FlightDose & { wave: WaveRow }> {
   if (hpRadiationApplies(rulesetVersion)) {
     const [current] = await tx.select().from(clanWarContributions).where(eq(clanWarContributions.id, wave.id)).for('update');
@@ -269,7 +280,7 @@ export async function settleWaveRadiation(
     path.at(-1)?.endMs ?? mission.departAt.getTime())) : wave.radiationSettledAt;
   await tx.update(clanWarContributions).set({ damage, fleet: settled.fleet, radiationSettledAt })
     .where(eq(clanWarContributions.id, wave.id));
-  if (Object.keys(settled.destroyed).length > 0) await recomputePlayerWealth(tx, wave.playerId);
+  if (Object.keys(settled.destroyed).length > 0) await recomputePlayerWealth(tx, wave.playerId, observedAt);
   return { ...settled, wave: { ...wave, damage, fleet: settled.fleet, radiationSettledAt } };
 }
 
@@ -308,15 +319,19 @@ export async function assertRadiationSafe(tx: Tx, input: {
   });
   let lost: number;
   if (hpRadiationApplies(season.rulesetVersion)) {
-    const sources = await hpSourcesForSeason(tx, input.seasonId);
     const path = input.path ?? outbound;
-    const loss = (fleet: Fleet, segments: readonly Segment[]) => fleetCount(applyHpDose(
-      fleet, input.damage ?? null, segmentsExposureHp(segments, sources), input.tech ?? {},
+    const sources = await hpSourcesForSeason(tx, input.seasonId, { targets: path.flatMap(segment => segment.target ? [segment.target] : []),
+      from: input.departAt, until: new Date(Math.max(input.departAt.getTime(), ...path.map(segment => segment.endMs))) });
+    const loss = (fleet: Fleet, damage: HpDamageLots, segments: readonly Segment[]) => fleetCount(applyHpDose(
+      fleet, damage, segmentsExposureHp(segments, sources), input.tech ?? {},
     ).destroyed);
-    lost = input.returning === undefined ? loss(input.fleet, path)
-      : loss(transferStayingFleet(input.fleet, input.returning), outbound) + loss(input.returning, path);
+    if (input.returning === undefined) lost = loss(input.fleet, input.damage ?? [], path);
+    else {
+      const split = splitHealthFleet(input.fleet, input.damage ?? [], input.returning);
+      lost = loss(split.remaining, split.remainingDamage, outbound) + loss(split.selected, split.selectedDamage, path);
+    }
   } else {
-    lost = fleetCount(applyDose(input.fleet, null, segmentsDoseBp(outbound, await sourcesForSeason(tx, input.seasonId))).destroyed);
+    lost = fleetCount(applyMaintenanceDoseBp(input.fleet, input.damage ?? null, segmentsDoseBp(outbound, await sourcesForSeason(tx, input.seasonId))).destroyed);
   }
   if (lost > 0) {
     throw new GameError('RADIATION_LETHAL', 'Radiation on this route would destroy ships', 409, { count: lost });
@@ -366,7 +381,7 @@ export async function liveRadiationFor(
   const [season] = await tx.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons)
     .where(eq(seasons.id, seasonId));
   const radiation: FlightRadiation = season && hpRadiationApplies(season.rulesetVersion)
-    ? { model: 'HP', sources: await hpSourcesForSeason(tx, seasonId) }
+    ? { model: 'HP', sources: await hpSourcesForSeason(tx, seasonId, { targets: [] }) }
     : { model: 'PERCENT', sources: season && shipDamageApplies(season.rulesetVersion) ? await sourcesForSeason(tx, seasonId) : [] };
   cache.set(seasonId, radiation);
   return radiation;
@@ -516,6 +531,10 @@ export async function addHpRadiationSource(
       at = monument;
     }
     if (!at) throw new Error('unreachable: an HP anchor has no position');
+    if (anchorKind === 'PLANET' && anchorId && season.radiationBombStartsAt) {
+      await lockWorlds(tx, [anchorId], { requireLive: false });
+      await settlePlanetRadiationAt(tx, anchorId, now);
+    }
     const targets = await prepareHpSourceChange(tx, source.seasonId, now, adminUsernames);
     const [row] = await tx.insert(hpRadiationSources).values({
       seasonId: source.seasonId, anchorKind, anchorId, x: at.x, y: at.y, z: at.z,
@@ -523,6 +542,11 @@ export async function addHpRadiationSource(
       activeFrom, activeUntil: source.activeUntil ?? null, label: source.label,
     }).returning();
     if (!row) throw new Error('HP radiation source insert returned no row');
+    if (anchorKind === 'PLANET' && anchorId && season.radiationBombStartsAt) {
+      await beginPlanetRadiationBoundary(tx, anchorId, now);
+      const [world] = await tx.select().from(planets).where(eq(planets.id, anchorId));
+      if (world) await schedulePlanetRadiation(tx, world, season, now);
+    }
     await replanHpSourceChange(tx, source.seasonId, targets, now);
     await publishShard(tx, source.seasonId, 'world');
     return row;
@@ -556,10 +580,19 @@ export async function endHpRadiationSource(
     if (!row) throw new GameError('NOT_FOUND', 'No such HP radiation source', 404);
     const now = clock.now();
     if (row.activeUntil !== null && (row.activeUntil <= now || row.activeUntil <= row.activeFrom)) return row;
+    if (row.anchorKind === 'PLANET' && row.anchorId && season.radiationBombStartsAt && season.status === 'live') {
+      await lockWorlds(tx, [row.anchorId], { requireLive: false });
+      await settlePlanetRadiationAt(tx, row.anchorId, now);
+    }
     const targets = season.status === 'live' ? await prepareHpSourceChange(tx, row.seasonId, now, adminUsernames) : [];
     const [ended] = await tx.update(hpRadiationSources).set({ activeUntil: new Date(Math.max(now.getTime(), row.activeFrom.getTime())) })
       .where(eq(hpRadiationSources.id, id)).returning();
     if (!ended) throw new Error(`HP radiation source ${id} vanished while it was ended`);
+    if (row.anchorKind === 'PLANET' && row.anchorId && season.radiationBombStartsAt && season.status === 'live') {
+      await beginPlanetRadiationBoundary(tx, row.anchorId, now);
+      const [world] = await tx.select().from(planets).where(eq(planets.id, row.anchorId));
+      if (world) await schedulePlanetRadiation(tx, world, season, now);
+    }
     await replanHpSourceChange(tx, row.seasonId, targets, now);
     await publishShard(tx, row.seasonId, 'world');
     return ended;
@@ -575,7 +608,7 @@ async function prepareHpSourceChange(tx: Tx, seasonId: string, at: Date, adminUs
 async function replanHpSourceChange(tx: Tx, seasonId: string, targets: readonly LockedMonument[], at: Date): Promise<void> {
   await tx.delete(scheduledEvents).where(and(eq(scheduledEvents.seasonId, seasonId), eq(scheduledEvents.kind, 'monument_loss'),
     eq(scheduledEvents.status, 'pending')));
-  const sources = await hpSourcesForSeason(tx, seasonId);
+  const sources = await hpSourcesForSeason(tx, seasonId, { targets: [], from: at });
   for (const target of targets) {
     await settleLockedMonument(tx, target, at);
     for (const wave of target.waves) await scheduleFlightBoundary(tx, wave, target.lots.filter((lot) => lot.waveId === wave.id), sources, target.season.endsAt);

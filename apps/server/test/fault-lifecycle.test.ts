@@ -244,7 +244,7 @@ describe('onarım', () => {
   });
 
   /** Sekiz arızanın hepsi, ama üçer üçer: lane sayısı üç ve dördüncüsü reddedilir. */
-  it('süre her zaman beş ile on beş dakika arasındadır', async () => {
+  it('süre her zaman yavaşlatılmış onarım süre aralığında kalır', async () => {
     for (const kind of FAULT_KINDS) {
       const id = await breakIt(kind);
       const { readyAt } = await startFaultRepair(f.db, colony, id, f.clock, f.playerIds[0]!);

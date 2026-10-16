@@ -21,11 +21,12 @@ export interface SilentSpaceClock {
   readonly lastProgressAt: number | null;
   readonly joinedAt: number;
   readonly mainEnteredAt: number;
+  readonly resetAt?: number | undefined;
 }
 
 /** When the commander becomes due to leave. All instants are server epoch milliseconds. */
 export function silentSpaceDueAt(state: SilentSpaceClock): number {
-  return Math.max(state.lastProgressAt ?? -Infinity, state.joinedAt, state.mainEnteredAt) + SILENT_SPACE.idleMs;
+  return Math.max(state.lastProgressAt ?? -Infinity, state.joinedAt, state.mainEnteredAt, state.resetAt ?? -Infinity) + SILENT_SPACE.idleMs;
 }
 
 /** Inclusive: exactly thirty hours is due. */

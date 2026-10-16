@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { DEBRIS } from '@astera/rules';
 import { MODEL } from '../ui/assets.js';
+import { freshestWreckAt } from '../lib/wrecks.js';
 import { unitModel } from './model.js';
 import { toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
@@ -169,7 +170,8 @@ export function Wrecks({
             planetRadius={radius}
             focused={focusedId === w.id}
             onSelect={() => {
-              onSelect(w.id);
+              // Rings on one spot are one target to the eye: open the freshest. See `freshestWreckAt`.
+              onSelect(freshestWreckAt(wrecks, w.id));
             }}
           />
         </Suspense>

@@ -194,6 +194,7 @@ export const RESEARCH_ART: Record<ResearchProjectId, string> = {
   INTERCEPTION_GRID: `${RESEARCH_BASE}/interception-grid-v1.webp`,
   STRATEGIC_STOCKPILE: `${RESEARCH_BASE}/strategic-stockpile-v1.webp`,
   INDUSTRIAL: `${RESEARCH_BASE}/industrial-v1.webp`,
+  RADIATION_SHIELDING: `${RESEARCH_BASE}/radiation-shielding-v1.webp`,
 };
 
 export const PROBE_ART = `${BASE}/ships/explorer_ship.png`;
@@ -276,6 +277,9 @@ export const MODEL = {
    * is pointed somewhere.
    */
   missile: '/assets/models/missiles/rocket-premium-v2.glb',
+  radiationBombL1: '/assets/models/missiles/radiation-bomb-l1.glb',
+  radiationBombL2: '/assets/models/missiles/radiation-bomb-l2.glb',
+  radiationBombL3: '/assets/models/missiles/radiation-bomb-l3.glb',
   /**
    * One chunk of wreckage. D32.
    *
@@ -296,6 +300,9 @@ export const MODEL = {
  * and everybody notices in play.
  */
 export const MODEL_FACING: Record<string, Facing> = {
+  [MODEL.radiationBombL1]: '+z',
+  [MODEL.radiationBombL2]: '+z',
+  [MODEL.radiationBombL3]: '+z',
   [MODEL.probeUfo]: '+z',
   ...Object.fromEntries(Object.entries({ 'red-dragon': '-x', scorpion: '+z', shark: '-x', stingray: '+z' } as const)
     .flatMap(([name, facing]) => ['', '_lod', '_preview'].map(suffix => [`/assets/models/ships/skins/${name}/model${suffix}.glb`, facing]))),
@@ -431,6 +438,9 @@ export const CRAFT_MODELS: readonly string[] = [
   MODEL.thorn,
   MODEL.drill,
   MODEL.missile,
+  MODEL.radiationBombL1,
+  MODEL.radiationBombL2,
+  MODEL.radiationBombL3,
   MODEL.deathStar,
   MODEL.tradeShip,
 ];

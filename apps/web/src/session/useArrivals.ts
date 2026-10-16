@@ -111,6 +111,7 @@ export function useArrivals(instants: readonly (Date | null | undefined)[]): voi
          */
         keys.reports,
         keys.notifications,
+        keys.vacation,
       ]) {
         void refreshQueries(client, { queryKey });
       }

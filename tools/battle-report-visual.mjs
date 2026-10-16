@@ -31,6 +31,19 @@ const sample = {
 };
 
 function fixture(kind) {
+  if (kind === 'preserved-shield') return { ...fixture('low-tier'),
+    pvpBalance: { lootDecisive: 0.6, lootPartial: 0.3, lootBufferShare: 0.5,
+      recoveryLossHours: 4, recoveryLookbackHours: 6, recoveryShieldHours: 8 },
+    recovery: { lossHours: 4, shielded: true, until: new Date(new Date(sample.at).getTime() + 11 * 3_600_000).toISOString() },
+  };
+  if (kind === 'low-tier' || kind === 'low-tier-progress') return { ...sample,
+    attacking: false, grade: 'DECISIVE', yourFleet: { DART: 4 }, yourLosses: { DART: 4 }, theirLosses: {},
+    theirFleet: { DART: 20, COURIER: 6 }, dominionBreakdown: null,
+    rounds: [{ ...rounds[0], attackerLosses: {}, defenderLosses: { DART: 4 } }],
+    pvpBalance: { lootDecisive: 0.25, lootPartial: 0.125, lootBufferShare: 0.6,
+      recoveryLossHours: 2, recoveryLookbackHours: 8, recoveryShieldHours: 12 },
+    recovery: { lossHours: kind === 'low-tier' ? 2.4 : 1.5, shielded: kind === 'low-tier' },
+  };
   if (kind === 'fractional' || kind === 'fractional-defender') return { ...sample,
     attacking: kind === 'fractional', grade: 'PARTIAL', dominion: 0, dominionBreakdown: null,
     yourFleet: { CATACLYSM: 2, DART: 1 }, yourLosses: {}, theirLosses: {},
@@ -74,7 +87,7 @@ export async function verifyBattleReports(out) {
         page.on('pageerror', error => { errors.push(error.message); console.error(error.message); });
         // Refuse all network API traffic; all reads below use in-memory fixtures.
         await page.route(url => url.pathname.startsWith('/api/'), route => route.abort());
-        for (const kind of ['attacker', 'defender', 'partial', 'walkover', 'mutual', 'legacy', 'fractional', 'fractional-defender', 'launch']) {
+        for (const kind of ['attacker', 'defender', 'partial', 'walkover', 'mutual', 'legacy', 'fractional', 'fractional-defender', 'low-tier', 'low-tier-progress', 'preserved-shield', 'launch']) {
           await page.route('**/battle-design-preview', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>:root { --v2-top-h: 0px; --v2-dock-h: 0px; }</style></head><body><div id="root"></div>
 <script type="module">
@@ -133,6 +146,25 @@ createRoot(document.getElementById('root')).render(React.createElement(QueryClie
             await page.locator('[data-hull-row="PIKE"]').scrollIntoViewIfNeeded();
             await page.screenshot({ path: `${prefix}-ships.png` });
           }
+          if (kind === 'low-tier' || kind === 'low-tier-progress' || kind === 'preserved-shield') {
+            const recovery = page.locator('[data-recovery-shield]');
+            await recovery.scrollIntoViewIfNeeded();
+            const text = await recovery.textContent();
+            const duration = kind === 'preserved-shield' ? '11' : '12';
+            const history = kind === 'preserved-shield' ? '6' : '8';
+            if (!text?.includes(duration) || !text.includes(history)) throw new Error(`Wrong recovery duration/history: ${text}`);
+            if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) {
+              throw new Error(`Low-tier report overflows at ${viewport.width}px`);
+            }
+            await page.screenshot({ path: `${prefix}-recovery.png` });
+            const formula = page.locator('[data-combat-formula]');
+            await page.locator('details').filter({ has: formula }).locator('summary').click();
+            await formula.scrollIntoViewIfNeeded();
+            if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) {
+              throw new Error(`Loot rules overflow at ${viewport.width}px`);
+            }
+            await page.screenshot({ path: `${prefix}-rules.png` });
+          }
           if (kind === 'attacker') {
             await page.locator('[data-report-section="who"]').scrollIntoViewIfNeeded();
             await page.screenshot({ path: `${prefix}-force.png` });
@@ -162,10 +194,10 @@ createRoot(document.getElementById('root')).render(React.createElement(QueryClie
             if (kind === 'fractional-defender') {
               const labels = await page.evaluate(async () => {
                 const i18n = (await import('/src/i18n/index.ts')).default;
-                return { dock: i18n.t('reportScene.toDock'), patched: i18n.t('reportScene.patched') };
+                return { hangar: i18n.t('repairStation.maintenance.hangar') };
               });
-              if (!rows[0].includes(labels.patched) || !rows[1].includes(labels.dock) || !rows[2].includes(labels.patched)) {
-                throw new Error(`Incorrect fractional repair destination: ${prefix}`);
+              if (rows.some(row => !row.includes(labels.hangar))) {
+                throw new Error(`Incorrect damaged-ship maintenance state: ${prefix}`);
               }
             }
             await page.screenshot({ path: `${prefix}-damage.png` });

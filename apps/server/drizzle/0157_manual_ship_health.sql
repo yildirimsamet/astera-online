@@ -1,0 +1,1 @@
+ALTER TABLE "units" ADD COLUMN "damage" jsonb DEFAULT '[]'::jsonb NOT NULL;

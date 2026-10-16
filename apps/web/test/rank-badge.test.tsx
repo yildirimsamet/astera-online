@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { RankBadge } from '../src/galaxy/RankBadge.js';
 
 describe('Dominion podium badges', () => {
+  it('names the Honor podium explicitly while preserving the place', () => {
+    render(<RankBadge rank={1} honor />);
+    expect(screen.getByLabelText('Honor · Rank 1')).toHaveTextContent('1');
+  });
   it.each([
     [1, 'gold'],
     [2, 'silver'],

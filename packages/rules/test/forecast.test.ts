@@ -70,6 +70,19 @@ const grade = (sending: Fleet, wall: Fleet, input: ForecastInput) => {
 const spread = (s: { low: number; high: number }) => s.high / Math.max(1, s.low);
 
 describe('the lines a wing is drawn against', () => {
+  it('uses the attacking ships’ real remaining HP when estimating losses', () => {
+    const wing: Fleet = { DART: 20 };
+    const crew: Fleet = { DART: 5 };
+    const input = blind({ wall: { kind: 'EXACT', fleet: crew } });
+    const wounded = { ...input, attackerDamage: [{ hull: 'DART' as const, count: 20, damageBp: 9000, remainderBp: 0.25 }] };
+    const power = combatValue(crew);
+    const healthyLoss = forecastLoss(wing, { low: power, high: power }, input);
+    const expected = resolveBattle([soloStack(wing, { tech: {} }, wounded.attackerDamage)],
+      [{ stackId: 'wall', playerId: '', fleet: crew, tech: { tech: {} } }], 0, flat, 'PLANET', true);
+    const loss = expected.attackerLossValue / fleetValue(wing);
+    expect(loss).toBeGreaterThan(healthyLoss.high);
+    expect(forecastLoss(wing, { low: power, high: power }, wounded)).toEqual({ low: loss, high: loss });
+  });
   it('agrees with HP battle casualties at the mean roll for identified pirate crews', () => {
     const crew: Fleet = { PALADIN: 3 };
     const input: ForecastInput = blind({ pirate: true,

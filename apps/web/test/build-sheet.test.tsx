@@ -118,6 +118,23 @@ const show = (
   );
 };
 
+it('asks before ordering Core level 10 and spends nothing when dismissed', async () => {
+  upgrade.mockClear();
+  const view = show({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4 } }, 'grow');
+  const row = view.container.querySelector('#row-CORE');
+  expect(row).not.toBeNull();
+  await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /about command core/i }));
+  await userEvent.click(screen.getByRole('button', { name: /raise to l10/i }));
+  expect(upgrade).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole('button', { name: 'Wait for now' }));
+  expect(upgrade).not.toHaveBeenCalled();
+  await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /about command core/i }));
+  await userEvent.click(screen.getByRole('button', { name: /raise to l10/i }));
+  await userEvent.click(screen.getByRole('button', { name: 'Order level 10' }));
+  expect(upgrade).toHaveBeenCalledOnce();
+  expect(upgrade.mock.calls[0]?.[0]).toEqual({ type: 'CORE', confirmedLevel: 10 });
+});
+
 /** The commander's Strategic Stockpile, held. */
 const withStockpile = (base: PlanetView): PlanetView['research'] =>
   base.research.map((project) => project.id === 'STRATEGIC_STOCKPILE'
@@ -276,7 +293,7 @@ describe('strategic hardware hierarchy', () => {
 
     const forge = forgeOf(view);
     expect(forge).toHaveAttribute('data-strategic-count', '2');
-    expect(forge).toHaveTextContent(/1 ready.*1 building/i);
+    expect(forge).toHaveTextContent(/Ready: 1.*Building: 1/i);
     expect([...forge.querySelectorAll<HTMLElement>('[data-tally] [data-cell]')].map((cell) => cell.dataset.cell))
       .toEqual(['ready', 'loading']);
     const progress = forge.querySelector<HTMLElement>('[data-strategic-progress]')!;
@@ -894,13 +911,13 @@ describe('the hull hero', () => {
     expect(hero).not.toHaveTextContent(/out/);
   });
 
-  it('lays the six figures under the art', async () => {
+  it('lays the hull figures under the art', async () => {
     show({});
     await openSheet('Dart');
     const art = document.querySelector('[data-build-art]');
     const stats = document.querySelector('[data-build-stats]');
     expect(art).toContainElement(stats as HTMLElement);
-    expect(stats?.querySelectorAll('[data-stat]')).toHaveLength(6);
+    expect(stats?.querySelectorAll('[data-stat]')).toHaveLength(7);
   });
 
   /** One price per sheet: the figure shown is the one the commit button quotes. */
@@ -1077,6 +1094,16 @@ describe('the Hangar row', () => {
 });
 
 describe('the room figure on a craft sheet', () => {
+  it('keeps planet Aegis protection visible at zero and explains its separate ship layer', () => {
+    show({ instruments: { AEGIS: 10 } }, 'grow', { shield: 0, radiationProtectionHpPerMinute: 0, radiationProtectionLevel: 10 });
+    const protection = screen.getByTestId('planet-radiation-protection');
+    expect(protection).toHaveTextContent('0 HP/min');
+    fireEvent.click(within(protection).getByRole('button', { name: /planet radiation protection/i }));
+    expect(protection).toHaveTextContent(/Aegis.*10/);
+    expect(protection).toHaveTextContent(/1 HP/);
+    expect(protection).toHaveTextContent(/each ship.s own radiation protection.*remaining damage/i);
+    expect(protection).toHaveTextContent(/Aegis does not protect ships at monuments/i);
+  });
   it('states the Hangar room a mobile craft takes', async () => {
     show();
     await openSheet('Dart');
@@ -1091,11 +1118,26 @@ describe('the room figure on a craft sheet', () => {
     expect(document.querySelector('[data-stat="room"]')).toHaveTextContent(String(hullBulk('BASTION')));
   });
 
-  it('leaves six relevant figures on a mobile craft sheet', async () => {
+  it('includes ship radiation protection alongside the six hull figures', async () => {
     show();
     await openSheet('Dart');
 
-    expect(document.querySelectorAll('[data-build-stats] [data-stat]')).toHaveLength(6);
+    expect(document.querySelectorAll('[data-build-stats] [data-stat]')).toHaveLength(7);
+  });
+
+  it('explains the ship-only research protection independently of the home Aegis', async () => {
+    const base = rich();
+    show({ instruments: { AEGIS: 10 }, research: base.research.map(project => project.id === 'RADIATION_SHIELDING'
+      ? { ...project, level: 2, completed: true } : project) });
+    await openSheet('Dart');
+    const stat = document.querySelector<HTMLElement>('[data-stat="radiation"]');
+    expect(stat).not.toBeNull();
+    expect(stat).toHaveTextContent('32%');
+    if (!stat) throw new Error('Missing ship protection stat');
+    fireEvent.click(within(stat).getByRole('button', { name: /radiation protection/i }));
+    expect(stat).toHaveTextContent(/radiation shielding.*2/i);
+    expect(stat).toHaveTextContent(/monuments/i);
+    expect(stat).toHaveTextContent(/Aegis/i);
   });
 });
 

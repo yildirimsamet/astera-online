@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMarkSeen, useNotifications, usePlanet } from '../api/queries.js';
@@ -313,6 +314,7 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   fleet_returned: { panel: 'planet' },
   // Ships a cloud finished: the flight board is where what is left of the fleet is.
   radiation_lost: { panel: 'planet' },
+  radiation_bomb_result: { panel: 'report', stop: 'battles' },
   // The trip is spent and the craft are on their way back; the flight board is
   // where the commander sees them and decides what the next launch is aimed at.
   target_gone: { panel: 'planet' },
@@ -463,6 +465,7 @@ const FAMILY_SKIN: Record<SignalFamily, { live: string; read: string }> = {
  */
 const OUTCOME_WASH: Record<SignalOutcome, string> = {
   win: 'bg-opportunity/[0.1]',
+  partial: 'bg-alloy/[0.06]',
   loss: 'bg-threat/[0.05]',
   neutral: '',
 };
@@ -537,7 +540,7 @@ function Event({
         aria-label={i18n.t('signals.openEvent')}
         onClick={() => {
           const monument = notificationMonumentTarget(event);
-          if (monument?.monumentId && event.kind !== 'raid_result' && onFocusMonument) {
+          if (monument?.monumentId && destination.stop !== 'battles' && onFocusMonument) {
             onFocusMonument(monument.monumentId);
             return;
           }
@@ -554,9 +557,10 @@ function Event({
             Read off the destination, the rule is stated once: a fifth battle kind
             gets it by routing there, which is the only place it can be forgotten.
           */
-          const reportMissionId = destination.stop === 'battles'
-            ? event.refId ?? undefined
-            : undefined;
+          const bomb = event.kind === 'radiation_bomb_result' || (event.kind === 'strategic_intercepted'
+            && z.object({ weaponKind: z.literal('RADIATION_BOMB') }).safeParse(event.payload).success);
+          const reportMissionId = destination.stop === 'battles' && event.refId
+            ? bomb ? `bomb:${event.refId}` : event.refId : undefined;
           /*
             A FAULT NAMES A WORLD, A TAB AND A ROW, and all three come off the payload
             rather than being worked out here. The server's copy has to travel with the

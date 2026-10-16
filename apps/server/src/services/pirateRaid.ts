@@ -21,7 +21,7 @@ import {
   pirateOverrun,
   pirateBattleWreck,
   pirateStats,
-  resolveCombat,
+  partitionCombatFleet,
   resolveBattle,
   soloStack,
   hpRadiationApplies,
@@ -44,6 +44,7 @@ import {
   type HpDamageLots,
 } from '@astera/rules';
 import { dockNotice, landShips, shipsIn } from './shipDamage.js';
+import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
 import type { Db, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { addMinutes, atMinute, minutesSince } from '../clock.js';
@@ -330,11 +331,14 @@ export async function launchPirateRaid(
     );
     if (hpRadiationApplies(origin.rulesetVersion)) await assertRadiationSafe(tx, {
       seasonId: origin.seasonId, from: origin, to: hit.at, departAt: origin.now, arriveAt, fleet: requested,
+      damage: selectHomeDispatch(origin.homeFleet, origin.homeDamage, requested, true).selectedDamage,
       tech, acknowledged: acknowledgeRadiationLoss, path: [flightSegment(origin, hit.at, origin.now, arriveAt),
         flightSegment(hit.at, hit.at, arriveAt, resolveAt), flightSegment(hit.at, origin, resolveAt, addMinutes(resolveAt, homeMinutes))],
     });
     assertSeasonOpenThrough(origin, addMinutes(resolveAt, homeMinutes));
 
+    selectHomeDispatch(origin.homeFleet, origin.homeDamage, requested, true);
+    const damage = await takeHomeHealth(tx, planetId, requested, true);
     const [raid] = await tx
       .insert(pirateRaids)
       .values({
@@ -344,6 +348,7 @@ export async function launchPirateRaid(
         ownerPlayerId: origin.playerId,
         pirateIndex: index,
         fleet: requested,
+        damage: damage.length ? damage : null,
         // Frozen at launch and read at the fight, exactly like a mission. D137.
         tech,
         interceptX: hit.at.x,
@@ -381,7 +386,7 @@ export async function launchPirateRaid(
 
     await publishShard(tx, origin.seasonId, 'pirate');
     await publish(tx, origin.playerId, 'private:pirate');
-    await recomputePlayerWealth(tx, origin.playerId);
+    await recomputePlayerWealth(tx, origin.playerId, origin.now);
 
     return {
       raidId: raid!.id,
@@ -449,7 +454,8 @@ export async function resolvePirateArrival(
   let attacking = await fleetOfRaid(tx, raid.planetId, raidId);
   if (hpRadiationApplies(origin.rulesetVersion)) {
     const meet = { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ };
-    const dose = await settleSpecialFlightRadiation(tx, { id: raid.id, leg: 'OUT', seasonId: raid.seasonId, rulesetVersion: origin.rulesetVersion,
+    const dose = await settleSpecialFlightRadiation(tx, {
+      observedAt: clock.now(), id: raid.id, leg: 'OUT', seasonId: raid.seasonId, rulesetVersion: origin.rulesetVersion,
       planetId: raid.planetId, playerId: raid.ownerPlayerId, location: raidLocation(raid.id),
       path: [flightSegment(origin, meet, raid.departAt, raid.arriveAt),
         flightSegment(meet, meet, raid.arriveAt, new Date(engagementEndsAt(raid.arriveAt.getTime())))],
@@ -562,15 +568,14 @@ async function settleArrival(
     attacker: { tech: raid.tech ?? {} },
     defender: { tech: {}, damageMult: pirateStats(spec.level).damageMult },
   };
-  const fought = hpRadiationApplies(origin.rulesetVersion)
-    ? resolveBattle([soloStack(attacking, combatTech.attacker, raid.damage ?? undefined)],
-      [{ stackId: 'pirate', playerId: '', fleet: crew, tech: combatTech.defender }], 0, seededFrom(raid.id), 'HP_PLANET')
-    : resolveCombat(attacking, crew, 0, seededFrom(raid.id), combatTech, raid.damage ?? undefined);
+  const fought = resolveBattle([soloStack(attacking, combatTech.attacker, raid.damage ?? undefined)],
+    [{ stackId: 'pirate', playerId: '', fleet: crew, tech: combatTech.defender, maintenanceExempt: true }],
+    0, seededFrom(raid.id), hpRadiationApplies(origin.rulesetVersion) ? 'HP_PLANET' : 'PLANET', true);
   /*
     UNESCORTED HOLDS DO NOT ESCAPE (owner report, 2026-10-06): once the crew's last warship is down
     and this wing still has a gun, the holds left are taken — destroyed, wreckage, a DECISIVE grade.
   */
-  const result = pirateOverrun(fought);
+  const result = pirateOverrun(fought, partitionCombatFleet(attacking, raid.damage).eligible);
   /*
     KALICI GEMİ HASARI. The hunters carry their part-hit ships home to be judged on
     landing; the crew is nobody's and carries nothing (plan D1).
@@ -865,7 +870,8 @@ async function turnRaidNow(
   let damage = raid.damage;
   let radiationSettledAt = raid.radiationSettledAt;
   if (precise) {
-    const dose = await settleSpecialFlightRadiation(tx, { id: raid.id, leg: 'OUT', seasonId: raid.seasonId,
+    const dose = await settleSpecialFlightRadiation(tx, {
+      observedAt: now, id: raid.id, leg: 'OUT', seasonId: raid.seasonId,
       rulesetVersion, planetId: raid.planetId, playerId: raid.ownerPlayerId, location: raidLocation(raid.id),
       path: flightPrefix([flightSegment(home, { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ }, raid.departAt, raid.arriveAt)], now),
       damage: raid.damage, tech: raid.tech ?? {}, radiationSettledAt: raid.radiationSettledAt });
@@ -1019,7 +1025,7 @@ export async function recallPirateRaid(
     if (result.outcome === 'missed') throw new GameError('NOT_RECALLABLE', 'That flight cannot be called back', 409);
     if (result.outcome === 'lost') {
       await clearRaidUnits(tx, raid.planetId, raid.id);
-      await recomputePlayerWealth(tx, raid.ownerPlayerId);
+      await recomputePlayerWealth(tx, raid.ownerPlayerId, now);
     }
     await publishShard(tx, raid.seasonId, 'pirate');
     return { raidId: raid.id, homeAt: result.outcome === 'turned' ? result.homeAt : null };
@@ -1051,8 +1057,8 @@ async function turnForHome(
       .update(pirateRaids)
       .set({ status: 'done', loot, salvage, capturedHull: captured, homeAt: null })
       .where(eq(pirateRaids.id, raid.id));
-    await recomputeWealth(tx, raid.planetId);
-    await recomputePlayerWealth(tx, raid.ownerPlayerId);
+    await recomputeWealth(tx, raid.planetId, origin.now);
+    await recomputePlayerWealth(tx, raid.ownerPlayerId, origin.now);
     return;
   }
 
@@ -1083,7 +1089,7 @@ async function turnForHome(
     refId: raid.id,
     resolveAt: homeAt,
   });
-  await recomputePlayerWealth(tx, raid.ownerPlayerId);
+  await recomputePlayerWealth(tx, raid.ownerPlayerId, origin.now);
 }
 
 export interface PirateRaidDelivery {
@@ -1143,7 +1149,8 @@ export async function resolvePirateReturn(
   let capturedHull = raid.capturedHull;
   if (hpRadiationApplies(home.rulesetVersion) && raid.homeAt) {
     // Captured hulls are already physical from acquisition; HOME never creates one.
-    const dose = await settleSpecialFlightRadiation(tx, { id: raid.id, leg: 'HOME', seasonId: raid.seasonId, rulesetVersion: home.rulesetVersion,
+    const dose = await settleSpecialFlightRadiation(tx, {
+      observedAt: clock.now(), id: raid.id, leg: 'HOME', seasonId: raid.seasonId, rulesetVersion: home.rulesetVersion,
       planetId: storagePlanetId, playerId: raid.ownerPlayerId, location: raidLocation(raid.id),
       path: [flightSegment({ x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ }, home,
         raid.returnDepartAt ?? new Date(engagementEndsAt(raid.arriveAt.getTime())), raid.homeAt)],
@@ -1166,6 +1173,7 @@ export async function resolvePirateReturn(
     fleet: landing,
     damage: raid.damage,
     at: home.now,
+    radiationAt: raid.homeAt ?? home.now,
   });
 
   const loot = raid.loot ?? { alloy: 0, crystal: 0, deuterium: 0 };
@@ -1182,8 +1190,8 @@ export async function resolvePirateReturn(
     Wealth counts units by the world they sit on, so a captor was carrying the
     parked stack on their books for the whole flight. Both commanders are settled.
   */
-  await recomputePlayerWealth(tx, raid.ownerPlayerId);
-  if (destinationPlanetId !== storagePlanetId) await recomputeWealth(tx, storagePlanetId);
+  await recomputePlayerWealth(tx, raid.ownerPlayerId, clock.now());
+  if (destinationPlanetId !== storagePlanetId) await recomputeWealth(tx, storagePlanetId, clock.now());
 
   await notify(tx, {
     playerId: raid.ownerPlayerId,

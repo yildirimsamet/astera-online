@@ -1,7 +1,8 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
+import { VacationSheet } from '../screens/VacationSheet.js';
 import { useTranslation } from 'react-i18next';
 import { playSound, setEffectsEnabled, setEffectsVolume, useEffectsEnabled, useEffectsVolume } from '../lib/sound.js';
-import { useAnnouncements, useRewards } from '../api/queries.js';
+import { useAnnouncements, useLeaderboard, useRewards } from '../api/queries.js';
 import {
   formatTrackTime,
   MUSIC_TRACKS,
@@ -38,6 +39,7 @@ import {
   SpeakerOnIcon,
   GuideIcon,
   HeartIcon,
+  HonorIcon,
 } from '../ui/icons/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
 import { publisherUrl } from '../lib/publisherPages.js';
@@ -181,14 +183,19 @@ export function MenuPanel({
   })();
   const hoursLeft = endsAt === null ? null : (endsAt.getTime() - serverNow()) / 3_600_000;
   const waiting = useRewards().data?.claimable ?? 0;
+  const honorEnabled = useLeaderboard().data?.honorEnabled ?? false;
   const announcementData = useAnnouncements().data;
   const announcementWaiting = announcementData?.announcements.filter((row) => !row.seen).length ?? 0;
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
+  const [vacationOpen, setVacationOpen] = useState(false);
 
   const marks = rivals.filter((mark) => (mark.lost ? onClearRival : onFocusRival) !== undefined);
 
   return (
     <div data-v2-commander-menu className="flex flex-col gap-5 px-1 pb-3 font-v2-ui text-v2-ink">
+      <MenuRow icon={<LockIcon className="size-5" />} label={t('vacation.title')}
+        hint={t('vacation.hint')} onClick={() => { setVacationOpen(true); }} />
+      {vacationOpen && <VacationSheet onClose={() => { setVacationOpen(false); }} />}
       {/**
        * RANK ONE — WHAT IS WAITING ON YOU, and only ever that.
        *
@@ -293,9 +300,9 @@ export function MenuPanel({
       <MenuGroup label={t('menu.seasonHeading')}>
         <MenuTile
           art={ATMOSPHERE.commander}
-          icon={<LeaderboardIcon className="size-5" />}
-          label={t('menu.leaderboardLabel')}
-          hint={t('menu.leaderboardHint')}
+          icon={honorEnabled ? <HonorIcon className="size-5 text-v2-self" /> : <LeaderboardIcon className="size-5" />}
+          label={t(honorEnabled ? 'leaderboard.honorTitle' : 'menu.leaderboardLabel')}
+          hint={t(honorEnabled ? 'leaderboard.honorPrimary' : 'menu.leaderboardHint')}
           onClick={() => {
             onOpen('leaderboard');
           }}

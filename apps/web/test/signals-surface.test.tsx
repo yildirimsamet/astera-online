@@ -39,16 +39,17 @@ vi.mock('../src/api/queries.js', async () => {
   };
 });
 
-function mount(given: NotificationView[], onFocusPlanet = vi.fn()) {
+function mount(given: NotificationView[], onFocusPlanet = vi.fn(), onFocusMonument = vi.fn()) {
+  const onOpen = vi.fn();
   rows = given;
   marked.mockReset();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const view = render(
     <QueryClientProvider client={client}>
-      <Signals onOpen={vi.fn()} onFocusPlanet={onFocusPlanet} />
+      <Signals onOpen={onOpen} onFocusPlanet={onFocusPlanet} onFocusMonument={onFocusMonument} />
     </QueryClientProvider>,
   );
-  return { ...view, onFocusPlanet };
+  return { ...view, onFocusPlanet, onFocusMonument, onOpen };
 }
 
 describe('the signals beacon', () => {
@@ -412,4 +413,23 @@ describe('what a signal row looks like', () => {
     expect(rowOf('fresh').querySelector('[data-unread]')).not.toBeNull();
     expect(rowOf('old').querySelector('[data-unread]')).toBeNull();
   });
+});
+
+it.each(['PLANET','MONUMENT'] as const)('opens the exact radiation report from an ordinary %s result signal', async targetKind => {
+  const {onOpen,onFocusMonument}=mount([notification({kind:'radiation_bomb_result',refId:'bomb-id',payload:{
+    targetKind,targetId:'target',targetName:'Asterion',level:1,outcome:'HIT',
+    ...(targetKind==='MONUMENT'?{monumentId:'monument',monumentOrdinal:1}:{}),
+  }})]);
+  await userEvent.click(screen.getByRole('button',{name:'Signals — 1 unread'}));
+  await userEvent.click(screen.getByRole('button',{name:'Open related report'}));
+  expect(onOpen).toHaveBeenCalledWith('report','battles','bomb:bomb-id',undefined);
+  expect(onFocusMonument).not.toHaveBeenCalled();
+});
+it('opens the exact intercepted radiation report without changing ordinary Death Star mission ids',async()=>{
+  const {onOpen}=mount([notification({kind:'strategic_intercepted',refId:'bomb-id',payload:{
+    weaponKind:'RADIATION_BOMB',level:1,defended:true,range:100,
+  }})]);
+  await userEvent.click(screen.getByRole('button',{name:'Signals — 1 unread'}));
+  await userEvent.click(screen.getByRole('button',{name:'Open related report'}));
+  expect(onOpen).toHaveBeenCalledWith('report','battles','bomb:bomb-id',undefined);
 });

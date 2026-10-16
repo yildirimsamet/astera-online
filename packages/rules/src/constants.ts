@@ -236,7 +236,8 @@ export const ECON = {
    * falls further from the crossing, and the floor stays the same SHARE of a bigger
    * pile, so both the protected and the raidable amounts grow.
    */
-  storageScale: 5.25,
+  // Owner, 2026-10-13: keep resource capacity as output falls; one hour now makes less.
+  storageScale: 5.25 * ECONOMY_ADJUSTMENT.producerCapacityTime,
 
   /**
    * A Vault kept level with a producer must hold the producer's next upgrade,
@@ -268,9 +269,10 @@ export const ECON = {
    * bigger than the store strands ore it cannot bank — a salvage haul with nowhere
    * to land on a young world, a clan share refused for want of room. Ten against a
    * Vault-0 store of 15.75 clears it at both ends; `economy.test.ts` holds the whole
-   * ladder.
+   * ladder. The 2026-10-13 slowdown preserves those resource amounts; at 80%
+   * output the same Works now hold 12.5 hours of production instead of ten.
    */
-  collectorHours: ECONOMY_PROFILE.collectorHours,
+  collectorHours: ECONOMY_PROFILE.collectorHours * ECONOMY_ADJUSTMENT.producerCapacityTime,
 
   /**
    * THE VAULT FLOOR IS DENOMINATED IN HOURS OF THAT RESOURCE'S OWN PRODUCTION,
@@ -932,7 +934,7 @@ export const SATELLITES = {
   BEACON: {
     alloy: scalePrice(3000, ECONOMY_TEMPO.fixedPrice),
     crystal: scalePrice(1000, ECONOMY_TEMPO.fixedPrice),
-    speed: 1.3,
+    speed: 1.2,
   },
 } as const;
 
@@ -988,8 +990,8 @@ export const BUILD = {
   /** Research is deliberate work, not assembly. */
   researchTimeMult: ECONOMY_TEMPO.researchWork,
   /**
-   * The authored eight-hour work ceiling follows the owner's +30% timer pass:
-   * 10h24m before robots. Raising the ceiling too preserves +30% at capped levels.
+   * The authored eight-hour work ceiling follows the shared timer dial:
+   * 9h45m before robots after the 2026-10-13 slowdown, including capped orders.
    */
   capMinutes: ECONOMY_TEMPO.buildCapMinutes * ECONOMY_ADJUSTMENT.buildTime,
   /**
@@ -1595,7 +1597,8 @@ export const PROBE = {
    * paced by the five-second interval below; probes do not consume ordinary fleet
    * bays and an airborne probe does not close the target to another paid look.
    */
-  speed: 3510,
+  // Owner, 2026-10-13: 25% below the previous 3510 default.
+  speed: 2632.5,
   /** Five-second, commander-and-target scoped double-tap guard, measured at launch. */
   retargetCooldownMinutes: 5 / 60,
 } as const;
@@ -1768,6 +1771,8 @@ export const RESEARCH_TECH = {
   fleetStatLadder: FLEET_STAT_LADDER,
   doctrineLadder: DOCTRINE_LADDER,
   repairLadder: REPAIR_LADDER,
+  /** Remaining source intensity; never a percentage of the ship's HP. */
+  radiationDamageLadder: [0.84, 0.68, 0.52, 0.42] as const,
   /**
    * FOUR PROPULSION RUNGS ADD A QUARTER EACH, AND THE FOURTH DOUBLES THE FLEET.
    * D152, owner instruction. Existing arrival timestamps never move.
@@ -1838,10 +1843,10 @@ export const ANTI_STRATEGIC = {
   /**
    * HOW MANY CHARGES ONE WORLD'S PAD HOLDS. Owner, 2026-10-01.
    *
-   * Two with no research at all — Radar 3 is the whole door to the battery — and four
-   * once the commander holds the Interception Grid. Read through `interceptorCapacity`.
+   * Two without research; each of two Interception Grid levels adds two, up to six.
+   * Read through `interceptorCapacity` so partial research keeps its own capacity.
    */
-  charges: { base: 2, researched: 4 },
+  charges: { base: 2, perLevel: 2, researched: 6 },
   /** Immediate launch, with enough screen time for every entitled client to join the scene. */
   flightSeconds: 8,
   /** Half-price owner retune; still cheaper and faster than the weapon it stops. */
@@ -1958,10 +1963,10 @@ export const PROSPECTOR = {
    * September's wider-disc profile was 618.75 after its 25% slowdown. Owner
    * instruction on 2026-10-04 raised the craft alone 2.5x (1546.875); on
    * 2026-10-06 the owner called that too much and set it to 2x the September
-   * figure, 1237.5. Rocks retain 262.5–562.5. Both mining and salvage read this
-   * one base speed.
+   * figure, 1237.5. The 2026-10-13 slowdown takes another 20%, to 990.
+   * Rocks retain 262.5–562.5. Both mining and salvage read this one base speed.
    */
-  speed: 1237.5,
+  speed: 990,
   /**
    * HOW MUCH SLOWER A LADEN CRAFT FLIES HOME. Owner's figure: twice, from three
    * (2026-09-14). The brake stays a brake — a full craft is still the slowest
@@ -2077,6 +2082,7 @@ export const PROSPECTOR = {
  * Aegis still requires a defending line and regenerates without spending resources.
  */
 export const SHIELD = {
+  depletedDelayMinutes: 15,
   /** Capacity at level 1; absent hardware still has zero capacity. */
   base: 150,
   mult: 1.5,
@@ -3460,8 +3466,10 @@ export const MULTI_WORLD = {
    * 15 → 16 on 2026-10-04: monuments and fixed HP radiation, for new seasons only.
    * 16 → 17: shared two-axis monument motion and entity radiation in new seasons.
    * Live v16 seasons adopt the same behavior through a separate explicit idle cutover.
+   * 17 → 18: calibrated fixed radiation levels and four-rung Radiation Shielding.
+   * Older live seasons adopt them through a separate idle cutover, preserving all other rules.
    */
-  rulesetVersion: 17,
+  rulesetVersion: 18,
   /** Monument and fixed HP radiation are dealt together, after every adapter is complete. */
   monumentRulesetVersion: 16,
   /**
@@ -3702,13 +3710,13 @@ export const DEATH_STAR = {
    * dead content. `RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.requiredCore` reads it
    * from here.
    */
-  requiredCore: 12,
+  requiredCore: 13,
   requiredShipyard: 5,
   /**
    * HOW MANY WEAPONS ONE WORLD'S PAD HOLDS. Owner, 2026-10-01.
    *
    * One with no research; two once the commander holds the Strategic Stockpile. The
-   * Death Star Protocol that used to authorise the weapon is gone — Core 12 and
+   * Death Star Protocol that used to authorise the weapon is gone — Core 13 and
    * Shipyard 5 are the whole door. Read through `strategicStockpile`.
    */
   perWorld: { base: 1, researched: 2 },
@@ -3723,8 +3731,11 @@ export const DEATH_STAR = {
    * is half of this and moves with it.
    */
   buildMinutes: 60 * ECONOMY_ADJUSTMENT.buildTime,
-  /** Owner-approved strategic travel speed after local interception playtesting. */
-  speed: 1_250,
+  /**
+   * Owner, 2026-10-13: 20% below the approved 1,250-unit strategic speed — then 50% faster on
+   * 2026-10-16 (*"Ölüm yıldızının hızını şu anki hızından %50 daha fazla yap"*).
+   */
+  speed: 1_000 * 1.5,
   /** EMP blackout duration: Aegis cannot regenerate and ground guns stay offline. */
   empMinutes: 60,
   /**
@@ -3738,6 +3749,17 @@ export const DEATH_STAR = {
   colonyLoyaltyLoss: 20,
   /** Ignore sub-hundredth regeneration residue after a strike; five rapid hits can finish a colony. */
   colonyLoyaltyZeroTolerance: 0.01,
+  /**
+   * WHAT A HIT BREAKS ON A COLONY THAT SURVIVES IT. Owner, 2026-10-15: *"Koloniye atılan
+   * her ölüm yıldızı 1 adet random arıza çıkartmalı (çıkartabiliyorsa yani hala kolonide
+   * aktif olmayan arıza varsa)."*
+   *
+   * Drawn from all eight, unlike a heavy defeat's `FAULT.attackSpares`: no recovery boost
+   * follows a strike, so there is no output to protect. Nothing breaks where `breakFaults`
+   * refuses — a capital, a colony under the fault gate or under fault protection, one with
+   * every fault standing — nor on the hit that takes the colony, which goes NEUTRAL.
+   */
+  colonyFaults: 1,
   /** Recent resolved impacts remain public this long so reconnecting tabs see the event. */
   impactSeconds: 8,
   probeVisibilityAccuracy: 0.75,
@@ -3762,6 +3784,8 @@ export const DEATH_STAR = {
  * with its faults standing falls just as fast — it only takes longer to reach that point.
  */
 export const FAULT = {
+  /** Accepted building orders protect only their colony against new faults. */
+  developmentProtectionMinutes: 12 * 60,
   /** Faults start here. Below it a colony cannot break and has no loyalty. */
   minCoreLevel: 6,
 
@@ -3885,7 +3909,8 @@ export const FAULT = {
    * Hours for a FULL store to drain. The owner's figure, and on its own it was a
    * wipe rather than a leak — see `leakIncomeCap`.
    */
-  leakDrainHours: 48,
+  // Owner, 2026-10-13: leak also slows 20%, preserving its ratio to production.
+  leakDrainHours: 48 * ECONOMY_ADJUSTMENT.producerCapacityTime,
   /**
    * THE SECOND CLAUSE, AND IT IS WHAT MAKES THE FIRST ONE MEAN THE SAME THING AT
    * EVERY LEVEL. Owner instruction: *"üretim hızı 8bin iken milyonlarca sızıntı hızı
@@ -3918,8 +3943,8 @@ export const FAULT = {
   /* ── repair ────────────────────────────────────────────────────────── */
   /** Three lanes, running at the same time, unlike every other queue in the game. */
   repairSlots: 3,
-  repairMinMinutes: 5,
-  repairMaxMinutes: 15,
+  repairMinMinutes: 5 / ECONOMY_ADJUSTMENT.workRate,
+  repairMaxMinutes: 15 / ECONOMY_ADJUSTMENT.workRate,
   /**
    * WHICH FAULTS COST WHAT. Three bands; the id decides the band and nothing else.
    */

@@ -36,6 +36,8 @@ import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { asteroidClaims, debrisFields, miningRuns, planets, seasons, units } from '../db/schema.js';
 import { assertFreeBay } from './flight.js';
+import { takeHomeHealth } from './homeHealth.js';
+import { landHpShips } from './shipDamage.js';
 import {
   assertSeasonOpenThrough,
   assertWorldOperational,
@@ -542,9 +544,11 @@ export async function launchMining(
     // The craft leave the home stack, exactly like an attack fleet — they are
     // demonstrably not on the planet — but under a `mine:` location so nothing
     // that reads mission ids can mistake them for one.
+    const damage = await takeHomeHealth(tx, planetId, { PROSPECTOR: craft });
     const remaining = { ...origin.homeFleet, PROSPECTOR: available - craft };
     await setUnits(tx, planetId, remaining, 'home');
     await setUnits(tx, planetId, { PROSPECTOR: craft }, `mine:${run!.id}`);
+    await tx.update(units).set({ damage }).where(and(eq(units.planetId, planetId), eq(units.location, `mine:${run!.id}`)));
 
     await schedule(tx, {
       seasonId: origin.seasonId,
@@ -1135,23 +1139,10 @@ export async function resolveMiningReturn(
   // The craft rejoin the garrison, and their in-flight row goes away. Read the
   // home count fresh rather than trusting the launch-time figure: other runs may
   // have landed while this one was out.
-  const [atHome] = await tx
-    .select()
-    .from(units)
-    .where(
-      and(
-        eq(units.planetId, landing.planetId),
-        eq(units.hull, 'PROSPECTOR'),
-        eq(units.location, 'home'),
-      ),
-    );
-  await setUnits(
-    tx,
-    landing.planetId,
-    { PROSPECTOR: (atHome?.count ?? 0) + run.craft },
-    'home',
-    landing.playerId,
-  );
+  const carried = await tx.select({ damage: units.damage }).from(units)
+    .where(and(eq(units.planetId, run.planetId), eq(units.location, `mine:${runId}`)));
+  await landHpShips(tx, { planetId: landing.planetId, ownerPlayerId: landing.playerId,
+    fleet: { PROSPECTOR: run.craft }, damage: carried.flatMap(row => row.damage), at: planet.now });
   await tx
     .delete(units)
     .where(and(eq(units.planetId, run.planetId), eq(units.location, `mine:${runId}`)));
@@ -1523,9 +1514,11 @@ export async function launchHarvest(
       })
       .returning();
 
+    const damage = await takeHomeHealth(tx, planetId, { PROSPECTOR: craft });
     const remaining = { ...origin.homeFleet, PROSPECTOR: available - craft };
     await setUnits(tx, planetId, remaining, 'home');
     await setUnits(tx, planetId, { PROSPECTOR: craft }, `mine:${run!.id}`);
+    await tx.update(units).set({ damage }).where(and(eq(units.planetId, planetId), eq(units.location, `mine:${run!.id}`)));
 
     await schedule(tx, {
       seasonId: origin.seasonId,

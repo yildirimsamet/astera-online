@@ -1,20 +1,30 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLeaderboard } from '../api/queries.js';
-import { full, signed } from '../lib/format.js';
+import { useLeaderboard, useSeason } from '../api/queries.js';
+import { full } from '../lib/format.js';
+import { honorScore } from '../lib/honor.js';
+import { HonorSoloPolicy } from '../ui/HonorSoloNotice.js';
+import { HonorBenefitsSection } from '../ui/HonorBenefits.js';
 import { haptic } from '../lib/haptics.js';
 import { commanderLabel } from '../lib/identity.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { Medal, isPlace } from '../ui/Medal.js';
-import { EmptyState, Unreachable, Waiting } from '../ui/kit/index.js';
+import { EmptyState, Segmented, Unreachable, Waiting } from '../ui/kit/index.js';
+import { HonorIcon, RewardIcon } from '../ui/icons/index.js';
+import { SeasonRewardReceipt } from '../ui/SeasonRewardReceipt.js';
+import { RankingScores } from '../ui/RankingScores.js';
+import { SeasonRewardBoard } from '../ui/SeasonRewardBoard.js';
+import { RESOURCE_ART } from '../ui/assets.js';
 import { Flag } from '../v2/identity/Flag.js';
 
-/** The whole local galaxy, ordered by the server's authoritative Dominion score. */
+/** The current season's Honor race, with the independent Dominion ladder alongside. */
 export function LeaderboardScreen({ onFocusPlanet }: {
   onFocusPlanet: (planetId: string) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const board = useLeaderboard();
+  const [ranking, setRanking] = useState<'HONOR' | 'DOMINION'>('HONOR');
+  const board = useLeaderboard(true, ranking);
+  const season = useSeason();
   const [query, setQuery] = useState('');
 
   if (board.isError) {
@@ -31,6 +41,10 @@ export function LeaderboardScreen({ onFocusPlanet }: {
   }
 
   const mine = board.data.you?.playerId;
+  const honor = board.data.ranking === 'HONOR';
+  const prize = board.data.honorReward;
+  const yours = board.data.you;
+  const next = honor && yours ? board.data.ladder.findLast(row => row.score > yours.score) : undefined;
   /**
    * The widest score in the galaxy, so every bar on the ladder shares one scale.
    *
@@ -62,6 +76,58 @@ export function LeaderboardScreen({ onFocusPlanet }: {
 
   return (
     <div data-v2-leaderboard className="font-v2-ui text-v2-ink">
+      <SeasonRewardReceipt receipt={season.data?.seasonReward} />
+      {board.data.honorEnabled ? <section className="border-b border-v2-line bg-linear-to-br from-v2-self/8 via-v2-panel to-v2-deep px-3 py-3">
+        <Segmented<'HONOR' | 'DOMINION'> segments={[
+          { id: 'HONOR', label: <span className="inline-flex items-center justify-center gap-1.5 text-body font-bold text-v2-ink"><HonorIcon className="size-4 text-v2-self" />{t('leaderboard.honorTitle')}</span> },
+          { id: 'DOMINION', label: <span className="text-caption font-normal text-v2-ink-2">{t('leaderboard.score')}</span> },
+        ]}
+          value={board.data.ranking} onSelect={setRanking} label={t('leaderboard.rankingChoice')} />
+        {honor ? <>
+          <p className="mt-3 text-label font-semibold text-v2-ink">{t('leaderboard.honorPrimary')}</p>
+          <p className="mt-1 text-caption text-v2-ink-2">{t('leaderboard.honorLead')}</p>
+          {board.data.honorSoloCredit && <div className="mt-2"><HonorSoloPolicy /></div>}
+          {board.data.honorStartsAt ? <div data-testid="honor-opening" className="mt-2 border-l-2 border-v2-self/60 pl-2.5">
+            <p className="text-micro font-semibold text-v2-ink">
+              {t('leaderboard.honorOpened')} <time className="num text-v2-self" dateTime={board.data.honorStartsAt.toISOString()}>
+                {new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'medium', timeStyle: 'short' }).format(board.data.honorStartsAt)}
+              </time>
+            </p>
+            <p className="mt-0.5 text-micro leading-relaxed text-v2-ink-2">{t('leaderboard.honorOpeningRule')}</p>
+          </div> : null}
+          {board.data.you ? <div className="mt-2 flex items-baseline justify-between gap-2">
+            <span className="text-micro text-v2-ink-2">{t('leaderboard.honorYourRank')} <strong className="num text-v2-ink">#{board.data.you.rank}</strong></span>
+            <strong className="num flex max-w-[75%] flex-wrap items-baseline justify-end gap-x-1.5 text-figure font-bold text-v2-ink"><HonorIcon className="size-5 shrink-0 self-center text-v2-self" /><span className="break-all">{honorScore(board.data.you.score)}</span><span className="text-body">{t('leaderboard.honorTitle')}</span></strong>
+          </div> : null}
+          {next && board.data.you ? <p className="mt-1 text-micro text-v2-ink-2">{t('leaderboard.honorNext', {
+            amount: honorScore(BigInt(next.score) - BigInt(board.data.you.score)), commander: next.username,
+          })}</p> : null}
+          {board.data.honorBenefits ? <div className="mt-3"><HonorBenefitsSection value={board.data.honorBenefits} /></div> : null}
+          {prize ? <div className="mt-3 border-t border-v2-line pt-2">
+            <p className="flex items-center justify-between gap-2 text-caption font-semibold text-v2-ink"><span className="inline-flex items-center gap-1.5"><RewardIcon className="size-4 text-v2-self" />{t('leaderboard.honorPrize')}</span><span className="shrink-0 rounded-chip border border-v2-self/30 bg-v2-self/8 px-1.5 py-0.5 text-micro text-v2-self">{t('leaderboard.honorPrizeMultiplier', { ranking: t('leaderboard.score') })}</span></p>
+            <p className="mt-1 text-micro text-v2-ink-2">{t('leaderboard.honorPayment')}</p>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              {(['alloy', 'crystal', 'deuterium'] as const).map(resource => <span key={resource} className="flex items-center gap-1 text-caption">
+                <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} className="size-5 object-contain" />
+                <strong className="num text-v2-ink">{full(prize.reward[resource])}</strong>
+                <span className="num text-micro text-v2-ink-2">/ {full(prize.nominal[resource])}</span>
+              </span>)}
+            </div>
+            <p className="mt-2 text-micro text-v2-ink-2">{t('leaderboard.honorThreshold', { amount: honorScore(prize.fullThreshold) })}</p>
+          </div> : null}
+          <details className="mt-2 text-micro text-v2-ink-2">
+            <summary className="cursor-pointer py-1 text-v2-ink underline decoration-v2-line-hi underline-offset-4">{t('leaderboard.honorRules')}</summary>
+            <div className="mt-1 space-y-2 leading-relaxed">
+              <p>{t('leaderboard.honorRuleCombat')}</p><p>{t('leaderboard.honorRuleDefense')}</p>
+              <p>{t('leaderboard.honorRuleRepeat')}</p><p>{t('leaderboard.honorPrizeHint')}</p><p>{t('leaderboard.honorPackageOnce')}</p>
+            </div>
+          </details>
+        </> : null}
+      </section> : null}
+      {!honor ? <>
+        <SeasonRewardBoard season={season.data} board={board.data} />
+        {board.data.honorEnabled ? <p className="border-b border-v2-line px-3 py-2 text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorPackageOnce')}</p> : null}
+      </> : null}
       <div className="sticky top-0 z-10 border-b border-v2-line bg-v2-void px-2 py-3">
         <input
           type="search"
@@ -86,6 +152,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
               <NearbyRival
                 key={row.playerId}
                 row={row}
+                honor={honor}
                 self={row.playerId === mine}
                 onFocusPlanet={onFocusPlanet}
               />
@@ -108,7 +175,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
             style={{ contentVisibility: 'auto', containIntrinsicSize: '88px' }}
           >
             {/* The podium is an object; everybody else is a numeral. */}
-            {isPlace(row.rank) ? (
+            {isPlace(row.rank) && (!honor || row.score > 0) ? (
               <Medal place={row.rank} size={26} className="mx-auto" />
             ) : (
               <span className={`num text-center text-body ${self ? 'text-crystal' : 'text-faint'}`}>
@@ -158,21 +225,16 @@ export function LeaderboardScreen({ onFocusPlanet }: {
                       developed world, and a capital's tier here invited the wrong comparison. */}
                   {row.planetName !== undefined ? <span className="truncate">{row.planetName}</span> : null}
                 </span>
-                <span data-leaderboard-score className="flex min-w-24 shrink-0 flex-col items-end text-right">
-                  <span className="flex items-center gap-1.5">
-                    <span aria-hidden className="relative block h-1.5 w-10 overflow-hidden rounded-full bg-line/50">
+                <span data-leaderboard-score className="flex min-w-24 max-w-[75%] shrink-0 flex-col items-end gap-1 text-right">
+                    <span aria-hidden className="relative block h-1 w-10 overflow-hidden rounded-full bg-line/50">
                       <span
                         data-score-bar
-                        className={`absolute inset-y-0 ${row.score < 0 ? 'right-1/2 bg-threat/70' : 'left-1/2 bg-opportunity/70'}`}
+                        className={`absolute inset-y-0 ${row.score < 0 ? `right-1/2 ${honor ? 'bg-v2-line-hi' : 'bg-threat/70'}` : `left-1/2 ${honor ? 'bg-v2-self/70' : 'bg-opportunity/70'}`}`}
                         style={{ width: `${String((Math.abs(row.score) / widest) * 50)}%` }}
                       />
                       <span className="absolute inset-y-0 left-1/2 w-px bg-bone/40" />
                     </span>
-                    <span className={`num text-caption ${row.score > 0 ? 'text-opportunity' : row.score < 0 ? 'text-threat' : 'text-dim'}`}>
-                      {row.score === 0 ? full(0) : signed(row.score)}
-                    </span>
-                  </span>
-                  <span className="legend block">{t('leaderboard.score')}</span>
+                  <RankingScores honor={honor ? row.score : undefined} dominion={row.dominion ?? (honor ? undefined : row.score)} />
                 </span>
               </span>
             </span>
@@ -191,10 +253,12 @@ type LeaderboardRow = NonNullable<ReturnType<typeof useLeaderboard>['data']>['la
 function NearbyRival({
   row,
   self,
+  honor,
   onFocusPlanet,
 }: {
   row: LeaderboardRow;
   self: boolean;
+  honor: boolean;
   onFocusPlanet: (planetId: string) => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -236,9 +300,7 @@ function NearbyRival({
           {identity}
         </button>
       )}
-      <span className={`num text-label ${row.score > 0 ? 'text-opportunity' : row.score < 0 ? 'text-threat' : 'text-dim'}`}>
-        {row.score === 0 ? full(0) : signed(row.score)}
-      </span>
+      <span data-leaderboard-score><RankingScores honor={honor ? row.score : undefined} dominion={row.dominion ?? (honor ? undefined : row.score)} /></span>
     </div>
   );
 }

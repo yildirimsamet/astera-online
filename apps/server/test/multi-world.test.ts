@@ -58,6 +58,7 @@ import { colonyStanding } from '../src/services/ownership.js';
 import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 import { listServers } from '../src/services/servers.js';
 import { dockLotsOf } from '../src/services/shipDamage.js';
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   FixedClock,
@@ -69,6 +70,7 @@ import {
   giveSatellite,
   makeAccount,
   setLevel,
+  settledAt,
   testDb,
   truncateAll,
 } from './helpers.js';
@@ -196,6 +198,24 @@ describe('current multi-world ruleset', () => {
     });
     expect(player?.dominionTaken).toBe(0);
     expect(player?.dominionLost).toBe(0);
+  });
+
+  it('does not let player ships that arrive at 5% HP fire at a caretaker garrison', async () => {
+    const f = await setup();
+    const target = f.neutrals.find(row => row.state.tier === 1)!;
+    await f.db.update(planets).set({ x: 150, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
+    await f.db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, f.joined.planetId));
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
+    await giveUnits(f.db, f.joined.planetId, { DART: 100 });
+    const launched = await launchAttack(f.db, f.joined.planetId, target.world.id, { DART: 100 }, f.clock);
+    await f.db.update(missions).set({ damage: [{ hull: 'DART', count: 100, damageBp: 9500 }] })
+      .where(eq(missions.id, launched.missionId));
+    f.clock.set(settledAt(launched.arriveAt));
+    await workerFor(f.db, f.clock).tick();
+    const [report] = await f.db.select().from(battleReports).where(eq(battleReports.missionId, launched.missionId));
+    expect(report).toBeDefined();
+    expect(report!.rounds.every(round => round.attackerDamage === 0)).toBe(true);
+    expect(report!.defenderLosses).toEqual({});
   });
 
   it.each([1, 2, 3] as const)(
@@ -328,7 +348,7 @@ describe('current multi-world ruleset', () => {
     });
   });
 
-  it('lands a settlement\'s damaged transports in the new colony\'s dock', async () => {
+  it('lands a settlement\'s transports in the new colony hangar with their wounds', async () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
     await f.db.update(planets).set({ x: 40, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
@@ -349,11 +369,12 @@ describe('current multi-world ruleset', () => {
 
     const [captured] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
     expect(captured?.controllerPlayerId).toBe(f.joined.playerId);
-    expect(await dockLotsOf(f.db, target.world.id)).toMatchObject([{ hull: 'COURIER', count: 1, damageBp: 6000 }]);
+    expect(await dockLotsOf(f.db, target.world.id)).toEqual([]);
+    expect((await readHomeHealth(f.db, target.world.id)).damage).toMatchObject([{ hull: 'COURIER', count: 1, damageBp: 6000 }]);
     const [hauler] = await f.db.select().from(units).where(and(
       eq(units.planetId, target.world.id), eq(units.hull, 'COURIER'), eq(units.location, 'home'),
     ));
-    expect(hauler?.count).toBe(MULTI_WORLD.settlement.transports - 1);
+    expect(hauler?.count).toBe(MULTI_WORLD.settlement.transports);
   });
 
   it('serializes two settlement arrivals so one captures and the loser returns intact', async () => {
@@ -799,7 +820,9 @@ describe('current multi-world ruleset', () => {
     */
     const told = await f.db.select().from(notifications)
       .where(eq(notifications.playerId, defender.playerId));
-    expect(told.filter((row) => !row.kind.startsWith('galaxy_event_'))).toHaveLength(1);
+    // Owner, 2026-10-15: the hit also breaks one thing on the colony, told in its own notice.
+    expect(told.filter((row) => !row.kind.startsWith('galaxy_event_')).map((row) => row.kind).sort())
+      .toEqual(['colony_fault', 'death_star_result']);
   });
 
   /**
@@ -1089,39 +1112,35 @@ describe('current multi-world ruleset', () => {
     });
   });
 
-  /**
-   * D113, owner instruction. A bombardment destroys the work in progress and
-   * refunds nothing — `cancelBuildOrder` gives half back because that is the
-   * player's own change of mind, and this is not that.
-   *
-   * It also closes the one way a building could stand ABOVE its Core ceiling:
-   * `applyOrderEffect` raises to `before + 1` without re-reading the Core, so an
-   * order placed at Core 12 completing after a strike left Core 11 would have put
-   * a Refinery at 12 — a level `build.ts` refuses to sell.
-   */
+  /** An EMP preserves both the paid building queue and commander research. */
   it('leaves queued building orders and their paid resources untouched', async () => {
     const f = await setup();
     const defenderAccount = await makeAccount(f.db, 'Builder');
     const defender = await joinSeason(f.db, defenderAccount.id, f.season.id, f.clock);
+    // A developed commander owns this smaller colony; the attack band reads
+    // their peak Core, while the queued work stays on the Core 8 target.
+    await setLevel(f.db, defender.planetId, 'CORE', DEATH_STAR.requiredCore);
+    const target = f.neutrals.find((row) => row.state.tier === 1)!.world;
+    await f.db.delete(neutralPlanetState).where(eq(neutralPlanetState.planetId, target.id));
     await f.db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, f.joined.planetId));
     await f.db.update(planets).set({
-      x: 200, y: 0, z: 0, kind: 'COLONY',
+      x: 200, y: 0, z: 0, kind: 'COLONY', controllerPlayerId: defender.playerId,
       alloy: 400_000, crystal: 200_000, deuterium: 40_000, lastTickAt: f.clock.now(),
-    }).where(eq(planets.id, defender.planetId));
-    await setLevel(f.db, defender.planetId, 'CORE', 8);
-    await setLevel(f.db, defender.planetId, 'REFINERY', 7);
+    }).where(eq(planets.id, target.id));
+    await setLevel(f.db, target.id, 'CORE', 8);
+    await setLevel(f.db, target.id, 'REFINERY', 7);
     // A striker who could have built the weapon, inside the defender's development
     // band — D168: a Death Star strike answers to the same development band as a raid.
     await setLevel(f.db, f.joined.planetId, 'CORE', DEATH_STAR.requiredCore);
 
-    // Two orders in one queue: a Refinery that would land ON the old ceiling, and
-    // a research order that has no Core level and must survive.
-    await upgradeBuilding(f.db, defender.planetId, 'REFINERY', f.clock);
-    await giveResearch(f.db, defender.planetId, 'ISOTOPE_SPECTROMETRY');
+    // The paid Refinery order would finish exactly at its colony Core ceiling;
+    // commander research is already owned independently of that world.
+    await upgradeBuilding(f.db, target.id, 'REFINERY', f.clock);
+    await giveResearch(f.db, target.id, 'ISOTOPE_SPECTROMETRY');
     const queuedBefore = await f.db.select().from(buildOrders)
-      .where(and(eq(buildOrders.planetId, defender.planetId), eq(buildOrders.status, 'BUILDING')));
+      .where(and(eq(buildOrders.planetId, target.id), eq(buildOrders.status, 'BUILDING')));
     expect(queuedBefore).toHaveLength(1);
-    const [purse] = await f.db.select().from(planets).where(eq(planets.id, defender.planetId));
+    const [purse] = await f.db.select().from(planets).where(eq(planets.id, target.id));
 
     await f.db.insert(strategicAssets).values({
       planetId: f.joined.planetId,
@@ -1129,30 +1148,21 @@ describe('current multi-world ruleset', () => {
       startedAt: f.clock.now(),
       remainingSeconds: 0,
     });
-    const launched = await launchDeathStar(f.db, f.joined.planetId, defender.planetId, f.clock);
+    const launched = await launchDeathStar(f.db, f.joined.planetId, target.id, f.clock);
     f.clock.set(launched.arriveAt);
     await workerFor(f.db, f.clock).tick();
 
     const orders = await f.db.select().from(buildOrders)
-      .where(eq(buildOrders.planetId, defender.planetId));
+      .where(eq(buildOrders.planetId, target.id));
     expect(orders.map((row) => row.status)).toEqual(['BUILDING']);
-    // Nothing came back: the survivor is exactly half the pre-strike purse, with
-    // no refund folded into it.
-    const [after] = await f.db.select().from(planets).where(eq(planets.id, defender.planetId));
+    // The EMP neither destroys stores nor refunds the paid order.
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, target.id));
     expect(after?.alloy).toBe(purse!.alloy);
     expect(after?.crystal).toBe(purse!.crystal);
-    // And the order can never complete into a level above the new Core.
+    // The EMP leaves the colony levels and its queue ceiling unchanged.
     const levels = Object.fromEntries((await f.db.select().from(buildings)
-      .where(eq(buildings.planetId, defender.planetId))).map((row) => [row.type, row.level]));
+      .where(eq(buildings.planetId, target.id))).map((row) => [row.type, row.level]));
     expect(levels).toMatchObject({ CORE: 8, REFINERY: 7 });
-    /*
-      EVERY CORE-BOUND BUILDING, not just the ones that were on the list when it
-      was written. The Deuterium Refinery was added in T5 and left off it — the
-      strike dropped the Core and the plant stayed standing above a level that
-      could not have built it, which is the illegal post-strike state the clamp
-      exists to prevent. Read off the rule rather than named here, so the next
-      building added is covered the day it exists.
-    */
     for (const [type, level] of Object.entries(levels)) {
       if (type === 'CORE') continue;
       expect(level, `${type} above its Core`).toBeLessThanOrEqual(levels.CORE!);
@@ -1167,11 +1177,11 @@ describe('current multi-world ruleset', () => {
     expect(await f.db.select().from(playerResearch)
       .where(eq(playerResearch.playerId, defender.playerId))).toHaveLength(1);
     const [stillSeven] = await f.db.select().from(buildings).where(and(
-      eq(buildings.planetId, defender.planetId),
+      eq(buildings.planetId, target.id),
       eq(buildings.type, 'REFINERY'),
     ));
     expect(stillSeven?.level).toBe(7);
-    // The value it cost is counted as damage rather than quietly vanishing.
+    // No paid work was destroyed, so none is recorded as damage.
     const [impact] = await f.db.select().from(strategicImpacts)
       .where(eq(strategicImpacts.missionId, launched.missionId));
     expect(impact!.damage).toBe(0);
@@ -1347,7 +1357,9 @@ describe('current multi-world ruleset', () => {
     await f.db.update(planets).set({ x: 40, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
     await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 400_000, crystal: 200_000, deuterium: 60_000 })
       .where(eq(planets.id, f.joined.planetId));
-    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
+    // Rival strikes require Core 13; keep this owner's peak in the same band
+    // while the settled colony itself retains the small neutral template.
+    await setLevel(f.db, f.joined.planetId, 'CORE', Math.max(COLONY_CORE, DEATH_STAR.requiredCore));
     await giveUnits(f.db, f.joined.planetId, { COURIER: MULTI_WORLD.settlement.transports });
     await f.db.update(neutralPlanetState)
       .set({ claimUntil: new Date(f.clock.now().getTime() + 30 * 60_000) })

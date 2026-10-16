@@ -1,3 +1,4 @@
+import { refreshPlanetAegis } from './planetAegis.js';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
   BUILD,
@@ -30,6 +31,7 @@ import {
   planets,
   satellites,
   scheduledEvents,
+  shipDamageLots,
   type BuildOrderKind,
 } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
@@ -56,7 +58,7 @@ import {
 import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
 import { markProgress } from './waitingRoom.js';
 import { researchLevels } from './researchState.js';
-import { releaseRepairedLots } from './shipDamage.js';
+import { landHpShips, releaseRepairedLots } from './shipDamage.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 
 type BuildOrder = typeof buildOrders.$inferSelect;
@@ -471,7 +473,8 @@ export async function applyBuildCompletion(
   clock: Clock,
 ): Promise<boolean> {
   const [identity] = await tx
-    .select({ planetId: buildOrders.planetId, status: buildOrders.status })
+    .select({ planetId: buildOrders.planetId, status: buildOrders.status, readyAt: buildOrders.readyAt,
+      kind: buildOrders.kind, subject: buildOrders.subject })
     .from(buildOrders)
     .where(eq(buildOrders.id, orderId));
   /*
@@ -481,7 +484,11 @@ export async function applyBuildCompletion(
   */
   if (identity?.status !== 'BUILDING') return false;
 
-  const planet = await loadLocked(tx, identity.planetId, clock, { requireLive: false });
+  const aegisChange = (identity.kind === 'BUILDING' && identity.subject === 'CORE')
+    || (identity.kind === 'INSTRUMENT' && identity.subject === 'AEGIS');
+  // Advance old hardware only to its real replacement instant, even after a late worker wakeup.
+  const completionClock = aegisChange ? { now: () => identity.readyAt } : clock;
+  const planet = await loadLocked(tx, identity.planetId, completionClock, { requireLive: false, radiationAt: identity.readyAt });
   const queue = await activeQueue(tx, identity.planetId);
   const [order] = queue.filter((candidate) => candidate.id === orderId);
   if (order?.readyAt.toISOString() !== expectedReadyAt) return false;
@@ -496,6 +503,9 @@ export async function applyBuildCompletion(
   if (claimed.length === 0) return false;
 
   await applyOrderEffect(tx, planet, order);
+  if ((order.kind === 'BUILDING' && order.subject === 'CORE') || (order.kind === 'INSTRUMENT' && order.subject === 'AEGIS')) {
+    await refreshPlanetAegis(tx, planet.planetId, order.readyAt);
+  }
   if (
     (order.kind === 'BUILDING' && order.subject === 'CORE')
     || (order.kind === 'INSTRUMENT' && order.subject === 'TELESCOPE')
@@ -526,6 +536,36 @@ export async function applyBuildCompletion(
   await reflowQueue(tx, order.planetId, order.queue, planet.now, true);
   await refreshWealth(tx, planet);
   return true;
+}
+
+/** Radiation closes only REPAIR: finish work already due, then return each remaining invoice once. */
+export async function cancelRepairsForRadiation(tx: Tx, planetId: string, at: Date) {
+  const repairs = (await activeQueue(tx, planetId)).filter(order => order.queue === 'REPAIR' && order.kind === 'REPAIR');
+  for (const order of repairs) {
+    if (order.readyAt > at) continue;
+    const [claimed] = await tx.update(buildOrders).set({ status: 'COMPLETED' })
+      .where(and(eq(buildOrders.id, order.id), eq(buildOrders.status, 'BUILDING'))).returning();
+    if (!claimed) continue;
+    const [world] = await tx.select({ playerId: planets.controllerPlayerId }).from(planets).where(eq(planets.id, planetId));
+    if (world?.playerId) await releaseRepairedLots(tx, { planetId, ownerPlayerId: world.playerId, orderId: order.id });
+  }
+  const remaining = repairs.filter(order => order.readyAt > at);
+  const cancelled = remaining.length === 0 ? [] : await tx.update(buildOrders).set({ status: 'CANCELLED' })
+    .where(and(inArray(buildOrders.id, remaining.map(order => order.id)), eq(buildOrders.status, 'BUILDING'))).returning();
+  const refund = cancelled.reduce((total, order) => ({ alloy: total.alloy + order.cost.alloy,
+    crystal: total.crystal + order.cost.crystal, deuterium: total.deuterium + order.cost.deuterium }),
+  { alloy: 0, crystal: 0, deuterium: 0 });
+  const ended = [...repairs.filter(order => order.readyAt <= at).map(order => order.id), ...cancelled.map(order => order.id)];
+  if (ended.length > 0) await tx.update(scheduledEvents).set({ status: 'done' })
+    .where(and(eq(scheduledEvents.kind, 'build_complete'), inArray(scheduledEvents.refId, ended),
+      inArray(scheduledEvents.status, ['pending', 'processing'])));
+  if (cancelled.length > 0) {
+    await tx.update(shipDamageLots).set({ repairOrderId: null }).where(inArray(shipDamageLots.repairOrderId, cancelled.map(order => order.id)));
+    await tx.update(planets).set({ alloy: sql`${planets.alloy} + ${refund.alloy}`,
+      crystal: sql`${planets.crystal} + ${refund.crystal}`, deuterium: sql`${planets.deuterium} + ${refund.deuterium}` })
+      .where(eq(planets.id, planetId));
+  }
+  return { count: cancelled.length, refund };
 }
 
 /** System fault: fully refund the order and any tail whose meaning depended on it. */
@@ -652,7 +692,12 @@ async function applyOrderEffect(tx: Tx, planet: LockedPlanet, order: BuildOrder)
     }
     case 'HULL':
       if (!isHull(order.subject)) throw new Error(`unknown hull ${order.subject}`);
-      await addUnits(tx, planet.planetId, { [order.subject]: order.count });
+      if (planet.radiationBombStartsAt && !HULLS[order.subject].ground) {
+        await landHpShips(tx, { planetId: planet.planetId, ownerPlayerId: planet.playerId,
+          fleet: { [order.subject]: order.count }, damage: [], at: planet.now, radiationAt: order.readyAt });
+      } else {
+        await addUnits(tx, planet.planetId, { [order.subject]: order.count });
+      }
       planet.seasonTelemetry = {
         ...planet.seasonTelemetry,
         shipsBuilt: {

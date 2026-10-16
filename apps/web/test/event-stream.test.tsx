@@ -163,12 +163,27 @@ describe('the event stream', () => {
   it('rechecks strategic sight after replica caches have observed the interception', () => {
     mountCaughtUp();
     fire('private:strategic-sight');
-    expect(asked).toEqual(['traffic']);
+    expect(asked.toSorted()).toEqual(['pending', 'traffic']);
 
     act(() => {
       vi.advanceTimersByTime(STRATEGIC_SIGHT_CONSISTENCY_MS);
     });
-    expect(asked).toEqual(['traffic', 'traffic']);
+    expect(asked.toSorted()).toEqual(['pending', 'traffic', 'traffic']);
+  });
+
+  /**
+   * THE WEAPON THAT WAS SHOT AT LEAVES YOUR OWN LIST WHEN THE INTERCEPTOR LEAVES ITS WORLD.
+   * Owner, 2026-10-16: *"Patlayan füzeler zamanı gelince patlamamış gibi hedef gezegende yanlış
+   * animasyon oynatıyor mu?"* The attacker's own Death Star or bomb is drawn from `pending`,
+   * the defender's siren is a `pending` row too, and the server resolves the weapon the
+   * instant the interceptor launches. Refreshing only `traffic` left the own copy flying
+   * beside the interceptor scene's copy, on through the fireball, until the collision's
+   * shard eight seconds later.
+   */
+  it('drops the shot-at weapon from the participants’ own list as the interceptor launches', () => {
+    mountCaughtUp();
+    fire('private:strategic-sight');
+    expect(asked).toContain('pending');
   });
 
   /**

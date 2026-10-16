@@ -4,7 +4,9 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { seasonCycles, seasonResults, seasons, shards } from '../src/db/schema.js';
+import { honorSeasons, seasonCycles, seasonResults, seasons, shards } from '../src/db/schema.js';
+import { createHonorCatalogue, createHonorShieldCatalogue } from '@astera/rules';
+import { emptyHonorState } from '../src/services/honorAccounting.js';
 import { monumentHonorees } from '../src/services/monumentHonorees.js';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 import { seasonSchema } from '../../web/src/api/schemas.js';
@@ -58,6 +60,31 @@ describe('the names the monuments carry', () => {
     await recordRanks([3, 1, 8, 5, 2, 4, 6, 7, 9]);
     expect(await monumentHonorees(f.db, f.seasonId))
       .toEqual(['Champion1', 'Champion2', 'Champion3', 'Champion4', 'Champion5', 'Champion6', 'Champion7', 'Champion8']);
+  });
+
+  const honorProgram = async () => {
+    const [prior] = await f.db.select().from(seasons).where(eq(seasons.id, priorSeasonId));
+    await f.db.insert(honorSeasons).values({ seasonId: priorSeasonId, version: 3, mode: 'ACTIVE',
+      catalogue: createHonorCatalogue(), shieldCatalogue: [...createHonorShieldCatalogue()],
+      state: emptyHonorState(), createdAt: prior!.startsAt, rankedAt: prior!.startsAt, closedAt: prior!.endsAt });
+  };
+  it('honours the frozen primary Honor winner rather than the Dominion winner', async () => {
+    await recordRanks([1, 2]); await honorProgram();
+    await f.db.update(seasonResults).set({ honorRank: 2, honorScore: 1000000 }).where(eq(seasonResults.accountId, f.accountIds[0]!));
+    await f.db.update(seasonResults).set({ honorRank: 1, honorScore: 2000000 }).where(eq(seasonResults.accountId, f.accountIds[1]!));
+    expect((await monumentHonorees(f.db, f.seasonId)).slice(0, 2)).toEqual(['Champion2', 'Champion1']);
+  });
+  it('keeps every equally ranked positive Honor champion in the shared monument name', async () => {
+    await recordRanks([1, 2]); await honorProgram();
+    await f.db.update(seasonResults).set({ honorRank: 1, honorScore: 1000000 });
+    const names = await monumentHonorees(f.db, f.seasonId);
+    expect(names[0]).toBe('Champion1 · Champion2');
+    expect(names[1]).toBeNull();
+  });
+  it('does not rename a Dominion winner into an Honor champion when the race had no positive score', async () => {
+    await recordRanks([1]); await honorProgram();
+    await f.db.update(seasonResults).set({ honorRank: 1, honorScore: 0 });
+    expect((await monumentHonorees(f.db, f.seasonId)).every(name => name === null)).toBe(true);
   });
 
   it('leaves a monument unnamed when last season had fewer commanders', async () => {

@@ -1,4 +1,6 @@
 export const clanWar = {
+  criticalReason: "Rappelez les flottes contenant des vaisseaux à 5% de vie ou moins avant de lancer l’attaque.",
+  stagingRadiation: "Les vaisseaux en attente subissent les radiations de la planète de rassemblement.",
   radiationMember: "{{name}} : les radiations détruiraient {{count}} vaisseaux. Rappelez la vague et renvoyez-la en acceptant votre propre perte.",
   radiationMemberRequired: "Un membre doit accepter ses pertes par radiation",
   tab: 'Guerre', purpose: 'Une cible. Plusieurs commandants. Une attaque commune.',

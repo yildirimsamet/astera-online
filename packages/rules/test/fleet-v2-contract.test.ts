@@ -253,7 +253,7 @@ describe('Fleet V2 catalog contract — D148', () => {
       minShipyard: 0, ground: true,
     });
     expect(HULLS.PROSPECTOR).toMatchObject({
-      id: 'PROSPECTOR', cls: 'SUPPORT', atk: 0, hp: 150, speed: 1237.5, cargo: 200,
+      id: 'PROSPECTOR', cls: 'SUPPORT', atk: 0, hp: 150, speed: 990, cargo: 200,
       minShipyard: 1, ground: false,
     });
   });
@@ -442,6 +442,7 @@ describe('Fleet V2 research identity contract', () => {
       'AI_ROBOTS',
       // The Repair Station's ladder. Kalıcı gemi hasarı, owner K6 (2026-09-29).
       'INDUSTRIAL',
+      'RADIATION_SHIELDING',
     ];
 
     expect([...RESEARCH_PROJECT_IDS].sort()).toEqual(expected.sort());

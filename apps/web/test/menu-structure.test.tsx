@@ -162,22 +162,26 @@ describe('the menu groups what it offers', () => {
    * RANK ONE: A FULL-WIDTH ROW MEANS ACT NOW. Both of these exist only while
    * something is genuinely waiting on the commander — a season that ended, a
    * placement that has to be applied for — so the sheet's widest, loudest shape is
-   * spent on them and on nothing else.
+   * spent on them. Vacation also has a persistent full-width control; it does
+   * not make an ended season or a pending placement cease to be urgent.
    */
   it('puts what needs the commander now above every group, at full width', () => {
     const view = show({ inSilentSpace: true, hasSeasonResult: true });
 
     const rows = [...view.container.querySelectorAll('[data-menu-row]')];
-    expect(rows).toHaveLength(2);
-    expect(follows(rows[0], view.container.querySelector('[data-menu-group]'))).toBe(true);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toHaveAccessibleName(named(i18n.t('vacation.title'), i18n.t('vacation.hint')));
+    expect(follows(rows[1], view.container.querySelector('[data-menu-group]'))).toBe(true);
     const store = screen.getByRole('region', { name: i18n.t('skins.collection') });
-    expect(follows(rows[1], store)).toBe(true);
+    expect(follows(rows[2], store)).toBe(true);
     expect(follows(store, view.container.querySelector('[data-menu-group]'))).toBe(true);
   });
 
   it('draws no urgent row when nothing is urgent', () => {
     const view = show();
-    expect(view.container.querySelectorAll('[data-menu-row]')).toHaveLength(0);
+    const rows = [...view.container.querySelectorAll('[data-menu-row]')];
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveAccessibleName(named(i18n.t('vacation.title'), i18n.t('vacation.hint')));
   });
 
   /**

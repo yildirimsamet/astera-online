@@ -1,5 +1,5 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { deuteriumOf, fleetCount, fleetEntries, type Fleet } from '@astera/rules';
+import { deuteriumOf, fleetCount, fleetEntries } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { miningRuns, missions, planets, units } from '../db/schema.js';
@@ -10,7 +10,6 @@ import {
   lockSeason,
   recomputePlayerWealth,
   recomputeWealth,
-  setUnits,
 } from '../services/planet.js';
 import { landShips } from '../services/shipDamage.js';
 import { publishShard } from '../stream/bus.js';
@@ -25,6 +24,7 @@ import { capitalPlanet } from '../services/ownership.js';
 import { landRunLocked } from '../services/mining.js';
 import { abandonClanWarLeg, clanWarEscrowPlanetIds } from '../services/clanWar.js';
 import { abandonClanSupportLeg } from '../services/clanSupport.js';
+import { resolveRadiationBomb } from '../services/radiationBomb.js';
 
 /**
  * WHAT HAPPENS WHEN AN EVENT GIVES UP FOR GOOD. D28.
@@ -195,8 +195,8 @@ async function abandonMission(db: Db, missionId: string, at: Date): Promise<bool
         }`,
       }).where(eq(planets.id, destinationPlanetId));
     }
-    await recomputePlayerWealth(tx, mission.ownerPlayerId);
-    if (destinationPlanetId !== storagePlanetId) await recomputeWealth(tx, storagePlanetId);
+    await recomputePlayerWealth(tx, mission.ownerPlayerId, at);
+    if (destinationPlanetId !== storagePlanetId) await recomputeWealth(tx, storagePlanetId, at);
     await tellThemItCameBack(
       tx,
       destinationPlanetId,
@@ -255,14 +255,10 @@ async function abandonMiningRun(
     // other returns, or a stale home count can erase the recalled craft.
     const landing = await landRunLocked(tx, run);
     if (landing) {
-      const current = await tx
-        .select()
-        .from(units)
-        .where(and(eq(units.planetId, landing.planetId), eq(units.location, 'home')));
-      const merged: Fleet = {};
-      for (const u of current) merged[u.hull] = u.count;
-      merged.PROSPECTOR = (merged.PROSPECTOR ?? 0) + run.craft;
-      await setUnits(tx, landing.planetId, merged, 'home', landing.playerId);
+      const carried = await tx.select({ damage: units.damage }).from(units)
+        .where(and(eq(units.planetId, run.planetId), eq(units.location, `mine:${runId}`)));
+      await landShips(tx, { planetId: landing.planetId, ownerPlayerId: landing.playerId,
+        fleet: { PROSPECTOR: run.craft }, damage: carried.flatMap(row => row.damage), at });
     }
     await tx
       .delete(units)
@@ -317,6 +313,9 @@ export async function abandon(db: Db, event: EventRow, clock: Clock): Promise<bo
         || abandonResearchOrder(db, event.refId, clock);
     case 'research_complete':
       return abandonResearchOrder(db, event.refId, clock);
+    case 'radiation_bomb_arrival':
+      await resolveRadiationBomb(db, event.refId, clock);
+      return true;
     case 'death_star_ready':
       return abandonDeathStarBuild(db, event.refId, clock);
     default:
@@ -378,6 +377,7 @@ export async function sweepStranded(db: Db, clock: Clock): Promise<number> {
     builds: strandedBuilds,
     research: strandedResearch,
     deathStars: strandedDeathStars,
+    bombs: strandedBombs,
   } = await strandedState(db, now);
 
   let released = 0;
@@ -403,6 +403,10 @@ export async function sweepStranded(db: Db, clock: Clock): Promise<number> {
   }
   for (const id of strandedDeathStars) {
     if (await abandonDeathStarBuild(db, id, clock)) released += 1;
+  }
+  for (const id of strandedBombs) {
+    await resolveRadiationBomb(db, id, clock);
+    released += 1;
   }
   return released;
 }
@@ -433,6 +437,7 @@ async function strandedState(
   builds: string[];
   research: string[];
   deathStars: string[];
+  bombs: string[];
 }> {
   const cutoff = new Date(now.getTime() - STRANDED_GRACE_MINUTES * 60_000).toISOString();
 
@@ -518,8 +523,16 @@ async function strandedState(
           and e.status in ('pending', 'processing'))
   `);
 
+  const bombRows = await db.execute<{ id: string }>(sql`
+    select b.id from radiation_bomb_flights b
+    where b.status = 'OUTBOUND' and b.arrive_at < ${cutoff}::timestamptz
+      and not exists (select 1 from scheduled_events e where e.ref_id = b.id
+        and e.kind = 'radiation_bomb_arrival' and e.status in ('pending', 'processing'))
+  `);
+
   return {
     missions: missionRows.map((row) => row.id),
+    bombs: bombRows.map(row => row.id),
     runs: runRows.map((row) => row.id),
     trades: tradeRows.map((row) => ({ id: row.id, leg: row.status })),
     convoys: convoyRows.map((row) => ({ id: row.id, leg: row.status })),
@@ -536,8 +549,8 @@ async function strandedState(
  * able to report the number on an API-only process that runs no worker at all.
  */
 export async function strandedFlightCount(db: Db, now: Date): Promise<number> {
-  const { missions: m, runs: r, trades: t, convoys: c } = await strandedState(db, now);
-  return m.length + r.length + t.length + c.length;
+  const { missions: m, runs: r, trades: t, convoys: c, bombs: b } = await strandedState(db, now);
+  return m.length + r.length + t.length + c.length + b.length;
 }
 
 /** Ordinary and strategic builds whose completion event has disappeared. */

@@ -60,6 +60,45 @@ const PLANET = planetView(
 );
 
 describe('the API client', () => {
+  it('keeps radiation bomb level, target and launch key intact through authentication retry', async () => {
+    const seen: { path: string; key: string | null; body: unknown }[] = [];
+    const fetch = vi.fn<typeof globalThis.fetch>((url, init) => {
+      if (pathOf(url).endsWith('/api/auth/refresh')) return json(SESSION);
+      if (typeof init?.body !== 'string') throw new Error('Radiation bomb launch must carry a JSON request body');
+      seen.push({ path: pathOf(url), key: new Headers(init.headers).get('idempotency-key'),
+        body: JSON.parse(init.body) });
+      if (seen.length === 1) return json({ error: 'UNAUTHENTICATED', message: 'Sign in first' }, 401);
+      return json({ flightId: '00000000-0000-4000-8000-000000000001',
+        departAt: '2026-10-15T00:00:00Z', arriveAt: '2026-10-15T00:10:00Z' });
+    });
+    const api = new Api({ fetch });
+    const result = await api.launchRadiationBomb('origin', 3, { kind: 'MONUMENT', id: 'target' }, 'bomb-confirmation-1', true);
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toEqual(seen[1]);
+    expect(seen[0]).toEqual({ path: '/api/radiation-bombs/launch', key: 'bomb-confirmation-1',
+      body: { originPlanetId: 'origin', level: 3, target: { kind: 'MONUMENT', id: 'target' }, acknowledgeShieldLoss: true } });
+    expect(result.arriveAt).toEqual(new Date('2026-10-15T00:10:00Z'));
+  });
+
+  it('keeps a maintenance confirmation key and exact fractional health through a token retry', async () => {
+    const seen: { key: string | null; body: string | null }[] = [];
+    const fetch = vi.fn<typeof globalThis.fetch>((url, init) => {
+      if (pathOf(url).endsWith('/api/auth/refresh')) return json(SESSION);
+      seen.push({ key: new Headers(init?.headers).get('idempotency-key'), body: typeof init?.body === 'string' ? init.body : null });
+      if (seen.length === 1) return json({ error: 'UNAUTHENTICATED', message: 'Sign in first' }, 401);
+      return json({ returned: { alloy: 10, crystal: 0, deuterium: 0 }, planet: { ...PLANET,
+        fleetDamage: [{ hull: 'DART', count: 1, damageBp: 0, remainderBp: 0.25 }] } });
+    });
+    const api = new Api({ fetch });
+    const selection = { source: 'HOME' as const, groups: [{ hull: 'DART' as const, count: 1, damageBp: 0, remainderBp: 0.25 }] };
+    const result = await api.maintenance('world-1', 'SCRAP', selection, 'maintenance-confirm-1');
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toEqual(seen[1]);
+    expect(seen[0]?.key).toBe('maintenance-confirm-1');
+    expect(JSON.parse(seen[0]?.body ?? '{}')).toEqual({ action: 'SCRAP', selection });
+    expect(result.planet.fleetDamage?.[0]?.remainderBp).toBe(0.25);
+  });
+
   it('keeps the convoy confirmation key on the wire and parses its frozen clocks', async () => {
     let path = '';
     let key = '';

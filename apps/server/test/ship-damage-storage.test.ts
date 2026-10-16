@@ -8,7 +8,8 @@ import { planetView } from '../src/services/planetView.js';
 import { wipeAllServers } from '../src/services/servers.js';
 import { dockDamaged, dockLotsOf, landShips, shipsOfLots } from '../src/services/shipDamage.js';
 import { forceSeasonEnd } from '../src/worker/handlers.js';
-import { giveUnits, seedWorld, testDb, type Fixture } from './helpers.js';
+import { readHomeHealth } from '../src/services/homeHealth.js';
+import { giveUnits, landAndDockShips, seedWorld, testDb, type Fixture } from './helpers.js';
 
 /**
  * THE REPAIR STATION'S DOCK, IN STORAGE. Kalıcı gemi hasarı, `plan.md` F2.
@@ -46,16 +47,19 @@ describe('the Repair Station dock', () => {
     return out;
   };
 
-  it('holds only ships above the free-repair line and short of destruction', async () => {
+  it('holds any positive wound short of destruction, including fractions below one bp', async () => {
     const insert = (damageBp: number) => f.db.insert(shipDamageLots)
       .values({ planetId, hull: 'BALLISTA', damageBp, createdAt: f.clock.now() });
-    await expect(insert(2000)).rejects.toThrow();
+    await expect(insert(0)).rejects.toThrow();
+    await expect(f.db.insert(shipDamageLots).values({ planetId, hull: 'DART', damageBp: 0, remainderBp: 0.25,
+      createdAt: f.clock.now() })).resolves.toBeDefined();
+    await expect(insert(2000)).resolves.toBeDefined();
     await expect(insert(10_000)).rejects.toThrow();
     await expect(insert(2001)).resolves.toBeDefined();
     await expect(insert(9999)).resolves.toBeDefined();
   });
 
-  it('lands a fleet: the patched go home, the damaged go to the dock, none made or lost', async () => {
+  it('lands the entire fleet at home with all its wounds and no automatic dock or repair', async () => {
     const before = await totalUnitsOf(f.db, planetId);
     const homeBefore = (await home()).BALLISTA ?? 0;
 
@@ -67,15 +71,10 @@ describe('the Repair Station dock', () => {
       damage: [lot('BALLISTA', 1, 2000), lot('BALLISTA', 2, 2001)],
     }));
 
-    expect(report.autoRepaired).toEqual([lot('BALLISTA', 1, 2000)]);
-    expect(report.docked).toEqual([lot('BALLISTA', 2, 2001)]);
-    expect((await home()).BALLISTA).toBe(homeBefore + 8);
-    const docked = await dockLotsOf(f.db, planetId);
-    expect(docked).toHaveLength(1);
-    expect(docked[0]).toMatchObject({ hull: 'BALLISTA', count: 2, damageBp: 2001, repairing: false });
-    const [row] = await f.db.select().from(units)
-      .where(and(eq(units.planetId, planetId), eq(units.location, `dock:${docked[0]!.id}`)));
-    expect(row).toMatchObject({ hull: 'BALLISTA', count: 2, ownerPlayerId: playerId });
+    expect(report).toEqual({ autoRepaired: [], docked: [] });
+    expect((await home()).BALLISTA).toBe(homeBefore + 10);
+    expect(await dockLotsOf(f.db, planetId)).toEqual([]);
+    expect((await readHomeHealth(f.db, planetId)).damage).toMatchObject([lot('BALLISTA', 2, 2001), lot('BALLISTA', 1, 2000)]);
     expect(fleetCount(await totalUnitsOf(f.db, planetId))).toBe(fleetCount(before) + 10);
   });
 
@@ -93,28 +92,25 @@ describe('the Repair Station dock', () => {
     expect(await dockLotsOf(f.db, planetId)).toEqual([]);
   });
 
-  it('keeps two landings apart even when their damage is the same', async () => {
+  it('groups identical home wounds from two landings without losing ships', async () => {
     for (let i = 0; i < 2; i++) {
       await f.db.transaction((tx) => landShips(tx, {
         planetId, ownerPlayerId: playerId, at: f.clock.now(), fleet: { TALON: 1 }, damage: [lot('TALON', 1, 5000)],
       }));
     }
-    const docked = await dockLotsOf(f.db, planetId);
-    expect(docked.map((row) => [row.hull, row.count, row.damageBp])).toEqual([
-      ['TALON', 1, 5000],
-      ['TALON', 1, 5000],
-    ]);
+    expect(await dockLotsOf(f.db, planetId)).toEqual([]);
+    expect((await readHomeHealth(f.db, planetId)).damage).toMatchObject([lot('TALON', 2, 5000)]);
   });
 
-  it('moves a defender\'s badly damaged ships off the line and leaves the lightly hit at home', async () => {
+  it('keeps all defender wounds at home until an explicit workshop transfer', async () => {
     await giveUnits(f.db, planetId, { TALON: 5 });
     const report = await f.db.transaction((tx) => dockDamaged(tx, {
       planetId, ownerPlayerId: playerId, at: f.clock.now(), lots: [lot('TALON', 1, 6400), lot('TALON', 1, 1500)],
     }));
-    expect(report.autoRepaired).toEqual([lot('TALON', 1, 1500)]);
-    expect(report.docked).toEqual([lot('TALON', 1, 6400)]);
-    expect((await home()).TALON).toBe(4);
-    expect(shipsOfLots(await dockLotsOf(f.db, planetId))).toEqual({ TALON: 1 });
+    expect(report).toEqual({ autoRepaired: [], docked: [] });
+    expect((await home()).TALON).toBe(5);
+    expect(shipsOfLots(await dockLotsOf(f.db, planetId))).toEqual({});
+    expect((await readHomeHealth(f.db, planetId)).damage).toMatchObject([lot('TALON', 1, 6400), lot('TALON', 1, 1500)]);
   });
 
   it('refuses to dock ships the world does not have at home', async () => {
@@ -126,9 +122,9 @@ describe('the Repair Station dock', () => {
   });
 
   it('counts docked ships as owned, never as away', async () => {
-    await f.db.transaction((tx) => landShips(tx, {
+    await landAndDockShips(f.db, {
       planetId, ownerPlayerId: playerId, at: f.clock.now(), fleet: { VIPER: 3 }, damage: [lot('VIPER', 3, 7000)],
-    }));
+    }, f.clock);
     expect(await awayFleet(f.db, planetId)).toEqual({});
     expect(shipsOfLots(await dockLotsOf(f.db, planetId))).toEqual({ VIPER: 3 });
     expect((await totalUnitsOf(f.db, planetId)).VIPER).toBe(3);
@@ -139,9 +135,9 @@ describe('the Repair Station dock', () => {
 
   /** A docked lot tied to a running repair order: every foreign key the dock adds. */
   const dockWithOrder = async () => {
-    await f.db.transaction((tx) => landShips(tx, {
+    await landAndDockShips(f.db, {
       planetId, ownerPlayerId: playerId, at: f.clock.now(), fleet: { BALLISTA: 2 }, damage: [lot('BALLISTA', 2, 6000)],
-    }));
+    }, f.clock);
     // Raw on purpose: the REPAIR queue reaches the TypeScript types with the Repair Station (F4).
     const inserted = await f.db.execute<{ id: string }>(sql`
       insert into build_orders

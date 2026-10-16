@@ -1,9 +1,12 @@
-import { and, asc, desc, eq, gt, inArray, isNull, lte, ne } from 'drizzle-orm';
+import { commanderPvpBalance } from './pvpBalance.js';
+import { and, asc, desc, eq, gt, inArray, isNull, lte, ne, or } from 'drizzle-orm';
 import {
   faultsPossible,
   hasFault,
   minutesUntilLoyaltyZero,
   repairCost,
+  radiationBombLevel,
+  partitionCombatFleet,
   INSTRUMENT_IDS,
   SHIELD,
   SATELLITE_IDS,
@@ -46,6 +49,8 @@ import { colonyStanding } from './ownership.js';
 import { buildDefencePostureView } from './defencePosture.js';
 import { activeClanMembership } from './clanCombat.js';
 import { clanSupportBayView } from './clanSupportView.js';
+import { workshopRadiation } from './workshop.js';
+import { readHonorPlayerPolicy } from './honorBenefits.js';
 import {
   activeResearchOrders,
   researchOrderView,
@@ -92,12 +97,13 @@ const strategicView = (row: StrategicRow) => ({
 });
 
 function departureOf(
-  player: Pick<typeof players.$inferSelect, 'lastProgressAt' | 'joinedAt' | 'mainEnteredAt'> | undefined,
-  p: Pick<LockedPlanet, 'silentSpace' | 'seasonEndsAt'>,
+  player: Pick<typeof players.$inferSelect, 'lastProgressAt' | 'joinedAt' | 'mainEnteredAt' | 'silentSpaceResetAt'> | undefined,
+  p: Pick<LockedPlanet, 'silentSpace' | 'seasonEndsAt' | 'vacationUntil'>,
 ): Date | null {
-  if (!player || p.silentSpace) return null;
+  if (!player || p.silentSpace || p.vacationUntil) return null;
   const at = silentSpaceDueAt({
     lastProgressAt: player.lastProgressAt?.getTime() ?? null,
+    resetAt: player.silentSpaceResetAt?.getTime(),
     joinedAt: player.joinedAt.getTime(),
     mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime(),
   });
@@ -106,19 +112,21 @@ function departureOf(
 
 /** Shared only across worlds in one transaction, never across requests or writes. */
 async function loadCommanderViewData(tx: Tx, p: LockedPlanet) {
-  const [[player], researchData, researchQueue, colonies, membership] = await Promise.all([
+  const [[player], researchData, researchQueue, colonies, membership, honor, pvpBalance] = await Promise.all([
     tx.select().from(players).where(eq(players.id, p.playerId)),
     loadResearchViewData(tx, p.playerId),
     activeResearchOrders(tx, p.playerId),
     colonyStanding(tx, p.playerId),
     clanDefenseApplies(p.rulesetVersion) ? activeClanMembership(tx, p.playerId) : null,
+    readHonorPlayerPolicy(tx, p.seasonId, p.playerId),
+    commanderPvpBalance(tx, p.playerId),
   ]);
   const queuedResearch = new Map(researchData.rows.map(row => [row.projectId, row.level]));
   for (const order of researchQueue) {
     queuedResearch.set(order.projectId, Math.max(queuedResearch.get(order.projectId) ?? 0, order.level));
   }
   return { playerId: p.playerId, seasonId: p.seasonId, player, researchData, researchQueue,
-    colonies, hasMembership: membership !== null, queuedResearch };
+    colonies, pvpBalance, hasMembership: membership !== null, queuedResearch, benefits: honor.benefits, honorTacticalCredit: honor.tacticalCredit };
 }
 
 export async function loadPlanetViewData(
@@ -137,12 +145,16 @@ export async function loadPlanetViewData(
     above, so it is issued together and pipelined on this transaction's connection
     instead of waiting for each answer in turn.
   */
-  const [commander, assets, queued, [activeConvoy], [spentConvoy], dockLots, flight, clanSupport] = await Promise.all([
+  const [commander, assets, queued, [activeConvoy], [spentConvoy], dockLots, flight, clanSupport, workshopIrradiated] = await Promise.all([
     shared ?? loadCommanderViewData(tx, p),
     tx.select().from(strategicAssets).where(and(
       eq(strategicAssets.planetId, planetId),
-      inArray(strategicAssets.type, ['DEATH_STAR', 'INTERCEPTOR']),
-      inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
+      or(
+        and(inArray(strategicAssets.type, ['DEATH_STAR', 'INTERCEPTOR']),
+          inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY'])),
+        and(inArray(strategicAssets.type, ['RADIATION_BOMB_L1', 'RADIATION_BOMB_L2', 'RADIATION_BOMB_L3']),
+          inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY', 'LAUNCHED'])),
+      ),
     )).orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id)),
     tx.select().from(buildOrders)
       .where(and(eq(buildOrders.planetId, planetId), eq(buildOrders.status, 'BUILDING')))
@@ -185,10 +197,11 @@ export async function loadPlanetViewData(
       .limit(1),
     dockLotsOf(tx, planetId, unitRows),
     baysOf(tx, planetId, p.buildings.CORE),
-    clanSupportBayView(tx, { planetId, rulesetVersion: p.rulesetVersion }),
+    clanSupportBayView(tx, { planetId, rulesetVersion: p.rulesetVersion, at: p.now }),
+    workshopRadiation(tx, p),
   ]);
   return { p, commander, assets, queued, activeConvoy, spentConvoy, unitRows, faultRows,
-    dockLots, flight, clanSupport };
+    dockLots, flight, clanSupport, workshopIrradiated };
 }
 
 export type PlanetViewData = Awaited<ReturnType<typeof loadPlanetViewData>>;
@@ -202,8 +215,8 @@ export function buildPlanetResult<T extends { planet: PlanetViewData }>(result: 
 /** No queries or writes: safe to run after the capturing transaction commits. */
 export function buildPlanetView(data: PlanetViewData) {
   const { p, commander, assets, queued, activeConvoy, spentConvoy, unitRows, faultRows,
-    dockLots, flight, clanSupport } = data;
-  const { player, researchData, researchQueue, colonies, hasMembership, queuedResearch } = commander;
+    dockLots, flight, clanSupport, workshopIrradiated } = data;
+  const { player, researchData, researchQueue, colonies, hasMembership, queuedResearch, benefits, honorTacticalCredit } = commander;
   const pad = assets.filter(row => row.type === 'DEATH_STAR').toSorted(padOrder);
   const interceptors = assets.filter(row => row.type === 'INTERCEPTOR').toSorted(padOrder);
   const owned: Fleet = {};
@@ -253,7 +266,7 @@ export function buildPlanetView(data: PlanetViewData) {
     resumes the same vessels; an outage does not shrink them.
   */
   // D212: Silent Space halves what runs; every ceiling below keeps reading the rated figure.
-  const pace = p.silentSpace ? SILENT_SPACE.productionPace : 1;
+  const pace = p.vacationUntil ? 0 : p.silentSpace ? SILENT_SPACE.productionPace : 1;
   const perHourAlloy = hasFault(p.faults, 'REFINERY_OUTAGE') ? 0 : nominalPerHourAlloy * pace;
   const perHourCrystal = hasFault(p.faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalPerHourCrystal * pace;
   const perHourDeuterium = hasFault(p.faults, 'PLANT_OUTAGE') ? 0 : nominalPerHourDeuterium * pace;
@@ -270,6 +283,12 @@ export function buildPlanetView(data: PlanetViewData) {
     deuterium: Math.min(Math.floor(p.deuterium), vaultCapacity.deuterium),
   };
   const shieldMax = shieldHp(p.effectiveInstruments.AEGIS ?? 0);
+  const aegisLevel = p.faults.includes('CORE_OUTAGE') ? 0 : p.effectiveInstruments.AEGIS ?? 0;
+  const blockedUntil = Math.max(p.empUntil?.getTime() ?? 0, p.shieldRegenAt?.getTime() ?? 0);
+  const protection = aegisLevel > 0 && p.shield >= 1 && blockedUntil <= p.now.getTime() ? aegisLevel : 0;
+  const restoresAt = protection > 0 || aegisLevel === 0 ? null : new Date(Math.max(p.now.getTime(), blockedUntil,
+    p.recoveryUntil?.getTime() ?? 0, p.vacationUntil?.getTime() ?? 0)
+    + Math.ceil(Math.max(0, 1 - p.shield) / (shieldMax * SHIELD.regenPerHour) * 3600000));
   return {
     planet: {
       id: p.planetId,
@@ -339,7 +358,11 @@ export function buildPlanetView(data: PlanetViewData) {
       vaultCapacity,
       shield: Math.floor(p.shield),
       shieldMax,
-      shieldPerHour: Math.round(shieldMax * SHIELD.regenPerHour),
+      shieldRegenAt: p.shieldRegenAt,
+      radiationProtectionHpPerMinute: protection,
+      radiationProtectionLevel: aegisLevel,
+      radiationProtectionRestoresAt: restoresAt,
+      shieldPerHour: p.vacationUntil ? 0 : Math.round(shieldMax * SHIELD.regenPerHour),
       disruptedUntil: p.disruptedUntil,
       recoveryUntil: p.recoveryUntil,
       empUntil: p.empUntil,
@@ -367,6 +390,7 @@ export function buildPlanetView(data: PlanetViewData) {
         ? p.transferReadyAt
         : null,
     },
+    pvpBalance: commander.pvpBalance,
     buildings: p.buildings,
     nextCosts: Object.fromEntries(
       (Object.keys(p.buildings) as BuildingId[]).map((b) => [b, buildingCost(b, p.buildings[b])]),
@@ -395,7 +419,7 @@ export function buildPlanetView(data: PlanetViewData) {
     /** The Core that gates and times research on EVERY world: the capital's. D209. */
     researchCore: colonies.capitalCore,
     /** One commander lane, identical whichever controlled world funded the view. */
-    researchQueue: researchQueue.map(researchOrderView),
+    researchQueue: researchQueue.map(order => ({ ...researchOrderView(order), pausedAt: p.vacationUntil ?? undefined })),
     /**
      * WHAT IS BROKEN, AND WHAT PUTTING IT RIGHT COSTS. Koloni arızaları.
      *
@@ -406,6 +430,7 @@ export function buildPlanetView(data: PlanetViewData) {
      * and authoritative figures is one modifier away from quoting a number the repair
      * endpoint will refuse.
      */
+    faultProtectedUntil: p.kind === 'COLONY' ? p.faultProtectedUntil : null,
     faults: faultRows
       .map((fault) => ({
         id: fault.id,
@@ -434,7 +459,7 @@ export function buildPlanetView(data: PlanetViewData) {
     loyalty: p.kind === 'COLONY'
       ? {
           value: p.loyalty,
-          minutesLeft: minutesUntilLoyaltyZero(p.loyalty, faultsPossible({
+          minutesLeft: p.vacationUntil ? null : minutesUntilLoyaltyZero(p.loyalty, faultsPossible({
             kind: p.kind,
             coreLevel: p.buildings.CORE,
             plantLevel: p.buildings.DEUTERIUM_PLANT,
@@ -445,10 +470,10 @@ export function buildPlanetView(data: PlanetViewData) {
     queues: {
       CONSTRUCTION: queued
         .filter((order) => order.queue === 'CONSTRUCTION' && order.kind !== 'RESEARCH')
-        .map(buildOrderView),
-      YARD: queued.filter((order) => order.queue === 'YARD').map(buildOrderView),
+        .map(order => buildOrderView(order, p.vacationUntil)),
+      YARD: queued.filter((order) => order.queue === 'YARD').map(order => buildOrderView(order, p.vacationUntil)),
       /** The Repair Station's own lane, beside the yard. Kalıcı gemi hasarı. */
-      REPAIR: queued.filter((order) => order.queue === 'REPAIR').map(buildOrderView),
+      REPAIR: queued.filter((order) => order.queue === 'REPAIR').map(order => buildOrderView(order, p.vacationUntil)),
     },
     /** The head of `deathStars`: the weapon that can fly soonest. */
     strategic: pad[0] ? strategicView(pad[0]) : null,
@@ -457,8 +482,16 @@ export function buildPlanetView(data: PlanetViewData) {
     /** Compatibility head plus the complete two-charge battery. */
     interceptor: interceptors[0] ? strategicView(interceptors[0]) : null,
     interceptors: interceptors.map(strategicView),
+    radiationBombsAvailable: !!p.radiationBombStartsAt && p.radiationBombStartsAt <= p.now,
+    radiationBombs: assets.flatMap(row => {
+      const level = radiationBombLevel(row.type);
+      return level === null ? [] : [{ ...strategicView(row), level }];
+    }),
     colonies,
     fleet: p.homeFleet,
+    fleetDamage: p.homeDamage,
+    workshopRadiation: workshopIrradiated,
+    fleetCombatReady: partitionCombatFleet(p.homeFleet, p.homeDamage).eligible,
     ground: p.ground,
     /**
      * Your own craft that are currently off the planet.
@@ -504,6 +537,7 @@ export function buildPlanetView(data: PlanetViewData) {
      * order nothing until then; null inside Silent Space and when the season closes first.
      */
     silentSpace: p.silentSpace,
+    vacationUntil: p.vacationUntil,
     silentSpaceAt: departureOf(player, p),
     /**
      * BOTH CEILINGS AND BOTH LOADS. T4 · T4b.
@@ -569,6 +603,8 @@ export function buildPlanetView(data: PlanetViewData) {
         lost: player?.dominionLost ?? 0,
       }),
     },
+    honorBenefits: benefits,
+    honorTacticalCredit,
   };
 }
 
@@ -577,7 +613,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
   return buildPlanetView(await loadPlanetViewData(tx, planetId, clock));
 }
 
-function buildOrderView(order: typeof buildOrders.$inferSelect) {
+function buildOrderView(order: typeof buildOrders.$inferSelect, pausedAt: Date | null = null) {
   return {
     id: order.id,
     queue: order.queue,
@@ -587,6 +623,7 @@ function buildOrderView(order: typeof buildOrders.$inferSelect) {
     count: order.count,
     startedAt: order.startedAt,
     finishesAt: order.readyAt,
+    pausedAt: pausedAt ?? undefined,
     cost: order.cost,
   };
 }

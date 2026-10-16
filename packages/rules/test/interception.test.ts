@@ -11,6 +11,7 @@ import {
   sphereEntryFraction,
   interceptorCapacity,
   strategicStockpile,
+  coreTier,
 } from '../src/index.js';
 
 /**
@@ -66,8 +67,8 @@ describe('the interception grid', () => {
    * The pad limit is per WORLD and a charge only fires from the target's pad, so the
    * attacker's reply to a loaded world is several worlds striking at once.
    */
-  it('holds two charges by default and four with the Grid', () => {
-    expect(ANTI_STRATEGIC.charges).toEqual({ base: 2, researched: 4 });
+  it('holds two charges by default and six with the completed Grid ladder', () => {
+    expect(ANTI_STRATEGIC.charges).toEqual({ base: 2, perLevel: 2, researched: 6 });
     expect(DEATH_STAR.perWorld).toEqual({ base: 1, researched: 2 });
   });
 
@@ -81,14 +82,22 @@ describe('the interception grid', () => {
     expect(ANTI_STRATEGIC.buildMinutes).toBeLessThan(DEATH_STAR.buildMinutes);
   });
 
-  it('doubles its capacity through the war chain, one rung deep', () => {
+  it('adds two charges at each of two research levels and never exceeds six', () => {
     const grid = RESEARCH_PROJECTS.INTERCEPTION_GRID;
-    expect(grid.maxLevel).toBe(1);
+    expect(grid.maxLevel).toBe(2);
     expect(grid.prerequisite).toBe('GRAVITIC_CHARGES');
     expect(grid.availableAtMinutes)
       .toBe(RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.availableAtMinutes);
     expect(interceptorCapacity(0)).toBe(2);
     expect(interceptorCapacity(1)).toBe(4);
+    expect(interceptorCapacity(2)).toBe(6);
+    expect(interceptorCapacity(3)).toBe(6);
+    expect(interceptorCapacity(99)).toBe(6);
+  });
+
+  it('requires Core 13 so strategic weapon production starts in command tier five', () => {
+    expect(DEATH_STAR.requiredCore).toBe(13);
+    expect(coreTier(DEATH_STAR.requiredCore)).toBe(5);
   });
 
   it('solves the exact Telescope entry point on a moving leg', () => {

@@ -6,6 +6,7 @@ import {
   battleReports, missions, notifications, planetFaults, planets, scheduledEvents, strategicAssets,
 } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
+import { upgradeBuilding } from '../src/services/build.js';
 import { launchDeathStar } from '../src/services/strategic.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
@@ -101,6 +102,16 @@ describe('ağır bir saldırı', () => {
     const faults = await faultsOf(colony);
     expect(faults).toHaveLength(FAULT.attackFaults);
     expect(new Set(faults).size).toBe(FAULT.attackFaults);
+  });
+
+  it('bina geliştirmesinin koruması yeni savaş arızalarını engeller, sadakat kaybını engellemez', async () => {
+    await grant(f.db, colony, 60_000, 15_000);
+    await upgradeBuilding(f.db, colony, 'HANGAR', f.clock, f.playerIds[1]);
+    const { report } = await overwhelm(colony);
+    expect(report.colonyFaults).toEqual([]);
+    expect(await faultsOf(colony)).toEqual([]);
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(world!.loyalty).toBe(70);
   });
 
   /**
@@ -324,8 +335,11 @@ describe('ağır bir saldırı', () => {
     }
   });
 
-  /** D179 and the owner’s 2026-10-01 rule: EMP and loyalty, through the strategic path. */
-  it('Death Star vuruşu kolonide EMP ve sadakat kaybı yaratır', async () => {
+  /**
+   * D179 and the owner’s 2026-10-01 rule: EMP and loyalty, through the strategic path — and,
+   * since the owner’s 2026-10-15 rule, one random fault (`DEATH_STAR.colonyFaults`).
+   */
+  it('Death Star vuruşu kolonide EMP, sadakat kaybı ve bir arıza yaratır', async () => {
     await grant(f.db, colony, 200_000, 50_000);
     // D168: a Death Star strike answers to the same development band as a raid; `grant` raised the
     // colony's Core, so the striker comes up to it.
@@ -341,7 +355,7 @@ describe('ağır bir saldırı', () => {
     expect(struck?.controllerPlayerId, 'ilk vuruş dünyayı ele geçirmemeli').toBe(f.playerIds[1]!);
     expect(struck?.empUntil?.getTime()).toBe(f.clock.now().getTime() + DEATH_STAR.empMinutes * 60_000);
     expect(struck?.loyalty).toBe(100 - DEATH_STAR.colonyLoyaltyLoss);
-    expect(await faultsOf(colony)).toHaveLength(0);
+    expect(await faultsOf(colony)).toHaveLength(DEATH_STAR.colonyFaults);
   });
 
   it('dönüş bacağı saldırganın dünyasını bozmaz', async () => {

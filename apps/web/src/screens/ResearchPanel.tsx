@@ -235,6 +235,9 @@ export function ResearchPanel({ onNeed, focus }: {
           role: t('research.industrialRole'),
           detail: t('research.industrialDetail'),
         };
+      case 'RADIATION_SHIELDING':
+        return { name: t('research.shieldingName'), tag: t('research.shieldingTag'),
+          role: t('research.shieldingRole'), detail: t('research.shieldingDetail') };
       case 'SHIP_POWER':
         return {
           name: t('research.powerName'),
@@ -523,7 +526,7 @@ export function ResearchPanel({ onNeed, focus }: {
             <span className="text-v2-ink">{copy(running.projectId).name}</span>
             {' · '}
             <span data-research-finishes className="font-v2-mono">
-              {t('research.runningFinishes', { time: clockTime(running.finishesAt) })}
+              {'pausedAt' in running && running.pausedAt ? t('vacation.paused') : t('research.runningFinishes', { time: clockTime(running.finishesAt) })}
             </span>
           </p>
         ) : (
@@ -623,7 +626,9 @@ function ConstellationCard({
               </>
             )}
             {spec.gain.ceiling !== undefined && spec.gain.maxed !== true && (
-              <span className="text-v2-ink-3"> · {t('upgradeRow.ceiling', { value: spec.gain.ceiling })}</span>
+              <span className="text-v2-ink-3"> · {spec.id === 'RADIATION_SHIELDING'
+                ? t('research.shieldingCeiling', { rate: spec.gain.ceiling, level: spec.maxLevel })
+                : t('upgradeRow.ceiling', { value: spec.gain.ceiling })}</span>
             )}
           </p>
           {prerequisite !== null && spec.completed === undefined && (
@@ -812,7 +817,9 @@ function ProjectSheet({
               : `${spec.gain.now} → ${spec.gain.next}`}
             {spec.gain.ceiling !== undefined && spec.gain.maxed !== true && (
               <span className="ml-2 text-faint">
-                {t('upgradeRow.ceiling', { value: spec.gain.ceiling })}
+                {spec.id === 'RADIATION_SHIELDING'
+                  ? t('research.shieldingCeiling', { rate: spec.gain.ceiling, level: spec.maxLevel })
+                  : t('upgradeRow.ceiling', { value: spec.gain.ceiling })}
               </span>
             )}
           </span>

@@ -9,6 +9,7 @@ export type DockTab = (typeof DOCK_TABS)[number];
 const REPORTS: ReadonlySet<string> = new Set([
   'raided',
   'raid_result',
+  'clan_support_result',
   'death_star_result',
   'strategic_intercepted',
   'probe_report',

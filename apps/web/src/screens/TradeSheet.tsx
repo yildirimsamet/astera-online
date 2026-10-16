@@ -7,6 +7,7 @@ import {
   combatValue,
   garrisonOf,
   quoteTrade,
+  honorTradeResources,
   transferCargoCapacity,
   type Fleet,
   type HullId,
@@ -34,6 +35,7 @@ import { duration, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { RadiationPreview } from '../ui/RadiationPreview.js';
+import { HonorEffectQuote } from '../ui/HonorBenefits.js';
 import { lethalAfterRefusal, radiationRefusalCount, routeHpRadiation, toHpRadiationSources, type RadiationRefusal } from '../lib/radiation.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { Tally } from '../ui/Tally.js';
@@ -237,6 +239,7 @@ export function TradeSheet({
   const want = balanceTake(units, give, lead ?? Infinity, rate, hold);
   /** THE ONE ARITHMETIC. Everything drawn below is a field of this object. */
   const quote: TradeQuote = quoteTrade(offered, want, rate);
+  const netWant = planet.honorBenefits ? honorTradeResources(want, planet.honorBenefits).net : want;
 
   /** The two ends of the split slider, both reachable, neither of them invalid. */
   const splitTop = rate[dear] > 0 ? Math.floor(units / rate[dear]) : 0;
@@ -282,6 +285,7 @@ export function TradeSheet({
     : !carrying ? t('trade.needsCarrier')
     : quote.refusal === 'EMPTY_GIVE' ? t('trade.noOffer')
     : quote.refusal === 'EMPTY_WANT' ? t('trade.noAsk')
+    : netWant.alloy + netWant.crystal + netWant.deuterium === 0 ? t('honorBenefits.tooSmall')
     : quote.refusal === 'OVERLAPPING_RESOURCE' ? t('trade.selfSwap')
     : quote.refusal === 'BAD_AMOUNT' ? t('trade.badAmount')
     : quote.refusal === 'INSUFFICIENT_OFFER' ? t('trade.cannotPay')
@@ -388,6 +392,7 @@ export function TradeSheet({
               onCommit={() => {
                 launch.mutate(
                   { occurrenceId: merchant.id, fleet, give: offered, want,
+                    ...(planet.honorBenefits ? { expectedHonorTier: planet.honorBenefits.tier } : {}),
                     ...(radiation && radiation.destroyed > 0 ? { acknowledgeRadiationLoss: true } : {}) },
                   {
                     onSuccess: (result) => {
@@ -408,6 +413,7 @@ export function TradeSheet({
       )}
     >
       <div className="flex flex-col gap-3 pt-1">
+      <HonorEffectQuote kind="trade" value={planet.honorBenefits} base={want} net={netWant} />
       {/* ── the convoy, first, because it sets every maximum below ── */}
       <section className="grid gap-1.5">
       <h3 className={HEADING}>{t('trade.convoyHeading')}</h3>
@@ -589,7 +595,7 @@ export function TradeSheet({
               <span className="min-w-0">
                 <span className="block truncate text-micro text-v2-ink-3">{t(`trade.${good}`)}</span>
                 <span data-take={good} className="block font-v2-mono text-body font-semibold text-v2-ink">
-                  {full(want[good])}
+                  {full(netWant[good])}
                 </span>
               </span>
             </span>
@@ -638,13 +644,15 @@ export function TradeSheet({
           <span className={`font-v2-mono ${returnDecides ? 'text-v2-ink-2' : 'text-v2-ink'}`}>
             {full(quote.outboundVolume)}
           </span>
-          <span className="text-v2-ink-3">{t('trade.legHome')}</span>
+          <span className="text-v2-ink-3">{t(planet.honorBenefits && planet.honorBenefits.tradePct > 0 ? 'honorBenefits.grossReturn' : 'trade.legHome')}</span>
           <span className={`font-v2-mono ${returnDecides ? 'text-v2-ink' : 'text-v2-ink-2'}`}>
             {full(quote.returnVolume)}
           </span>
           <span className="text-v2-ink-3">{t('trade.legHold')}</span>
           <span className="font-v2-mono text-v2-ink-2">{full(hold)}</span>
         </div>
+        {planet.honorBenefits && planet.honorBenefits.tradePct > 0
+          ? <p className="mt-2 text-micro leading-snug text-v2-ink-2">{t('honorBenefits.grossCargoRule')}</p> : null}
         {returnDecides && (
           <p className="mt-2 text-caption leading-snug text-v2-warn">
             {t('trade.legReturnDecides')}

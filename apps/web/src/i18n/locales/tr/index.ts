@@ -1,3 +1,5 @@
+import { honorBenefits } from './honorBenefits.js';
+import { vacation } from './vacation.js';
 import { silentSpace } from './silentSpace.js';
 import { brand } from './brand.js';
 import { monument } from './monument.js';
@@ -34,9 +36,11 @@ import type { Resources } from '../en/index.js';
  * anahtarı yakalar ama boş bir dizeyi yakalamaz.
  */
 export const tr: Resources = {
+  honorBenefits,
   brand,
   monument,
   silentSpace,
+  vacation,
   academy,
   landing,
   servers,

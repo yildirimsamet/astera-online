@@ -1487,8 +1487,8 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
    * enough that six to eight fit in an evening.
    */
   it('lands a neighbourhood raid inside the chosen window', () => {
-    expect(roundTrip).toBeGreaterThanOrEqual(10);
-    expect(roundTrip).toBeLessThanOrEqual(20);
+    expect(roundTrip).toBeGreaterThanOrEqual(10 / 0.8);
+    expect(roundTrip).toBeLessThanOrEqual(20 / 0.8);
   });
 
   it('keeps a heavy raid on a neighbour inside a single sitting', () => {
@@ -1561,7 +1561,8 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
     // disproportionately efficient.
     const perEffort = DISRUPTION.decisiveMinutes / roundTrip;
     expect(perEffort).toBeLessThan(9);
-    expect(perEffort).toBeGreaterThanOrEqual(1);
+    // Flight slows by 20%; disruption is a fixed effect clock, outside the work slowdown.
+    expect(perEffort).toBeGreaterThanOrEqual(0.8);
     expect(DISRUPTION.partialMinutes).toBeLessThan(DISRUPTION.decisiveMinutes);
     expect(DISRUPTION.maxPendingMinutes).toBeGreaterThanOrEqual(DISRUPTION.decisiveMinutes);
   });

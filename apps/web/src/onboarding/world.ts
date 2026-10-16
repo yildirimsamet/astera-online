@@ -280,6 +280,8 @@ export function planetOf(w: RehearsalWorld): PlanetView {
     }), { alloy: 0, crystal: 0, deuterium: 0 });
 
   return {
+    radiationBombsAvailable: false,
+    radiationBombs: [],
     planet: {
       id: w.reserved.id,
       name: w.reserved.name,

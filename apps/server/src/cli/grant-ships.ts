@@ -1,3 +1,4 @@
+import { systemClock } from '../clock.js';
 import { and, eq, ilike } from 'drizzle-orm';
 import { ALL_HULLS } from '@astera/rules';
 import { createDb } from '../db/client.js';
@@ -81,7 +82,7 @@ try {
         });
     }
 
-    await recomputeWealth(tx, planet.id);
+    await recomputeWealth(tx, planet.id, systemClock.now());
   });
 
   console.log(`Successfully added 1 of every ship type to ${account.username}!`);

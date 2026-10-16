@@ -83,6 +83,8 @@ export function planetView(
     ground: {},
     /** Craft that are off the planet. Empty by default: nothing is in the air. */
     fleetAway: {},
+    radiationBombsAvailable: false,
+    radiationBombs: [],
     flight: { used: 0, total: 3 },
     capacity: {
       ground: groundSlots(1),

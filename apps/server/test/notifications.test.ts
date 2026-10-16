@@ -805,6 +805,7 @@ describe('the kinds of news the server can send', () => {
       'monument_probe_lost',
       'monument_returning',
       'probe_report',
+      'radiation_bomb_result',
       // Radyasyon (plan F9): ships a cloud finished; the client routes it to the fleet board.
       'radiation_lost',
       'raid_result',

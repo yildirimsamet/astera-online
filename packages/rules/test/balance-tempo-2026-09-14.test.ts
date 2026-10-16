@@ -64,10 +64,10 @@ describe('the drill and the rock it meets', () => {
   });
 
   it('comes home at half speed laden, not a third', () => {
-    expect(PROSPECTOR.speed).toBe(1237.5);
+    expect(PROSPECTOR.speed).toBe(990);
     expect(PROSPECTOR.returnSpeedFactor).toBe(1 / 2);
-    expect(prospectorReturnSpeed([], true)).toBe(618.75);
-    expect(prospectorReturnSpeed([], false)).toBe(1237.5);
+    expect(prospectorReturnSpeed([], true)).toBe(495);
+    expect(prospectorReturnSpeed([], false)).toBe(990);
     expect(PROSPECTOR.shortTripMinutes).toBe(4 / 3);
   });
 
@@ -134,8 +134,9 @@ describe('research prices', () => {
     }
     // Industrial (owner K6, 2026-09-29) added the seventeenth project and its two rungs;
     // the Death Star Protocol's retirement (owner, 2026-10-01) took one project and one rung.
-    expect(RESEARCH_PROJECT_IDS.length).toBe(16);
-    expect(rungs).toBe(53);
+    expect(RESEARCH_PROJECT_IDS.length).toBe(17);
+    // Interception Grid now adds a second useful level (owner, 2026-10-15).
+    expect(rungs).toBe(58);
   });
 
   it('still charges whole positive resources at every rung', () => {
@@ -204,14 +205,14 @@ describe('fuel', () => {
 });
 
 describe('build and research timers', () => {
-  it('takes a quarter off the one shared tempo dial', () => {
-    expect(ECONOMY_ADJUSTMENT.buildTime).toBeCloseTo(1.3 * 0.75, 12);
-    expect(ECONOMY_ADJUSTMENT.buildTime).toBe(0.975);
+  it('slows the previous shared work rate by 20%', () => {
+    expect(ECONOMY_ADJUSTMENT.buildTime).toBeCloseTo(0.975 / 0.8, 12);
+    expect(ECONOMY_ADJUSTMENT.buildTime).toBe(1.21875);
   });
 
-  it('lowers the effective eight-hour building ceiling from 624 to 468 minutes', () => {
+  it('extends the effective work ceiling from 468 to 585 minutes', () => {
     // The authored ceiling is 480 minutes of work; the dial is applied after it.
-    expect(buildingMinutes('CORE', 40, {})).toBeCloseTo(468, 9);
+    expect(buildingMinutes('CORE', 40, {})).toBeCloseTo(585, 9);
   });
 });
 

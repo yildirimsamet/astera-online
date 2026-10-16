@@ -5,6 +5,8 @@ import { MOBILE_HULLS, MONUMENT_CAPACITY, MULTI_WORLD, allocateMonumentDominion,
 import { clanMemberships, clans, hpRadiationSources, monumentBattles, monumentBattleParticipants, monuments, monumentShipLots, monumentWaves, notifications, planets, players, seasons, units } from '../src/db/schema.js';
 import { resolveMonumentArrival } from '../src/services/monumentArrival.js';
 import { lockMonument, settleMonument } from '../src/services/monument.js';
+import { recallMonument } from '../src/services/monumentMovement.js';
+import { readMonumentBattleReports } from '../src/services/monumentReports.js';
 import { assertDominionLedgers } from '../src/services/dominion.js';
 import { totalUnitsOf } from '../src/services/planet.js';
 import { seedWorld, testDb, type Fixture } from './helpers.js';
@@ -52,6 +54,17 @@ beforeEach(async () => {
 afterAll(async () => { await (await testDb()).close(); });
 
 describe('chronological monument arrivals and physical battle settlement', () => {
+  it('keeps maintenance-critical monument ships targetable while they deal no return fire', async () => {
+    await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]! }).where(eq(monuments.id, m.id));
+    await wave(1, { DART: 10 }, { hold: true, damageBp: 9500 });
+    const attacker = await wave(0, { DART: 20 });
+    await arrive(attacker);
+    const [battle] = await f.db.select().from(monumentBattles);
+    expect(battle?.rounds.every((round) => round.defenderDamage === 0)).toBe(true);
+    expect(battle?.defenderFleet.DART).toBe(10);
+    expect(battle?.defenderSurvivors.DART ?? 0).toBe(0);
+    expect(battle?.attackerSurvivors.DART).toBe(20);
+  });
   it('defeats neutral ships without Dominion and captures for the actual owner’s clan', async () => {
     const clanId = await clan([0]);
     const attacker = await wave(0, { CATACLYSM: 20, COURIER: 2 });
@@ -121,15 +134,71 @@ describe('chronological monument arrivals and physical battle settlement', () =>
       payload: { targetKind: 'MONUMENT', monumentId: m.id, reason: 'CAPACITY', craft: 2, arriveAt: incomingAfter!.arriveAt!.toISOString() } });
   });
 
-  it('returns a friendly reinforcement whose target changed control, instead of turning it into an attack', async () => {
-    await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]! }).where(eq(monuments.id, m.id));
-    await wave(1, { DART: 1 }, { hold: true });
+  /** Owner, 2026-10-15: a control change in flight never turns a fleet back; arrival meets the target as it is. */
+  it.each([
+    { state: 'RIVAL', defender: { DART: 1 }, opponent: 'PLAYER' },
+    { state: 'GARRISON', defender: { DART: 1 }, opponent: 'NEUTRAL' },
+    { state: 'EMPTY', defender: {}, opponent: null },
+  ] as const)('resolves a reinforcement against a $state target at arrival instead of sending it home', async ({ state, defender, opponent }) => {
+    if (state === 'RIVAL') {
+      await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]! }).where(eq(monuments.id, m.id));
+      await wave(1, { DART: 1 }, { hold: true });
+    }
+    if (state === 'EMPTY') await f.db.update(monuments).set({ garrison: {}, emptySince: at(0) }).where(eq(monuments.id, m.id));
     const incoming = await wave(0, { CATACLYSM: 10 }, { purpose: 'REINFORCE' });
     await arrive(incoming);
     const [stored] = await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, incoming.id));
-    expect(stored).toMatchObject({ status: 'RETURNING', returnReason: 'CONTROL_CHANGED' });
-    expect(await f.db.select().from(monumentBattles)).toHaveLength(0);
-    expect((await f.db.select().from(monuments))[0]?.controllerPlayerId).toBe(f.playerIds[1]);
+    expect(stored).toMatchObject({ status: 'HOLD', returnReason: null, reservedBulk: 0, heldAt: at(1) });
+    const battles = await f.db.select().from(monumentBattles);
+    expect(battles).toHaveLength(1);
+    expect(battles[0]).toMatchObject({ control: 'ATTACKER', defenderFleet: defender, triggerWaveId: incoming.id });
+    expect((await f.db.select().from(monuments))[0]).toMatchObject({ controllerPlayerId: f.playerIds[0], emptySince: null });
+    const notices = await f.db.select().from(notifications).where(eq(notifications.playerId, f.playerIds[0]!));
+    expect(notices.some((notice) => notice.kind === 'monument_returning')).toBe(false);
+    expect(notices.find((notice) => notice.kind === 'raid_result')?.payload)
+      .toMatchObject({ opponents: opponent === null ? [] : [{ kind: opponent }] });
+    const [report] = await f.db.transaction((tx) => readMonumentBattleReports(tx, f.playerIds[0]!, 10));
+    expect(report?.opponents.map((row) => row.kind)).toEqual(opponent === null ? [] : [opponent]);
+  });
+
+  it('keeps a clanmate’s reinforcement flying when the last holder leaves, then takes the emptied monument', async () => {
+    const clanId = await clan([0, 1]);
+    await f.db.update(monuments).set({ garrison: {}, controllerClanId: clanId }).where(eq(monuments.id, m.id));
+    const holder = await wave(1, { DART: 1 }, { hold: true });
+    const incoming = await wave(0, { CATACLYSM: 2 }, { eta: 5, purpose: 'REINFORCE' });
+    f.clock.set(at(2));
+    await f.db.transaction((tx) => recallMonument(tx, { playerId: f.playerIds[1]!, waveId: holder.id, all: true, clock: f.clock }));
+    expect((await f.db.select().from(monuments))[0]).toMatchObject({ controllerClanId: null, emptySince: at(2) });
+    expect((await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, incoming.id)))[0]?.status).toBe('OUTBOUND');
+
+    await arrive(incoming);
+
+    expect((await f.db.select().from(monuments))[0]).toMatchObject({ controllerClanId: clanId, controllerPlayerId: null, emptySince: null });
+    expect((await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, incoming.id)))[0]).toMatchObject({ status: 'HOLD', returnReason: null });
+    const returning = await f.db.select().from(notifications).where(and(eq(notifications.playerId, f.playerIds[0]!), eq(notifications.kind, 'monument_returning')));
+    expect(returning).toHaveLength(0);
+  });
+
+  it('returns cargo that reaches an empty monument without restarting the garrison clock', async () => {
+    await f.db.update(monuments).set({ garrison: {}, emptySince: at(0) }).where(eq(monuments.id, m.id));
+    const cargo = await wave(0, { COURIER: 2 }, { eta: 5, purpose: 'REINFORCE', cargo: 0.125 });
+    await arrive(cargo);
+    expect((await f.db.select().from(monuments))[0]).toMatchObject({ controllerPlayerId: null, controllerClanId: null, emptySince: at(0) });
+    expect((await f.db.select().from(monumentWaves))[0]).toMatchObject({ status: 'RETURNING', returnReason: 'DEFEAT', reservedBulk: 0 });
+    expect((await f.db.select().from(monumentShipLots))[0]?.deuterium).toBe(0.125);
+  });
+
+  it('warns a capturing holder about a reinforcement that is now hostile and still inbound', async () => {
+    await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[2]! }).where(eq(monuments.id, m.id));
+    await wave(2, { DART: 1 }, { hold: true });
+    const stranded = await wave(2, { DART: 1 }, { eta: 10, purpose: 'REINFORCE' });
+    const attacker = await wave(0, { CATACLYSM: 10 });
+    await arrive(attacker);
+    expect((await f.db.select().from(monuments))[0]?.controllerPlayerId).toBe(f.playerIds[0]);
+    const notices = await f.db.select().from(notifications).where(eq(notifications.refId, stranded.id));
+    expect(notices.filter((notice) => notice.playerId === f.playerIds[0])).toMatchObject([
+      { kind: 'monument_inbound', payload: { waveId: stranded.id, arriveAt: stranded.arriveAt!.toISOString() } },
+    ]);
   });
 
   it('uses the whole attacking wing in battle before selecting capacity and returns only its excess', async () => {

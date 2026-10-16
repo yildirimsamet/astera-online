@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HULLS, MONUMENT_BALANCE, MONUMENT_CAPACITY, MONUMENT_SEASON_DEFAULTS, distance, interpolatePosition, monumentDifficulty, seededFrom, travelExact, type Vec3 } from '@astera/rules';
-import { galaxySchema, monumentsSchema, monumentRecallQuoteSchema, monumentSendSchema } from '../../web/src/api/schemas.js';
+import { galaxySchema, monumentsSchema, monumentQuoteSchema, monumentRecallQuoteSchema, monumentSendSchema } from '../../web/src/api/schemas.js';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { clanWarOperations, hpRadiationSources, monumentProbes, monuments, monumentShipLots, monumentWaves, notifications, planets, radiationSources, seasons, units } from '../src/db/schema.js';
@@ -70,6 +70,30 @@ async function outbound() {
 }
 
 describe('Easy / Hard HTTP contracts and personal dispatch boundaries', () => {
+  it('shows the wave’s frozen shielding, protected flat rate and cargo-loss forecast through real schemas', async () => {
+    await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now(), monumentRadiationStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    const own = await hold(0, 0);
+    await f.db.update(monumentWaves).set({ tech: { SHIP_ARMOR: 5, RADIATION_SHIELDING: 4 } }).where(eq(monumentWaves.id, own.id));
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id,
+      x: m.x, y: m.y, z: m.z, radius: 1000, mode: 'EMIT', radiationLevel: 2, intensityHpPerMinute: 12.5, activeFrom: f.clock.now() });
+    f.clock.advance(10);
+    const detail = await app.inject({ method: 'GET', url: `/api/monuments/${m.id}`, headers: auth });
+    expect(detail.statusCode, detail.body).toBe(200);
+    const view = monumentsSchema.parse(detail.json());
+    expect(view.monuments[0]?.radiationHpPerMinute).toBeCloseTo(12.5, 10);
+    const wave = view.waves.find(row => row.id === own.id)!;
+    expect(wave.radiationHpPerMinute).toBeCloseTo(5.25, 10);
+    expect(wave.tech.RADIATION_SHIELDING).toBe(4);
+    expect(wave.lots.find(row => row.hull === 'ARGOSY')?.remainingHp).toBeCloseTo(1687.5 - 52.5, 9);
+    expect(wave.cargoLossAt?.getTime()).toBe(f.clock.now().getTime() + Math.ceil((1687.5 / 5.25 - 10) * 60_000));
+    expect(wave.returnForecast.doseHp).toBe(0);
+    const quote = await post(`/api/monuments/${m.id}/quote`, { ...launchBody(), purpose: 'REINFORCE' });
+    expect(quote.statusCode, quote.body).toBe(200);
+    const priced = monumentQuoteSchema.parse(quote.json());
+    expect(priced.radiationProtection).toMatchObject({ level: 0, hpPerMinute: 12.5 });
+    expect(priced.radiationProtection?.cargoLossAt?.getTime())
+      .toBe(priced.arriveAt.getTime() + 108 * 60_000);
+  });
   it('carries motion, escrow and a priced partial recall through the actual client schemas', async () => {
     await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
     const sent = await post(`/api/monuments/${m.id}/send`, { ...launchBody(), acknowledgeShieldLoss: true });
@@ -96,9 +120,9 @@ describe('Easy / Hard HTTP contracts and personal dispatch boundaries', () => {
   it('publishes radiation levels on monument clouds without relabelling zones or the legacy four-HP cloud', async () => {
     const sources = await f.db.insert(hpRadiationSources).values([
       { seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id, x: m.x, y: m.y, z: m.z,
-        radius: 1000, intensityHpPerMinute: 2, mode: 'EMIT', activeFrom: f.clock.now() },
+        radius: 1000, intensityHpPerMinute: 2, radiationLevel: 1, mode: 'EMIT', activeFrom: f.clock.now() },
       { seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id, x: m.x, y: m.y, z: m.z,
-        radius: 1000, intensityHpPerMinute: 5, mode: 'EMIT', activeFrom: f.clock.now() },
+        radius: 1000, intensityHpPerMinute: 5, radiationLevel: 2, mode: 'EMIT', activeFrom: f.clock.now() },
       { seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id, x: m.x, y: m.y, z: m.z,
         radius: 1000, intensityHpPerMinute: 4, mode: 'EMIT', activeFrom: f.clock.now() },
       { seasonId: f.seasonId, anchorKind: 'ZONE', x: 0, y: 0, z: 0,
@@ -141,6 +165,7 @@ describe('Easy / Hard HTTP contracts and personal dispatch boundaries', () => {
   });
 
   it('deduplicates one dispatch and allows a new independent support dispatch', async () => {
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 10);
     await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
     await giveUnits(f.db, f.planetIds[0]!, { CITADEL: 4, ARGOSY: 2 });
     const headers = key();
@@ -154,6 +179,24 @@ describe('Easy / Hard HTTP contracts and personal dispatch boundaries', () => {
     const second = await post(url, payload);
     expect(second.statusCode, second.body).toBe(200);
     expect(await f.db.select().from(monumentWaves)).toHaveLength(2);
+  });
+
+  it('returns Hard tier restrictions in the catalog and refuses low-tier quote/send requests atomically', async () => {
+    await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 9);
+    const beforeShips = await f.db.select().from(units);
+    const beforeWorlds = await f.db.select().from(planets);
+    const catalog = await app.inject({ method: 'GET', url: '/api/monuments', headers: auth });
+    const view = monumentsSchema.parse(catalog.json());
+    expect(view.monuments.find(row => row.id === m.id)?.sendAccess).toMatchObject({ playerTier: 3, tierAllowed: false });
+    for (const action of ['quote', 'send']) {
+      const response = await post(`/api/monuments/${m.id}/${action}`, { ...launchBody(), acknowledgeShieldLoss: true });
+      expect(response.statusCode, response.body).toBe(403);
+      expect(response.json()).toMatchObject({ error: 'MONUMENT_TIER_FORBIDDEN', params: { tier: 3, minTier: 4 } });
+    }
+    expect(await f.db.select().from(units)).toEqual(beforeShips);
+    expect(await f.db.select().from(planets)).toEqual(beforeWorlds);
+    expect(await f.db.select().from(monumentWaves)).toHaveLength(0);
   });
 
   it('keeps recall available after Easy becomes tier-ineligible, while refusing new cargo atomically', async () => {
@@ -175,6 +218,7 @@ describe('Easy / Hard HTTP contracts and personal dispatch boundaries', () => {
   });
 
   it('reopens combat access on an overdue final return without a worker tick', async () => {
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 10);
     await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
     const own = await outbound();
     f.clock.advance(0.1);

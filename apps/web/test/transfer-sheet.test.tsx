@@ -110,6 +110,21 @@ describe('world transfer sheet', () => {
     sky.hpRadiation = [];
   });
 
+  it('blocks a held transfer if a live inventory update removes the selected ships', async () => {
+    const draw = (count: number) => <ToastProvider><TransferSheet target={target}
+      planet={planetView({ fleet: { DART: count } }, { id: 'capital-1', alloy: 10_000, deuterium: 10_000 })}
+      onClose={vi.fn()} onLaunched={vi.fn()} /></ToastProvider>;
+    const { rerender } = render(draw(2));
+    await userEvent.click(screen.getByRole('button', { name: 'More Dart' }));
+    rerender(draw(0));
+    const commit = document.querySelector<HTMLButtonElement>('[data-transfer-commit] button');
+    expect(commit).toBeDisabled();
+    if (!commit) throw new Error('Missing transfer commit');
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
   /** Radyasyon (plan D10): a route that would finish ships says so, and the hold is the answer. */
   it('reads HP exposure for this physical transfer and carries the selection’s own loss consent', async () => {
     sky.hpRadiation = [{ id: 'hp', mode: 'EMIT', center: { x: 50, y: 0, z: 0 }, radius: 100_000,
@@ -125,6 +140,18 @@ describe('world transfer sheet', () => {
     fireEvent.keyDown(commit, { key: 'Enter' });
     fireEvent.keyDown(commit, { key: 'Enter' });
     expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ acknowledgeRadiation: true }), expect.anything());
+  });
+
+  it('quotes a lethal route using the transferred ships’ existing wounds', async () => {
+    sky.hpRadiation = [{ id: 'hp', mode: 'EMIT', center: { x: 50, y: 0, z: 0 }, radius: 100_000,
+      intensityHpPerMinute: HULLS.DART.hp * 0.1, activeFrom: new Date(0), activeUntil: null }];
+    const user = userEvent.setup();
+    render(<ToastProvider><TransferSheet target={target}
+      planet={planetView({ fleet: { DART: 1 }, fleetDamage: [{ hull: 'DART', count: 1, damageBp: 9990 }] },
+        { id: 'capital-1', alloy: 10_000, deuterium: 10_000 })}
+      onClose={vi.fn()} onLaunched={vi.fn()} /></ToastProvider>);
+    await user.click(screen.getByRole('button', { name: 'More Dart' }));
+    expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/destroys 1 ship/);
   });
   it('names the ships a lethal route finishes, and the hold carries the acknowledgement', async () => {
     sky.radiation = [{

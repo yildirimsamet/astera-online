@@ -3,6 +3,7 @@ import { hangarCapacity } from './economy.js';
 import { coreTier } from './loot.js';
 import {
   applyHpDose,
+  RADIATION_LEVEL_HP_PER_MINUTE,
   hpLethalAtMs,
   segmentsExposureHp,
   type HpDamageLots,
@@ -15,8 +16,8 @@ import type { MobileHullId, Vec3 } from './types.js';
 export type MonumentDifficulty = 'LEGACY' | 'EASY' | 'HARD';
 
 export const MONUMENT_BALANCE = {
-  EASY: { capacity: hangarCapacity(5), radiationLevel: 1, intensityHpPerMinute: 2, productionPerMinute: 3, garrison: { STRONGHOLD: 3 } },
-  HARD: { capacity: hangarCapacity(10), radiationLevel: 2, intensityHpPerMinute: 5, productionPerMinute: 8, garrison: { LEVIATHAN: 10 } },
+  EASY: { capacity: hangarCapacity(5), radiationLevel: 1, intensityHpPerMinute: RADIATION_LEVEL_HP_PER_MINUTE[1], productionPerMinute: 3, garrison: { STRONGHOLD: 3 } },
+  HARD: { capacity: hangarCapacity(10), radiationLevel: 2, intensityHpPerMinute: RADIATION_LEVEL_HP_PER_MINUTE[2], productionPerMinute: 8, garrison: { LEVIATHAN: 10 } },
 } as const;
 
 /** Each set of four forms a tetrahedron; together they cover the eight cube corners. */
@@ -43,7 +44,8 @@ export function monumentDifficulty(ordinal: number): 'EASY' | 'HARD' {
 }
 
 export function monumentTierEligible(difficulty: MonumentDifficulty, peakCoreLevel: number): boolean {
-  return difficulty !== 'EASY' || coreTier(peakCoreLevel) <= 3;
+  if (difficulty === 'LEGACY') return true;
+  return difficulty === 'EASY' ? coreTier(peakCoreLevel) <= 3 : coreTier(peakCoreLevel) >= 4;
 }
 
 /**

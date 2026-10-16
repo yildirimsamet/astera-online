@@ -5,8 +5,6 @@ import {
   repairPct,
   shipHpRepairCost,
   shipHpRepairMinutes,
-  splitForHpLanding,
-  splitForLanding,
   type TechLevels,
   type DamageLot,
   type DamageLots,
@@ -18,13 +16,15 @@ import {
 import type { Queryable, Tx } from '../db/client.js';
 import { buildOrders, shipDamageLots, units } from '../db/schema.js';
 import { setUnits } from './planet.js';
+import { readHomeHealth, writeHomeHealth } from './homeHealth.js';
+import { maintenanceLanding } from '@astera/rules';
+import { projectLateHomeArrival, settlePlanetRadiationAt } from './planetRadiation.js';
 
 /**
  * KALICI GEMİ HASARI — the Repair Station's dock, in storage. `plan.md` F2.
  *
- * `damage.ts` decides what damage means; this file writes the answer down. Ships above
- * the owner's twenty percent leave `home` for `dock:<lot>`, where no launch lane and no
- * defending line will find them. Nothing here creates or destroys a ship: every function
+ * Wounds persist at home. Only an explicit workshop action moves ships to `dock:<lot>`,
+ * where no launch lane and no defending line will find them. Every function
  * moves counts between `units` locations, and `units` stays the only record of how many
  * ships a world has.
  */
@@ -41,11 +41,11 @@ export interface DockedLot {
   orderId: string | null;
 }
 
-/** What the Repair Station did with ships just judged, for the report and the bell. */
+/** Historical report shape. Manual landings leave both notice arrays empty. */
 export interface DockReport {
-  /** At or under the line: patched free, now standing at home. */
+  /** Historic free-repair notice; new landings do not heal. */
   autoRepaired: DamageLot[];
-  /** Above it: waiting in the dock. */
+  /** Historic auto-dock notice; workshop entry is now manual. */
   docked: DamageLot[];
 }
 
@@ -82,6 +82,8 @@ export async function dockLotsOf(tx: Queryable, planetId: string, inventory?: re
     inArray(units.location, lots.map((lot) => dockLocation(lot.id))),
   ));
   const counts = new Map(rows.map((row) => [row.location, row.count]));
+  // Only an explicit projected inventory can override canonical dock HP.
+  const projectedDamage = new Map((inventory ?? []).filter(row => row.damage.length > 0).map(row => [row.location, row.damage[0]! ]));
   const orderIds = lots.flatMap((lot) => (lot.repairOrderId ? [lot.repairOrderId] : []));
   const running = new Set(orderIds.length === 0 ? [] : (await tx.select({ id: buildOrders.id })
     .from(buildOrders)
@@ -92,12 +94,13 @@ export async function dockLotsOf(tx: Queryable, planetId: string, inventory?: re
     const count = counts.get(dockLocation(lot.id)) ?? 0;
     if (count <= 0) return [];
     const job = lot.repairOrderId !== null && running.has(lot.repairOrderId) ? lot.repairOrderId : null;
+    const health = projectedDamage.get(dockLocation(lot.id)) ?? lot;
     return [{
       id: lot.id,
       hull: lot.hull,
       count,
-      damageBp: lot.damageBp,
-      ...(lot.remainderBp > 0 ? { remainderBp: lot.remainderBp } : {}),
+      damageBp: health.damageBp,
+      ...((health.remainderBp ?? 0) > 0 ? { remainderBp: health.remainderBp } : {}),
       repairing: job !== null,
       orderId: job,
     }];
@@ -135,19 +138,6 @@ export function dockView(lots: readonly DockedLot[], yard: number, tech: TechLev
   };
 }
 
-/** One lot row per landing's damage state, and its ships at `dock:<lot>`. Never merged. */
-async function dock(tx: Tx, planetId: string, ownerPlayerId: string, lots: HpDamageLots, at: Date): Promise<void> {
-  for (const lot of lots) {
-    const [row] = await tx.insert(shipDamageLots)
-      .values({ planetId, hull: lot.hull, damageBp: lot.damageBp, remainderBp: lot.remainderBp ?? 0, createdAt: at })
-      .returning({ id: shipDamageLots.id });
-    if (!row) throw new Error('dock lot insert returned no row');
-    await tx.insert(units).values({
-      planetId, ownerPlayerId, hull: lot.hull, location: dockLocation(row.id), count: lot.count,
-    });
-  }
-}
-
 async function homeOf(tx: Tx, planetId: string): Promise<Fleet> {
   const rows = await tx.select().from(units)
     .where(and(eq(units.planetId, planetId), eq(units.location, 'home')));
@@ -163,33 +153,31 @@ export interface Landing {
   /** What the ships carry; null or empty when every one of them is whole. */
   damage: HpDamageLots | null | undefined;
   at: Date;
+  /** A delayed worker observes now, but these ships began occupying home at arrival. */
+  radiationAt?: Date;
 }
 
 /**
  * SHIPS COME DOWN ON A WORLD. The one landing every lane uses.
  *
- * Undamaged, this is the read-merge-write every landing already did. Damaged, the
- * Repair Station judges each ship as it lands: at or under the line it is patched and
- * joins the others at home, above it it goes to the dock. The caller holds the world's
- * row lock, as every landing already does.
+ * Every survivor joins the home population with its exact wounds. The caller holds
+ * the world's row lock; workshop entry is a separate explicit maintenance action.
  */
 export async function landShips(tx: Tx, input: Landing): Promise<DockReport> {
-  if (input.damage?.some((lot) => lot.remainderBp !== undefined)) return landHpShips(tx, input);
-  const landing = splitForLanding(input.fleet, input.damage);
-  const merged = await homeOf(tx, input.planetId);
-  for (const [hull, count] of fleetEntries(landing.home)) merged[hull] = (merged[hull] ?? 0) + count;
-  await setUnits(tx, input.planetId, merged, 'home', input.ownerPlayerId);
-  await dock(tx, input.planetId, input.ownerPlayerId, landing.docked, input.at);
-  return { autoRepaired: landing.autoRepaired, docked: landing.docked };
+  return landHpShips(tx, input);
 }
 
 /** The same physical landing, preserving HP fractions through the Repair Station. */
 export async function landHpShips(tx: Tx, input: Omit<Landing, 'damage'> & { damage: HpDamageLots | null | undefined }): Promise<HpDockReport> {
-  const landing = splitForHpLanding(input.fleet, input.damage);
-  const merged = await homeOf(tx, input.planetId);
+  const arrivedAt = input.radiationAt ?? input.at;
+  const state = await settlePlanetRadiationAt(tx, input.planetId, arrivedAt, input.at);
+  const exposure = state ? await projectLateHomeArrival(tx, state, input.fleet, input.damage, arrivedAt) : null;
+  const landing = maintenanceLanding(exposure?.fleet ?? input.fleet, exposure?.lots ?? input.damage);
+  const home = await readHomeHealth(tx, input.planetId);
+  const merged = home.fleet;
   for (const [hull, count] of fleetEntries(landing.home)) merged[hull] = (merged[hull] ?? 0) + count;
   await setUnits(tx, input.planetId, merged, 'home', input.ownerPlayerId);
-  await dock(tx, input.planetId, input.ownerPlayerId, landing.docked, input.at);
+  await writeHomeHealth(tx, input.planetId, merged, [...home.damage, ...landing.damage]);
   return { autoRepaired: landing.autoRepaired, docked: landing.docked };
 }
 
@@ -215,19 +203,14 @@ export async function releaseRepairedLots(
 }
 
 /**
- * A DEFENDER'S BATTLE HAS ENDED ON ITS OWN WORLD. The same judgement as a landing, with
- * the ships already standing at home: the badly damaged step off the line into the dock
- * before anything else can read the garrison.
+ * A DEFENDER'S BATTLE HAS ENDED ON ITS OWN WORLD. Record the survivors' wounds at home;
+ * the historical function name remains for callers, but it never auto-docks a ship.
  */
 export async function dockDamaged(
   tx: Tx,
   input: { planetId: string; ownerPlayerId: string; lots: HpDamageLots; at: Date },
 ): Promise<DockReport> {
   const standing = await homeOf(tx, input.planetId);
-  const judged = input.lots.some((lot) => lot.remainderBp !== undefined) ? splitForHpLanding(standing, input.lots) : splitForLanding(standing, input.lots);
-  const moved: Fleet = {};
-  for (const lot of judged.docked) moved[lot.hull] = judged.home[lot.hull] ?? 0;
-  await setUnits(tx, input.planetId, moved, 'home', input.ownerPlayerId);
-  await dock(tx, input.planetId, input.ownerPlayerId, judged.docked, input.at);
-  return { autoRepaired: judged.autoRepaired, docked: judged.docked };
+  await writeHomeHealth(tx, input.planetId, standing, input.lots);
+  return { autoRepaired: [], docked: [] };
 }

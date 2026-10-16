@@ -80,8 +80,7 @@ export const trade = {
   /* ── confirmation ───────────────────────────────────────────── */
   send: "Envoyer le convoi",
   sending: "Départ en cours",
-  warning:
-    "Un convoi lancé ne peut pas être rappelé. Il restera en vol pendant {{duration}}.",
+  warning: "Rappelle le convoi avant son arrivée chez le marchand pour récupérer ton offre sans échange. Le carburant n’est pas remboursé. Trajet prévu : {{duration}}.",
   fleetsave:
     "Il ne peut pas être attaqué pendant son trajet, mais il ne peut pas non plus défendre ce monde.",
   launched: "Convoi lancé · {{duration}}",

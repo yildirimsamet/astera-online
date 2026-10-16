@@ -36,7 +36,7 @@ import { chatRelativeTime } from '../lib/chatTime.js';
 import { commanderLabel } from '../lib/identity.js';
 import { haptic } from '../lib/haptics.js';
 import { useNow } from '../lib/time.js';
-import { ClanIcon, CloseIcon, HeartIcon, MuteIcon, PlusIcon, SendIcon } from '../ui/icons/index.js';
+import { ClanIcon, CloseIcon, HeartIcon, HonorIcon, MuteIcon, PlusIcon, SendIcon } from '../ui/icons/index.js';
 import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Segmented } from '../v2/kit/Segmented.js';
 import { EmptyState } from '../v2/kit/Surface.js';
@@ -67,6 +67,7 @@ interface MessageRow {
   admin?: boolean;
   supporter?: boolean;
   previousSeasonRank?: Place;
+  previousSeasonRanking?: 'HONOR' | 'DOMINION';
   replyTo?: { id: string; username: string; content: string } | null;
   reactions?: { emoji: ReactionEmoji; count: number; mine: boolean }[];
 }
@@ -595,13 +596,15 @@ function ChannelPanel({
     if (recognitionTimer.current !== null) clearTimeout(recognitionTimer.current);
   }, []);
 
-  const explainRecognition = (button: HTMLButtonElement, messageId: string, recognition: 'supporter' | Place): void => {
+  const explainRecognition = (button: HTMLButtonElement, messageId: string, recognition: 'supporter' | Place, ranking?: 'HONOR' | 'DOMINION'): void => {
     if (recognitionTimer.current !== null) clearTimeout(recognitionTimer.current);
     const rect = button.getBoundingClientRect();
     const width = Math.min(220, Math.max(0, window.innerWidth - 16));
     setRecognitionHint({
       key: `${messageId}:${recognition}`,
-      explanation: recognition === 'supporter' ? t('chat.supporterExplanation') : t('chat.previousSeasonExplanation', { rank: recognition }),
+      explanation: recognition === 'supporter' ? t('chat.supporterExplanation')
+        : ranking === 'HONOR' ? t('chat.previousSeasonHonorExplanation', { rank: recognition })
+        : t('chat.previousSeasonExplanation', { rank: recognition }),
       ink: recognition === 'supporter' ? 'text-chat-supporter-ink' : PODIUM_INK[recognition],
       position: {
         bottom: window.innerHeight - rect.top + 8,
@@ -837,12 +840,13 @@ function ChannelPanel({
                       )}
                       {message.previousSeasonRank !== undefined && (
                         <button type="button" data-chat-podium-icon
-                          aria-label={t('chat.previousSeasonPlace', { rank: message.previousSeasonRank })}
+                          aria-label={`${message.previousSeasonRanking === 'HONOR' ? t('leaderboard.honorTitle') + ' · ' : ''}${t('chat.previousSeasonPlace', { rank: message.previousSeasonRank })}`}
                           aria-describedby={recognitionHint?.key === `${message.id}:${message.previousSeasonRank}` ? recognitionHintId : undefined}
-                          onClick={(event) => { if (message.previousSeasonRank !== undefined) explainRecognition(event.currentTarget, message.id, message.previousSeasonRank); }}
+                          onClick={(event) => { if (message.previousSeasonRank !== undefined) explainRecognition(event.currentTarget, message.id, message.previousSeasonRank, message.previousSeasonRanking); }}
                           onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}
                           className={`${RECOGNITION_BUTTON} [&_svg]:text-current ${PODIUM_INK[message.previousSeasonRank]}`}>
                           <Trophy won size={14} />
+                          {message.previousSeasonRanking === 'HONOR' ? <HonorIcon className="ml-0.5 size-3" /> : null}
                         </button>
                       )}
                       <time className="ml-auto shrink-0 font-v2-mono text-micro text-v2-ink-3" dateTime={message.createdAt.toISOString()}>

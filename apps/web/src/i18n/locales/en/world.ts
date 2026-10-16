@@ -204,6 +204,12 @@ export const focus = {
     },
     deathStar: "Death Star",
     deathStarStrike: "Death Star · EMP strike",
+    /** The Death Star as a folding section of the panel, beside the radiation strike (owner, 2026-10-16). */
+    deathStarSection: {
+      title: "Death Star strike",
+      hold: "Launch Death Star",
+    },
+    strikeReady: "{{ready}} ready",
 
     /**
      * THE SECOND BEAT ON A STRIKE. Owner report: *"yanlışlıkla"*.
@@ -217,9 +223,12 @@ export const focus = {
     strikeConfirm: {
       eyebrow: "Tactical EMP strike",
       title: "Suppress {{world}}",
-      lead: "The Death Star is consumed by the strike. It cannot be recalled and nothing brings it back.",
+      lead: "The Death Star is consumed by the strike and cannot be recalled.",
       outage: "EMP blackout",
-      keeps: "Aegis is emptied and cannot regenerate for one hour. Ground defences stay offline and take no damage. A colony loses {{loss}} loyalty; at {{loss}} or less it secedes and turns neutral.",
+      keeps: "Aegis drops to zero and does not refill for 1 hour. Ground defences sit out every fight in that hour.",
+      keepsColony: "The colony loses {{loss}} loyalty and 1 random fault breaks there. A colony at 100 loyalty falls after {{hits}} hits in a row and turns neutral.",
+      origin: "Launch from",
+      originRead: "{{world}} · {{ready}} ready",
       commit: "Launch EMP",
       loyalty: "Colony loyalty",
       loyaltyRead: "{{value}}% · {{hits}}",
@@ -243,8 +252,7 @@ export const focus = {
     kindColony: "Colony",
     kindNeutral: "Neutral",
     capitalProtected: "Uncapturable capital",
-    capitalProtectedHint:
-      "A Death Star empties Aegis and blocks its regeneration for one hour; ground defences stay offline and take no damage.",
+    capitalProtectedHint: "A Death Star drops Aegis to zero and stops it refilling for 1 hour; ground defences sit out every fight in that hour.",
     /**
      * WHAT A CAPITAL IS WHILE THE WEAPON IS OFF. `STRATEGIC_CRAFTING_ENABLED`.
      *
@@ -258,7 +266,7 @@ export const focus = {
     capitalRecoveringHint:
       "Another EMP strike restarts the one-hour suppression; control still cannot change.",
     capitalEmp: "Capital under EMP",
-    capitalEmpHint: "Aegis is empty and ground defences are offline and invulnerable until the one-hour EMP ends.",
+    capitalEmpHint: "Until the one-hour EMP ends, Aegis stays empty and ground defences sit out every fight.",
     yourCapital: "Your protected capital",
     yourColony: "Your colony",
     transferHint: "Move craft and resources here, then choose which ships return.",
@@ -330,7 +338,7 @@ export const focus = {
     occupationProtected: "Occupation protection",
     protectedFor: "Cannot be struck or captured for {{duration}}.",
     firstImpact: "Aegis zero + {{duration}} EMP",
-    firstImpactColony: "A colony also loses {{loss}} loyalty; at {{loss}} or less it secedes and turns neutral.",
+    firstImpactColony: "A colony also loses {{loss}} loyalty and 1 random fault breaks there. At 100 loyalty it falls after {{hits}} hits in a row.",
     secondImpact: "EMP ends · defences return",
     deathStarReadyRequirement: "Death Star ready",
     deathStarReadyExplain:
@@ -497,6 +505,7 @@ export const focus = {
     stateReturning: "heading home",
     stateInbound: "inbound",
     noCraft: "No craft at home",
+    measuring: "Working out the flight…",
     tooLate: "It will be gone before you arrive",
     resting: "Craft resting · {{duration}}",
     send: "Send {{count}} · {{duration}}",

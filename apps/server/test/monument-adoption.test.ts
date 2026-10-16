@@ -8,7 +8,7 @@ import { adoptMonumentLayout } from '../src/services/monumentAdoption.js';
 import { sendMonument } from '../src/services/monument.js';
 import { hpSourcesForSeason } from '../src/services/radiationSources.js';
 import { HANDLERS } from '../src/worker/handlers.js';
-import { giveUnits, grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { giveUnits, grant, seedWorld, setLevel, TEST_DATABASE_URL, testDb, type Fixture } from './helpers.js';
 
 let f: Fixture;
 beforeEach(async () => {
@@ -59,7 +59,7 @@ describe('idle live-season monument adoption', () => {
     const [shard] = await f.db.select().from(shards).where(eq(shards.id, season!.shardId));
     const { stdout } = await promisify(execFile)(process.execPath,
       ['--import', 'tsx', 'src/cli/season.ts', 'adopt-monuments', '--shard', shard!.code],
-      { env: { ...process.env, NODE_ENV: 'test' } });
+      { env: { ...process.env, NODE_ENV: 'test', DATABASE_URL: TEST_DATABASE_URL } });
     expect(stdout).toContain('READY');
     expect(stdout).toContain('Nothing was written');
     expect(await f.db.select().from(monuments)).toHaveLength(5);

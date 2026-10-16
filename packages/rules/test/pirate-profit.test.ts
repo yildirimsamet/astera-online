@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   COMBAT, HULLS, capLoadToSurvivors, claimPirateLoot, currentPirateGeneration,
   forecastPirateProfit, fleetCargo, fleetCount, missionFuel, pirateHoard, pirateOverrun,
-  pirateRaidTrial, resolveBattle, seededFrom, shipHpRepairCost, soloStack, splitForHpLanding,
+  pirateRaidTrial, resolveBattle, seededFrom, shipHpRepairCost, soloStack,
   type Resources,
 } from '../src/index.js';
 
@@ -15,6 +15,26 @@ const input = { attacker, crew, level: 4 as const, tech, rulesetVersion: 16,
   hoard: pirateHoard(crew, currentPirateGeneration()), paid: zero, fuel: missionFuel(attacker, 1000, 2) };
 
 describe('pirate launch economics', () => {
+  it('carries initial wounds and includes paid repair even for tiny surviving damage', () => {
+    const damage = [{ hull: 'DART' as const, count: 2, damageBp: 1, remainderBp: 0.25 }];
+    const trial = pirateRaidTrial({ ...input, attacker: { DART: 2 }, crew: {}, damage,
+      tech: {}, hoard: zero, fuel: 0 }, seededFrom('tiny-maintenance'));
+    expect(trial.returning).toEqual({ DART: 2 });
+    expect(trial.repair).toEqual(shipHpRepairCost(damage, 100));
+    expect(trial.repair.alloy).toBeGreaterThan(0);
+  });
+
+  it('does not credit pirate loot from ships that cannot fire when the fight starts', () => {
+    const trial = pirateRaidTrial({ ...input, attacker: { CITADEL: 100 }, crew: { DART: 1 }, tech: {},
+      damage: [{ hull: 'CITADEL', count: 100, damageBp: 9500 }],
+      hoard: { alloy: 1000, crystal: 1000, deuterium: 0 }, fuel: 0 }, seededFrom('passive-maintenance'));
+    expect(trial.loot).toEqual(zero);
+    expect(trial.returning.CITADEL).toBeGreaterThan(0);
+    const unarmedCrew = pirateRaidTrial({ ...input, attacker: { CITADEL: 100 }, crew: { COURIER: 1 }, tech: {},
+      damage: [{ hull: 'CITADEL', count: 100, damageBp: 9500 }],
+      hoard: { alloy: 1000, crystal: 1000, deuterium: 0 }, fuel: 0 }, seededFrom('passive-transports'));
+    expect(unarmedCrew.loot).toEqual(zero);
+  });
   it('settles the HP fight, the unpaid hoard, surviving cargo and the actual paid dock invoice', () => {
     const trial = pirateRaidTrial(input, seededFrom('preview-test'));
     const fight = pirateOverrun(resolveBattle([soloStack(attacker, { tech })],
@@ -23,7 +43,7 @@ describe('pirate launch economics', () => {
     expect(trial.grade).toBe(fight.grade);
     expect(trial.loot).toEqual(claimPirateLoot(input.hoard, zero, fight.grade,
       fleetCargo(fight.attackerSurvivors, tech)).fromStock);
-    expect(trial.repair).toEqual(shipHpRepairCost(splitForHpLanding(fight.attackerSurvivors, fight.attackerDamage).docked, 100));
+    expect(trial.repair).toEqual(shipHpRepairCost(fight.attackerDamage, 100));
     expect(trial.salvage).toEqual(zero);
     for (const key of keys) expect(trial.net[key]).toBeCloseTo(trial.loot[key] - trial.lossCost[key]
       - trial.repair[key] - (key === 'deuterium' ? input.fuel : 0), 8);

@@ -1,3 +1,4 @@
+import { refreshPlanetAegis } from './planetAegis.js';
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import { FAULT, repairCost, repairMinutes, seededFrom } from '@astera/rules';
 import { atMinute, type Clock } from '../clock.js';
@@ -22,8 +23,8 @@ import { refreshSensorEpoch } from './sensorHistory.js';
  * codebase keeps paying for. The repair lives on the fault row instead, guarded by a
  * partial unique index cut to exactly the shape `build_orders` uses for its own slots.
  *
- * THERE IS NO CANCEL ENDPOINT, deliberately and by owner instruction. Five to fifteen
- * minutes is short enough that a way out would cost more screen than it saved, and the
+ * THERE IS NO CANCEL ENDPOINT, deliberately and by owner instruction. The shared repair
+ * range is short enough that a way out would cost more screen than it saved, and the
  * absence is the interface's clearest statement about what starting one means.
  */
 
@@ -152,6 +153,7 @@ export async function completeFaultRepair(tx: Tx, faultId: string, now: Date): P
     await dropPendingFaultEvents(tx, fault.planetId, ['vault_leak_flush']);
   }
   await tx.delete(planetFaults).where(eq(planetFaults.id, faultId));
+  if (fault.kind === 'CORE_OUTAGE') await refreshPlanetAegis(tx, fault.planetId, now);
   if (fault.kind === 'TELESCOPE_FAULT') {
     await refreshSensorEpoch(tx, fault.planetId, now);
   }

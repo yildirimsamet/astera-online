@@ -164,7 +164,9 @@ describe('personal raids involving tier 1–3 commanders', () => {
 
   it('allows a Death Star during the ordinary-raid cooldown', async () => {
     await history(f.clock.now());
-    await setLevel(f.db, mine, 'CORE', DEATH_STAR.requiredCore);
+    // Existing ready stock survives the newer Core 13 build gate. Core 12
+    // stays in reach of the tier 3 defender whose raid allowance is tested.
+    await setLevel(f.db, mine, 'CORE', 12);
     await setLevel(f.db, mine, 'SHIPYARD', DEATH_STAR.requiredShipyard);
     await f.db.insert(strategicAssets).values({ planetId: mine, status: 'READY', startedAt: f.clock.now(), remainingSeconds: 0 });
     await expect(launchDeathStar(f.db, mine, theirs, f.clock)).resolves.toHaveProperty('missionId');
@@ -172,7 +174,9 @@ describe('personal raids involving tier 1–3 commanders', () => {
   });
 
   it('a launched Death Star does not reserve the ordinary-raid allowance', async () => {
-    await setLevel(f.db, mine, 'CORE', DEATH_STAR.requiredCore);
+    // Existing ready stock survives the newer Core 13 build gate. Core 12
+    // stays in reach of the tier 3 defender whose raid allowance is tested.
+    await setLevel(f.db, mine, 'CORE', 12);
     await setLevel(f.db, mine, 'SHIPYARD', DEATH_STAR.requiredShipyard);
     await f.db.insert(strategicAssets).values({ planetId: mine, status: 'READY', startedAt: f.clock.now(), remainingSeconds: 0 });
     await launchDeathStar(f.db, mine, theirs, f.clock);

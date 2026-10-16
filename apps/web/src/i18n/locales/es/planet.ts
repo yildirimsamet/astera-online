@@ -4,6 +4,78 @@
  */
 
 export const planet = {
+  tacticalStock: {
+    "stock": "Reserva {{used}}/{{total}}",
+    "charges": "Cargas {{used}}/{{total}}",
+    "ready": "Listas: {{count}}",
+    "loading": "En producción: {{count}}",
+    "paused": "En pausa: {{count}}",
+    "flight": "En vuelo: {{count}}",
+    "empty": "Vacía"
+  },
+
+  radiationProtection: {
+    aegisReduction: "Protección de Aegis: {{rate}} PV/min.",
+    "planet": "Protección radiológica del planeta",
+    "planetInfo": "Acerca de la protección radiológica del planeta",
+    "aegisSource": "Aegis · Nivel {{level}}. Cada nivel activo reduce en 1 PV/min el daño por radiación a las naves de este planeta.",
+    "planetScope": "Protege las naves del hangar, del taller y las flotas de clan presentes. La protección propia de cada nave reduce aún más el daño restante. Aegis no protege las naves en monumentos.",
+    "emptyShield": "Con 0 PV, Aegis no protege de la radiación. La protección vuelve al alcanzar al menos 1 PV.",
+    "restores": "La protección vuelve en {{time}}",
+    "ship": "Protección radiológica de la nave",
+    "shipInfo": "Acerca de la protección radiológica de la nave",
+    "immune": "Inmune",
+    "immuneInfo": "Las unidades mineras y las defensas terrestres no sufren daño por radiación.",
+    "shipResearch": "Protección radiológica · Nivel {{level}}: reduce un {{percent}} % el daño por radiación de esta nave.",
+    "shipScope": "Esta protección también funciona en monumentos. En un planeta, Aegis aporta protección adicional."
+},
+  radiationBomb: {
+    colonyEffects: "Colonias: −{{loyalty}} puntos de lealtad · hasta {{faults}} averías nuevas.",
+    colonyRules: "Estos efectos adicionales solo se aplican a colonias. Con lealtad cero, la colonia se vuelve neutral. Las averías nuevas requieren Núcleo de nivel 6 o superior en la colonia objetivo y ninguna protección contra averías. Las averías activas no se repiten. Aegis no evita la pérdida de lealtad ni las averías.",
+    colonyResult: "Lealtad de la colonia: {{before}}% → {{after}}%.",
+    colonySeceded: "La lealtad llegó a cero; la colonia se vuelve neutral.",
+    faultResult: "Averías nuevas: {{faults}}.",
+    strengthLabel: "Daño antes de protección",
+    durationLabel: "Duración del efecto",
+    honor: 'Con Honor activo, el daño real otorga como máximo 2,5 Honor por bomba. Presionar a objetivos débiles puede costar Honor.',
+    sources: 'Fuentes de radiación',
+    "refund": "Reparaciones canceladas y reembolsadas por completo.",
+    "intercepted": "Bomba de radiación N{{level}} interceptada.",
+
+  "radiation": "Radiación",
+  "unit": "PV/min",
+  "rate": "{{rate}} PV/min",
+  "perShip": "Daño sin protección · máximo 50 HP/min",
+  "protectedRate": "Tras la protección: {{rate}} HP/min por nave",
+  "decrease": "En {{time}} → {{rate}} PV/min",
+  "permanent": "Radiación permanente",
+  "title": "Bomba de radiación",
+  "level": "Nivel {{level}}",
+  "build": "Producir N{{level}}",
+  "ready": "Lista para lanzar",
+  "building": "En producción · {{time}}",
+  "paused": "Producción pausada",
+  "flying": "En vuelo · espacio ocupado",
+  "empty": "Sin existencias · 0/1",
+  "stock": "Una por nivel. Los niveles se producen en paralelo; las bombas en vuelo ocupan su espacio.",
+  "effect": "Cada bomba crea 30 minutos de radiación en su objetivo. El daño de varios impactos se suma. El daño total está limitado a 50 HP/min antes de aplicar la protección.",
+  "workshop": "Las reparaciones y el desmantelamiento se detienen cuando la radiación supera la protección de Aegis. Las reparaciones en curso se cancelan y se devuelven todos los recursos pagados.",
+  "launch": "Lanzar N{{level}}",
+  "flight": "Vuelo: {{time}}",
+  "noRecall": "No se puede retirar. Si el planeta obtiene protección antes del impacto, la bomba no tiene efecto.",
+  "target": "Objetivo: {{target}}",
+  "launched": "Bomba de radiación lanzada",
+  "started": "Producción de bomba de radiación iniciada",
+  "need": "Requiere núcleo 13 y astillero 5",
+  "noBomb": "Primero produce una bomba en este planeta.",
+  "environment": "Radiación base",
+  "bombSource": "Bomba · N{{level}}",
+  "sourceEnd": "Quedan {{time}}",
+  "launchTitle": "Ataque de radiación",
+  "impact": "Impacto de radiación",
+  "hit": "N{{level}} ha impactado. La radiación dura 30 minutos.",
+  "ineffective": "El objetivo estaba protegido al impactar. La bomba se consumió."
+},
   abandon: {
     "action": "Abandonar colonia",
     "title": "¿Abandonar esta colonia?",
@@ -46,6 +118,7 @@ export const planet = {
    * it. `docs/interface.md` I1 — every requirement is a door and names itself.
    */
   interceptor: {
+    capacity: "Capacidad: {{used}} / {{total}} cargas",
     eyebrow: "Batería antiestratégica",
     tally: "{{used}} de {{total}} cargas disponibles",
     none: "Sin cargo cargado",
@@ -55,20 +128,22 @@ export const planet = {
     noRadar: "Cargado · El anillo de radar está fuera de línea",
     build: "Cargo de carga",
     started: "Cargando carga",
-    hint: "Destruye la primera Estrella de la Muerte que ingresa al anillo del radar cronometrado o se identifica en la mira del telescopio. Gastado cuando se dispara.",
-    colonyHint: "Cada Estrella de la Muerte que pasa le quita {{loss}} de lealtad a esta colonia; con {{loss}} o menos se separa.",
+    hint: "Detiene una Estrella de la Muerte o una bomba de radiación en el anillo de intercepción Radar o al identificarla con el Telescopio. Cada disparo consume una carga de la batería del planeta objetivo.",
+    colonyHint: "Cada Estrella de la Muerte que pasa le quita {{loss}} de lealtad a esta colonia y provoca 1 avería aleatoria.",
     readyHint:
-      "Armado. Destruye la próxima Estrella de la Muerte que ingresa al anillo de intercepción del radar o es identificada en la mira del telescopio.",
+      "Detiene una Estrella de la Muerte o una bomba de radiación en el anillo de intercepción Radar o al identificarla con el Telescopio. Cada disparo consume una carga de la batería del planeta objetivo.",
     noRadarHint:
       "La carga sigue cargada, pero este mundo no tiene anillo de interceptación de radar. Restaurar su enlace ascendente y radar 3; La vista telescópica de otro mundo todavía puede activarlo.",
     needRadar: "Radar L{{level}}",
     needUplink: "Enlace ascendente en órbita",
     needOperational: "Operativo mundial",
     buildTime: "{{duration}} · una carga · gastada en disparar",
-    buildSecond: 'Cargar la segunda carga',
+    buildSecond: "Cargar otra carga",
   },
 
   deathStar: {
+    empDuration: "Duración del EMP",
+    loyaltyDamage: "Lealtad colonial por impacto",
     eyebrow: "Arma EMP táctica",
     tally: "{{used}} de {{total}} armas disponibles",
     none: "No hay Estrella de la Muerte en este mundo",
@@ -78,9 +153,7 @@ export const planet = {
     stock: "{{ready}} listo · {{building}} edificio · {{held}}/{{capacity}}",
     build: "Construir",
     started: "Comenzó la construcción de la Estrella de la Muerte",
-    dangerHint: "EMP: la Égida cae a cero y no se regenera durante 1 hora. Las defensas terrestres no disparan ni reciben daño en ese tiempo. Una colonia además pierde {{loss}} de lealtad; con {{loss}} o menos se separa y queda neutral.",
-    readyHint:
-      "Preparada: la Égida del objetivo cae a cero y no se regenera durante 1 hora; las defensas terrestres no disparan ni reciben daño.",
+    hint: "Deja la Égida del objetivo en cero. Durante 1 hora la Égida no se recarga y las defensas terrestres no participan en ningún combate. Cada impacto en una colonia le quita {{loss}} de lealtad y provoca 1 avería aleatoria. Si golpeas {{hits}} veces seguidas una colonia con 100 de lealtad, cae y queda neutral.",
     needCore: "Núcleo L{{level}}",
     needShipyard: "Astillero L{{level}}",
     needOperational: "Operativo mundial",
@@ -646,11 +719,11 @@ export const launch = {
   radiationHpStays: "Permanece en el destino.",
   radiationHpDose: "Radiación de vuelo: {{hp}} HP por nave.",
   radiationHpHealth: "{{count}}× {{hull}} · {{health}}% HP · {{hp}} / {{max}} HP",
-  radiationHpDock: "Necesita reparación en la Estación de reparación después de aterrizar.",
-  radiationHpFree: "Reparación gratuita al aterrizar.",
+  radiationHpDock: "Las naves supervivientes conservan sus daños. Trasládalas tú al taller para una reparación pagada.",
+  radiationHpFree: "Las naves supervivientes conservan sus daños. Trasládalas tú al taller para una reparación pagada.",
   radiationHpCombat: "El combate puede causar daño adicional.",
-  radiationDock: "La ruta cruza radiación: cada nave pierde ~{{pct}} % de su casco. Más del 20 % espera en la Estación de Reparación.",
-  radiationPatched: "La ruta cruza radiación: cada nave pierde ~{{pct}} % de su casco, reparada gratis al aterrizar.",
+  radiationDock: "La ruta cruza radiación: cada nave pierde aproximadamente el {{pct}}% de su casco. Los daños permanecen hasta una reparación pagada.",
+  radiationPatched: "La ruta cruza radiación: cada nave pierde aproximadamente el {{pct}}% de su casco. Los daños permanecen hasta una reparación pagada.",
   fleetsave: "Los naves en vuelo no pueden ser asaltados. Tu planeta puede.",
   range: "distancia {{d}}",
   arrive: "Llegada",
@@ -740,6 +813,12 @@ export const capacity = {
  * like a catastrophe when they are a Tuesday.
  */
 export const faults = {
+  protection: {
+    paused: "Protección contra averías en pausa · quedan {{time}}",
+    active: "Sin nuevas averías durante {{time}}",
+    rule: "Inicia cualquier mejora de edificio para renovar 12 horas de protección en esta colonia.",
+    existing: "Las averías existentes necesitan reparación. El daño de combate y la pérdida de lealtad siguen aplicándose.",
+  },
   title: "Fallos",
   mark: "Fallo presente",
   launchBlock: {
@@ -796,7 +875,7 @@ export const faults = {
     title: "La reparación",
     crew: "la tripulación",
     parts: "piezas",
-    takes: "La reparación dura 5–15 minutos. La duración exacta se fija al comenzar.",
+    takes: "La reparación dura {{min}}–{{max}} minutos. La duración exacta se fija al comenzar.",
   },
   repair: "Iniciar reparación",
   running: "Hay un equipo en él · {{time}}",

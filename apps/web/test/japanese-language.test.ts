@@ -76,8 +76,9 @@ describe('Japanese language support', () => {
     expect(ja.planet.interceptor.build).toContain('迎撃弾');
     expect(ja.planet.interceptor.hint).toContain('デス・スター');
     expect(ja.planet.deathStar.none).toContain('この惑星');
-    expect(ja.planet.deathStar.dangerHint).toContain('1時間');
-    expect(ja.planet.deathStar.dangerHint).toContain('{{loss}}');
+    expect(ja.planet.deathStar.hint).toContain('1時間');
+    expect(ja.planet.deathStar.hint).toContain('{{loss}}');
+    expect(ja.planet.deathStar.hint).toContain('{{hits}}');
   });
 
   it('uses game meanings in the first lesson, capacity, battle, and clan war', () => {
@@ -154,7 +155,9 @@ describe('Japanese language support', () => {
     expect(ja.trade.leavesIn).toContain('出発');
     expect(ja.trade.giveSpend).toContain('貯蔵庫');
     expect(ja.trade.noStock).toContain('貯蔵庫');
-    expect(ja.trade.warning).toContain('呼び戻せません');
+    expect(ja.trade.warning).toContain('到着する前');
+    expect(ja.trade.warning).toContain('呼び戻せます');
+    expect(ja.trade.warning).toContain('燃料は返還されません');
     expect(ja.convoy.open).toContain('攻撃');
     expect(ja.convoy.engagementLabel).toContain('攻撃');
     expect(ja.convoy.irreversible).toContain('呼び戻せません');
@@ -201,7 +204,7 @@ describe('Japanese language support', () => {
     expect(ja.research.gridDetail).toContain('迎撃弾');
     expect(ja.research.stockpileDetail).toContain('迎撃弾');
     expect(ja.skins.oneTime).toContain('運営期間中');
-    expect(ja.skins.shopierNote).toContain('{{commander}}');
+    expect(ja.skins.shopierStepPaste).toContain('注文メモ');
     expect(ja.skins.worldsHint).toContain('外せます');
     expect(ja.seasonRecap.clan.recordOnly).toContain('戦力');
   });
@@ -213,11 +216,13 @@ describe('Japanese language support', () => {
     expect(ja.silentSpace.unavailable).toContain('帰還申請');
   });
 
-  it('keeps the command HUD and repair threshold precise', () => {
+  it('keeps the command HUD and manual maintenance rules precise', () => {
     expect(ja.fleetPage.shipsHome_one).toContain('駐留');
-    expect(ja.reportScene.landing).toContain('20%を超');
+    expect(ja.reportScene.landing).toContain('手動');
     expect(ja.reportScene.intel).toContain('防衛情報');
-    expect(ja.repairStation.outOfAction).toContain('20%を超');
+    expect(ja.repairStation.outOfAction).toContain('格納庫に戻');
+    expect(ja.repairStation.maintenance.rule).toContain('HPが5%以下');
+    expect(ja.repairStation.maintenance.rule).toContain('有料修理');
     expect(ja.repairStation.ends).toContain('完了まで');
     expect(ja.away.scanDetail).toContain('情報');
     expect(ja.slot.dismiss).toBe('閉じる');
@@ -265,7 +270,10 @@ describe('Japanese language support', () => {
   });
 
   it('contains no recurring literal machine translations of game terms', () => {
-    const copy = JSON.stringify(ja).replaceAll('この世界', '');
+    // Here "even" really means an even integer, not evenly matched fleets.
+    // Exclude this one arithmetic explanation; keep the ban everywhere else.
+    expect(ja.vacation.formula).toContain('次の偶数に切り上げ');
+    const copy = JSON.stringify({ ...ja, vacation: { ...ja.vacation, formula: '' } }).replaceAll('この世界', '');
     const mistranslations = ['この世', '出荷', 'ストライキ', '返品', '戦車', '飛行機', '閉店', '偶数'];
     expect(mistranslations.filter((term) => copy.includes(term))).toEqual([]);
   });

@@ -2,6 +2,7 @@ import { Hull } from './Fleets.jsx';
 import type * as THREE from 'three';
 import { orientedCraft } from './model.js';
 import { TRADE_SHIP_SCALE } from './TradeShip.js';
+import { monumentVisualScale } from '@astera/rules';
 import type { MonumentDifficulty } from '@astera/rules';
 
 /** Stable public identities: four Hard models, followed by four Easy models. */
@@ -23,8 +24,7 @@ export const MONUMENT_SCALE = 3 * TRADE_SHIP_SCALE;
 export const MONUMENT_GLOW = '#8be7ff';
 
 /** Difficulty has the same visible meaning on every landmark, focused or not. */
-export const monumentScale = (difficulty: MonumentDifficulty): number =>
-  difficulty === 'HARD' ? 5 * TRADE_SHIP_SCALE : difficulty === 'EASY' ? 3 * TRADE_SHIP_SCALE : MONUMENT_SCALE;
+export const monumentScale = monumentVisualScale;
 export const monumentGlow = (difficulty: MonumentDifficulty): string =>
   difficulty === 'HARD' ? '#ff4b4b' : difficulty === 'EASY' ? '#58f4b3' : MONUMENT_GLOW;
 

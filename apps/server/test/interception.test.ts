@@ -533,7 +533,7 @@ describe('the interception grid', () => {
         status: 'BUILDING',
         startedAt: new Date(readyAt.getTime() - ANTI_STRATEGIC.buildMinutes * 60_000),
         readyAt,
-        remainingSeconds: ANTI_STRATEGIC.buildMinutes * 60,
+        remainingSeconds: Math.ceil(ANTI_STRATEGIC.buildMinutes * 60),
       }).returning();
       await schedule(f.db, {
         seasonId: f.seasonId,
@@ -585,7 +585,7 @@ describe('the interception grid', () => {
         status: 'BUILDING',
         startedAt: new Date(readyAt.getTime() - ANTI_STRATEGIC.buildMinutes * 60_000),
         readyAt,
-        remainingSeconds: ANTI_STRATEGIC.buildMinutes * 60,
+        remainingSeconds: Math.ceil(ANTI_STRATEGIC.buildMinutes * 60),
       });
 
       await oversleep(launched.arriveAt);
@@ -977,7 +977,7 @@ describe('what a probe brings home about a grid', () => {
       status: 'BUILDING',
       startedAt: f.clock.now(),
       readyAt: new Date(f.clock.now().getTime() + DEATH_STAR.buildMinutes * 60_000),
-      remainingSeconds: DEATH_STAR.buildMinutes * 60,
+      remainingSeconds: Math.ceil(DEATH_STAR.buildMinutes * 60),
     });
     await f.db.insert(strategicAssets).values({
       planetId: target,

@@ -1,11 +1,16 @@
-import { and, asc, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
-import { coreTier, distance, hpRadiationApplies, planetSkinById } from '@astera/rules';
+import { and, asc, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
+import { z } from 'zod';
+import { applyHonorPodium, honorPodium } from '../services/honorPodium.js';
+import { readHonorBenefits } from '../services/honorBenefits.js';
+import { honorSoloCredit, isSupportedHonorVersion, coreTier, distance, hpRadiationApplies, planetSkinById, honorRankRewards, honorResourceValue } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import {
   accounts,
   botProfiles,
   clanMemberships,
   clans,
+  honorSeasons,
+  honorTotals,
   neutralPlanetState,
   planetFaults,
   planets,
@@ -89,7 +94,8 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     const rankedWorlds = publicPodium === null
       ? allWorlds
       : applyDominionPodium(allWorlds, publicPodium);
-    const worlds = rankedWorlds.filter((world) =>
+    const primaryWorlds = applyHonorPodium(rankedWorlds, await honorPodium(app.db, self.seasonId, adminPlayerIds));
+    const worlds = primaryWorlds.filter((world) =>
       world.controller.kind !== 'PLAYER'
       || !hiddenAdminPlayerIds.has(world.controller.playerId));
     const mineSet = new Set(self.planetIds);
@@ -335,6 +341,9 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
             isSelf: false,
             isOwned: false,
             isCapital: record.silhouette.kind === 'CAPITAL',
+            // A known world's protection is actionable; an unseen world's
+            // commander activity must not be revealed through this flag.
+            vacation: world.vacation,
             ...publicMoments,
           };
         }
@@ -414,16 +423,23 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
   /** The Dominion ladder. Public by design — competition needs a visible target. */
   app.get('/api/leaderboard', { preHandler: requireAuth }, async (req) => {
     const self = await app.projections.commander(req.accountId!);
+    // An old client labels this field Dominion. Honor is explicit on the wire.
+    const requested = z.object({ ranking: z.enum(['HONOR', 'DOMINION']).default('DOMINION') }).parse(req.query).ranking;
 
-    const [sensors, remembered, adminPlayerIds, botRows] = await Promise.all([
+    const [sensors, remembered, adminPlayerIds, botRows, configs, benefits] = await Promise.all([
       app.projections.sensorsFor(self.playerId, self.planetIds),
       app.projections.rememberedFor(self.playerId),
       adminPlayerIdsInSeason(app.db, self.seasonId, app.adminUsernames),
       app.db.select({ accountId: botProfiles.accountId }).from(botProfiles)
         .where(eq(botProfiles.accountId, req.accountId!)).limit(1),
+      app.db.select({ mode: honorSeasons.mode, version: honorSeasons.version, rankedAt: honorSeasons.rankedAt }).from(honorSeasons).where(eq(honorSeasons.seasonId, self.seasonId)),
+      readHonorBenefits(app.db, self.seasonId, self.playerId),
     ]);
 
-    const score = playerDominionSql;
+    const honorEnabled = configs[0]?.mode === 'ACTIVE';
+    const ranking = honorEnabled ? requested : 'DOMINION';
+    const honor = honorEnabled ? sql<number>`coalesce(${honorTotals.score}, 0)`.mapWith(Number) : sql<number>`0`.mapWith(Number);
+    const score = ranking === 'HONOR' ? honor : playerDominionSql;
     const rows = await app.db
       .select({
         playerId: players.id,
@@ -436,12 +452,17 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         y: planets.y,
         z: planets.z,
         score,
+        dominion: playerDominionSql,
+        honor,
+        bot: botProfiles.accountId,
         clanId: clans.id,
         clanName: clans.name,
         clanTag: clans.tag,
       })
       .from(players)
       .innerJoin(accounts, eq(players.accountId, accounts.id))
+      .leftJoin(botProfiles, eq(botProfiles.accountId, accounts.id))
+      .leftJoin(honorTotals, and(eq(honorTotals.seasonId, self.seasonId), eq(honorTotals.playerId, players.id)))
       .innerJoin(
         planets,
         and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')),
@@ -457,8 +478,12 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       .where(eq(players.seasonId, self.seasonId))
       .orderBy(desc(score), asc(players.joinedAt), asc(players.id));
 
-    const visibleRows = rows.filter((entry) => !adminPlayerIds.has(entry.playerId));
+    const visibleRows = rows.filter(entry => !adminPlayerIds.has(entry.playerId) && (ranking !== 'HONOR' || entry.bot === null));
+    let rank = 0;
+    let previousScore: number | undefined;
     const ladder = visibleRows.map((entry, i) => {
+      if (ranking !== 'HONOR' || entry.score !== previousScore) rank = i + 1;
+      previousScore = entry.score;
       const isSelf = entry.playerId === self.playerId;
       const resolved = isSelf || sensors.some((post) => distance(
         post.at,
@@ -484,13 +509,15 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         ? { planetId: entry.planetId, planetName: entry.planetName }
         : {};
       return {
-        rank: i + 1,
+        rank,
         playerId: entry.playerId,
         username: entry.username,
         country: entry.country,
         skinId: entry.equippedSkinId ? planetSkinById(entry.equippedSkinId)?.id ?? null : null,
         ...visibleWorld,
         score: entry.score,
+        dominion: entry.dominion,
+        ...(honorEnabled ? { honor: entry.honor } : {}),
         clan: entry.clanId && entry.clanName && entry.clanTag
           ? { id: entry.clanId, name: entry.clanName, tag: entry.clanTag }
           : null,
@@ -498,6 +525,12 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     });
 
     const you = ladder.find((entry) => entry.playerId === self.playerId);
-    return { ladder, you: you ? { ...you, isBot: botRows.length > 0 } : null };
+    const prize = honorEnabled ? honorRankRewards(rows.filter(entry => !adminPlayerIds.has(entry.playerId) && entry.bot === null)
+      .map(entry => ({ actor: entry.playerId, honor: entry.honor }))).find(entry => entry.actor === self.playerId) : undefined;
+    const honorReward = prize ? { rank: prize.rank, honor: prize.honor, nominal: prize.nominal, reward: prize.reward,
+      fullThreshold: Number((BigInt(honorResourceValue(prize.nominal)) * 1_000_000n + 199n) / 200n) } : null;
+    return { ranking, honorEnabled, honorStartsAt: honorEnabled ? configs[0]?.rankedAt ?? null : null,
+      honorSoloCredit: honorEnabled && configs[0] !== undefined && isSupportedHonorVersion(configs[0].version) && honorSoloCredit(configs[0].version),
+      honorBenefits: benefits, honorReward, ladder, you: you ? { ...you, isBot: botRows.length > 0 } : null };
   });
 }

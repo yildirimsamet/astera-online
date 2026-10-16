@@ -108,12 +108,15 @@ arızanın engellemesi gereken şey değil.
 **Oran.** İki maddeli, ikisi de sütun başına:
 
 ```
-leakPerHour_i = min( storageCap_i(rate_i, vault) / FAULT.leakDrainHours,   // 48
+leakPerHour_i = min( storageCap_i(rate_i, vault) / FAULT.leakDrainHours,   // 60
                      rate_i × FAULT.leakIncomeCap )                        // 2
 ```
 
-Söylenebilir hâli: **sızıntı, tam bir depoyu 48 saatte boşaltacak hızda akar — ama
+Söylenebilir hâli: **sızıntı, tam bir depoyu 60 saatte boşaltacak hızda akar — ama
 hiçbir zaman üretiminin iki katından hızlı değil.**
+
+13 Ekim 2026: üretimle birlikte sızıntı hızı da %20 azaltıldı; depo kapasitesi ve
+toplam sızıntı bütçesi korundu. Aktif sezonda geçiş öncesi süre eski hızla hesaplanır.
 
 İkinci madde zorunlu. Depo saatleri üretimden çok daha hızlı büyüyor
 (`storageHours`'daki satın alma garantisi), yani tek başına birinci madde şunu veriyordu:
@@ -430,7 +433,7 @@ bağlı değil. Faz 5'e kadar sistem tam olarak çalışır, sadece koloni kayb�
 - Sadakat: k=8 → tam 12 saatte 0; k=1 → 96 saat; k=0 → geri dolum; 0/100 kenetlenmesi;
   sıfır aralık, bir haftalık aralık, geriye giden saat.
 - Fiyat tablosu: core 5/6/12/18/30/31/99 → 30 ile aynı.
-- Sızıntı: tam depo tam 48 saatte biter; havuz önce boşalır; boş gezegen negatife
+- Sızıntı: tam depo tam 60 saatte biter; havuz önce boşalır; boş gezegen negatife
   düşmez; aralık içinde üretilen de akar; **tavan bir depoda durur ve arıza yaşamaya
   devam eder**.
 - Spawn dağılımı: 100k çekimde ortalama gap 6 saat ± tolerans; burst kolu payı ~%30;
@@ -563,7 +566,7 @@ gereken %34 değil, **ne kadar vakti olduğu**.
 | `FAULT.loyaltyCollapseHours` | 12 | Sekiz arızayla sıfıra iniş |
 | `FAULT.loyaltyCurveExponent` | 3 | Çöküşün birikimliliği — çöküş süresini belirler |
 | `FAULT.loyaltyRecoverHours` | 12 | Arızasız geri dolum |
-| `FAULT.leakDrainHours` | 48 | Sızıntı hızı (depo tarafı) |
+| `FAULT.leakDrainHours` | 60 | Sızıntı hızı (depo tarafı) |
 | `FAULT.leakIncomeCap` | 2 | Sızıntı hız tavanı (üretim tarafı) |
 | `FAULT.leakTotalStores` | 1 | Bir arızanın toplam maliyeti |
 | `FAULT.leakFlushMinutes` | 20 | Debris tarlası yazma aralığı |

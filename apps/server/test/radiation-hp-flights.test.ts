@@ -5,6 +5,7 @@ import { HULLS, hullTech, distance, fleetTravelExact, engagementEndsAt, type Fle
 import { battleReports, clanSupportWaves, clanWarContributions, clanWarParticipantResults, clans, hpRadiationSources, missions, planets, playerResearch, radiationSources, seasons, units } from '../src/db/schema.js';
 import { assertRadiationSafe, settleFlightRadiation, settleMissionRadiation } from '../src/services/radiation.js';
 import { dockLotsOf, landShips } from '../src/services/shipDamage.js';
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchTransfer } from '../src/services/movement.js';
 import { recallClanSupport, sendClanSupport, setDefencePosture } from '../src/services/clanSupport.js';
@@ -75,6 +76,15 @@ beforeEach(async () => {
 afterAll(async () => { const { close } = await testDb(); await close(); });
 
 describe('new-season HP radiation on ordinary flights', () => {
+  it('partitions carried wounds between a transfer stay and its return forecast', async () => {
+    const path = minutePath();
+    const input = { seasonId: f.seasonId, from: path[0]!.from, to: path[0]!.to,
+      departAt: f.clock.now(), arriveAt: new Date(start() + 60_000), fleet: { DART: 2 }, returning: { DART: 1 },
+      damage: [{ hull: 'DART' as const, count: 2, damageBp: 5000, remainderBp: 0.25 }], acknowledged: false };
+    await expect(f.db.transaction(tx => assertRadiationSafe(tx, input))).resolves.toBeUndefined();
+    await hpCloud(HULLS.DART.hp * 0.6);
+    await expect(f.db.transaction(tx => assertRadiationSafe(tx, input))).rejects.toMatchObject({ code: 'RADIATION_LETHAL', params: { count: 2 } });
+  });
   it('carries the support owner’s committed armor home after research changes during its stay', async () => {
     f = await supportWorld(3, 20_261_015, version);
     await formClan(f, 0, [1]);
@@ -103,7 +113,7 @@ describe('new-season HP radiation on ordinary flights', () => {
       / ((back.arriveAt.getTime() - back.departAt.getTime()) / 60_000));
     f.clock.set(back.arriveAt);
     await worker().tick();
-    expect(exact((await dockLotsOf(f.db, f.planetIds[0]!))[0])).toBeCloseTo(3000.125, 7);
+    expect(exact((await readHomeHealth(f.db, f.planetIds[0]!)).damage[0])).toBeCloseTo(3000.125, 7);
   });
   it('projects a paid ordinary cohort once, without resurrecting its dead launch hulls', async () => {
     const mission = await flight({ DART: 1, CITADEL: 1 });
@@ -170,7 +180,7 @@ describe('new-season HP radiation on ordinary flights', () => {
   it('keeps the legacy percentage model and ignores HP rows in the older ruleset', async () => {
     await hpCloud(1_000_000);
     await percentageCloud();
-    expect((await dose({ DART: 1 }, {}, 15)).damage).toEqual([{ hull: 'DART', count: 1, damageBp: 2500 }]);
+    expect((await dose({ DART: 1 }, {}, 15)).damage).toEqual([{ hull: 'DART', count: 1, damageBp: 2500, remainderBp: 0 }]);
   });
 
   it('does not reinterpret percentage sources as HP or stack the two models', async () => {
@@ -209,16 +219,17 @@ describe('new-season HP radiation on ordinary flights', () => {
     expect(second.destroyed).toEqual({});
   });
 
-  it('docks a ship just above twenty percent through the ordinary landing adapter', async () => {
+  it('keeps a ship just above twenty percent in its home hangar without healing', async () => {
     const damage: HpDamageLot[] = [{ hull: 'DART', count: 1, damageBp: 2000, remainderBp: Number.MIN_VALUE }];
     await f.db.transaction(async (tx) => {
       await lockWorlds(tx, [f.planetIds[0]!]);
       await landShips(tx, { planetId: f.planetIds[0]!, ownerPlayerId: f.playerIds[0]!, fleet: { DART: 1 }, damage, at: f.clock.now() });
     });
-    expect(await dockLotsOf(f.db, f.planetIds[0]!)).toMatchObject([{ hull: 'DART', count: 1, damageBp: 2000, remainderBp: Number.MIN_VALUE }]);
+    expect((await readHomeHealth(f.db, f.planetIds[0]!)).damage).toMatchObject([{ hull: 'DART', count: 1, damageBp: 2000, remainderBp: Number.MIN_VALUE }]);
+    expect(await dockLotsOf(f.db, f.planetIds[0]!)).toEqual([]);
   });
 
-  it('carries the arrival fraction through a planet walkover, its return flight and the dock', async () => {
+  it('carries the arrival fraction through a planet walkover, its return flight and the home hangar', async () => {
     await giveUnits(f.db, f.planetIds[0]!, { DART: 2 });
     const launched = await launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 2 }, f.clock);
     const minutes = (launched.arriveAt.getTime() - start()) / 60_000;
@@ -232,10 +243,11 @@ describe('new-season HP radiation on ordinary flights', () => {
     expect(exact(back.damage?.[0])).toBeCloseTo(3000.125, 7);
     f.clock.set(back.arriveAt);
     await worker().tick();
-    expect(await dockLotsOf(f.db, f.planetIds[0]!)).toMatchObject([{ hull: 'DART', count: 2, damageBp: 3000 }]);
-    expect(exact((await dockLotsOf(f.db, f.planetIds[0]!))[0])).toBeCloseTo(3000.125, 7);
+    expect((await readHomeHealth(f.db, f.planetIds[0]!)).damage).toMatchObject([{ hull: 'DART', count: 2, damageBp: 3000 }]);
+    expect(exact((await readHomeHealth(f.db, f.planetIds[0]!)).damage[0])).toBeCloseTo(3000.125, 7);
     await worker().tick();
-    expect(await dockLotsOf(f.db, f.planetIds[0]!)).toHaveLength(1);
+    expect((await readHomeHealth(f.db, f.planetIds[0]!)).damage).toHaveLength(1);
+    expect(await dockLotsOf(f.db, f.planetIds[0]!)).toEqual([]);
   });
 
   it('uses the same HP and armor in the lethal route acknowledgement', async () => {
@@ -278,10 +290,10 @@ describe('new-season HP radiation on ordinary flights', () => {
     await worker().tick();
     const [back] = await f.db.select().from(missions).where(eq(missions.parentMissionId, launched.missionId));
     expect(exact(back?.damage?.[0])).toBeCloseTo(exposure / HULLS.COURIER.hp * 10_000, 7);
-    expect(exact((await dockLotsOf(f.db, f.planetIds[1]!))[0])).toBeCloseTo(exposure / HULLS.DART.hp * 10_000, 7);
+    expect(exact((await readHomeHealth(f.db, f.planetIds[1]!)).damage[0])).toBeCloseTo(exposure / HULLS.DART.hp * 10_000, 7);
   });
 
-  it('writes support’s HP wound on the wave and preserves it when recalled to its own dock', async () => {
+  it('writes support’s HP wound on the wave and preserves it when recalled to its home hangar', async () => {
     f = await supportWorld(3, 20_261_005, version);
     await formClan(f, 0, [1]);
     await f.db.transaction((tx) => setDefencePosture(tx, { planetId: f.planetIds[1]!, playerId: f.playerIds[1]!,
@@ -300,7 +312,7 @@ describe('new-season HP radiation on ordinary flights', () => {
     if (!returning?.returnAt) throw new Error('missing support return');
     f.clock.set(returning.returnAt);
     await worker().tick();
-    expect(exact((await dockLotsOf(f.db, f.planetIds[0]!))[0])).toBeCloseTo(3000.125, 7);
+    expect(exact((await readHomeHealth(f.db, f.planetIds[0]!)).damage[0])).toBeCloseTo(3000.125, 7);
   });
 
   it('preserves each joint contributor’s fraction on the personal battle result and return', async () => {

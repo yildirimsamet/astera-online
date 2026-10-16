@@ -199,7 +199,9 @@ describe('the authored convoy formation', () => {
         }
       }
     }
-    expect(slowestArrival).toBeLessThanOrEqual(75);
+    // The 20% fleet slowdown extends the previous arrival bound; every intercept must
+    // still fit the unchanged event deadline (asserted above).
+    expect(slowestArrival).toBeLessThanOrEqual(75 / 0.8);
   });
 
   it('does not silently reinterpret an unknown persisted version', () => {

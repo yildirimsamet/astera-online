@@ -46,7 +46,7 @@ describe('pirate profit updates with the committed fleet', () => {
       onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper },
   );
 
-  it('shows a loss for a weak wing and recomputes the net haul after a stronger selection', async () => {
+  it('recomputes the stronger wing’s net haul including paid repair for every wound', async () => {
     open();
     expect(screen.getByText(/choose ships.*estimate/i)).toBeVisible();
     const user = userEvent.setup();
@@ -59,8 +59,8 @@ describe('pirate profit updates with the committed fleet', () => {
     for (const hull of ['Cataclysm', 'Corsair', 'Citadel', 'Paladin']) {
       await user.click(screen.getByRole('button', { name: `Max ${hull}` }));
     }
-    expect(await screen.findByText(/likely profitable/i)).toBeVisible();
-    expect(document.querySelector('[data-profit-net="alloy"]')).toHaveTextContent('+');
+    expect(await screen.findByText('Profit is uncertain')).toBeVisible();
+    expect(document.querySelector('[data-profit-net="alloy"]')).toHaveTextContent('−');
     expect(document.querySelector('[data-profit-net="deuterium"]')).not.toBeNull();
   });
 
@@ -199,6 +199,17 @@ describe('choosing a fleet to attack with', () => {
     expect(quantity).toHaveValue('250');
     await user.tab();
     expect(quantity).toHaveValue('200');
+  });
+
+  it('limits combat selection to home ships with more than 5% HP', async () => {
+    render(<LaunchSheet target={{ kind: 'world', world: target }}
+      planet={planetView({ fleet: { DART: 5 }, fleetDamage: [{ hull: 'DART', count: 3, damageBp: 9500 }],
+        fleetCombatReady: { DART: 2 } })} onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper });
+    const user = userEvent.setup();
+    const quantity = screen.getByRole('textbox', { name: /dart quantity/i });
+    await user.type(quantity, '5');
+    await user.tab();
+    expect(quantity).toHaveValue('2');
   });
 
   it('uses exact one-ship steps even for a large hangar and exposes Max', async () => {

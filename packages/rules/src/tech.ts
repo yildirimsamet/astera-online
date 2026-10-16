@@ -30,6 +30,10 @@ const ladderAt = (ladder: readonly number[], level: number): number => {
   return rung === 0 ? 1 : ladder[rung - 1] ?? 1;
 };
 
+/** One flat source dose is reduced equally for every hull in this dispatch snapshot. */
+export const radiationDamageMult = (tech: TechLevels): number =>
+  ladderAt(RESEARCH_TECH.radiationDamageLadder, tech.RADIATION_SHIELDING ?? 0);
+
 /**
  * HOW MUCH FASTER THE YARD RUNS. T8.
  *

@@ -22,8 +22,9 @@ import { Icon } from '../v2/icons.js';
 import { PLANET_SKIN_CATALOG, SKIN_COLLECTIONS } from '../ui/skinCatalog.js';
 import { HeartIcon } from '../ui/icons/index.js';
 import { AdminPlayersPanel } from './AdminPlayersPanel.js';
+import { AdminShopierQueue } from './AdminShopierQueue.js';
 
-type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SUPPORTERS' | 'PLAYERS';
+type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SHOPIER' | 'SUPPORTERS' | 'PLAYERS';
 
 const ADMIN_TAB_ID: Record<AdminTab, string> = {
   PLAYERS: 'admin-players-tab',
@@ -31,6 +32,7 @@ const ADMIN_TAB_ID: Record<AdminTab, string> = {
   FEEDBACK: 'admin-feedback-tab',
   PERF: 'admin-perf-tab',
   SKINS: 'admin-skins-tab',
+  SHOPIER: 'admin-shopier-tab',
   SUPPORTERS: 'admin-supporters-tab',
 };
 
@@ -60,6 +62,7 @@ export default function AdminPanel() {
             { id: 'FEEDBACK', label: t('community.admin.feedbackTab') },
             { id: 'PERF', label: t('community.admin.perfTab') },
             { id: 'SKINS', label: t('community.admin.skinsTab') },
+            { id: 'SHOPIER', label: t('community.admin.shopierTab') },
             { id: 'SUPPORTERS', label: t('community.admin.supportersTab') },
           ]}
         />
@@ -72,7 +75,7 @@ export default function AdminPanel() {
         {tab === 'PLAYERS' ? <AdminPlayersPanel /> : tab === 'COMPOSE' ? <AnnouncementComposer />
           : tab === 'FEEDBACK' ? <AdminFeedbackList />
             : tab === 'PERF' ? <PerfRecorderPanel />
-              : tab === 'SKINS' ? <SkinGrantForm /> : <SupporterForm />}
+              : tab === 'SKINS' ? <SkinGrantForm /> : tab === 'SHOPIER' ? <AdminShopierQueue /> : <SupporterForm />}
       </div>
     </div>
   );

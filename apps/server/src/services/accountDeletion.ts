@@ -281,7 +281,7 @@ export async function deleteAccount(
       .orderBy(planets.slotIndex);
     const planetIds = worlds.map((world) => world.id);
     const rows = await commanderRows(tx, planetIds, player.id);
-    if (await busy(tx, planetIds, player.id, rows)) {
+    if (await busy(tx, planetIds, player.id, rows, now)) {
       throw new GameError(
         'WORLD_BUSY',
         `${found.displayName} still has craft in the air. Let them land and run this again.`,

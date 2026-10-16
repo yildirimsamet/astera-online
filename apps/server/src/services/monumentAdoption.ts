@@ -5,6 +5,7 @@ import type { Clock } from '../clock.js';
 import { clanWarOperations, hpRadiationSources, monumentProbes, monuments, monumentWaves, scheduledEvents, seasons } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { GameError } from './planet.js';
+import { monumentBaseRadiation } from './monumentRadiation.js';
 
 /**
  * A live deal changes only while every monument is idle. The exclusive season
@@ -59,7 +60,7 @@ export async function adoptMonumentLayout(db: Db, input: { seasonId: string; clo
     const updated = await tx.select().from(monuments).where(eq(monuments.seasonId, season.id)).orderBy(monuments.ordinal);
     await tx.insert(hpRadiationSources).values(updated.map(row => ({ seasonId: season.id,
       anchorKind: 'MONUMENT' as const, anchorId: row.id, x: row.x, y: row.y, z: row.z,
-      radius: MONUMENT_SEASON_DEFAULTS.cloudRadius, intensityHpPerMinute: MONUMENT_BALANCE[monumentDifficulty(row.ordinal)].intensityHpPerMinute,
+      radius: MONUMENT_SEASON_DEFAULTS.cloudRadius, ...monumentBaseRadiation(monumentDifficulty(row.ordinal), season),
       mode: 'EMIT' as const, activeFrom: at, activeUntil: null, label: `Monument ${String(row.ordinal)} cloud` })));
     await tx.delete(scheduledEvents).where(and(eq(scheduledEvents.seasonId, season.id), eq(scheduledEvents.status, 'pending'),
       inArray(scheduledEvents.kind, ['monument_respawn', 'monument_loss'])));

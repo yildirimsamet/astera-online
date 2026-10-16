@@ -78,7 +78,7 @@ describe('the report scene', () => {
   /** A win that cost the whole fleet is a loss to the reader (the sheet's verdict says so too). */
   it('reddens the word when the attacker lost every ship, whatever the grade', () => {
     const { rerender } = render(<ReportScene report={report()} word="Partial victory" />);
-    expect(document.querySelector('[data-report-word]')).toHaveClass('text-v2-self');
+    expect(document.querySelector('[data-report-word]')).toHaveClass('text-v2-alloy');
     rerender(<ReportScene report={report({ yourLosses: { DART: 23, COURIER: 3 } })} word="Fleet lost" />);
     expect(document.querySelector('[data-report-word]')).toHaveClass('text-v2-hostile');
   });
@@ -225,16 +225,17 @@ describe('the report scene', () => {
  * spot (the dock, or patched free); a raider's fly home and are judged on landing.
  */
 describe('the report scene\'s damage', () => {
-  it('tells a defender which ships went to the Repair Station and which were patched', () => {
+  it('keeps every defender wound visible without claiming a free repair or automatic dock', () => {
     render(<ReportScene report={report({
       attacking: false,
       yourDamage: [{ hull: 'STRONGHOLD', count: 1, damageBp: 6400 }, { hull: 'TALON', count: 1, damageBp: 1200 }],
     })} />);
     const block = document.querySelector<HTMLElement>('[data-report-damage]')!;
     expect(block).toHaveTextContent(/Stronghold ×1 · 64% damage/);
-    expect(block).toHaveTextContent(/Repair Station/);
+    expect(block).not.toHaveTextContent(/Repair Station/);
     expect(block).toHaveTextContent(/Talon ×1 · 12% damage/);
-    expect(block).toHaveTextContent(/patched free/);
+    expect(block).not.toHaveTextContent(/patched free/);
+    expect(block).toHaveTextContent(/hangar/i);
   });
 
   /** One row docked and one patched must never read the same percentage (`damagePct`). */
@@ -252,7 +253,7 @@ describe('the report scene\'s damage', () => {
     render(<ReportScene report={report({ yourDamage: [{ hull: 'DART', count: 1, damageBp: 7000 }] })} />);
     const block = document.querySelector<HTMLElement>('[data-report-damage]')!;
     expect(block).toHaveTextContent(/Dart ×1 · 70% damage/);
-    expect(block).toHaveTextContent(/when they land/i);
+    expect(block).toHaveTextContent(/survivors return to the hangar/i);
   });
 
   it('draws nothing when nothing came out damaged', () => {

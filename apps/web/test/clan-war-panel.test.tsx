@@ -51,8 +51,10 @@ function show(
   worlds: readonly ReturnType<typeof planetView>[] = [],
   members: readonly WarSeatMember[] = crew,
   onOpenClanChat = vi.fn(),
+  honorSoloCredit = false,
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(['season'], { honorSoloCredit });
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   render(<QueryClientProvider client={client}><ApiProvider api={api}>
     <ClanWarPanel war={war} role={role} mature worlds={worlds} members={members}
@@ -90,6 +92,11 @@ const shieldQuote = {
 };
 
 describe('clan war decision surface', () => {
+  it('states Honor restrictions before a combined attack can be dispatched', () => {
+    show(active, 'LEADER', [], crew, vi.fn(), true);
+    expect(screen.getByText(/Shared sides cannot earn positive Honor/)).toBeVisible();
+    expect(screen.getByText(/Attack losses and weaker-target penalties still apply/)).toBeVisible();
+  });
   it('shows own HP loss and requires its consent before contributing, resetting consent when the fleet changes', async () => {
     const { api } = show(active, 'MEMBER', [origin]);
     vi.spyOn(api, 'quoteClanWar').mockResolvedValue({ ...shieldQuote, shieldWouldDrop: null,
@@ -456,4 +463,19 @@ describe('the war room at a glance', () => {
     await user.click(screen.getByRole('button', { name: /^donate/i }));
     expect(document.querySelector('select, input[type="number"], input[type="checkbox"]')).toBeNull();
   });
+});
+
+
+it('shows staged health, blocks critical waves from striking and keeps their owner recall available', async () => {
+  const war = clanWarSchema.parse({ ...launchReady, operation: { ...launchReady.operation!, contributions: [{
+    ...launchReady.operation!.contributions[0]!, playerId: 'leader', username: 'Vantage', mine: true, canRecall: true,
+    damage: [{ hull: 'DART', count: 2, damageBp: 9500 }],
+  }] } });
+  show(war);
+  expect(strike()).toBeDisabled();
+  expect(screen.getByText(/Recall waves with ships at 5% health or below/)).toBeVisible();
+  const seats = within(screen.getByRole('group', { name: /seats/i })).getAllByRole('button');
+  await userEvent.setup().click(seats[0]!);
+  expect(document.querySelector('[data-seat-waves]')).toHaveTextContent(/2.*5%/);
+  expect(within(document.querySelector<HTMLElement>('[data-seat-waves]')!).getByRole('button', { name: /recall my wave/i })).toBeEnabled();
 });

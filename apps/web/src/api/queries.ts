@@ -1,6 +1,7 @@
 import { refreshQueries } from './refreshQueries.js';
 import { playSound } from '../lib/sound.js';
-import type { CosmeticCategory, CosmeticId, MobileHullId } from '@astera/rules';
+import { ApiError, type MaintenanceAction, type MaintenanceSelection, type RepairRequest } from './client.js';
+import type { CosmeticCategory, CosmeticId, HonorBenefitTier, MobileHullId } from '@astera/rules';
 import { useEffect, useMemo, useRef } from 'react';
 import {
   useInfiniteQuery,
@@ -171,6 +172,16 @@ export function useSeason() {
   });
 }
 
+/** Shared between the dossier and dispatch; the server supplies coarse guidance only. */
+export function useHonorTarget(planetId: string | null) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.honorTarget(planetId ?? ''), enabled: planetId !== null,
+    queryFn: () => {
+      if (planetId === null) throw new Error('Missing Honor target');
+      return api.honorTarget(planetId);
+    }, staleTime: 5_000, refetchInterval: 30_000 });
+}
+
 /** Active-only event state; lifecycle SSE is primary and this interval heals a missed event. */
 export function useGalaxyEvents() {
   const api = useApi();
@@ -294,6 +305,39 @@ export function usePolarPricing() {
 export function usePurchasePolarSkin() {
   const api = useApi();
   return useMutation({ mutationFn: (itemId: CosmeticId | 'bundle') => api.purchasePolarSkin(itemId) });
+}
+
+export function useShopierShop() {
+  const api = useApi();
+  return useQuery({ queryKey: keys.shopierShop, queryFn: api.shopierShop, staleTime: 30_000, refetchOnWindowFocus: true });
+}
+
+export function useShopierCode() {
+  const api = useApi();
+  return useMutation({ mutationFn: (itemId: CosmeticId | 'bundle') => api.shopierCode(itemId) });
+}
+
+export function useShopierQueue() {
+  const api = useApi();
+  return useQuery({ queryKey: keys.shopierQueue, queryFn: api.shopierQueue, staleTime: 10_000 });
+}
+
+/** Every operator action ends in a fresh queue: the row moves, and the server says where. */
+export function useShopierAction() {
+  const api = useApi();
+  const cache = useQueryClient();
+  return useMutation({
+    mutationFn: (action: { kind: 'grant'; orderId: string; username: string } | { kind: 'dismiss' | 'revoke'; orderId: string }) =>
+      action.kind === 'grant' ? api.shopierGrant(action.orderId, action.username)
+        : action.kind === 'dismiss' ? api.shopierDismiss(action.orderId) : api.shopierRevoke(action.orderId),
+    onSettled: () => cache.invalidateQueries({ queryKey: keys.shopierQueue }),
+  });
+}
+
+export function useShopierSync() {
+  const api = useApi();
+  const cache = useQueryClient();
+  return useMutation({ mutationFn: () => api.shopierSync(), onSettled: () => cache.invalidateQueries({ queryKey: keys.shopierQueue }) });
 }
 
 export function useEquipCosmetic() {
@@ -574,11 +618,11 @@ export function useClaimReward() {
   });
 }
 
-export function useLeaderboard(enabled = true) {
+export function useLeaderboard(enabled = true, ranking: 'HONOR' | 'DOMINION' = 'HONOR') {
   const api = useApi();
   return useQuery({
-    queryKey: keys.leaderboard,
-    queryFn: api.leaderboard,
+    queryKey: ranking === 'HONOR' ? keys.leaderboard : [...keys.leaderboard, ranking],
+    queryFn: ranking === 'HONOR' ? api.honorLeaderboard : api.leaderboard,
     staleTime: 60_000,
     enabled,
   });
@@ -1815,11 +1859,13 @@ export function useUpgrade() {
   const { meta, predict, rollback, settle } = useOptimisticPlanet();
   return useMutation({
     meta,
-    mutationFn: (type: BuildingId, context) => {
+    mutationFn: (input: BuildingId | { type: BuildingId; confirmedLevel: number }, context) => {
+      const type = typeof input === 'string' ? input : input.type;
+      const confirmedLevel = typeof input === 'string' ? undefined : input.confirmedLevel;
       const planetId = planetMutationOrigin(context);
-      return planetId ? api.upgrade(planetId, type) : api.upgrade(type);
+      return planetId ? api.upgrade(planetId, type, confirmedLevel) : api.upgrade(type, undefined, confirmedLevel);
     },
-    onMutate: (type: BuildingId) => predict((view) => predictUpgrade(view, type)),
+    onMutate: (input: BuildingId | { type: BuildingId; confirmedLevel: number }) => predict((view) => predictUpgrade(view, typeof input === 'string' ? input : input.type)),
     onError: (_error, _type, context) => {
       rollback(context);
     },
@@ -1913,11 +1959,29 @@ export function useStartRepair() {
   const api = useApi();
   const apply = useApplyPlanet();
   const lane = usePlanetInputLane();
+  const invalidate = useInvalidator();
   return useMutation({
-    mutationFn: ({ planetId, request }: { planetId: string; request: { lotIds: string[] } | { all: true } }) =>
-      api.startRepair(planetId, request),
+    mutationFn: ({ planetId, request, key }: { planetId: string; request: RepairRequest; key?: string }) =>
+      api.startRepair(planetId, request, key),
     onMutate: ({ planetId }) => lane.enter(planetId),
     onSuccess: async (result) => { await apply(result.planet, false); },
+    onError: error => {
+      if (error instanceof ApiError && error.code === 'HONOR_QUOTE_CHANGED') invalidate(keys.planet, keys.planets, keys.leaderboard);
+    },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  });
+}
+
+export function useMaintenance() {
+  const api = useApi();
+  const apply = useApplyPlanet();
+  const lane = usePlanetInputLane();
+  const invalidate = useInvalidator();
+  return useMutation({
+    mutationFn: ({ planetId, action, selection, key }: { planetId: string; action: MaintenanceAction;
+      selection: MaintenanceSelection; key: string }) => api.maintenance(planetId, action, selection, key),
+    onMutate: ({ planetId }) => lane.enter(planetId),
+    onSuccess: async (result) => { await apply(result.planet, false); invalidate(keys.leaderboard); },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
@@ -2213,13 +2277,14 @@ export function useLaunchTrade(originPlanetId: string) {
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
     meta: lane.meta,
-    mutationFn: ({ occurrenceId, fleet, give, want, acknowledgeRadiationLoss }: {
+    mutationFn: ({ occurrenceId, fleet, give, want, acknowledgeRadiationLoss, expectedHonorTier }: {
       occurrenceId: string;
       fleet: Fleet;
       give: { alloy: number; crystal: number; deuterium: number };
       want: { alloy: number; crystal: number; deuterium: number };
       acknowledgeRadiationLoss?: boolean;
-    }, context) => api.trade(occurrenceId, fleet, give, want, requiredPlanetMutationOrigin(context), acknowledgeRadiationLoss),
+      expectedHonorTier?: HonorBenefitTier;
+    }, context) => api.trade(occurrenceId, fleet, give, want, requiredPlanetMutationOrigin(context), acknowledgeRadiationLoss, expectedHonorTier),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       playSound('cargo');
@@ -2229,6 +2294,9 @@ export function useLaunchTrade(originPlanetId: string) {
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
       invalidate(keys.traffic, keys.galaxy, keys.planets);
+    },
+    onError: error => {
+      if (error instanceof ApiError && error.code === 'HONOR_QUOTE_CHANGED') invalidate(keys.planet, keys.planets, keys.leaderboard);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
@@ -2273,8 +2341,9 @@ export function useLaunchIntergalacticConvoy(originPlanetId: string) {
         keys.notifications,
       );
     },
-    onError: () => {
+    onError: (error) => {
       invalidate(keys.galaxyEvents, keys.planetById(originPlanetId), keys.pending);
+      if (error instanceof ApiError && error.code === 'HONOR_QUOTE_CHANGED') invalidate(keys.planet, keys.planets, keys.leaderboard);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
@@ -2324,12 +2393,14 @@ export function useRecallFlight() {
   const api = useApi();
   const invalidate = useInvalidator();
   return useMutation({
-    mutationFn: async ({ missionId, pirate, monument }: FlightRecallInput) => {
+    mutationFn: async ({ missionId, pirate, monument, trade }: FlightRecallInput) => {
+      if (trade) return api.recallTrade(missionId);
       if (monument) return api.recallMonumentFlight(missionId);
       return pirate === true ? api.recallPirateRaid(missionId) : api.recallFlight(missionId);
     },
-    onSuccess: (_result, { pirate, monument }) => {
+    onSuccess: (_result, { pirate, monument, trade }) => {
       invalidate(keys.pending, keys.planet, keys.planets, ...(pirate === true ? [keys.pirates] : []),
+        ...(trade ? [keys.traffic, keys.notifications] : []),
         ...(monument ? [keys.monuments, keys.galaxy, keys.traffic, keys.notifications, keys.reports, keys.clanWar, keys.season] : []));
     },
   });
@@ -2490,6 +2561,37 @@ export function useBuildDeathStar() {
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   } satisfies UseMutationOptions<Awaited<ReturnType<typeof api.buildDeathStar>>, Error, void, MutationTurn>);
+}
+
+export function useBuildRadiationBomb(planetId: string) {
+  const api = useApi();
+  const apply = useApplyPlanet();
+  const lane = usePlanetMutationLane(planetId);
+  return useMutation({
+    meta: lane.meta,
+    mutationFn: (level: 1 | 2 | 3, context) => api.buildRadiationBomb(requiredPlanetMutationOrigin(context), level),
+    onMutate: lane.enter,
+    onSuccess: async result => { await apply(result.planet); },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  });
+}
+
+export function useLaunchRadiationBomb(planetId: string) {
+  const api = useApi();
+  const invalidate = useInvalidator();
+  const lane = usePlanetMutationLane(planetId);
+  return useMutation({
+    meta: lane.meta,
+    mutationFn: (input: { level: 1 | 2 | 3; target: { kind: 'PLANET' | 'MONUMENT'; id: string };
+      key: string; acknowledgeShieldLoss: boolean }, context) => api.launchRadiationBomb(
+      requiredPlanetMutationOrigin(context), input.level, input.target, input.key, input.acknowledgeShieldLoss),
+    onMutate: lane.enter,
+    onSuccess: () => {
+      playSound('launch');
+      invalidate(keys.planetById(planetId), keys.planets, keys.galaxy, keys.traffic, keys.pending);
+    },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  });
 }
 
 /**

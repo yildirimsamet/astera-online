@@ -361,8 +361,13 @@ describe('what a private clan event asks the client to read', () => {
     expect(readsForPrivateEvent('private:sight')).toEqual([keys.galaxy, keys.intel]);
   });
 
-  it('refreshes only traffic for an entitled strategic interception witness', () => {
-    expect(readsForPrivateEvent('private:strategic-sight')).toEqual([keys.traffic]);
+  /**
+   * The interceptor scene lives in `traffic`; the weapon it hunts is resolved at that same
+   * instant and leaves the participants' own `pending` (owner, 2026-10-16) — or it flew on
+   * beside the scene's copy and through the fireball.
+   */
+  it('refreshes traffic and the participants’ own list for a strategic interception', () => {
+    expect(readsForPrivateEvent('private:strategic-sight')).toEqual([keys.traffic, keys.pending]);
   });
 
   it('refreshes only claimable rewards after a hand grant', () => {
@@ -378,4 +383,8 @@ describe('what a private clan event asks the client to read', () => {
     expect(readsForPrivateEvent('private:clan-unheard-of')).toBeNull();
     expect(readsForShardEvent('shard:unheard-of')).toEqual([]);
   });
+});
+
+it('refreshes Honor receipts and personal economic quotes without a blanket gameplay resync',()=>{
+  expect(readsForPrivateEvent('private:honor')).toEqual([keys.reports, keys.planet, keys.planets, keys.leaderboard]);
 });

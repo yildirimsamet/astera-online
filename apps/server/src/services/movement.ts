@@ -27,8 +27,6 @@ import {
   type NeutralTier,
   type Resources,
   type TransferReturnPlan,
-  lotsWithin,
-  hpRadiationApplies,
   normalizeHpDamage,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
@@ -71,6 +69,7 @@ import { loadPlanetViewData, buildPlanetResult } from './planetView.js';
 import { pendingThreads } from './session.js';
 import { techOf } from './researchState.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
+import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
 
 const EMPTY: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 
@@ -107,6 +106,8 @@ async function reserveFleet(
   fleet: Fleet,
   missionId: string,
 ): Promise<void> {
+  const damage = await takeHomeHealth(tx, originPlanetId, fleet);
+  await tx.update(missions).set({ damage: damage.length ? damage : null }).where(eq(missions.id, missionId));
   const remaining: Fleet = { ...home };
   for (const [hull, count] of Object.entries(fleet) as [HullId, number][]) {
     if ((home[hull] ?? 0) < count) {
@@ -364,6 +365,7 @@ export async function launchTransfer(
     await assertRadiationSafe(tx, {
       seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
       fleet, tech, acknowledged: acknowledgeRadiation,
+      damage: selectHomeDispatch(origin.homeFleet, origin.homeDamage, fleet).selectedDamage,
       returning,
       path: [
         { from: origin, to: target, startMs: origin.now.getTime(), endMs: arriveAt.getTime() },
@@ -402,7 +404,7 @@ export async function launchTransfer(
     });
     await publishShard(tx, origin.seasonId, 'launch');
     if (fleetChangesWatch(fleet)) await publishWatchChanges(tx, [originPlanetId]);
-    await recomputePlayerWealth(tx, ownerPlayerId);
+    await recomputePlayerWealth(tx, ownerPlayerId, clock.now());
     return {
       missionId: mission.id,
       arriveAt,
@@ -535,7 +537,7 @@ export async function launchSettlement(
     });
     await publishShard(tx, origin.seasonId, 'launch');
     if (fleetChangesWatch(fleet)) await publishWatchChanges(tx, [originPlanetId]);
-    await recomputePlayerWealth(tx, ownerPlayerId);
+    await recomputePlayerWealth(tx, ownerPlayerId, clock.now());
     return {
       missionId: mission.id,
       arriveAt,
@@ -785,7 +787,7 @@ export async function resolveTransfer(
     RADYASYON FIRST: the dose over the whole leg, then whatever is left lands (plan §3.5).
     The last ship takes the cargo with it — there is nothing to land and nobody to reroute.
   */
-  const dosed = await settleMissionRadiation(tx, arriving, { rulesetVersion });
+  const dosed = await settleMissionRadiation(tx, arriving, { rulesetVersion, observedAt: now });
   await tellRadiationLoss(tx, flightWitness(dosed.mission), dosed, now);
   if (fleetCount(dosed.destroyed) > 0 && fleetCount(dosed.fleet) === 0) return 'LOST';
   const mission = fleetCount(dosed.destroyed) > 0 ? cutToSurvivors(dosed.mission, dosed.fleet) : dosed.mission;
@@ -838,9 +840,8 @@ export async function resolveTransfer(
   const returning = mission.parentMissionId === null && mission.recalledAt === null
     ? mission.returnFleet ?? {} : {};
   const staying = transferStayingFleet(mission.fleet, returning);
-  const damageWithin = (part: Fleet) => hpRadiationApplies(rulesetVersion)
-    ? normalizeHpDamage(part, mission.damage?.filter((lot) => (part[lot.hull] ?? 0) > 0))
-    : lotsWithin(mission.damage, part);
+  const damageWithin = (part: Fleet) =>
+    normalizeHpDamage(part, mission.damage?.filter((lot) => (part[lot.hull] ?? 0) > 0));
   // Whole hull types stay or go, so each part takes the damage of its own hulls.
   const returningDamage = damageWithin(returning);
   if (fleetCount(returning) > 0) {
@@ -881,6 +882,7 @@ export async function resolveTransfer(
       fleet: staying,
       damage: damageWithin(staying),
       at: now,
+      radiationAt: mission.arriveAt,
     });
   }
   /*
@@ -924,7 +926,7 @@ export async function resolveSettlement(
     settlement fails as a lost race does: the founding charge comes back. No ship is left
     to fly it home, so it is refunded where the commander now lives.
   */
-  const dosed = await settleMissionRadiation(tx, arriving, { rulesetVersion });
+  const dosed = await settleMissionRadiation(tx, arriving, { rulesetVersion, observedAt: now });
   const mission = dosed.mission;
   await tellRadiationLoss(tx, flightWitness(mission), dosed, now);
   if (fleetCount(dosed.destroyed) > 0 && fleetCount(dosed.fleet) === 0) {
@@ -966,6 +968,7 @@ export async function resolveSettlement(
     fleet: mission.fleet,
     damage: mission.damage,
     at: now,
+    radiationAt: mission.arriveAt,
   });
   /*
     A SETTLED WORLD OPENS ON ITS TIER'S CAPTURE STOCK, AND ON NOTHING ELSE. D209.
@@ -994,6 +997,6 @@ export async function resolveSettlement(
     payload: { expectedUntil: addMinutes(now, MULTI_WORLD.occupationMinutes).toISOString() },
     resolveAt: addMinutes(now, MULTI_WORLD.occupationMinutes),
   });
-  await recomputePlayerWealth(tx, mission.ownerPlayerId);
+  await recomputePlayerWealth(tx, mission.ownerPlayerId, now);
   return 'CAPTURED';
 }

@@ -877,6 +877,8 @@ export interface PlanetEconomyInput {
    * figure, so leaving Silent Space never clamps a buffer down to a smaller vessel.
    */
   pace?: number;
+  /** Undefined: current tempo. Null: legacy pending adoption. An instant preserves earlier output. */
+  productionTempoStartsAtMinutes?: number | null;
   /**
    * WHAT IS BROKEN ON THIS WORLD. Koloni arızaları; absent means nothing is.
    *
@@ -923,6 +925,23 @@ export function advanceEconomy(
 ): PlanetEconomyState {
   if (nowMinutes <= state.lastTickMinutes) return state;
 
+  const cutover = input.productionTempoStartsAtMinutes;
+  if (cutover !== undefined && cutover !== null && !Number.isFinite(cutover)) {
+    throw new RangeError('Production cutover must be a finite minute');
+  }
+  if (cutover !== undefined && cutover !== null && state.lastTickMinutes < cutover && nowMinutes > cutover) {
+    const before = advanceEconomy(state, input, cutover);
+    // Carry the leak's spent budget across both intervals, as separate lazy ticks do.
+    return advanceEconomy(before, {
+      ...input,
+      leakedSoFar: {
+        alloy: (input.leakedSoFar?.alloy ?? 0) + (before.pendingLeakAlloy ?? 0) - (state.pendingLeakAlloy ?? 0),
+        crystal: (input.leakedSoFar?.crystal ?? 0) + (before.pendingLeakCrystal ?? 0) - (state.pendingLeakCrystal ?? 0),
+        deuterium: (input.leakedSoFar?.deuterium ?? 0) + (before.pendingLeakDeuterium ?? 0) - (state.pendingLeakDeuterium ?? 0),
+      },
+    }, nowMinutes);
+  }
+
   /*
     HOURS OF PRODUCTION, NOT HOURS OF CLOCK. With no recovery boost this is exactly
     the productive hours it always was; with one, every boosted productive minute
@@ -954,13 +973,15 @@ export function advanceEconomy(
   const nominalA = alloyRate(input.refineryLevel) * boost;
   const nominalC = crystalRate(input.extractorLevel) * boost;
   const nominalD = deuteriumRate(input.plantLevel) * boost;
+  const outputFactor = cutover === null || (cutover !== undefined && nowMinutes <= cutover)
+    ? ECONOMY_ADJUSTMENT.producerCapacityTime : 1;
 
   const pace = input.pace ?? 1;
   if (!(pace >= 0 && pace <= 1)) throw new RangeError(`production pace must lie in [0, 1], got ${String(pace)}`);
   const faults = input.faults;
-  const ra = hasFault(faults, 'REFINERY_OUTAGE') ? 0 : nominalA * pace;
-  const rc = hasFault(faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalC * pace;
-  const rd = hasFault(faults, 'PLANT_OUTAGE') ? 0 : nominalD * pace;
+  const ra = hasFault(faults, 'REFINERY_OUTAGE') ? 0 : nominalA * pace * outputFactor;
+  const rc = hasFault(faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalC * pace * outputFactor;
+  const rd = hasFault(faults, 'PLANT_OUTAGE') ? 0 : nominalD * pace * outputFactor;
   const maxShield = shieldHp(input.aegisLevel);
 
   /*
@@ -972,7 +993,7 @@ export function advanceEconomy(
   */
   const nominal = { alloy: nominalA, crystal: nominalC, deuterium: nominalD };
   const leaking = hasFault(faults, 'VAULT_LEAK');
-  const rate = leaking ? leakRates(nominal, input.vaultLevel) : NO_LEAK;
+  const rate = leaking ? leakRates(nominal, input.vaultLevel, outputFactor) : NO_LEAK;
   const budget = leaking ? leakBudget(nominal, input.vaultLevel) : NO_LEAK;
   const spent = input.leakedSoFar ?? NO_LEAK;
   const room = (column: keyof Resources): number =>
@@ -1157,15 +1178,20 @@ export interface ProductionRates {
  * Per column rather than one total: deuterium's store is sized off the CRYSTAL rate,
  * so a shared figure emptied that column before the player could read the notification.
  */
-export function leakRates(rates: ProductionRates, vaultLevel: number): Resources {
+export function leakRates(
+  rates: ProductionRates,
+  vaultLevel: number,
+  /** The pre-cutover interval restores both the old income cap and old drain speed. */
+  tempoFactor = 1,
+): Resources {
   const fromStore = (cap: number): number => cap / FAULT.leakDrainHours;
   return {
-    alloy: Math.min(fromStore(storageCap(rates.alloy, vaultLevel)), rates.alloy * FAULT.leakIncomeCap),
-    crystal: Math.min(fromStore(storageCap(rates.crystal, vaultLevel)), rates.crystal * FAULT.leakIncomeCap),
+    alloy: Math.min(fromStore(storageCap(rates.alloy, vaultLevel)), rates.alloy * FAULT.leakIncomeCap) * tempoFactor,
+    crystal: Math.min(fromStore(storageCap(rates.crystal, vaultLevel)), rates.crystal * FAULT.leakIncomeCap) * tempoFactor,
     deuterium: Math.min(
       fromStore(deuteriumStorageCap(rates.deuterium, rates.crystal, vaultLevel)),
       rates.deuterium * FAULT.leakIncomeCap,
-    ),
+    ) * tempoFactor,
   };
 }
 

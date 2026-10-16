@@ -357,7 +357,7 @@ export async function joinSeason(
 
         // Without this a fresh commander's Wealth stays at the column default of
         // zero, and the rank floor then protects them from every attacker forever.
-        await recomputeWealth(tx, planet.id);
+        await recomputeWealth(tx, planet.id, clock.now());
         await refreshSensorEpoch(tx, planet.id, now);
         await notifyActiveGalaxyEventsForPlayer(tx, {
           playerId: player.id,

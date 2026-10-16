@@ -4,6 +4,7 @@ import { performance } from 'node:perf_hooks';
 import { createDb } from '../db/client.js';
 import { players } from '../db/schema.js';
 import { GameError } from './planet.js';
+import { assertCommanderNotVacationing } from './vacation.js';
 
 /**
  * THE HOT READS, WHICH CHECK PLACEMENT INSTEAD OF LEASING IT. Resource analysis 2026-10-13.
@@ -105,12 +106,23 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
         app.metrics.observePlacementTransactionStart(performance.now() - startedAt);
         const [initial] = await tx.select(PLACEMENT).from(players).where(eq(players.accountId, req.accountId!));
         if (!initial) return handler.call(this, req, reply);
-        await tx.execute(sql`select pg_advisory_xact_lock_shared(hashtextextended(${`placement:${initial.seasonId}`}, 0))`);
+        // A vacation changes all holdings. Its exclusive admission waits for every
+        // authenticated writer; their shared lease stays held through the handler.
+        const vacationMutation = req.method === 'POST' && (route.url === '/api/vacation' || route.url === '/api/vacation/end');
+        if (vacationMutation) await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`placement:${initial.seasonId}`}, 0))`);
+        else await tx.execute(sql`select pg_advisory_xact_lock_shared(hashtextextended(${`placement:${initial.seasonId}`}, 0))`);
         const [current] = await tx.select(PLACEMENT).from(players).where(eq(players.id, initial.id));
         if (current?.seasonId !== initial.seasonId || current.placementVersion !== initial.placementVersion) {
           throw placementChanged();
         }
         void reply.header('x-placement', admit(req, current, reconcile));
+        const social = /^\/api\/(chat|dm)(\/|$)/.test(route.url)
+          || route.url.startsWith('/api/auth/')
+          || route.url.startsWith('/api/notifications')
+          || route.url === '/api/session/return';
+        if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !social && !vacationMutation) {
+          await assertCommanderNotVacationing(tx, current.id, app.clock.now());
+        }
         return handler.call(this, req, reply);
       }).catch((error: unknown) => {
         if (!transactionStarted) app.metrics.observePlacementTransactionStartError();

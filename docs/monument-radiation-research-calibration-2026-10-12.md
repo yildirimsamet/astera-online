@@ -1,250 +1,266 @@
-# Anıt radyasyonu ve koruma araştırması — 12 Ekim 2026
+# Anıt radyasyonu ve koruma araştırması — sabit HP kalibrasyonu
 
-**Durum güncellemesi — 12 Ekim 2026: karma hasar önerisi kullanıcı tarafından reddedildi.** Geçerli karar [Game Design: sabit HP hasarı](game-design.md#radyasyon--sabit-hp-hasarı-kesin-kullanıcı-kararı-2026-10-12) bölümündedir. Radyasyon geminin canından bağımsız, gemi başına sabit HP/dk vuracak. Gemi HP'sine bağlı yüzdelik hasar ve sabit + yüzdelik karışımı kullanılmayacak.
+12 Ekim 2026. **Master dalında uygulandı ve doğrulama tamamlandı. Canlı sezon değiştirilmedi. Deploy yapılmadı ve yapılmayacak.** Önceki karma model bu rapordan, hesap aracından ve güncel kanıt JSON'undan çıkarıldı; uygulamaya taşınmadı.
 
-**Kararın gerekçesi:** yüksek can radyasyona karşı daha uzun dayanmayı sağlamalı. Yüzdesel hasar bu avantajı ortadan kaldırır; karma hasar ise avantajı aşındırırken ileride eklenecek yüzdelerle etkileşim, hata ve bakım yükünü artırır. Tüm gemileri yaklaşık 1–2 saatte öldürme hedefi asistanın fazla sıkı varsayımıydı; kullanıcı tarafından istenmiş bir kural değil.
+## 1. Kesin hedef ve önerinin sınırı
 
-**Geçerli çalışma yönü:** anıt seviyelerine göre sabit HP/dk hasar ve bu hasarı azaltan koruma araştırması kalibre edilecek. Yeni oranlar henüz kesinleşmedi. Önceki dört seviye, %10/%20/%30/%40 etki ve fiyatlar onaylanmış sayılmaz. Büyük savunma filosunun kârlılığına ilişkin ekonomik tercih de açık kalıyor.
+Kullanıcının netleştirdiği hedef: HARD anıtta **Korsan (CORSAIR), radyasyon koruması 0 ve Gemi Zırhı 0 ile yaklaşık 2 saat; yeni koruma ve mevcut Gemi Zırhı maksimumken yaklaşık 6 saat** dayanmalı. Saniyesi saniyesine eşitleme gerekmiyor. Korsan'ın canlı katalog HP'si 1.508, Gemi Zırhı 5 ile HP'si 1.885.
 
-Bu çalışma oyun kurallarını, araştırma listesini veya aktif sezon verisini değiştirmedi; deploy yapılmadı. Aşağıda mevcut 2/5 HP/dk durumunun ölçümleri ve **karar öncesindeki reddedilmiş karma model incelemesi** tarihsel karşılaştırma için korunuyor. Karma modele ait formüller, ölüm tavanları, farm/onarım sonuçları, araştırma taslağı, JSON kanıtı ve hesap aracı güncel uygulama önerisi değildir.
+“Hiç araştırmasız” burada **korumasız/zırhsız** anlamında kullanılıyor. Korsan'ı üretmek için gereken Starship Engineering 2 ve Ship Power 2 gibi önkoşullar ortadan kalkmıyor. Farm örneklerindeki diğer gemilerin kendi üretim önkoşulları da uygulanıyor.
 
-## Arşiv: karar öncesindeki değerlendirme
+**Kesin hasar kararı:** radyasyon gemi başına sabit HP/dk vurur. Gemi HP'sinin yüzdesi kadar hasar ve sabit + yüzdesel HP hasarı karışımı yasak. Aynı koşulda düşük ve yüksek HP'li gemiden aynı HP düşer; yüksek HP daha uzun dayanmayı sağlar. Kullanıcının gerekçesi, HP'nin anlamını korumak ve ileride başka yüzdelerle etkileşim/hata/bakım yükünü önlemek. Ayrıntı: [Game Design](game-design.md#radyasyon--sabit-hp-hasarı-kesin-kullanıcı-kararı-2026-10-12).
 
-İlk öneri dört seviyeli Radyasyon Kalkanı, %10 / %20 / %30 / %40 azaltma ve sabit HP hasarına temel gemi HP'sinden hesaplanan bir pay eklenmesiydi. Bu öneri reddedildi. Aşağıdaki eski sonuçlar bu modele aittir; yeni sabit HP kalibrasyonu için kullanılamaz.
+**Kaynak seviyesi ile araştırma seviyesi ayrı:** kullanıcı, radyasyon seviyelerinin belirli sabit hasarları olacağını netleştirdi. **Radyasyon seviye 2'nin temel hasarı 12,5 HP/dk** esas alınacak; HARD anıtlar bu seviyeyi kullanır. Aynı seviye başka bir hedefte kullanıldığında da temel hasarı aynıdır. Koruma araştırması alınan hasarı azaltır; kaynağın radyasyon seviyesini değiştirmez. Seviye 3 şu anda hiçbir yerde kullanılmıyor; bu çalışmada ona yeni hasar atanmadı veya kaynak oluşturulmadı.
 
-## 1. Hedef ve varsayımlar
+**Uygulanan araştırma:** kullanıcı 12 Ekim’de masterda geliştirmeyi başlatmayı onayladı. Dört seviyeli koruma; radyasyon seviye 2, koruma 0 → 4 arasında 12,5 → 5,25 HP/dk vurur. Radyasyon seviye 1 için 9 → 3,78 HP/dk uygulandı. Core 3 ve aşağıdaki fiyatlar kullanıldı. Üretim artışı uygulanmadı: EASY 3 / HARD 8 D/dk korunuyor. Deploy veya canlı sezon aktivasyonu yapılmadı. Kullanıcı 6 saat hesabının maksimum zırhı da içermesini açıkça seçti.
 
-- Araştırmasız: kolay anıtta zor, zor anıtta çok zor; uygun gemi ve taktikle yapılabilir.
-- Azami koruma: kolay anıtta orta, zor anıtta zor. Radyasyon tamamen iptal edilmez.
-- Sağlıklı, en dayanıklı filolarda dahi ölüm sınırı kolay anıtta yaklaşık 90–150, zor anıtta 60–100 dakika bandını aşmasın. Bu bant kullanıcıya soruldu; yanıt gelmeden kullanılan tasarım varsayımıdır. İnce gövdeler bu sürelerden önce kaybedilir.
-- Süre anıta **varıştan** itibaren hesaplanır. Yolculuk ve dönüşte alan radyasyonu yoktur. Savaş, mevcut hasar ve gelecekteki bomba bu süreyi kısaltabilir.
-- “Kayıpsız çalışma süresi” ile “son geminin ölüm süresi” ayrı kavramlardır. Farm tablosunda temkin payı olarak **ilk ölüm süresinin %75'i** kullanıldı; bu otomatik geri çağırma özelliği değildir ve PvP karşısında güvence sağlamaz.
-- Tam gece bırakılan aynı filo, yeni gemi/koruma alanı gelmezse 8 saat boyunca kaynak biriktiremesin. Sürekli yeni dalga gönderilmesi, aktif oyuncunun rotasyonu ve üçüncü taraf otomasyonu ayrı konulardır.
+## 2. Geçiş öncesi durum ve yeni hasar tablosu
 
-**Açık ekonomik tercih:** küçük nöbet + yük filosu mu, büyük savunma ordusu mu kârlı olmalı? Sayısal sonuçla kullanıcıya soruldu. Öneri, üretimi artırmadan ilk seçeneği esas alıyor. Büyük ordu da kârlı olsun denirse aşağıdaki üretim kararı yeniden hesaplanmalı.
-
-## 2. Bugün oyun gerçekten ne yapıyor?
-
-| Anıt | Sayı | Radyasyon | Üretim | İlk NPC garnizonu | Bekleme kapasitesi |
+| Anıt | Sayı | Mevcut radyasyon | Mevcut üretim | NPC garnizonu | Bekleme kapasitesi |
 |---|---:|---:|---:|---|---:|
-| Seviye 1 / EASY | 4 | Gemi başına 2 HP/dk | Toplam 3 döteryum/dk | 3 Stronghold | 1.550 hacim |
-| Seviye 2 / HARD | 4 | Gemi başına 5 HP/dk | Toplam 8 döteryum/dk | 10 Leviathan | 7.270 hacim |
+| EASY / radyasyon 1 | 4 | 2 HP/dk | Toplam 3 D/dk | 3 Stronghold | 1.550 hacim |
+| HARD / radyasyon 2 | 4 | 5 HP/dk | Toplam 8 D/dk | 10 Leviathan | 7.270 hacim |
 
-Mevcut anıt sistemi iki radyasyon seviyesi kullanıyor. Gezegensel nötr T1/T2/T3 katmanları üç ayrı anıt radyasyon seviyesi değildir.
+Hedeflenen ortak kaynak sabitleri; araştırma uygulanmadan önce:
 
-Önemli kurallar:
+| Radyasyon seviyesi | Temel hasar | Mevcut kullanım |
+|---|---:|---|
+| 1 | 9 HP/dk | EASY anıtlar |
+| 2 | 12,5 HP/dk | HARD anıtlar |
+| 3 | Bu çalışmada atanmadı | Henüz hiçbir yerde yok |
 
-- EASY kısıtı **oyuncunun en yüksek çekirdek seviyesi** üzerinden: en fazla Core 9. Geminin T4 olması tek başına engel değil. Örneğin Shipyard 6, Starship Engineering 2 ve Ship Armor 2 ile Citadel; Propulsion 2 ile Argosy üretilebilir. Bunlar Core 9'da anıta gönderilebilir. İkisinin toplam hacmi yalnızca 47, EASY kapasitesine sığıyor.
-- Gönderilebilir **22 hareketli gövdenin tamamı** ölçüldü. Prospector, sonda, yer savunması ve stratejik füze bu filonun üyesi değil. Garbage Collector hasar alır ama kendisi üretim toplayamaz.
-- HP, `hulls.ts` içindeki eski ilk literal değerlerden alınmadı. `profileHull()` sonrası dışa verilen **canlı `HULLS`** kullanıldı.
-- Ship Armor 5, HP'yi %25 artırır. Yeni koruma bunun üzerine ayrı bir çarpan olur.
-- Radyasyon her gemiye uygulanır; 100 gemilik filo hasarı 100'e bölmez.
-- Farm deposu yalnız **CARGO ailesindeki yük gemilerinde** vardır. Savaş gemilerinin normal baskın yük kapasitesi anıt üretimini taşımaz.
-- Kaynak alabilmek için aynı oyuncunun hem saldırı gücü hem boş yük kapasitesi olmalı. Klan arkadaşının savaş gemileri, yalnız yük gemisi getiren başka oyuncuya otomatik üretim payı sağlamaz.
-- 3/8 döteryum **filo başına değil, anıt başına toplamdır**. Hak kazanan oyuncular güçlerine göre paylaşır; dolan deponun kullanılmayan payı yeniden dağıtılır.
+Anıtların ayrı hasar tabloları olmayacak; kendi radyasyon seviyesini bu ortak tablodan okuyacaklar. Aynı radyasyon seviyesi ve aynı koruma, bütün hedeflerde aynı temel etkili HP/dk'yı verir. İlave kaynak varsa onun sabit dozu ayrıca hesaba katılır. Eski sezonların kaynak geçmişi, yeni sabitlerle geriye dönük yeniden hesaplanmaz.
 
-Kaynaklar: [`monument.ts`](../packages/rules/src/monument.ts), [`hulls.ts`](../packages/rules/src/hulls.ts), [`tech.ts`](../packages/rules/src/tech.ts), [`monumentCapacity.ts`](../packages/rules/src/monumentCapacity.ts).
+Aşağıdaki bütün oranlar **her gemi için aynı sabit HP/dk** değeridir. Süre tam canla anıta varıştan başlar; uçuş/dönüşte alan radyasyonu yoktur.
 
-## 3. Neden mevcut hasara sadece koruma eklemek yetmiyor?
+| Koruma araştırması seviyesi | Radyasyon 1 HP/dk | Radyasyon 2 HP/dk | HARD Korsan, zırh 0 | HARD Korsan, zırh 5 |
+|---|---:|---:|---:|---:|
+| 0 | 9.00 | 12.50 | 120.6 dk | 150.8 dk |
+| 1 | 7.56 | 10.50 | 143.6 dk | 179.5 dk |
+| 2 | 6.12 | 8.50 | 177.4 dk | 221.8 dk |
+| 3 | 4.68 | 6.50 | 232.0 dk | 290.0 dk |
+| 4 | 3.78 | 5.25 | 287.2 dk | 359.0 dk |
 
-Mevcut sabit hasarda, tam zırhlı Citadel EASY'de **22,48 saat**, HARD'da **8,99 saat** dayanıyor. Tam zırhlı Argosy EASY'de **14,06 saat**, HARD'da **5,63 saat** dayanıyor. İkisi de EASY'ye yasal olarak gidebildiği için gece bırakma sorunu zaten var.
+HARD sonuçları yaklaşık **121 dakika → 359 dakika**. Maksimum yeni koruma, zırhsız Korsan'da yaklaşık **287 dakika / 4 saat 47 dakika** verir; yalnız Gemi Zırhı maksimum, yeni koruma yoksa yaklaşık **151 dakika / 2 saat 31 dakika**. Altı saat iki araştırmanın birlikte sonucu; yalnız yeni korumaya atfedilmemeli.
 
-Sadece %40 koruma eklenirse Argosy HARD'da **9,38 saat** dayanır. Citadel + Argosy, 8 saatin sonunda 3.840 döteryumu hâlâ taşıyabilir. Yeni araştırma, bugün HARD'da yük gemisinin ölümüyle sonlanan gece farmını yeniden açar.
-
-| Model | Sonuç |
-|---|---|
-| Mevcut 2/5 HP + %40 koruma | Ağır filo için saatlerce AFK farm mümkün; hedefi karşılamıyor. |
-| Sabit hasarı EASY 30, HARD 50 HP/dk yapmak | Citadel azami koruma/zırhla yaklaşık 150/90 dk dayanır; araştırmasız Pike ise yaklaşık 1,3/0,8 dk. Küçük gemiyi gereksiz yere eliyor. |
-| Yalnız temel HP'nin %1,6 / %2,4'ü | Süreyi sınırlar, ancak radyasyona karşı bütün sağlıklı gövdelerin ömrünü eşitler. Ağır gövde seçiminin bu alandaki yararı kaybolur. |
-| Reddedilen sabit + temel HP payı | Süreyi sınırlar; kullanıcı yüksek HP avantajını korumak ve karma oranların etkileşim/bakım yükünü önlemek için bu modeli reddetti. |
-
-## 4. Reddedilen karma hasar ve araştırma taslağı (arşiv)
+Hesap tek model kullanır:
 
 ```text
-H = geminin canlı katalogdaki temel HP'si, Ship Armor çarpanı uygulanmadan önce
-K = araştırma seviyesi: 0, 1, 2, 3, 4
-R(K) = 0, %10, %20, %30, %40
-
-Seviye 1: HP/dk = (1 + 0,0145 × H + ek bomba HP/dk) × (1 - R(K))
-Seviye 2: HP/dk = (2 + 0,0220 × H + ek bomba HP/dk) × (1 - R(K))
-
-Kalan can = H × ShipArmorÇarpanı × (1 - mevcut hasar oranı)
-Ölüm süresi = kalan can / HP/dk
+temel HP/dk = ortak radyasyon hasar tablosu[radyasyon seviyesi]
+etkin HP/dk = (temel HP/dk + varsa ek sabit HP/dk) × koruma çarpanı
+koruma çarpanları, seviye 0…4: 1,00 / 0,84 / 0,68 / 0,52 / 0,42
+kaybedilen HP = etkin HP/dk × anıtta geçen dakika
+dayanma süresi = mevcut kalan HP / etkin HP/dk
 ```
 
-Yüzdelik kısım **temel HP** üzerinden hesaplanır. Artırılmış HP üzerinden hesaplarsak Ship Armor'un sağladığı dayanıklılığı aynı anda hasara ekleyip geri almış oluruz. Hasarın her iki kısmı ve ilerideki bombanın ek hasarı korumadan önce toplanır. Koruma PvP saldırısını, füzenin doğrudan patlama hasarını veya yakıt bedelini azaltmaz.
+Çarpan **kaynağın şiddetini** azaltır; hasarı geminin HP'sinden türetmez. Örneğin maksimum korumayla HARD anıtta 90 HP Courier de 2.158 HP Citadel de her dakika 5,25 HP kaybeder. Zırh, can miktarını artırır; radyasyon oranını artırmaz. Can oranı biçimindeki `damageBp/remainderBp` yalnız kayıt biçimidir.
 
-Örneğin 90 HP Courier, EASY'de 2,305 HP/dk, HARD'da 3,98 HP/dk alır. Koruma 4 ile bunlar **1,383 / 2,388 HP/dk** olur. 2.158 HP Citadel için aynı değerler araştırmasız **32,291 / 49,476 HP/dk**, koruma 4 ile **19,375 / 29,686 HP/dk** olur.
+Dört seviye, HARD'da hasarı anlaşılır adımlarla azaltır ve ilk yatırımı erişilebilir tutar. İki seviye seçilirse aynı modelin 2. ve 4. basamakları kullanılabilir: HARD 12,5 → 8,5 → 5,25 HP/dk; nihai 6 saat hedefi değişmez. Dört seviyeli düzen uygulandı.
 
-Matematiksel tavan, Ship Armor 5 ve koruma 4 ile, HP ne kadar yüksek olursa olsun:
+## 3. EASY neden 9 HP/dk?
+
+EASY erişim kısıtı geminin T1/T2/T3/T4 olması değildir: **oyuncunun en yüksek çekirdeği en fazla Core 9 olmalı.** Core 9'da gerekli tersane/araştırmalarla T4 Citadel ve Argosy üretilebilir. İkisinin toplam hacmi 47; EASY kapasitesine rahatlıkla sığar. T4'ü hesap dışında bırakmak gece farmını gizler.
+
+Maksimum Gemi Zırhında en dayanıklı mevcut yük gemisi Argosy **1.687,5 HP**. Aynı geminin, takviye veya radyasyon sığınağı olmadan, 8 saat boyunca yük taşımaya devam etmemesi için:
 
 ```text
-EASY < 1,25 / (0,0145 × 0,60) = 143,68 dakika
-HARD < 1,25 / (0,0220 × 0,60) =  94,70 dakika
+EASY son HP/dk > 1.687,5 / 480 = 3,515625
+0,42 koruma çarpanında EASY başlangıç HP/dk > 8,37
+öneri: 9 × 0,42 = 3,78 HP/dk
 ```
 
-Mevcut en dayanıklı gemide ölçülen sınırlar **139,2 / 90,9 dakika**. Bu sınır sabit anıt radyasyonu, tek dalganın donmuş teknolojisi ve radyasyonu iptal eden SHELTER bulunmaması için geçerli. SHELTER motoru tam bağışıklık verebiliyor; oyuncuya anıtta böyle bir kaynak açılırsa ayrı bir istisna olur. Daha yüksek Ship Armor tavanı da formülle yeniden denetlenmeli.
+Bu, bütün gemilere ortak ölüm tavanı koymaz. Maksimum zırh/korumada Argosy EASY'de yaklaşık **7 saat 26 dakika**, HARD'da **5 saat 21 dakika** dayanır. Citadel aynı koşulda EASY'de **11 saat 54 dakika**, HARD'da **8 saat 34 dakika** yaşayabilir. Citadel'in can avantajı korunur; **yük gemileri kaybedildiği için aynı filonun gece boyunca biriktirdiği farm eve taşınamaz.** Savaş gemisinin baskın yükü anıt üretimi için depo sayılmaz.
 
-### Dört seviye neden daha uygun?
+Bedeli: EASY'de korumasız T1 Courier yalnız **10 dakika**, Pike yaklaşık **4 dakika** dayanır. Dolayısıyla EASY adı başlangıç gemilerine rahat park etme anlamına gelmiyor; küçük gemi erken çekilmeli. Bu süre daha uzun istenirse aynı koruma çarpanını bütün anıtlarda kullanma veya 8 saatlik farm sınırı yeniden ele alınır. Yüksek HP avantajını yüzdesel hasarla silerek çözülmez. Yeni daha dayanıklı yük gemileri veya zırh tavanı geldiğinde bu eşik tekrar ölçülmeli.
 
-| Araştırma | Hasar azalması | Aynı gemi/zırhla dayanma süresi |
-|---|---:|---:|
-| Yok | %0 | ×1,00 |
-| 1 | %10 | ×1,11 |
-| 2 | %20 | ×1,25 |
-| 3 | %30 | ×1,43 |
-| 4 | %40 | ×1,67 |
+## 4. Bütün gönderilebilir gemiler: HP ve dayanma
 
-İki seviye istenirse **%20 / %40** aynı nihai tavanı verir. Dört seviye, ilk korumayı daha erken aldırıp gelişimi daha fazla adıma böler. **%40 hasar azaltma, %40 daha uzun kalma demek değildir; %66,7 daha uzun kalmadır.** Max zırhla beraber araştırmasız/zırhsız gemiye göre çarpan yaklaşık ×2,08 olur.
+Dakika; sütunlar **koruma 0/zırh 0 → koruma 4/zırh 5**. Bu HP karşılaştırması, her ileri geminin gerçekten sıfır araştırmayla üretilebileceği iddiası değildir. Gerçek farm ve savaş hesapları asgari üretim araştırmalarını içerir.
 
-### Araştırma fiyatı önerisi
+| Gemi | Temel HP | EASY dakika | HARD dakika |
+|---|---:|---:|---:|
+| DART | 77 | 8.6 → 25.5 | 6.2 → 18.3 |
+| PIKE | 38 | 4.2 → 12.6 | 3.0 → 9.0 |
+| RAMPART | 106 | 11.8 → 35.1 | 8.5 → 25.2 |
+| WARDEN | 87 | 9.7 → 28.8 | 7.0 → 20.7 |
+| COURIER | 90 | 10.0 → 29.8 | 7.2 → 21.4 |
+| VIPER | 223 | 24.8 → 73.7 | 17.8 → 53.1 |
+| TALON | 111 | 12.3 → 36.7 | 8.9 → 26.4 |
+| STRONGHOLD | 315 | 35.0 → 104.2 | 25.2 → 75.0 |
+| SENTINEL | 252 | 28.0 → 83.3 | 20.2 → 60.0 |
+| WAYFARER | 225 | 25.0 → 74.4 | 18.0 → 53.6 |
+| TEMPEST | 564 | 62.7 → 186.5 | 45.1 → 134.3 |
+| BALLISTA | 282 | 31.3 → 93.3 | 22.6 → 67.1 |
+| LEVIATHAN | 801 | 89.0 → 264.9 | 64.1 → 190.7 |
+| PRAETORIAN | 626 | 69.6 → 207.0 | 50.1 → 149.0 |
+| ATLAS | 540 | 60.0 → 178.6 | 43.2 → 128.6 |
+| NULLIFIER | 282 | 31.3 → 93.3 | 22.6 → 67.1 |
+| GARBAGE_COLLECTOR | 540 | 60.0 → 178.6 | 43.2 → 128.6 |
+| CATACLYSM | 754 | 83.8 → 249.3 | 60.3 → 179.5 |
+| CORSAIR | 1.508 | 167.6 → 498.7 | 120.6 → 359.0 |
+| CITADEL | 2.158 | 239.8 → 713.6 | 172.6 → 513.8 |
+| PALADIN | 1.647 | 183.0 → 544.6 | 131.8 → 392.1 |
+| ARGOSY | 1.350 | 150.0 → 446.4 | 108.0 → 321.4 |
 
-Ad: **Radyasyon Kalkanı**. Teknik kimlik önerisi: `RADIATION_SHIELDING`. Komutan genelinde, azami 4 seviye. Önerilen açılış Core 3, başka araştırma önkoşulu yok. İlk korumaya erişmek için önceden anıttan döteryum çıkarma şartı oluşturulmamalı; üst seviyelerde Core 10 zorunluluğu konmamalı, çünkü EASY erişimini kapatır.
+Canlı `HULLS` profilleri kullanıldı; eski literal HP'ler kullanılmadı. Prospector, sonda, yer savunması ve stratejik füzeler bu 22 hareketli filo gövdesinin parçası değil. Garbage Collector radyasyon alır fakat tek başına farm yapamaz. Gemi sayısı hasarı gemilere bölmez ve anıtın toplam üretimini artırmaz.
 
-Mevcut ekonomi fiyatlama yönteminin referans aşama 4, 1,5 saat temel çaba, seviye başına ×1,8 büyüme ve mevcut araştırma kristal çarpanı kullanıldı. Fiyatlar oyun koduna eklenmiş değildir.
+## 5. Gerçekte ne kadar farm yapılabiliyor?
 
-| Seviye | Alaşım | Kristal | Döteryum | Core 6'da tek seviye araştırma süresi |
+Korsan'ın tek başına 6 saat dayanması, filo 6 saat kayıpsız farm yapar demek değildir. Maksimum araştırmalı Korsan + Argosy'de ilk yük kaybı **321.4 dakika**. Hesaplarda temkin payı olarak ilk ölümün %75'i kullanıldı: yaklaşık **241 dakika / 4 saat 1 dakika** bekleme. Bu otomatik geri çağırma veya PvP güvenliği değildir; tam canla başlayan, ele geçirme sonrası taze filo örneğidir.
+
+Aşağıdaki bütün filolarda koruma 4, Gemi Zırhı 5, Industrial 2 var. **Mevcut 3/8 D/dk üretim** kullanıldı. Üretim anıt başına toplam; başka hak sahibi oyuncu yok. Sayılar gerçek oyuncu telemetrisi değil, aynı geometrideki örneklerin ortalamasıdır.
+
+| Anıt | Birer gemilik filo | %25 can payıyla bekleme | Brüt D | Ortalama gidiş+dönüş yakıtı | Tamir/yakıt sonrası net D eşdeğeri |
+|---|---|---:|---:|---:|---:|
+| EASY | Rampart + Courier | 22.3 dk | 67.0 | 15.1 | 31.3 |
+| EASY | Stronghold + Wayfarer | 55.8 dk | 167.4 | 34.0 | 77.2 |
+| EASY | Leviathan + Atlas | 133.9 dk | 401.8 | 65.8 | 194.9 |
+| EASY | Corsair + Argosy | 334.8 dk | 1004.5 | 176.6 | 461.4 |
+| EASY | Citadel + Argosy | 334.8 dk | 1004.5 | 153.8 | 497.1 |
+| HARD | Rampart + Courier | 16.1 dk | 128.6 | 15.1 | 92.9 |
+| HARD | Stronghold + Wayfarer | 40.2 dk | 321.4 | 34.2 | 231.0 |
+| HARD | Leviathan + Atlas | 96.4 dk | 771.4 | 65.4 | 564.9 |
+| HARD | Corsair + Argosy | 241.1 dk | 1928.6 | 176.2 | 1385.9 |
+| HARD | Citadel + Argosy | 241.1 dk | 1928.6 | 153.3 | 1421.6 |
+
+Net eşdeğer: eve taşınan D − gerçek gidiş/dönüş yakıtı − tamirin ekonomik değeri − varsa ölen gemi ve yanan yakıt rezervi. **32 alaşım / 16 kristal = 1 D**, yalnız değerleme referansıdır; oyuncuya bütün faturanın D ile kesildiği veya kaynak takası olduğu anlamına gelmez. Tamir ayrı A/C/D faturasıdır. Sağ kalan geminin kullanılmadan eve getirdiği rezerv tüketim sayılmaz; yalnız gerçekten eve dönen kohortun iadesi vardır. Ölen geminin kendi yükü ve rezervi yanar.
+
+Ortalama örnekleme: beş filo × iki anıt seviyesi × üç teknoloji durumu × küreye dağıtılan 12 ev konumu × 12 hareket fazı × her seviyedeki dört anıt = **17.280 kısa yolculuk**. Ev yarıçapı 4.500, anıt 6.000, hareket 8/16 saat, tam uçuş hızı, beacon yok; gerçek kesişme ve gerçek geri çağırma konumu kullanıldı. Tersane 6 onarım süresi dahil çevrim süreleri JSON'dadır. Çevrimde yol ve onarım süresi vardır; sürekli anıtta kalındığı varsayılmaz.
+
+## 6. Önemli bulgu: uzun ve ücretli onarımlı nöbetin maliyeti
+
+Yeni HARD 12,5 HP/dk hedefine çıkıp üretimi 8 D/dk bırakırsak, **korumasız Korsan + Argosy** 81 dakika bekleyerek 648 D biriktiriyor; gerçek yakıt ve tamir sonrası ortalama **−257 D eşdeğeri**. Fiziksel olarak 2 saat dayanmak, kârlı farm yapmak anlamına gelmiyor. EASY'de de korumasız örnek filolar mevcut 3 D/dk ile zararda.
+
+Bu örnekler ilk kaybın %75'ine kadar uzun beklemeyi değerlendirir; bütün farm stratejilerinin zararda olduğu anlamına gelmez. Ücretsiz %20 onarım sınırından önce geri dönülen küçük filoların masrafı çok daha düşüktür. Büyük nöbetin masrafı gemi sayısıyla büyürken anıtın toplam üretimi sabit kalır. Kullanıcının 10 Korsan örneği ve kısa tur/uzun nöbet ayrımı bölüm 12'de ayrıca hesaplandı. Üretim artışı uygulanmadı.
+
+Yalnız yeni koruma 4'e çıkıp diğer araştırmalar aynı kalırsa HARD Korsan + Argosy yaklaşık 193 dakika bekleyip 1.543 D topluyor, ortalama **+635 D eşdeğeri** kalıyor. EASY'de aynı koruma, zırhsız/Industrial 0 Korsan + Argosy'yi tek başına kâra taşımıyor: yaklaşık **−106 D eşdeğeri**. İlk tablodaki maksimum sonuçlarda Gemi Zırhı ve Industrial'ın da katkısı var.
+
+**Üretim tercihi kullanıcıya soruldu; henüz onaylanmış değil.** İki tutarlı yol:
+
+1. **3/8 D/dk korunur:** para kazanmak için koruma/onarım araştırması gerekir; araştırmasız uzun turların çoğu zarar yazar. Yakın rota veya %20 ücretsiz onarım sınırı içindeki kısa tur bazı durumlarda işe yarar, genel kârlılık garanti edilmez. Bu seçenekte “çok zor ama yapılabilir” fiziksel dayanma için doğrudur; ekonomik erişim daha serttir.
+2. **9/14 D/dk üretim önerisi:** incelenen taze küçük nöbet + yük filoları, asgari üretim teknolojileriyle ve yeni koruma olmadan dahi masraflarını karşılar. HARD Korsan + Argosy aynı 81 dakikada 1.134 D toplar, ortalama yaklaşık **+229 D eşdeğeri** bırakır. EASY'de aynı filo yaklaşık **+107 D eşdeğeri**. Başlangıcın ekonomik olarak tamamen kilitlenmemesi için bu seçenek önerildi; aktif sezon kaynak arzına etkisi ayrıca onay gerektiren bir denge kararıdır.
+
+Asgari üretim araştırmaları, Industrial 0, koruma 0, %25 can payı. Citadel/Leviathan gibi gövdeler gerekiyorsa Armor 2 içerir. Yeni üretim sütunları **EASY 9 / HARD 14** içindir.
+
+| Anıt | Birer gemilik filo | Bekleme | Mevcut üretimde ortalama net | 9/14 önerisinde ortalama net | 9/14 örnek net aralığı |
+|---|---|---:|---:|---:|---:|
+| EASY | Rampart + Courier | 7.5 dk | -33.8 | 11.2 | 4.4…22.4 |
+| EASY | Stronghold + Wayfarer | 18.8 dk | -89.8 | 22.7 | 6.4…48.4 |
+| EASY | Leviathan + Atlas | 49.5 dk | -198.8 | 98.2 | 65.4…147.4 |
+| EASY | Corsair + Argosy | 112.5 dk | -567.9 | 107.1 | 24.6…228.6 |
+| EASY | Citadel + Argosy | 123.8 dk | -484.0 | 258.5 | 186.7…361.7 |
+| HARD | Rampart + Courier | 5.4 dk | -13.1 | 19.3 | 12.5…30.5 |
+| HARD | Stronghold + Wayfarer | 13.5 dk | -38.2 | 42.8 | 25.6…68.6 |
+| HARD | Leviathan + Atlas | 35.6 dk | -62.5 | 151.3 | 117.9…199.9 |
+| HARD | Corsair + Argosy | 81.0 dk | -257.2 | 228.8 | 144.1…347.1 |
+| HARD | Citadel + Argosy | 89.1 dk | -142.0 | 392.6 | 315.3…492.3 |
+
+Bunlar ele geçirilmiş anıtta taze filo turları; **ilk NPC ele geçirme savaşının kayıpları, eski savaş hasarı ve rakip oyuncuların saldırıları dahil değil**. Bütün oyuncular/konumlar için kâr veya anıtı tutabilme garantisi değildir. 6/12 ve 8/14 ara seçenekleri de hesaplandı; JSON'da filo bazında başa baş üretim ve konumlara göre alt/üst net var. Örneğin 8 D/dk EASY, araştırmasız Korsan + Argosy'yi ortalamada hâlâ hafif zararda bırakıyor; tek elverişli yakın konumu “genel sonuç” diye göstermiyoruz.
+
+Galaksi üst sınırı, dört EASY ve dört HARD kesintisiz üretirse:
+
+| Üretim EASY/HARD | Galaksi D/dk | Azami D/gün | Bugüne göre |
+|---|---:|---:|---:|
+| 3 / 8 — mevcut | 44 | 63.360 | — |
+| 6 / 12 — ara seçenek | 72 | 103.680 | +%63,6 |
+| 8 / 14 — ara seçenek | 88 | 126.720 | +%100 |
+| 9 / 14 — araştırmasız kâr seçeneği | 92 | 132.480 | +%109,1 |
+
+Üretim artışı, maksimum araştırmalı filoya da ödenir: Korsan + Argosy'nin azami araştırmalı HARD turu yaklaşık 3.375 brüt / **2.832 net D eşdeğeri** verir. Bu yüzden üretimi artırmak yalnız başlangıcı düzeltmez; üst seviye gelir ve klan rekabetini de değiştirir. Bu çalışma tam sezon ekonomisini veya PvP dengesini doğrulamış sayılmaz.
+
+Büyük orduyu sürekli park etmek ayrı risk/ödül tercihidir. Onarım ve yakıt gemi sayısıyla artar; toplam üretim artmaz. Yeni uzun dayanma süresinde, max teknolojili 10 Leviathan + Atlas örneği HARD'da yakın evden mevcut 8 D/dk ile bile yaklaşık +114 net eşdeğer bırakabiliyor; eski reddedilmiş karma modelin “büyük ordu hep zararda” sonucu artık geçerli değil. 10 Citadel + Argosy için aynı yakın örnek yaklaşık +125. Farklı konum, yaralı varış ve PvP bu sonucu değiştirir; büyük ordu için genel kârlılık iddiası yok.
+
+## 7. Savaş sonrası aynı süreye güvenilmemeli
+
+128 kısa, sabit tohumlu NPC savaşı çalıştırıldı: sekiz filo, iki teknoloji durumu, sekiz tohum. Küçük tanı örneğidir; kazanma ihtimali veya PvP istatistiği değildir. Maksimum koruma grubunda Gemi Zırhı/Ship Power 5 de var; savaş başarısı yeni radyasyon araştırmasının saldırı bonusu değildir.
+
+| Örnek | Sekiz tohumda ele geçirme | Savaş sonrası ilk radyasyon kaybı |
+|---|---:|---|
+| EASY, 5 Viper + Courier, koruma 0/asgari teknoloji | 8/8 | En erken 0,36 dk; ortalama 2,88 dk |
+| EASY, 2 Leviathan + Atlas, koruma 0/asgari teknoloji | 8/8 | En erken 45,99 dk; ortalama 52,54 dk |
+| HARD, 8 Korsan + Argosy, koruma 0/asgari teknoloji | 8/8 | En erken 6,60 dk; ortalama 25,32 dk |
+| HARD, 8 Korsan + Argosy, koruma 4/zırh ve güç 5 | 8/8 | En erken 91,58 dk; ortalama 119,91 dk |
+
+Korsan'ın **tam canla 2/6 saat hedefi**, savaşta yaralanmış bir Korsan'ın garantili süresi değildir. %50 canla varan geminin radyasyon bütçesi tam canlının yarısıdır. İlk yaralı savaş gemisi kaybedilse bile başka savaş gemileri ve yük kapasitesi varsa farm sürer; ilk ölüm bütün filonun ölümü değildir. Yük gemisinin ölümü kendi topladığı yükü yok eder, başka gemiye aktarmaz.
+
+## 8. Uygulanan araştırma erişimi ve fiyatları
+
+Uygulama: **Radyasyon Kalkanı**, `RADIATION_SHIELDING`, komutan genelinde dört seviye. Core 3'te erişim, başka araştırma önkoşulu yok; maksimum için Core 10 gerektirilmemeli, aksi halde EASY erişimini kapatır. Önce anıttan D kazanmayı zorunlu kılmamak için D maliyeti yok. Araştırma normal komutan kuyruğuna eklendi; mevcut sezonlarda radyasyon geçişi gerçekleşmeden görünmez veya satın alınamaz.
+
+Mevcut ekonomi fiyatlama yönteminin referans aşama 4, 1,5 saat temel çaba, seviye başına ×1,8 büyüme ve araştırma kristal çarpanı kullanıldı.
+
+| Seviye | Alaşım | Kristal | Döteryum | Core 6'da bu seviye |
 |---|---:|---:|---:|---:|
-| 1 | 2.331 | 1.434 | 0 | 25,9 dk |
-| 2 | 4.196 | 2.582 | 0 | 46,6 dk |
-| 3 | 7.552 | 4.647 | 0 | 83,8 dk |
-| 4 | 13.593 | 8.365 | 0 | 150,8 dk |
-| Toplam | **27.672** | **17.028** | **0** | **307,1 dk** |
+| 1 | 2.331 | 1.434 | 0 | 25.9 dk |
+| 2 | 4.196 | 2.582 | 0 | 46.6 dk |
+| 3 | 7.552 | 4.647 | 0 | 83.8 dk |
+| 4 | 13.593 | 8.365 | 0 | 150.8 dk |
+| Toplam | 27.672 | 17.028 | 0 | 307,1 dk |
 
-Süreler kuyruğun boş, mevcut ekonomi profilinin geçerli olduğu durum içindir. Diğer araştırmaların ve gemilerin yatırım maliyetleri buna dahil değil.
+Bu süre boş araştırma kuyruğu içindir; üretim önkoşulları, Gemi Zırhı ve Industrial yatırımı ayrıca gerekir. Radyasyon koruması PvP hasarını, doğrudan füze darbesini veya yakıtı azaltmaz.
 
-## 5. İlk inceleme: HP ve reddedilen karma modelde dayanma süresi
+## 9. Uygulama yol haritası ve açık bırakılmaması gerekenler
 
-Dakika, tam can, zırh 0; yeni model sütunlarında **koruma 0 → koruma 4**. Bunlar temel gövde karşılaştırmasıdır: bazı ileri gemilerin üretimi Armor 2 gibi ek önkoşullar ister. Aşağıdaki gerçek filo hesapları bu önkoşulları içerir. Sıfır zırh sütunu bu ileri geminin sıfır araştırmayla üretilebileceği iddiası değildir.
+1. **Ayar kararı:** HARD 2/6 saat hedefi ve sabit HP modeli kesin; EASY 9 HP/dk, dört basamak ve Core 3/fiyatlar uygulandı; 3/8 → 9/14 üretim artışı uygulanmadı. Bu rapor bir deploy veya aktif sezon aktivasyonu yapmaz.
+2. **Tek ortak rules tablosu ve hesabı:** radyasyon seviyesi temel HP/dk'yı tek tablodan seçsin; anıt zorluğu yalnız bu seviyeyi belirlesin. Koruma araştırması ayrı seviye olarak uygulansın. Gerçek hasar, `hpLethalAtMs`, ilk kayıp planlayıcısı, settlement ve UI tahmini aynı fonksiyonu kullansın. Gemi HP'sine göre yeni bir hasar bileşeni eklenmesin. Mevcut `radiationSources.ts` görünümü seviyeyi ham hasarı `MONUMENT_BALANCE` ile eşleştirerek buluyor; entegrasyonda seviye açık kaynak/hedef bilgisiyle taşınmalı. Korunmuş hasardan, bomba eklenmiş toplamdan veya yeni sabitlerle uyuşmayan eski kaynak yoğunluğundan seviye çıkarılmamalı. Seviye 3 aktif bir kaynak gibi oluşturulmamalı.
+3. **Gönderimde teknoloji sabitlenmesi:** mevcut dalga snapshot kuralı korumaya da uygulanmalı. Araştırma tamamlanınca anıtta bekleyen eski gemi aniden güçlenmez veya iyileşmez; yeni gönderim yararlanır. Eski snapshot'ta yeni anahtar yoksa seviye 0. Klan katkıları liderin değil, kendi dalgasının korumasını kullanır. Farklı korumalı kohortlara tek ortak azaltılmış doz uygulamak hata olur.
+4. **Hasar devamlılığı:** hasar ve kesir bölme/destek/geri çağırma/yeniden gönderim/klan savaşı/fazla kapasite dönüşü/iniş boyunca taşınır. Araştırma eski hasarı silmez. Ölen yük/rezerv korunmuş gibi iade edilmez. Sağ kalan kohortun yakıtı gerçek dönüş rotasıyla fiyatlanır; yalnız HOME'da iade edilir.
+5. **Tamir eşiği:** mevcut %20 ve altı ücretsiz onarım, üstü dock/fatura kuralı korunur. Bu, kısa tur teşviki ve keskin maliyet farkı yaratır. Korumasız Courier için ücretsiz hasar bütçesi EASY 2, HARD 1,44 dakika; max zırh/korumada EASY 5,95, HARD 4,29 dakika. Ücretsiz onarımı değiştirerek kârlılık gizlice düzeltilmez. Industrial etkisi yeni korumanın kazancı gibi gösterilmez.
+6. **Kaynak geçmişi ve aktif sezon:** eski kaynak oranı geçmişe dönük yeniden yazılmamalı; kesin geçiş anıyla eski kaynak kapanır, yenisi açılır. İdempotent aktivasyon, aynı işlemde kilit/yeniden kontrol, OUTBOUND/HOLD/RETURNING/sonda/klan hazırlığı dahil önceki boşluk koşulları korunmalı. Owner'ın boş anıtta geçiş talimatı, yalnız HOLD tablosuna bakmak anlamına gelmez. Araştırma yeni açılır; oyuncuya geçmiş bekleme için ek hasar/fatura çıkarılmaz. Yeni veri varsayılanları ve ruleset/snapshot uyumluluğu doğrulanmalı.
+7. **Oyuncuya gösterim:** araştırmada net HP/dk örneği ve teknoloji snapshot kuralı; göndermeden önce mevcut cana göre ilk kayıp ve yük gemisi kaybı; HOLD'da kalan can, gerçek HP/dk ve geri çağırma kararı. “6 saat güvenli” yazılmaz. Brüt yük, tahmini A/C/D onarım, gerçek gidiş/dönüş yakıtı, ayrılan rezerv, bekleyen iade ve kayıpta yanan pay ayrı anlatılır. Wiki ve altı dil aynı kurala taşınmalı.
+8. **Gelecek radyasyon bombası:** yalnız ek sabit HP/dk kaynağı; şimdiki öneride ek yoğunluk korumadan önce toplanır. Örnek +5 HP/dk, max korumada herkese ek 2,1 HP/dk vurur. HARD max zırhlı Korsan 5,25 yerine 7,35 HP/dk alıp yaklaşık 4 saat 16 dakika dayanır. Bomba seviyesi/süresi/birikimi ayrı tasarım; bu örnek bombayı veya gezegen bekleme hasarını eklemez.
+9. **Performans:** yeni hareketli alan kesişimi veya dakika başına tick gerekmez. Kaynak zaman penceresi dozu bir kez bulunup kohort korumasına uygulanır; mevcut olay bazlı ölüm/üretim settlement korunur. Aday matematik çalışmasının kısa sürmesi sunucu/DB yük testi değildir; entegrasyonda mevcut sorgu sayısı ve planlayıcı olayları ayrıca ölçülür. Koruma yeni bir hareket hesaplaması başlatmamalı.
+10. **İstisnalar:** radyasyonu iptal eden SHELTER bu çalışmada yok. Yeni sığınak, anıtta iyileştirme, daha dayanıklı yük gemisi, yüksek zırh tavanı veya farklı üretim koşulu 8 saatlik farm sonucunu değiştirir. Aktif oyuncunun taze filo takviyesi aynı filonun gece boyu bırakılmasıyla aynı şey değildir.
 
-| Gemi | Temel HP | Mevcut EASY / HARD | Reddedilen model EASY, K0 → K4 | Reddedilen model HARD, K0 → K4 |
-|---|---:|---:|---:|---:|
-| Dart | 77 | 38,5 / 15,4 | 36,4 → 60,6 | 20,8 → 34,7 |
-| Pike | 38 | 19,0 / 7,6 | 24,5 → 40,8 | 13,4 → 22,3 |
-| Rampart | 106 | 53,0 / 21,2 | 41,8 → 69,6 | 24,5 → 40,8 |
-| Warden | 87 | 43,5 / 17,4 | 38,5 → 64,1 | 22,2 → 37,0 |
-| Courier | 90 | 45,0 / 18,0 | 39,0 → 65,1 | 22,6 → 37,7 |
-| Viper | 223 | 111,5 / 44,6 | 52,7 → 87,8 | 32,3 → 53,8 |
-| Talon | 111 | 55,5 / 22,2 | 42,5 → 70,9 | 25,0 → 41,6 |
-| Stronghold | 315 | 157,5 / 63,0 | 56,6 → 94,3 | 35,3 → 58,8 |
-| Sentinel | 252 | 126,0 / 50,4 | 54,1 → 90,2 | 33,4 → 55,7 |
-| Wayfarer | 225 | 112,5 / 45,0 | 52,8 → 88,0 | 32,4 → 54,0 |
-| Tempest | 564 | 282,0 / 112,8 | 61,5 → 102,4 | 39,1 → 65,2 |
-| Ballista | 282 | 141,0 / 56,4 | 55,4 → 92,4 | 34,4 → 57,3 |
-| Leviathan | 801 | 400,5 / 160,2 | 63,5 → 105,8 | 40,8 → 68,0 |
-| Praetorian | 626 | 313,0 / 125,2 | 62,1 → 103,5 | 39,7 → 66,2 |
-| Atlas | 540 | 270,0 / 108,0 | 61,2 → 101,9 | 38,9 → 64,8 |
-| Nullifier | 282 | 141,0 / 56,4 | 55,4 → 92,4 | 34,4 → 57,3 |
-| Garbage Collector | 540 | 270,0 / 108,0 | 61,2 → 101,9 | 38,9 → 64,8 |
-| Cataclysm | 754 | 377,0 / 150,8 | 63,2 → 105,3 | 40,6 → 67,6 |
-| Corsair | 1.508 | 754,0 / 301,6 | 65,9 → 109,9 | 42,9 → 71,5 |
-| Citadel | 2.158 | 1.079,0 / 431,6 | 66,8 → 111,4 | 43,6 → 72,7 |
-| Paladin | 1.647 | 823,5 / 329,4 | 66,2 → 110,3 | 43,1 → 71,8 |
-| Argosy | 1.350 | 675,0 / 270,0 | 65,6 → 109,4 | 42,6 → 71,0 |
+## 10. Doğrulama ve dosyalar
 
-### Sağlıklı gerçek filo: azami koruma ve azami zırh
-
-Her örnekte ilk ölüm yük gemisinde gerçekleşiyor. Üretim başka oyuncu yokken anıtın tamamına sahip. Hasar almadan başlayan filo; savaş sonrası filo değil.
-
-| Filo | EASY ilk ölüm | EASY %25 can payıyla bekleme / brüt farm | HARD ilk ölüm | HARD %25 can payıyla bekleme / brüt farm |
-|---|---:|---:|---:|---:|
-| 1 Rampart + 1 Courier | 81,3 dk | 61,0 dk / 183,0 D | 47,1 dk | 35,3 dk / 282,7 D |
-| 1 Stronghold + 1 Wayfarer | 110,0 dk | 82,5 dk / 247,4 D | 67,4 dk | 50,6 dk / 404,7 D |
-| 1 Leviathan + 1 Atlas | 127,4 dk | 95,6 dk / 286,7 D | 81,1 dk | 60,8 dk / 486,3 D |
-| 1 Citadel + 1 Argosy | 136,7 dk | 102,5 dk / 307,6 D | 88,7 dk | 66,5 dk / 532,3 D |
-
-Araştırma aynı gemiyi bir anda kayıpsız yapmıyor. %50 hasarlı bir Courier'in bu anıtta kalabilecek süresi tam canlının yarısıdır. Filoya bir Pike katmak da ilk ölüm sınırını kısaltır. Fazladan yük gemisi ve Cargo Holds kapasiteyi artırır, ölüm süresini artırmaz. Örneğin Courier'in deposu 1.000, Argosy'ninki 26.000 D; bu üretim hızlarında tek sağlıklı yük gemisinin deposu genellikle radyasyondan önce dolmaz.
-
-## 6. Reddedilen karma modelde araştırmanın etkisi (arşiv)
-
-1 Rampart + 1 Courier, **Armor 0, Industrial 0 her satırda aynı**. Anıt daha önce ele geçirilmiş, tek üretici oyuncu, %25 can payı; hareketli anıta başlangıçta yakın evden gönderim. Yakıt gerçek kesişme ve geri çağırma konumundan hesaplandı.
-
-“Net eşdeğer” gerçek teslim edilen D'den yakıt ve onarımın ekonomik değerini düşer. **32 alaşım = 16 kristal = 1 D** oyunun değerleme referansıdır; oyuncunun kaynaklarını böyle değiştirebildiği veya tüm onarımı D ile ödediği anlamına gelmez. Tablodaki net, ilk ele geçirme savaşının kayıp maliyetini içermez.
-
-| Koruma | EASY bekleme | EASY brüt / net eşdeğer | HARD bekleme | HARD brüt / net eşdeğer |
-|---|---:|---:|---:|---:|
-| 0 | 29,3 dk | 87,9 / 38,4 | 17,0 dk | 135,7 / 87,3 |
-| 1 | 32,5 dk | 97,6 / 48,1 | 18,8 dk | 150,8 / 102,4 |
-| 2 | 36,6 dk | 109,8 / 60,3 | 21,2 dk | 169,6 / 120,3 |
-| 3 | 41,8 dk | 125,5 / 75,0 | 24,2 dk | 193,8 / 144,5 |
-| 4 | 48,8 dk | 146,4 / 95,9 | 28,3 dk | 226,1 / 176,8 |
-
-EASY onarımı her satırda yaklaşık **692 A + 334 C**, HARD **689 A + 333 C**. Aynı can payında geri çekildiğimiz için hasar yüzdesi ve onarım faturası benzer; araştırma bu faturayla daha çok üretim almamızı sağlıyor. Aynı dakika kaldığımızda ise hem hasar hem onarım düşer.
-
-## 7. Reddedilen karma modelde yakıt, net farm ve büyük filo sorunu
-
-“Ortalama” gerçek oyuncu telemetrisi değildir: 4 filo × 2 anıt seviyesi × 3 teknoloji durumu için, her seviyedeki dört anıtın tamamında, 4.500 yarıçapında küreye dağıtılan **12 ev konumu × 12 hareket fazı**, toplam **13.824 kısa yolculuk** ölçüldü. 16 saatlik ortak hareket döngüsü örneklendi. Beacon yok, tam hız; gemilerin asgari üretim araştırmaları ve bunların hız etkileri hesaba dahil. %75 ilk-ölüm bütçesi kullanıldı. Her örnek tek sahipli ve NPC savaşından sonraki farm turudur.
-
-Aşağıdaki satırlarda Armor 5 + Industrial 2 var. Netten onarım, gerçek gidiş/dönüş yakıtı çıkarıldı. Kullanılmadan eve dönen **yakıt rezervi tüketilmiş maliyet sayılmadı**. Kayıp olursa gemi bedeli, kendi yükü ve yanan rezerv ayrıca kayıptır.
-
-| Anıt | Filo, koruma 4 | Bekleme | Brüt D | Ortalama gerçek yakıt | Ortalama net D eşdeğeri | Örneklerde net aralığı |
-|---|---|---:|---:|---:|---:|---:|
-| EASY | Rampart + Courier | 61,0 dk | 183,0 | 14,8 | **146,9** | 139,7…157,7 |
-| EASY | Stronghold + Wayfarer | 82,5 dk | 247,4 | 33,7 | **151,9** | 134,6…175,6 |
-| EASY | Leviathan + Atlas | 95,6 dk | 286,7 | 65,5 | **65,2** | 32,8…111,8 |
-| EASY | Citadel + Argosy | 102,5 dk | 307,6 | 147,9 | **−244,7** | −318,8…−139,8 |
-| HARD | Rampart + Courier | 35,3 dk | 282,7 | 14,9 | **246,6** | 239,4…257,4 |
-| HARD | Stronghold + Wayfarer | 50,6 dk | 404,7 | 34,0 | **309,2** | 292,1…333,1 |
-| HARD | Leviathan + Atlas | 60,8 dk | 486,3 | 65,8 | **265,1** | 230,9…310,9 |
-| HARD | Citadel + Argosy | 66,5 dk | 532,3 | 148,3 | **−19,6** | −96,4…82,6 |
-
-Gidiş, bekleme, dönüş ve onarım birlikte sayıldığında örnek filoların tam çevrimi ortalamada yaklaşık **3,5–4,4 saat** sürüyor. Anıtta 35 dakika çalışmak, 35 dakikada tekrar kullanılabilir filo demek değil. Eve yakın anıta giden filo dönerken anıt daha uzağa taşınmış olabiliyor; örnekler gerçek 8/16 saat hareketini kullandığı için bu gider tabloda var.
-
-Araştırmasız/asgari teknoloji ile Rampart + Courier'in örneklenmiş ortalama neti EASY'de **30,4**, HARD'da **78,3 D eşdeğeri**: uygun küçük filo için sonuç tamamen zarara kilitlenmiyor. Yalnız yeni korumayı 4'e çıkarıp diğer teknolojileri sabit tutunca **89,1 / 168,9** oluyor. Armor 5 ve Industrial 2 ile elde edilen daha yüksek sonuç yalnız yeni araştırmaya atfedilmemeli.
-
-**Büyük savaş ordusu aynı tabloya sığmıyor.** Örneğin başlangıçta yakın evden HARD'a 10 Leviathan + Atlas, max koruma/zırh ve Industrial 2 ile 60,8 dk beklerse 486,3 D topluyor; yakıt + onarım **765,5 D eşdeğeri**, net **−279,2**. 10 Citadel + Argosy için aynı koşulda net yaklaşık **−1.477,9**. Bunlar tek başına büyük orduyu sürekli park etmeyi finanse etmez.
-
-Bu nedenle önerilen kullanım: ele geçirme kuvvetiyle alınır; yaralı ve pahalı savaş gemilerinin gereksiz kısmı çekilir; kontrol/PvP ihtiyacına göre nöbet ve yük filosu yenilenir. Daha çok savunma daha çok toplam üretim oluşturmaz; rakip oyuncu ve klanlara karşı kontrol maliyetidir. Küçük nöbet filosunun kazançlı olması onun NPC garnizonunu yenebileceği veya PvP karşısında anıtı tutabileceği anlamına gelmez.
-
-Büyük ordu da kârlı istenirse üretim ayrı karar. Yakın ev örneğinde yalnız 10 Leviathan + Atlas'ın başa başı yaklaşık **12,6 D/dk**, 10 Citadel + Argosy'ninki **30,2 D/dk** gerektiriyor; uzak evlerde daha yüksek. Tek bir yüksek üretim tüm küçük filolara da ödenir. Bugünkü galaksi üst üretimi **44 D/dk = 63.360 D/gün**. HARD'ları örneğin 30 D/dk yapmak bunu **132 D/dk = 190.080 D/gün** yapar. Bu, yalnız radyasyon ayarı olarak gizlice yapılmamalı.
-
-## 8. İlk incelemenin savaş sonrası filo ve uç durumları (arşiv)
-
-128 kısa, sabit tohumlu NPC savaşı çalıştırıldı: iki anıt tipi, sekiz filo şablonu, iki teknoloji durumu, sekizer tohum. Bu küçük tanı çalışması bir kazanma yüzdesi veya PvP istatistiği iddiası değildir. Koruma 4 grubunda Armor/Power 5 de bulunur; farklı savaş sonucu **radyasyon araştırmasının PvP bonusu** olarak yorumlanamaz.
-
-| Örnek | Sonuç | Savaş sonrası ilk radyasyon kaybı | 30 dk sonra taşınabilir brüt farm |
-|---|---|---|---:|
-| EASY, 5 Viper + Courier, koruma 0/asgari teknoloji | 8/8 örnekte ele geçirdi | Ortalama 8,4 dk; en erken 0,8 dk | 90 D; bazı savaş gemileri daha önce kaybedilir |
-| EASY, 2 Leviathan + Atlas, koruma 0/asgari teknoloji | 8/8 ele geçirdi | Ortalama 37,5 dk; en erken 32,8 dk | 90 D |
-| HARD, 24 Tempest + Atlas, koruma 0/asgari teknoloji | 8/8 ele geçirdi | Ortalama 30,3 dk; en erken 20,0 dk | 240 D |
-| HARD, 16 Leviathan + Atlas, koruma 4/Armor 5/Power 5 | 8/8 ele geçirdi | Ortalama 39,1 dk; en erken 2,5 dk | 240 D; en yaralı gövde daha erken ölebilir |
-
-**İlk geminin ölümü bütün filonun veya farmın bitmesi değildir.** Olay bazlı hesap, o gemiyi çıkarıp kalan gerçek güç ve yük kapasitesiyle üretime devam etti. Ölen yük gemisinin kendi yükü yok olur; diğer gemiye veya klan arkadaşına aktarılmaz. Örneğin mevcut EASY'de 1 Rampart + Courier için 45. dakikadan hemen önce yaklaşık 135 D vardır; Courier tam 45. dakikada ölünce bu 135 D kaybolur, Rampart hayatta kalır.
-
-İncelenen önemli durumlar:
-
-- **20% ücretsiz onarım eşiği:** bugün %20 ve altı hasar eve dönüşte ücretsiz, %20,01 ve üstü dock/fatura. Max koruma/zırhlı Rampart + Courier için ücretsiz dönüş bütçesi EASY'de yaklaşık **16,3**, HARD'da **9,4 dk**; araştırmasız/zırhsız yaklaşık **7,8 / 4,5 dk**. Bu keskin maliyet farkı kısa rotasyonu teşvik eder. Ücretsiz onarım eşiği bu öneride değiştirilmedi; uzun farmı teşvik etmek istenirse ayrıca değerlendirilir.
-- **Hasarlı varış:** savaş öncesi tabloya güvenip yaralı filo bırakılmamalı. En hasarlı kohort ve yük kohortunun ayrı ölüm zamanları gösterilmeli. %25 can payı PvP darbesini garantiyle karşılamaz.
-- **Klan:** koruma, zırh, hasar ve yük her katkının kendi dalga teknolojisine ait. Liderin araştırması diğer katkılara uygulanamaz. Klan değişimiyle eski hasar veya yeni koruma hediye edilemez.
-- **Araştırma tamamlanması:** mevcut sistemde teknoloji gönderimde donar. Öneride koruma da gönderimde donar; araştırma bitince mevcut HOLD gemisi iyileşmez veya aniden daha uzun dayanmaz. Yeni gönderimler yararlanır. UI bunu açıkça söylemeli.
-- **Bölüp geri çekme/yeniden yollama:** `damageBp` ile kesir `remainderBp` birlikte taşınmalı. Bölme, varış, savaş, okuma ve yeniden gönderim hasarı sıfırlamamalı. Eve gerçekten dönen geminin mevcut onarım kuralı geçerlidir.
-- **Yakıt:** başta ayrılan rezerv, dönüşteki gerçek ücret ve eve varınca iade ayrı gösterilir. Ölen geminin rezervi yanar. Koruma bunu değiştirmez; hayatta kalan ancak uzaktan dönen gemi daha çok yakıt harcayabilir.
-- **Gece farmı:** aynı max teknolojili Citadel + Argosy'yi 8 saat bırakınca önerilen modelde iki anıt tipinde de sağ kalan/yüklü gemi yok. Daha çok gemi, Cargo Holds, düşük uçuş hızı veya filoyu birden çok kohorta bölmek aynı gönderilmiş geminin HP tavanını kaldırmaz. Aktif takviye farklı gemiler getirir; bu tavan tüm oyuncunun oturum süresi sınırlaması değildir.
-- **Gelecek radyasyon bombası:** `max(sabitHasar, HPPayı)` kullanmak ağır gövdelerin küçük bomba artışını yok saymasına yol açabilir. Öneride bomba hasarı toplama eklenir ve koruma en son uygulanır. Bomba seviyelerinin oranı/süresi/birikme kuralı ayrı kalibrasyondur. Bu çalışma ana gezegen filosuna yeni bekleme hasarı eklemiyor.
-
-## 9. Reddedilen karma modelin uygulama değerlendirmesi (arşiv; uygulanmayacak)
-
-1. **Ortak rules:** yeni araştırma kimliği, effect ladder, araştırma tavanı/fiyatı/görünümü; ortak radyasyon oranı hesabı. Dört seviyenin her birinin etkisi hem sunucuda hem istemcide aynı olmalı.
-2. **HP settlement ve ölüm tahmini:** `applyHpDose`, `hpLethalAtMs`, ilk kayıp planlayıcısı, `settleMonumentHold`, forecast/quote aynı gemiye özel dozu kullanmalı. Mevcut tek bir ortak HP dozunu filo geneline uygulamaya devam edip yalnız tooltip'i değiştirmek hatalı olur. Ham temel HP'nin zamansal profili ile sabit HP profili taşınmalı; her gemiye rastgele değişen doz eklenmemeli.
-3. **Kaynak geçmişi:** yeni temel-HP yüzdesi de radyasyon kaynağının tarihsel verisi olmalı. Eski kaynağın geçmiş oranı yeniden yazılmamalı. Geçiş zamanı, eski kaynak sonu ve yeni kaynak başlangıcı kesin olmalı. Eski kayıtların yüzdelik bileşeni sıfır kalmalı.
-4. **Dalga/kohort:** normal gönderim, destek, klan katkısı, ele geçirme, fazla kapasitenin dönüşü, kısmi/tam geri çağırma, iniş ve sezon kapanışında araştırma/hasar/kesir/yük/rezerv korunmalı. Sağ kalanlar en yaralı kohorttan itibaren doğru zamanla işlenmeli.
-5. **UI:** araştırmada “radyasyon hasarı %x azalır”; göndermeden önce filo için gerçek HP/dk, ilk kayıp tahmini, yük gemisi kayıp tahmini, mevcut hasar; bekleyen filoda geri çağırmaya kalan süre. Brüt yük, tahmini onarımın A/C/D faturası ve yakıt/iade birbirine karıştırılmamalı. Wiki ve altı dil güncellenmeli. Oyuncuya “139 dk güvenli” yazılmamalı; bu ölüm sınırı.
-6. **Aktif sezon:** ayar yalnız yeni sezon seed'ine eklenirse mevcut anıtlar değişmez. Kullanıcının boş anıtta deploy planına uygun, OUTBOUND/HOLD/RETURNING/sonda/klan hazırlığı dahil önceki katı boşluk kontrolleriyle açık bir aktivasyon yapılmalı. Araştırma yeni açılır; hiç kimseye geriye dönük hasar/fatura çıkarılmaz. Bu analiz hiçbir aktivasyon yapmadı.
-
-Performans bakımından gereken işlem kohort başına sabit birkaç çarpma ve mevcut olay zamanlarını hesaplamak. Yeni hareketli alan kesişimi veya dakika başına tick gerekmiyor. Kaynak zaman pencereleri ortak hesaplanıp her kohorta uygulanabilir. Bu tasarımın ek yükü hareket hesabından bağımsızdır; oyun entegrasyonunun DB/worker performansı bu analizle ölçülmüş sayılmaz.
-
-## 10. Geçmiş hesapların doğrulaması ve tekrar çalıştırılması
-
-- [`Hesap aracı`](../tools/monument-radiation-study.mjs) yalnız üretimdeki saf rule fonksiyonlarını çağırır; DB veya sunucuya yazmaz.
-- [`18 otomatik test`](../tools/monument-radiation-study.test.mjs): canlı HP/üretim önkoşulları, tüm gövdelerde tavan, seviye artışı, kesirli hasar, üretim/cap/paylaşım, tam ölüm anında yük kaybı, sekiz saat bırakma, gerçek onarım eşiği, yakıt rezervi/iade denkliği, farklı ev/hareket fazı ve sekiz anıt, yaralı gemi, mal varlığı kaybı ile cüzdan maliyetinin ayrımı ve geçersiz girdiler. Önce başarısız test çalıştırıldı, ardından uygulama ve yeşil sonuç alındı.
-- Mevcut sabit HP modelinin hesap aracı sonucu `settleMonumentHold` ve `hpLethalAtMs` ile karşılaştırıldı. Yeni model oyun koduna entegre edilmiş değildir; araçta aynı HP/üretim fonksiyonlarına gemi başına aday oran verilir.
-- 384 yakın/uzak uç örneği + 13.824 konum/faz/anıt örneği + 10 sabit teknolojili araştırma adımı; ayrıca 128 kısa NPC savaşı. Bu bir tam sezon ekonomisi veya PvP simülasyonu değildir.
-- İlgili mevcut rules regresyonları: radyasyon HP, anıt üretimi/yakıtı/savaşı/kapasitesi, gemi hasarı ve araştırma; **7 dosyada 148 test geçti**. Yeni araçtaki 18 test de geçti. Araç dosyalarının lint kontrolü ve `git diff --check` temiz. Bu analiz için uygulama kodu değişmediğinden önceki session'ın bütün API/UI test sayıları yeni araştırmanın entegrasyon kanıtı olarak sunulmuyor.
-- Makine tarafından okunabilir bütün sonuçlar: [`kanıt JSON`](evidence/monument-radiation-calibration-2026-10-12.json).
+- [Hesap aracı](../tools/monument-radiation-study.mjs): gerçek rules fonksiyonları, DB/sunucu yazımı yok. Gemi HP'sinden türetilen hasar modeli araçtan kaldırıldı.
+- [24 otomatik test](../tools/monument-radiation-study.test.mjs): önce başarısız test, ardından uygulama ve yeşil sonuç. Radyasyon seviyesi/koruma seviyesi ayrımı ve kullanılmayan seviye 3'ün reddi; 2/6 saat hedefi; bütün gövdelerde aynı HP kaybı ve seviye ilerlemesi; zırh ile korumanın ayrımı; gerçek settlement ile karşılaştırma; korumanın iki kez uygulanmaması; ölüm anı/yük kaybı; canlı T4 erişimi; sekiz saat farmın bitmesi ama ağır nöbetçinin yaşayabilmesi; kesirli HP onarım eşiği/faturası; yakıt/iade/kayıp denklemleri; yaralı gemiler; geçersiz girdiler; üretilen rapor ve üretim duyarlılığı gerçek turla doğrulandı. Süreler oyun hesabındaki tam milisaniye sınırına yuvarlanır; kullanıcı hedefi saniyesi saniyesine zorlanmaz.
+- 22 gövde; 416 yakın/uzak tur; 17.280 ev/faz/anıt turu; 20 sabit teknolojili araştırma adımı; 128 kısa NPC savaşı. **Tam sezon ekonomisi veya PvP simülasyonu çalıştırılmadı.**
+- [Makine tarafından okunabilir kanıt](evidence/monument-radiation-calibration-2026-10-12.json): güncel sabit model; eski karma sonuçların yerine yazıldı. Rapor statüsü `IMPLEMENTED_PENDING_DEPLOY`. `CURRENT` hesap modeli geçiş öncesindeki tarihsel 2/5 HP/dk karşılaştırmasını ifade eder.
+- İlgili mevcut rules regresyonları: HP radyasyon, anıt üretimi/savaşı/kapasitesi/yakıtı, gemi hasarı ve araştırma; **7 dosyada 148 test geçti**. Hesap aracındaki **23 test de geçti**. İki araç dosyasının lint kontrolü ve `git diff --check` temiz. Bu sayılar ilk hesap aşamasına aittir. Yeni araştırmanın entegrasyonu ayrı rules, API, klan ve arayüz regresyonlarıyla doğrulanır; sonuçları aşağıdaki uygulama takibine eklenir.
 
 ```bash
 nice -n 10 node --import tsx --test tools/monument-radiation-study.test.mjs
 nice -n 10 node --import tsx tools/monument-radiation-study.mjs
 ```
+## 11. Uygulama takibi — 2026-10-12
 
-**Güncel karar:** yukarıdaki `sabit HP + temelHP × yüzde` formülleri ve bunlardan çıkan süre/farm tabloları uygulamaya taşınmayacak. Araştırmasız zor, araştırmayla daha yönetilebilir ve gece boyu başıboş farmı ödüllendirmeyen denge, **yalnız sabit HP/dk** ile yeniden hesaplanacak. Kaynağın gücü aynı koşullardaki her gemiden aynı HP'yi götürecek; yüksek can daha uzun dayanmayı sağlayacak. Kesin yeni oranlar ve araştırma etkileri bu dosyada henüz hesaplanmış veya onaylanmış değildir.
+Kullanıcı uygulamayı master dalında yetkilendirdi; deploy yapılmayacak. Üretim EASY 3 / HARD 8 D/dk olarak korunur. Seviye 1/2 radyasyonun ortak tabanı 9 / 12,5 HP/dk; Radyasyon Kalkanı 0–4 hasar çarpanları 1 / 0,84 / 0,68 / 0,52 / 0,42. Core 3, komutan genelinde araştırma; fiyat ve süre mevcut araştırma kuyruğundan gelir.
+
+Dokunulan sözleşmeler: ortak HP doz motoru ve ölüm zamanı tahmini, araştırma kimlikleri/fiyatları, gönderim anındaki teknoloji kaydı, klan katkılarının ayrı teknoloji kayıtları, anıt üretiminin ölüm anında kesilmesi, sunucu ve arayüz tahminleri, araştırma ağacı/Wiki/çeviriler ve aktif sezon için açıkça çalıştırılacak boş-anıt geçişi. Yakıt rezervi ve iade kuralları korunur; koruma PvP hasarını veya gemi HP'sini değiştirmez.
+
+Kontrol edilecek uçlar: eksik araştırma anahtarı=0, yaralı gemide hasarın silinmemesi, kesirli hasarın bölünmüş işlemlerde korunması, farklı korumalı klan katkıları, yük gemisi ölünce farmın bitmesi, araştırma tamamlanınca eski filonun değişmemesi, kaynağın eski zaman penceresinin yeniden yazılmaması, uçuş/probe/klan hazırlığı varken geçişin reddi ve eşzamanlı gönderimle geçişin kilit sırası. Yeni sezonlar yeni kalibrasyonla başlar; canlı eski sezonlar ayrı geçiş işaretiyle korunur. Seviye 3 oluşturulmaz. Alan uçuş hasarı, yeni gezegen hasarı veya radyasyon füzesi bu uygulamaya eklenmez.
+
+Code review düzeltmeleri: hesap aracı da sunucunun `splitForHpLanding/shipHpRepairCost/shipHpRepairMinutes` fonksiyonlarına taşındı; eski onarım adaptörü kesirli hasarı düşürüp %20 eşiğinin hemen üstünü ücretsiz sayabiliyordu. Bu sunucu bug'ı değildi, hesap aracının doğruluk açığıydı. Başarısız testle gösterilip düzeltildi. Koruma önceden azaltılmış bir doza ikinci kez uygulanmıyor; ham doz ve oyuncuya gösterilen alınan doz ayrı tutuluyor. Korsan ve Argosi HP/fiyatları canlı katalogdan okunur. Araştırma kartındaki “maksimum hasar” olarak okunabilecek genel etiket, son araştırma seviyesinin gerçek HP/dk değeriyle değiştirildi. Tür kontrolünde eski kaynak seviyesinin doğrulanmış difficulty değeri kullanılır; cast ile hata gizlenmez. İlk lint kontrolünün bulduğu üç test dosyasındaki sekiz hata düzeltildi: HTTP teklifi gerçek istemci Zod şemasıyla okunur, gereksiz non-null işaretleri kaldırıldı. Bu üç dosyanın **101 testi yeniden geçti**.
+
+Doğrulama: bütün sunucu regresyonları **234 dosya, 3.433 başarılı / 1 mevcut atlanan test**; buna sonradan eklenen dört seviyenin gerçek araştırma tamamlanmasını ve beşinci seviyenin reddini kapsayan bir test de geçti. Rules taramasındaki 2.125 başarılı teste ek olarak yeni sayı sözleşmesini düzelten iki dosyanın 29 testi geçti (toplam benzersiz 2.127 rules testi doğrulandı). Arayüz taraması **443 dosya; 6.035 başarılı, 1 başarısız, 29 mevcut atlanan test** verdi: tek hata, geçici zırh görselinin yeni araştırmayla ortak kullanılmasıydı. Araştırmaya özgü görsel eklendikten sonra ilgili dosyanın **23 testi geçti**; toplam 6.036 benzersiz arayüz testi doğrulandı. Hesap aracının **24 testi** geçti, kanıt JSON'u yeniden üretildi. Rules/server/sim tür kontrolleri normal, web tür kontrolü 6 GB Node heap ile başarılı; varsayılan heap ile OOM yaşandı. Simülasyon workspace'inin yalnız tür kontrolü yapıldı, uzun testleri çalıştırılmadı. Düzeltmelerden sonra kökte `nice -n 10 pnpm lint` yeniden çalıştırıldı: **0 hata / 0 uyarı**. `git diff --check` temiz. Görsel doğrulama için başlatılan yerel 3217 API ve 5187 Vite süreçleri kapatıldı.
+
+Görsel doğrulama: `node tools/visual.mjs out/radiation-shielding/monument --monument-motion`, yalnız `astera_motion_visual_test` ve sahte kullanıcıyla gerçek API/renderer. Masaüstü + 350 px telefon: anıt ve aura hareketi, açık gönderim panelinde hareket, fiyat teklifi ve seçili geri dönüş taşmasız; hata yok. Araştırma kartı/ayrıntısı da son yeşil/sarı görselle 350/1280 px ölçüldü: ayrıntı genişlikleri 334/623 px, scroll genişliğiyle eşit; taşma veya tarayıcı hatası yok. Bu kontrollerde gönderim/geri çağırma işlemi yapılmadı. Görseller `out/radiation-shielding/` altında yereldir.
+
+Araştırma görseli: kullanıcının yeşil ağırlıklı, sarı detaylı radyasyon görünümüyle **built-in `image_gen`** kullanılarak üretildi/düzenlendi. [Kayıpsız kaynak](../assets/source/premium/research/radiation-shielding-v1.png) 1.254 × 1.254; [oyunda kullanılan WebP](../apps/web/public/assets/images/premium/research/radiation-shielding-v1.webp) 384 × 384, 42.598 bayt. Aynı katalogdaki zırh görseliyle ortak kullanım kaldırıldı. Gerçek düzenleme istemi [prompts.json](../assets/source/premium/research/prompts.json) içindeki `radiation-shielding` kaydında saklandı. Yerel API anahtarı veya CLI üretim yolu kullanılmadı.
+
+Uygulama: ortak HP motoru ve ölüm zamanı tahmini aynı koruma çarpanını kullanır. Sunucu/arayüz HP dozları, klan tahminleri ve geri dönüş tahminleri alınan gerçek hasarı gösterir; motorun girdisi ham kaynak dozu kalır ve koruma ikinci kez uygulanmaz. Araştırma ağacı, Wiki ve altı dil güncellendi. Gönderim ekranındaki kayıp süreleri savaş hasarı hariçtir; gerçek savaş sonrasında HOLD kartındaki kalan HP ve kayıp zamanları esas alınır.
+
+Performans: koruma için yeni DB sorgusu veya dakika başına hasar işi eklenmedi. Araştırma erişimi zaten okunan sezon satırından alınır. Kaynak anlık şiddeti anıt başına bir kez bulunur, her dalganın korumasına sabit çarpım uygulanır. Mevcut ölüm sınırı/üretim olayları korunur; gemi adedi tek tek döngüye girmez, kohort adedi önemlidir. Yeni gönderim tahmini kaynakların sabit zaman pencerelerini kullanır; yörüngeyi radyasyon hesabı için yeniden örneklemez. Bunlar mimari/code review bulgularıdır; 300 oyunculu canlı yük ölçümü iddiası değildir.
+
+Aktif sezon: `0154` migration kaynak oranlarını değiştirmez. Önce bütün roller güncellenir, gerekiyorsa 8 anıt düzeni ve hareket açılır; ardından ayrı `activate-monument-radiation` kuru çalıştırması ve yetkili yayında `--yes`. Geçiş eski kaynak penceresini kapatıp yenisini açar ve araştırmayı aynı transaction içinde erişilebilir yapar. Özel kaynak/sığınak korunur. Etiketsiz ama eski seed kimliği ve 2/5 oranı tam eşleşen kaynaklar, migration sonrasında eski image tarafından oluşturulmuş olsa da tanınır. Eksik/çift/yanlış seviyeli/gelecekte başlayan taban kaynak geçişi durdurur. Ayrıntılar [deploy kılavuzunda](deployment.md#12-october-radiation-shielding-explicit-idle-season-calibration).
+
+İstemci sınırı: eski web bundle'ının araştırma enum'u yeni kimliği okuyamaz. Web build'i aktivasyondan önce yayınlanmalı ve açık eski sekmeler yenilenmelidir; dosyaları yayınlamak çalışan JavaScript'i kendiliğinden değiştirmez. Bu iş genel bir zorunlu istemci güncelleme protokolü eklemez. Aktivasyon öncesinde bu yayın sınırı sağlanmalıdır.
+
+## 12. Kullanıcı örneği: 10 Korsan + 1 Argosi, mesafe 1.500
+
+Koruma 0, Endüstri 0, zırh 0; yalnız gemi üretiminin gerektirdiği Mühendislik 2, Gemi Gücü 2 ve Gemi İtkisi 2 mevcut. Tam HP ile varış, savaş hasarı yok, bütün üretim bu oyuncuya ait. Hareket nedeniyle gerçek dönüş mesafesi değişebilir; bu özel hesapta gidiş/dönüş ayrı ayrı 1.500 kabul edildi. Hareketli anıtta uçuş radyasyonu yok; yalnız HOLD hasarı 12,5 HP/dk.
+
+Gerçek `missionFuel` ve `priceMonumentReturn`: toplam yakıt **210 D** (Korsanlar 192, Argosi 18). Ayrılan dönüş rezervi net masraf değildir; eve dönenlerin kullanılmayan payı iade edilir. `applyHpDose` → `splitForHpLanding` → `shipHpRepairCost(...,100)` ile 60 dakika sonunda onarım **30.778 A + 12.047 K + 173 D**. Mevcut üretim emeği değerlemesi `RESOURCE_VALUE` (32 A = 16 K = 1 D) ile tamir 1.887,75 D eşdeğeri; yakıt dahil **2.097,75 D / 60 = 34,9625 D/dk** başa baş üretim.
+
+| Bekleme | Yakıt + tamir, D eşdeğeri | Başa baş, D/dk |
+|---|---:|---:|
+| 21,6 dk — bütün gemiler ücretsiz onarım sınırında | 210 | 9,7222 |
+| 60 dk | 2.097,75 | 34,9625 |
+| 81 dk | 2.757,78125 | 34,0467 |
+| 100 dk | 3.354,78125 | 33,5478 |
+
+Yuvarlama hariç, bütün gemiler ücretli onarımdayken eşik yaklaşık `31,44 + 210 / bekleme_dakikası` D/dk'dır. 31,44 D/dk hasarın onarım emeği, ikinci terim ise uçuşun sabit yakıt maliyetidir. Ücretsiz onarım aralığında bu formül uygulanmaz.
+
+Argosi 108. dakikada, Korsan 120,64. dakikada ölür. Yük/rezerv kaybı nedeniyle 108 dakika ve sonrası aynı başa baş formülüyle değerlendirilemez. 60 dakika nöbetin mevcut 8 D/dk üretimi 480 D getirir; yakıt + D tamir sonrası kasada +97 D kalırken A/K tamiri dahil ekonomik sonuç **−1.617,75 D eşdeğeri**. 26.000 kargo bu sürelerde sınırlayıcı değildir. Bu sayı üretim artışı kararı değildir: küçük filo ile büyük nöbetin masrafı farklıdır, toplam anıt üretimi gemi sayısıyla artmaz. İlk gemi yatırım bedeli sağ kalan gemiler için her tur yeniden masraf yazılmadı; savaşta veya radyasyonda kayıp olursa ayrıca eklenir. Döteryum eşdeğeri bir üretim emeği karşılaştırmasıdır, garantili ticaret kuru değildir.

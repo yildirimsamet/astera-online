@@ -11,6 +11,13 @@ const node = (over: Record<string, unknown> = {}) =>
   planetNodes([galaxySchema.shape.planets.element.parse({ ...input, ...over })])[0]!;
 
 describe('the known commander beside a planet name', () => {
+  it('shows the Honor podium as primary and never falls back to Dominion in an active Honor season', () => {
+    const { rerender } = render(<GalaxyCommanderName node={node({ honorRanking: true, honorRank: 2, dominionRank: 1 })} />);
+    expect(screen.getByLabelText('Honor · Rank 2')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Rank 1')).not.toBeInTheDocument();
+    rerender(<GalaxyCommanderName node={node({ honorRanking: true, dominionRank: 1 })} />);
+    expect(screen.queryByLabelText('Rank 1')).not.toBeInTheDocument();
+  });
   it('carries the server country through the schema and scene to a flag beside the name', () => {
     const known = node();
     expect(known.country).toBe('JP');

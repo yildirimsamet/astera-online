@@ -5,7 +5,9 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLAN, hangarLoad, MONUMENT_CAPACITY, MONUMENT_SEASON_DEFAULTS, monumentMotion, motionPositionAt, distance, missionFuel, monumentFuelReserves, priceMonumentReturn, type Fleet } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { accounts, clanMemberships, clanWarContributions, clanWarOperations, clans, hpRadiationSources, missions, monumentBattleParticipants, monumentBattles, monuments, monumentShipLots, monumentWaves, notifications, planets, players, seasons, units } from '../src/db/schema.js';
+import { accounts, clanMemberships, clanWarContributions, clanWarOperations, clans, honorCommitments, honorEvents, honorSeasons, hpRadiationSources, missions, monumentBattleParticipants, monumentBattles, monuments, monumentShipLots, monumentWaves, notifications, planets, players, seasons, units } from '../src/db/schema.js';
+import { prepareHonorSeason } from '../src/services/honorLedger.js';
+import { openHonorRanking } from '../src/services/honorActivation.js';
 import { acceptClanRequest, applyToClan, clanActor, createClan } from '../src/services/clan.js';
 import { cancelClanWarOperation, markClanWarMonumentTarget, openOperation, quoteClanWarContribution, readClanWar, recallClanWarContribution, sendClanWarContribution, startClanWar } from '../src/services/clanWar.js';
 import { forceRecoveryShield } from '../src/services/attackProtection.js';
@@ -18,7 +20,9 @@ import { recallMonument } from '../src/services/monumentMovement.js';
 import { wipeAllServers } from '../src/services/servers.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { EventBus, type StreamEvent } from '../src/stream/bus.js';
-import { TEST_DATABASE_URL, fuelUp, giveNewcomerShield, giveUnits, grant, levelWorld, seedWorld, setLevel, testDb, testEnv, type Fixture } from './helpers.js';
+import { TEST_DATABASE_URL, fuelUp, giveNewcomerShield, giveResearch, giveUnits, grant, levelWorld, seedWorld, setLevel, testDb, testEnv, type Fixture } from './helpers.js';
+import { activateMonumentRadiation } from '../src/services/monumentRadiationAdoption.js';
+import { readMonuments } from '../src/services/monumentView.js';
 
 let f: Fixture;
 let m: typeof monuments.$inferSelect;
@@ -70,6 +74,83 @@ beforeEach(async () => {
 afterAll(async () => { await (await testDb()).close(); });
 
 describe('the existing clan preparation with a real monument target', () => {
+  it.each([{ afterLaunch: false, rankedOpening: false, openBeforeLaunch: false },
+    { afterLaunch: true, rankedOpening: false, openBeforeLaunch: false },
+    { afterLaunch: false, rankedOpening: true, openBeforeLaunch: false },
+    { afterLaunch: false, rankedOpening: false, openBeforeLaunch: true }])('honors the activation boundary for a real joint monument battle: $afterLaunch/$rankedOpening/$openBeforeLaunch', async ({ afterLaunch, rankedOpening, openBeforeLaunch }) => {
+    const holder = randomUUID();
+    await f.db.update(monuments).set({ controllerPlayerId: f.playerIds[2]! }).where(eq(monuments.id, m.id));
+    await f.db.insert(monumentWaves).values({ id: holder, seasonId: f.seasonId, monumentId: m.id,
+      playerId: f.playerIds[2]!, originPlanetId: f.planetIds[2]!, unitLocation: `monument:${holder}`,
+      purpose: 'REINFORCE', sentFleet: { DART: 1 }, tech: {}, route: [], fuelPaid: 0,
+      sentAt: f.clock.now(), heldAt: f.clock.now(), radiationSettledAt: f.clock.now(), status: 'HOLD' });
+    await f.db.insert(monumentShipLots).values({ waveId: holder, hull: 'DART', count: 1, damageBp: 0, remainderBp: 0, deuterium: 0 });
+    await giveUnits(f.db, f.planetIds[2]!, { DART: 1 }, `monument:${holder}`);
+    const enable = () => f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'SHADOW', f.clock));
+    if (!afterLaunch) await enable();
+    if (rankedOpening || openBeforeLaunch) f.clock.advance(2 * 24 * 60);
+    await mark();
+    await stage();
+    if (openBeforeLaunch) await openHonorRanking(f.db, { seasonId: f.seasonId, clock: f.clock, apply: true });
+    const launched = await start();
+    const outgoing = await f.db.select().from(monumentWaves).where(eq(monumentWaves.status, 'OUTBOUND'));
+    expect(outgoing).toHaveLength(2);
+    expect(new Set(outgoing.map(row => row.jointOperationId)).size).toBe(1);
+    if (afterLaunch) await enable();
+    if (rankedOpening) await openHonorRanking(f.db, { seasonId: f.seasonId, clock: f.clock, apply: true });
+    expect(await f.db.select().from(honorCommitments)).toHaveLength(afterLaunch ? 0 : 1);
+    if (afterLaunch) {
+      const [config] = await f.db.select().from(honorSeasons);
+      expect(config?.legacySources).toEqual([`MONUMENT:${outgoing[0]!.jointOperationId}`]);
+    }
+    await arrive(launched.arriveAt);
+    expect(await f.db.select().from(monumentBattles)).toHaveLength(1);
+    expect(await openOperation(f.db, clanId)).toBeNull();
+    const entries = await f.db.select().from(honorEvents);
+    expect(entries).toHaveLength(afterLaunch || rankedOpening ? 0 : 1);
+    if (!afterLaunch && !rankedOpening) {
+      expect(entries[0]?.evidence.attack.map(row => row.id).sort()).toEqual(f.playerIds.slice(0, 2).sort());
+      expect(entries[0]?.ranked).toBe(openBeforeLaunch);
+      expect(entries[0]?.outcome.attack.total).toBeLessThanOrEqual(0);
+      expect(entries[0]?.outcome.pool.attack.exposures.every(row => row.positive === 0)).toBe(true);
+    }
+    await arrive(launched.arriveAt);
+    expect(await f.db.select().from(monumentBattles)).toHaveLength(1);
+    expect(await f.db.select().from(honorEvents)).toHaveLength(afterLaunch || rankedOpening ? 0 : 1);
+  });
+
+  it('refuses radiation calibration while an empty joint preparation remains open', async () => {
+    await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    await mark();
+    expect(await activateMonumentRadiation(f.db, { seasonId: f.seasonId, clock: f.clock, apply: true }))
+      .toMatchObject({ applied: false, status: 'BUSY', fleets: 0, operations: 1 });
+  });
+
+  it('keeps each clan contributor’s shielding through staging, combat, HOLD and recall', async () => {
+    await f.db.update(seasons).set({ monumentMotionStartsAt: f.clock.now(), monumentRadiationStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'MONUMENT', anchorId: m.id,
+      x: m.x, y: m.y, z: m.z, radius: 1000, mode: 'EMIT', radiationLevel: 2, intensityHpPerMinute: 12.5, activeFrom: f.clock.now() });
+    await giveResearch(f.db, f.planetIds[0]!, 'RADIATION_SHIELDING', 4);
+    await giveResearch(f.db, f.planetIds[1]!, 'RADIATION_SHIELDING', 1);
+    await mark();
+    await stage();
+    await giveResearch(f.db, f.planetIds[1]!, 'RADIATION_SHIELDING', 3);
+    const launched = await start();
+    const waves = await f.db.select().from(monumentWaves);
+    expect(waves.find(row => row.playerId === f.playerIds[0])?.tech.RADIATION_SHIELDING).toBe(4);
+    expect(waves.find(row => row.playerId === f.playerIds[1])?.tech.RADIATION_SHIELDING).toBe(1);
+    await arrive(launched.arriveAt);
+    f.clock.advance(10);
+    for (const [index, rate] of [[0, 5.25], [1, 10.5]] as const) {
+      const view = await f.db.transaction(tx => readMonuments(tx, { playerId: f.playerIds[index]!, seasonId: f.seasonId, at: f.clock.now(), adminUsernames: [] }));
+      const wave = view.waves.find(row => row.playerId === f.playerIds[index])!;
+      expect(wave.status).toBe('HOLD');
+      expect(wave.radiationHpPerMinute).toBeCloseTo(rate, 10);
+      const recalled = await f.db.transaction(tx => recallMonument(tx, { playerId: f.playerIds[index]!, waveId: wave.id,
+        selections: wave.lots.map(lot => ({ lotId: lot.id, count: lot.count })), clock: f.clock }));
+      expect(recalled.wave.tech.RADIATION_SHIELDING).toBe(index === 0 ? 4 : 1);
+    }
+  });
   it('refuses an idle activation while an empty monument preparation remains open', async () => {
     await mark();
     expect(await activateMonumentMotion(f.db, { seasonId: f.seasonId, clock: f.clock, apply: true, adminUsernames: [] }))
@@ -296,6 +377,25 @@ describe('the existing clan preparation with a real monument target', () => {
     const native = await f.db.select().from(monumentWaves);
     expect(native).toHaveLength(1);
     expect(native[0]).toMatchObject({ playerId: f.playerIds[1], status: 'OUTBOUND' });
+  });
+
+  it('refuses tier three contributions to Hard even when the clan leader can attack it', async () => {
+    await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
+    await setLevel(f.db, f.planetIds[1]!, 'CORE', 9);
+    await mark();
+    await expect(send(1)).rejects.toMatchObject({ code: 'MONUMENT_TIER_FORBIDDEN' });
+    expect(await f.db.select().from(clanWarContributions)).toHaveLength(0);
+    expect(await f.db.select().from(monumentWaves)).toHaveLength(0);
+  });
+
+  it('rechecks Hard participant tiers before a staged joint fleet departs', async () => {
+    await f.db.update(monuments).set({ difficulty: 'HARD' }).where(eq(monuments.id, m.id));
+    await mark();
+    await stage();
+    await setLevel(f.db, f.planetIds[1]!, 'CORE', 9);
+    await expect(start()).rejects.toMatchObject({ code: 'MONUMENT_TIER_FORBIDDEN', params: { tier: 3, minTier: 4 } });
+    expect(await f.db.select().from(monumentWaves)).toHaveLength(0);
+    expect((await f.db.select().from(clanWarOperations))[0]?.status).toBe('ASSEMBLING');
   });
 
   it('rejects a participant who reaches tier four after staging for Easy, before any joint fleet departs', async () => {

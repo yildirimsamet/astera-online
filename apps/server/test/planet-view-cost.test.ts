@@ -1,4 +1,5 @@
 import { eq, sql as query } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { pino } from 'pino';
@@ -9,6 +10,7 @@ import { planetView } from '../src/services/planetView.js';
 import * as viewModule from '../src/services/planetView.js';
 import { collectWorks } from '../src/services/build.js';
 import { landShips } from '../src/services/shipDamage.js';
+import { maintenanceAction } from '../src/services/maintenance.js';
 import { seedWorld, testDb, testEnv, TEST_DATABASE_URL } from './helpers.js';
 
 const queries: string[] = [];
@@ -106,6 +108,22 @@ it('renders the committed collect result after releasing its transaction', async
   expect(precedingStatements).toEqual(['commit']);
 });
 
+it('renders manual maintenance only after releasing its transaction', async () => {
+  const f = await seedWorld(1);
+  const planetId = f.planetIds[0]!;
+  await db.transaction(tx => landShips(tx, { planetId, ownerPlayerId: f.playerIds[0]!,
+    fleet: { BALLISTA: 2 }, damage: [{ hull: 'BALLISTA', count: 2, damageBp: 6500 }], at: f.clock.now() }));
+  const render = viewModule.buildPlanetView;
+  const precedingStatements: (string | undefined)[] = [];
+  vi.spyOn(viewModule, 'buildPlanetView').mockImplementation(data => {
+    precedingStatements.push(wireQueries.at(-1));
+    return render(data);
+  });
+  await maintenanceAction(db, f.playerIds[0]!, planetId, 'DOCK', { source: 'HOME',
+    groups: [{ hull: 'BALLISTA', count: 1, damageBp: 6500 }] }, randomUUID(), f.clock);
+  expect(precedingStatements).toEqual(['commit']);
+});
+
 it('keeps home, away and docked inventory separate in the captured response', async () => {
   const f = await seedWorld(1);
   const planetId = f.planetIds[0]!;
@@ -113,6 +131,8 @@ it('keeps home, away and docked inventory separate in the captured response', as
   await f.db.insert(schema.units).values({ planetId, ownerPlayerId, hull: 'DART', location: 'cost-test-flight', count: 3 });
   await f.db.transaction(tx => landShips(tx, { planetId, ownerPlayerId,
     fleet: { BALLISTA: 2 }, damage: [{ hull: 'BALLISTA', count: 2, damageBp: 6500 }], at: f.clock.now() }));
+  await maintenanceAction(db, ownerPlayerId, planetId, 'DOCK', { source: 'HOME',
+    groups: [{ hull: 'BALLISTA', count: 2, damageBp: 6500 }] }, randomUUID(), f.clock);
   queries.length = 0;
   const view = await db.transaction(tx => planetView(tx, planetId, f.clock));
   expect(view.fleetAway.DART).toBe(3);

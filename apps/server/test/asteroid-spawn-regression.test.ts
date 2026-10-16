@@ -46,6 +46,7 @@ import {
   placeAt,
   setLevel,
   settledAt,
+  TEST_DATABASE_URL,
   testDb,
   truncateAll,
 } from './helpers.js';
@@ -797,7 +798,7 @@ async function readInFreshProcess(f: World, oreMultiplier: number) {
     ['--import', 'tsx', '--input-type=module', '--eval', code], {
       cwd: process.cwd(), timeout: 30_000,
       env: {
-        ...process.env, ASTERA_REPRO_ORE_MULTIPLIER: String(oreMultiplier),
+        ...process.env, DATABASE_URL: TEST_DATABASE_URL, ASTERA_REPRO_ORE_MULTIPLIER: String(oreMultiplier),
         ASTERA_REPRO_SEASON: f.seasonId, ASTERA_REPRO_AT: f.clock.now().toISOString(),
         ASTERA_REPRO_HOUR: String(Math.round((f.at.getTime() - floorHour(START).getTime()) / HOUR_MS)),
       },

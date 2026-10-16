@@ -7,43 +7,62 @@ import { pathToFileURL } from 'node:url';
 import {
   HULLS, MOBILE_HULLS, MONUMENT_BALANCE, MONUMENT_SEASON_DEFAULTS, monumentDifficulty,
   hullTech, hullBulk, hpLethalAtMs, applyHpDose, segmentsExposureHp, normalizeMonumentLots,
-  produceMonumentDeuterium, splitForLanding, shipRepairCost, shipRepairMinutes, repairPct,
+  produceMonumentDeuterium, splitForHpLanding, shipHpRepairCost, shipHpRepairMinutes, repairPct,
   monumentFuelReserves, priceMonumentReturn, missionFuel, resourceValue,
   monumentMotion, motionPositionAt, interceptMotion, fleetPace, distance, travelExact,
   resolveMonumentCombat, mulberry32, selectMonumentHold,
-  profileIncome, profileInvoice, ECONOMY_PROFILE, researchMinutes,
+  RESEARCH_PROJECTS, RESEARCH_TECH, RADIATION_LEVEL_HP_PER_MINUTE, radiationDamageMult, researchMinutes,
 } from '../packages/rules/src/index.ts';
 
+export { RADIATION_LEVEL_HP_PER_MINUTE };
+// CURRENT names the historical pre-calibration baseline, not today's production constants.
 export const MODELS = {
   CURRENT: {
-    EASY: { flat: MONUMENT_BALANCE.EASY.intensityHpPerMinute, fraction: 0 },
-    HARD: { flat: MONUMENT_BALANCE.HARD.intensityHpPerMinute, fraction: 0 },
+    EASY: { flat: 2 }, HARD: { flat: 5 },
   },
-  CURRENT_PLUS_RESEARCH: { EASY: { flat: 2, fraction: 0 }, HARD: { flat: 5, fraction: 0 } },
-  FLAT_TUNED: { EASY: { flat: 30, fraction: 0 }, HARD: { flat: 50, fraction: 0 } },
-  PERCENT_ONLY: { EASY: { flat: 0, fraction: .016 }, HARD: { flat: 0, fraction: .024 } },
-  HYBRID: { EASY: { flat: 1, fraction: .0145 }, HARD: { flat: 2, fraction: .022 } },
+  CURRENT_PLUS_RESEARCH: {
+    EASY: { flat: 2 }, HARD: { flat: 5 },
+  },
+  FLAT_CALIBRATED: {
+    EASY: { radiationLevel: MONUMENT_BALANCE.EASY.radiationLevel },
+    HARD: { radiationLevel: MONUMENT_BALANCE.HARD.radiationLevel },
+  },
 };
-export const PROTECTION = [0, .1, .2, .3, .4];
+// Reduces source intensity, never a fraction of ship HP. One ladder for all hulls/sources.
+export const PROTECTION = [0, ...RESEARCH_TECH.radiationDamageLadder.map(mult => Number((1 - mult).toFixed(2)))];
 const CENTER = { x: 0, y: 0, z: 0 };
 const source = rate => ({ id: 'study', mode: 'EMIT', center: CENTER, radius: 1,
   activeFromMs: 0, activeUntilMs: null, intensityHpPerMinute: rate });
 const segment = (startMs, endMs) => [{ from: CENTER, to: CENTER, startMs, endMs }];
 
-export function radiationRate(hull, difficulty, model = 'CURRENT', protectionLevel = 0, extraHp = 0) {
-  const config = MODELS[model]?.[difficulty];
-  if (!MOBILE_HULLS.includes(hull) || !config
+function protectedRadiationRate(flat, protectionLevel, extraHp, enabled = true) {
+  if (!Number.isFinite(flat) || flat <= 0
     || !Number.isInteger(protectionLevel) || protectionLevel < 0 || protectionLevel >= PROTECTION.length
     || !Number.isFinite(extraHp) || extraHp < 0) throw new RangeError('Bad study radiation configuration');
-  const resistance = model === 'CURRENT' ? 0 : PROTECTION[protectionLevel];
-  return (config.flat + config.fraction * HULLS[hull].hp + extraHp) * (1 - resistance);
+  return (flat + extraHp) * (enabled ? radiationDamageMult({ RADIATION_SHIELDING: protectionLevel }) : 1);
+}
+
+export function radiationLevelRate(radiationLevel, protectionLevel = 0, extraHp = 0) {
+  if (!Number.isInteger(radiationLevel) || !Object.hasOwn(RADIATION_LEVEL_HP_PER_MINUTE, radiationLevel)) {
+    throw new RangeError('Unknown study radiation level');
+  }
+  return protectedRadiationRate(RADIATION_LEVEL_HP_PER_MINUTE[radiationLevel], protectionLevel, extraHp);
+}
+
+export function radiationRate(hull, difficulty, model = 'CURRENT', protectionLevel = 0, extraHp = 0) {
+  const config = MODELS[model]?.[difficulty];
+  if (!MOBILE_HULLS.includes(hull) || !config) throw new RangeError('Bad study radiation configuration');
+  if (config.radiationLevel !== undefined) return radiationLevelRate(config.radiationLevel, protectionLevel, extraHp);
+  return protectedRadiationRate(config.flat, protectionLevel, extraHp, model !== 'CURRENT');
 }
 
 export function lifetimeMinutes(hull, difficulty, model = 'CURRENT', protectionLevel = 0,
   tech = {}, damageBp = 0, remainderBp = 0, extraHp = 0) {
   const rate = radiationRate(hull, difficulty, model, protectionLevel, extraHp);
+  const snapshot = { ...tech, RADIATION_SHIELDING: model === 'CURRENT' ? 0 : protectionLevel };
+  const rawRate = radiationRate(hull, difficulty, model, 0, extraHp);
   const endMs = Math.ceil((HULLS[hull].hp * hullTech(tech, hull).hp / rate + 1) * 60000);
-  return hpLethalAtMs(segment(0, endMs), [source(rate)], { hull, tech, damageBp, remainderBp }) / 60000;
+  return hpLethalAtMs(segment(0, endMs), [source(rawRate)], { hull, tech: snapshot, damageBp, remainderBp }) / 60000;
 }
 
 export function makeLots(fleet, { tech = {}, playerId = 'one', damageBp = 0, remainderBp = 0,
@@ -70,7 +89,7 @@ export function minimumBuildTech(fleet) {
 }
 
 /** Reuses actual production allocation, integer-ms casualty boundaries, and carried HP fractions.
- * Candidate hybrid rates are per hull; the game currently supplies a uniform dose.
+ * The flat dose is identical for every hull with the same protection.
  * No fresh arrivals/battles/recalls in this one HOLD window, and no radiation shelter.
  */
 export function studyHold(lots, { difficulty, model = 'CURRENT', protectionLevel = 0,
@@ -79,7 +98,10 @@ export function studyHold(lots, { difficulty, model = 'CURRENT', protectionLevel
   const toMs = Math.round(minutes * 60000);
   if (!Number.isFinite(minutes) || minutes < 0 || !Number.isSafeInteger(toMs)
     || !Number.isFinite(outputPerMinute) || outputPerMinute < 0) throw new RangeError('Bad study HOLD window');
-  let rows = normalizeMonumentLots(lots);
+  let rows = normalizeMonumentLots(lots.map(row => ({ ...row,
+    tech: model === 'CURRENT' && row.tech.RADIATION_SHIELDING === undefined ? row.tech
+      : { ...row.tech, RADIATION_SHIELDING: model === 'CURRENT' ? 0 : protectionLevel },
+  })));
   const paid = new Map([...new Set(rows.map(row => row.playerId))].sort().map(id => [id, 0]));
   const destroyed = [];
   let cursor = 0, lostDeuterium = 0, discardedDeuterium = 0, lostFuelReserve = 0;
@@ -87,7 +109,7 @@ export function studyHold(lots, { difficulty, model = 'CURRENT', protectionLevel
   while (cursor < toMs) {
     let until = toMs;
     for (const row of rows) {
-      const rate = radiationRate(row.hull, difficulty, model, protectionLevel, extraHp);
+      const rate = radiationRate(row.hull, difficulty, model, 0, extraHp);
       const death = hpLethalAtMs(segment(cursor, toMs), [source(rate)], row);
       if (death !== null) until = Math.min(until, death);
     }
@@ -96,7 +118,7 @@ export function studyHold(lots, { difficulty, model = 'CURRENT', protectionLevel
     discardedDeuterium += production.discardedDeuterium;
     const kept = [];
     for (const row of production.lots) {
-      const rate = radiationRate(row.hull, difficulty, model, protectionLevel, extraHp);
+      const rate = radiationRate(row.hull, difficulty, model, 0, extraHp);
       const outcome = applyHpDose({ [row.hull]: row.count }, [row],
         segmentsExposureHp(segment(cursor, until), [source(rate)]), row.tech);
       if (!outcome.fleet[row.hull]) {
@@ -122,9 +144,9 @@ export function studyHold(lots, { difficulty, model = 'CURRENT', protectionLevel
 export function landingBill(lots, tech = {}, yard = 6) {
   const fleet = {};
   for (const row of lots) fleet[row.hull] = (fleet[row.hull] ?? 0) + row.count;
-  const landing = splitForLanding(fleet, lots);
+  const landing = splitForHpLanding(fleet, lots);
   const pct = repairPct(tech);
-  return { cost: shipRepairCost(landing.docked, pct), minutes: shipRepairMinutes(landing.docked, yard, tech, pct),
+  return { cost: shipHpRepairCost(landing.docked, pct), minutes: shipHpRepairMinutes(landing.docked, yard, tech, pct),
     dockedCount: landing.docked.reduce((sum, row) => sum + row.count, 0),
     autoRepairedCount: landing.autoRepaired.reduce((sum, row) => sum + row.count, 0) };
 }
@@ -167,41 +189,45 @@ export function farmTrip(fleet, { difficulty, model = 'CURRENT', protectionLevel
 }
 
 export function proposedResearch() {
-  const income = profileIncome(4), scale = (ECONOMY_PROFILE.progressionDays / 14) ** 1.8;
   return [1, 2, 3, 4].map(level => {
-    const h = 1.5 * 1.8 ** (level - 1) * scale;
-    const priced = profileInvoice(income, { alloy: .65 * h, crystal: h, deuterium: 0 });
-    const cost = { ...priced, crystal: Math.round(priced.crystal * .8) };
+    const cost = RESEARCH_PROJECTS.RADIATION_SHIELDING.costAt(level);
     return { level, reduction: PROTECTION[level], cost,
+      hpPerMinute: Object.fromEntries(['EASY', 'HARD'].map(difficulty => [difficulty,
+        radiationRate('DART', difficulty, 'FLAT_CALIBRATED', level)])),
       minutesCore4: researchMinutes(cost, 4), minutesCore6: researchMinutes(cost, 6), minutesCore9: researchMinutes(cost, 9) };
   });
 }
 
-async function main() {
+export function buildStudy() {
+  const model = 'FLAT_CALIBRATED';
+  const productionBudgets = [
+    { EASY: MONUMENT_BALANCE.EASY.productionPerMinute, HARD: MONUMENT_BALANCE.HARD.productionPerMinute },
+    { EASY: 6, HARD: 12 }, { EASY: 8, HARD: 14 }, { EASY: 9, HARD: 14 },
+  ].map(output => ({ ...output, dailyMaximum: 4 * (output.EASY + output.HARD) * 1440 }));
   const hulls = MOBILE_HULLS.map(hull => ({ hull, tier: HULLS[hull].tier, hp: HULLS[hull].hp,
     armoredHp: HULLS[hull].hp * hullTech({ SHIP_ARMOR: 5 }, hull).hp,
     farmCargo: HULLS[hull].family === 'CARGO' ? HULLS[hull].cargo : 0, bulk: hullBulk(hull),
     difficulty: Object.fromEntries(['EASY', 'HARD'].map(difficulty => [difficulty, {
       currentMinutes: lifetimeMinutes(hull, difficulty), currentArmor5Minutes: lifetimeMinutes(hull, difficulty, 'CURRENT', 0, { SHIP_ARMOR: 5 }),
-      hybridHpPerMinute: radiationRate(hull, difficulty, 'HYBRID'),
-      hybridMinutesByLevel: PROTECTION.map((_, level) => lifetimeMinutes(hull, difficulty, 'HYBRID', level)),
-      hybridArmor5MinutesByLevel: PROTECTION.map((_, level) => lifetimeMinutes(hull, difficulty, 'HYBRID', level, { SHIP_ARMOR: 5 })),
+      hpPerMinuteByLevel: PROTECTION.map((_, level) => radiationRate(hull, difficulty, model, level)),
+      minutesByLevel: PROTECTION.map((_, level) => lifetimeMinutes(hull, difficulty, model, level)),
+      armor5MinutesByLevel: PROTECTION.map((_, level) => lifetimeMinutes(hull, difficulty, model, level, { SHIP_ARMOR: 5 })),
     }])) }));
   const templates = [
     { DART: 1, COURIER: 1 }, { PIKE: 1, COURIER: 1 }, { RAMPART: 1, COURIER: 1 },
     { VIPER: 1, COURIER: 1 }, { STRONGHOLD: 1, WAYFARER: 1 },
     { TEMPEST: 1, COURIER: 1 }, { LEVIATHAN: 1, ATLAS: 1 },
-    { CORSAIR: 1, COURIER: 1 }, { CITADEL: 1, ARGOSY: 1 },
+    { CORSAIR: 1, COURIER: 1 }, { CORSAIR: 1, ARGOSY: 1 }, { CITADEL: 1, ARGOSY: 1 },
     { RAMPART: 10, COURIER: 1 }, { LEVIATHAN: 10, ATLAS: 1 }, { CITADEL: 10, ARGOSY: 1 },
   ];
   const trips = [];
   for (const difficulty of ['EASY', 'HARD']) for (const fleet of templates) {
     const buildTech = minimumBuildTech(fleet);
     for (const [protectionLevel, tech] of [[0, buildTech], [4, { ...buildTech, SHIP_ARMOR: 5, INDUSTRIAL: 2 }]]) {
-      const firstDeath = Math.min(...Object.keys(fleet).map(hull => lifetimeMinutes(hull, difficulty, 'HYBRID', protectionLevel, tech)));
+      const firstDeath = Math.min(...Object.keys(fleet).map(hull => lifetimeMinutes(hull, difficulty, model, protectionLevel, tech)));
       for (const fraction of [.18, .5, .75, .9]) for (const origin of ['NEAR', 'FAR']) {
-        const minutes = firstDeath * fraction;
-        const result = farmTrip(fleet, { difficulty, model: 'HYBRID', protectionLevel, tech, minutes, origin });
+        const minutes = Math.round(firstDeath * fraction * 60000) / 60000;
+        const result = farmTrip(fleet, { difficulty, model, protectionLevel, tech, minutes, origin });
         trips.push({ difficulty, fleet, protectionLevel, tech, origin, fractionOfFirstDeath: fraction, firstDeath,
           ...result, lots: undefined, destroyed: undefined, shares: undefined });
       }
@@ -226,14 +252,14 @@ async function main() {
             ...(healthy > 0 ? [{ ...row, count: healthy, returnFuelReserve: (row.returnFuelReserve / row.count) * healthy }] : [])];
         });
         const firstDeath = survivorLots.length ? Math.min(...survivorLots.map(row => lifetimeMinutes(
-          row.hull, difficulty, 'HYBRID', protectionLevel, tech, row.damageBp, row.remainderBp))) : null;
+          row.hull, difficulty, model, protectionLevel, tech, row.damageBp, row.remainderBp))) : null;
         captures.push({ difficulty, fleet, tech, protectionLevel, seed, control: battle.control,
           survivors: contribution.survivors, losses: contribution.losses, wounds: contribution.survivorDamage,
           firstDeathMinutesAfterBattle: firstDeath,
           grossAt75PctFirstDeath: battle.control === 'ATTACKER' && firstDeath !== null ? studyHold(survivorLots, {
-            difficulty, model: 'HYBRID', protectionLevel, minutes: firstDeath * .75 }).deliverableDeuterium : 0,
+            difficulty, model, protectionLevel, minutes: firstDeath * .75 }).deliverableDeuterium : 0,
           checkpoints: battle.control !== 'ATTACKER' ? [] : [15, 30, 45, 60, 90, 120].map(minutes => {
-            const hold = studyHold(survivorLots, { difficulty, model: 'HYBRID', protectionLevel, minutes });
+            const hold = studyHold(survivorLots, { difficulty, model, protectionLevel, minutes });
             return { minutes, deliverableDeuterium: hold.deliverableDeuterium, lostDeuterium: hold.lostDeuterium,
               destroyedShips: hold.destroyed.reduce((sum, row) => sum + row.count, 0),
               survivingShips: hold.lots.reduce((sum, row) => sum + row.count, 0) };
@@ -242,27 +268,29 @@ async function main() {
     }
   }
   const progression = [];
-  for (const difficulty of ['EASY', 'HARD']) for (let protectionLevel = 0; protectionLevel <= 4; protectionLevel++) {
-    const fleet = { RAMPART: 1, COURIER: 1 };
-    const firstDeath = Math.min(...Object.keys(fleet).map(hull => lifetimeMinutes(hull, difficulty, 'HYBRID', protectionLevel)));
-    const minutes = firstDeath * .75;
-    progression.push({ difficulty, fleet, protectionLevel, tech: {}, firstDeath, minutes,
-      ...farmTrip(fleet, { difficulty, model: 'HYBRID', protectionLevel, minutes }), lots: undefined, destroyed: undefined, shares: undefined });
+  for (const difficulty of ['EASY', 'HARD']) for (const fleet of [{ RAMPART: 1, COURIER: 1 }, { CORSAIR: 1, ARGOSY: 1 }]) {
+    const tech = minimumBuildTech(fleet);
+    for (let protectionLevel = 0; protectionLevel <= 4; protectionLevel++) {
+      const firstDeath = Math.min(...Object.keys(fleet).map(hull => lifetimeMinutes(hull, difficulty, model, protectionLevel, tech)));
+      const minutes = Math.round(firstDeath * .75 * 60000) / 60000;
+      progression.push({ difficulty, fleet, protectionLevel, tech, firstDeath, minutes,
+        ...farmTrip(fleet, { difficulty, model, protectionLevel, tech, minutes }), lots: undefined, destroyed: undefined, shares: undefined });
+    }
   }
   const averageTrips = [];
   const averageFleets = [{ RAMPART: 1, COURIER: 1 }, { STRONGHOLD: 1, WAYFARER: 1 },
-    { LEVIATHAN: 1, ATLAS: 1 }, { CITADEL: 1, ARGOSY: 1 }];
+    { LEVIATHAN: 1, ATLAS: 1 }, { CORSAIR: 1, ARGOSY: 1 }, { CITADEL: 1, ARGOSY: 1 }];
   for (const difficulty of ['EASY', 'HARD']) for (const fleet of averageFleets) {
     const buildTech = minimumBuildTech(fleet);
     for (const [protectionLevel, tech] of [[0, buildTech], [4, buildTech], [4, { ...buildTech, SHIP_ARMOR: 5, INDUSTRIAL: 2 }]]) {
-      const firstDeath = Math.min(...Object.keys(fleet).map(hull => lifetimeMinutes(hull, difficulty, 'HYBRID', protectionLevel, tech)));
-      const minutes = firstDeath * .75, samples = [];
+      const firstDeath = Math.min(...Object.keys(fleet).map(hull => lifetimeMinutes(hull, difficulty, model, protectionLevel, tech)));
+      const minutes = Math.round(firstDeath * .75 * 60000) / 60000, samples = [];
       for (let homeIndex = 0; homeIndex < 12; homeIndex++) {
         const y = 1 - 2 * (homeIndex + .5) / 12, angle = homeIndex * Math.PI * (3 - Math.sqrt(5));
         const planar = Math.sqrt(1 - y * y);
         const homePosition = { x: 4500 * planar * Math.cos(angle), y: 4500 * y, z: 4500 * planar * Math.sin(angle) };
         for (let phase = 0; phase < 12; phase++) for (const ordinal of difficulty === 'EASY' ? [5, 6, 7, 8] : [1, 2, 3, 4]) {
-          const trip = farmTrip(fleet, { difficulty, model: 'HYBRID', protectionLevel, tech, minutes, homePosition,
+          const trip = farmTrip(fleet, { difficulty, model, protectionLevel, tech, minutes, homePosition,
             ordinal, departAt: phase * 16 * 3600_000 / 12 });
           const cycleMinutes = trip.outboundMinutes + minutes + trip.returnMinutes + trip.repair.minutes;
           samples.push({ fuel: trip.outboundFuel + trip.returnFuel, netValue: trip.netValueDeuteriumEquivalent,
@@ -270,24 +298,49 @@ async function main() {
         }
       }
       const mean = key => samples.reduce((sum, row) => sum + row[key], 0) / samples.length;
+      const gross = MONUMENT_BALANCE[difficulty].productionPerMinute * minutes;
+      const minNetValue = Math.min(...samples.map(row => row.netValue));
+      const maxNetValue = Math.max(...samples.map(row => row.netValue));
+      const productionOptions = [...new Set(productionBudgets.map(output => output[difficulty]))].map(output => {
+        const newGross = output * minutes;
+        // Every sampled trip returns before its first casualty. No cargo cap at these outputs.
+        const capacity = Object.entries(fleet).reduce((sum, [hull, count]) => sum
+          + (HULLS[hull].family === 'CARGO' ? HULLS[hull].cargo * count : 0), 0);
+        if (newGross > capacity) throw new RangeError('Production sensitivity requires an uncapped cargo hold');
+        return { outputPerMinute: output, gross: newGross,
+          meanNetValue: mean('netValue') + newGross - gross,
+          minNetValue: minNetValue + newGross - gross, maxNetValue: maxNetValue + newGross - gross };
+      });
       averageTrips.push({ difficulty, fleet, protectionLevel, tech, samples: samples.length,
-        holdMinutes: minutes, gross: MONUMENT_BALANCE[difficulty].productionPerMinute * minutes,
+        holdMinutes: minutes, gross,
         meanFuel: mean('fuel'), meanNetValue: mean('netValue'), meanCycleMinutes: mean('cycleMinutes'),
         meanNetValuePerHour: mean('netValuePerHour'),
-        minNetValue: Math.min(...samples.map(row => row.netValue)), maxNetValue: Math.max(...samples.map(row => row.netValue)) });
+        minNetValue, maxNetValue,
+        breakEvenOutputMean: (gross - mean('netValue')) / minutes,
+        breakEvenOutputAllSamples: (gross - minNetValue) / minutes, productionOptions });
     }
   }
   const report = {
-    date: '2026-10-12', status: 'PROPOSAL_ONLY_NO_GAME_RULE_CHANGES', models: MODELS, protection: PROTECTION,
-    scope: '22 live mobile hulls; 384 endpoint trips, 13824 sampled-position/phase/monument trips, 10 fixed-tech research progression trips, 128 seeded NPC battles. No DB, season simulation, PvP simulation, shelter, new arrivals or tactical bombs.',
+    date: '2026-10-12', status: 'IMPLEMENTED_PENDING_DEPLOY', model, models: MODELS,
+    radiationLevelHpPerMinute: RADIATION_LEVEL_HP_PER_MINUTE, protection: PROTECTION,
+    anchors: { hull: 'CORSAIR', baseHp: HULLS.CORSAIR.hp, maxArmor: 5,
+      baseCorsairMinutes: lifetimeMinutes('CORSAIR', 'HARD', model),
+      maxCorsairMinutes: lifetimeMinutes('CORSAIR', 'HARD', model, 4, { SHIP_ARMOR: 5 }),
+      maxShieldWithoutArmorMinutes: lifetimeMinutes('CORSAIR', 'HARD', model, 4) },
+    scope: `${hulls.length} live mobile hulls; ${trips.length} endpoint trips, ${averageTrips.reduce((sum, row) => sum + row.samples, 0)} sampled-position/phase/monument trips, ${progression.length} fixed-tech research progression trips, ${captures.length} seeded NPC battles. No DB, season simulation, PvP simulation, shelter, new arrivals or tactical bombs.`,
     assumptions: { maxArmor: 5, radiationInFlight: false, farmAfterCapture: true, soloProductionPerMinute: { EASY: 3, HARD: 8 },
       flightPace: 1, beaconBoost: 1, propulsion: 'minimum hull build prerequisite', homeRadius: 4500, monumentRadius: 6000, periodsHours: [8, 16], repairYard: 6,
       equivalent: '32 alloy or 16 crystal = 1 deuterium, valuation only; not an exchange or actual currency debit.' },
-    proposedResearch: proposedResearch(), hulls, trips, captures, progression, averageTrips,
+    proposedResearch: proposedResearch(), productionBudgets, hulls, trips, captures, progression, averageTrips,
   };
+  return report;
+}
+
+async function main() {
+  const report = buildStudy();
   await writeFile(new URL('../docs/evidence/monument-radiation-calibration-2026-10-12.json', import.meta.url), JSON.stringify(report, null, 2) + '\n');
-  console.log(JSON.stringify({ mobileHulls: hulls.length, tripSamples: trips.length, npcBattles: captures.length,
-    bestTrips: ['EASY', 'HARD'].map(difficulty => trips.filter(row => row.difficulty === difficulty)
+  console.log(JSON.stringify({ scope: report.scope, anchors: report.anchors,
+    bestTrips: ['EASY', 'HARD'].map(difficulty => report.trips.filter(row => row.difficulty === difficulty)
       .sort((a, b) => b.netValueDeuteriumEquivalent - a.netValueDeuteriumEquivalent)[0]),
     proposedResearch: report.proposedResearch }, null, 2));
 }

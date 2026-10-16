@@ -272,7 +272,7 @@ describe('onarım fiyatı', () => {
     }
   });
 
-  it('onarım her zaman beş ile on beş dakika arasındadır', () => {
+  it('onarım her zaman yavaşlatılmış onarım süre aralığında kalır', () => {
     const rng = mulberry32(3);
     for (let i = 0; i < 20_000; i++) {
       const minutes = repairMinutes(rng);
@@ -299,7 +299,7 @@ describe('kasada sızıntı', () => {
     }
   });
 
-  it('tavan bağlamadığı seviyede tam depo 48 saatte akar', () => {
+  it('tavan bağlamadığı seviyede tam depo 60 saatte akar', () => {
     const core = 6;
     const r = rates(core);
     expect(leakRates(r, core).alloy).toBeCloseTo(storageCap(r.alloy, core) / FAULT.leakDrainHours, 6);

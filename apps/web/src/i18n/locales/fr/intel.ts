@@ -346,7 +346,7 @@ export const reports = {
       "Les vaisseaux de soutien restent protégés tant qu’au moins une unité de combat survit de leur côté.",
     resultHeading: "Détermination du résultat",
     resultDecisive:
-      "DÉCISIF · toutes les unités défensives ont été détruites et le bouclier est tombé à zéro · jusqu’à %{{decisiveLoot}} des réserves exposées peuvent être prises avant la limite de soute.",
+      "DÉCISIF · toutes les unités défensives ont été détruites et le bouclier est tombé à zéro · jusqu’à %{{decisiveLoot}} des réserves exposées peuvent être prises avant la limite de soute. Production non collectée : {{decisiveBuffer}} %.",
     /**
 
     * MÊME RÈGLE, SANS SA MOITIÉ INAPPLICABLE. Le bouclier est une structure
@@ -356,7 +356,7 @@ export const reports = {
     resultDecisivePirate:
       "DÉCISIF · tous les vaisseaux de l’équipage ont été détruits · jusqu’à %{{decisiveLoot}} du butin peut être pris avant les limites de cargaison ; remorquer une coque n’est possible que dans ce cas.",
     resultPartial:
-      "PARTIEL · au moins %{{threshold}} de la valeur des unités défensives a été détruite · jusqu’à %{{partialLoot}} des réserves exposées peuvent être prises avant la limite de soute.",
+      "PARTIEL · au moins %{{threshold}} de la valeur des unités défensives a été détruite · jusqu’à %{{partialLoot}} des réserves exposées peuvent être prises avant la limite de soute. Production non collectée : {{partialBuffer}} %.",
     resultRepelled:
       "REPOUSSÉ · moins de %{{threshold}} de la valeur des unités défensives a été détruite · aucune ressource ne peut être prise.",
     round: "Tour {{round}}",
@@ -391,13 +391,16 @@ export const reports = {
   strategicEmpEffect: "L’Aegis est tombée à zéro et ne se régénère pas pendant 1 heure. Les défenses terrestres ne tirent pas et ne subissent aucun dégât durant ce temps.",
   strategicLoyalty: "Loyauté de la colonie",
   strategicLoyaltyChange: "{{before}} % → {{after}} %",
-  strategicLoyaltyNext: "À {{loss}} % ou moins, le prochain tir emporte la colonie.",
+  strategicLoyaltyNext_one: "La prochaine frappe fait tomber la colonie.",
+  strategicLoyaltyNext_other: "Encore {{count}} frappes de suite font tomber la colonie.",
   strategicSecededAttacker: "La colonie a fait sécession et est devenue neutre : elle n’appartient plus à personne.",
   strategicSecededDefender: "Ta colonie a fait sécession et est devenue neutre.",
   strategicSecededShort: "colonie perdue",
   strategicCaptured: "CAPTURÉ",
   strategicIneffective: "INEFFICACE",
   strategicIntercepted: "DÉTRUIT EN VOL",
+  radiationYouAttacked: "Votre bombe à radiation a ciblé ",
+  radiationAttackedBy: "Bombe à radiation envoyée par ",
   strategicYouAttacked: "Cible de ton Étoile de la Mort : ",
   strategicAttackedBy: "Étoile de la Mort envoyée par : ",
   strategicDestroyedInFlight: "Étoile de la Mort détruite en vol",
@@ -671,8 +674,8 @@ export const dossier = {
     "Aucun intercepteur chargé au moment du passage de la sonde. Des munitions ont pu être ajoutées depuis.",
   loyaltyLabel: "Loyauté de la colonie",
   loyaltyValue: "{{value}} %",
-  loyaltyNote_one: "Une Étoile de la Mort retire {{loss}} de loyauté et une colonie à {{loss}} ou moins fait sécession : un seul tir suffirait.",
-  loyaltyNote_other: "Une Étoile de la Mort retire {{loss}} de loyauté et une colonie à {{loss}} ou moins fait sécession : il faudrait {{count}} tirs. Elle remonte tant que rien n’est en panne.",
+  loyaltyNote_one: "Une Étoile de la Mort retire {{loss}} de loyauté par frappe. Une frappe ferait tomber cette colonie.",
+  loyaltyNote_other: "Une Étoile de la Mort retire {{loss}} de loyauté par frappe. Il faudrait {{count}} frappes de suite pour faire tomber cette colonie.",
   doctrinesLabel: "Doctrine de combat",
   doctrinesNone: "Aucune recherche terminée",
   doctrinesNote:

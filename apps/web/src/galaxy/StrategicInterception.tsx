@@ -11,8 +11,11 @@ import { MODEL } from '../ui/assets.js';
 import { FullRate } from './frames.jsx';
 import { TimedImpact, type DeathStarImpactEvent } from './DeathStarImpact.jsx';
 import { Hull } from './Fleets.jsx';
-import { toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
+import { MISSILE_SIZE, toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
 import { publicEffectIntensity } from './vfx.js';
+import { rememberStarts } from './publicMoments.js';
+import { RADIATION_BOMB_VISUAL } from '@astera/rules';
+import { RadiationBombExhaust } from './StrategicExhaust.js';
 
 useGLTF.preload(MODEL.missile, false);
 useGLTF.preload(MODEL.deathStar, false);
@@ -116,11 +119,17 @@ export function strategicInterceptionMissilePosition(
  * One impact list for two audiences: entitled viewers can schedule it from the
  * private eight-second scene, while everybody else receives only the public moment
  * once it occurs. Stable ids de-duplicate the two at the boundary.
+ *
+ * The public moment reaches a bystander with the refetch its own shard triggers, a
+ * second or so late, and an airborne fire is spent in about a second and a half: one
+ * learned that late plays from when this screen first saw it (`starts`, `rememberStarts`),
+ * as a late Death Star or bomb hit does (owner, 2026-10-16).
  */
 export function strategicInterceptionImpactEvents(
   impacts: readonly StrategicInterceptionImpact[],
   nodes: readonly PlanetNode[],
   interceptions: readonly StrategicInterception[] = [],
+  starts: ReadonlyMap<string, number> = new Map(),
 ): DeathStarImpactEvent[] {
   const events = new Map<string, DeathStarImpactEvent>();
   for (const interception of interceptions) {
@@ -139,7 +148,7 @@ export function strategicInterceptionImpactEvents(
     if (events.has(impact.id)) continue;
     events.set(impact.id, {
       id: impact.id,
-      at: impact.at.getTime(),
+      at: starts.get(impact.id) ?? impact.at.getTime(),
       position: toWorld(impact.collision),
       radius: 0.4,
       intensity: publicEffectIntensity(impact.effectOnly),
@@ -159,7 +168,10 @@ export function StrategicInterceptions({
   impacts?: readonly StrategicInterceptionImpact[];
   nodes: readonly PlanetNode[];
 }) {
-  const impactEvents = strategicInterceptionImpactEvents(impacts, nodes, events);
+  // When each public collision starts on this screen; see `strategicInterceptionImpactEvents`.
+  const starts = useRef(new Map<string, number>());
+  rememberStarts(starts.current, impacts.map((impact) => ({ id: impact.id, at: impact.at.getTime() })), serverNow());
+  const impactEvents = strategicInterceptionImpactEvents(impacts, nodes, events, starts.current);
   return (
     <>
       {events.map((event) => (
@@ -191,6 +203,7 @@ function StrategicInterceptionScene({
           launchAt={event.launchAt.getTime()}
           impactAt={event.impactAt.getTime()}
           radius={radius}
+          radiationBombLevel={event.radiationBombLevel}
         />
       </Suspense>
     </>
@@ -205,6 +218,7 @@ function InterceptionFlight({
   launchAt,
   impactAt,
   radius,
+  radiationBombLevel,
 }: {
   launch: Vec3Tuple;
   control: Vec3Tuple;
@@ -213,6 +227,7 @@ function InterceptionFlight({
   launchAt: number;
   impactAt: number;
   radius: number;
+  radiationBombLevel?: 1 | 2 | 3 | undefined;
 }) {
   const root = useRef<THREE.Group>(null);
   const missile = useRef<THREE.Group>(null);
@@ -264,16 +279,17 @@ function InterceptionFlight({
       <FullRate />
       <group ref={deathStar}>
         <Hull
-          url={MODEL.deathStar}
-          scale={Math.max(0.34, radius * 0.48)}
-          glow={STRATEGIC_INTERCEPTION_NEON.deathStar}
+          url={radiationBombLevel ? `/assets/models/missiles/radiation-bomb-l${String(radiationBombLevel)}.glb` : MODEL.deathStar}
+          scale={radiationBombLevel ? RADIATION_BOMB_VISUAL[radiationBombLevel].length : Math.max(0.34, radius * 0.48) * MISSILE_SIZE}
+          glow={radiationBombLevel ? RADIATION_BOMB_VISUAL[radiationBombLevel].glow : STRATEGIC_INTERCEPTION_NEON.deathStar}
           focused={false}
         />
+        {radiationBombLevel && <RadiationBombExhaust level={radiationBombLevel} />}
       </group>
       <group ref={missile}>
         <Hull
           url={MODEL.missile}
-          scale={Math.max(0.2, radius * 0.28)}
+          scale={Math.max(0.2, radius * 0.28) * MISSILE_SIZE}
           glow={STRATEGIC_INTERCEPTION_NEON.battery}
           focused={false}
         />

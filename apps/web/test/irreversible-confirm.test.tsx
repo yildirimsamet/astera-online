@@ -247,32 +247,31 @@ describe('a Death Star strike asks before it leaves', () => {
     const view = show(onDeathStar);
     await userEvent.click(view.container.querySelector('[data-death-star]')!);
     expect(onDeathStar).not.toHaveBeenCalled();
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   /** The world is the whole question — a mis-tap sends it to the wrong one. */
-  it('names the world it is about to darken', async () => {
+  it('names the world it is about to darken', () => {
     const view = show(vi.fn());
-    await userEvent.click(view.container.querySelector('[data-death-star]')!);
-    expect(within(screen.getByRole('dialog')).getByText(/Grimhold/)).toBeInTheDocument();
+    const section = view.container.querySelector<HTMLElement>('[data-strike-section]')!;
+    expect(within(section).getAllByText(/Grimhold/).length).toBeGreaterThan(0);
   });
 
   /** Held since K4 (B9: every launch and the Death Star); Enter twice is the keyboard's hold. */
-  it('launches once the commander holds', async () => {
+  it('launches once the commander holds', () => {
     const onDeathStar = vi.fn();
     const view = show(onDeathStar);
-    await userEvent.click(view.container.querySelector('[data-death-star]')!);
-    const hold = screen.getByRole('dialog').querySelector<HTMLElement>('[data-hold]')!;
+    const hold = view.container.querySelector<HTMLElement>('[data-death-star]')!;
     fireEvent.keyDown(hold, { key: 'Enter' });
     fireEvent.keyDown(hold, { key: 'Enter' });
     expect(onDeathStar).toHaveBeenCalledTimes(1);
   });
 
-  it('leaves the weapon on the pad when the commander backs out', async () => {
+  it('leaves the weapon on the pad when a hold is let go early', () => {
     const onDeathStar = vi.fn();
     const view = show(onDeathStar);
-    await userEvent.click(view.container.querySelector('[data-death-star]')!);
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }));
+    const hold = view.container.querySelector<HTMLElement>('[data-death-star]')!;
+    fireEvent.pointerDown(hold, { button: 0 });
+    fireEvent.pointerUp(hold, { button: 0 });
     expect(onDeathStar).not.toHaveBeenCalled();
   });
 });
@@ -354,43 +353,19 @@ describe('a confirmation is above everything, and dies with its question', () =>
     />
   );
 
-  it('escapes the focus rail’s stacking context', async () => {
+  /**
+   * THE STRIKE NO LONGER OPENS A SECOND SURFACE. Owner, 2026-10-16: the Death Star is its own
+   * section in the panel, held to launch, so there is no dialog to escape, follow a world or
+   * reopen itself — the three faults those tests guarded cannot occur.
+   */
+  it('asks nothing in a second surface: the strike lives in the panel', async () => {
     const Wrapper = harness();
     const view = render(<Wrapper>{panel(target())}</Wrapper>);
     await userEvent.click(view.container.querySelector('[data-death-star]')!);
-
-    const dialog = screen.getByRole('dialog');
-    const scrim = dialog.parentElement;
-    expect(scrim, 'the sheet has no scrim wrapper').not.toBeNull();
-    // A portal renders into `document.body`, outside every rail and every panel.
-    expect(scrim?.parentElement).toBe(document.body);
-    expect(view.container.contains(dialog)).toBe(false);
-  });
-
-  it('closes itself when the focus moves to another world', async () => {
-    const Wrapper = harness();
-    const view = render(<Wrapper>{panel(target())}</Wrapper>);
-    await userEvent.click(view.container.querySelector('[data-death-star]')!);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-
-    view.rerender(<Wrapper>{panel(target({ id: 'p3', name: 'Ashfell' }))}</Wrapper>);
-    expect(screen.queryByRole('dialog'), 'the question followed the commander to a new world').toBeNull();
-  });
-
-  /** The half of that fault that reopened by itself, which is the worse one. */
-  it('does not reappear after a detour through an owned world', async () => {
-    const Wrapper = harness();
-    const view = render(<Wrapper>{panel(target())}</Wrapper>);
-    await userEvent.click(view.container.querySelector('[data-death-star]')!);
-
-    view.rerender(<Wrapper>{panel(target({ id: 'mine', isOwned: true, isSelf: true }))}</Wrapper>);
     expect(screen.queryByRole('dialog')).toBeNull();
-
-    view.rerender(<Wrapper>{panel(target({ id: 'p4', name: 'Ashfell' }))}</Wrapper>);
-    expect(screen.queryByRole('dialog'), 'the strike question opened itself').toBeNull();
+    expect(view.container.querySelector('[data-strike-section] [data-death-star]')).not.toBeNull();
   });
 
-  /** The queue's confirmation is the same object, so it makes the same escape. */
   it('escapes from a build queue too', async () => {
     const Wrapper = harness();
     const view = render(

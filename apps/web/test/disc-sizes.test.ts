@@ -38,13 +38,14 @@ describe('the rock ladder', () => {
   });
 
   /**
-   * Owner, 2026-10-04: planets grow another 30%, with asteroid sizes unchanged.
-   * This restores clearance even below a Core-1 world; the developed worlds
-   * still clear the richest rock by a wide margin.
+   * Owner, 2026-10-16: only planets shrink 20%. The richest rock now slightly
+   * exceeds a Core-1 marker; developed worlds remain clearly larger. Keep the
+   * asteroid ladder unchanged when resizing planets.
    */
-  it('stays below the enlarged worlds, and far below a developed one', () => {
+  it('keeps its size while developed worlds remain larger after the planet shrink', () => {
     const richest = asteroidRadius(5);
-    expect(richest).toBeLessThan(worldRadius(1));
+    expect(richest).toBeCloseTo(0.3825, 9);
+    expect(worldRadius(1)).toBeCloseTo((0.54 * 1.25 * 1.3 / 1.8636) * 0.8, 9);
     expect(richest).toBeLessThan(worldRadius(11) * 0.6);
     expect(richest).toBeLessThan(worldRadius(CORE_TOP_LEVEL) * 0.35);
   });

@@ -10,8 +10,8 @@ describe.each([
   ['general', chatPostSchema], ['clan', clanChatPostSchema], ['DM', dmPostSchema],
 ] as const)('%s chat recognition at the API boundary', (_channel, schema) => {
   it('retains the supporter and podium together rather than stripping server decoration', () => {
-    const result = schema.parse({ conversationId: 'dm-1', message: { ...message, supporter: true, previousSeasonRank: 3 } });
-    expect(result.message).toMatchObject({ supporter: true, previousSeasonRank: 3 });
+    const result = schema.parse({ conversationId: 'dm-1', message: { ...message, supporter: true, previousSeasonRank: 3, previousSeasonRanking: 'HONOR' } });
+    expect(result.message).toMatchObject({ supporter: true, previousSeasonRank: 3, previousSeasonRanking: 'HONOR' });
     expect(result.message.createdAt).toBeInstanceOf(Date);
   });
 

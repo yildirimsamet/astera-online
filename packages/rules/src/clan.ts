@@ -8,8 +8,8 @@ import type { Fleet, Resources } from './types.js';
 export const CLAN = {
   maxMembers: 5,
   founderCoreLevel: 7,
-  /** The owner's price (2026-09-25): 7.5k alloy and 3k crystal, fixed rather than an income multiple. */
-  creationCost: { alloy: 7_500, crystal: 3_000, deuterium: 0 },
+  /** The owner's price (2026-10-16), fixed rather than an income multiple. */
+  creationCost: { alloy: 2_000, crystal: 1_000, deuterium: 0 },
   nameMinChars: 3,
   nameMaxChars: 24,
   tagMinChars: 2,

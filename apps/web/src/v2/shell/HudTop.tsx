@@ -58,7 +58,7 @@ export interface HudTopProps {
  * between fetches the way the old header's did.
  */
 export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, onEconomy, onBell, nowOpen, onNow, onFocusCraft, tabs }: HudTopProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const now = useNow(1_000);
   const { activePlanetId, capitalPlanetId, worlds } = useWorld();
   const planet = usePlanet();
@@ -145,8 +145,8 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
     threads,
     contacts,
     runs,
-    builds: [...(data?.queues?.CONSTRUCTION ?? []), ...(data?.queues?.YARD ?? [])],
-    research: data?.researchQueue ?? [],
+    builds: data?.vacationUntil ? [] : [...(data?.queues?.CONSTRUCTION ?? []), ...(data?.queues?.YARD ?? [])],
+    research: data?.vacationUntil ? [] : data?.researchQueue ?? [],
     events,
     shieldUntil,
     // D212: one figure per commander, published on every world's view.
@@ -159,6 +159,9 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
   return (
     <div className="relative shrink-0">
       <BrandMasthead onShop={onShop} />
+      {data?.vacationUntil && <div role="status" className="border-b border-v2-self/20 bg-v2-self/10 px-3 py-1 text-center text-caption text-v2-self">
+        {t('vacation.title')} · {t('vacation.until', { time: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(data.vacationUntil) })}
+      </div>}
       <TopBar
         commander={commander}
         shield={shieldUntil ? { until: shieldUntil.getTime(), kind: season?.shieldKind ?? 'NEWCOMER' } : null}

@@ -12,6 +12,8 @@ import {
   plantCeiling,
   hullTech,
   cargoMult,
+  radiationDamageMult,
+  RADIATION_LEVEL_HP_PER_MINUTE,
   RESEARCH_MAX_LEVEL,
   SHIELD,
   HULLS,
@@ -41,7 +43,7 @@ import {
 import type { PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { hullLabel } from '../i18n/names.js';
-import { compact, full, percent } from './format.js';
+import { compact, decimal, full, percent } from './format.js';
 
 /**
  * WHAT YOU GET IF YOU PRESS IT.
@@ -586,6 +588,14 @@ export function researchGain(id: ResearchProjectId, level: number): Gain {
         (rung) => 1 - repairPct({ INDUSTRIAL: rung }) / 100,
         i18n.t('gains.research.industrialScope'),
       );
+    case 'RADIATION_SHIELDING': {
+      const rateAt = (rung: number) => {
+        const rate = RADIATION_LEVEL_HP_PER_MINUTE[2] * radiationDamageMult({ RADIATION_SHIELDING: rung });
+        return decimal(rate, Number.isInteger(rate * 10) ? 1 : 2);
+      };
+      return { label: i18n.t('research.shieldingRateLabel'), now: rateAt(level), next: rateAt(show),
+        ceiling: rateAt(max), unlocks: i18n.t('research.shieldingScope'), ...(maxed ? { maxed: true as const } : {}) };
+    }
 
     /**
      * A LADDER THAT RAISES A CEILING ELSEWHERE, so the figure is that ceiling in
@@ -608,7 +618,7 @@ export function researchGain(id: ResearchProjectId, level: number): Gain {
         ...(maxed ? { maxed: true as const } : {}),
       };
 
-    /** How many interceptor charges one world's pad holds: 2 → 4. Owner, 2026-10-01. */
+    /** How many interceptor charges one world's pad holds: 2 → 4 → 6. Owner, 2026-10-15. */
     case 'INTERCEPTION_GRID':
       return {
         label: i18n.t('gains.research.gridLabel'),

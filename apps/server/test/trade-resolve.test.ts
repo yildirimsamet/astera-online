@@ -1,9 +1,10 @@
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
-import { GALAXY_EVENTS, TRADE, type Fleet } from '@astera/rules';
+import { GALAXY_EVENTS, HULLS, TRADE, type Fleet } from '@astera/rules';
 import {
   galaxyEventOccurrences,
+  hpRadiationSources,
   notifications,
   planets,
   players,
@@ -17,12 +18,15 @@ import { tradeShipOf } from '../src/services/tradeField.js';
 import {
   dockEndsAt,
   launchTrade,
+  recallTrade,
   resolveTradeArrival,
   resolveTradeReturn,
   tradeLocation,
 } from '../src/services/trade.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { baysInUse } from '../src/services/flight.js';
+import { pendingThreads } from '../src/services/session.js';
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { abandon } from '../src/worker/abandon.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { fuelUp, giveUnits, grant, seedWorld, testDb, type Fixture } from './helpers.js';
@@ -125,6 +129,112 @@ describe('a convoy resolving', () => {
     seasonStartsAt = season!.startsAt;
     key = season!.asteroidKey;
     await handOver(colony, f.playerIds[2]!, trader);
+  });
+
+  it('recalls before the merchant, flies home from the current point and returns the offer once', async () => {
+    const launch = await sendConvoy(capital);
+    const departAt = f.clock.now();
+    const elapsed = (launch.arriveAt.getTime() - departAt.getTime()) / 3;
+    f.clock.set(new Date(departAt.getTime() + elapsed));
+    const before = (await f.db.select().from(planets).where(eq(planets.id, capital)))[0]!;
+    const result = await recallTrade(f.db, launch.runId, f.clock, trader);
+    expect(result.homeAt?.getTime()).toBeGreaterThan(f.clock.now().getTime());
+    expect(result.homeAt!.getTime()).toBeLessThan(launch.arriveAt.getTime());
+    const [run] = await f.db.select().from(tradeRuns).where(eq(tradeRuns.id, launch.runId));
+    expect(run?.status).toBe('returning');
+    expect(run?.want).toEqual(launch.give);
+    expect(await baysInUse(f.db, capital)).toBe(1);
+    await f.db.transaction(tx => resolveTradeArrival(tx, launch.runId, f.clock));
+    expect((await f.db.select().from(planets).where(eq(planets.id, capital)))[0]?.alloy).toBe(before.alloy);
+    const retry = await recallTrade(f.db, launch.runId, f.clock, trader);
+    expect(retry.homeAt).toEqual(result.homeAt);
+    f.clock.set(result.homeAt!);
+    const delivered = await f.db.transaction(tx => resolveTradeReturn(tx, launch.runId, f.clock));
+    expect(delivered?.delivered).toEqual(launch.give);
+    expect(await f.db.transaction(tx => resolveTradeReturn(tx, launch.runId, f.clock))).toBeNull();
+    expect(await baysInUse(f.db, capital)).toBe(0);
+    expect((await f.db.select().from(planets).where(eq(planets.id, capital)))[0]?.alloy).toBeCloseTo(before.alloy + launch.give.alloy, 3);
+  });
+
+  it('rejects another commander and refuses recall at the exact merchant arrival', async () => {
+    const launch = await sendConvoy(capital);
+    await expect(recallTrade(f.db, launch.runId, f.clock, captor)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    f.clock.set(launch.arriveAt);
+    await expect(recallTrade(f.db, launch.runId, f.clock, trader)).rejects.toMatchObject({ code: 'NOT_RECALLABLE' });
+    expect((await f.db.select().from(tradeRuns).where(eq(tradeRuns.id, launch.runId)))[0]?.status).toBe('outbound');
+  });
+
+  it('preserves outbound radiation wounds through recall and the physical landing', async () => {
+    await f.db.update(seasons).set({ rulesetVersion: 16 }).where(eq(seasons.id, f.seasonId));
+    const launch = await sendConvoy(capital);
+    const elapsedMinutes = launch.flightMinutes / 3;
+    const turnAt = new Date(launch.departAt.getTime() + elapsedMinutes * 60_000);
+    const elapsed = (turnAt.getTime() - launch.departAt.getTime()) / 60_000;
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'ZONE',
+      x: 0, y: 0, z: 0, radius: 100_000, mode: 'EMIT', intensityHpPerMinute: HULLS.COURIER.hp / (elapsed * 2),
+      activeFrom: launch.departAt, activeUntil: turnAt });
+    f.clock.set(turnAt);
+    const result = await recallTrade(f.db, launch.runId, f.clock, trader);
+    const [run] = await f.db.select().from(tradeRuns).where(eq(tradeRuns.id, launch.runId));
+    expect(run?.damage?.[0]?.damageBp).toBeCloseTo(5000, 0);
+    const thread = (await pendingThreads(f.db, capital, f.clock.now())).find(row => row.id === launch.runId);
+    expect(thread?.leg).toBe('return');
+    expect(thread?.recallable).toBeUndefined();
+    expect(thread?.path?.departAt).toEqual(turnAt);
+    expect(thread?.path?.from).toEqual({ x: run!.recallFrom!.x, y: run!.recallFrom!.y, z: run!.recallFrom!.z });
+    f.clock.set(result.homeAt!);
+    await f.db.transaction(tx => resolveTradeReturn(tx, launch.runId, f.clock));
+    expect((await readHomeHealth(f.db, capital)).damage[0]?.damageBp).toBeCloseTo(5000, 0);
+  });
+
+  it('releases the bay without restoring ships or cargo when radiation has already destroyed the convoy', async () => {
+    await f.db.update(seasons).set({ rulesetVersion: 16 }).where(eq(seasons.id, f.seasonId));
+    const launch = await sendConvoy(capital);
+    const elapsedMinutes = launch.flightMinutes / 3;
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'ZONE',
+      x: 0, y: 0, z: 0, radius: 100_000, mode: 'EMIT', intensityHpPerMinute: HULLS.COURIER.hp * 2 / elapsedMinutes,
+      activeFrom: launch.departAt });
+    f.clock.set(new Date(launch.departAt.getTime() + elapsedMinutes * 60_000));
+    expect((await recallTrade(f.db, launch.runId, f.clock, trader)).homeAt).toBeNull();
+    expect(await baysInUse(f.db, capital)).toBe(0);
+    expect((await f.db.select().from(tradeRuns).where(eq(tradeRuns.id, launch.runId)))[0]).toMatchObject({ status: 'done', want: RES() });
+    expect(await f.db.transaction(tx => resolveTradeReturn(tx, launch.runId, f.clock))).toBeNull();
+  });
+
+  it('preserves the dispatched wounds when recalling on the current entity-radiation ruleset', async () => {
+    await f.db.update(seasons).set({ rulesetVersion: 18 }).where(eq(seasons.id, f.seasonId));
+    const launch = await sendConvoy(capital);
+    const damage = [{ hull: 'COURIER' as const, count: 4, damageBp: 2750, remainderBp: 0.25 }];
+    await f.db.update(tradeRuns).set({ damage }).where(eq(tradeRuns.id, launch.runId));
+    f.clock.advance(0.1);
+    const result = await recallTrade(f.db, launch.runId, f.clock, trader);
+    f.clock.set(result.homeAt!);
+    await f.db.transaction(tx => resolveTradeReturn(tx, launch.runId, f.clock));
+    expect((await readHomeHealth(f.db, capital)).damage).toEqual(damage);
+  });
+
+  it('serializes concurrent recall requests into one physical return', async () => {
+    const launch = await sendConvoy(capital);
+    f.clock.advance(0.1);
+    const results = await Promise.all([recallTrade(f.db, launch.runId, f.clock, trader), recallTrade(f.db, launch.runId, f.clock, trader)]);
+    expect(results[0].homeAt).toEqual(results[1].homeAt);
+    const events = await f.db.select().from(scheduledEvents).where(and(eq(scheduledEvents.refId, launch.runId), eq(scheduledEvents.kind, 'trade_return')));
+    expect(events).toHaveLength(1);
+  });
+
+  it('returns a recalled colony convoy and its offer to its commander after capture', async () => {
+    const launch = await sendConvoy(colony);
+    await handOver(colony, trader, captor);
+    f.clock.advance(0.1);
+    const result = await recallTrade(f.db, launch.runId, f.clock, trader);
+    const [home] = await f.db.select().from(planets).where(eq(planets.id, capital));
+    const thread = (await pendingThreads(f.db, capital, f.clock.now())).find(row => row.id === launch.runId);
+    expect(thread?.path?.to).toEqual({ x: home!.x, y: home!.y, z: home!.z });
+    f.clock.set(result.homeAt!);
+    await f.db.transaction(tx => resolveTradeReturn(tx, launch.runId, f.clock));
+    expect(await f.db.select().from(units).where(and(eq(units.planetId, capital), eq(units.hull, 'COURIER'), eq(units.location, 'home')))).toMatchObject([{ count: 4 }]);
+    const seized = await f.db.select().from(units).where(and(eq(units.planetId, colony), eq(units.hull, 'COURIER')));
+    expect(seized.reduce((sum, row) => sum + row.count, 0)).toBe(0);
   });
 
   /* ── the two moments ────────────────────────────────────── */

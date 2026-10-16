@@ -60,7 +60,8 @@ export async function runSilentSpaceSweep(db: Db, clock: Clock, options: { batch
     const candidates = await db.select({ player: players, season: seasons }).from(players)
       .innerJoin(seasons, eq(players.seasonId, seasons.id)).innerJoin(shards, eq(shards.id, seasons.shardId))
       .where(and(eq(shards.role, 'MAIN'), eq(seasons.status, 'live'), gt(seasons.endsAt, now),
-        sql`greatest(${players.lastProgressAt}, ${players.joinedAt}, ${players.mainEnteredAt}) <= ${cutoff.toISOString()}::timestamptz`,
+        sql`greatest(${players.lastProgressAt}, ${players.joinedAt}, ${players.mainEnteredAt}, ${players.silentSpaceResetAt}) <= ${cutoff.toISOString()}::timestamptz`,
+        sql`(${players.vacationUntil} is null or ${players.vacationUntil} <= ${now.toISOString()}::timestamptz)`,
         state.cursorPlayerId ? gt(players.id, state.cursorPlayerId) : undefined))
       .orderBy(asc(players.id)).limit(50);
     let cursor = state.cursorPlayerId;
@@ -122,7 +123,7 @@ export async function describeSilentSpaceDeparture(db: Db, clock: Clock, command
     .from(planets).where(eq(planets.controllerPlayerId, player.id)).orderBy(asc(planets.kind), asc(planets.slotIndex));
   return {
     playerId: player.id, accountId: player.accountId, commander: name, seasonId: season.id, shard: shard.name, worlds,
-    inactive: silentSpaceDue({ lastProgressAt: player.lastProgressAt?.getTime() ?? null, joinedAt: player.joinedAt.getTime(),
+    inactive: silentSpaceDue({ lastProgressAt: player.lastProgressAt?.getTime() ?? null, resetAt: player.silentSpaceResetAt?.getTime(), joinedAt: player.joinedAt.getTime(),
       mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime() }, clock.now().getTime()),
   };
 }

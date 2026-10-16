@@ -94,7 +94,6 @@ describe('what each kind of project turns out to be', () => {
     'ISOTOPE_SPECTROMETRY',
     'DENSE_FUEL_CELLS',
     'GRAVITIC_CHARGES',
-    'INTERCEPTION_GRID',
     'STRATEGIC_STOCKPILE',
   ];
 
@@ -104,6 +103,12 @@ describe('what each kind of project turns out to be', () => {
       expect(researchMaxed(id, 1), id).toBe(true);
       expect(researchMaxed(id, 0), id).toBe(false);
     }
+  });
+
+  it('offers exactly two useful Interception Grid levels', () => {
+    expect(RESEARCH_MAX_LEVEL.INTERCEPTION_GRID).toBe(2);
+    expect(researchMaxed('INTERCEPTION_GRID', 1)).toBe(false);
+    expect(researchMaxed('INTERCEPTION_GRID', 2)).toBe(true);
   });
 
   it('finds five under each economy ladder', () => {

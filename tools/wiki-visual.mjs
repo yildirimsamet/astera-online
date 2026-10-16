@@ -21,7 +21,7 @@ export async function verifyWiki(output) {
       page.on('request', request => { requests.push(request.url()); });
       page.on('response', response => { if (response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
       const base = language === 'tr' ? '/wiki/tr' : '/wiki';
-      for (const [name, path] of [['home', base], ['fleet', `${base}/fleet`], ['dart', `${base}/fleet/dart`], ['research', `${base}/research/gravitic-charges`], ['storage', `${base}/buildings/vault`]]) {
+      for (const [name, path] of [['home', base], ['fleet', `${base}/fleet`], ['dart', `${base}/fleet/dart`], ['research', `${base}/research/gravitic-charges`], ['storage', `${base}/buildings/vault`], ['loot', `${base}/combat/loot`], ['recovery', `${base}/combat/eligibility`]]) {
         const response = await page.goto(web + path, { waitUntil: 'networkidle' });
         assert.equal(response.status(), 200);
         assert.equal(await page.locator('h1').count(), 1);

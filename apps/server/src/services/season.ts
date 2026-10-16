@@ -20,6 +20,7 @@ import {
   CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION,
   type GalaxySpec,
   type NeutralTier,
+  type HonorVersion,
   MONUMENT_SEASON_DEFAULTS,
   MONUMENT_BALANCE,
   monumentDifficulty,
@@ -27,6 +28,7 @@ import {
 import type { Db, Tx } from '../db/client.js';
 import {
   buildings,
+  honorSeasons,
   neutralPlanetState,
   planets,
   players,
@@ -41,6 +43,8 @@ import {
   units,
 } from '../db/schema.js';
 import { addMinutes } from '../clock.js';
+import { inheritedHonorProgram, inheritedHonorBenefitsProgram } from './honorProgram.js';
+import { prepareHonorSeason } from './honorLedger.js';
 import { schedule } from '../worker/queue.js';
 import { floorHour, scheduleAsteroidHour } from './asteroidSpawn.js';
 import { seedGalaxyEventCalendar } from './galaxyEvents.js';
@@ -48,6 +52,7 @@ import { CURRENT_SEASON_STATS_VERSION } from './seasonArchive.js';
 import { colonyStandings } from './ownership.js';
 import { isPerson } from './people.js';
 import { publishShard } from '../stream/bus.js';
+import { monumentBaseRadiation } from './monumentRadiation.js';
 import { recordGalaxyEvent } from './chronicle.js';
 
 /**
@@ -121,6 +126,8 @@ export interface CreateSeasonInput {
   playerCap?: number;
   /** Immutable activation boundary. New production seasons use Fleet V2 ruleset v4. */
   rulesetVersion?: number;
+  /** Explicit announced successor policy; null opts out, undefined inherits. */
+  honorVersion?: HonorVersion | null;
 }
 
 export async function createSeason(db: Db, input: CreateSeasonInput) {
@@ -139,6 +146,9 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
   // One lock makes max+1 a durable identity rather than a race between shard
   // bootstrap transactions. Exact period matches still share the same number.
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext('season-cycle-ordinal'))`);
+  const honorVersion = (input.role ?? 'MAIN') === 'WAITING' ? undefined
+    : input.honorVersion === undefined ? await inheritedHonorProgram(tx, input.startsAt) : input.honorVersion ?? undefined;
+  const honorBenefitsVersion = honorVersion === undefined ? null : await inheritedHonorBenefitsProgram(tx, input.startsAt);
   const [existingCycle] = await tx
     .select()
     .from(seasonCycles)
@@ -177,6 +187,8 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
         status: 'live',
         startsAt: input.startsAt,
         endsAt,
+        tempoStartsAt: input.startsAt,
+        radiationBombStartsAt: (input.rulesetVersion ?? MULTI_WORLD.rulesetVersion) >= 18 ? input.startsAt : null,
         rulesetVersion: input.rulesetVersion ?? MULTI_WORLD.rulesetVersion,
         statsVersion: cycle.statsVersion,
         /*
@@ -193,6 +205,12 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
 
   if (season!.rulesetVersion >= MULTI_WORLD.monumentRulesetVersion) {
     await seedApprovedMonuments(tx, season!, initializedAt);
+  }
+
+  if (honorVersion !== undefined) {
+    await prepareHonorSeason(tx, season!.id, 'ACTIVE', { now: () => input.startsAt }, honorVersion);
+    if (honorBenefitsVersion !== null) await tx.update(honorSeasons).set({ benefitsVersion: honorBenefitsVersion })
+      .where(eq(honorSeasons.seasonId, season!.id));
   }
 
   await seedGalaxyEventCalendar(tx, season!, initializedAt);
@@ -287,7 +305,7 @@ async function seedApprovedMonuments(
     y: row.y,
     z: row.z,
     radius: MONUMENT_SEASON_DEFAULTS.cloudRadius,
-    intensityHpPerMinute: MONUMENT_BALANCE[monumentDifficulty(row.ordinal)].intensityHpPerMinute,
+    ...monumentBaseRadiation(monumentDifficulty(row.ordinal), season),
     mode: 'EMIT' as const,
     activeFrom: season.startsAt,
     activeUntil: null,

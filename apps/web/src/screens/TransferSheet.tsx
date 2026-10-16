@@ -10,6 +10,8 @@ import {
   distance,
   missionFuel,
   fleetCount,
+  splitHealthFleet,
+  partitionCombatFleet,
   combatValue,
   garrisonOf,
   fleetTravelExact,
@@ -185,6 +187,10 @@ export function TransferSheet({
   const loaded = resourcesTotal(cargo);
   const ownsHold = fleetCargo(planet.fleet, mods.tech) > 0;
   const returningFleet = transferReturningFleet(fleet, returnPlan);
+  const selectedHealth = useMemo(() => {
+    try { return splitHealthFleet(planet.fleet, planet.fleetDamage, fleet); }
+    catch (error) { if (!(error instanceof RangeError)) throw error; return null; }
+  }, [planet.fleet, planet.fleetDamage, fleet]);
   const stayingFleet = transferStayingFleet(fleet, returningFleet);
   const remainingFleet = useMemo<Fleet>(() => Object.fromEntries(
     (Object.keys(planet.fleet) as HullId[]).map((id) => [
@@ -193,9 +199,10 @@ export function TransferSheet({
     ]),
   ), [fleet, planet.fleet]);
   // Firepower, the one force unit the launch sheet and a probe use. D199.
-  const homeDefence = combatValue(garrisonOf(remainingFleet, planet.ground));
+  const homeDefence = combatValue(garrisonOf(selectedHealth
+    ? partitionCombatFleet(selectedHealth.remaining, selectedHealth.remainingDamage).eligible : remainingFleet, planet.ground));
   /** What the origin holds before anything is packed, so the bar has a whole. */
-  const defencePowerNow = combatValue(garrisonOf(planet.fleet, planet.ground));
+  const defencePowerNow = combatValue(garrisonOf(partitionCombatFleet(planet.fleet, planet.fleetDamage).eligible, planet.ground));
   /** The one distance this sheet is about: the ETA, the fuel and the trim share it. */
   const span = distance(planet.planet.position, target.position);
   /**
@@ -230,11 +237,13 @@ export function TransferSheet({
   // A server refusal for this same selection outranks the quote (see `lethalAfterRefusal`).
   const [refused, setRefused] = useState<RadiationRefusal | null>(null);
   const radiation = eta > 0
-    ? lethalAfterRefusal(hpModel ? transferHpRadiation({ fleet, returning: returningFleet, tech: mods.tech,
+    ? lethalAfterRefusal(hpModel && selectedHealth ? transferHpRadiation({ fleet, returning: returningFleet, tech: mods.tech,
+        damage: selectedHealth.selectedDamage,
         path: [{ from: planet.planet.position, to: target.position, startMs: departMs, endMs: departMs + eta * 60_000 },
           { from: target.position, to: planet.planet.position, startMs: departMs + eta * 60_000,
             endMs: departMs + (eta + returnMinutes) * 60_000 }] }, hpSources) : routeRadiation({
-        fleet, from: planet.planet.position, to: target.position, departMs, arriveMs: departMs + eta * 60_000,
+        fleet, damage: selectedHealth?.selectedDamage,
+        from: planet.planet.position, to: target.position, departMs, arriveMs: departMs + eta * 60_000,
       }, sources), refused, fleet)
     : null;
   /**
@@ -309,6 +318,8 @@ export function TransferSheet({
       ? t('transfer.cooldown', { duration: duration((cooldownUntil.getTime() - now) / 60_000) })
       : fleetCount(fleet) === 0
         ? t('launch.chooseFleet')
+        : selectedHealth === null
+          ? t('errors.SHIP_SELECTION_CHANGED')
         : !destinationFits
           ? t('transfer.noRoom')
           : loaded > capacity

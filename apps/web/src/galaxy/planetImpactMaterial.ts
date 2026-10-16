@@ -10,6 +10,15 @@ export function planetImpactLevel(node: ImpactNode): number {
   return Math.min(5, Math.max(1, node.state.hits ?? 1));
 }
 
+/**
+ * THE WORLDS THAT CARRY A DEATH STAR'S EMBER, AND HOW HARD EACH BURNS. Owner, 2026-10-16: from
+ * the whole disc a player should be able to tell a world took a strike. Only a live EMP carries
+ * it — the legacy RECOVERY finish keeps its fissures but no ember.
+ */
+export function planetEmbers<T extends ImpactNode>(nodes: readonly T[]): { node: T; level: number }[] {
+  return nodes.flatMap((node) => node.state?.kind === 'EMP' ? [{ node, level: planetImpactLevel(node) }] : []);
+}
+
 export function planetImpactGroups<T extends ImpactNode>(nodes: readonly T[]): { level: number; nodes: T[] }[] {
   const groups = new Map<number, T[]>();
   for (const node of nodes) {
@@ -55,10 +64,15 @@ function impactMask(level: number): THREE.Texture {
       context.lineCap = 'round';
       context.lineJoin = 'round';
       context.strokeStyle = 'rgb(0, 55, 0)';
-      context.lineWidth = 3 + level * 0.3;
+      context.lineWidth = 4 + level * 0.4;
+      context.stroke(path);
+      // A dim heat band under the core, so the fissures still read on a world a few dozen
+      // pixels across (owner, 2026-10-16); the core stays a thin bright line up close.
+      context.strokeStyle = 'rgb(150, 0, 0)';
+      context.lineWidth = 6 + level * 0.5;
       context.stroke(path);
       context.strokeStyle = 'rgb(255, 0, 0)';
-      context.lineWidth = 0.8 + level * 0.08;
+      context.lineWidth = 1.8 + level * 0.18;
       context.stroke(path);
     }
   });
@@ -95,12 +109,15 @@ vec2 impactUv = vec2(atan(impactDirection.z, impactDirection.x) / 6.28318530718 
 vec2 impactScar = texture2D(uPlanetImpactMask, impactUv).rg;
 diffuseColor.rgb *= 1.0 - impactScar.g * 0.65;`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-float impactHeat = 0.8 + 0.1 * sin(uPlanetImpactTime * 1.3 + impactUv.x * 19.0);
-vec3 impactGlow = vec3(1.5, 0.035, 0.008) * impactScar.r * impactHeat;
+// Molten, not painted (owner, 2026-10-16: "daha belirgin daha parlak daha glowing"): the
+// core runs hot enough to bloom and breathes visibly; the wide band around it stays a dim red.
+float impactHeat = 0.78 + 0.22 * sin(uPlanetImpactTime * 1.6 + impactUv.x * 19.0);
+float impactCore = smoothstep(0.62, 1.0, impactScar.r);
+vec3 impactGlow = (vec3(2.6, 0.12, 0.02) * impactScar.r + vec3(1.6, 0.55, 0.08) * impactCore) * impactHeat;
 #if defined(USE_COLOR) || defined(USE_INSTANCING_COLOR)
 impactGlow *= vColor.rgb;
 #endif
 totalEmissiveRadiance += impactGlow;`);
   };
-  material.customProgramCacheKey = () => `${program}|planet-impact-uv-v1`;
+  material.customProgramCacheKey = () => `${program}|planet-impact-uv-v2`;
 }

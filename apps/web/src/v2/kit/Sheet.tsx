@@ -205,7 +205,7 @@ export function Sheet({
         data-detent={detent}
         data-placement={placement}
         data-sheet-panel=""
-        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col overflow-hidden rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
+        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col overflow-hidden border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
       >
         <div className={`shrink-0 touch-none ${headerArt && !quietTitle && detent !== 'peek' ? 'sheet-art-head' : ''}`} {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
           {headerArt && !quietTitle && detent !== 'peek' && <div data-sheet-art=""><AtmosphereImage art={headerArt} /></div>}

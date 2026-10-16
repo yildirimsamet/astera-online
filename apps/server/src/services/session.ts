@@ -5,6 +5,8 @@ import {
   crystalRate,
   deuteriumOf,
   fleetCount,
+  distance,
+  pointAlong,
   massClass,
   radarDetectsFleets,
   radarRange,
@@ -29,6 +31,8 @@ import {
   clanWarOperations,
   intergalacticConvoyRuns,
   missions,
+  monuments,
+  radiationBombFlights,
   notifications,
   pirateRaids,
   planets,
@@ -44,7 +48,7 @@ import { announceUnlocks } from './notifications.js';
 import { GameError } from './planet.js';
 import { instrumentLevels, levelOf } from './intel.js';
 import { inboundRadarLead, LEAD_TOLERANCE } from './radar.js';
-import { dockEndsAt } from './trade.js';
+import { dockEndsAt, tradeReturnPoint, tradeReturnDepartAt, tradeReturnHome } from './trade.js';
 import { isHostileMission } from './flight.js';
 import { flightFadeAt, liveRadiationFor, type FlightRadiation } from './radiation.js';
 import { missionCohorts, missionFlightPath, physicalFleets, projectHpFlight } from './flightProjection.js';
@@ -161,6 +165,9 @@ export type ReturnEntry =
   | { kind: 'unlock'; params: { unlock: Unlockable }; at: Date };
 
 export interface PendingThread {
+  radiationBombLevel?: 1 | 2 | 3;
+  monumentId?: string;
+  monumentOrdinal?: number;
   /** The mission's own id — YOUR OWN CRAFT ONLY. Absent on `incoming`. See below. */
   id?: string;
   /** Klan Savunma Desteği: this `transfer` is a support wave's leg, named for what it is. */
@@ -180,7 +187,7 @@ export interface PendingThread {
    * caller's own craft. D153's outbound-only camera follow reads `leg`/`status`
    * off this thread too, so it dies with it.
    */
-  kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'pirate' | 'trade' | 'intergalactic_convoy';
+  kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'radiation_bomb' | 'pirate' | 'trade' | 'intergalactic_convoy';
   targetName: string;
   /** Stable physical launch pad on a commander's own flight only. */
   originPlanetId?: string;
@@ -1035,10 +1042,10 @@ export async function pendingThreads(
     const returning = run.status === 'returning';
     const arriveAt = returning ? run.homeAt : run.arriveAt;
     if (!arriveAt) continue;
-    const home = { x: originX, y: originY, z: originZ };
-    const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
+    const home = tradeReturnHome(run, { x: originX, y: originY, z: originZ });
+    const meet = returning ? tradeReturnPoint(run) : { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
     const model = await liveRadiationFor(db, run.seasonId, radiation);
-    const path = returning ? [flightSegment(meet, home, dockEndsAt(run.arriveAt), arriveAt)]
+    const path = returning ? [flightSegment(meet, home, tradeReturnDepartAt(run), arriveAt)]
       : [flightSegment(home, meet, run.departAt, run.arriveAt), flightSegment(meet, meet, run.arriveAt, dockEndsAt(run.arriveAt))];
     const projection = model.model === 'HP' ? projectHpFlight([{ fleet: merchantFleets.get(`trade:${run.id}`) ?? {},
       damage: run.damage, tech: run.tech ?? {}, paidAt: run.radiationSettledAt }], path, now, model) : null;
@@ -1046,6 +1053,8 @@ export async function pendingThreads(
     pending.push({
       id: run.id,
       kind: 'trade',
+      originPlanetId: run.planetId,
+      ...(!returning && run.recalledAt === null && now < run.arriveAt ? { recallable: true as const } : {}),
       /**
        * THE EVENT KIND, NOT A SENTENCE. D150's shape, and the server has never
        * written user-facing copy.
@@ -1088,7 +1097,7 @@ export async function pendingThreads(
          * return from, so this is the number the queue is actually waiting on.
          * D51/D52: one fleet, one authoritative clock.
          */
-        departAt: returning ? dockEndsAt(run.arriveAt) : run.departAt,
+        departAt: returning ? tradeReturnDepartAt(run) : run.departAt,
         arriveAt,
       },
     });
@@ -1160,6 +1169,39 @@ export async function pendingThreads(
     });
   }
 
+  if (playerId) {
+    const bombs = await db.select({ flight: radiationBombFlights, planetName: planets.name, originName: originPlanet.name,
+      targetX: planets.x, targetY: planets.y, targetZ: planets.z, ordinal: monuments.ordinal })
+      .from(radiationBombFlights).leftJoin(planets, eq(planets.id, radiationBombFlights.targetPlanetId))
+      .leftJoin(originPlanet, eq(originPlanet.id, radiationBombFlights.originPlanetId))
+      .leftJoin(monuments, eq(monuments.id, radiationBombFlights.targetMonumentId))
+      .where(and(or(eq(radiationBombFlights.ownerPlayerId, playerId), inArray(radiationBombFlights.targetPlanetId, ownedIds)), eq(radiationBombFlights.status, 'OUTBOUND')));
+    for (const { flight, planetName, originName, ordinal, targetX, targetY, targetZ } of bombs) {
+      if (flight.ownerPlayerId !== playerId) {
+        if (!flight.targetPlanetId) continue;
+        const radar = radarByPlanet.get(flight.targetPlanetId) ?? 0;
+        const reach = radarRange(radar);
+        const progress = Math.max(0, Math.min(1, (now.getTime() - flight.departAt.getTime()) / (flight.arriveAt.getTime() - flight.departAt.getTime())));
+        const craft = pointAlong(flight.originPosition, flight.targetPosition, progress);
+        if (targetX === null || targetY === null || targetZ === null || !radarDetectsFleets(radar)
+          || distance(craft, { x: targetX, y: targetY, z: targetZ }) > reach) continue;
+        pending.push({kind:'incoming', targetName:planetName ?? '', targetPlanetId:flight.targetPlanetId, contactId:flight.id,
+          arriveAt:flight.arriveAt, minutesRemaining:Math.max(0, Math.round((flight.arriveAt.getTime()-now.getTime())/60000)),
+          ...(radarRevealsOrigin(radar) && originName !== null ? { originName } : {}),
+          ...(radarRevealsComposition(radar) ? { radiationBombLevel:flight.level } : {})});
+        continue;
+      }
+      pending.push({
+      id: flight.id, kind: 'radiation_bomb', radiationBombLevel: flight.level,
+      originPlanetId: flight.originPlanetId, targetName: planetName ?? '',
+      ...(flight.targetPlanetId ? { targetPlanetId: flight.targetPlanetId } : {}),
+      ...(flight.targetMonumentId ? { monumentId: flight.targetMonumentId, monumentOrdinal: ordinal ?? undefined } : {}),
+      minutesRemaining: Math.max(0, Math.round((flight.arriveAt.getTime() - now.getTime()) / 60000)),
+      arriveAt: flight.arriveAt, leg: 'outbound',
+      path: { from: flight.originPosition, to: flight.targetPosition, departAt: flight.departAt, arriveAt: flight.arriveAt },
+    });
+    }
+  }
   return pending;
 }
 

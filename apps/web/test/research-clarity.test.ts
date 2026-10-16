@@ -55,6 +55,15 @@ describe('a percentage small enough to matter', () => {
 });
 
 describe('every ladder says where it ends', () => {
+  it('quotes shielding as flat level-two HP/min, including its maximum and scope', () => {
+    const gain = researchGain('RADIATION_SHIELDING', 0);
+    expect(gain.label).toMatch(/Level 2.*HP\/min/i);
+    expect(gain.now).toBe('12.5');
+    expect(gain.next).toBe('10.5');
+    expect(gain.ceiling).toBe('5.25');
+    expect(gain.unlocks).toMatch(/dispatch/i);
+    expect(researchGain('RADIATION_SHIELDING', 4)).toMatchObject({ now: '5.25', next: '5.25', maxed: true });
+  });
   const LADDERS = [
     'SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION', 'EMPLACEMENT_DOCTRINE',
     'YARD_AUTOMATION', 'PROSPECTOR_HOLDS', 'CARGO_HOLDS',

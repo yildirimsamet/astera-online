@@ -74,7 +74,8 @@ export function registerMonumentRoutes(app: FastifyInstance): void {
     return idempotentMutation(app.db, { playerId: self.playerId, operation: 'monument.send', key: keyOf(req), body: { monumentId, ...body }, now: self.at }, async (tx) => {
       await assertMonumentAvailable(tx, self.seasonId, monumentId, true, self.at);
       await reconcileMonumentViews(tx, self, monumentId);
-      return sendMonument(tx, { ...body, monumentId, senderPlayerId: self.playerId, clock: { now: () => self.at } });
+      return sendMonument(tx, { ...body, monumentId, senderPlayerId: self.playerId, clock: { now: () => self.at },
+        adminUsernames: app.adminUsernames });
     });
   });
   app.post('/api/monuments/:monumentId/probe', { preHandler: requireAuth }, async (req) => {

@@ -770,6 +770,21 @@ describe('chat recognition explanations', () => {
     { ...initial.pages[0]!.messages[2], previousSeasonRank: 3 },
   ] }] });
 
+  it.each(LANGUAGES)('identifies the previous Honor podium on its cup and mobile explanation in %s', async (language) => {
+    await i18n.changeLanguage(language);
+    show(vi.fn(), 'general', { ...initial, pages: [{ ...initial.pages[0], messages: [
+      { ...initial.pages[0]!.messages[0], previousSeasonRank: 2, previousSeasonRanking: 'HONOR' },
+    ] }] });
+    const cup = screen.getByRole('button', { name: `Honor · ${i18n.t('chat.previousSeasonPlace', { rank: 2 })}` });
+    expect(cup.querySelectorAll('svg')).toHaveLength(2);
+    expect(document.querySelector('[data-chat-message="one"]')).toHaveClass('border-rank-silver/35');
+    fireEvent.click(cup);
+    const explanation = screen.getByRole('tooltip');
+    expect(explanation).toHaveTextContent('Honor');
+    expect(explanation).toHaveTextContent('2');
+    expect(explanation.textContent).not.toContain('chat.');
+  });
+
   it('opens the supporter explanation above its button without focusing the author or opening message actions', () => {
     vi.useFakeTimers();
     vi.stubGlobal('innerWidth', 350);

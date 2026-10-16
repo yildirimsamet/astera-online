@@ -308,7 +308,7 @@ export const reports = {
     formulaSupport: 'Destek gemileri, kendi taraflarında en az bir savaş birliği kaldığı sürece korunur.',
     resultHeading: 'Sonuç nasıl belirlenir',
     resultDecisive:
-      'KESİN · savunmadaki tüm birlikler yok olmuş ve kalkan sıfıra inmiştir · ambar sınırından önce açık stokun %{{decisiveLoot}} kadarı alınabilir.',
+      'KESİN · savunmadaki tüm birlikler yok olmuş ve kalkan sıfıra inmiştir · ambar sınırından önce Depo koruması üzerindeki stokun %{{decisiveLoot}} kadarı ve toplanmamış Havuzun %{{decisiveBuffer}} kadarı alınabilir.',
     /**
      * AYNI KURAL, UYGULANAMAYACAK YARISI OLMADAN. Kalkan bir dünya üzerindeki
      * yapıdır; randevu noktasında kalkandan söz eden bir açıklama, okuyucunun asla
@@ -317,7 +317,7 @@ export const reports = {
     resultDecisivePirate:
       'KESİN · mürettebattaki her gemi yok edildi · kargo sınırlarından önce ganimetin %{{decisiveLoot}} kadarı alınabilir; bir gövdeyi çekerek getirmek yalnızca burada mümkündür.',
     resultPartial:
-      'KISMİ · savunma birliklerinin değer olarak en az %{{threshold}} kadarı yok edilmiştir · ambar sınırından önce açık stokun %{{partialLoot}} kadarı alınabilir.',
+      'KISMİ · savunma birliklerinin değer olarak en az %{{threshold}} kadarı yok edilmiştir · ambar sınırından önce Depo koruması üzerindeki stokun %{{partialLoot}} kadarı ve toplanmamış Havuzun %{{partialBuffer}} kadarı alınabilir.',
     resultRepelled:
       'PÜSKÜRTÜLDÜ · savunma birliklerinin değer olarak %{{threshold}} kadarından azı yok edilmiştir · kaynak alınamaz.',
     round: '{{round}}. tur',
@@ -349,13 +349,16 @@ export const reports = {
   strategicEmpEffect: 'Aegis canı sıfırlandı ve 1 saat yenilenmez. Yer savunmaları bu sürede ateş etmez ve hasar almaz.',
   strategicLoyalty: "Koloni sadakati",
   strategicLoyaltyChange: "%{{before}} → %{{after}}",
-  strategicLoyaltyNext: "Sadakat %{{loss}} veya altındayken bir sonraki isabet koloniyi koparır.",
+  strategicLoyaltyNext_one: "Bir sonraki isabet koloniyi düşürür.",
+  strategicLoyaltyNext_other: "Koloniyi düşürmek için art arda {{count}} isabet daha gerekir.",
   strategicSecededAttacker: "Koloni koptu ve tarafsız oldu; artık kimsenin değil.",
   strategicSecededDefender: "Kolonin koptu ve tarafsız oldu.",
   strategicSecededShort: "koloni koptu",
   strategicCaptured: 'ELE GEÇİRİLDİ',
   strategicIneffective: 'ETKİSİZ',
   strategicIntercepted: 'HAVADA VURULDU',
+  radiationYouAttacked: "Radyasyon bombası hedefin: ",
+  radiationAttackedBy: "Radyasyon bombası gönderen: ",
   strategicYouAttacked: 'Ölüm Yıldızı hedefin: ',
   strategicAttackedBy: 'Ölüm Yıldızı gönderen: ',
   strategicDestroyedInFlight: 'Ölüm Yıldızı havada yok edildi',
@@ -592,8 +595,8 @@ export const dossier = {
   interceptorEmptyNote: 'Sonda anında yüklü önleyici yoktu. O zamandan beri mühimmat yüklemiş olabilirler.',
   loyaltyLabel: "Koloni sadakati",
   loyaltyValue: "%{{value}}",
-  loyaltyNote_one: "Ölüm Yıldızı {{loss}} sadakat götürür; {{loss}} veya altındaki koloni kopar. Tek isabet bu koloniyi koparır.",
-  loyaltyNote_other: "Ölüm Yıldızı {{loss}} sadakat götürür; {{loss}} veya altındaki koloni kopar. Bu koloniyi koparmak {{count}} isabet ister; hiçbir şey arızalı değilse sadakat geri dolar.",
+  loyaltyNote_one: "Ölüm Yıldızı isabet başına {{loss}} sadakat götürür. Tek isabet bu koloniyi düşürür.",
+  loyaltyNote_other: "Ölüm Yıldızı isabet başına {{loss}} sadakat götürür. Bu koloniyi düşürmek için art arda {{count}} isabet gerekir.",
   doctrinesLabel: 'Muharebe doktrini',
   doctrinesNone: 'Hiçbiri araştırılmamış',
   doctrinesNote: 'Bu araştırmalar gemilerin saldırı gücünü ve gövde dayanımını artırır. Rapordaki değerler sonda anına aittir.',

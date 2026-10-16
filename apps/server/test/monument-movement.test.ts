@@ -1,3 +1,4 @@
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
@@ -157,7 +158,10 @@ describe('physical monument recalls and returns', () => {
     const landed = await f.db.transaction((tx) => resolveMonumentReturn(tx, { waveId: wave.id, generation: result.wave.generation, at: eta }));
     expect(landed?.deliveredDeuterium).toBeCloseTo(200.125);
     expect(await totalUnitsOf(f.db, wave.originPlanetId)).toEqual(before);
-    expect(await f.db.select().from(shipDamageLots)).toMatchObject([{ hull: 'COURIER', damageBp: 2000, remainderBp: 0.375 }]);
+    expect((await readHomeHealth(f.db, wave.originPlanetId)).damage).toEqual(expect.arrayContaining([
+      expect.objectContaining({ hull: 'COURIER', count: 2, damageBp: 2000, remainderBp: 0.375 }),
+    ]));
+    expect(await f.db.select().from(shipDamageLots)).toEqual([]);
     const [home] = await f.db.select().from(units).where(and(eq(units.planetId, wave.originPlanetId), eq(units.location, 'home'), eq(units.hull, 'DART')));
     expect(home?.count).toBeGreaterThanOrEqual(1);
     const [planetAfter] = await f.db.select().from(planets).where(eq(planets.id, wave.originPlanetId));
@@ -182,7 +186,8 @@ describe('physical monument recalls and returns', () => {
     expect(values.filter((row) => row === null)).toHaveLength(1);
     const [after] = await f.db.select().from(planets).where(eq(planets.id, wave.originPlanetId));
     expect(after!.deuterium - before!.deuterium).toBeCloseTo(200.125, 8);
-    expect(await f.db.select().from(shipDamageLots)).toHaveLength(1);
+    expect((await readHomeHealth(f.db, wave.originPlanetId)).damage.find(lot => lot.hull === 'COURIER')?.count).toBe(2);
+    expect(await f.db.select().from(shipDamageLots)).toHaveLength(0);
   });
 
   it('refuses return delivery before its ETA and rolls a partial transfer back atomically', async () => {

@@ -15,6 +15,7 @@ let news: NotificationView[] = [];
 vi.mock('../src/api/queries.js', () => ({
   useReports: () => ({ data: { reports: [wire] }, isPending: false, isError: false }),
   usePlanet: () => ({ data: undefined }),
+  useMarkSeen: () => ({ mutate: vi.fn() }),
   useNotifications: () => ({ data: { notifications: news } }),
 }));
 const notice = (kind: string, payload: unknown): NotificationView => ({ id: 'n1', kind, payload, refId: 'battle-3', seen: false, at });
@@ -71,6 +72,15 @@ describe('monument reports and actionable news', () => {
     fireEvent.click(screen.getByRole('button', { name: /Look at Ancient Observatory/i }));
     expect(focus).toHaveBeenCalledWith(id);
     expect(screen.queryByRole('img', { name: /planet/i })).toBeNull();
+  });
+  it('shows the battle grade and capture rules alongside control in its report', () => {
+    render(<BattleReportDoor missionId="battle-3" onClose={vi.fn()} onUnavailable={vi.fn()} />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent(/partial/i);
+    expect(dialog).toHaveTextContent(/not captured/i);
+    expect(dialog).toHaveTextContent(/3 rounds/i);
+    expect(dialog).toHaveTextContent(/42%/);
+    expect(dialog).not.toHaveTextContent(/enemy.*health/i);
   });
   it('names a composition-free launch warning and identifies the actual target', () => {
     const event = notice('monument_inbound', { ...target, arriveAt: new Date(at.getTime() + 10 * 60_000).toISOString() });

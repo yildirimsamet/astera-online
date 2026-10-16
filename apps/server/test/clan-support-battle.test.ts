@@ -80,6 +80,29 @@ const raid = async (f: Fixture, fleet: Fleet) => {
 };
 
 describe('a raid on a supported world', () => {
+  it('keeps critically wounded support out of the probe defence reading', async () => {
+    const { f, waveId } = await supported(141014);
+    await f.db.update(clanSupportWaves).set({ damage: [{ hull: 'PIKE', count: 40, damageBp: 9500 }] })
+      .where(eq(clanSupportWaves.id, waveId));
+    const { standingSupportAt } = await import('../src/services/clanSupportView.js');
+    const reading = await standingSupportAt(f.db, { hostPlanetId: f.planetIds[1]!, hostPlayerId: f.playerIds[1]! });
+    expect(reading).toEqual({ supporters: 0, fleet: {} });
+  });
+  it('keeps maintenance-critical support ships outside the raid with their wounds intact', async () => {
+    const { f, waveId } = await supported(131030);
+    const damage = [{ hull: 'PIKE' as const, count: 40, damageBp: 9500, remainderBp: 0.25 }];
+    await f.db.update(clanSupportWaves).set({ damage }).where(eq(clanSupportWaves.id, waveId));
+    const missionId = await raid(f, { DART: 1000 });
+    await landRaid(f, missionId);
+    const [wave] = await f.db.select().from(clanSupportWaves).where(eq(clanSupportWaves.id, waveId));
+    const [stock] = await f.db.select().from(units).where(eq(units.location, wave!.unitLocation));
+    expect(wave?.status).toBe('STATIONED');
+    expect(wave?.damage).toEqual(damage);
+    expect(stock?.count).toBe(40);
+    const [report] = await f.db.select().from(battleReports).where(eq(battleReports.missionId, missionId));
+    expect(report?.defenderFleet.PIKE ?? 0).toBe(0);
+    expect(report?.defenderCount).toBe(1);
+  });
   it('fights host and wave as one line, and writes each one’s survivors back to its owner', async () => {
     const { f, waveId } = await supported(15_401);
     const hostBefore = await homeOf(f, 1);

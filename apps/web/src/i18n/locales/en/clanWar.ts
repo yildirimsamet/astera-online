@@ -1,4 +1,6 @@
 export const clanWar = {
+  criticalReason: "Recall waves with ships at 5% health or below before starting the attack.",
+  stagingRadiation: "Ships waiting here take radiation damage on the gathering planet.",
   radiationMember: "{{name}}: {{count}} ships would be lost to radiation. Recall and send the wave again with your own loss consent.",
   radiationMemberRequired: "A member must confirm their radiation loss",
   tab: 'War', purpose: 'One target. Many commanders. One shared strike.',

@@ -1,3 +1,4 @@
+import { observeHonorOwner } from './honorReference.js';
 import { and, eq, inArray, like, ne, sql } from 'drizzle-orm';
 import {
   FAULT,
@@ -248,10 +249,10 @@ export async function secedeColony(
     if (!home) return false;
     for (const row of mobile) {
       await tx.insert(units)
-        .values({ planetId: home.id, ownerPlayerId: owner, hull: row.hull, location: 'home', count: row.count })
+        .values({ planetId: home.id, ownerPlayerId: owner, hull: row.hull, location: 'home', count: row.count, damage: row.damage })
         .onConflictDoUpdate({
           target: [units.planetId, units.hull, units.location],
-          set: { count: sql`${units.count} + ${row.count}` },
+          set: { count: sql`${units.count} + ${row.count}`, damage: sql`${units.damage} || ${JSON.stringify(row.damage)}::jsonb` },
         });
     }
     await tx.delete(units).where(and(
@@ -339,6 +340,7 @@ export async function secedeColony(
     protectedUntil: null,
     disruptedUntil: null,
     recoveryUntil: null,
+    faultProtectedUntil: null,
     loyalty: FAULT.loyaltyMax,
     pendingLeakAlloy: 0,
     pendingLeakCrystal: 0,
@@ -412,5 +414,6 @@ export async function secedeColony(
   // Klan Savunma Desteği: nobody is left to defend; waves from here re-anchor.
   await reanchorMonumentOrigin(tx, planetId);
   await releaseSupportForWorldChange(tx, { planetId, now });
+  await observeHonorOwner(tx, owner, now);
   return true;
 }

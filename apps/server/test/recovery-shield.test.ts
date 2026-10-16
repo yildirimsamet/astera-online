@@ -126,7 +126,8 @@ describe('the recovery shield', () => {
     f = await seedWorld(3);
     [mine, theirs, colony] = f.planetIds as [string, string, string];
     for (const id of f.planetIds) {
-      await setLevel(f.db, id, 'CORE', 8);
+      // This suite exercises the unchanged tier 4+ profile; low-tier settings have a dedicated suite.
+      await setLevel(f.db, id, 'CORE', 10);
       await setLevel(f.db, id, 'SHIPYARD', 4);
       // This suite tests three produced resources. A loss in one the defender cannot
       // make is repriced into alloy (2026-09-18); the arithmetic is in the rules tests.

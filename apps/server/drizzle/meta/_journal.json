@@ -1086,6 +1086,160 @@
       "when": 1791924753286,
       "tag": "0154_monument_motion_fuel",
       "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1791924753287,
+      "tag": "0155_monument_radiation_shielding",
+      "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1791924753288,
+      "tag": "0156_tempo_slowdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1791924753289,
+      "tag": "0157_manual_ship_health",
+      "breakpoints": true
+    },
+    {
+      "idx": 158,
+      "version": "7",
+      "when": 1791924753290,
+      "tag": "0158_manual_dock_wounds",
+      "breakpoints": true
+    },
+    {
+      "idx": 159,
+      "version": "7",
+      "when": 1791969510890,
+      "tag": "0159_honor_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1791969779494,
+      "tag": "0160_honor_references",
+      "breakpoints": true
+    },
+    {
+      "idx": 161,
+      "version": "7",
+      "when": 1791973047112,
+      "tag": "0161_honor_commitments",
+      "breakpoints": true
+    },
+    {
+      "idx": 162,
+      "version": "7",
+      "when": 1791974042375,
+      "tag": "0162_honor_shield_catalogue",
+      "breakpoints": true
+    },
+    {
+      "idx": 163,
+      "version": "7",
+      "when": 1791975552062,
+      "tag": "0163_honor_season_rewards",
+      "breakpoints": true
+    },
+    {
+      "idx": 164,
+      "version": "7",
+      "when": 1791976000000,
+      "tag": "0164_honor_legacy_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 165,
+      "version": "7",
+      "when": 1791998177034,
+      "tag": "0165_honor_strategic_catalogue",
+      "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1792020548869,
+      "tag": "0166_radiation_bomb",
+      "breakpoints": true
+    },
+    {
+      "idx": 167,
+      "version": "7",
+      "when": 1792020634692,
+      "tag": "0167_honor_ranked_opening",
+      "breakpoints": true
+    },
+    {
+      "idx": 168,
+      "version": "7",
+      "when": 1792052878235,
+      "tag": "0168_radiation_source_read_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 169,
+      "version": "7",
+      "when": 1792063680626,
+      "tag": "0169_radiation_history_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 170,
+      "version": "7",
+      "when": 1792076114560,
+      "tag": "0170_vacation_mode",
+      "breakpoints": true
+    },
+    {
+      "idx": 171,
+      "version": "7",
+      "when": 1792079789516,
+      "tag": "0171_aegis_radiation",
+      "breakpoints": true
+    },
+    {
+      "idx": 172,
+      "version": "7",
+      "when": 1792081540558,
+      "tag": "0172_trade_recall",
+      "breakpoints": true
+    },
+    {
+      "idx": 173,
+      "version": "7",
+      "when": 1792084394934,
+      "tag": "0173_colony_fault_protection",
+      "breakpoints": true
+    },
+    {
+      "idx": 174,
+      "version": "7",
+      "when": 1792103326671,
+      "tag": "0174_shiny_hemingway",
+      "breakpoints": true
+    },
+    {
+      "idx": 175,
+      "version": "7",
+      "when": 1792133159911,
+      "tag": "0175_shopier_auto_delivery",
+      "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1792161927756,
+      "tag": "0176_unknown_imperial_guard",
+      "breakpoints": true
     }
   ]
 }

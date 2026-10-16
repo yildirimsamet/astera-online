@@ -27,7 +27,7 @@ const shapes = (markup: string): string[] =>
 describe('the v2 icon set', () => {
   it('has every symbol the spec draws', () => {
     // The gift is the claimable reward control in the galaxy's top bar.
-    expect(symbols.length).toBe(42);
+    expect(symbols.length).toBe(44);
     for (const { id } of symbols) expect(isIconId(id), id).toBe(true);
   });
 

@@ -1,0 +1,1 @@
+CREATE INDEX "hp_radiation_sources_environment_time_idx" ON "hp_radiation_sources" USING btree ("season_id","active_from","active_until") WHERE "hp_radiation_sources"."origin" = 'ENVIRONMENT';

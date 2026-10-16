@@ -1,3 +1,4 @@
+import { commanderPvpBalance } from './pvpBalance.js';
 import { spatialHistory } from './spatialHistory.js';
 import { isNull, and, desc, eq, gt, inArray, isNotNull, ne, notLike, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -5,6 +6,7 @@ import {
   COMBAT_RESEARCH_PROJECTS,
   FEATURE_FLAGS,
   PROBE,
+  partitionCombatFleet,
   dockLocation,
   isDockLocation,
   DEATH_STAR,
@@ -617,6 +619,7 @@ export async function launchProbe(
     if (target.seasonId !== origin.seasonId) {
       throw new GameError('CROSS_SEASON', 'That planet is in another galaxy');
     }
+    if (target.vacationUntil && target.vacationUntil > origin.now) throw new GameError('TARGET_VACATION', 'That commander is on vacation.', 409);
     if (target.controllerPlayerId) {
       await lockClanPlayers(tx, [origin.playerId, target.controllerPlayerId]);
       await assertClanHostilityAllowed(
@@ -878,7 +881,8 @@ export async function standingAt(tx: Tx, target: typeof planets.$inferSelect, no
     };
   }
   const [[season], levels, hardwareRows, faultRows] = await Promise.all([
-    tx.select({ startsAt: seasons.startsAt, endsAt: seasons.endsAt, status: seasons.status, role: shards.role })
+    tx.select({ startsAt: seasons.startsAt, endsAt: seasons.endsAt, status: seasons.status, role: shards.role,
+      tempoStartsAt: seasons.tempoStartsAt })
       .from(seasons).innerJoin(shards, eq(shards.id, seasons.shardId)).where(eq(seasons.id, target.seasonId)),
     buildingLevelsOf(tx, target.id),
     tx.select().from(satellites).where(eq(satellites.planetId, target.id)),
@@ -993,6 +997,9 @@ export async function resolveProbe(
       targetBuildings.DEUTERIUM_PLANT,
     ),
     'DECISIVE', Number.MAX_SAFE_INTEGER,
+    target.kind === 'NEUTRAL' || target.controllerPlayerId === null
+      ? undefined
+      : await commanderPvpBalance(tx, target.controllerPlayerId),
   );
   if (target.kind === 'NEUTRAL') {
     const [state] = await tx.select({ tier: neutralPlanetState.tier }).from(neutralPlanetState)
@@ -1047,7 +1054,8 @@ export async function resolveProbe(
     reported five hulls at a world holding eleven would be hiding the transports
     rather than pricing them.
   */
-  const defence = fuzzBand(combatValue(homeFleet), accuracy, rng);
+  const ready = partitionCombatFleet(homeFleet, unitRows.filter(row => row.location === 'home').flatMap(row => row.damage)).eligible;
+  const defence = fuzzBand(combatValue(ready), accuracy, rng);
   const size = fuzzBand(fleetCount(homeFleet), accuracy, rng);
   /*
     THE THREE READINGS THAT TURN A FIREPOWER FIGURE INTO A FIGHT. D199.
@@ -1062,7 +1070,7 @@ export async function resolveProbe(
     Each band draws from its own seeded stream, like the deuterium above, so the
     bands a report already carried and the detection roll below are untouched.
   */
-  const line = garrisonOf(homeFleet, {});
+  const line = garrisonOf(ready, {});
   const shape = classReading(line, accuracy);
   const shield = fuzzBand(standing.shield, accuracy, seededFrom(mission.id, 0x5e1d_0a));
   const unarmed = fuzzBand(unarmedCount(line), accuracy, seededFrom(mission.id, 0x0a4_3ed));

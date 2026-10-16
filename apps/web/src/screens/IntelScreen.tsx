@@ -1,3 +1,4 @@
+import { useReadReportSignals } from '../session/useReadReportSignals.js';
 import { GameActions } from '../session/seasonLock.js';
 import {
   GALAXY,
@@ -103,6 +104,8 @@ export function IntelScreen({
   const [stop, setStop] = useState<Stop>(open?.stop ?? 'probes');
   const requestedStop = open?.stop;
   const request = open?.request;
+  useReadReportSignals(shelf === 'reports' && stop === 'probes' && !intel.isError && intel.data !== undefined,
+    (intel.data?.probeReports ?? []).flatMap(report => report.missionId ? [report.missionId] : []));
   useEffect(() => {
     if (!requestedStop) return;
     setShelf('reports');
@@ -204,6 +207,7 @@ export function IntelScreen({
             </div>
             <div role="tabpanel" aria-labelledby="intel-tab-battles" hidden={stop !== 'battles'}>
               <BattleReports
+                visible={stop === 'battles'}
                 {...(open?.reportMissionId
                   ? { open: { missionId: open.reportMissionId, request: open.request } }
                   : {})}

@@ -292,7 +292,9 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
 
-    expect(document.querySelector('[data-death-star]')).toBeEnabled();
+    const section = document.querySelector<HTMLElement>('[data-strike-section]')!;
+    expect(section.querySelector('[data-hold]')).not.toBeNull();
+    expect(section.querySelector('[data-hold-refused]')).toBeNull();
   });
 
   /**
@@ -326,9 +328,9 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
 
-    const strike = document.querySelector('[data-death-star]');
-    expect(strike).toBeDisabled();
-    expect(strike).toHaveTextContent(i18n.t('focus.planet.deathStarOutOfBand'));
+    const refused = document.querySelector('[data-strike-section] [data-hold-refused]');
+    expect(refused).toBeDisabled();
+    expect(refused).toHaveTextContent(i18n.t('focus.planet.deathStarOutOfBand'));
   });
 
   /**
@@ -337,7 +339,7 @@ describe('the focus rail’s two commitments', () => {
    * nothing, a hold fires, and there is no second "hold fire" button — the sheet's
    * close is the way back.
    */
-  it('fires the Death Star on a hold, from a sheet that names the world and its price', () => {
+  it('fires the Death Star on a hold, from its own section that states the price', () => {
     const Wrapper = harness();
     const onDeathStar = vi.fn();
     render(
@@ -362,14 +364,15 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
 
-    fireEvent.click(document.querySelector<HTMLElement>('[data-death-star]')!);
-    const sheet = document.querySelector<HTMLElement>('[data-strike-sheet]')!;
+    const sheet = document.querySelector<HTMLElement>('[data-strike-section]')!;
     expect(sheet).toHaveTextContent(/consumed by the strike/i);
     expect(sheet).toHaveTextContent(duration(DEATH_STAR.empMinutes));
     expect(within(sheet).queryByRole('button', { name: /hold fire/i })).toBeNull();
+    // No second surface: the section is the strike, so nothing opens a sheet.
+    expect(document.querySelector('[data-strike-sheet]')).toBeNull();
 
     const hold = sheet.querySelector<HTMLElement>('[data-hold]')!;
-    expect(hold).toHaveTextContent(/launch emp/i);
+    expect(hold).toHaveTextContent(/hold · launch death star/i);
     // The strategic weapon is the one launch drawn in the colour of harm (`HoldButton` tones).
     expect(hold.className).toMatch(/border-v2-hostile/);
     fireEvent.click(hold);
@@ -430,8 +433,7 @@ describe('the focus rail’s two commitments', () => {
           />
         </Wrapper>,
       );
-      fireEvent.click(document.querySelector<HTMLElement>('[data-death-star]')!);
-      return document.querySelector<HTMLElement>('[data-strike-sheet]')!;
+      return document.querySelector<HTMLElement>('[data-strike-section]')!;
     };
 
     it('states the colony rule and says one hit takes a colony read at twenty or less', () => {
@@ -463,6 +465,71 @@ describe('the focus rail’s two commitments', () => {
         .querySelector<HTMLElement>('[data-strike-charges]')!;
       expect(row).toHaveTextContent(/3 charges/i);
       expect(row).toHaveTextContent(/\b4\b/);
+    });
+
+    /**
+     * WHICH WORLD FIRES, AND WHAT IT HAS LEFT. Owner question, 2026-10-15: *"üst üste
+     * fırlattığımda elimdeki kalan stok adeti düzgün gösteriliyor mu?"* The weapon leaves
+     * the SELECTED world, and with weapons on several worlds the commander has to see which
+     * one is about to be spent — counted from the pad, so a building weapon is not offered.
+     */
+    it('names the world the weapon leaves from and its ready weapons', () => {
+      const Wrapper = harness();
+      const ready = (id: string) => ({ id, status: 'READY' as const, readyAt: new Date(NOW), remainingSeconds: 0 });
+      render(
+        <Wrapper>
+          <PlanetFocus
+            target={target({ kind: 'CAPITAL' })}
+            planet={{
+              ...mine,
+              deathStars: [ready('a'), ready('b'), { id: 'c', status: 'BUILDING' as const, readyAt: new Date(NOW + 60_000), remainingSeconds: 60 }],
+            }}
+            intel={intel}
+            reports={[]}
+            now={NOW}
+            onClose={vi.fn()}
+            onAttack={vi.fn()}
+            onDeathStar={vi.fn()}
+            onInstallTelescope={vi.fn()}
+            onLaunched={vi.fn()}
+            open
+            onToggle={vi.fn()}
+          />
+        </Wrapper>,
+      );
+      const row = document.querySelector<HTMLElement>('[data-strike-section] [data-strike-origin]')!;
+      expect(row).toHaveTextContent(mine.planet.name);
+      expect(row).toHaveTextContent(/2 ready/i);
+    });
+
+    /** Owner, 2026-10-15: every hit on a colony breaks one random fault, and five take it. */
+    it('tells a colony strike the fault and the five-hit fall', () => {
+      const sheet = openSheet({ kind: 'COLONY' }, []);
+      expect(sheet).toHaveTextContent(/1 random fault/i);
+      expect(sheet).toHaveTextContent(new RegExp(`${String(Math.ceil(100 / DEATH_STAR.colonyLoyaltyLoss))} hits in a row`, 'i'));
+      expect(sheet).not.toHaveTextContent(/or less|take no damage/i);
+    });
+
+    it('keeps the colony rule off a capital strike', () => {
+      const sheet = openSheet({ kind: 'CAPITAL' }, []);
+      expect(sheet).not.toHaveTextContent(/loyalty|fault/i);
+    });
+
+    /**
+     * ONE SECTION, FOLDED UNTIL WANTED. Owner, 2026-10-16: *"focus sheet'te radyasyon saldırısı
+     * section gibi benzer bir sectionda ölüm yıldızı için yap. İkisi de açılıp kapanabilir
+     * accordion olsun."* Folded, the header still says what is ready, so the player knows the
+     * weapon is there without the whole price on screen.
+     */
+    it('sits folded as an accordion whose header names the weapon and its ready stock', () => {
+      const sheet = openSheet({ kind: 'CAPITAL' }, []);
+      expect(sheet.tagName).toBe('DETAILS');
+      expect(sheet).not.toHaveAttribute('open');
+      const header = sheet.querySelector<HTMLElement>('summary')!;
+      expect(header).toHaveTextContent(/death star/i);
+      expect(header).toHaveTextContent(/1 ready/i);
+      fireEvent.click(header);
+      expect(sheet).toHaveAttribute('open');
     });
   });
 
@@ -728,7 +795,7 @@ describe('the focus rail’s two commitments', () => {
         />
       </Wrapper>,
     );
-    expect(screen.getByRole('button', { name: /death star.*emp strike/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /launch death star/i })).toBeEnabled();
   });
 
   it.skipIf(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('offers another strike while the target is already under EMP', () => {
@@ -760,7 +827,7 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
     expect(screen.getByText(/under EMP/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /death star.*emp strike/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /launch death star/i })).toBeEnabled();
   });
 
   it('disables outbound commitments while the active world is recovering', () => {

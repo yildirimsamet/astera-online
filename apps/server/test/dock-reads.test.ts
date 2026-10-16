@@ -7,10 +7,9 @@ import { transferCommander } from '../src/services/commanderTransfer.js';
 import { fleetTruthFor, launchProbe } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
 import { loadLocked } from '../src/services/planet.js';
-import { landShips } from '../src/services/shipDamage.js';
 import { ensureWaitingSeason } from '../src/services/waitingServers.js';
 import { EventWorker } from '../src/worker/loop.js';
-import { giveUnits, grant, levelWorld, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { landAndDockShips, giveUnits, grant, levelWorld, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
 /**
  * A DOCKED SHIP IS ON ITS WORLD AND OUT OF THE GAME. Kalıcı gemi hasarı, `plan.md` F3.
@@ -43,13 +42,13 @@ describe('the Repair Station dock, as the rest of the game reads it', () => {
 
   /** Put ships straight into a world's dock, badly damaged. */
   const dock = async (planetId: string, ownerPlayerId: string, fleet: Fleet) => {
-    await f.db.transaction((tx) => landShips(tx, {
+    await landAndDockShips(f.db, {
       planetId,
       ownerPlayerId,
       fleet,
       damage: Object.entries(fleet).map(([hull, count]) => ({ hull: hull as HullId, count, damageBp: 6000 })),
       at: f.clock.now(),
-    }));
+    }, f.clock);
   };
 
   it('reads a world with ships in the dock as a world whose fleet is home', async () => {

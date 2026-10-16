@@ -10,6 +10,7 @@ import {
   missions,
   monumentWaves,
   pirateRaids,
+  radiationBombFlights,
   tradeRuns,
   type ClanWarLeg,
 } from '../db/schema.js';
@@ -144,6 +145,8 @@ export const isHostileMission = (
  * Monument fragments share their root's bay until the last fragment returns.
  */
 export async function baysInUse(tx: Queryable, planetId: string): Promise<number> {
+  const bombs = tx.select({ n: sql<number>`count(*)::int` }).from(radiationBombFlights)
+    .where(and(eq(radiationBombFlights.originPlanetId, planetId), eq(radiationBombFlights.status, 'OUTBOUND')));
   const flights = tx
     .select({ n: sql<number>`count(*)::int` })
     .from(missions)
@@ -199,7 +202,7 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
     eq(monumentWaves.originPlanetId, planetId),
     notInArray(monumentWaves.status, ['HOME', 'LOST']),
   ));
-  const [row] = await tx.execute<{ used: number }>(sql`select ((${flights}) + (${mining}) + (${pirate}) + (${trade}) + (${convoy}) + (${contributed}) + (${supporting}) + (${monument}))::int as used`);
+  const [row] = await tx.execute<{ used: number }>(sql`select ((${flights}) + (${mining}) + (${pirate}) + (${trade}) + (${convoy}) + (${contributed}) + (${supporting}) + (${monument}) + (${bombs}))::int as used`);
   return row?.used ?? 0;
 }
 

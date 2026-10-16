@@ -124,7 +124,7 @@ function Lane({
               {order.finishesAt && (
                 <button
                   type="button"
-                  disabled={cancelling !== undefined}
+                  disabled={cancelling !== undefined || ('pausedAt' in order && order.pausedAt !== undefined)}
                   aria-label={t('planet.queue.cancelOne', { name: buildOrderLabel(order) })}
                   onClick={() => { onAsk(order); }}
                   className="shrink-0 rounded-control border border-v2-line-hi px-2.5 py-1 text-caption text-v2-ink-2 disabled:opacity-40"

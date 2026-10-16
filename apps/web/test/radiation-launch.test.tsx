@@ -103,19 +103,20 @@ describe('radiation on the launch sheet', () => {
     expect(line()).toBeNull();
   });
 
-  it('quotes the share of a hull each ship takes, and that it will need the Repair Station', async () => {
+  it('quotes the share of a hull each ship takes and explains that wounds require paid repair', async () => {
     show(30);
     await pick();
     expect(line()).toHaveTextContent(/radiation/i);
     expect(line()).toHaveTextContent(/30%/);
-    expect(line()).toHaveTextContent(/Repair Station/);
+    expect(line()).toHaveTextContent(/wounds remain until paid repair/i);
   });
 
-  it('says a light dose is patched free on landing', async () => {
+  it('says even a light dose remains until paid repair', async () => {
     show(10);
     await pick();
     expect(line()).toHaveTextContent(/10%/);
-    expect(line()).toHaveTextContent(/patched free/);
+    expect(line()).toHaveTextContent(/wounds remain until paid repair/i);
+    expect(line()).not.toHaveTextContent(/patched free/i);
   });
 
   it('asks for nothing when the cloud only hurts', async () => {

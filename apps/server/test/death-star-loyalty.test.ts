@@ -271,4 +271,115 @@ describe('a Death Star hit on a colony', () => {
     const report = reports.find((row): row is StrategicReportView => row.kind === 'STRATEGIC');
     expect(report?.loyalty).toBeNull();
   });
+
+  /**
+   * HER İSABET KOLONİDE BİR ŞEYİ DE BOZAR. Sahip, 2026-10-15: *"Koloniye atılan her ölüm
+   * yıldızı 1 adet random arıza çıkartmalı (çıkartabiliyorsa yani hala kolonide aktif
+   * olmayan arıza varsa)."*
+   */
+  describe('and one random fault', () => {
+    const faultsOf = async (planetId: string) =>
+      (await f.db.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)))
+        .map((row) => row.kind);
+
+    it('breaks exactly one thing on a colony that survives the hit', async () => {
+      await strike(colony);
+
+      const faults = await faultsOf(colony);
+      expect(DEATH_STAR.colonyFaults).toBe(1);
+      expect(faults).toHaveLength(DEATH_STAR.colonyFaults);
+      expect(FAULT_KINDS).toContain(faults[0]);
+    });
+
+    it('breaks something new on each hit, never the same fault twice', async () => {
+      await f.db.insert(strategicAssets).values({
+        planetId: attacker, status: 'READY', startedAt: f.clock.now(), remainingSeconds: 0,
+      });
+      await strike(colony);
+      await strike(colony);
+
+      const faults = await faultsOf(colony);
+      expect(faults).toHaveLength(2);
+      expect(new Set(faults).size).toBe(2);
+    });
+
+    it('breaks nothing more when every fault already stands, and still takes the loyalty', async () => {
+      await setLevel(f.db, colony, 'DEUTERIUM_PLANT', 1);
+      for (const kind of FAULT_KINDS) {
+        await f.db.insert(planetFaults).values({ planetId: colony, kind, startedAt: f.clock.now() });
+      }
+
+      await strike(colony, 90);
+
+      expect(await faultsOf(colony)).toHaveLength(FAULT_KINDS.length);
+      expect((await worldOf(colony)).loyalty).toBeCloseTo(70, 6);
+    });
+
+    it('breaks nothing on a colony too young to break', async () => {
+      await setLevel(f.db, colony, 'CORE', FAULT.minCoreLevel - 1);
+
+      await strike(colony);
+
+      expect(await faultsOf(colony)).toEqual([]);
+    });
+
+    it('breaks nothing while the colony is fault-protected', async () => {
+      await f.db.update(planets)
+        .set({ faultProtectedUntil: new Date(f.clock.now().getTime() + 24 * 3_600_000) })
+        .where(eq(planets.id, colony));
+
+      await strike(colony);
+
+      expect(await faultsOf(colony)).toEqual([]);
+      expect((await worldOf(colony)).loyalty).toBeCloseTo(80, 6);
+    });
+
+    it('breaks nothing on a capital', async () => {
+      await strike(capital);
+
+      expect(await faultsOf(capital)).toEqual([]);
+    });
+
+    it('breaks nothing when the weapon is shot down on the way', async () => {
+      await giveSatellite(f.db, colony, 'UPLINK');
+      await giveInstrument(f.db, colony, 'RADAR', ANTI_STRATEGIC.requiredRadar);
+      await f.db.insert(strategicAssets).values({
+        planetId: colony, type: 'INTERCEPTOR', status: 'READY', startedAt: f.clock.now(), remainingSeconds: 0,
+      });
+
+      await strike(colony);
+
+      expect(await faultsOf(colony)).toEqual([]);
+    });
+
+    /** The world goes NEUTRAL; a fault written on the way out would be a fault on nobody's world. */
+    it('breaks nothing with the hit that takes the colony', async () => {
+      await strike(colony, 20);
+
+      expect((await worldOf(colony)).kind).toBe('NEUTRAL');
+      expect(await faultsOf(colony)).toEqual([]);
+    });
+
+    it('tells the colony’s commander what broke, and the attacker nothing', async () => {
+      await strike(colony);
+
+      const [fault] = await faultsOf(colony);
+      const told = await f.db.select().from(notifications)
+        .where(eq(notifications.kind, 'colony_fault'));
+      expect(told.map((row) => row.playerId)).toEqual([f.playerIds[1]!]);
+      expect(told[0]!.payload).toMatchObject({ planetId: colony, fault });
+    });
+
+    /** One more fault means the colony now falls between hits, so the watch must be booked. */
+    it('books the loyalty watch for the fall the new fault starts', async () => {
+      await strike(colony);
+
+      const watch = await f.db.select().from(scheduledEvents).where(and(
+        eq(scheduledEvents.kind, 'colony_secession'),
+        eq(scheduledEvents.refId, colony),
+        eq(scheduledEvents.status, 'pending'),
+      ));
+      expect(watch).toHaveLength(1);
+    });
+  });
 });

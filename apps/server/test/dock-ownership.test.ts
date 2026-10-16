@@ -6,8 +6,8 @@ import { buildOrders, planets, seasons, shipDamageLots, units } from '../src/db/
 import { secedeColony } from '../src/services/loyalty.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { startRepair } from '../src/services/repair.js';
-import { dockLotsOf, landShips } from '../src/services/shipDamage.js';
-import { giveUnits, grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { dockLotsOf } from '../src/services/shipDamage.js';
+import { landAndDockShips, giveUnits, grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
 /**
  * THE DOCK BELONGS TO ITS WORLD. Kalıcı gemi hasarı, `plan.md` D7.
@@ -39,13 +39,13 @@ describe('the dock when a colony changes hands', () => {
   });
 
   const dock = (planetId: string, playerId: string, fleet: Fleet) =>
-    f.db.transaction((tx) => landShips(tx, {
+    landAndDockShips(f.db, {
       planetId,
       ownerPlayerId: playerId,
       fleet,
       damage: Object.entries(fleet).map(([hull, count]) => ({ hull: hull as HullId, count, damageBp: 6500 })),
       at: f.clock.now(),
-    }));
+    }, f.clock);
 
   const dockRows = (planetId: string) =>
     f.db.select().from(units).where(and(eq(units.planetId, planetId), like(units.location, 'dock:%')));

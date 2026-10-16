@@ -1,7 +1,10 @@
+import { refreshPlanetAegis } from './planetAegis.js';
 import { and, eq, inArray } from 'drizzle-orm';
 import {
   ANTI_STRATEGIC,
   DEATH_STAR,
+  RADIATION_BOMB,
+  radiationBombLevel,
   interceptionRange,
   interceptorCapacity,
   strategicStockpile,
@@ -42,6 +45,9 @@ import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
 import { researchLevels } from './researchState.js';
 import { rescheduleLoyaltyWatch } from './loyalty.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
+import { observeHonorOwner } from './honorReference.js';
+import { commitStrategicHonor, settleEmpHonor } from './honorStrategic.js';
+import { breakFaults, defenceOnline } from './faults.js';
 
 export async function buildDeathStar(db: Db, planetId: string, clock: Clock, expectedPlayerId?: string) {
   return db.transaction(async (tx) => {
@@ -85,7 +91,9 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
       (latest, row) => (row.readyAt && row.readyAt > latest ? row.readyAt : latest),
       planet.now,
     );
-    const readyAt = addMinutes(queueHead, DEATH_STAR.buildMinutes);
+    // Same whole-second boundary as other work queues; remaining_seconds is an integer.
+    const durationSeconds = Math.ceil(DEATH_STAR.buildMinutes * 60);
+    const readyAt = addMinutes(queueHead, durationSeconds / 60);
     if (readyAt >= planet.seasonEndsAt) {
       throw new GameError(
         'SEASON_ENDS_BEFORE_BUILD',
@@ -107,7 +115,7 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
         status: 'BUILDING',
         startedAt: queueHead,
         readyAt,
-        remainingSeconds: DEATH_STAR.buildMinutes * 60,
+        remainingSeconds: durationSeconds,
       })
       .returning();
     if (!asset) throw new Error('strategic asset insert returned no row');
@@ -188,7 +196,8 @@ export async function buildInterceptor(
       throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
     }
 
-    const readyAt = addMinutes(planet.now, ANTI_STRATEGIC.buildMinutes);
+    const durationSeconds = Math.ceil(ANTI_STRATEGIC.buildMinutes * 60);
+    const readyAt = addMinutes(planet.now, durationSeconds / 60);
     if (readyAt >= planet.seasonEndsAt) {
       throw new GameError(
         'SEASON_ENDS_BEFORE_BUILD',
@@ -210,7 +219,7 @@ export async function buildInterceptor(
         status: 'BUILDING',
         startedAt: planet.now,
         readyAt,
-        remainingSeconds: ANTI_STRATEGIC.buildMinutes * 60,
+        remainingSeconds: durationSeconds,
       })
       .returning();
     if (!asset) throw new Error('interceptor insert returned no row');
@@ -235,6 +244,7 @@ export async function launchDeathStar(
   expectedPlayerId?: string,
   /** The commander has been told this spends their own first-day shield. D183. */
   acknowledgeShieldLoss?: boolean,
+  adminUsernames: ReadonlySet<string> = new Set(),
 ) {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot target your own world', 400);
@@ -368,6 +378,9 @@ export async function launchDeathStar(
       .where(and(eq(strategicAssets.id, asset.id), eq(strategicAssets.status, 'READY')))
       .returning({ id: strategicAssets.id });
     if (claimed.length === 0) throw new GameError('DEATH_STAR_NOT_READY', 'It already launched', 409);
+    await observeHonorOwner(tx, origin.playerId, origin.now);
+    await commitStrategicHonor(tx, { seasonId: origin.seasonId, id: mission.id, owner: origin.playerId,
+      defenders: target.controllerPlayerId ? [target.controllerPlayerId] : [], at: origin.now, adminUsernames });
     await schedule(tx, {
       seasonId: origin.seasonId,
       kind: 'mission_arrival',
@@ -451,17 +464,23 @@ export async function applyDeathStarStrike(
     loyaltyBefore: null,
     loyaltyAfter: null,
   });
+  const ineffective = async (defender: string | null) => {
+    await settleEmpHonor(tx, { seasonId: mission.seasonId, id: mission.id, at: now, defender,
+      ground: {}, coreOnline: false, groundWasOnline: false, shieldDestroyed: 0,
+      addedBlackoutPpm: 0, loyaltyLost: 0, effective: false });
+    return empty(defender, 'INEFFECTIVE');
+  };
   const [target] = await tx
     .select()
     .from(planets)
     .where(eq(planets.id, mission.targetPlanetId))
     .for('update');
-  if (!target) return empty(null, 'INEFFECTIVE');
+  if (!target) return ineffective(null);
   if (target.controllerPlayerId === mission.ownerPlayerId) {
-    return empty(target.controllerPlayerId, 'INEFFECTIVE');
+    return ineffective(target.controllerPlayerId);
   }
   if (target.protectedUntil !== null && target.protectedUntil > now) {
-    return empty(target.controllerPlayerId, 'INEFFECTIVE');
+    return ineffective(target.controllerPlayerId);
   }
 
   const owned = target.controllerPlayerId && target.kind !== 'NEUTRAL'
@@ -497,6 +516,15 @@ export async function applyDeathStarStrike(
   const loyaltyAfter = remainingLoyalty !== null && remainingLoyalty <= DEATH_STAR.colonyLoyaltyZeroTolerance + 1e-6
     ? 0 : remainingLoyalty;
 
+  const duration = DEATH_STAR.empMinutes * 60000;
+  const added = Math.max(0, empUntil.getTime() - Math.max(now.getTime(), target.empUntil?.getTime() ?? now.getTime()));
+  await settleEmpHonor(tx, { seasonId: mission.seasonId, id: mission.id, at: now,
+    defender: target.controllerPlayerId, ground: owned?.ground ?? {},
+    coreOnline: owned !== null && !owned.faults.includes('CORE_OUTAGE'),
+    groundWasOnline: owned !== null && defenceOnline(owned.faults, target.empUntil, now),
+    shieldDestroyed, addedBlackoutPpm: Math.min(1_000_000, Math.floor(added * 1_000_000 / duration)),
+    loyaltyLost: loyaltyBefore === null || loyaltyAfter === null ? 0 : loyaltyBefore - loyaltyAfter, effective: true });
+
   await tx
     .update(planets)
     .set({
@@ -507,8 +535,29 @@ export async function applyDeathStarStrike(
       ...(loyaltyAfter === null ? {} : { loyalty: loyaltyAfter }),
     })
     .where(eq(planets.id, target.id));
+  await refreshPlanetAegis(tx, target.id, now);
   if (loyaltyAfter !== null) {
     await rescheduleLoyaltyWatch(tx, { seasonId: target.seasonId, planetId: target.id, now });
+  }
+  /*
+    AND A COLONY THAT SURVIVES THE HIT BREAKS. Owner, 2026-10-15 (`DEATH_STAR.colonyFaults`).
+
+    After the row above: `loadLocked` closed the clean interval at this instant, so the
+    fault starts here rather than reaching back over the flight. `breakFaults` owns the
+    rest — what may break, protection, the leak timer, the re-booked watch and the
+    commander's notification. Not on the hit that takes the colony: it goes NEUTRAL and
+    the secession clears every fault it had. Seeded from the mission, so a replayed
+    resolution would break the same thing.
+  */
+  if (owned?.kind === 'COLONY' && loyaltyAfter !== null && loyaltyAfter > 0) {
+    await breakFaults(tx, {
+      seasonId: target.seasonId,
+      planetId: target.id,
+      now,
+      count: DEATH_STAR.colonyFaults,
+      seed: `death-star:${mission.id}`,
+      lane: 'STRIKE',
+    });
   }
 
   return {
@@ -590,7 +639,10 @@ export async function abandonDeathStarBuild(
       ))
       .returning({ type: strategicAssets.type });
     if (!failed) return false;
-    const paid = failed.type === 'INTERCEPTOR' ? ANTI_STRATEGIC.cost : DEATH_STAR.cost;
+    const bombLevel = radiationBombLevel(failed.type);
+    const paid = bombLevel === null
+      ? failed.type === 'INTERCEPTOR' ? ANTI_STRATEGIC.cost : DEATH_STAR.cost
+      : RADIATION_BOMB.levels[bombLevel].cost;
     planet.alloy += paid.alloy;
     planet.crystal += paid.crystal;
     planet.deuterium += paid.deuterium;
@@ -599,7 +651,7 @@ export async function abandonDeathStarBuild(
       crystal: planet.crystal,
       deuterium: planet.deuterium,
     });
-    await recomputePlayerWealth(tx, planet.playerId);
+    await recomputePlayerWealth(tx, planet.playerId, clock.now());
     return true;
   });
 }

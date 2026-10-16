@@ -1,4 +1,7 @@
-import { HULLS, fleetEntries, type Fleet } from '@astera/rules';
+import { HULLS, SHIP_DAMAGE, fleetEntries, type Fleet, type HpDamageLots } from '@astera/rules';
+import { useState } from 'react';
+import { homeMaintenanceRows, maintenanceChoice } from '../../lib/maintenanceInventory.js';
+import { ShipHealthInventory } from '../../ui/ShipHealthInventory.js';
 import { useTranslation } from 'react-i18next';
 import type { ClanSupportWave, Monuments } from '../../api/schemas.js';
 import { hullLabel, hullName, monumentName } from '../../i18n/names.js';
@@ -22,6 +25,8 @@ export interface FleetWorld {
   active: boolean;
   /** Ships standing at home. */
   fleet: Fleet;
+  damage?: HpDamageLots;
+  workshopRadiation?: boolean;
   /** How many of its craft are off the world. */
   away: number;
   room: ReturnType<typeof roomOf>;
@@ -50,6 +55,8 @@ export interface FleetPageProps {
    * under its Shipyard and Hangar, and this opens the one the ships are held at.
    */
   onOpenRepairStation: (worldId: string) => void;
+  onDock?: (worldId: string, groups: HpDamageLots, onSuccess: () => void) => void;
+  docking?: boolean;
   /** A world's name in the home and Hangar views frames that world in the galaxy (owner, 2026-10-07). */
   onFocusWorld: (worldId: string) => void;
   /**
@@ -73,6 +80,7 @@ const MARK: Record<FlightMark, IconId> = {
   transfer: 'i-transfer',
   settlement: 'm-colony',
   death_star: 'i-attack',
+  radiation_bomb: 'i-attack',
   mining: 'i-mine',
   salvage: 'm-debris',
   pirate: 'm-pirate',
@@ -281,30 +289,37 @@ function WorldName({ world, onFocus }: { world: FleetWorld; onFocus: () => void 
 }
 
 /** A world's ships at home, by hull, with its class shape. */
-function Garrison({ world, onOpenRepairStation, onFocusWorld }: {
+function Garrison({ world, onOpenRepairStation, onFocusWorld, onDock, docking }: {
   world: FleetWorld;
   onOpenRepairStation: () => void;
   onFocusWorld: () => void;
+  onDock?: (worldId: string, groups: HpDamageLots, onSuccess: () => void) => void;
+  docking?: boolean;
 }) {
   const { t } = useTranslation();
   const rows = garrisonOf(world.fleet);
+  const [quantities, setQuantities] = useState<Readonly<Record<string, number>>>({});
+  const damaged = homeMaintenanceRows(world.fleet, world.damage).filter((row) => row.damageBp > 0 || (row.remainderBp ?? 0) > 0);
+  const choice = maintenanceChoice(damaged, quantities, 100);
   const total = rows.reduce((n, row) => n + row.count, 0);
   return (
     <li className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-1.5">
         <WorldName world={world} onFocus={onFocusWorld} />
-        {total > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-2">{t('fleetPage.shipsHome', { count: total })}</span>}
-        {world.away > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">{t('fleetPage.away', { count: world.away })}</span>}
-        {/* Why the count is lower than the ships owned: they wait for repair, and one tap opens that station. */}
-        {world.docked > 0 && (
-          <button
-            type="button"
-            onClick={onOpenRepairStation}
-            className="shrink-0 rounded-chip border border-v2-warn/50 px-1.5 py-0.5 font-v2-mono text-micro text-v2-warn"
-          >
-            {t('repairStation.docked', { count: world.docked })}
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {total > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-2">{t('fleetPage.shipsHome', { count: total })}</span>}
+          {world.away > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">{t('fleetPage.away', { count: world.away })}</span>}
+          {/* Why the count is lower than the ships owned: they wait for repair, and one tap opens that station. */}
+          {world.docked > 0 && (
+            <button
+              type="button"
+              onClick={onOpenRepairStation}
+              className="shrink-0 rounded-chip border border-v2-warn/50 px-1.5 py-0.5 font-v2-mono text-micro text-v2-warn"
+            >
+              {t('repairStation.docked', { count: world.docked })}
+            </button>
+          )}
+        </div>
       </div>
       {rows.length === 0 ? (
         <p className="mt-1 text-micro text-v2-ink-3">{t('fleetPage.noShips')}</p>
@@ -323,6 +338,19 @@ function Garrison({ world, onOpenRepairStation, onFocusWorld }: {
           ))}
         </div>
       )}
+      {damaged.length > 0 && <section className="mt-2 flex flex-col gap-2 border-t border-v2-line pt-2">
+        <p className="text-micro font-semibold text-v2-warn">{t('repairStation.damagedHeading')}</p>
+        {world.workshopRadiation && <p className="text-micro text-v2-warn">{t('repairStation.maintenance.radiation')}</p>}
+        <ShipHealthInventory rows={damaged} quantities={quantities} disabled={docking === true || world.workshopRadiation === true}
+          onQuantity={(key, count) => { setQuantities((current) => ({ ...current, [key]: count })); }} />
+        {choice.stale && <button type="button" onClick={() => { setQuantities({}); }} className="text-micro text-v2-warn">{t('repairStation.maintenance.stale')}</button>}
+        {choice.tooMany && <p role="status" className="text-micro text-v2-warn">{t('repairStation.tooMany', { max: SHIP_DAMAGE.repairLotsPerOrder })}</p>}
+        <button type="button" disabled={!onDock || !choice.selection || docking === true || world.workshopRadiation === true} onClick={() => {
+          if (choice.selection?.source === 'HOME') onDock?.(world.id, choice.selection.groups, () => { setQuantities({}); });
+        }} className="min-h-9 rounded-control border border-v2-self/40 bg-v2-self/10 px-2 text-caption font-semibold text-v2-self disabled:opacity-40">
+          {t('repairStation.maintenance.move')}
+        </button>
+      </section>}
     </li>
   );
 }
@@ -385,6 +413,8 @@ export function FleetPage({
   onFocus,
   onRecall,
   onOpenRepairStation,
+  onDock,
+  docking,
   onFocusWorld,
   support,
   monuments,
@@ -446,6 +476,8 @@ export function FleetPage({
               <Garrison
                 key={world.id}
                 world={world}
+                onDock={onDock}
+                docking={docking}
                 onOpenRepairStation={() => { onOpenRepairStation(world.id); }}
                 onFocusWorld={() => { onFocusWorld(world.id); }}
               />

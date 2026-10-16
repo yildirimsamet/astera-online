@@ -5,6 +5,8 @@ import {
   FEATURE_FLAGS,
   INTEL,
   PROBE,
+  STANDARD_PVP_BALANCE,
+  type PvpBalance,
   combatValue,
   computeLoot,
   detectChance,
@@ -32,6 +34,7 @@ import {
   readTelescopes,
 } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
+import { commanderPvpBalance } from '../src/services/pvpBalance.js';
 import { withPlanetLock } from '../src/services/planet.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
@@ -492,6 +495,20 @@ describe('the information layer', () => {
       expect(report!.fleetSize.high).toBeCloseTo(28, 6);
     });
 
+    it('excludes critical home ships from probe firepower while preserving the physical fleet count', async () => {
+      const { landHpShips } = await import('../src/services/shipDamage.js');
+      await giveUnits(f.db, theirs, { DART: 2 });
+      await f.db.transaction(tx => landHpShips(tx, { planetId: theirs, ownerPlayerId: f.playerIds[1]!,
+        fleet: { DART: 3 }, damage: [{ hull: 'DART', count: 3, damageBp: 9500 }], at: f.clock.now() }));
+      await setLevel(f.db, mine, 'SHIPYARD', 4);
+      const scout = await launchProbe(f.db, mine, theirs, f.clock);
+      f.clock.set(scout.arriveAt);
+      await worker(f).tick();
+      const [report] = await f.db.select().from(probeReports);
+      expect(report?.defence).toEqual({ low: combatValue({ DART: 2 }), high: combatValue({ DART: 2 }) });
+      expect(report?.fleetSize).toEqual({ low: 5, high: 5 });
+    });
+
     /**
      * WHAT A RAID COULD TAKE, NOT WHAT THE WORLD IS HOLDING. Owner report:
      * *"gezegende 50k kaynak gözüküyor ama dalıyom 300 alloy alıyorum. Böyle
@@ -523,7 +540,7 @@ describe('the information layer', () => {
     it('quotes the same tier-adjusted deuterium that a neutral raid can take', async () => {
       await grant(f.db, theirs, 60_000, 6_000);
       await setLevel(f.db, mine, 'SHIPYARD', 4);
-      const unscaled = await standingNow();
+      const unscaled = await standingNow(STANDARD_PVP_BALANCE);
       const expectedDeuterium = Math.floor(unscaled.raidableDeuterium * 30 / 100);
       await f.db.update(planets)
         .set({ kind: 'NEUTRAL', controllerPlayerId: null })
@@ -627,7 +644,8 @@ describe('the information layer', () => {
     };
 
     /** The world as a raid landing at this instant would find it — locked and ticked. */
-    const standingNow = () => withPlanetLock(f.db, theirs, f.clock, (_tx, p) => {
+    const standingNow = (override?: PvpBalance) => withPlanetLock(f.db, theirs, f.clock, async (tx, p) => {
+      const balance = override ?? await commanderPvpBalance(tx, p.playerId);
       const stock = { alloy: p.alloy, crystal: p.crystal, deuterium: p.deuterium };
       const buffer = {
         alloy: p.bufferAlloy,
@@ -640,17 +658,18 @@ describe('the information layer', () => {
         p.buildings.EXTRACTOR,
         p.buildings.DEUTERIUM_PLANT,
       );
-      return Promise.resolve({
-        raidable: raidableStock(stock, buffer, floor, 'DECISIVE'),
+      return {
+        raidable: raidableStock(stock, buffer, floor, 'DECISIVE', balance),
         raidableDeuterium: computeLoot(
           stock,
           buffer,
           floor,
           'DECISIVE',
           Number.MAX_SAFE_INTEGER,
+          balance,
         ).deuterium,
         shield: p.shield,
-      });
+      };
     });
 
     /**

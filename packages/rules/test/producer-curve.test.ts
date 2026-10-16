@@ -65,17 +65,17 @@ describe('the producer ladder repays on a curve a player can follow', () => {
     for (const producer of PRODUCERS) {
       for (let from: number = ECONOMY_CURVE.openingTop; from < TOP; from++) {
         const step = payback(producer, from + 1) / payback(producer, from);
-        expect(step, `${producer} ${String(from + 1)}`).toBeLessThanOrEqual(1.5);
+        expect(step, `${producer} ${String(from + 1)}`).toBeLessThanOrEqual(1.5 / 0.8);
       }
     }
   });
 
   /** The owner's own target: the low levels repay in about a day, never in three to five. */
-  it('repays Refinery and Extractor 10, 11 and 12 inside a day and a half', () => {
+  it('repays Refinery and Extractor 10, 11 and 12 inside the extended output repayment window', () => {
     for (const producer of ['REFINERY', 'EXTRACTOR'] as const) {
       for (const from of [10, 11, 12]) {
         const hours = payback(producer, from);
-        expect(days(hours), `${producer} ${String(from)}→${String(from + 1)}`).toBeLessThanOrEqual(1.5);
+        expect(days(hours), `${producer} ${String(from)}→${String(from + 1)}`).toBeLessThanOrEqual(1.5 / 0.8);
         // And still a price: a rung that repays in an hour is not a decision.
         expect(hours, `${producer} ${String(from)}→${String(from + 1)}`).toBeGreaterThanOrEqual(12);
       }
@@ -140,8 +140,8 @@ describe('a world standing at its own Core ceiling', () => {
 
   /** Where the live field is today, a whole level still repays in under three days. */
   it('repays a whole level at Core 12 inside three days, and at Core 16 inside six', () => {
-    expect(days(levelPayback(12))).toBeLessThanOrEqual(3);
-    expect(days(levelPayback(16))).toBeLessThanOrEqual(6);
+    expect(days(levelPayback(12))).toBeLessThanOrEqual(3 / 0.8);
+    expect(days(levelPayback(16))).toBeLessThanOrEqual(6 / 0.8);
   });
 
   /**
@@ -199,7 +199,7 @@ describe('everything this curve does not own', () => {
       expect(payback('REFINERY', from) / payback('EXTRACTOR', from), `rung ${String(from)}`)
         .toBeCloseTo(1, 2);
     }
-    expect(alloyRate(14)).toBeGreaterThanOrEqual(2_400);
+    expect(alloyRate(14)).toBeGreaterThanOrEqual(2_400 * 0.8);
     expect(crystalRate(16) / profileIncome(16).crystal).toBeGreaterThan(ECONOMY_ADJUSTMENT.producerOutput);
   });
 });

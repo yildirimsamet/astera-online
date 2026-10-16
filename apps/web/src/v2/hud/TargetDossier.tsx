@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FAULT,
@@ -7,6 +7,7 @@ import {
   fleetCargo,
   fleetCount,
   matchupsAgainst,
+  partitionCombatFleet,
   type ClassReading,
   type CombatClass,
   type Fleet,
@@ -78,13 +79,15 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
   const { t } = useTranslation();
   const [bandOpen, setBandOpen] = useState(false);
   const mods = flightModifiers(planet);
-  const wing = planet.fleet;
+  const available = useMemo(() => partitionCombatFleet(planet.fleet, planet.fleetDamage), [planet.fleet, planet.fleetDamage]);
+  const wing = available.eligible;
   const reading = useTargetReading({
     target: { kind: 'world', world: target },
     intel,
     reports,
     tech: mods.tech,
     wing,
+    damage: available.damage,
     rulesetVersion: 0,
   });
   const read = dossier({ target, planet, intel, reports, ownPeakCore, now });

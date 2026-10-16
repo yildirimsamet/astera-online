@@ -1,13 +1,14 @@
 import {
   SHIP_DAMAGE,
-  applyDose,
+  applyMaintenanceDoseBp,
   applyHpDose,
+  protectedRadiationHp,
   HULLS,
   hullTech,
   fleetEntries,
   segmentsExposureHp,
-  transferStayingFleet,
   fleetCount,
+  splitHealthFleet,
   missionSegments,
   needsDock,
   needsHpDock,
@@ -72,7 +73,9 @@ export type RouteRadiation = PctRouteRadiation | HpRouteRadiation;
 
 export const toHpRadiationSources = (views: readonly HpRadiationSourceView[]): HpRadiationSource[] =>
   views.map(view => ({ id: view.id, mode: view.mode, center: view.center, radius: view.radius, ...(view.target ? { target: view.target } : {}),
-    intensityHpPerMinute: view.intensityHpPerMinute, activeFromMs: view.activeFrom.getTime(), activeUntilMs: view.activeUntil?.getTime() ?? null }));
+    ...(view.origin ? { origin: view.origin } : {}),
+    intensityHpPerMinute: view.intensityHpPerMinute, activeFromMs: view.activeFrom.getTime(), activeUntilMs: view.activeUntil?.getTime() ?? null,
+    ...(view.totalCapFrom ? { totalCapFromMs: view.totalCapFrom.getTime() } : {}) }));
 
 /** Exact own-ship health on known flight segments. Combat may add another wound. */
 export function routeHpRadiation(route: { fleet: Fleet; tech: TechLevels; path: readonly Segment[]; damage?: HpDamageLots },
@@ -93,18 +96,19 @@ export function routeHpRadiation(route: { fleet: Fleet; tech: TechLevels; path: 
     const healthy = count - damaged.reduce((sum, lot) => sum + lot.count, 0);
     if (healthy > 0) lots.push({ hull, count: healthy, maxHp, remainingHp: maxHp, healthPct: 100, needsDock: false });
   }
-  return { kind: 'HP', doseHp, destroyed: fleetCount(outcome.destroyed), lostFleet: outcome.destroyed,
+  return { kind: 'HP', doseHp: protectedRadiationHp(doseHp, route.tech), destroyed: fleetCount(outcome.destroyed), lostFleet: outcome.destroyed,
     lots, docks: lots.some(lot => lot.needsDock) };
 }
 
 /** A transfer's selected return ships keep their outbound wound; the rest land once. */
-export function transferHpRadiation(route: { fleet: Fleet; returning: Fleet; tech: TechLevels; path: readonly Segment[] },
+export function transferHpRadiation(route: { fleet: Fleet; returning: Fleet; tech: TechLevels; path: readonly Segment[]; damage?: HpDamageLots },
   sources: readonly HpRadiationSource[]): HpRouteRadiation | null {
   const outward = route.path.slice(0, 1);
-  const stay = routeHpRadiation({ ...route, fleet: transferStayingFleet(route.fleet, route.returning), path: outward }, sources);
-  const home = routeHpRadiation({ ...route, fleet: route.returning }, sources);
+  const split = splitHealthFleet(route.fleet, route.damage, route.returning);
+  const stay = routeHpRadiation({ ...route, fleet: split.remaining, damage: split.remainingDamage, path: outward }, sources);
+  const home = routeHpRadiation({ ...route, fleet: split.selected, damage: split.selectedDamage }, sources);
   if (!stay && !home) return null;
-  const doseHp = segmentsExposureHp(outward, sources);
+  const doseHp = protectedRadiationHp(segmentsExposureHp(outward, sources), route.tech);
   const lostFleet: Fleet = { ...(stay?.lostFleet ?? {}) };
   for (const [hull, count] of fleetEntries(home?.lostFleet ?? {})) lostFleet[hull] = (lostFleet[hull] ?? 0) + count;
   const lots = [...(stay?.lots ?? []).map(lot => ({ ...lot, returning: false })),
@@ -114,11 +118,11 @@ export function transferHpRadiation(route: { fleet: Fleet; returning: Fleet; tec
 }
 
 /**
- * WHAT A ROUTE WILL COST IN RADIATION, before the ships leave. A launch leaves home whole
- * (I1), so every ship takes the same dose. `null` when the route crosses no live cloud.
+ * WHAT A ROUTE WILL COST IN RADIATION, including the selected ships' existing wounds.
+ * `null` when the route crosses no live cloud.
  */
 export function routeRadiation(
-  route: { fleet: Fleet; from: Vec3; to: Vec3; departMs: number; arriveMs: number },
+  route: { fleet: Fleet; from: Vec3; to: Vec3; departMs: number; arriveMs: number; damage?: HpDamageLots },
   sources: readonly RadiationSource[],
 ): PctRouteRadiation | null {
   if (sources.length === 0 || fleetCount(route.fleet) === 0) return null;
@@ -128,10 +132,10 @@ export function routeRadiation(
   if (doseBp === 0) return null;
   return {
     doseBp,
-    // A lethal dose reads 100; any other reads on the right side of the free line (`damagePct`).
+    // The displayed dose is the route's added damage, separate from carried wounds.
     pct: doseBp >= SHIP_DAMAGE.destroyedBp ? 100 : damagePct(doseBp),
     docks: needsDock(Math.min(doseBp, SHIP_DAMAGE.destroyedBp - 1)),
-    destroyed: fleetCount(applyDose(route.fleet, null, doseBp).destroyed),
+    destroyed: fleetCount(applyMaintenanceDoseBp(route.fleet, route.damage, doseBp).destroyed),
   };
 }
 
@@ -165,7 +169,7 @@ export const hazeAlpha = (pctPerMinute: number): number =>
   0.75 * Math.min(0.09, 0.018 + 0.014 * Math.log2(1 + Math.max(0, pctPerMinute)));
 
 /** HP clouds use a different unit scale; four HP/min is the season baseline. */
-export const hpHazeAlpha = (hpPerMinute: number, level?: 1 | 2): number =>
+export const hpHazeAlpha = (hpPerMinute: number, level?: 1 | 2 | 3): number =>
   (level === 1 ? 0.55 : 1) * 0.75 * Math.min(0.09, 0.018 + 0.014 * Math.log2(1 + Math.max(0, hpPerMinute) / 4));
 
 /** The clouds on the disc now: lit and emitting. A shelter cancels a dose; it is not a cloud. */

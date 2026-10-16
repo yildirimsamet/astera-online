@@ -51,8 +51,11 @@ export const clan = {
   },
   outside: {
     eyebrow: "Clans saisonniers",
-    title: "Cinq commandants, une seule équipe sûre.",
-    body: "Rejoins une petite équipe, progressez ensemble et laissez une trace commune sur la saison. La puissance du clan ne se transfère pas à la saison suivante.",
+    title: "Cinq commandants. Plus loin ensemble.",
+    body: "Défendez vos mondes, réunissez vos flottes et disputez les monuments avec votre équipe.",
+    requirements: "Fonder exige un Noyau de commandement de niveau {{level}} et ces ressources sur ta capitale. Rejoindre ne coûte aucun frais de fondation.",
+    joinAction: "Trouver mon équipe",
+    foundAction: "Fonder mon clan",
   },
   benefits: {
     heading: "Pourquoi rejoindre un clan ?",
@@ -61,14 +64,21 @@ export const clan = {
     safeBody:
       "Les membres d’un même clan ne peuvent ni s’attaquer ni s’envoyer de sondes.",
     lootTitle: "Butin de raid partagé",
-    lootBody:
-      "10 % du butin de raid revenu à bon port est réparti à parts égales entre les membres pleinement adaptés. Chacun récupère sa propre part.",
+    lootBody: "10 % du butin de raid ramené est proposé à parts égales aux membres admissibles, dans leurs limites. Récupère ta part au Dépôt de Butin.",
     aidTitle: "Vols d’aide plus rapides",
-    aidBody:
-      "Envoie des ressources ou directement des vaisseaux avec des transports. L’aide vole 10 % plus vite et utilise une baie supplémentaire réservée à l’aide.",
+    aidBody: "Donne des ressources ou des vaisseaux définitivement. L’aide vole 10 % plus vite et dispose d’une rampe supplémentaire réservée.",
     recordTitle: "Historique de saison commun",
     recordBody:
       "Ton équipe gagne ensemble de la Domination de clan. Les trois premiers ne reçoivent qu’un sceau de saison visuel, sans avantage de combat.",
+    supportTitle: "Défendez-vous ensemble",
+    supportBody: "Active le soutien du clan sur ta planète pour que tes équipiers envoient des flottes défensives. Les vaisseaux gardent leur propriétaire ; une planète soutenue ne peut pas battre en retraite.",
+    warTitle: "Attaquez en une seule flotte",
+    warBody: "Rassemblez vos flottes sur la capitale du chef. Le chef les lance ensemble contre une cible. Aucun rappel n’est possible après le départ.",
+    monumentTitle: "Tenez les monuments ensemble",
+    monumentBody: "Combattez dans le même camp et tenez un monument. La puissance des vaisseaux armés fixe la part de deutérium ; les radiations endommagent les vaisseaux stationnés.",
+    chatTitle: "Discussion privée du clan",
+    chatBody: "Planifiez cibles, soutien et heures d’arrivée dans une discussion réservée à votre équipe.",
+    waitingNote: "La discussion et la protection contre les tirs alliés commencent dès l’adhésion. Les membres qui rejoignent un clan attendent {{hours}} heures pour l’aide, le partage du butin, le soutien et les contributions aux attaques communes.",
   },
   standings: {
     heading: "Classement des clans",

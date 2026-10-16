@@ -5,7 +5,7 @@ import {
   HULLS, applyMonumentHpDose, combatValue, coreTier, distance, fleetCount, fleetPace, fleetSpeedMult, fleetTravelExact,
   hangarLoad, hpLethalAtMs, hpRadiationApplies, hullTech, interpolatePosition, monumentCargoCapacity,
   monumentTierEligible, produceMonumentDeuterium, recallMonumentShips, segmentsExposureHp, settleMonumentHold,
-  priceMonumentReturn,
+  priceMonumentReturn, protectedRadiationHp,
   type Fleet, type HpRadiationSource, type MonumentShipLot, type Segment, type Vec3,
 } from '@astera/rules';
 import type { Tx } from '../db/client.js';
@@ -87,7 +87,11 @@ export async function reconcileMonumentTargets(tx: Tx, input: Omit<Reader, 'play
 export async function projectMonumentTargets(tx: Tx, input: Reader, ids: readonly string[]) {
   const targets = await readMonumentRosters(tx, ids, [input.playerId]);
   if (targets.length === 0) return targets;
-  const sources = await hpSourcesForSeason(tx, input.seasonId);
+  const sources = await hpSourcesForSeason(tx, input.seasonId, {
+    targets: targets.map(target => ({ kind: 'MONUMENT', id: target.monument.id })),
+    from: new Date(Math.min(...targets.flatMap(target => [target.monument.settledAt.getTime(),
+      ...target.waves.map(wave => wave.radiationSettledAt.getTime())]))),
+  });
   const probes = await tx.select().from(monumentProbes).where(and(
     inArray(monumentProbes.monumentId, [...ids]),
     inArray(monumentProbes.status, ['OUTBOUND', 'RETURNING'])));
@@ -135,7 +139,8 @@ type PublicMonumentTarget = Pick<LockedMonument, 'monument' | 'season' | 'waves'
 export async function publicMonumentFacts(tx: Tx, targets: readonly PublicMonumentTarget[], at: Date) {
   const sourcesBySeason = new Map<string, HpRadiationSource[]>();
   for (const seasonId of new Set(targets.map(({ monument }) => monument.seasonId))) {
-    sourcesBySeason.set(seasonId, await hpSourcesForSeason(tx, seasonId));
+    sourcesBySeason.set(seasonId, await hpSourcesForSeason(tx, seasonId, { from: at, until: new Date(at.getTime() + 1),
+      targets: targets.filter(target => target.season.id === seasonId).map(target => ({ kind: 'MONUMENT', id: target.monument.id })) }));
   }
   const playerIds = targets.flatMap(({ monument }) => monument.controllerPlayerId ? [monument.controllerPlayerId] : []);
   const clanIds = targets.flatMap(({ monument }) => monument.controllerClanId ? [monument.controllerClanId] : []);
@@ -229,13 +234,13 @@ async function returnForecast(tx: Tx, target: LockedMonument, wave: typeof monum
   const arriveAt = wave.status === 'RETURNING' && wave.arriveAt !== null ? wave.arriveAt : addMinutes(at, minutes);
   const route: Segment[] = wave.status === 'RETURNING' ? monumentRouteSchema.parse(wave.route)
     : [{ from: position, to: { x: home.x, y: home.y, z: home.z }, startMs: at.getTime(), endMs: arriveAt.getTime() }];
-  const sources = (await hpSourcesForSeason(tx, target.season.id)).map((source) => ({ ...source, activeFromMs: Math.max(at.getTime(), source.activeFromMs),
+  const sources = (await hpSourcesForSeason(tx, target.season.id, { targets: [], from: at, until: target.season.endsAt })).map((source) => ({ ...source, activeFromMs: Math.max(at.getTime(), source.activeFromMs),
     activeUntilMs: Math.min(source.activeUntilMs ?? target.season.endsAt.getTime(), target.season.endsAt.getTime()) }));
   const doseHp = segmentsExposureHp(route, sources);
   const priced = wave.status === 'RETURNING' ? { lots, fuel: 0 } : priceMonumentReturn(lots, distance(position, home));
   const forecast = applyMonumentHpDose(priced.lots, doseHp);
   return { homePlanetId: homeId, homePosition, speed: fleetPace(fleet, modifiers), arriveAt: arriveAt.toISOString(), minutes: Math.max(0, (arriveAt.getTime() - at.getTime()) / 60_000),
-    doseHp, destroyed: forecast.destroyed.reduce((sum, lot) => sum + lot.count, 0),
+    doseHp: protectedRadiationHp(doseHp, wave.tech), destroyed: forecast.destroyed.reduce((sum, lot) => sum + lot.count, 0),
     deuterium: forecast.lots.reduce((sum, lot) => sum + lot.deuterium, 0), lots: forecast.lots.map(lotHealth), lostDeuterium: forecast.lostDeuterium,
     returnFuel: priced.fuel, fuelRefund: forecast.lots.reduce((sum, lot) => sum + (lot.fuelRefund ?? 0), 0) };
 }
@@ -244,10 +249,13 @@ async function ownWaves(tx: Tx, targets: readonly LockedMonument[], input: Reade
   const result = [];
   for (const target of targets) {
     const at = new Date(Math.min(input.at.getTime(), target.season.endsAt.getTime()));
-    const sources = await hpSourcesForSeason(tx, input.seasonId);
+    const sources = await hpSourcesForSeason(tx, input.seasonId, { from: at, until: target.season.endsAt,
+      targets: [{ kind: 'MONUMENT', id: target.monument.id }] });
     const held = new Set(target.waves.filter((row) => row.status === 'HOLD').map((row) => row.id));
     const allHeld = target.lots.filter((lot) => held.has(lot.waveId));
     const flowing = produceMonumentDeuterium(allHeld, target.monument.productionPerMinute);
+    const currentRadiationRate = at < target.season.endsAt ? segmentsExposureHp(
+      monumentHoldPath(target.monument, target.season, at.getTime(), at.getTime() + 1), sources) * 60_000 : 0;
     for (const wave of target.waves.filter((row) => row.playerId === input.playerId && (row.status === 'OUTBOUND' || row.status === 'HOLD' || row.status === 'RETURNING'))) {
       const lots = target.lots.filter((lot) => lot.waveId === wave.id);
       const rate = flowing.lots.filter((lot) => lot.waveId === wave.id)
@@ -287,6 +295,8 @@ async function ownWaves(tx: Tx, targets: readonly LockedMonument[], input: Reade
         fleet: fleetOf(lots), lots: lots.map(lotHealth), deuterium: lots.reduce((sum, lot) => sum + lot.deuterium, 0),
         productionPerMinute: wave.status === 'HOLD' && at < target.season.endsAt ? rate : 0, fillsAt: fillsAt === null ? null : new Date(fillsAt).toISOString(),
         nextLossAt: nextLoss.length === 0 ? null : new Date(Math.min(...nextLoss)).toISOString(),
+        radiationHpPerMinute: wave.status === 'HOLD' ? protectedRadiationHp(currentRadiationRate, wave.tech) : 0,
+        cargoLossAt: cargoDeaths.length === 0 ? null : new Date(Math.min(...cargoDeaths)).toISOString(),
         fadeAt: fadeAt === null ? null : new Date(fadeAt).toISOString(),
         returnReason: wave.returnReason,
         returnForecast: await returnForecast(tx, target, wave, lots, at) });

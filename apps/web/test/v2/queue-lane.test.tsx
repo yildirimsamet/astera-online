@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { BuildOrderView } from '../../src/api/schemas.js';
 import { orderProgress, orderWaiting } from '../../src/lib/orders.js';
-import { QueueLane } from '../../src/v2/kit/QueueLane.js';
+import { QueueLane, orderLeft } from '../../src/v2/kit/QueueLane.js';
 
 /**
  * A LANE OF WORK AS RINGS. Spec B12 (docs/ui-v2/gozlemevi.md).
@@ -41,6 +41,10 @@ const optimistic: BuildOrderView = {
 };
 
 describe('how far an order has built', () => {
+  it('shows vacation pause instead of a running countdown', () => {
+    const order = { ...hull('paused', -30, 30), pausedAt: new Date(NOW) };
+    expect(orderLeft(order, NOW + 60000)).toBe('Paused — vacation mode');
+  });
   it('reads the running order by its own clock', () => {
     expect(orderProgress(hull('a', -30, 30), NOW)).toBe(0.5);
   });

@@ -40,6 +40,12 @@ describe('the commander card', () => {
     expect(cell('Rank')).toBe('14 / 212');
     expect(cell('Worlds')).toBe('2 / 4');
   });
+  it('identifies an active Honor rank and keeps the two personal scores together', () => {
+    render(<CommanderCard {...props()} honor={{ score: 12_500_000, dominion: 400 }} />);
+    expect(screen.getByText('Honor rank')).toBeInTheDocument();
+    expect(screen.getByText('12.5')).toBeInTheDocument();
+    expect(screen.getByText('+400')).toBeInTheDocument();
+  });
   it('is the avatar, the clan, and where and when this season is', () => {
     render(<CommanderCard {...props()} />);
     expect(screen.getByText('KS')).toBeInTheDocument();

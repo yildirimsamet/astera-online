@@ -4,8 +4,8 @@ import { z } from 'zod';
 import { planets, players } from '../db/schema.js';
 import { mobileFleetSchema } from '../schemas/fleet.js';
 import { GameError } from '../services/planet.js';
-import { ownedPlanet } from '../services/ownership.js';
-import { launchTrade } from '../services/trade.js';
+import { ownedPlanet, commanderForAccount } from '../services/ownership.js';
+import { launchTrade, recallTrade } from '../services/trade.js';
 import { requireAuth } from './auth.js';
 
 /**
@@ -35,6 +35,7 @@ const tradeBody = z.object({
   give: resources,
   want: resources,
   acknowledgeRadiationLoss: z.boolean().optional(),
+  expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional(),
 }).strict();
 
 /**
@@ -52,6 +53,12 @@ const tradeBody = z.object({
  * of the caller's worlds is launching, and lets the service refuse.
  */
 export function registerTradeRoutes(app: FastifyInstance): void {
+  app.post('/api/trade/runs/:runId/recall', { preHandler: requireAuth }, async req => {
+    const { runId } = z.object({ runId: z.string().uuid() }).parse(req.params);
+    z.object({}).strict().parse(req.body ?? {});
+    const commander = await commanderForAccount(app.db, req.accountId!);
+    return recallTrade(app.db, runId, app.clock, commander.playerId);
+  });
   const capitalOf = async (accountId: string) => {
     const rows = await app.db
       .select({ planetId: planets.id, seasonId: players.seasonId, playerId: players.id })
@@ -83,6 +90,7 @@ export function registerTradeRoutes(app: FastifyInstance): void {
         give: body.give,
         want: body.want,
         acknowledgeRadiationLoss: body.acknowledgeRadiationLoss,
+        expectedHonorTier: body.expectedHonorTier,
       },
       app.clock,
       owner.playerId,

@@ -14,6 +14,13 @@
  * on a ship. The day either is reworded the other must not move with it.
  */
 export const research = {
+  shieldingCeiling: "Nivel {{level}}: {{rate}} HP/min",
+  shieldingName: "Blindaje antirradiación",
+  shieldingTag: "Reduce el daño por radiación a las naves",
+  shieldingRole: "Protege tus naves de la radiación en planetas y monumentos. Hay cuatro niveles de investigación.",
+  shieldingDetail: "Esta investigación solo protege naves; no reduce el daño de combate. En un planeta, Aegis aporta protección adicional. En monumentos solo se aplica la protección de la nave. Las naves en tus propios planetas usan el nivel actual de su comandante. Las flotas enviadas conservan la protección de su salida; las investigaciones posteriores no las mejoran. La investigación requiere Núcleo 3 en tu capital.",
+  shieldingRateLabel: "Radiación nivel 2 · HP/min",
+  shieldingScope: "La protección de la flota se guarda al enviar. Funciona contra todos los niveles de radiación.",
   eyebrow: "Comandante",
   title: "Investigación",
   /** What the whole screen is for, in the one clause a player reads before scrolling. */
@@ -115,7 +122,7 @@ export const research = {
   industrialRole:
     "Reduce el coste y el tiempo de cada trabajo de la Estación de Reparación",
   industrialDetail:
-    "Reduce el coste y tiempo de reparación en todos tus planetas. El nivel 1 aplica el 75 % de lo normal; el nivel 2 aplica el 50 %. No acelera la construcción de naves. Los daños de hasta el 20 % ya se reparan gratis al aterrizar.",
+    "Reduce el coste y tiempo de reparación en todos tus planetas. El nivel 1 aplica el 75 % de lo normal; el nivel 2 aplica el 50 %. No acelera la construcción de naves.",
   holdsName: "Retenciones del prospector",
   holdsTag: "Las naves mineras llevan más",
   holdsRole: "Aumenta todas las reservas del Prospector; La bonificación por capacidad de la torre de perforación se aplica en la parte superior.",
@@ -159,9 +166,9 @@ export const research = {
     "Aumenta el ataque y la resistencia del Bastión, el Arpón y la Espina en todos tus planetas. Capacidad terrestre y recuperación no cambian. La defensa usa el nivel de investigación al comenzar el combate.",
 
   gridName: "Cuadrícula de intercepción",
-  gridTag: "Cuatro cargas interceptoras por mundo",
-  gridRole: "Aumenta de 2 a 4 las cargas interceptoras que puede tener cada uno de tus mundos.",
-  gridDetail: "Aumenta el límite de cargas interceptoras de 2 a 4 por planeta. Prepararlas requiere Enlace ascendente y Radar 3 en ese planeta. Una carga destruye una Estrella de la Muerte identificada por Telescopio o interceptada a tiempo en el anillo de Radar. Los sensores deben funcionar. Cada intercepción consume una carga.",
+  gridTag: "Hasta seis cargas interceptoras por planeta",
+  gridRole: "Dos niveles de investigación aumentan la capacidad de cada planeta: 2 → 4 → 6.",
+  gridDetail: "Cada nivel añade 2 espacios, sin dar cargas gratis. Construye cada carga en un planeta con Enlace ascendente activo y Radar 3. Una intercepción consume una carga y detiene una Estrella de la Muerte o una bomba de radiación. Solo dispara la batería del planeta objetivo.",
   stockpileName: "Reserva estratégica",
   stockpileTag: "Dos Estrellas de la Muerte por mundo",
   stockpileRole: "Aumenta de 1 a 2 las Estrellas de la Muerte que puede tener cada uno de tus mundos. La segunda empieza cuando termina la primera.",

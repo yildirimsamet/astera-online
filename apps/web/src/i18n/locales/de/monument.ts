@@ -1,4 +1,41 @@
 export const monument = {
+  battleResult: {
+  "control": {
+    "attacking": {
+      "ATTACKER": "Deine Seite hat das Monument erobert.",
+      "DEFENDER": "Monument nicht erobert.",
+      "EMPTY": "Nach dem Kampf kontrolliert keine Seite das Monument."
+    },
+    "defending": {
+      "ATTACKER": "Deine Seite hat die Kontrolle verloren.",
+      "DEFENDER": "Deine Seite hat die Kontrolle behalten.",
+      "EMPTY": "Nach dem Kampf kontrolliert keine Seite das Monument."
+    }
+  },
+  "grade": {
+    "attacking": {
+      "DECISIVE": "Verteidigung vernichtet.",
+      "PARTIAL": "Teilerfolg.",
+      "REPELLED": "Angriff abgewehrt."
+    },
+    "defending": {
+      "DECISIVE": "Verteidigung überwunden.",
+      "PARTIAL": "Die Verteidigung erlitt teilweise Verluste.",
+      "REPELLED": "Angriff abgewehrt."
+    }
+  },
+  "wiped": "Deine gesamte Flotte wurde zerstört.",
+  "rulesTitle": "Kampfregeln",
+  "roundRule": "Der Kampf dauert höchstens {{rounds}} Runden. Frachter sind geschützt, solange bewaffnete Schiffe überleben.",
+  "captureRule": "Zur Eroberung musst du die gesamte Verteidigung vernichten und ein kampffähiges bewaffnetes Schiff behalten. Frachter allein können bestehende Kontrolle halten.",
+  "partialRule": "Ein Teilerfolg erfordert die Vernichtung von mindestens {{threshold}} des Ressourcenwerts der verteidigenden Flotte. Beschädigte Überlebende zählen nicht als zerstört. Kampfergebnis und Punkte bestimmen die Kontrolle nicht."
+},
+  radiationLossForecast: "Erster Strahlungsverlust in {{time}}, ohne Kampfschaden.",
+  radiationCargoForecast: "Erster Frachterverlust in {{time}}, ohne Kampfschaden.",
+  protectedRate: "Schutz {{level}} · {{rate}} HP/min je Schiff",
+  cargoLossAt: "Erster Frachterverlust in {{time}}. Sein geladenes Deuterium geht verloren.",
+  dispatchProtection: "Gestartete Flotte · Schutz {{level}}: {{rate}} HP/min je stationiertem Schiff.",
+  shieldingSnapshot: "Später abgeschlossene Forschung ändert den Schutz dieser Flotte nicht.",
   returnAll: "Rückkehr der gesamten Flotte",
   returnSelected_one: "Ausgewählter Rückflug · {{count}} Schiff",
   returnSelected_other: "Ausgewählter Rückflug · {{count}} Schiffe",
@@ -19,8 +56,8 @@ export const monument = {
   hard: "Schwer",
   radiationLevelRate: "Strahlungsstufe {{level}}: {{rate}} HP pro Schiff und Minute",
   easyAccess: "Leicht · Stufen 1–3",
-  hardAccess: "Schwer · alle Stufen",
-  tierBlocked: "Mit deiner Stufe {{tier}} kannst du neue Flotten nur zu schweren Monumenten schicken.",
+  hardAccess: "Schwer · ab Stufe 4",
+  tierBlocked: "Du bist Stufe {{tier}}. Wähle auf Stufe 1–3 leichte Monumente, ab Stufe 4 schwere.",
   initialFleetRule: "Du kannst Kampf- und Frachtschiffe erneut senden. Jede Unterstützungsflotte braucht Treibstoff, eine Flugbucht und Platz am Monument.",
   recallFlightRule: "Vor der Ankunft kannst du ausgewählte Schiffe von ihrer aktuellen Position zurückrufen. Verbrauchter Hinflugtreibstoff wird nicht erstattet. Ungenutzte Rückflugreserven werden bei der Heimkehr erstattet.",
   "newsRadiation": "{{name}} · Strahlung zerstörte {{count}} Schiffe und {{cargo}} Deuterium · {{left}} Schiffe übrig",
@@ -78,6 +115,8 @@ export const monument = {
   "holdForecast": "Nach Ankunft: {{rate}} Deuterium/Min. · nächster Schiffsverlust {{time}}",
   "noLoss": "keiner erwartet",
   "attackOutcome": "Nach einem Sieg belegen Schiffe höherer Stufen zuerst den Platz am Monument. Schiffe ohne Platz kehren heim. Eine Flotte nur aus Frachtern gewinnt kein Deuterium.",
+  "reinforceRule": "Verliert deine Seite das Monument unterwegs, kehrt die Flotte nicht um. Sie kämpft gegen den Rivalen oder die Garnison. Ist das Monument leer, nimmt ein bewaffnetes Schiff es ein.",
+  "arrivalOutcome": {"JOIN":"Bei Ankunft, nach aktuellem Stand: schließt sich deiner Seite an. Schiffe ohne Platz kehren heim.","FIGHT":"Bei Ankunft, nach aktuellem Stand: kämpft gegen die rivalisierende Flotte am Monument.","GARRISON":"Bei Ankunft, nach aktuellem Stand: kämpft gegen die neutrale Garnison.","CAPTURE":"Bei Ankunft, nach aktuellem Stand: nimmt das leere Monument ein. Frachter allein können es nicht einnehmen und kehren heim."},
   "losses": "{{count}} Schiffe gehen auf dem Hinflug verloren",
   "health": "{{name}}: {{remaining}} / {{max}} HP bei Ankunft",
   "shield": "Ich akzeptiere den Verlust meines Schildes bei diesem Start",

@@ -1,7 +1,8 @@
 import { clanDefenseApplies, fleetCount, hpRadiationApplies } from '@astera/rules';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useClanSupportActions, useMySupport, useMonuments, usePlanet, useRecallFlight, useRecallMining } from '../../api/queries.js';
+import { useClanSupportActions, useMaintenance, useMySupport, useMonuments, usePlanet, useRecallFlight, useRecallMining } from '../../api/queries.js';
+import { createIdempotencyKey } from '../../api/client.js';
 import { useWorld } from '../../api/world.js';
 import { roomOf } from '../../lib/fleetPage.js';
 import { useAirborne, type AirborneItem, type StripFocus } from '../../shell/PendingStrip.js';
@@ -34,6 +35,8 @@ export function FleetHost({ onFocus, onFocusWorld, onClose, onOpenRepairStation 
   const { activePlanetId, capitalPlanetId, worlds } = useWorld();
   const recallFlight = useRecallFlight();
   const recallMining = useRecallMining();
+  const maintenance = useMaintenance();
+  const dockIntent = useRef<{ fingerprint: string; key: string } | null>(null);
   const say = useToast();
   // Klan Savunma Desteği: my waves still out, recalled from their own group — asked for only
   // in a season dealt the rule.
@@ -72,12 +75,23 @@ export function FleetHost({ onFocus, onFocusWorld, onClose, onOpenRepairStation 
         capital: world.planet.id === capitalPlanetId,
         active: world.planet.id === activePlanetId,
         fleet: world.fleet,
+        damage: world.fleetDamage,
+        workshopRadiation: world.workshopRadiation,
         away: fleetCount(world.fleetAway),
         room: roomOf(world.capacity),
         docked: fleetCount(world.fleetDocked ?? {}),
       }))}
       recalling={recalling}
       onOpenRepairStation={onOpenRepairStation}
+      docking={maintenance.isPending}
+      onDock={(planetId, groups, onSuccess) => {
+        const fingerprint = JSON.stringify({ planetId, groups });
+        if (dockIntent.current?.fingerprint !== fingerprint) dockIntent.current = { fingerprint, key: createIdempotencyKey() };
+        maintenance.mutate({ planetId, action: 'DOCK', selection: { source: 'HOME', groups }, key: dockIntent.current.key }, {
+          onSuccess: () => { dockIntent.current = null; onSuccess(); say(t('repairStation.maintenance.moved')); },
+          onError: (error) => { say(describe(error), 'error'); },
+        });
+      }}
       // The page covers the galaxy: it closes first, as a flight row's press does.
       onFocusWorld={(planetId) => {
         onClose();

@@ -32,6 +32,8 @@ export interface HoldButtonProps {
   /** Set when it cannot commit: the reason replaces the label and nothing arms. */
   disabledReason?: string | null;
   tone?: keyof typeof TONE;
+  /** A `data-*` name for the control, so a surface can find its own hold among several. */
+  marker?: string;
 }
 
 /**
@@ -54,7 +56,8 @@ export interface HoldButtonProps {
  * puts "hold to confirm" on the face for a moment. Found on the gallery: with the
  * hint only in a screen-reader line, a tap did nothing and said nothing.
  */
-export function HoldButton({ label, onCommit, disabledReason = null, tone = 'self' }: HoldButtonProps) {
+export function HoldButton({ label, onCommit, disabledReason = null, tone = 'self', marker }: HoldButtonProps) {
+  const mark = marker ? { [`data-${marker}`]: '' } : {};
   const { t } = useTranslation();
   const hintId = useId();
   const timer = useRef<number | null>(null);
@@ -127,6 +130,7 @@ export function HoldButton({ label, onCommit, disabledReason = null, tone = 'sel
         type="button"
         disabled
         data-hold-refused=""
+        {...mark}
         className="flex h-11 w-full items-center justify-center rounded-control border border-v2-line-hi px-3 text-center font-v2-ui text-body text-v2-ink-2"
       >
         {disabledReason}
@@ -140,6 +144,7 @@ export function HoldButton({ label, onCommit, disabledReason = null, tone = 'sel
       <button
         type="button"
         data-hold=""
+        {...mark}
         {...(holding ? { 'data-holding': '' } : {})}
         aria-describedby={hintId}
         onPointerDown={(event) => {

@@ -204,6 +204,12 @@ export const focus = {
     },
     deathStar: "Todesstern",
     deathStarStrike: "Todesstern · EMP-Angriff",
+    /** The Death Star as a folding section of the panel, beside the radiation strike (owner, 2026-10-16). */
+    deathStarSection: {
+      title: "Todesstern-Angriff",
+      hold: "Todesstern starten",
+    },
+    strikeReady: "{{ready}} bereit",
 
     /**
      * THE SECOND BEAT ON A STRIKE. Owner report: *"yanlışlıkla"*.
@@ -217,9 +223,12 @@ export const focus = {
     strikeConfirm: {
       eyebrow: "Taktischer EMP-Schlag",
       title: "{{world}} unterdrücken",
-      lead: "Der Todesstern wird beim Angriff verbraucht. Er kann nicht zurückgerufen werden.",
+      lead: "Der Todesstern wird beim Angriff verbraucht und kann nicht zurückgerufen werden.",
       outage: "EMP-Ausfall",
-      keeps: "Aegis wird geleert und regeneriert eine Stunde lang nicht. Bodenverteidigungen bleiben offline und erleiden keinen Schaden. Eine Kolonie verliert {{loss}} Loyalität; bei {{loss}} oder weniger fällt sie ab und wird neutral.",
+      keeps: "Die Aegis fällt auf null und lädt sich 1 Stunde lang nicht auf. Bodenverteidigungen nehmen in dieser Stunde an keinem Kampf teil.",
+      keepsColony: "Die Kolonie verliert {{loss}} Loyalität und erleidet 1 zufällige Störung. Eine Kolonie mit 100 Loyalität fällt nach {{hits}} Treffern in Folge und wird neutral.",
+      origin: "Start von",
+      originRead: "{{world}} · {{ready}} bereit",
       commit: "EMP starten",
       loyalty: "Loyalität der Kolonie",
       loyaltyRead: "{{value}} % · {{hits}}",
@@ -243,8 +252,7 @@ export const focus = {
     kindColony: "Kolonie",
     kindNeutral: "Neutral",
     capitalProtected: "Nicht einnehmbares Hauptwelt",
-    capitalProtectedHint:
-      "Ein Todesstern leert die Aegis und blockiert ihre Regeneration für eine Stunde; Bodenverteidigungen bleiben offline und erleiden keinen Schaden.",
+    capitalProtectedHint: "Ein Todesstern setzt die Aegis auf null und verhindert 1 Stunde lang ihr Aufladen; Bodenverteidigungen nehmen in dieser Zeit an keinem Kampf teil.",
     /**
      * WHAT A CAPITAL IS WHILE THE WEAPON IS OFF. `STRATEGIC_CRAFTING_ENABLED`.
      *
@@ -258,7 +266,7 @@ export const focus = {
     capitalRecoveringHint:
       "Ein weiterer EMP-Angriff startet die einstündige Unterdrückung neu; die Kontrolle bleibt unverändert.",
     capitalEmp: "Hauptwelt unter EMP",
-    capitalEmpHint: "Aegis ist leer und Bodenverteidigungen sind eine Stunde lang offline und unverwundbar.",
+    capitalEmpHint: "Bis das einstündige EMP endet, bleibt die Aegis leer und Bodenverteidigungen nehmen an keinem Kampf teil.",
     yourCapital: "Ihr geschütztes Hauptwelt",
     yourColony: "Deine Kolonie",
     transferHint: "Bewegen Sie Schiffe und Ressourcen hierher und wählen Sie, welche Schiffe zurückfliegen.",
@@ -330,7 +338,7 @@ export const focus = {
     occupationProtected: "Arbeitsschutz",
     protectedFor: "Kann für {{duration}} nicht getroffen oder gefangen werden.",
     firstImpact: "Schaden + {{duration}} Dunkelheit",
-    firstImpactColony: "Eine Kolonie verliert zudem {{loss}} Loyalität; bei {{loss}} oder weniger fällt sie ab und wird neutral.",
+    firstImpactColony: "Eine Kolonie verliert zudem {{loss}} Loyalität und erleidet 1 zufällige Störung. Mit 100 Loyalität fällt sie nach {{hits}} Treffern in Folge.",
     secondImpact: "Die Uhr läuft ab · die Welt ist unverändert",
     deathStarReadyRequirement: "Todesstern bereit",
     deathStarReadyExplain:
@@ -496,6 +504,7 @@ export const focus = {
     stateReturning: "auf dem Heimweg",
     stateInbound: "eingehend",
     noCraft: "Kein Schiff zu Hause",
+    measuring: "Flugzeit wird berechnet…",
     tooLate: "Es wird verschwunden sein, bevor Sie ankommen",
     resting: "Schiff ruht · {{duration}}",
     send: "Senden Sie {{count}} · {{duration}}",

@@ -1,9 +1,11 @@
 import { spatialHistory } from './spatialHistory.js';
-import { and, desc, eq, inArray, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import { clanWarPlanetTarget } from './clanWar.js';
 import {
   type EscapeOutcome,
   type FaultKind,
+  FAULT_KINDS,
   MULTI_WORLD,
   PIRATE,
   deuteriumOf,
@@ -16,6 +18,7 @@ import {
   type HullId,
   type PirateLevel,
   type Resources,
+  type PvpBalance,
 } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
 import {
@@ -30,6 +33,11 @@ import {
   clanWarParticipantResults,
   clans,
   missions,
+  monuments,
+  radiationBombFlights,
+  honorCommitments,
+  hpRadiationSources,
+  notifications,
   pirateRaids,
   planets,
   players,
@@ -42,6 +50,8 @@ import {
 import { pirateCallsign, pirateSpecAt } from './pirateField.js';
 import { addDominionCounters } from './dominion.js';
 import { readMonumentBattleReports, type MonumentReportView } from './monumentReports.js';
+import { readHonorReceipts, readRadiationHonorReceipts, type HonorReportReceipt } from './honorReports.js';
+import { honorEventKey } from './honorAccounting.js';
 
 /** The wire's ceiling for `recovery.lossHours`: finite, and far past any bar. */
 const RECOVERY_HOURS_CAP = 999;
@@ -89,6 +99,7 @@ function subtractFleet(sent: Fleet, lost: Fleet): Fleet {
  */
 
 export interface BattleReportView {
+  pvpBalance: PvpBalance | null;
   kind: 'BATTLE';
   id: string;
   /**
@@ -215,6 +226,7 @@ export interface BattleReportView {
    * rather than showing a figure it would have had to guess.
    */
   dominion: number | null;
+  honor?: HonorReportReceipt | null;
   /** The auditable v7 equation, signed and named from the caller's perspective. */
   dominionBreakdown: {
     ruleVersion: number;
@@ -287,7 +299,7 @@ export interface BattleReportView {
    * Null to an attacker (how hurt the defender is, is a probe's product), on pirate and
    * caretaker rows, and on rows written before the figure was recorded.
    */
-  recovery: { lossHours: number; shielded: boolean } | null;
+  recovery: { lossHours: number; shielded: boolean; until: Date | null } | null;
   /** Historical compatibility field; new battles never stop production and write zero. */
   disruptedMinutes: number;
   /** What the fight left in orbit for whoever gets there first. Zero when no field formed. */
@@ -386,7 +398,14 @@ type BattleReportRoundView = Omit<
   attackerHullDamage: number | null;
 };
 
+const bombColonyPayload = z.object({
+  loyalty: z.object({ before: z.number(), after: z.number() }).optional(),
+  faults: z.array(z.enum(FAULT_KINDS)).optional(),
+});
+
 export interface StrategicReportView {
+  honor?: HonorReportReceipt | null;
+  radiation?: { level: 1 | 2 | 3; activeUntil: Date | null; monumentOrdinal?: number; faults?: FaultKind[] };
   kind: 'STRATEGIC';
   id: string;
   missionId: string;
@@ -503,7 +522,34 @@ async function readBattleReportsIn(
       .orderBy(desc(strategicImpacts.createdAt)),
   ]);
 
-  if (history.length === 0 && impacts.length === 0) return { reports: monumentReports, rivals: [] };
+  // A launch participant or actual notified impact witness may read this report.
+  // Merely acquiring the planet later never grants its private impact history.
+  const bombRows = await tx.select({ flight: radiationBombFlights, intent: honorCommitments.snapshot, impactPayload: notifications.payload,
+    monumentOrdinal: monuments.ordinal, activeUntil: hpRadiationSources.activeUntil })
+    .from(radiationBombFlights)
+    .innerJoin(players, eq(players.id, playerId))
+    .leftJoin(honorCommitments, and(eq(honorCommitments.seasonId, radiationBombFlights.seasonId),
+      eq(honorCommitments.source, 'STRATEGIC_IMPACT'),
+      eq(honorCommitments.sourceId, sql`'bomb:' || ${radiationBombFlights.id}::text`)))
+    .leftJoin(monuments, eq(monuments.id, radiationBombFlights.targetMonumentId))
+    .leftJoin(hpRadiationSources, eq(hpRadiationSources.bombFlightId, radiationBombFlights.id))
+    .leftJoin(notifications, and(eq(notifications.playerId, playerId),
+      eq(notifications.kind, 'radiation_bomb_result'), eq(notifications.refId, radiationBombFlights.id)))
+    .where(and(inArray(radiationBombFlights.status, ['HIT', 'INTERCEPTED', 'INEFFECTIVE']),
+      or(eq(radiationBombFlights.ownerPlayerId, playerId),
+        sql`${honorCommitments.snapshot}->'defence' @> ${JSON.stringify([{ id: playerId }])}::jsonb`,
+        isNotNull(notifications.id))))
+    .orderBy(desc(radiationBombFlights.resolvedAt)).limit(Math.min(limit, 50));
+  if (history.length === 0 && impacts.length === 0 && bombRows.length === 0) return { reports: monumentReports, rivals: [] };
+
+  const honorSources = rows.flatMap(row => row.missionId === null ? [] : [{
+    source: row.clanWarOperationId === null ? 'WORLD' as const : 'CLAN_WAR' as const, id: row.missionId,
+  }]);
+  const honorReceipts = await readHonorReceipts(tx, playerId, [...honorSources,
+    ...impacts.map(row => ({ source: row.outcome === 'INTERCEPTED' ? 'STRATEGIC_INTERCEPTION' as const : 'STRATEGIC_IMPACT' as const, id: row.missionId })),
+    ...bombRows.filter(row => row.flight.status === 'INTERCEPTED').map(row => ({ source: 'STRATEGIC_INTERCEPTION' as const, id: `bomb:${row.flight.id}` })),
+  ]);
+  const radiationReceipts = await readRadiationHonorReceipts(tx, playerId, bombRows.map(row => row.flight.id));
 
   /* The per-commander rows of every supported battle in reach — the page and the rivals. */
   const supportedIds = history.filter((row) => row.defenderCount > 1).map((row) => row.id);
@@ -586,6 +632,8 @@ async function readBattleReportsIn(
     })
     .concat(impacts.map((r) =>
       r.attackerPlayerId === playerId ? r.defenderPlayerId : r.attackerPlayerId))
+    .concat(bombRows.flatMap(({ flight, intent }) => flight.ownerPlayerId === playerId
+      ? intent?.defence.map(row => row.id) ?? [] : [flight.ownerPlayerId]))
     .concat(jointResults.map((result) => result.playerId))
     .concat(lineRows.map((line) => line.playerId))
     .filter((id): id is string => id !== null);
@@ -685,6 +733,7 @@ async function readBattleReportsIn(
     ...rows.map((row) => row.targetPlanetId),
     ...impacts.map((row) => row.targetPlanetId),
     ...originByMission.values(),
+    ...bombRows.flatMap(({ flight }) => [flight.originPlanetId, flight.targetPlanetId]),
     ...raidRows.map((raid) => raid.planetId),
     ...jointWaves.map((wave) => wave.originPlanetId),
     ...destinationByWave.values(),
@@ -883,6 +932,9 @@ async function readBattleReportsIn(
         : supporting ? 0 : -deuteriumOf(row.loot),
       dominion,
       dominionBreakdown,
+      honor: row.missionId === null ? null : honorReceipts.get(honorEventKey({
+        source: row.clanWarOperationId === null ? 'WORLD' : 'CLAN_WAR', id: row.missionId,
+      })) ?? null,
       shieldAbsorbed: row.shieldAbsorbed,
       shieldBefore: firstRound?.shieldBefore ?? null,
       shieldAfter: lastRound?.shieldAfter ?? null,
@@ -897,11 +949,13 @@ async function readBattleReportsIn(
       fleetEscape: attacking
         ? row.fleetEscape?.kind === 'ESCAPED' ? { kind: 'ESCAPED' } : null
         : supporting ? null : row.fleetEscape,
+      pvpBalance: row.pvpBalance,
       recovery: attacking || supporting || row.targetKind !== 'PLAYER' || row.recoveryLossHours === null
         ? null
         : {
           lossHours: Math.min(row.recoveryLossHours, RECOVERY_HOURS_CAP),
           shielded: row.recoveryShieldUntil !== null,
+          until: row.recoveryShieldUntil,
         },
       /*
         These two go to both, and neither is a disclosure. Downtime is a pure
@@ -1006,6 +1060,7 @@ async function readBattleReportsIn(
     const yourPlanetId = ownWorldId && targetById.has(ownWorldId) ? ownWorldId : null;
     return {
       kind: 'STRATEGIC',
+      honor: honorReceipts.get(honorEventKey({ source: impact.outcome === 'INTERCEPTED' ? 'STRATEGIC_INTERCEPTION' : 'STRATEGIC_IMPACT', id: impact.missionId })) ?? null,
       id: impact.id,
       missionId: impact.missionId,
       at: impact.createdAt,
@@ -1136,6 +1191,36 @@ async function readBattleReportsIn(
     ...monumentReports,
     ...rows.map(viewOf),
     ...impacts.map(strategicViewOf),
+    ...bombRows.map(({ flight, intent, monumentOrdinal, activeUntil, impactPayload }): StrategicReportView => {
+      // Read this commander's receipt, never the current target owner's private
+      // state. Older impacts without the new fields remain valid reports.
+      const payload = bombColonyPayload.safeParse(impactPayload);
+      const colony = flight.status === 'HIT' && payload.success ? payload.data : null;
+      const attacking = flight.ownerPlayerId === playerId;
+      const opponentId = attacking ? intent?.defence[0]?.id : flight.ownerPlayerId;
+      const opponent = opponentId ? byId.get(opponentId) : undefined;
+      const ownId = attacking ? flight.originPlanetId : flight.targetPlanetId;
+      const otherId = attacking ? flight.targetPlanetId : flight.originPlanetId;
+      const at = flight.resolvedAt ?? flight.arriveAt;
+      return {
+        kind: 'STRATEGIC', id: flight.id, missionId: `bomb:${flight.id}`, at, attacking,
+        opponentName: opponent?.name ?? 'someone',
+        opponentPlanet: otherId ? targetById.get(otherId) ?? 'an unknown world' : '',
+        opponentPlanetId: otherId && spatiallyCurrent(otherId, at) ? otherId : null,
+        yourPlanet: ownId ? targetById.get(ownId) ?? '' : '',
+        yourPlanetId: ownId && spatiallyCurrent(ownId, at) ? ownId : null,
+        outcome: flight.status === 'HIT' ? 'FIRST_STRIKE' : flight.status === 'INTERCEPTED' ? 'INTERCEPTED' : 'INEFFECTIVE',
+        radiation: { level: flight.level, activeUntil: flight.status === 'HIT' ? activeUntil : null,
+          ...(colony?.faults === undefined ? {} : { faults: colony.faults }),
+          ...(monumentOrdinal === null ? {} : { monumentOrdinal }) },
+        honor: flight.status === 'INTERCEPTED'
+          ? honorReceipts.get(honorEventKey({ source: 'STRATEGIC_INTERCEPTION', id: `bomb:${flight.id}` })) ?? null
+          : radiationReceipts.get(flight.id) ?? null,
+        damage: 0, destroyedFleet: {}, destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
+        levelChanges: [], destroyedOrders: [], shieldDestroyed: 0, loyalty: colony?.loyalty ?? null,
+        trigger: flight.interception?.trigger ?? null, attackerClan: null, defenderClan: null,
+      };
+    }),
   ]
     .toSorted((a, b) => b.at.getTime() - a.at.getTime())
     .slice(0, Math.min(limit, 50));

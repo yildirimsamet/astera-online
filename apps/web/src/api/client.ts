@@ -1,5 +1,7 @@
 import { COSMETIC_IDS, type CosmeticCategory, type CosmeticId, type MobileHullId } from '@astera/rules';
 import { cosmeticEquipSchema } from './schemas.js';
+import { vacationSchema } from './schemas.js';
+import { honorTargetSchema } from './schemas.js';
 import { returnStatusSchema } from './schemas.js';
 import type { z } from 'zod';
 import type {
@@ -9,6 +11,8 @@ import type {
   InstrumentId,
   ResearchProjectId,
   Resources,
+  HpDamageLots,
+  HonorBenefitTier,
   SatelliteId,
   PlanetSkinId,
   ChatLanguage,
@@ -20,6 +24,7 @@ import type {
 import { noteServerTime } from '../lib/clock.js';
 import { adminChatScopesSchema, adminPlayersSchema, adminMuteSchema, adminMaskSchema, type AdminMuteInput, type AdminMaskInput } from './adminSchemas.js';
 import {
+  tradeRecallSchema,
   adminFeedbackPageSchema,
   skinGrantedSchema,
   supporterStatusSchema,
@@ -84,6 +89,11 @@ import {
   polarShopSchema,
   polarPricingSchema,
   polarPurchaseSchema,
+  shopierShopSchema,
+  shopierCodeSchema,
+  shopierQueueSchema,
+  shopierOrderActionSchema,
+  shopierSyncSchema,
   skinEquipSchema,
   intelSchema,
   miningLaunchSchema,
@@ -121,6 +131,8 @@ import {
   planetsSchema,
   movementLaunchSchema,
   deathStarBuildSchema,
+  radiationBombBuildSchema,
+  radiationBombLaunchSchema,
   interceptorBuildSchema,
   faultRepairSchema,
   deathStarLaunchSchema,
@@ -144,6 +156,7 @@ import {
   trafficSchema,
   buildSchema,
   repairStartSchema,
+  maintenanceSchema,
   buildCancelSchema,
   markedSchema,
   unlocksSchema,
@@ -233,6 +246,12 @@ export interface ClanAidInput {
   cargo: Resources;
 }
 
+export type MaintenanceSelection = { source: 'HOME'; groups: HpDamageLots }
+  | { source: 'DOCK'; lots: { id: string; count: number; damageBp?: number; remainderBp?: number }[] };
+export type MaintenanceAction = 'DOCK' | 'RETURN' | 'SCRAP';
+export type RepairRequest = ({ lotIds: string[] } | { all: true }
+  | { lots: { id: string; count: number; damageBp: number; remainderBp: number }[] }) & { expectedHonorTier?: HonorBenefitTier };
+
 export interface MonumentSendInput {
   originPlanetId: string;
   fleet: Fleet;
@@ -242,8 +261,9 @@ export interface MonumentSendInput {
 }
 export interface MonumentRecallSelection { lotId: string; count: number }
 export type FlightRecallInput =
-  | { missionId: string; pirate?: boolean; monument?: never }
-  | { missionId: string; pirate?: never; monument: true };
+  | { missionId: string; pirate?: boolean; monument?: never; trade?: never }
+  | { missionId: string; pirate?: never; monument: true; trade?: never }
+  | { missionId: string; pirate?: never; monument?: never; trade: true };
 
 export interface IntergalacticConvoyLaunchInput {
   originPlanetId: string;
@@ -253,6 +273,7 @@ export interface IntergalacticConvoyLaunchInput {
   quotedFlightSeconds: number;
   quotedArriveAt: Date;
   acknowledgeRadiationLoss?: boolean;
+  expectedHonorTier?: HonorBenefitTier;
 }
 
 /**
@@ -591,6 +612,18 @@ export class Api {
   polarPricing = () => this.send('/api/skins/polar-pricing', polarPricingSchema);
   purchasePolarSkin = (itemId: CosmeticId | 'bundle') =>
     this.send('/api/skins/polar-purchase', polarPurchaseSchema, { method: 'POST', body: { itemId } });
+  shopierShop = () => this.send('/api/skins/shopier-shop', shopierShopSchema);
+  /** The open purchase code for this item; asking again returns the same one. */
+  shopierCode = (itemId: CosmeticId | 'bundle') =>
+    this.send('/api/skins/shopier-code', shopierCodeSchema, { method: 'POST', body: { itemId } });
+  shopierQueue = () => this.send('/api/admin/shopier/orders', shopierQueueSchema);
+  shopierGrant = (orderId: string, username: string) =>
+    this.send(`/api/admin/shopier/orders/${encodeURIComponent(orderId)}/grant`, shopierOrderActionSchema, { method: 'POST', body: { username } });
+  shopierDismiss = (orderId: string) =>
+    this.send(`/api/admin/shopier/orders/${encodeURIComponent(orderId)}/dismiss`, shopierOrderActionSchema, { method: 'POST', body: {} });
+  shopierRevoke = (orderId: string) =>
+    this.send(`/api/admin/shopier/orders/${encodeURIComponent(orderId)}/revoke`, shopierOrderActionSchema, { method: 'POST', body: {} });
+  shopierSync = () => this.send('/api/admin/shopier/sync', shopierSyncSchema, { method: 'POST', body: {} });
   equipSkin = (planetId: string, skinId: PlanetSkinId | null) =>
     this.send(`/api/skins/planets/${encodeURIComponent(planetId)}`, skinEquipSchema, {
       method: 'POST', body: { skinId },
@@ -612,6 +645,8 @@ export class Api {
     this.send(`/api/monuments/waves/${encodeURIComponent(waveId)}/recall`, monumentRecallSchema,
       { method: 'POST', body: { all: true }, idempotencyKey: `monument-flight-recall:${waveId}` });
   leaderboard = gatedRead(() => this.send('/api/leaderboard', leaderboardSchema), BIG_READ_GAP_MS);
+  honorLeaderboard = gatedRead(() => this.send('/api/leaderboard?ranking=HONOR', leaderboardSchema), BIG_READ_GAP_MS);
+  honorTarget = (planetId: string) => this.send(`/api/honor/targets/${encodeURIComponent(planetId)}`, honorTargetSchema);
   seasonArchive = (cursor?: number) => this.send(
     `/api/season-archive?limit=12${cursor === undefined ? '' : `&cursor=${String(cursor)}`}`,
     seasonArchiveSchema,
@@ -775,13 +810,19 @@ export class Api {
   /** The closing link of the loop: what a fight actually taught you. */
   reports = () => this.send('/api/reports?limit=50', reportsSchema);
 
-  upgrade = (planetIdOrType: string, explicitType?: BuildingId) => {
+  upgrade = (planetIdOrType: string, explicitType?: BuildingId, confirmedLevel?: number) => {
     const type = explicitType ?? planetIdOrType as BuildingId;
     const path = explicitType
       ? `/api/planets/${encodeURIComponent(planetIdOrType)}/upgrade`
       : '/api/planet/upgrade';
-    return this.send(path, upgradeSchema, { method: 'POST', body: { type } });
+    return this.send(path, upgradeSchema, { method: 'POST', body: { type, ...(confirmedLevel === undefined ? {} : { confirmedLevel }) } });
   };
+
+  vacation = (days = 1) => this.send(`/api/vacation?days=${String(days)}`, vacationSchema);
+  startVacation = (input: { days: number; fingerprint: string; requestId: string }) =>
+    this.send('/api/vacation', vacationSchema, { method: 'POST', body: input });
+  endVacation = (vacationId: string) =>
+    this.send('/api/vacation/end', vacationSchema, { method: 'POST', body: { vacationId } });
 
   build = (planetIdOrHull: string, explicitHullOrCount: HullId | number, explicitCount?: number) => {
     const hull = (explicitCount === undefined ? planetIdOrHull : explicitHullOrCount) as HullId;
@@ -804,9 +845,14 @@ export class Api {
    * START A REPAIR STATION JOB at a named world, on the lots named or on everything waiting.
    * Cancelling is the yard's own door (`cancelBuildOrder`); the order is a queue row there.
    */
-  startRepair = (planetId: string, request: { lotIds: string[] } | { all: true }) =>
+  startRepair = (planetId: string, request: RepairRequest, key = createIdempotencyKey()) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/repairs`, repairStartSchema, {
-      method: 'POST', body: request,
+      method: 'POST', body: request, idempotencyKey: key,
+    });
+
+  maintenance = (planetId: string, action: MaintenanceAction, selection: MaintenanceSelection, key = createIdempotencyKey()) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/maintenance`, maintenanceSchema, {
+      method: 'POST', body: { action, selection }, idempotencyKey: key,
     });
 
   completeResearch = (planetIdOrProject: string, explicitProject?: ResearchProjectId) =>
@@ -878,6 +924,9 @@ export class Api {
       { method: 'POST', body: {} },
     );
 
+  recallTrade = (runId: string) => this.send(`/api/trade/runs/${encodeURIComponent(runId)}/recall`,
+    tradeRecallSchema, { method: 'POST', body: {} });
+
   watch = (targetPlanetId: string, slot: number, observerPlanetId?: string) =>
     this.send('/api/intel/watch', watchSchema, {
       method: 'POST',
@@ -910,6 +959,17 @@ export class Api {
   buildDeathStar = (planetId: string) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/death-star/build`, deathStarBuildSchema, {
       method: 'POST', body: {},
+    });
+
+  buildRadiationBomb = (planetId: string, level: 1 | 2 | 3) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/radiation-bombs/build`, radiationBombBuildSchema, {
+      method: 'POST', body: { level },
+    });
+
+  launchRadiationBomb = (originPlanetId: string, level: 1 | 2 | 3,
+    target: { kind: 'PLANET' | 'MONUMENT'; id: string }, key: string, acknowledgeShieldLoss = false) =>
+    this.send('/api/radiation-bombs/launch', radiationBombLaunchSchema, {
+      method: 'POST', body: { originPlanetId, level, target, acknowledgeShieldLoss }, idempotencyKey: key,
     });
 
   /** Save a world's two defence toggles (Klan Savunma Desteği, K4). Idempotent by nature. */
@@ -1021,7 +1081,7 @@ export class Api {
   /**
    * SEND A CONVOY TO THE MERCHANT. D156.
    *
-   * IRREVERSIBLE, like every launch, and there is deliberately no `GET` beside it:
+   * Outbound convoys can be recalled before reaching the merchant. No `GET` is needed here:
    * the merchant already reaches the client on `/api/galaxy/events`, orbit and all,
    * so the rendezvous is solved on both sides from the same published elements with
    * the same `interceptOrbit`. A second read here would be a second answer to a
@@ -1034,11 +1094,13 @@ export class Api {
     want: { alloy: number; crystal: number; deuterium: number },
     originPlanetId?: string,
     acknowledgeRadiationLoss?: boolean,
+    expectedHonorTier?: HonorBenefitTier,
   ) =>
     this.send('/api/trade/launch', tradeLaunchSchema, {
       method: 'POST',
       body: { occurrenceId, fleet, give, want, ...(originPlanetId ? { originPlanetId } : {}),
-        ...(acknowledgeRadiationLoss ? { acknowledgeRadiationLoss: true } : {}) },
+        ...(acknowledgeRadiationLoss ? { acknowledgeRadiationLoss: true } : {}),
+        ...(expectedHonorTier !== undefined ? { expectedHonorTier } : {}) },
     });
 
   /** Commit the exact moving-target quote the confirmation surface displayed. */

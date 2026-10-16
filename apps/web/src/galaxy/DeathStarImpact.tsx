@@ -9,10 +9,8 @@ import type { Contact, PendingThread } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { FullRate } from './frames.jsx';
 import { playSceneSound } from './audio.js';
-import {
-  ringTexture,
-  publicEffectIntensity,
-} from './vfx.js';
+import { ringTexture } from './vfx.js';
+import { replayStarts } from './publicMoments.js';
 import { toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
 
 /** Long enough to read as an event, short enough not to obscure the next decision. */
@@ -36,8 +34,22 @@ export function mergeRetainedDeathStarImpacts(
   current: readonly DeathStarImpactEvent[],
   candidates: readonly DeathStarImpactEvent[],
   now: number,
+  intercepted: ReadonlySet<string> = new Set(),
 ): DeathStarImpactEvent[] {
-  const merged = new Map(candidates.map((event) => [event.id, event]));
+  const known = new Map(current.map((event) => [event.id, event]));
+  /*
+    A STRIKE THIS SCREEN LEARNED OF LATE STILL LANDS IN FULL (owner, 2026-10-16). A bystander
+    outside every sensor is told only by the refetch the hit triggers; such a moment starts
+    at its discovery, a burst read together keeping its spacing (`replayStarts`), and keeps
+    that start on every later read.
+  */
+  const fresh = candidates.filter((event) => !known.has(event.id));
+  const replayed = new Map(replayStarts(fresh.map((event) => event.at), now)
+    .map((at, index) => [fresh[index]!.id, at]));
+  const merged = new Map(candidates.map((event) => [event.id, {
+    ...event,
+    at: known.get(event.id)?.at ?? replayed.get(event.id) ?? event.at,
+  }]));
   for (const event of current) {
     /*
       A future candidate disappearing is a cancellation, not an impact refetch.
@@ -52,7 +64,9 @@ export function mergeRetainedDeathStarImpacts(
     if (event.at <= now && !merged.has(event.id)) merged.set(event.id, event);
   }
   return [...merged.values()]
-    .filter((event) => event.at + DEATH_STAR_IMPACT_MS > now)
+    // A weapon shot down never lands, even when the collision came late enough that its
+    // surface blast had begun (see `deathStarImpactCandidates`).
+    .filter((event) => event.at + DEATH_STAR_IMPACT_MS > now && !intercepted.has(event.id))
     .sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
 }
 
@@ -82,9 +96,16 @@ export function deathStarImpactCandidates(
   pending: readonly PendingThread[],
   contacts: readonly Contact[],
   nodes: readonly PlanetNode[],
+  /**
+   * WEAPONS A BATTERY HAS SHOT DOWN, by the id their craft carries. Owner, 2026-10-16: a
+   * battery firing in a weapon's last seconds puts the collision at its original arrival,
+   * and the landing contact a bystander holds until the next read would land it too.
+   */
+  intercepted: ReadonlySet<string> = new Set(),
 ): DeathStarImpactEvent[] {
   const events = new Map<string, DeathStarImpactEvent>();
   const add = (event: DeathStarImpactEvent): void => {
+    if (intercepted.has(event.id)) return;
     const current = events.get(event.id);
     if (!current || event.intensity >= current.intensity) events.set(event.id, event);
   };
@@ -118,7 +139,8 @@ export function deathStarImpactCandidates(
       at: contact.impact.at.getTime(),
       position,
       radius: radiusAt(position, nodes),
-      intensity: publicEffectIntensity(contact.effectOnly === true),
+      // Full strength outside sight too (owner, 2026-10-16): the contact stays effect-only.
+      intensity: 1,
     });
   }
   return [...events.values()].sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
@@ -133,21 +155,25 @@ export function DeathStarImpacts({
   pending,
   contacts,
   nodes,
+  intercepted,
 }: {
   pending: readonly PendingThread[];
   contacts: readonly Contact[];
   nodes: readonly PlanetNode[];
+  intercepted: ReadonlySet<string>;
 }) {
   const candidates = useMemo(
-    () => deathStarImpactCandidates(pending, contacts, nodes),
-    [pending, contacts, nodes],
+    () => deathStarImpactCandidates(pending, contacts, nodes, intercepted),
+    [pending, contacts, nodes, intercepted],
   );
-  const [retained, setRetained] = useState<DeathStarImpactEvent[]>(candidates);
+  const [retained, setRetained] = useState<DeathStarImpactEvent[]>(
+    () => mergeRetainedDeathStarImpacts([], candidates, serverNow(), intercepted),
+  );
 
   useEffect(() => {
     const now = serverNow();
-    setRetained((current) => mergeRetainedDeathStarImpacts(current, candidates, now));
-  }, [candidates]);
+    setRetained((current) => mergeRetainedDeathStarImpacts(current, candidates, now, intercepted));
+  }, [candidates, intercepted]);
 
   useEffect(() => {
     if (retained.length === 0) return;

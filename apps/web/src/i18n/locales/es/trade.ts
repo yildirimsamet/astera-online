@@ -58,7 +58,7 @@ export const trade = {
   maxShort: 'Máx.',
   send: 'Enviar convoy',
   sending: 'Enviando convoy',
-  warning: 'Una vez lanzado, el convoy no puede volver antes. Estará fuera durante {{duration}}.',
+  warning: "Retira el convoy antes de llegar al mercader para recuperar tu oferta sin intercambiarla. El combustible no se reembolsa. Viaje previsto: {{duration}}.",
   fleetsave: 'Mientras viaja, nadie puede atacar a esta flota. Tampoco podrá defender tu mundo.',
   launched: 'Convoy en camino · {{duration}}',
   chooseFleet: 'Prepara un convoy',

@@ -1,13 +1,14 @@
-import { ABUSE, COMBAT, MULTI_WORLD } from './constants.js';
+import { ABUSE, MULTI_WORLD } from './constants.js';
 import type { Grade, NeutralTier, Resources } from './types.js';
 import { RESOURCE_VALUE } from './valuation.js';
 import { CORE_TOP_LEVEL } from './view.js';
+import { STANDARD_PVP_BALANCE, type PvpBalance } from './pvpBalance.js';
 
-export const gradeMultiplier = (grade: Grade): number =>
+export const gradeMultiplier = (grade: Grade, balance: PvpBalance = STANDARD_PVP_BALANCE): number =>
   grade === 'DECISIVE'
-    ? COMBAT.lootDecisive
+    ? balance.lootDecisive
     : grade === 'PARTIAL'
-      ? COMBAT.lootPartial
+      ? balance.lootPartial
       : 0;
 
 /** Compatibility boundary for JSON rows written before D92. */
@@ -34,16 +35,16 @@ export const NO_LOOT: Loot = {
 /**
  * Cargo is filled with alloy and crystal in proportion to what is available.
  *
- * The decisive share IS the repeat-raid decay system: successive raids take 60%,
- * then 24%, then 9.6% of the original exposed pile. Diminishing returns arrive for free, with
- * no cooldown table and no extra state.
+ * Repeated raids take a share of the remainder. The standard decisive profile
+ * takes 60%, then 24%, then 9.6% of the original exposed stock; beginner PvP
+ * uses the smaller shares in its passed balance profile.
  *
  * TWO PILES, TWO RATES (D16). Ore in storage is exposed in full, less the vault
  * floor — ALL THREE RESOURCES, which this took until D187 to actually do. The
  * deuterium line read the bare store while the other two subtracted their floors,
  * a leftover from when `vaultProtects` returned zero for fuel because fuel had no
  * passive rate to take hours of. Ore still sitting uncollected in the works is exposed at
- * `COMBAT.lootBufferShare` and the vault does not cover it at all — the vault
+ * the balance profile’s `lootBufferShare` and the vault does not cover it at all — the vault
  * protects a store, and this has not reached the store yet. Leaving production
  * uncollected is therefore partial cover and never safety, which is exactly the
  * decision the collector is there to create.
@@ -64,11 +65,12 @@ export function computeLoot(
   vaultFloor: Resources,
   grade: Grade,
   cargo: number,
+  balance: PvpBalance = STANDARD_PVP_BALANCE,
 ): Loot {
-  const mult = gradeMultiplier(grade);
+  const mult = gradeMultiplier(grade, balance);
   if (mult === 0 || cargo <= 0) return NO_LOOT;
 
-  const share = COMBAT.lootBufferShare;
+  const share = balance.lootBufferShare;
   const stockA = Math.max(0, stock.alloy - vaultFloor.alloy) * mult;
   const stockC = Math.max(0, stock.crystal - vaultFloor.crystal) * mult;
   const stockD = Math.max(0, stock.deuterium - vaultFloor.deuterium) * mult;
@@ -79,7 +81,7 @@ export function computeLoot(
   const total = stockA + stockC + stockD + bufferA + bufferC + bufferD;
   if (total <= 0) return NO_LOOT;
 
-  // One scale factor across all four piles, so a cargo shortfall costs each of
+  // One scale factor across all six piles, so a cargo shortfall costs each of
   // them the same proportion rather than emptying whichever is read first.
   const factor = total <= cargo ? 1 : cargo / total;
   const fromStock = {
@@ -129,7 +131,7 @@ export function scaleNeutralDeuteriumLoot(loot: Loot, tier: NeutralTier): Loot {
  * Böyle saçmalık olmaz."* A probe reported `alloy + crystal` — the whole pile —
  * and THREE rules stand between that figure and what a fleet flies home with:
  * the vault floor is untouchable, the grade takes a share rather than the
- * remainder, and uncollected ore is exposed at half again (D16). Reported total
+ * remainder, and uncollected ore uses the profile's Works share (D16). Reported total
  * and delivered haul were never the same quantity, and a number that cannot be
  * compared to the outcome it predicts is the Clarity failure `interface.md` opens
  * with.
@@ -148,8 +150,9 @@ export function raidableStock(
   buffer: Resources,
   vaultFloor: Resources,
   grade: Grade,
+  balance: PvpBalance = STANDARD_PVP_BALANCE,
 ): number {
-  const loot = computeLoot(stock, buffer, vaultFloor, grade, Number.MAX_SAFE_INTEGER);
+  const loot = computeLoot(stock, buffer, vaultFloor, grade, Number.MAX_SAFE_INTEGER, balance);
   return loot.alloy + loot.crystal + loot.deuterium;
 }
 
@@ -323,14 +326,14 @@ export const newcomerShielded = (
  * player row, published to the client and drawn as a countdown against
  * `serverNow()` (D51). A duration would have to be re-based by whoever received it.
  */
-export const recoveryShieldUntil = (nowMs: number): number =>
-  nowMs + ABUSE.recoveryShieldHours * 3_600_000;
+export const recoveryShieldUntil = (nowMs: number, balance: PvpBalance = STANDARD_PVP_BALANCE): number =>
+  nowMs + balance.recoveryShieldHours * 3_600_000;
 
 /**
  * THE END OF THE WINDOW AFTER ONE MORE HEAVY DEFEAT. Owner instruction.
  *
  * *"Süreler toplanmaz"* — a second defeat inside a live window pushes the end out
- * to six hours from NOW and no further, so a commander being worked over by
+ * to the profile’s duration from NOW and no further, so a commander being worked over by
  * several attackers is not accumulating a day of immunity one raid at a time. It
  * can only ever move the end FORWARD: a defeat landing under a shield that already
  * reaches further leaves that shield alone rather than cutting it short.
@@ -341,8 +344,9 @@ export const recoveryShieldUntil = (nowMs: number): number =>
 export const extendRecoveryShield = (
   existingUntil: number | null | undefined,
   nowMs: number,
+  balance: PvpBalance = STANDARD_PVP_BALANCE,
 ): number => {
-  const fresh = recoveryShieldUntil(nowMs);
+  const fresh = recoveryShieldUntil(nowMs, balance);
   return typeof existingUntil === 'number' && Number.isFinite(existingUntil)
     ? Math.max(fresh, existingUntil)
     : fresh;
@@ -406,8 +410,9 @@ export interface RecoveryLedgerEntry {
   fleetLost: Resources;
 }
 
-/** Everything the last `ABUSE.recoveryLookbackHours` cost one commander, and what they make. */
+/** Losses and raid profits inside the selected profile’s lookback, and nominal production. */
 export interface RecoveryShieldCheck {
+  balance?: PvpBalance;
   /** Every PvP defeat inside the lookback, the one being settled included. */
   defeats: readonly RecoveryLedgerEntry[];
   /** Every raid this commander made on ANOTHER commander inside the lookback. */
@@ -542,7 +547,7 @@ export function netRecoveryLossHours(check: RecoveryShieldCheck): number {
  * report is not that.
  */
 export function earnsRecoveryShield(check: RecoveryShieldCheck): boolean {
-  return netRecoveryLossHours(check) >= ABUSE.recoveryLossHours;
+  return netRecoveryLossHours(check) >= (check.balance ?? STANDARD_PVP_BALANCE).recoveryLossHours;
 }
 
 export function canAttack(

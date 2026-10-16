@@ -9,6 +9,7 @@ import { hullTech, type TechLevels } from './tech.js';
 import { normalizeHpDamage, type HpDamageLot, type HpDamageLots } from './radiationHp.js';
 import {
   ALL_HULLS,
+  COMBAT_HULLS,
   HULLS,
   counterMult,
   fleetCount,
@@ -17,6 +18,7 @@ import {
   fleetValue,
 } from './hulls.js';
 import type { Fleet, Grade, HullId, Rng } from './types.js';
+import { partitionCombatFleet } from './shipMaintenance.js';
 
 export interface CombatRound {
   round: number;
@@ -38,6 +40,8 @@ export interface CombatRound {
 }
 
 export interface CombatResult {
+  /** Exact normal fire absorbed while a firing armed defender remained; excludes Nullifier bonus. */
+  shieldProtectedArmed?: number;
   grade: Grade;
   /**
    * Share of defending unit value destroyed; 1 for an unguarded walkover (D173).
@@ -533,6 +537,7 @@ export function resolveJointCombat(
   const credited = stacks.map(() => 0);
   const rounds: CombatRound[] = [];
   let shieldLeft = shield;
+  let shieldProtectedArmed = 0;
 
   for (let r = 0; r < COMBAT.rounds; r++) {
     let alive = 0;
@@ -587,6 +592,7 @@ export function resolveJointCombat(
     const specialistAbsorbed = Math.min(shieldLeft, specialistBonus);
     shieldLeft -= specialistAbsorbed;
     const absorbed = Math.min(shieldLeft, incoming);
+    if (fleetEntries(D).some(([hull, count]) => count > 0 && HULLS[hull].atk > 0)) shieldProtectedArmed += absorbed;
     shieldLeft -= absorbed;
     const shieldAfter = Math.max(0, Math.round(shieldLeft));
     const passRatio = incoming > 0 ? (incoming - absorbed) / incoming : 0;
@@ -691,6 +697,7 @@ export function resolveJointCombat(
     lossRatio,
     rounds,
     shieldLeft: Math.max(0, Math.round(shieldLeft)),
+    shieldProtectedArmed,
     attackerSurvivors,
     defenderSurvivors: D,
     attackerLosses,
@@ -827,6 +834,7 @@ export function resolveCombat(
     lossRatio: joint.lossRatio,
     rounds: joint.rounds,
     shieldLeft: joint.shieldLeft,
+    shieldProtectedArmed: joint.shieldProtectedArmed,
     attackerSurvivors: joint.attackerSurvivors,
     defenderSurvivors: joint.defenderSurvivors,
     attackerLosses: joint.attackerLosses,
@@ -856,6 +864,8 @@ export interface DefenderStack {
   tech: CombatSide;
   /** A wave's carried damage. A planet host is healthy; a monument defender need not be. */
   damage?: HpDamageLots;
+  /** NPC garrisons retain their existing combat rule; maintenance concerns owned ships. */
+  maintenanceExempt?: boolean;
 }
 
 /** What one defending stack sent in, kept and lost. */
@@ -875,9 +885,9 @@ export interface BattleResult extends JointCombatResult {
   defenders: DefenderOutcome[];
 }
 
-function assertDefendingLine(defenders: readonly DefenderStack[], monument: boolean, precise: boolean): void {
+function assertDefendingLine(defenders: readonly DefenderStack[], monument: boolean, precise: boolean, maintenance: boolean): void {
   if (defenders.length === 0) throw new RangeError('a battle needs a defending line');
-  if (!monument && combatLots(defenders[0]!.fleet, defenders[0]!.damage, precise).length > 0) {
+  if (!monument && !maintenance && combatLots(defenders[0]!.fleet, defenders[0]!.damage, precise).length > 0) {
     throw new RangeError('the host stack stands at home and cannot carry damage');
   }
   for (const stack of monument ? defenders : defenders.slice(1)) {
@@ -912,17 +922,24 @@ const mergedFleet = (fleets: readonly Fleet[]): Fleet => {
  */
 export function resolveBattle(
   stacks: readonly JointAttackerStack[],
-  defenders: readonly DefenderStack[],
+  defendingLine: readonly DefenderStack[],
   shield: number,
   rng: Rng,
   /** New ruleset callers explicitly opt in; legacy planet battles retain exact parity. */
   context: 'PLANET' | 'MONUMENT' | 'HP_PLANET' = 'PLANET',
+  maintenance = false,
 ): BattleResult {
   const monument = context === 'MONUMENT';
-  const precise = context !== 'PLANET';
+  const precise = context !== 'PLANET' || maintenance;
+  const defenders = maintenance && !monument ? defendingLine.map((stack) => {
+    if (stack.maintenanceExempt) return stack;
+    const partition = partitionCombatFleet(stack.fleet, stack.damage);
+    return { ...stack, fleet: partition.eligible, damage: partition.damage };
+  }) : defendingLine;
   if (monument && shield !== 0) throw new RangeError('a monument fleet has no planet shield');
-  assertDefendingLine(defenders, monument, precise);
-  if (defenders.length === 1 && !monument) {
+  assertDefendingLine(defenders, monument, precise, maintenance);
+  const passiveAttackers = maintenance && stacks.some((stack) => fleetCount(partitionCombatFleet(stack.fleet, stack.damage).excluded) > 0);
+  if (defenders.length === 1 && !monument && !passiveAttackers && combatLots(defenders[0]!.fleet, defenders[0]!.damage, precise).length === 0) {
     const only = defenders[0]!;
     const joint = resolveJointCombat(stacks, only.fleet, shield, rng, only.tech, precise);
     return {
@@ -945,11 +962,13 @@ export function resolveBattle(
   const stats = stacks.map((stack) => statsFor(stack.tech));
   const live = stacks.map((stack) => ({ ...stack.fleet }));
   const starts = stacks.map((stack) => ({ ...stack.fleet }));
+  const aFireStart = stacks.map((stack) => maintenance ? partitionCombatFleet(stack.fleet, stack.damage).eligible : stack.fleet);
   const wounded = stacks.map((stack, i) => woundedFrom(stack, stats[i]!, precise));
 
   const dStats = defenders.map((stack) => statsFor(stack.tech));
   const dLive = defenders.map((stack) => ({ ...stack.fleet }));
   const dStarts = defenders.map((stack) => ({ ...stack.fleet }));
+  const dFireStart = defenders.map((stack) => maintenance && !stack.maintenanceExempt ? partitionCombatFleet(stack.fleet, stack.damage).eligible : stack.fleet);
   const dWounded = defenders.map((stack, j) => woundedFrom(stack, dStats[j]!, precise));
   const dIds = defenders.map((stack) => stack.stackId);
 
@@ -959,6 +978,7 @@ export function resolveBattle(
   const credited = stacks.map(() => 0);
   const rounds: CombatRound[] = [];
   let shieldLeft = shield;
+  let shieldProtectedArmed = 0;
 
   for (let r = 0; r < COMBAT.rounds; r++) {
     let alive = 0;
@@ -972,7 +992,13 @@ export function resolveBattle(
     const defenderRoll = COMBAT.varianceMin + rng() * span;
 
     // Each attacking stack's fire, split across every defending (stack, hull).
-    const perStack = live.map((fleet, i) => jointReturnFire(fleet, dLive, dStats, attackerRoll, stats[i]!));
+    // Critical arrivals die before healthier same-hull ships. Freeze eligibility at
+    // entry: subsequent wounds never make an active survivor leave the fight.
+    const firing = (fleet: Fleet, initial: Fleet): Fleet => Object.fromEntries(fleetEntries(fleet)
+      .map(([hull, count]) => [hull, Math.min(count, initial[hull] ?? 0)]));
+    const aFire = live.map((fleet, i) => firing(fleet, aFireStart[i]!));
+    const dFire = dLive.map((fleet, j) => firing(fleet, dFireStart[j]!));
+    const perStack = aFire.map((fleet, i) => jointReturnFire(fleet, dLive, dStats, attackerRoll, stats[i]!));
     const toD = dLive.map((_, j) => {
       const merged = new Map<HullId, number>();
       for (const maps of perStack) {
@@ -984,7 +1010,7 @@ export function resolveBattle(
     let specialistNormal = 0;
     if (shieldLeft > 0) {
       for (let i = 0; i < live.length; i++) {
-        const shots = jointReturnFire({ NULLIFIER: live[i]!.NULLIFIER ?? 0 }, dLive, dStats, attackerRoll, stats[i]!);
+        const shots = jointReturnFire({ NULLIFIER: aFire[i]!.NULLIFIER ?? 0 }, dLive, dStats, attackerRoll, stats[i]!);
         for (const map of shots) specialistNormal += sum(map);
       }
     }
@@ -992,7 +1018,7 @@ export function resolveBattle(
     // The line fires back stack by stack, each at its owner's research.
     const toA = live.map(() => new Map<HullId, number>());
     for (let j = 0; j < dLive.length; j++) {
-      const fire = jointReturnFire(dLive[j]!, live, stats, defenderRoll, dStats[j]!);
+      const fire = jointReturnFire(dFire[j]!, live, stats, defenderRoll, dStats[j]!);
       for (let i = 0; i < live.length; i++) {
         for (const [hull, value] of fire[i]!) toA[i]!.set(hull, (toA[i]!.get(hull) ?? 0) + value);
       }
@@ -1004,6 +1030,7 @@ export function resolveBattle(
     const specialistAbsorbed = Math.min(shieldLeft, specialistBonus);
     shieldLeft -= specialistAbsorbed;
     const absorbed = Math.min(shieldLeft, incoming);
+    if (dFire.some(fleet => fleetEntries(fleet).some(([hull, count]) => count > 0 && HULLS[hull].atk > 0))) shieldProtectedArmed += absorbed;
     shieldLeft -= absorbed;
     const shieldAfter = Math.max(0, Math.round(shieldLeft));
     const passRatio = incoming > 0 ? (incoming - absorbed) / incoming : 0;
@@ -1077,9 +1104,12 @@ export function resolveBattle(
 
   const D = mergedFleet(dLive);
   const defStart = mergedFleet(dStarts);
-  const lossRatio = defValueBefore > 0 ? 1 - fleetValue(D) / defValueBefore : 1;
+  const unableToFight = maintenance && aFireStart.every(fleet =>
+    !COMBAT_HULLS.some(hull => (fleet[hull] ?? 0) > 0));
+  const lossRatio = defValueBefore > 0 ? 1 - fleetValue(D) / defValueBefore : unableToFight ? 0 : 1;
   const grade: Grade =
-    fleetCount(D) === 0 && (defValueBefore === 0 || shieldLeft <= 0)
+    unableToFight ? 'REPELLED'
+      : fleetCount(D) === 0 && (defValueBefore === 0 || shieldLeft <= 0)
       ? 'DECISIVE'
       : lossRatio >= COMBAT.partialThreshold
         ? 'PARTIAL'
@@ -1127,6 +1157,7 @@ export function resolveBattle(
     lossRatio,
     rounds,
     shieldLeft: Math.max(0, Math.round(shieldLeft)),
+    shieldProtectedArmed,
     attackerSurvivors,
     defenderSurvivors: D,
     attackerLosses,

@@ -4,12 +4,13 @@ import { and, asc, eq, gt, inArray, isNull, ne, notInArray, notLike, or, sql } f
 import { CLAN, DEBRIS, INACTIVITY_MS, MULTI_WORLD, dockLocation, generateGalaxy, silentSpaceDue, waitingColonySlots, selectNeutralSlots, neutralOpeningOrder, hashSeed } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
-import { accounts, buildOrders, clanMemberships, clanRequests, clans,
+import { accounts, buildOrders, clanMemberships, clanRequests, clans, honorObservations, honorSeasons,
   clanSupportWaves, clanWarContributions, clanWarOperations, commanderTransfers, debrisFields, mainVacancies,
   miningRuns, missions, planets, playerRivals, players, probeWorldMemories, researchOrders, returnApplications,
   scheduledEvents, seasons, shards, strategicAssets, strategicInterceptions, units, watches, pirateRaids, tradeRuns,
-  intergalacticConvoyRuns } from '../db/schema.js';
+  intergalacticConvoyRuns, radiationBombFlights, hpRadiationSources } from '../db/schema.js';
 import { loadLocked } from './planet.js';
+import { observeHonorOwner } from './honorReference.js';
 import { lockAdmission } from './returnQueue.js';
 import { peopleIn } from './people.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
@@ -87,9 +88,10 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       if (!capital || worlds.some(w => w.seasonId !== source.id) || worlds.length !== colonies.length + 1) defer('PLACEMENT');
       const ids = worlds.map(w => w.id);
       const now = clock.now();
+      if (player.vacationUntil && player.vacationUntil > now) defer('ACTIVE');
       if (now >= source.endsAt || now >= target.endsAt) defer('SEASON');
       if (!returning && options.ownerRequested !== true
-        && !silentSpaceDue({ lastProgressAt: player.lastProgressAt?.getTime() ?? null, joinedAt: player.joinedAt.getTime(), mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime() }, now.getTime())) defer('ACTIVE');
+        && !silentSpaceDue({ lastProgressAt: player.lastProgressAt?.getTime() ?? null, resetAt: player.silentSpaceResetAt?.getTime(), joinedAt: player.joinedAt.getTime(), mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime() }, now.getTime())) defer('ACTIVE');
       if (returning) {
         const [application] = await tx.select().from(returnApplications).where(eq(returnApplications.id, applicationId)).for('update', { noWait: true });
         if (application?.playerId !== playerId || application.status !== 'QUEUED' || now >= application.expiresAt
@@ -136,6 +138,18 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       const [flight] = await tx.select({ id: missions.id }).from(missions).where(and(eq(missions.status, 'in_flight'),
         or(eq(missions.ownerPlayerId, playerId), inArray(missions.originPlanetId, ids), inArray(missions.targetPlanetId, ids)))).limit(1);
       if (flight) defer('FLIGHT');
+      const [bomb] = await tx.select({ id: radiationBombFlights.id }).from(radiationBombFlights).where(and(
+        or(eq(radiationBombFlights.status, 'OUTBOUND'), and(eq(radiationBombFlights.status, 'INTERCEPTED'),
+          sql`(${radiationBombFlights.interception}->>'impactAt')::timestamptz > ${now.toISOString()}::timestamptz`)),
+        or(eq(radiationBombFlights.ownerPlayerId, playerId),
+          inArray(radiationBombFlights.originPlanetId, ids), inArray(radiationBombFlights.targetPlanetId, ids)),
+      )).limit(1);
+      if (bomb) defer('FLIGHT');
+      const [radiation] = await tx.select({ id: hpRadiationSources.id }).from(hpRadiationSources).where(and(
+        eq(hpRadiationSources.seasonId, source.id), eq(hpRadiationSources.anchorKind, 'PLANET'),
+        inArray(hpRadiationSources.anchorId, ids), or(isNull(hpRadiationSources.activeUntil), gt(hpRadiationSources.activeUntil, now)),
+      )).limit(1);
+      if (radiation) defer('EFFECT');
       const [mining] = await tx.select({ id: miningRuns.id }).from(miningRuns).where(and(inArray(miningRuns.planetId, ids), ne(miningRuns.status, 'done'))).limit(1);
       const [pirate] = await tx.select({ id: pirateRaids.id }).from(pirateRaids).where(and(ne(pirateRaids.status, 'done'), or(eq(pirateRaids.ownerPlayerId, playerId), inArray(pirateRaids.planetId, ids)))).limit(1);
       const [trade] = await tx.select({ id: tradeRuns.id }).from(tradeRuns).where(and(ne(tradeRuns.status, 'done'), or(eq(tradeRuns.ownerPlayerId, playerId), inArray(tradeRuns.planetId, ids)))).limit(1);
@@ -185,6 +199,8 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
         eq(planets.seasonId, target.id), eq(planets.kind, 'NEUTRAL'), isNull(planets.controllerPlayerId), isNull(planets.recoveryUntil),
         sql`not exists (select 1 from debris_fields d where d.planet_id = ${planets.id} and (d.created_at > ${wreckCutoff.toISOString()}::timestamptz or exists (select 1 from mining_runs r where r.debris_field_id = d.id and r.status <> 'done')))`,
         sql`not exists (select 1 from missions m where m.status = 'in_flight' and (m.origin_planet_id = ${planets.id} or m.target_planet_id = ${planets.id}))`,
+        sql`not exists (select 1 from radiation_bomb_flights b where (b.status = 'OUTBOUND' or (b.status = 'INTERCEPTED' and (b.interception->>'impactAt')::timestamptz > ${now.toISOString()}::timestamptz)) and (b.origin_planet_id = ${planets.id} or b.target_planet_id = ${planets.id}))`,
+        sql`not exists (select 1 from hp_radiation_sources r where r.season_id = ${planets.seasonId} and r.anchor_kind = 'PLANET' and r.anchor_id = ${planets.id} and (r.active_until is null or r.active_until > ${now.toISOString()}::timestamptz))`,
         sql`not exists (select 1 from units u where u.planet_id = ${planets.id} and u.owner_player_id is not null and u.count > 0)`,
         sql`not exists (select 1 from scheduled_events e where e.ref_id = ${planets.id} and e.status <> 'done' and (e.kind <> 'neutral_reinforce' or e.status <> 'pending' or e.attempts <> 0 or e.resolve_at <= ${now.toISOString()}::timestamptz))`,
       )) : [];
@@ -279,6 +295,16 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
         ...(returning ? { mainEnteredAt: now } : {}),
         ...(membership ? { clanLockedUntil: new Date(Math.max(player.clanLockedUntil?.getTime() ?? 0, now.getTime() + CLAN.membershipLockMinutes * 60_000)) } : {}),
       }).where(eq(players.id, playerId));
+      const [honorSource] = await tx.select().from(honorSeasons).where(eq(honorSeasons.seasonId, source.id));
+      if (honorSource?.version === 4 && honorSource.closedAt === null) {
+        const [previous] = await tx.select().from(honorObservations).where(and(eq(honorObservations.seasonId, source.id),
+          eq(honorObservations.playerId, playerId))).orderBy(sql`${honorObservations.id} desc`).limit(1);
+        if (previous) await tx.insert(honorObservations).values({ seasonId: source.id, playerId,
+          at: now, navy: 0, coreTier: previous.coreTier });
+      }
+      // The target season needs a genuine arrival sample, even if the commander
+      // takes no further action. Never copy current inventory into a past launch.
+      await observeHonorOwner(tx, playerId, now);
       await notifyDmPeers(tx, playerId);
       /*
         THE RIVAL MARKS DO NOT COME ALONG. D183.

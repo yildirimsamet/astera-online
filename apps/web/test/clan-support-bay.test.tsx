@@ -56,8 +56,9 @@ function world(posture: 'ESCAPE' | 'SUPPORT' | 'HOLD', options: {
   })));
 }
 
-function show(node: React.ReactNode, fetch = vi.fn()) {
+function show(node: React.ReactNode, fetch = vi.fn(), honorSoloCredit = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  client.setQueryData(['season'], { honorSoloCredit });
   const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
   render(<QueryClientProvider client={client}><ApiProvider api={api}>{node}</ApiProvider></QueryClientProvider>);
   return { api, fetch };
@@ -66,6 +67,11 @@ function show(node: React.ReactNode, fetch = vi.fn()) {
 const toggle = (name: RegExp) => screen.getByRole('checkbox', { name });
 
 describe('the defence posture card', () => {
+  it('explains Honor before the player enables clan defence support', () => {
+    show(<DefencePostureCard planet={world('HOLD')} />, vi.fn(), true);
+    expect(screen.getByText(/Shared sides cannot earn positive Honor/)).toBeVisible();
+    expect(screen.getByText(/supported defenders/)).toBeVisible();
+  });
   it('shows the retreat on and support off by default, and says what each does', () => {
     show(<DefencePostureCard planet={world('ESCAPE')} />);
     expect(toggle(/tactical retreat/i)).toHaveAttribute('aria-checked', 'true');

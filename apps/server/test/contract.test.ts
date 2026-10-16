@@ -45,8 +45,11 @@ import {
 } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { launchAttack } from '../src/services/mission.js';
+import { resolveRadiationBomb } from '../src/services/radiationBomb.js';
 import { launchProbe, rememberWorld } from '../src/services/intel.js';
 import { launchMining } from '../src/services/mining.js';
+import { writeHomeHealth } from '../src/services/homeHealth.js';
+import { landHpShips } from '../src/services/shipDamage.js';
 import { privatePirateField, pirateId } from '../src/services/pirateField.js';
 import { refreshSensorEpoch, sensorHistoryForPlayer } from '../src/services/sensorHistory.js';
 import { buildApp } from '../src/app.js';
@@ -116,6 +119,7 @@ import {
   pirateRaidSchema,
   pirateRecallSchema,
   tradeLaunchSchema,
+  tradeRecallSchema,
   miningSchema,
   miningStatusSchema,
   movementLaunchSchema,
@@ -124,6 +128,8 @@ import {
   pendingSchema,
   placementSchema,
   planetSchema,
+  maintenanceSchema,
+  repairStartSchema,
   planetsSchema,
   previewSchema,
   publicClanSchema,
@@ -147,6 +153,8 @@ import {
   watchSchema,
   deathStarLaunchSchema,
   deathStarBuildSchema,
+  radiationBombBuildSchema,
+  radiationBombLaunchSchema,
   interceptorBuildSchema,
 } from '../../web/src/api/schemas.js';
 import { describeNotification } from '../../web/src/lib/notifications.js';
@@ -208,6 +216,58 @@ describe('every payload the client parses', () => {
   let app: FastifyInstance;
   let built: ReturnType<typeof buildApp>;
   let auth: { authorization: string };
+
+  it('parses radiation bomb production, launch, occupied stock, own flight and impact sources with client contracts', async () => {
+    const origin = f.planetIds[0]!;
+    const target = f.planetIds[1]!;
+    await f.db.update(seasons).set({ rulesetVersion: 18, radiationBombStartsAt: f.clock.now() }).where(eq(seasons.id, f.seasonId));
+    await f.db.update(players).set({ newcomerShieldUntil: null, recoveryShieldUntil: null });
+    for (const planetId of [origin, target]) await setLevel(f.db, planetId, 'CORE', 13);
+    await setLevel(f.db, origin, 'SHIPYARD', 5);
+    await f.db.update(planets).set({ alloy: 400000, crystal: 200000, deuterium: 40000 }).where(eq(planets.id, origin));
+    const asset = radiationBombBuildSchema.parse(await post(`/api/planets/${origin}/radiation-bombs/build`, { level: 2 }));
+    expect(asset.planet.radiationBombs).toMatchObject([{ id: asset.assetId, level: 2, status: 'BUILDING' }]);
+    await f.db.update(strategicAssets).set({ status: 'READY' }).where(eq(strategicAssets.id, asset.assetId));
+    const response = await app.inject({ method: 'POST', url: '/api/radiation-bombs/launch',
+      headers: { ...auth, 'idempotency-key': 'contract-radiation-bomb-launch' },
+      payload: { originPlanetId: origin, level: 2, target: { kind: 'PLANET', id: target }, acknowledgeShieldLoss: true } });
+    expect(response.statusCode, response.body).toBe(200);
+    const flight = radiationBombLaunchSchema.parse(response.json());
+    expect(planetSchema.parse(await get(`/api/planets/${origin}`)).radiationBombs)
+      .toMatchObject([{ id: asset.assetId, level: 2, status: 'LAUNCHED' }]);
+    expect(pendingSchema.parse(await get('/api/session/pending')).pending)
+      .toContainEqual(expect.objectContaining({ id: flight.flightId, kind: 'radiation_bomb', radiationBombLevel: 2 }));
+    f.clock.set(flight.arriveAt);
+    await resolveRadiationBomb(f.db, flight.flightId, f.clock);
+    const galaxy = galaxySchema.parse(await get('/api/galaxy'));
+    expect(galaxy.hpRadiation).toContainEqual(expect.objectContaining({ origin: 'BOMB', level: 2,
+      target: { kind: 'PLANET', id: target }, intensityHpPerMinute: 12.5 }));
+  });
+
+  it('parses manual workshop entry, partial paid repair and home scrapping with client schemas', async () => {
+    await f.db.update(seasons).set({ rulesetVersion: 14 }).where(eq(seasons.id, f.seasonId));
+    const planetId = f.planetIds[0]!;
+    await f.db.transaction(tx => landHpShips(tx, { planetId, ownerPlayerId: f.playerIds[0]!,
+      fleet: { DART: 2 }, damage: [{ hull: 'DART', count: 2, damageBp: 1000, remainderBp: 0.25 }], at: f.clock.now() }));
+    const entry = await app.inject({ method: 'POST', url: `/api/planets/${planetId}/maintenance`,
+      headers: { ...auth, 'idempotency-key': 'contract-maintenance-entry' },
+      payload: { action: 'DOCK', selection: { source: 'HOME', groups: [{ hull: 'DART', count: 1, damageBp: 1000, remainderBp: 0.25 }] } } });
+    expect(entry.statusCode, entry.body).toBe(200);
+    const moved = maintenanceSchema.parse(entry.json());
+    const lot = moved.planet.dock?.lots[0];
+    expect(lot).toMatchObject({ hull: 'DART', count: 1, damageBp: 1000, remainderBp: 0.25 });
+    if (!lot) throw new Error('Missing workshop contract lot');
+    const repair = await app.inject({ method: 'POST', url: `/api/planets/${planetId}/repairs`,
+      headers: { ...auth, 'idempotency-key': 'contract-maintenance-repair' },
+      payload: { lots: [{ id: lot.id, count: 1, damageBp: lot.damageBp, remainderBp: lot.remainderBp ?? 0 }] } });
+    expect(repair.statusCode, repair.body).toBe(200);
+    expect(repairStartSchema.parse(repair.json()).planet.dock?.lots[0]?.repairing).toBe(true);
+    const scrap = await app.inject({ method: 'POST', url: `/api/planets/${planetId}/maintenance`,
+      headers: { ...auth, 'idempotency-key': 'contract-maintenance-scrap' },
+      payload: { action: 'SCRAP', selection: { source: 'HOME', groups: [{ hull: 'DART', count: 1, damageBp: 1000, remainderBp: 0.25 }] } } });
+    expect(scrap.statusCode, scrap.body).toBe(200);
+    expect(maintenanceSchema.parse(scrap.json()).returned.alloy).toBeGreaterThan(0);
+  });
 
   it('parses the admin players total with the client contract on every page', async () => {
     await built.close();
@@ -1310,6 +1370,15 @@ describe('every payload the client parses', () => {
     expect(thread!.targetPlanetId).toBeUndefined();
     expect(thread!.targetName).toBe('TRADE_SHIP');
 
+    expect(thread!.recallable).toBe(true);
+    f.clock.advance(0.1);
+    const recalled = tradeRecallSchema.parse(await post(`/api/trade/runs/${parsed.runId}/recall`, {}));
+    expect(recalled.runId).toBe(parsed.runId);
+    expect(recalled.homeAt!.getTime()).toBeGreaterThan(f.clock.now().getTime());
+    const returning = pendingSchema.parse(await get('/api/session/pending')).pending.find(row => row.id === parsed.runId);
+    expect(returning?.leg).toBe('return');
+    expect(returning?.recallable).toBeUndefined();
+
     // A point is not an orbit: the rendezvous travels, the route never does.
     const wire = JSON.stringify(parsed);
     for (const forbidden of ['radius', 'period', 'phase', 'inclination', 'ascendingNode']) {
@@ -1541,6 +1610,7 @@ describe('every payload the client parses', () => {
     const parsed = intelSchema.parse(await get('/api/intel'));
     const report = parsed.probeReports.find((r) => r.targetPlanetId === theirs);
     expect(report, 'the delivered report never reached the payload').toBeDefined();
+    expect(report).toMatchObject({ missionId: launch.missionId });
     expect(report?.doctrines, 'the doctrine reading was dropped on the way out')
       .toEqual({ SHIP_POWER: 2 });
     expect(report?.interceptors, 'the interceptor count was dropped on the way out')
@@ -1689,6 +1759,15 @@ describe('every payload the client parses', () => {
     expect(parsed.level).toBeGreaterThan(0);
   });
 
+  it('publishes colony fault protection in upgrade and subsequent planet responses', async () => {
+    const colony = f.planetIds[0]!;
+    await f.db.update(planets).set({ kind: 'COLONY' }).where(eq(planets.id, colony));
+    const until = new Date(f.clock.now().getTime() + 12 * 60 * 60_000);
+    const parsed = upgradeSchema.parse(await post(`/api/planets/${colony}/upgrade`, { type: 'VAULT' }));
+    expect(parsed.planet.faultProtectedUntil).toEqual(until);
+    expect(planetSchema.parse(await get(`/api/planets/${colony}`)).faultProtectedUntil).toEqual(until);
+  });
+
   it('POST /api/planet/build parses', async () => {
     const parsed = buildSchema.parse(await post('/api/planet/build', { hull: 'DART', count: 2 }));
     expect(parsed.built).toBe(2);
@@ -1787,12 +1866,16 @@ describe('every payload the client parses', () => {
     }));
     const marked = clanWarTargetResultSchema.parse(await clanPost('/api/clan/war/target', { targetPlanetId: target }));
     expect(marked.operation.pool).toMatchObject({ strikeMinutes: null, paces: [] });
+    await f.db.transaction(tx => writeHomeHealth(tx, origin, { DART: 12, COURIER: 2, BASTION: 3, THORN: 5, PROSPECTOR: 3 },
+      [{ hull: 'DART', count: 12, damageBp: 2000, remainderBp: 0.25 }]));
     const staged = clanWarContributionResultSchema.parse(await clanPost('/api/clan/war/contributions', {
       originPlanetId: origin, fleet: { DART: 4 }, acknowledgeShieldLoss: true,
     }));
     expect(staged.war.pool.paces).toEqual(MISSION_PACES);
     const read = clanWarSchema.parse(await get('/api/clan/war'));
     expect(read.operation?.pool.paces).toEqual(MISSION_PACES);
+    expect(staged.war.contributions[0]?.damage).toEqual([{ hull: 'DART', count: 4, damageBp: 2000, remainderBp: 0.25 }]);
+    expect(read.operation?.contributions[0]?.damage).toEqual(staged.war.contributions[0]?.damage);
     const launched = clanWarStartResultSchema.parse(await clanPost('/api/clan/war/start', {
       acknowledgeShieldLoss: true, pace: 0.5,
     }));

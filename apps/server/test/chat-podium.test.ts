@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -9,7 +9,8 @@ import { clanMemberships, clans, players, seasonCycles, seasonResults, seasonRew
 import { previousSeasonPodium } from '../src/services/messageDecorations.js';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 
-const message = z.object({ id: z.string(), previousSeasonRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional() });
+const message = z.object({ id: z.string(), previousSeasonRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  previousSeasonRanking: z.enum(['HONOR', 'DOMINION']).optional() });
 const posted = z.object({ message, conversationId: z.string().optional() });
 const page = z.object({ messages: z.array(message) });
 
@@ -60,6 +61,14 @@ describe('previous-season chat podium', () => {
 
   it('returns no podium for an empty page', async () => {
     expect(await previousSeasonPodium(f.db, [])).toEqual(new Map());
+  });
+  it('uses the positive Honor podium in a ranked Honor season and keeps Dominion independent', async () => {
+    for (const [index, accountId] of f.accountIds.entries()) await f.db.update(seasonResults).set({
+      honorRank: index === 0 ? 1 : index, honorScore: index === 0 ? 0 : 100_000_000 - index * 10_000_000,
+    }).where(and(eq(seasonResults.seasonId, priorSeasonId), eq(seasonResults.accountId, accountId)));
+    expect(await previousSeasonPodium(f.db, f.playerIds)).toEqual(new Map([
+      [f.playerIds[1], 1], [f.playerIds[2], 2], [f.playerIds[3], 3],
+    ]));
   });
 
   it('does not retain an older podium into the following season', async () => {
@@ -121,5 +130,40 @@ describe('previous-season chat podium', () => {
     const history = await app.inject({ method: 'GET', url: `/api/dm/conversations/${conversationId}/messages`, headers: auth[3] });
     expect(history.statusCode, history.body).toBe(200);
     expect(page.parse(history.json()).messages[0]?.previousSeasonRank).toBe(3);
+  });
+
+  it.each(['general', 'clan', 'dm'] as const)('uses the frozen Honor winner in %s post and history even when Dominion disagrees', async (channel) => {
+    for (const [index, accountId] of f.accountIds.entries()) await f.db.update(seasonResults).set({
+      honorRank: 4 - index, honorScore: (index + 1) * 10_000_000,
+    }).where(and(eq(seasonResults.seasonId, priorSeasonId), eq(seasonResults.accountId, accountId)));
+    if (channel === 'clan') {
+      const [clan] = await f.db.insert(clans).values({ seasonId: f.seasonId, name: 'Honor', nameKey: 'honor', tag: 'HNR', createdAt: f.clock.now() }).returning();
+      if (!clan) throw new Error('Missing Honor clan');
+      await f.db.insert(clanMemberships).values([0, 3].map((index, slot) => ({
+        seasonId: f.seasonId, clanId: clan.id, playerId: f.playerIds[index]!, role: slot === 0 ? 'LEADER' as const : 'MEMBER' as const,
+        slot, joinedAt: f.clock.now(), matureAt: f.clock.now(), aidPolicyChangedAt: f.clock.now(),
+      })));
+    }
+    let conversationId: string | undefined;
+    for (const who of [0, 3]) {
+      const response = await app.inject({ method: 'POST',
+        url: channel === 'general' ? '/api/chat/messages' : channel === 'clan' ? '/api/clan/chat/messages' : '/api/dm/messages',
+        headers: { ...auth[who], 'idempotency-key': `honor-cup-${channel}-${who}` },
+        payload: { content: `Honor cup ${who}`, ...(channel === 'dm' ? { recipientPlayerId: f.playerIds[who === 0 ? 3 : 0] } : {}) },
+      });
+      expect(response.statusCode, response.body).toBe(200);
+      const result = posted.parse(response.json());
+      conversationId = result.conversationId;
+      expect(result.message.previousSeasonRank).toBe(who === 3 ? 1 : undefined);
+      expect(result.message.previousSeasonRanking).toBe(who === 3 ? 'HONOR' : undefined);
+    }
+    const history = await app.inject({ method: 'GET',
+      url: channel === 'general' ? '/api/chat/messages' : channel === 'clan' ? '/api/clan/chat' : `/api/dm/conversations/${conversationId}/messages`,
+      headers: auth[0],
+    });
+    expect(history.statusCode, history.body).toBe(200);
+    expect(page.parse(history.json()).messages.map(row => [row.previousSeasonRank, row.previousSeasonRanking])).toEqual([
+      [undefined, undefined], [1, 'HONOR'],
+    ]);
   });
 });

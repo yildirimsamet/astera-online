@@ -369,10 +369,11 @@ const researchWork: Record<ResearchProjectId, { stage: number; hours: number; gr
   SHIP_ARMOR: { stage: 4, hours: 3, growth: 2.3, fuel: 0.5 },
   SHIP_PROPULSION: { stage: 4, hours: 2.5, growth: 2.1, fuel: 1 },
   EMPLACEMENT_DOCTRINE: { stage: 4, hours: 2, growth: 2.1, fuel: 0.5 },
-  INTERCEPTION_GRID: { stage: 9, hours: 8, growth: 1, fuel: 8 },
+  INTERCEPTION_GRID: { stage: 9, hours: 8, growth: 1.8, fuel: 8 },
   STRATEGIC_STOCKPILE: { stage: 11, hours: 12, growth: 1, fuel: 12 },
   /** Owner K6, 2026-09-29: Yard Automation's own first two rungs. */
   INDUSTRIAL: { stage: 6, hours: 3, growth: 1.8, fuel: 0 },
+  RADIATION_SHIELDING: { stage: 4, hours: 1.5, growth: 1.8, fuel: 0 },
 };
 
 export function profileResearch(id: ResearchProjectId, level: number, days: number = ECONOMY_PROFILE.progressionDays) {
@@ -404,8 +405,8 @@ export function profileResearch(id: ResearchProjectId, level: number, days: numb
  */
 export const SUPPORT_ROUND_TRIP = [17, 22, 32, 38] as const;
 
-/** Owner instruction, 2026-09-25: every shipyard-built fleet hull flies 25% slower. */
-export const FLEET_SPEED_FACTOR = 0.75;
+/** Owner, 2026-10-13: 80% of the previous 0.75 fleet scale; NPC anchors follow it. */
+export const FLEET_SPEED_FACTOR = 0.60;
 
 /**
  * EVERY CARGO HOLD FLIES 2.5x ITS RUNG. Owner instruction, 2026-10-06.

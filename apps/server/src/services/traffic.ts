@@ -1,5 +1,5 @@
 import { loadCosmeticTraffic, decorateCosmeticContacts } from './cosmeticTraffic.js';
-import { and, eq, gte, inArray, ne, or } from 'drizzle-orm';
+import { and, eq, gte, inArray, ne, or, sql } from 'drizzle-orm';
 import {
   DEATH_STAR,
   PIRATE,
@@ -42,6 +42,7 @@ import {
   planets,
   strategicImpacts,
   strategicInterceptions,
+  radiationBombFlights,
   tradeRuns,
   units,
 } from '../db/schema.js';
@@ -55,7 +56,7 @@ import {
   pirateId,
   type PirateSnapshot,
 } from './pirateField.js';
-import { dockEndsAt } from './trade.js';
+import { dockEndsAt, tradeReturnPoint, tradeReturnDepartAt, tradeReturnHome } from './trade.js';
 import { minutesSince } from '../clock.js';
 import { sensorHistoryForPlayer } from './sensorHistory.js';
 import { loadMonumentTraffic, monumentTrafficFleet, type NativeMonumentTraffic } from './monumentTraffic.js';
@@ -195,11 +196,12 @@ const APPROACH_MS = 60_000;
  * sells and none of them are here.
  */
 export type ContactKind =
-  | 'unknown' | 'fleet' | 'probe' | 'death_star' | 'mining' | 'harvest'
+  | 'unknown' | 'fleet' | 'probe' | 'death_star' | 'radiation_bomb' | 'mining' | 'harvest'
   /** An NPC pirate fleet riding its own orbit. D150. */
   | 'pirate';
 
 export interface Contact {
+  radiationBombLevel?: 1 | 2 | 3;
   appearance?: { engineId?: string; probeId?: string; flagId?: string; shipSkins?: ShipCosmeticEquipment };
   /**
    * Stable for the life of the flight, and meaningless on its own.
@@ -506,6 +508,7 @@ function windowOf(
  * column — a sentinel string is a 500 from the driver, which is how this was found.
  */
 export interface TrafficSnapshot {
+  bombRows?: readonly (typeof radiationBombFlights.$inferSelect)[];
   cosmeticAppearances?: ReadonlyMap<string, NonNullable<Contact['appearance']>>;
   radiation?: FlightRadiation;
   missionCohorts?: ReadonlyMap<string, FlightCohort[]>;
@@ -570,7 +573,7 @@ export async function loadTrafficSnapshot(
   now: Date = new Date(),
 ): Promise<TrafficSnapshot> {
   const impactCutoff = new Date(now.getTime() - DEATH_STAR.impactSeconds * 1000);
-  const [missionRows, miningRows, pirateRaidRows, tradeRunRows, convoyRunRows, interceptionRows, impactRows, monumentTraffic] =
+  const [missionRows, miningRows, pirateRaidRows, tradeRunRows, convoyRunRows, interceptionRows, impactRows, monumentTraffic, bombRows] =
     await Promise.all([
     db
       .select({ mission: missions })
@@ -621,6 +624,13 @@ export async function loadTrafficSnapshot(
         gte(strategicImpacts.createdAt, impactCutoff),
       )),
     loadMonumentTraffic(db, seasonId),
+    // An intercepted bomb is resolved at the interceptor's LAUNCH, eight seconds before
+    // its collision; counted from that, the row left the map as the fireball began. Its
+    // window runs from the collision, exactly as a Death Star's interception does.
+    db.select().from(radiationBombFlights).where(and(eq(radiationBombFlights.seasonId, seasonId),
+      or(eq(radiationBombFlights.status, 'OUTBOUND'),
+        and(eq(radiationBombFlights.status, 'INTERCEPTED'),
+          sql`(${radiationBombFlights.interception}->>'impactAt')::timestamptz >= ${impactCutoff.toISOString()}::timestamptz`)))),
   ]);
 
   const jointMissionIds = missionRows
@@ -679,7 +689,7 @@ export async function loadTrafficSnapshot(
   if (ids.size === 0) {
     return {
       radiation, missionCohorts: cohorts, physicalFleets: physical,
-      monumentTraffic,
+      monumentTraffic, bombRows,
       missionRows,
       clanFleetByMission,
       miningRows,
@@ -722,7 +732,7 @@ export async function loadTrafficSnapshot(
   );
   const snapshot: TrafficSnapshot = {
     radiation, missionCohorts: cohorts, physicalFleets: physical,
-    monumentTraffic,
+    monumentTraffic, bombRows,
     missionRows,
     clanFleetByMission,
     miningRows,
@@ -739,7 +749,13 @@ export async function loadTrafficSnapshot(
 }
 
 export interface StrategicInterceptionView {
+  radiationBombLevel?: 1 | 2 | 3;
   id: string;
+  /**
+   * The weapon this shot killed — the Death Star's mission or the bomb's flight, the id its
+   * craft and landing moment carry — so no screen still lands it (owner, 2026-10-16).
+   */
+  weaponId: string;
   targetPlanetId: string;
   trigger: 'RADAR' | 'TELESCOPE';
   launchAt: Date;
@@ -751,6 +767,8 @@ export interface StrategicInterceptionView {
 
 export interface StrategicInterceptionImpactView {
   id: string;
+  /** See `StrategicInterceptionView.weaponId`. */
+  weaponId: string;
   at: Date;
   collision: Vec3;
   /** True means the viewer earned the public blast but not either craft. */
@@ -772,7 +790,7 @@ export function projectStrategicInterceptions(
   ownPlayerId: string | null,
   sensors: readonly SensorPost[],
 ): StrategicInterceptionView[] {
-  return snapshot.interceptionRows.flatMap(({ interception }) => {
+  const ordinary = snapshot.interceptionRows.flatMap(({ interception }) => {
     const collision = {
       x: interception.collisionX,
       y: interception.collisionY,
@@ -788,6 +806,7 @@ export function projectStrategicInterceptions(
     if (!participant && !telescopeWitness) return [];
     return [{
       id: interception.id,
+      weaponId: interception.missionId,
       targetPlanetId: interception.targetPlanetId,
       trigger: interception.trigger,
       launchAt: interception.launchAt,
@@ -805,6 +824,16 @@ export function projectStrategicInterceptions(
       collision,
     }];
   });
+  const bombs: StrategicInterceptionView[] = (snapshot.bombRows ?? []).flatMap(flight => {
+    const interception = flight.interception;
+    if (flight.status !== 'INTERCEPTED' || !interception || flight.targetPlanetId === null) return [];
+    const participant = ownPlayerId === flight.ownerPlayerId || ownPlayerId === interception.defenderPlayerId;
+    if (!participant && !identifiesStrategicCollision(sensors, interception.collisionPosition)) return [];
+    return [{ id: flight.id, weaponId: flight.id, radiationBombLevel: flight.level, targetPlanetId: flight.targetPlanetId,
+      trigger: interception.trigger, launchAt: new Date(interception.launchAt), impactAt: new Date(interception.impactAt),
+      launch: interception.launchPosition, deathStarFrom: interception.weaponPosition, collision: interception.collisionPosition }];
+  });
+  return [...ordinary, ...bombs];
 }
 
 /**
@@ -821,7 +850,7 @@ export function projectStrategicInterceptionImpacts(
   sensors: readonly SensorPost[],
   now: Date,
 ): StrategicInterceptionImpactView[] {
-  return snapshot.interceptionRows.flatMap(({ interception }) => {
+  const ordinary = snapshot.interceptionRows.flatMap(({ interception }) => {
     const age = now.getTime() - interception.impactAt.getTime();
     if (age < 0 || age >= DEATH_STAR.impactSeconds * 1000) return [];
     const collision = {
@@ -833,12 +862,25 @@ export function projectStrategicInterceptionImpacts(
       || ownPlayerId === interception.defenderPlayerId;
     return [{
       id: interception.id,
+      weaponId: interception.missionId,
       at: interception.impactAt,
       collision,
       effectOnly: !participant && !identifiesStrategicCollision(sensors, collision),
       focusEligible: ownPlayerId === interception.defenderPlayerId,
     }];
   });
+  const bombs: StrategicInterceptionImpactView[] = (snapshot.bombRows ?? []).flatMap(flight => {
+    const interception = flight.interception;
+    if (flight.status !== 'INTERCEPTED' || !interception) return [];
+    const at = new Date(interception.impactAt);
+    const age = now.getTime() - at.getTime();
+    if (age < 0 || age >= DEATH_STAR.impactSeconds * 1000) return [];
+    const participant = ownPlayerId === flight.ownerPlayerId || ownPlayerId === interception.defenderPlayerId;
+    return [{ id: flight.id, weaponId: flight.id, at, collision: interception.collisionPosition,
+      effectOnly: !participant && !identifiesStrategicCollision(sensors, interception.collisionPosition),
+      focusEligible: ownPlayerId === interception.defenderPlayerId }];
+  });
+  return [...ordinary, ...bombs];
 }
 
 /**
@@ -1136,6 +1178,20 @@ export function projectGalaxyTraffic(
   };
 
   const out: Contact[] = [];
+
+  for (const flight of snapshot.bombRows ?? []) {
+    if (flight.status !== 'OUTBOUND' || flight.ownerPlayerId === ownPlayerId) continue;
+    const slice = windowOf(flight.originPosition, flight.targetPosition, flight.departAt, flight.arriveAt, now);
+    if (!slice) continue;
+    const zone = zoneAt(slice.from);
+    if (zone === 'NONE') continue;
+    const targetPost = sensors.find(post => post.planetId === flight.targetPlanetId);
+    const inbound = targetPost && radarSensesIntent(targetPost.detect, distance(targetPost.at, slice.from))
+      ? { inbound: true as const } : {};
+    out.push(zone === 'CONTACT' ? { id: flight.id, kind: 'unknown', ...slice, ...inbound,
+      ...(radarReveal(slice.from).kind ? { silhouette: 'radiation_bomb' as const } : {}) }
+      : { id: flight.id, kind: 'radiation_bomb', radiationBombLevel: flight.level, ...slice, ...inbound });
+  }
 
   if (snapshot.monumentTraffic && now.getTime() < snapshot.monumentTraffic.endsAt) {
     for (const flight of snapshot.monumentTraffic.flights) {
@@ -1443,8 +1499,8 @@ export function projectGalaxyTraffic(
     if (ownedPlanets.has(run.planetId)) continue;
     const home = positions.get(run.planetId);
     if (!home) continue;
-    const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
     const returning = run.status === 'returning';
+    const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
 
     const rawFrom = returning ? meet : home;
     const rawTo = returning ? home : meet;
@@ -1915,17 +1971,18 @@ export function projectGalaxyTraffic(
       ? ownedPlanets.has(run.planetId)
       : run.ownerPlayerId === ownPlayerId;
     if (mine) continue;
-    const home = positions.get(run.planetId);
-    if (!home) continue;
+    const origin = positions.get(run.planetId);
+    if (!origin) continue;
+    const home = tradeReturnHome(run, origin);
 
-    const meet = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
     const returning = run.status === 'returning';
+    const meet = returning ? tradeReturnPoint(run) : { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
     const legArriveAt = returning ? run.homeAt : run.arriveAt;
     if (!legArriveAt) continue;
     if (snapshot.radiation?.model === 'HP') {
       const projection = projectHpFlight([{ fleet: snapshot.physicalFleets?.get(`trade:${run.id}`) ?? {},
         damage: run.damage, tech: run.tech ?? {}, paidAt: run.radiationSettledAt }],
-        returning ? [flightSegment(meet, home, dockEndsAt(run.arriveAt), legArriveAt)]
+        returning ? [flightSegment(meet, home, tradeReturnDepartAt(run), legArriveAt)]
           : [flightSegment(home, meet, run.departAt, run.arriveAt), flightSegment(meet, meet, run.arriveAt, dockEndsAt(run.arriveAt))],
         now, snapshot.radiation);
       if (fleetCount(projection.fleet) === 0) continue;
@@ -1942,7 +1999,7 @@ export function projectGalaxyTraffic(
       The same instant `resolveTradeArrival` measures the leg from, so the window
       this publishes and the clock the queue is waiting on are one number.
     */
-    const departAt = returning ? dockEndsAt(run.arriveAt) : run.departAt;
+    const departAt = returning ? tradeReturnDepartAt(run) : run.departAt;
 
     /*
       ALONGSIDE, FOR TEN SECONDS, AND STILL SUBJECT TO THE HORIZON.

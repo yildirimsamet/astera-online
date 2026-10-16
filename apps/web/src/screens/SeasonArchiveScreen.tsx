@@ -9,8 +9,6 @@ import type {
 } from '../api/schemas.js';
 import {
   useArchivedLeaderboard,
-  useLeaderboard,
-  useSeason,
   useSeasonArchive,
   useSeasonCommanderProfile,
 } from '../api/queries.js';
@@ -27,9 +25,10 @@ import {
   SkullIcon, WarBannerIcon, WorldLostIcon,
 } from '../ui/icons/index.js';
 import { LeaderboardScreen } from './LeaderboardScreen.js';
-import { SeasonRewardBoard } from '../ui/SeasonRewardBoard.js';
 import { ArtWell, EmptyState, Section, Segmented, Stat, Unreachable, Waiting } from '../ui/kit/index.js';
 import { Flag } from '../v2/identity/Flag.js';
+import { RankingScores } from '../ui/RankingScores.js';
+import { HonorIcon } from '../ui/icons/index.js';
 
 type ProfileView = 'season' | 'overall';
 
@@ -73,8 +72,6 @@ export function SeasonArchiveScreen({
 }) {
   const { t } = useTranslation();
   const archive = useSeasonArchive();
-  const season = useSeason();
-  const board = useLeaderboard();
   const [seasonId, setSeasonId] = useState<string | null>(initialSeasonId);
   const [resultId, setResultId] = useState<string | null>(null);
   /*
@@ -100,7 +97,7 @@ export function SeasonArchiveScreen({
     <div data-v2-season-archive className="font-v2-ui text-v2-ink">
       <nav
         aria-label={t('leaderboard.archive.selectorLabel')}
-        className="border-b border-line-soft bg-void px-2 py-2"
+        className="border-b border-v2-line bg-v2-void px-2 py-2"
       >
         {/*
           THE STRIP FETCHES ITSELF. Owner instruction: no "load older seasons"
@@ -109,7 +106,7 @@ export function SeasonArchiveScreen({
           and on a horizontal rail the gesture IS the request.
         */}
         <div
-          className="flex gap-2 overflow-x-auto pb-1.5"
+          className="v2-segmented flex gap-1 overflow-x-auto [scrollbar-width:none]"
           onScroll={(event) => {
             const strip = event.currentTarget;
             const remaining = strip.scrollWidth - strip.scrollLeft - strip.clientWidth;
@@ -161,7 +158,6 @@ export function SeasonArchiveScreen({
             standings is already asking "where am I"; this is the half of that
             question the product never answered — what being there is worth.
           */}
-          <SeasonRewardBoard season={season.data} board={board.data} />
           <LeaderboardScreen onFocusPlanet={onFocusPlanet} />
         </>
       ) : resultId === null ? (
@@ -192,11 +188,7 @@ function ArchiveChoice({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`legend min-h-11 shrink-0 rounded-chip border px-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crystal ${
-        active
-          ? 'border-crystal/50 bg-crystal/10 text-crystal'
-          : 'border-line bg-raised text-dim hover:text-bone'
-      }`}
+      className="v2-segmented-option min-h-10 flex-1 shrink-0 whitespace-nowrap px-3"
     >
       {label}
     </button>
@@ -216,8 +208,11 @@ function ArchivedLeaderboard({
   const rows = useMemo(() => {
     const locale = i18n.resolvedLanguage === 'tr' ? 'tr-TR' : 'en-US';
     const needle = query.trim().toLocaleLowerCase(locale);
-    return board.data?.ladder.filter((row) =>
-      row.commanderName.toLocaleLowerCase(locale).includes(needle)) ?? [];
+    const honor = board.data?.ladder.some(row => row.honorRank != null) ?? false;
+    return board.data?.ladder.filter((row) => (!honor || row.honorRank != null) &&
+      row.commanderName.toLocaleLowerCase(locale).includes(needle))
+      .map(row => ({ ...row, rank: row.honorRank ?? row.rank }))
+      .toSorted((a, b) => a.rank - b.rank) ?? [];
   }, [board.data, i18n.resolvedLanguage, query]);
 
   if (board.isError) {
@@ -255,7 +250,7 @@ function ArchivedLeaderboard({
           className="field mt-2 min-h-11 w-full"
         />
       </header>
-      {board.data.record === null ? null : <GalaxyRecordPanel record={board.data.record} />}
+      {board.data.record === null ? null : <GalaxyRecordPanel record={board.data.record} honorPrimary={board.data.ladder.some(row => row.honorRank != null)} />}
       {rows.length === 0 ? (
         <div className="px-2 py-6"><EmptyState title={t('leaderboard.archive.noMatch')} /></div>
       ) : (
@@ -272,7 +267,7 @@ function ArchivedLeaderboard({
                 className={`grid min-h-16 w-full grid-cols-[2rem_2.25rem_minmax(0,1fr)_auto] items-center gap-2 px-2 py-3 text-left focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-crystal ${row.self ? 'bg-crystal/8' : 'hover:bg-raised/60'}`}
               >
                 {/* An object for the podium, a numeral for everybody else. */}
-                {isPlace(row.rank) ? (
+                {isPlace(row.rank) && (row.honorScore == null || row.honorScore > 0) ? (
                   <Medal place={row.rank} size={26} className="mx-auto text-crystal/70" />
                 ) : (
                   <span className={`num text-center text-body ${row.self ? 'text-crystal' : 'text-faint'}`}>
@@ -289,7 +284,7 @@ function ArchivedLeaderboard({
                 */}
                 <span
                   className={`inline-block rounded-full ${
-                    medalOf(row.rank) ? `ring-1 ${medalOf(row.rank)?.ring ?? ''}` : ''
+                    (row.honorScore == null || row.honorScore > 0) && medalOf(row.rank) ? `ring-1 ${medalOf(row.rank)?.ring ?? ''}` : ''
                   }`}
                 >
                   <PlanetSigil seed={row.resultId} size={36} />
@@ -301,12 +296,7 @@ function ArchivedLeaderboard({
                   </strong>
                   <span className="mt-1 block truncate text-label text-faint">{row.title}</span>
                 </span>
-                <span className="text-right">
-                  <span className="num block text-body text-opportunity">
-                    {row.dominion === 0 ? full(0) : signed(row.dominion)}
-                  </span>
-                  <span className="legend block">{t('leaderboard.score')}</span>
-                </span>
+                <RankingScores honor={row.honorScore} dominion={row.dominion} />
               </button>
             </li>
           ))}
@@ -318,8 +308,10 @@ function ArchivedLeaderboard({
 
 function GalaxyRecordPanel({
   record,
+  honorPrimary = false,
 }: {
   record: NonNullable<SeasonArchiveLeaderboard['record']>;
+  honorPrimary?: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -338,9 +330,9 @@ function GalaxyRecordPanel({
         </header>
         <div className="grid gap-px bg-line-soft sm:grid-cols-2">
           {record.champion === null ? null : (
-            <RecordFact label={t('leaderboard.archive.galaxyRecord.champion')}>
+            <RecordFact label={`${honorPrimary ? t('leaderboard.score') + ' · ' : ''}${t('leaderboard.archive.galaxyRecord.champion')}`}>
               <strong className="name text-bone">{record.champion.commanderName}</strong>
-              <span className="num text-label text-opportunity">{signed(record.champion.dominion)}</span>
+              <span className="num text-caption font-normal text-v2-ink-2">{signed(record.champion.dominion)}</span>
             </RecordFact>
           )}
           {record.clanPodium.length === 0 ? null : (
@@ -417,8 +409,11 @@ function CommanderProfile({
     return <Unreachable what={t('leaderboard.archive.commanderCard')} onRetry={() => { void profile.refetch(); }} />;
   }
   if (!profile.data) return <Waiting>{t('leaderboard.archive.waitingProfile')}</Waiting>;
-  const { selected } = profile.data;
-  const standing = percentile(selected.rank, selected.commanders ?? 0);
+  const stored = profile.data.selected;
+  const selected = { ...stored, rank: stored.honorRank ?? stored.rank,
+    commanders: stored.honorRank != null ? stored.honorCommanders : stored.commanders };
+  const meritsMedal = selected.honorScore == null || selected.honorScore > 0;
+  const standing = meritsMedal ? percentile(selected.rank, selected.commanders ?? 0) : null;
   const openResult = (nextResultId: string): void => {
     if (nextResultId === selected.resultId) {
       setView('season');
@@ -458,14 +453,14 @@ function CommanderProfile({
           <span className="relative inline-block">
             <span
               className={`inline-block rounded-full ${
-                medalOf(selected.rank)
+                meritsMedal && medalOf(selected.rank)
                   ? `ring-2 ${medalOf(selected.rank)?.ring ?? ''} ${medalOf(selected.rank)?.glow ?? ''}`
                   : ''
               }`}
             >
               <PlanetSigil seed={selected.seasonId + selected.commanderName} size={64} />
             </span>
-            {isPlace(selected.rank) ? (
+            {isPlace(selected.rank) && meritsMedal ? (
               <Medal
                 place={selected.rank}
                 size={34}
@@ -498,17 +493,19 @@ function CommanderProfile({
         </div>
         <div className="relative mt-4 grid grid-cols-2 gap-2">
           <HeroFigure
-            icon={<LeaderboardIcon className="size-4" />}
-            label={t('leaderboard.archive.metrics.finalRank')}
+            icon={selected.honorRank != null ? <HonorIcon className="size-4" /> : <LeaderboardIcon className="size-4" />}
+            label={t(selected.honorRank != null ? 'leaderboard.honorRank' : 'leaderboard.archive.metrics.finalRank')}
             value={`#${full(selected.rank)}`}
-            tone={selected.rank === 1 ? 'opportunity' : selected.rank <= 3 ? 'crystal' : 'bone'}
+            tone={!meritsMedal ? 'bone' : selected.rank === 1 ? 'opportunity' : selected.rank <= 3 ? 'crystal' : 'bone'}
           />
-          <HeroFigure
+          {selected.honorScore != null ? <div className="flex items-center justify-end rounded-control border border-v2-self/25 bg-v2-self/5 px-3 py-2">
+            <RankingScores honor={selected.honorScore} dominion={selected.dominion} />
+          </div> : <HeroFigure
             icon={<GalaxyIcon className="size-4" />}
             label={t('leaderboard.score')}
             value={selected.dominion === 0 ? full(0) : signed(selected.dominion)}
             tone={selected.dominion > 0 ? 'opportunity' : 'bone'}
-          />
+          />}
         </div>
       </header>
       <Segmented
@@ -1050,7 +1047,7 @@ function CareerStats({
       )}
       <Section label={t('leaderboard.archive.career.seasons')}>
         <ol className="divide-y divide-line-soft rounded-plate border border-line-soft">
-          {career.seasons.map((season) => (
+          {career.seasons.map(season => ({ ...season, rank: season.honorRank ?? season.rank })).map((season) => (
             <li key={season.resultId}>
               <button
                 type="button"
@@ -1070,7 +1067,7 @@ function CareerStats({
                   everything else carries a quiet numeral — the same vocabulary as
                   the ladder it came from.
                 */}
-                {isPlace(season.rank) ? (
+                {isPlace(season.rank) && (season.honorScore == null || season.honorScore > 0) ? (
                   <Medal place={season.rank} size={26} className="text-crystal/70" />
                 ) : (
                   <span className="num w-7 shrink-0 text-center text-body text-faint">
@@ -1085,16 +1082,7 @@ function CareerStats({
                     {season.shard} · {season.title}
                   </span>
                 </span>
-                <span className="shrink-0 text-right">
-                  <span
-                    className={`num block text-body ${
-                      season.dominion > 0 ? 'text-opportunity' : season.dominion < 0 ? 'text-threat' : 'text-dim'
-                    }`}
-                  >
-                    {season.dominion === 0 ? full(0) : signed(season.dominion)}
-                  </span>
-                  <span className="legend block">{t('leaderboard.score')}</span>
-                </span>
+                <RankingScores honor={season.honorScore} dominion={season.dominion} />
               </button>
             </li>
           ))}

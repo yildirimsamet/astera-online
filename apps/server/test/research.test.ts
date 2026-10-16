@@ -972,7 +972,7 @@ describe('what is open from the first minute', () => {
   beforeEach(async () => {
     f = await seedWorld();
     [mine] = f.planetIds as [string];
-    await setLevel(f.db, mine, 'CORE', 12);
+    await setLevel(f.db, mine, 'CORE', 13);
     await grant(f.db, mine, 5_000_000, 5_000_000);
     await f.db.update(planets).set({ deuterium: 500_000 }).where(eq(planets.id, mine));
   });
@@ -1092,7 +1092,7 @@ describe('the reason a shut project is shut', () => {
   beforeEach(async () => {
     f = await seedWorld();
     [mine] = f.planetIds as [string];
-    await setLevel(f.db, mine, 'CORE', 12);
+    await setLevel(f.db, mine, 'CORE', 13);
     await grant(f.db, mine, 5_000_000, 5_000_000);
     await f.db.update(planets).set({ deuterium: 500_000 }).where(eq(planets.id, mine));
   });

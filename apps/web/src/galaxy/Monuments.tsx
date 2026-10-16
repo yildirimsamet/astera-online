@@ -5,18 +5,24 @@ import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { PublicMonument } from '../api/schemas.js';
+import type { HpRadiationSourceView, PublicMonument } from '../api/schemas.js';
+import { RadiationIndicator } from '../ui/RadiationIndicator.js';
+import { radiationAtTarget } from '../lib/targetRadiation.js';
+import { useNow } from '../lib/time.js';
 import { MonumentModel, monumentScale } from './MonumentModel.js';
+import { MonumentOrbit } from './MonumentOrbit.js';
 import { monumentName } from '../i18n/names.js';
 import { markHit, wasTap } from './tap.js';
 import { createMonumentVisibility } from './monumentVisibility.js';
 import type { PlanetNode } from './scene.js';
 
-export function Monuments({ monuments, planets, focusedId, onSelect }: {
+export function Monuments({ monuments, planets, hpRadiation = [], focusedId, onSelect }: {
   monuments: readonly PublicMonument[]; planets: readonly PlanetNode[];
+  hpRadiation?: readonly HpRadiationSourceView[];
   focusedId: string | null; onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const radiationNow = useNow(1000);
   const groups = useRef(new Map<string,Group>());
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
   const lastHidden = useRef<ReadonlySet<string>>(hidden);
@@ -40,7 +46,10 @@ export function Monuments({ monuments, planets, focusedId, onSelect }: {
       setHidden(next);
     }
   });
-  return <>{monuments.map((monument) => <group key={monument.id} ref={group=>{if(group)groups.current.set(monument.id,group);else groups.current.delete(monument.id);}} position={toWorld(monument.position)}
+  return <>
+    {monuments.map(monument => monument.motion ? <MonumentOrbit key={monument.id} id={monument.id}
+      motion={monument.motion} scale={monumentScale(monument.difficulty)} focused={focusedId === monument.id} hasFocus={focusedId !== null} /> : null)}
+    {monuments.map((monument) => <group key={monument.id} ref={group=>{if(group)groups.current.set(monument.id,group);else groups.current.delete(monument.id);}} position={toWorld(monument.position)}
     name={`monument-${monument.id}`} onClick={(event) => {
       if (!wasTap()) return;
       event.stopPropagation(); markHit(); onSelect(monument.id);
@@ -50,6 +59,10 @@ export function Monuments({ monuments, planets, focusedId, onSelect }: {
     <Html position={[0, monumentScale(monument.difficulty) / 2 + 0.35, 0]} center distanceFactor={20} zIndexRange={[8, 0]} style={{ pointerEvents: 'none', visibility: hidden.has(monument.id) ? 'hidden' : 'visible' }}>
       <div className={`whitespace-nowrap rounded-control border px-2 py-1 text-center font-v2-ui shadow-sm ${focusedId === monument.id ? `${monument.difficulty === 'HARD' ? 'border-v2-hostile text-v2-hostile' : 'border-v2-self text-v2-self'} bg-v2-panel/90` : 'border-v2-line bg-v2-panel/70 text-v2-ink-2'}`}>
         <p className="text-caption font-semibold">{monumentName(monument.ordinal)}</p>
+        {(() => {
+          const radiation = radiationAtTarget({ kind: 'MONUMENT', id: monument.id }, hpRadiation, radiationNow);
+          return radiation ? <RadiationIndicator state={radiation} variant="bar" now={radiationNow} /> : null;
+        })()}
         {monument.difficulty !== 'LEGACY' && <p className={`text-micro ${monument.difficulty === 'HARD' ? 'text-v2-hostile' : 'text-v2-self'}`}>
           {t(monument.difficulty === 'EASY' ? 'monument.easyAccess' : 'monument.hardAccess')}</p>}
         <p className="text-micro">{monument.controller.kind === 'PLAYER' ? monument.controller.name

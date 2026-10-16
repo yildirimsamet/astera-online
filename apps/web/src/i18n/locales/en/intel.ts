@@ -347,7 +347,7 @@ export const reports = {
     formulaSupport: 'Support ships stay protected while at least one combat unit on their side remains.',
     resultHeading: 'How the result is decided',
     resultDecisive:
-      'DECISIVE · every defending unit is gone and the shield is at zero · {{decisiveLoot}}% of exposed stock can be taken before cargo limits.',
+      'DECISIVE · every defending unit is gone and the shield is at zero · {{decisiveLoot}}% of stored resources above the Store protection and {{decisiveBuffer}}% of uncollected Works can be taken before cargo limits.',
     /**
      * THE SAME RULE WITHOUT THE HALF THAT CANNOT APPLY. A shield is a structure on
      * a world; a legend that names one out at a rendezvous is describing a
@@ -356,7 +356,7 @@ export const reports = {
     resultDecisivePirate:
       'DECISIVE · every ship in the crew is gone · {{decisiveLoot}}% of the hoard can be taken before cargo limits, and only here can a hull be towed home.',
     resultPartial:
-      'PARTIAL · at least {{threshold}}% of defending unit value is destroyed · {{partialLoot}}% of exposed stock can be taken before cargo limits.',
+      'PARTIAL · at least {{threshold}}% of defending unit value is destroyed · {{partialLoot}}% of stored resources above the Store protection and {{partialBuffer}}% of uncollected Works can be taken before cargo limits.',
     resultRepelled:
       'REPELLED · less than {{threshold}}% of defending unit value is destroyed · nothing can be taken.',
     round: 'Round {{round}}',
@@ -389,13 +389,16 @@ export const reports = {
   strategicEmpEffect: 'Aegis dropped to zero and cannot regenerate for 1 hour. Ground defences cannot fire or take damage during that hour.',
   strategicLoyalty: "Colony loyalty",
   strategicLoyaltyChange: "{{before}}% → {{after}}%",
-  strategicLoyaltyNext: "At {{loss}}% or less, the next hit takes the colony.",
+  strategicLoyaltyNext_one: "The next hit takes the colony.",
+  strategicLoyaltyNext_other: "{{count}} more hits in a row take the colony.",
   strategicSecededAttacker: "The colony seceded and turned neutral — nobody holds it now.",
   strategicSecededDefender: "Your colony seceded and turned neutral.",
   strategicSecededShort: "colony seceded",
   strategicCaptured: 'CAPTURED',
   strategicIneffective: 'INEFFECTIVE',
   strategicIntercepted: 'INTERCEPTED',
+  radiationYouAttacked: "Your radiation bomb targeted ",
+  radiationAttackedBy: "Radiation bomb sent by ",
   strategicYouAttacked: 'Your Death Star targeted ',
   strategicAttackedBy: 'Death Star sent by ',
   strategicDestroyedInFlight: 'Death Star destroyed in flight',
@@ -664,8 +667,8 @@ export const dossier = {
   interceptorEmptyNote: 'Nothing here stops a strategic weapon. They may have loaded one since.',
   loyaltyLabel: "Colony loyalty",
   loyaltyValue: "{{value}}%",
-  loyaltyNote_one: "A Death Star takes {{loss}} loyalty and a colony at {{loss}} or less secedes: one hit would take this one.",
-  loyaltyNote_other: "A Death Star takes {{loss}} loyalty and a colony at {{loss}} or less secedes: {{count}} hits would take this one. It climbs back while nothing is broken.",
+  loyaltyNote_one: "A Death Star takes {{loss}} loyalty per hit. One hit would take this colony.",
+  loyaltyNote_other: "A Death Star takes {{loss}} loyalty per hit. {{count}} hits in a row would take this colony.",
   doctrinesLabel: 'Combat doctrine',
   doctrinesNone: 'None researched',
   doctrinesNote: 'Their hulls fight better than the table says. This is the multiplier you would meet.',

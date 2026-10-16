@@ -370,3 +370,42 @@ describe('a target already being worked', () => {
     expect(screen.getByText(/1 craft already working this rock · heading home/i)).toBeInTheDocument();
   });
 });
+
+/**
+ * NO REACH YET IS NOT "TOO LATE". `reachMinutes` is null until the craft's speed and the
+ * home world are known; the button used to read "It will be gone before you arrive" in
+ * that gap — a confident claim about something nobody had measured (`ux-writing` rule 8).
+ */
+describe('a wreck field whose reach is not known yet', () => {
+  const field = (reachMinutes: number | null, minutesLeft = 30) => render(
+    <DebrisFocus
+      field={{ ...FIELD, minutesLeft }}
+      planetName="Kestrel-12"
+      craftAvailable={2}
+      craftHold={300}
+      reachMinutes={reachMinutes}
+      worksRoom={100_000}
+      run={undefined}
+      onSend={vi.fn()}
+      {...shell}
+      craftReadyAt={null}
+    />,
+  );
+
+  it('says the reach is still being worked out, and holds the send', () => {
+    field(null);
+    const button = screen.getByRole('button', { name: /working out the flight/i });
+    expect(button).toBeDisabled();
+    expect(screen.queryByText(/gone before you arrive/i)).not.toBeInTheDocument();
+  });
+
+  it('still says too late when the flight is longer than the field lasts', () => {
+    field(31, 30);
+    expect(screen.getByRole('button', { name: /gone before you arrive/i })).toBeDisabled();
+  });
+
+  it('offers the send once the flight fits', () => {
+    field(29, 30);
+    expect(screen.getByRole('button', { name: /^Send \d/ })).toBeEnabled();
+  });
+});

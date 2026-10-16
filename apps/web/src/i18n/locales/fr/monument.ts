@@ -1,4 +1,41 @@
 export const monument = {
+  battleResult: {
+  "control": {
+    "attacking": {
+      "ATTACKER": "Votre camp a pris le contrôle du monument.",
+      "DEFENDER": "Monument non capturé.",
+      "EMPTY": "Aucun camp ne contrôle le monument après la bataille."
+    },
+    "defending": {
+      "ATTACKER": "Votre camp a perdu le contrôle du monument.",
+      "DEFENDER": "Votre camp a conservé le contrôle du monument.",
+      "EMPTY": "Aucun camp ne contrôle le monument après la bataille."
+    }
+  },
+  "grade": {
+    "attacking": {
+      "DECISIVE": "Défense éliminée.",
+      "PARTIAL": "Succès partiel.",
+      "REPELLED": "Attaque repoussée."
+    },
+    "defending": {
+      "DECISIVE": "Défense vaincue.",
+      "PARTIAL": "La défense a subi des pertes partielles.",
+      "REPELLED": "Attaque repoussée."
+    }
+  },
+  "wiped": "Votre flotte entière a été détruite.",
+  "rulesTitle": "Règles de combat",
+  "roundRule": "Le combat dure au maximum {{rounds}} tours. Les cargos sont protégés tant que des navires armés survivent.",
+  "captureRule": "La capture exige d’éliminer toute la défense et de conserver un navire armé capable de combattre. Les cargos seuls peuvent conserver un contrôle existant.",
+  "partialRule": "Un succès partiel exige de détruire au moins {{threshold}} de la valeur en ressources de la flotte en défense. Les survivants endommagés ne sont pas détruits. Le résultat et les points ne déterminent pas le contrôle."
+},
+  radiationLossForecast: "Première perte par radiation dans {{time}}, hors dégâts de combat.",
+  radiationCargoForecast: "Première perte de cargo dans {{time}}, hors dégâts de combat.",
+  protectedRate: "Protection {{level}} · {{rate}} HP/min par vaisseau",
+  cargoLossAt: "Première perte de cargo dans {{time}}. Son deutérium chargé est perdu.",
+  dispatchProtection: "Flotte envoyée · protection {{level}} : {{rate}} HP/min par vaisseau stationné.",
+  shieldingSnapshot: "Les recherches terminées ensuite ne changent pas la protection de cette flotte.",
   returnAll: "Retour de toute la flotte",
   returnSelected_one: "Retour sélectionné · {{count}} vaisseau",
   returnSelected_other: "Retour sélectionné · {{count}} vaisseaux",
@@ -19,8 +56,8 @@ export const monument = {
   hard: "Difficile",
   radiationLevelRate: "Rayonnement de niveau {{level}} : {{rate}} HP par vaisseau et par minute",
   easyAccess: "Facile · niveaux 1–3",
-  hardAccess: "Difficile · tous les niveaux",
-  tierBlocked: "Avec ton niveau {{tier}}, tu peux envoyer de nouvelles flottes uniquement vers les monuments difficiles.",
+  hardAccess: "Difficile · à partir du niveau 4",
+  tierBlocked: "Tu es au niveau {{tier}}. Choisis les monuments faciles aux niveaux 1–3 et difficiles à partir du niveau 4.",
   initialFleetRule: "Tu peux renvoyer des vaisseaux de combat et des cargos. Chaque flotte de soutien nécessite du carburant, une baie de vol et de la place au monument.",
   recallFlightRule: "Avant l’arrivée, rappelez les vaisseaux sélectionnés depuis leur position actuelle. Le carburant consommé à l’aller n’est pas remboursé. Les réserves de retour inutilisées sont remboursées à l’arrivée.",
   "newsRadiation": "{{name}} · le rayonnement a détruit {{count}} vaisseaux et {{cargo}} deutérium · {{left}} vaisseaux restants",
@@ -78,6 +115,8 @@ export const monument = {
   "holdForecast": "Après l’arrivée : {{rate}} deutérium/min · prochaine perte {{time}}",
   "noLoss": "aucune prévue",
   "attackOutcome": "Après la victoire, les vaisseaux de palier supérieur occupent d’abord la capacité du monument. Ceux qui ne tiennent pas rentrent. Une flotte composée uniquement de cargos ne gagne pas de deutérium.",
+  "reinforceRule": "Si ton camp perd le monument pendant le trajet, la flotte ne fait pas demi-tour. Elle combat le rival ou la garnison. Si le monument est vide, un vaisseau armé le prend.",
+  "arrivalOutcome": {"JOIN":"À l’arrivée, en l’état actuel : rejoint ton camp. Les vaisseaux sans place rentrent.","FIGHT":"À l’arrivée, en l’état actuel : combat la flotte rivale qui le tient.","GARRISON":"À l’arrivée, en l’état actuel : combat la garnison neutre.","CAPTURE":"À l’arrivée, en l’état actuel : prend le monument vide. Des cargos seuls ne peuvent pas le prendre et rentrent."},
   "losses": "{{count}} vaisseaux perdus à l’aller",
   "health": "{{name}} : {{remaining}} / {{max}} HP à l’arrivée",
   "shield": "J’accepte de perdre mon bouclier lors de cet envoi",

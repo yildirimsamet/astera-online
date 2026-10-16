@@ -1,4 +1,5 @@
 import { motionPositionAt } from '@astera/rules';
+import { useNow } from '../lib/time.js';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react';
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
@@ -22,6 +23,11 @@ import type {
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
 import { Monuments } from './Monuments.js';
+import { RadiationIndicator } from '../ui/RadiationIndicator.js';
+import { RadiationBombEffects } from './RadiationBombEffects.js';
+import { PlanetEmbers } from './PlanetEmbers.js';
+import { FaultMarks } from './FaultMarks.js';
+import { radiationAtTarget } from '../lib/targetRadiation.js';
 import { monumentNavigationRadius } from './monuments.js';
 import {
   easedCameraRange,
@@ -376,6 +382,9 @@ export function GalaxyCanvas({
   );
 
   const rendezvous = useMemo(() => rendezvousMarks(runs, pending), [runs, pending]);
+  // Weapons a battery shot down; their surface blast never plays (owner, 2026-10-16).
+  const interceptedWeapons = useMemo(() => new Set([...interceptions ?? [], ...interceptionImpacts ?? []]
+    .flatMap((event) => event.weaponId ? [event.weaponId] : [])), [interceptions, interceptionImpacts]);
   /**
    * Held to the coordinates rather than the object: `aim` is rebuilt on every
    * keystroke in the picker, and a fresh tuple would remount `AimMark` — and its
@@ -768,7 +777,12 @@ export function GalaxyCanvas({
         */}
         {/* Radiation (K3): a haze where the dose is, behind the worlds it may wrap. */}
         <RadiationHaze {...(radiation ? { clouds: radiation } : {})} hpClouds={hpRadiation} />
-        <Monuments monuments={monuments} planets={nodes} focusedId={focus?.kind === 'monument' ? focus.id : null}
+        <RadiationBombEffects sources={hpRadiation} nodes={nodes} monuments={monuments} />
+        {/* A Death Star's EMP hour, as a dull ember that survives the zoom (owner, 2026-10-16). */}
+        <PlanetEmbers nodes={nodes} />
+        {/* The commander's own broken colonies, at every zoom (owner, 2026-10-16). */}
+        <FaultMarks nodes={nodes} />
+        <Monuments monuments={monuments} planets={nodes} hpRadiation={hpRadiation} focusedId={focus?.kind === 'monument' ? focus.id : null}
           onSelect={(id) => { onFocus({ kind: 'monument', id }); }} />
         {sensors && sensors.length > 0 && (
           <SensorRings
@@ -839,7 +853,7 @@ export function GalaxyCanvas({
             onFocus({ kind: 'contact', id });
           }}
         />
-        <DeathStarImpacts pending={pending} contacts={contacts} nodes={nodes} />
+        <DeathStarImpacts pending={pending} contacts={contacts} nodes={nodes} intercepted={interceptedWeapons} />
         <StrategicInterceptions
           events={interceptions ?? []}
           impacts={interceptionImpacts ?? []}
@@ -847,6 +861,7 @@ export function GalaxyCanvas({
         />
         <Labels
           nodes={nodes}
+          hpRadiation={hpRadiation}
           selectedId={selectedId}
           rivals={rivals}
         />
@@ -1003,14 +1018,26 @@ function claimTag(claim: ReturnType<typeof claimLabelOf>, t: TFunction) {
 
 function Labels({
   nodes,
+  hpRadiation,
   selectedId,
   rivals,
 }: {
   nodes: readonly PlanetNode[];
+  hpRadiation: readonly HpRadiationSourceView[];
   selectedId: string | null;
   rivals: readonly RivalMark[];
 }) {
   const { t } = useTranslation();
+  const radiationNow = useNow(1000);
+  const radiationByWorld = useMemo(() => {
+    const sources = new Map<string, HpRadiationSourceView[]>();
+    for (const source of hpRadiation) {
+      if (source.target?.kind !== 'PLANET') continue;
+      const bucket = sources.get(source.target.id) ?? [];
+      bucket.push(source); sources.set(source.target.id, bucket);
+    }
+    return sources;
+  }, [hpRadiation]);
   // Nearby earned identities need no tap. Unknown worlds remain unnamed, and
   // remembered identities keep their record age. Only the visible, non-colliding
   // pool mounts Html; the eye remains in PlanetField's spatial marker stack.
@@ -1104,6 +1131,7 @@ function Labels({
        */
       const age = recordAgeMinutes(node, serverNow());
       const detail = planetLabelRank(node, selectedId, rivals, serverNow()) < 7;
+      const radiation = radiationAtTarget({ kind: 'PLANET', id: node.id }, radiationByWorld.get(node.id) ?? [], radiationNow);
       return (
         <Html
           key={node.id}
@@ -1142,6 +1170,7 @@ function Labels({
             className="galaxy-world-label flex -translate-y-1/2 flex-col items-center gap-0.5 whitespace-nowrap text-center"
             style={{ width: 'max-content', maxWidth: planetLabelWidth(node, detail), visibility: 'hidden', textShadow: '0 1px 4px #05070d, 0 0 12px #05070d' }}
           >
+            {radiation && <RadiationIndicator state={radiation} variant="bar" now={radiationNow} />}
             {/*
               THE EYE IS NOT HERE. D126. It sits in the marker stack instead, one
               step above the pin and on the pin's own scale law — the owner's
@@ -1255,8 +1284,9 @@ export function GalaxyPlanetName({ node, compact = false }: { node: PlanetNode; 
 export function GalaxyCommanderName({ node }: { node: PlanetNode }) {
   const { i18n } = useTranslation();
   if (node.intel === 'UNKNOWN' || node.kind === 'NEUTRAL' || !node.owner) return null;
+  const rank = node.honorRanking ? node.honorRank : node.dominionRank;
   return <span className="name text-caption text-bone flex max-w-full items-center gap-1.5">
-    {node.dominionRank ? <RankBadge rank={node.dominionRank} /> : null}
+    {rank ? <RankBadge rank={rank} honor={node.honorRanking} /> : null}
     <span className="min-w-0 truncate">{commanderLabel(node.owner, node.clan?.tag)}</span>
     {node.country && <Flag code={node.country} language={i18n.language} size="small" className="shrink-0" />}
   </span>;

@@ -26,6 +26,7 @@ import { loadPirateSnapshot, pirateId } from '../src/services/pirateField.js';
 import { launchPirateRaid } from '../src/services/pirateRaid.js';
 import { joinSeason } from '../src/services/player.js';
 import { createSeason } from '../src/services/season.js';
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { dockLotsOf } from '../src/services/shipDamage.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { fuelUp, giveUnits, grant, makeAccount, pinnedKey, setLevel, settledAt, testDb, truncateAll } from './helpers.js';
@@ -105,9 +106,9 @@ describe('a raid on a caretaker world', () => {
     const survivors = fleetCount(back!.fleet);
     clock.set(back!.arriveAt);
     await worker(db, clock).tick();
-    const docked = await dockLotsOf(db, joined.planetId);
-    expect(docked.map(({ hull, count, damageBp }) => ({ hull, count, damageBp }))).toEqual(report!.attackerDamage);
-    expect((await homeOf(db, joined.planetId)).DART ?? 0).toBe(survivors - ships(report!.attackerDamage));
+    expect((await readHomeHealth(db, joined.planetId)).damage).toEqual(report!.attackerDamage);
+    expect(await dockLotsOf(db, joined.planetId)).toEqual([]);
+    expect((await homeOf(db, joined.planetId)).DART ?? 0).toBe(survivors);
   });
 });
 
@@ -170,14 +171,13 @@ describe('a raid on a pirate', () => {
     clock.set(raid!.homeAt!);
     await worker(db, clock).tick();
 
-    const toDock = report!.attackerDamage.filter((lot) => needsDock(lot.damageBp));
-    const docked = await dockLotsOf(db, mine);
-    expect(docked.map(({ hull, count, damageBp }) => ({ hull, count, damageBp }))).toEqual(toDock);
+    expect((await readHomeHealth(db, mine)).damage).toEqual(report!.attackerDamage);
+    expect(await dockLotsOf(db, mine)).toEqual([]);
     const after = await homeOf(db, mine);
     const captured = raid!.capturedHull ? 1 : 0;
-    expect(fleetCount(after) - fleetCount(before)).toBe(returning - ships(toDock) + captured);
+    expect(fleetCount(after) - fleetCount(before)).toBe(returning + captured);
     const [landed] = await db.select().from(notifications)
       .where(and(eq(notifications.playerId, joined[0]!.playerId), eq(notifications.kind, 'fleet_returned')));
-    expect(landed?.payload).toMatchObject(toDock.length > 0 ? { docked: ships(toDock) } : {});
+    expect(landed?.payload).not.toHaveProperty('docked');
   });
 });

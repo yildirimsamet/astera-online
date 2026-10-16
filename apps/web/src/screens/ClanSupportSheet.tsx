@@ -1,5 +1,6 @@
-import { HULLS, MOBILE_HULLS, NON_COMBATANT_HULLS, fleetCount, type Fleet, type HullId } from '@astera/rules';
+import { HULLS, MOBILE_HULLS, NON_COMBATANT_HULLS, fleetCount, partitionCombatFleet, type Fleet, type HullId } from '@astera/rules';
 import { useEffect, useState } from 'react';
+import { HonorSoloNotice } from '../ui/HonorSoloNotice.js';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client.js';
 import { useClanSupportActions } from '../api/queries.js';
@@ -48,6 +49,7 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
   const [fleet, setFleet] = useState<Fleet>({});
   const [quotedKey, setQuotedKey] = useState<string | null>(null);
   const origin = worlds.find((world) => world.planet.id === originId) ?? worlds[0];
+  const available = origin ? origin.fleetCombatReady ?? partitionCombatFleet(origin.fleet, origin.fleetDamage).eligible : {};
   const quoteKey = `${origin?.planet.id ?? ''}:${JSON.stringify(fleet)}`;
   const quote = quotedKey === quoteKey ? actions.quote.data : undefined;
   const picked = fleetCount(fleet);
@@ -78,7 +80,7 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
             : null;
 
   // A support wave is a fighting line: the mining craft never go (CLAN_SUPPORT_NONCOMBATANT).
-  const hulls = MOBILE_HULLS.filter((hull) => (origin?.fleet[hull] ?? 0) > 0 && !NON_COMBATANT_HULLS.includes(hull));
+  const hulls = MOBILE_HULLS.filter((hull) => (available[hull] ?? 0) > 0 && !NON_COMBATANT_HULLS.includes(hull));
 
   return (
     <Sheet
@@ -108,6 +110,7 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
       )}
     >
       <div className="flex flex-col gap-3 pt-1">
+        <HonorSoloNotice />
         <p className="text-caption leading-snug text-v2-ink-2">{t('clanSupport.sendActionHint')}</p>
         {worlds.length > 1 && (
           <ChoiceChips
@@ -127,7 +130,7 @@ export function ClanSupportSheet({ host, worlds, onClose, onSent }: {
         ) : (
           <div>
             {hulls.map((hull) => {
-              const held = origin?.fleet[hull] ?? 0;
+              const held = available[hull] ?? 0;
               const art = HULL_ART[hull];
               return (
                 <div key={hull} data-hull-row={hull}

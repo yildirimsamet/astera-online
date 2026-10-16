@@ -202,7 +202,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
   /** My support waves still out — the Fleet page's "Klan desteği" group. */
   app.get('/api/clan/support', { preHandler: requireAuth }, async (req) => {
     const actor = await clanActor(app.db, req.accountId!);
-    return readMySupport(app.db, actor.playerId);
+    return readMySupport(app.db, actor.playerId, app.clock.now());
   });
 
   /** Decides nothing: the send recomputes every figure under its own locks. */

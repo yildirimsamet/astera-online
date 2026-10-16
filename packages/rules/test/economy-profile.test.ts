@@ -11,17 +11,17 @@ import { hullBulk } from '../src/hulls.js';
 import { ECONOMY_ADJUSTMENT } from '../src/tempo.js';
 
 describe('monthly economy', () => {
-  it('feeds the live economy before the explicit 30% tempo overlay', () => {
-    expect(alloyRate(4)).toBeCloseTo(profileIncome(4).alloy * 0.70 * 1.25);
-    expect(crystalRate(4)).toBeCloseTo(profileIncome(4).crystal * 0.70);
-    expect(deuteriumRate(4)).toBeCloseTo(profileIncome(4).deuterium * 0.70);
+  it('feeds the live economy before the current output tempo overlay', () => {
+    expect(alloyRate(4)).toBeCloseTo(profileIncome(4).alloy * 0.56 * 1.25);
+    expect(crystalRate(4)).toBeCloseTo(profileIncome(4).crystal * 0.56);
+    expect(deuteriumRate(4)).toBeCloseTo(profileIncome(4).deuterium * 0.56);
     expect(buildingCost('REFINERY', 3)).toEqual(profileBuilding('REFINERY', 4).cost);
     const engineering = profileResearch('STARSHIP_ENGINEERING', 1).cost;
     expect(RESEARCH_PROJECTS.STARSHIP_ENGINEERING.costAt(1)).toEqual({
       ...engineering,
       crystal: Math.round(engineering.crystal * RESEARCH_CRYSTAL_DISCOUNT),
     });
-    expect(collectorCap(100)).toBe(1000);
+    expect(collectorCap(80)).toBe(1000);
     expect(HULLS.DART.alloy).toBe(304); expect(hullBulk('DART')).toBe(3);
     expect(hullTech({ SHIP_PROPULSION: 4 }, 'DART').speed).toBe(1.5);
   });
@@ -76,8 +76,8 @@ describe('monthly economy', () => {
     expect(DEATH_STAR.buildMinutes).toBeCloseTo(60 * ECONOMY_ADJUSTMENT.buildTime, 9);
     expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 21550, crystal: 10776, deuterium: 894 });
     expect(ANTI_STRATEGIC.buildMinutes).toBeCloseTo(30 * ECONOMY_ADJUSTMENT.buildTime, 9);
-    // The clan's founding price is the owner's (2026-09-25), not an income multiple.
-    expect(CLAN.creationCost).toEqual({ alloy: 7500, crystal: 3000, deuterium: 0 });
+    // The clan's founding price is the owner's (2026-10-16), not an income multiple.
+    expect(CLAN.creationCost).toEqual({ alloy: 2000, crystal: 1000, deuterium: 0 });
     expect(MULTI_WORLD.settlement.cost).toEqual({ alloy: 800, crystal: 400, deuterium: 0 });
     expect(PLANET_START).toEqual({ alloy: 1500, crystal: 400, deuterium: 50 });
     expect(START.alloy).toBe((['CORE', 'REFINERY', 'EXTRACTOR'] as const)

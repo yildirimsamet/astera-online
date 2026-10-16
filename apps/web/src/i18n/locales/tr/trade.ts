@@ -77,7 +77,7 @@ export const trade = {
   /* ── taahhüt ────────────────────────────────────────────────── */
   send: "Konvoyu gönder",
   sending: "Yola çıkıyor",
-  warning: "Yola çıkan konvoy geri çağrılamaz. {{duration}} boyunca dışarıda olacak.",
+  warning: "Tüccara varmadan geri çağırırsan teklifin takas edilmeden eve döner. Yakıt iade edilmez. Planlanan sefer: {{duration}}.",
   fleetsave: "Dışarıdayken ona akın edilemez; ama bu dünyayı da savunamaz.",
   launched: "Konvoy yola çıktı · {{duration}}",
 

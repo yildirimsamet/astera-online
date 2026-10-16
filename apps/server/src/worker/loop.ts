@@ -8,6 +8,9 @@ import { runBotSweep } from '../services/bots/sweep.js';
 import { BOTS } from '../services/bots/personas.js';
 import { claimDue, complete, fail, reap } from './queue.js';
 import { performance } from 'node:perf_hooks';
+import { eq, sql } from 'drizzle-orm';
+import { scheduledEvents } from '../db/schema.js';
+import { VACATION_EVENT_KINDS } from '../services/vacation.js';
 
 export interface WorkerOptions {
   pollMs: number;
@@ -252,12 +255,28 @@ export class EventWorker {
         continue;
       }
       try {
-        await handler({
+        const run = () => handler({
           db: this.db,
           clock: this.clock,
           adminUsernames: this.opts.adminUsernames,
         }, event);
-        await complete(this.db, event.id);
+        if (VACATION_EVENT_KINDS.has(event.kind)) {
+          const ran = await this.db.transaction(async tx => {
+            // Admission waits on this fence BEFORE locking the season. Holding a
+            // season row here across a separate handler transaction would invert
+            // that order when an exclusive season request is already waiting.
+            await tx.execute(sql`select pg_advisory_xact_lock_shared(hashtextextended(${`vacation:${event.seasonId}`}, 0))`);
+            const [current] = await tx.select().from(scheduledEvents).where(eq(scheduledEvents.id, event.id));
+            if (current?.status !== 'processing' || current.resolveAt.getTime() !== event.resolveAt.getTime()) return false;
+            await run();
+            await complete(tx, event.id);
+            return true;
+          });
+          if (!ran) continue;
+        } else {
+          await run();
+          await complete(this.db, event.id);
+        }
         processed++;
       } catch (err) {
         failed++;

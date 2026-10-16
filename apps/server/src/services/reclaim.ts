@@ -57,6 +57,8 @@ import {
   units,
   watches,
   shipDamageLots,
+  radiationBombFlights,
+  hpRadiationSources,
 } from '../db/schema.js';
 import { prepareClanReclaimMonuments, reconcileClanPlayerReclaim } from './clan.js';
 import { addDominionCounters } from './dominion.js';
@@ -150,7 +152,12 @@ export async function commanderRows(
   raidIds: string[];
   tradeIds: string[];
   convoyIds: string[];
+  bombIds: string[];
 }> {
+  const bombIds = (await tx.select({ id: radiationBombFlights.id }).from(radiationBombFlights).where(or(
+    eq(radiationBombFlights.ownerPlayerId, playerId), inArray(radiationBombFlights.originPlanetId, planetIds),
+    inArray(radiationBombFlights.targetPlanetId, planetIds),
+  ))).map(row => row.id);
   const missionIds = (
     await tx
       .select({ id: missions.id })
@@ -265,7 +272,7 @@ export async function commanderRows(
       )
   ).map((r) => r.id);
 
-  return { missionIds, fieldIds, runIds, raidIds, tradeIds, convoyIds };
+  return { missionIds, fieldIds, runIds, raidIds, tradeIds, convoyIds, bombIds };
 }
 
 /**
@@ -279,8 +286,17 @@ export async function busy(
   tx: Tx,
   planetIds: string[],
   playerId: string,
-  rows: { runIds: string[]; raidIds: string[]; tradeIds: string[]; convoyIds: string[] },
+  rows: { runIds: string[]; raidIds: string[]; tradeIds: string[]; convoyIds: string[]; bombIds: string[] },
+  now: Date,
 ): Promise<boolean> {
+  if (rows.bombIds.length > 0) {
+    const [bomb] = await tx.select({ id: radiationBombFlights.id }).from(radiationBombFlights).where(and(
+      inArray(radiationBombFlights.id, rows.bombIds),
+      or(eq(radiationBombFlights.status, 'OUTBOUND'), and(eq(radiationBombFlights.status, 'INTERCEPTED'),
+        sql`(${radiationBombFlights.interception}->>'impactAt')::timestamptz > ${now.toISOString()}::timestamptz`)),
+    )).limit(1);
+    if (bomb) return true;
+  }
   if (await hasMonumentActivity(tx, playerId, planetIds)) return true;
   const [flight] = await tx
     .select({ id: missions.id })
@@ -434,10 +450,16 @@ export async function demolish(
     raidIds: string[];
     tradeIds: string[];
     convoyIds: string[];
+    bombIds: string[];
   },
 ): Promise<void> {
   let { missionIds } = rows;
-  const { fieldIds, runIds, raidIds, tradeIds, convoyIds } = rows;
+  const { fieldIds, runIds, raidIds, tradeIds, convoyIds, bombIds } = rows;
+  // A consumed weapon no longer requires its commander's identity. Its source
+  // keeps running and retains historical dose through ON DELETE SET NULL.
+  if (bombIds.length > 0) await tx.delete(radiationBombFlights).where(inArray(radiationBombFlights.id, bombIds));
+  await tx.delete(hpRadiationSources).where(and(eq(hpRadiationSources.anchorKind, 'PLANET'),
+    inArray(hpRadiationSources.anchorId, planetIds)));
   await removeTerminalMonumentWaves(tx, playerId, planetIds);
 
   /*
@@ -637,7 +659,7 @@ export async function demolish(
     .where(inArray(buildOrders.planetId, planetIds))).map((order) => order.id);
   const refs = [
     ...missionIds, ...runIds, ...raidIds, ...tradeIds, ...convoyIds,
-    ...planetIds, ...assetIds, ...buildOrderIds,
+    ...planetIds, ...assetIds, ...buildOrderIds, ...bombIds,
   ];
   if (refs.length > 0) {
     await tx.delete(scheduledEvents).where(inArray(scheduledEvents.refId, refs));
@@ -837,7 +859,7 @@ export async function reclaimIdleSeats(
         // A busy commander cannot be reclaimed or have their fleets recalled.
         const initialWorlds = await tx.select({ id: planets.id }).from(planets).where(eq(planets.controllerPlayerId, row.playerId));
         const initialIds = initialWorlds.map((world) => world.id);
-        if (await busy(tx, initialIds, row.playerId, await commanderRows(tx, initialIds, row.playerId))) return 'busy' as const;
+        if (await busy(tx, initialIds, row.playerId, await commanderRows(tx, initialIds, row.playerId), now)) return 'busy' as const;
         const monumentTargets = await prepareClanReclaimMonuments(tx, { playerId: row.playerId, now,
           activeCutoff: cutoff, adminUsernames: options.adminUsernames });
         /**
@@ -864,7 +886,7 @@ export async function reclaimIdleSeats(
         const planetIds = controlled.map((world) => world.id);
         if (planetIds.length === 0) return 'came-back' as const;
         const rows = await commanderRows(tx, planetIds, row.playerId);
-        if (await busy(tx, planetIds, row.playerId, rows)) return 'busy' as const;
+        if (await busy(tx, planetIds, row.playerId, rows, now)) return 'busy' as const;
 
         await reconcileClanPlayerReclaim(tx, {
           playerId: row.playerId,

@@ -1,4 +1,6 @@
-import { resolveCombat, type CombatResult, type CombatSide } from './combat.js';
+import { resolveBattle, resolveCombat, soloStack, type CombatResult, type CombatSide } from './combat.js';
+import { partitionCombatFleet } from './shipMaintenance.js';
+import type { HpDamageLots } from './radiationHp.js';
 import { pirateOverrun } from './pirates.js';
 import {
   ALL_HULLS,
@@ -57,6 +59,8 @@ export type WallKnowledge =
   | { kind: 'EXACT'; fleet: Fleet };
 
 export interface ForecastInput {
+  /** Known starting wounds of this exact wing; the enemy's unread health stays unknown. */
+  attackerDamage?: HpDamageLots;
   /** The launching commander's ladders — frozen at launch, so today's are the ones. */
   attackerTech: TechLevels;
   /** The doctrines a probe brought home, or none. */
@@ -293,11 +297,15 @@ function fight(wing: Fleet, wall: Fleet, shield: number, input: ForecastInput) {
   const defender: CombatSide = input.defenderDamageMult === undefined
     ? { tech: input.defenderTech }
     : { tech: input.defenderTech, damageMult: input.defenderDamageMult };
-  const result = resolveCombat(wing, wall, shield, MEAN_ROLL, {
+  const result = input.attackerDamage?.length ? resolveBattle(
+    [soloStack(wing, { tech: input.attackerTech }, input.attackerDamage)],
+    [{ stackId: 'forecast', playerId: '', fleet: wall, tech: defender, maintenanceExempt: input.pirate === true }],
+    shield, MEAN_ROLL, 'PLANET', true,
+  ) : resolveCombat(wing, wall, shield, MEAN_ROLL, {
     attacker: { tech: input.attackerTech },
     defender,
   });
-  return input.pirate === true ? pirateOverrun(result) : result;
+  return input.pirate === true ? pirateOverrun(result, partitionCombatFleet(wing, input.attackerDamage).eligible) : result;
 }
 
 /**

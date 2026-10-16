@@ -165,7 +165,7 @@ try {
           });
 
         await refreshSensorEpoch(tx, planet!.id, now);
-        await recomputeWealth(tx, planet!.id);
+        await recomputeWealth(tx, planet!.id, now);
       });
     }
 

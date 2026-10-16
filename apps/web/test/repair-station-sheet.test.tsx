@@ -1,4 +1,4 @@
-import { MULTI_WORLD } from '@astera/rules';
+import { MULTI_WORLD, shipHpRepairCost } from '@astera/rules';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BuildOrderView, PlanetView } from '../src/api/schemas.js';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
+import { compact } from '../src/lib/format.js';
 import { ApiError } from '../src/api/client.js';
 import { describeError } from '../src/i18n/errors.js';
 import { planetView } from './fixtures.js';
@@ -99,6 +100,7 @@ vi.mock('../src/api/queries.js', async () => {
     useCancelBuildOrder: () => ({ mutate: vi.fn(), isPending: false }),
     useBuildDeathStar: () => ({ mutate: vi.fn(), isPending: false }),
     useBuildInterceptor: () => ({ mutate: vi.fn(), isPending: false }),
+    useMaintenance: () => ({ mutate: vi.fn(), isPending: false }),
     useStartRepair: () => ({ mutate: startRepair, isPending: startPending }),
     useCancelRepair: () => ({ mutate: cancelRepair, isPending: false }),
   };
@@ -162,8 +164,9 @@ describe('the Repair Station card', () => {
     expect(hero?.querySelectorAll('img')).toHaveLength(1);
     expect(hero?.querySelector('img[data-atmosphere-image]')).toHaveAttribute('src', '/assets/images/atmosphere/repair-v2.webp');
     expect(hero?.querySelector('img')).toHaveAttribute('alt', '');
-    expect(hero).toHaveTextContent(/Waiting/);
-    expect(hero).toHaveTextContent(/Under repair/);
+    expect(hero).toHaveTextContent(/Wounds remain until paid repair/);
+    expect(station).toHaveTextContent(/Waiting/);
+    expect(station).toHaveTextContent(/Under repair/);
   });
 
   it('is not there in a season dealt before the Repair Station', () => {
@@ -191,7 +194,7 @@ describe('the Repair Station card', () => {
 
   it('says no ship at this world is damaged when nothing waits', () => {
     show(world({ fleetDocked: {}, dock: { lots: [], waiting: { cost: { alloy: 0, crystal: 0, deuterium: 0 }, minutes: 0 }, pct: 100 }, queues: { CONSTRUCTION: [], YARD: [], REPAIR: [] } }));
-    expect(card()).toHaveTextContent(/no damaged ships/i);
+    expect(card()).toHaveTextContent(/workshop empty/i);
     expect(card()).not.toHaveTextContent(/waiting/i);
   });
 
@@ -214,55 +217,67 @@ describe('the Repair Station card', () => {
 });
 
 describe('the Repair Station menu', () => {
-  it('lists every waiting lot, chosen, with its damage and its price against a new ship', async () => {
+  const choose = async (station: HTMLElement, name: RegExp, count = '1') => {
+    const row = within(station).getAllByTestId('health-group').find(group => within(group).queryByText(name));
+    if (!row) throw new Error('health group missing');
+    await userEvent.type(within(row).getByRole('textbox'), count);
+  };
+
+  it('lists exact health groups with waiting quantities initially unselected', async () => {
     show();
     const station = await openStation();
-    const rows = within(station).getAllByTestId('dock-lot');
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent(/Talon/);
-    expect(rows[0]).toHaveTextContent(/×2/);
-    expect(rows[0]).toHaveTextContent(/35% damaged/i);
-    expect(rows[0]).toHaveTextContent(/35% of a new ship/i);
-    for (const row of rows) expect(within(row).getByRole('checkbox')).toBeChecked();
+    const rows = within(station).getAllByTestId('health-group');
+    expect(rows).toHaveLength(3);
+    const waiting = rows.filter(row => within(row).queryByRole('textbox'));
+    expect(waiting[0]).toHaveTextContent(/Talon/);
+    expect(waiting[0]).toHaveTextContent(/×2/);
+    expect(waiting[0]).toHaveTextContent(/65% HP/);
+    for (const row of waiting) expect(within(row).getByRole('textbox')).toHaveValue('0');
   });
 
-  it('keeps a lot under repair out of the choice and shows it with its job', async () => {
+  it('keeps a group under repair out of selection and shows it with its job', async () => {
     show();
     const station = await openStation();
-    for (const row of within(station).getAllByTestId('dock-lot')) expect(row).not.toHaveTextContent(/Ballista/);
+    const busy = within(station).getAllByTestId('health-group').find(row => within(row).queryByText('Ballista'));
+    expect(busy).toBeDefined();
+    expect(within(busy!).queryByRole('textbox')).toBeNull();
     const running = within(station).getAllByTestId('repair-job')[0]!;
     expect(running).toHaveTextContent(/Ballista/);
     expect(running).toHaveTextContent(/64% damaged/i);
   });
 
-  it('repairs exactly the ships that were chosen', async () => {
+  it('repairs only the selected quantities and carries their exact health quote', async () => {
     show();
     const station = await openStation();
-    await userEvent.click(within(station).getByRole('checkbox', { name: /Warden/ }));
+    await choose(station, /Talon/, '2');
     await userEvent.click(within(station).getByRole('button', { name: /repair 2 ships/i }));
-    expect(startRepair).toHaveBeenCalledWith({ planetId: 'p1', request: { lotIds: ['lot-2'] } }, expect.any(Object));
+    expect(startRepair).toHaveBeenCalledWith(expect.objectContaining({ planetId: 'p1',
+      request: { lots: [{ id: 'lot-2', count: 2, damageBp: 3500, remainderBp: 0 }] } }), expect.any(Object));
+    expect(startRepair.mock.calls[0]?.[0]).toHaveProperty('key', expect.any(String));
     expectMutationCallbacks(startRepair.mock.calls[0]?.[1]);
   });
 
-  it('prices the choice beside the button, and moves it as the choice moves', async () => {
+  it('prices only the chosen quantities beside the button', async () => {
     show();
     const station = await openStation();
+    await choose(station, /Talon/, '2');
+    await choose(station, /Warden/);
     const total = within(station).getByTestId('repair-total');
-    expect(total).toHaveTextContent('886');
-    expect(total).toHaveTextContent('364');
+    const cost = shipHpRepairCost([talon, warden], 100);
+    expect(total).toHaveTextContent(compact(cost.alloy));
+    expect(total).toHaveTextContent(compact(cost.crystal));
     expect(total).toHaveTextContent(/4m/);
-    await userEvent.click(within(station).getByRole('checkbox', { name: /Warden/ }));
-    expect(total).toHaveTextContent('551');
+    await userEvent.clear(within(station).getAllByRole('textbox')[1]!);
+    expect(total).toHaveTextContent(compact(shipHpRepairCost([talon], 100).alloy));
     expect(total).toHaveTextContent(/2m 30s/);
   });
 
-  it('will not start with nothing chosen, and says what to do', async () => {
+  it('will not start with nothing chosen, and supports selecting each complete group', async () => {
     show();
     const station = await openStation();
-    await userEvent.click(within(station).getByRole('button', { name: /clear/i }));
-    const commit = within(station).getByRole('button', { name: /choose ships to repair/i });
-    expect(commit).toBeDisabled();
-    await userEvent.click(within(station).getByRole('button', { name: /select all/i }));
+    expect(within(station).getByRole('button', { name: /choose ships to repair/i })).toBeDisabled();
+    await userEvent.click(within(station).getByRole('button', { name: /select all Talon/i }));
+    await userEvent.click(within(station).getByRole('button', { name: /select all Warden/i }));
     expect(within(station).getByRole('button', { name: /repair 3 ships/i })).toBeEnabled();
   });
 
@@ -274,9 +289,10 @@ describe('the Repair Station menu', () => {
     expect(within(station).getByRole('button', { name: /queue full/i })).toBeDisabled();
   });
 
-  it('says when the purse will cover a repair it cannot pay for yet', async () => {
+  it('explains a resource shortfall before a repair is started', async () => {
     show(world({}, { alloy: 100, crystal: 100, deuterium: 10_000, alloyPerHour: 600, crystalPerHour: 300 }));
     const station = await openStation();
+    await choose(station, /Talon/, '2');
     const commit = within(station).getByRole('button', { name: /enough/i });
     expect(commit).toBeDisabled();
   });
@@ -284,6 +300,7 @@ describe('the Repair Station menu', () => {
   it('says a fuel shortfall is short, since fuel has no rate to wait on', async () => {
     show(world({}, { deuterium: 0 }));
     const station = await openStation();
+    await choose(station, /Talon/, '2');
     expect(within(station).getByRole('button', { name: /not enough resources/i })).toBeDisabled();
   });
 
@@ -297,6 +314,8 @@ describe('the Repair Station menu', () => {
   it('says why the server refused a repair', async () => {
     show();
     const station = await openStation();
+    await choose(station, /Talon/, '2');
+    await choose(station, /Warden/);
     await userEvent.click(within(station).getByRole('button', { name: /repair 3 ships/i }));
     const refusal = new ApiError('REPAIR_LOT_BUSY', 'Those ships are already under repair', 409, {});
     const onError = callbackOf(startRepair.mock.calls[0]?.[1], 'onError');
@@ -381,10 +400,10 @@ describe('the Repair Station menu', () => {
   it('teaches the rule where it is used: the line always, the arithmetic one tap deeper', async () => {
     show(world({ dock: { lots: [talon], waiting: { cost: talon.cost, minutes: talon.minutes }, pct: 75 } }));
     const station = await openStation();
-    expect(station).toHaveTextContent(/more than 20% damaged/i);
+    expect(station).toHaveTextContent(/5% HP or less/i);
     expect(station).not.toHaveTextContent(/half the price/i);
     await userEvent.click(within(station).getByRole('button', { name: /how it works/i }));
-    expect(station).toHaveTextContent(/20% or less/i);
+    expect(station).toHaveTextContent(/no free repair/i);
     expect(station).toHaveTextContent(/share of a new ship/i);
     expect(station).toHaveTextContent(/build time/i);
     expect(station).toHaveTextContent(/one after another/i);
@@ -395,7 +414,7 @@ describe('the Repair Station menu', () => {
   it('says there is nothing to repair when nothing waits', async () => {
     show(world({ fleetDocked: {}, dock: { lots: [], waiting: { cost: { alloy: 0, crystal: 0, deuterium: 0 }, minutes: 0 }, pct: 100 }, queues: { CONSTRUCTION: [], YARD: [], REPAIR: [] } }));
     const station = await openStation();
-    expect(station).toHaveTextContent(/no damaged ships/i);
+    expect(station).toHaveTextContent(/no ships in this group/i);
     expect(station).toHaveTextContent(/nothing under repair/i);
     expect(within(station).queryByRole('checkbox')).toBeNull();
   });

@@ -32,9 +32,9 @@ export async function verifyChatRecognition(output) {
           await i18n.changeLanguage(language);
           const now = new Date();
           const messages = [
-            { id: 'gold', username: 'Vantage', previousSeasonRank: 1, supporter: true, content: 'Galaksinin yeni sezonuna hazırız.' },
-            { id: 'silver', username: 'Sable', previousSeasonRank: 2, content: 'Anıtların çevresinde yeni hareketler var.' },
-            { id: 'bronze', username: 'Rook', previousSeasonRank: 3, self: true, content: 'Sondam birazdan hedefe varacak.' },
+            { id: 'gold', username: 'Vantage', previousSeasonRank: 1, previousSeasonRanking: 'HONOR', supporter: true, content: 'Galaksinin yeni sezonuna hazırız.' },
+            { id: 'silver', username: 'Sable', previousSeasonRank: 2, previousSeasonRanking: 'HONOR', content: 'Anıtların çevresinde yeni hareketler var.' },
+            { id: 'bronze', username: 'Rook', previousSeasonRank: 3, previousSeasonRanking: 'HONOR', self: true, content: 'Sondam birazdan hedefe varacak.' },
             { id: 'supporter', username: 'Aurora', supporter: true, content: 'Herkese iyi oyunlar!' },
           ].map((row, index) => ({ authorPlayerId: row.id, planetId: `planet-${row.id}`, language,
             createdAt: new Date(now.getTime() - (4 - index) * 60_000), self: false, ...row }));
@@ -83,6 +83,10 @@ export async function verifyChatRecognition(output) {
               pageFits: document.documentElement.scrollWidth <= window.innerWidth };
           }, selector);
           assert(geometry.above && geometry.fits && geometry.pageFits, JSON.stringify({ width, language, name, ...geometry }));
+          if (['gold', 'silver', 'bronze'].includes(name)) {
+            assert(geometry.text.includes('Honor'), geometry.text);
+            assert.equal(await button.locator('svg').count(), 2);
+          }
           assert.equal(await page.getByRole('tooltip').count(), 1);
           await page.screenshot({ path: join(output, `${width}-${language}-${name}.png`) });
           results.push({ width, language, name, ...geometry });

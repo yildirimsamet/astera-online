@@ -110,7 +110,7 @@ export async function abandonColony(db: Db, planetId: string, playerId: string, 
     }
     // The returned capital also advances production; include that tick in Wealth.
     const capital = await planetView(tx, home.id, clock);
-    const wealth = await recomputePlayerWealth(tx, playerId);
+    const wealth = await recomputePlayerWealth(tx, playerId, clock.now());
     await publishShard(tx, world.seasonId, 'control');
     return { abandonedPlanetId: planetId, capital: { ...capital, score: { ...capital.score, wealth } } };
   });

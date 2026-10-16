@@ -18,6 +18,7 @@ export function flightRecallInput(thread: PendingThread, now = serverNow()): Fli
     if (!thread.monumentRecall) return undefined;
     return { missionId: thread.id, monument: true };
   }
+  if (thread.kind === 'trade') return { missionId: thread.id, trade: true };
   return { missionId: thread.id, ...(thread.kind === 'pirate' ? { pirate: true } : {}) };
 }
 
@@ -93,6 +94,8 @@ export const contactFor = (
   : contacts.find((c) => c.id === thread.contactId));
 
 export const flightTitle = (thread: PendingThread): string => {
+  if (thread.kind === 'radiation_bomb') return `${i18n.t('planet.radiationBomb.title')} · L${String(thread.radiationBombLevel ?? 1)} → ${thread.monumentOrdinal
+    ? monumentName(thread.monumentOrdinal) : thread.targetName}`;
   if (thread.monumentOrdinal !== undefined) {
     return `${monumentName(thread.monumentOrdinal)} · ${i18n.t(`monument.status.${thread.leg === 'return' ? 'RETURNING' : 'OUTBOUND'}`)}`;
   }

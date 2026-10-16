@@ -116,6 +116,7 @@ export const CONTACT_HITBOX_KIND: Record<Contact['kind'], HitboxKind> = {
   mining: 'miner',
   harvest: 'miner',
   death_star: 'deathStar',
+  radiation_bomb: 'deathStar',
   pirate: 'pirate',
 };
 

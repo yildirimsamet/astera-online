@@ -13,10 +13,9 @@ import { constellationLayout, hullDoor, RESEARCH_GROUPS } from '../src/lib/const
 const layout = constellationLayout(RESEARCH_GROUPS, (id) => RESEARCH_PROJECTS[id].prerequisite);
 
 describe('the research constellation', () => {
-  // Sixteen since the Death Star Protocol retired (owner, 2026-10-01).
-  it('draws every project once, sixteen stars', () => {
+  it('draws every project exactly once', () => {
     const ids = layout.nodes.map((node) => node.id);
-    expect(ids).toHaveLength(16);
+    expect(ids).toHaveLength(RESEARCH_PROJECT_IDS.length);
     expect(new Set(ids)).toEqual(new Set(RESEARCH_PROJECT_IDS));
   });
 

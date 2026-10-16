@@ -1,4 +1,5 @@
 import { MULTI_WORLD, SHIP_DAMAGE } from './constants.js';
+import { RADIATION_BOMB } from './radiationBomb.js';
 import { assertDamageCarried, type DamageLot } from './damage.js';
 import { ALL_HULLS, HULLS, fleetEntries } from './hulls.js';
 import {
@@ -7,12 +8,12 @@ import {
   type RadiationRatePiece,
   type Segment,
 } from './radiation.js';
-import { hullTech, type TechLevels } from './tech.js';
+import { hullTech, radiationDamageMult, type TechLevels } from './tech.js';
 import type { Fleet, HullId } from './types.js';
 
 /**
- * Monument's fixed HP dose. No balance values or season gate live here: the old
- * percentage model remains its own API until a completed new ruleset opts in.
+ * Fixed HP radiation, source-level calibration and commander shielding. The old
+ * percentage model remains its own API for seasons that have not adopted HP radiation.
  *
  * A lot keeps its fractional basis point as well as its existing integer damage.
  * Dropping the fraction at a read, a fleet split or a battle boundary would turn
@@ -20,6 +21,21 @@ import type { Fleet, HullId } from './types.js';
  */
 export interface HpRadiationSource extends RadiationField {
   intensityHpPerMinute: number;
+  /** Shared season policy, copied to its sources; absent on pre-adoption history. */
+  totalCapFromMs?: number;
+  /** Authored NPC immunity applies only to the environment. */
+  origin?: 'ENVIRONMENT' | 'BOMB';
+}
+
+/** Natural monuments use L1/L2; a bomb can also emit L3. */
+export const RADIATION_LEVEL_HP_PER_MINUTE = { 1: 9, 2: 12.5, 3: 18 } as const;
+/** Older live seasons opt in through an explicit, idle-only server cutover. */
+export const RADIATION_SHIELDING_RULESET = 18;
+
+/** For quotes/receipts only. Feed raw source exposure into applyHpDose, once. */
+export function protectedRadiationHp(doseHp: number, tech: TechLevels = {}): number {
+  if (!Number.isFinite(doseHp) || doseHp < 0) throw new RangeError(`bad HP dose ${String(doseHp)}`);
+  return doseHp * radiationDamageMult(tech);
 }
 
 export interface HpDamageLot extends DamageLot {
@@ -104,12 +120,32 @@ function fleetCohorts(fleet: Fleet, lots: HpDamageLots): HpDamageLot[] {
   return cohorts;
 }
 
-function hpProfile(segments: readonly Segment[], sources: readonly HpRadiationSource[]): RadiationRatePiece[] {
+export function hpRadiationRateProfile(segments: readonly Segment[], sources: readonly HpRadiationSource[]): RadiationRatePiece[] {
   const pieces: RadiationRatePiece[] = [];
+  let capFrom = Infinity;
+  for (const source of sources) {
+    if (source.totalCapFromMs === undefined) continue;
+    if (!Number.isFinite(source.totalCapFromMs)) throw new RangeError('bad radiation cap epoch');
+    capFrom = Math.min(capFrom, source.totalCapFromMs);
+  }
+  const capPerMs = RADIATION_BOMB.maxHpPerMinute / 60_000;
   let previousEnd = Number.NEGATIVE_INFINITY;
   for (const segment of segments) {
     if (segment.startMs < previousEnd) throw new RangeError('segments out of order');
-    pieces.push(...radiationRateProfile(segment, sources, (source) => source.intensityHpPerMinute));
+    const protection = segment.target?.kind === 'PLANET' ? segment.radiationProtectionHpPerMinute ?? 0 : 0;
+    if (!Number.isFinite(protection) || protection < 0) throw new RangeError('bad planet radiation protection');
+    const append = (piece: RadiationRatePiece) => {
+      const rate = Math.max(0, piece.rate - protection / 60000);
+      if (rate > 0) pieces.push({ ...piece, rate });
+    };
+    for (const piece of radiationRateProfile(segment, sources, source => source.intensityHpPerMinute)) {
+      if (piece.endMs <= capFrom) append(piece);
+      else {
+        if (piece.startMs < capFrom) append({ ...piece, endMs: capFrom });
+        append({ startMs: Math.max(piece.startMs, capFrom), endMs: piece.endMs,
+          rate: Math.min(piece.rate, capPerMs) });
+      }
+    }
     previousEnd = segment.endMs;
   }
   return pieces;
@@ -117,19 +153,19 @@ function hpProfile(segments: readonly Segment[], sources: readonly HpRadiationSo
 
 /** Exact HP lost by EACH non-exempt ship, over the source windows actually crossed. */
 export function segmentsExposureHp(segments: readonly Segment[], sources: readonly HpRadiationSource[]): number {
-  const dose = hpProfile(segments, sources).reduce((sum, piece) => sum + piece.rate * (piece.endMs - piece.startMs), 0);
+  const dose = hpRadiationRateProfile(segments, sources).reduce((sum, piece) => sum + piece.rate * (piece.endMs - piece.startMs), 0);
   if (!Number.isFinite(dose)) throw new RangeError('HP exposure exceeds finite range');
   return dose;
 }
 
-/** Every ship takes this many HP; count and tier never divide or resist the dose. */
+/** Raw source exposure in; each ship takes the same protected flat HP dose. */
 export function applyHpDose(
   fleet: Fleet,
   lots: HpDamageLots | null | undefined,
   doseHp: number,
   tech: TechLevels = {},
 ): HpDoseOutcome {
-  if (!Number.isFinite(doseHp) || doseHp < 0) throw new RangeError(`bad HP dose ${String(doseHp)}`);
+  const takenHp = protectedRadiationHp(doseHp, tech);
   assertFleetPopulation(fleet, true);
   const damaged = normalizeHpLots(fleet, lots);
   const survivors = cleanFleet(fleet);
@@ -145,7 +181,7 @@ export function applyHpDose(
       continue;
     }
     const hp = HULLS[row.hull].hp * hullTech(tech, row.hull).hp;
-    const totalBp = exactBp(row) + doseHp / hp * SHIP_DAMAGE.destroyedBp;
+    const totalBp = exactBp(row) + takenHp / hp * SHIP_DAMAGE.destroyedBp;
     const damageBp = Math.floor(totalBp + DAMAGE_EPSILON);
     if (damageBp >= SHIP_DAMAGE.destroyedBp) {
       destroyed[row.hull] = (destroyed[row.hull] ?? 0) + row.count;
@@ -168,7 +204,7 @@ function lethalFromProfile(
   const aimBp = neededBp - DAMAGE_EPSILON / 2;
   let takenBp = 0;
   for (const piece of pieces) {
-    const rateBp = piece.rate / hp * SHIP_DAMAGE.destroyedBp;
+    const rateBp = piece.rate * radiationDamageMult(tech) / hp * SHIP_DAMAGE.destroyedBp;
     const gainedBp = rateBp * (piece.endMs - piece.startMs);
     if (takenBp + gainedBp + DAMAGE_EPSILON >= neededBp) {
       const at = Math.ceil(Math.min(piece.endMs, piece.startMs + Math.max(0, aimBp - takenBp) / rateBp));
@@ -193,7 +229,7 @@ export function hpLethalAtMs(
     hull: ship.hull, count: 1, damageBp: ship.damageBp ?? 0, remainderBp: ship.remainderBp ?? 0,
   };
   normalizeHpLots(fleet, [row]);
-  return lethalFromProfile(hpProfile(segments, sources), row, ship.tech ?? {});
+  return lethalFromProfile(hpRadiationRateProfile(segments, sources), row, ship.tech ?? {});
 }
 
 /**
@@ -209,7 +245,7 @@ export function firstHpLossAtMs(
 ): number | null {
   assertFleetPopulation(fleet, true);
   const damaged = normalizeHpLots(fleet, lots);
-  const pieces = hpProfile(segments, sources);
+  const pieces = hpRadiationRateProfile(segments, sources);
   let first: number | null = null;
   for (const row of fleetCohorts(fleet, damaged)) {
     const at = lethalFromProfile(pieces, row, tech);
@@ -224,7 +260,7 @@ export function hpWingLethalAtMs(segments: readonly Segment[], sources: readonly
   assertFleetPopulation(fleet, true);
   const cohorts = fleetCohorts(fleet, normalizeHpLots(fleet, lots));
   if (cohorts.length === 0) return null;
-  const pieces = hpProfile(segments, sources);
+  const pieces = hpRadiationRateProfile(segments, sources);
   let last = Number.NEGATIVE_INFINITY;
   for (const cohort of cohorts) {
     const at = lethalFromProfile(pieces, cohort, tech);

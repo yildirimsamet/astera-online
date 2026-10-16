@@ -10,6 +10,10 @@ import {
   fleetSpeedMult,
   interceptIntergalacticConvoy,
   sensorSphere,
+  honorConvoyResources,
+  honorBenefits,
+  HONOR_BENEFIT_THRESHOLDS_V1,
+  quoteIntergalacticConvoyReward,
   type Fleet,
 } from '@astera/rules';
 import {
@@ -22,6 +26,7 @@ import {
   scheduledEvents,
   seasons,
   units,
+  honorTotals,
 } from '../src/db/schema.js';
 import { minutesSince } from '../src/clock.js';
 import { buildApp } from '../src/app.js';
@@ -33,6 +38,9 @@ import { loadTrafficSnapshot, projectGalaxyTraffic } from '../src/services/traff
 import { intergalacticConvoyOf } from '../src/services/intergalacticConvoyField.js';
 import { pendingThreads } from '../src/services/session.js';
 import { planetView } from '../src/services/planetView.js';
+import { landHpShips } from '../src/services/shipDamage.js';
+import { prepareHonorSeason } from '../src/services/honorLedger.js';
+import { enableHonorBenefits } from '../src/services/honorBenefits.js';
 import {
   abandonIntergalacticConvoyRun,
   intergalacticConvoyLocation,
@@ -128,6 +136,81 @@ async function armed(fleet: Fleet, planetId = mine): Promise<void> {
 }
 
 describe('an intergalactic convoy strike launch', () => {
+  it('does not reprice a convoy committed before the economic opening', async () => {
+    await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'ACTIVE', f.clock));
+    const crossing = await convoyUp();
+    await f.db.update(seasons).set({ rulesetVersion: 18 }).where(eq(seasons.id, f.seasonId));
+    const fleet: Fleet = { DART: 20, COURIER: 20 };
+    await armed(fleet);
+    const order = await crossing.order(fleet);
+    const launch = await f.db.transaction(tx => launchIntergalacticConvoy(tx, { planetId: mine,
+      expectedPlayerId: f.playerIds[0]!, order, clock: f.clock }));
+    await f.db.insert(honorTotals).values({ seasonId: f.seasonId, playerId: f.playerIds[0]!, score: 75_000_000 });
+    await enableHonorBenefits(f.db, f.seasonId, f.clock, true);
+    f.clock.set(launch.engagementEndsAt);
+    await f.db.transaction(tx => resolveIntergalacticConvoyArrival(tx, launch.runId, f.clock));
+    const [run] = await f.db.select().from(intergalacticConvoyRuns).where(eq(intergalacticConvoyRuns.id, launch.runId));
+    expect(run?.honorResourcePct).toBe(0);
+    expect(run?.resourceReward).toEqual(launch.quotedResourceReward);
+  });
+  it.each([[75_000_000, 2, 30], [-100_000_000, -2, -30]] as const)(
+    'freezes Honor %s resource effect through real arrival, including repricing the surviving force once', async (score, tier, percent) => {
+      await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'ACTIVE', f.clock));
+      await f.db.insert(honorTotals).values({ seasonId: f.seasonId, playerId: f.playerIds[0]!, score });
+      await enableHonorBenefits(f.db, f.seasonId, f.clock, true);
+      const crossing = await convoyUp();
+      await f.db.update(seasons).set({ rulesetVersion: 18 }).where(eq(seasons.id, f.seasonId));
+      const fleet: Fleet = { DART: 20, COURIER: 20 };
+      await armed(fleet);
+      const order = { ...await crossing.order(fleet), expectedHonorTier: tier };
+      await expect(f.db.transaction(tx => launchIntergalacticConvoy(tx, { planetId: mine,
+        expectedPlayerId: f.playerIds[0]!, order: { ...order, expectedHonorTier: 0 }, clock: f.clock })))
+        .rejects.toMatchObject({ code: 'HONOR_QUOTE_CHANGED' });
+      const launch = await f.db.transaction(tx => launchIntergalacticConvoy(tx, { planetId: mine,
+        expectedPlayerId: f.playerIds[0]!, order, clock: f.clock }));
+      const [run] = await f.db.select().from(intergalacticConvoyRuns).where(eq(intergalacticConvoyRuns.id, launch.runId));
+      if (!run) throw new Error('Missing Honor convoy');
+      expect(run.honorResourcePct).toBe(percent);
+      const base = quoteIntergalacticConvoyReward({ productionCap: run.productionCap, fleet, launchTech: run.tech, effect });
+      const expected = honorConvoyResources(base.resourceReward, base.cargo, honorBenefits(score, HONOR_BENEFIT_THRESHOLDS_V1));
+      expect(launch.quotedResourceReward).toEqual(expected);
+      expect(launch.shipDropChance).toBe(base.shipDropChance);
+      await f.db.update(honorTotals).set({ score: -score });
+      f.clock.set(launch.engagementEndsAt);
+      await f.db.transaction(tx => resolveIntergalacticConvoyArrival(tx, launch.runId, f.clock));
+      const [settled] = await f.db.select().from(intergalacticConvoyRuns).where(eq(intergalacticConvoyRuns.id, launch.runId));
+      expect(settled?.resourceReward).toEqual(expected);
+      await f.db.transaction(tx => resolveIntergalacticConvoyArrival(tx, launch.runId, f.clock));
+      const [retried] = await f.db.select().from(intergalacticConvoyRuns).where(eq(intergalacticConvoyRuns.id, launch.runId));
+      expect(retried?.resourceReward).toEqual(expected);
+    });
+  it('does not pay a strike reward if all arriving warships are at 5% HP', async () => {
+    const crossing = await convoyUp();
+    await f.db.update(seasons).set({ rulesetVersion: 18 }).where(eq(seasons.id, f.seasonId));
+    await armed({ DART: 4 });
+    const order = await crossing.order({ DART: 4 });
+    const launch = await f.db.transaction(tx => launchIntergalacticConvoy(tx, { planetId: mine,
+      expectedPlayerId: f.playerIds[0]!, order, clock: f.clock }));
+    await f.db.update(intergalacticConvoyRuns).set({ damage: [{ hull: 'DART', count: 4, damageBp: 9500 }] })
+      .where(eq(intergalacticConvoyRuns.id, launch.runId));
+    f.clock.set(launch.engagementEndsAt);
+    await f.db.transaction(tx => resolveIntergalacticConvoyArrival(tx, launch.runId, f.clock));
+    const [run] = await f.db.select().from(intergalacticConvoyRuns).where(eq(intergalacticConvoyRuns.id, launch.runId));
+    expect(run?.resourceReward).toEqual({ alloy: 0, crystal: 0, deuterium: 0 });
+    expect(run?.awardedFleet).toEqual({});
+    expect(run?.status).toBe('returning');
+  });
+  it('carries maintenance health to a convoy strike', async () => {
+    const crossing = await convoyUp();
+    await armed({ DART: 0 });
+    const damage = [{ hull: 'DART' as const, count: 4, damageBp: 1000, remainderBp: 0.25 }];
+    await f.db.transaction((tx) => landHpShips(tx, { planetId: mine, ownerPlayerId: f.playerIds[0]!,
+      fleet: { DART: 4 }, damage, at: f.clock.now() }));
+    const order = await crossing.order({ DART: 2 });
+    const result = await f.db.transaction((tx) => launchIntergalacticConvoy(tx, { planetId: mine, expectedPlayerId: f.playerIds[0]!, order, clock: f.clock }));
+    const [run] = await f.db.select().from(intergalacticConvoyRuns).where(eq(intergalacticConvoyRuns.id, result.runId));
+    expect(run?.damage).toEqual([{ ...damage[0], count: 2 }]);
+  });
   it('requires explicit HP loss acknowledgement for the frozen strike route', async () => {
     const crossing = await convoyUp();
     const fleet: Fleet = { DART: 20, COURIER: 2 };

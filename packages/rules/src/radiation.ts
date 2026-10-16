@@ -57,6 +57,8 @@ export interface Segment {
   endMs: number;
   /** Present only for time spent waiting at a target, never for a flight leg. */
   target?: RadiationTarget;
+  /** Flat HP/min protection of the occupied planet, before the ship's own research. */
+  radiationProtectionHpPerMinute?: number;
 }
 
 const MINUTE_MS = 60_000;

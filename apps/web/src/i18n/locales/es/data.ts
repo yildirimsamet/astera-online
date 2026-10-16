@@ -57,7 +57,7 @@ export const vocabulary = {
         'Absorbe el daño de las incursiones antes que los naves y los cañones terrestres, luego se regenera sin recursos. No proporciona ninguna inteligencia.',
       roleOwned:
         'Absorbe el daño de las incursiones antes que naves y cañones terrestres y regenera el 35% de su máximo cada hora. No proporciona ninguna inteligencia.',
-      detail: 'Cada nivel aumenta la fuerza máxima del escudo. El daño de combate se elimina de Égida antes de que llegue a los naves o a los cañones terrestres, y el escudo se regenera el 35% de su máximo por hora sin recursos. No reúne ninguna inteligencia.',
+      detail: "Cada nivel aumenta los PV máximos del escudo. Aegis activo recibe el daño de combate antes que las naves y las defensas terrestres. Cada nivel activo también reduce en 1 PV/min el daño por radiación a las naves de este planeta. Con cero PV, la protección contra radiación se detiene. Tras agotarse en combate, la recarga empieza en 15 minutos; un EMP puede retrasarla más. La recarga no cuesta recursos. Sin unidades aptas para el combate, Aegis no puede defender el planeta por sí solo. No proporciona información de inteligencia.",
     },
     VEIL: {
       name: 'Velo',
@@ -103,10 +103,10 @@ export const vocabulary = {
       name: 'Baliza',
       tag: 'Flotas más rápidas',
       role:
-        'Hace que las flotas de incursiones, transferencias, comercio y ayuda a clanes lanzadas aquí viajen 1,3 veces más rápido en ambas piernas.',
+        'Hace que las flotas de incursiones, transferencias, comercio y ayuda a clanes lanzadas aquí viajen 1,2 veces más rápido en ambas piernas.',
       blurb:
         'Una marca de navegación para flotas de incursión, transferencia, comercio y ayuda a clanes. Vuelos más cortos significan una ventana más corta con su defensa fuera de casa.',
-      detail: 'Su multiplicador de velocidad de 1,3 se aplica a las flotas de incursión, transferencia, comercio y ayuda a clanes de ida y vuelta lanzadas aquí. No afecta a las flotas de asentamientos ni a los Prospectores, y no cambia el costo de ataque, armadura, carga o combustible.',
+      detail: 'Su multiplicador de velocidad de 1,2 se aplica a las flotas de incursión, transferencia, comercio y ayuda a clanes de ida y vuelta lanzadas aquí. No afecta a las flotas de asentamientos ni a los Prospectores, y no cambia el costo de ataque, armadura, carga o combustible.',
     },
   },
 

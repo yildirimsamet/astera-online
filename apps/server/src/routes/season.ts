@@ -1,11 +1,12 @@
 import { and, asc, desc, eq, exists, gte, inArray, isNotNull, lt, ne, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { RIVAL, SERVERS, seasonRankRewardProgram } from '@astera/rules';
+import { honorSoloCredit, isSupportedHonorVersion, RIVAL, SERVERS, seasonRankRewardProgram } from '@astera/rules';
 import {
   accounts,
   botProfiles,
   clanMemberships,
+  honorSeasons,
   planets,
   playerRivals,
   players,
@@ -19,6 +20,7 @@ import { addMinutes } from '../clock.js';
 import { protectionFrom } from '../services/attackProtection.js';
 import { averageSeasonStats, sumSeasonStats } from '../services/seasonArchive.js';
 import { monumentHonorees } from '../services/monumentHonorees.js';
+import { deliveredSeasonRankReward } from '../services/seasonRankRewards.js';
 import { GameError } from '../services/planet.js';
 import { requireAuth } from './auth.js';
 
@@ -193,6 +195,8 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         commanderName: result.recap.commanderName,
         country: result.recap.countryCode ?? currentCountry,
         dominion: result.dominion,
+        honorScore: result.honorScore,
+        honorRank: result.honorRank,
         title: result.title,
         self: result.accountId === req.accountId,
         reward: null,
@@ -235,7 +239,8 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         ne(shards.role, 'WAITING'),
       ))
       .orderBy(desc(seasonCycles.ordinal));
-    const ranks = completed.map((row) => row.result.finalRank);
+    const ranks = completed.flatMap(({ result }) => result.honorScore == null ? [result.finalRank]
+      : result.honorScore > 0 && result.honorRank !== null ? [result.honorRank] : []);
     const completedStats = completed.flatMap((row) => row.result.stats === null
       ? []
       : [row.result.stats]);
@@ -248,7 +253,7 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       hundred are the same line of text.
     */
     const [field] = await app.db
-      .select({ n: sql<number>`count(*)::int` })
+      .select({ n: sql<number>`count(*)::int`, honorN: sql<number>`count(${seasonResults.honorRank})::int` })
       .from(seasonResults)
       .where(eq(seasonResults.seasonId, selected.result.seasonId));
     const [legacyRows, botRows] = await Promise.all([
@@ -311,6 +316,9 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         /** The size of the field that rank was taken from. */
         commanders: field?.n ?? 0,
         dominion: selected.result.dominion,
+        honorScore: selected.result.honorScore,
+        honorRank: selected.result.honorRank,
+        honorCommanders: field?.honorN ?? 0,
         title: selected.result.title,
         recap: selected.result.recap,
         legacyStats: {
@@ -367,6 +375,8 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
           commanderName: row.result.recap.commanderName,
           rank: row.result.finalRank,
           dominion: row.result.dominion,
+          honorScore: row.result.honorScore,
+          honorRank: row.result.honorRank,
           title: row.result.title,
           statsAvailable: row.result.stats !== null,
         })),
@@ -427,7 +437,7 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
      * minute to move a number in a corner.
      */
     const today = addMinutes(app.clock.now(), -SERVERS.dayWindowMinutes);
-    const [[count], [active], [seenToday], [result]] = await Promise.all([
+    const [[count], [active], [seenToday], [result], [honor]] = await Promise.all([
       app.db
         .select({ n: sql<number>`count(*)::int` })
         .from(players)
@@ -447,6 +457,8 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
           eq(seasonResults.seasonId, row.season.id),
           eq(seasonResults.accountId, row.accountId),
         )),
+      app.db.select({ mode: honorSeasons.mode, version: honorSeasons.version }).from(honorSeasons)
+        .where(eq(honorSeasons.seasonId, row.season.id)),
     ]);
 
     const protection = protectionFrom(
@@ -462,6 +474,8 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
 
     return {
       seasonId: row.season.id,
+      honorSoloCredit: honor?.mode === 'ACTIVE' && isSupportedHonorVersion(honor.version) && honorSoloCredit(honor.version),
+      seasonReward: await deliveredSeasonRankReward(app.db, req.accountId!, row.season.id),
       shard: row.shard.code,
       shardName: row.shard.name === '' ? row.shard.code : row.shard.name,
       /**

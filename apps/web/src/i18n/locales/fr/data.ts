@@ -107,7 +107,7 @@ export const vocabulary = {
         'Absorbe les dégâts du raid avant les navires et les canons au sol, puis se régénère sans ressources. Il ne fournit aucune intelligence.',
       roleOwned:
         'Absorbe les dégâts du raid avant les navires et les canons au sol et régénère 35 % de son maximum chaque heure. Il ne fournit aucune intelligence.',
-      detail: 'Chaque niveau augmente la force maximale du bouclier. Les dégâts de combat sont supprimés d\'Aegis avant qu\'ils n\'atteignent les navires ou les canons au sol, et le bouclier régénère 35 % de son maximum par heure sans ressources. Il ne recueille aucune intelligence.',
+      detail: "Chaque niveau augmente les PV maximaux du bouclier. Aegis actif absorbe les dégâts de combat avant les vaisseaux et les défenses terrestres. Chaque niveau actif réduit aussi de 1 PV/min les dégâts de radiation des vaisseaux sur cette planète. À zéro PV, la protection contre la radiation cesse. Après un épuisement au combat, la recharge commence après 15 minutes ; un EMP peut la retarder davantage. La recharge ne coûte aucune ressource. Sans unités aptes au combat, Aegis ne peut pas défendre seul la planète. Il ne fournit aucun renseignement.",
     },
     VEIL: {
       name: 'Voile',
@@ -153,10 +153,10 @@ export const vocabulary = {
       name: 'Balise',
       tag: 'Des flottes plus rapides',
       role:
-        'Permet aux flottes de raid, de transfert, de commerce et d\'aide aux clans lancées ici de voyager 1,3 fois plus vite sur les deux jambes.',
+        'Permet aux flottes de raid, de transfert, de commerce et d\'aide aux clans lancées ici de voyager 1,2 fois plus vite sur les deux jambes.',
       blurb:
         'Une marque de navigation pour les flottes de raid, de transfert, de commerce et d\'aide aux clans. Des vols plus courts signifient une fenêtre plus courte avec votre défense loin de chez vous.',
-      detail: 'Son multiplicateur de vitesse de 1,3 s\'applique aux flottes de raid, de transfert, de commerce et d\'aide aux clans aller et retour lancées ici. Cela n\'affecte pas les flottes des colonies ou les prospecteurs, et cela ne change aucun coût d\'attaque, de blindage, de fret ou de carburant.',
+      detail: 'Son multiplicateur de vitesse de 1,2 s\'applique aux flottes de raid, de transfert, de commerce et d\'aide aux clans aller et retour lancées ici. Cela n\'affecte pas les flottes des colonies ou les prospecteurs, et cela ne change aucun coût d\'attaque, de blindage, de fret ou de carburant.',
     },
   },
 

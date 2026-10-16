@@ -45,7 +45,7 @@ const cost = (alloy: number, crystal: number, deuterium = 0): Resources =>
  * `buildingMinutes` is `profileBuilding().minutes x ECONOMY_ADJUSTMENT.buildTime x
  * robotSpeedMult(tech)` — the dial is the one figure every timer in the game is
  * multiplied by, and it sat at 1.00 when these assertions were written. It is
- * 0.975 now, so an expectation built out of `profileBuilding` that does not carry
+ * 1.21875 after the October slowdown, so an expectation built out of `profileBuilding` that does not carry
  * it is asserting the dial does not exist, which is what made this file red.
  *
  * The robot half of every assertion below is UNCHANGED: what the research sells is

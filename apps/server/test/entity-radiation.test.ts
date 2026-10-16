@@ -1,3 +1,4 @@
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { afterAll, beforeEach, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { HULLS, MONUMENT_SEASON_DEFAULTS, segmentsExposureHp } from '@astera/rules';
@@ -66,9 +67,11 @@ it('takes waiting damage from its monument and carries the same wound home witho
   // The return settles no additional environmental dose; its parked lots were removed on landing.
   const [home] = await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, sent.wave.id));
   expect(home!.status).toBe('HOME');
-  expect(landed?.dock).toMatchObject({ docked: [], autoRepaired: [{ hull: 'RAMPART', count: 2 }] });
+  expect(landed?.dock).toMatchObject({ docked: [], autoRepaired: [] });
+  expect((await readHomeHealth(f.db, sent.wave.originPlanetId)).damage[0]).toMatchObject({ hull: 'RAMPART', count: 2, damageBp: held!.damageBp, remainderBp: held!.remainderBp });
   const [notice] = (await f.db.select().from(notifications)).filter(row => row.kind === 'fleet_returned');
-  expect(notice?.payload).toMatchObject({ autoRepaired: 2 });
+  expect(notice?.payload).not.toHaveProperty('autoRepaired');
+  expect(notice?.payload).not.toHaveProperty('docked');
   expect(await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, sent.wave.id))).toHaveLength(0);
 });
 

@@ -1,7 +1,9 @@
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import { fleetDiff, type Fleet, type Grade, type HpDamageLot, type Vec3 } from '@astera/rules';
+import { fleetCount, fleetDiff, type Fleet, type Grade, type HpDamageLot, type Vec3 } from '@astera/rules';
 import type { Tx } from '../db/client.js';
 import { monumentBattles, monumentBattleParticipants } from '../db/schema.js';
+import { readHonorReceipts, type HonorReportReceipt } from './honorReports.js';
+import { honorEventKey } from './honorAccounting.js';
 
 export interface MonumentReportView {
   kind: 'MONUMENT';
@@ -20,6 +22,7 @@ export interface MonumentReportView {
   theirLosses: Fleet;
   lootDeuterium: number;
   dominion: number;
+  honor?: HonorReportReceipt | null;
   opponents: { kind: 'PLAYER' | 'NEUTRAL'; playerId: string | null; name: string;
     clanName: string | null; clanTag: string | null }[];
 }
@@ -33,6 +36,7 @@ export async function readMonumentBattleReports(tx: Tx, playerId: string, limit:
   const battleIds = [...new Set(rows.map(({ battle }) => battle.id))];
   const participants = battleIds.length === 0 ? [] : await tx.select().from(monumentBattleParticipants)
     .where(inArray(monumentBattleParticipants.battleId, battleIds));
+  const honor = await readHonorReceipts(tx, playerId, battleIds.map(id => ({ source: 'MONUMENT', id })));
   return rows.map(({ battle, own }) => ({
     kind: 'MONUMENT', id: battle.id, at: battle.createdAt,
     monument: { id: battle.monumentId, ordinal: battle.monumentOrdinal, position: battle.monumentPosition },
@@ -41,13 +45,16 @@ export async function readMonumentBattleReports(tx: Tx, playerId: string, limit:
     theirLosses: own.side === 'ATTACK' ? fleetDiff(battle.defenderFleet, battle.defenderSurvivors)
       : fleetDiff(battle.attackerFleet, battle.attackerSurvivors),
     lootDeuterium: own.lootDeuterium, dominion: own.dominionDelta,
+    honor: honor.get(honorEventKey({ source: 'MONUMENT', id: battle.id })) ?? null,
     opponents: (() => {
       const opposing = participants.filter((row) => row.battleId === battle.id && row.side !== own.side);
       if (opposing.length > 0) return [...new Map(opposing.map((row) => [row.playerId, {
         kind: 'PLAYER' as const, playerId: row.playerId, name: row.commanderName,
         clanName: row.clanName, clanTag: row.clanTag,
       }])).values()];
-      return own.side === 'ATTACK' ? [{ kind: 'NEUTRAL' as const, playerId: null, name: 'Neutral garrison', clanName: null, clanTag: null }] : [];
+      // An empty monument has no garrison to name.
+      return own.side === 'ATTACK' && fleetCount(battle.defenderFleet) > 0
+        ? [{ kind: 'NEUTRAL' as const, playerId: null, name: 'Neutral garrison', clanName: null, clanTag: null }] : [];
     })(),
   }));
 }

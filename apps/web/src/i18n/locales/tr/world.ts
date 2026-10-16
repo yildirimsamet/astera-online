@@ -198,6 +198,12 @@ export const focus = {
     },
     deathStar: "Ölüm Yıldızı",
     deathStarStrike: "Ölüm Yıldızı · EMP darbesi",
+    /** The Death Star as a folding section of the panel, beside the radiation strike (owner, 2026-10-16). */
+    deathStarSection: {
+      title: "Ölüm Yıldızı saldırısı",
+      hold: "Ölüm Yıldızı fırlat",
+    },
+    strikeReady: "{{ready}} hazır",
 
     /**
      * DARBENİN İKİNCİ VURUŞU. Sahip raporu: *"yanlışlıkla"*.
@@ -211,13 +217,16 @@ export const focus = {
     strikeConfirm: {
       eyebrow: "Taktiksel EMP darbesi",
       title: "{{world}} savunmasını bastır",
-      lead: "Ölüm Yıldızı darbeyle birlikte tükenir. Geri çağrılamaz ve hiçbir şey onu geri getirmez.",
+      lead: "Ölüm Yıldızı vuruşta tükenir ve geri çağrılamaz.",
       outage: "EMP kesintisi",
-      keeps: "Aegis sıfırlanır ve 1 saat yenilenmez. Yer savunmaları 1 saat çalışmaz ve hasar almaz. Koloni {{loss}} sadakat kaybeder; {{loss}} veya altındaysa kopar ve tarafsız olur.",
+      keeps: "Aegis sıfırlanır ve 1 saat dolmaz. Yer savunmaları bu 1 saat içinde savaşa girmez.",
+      keepsColony: "Koloni {{loss}} sadakat kaybeder ve 1 rastgele arıza alır. Sadakati 100 olan koloni art arda {{hits}} isabette düşer ve tarafsız olur.",
+      origin: "Kalkış",
+      originRead: "{{world}} · {{ready}} hazır",
       commit: "EMP’yi fırlat",
       loyalty: "Koloni sadakati",
       loyaltyRead: "%{{value}} · {{hits}}",
-      hits_one: "bu isabet koparır",
+      hits_one: "bu isabet düşürür",
       hits_other: "{{count}} isabet",
       loyaltyUnknown: "Bilinmiyor — önce sonda gönder",
       charges: "Önleyici şarj",
@@ -237,8 +246,7 @@ export const focus = {
     kindColony: "Koloni",
     kindNeutral: "Tarafsız",
     capitalProtected: "Ele geçirilemez ana gezegen",
-    capitalProtectedHint:
-      "Ölüm Yıldızı Aegis canını sıfırlar ve 1 saat yenilenmesini engeller; yer savunmaları 1 saat çalışmaz ve hasar almaz.",
+    capitalProtectedHint: "Ölüm Yıldızı Aegis’i sıfırlar ve 1 saat dolmasını engeller; yer savunmaları bu sürede savaşa girmez.",
     /** Silah kapalıyken ana gezegenin tek gerçek kuralı. `STRATEGIC_CRAFTING_ENABLED`. */
     capitalRaidOnlyHint:
       "Akın buradan yalnızca kaynak alır. Ana gezegen ne olursa olsun el değiştirmez.",
@@ -246,7 +254,7 @@ export const focus = {
     capitalRecoveringHint:
       "Yeni bir EMP darbesi bir saatlik bastırmayı yeniden başlatır; kontrol yine el değiştirmez.",
     capitalEmp: "Ana gezegen EMP altında",
-    capitalEmpHint: "Bir saatlik EMP bitene kadar Aegis boş, yer savunmaları kapalı ve hasar almaz.",
+    capitalEmpHint: "1 saatlik EMP bitene kadar Aegis boş kalır ve yer savunmaları savaşa girmez.",
     yourCapital: "Korunan ana gezegenin",
     yourColony: "Kolonin",
     transferHint: "Gemi ve kaynakları buraya taşı; hangi gemilerin döneceğini seç.",
@@ -317,7 +325,7 @@ export const focus = {
     occupationProtected: "İşgal koruması",
     protectedFor: "{{duration}} boyunca vurulamaz veya ele geçirilemez.",
     firstImpact: "Aegis sıfır + {{duration}} EMP",
-    firstImpactColony: "Koloni ayrıca {{loss}} sadakat kaybeder; {{loss}} veya altındaysa kopar ve tarafsız olur.",
+    firstImpactColony: "Koloni ayrıca {{loss}} sadakat kaybeder ve 1 rastgele arıza alır. Sadakati 100 olan koloni art arda {{hits}} isabette düşer.",
     secondImpact: "EMP biter · savunmalar geri döner",
     deathStarReadyRequirement: "Ölüm Yıldızı hazır",
     deathStarReadyExplain:
@@ -460,6 +468,7 @@ export const focus = {
     stateReturning: "dönüyor",
     stateInbound: "gidiyor",
     noCraft: "Evde Kazıcı yok",
+    measuring: "Varış süresi hesaplanıyor…",
     tooLate: "Sen varmadan dağılır",
     resting: "Araçlar dinleniyor · {{duration}}",
     send: "{{count}} gönder · {{duration}}",

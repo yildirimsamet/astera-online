@@ -115,10 +115,12 @@ export const conceptArticles: readonly WikiArticle[] = [
     l("Manage each colony’s buildings, ships and repairs. Learn how faults and defeats reduce loyalty and when a colony becomes neutral.", "Her koloninin binalarını, gemilerini ve onarımlarını yönet. Arızaların ve yenilgilerin sadakati nasıl düşürdüğünü, koloninin ne zaman tarafsız olduğunu öğren."),
     l([
       "Each colony has separate buildings, stock, ships and instruments. Completed research is shared across all your planets. Developed colonies can suffer faults that interrupt production, leak stored resources or disable equipment and actions.",
+      "Starting any building upgrade protects that colony from all new faults for at least 12 hours, including faults caused by attacks. Each accepted building order renews the protection immediately; completion is not required. Other colonies are unaffected. Existing faults still need repairs, and battles can still cause damage and loyalty loss.",
       "Possible faults affect producers, the Store, Command Core, Telescope, Shipyard or Prospectors. Open the affected item to see the specific consequence and repair. A Command Core fault and a Shipyard fault do not disable the same functions.",
       "Active faults reduce loyalty; several faults make it fall faster. Loyalty recovers when faults are cleared. A lost raid or [[combat.death-star|EMP hit]] can also reduce it. At zero loyalty, you lose the colony and it becomes neutral. A decisive ordinary raid does not directly give ownership to its attacker.",
     ], [
       "Her koloninin binaları, kaynakları, gemileri ve gezegen cihazları ayrıdır. Tamamlanan araştırmalar bütün gezegenlerinde geçerlidir. Gelişmiş kolonilerde üretimi durduran, kaynak kaybettiren veya cihazlarla işlemleri devre dışı bırakan arızalar çıkabilir.",
+      "Herhangi bir bina geliştirmesi başlatmak, o kolonide saldırı kaynaklı olanlar dâhil tüm yeni arızaları en az 12 saat engeller. Kabul edilen her bina emri süreyi hemen yeniler; tamamlanması gerekmez. Diğer koloniler etkilenmez. Mevcut arızaları onarman gerekir. Savaş hasarı ve sadakat kaybı devam eder.",
       "Arızalar üretim binalarını, Depoyu, Komuta Çekirdeğini, Teleskobu, Tersaneyi veya Kazıcıları etkileyebilir. Arızanın sonucunu ve onarımını görmek için etkilenen öğeyi aç. Çekirdek ve Tersane arızaları farklı işlevleri devre dışı bırakır.",
       "Aktif arızalar sadakati düşürür; birden fazla arıza düşüşü hızlandırır. Arızalar giderilince sadakat toparlanır. Kaybedilen akın veya [[combat.death-star|EMP isabeti]] de sadakati azaltabilir. Sadakat sıfırda ise koloniyi kaybedersin ve gezegen tarafsız olur. Normal akında kesin zafer, gezegeni doğrudan saldırana vermez.",
     ]),
@@ -169,10 +171,12 @@ export const conceptArticles: readonly WikiArticle[] = [
       "Your planets produce resources automatically into the Works. Collect them into the Store before spending them. The Works and Store have separate capacities. Each resource’s Works capacity is based on its hourly production.",
       "When a resource’s Works space is full, more of that resource cannot accumulate. Returning asteroid and debris loads also enter the Works and must fit its available room.",
       "Collection is limited by free Store capacity. If only part fits, the rest stays in the Works. A returned mining load is not spendable until you collect it.",
+      "[[galaxy.vacation|Vacation mode]] is an exception: its deuterium fee uses the capital’s Store first, then its Works directly, without requiring free Store capacity.",
     ], [
       "Gezegenlerin kaynakları otomatik olarak Havuzda üretir. Bu kaynakları harcamadan önce Depoya toplamalısın. Havuzun ve Deponun kapasiteleri ayrıdır. Her kaynağın Havuz kapasitesi, o kaynağın saatlik üretimine bağlıdır.",
       "Bir kaynağın Havuzu dolunca o kaynak birikmeye devam edemez. Asteroitlerden ve enkaz sahalarından dönen yükler de Havuza eklenir; boş Havuz kapasitesiyle sınırlıdır.",
       "Toplama, Deponun boş kapasitesiyle sınırlıdır. Yükün yalnız bir kısmı sığarsa kalan kaynak Havuzda bekler. Madencilik yükü dönmüş olsa da toplamadan harcayamazsın.",
+      "[[galaxy.vacation|Tatil modu]] bir istisnadır: döteryum ücreti önce ana gezegenin Deposundan, eksik kalırsa doğrudan Havuzundan alınır; Depoda boş kapasite gerektirmez.",
     ]),
     l([
       "Collect before placing an order and before several mining flights return. If the Store is full, spending resources or increasing storage capacity can make room for collection.",

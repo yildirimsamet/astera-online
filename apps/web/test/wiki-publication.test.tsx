@@ -198,3 +198,23 @@ describe('the published Wiki contract', () => {
     expect(readFileSync(resolve(process.cwd(), 'public/hizli-baslangic-rehberi.html'), 'utf8')).toContain('href="/wiki/tr/basics/quick-start"');
   });
 });
+
+
+it('publishes tier-specific storage, Works and recovery values in both languages', () => {
+  for (const language of ['en', 'tr'] as const) {
+    for (const id of ['combat.loot', 'combat.eligibility']) {
+      const page = wikiPages.find(p => p.articleId === id && p.language === language);
+      if (!page) throw new Error(`Missing ${id}`);
+      const text = documentFor(renderWikiPage(page)).querySelector('article')?.textContent ?? '';
+      expect(text).toMatch(/1[–-]3/);
+      expect(text).toMatch(/4\+/);
+      if (id === 'combat.loot') {
+        expect(text).toContain(language === 'en' ? '25%' : '%25');
+        expect(text).toContain(language === 'en' ? '12.5%' : '%12,5');
+      } else {
+        expect(text).toContain(language === 'en' ? '12 h' : '12 sa');
+        expect(text).toContain(language === 'en' ? '2 h' : '2 sa');
+      }
+    }
+  }
+});

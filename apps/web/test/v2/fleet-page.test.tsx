@@ -62,6 +62,30 @@ const props = (over: Partial<FleetPageProps> = {}): FleetPageProps => ({
 });
 
 describe('the Fleet page', () => {
+  it('explains radiation closure and blocks workshop entry while keeping the workshop accessible', async () => {
+    const onDock = vi.fn();
+    const onOpenRepairStation = vi.fn();
+    const irradiated = { ...world({ fleet: { DART: 2 }, docked: 1,
+      damage: [{ hull: 'DART', count: 2, damageBp: 5000 }] }), workshopRadiation: true };
+    render(<FleetPage {...props({ tab: 'home', worlds: [irradiated], onDock, onOpenRepairStation })} />);
+    await userEvent.type(within(screen.getByTestId('health-group')).getByRole('textbox'), '1');
+    expect(screen.getByRole('button', { name: 'Move to workshop' })).toBeDisabled();
+    expect(screen.getByText(/Radiation closes entry/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '1 in repair' }));
+    expect(onOpenRepairStation).toHaveBeenCalledWith('p-1');
+    expect(onDock).not.toHaveBeenCalled();
+  });
+  it('groups maintenance wounds and transfers the exact selected quantity from the fleet page', async () => {
+    const onDock = vi.fn();
+    render(<FleetPage {...props({ tab: 'home', worlds: [world({ fleet: { DART: 5 },
+      damage: [{ hull: 'DART', count: 2, damageBp: 9500, remainderBp: 0.25 }] })], onDock })} />);
+    expect(screen.getByText('Cannot fight')).toBeInTheDocument();
+    const group = screen.getByTestId('health-group');
+    await userEvent.type(within(group).getByRole('textbox'), '1');
+    await userEvent.click(screen.getByRole('button', { name: 'Move to workshop' }));
+    expect(onDock).toHaveBeenCalledWith('p-1', [{ hull: 'DART', count: 1, damageBp: 9500, remainderBp: 0.25 }], expect.any(Function));
+    expect(within(group).getByRole('textbox')).toHaveValue('1');
+  });
   /**
    * AS TALL AS WHAT IT HOLDS (owner, 2026-09-25): with nothing in the air the page stood at
    * full height over empty space. It opens to its content, a page at most, and scrolls the

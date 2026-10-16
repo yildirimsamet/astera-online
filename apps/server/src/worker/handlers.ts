@@ -1,3 +1,4 @@
+import { commanderPvpBalance } from '../services/pvpBalance.js';
 import { and, eq, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm';
 import {
   FAULT,
@@ -37,6 +38,11 @@ import {
   soloStack,
   shipDamageApplies,
   hpRadiationApplies,
+  partitionCombatFleet,
+  shipCanFight,
+  shieldHp,
+  selectSeasonReward,
+  honorResourceValue,
   travelExact,
   vaultProtects,
   type Fleet,
@@ -97,6 +103,9 @@ import {
   setUnits,
 } from '../services/planet.js';
 import { grantRecoveryShield, permanentFleetCost } from '../services/attackProtection.js';
+import { honorDefenceNavy } from '../services/honorNavy.js';
+import { settlePlanetHonor } from '../services/honorPlanetBattle.js';
+import { sealHonor } from '../services/honorSeason.js';
 import { breakFaults, defenceOnline, onFaultSpawn, onVaultLeakFlush } from '../services/faults.js';
 import { onFaultRepairComplete } from '../services/faultRepair.js';
 import { onColonySecession, rescheduleLoyaltyWatch } from '../services/loyalty.js';
@@ -157,9 +166,12 @@ import {
   nextCheckAt,
   triggerAt,
 } from '../services/strategicInterception.js';
-import { safeHomePlanet } from '../services/ownership.js';
+import { lockWorlds, safeHomePlanet } from '../services/ownership.js';
+import { observeHonorOwner } from '../services/honorReference.js';
 import { monumentOriginCapitals, prepareMonumentOriginChange } from '../services/monumentOwnership.js';
 import { closeSeasonMonuments } from '../services/monumentSeasonClose.js';
+import { closeSeasonRadiationBombs } from '../services/radiationBomb.js';
+import { warnRadiationBombById } from '../services/radiationBombWarning.js';
 import {
   reinforceNeutral,
   resolveNeutralBattle,
@@ -205,6 +217,7 @@ import { processGalaxyEventLifecycle } from '../services/galaxyEvents.js';
 import { isHostileMission } from '../services/flight.js';
 import { resolveNeutralCensus } from '../services/season.js';
 import { onMonumentArrival, onMonumentLoss, onMonumentProbe, onMonumentRespawn } from './monumentHandlers.js';
+import { onPlanetRadiationBoundary, onRadiationBombArrival, onRadiationBombIntercept, onRadiationBombInterceptImpact } from './radiationBombHandlers.js';
 
 export interface HandlerContext {
   db: Db;
@@ -356,7 +369,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         there and never arrives — see `interceptOwedShot`. On a punctual worker
         the event already fired and this mission never reached here in flight.
       */
-      if (await interceptOwedShot(tx, mission)) return;
+      if (await interceptOwedShot(tx, mission, clock.now())) return;
       const result = await applyDeathStarStrike(tx, mission, clock.now());
       const outcome = result.outcome;
       await tx.insert(strategicImpacts).values({
@@ -383,6 +396,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
           eq(strategicAssets.missionId, mission.id),
           eq(strategicAssets.status, 'LAUNCHED'),
         ));
+      await observeHonorOwner(tx, mission.ownerPlayerId, clock.now());
       /*
         A COLONY'S LOYALTY RIDES ON THE NEWS (owner, 2026-10-01), so a commander who never
         opens the report still learns their colony is slipping — or gone — from the bell.
@@ -733,6 +747,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     */
     const dosed = await settleMissionRadiation(tx, mission, {
       storagePlanetId: mission.originPlanetId,
+      observedAt: clock.now(),
       rulesetVersion: season.rulesetVersion,
     });
     const flown = dosed.mission;
@@ -846,6 +861,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     const defenderBefore = defenderLedger.taken - defenderLedger.lost;
 
     const defender = await loadLocked(tx, mission.targetPlanetId, clock);
+    const pvpBalance = await commanderPvpBalance(tx, defender.playerId);
     const attackerHomeId = await safeHomePlanet(tx, mission.ownerPlayerId, mission.originPlanetId);
     const attackerOrbit = await orbitOf(tx, attackerHomeId);
 
@@ -881,7 +897,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       one line up, for exactly the same reason.
     */
     const defenceDark = !defenceOnline(defender.faults, defender.empUntil, defender.now);
-    const defenders = garrisonOf(defender.homeFleet, defenceDark ? {} : defender.ground);
+    const homePartition = partitionCombatFleet(defender.homeFleet, defender.homeDamage);
+    const defenders = garrisonOf(homePartition.eligible, defenceDark ? {} : defender.ground);
     /*
       TAKTİK GERİ ÇEKİLME. Owner decision, 2026-09-23 (`escape.ts`).
 
@@ -897,10 +914,13 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       rulesetVersion: season.rulesetVersion,
       now: defender.now,
     });
+    const defenceNavy = await honorDefenceNavy(tx, mission.seasonId, [defender.playerId, ...supporterIds]);
     const raid = resolveRaid({
       // What the wing arrived with in damage (radiation on the way in); null when whole.
       stacks: [soloStack(attackingFleet, { tech: attackerTech }, flown.damage ?? undefined)],
       line: defenders,
+      homeDamage: homePartition.damage.filter((lot) => !NON_COMBATANT_HULLS.includes(lot.hull)),
+      maintenance: true,
       shield: defenceDark ? 0 : defender.shield,
       rng: () => seededFrom(missionId),
       defender: { tech: defenderTech },
@@ -947,7 +967,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
        */
       defenderHome[hull] = NON_COMBATANT_HULLS.includes(hull) || (escaped[hull] ?? 0) > 0
         ? standing
-        : hostOutcome.survivors[hull] ?? 0;
+        : (hostOutcome.survivors[hull] ?? 0) + (homePartition.excluded[hull] ?? 0);
     }
     for (const [hull, standing] of fleetEntries(defender.ground)) {
       defenderHome[hull] = defenceDark
@@ -958,20 +978,19 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     /*
       KALICI GEMİ HASARI. Owner decision K1, 2026-09-29.
 
-      The defender's part-hit ships are judged the moment the battle ends — at or under
-      the line they are patched and stand where they were, above it they step off into
-      the Repair Station before anything else can read the garrison. The raider's ride
-      home on the return leg and are judged when it lands (`settleReturn`). A season
-      dealt before the rule keeps the old battle: nothing is carried out of it.
+      Defender survivors keep their wounds in the home hangar. Raiders carry their
+      wounds through the return leg and land without healing or automatic docking.
+      Seasons predating persistent damage still do not retain new battle wounds.
     */
     const damageRule = shipDamageApplies(season.rulesetVersion);
     const attackerDamage = damageRule ? result.attackerDamage : [];
-    // The whole line's, for the report; only the host's own ships go to their dock.
+    // The whole line's, for the report; host and support wounds stay with their owners.
     const defenderDamage = damageRule ? result.defenderDamage : [];
     const defenderDock = await dockDamaged(tx, {
       planetId: defender.planetId,
       ownerPlayerId: defender.playerId,
-      lots: damageRule ? hostOutcome.survivorDamage : [],
+      lots: damageRule ? [...hostOutcome.survivorDamage, ...defender.homeDamage.filter((lot) =>
+        NON_COMBATANT_HULLS.includes(lot.hull) || (escaped[lot.hull] ?? 0) > 0 || !shipCanFight(lot))] : [],
       at: defender.now,
     });
     await settleStations(tx, { stations, outcomes: result.defenders, damageRule, now: defender.now });
@@ -1014,6 +1033,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       result.grade,
       // The ATTACKER's holds: it is their fleet carrying it home. T8.
       fleetCargo(result.attackerSurvivors, attackerTech),
+      pvpBalance,
     );
     /**
      * Dense Fuel Cells is discovered by a real PvP lesson, not a counter. D94.
@@ -1027,6 +1047,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       vaultFloor,
       result.grade,
       Number.MAX_SAFE_INTEGER,
+      pvpBalance,
     );
     /**
      * THE CEILING THIS WORLD COULD HAVE BEEN MADE TO GIVE UP. 2026-09-14.
@@ -1046,6 +1067,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       exposedBuffer,
       vaultFloor,
       'DECISIVE',
+      pvpBalance,
     );
     const cargoLimited =
       uncappedLoot.alloy + uncappedLoot.crystal + uncappedLoot.deuterium
@@ -1088,6 +1110,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     const recovery = await grantRecoveryShield(tx, {
       playerId: defender.playerId,
       planetId: defender.planetId,
+      balance: pvpBalance,
       lootLost: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
       fleetLost,
       now: defender.now,
@@ -1279,6 +1302,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       */
       raidableBefore: Math.round(raidableBefore),
       recoveryLossHours: recovery.hours,
+      pvpBalance,
       recoveryShieldUntil,
       createdAt: defender.now,
     }).returning({ id: battleReports.id });
@@ -1486,8 +1510,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
 
     // A raid moves stock and destroys units on both sides, so both Wealth figures
     // are stale the moment it resolves — and Wealth gates who may attack whom.
-    await recomputeWealth(tx, defender.planetId);
-    await recomputePlayerWealth(tx, mission.ownerPlayerId);
+    await recomputeWealth(tx, defender.planetId, clock.now());
+    await recomputePlayerWealth(tx, mission.ownerPlayerId, clock.now());
 
     const [attackerIdentity, defenderIdentity] = await Promise.all([
       identityOfPlanet(tx, attackerHomeId),
@@ -1639,6 +1663,23 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
 
     await announceUnlocks(tx, mission.ownerPlayerId, defender.now);
     await announceUnlocks(tx, defender.playerId, defender.now);
+    const nothing = { alloy: 0, crystal: 0, deuterium: 0 };
+    await settlePlanetHonor(tx, { source: 'WORLD', seasonId: mission.seasonId, missionId,
+      hostPlanetId: defender.planetId, hostPlayerId: defender.playerId, at: defender.now, adminUsernames,
+      attack: [{ id: mission.ownerPlayerId, sent: attackingFleet,
+        active: partitionCombatFleet(attackingFleet, flown.damage).eligible,
+        losses: result.attackerLosses, rebuilt: {}, lootLost: nothing }],
+      defence: result.defenders.map(outcome => {
+        const host = outcome.stackId === 'host';
+        const station = host ? undefined : stations.find(row => row.wave.id === outcome.stackId);
+        if (!host && !station) throw new Error('Honor defender has no authoritative station');
+        return { id: host ? defender.playerId : station!.wave.senderPlayerId,
+          defenceNavy: defenceNavy.get(host ? defender.playerId : station!.wave.senderPlayerId),
+          sent: outcome.sent, active: outcome.sent, losses: outcome.losses,
+          rebuilt: host ? result.defenceSalvage : {}, lootLost: host ? loot : nothing };
+      }),
+      shieldCapacity: shieldHp(defender.effectiveInstruments.AEGIS ?? 0), shieldAbsorbed: result.shieldProtectedArmed ?? 0,
+    });
   });
 };
 
@@ -1673,7 +1714,7 @@ async function settleReturn(
     unevenly — and what it carried is cut to the holds that made it, BEFORE the clan is
     dealt its share, so the clan is dealt what landed. All of it lost is all of it gone.
   */
-  const dosed = await settleMissionRadiation(tx, mission, { storagePlanetId, rulesetVersion });
+  const dosed = await settleMissionRadiation(tx, mission, { storagePlanetId, rulesetVersion, observedAt: at });
   const flown = dosed.mission;
   await tellRadiationLoss(tx, flightWitness(flown), dosed, at);
   const returning = dosed.fleet;
@@ -1692,6 +1733,7 @@ async function settleReturn(
     fleet: returning,
     damage: flown.damage,
     at,
+    radiationAt: mission.arriveAt,
   });
 
   const landedLoot = carried.loot ? await allocateClanLoot(tx, { ...flown, loot: carried.loot }, at) : null;
@@ -1716,7 +1758,7 @@ async function settleReturn(
       .where(eq(planets.id, destinationPlanetId));
   }
 
-  await recomputeWealth(tx, destinationPlanetId);
+  await recomputeWealth(tx, destinationPlanetId, at);
 
   const [planet] = await tx.select().from(planets).where(eq(planets.id, destinationPlanetId));
   if (planet?.controllerPlayerId === mission.ownerPlayerId) {
@@ -1792,8 +1834,9 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
 
   await db.transaction(async (tx) => {
     const [mission] = await tx.select().from(missions).where(eq(missions.id, missionId));
+    if (!mission) { await warnRadiationBombById(tx, missionId, clock.now()); return; }
     // Nothing to warn about if it already landed or was somehow cancelled.
-    if (mission?.status !== 'in_flight') return;
+    if (mission.status !== 'in_flight') return;
     const [joint] = mission.kind === 'clan_war'
       ? await tx
           .select({ leg: clanWarMissions.leg, clanTag: clanWarOperations.clanTag })
@@ -1969,7 +2012,7 @@ export const onMiningReturn: Handler = async ({ db, clock }, event) => {
     if (!run) return;
     // Where it came down, which is not always where it left (`landRunLocked`).
     if (delivered.planetId === null || delivered.playerId === null) return;
-    await recomputeWealth(tx, delivered.planetId);
+    await recomputeWealth(tx, delivered.planetId, clock.now());
     /**
      * Reuses `fleet_returned` rather than inventing a kind: from the player's side
      * this IS craft coming home with cargo.
@@ -2129,6 +2172,7 @@ async function freezeSeason(
     const capturedThrough = event === null
       ? new Date(Math.min(clock.now().getTime(), season.endsAt.getTime()))
       : season.endsAt;
+    await closeSeasonRadiationBombs(tx, seasonId, capturedThrough);
     await closeSeasonMonuments(tx, { seasonId, cutoff: capturedThrough, adminUsernames: [...adminUsernames] });
     const ownedWorlds = await tx
       .select({ id: planets.id })
@@ -2288,6 +2332,9 @@ async function freezeSeason(
       membership.clanId,
     ]));
     const botAccountIds = new Set(botRows.map((bot) => bot.accountId));
+    const honorRanks = await sealHonor(tx, { seasonId, at: capturedThrough,
+      humanPlayerIds: roster.filter(player => !botAccountIds.has(player.accountId)).map(player => player.playerId) });
+    const honorByPlayer = new Map(honorRanks?.map(row => [row.actor, row]) ?? []);
     /*
       THE SEASON'S ROWS, INDEXED BY COMMANDER ONCE INSTEAD OF RESCANNED PER HEAD.
       2026-09-15.
@@ -2423,9 +2470,13 @@ async function freezeSeason(
         : null;
       const dominion = dominionScore(player.taken, player.lost);
       const finalRank = index + 1;
-      const title = finalRank === 1
+      const honorResult = honorByPlayer.get(player.playerId);
+      const primaryRank = honorResult?.rank ?? finalRank;
+      const meritsTitle = honorRanks === null || (honorResult?.honor ?? 0) > 0;
+      const title = meritsTitle && primaryRank === 1
         ? `Sovereign of ${shardLabel}`
-        : finalRank <= 3 ? 'Vanguard' : dominion > 0 ? 'Conqueror' : 'Commander';
+        : meritsTitle && primaryRank <= 3 ? 'Vanguard'
+          : (honorRanks === null ? dominion : honorResult?.honor ?? 0) > 0 ? 'Conqueror' : 'Commander';
       const playerClanId = clanIdByPlayer.get(player.playerId);
       const clan = playerClanId ? clanRecapById.get(playerClanId) ?? null : null;
       const stats: SeasonStatsSnapshot = emptySeasonStats();
@@ -2509,6 +2560,8 @@ async function freezeSeason(
         accountId: player.accountId,
         finalRank,
         dominion,
+        honorScore: honorByPlayer.get(player.playerId)?.honor ?? null,
+        honorRank: honorByPlayer.get(player.playerId)?.rank ?? null,
         damageDealt,
         damageTaken,
         rivalName: rival?.commanderName ?? null,
@@ -2544,7 +2597,7 @@ async function freezeSeason(
     });
     // WAITING is Silent Space: it preserves inactive commanders but is not a
     // season they entered or a ladder that pays into the next competitive world.
-    if (rewardProgram && seasonShard.role !== 'WAITING') {
+    if ((rewardProgram || honorRanks) && seasonShard.role !== 'WAITING') {
       /*
         A PLACE MAY BE EMPTY, BUT IT MAY NEVER MOVE.
 
@@ -2556,23 +2609,30 @@ async function freezeSeason(
         rank, then omit recipients who cannot collect it. A bot winner therefore
         leaves first prize unclaimed; it does not rewrite the race after it ends.
       */
-      const earned = values.slice(0, rewardProgram.tiers.length).flatMap((row) => {
-        if (botAccountIds.has(row.accountId)
-          || row.dominion < rewardProgram.minimumDominion) return [];
-        const tier = rewardProgram.tiers[row.finalRank - 1];
-        if (!tier) throw new Error(`Missing season reward tier ${String(row.finalRank)}`);
-        return [{ row, tier }];
+      const honorByAccount = new Map(roster.map(player => [player.accountId, honorByPlayer.get(player.playerId)]));
+      const earned = values.flatMap(row => {
+        if (botAccountIds.has(row.accountId)) return [];
+        const tier = rewardProgram && row.dominion >= rewardProgram.minimumDominion
+          ? rewardProgram.tiers.find(candidate => candidate.place === row.finalRank) : undefined;
+        const honor = honorByAccount.get(row.accountId);
+        const zero = { alloy: 0, crystal: 0, deuterium: 0 };
+        const selected = selectSeasonReward(tier?.reward ?? zero, honor?.reward ?? zero);
+        if (honorResourceValue(selected.reward) === 0) return [];
+        const place = selected.ranking === 'HONOR' ? honor?.rank : tier?.place;
+        if (place === undefined) throw new Error('Missing selected season reward rank');
+        return [{ row, ...selected, place }];
       });
       if (earned.length > 0) {
-        await tx.insert(seasonRewardEntitlements).values(earned.map(({ row, tier }) => {
+        await tx.insert(seasonRewardEntitlements).values(earned.map(({ row, ranking, reward, place }) => {
           return {
             sourceCycleId: season.cycleId,
             sourceSeasonId: seasonId,
             accountId: row.accountId,
-            displayRank: row.finalRank,
-            rewardPlace: tier.place,
-            ...tier.reward,
-            programVersion: rewardProgram.version,
+            displayRank: ranking === 'HONOR' ? row.honorRank! : row.finalRank,
+            rewardPlace: place,
+            ranking,
+            ...reward,
+            programVersion: rewardProgram?.version ?? 1,
             createdAt: clock.now(),
           };
         })).onConflictDoNothing();
@@ -2638,10 +2698,13 @@ export const onSeasonRollover: Handler = async ({ db, clock }, event) => {
   });
 };
 
-export const onDeathStarReady: Handler = async ({ db }, event) => {
+export const onDeathStarReady: Handler = async ({ db, clock }, event) => {
   if (!event.refId || typeof event.payload?.expectedReadyAt !== 'string') return;
   await db.transaction(async (tx) => {
     await lockSeason(tx, event.seasonId);
+    const [asset] = await tx.select({ planetId: strategicAssets.planetId }).from(strategicAssets).where(eq(strategicAssets.id, event.refId!));
+    if (!asset) return;
+    await lockWorlds(tx, [asset.planetId]);
     const ready = await finishDeathStarBuild(tx, event.refId!, event.payload!.expectedReadyAt as string);
     const planetId = ready[0]?.planetId;
     if (!planetId) return;
@@ -2652,7 +2715,10 @@ export const onDeathStarReady: Handler = async ({ db }, event) => {
       .select({ playerId: planets.controllerPlayerId })
       .from(planets)
       .where(eq(planets.id, planetId));
-    if (world?.playerId) await publish(tx, world.playerId, 'death_star_ready');
+    if (world?.playerId) {
+      await observeHonorOwner(tx, world.playerId, clock.now());
+      await publish(tx, world.playerId, 'death_star_ready');
+    }
   });
 };
 
@@ -2780,6 +2846,7 @@ export const onStrategicIntercept: Handler = async ({ db, clock }, event) => {
   if (!missionId) throw new Error('strategic_intercept without refId');
 
   await db.transaction(async (tx) => {
+    await lockSeason(tx, event.seasonId, false);
     const [mission] = await tx
       .select()
       .from(missions)
@@ -2792,6 +2859,7 @@ export const onStrategicIntercept: Handler = async ({ db, clock }, event) => {
     // shot this check was too late to take (`interceptOwedShot`).
     if (mission.arriveAt.getTime() <= now.getTime()) return;
 
+    await lockWorlds(tx, [mission.originPlanetId, mission.targetPlanetId]);
     const leg = await interceptionLeg(tx, mission);
     if (!leg) return;
 
@@ -2830,7 +2898,7 @@ export const onStrategicIntercept: Handler = async ({ db, clock }, event) => {
       .limit(1)
       .for('update');
     if (!charge) return;
-    await fireInterception(tx, leg, charge.id, now, trigger, { claimMission: true });
+    await fireInterception(tx, leg, charge.id, now, trigger, { claimMission: true, observedAt: now });
   });
 };
 
@@ -3023,6 +3091,10 @@ export const onClanSupportExpiry: Handler = async ({ db, clock }, event) => {
 };
 
 export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
+  radiation_bomb_arrival: onRadiationBombArrival,
+  radiation_bomb_intercept: onRadiationBombIntercept,
+  radiation_bomb_intercept_impact: onRadiationBombInterceptImpact,
+  planet_radiation_boundary: onPlanetRadiationBoundary,
   monument_arrival: onMonumentArrival,
   monument_loss: onMonumentLoss,
   monument_respawn: onMonumentRespawn,

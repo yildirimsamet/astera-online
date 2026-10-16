@@ -6,8 +6,13 @@ import { notify } from './notifications.js';
 
 /** Only newly destroyed physical cohorts enter this function; the paid cursor prevents replay. */
 export async function tellMonumentRadiationLoss(tx: Tx, target: { id: string; ordinal: number },
-  wave: { id: string; playerId: string }, destroyed: readonly MonumentShipLot[], survivors: readonly MonumentShipLot[], at: Date) {
+  wave: { id: string; playerId: string }, destroyed: readonly MonumentShipLot[], survivors: readonly MonumentShipLot[], at: Date,
+  silentFrom?: Date | null) {
   if (destroyed.length === 0) return;
+  if (silentFrom && at >= silentFrom) {
+    await publish(tx, wave.playerId, 'private:monument');
+    return;
+  }
   await notify(tx, { playerId: wave.playerId, kind: 'radiation_lost', refId: randomUUID(), at,
     payload: { targetKind: 'MONUMENT', monumentId: target.id, monumentOrdinal: target.ordinal, waveId: wave.id,
       lost: destroyed.reduce((sum, lot) => sum + lot.count, 0), left: survivors.reduce((sum, lot) => sum + lot.count, 0),

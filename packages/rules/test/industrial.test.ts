@@ -20,7 +20,7 @@ import {
 
 describe('Industrial', () => {
   it('is appended to the project list, never inserted', () => {
-    expect(RESEARCH_PROJECT_IDS.at(-1)).toBe('INDUSTRIAL');
+    expect(RESEARCH_PROJECT_IDS.indexOf('INDUSTRIAL')).toBe(RESEARCH_PROJECT_IDS.indexOf('AI_ROBOTS') + 1);
   });
 
   it('has two rungs, found by walking its own effect', () => {

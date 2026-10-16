@@ -57,7 +57,7 @@ export const vocabulary = {
         'Absorbiert Angriffsschaden vor Schiffen und Bodengeschützen und regeneriert sich dann ohne Ressourcen. Es liefert keine Informationen.',
       roleOwned:
         'Absorbiert Angriffsschaden vor Schiffen und Bodengeschützen und regeneriert jede Stunde 35 % seines Maximums. Es liefert keine Informationen.',
-      detail: 'Jede Stufe erhöht die maximale Schildstärke. Kampfschaden wird von Aegis entfernt, bevor er Schiffe oder Bodengeschütze erreicht, und der Schild regeneriert ohne Ressourcen 35 % seines Maximums pro Stunde. Es sammelt keine Informationen.',
+      detail: "Jede Stufe erhöht die maximalen Schild-HP. Aktives Aegis nimmt Kampfschaden vor Schiffen und Bodenverteidigung auf. Jede aktive Stufe verringert außerdem den Strahlungsschaden an Schiffen auf diesem Planeten um 1 HP/min. Bei null HP endet der Strahlungsschutz. Nach einer Entleerung im Kampf beginnt die Aufladung nach 15 Minuten; EMP kann sie weiter verzögern. Die Aufladung kostet keine Ressourcen. Ohne kampffähige Einheiten kann Aegis den Planeten nicht allein verteidigen. Es liefert keine Aufklärung.",
     },
     VEIL: {
       name: 'Schleier',
@@ -103,10 +103,10 @@ export const vocabulary = {
       name: 'Leuchtfeuer',
       tag: 'Schnellere Flotten',
       role:
-        'Lässt hier gestartete Überfall-, Transfer-, Handels- und Clan-Hilfsflotten auf beiden Strecken 1,3-mal schneller reisen.',
+        'Lässt hier gestartete Überfall-, Transfer-, Handels- und Clan-Hilfsflotten auf beiden Strecken 1,2-mal schneller reisen.',
       blurb:
         'Ein Navigationszeichen für Überfall-, Transfer-, Handels- und Clan-Hilfsflotten. Kürzere Flüge bedeuten ein kürzeres Zeitfenster für Ihre Verteidigung auswärts.',
-      detail: 'Sein Geschwindigkeitsmultiplikator von 1,3 gilt für ausgehende und zurückkehrende Überfall-, Transfer-, Handels- und Clan-Hilfsflotten, die hier gestartet werden. Es wirkt sich nicht auf Siedlungsflotten oder Prospektoren aus und es ändert weder Angriffs-, Rüstungs-, Fracht- noch Treibstoffkosten.',
+      detail: 'Sein Geschwindigkeitsmultiplikator von 1,2 gilt für ausgehende und zurückkehrende Überfall-, Transfer-, Handels- und Clan-Hilfsflotten, die hier gestartet werden. Es wirkt sich nicht auf Siedlungsflotten oder Prospektoren aus und es ändert weder Angriffs-, Rüstungs-, Fracht- noch Treibstoffkosten.',
     },
   },
 

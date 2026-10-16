@@ -6,6 +6,8 @@ import { haptic } from '../lib/haptics.js';
 import { AttackIcon, ClanIcon, GalaxyIcon, LeaderboardIcon, ShieldedIcon } from '../ui/icons/index.js';
 import { NextSeason } from '../ui/NextSeason.js';
 import { useOwnPress } from '../ui/kit/index.js';
+import { RankingScores } from '../ui/RankingScores.js';
+import { HonorIcon } from '../ui/icons/index.js';
 
 export type SeasonResult = Exclude<SeasonInfo['result'], null | undefined>;
 
@@ -104,12 +106,14 @@ export function SeasonRecap({
   // another control that can appear under a finger already mid-gesture (D109a).
   const dismiss = useOwnPress(close);
 
+  const primaryRank = result.honorRank ?? result.finalRank;
+  const meritsTitle = result.honorScore == null || result.honorScore > 0;
   const title =
-    result.finalRank === 1
+    meritsTitle && primaryRank === 1
       ? t('seasonRecap.titles.sovereign', { galaxy })
-      : result.finalRank <= 3
+      : meritsTitle && primaryRank <= 3
         ? t('seasonRecap.titles.vanguard')
-        : result.dominion > 0
+        : (result.honorScore ?? result.dominion) > 0
           ? t('seasonRecap.titles.conqueror')
           : t('seasonRecap.titles.commander');
   const quiet = result.recap.battles === 0;
@@ -154,19 +158,21 @@ export function SeasonRecap({
 
         <section className="mt-8 grid grid-cols-2 gap-2" aria-label={t('seasonRecap.finalRecord', { galaxy })}>
           <HeroFigure
-            icon={<LeaderboardIcon className="size-5" />}
+            icon={result.honorRank != null ? <HonorIcon className="size-5" /> : <LeaderboardIcon className="size-5" />}
             label={
-              players === undefined
+              result.honorRank != null ? t('leaderboard.honorRank') : players === undefined
                 ? t('seasonRecap.rankAlone', { rank: result.finalRank })
                 : t('seasonRecap.rank', { rank: result.finalRank, players })
             }
-            value={`#${full(result.finalRank)}`}
+            value={`#${full(primaryRank)}`}
           />
-          <HeroFigure
+          {result.honorScore != null ? <div className="flex items-center justify-end rounded-control border border-v2-self/25 bg-v2-self/5 px-3 py-3">
+            <RankingScores honor={result.honorScore} dominion={result.dominion} />
+          </div> : <HeroFigure
             icon={<GalaxyIcon className="size-5" />}
             label={t('seasonRecap.dominion')}
             value={signed(result.dominion)}
-          />
+          />}
         </section>
 
         <section className="plate plate-cut mt-3 grid grid-cols-3 divide-x divide-line-soft px-2 py-2">

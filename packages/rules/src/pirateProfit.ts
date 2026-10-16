@@ -1,16 +1,17 @@
-import { resolveBattle, resolveCombat, soloStack } from './combat.js';
+import { resolveBattle, soloStack } from './combat.js';
 import { DEBRIS } from './constants.js';
-import { capLoadToSurvivors, shipDamageApplies, shipRepairCost, splitForLanding } from './damage.js';
+import { capLoadToSurvivors, shipDamageApplies } from './damage.js';
 import { ALL_HULLS, HULLS, fleetCargo, fleetCount, fleetEntries } from './hulls.js';
-import { shipHpRepairCost, splitForHpLanding } from './hpDamage.js';
+import { shipHpRepairCost } from './hpDamage.js';
 import { claimPirateLoot, remainingPirateLoot } from './pirateLoot.js';
 import { pirateOverrun, pirateStats, type PirateLevel } from './pirates.js';
-import { applyHpDose, hpRadiationApplies } from './radiationHp.js';
+import { applyHpDose, hpRadiationApplies, normalizeHpDamage, type HpDamageLots } from './radiationHp.js';
 import { seededFrom } from './rng.js';
 import { settleWreck } from './salvage.js';
 import { repairPct, type TechLevels } from './tech.js';
 import type { Fleet, Resources, Rng } from './types.js';
 import { resourceValue } from './valuation.js';
+import { partitionCombatFleet } from './shipMaintenance.js';
 
 const keys = ['alloy', 'crystal', 'deuterium'] as const;
 const zero = (): Resources => ({ alloy: 0, crystal: 0, deuterium: 0 });
@@ -58,6 +59,7 @@ export interface PirateProfitInput {
   fuel: number;
   /** Known route's HP exposure. Return exposure is a preflight estimate. */
   radiation?: { outboundHp: number; returnHp: number };
+  damage?: HpDamageLots;
 }
 
 /** A hypothetical roll, never the server's private battle seed. */
@@ -67,20 +69,19 @@ export function pirateRaidTrial(input: PirateProfitInput, rng: Rng) {
   fleetProductionCost(input.crew);
   remainingPirateLoot(input.hoard, input.paid);
   const hp = hpRadiationApplies(input.rulesetVersion);
-  const outbound = hp ? applyHpDose(input.attacker, undefined, input.radiation?.outboundHp ?? 0, input.tech)
-    : { fleet: input.attacker, lots: [] };
+  const outbound = hp ? applyHpDose(input.attacker, input.damage, input.radiation?.outboundHp ?? 0, input.tech)
+    : { fleet: input.attacker, lots: normalizeHpDamage(input.attacker, input.damage) };
   const sides = { attacker: { tech: input.tech }, defender: { tech: {}, damageMult: pirateStats(input.level).damageMult } };
-  const fight = pirateOverrun(hp
-    ? resolveBattle([soloStack(outbound.fleet, sides.attacker, outbound.lots)],
-      [{ stackId: 'pirate', playerId: '', fleet: input.crew, tech: sides.defender }], 0, rng, 'HP_PLANET')
-    : resolveCombat(outbound.fleet, input.crew, 0, rng, sides));
+  const fight = pirateOverrun(resolveBattle([soloStack(outbound.fleet, sides.attacker, outbound.lots)],
+    [{ stackId: 'pirate', playerId: '', fleet: input.crew, tech: sides.defender, maintenanceExempt: true }],
+    0, rng, hp ? 'HP_PLANET' : 'PLANET', true), partitionCombatFleet(outbound.fleet, outbound.lots).eligible);
   const lived = fleetCount(fight.attackerSurvivors) > 0;
   const available = claimPirateLoot(input.hoard, input.paid, fight.grade, Number.MAX_SAFE_INTEGER);
   const loaded = lived ? claimPirateLoot(input.hoard, input.paid, fight.grade,
     fleetCargo(fight.attackerSurvivors, input.tech)).fromStock : zero();
   const lifted = settleWreck(pirateBattleWreck(fight.attackerLosses, fight.defenderLosses), fight.attackerSurvivors).salvage;
   const back = hp ? applyHpDose(fight.attackerSurvivors, fight.attackerDamage,
-    input.radiation?.returnHp ?? 0, input.tech) : { fleet: fight.attackerSurvivors, lots: [] };
+    input.radiation?.returnHp ?? 0, input.tech) : { fleet: fight.attackerSurvivors, lots: fight.attackerDamage };
   const cargo = capLoadToSurvivors({ loot: loaded, salvage: lifted }, back.fleet, input.tech);
   const loot = cargo.loot ?? zero();
   const salvage = cargo.salvage ?? zero();
@@ -90,9 +91,8 @@ export function pirateRaidTrial(input: PirateProfitInput, rng: Rng) {
     if (lost > 0) losses[id] = lost;
   }
   const lossCost = fleetProductionCost(losses);
-  const repair = !shipDamageApplies(input.rulesetVersion) ? zero() : hp
-    ? shipHpRepairCost(splitForHpLanding(back.fleet, back.lots).docked, repairPct(input.tech))
-    : shipRepairCost(splitForLanding(back.fleet, fight.attackerDamage).docked, repairPct(input.tech));
+  const repair = !shipDamageApplies(input.rulesetVersion) ? zero()
+    : shipHpRepairCost(back.lots, repairPct(input.tech));
   const net = zero();
   for (const key of keys) net[key] = loot[key] + salvage[key] - lossCost[key] - repair[key]
     - (key === 'deuterium' ? input.fuel : 0);

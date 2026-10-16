@@ -46,6 +46,7 @@ import { loadPirateSnapshot, privatePirateField, pirateId } from '../src/service
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { baysInUse } from '../src/services/flight.js';
 import { fleetTruthFor } from '../src/services/intel.js';
+import { landHpShips } from '../src/services/shipDamage.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   giveInstrument,
@@ -138,6 +139,17 @@ describe('a raid at a pirate', () => {
   beforeEach(async () => {
     f = await seedWorld(2, 4242, { pirates: true });
     mine = f.planetIds[0]!;
+  });
+
+  it('carries maintenance health to a pirate raid', async () => {
+    const target = await findVisible();
+    await armed({ DART: 0 });
+    const damage = [{ hull: 'DART' as const, count: 4, damageBp: 1000, remainderBp: 0.25 }];
+    await f.db.transaction((tx) => landHpShips(tx, { planetId: mine, ownerPlayerId: f.playerIds[0]!,
+      fleet: { DART: 4 }, damage, at: f.clock.now() }));
+    const result = await launchPirateRaid(f.db, mine, target.id, { DART: 2 }, f.clock);
+    const [run] = await f.db.select().from(pirateRaids).where(eq(pirateRaids.id, result.raidId));
+    expect(run?.damage).toEqual([{ ...damage[0], count: 2 }]);
   });
 
   it('requires explicit HP loss acknowledgement for a lethal pirate route', async () => {

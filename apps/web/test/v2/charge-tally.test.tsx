@@ -7,9 +7,21 @@ const cells = (): string[] =>
 
 /**
  * CHARGES, CELL BY CELL. D3 (owner, round 2): a Death Star or an interception charge is
- * a slot that is loaded, loading or empty — drawn as a tally, not as "1 / 2".
+ * a slot that is loaded, loading or empty. A labelled numeric counter accompanies
+ * the tally on tactical cards; weapon levels use their own symbols.
  */
 describe('the charge tally', () => {
+  it('keeps paused and flying stock occupied without calling it ready or loading', () => {
+    render(<ChargeTally ready={1} loading={1} paused={1} inFlight={1} total={5} label="Stock 4/5" />);
+    expect(cells()).toEqual(['ready', 'loading', 'paused', 'flight', 'empty']);
+    expect(screen.getByRole('img', { name: 'Stock 4/5' })).toHaveAttribute('data-used', '4');
+  });
+
+  it('bounds reserved cells to the slots remaining after ready and loading stock', () => {
+    render(<ChargeTally ready={1} loading={0} paused={3} inFlight={4} total={2} label="Stock 2/2" />);
+    expect(cells()).toEqual(['ready', 'paused']);
+    expect(screen.getByRole('img')).toHaveAttribute('data-used', '2');
+  });
   it('draws one cell per slot: loaded, then loading, then empty', () => {
     render(<ChargeTally ready={1} loading={1} total={3} label="1 of 3 loaded" />);
     expect(cells()).toEqual(['ready', 'loading', 'empty']);

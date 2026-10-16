@@ -64,6 +64,9 @@ import { Tally } from '../ui/Tally.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import {
   ClanIcon,
+  AegisIcon,
+  AttackIcon,
+  ChatIcon,
   ClockIcon,
   CoreIcon,
   GalaxyIcon,
@@ -335,19 +338,27 @@ function ClanOutside({
 
   return (
     <div className="flex flex-col gap-4 px-3 py-2">
-      <header className="rounded-control border border-v2-line bg-v2-panel px-3 py-3">
-        <h3 className="text-body font-semibold text-v2-ink">{t('clan.outside.title')}</h3>
-        <p className="mt-1 text-caption leading-snug text-v2-ink-2">{t('clan.outside.body')}</p>
+      <header className="clan-command-head rounded-control border border-v2-ally/40 bg-v2-panel px-3 py-3">
+        <AtmosphereImage art={ATMOSPHERE.clan} />
+        <p className="mb-2 flex items-center gap-1.5 text-micro font-semibold uppercase tracking-widest text-v2-ally">
+          <ClanIcon className="size-4" />{t('clan.outside.eyebrow')}
+        </p>
+        <h3 className="max-w-72 text-title font-semibold leading-tight text-v2-ink">{t('clan.outside.title')}</h3>
+        <p className="mt-2 text-caption leading-snug text-v2-ink-2">{t('clan.outside.body')}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-control border border-v2-ally/25 bg-v2-deep/70 px-2 py-1.5">
+          <span className="text-micro text-v2-ink-2">{t('clan.found.cost')}</span>
+          <PriceTag alloy={home.creation.cost.alloy} crystal={home.creation.cost.crystal} exact />
+        </div>
+        <p className="mt-1.5 text-micro leading-snug text-v2-ink-2">
+          {t('clan.outside.requirements', { level: home.creation.requiredCoreLevel })}
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <a href="#clan-directory-search" className="grid min-h-11 place-items-center rounded-control bg-v2-self px-2 py-2 text-center text-caption font-semibold text-v2-self-ink outline-none focus-visible:ring-2 focus-visible:ring-v2-ink">{t('clan.outside.joinAction')}</a>
+          <a href="#clan-found-name" className="grid min-h-11 place-items-center rounded-control border border-v2-line-hi bg-v2-deep/80 px-2 py-2 text-center text-caption font-semibold text-v2-ink outline-none focus-visible:ring-2 focus-visible:ring-v2-self">{t('clan.outside.foundAction')}</a>
+        </div>
       </header>
 
-      <Section label={t('clan.benefits.heading')}>
-        <div className="grid grid-cols-2 gap-1.5">
-        <Benefit icon={<GalaxyIcon className="size-5" />} title={t('clan.benefits.safeTitle')} body={t('clan.benefits.safeBody')} />
-        <Benefit icon={<LeaderboardIcon className="size-5" />} title={t('clan.benefits.lootTitle')} body={t('clan.benefits.lootBody')} />
-        <Benefit icon={<ClockIcon className="size-5" />} title={t('clan.benefits.aidTitle')} body={t('clan.benefits.aidBody')} />
-        <Benefit icon={<ClanIcon className="size-5" />} title={t('clan.benefits.recordTitle')} body={t('clan.benefits.recordBody')} />
-        </div>
-      </Section>
+      <ClanBenefits />
 
       {hasDepot ? (
         <Section label={t('clan.depot.formerHeading')}>
@@ -446,6 +457,7 @@ function ClanOutside({
           <label className="min-w-0 flex-1">
             <span className="sr-only">{t('clan.directory.search')}</span>
             <input
+              id="clan-directory-search"
               value={searchDraft}
               maxLength={40}
               onChange={(event) => { setSearchDraft(event.currentTarget.value); }}
@@ -691,15 +703,38 @@ function ClanProfile({
   );
 }
 
-function Benefit({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
+function ClanBenefits({ member = false }: { member?: boolean }) {
+  const { t } = useTranslation();
   return (
-    <Plate className="flex flex-col gap-1 px-2.5 py-2">
-      <span className="flex items-center gap-1.5">
-        <span className="shrink-0 text-v2-self [&>svg]:size-4">{icon}</span>
-        <strong className="min-w-0 text-caption font-semibold leading-tight text-v2-ink">{title}</strong>
-      </span>
-      <span className="text-micro leading-snug text-v2-ink-2">{body}</span>
-    </Plate>
+    <Section label={t(member ? 'clan.benefits.activeHeading' : 'clan.benefits.heading')}>
+      <div className="flex flex-col gap-1.5">
+        <Benefit featured icon={<AegisIcon />} title={t('clan.benefits.supportTitle')} body={t('clan.benefits.supportBody')} />
+        <Benefit featured icon={<AttackIcon />} title={t('clan.benefits.warTitle')} body={t('clan.benefits.warBody')} />
+        <Benefit featured icon={<GalaxyIcon />} title={t('clan.benefits.monumentTitle')} body={t('clan.benefits.monumentBody')} />
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <Benefit icon={<ClockIcon />} title={t('clan.benefits.aidTitle')} body={t('clan.benefits.aidBody')} />
+        <Benefit icon={<LeaderboardIcon />} title={t('clan.benefits.lootTitle')} body={t('clan.benefits.lootBody')} />
+        <Benefit icon={<ChatIcon />} title={t('clan.benefits.chatTitle')} body={t('clan.benefits.chatBody')} />
+        <Benefit icon={<ClanIcon />} title={t('clan.benefits.safeTitle')} body={t('clan.benefits.safeBody')} />
+        <div className="col-span-2">
+          <Benefit icon={<LeaderboardIcon />} title={t('clan.benefits.recordTitle')} body={t('clan.benefits.recordBody')} />
+        </div>
+      </div>
+      <p className="text-micro leading-snug text-v2-ink-3">{t('clan.benefits.waitingNote', { hours: CLAN.adaptationMinutes / 60 })}</p>
+    </Section>
+  );
+}
+
+function Benefit({ icon, title, body, featured = false }: { icon: ReactNode; title: string; body: string; featured?: boolean }) {
+  return (
+    <article className={`flex gap-2 rounded-control border px-2.5 py-2 ${featured ? 'border-v2-ally/30 bg-gradient-to-r from-v2-ally/10 to-v2-panel' : 'border-v2-line bg-v2-panel'}`}>
+      <span className={`mt-0.5 shrink-0 text-v2-ally [&>svg]:size-4 ${featured ? 'grid size-9 place-items-center rounded-control border border-v2-ally/25 bg-v2-ally/10 [&>svg]:size-5' : ''}`}>{icon}</span>
+      <div className="min-w-0">
+        <h4 className="text-caption font-semibold leading-tight text-v2-ink">{title}</h4>
+        <p className={`mt-1 leading-snug text-v2-ink-2 ${featured ? 'text-caption' : 'text-micro'}`}>{body}</p>
+      </div>
+    </article>
   );
 }
 
@@ -752,6 +787,7 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
           <label>
             <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{t('clan.found.nameLabel')}</span>
             <input
+              id="clan-found-name"
               value={name}
               maxLength={CLAN.nameMaxChars}
               onChange={(event) => { setName(event.currentTarget.value); }}
@@ -853,14 +889,8 @@ function ClanOverview({
         </Plate>
       )}
 
-      <Section label={t('clan.benefits.activeHeading')}>
-        <div className="grid grid-cols-2 gap-2">
-          <SmallRule title={t('clan.rules.peaceTitle')} body={t('clan.rules.peaceBody')} />
-          <SmallRule title={t('clan.rules.aidTitle')} body={t('clan.rules.aidBody')} />
-          <SmallRule title={t('clan.rules.lootTitle')} body={t('clan.rules.lootBody')} />
-          <SmallRule title={t('clan.rules.limitTitle')} body={t('clan.rules.limitBody')} />
-        </div>
-      </Section>
+      <ClanBenefits member />
+      <SmallRule title={t('clan.rules.limitTitle')} body={t('clan.rules.limitBody')} />
 
       <ClanStandings home={home} standings={standings} />
 

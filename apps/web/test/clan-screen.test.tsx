@@ -31,7 +31,7 @@ const outside = {
     coreLevel: 6,
     intel: 'RESOLVED' as const,
     requiredCoreLevel: 7,
-    cost: { alloy: 5_000, crystal: 3_000, deuterium: 0 },
+    cost: { alloy: 2_000, crystal: 1_000, deuterium: 0 },
     affordable: false,
     unlockedAt: null,
   },
@@ -202,13 +202,38 @@ describe('clan command surface', () => {
   it('answers why a clan matters and shows the exact founding gate', () => {
     show(outside);
 
-    expect(screen.getByText('Five commanders, one safe crew.')).toBeInTheDocument();
+    expect(screen.getByText('Five commanders. Go further together.')).toBeInTheDocument();
     expect(screen.getByText(/Clanmates cannot attack each other/)).toBeInTheDocument();
     expect(screen.getByText(/10% of returned raid loot/)).toBeInTheDocument();
     expect(screen.getByText('Command Core 6 / 7')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Found a clan' })).toBeDisabled();
-    expect(screen.getByText('5,000')).toBeInTheDocument();
-    expect(screen.getByText('3,000')).toBeInTheDocument();
+    expect(screen.getAllByText('2,000').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1,000').length).toBeGreaterThan(0);
+  });
+
+  it('offers direct discovery and founding routes without submitting either action', async () => {
+    const { api } = show(outside);
+    const create = vi.spyOn(api, 'createClan');
+    const apply = vi.spyOn(api, 'applyToClan');
+    for (const name of ['Find my crew', 'Start my own clan']) {
+      const link = screen.getByRole('link', { name });
+      const target = document.querySelector(link.getAttribute('href')!);
+      expect(target).toBeInstanceOf(HTMLInputElement);
+      await userEvent.setup().click(link);
+    }
+    expect(create).not.toHaveBeenCalled();
+    expect(apply).not.toHaveBeenCalled();
+  });
+
+  it.each([outside, member])('explains shared combat, monuments and communication before choosing an action ($state)', (home) => {
+    show(home);
+    expect(screen.getByRole('heading', { name: 'Defend each other' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Strike as one fleet' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Hold monuments together' })).toBeInTheDocument();
+    expect(screen.getByText(/Support ships keep their owner/)).toBeInTheDocument();
+    expect(screen.getByText(/The leader launches/)).toBeInTheDocument();
+    expect(screen.getByText(/radiation damages stationed ships/)).toBeInTheDocument();
+    expect(screen.getByText('Private clan chat')).toBeInTheDocument();
   });
 
   it('lets a clanless commander apply from the directory', async () => {
@@ -427,7 +452,7 @@ describe('clan command surface', () => {
     await i18n.changeLanguage('tr');
     show(outside);
 
-    expect(screen.getByText('Beş komutan, tek güvenli ekip.')).toBeInTheDocument();
+    expect(screen.getByText('Beş komutan. Birlikte daha ileri.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Klan kur' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Orbit Wardens klanına başvur' })).toBeInTheDocument();
   });

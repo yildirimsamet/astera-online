@@ -17,6 +17,84 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--shopier-store')) {
+  const { verifyShopierStore } = await import('./shopier-store-visual.mjs');
+  await verifyShopierStore(process.argv[2] ?? 'out/shopier-store');
+  process.exit(0);
+}
+
+if (process.argv.includes('--clan-entry')) {
+  const { verifyClanEntry } = await import('./clan-entry-visual.mjs');
+  await verifyClanEntry(process.argv[2] ?? 'out/clan-entry');
+  process.exit(0);
+}
+
+if (process.argv.includes('--colony-fault-protection')) {
+  const { verifyColonyFaultProtection } = await import('./colony-fault-protection-visual.mjs');
+  await verifyColonyFaultProtection(process.argv[2] ?? 'out/colony-fault-protection/visual');
+  process.exit(0);
+}
+
+if (process.argv.includes('--trade-recall')) {
+  const { verifyTradeRecall } = await import('./trade-recall-visual.mjs');
+  await verifyTradeRecall(process.argv[2] ?? 'out/trade-recall-visual');
+  process.exit(0);
+}
+
+if (process.argv.includes('--vacation')) {
+  const { verifyVacation } = await import('./vacation-visual.mjs');
+  await verifyVacation(process.argv[2] ?? 'out/vacation');
+  process.exit(0);
+}
+
+if (process.argv.includes('--honor')) {
+  const { verifyHonor } = await import('./honor-visual.mjs');
+  await verifyHonor(process.argv[2] ?? 'out/honor', process.argv.includes('--honor-tactical') ? ['radiation', 'emp', 'emp-launch'] : process.argv.includes('--honor-breakdown') ? ['breakdown'] : undefined);
+  process.exit(0);
+}
+
+if (process.argv.includes('--radiation-bomb')) {
+  const { verifyRadiationBomb } = await import('./radiation-bomb-visual.mjs');
+  await verifyRadiationBomb(process.argv[2] ?? 'out/radiation-bomb');
+  process.exit(0);
+}
+
+if (process.argv.includes('--radiation-forge')) {
+  const { verifyRadiationForge } = await import('./radiation-forge-visual.mjs');
+  await verifyRadiationForge(process.argv[2] ?? 'out/radiation-forge');
+  process.exit(0);
+}
+
+if (process.argv.includes('--tactical-production')) {
+  const { verifyTacticalProduction } = await import('./tactical-production-visual.mjs');
+  await verifyTacticalProduction(process.argv[2] ?? 'out/tactical-production');
+  process.exit(0);
+}
+
+if (process.argv.includes('--strategic-capacity')) {
+  const { verifyStrategicCapacity } = await import('./strategic-capacity-visual.mjs');
+  await verifyStrategicCapacity(process.argv[2] ?? 'out/strategic-capacity');
+  process.exit(0);
+}
+
+if (process.argv.includes('--ship-maintenance')) {
+  const { verifyShipMaintenance } = await import('./ship-maintenance-visual.mjs');
+  await verifyShipMaintenance(process.argv[2] ?? 'out/ship-maintenance');
+  process.exit(0);
+}
+
+if (process.argv.includes('--planet-skin-glow')) {
+  const { verifyPlanetSkinGlow } = await import('./planet-skin-glow-visual.mjs');
+  await verifyPlanetSkinGlow(process.argv[2] ?? 'out/planet-skin-glow');
+  process.exit(0);
+}
+
+if (process.argv.includes('--monument-orbits')) {
+  const { verifyMonumentOrbits } = await import('./monument-orbit-visual.mjs');
+  await verifyMonumentOrbits(process.argv[2] ?? 'out/monument-orbits');
+  process.exit(0);
+}
+
 if (process.argv.includes('--monument-motion')) {
   const { verifyMonumentMotion } = await import('./monument-motion-visual.mjs');
   await verifyMonumentMotion(process.argv[2] ?? 'out/monument-motion');
@@ -109,6 +187,11 @@ if (process.argv.includes('--shop-showcase')) {
 if (process.argv.includes('--chat-recognition')) {
   const { verifyChatRecognition } = await import('./chat-recognition-visual.mjs');
   await verifyChatRecognition(process.argv[2] ?? 'out/chat-recognition');
+  process.exit(0);
+}
+if (process.argv.includes('--honor-benefits')) {
+  const { verifyHonorBenefits } = await import('./honor-benefits-visual.mjs');
+  await verifyHonorBenefits(process.argv[2] ?? 'out/honor-benefits');
   process.exit(0);
 }
 

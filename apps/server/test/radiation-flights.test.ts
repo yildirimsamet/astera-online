@@ -11,6 +11,7 @@ import { launchAttack } from '../src/services/mission.js';
 import { launchSettlement, launchTransfer, recallFlight } from '../src/services/movement.js';
 import { addRadiationSource } from '../src/services/radiation.js';
 import { dockLotsOf } from '../src/services/shipDamage.js';
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { pendingThreads } from '../src/services/session.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { FixedClock } from '../src/clock.js';
@@ -97,7 +98,7 @@ beforeEach(async () => {
 });
 
 describe('a raid flying through a cloud', () => {
-  it('fights with the damage it took on the way, and carries it home to the dock', async () => {
+  it('fights with the damage it took on the way, and carries it home without automatic docking', async () => {
     await giveUnits(f.db, raider, { DART: 3 });
     const launch = await launchAttack(f.db, raider, target, { DART: 3 }, f.clock);
     await cloud(30, minutesOf(await flightOf(launch.missionId)), new Date(0));
@@ -109,14 +110,15 @@ describe('a raid flying through a cloud', () => {
     const [report] = await f.db.select().from(battleReports).where(eq(battleReports.missionId, launch.missionId));
     expect(report, 'the raid never struck').toBeDefined();
     // Nothing on the world to fight: the wing's own damage is what it carries out.
-    expect(report!.attackerDamage).toEqual([{ hull: 'DART', count: 3, damageBp: 3000 }]);
+    expect(report!.attackerDamage).toEqual([{ hull: 'DART', count: 3, damageBp: 3000, remainderBp: 0 }]);
     const [back] = await f.db.select().from(missions).where(eq(missions.parentMissionId, launch.missionId));
-    expect(back?.damage).toEqual([{ hull: 'DART', count: 3, damageBp: 3000 }]);
+    expect(back?.damage).toEqual([{ hull: 'DART', count: 3, damageBp: 3000, remainderBp: 0 }]);
 
     f.clock.set(back!.arriveAt);
     await worker().tick();
-    expect((await dockLotsOf(f.db, raider)).map(({ hull, count, damageBp }) => ({ hull, count, damageBp })))
+    expect((await readHomeHealth(f.db, raider)).damage.map(({ hull, count, damageBp }) => ({ hull, count, damageBp })))
       .toEqual([{ hull: 'DART', count: 3, damageBp: 3000 }]);
+    expect(await dockLotsOf(f.db, raider)).toEqual([]);
   });
 
   it('never strikes when the cloud finished it, and gives the strike back', async () => {
@@ -170,14 +172,15 @@ describe('a wing coming home through a cloud', () => {
     expect(worn).toBeGreaterThan(0);
     expect(whole).toBeGreaterThan(0);
 
-    // Half a hull on the way home: the worn ones do not make it, the whole ones dock.
+    // Half a hull on the way home: the worn ones die; the others keep their wounds at home.
     await cloud(50, minutesOf(back!), back!.departAt);
     const storeBefore = (await f.db.select().from(planets).where(eq(planets.id, raider)))[0]!;
     f.clock.set(back!.arriveAt);
     await worker().tick();
 
-    expect((await dockLotsOf(f.db, raider)).map(({ hull, count, damageBp }) => ({ hull, count, damageBp })))
+    expect((await readHomeHealth(f.db, raider)).damage.map(({ hull, count, damageBp }) => ({ hull, count, damageBp })))
       .toEqual([{ hull: 'DART', count: whole, damageBp: 5000 }]);
+    expect(await dockLotsOf(f.db, raider)).toEqual([]);
     const [word] = await told(f.playerIds[0]!, 'radiation_lost');
     expect(word?.payload).toMatchObject({ lost: worn, left: whole });
     const storeAfter = (await f.db.select().from(planets).where(eq(planets.id, raider)))[0]!;
@@ -187,7 +190,8 @@ describe('a wing coming home through a cloud', () => {
     expect(carried).toBeGreaterThan(fleetCargo({ DART: whole }, back!.tech ?? {}));
     expect(landed).toBeLessThanOrEqual(fleetCargo({ DART: whole }, back!.tech ?? {}) + 1);
     const [returned] = await told(f.playerIds[0]!, 'fleet_returned');
-    expect(returned?.payload).toMatchObject({ ships: whole, docked: whole });
+    expect(returned?.payload).toMatchObject({ ships: whole });
+    expect(returned?.payload).not.toHaveProperty('docked');
   });
 
   it('loses the whole haul with the last ship, and says nothing of a homecoming', async () => {
@@ -224,9 +228,10 @@ describe('a wing coming home through a cloud', () => {
     f.clock.set(turned.arriveAt);
     await worker().tick();
 
-    expect((await dockLotsOf(f.db, raider)).map(({ hull, count, damageBp }) => ({ hull, count, damageBp })))
+    expect((await readHomeHealth(f.db, raider)).damage.map(({ hull, count, damageBp }) => ({ hull, count, damageBp })))
       .toEqual([{ hull: 'DART', count: 3, damageBp: 3000 }]);
-    expect(await home(raider)).toEqual({});
+    expect(await dockLotsOf(f.db, raider)).toEqual([]);
+    expect(await home(raider)).toEqual({ DART: 3 });
   });
 });
 
@@ -262,7 +267,7 @@ describe('a raid on a caretaker world through a cloud', () => {
 
     const [report] = await db.select().from(battleReports).where(eq(battleReports.missionId, launch.missionId));
     expect(report?.targetKind).toBe('NEUTRAL');
-    expect(report!.attackerDamage).toEqual([{ hull: 'DART', count: 3, damageBp: 3000 }]);
+    expect(report!.attackerDamage).toEqual([{ hull: 'DART', count: 3, damageBp: 3000, remainderBp: 0 }]);
   });
 });
 

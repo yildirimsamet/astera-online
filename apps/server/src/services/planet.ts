@@ -1,9 +1,14 @@
 import { and, eq, inArray, isNull, ne, notLike, or, sql } from 'drizzle-orm';
+import { observeHonorOwner } from './honorReference.js';
+import { persistPlanetRadiation, projectPlanetRadiation } from './planetRadiation.js';
+import { refreshPlanetAegis, syncPlanetAegis } from './planetAegis.js';
 import {
   BUILDING_IDS,
   INSTRUMENT_IDS,
   SATELLITE_IDS,
+  SHIELD,
   FAULT,
+  ECONOMY_ADJUSTMENT,
   advanceEconomy,
   advanceLoyalty,
   alloyRate,
@@ -15,6 +20,8 @@ import {
   satelliteSlots,
   wealth,
   dockLocation,
+  normalizeHpDamage,
+  type HpDamageLot,
   type BuildingId,
   type BuildingLevels,
   type DefencePosture,
@@ -24,11 +31,14 @@ import {
   type HullId,
   type InstrumentId,
   type InstrumentLevels,
+  type PlanetEconomyState,
   type Resources,
   type SatelliteId,
   type SatelliteSet,
   HULLS,
   DEATH_STAR,
+  RADIATION_BOMB,
+  radiationBombLevel,
   SILENT_SPACE,
 } from '@astera/rules';
 import { minutesSince, type Clock } from '../clock.js';
@@ -50,6 +60,7 @@ import {
   seasons,
   shards,
   strategicAssets,
+  radiationBombFlights,
   units,
 } from '../db/schema.js';
 
@@ -159,7 +170,7 @@ export function economyAt(
   row: typeof planets.$inferSelect,
   levels: BuildingLevels,
   hardware: { effectiveInstruments: InstrumentLevels; orbit: SatelliteSet },
-  season: Pick<typeof seasons.$inferSelect, 'startsAt' | 'endsAt' | 'status'>,
+  season: Pick<typeof seasons.$inferSelect, 'startsAt' | 'endsAt' | 'status' | 'tempoStartsAt'>,
   requestedNow: Date,
   /**
    * WHAT IS BROKEN HERE, and every caller has to be able to say so.
@@ -176,7 +187,8 @@ export function economyAt(
 ) {
   // The deadline is an economic boundary even when the worker claims the freeze
   // event late. Status remains `live` during afterglow, but production does not.
-  const now = requestedNow <= season.endsAt ? requestedNow : season.endsAt;
+  const paused = row.vacationUntil !== null && requestedNow < row.vacationUntil;
+  const now = paused ? row.vacationUntil! : requestedNow <= season.endsAt ? requestedNow : season.endsAt;
   const nowMinutes = minutesSince(season.startsAt, now);
 
   const recovering = row.recoveryUntil !== null && row.recoveryUntil > now;
@@ -186,10 +198,12 @@ export function economyAt(
     plantLevel: levels.DEUTERIUM_PLANT,
     vaultLevel: levels.VAULT,
     aegisLevel: hardware.effectiveInstruments.AEGIS ?? 0,
-    shieldDisabledUntilMinutes: row.empUntil
-      ? minutesSince(season.startsAt, row.empUntil)
-      : null,
+    shieldDisabledUntilMinutes: Math.max(
+      row.empUntil ? minutesSince(season.startsAt, row.empUntil) : 0,
+      row.shieldRegenAt ? minutesSince(season.startsAt, row.shieldRegenAt) : 0),
     production: productionMult(hardware.orbit),
+    productionTempoStartsAtMinutes: season.tempoStartsAt === null ? null
+      : minutesSince(season.startsAt, season.tempoStartsAt),
     recoveryBoostUntilMinutes: row.recoveryBoostUntil
       ? minutesSince(season.startsAt, row.recoveryBoostUntil)
       : null,
@@ -197,7 +211,7 @@ export function economyAt(
     ...(leakedSoFar ? { leakedSoFar } : {}),
     pace,
   };
-  const state = recovering ? {
+  const previous: PlanetEconomyState = {
     alloy: row.alloy,
     crystal: row.crystal,
     deuterium: row.deuterium,
@@ -205,35 +219,18 @@ export function economyAt(
     bufferCrystal: row.bufferCrystal,
     bufferDeuterium: row.bufferDeuterium,
     shield: row.shield,
-    lastTickMinutes: nowMinutes,
-    // A world under recovery is frozen, and that includes a broken vault: nothing is
-    // produced, so nothing is bleeding. The piles are carried across untouched.
+    lastTickMinutes: minutesSince(season.startsAt, row.lastTickAt),
+    disruptedUntilMinutes: row.disruptedUntil ? minutesSince(season.startsAt, row.disruptedUntil) : 0,
+    // Pending leak is cumulative across every lazy tick and the tempo cutover.
     pendingLeakAlloy: row.pendingLeakAlloy,
     pendingLeakCrystal: row.pendingLeakCrystal,
     pendingLeakDeuterium: row.pendingLeakDeuterium,
-  } : advanceEconomy(
-    {
-      alloy: row.alloy,
-      crystal: row.crystal,
-      deuterium: row.deuterium,
-      bufferAlloy: row.bufferAlloy,
-      bufferCrystal: row.bufferCrystal,
-      bufferDeuterium: row.bufferDeuterium,
-      shield: row.shield,
-      lastTickMinutes: minutesSince(season.startsAt, row.lastTickAt),
-      disruptedUntilMinutes: row.disruptedUntil
-        ? minutesSince(season.startsAt, row.disruptedUntil)
-        : 0,
-      // A lazy tick advances the SAME pending pile. Omitting these three made every
-      // read replace the previous interval with the newest one, so a leak observed
-      // twice never accumulated beyond one observation interval.
-      pendingLeakAlloy: row.pendingLeakAlloy,
-      pendingLeakCrystal: row.pendingLeakCrystal,
-      pendingLeakDeuterium: row.pendingLeakDeuterium,
-    },
-    economyInput,
-    nowMinutes,
-  );
+  };
+  // Recovery freezes production and leaks, but still advances the world's clock.
+  // Historical completions can precede an already-observed tick. Recovery and
+  // vacation must preserve the same monotonic clock as advanceEconomy.
+  const state = paused || recovering ? { ...previous, lastTickMinutes: Math.max(previous.lastTickMinutes, nowMinutes) }
+    : advanceEconomy(previous, economyInput, nowMinutes);
   const produced = {
     alloy: Math.max(0, state.bufferAlloy - row.bufferAlloy),
     crystal: Math.max(0, state.bufferCrystal - row.bufferCrystal),
@@ -245,11 +242,20 @@ export function economyAt(
     crystalRate(economyInput.extractorLevel) * boost,
     deuteriumRate(economyInput.plantLevel) * boost,
   ];
-  const generated = [produced.alloy, produced.crystal, produced.deuterium];
-  const productiveSeconds = Math.max(...generated.map((amount, index) => {
-    const rate = rates[index] ?? 0;
-    return rate <= 0 ? 0 : amount / rate * 3_600;
-  }));
+  const productionSeconds = (next: typeof previous, prior: typeof previous, factor: number): number => {
+    const generated = [next.bufferAlloy - prior.bufferAlloy, next.bufferCrystal - prior.bufferCrystal,
+      next.bufferDeuterium - prior.bufferDeuterium];
+    return Math.max(...generated.map((amount, index) => {
+      const rate = (rates[index] ?? 0) * factor;
+      return rate <= 0 ? 0 : Math.max(0, amount) / rate * 3_600;
+    }));
+  };
+  const cutover = economyInput.productionTempoStartsAtMinutes;
+  const legacyUntil = cutover === null ? nowMinutes : Math.min(nowMinutes, cutover);
+  const before = !recovering && legacyUntil > previous.lastTickMinutes
+    ? advanceEconomy(previous, economyInput, legacyUntil) : previous;
+  const productiveSeconds = productionSeconds(before, previous, ECONOMY_ADJUSTMENT.producerCapacityTime)
+    + productionSeconds(state, before, 1);
   return { state, now, nowMinutes, produced, productiveSeconds };
 }
 
@@ -272,8 +278,12 @@ export interface LockedPlanet {
   seasonEndsAt: Date;
   /** The rule set the season was dealt, read off the row this lock already holds. */
   rulesetVersion: number;
+  /** Reuse the season row already read for active-season shielding availability. */
+  monumentRadiationStartsAt?: Date | null;
+  radiationBombStartsAt?: Date | null;
   /** D212: this world is in Silent Space — no fights, no farming, works at half pace. */
   silentSpace: boolean;
+  vacationUntil: Date | null;
   name: string;
   equippedSkinId: string | null;
   x: number; y: number; z: number;
@@ -292,6 +302,7 @@ export interface LockedPlanet {
   bufferCrystal: number;
   bufferDeuterium: number;
   shield: number;
+  shieldRegenAt: Date | null;
   disruptedUntil: Date | null;
   recoveryUntil: Date | null;
   empUntil: Date | null;
@@ -321,6 +332,7 @@ export interface LockedPlanet {
    * flight bay, the battle, the sensor post — and this list is what they all read.
    */
   faults: FaultKind[];
+  faultProtectedUntil: Date | null;
   /**
    * 0-100 on every colony; `FAULT.loyaltyMax` on a capital.
    *
@@ -330,6 +342,7 @@ export interface LockedPlanet {
   loyalty: number;
   /** Units physically at home right now. Anything in flight is not here. */
   homeFleet: Fleet;
+  homeDamage: HpDamageLot[];
   ground: Fleet;
   /** Minutes since season start, at the moment the lock was taken. */
   nowMinutes: number;
@@ -384,11 +397,14 @@ export function loyaltyAt(
     coreLevel: levels.CORE,
     plantLevel: levels.DEUTERIUM_PLANT,
   }) ? faultCount : 0;
-  return advanceLoyalty(row.loyalty, active, (now.getTime() - row.lastTickAt.getTime()) / 60_000);
+  return advanceLoyalty(row.loyalty, active, Math.max(0, (now.getTime() - row.lastTickAt.getTime()) / 60_000));
 }
 
 /** Mutations and launches stop for the whole exact recovery window. */
 export function assertWorldOperational(planet: LockedPlanet): void {
+  if (planet.vacationUntil && planet.vacationUntil > planet.now) {
+    throw new GameError('VACATION_ACTIVE', 'End vacation mode before giving orders.', 409);
+  }
   if (planet.kind === 'COLONY' && planet.loyalty <= 0) {
     /*
       ZERO IS ALREADY THE SECESSION BOUNDARY.
@@ -464,7 +480,7 @@ export async function loadLocked(
   tx: Tx,
   planetId: string,
   clock: Clock,
-  options: { requireLive?: boolean; expectedPlayerId?: string } = {},
+  options: { requireLive?: boolean; expectedPlayerId?: string; radiationAt?: Date } = {},
 ): Promise<LockedPlanet> {
   return (await loadPlanetState(tx, planetId, clock, { ...options, mutate: true })).planet;
 }
@@ -502,7 +518,7 @@ export async function loadPlanetViewState(tx: Tx, planetId: string, clock: Clock
 
 async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
   options: {
-    requireLive?: boolean; expectedPlayerId?: string; mutate: boolean; allUnits?: boolean; lockSeason?: boolean;
+    requireLive?: boolean; expectedPlayerId?: string; mutate: boolean; allUnits?: boolean; lockSeason?: boolean; radiationAt?: Date;
   }) {
   // Resolve the parent first without locking the child, then take locks in the
   // global season → planet order. The pre-read locates a lock, not authority.
@@ -530,7 +546,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     tx.select().from(buildings).where(eq(buildings.planetId, planetId)),
     tx.select().from(satellites).where(eq(satellites.planetId, planetId)),
     tx.select().from(units).where(and(eq(units.planetId, planetId),
-      options.allUnits ? undefined : eq(units.location, 'home'))),
+      options.allUnits || season.radiationBombStartsAt ? undefined : eq(units.location, 'home'))),
     tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)),
     tx.select({ role: shards.role }).from(shards).where(eq(shards.id, season.shardId)),
   ]);
@@ -562,6 +578,15 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
   const levels = buildingLevelsFrom(buildingRows);
   const { instruments, effectiveInstruments, orbit, storedOrbit } = hardwareOf(satelliteRows, levels);
 
+  if (season.radiationBombStartsAt) {
+    if (options.mutate) await syncPlanetAegis(tx, row, options.radiationAt ?? clock.now(),
+      new Date(Math.max(season.radiationBombStartsAt.getTime(), row.lastTickAt.getTime())),
+      { coreLevel: levels.CORE, aegisLevel: instruments.AEGIS ?? 0, coreOffline: faults.includes('CORE_OUTAGE') });
+    const projection = await projectPlanetRadiation(tx, row, season, unitRows, options.radiationAt ?? clock.now());
+    if (options.mutate) await persistPlanetRadiation(tx, row, season, unitRows, projection, clock.now());
+    unitRows.splice(0, unitRows.length, ...projection.rows);
+  }
+
   const homeFleet: Fleet = {};
   const ground: Fleet = {};
   for (const u of unitRows) {
@@ -569,7 +594,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     (HULLS[u.hull].ground ? ground : homeFleet)[u.hull] = u.count;
   }
 
-  const { state: advanced, now, nowMinutes, produced, productiveSeconds } = economyAt(
+  const { state: advanced, now, produced, productiveSeconds } = economyAt(
     row,
     levels,
     { effectiveInstruments, orbit },
@@ -674,7 +699,10 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     seasonStart: season.startsAt,
     seasonEndsAt: season.endsAt,
     rulesetVersion: season.rulesetVersion,
+    monumentRadiationStartsAt: season.monumentRadiationStartsAt,
+    radiationBombStartsAt: season.radiationBombStartsAt,
     silentSpace,
+    vacationUntil: row.vacationUntil && row.vacationUntil > clock.now() ? row.vacationUntil : null,
     name: row.name,
     equippedSkinId: row.equippedSkinId,
     x: row.x, y: row.y, z: row.z,
@@ -689,6 +717,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     disruptedUntil: row.disruptedUntil,
     recoveryUntil: row.recoveryUntil,
     empUntil: row.empUntil,
+    shieldRegenAt: row.shieldRegenAt,
     protectedUntil: row.protectedUntil,
     recoveryBoostUntil: row.recoveryBoostUntil,
     transferReadyAt: row.transferReadyAt,
@@ -701,10 +730,12 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     seasonTelemetry: row.seasonTelemetry,
     faults,
     loyalty,
+    faultProtectedUntil: row.faultProtectedUntil,
     homeFleet,
+    homeDamage: normalizeHpDamage(homeFleet, unitRows.filter((row) => row.location === 'home' && !HULLS[row.hull].ground).flatMap((row) => row.damage)),
     ground,
-    nowMinutes,
-    now,
+    nowMinutes: minutesSince(season.startsAt, clock.now()),
+    now: clock.now() <= season.endsAt ? clock.now() : season.endsAt,
   };
   return { planet, unitRows, faultRows };
 }
@@ -759,9 +790,14 @@ export async function saveResources(
     bufferCrystal?: number;
     bufferDeuterium?: number;
     shield?: number;
+    shieldRegenAt?: Date | null;
     disruptedUntil?: Date | null;
   },
 ): Promise<void> {
+  const [beforeShield] = next.shield === undefined ? [] : await tx.select().from(planets).where(eq(planets.id, planetId));
+  const shieldRegenAt = beforeShield && beforeShield.shield > 0 && next.shield === 0
+    ? new Date(Math.max(beforeShield.shieldRegenAt?.getTime() ?? 0,
+      beforeShield.lastTickAt.getTime() + SHIELD.depletedDelayMinutes * 60000)) : next.shieldRegenAt;
   await tx
     .update(planets)
     .set({
@@ -774,9 +810,14 @@ export async function saveResources(
         ? { bufferDeuterium: next.bufferDeuterium }
         : {}),
       ...(next.shield !== undefined ? { shield: next.shield } : {}),
+      ...(shieldRegenAt !== undefined ? { shieldRegenAt } : {}),
       ...(next.disruptedUntil !== undefined ? { disruptedUntil: next.disruptedUntil } : {}),
     })
     .where(eq(planets.id, planetId));
+  if (next.shield !== undefined) {
+    const [world] = await tx.select().from(planets).where(eq(planets.id, planetId));
+    if (world) await refreshPlanetAegis(tx, planetId, world.lastTickAt);
+  }
 }
 
 /** Overwrite the home stack for the given hulls. Values are absolute, not deltas. */
@@ -849,21 +890,22 @@ export async function setBuildingLevel(
  * garrison meant a player was cheapest — and so most protected by the rank floor —
  * at exactly the moment their fleet was away and they were most vulnerable.
  */
-export async function recomputeWealth(tx: Tx, planetId: string): Promise<number> {
+export async function recomputeWealth(tx: Tx, planetId: string, observedAt?: Date): Promise<number> {
   const [row] = await tx.select().from(planets).where(eq(planets.id, planetId));
   if (!row?.controllerPlayerId) return 0;
 
-  return recomputePlayerWealth(tx, row.controllerPlayerId);
+  return recomputePlayerWealth(tx, row.controllerPlayerId, observedAt);
 }
 
 /** Commander-wide Wealth across every controlled world and every owned flight. */
-export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<number> {
+export async function recomputePlayerWealth(tx: Tx, playerId: string, observedAt?: Date): Promise<number> {
   const worlds = await tx
     .select()
     .from(planets)
     .where(eq(planets.controllerPlayerId, playerId));
   if (worlds.length === 0) {
     await tx.update(players).set({ wealth: 0 }).where(eq(players.id, playerId));
+    await observeHonorOwner(tx, playerId, observedAt);
     return 0;
   }
   const worldIds = worlds.map((world) => world.id);
@@ -880,6 +922,7 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
     [unclaimedClanLoot],
     [monumentCargo],
     contributionFuel,
+    launchedBombs,
   ] = await Promise.all([
     tx.select().from(buildings).where(inArray(buildings.planetId, worldIds)),
     tx.select().from(satellites).where(inArray(satellites.planetId, worldIds)),
@@ -887,12 +930,12 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
       eq(units.ownerPlayerId, playerId),
       and(isNull(units.ownerPlayerId), inArray(units.planetId, worldIds)),
     )),
-    tx.select({ id: strategicAssets.id }).from(strategicAssets).where(and(
+    tx.select({ id: strategicAssets.id, type: strategicAssets.type }).from(strategicAssets).where(and(
       inArray(strategicAssets.planetId, worldIds),
       inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
     )),
     tx
-      .select({ id: strategicAssets.id })
+      .select({ id: strategicAssets.id, type: strategicAssets.type })
       .from(strategicAssets)
       .innerJoin(missions, eq(strategicAssets.missionId, missions.id))
       .where(and(
@@ -931,6 +974,10 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
     tx.select({ fleet: clanWarContributions.fleet, budget: clanWarContributions.monumentFuelBudget })
       .from(clanWarContributions).where(and(eq(clanWarContributions.playerId, playerId),
         inArray(clanWarContributions.status, ['OUTBOUND', 'STAGED', 'RECALL_ORDERED', 'RETURNING']))),
+    tx.select({ type: strategicAssets.type }).from(radiationBombFlights)
+      .innerJoin(strategicAssets, eq(strategicAssets.id, radiationBombFlights.assetId))
+      .where(and(eq(radiationBombFlights.ownerPlayerId, playerId), eq(radiationBombFlights.status, 'OUTBOUND'),
+        eq(strategicAssets.status, 'LAUNCHED'))),
   ]);
 
   let value = 0;
@@ -961,7 +1008,12 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
   }
   const strategicUnitValue =
     DEATH_STAR.cost.alloy + DEATH_STAR.cost.crystal + DEATH_STAR.cost.deuterium;
-  value += (inventoryAssets.length + launchedAssets.length) * strategicUnitValue;
+  for (const asset of [...inventoryAssets, ...launchedAssets, ...launchedBombs]) {
+    const level = radiationBombLevel(asset.type);
+    const cost = level === null ? null : RADIATION_BOMB.levels[level].cost;
+    // Preserve existing Death Star/battery valuation; new bombs use their own invoice.
+    value += cost === null ? strategicUnitValue : cost.alloy + cost.crystal + cost.deuterium;
+  }
   for (const mission of cargoMissions) {
     const cargo = mission.cargo;
     const loot = mission.loot;
@@ -990,12 +1042,13 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
   }
   value = Math.round(value);
   await tx.update(players).set({ wealth: value }).where(eq(players.id, playerId));
+  await observeHonorOwner(tx, playerId, observedAt);
   return value;
 }
 
 /** Convenience for callers that already hold a lock. */
 export const refreshWealth = (tx: Tx, planet: LockedPlanet): Promise<number> =>
-  recomputeWealth(tx, planet.planetId);
+  recomputeWealth(tx, planet.planetId, planet.now);
 
 /** Everything a player currently owns, including fleets that are away. */
 export async function totalUnitsOf(tx: Queryable, planetId: string): Promise<Fleet> {

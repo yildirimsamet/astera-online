@@ -324,11 +324,15 @@ export async function loadPirateSnapshot(
 }
 
 function snapshotOf(
-  season: { startsAt: Date; asteroidKey: string },
+  season: { startsAt: Date; asteroidKey: string; tempoStartsAt: Date | null },
   state: ReadonlyMap<number, PirateStateRow>,
   pirates: PirateSpec[],
   visibleLength: number,
 ): PirateSnapshot {
+  if (season.tempoStartsAt !== null && season.tempoStartsAt > season.startsAt) {
+    const cutoverMinute = minutesSince(season.startsAt, season.tempoStartsAt);
+    pirates = pirates.filter(spec => spec.appearsAt > cutoverMinute);
+  }
   const byIndex = new Map(pirates.map((spec) => [spec.index, spec]));
   return {
     pirates,

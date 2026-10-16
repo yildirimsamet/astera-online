@@ -1,4 +1,6 @@
 export const clanWar = {
+  criticalReason: "Saldırıyı başlatmadan önce canı %5 veya altına düşen gemilerin bulunduğu filoları geri çağırın.",
+  stagingRadiation: "Burada bekleyen gemiler toplandıkları gezegende radyasyon hasarı alır.",
   radiationMember: "{{name}}: radyasyon {{count}} gemiyi yok edecek. Dalgayı geri çağırıp kendi kayıp onayınla yeniden gönder.",
   radiationMemberRequired: "Üye kendi radyasyon kaybını onaylamalı",
   tab: 'Savaş', purpose: 'Tek hedef. Birçok komutan. Ortak saldırı.',

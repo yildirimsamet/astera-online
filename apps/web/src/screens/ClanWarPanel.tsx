@@ -1,11 +1,13 @@
-import { CLAN, HULLS, MOBILE_HULLS, fleetCount, pacesForMinutes, type MissionPace } from '@astera/rules';
+import { CLAN, HULLS, MOBILE_HULLS, fleetCount, pacesForMinutes, shipCanFight, shipHealthGroups, healthGroupKey, type MissionPace } from '@astera/rules';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClanWarActions } from '../api/queries.js';
+import { HonorSoloNotice } from '../ui/HonorSoloNotice.js';
 import type { ClanWar, PlanetView } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
 import { hullName, monumentName } from '../i18n/names.js';
-import { full } from '../lib/format.js';
+import { healthDisplay } from '../lib/maintenanceInventory.js';
+import { decimal, full } from '../lib/format.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { planetArt, RESOURCE_ART } from '../ui/assets.js';
 import { PaceRow } from '../ui/PaceRow.js';
@@ -96,7 +98,9 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
 
   const assembling = operation.status === 'ASSEMBLING';
   const inbound = operation.contributions.some((wave) => wave.status === 'OUTBOUND');
+  const critical = operation.contributions.some(wave => wave.status === 'STAGED' && wave.damage.some(lot => !shipCanFight(lot)));
   const startReason = operation.status !== 'ASSEMBLING' ? t('clanWar.notAssembling')
+    : critical ? t('clanWar.criticalReason')
     : inbound ? t('clanWar.inboundReason')
       : operation.pool.waves === 0 ? t('clanWar.noWaveReason')
         : operation.pool.combatHulls === 0 ? t('clanWar.noCombatReason') : null;
@@ -119,6 +123,7 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
 
   return (
     <div className="flex min-w-0 flex-col gap-3 pb-5">
+      <HonorSoloNotice />
       <WarTarget operation={operation} now={now} />
       <Seats operation={operation} members={members} selfPlayerId={selfPlayerId} now={now} />
       {hangar}
@@ -402,6 +407,8 @@ function Seats({ operation, members, selfPlayerId, now }: {
         })}
       </div>
 
+      <p className="text-micro text-v2-ink-3">{t('clanWar.stagingRadiation')}</p>
+
       {selected && (
         <div data-seat-waves="" className="flex flex-col gap-2 border-t border-v2-line/70 pt-2.5">
           {theirs.length === 0 ? (
@@ -420,6 +427,23 @@ function Seats({ operation, members, selfPlayerId, now }: {
                   </span>
                 ))}
               </p>
+              <div className="flex flex-col gap-1">
+                {shipHealthGroups(wave.fleet, wave.damage).filter(lot => lot.damageBp > 0 || (lot.remainderBp ?? 0) > 0).map(lot => {
+                  const health = healthDisplay(lot);
+                  const critical = !shipCanFight(lot);
+                  return <div key={healthGroupKey(lot)} data-staged-health="" className="rounded-cell border border-v2-line bg-v2-deep/60 px-2 py-1">
+                    <p className={`flex flex-wrap justify-between gap-x-2 text-micro ${critical ? 'text-v2-warn' : 'text-v2-ink-2'}`}>
+                      <span>{hullName(lot.hull)} ×{full(lot.count)}</span>
+                      <span>{t(`repairStation.maintenance.health${health.relation === 'above' ? 'Above' : health.relation === 'below' ? 'Below' : 'Exact'}`,
+                        { pct: decimal(health.percent, Number.isInteger(health.percent) ? 0 : 2) })}</span>
+                    </p>
+                    <span aria-hidden="true" className="mt-1 block h-1 overflow-hidden rounded-full bg-v2-line">
+                      <span className={`block h-full ${critical ? 'bg-v2-warn' : 'bg-v2-self'}`} style={{ width: `${String(health.percent)}%` }} />
+                    </span>
+                    {critical && <p className="mt-0.5 text-micro text-v2-warn">{t('repairStation.maintenance.critical')}</p>}
+                  </div>;
+                })}
+              </div>
               <p className="font-v2-mono text-micro text-v2-ink-3">
                 {t('clanWar.waveMeta', { ships: fleetCount(wave.fleet), bulk: full(wave.bulk) })}
                 {wave.arrivesAt && <> · {t('clanWar.eta', { time: countdown(wave.arrivesAt.getTime() - now) })}</>}

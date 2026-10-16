@@ -256,7 +256,7 @@ export function repairCost(kind: FaultKind, coreLevel: number): Resources {
 }
 
 /**
- * Five to fifteen minutes, drawn. The sheet quotes the RANGE and never a figure:
+ * Drawn from the shared repair range. The sheet quotes the RANGE and never a figure:
  * an outcome the player can predict exactly is one the game has already decided for
  * them, and the range is enough to plan a session around.
  */

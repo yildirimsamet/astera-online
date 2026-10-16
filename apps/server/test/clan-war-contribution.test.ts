@@ -22,6 +22,7 @@ import {
   players,
   seasons,
   units,
+  hpRadiationSources,
 } from '../src/db/schema.js';
 import {
   acceptClanRequest,
@@ -204,6 +205,19 @@ async function readyOperation(f: Fixture): Promise<void> {
 /* ── the quote ──────────────────────────────────────────────────── */
 
 describe('quoting a wave', () => {
+  it('quotes the radiation risk using the contributed home ships’ existing wounds', async () => {
+    const f = await setup();
+    await f.db.update(seasons).set({ rulesetVersion: 16 }).where(eq(seasons.id, f.seasonId));
+    await readyOperation(f);
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 0 });
+    const { landHpShips } = await import('../src/services/shipDamage.js');
+    await f.db.transaction(tx => landHpShips(tx, { planetId: f.planetIds[0]!, ownerPlayerId: f.playerIds[0]!,
+      fleet: { DART: 2 }, damage: [{ hull: 'DART', count: 2, damageBp: 9000 }], at: f.clock.now() }));
+    await f.db.insert(hpRadiationSources).values({ seasonId: f.seasonId, anchorKind: 'ZONE', x: 0, y: 0, z: 0,
+      radius: 100_000, mode: 'EMIT', intensityHpPerMinute: 0.01, activeFrom: f.clock.now() });
+    const preview = await quote(f, 0, f.planetIds[0]!, { DART: 2 });
+    expect(preview.radiation?.health[0]?.healthPct ?? 100).toBeLessThanOrEqual(10);
+  });
   it('prices three legs for a member and two for the leader capital', async () => {
     const f = await setup();
     await readyOperation(f);

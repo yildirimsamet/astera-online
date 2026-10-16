@@ -31,6 +31,7 @@ const convoyLaunchBody = z.object({
   quotedFlightSeconds: z.number().finite().nonnegative(),
   quotedArriveAt: z.string().datetime({ offset: true }),
   acknowledgeRadiationLoss: z.boolean().optional(),
+  expectedHonorTier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]).optional(),
 }).strict();
 
 const idempotencyKey = (req: FastifyRequest): string => {
@@ -120,6 +121,7 @@ export function registerIntergalacticConvoyRoutes(app: FastifyInstance): void {
         quotedFlightSeconds: body.quotedFlightSeconds,
         quotedArriveAt: new Date(body.quotedArriveAt),
         acknowledgeRadiationLoss: body.acknowledgeRadiationLoss,
+        expectedHonorTier: body.expectedHonorTier,
       },
       clock: { now: () => now },
     })));

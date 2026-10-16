@@ -6,7 +6,8 @@ import { landHpShips, dockLotsOf, dockView } from '../src/services/shipDamage.js
 import { loadLocked, totalUnitsOf } from '../src/services/planet.js';
 import { startRepair } from '../src/services/repair.js';
 import { applyBuildCompletion } from '../src/services/buildQueue.js';
-import { grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { landAndDockShips, grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { readHomeHealth } from '../src/services/homeHealth.js';
 
 let f: Fixture;
 const lot = (damageBp = 2000, remainderBp = 0.375): HpDamageLot => ({ hull: 'COURIER', count: 1, damageBp, remainderBp });
@@ -24,11 +25,16 @@ beforeEach(async () => {
 afterAll(async () => { await (await testDb()).close(); });
 
 describe('precise HP landing persistence and normal repairs', () => {
-  it('lands exact twenty percent at home and stores the positive fraction above it in the dock', async () => {
+  it('keeps exact twenty percent and every fraction at home until explicit workshop entry', async () => {
     const population = (await totalUnitsOf(f.db, f.planetIds[0]!)).COURIER ?? 0;
     const report = await land([lot(2000, 0), lot()]);
-    expect(report.autoRepaired).toEqual([lot(2000, 0)]);
-    expect(report.docked).toEqual([lot()]);
+    expect(report.autoRepaired).toEqual([]);
+    expect(report.docked).toEqual([]);
+    expect((await readHomeHealth(f.db, f.planetIds[0]!)).damage).toEqual([lot(), lot(2000, 0)]);
+    expect(await dockLotsOf(f.db, f.planetIds[0]!)).toEqual([]);
+    const { maintenanceAction } = await import('../src/services/maintenance.js');
+    await maintenanceAction(f.db, f.playerIds[0]!, f.planetIds[0]!, 'DOCK',
+      { source: 'HOME', groups: [lot()] }, 'hp-landing-manual-entry', f.clock);
     const [stored] = await f.db.select().from(shipDamageLots);
     expect(stored).toMatchObject({ damageBp: 2000, remainderBp: 0.375 });
     const [docked] = await dockLotsOf(f.db, f.planetIds[0]!);
@@ -40,24 +46,27 @@ describe('precise HP landing persistence and normal repairs', () => {
   it('keeps distinct carried fractions apart and preserves a barely surviving ship', async () => {
     const damage = [lot(3000, 0.25), lot(3000, 0.75), lot(9999, 1 - Number.EPSILON)];
     await land(damage);
-    const rows = await f.db.select().from(shipDamageLots);
+    const rows = (await readHomeHealth(f.db, f.planetIds[0]!)).damage;
     expect(rows).toHaveLength(3);
     expect(rows.map((row) => [row.damageBp, row.remainderBp]).sort()).toEqual(damage.map((row) => [row.damageBp, row.remainderBp]).sort());
   });
 
-  it('enforces the real threshold and rejects malformed fractions in PostgreSQL', async () => {
+  it('accepts every positive wound but rejects healthy and malformed dock fractions in PostgreSQL', async () => {
     const insert = (damageBp: number, remainderBp: number) => f.db.insert(shipDamageLots).values({
       planetId: f.planetIds[0]!, hull: 'COURIER', damageBp, remainderBp, createdAt: f.clock.now(),
     });
-    await expect(insert(2000, 0)).rejects.toMatchObject({ cause: { code: '23514' } });
-    await expect(insert(1999, 0.9)).rejects.toMatchObject({ cause: { code: '23514' } });
+    await expect(insert(2000, 0)).resolves.toBeDefined();
+    await expect(insert(1999, 0.9)).resolves.toBeDefined();
+    await expect(insert(0, 0)).rejects.toMatchObject({ cause: { code: '23514' } });
+    await expect(insert(0, Number.MIN_VALUE)).resolves.toBeDefined();
     await expect(insert(2000, Number.MIN_VALUE)).resolves.toBeDefined();
     for (const fraction of [-1, 1, Number.NaN, Number.POSITIVE_INFINITY]) await expect(insert(3000, fraction)).rejects.toMatchObject({ cause: { code: '23514' } });
   });
 
   it('uses exact fractional cost and duration through the ordinary queued repair, then releases the same ship whole', async () => {
     const wound = lot(5000, 0.5);
-    await land([wound]);
+    await landAndDockShips(f.db, { planetId: f.planetIds[0]!, ownerPlayerId: f.playerIds[0]!,
+      fleet: { COURIER: 1 }, damage: [wound], at: f.clock.now() }, f.clock);
     const [docked] = await dockLotsOf(f.db, f.planetIds[0]!);
     await startRepair(f.db, f.planetIds[0]!, { lotIds: [docked!.id] }, f.clock, f.playerIds[0]);
     const [order] = await f.db.select().from(buildOrders).where(eq(buildOrders.kind, 'REPAIR'));

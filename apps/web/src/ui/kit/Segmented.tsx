@@ -13,10 +13,8 @@ import { haptic } from '../../lib/haptics.js';
  * shapes, three grammars for "this one is on", three things said to a screen
  * reader, and on one of them half the selected state was missing entirely.
  *
- * ONE GRAMMAR: THE SELECTED SEGMENT IS LIT AND RAISED. It is the only one with a
- * face catching the light and the only one at full ink; everything else is flat
- * and faint. That is the same physical language `.slab` uses for a surface you
- * press, read in reverse — which is why it needs no explaining.
+ * One ui-v2 surface across both segmented APIs: quiet frame, raised active face,
+ * sentence-case Archivo, and a narrow active indicator. No legacy plate/legend.
  *
  * `role` picks the SEMANTICS, and the look never changes with them:
  *
@@ -116,8 +114,8 @@ export function Segmented<T extends string>({
       onKeyDown={move}
       className={
         flush
-          ? `flex gap-0.5 overflow-x-auto rounded-control border border-v2-line bg-v2-panel p-0.5 font-v2-ui [scrollbar-width:none] ${className}`
-          : `plate plate-sunk grid gap-1 rounded-control p-1 ${className}`
+          ? `v2-segmented flex gap-1 overflow-x-auto [scrollbar-width:none] ${className}`
+          : `v2-segmented grid gap-1 ${className}`
       }
       {...(flush ? {} : { style: { gridTemplateColumns: `repeat(${String(segments.length)}, minmax(0, 1fr))` } })}
     >
@@ -148,16 +146,8 @@ export function Segmented<T extends string>({
               onSelect(segment.id);
             }}
             className={flush
-              ? `min-h-9 flex-auto shrink-0 whitespace-nowrap rounded-chip px-2 text-label font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-v2-self ${
-                on ? 'bg-v2-raise text-v2-ink ring-1 ring-v2-line-hi' : 'text-v2-ink-3 hover:text-v2-ink-2'
-              }`
-              : `legend rounded-chip transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crystal ${
-                size === 'sm' ? 'min-h-9 px-2' : 'min-h-11 px-2'
-              } ${
-                on
-                  ? 'bg-raised text-bone shadow-[inset_0_1px_0_rgb(255_255_255/12%),0_1px_0_rgb(0_0_0/45%)]'
-                  : 'text-faint hover:text-dim'
-              }`}
+              ? 'v2-segmented-option min-h-9 flex-auto shrink-0 whitespace-nowrap px-3'
+              : `v2-segmented-option min-w-0 break-words whitespace-normal ${size === 'sm' ? 'min-h-9 px-2' : 'min-h-10 px-3'}`}
           >
             {segment.mark ? (
               // `gap-1` and nothing else: the mark rides with the label rather than

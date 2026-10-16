@@ -3,7 +3,12 @@ import type { Resources, ShipTier } from './types.js';
 /** Owner's post-147deca 30% experiment: replaces 25%, not compounded on top of it. */
 export const ECONOMY_ADJUSTMENT = {
   hullMetalPrice: 1.30,
-  producerOutput: 0.70,
+  /** Owner, 2026-10-13: another 20% off every producer's previous hourly output. */
+  producerOutput: 0.56,
+  /** Preserve existing Store/Works capacities while their hourly output falls by 20%. */
+  producerCapacityTime: 1.25,
+  /** Every production/repair queue runs at 80% of its previous work rate. */
+  workRate: 0.8,
   /**
    * Owner instruction, 2026-09-13: a temporary lift on the early Alloy ladder.
    *
@@ -30,32 +35,14 @@ export const ECONOMY_ADJUSTMENT = {
   /** The first rung with no lift left on it. Between the two, the lift decays. */
   alloyLiftEndLevel: 10,
   /**
-   * THE ONE DIAL EVERY TIMER IN THE GAME IS MULTIPLIED BY.
-   *
-   * `1.30 x 0.75 = 0.975`. Owner instruction, 2026-09-14: *"Üretilen veya
-   * araştırılan her şeyin yapım süresini %25 azalt."* Both halves are still live
-   * decisions — the 30% slow-down is the standing tempo and the quarter is the
-   * reduction on top of it — but the DERIVATION belongs in this sentence rather
-   * than in the expression: `1.30 * 0.75` evaluates to 0.9750000000000001 in
-   * binary floating point, and a dial every timer in the game multiplies by is the
-   * last place to leave a trailing bit for a later equality check to trip over.
-   *
-   * IT REACHES SEVEN QUOTES AND NO MORE: `buildMinutes`, `satelliteMinutes`,
-   * `buildingMinutes`, `shipMinutes`, `defenceMinutes`, `researchMinutes` and
-   * `DEATH_STAR.buildMinutes`. Flight time, event windows, mining turnaround,
-   * Telescope repoint, disruption and recovery are deliberately outside it: they
-   * are not WORK, and shortening them would be a different decision wearing this
-   * one's clothes.
-   *
-   * THE CEILING MOVES WITH IT, AND THAT IS THE PROPERTY THAT MAKES THE CHANGE ONE
-   * LINE. `BUILD.capMinutes` is itself `ECONOMY_TEMPO.buildCapMinutes x buildTime`,
-   * so every quote reduces to `buildTime x min(480, work)` whether it clamps before
-   * the multiplication (`buildingMinutes`, off authored minutes) or after it
-   * (`buildMinutes`, `shipMinutes`, `defenceMinutes`, `researchMinutes`, off price).
-   * A capped order therefore shortens by the same quarter as an uncapped one: the
-   * effective eight-hour ceiling falls from 624 to 468 minutes before AI Robots.
+   * Shared work timer: owner, 2026-10-13, runs production at 80% of its previous
+   * rate. The previous 0.975 dial is divided by 0.8, giving 1.21875 (×1.25 time).
+   * Buildings, instruments, satellites, research, hulls, ground defence, repairs
+   * and both strategic build clocks inherit it. The work cap follows the same
+   * dial, so capped orders slow by the same factor: 468 → 585 minutes.
+   * Flight, event, recovery and cooldown clocks are separate from production work.
    */
-  buildTime: 0.975,
+  buildTime: 1.21875,
 } as const;
 
 /** Shift a live hull invoice toward crystal without changing its 1:2 economic value. */

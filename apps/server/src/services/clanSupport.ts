@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { settlePlanetRadiationAt } from './planetRadiation.js';
 import { and, eq, inArray, isNull, or } from 'drizzle-orm';
 import {
   CLAN_SUPPORT,
@@ -71,6 +72,7 @@ import { planetView, type PlanetView } from './planetView.js';
 import { peakCoreLevels } from './player.js';
 import { techOf } from './researchState.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
+import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
 
 /**
  * KLAN SAVUNMA DESTEĞİ — the server half. Owner decisions, 2026-10-01
@@ -227,12 +229,14 @@ async function gatherSupport(tx: Tx, input: SupportInput): Promise<SupportContex
   if (host.controllerPlayerId === input.senderPlayerId) {
     throw new GameError('CLAN_SUPPORT_SELF', 'Support goes to a clanmate, not to your own worlds', 400);
   }
+  if (host.vacationUntil && host.vacationUntil > origin.now) throw new GameError('TARGET_VACATION', 'That commander is on vacation.', 409);
   for (const [hull, n] of Object.entries(input.fleet) as [HullId, number][]) {
     if ((origin.homeFleet[hull] ?? 0) < n) {
       throw new GameError('NOT_ENOUGH_SHIPS', `Not enough ${hull} at home`, 400, { hull });
     }
   }
 
+  selectHomeDispatch(origin.homeFleet, origin.homeDamage, input.fleet, true);
   const now = origin.now;
   const [sender, recipient] = await Promise.all([
     activeClanMembership(tx, input.senderPlayerId),
@@ -395,6 +399,7 @@ export async function sendClanSupport(
   if (first) throw new GameError(first.code, first.message, 409, first.params);
 
   const { origin } = context;
+  const damage = await takeHomeHealth(tx, origin.planetId, input.fleet, true);
   const [mission] = await tx.insert(missions).values({
     seasonId: origin.seasonId,
     kind: 'clan_support',
@@ -402,6 +407,7 @@ export async function sendClanSupport(
     originPlanetId: origin.planetId,
     targetPlanetId: input.hostPlanetId,
     fleet: input.fleet,
+    damage: damage.length ? damage : null,
     tech: context.tech,
     distance: context.distance,
     fuelPaid: context.fuel,
@@ -432,6 +438,7 @@ export async function sendClanSupport(
     hostPlanetId: input.hostPlanetId,
     unitLocation,
     fleet: input.fleet,
+    damage: damage.length ? damage : null,
     reservedBulk: context.bulk,
     fuelPaid: context.fuel,
     outboundMissionId: mission.id,
@@ -462,7 +469,7 @@ export async function sendClanSupport(
     at: origin.now,
     refId: wave.id,
   });
-  await recomputePlayerWealth(tx, input.senderPlayerId);
+  await recomputePlayerWealth(tx, input.senderPlayerId, origin.now);
   await publishPrivate(tx, input.senderPlayerId, 'support');
   await publishPrivate(tx, context.hostPlayerId, 'support');
   await publishShard(tx, origin.seasonId, 'launch');
@@ -567,6 +574,12 @@ async function homewardMinutes(db: Queryable, wave: WaveRow, destinationPlanetId
  * now stands, or null when nothing changed.
  */
 export async function returnWave(tx: Tx, wave: WaveRow, reason: ReturnReason, now: Date): Promise<WaveRow | null> {
+  if (wave.status === 'STATIONED') {
+    await settlePlanetRadiationAt(tx, wave.hostPlanetId, now);
+    const [current] = await tx.select().from(clanSupportWaves).where(eq(clanSupportWaves.id, wave.id));
+    if (!current) return null;
+    wave = current;
+  }
   if (wave.status === 'OUTBOUND') {
     if (now.getTime() >= wave.arriveAt.getTime()) return null;
     const [mission] = await tx.select().from(missions)
@@ -634,7 +647,7 @@ export async function publishSupport(tx: Tx, wave: Pick<WaveRow, 'senderPlayerId
 export async function loseWave(tx: Tx, wave: WaveRow, now: Date): Promise<void> {
   await tx.delete(units).where(and(eq(units.planetId, wave.originPlanetId), eq(units.location, wave.unitLocation)));
   await tx.update(clanSupportWaves).set({ status: 'LOST', resolvedAt: now }).where(eq(clanSupportWaves.id, wave.id));
-  await recomputePlayerWealth(tx, wave.senderPlayerId);
+  await recomputePlayerWealth(tx, wave.senderPlayerId, now);
   await publishSupport(tx, wave);
 }
 
@@ -645,6 +658,7 @@ async function landSupport(
   fleet: Fleet,
   destinationPlanetId: string,
   now: Date,
+  radiationAt = now,
 ): Promise<DockReport> {
   await tx.delete(units).where(and(eq(units.planetId, wave.originPlanetId), eq(units.location, wave.unitLocation)));
   const report = await landShips(tx, {
@@ -653,9 +667,10 @@ async function landSupport(
     fleet,
     damage: wave.damage,
     at: now,
+    radiationAt,
   });
   await tx.update(clanSupportWaves).set({ status: 'HOME', resolvedAt: now }).where(eq(clanSupportWaves.id, wave.id));
-  await recomputePlayerWealth(tx, wave.senderPlayerId);
+  await recomputePlayerWealth(tx, wave.senderPlayerId, now);
   if (fleetChangesWatch(fleet)) await publishWatchChanges(tx, [destinationPlanetId]);
   await publishSupport(tx, wave);
   return report;
@@ -877,7 +892,7 @@ export async function resolveClanSupportLeg(
     const destination = await safeHomePlanet(tx, wave.senderPlayerId, mission.recalledAt !== null
       ? mission.originPlanetId
       : mission.targetPlanetId);
-    const landed = await landSupport(tx, damaged, dose.fleet, destination, now);
+    const landed = await landSupport(tx, damaged, dose.fleet, destination, now, mission.arriveAt);
     await notify(tx, {
       playerId: wave.senderPlayerId,
       kind: 'fleet_returned',
@@ -891,7 +906,7 @@ export async function resolveClanSupportLeg(
   if (wave.status !== 'OUTBOUND') return;
   const refusal = await standingRefusal(tx, damaged);
   const [seasonRow] = await tx.select({ endsAt: seasons.endsAt }).from(seasons).where(eq(seasons.id, wave.seasonId));
-  const stationedAt = now;
+  const stationedAt = mission.arriveAt;
   const destination = await safeHomePlanet(tx, wave.senderPlayerId, wave.originPlanetId);
   const leg = await homewardMinutes(tx, damaged, destination, dose.fleet);
   const fullStay = addMinutes(stationedAt, CLAN_SUPPORT.stationHours * 60);
@@ -906,6 +921,9 @@ export async function resolveClanSupportLeg(
     await returnWave(tx, standing, refusal, now);
     return;
   }
+  // A late worker must charge this newly parked cohort from its actual landing,
+  // even if another action has already advanced the host's resident fleet cursor.
+  await settlePlanetRadiationAt(tx, wave.hostPlanetId, now);
   await schedule(tx, {
     seasonId: wave.seasonId,
     kind: 'clan_support_expiry',

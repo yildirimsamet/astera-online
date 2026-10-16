@@ -204,6 +204,12 @@ export const focus = {
     },
     deathStar: "デス・スター",
     deathStarStrike: "デス・スター · EMPストライク",
+    /** The Death Star as a folding section of the panel, beside the radiation strike (owner, 2026-10-16). */
+    deathStarSection: {
+      title: "デス・スター攻撃",
+      hold: "デス・スター発射",
+    },
+    strikeReady: "準備完了 {{ready}}",
 
     /**
      * THE SECOND BEAT ON A STRIKE. Owner report: *"yanlışlıkla"*.
@@ -217,14 +223,17 @@ export const focus = {
     strikeConfirm: {
       eyebrow: "戦術EMPストライク",
       title: "{{world}} の抑制",
-      lead: "デス・スター がストライクにより消費されました。それを思い出すことはできず、何も取り戻すことはできません。",
+      lead: "デス・スターは命中時に消費され、呼び戻せません。",
       outage: "EMP ブラックアウト",
-      keeps: "イージス が空のため、1 時間再生成できません。地上防御はオフラインのままであり、ダメージを受けません。コロニーは {{loss}} の忠誠心を失います。 {{loss}} 以下では離脱してニュートラルになります。",
+      keeps: "イージスは0になり、1時間回復しません。その1時間、地上防衛は戦闘に参加しません。",
+      keepsColony: "植民地は忠誠度が{{loss}}下がり、ランダムな故障が1件発生します。忠誠度100の植民地は{{hits}}回続けて命中すると陥落し、中立になります。",
+      origin: "発射元",
+      originRead: "{{world}} · 準備完了 {{ready}}基",
       commit: "EMPの起動",
       loyalty: "コロニーへの忠誠心",
       loyaltyRead: "{{value}}% · {{hits}}",
-      hits_one: "このヒットはかかります",
-      hits_other: "{{count}} 件のヒット",
+      hits_one: "この命中で陥落",
+      hits_other: "{{count}}回の命中",
       loyaltyUnknown: "不明 — まず調べてください",
       charges: "インターセプター料金",
       chargesRead_one: "{{count}}料金・{{needed}}は必ず同時到着",
@@ -243,8 +252,7 @@ export const focus = {
     kindColony: "コロニー",
     kindNeutral: "ニュートラル",
     capitalProtected: "奪えない資本",
-    capitalProtectedHint:
-      "デス・スター は イージス を空にし、その再生を 1 時間ブロックします。地上防御はオフラインのままであり、ダメージを受けません。",
+    capitalProtectedHint: "デス・スターはイージスを0にし、1時間回復を止めます。その間、地上防衛は戦闘に参加しません。",
     /**
      * WHAT A CAPITAL IS WHILE THE WEAPON IS OFF. `STRATEGIC_CRAFTING_ENABLED`.
      *
@@ -258,7 +266,7 @@ export const focus = {
     capitalRecoveringHint:
       "別の EMP 攻撃により、1 時間の鎮圧が再開されます。コントロールはまだ変更できません。",
     capitalEmp: "EMP の資本",
-    capitalEmpHint: "イージス は空で、地上防御はオフラインであり、1 時間の EMP が終了するまで無敵です。",
+    capitalEmpHint: "1時間のEMPが終わるまで、イージスは空のままで、地上防衛は戦闘に参加しません。",
     yourCapital: "あなたの保護された首都",
     yourColony: "あなたのコロニー",
     transferHint: "クラフトとリソースをここに移動し、どの船が戻るかを選択してください。",
@@ -330,7 +338,7 @@ export const focus = {
     occupationProtected: "占領保護",
     protectedFor: "あと{{duration}}は攻撃も占領もできません。",
     firstImpact: "イージスの残量がゼロ・EMPは{{duration}}続きます",
-    firstImpactColony: "植民地の忠誠度も{{loss}}低下します。忠誠度が{{loss}}以下になると離脱して中立になります。",
+    firstImpactColony: "植民地は忠誠度も{{loss}}下がり、ランダムな故障が1件発生します。忠誠度100なら{{hits}}回続けて命中すると陥落します。",
     secondImpact: "EMP終了・防御復帰",
     deathStarReadyRequirement: "デス・スターの準備完了",
     deathStarReadyExplain:
@@ -497,6 +505,7 @@ export const focus = {
     stateReturning: "帰還中",
     stateInbound: "向かっています",
     noCraft: "惑星に派遣可能な艦船がありません",
+    measuring: "飛行時間を計算中…",
     tooLate: "到着する前に残骸が消滅します",
     resting: "艦船の休息中 · {{duration}}",
     send: "{{count}}隻を派遣 · {{duration}}",

@@ -7,16 +7,19 @@ import { HANDLERS, type Handler } from '../src/worker/handlers.js';
 import * as queue from '../src/worker/queue.js';
 import * as repairs from '../src/worker/abandon.js';
 
+// These tests isolate queue draining from per-commander admission fences.
+// Global lifecycle events cannot be suspended by vacation and need no DB read.
+// Vacation/claimed-event fencing is exercised against real DB in vacation.test.ts.
 // All persistence boundaries are replaced below; this lazy pool never connects.
 const pool = createDb('postgres://unused/worker_scheduling_test');
 const log = pino({ level: 'silent' });
 const clock = new FixedClock(new Date('2026-01-01T00:00:00Z'));
 let worker: EventWorker;
-const originalBuildHandler = HANDLERS.build_complete;
-const buildHandler = vi.fn<Handler>();
+const originalLifecycleHandler = HANDLERS.galaxy_event_start;
+const lifecycleHandler = vi.fn<Handler>();
 
 const event = (id: string): queue.EventRow => ({
-  id, seasonId: 'season', kind: 'build_complete', refId: null, payload: null,
+  id, seasonId: 'season', kind: 'galaxy_event_start', refId: null, payload: null,
   dedupeKey: null, resolveAt: clock.now(), status: 'processing', attempts: 1,
   claimedAt: clock.now(), lastError: null,
 });
@@ -30,14 +33,14 @@ beforeEach(() => {
   vi.spyOn(queue, 'complete').mockResolvedValue(undefined);
   vi.spyOn(queue, 'fail').mockResolvedValue({ exhausted: false });
   vi.spyOn(repairs, 'sweepStranded').mockResolvedValue(0);
-  buildHandler.mockReset().mockResolvedValue(undefined);
-  HANDLERS.build_complete = buildHandler;
+  lifecycleHandler.mockReset().mockResolvedValue(undefined);
+  HANDLERS.galaxy_event_start = lifecycleHandler;
   worker = new EventWorker(pool.db, clock, { pollMs: 60_000, batch: 2, staleMinutes: 5 }, log);
 });
 
 afterEach(async () => {
   await worker.stop();
-  HANDLERS.build_complete = originalBuildHandler;
+  HANDLERS.galaxy_event_start = originalLifecycleHandler;
   vi.restoreAllMocks();
 });
 afterAll(async () => { await pool.close(); });
@@ -60,7 +63,7 @@ it('checks once after an exactly full batch and sleeps when that check is empty'
 
 it('waits for the normal poll after a handler fails instead of burning retries', async () => {
   vi.mocked(queue.claimDue).mockResolvedValue([event('first'), event('second')]);
-  buildHandler.mockRejectedValue(new Error('temporary failure'));
+  lifecycleHandler.mockRejectedValue(new Error('temporary failure'));
   worker.start();
   await vi.waitFor(() => { expect(worker.status().ticks).toBe(1); });
   expect(queue.claimDue).toHaveBeenCalledTimes(1);
@@ -80,11 +83,11 @@ it('waits for the normal poll after a claim fails', async () => {
 it('finishes the current batch on stop without starting another or overlapping a timer tick', async () => {
   let release = () => { /* assigned synchronously */ };
   const held = new Promise<void>(resolve => { release = resolve; });
-  buildHandler.mockImplementationOnce(() => held);
+  lifecycleHandler.mockImplementationOnce(() => held);
   vi.mocked(queue.claimDue).mockResolvedValue([event('first'), event('second')]);
   worker.start();
   try {
-    await vi.waitFor(() => { expect(buildHandler).toHaveBeenCalledTimes(1); });
+    await vi.waitFor(() => { expect(lifecycleHandler).toHaveBeenCalledTimes(1); });
     vi.mocked(setInterval).mock.calls[0]![0]();
     expect(queue.claimDue).toHaveBeenCalledTimes(1);
   } finally {

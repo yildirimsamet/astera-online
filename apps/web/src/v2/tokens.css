@@ -69,6 +69,44 @@
   --color-v2-sky-drift: #284682;
   --color-v2-sky-shade: #050b12;
 
+  /* Radiation instruments and launch surfaces: approved olive materials. */
+  --color-v2-radiation-meter-ground: #07100fed;
+  --color-v2-radiation-shadow: #0008;
+  --color-v2-radiation-instrument-ground: #0b1418e8;
+  --color-v2-radiation-instrument-unit: #b2c39a;
+  --color-v2-radiation-instrument-copy: #b9c8ab;
+  --color-v2-radiation-tier-1: #c5dc95;
+  --color-v2-radiation-tier-2: #75e5c6;
+  --color-v2-radiation-tier-3: #f0c36c;
+  --color-v2-radiation-forge-border: #a6c77730;
+  --color-v2-radiation-forge-glow: #a7bc6410;
+  --color-v2-radiation-title: #e2e9ce;
+  --color-v2-radiation-product-border: #c6d99a1f;
+  --color-v2-radiation-product-glow: #afcf6c0e;
+  --color-v2-radiation-product-ground: #08101566;
+  --color-v2-radiation-product-title: #e4eaca;
+  --color-v2-radiation-product-rate: #c5dc95;
+  --color-v2-radiation-ready: #d1e5a2;
+  --color-v2-radiation-flying: #dec887;
+  --color-v2-radiation-price: #a0afa9;
+  --color-v2-radiation-progress: #c3d793;
+  --color-v2-radiation-details: #b8cba3;
+  --color-v2-radiation-level-border: #a5bb7d38;
+  --color-v2-radiation-level-copy: #c5d2b2;
+  --color-v2-radiation-level-ground: #060c1244;
+  --color-v2-radiation-selected-ground: #a4c66d1f;
+  --color-v2-radiation-selected-border: #bcd98988;
+  --color-v2-radiation-selected-copy: #e0efbd;
+  --color-v2-radiation-selected-shine: #e1f5b41a;
+  --color-v2-radiation-flight: #cedda7;
+  --color-v2-radiation-preview-ground: #060b12;
+  --color-v2-radiation-preview-copy: #dee8cb;
+  --color-v2-radiation-preview-heading: #b6c994;
+  --color-v2-radiation-preview-muted: #91a489;
+  --color-v2-radiation-preview-border: #bbc99130;
+  --color-v2-radiation-preview-button-border: #bdcf934a;
+  --color-v2-radiation-preview-button-ground: #18221b;
+
   /* ── type ─ one family, width as hierarchy (K3); sizes stay on the current scale */
   --font-v2-ui: 'Archivo Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
   --font-v2-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;

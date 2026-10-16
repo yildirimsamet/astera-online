@@ -59,6 +59,9 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
    * before anything goes wrong.
    */
   const loyalty = planet.loyalty ?? null;
+  const faultProtectionRemaining = (planet.faultProtectedUntil?.getTime() ?? 0)
+    - Math.max(now, planet.vacationUntil?.getTime() ?? 0);
+  const faultProtectionPaused = (planet.vacationUntil?.getTime() ?? 0) > now;
 
   return (
     <div className="flex flex-col gap-2">
@@ -85,6 +88,19 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
           <p className="mt-0.5 text-micro text-v2-ink-3">
             {t('faults.loyalty.battleLoss', { strike: DEATH_STAR.colonyLoyaltyLoss })}
           </p>
+          <div data-testid="fault-protection" className="mt-2 rounded-chip border border-v2-self/20 bg-v2-self/5 px-2 py-1.5">
+            {faultProtectionRemaining > 0 && (
+              <p className="font-v2-mono text-caption text-v2-self">
+                {t(faultProtectionPaused ? 'faults.protection.paused' : 'faults.protection.active', {
+                  time: countdown(faultProtectionRemaining),
+                })}
+              </p>
+            )}
+            <p className="text-micro leading-snug text-v2-ink-2">{t('faults.protection.rule')}</p>
+            {(planet.faults?.length ?? 0) > 0 && (
+              <p className="mt-0.5 text-micro text-v2-ink-3">{t('faults.protection.existing')}</p>
+            )}
+          </div>
         </div>
       )}
       {/*

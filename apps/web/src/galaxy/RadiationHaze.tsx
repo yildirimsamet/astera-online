@@ -138,6 +138,6 @@ function Clouds({ clouds }: { clouds: readonly CloudView[] }) {
 export function RadiationHaze({ clouds = [], hpClouds = [] }: { clouds?: readonly RadiationSourceView[]; hpClouds?: readonly HpRadiationSourceView[] }) {
   // A scheduled cloud appears on the server clock without waiting for a refetch.
   const now = useNow(5_000);
-  const lit = [...drawnClouds(clouds, now), ...drawnHpClouds(hpClouds, now)];
+  const lit = [...drawnClouds(clouds, now), ...drawnHpClouds(hpClouds.filter(source => source.origin !== 'BOMB'), now)];
   return lit.length > 0 ? <Clouds clouds={lit} /> : null;
 }

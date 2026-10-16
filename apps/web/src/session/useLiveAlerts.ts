@@ -65,9 +65,10 @@ export function useLiveAlerts(enabled: boolean): void {
     });
 
     const now = serverNow();
-    for (const n of ordered.slice(0, MAX_TOASTS)) {
-      const line = describeNotification(n, now);
-      if (line) say(line, isAlarming(n) ? 'error' : 'info');
+    const readable = ordered.map(n => ({ n, line: describeNotification(n, now) }))
+      .filter((entry): entry is { n: typeof entry.n; line: string } => entry.line !== null);
+    for (const { n, line } of readable.slice(0, MAX_TOASTS)) {
+      say(line, isAlarming(n) ? 'error' : 'info');
     }
   }, [data, enabled, say]);
 }

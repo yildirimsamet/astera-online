@@ -30,6 +30,7 @@ import { Figure, Figures } from '../v2/kit/Figure.js';
 import { MatchupLine } from '../v2/kit/MatchupLine.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { PirateProfitCard } from '../ui/PirateProfitCard.js';
+import { HonorTargetCard } from '../ui/HonorTargetCard.js';
 
 /**
  * WHAT A FLEET CAN BE COMMITTED AT. D150.
@@ -95,7 +96,7 @@ export function LaunchSheet({
 }) {
   const { t } = useTranslation();
   const {
-    sending, set, roomFor, allowance, lesson, season, spendsShield, pirate, mods, radiation,
+    sending, set, roomFor, allowance, lesson, season, honorTarget, spendsShield, pirate, mods, radiation,
     paces, pace, setWantedPace, route, fullSpeedRoute, paceReset, total, salvageRoom, baysFree, tooLate, busy,
     holding, away, atHome, recordAge, opposing, lines, loss, escape, notes, refusal,
     commit, classReading, report, pirateProfit, pirateProfitState,
@@ -280,6 +281,13 @@ export function LaunchSheet({
       }
     >
       <div className="flex flex-col gap-3 pt-1">
+        {honorTarget.data && <HonorTargetCard value={honorTarget.data} />}
+        {honorTarget.isFetching && !honorTarget.data && <p className="text-caption text-v2-ink-2">{t('leaderboard.honorTarget.loading')}</p>}
+        {honorTarget.isError && <div className="flex flex-wrap items-center gap-2 text-caption">
+          <p className="text-v2-ink-2">{t('leaderboard.honorTarget.unavailable')}</p>
+          <button type="button" className="min-h-9 text-v2-self underline underline-offset-4"
+            onClick={() => { void honorTarget.refetch(); }}>{t('leaderboard.honorTarget.retry')}</button>
+        </div>}
         {/*
           WHAT YOU ARE FLYING AT, ON THE SAME AXIS AS WHAT YOU ARE SENDING (B5), with
           the counter cycle against what the probe read (B6) and the tank the trip

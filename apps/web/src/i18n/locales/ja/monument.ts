@@ -1,4 +1,41 @@
 export const monument = {
+  battleResult: {
+  "control": {
+    "attacking": {
+      "ATTACKER": "味方が記念碑を制圧しました。",
+      "DEFENDER": "記念碑を制圧できませんでした。",
+      "EMPTY": "戦闘終了時、どちらの陣営も記念碑を支配していません。"
+    },
+    "defending": {
+      "ATTACKER": "味方は記念碑の支配権を失いました。",
+      "DEFENDER": "味方は記念碑の支配権を維持しました。",
+      "EMPTY": "戦闘終了時、どちらの陣営も記念碑を支配していません。"
+    }
+  },
+  "grade": {
+    "attacking": {
+      "DECISIVE": "防衛艦隊を全滅させました。",
+      "PARTIAL": "部分的成功。",
+      "REPELLED": "攻撃は撃退されました。"
+    },
+    "defending": {
+      "DECISIVE": "防衛は突破されました。",
+      "PARTIAL": "防衛側は一部の艦を失いました。",
+      "REPELLED": "攻撃は撃退されました。"
+    }
+  },
+  "wiped": "自分の艦隊は全滅しました。",
+  "rulesTitle": "戦闘ルール",
+  "roundRule": "戦闘は最大{{rounds}}ラウンドです。武装艦が生存している間、貨物船は保護されます。",
+  "captureRule": "制圧には防衛側の全滅と、戦闘可能な武装艦の生存が必要です。貨物船だけでも既存の支配権は維持できます。",
+  "partialRule": "部分的成功には、防衛艦隊の資源価値の{{threshold}}以上を破壊する必要があります。損傷した生存艦は撃沈に含まれません。戦闘評価やポイントだけでは支配権は決まりません。"
+},
+  radiationLossForecast: "戦闘ダメージを除く最初の放射線による喪失まで{{time}}。",
+  radiationCargoForecast: "戦闘ダメージを除く最初の輸送艦喪失まで{{time}}。",
+  protectedRate: "防護{{level}} · 各艦{{rate}} HP/分",
+  cargoLossAt: "最初の輸送艦喪失まで{{time}}。積載した重水素は失われます。",
+  dispatchProtection: "派遣艦隊 · 防護{{level}}：駐留中は各艦{{rate}} HP/分。",
+  shieldingSnapshot: "派遣後に完了した研究は、この艦隊の防護を変更しません。",
   returnAll: "艦隊全体の帰還",
   returnSelected_one: "選択した帰還 · {{count}}隻",
   returnSelected_other: "選択した帰還 · {{count}}隻",
@@ -19,8 +56,8 @@ export const monument = {
   hard: "ハード",
   radiationLevelRate: "放射線レベル{{level}}：1隻あたり毎分{{rate}}HP",
   easyAccess: "イージー · ティア1–3",
-  hardAccess: "ハード · 全ティア",
-  tierBlocked: "ティア{{tier}}では、新しい艦隊をハードの記念碑にのみ派遣できます。",
+  hardAccess: "ハード · ティア4以上",
+  tierBlocked: "現在のティアは{{tier}}です。ティア1–3ではイージー、ティア4以上ではハードの記念碑を選んでください。",
   initialFleetRule: "戦闘艦と貨物船を繰り返し派遣できます。支援艦隊ごとに燃料、出撃枠、モニュメントの空き容量が必要です。",
   recallFlightRule: "到着前なら、選択した艦船を現在地から呼び戻せます。消費した往路の燃料は返却されません。未使用の復路燃料は帰還時に返却されます。",
   "newsRadiation": "{{name}} · 放射線で{{count}}隻と重水素{{cargo}}を喪失 · 残存{{left}}隻",
@@ -78,6 +115,8 @@ export const monument = {
   "holdForecast": "到着後：毎分 {{rate}} 重水素 · 次の艦損失 {{time}}",
   "noLoss": "予測なし",
   "attackOutcome": "勝利後は高い階級の艦船から記念碑の収容枠に入ります。収容できない艦船は帰還します。貨物船だけの艦隊は重水素を獲得しません。",
+  "reinforceRule": "移動中に味方が記念碑を失っても、艦隊は引き返しません。到着時に敵または中立守備隊と戦います。記念碑が空なら、武装艦が占領します。",
+  "arrivalOutcome": {"JOIN":"現在の状況では到着時：味方に合流します。収容できない艦船は帰還します。","FIGHT":"現在の状況では到着時：記念碑を保持する敵艦隊と戦います。","GARRISON":"現在の状況では到着時：中立守備隊と戦います。","CAPTURE":"現在の状況では到着時：空の記念碑を占領します。貨物船だけでは占領できず帰還します。"},
   "losses": "往路で {{count}} 隻を失います",
   "health": "{{name}}：到着時 {{remaining}} / {{max}} HP",
   "shield": "この出撃でシールドを失うことに同意します",

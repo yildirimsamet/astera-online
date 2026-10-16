@@ -1,3 +1,5 @@
+import { commitHonor } from './honorCommitment.js';
+import { recordRadiationHonor } from './honorRadiation.js';
 import { fleetPace } from '@astera/rules';
 import { monumentFlight, monumentRadiationTarget, monumentHoldPath, monumentMotionStart } from './monumentMotion.js';
 import { reserveMonumentHome } from './monumentFuel.js';
@@ -14,8 +16,11 @@ import {
   hangarLoad,
   missionFuel,
   hpLethalAtMs,
+  hpWingLethalAtMs,
+  firstHpLossAtMs,
   produceMonumentDeuterium,
   applyHpDose,
+  protectedRadiationHp,
   segmentsExposureHp,
   HULLS,
   hullTech,
@@ -33,8 +38,10 @@ import {
 } from '@astera/rules';
 import { type Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
-import { clanMemberships, clans, monuments, monumentProbes, monumentShipLots, monumentWaves, planets, units, type seasons } from '../db/schema.js';
+import { clanMemberships, clans, monuments, monumentProbes, monumentShipLots, monumentWaves, planets, radiationBombFlights, units, type seasons } from '../db/schema.js';
 import { GameError, assertSeasonOpenThrough, assertWorldOperational, loadLocked, readPlanetState, lockSeason, recomputePlayerWealth, saveResources, setUnits } from './planet.js';
+import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
+import { shipHealthGroups } from '@astera/rules';
 import { capitalPlanet, lockWorlds } from './ownership.js';
 import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
 import { assertFreeBay, baysOf } from './flight.js';
@@ -45,7 +52,7 @@ import { notify } from './notifications.js';
 import { tellMonumentRadiationLoss } from './monumentRadiationLoss.js';
 import { publish, publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
-import { scheduleFlightBoundary, scheduleHoldBoundary } from './monumentBoundaries.js';
+import { restoreMonumentGarrison, scheduleFlightBoundary, scheduleHoldBoundary } from './monumentBoundaries.js';
 import { hpSourcesForSeason } from './radiationSources.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 import { peakCoreLevels } from './player.js';
@@ -57,10 +64,11 @@ type UnitRow = typeof units.$inferSelect;
 const activeStatuses = ['OUTBOUND', 'HOLD', 'RETURNING'] as const;
 
 export async function assertMonumentTierAccess(tx: Tx, monument: MonumentRow, playerId: string): Promise<void> {
-  if (monument.difficulty !== 'EASY') return;
+  if (monument.difficulty === 'LEGACY') return;
   const peak = (await peakCoreLevels(tx, [playerId])).get(playerId) ?? 1;
   if (!monumentTierEligible(monument.difficulty, peak)) throw new GameError('MONUMENT_TIER_FORBIDDEN',
-    'Easy monuments accept tiers 1–3; choose a Hard monument', 403, { tier: coreTier(peak), maxTier: 3 });
+    'Easy monuments accept tiers 1–3; Hard monuments accept tiers 4 and above', 403,
+    { tier: coreTier(peak), ...(monument.difficulty === 'EASY' ? { maxTier: 3 } : { minTier: 4 }) });
 }
 
 /** Tier eligibility is checked on every dispatch, including joint and repeated support. */
@@ -86,6 +94,7 @@ const garrisonSchema = z.object({
  * first. This also lets ownership cleanup take a world before its targets.
  */
 export interface LockedMonument {
+  pendingBombAt?: Date | null;
   monument: MonumentRow;
   season: typeof seasons.$inferSelect;
   waves: WaveRow[];
@@ -159,7 +168,10 @@ async function lockMonumentRoster(tx: Tx, monumentId: string, requireLive: boole
       throw new GameError('MONUMENT_TIMELINE_INVALID', 'HOLD was not settled before its roster changed', 409);
     }
   }
-  return { monument, season, waves, lots: normalized, unitRows, memberships: new Map() };
+  const [pendingBomb] = season.radiationBombStartsAt ? await tx.select({ at: radiationBombFlights.arriveAt })
+    .from(radiationBombFlights).where(and(eq(radiationBombFlights.targetMonumentId, monument.id),
+      eq(radiationBombFlights.status, 'OUTBOUND'))).orderBy(asc(radiationBombFlights.arriveAt)).limit(1) : [];
+  return { monument, season, waves, lots: normalized, unitRows, memberships: new Map(), pendingBombAt: pendingBomb?.at ?? null };
 }
 
 /** Private snapshots share manifest validation with mutations, but never acquire target/world/player locks. */
@@ -177,9 +189,13 @@ export async function readMonumentRosters(tx: Tx, ids: readonly string[], extraP
 /** Advance HOLD in memory. A casualty needs the authoritative event writer and its notices. */
 export function projectMonumentHold(target: LockedMonument, at: Date, sources: readonly HpRadiationSource[]): boolean {
   if (target.season.status !== 'live') return false;
-  const toMs = Math.max(target.monument.settledAt.getTime(), Math.min(at.getTime(), target.season.endsAt.getTime()));
+  const toMs = Math.max(target.monument.settledAt.getTime(), Math.min(at.getTime(), target.season.endsAt.getTime(), target.pendingBombAt?.getTime() ?? Infinity));
   const holdIds = new Set(target.waves.filter((wave) => wave.status === 'HOLD').map((wave) => wave.id));
   const lots = target.lots.filter((lot) => holdIds.has(lot.waveId));
+  const npc = projectGarrison(target, target.monument.settledAt.getTime(), toMs, sources);
+  if (fleetCount(npc.destroyed) > 0) return true;
+  target.monument.garrison = npc.fleet;
+  target.monument.garrisonDamage = npc.lots;
   const projection = settleMonumentHold(lots, { fromMs: target.monument.settledAt.getTime(), toMs,
     position: target.monument, target: monumentRadiationTarget(target.monument, target.season), productionPerMinute: target.monument.productionPerMinute, sources });
   if (projection.destroyed.length > 0) return true;
@@ -187,6 +203,13 @@ export function projectMonumentHold(target: LockedMonument, at: Date, sources: r
   target.monument.settledAt = new Date(toMs);
   for (const wave of target.waves) if (holdIds.has(wave.id)) wave.radiationSettledAt = new Date(toMs);
   return false;
+}
+
+function projectGarrison(locked: LockedMonument, fromMs: number, toMs: number, sources: readonly HpRadiationSource[]) {
+  const m = locked.monument;
+  const dose = segmentsExposureHp(monumentHoldPath(m, locked.season, fromMs, toMs),
+    sources.filter(source => source.origin === 'BOMB' || source.mode === 'SHELTER'));
+  return applyHpDose(m.garrison, m.garrisonDamage, dose, m.garrisonTech);
 }
 
 /** A membership change may touch several targets; none may wait for a clan while holding another clan. */
@@ -236,12 +259,39 @@ function lossTime(lot: MonumentShipLot, monument: MonumentRow, sources: readonly
  * This adapter is called by target mutations before changing the HOLD roster.
  * A delayed/replayed event observes the cursor after the prior writer commits.
  */
-export async function settleLockedMonument(tx: Tx, locked: LockedMonument, at: Date): Promise<MonumentSettlement> {
+export async function settleLockedMonument(tx: Tx, locked: LockedMonument, at: Date, observedAt = at): Promise<MonumentSettlement> {
+  if (!locked.season.radiationBombStartsAt || !Number.isSafeInteger(at.getTime())
+    || locked.monument.controllerPlayerId !== null || locked.monument.controllerClanId !== null
+    || locked.waves.some(wave => wave.status === 'HOLD')) {
+    return settleMonumentInterval(tx, locked, at, observedAt);
+  }
+  const cutoff = Math.min(at.getTime(), locked.season.endsAt.getTime());
+  for (;;) {
+    const m = locked.monument;
+    // No garrison can die and respawn in less than a day. Chunk a long absence
+    // so the actual emptySince, not worker time, owns each successive birth.
+    const birth = fleetCount(m.garrison) === 0 && m.emptySince !== null
+      ? m.emptySince.getTime() + 86400000 : null;
+    const next = Math.max(m.settledAt.getTime(), Math.min(cutoff, birth ?? m.settledAt.getTime() + 86400000));
+    const boundary = new Date(next);
+    const result = await settleMonumentInterval(tx, locked, boundary, observedAt);
+    const restored = await restoreMonumentGarrison(tx, locked, boundary);
+    if (next >= cutoff) {
+      // Arm casualty timers for a garrison born exactly at this boundary too.
+      return restored ? settleMonumentInterval(tx, locked, boundary, observedAt) : result;
+    }
+  }
+}
+
+async function settleMonumentInterval(tx: Tx, locked: LockedMonument, at: Date, observedAt: Date): Promise<MonumentSettlement> {
   const { monument, season } = locked;
   const fromMs = monument.settledAt.getTime();
   const requestedMs = at.getTime();
   if (!Number.isSafeInteger(requestedMs)) throw new GameError('MONUMENT_TIMELINE_INVALID', 'Invalid settlement time', 400);
   const toMs = Math.max(fromMs, Math.min(requestedMs, season.endsAt.getTime()));
+  if (locked.pendingBombAt && locked.pendingBombAt.getTime() < toMs) {
+    throw new GameError('RADIATION_IMPACT_PENDING', 'An earlier missile impact must resolve before advancing this monument', 409);
+  }
   if (fromMs > season.endsAt.getTime()) throw new GameError('MONUMENT_TIMELINE_INVALID', 'Settlement exceeds the season cutoff', 409);
   if (locked.waves.some((wave) => wave.status === 'OUTBOUND' && wave.arriveAt !== null && wave.arriveAt.getTime() < toMs)) {
     throw new GameError('MONUMENT_ARRIVAL_PENDING', 'An earlier arrival must resolve before advancing this monument', 409);
@@ -252,12 +302,29 @@ export async function settleLockedMonument(tx: Tx, locked: LockedMonument, at: D
   if (pendingProbe) throw new GameError('MONUMENT_ARRIVAL_PENDING', 'An earlier probe must observe before advancing this monument', 409);
   const holdIds = new Set(locked.waves.filter((wave) => wave.status === 'HOLD').map((wave) => wave.id));
   const holdLots = locked.lots.filter((lot) => holdIds.has(lot.waveId));
-  const sources = await hpSourcesForSeason(tx, season.id);
+  const sources = await hpSourcesForSeason(tx, season.id, { targets: [{ kind: 'MONUMENT', id: monument.id }],
+    from: monument.settledAt, until: season.endsAt });
+  const npcSources = sources.filter(source => source.origin === 'BOMB' || source.mode === 'SHELTER');
+  const beforeGarrison = monument.garrison;
+  const beforeGarrisonDamage = monument.garrisonDamage;
+  const npc = projectGarrison(locked, fromMs, toMs, sources);
+  if (fleetCount(beforeGarrison) > 0 && fleetCount(npc.fleet) === 0) {
+    const death = hpWingLethalAtMs(monumentHoldPath(monument, season, fromMs, toMs), npcSources,
+      beforeGarrison, beforeGarrisonDamage, monument.garrisonTech);
+    monument.emptySince = new Date(death ?? toMs);
+    monument.generation += 1;
+    await publishShard(tx, season.id, 'control');
+  }
+  monument.garrison = npc.fleet;
+  monument.garrisonDamage = npc.lots;
   const result = settleMonumentHold(holdLots, {
     fromMs, toMs, position: monument, target: monumentRadiationTarget(monument, season),
     productionPerMinute: monument.productionPerMinute, sources,
   });
   if (toMs > fromMs) {
+    for (const lot of holdLots) await recordRadiationHonor(tx, { seasonId: season.id, victim: lot.playerId,
+      slice: `monument:${lot.id}`, until: new Date(toMs), fleet: { [lot.hull]: lot.count }, damage: [lot], tech: lot.tech,
+      segments: monumentHoldPath(monument, season, fromMs, toMs), sources });
     const survivors = new Map(result.lots.map((lot) => [lot.id, lot]));
     for (const lot of holdLots) {
       const survivor = survivors.get(lot.id);
@@ -305,21 +372,23 @@ export async function settleLockedMonument(tx: Tx, locked: LockedMonument, at: D
   await tx.update(monuments).set({
     settledAt: monument.settledAt, controllerPlayerId: monument.controllerPlayerId,
     controllerClanId: monument.controllerClanId, emptySince: monument.emptySince, generation: monument.generation,
+    garrison: monument.garrison, garrisonDamage: monument.garrisonDamage,
   }).where(eq(monuments.id, monument.id));
   locked.lots = [...locked.lots.filter((lot) => !holdIds.has(lot.waveId)), ...result.lots];
   const changedOwners = new Set([
     ...result.shares.filter((share) => share.deuterium > 0).map((share) => share.playerId),
     ...result.destroyed.map((lot) => lot.playerId),
   ]);
-  for (const playerId of [...changedOwners].sort()) await recomputePlayerWealth(tx, playerId);
+  for (const playerId of [...changedOwners].sort()) await recomputePlayerWealth(tx, playerId, observedAt);
   for (const wave of locked.waves) {
     const destroyed = result.destroyed.filter(lot => lot.waveId === wave.id);
     if (destroyed.length === 0) continue;
     const ids = new Set(destroyed.map(lot => lot.id));
     const death = Math.max(...holdLots.filter(lot => ids.has(lot.id)).map(lot => lossTime(lot, monument, sources, fromMs, toMs, season) ?? toMs));
-    await tellMonumentRadiationLoss(tx, monument, wave, destroyed, result.lots.filter(lot => lot.waveId === wave.id), new Date(death));
+    await tellMonumentRadiationLoss(tx, monument, wave, destroyed, result.lots.filter(lot => lot.waveId === wave.id), new Date(death), season.radiationBombStartsAt);
   }
-  let nextLoss: number | null = null;
+  let nextLoss: number | null = firstHpLossAtMs(monumentHoldPath(monument, season, toMs, season.endsAt.getTime()),
+    npcSources, monument.garrison, monument.garrisonDamage, monument.garrisonTech);
   for (const lot of result.lots) {
     const death = lossTime(lot, monument, sources, toMs, season.endsAt.getTime(), season);
     if (death !== null) nextLoss = Math.min(nextLoss ?? death, death);
@@ -342,6 +411,7 @@ export interface MonumentSendInput {
   purpose: 'ATTACK' | 'REINFORCE';
   acknowledgeShieldLoss?: boolean;
   acknowledgeRadiationLoss?: boolean;
+  adminUsernames?: ReadonlySet<string>;
   clock: Clock;
 }
 
@@ -369,6 +439,7 @@ export interface MonumentQuote {
   room: { used: number; reserved: number; total: number; after: number };
   bays: { used: number; total: number };
   shieldWouldDrop: boolean;
+  radiationProtection: { level: number; hpPerMinute: number; nextLossAt: string | null; cargoLossAt: string | null };
   /** Deterministic only for a friendly reinforcement; an attack's battle is unknown. */
   holdForecast?: { productionPerMinute: number; nextLossAt: string | null };
   outboundForecast: { doseHp: number; destroyed: number; fleet: Fleet;
@@ -449,7 +520,9 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
   if (origin.seasonId !== locked.season.id) throw new GameError('CROSS_SEASON', 'That monument is in another galaxy', 403);
   if (input.clock.now() >= locked.season.endsAt) throw new GameError('SEASON_FROZEN', 'That season is over', 409);
   if (preview) {
-    if (projectMonumentHold(locked, origin.now, await hpSourcesForSeason(tx, origin.seasonId))) {
+    if (projectMonumentHold(locked, origin.now, await hpSourcesForSeason(tx, origin.seasonId, {
+      targets: [{ kind: 'MONUMENT', id: locked.monument.id }], from: locked.monument.settledAt, until: locked.season.endsAt,
+    }))) {
       throw new GameError('MONUMENT_ARRIVAL_PENDING', 'A casualty must resolve before quoting this target', 409);
     }
   } else await settleLockedMonument(tx, locked, origin.now);
@@ -501,25 +574,39 @@ async function gatherMonumentSend(tx: Tx, input: MonumentSendInput, preview = fa
   // shield, including a neutral attack and a friendly reinforcement.  The
   // quote exposes the same decision that the commit will enforce.
   const protections = await protectionsOf(tx, [input.senderPlayerId], origin.now);
-  const sources = await hpSourcesForSeason(tx, origin.seasonId);
+  const sources = await hpSourcesForSeason(tx, origin.seasonId, { targets: [{ kind: 'MONUMENT', id: locked.monument.id }],
+    from: origin.now, until: locked.season.endsAt });
   const doseHp = segmentsExposureHp([{ from: origin, to: meeting.at, startMs: origin.now.getTime(), endMs: arriveAt.getTime() }], sources);
-  const arrival = applyHpDose(fleet, null, doseHp, tech);
-  const health = fleetEntries(fleet).map(([hull, count]) => {
+  const startingDamage = selectHomeDispatch(origin.homeFleet, origin.homeDamage, fleet, true).selectedDamage;
+  const arrival = applyHpDose(fleet, startingDamage, doseHp, tech);
+  const health = shipHealthGroups(arrival.fleet, arrival.lots).map(({ hull, count, damageBp, remainderBp = 0 }) => {
     const maxHp = HULLS[hull].hp * hullTech(tech, hull).hp;
-    const damage = arrival.lots.find((lot) => lot.hull === hull);
-    const damageBp = (arrival.fleet[hull] ?? 0) === 0 ? 10_000 : damage?.damageBp ?? 0;
-    const remainderBp = damage?.remainderBp ?? 0;
-    return { hull, count, maxHp, remainingHp: maxHp * (1 - (damageBp + remainderBp) / 10_000), damageBp, remainderBp };
+    return { hull, count, maxHp, remainingHp: maxHp * ((10_000 - damageBp) - remainderBp) / 10_000, damageBp, remainderBp };
+  }).concat(fleetEntries(arrival.destroyed).map(([hull, count]) => ({ hull, count,
+    maxHp: HULLS[hull].hp * hullTech(tech, hull).hp, remainingHp: 0, damageBp: 10_000, remainderBp: 0 })));
+  const holdPath = monumentHoldPath(locked.monument, locked.season, arriveAt.getTime(), locked.season.endsAt.getTime());
+  const losses = health.flatMap(row => {
+    if ((arrival.fleet[row.hull] ?? 0) === 0) return [];
+    const at = hpLethalAtMs(holdPath, sources, { ...row, tech });
+    return at === null ? [] : [{ at, cargo: HULLS[row.hull].family === 'CARGO' }];
   });
+  const firstLoss = (cargoOnly: boolean): string | null => {
+    const times = losses.filter(row => !cargoOnly || row.cargo).map(row => row.at);
+    return times.length === 0 ? null : new Date(Math.min(...times)).toISOString();
+  };
   const quote: MonumentQuote = {
     fuel, arriveAt: arriveAt.toISOString(), travelMinutes,
     ...(reserve ? { outboundFuel, returnFuelReserve: reserve.total } : {}),
     room: { used, reserved: friendly ? reserved : 0, total: locked.monument.capacity, after: used + (friendly ? reserved + bulk : 0) },
     bays: await baysOf(tx, origin.planetId, origin.buildings.CORE),
     shieldWouldDrop: protections.get(input.senderPlayerId) != null,
+    radiationProtection: { level: tech.RADIATION_SHIELDING ?? 0,
+      nextLossAt: firstLoss(false), cargoLossAt: firstLoss(true),
+      hpPerMinute: protectedRadiationHp(segmentsExposureHp(monumentHoldPath(locked.monument, locked.season,
+        arriveAt.getTime(), arriveAt.getTime() + 1), sources) * 60_000, tech) },
     ...(friendly ? { holdForecast: friendlyHoldForecast(locked, input.senderPlayerId, arrival, tech, arriveAt, sources) } : {}),
     targetPosition: meeting.at,
-    outboundForecast: { doseHp, destroyed: fleetCount(arrival.destroyed), fleet: arrival.fleet, health },
+    outboundForecast: { doseHp: protectedRadiationHp(doseHp, tech), destroyed: fleetCount(arrival.destroyed), fleet: arrival.fleet, health },
   };
   return { locked, origin, fleet, tech, bulk, fuel, arriveAt, pvp, quote, targetAt: meeting.at, reserve };
 }
@@ -532,6 +619,7 @@ export async function quoteMonument(tx: Tx, input: MonumentSendInput): Promise<M
 export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ wave: WaveRow; quote: MonumentQuote }> {
   const context = await gatherMonumentSend(tx, input);
   const { origin, fleet, locked } = context;
+  const carriedDamage = await takeHomeHealth(tx, origin.planetId, fleet, true);
   if (context.quote.outboundForecast.destroyed > 0 && !input.acknowledgeRadiationLoss) {
     throw new GameError('RADIATION_LETHAL', 'Radiation on this route would destroy ships', 409, { count: context.quote.outboundForecast.destroyed });
   }
@@ -550,16 +638,18 @@ export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ 
   for (const [hull, count] of fleetEntries(fleet)) remaining[hull] = (remaining[hull] ?? 0) - count;
   await setUnits(tx, origin.planetId, remaining, 'home', input.senderPlayerId);
   await setUnits(tx, origin.planetId, fleet, wave.unitLocation, input.senderPlayerId);
-  const manifest = await tx.insert(monumentShipLots).values(MOBILE_HULLS.flatMap((hull) => (fleet[hull] ?? 0) > 0 ? [{
-    waveId: wave.id, hull, count: fleet[hull]!, damageBp: 0, remainderBp: 0, deuterium: 0,
-    returnFuelReserve: (context.reserve?.perShip[hull] ?? 0) * fleet[hull]!, fuelRefund: 0,
-  }] : [])).returning();
+  const groups = shipHealthGroups(fleet, carriedDamage);
+  const manifest = await tx.insert(monumentShipLots).values(MOBILE_HULLS.flatMap((hull) => groups
+    .filter((lot) => lot.hull === hull).map((lot) => ({
+      waveId: wave.id, hull, count: lot.count, damageBp: lot.damageBp, remainderBp: lot.remainderBp ?? 0, deuterium: 0,
+      returnFuelReserve: (context.reserve?.perShip[hull] ?? 0) * lot.count, fuelRefund: 0,
+    })))).returning();
   await saveResources(tx, origin.planetId, { alloy: origin.alloy, crystal: origin.crystal, deuterium: origin.deuterium - context.fuel });
-  await recomputePlayerWealth(tx, input.senderPlayerId);
+  await recomputePlayerWealth(tx, input.senderPlayerId, origin.now);
   await schedule(tx, { seasonId: origin.seasonId, kind: 'monument_arrival', refId: wave.id,
     dedupeKey: `monument-arrival:${wave.id}:0`, payload: { generation: 0 }, resolveAt: context.arriveAt });
   await scheduleFlightBoundary(tx, wave, manifest.map((lot) => ({ ...lot, playerId: wave.playerId, tech: wave.tech })),
-    await hpSourcesForSeason(tx, wave.seasonId), locked.season.endsAt);
+    await hpSourcesForSeason(tx, wave.seasonId, { targets: [], from: origin.now, until: locked.season.endsAt }), locked.season.endsAt);
   if (context.pvp) {
     const holders = new Set(locked.waves.filter((row) => row.status === 'HOLD').map((row) => row.playerId));
     for (const playerId of holders) await notify(tx, { playerId, kind: 'monument_inbound', at: origin.now, refId: wave.id,
@@ -567,5 +657,8 @@ export async function sendMonument(tx: Tx, input: MonumentSendInput): Promise<{ 
   }
   await publish(tx, input.senderPlayerId, 'private:monument');
   await publishShard(tx, origin.seasonId, 'launch');
+  await commitHonor(tx, { seasonId: origin.seasonId, source: 'MONUMENT', id: wave.id, attack: [input.senderPlayerId],
+    defence: context.pvp ? [...new Set(locked.waves.filter(row => row.status === 'HOLD').map(row => row.playerId))] : [],
+    at: origin.now, adminUsernames: input.adminUsernames ?? new Set() });
   return { wave, quote: context.quote };
 }

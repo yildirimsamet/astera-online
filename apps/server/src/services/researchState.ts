@@ -13,6 +13,7 @@ import { atMinute } from '../clock.js';
 import type { Queryable } from '../db/client.js';
 import { battleReports, buildings, planets, playerResearch } from '../db/schema.js';
 import type { LockedPlanet } from './planet.js';
+import { monumentRadiationStart } from './monumentRadiation.js';
 
 /**
  * WHAT THIS COMMANDER HOLDS, AND HOW FAR UP EACH LADDER. T7.
@@ -212,7 +213,9 @@ export function buildResearchView(
     HAS NONE. It is not listed there at all, so it can be neither shown nor bought.
   */
   const offered = RESEARCH_PROJECT_IDS.filter((id) =>
-    id !== 'INDUSTRIAL' || shipDamageApplies(planet.rulesetVersion));
+    (id !== 'INDUSTRIAL' || shipDamageApplies(planet.rulesetVersion))
+    && (id !== 'RADIATION_SHIELDING' || monumentRadiationStart({ rulesetVersion: planet.rulesetVersion,
+      startsAt: planet.seasonStart, monumentRadiationStartsAt: planet.monumentRadiationStartsAt }) !== undefined));
   return offered.map((id) => {
     const project = RESEARCH_PROJECTS[id];
     const level = held.get(id) ?? 0;

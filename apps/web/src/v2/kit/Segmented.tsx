@@ -49,7 +49,7 @@ export function Segmented<T extends string>({ label, options, value, onChange, t
     <div
       role="tablist"
       aria-label={label}
-      className="grid auto-cols-fr grid-flow-col rounded-control border border-v2-line bg-v2-panel p-0.5 font-v2-ui"
+      className="v2-segmented flex gap-1 overflow-x-auto [scrollbar-width:none]"
     >
       {options.map((option, index) => {
         const on = option.id === value;
@@ -65,11 +65,9 @@ export function Segmented<T extends string>({ label, options, value, onChange, t
             aria-label={option.name ?? (option.dot && option.dotLabel ? `${option.label} · ${option.dotLabel}` : option.label)}
             onClick={() => { onChange(option.id); }}
             onKeyDown={(event) => { onKeyDown(event, index); }}
-            className={`relative flex items-center justify-center gap-1 truncate rounded-chip px-2 py-1.5 text-caption font-medium ${
-              on ? 'bg-v2-raise text-v2-ink ring-1 ring-v2-line-hi' : 'text-v2-ink-3'
-            }`}
+            className="v2-segmented-option flex min-h-9 flex-1 shrink-0 items-center justify-center gap-1 whitespace-nowrap px-2 py-1.5"
           >
-            {option.label}
+            <span className="text-center">{option.label}</span>
             {option.dot && <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-v2-self" />}
           </button>
         );

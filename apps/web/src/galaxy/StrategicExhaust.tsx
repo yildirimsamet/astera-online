@@ -6,10 +6,19 @@ import { SkinAssetBoundary } from './SkinAssetBoundary.js';
 import { jetParticle, type JetParticle } from './rocketJet.js';
 import { nativeEngineAnchors } from './engineAnchors.js';
 import { MODEL } from '../ui/assets.js';
+import { RADIATION_BOMB_VISUAL, type RadiationBombLevel, type Vec3Tuple } from '@astera/rules';
 
 const GRUNGE = '/assets/vfx/premium-v2/thruster-grunge.webp';
 const NOISE = '/assets/vfx/premium-v2/thruster-noise.webp';
 const COUNT = 64;
+/**
+ * HOW MUCH WIDER THE FLAME IS THAN ITS NOZZLE-SIZED STREAM. Owner, 2026-10-16: *"Tüm füzelerin
+ * egzoz alevinin genişliğini 4 katına çıkart, füze alevi dediğin şöyle kallavi olur.
+ * Gerçekçilikleri bozulmasın."* The plume already grows with its doubled hull; this doubles its
+ * width again, so the flame is four times as wide as before and twice as long — a heavy rocket's
+ * column rather than a fat blob.
+ */
+export const PLUME_WIDTH = 2;
 const NOZZLE = nativeEngineAnchors(MODEL.deathStar)?.[0] ?? [0, 0, -0.48];
 
 /** GD RocketThrusterExhaustFX: velocity-aligned 3×3 grunge sprites with noise.
@@ -21,7 +30,16 @@ export function StrategicExhaust({ scale }: { scale: number }) {
   </Suspense></SkinAssetBoundary>;
 }
 
-function RocketPlume({ scale }: { scale: number }) {
+export function RadiationBombExhaust({ level }: { level: RadiationBombLevel }) {
+  return <SkinAssetBoundary fallback={null}><Suspense fallback={null}>
+    <RocketPlume scale={RADIATION_BOMB_VISUAL[level].length} nozzle={[0, 0, -1.04 / 2.2]}
+      name="radiation-bomb-rocket-exhaust" tint={RADIATION_BOMB_VISUAL[level].flame} />
+  </Suspense></SkinAssetBoundary>;
+}
+
+function RocketPlume({ scale, nozzle = NOZZLE, name = 'death-star-rocket-exhaust', tint = '#ffffff' }: {
+  scale: number; nozzle?: readonly [number, number, number] | Vec3Tuple; name?: string; tint?: string;
+}) {
   const [grunge, noise] = useTexture([GRUNGE, NOISE]);
   const root = useRef<THREE.Group>(null), stream = useRef<THREE.InstancedMesh>(null);
   const geometry = useMemo(() => {
@@ -32,7 +50,7 @@ function RocketPlume({ scale }: { scale: number }) {
     return result;
   }, []);
   const material = useMemo(() => new THREE.ShaderMaterial({
-    uniforms: { uGrunge: { value: grunge }, uNoise: { value: noise }, uTime: { value: 0 } },
+    uniforms: { uGrunge: { value: grunge }, uNoise: { value: noise }, uTime: { value: 0 }, uTint: { value: new THREE.Color(tint) } },
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
     vertexShader: `
       attribute float aAge; attribute float aAlpha; attribute float aFrame;
@@ -43,7 +61,7 @@ function RocketPlume({ scale }: { scale: number }) {
       }
     `,
     fragmentShader: `
-      uniform sampler2D uGrunge; uniform sampler2D uNoise; uniform float uTime;
+      uniform sampler2D uGrunge; uniform sampler2D uNoise; uniform float uTime; uniform vec3 uTint;
       varying vec2 vUv; varying float vAge; varying float vAlpha; varying float vFrame;
       void main() {
         vec2 cell=vec2(mod(vFrame,3.0),2.0-floor(vFrame/3.0));
@@ -54,10 +72,10 @@ function RocketPlume({ scale }: { scale: number }) {
         vec3 heat=mix(vec3(1.8,0.7,0.13),vec3(2.8,2.4,1.85),smoothstep(0.03,0.18,vAge));
         heat=mix(heat,vec3(0.5,0.15,1.2),smoothstep(0.35,0.7,vAge));
         heat=mix(heat,vec3(0.035,0.13,1.0),smoothstep(0.72,0.95,vAge));
-        gl_FragColor=vec4(heat,density*vAlpha);
+        gl_FragColor=vec4(heat*uTint,density*vAlpha);
       }
     `,
-  }), [grunge, noise]);
+  }), [grunge, noise, tint]);
   const scratch = useMemo(() => new THREE.Object3D(), []);
   const particle = useMemo<JetParticle>(() => ({ x: 0, y: 0, z: 0, width: 0, length: 0, age: 0, alpha: 0, frame: 0 }), []);
   const world = useMemo(() => new THREE.Quaternion(), []), facing = useMemo(() => new THREE.Quaternion(), []);
@@ -75,14 +93,14 @@ function RocketPlume({ scale }: { scale: number }) {
       jetParticle(i, COUNT, clock.elapsedTime, particle);
       scratch.position.set(particle.x, particle.y, particle.z);
       scratch.quaternion.copy(facing); scratch.rotateZ(angle);
-      scratch.scale.set(particle.width, particle.length, 1);
+      scratch.scale.set(particle.width * PLUME_WIDTH, particle.length, 1);
       scratch.updateMatrix(); node.setMatrixAt(i, scratch.matrix);
       ages.setX(i, particle.age); alphas.setX(i, particle.alpha);
     }
     node.instanceMatrix.needsUpdate = true; ages.needsUpdate = true; alphas.needsUpdate = true;
     material.uniforms.uTime!.value = clock.elapsedTime;
   });
-  return <group ref={root} name="death-star-rocket-exhaust" position={[NOZZLE[0] * scale, NOZZLE[1] * scale, NOZZLE[2] * scale]} scale={scale}>
+  return <group ref={root} name={name} position={[nozzle[0] * scale, nozzle[1] * scale, nozzle[2] * scale]} scale={scale}>
     <instancedMesh ref={stream} args={[geometry, material, COUNT]} name="rocket-velocity-aligned-fire" frustumCulled={false} renderOrder={1001} raycast={() => null} />
   </group>;
 }

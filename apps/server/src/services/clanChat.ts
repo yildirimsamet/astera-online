@@ -22,6 +22,7 @@ export interface ClanMessageView {
   replyTo: ReplyPreview | null;
   reactions: ReactionView[];
   previousSeasonRank?: PodiumPlace;
+  previousSeasonRanking?: 'HONOR' | 'DOMINION';
   supporter?: boolean;
   admin?: boolean;
 }

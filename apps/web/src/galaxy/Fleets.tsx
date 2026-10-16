@@ -48,10 +48,12 @@ import { TRAIL_MAP } from './vfx.js';
 import { EngineJets, type EngineUnit } from './EngineJets.js';
 import { nativeEngineAnchors } from './engineAnchors.js';
 import { formationEngineUnits } from './engineUnits.js';
-import { StrategicExhaust } from './StrategicExhaust.jsx';
+import { StrategicExhaust, RadiationBombExhaust } from './StrategicExhaust.jsx';
+import { RADIATION_BOMB_VISUAL } from '@astera/rules';
 import { configureOpaqueTransparentBody, posedCraft } from './model.js';
 import {
   concealedVolley,
+  contactHeadingAim,
   contactPosition,
   CRAFT_SCALE,
   STRATEGIC_CONTACT_SCALE,
@@ -68,6 +70,7 @@ import {
   type PlanetNode,
   type Vec3Tuple,
 } from './scene.js';
+import { trackingMarkStyle, type TrackingKind } from './trackingMark.js';
 import {
   PER_MODEL,
   formationHitBox,
@@ -758,7 +761,10 @@ function Flight({
     : undefined;
   const isProbe = thread.kind === 'probe';
   const isDeathStar = thread.kind === 'death_star';
-  const style = isProbe ? ROUTE.probe : ROUTE.fleet;
+  const isBomb = thread.kind === 'radiation_bomb';
+  const bombVisual = RADIATION_BOMB_VISUAL[thread.radiationBombLevel ?? 1];
+  const style = isBomb ? { ...ROUTE.probe, url: `/assets/models/missiles/radiation-bomb-l${String(thread.radiationBombLevel ?? 1)}.glb`,
+    scale: bombVisual.length, neon: bombVisual.glow, flame: bombVisual.flame } : isProbe ? ROUTE.probe : ROUTE.fleet;
   const group = useRef<THREE.Group>(null);
   const formationAim = useRef(100);
 
@@ -834,8 +840,8 @@ function Flight({
    * a scout would be stating a capacity it does not have.
    */
   const markers = useMemo(
-    () => (isProbe || isDeathStar ? null : markersFor(thread.fleet ?? {})),
-    [isProbe, isDeathStar, thread.fleet],
+    () => (isProbe || isDeathStar || isBomb ? null : markersFor(thread.fleet ?? {})),
+    [isProbe, isDeathStar, isBomb, thread.fleet],
   );
 
   /** Sized by the largest drawn hull, so capital craft cannot overlap a Dart grid. */
@@ -854,7 +860,7 @@ function Flight({
    * worker's next tick, and until then this craft is still in `pending` — which
    * drew the weapon hovering over the world it had just detonated on.
    */
-  const spent = useStrikeConsumed(isDeathStar && path ? path.arriveAt.getTime() : null);
+  const spent = useStrikeConsumed((isDeathStar || isBomb) && path ? path.arriveAt.getTime() : null);
   // A cloud finished this wing (D15): it leaves the disc where it died, not at a landing.
   const perished = useStrikeConsumed(thread.fadeAt ? thread.fadeAt.getTime() : null);
 
@@ -961,7 +967,7 @@ function Flight({
       </lineSegments>
 
       <group ref={group} name="flight" userData={{ craftId: id }}>
-        {!isProbe && !isDeathStar && appearance?.flagId &&
+        {!isProbe && !isDeathStar && !isBomb && appearance?.flagId &&
           <Suspense fallback={null}><FleetCosmeticFlag id={appearance.flagId} scale={formationScale} /></Suspense>}
         {/*
           One generous invisible target for the whole squadron. Picking an
@@ -982,7 +988,7 @@ function Flight({
         </mesh>
 
         <TrackingMark
-          kind={isDeathStar ? 'death_star' : isProbe ? 'probe' : 'fleet'}
+          kind={isBomb ? 'radiation_bomb' : isDeathStar ? 'death_star' : isProbe ? 'probe' : 'fleet'}
           scale={isDeathStar ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
           colour={isDeathStar ? DEATH_STAR_LIGHT.glow : style.neon}
           focused={focused}
@@ -1032,6 +1038,8 @@ function Flight({
               />
               {isDeathStar ? (
                 <StrategicExhaust scale={style.scale * STRATEGIC_HULL_SCALE_MULT} />
+              ) : isBomb ? (
+                <RadiationBombExhaust level={thread.radiationBombLevel ?? 1} />
               ) : (
                 <Exhaust
                   url={appearance?.probeId ? cosmeticById(appearance.probeId)?.model ?? MODEL.probe : MODEL.probe}
@@ -1934,6 +1942,7 @@ const CONTACT_STYLE: Record<Contact['kind'], { neon: string; scale: number; flam
   // not headed for a rock. D32.
   harvest: { neon: '#ffcf8f', scale: 0.18 * CRAFT_SCALE, flame: '#ffe9cc' },
   death_star: { neon: '#ff4d67', scale: STRATEGIC_CONTACT_SCALE, flame: '#ff9cac' },
+  radiation_bomb: { neon: '#c4d888', scale: STRATEGIC_CONTACT_SCALE, flame: '#c0dd8e' },
   /**
    * A PIRATE. D150.
    *
@@ -1977,7 +1986,7 @@ const SILHOUETTE: Record<'LIGHT' | 'MEDIUM' | 'HEAVY', number> = {
 const contactMarkers = (contact: Contact): Marker[] | null => {
   // An unidentified contact has no hull to draw, which is the whole point of it.
   if (contact.kind === 'unknown') return null;
-  if (contact.kind === 'probe' || contact.kind === 'death_star') return null;
+  if (contact.kind === 'probe' || contact.kind === 'death_star' || contact.kind === 'radiation_bomb') return null;
   // A harvest is Prospectors too, and its count is in `craft` like a mining run's.
   // Telescope has identified these Prospectors, so these are real counts rather
   // than the mass estimate a Radar contact may carry.
@@ -2534,11 +2543,14 @@ function Foreign({
    * careful not to imply otherwise by adding a clock anywhere near it.
    */
   const style = useMemo(() => {
-    const base = CONTACT_STYLE[contact.kind];
+    const bomb = RADIATION_BOMB_VISUAL[contact.radiationBombLevel ?? 1];
+    const base = contact.kind === 'radiation_bomb'
+      ? { scale: bomb.length, neon: bomb.glow, flame: bomb.flame }
+      : CONTACT_STYLE[contact.kind];
     return contact.inbound === true
       ? { ...base, neon: THREAT_NEON, flame: THREAT_FLAME }
       : base;
-  }, [contact.kind, contact.inbound]);
+  }, [contact.kind, contact.inbound, contact.radiationBombLevel]);
   // Polling advances the flight window, while structural sharing retains the fleet.
   // Only formation inputs should rebuild slots, hull buckets and GPU buffers.
   const markers = useMemo(
@@ -2555,7 +2567,6 @@ function Foreign({
     (contact.kind === 'fleet' || contact.kind === 'pirate') && contact.fleet !== undefined;
 
 
-  const to = useMemo(() => toWorld(contact.to), [contact.to]);
 
   /**
    * THE BATTLE, DRAWN FOR EVERYBODY. D52.
@@ -2667,7 +2678,7 @@ function Foreign({
     node.position.set(at[0], at[1], at[2]);
     // Aimed down its own window, which is its heading and nothing further — or, once
     // it is over a world, at the world it is putting rounds into.
-    const aim = fight ? engagementTargetPosition(fight, serverNow()) : to;
+    const aim = contactHeadingAim(contact, at, serverNow());
     /*
       THE SLOTS AIM AT A DIRECTION, NOT AT THE SAMPLE THAT EXPRESSED IT.
 
@@ -2821,13 +2832,16 @@ function Foreign({
                 lengthScale={contact.kind === 'death_star' ? 0.5 : 1}
               />
               <Hull
-                url={contact.kind === 'death_star' ? MODEL.deathStar : contact.kind === 'probe' && contact.appearance?.probeId ? cosmeticById(contact.appearance.probeId)?.model ?? MODEL.probe : MODEL.probe}
+                url={contact.kind === 'radiation_bomb' ? `/assets/models/missiles/radiation-bomb-l${String(contact.radiationBombLevel ?? 1)}.glb`
+                  : contact.kind === 'death_star' ? MODEL.deathStar : contact.kind === 'probe' && contact.appearance?.probeId ? cosmeticById(contact.appearance.probeId)?.model ?? MODEL.probe : MODEL.probe}
                 scale={contact.kind === 'death_star' ? style.scale * STRATEGIC_HULL_SCALE_MULT : style.scale}
                 glow={contact.kind === 'death_star' ? DEATH_STAR_LIGHT.glow : style.neon}
                 focused={focused}
               />
               {contact.kind === 'death_star' ? (
                 <StrategicExhaust scale={style.scale * STRATEGIC_HULL_SCALE_MULT} />
+              ) : contact.kind === 'radiation_bomb' ? (
+                <RadiationBombExhaust level={contact.radiationBombLevel ?? 1} />
               ) : (
                 <Exhaust
                   url={contact.appearance?.probeId ? cosmeticById(contact.appearance.probeId)?.model ?? MODEL.probe : MODEL.probe}
@@ -2879,14 +2893,17 @@ function TrackingMark({
   colour,
   focused,
 }: {
-  kind: Contact['kind'] | 'fleet' | 'probe' | 'death_star';
+  kind: TrackingKind;
   scale: number;
   colour: string;
   focused: boolean;
 }) {
   const unknown = kind === 'unknown';
+  // The Death Star and the radiation bomb share one reticle; only its colour differs.
+  const strategic = kind === 'death_star' || kind === 'radiation_bomb';
+  const look = trackingMarkStyle(kind, colour);
   const radius = scale * (
-    kind === 'death_star'
+    strategic
       ? 0.225
       : unknown
         ? UNKNOWN_CONTACT_MARK.radius
@@ -2900,7 +2917,7 @@ function TrackingMark({
       ? 0.92
       : 0.46;
   const segments = kind === 'probe' ? 4 : kind === 'mining' || kind === 'harvest' ? 6 : 32;
-  const ringOuter = kind === 'death_star'
+  const ringOuter = strategic
     ? 1.0175
     : unknown
       ? UNKNOWN_CONTACT_MARK.ringOuter
@@ -2928,13 +2945,13 @@ function TrackingMark({
             />
           </mesh>
         )}
-        {(kind === 'probe' || kind === 'mining' || kind === 'harvest' || kind === 'death_star') && (
+        {look.ring && (
           <mesh renderOrder={SHIP_ORDER + 3}>
             <ringGeometry args={[radius, radius * ringOuter, segments]} />
-            <meshBasicMaterial color={colour} transparent opacity={opacity} depthWrite={false} />
+            <meshBasicMaterial color={look.colour} transparent opacity={opacity} depthWrite={false} />
           </mesh>
         )}
-        {(kind === 'fleet' || kind === 'death_star') && [0, 1, 2, 3].map((quarter) => (
+        {look.ticks && [0, 1, 2, 3].map((quarter) => (
           <mesh
             key={quarter}
             position={[
@@ -2946,16 +2963,16 @@ function TrackingMark({
             renderOrder={SHIP_ORDER + 3}
           >
             <planeGeometry args={[
-              scale * (kind === 'death_star' ? 0.02 : TRACKING_MARK.fleetTickWidth),
-              scale * (kind === 'death_star' ? 0.225 : TRACKING_MARK.fleetTickLength),
+              scale * (strategic ? 0.02 : TRACKING_MARK.fleetTickWidth),
+              scale * (strategic ? 0.225 : TRACKING_MARK.fleetTickLength),
             ]} />
-            <meshBasicMaterial color={colour} transparent opacity={opacity} depthWrite={false} />
+            <meshBasicMaterial color={look.colour} transparent opacity={opacity} depthWrite={false} />
           </mesh>
         ))}
-        {kind === 'death_star' && (
+        {strategic && (
           <mesh renderOrder={SHIP_ORDER + 3}>
             <ringGeometry args={[radius * 1.11, radius * 1.135, 32]} />
-            <meshBasicMaterial color={colour} transparent opacity={opacity * 0.7} depthWrite={false} />
+            <meshBasicMaterial color={look.colour} transparent opacity={opacity * 0.7} depthWrite={false} />
           </mesh>
         )}
       </group>

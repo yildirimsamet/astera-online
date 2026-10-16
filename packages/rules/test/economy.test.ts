@@ -30,7 +30,7 @@ describe('production and cost curves', () => {
     // `base x L x growth^L`: level 0 produces nothing, which is correct — a planet
     // is created with the Refinery at 1 and it can never go down.
     expect(alloyRate(0)).toBe(0);
-    expect(alloyRate(1)).toBeCloseTo(87.5, 5);
+    expect(alloyRate(1)).toBeCloseTo(70, 5);
   });
 
   /**
@@ -96,18 +96,18 @@ describe('production and cost curves', () => {
 
     expect(alloyRate(0)).toBe(0);
     for (let level = 1; level <= 6; level += 1) {
-      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70 * 1.25, 8);
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56 * 1.25, 8);
     }
     expect([7, 8, 9].map(lift)).toEqual([1.1875, 1.125, 1.0625]);
     for (let level = 7; level <= 9; level += 1) {
-      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70 * lift(level), 8);
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56 * lift(level), 8);
     }
     for (const level of [10, 11, 12]) {
-      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70, 8);
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56, 8);
     }
     // Past 12 the owner's 2026-09-20 late lift rides on top — the opening lift is long gone.
     for (const level of [13, 20, 100]) {
-      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70 * producerOutputMult(level), 8);
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.56 * producerOutputMult(level), 8);
     }
 
     // The two rungs the flat bands broke, in the units the screen quotes.
@@ -162,8 +162,8 @@ describe('production and cost curves', () => {
     for (let i = 1; i < curve.length; i++) {
       expect(curve[i]!).toBeGreaterThan(curve[i - 1]!);
     }
-    // The opening has to repay inside a session — that is the day-zero dopamine.
-    expect(producerPaybackHours('REFINERY', 1)).toBeLessThan(1);
+    // The opening repayment window extends with the 2026-10-13 output reduction.
+    expect(producerPaybackHours('REFINERY', 1)).toBeLessThan(1 / 0.8);
     // ...and the late game has to stop repaying inside a season, or it runs away.
     expect(producerPaybackHours('REFINERY', 10)).toBeGreaterThan(4);
     expect(producerPaybackHours('REFINERY', 18)).toBeGreaterThan(24);
@@ -553,12 +553,9 @@ describe('disruption', () => {
 /**
  * TEN HOURS, AND THE TWO RULES THAT BOUND IT. D190, owner instruction.
  *
- * The works fill and then the plant stands idle until somebody taps. Ten hours is
- * a night plus a margin — the figure D16 authored and measured — and it is the
- * number that decides whether a working commander's midday check-in has a job. The
- * audience is out of the house for eleven hours; at twelve the check-in bought
- * nothing, at ten the last hour of the working day is only produced if somebody
- * looked. That is the design, not an accident of the cutover that set it to 12.
+ * The 2026-10-13 owner decision preserves the existing resource capacity while
+ * reducing production by 20%. The former ten-hour vessel now takes 12.5 hours
+ * to fill. A slower rate must not discard ore already accumulated in that vessel.
  *
  * THE WORKS MUST STAY SMALLER THAN THE STORE AT EVERY VAULT LEVEL, D171's rule and
  * the reason cutting this dial alone was once refused: `collect` takes
@@ -566,11 +563,11 @@ describe('disruption', () => {
  * rather than lost. A works bigger than the store at Vault 0 would strand a young
  * world's salvage haul with nowhere to bank it.
  */
-describe('the works hold ten hours', () => {
-  it('is ten hours of whatever the world produces', () => {
-    expect(ECON.collectorHours).toBe(10);
+describe('the works preserve capacity while production slows', () => {
+  it('holds 12.5 hours at the reduced output rate', () => {
+    expect(ECON.collectorHours).toBe(12.5);
     for (const rate of [100, 1_000, 3_380]) {
-      expect(collectorCap(rate)).toBe(10 * rate);
+      expect(collectorCap(rate)).toBe(12.5 * rate);
     }
   });
 
@@ -582,8 +579,8 @@ describe('the works hold ten hours', () => {
   });
 
   /** The working day is eleven hours, so the day's last hour needs a look. */
-  it('fills before a commander gets home from work', () => {
-    expect(ECON.collectorHours).toBeLessThan(11);
+  it('keeps the former ten-hour capacity after the 20% output reduction', () => {
+    expect(ECON.collectorHours * 0.8).toBe(10);
   });
 });
 

@@ -145,7 +145,7 @@ describe('the Dominion leaderboard', () => {
 
   it('shows the localized Dominion label with the score', async () => {
     await show('fr');
-    const score = screen.getAllByText('Domination')[0];
+    const score = within(screen.getByRole('list')).getAllByText('Domination')[0];
     expect(score).toBeVisible();
     expect(score?.closest('[data-leaderboard-score]')).toHaveTextContent('+50');
   });

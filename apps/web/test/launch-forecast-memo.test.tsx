@@ -75,6 +75,13 @@ const wrap = (node: ReactNode) => (
 );
 
 describe('the forecast on the launch sheet', () => {
+  it('passes the selected home wounds to the battle forecast', async () => {
+    const damage = [{ hull: 'TALON' as const, count: 20, damageBp: 9000, remainderBp: 0.25 }];
+    render(wrap(<LaunchSheet target={{ kind: 'world', world }} planet={planetView({ fleet: { TALON: 20 }, fleetDamage: damage })}
+      intel={intel} onClose={vi.fn()} onLaunched={vi.fn()} />));
+    await userEvent.click(screen.getByRole('button', { name: 'More Talon' }));
+    expect(vi.mocked(forecastLines).mock.calls.at(-1)?.[1]).toMatchObject({ attackerDamage: [{ ...damage[0], count: 1 }] });
+  });
   it('is not recomputed by a render that changes nothing it reads', async () => {
     const planet = planetView({ fleet: { TALON: 20 } });
     const sheet = () => (

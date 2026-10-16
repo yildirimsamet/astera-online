@@ -85,10 +85,18 @@ export const DISC_RADIUS = GALAXY.radius / SCALE;
   of it — so the merchant doubles with everything else and its own multiplier is
   untouched.
 */
-export const CRAFT_SCALE = 1.6;
+export const CRAFT_SCALE = VIEW.craftScale;
+
+/**
+ * EVERY MISSILE TWICE ITS FORMER SIZE. Owner, 2026-10-16: *"Tüm füzelerin modellerinin
+ * boyutunu, şuanki boyutlarının 2 katına çıkart … Şu anda giden bir füze galakside pek belli
+ * olmuyor."* The Death Star and the interception scene read it here; the radiation bomb's
+ * lengths live in `RADIATION_BOMB_VISUAL`, because its frozen flight geometry reads them too.
+ */
+export const MISSILE_SIZE = 2;
 
 /** Shared strategic hull sizing; monument sizing is anchored to the public trade ship. */
-export const STRATEGIC_HULL_SCALE_MULT = 3.4;
+export const STRATEGIC_HULL_SCALE_MULT = 3.4 * MISSILE_SIZE;
 export const STRATEGIC_CONTACT_SCALE = 0.34 * CRAFT_SCALE;
 
 /**
@@ -184,6 +192,8 @@ export interface PlanetNode {
   seenAt?: Date;
   /** Only the public podium. Lower exact ranks belong on the leaderboard. */
   dominionRank?: 1 | 2 | 3;
+  honorRanking?: true;
+  honorRank?: 1 | 2 | 3;
   position: Vec3Tuple;
   /** Bigger worlds for more developed players — the only free public signal. */
   radius: number;
@@ -293,6 +303,7 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     ...(planet.country ? { country: planet.country } : {}),
     ...(planet.clan ? { clan: planet.clan } : {}),
     ...(!planet.dominionRank ? {} : { dominionRank: planet.dominionRank }),
+    ...(planet.honorRanking ? { honorRanking: true as const, honorRank: planet.honorRank } : {}),
     position: toWorld(planet.position),
     // Map markers, not scale models. A planet at true scale in a disc 2000 units
     // across would be invisible, so these are sized to be READ. One step per Core
@@ -544,6 +555,8 @@ export function legStandoff(
   nodes: readonly PlanetNode[],
 ): LegStandoff {
   if (!thread.path) return NO_STANDOFF;
+  // Bomb paths already freeze the source surface and target surface + half hull on the server.
+  if (thread.kind === 'radiation_bomb') return NO_STANDOFF;
   const returning = thread.leg === 'return';
   /*
     A CONVOY STRIKE HOLDS OFF THE FORMATION, EXACTLY LIKE A PIRATE RENDEZVOUS.
@@ -880,6 +893,27 @@ export function contactPosition(
     visualFrom[1] + (visualTo[1] - visualFrom[1]) * t,
     visualFrom[2] + (visualTo[2] - visualFrom[2]) * t,
   ];
+}
+
+/**
+ * WHERE A STRANGER'S CRAFT POINTS: DOWN ITS WINDOW, NEVER BACK AT ITS FAR END.
+ *
+ * Owner report, 2026-10-16: missiles slewed sideways in the last seconds before impact and
+ * straightened again. The nose used to aim at the window's far point — but a craft whose next
+ * read is late coasts PAST that point (`COAST_MS`), so the point fell behind it and the eased
+ * heading swung towards the tail until the next window arrived. Windows are shortest just
+ * before arrival, which is exactly when it showed. Aiming one window-length ahead of the craft
+ * along the window's own direction is the same bearing, and it can never fall behind.
+ *
+ * Over a world it is fighting, the nose still goes to the target of the fight. A window that
+ * does not move has no direction; it answers with the craft's own position, which the heading
+ * code reads as "keep the heading you have".
+ */
+export function contactHeadingAim(contact: Contact, at: Vec3Tuple, now: number): Vec3Tuple {
+  if (contact.engagement) return engagementTargetPosition(contact.engagement, now);
+  const from = toWorld(contact.from);
+  const to = toWorld(contact.to);
+  return [at[0] + to[0] - from[0], at[1] + to[1] - from[1], at[2] + to[2] - from[2]];
 }
 
 /**

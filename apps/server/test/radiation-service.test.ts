@@ -262,9 +262,9 @@ describe('a flight settling its dose', () => {
     const settled = await settle(launch.missionId);
 
     expect(settled.destroyed).toEqual({});
-    expect(settled.mission.damage).toEqual([{ hull: 'DART', count: 3, damageBp: 3000 }]);
+    expect(settled.mission.damage).toEqual([{ hull: 'DART', count: 3, damageBp: 3000, remainderBp: 0 }]);
     const [row] = await f.db.select().from(missions).where(eq(missions.id, launch.missionId));
-    expect(row?.damage).toEqual([{ hull: 'DART', count: 3, damageBp: 3000 }]);
+    expect(row?.damage).toEqual([{ hull: 'DART', count: 3, damageBp: 3000, remainderBp: 0 }]);
     expect(await parked(raider, launch.missionId)).toEqual({ DART: 3 });
   });
 

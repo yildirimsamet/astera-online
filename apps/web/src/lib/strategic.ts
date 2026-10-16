@@ -1,3 +1,4 @@
+import { DEATH_STAR, FAULT } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 
 type StrategicAsset = NonNullable<PlanetView['strategic']>;
@@ -19,6 +20,13 @@ export function interceptorsOf(planet: PlanetView): readonly StrategicAsset[] {
 
 export const readyDeathStar = (planet: PlanetView): StrategicAsset | undefined =>
   deathStarsOf(planet).find((asset) => asset.status === 'READY');
+
+/**
+ * HOW MANY HITS IN A ROW TAKE A COLONY AT FULL LOYALTY. Owner, 2026-10-15: *"Sadakati
+ * 100 olan bir koloniye 5 tane ard arda atarsanız, koloni düşer"*. Read from the two
+ * rules rather than written as 5, so the sentence moves if either number does.
+ */
+export const hitsToTakeLoyalColony = Math.ceil(FAULT.loyaltyMax / DEATH_STAR.colonyLoyaltyLoss);
 
 /**
  * HOW FAR A STRATEGIC BUILD HAS COME, 0–100. `readyAt` is the live clock and wins;

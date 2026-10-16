@@ -1,12 +1,13 @@
 import {
+  LOW_TIER_PVP_BALANCE, STANDARD_PVP_BALANCE,
   ABUSE, ANTI_STRATEGIC, BUILD, COMBAT, CORE_TOP_LEVEL, DEATH_STAR, DEUTERIUM,
-  DISRUPTION, ECON, ESCAPE, FAULT, HANGAR, HULLS, INSTRUMENT_MAX_LEVEL, MULTI_WORLD,
-  PROBE, PROSPECTOR, PIRATE, RESEARCH_PROJECTS, SEASON, SHIP_DAMAGE, SALVAGE, CLAN,
+  ECON, ESCAPE, FAULT, HANGAR, HULLS, INSTRUMENT_MAX_LEVEL, MULTI_WORLD,
+  PROBE, PROSPECTOR, PIRATE, RESEARCH_PROJECTS, SEASON, SALVAGE, CLAN, RADIATION_LEVEL_HP_PER_MINUTE,
   CLAN_SUPPORT, CLAN_LEVEL_MAX, GALAXY_EVENTS, TRADE, MONUMENT_BALANCE, MONUMENT_PROBE_LOSS_CHANCE, MONUMENT_SEASON_DEFAULTS,
   CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION, INACTIVITY_MS, SILENT_SPACE, SETTLEMENT_CLAIM_MINUTES, SETTLEMENT_PRIORITY_MINUTES, TRAVEL,
   alloyRate, buildingCost, buildingMinutes, crystalRate, deuteriumRate,
   flightSlots, groundSlots, hangarCapacity, hullBulk, shipyardTimeReduction, instrumentCost, radarRange,
-  researchEffectAt, satelliteCost, satelliteSlots, shieldHp, telescopeSlots,
+  researchEffectAt, interceptorCapacity, satelliteCost, satelliteSlots, shieldHp, telescopeSlots,
   telescopeRange, telescopeWatchRange, telescopeCooldownHours, researchMinutes,
   clanHangarCapacity, clanLevelUpgradeCost, seasonRankRewardProgram, storageHours,
   type Resources,
@@ -58,6 +59,9 @@ export function subjectReference(subject: WikiSubject, language: WikiLanguage): 
           if (subject.id === 'SHIP_PROPULSION') text = label(language, `${n(effect)}× ship speed`, `${n(effect)} kat gemi hızı`);
           if (subject.id === 'EMPLACEMENT_DOCTRINE') text = label(language, `${n(effect)}× ground attack and hull strength`, `${n(effect)} kat yer savunması saldırısı ve dayanımı`);
           if (subject.id === 'INDUSTRIAL') text = label(language, `${n(effect)}% of repair cost & time`, `Onarım bedeli ve süresinin %${n(effect)}’i`);
+          if (subject.id === 'RADIATION_SHIELDING') text = label(language,
+            `Level 1: ${n(RADIATION_LEVEL_HP_PER_MINUTE[1] * effect)}; level 2: ${n(RADIATION_LEVEL_HP_PER_MINUTE[2] * effect)} HP/min per ship`,
+            `Seviye 1: ${n(RADIATION_LEVEL_HP_PER_MINUTE[1] * effect)}; seviye 2: ${n(RADIATION_LEVEL_HP_PER_MINUTE[2] * effect)} HP/dk, gemi başına`);
           if (subject.id === 'STARSHIP_ENGINEERING') text = label(language, `Engineering requirement for tier ${rung + 2} ships met`, `${rung + 2}. kademe gemilerin mühendislik koşulu karşılanır`);
           if (['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES'].includes(subject.id)) text = label(language, 'Unlocks the feature described above', 'Yukarıda açıklanan özelliği açar');
           if (subject.id === 'DEUTERIUM_SYNTHESIS') text = label(language, `Maximum Deuterium Refinery level: ${n(effect)}`, `Döteryum Rafinerisi seviye sınırı: ${n(effect)}`);
@@ -137,14 +141,17 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
   if (id === 'combat.model' || id === 'combat.loot') blocks = [pairs(language, t('Battle outcome rules', 'Savaş sonuç kuralları'), [
     [t('Maximum rounds', 'Azami tur'), n(COMBAT.rounds)],
     [t('Partial: defending value destroyed', 'Kısmi: yok edilen savunma değeri'), percent(COMBAT.partialThreshold, language)],
-    [t('Decisive victory: exposed loot taken', 'Kesin zaferde alınan korumasız ganimet'), percent(COMBAT.lootDecisive, language)],
-    [t('Partial success: exposed loot taken', 'Kısmi başarıda alınan korumasız ganimet'), percent(COMBAT.lootPartial, language)],
-    [t('Uncollected production exposed to raids', 'Akınla alınabilecek Havuz payı'), percent(COMBAT.lootBufferShare, language)],
-    [t('Production pause after decisive victory', 'Kesin zaferden sonra üretim durması'), `${n(DISRUPTION.decisiveMinutes)} min`],
-    [t('Production pause after partial success', 'Kısmi başarıdan sonra üretim durması'), `${n(DISRUPTION.partialMinutes)} min`],
     [t('Ground losses rebuilt free', 'Ücretsiz yenilenen yer kaybı'), percent(COMBAT.defenceSalvage, language)],
     [t('Wreck resources per surviving Garbage Collector', 'Sağ kalan Hurdacı başına enkaz kaynağı'), n(SALVAGE.perCollector)],
-  ])];
+  ]), table(t('Loot before surviving cargo limits', 'Sağ kalan kargo sınırından önce yağma'),
+    [t('Defending commander', 'Savunan komutan'), t('Result', 'Sonuç'), t('Stock above Store protection', 'Depo koruması üzerindeki stok'), t('Uncollected Works', 'Toplanmamış Havuz')],
+    [
+      ...([[t('Tier 1–3', 'Kademe 1–3'), LOW_TIER_PVP_BALANCE], [t('Tier 4+', 'Kademe 4+'), STANDARD_PVP_BALANCE]] as const).flatMap(([name, balance]) => [
+        [name, t('Decisive', 'Kesin zafer'), percent(balance.lootDecisive, language), percent(balance.lootDecisive * balance.lootBufferShare, language)],
+        [name, t('Partial', 'Kısmi başarı'), percent(balance.lootPartial, language), percent(balance.lootPartial * balance.lootBufferShare, language)],
+      ]),
+    ],
+  )];
   if (id === 'combat.eligibility') blocks = [pairs(language, t('PvP boundaries', 'PvP sınırları'), [
     [t('Development tier', 'Gelişim kademesi'), t('Highest owned Core level ÷ 3, rounded up', 'Sahip olduğun en yüksek Çekirdek seviyesi ÷ 3; yukarı yuvarlanır')],
     [t('Maximum tier difference', 'İzin verilen kademe farkı'), `±${n(ABUSE.tierBand)}`],
@@ -152,8 +159,13 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
     [t('Personal raids when both commanders are tier 4+', 'İki komutan da 4+ kademedeyken kişisel akın'), `${n(ABUSE.bashLimit)} / ${hours(ABUSE.bashWindowMinutes / 60, language)}`],
     [t('Clan raids on one commander', 'Aynı komutana klan akını sınırı'), `${n(CLAN.attackLimit)} / ${hours(CLAN.attackWindowMinutes / 60, language)}`],
     [t('Newcomer shield', 'Yeni oyuncu kalkanı'), hours(ABUSE.newcomerShieldHours, language)],
-    [t('Recovery shield when granted', 'Verildiğinde toparlanma kalkanı'), hours(ABUSE.recoveryShieldHours, language)],
-  ])];
+  ]), table(t('Recovery protection by defending commander', 'Savunan komutana göre toparlanma koruması'),
+    [t('Tier', 'Kademe'), t('Net production hours lost', 'Net üretim kaybı'), t('Loss history', 'Kayıp penceresi'), t('Shield duration', 'Kalkan süresi')],
+    [
+      [t('Tier 1–3', 'Kademe 1–3'), hours(LOW_TIER_PVP_BALANCE.recoveryLossHours, language), hours(LOW_TIER_PVP_BALANCE.recoveryLookbackHours, language), hours(LOW_TIER_PVP_BALANCE.recoveryShieldHours, language)],
+      [t('Tier 4+', 'Kademe 4+'), hours(STANDARD_PVP_BALANCE.recoveryLossHours, language), hours(STANDARD_PVP_BALANCE.recoveryLookbackHours, language), hours(STANDARD_PVP_BALANCE.recoveryShieldHours, language)],
+    ],
+  )];
   if (id === 'combat.retreat') blocks = [pairs(language, t('Retreat inputs', 'Çekilme girdileri'), [
     [t('Minimum fighting ships', 'Asgari savaş gemisi'), n(ESCAPE.minimumCombatShips)], [t('Attacking armed-unit value / defending armed-unit value', 'Saldıran silahlı birimlerin değeri / savunan silahlı birimlerin değeri'), `${n(ESCAPE.ratio)}×`],
   ])];
@@ -163,17 +175,20 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
     [t('Build minutes per weapon', 'Silah başına kurulum dakikası'), n(DEATH_STAR.buildMinutes)],
     [t('EMP duration', 'EMP süresi'), `${n(DEATH_STAR.empMinutes)} min`],
     [t('Colony loyalty loss per hit', 'Vuruş başına koloni sadakat kaybı'), n(DEATH_STAR.colonyLoyaltyLoss)],
+    [t('Random faults per colony hit', 'Vuruş başına koloniye rastgele arıza'), n(DEATH_STAR.colonyFaults)],
     [t('Weapons per world without Strategic Stockpile', 'Stratejik Stok olmadan gezegen başına silah'), n(DEATH_STAR.perWorld.base)],
     [t('Weapons per world with Strategic Stockpile', 'Stratejik Stok ile gezegen başına silah'), n(DEATH_STAR.perWorld.researched)],
   ]), table(t('One weapon, excluding flight fuel', 'Uçuş yakıtı hariç bir silah'), resourceColumns(language), [costCells(DEATH_STAR.cost, language)])];
   if (id === 'combat.interception') blocks = [pairs(language, t('Interceptor requirements', 'Önleyici şartları'), [
     [t('Required local Radar with Uplink', 'Antenle gereken yerel Radar'), n(ANTI_STRATEGIC.requiredRadar)],
     [t('Charges per world without Interception Grid', 'Önleme Ağı olmadan gezegen başına şarj'), n(ANTI_STRATEGIC.charges.base)],
-    [t('Charges per world with Interception Grid', 'Önleme Ağı ile gezegen başına şarj'), n(ANTI_STRATEGIC.charges.researched)],
+    [t('Charges per world with Grid L1', 'Önleme Ağı L1 ile gezegen başına şarj'), n(interceptorCapacity(1))],
+    [t('Charges per world with Grid L2 (maximum)', 'Önleme Ağı L2 ile gezegen başına şarj (en fazla)'), n(interceptorCapacity(2))],
     [t('Build minutes per charge', 'Şarj başına kurulum dakikası'), n(ANTI_STRATEGIC.buildMinutes)],
   ]), table(t('One charge', 'Bir şarj'), resourceColumns(language), [costCells(ANTI_STRATEGIC.cost, language)])];
   if (id === 'fleet.repairs') blocks = [pairs(language, t('Repair threshold', 'Onarım eşiği'), [
-    [t('Free landing repair: damage at most', 'Ücretsiz iniş onarımı: en çok hasar'), `${n(SHIP_DAMAGE.autoRepairMaxBp / 100)}%`],
+    [t('Cannot start combat at HP at most', 'Savaşa katılamayan geminin en yüksek canı'), `${n(5)}%`],
+    [t('Scrap return × remaining HP share', 'Parçalama dönüşü × kalan can oranı'), `${n(50)}%`],
     [t('Repair orders, including the active order', 'Aktif iş dahil onarım siparişi sınırı'), n(BUILD.queueDepth)],
   ])];
   if (id === 'intel.probes') blocks = [table(t('Resource cost of one planet probe', 'Bir gezegen sondasının kaynak bedeli'), resourceColumns(language), [costCells({ alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 }, language)])];
@@ -200,7 +215,7 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
   if (id === 'galaxy.pirates') blocks = [table(t('Pirate levels · capture chance after a decisive win', 'Korsan seviyeleri · kesin zaferden sonra ele geçirme şansı'), [t('Level', 'Seviye'), t('Pirate damage multiplier', 'Korsan hasar çarpanı'), t('Captured ship chance', 'Ele geçirilen gemi şansı')], ([1, 2, 3, 4] as const).map(level => [n(level), `${n(PIRATE.damageMult[level])}×`, percent(PIRATE.captureChance[level], language)]))];
   if (id === 'galaxy.monuments') blocks = [table(t('Monument types', 'Anıt türleri'), [t('Rule', 'Kural'), t('Easy', 'Kolay'), t('Hard', 'Zor')], [
     [t('Monuments per galaxy', 'Galaksi başına anıt'), n(MONUMENT_SEASON_DEFAULTS.count / 2), n(MONUMENT_SEASON_DEFAULTS.count / 2)],
-    [t('Commander tiers allowed to send', 'Yeni filo gönderebilen komutan tier’ları'), '1–3', t('Everyone', 'Herkes')],
+    [t('Commander tiers allowed to send', 'Yeni filo gönderebilen komutan tier’ları'), '1–3', '4+'],
     [t('Deuterium per minute per monument', 'Anıt başına dakikalık döteryum'), n(MONUMENT_BALANCE.EASY.productionPerMinute), n(MONUMENT_BALANCE.HARD.productionPerMinute)],
     [t('Radiation level', 'Radyasyon seviyesi'), n(MONUMENT_BALANCE.EASY.radiationLevel), n(MONUMENT_BALANCE.HARD.radiationLevel)],
     [t('Hull strength lost per ship per minute (HP)', 'Gemi başına dakikalık dayanım kaybı (HP)'), n(MONUMENT_BALANCE.EASY.intensityHpPerMinute), n(MONUMENT_BALANCE.HARD.intensityHpPerMinute)],

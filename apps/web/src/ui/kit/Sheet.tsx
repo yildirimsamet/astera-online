@@ -124,7 +124,7 @@ export function Sheet({
         aria-modal="true"
         aria-label={title}
         data-sheet-panel
-        className={`plate plate-flush relative flex animate-[sheet-in_340ms_var(--ease-hardware)] flex-col overflow-hidden rounded-b-none rounded-t-sheet pb-[env(safe-area-inset-bottom)] v2-split:h-full! v2-split:max-h-full! v2-split:max-w-none! v2-split:rounded-none v2-split:border-l v2-split:border-t-0 ${
+        className={`plate plate-flush relative flex animate-[sheet-in_340ms_var(--ease-hardware)] flex-col overflow-hidden rounded-b-none pb-[env(safe-area-inset-bottom)] v2-split:h-full! v2-split:max-h-full! v2-split:max-w-none! v2-split:rounded-none v2-split:border-l v2-split:border-t-0 ${
           contained ? 'h-[88dvh] max-h-full' : 'max-h-full'
         } ${reading ? 'mx-auto w-full max-w-3xl' : ''}`}
       >

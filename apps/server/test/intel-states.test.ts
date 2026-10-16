@@ -378,6 +378,24 @@ describe('the three intel states', () => {
     );
   });
 
+  it('does not disclose an unseen commander’s active vacation or its end time', async () => {
+    await f.db.update(planets).set({ vacationUntil: new Date(f.clock.now().getTime() + 86_400_000) })
+      .where(eq(planets.id, far));
+    const unknown = await world(far);
+    expect(unknown.intel).toBe('UNKNOWN');
+    expect(unknown).not.toHaveProperty('vacation');
+    expect(unknown).not.toHaveProperty('vacationUntil');
+  });
+
+  it('keeps the protection flag on a remembered world without publishing its private vacation end', async () => {
+    await probe(far);
+    await f.db.update(planets).set({ vacationUntil: new Date(f.clock.now().getTime() + 86_400_000) })
+      .where(eq(planets.id, far));
+    const remembered = await world(far);
+    expect(remembered).toMatchObject({ intel: 'REMEMBERED', vacation: true });
+    expect(remembered).not.toHaveProperty('vacationUntil');
+  });
+
   it('never puts an unknown world’s name, owner or hardware on the wire in any form', async () => {
     await giveSatellite(f.db, far, 'FOUNDRY');
     await giveInstrument(f.db, far, 'AEGIS', 3);

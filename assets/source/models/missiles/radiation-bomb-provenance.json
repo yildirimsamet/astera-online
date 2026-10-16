@@ -1,0 +1,26 @@
+{
+  "selectedGeometry": "Space Commander / Missile_0002_high-2-1.obj (M1)",
+  "sourceSha256": "26a3fa85df510c7c4e79cc9201bcdf3ca2e49790ce295f1f05a55881cdea6e9d",
+  "ownerSelection": "M1; E3 green plasma impact + A1 large smoke; 15 October 2026",
+  "authoring": "M1 nose +Z; distinct olive/teal/ochre armour, increasing warhead diameter, counted pressure collars, external isotope canisters, aft drive throat, casing-mounted radiation trefoils on four faces and black/yellow safety bands; warning paint batched; archive files unchanged",
+  "records": [
+    {
+      "level": 1,
+      "model": "/assets/models/missiles/radiation-bomb-l1.glb",
+      "bytes": 173712,
+      "sha256": "141e7cc0f629ad1369be5a3a29557c2e42701d14b6933143b6ed871fe9623e49"
+    },
+    {
+      "level": 2,
+      "model": "/assets/models/missiles/radiation-bomb-l2.glb",
+      "bytes": 191248,
+      "sha256": "b8dd285221b7e58289ad2d6304e4eb0c28d8728faef2a5149b6464df8f5be482"
+    },
+    {
+      "level": 3,
+      "model": "/assets/models/missiles/radiation-bomb-l3.glb",
+      "bytes": 205140,
+      "sha256": "914c40ed5b0f9134b94591f73544bb0ac83cb94ff7beca0d0bc57afed3634359"
+    }
+  ]
+}

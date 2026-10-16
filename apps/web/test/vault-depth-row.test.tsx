@@ -11,9 +11,10 @@ beforeEach(async () => {
 
 describe('Vault depth after protection reaches its cap', () => {
   it.each([
-    [12, '84', '95'],
-    [13, '95', '105'],
-    [14, '105', '116'],
+    // Resource capacity is preserved; 20% less hourly output means 25% more storage hours.
+    [12, '105', '118'],
+    [13, '118', '131'],
+    [14, '131', '144'],
   ])('shows the storage change for level %i even when protected amounts stay flat', (level, now, next) => {
     const levels: BuildingLevels = {
       CORE: 15,

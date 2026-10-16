@@ -1,9 +1,11 @@
+import { pvpBalanceForTier } from '@astera/rules';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Api } from '../src/api/client.js';
 import type { BattleReport, StrategicBattleReport } from '../src/api/schemas.js';
+import { reportsSchema } from '../src/api/schemas.js';
 import { ApiProvider } from '../src/api/context.js';
 import { BattleReports } from '../src/screens/BattleReports.js';
 
@@ -1146,4 +1148,83 @@ describe('toparlanma kalkanı satırı', () => {
     await openSheet(legacy as BattleReport);
     expect(document.querySelector('[data-recovery-shield]')).toBeNull();
   });
+});
+it('shows radiation weapon identity and its Honor result without describing an EMP blackout', async () => {
+  const { StrategicReportSheet } = await import('../src/screens/BattleReports.js');
+  render(<StrategicReportSheet onClose={() => undefined} report={{
+    kind:'STRATEGIC',id:'radiation',missionId:'bomb:one',at:new Date(),attacking:true,
+    opponentName:'Sable',opponentPlanet:'Grimhold',opponentPlanetId:'p2',yourPlanet:'Vantage',yourPlanetId:'p1',
+    outcome:'FIRST_STRIKE',damage:0,destroyedFleet:{},destroyedResources:{alloy:0,crystal:0,deuterium:0},
+    levelChanges:[],destroyedOrders:[],shieldDestroyed:0,loyalty:null,trigger:null,
+    radiation:{level:1,activeUntil:new Date(Date.now()+60000)},honor:{delta:995024,reason:'TACTICAL'},
+  }} />);
+  expect(screen.getByText('Radiation impact')).toBeVisible();
+  expect(screen.getByText(/Sable/)).toBeVisible();
+  expect(screen.getByText('+0.995024')).toBeVisible();
+  expect(screen.queryByText(/Aegis dropped to zero/)).not.toBeInTheDocument();
+});
+
+it('shows actual colony loyalty in a radiation report without using Death Star strike counts', async () => {
+  const { StrategicReportSheet } = await import('../src/screens/BattleReports.js');
+  const report: StrategicBattleReport = {
+    kind: 'STRATEGIC', id: 'radiation-colony', missionId: 'bomb:colony', at: new Date(), attacking: false,
+    opponentName: 'Sable', opponentPlanet: 'Grimhold', opponentPlanetId: 'p2', yourPlanet: 'Vantage', yourPlanetId: 'p1',
+    outcome: 'FIRST_STRIKE', damage: 0, destroyedFleet: {}, destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
+    levelChanges: [], destroyedOrders: [], shieldDestroyed: 0, loyalty: { before: 80, after: 65 }, trigger: null,
+    radiation: { level: 3, activeUntil: new Date(Date.now() + 60000), faults: ['CORE_OUTAGE'] },
+  };
+  const [parsed] = reportsSchema.parse({ reports: [report], rivals: [] }).reports;
+  if (parsed?.kind !== 'STRATEGIC') throw new Error('Missing strategic report');
+  expect(parsed.radiation).toHaveProperty('faults', ['CORE_OUTAGE']);
+  render(<StrategicReportSheet onClose={() => undefined} report={parsed} />);
+  expect(screen.getByText('Colony loyalty 80% → 65%.')).toBeVisible();
+  expect(screen.getByText(/New faults: Command core blackout/)).toBeVisible();
+  expect(screen.queryByText(/Death Star/i)).not.toBeInTheDocument();
+});
+
+it('names a radiation-targeted monument even when there is no opposing planet', async () => {
+  const { StrategicReportSheet } = await import('../src/screens/BattleReports.js');
+  const { monumentName } = await import('../src/i18n/names.js');
+  render(<StrategicReportSheet onClose={() => undefined} report={{
+    kind:'STRATEGIC',id:'radiation',missionId:'bomb:one',at:new Date(),attacking:true,
+    opponentName:'Sable',opponentPlanet:'',opponentPlanetId:null,yourPlanet:'Vantage',yourPlanetId:'p1',
+    outcome:'FIRST_STRIKE',damage:0,destroyedFleet:{},destroyedResources:{alloy:0,crystal:0,deuterium:0},
+    levelChanges:[],destroyedOrders:[],shieldDestroyed:0,loyalty:null,trigger:null,
+    radiation:{level:1,activeUntil:new Date(Date.now()+60000),monumentOrdinal:1},
+  }} />);
+  expect(screen.getByText(monumentName(1))).toBeVisible();
+});
+
+
+describe('the battle’s frozen PvP balance', () => {
+  it('explains the low-tier recovery bar, history and duration from the recorded profile', async () => {
+    await openSheet(report({ attacking: false, pvpBalance: pvpBalanceForTier(3), recovery: { lossHours: 1.5, shielded: false } }));
+    const line = document.querySelector('[data-recovery-shield]');
+    expect(line).toHaveTextContent(/last 8 h\b/i);
+    expect(line).toHaveTextContent(/of 2 h\b/i);
+    expect(line).toHaveTextContent(/12 h\b/i);
+  });
+
+  it('recognises a low-tier shield refusal at two hours, not the legacy four-hour bar', async () => {
+    await openSheet(report({ attacking: false, pvpBalance: pvpBalanceForTier(1), recovery: { lossHours: 2.5, shielded: false } }));
+    expect(document.querySelector('[data-recovery-shield]')).toHaveTextContent(/in the air/i);
+  });
+
+  it('shows low-tier loot in the calculation without applying another reduction to actual loot', async () => {
+    await openSheet(report({ pvpBalance: pvpBalanceForTier(3) }));
+    const calculation = document.querySelector('[data-combat-formula]');
+    expect(calculation).toHaveTextContent(/25%/);
+    expect(calculation).toHaveTextContent(/12.5%/);
+    expect(calculation).toHaveTextContent(/15%/);
+    expect(calculation).toHaveTextContent(/7.5%/);
+  });
+});
+
+
+it('reports the preserved shield deadline when a tier-four grant keeps a longer low-tier shield', async () => {
+  await openSheet(report({
+    attacking: false, pvpBalance: pvpBalanceForTier(4),
+    recovery: { lossHours: 4, shielded: true, until: new Date(base.at.getTime() + 11 * 3_600_000) },
+  }));
+  expect(document.querySelector('[data-recovery-shield]')).toHaveTextContent(/11 h recovery shield/i);
 });

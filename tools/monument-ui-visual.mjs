@@ -16,6 +16,8 @@ export async function verifyMonumentUi(output) {
       ['mobile-tr-empty', { width: 350, height: 812 }, 'tr', 5, true],
       ['mobile-en-support', { width: 350, height: 812 }, 'en', 2, false, true],
       ['mobile-tr-tier4', { width: 350, height: 812 }, 'tr', 8, false, false, true],
+      ['mobile-tr-tier3-hard', { width: 350, height: 812 }, 'tr', 1, false, false, true],
+      ['desktop-en-tier3-hard', { width: 1280, height: 900 }, 'en', 1, false, false, true],
     ]) {
       const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
       await context.addInitScript((language) => { localStorage.setItem('astera.language', language); }, language);
@@ -38,7 +40,7 @@ export async function verifyMonumentUi(output) {
         target.emptySince = new Date(Date.now() - 600_000).toISOString();
         target.respawnAt = new Date(Date.now() + 23 * 3600_000 + 50 * 60_000).toISOString();
       }
-      target.sendAccess = { playerTier: tierBlocked ? 4 : 3, tierAllowed: !tierBlocked, cargoOnly: false };
+      target.sendAccess = { playerTier: target.difficulty === 'EASY' ? (tierBlocked ? 4 : 3) : (tierBlocked ? 3 : 4), tierAllowed: !tierBlocked, cargoOnly: false };
       await page.route(/\/api\/monuments(?:\?|$)/, (route) => route.fulfill({ json: catalog }));
       await page.goto(web, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => window.__galaxy?.scene.getObjectByName('monument-model-5'), undefined, { timeout: 60_000 });
@@ -73,7 +75,7 @@ export async function verifyMonumentUi(output) {
       if (!result.pageFits || !result.panelFits || !result.buttonReachable || errors.length > 0) throw new Error(JSON.stringify({ label, ...result, errors }));
       if (empty && !(await dialog.textContent()).includes('Garnizonun dönüşüne')) throw new Error('Empty state lacks the garrison return time');
       if (tierBlocked && !(await dialog.getByRole('textbox').evaluateAll(inputs => inputs.length > 0 && inputs.every(input => input.matches(':disabled'))))) {
-        throw new Error('Tier-ineligible Easy fleet selection is enabled');
+        throw new Error('Tier-ineligible monument fleet selection is enabled');
       }
       if (cargoOnly && !(await dialog.getByRole('textbox').evaluateAll(inputs => inputs.length > 0 && inputs.every(input => !input.matches(':disabled'))))) {
         throw new Error('Repeated support incorrectly blocks a mobile hull');

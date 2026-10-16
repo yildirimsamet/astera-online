@@ -4,6 +4,7 @@ import type { Db, Tx } from '../db/client.js';
 import { planets, seasonRewardEntitlements } from '../db/schema.js';
 
 export interface DeliveredSeasonRankReward extends Resources {
+  ranking: 'DOMINION' | 'HONOR';
   sourceSeasonId: string;
   displayRank: number;
   rewardPlace: number;
@@ -79,6 +80,7 @@ export async function deliverSeasonRankReward(
       eq(seasonRewardEntitlements.status, 'PENDING'),
     ))
     .returning({
+      ranking: seasonRewardEntitlements.ranking,
       sourceSeasonId: seasonRewardEntitlements.sourceSeasonId,
       displayRank: seasonRewardEntitlements.displayRank,
       rewardPlace: seasonRewardEntitlements.rewardPlace,
@@ -109,6 +111,7 @@ export async function deliveredSeasonRankReward(
 ): Promise<DeliveredSeasonRankReward | null> {
   const [receipt] = await tx
     .select({
+      ranking: seasonRewardEntitlements.ranking,
       sourceSeasonId: seasonRewardEntitlements.sourceSeasonId,
       displayRank: seasonRewardEntitlements.displayRank,
       rewardPlace: seasonRewardEntitlements.rewardPlace,

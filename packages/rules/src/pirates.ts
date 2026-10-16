@@ -273,12 +273,13 @@ export function pirateCapture(
  *
  * PvP is untouched: a world's line has an Aegis and ground guns, and its rules are their own.
  */
-export function pirateOverrun(result: CombatResult): CombatResult {
+export function pirateOverrun(result: CombatResult, combatReadyAtStart?: Fleet): CombatResult {
   const left = fleetEntries(result.defenderSurvivors);
   if (left.length === 0) return result;
   if (left.some(([id]) => HULLS[id].cls !== 'SUPPORT')) return result;
   const armed = fleetEntries(result.attackerSurvivors)
-    .some(([id]) => HULLS[id].cls !== 'SUPPORT' && HULLS[id].atk > 0);
+    .some(([id]) => HULLS[id].cls !== 'SUPPORT' && HULLS[id].atk > 0
+      && (combatReadyAtStart === undefined || (combatReadyAtStart[id] ?? 0) > 0));
   if (!armed) return result;
 
   const defenderLosses: Fleet = { ...result.defenderLosses };

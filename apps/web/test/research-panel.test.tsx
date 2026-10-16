@@ -43,6 +43,15 @@ const GROUPS = ['frontier', 'industry', 'doctrine', 'strategic'] as const;
 
 type ResearchState = PlanetView['research'][number];
 
+it('states shielding’s level-four damage instead of labelling it as maximum damage', async () => {
+  const view = show();
+  const card = pick(view, 'RADIATION_SHIELDING');
+  expect(card).toHaveTextContent('At level 4: 5.25 HP/min');
+  const sheet = await open(view, 'RADIATION_SHIELDING');
+  expect(sheet).toHaveTextContent('At level 4: 5.25 HP/min');
+  expect(sheet).toHaveTextContent(/saved at dispatch/);
+});
+
 /** A project as the server reports it, open by default so a test states its own shut. */
 const state = (id: ResearchProjectId, over: Partial<ResearchState> = {}): ResearchState => ({
   id,
@@ -306,6 +315,7 @@ describe('the groups', () => {
       INTERCEPTION_GRID: 'strategic',
       STRATEGIC_STOCKPILE: 'strategic',
       INDUSTRIAL: 'industry',
+      RADIATION_SHIELDING: 'doctrine',
     };
     for (const id of ALL) expect(groupOf(view, id), id).toBe(expected[id]);
   });

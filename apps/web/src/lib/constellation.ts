@@ -40,7 +40,7 @@ export const RESEARCH_GROUPS = [
     note: 'research.doctrineNote',
     projects: [
       'STARSHIP_ENGINEERING', 'SHIP_POWER', 'SHIP_ARMOR',
-      'SHIP_PROPULSION', 'EMPLACEMENT_DOCTRINE',
+      'SHIP_PROPULSION', 'EMPLACEMENT_DOCTRINE', 'RADIATION_SHIELDING',
     ],
   },
   {

@@ -1,4 +1,41 @@
 export const monument = {
+  battleResult: {
+  "control": {
+    "attacking": {
+      "ATTACKER": "Tu bando capturó el monumento.",
+      "DEFENDER": "Monumento no capturado.",
+      "EMPTY": "Ningún bando controla el monumento tras la batalla."
+    },
+    "defending": {
+      "ATTACKER": "Tu bando perdió el control del monumento.",
+      "DEFENDER": "Tu bando conservó el control del monumento.",
+      "EMPTY": "Ningún bando controla el monumento tras la batalla."
+    }
+  },
+  "grade": {
+    "attacking": {
+      "DECISIVE": "Defensa eliminada.",
+      "PARTIAL": "Éxito parcial.",
+      "REPELLED": "Ataque repelido."
+    },
+    "defending": {
+      "DECISIVE": "Defensa superada.",
+      "PARTIAL": "La defensa sufrió pérdidas parciales.",
+      "REPELLED": "Ataque repelido."
+    }
+  },
+  "wiped": "Toda tu flota fue destruida.",
+  "rulesTitle": "Reglas de combate",
+  "roundRule": "El combate dura como máximo {{rounds}} rondas. Las naves de carga están protegidas mientras sobrevivan naves armadas.",
+  "captureRule": "Para capturar debes eliminar toda la defensa y conservar una nave armada capaz de combatir. Las naves de carga solas pueden mantener el control existente.",
+  "partialRule": "El éxito parcial exige destruir al menos {{threshold}} del valor en recursos de la flota defensora. Las supervivientes dañadas no cuentan como destruidas. El resultado y los puntos no determinan el control."
+},
+  radiationLossForecast: "Primera pérdida por radiación en {{time}}, sin daño de combate.",
+  radiationCargoForecast: "Primera pérdida de carguero en {{time}}, sin daño de combate.",
+  protectedRate: "Blindaje {{level}} · {{rate}} HP/min por nave",
+  cargoLossAt: "Primera pérdida de carguero en {{time}}. Se pierde su deuterio cargado.",
+  dispatchProtection: "Flota enviada · blindaje {{level}}: {{rate}} HP/min por nave estacionada.",
+  shieldingSnapshot: "La investigación completada después no cambia la protección de esta flota.",
   returnAll: "Regreso de toda la flota",
   returnSelected_one: "Regreso seleccionado · {{count}} nave",
   returnSelected_other: "Regreso seleccionado · {{count}} naves",
@@ -19,8 +56,8 @@ export const monument = {
   hard: "Difícil",
   radiationLevelRate: "Radiación de nivel {{level}}: {{rate}} HP por nave y minuto",
   easyAccess: "Fácil · niveles 1–3",
-  hardAccess: "Difícil · todos los niveles",
-  tierBlocked: "Con tu nivel {{tier}}, solo puedes enviar nuevas flotas a monumentos difíciles.",
+  hardAccess: "Difícil · nivel 4 o superior",
+  tierBlocked: "Tu nivel es {{tier}}. Elige monumentos fáciles en los niveles 1–3 y difíciles a partir del nivel 4.",
   initialFleetRule: "Puedes volver a enviar naves de combate y cargueros. Cada flota de apoyo necesita combustible, una bahía de vuelo y espacio en el monumento.",
   recallFlightRule: "Antes de llegar, retira las naves seleccionadas desde su posición actual. El combustible de ida consumido no se devuelve. Las reservas de regreso sin usar se devuelven al llegar a casa.",
   "newsRadiation": "{{name}} · radiación destruyó {{count}} naves y {{cargo}} deuterio · quedan {{left}} naves",
@@ -78,6 +115,8 @@ export const monument = {
   "holdForecast": "Tras llegar: {{rate}} deuterio/min · próxima pérdida {{time}}",
   "noLoss": "ninguna prevista",
   "attackOutcome": "Tras la victoria, las naves de nivel superior ocupan primero la capacidad del monumento. Las que no caben vuelven a casa. Una flota con solo cargueros no obtiene deuterio.",
+  "reinforceRule": "Si tu bando pierde el monumento durante el viaje, la flota no regresa. Lucha contra el rival o la guarnición. Si el monumento está vacío, una nave armada lo toma.",
+  "arrivalOutcome": {"JOIN":"Al llegar, según el estado actual: se une a tu bando. Las naves que no caben regresan.","FIGHT":"Al llegar, según el estado actual: lucha contra la flota rival que lo ocupa.","GARRISON":"Al llegar, según el estado actual: lucha contra la guarnición neutral.","CAPTURE":"Al llegar, según el estado actual: toma el monumento vacío. Los cargueros solos no pueden tomarlo y regresan."},
   "losses": "{{count}} naves perdidas en la ida",
   "health": "{{name}}: {{remaining}} / {{max}} HP al llegar",
   "shield": "Acepto perder mi escudo en este envío",

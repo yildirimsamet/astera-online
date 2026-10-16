@@ -58,7 +58,7 @@ export const trade = {
   maxShort: 'Max.',
   send: 'Konvoi entsenden',
   sending: 'Konvoi wird entsandt',
-  warning: 'Ein gestarteter Konvoi kann nicht zurückgerufen werden. Er ist {{duration}} unterwegs.',
+  warning: "Rufe den Konvoi vor der Ankunft beim Händler zurück, um dein Angebot ohne Tausch heimzubringen. Treibstoff wird nicht erstattet. Geplante Reise: {{duration}}.",
   fleetsave: 'Unterwegs kann deine Flotte nicht überfallen werden. Sie kann in dieser Zeit aber auch deine Welt nicht verteidigen.',
   launched: 'Konvoi unterwegs · {{duration}}',
   chooseFleet: 'Stelle einen Konvoi zusammen',

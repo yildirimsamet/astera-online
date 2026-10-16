@@ -1,6 +1,7 @@
 import { and, eq, gt, inArray, isNull, lt, lte, ne, or } from 'drizzle-orm';
 import {
-  ABUSE,
+  STANDARD_PVP_BALANCE,
+  type PvpBalance,
   alloyRate,
   canAttack,
   crystalRate,
@@ -33,6 +34,7 @@ import {
 } from '../db/schema.js';
 import { GameError, orbitFromRows } from './planet.js';
 import { peakCoreLevels } from './player.js';
+import { commanderPvpBalance } from './pvpBalance.js';
 
 /**
  * WHO MAY BE ATTACKED, AND WHAT A DEFEAT BUYS. D183 · owner instruction 2026-09-14.
@@ -137,9 +139,12 @@ export async function assertTierBand(
 
 /** The world-level occupation/recovery gate shared by every PvP launch lane. */
 export function assertWorldAttackable(
-  world: Pick<typeof planets.$inferSelect, 'protectedUntil' | 'recoveryUntil'>,
+  world: Pick<typeof planets.$inferSelect, 'protectedUntil' | 'recoveryUntil'> & { vacationUntil?: Date | null },
   now: Date,
 ): void {
+  if (world.vacationUntil && world.vacationUntil > now) {
+    throw new GameError('TARGET_VACATION', 'That commander is on vacation.', 409);
+  }
   if (world.protectedUntil !== null && world.protectedUntil > now) {
     throw new GameError('OCCUPATION_PROTECTED', 'That world is protected', 409, {
       until: world.protectedUntil.toISOString(),
@@ -156,7 +161,7 @@ export function assertWorldAttackable(
  * WHAT THIS COMMANDER'S WORKS TURN OUT IN AN HOUR, ACROSS EVERY WORLD.
  *
  * The denominator of the recovery shield: the lookback is heavy when it costs at
- * least `ABUSE.recoveryLossHours` hours of this.
+ * least the selected profile's `recoveryLossHours` hours of this.
  *
  * IT REPLACED STORAGE CAPACITY, and the live field is why. Capacity is a ceiling
  * nobody reaches — the median commander holds 24% of theirs — so a floor written
@@ -249,8 +254,7 @@ export function permanentFleetCost(lost: Fleet, salvaged: Fleet): Resources {
  *
  * Read off the reports, which already carry both halves: the loot and each side's
  * dead hulls. `(now − lookback, now]` — a battle exactly one lookback old has aged
- * out, which is what keeps a shield from being re-earned off the defeats that bought
- * the last one (the window and the lookback are the same six hours).
+ * out. The selected profile determines whether this reads six or eight hours.
  *
  * PLAYER TARGETS ONLY. A caretaker world and a pirate raid have no commander on the
  * other side: neither a defeat nor a haul there is the war this rule is about.
@@ -258,15 +262,19 @@ export function permanentFleetCost(lost: Fleet, salvaged: Fleet): Resources {
  * The battle being settled is not on the record yet — its report is written after
  * the grant — so the caller adds it.
  */
+type TimedRecoveryEntry = RecoveryLedgerEntry & { at: number };
+
 async function lookbackLedger(
   db: Queryable,
   playerId: string,
   now: Date,
-): Promise<{ defeats: RecoveryLedgerEntry[]; raids: RecoveryLedgerEntry[] }> {
-  const since = new Date(now.getTime() - ABUSE.recoveryLookbackHours * 3_600_000);
+  lookbackHours: number,
+): Promise<{ defeats: TimedRecoveryEntry[]; raids: TimedRecoveryEntry[] }> {
+  const since = new Date(now.getTime() - lookbackHours * 3_600_000);
   const [rows, jointRaids, hostShares] = await Promise.all([db
     .select({
       id: battleReports.id,
+      at: battleReports.createdAt,
       defenderCount: battleReports.defenderCount,
       clanWarOperationId: battleReports.clanWarOperationId,
       attackerPlayerId: battleReports.attackerPlayerId,
@@ -288,6 +296,7 @@ async function lookbackLedger(
     )), db
       .select({
         loot: clanWarParticipantResults.loot,
+        at: battleReports.createdAt,
         losses: clanWarParticipantResults.losses,
       })
       .from(clanWarParticipantResults)
@@ -313,11 +322,12 @@ async function lookbackLedger(
       )),
   ]);
   const hostLosses = new Map(hostShares.map((row) => [row.reportId, row.losses]));
-  const defeats: RecoveryLedgerEntry[] = [];
-  const raids: RecoveryLedgerEntry[] = [];
+  const defeats: TimedRecoveryEntry[] = [];
+  const raids: TimedRecoveryEntry[] = [];
   for (const row of rows) {
     if (row.defenderPlayerId === playerId && row.attackerPlayerId !== playerId) {
       defeats.push({
+        at: row.at.getTime(),
         loot: row.loot,
         fleetLost: permanentFleetCost(
           row.defenderCount > 1 ? hostLosses.get(row.id) ?? row.defenderLosses : row.defenderLosses,
@@ -326,11 +336,11 @@ async function lookbackLedger(
       });
     } else if (row.clanWarOperationId === null
       && row.attackerPlayerId === playerId && row.defenderPlayerId !== playerId) {
-      raids.push({ loot: row.loot, fleetLost: permanentFleetCost(row.attackerLosses, {}) });
+      raids.push({ at: row.at.getTime(), loot: row.loot, fleetLost: permanentFleetCost(row.attackerLosses, {}) });
     }
   }
   for (const row of jointRaids) {
-    raids.push({ loot: row.loot, fleetLost: permanentFleetCost(row.losses, {}) });
+    raids.push({ at: row.at.getTime(), loot: row.loot, fleetLost: permanentFleetCost(row.losses, {}) });
   }
   return { defeats, raids };
 }
@@ -403,10 +413,10 @@ async function hasOutboundPvpStrike(
 }
 
 /**
- * GRANT OR EXTEND THE SIX-HOUR WINDOW AFTER ONE BATTLE. Owner instruction.
+ * GRANT OR EXTEND THE COMMANDER’S RECOVERY WINDOW AFTER ONE BATTLE. Owner instruction.
  *
  * JUDGED ON THE WHOLE LOOKBACK, NOT ON THIS BATTLE. Owner instruction, 2026-09-18:
- * every PvP defeat in the last `ABUSE.recoveryLookbackHours` (this one included),
+ * every PvP defeat in the selected profile's lookback (this one included),
  * less the profit of every raid this commander made on another commander in the same
  * hours — see `netRecoveryLossHours`. Small raids that each stayed under the bar add up.
  *
@@ -429,28 +439,21 @@ export async function grantRecoveryShield(
   tx: Tx,
   input: {
     playerId: string;
-    /** The world the battle was fought at; it is the one that works double. */
+    /** The world the battle was fought at; it receives the recovery production bonus. */
     planetId: string;
     lootLost: Resources;
     fleetLost: Resources;
     now: Date;
+    balance?: PvpBalance;
   },
 ): Promise<{
   until: Date | null;
   hours: number;
   /**
-   * DID THIS BLOW CROSS THE BAR — whether or not a window was actually written.
-   *
-   * Two refusals below are not about the size of the blow: a defender with a raid of
-   * their own in the air, and a commander the server plays. Both still took a defeat
-   * heavy enough to earn a shield, and what a colony breaks from is the DEFEAT, not the
-   * protection (koloni arızaları, `FAULT.attackFaults`). `until` answers "is this
-   * commander protected"; this answers "was that a heavy defeat", and they differ in
-   * exactly those two cases.
-   *
-   * False while the switch is off: with no shield system there is no bar to cross, and
-   * an operator who stages shields off should not discover they left a second system
-   * keyed to it running.
+   * Existing colony-fault eligibility: four net production hours in six hours.
+   * Independent of the easier tier 1–3 shield, so protection cannot add damage.
+   * `until` records whether a shield was actually granted (outbound PvP can refuse
+   * it). False when the recovery system is disabled, preserving that switch’s scope.
    */
   earned: boolean;
 }> {
@@ -466,48 +469,51 @@ export async function grantRecoveryShield(
   if (resourceValue(input.lootLost) + resourceValue(input.fleetLost) <= 0) {
     return { until: null, hours: 0, earned: false };
   }
+  const balance = input.balance ?? await commanderPvpBalance(tx, input.playerId);
   const [production, ledger] = await Promise.all([
     commanderProductionRate(tx, input.playerId),
-    lookbackLedger(tx, input.playerId, input.now),
+    lookbackLedger(tx, input.playerId, input.now, balance.recoveryLookbackHours),
   ]);
   const check = {
+    balance,
     defeats: [...ledger.defeats, { loot: input.lootLost, fleetLost: input.fleetLost }],
     raids: ledger.raids,
     production,
   };
   const hours = netRecoveryLossHours(check);
+  // Colony damage retains the existing heavy-defeat rule. A gentler shield must
+  // never turn the same small defeat into a newly broken beginner colony.
+  const faultSince = input.now.getTime() - STANDARD_PVP_BALANCE.recoveryLookbackHours * 3_600_000;
+  const earned = earnsRecoveryShield({
+    defeats: [...ledger.defeats.filter(entry => entry.at > faultSince), { loot: input.lootLost, fleetLost: input.fleetLost }],
+    raids: ledger.raids.filter(entry => entry.at > faultSince),
+    production,
+  });
   if (!earnsRecoveryShield(check)) {
-    return { until: null, hours, earned: false };
+    return { until: null, hours, earned };
   }
   const until = await forceRecoveryShield(tx, {
     playerId: input.playerId,
     planetId: input.planetId,
     now: input.now,
+    balance,
   });
-  return { until, hours, earned: true };
+  return { until, hours, earned };
 }
 
 /**
- * THE WINDOW, WITHOUT THE LOSS TEST. The Death Star's own door.
- *
- * A strike halves a world's stores, takes a Core level and everything that stood
- * on it, and burns the queue behind it — the loudest thing one commander can do to
- * another, and it carries no `loot` for a share to be measured against. The owner
- * ruled it grants the same recovery outright, so the threshold is skipped rather
- * than approximated from destroyed value.
- *
- * THE ONE REFUSAL THAT STILL APPLIES is the one that is not about the size of
- * the blow: a commander with a hostile fleet of their own in the air does not
- * collect a shield. The server's own commanders collect it like anybody else
- * since 2026-09-19 (owner: they are people now), so no one bot can be farmed.
+ * Grant the selected duration; `grantRecoveryShield` owns the loss test.
+ * Outbound hostile missions still refuse the grant. Existing windows only extend,
+ * and the struck world's production boost follows the resulting stored deadline.
  */
 export async function forceRecoveryShield(
   tx: Tx,
   input: {
     playerId: string;
+    balance?: PvpBalance;
     /**
-     * THE STRUCK WORLD. Owner instruction, 2026-09-16: it produces double while the
-     * shield stands. Its row is already held by the settlement that got here
+     * THE STRUCK WORLD receives the recovery production bonus while the shield
+     * stands. Its row is already held by the settlement that got here
      * (`loadLocked`), and its economy has been advanced to `now`, so the boost
      * starts exactly at the battle and nothing before it is paid twice.
      */
@@ -517,6 +523,7 @@ export async function forceRecoveryShield(
 ): Promise<Date | null> {
   if (!recoveryShieldEnabled()) return null;
   if (await hasOutboundPvpStrike(tx, input.playerId)) return null;
+  const balance = input.balance ?? await commanderPvpBalance(tx, input.playerId);
 
   const [row] = await tx
     .select({ until: players.recoveryShieldUntil })
@@ -530,9 +537,10 @@ export async function forceRecoveryShield(
   const until = new Date(extendRecoveryShield(
     row.until?.getTime() ?? null,
     input.now.getTime(),
+    balance,
   ));
   /*
-    THE STRUCK WORLD WORKS DOUBLE UNTIL THE SHIELD'S END — the end the shield
+    THE STRUCK WORLD'S BONUS LASTS UNTIL THE SHIELD'S END — the end the shield
     actually has, which is the existing one when that already reaches further. Only
     ever moved forward: a second defeat on this world extends its boost, and a
     defeat elsewhere leaves this world's boost at the window its own defeat bought.
@@ -666,6 +674,9 @@ export async function assertAttackProtections(
   if (input.defenderPlayerId === null) return;
 
   const ids = [...new Set([input.attackerPlayerId, input.defenderPlayerId])];
+  const onVacation = await tx.select({ id: players.id }).from(players)
+    .where(and(inArray(players.id, ids), gt(players.vacationUntil, input.now)));
+  if (onVacation.length) throw new GameError(onVacation.some(p => p.id === input.attackerPlayerId) ? 'VACATION_ACTIVE' : 'TARGET_VACATION', 'Vacation mode blocks this launch.', 409);
   const protections = await protectionsOf(tx, ids, input.now);
   const protectionOf = (id: string): AttackProtection | null => protections.get(id) ?? null;
 

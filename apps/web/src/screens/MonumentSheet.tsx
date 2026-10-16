@@ -1,12 +1,18 @@
+import { useReadReportSignals } from '../session/useReadReportSignals.js';
+import { MonumentBattleRules } from './MonumentBattleRules.js';
 import { MonumentRoutePreview } from './MonumentRoutePreview.js';
-import { MOBILE_HULLS, MONUMENT_BALANCE, MONUMENT_PROBE_LOSS_CHANCE, PROBE, combatValue, fleetCount, fleetEntries, hangarLoad, type Fleet, type HullId } from '@astera/rules';
+import { HonorSoloNotice } from '../ui/HonorSoloNotice.js';
+import { RadiationBombControl } from './RadiationBombControls.js';
+import { TargetRadiationInstrument } from '../ui/TargetRadiationInstrument.js';
+import { techOf } from '../lib/navigation.js';
+import { MOBILE_HULLS, MONUMENT_BALANCE, MONUMENT_PROBE_LOSS_CHANCE, PROBE, combatValue, fleetCount, fleetEntries, hangarLoad, partitionCombatFleet, type Fleet, type HullId } from '@astera/rules';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createIdempotencyKey, type MonumentSendInput } from '../api/client.js';
 import { useApi } from '../api/context.js';
 import { keys, useMonumentActions, useMonuments, useNotifications } from '../api/queries.js';
-import type { MonumentWave, PlanetView } from '../api/schemas.js';
+import type { MonumentWave, PlanetView, PublicMonument } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
 import { hullName, monumentHonoree, monumentName } from '../i18n/names.js';
 import { activeMonumentInbound } from '../lib/notifications.js';
@@ -20,6 +26,19 @@ import { Sheet } from '../v2/kit/Sheet.js';
 import { Button, Plate } from '../v2/kit/Surface.js';
 import { Toggle } from '../v2/kit/Toggle.js';
 import { GameActions, useSeasonLocked } from '../session/seasonLock.js';
+
+type ArrivalOutcome = 'JOIN' | 'FIGHT' | 'GARRISON' | 'CAPTURE';
+
+/**
+ * What a fleet in flight meets, judged from the public state now. Arrival takes the
+ * monument as it is then, whatever the launch purpose was (owner, 2026-10-15).
+ */
+function arrivalOutcome(target: PublicMonument, friendly: boolean, arriveAt: Date | null): ArrivalOutcome {
+  if (friendly) return 'JOIN';
+  if (target.controller.kind !== 'NEUTRAL') return 'FIGHT';
+  if (target.emptySince === null) return 'GARRISON';
+  return target.respawnAt !== null && arriveAt !== null && target.respawnAt <= arriveAt ? 'GARRISON' : 'CAPTURE';
+}
 
 /** Keep the same confirmation identity after a lost response; a changed body gets a new one. */
 function useConfirmationKey(signature: string): string {
@@ -41,6 +60,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
   const notifications = useNotifications();
   const now = useNow();
   const [fleet, setFleet] = useState<Fleet>({});
+  const available = origin.fleetCombatReady ?? partitionCombatFleet(origin.fleet, origin.fleetDamage).eligible;
   const [shield, setShield] = useState(false);
   const [radiation, setRadiation] = useState(false);
   const [probeConfirmation, setProbeConfirmation] = useState(0);
@@ -74,6 +94,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
   const incoming = (notifications.data?.notifications ?? []).some((notice) => activeMonumentInbound(notice, monumentId, now));
   const probes = view.data?.probes.filter((row) => row.monumentId === monumentId) ?? [];
   const report = view.data?.probeReports.find((row) => row.monumentId === monumentId);
+  useReadReportSignals(!view.isError && target !== undefined && report !== undefined, report ? [report.id] : []);
   const probeRefusal = !target ? t('monument.missing') : actions.probe.isPending ? t('monument.probing')
     : origin.planet.alloy < PROBE.alloy || origin.planet.crystal < PROBE.crystal ? t('itemSheet.short') : null;
   const controller = target?.controller.kind === 'PLAYER' ? target.controller.name
@@ -87,6 +108,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
       {actions.send.error && <p role="alert" className="mt-1 text-caption text-v2-warn">{describeError(actions.send.error)}</p>}
     </div></GameActions>}>
     <GameActions><div className="flex min-w-0 flex-col gap-3">
+      <HonorSoloNotice />
       {view.isPending && <p className="text-caption text-v2-ink-2">{t('monument.loading')}</p>}
       {view.error && <p role="alert" className="text-caption text-v2-warn">{describeError(view.error)}</p>}
       {target && <Plate className="p-3">
@@ -106,24 +128,29 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
           {t('monument.honouredNote', { name: monumentHonoree(target.ordinal), rank: target.ordinal })}</p>}
         {onClanTarget && !friendly && <Button size="sm" className="mt-2" onClick={() => { onClanTarget(monumentId); }}>{t('monument.clanTarget')}</Button>}
       </Plate>}
+      {target && <TargetRadiationInstrument target={{ kind: 'MONUMENT', id: target.id }} tech={techOf(origin)} />}
+      {target && !friendly && origin.radiationBombsAvailable && <RadiationBombControl origin={origin}
+        target={{ kind: 'MONUMENT', id: target.id }} targetName={monumentName(target.ordinal)}
+        position={target.position} motion={target.motion} disabledReason={silentSpace ? t('faults.launchBlock.SILENT_SPACE') : null} />}
       {incoming && <p role="alert" className="text-caption text-v2-hostile">{t('monument.incoming')}</p>}
       <p className="text-micro text-v2-ink-2">{t('monument.fog')}</p>
       {waves.length > 0 && <section className="flex flex-col gap-2">
         <h3 className="text-caption font-semibold text-v2-ink">{t('monument.yourWaves')}</h3>
-        {waves.map((wave) => <MonumentWaveCard key={wave.id} wave={wave} />)}
+        {waves.map((wave) => <MonumentWaveCard key={wave.id} wave={wave}
+          arrival={target && wave.status === 'OUTBOUND' ? arrivalOutcome(target, friendly, wave.arriveAt) : null} />)}
       </section>}
       <section className="flex flex-col gap-2">
         <h3 className="text-caption font-semibold text-v2-ink">{t('monument.launch', { world: origin.planet.name })} · {t(friendly ? 'monument.reinforce' : 'monument.attack')}</h3>
         {target?.difficulty !== undefined && target.difficulty !== 'LEGACY' && <p className={`text-micro leading-snug ${tierBlocked ? 'text-v2-warn' : 'text-v2-ink-2'}`}>
           {tierBlocked ? t('monument.tierBlocked', { tier: target.sendAccess?.playerTier })
             : t('monument.initialFleetRule')}</p>}
-        {MOBILE_HULLS.filter((hull) => (origin.fleet[hull] ?? 0) > 0).map((hull) => <div key={hull} className="flex min-w-0 items-center gap-2 border-b border-v2-line py-2">
+        {MOBILE_HULLS.filter((hull) => (available[hull] ?? 0) > 0).map((hull) => <div key={hull} className="flex min-w-0 items-center gap-2 border-b border-v2-line py-2">
           <img src={HULL_ART[hull] ?? undefined} alt="" className="size-8 shrink-0 object-contain" />
           <div className="min-w-0 flex-1"><p className="truncate text-caption font-semibold text-v2-ink">{hullName(hull)}</p>
-            <p className="text-micro text-v2-ink-3">{t('launch.atHome', { count: origin.fleet[hull] ?? 0 })}</p></div>
+            <p className="text-micro text-v2-ink-3">{t('launch.atHome', { count: available[hull] ?? 0 })}</p></div>
           <fieldset disabled={tierBlocked} className="min-w-0 border-0 p-0 disabled:opacity-50">
             <QuantityStepper key={hull} look="v2"
-              min={0} max={origin.fleet[hull] ?? 0} value={fleet[hull] ?? 0} onChange={(count) => { change(hull, count); }}
+              min={0} max={available[hull] ?? 0} value={fleet[hull] ?? 0} onChange={(count) => { change(hull, count); }}
               valueLabel={`${hullName(hull)} · ${t('launch.quantity', { name: hullName(hull) })}`}
               decreaseLabel={t('launch.fewer', { name: hullName(hull) })} increaseLabel={t('launch.more', { name: hullName(hull) })}
               maxLabel={t('launch.max', { name: hullName(hull) })} maxText={t('launch.maxShort')} />
@@ -140,11 +167,24 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
           <p className="text-caption text-v2-ink">{t('monument.arrival', { time: countdown(quote.data.arriveAt.getTime() - now) })}</p>
           <p className="text-micro text-v2-ink-2">{t('monument.bays', { used: quote.data.bays.used, total: quote.data.bays.total })}</p>
           {friendly && <p className="text-micro text-v2-ink-2">{t('monument.room', { after: full(quote.data.room.after), total: full(quote.data.room.total) })}</p>}
+          {friendly && <p className="text-micro leading-snug text-v2-ink-3">{t('monument.reinforceRule')}</p>}
           {friendly && quote.data.holdForecast && <p className="text-micro text-v2-deut">{t('monument.holdForecast', {
             rate: decimal(quote.data.holdForecast.productionPerMinute),
             time: quote.data.holdForecast.nextLossAt ? countdown(quote.data.holdForecast.nextLossAt.getTime() - now) : t('monument.noLoss'),
           })}</p>}
-          {!friendly && <p className="text-micro leading-snug text-v2-ink-2">{t('monument.attackOutcome')}</p>}
+          {!friendly && <><p className="text-micro leading-snug text-v2-ink-2">{t('monument.attackOutcome')}</p><MonumentBattleRules /></>}
+          {quote.data.radiationProtection && <>
+            <p className="font-v2-mono text-micro text-v2-warn">{t('monument.dispatchProtection', {
+              level: quote.data.radiationProtection.level, rate: decimal(quote.data.radiationProtection.hpPerMinute, 2),
+            })}</p>
+            <p className="text-micro leading-snug text-v2-ink-3">{t('monument.shieldingSnapshot')}</p>
+            {quote.data.radiationProtection.nextLossAt && <p className="text-micro text-v2-warn">{t('monument.radiationLossForecast', {
+              time: countdown(quote.data.radiationProtection.nextLossAt.getTime() - now),
+            })}</p>}
+            {quote.data.radiationProtection.cargoLossAt && <p className="text-micro text-v2-warn">{t('monument.radiationCargoForecast', {
+              time: countdown(quote.data.radiationProtection.cargoLossAt.getTime() - now),
+            })}</p>}
+          </>}
           <p className="text-caption text-v2-warn">{t('monument.dose', { dose: decimal(quote.data.outboundForecast.doseHp) })}</p>
           {quote.data.outboundForecast.health.map((health) => <p key={health.hull} className="text-micro text-v2-ink-2">{t('monument.health', { name: hullName(health.hull), remaining: decimal(health.remainingHp), max: decimal(health.maxHp) })}</p>)}
           {quote.data.outboundForecast.destroyed > 0 && <><p className="text-caption text-v2-hostile">{t('monument.losses', { count: quote.data.outboundForecast.destroyed })}</p>
@@ -170,7 +210,7 @@ export function MonumentSheet({ monumentId, origin, playerId, clanId, onClose, o
 }
 
 /** Counts select exact physical cohorts, including their proportional load and carried wounds. */
-export function MonumentWaveCard({ wave }: { wave: MonumentWave }) {
+export function MonumentWaveCard({ wave, arrival = null }: { wave: MonumentWave; arrival?: ArrivalOutcome | null }) {
   const { t } = useTranslation();
   const api = useApi();
   const locked = useSeasonLocked();
@@ -191,11 +231,17 @@ export function MonumentWaveCard({ wave }: { wave: MonumentWave }) {
   return <section className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3" data-testid={`monument-wave-${wave.id}`}>
     <div className="flex items-center justify-between gap-2"><span className="text-caption font-semibold text-v2-self">{t(`monument.status.${wave.status}`)}</span>
       {wave.arriveAt && <span className="font-v2-mono text-micro text-v2-ink-2">{countdown(wave.arriveAt.getTime() - now)}</span>}</div>
+    {arrival && <p className={`text-micro leading-snug ${arrival === 'JOIN' ? 'text-v2-self' : arrival === 'CAPTURE' ? 'text-v2-ink' : 'text-v2-hostile'}`}>
+      {t(`monument.arrivalOutcome.${arrival}`)}</p>}
     <p className="text-caption text-v2-deut">{t('monument.cargo', { amount: decimal(wave.deuterium), capacity: decimal(wave.lots.reduce((sum, lot) => sum + lot.cargoCapacity, 0)) })}</p>
     <p className="text-micro text-v2-ink-2">{t('monument.firepower', { power: full(combatValue(wave.fleet)) })}</p>
     {wave.status === 'RETURNING' && wave.returnReason && <p className="text-micro text-v2-warn">{t(`monument.returnReason.${wave.returnReason}`)}</p>}
     {wave.status === 'HOLD' && <><p className="text-micro text-v2-deut">{t('monument.ownRate', { rate: decimal(wave.productionPerMinute) })}</p>
+      {wave.radiationHpPerMinute !== undefined && <p className="font-v2-mono text-micro text-v2-warn">{t('monument.protectedRate', {
+        level: wave.tech.RADIATION_SHIELDING ?? 0, rate: decimal(wave.radiationHpPerMinute, 2),
+      })}</p>}
       {wave.fillsAt && <p className="text-micro text-v2-ink-2">{t('monument.fills', { time: countdown(wave.fillsAt.getTime() - now) })}</p>}
+      {wave.cargoLossAt && <p className="text-micro text-v2-hostile">{t('monument.cargoLossAt', { time: countdown(wave.cargoLossAt.getTime() - now) })}</p>}
       {wave.nextLossAt && <p className="text-micro text-v2-hostile">{t('monument.lossAt', { time: countdown(wave.nextLossAt.getTime() - now) })}</p>}</>}
     {wave.lots.map((lot) => <div key={lot.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-v2-line pt-2">
       <div className="min-w-0"><p className="text-caption text-v2-ink">{hullName(lot.hull)} × {full(lot.count)}</p>

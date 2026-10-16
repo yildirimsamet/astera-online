@@ -83,7 +83,7 @@ export const trade = {
   /* ── the commitment ─────────────────────────────────────────── */
   send: "Send convoy",
   sending: "Dispatching",
-  warning: "A launched convoy cannot be recalled. It is away for {{duration}}.",
+  warning: "Recall before reaching the merchant to bring your offer home without trading. Fuel is not refunded. Planned trip: {{duration}}.",
   fleetsave: "While it is out there it cannot be raided — but neither can it defend this world.",
   launched: "Convoy away · {{duration}}",
 

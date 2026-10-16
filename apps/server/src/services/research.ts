@@ -13,6 +13,7 @@ import {
   players,
   researchOrders,
   scheduledEvents,
+  seasons,
 } from '../db/schema.js';
 import { schedule } from '../worker/queue.js';
 import { loadPlanetViewData, buildPlanetResult, type PlanetView } from './planetView.js';
@@ -21,12 +22,14 @@ import {
   GameError,
   assertWorldOperational,
   loadLocked,
+  lockSeason,
   recomputePlayerWealth,
   saveResources,
 } from './planet.js';
 import { activeResearchOrders, projectedResearchLevels } from './researchQueue.js';
 import { researchCoreLevel, researchView } from './researchState.js';
-import { safeHomePlanet } from './ownership.js';
+import { lockWorlds, safeHomePlanet } from './ownership.js';
+import { settlePlanetRadiationAt } from './planetRadiation.js';
 
 export interface CompleteResearchResult {
   projectId: ResearchProjectId;
@@ -34,6 +37,9 @@ export interface CompleteResearchResult {
 }
 
 async function lockResearchQueue(tx: Tx, playerId: string): Promise<void> {
+  const [identity] = await tx.select({ seasonId: players.seasonId }).from(players).where(eq(players.id, playerId));
+  if (!identity) throw new GameError('PLAYER_NOT_FOUND', 'No such commander', 404);
+  await lockSeason(tx, identity.seasonId, false);
   // Research writers serialize independently of planet-first settlements. An
   // exclusive player row lock blocks report FK checks and wealth updates while
   // research waits for their world, forming a deadlock. KEY SHARE still fences
@@ -175,7 +181,7 @@ export async function completeResearch(
       payload: { expectedReadyAt: readyAt.toISOString() },
       resolveAt: readyAt,
     });
-    await recomputePlayerWealth(tx, planet.playerId);
+    await recomputePlayerWealth(tx, planet.playerId, planet.now);
     await markProgress(tx, planet.playerId, planet.now); // D212
     return { projectId, planet: await loadPlanetViewData(tx, planetId, clock) };
   }).then(buildPlanetResult);
@@ -249,6 +255,17 @@ export async function applyResearchCompletion(
   if (candidate.readyAt.toISOString() !== expectedReadyAt) return null;
 
   await lockResearchQueue(tx, candidate.playerId);
+  if (candidate.projectId === 'SHIP_ARMOR' || candidate.projectId === 'RADIATION_SHIELDING') {
+    const [parent] = await tx.select({ seasonId: players.seasonId, epoch: seasons.radiationBombStartsAt }).from(players)
+      .innerJoin(seasons, eq(seasons.id, players.seasonId)).where(eq(players.id, candidate.playerId));
+    if (parent?.epoch) {
+      const owned = await tx.select({ id: planets.id }).from(planets).where(eq(planets.controllerPlayerId, candidate.playerId));
+      if (owned.length > 0) await lockWorlds(tx, owned.map(world => world.id), { requireLive: false });
+      for (const world of owned.toSorted((a, b) => a.id.localeCompare(b.id))) {
+        await settlePlanetRadiationAt(tx, world.id, candidate.readyAt, _clock.now());
+      }
+    }
+  }
   const [applied] = await tx
     .update(researchOrders)
     .set({ status: 'COMPLETED' })
@@ -283,7 +300,7 @@ export async function applyResearchCompletion(
       .set({ slot: order.slot - 1 })
       .where(and(eq(researchOrders.id, order.id), eq(researchOrders.status, 'BUILDING')));
   }
-  await recomputePlayerWealth(tx, applied.playerId);
+  await recomputePlayerWealth(tx, applied.playerId, _clock.now());
   return { playerId: applied.playerId };
 }
 
@@ -352,7 +369,7 @@ export async function abandonResearchOrder(
       clock.now(),
       queue[0]?.id !== order.id,
     );
-    await recomputePlayerWealth(tx, order.playerId);
+    await recomputePlayerWealth(tx, order.playerId, clock.now());
     return true;
   });
 }

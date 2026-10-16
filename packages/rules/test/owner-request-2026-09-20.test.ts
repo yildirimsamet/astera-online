@@ -55,8 +55,8 @@ describe('owner requests from 2026-09-20', () => {
       expect(gains[1]!).toBeGreaterThan(gains[0]!);
       expect(gains[2]!).toBeGreaterThan(gains[1]!);
     }
-    expect(alloyRate(14)).toBeGreaterThanOrEqual(2_400);
-    expect(alloyRate(15)).toBeGreaterThanOrEqual(2_750);
+    expect(alloyRate(14)).toBeGreaterThanOrEqual(2_400 * 0.8);
+    expect(alloyRate(15)).toBeGreaterThanOrEqual(2_750 * 0.8);
   });
 
   it('slows late upgrade-cost growth for every refinery', () => {

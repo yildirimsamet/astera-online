@@ -22,6 +22,7 @@ export interface ChatMessageView {
   replyTo: ReplyPreview | null;
   reactions: ReactionView[];
   previousSeasonRank?: PodiumPlace;
+  previousSeasonRanking?: 'HONOR' | 'DOMINION';
   supporter?: boolean;
   /**
    * THE AUTHOR SPEAKS WITH ADMIN AUTHORITY. Owner instruction.

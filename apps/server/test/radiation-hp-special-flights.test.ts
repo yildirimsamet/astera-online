@@ -8,6 +8,7 @@ import { resolvePirateArrival, resolvePirateReturn } from '../src/services/pirat
 import { abandonTradeRun, dockEndsAt, resolveTradeArrival, resolveTradeReturn, tradeLocation } from '../src/services/trade.js';
 import { abandonIntergalacticConvoyRun, intergalacticConvoyLocation, resolveIntergalacticConvoyArrival, resolveIntergalacticConvoyReturn } from '../src/services/intergalacticConvoyRaid.js';
 import { dockLotsOf } from '../src/services/shipDamage.js';
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { lockSeason } from '../src/services/planet.js';
 import { pendingThreads } from '../src/services/session.js';
 import { loadTrafficSnapshot, projectGalaxyTraffic, type SensorPost } from '../src/services/traffic.js';
@@ -187,7 +188,7 @@ describe('fixed HP radiation on special flight families', () => {
     expect(await f.db.select().from(units).where(eq(units.location, tradeLocation(run.id)))).toEqual([]);
   });
 
-  it('keeps a trade wound through dock time and a surviving return to the Repair Station', async () => {
+  it('keeps a trade wound through the merchant stay and a surviving return to its home hangar', async () => {
     const run = await trade();
     const doseMinutes = (dockEndsAt(run.arriveAt).getTime() - run.departAt.getTime()) / 60_000;
     await cloud(HULLS.COURIER.hp * 0.3000125 / doseMinutes, { activeUntil: dockEndsAt(run.arriveAt) });
@@ -197,8 +198,9 @@ describe('fixed HP radiation on special flight families', () => {
     if (!returning?.homeAt) throw new Error('missing trade return');
     f.clock.set(returning.homeAt);
     await apply((tx) => resolveTradeReturn(tx, run.id, f.clock));
-    const [lot] = await dockLotsOf(f.db, f.planetIds[0]!);
+    const [lot] = (await readHomeHealth(f.db, f.planetIds[0]!)).damage;
     expect(lot?.damageBp).toBe(3000);
+    expect(await dockLotsOf(f.db, f.planetIds[0]!)).toEqual([]);
     expect(lot?.remainderBp).toBeCloseTo(0.125, 7);
     expect(await apply((tx) => resolveTradeReturn(tx, run.id, f.clock))).toBeNull();
   });
@@ -351,8 +353,9 @@ describe('fixed HP radiation on special flight families', () => {
     await cloud(HULLS.COURIER.hp * 0.6);
     f.clock.set(new Date(run.departAt.getTime() + 30_000));
     await abandonTradeRun(f.db, run.id, 'outbound', f.clock);
-    const [lot] = await dockLotsOf(f.db, run.planetId);
+    const [lot] = (await readHomeHealth(f.db, run.planetId)).damage;
     expect(lot?.damageBp).toBe(3000);
+    expect(await dockLotsOf(f.db, run.planetId)).toEqual([]);
     expect(lot?.count).toBe(2);
   });
 

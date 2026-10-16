@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { combatValue, computeLoot } from '@astera/rules';
+import { combatValue, computeLoot, pvpBalanceForTier } from '@astera/rules';
 import { probeAxis, yardstickOf } from '../src/lib/probeScale.js';
 import { planetView } from './fixtures.js';
 
@@ -82,4 +82,15 @@ describe('your own world, measured as a probe measures', () => {
   it('counts every craft at home, the unarmed ones too', () => {
     expect(yardstickOf(world).ships).toBe(17);
   });
+});
+
+
+it('uses the commander profile for the own-world comparison, including a small colony', () => {
+  const beginner = planetView({ pvpBalance: pvpBalanceForTier(3) }, {
+    alloy: 10_000, crystal: 0, deuterium: 0,
+    bufferAlloy: 2_000, bufferCrystal: 0, bufferDeuterium: 0,
+    vaultCapacity: { alloy: 0, crystal: 0, deuterium: 0 },
+  });
+  expect(yardstickOf(beginner).stock).toBe(2_800);
+  expect(yardstickOf({ ...beginner, pvpBalance: pvpBalanceForTier(4) }).stock).toBe(6_600);
 });

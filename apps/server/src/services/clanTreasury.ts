@@ -406,7 +406,7 @@ export async function donateToClanTreasury(
     deuterium: input.resources.deuterium,
     createdAt: now,
   });
-  await recomputePlayerWealth(tx, input.actor.playerId);
+  await recomputePlayerWealth(tx, input.actor.playerId, input.clock.now());
   await publishClanTreasury(tx, clan.id);
   return resultFor(clan.level, after);
 }

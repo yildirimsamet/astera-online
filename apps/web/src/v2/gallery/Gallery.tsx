@@ -982,9 +982,12 @@ function Views({ view }: { view: string }) {
     // A colony read by a probe: the two readings the hit is decided by (owner, 2026-10-01).
     const colony: GalaxyPlanet = { ...rival, kind: 'COLONY' };
     const read = { ...launchIntel.probeReports[0]!, targetPlanetId: colony.id, loyalty: 38, interceptors: 2 };
-    return <StrikeSheet target={colony} report={read} onConfirm={noop} onClose={noop} />;
+    // Two weapons on the pad that fires, so the origin row reads a real stock.
+    const origin = { ...launchWorld, deathStars: [0, 1].map((n) => ({ id: `ds-${String(n)}`, status: 'READY' as const, readyAt: null, remainingSeconds: 0 })) };
+    return <StrikeSheet target={colony} origin={origin} report={read} onConfirm={noop} onClose={noop} />;
   }
-  if (view === 'wave') {
+  if (view === 'wave' || view === 'wave-critical') {
+    const critical = view === 'wave-critical';
     const war = clanWarSchema.parse({
       available: true, level: 2, maxLevel: false,
       treasury: { alloy: 1200, crystal: 800, deuterium: 90 },
@@ -993,17 +996,18 @@ function Views({ view }: { view: string }) {
       hangar: { used: 184, reserved: 40, total: 360 },
       serverNow: new Date(NOW).toISOString(),
       operation: {
-        id: 'op', status: 'ASSEMBLING', closeReason: null, leaderPlayerId: 'leader',
+        id: 'op', status: 'ASSEMBLING', closeReason: null, leaderPlayerId: critical ? 'p1' : 'leader',
         target: { playerId: 'enemy', username: 'VEX', planetId: 'target', planetName: 'Kestrel', position: { x: 1, y: 2, z: 3 } },
         staging: { planetId: 'home', name: 'Mira', position: { x: 0, y: 0, z: 0 } },
         createdAt: new Date(NOW - 60 * MIN).toISOString(), expiresAt: new Date(NOW + 23 * 60 * MIN).toISOString(),
         startedAt: null, resolvedAt: null, completedAt: null,
         contributions: [{ id: 'w1', playerId: 'p1', username: 'Orin', originPlanetId: 'o1', originPlanetName: 'Orin', sourceKind: 'PHYSICAL',
-          status: 'STAGED', fleet: { DART: 22 }, bulk: 22, fuelPaid: 40, sentAt: new Date(NOW - 30 * MIN).toISOString(), arrivesAt: null, mine: false, canRecall: false }],
+          status: 'STAGED', fleet: { DART: 22 }, bulk: 22, fuelPaid: 40, sentAt: new Date(NOW - 30 * MIN).toISOString(), arrivesAt: null, mine: critical, canRecall: critical,
+          damage: critical ? [{ hull: 'DART', count: 2, damageBp: 9500 }, { hull: 'DART', count: 4, damageBp: 4000 }] : [] }],
         pool: { combatHulls: 22, waves: 1, participants: 1 },
       },
     });
-    return <div className="mx-auto max-w-[420px] p-3"><ClanWarPanel war={war} role="MEMBER" mature worlds={[launchWorld]} /></div>;
+    return <div className="mx-auto max-w-[420px] p-3"><ClanWarPanel war={war} role={critical ? "LEADER" : "MEMBER"} mature worlds={[launchWorld]} selfPlayerId={critical ? "p1" : undefined} /></div>;
   }
   if (view === 'trade') {
     return (

@@ -1,3 +1,5 @@
+import { honorBenefits } from './honorBenefits.js';
+import { vacation } from './vacation.js';
 import { silentSpace } from './silentSpace.js';
 import { brand } from './brand.js';
 import { monument } from './monument.js';
@@ -40,9 +42,11 @@ import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold
  * between English and Turkish — the other must not move with it.
  */
 export const en = {
+  honorBenefits,
   brand,
   monument,
   silentSpace,
+  vacation,
   academy,
   landing,
   servers,

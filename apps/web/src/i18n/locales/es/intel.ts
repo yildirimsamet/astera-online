@@ -347,7 +347,7 @@ export const reports = {
     formulaSupport: 'Los naves de apoyo permanecen protegidos mientras al menos una unidad de combate permanece de su lado.',
     resultHeading: 'Cómo se decide el resultado',
     resultDecisive:
-      'DECISIVO · todas las unidades defensoras han desaparecido y el escudo está en cero · {{decisiveLoot}}% del material expuesto se puede tomar antes de los límites de carga.',
+      'DECISIVO · todas las unidades defensoras han desaparecido y el escudo está en cero · {{decisiveLoot}}% del material expuesto se puede tomar antes de los límites de carga. Producción sin recoger: {{decisiveBuffer}}%.',
     /**
      * THE SAME RULE WITHOUT THE HALF THAT CANNOT APPLY. A shield is a structure on
      * a world; a legend that names one out at a rendezvous is describing a
@@ -356,7 +356,7 @@ export const reports = {
     resultDecisivePirate:
       'DECISIVO · todos los naves de la tripulación se han ido · {{decisiveLoot}}% del tesoro se puede tomar antes de los límites de carga, y solo aquí se puede remolcar un casco a casa.',
     resultPartial:
-      'PARCIAL · al menos {{threshold}}% del valor de la unidad defensora se destruye · {{partialLoot}}% del stock expuesto se puede tomar antes de los límites de carga.',
+      'PARCIAL · al menos {{threshold}}% del valor de la unidad defensora se destruye · {{partialLoot}}% del stock expuesto se puede tomar antes de los límites de carga. Producción sin recoger: {{partialBuffer}}%.',
     resultRepelled:
       'REPELIDO · menos del {{threshold}}% del valor de la unidad defensora es destruido · no se puede tomar nada.',
     round: 'Ronda {{round}}',
@@ -389,13 +389,16 @@ export const reports = {
   strategicEmpEffect: 'La Égida cayó a cero y no se regenera durante 1 hora. Las defensas terrestres no disparan ni reciben daño en ese tiempo.',
   strategicLoyalty: "Lealtad de la colonia",
   strategicLoyaltyChange: "{{before}} % → {{after}} %",
-  strategicLoyaltyNext: "Con {{loss}} % o menos, el siguiente impacto se lleva la colonia.",
+  strategicLoyaltyNext_one: "El siguiente impacto hace caer la colonia.",
+  strategicLoyaltyNext_other: "Faltan {{count}} impactos seguidos para que caiga la colonia.",
   strategicSecededAttacker: "La colonia se separó y quedó neutral: ahora no es de nadie.",
   strategicSecededDefender: "Tu colonia se separó y quedó neutral.",
   strategicSecededShort: "colonia separada",
   strategicCaptured: 'CAPTURED',
   strategicIneffective: 'INEFFECTIVE',
   strategicIntercepted: 'INTERCEPTED',
+  radiationYouAttacked: "Tu bomba de radiación apuntó a ",
+  radiationAttackedBy: "Bomba de radiación enviada por ",
   strategicYouAttacked: 'Tu Estrella de la Muerte apuntada',
   strategicAttackedBy: 'Estrella de la Muerte enviada por',
   strategicDestroyedInFlight: 'Estrella de la Muerte destruida en vuelo',
@@ -664,8 +667,8 @@ export const dossier = {
   interceptorEmptyNote: 'Nada aquí detiene un arma estratégica. Es posible que hayan cargado uno desde entonces.',
   loyaltyLabel: "Lealtad de la colonia",
   loyaltyValue: "{{value}} %",
-  loyaltyNote_one: "Una Estrella de la Muerte quita {{loss}} de lealtad y una colonia con {{loss}} o menos se separa: un impacto bastaría.",
-  loyaltyNote_other: "Una Estrella de la Muerte quita {{loss}} de lealtad y una colonia con {{loss}} o menos se separa: harían falta {{count}} impactos. Se recupera mientras nada esté averiado.",
+  loyaltyNote_one: "Una Estrella de la Muerte quita {{loss}} de lealtad por impacto. Un impacto haría caer esta colonia.",
+  loyaltyNote_other: "Una Estrella de la Muerte quita {{loss}} de lealtad por impacto. Harían falta {{count}} impactos seguidos para que cayera esta colonia.",
   doctrinesLabel: 'Doctrina de combate',
   doctrinesNone: 'Ninguno investigado',
   doctrinesNote: 'Sus cascos luchan mejor de lo que dice la tabla. Este es el multiplicador que encontrarías.',

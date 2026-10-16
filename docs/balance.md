@@ -20,14 +20,25 @@ and this profile win.
   100 bot seats and 130 neutral seats. Neutral addresses open in strata (`T1 76 / T2 38 / T3 16`)
   under the staged census (`T1 15 / T2 8 / T3 3` initially, then one free colony slot per census),
   with the T3 target share at `0.13`.
-- **Tempo:** player mobile hulls use `0.75×` their profile speed (including collectors), and every
+- **Tempo (owner 2026-10-13):** player mobile hulls use `0.60×` their profile speed (including collectors), and every
   cargo hold (`TRANSPORT`) flies `2.5×` that (`TRANSPORT_SPEED_MULT`, owner 2026-10-06; a mixed
-  wing still flies at its slowest warship, and the merchant kept its pace). Pirate fleets use
-  `0.70×`; the Prospector is `1237.5` units/minute — `2×` its September `618.75` (owner 2026-10-06,
-  down from the 2026-10-04 `2.5×`). Its rocks remain `262.5–562.5`, and its laden return is
-  `618.75` units/minute. Asteroid lifetime is unchanged.
-  Planet marker radii also grew uniformly `1.3×`: Core `1 / 11 / 22` anchors are approximately
-  `0.471 / 0.8775 / 1.498` world units; the geometric size ramp and development ratios are retained.
+  wing still flies at its slowest warship). Pirate and merchant anchors follow the same additional
+  `0.8×` slowdown, retaining their fleet-relative ratios. The Prospector is `990` catalogue
+  units/minute and its laden return `495`; rocks remain `262.5–562.5`. Probe speed is `2632.5`
+  (another `25%` reduction), Death Star speed `1500` (owner 2026-10-16: `+50%`), Radiation Bomb speed
+  `1300` (owner 2026-10-16: `+30%`), and Beacon speed bonus `20%` (`×1.2`).
+  All three producer rates fall another `20%` at every level (`producerOutput = 0.56`).
+  Store and Works capacities retain their resource amounts; the Works now hold `12.5` hours
+  of the reduced output. Work runs at `80%` of its previous rate (`×1.25` duration,
+  `buildTime = 1.21875`, capped work `585` min). Colony repair crews take `6.25–18.75` min.
+  Vault leaks also slow `20%`: the full-store drain clock is `60` hours, retaining
+  the `2×` income cap and one-store total budget. Pre-cutover leakage keeps the old rate.
+  Existing seasons adopt through the idle NPC cutover in
+  [the release runbook](deployment.md), preserving previously earned production.
+  Asteroid lifetime is unchanged.
+  Planet marker radii grew uniformly `1.3×`, then shrank `20%` (owner, 2026-10-16):
+  Core `1 / 11 / 22` anchors are approximately `0.377 / 0.702 / 1.199` world units;
+  the geometric size ramp and development ratios are retained.
 - **Fuel:** the fleet-wide value rate is `0.00495`, 10% below the former `0.0055` rate after the
   slowdown; the Collector's special fuel mass is `200` (card rate `20` deuterium, reduced
   from `90` by owner instruction 2026-10-07). Owner 2026-10-11: chosen pace now
@@ -489,7 +500,7 @@ timed-warning tables are temporarily the same; splitting them restores the narro
 many times it is requested inside its window. Without this a player defeats the entire fog layer by
 pulling to refresh. It is the easiest way to ship a broken information game.
 
-Probes: `65 alloy · 40 crystal · speed 3,510` (×0.75 at D153). Repeat launches to the same
+Probes: `65 alloy · 40 crystal · speed 2,632.5` (×0.75 again on 2026-10-13). Repeat launches to the same
 target are allowed every five seconds per commander, including while earlier probes are
 airborne. Probes do not consume ordinary flight bays; each launch pays the full price.
 
@@ -535,6 +546,8 @@ level adds 50% capacity and 60% upgrade cost. No deuterium cost. Existing fill r
 and historical investment are preserved by migration `0152_aegis_balance`; queued
 orders keep paid invoices and deadlines. [Task and rollout](aegis-balance-2026-10-12.md).
 
+**Radiation / Aegis, owner decision 2026-10-15 (local implementation):** each bomb lasts 30 minutes; L1/L2/L3 remain 9/12.5/18 HP/min per ship. Cap all sources at 50 HP/min, subtract the planet’s active effective Aegis level, clamp to zero, then apply the ship owner’s Radiation Shielding research. Aegis protects home/dock, stationed clan support and staged clan attack ships; it does not travel to monuments. At 0 HP it provides no protection. Recharge starts 15 minutes after depletion (a longer Death Star EMP takes precedence); protection returns at 1 HP. Radiation sources, their timers and smoke remain even when all damage is blocked. The workshop closes only while damage gets past Aegis. [Implementation plan](radiation-aegis-plan-2026-10-15.md).
+
 `INSTRUMENT_LEVEL_WORTH` is **2** (legacy reference; Aegis uses the exception above). At 1 the whole information layer is bought out by day two, which
 makes the fog uniform and therefore decorative. At 2 the four instruments cost about one L15 building
 step, while Telescope L1 still costs 165 alloy and the door stays open.
@@ -544,7 +557,7 @@ step, while Telescope L1 still costs 165 alloy and the door stays open.
 | Uplink | 1,125 | 375 | Gates the Telescope and the Radar. Nothing else gates anything |
 | Foundry | 3,400 | 1,190 | ×1.06 on everything the works produce |
 | Derrick | 3,740 | 1,360 | ×2 mining hold, ×1.5 mining speed |
-| Beacon | 5,100 | 1,700 | ×1.3 speed for every fleet that leaves |
+| Beacon | 5,100 | 1,700 | ×1.2 speed for supported fleet missions |
 
 Slots come from the Command Core at L1, L9, L15 and L18.
 
@@ -565,10 +578,10 @@ season        14 days · investment horizon 0.70 · acts at 4/14, 8/14, 12/14
 opening       START 870/78 · OPENING_BONUS 407/146 · PLANET_START 1,277/224
 strategic     settlement 2 Couriers + 3,400/1,700 · Death Star 50,000/35,000/3,000, 60 min
               interceptor charge 21,550/10,776/894, 30 min
-              Death Star gates Core 12 · Shipyard 5 · EMP 1 h · colony −20 loyalty
+              Death Star gates Core 13 · Shipyard 5 · EMP 1 h · colony −20 loyalty
               pad 1 weapon (Stockpile 2) · 2 charges (Grid 4)
 research      Isotope 1,530 C · Dense Fuel 2,380 C + 195 D · Gravitic 3,230 C + 455 D
-clan          5 seats · Core 7 · create 8,500 A + 5,100 C · adapt 12 h
+clan          5 seats · Core 7 · create 2,000 A + 1,000 C · adapt 12 h
               aid ×1.10, +1 aid-only bay · receiver limit 4 h A/C + 20% D cap / 24 h
               raid share 10% · purse 2 h A/C + 10% D cap · protected ceiling 49%
               personal bash 3 + clan bash 5 per target commander / 12 h
@@ -585,9 +598,9 @@ clan defence  ruleset 15+ · posture ESCAPE (default) | SUPPORT | HOLD per world
               supporters' lost ships added at face value (never × D)
 ```
 
-**The clan economy is bounded at both entry and receipt (D114).** Creation removes the
-equivalent of a meaningful Core-7 decision, with extra Crystal deliberately targeting the
-resource that accumulates late. Aid is valued per resource — cargo plus full hull build cost —
+**The clan economy is bounded at both entry and receipt (D114).** Creation costs a fixed
+2,000 Alloy and 1,000 Crystal (owner, 2026-10-16) to make forming a crew more accessible.
+Aid is valued per resource — cargo plus full hull build cost —
 so sending ships cannot tunnel around the receiver's limit. The four-hour receiver window is
 large enough to repair a mistake or seed a formation but too small to make five production
 accounts behave like one treasury.
@@ -1767,8 +1780,34 @@ yüzdesel HP hasarı karışımı kullanılmayacak.** Ayrıntılı gerekçe ve k
 Yüksek HP'nin radyasyona karşı avantajı korunmalı. Kalibrasyon, bütün gemileri aynı veya
 benzer sürede öldürmeye zorlanmamalı. Karma model, ilerideki yüzdelik etkilerle etkileşim,
 hata ayıklama ve bakım yükünü artırdığı için reddedildi. Koruma araştırması etkin sabit
-HP/dk hasarını azaltacak; nihai seviyeler, oranlar ve fiyatlar henüz kesinleşmedi.
+HP/dk hasarını azaltır; dört seviye ve aşağıdaki 9 / 12,5 HP/dk tabanı masterda uygulandı.
 
-[İlk incelemedeki](monument-radiation-research-calibration-2026-10-12.md) karma oranlar ve
-bunlardan türeyen süre/farm sonuçları arşivdir, uygulanacak denge değildir. Bu not mevcut
-2/5 HP/dk oranını, oyun kodunu veya aktif sezon verisini değiştirmez.
+Kullanıcının kesinleştirdiği referans: HARD anıtta Korsan, koruma 0/zırh 0 ile yaklaşık
+2 saat; koruma ve mevcut Gemi Zırhı maksimumken yaklaşık 6 saat. 1.508 / 1.885 HP esas
+alınır; saniyesi saniyesine eşitleme gerekmiyor. Bu bütün gemiler için ortak ömür tavanı değildir.
+
+Radyasyon seviyesi ve koruma araştırmasının seviyesi birbirinden ayrıdır. Ortak kaynak
+tablosunda **radyasyon 2 = temel 12,5 HP/dk** esas alınır; HARD anıtlar bu seviyeyi seçer.
+12,5 → 10,5 → 8,5 → 6,5 → 5,25 dizisi farklı radyasyon seviyeleri değil, aynı radyasyon
+2'nin koruma araştırması 0…4 altında vurduğu hasardır. Radyasyon 1 için 9 HP/dk kullanılır; radyasyon 3 henüz hiçbir yerde kullanılmaz ve bu çalışmada ona değer atanmaz.
+
+[Güncel hesap](monument-radiation-research-calibration-2026-10-12.md): HARD 12,5 → 5,25
+HP/dk bu hedefi yaklaşık 121 → 359 dakika ile karşılıyor. EASY 9 → 3,78 HP/dk, dört
+araştırma seviyesi ve Core 3 erişim/fiyatları masterda uygulandı. 3/8 D/dk üretimde bazı araştırmasız farm turları
+zararda kalır; 9/14 D/dk alternatifi ayrıca hesaplandı, fakat kaynak arzını %109,1 artırır
+ve onaylanmış değildir. Önceki karma hesaplar güncel araç/rapor/kanıttan kaldırıldı.
+Yeni sezon varsayılanı v18’dir. Eski canlı sezonlarda 2/5 HP/dk, ayrı boş-anıt geçişi yapılana kadar korunur. Üretim 3/8 olarak kaldı; deploy ve canlı aktivasyon yapılmadı.
+
+
+**Strategic production and battery, owner decision 2026-10-15:** new Death Stars and all radiation bomb levels require local Core 13 (tier 5), Shipyard 5. Existing stock/flights are retained. Anti-battery capacity is 2 without research, 4 with Interception Grid L1, 6 with L2; no third level. Each charge is still produced and paid for separately. Grid L1 cost/time is unchanged; the new L2 uses the existing 1.8 research ladder growth (profile cost and work calculations). Existing L1 commanders can purchase L2; no free charges or research promotion.
+
+
+## Tier 1–3 PvP protection — owner revision, 2026-10-16
+
+At resolution/observation, use the defending commander's highest controlled Core across
+all worlds. Tiers 1–3: decisive storage loot 25% above the Vault floor, Works loot 15%;
+partial 12.5% / 7.5%; recovery threshold 2 average net production hours over an 8h
+history grants a 12h shield. The struck world's existing +50% recovery output follows
+that duration. Tier 4+, NPC loot, cargo, salvage, raid-profit deduction and colony
+fault eligibility (4h net loss / 6h history) retain their existing rules. No economy
+simulation was requested; these are approved settings, not a calibrated season result.

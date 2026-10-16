@@ -25,6 +25,9 @@ import {
 import { publishStrategicSight } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { instrumentLevels, levelOf } from './intel.js';
+import { observeHonorOwner } from './honorReference.js';
+import { ownedHonorNavy } from './honorNavy.js';
+import { strategicHonorIntent, settleStrategicInterceptionHonor } from './honorStrategic.js';
 import { LEAD_TOLERANCE, inboundRadarLead, interceptBefore } from './radar.js';
 
 /**
@@ -47,11 +50,14 @@ import { LEAD_TOLERANCE, inboundRadarLead, interceptBefore } from './radar.js';
  */
 
 type Mission = typeof missions.$inferSelect;
+/** Geometry needs only a timed planet-to-planet weapon leg, including a radiation bomb. */
+export type InterceptionMission = Pick<Mission,
+  'id' | 'seasonId' | 'ownerPlayerId' | 'originPlanetId' | 'targetPlanetId' | 'departAt' | 'arriveAt'>;
 export type InterceptionTrigger = 'RADAR' | 'TELESCOPE';
 
 /** One inbound weapon's leg, and every circle along it that can engage it. */
 export interface InterceptionLeg {
-  mission: Mission;
+  mission: InterceptionMission;
   target: { id: string; controllerPlayerId: string; x: number; y: number; z: number };
   /** The leg exactly as the disc draws it — the geometry the zones are solved on. */
   drawn: { from: Vec3; to: Vec3 };
@@ -67,7 +73,8 @@ export interface InterceptionLeg {
  * world nobody holds: a caretaker world has no commander, no research and nothing
  * to fire.
  */
-export async function interceptionLeg(tx: Tx, mission: Mission): Promise<InterceptionLeg | null> {
+export async function interceptionLeg(tx: Tx, mission: InterceptionMission,
+  trajectory?: { from: Vec3; to: Vec3 }): Promise<InterceptionLeg | null> {
   const [target] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
   if (!target?.controllerPlayerId) return null;
 
@@ -124,14 +131,19 @@ export async function interceptionLeg(tx: Tx, mission: Mission): Promise<Interce
   return {
     mission,
     target: { ...targetPoint, id: target.id, controllerPlayerId: target.controllerPlayerId },
-    drawn: visualLeg(
+    drawn: trajectory ?? visualLeg(
       originPoint,
       targetPoint,
       surfaceStandoff(worldRadius(timedLeg.originCoreLevel)),
       orbitStandoff(worldRadius(timedLeg.targetCoreLevel)),
     ),
     totalMs: Math.max(1, mission.arriveAt.getTime() - mission.departAt.getTime()),
-    radarLead: reach > 0 ? inboundRadarLead(reach, timedLeg) : 0,
+    radarLead: trajectory && reach > 0
+      ? (() => {
+        const entry = sphereEntryFraction(trajectory.from, trajectory.to, targetPoint, reach);
+        return entry === null ? 0 : (1 - entry) * timedLeg.oneWayMinutes;
+      })()
+      : reach > 0 ? inboundRadarLead(reach, timedLeg) : 0,
     telescopes,
   };
 }
@@ -230,9 +242,11 @@ export async function fireInterception(
   chargeId: string,
   at: Date,
   trigger: InterceptionTrigger,
-  options: { claimMission: boolean },
+  options: { claimMission: boolean; observedAt?: Date },
 ): Promise<boolean> {
   const { mission, target } = leg;
+  const honor = await strategicHonorIntent(tx, mission.seasonId, mission.id);
+  const defenceNavy = honor ? await ownedHonorNavy(tx, target.controllerPlayerId, honor.config) : 0;
   const spent = await tx
     .update(strategicAssets)
     .set({ status: 'CONSUMED', missionId: mission.id })
@@ -242,6 +256,13 @@ export async function fireInterception(
     ))
     .returning({ id: strategicAssets.id });
   if (!spent[0]) return false;
+  if (honor) {
+    const catalogue = honor.config.strategicCatalogue;
+    if (!catalogue) throw new Error('Missing strategic Honor catalogue');
+    await settleStrategicInterceptionHonor(tx, { seasonId: mission.seasonId, commitmentId: mission.id,
+      sourceId: mission.id, defender: target.controllerPlayerId, at,
+      weaponValue: catalogue.DEATH_STAR, chargeValue: catalogue.INTERCEPTOR, defenderNavy: defenceNavy });
+  }
   if (options.claimMission) {
     const claimed = await tx
       .update(missions)
@@ -256,6 +277,9 @@ export async function fireInterception(
     .update(strategicAssets)
     .set({ status: 'CONSUMED' })
     .where(and(eq(strategicAssets.missionId, mission.id), eq(strategicAssets.type, 'DEATH_STAR')));
+  for (const owner of [mission.ownerPlayerId, target.controllerPlayerId].sort()) {
+    await observeHonorOwner(tx, owner, options.observedAt ?? at);
+  }
 
   /*
     FIRE IMMEDIATELY; LET THE FLIGHT PROVIDE THE REACTION WINDOW.
@@ -300,6 +324,12 @@ export async function fireInterception(
     resolveAt: impactAt,
   });
 
+  await publishInterceptionSight(tx, mission.seasonId, collision, [mission.ownerPlayerId, target.controllerPlayerId]);
+  return true;
+}
+
+/** The participants and effective Telescope witnesses see the interceptor leave; nobody else is told. */
+export async function publishInterceptionSight(tx: Tx, seasonId: string, collision: Vec3, participants: readonly string[]): Promise<void> {
   /*
     THE LAUNCH INSTANT IS NOT A GALAXY-WIDE FACT. D139.
 
@@ -318,11 +348,11 @@ export async function fireInterception(
     })
     .from(planets)
     .where(and(
-      eq(planets.seasonId, mission.seasonId),
+      eq(planets.seasonId, seasonId),
       isNotNull(planets.controllerPlayerId),
     ));
   const witnessLevels = await instrumentLevels(tx, witnessWorlds.map((world) => world.id));
-  const audience = new Set([mission.ownerPlayerId, target.controllerPlayerId]);
+  const audience = new Set(participants);
   for (const world of witnessWorlds) {
     const telescope = levelOf(witnessLevels, world.id, 'TELESCOPE');
     if (telescope <= 0 || !world.controllerPlayerId) continue;
@@ -330,7 +360,6 @@ export async function fireInterception(
     if (distance(sight.at, collision) <= sight.identify) audience.add(world.controllerPlayerId);
   }
   for (const playerId of audience) await publishStrategicSight(tx, playerId);
-  return true;
 }
 
 /**
@@ -355,7 +384,7 @@ export async function fireInterception(
  * The world is read as it stands at the arrival, which after an in-order catch-up
  * is the world as it stood at the arrival instant.
  */
-export async function interceptOwedShot(tx: Tx, mission: Mission): Promise<boolean> {
+export async function interceptOwedShot(tx: Tx, mission: Mission, observedAt: Date = mission.arriveAt): Promise<boolean> {
   const leg = await interceptionLeg(tx, mission);
   if (!leg) return false;
   const charges = await tx
@@ -378,5 +407,5 @@ export async function interceptOwedShot(tx: Tx, mission: Mission): Promise<boole
   if (!charge) return false;
   const shot = firstShotSince(leg, readySince(charge));
   if (!shot) return false;
-  return fireInterception(tx, leg, charge.id, shot.at, shot.trigger, { claimMission: false });
+  return fireInterception(tx, leg, charge.id, shot.at, shot.trigger, { claimMission: false, observedAt });
 }

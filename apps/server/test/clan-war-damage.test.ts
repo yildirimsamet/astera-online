@@ -1,7 +1,8 @@
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { pino } from 'pino';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
-import { CLAN, MULTI_WORLD, needsDock, normalizeLots, type DamageLot, type Fleet } from '@astera/rules';
+import { CLAN, MULTI_WORLD, fleetEntries, needsDock, normalizeHpDamage, type DamageLot, type Fleet } from '@astera/rules';
 import {
   battleReports,
   clanWarContributions,
@@ -128,7 +129,7 @@ const payloadOf = async (f: Fixture, playerId: string, kind: 'raided' | 'raid_re
     .map((row) => row.payload);
 
 describe('persistent damage in a joint war', () => {
-  it('docks the defender at once and sends each wave home with its own damage', async () => {
+  it('keeps the defender wounds at home and sends each wave home with its own wounds', async () => {
     const f = await setup(MULTI_WORLD.shipDamageRulesetVersion);
     await fightIt(f);
 
@@ -136,16 +137,21 @@ describe('persistent damage in a joint war', () => {
     expect(report?.defenderDamage).toHaveLength(1);
     expect(report!.defenderDamage[0]).toMatchObject({ hull: 'STRONGHOLD', count: 1 });
     expect(needsDock(report!.defenderDamage[0]!.damageBp)).toBe(true);
-    expect(await dockLotsOf(f.db, f.planetIds[2]!)).toMatchObject([{ hull: 'STRONGHOLD', count: 1 }]);
-    expect((await payloadOf(f, f.playerIds[2]!, 'raided'))[0]).toMatchObject({ docked: 1 });
+    expect((await readHomeHealth(f.db, f.planetIds[2]!)).damage).toEqual(report!.defenderDamage);
+    expect(await dockLotsOf(f.db, f.planetIds[2]!)).toEqual([]);
+    expect((await payloadOf(f, f.playerIds[2]!, 'raided'))[0]).not.toHaveProperty('docked');
 
     // The pool's damage is the waves' damage, and each commander's result says theirs.
     expect(report!.attackerDamage.length).toBeGreaterThan(0);
     const waves = await f.db.select().from(clanWarContributions);
-    expect(normalizeLots(waves.flatMap((wave) => wave.damage ?? []))).toEqual(report!.attackerDamage);
+    const survivingPool: Fleet = {};
+    for (const wave of waves) for (const [hull, count] of fleetEntries(wave.survivors ?? {})) {
+      survivingPool[hull] = (survivingPool[hull] ?? 0) + count;
+    }
+    expect(normalizeHpDamage(survivingPool, waves.flatMap((wave) => wave.damage ?? []))).toEqual(report!.attackerDamage);
     const results = await f.db.select().from(clanWarParticipantResults);
     for (const row of results) {
-      const own = normalizeLots(waves.filter((wave) => wave.playerId === row.playerId).flatMap((wave) => wave.damage ?? []));
+      const own = normalizeHpDamage(row.survivors, waves.filter((wave) => wave.playerId === row.playerId).flatMap((wave) => wave.damage ?? []));
       expect(row.damage).toEqual(own);
       const [told] = await payloadOf(f, row.playerId, 'raid_result');
       expect(told).toMatchObject(own.length > 0 ? { damaged: ships(own) } : {});
@@ -159,16 +165,14 @@ describe('persistent damage in a joint war', () => {
     const [defended] = (await readBattleReports(f.db, f.playerIds[2]!)).reports;
     expect(defended).toMatchObject({ yourDamage: report!.defenderDamage });
 
-    // Each wave lands where it left from, and the Repair Station judges it there.
+    // Each wave lands where it left from with every surviving wound preserved.
     await land(f);
     for (const wave of waves) {
-      const lots = (wave.damage ?? []).filter((lot) => needsDock(lot.damageBp));
-      const docked = await dockLotsOf(f.db, wave.originPlanetId);
-      expect(docked.map(({ hull, count, damageBp }) => ({ hull, count, damageBp }))).toEqual(lots);
-      if (lots.length > 0) {
-        const told = await payloadOf(f, wave.playerId, 'fleet_returned');
-        expect(told.some((payload) => payload.docked === ships(lots))).toBe(true);
-      }
+      const home = await readHomeHealth(f.db, wave.originPlanetId);
+      expect(home.damage).toEqual(normalizeHpDamage(home.fleet, wave.damage ?? []));
+      expect(await dockLotsOf(f.db, wave.originPlanetId)).toEqual([]);
+      const told = await payloadOf(f, wave.playerId, 'fleet_returned');
+      expect(told.every(payload => payload.docked === undefined && payload.autoRepaired === undefined)).toBe(true);
     }
   });
 

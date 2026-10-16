@@ -153,6 +153,9 @@ describe('next-season Dominion rewards', () => {
       joinSeason(f.db, f.accountIds[0]!, targetSeason!.id, f.clock),
     ]);
     expect(first.planetId).toBe(retry.planetId);
+    expect(first.seasonReward).toMatchObject({ ranking: 'DOMINION', displayRank: 1,
+      alloy: 2000, crystal: 1500, deuterium: 300 });
+    expect(retry.seasonReward).toEqual(first.seasonReward);
     const [world] = await f.db.select().from(planets).where(eq(planets.id, first.planetId));
     expect(world).toMatchObject({
       alloy: PLANET_START.alloy + 2_000,

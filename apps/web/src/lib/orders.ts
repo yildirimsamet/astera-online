@@ -105,7 +105,7 @@ export function researchQueueOrders(queue: readonly ResearchQueueOrderView[]): B
     cost: order.cost,
     ...('optimistic' in order
       ? { optimistic: true as const }
-      : { startedAt: order.startedAt, finishesAt: order.finishesAt }),
+      : { startedAt: order.startedAt, finishesAt: order.finishesAt, pausedAt: order.pausedAt }),
   }));
 }
 
@@ -127,6 +127,7 @@ export function orderWaiting(order: BuildOrderView, now: number): boolean {
  * takes it off the lane.
  */
 export function orderProgress(order: BuildOrderView, now: number): number {
+  if ('pausedAt' in order && order.pausedAt) now = order.pausedAt.getTime();
   if (!order.startedAt) return 0;
   const start = order.startedAt.getTime();
   const span = Math.max(1, order.finishesAt.getTime() - start);

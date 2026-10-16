@@ -10,6 +10,8 @@ import { ESCAPE, MULTI_WORLD } from './constants.js';
 import { missionFuel } from './fuel.js';
 import { HULLS, combatValue, fleetCount, fleetEntries } from './hulls.js';
 import type { Fleet, Rng } from './types.js';
+import type { HpDamageLots } from './radiationHp.js';
+import { partitionCombatFleet } from './shipMaintenance.js';
 
 /**
  * TAKTİK GERİ ÇEKİLME — THE FLEET ESCAPE. Owner decision, 2026-09-23.
@@ -131,6 +133,8 @@ export interface RaidResolution {
 }
 
 export interface RaidInput {
+  homeDamage?: HpDamageLots;
+  maintenance?: boolean;
   stacks: readonly JointAttackerStack[];
   /** The defending line as `garrisonOf` builds it — ships plus whichever guns are online. */
   line: Fleet;
@@ -165,27 +169,31 @@ const tankOf = (deuterium: number): number =>
 
 export function resolveRaid(input: RaidInput): RaidResolution {
   const context = input.preciseDamage ? 'HP_PLANET' : 'PLANET';
-  const host = (line: Fleet): DefenderStack =>
-    ({ stackId: 'host', playerId: input.hostPlayerId ?? '', fleet: line, tech: input.defender });
+  const partition = input.maintenance ? partitionCombatFleet(input.line, input.homeDamage) : null;
+  const line = partition?.eligible ?? input.line;
+  const host = (fleet: Fleet): DefenderStack =>
+    ({ stackId: 'host', playerId: input.hostPlayerId ?? '', fleet, tech: input.defender,
+      ...(partition ? { damage: partition.damage.filter((lot) => (fleet[lot.hull] ?? 0) > 0) } : {}) });
   const support = input.support ?? [];
   if (support.length > 0) {
     if (input.escape) throw new RangeError('a line holding clan support never lifts');
     return {
-      result: resolveBattle(input.stacks, [host(input.line), ...support], input.shield, input.rng(), context),
+      result: resolveBattle(input.stacks, [host(line), ...support], input.shield, input.rng(), context, input.maintenance),
       escape: null,
     };
   }
-  const standing = resolveBattle(input.stacks, [host(input.line)], input.shield, input.rng(), context);
+  const standing = resolveBattle(input.stacks, [host(line)], input.shield, input.rng(), context, input.maintenance);
   if (!input.escape) return { result: standing, escape: null };
 
-  const ships = escapingShips(input.line);
+  const ships = escapingShips(line);
   if (fleetCount(ships) === 0) return { result: standing, escape: null };
-  if (escapeCombatShipCount(input.line) < input.minimumCombatShips) {
+  if (escapeCombatShipCount(line) < input.minimumCombatShips) {
     return { result: standing, escape: null };
   }
 
-  const power = input.stacks.reduce((sum, stack) => sum + combatValue(stack.fleet), 0);
-  if (!outmatches(power, combatValue(input.line)) || standing.grade !== 'DECISIVE') {
+  const power = input.stacks.reduce((sum, stack) => sum + combatValue(input.maintenance
+    ? partitionCombatFleet(stack.fleet, stack.damage).eligible : stack.fleet), 0);
+  if (!outmatches(power, combatValue(line)) || standing.grade !== 'DECISIVE') {
     return { result: standing, escape: null };
   }
 
@@ -196,9 +204,9 @@ export function resolveRaid(input: RaidInput): RaidResolution {
   }
 
   const guns: Fleet = {};
-  for (const [id, count] of fleetEntries(input.line)) {
+  for (const [id, count] of fleetEntries(line)) {
     if (HULLS[id].ground) guns[id] = count;
   }
-  const result = resolveBattle(input.stacks, [host(guns)], input.shield, input.rng(), context);
+  const result = resolveBattle(input.stacks, [host(guns)], input.shield, input.rng(), context, input.maintenance);
   return { result, escape: { kind: 'ESCAPED', ships, fuel } };
 }

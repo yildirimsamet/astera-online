@@ -1,4 +1,6 @@
 import { GameActions } from '../session/seasonLock.js';
+import { RadiationBombControl } from '../screens/RadiationBombControls.js';
+import { TargetRadiationInstrument } from '../ui/TargetRadiationInstrument.js';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation, Trans } from 'react-i18next';
@@ -57,7 +59,7 @@ import {
 } from '../lib/colonization.js';
 import { useAccordion } from '../lib/accordion.js';
 import { launchFault, type LaunchFault } from '../lib/faults.js';
-import { deathStarsOf, readyDeathStar } from '../lib/strategic.js';
+import { deathStarsOf, hitsToTakeLoyalColony, readyDeathStar } from '../lib/strategic.js';
 import { commanderLabel } from '../lib/identity.js';
 import {
   beyondDossier,
@@ -73,12 +75,12 @@ import {
   type Headline as HeadlineKind,
 } from '../lib/dossier.js';
 import { countdown, duration, staleness, useNow } from '../lib/time.js';
-import { flightModifiers, reachMinutes } from '../lib/navigation.js';
+import { flightModifiers, reachMinutes, techOf } from '../lib/navigation.js';
 import { rateAnchor } from '../lib/trade.js';
 import type { TradeShipEvent } from '../lib/trade.js';
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { HullMark } from '../ui/icons/hulls.js';
-import { AttackIcon, EyeIcon, ReturnedIcon } from '../ui/icons/index.js';
+import { AttackIcon, EyeIcon, ReturnedIcon, HonorIcon } from '../ui/icons/index.js';
 import { Price } from '../ui/Action.js';
 import { Band } from '../ui/UpgradeRow.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
@@ -154,6 +156,7 @@ export function MonumentFocus({ monument, onInspect, onClose }: {
       <span className="block text-v2-warn">{monument.difficulty === 'LEGACY'
         ? t('monument.radiationRate', { rate: decimal(monument.radiationHpPerMinute) })
         : t('monument.radiationLevelRate', { level: MONUMENT_BALANCE[monument.difficulty].radiationLevel, rate: decimal(monument.radiationHpPerMinute) })}</span></>}
+    peek={<TargetRadiationInstrument target={{ kind: 'MONUMENT', id: monument.id }} />}
     open={false} onToggle={onInspect} onClose={onClose}>{null}</Shell>;
 }
 
@@ -243,7 +246,7 @@ function Shell({
     >
       <div
         className={open
-          ? 'mx-auto max-w-xl overflow-hidden rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel shadow-[0_-12px_32px_rgb(0_0_0/45%)]'
+          ? 'mx-auto max-w-xl overflow-hidden border border-b-0 border-v2-line bg-v2-panel shadow-[0_-12px_32px_rgb(0_0_0/45%)]'
           : 'mx-auto max-w-xl overflow-hidden rounded-control border border-v2-line bg-v2-panel/95 shadow-[0_8px_24px_rgb(0_0_0/40%)]'}
       >
         {/* The header. Always present, and the whole control when closed. */}
@@ -620,7 +623,6 @@ export function PlanetFocus({
    * only some renders reach is React #310 in production. Every hook this panel
    * has is called on every render; only what it draws is a branch.
    */
-  const [striking, setStriking] = useState(false);
 
   /**
    * AND IT DIES WITH THE WORLD IT WAS ASKED ABOUT.
@@ -649,11 +651,6 @@ export function PlanetFocus({
     [clouds, target.position, now],
   );
 
-  const askedAbout = useRef(target.id);
-  if (askedAbout.current !== target.id) {
-    askedAbout.current = target.id;
-    if (striking) setStriking(false);
-  }
 
   if (target.isOwned) {
     return (
@@ -820,7 +817,9 @@ export function PlanetFocus({
 
   const deathStarReady = readyDeathStar(planet) !== undefined;
   const hasDeathStar = deathStarsOf(planet).length > 0;
-  const deathStarBlock = originSilentSpace
+  const deathStarBlock = target.vacation
+    ? t('errors.TARGET_VACATION')
+    : originSilentSpace
     ? t('faults.launchBlock.SILENT_SPACE')
     : !deathStarReady
     ? t('focus.planet.deathStarUnavailable')
@@ -840,7 +839,6 @@ export function PlanetFocus({
         : !flightBayOpen
           ? t('focus.planet.deathStarNeedBay')
           : null;
-  const deathStarEnabled = deathStarBlock === null;
 
   /**
    * THE HEADER OF A WORLD NOBODY HAS SURVEYED. D127.
@@ -862,7 +860,7 @@ export function PlanetFocus({
   const anonymous = unsurveyed && !target.clanmate;
 
   const probeControl = !target.clanmate && (
-    <ProbeControl target={target} intel={intel} onLaunched={onLaunched} />
+    target.vacation ? <span className="text-caption text-v2-self">{t('vacation.title')}</span> : <ProbeControl target={target} intel={intel} onLaunched={onLaunched} />
   );
   /*
     THE RIVAL MARK, A CHIP IN THE DOSSIER'S HEADER (M2, the mock) rather than a slab among
@@ -910,7 +908,7 @@ export function PlanetFocus({
               for the same no. The same argument puts it ahead of a shield clock
               here: the shield expires, the development gap does not.
             */
-            aria-label={t(originSilentSpace
+            aria-label={target.vacation ? t('errors.TARGET_VACATION') : t(originSilentSpace
               ? 'focus.planet.attackSilentSpace'
               : originShipyardRevolt
               ? 'focus.planet.attackShipyardRevolt'
@@ -923,7 +921,7 @@ export function PlanetFocus({
                   : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
                     ? 'focus.planet.attackNeutralAgain'
                     : 'focus.planet.attack')}
-            disabled={originSilentSpace || originShipyardRevolt || outOfBand || originRecovering || shieldedUntil !== null}
+            disabled={(target.vacation ?? false) || originSilentSpace || originShipyardRevolt || outOfBand || originRecovering || shieldedUntil !== null}
             onClick={onAttack}
           >
             {/*
@@ -1049,33 +1047,6 @@ export function PlanetFocus({
               onClick={onSettle}
             >
               {settlementBlockLabel ?? t('focus.planet.settle')}
-            </button>
-          )}
-          {/*
-            A WEAPON YOU DO NOT OWN TAKES NO ROW. Owner report, with a screenshot.
-
-            This slab rendered unconditionally and, for the overwhelming majority
-            of commanders, read "No ready Death Star" — a full-width control on a
-            350-wide rail whose entire content was the absence of a thing they had
-            never built. Three stacked slabs, one of them announcing nothing.
-
-            `interface.md` I1 — an unavailable action stays visible with its reason
-            on it — is not violated by hiding it, because that rule is about a gap
-            the player is ABOUT TO CLOSE. Once a strategic asset exists in any
-            state, the block reason is something they can act on (finish it, free a
-            bay, wait for the recovery window) and the control belongs on the rail.
-            With `strategic` null there is no gap, no reason worth reading, and no
-            action — only a row of type.
-          */}
-          {onDeathStar && !target.clanmate && hasDeathStar && (
-            <button
-              type="button"
-              data-death-star
-              className={`${BTN_GHOST} basis-full whitespace-normal`}
-              disabled={!deathStarEnabled}
-              onClick={() => { setStriking(true); }}
-            >
-              {deathStarBlock ?? t('focus.planet.deathStarStrike')}
             </button>
           )}
           {/*
@@ -1282,58 +1253,55 @@ export function PlanetFocus({
         ))}
       </div>
 
+      <TargetRadiationInstrument target={{ kind: 'PLANET', id: target.id }} tech={techOf(planet)} />
       {/*
-        THE SECOND BEAT ON THE STRIKE. Owner report: *"yanlışlıkla"*.
+        THE DEATH STAR IS A SECTION, LIKE THE RADIATION STRIKE. Owner, 2026-10-16: *"focus
+        sheet'te radyasyon saldırısı section gibi benzer bir sectionda ölüm yıldızı için yap.
+        İkisi de açılıp kapanabilir accordion olsun."* It replaces the grey slab on the rail and
+        the sheet it opened: the price and the readings sit above a red hold, folded until wanted.
 
-        Inside the shell rather than beside it, because it is a sheet and a sheet
-        is a fixed-position surface — where the element sits in this tree changes
-        nothing about where it lands, and keeping it here means it dies with the
-        panel that opened it. The commit itself is still the caller's: this asks,
-        `GalaxyView` fires.
+        A WEAPON YOU DO NOT OWN TAKES NO SECTION: with nothing on the pad there is no gap to
+        close, only a row of type. Once one exists in any state, its block reason is actionable.
       */}
-      {striking && onDeathStar && (
-        <StrikeSheet
+      {onDeathStar && !target.clanmate && hasDeathStar && (
+        <DeathStarSection
           target={target}
+          origin={planet}
           report={intel?.probeReports.find((report) => report.spatiallyCurrent !== false && report.targetPlanetId === target.id)}
-          onClose={() => { setStriking(false); }}
-          onConfirm={() => {
-            setStriking(false);
-            onDeathStar();
-          }}
+          disabledReason={deathStarBlock}
+          onLaunch={onDeathStar}
         />
       )}
+      {planet.radiationBombsAvailable && !target.clanmate && <RadiationBombControl collapsible origin={planet}
+        target={{ kind: 'PLANET', id: target.id }} targetName={anonymous ? t('focus.planet.unsurveyedTitle') : target.name}
+        position={target.position} onLaunched={onClose}
+        disabledReason={originSilentSpace ? t('faults.launchBlock.SILENT_SPACE')
+          : originShipyardRevolt ? t('faults.launchBlock.SHIPYARD_REVOLT')
+          : outOfBand ? t('focus.planet.deathStarOutOfBand')
+          : shieldedUntil ? t('focus.planet.deathStarProtected')
+          : originRecovering ? t('focus.planet.deathStarOriginRecovering')
+          : !flightBayOpen ? t('focus.planet.deathStarNeedBay') : null} />}
     </Shell>
   );
 }
 
+type ProbeReading = IntelView['probeReports'][number];
+
 /**
- * WHAT A STRIKE SPENDS, ON THE PRESS THAT SPENDS IT.
+ * WHAT A STRIKE SPENDS, WHAT IT DOES, AND WHAT THE LAST LOOK SAID — the one statement of it,
+ * read in the panel's Death Star section and in the gallery's sheet alike.
  *
- * Three sentences and one figure, and the ranking is deliberate. It names the
- * WORLD first — a mis-tap sends a Death Star to the wrong one, which is the whole
- * of the owner's report — then what is consumed, then what the target actually
- * suffers, then what it does NOT (D179: the world stays, the fleet survives).
- *
- * HELD, NOT CONFIRMED (K4, B9: every launch and the Death Star). The sheet states the
- * price and the press that spends it is a hold; the close is the way back, so there is
- * no second "hold fire" button beside it.
+ * The ranking is deliberate: what is consumed, which world fires and what it has left, then
+ * what the target suffers and what it does NOT (D179: the world stays, the fleet survives).
  */
-export function StrikeSheet({
-  target,
-  report,
-  onConfirm,
-  onClose,
-}: {
+function StrikeDetails({ target, report, origin }: {
   target: GalaxyPlanet;
   /** The newest probe of this world, if any: what its pad and its loyalty looked like. */
-  report?: IntelView['probeReports'][number] | undefined;
-  onConfirm: () => void;
-  onClose: () => void;
+  report?: ProbeReading | undefined;
+  /** The world the weapon leaves from: the selected one, whose pad this launch spends. */
+  origin?: PlanetView | undefined;
 }) {
   const { t } = useTranslation();
-  const world = target.intel === 'UNKNOWN'
-    ? t('focus.planet.unsurveyedTitle')
-    : target.name;
   /*
     THE TWO READINGS THIS HIT IS DECIDED BY, FROM THE LAST LOOK. Owner, 2026-10-01.
 
@@ -1345,7 +1313,139 @@ export function StrikeSheet({
   const colony = target.kind === 'COLONY';
   const hits = report?.loyalty === undefined ? null : Math.max(1, Math.ceil(report.loyalty / loss));
   const age = report ? staleness((Date.now() - report.at.getTime()) / 60_000) : null;
+  // Owner question, 2026-10-15: which world is about to be spent, and what it has left.
+  const ready = origin ? deathStarsOf(origin).filter((asset) => asset.status === 'READY').length : 0;
 
+  return (
+    <>
+    <p className="text-caption leading-snug text-v2-ink">{t('focus.planet.strikeConfirm.lead')}</p>
+    {origin && (
+      <div data-strike-origin className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+        <span className="shrink-0 text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.origin')}</span>
+        <span className="min-w-0 truncate text-right text-caption font-semibold text-v2-ink">
+          {t('focus.planet.strikeConfirm.originRead', { world: origin.planet.name, ready })}
+        </span>
+      </div>
+    )}
+    <div className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+      <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.outage')}</span>
+      <span className="font-v2-mono text-caption font-semibold text-v2-ink">{duration(DEATH_STAR.empMinutes)}</span>
+    </div>
+    {colony && (
+      <div data-strike-loyalty className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+        <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.loyalty')}</span>
+        <span className={`text-right text-caption font-semibold ${hits === 1 ? 'text-v2-hostile' : 'text-v2-ink'}`}>
+          {report?.loyalty === undefined || hits === null
+            ? t('focus.planet.strikeConfirm.loyaltyUnknown')
+            : t('focus.planet.strikeConfirm.loyaltyRead', {
+              value: report.loyalty,
+              hits: t('focus.planet.strikeConfirm.hits', { count: hits }),
+            })}
+        </span>
+      </div>
+    )}
+    {report?.interceptors !== undefined && (
+      <div data-strike-charges className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+        <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.charges')}</span>
+        <span className="text-right text-caption font-semibold text-v2-ink">
+          {report.interceptors > 0
+            ? t('focus.planet.strikeConfirm.chargesRead', {
+              count: report.interceptors,
+              needed: report.interceptors + 1,
+            })
+            : t('focus.planet.strikeConfirm.chargesNone')}
+        </span>
+      </div>
+    )}
+    {/* Both readings come from one look, so its age is said once, under them. */}
+    {age !== null && ((colony && report?.loyalty !== undefined) || report?.interceptors !== undefined) && (
+      <p data-strike-probe-age className="-mt-1 text-right text-micro text-v2-ink-3">
+        {t('focus.planet.strikeConfirm.probeAge', { age })}
+      </p>
+    )}
+    {/* And what it does NOT do, because D179 took the teeth out and a commander
+        about to spend twenty thousand alloy should know what they are buying. */}
+    <p className="text-micro leading-snug text-v2-ink-3">{t('focus.planet.strikeConfirm.keeps')}</p>
+    {colony && (
+      <p className="text-micro leading-snug text-v2-ink-3">
+        {t('focus.planet.strikeConfirm.keepsColony', { loss, hits: hitsToTakeLoyalColony })}
+      </p>
+    )}
+    <section data-honor-weapon-rule className="grid gap-1.5 rounded-control border border-v2-self/25 bg-v2-self/5 px-3 py-2.5">
+      <p className="flex items-center gap-1.5 text-caption font-semibold text-v2-ink"><HonorIcon className="size-3.5 text-v2-self" />{t('leaderboard.honorTitle')}</p>
+      {origin?.honorTacticalCredit ? <>
+        <p className="text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorEmpGain')}</p>
+        <p className="text-micro leading-relaxed text-v2-ink-2">{t('leaderboard.honorEmpRisk')}</p>
+      </> : <p className="text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorWeaponsInactive')}</p>}
+    </section>
+    </>
+  );
+}
+
+/**
+ * THE DEATH STAR, AS A SECTION OF THE PANEL. Owner, 2026-10-16 — the radiation strike's shape
+ * in the colour of harm, folded until wanted.
+ *
+ * HELD, NOT CONFIRMED (K4, B9: every launch and the Death Star). The hold is the only press
+ * that spends it; a tap does nothing, and folding the section is the way back.
+ */
+export function DeathStarSection({ target, origin, report, disabledReason, onLaunch }: {
+  target: GalaxyPlanet;
+  origin: PlanetView;
+  report?: ProbeReading | undefined;
+  /** Why it cannot fly right now; the hold shows it instead of arming. */
+  disabledReason: string | null;
+  onLaunch: () => void;
+}) {
+  const { t } = useTranslation();
+  const world = target.intel === 'UNKNOWN' ? t('focus.planet.unsurveyedTitle') : target.name;
+  const ready = deathStarsOf(origin).filter((asset) => asset.status === 'READY').length;
+  return (
+    <details data-strike-section className="strike-launch strike-launch--death-star">
+      <summary className="strike-launch__summary">
+        <span className="strike-launch__heading">
+          <span className="strike-launch__title">{t('focus.planet.deathStarSection.title')}</span>
+          <span className="strike-launch__target">{t('planet.radiationBomb.target', { target: world })}</span>
+        </span>
+        <span className="strike-launch__ready">{t('focus.planet.strikeReady', { ready })}</span>
+      </summary>
+      <div className="strike-launch__body flex flex-col gap-2.5 font-v2-ui">
+        <StrikeDetails target={target} report={report} origin={origin} />
+        <HoldButton
+          marker="death-star"
+          label={t('focus.planet.deathStarSection.hold')}
+          tone="hostile"
+          disabledReason={disabledReason}
+          onCommit={onLaunch}
+        />
+      </div>
+    </details>
+  );
+}
+
+/**
+ * THE STRIKE AS A SHEET — kept for the v2 gallery's camera, which photographs it whole. The
+ * panel itself carries the strike as `DeathStarSection` since 2026-10-16.
+ */
+export function StrikeSheet({
+  target,
+  report,
+  onConfirm,
+  onClose,
+  origin,
+}: {
+  target: GalaxyPlanet;
+  /** The world the weapon leaves from: the selected one, whose pad this launch spends. */
+  origin?: PlanetView | undefined;
+  /** The newest probe of this world, if any: what its pad and its loyalty looked like. */
+  report?: ProbeReading | undefined;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const world = target.intel === 'UNKNOWN'
+    ? t('focus.planet.unsurveyedTitle')
+    : target.name;
   // THROUGH A PORTAL: the focus shell is `absolute z-20`, a stacking context that would
   // paint the strip and the toasts over this sheet's scrim (the confirm's old fault).
   return createPortal(
@@ -1356,46 +1456,7 @@ export function StrikeSheet({
       onClose={onClose}
     >
       <div data-strike-sheet className="flex flex-col gap-2.5 pt-1 font-v2-ui">
-        <p className="text-caption leading-snug text-v2-ink">{t('focus.planet.strikeConfirm.lead')}</p>
-        <div className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-          <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.outage')}</span>
-          <span className="font-v2-mono text-caption font-semibold text-v2-ink">{duration(DEATH_STAR.empMinutes)}</span>
-        </div>
-        {colony && (
-          <div data-strike-loyalty className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-            <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.loyalty')}</span>
-            <span className={`text-right text-caption font-semibold ${hits === 1 ? 'text-v2-hostile' : 'text-v2-ink'}`}>
-              {report?.loyalty === undefined || hits === null
-                ? t('focus.planet.strikeConfirm.loyaltyUnknown')
-                : t('focus.planet.strikeConfirm.loyaltyRead', {
-                  value: report.loyalty,
-                  hits: t('focus.planet.strikeConfirm.hits', { count: hits }),
-                })}
-            </span>
-          </div>
-        )}
-        {report?.interceptors !== undefined && (
-          <div data-strike-charges className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
-            <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.charges')}</span>
-            <span className="text-right text-caption font-semibold text-v2-ink">
-              {report.interceptors > 0
-                ? t('focus.planet.strikeConfirm.chargesRead', {
-                  count: report.interceptors,
-                  needed: report.interceptors + 1,
-                })
-                : t('focus.planet.strikeConfirm.chargesNone')}
-            </span>
-          </div>
-        )}
-        {/* Both readings come from one look, so its age is said once, under them. */}
-        {age !== null && ((colony && report?.loyalty !== undefined) || report?.interceptors !== undefined) && (
-          <p data-strike-probe-age className="-mt-1 text-right text-micro text-v2-ink-3">
-            {t('focus.planet.strikeConfirm.probeAge', { age })}
-          </p>
-        )}
-        {/* And what it does NOT do, because D179 took the teeth out and a commander
-            about to spend twenty thousand alloy should know what they are buying. */}
-        <p className="text-micro leading-snug text-v2-ink-3">{t('focus.planet.strikeConfirm.keeps', { loss })}</p>
+        <StrikeDetails target={target} report={report} origin={origin} />
         <HoldButton label={t('focus.planet.strikeConfirm.commit')} onCommit={onConfirm} tone="hostile" />
       </div>
     </V2Sheet>,
@@ -1453,6 +1514,7 @@ function OwnedPlanetFocus({
         </span>
       )}
     >
+      <TargetRadiationInstrument target={{ kind: 'PLANET', id: target.id }} tech={techOf(origin)} />
       <div className="rounded-chip border border-v2-self/35 bg-v2-self/8 px-3 py-3">
         <p className="v2-legend text-v2-self">{t('focus.planet.transferRoute')}</p>
         <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -1972,7 +2034,7 @@ function StrategicWorldGuide({
             })}
             // A colony also pays in loyalty (owner, 2026-10-01); a capital has none to lose.
             {...(target.kind === 'COLONY'
-              ? { description: t('focus.planet.firstImpactColony', { loss: DEATH_STAR.colonyLoyaltyLoss }) }
+              ? { description: t('focus.planet.firstImpactColony', { loss: DEATH_STAR.colonyLoyaltyLoss, hits: hitsToTakeLoyalColony }) }
               : {})}
             danger
           />
@@ -3348,7 +3410,7 @@ export function ThreadFocus({
             ? 'focus.thread.eyebrowFleetHome'
             : 'focus.thread.eyebrowFleetOut',
       )}
-      title={thread.targetName}
+      title={thread.kind === 'trade' ? t('trade.title') : thread.targetName}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
@@ -3866,7 +3928,9 @@ export function DebrisFocus({
     1,
     Math.min(craftAvailable, Math.ceil(left / Math.max(1, craftHold))),
   );
-  const tooLate = reach === null || reach >= field.minutesLeft;
+  // Unknown is not "too late": the craft's speed or the home world may still be loading.
+  const measuring = reach === null;
+  const tooLate = reach !== null && reach >= field.minutesLeft;
   const [craft, setCraft] = useState(worthSending);
   const sending = Math.min(Math.max(1, craft), Math.max(1, craftAvailable));
   useEffect(() => {
@@ -3905,7 +3969,7 @@ export function DebrisFocus({
             type="button"
             data-primary
             className={`${BTN_PRIMARY} basis-full whitespace-normal`}
-            disabled={busy || launchBlock !== undefined || craftAvailable < 1 || tooLate || resting !== null}
+            disabled={busy || launchBlock !== undefined || craftAvailable < 1 || measuring || tooLate || resting !== null}
             onClick={() => {
               onSend(sending);
             }}
@@ -3916,9 +3980,11 @@ export function DebrisFocus({
               ? t('focus.debris.resting', { duration: countdown(resting) })
               : craftAvailable < 1
                 ? t('focus.debris.noCraft')
-                : tooLate
-                  ? t('focus.debris.tooLate')
-                  : t('focus.debris.send', { count: sending, duration: duration(reach) })}
+                : measuring
+                  ? t('focus.debris.measuring')
+                  : tooLate
+                    ? t('focus.debris.tooLate')
+                    : t('focus.debris.send', { count: sending, duration: duration(reach) })}
           </button>
         </>
       }
@@ -3967,6 +4033,7 @@ const CONTACT_TITLE = {
   mining: 'focus.contact.titleMining',
   harvest: 'focus.contact.titleHarvest',
   death_star: 'focus.contact.titleDeathStar',
+  radiation_bomb: 'planet.radiationBomb.title',
   pirate: 'focus.contact.titlePirate',
 } as const satisfies Record<Contact['kind'], string>;
 

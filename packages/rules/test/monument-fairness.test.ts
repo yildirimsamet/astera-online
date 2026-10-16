@@ -19,18 +19,17 @@ describe('Easy and Hard monuments', () => {
   });
 
   it('uses the agreed capacity, per-ship damage, total production and neutral fleet', () => {
-    expect(MONUMENT_BALANCE.EASY).toMatchObject({ capacity: 1550, radiationLevel: 1, intensityHpPerMinute: 2,
+    expect(MONUMENT_BALANCE.EASY).toMatchObject({ capacity: 1550, radiationLevel: 1, intensityHpPerMinute: 9,
       productionPerMinute: 3, garrison: { STRONGHOLD: 3 } });
-    expect(MONUMENT_BALANCE.HARD).toMatchObject({ capacity: 7270, radiationLevel: 2, intensityHpPerMinute: 5,
+    expect(MONUMENT_BALANCE.HARD).toMatchObject({ capacity: 7270, radiationLevel: 2, intensityHpPerMinute: 12.5,
       productionPerMinute: 8, garrison: { LEVIATHAN: 10 } });
     expect(4 * MONUMENT_BALANCE.EASY.productionPerMinute + 4 * MONUMENT_BALANCE.HARD.productionPerMinute).toBe(44);
   });
 
-  it('uses commander development tier and allows weaker players to choose Hard', () => {
-    for (const core of [1, 3, 4, 6, 7, 9]) expect(monumentTierEligible('EASY', core)).toBe(true);
-    for (const core of [10, 12, 18, 30]) expect(monumentTierEligible('EASY', core)).toBe(false);
-    for (const core of [1, 9, 10, 30]) expect(monumentTierEligible('HARD', core)).toBe(true);
-    expect(monumentTierEligible('LEGACY', 30)).toBe(true);
+  it.each(Array.from({ length: 30 }, (_, index) => index + 1))('separates Easy and Hard access at Core 10: Core %i', core => {
+    expect(monumentTierEligible('EASY', core)).toBe(core <= 9);
+    expect(monumentTierEligible('HARD', core)).toBe(core >= 10);
+    expect(monumentTierEligible('LEGACY', core)).toBe(true);
   });
 
 });

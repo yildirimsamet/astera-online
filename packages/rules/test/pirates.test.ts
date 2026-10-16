@@ -602,8 +602,8 @@ describe('the pirate schedule', () => {
     const field = generatePirateSchedule(mulberry32(7));
 
     // The count is the 300-seat lane's and never moved; the digests below were
-    // re-taken for the radius-4500 orbit band and 30% speed cut (2026-09-25), both
-    // deliberately introduced only with the new-season reset.
+    // re-taken for the 2026-10-13 20% NPC slowdown. Existing live contacts are
+    // retired by the idle same-season cutover; indices and the random draw order stay fixed.
     expect(established).toHaveLength(2823);
     // Each stage is a strict prefix of the next, so a staged rollout only ever
     // hides contacts — it can never publish a different one under the same handle.
@@ -631,9 +631,9 @@ describe('the pirate schedule', () => {
     // Only derived radius/period tolerate measured final-bit runtime differences.
     const identity = (field: typeof established): string => orbitFingerprint(field.map(({ hoard: _hoard, ...rest }) => rest));
     expect(identity(established))
-      .toBe('abeded8ba38f7f7903e96661c7994f2149615acd314c6aa763c1b42cd434e2d0');
+      .toBe('bb1f2ad00d1484550acc0356f4f1868834ddf872dfd42ebe92d5e8348e87b29d');
     expect(identity(increased))
-      .toBe('e30f6f2f1591b13bfd2bba4aa6e3df5bd8223930056e3e4e556ec8c3beaf0148');
+      .toBe('7ef3b797a3c9534846a9b7626c025f57f73b4bd0959fb0a70f0f46288b526580');
     // And the prize is still deterministic for a given lane, which the roster above pins.
     expect(established[0]!.hoard).toEqual(increased[0]!.hoard);
   });

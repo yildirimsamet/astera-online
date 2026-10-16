@@ -781,7 +781,7 @@ export async function createClan(
     crystal: locked.crystal - CLAN.creationCost.crystal,
     deuterium: locked.deuterium,
   });
-  await recomputePlayerWealth(tx, input.actor.playerId);
+  await recomputePlayerWealth(tx, input.actor.playerId, input.clock.now());
   await recordClanEvent(tx, {
     seasonId: input.actor.seasonId,
     clanId: clan.id,

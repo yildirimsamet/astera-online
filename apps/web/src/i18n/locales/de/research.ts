@@ -14,6 +14,13 @@
  * on a ship. The day either is reworded the other must not move with it.
  */
 export const research = {
+  shieldingCeiling: "Bei Stufe {{level}}: {{rate}} HP/min",
+  shieldingName: "Strahlenschutz",
+  shieldingTag: "Verringert Strahlungsschaden an Schiffen",
+  shieldingRole: "Schützt deine Schiffe vor Strahlung auf Planeten und an Monumenten. Es gibt vier Forschungsstufen.",
+  shieldingDetail: "Diese Forschung schützt nur Schiffe; sie verringert keinen Kampfschaden. Auf Planeten bietet Aegis zusätzlichen Schutz. An Monumenten gilt nur der Strahlungsschutz des Schiffs. Schiffe auf deinen eigenen Planeten nutzen die aktuelle Forschungsstufe ihres Kommandanten. Entsandte Flotten behalten den Schutz ihrer Abflugstufe; spätere Forschung verstärkt sie nicht. Die Forschung erfordert Kern 3 auf deiner Hauptstadt.",
+  shieldingRateLabel: "Strahlung Stufe 2 · HP/min",
+  shieldingScope: "Der Flottenschutz wird beim Start gespeichert. Er wirkt gegen jede Strahlungsstufe.",
   eyebrow: "Kommandant",
   title: "Forschung",
   /** What the whole screen is for, in the one clause a player reads before scrolling. */
@@ -115,7 +122,7 @@ export const research = {
   industrialRole:
     "Senkt Kosten und Dauer jedes Auftrags der Reparaturstation",
   industrialDetail:
-    "Senkt Schiffsreparaturkosten und -zeit auf allen Planeten. Stufe 1 nutzt 75 % der normalen Kosten und Zeit; Stufe 2 nutzt 50 %. Schiffsbau wird nicht beschleunigt. Schäden bis einschließlich 20 % werden bei Landung bereits kostenlos repariert.",
+    "Senkt Schiffsreparaturkosten und -zeit auf allen Planeten. Stufe 1 nutzt 75 % der normalen Kosten und Zeit; Stufe 2 nutzt 50 %. Schiffsbau wird nicht beschleunigt.",
   holdsName: "Prospektor hält",
   holdsTag: "Bergbauschiffe transportieren mehr",
   holdsRole: "Erhöht jeden Prospektor-Hold; Zusätzlich gilt der Kapazitätsbonus des Derricks",
@@ -159,9 +166,9 @@ export const research = {
     "Erhöht Angriff und Rumpfstärke von Bastion, Harpune und Dorn auf allen deinen Planeten. Bodenkapazität und Bergungsregeln bleiben unverändert. Verteidiger nutzen die Forschungsstufe bei Kampfbeginn.",
 
   gridName: "Abfanggitter",
-  gridTag: "Vier Abfangladungen pro Welt",
-  gridRole: "Erhöht die Abfangladungen, die jede deiner Welten halten kann, von 2 auf 4.",
-  gridDetail: "Erhöht das Abfangladungsmaximum jedes Planeten von 2 auf 4. Laden erfordert Uplink und Radar 3 auf diesem Planeten. Eine Ladung zerstört einen Todesstern bei Teleskopidentifizierung oder rechtzeitiger Radar-Ring-Abfangung. Die Sensoren müssen funktionieren. Jede Abfangung verbraucht eine Ladung.",
+  gridTag: "Bis zu sechs Abfangladungen pro Planet",
+  gridRole: "Zwei Forschungsstufen erhöhen die Ladungskapazität jedes Planeten: 2 → 4 → 6.",
+  gridDetail: "Jede Forschungsstufe fügt 2 Plätze hinzu, aber keine kostenlosen Ladungen. Baue jede Ladung auf einem Planeten mit aktivem Uplink und Radar 3. Ein Abfangen verbraucht eine Ladung und stoppt einen Todesstern oder eine Strahlungsbombe. Nur die Batterie des Zielplaneten feuert.",
   stockpileName: "Strategischer Vorrat",
   stockpileTag: "Zwei Todessterne pro Welt",
   stockpileRole: "Erhöht die Todessterne, die jede deiner Welten halten kann, von 1 auf 2. Der zweite beginnt, sobald der erste fertig ist.",

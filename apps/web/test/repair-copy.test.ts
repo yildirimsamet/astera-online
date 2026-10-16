@@ -1,4 +1,4 @@
-import { BUILD, RESEARCH_TECH, SHIP_DAMAGE } from '@astera/rules';
+import { BUILD, RESEARCH_TECH } from '@astera/rules';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ApiError } from '../src/api/client.js';
 import { describeError } from '../src/i18n/errors.js';
@@ -49,15 +49,14 @@ describe('the Repair Station refusals', () => {
 
 /**
  * THE NUMBERS THE STATION'S RULES SAY IN WORDS (2026-09-30). The menu's "how it works"
- * states the free-patch line, Industrial's two rungs and the cancel refund as words in
+ * states paid repair, Industrial's two rungs and the cancel refund as words in
  * supported languages — Turkish suffixes (`%75'e`, `%50'ye`) cannot be interpolated — so the
  * rules they quote are pinned here. A tuning change fails this test and sends whoever made
  * it to `repairStation.ruleFree`, `ruleIndustrial` and `ruleCancel` in every locale.
  */
 describe('the numbers the Repair Station states in words', () => {
-  it('patches free up to twenty percent', () => {
-    expect(SHIP_DAMAGE.autoRepairMaxBp).toBe(2000);
-    expect(i18n.t('repairStation.ruleFree')).toMatch(/20%/);
+  it('states that all wounds require paid repair', () => {
+    expect(i18n.t('repairStation.ruleFree')).toMatch(/no free repair.*wounds remain until paid repair/i);
   });
 
   it('lets Industrial leave 75%, then 50%', () => {

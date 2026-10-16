@@ -1,24 +1,31 @@
-type Cell = 'ready' | 'loading' | 'empty';
+type Cell = 'ready' | 'loading' | 'paused' | 'flight' | 'empty';
 
 const LOOK: Record<Cell, string> = {
   ready: 'bg-v2-self shadow-[0_0_6px_var(--color-v2-self)]',
   loading: 'ring-[1.5px] ring-inset ring-v2-self',
+  paused: 'bg-v2-warn/20 ring-[1.5px] ring-inset ring-v2-warn',
+  flight: 'bg-v2-sky-violet/20 ring-[1.5px] ring-inset ring-v2-sky-violet',
   empty: 'bg-v2-line',
 };
 
 /**
- * CHARGES, CELL BY CELL. D3 (owner, round 2): "1 / 2" is a fraction to decode; a slot
- * that is loaded glows in your colour, one being loaded is outlined, an empty one is
- * dark. Loaded first, then loading, then empty — the order a stockpile fills in.
+ * Inventory slots only: ready is filled, loading outlined, paused amber, and a
+ * flying weapon retains its violet outlined slot. Empty slots remain dark.
+ * TacticalStock pairs this picture with an explicit stock/charge count; a weapon's
+ * level uses a separate badge rather than borrowing this inventory grammar.
  */
 export function ChargeTally({
   ready,
   loading,
+  paused = 0,
+  inFlight = 0,
   total,
   label,
 }: {
   ready: number;
   loading: number;
+  paused?: number;
+  inFlight?: number;
   total: number;
   /** The whole reading, in words: the cells are one picture. */
   label: string;
@@ -26,13 +33,17 @@ export function ChargeTally({
   if (total <= 0) return null;
   const lit = Math.max(0, Math.min(total, ready));
   const filling = Math.max(0, Math.min(total - lit, loading));
+  const stopped = Math.max(0, Math.min(total - lit - filling, paused));
+  const flying = Math.max(0, Math.min(total - lit - filling - stopped, inFlight));
   const cells: Cell[] = Array.from({ length: total }, (_, index) =>
-    index < lit ? 'ready' : index < lit + filling ? 'loading' : 'empty');
+    index < lit ? 'ready' : index < lit + filling ? 'loading'
+      : index < lit + filling + stopped ? 'paused'
+        : index < lit + filling + stopped + flying ? 'flight' : 'empty');
 
   return (
     <span
       data-tally=""
-      data-used={lit + filling}
+      data-used={lit + filling + stopped + flying}
       data-total={total}
       role="img"
       aria-label={label}

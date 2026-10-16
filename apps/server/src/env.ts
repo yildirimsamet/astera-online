@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
-import { EXTRA_COSMETIC_IDS, cosmeticById, MULTI_WORLD } from '@astera/rules';
+import { COSMETIC_IDS, EXTRA_COSMETIC_IDS, cosmeticById, MULTI_WORLD } from '@astera/rules';
 import { BOTS } from './services/bots/personas.js';
 
 const schema = z.object({
@@ -56,6 +56,20 @@ const schema = z.object({
     productId: z.string().uuid(), eurAmount: z.number().int().positive(), tryAmount: z.number().int().positive().optional(),
   }).strict()).refine(items => Object.keys(items).every(id => !cosmeticById(id)?.free), 'Free cosmetics cannot have a price')),
   POLAR_RETURN_URL: z.string().url().default('http://localhost:5173/'),
+  /** Shopier TRY sales with automatic delivery; a buyer's note carries the purchase code. */
+  SHOPIER_CHECKOUT_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  SHOPIER_ACCESS_TOKEN: z.string().default(''),
+  /** Returned once by Shopier when the webhook subscription is created. */
+  SHOPIER_WEBHOOK_TOKEN: z.string().default(''),
+  SHOPIER_PRODUCTS: z.string().default('{}').transform((value, ctx): unknown => {
+    try { return JSON.parse(value.trim() || '{}') as unknown; }
+    catch { ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid Shopier product JSON' }); return z.NEVER; }
+  }).pipe(z.record(z.enum([...COSMETIC_IDS, 'bundle']), z.object({
+    productId: z.string().regex(/^\d{1,20}$/), tryAmount: z.number().int().positive(),
+  }).strict())
+    .refine(items => Object.keys(items).every(id => !cosmeticById(id)?.free), 'Free cosmetics cannot have a price')
+    .refine(items => new Set(Object.values(items).map(item => item.productId)).size === Object.keys(items).length,
+      'Each Shopier product sells one item')),
   POLAR_PRODUCT_LAVA: z.string().uuid().or(z.literal('')).default(''),
   POLAR_PRODUCT_ICE: z.string().uuid().or(z.literal('')).default(''),
   POLAR_PRODUCT_TOXIC: z.string().uuid().or(z.literal('')).default(''),
@@ -231,6 +245,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     ...source,
     PADDLE_API_KEY: source.PADDLE_API_KEY?.trim() ? source.PADDLE_API_KEY : (source.PADDLE_LIVE_API_KEY ?? ''),
     PADDLE_CLIENT_TOKEN: source.PADDLE_CLIENT_TOKEN?.trim() ? source.PADDLE_CLIENT_TOKEN : (source.PADDLE_CLIENT_SIDE_TOKEN ?? ''),
+    SHOPIER_ACCESS_TOKEN: source.SHOPIER_ACCESS_TOKEN?.trim() ? source.SHOPIER_ACCESS_TOKEN : (source.shopier_prod_access_token ?? ''),
   };
   const parsed = schema.safeParse(normalized);
   if (!parsed.success) {

@@ -347,7 +347,7 @@ export const reports = {
     formulaSupport: 'Unterstützungsschiffe bleiben geschützt, während mindestens eine Kampfeinheit auf ihrer Seite verbleibt.',
     resultHeading: 'Wie über das Ergebnis entschieden wird',
     resultDecisive:
-      'ENTSCHEIDEND · jede verteidigende Einheit ist verschwunden und der Schild ist auf Null · {{decisiveLoot}} % des exponierten Bestands können vor dem Frachtlimit eingenommen werden.',
+      'ENTSCHEIDEND · jede verteidigende Einheit ist verschwunden und der Schild ist auf Null · {{decisiveLoot}} % des exponierten Bestands können vor dem Frachtlimit eingenommen werden. Nicht eingesammelte Produktion: {{decisiveBuffer}}%.',
     /**
      * THE SAME RULE WITHOUT THE HALF THAT CANNOT APPLY. A shield is a structure on
      * a world; a legend that names one out at a rendezvous is describing a
@@ -356,7 +356,7 @@ export const reports = {
     resultDecisivePirate:
       'ENTSCHEIDEND · jedes Schiff der Besatzung ist verschwunden · {{decisiveLoot}} % des Horts können vor den Frachtgrenzen eingenommen werden, und nur hier kann ein Rumpf nach Hause geschleppt werden.',
     resultPartial:
-      'TEILWEISE · mindestens {{threshold}} % des Wertes der verteidigenden Einheit sind zerstört · {{partialLoot}} % des ungeschützten Bestands können vor dem Frachtlimit genommen werden.',
+      'TEILWEISE · mindestens {{threshold}} % des Wertes der verteidigenden Einheit sind zerstört · {{partialLoot}} % des ungeschützten Bestands können vor dem Frachtlimit genommen werden. Nicht eingesammelte Produktion: {{partialBuffer}}%.',
     resultRepelled:
       'ABGEWEHRT · weniger als {{threshold}} % des Wertes der verteidigenden Einheit werden zerstört · nichts kann genommen werden.',
     round: 'Runde {{round}}',
@@ -389,13 +389,16 @@ export const reports = {
   strategicEmpEffect: 'Die Aegis fiel auf null und regeneriert sich 1 Stunde lang nicht. Bodenverteidigungen feuern in dieser Zeit nicht und erleiden keinen Schaden.',
   strategicLoyalty: "Loyalität der Kolonie",
   strategicLoyaltyChange: "{{before}} % → {{after}} %",
-  strategicLoyaltyNext: "Bei {{loss}} % oder weniger nimmt der nächste Treffer die Kolonie.",
+  strategicLoyaltyNext_one: "Der nächste Treffer bringt die Kolonie zu Fall.",
+  strategicLoyaltyNext_other: "Noch {{count}} Treffer in Folge bringen die Kolonie zu Fall.",
   strategicSecededAttacker: "Die Kolonie ist abgefallen und neutral geworden – sie gehört jetzt niemandem.",
   strategicSecededDefender: "Deine Kolonie ist abgefallen und neutral geworden.",
   strategicSecededShort: "Kolonie abgefallen",
   strategicCaptured: 'CAPTURED',
   strategicIneffective: 'INEFFECTIVE',
   strategicIntercepted: 'INTERCEPTED',
+  radiationYouAttacked: "Deine Strahlungsbombe traf auf ",
+  radiationAttackedBy: "Strahlungsbombe von ",
   strategicYouAttacked: 'Ihr Todesstern im Visier',
   strategicAttackedBy: 'Todesstern gesendet von',
   strategicDestroyedInFlight: 'Todesstern im Flug zerstört',
@@ -664,8 +667,8 @@ export const dossier = {
   interceptorEmptyNote: 'Nichts hier hält eine strategische Waffe auf. Möglicherweise haben sie seitdem einen geladen.',
   loyaltyLabel: "Loyalität der Kolonie",
   loyaltyValue: "{{value}} %",
-  loyaltyNote_one: "Ein Todesstern kostet {{loss}} Loyalität, und eine Kolonie mit {{loss}} oder weniger fällt ab: ein Treffer würde diese nehmen.",
-  loyaltyNote_other: "Ein Todesstern kostet {{loss}} Loyalität, und eine Kolonie mit {{loss}} oder weniger fällt ab: {{count}} Treffer würden diese nehmen. Solange nichts defekt ist, steigt sie wieder.",
+  loyaltyNote_one: "Ein Todesstern kostet {{loss}} Loyalität pro Treffer. Ein Treffer würde diese Kolonie zu Fall bringen.",
+  loyaltyNote_other: "Ein Todesstern kostet {{loss}} Loyalität pro Treffer. {{count}} Treffer in Folge würden diese Kolonie zu Fall bringen.",
   doctrinesLabel: 'Kampfdoktrin',
   doctrinesNone: 'Keine recherchiert',
   doctrinesNote: 'Ihre Rümpfe kämpfen besser, als die Tabelle sagt. Dies ist der Multiplikator, den Sie erreichen würden.',

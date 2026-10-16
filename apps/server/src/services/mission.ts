@@ -19,6 +19,7 @@ import {
   type HullId,
   HULLS,
   COMBAT_HULLS,
+  splitHealthFleet,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
@@ -59,6 +60,8 @@ import { prepareClanAttack, recordClanAttack } from './clanCombat.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 import { assertRadiationSafe } from './radiation.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
+import { takeHomeHealth } from './homeHealth.js';
+import { commitHonor } from './honorCommitment.js';
 
 export interface LaunchResult {
   missionId: string;
@@ -122,6 +125,7 @@ export async function launchAttack(
   pace?: number,
   /** The commander has read what radiation on this route would take (plan D10). */
   acknowledgeRadiation = false,
+  adminUsernames: ReadonlySet<string> = new Set(),
 ): Promise<LaunchResult> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot attack your own planet');
@@ -163,6 +167,11 @@ export async function launchAttack(
       if ((origin.homeFleet[hull] ?? 0) < n) {
         throw new GameError('NOT_ENOUGH_SHIPS', `Not enough ${hull} at home`, 400, { hull });
       }
+    }
+    try { splitHealthFleet(origin.homeFleet, origin.homeDamage, requested, true); }
+    catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+      throw new GameError('NOT_ENOUGH_COMBAT_READY_SHIPS', 'Ships at 5% HP or below cannot join a combat mission', 409);
     }
     /*
       CAN THIS WING MOVE AT ALL — a question research cannot answer. D180.
@@ -399,6 +408,7 @@ export async function launchAttack(
     await assertRadiationSafe(tx, {
       seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
       fleet: requested, tech, acknowledged: acknowledgeRadiation,
+      damage: splitHealthFleet(origin.homeFleet, origin.homeDamage, requested, true).selectedDamage,
       path: [
         { from: origin, to: target, startMs: origin.now.getTime(), endMs: arriveAt.getTime() },
         { from: target, to: target, startMs: arriveAt.getTime(), endMs: resolveAt.getTime() },
@@ -463,6 +473,8 @@ export async function launchAttack(
     }
 
     // Move the ships off the home stack, in the same transaction.
+    const carriedDamage = await takeHomeHealth(tx, originPlanetId, requested, true);
+    await tx.update(missions).set({ damage: carriedDamage.length ? carriedDamage : null }).where(eq(missions.id, mission!.id));
     const remaining: Fleet = { ...origin.homeFleet };
     for (const [hull, n] of Object.entries(requested) as [HullId, number][]) {
       remaining[hull] = (remaining[hull] ?? 0) - n;
@@ -546,6 +558,9 @@ export async function launchAttack(
     await publishShard(tx, origin.seasonId, 'launch');
     await publishReward(tx, origin.playerId);
     if (fleetChangesWatch(requested)) await publishWatchChanges(tx, [originPlanetId]);
+
+    await commitHonor(tx, { seasonId: origin.seasonId, source: 'WORLD', id: mission!.id,
+      attack: [me.id], defence: them ? [them.id] : [], at: origin.now, adminUsernames });
 
     const homeDefenceAfter =
       fleetCount(remaining) + fleetCount(origin.ground);

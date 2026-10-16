@@ -14,6 +14,13 @@
  * on a ship. The day either is reworded the other must not move with it.
  */
 export const research = {
+  shieldingCeiling: "At level {{level}}: {{rate}} HP/min",
+  shieldingName: "Radiation Shielding",
+  shieldingTag: "Reduces radiation damage to ships",
+  shieldingRole: "Protects your ships from planet and monument radiation. There are four research levels.",
+  shieldingDetail: "This research protects ships only; it does not reduce combat damage. On a planet, Aegis provides additional protection. At monuments, only the ship’s radiation protection applies. Ships on your own planets use their commander’s current research level. Dispatched fleets keep the protection level they had at departure; later research does not upgrade them. Research requires Core 3 on your capital.",
+  shieldingRateLabel: "Level 2 radiation · HP/min",
+  shieldingScope: "Fleet protection is saved at dispatch. Works against every radiation level.",
   eyebrow: "Commander",
   title: "Research",
   /** What the whole screen is for, in the one clause a player reads before scrolling. */
@@ -115,7 +122,7 @@ export const research = {
   industrialRole:
     "Reduces ship repair cost and time in every Repair Station.",
   industrialDetail:
-    "Level 1 uses 75% of normal repair cost and time; level 2 uses 50%. The effect applies on all your planets. It does not speed up new ship construction. Ships with 20% damage or less are already repaired free on landing.",
+    "Level 1 uses 75% of normal repair cost and time; level 2 uses 50%. The effect applies on all your planets. It does not speed up new ship construction.",
   holdsName: "Prospector Holds",
   holdsTag: "Mining craft carry more",
   holdsRole: "Increases Prospector cargo capacity. Level 3 opens a third Prospector slot on each planet.",
@@ -159,9 +166,9 @@ export const research = {
     "The effect applies to existing Bastion, Harpoon and Thorn ground defences. They use the research level completed when combat begins. Ground capacity, free rebuilding and class matchups do not change. The project adds no bonus to mobile ships.",
 
   gridName: "Interception Grid",
-  gridTag: "Four interceptor charges per world",
-  gridRole: "Raises each planet’s interceptor capacity from 2 charges to 4.",
-  gridDetail: "The research increases capacity; it does not create free charges. Each charge must be built on a planet with Uplink and Radar level 3. Operational sensors can trigger interception of one Death Star; firing consumes one charge. More capacity is useful only if charges are ready.",
+  gridTag: "Up to six interceptor charges per planet",
+  gridRole: "Two research levels raise each planet’s charge capacity: 2 → 4 → 6.",
+  gridDetail: "Each research level adds 2 slots; it does not create free charges. Build each charge on a planet with an active Uplink and Radar level 3. One interception consumes one charge and stops one Death Star or radiation bomb. Only the target planet’s battery can fire.",
   stockpileName: "Strategic Stockpile",
   stockpileTag: "Two Death Stars per world",
   stockpileRole: "Raises Death Star capacity from 1 to 2 on each planet. Each weapon is built and paid for separately.",

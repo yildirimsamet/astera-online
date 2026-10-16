@@ -1,6 +1,8 @@
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
   clanDefenseApplies,
+  partitionCombatFleet,
+  fleetCount,
   hangarCapacity,
   withinTierBand,
   type Fleet,
@@ -17,6 +19,7 @@ import {
   type ClanSupportWaveStatus,
 } from '../db/schema.js';
 import { peakCoreLevels } from './player.js';
+import { projectStationedSupport } from './clanSupportRadiation.js';
 
 /**
  * KLAN SAVUNMA DESTEĞİ — the read half: what a wave looks like to its sender and to
@@ -61,7 +64,7 @@ export interface ClanSupportWaveView {
 export type WaveRow = typeof clanSupportWaves.$inferSelect;
 
 /** Render waves for the pages, reading the ships as they stand and the band as it is. */
-export async function viewWaves(db: Queryable, rows: readonly WaveRow[]): Promise<ClanSupportWaveView[]> {
+export async function viewWaves(db: Queryable, rows: readonly WaveRow[], at?: Date): Promise<ClanSupportWaveView[]> {
   if (rows.length === 0) return [];
   const people = [...new Set(rows.flatMap((row) => [row.senderPlayerId, row.hostPlayerId]))];
   const [names, worldNames, stock, peaks] = await Promise.all([
@@ -83,7 +86,11 @@ export async function viewWaves(db: Queryable, rows: readonly WaveRow[]): Promis
     fleet[row.hull] = row.count;
     fleets.set(row.location, fleet);
   }
-  return rows.map((row) => ({
+  const projected = at ? await projectStationedSupport(db, rows, at) : new Map<string, never>();
+  return rows.map(original => {
+    const projection = projected.get(original.id);
+    const row: WaveRow = projection?.wave ?? original;
+    return ({
     id: row.id,
     status: row.status,
     sender: { playerId: row.senderPlayerId, name: nameOf.get(row.senderPlayerId) ?? '' },
@@ -91,9 +98,9 @@ export async function viewWaves(db: Queryable, rows: readonly WaveRow[]): Promis
     originPlanetId: row.originPlanetId,
     hostPlanetId: row.hostPlanetId,
     hostPlanetName: worldOf.get(row.hostPlanetId) ?? '',
-    fleet: fleets.get(row.unitLocation) ?? {},
+    fleet: projection?.fleet ?? fleets.get(row.unitLocation) ?? {},
     bulk: row.reservedBulk,
-    damaged: (row.damage ?? []).some((lot) => lot.count > 0 && lot.damageBp > 0),
+    damaged: (row.damage ?? []).some((lot) => lot.count > 0 && lot.damageBp + (lot.remainderBp ?? 0) > 0),
     sentAt: row.sentAt.toISOString(),
     arriveAt: row.arriveAt.toISOString(),
     stationedAt: row.stationedAt?.toISOString() ?? null,
@@ -102,7 +109,7 @@ export async function viewWaves(db: Queryable, rows: readonly WaveRow[]): Promis
     returnReason: row.returnReason,
     outOfBand: !withinTierBand(peaks.get(row.senderPlayerId) ?? 1, peaks.get(row.hostPlayerId) ?? 1),
     battles: row.battles,
-  }));
+  }); });
 }
 
 export interface SupportRoom {
@@ -146,7 +153,7 @@ export async function supportRoomOf(db: Queryable, planetId: string): Promise<Su
  */
 export async function clanSupportBayView(
   db: Queryable,
-  input: { planetId: string; rulesetVersion: number },
+  input: { planetId: string; rulesetVersion: number; at?: Date },
 ): Promise<{ room: SupportRoom; waves: ClanSupportWaveView[] } | null> {
   if (!clanDefenseApplies(input.rulesetVersion)) return null;
   const [room, rows] = await Promise.all([
@@ -158,18 +165,19 @@ export async function clanSupportBayView(
       ))
       .orderBy(asc(clanSupportWaves.arriveAt), asc(clanSupportWaves.id)),
   ]);
-  return { room, waves: await viewWaves(db, rows) };
+  const waves = (await viewWaves(db, rows, input.at)).filter(wave => ROOM_HOLDING.includes(wave.status));
+  return { room: input.at ? { ...room, used: waves.filter(wave => wave.status === 'STATIONED').reduce((sum, wave) => sum + wave.bulk, 0) } : room, waves };
 }
 
 /** Every wave of mine still out — the Fleet page's "Klan desteği" group. */
-export async function readMySupport(db: Queryable, playerId: string): Promise<{ waves: ClanSupportWaveView[] }> {
+export async function readMySupport(db: Queryable, playerId: string, at?: Date): Promise<{ waves: ClanSupportWaveView[] }> {
   const rows = await db.select().from(clanSupportWaves)
     .where(and(
       eq(clanSupportWaves.senderPlayerId, playerId),
       inArray(clanSupportWaves.status, [...LIVE_WAVE]),
     ))
     .orderBy(asc(clanSupportWaves.sentAt), asc(clanSupportWaves.id));
-  return { waves: await viewWaves(db, rows) };
+  return { waves: (await viewWaves(db, rows, at)).filter(wave => LIVE_WAVE.includes(wave.status)) };
 }
 
 /**
@@ -188,9 +196,17 @@ export async function standingSupportAt(
   const hostPeak = peaks.get(input.hostPlayerId) ?? 1;
   const inBand = rows.filter((row) => withinTierBand(peaks.get(row.senderPlayerId) ?? 1, hostPeak));
   if (inBand.length === 0) return { supporters: 0, fleet: {} };
-  const stock = await db.select({ hull: units.hull, count: units.count }).from(units)
+  const stock = await db.select({ hull: units.hull, count: units.count, location: units.location }).from(units)
     .where(inArray(units.location, inBand.map((row) => row.unitLocation)));
   const fleet: Fleet = {};
-  for (const row of stock) if (row.count > 0) fleet[row.hull] = (fleet[row.hull] ?? 0) + row.count;
-  return { supporters: new Set(inBand.map((row) => row.senderPlayerId)).size, fleet };
+  const supporters = new Set<string>();
+  for (const wave of inBand) {
+    const held: Fleet = {};
+    for (const row of stock) if (row.location === wave.unitLocation && row.count > 0) held[row.hull] = row.count;
+    const ready = partitionCombatFleet(held, wave.damage).eligible;
+    if (fleetCount(ready) === 0) continue;
+    supporters.add(wave.senderPlayerId);
+    for (const row of stock) if (row.location === wave.unitLocation) fleet[row.hull] = (fleet[row.hull] ?? 0) + (ready[row.hull] ?? 0);
+  }
+  return { supporters: supporters.size, fleet };
 }

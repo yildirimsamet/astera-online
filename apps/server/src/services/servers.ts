@@ -70,6 +70,7 @@ import {
   radiationSources,
   shipDamageLots,
   hpRadiationSources,
+  radiationBombFlights,
   monuments,
   monumentShipLots,
   monumentWaves,
@@ -607,6 +608,7 @@ export async function wipeAllServers(
     await tx.delete(monumentShipLots);
     await tx.delete(monumentWaves);
     await tx.delete(hpRadiationSources);
+    await tx.delete(radiationBombFlights);
     // Clan rows form their own child graph around missions, players and clans.
     // Personal shares go first; immutable score/event history is kept only until
     // this seasonal wipe, never into the next galaxy.

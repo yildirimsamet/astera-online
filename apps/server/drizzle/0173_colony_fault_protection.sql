@@ -1,0 +1,1 @@
+ALTER TABLE "planets" ADD COLUMN "fault_protected_until" timestamp with time zone;

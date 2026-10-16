@@ -3,7 +3,8 @@ import { FAULT_KINDS } from '@astera/rules';
 import type { NotificationView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { hullName, monumentName, unlockCopy } from '../i18n/names.js';
-import { compact, decimal, full } from './format.js';
+import { battleOutcome, monumentControlKey, monumentGradeKey, type BattleOutcome } from './battleOutcome.js';
+import { compact, decimal, full, signed } from './format.js';
 import { commanderLabel } from './identity.js';
 import { dayClock, duration } from './time.js';
 
@@ -91,6 +92,15 @@ const intercepted = z.object({
   range: z.number(),
 });
 
+const radiationBombResult = z.object({
+  level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  outcome: z.enum(['HIT', 'INEFFECTIVE']).default('HIT'), targetKind: z.enum(['PLANET', 'MONUMENT']).optional(),
+  targetId: z.string().optional(), targetName: z.string().optional(), monumentOrdinal: z.number().optional(),
+  defended: z.boolean().optional(), repairsCancelled: z.number().nonnegative().optional(),
+  loyalty: z.object({ before: z.number(), after: z.number() }).optional(),
+  faults: z.array(z.enum(FAULT_KINDS)).optional(),
+});
+
 /**
  * WHAT A RAID'S GARBAGE COLLECTORS LIFTED. D200.
  *
@@ -137,8 +147,8 @@ const supportResult = z.object({
   /** The raid's grade, which is the raider's: REPELLED is the line holding. */
   grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']),
   hostPlanetName: z.string(),
-  lost: z.number(),
-  survived: z.number(),
+  lost: z.number().int().nonnegative(),
+  survived: z.number().int().nonnegative(),
 });
 const postureReset = z.object({ planetNames: z.array(z.string()) });
 
@@ -152,7 +162,7 @@ const raided = z.object({
   lootAlloy: z.number(),
   lootCrystal: z.number(),
   lootDeuterium: z.number().default(0),
-  unitsLost: z.number(),
+  unitsLost: z.number().int().nonnegative(),
   theirLosses: z.number().optional(),
   /** Optional: rows written before the works were reported are still readable. */
   disruptedMinutes: z.number().optional(),
@@ -187,8 +197,8 @@ const raidResult = z.object({
   lootCrystal: z.number(),
   lootDeuterium: z.number().default(0),
   ...salvageFields,
-  unitsLost: z.number(),
-  shipsHome: z.number(),
+  unitsLost: z.number().int().nonnegative(),
+  shipsHome: z.number().int().nonnegative(),
   dominion: z.number().int().safe().optional(),
   /** The line emptied in front of the raid. Nothing about what it held. */
   targetFled: z.boolean().optional(),
@@ -567,6 +577,32 @@ const monumentResult = monumentTarget.extend({ lostFuel: z.number().finite().non
   opponents: z.array(z.object({ kind: z.enum(['PLAYER', 'NEUTRAL']), name: z.string(),
     clanName: z.string().nullable(), clanTag: z.string().nullable() })).default([]) });
 
+/** A battle's verdict is independent of the notification's category or score. */
+export function notificationBattleOutcome(notification: NotificationView): BattleOutcome | null {
+  if (notification.kind === 'raid_result') {
+    if (notificationMonumentTarget(notification)) {
+      const result = monumentResult.safeParse(notification.payload);
+      return result.success ? battleOutcome({ ...result.data, losses: result.data.unitsLost }) : 'neutral';
+    }
+    const result = raidResult.safeParse(notification.payload);
+    const grade = z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']).safeParse(result.success ? result.data.grade : undefined);
+    return result.success && grade.success ? battleOutcome({ attacking: true, grade: grade.data,
+      survivors: result.data.shipsHome, losses: result.data.unitsLost }) : 'neutral';
+  }
+  if (notification.kind === 'raided') {
+    const result = raided.safeParse(notification.payload);
+    const grade = z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']).safeParse(result.success ? result.data.grade : undefined);
+    return result.success && grade.success ? battleOutcome({ attacking: false, grade: grade.data,
+      losses: result.data.unitsLost }) : 'neutral';
+  }
+  if (notification.kind === 'clan_support_result') {
+    const result = supportResult.safeParse(notification.payload);
+    return result.success ? battleOutcome({ attacking: false, grade: result.data.grade,
+      survivors: result.data.survived, losses: result.data.lost }) : 'neutral';
+  }
+  return null;
+}
+
 /** Native target payloads cannot be treated as historical planet-shaped news. */
 export function notificationMonumentTarget(notification: NotificationView): NotificationIdentity | null {
   const allowed = notification.kind === 'monument_inbound' || notification.kind === 'monument_probe_lost'
@@ -591,6 +627,11 @@ export function notificationIdentity(notification: NotificationView): Notificati
   const target = notificationMonumentTarget(notification);
   if (target) return target;
   switch (notification.kind) {
+    case 'radiation_bomb_result': {
+      const parsed = radiationBombResult.safeParse(notification.payload);
+      if (!parsed.success || !parsed.data.targetName || parsed.data.targetKind !== 'PLANET') return null;
+      return { label: parsed.data.targetName, ...(parsed.data.targetId ? { planetId: parsed.data.targetId } : {}) };
+    }
     case 'incoming_fleet':
     case 'strategic_incoming': {
       const parsed = incoming.safeParse(notification.payload);
@@ -722,8 +763,8 @@ export function describeNotification(notification: NotificationView, now: number
     if (notification.kind === 'raid_result') {
       const parsed = monumentResult.safeParse(notification.payload);
       if (!parsed.success) return null;
-      const sentence = withFuel(i18n.t('monument.newsBattle', { name, outcome: i18n.t(`monument.reportControl.${parsed.data.control}`),
-        left: parsed.data.survivors, lost: parsed.data.unitsLost, points: String(parsed.data.dominion) }), parsed.data.lostFuel, 'lost');
+      const sentence = withFuel(i18n.t('monument.newsBattle', { name, outcome: `${i18n.t(monumentControlKey(parsed.data))} ${i18n.t(monumentGradeKey(parsed.data))}${parsed.data.survivors === 0 && parsed.data.unitsLost > 0 ? ` ${i18n.t('monument.battleResult.wiped')}` : ''}`,
+        left: parsed.data.survivors, lost: parsed.data.unitsLost, points: signed(parsed.data.dominion) }), parsed.data.lostFuel, 'lost');
       if (parsed.data.opponents.length === 0) return sentence;
       const opponents = parsed.data.opponents.map((opponent) => opponent.kind === 'NEUTRAL'
         ? i18n.t('monument.neutral')
@@ -812,7 +853,22 @@ export function describeNotification(notification: NotificationView, now: number
      * it, the attacker lost it. One kind rather than two, because it IS one event
      * — and a pair of kinds would let the two halves drift apart in wording.
      */
+    case 'radiation_bomb_result': {
+      const parsed = radiationBombResult.safeParse(notification.payload);
+      if (!parsed.success) return i18n.t('planet.radiationBomb.impact');
+      const target = parsed.data.targetKind === 'MONUMENT' ? monumentName(parsed.data.monumentOrdinal) : parsed.data.targetName;
+      const text = i18n.t(parsed.data.outcome === 'INEFFECTIVE' ? 'planet.radiationBomb.ineffective' : 'planet.radiationBomb.hit', { level: parsed.data.level });
+      const loyalty = parsed.data.outcome === 'HIT' ? parsed.data.loyalty : undefined;
+      const colony = loyalty ? i18n.t(loyalty.after <= 0 ? 'planet.radiationBomb.colonySeceded' : 'planet.radiationBomb.colonyResult', {
+        before: Math.ceil(loyalty.before), after: Math.ceil(loyalty.after),
+      }) : null;
+      const faults = parsed.data.outcome === 'HIT' && parsed.data.faults?.length
+        ? i18n.t('planet.radiationBomb.faultResult', { faults: parsed.data.faults.map(fault => i18n.t(`faults.name.${fault}`)).join(', ') }) : null;
+      return [target, text, colony, faults, (parsed.data.repairsCancelled ?? 0) > 0 ? i18n.t('planet.radiationBomb.refund') : null].filter(Boolean).join(JOIN());
+    }
     case 'strategic_intercepted': {
+      const bomb = z.object({ weaponKind: z.literal('RADIATION_BOMB'), level: z.number().int().min(1).max(3) }).safeParse(notification.payload);
+      if (bomb.success) return i18n.t('planet.radiationBomb.intercepted', { level: bomb.data.level });
       const parsed = intercepted.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.interceptedFallback');
       return parsed.data.defended
@@ -1306,7 +1362,7 @@ export function describeNotification(notification: NotificationView, now: number
       const parsed = supportResult.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('clanSupport.noticeFallback');
       const { hostPlanetName, lost, survived } = parsed.data;
-      return i18n.t('clanSupport.noticeResult', { world: hostPlanetName, lost, kept: survived });
+      return `${i18n.t(`clanSupport.verdict.${parsed.data.grade}`)} · ${i18n.t('clanSupport.noticeResult', { world: hostPlanetName, lost, kept: survived })}`;
     }
     case 'defence_posture_reset': {
       const parsed = postureReset.safeParse(notification.payload);
@@ -1347,15 +1403,14 @@ export const isUrgent = (notification: NotificationView): boolean =>
 /**
  * Bad news, which is a different question from urgent news.
  *
- * A raid of your own resolving is urgent either way; it is only ALARMING if the
- * fleet did not come back. Colouring a decisive win in threat red would teach the
- * player to read red as "something happened" rather than as "something is wrong".
+ * Completed battles use their own result, including personal fleet destruction.
+ * Incoming warnings remain urgent independently of who later wins the battle.
  */
 export const isAlarming = (notification: NotificationView): boolean => {
   if (wasAbandoned(notification)) return false;
   if (notification.kind === 'monument_inbound' || notification.kind === 'monument_probe_lost') return true;
-  const result = monumentResult.safeParse(notification.payload);
-  if (notification.kind === 'raid_result' && result.success) return result.data.survivors === 0 || result.data.dominion < 0;
+  const battle = notificationBattleOutcome(notification);
+  if (battle !== null) return battle === 'loss';
   if (
     notification.kind === 'incoming_fleet'
     || notification.kind === 'strategic_incoming'
@@ -1413,6 +1468,10 @@ const isPirateNews = (notification: NotificationView): boolean => {
 };
 
 export function signalFamily(notification: NotificationView): SignalFamily {
+  if (notification.kind === 'radiation_bomb_result') {
+    const parsed = radiationBombResult.safeParse(notification.payload);
+    return parsed.success && parsed.data.outcome === 'HIT' && parsed.data.defended ? 'threat' : 'note';
+  }
   if (notification.kind === 'monument_inbound' || notification.kind === 'monument_probe_lost') return 'threat';
   switch (notification.kind) {
     case 'colony_lost':
@@ -1518,9 +1577,11 @@ export function signalFamily(notification: NotificationView): SignalFamily {
  * and the two part company on the pirate lane, where the chip is red whichever way
  * the fight went and only the squadron coming home decides this.
  */
-export type SignalOutcome = 'win' | 'loss' | 'neutral';
+export type SignalOutcome = BattleOutcome;
 
 export function signalOutcome(notification: NotificationView): SignalOutcome {
+  const battle = notificationBattleOutcome(notification);
+  if (battle !== null) return battle;
   const family = signalFamily(notification);
   /*
     NOTHING WAS WON AND NOTHING WAS LOST. D177.
@@ -1608,6 +1669,7 @@ export function signalGlyph(notification: NotificationView): SignalGlyph {
     case 'strategic_incoming':
     case 'strategic_intercepted':
     case 'death_star_result':
+    case 'radiation_bomb_result':
       return 'strategic';
     case 'raided':
     case 'raid_result':

@@ -1,4 +1,9 @@
 import { GameActions } from '../session/seasonLock.js';
+import { Confirm } from '../ui/kit/Confirm.js';
+import { RadiationBombForgeHost } from './RadiationBombControls.js';
+import { ShipRadiationProtection } from '../ui/ShipRadiationProtection.js';
+import { PlanetRadiationProtection } from '../ui/PlanetRadiationProtection.js';
+import { TargetRadiationInstrument } from '../ui/TargetRadiationInstrument.js';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Unreachable, Waiting } from '../ui/kit/Surface.js';
@@ -36,6 +41,7 @@ import {
   satelliteSlots,
   satelliteCost,
   interceptorCapacity,
+  researchMaxed,
   strategicStockpile,
   fleetEscapeApplies,
   shipDamageApplies,
@@ -47,6 +53,7 @@ import {
   type SatelliteId,
   type FaultKind,
   type ResearchProjectId,
+  type TechLevels,
 } from '@astera/rules';
 import { isResearchProject } from '../lib/researchNeed.js';
 import {
@@ -68,7 +75,7 @@ import { compact, decimal, factor, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { countdown, duration, untilReady, useNow } from '../lib/time.js';
 import { projectedQueueState, type ProjectedQueueState } from '../lib/predict.js';
-import { buildShare, deathStarsOf, interceptorsOf } from '../lib/strategic.js';
+import { buildShare, deathStarsOf, hitsToTakeLoyalColony, interceptorsOf } from '../lib/strategic.js';
 /** The commander's research ladders, off the payload the screen already holds. */
 import { techOf } from '../lib/navigation.js';
 /*
@@ -129,7 +136,7 @@ import { Segmented } from '../ui/kit/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
 import { Icon } from '../v2/icons.js';
-import { ChargeTally } from '../v2/kit/ChargeTally.js';
+import { TacticalStock } from '../ui/TacticalStock.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Cost } from '../v2/kit/Cost.js';
@@ -268,7 +275,7 @@ export function PlanetScreen({
       ? [...data.queues.CONSTRUCTION, ...data.queues.YARD, ...(data.queues.REPAIR ?? [])].map((order) => order.finishesAt)
       : [];
     const strategicInstants = data
-      ? [...deathStarsOf(data), ...interceptorsOf(data)]
+      ? [...deathStarsOf(data), ...interceptorsOf(data), ...data.radiationBombs]
         .filter((asset) => asset.status === 'BUILDING' && asset.readyAt !== null)
         .map((asset) => asset.readyAt)
       : [];
@@ -311,7 +318,7 @@ export function PlanetScreen({
       stopped = true;
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [data?.deathStars, data?.interceptors, data?.interceptor, data?.faults, data?.planet.recoveryUntil, data?.planet.empUntil, data?.queues, data?.strategic, refetch]);
+  }, [data?.deathStars, data?.interceptors, data?.interceptor, data?.radiationBombs, data?.faults, data?.planet.recoveryUntil, data?.planet.empUntil, data?.queues, data?.strategic, refetch]);
 
   useEffect(() => {
     if (!flashed) return;
@@ -497,6 +504,9 @@ export function PlanetScreen({
 
         {!lesson && <div className="flex flex-col gap-2 px-2 pt-2">
           <PlanetHero planet={data} />
+          <PlanetRadiationProtection planet={data} />
+          <TargetRadiationInstrument target={{ kind: 'PLANET', id: data.planet.id }} tech={techOf(data)}
+            planetProtection={data.planet.radiationProtectionHpPerMinute ?? 0} />
           <ColonyAbandonment planet={data} />
         </div>}
 
@@ -537,7 +547,11 @@ export function PlanetScreen({
               {active === 'reach' && <Reach {...shared} onBuild={openBuild} onStation={() => { setStation(true); }} />}
               {active === 'grow' && <Grow {...shared} />}
               {!lesson && active === 'tactical' && (
-                <DeathStarForge planet={data} held={held} recovering={recovering} onNeed={goToNeed} />
+                <div className="flex flex-col gap-3">
+                  <DeathStarForge planet={data} held={held} recovering={recovering} onNeed={goToNeed} />
+                  {data.radiationBombsAvailable && <RadiationBombForgeHost planet={data} held={held}
+                    disabledReason={recovering ? t('planet.deathStar.needOperational') : null} />}
+                </div>
               )}
             </DecisionGroup>
           </div>
@@ -803,7 +817,8 @@ function DeathStarForge({
   // A captured pad can hold more than its new owner may build; the tally counts what stands.
   const pad = Math.max(stockpile, weapons.length);
   const readyCount = weapons.filter((asset) => asset.status === 'READY').length;
-  const buildingCount = weapons.filter((asset) => asset.status !== 'READY').length;
+  const buildingCount = weapons.filter((asset) => asset.status === 'BUILDING').length;
+  const pausedCount = weapons.filter((asset) => asset.status === 'PAUSED').length;
   const activeBuild = weapons.find((asset) => asset.status === 'BUILDING');
   const progress = activeBuild ? buildShare(activeBuild, DEATH_STAR.buildMinutes, now) : null;
   const core = (planet.buildings.CORE ?? 0) >= DEATH_STAR.requiredCore;
@@ -831,93 +846,70 @@ function DeathStarForge({
       data-strategic-state={primary?.status ?? 'LOCKED'}
       data-strategic-count={weapons.length}
       data-strategic-capacity={stockpile}
-      className={`scene-panel tactical-scene flex flex-col gap-2.5 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
+      data-locked={!live && (!core || !yard)}
+      className={`tactical-production tactical-production--death-star font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
     >
-      <AtmosphereImage art={ATMOSPHERE.strategic} />
-      <div className="flex items-start gap-3">
-
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center justify-between gap-2">
-            <span className={TACTICAL_HEADING}>{t('planet.deathStar.eyebrow')}</span>
-            <ChargeTally
-              ready={readyCount}
-              loading={buildingCount}
-              total={pad}
-              label={t('planet.deathStar.tally', { used: weapons.length, total: pad })}
-            />
-          </p>
-          <p className="mt-0.5 text-body font-semibold leading-snug text-v2-ink">
-            {primary?.status === 'READY'
-              ? t('planet.deathStar.ready')
-              : primary?.status === 'PAUSED'
-                ? t('planet.deathStar.paused')
-                : primary?.status === 'BUILDING'
-                  ? t('planet.deathStar.building', {
-                    duration: primary.readyAt
-                      ? untilReady((primary.readyAt.getTime() - now) / 60_000)
-                      : duration((primary.remainingSeconds ?? 0) / 60),
-                  })
-                  : t('planet.deathStar.none')}
-          </p>
-          {live && (
-            <p className="font-v2-mono text-micro text-v2-ink-3" data-strategic-stock>
-              {t('planet.deathStar.stock', {
-                ready: readyCount,
-                building: buildingCount,
-                held: weapons.length,
-                capacity: pad,
-              })}
-            </p>
-          )}
-          {progress !== null && <ChargeProgress share={progress} mark="data-strategic-progress" />}
-          <p className="mt-1 text-caption leading-snug text-v2-ink-2">
-            {t(readyCount > 0 ? 'planet.deathStar.readyHint' : 'planet.deathStar.dangerHint', {
-              loss: DEATH_STAR.colonyLoyaltyLoss,
-            })}
-          </p>
-        </div>
+      <div className="tactical-production__scene" aria-hidden="true">
+        <AtmosphereImage art={{ ...ATMOSPHERE.strategic, position: '50% 20%' }} className="tactical-production__art" />
       </div>
-
-      {!room && stockpileLevel < 1 && (
-        <CapacityNext
-          project="STRATEGIC_STOCKPILE"
-          total={strategicStockpile(1)}
-          onOpen={() => { onNeed('STRATEGIC_STOCKPILE'); }}
-        />
-      )}
-      {room && (
-        <>
+      <div className="tactical-production__body">
+        <div className="tactical-production__heading">
+          <h4><Icon id="i-attack" className="size-3.5" />{t('focus.planet.deathStar')}</h4>
+          <TacticalStock ready={readyCount} loading={buildingCount} paused={pausedCount} total={pad} capacity={stockpile} />
+        </div>
+        <p className="tactical-production__eyebrow">{t('planet.deathStar.eyebrow')}</p>
+        <p className="tactical-production__status" data-state={primary?.status ?? 'EMPTY'}><i aria-hidden="true" />
+          {primary?.status === 'READY'
+            ? t('planet.deathStar.ready')
+            : primary?.status === 'PAUSED'
+              ? t('planet.deathStar.paused')
+              : primary?.status === 'BUILDING'
+                ? t('planet.deathStar.building', {
+                  duration: primary.readyAt
+                    ? untilReady((primary.readyAt.getTime() - now) / 60_000)
+                    : duration((primary.remainingSeconds ?? 0) / 60),
+                })
+                : t('planet.deathStar.none')}
+        </p>
+        {progress !== null && <ChargeProgress share={progress} mark="data-strategic-progress" />}
+        <dl className="tactical-production__specs">
+          <div><dt><Icon id="i-clock" className="size-3" />{t('planet.deathStar.empDuration')}</dt>
+            <dd>{duration(DEATH_STAR.empMinutes)}</dd></div>
+          <div><dt><Icon id="i-base" className="size-3" />{t('planet.deathStar.loyaltyDamage')}</dt>
+            <dd>−{DEATH_STAR.colonyLoyaltyLoss}</dd></div>
+        </dl>
+        <p className="tactical-production__hint">
+          {t('planet.deathStar.hint', { loss: DEATH_STAR.colonyLoyaltyLoss, hits: hitsToTakeLoyalColony })}
+        </p>
+        {!room && stockpileLevel < 1 && (
+          <CapacityNext project="STRATEGIC_STOCKPILE" total={strategicStockpile(1)} onOpen={() => { onNeed('STRATEGIC_STOCKPILE'); }} />
+        )}
+        {room && <>
           <ul className="flex flex-wrap gap-1.5">
             <TacticalNeed ok={core} onFix={() => { onNeed('CORE'); }}>{needCore}</TacticalNeed>
             <TacticalNeed ok={yard} onFix={() => { onNeed('SHIPYARD'); }}>{needShipyard}</TacticalNeed>
             <TacticalNeed ok={!recovering}>{needOperational}</TacticalNeed>
           </ul>
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="tactical-production__price">
             <Cost cost={DEATH_STAR.cost} held={held} />
             <span className="flex items-center gap-1 font-v2-mono text-micro text-v2-ink-3">
               <Icon id="i-clock" className="size-3 shrink-0" />
               {t('planet.deathStar.buildTime', { duration: duration(DEATH_STAR.buildMinutes) })}
             </span>
           </div>
-          <div data-act>
-            <HoldButton
-              label={t('planet.deathStar.build')}
-              disabledReason={strategicBuild.isPending ? t('planet.deathStar.started') : refusal}
-              onCommit={() => {
-                strategicBuild.mutate(undefined, {
-                  onSuccess: () => { say(t('planet.deathStar.started')); },
-                  onError: (error) => { say(describe(error), 'error'); },
-                });
-              }}
-            />
-          </div>
-        </>
-      )}
+          <div data-act><HoldButton label={t('planet.deathStar.build')}
+            disabledReason={strategicBuild.isPending ? t('planet.deathStar.started') : refusal}
+            onCommit={() => {
+              strategicBuild.mutate(undefined, {
+                onSuccess: () => { say(t('planet.deathStar.started')); },
+                onError: (error) => { say(describe(error), 'error'); },
+              });
+            }} /></div>
+        </>}
+      </div>
     </section>
   );
 }
-
-const TACTICAL_HEADING = 'text-micro font-semibold uppercase tracking-wide text-v2-ink-3';
 
 /** The commander's rung of one research project, as this world's view reports it. */
 const researchLevel = (planet: PlanetView, id: ResearchProjectId): number =>
@@ -1121,12 +1113,13 @@ const cappedCountOf = (levels: BuildingLevels): number =>
 
 function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
   const upgrade = useUpgrade();
+  const [consent, setConsent] = useState<{ planetId: string; submit: () => void } | null>(null);
   const say = useToast();
   const projected = projectedQueueState(planet, 'CONSTRUCTION');
   const core = projected.buildings.CORE;
   const orders = planet.queues?.CONSTRUCTION ?? [];
 
-  return (id: BuildingId, name: string, onNeed: (row: string) => void) => {
+  const action = (id: BuildingId, name: string, onNeed: (row: string) => void) => {
     const level = planet.buildings[id] ?? 0;
     const nextLevel = projected.buildings[id];
     const cost = buildingCost(id, nextLevel);
@@ -1190,7 +1183,7 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
       queued,
       pending: upgrade.isPending,
       act: () => {
-        upgrade.mutate(id, {
+        const submit = () => { upgrade.mutate(id === 'CORE' && nextLevel === 9 ? { type: id, confirmedLevel: 10 } : id, {
           onSuccess: (r) => {
             onFlash(id);
             say(i18n.t('planet.done.queued', { name, level: r.level }));
@@ -1198,10 +1191,22 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
           onError: (err) => {
             say(describe(err), 'error');
           },
-        });
+        }); };
+        if (id === 'CORE' && nextLevel === 9) {
+          setConsent({ planetId: planet.planet.id, submit });
+        } else submit();
       },
     };
   };
+  return Object.assign(action, { confirmation: consent?.planetId === planet.planet.id ? (
+    <Confirm eyebrow={i18n.t('vacation.coreEyebrow')} title={i18n.t('vacation.coreTitle')}
+      confirmVariant="primary"
+      confirmLabel={i18n.t('vacation.coreConfirm')} backLabel={i18n.t('vacation.coreBack')}
+      pending={upgrade.isPending} onClose={() => { setConsent(null); }}
+      onConfirm={() => { if (projected.buildings.CORE !== 9) { setConsent(null); return; } consent.submit(); setConsent(null); }}>
+      <p className="text-body leading-relaxed text-v2-ink-2">{i18n.t('vacation.coreBody')}</p>
+    </Confirm>
+  ) : null });
 }
 
 /**
@@ -1726,7 +1731,7 @@ function InterceptorBattery({
   const charge = charges[0] ?? null;
   const loaded = charges.filter((asset) => asset.status === 'READY').length;
   const loading = charges.find((asset) => asset.status !== 'READY');
-  // Two per world, four with the commander's Grid (owner, 2026-10-01).
+  // Two per world, then four and six with the commander's two Grid levels.
   const gridLevel = researchLevel(planet, 'INTERCEPTION_GRID');
   const capacity = interceptorCapacity(gridLevel);
   const pad = Math.max(capacity, charges.length);
@@ -1775,22 +1780,21 @@ function InterceptorBattery({
   return (
     <section
       data-interceptor-state={state}
-      className={`scene-panel tactical-scene flex flex-col gap-2.5 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
+      data-locked={charges.length === 0 && (!uplink || !radarReady)}
+      className={`tactical-production tactical-production--battery font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
     >
-      <AtmosphereImage art={ATMOSPHERE.interceptor} />
-      <div className="flex items-start gap-3">
-
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center justify-between gap-2">
-            <span className={TACTICAL_HEADING}>{t('planet.interceptor.eyebrow')}</span>
-            <ChargeTally
-              ready={loaded}
-              loading={charges.length - loaded}
-              total={pad}
-              label={t('planet.interceptor.tally', { used: charges.length, total: pad })}
-            />
-          </p>
-          <p className="mt-0.5 text-body font-semibold leading-snug text-v2-ink">
+      <div className="tactical-production__scene" aria-hidden="true">
+        <AtmosphereImage art={ATMOSPHERE.interceptor} className="tactical-production__art" />
+      </div>
+      <div className="tactical-production__body">
+          <div className="tactical-production__heading">
+            <h4><Icon id="i-shield" className="size-3.5" />{t('planet.interceptor.eyebrow')}</h4>
+            <div data-interceptor-capacity><TacticalStock ready={loaded}
+              loading={charges.filter(asset => asset.status === 'BUILDING').length}
+              paused={charges.filter(asset => asset.status === 'PAUSED').length}
+              total={pad} capacity={capacity} kind="charges" /></div>
+          </div>
+          <p className="tactical-production__status" data-state={state}><i aria-hidden="true" />
             {noRadarProtection
               ? t('planet.interceptor.noRadar')
               : charge?.status === 'READY'
@@ -1808,7 +1812,7 @@ function InterceptorBattery({
           {loading && (
             <ChargeProgress share={buildShare(loading, ANTI_STRATEGIC.buildMinutes, now)} mark="data-charge-progress" />
           )}
-          <p className="mt-1 text-caption leading-snug text-v2-ink-2">
+          <p className="tactical-production__hint">
             {t(noRadarProtection
               ? 'planet.interceptor.noRadarHint'
               : charge?.status === 'READY'
@@ -1821,25 +1825,23 @@ function InterceptorBattery({
               {t('planet.interceptor.colonyHint', { loss: DEATH_STAR.colonyLoyaltyLoss })}
             </p>
           )}
-        </div>
-      </div>
 
       {/*
         THE REQUIREMENTS STAY ON SCREEN UNTIL A CHARGE EXISTS, and each is a door
         rather than an alarm: the Uplink and the Radar both point at the row that
         would close them. A loaded charge whose ring went dark shows them again.
       */}
-      {!room && gridLevel < 1 && (
+      {!room && !researchMaxed('INTERCEPTION_GRID', gridLevel) && (
         <CapacityNext
           project="INTERCEPTION_GRID"
-          total={interceptorCapacity(1)}
+          total={interceptorCapacity(gridLevel + 1)}
           onOpen={() => { onNeed('INTERCEPTION_GRID'); }}
         />
       )}
       {room && !noRadarProtection && (
         <>
           {needs}
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="tactical-production__price">
             <Cost cost={ANTI_STRATEGIC.cost} held={held} />
             <span className="flex items-center gap-1 font-v2-mono text-micro text-v2-ink-3">
               <Icon id="i-clock" className="size-3 shrink-0" />
@@ -1864,6 +1866,7 @@ function InterceptorBattery({
         </>
       )}
       {charge !== null && !radarReady && needs}
+      </div>
     </section>
   );
 }
@@ -2403,6 +2406,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
 
   return (
     <>
+      {building.confirmation}
       {/* E5: the buildings as cards, two to a row, the render on top (the mock's Base). */}
       <div className="grid grid-cols-2 gap-2">
       <div id="row-CORE">
@@ -2926,7 +2930,7 @@ function BuildSheet({
           </div>
           {art && <div data-build-scene role="img" aria-label={hullLabel(hull)} className="relative mt-2 grid aspect-[3/2] place-items-center overflow-hidden rounded-control"><CardArtwork src={art} locked={false} unowned={false} /></div>}
           <p className="text-center text-caption text-v2-ink-2">{hullTag(hull)}</p>
-          <HullStats hull={hull} />
+          <HullStats hull={hull} tech={tech} />
         </section>
 
         <div className="flex flex-col gap-1.5">
@@ -3062,7 +3066,7 @@ const HULL_SKY = {
  * speed, cargo (or salvage), the room it takes and the fuel it burns. A gun never
  * moves, so its speed says "fixed" and its fuel says nothing, rather than nought.
  */
-function HullStats({ hull }: { hull: HullId }) {
+export function HullStats({ hull, tech }: { hull: HullId; tech: TechLevels }) {
   const spec = HULLS[hull];
   const salvage = salvageCapacity({ [hull]: 1 });
   const fuel = hullFuelRate(hull);
@@ -3083,11 +3087,16 @@ function HullStats({ hull }: { hull: HullId }) {
   return (
     <dl data-build-stats className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5">
       {cells.map((cell) => (
-        <div key={cell.id} data-stat={cell.id} className="min-w-0 text-center">
-          <dt className="truncate text-micro text-v2-ink-3">{cell.label}</dt>
+        <div key={cell.id} data-stat={cell.id} className="min-w-0 rounded-chip border border-v2-line bg-v2-panel/50 px-1 py-1.5 text-center">
+          <Icon id={cell.id === 'attack' ? 'i-attack' : cell.id === 'hull' ? 'i-shield' : cell.id === 'speed' ? 'i-fleet'
+            : cell.id === 'cargo' || cell.id === 'salvage' ? 'i-collect' : cell.id === 'room' ? 'i-base' : 'i-spark'}
+            className={`mx-auto mb-1 size-4 ${cell.id === 'attack' ? 'text-v2-hostile' : cell.id === 'hull' ? 'text-v2-self'
+              : cell.id === 'speed' ? 'text-v2-sky-blue' : cell.id === 'fuel' ? 'text-v2-warn' : 'text-v2-ink-2'}`} />
+          <dt className="text-micro leading-tight text-v2-ink-3">{cell.label}</dt>
           <dd className="font-v2-mono text-caption tabular-nums text-v2-ink">{cell.value}</dd>
         </div>
       ))}
+      <ShipRadiationProtection hull={hull} tech={tech} />
     </dl>
   );
 }

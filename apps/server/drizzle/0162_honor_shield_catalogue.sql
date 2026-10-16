@@ -1,0 +1,1 @@
+ALTER TABLE "honor_seasons" ADD COLUMN "shield_catalogue" jsonb NOT NULL;

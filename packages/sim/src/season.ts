@@ -1,5 +1,10 @@
+import { simCommanderPeakCore, simCommanderPvpBalance } from './pvpBalance.js';
+export { simCommanderPeakCore, simCommanderPvpBalance } from './pvpBalance.js';
 import {
   ABUSE,
+  coreTier,
+  pvpBalanceForTier,
+  type PvpBalance,
   ALL_HULLS,
   BUILD,
   BUILDING_IDS,
@@ -1962,6 +1967,7 @@ export function probeIntel(
   q: ProbeTarget,
   t: number,
   rng: Rng,
+  balance: PvpBalance = pvpBalanceForTier(coreTier(q.buildings.CORE)),
 ): SimIntel {
   const line = garrisonOf(q.fleet, q.ground);
   const accuracy = probeAccuracy(scoutShipyard, q.instruments.VEIL ?? 0);
@@ -1984,6 +1990,7 @@ export function probeIntel(
     ),
     'DECISIVE',
     Number.MAX_SAFE_INTEGER,
+    balance,
   );
   return {
     takeable: fuzzBand(raidable.alloy + raidable.crystal + raidable.deuterium, accuracy, rng).mid,
@@ -2732,15 +2739,12 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
 
     const hits = (p.recentHits.get(q.id) ?? []).filter((x) => t - x < ABUSE.bashWindowMinutes).length;
     /*
-      ONE WORLD PER SIMULATED COMMANDER, SO THE PEAK IS THE ONLY CORE THERE IS.
-      D168 measures the band on a commander's tallest Core across every world they
-      hold; `SimPlayer` models a single planet, so this is that reading and not a
-      shortcut past it. A simulator that ever grows colonies has to take the max
-      here, or it will report a band the server does not enforce.
+      Use the same whole-holding peak as loot and probes. Colonies are now part
+      of the model; reading only the capital would reopen the low-tier band.
     */
     const gate = canAttack(
-      { playerId: String(p.id), peakCoreLevel: p.buildings.CORE },
-      { playerId: String(q.id), peakCoreLevel: q.buildings.CORE },
+      { playerId: String(p.id), peakCoreLevel: simCommanderPeakCore(world, p) },
+      { playerId: String(q.id), peakCoreLevel: simCommanderPeakCore(world, q) },
       hits,
     );
     if (!gate.ok) continue;
@@ -2853,7 +2857,7 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
     if ((best.q.instruments.AEGIS ?? 0) > 0 && best.q.shield > 0) {
       p.shieldInsightSeen = true;
     }
-    p.intel.set(best.q.id, probeIntel(p.buildings.SHIPYARD, best.q, t, rng));
+    p.intel.set(best.q.id, probeIntel(p.buildings.SHIPYARD, best.q, t, rng, simCommanderPvpBalance(world, best.q)));
     return; // spends the session on the probe
   }
 
@@ -2958,6 +2962,7 @@ export function resolveMission(m: Mission, t: number, world: World, stats: DaySt
   }
   def.shield = r.shieldLeft;
 
+  const balance = simCommanderPvpBalance(world, def);
   const loot = computeLoot(
     { alloy: def.alloy, crystal: def.crystal, deuterium: def.deuterium },
     {
@@ -2968,6 +2973,7 @@ export function resolveMission(m: Mission, t: number, world: World, stats: DaySt
     vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR, def.buildings.DEUTERIUM_PLANT),
     r.grade,
     fleetCargo(r.attackerSurvivors, atk.tech),
+    balance,
   );
   // Two columns, debited separately — the works are not the store, and the vault
   // covers only one of them. D16.
@@ -2987,7 +2993,7 @@ export function resolveMission(m: Mission, t: number, world: World, stats: DaySt
     Math.max(0, def.alloy - vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR, def.buildings.DEUTERIUM_PLANT).alloy)
     + Math.max(0, def.crystal - vaultProtects(def.buildings.VAULT, def.buildings.REFINERY, def.buildings.EXTRACTOR, def.buildings.DEUTERIUM_PLANT).crystal)
     + def.deuterium
-    + (def.bufferAlloy + def.bufferCrystal + def.bufferDeuterium) * COMBAT.lootBufferShare;
+    + (def.bufferAlloy + def.bufferCrystal + def.bufferDeuterium) * balance.lootBufferShare;
   if (survivingCargo > 0 && loot.alloy + loot.crystal + loot.deuterium >= survivingCargo - 1) {
     if (remainingRaidable > 1) atk.cargoLimitedSeen = true;
   }
@@ -3106,7 +3112,7 @@ export function runSeason(cfg: SimConfig): { world: World; days: DayReport[]; di
         p.wealthNow = totalWealth(p, world);
       }
       const day = t / 1440;
-      days.push({ day, stats, invariants: measure(day, world.players, stats) });
+      days.push({ day, stats, invariants: measure(day, world.players, stats, world) });
       cfg.onDay?.(day, world);
       for (const p of world.players) {
         p.wealthHistory.push(p.wealthNow);

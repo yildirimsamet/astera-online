@@ -11,6 +11,9 @@ import {
   interceptOrbit,
   missionFuel,
   quoteTrade,
+  honorTradeResources,
+  honorBenefits,
+  HONOR_BENEFIT_THRESHOLDS_V1,
   transferCargoCapacity,
   type Fleet,
 } from '@astera/rules';
@@ -22,6 +25,7 @@ import {
   seasons,
   tradeRuns,
   units,
+  honorTotals,
 } from '../src/db/schema.js';
 import { minutesSince } from '../src/clock.js';
 import { buildApp } from '../src/app.js';
@@ -32,6 +36,9 @@ import { launchAttack } from '../src/services/mission.js';
 import { launchHarvest, resolveMiningArrival, resolveMiningReturn } from '../src/services/mining.js';
 import { baysInUse } from '../src/services/flight.js';
 import { fleetTruthFor } from '../src/services/intel.js';
+import { landHpShips } from '../src/services/shipDamage.js';
+import { prepareHonorSeason } from '../src/services/honorLedger.js';
+import { enableHonorBenefits } from '../src/services/honorBenefits.js';
 import {
   fuelUp,
   giveDebris,
@@ -49,7 +56,7 @@ import {
  *
  * The fourth target class and the first one you DEAL with rather than take from.
  * Every refusal below is a sentence the launch screen has to be able to say before
- * a fleet is committed, because there is no recall — and the one this feature is
+ * a fleet is committed — and the one this feature is
  * really built on is `CARGO_CAPACITY`: the hold is sized by `max(outbound,
  * return)`, so a small offer that buys a large haul must fly out in a convoy big
  * enough to bring the haul home. That is the decision. Everything else is a brake
@@ -132,6 +139,97 @@ describe('a convoy sent to the merchant', () => {
   };
 
   const RES = (alloy = 0, crystal = 0, deuterium = 0) => ({ alloy, crystal, deuterium });
+
+  it('rejects missing Honor quotes and zero-net commission before spending stores or dispatching ships', async () => {
+    await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'ACTIVE', f.clock));
+    await f.db.insert(honorTotals).values({ seasonId: f.seasonId, playerId: f.playerIds[0]!, score: -100_000_000 });
+    await enableHonorBenefits(f.db, f.seasonId, f.clock, true);
+    const merchant = await merchantUp();
+    const fleet = await armed();
+    const before = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const beforeShips = await f.db.select().from(units).where(eq(units.planetId, mine));
+    const order = { occurrenceId: merchant.occurrenceId, fleet, give: RES(2), want: RES(0, 1) };
+    await expect(launchTrade(f.db, mine, order, f.clock)).rejects.toMatchObject({ code: 'HONOR_QUOTE_CHANGED' });
+    await expect(launchTrade(f.db, mine, { ...order, expectedHonorTier: -2 }, f.clock))
+      .rejects.toMatchObject({ code: 'HONOR_TRADE_TOO_SMALL' });
+    expect(await f.db.select().from(tradeRuns)).toHaveLength(0);
+    expect(await f.db.select().from(planets).where(eq(planets.id, mine))).toEqual(before);
+    expect(await f.db.select().from(units).where(eq(units.planetId, mine))).toEqual(beforeShips);
+  });
+
+  it.each([[-25_000_000, -1, 7], [-100_000_000, -2, 14], [75_000_000, 2, 0]] as const)(
+    'freezes Honor %s commission once and rejects stale quotes', async (score, tier, pct) => {
+      await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'ACTIVE', f.clock));
+      await f.db.insert(honorTotals).values({ seasonId: f.seasonId, playerId: f.playerIds[0]!, score });
+      await enableHonorBenefits(f.db, f.seasonId, f.clock, true);
+      const merchant = await merchantUp();
+      const fleet = await armed();
+      const gross = RES(0, 200);
+      const order = { occurrenceId: merchant.occurrenceId, fleet, give: RES(400), want: gross, expectedHonorTier: tier };
+      await expect(launchTrade(f.db, mine, { ...order, expectedHonorTier: 0 }, f.clock)).rejects.toMatchObject({ code: 'HONOR_QUOTE_CHANGED' });
+      expect(await f.db.select().from(tradeRuns)).toHaveLength(0);
+      const launch = await launchTrade(f.db, mine, order, f.clock);
+      const [run] = await f.db.select().from(tradeRuns).where(eq(tradeRuns.id, launch.runId));
+      const net = honorTradeResources(gross, honorBenefits(score, HONOR_BENEFIT_THRESHOLDS_V1)).net;
+      expect(run).toMatchObject({ honorCommissionPct: pct, want: net });
+      expect(launch.want).toEqual(net);
+      await f.db.update(honorTotals).set({ score: -score });
+      const { resolveTradeArrival, resolveTradeReturn } = await import('../src/services/trade.js');
+      f.clock.set(launch.arriveAt);
+      await f.db.transaction(tx => resolveTradeArrival(tx, launch.runId, f.clock));
+      await f.db.transaction(tx => resolveTradeArrival(tx, launch.runId, f.clock));
+      const [returning] = await f.db.select().from(tradeRuns).where(eq(tradeRuns.id, launch.runId));
+      if (!returning?.homeAt) throw new Error('Missing merchant return');
+      f.clock.set(returning.homeAt);
+      const delivery = await f.db.transaction(tx => resolveTradeReturn(tx, launch.runId, f.clock));
+      expect(delivery?.delivered).toEqual(net);
+      expect(await f.db.transaction(tx => resolveTradeReturn(tx, launch.runId, f.clock))).toBeNull();
+    });
+
+  it('preserves an old flight at program opening and returns the full offer on a new recalled trade', async () => {
+    await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'ACTIVE', f.clock));
+    const merchant = await merchantUp();
+    const fleet = await armed();
+    const order = { occurrenceId: merchant.occurrenceId, fleet, give: RES(400), want: RES(0, 200) };
+    const old = await launchTrade(f.db, mine, order, f.clock);
+    await f.db.insert(honorTotals).values({ seasonId: f.seasonId, playerId: f.playerIds[0]!, score: -100_000_000 });
+    await enableHonorBenefits(f.db, f.seasonId, f.clock, true);
+    const { resolveTradeArrival, resolveTradeReturn, recallTrade } = await import('../src/services/trade.js');
+    f.clock.set(old.arriveAt);
+    await f.db.transaction(tx => resolveTradeArrival(tx, old.runId, f.clock));
+    const [returning] = await f.db.select().from(tradeRuns).where(eq(tradeRuns.id, old.runId));
+    if (!returning?.homeAt) throw new Error('Missing old merchant flight return');
+    expect(returning.honorCommissionPct).toBe(0);
+    f.clock.set(returning.homeAt);
+    expect((await f.db.transaction(tx => resolveTradeReturn(tx, old.runId, f.clock)))?.delivered).toEqual(RES(0, 200));
+    const launched = await launchTrade(f.db, mine, { ...order, expectedHonorTier: -2 }, f.clock);
+    const recalled = await recallTrade(f.db, launched.runId, f.clock, f.playerIds[0]!);
+    if (!recalled.homeAt) throw new Error('Missing recalled merchant return');
+    f.clock.set(recalled.homeAt);
+    const delivery = await f.db.transaction(tx => resolveTradeReturn(tx, launched.runId, f.clock));
+    expect(delivery?.delivered).toEqual(RES(400));
+  });
+
+  it('carries maintenance health on a civilian merchant flight', async () => {
+    const merchant = await merchantUp();
+    await armed({ COURIER: 0 });
+    const damage = [{ hull: 'COURIER' as const, count: 4, damageBp: 9700, remainderBp: 0.25 }];
+    await f.db.transaction((tx) => landHpShips(tx, { planetId: mine, ownerPlayerId: f.playerIds[0]!,
+      fleet: { COURIER: 4 }, damage, at: f.clock.now() }));
+    const result = await launchTrade(f.db, mine, { occurrenceId: merchant.occurrenceId, fleet: { COURIER: 2 },
+      give: RES(40), want: RES(0, 20) }, f.clock);
+    const [run] = await f.db.select().from(tradeRuns).where(eq(tradeRuns.id, result.runId));
+    expect(run?.damage).toEqual([{ ...damage[0], count: 2 }]);
+    const { resolveTradeArrival, resolveTradeReturn } = await import('../src/services/trade.js');
+    const { readHomeHealth } = await import('../src/services/homeHealth.js');
+    f.clock.set(result.arriveAt);
+    await f.db.transaction(tx => resolveTradeArrival(tx, result.runId, f.clock));
+    const [returning] = await f.db.select().from(tradeRuns).where(eq(tradeRuns.id, result.runId));
+    if (!returning?.homeAt) throw new Error('merchant return not scheduled');
+    f.clock.set(returning.homeAt);
+    await f.db.transaction(tx => resolveTradeReturn(tx, result.runId, f.clock));
+    expect((await readHomeHealth(f.db, mine)).damage).toEqual(damage);
+  });
 
   it('requires explicit HP loss acknowledgement before paying a lethal merchant flight', async () => {
     const merchant = await merchantUp();
@@ -502,6 +600,21 @@ describe('a convoy sent to the merchant', () => {
    * raid budget while running convoys on the side — the "resources replace players
    * as the fun" regression the design watches for.
    */
+  it('dispatches newly returned cargo ships while the first trade fleet is still outbound', async () => {
+    const merchant = await merchantUp();
+    await armed({ COURIER: 1 });
+    const order = { occurrenceId: merchant.occurrenceId, fleet: { COURIER: 1 }, give: RES(90), want: RES(0, 30) };
+    const first = await launchTrade(f.db, mine, order, f.clock);
+    await f.db.transaction(tx => landHpShips(tx, { planetId: mine, ownerPlayerId: f.playerIds[0]!, fleet: { COURIER: 2 }, damage: null, at: f.clock.now() }));
+    const second = await launchTrade(f.db, mine, { ...order, fleet: { COURIER: 2 } }, f.clock);
+    expect(second.runId).not.toBe(first.runId);
+    expect(second.pending.filter(thread => thread.kind === 'trade')).toHaveLength(2);
+    expect(await baysInUse(f.db, mine)).toBe(2);
+    const rows = await f.db.select().from(units).where(eq(units.planetId, mine));
+    expect(rows.find(row => row.location === tradeLocation(first.runId))?.count).toBe(1);
+    expect(rows.find(row => row.location === tradeLocation(second.runId))?.count).toBe(2);
+  });
+
   it('competes for the same bays a raid does', async () => {
     const merchant = await merchantUp();
     await armed({ COURIER: 200, DART: 40 });

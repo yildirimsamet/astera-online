@@ -1,31 +1,35 @@
-import { HULLS, SHIP_DAMAGE } from '@astera/rules';
 import { ATMOSPHERE } from '../ui/atmosphere.js';
 import { AtmosphereImage } from '../ui/AtmosphereArt.js';
-import { useState } from 'react';
+import { HULLS, SHIP_DAMAGE, honorRepairResources } from '@astera/rules';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useCancelRepair, useStartRepair } from '../api/queries.js';
+import { useCancelRepair, useMaintenance, useStartRepair } from '../api/queries.js';
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
 import { buildingName, hullLabel, researchName } from '../i18n/names.js';
-import { affordWait } from '../lib/afford.js';
 import { full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { buildOrderLabel } from '../lib/orders.js';
 import {
   damagePct,
   jobLots,
-  newShipShare,
-  repairSelection,
   stationSummary,
   type DockLot,
   type RepairDock,
 } from '../lib/repairStation.js';
-import { countdown, duration, durationPrecise, useNow } from '../lib/time.js';
+import { countdown, durationPrecise, useNow } from '../lib/time.js';
+import { RESOURCE_ART } from '../ui/assets.js';
 import { CancelConfirm } from '../ui/QueueStrip.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { Icon } from '../v2/icons.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { Cost } from '../v2/kit/Cost.js';
 import { Sheet } from '../v2/kit/Sheet.js';
+import { Segmented } from '../v2/kit/Segmented.js';
+import { Confirm } from '../ui/kit/Confirm.js';
+import { ShipHealthInventory } from '../ui/ShipHealthInventory.js';
+import { HonorEffectQuote } from '../ui/HonorBenefits.js';
+import { createIdempotencyKey, type MaintenanceAction, type MaintenanceSelection, type RepairRequest } from '../api/client.js';
+import { dockMaintenanceRows, homeMaintenanceRows, maintenanceChoice } from '../lib/maintenanceInventory.js';
 
 /**
  * THE REPAIR STATION, IN THE BASE. Kalıcı gemi hasarı; owner instruction, 2026-09-30:
@@ -42,15 +46,6 @@ import { Sheet } from '../v2/kit/Sheet.js';
  */
 
 interface Held { alloy: number; crystal: number; deuterium: number }
-
-/** How much of the hull is gone, as a thin bar that fills with the damage. */
-function DamageBar({ damageBp }: { damageBp: number }) {
-  return (
-    <span aria-hidden="true" className="block h-1 overflow-hidden rounded-full bg-v2-line">
-      <span className="block h-full rounded-full bg-v2-warn" style={{ width: `${String(Math.min(100, damageBp / 100))}%` }} />
-    </span>
-  );
-}
 
 /** A thin bar a running job fills as it goes. */
 function JobBar({ order, now }: { order: BuildOrderView; now: number }) {
@@ -125,6 +120,7 @@ export function RepairStationCard({
   return (
     <div
       id="row-REPAIR_STATION"
+      data-highlighted={highlighted ? '' : undefined}
       className={`scene-panel repair-scene col-span-2 overflow-hidden rounded-control border bg-v2-panel font-v2-ui ${
         highlighted ? 'border-v2-self/60 ring-1 ring-v2-self/40' : 'border-v2-line'
       }`}
@@ -192,73 +188,6 @@ function Stat({ label, value, tone }: { label: string; value: string; tone: 'war
   );
 }
 
-/**
- * ONE WAITING LOT, CHOSEN OR NOT. The whole row is the switch, because on a phone the box
- * alone is a target the thumb misses. Its damage, what that is against a new ship, the
- * price and the time are the comparison the choice is made on: a lot at 90% costs nearly
- * a new ship, one at 25% little.
- */
-function LotRow({ lot, pct, held, chosen, onToggle }: {
-  lot: DockLot;
-  pct: number;
-  held: Held;
-  chosen: boolean;
-  onToggle: () => void;
-}) {
-  const { t } = useTranslation();
-  const name = hullLabel(lot.hull);
-  const damage = damagePct(lot.damageBp);
-  return (
-    <li data-testid="dock-lot">
-      <label
-        className={`flex cursor-pointer items-start gap-2.5 rounded-control border px-2.5 py-2 transition-colors ${
-          chosen ? 'border-v2-self/45 bg-v2-self/[0.06]' : 'border-v2-line bg-v2-panel'
-        }`}
-      >
-        <input
-          type="checkbox"
-          checked={chosen}
-          onChange={onToggle}
-          aria-label={t('repairStation.choose', { name, count: lot.count })}
-          className="peer sr-only"
-        />
-        <span
-          aria-hidden="true"
-          className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-cell border peer-focus-visible:ring-2 peer-focus-visible:ring-v2-self/70 ${
-            chosen ? 'border-v2-self bg-v2-self text-v2-self-ink' : 'border-v2-line-hi bg-v2-deep'
-          }`}
-        >
-          {chosen && <Icon id="i-check" className="size-3" />}
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="flex items-center gap-1.5">
-            <ClassEmblem cls={HULLS[lot.hull].cls} className="size-3 shrink-0" decorative />
-            <span className="min-w-0 flex-1 truncate text-caption font-semibold text-v2-ink">
-              {name} <span className="font-v2-mono font-normal text-v2-ink-2">{`×${String(lot.count)}`}</span>
-            </span>
-            <span className="shrink-0 font-v2-mono text-micro font-semibold text-v2-warn">
-              {t('repairStation.damaged', { pct: damage })}
-            </span>
-          </span>
-          <DamageBar damageBp={lot.damageBp} />
-          <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-            <span className="text-micro text-v2-ink-3">
-              {t('repairStation.share', { pct: newShipShare(lot.damageBp, pct) })}
-            </span>
-            <span className="ml-auto flex items-center gap-2">
-              <Cost cost={lot.cost} held={held} />
-              <span className="flex items-center gap-1 font-v2-mono text-micro text-v2-ink-2">
-                <Icon id="i-clock" className="size-3 shrink-0" />
-                {durationPrecise(lot.minutes)}
-              </span>
-            </span>
-          </span>
-        </span>
-      </label>
-    </li>
-  );
-}
-
 /** One job: what it holds, how far along it is or when it starts, and its cancel. */
 function JobRow({ order, lots, busy, onCancel }: {
   order: BuildOrderView;
@@ -285,7 +214,7 @@ function JobRow({ order, lots, busy, onCancel }: {
           {label} <span className="font-v2-mono font-normal text-v2-ink-2">{`×${String(order.count)}`}</span>
           {only && (
             <span className="ml-1.5 font-v2-mono text-micro font-normal text-v2-warn">
-              {t('repairStation.damaged', { pct: damagePct(only.damageBp) })}
+              {t('repairStation.damaged', { pct: damagePct(only.damageBp + (only.remainderBp ?? 0)) })}
             </span>
           )}
         </span>
@@ -308,7 +237,7 @@ function JobRow({ order, lots, busy, onCancel }: {
               <ClassEmblem cls={HULLS[lot.hull].cls} className="size-2.5" decorative />
               {hullLabel(lot.hull)}
               <span className="font-v2-mono text-v2-ink">{`×${String(lot.count)}`}</span>
-              <span className="text-v2-warn">{t('repairStation.damaged', { pct: damagePct(lot.damageBp) })}</span>
+              <span className="text-v2-warn">{t('repairStation.damaged', { pct: damagePct(lot.damageBp + (lot.remainderBp ?? 0)) })}</span>
             </span>
           ))}
         </span>
@@ -341,235 +270,184 @@ function JobRow({ order, lots, busy, onCancel }: {
  * (the damaged ships, every one chosen until left out, with the choice's price and the
  * commit held in the footer where the thumb is).
  */
-export function RepairStationSheet({ planet, held, onClose }: {
+interface RepairStationSheetProps {
   planet: PlanetView;
   held: Held;
   onClose: () => void;
-}) {
+}
+
+export function RepairStationSheet(props: RepairStationSheetProps) {
+  return <RepairStationContent key={props.planet.planet.id} {...props} />;
+}
+
+function RepairStationContent({ planet, held, onClose }: RepairStationSheetProps) {
   const { t } = useTranslation();
   const say = useToast();
   const start = useStartRepair();
   const cancel = useCancelRepair();
-  const [excluded, setExcluded] = useState<ReadonlySet<string>>(() => new Set());
-  const [explained, setExplained] = useState(false);
+  const maintenance = useMaintenance();
+  const [place, setPlace] = useState<'HOME' | 'DOCK'>(() =>
+    (planet.fleetDamage?.length ?? 0) === 0 && (planet.dock?.lots.length ?? 0) > 0 ? 'DOCK' : 'HOME');
+  const [mode, setMode] = useState<'REPAIR' | 'SCRAP'>('REPAIR');
+  const [quantities, setQuantities] = useState<Readonly<Record<string, number>>>({});
   const [asking, setAsking] = useState<BuildOrderView | null>(null);
-
-  const dock = planet.dock ?? null;
+  const [explained, setExplained] = useState(false);
+  const [scrap, setScrap] = useState<{ selection: MaintenanceSelection; count: number;
+    returned: Held; key: string } | null>(null);
+  const intent = useRef<{ fingerprint: string; key: string } | null>(null);
+  const intentKey = (action: MaintenanceAction | 'REPAIR', selection: MaintenanceSelection | RepairRequest): string => {
+    const fingerprint = JSON.stringify({ planetId: planet.planet.id, action, selection });
+    if (intent.current?.fingerprint !== fingerprint) intent.current = { fingerprint, key: createIdempotencyKey() };
+    return intent.current.key;
+  };
   const repairs = planet.queues?.REPAIR ?? [];
-  const last = repairs.at(-1);
-  const pct = dock?.pct ?? 100;
+  const dock = planet.dock;
   const summary = stationSummary(dock, repairs);
   const lots = dock?.lots ?? [];
-  const waiting = lots.filter((lot) => !lot.repairing);
-  const choice = repairSelection(dock, excluded);
-  const everyChosen = choice.lots.length === waiting.length;
-  const busy = start.isPending || cancel.isPending;
-
-  const short = {
-    alloy: Math.max(0, choice.cost.alloy - held.alloy),
-    crystal: Math.max(0, choice.cost.crystal - held.crystal),
-    deuterium: Math.max(0, choice.cost.deuterium - held.deuterium),
-  };
-  const canPay = short.alloy === 0 && short.crystal === 0 && short.deuterium === 0;
-  // Deuterium has no rate on this payload, so a fuel shortfall says so rather than when.
-  const wait = canPay || short.deuterium > 0
-    ? null
-    : affordWait(short, { alloyPerHour: planet.planet.alloyPerHour, crystalPerHour: planet.planet.crystalPerHour });
-
-  const toggle = (id: string): void => {
-    setExcluded((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const commit = (): void => {
-    if (!choice.request) return;
-    haptic('tap');
-    start.mutate({ planetId: planet.planet.id, request: choice.request }, {
-      onSuccess: () => { say(t('repairStation.started')); },
+  const home = homeMaintenanceRows(planet.fleet, planet.fleetDamage);
+  const allRows = place === 'HOME' ? home : dockMaintenanceRows(lots, planet.workshopRadiation ? 'LOT' : 'HEALTH');
+  const rows = mode === 'SCRAP' ? allRows : allRows.filter((row) => row.damageBp > 0 || (row.remainderBp ?? 0) > 0);
+  const choice = maintenanceChoice(rows, quantities, dock?.pct ?? 100);
+  const adjustedRepairCost = planet.honorBenefits ? honorRepairResources(choice.repairCost, planet.honorBenefits) : choice.repairCost;
+  const busy = start.isPending || cancel.isPending || maintenance.isPending;
+  const canPay = adjustedRepairCost.alloy <= held.alloy && adjustedRepairCost.crystal <= held.crystal
+    && adjustedRepairCost.deuterium <= held.deuterium;
+  const switchPlace = (next: 'HOME' | 'DOCK'): void => { setPlace(next); setQuantities({}); };
+  const switchMode = (next: 'REPAIR' | 'SCRAP'): void => { setMode(next); setQuantities({}); };
+  const move = (action: MaintenanceAction, selection: MaintenanceSelection, key?: string): void => {
+    // Evacuation uses current server health; changing radiation damage must not turn
+    // a retry of the same lot/count into another withdrawal.
+    const request = action === 'RETURN' && selection.source === 'DOCK'
+      ? { source: 'DOCK' as const, lots: selection.lots.map(({ id, count }) => ({ id, count })) } : selection;
+    maintenance.mutate({ planetId: planet.planet.id, action, selection: request, key: key ?? intentKey(action, request) }, {
+      onSuccess: () => {
+        intent.current = null;
+        setQuantities({}); setScrap(null);
+        if (action === 'DOCK') setPlace('DOCK');
+        say(t(`repairStation.maintenance.${action === 'DOCK' ? 'moved' : action === 'RETURN' ? 'returned' : 'scrapped'}`));
+      },
       onError: (error) => { say(describe(error), 'error'); },
     });
   };
-
-  /** What the commit says, and whether it may be pressed: the first thing in the way wins. */
-  const action: { label: string; ready: boolean } = start.isPending
-    ? { label: t('repairStation.starting'), ready: false }
-    : summary.full
-      ? { label: t('repairStation.queueFullShort', { used: summary.jobs, total: summary.depth }), ready: false }
-      : choice.tooMany
-        ? { label: t('repairStation.tooMany', { max: SHIP_DAMAGE.repairLotsPerOrder }), ready: false }
-        : choice.request === null
-          ? { label: t('repairStation.pick'), ready: false }
-          : !canPay
-            ? { label: wait === null ? t('itemSheet.short') : t('itemSheet.affordIn', { duration: duration(wait) }), ready: false }
-            : { label: t('repairStation.repairSelected', { count: choice.ships }), ready: true };
-
-  return (
-    <Sheet
-      detents={['fit']}
-      eyebrow={planet.planet.name}
-      title={t('repairStation.title')}
-      onClose={onClose}
-      footer={waiting.length === 0 ? undefined : (
-        <div className="flex flex-col gap-2">
-          {/* Only while the lane has room: a full lane says so on the commit instead. */}
-          {last && !summary.full && <QueueWait last={last} />}
-          <div data-testid="repair-total" className="flex items-center justify-between gap-2">
-            <span className="min-w-0 truncate text-micro text-v2-ink-3">
-              {t('repairStation.selected', { count: choice.ships })}
-            </span>
-            <span className="flex shrink-0 items-center gap-2">
-              <Cost cost={choice.cost} held={held} />
-              <span className="flex items-center gap-1 whitespace-nowrap font-v2-mono text-micro text-v2-ink-2">
-                <Icon id="i-clock" className="size-3 shrink-0" />
-                {durationPrecise(choice.minutes)}
-              </span>
-            </span>
-          </div>
-          <button
-            type="button"
-            disabled={!action.ready || busy}
-            onClick={commit}
-            className="min-h-10 w-full rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-2"
-          >
-            {action.label}
-          </button>
-        </div>
-      )}
-    >
-      <div className="flex flex-col gap-3 pt-1">
-        {/* WHAT IT IS AND WHAT IS IN IT. */}
-        <section data-repair-hero className="scene-panel repair-hero flex min-h-[250px] flex-col justify-end gap-2 rounded-control border border-v2-line bg-v2-deep px-3 pb-3 pt-2.5">
-          <AtmosphereImage art={ATMOSPHERE.repair} />
-          {pct < 100 && (
-            <span className="absolute left-2.5 top-2.5 rounded-chip border border-v2-self/40 bg-v2-deep/80 px-1.5 py-0.5 font-v2-mono text-micro text-v2-self">
-              {t('repairStation.industrialChip', { industrial: researchName('INDUSTRIAL'), off: 100 - pct })}
-            </span>
-          )}
-          <p className="text-center text-caption text-v2-ink-2">{t('repairStation.tagline')}</p>
-          <div className="grid grid-cols-3 gap-1.5">
-            <Stat label={t('repairStation.statWaiting')} value={full(summary.waitingShips)} tone={summary.waitingShips > 0 ? 'warn' : 'ink'} />
-            <Stat label={t('repairStation.statRepairing')} value={full(summary.repairingShips)} tone={summary.repairingShips > 0 ? 'self' : 'ink'} />
-            <Stat label={t('repairStation.statQueue')} value={`${String(summary.jobs)}/${String(summary.depth)}`} tone={summary.full ? 'warn' : 'ink'} />
-          </div>
-        </section>
-
-        {/* WHY THEY ARE HERE, AND THE ARITHMETIC ONE TAP DEEPER (progressive disclosure). */}
-        <div className="flex flex-col gap-1.5">
-          <p className="text-caption leading-snug text-v2-ink-2">
-            <span>{t('repairStation.outOfAction')}</span>{' '}
-            <button
-              type="button"
-              aria-expanded={explained}
-              onClick={() => { setExplained((open) => !open); }}
-              className="font-semibold text-v2-self"
-            >
-              {t('repairStation.howItWorks')} ›
-            </button>
-          </p>
-          {explained && (
-            <ul data-repair-rules className="flex flex-col gap-1 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5 text-micro leading-snug text-v2-ink-2">
-              {[
-                t('repairStation.ruleFree'),
-                t('repairStation.rulePrice'),
-                t('repairStation.ruleTime', { shipyard: buildingName('SHIPYARD'), automation: researchName('YARD_AUTOMATION') }),
-                `${t('repairStation.ruleIndustrial', { industrial: researchName('INDUSTRIAL') })}${pct < 100 ? ` ${t('repairStation.youPay', { pct })}` : ''}`,
-                t('repairStation.ruleQueue', { depth: summary.depth }),
-                t('repairStation.ruleCancel'),
-              ].map((line) => (
-                <li key={line} className="flex gap-2">
-                  <span aria-hidden="true" className="mt-[0.45em] size-1 shrink-0 rounded-full bg-v2-self/70" />
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* WHAT IS ALREADY BEING DONE. */}
-        <section className="flex flex-col gap-1.5">
-          <p className={HEADING}>
-            {t('repairStation.queueHeading')}
-            <span aria-hidden="true" className="h-px flex-1 bg-v2-line" />
-            <span className={`font-v2-mono normal-case ${summary.full ? 'text-v2-warn' : ''}`}>{`${String(summary.jobs)}/${String(summary.depth)}`}</span>
-          </p>
-          {repairs.length === 0 ? (
-            <p className="px-1 text-micro text-v2-ink-3">{t('repairStation.queueEmpty')}</p>
-          ) : (
-            <ul className="flex flex-col gap-1.5">
-              {repairs.map((order) => (
-                <JobRow
-                  key={order.id}
-                  order={order}
-                  lots={jobLots(order, lots)}
-                  busy={busy}
-                  onCancel={() => { setAsking(order); }}
-                />
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* WHAT TO DO NOW. */}
-        <section className="flex flex-col gap-1.5">
-          <p className={HEADING}>
-            {t('repairStation.damagedHeading')}
-            <span aria-hidden="true" className="h-px flex-1 bg-v2-line" />
-            {waiting.length > 0 && (
-              <button
-                type="button"
-                onClick={() => { setExcluded(everyChosen ? new Set(waiting.map((lot) => lot.id)) : new Set()); }}
-                className="font-semibold normal-case tracking-normal text-v2-self"
-              >
-                {everyChosen ? t('repairStation.selectNone') : t('repairStation.selectAll')}
-              </button>
-            )}
-          </p>
-          {waiting.length === 0 ? (
-            <p className="px-1 text-micro leading-snug text-v2-ink-3">
-              {summary.jobs === 0 ? t('repairStation.idle') : t('repairStation.noneWaiting')}
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-1.5">
-              {waiting.map((lot) => (
-                <LotRow
-                  key={lot.id}
-                  lot={lot}
-                  pct={pct}
-                  held={held}
-                  chosen={!excluded.has(lot.id)}
-                  onToggle={() => { toggle(lot.id); }}
-                />
-              ))}
-            </ul>
-          )}
-        </section>
+  const commit = (): void => {
+    const selection = choice.selection;
+    if (!selection) return;
+    if (mode === 'SCRAP') setScrap({ selection, count: choice.ships, returned: choice.scrap, key: intentKey('SCRAP', selection) });
+    else if (place === 'HOME') move('DOCK', selection);
+    else if (choice.repair) {
+      const request = { ...choice.repair, ...(planet.honorBenefits ? { expectedHonorTier: planet.honorBenefits.tier } : {}) };
+      start.mutate({ planetId: planet.planet.id, request,
+      key: intentKey('REPAIR', request) }, {
+      onSuccess: () => { intent.current = null; setQuantities({}); say(t('repairStation.started')); },
+      onError: (error) => { say(describe(error), 'error'); },
+    });
+    }
+  };
+  const label = mode === 'SCRAP' ? t('repairStation.maintenance.scrapAction') : place === 'HOME'
+    ? t('repairStation.maintenance.move') : t('repairStation.repairSelected', { count: choice.ships });
+  const ready = choice.selection !== null && !busy && !planet.workshopRadiation
+    && (mode === 'SCRAP' || place === 'HOME' || (!summary.full && canPay));
+  return <Sheet detents={['fit']} eyebrow={planet.planet.name} title={t('repairStation.title')} onClose={onClose}
+    footer={<div className="flex flex-col gap-2">
+      {choice.stale && <p role="status" className="text-micro text-v2-warn">{t('repairStation.maintenance.stale')}</p>}
+      {choice.tooMany && <p role="status" className="text-micro text-v2-warn">{t('repairStation.tooMany', { max: SHIP_DAMAGE.repairLotsPerOrder })}</p>}
+      <div className="flex items-center justify-between gap-2" data-testid="repair-total">
+        <span className="text-micro text-v2-ink-3">{t('repairStation.maintenance.selected', { count: choice.ships })}</span>
+        {mode === 'SCRAP' ? <Cost cost={choice.scrap} /> : place === 'DOCK' && <span className="flex items-center gap-2">
+          <Cost cost={adjustedRepairCost} held={held} /><span className="font-v2-mono text-micro text-v2-ink-2">{durationPrecise(choice.minutes)}</span>
+        </span>}
       </div>
-
-      {asking && (
-        <CancelConfirm
-          order={asking}
-          pending={cancel.isPending}
-          onClose={() => { setAsking(null); }}
-          onConfirm={() => {
-            const order = asking;
-            setAsking(null);
-            cancel.mutate({ planetId: planet.planet.id, orderId: order.id }, {
-              onSuccess: (result) => {
-                say(t('planet.queue.cancelled', {
-                  alloy: full(result.refund.alloy),
-                  crystal: full(result.refund.crystal),
-                  deuterium: full(result.refund.deuterium),
-                }));
-              },
-              onError: (error) => { say(describe(error), 'error'); },
-            });
-          }}
-        />
-      )}
-    </Sheet>
-  );
+      {mode === 'REPAIR' && place === 'DOCK' && choice.ships > 0 ? <HonorEffectQuote kind="repair" value={planet.honorBenefits}
+        base={choice.repairCost} net={adjustedRepairCost} /> : null}
+      {mode === 'REPAIR' && place === 'DOCK' && repairs.at(-1) && <QueueWait last={repairs.at(-1)!} />}
+      <div className="flex gap-2">
+        {place === 'DOCK' && <button type="button" disabled={!choice.selection || busy}
+          onClick={() => { if (choice.selection) move('RETURN', choice.selection); }}
+          className="min-h-10 flex-1 rounded-control border border-v2-line-hi px-2 text-caption font-semibold text-v2-ink-2 disabled:opacity-40">
+          {t('repairStation.maintenance.return')}
+        </button>}
+        <button type="button" disabled={!ready} onClick={commit}
+          className={`min-h-10 flex-1 rounded-control px-3 text-caption font-semibold disabled:bg-v2-raise disabled:text-v2-ink-3 ${mode === 'SCRAP' ? 'bg-v2-warn text-v2-deep' : 'bg-v2-self text-v2-self-ink'}`}>
+          {start.isPending ? t('repairStation.starting')
+            : mode === 'REPAIR' && place === 'DOCK' && summary.full ? t('repairStation.queueFullShort', { used: summary.jobs, total: summary.depth })
+              : mode === 'REPAIR' && place === 'DOCK' && !canPay ? t('itemSheet.short')
+                : mode === 'REPAIR' && place === 'DOCK' && choice.ships === 0 ? t('repairStation.pick') : label}
+        </button>
+      </div>
+    </div>}>
+    <div className="flex flex-col gap-3 pt-1">
+      {planet.workshopRadiation && <p role="status" className="rounded-control border border-v2-warn/35 bg-v2-warn/10 p-2 text-caption leading-snug text-v2-warn">
+        {t('repairStation.maintenance.radiation')}
+      </p>}
+      <section data-repair-hero className="scene-panel repair-hero flex min-h-[250px] flex-col justify-end gap-2 rounded-control border border-v2-line bg-v2-deep px-3 pb-3 pt-2.5">
+        <AtmosphereImage art={ATMOSPHERE.repair} />
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <p className="text-caption leading-snug text-v2-ink-2">{t('repairStation.maintenance.rule')}</p>
+          <span className="text-micro text-v2-self">{planet.honorBenefits
+            ? t('honorBenefits.researchShare', { pct: dock?.pct ?? 100 }) : t('repairStation.youPay', { pct: dock?.pct ?? 100 })}</span>
+        </div>
+      </section>
+      <button type="button" aria-expanded={explained} onClick={() => { setExplained(current => !current); }}
+        className="min-h-9 self-end px-1 text-micro font-semibold text-v2-self">{t('repairStation.howItWorks')} ›</button>
+      {explained && <ul data-repair-rules className="flex flex-col gap-1 rounded-control border border-v2-line bg-v2-deep/60 px-2 py-2 text-micro leading-snug text-v2-ink-2">
+        {[t('repairStation.ruleFree'), t('repairStation.rulePrice'),
+          t('repairStation.ruleTime', { shipyard: buildingName('SHIPYARD'), automation: researchName('YARD_AUTOMATION') }),
+          t('repairStation.ruleIndustrial', { industrial: researchName('INDUSTRIAL') }),
+          t('repairStation.ruleQueue', { depth: summary.depth }), t('repairStation.ruleCancel')]
+          .map(line => <li key={line}>{line}</li>)}
+      </ul>}
+      <div className="grid grid-cols-3 gap-1.5">
+        <Stat label={t('repairStation.damagedHeading')} value={full(home.filter((row) => row.damageBp > 0 || (row.remainderBp ?? 0) > 0).reduce((sum, row) => sum + row.count, 0))} tone="warn" />
+        <Stat label={t('repairStation.statWaiting')} value={full(summary.waitingShips)} tone="ink" />
+        <Stat label={t('repairStation.statRepairing')} value={full(summary.repairingShips)} tone="self" />
+      </div>
+      <Segmented label={t('repairStation.title')} options={[
+        { id: 'REPAIR', label: t('repairStation.maintenance.repair') },
+        { id: 'SCRAP', label: t('repairStation.maintenance.scrap') },
+      ]} value={mode} onChange={switchMode} />
+      <Segmented label={t('repairStation.maintenance.hangar')} options={[
+        { id: 'HOME', label: t('repairStation.maintenance.hangar') },
+        { id: 'DOCK', label: t('repairStation.maintenance.workshop') },
+      ]} value={place} onChange={switchPlace} />
+      <p className="text-micro leading-snug text-v2-ink-3">{mode === 'SCRAP' ? t('repairStation.maintenance.scrapRule')
+        : place === 'HOME' ? t('repairStation.maintenance.homeHint') : t('repairStation.maintenance.dockRule')}</p>
+      {Object.values(quantities).some((count) => count > 0) && <button type="button" onClick={() => { setQuantities({}); }}
+        className="self-end text-micro font-semibold text-v2-self">{t('repairStation.maintenance.clear')}</button>}
+      {rows.length === 0 ? <p className="py-2 text-caption text-v2-ink-3">{t('repairStation.maintenance.empty')}</p>
+        : <ShipHealthInventory rows={rows} quantities={quantities} disabled={busy}
+          onQuantity={(key, count) => { setQuantities((current) => ({ ...current, [key]: count })); }} />}
+      <section className="flex flex-col gap-1.5">
+        <p className={HEADING}>{t('repairStation.queueHeading')}<span className="h-px flex-1 bg-v2-line" />
+          <span className="font-v2-mono">{summary.jobs}/{summary.depth}</span></p>
+        {repairs.length === 0 ? <p className="text-micro text-v2-ink-3">{t('repairStation.queueEmpty')}</p>
+          : <ul className="flex flex-col gap-1.5">{repairs.map((order) => <JobRow key={order.id} order={order}
+            lots={jobLots(order, lots)} busy={busy} onCancel={() => { setAsking(order); }} />)}</ul>}
+      </section>
+    </div>
+    {scrap && <Confirm eyebrow={planet.planet.name} title={t('repairStation.maintenance.scrapConfirm', { count: scrap.count })}
+      confirmLabel={t('repairStation.maintenance.scrapAction')} backLabel={t('repairStation.maintenance.keep')}
+      pending={busy || choice.stale || planet.workshopRadiation === true} onClose={() => { setScrap(null); }} onConfirm={() => { move('SCRAP', scrap.selection, scrap.key); }}>
+      <p className="text-caption text-v2-ink-2">{t('repairStation.maintenance.scrapRule')}</p>
+      <div className="mt-3 flex items-center justify-between rounded-control border border-v2-line bg-v2-deep p-3">
+        <span className="text-caption text-v2-ink-2">{t('repairStation.maintenance.returnedResources')}</span>
+        <span className="flex flex-col items-end gap-1 font-v2-mono text-caption tabular-nums">
+          {(['alloy', 'crystal', 'deuterium'] as const).map(resource =>
+            <span key={resource} className="flex items-center gap-1">
+              <img src={RESOURCE_ART[resource]} alt={t(`vocabulary.resource.${resource}`)} className="size-3.5 object-contain" />
+              {full(scrap.returned[resource])}
+            </span>)}
+        </span>
+      </div>
+    </Confirm>}
+    {asking && <CancelConfirm order={asking} pending={cancel.isPending} onClose={() => { setAsking(null); }}
+      onConfirm={() => {
+        const order = asking;
+        setAsking(null);
+        cancel.mutate({ planetId: planet.planet.id, orderId: order.id }, {
+          onSuccess: (result) => { say(t('planet.queue.cancelled', { alloy: full(result.refund.alloy),
+            crystal: full(result.refund.crystal), deuterium: full(result.refund.deuterium) })); },
+          onError: (error) => { say(describe(error), 'error'); },
+        });
+      }} />}
+  </Sheet>;
 }

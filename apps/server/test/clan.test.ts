@@ -30,6 +30,7 @@ import {
   createClan,
   leaveClan,
   readClanBadge,
+  readClanHome,
   setClanAidPolicy,
 } from '../src/services/clan.js';
 import {
@@ -52,6 +53,7 @@ import {
 } from '../src/services/clanLoot.js';
 import { launchAttack } from '../src/services/mission.js';
 import { dockLotsOf } from '../src/services/shipDamage.js';
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { readBattleReports } from '../src/services/reports.js';
 import { launchProbe } from '../src/services/intel.js';
 import { prepareClanAttack } from '../src/services/clanCombat.js';
@@ -174,6 +176,37 @@ describe('ruleset-v3 clans', () => {
     } finally {
       await built.close();
     }
+  });
+
+  it.each([
+    { alloy: 2000, crystal: 1000, affordable: true },
+    { alloy: 1999, crystal: 1000, affordable: false },
+    { alloy: 2000, crystal: 999, affordable: false },
+  ])('quotes and charges the new founding boundary: $alloy alloy / $crystal crystal', async ({ alloy, crystal, affordable }) => {
+    const f = await setup(1);
+    await f.db.update(planets).set({ alloy, crystal, deuterium: 0, lastTickAt: f.clock.now() })
+      .where(eq(planets.id, f.planetIds[0]!));
+    const actor = await clanActor(f.db, f.accountIds[0]!);
+    expect(await readClanHome(f.db, f.accountIds[0]!, f.clock.now())).toMatchObject({
+      state: 'OUTSIDE',
+      creation: { cost: { alloy: 2000, crystal: 1000, deuterium: 0 }, affordable },
+    });
+    const create = () => f.db.transaction(tx => createClan(tx, {
+      actor, name: 'Orion Guard', tag: 'OG', description: '', recruiting: true, clock: f.clock,
+    }));
+    if (affordable) {
+      await expect(create()).resolves.toMatchObject({ tag: 'OG' });
+    } else {
+      await expect(create()).rejects.toMatchObject({
+        code: 'CLAN_COST_REQUIRED', params: { alloy: 2000, crystal: 1000 },
+      });
+      expect(await f.db.select().from(clans)).toHaveLength(0);
+      expect(await f.db.select().from(clanMemberships)).toHaveLength(0);
+    }
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+    expect(after).toMatchObject({
+      alloy: affordable ? 0 : alloy, crystal: affordable ? 0 : crystal, deuterium: 0,
+    });
   });
 
   it('requires Core 7, normalises identity and burns the founding cost exactly once', async () => {
@@ -557,7 +590,7 @@ describe('ruleset-v3 clans', () => {
    * the damage is written straight onto the leg here. A gift lands in the RECIPIENT's
    * Repair Station; a hauler carries its damage home and lands in the sender's.
    */
-  it('lands a damaged gift in the recipient\'s dock', async () => {
+  it('lands a damaged gift in the recipient hangar with the same wounds', async () => {
     const f = await setup(3);
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
@@ -578,12 +611,14 @@ describe('ruleset-v3 clans', () => {
     await workerFor(f).tick();
 
     const docked = await dockLotsOf(f.db, f.planetIds[1]!);
-    expect(docked).toMatchObject([{ hull: 'COURIER', count: 1, damageBp: 6000 }]);
-    const [row] = await f.db.select().from(units).where(eq(units.location, `dock:${docked[0]!.id}`));
+    expect(docked).toEqual([]);
+    expect((await readHomeHealth(f.db, f.planetIds[1]!)).damage).toMatchObject([{ hull: 'COURIER', count: 1, damageBp: 6000 }]);
+    const [row] = await f.db.select().from(units).where(and(eq(units.planetId, f.planetIds[1]!),
+      eq(units.hull, 'COURIER'), eq(units.location, 'home')));
     expect(row?.ownerPlayerId).toBe(f.playerIds[1]);
   });
 
-  it('flies a damaged hauler home with its damage and docks it at the sender', async () => {
+  it('flies a damaged hauler home and keeps its wounds in the sender hangar', async () => {
     const f = await setup(3);
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
@@ -610,7 +645,8 @@ describe('ruleset-v3 clans', () => {
     expect(back?.damage).toEqual(lots);
     f.clock.set(back!.arriveAt);
     await workerFor(f).tick();
-    expect(await dockLotsOf(f.db, f.planetIds[0]!)).toMatchObject(lots);
+    expect(await dockLotsOf(f.db, f.planetIds[0]!)).toEqual([]);
+    expect((await readHomeHealth(f.db, f.planetIds[0]!)).damage).toMatchObject(lots);
   });
 
   /** Radyasyon (plan F9): an aid flight a cloud finished delivers nothing and ends. */

@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { combatValue, type Fleet } from '@astera/rules';
+import { combatValue, HONOR_BENEFIT_THRESHOLDS_V1, honorBenefits, type Fleet, type HpDamageLots } from '@astera/rules';
 import type { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { IntergalacticConvoySheet } from '../src/screens/IntergalacticConvoySheet.js';
@@ -50,7 +50,7 @@ describe('the intergalactic convoy commitment surface', () => {
     vi.restoreAllMocks();
   });
 
-  function openSheet(fleet: Fleet = { DART: 12 }, hpRate?: number) {
+  function openSheet(fleet: Fleet = { DART: 12 }, hpRate?: number, fleetDamage?: HpDamageLots, honor?: number) {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(NOW);
     const launch = vi.fn().mockRejectedValue(new Error('test stop after request'));
@@ -70,7 +70,10 @@ describe('the intergalactic convoy commitment surface', () => {
       </QueryClientProvider>
     );
     const world = planetView({
+      honorBenefits: honor === undefined ? null : { version: 1, score: honor, thresholds: HONOR_BENEFIT_THRESHOLDS_V1,
+        ...honorBenefits(honor, HONOR_BENEFIT_THRESHOLDS_V1) },
       fleet,
+      fleetDamage: fleetDamage ? [...fleetDamage] : [],
       buildings: {
         CORE: 3,
         REFINERY: 3,
@@ -98,6 +101,21 @@ describe('the intergalactic convoy commitment surface', () => {
     );
     return launch;
   }
+
+  it('shows the actual Honor penalty before sending and commits the reviewed tier', async () => {
+    const launch = openSheet({ DART: 12 }, undefined, undefined, -100_000_000);
+    expect(screen.getByText('Honor penalty: −30%')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: /Send every/ }));
+    hold();
+    await waitFor(() => { expect(launch).toHaveBeenCalled(); });
+    expect(launch.mock.calls[0]?.[0]).toMatchObject({ expectedHonorTier: -2 });
+  });
+
+  it('limits convoy attacks to ships above 5% HP', () => {
+    openSheet({ DART: 12 }, undefined, [{ hull: 'DART', count: 10, damageBp: 9500 }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Send every Dart' }));
+    expect(screen.getByRole('textbox', { name: 'Dart quantity' })).toHaveValue('2');
+  });
 
   it('keeps the selected fleet while committing the exact quote with one key', async () => {
     const launch = openSheet();

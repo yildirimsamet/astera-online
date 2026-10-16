@@ -1,3 +1,5 @@
+import { settlePlanetRadiationAt } from './planetRadiation.js';
+import { commitHonor } from './honorCommitment.js';
 import { monumentFlight, monumentPosition, monumentMotionStart } from './monumentMotion.js';
 import { reserveMonumentHome } from './monumentFuel.js';
 import { randomUUID } from 'node:crypto';
@@ -28,6 +30,7 @@ import {
   travelExact,
   hangarLoad,
   applyHpDose,
+  protectedRadiationHp,
   hullTech,
   hpRadiationApplies,
   segmentsExposureHp,
@@ -40,6 +43,7 @@ import {
   MOBILE_HULLS,
   normalizeHpDamage,
   needsHpDock,
+  shipCanFight,
   type FaultKind,
   type Fleet,
   type HullId,
@@ -132,6 +136,7 @@ import { rememberedWorlds } from './intel.js';
 import { schedule } from '../worker/queue.js';
 import { publish, publishPrivate, publishShard } from '../stream/bus.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
+import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
 import type { ClanActor } from './clan.js';
 /*
   THE SETTLEMENT IS A SEPARATE FILE AND IMPORTS BACK INTO THIS ONE for the return
@@ -219,9 +224,11 @@ async function prepareWarMonuments(tx: Tx, operation: ClanWarOperationRow | null
     ...[operation?.stagingPlanetId, operation?.targetPlanetId].filter((id): id is string => typeof id === 'string')];
   if (ids.length === 0) {
     await lockWarWorlds(tx, worldIds);
+    if (operation) await settlePlanetRadiationAt(tx, operation.stagingPlanetId, at);
     return new Map();
   }
   const worlds = await lockWorlds(tx, worldIds);
+  if (operation) await settlePlanetRadiationAt(tx, operation.stagingPlanetId, at);
   const memberships = await Promise.all(playersToLock.map((id) => activeClanMembership(tx, id)));
   const locked = await lockMonuments(tx, ids, { extraPlayerIds: playersToLock,
     extraClanIds: [...new Set(memberships.flatMap((membership) => membership ? [membership.clanId] : []))] });
@@ -258,6 +265,7 @@ export interface ClanWarContributionView {
   sourceKind: ClanWarContributionSource;
   status: ClanWarContributionStatus;
   fleet: Fleet;
+  damage: HpDamageLots;
   bulk: number;
   fuelPaid: number;
   sentAt: string;
@@ -451,6 +459,7 @@ export async function projectOperation(
     sourceKind: wave.sourceKind,
     status: wave.status,
     fleet: wave.fleet,
+    damage: wave.damage ?? [],
     bulk: wave.reservedBulk,
     fuelPaid: wave.fuelPaid,
     sentAt: wave.sentAt.toISOString(),
@@ -529,7 +538,7 @@ export async function projectOperation(
     const [season] = await db.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons)
       .where(eq(seasons.id, operation.seasonId));
     if (season && hpRadiationApplies(season.rulesetVersion)) {
-      const sources = await hpSourcesForSeason(db, operation.seasonId);
+      const sources = await hpSourcesForSeason(db, operation.seasonId, { targets: [] });
       for (const pace of strikePaces) {
         const own: WarRadiationForecast[] = [];
         const missing = new Map<string, { playerId: string; username: string; count: number }>();
@@ -1153,7 +1162,7 @@ function warRadiationForecast(fleet: Fleet, damage: HpDamageLots | null, tech: T
     }), ...(healthy > 0 ? [{ hull, count: healthy, maxHp, remainingHp: maxHp,
       healthPct: 100, needsDock: false }] : [])];
   });
-  return { doseHp, destroyed: fleetCount(result.destroyed), lostFleet: result.destroyed, health };
+  return { doseHp: protectedRadiationHp(doseHp, tech), destroyed: fleetCount(result.destroyed), lostFleet: result.destroyed, health };
 }
 
 function requireWaveRadiation(wave: { playerId: string; fleet: Fleet; damage: HpDamageLots | null;
@@ -1394,6 +1403,7 @@ async function gatherContribution(
 
   const tech = await techOf(tx, input.actor.playerId);
   const originToStaging = distance(origin, staging);
+  const startingDamage = selectHomeDispatch(origin.homeFleet, origin.homeDamage, input.fleet, true).selectedDamage;
 
   const originPace = { boost: fleetSpeedMult(origin.orbit), tech };
   const stagingPace = { boost: fleetSpeedMult(await orbitOfWorld(tx, staging.id)), tech };
@@ -1555,14 +1565,14 @@ async function gatherContribution(
   }
 
   const owned = await totalUnitsOf(tx, origin.planetId);
-  const radiation = hpRadiationApplies(origin.rulesetVersion) ? warRadiationForecast(input.fleet, null, tech, [
+  const radiation = hpRadiationApplies(origin.rulesetVersion) ? warRadiationForecast(input.fleet, startingDamage, tech, [
     ...sourceKind === 'PHYSICAL' ? [flightSegment(origin, staging, now, stagingAt)] : [],
     flightSegment(staging, flightTarget, stagingAt, addMinutes(stagingAt, combinedMinutes)),
     ...operation.targetKind === 'PLANET' ? [
       flightSegment(target, target, addMinutes(stagingAt, combinedMinutes), addMinutes(stagingAt, combinedMinutes + engagementMinutes)),
       flightSegment(target, origin, addMinutes(stagingAt, combinedMinutes + engagementMinutes), battleHomeAt),
     ] : [],
-  ], await hpSourcesForSeason(tx, operation.seasonId)) : null;
+  ], await hpSourcesForSeason(tx, operation.seasonId, { targets: [] })) : null;
   if (radiation && radiation.destroyed > 0 && !input.acknowledgeRadiationLoss) {
     refuse('RADIATION_LETHAL', 'Radiation on the planned route would destroy ships');
   }
@@ -1748,6 +1758,7 @@ export async function sendClanWarContribution(
     two waves were committed at once.
   */
   const unitLocation = `clan-war:${randomUUID()}`;
+  const damage = await takeHomeHealth(tx, context.origin.planetId, input.fleet, true);
   const [contribution] = await tx.insert(clanWarContributions).values({
     seasonId: context.operation.seasonId,
     operationId: context.operation.id,
@@ -1755,6 +1766,7 @@ export async function sendClanWarContribution(
     playerId: input.actor.playerId,
     originPlanetId: context.origin.planetId,
     sourceKind: context.sourceKind,
+    damage: damage.length ? damage : null,
     shieldLossAcknowledged: input.acknowledgeShieldLoss,
     radiationLossAcknowledged: input.acknowledgeRadiationLoss ?? false,
     fleet: input.fleet,
@@ -1801,6 +1813,7 @@ export async function sendClanWarContribution(
       seasonId: context.operation.seasonId,
       kind: 'clan_war',
       ownerPlayerId: input.actor.playerId,
+      damage: damage.length ? damage : null,
       originPlanetId: context.origin.planetId,
       targetPlanetId: context.operation.stagingPlanetId,
       fleet: input.fleet,
@@ -1929,6 +1942,7 @@ async function landContribution(
   fleet: Fleet,
   destinationPlanetId: string,
   now: Date,
+  radiationAt = now,
 ): Promise<DockReport & { fuelRefund: number }> {
   // Free when the caller already holds it, which every path is arranged to do.
   await lockWarWorlds(tx, [destinationPlanetId]);
@@ -1943,6 +1957,7 @@ async function landContribution(
     fleet,
     damage: contribution.damage,
     at: now,
+    radiationAt,
   });
   await tx.update(clanWarContributions)
     .set({ status: 'HOME', resolvedAt: now, monumentFuelBudget: null })
@@ -2027,7 +2042,7 @@ export async function planContributionReturn(
     && input.fromPlanetId === operation.stagingPlanetId) {
     const landed = await landContribution(tx, contribution, input.fleet, contribution.originPlanetId, now);
     if (contribution.monumentFuelBudget) {
-      await recomputePlayerWealth(tx, contribution.playerId);
+      await recomputePlayerWealth(tx, contribution.playerId, now);
       await notify(tx, { playerId: contribution.playerId, kind: 'fleet_returned', refId: contribution.id, at: now,
         payload: { trip: 'recalled', craft: fleetCount(input.fleet), craftKind: 'fleet',
           fuelRefund: landed.fuelRefund, ...dockNotice(landed) } });
@@ -2093,6 +2108,7 @@ export async function planContributionReturn(
     originPlanetId: input.fromPlanetId,
     targetPlanetId: destinationPlanetId,
     fleet: input.fleet,
+    damage: contribution.damage,
     tech: contribution.tech,
     distance: span,
     pace,
@@ -2136,7 +2152,7 @@ export async function planContributionReturn(
   await tx.update(clanWarContributions)
     .set({ status: 'RETURNING', returnAt: arriveAt, monumentFuelBudget })
     .where(eq(clanWarContributions.id, contribution.id));
-  if (monumentFuelBudget) await recomputePlayerWealth(tx, contribution.playerId);
+  if (monumentFuelBudget) await recomputePlayerWealth(tx, contribution.playerId, now);
   await publishShard(tx, operation.seasonId, 'launch');
 }
 
@@ -2389,6 +2405,15 @@ async function tryCloseFromHook(
     .where(eq(planets.id, operation.stagingPlanetId))
     .for('update', { skipLocked: true });
   if (held.length === 0) return false;
+  try {
+    await settlePlanetRadiationAt(tx, operation.stagingPlanetId, now);
+  } catch (error) {
+    // The hook is opportunistic. A pending health boundary must not abort the
+    // capture or recruitment; ordinary reads retry closure after it resolves.
+    if (error instanceof GameError && ['RADIATION_IMPACT_PENDING', 'RADIATION_RESEARCH_PENDING',
+      'RADIATION_SOURCE_PENDING'].includes(error.code)) return false;
+    throw error;
+  }
   const [locked] = await tx
     .select()
     .from(clanWarOperations)
@@ -2438,6 +2463,7 @@ export async function resolveClanWarExpiry(
     .limit(1);
   if (!pending) return;
   await lockWarWorlds(tx, [pending.stagingPlanetId]);
+  await settlePlanetRadiationAt(tx, pending.stagingPlanetId, now);
   const [operation] = await tx
     .select()
     .from(clanWarOperations)
@@ -2457,6 +2483,13 @@ export interface ClanWarStartResult {
   resolveAt: string;
   participants: number;
   operation: ClanWarOperationView;
+}
+
+function assertStagedCombatReady(waves: readonly (typeof clanWarContributions.$inferSelect)[]): void {
+  if (waves.some(wave => (wave.damage ?? []).some(lot => !shipCanFight(lot)))) {
+    throw new GameError('NOT_ENOUGH_COMBAT_READY_SHIPS',
+      'Recall waves containing ships at 5% health or below before starting the strike', 409);
+  }
 }
 
 /**
@@ -2501,6 +2534,7 @@ export async function startClanWar(
   const pending = standing ? await openOperation(tx, standing.clanId) : null;
   if (pending?.targetKind === 'MONUMENT') return startMonumentClanWar(tx, input, pending, chosenPace);
   await lockWarWorlds(tx, [pending?.stagingPlanetId, pending?.targetPlanetId]);
+  if (pending) await settlePlanetRadiationAt(tx, pending.stagingPlanetId, now);
 
   const clan = await lockLedClan(tx, input.actor, targetPlayers(pending));
   const opened = await lockOperation(tx, clan.id);
@@ -2563,6 +2597,7 @@ export async function startClanWar(
     );
   }
   const pool = waves.filter((wave) => wave.status === 'STAGED');
+  assertStagedCombatReady(pool);
   if (pool.length === 0) {
     throw new GameError('CLAN_WAR_NO_COMBAT_FLEET', 'There is nothing in the pool', 409);
   }
@@ -2695,7 +2730,7 @@ export async function startClanWar(
   const arriveAt = addMinutes(now, oneWay);
   const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
   const hpSources = hpRadiationApplies(season.rulesetVersion)
-    ? await hpSourcesForSeason(tx, operation.seasonId) : [];
+    ? await hpSourcesForSeason(tx, operation.seasonId, { targets: [] }) : [];
   /*
     EVERY WAVE HAS TO BE ABLE TO GET HOME INSIDE THE GALAXY, recomputed from where
     it is standing NOW rather than from the estimate its quote made a day ago.
@@ -2801,6 +2836,8 @@ export async function startClanWar(
 
   await publishShard(tx, operation.seasonId, 'launch');
   await publishWar(tx, clan.id);
+  await commitHonor(tx, { seasonId: operation.seasonId, source: 'CLAN_WAR', id: mission.id,
+    attack: fighters, defence: [targetPlayerId], at: now, adminUsernames: new Set(input.adminUsernames ?? []) });
   return {
     missionId: mission.id,
     arriveAt: arriveAt.toISOString(),
@@ -2837,6 +2874,7 @@ async function startMonumentClanWar(tx: Tx, input: {
     .orderBy(clanWarContributions.id).for('update');
   if (waves.some((wave) => wave.status === 'OUTBOUND')) throw new GameError('CLAN_WAR_SUPPORT_INBOUND', 'Support is still on its way', 409);
   const pool = waves.filter((wave) => wave.status === 'STAGED');
+  assertStagedCombatReady(pool);
   if (pool.length === 0 || !pool.some((wave) => COMBAT_HULLS.some((hull) => (wave.fleet[hull] ?? 0) > 0))) {
     throw new GameError('CLAN_WAR_NO_COMBAT_FLEET', 'A combined attack needs at least one combat hull', 409);
   }
@@ -2878,7 +2916,7 @@ async function startMonumentClanWar(tx: Tx, input: {
       : pool.filter((wave) => wave.playerId === playerId).every((wave) => wave.shieldLossAcknowledged);
     await assertOwnShieldLoss(tx, { attackerPlayerId: playerId, now, acknowledgeShieldLoss: acknowledged });
   }
-  const sources = await hpSourcesForSeason(tx, operation.seasonId);
+  const sources = await hpSourcesForSeason(tx, operation.seasonId, { targets: [] });
   for (const wave of pool) requireWaveRadiation(wave, input,
     [flightSegment(staging, meeting.at, now, arriveAt)], sources);
   const nativeIds: string[] = [];
@@ -2929,11 +2967,13 @@ async function startMonumentClanWar(tx: Tx, input: {
   // The clan-war event refreshes preparation; each departing owner's monument
   // waves and personal dispatch access must also update without waiting for a poll.
   for (const playerId of fighters) {
-    await recomputePlayerWealth(tx, playerId);
+    await recomputePlayerWealth(tx, playerId, now);
     await publish(tx, playerId, 'private:monument');
   }
   await publishShard(tx, operation.seasonId, 'launch');
   await publishWar(tx, clan.id);
+  await commitHonor(tx, { seasonId: operation.seasonId, source: 'MONUMENT', id: operation.id,
+    attack: fighters, defence: holders, at: now, adminUsernames: new Set(input.adminUsernames ?? []) });
   return { missionId: nativeIds[0]!, arriveAt: arriveAt.toISOString(), resolveAt: arriveAt.toISOString(), participants: fighters.length,
     operation: await projectOperation(tx, attacking ?? operation, input.actor.playerId, now) };
 }
@@ -3065,7 +3105,7 @@ async function resolveSupportArrival(
   if (!['OUTBOUND', 'RECALL_ORDERED'].includes(contribution.status)) return;
 
   // The dose on the way to the staging world, before the wave counts in the pool.
-  const dosed = await settleWaveRadiation(tx, contribution, mission, rulesetVersion);
+  const dosed = await settleWaveRadiation(tx, contribution, mission, rulesetVersion, now);
   await tellRadiationLoss(tx, { playerId: contribution.playerId, refId: mission.id, toPlanetId: mission.targetPlanetId },
     dosed, now);
   if (fleetCount(dosed.fleet) === 0 && fleetCount(dosed.destroyed) > 0) {
@@ -3074,7 +3114,7 @@ async function resolveSupportArrival(
   }
 
   await tx.update(clanWarContributions)
-    .set({ status: 'STAGED', stagedAt: now })
+    .set({ status: 'STAGED', stagedAt: mission.arriveAt })
     .where(eq(clanWarContributions.id, contributionId));
 
   /*
@@ -3092,13 +3132,19 @@ async function resolveSupportArrival(
     .where(eq(clanWarOperations.id, contribution.operationId))
     .for('update');
   if (!operation) return;
-  const staged = { ...dosed.wave, status: 'STAGED' as const, stagedAt: now };
+  await settlePlanetRadiationAt(tx, operation.stagingPlanetId, now);
+  const [staged] = await tx.select().from(clanWarContributions).where(eq(clanWarContributions.id, contribution.id));
+  if (!staged || staged.status === 'LOST') {
+    await completeIfSettled(tx, operation, now);
+    await publishWar(tx, contribution.clanId);
+    return;
+  }
   if (contribution.status === 'RECALL_ORDERED' || operation.status !== 'ASSEMBLING') {
     await planContributionReturn(tx, {
       contribution: staged,
       operation,
       fromPlanetId: operation.stagingPlanetId,
-      fleet: dosed.wave.fleet,
+      fleet: staged.fleet,
       now,
     });
     await completeIfSettled(tx, operation, now);
@@ -3135,7 +3181,7 @@ async function resolveReturnArrival(
     THE DOSE ON THE WAY HOME, then the landing (plan §3.5, D9): the last ship takes the
     haul with it, and what survives carries only what its holds can.
   */
-  const dosed = await settleWaveRadiation(tx, contribution, mission, rulesetVersion);
+  const dosed = await settleWaveRadiation(tx, contribution, mission, rulesetVersion, now);
   await tellRadiationLoss(tx, { playerId: contribution.playerId, refId: mission.id, toPlanetId: mission.targetPlanetId },
     dosed, now);
   if (fleetCount(dosed.fleet) === 0 && fleetCount(dosed.destroyed) > 0) {
@@ -3152,7 +3198,7 @@ async function resolveReturnArrival(
   const destinationPlanetId = await safeHomePlanet(
     tx, contribution.playerId, mission.targetPlanetId,
   );
-  const landed = await landContribution(tx, wave, dosed.fleet, destinationPlanetId, now);
+  const landed = await landContribution(tx, wave, dosed.fleet, destinationPlanetId, now, mission.arriveAt);
   // The battle wrote immutable per-wave shares, but the ships physically carry
   // them until this return lands. A terminal wave is skipped above, so a repeated
   // arrival cannot credit the haul twice. Joint loot never enters the ordinary
@@ -3167,7 +3213,7 @@ async function resolveReturnArrival(
       deuterium: sql`${planets.deuterium} + ${loot.deuterium + salvage.deuterium}`,
     }).where(eq(planets.id, destinationPlanetId));
   }
-  await recomputePlayerWealth(tx, contribution.playerId);
+  await recomputePlayerWealth(tx, contribution.playerId, now);
   const [operation] = await tx
     .select()
     .from(clanWarOperations)
@@ -3225,7 +3271,7 @@ export async function abandonClanWarLeg(
       tx, contribution.playerId, contribution.originPlanetId,
     );
     const landed = await landContribution(tx, contribution, contribution.fleet, destinationPlanetId, now);
-    await recomputePlayerWealth(tx, contribution.playerId);
+    await recomputePlayerWealth(tx, contribution.playerId, now);
     await notify(tx, {
       playerId: contribution.playerId,
       kind: 'fleet_returned',

@@ -57,7 +57,7 @@ export const vocabulary = {
         'Absorbs raid damage before ships and ground guns, then regenerates without resources. It provides no intelligence.',
       roleOwned:
         'Absorbs raid damage before ships and ground guns and regenerates 35% of its maximum each hour. It provides no intelligence.',
-      detail: "Each level raises maximum shield strength. While active, Aegis absorbs combat damage before ships and ground defences. It regenerates without resource payment, except while EMP disables it. Aegis alone cannot defend a planet without combat-ready units. It provides no intelligence.",
+      detail: "Each level increases maximum shield HP. Active Aegis takes combat damage before ships and ground defences. Each active level also reduces radiation damage to ships on this planet by 1 HP/min. At zero HP, radiation protection stops. After battle depletion, recharge starts in 15 minutes; EMP can delay it further. Recharging costs no resources. Aegis cannot defend a planet alone without combat-ready units. It provides no intelligence.",
     },
     VEIL: {
       name: 'Veil',
@@ -103,7 +103,7 @@ export const vocabulary = {
       name: 'Beacon',
       tag: 'Faster fleets',
       role:
-        "Multiplies speed by 1.3 for raids, transfers, trade and clan aid launched from this planet.",
+        "Increases raid, transfer, trade and clan aid speeds from this planet by 20%.",
       blurb:
         'A navigation mark for raid, transfer, trade and clan-aid fleets. Shorter flights mean a shorter window with your defence away from home.',
       detail: "The speed bonus applies on the outbound and return legs of the listed missions. Settlement fleets and Prospectors are unaffected. It does not change attack, hull strength, cargo or fuel cost.",

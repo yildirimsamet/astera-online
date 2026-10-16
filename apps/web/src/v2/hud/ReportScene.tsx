@@ -1,5 +1,6 @@
+import { ordinaryBattleOutcome } from '../../lib/battleOutcome.js';
 import { useTranslation } from 'react-i18next';
-import { FAULT, HULLS, needsHpDock } from '@astera/rules';
+import { FAULT, HULLS } from '@astera/rules';
 import type { BattleReport } from '../../api/schemas.js';
 import { combatClassLabel, hullLabel } from '../../i18n/names.js';
 import { serverNow } from '../../lib/clock.js';
@@ -11,6 +12,7 @@ import { rivalColour } from '../../galaxy/PlanetField.js';
 import { RESOURCE_ART, planetArt } from '../../ui/assets.js';
 import { Icon } from '../icons.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
+import { HonorBattleSummary } from '../../ui/HonorBattleSummary.js';
 
 export interface ReportSceneProps {
   report: BattleReport;
@@ -130,13 +132,9 @@ export function ReportScene({
   const reason = lossReason(report.yourLosses);
   const looted = report.lootAlloy + report.lootCrystal + report.lootDeuterium;
   const lost = yours.filter((row) => row.lost > 0).map((row) => `${String(row.lost)} ${hullLabel(row.hull)}`);
-  /* A win that cost every ship sent is a loss to the reader — red, as the sheet's verdict (K2). */
-  const wiped = report.attacking && sum(yours, 'sent') > 0 && sum(yours, 'left') === 0;
-  const tone = wiped
-    ? 'text-v2-hostile'
-    : report.attacking
-      ? report.grade === 'REPELLED' ? 'text-v2-ink-2' : 'text-v2-self'
-      : report.grade === 'REPELLED' ? 'text-v2-self' : 'text-v2-hostile';
+  const outcome = ordinaryBattleOutcome(report);
+  const tone = outcome === 'loss' ? 'text-v2-hostile'
+    : outcome === 'partial' ? 'text-v2-alloy' : outcome === 'win' ? 'text-v2-self' : 'text-v2-ink-2';
   /* The mock's "Bugün 21:40": today and yesterday by their word, anything older by its date. */
   const time = dayClock(report.at, serverNow());
   const hour = new Intl.DateTimeFormat(t('units.numberLocale'), { timeStyle: 'short' }).format(report.at);
@@ -221,6 +219,7 @@ export function ReportScene({
         </div>
       </div>
 
+      <HonorBattleSummary receipt={report.honor} dominion={report.dominion} />
       <div data-report-loot className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
         {([['alloy', report.lootAlloy], ['crystal', report.lootCrystal], ['deuterium', report.lootDeuterium]] as const).map(([resource, value]) => (
           <span key={resource} className="flex items-center gap-1 font-v2-mono text-caption font-semibold text-v2-ink">
@@ -264,8 +263,8 @@ export function ReportScene({
                 </span>
                 {/* A defender's were judged at the fight; a raider's wait for the landing. */}
                 {!report.attacking && (
-                  <span className={`shrink-0 text-micro ${needsHpDock(lot) ? 'text-v2-warn' : 'text-v2-self'}`}>
-                    {t(needsHpDock(lot) ? 'reportScene.toDock' : 'reportScene.patched')}
+                  <span className="shrink-0 text-micro text-v2-warn">
+                    {t('repairStation.maintenance.hangar')}
                   </span>
                 )}
               </li>

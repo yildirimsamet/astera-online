@@ -96,6 +96,7 @@ export interface PublicWorld {
   shielded: boolean;
   /** Independent of EMP: a protected world still refuses attack launches. */
   attackProtectedUntil: Date | null;
+  vacation: boolean;
   state:
     | { kind: 'NORMAL' }
     | { kind: 'EMP'; until: Date; hits?: number }
@@ -350,6 +351,7 @@ export async function publicWorlds(
       // Keep the fault itself private; publish only the observable consequence.
       shielded: shielded.has(r.planet.id) && !darkCores.has(r.planet.id) && !empActive,
       attackProtectedUntil: shieldedUntil,
+      vacation: r.planet.vacationUntil !== null && r.planet.vacationUntil > now,
       state,
       ...(r.clanId && r.clanName && r.clanTag
         ? { clan: { id: r.clanId, name: r.clanName, tag: r.clanTag } }

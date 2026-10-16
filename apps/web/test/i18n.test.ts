@@ -75,6 +75,14 @@ const TURKISH = flatten(tr);
 const LOCALES = { en, tr, fr, de, es, ja } as const;
 const TRANSLATED_LOCALES = { fr, de, es, ja } as const;
 
+describe('Beacon speed description', () => {
+  it.each(Object.entries(LOCALES))('states the current 20% bonus in %s', (_, locale) => {
+    const { role, detail } = locale.vocabulary.satellite.BEACON;
+    expect(role).toMatch(/(?:1[.,]2|20)/);
+    expect(`${role} ${detail}`).not.toMatch(/1[.,]3/);
+  });
+});
+
 describe('the Command Core explanation respects independent upgrades', () => {
   it.each(Object.entries(LOCALES))('names the Hangar exception in %s', (_, locale) => {
     expect(locale.vocabulary.building.CORE.detail).toContain(locale.vocabulary.building.HANGAR.name);
@@ -97,6 +105,10 @@ describe('the Command Core explanation respects independent upgrades', () => {
 });
 
 describe('risk and defence explanations follow the current rules', () => {
+  it.each(Object.entries(LOCALES))('never promises automatic free repair in current UI explanations in %s', (_, locale) => {
+    const copy = `${locale.launch.radiationHpFree} ${locale.launch.radiationPatched} ${locale.reportScene.patched}`;
+    expect(copy).not.toMatch(/patched free|free on landing|ücretsiz|kostenlos|gratis|gratuit|無料/iu);
+  });
   it.each(Object.entries(LOCALES))('includes every emplacement affected by Doctrine in %s', (_, locale) => {
     for (const id of ['BASTION', 'HARPOON', 'THORN'] as const) {
       expect(locale.research.groundDoctrineDetail).toContain(locale.vocabulary.hull[id].name);
@@ -277,6 +289,7 @@ const RESEARCH_DETAIL_KEYS = {
   INTERCEPTION_GRID: 'gridDetail',
   STRATEGIC_STOCKPILE: 'stockpileDetail',
   INDUSTRIAL: 'industrialDetail',
+  RADIATION_SHIELDING: 'shieldingDetail',
 } as const satisfies Record<ResearchProjectId, keyof typeof en.research>;
 
 /**
@@ -287,6 +300,10 @@ const RESEARCH_DETAIL_KEYS = {
  * that matches its English counterpart is an untranslated string.
  */
 const IDENTICAL_ON_PURPOSE = new Set([
+  'honorBenefits.atLeast', 'honorBenefits.atMost', 'honorBenefits.range',
+  'honorBenefits.negativeRange', 'honorBenefits.neutralRange', 'honorBenefits.difference', // Honor proper name and mathematical inequalities.
+  'leaderboard.honorTitle', // Honor is the ranking's proper name in every language.
+  'repairStation.maintenance.hangar', // Hangar is the established Turkish building name too.
   // A commander's name, a bullet and the monument's own (translated) name: no words of its own.
   'monument.honoured',
   // The player explicitly names this channel DM in both languages.
@@ -356,6 +373,7 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'community.donate.cryptoTrc20',
   'community.donate.cryptoSolana',
   'community.donate.cardHeading',
+  'community.admin.shopierTab',
   'signals.repeat',
   'pendingStrip.more',
   // Notification title is two already-localised runtime values joined by punctuation.
@@ -613,8 +631,10 @@ describe('decision sheets explain every item', () => {
     expect(tr.research.stockpileDetail).toContain('her gezegene ayrı');
     expect(en.research.stockpileRole).toMatch(/1 to 2/);
     expect(tr.research.stockpileRole).toMatch(/1’den 2’ye/);
-    expect(en.research.gridRole).toMatch(/2(?: charges)? to 4/);
-    expect(tr.research.gridRole).toMatch(/2’den 4’e/);
+    expect(en.research.gridRole).toContain('2 → 4 → 6');
+    expect(tr.research.gridRole).toContain('2 → 4 → 6');
+    expect(en.research.gridRole).toMatch(/Two research levels/i);
+    expect(tr.research.gridRole).toMatch(/İki araştırma seviyesi/);
     // The Grid no longer "grants access": the first two charges need no research.
     expect(en.research.gridDetail).not.toMatch(/grants access/i);
     expect(tr.research.gridDetail).not.toMatch(/erişim verir/i);
@@ -625,13 +645,13 @@ describe('decision sheets explain every item', () => {
 
     // What a hit does, where the weapon is built and where it is fired. D179 retired
     // fleet destruction and capture; the colony loyalty cost is the owner's 2026-10-01 rule.
-    for (const copy of [en.planet.deathStar.dangerHint, en.focus.planet.strikeConfirm.keeps]) {
+    for (const copy of [en.planet.deathStar.hint, `${en.focus.planet.strikeConfirm.keeps} ${en.focus.planet.strikeConfirm.keepsColony}`]) {
       expect(copy).not.toMatch(/destroys every fleet|capture/i);
       expect(copy).toMatch(/1 hour|one hour/);
       expect(copy).toMatch(/{{loss}} loyalty/);
       expect(copy).toMatch(/neutral/i);
     }
-    for (const copy of [tr.planet.deathStar.dangerHint, tr.focus.planet.strikeConfirm.keeps]) {
+    for (const copy of [tr.planet.deathStar.hint, `${tr.focus.planet.strikeConfirm.keeps} ${tr.focus.planet.strikeConfirm.keepsColony}`]) {
       expect(copy).not.toMatch(/tüm filoyu|ele geçir/i);
       expect(copy).toContain('1 saat');
       expect(copy).toMatch(/{{loss}} sadakat/);

@@ -41,9 +41,10 @@ describe('balanced pirate generation for this season', () => {
   it('keeps old hours on their recorded fleet and reward without rerolling identities or orbits', () => {
     const lane = { fromMinute: 600, untilMinute: 660, count: 40 };
     const legacy = generatePirateHour({ hourOrdinal: 10, lane, rng: mulberry32(42) });
-    // Baseline comes from the deployed source. Only Math.pow orbit ulps are normalised;
+    // Baseline includes the 2026-10-13 NPC slowdown and idle target retirement.
+    // Only Math.pow orbit ulps are normalised;
     // every roster, hoard, RNG/window and identity value remains exact.
-    expect(orbitFingerprint(legacy)).toBe('53c4917717e394c83f4166f19683850d51cb7887e3f78821a80b219fb63c4e90');
+    expect(orbitFingerprint(legacy)).toBe('36fc42489dd209ba55c94169999f636dbd4d7f6a7e7afa8d0772ffbf7d463651');
     const next = generatePirateHour({ hourOrdinal: 10, lane: { ...lane, generation: currentPirateGeneration() }, rng: mulberry32(42) });
     const identity = (p: typeof legacy[number]) => ({ index: p.index, level: p.level, appearsAt: p.appearsAt,
       expiresAt: p.expiresAt, radius: p.radius, period: p.period, phase: p.phase,

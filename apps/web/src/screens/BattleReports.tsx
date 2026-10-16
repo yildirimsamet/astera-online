@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ABUSE, COMBAT, DEATH_STAR, HULLS, fleetCount, fleetEntries, type Fleet, type Grade, type HullId } from '@astera/rules';
+import { STANDARD_PVP_BALANCE, type PvpBalance, COMBAT, DEATH_STAR, HULLS, fleetCount, fleetEntries, type Fleet, type Grade, type HullId } from '@astera/rules';
+import { useReadReportSignals } from '../session/useReadReportSignals.js';
+import { battleOutcome, battleTone, monumentControlKey, monumentGradeKey, ordinaryBattleOutcome } from '../lib/battleOutcome.js';
 import { useReports } from '../api/queries.js';
 import type { BattleReport, Report, StrategicBattleReport } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
@@ -16,6 +18,8 @@ import { ReportScene } from '../v2/hud/ReportScene.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import './battle-report.css';
 import { MonumentReportSheet } from './MonumentReportSheet.js';
+import { HonorBattleSummary } from '../ui/HonorBattleSummary.js';
+import { RankingScores } from '../ui/RankingScores.js';
 
 /**
  * THE CLOSING LINK OF THE LOOP.
@@ -181,6 +185,15 @@ export interface ReportDoors {
   onShare?: (line: string) => void;
 }
 
+function reportReferences(report: Report): string[] {
+  if (report.kind === 'MONUMENT') return [report.id];
+  const refs = [report.id];
+  if (report.missionId) refs.push(report.missionId);
+  if (report.missionId?.startsWith('bomb:')) refs.push(report.missionId.slice(5));
+  if (report.kind !== 'STRATEGIC' && report.pirateRaidId) refs.push(report.pirateRaidId);
+  return refs;
+}
+
 export function BattleReportDoor({
   missionId,
   onClose,
@@ -194,6 +207,7 @@ export function BattleReportDoor({
 } & ReportDoors) {
   const { data, isPending, isError } = useReports();
   const report = data ? reportFor(data.reports, missionId) : undefined;
+  useReadReportSignals(!isPending && !isError && report !== undefined, report ? reportReferences(report) : []);
   const missing = !isPending && !report;
 
   useEffect(() => {
@@ -211,23 +225,32 @@ export function BattleReportDoor({
 
 export function BattleReports({
   open: requested,
+  visible = true,
   ...doors
 }: {
   open?: { missionId: string; request: number };
+  visible?: boolean;
 } & ReportDoors = {}) {
   const { t } = useTranslation();
   const { data, isPending, isError, refetch } = useReports();
   const [open, setOpen] = useState<Report | null>(null);
+  const [closedRequest, setClosedRequest] = useState<number | null>(null);
   const now = useNow(30_000);
   const reports = data?.reports ?? [];
   const requestedMissionId = requested?.missionId;
   const requestedSequence = requested?.request;
+  const requestedReport = requestedMissionId && requestedSequence !== closedRequest
+    ? reportFor(reports, requestedMissionId) : undefined;
+  const shownReport = open ?? requestedReport;
+  useReadReportSignals(visible && !isPending && !isError, shownReport
+    ? reportReferences(shownReport) : requestedMissionId && requestedSequence !== closedRequest ? [] : reports.flatMap(reportReferences));
+  const closeReport = () => { setOpen(null); setClosedRequest(requestedSequence ?? null); };
 
   useEffect(() => {
-    if (!requestedMissionId) return;
+    if (!requestedMissionId || requestedSequence === closedRequest) return;
     const report = reportFor(reports, requestedMissionId);
     if (report) setOpen(report);
-  }, [reports, requestedMissionId, requestedSequence]);
+  }, [reports, requestedMissionId, requestedSequence, closedRequest]);
 
   return (
     <Section
@@ -254,10 +277,12 @@ export function BattleReports({
         <div className="rounded-control border border-v2-line bg-v2-deep/40">
           {reports.map((report) => {
             if (report.kind === 'MONUMENT') return <button type="button" key={report.id} data-report-row=""
+              data-battle-outcome={battleOutcome({ ...report, survivors: fleetCount(report.yourSurvivors), losses: fleetCount(report.yourLosses) })}
               onClick={() => { setOpen(report); }} className="grid w-full gap-1 border-b border-v2-line/60 px-3 py-3 text-left text-caption last:border-b-0">
-              <span className="font-semibold text-v2-ink">{monumentName(report.monument.ordinal)} · {t(`monument.reportControl.${report.control}`)}</span>
+              <span className="font-semibold text-v2-ink">{monumentName(report.monument.ordinal)} · {t(monumentControlKey(report))}</span>
+              <span className={`w-fit rounded-cell border px-2 py-1 text-micro ${battleTone[battleOutcome({ ...report, survivors: fleetCount(report.yourSurvivors), losses: fleetCount(report.yourLosses) })]}`}>{t(monumentGradeKey(report))}</span>
               <span className="text-micro text-v2-ink-2">{t('monument.reportOwn', { sent: fleetCount(report.yourFleet), left: fleetCount(report.yourSurvivors), lost: fleetCount(report.yourLosses) })}</span>
-              <span className="font-v2-mono text-micro text-v2-ink-3">{staleness((now - report.at.getTime()) / 60_000)} · {t('reports.dominion')} {signed(report.dominion)}</span>
+              <span className="flex items-end justify-between gap-2"><span className="font-v2-mono text-micro text-v2-ink-3">{staleness((now - report.at.getTime()) / 60_000)}</span><RankingScores honor={report.honor?.delta} dominion={report.dominion} change /></span>
             </button>;
             if (report.kind === 'STRATEGIC') {
               return (
@@ -299,14 +324,7 @@ export function BattleReports({
                     </p>
                   </div>
                   {/* A swing of zero moves nobody's score, so it has no figure. */}
-                  {report.dominion !== null && report.dominion !== 0 && (
-                    <span
-                      className={`font-v2-mono tabular-nums col-start-2 row-start-1 text-right text-caption ${report.dominion >= 0 ? 'text-v2-self' : 'text-v2-hostile'}`}
-                    >
-                      <span className="mb-1 block text-micro text-v2-ink-2">{t('reports.dominion')}</span>
-                      {signed(report.dominion)}
-                    </span>
-                  )}
+                  {report.honor || (report.dominion !== null && report.dominion !== 0) ? <span className="col-start-2 row-start-1 max-w-40"><RankingScores honor={report.honor?.delta} dominion={report.dominion} change /></span> : null}
                 </button>
                 <p className="flex flex-wrap items-center gap-x-1 px-3 pb-2 font-v2-mono tabular-nums text-micro text-v2-ink-3">
                 {listedPlanet !== '' && (listedPlanetId && doors.onFocusPlanet ? (
@@ -325,10 +343,10 @@ export function BattleReports({
       )}
 
       {open && (
-        open.kind === 'MONUMENT' ? <MonumentReportSheet report={open} onClose={() => { setOpen(null); }} onFocusMonument={doors.onFocusMonument} /> : open.kind === 'STRATEGIC' ? (
-          <StrategicReportSheet report={open} onClose={() => { setOpen(null); }} onFocusPlanet={doors.onFocusPlanet} />
+        open.kind === 'MONUMENT' ? <MonumentReportSheet report={open} onClose={closeReport} onFocusMonument={doors.onFocusMonument} /> : open.kind === 'STRATEGIC' ? (
+          <StrategicReportSheet report={open} onClose={closeReport} onFocusPlanet={doors.onFocusPlanet} />
         ) : (
-          <ReportSheet report={open} onClose={() => { setOpen(null); }} {...doors} />
+          <ReportSheet report={open} onClose={closeReport} {...doors} />
         )
       )}
     </Section>
@@ -355,6 +373,8 @@ function StrategicReportRow({
 }) {
   const { t } = useTranslation();
   const stopped = report.outcome === 'INTERCEPTED';
+  const targetName = report.radiation?.monumentOrdinal && report.attacking
+    ? monumentName(report.radiation.monumentOrdinal) : report.opponentPlanet;
   return (
     <div className="border-b border-v2-line/60 last:border-b-0">
       <button
@@ -363,22 +383,23 @@ function StrategicReportRow({
         className="flex w-full items-center gap-2 px-3 pb-1 pt-3 text-left hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self"
       >
         <span className={`inline-flex items-center rounded-chip border px-1.5 py-0.5 text-micro font-semibold shrink-0 ${stopped ? 'border-v2-self/50 text-v2-self' : 'border-v2-hostile/50 text-v2-hostile'}`}>
-          {t(STRATEGIC_OUTCOME[report.outcome])}
+          {t(report.radiation && report.outcome === 'FIRST_STRIKE' ? 'planet.radiationBomb.impact' : STRATEGIC_OUTCOME[report.outcome])}
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-caption text-v2-ink">
-            {t(report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy')}
+            {t(report.radiation ? report.attacking ? 'reports.radiationYouAttacked' : 'reports.radiationAttackedBy' : report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy')}
             <span className="text-v2-ink-2">{report.opponentName}</span>
           </p>
         </div>
+        {report.honor ? <RankingScores honor={report.honor.delta} change /> : null}
         {report.damage > 0 ? <span className="font-v2-mono tabular-nums text-caption text-v2-hostile">{compact(report.damage)}</span> : null}
       </button>
       <p className="flex flex-wrap items-center gap-x-1 px-3 pb-2 font-v2-mono tabular-nums text-micro text-v2-ink-3">
         {report.opponentPlanetId && onFocusPlanet ? (
           <button type="button" data-report-planet onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="font-v2-ui font-semibold text-v2-self underline decoration-v2-self/40 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
-            {report.opponentPlanet}
+            {targetName}
           </button>
-        ) : <span>{report.opponentPlanet}</span>}
+        ) : <span>{targetName}</span>}
         <span aria-hidden>·</span>
         <span>{staleness((now - report.at.getTime()) / 60_000)}</span>
         {report.loyalty?.after === 0 && (
@@ -419,7 +440,7 @@ function LoyaltyHit({ loyalty, attacking }: {
       <p className={`mt-1 text-micro leading-snug ${seceded ? 'font-semibold text-v2-hostile' : 'text-v2-ink-3'}`}>
         {seceded
           ? t(attacking ? 'reports.strategicSecededAttacker' : 'reports.strategicSecededDefender')
-          : t('reports.strategicLoyaltyNext', { loss: DEATH_STAR.colonyLoyaltyLoss })}
+          : t('reports.strategicLoyaltyNext', { count: Math.max(1, Math.ceil(loyalty.after / DEATH_STAR.colonyLoyaltyLoss)) })}
       </p>
     </div>
   );
@@ -436,6 +457,10 @@ export function StrategicReportSheet({
   onFocusPlanet?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
+  const monument = report.radiation?.monumentOrdinal ? monumentName(report.radiation.monumentOrdinal) : null;
+  const ownName = !report.attacking && monument ? monument : report.yourPlanet;
+  const targetName = report.attacking && monument ? monument : report.opponentPlanet;
+  const actorLabel = t(report.radiation ? report.attacking ? 'reports.radiationYouAttacked' : 'reports.radiationAttackedBy' : report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy');
   const resourcesLost = report.destroyedResources.alloy
     + report.destroyedResources.crystal
     + report.destroyedResources.deuterium;
@@ -443,33 +468,32 @@ export function StrategicReportSheet({
     (sum, order) => sum + order.cost.alloy + order.cost.crystal + order.cost.deuterium,
     0,
   );
-  const emp = report.outcome === 'FIRST_STRIKE' && report.damage === 0;
+  const emp = !report.radiation && report.outcome === 'FIRST_STRIKE' && report.damage === 0;
 
   return (
     <V2Sheet
       detents={['full']}
-      eyebrow={t(report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy', {
-        opponent: report.opponentName,
-      })}
-      title={t(STRATEGIC_OUTCOME[report.outcome])}
+      eyebrow={`${actorLabel}${report.opponentName}`}
+      title={t(report.radiation && report.outcome === 'FIRST_STRIKE' ? 'planet.radiationBomb.impact' : STRATEGIC_OUTCOME[report.outcome])}
       onClose={onClose}
     >
-      {report.yourPlanet ? (
+      {ownName ? (
         <p className="font-v2-mono tabular-nums mb-3 flex items-center gap-2 text-micro text-v2-ink-3">
           {report.yourPlanetId && onFocusPlanet ? (
             <button type="button" onClick={() => { if (report.yourPlanetId) onFocusPlanet(report.yourPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
-              {report.yourPlanet}
+              {ownName}
             </button>
-          ) : <span className="text-v2-ink">{report.yourPlanet}</span>}
+          ) : <span className="text-v2-ink">{ownName}</span>}
           <span aria-hidden>{report.attacking ? '→' : '←'}</span>
           {report.opponentPlanetId && onFocusPlanet ? (
             <button type="button" onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
-              {report.opponentPlanet}
+              {targetName}
             </button>
-          ) : <span>{report.opponentPlanet}</span>}
+          ) : <span>{targetName}</span>}
         </p>
       ) : null}
 
+      {report.honor && <div className="mb-3"><HonorBattleSummary receipt={report.honor} /></div>}
       {report.outcome === 'INTERCEPTED' ? (
         <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
           <p className="text-caption font-semibold text-v2-self">{t('reports.strategicDestroyedInFlight')}</p>
@@ -478,6 +502,21 @@ export function StrategicReportSheet({
               ? 'reports.strategicTelescopeTrigger'
               : 'reports.strategicRadarTrigger')}
           </p>
+        </div>
+      ) : report.radiation ? (
+        <div className="space-y-2 rounded-control border border-v2-line bg-v2-deep/40 p-3 text-caption text-v2-ink-2">
+          <p className="font-semibold text-v2-ink">{t('planet.radiationBomb.title')} · {t('planet.radiationBomb.level', { level: report.radiation.level })}</p>
+          {report.outcome === 'FIRST_STRIKE' ? <><p>{t('planet.radiationBomb.effect')}</p><p>{t('planet.radiationBomb.workshop')}</p></> : <p>{t('reports.strategicIneffective')}</p>}
+          {report.outcome === 'FIRST_STRIKE' && report.loyalty && <div data-report-loyalty className="rounded-control border border-v2-line p-3">
+            <p className="font-v2-mono text-v2-hostile">{t('planet.radiationBomb.colonyResult', {
+              before: Math.ceil(report.loyalty.before), after: Math.ceil(Math.max(0, report.loyalty.after)),
+            })}</p>
+            {report.loyalty.after <= 0 && <p>{t('planet.radiationBomb.colonySeceded')}</p>}
+          </div>}
+          {report.outcome === 'FIRST_STRIKE' && (report.radiation.faults?.length ?? 0) > 0 && <p>{t('planet.radiationBomb.faultResult', {
+            faults: report.radiation.faults?.map(fault => t(`faults.name.${fault}`)).join(', '),
+          })}</p>}
+          {report.honor && <p>{t('planet.radiationBomb.honor')}</p>}
         </div>
       ) : emp ? (
         <>
@@ -561,13 +600,10 @@ function StrategicMetric({ label, value }: { label: string; value: string }) {
  * produces, and which one you got is the first thing a player looks for.
  */
 function GradeMark({ report }: { report: OrdinaryReport }) {
-  const starting = unitCount(report.yourFleet);
-  const won = report.attacking
-    ? report.grade !== 'REPELLED' && (starting === 0 || unitCount(report.yourLosses) < starting)
-    : report.grade === 'REPELLED';
+  const outcome = ordinaryBattleOutcome(report);
   return (
     <span
-      className={`w-fit max-w-full rounded-cell border px-2 py-1 text-caption font-semibold ${won ? 'border-v2-self/30 text-v2-self' : 'border-threat/30 text-v2-hostile'}`}
+      className={`w-fit max-w-full rounded-cell border px-2 py-1 text-caption font-semibold ${battleTone[outcome]}`}
       title={verdictTitle(report)}
     >
       {verdictTitle(report)}
@@ -856,7 +892,7 @@ function ReportSheet({
         <summary className="cursor-pointer py-3 text-caption font-semibold text-v2-crystal focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self">
           {t('reports.rulesToggle')}
         </summary>
-        <CombatFormula grade={report.grade} pirate={report.pirate != null} />
+        <CombatFormula grade={report.grade} pirate={report.pirate != null} balance={report.pvpBalance ?? STANDARD_PVP_BALANCE} />
       </details>
       </>
       )}
@@ -875,11 +911,7 @@ function ReportSheet({
       {report.dominion !== null && report.dominion !== 0 ? (
         <p
           data-dominion-summary
-          className={`mt-3 border-l-2 pl-3 text-caption leading-relaxed ${
-            report.dominion >= 0
-              ? 'border-v2-self text-v2-self'
-              : 'border-threat text-v2-hostile'
-          }`}
+          className="mt-3 border-l border-v2-line pl-3 text-caption font-normal leading-relaxed text-v2-ink-2"
         >
           {t(
             report.dominion >= 0
@@ -1322,25 +1354,31 @@ function Consequences({ report }: { report: OrdinaryReport }) {
 
   /*
     WHERE THIS DEFEAT LEFT THE READER AGAINST THE RECOVERY SHIELD. Owner instruction,
-    2026-09-18: the bar is the NET loss of the last six hours, so a player needs to see
+    2026-09-18: the bar is the NET loss across the selected lookback, so a player needs to see
     how close the raids so far have brought them — the rule stated beside the figure,
     one tap from the defeat that moved it. Defender only; the server sends an attacker
     null, and the guard here keeps it that way on its own.
   */
   const recovery = report.attacking ? null : report.recovery ?? null;
   if (recovery && recovery.lossHours > 0) {
+    const balance = report.pvpBalance ?? STANDARD_PVP_BALANCE;
+    // A tier upgrade must not shorten an existing shield. The stored deadline can
+    // therefore cover longer than this battle's nominal profile duration.
+    const preservedHours = recovery.shielded && recovery.until && recovery.until > report.at
+      ? (recovery.until.getTime() - report.at.getTime()) / 3_600_000
+      : balance.recoveryShieldHours;
     const values = {
       hours: recovery.lossHours >= 999 ? '999+' : decimal(recovery.lossHours),
-      bar: ABUSE.recoveryLossHours,
-      window: ABUSE.recoveryLookbackHours,
-      shield: ABUSE.recoveryShieldHours,
+      bar: balance.recoveryLossHours,
+      window: balance.recoveryLookbackHours,
+      shield: decimal(preservedHours, Number.isInteger(preservedHours) ? 0 : 1),
     };
     lines.push({
       key: 'recovery',
       tone: recovery.shielded ? 'text-v2-self' : 'text-v2-ink-2',
       text: recovery.shielded
         ? t('reports.effects.recoveryEarned', values)
-        : recovery.lossHours >= ABUSE.recoveryLossHours
+        : recovery.lossHours >= balance.recoveryLossHours
           ? t('reports.effects.recoveryRefused', values)
           : t('reports.effects.recoveryProgress', values),
     });
@@ -1405,8 +1443,9 @@ const shieldWasBroken = (report: OrdinaryReport): boolean => {
  * does not exist here. Everything else — the counter cycle, the roll band, how
  * damage is split — is the model and applies to every fight there is.
  */
-function CombatFormula({ grade, pirate = false }: { grade: Grade; pirate?: boolean }) {
+function CombatFormula({ grade, pirate = false, balance }: { grade: Grade; pirate?: boolean; balance: PvpBalance }) {
   const { t } = useTranslation();
+  const percent = (share: number) => decimal(share * 100, Number.isInteger(share * 100) ? 0 : 1);
   return (
     <section data-combat-formula className="rounded-control border border-v2-line bg-v2-deep/40 mt-2 px-3 py-2">
       <p className="text-caption font-semibold text-v2-ink">{t('reports.calculation.formulaHeading')}</p>
@@ -1444,8 +1483,10 @@ function CombatFormula({ grade, pirate = false }: { grade: Grade; pirate?: boole
                   : RESULT_EXPLANATION[result],
                 {
                   threshold: full(COMBAT.partialThreshold * 100),
-                  decisiveLoot: full(COMBAT.lootDecisive * 100),
-                  partialLoot: full(COMBAT.lootPartial * 100),
+                  decisiveLoot: percent(balance.lootDecisive),
+                  partialLoot: percent(balance.lootPartial),
+                  decisiveBuffer: percent(balance.lootDecisive * balance.lootBufferShare),
+                  partialBuffer: percent(balance.lootPartial * balance.lootBufferShare),
                 },
               )}
             </li>
@@ -2010,25 +2051,22 @@ function BattleVerdict({ report }: { report: OrdinaryReport }) {
   // the same empty-object fallback for an unrecorded starting force.
   const rosterKnown = starting > 0
     || (!report.attacking && report.grade === 'DECISIVE' && report.rounds.length === 0);
-  const won = report.attacking
-    ? report.grade !== 'REPELLED' && (!rosterKnown || remaining > 0)
-    : report.grade === 'REPELLED';
+  const outcome = ordinaryBattleOutcome(report);
+  const won = outcome === 'win';
   const title = verdictTitle(report);
 
   return (
     <section
       data-battle-verdict={report.grade}
       /* The tone is stated, not implied by a class: a loss is red (K2) whatever else was won. */
-      data-tone={won ? 'good' : 'threat'}
-      className={`relative mb-3 mt-2 overflow-hidden rounded-control border p-3 ${
-        won ? 'border-v2-self/40 bg-v2-self/5' : 'border-v2-hostile/40 bg-v2-hostile/5'
-      }`}
+      data-tone={outcome === 'partial' ? 'partial' : won ? 'good' : 'threat'}
+      className={`relative mb-3 mt-2 overflow-hidden rounded-control border p-3 ${battleTone[outcome]}`}
       aria-label={title}
     >
       <span
         aria-hidden
         className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent ${
-          won ? 'via-v2-self/80' : 'via-v2-hostile/80'
+          outcome === 'partial' ? 'via-v2-alloy/80' : won ? 'via-v2-self/80' : 'via-v2-hostile/80'
         } to-transparent`}
       />
 
@@ -2071,7 +2109,7 @@ function BattleVerdict({ report }: { report: OrdinaryReport }) {
 
       <div
         data-verdict-summary
-        className={`mt-3 border-l-2 pl-3 ${won ? 'border-v2-self' : 'border-threat'}`}
+        className={`mt-3 border-l-2 pl-3 ${outcome === 'partial' ? 'border-v2-alloy' : won ? 'border-v2-self' : 'border-threat'}`}
       >
         <p className="text-caption font-semibold leading-relaxed text-v2-ink">
           {t(report.rounds.length === 0

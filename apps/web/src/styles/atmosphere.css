@@ -117,11 +117,11 @@
 [data-base-surface='defend'] { --section-material: var(--color-v2-neutral); }
 [data-base-surface='tactical'] { --section-material: color-mix(in srgb, var(--color-v2-alloy) 28%, var(--color-v2-neutral)); }
 [data-base-surface='reach'] { --section-material: var(--color-v2-sky-cool); }
-[data-base-surface] [data-layout='card'] {
+[data-base-surface] :is([data-layout='card'], .repair-scene) {
   border-color: color-mix(in srgb, var(--section-material) 30%, var(--color-v2-line));
   background-image: linear-gradient(135deg, color-mix(in srgb, var(--section-material) 5%, transparent), transparent 75%);
 }
-[data-base-surface] [data-layout='card'][data-highlighted] {
+[data-base-surface] :is([data-layout='card'], .repair-scene)[data-highlighted] {
   border-color: color-mix(in srgb, var(--color-v2-self) 60%, transparent);
 }
 [data-base-surface] [data-row-line='name'] {

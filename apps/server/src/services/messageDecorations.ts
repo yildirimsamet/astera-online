@@ -7,15 +7,15 @@ export type MessageChannel = 'general' | 'clan' | 'dm';
 export interface ReplyPreview { id: string; username: string; content: string }
 export interface ReactionView { emoji: ReactionEmoji; count: number; mine: boolean }
 export type PodiumPlace = 1 | 2 | 3;
-export interface AuthorRecognition { previousSeasonRank?: PodiumPlace; supporter?: boolean }
+export interface AuthorRecognition { previousSeasonRank?: PodiumPlace; previousSeasonRanking?: 'HONOR' | 'DOMINION'; supporter?: boolean }
 export interface MessageDecoration extends AuthorRecognition { replyTo: ReplyPreview | null; reactions: ReactionView[] }
 
 /** Batch recognition once per page; also used by immediate send responses. */
 export async function authorRecognition(db: Queryable, playerIds: readonly string[]): Promise<Map<string, AuthorRecognition>> {
   const ids = [...new Set(playerIds)];
-  const [podium, supporters] = await Promise.all([previousSeasonPodium(db, ids), supporterPlayers(db, ids)]);
+  const [podium, supporters] = await Promise.all([previousSeasonRecognition(db, ids), supporterPlayers(db, ids)]);
   return new Map(ids.map((id) => [id, {
-    ...(podium.has(id) ? { previousSeasonRank: podium.get(id) } : {}),
+    ...(podium.has(id) ? { previousSeasonRank: podium.get(id)!.place, previousSeasonRanking: podium.get(id)!.ranking } : {}),
     ...(supporters.has(id) ? { supporter: true } : {}),
   }]));
 }
@@ -24,10 +24,17 @@ export async function authorRecognition(db: Queryable, playerIds: readonly strin
 export async function previousSeasonPodium(
   db: Queryable, playerIds: readonly string[],
 ): Promise<Map<string, PodiumPlace>> {
+  return new Map([...(await previousSeasonRecognition(db, playerIds))].map(([id, row]) => [id, row.place]));
+}
+
+async function previousSeasonRecognition(db: Queryable, playerIds: readonly string[]):
+Promise<Map<string, { place: PodiumPlace; ranking: 'HONOR' | 'DOMINION' }>> {
   if (playerIds.length === 0) return new Map();
   const ids = sql.join([...new Set(playerIds)].map((id) => sql`${id}::uuid`), sql`, `);
-  const rows = await db.execute<{ playerId: string; place: number }>(sql`
-    SELECT p.id AS "playerId", r.final_rank AS place
+  const primary = sql`CASE WHEN h.mode = 'ACTIVE' OR r.honor_score IS NOT NULL THEN r.honor_rank ELSE r.final_rank END`;
+  const rows = await db.execute<{ playerId: string; place: number; ranking: 'HONOR' | 'DOMINION' }>(sql`
+    SELECT p.id AS "playerId", ${primary} AS place,
+      CASE WHEN h.mode = 'ACTIVE' OR r.honor_score IS NOT NULL THEN 'HONOR' ELSE 'DOMINION' END AS ranking
       FROM players p
       JOIN seasons current_season ON current_season.id = p.season_id
       JOIN season_cycles current_cycle ON current_cycle.id = current_season.cycle_id
@@ -35,15 +42,17 @@ export async function previousSeasonPodium(
       JOIN season_results r ON r.cycle_id = previous_cycle.id AND r.account_id = p.account_id
       JOIN seasons previous_season ON previous_season.id = r.season_id AND previous_season.status IN ('frozen', 'wiped')
       JOIN shards previous_shard ON previous_shard.id = previous_season.shard_id
-     WHERE p.id IN (${ids}) AND r.final_rank BETWEEN 1 AND 3
+      LEFT JOIN honor_seasons h ON h.season_id = r.season_id
+     WHERE p.id IN (${ids}) AND ${primary} BETWEEN 1 AND 3
+       AND (r.honor_score IS NULL OR r.honor_score > 0)
        AND (previous_shard.role = 'MAIN' OR EXISTS (
          SELECT 1 FROM season_reward_entitlements e
           WHERE e.source_season_id = r.season_id AND e.target_cycle_id = current_cycle.id
        ))
   `);
-  const places = new Map<string, PodiumPlace>();
+  const places = new Map<string, { place: PodiumPlace; ranking: 'HONOR' | 'DOMINION' }>();
   for (const row of rows) {
-    if (row.place === 1 || row.place === 2 || row.place === 3) places.set(row.playerId, row.place);
+    if (row.place === 1 || row.place === 2 || row.place === 3) places.set(row.playerId, { place: row.place, ranking: row.ranking });
   }
   return places;
 }

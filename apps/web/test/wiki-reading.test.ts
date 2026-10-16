@@ -4,6 +4,16 @@ import { getWikiArticle } from '../src/wiki/catalog.js';
 import { conceptReference, number, subjectReference } from '../src/wiki/facts.js';
 
 describe('Wiki values a new player can interpret', () => {
+  it('teaches manual maintenance, the 5% combat limit and scrap returns', () => {
+    for (const language of ['en', 'tr'] as const) {
+      const article = getWikiArticle('fleet.repairs');
+      const text = JSON.stringify(article?.sections[language]);
+      expect(text).toMatch(language === 'en' ? /manual|yourself/i : /kendin|manuel/i);
+      expect(text).toMatch(language === 'en' ? /5%/ : /%5/);
+      expect(text).toMatch(language === 'en' ? /scrap/i : /parçala/i);
+      expect(text).not.toMatch(/repaired free on landing/i);
+    }
+  });
   it('publishes the new Aegis invoice and capacity together in English and Turkish', () => {
     for (const language of ['en', 'tr'] as const) {
       const table = subjectReference({ kind: 'instrument', id: 'AEGIS' }, language).blocks
@@ -21,6 +31,7 @@ describe('Wiki values a new player can interpret', () => {
       const table = blocks?.find(block => block.kind === 'table' && block.columns.includes(easy));
       if (table?.kind !== 'table') throw new Error('Missing monument difficulty comparison');
       expect(table.columns).toContain(hard);
+      expect(table.rows).toContainEqual([language === 'en' ? 'Commander tiers allowed to send' : 'Yeni filo gönderebilen komutan tier’ları', '1–3', '4+']);
       expect(table.rows.some(row => row.includes(number(1550, language)) && row.includes(number(7270, language)))).toBe(true);
       expect(table.rows.at(-1)).toEqual([language === 'en' ? 'Probe loss chance' : 'Sonda kayıp şansı',
         language === 'en' ? '75%' : '%75', language === 'en' ? '75%' : '%75']);
@@ -34,6 +45,16 @@ describe('Wiki values a new player can interpret', () => {
         : /kullanılmayan payı yalnız o gemi eve varınca iade edilir; dönemeyen geminin payı yanar/i);
       if (language === 'tr') expect(text).not.toMatch(/\bEasy\b|\bHard\b/);
     }
+  });
+  it('separates monument capture, battle grade and score without exposing enemy survivors', () => {
+    const article = getWikiArticle('galaxy.monuments');
+    if (!article) throw new Error('Missing monument article');
+    const text = (language: 'en' | 'tr') => article.sections[language].flatMap(section =>
+      section.blocks.flatMap(block => block.kind === 'text' ? [block.text] : [])).join(' ');
+    expect(text('en')).toMatch(/whole defence.*armed ship/i);
+    expect(text('en')).toMatch(/positive.*Dominion.*without.*captur/i);
+    expect(text('tr')).toMatch(/savunmanın tamamını/);
+    expect(text('tr')).toMatch(/Hâkimiyet.*ele geçireme/);
   });
   it('compares Shipyard levels by time saved from each preceding level, for all units', () => {
     for (const language of ['en', 'tr'] as const) {
@@ -64,9 +85,11 @@ describe('Wiki values a new player can interpret', () => {
     if (!article) throw new Error('Missing discovery explanation');
     const prose = article.sections.tr.flatMap(section => section.blocks.flatMap(block => block.kind === 'text' ? [block.text] : [])).join(' ');
     expect(prose).toContain(`%${number(DEUTERIUM.graviticDiscoveryShieldShare * 100, 'tr')}`);
-    const table = conceptReference('combat.model', 'tr')?.blocks.find(block => block.kind === 'table');
+    const table = conceptReference('combat.model', 'tr')?.blocks.find(block =>
+      block.kind === 'table' && block.columns.includes('Depo koruması üzerindeki stok'));
     if (table?.kind !== 'table') throw new Error('Missing combat percentages');
-    expect(table.rows.find(row => row[0] === 'Kesin zaferde alınan korumasız ganimet')?.[1]).toMatch(/^%\d/);
+    expect(table.rows).toHaveLength(4);
+    for (const row of table.rows) for (const value of row.slice(2)) expect(value).toMatch(/^%\d+(?:,\d+)?$/);
   });
   it('names the three independent Core capacities in separate columns', () => {
     for (const language of ['en', 'tr'] as const) {

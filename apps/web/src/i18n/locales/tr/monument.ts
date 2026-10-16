@@ -1,4 +1,41 @@
 export const monument = {
+  battleResult: {
+  "control": {
+    "attacking": {
+      "ATTACKER": "Tarafın anıtın kontrolünü aldı.",
+      "DEFENDER": "Anıt ele geçirilemedi.",
+      "EMPTY": "Savaş sonunda anıtı hiçbir taraf kontrol etmiyor."
+    },
+    "defending": {
+      "ATTACKER": "Tarafın anıtın kontrolünü kaybetti.",
+      "DEFENDER": "Tarafın anıtın kontrolünü korudu.",
+      "EMPTY": "Savaş sonunda anıtı hiçbir taraf kontrol etmiyor."
+    }
+  },
+  "grade": {
+    "attacking": {
+      "DECISIVE": "Savunma temizlendi.",
+      "PARTIAL": "Kısmi başarı.",
+      "REPELLED": "Saldırı püskürtüldü."
+    },
+    "defending": {
+      "DECISIVE": "Savunma aşıldı.",
+      "PARTIAL": "Savunma kısmen kayıp verdi.",
+      "REPELLED": "Saldırı püskürtüldü."
+    }
+  },
+  "wiped": "Filonun tamamı yok oldu.",
+  "rulesTitle": "Savaş kuralları",
+  "roundRule": "Savaş en fazla {{rounds}} tur sürer. Savaş gemileri yaşarken yük gemileri korunur.",
+  "captureRule": "Ele geçirmek için savunmanın tamamını temizlemeli ve savaşabilecek bir savaş gemisini hayatta tutmalısın. Yalnız yük gemileri mevcut kontrolü koruyabilir.",
+  "partialRule": "Kısmi başarı için savunan filonun kaynak değerinin en az {{threshold}} kadarını yok etmelisin. Hasarlı sağ kalan gemiler imha sayılmaz. Derece ve puan, anıt kontrolünü belirlemez."
+},
+  radiationLossForecast: "Savaş hasarı hariç ilk radyasyon kaybı: {{time}} sonra.",
+  radiationCargoForecast: "Savaş hasarı hariç ilk yük gemisi kaybı: {{time}} sonra.",
+  protectedRate: "Kalkan {{level}} · gemi başına {{rate}} HP/dk",
+  cargoLossAt: "İlk yük gemisi kaybı: {{time}} sonra. Üzerindeki döteryum kaybolur.",
+  dispatchProtection: "Gönderilen filo · kalkan {{level}}: beklerken gemi başına {{rate}} HP/dk.",
+  shieldingSnapshot: "Sonradan tamamlanan araştırma bu filonun korumasını değiştirmez.",
   returnAll: "Bütün filonun dönüşü",
   returnSelected_one: "Seçili dönüş · {{count}} gemi",
   returnSelected_other: "Seçili dönüş · {{count}} gemi",
@@ -19,8 +56,8 @@ export const monument = {
   hard: "Zor",
   radiationLevelRate: "Radyasyon seviye {{level}}: gemi başına dakikada {{rate}} HP",
   easyAccess: "Kolay · Tier 1–3",
-  hardAccess: "Zor · tüm tier’lar",
-  tierBlocked: "Tier {{tier}} olduğun için yalnız zor anıtlara yeni filo gönderebilirsin.",
+  hardAccess: "Zor · Tier 4 ve üzeri",
+  tierBlocked: "Tier {{tier}} seviyesindesin. Tier 1–3 için kolay, Tier 4 ve üzeri için zor anıt seç.",
   initialFleetRule: "Savaş ve yük gemilerini tekrar gönderebilirsin. Her destek filosu yakıt ve uçuş yuvası kullanır; anıtta boş hacim gerekir.",
   recallFlightRule: "Varıştan önce seçili gemileri mevcut konumlarından geri çağırabilirsin. Harcanan gidiş yakıtı iade edilmez. Kullanılmayan dönüş rezervi, gemiler eve varınca iade edilir.",
   "newsRadiation": "{{name}} · radyasyonda {{count}} gemi ve {{cargo}} döteryum kaybedildi · {{left}} gemi kaldı",
@@ -78,6 +115,8 @@ export const monument = {
   "holdForecast": "Varıştan sonra: dakikada {{rate}} döteryum · sonraki gemi kaybı {{time}}",
   "noLoss": "kayıp beklenmiyor",
   "attackOutcome": "Savaşı kazanırsan yüksek kademeli gemiler anıt kapasitesine önce yerleşir. Kapasiteye sığmayan gemiler geri döner. Yalnız yük gemileri sağ kalırsa döteryum kazanamazsın.",
+  "reinforceRule": "Tarafın anıtı yolda kaybederse filo geri dönmez. Rakiple veya garnizonla savaşır. Anıt boşsa savaşabilen bir gemi onu ele geçirir.",
+  "arrivalOutcome": {"JOIN":"Şimdiki duruma göre varışta: tarafına katılır. Sığmayan gemiler döner.","FIGHT":"Şimdiki duruma göre varışta: anıtı tutan rakip filoyla savaşır.","GARRISON":"Şimdiki duruma göre varışta: tarafsız garnizonla savaşır.","CAPTURE":"Şimdiki duruma göre varışta: boş anıtı ele geçirir. Yalnız yük gemileri ele geçiremez ve geri döner."},
   "losses": "Gidiş rotasında {{count}} gemi kaybolur",
   "health": "{{name}}: varışta {{remaining}} / {{max}} HP",
   "shield": "Bu gönderimde geçici koruma kalkanımdan vazgeçiyorum",

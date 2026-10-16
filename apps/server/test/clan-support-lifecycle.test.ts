@@ -168,11 +168,11 @@ describe('the reclaim sweep', () => {
     await open(f, 1, 1);
     await send(f, 0, 0, 1, { DART: 5 });
     await landAll(f);
-    const rows = { runIds: [], raidIds: [], tradeIds: [], convoyIds: [] };
+    const rows = { runIds: [], raidIds: [], tradeIds: [], convoyIds: [], bombIds: [] };
     await f.db.transaction(async (tx) => {
-      expect(await busy(tx, [f.planetIds[0]!], f.playerIds[0]!, rows)).toBe(true);
-      expect(await busy(tx, [f.planetIds[1]!], f.playerIds[1]!, rows)).toBe(true);
-      expect(await busy(tx, [f.planetIds[2]!], f.playerIds[2]!, rows)).toBe(false);
+      expect(await busy(tx, [f.planetIds[0]!], f.playerIds[0]!, rows, f.clock.now())).toBe(true);
+      expect(await busy(tx, [f.planetIds[1]!], f.playerIds[1]!, rows, f.clock.now())).toBe(true);
+      expect(await busy(tx, [f.planetIds[2]!], f.playerIds[2]!, rows, f.clock.now())).toBe(false);
     });
   });
 });

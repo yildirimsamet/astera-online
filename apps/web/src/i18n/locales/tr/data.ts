@@ -107,7 +107,7 @@ export const vocabulary = {
         'Akın hasarını gemilere ve yer savunmasına ulaşmadan önce karşılar. Kaynak harcamadan yenilenir; istihbarat sağlamaz.',
       roleOwned:
         'Akın hasarını önce kalkan karşılar. Azami dayanımının saatte %35’ini kaynak harcamadan yeniler; istihbarat sağlamaz.',
-      detail: "Her seviye, azami kalkan dayanımını artırır. Aktif Aegis, savaş hasarını gemilerden ve yer savunmalarından önce alır. EMP etkisi dışında kaynak harcamadan yenilenir. Savaşabilecek birim yoksa gezegeni tek başına savunamaz. İstihbarat sağlamaz.",
+      detail: "Her seviye, kalkanın azami canını artırır. Aktif Aegis, savaş hasarını gemilerden ve yer savunmalarından önce alır. Her aktif seviye, bu gezegendeki gemilerin radyasyon hasarını da 1 HP/dk azaltır. Canı sıfırsa radyasyon koruması durur. Savaşta sıfırlanırsa yeniden dolmaya başlaması 15 dakika sürer; EMP bu süreyi uzatabilir. Kalkan kaynak harcamadan dolar. Savaşabilecek birim yoksa Aegis gezegeni tek başına savunamaz. İstihbarat sağlamaz.",
     },
     VEIL: {
       name: 'Perde',
@@ -153,7 +153,7 @@ export const vocabulary = {
       name: 'Kılavuz',
       tag: 'Filoları hızlandırır',
       role:
-        "Bu gezegenden başlayan akın, transfer, ticaret ve klan yardımı hızını 1,3 katına çıkarır.",
+        "Bu gezegenden başlayan akın, transfer, ticaret ve klan yardımı hızını %20 artırır.",
       blurb:
         'Akın, transfer, ticaret ve klan yardımı filolarına rota desteği sağlar. Gidiş ve dönüş kısaldıkça gemilerin ev savunmasından ayrı kaldığı süre de azalır.',
       detail: "Hız bonusu, belirtilen görevlerin gidişine ve dönüşüne uygulanır. Yerleşim filoları ve Kazıcılar etkilenmez. Saldırıyı, gövde dayanımını, kargoyu veya yakıt bedelini değiştirmez.",

@@ -1,4 +1,5 @@
 import type { ResearchProjectId } from '@astera/rules';
+import { RESEARCH_ART } from './assets.js';
 
 /** Decorative environments are distinct from gameplay objects and their tier contract. */
 export interface AtmosphereArt {
@@ -49,6 +50,7 @@ export const RESEARCH_SCENES = {
   INTERCEPTION_GRID: { src: `${BASE}/research-interception-grid-scene-v1.webp`, position: '60% 46%' },
   STRATEGIC_STOCKPILE: { src: `${BASE}/research-strategic-stockpile-scene-v1.webp`, position: '60% 46%' },
   INDUSTRIAL: { src: `${BASE}/research-industrial-scene-v1.webp`, position: '60% 46%' },
+  RADIATION_SHIELDING: { src: RESEARCH_ART.RADIATION_SHIELDING, position: '50% 50%', fit: 'contain' },
 } satisfies Record<ResearchProjectId, AtmosphereArt>;
 
 const CARD_SCENES: Readonly<Record<string, AtmosphereArt>> = {

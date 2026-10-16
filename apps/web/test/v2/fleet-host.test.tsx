@@ -20,10 +20,12 @@ let rows: PendingThread[] = [];
 let runs: MiningRun[] = [];
 const recallFlight = vi.fn();
 const recallMining = vi.fn();
+const maintenance = vi.fn();
 
 const capital = planetView({ fleet: { DART: 12 } }, { id: 'p-1', name: 'Thistle' });
 const withRoom = {
   ...capital,
+  fleetDamage: [{ hull: 'DART' as const, count: 2, damageBp: 5000, remainderBp: 0.25 }],
   flight: { used: 1, total: 4 },
   fleetAway: { DART: 6 },
   capacity: { hangar: 80, hangarUsed: 54, hangarCeiling: 180, ground: 20, groundUsed: 4 },
@@ -50,6 +52,7 @@ vi.mock('../../src/api/queries.js', async () => {
     useRecallFlight: () => ({ mutate: recallFlight, isPending: false }),
     useMySupport: () => ({ data: { waves: [] } }),
     useClanSupportActions: () => ({ recall: { mutate: vi.fn(), isPending: false } }),
+    useMaintenance: () => ({ mutate: maintenance, isPending: false }),
   };
 });
 
@@ -89,6 +92,18 @@ beforeEach(() => {
 });
 
 describe('the wired Fleet page', () => {
+  it('sends the fleet page’s explicit maintenance selection to the named world', async () => {
+    host();
+    await userEvent.click(screen.getByRole('tab', { name: 'At home' }));
+    await userEvent.type(screen.getByRole('textbox'), '1');
+    await userEvent.click(screen.getByRole('button', { name: 'Move to workshop' }));
+    expect(maintenance).toHaveBeenCalledWith(expect.objectContaining({ planetId: 'p-1', action: 'DOCK',
+      selection: { source: 'HOME', groups: [{ hull: 'DART', count: 1, damageBp: 5000, remainderBp: 0.25 }] } }), expect.any(Object));
+    expect(maintenance.mock.calls[0]?.[0]).toHaveProperty('key', expect.any(String));
+    const first: unknown = maintenance.mock.calls[0]?.[0];
+    await userEvent.click(screen.getByRole('button', { name: 'Move to workshop' }));
+    expect(maintenance.mock.calls[1]?.[0]).toEqual(first);
+  });
   it('heads the page with the active world’s flight bays and Hangar', () => {
     host();
     expect(screen.getByRole('dialog', { name: 'Fleet' })).toBeInTheDocument();

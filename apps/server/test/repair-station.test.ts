@@ -16,9 +16,9 @@ import { abandonBuildOrder, cancelBuildOrder } from '../src/services/buildQueue.
 import { secedeColony } from '../src/services/loyalty.js';
 import { planetView } from '../src/services/planetView.js';
 import { startRepair } from '../src/services/repair.js';
-import { dockLotsOf, landShips } from '../src/services/shipDamage.js';
+import { dockLotsOf } from '../src/services/shipDamage.js';
 import { EventWorker } from '../src/worker/loop.js';
-import { giveResearch, giveUnits, grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { giveResearch, giveUnits, grant, landAndDockShips, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
 /**
  * THE REPAIR STATION. Owner decisions K2, K6, 2026-09-29 (`plan.md` F4).
@@ -60,9 +60,9 @@ describe('the Repair Station', () => {
   /** Land ships straight into a world's dock and hand back the lot ids, oldest first. */
   const dock = async (lots: DamageLot[], planetId = mine, owner = me): Promise<string[]> => {
     for (const row of lots) {
-      await f.db.transaction((tx) => landShips(tx, {
+      await landAndDockShips(f.db, {
         planetId, ownerPlayerId: owner, fleet: { [row.hull]: row.count }, damage: [row], at: f.clock.now(),
-      }));
+      }, f.clock);
     }
     return (await dockLotsOf(f.db, planetId)).map((row) => row.id);
   };

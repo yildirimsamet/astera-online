@@ -18,11 +18,14 @@ describe('the approved monument season deal', () => {
     const current = await createSeason(f.db, {
       shardCode: 'MONUMENT-DEFAULT', seed: 919, startsAt: f.clock.now(),
     });
-    expect(current.season.rulesetVersion).toBe(17);
+    expect(current.season.rulesetVersion).toBe(18);
     expect(await f.db.select().from(monuments).where(eq(monuments.seasonId, current.season.id)))
       .toHaveLength(MONUMENT_SEASON_DEFAULTS.count);
     expect(await f.db.select().from(hpRadiationSources).where(eq(hpRadiationSources.seasonId, current.season.id)))
       .toHaveLength(MONUMENT_SEASON_DEFAULTS.count);
+    const calibrated = await f.db.select().from(hpRadiationSources).where(eq(hpRadiationSources.seasonId, current.season.id));
+    expect(calibrated.filter(row => row.radiationLevel === 1).map(row => row.intensityHpPerMinute)).toEqual([9, 9, 9, 9]);
+    expect(calibrated.filter(row => row.radiationLevel === 2).map(row => row.intensityHpPerMinute)).toEqual([12.5, 12.5, 12.5, 12.5]);
     expect(await f.db.select().from(monuments).where(eq(monuments.seasonId, f.seasonId))).toEqual([]);
   });
 
@@ -52,7 +55,7 @@ describe('the approved monument season deal', () => {
       intensity: cloud.intensityHpPerMinute, activeFrom: cloud.activeFrom }))
       .sort((a, b) => (a.anchorId ?? '').localeCompare(b.anchorId ?? ''))).toEqual(
       rows.map((row) => ({ anchorId: row.id, radius: MONUMENT_SEASON_DEFAULTS.cloudRadius,
-        intensity: MONUMENT_BALANCE[monumentDifficulty(row.ordinal)].intensityHpPerMinute, activeFrom: season.startsAt }))
+        intensity: monumentDifficulty(row.ordinal) === 'EASY' ? 2 : 5, activeFrom: season.startsAt }))
         .sort((a, b) => a.anchorId.localeCompare(b.anchorId)),
     );
   });

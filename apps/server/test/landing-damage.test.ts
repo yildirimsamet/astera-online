@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import type { DamageLot, Fleet, HullId } from '@astera/rules';
 import { missions, planets, scheduledEvents, units } from '../src/db/schema.js';
 import { launchTransfer, recallFlight } from '../src/services/movement.js';
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { dockLotsOf } from '../src/services/shipDamage.js';
 import { abandon } from '../src/worker/abandon.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -53,8 +54,8 @@ describe('landing a damaged fleet', () => {
     return out;
   };
 
-  const dockOf = async (planetId: string) =>
-    (await dockLotsOf(f.db, planetId)).map(({ hull, count, damageBp }) => ({ hull, count, damageBp }));
+  const woundsOf = async (planetId: string) =>
+    (await readHomeHealth(f.db, planetId)).damage.map(({ hull, count, damageBp }) => ({ hull, count, damageBp }));
 
   /** Radiation's work, done by hand until F9 does it in the air. */
   const irradiate = (missionId: string, lots: DamageLot[]) =>
@@ -77,14 +78,15 @@ describe('landing a damaged fleet', () => {
     f.clock.advance(250);
   });
 
-  it('docks a transfer\'s badly damaged ships at the world it reaches', async () => {
+  it('keeps all transfer wounds in the destination hangar', async () => {
     const launched = await launchTransfer(f.db, f.playerIds[0]!, mine, colony, { DART: 10 }, EMPTY, f.clock);
     await irradiate(launched.missionId, [lot('DART', 3, 6000), lot('DART', 1, 1500)]);
     f.clock.set(launched.arriveAt);
     await worker().tick();
 
-    expect((await homeOf(colony)).DART).toBe(7);
-    expect(await dockOf(colony)).toEqual([lot('DART', 3, 6000)]);
+    expect((await homeOf(colony)).DART).toBe(10);
+    expect(await woundsOf(colony)).toEqual([lot('DART', 3, 6000), lot('DART', 1, 1500)]);
+    expect(await dockLotsOf(f.db, colony)).toEqual([]);
   });
 
   it('splits a round trip by hull: the staying hulls land their damage, the returning carry theirs', async () => {
@@ -96,16 +98,16 @@ describe('landing a damaged fleet', () => {
     f.clock.set(launched.arriveAt);
     await worker().tick();
 
-    expect((await homeOf(colony)).DART).toBe(4);
-    expect(await dockOf(colony)).toEqual([lot('DART', 2, 6000)]);
+    expect((await homeOf(colony)).DART).toBe(6);
+    expect(await woundsOf(colony)).toEqual([lot('DART', 2, 6000)]);
     const [back] = await f.db.select().from(missions)
       .where(and(eq(missions.parentMissionId, launched.missionId), eq(missions.status, 'in_flight')));
-    expect(back?.damage).toEqual([lot('COURIER', 1, 7000)]);
+    expect(back?.damage).toEqual([{ ...lot('COURIER', 1, 7000), remainderBp: 0 }]);
 
     f.clock.set(back!.arriveAt);
     await worker().tick();
-    expect(await dockOf(mine)).toEqual([lot('COURIER', 1, 7000)]);
-    expect((await homeOf(mine)).COURIER).toBe(3);
+    expect(await woundsOf(mine)).toEqual([lot('COURIER', 1, 7000)]);
+    expect((await homeOf(mine)).COURIER).toBe(4);
   });
 
   it('brings a recalled flight home with what it carries', async () => {
@@ -116,8 +118,8 @@ describe('landing a damaged fleet', () => {
     f.clock.set(new Date(recall.arriveAt.getTime() + 1_000));
     await worker().tick();
 
-    expect((await homeOf(mine)).DART).toBe(8);
-    expect(await dockOf(mine)).toEqual([lot('DART', 2, 4500)]);
+    expect((await homeOf(mine)).DART).toBe(10);
+    expect(await woundsOf(mine)).toEqual([lot('DART', 2, 4500)]);
   });
 
   it('carries the damage onto a reroute when the world it flew to is gone', async () => {
@@ -132,7 +134,7 @@ describe('landing a damaged fleet', () => {
     expect(reroute?.damage).toEqual([lot('DART', 1, 8000)]);
     f.clock.set(reroute!.arriveAt);
     await worker().tick();
-    expect(await dockOf(mine)).toEqual([lot('DART', 1, 8000)]);
+    expect(await woundsOf(mine)).toEqual([lot('DART', 1, 8000)]);
   });
 
   it('never repairs a stranded fleet for free when the server gives up on its leg', async () => {
@@ -142,7 +144,7 @@ describe('landing a damaged fleet', () => {
       .where(eq(scheduledEvents.refId, launched.missionId));
     expect(await abandon(f.db, event!, f.clock)).toBe(true);
 
-    expect((await homeOf(mine)).DART).toBe(6);
-    expect(await dockOf(mine)).toEqual([lot('DART', 4, 5500)]);
+    expect((await homeOf(mine)).DART).toBe(10);
+    expect(await woundsOf(mine)).toEqual([lot('DART', 4, 5500)]);
   });
 });

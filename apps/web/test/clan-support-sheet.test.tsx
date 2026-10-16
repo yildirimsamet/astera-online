@@ -28,13 +28,14 @@ const quote = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-function show(answer: Record<string, unknown>) {
+function show(answer: Record<string, unknown>, world?: ReturnType<typeof planetView>, honorSoloCredit = false) {
   const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify(answer), {
     status: 200, headers: { 'content-type': 'application/json' },
   })));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  client.setQueryData(['season'], { honorSoloCredit });
   const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
-  const origin = planetView({ fleet: { PIKE: 30, DART: 10 } }, { id: 'origin', name: 'Home' });
+  const origin = world ?? planetView({ fleet: { PIKE: 30, DART: 10 } }, { id: 'origin', name: 'Home' });
   render(<QueryClientProvider client={client}><ApiProvider api={api}>
     <ClanSupportSheet host={{ planetId: 'world', planetName: 'Vega', ownerName: 'Ali' }}
       worlds={[origin]} onClose={vi.fn()} onSent={vi.fn()} />
@@ -55,6 +56,16 @@ async function pick(count: number) {
 }
 
 describe('the clan support sheet', () => {
+  it('states the Honor consequence before sending defence support', () => {
+    show(quote(), undefined, true);
+    expect(screen.getByText(/Shared sides cannot earn positive Honor/)).toBeVisible();
+  });
+  it('limits support dispatches to ships above 5% HP', async () => {
+    show(quote(), planetView({ fleet: { PIKE: 3 }, fleetDamage: [{ hull: 'PIKE', count: 2, damageBp: 9500 }],
+      fleetCombatReady: { PIKE: 1 } }, { id: 'origin', name: 'Home' }));
+    await pick(3);
+    expect(screen.getByRole('textbox', { name: /pike.*quantity/i })).toHaveValue('1');
+  });
   it('names the host world and asks for ships before anything else', () => {
     show(quote());
     expect(screen.getByText(/Ali · Vega/)).toBeInTheDocument();

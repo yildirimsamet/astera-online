@@ -489,7 +489,7 @@ function AuthDialog({
       />
 
       <form
-        className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-3 font-v2-ui text-v2-ink shadow-2xl sm:rounded-sheet sm:border-b sm:p-6"
+        className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto border border-b-0 border-v2-line bg-v2-panel px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-3 font-v2-ui text-v2-ink shadow-2xl sm:rounded-sheet sm:border-b sm:p-6"
         onSubmit={(event) => {
           event.preventDefault();
           submit();

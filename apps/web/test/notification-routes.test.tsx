@@ -51,6 +51,7 @@ const EVERY_KIND = [
   'monument_returning',
   'probe_report',
   'radiation_lost',
+  'radiation_bomb_result',
   'raid_result',
   'raided',
   'scan_detected',
@@ -92,6 +93,7 @@ const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
   colony_lost: { targetPlanetId: 'p9' },
   death_star_result: { outcome: 'FIRST_STRIKE', targetPlanetId: 'p9' },
   fleet_returned: { trip: 'raid', ships: 4, lootAlloy: 10, lootCrystal: 0 },
+  radiation_bomb_result: { level: 2, outcome: 'HIT', targetKind: 'PLANET', targetId: 'p9', targetName: 'Asterion' },
   radiation_lost: { lost: 3, left: 0, toPlanetId: 'p9', toPlanetName: 'Vantage' },
   galaxy_event_ended: {
     eventKind: 'ASTEROID_SHOWER',
@@ -193,6 +195,7 @@ describe('where a notification takes you', () => {
     ['raided', 'report', 'battles'],
     ['raid_result', 'report', 'battles'],
     ['death_star_result', 'report', 'battles'],
+    ['radiation_bomb_result', 'report', 'battles'],
     ['strategic_intercepted', 'report', 'battles'],
   ] as const)('takes %s straight to the %s, with the %s list behind it', (kind, panel, stop) => {
     expect(DESTINATION[kind]).toEqual({ panel, stop });
@@ -242,7 +245,7 @@ describe('where a notification takes you', () => {
     for (const [kind, where] of Object.entries(DESTINATION)) {
       if (where.panel !== 'report') continue;
       expect(
-        ['raided', 'raid_result', 'death_star_result', 'strategic_intercepted', 'clan_support_result'],
+        ['raided', 'raid_result', 'death_star_result', 'strategic_intercepted', 'clan_support_result', 'radiation_bomb_result'],
         `${kind} is not a fight`,
       ).toContain(kind);
       expect(where.stop, `${kind} has no list to fall back to`).toBe('battles');

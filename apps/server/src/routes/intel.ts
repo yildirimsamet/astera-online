@@ -67,6 +67,7 @@ export function registerIntelRoutes(app: FastifyInstance): void {
       // Which worlds this commander may not look at again yet, and until when.
       probeCooldowns: cooldowns,
       probeReports: reports.map((r) => ({
+        missionId: r.report.missionId,
         targetPlanetId: r.report.targetPlanetId,
         spatiallyCurrent: r.spatiallyCurrent,
         targetName: r.targetName,

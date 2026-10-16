@@ -8,6 +8,13 @@ import type { PlanetView } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
 import i18n from '../src/i18n/index.js';
 import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
+import { hitsToTakeLoyalColony } from '../src/lib/strategic.js';
+
+/** The Death Star's one description, with the figures the card passes it. */
+const deathStarHint = (): string => i18n.t('planet.deathStar.hint', {
+  loss: DEATH_STAR.colonyLoyaltyLoss,
+  hits: hitsToTakeLoyalColony,
+});
 
 /**
  * WHERE THE PLANET SHEET PUTS THINGS, AND WHICH TAB IT OPENS ON. D170.
@@ -200,6 +207,31 @@ describe('what a Death Star strike actually does', () => {
     expect(fleet.container.querySelector('[data-strategic-state]')).toBeNull();
   });
 
+  it('uses the same image-and-body production layout and a labelled stock counter', () => {
+    const view = show('tactical');
+    const forge = view.container.querySelector('[data-strategic-state]');
+    expect(forge).toHaveClass('tactical-production');
+    expect(forge?.querySelector('.tactical-production__scene img')).toHaveAttribute('src', '/assets/images/atmosphere/strategic-v2.webp');
+    expect(forge?.querySelector('.tactical-production__body')).not.toBeNull();
+    expect(forge?.querySelector('[data-stock-counter]')).toHaveTextContent('Stock 0/1');
+    expect(screen.getByRole('heading', { name: 'Death Star' })).toBeInTheDocument();
+  });
+
+  it.each([0, 1])('shows mixed ready and paused inventory without hiding captured stock at Stockpile %s', level => {
+    const world = rich();
+    current = { ...world, deathStars: [
+      { id: 'ready', status: 'READY', readyAt: null, remainingSeconds: 0 },
+      { id: 'paused', status: 'PAUSED', readyAt: null, remainingSeconds: 60 },
+    ], research: world.research.map(project => project.id === 'STRATEGIC_STOCKPILE' ? { ...project, level } : project) };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = render(<QueryClientProvider client={client}><ToastProvider><PlanetScreen focusGroup="tactical" /></ToastProvider></QueryClientProvider>);
+    const forge = view.container.querySelector('[data-strategic-state]');
+    expect(forge?.querySelector('[data-stock-counter]')).toHaveTextContent(`Stock 2/${String(level + 1)}`);
+    expect([...forge!.querySelectorAll('[data-cell]')].map(cell => cell.getAttribute('data-cell'))).toEqual(['ready', 'paused']);
+    expect(forge).toHaveTextContent('Paused: 1');
+    expect(forge).not.toHaveTextContent('Building: 1');
+  });
+
   it('explains an active EMP on the affected planet without claiming production is stopped', () => {
     current = rich();
     current = { ...current, planet: {
@@ -228,22 +260,34 @@ describe('what a Death Star strike actually does', () => {
    */
   it('states the deadline rather than a capture', () => {
     show('tactical');
-    const hint = screen.getByText(i18n.t('planet.deathStar.dangerHint', { loss: DEATH_STAR.colonyLoyaltyLoss }));
-    expect(hint).toBeInTheDocument();
+    expect(screen.getByText(deathStarHint())).toBeInTheDocument();
     for (const forbidden of ['ele geçir', 'capture']) {
-      expect(i18n.t('planet.deathStar.dangerHint').toLowerCase()).not.toContain(forbidden);
-      expect(i18n.t('planet.deathStar.readyHint').toLowerCase()).not.toContain(forbidden);
+      expect(deathStarHint().toLowerCase()).not.toContain(forbidden);
     }
   });
 
-  it('states the complete EMP rule directly without a redundant effects panel', () => {
+  /**
+   * ONE PLAIN DESCRIPTION. Owner, 2026-10-15: *"Ölüm yıldızının açıklaması sadeleşsin ve
+   * kafa karıştırıcı ifadeler kaldırılsın ayrıca: Sadakati 100 olan bir koloniye 5 tane
+   * ard arda atarsanız, koloni düşer yazısı eklensin."* The threshold sentence ("at 20 or
+   * less it secedes") and "ground defences take no damage" are what read as riddles; the
+   * worked example and "they sit the fight out" say the same rules plainly.
+   */
+  it('states the EMP rule plainly, with the five-hit example and the fault', async () => {
     show('tactical');
-    const copy = i18n.t('planet.deathStar.dangerHint', { loss: DEATH_STAR.colonyLoyaltyLoss });
-    expect(copy).toMatch(/Aegis/i);
-    expect(copy).toMatch(/1|hour|saat/i);
-    expect(copy).toMatch(/savunma|defence/i);
-    expect(copy).toMatch(/hasar almaz|cannot .*take damage|invulnerable/i);
-    expect(screen.getByText(copy)).toBeInTheDocument();
+    for (const language of ['en', 'tr'] as const) {
+      await i18n.changeLanguage(language);
+      const copy = deathStarHint();
+      expect(copy).toMatch(/Aegis/);
+      expect(copy).toMatch(/1 (hour|saat)/i);
+      expect(copy).toMatch(/ground defences|yer savunmaları/i);
+      expect(copy).toMatch(/fault|arıza/i);
+      expect(copy).toContain(String(Math.ceil(100 / DEATH_STAR.colonyLoyaltyLoss)));
+      expect(copy).toContain(String(DEATH_STAR.colonyLoyaltyLoss));
+      expect(copy).not.toMatch(/hasar almaz|take damage|or less|veya altında|kopar|secede/i);
+    }
+    await i18n.changeLanguage('en');
+    expect(screen.getByText(deathStarHint())).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /tek darbe ne yapar|what one impact does/i }))
       .not.toBeInTheDocument();
   });

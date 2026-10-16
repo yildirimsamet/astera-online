@@ -225,6 +225,16 @@ describe('the charge itself', () => {
     expect(stateOf(view)).toBe('READY');
     expect(block(view).querySelector('[data-tally]')).toHaveAttribute('data-used', '1');
     expect(block(view).querySelector('[data-tally]')).toHaveAttribute('data-total', '2');
+    expect(block(view).querySelector('[data-stock-counter]')).toHaveTextContent('Charges 1/2');
+    expect(button(view)).toBeEnabled();
+  });
+
+  it.each([[0, 2], [1, 4], [2, 6]] as const)('shows %s Grid research as %s actual battery slots', (level, capacity) => {
+    const research = planetView().research.map(project => project.id === 'INTERCEPTION_GRID'
+      ? { ...project, level, completed: level >= 2, discovered: true } : project);
+    const view = show(armed({ research, interceptors: [] }));
+    expect(block(view).querySelector('[data-tally]')).toHaveAttribute('data-total', String(capacity));
+    expect(block(view).querySelector('[data-interceptor-capacity]')).toHaveTextContent(`Charges 0/${String(capacity)}`);
     expect(button(view)).toBeEnabled();
   });
 
@@ -286,6 +296,19 @@ describe('the charge itself', () => {
     expect(next).toHaveTextContent('4');
     await userEvent.click(next);
     expect(onOpenResearch).toHaveBeenCalledWith('INTERCEPTION_GRID');
+  });
+
+  it('points a full level-one battery at level two for six charges, and removes the prompt at the maximum', () => {
+    const four = Array.from({ length: 4 }, (_, i) => ({ id: `charge-${String(i)}`, status: 'READY' as const,
+      readyAt: null, remainingSeconds: 0 }));
+    const view = show(armed({ research: withGrid(), interceptor: four[0]!, interceptors: four }));
+    const next = within(block(view)).getByRole('button', { name: /interception grid/i });
+    expect(next).toHaveTextContent('6');
+    view.unmount();
+    const six = Array.from({ length: 6 }, (_, i) => ({ ...four[0]!, id: `max-${String(i)}` }));
+    const research = withGrid().map(project => project.id === 'INTERCEPTION_GRID' ? { ...project, level: 2 } : project);
+    const maxed = show(armed({ research, interceptor: six[0]!, interceptors: six }));
+    expect(block(maxed).querySelector('[data-capacity-next]')).toBeNull();
   });
 
   /**

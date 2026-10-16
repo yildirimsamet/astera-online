@@ -1,4 +1,5 @@
 import {
+  FAULT,
   HULLS,
   buildingCost,
   buildMinutes,
@@ -27,6 +28,8 @@ import {
   type InstrumentId,
   type SatelliteId,
 } from '@astera/rules';
+import { eq } from 'drizzle-orm';
+import { planets } from '../db/schema.js';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { buildQueueContext, placeBuildOrder } from './buildQueue.js';
@@ -202,11 +205,18 @@ export async function placeBuildingUpgrade(
   tx: Tx,
   planet: LockedPlanet,
   type: BuildingId,
+  intent: { confirmedLevel?: number } = {},
 ): Promise<number> {
   assertWorldOperational(planet);
   assertFaultItemOperational(planet, type, BUILDING_FAULT[type]);
   const context = await buildQueueContext(tx, planet, 'CONSTRUCTION');
   const level = context.projected.buildings[type];
+  if (intent.confirmedLevel !== undefined && intent.confirmedLevel !== level + 1) {
+    throw new GameError('UPGRADE_TARGET_CHANGED', 'The upgrade target changed. Review it again.', 409);
+  }
+  if (type === 'CORE' && level + 1 === 10 && intent.confirmedLevel !== 10) {
+    throw new GameError('CORE_TIER_CONFIRMATION_REQUIRED', 'Confirm the level 10 transition first.', 409);
+  }
 
   if (type === 'HANGAR') {
     assertHangarRung(level);
@@ -247,6 +257,16 @@ export async function placeBuildingUpgrade(
     // design reference and knows nothing about what this commander automated. D198.
     minutes: buildingMinutes(type, level + 1, asTech(context.projected.research)),
   });
+  // The order has passed every gate and payment. Keep this stamp in that same
+  // planet-locked transaction: refused/rolled-back orders never buy protection.
+  if (planet.kind === 'COLONY') {
+    const until = new Date(Math.max(
+      planet.now.getTime() + FAULT.developmentProtectionMinutes * 60_000,
+      planet.faultProtectedUntil?.getTime() ?? 0,
+    ));
+    await tx.update(planets).set({ faultProtectedUntil: until }).where(eq(planets.id, planet.planetId));
+    planet.faultProtectedUntil = until;
+  }
   return level + 1;
 }
 
@@ -256,9 +276,10 @@ export async function upgradeBuilding(
   type: BuildingId,
   clock: Clock,
   expectedPlayerId?: string,
+  intent: { confirmedLevel?: number } = {},
 ): Promise<WithPlanet & { type: BuildingId; level: number; alloy: number; crystal: number }> {
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
-    const level = await placeBuildingUpgrade(tx, planet, type);
+    const level = await placeBuildingUpgrade(tx, planet, type, intent);
     return {
       type,
       level,

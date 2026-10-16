@@ -1,3 +1,4 @@
+import { refreshPlanetAegis } from './planetAegis.js';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   DEBRIS,
@@ -134,10 +135,12 @@ export async function armFaults(
     ))
     .limit(1);
   if (active) return;
+  const [world] = await tx.select({ until: planets.faultProtectedUntil }).from(planets)
+    .where(eq(planets.id, input.planetId));
   await scheduleNextFaultSpawn(tx, {
     seasonId: input.seasonId,
     planetId: input.planetId,
-    now: input.now,
+    now: new Date(Math.max(input.now.getTime(), world?.until?.getTime() ?? 0)),
     rng: seededFrom('fault-arm', input.planetId, input.now.getTime()),
   });
 }
@@ -151,8 +154,9 @@ export async function armFaults(
 export async function faultStateOf(
   tx: Tx,
   planetId: string,
-): Promise<{ kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL'; coreLevel: number; plantLevel: number; active: FaultKind[] } | null> {
-  const [world] = await tx.select({ kind: planets.kind }).from(planets).where(eq(planets.id, planetId));
+): Promise<{ kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL'; coreLevel: number; plantLevel: number; active: FaultKind[]; faultProtectedUntil: Date | null } | null> {
+  const [world] = await tx.select({ kind: planets.kind, faultProtectedUntil: planets.faultProtectedUntil })
+    .from(planets).where(eq(planets.id, planetId));
   if (!world) return null;
   const [levels, active] = await Promise.all([
     tx.select().from(buildings).where(eq(buildings.planetId, planetId)),
@@ -161,6 +165,7 @@ export async function faultStateOf(
   const levelOf = (type: string): number => levels.find((row) => row.type === type)?.level ?? 0;
   return {
     kind: world.kind,
+    faultProtectedUntil: world.faultProtectedUntil,
     coreLevel: levelOf('CORE'),
     plantLevel: levelOf('DEUTERIUM_PLANT'),
     active: active.map((row) => row.kind),
@@ -265,6 +270,14 @@ export const FAULT_LOCATION: Record<FaultKind, { group: string; itemId: string }
  */
 export async function breakFaults(
   tx: Tx,
+  input: Parameters<typeof breakFaultsWithEffects>[1],
+): Promise<FaultKind[]> {
+  return (await breakFaultsWithEffects(tx, input)).faults;
+}
+
+/** A strike also needs the repair receipt when its Core fault exposes the workshop. */
+export async function breakFaultsWithEffects(
+  tx: Tx,
   input: {
     seasonId: string;
     planetId: string;
@@ -277,7 +290,8 @@ export async function breakFaults(
      *
      * `CLOCK` draws from all eight; `ATTACK` spares the production line, because the same blow
      * just bought the defender eight hours of BOOSTED output and an outage would take it straight
-     * back (`FAULT.attackSpares`).
+     * back (`FAULT.attackSpares`). `STRIKE` is a Death Star or Radiation Bomb hit:
+     * all eight, since neither strike grants a production boost.
      *
      * A default would pick one of those two silently for whoever writes the next caller, and the
      * wrong pick is invisible until a balance number looks wrong months later — the exact failure
@@ -287,7 +301,7 @@ export async function breakFaults(
      * line away, and it means an event id — two adjacent calls with one word for two things is a
      * trap for whoever reads this next.
      */
-    lane: 'CLOCK' | 'ATTACK';
+    lane: 'CLOCK' | 'ATTACK' | 'STRIKE';
     spawnEventId?: string;
     /**
      * Whether each fault gets its own notification. The clock's faults do; a battle's do
@@ -296,7 +310,7 @@ export async function breakFaults(
      */
     announce?: boolean;
   },
-): Promise<FaultKind[]> {
+): Promise<{ faults: FaultKind[]; repairs?: Awaited<ReturnType<typeof refreshPlanetAegis>> }> {
   /*
     ONE SPAWN EVENT CAN ONLY EVER NAME ONE ROW. `planet_faults_spawn_event_idx` is unique,
     so a second insert under the same id is refused by the conflict clause below —
@@ -309,7 +323,8 @@ export async function breakFaults(
     );
   }
   const state = await faultStateOf(tx, input.planetId);
-  if (!state) return [];
+  if (!state) return { faults: [] };
+  if (state.faultProtectedUntil && state.faultProtectedUntil > input.now) return { faults: [] };
   const draw = input.lane === 'ATTACK' ? drawAttackFaults : drawFaults;
   const drawn = draw(
     { kind: state.kind, coreLevel: state.coreLevel, plantLevel: state.plantLevel },
@@ -337,11 +352,13 @@ export async function breakFaults(
       .returning({ id: planetFaults.id });
     if (row) written.push({ id: row.id, kind });
   }
-  if (written.length === 0) return [];
+  if (written.length === 0) return { faults: [] };
 
   // The Core fault changes the public dome: every observer must drop the cached
   // `shielded` silhouette on the same commit that darkens it.
+  let repairs: Awaited<ReturnType<typeof refreshPlanetAegis>>;
   if (written.some((fault) => fault.kind === 'CORE_OUTAGE')) {
+    repairs = await refreshPlanetAegis(tx, input.planetId, input.now);
     await publishShard(tx, input.seasonId, 'world');
   }
 
@@ -399,7 +416,7 @@ export async function breakFaults(
       });
     }
   }
-  return written.map((fault) => fault.kind);
+  return { faults: written.map((fault) => fault.kind), repairs };
 }
 
 /**
@@ -441,6 +458,19 @@ export const onFaultSpawn: Handler = async ({ db, clock }, event) => {
       coreLevel: world.buildings.CORE,
       plantLevel: world.buildings.DEUTERIUM_PLANT,
     })) return;
+
+    // A committed successor also marks a deferred event as consumed. Without
+    // this guard its redelivery after protection expires could write a new fault.
+    const [successor] = await tx.select({ id: scheduledEvents.id }).from(scheduledEvents)
+      .where(eq(scheduledEvents.dedupeKey, `fault-spawn:${event.id}`)).limit(1);
+    if (successor) return;
+    if (world.faultProtectedUntil && world.faultProtectedUntil > now) {
+      await schedule(tx, {
+        seasonId: event.seasonId, kind: 'fault_spawn', refId: planetId,
+        dedupeKey: `fault-spawn:${event.id}`, resolveAt: world.faultProtectedUntil,
+      });
+      return;
+    }
 
     /*
       THE TIMER IS RE-ARMED WHATEVER HAPPENS, including when there is nothing left to

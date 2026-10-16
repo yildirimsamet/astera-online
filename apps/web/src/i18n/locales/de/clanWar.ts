@@ -1,4 +1,6 @@
 export const clanWar = {
+  criticalReason: "Ruft vor dem Angriff Flotten mit Schiffen zurück, deren Hülle bei höchstens 5% liegt.",
+  stagingRadiation: "Wartende Schiffe erleiden auf dem Sammelplaneten Strahlungsschaden.",
   radiationMember: "{{name}}: Strahlung würde {{count}} Schiffe zerstören. Rufe die Welle zurück und sende sie erneut mit deiner eigenen Zustimmung.",
   radiationMemberRequired: "Ein Mitglied muss den Strahlungsverlust bestätigen",
   tab: 'Krieg', purpose: 'Ein Ziel. Viele Kommandanten. Ein gemeinsamer Angriff.',

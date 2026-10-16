@@ -8,6 +8,7 @@ import { HULLS, MOBILE_HULLS, combatValue, fleetCount, fleetEntries, fleetValue 
 import { allocateJointDominion, type JointDominionShare } from './clanWar.js';
 import { applyHpDose, type HpDamageLots } from './radiationHp.js';
 import type { Fleet, Rng } from './types.js';
+import { partitionCombatFleet } from './shipMaintenance.js';
 
 const MOBILE: ReadonlySet<string> = new Set(MOBILE_HULLS);
 const byId = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
@@ -74,6 +75,7 @@ export function resolveMonumentCombat(
   attackers: readonly JointAttackerStack[],
   defenders: readonly DefenderStack[],
   rng: Rng,
+  maintenance = false,
 ): MonumentCombatResult {
   const identities = new Set<string>();
   for (const row of attackers) {
@@ -90,10 +92,16 @@ export function resolveMonumentCombat(
   const d: DefenderStack[] = defenders.length > 0
     ? [...defenders].sort((left, right) => byId(left.stackId, right.stackId))
     : [{ stackId: '', playerId: '', fleet: {}, tech: { tech: {} } }];
-  const result = resolveBattle(a, d, 0, rng, 'MONUMENT');
+  const result = resolveBattle(a, d, 0, rng, 'MONUMENT', maintenance);
+  const capturing: Fleet = {};
+  for (const outcome of result.contributions) {
+    const initial = a.find((stack) => stack.contributionId === outcome.contributionId)!;
+    const ready = maintenance ? partitionCombatFleet(initial.fleet, initial.damage).eligible : initial.fleet;
+    for (const [hull, count] of fleetEntries(outcome.survivors)) capturing[hull] = (capturing[hull] ?? 0) + Math.min(count, ready[hull] ?? 0);
+  }
   return {
     ...result,
     defenders: defenders.length > 0 ? result.defenders : [],
-    control: monumentBattleControl(result.attackerSurvivors, result.defenderSurvivors),
+    control: monumentBattleControl(capturing, result.defenderSurvivors),
   };
 }

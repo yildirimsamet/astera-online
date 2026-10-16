@@ -10,15 +10,18 @@ import { createContext, useContext, type ReactNode } from 'react';
  * player was invited to make.
  */
 const SeasonLocked = createContext(false);
+const VacationLocked = createContext(false);
 
 export function SeasonLockProvider({
   locked,
+  vacation = false,
   children,
 }: {
   locked: boolean;
+  vacation?: boolean;
   children: ReactNode;
 }) {
-  return <SeasonLocked.Provider value={locked}>{children}</SeasonLocked.Provider>;
+  return <SeasonLocked.Provider value={locked}><VacationLocked.Provider value={vacation}>{children}</VacationLocked.Provider></SeasonLocked.Provider>;
 }
 
 export const useSeasonLocked = (): boolean => useContext(SeasonLocked);
@@ -40,8 +43,9 @@ export const useSeasonLocked = (): boolean => useContext(SeasonLocked);
  */
 export function GameActions({ children }: { children: ReactNode }) {
   const locked = useSeasonLocked();
+  const vacation = useContext(VacationLocked);
   return (
-    <fieldset disabled={locked} className="contents">
+    <fieldset disabled={locked || vacation} className="contents">
       {children}
     </fieldset>
   );

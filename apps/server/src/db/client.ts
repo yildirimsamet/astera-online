@@ -1,8 +1,10 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import type { PgTransactionConfig } from 'drizzle-orm/pg-core';
 import postgres from 'postgres';
 import * as schema from './schema.js';
+import { flushBeforeCommit } from './finalizers.js';
 
-export type Db = ReturnType<typeof createDb>['db'];
+export type Db = PostgresJsDatabase<typeof schema>;
 /** A transaction handle. Every mutating service takes one of these, never the pool. */
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 /** Either works for reads; only Tx may mutate. */
@@ -27,6 +29,13 @@ export function createDb(
     onnotice: () => undefined,
   });
   const db = drizzle(sql, { schema });
+  const transaction = db.transaction.bind(db);
+  db.transaction = <T>(action: (tx: Tx) => Promise<T>, config?: PgTransactionConfig): Promise<T> =>
+    transaction(async tx => {
+      const result = await action(tx);
+      await flushBeforeCommit(tx);
+      return result;
+    }, config);
   return { sql, db, close: () => sql.end({ timeout: 5 }) };
 }
 

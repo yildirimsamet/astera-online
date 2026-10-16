@@ -1,4 +1,4 @@
-import { COSMETIC_IDS, COSMETIC_CATEGORIES, SHIP_SKIN_IDS, isMissionPace } from '@astera/rules';
+import { COSMETIC_IDS, COSMETIC_CATEGORIES, SHIP_SKIN_IDS, isMissionPace, honorBenefits, VACATION_BLOCK_REASONS } from '@astera/rules';
 import { z } from 'zod';
 import { CHAT_LANGUAGES, COUNTRY_CODES, FAULT_KINDS, PLANET_SKIN_IDS, REACTION_EMOJIS } from '@astera/rules';
 import type {
@@ -28,6 +28,40 @@ type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 
 /** Dominion is persisted and transferred as an exact JavaScript-safe integer. */
 const dominionInteger = z.number().int().safe();
+export const honorBenefitsSchema = z.object({ version: z.literal(1), score: dominionInteger,
+  thresholds: z.object({ positive: z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly(),
+    negative: z.tuple([dominionInteger.positive(), dominionInteger.positive()]).readonly() }),
+  tier: z.union([z.literal(-2), z.literal(-1), z.literal(0), z.literal(1), z.literal(2)]),
+  repairPct: z.union([z.literal(-10), z.literal(-5), z.literal(0), z.literal(5), z.literal(10)]),
+  convoyPct: z.union([z.literal(-30), z.literal(-15), z.literal(0), z.literal(15), z.literal(30)]),
+  tradePct: z.union([z.literal(0), z.literal(7), z.literal(14)]),
+}).refine(value => {
+  // Zod still runs refinements after a numeric check marks an object dirty.
+  // Refuse malformed integers here before calling the exact arithmetic rules.
+  if (![value.score, ...value.thresholds.positive, ...value.thresholds.negative].every(Number.isSafeInteger)) return false;
+  if (value.thresholds.positive[0] <= 0 || value.thresholds.negative[0] <= 0
+    || value.thresholds.positive[0] >= value.thresholds.positive[1] || value.thresholds.negative[0] >= value.thresholds.negative[1]) return false;
+  const expected = honorBenefits(value.score, value.thresholds);
+  return expected.tier === value.tier && expected.repairPct === value.repairPct
+    && expected.convoyPct === value.convoyPct && expected.tradePct === value.tradePct;
+}, 'Honor economic quote does not match its frozen program');
+export type HonorBenefitsView = z.infer<typeof honorBenefitsSchema>;
+const honorReceipt = z.object({ delta: dominionInteger, reason: z.enum([
+  'COMBAT', 'TACTICAL', 'WEAK_TARGET', 'ATTACK_LOSS', 'NO_GAIN', 'RELATED', 'INELIGIBLE', 'TARGET_CHANGED', 'PARTICIPANT_JOINED_LATE', 'SHARED_SIDE',
+]), breakdown: z.object({ teamDelta: dominionInteger, rawTeamDelta: dominionInteger,
+  participants: z.number().int().nonnegative(), contributionPpm: z.number().int().min(0).max(1_000_000),
+  militaryDamage: dominionInteger.nonnegative(), permanentLoss: dominionInteger.nonnegative(),
+  weakTargetDebit: z.boolean().optional(), sharedPositiveBlocked: z.boolean().optional(), tactical: z.boolean().optional() }).optional() });
+export { honorReceipt as honorReceiptSchema };
+export type HonorReceipt = z.infer<typeof honorReceipt>;
+export const honorTargetSchema = z.union([
+  z.object({ enabled: z.literal(false) }),
+  z.object({ enabled: z.literal(true), eligible: z.literal(false) }),
+  z.object({ enabled: z.literal(true), eligible: z.literal(true), kind: z.enum(['PEER', 'UPPER', 'WEAK']),
+    militaryReturn: z.enum(['NONE', 'HALF', 'FULL']), related: z.boolean(), repeated: z.boolean(), retaliation: z.boolean(),
+    soloCredit: z.boolean().optional() }),
+]);
+export type HonorTarget = z.infer<typeof honorTargetSchema>;
 export const countryCode = z.enum(COUNTRY_CODES);
 
 export const hullId = z.enum([
@@ -55,12 +89,20 @@ export const fleetStatus = z.enum(['HOME', 'AWAY', 'UNKNOWN']);
 export const massClass = z.enum(['LIGHT', 'MEDIUM', 'HEAVY']);
 export const clarityState = z.enum(['FULL', 'CLEAR', 'INTERMITTENT', 'DEGRADED', 'BLIND']);
 export const grade = z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']);
+export const pvpBalanceSchema = z.object({
+  lootDecisive: z.number().finite().min(0).max(1),
+  lootPartial: z.number().finite().min(0).max(1),
+  lootBufferShare: z.number().finite().min(0).max(1),
+  recoveryLossHours: z.number().finite().positive(),
+  recoveryLookbackHours: z.number().finite().positive(),
+  recoveryShieldHours: z.number().finite().positive(),
+});
 export const researchProjectId = z.enum([
   'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES',
   'DEUTERIUM_SYNTHESIS', 'YARD_AUTOMATION', 'PROSPECTOR_HOLDS', 'CARGO_HOLDS',
   'STARSHIP_ENGINEERING', 'SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION',
   'EMPLACEMENT_DOCTRINE', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE',
-  'AI_ROBOTS', 'INDUSTRIAL',
+  'AI_ROBOTS', 'INDUSTRIAL', 'RADIATION_SHIELDING',
 ]);
 
 // If any of these stop compiling, the rules changed and this file has not.
@@ -130,6 +172,7 @@ const timedConstructionOrder = z.object({
   count: z.number().int().min(1),
   startedAt: z.coerce.date(),
   finishesAt: z.coerce.date(),
+  pausedAt: z.coerce.date().optional(),
   cost: resources,
 });
 
@@ -142,6 +185,7 @@ const timedYardOrder = z.object({
   count: z.number().int().min(1),
   startedAt: z.coerce.date(),
   finishesAt: z.coerce.date(),
+  pausedAt: z.coerce.date().optional(),
   cost: resources,
 });
 
@@ -155,6 +199,7 @@ const timedRepairOrder = z.object({
   count: z.number().int().min(1),
   startedAt: z.coerce.date(),
   finishesAt: z.coerce.date(),
+  pausedAt: z.coerce.date().optional(),
   cost: resources,
 });
 
@@ -165,6 +210,7 @@ const timedResearchOrder = z.object({
   level: z.number().int().min(1),
   startedAt: z.coerce.date(),
   finishesAt: z.coerce.date(),
+  pausedAt: z.coerce.date().optional(),
   cost: resources,
 });
 
@@ -213,6 +259,8 @@ export const seasonResultSchema = z.object({
   accountId: z.string(),
   finalRank: z.number(),
   dominion: dominionInteger,
+  honorScore: dominionInteger.nullish(),
+  honorRank: z.number().int().positive().nullish(),
   damageDealt: z.number(),
   damageTaken: z.number(),
   rivalName: z.string().nullable(),
@@ -313,6 +361,8 @@ export const seasonArchiveLeaderboardSchema = z.object({
     commanderName: z.string(),
     country: countryCode,
     dominion: dominionInteger,
+    honorScore: dominionInteger.nullish(),
+    honorRank: z.number().int().positive().nullish(),
     title: z.string(),
     self: z.boolean(),
     reward: z.null(),
@@ -381,6 +431,8 @@ const careerSeasonSchema = archivedSeasonContext.extend({
   commanderName: z.string(),
   rank: z.number().int().positive(),
   dominion: dominionInteger,
+  honorScore: dominionInteger.nullish(),
+  honorRank: z.number().int().positive().nullish(),
   title: z.string(),
   statsAvailable: z.boolean(),
 });
@@ -403,6 +455,9 @@ export const seasonCommanderProfileSchema = z.object({
     /** The field this rank was taken from, so a position can be stated. */
     commanders: z.number().int().nonnegative().optional(),
     dominion: dominionInteger,
+    honorScore: dominionInteger.nullish(),
+    honorRank: z.number().int().positive().nullish(),
+    honorCommanders: z.number().int().nonnegative().optional(),
     title: z.string(),
     recap: seasonResultSchema.shape.recap,
     legacyStats: z.object({ competition: legacyCompetitionSchema }).optional(),
@@ -469,7 +524,14 @@ export const serverListSchema = z.object({
   placement: z.object({ shard: z.string(), name: z.string() }).nullable(),
 });
 
+const seasonRewardReceipt = z.object({ ranking: z.enum(['DOMINION', 'HONOR']).default('DOMINION'),
+  sourceSeasonId: z.string(), displayRank: z.number().int().positive(), rewardPlace: z.number().int().min(1).max(10),
+  programVersion: z.number().int().positive(), alloy: dominionInteger.nonnegative(),
+  crystal: dominionInteger.nonnegative(), deuterium: dominionInteger.nonnegative() });
+export type SeasonRewardReceipt = z.infer<typeof seasonRewardReceipt>;
+
 export const placementSchema = z.object({
+  seasonReward: seasonRewardReceipt.nullish(),
   shard: z.string(),
   shardName: z.string(),
   seasonId: z.string(),
@@ -482,6 +544,8 @@ export const placementSchema = z.object({
 export const okSchema = z.object({ ok: z.boolean() });
 
 export const seasonSchema = z.object({
+  honorSoloCredit: z.boolean().optional(),
+  seasonReward: seasonRewardReceipt.nullish(),
   seasonId: z.string(),
   /** Last season's top eight, index N − 1 naming monument N (2026-10-10). Older servers omit it. */
   monumentHonorees: z.array(z.string().nullable()).optional(),
@@ -712,6 +776,11 @@ const strategicAsset = z.object({
   remainingSeconds: z.number().nullable(),
 });
 
+const radiationBombAsset = strategicAsset.extend({
+  level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  status: z.enum(['BUILDING', 'PAUSED', 'READY', 'LAUNCHED']),
+});
+
 /* ── klan savunma desteği ─────────────────────────────────────── */
 
 export const defencePostureSchema = z.object({
@@ -777,6 +846,7 @@ export type ClanSupportQuote = z.infer<typeof clanSupportQuoteSchema>;
 export const clanSupportWaveAnswerSchema = z.object({ wave: clanSupportWaveSchema });
 
 export const planetSchema = z.object({
+  workshopRadiation: z.boolean().optional(),
   planet: z.object({
     id: z.string(),
     /** Economy anchor and ordering of server views; optional for rolling deploys. */
@@ -818,6 +888,10 @@ export const planetSchema = z.object({
     shield: z.number(),
     shieldMax: z.number(),
     shieldPerHour: z.number(),
+    shieldRegenAt: z.coerce.date().nullable().optional(),
+    radiationProtectionHpPerMinute: z.number().nonnegative().optional(),
+    radiationProtectionLevel: z.number().int().nonnegative().optional(),
+    radiationProtectionRestoresAt: z.coerce.date().nullable().optional(),
     disruptedUntil: z.coerce.date().nullable(),
     recoveryUntil: z.coerce.date().nullable().optional(),
     empUntil: z.coerce.date().nullable().optional(),
@@ -838,6 +912,7 @@ export const planetSchema = z.object({
      */
     productionBoostUntil: z.coerce.date().nullable().optional(),
   }),
+  pvpBalance: pvpBalanceSchema.optional(),
   buildings: z.record(buildingId, z.number()),
   nextCosts: z.record(buildingId, resources),
   /** The four on the ground, with their levels. D25. */
@@ -939,6 +1014,8 @@ export const planetSchema = z.object({
   interceptor: strategicAsset.nullable().optional(),
   /** All live anti-battery charges, ready first. */
   interceptors: z.array(strategicAsset).optional(),
+  radiationBombsAvailable: z.boolean().default(false),
+  radiationBombs: z.array(radiationBombAsset).default([]),
   /**
    * WHAT IS BROKEN ON THIS WORLD, AND WHAT PUTTING IT RIGHT COSTS. Koloni arızaları.
    *
@@ -949,6 +1026,7 @@ export const planetSchema = z.object({
    * function this client already imports, and a screen that quoted its own answer would
    * be one balance change away from showing a price the repair endpoint refuses.
    */
+  faultProtectedUntil: z.coerce.date().nullable().optional(),
   faults: z.array(z.object({
     id: z.string(),
     kind: z.enum(FAULT_KINDS),
@@ -989,6 +1067,10 @@ export const planetSchema = z.object({
   academyStep: z.number().nullable().optional(),
   fleet,
   ground: fleet,
+  fleetDamage: z.array(z.object({ hull: hullId, count: z.number().int().positive(),
+    damageBp: z.number().int().min(0).max(9999), remainderBp: z.number().finite().min(0).lt(1).optional(),
+  })).optional(),
+  fleetCombatReady: fleet.optional(),
   /** Your own craft that are off the planet right now. Ownership, not readiness. */
   fleetAway: fleet,
   /**
@@ -1002,7 +1084,8 @@ export const planetSchema = z.object({
       id: z.string(),
       hull: hullId,
       count: z.number().int().min(1),
-      damageBp: z.number().int().min(1).max(9999),
+      damageBp: z.number().int().min(0).max(9999),
+      remainderBp: z.number().finite().min(0).lt(1).optional(),
       repairing: z.boolean(),
       /** The job repairing it, so a job holding several hulls can list them. Null while it waits. */
       orderId: z.string().nullable().default(null),
@@ -1029,6 +1112,7 @@ export const planetSchema = z.object({
    */
   silentSpace: z.boolean().optional(),
   silentSpaceAt: z.coerce.date().nullish(),
+  vacationUntil: z.coerce.date().nullish(),
   /**
    * Ownership ceilings, including craft away from the world. T4/T4b.
    * Optional only for a rolling deploy against an older server.
@@ -1042,6 +1126,9 @@ export const planetSchema = z.object({
     groundUsed: z.number(),
   }).optional(),
   score: z.object({ wealth: z.number(), dominion: dominionInteger }),
+  honorBenefits: honorBenefitsSchema.nullish(),
+  /** Explicit seasonal capability; economics can be disabled independently. */
+  honorTacticalCredit: z.boolean().optional(),
   /**
    * The rule set this world's season was dealt. Optional for a rolling deploy; the
    * Defend tab reads it through `fleetEscapeApplies`, never by hand.
@@ -1057,6 +1144,17 @@ export const planetSchema = z.object({
     room: supportRoomSchema,
     waves: z.array(clanSupportWaveSchema),
   }).nullable().optional(),
+});
+
+export const vacationSchema = z.object({
+  active: z.object({ id: z.string(), startedAt: z.coerce.date(), endsAt: z.coerce.date(), days: z.number(), cost: z.number() }).nullable(),
+  days: z.number(), maxDays: z.number(), seasonEndsAt: z.coerce.date(),
+  worlds: z.array(z.object({ id: z.string(), name: z.string(), kind: z.string(), coreLevel: z.number() })),
+  price: z.object({ total: z.number(), worlds: z.array(z.object({
+    id: z.string(), capital: z.boolean(), coreLevel: z.number(), referenceLevel: z.number(), hours: z.number(), rate: z.number(), cost: z.number(),
+  })) }).nullable(),
+  store: z.number(), buffer: z.number(), blocker: z.string().nullable(), fingerprint: z.string(),
+  reasons: z.array(z.enum(VACATION_BLOCK_REASONS)).default([]),
 });
 
 export const planetsSchema = z.object({
@@ -1146,6 +1244,8 @@ export const repairStartSchema = z.object({
   orderId: z.string(),
   ...withPlanet,
 });
+
+export const maintenanceSchema = z.object({ returned: resources, ...withPlanet });
 
 
 /* ── rewards ────────────────────────────────────────────────── */
@@ -1245,8 +1345,10 @@ export type RadiationSourceView = z.infer<typeof radiationSourceSchema>;
 
 /** Ruleset 16 clouds carry HP, independently of the legacy percentage model. */
 export const hpRadiationSourceSchema = radiationSourceSchema.omit({ intensityPctPerMinute: true }).extend({
+  origin: z.enum(['ENVIRONMENT', 'BOMB']).optional(),
   intensityHpPerMinute: z.number().finite().nonnegative(),
-  level: z.union([z.literal(1), z.literal(2)]).optional(),
+  level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  totalCapFrom: z.coerce.date().optional(),
   motion:monumentMotionSchema.optional(),
   target: z.object({ kind: z.enum(['PLANET', 'MONUMENT']), id: z.string().min(1) }).optional(),
 });
@@ -1295,6 +1397,8 @@ export const monumentWaveSchema = z.object({
   route: z.array(z.object({ from: vec3, to: vec3, startMs: z.number(), endMs: z.number() })),
   tech: techLevels, fleet, lots: z.array(monumentLotSchema), deuterium: z.number().nonnegative(),
   productionPerMinute: z.number().nonnegative(), fillsAt: z.coerce.date().nullable(), nextLossAt: z.coerce.date().nullable(),
+  radiationHpPerMinute: z.number().finite().nonnegative().optional(),
+  cargoLossAt: z.coerce.date().nullable().optional(),
   fadeAt: z.coerce.date().nullable().optional(),
   returnReason: z.enum(['RECALLED', 'CAPACITY', 'MEMBERSHIP', 'CONTROL_CHANGED', 'DEFEAT', 'WORLD_CHANGED', 'FREEZE']).nullable().optional(),
   returnForecast: monumentReturnForecastSchema,
@@ -1319,6 +1423,8 @@ export const monumentQuoteSchema = z.object({
   room: z.object({ used: z.number().nonnegative(), reserved: z.number().nonnegative(), total: z.number().nonnegative(), after: z.number().nonnegative() }),
   bays: z.object({ used: z.number().int().nonnegative(), total: z.number().int().nonnegative() }), shieldWouldDrop: z.boolean(),
   holdForecast: z.object({ productionPerMinute: z.number().nonnegative(), nextLossAt: z.coerce.date().nullable() }).optional(),
+  radiationProtection: z.object({ level: z.number().int().min(0).max(4), hpPerMinute: z.number().finite().nonnegative(),
+    nextLossAt: z.coerce.date().nullable(), cargoLossAt: z.coerce.date().nullable() }).optional(),
   outboundForecast: z.object({ doseHp: z.number().nonnegative(), destroyed: z.number().int().nonnegative(), fleet,
     health: z.array(z.object({ hull: hullId, count: z.number().int().positive(), maxHp: z.number().positive(),
       remainingHp: z.number().nonnegative(), damageBp: z.number().int().nonnegative(), remainderBp: z.number().finite().nonnegative() })) }),
@@ -1443,6 +1549,8 @@ export const galaxySchema = z.object({
       clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
       /** Exact public Dominion rank only for the three podium commanders. */
       dominionRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+      honorRanking: z.literal(true).optional(),
+      honorRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
       position: vec3,
       coreTier: z.number().default(1),
       /**
@@ -1467,6 +1575,7 @@ export const galaxySchema = z.object({
        */
       shielded: z.boolean().default(false),
       attackProtectedUntil: z.coerce.date().nullable().optional(),
+      vacation: z.boolean().optional(),
       isSelf: z.boolean(),
       isOwned: z.boolean().optional(),
       /** Present only on one of the caller's own worlds with at least one live fault. */
@@ -1567,6 +1676,33 @@ export const polarPurchaseSchema = z.object({ checkoutId: z.string().uuid(),
     const url = new URL(value);
     return url.protocol === 'https:' && (url.hostname === 'polar.sh' || url.hostname.endsWith('.polar.sh'));
   }) });
+/** Shopier sells in lira: prices are kuruş, only for items with a Shopier product. */
+export const shopierShopSchema = z.object({ enabled: z.boolean(), prices: z.record(z.number().int().positive()) });
+/** The single-use code the buyer writes in the Shopier order note, and the product to pay on. */
+export const shopierCodeSchema = z.object({
+  code: z.string().regex(/^AST-[2-9A-HJKMNP-TV-Z]{6}$/),
+  url: z.string().url().refine(value => {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname === 'www.shopier.com';
+  }),
+  amount: z.number().int().positive(),
+  currency: z.literal('TRY'),
+});
+export const shopierQueueSchema = z.object({ orders: z.array(z.object({
+  orderId: z.string(),
+  status: z.enum(['MATCHED', 'UNMATCHED', 'RESOLVED', 'DISMISSED', 'REFUNDED', 'REVOKED']),
+  reason: z.string().nullable(),
+  itemId: z.string().nullable(),
+  username: z.string().nullable(),
+  code: z.string().nullable(),
+  note: z.string().nullable(),
+  total: z.string().nullable(),
+  currency: z.string().nullable(),
+  receivedAt: z.coerce.date(),
+  closed: z.boolean(),
+})) });
+export const shopierOrderActionSchema = z.object({ orderId: z.string() }).passthrough();
+export const shopierSyncSchema = z.object({ recorded: z.number().int().nonnegative(), closed: z.number().int().nonnegative() });
 /** An operator's grant of an externally paid look (a Shopier order). */
 export const skinGrantedSchema = z.object({ accountId: z.string(), skinId: planetSkinId, grantedAt: z.coerce.date() });
 export const supporterStatusSchema = z.object({
@@ -1574,6 +1710,16 @@ export const supporterStatusSchema = z.object({
 });
 
 export const leaderboardSchema = z.object({
+  honorBenefits: honorBenefitsSchema.nullish(),
+  ranking: z.enum(['HONOR', 'DOMINION']).default('DOMINION'),
+  honorEnabled: z.boolean().default(false),
+  honorSoloCredit: z.boolean().default(false),
+  honorStartsAt: z.coerce.date().nullable().default(null),
+  honorReward: z.object({ rank: z.number().int().positive(), honor: dominionInteger,
+    nominal: z.object({ alloy: z.number().int().nonnegative(), crystal: z.number().int().nonnegative(), deuterium: z.number().int().nonnegative() }),
+    reward: z.object({ alloy: z.number().int().nonnegative(), crystal: z.number().int().nonnegative(), deuterium: z.number().int().nonnegative() }),
+    fullThreshold: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  }).nullable().default(null),
   ladder: z.array(
     z.object({
       rank: z.number(),
@@ -1584,6 +1730,8 @@ export const leaderboardSchema = z.object({
       planetId: z.string().optional(),
       planetName: z.string().optional(),
       score: dominionInteger,
+      dominion: dominionInteger.optional(),
+      honor: dominionInteger.optional(),
       clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
     }),
   ),
@@ -1597,6 +1745,8 @@ export const leaderboardSchema = z.object({
       planetId: z.string().optional(),
       planetName: z.string().optional(),
       score: dominionInteger,
+      dominion: dominionInteger.optional(),
+      honor: dominionInteger.optional(),
       clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
       isBot: z.boolean().default(false),
     })
@@ -1854,6 +2004,9 @@ const clanWarOperationSchema = z.object({
     originPlanetId: z.string(), originPlanetName: z.string(),
     sourceKind: z.enum(['PHYSICAL', 'LEADER_CAPITAL']),
     status: clanWarContributionStatus, fleet, bulk: z.number().nonnegative(),
+    damage: z.array(z.object({ hull: hullId, count: z.number().int().positive(),
+      damageBp: z.number().int().min(0).max(9999), remainderBp: z.number().finite().min(0).lt(1).optional(),
+    })).default([]),
     fuelPaid: z.number().nonnegative(), sentAt: z.coerce.date(),
     arrivesAt: z.coerce.date().nullable(), mine: z.boolean(), canRecall: z.boolean(),
   })),
@@ -1968,6 +2121,7 @@ export const clanAidLaunchSchema = z.object({
 const messageInteractionSchema = {
   supporter: z.boolean().optional(),
   previousSeasonRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  previousSeasonRanking: z.enum(['HONOR', 'DOMINION']).optional(),
   replyTo: z.object({ id: z.string(), username: z.string(), content: z.string() }).nullable().optional(),
   reactions: z.array(z.object({ emoji: z.enum(REACTION_EMOJIS), count: z.number().int().positive(), mine: z.boolean() })).optional(),
 };
@@ -2280,6 +2434,8 @@ export const intelSchema = z.object({
   ),
   probeReports: z.array(
     z.object({
+      /** Own dispatch reference; absent on older servers. */
+      missionId: z.string().optional(),
       spatiallyCurrent: z.boolean().optional(),
       targetPlanetId: z.string(),
       targetName: z.string(),
@@ -2381,6 +2537,7 @@ export const probeSchema = z.object({
 export const unlockable = z.enum(['TELESCOPE', 'RADAR', 'EXPLORER', 'VEIL']);
 
 const pendingThread = z.object({
+  radiationBombLevel: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   monumentId: z.string().optional(),
   monumentOrdinal: z.number().int().min(1).max(8).optional(),
   /** Klan Savunma Desteği: a `transfer` that is a support wave's leg. Optional for a rolling deploy. */
@@ -2405,7 +2562,7 @@ const pendingThread = z.object({
    */
   kind: z.enum([
     'fleet', 'probe', 'incoming', 'transfer', 'settlement', 'death_star', 'pirate', 'trade',
-    'intergalactic_convoy', 'monument',
+    'intergalactic_convoy', 'monument', 'radiation_bomb',
   ]),
   targetName: z.string(),
   originPlanetId: z.string().uuid().optional(),
@@ -2563,6 +2720,12 @@ export const deathStarBuildSchema = z.object({
  * lifecycle — one row, one completion event, one planet view back (D53).
  */
 export const interceptorBuildSchema = deathStarBuildSchema;
+export const radiationBombBuildSchema = deathStarBuildSchema;
+export const radiationBombLaunchSchema = z.object({
+  flightId: z.string().uuid(),
+  departAt: z.coerce.date(),
+  arriveAt: z.coerce.date(),
+});
 
 export const deathStarLaunchSchema = z.object({
   missionId: z.string(),
@@ -2700,6 +2863,7 @@ const ordinaryBattleReport = z.object({
       lootDeuterium: z.number(),
       /** Null on reports written before the swing was recorded. */
       dominion: dominionInteger.nullable(),
+      honor: honorReceipt.nullish(),
       /** Auditable v7 equation, already mirrored into the reader's perspective. */
       dominionBreakdown: z
         .object({
@@ -2748,8 +2912,9 @@ const ordinaryBattleReport = z.object({
        * this battle, and whether it bought the recovery shield. Optional for a rolling
        * deploy; null to an attacker and on rows that predate the figure.
        */
+      pvpBalance: pvpBalanceSchema.nullable().optional(),
       recovery: z
-        .object({ lossHours: z.number().nonnegative(), shielded: z.boolean() })
+        .object({ lossHours: z.number().nonnegative(), shielded: z.boolean(), until: z.coerce.date().nullable().optional() })
         .nullable()
         .optional(),
       /** Historical report compatibility; current battles always send zero. */
@@ -2815,6 +2980,9 @@ const ordinaryBattleReport = z.object({
     });
 
 const strategicBattleReport = z.object({
+  honor: honorReceipt.nullable().optional(),
+  radiation: z.object({ level: z.union([z.literal(1), z.literal(2), z.literal(3)]), activeUntil: z.coerce.date().nullable(),
+    monumentOrdinal: z.number().int().min(1).max(8).optional(), faults: z.array(z.enum(FAULT_KINDS)).optional() }).optional(),
   kind: z.literal('STRATEGIC'),
   id: z.string(),
   missionId: z.string(),
@@ -2856,6 +3024,7 @@ const monumentBattleReport = z.object({
   roundCount: z.number().int().nonnegative(), yourFleet: fleet, yourSurvivors: fleet, yourLosses: fleet,
   yourDamage: z.array(monumentLotSchema.pick({ hull: true, count: true, damageBp: true, remainderBp: true })),
   theirLosses: fleet, lootDeuterium: z.number().finite().nonnegative(), dominion: dominionInteger,
+  honor: honorReceipt.nullish(),
   opponents: z.array(z.object({ kind: z.enum(['PLAYER', 'NEUTRAL']), playerId: z.string().nullable(), name: z.string(),
     clanName: z.string().nullable(), clanTag: z.string().nullable() })).default([]),
 });
@@ -3191,6 +3360,11 @@ export const piratesSchema = z.object({
  * flight cannot land afterwards and erase it.
  */
 /** A pirate raid turned home before its engagement (owner, 2026-10-08). `homeAt` is null if nothing survived the turn. */
+export const tradeRecallSchema = z.object({
+  runId: z.string(),
+  homeAt: z.coerce.date().nullable(),
+});
+
 export const pirateRecallSchema = z.object({
   raidId: z.string(),
   homeAt: z.coerce.date().nullable(),
@@ -3310,7 +3484,8 @@ export const trafficSchema = z.object({
        * an advertisement for the Telescope written in the picture rather than in a
        * tooltip (D124).
        */
-      kind: z.enum(['unknown', 'fleet', 'probe', 'death_star', 'mining', 'harvest', 'pirate']),
+      kind: z.enum(['unknown', 'fleet', 'probe', 'death_star', 'radiation_bomb', 'mining', 'harvest', 'pirate']),
+      radiationBombLevel: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
       /**
        * WHAT KIND OF CRAFT A QUESTION MARK IS, WHEN RADAR L5 HAS EARNED IT.
        *
@@ -3319,7 +3494,7 @@ export const trafficSchema = z.object({
        * traffic rather than only on a raid aimed at you. A kind, never a roster.
        */
       silhouette: z
-        .enum(['unknown', 'fleet', 'probe', 'death_star', 'mining', 'harvest', 'pirate'])
+        .enum(['unknown', 'fleet', 'probe', 'death_star', 'radiation_bomb', 'mining', 'harvest', 'pirate'])
         .optional(),
       from: vec,
       to: vec,
@@ -3427,7 +3602,10 @@ export const trafficSchema = z.object({
   ),
   /** An eight-second anti-strategic collision, visible only to participants or Telescope sight. */
   interceptions: z.array(z.object({
+    radiationBombLevel: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
     id: z.string(),
+    /** The weapon this shot killed; its surface blast never plays. Absent on older servers. */
+    weaponId: z.string().optional(),
     targetPlanetId: z.string(),
     trigger: z.enum(['RADAR', 'TELESCOPE']),
     launchAt: z.coerce.date(),
@@ -3439,6 +3617,7 @@ export const trafficSchema = z.object({
   /** Public effect-only aftermath of an anti-strategic collision. */
   interceptionImpacts: z.array(z.object({
     id: z.string(),
+    weaponId: z.string().optional(),
     at: z.coerce.date(),
     collision: vec3,
     effectOnly: z.boolean(),

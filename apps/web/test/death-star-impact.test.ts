@@ -99,7 +99,12 @@ describe('the public Death Star impact', () => {
     }]);
   });
 
-  it('keeps an out-of-sight strike effect-only and visibly fainter', () => {
+  /**
+   * OUT OF SIGHT IS NOT OUT OF MIND. Owner, 2026-10-16: *"telescope dışında bile olsa patlama
+   * animasyonları gözükmeli"*. The contact stays effect-only — no bearing, no hull — but the
+   * detonation itself is drawn at full strength.
+   */
+  it('draws an out-of-sight strike at full strength, effect only', () => {
     const contact: Contact = {
       id: 'distant-impact',
       kind: 'unknown',
@@ -117,7 +122,7 @@ describe('the public Death Star impact', () => {
       at: 10_000,
       position: toWorld(TARGET),
       radius: 1.4,
-      intensity: 0.35,
+      intensity: 1,
     }]);
   });
 
@@ -183,5 +188,64 @@ describe('the public Death Star impact', () => {
       [],
       event.at + DEATH_STAR_IMPACT_MS,
     )).toEqual([]);
+  });
+
+  /**
+   * A WEAPON SHOT DOWN NEVER LANDS ON ANY SCREEN. Owner, 2026-10-16: *"Patlayan füzeler zamanı
+   * gelince patlamamış gibi hedef gezegende yanlış animasyon oynatıyor mu?"* A battery that
+   * fires in the weapon's last seconds (a charge finishing late, a worker catching up) puts
+   * the collision at the original arrival: a bystander's landing contact had already started
+   * the surface blast, and the refetch that removed the contact kept it as a live strike.
+   * The interception names its weapon, and that weapon's surface blast is cancelled.
+   */
+  describe('a strike the battery shot down', () => {
+    const contact: Contact = {
+      id: 'shot-down', kind: 'death_star', from: path.from, to: TARGET,
+      startAt: new Date(4_000), endAt: path.arriveAt, landing: true,
+      impact: { at: path.arriveAt, target: TARGET },
+    };
+    const event = { id: 'shot-down', at: 10_000, position: toWorld(TARGET), radius: 1.4, intensity: 1 };
+
+    it('is never scheduled as a surface blast', () => {
+      expect(deathStarImpactCandidates([], [contact], nodes, new Set(['shot-down']))).toEqual([]);
+      expect(deathStarImpactCandidates([], [contact], nodes, new Set(['another']))).toHaveLength(1);
+    });
+
+    it('stops a blast that had already begun when the interception becomes known', () => {
+      expect(mergeRetainedDeathStarImpacts([event], [], 10_400, new Set(['shot-down']))).toEqual([]);
+      expect(mergeRetainedDeathStarImpacts([event], [], 10_400, new Set())).toEqual([event]);
+    });
+  });
+
+  /**
+   * A BYSTANDER LEARNS OF A STRIKE ONLY WHEN IT HAS LANDED, AND MUST STILL SEE IT LAND.
+   *
+   * Outside every sensor the impact reaches this client with the refetch the hit itself
+   * triggers, a second or so late — past the flash and most of the fire. A moment
+   * discovered that late plays from its first frame at discovery; one found much later
+   * (a tab reopened mid-smoke) keeps its real clock.
+   */
+  describe('a strike discovered after it landed', () => {
+    const late = (at: number) => ({ id: 'seen-late', at, position: toWorld(TARGET), radius: 1.4, intensity: 1 });
+
+    it('plays from its first frame at the moment it is discovered', () => {
+      expect(mergeRetainedDeathStarImpacts([], [late(10_000)], 11_200)).toEqual([{ ...late(10_000), at: 11_200 }]);
+    });
+
+    it('keeps its replayed start when the same impact is read again', () => {
+      const replayed = mergeRetainedDeathStarImpacts([], [late(10_000)], 11_200);
+      expect(mergeRetainedDeathStarImpacts(replayed, [late(10_000)], 12_000)).toEqual(replayed);
+    });
+
+    it('keeps a burst discovered in one read spaced as it landed', () => {
+      const second = { ...late(10_500), id: 'seen-late-2' };
+      expect(mergeRetainedDeathStarImpacts([], [late(10_000), second], 11_200).map(event => event.at))
+        .toEqual([11_200, 11_700]);
+    });
+
+    it('keeps the real clock for a moment seen on time or found long afterwards', () => {
+      expect(mergeRetainedDeathStarImpacts([], [late(10_000)], 10_100)).toEqual([late(10_000)]);
+      expect(mergeRetainedDeathStarImpacts([], [late(10_000)], 15_000)).toEqual([late(10_000)]);
+    });
   });
 });

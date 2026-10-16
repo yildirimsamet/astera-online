@@ -94,7 +94,7 @@ describe('battle reports with fractional HP damage', () => {
     expect(consoleError).not.toHaveBeenCalled();
   });
 
-  it.each([0.5, Number.MIN_VALUE])('sends fractional damage above the free repair boundary to the dock: %s', remainderBp => {
+  it.each([0.5, Number.MIN_VALUE])('keeps whole and fractional wounds in the hangar without automatic docking: %s', remainderBp => {
     const parsed = reportsSchema.parse({ rivals: [], reports: [report({
       attacking: false,
       yourDamage: [
@@ -107,8 +107,9 @@ describe('battle reports with fractional HP damage', () => {
 
     const rows = within(document.querySelector<HTMLElement>('[data-report-damage]')!).getAllByRole('listitem');
     expect(rows[0]).toHaveTextContent('Cataclysm ×1 · 21% damage');
-    expect(rows[0]).toHaveTextContent('Repair Station');
+    expect(rows[0]).toHaveTextContent('Hangar');
     expect(rows[1]).toHaveTextContent('Dart ×1 · 20% damage');
-    expect(rows[1]).toHaveTextContent('patched free');
+    expect(rows[1]).toHaveTextContent('Hangar');
+    expect(document.querySelector('[data-report-damage]')).not.toHaveTextContent(/patched free|Repair Station/);
   });
 });

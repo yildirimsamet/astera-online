@@ -1,4 +1,6 @@
 export const clanWar = {
+  criticalReason: "耐久値が5%以下の艦船を含む艦隊を呼び戻してから、攻撃を開始してください。",
+  stagingRadiation: "待機中の艦船は集結先の惑星で放射線ダメージを受けます。",
   radiationMember: "{{name}}：放射線で{{count}}隻が失われます。艦隊を呼び戻し、自分の損失を承認して再派遣してください。",
   radiationMemberRequired: "メンバー本人による放射線損失の承認が必要",
   tab: '共同戦',

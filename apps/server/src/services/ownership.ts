@@ -18,6 +18,7 @@ import { revalidateClanWarTargetPlanet } from './clanWar.js';
 import { releaseSupportForWorldChange } from './clanSupport.js';
 import { armFaults } from './faults.js';
 import { prepareMonumentOriginChange, reanchorMonumentOrigin } from './monumentOwnership.js';
+import { observeHonorOwner } from './honorReference.js';
 
 export interface CommanderWorld {
   playerId: string;
@@ -420,6 +421,9 @@ export async function transferPlanetControl(
   await revalidateClanWarTargetPlanet(tx, input.targetPlanetId, input.now);
   // Klan Savunma Desteği: the waves there go home, the waves from there re-anchor.
   await releaseSupportForWorldChange(tx, { planetId: input.targetPlanetId, now: input.now });
+  for (const playerId of [...new Set([input.newPlayerId, ...(input.expectedControllerPlayerId ? [input.expectedControllerPlayerId] : [])])].sort()) {
+    await observeHonorOwner(tx, playerId, input.now);
+  }
   return { previousPlayerId: input.expectedControllerPlayerId, planetId: input.targetPlanetId };
 }
 

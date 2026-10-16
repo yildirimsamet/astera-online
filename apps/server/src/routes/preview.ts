@@ -9,6 +9,7 @@ import { listServers, resolveJoinTarget } from '../services/servers.js';
 import { projectGalaxyTraffic } from '../services/traffic.js';
 import { adminPlayerIdsInSeason } from '../services/admin.js';
 import { applyDominionPodium, dominionPodium } from '../services/dominion.js';
+import { applyHonorPodium, honorPodium } from '../services/honorPodium.js';
 
 /**
  * THE GALAXY, BEFORE YOU HAVE AN ACCOUNT. D56.
@@ -82,7 +83,8 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
     const rankedWorlds = publicPodium === null
       ? allWorlds
       : applyDominionPodium(allWorlds, publicPodium);
-    const worlds = rankedWorlds.filter((world) =>
+    const primaryWorlds = applyHonorPodium(rankedWorlds, await honorPodium(app.db, target.seasonId, adminPlayerIds));
+    const worlds = primaryWorlds.filter((world) =>
       world.controller.kind !== 'PLAYER'
       || !adminPlayerIds.has(world.controller.playerId));
     /**

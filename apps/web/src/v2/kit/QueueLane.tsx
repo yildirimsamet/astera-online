@@ -9,6 +9,7 @@ import { Icon } from '../icons.js';
 
 /** Time until an order is done — or, behind the head, that it waits; or why it has no clock yet. */
 export function orderLeft(order: BuildOrderView, now: number): string {
+  if ('pausedAt' in order && order.pausedAt) return i18n.t('vacation.paused');
   if (orderWaiting(order, now)) return i18n.t('planet.queue.waiting');
   if (order.finishesAt) return countdown(order.finishesAt.getTime() - now);
   return i18n.t('optimistic' in order ? 'planet.queue.committing' : 'planet.queue.staged');

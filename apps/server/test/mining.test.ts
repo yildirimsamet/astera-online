@@ -79,6 +79,42 @@ describe('mining', () => {
   let mine: string;
   let other: string;
 
+  it('preserves existing Prospector wounds while mining and when the craft returns', async () => {
+    const { landHpShips } = await import('../src/services/shipDamage.js');
+    const { readHomeHealth } = await import('../src/services/homeHealth.js');
+    await giveUnits(f.db, mine, { PROSPECTOR: 0 });
+    const damage = [{ hull: 'PROSPECTOR' as const, count: 1, damageBp: 7000, remainderBp: 0.25 }];
+    await f.db.transaction(tx => landHpShips(tx, { planetId: mine, ownerPlayerId: f.playerIds[0]!,
+      fleet: { PROSPECTOR: 1 }, damage, at: f.clock.now() }));
+    const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+    expect((await readHomeHealth(f.db, mine)).damage).toEqual([]);
+    f.clock.set(launched.arriveAt);
+    await worker(f).tick();
+    const [run] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+    if (!run?.homeAt) throw new Error('mining return was not scheduled');
+    f.clock.set(run.homeAt);
+    await worker(f).tick();
+    expect((await readHomeHealth(f.db, mine)).damage).toEqual(damage);
+  });
+
+  it('preserves Prospector wounds when a failed return is recovered by the worker sweep', async () => {
+    const { landHpShips } = await import('../src/services/shipDamage.js');
+    const { readHomeHealth } = await import('../src/services/homeHealth.js');
+    const damage = [{ hull: 'PROSPECTOR' as const, count: 1, damageBp: 7000, remainderBp: 0.25 }];
+    await f.db.transaction(tx => landHpShips(tx, { planetId: mine, ownerPlayerId: f.playerIds[0]!,
+      fleet: { PROSPECTOR: 1 }, damage, at: f.clock.now() }));
+    const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+    const recalled = await recallMining(f.db, launched.runId, f.clock, f.playerIds[0]!);
+    f.clock.set(recalled.homeAt);
+    const [event] = await f.db.select().from(scheduledEvents).where(and(eq(scheduledEvents.refId, launched.runId),
+      eq(scheduledEvents.kind, 'mining_return')));
+    if (!event) throw new Error('missing mining return');
+    await abandon(f.db, event, f.clock);
+    expect((await readHomeHealth(f.db, mine)).damage).toEqual(damage);
+    await abandon(f.db, event, f.clock);
+    expect((await readHomeHealth(f.db, mine)).fleet.PROSPECTOR).toBe(1);
+  });
+
   /** A rock that is in the disc at the fixture's clock, with its whole spec. */
   const rockNow = (): AsteroidSpec => {
     const minutes = (f.clock.now().getTime() - new Date('2026-01-01T00:00:00.000Z').getTime()) / 60_000;
@@ -1168,27 +1204,30 @@ describe('mining', () => {
   });
 
   describe('the trip home', () => {
-    it('admits the faster laden round trip only when it fits before season end', async () => {
+    it('admits the slowed laden round trip only when it fits before season end', async () => {
       await placeAt(f.db, other, { x: 1000 });
       await giveUnits(f.db, mine, { PROSPECTOR: 1 });
       const field = await giveDebris(f.db, f.seasonId, other, {
         alloy: 1000, crystal: 0, createdAt: f.clock.now(),
       });
       const now = f.clock.now().getTime();
-      await f.db.update(seasons).set({ endsAt: new Date(now + 2 * 60_000) })
+      // The 20% speed cut extends both sides of the previous 2–3 minute boundary by 25%.
+      const tooShort = 2 / 0.8 * 60_000;
+      const enough = 3 / 0.8 * 60_000;
+      await f.db.update(seasons).set({ endsAt: new Date(now + tooShort) })
         .where(eq(seasons.id, f.seasonId));
       await expect(launchHarvest(f.db, mine, field.id, 1, f.clock))
         .rejects.toMatchObject({ code: 'SEASON_ENDS_BEFORE_RETURN' });
       expect(await f.db.select().from(miningRuns)).toEqual([]);
-      await f.db.update(seasons).set({ endsAt: new Date(now + 3 * 60_000) })
+      await f.db.update(seasons).set({ endsAt: new Date(now + enough) })
         .where(eq(seasons.id, f.seasonId));
       const launched = await launchHarvest(f.db, mine, field.id, 1, f.clock);
       f.clock.set(launched.arriveAt);
       await worker(f).tick();
       const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
       expect(back!.minedAlloy).toBe(200);
-      expect(back!.homeAt!.getTime() - now).toBeLessThan(3 * 60_000);
-      expect(back!.homeAt!.getTime() - now).toBeGreaterThan(2 * 60_000);
+      expect(back!.homeAt!.getTime() - now).toBeLessThan(enough);
+      expect(back!.homeAt!.getTime() - now).toBeGreaterThan(tooShort);
     });
 
     it('keeps a stored legacy arrival and starts its laden return at the new speed', async () => {

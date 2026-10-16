@@ -99,4 +99,25 @@ describe('strategic interception flight', () => {
     expect(events[0]).not.toHaveProperty('launch');
     expect(events[0]).not.toHaveProperty('deathStarFrom');
   });
+
+  /**
+   * A BYSTANDER STILL SEES THE WHOLE AIRBORNE FIREBALL. Owner, 2026-10-16: *"Havada vurulan her
+   * füze için patlama animasyonu doğru şekilde oynatılıyor mu?"* Outside sight the collision
+   * arrives with the refetch its own `impact` shard triggers, a second or so late — and an
+   * airborne fire is over in about a second and a half. Learned that late, it plays from
+   * discovery; a participant, who held the scene in advance, keeps the exact instant.
+   */
+  it('starts a collision learned late at its discovery, and a known one on its instant', () => {
+    const at = new Date('2026-08-25T12:00:04.000Z');
+    const publicOnly = { id: 'public', at, collision: { x: 400, y: 0, z: 0 }, effectOnly: true, focusEligible: false };
+    // When this screen starts each public collision (`rememberStarts`): here, 1.1 s late.
+    const seen = new Map([['public', at.getTime() + 1_100], ['scene', at.getTime() + 1_100]]);
+    const scene: StrategicInterception = { id: 'scene', targetPlanetId: 'p', trigger: 'RADAR',
+      launchAt: new Date(at.getTime() - 8_000), impactAt: at, launch: { x: 0, y: 0, z: 0 },
+      deathStarFrom: { x: 500, y: 0, z: 0 }, collision: { x: 400, y: 0, z: 0 } };
+    const events = strategicInterceptionImpactEvents([publicOnly, { ...publicOnly, id: 'scene' }], [], [scene], seen);
+    expect(events.find(event => event.id === 'public')?.at).toBe(at.getTime() + 1_100);
+    expect(events.find(event => event.id === 'scene')?.at).toBe(at.getTime());
+  });
 });
+

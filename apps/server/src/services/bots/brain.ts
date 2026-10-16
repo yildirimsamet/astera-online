@@ -1,4 +1,5 @@
 import { and, eq, gt, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import type { FastifyBaseLogger } from 'fastify';
 import {
   BUILD,
@@ -6,6 +7,10 @@ import {
   HULLS,
   INSTRUMENT_IDS,
   SATELLITE_IDS,
+  SHIP_DAMAGE,
+  shipHpRepairCost,
+  honorRepairResources,
+  type HpDamageLot,
   type BuildingId,
   type GroundHullId,
   type InstrumentId,
@@ -38,6 +43,7 @@ import { GameError } from '../planet.js';
 import { buildUnits, collectWorks, installSatellite, raiseInstrument, upgradeBuilding } from '../build.js';
 import { completeResearch } from '../research.js';
 import { startRepair } from '../repair.js';
+import { maintenanceAction } from '../maintenance.js';
 import { launchAttack } from '../mission.js';
 import { launchProbe, rememberedWorlds } from '../intel.js';
 import { launchHarvest, launchMining, loadMiningSnapshot, projectVisibleDebris } from '../mining.js';
@@ -134,7 +140,7 @@ export async function runBotTurn(
     return { did };
   }
 
-  await repairDocked(db, clock, seat, view, did, log);
+  view = await repairDocked(db, clock, seat, view, did, log);
   await buyGroundDefence(db, clock, seat, persona, view, did, log);
   await raiseOneBuilding(db, clock, seat, persona, view, did, log);
   await buyOneInstrument(db, clock, seat, persona, view, did, log);
@@ -176,9 +182,27 @@ const storeReserve = (view: PlanetView): number => view.planet.alloyPerHour * BO
 async function repairDocked(
   db: Db, clock: Clock, seat: BotSeat,
   view: PlanetView, did: string[], log: FastifyBaseLogger,
-): Promise<void> {
-  if (view.queues.REPAIR.length >= BUILD.queueDepth) return;
+): Promise<PlanetView> {
+  if (view.workshopRadiation || view.queues.REPAIR.length >= BUILD.queueDepth) return view;
   const price = (cost: Resources): number => cost.alloy + cost.crystal + cost.deuterium;
+  if (!view.dock.lots.some(lot => !lot.repairing)) {
+    const groups: HpDamageLot[] = [];
+    let quoted: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+    for (const lot of view.fleetDamage) {
+      if (groups.length === SHIP_DAMAGE.repairLotsPerOrder) break;
+      const cost = shipHpRepairCost([lot], view.dock.pct);
+      const next = { alloy: quoted.alloy + cost.alloy, crystal: quoted.crystal + cost.crystal,
+        deuterium: quoted.deuterium + cost.deuterium };
+      if (!affordable(view, next)) continue;
+      groups.push(lot);
+      quoted = next;
+    }
+    if (groups.length > 0) await attempt(did, 'dock', log, async () => {
+      const moved = await maintenanceAction(db, seat.playerId, seat.planetId, 'DOCK',
+        { source: 'HOME', groups }, randomUUID(), clock);
+      view = moved.planet;
+    });
+  }
   const waiting = view.dock.lots
     .filter((lot) => !lot.repairing)
     .sort((a, b) => price(a.cost) - price(b.cost));
@@ -190,13 +214,17 @@ async function repairDocked(
       crystal: bill.crystal + lot.cost.crystal,
       deuterium: bill.deuterium + lot.cost.deuterium,
     };
-    if (!affordable(view, next)) continue;
+    if (!affordable(view, view.honorBenefits ? honorRepairResources(next, view.honorBenefits) : next)) continue;
     chosen.push(lot.id);
     bill = next;
   }
-  if (chosen.length === 0) return;
-  await attempt(did, 'repair', log, () =>
-    startRepair(db, seat.planetId, { lotIds: chosen }, clock, seat.playerId));
+  if (chosen.length === 0) return view;
+  await attempt(did, 'repair', log, async () => {
+    const repaired = await startRepair(db, seat.planetId, { lotIds: chosen,
+      ...(view.honorBenefits ? { expectedHonorTier: view.honorBenefits.tier } : {}) }, clock, seat.playerId);
+    view = repaired.planet;
+  });
+  return view;
 }
 
 /**
@@ -280,7 +308,8 @@ async function raiseOneBuilding(
     // somebody arrives — and is worth somebody arriving at. `BOTS.stockReserveHours`.
     if (!affordable(view, cost, storeReserve(view))) continue;
     if (await attempt(did, `build:${type}`, log, () =>
-      upgradeBuilding(db, seat.planetId, type, clock, seat.playerId))) return;
+      upgradeBuilding(db, seat.planetId, type, clock, seat.playerId,
+        type === 'CORE' && level === 9 ? { confirmedLevel: 10 } : {}))) return;
   }
 }
 

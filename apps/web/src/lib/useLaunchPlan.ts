@@ -6,6 +6,8 @@ import {
   COMBAT_HULLS,
   ENGAGEMENT_MS,
   fleetCount,
+  partitionCombatFleet,
+  splitHealthFleet,
   salvageCapacity,
   hpRadiationApplies,
   forecastPirateProfit,
@@ -14,7 +16,7 @@ import {
   type Fleet,
   type MobileHullId,
 } from '@astera/rules';
-import { useGalaxy, useLaunch, useRaidPirate, useSeason } from '../api/queries.js';
+import { useGalaxy, useHonorTarget, useLaunch, useRaidPirate, useSeason } from '../api/queries.js';
 import type { IntelView, PlanetView, Report } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
@@ -64,6 +66,14 @@ export function useLaunchPlan({
   const raid = useRaidPirate();
   const say = useToast();
   const [sending, setSending] = useState<Fleet>({});
+  const available = planet.fleetCombatReady ?? partitionCombatFleet(planet.fleet, planet.fleetDamage).eligible;
+  const selectedHealth = useMemo(() => {
+    try { return splitHealthFleet(planet.fleet, planet.fleetDamage, sending, true); }
+    catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+      return null;
+    }
+  }, [planet.fleet, planet.fleetDamage, sending]);
   const lesson = useAcademyLesson();
   /**
    * THE COMMANDER'S OWN RAID IMMUNITY, IF THEY STILL HAVE ONE. D183 · 2026-09-14.
@@ -95,6 +105,8 @@ export function useLaunchPlan({
    * reason D168 measures the attack band on the commander.
    */
   const season = useSeason();
+  const honorTarget = useHonorTarget(!lesson && target.kind === 'world'
+    && target.world.kind !== 'NEUTRAL' && !target.world.isSelf ? target.world.id : null);
   const shieldUntil = season.data?.shieldUntil ?? null;
   const spendsShield = target.kind === 'world'
     && target.world.kind !== 'NEUTRAL'
@@ -126,9 +138,9 @@ export function useLaunchPlan({
    */
   const [wantedPace, setWantedPace] = useState<MissionPace>(1);
   const unpaced = target.kind === 'pirate'
-    ? planPirateRoute(target.pirate.reach, sending, planet.fleet, planet.ground, mods)
+    ? planPirateRoute(target.pirate.reach, sending, available, planet.ground, mods)
     : planRoute(
-        planet.planet.position, target.world.position, sending, planet.fleet, planet.ground, mods,
+        planet.planet.position, target.world.position, sending, available, planet.ground, mods,
       );
   /**
    * WORLD TARGETS ONLY, FOR NOW — and the reason is that a quote must not lie.
@@ -147,9 +159,9 @@ export function useLaunchPlan({
   const pace = paces.includes(wantedPace) ? wantedPace : 1;
   const paced = useMemo(() => ({ ...mods, pace }), [mods, pace]);
   const planned = target.kind === 'pirate'
-    ? planPirateRoute(target.pirate.reach, sending, planet.fleet, planet.ground, paced)
+    ? planPirateRoute(target.pirate.reach, sending, available, planet.ground, paced)
     : planRoute(
-        planet.planet.position, target.world.position, sending, planet.fleet, planet.ground, paced,
+        planet.planet.position, target.world.position, sending, available, planet.ground, paced,
       );
   const route = lesson && planned ? { ...planned,
     oneWayMinutes: ACADEMY_LEG_SECONDS / 60, exposureMinutes: (ACADEMY_LEG_SECONDS * 2 + 10) / 60 } : planned;
@@ -198,13 +210,15 @@ export function useLaunchPlan({
   const endpoint = target.kind === 'world' ? target.world.position : route?.rendezvous;
   const arriveMs = departMs + (route?.oneWayMinutes ?? 0) * 60_000;
   const homeMs = departMs + (route?.exposureMinutes ?? 0) * 60_000 + ENGAGEMENT_MS;
-  const hpQuote = hpModel && route !== null && endpoint && !lesson ? routeHpRadiation({ fleet: sending, tech: mods.tech,
+  const hpQuote = hpModel && selectedHealth && route !== null && endpoint && !lesson ? routeHpRadiation({ fleet: sending, tech: mods.tech,
+    damage: selectedHealth.selectedDamage,
     path: [{ from: planet.planet.position, to: endpoint, startMs: departMs, endMs: arriveMs },
       { from: endpoint, to: endpoint, startMs: arriveMs, endMs: arriveMs + ENGAGEMENT_MS },
       { from: endpoint, to: planet.planet.position, startMs: arriveMs + ENGAGEMENT_MS, endMs: homeMs }] }, hpSources) : null;
   const radiation = hpModel ? lethalAfterRefusal(hpQuote, refused, sending) : target.kind === 'world' && route !== null && !lesson
     ? lethalAfterRefusal(routeRadiation({
         fleet: sending,
+        damage: selectedHealth?.selectedDamage,
         from: planet.planet.position,
         to: target.world.position,
         departMs,
@@ -222,16 +236,19 @@ export function useLaunchPlan({
       { from: planet.planet.position, to: endpoint, startMs: departMs, endMs: arriveMs },
       { from: endpoint, to: endpoint, startMs: arriveMs, endMs: arriveMs + ENGAGEMENT_MS },
     ], hpSources) : 0;
-  const returnHp = hpQuote ? Math.max(0, hpQuote.doseHp - outboundHp) : 0;
+  // Profit settlement consumes raw source doses; the visible quote has shielding applied.
+  const returnHp = hpModel && route !== null && endpoint && !lesson ? segmentsExposureHp([
+    { from: endpoint, to: planet.planet.position, startMs: arriveMs + ENGAGEMENT_MS, endMs: homeMs },
+  ], hpSources) : 0;
   const profitInput = useMemo<PirateProfitInput | null>(() => {
     if (lesson || total === 0 || route === null || !pirate?.fleet || !reward || !paid || profitRuleset === undefined
       || (pirateLevel !== 1 && pirateLevel !== 2 && pirateLevel !== 3 && pirateLevel !== 4)) return null;
-    return { attacker: sending, crew: pirate.fleet, level: pirateLevel, tech: mods.tech,
+    return { attacker: sending, damage: selectedHealth?.selectedDamage, crew: pirate.fleet, level: pirateLevel, tech: mods.tech,
       rulesetVersion: profitRuleset, hoard: reward, paid, fuel: route.fuel,
       radiation: { outboundHp, returnHp } };
   }, [lesson, total, sending, pirate?.fleet, pirateLevel, mods.tech, profitRuleset, route?.fuel,
     reward?.alloy, reward?.crystal, reward?.deuterium, paid?.alloy, paid?.crystal, paid?.deuterium,
-    outboundHp, returnHp]);
+    outboundHp, returnHp, selectedHealth]);
   const deferredProfit = useDeferredValue(profitInput);
   const pirateProfit = useMemo(() => deferredProfit ? forecastPirateProfit(deferredProfit) : null, [deferredProfit]);
   const pirateProfitState: PirateProfitState = total === 0 ? 'empty' : profitInput === null ? 'unavailable'
@@ -259,7 +276,7 @@ export function useLaunchPlan({
     quote — nothing picked yet, or a rendezvous the chosen wing cannot make. Same
     helper both planners use, so the two figures cannot drift on one screen.
   */
-  const holding = homeDefenceAfter(planet.fleet, planet.ground, sending);
+  const holding = homeDefenceAfter(available, planet.ground, sending);
   /**
    * A RAID AT A WORLD NEEDS SOMETHING THAT CAN FIGHT. Owner report.
    *
@@ -278,6 +295,7 @@ export function useLaunchPlan({
     && total > 0
     && !COMBAT_HULLS.some((hull) => (sending[hull] ?? 0) > 0);
   const canSend = total > 0
+    && selectedHealth !== null
     && !shipyardRevolt
     && route !== null
     && route.oneWayMinutes > 0
@@ -314,7 +332,7 @@ export function useLaunchPlan({
    * Prospector too. A world whose only craft at home was a miner showed an empty
    * list and no explanation for it.
    */
-  const atHome = MOBILE.reduce((sum, hull) => sum + (planet.fleet[hull] ?? 0), 0);
+  const atHome = MOBILE.reduce((sum, hull) => sum + (available[hull] ?? 0), 0);
 
   /**
    * WHAT A LESSON LETS THE COMMANDER PICK, AND WHY IT IS A CEILING NOT A HINT.
@@ -333,7 +351,7 @@ export function useLaunchPlan({
    */
   const allowance = lesson === 'pirate' || lesson === 'raid' ? academyLessonFleet(lesson) : null;
   const roomFor = (hull: MobileHullId): number => {
-    const home = planet.fleet[hull] ?? 0;
+    const home = available[hull] ?? 0;
     return allowance ? Math.min(home, allowance[hull] ?? 0) : home;
   };
 
@@ -372,6 +390,7 @@ export function useLaunchPlan({
     reports,
     tech: mods.tech,
     wing: sending,
+    damage: selectedHealth?.selectedDamage,
     rulesetVersion: planet.rulesetVersion ?? season.data?.rulesetVersion ?? 0,
   });
 
@@ -465,7 +484,7 @@ export function useLaunchPlan({
   };
 
   return {
-    sending, set, roomFor, allowance, lesson, season, spendsShield, pirate, mods,
+    sending, set, roomFor, allowance, lesson, season, honorTarget, spendsShield, pirate, mods,
     paces, pace, setWantedPace, route, fullSpeedRoute: unpaced,
     paceReset: paces.length > 0 && pace !== wantedPace,
     total, salvageRoom, baysFree, tooLate, busy, radiation, pirateProfit, pirateProfitState,

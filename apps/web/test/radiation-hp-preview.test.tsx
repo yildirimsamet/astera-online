@@ -14,13 +14,16 @@ describe('the commitment radiation reading', () => {
     expect(screen.getByText(/400.25 HP per ship/)).toBeVisible();
     expect(screen.getByText(/1× Citadel/)).toHaveTextContent('81.45%');
     expect(screen.getByText(/1× Argosy/)).toHaveTextContent('70.35%');
-    expect(screen.getByText(/1× Argosy/).parentElement).toHaveTextContent(/Repair Station/);
+    for (const hull of ['Citadel', 'Argosy']) {
+      expect(screen.getByText(new RegExp(`1× ${hull}`)).parentElement)
+        .toHaveTextContent(/Move them into the workshop yourself for paid repair/);
+    }
     expect(screen.getByText(/destroys 2 ships/)).toBeVisible();
     expect(screen.getByText(/Combat may add damage/)).toBeVisible();
   });
   it('keeps the established percentage reading and shows no warning for no exposure', () => {
     const { rerender } = render(<RadiationPreview radiation={{ doseBp: 3000, pct: 30, docks: true, destroyed: 0 }} />);
-    expect(screen.getByText(/30%/)).toHaveTextContent(/Repair Station/);
+    expect(screen.getByText(/30%/)).toHaveTextContent(/wounds remain until paid repair/i);
     rerender(<RadiationPreview radiation={null} />);
     expect(document.querySelector('[data-radiation-warning]')).toBeNull();
   });

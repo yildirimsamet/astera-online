@@ -428,7 +428,7 @@ export interface AirborneItem {
  */
 export type FlightMark =
   | 'monument'
-  | 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star'
+  | 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'radiation_bomb'
   | 'mining' | 'salvage' | 'pirate' | 'trade' | 'intergalactic_convoy';
 
 const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
@@ -439,6 +439,7 @@ const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
   transfer: SendIcon,
   settlement: HomeworldIcon,
   death_star: WarBannerIcon,
+  radiation_bomb: WarBannerIcon,
   mining: DrillIcon,
   salvage: DrillIcon,
   // A pirate raid IS a raid: same glyph, because the act is the same act and a

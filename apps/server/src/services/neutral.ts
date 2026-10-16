@@ -1,3 +1,4 @@
+import { refreshPlanetAegis, syncPlanetAegis } from './planetAegis.js';
 import { and, eq, inArray, isNull, lte, or } from 'drizzle-orm';
 import {
   ALL_HULLS,
@@ -16,7 +17,9 @@ import {
   missionPaceOf,
   garrisonOf,
   productionMult,
-  resolveCombat,
+  resolveBattle,
+  soloStack,
+  hpRadiationApplies,
   seededFrom,
   scaleNeutralDeuteriumLoot,
   settleWreck,
@@ -31,6 +34,8 @@ import {
   type NeutralTier,
   type Resources,
   shipDamageApplies,
+  normalizeHpDamage,
+  type HpDamageLots,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import { shipsIn } from './shipDamage.js';
@@ -52,6 +57,8 @@ import { recordGalaxyEvent } from './chronicle.js';
 import { notify } from './notifications.js';
 import { orbitOf, recomputePlayerWealth, saveResources, setUnits } from './planet.js';
 import { colonyStanding, safeHomePlanet } from './ownership.js';
+import { readHomeHealth } from './homeHealth.js';
+import { settlePlanetRadiationAt } from './planetRadiation.js';
 
 const EMPTY_VAULT = { alloy: 0, crystal: 0, deuterium: 0 };
 
@@ -89,9 +96,7 @@ export function neutralEconomyAt(
   );
   const aegisLevel = orbitRows.find((row) => row.type === 'AEGIS')?.level ?? 0;
   const maxShield = shieldHp(aegisLevel);
-  const shieldStart = world.empUntil && world.empUntil > world.lastTickAt
-    ? world.empUntil
-    : world.lastTickAt;
+  const shieldStart = new Date(Math.max(world.lastTickAt.getTime(), world.empUntil?.getTime() ?? 0, world.shieldRegenAt?.getTime() ?? 0));
   const shieldHours = Math.max(0, now.getTime() - shieldStart.getTime()) / 3_600_000;
   const shield = maxShield > 0
     ? Math.min(maxShield, world.shield + maxShield * SHIELD.regenPerHour * shieldHours)
@@ -112,31 +117,32 @@ export async function neutralStanding(tx: Tx, world: typeof planets.$inferSelect
 export async function advanceNeutralEconomy(tx: Tx, planetId: string, now: Date) {
   const [world] = await tx.select().from(planets).where(eq(planets.id, planetId)).for('update');
   if (world?.kind !== 'NEUTRAL') return null;
+  await syncPlanetAegis(tx, world, now, world.lastTickAt);
+  // Close the resident interval before combat or a reinforcement births fresh NPCs.
+  const radiation = await settlePlanetRadiationAt(tx, planetId, now);
+  const epoch = radiation?.season.radiationBombStartsAt;
   const levels = await neutralLevels(tx, planetId);
   const orbitRows = await neutralOrbit(tx, planetId);
   const { alloy, crystal, shield } = neutralEconomyAt(world, levels, orbitRows, now);
   await tx.update(planets).set({ alloy, crystal, shield, lastTickAt: now })
     .where(eq(planets.id, planetId));
-  return { ...world, alloy, crystal, shield, levels };
+  return { ...world, alloy, crystal, shield, levels, radiationEnabled: epoch != null && epoch <= now };
 }
 
-async function neutralFleet(tx: Tx, planetId: string): Promise<Fleet> {
-  const rows = await tx.select().from(units)
-    .where(and(eq(units.planetId, planetId), eq(units.location, 'home')));
-  return Object.fromEntries(rows.filter((row) => row.count > 0).map((row) => [row.hull, row.count]));
-}
-
-async function setNeutralFleet(tx: Tx, planetId: string, fleet: Fleet): Promise<void> {
+async function setNeutralFleet(tx: Tx, planetId: string, fleet: Fleet, damage: HpDamageLots = []): Promise<void> {
+  const wounds = normalizeHpDamage(fleet, damage);
   for (const [hull, count] of fleetEntries(fleet)) {
+    const hullDamage = wounds.filter(lot => lot.hull === hull);
     await tx.insert(units).values({
       planetId,
       ownerPlayerId: null,
       hull,
       location: 'home',
       count,
+      damage: hullDamage,
     }).onConflictDoUpdate({
       target: [units.planetId, units.hull, units.location],
-      set: { ownerPlayerId: null, count },
+      set: { ownerPlayerId: null, count, damage: hullDamage },
     });
   }
   const alive = new Set(fleetEntries(fleet).filter(([, count]) => count > 0).map(([hull]) => hull));
@@ -219,7 +225,8 @@ export async function resolveNeutralBattle(
   // Through the same definition the player battle uses, so a craft can never be
   // spared on one path and pulled into the line on the other. A neutral world has
   // no mining craft today; the shared call is what keeps that true if it ever does.
-  const standing = await neutralFleet(tx, mission.targetPlanetId);
+  const health = await readHomeHealth(tx, mission.targetPlanetId);
+  const standing = health.fleet;
   const defenceDark = neutral.empUntil !== null && neutral.empUntil > clock.now();
   const ground = Object.fromEntries(
     fleetEntries(standing).filter(([hull]) => HULLS[hull].ground),
@@ -228,22 +235,22 @@ export async function resolveNeutralBattle(
     fleetEntries(standing).filter(([hull]) => !HULLS[hull].ground),
   ) as Fleet;
   const defenders = garrisonOf(mobile, defenceDark ? {} : ground);
-  const result = resolveCombat(
-    attackingFleet, defenders, defenceDark ? 0 : neutral.shield, seededFrom(mission.id),
-    // A caretaker world researches nothing; the raider's doctrines still count. T9.
-    { attacker: { tech: mission.tech ?? {} }, defender: { tech: {} } },
-    mission.damage ?? undefined,
-  );
+  const result = resolveBattle([soloStack(attackingFleet, { tech: mission.tech ?? {} }, mission.damage ?? undefined)],
+    [{ stackId: 'neutral', playerId: '', fleet: defenders, damage: neutral.radiationEnabled ? health.damage : [],
+      tech: { tech: {} }, maintenanceExempt: true }],
+    defenceDark ? 0 : neutral.shield, seededFrom(mission.id), hpRadiationApplies(rulesetVersion) ? 'HP_PLANET' : 'PLANET', true);
   /*
-    KALICI GEMİ HASARI. The raider carries its part-hit ships home to be judged on
-    landing; a caretaker's garrison is nobody's and carries nothing (plan D1).
+    Bomb-enabled garrisons carry their real surviving HP, like monument NPCs;
+    a subsequent raid or reinforcement cannot heal radiation wounds. Legacy
+    seasons keep their original caretaker combat policy (plan D1).
   */
   const attackerDamage = shipDamageApplies(rulesetVersion) ? result.attackerDamage : [];
+  const defenderDamage = neutral.radiationEnabled ? result.defenderDamage : [];
   const survivors: Fleet = { ...result.defenderSurvivors };
   if (defenceDark) {
     for (const [hull, count] of fleetEntries(ground)) survivors[hull] = count;
   }
-  await setNeutralFleet(tx, mission.targetPlanetId, survivors);
+  await setNeutralFleet(tx, mission.targetPlanetId, survivors, defenderDamage);
   const [state] = await tx.select({ tier: neutralPlanetState.tier })
     .from(neutralPlanetState)
     .where(eq(neutralPlanetState.planetId, mission.targetPlanetId));
@@ -362,6 +369,7 @@ export async function resolveNeutralBattle(
     attackerLosses: result.attackerLosses,
     defenderLosses: result.defenderLosses,
     attackerDamage,
+    defenderDamage,
     // The rosters that met. The garrison is the caretaker's, so nothing here is
     // anybody's private board — but the reader is still only ever shown its own.
     attackerFleet: attackingFleet,
@@ -465,7 +473,7 @@ export async function resolveNeutralBattle(
       resolveAt: arriveAt,
     });
   }
-  await recomputePlayerWealth(tx, mission.ownerPlayerId);
+  await recomputePlayerWealth(tx, mission.ownerPlayerId, clock.now());
   await publishShard(tx, mission.seasonId, 'world');
 }
 
@@ -597,13 +605,14 @@ export async function reinforceNeutral(
   }
 
   // The guard, to the template's own roster and at no charge. Never past it.
-  const current = await neutralFleet(tx, planetId);
+  const health = await readHomeHealth(tx, planetId);
+  const current = health.fleet;
   const targets = { ...template.fleet, ...template.ground } as Fleet;
   for (const hull of ALL_HULLS) {
     const want = targets[hull] ?? 0;
     if ((current[hull] ?? 0) < want) current[hull] = want;
   }
-  await setNeutralFleet(tx, planetId, current);
+  await setNeutralFleet(tx, planetId, current, advanced.radiationEnabled ? health.damage : []);
   await tx.update(planets).set({
     alloy,
     crystal,
@@ -616,6 +625,7 @@ export async function reinforceNeutral(
       ? 0
       : shieldHp(domeTarget),
   }).where(eq(planets.id, planetId));
+  await refreshPlanetAegis(tx, planetId, now);
   const next = addMinutes(now, template.reinforcementMinutes);
   await tx.update(neutralPlanetState).set({ nextReinforcementAt: next })
     .where(eq(neutralPlanetState.planetId, planetId));

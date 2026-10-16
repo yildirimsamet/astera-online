@@ -74,32 +74,15 @@ describe('the wired dock', () => {
     expect(screen.getByRole('button', { name: 'Intel · New reports: 2' })).toBeInTheDocument();
   });
 
-  it('marks only report signals read when Intel is opened, including reports arriving after opening', () => {
-    notifications = [
-      { ...note('probe_report'), id: 'probe-1' },
-      { ...note('fleet_returned'), id: 'flight-1' },
-    ];
-    const { rerender } = render(<HudDock active="galaxy" onSelect={vi.fn()} />);
+  it('keeps report badges unread when Intel opens without a visible report list', () => {
+    notifications = [{ ...note('probe_report'), id: 'probe-1' }];
+    const { rerender } = render(<HudDock active="intel" onSelect={vi.fn()} />);
     expect(markSeen).not.toHaveBeenCalled();
-
-    rerender(<HudDock active="intel" onSelect={vi.fn()} />);
-    expect(markSeen).toHaveBeenCalledTimes(1);
-    expect(markSeen).toHaveBeenLastCalledWith(['probe-1']);
-    expect(screen.getByRole('button', { name: 'Intel' })).toBeInTheDocument();
-
-    rerender(<HudDock active="intel" onSelect={vi.fn()} />);
-    expect(markSeen).toHaveBeenCalledTimes(1);
-
+    expect(screen.getByRole('button', { name: 'Intel · New reports: 1' })).toBeInTheDocument();
     notifications = [...notifications, { ...note('raid_result'), id: 'battle-2' }];
     rerender(<HudDock active="intel" onSelect={vi.fn()} />);
-    expect(markSeen).toHaveBeenCalledTimes(2);
-    expect(markSeen).toHaveBeenLastCalledWith(['battle-2']);
-
-    // If the server write failed and the query still says unread, opening again retries.
-    rerender(<HudDock active="galaxy" onSelect={vi.fn()} />);
-    rerender(<HudDock active="intel" onSelect={vi.fn()} />);
-    expect(markSeen).toHaveBeenCalledTimes(3);
-    expect(markSeen).toHaveBeenLastCalledWith(['probe-1', 'battle-2']);
+    expect(markSeen).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Intel · New reports: 2' })).toBeInTheDocument();
   });
 
   it('keeps clan chat unread on the chat button instead of duplicating it on Clan', () => {

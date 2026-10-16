@@ -47,9 +47,9 @@ describe('the private pirate field', () => {
    * next, which is what makes a staged rollout able to hide contacts without ever
    * publishing a different one under the same handle — a pirate's id is an HMAC of
    * its lane index, so a renumbering silently re-aims every claim and every raid
-   * already in the air. The digest uses the radius-4500 orbit band and 30% speed
-   * cut introduced with the 2026-09-25 new-season reset, matching the pure rules
-   * test's historical boundary.
+   * already in the air. The digest includes the owner-approved 2026-10-13 20%
+   * NPC slowdown. Existing contacts retire only at an idle season cutover;
+   * new contacts retain their index, roster, radius and appearance window.
    */
   it('appends each denser lane after every established opaque target', () => {
     // The derived lane is priced for the 300 seats it serves (`PIRATE.legacySeats`).
@@ -81,7 +81,7 @@ describe('the private pirate field', () => {
     // Match the rules fingerprints: only derived radius/period tolerate final-bit runtime drift.
     const identity = (lane: typeof field): string => orbitFingerprint(lane.map(({ hoard: _hoard, ...rest }) => rest));
     expect(identity(field.slice(0, establishedLength)))
-      .toBe('9078135d444c0c643d7935bc85bd9541229ee8d64a9ae4228fe03e17f96a87c7');
+      .toBe('9111ebd807ca437db51b52fc8eadea05296e1537db1bce054aed2979622129f9');
   });
 
   it('can retain the complete established lane during a rolling activation', () => {

@@ -21,4 +21,5 @@ export const projectCopy: Readonly<Record<ResearchProjectId, Localized<ProjectCo
   INTERCEPTION_GRID: l({ name: en.gridName, role: en.gridRole, detail: en.gridDetail }, { name: tr.gridName, role: tr.gridRole, detail: tr.gridDetail }),
   STRATEGIC_STOCKPILE: l({ name: en.stockpileName, role: en.stockpileRole, detail: en.stockpileDetail }, { name: tr.stockpileName, role: tr.stockpileRole, detail: tr.stockpileDetail }),
   INDUSTRIAL: l({ name: en.industrialName, role: en.industrialRole, detail: en.industrialDetail }, { name: tr.industrialName, role: tr.industrialRole, detail: tr.industrialDetail }),
+  RADIATION_SHIELDING: l({ name: en.shieldingName, role: en.shieldingRole, detail: en.shieldingDetail }, { name: tr.shieldingName, role: tr.shieldingRole, detail: tr.shieldingDetail }),
 };

@@ -217,7 +217,7 @@ export async function allocateClanLoot(
     }
   }
   for (const playerId of creditedPlayers) {
-    await recomputePlayerWealth(tx, playerId);
+    await recomputePlayerWealth(tx, playerId, at);
     await publishPrivate(tx, playerId, 'depot');
   }
   return {
@@ -297,7 +297,7 @@ export async function claimClanLoot(
     crystal: sql`${planets.crystal} + ${claimed.crystal}`,
     deuterium: sql`${planets.deuterium} + ${claimed.deuterium}`,
   }).where(eq(planets.id, capital.id));
-  await recomputePlayerWealth(tx, input.playerId);
+  await recomputePlayerWealth(tx, input.playerId, input.clock.now());
   await publishPrivate(tx, input.playerId, 'depot');
   const [remaining] = await tx.select({
     alloy: sql<number>`coalesce(sum(${clanLootShares.remainingAlloy}), 0)`,

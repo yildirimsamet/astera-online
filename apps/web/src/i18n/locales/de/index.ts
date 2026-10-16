@@ -1,3 +1,5 @@
+import { honorBenefits } from './honorBenefits.js';
+import { vacation } from './vacation.js';
 import { silentSpace } from './silentSpace.js';
 import { brand } from './brand.js';
 import { monument } from './monument.js';
@@ -27,9 +29,11 @@ import type { Resources } from '../en/index.js';
 
 /** DE — translated from the English resource tree. */
 export const de: Resources = {
+  honorBenefits,
   brand,
   monument,
-  silentSpace, academy, landing, servers, app, crash, loading, document, settings, consent,
+  silentSpace,
+  vacation, academy, landing, servers, app, crash, loading, document, settings, consent,
   statusBar, menu, leaderboard, chat, pendingStrip, signals, sheet, toast, surface, galaxy,
   focus, pirate, worlds, planet, faults, capacity, spend, rangeBand, flightBar, counter,
   itemSheet, upgradeRow, action, planetHero, launch, transfer, intel, reports, clarity, dossier,

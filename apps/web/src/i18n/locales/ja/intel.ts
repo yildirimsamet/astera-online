@@ -347,7 +347,7 @@ export const reports = {
     formulaSupport: "支援船は、側に少なくとも 1 つの戦闘ユニットが残っている間は保護され続けます。",
     resultHeading: "結果の決定方法",
     resultDecisive:
-      "決定的 · 防御ユニットはすべて消滅し、シールドはゼロになります。 · 貨物制限前に露出在庫の {{decisiveLoot}}% を取得できます。",
+      "決定的 · 防御ユニットはすべて消滅し、シールドはゼロになります。 · 貨物制限前に露出在庫の {{decisiveLoot}}% を取得できます。 未回収の生産資源は{{decisiveBuffer}}%。",
     /**
      * THE SAME RULE WITHOUT THE HALF THAT CANNOT APPLY. A shield is a structure on
      * a world; a legend that names one out at a rendezvous is describing a
@@ -356,7 +356,7 @@ export const reports = {
     resultDecisivePirate:
       "決定的 · 乗組員のすべての船がいなくなりました · 積み荷の {{decisiveLoot}}% を貨物制限前に持ち帰ることができ、ここでのみ船体を曳航して持ち帰ることができます。",
     resultPartial:
-      "一部 · 防御ユニット値の少なくとも {{threshold}}% が破壊される · 貨物制限前に露出在庫の {{partialLoot}}% を取得できる。",
+      "一部 · 防御ユニット値の少なくとも {{threshold}}% が破壊される · 貨物制限前に露出在庫の {{partialLoot}}% を取得できる。 未回収の生産資源は{{partialBuffer}}%。",
     resultRepelled:
       "撃退 · {{threshold}}%未満の防御ユニット値が破壊される · 何も取れない。",
     round: "ラウンド {{round}}",
@@ -389,13 +389,16 @@ export const reports = {
   strategicEmpEffect: "イージス がゼロになり、1 時間再生成できません。その時間の間、地上防御は発砲したりダメージを受けることはできません。",
   strategicLoyalty: "コロニーへの忠誠心",
   strategicLoyaltyChange: "{{before}}% → {{after}}%",
-  strategicLoyaltyNext: "{{loss}}% 以下では、次のヒットでコロニーが奪われます。",
+  strategicLoyaltyNext_one: "次の命中で植民地は陥落します。",
+  strategicLoyaltyNext_other: "あと{{count}}回続けて命中すると植民地は陥落します。",
   strategicSecededAttacker: "植民地は離脱して中立となり、現在は誰もそれを保持していません。",
   strategicSecededDefender: "あなたの植民地は離脱して中立になりました。",
   strategicSecededShort: "コロニーが離脱しました",
   strategicCaptured: "捕獲されました",
   strategicIneffective: "無効です",
   strategicIntercepted: "傍受されました",
+  radiationYouAttacked: "放射線爆弾の対象：",
+  radiationAttackedBy: "放射線爆弾の発射者：",
   strategicYouAttacked: "あなたの デス・スター がターゲットにされています",
   strategicAttackedBy: "デス・スター 送信者",
   strategicDestroyedInFlight: "デス・スター 飛行中に破壊されました",
@@ -664,8 +667,8 @@ export const dossier = {
   interceptorEmptyNote: "現時点で戦略兵器を迎撃する弾は確認されていません。偵察後に装填された可能性はあります。",
   loyaltyLabel: "植民地の忠誠度",
   loyaltyValue: "{{value}}%",
-  loyaltyNote_one: "デス・スター1基の命中で忠誠度が{{loss}}下がります。忠誠度が{{loss}}以下なら植民地は離脱します。ここは1回の命中で離脱します。",
-  loyaltyNote_other: "デス・スター1基の命中で忠誠度が{{loss}}下がります。忠誠度が{{loss}}以下なら植民地は離脱します。ここは{{count}}回の命中が必要です。故障がなければ忠誠度は回復します。",
+  loyaltyNote_one: "デス・スターは命中1回で忠誠度を{{loss}}下げます。この植民地は1回の命中で陥落します。",
+  loyaltyNote_other: "デス・スターは命中1回で忠誠度を{{loss}}下げます。この植民地は{{count}}回続けて命中すると陥落します。",
   doctrinesLabel: "戦闘ドクトリン",
   doctrinesNone: "戦闘研究なし",
   doctrinesNote: "敵艦は基本値より強化されています。攻撃時にはこの倍率が適用されます。",

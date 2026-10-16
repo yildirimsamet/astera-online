@@ -1,5 +1,6 @@
 import { fleetCount, fleetEntries } from '@astera/rules';
 import { useEffect, useState } from 'react';
+import { HonorSoloNotice } from '../ui/HonorSoloNotice.js';
 import { useTranslation } from 'react-i18next';
 import { useClanSupportActions, useSetDefencePosture } from '../api/queries.js';
 import type { ClanSupportWave, PlanetView } from '../api/schemas.js';
@@ -53,6 +54,7 @@ function PostureCard({ planet, posture }: {
 
   return (
     <section data-defence-posture="" className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
+      <HonorSoloNotice />
       <p className="flex items-center justify-between gap-2">
         <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('clanSupport.postureTitle')}</span>
         <span className="text-micro text-v2-ink-3">{t('clanSupport.exclusive')}</span>

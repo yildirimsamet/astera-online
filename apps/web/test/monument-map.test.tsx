@@ -13,6 +13,12 @@ import { GalaxyReadout } from '../src/v2/hud/GalaxyCorners.js';
 import { readsForShardEvent } from '../src/session/shardEvents.js';
 import { keys } from '../src/api/keys.js';
 import { monumentScale } from '../src/galaxy/MonumentModel.js';
+import type * as Queries from '../src/api/queries.js';
+
+vi.mock('../src/api/queries.js', async importOriginal => ({
+  ...await importOriginal<typeof Queries>(),
+  useGalaxy: () => ({ data: { hpRadiation: [] } }),
+}));
 
 const target: PublicMonument = { id: 'monument-1', ordinal: 1, difficulty: 'LEGACY', position: { x: 0, y: 7000, z: 0 },
   controller: { kind: 'NEUTRAL' }, capacity: 7270, used: 120, productionPerMinute: 60, radiationHpPerMinute: 4, emptySince: null, respawnAt: null };

@@ -204,6 +204,12 @@ export const focus = {
     },
     deathStar: "Estrella de la Muerte",
     deathStarStrike: "Estrella de la Muerte · ataque EMP",
+    /** The Death Star as a folding section of the panel, beside the radiation strike (owner, 2026-10-16). */
+    deathStarSection: {
+      title: "Ataque con Estrella de la Muerte",
+      hold: "Lanzar Estrella de la Muerte",
+    },
+    strikeReady: "listas: {{ready}}",
 
     /**
      * THE SECOND BEAT ON A STRIKE. Owner report: *"yanlışlıkla"*.
@@ -217,9 +223,12 @@ export const focus = {
     strikeConfirm: {
       eyebrow: "Ataque EMP táctico",
       title: "Suprimir {{world}}",
-      lead: "La Estrella de la Muerte se consume con el ataque. No puede ser retirada.",
+      lead: "La Estrella de la Muerte se consume con el ataque y no puede ser retirada.",
       outage: "Apagón EMP",
-      keeps: "La Égida se vacía y no se regenera durante una hora. Las defensas terrestres quedan fuera de línea y no reciben daño. Una colonia pierde {{loss}} de lealtad; con {{loss}} o menos se separa y queda neutral.",
+      keeps: "La Égida cae a cero y no se recarga durante 1 hora. Las defensas terrestres no participan en ningún combate durante esa hora.",
+      keepsColony: "La colonia pierde {{loss}} de lealtad y sufre 1 avería aleatoria. Una colonia con 100 de lealtad cae tras {{hits}} impactos seguidos y queda neutral.",
+      origin: "Lanzar desde",
+      originRead: "{{world}} · listas: {{ready}}",
       commit: "Lanzar EMP",
       loyalty: "Lealtad de la colonia",
       loyaltyRead: "{{value}} % · {{hits}}",
@@ -243,8 +252,7 @@ export const focus = {
     kindColony: "Colonia",
     kindNeutral: "Neutro",
     capitalProtected: "Capital incapturable",
-    capitalProtectedHint:
-      "Una Estrella de la Muerte vacía la Égida y bloquea su regeneración durante una hora; las defensas terrestres quedan fuera de línea y no reciben daño.",
+    capitalProtectedHint: "Una Estrella de la Muerte deja la Égida en cero y le impide recargarse durante 1 hora; las defensas terrestres no participan en ningún combate en ese tiempo.",
     /**
      * WHAT A CAPITAL IS WHILE THE WEAPON IS OFF. `STRATEGIC_CRAFTING_ENABLED`.
      *
@@ -258,7 +266,7 @@ export const focus = {
     capitalRecoveringHint:
       "Otro ataque EMP reinicia la supresión de una hora; el control permanece igual.",
     capitalEmp: "Capital bajo EMP",
-    capitalEmpHint: "La Égida está vacía y las defensas terrestres quedan fuera de línea e invulnerables durante una hora.",
+    capitalEmpHint: "Hasta que termine el EMP de una hora, la Égida sigue vacía y las defensas terrestres no participan en ningún combate.",
     yourCapital: "Tu capital protegido",
     yourColony: "Tu colonia",
     transferHint: "Mueve naves y recursos aquí y elige cuáles regresan.",
@@ -330,7 +338,7 @@ export const focus = {
     occupationProtected: "Protección laboral",
     protectedFor: "No se puede golpear ni capturar por {{duration}}.",
     firstImpact: "Daño + {{duration}} oscuro",
-    firstImpactColony: "Una colonia además pierde {{loss}} de lealtad; con {{loss}} o menos se separa y queda neutral.",
+    firstImpactColony: "Una colonia además pierde {{loss}} de lealtad y sufre 1 avería aleatoria. Con 100 de lealtad cae tras {{hits}} impactos seguidos.",
     secondImpact: "El tiempo se acaba · el mundo no cambia",
     deathStarReadyRequirement: "Estrella de la Muerte lista",
     deathStarReadyExplain:
@@ -496,6 +504,7 @@ export const focus = {
     stateReturning: "regresando a casa",
     stateInbound: "entrante",
     noCraft: "No hay manualidades en casa",
+    measuring: "Calculando el vuelo…",
     tooLate: "Desaparecerá antes de que llegues",
     resting: "Embarcación descansando · {{duration}}",
     send: "Enviar {{count}} · {{duration}}",

@@ -44,7 +44,7 @@ export async function launchMonumentProbe(tx: Tx, input: {
     originPlanetId: input.originPlanetId, departAt: origin.now, arriveAt, outboundRoute: [flightSegment(origin, meeting.at, origin.now, arriveAt)] }).returning();
   if (!probe) throw new Error('monument probe insert returned no row');
   await saveResources(tx, origin.planetId, { alloy: origin.alloy - PROBE.alloy, crystal: origin.crystal - PROBE.crystal, deuterium: origin.deuterium });
-  await recomputePlayerWealth(tx, input.playerId);
+  await recomputePlayerWealth(tx, input.playerId, input.clock.now());
   await schedule(tx, { seasonId: season.id, kind: 'monument_probe', refId: probe.id, payload: { leg: 'OUT' },
     dedupeKey: `monument-probe:out:${probe.id}`, resolveAt: arriveAt });
   await publish(tx, input.playerId, 'private:monument');

@@ -42,7 +42,7 @@ beforeEach(async () => {
   for (const planetId of f.planetIds) {
     await setLevel(f.db, planetId, 'HANGAR', 10);
     await grant(f.db, planetId, 100000, 100000);
-    await setLevel(f.db, planetId, 'CORE', 9);
+    await setLevel(f.db, planetId, 'CORE', 10);
     await giveUnits(f.db, planetId, { DART: 20, COURIER: 10, RAMPART: 3 });
   }
   const [row] = await f.db.insert(monuments).values({ seasonId: f.seasonId, ordinal: 1, difficulty: 'HARD',
@@ -174,7 +174,47 @@ describe('repeated monument reinforcements', () => {
   });
 });
 
+describe('Hard commander access', () => {
+  beforeEach(async () => {
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 9);
+  });
+
+  it.each(['ATTACK', 'REINFORCE'] as const)('refuses tier three quotes and %s dispatches without consuming ships, fuel or bays', async purpose => {
+    if (purpose === 'REINFORCE') {
+      await park(1, { DART: 1 });
+      await makeClan();
+    }
+    const beforeShips = await f.db.select().from(units);
+    const beforeWorlds = await f.db.select().from(planets);
+    const beforeWaves = await f.db.select().from(monumentWaves);
+    const error = { code: 'MONUMENT_TIER_FORBIDDEN', params: { tier: 3, minTier: 4 } };
+    await expect(f.db.transaction(tx => quoteMonument(tx, request(0, { DART: 1 }, purpose)))).rejects.toMatchObject(error);
+    await expect(send(0, { DART: 1 }, purpose)).rejects.toMatchObject(error);
+    await expect(send(0, { COURIER: 1 }, purpose)).rejects.toMatchObject(error);
+    expect(await f.db.select().from(units)).toEqual(beforeShips);
+    expect(await f.db.select().from(planets)).toEqual(beforeWorlds);
+    expect(await f.db.select().from(monumentWaves)).toEqual(beforeWaves);
+  });
+
+  it('publishes Hard as blocked at tier three and unlocks it at tier four', async () => {
+    const read = () => f.db.transaction(tx => readMonuments(tx, { playerId: f.playerIds[0]!, seasonId: f.seasonId,
+      at: f.clock.now(), adminUsernames: [] }));
+    expect((await read()).monuments[0]).toMatchObject({ difficulty: 'HARD', sendAccess: { playerTier: 3, tierAllowed: false } });
+    await setLevel(f.db, f.planetIds[0]!, 'CORE', 10);
+    expect((await read()).monuments[0]).toMatchObject({ sendAccess: { playerTier: 4, tierAllowed: true } });
+    expect((await send()).wave.status).toBe('OUTBOUND');
+  });
+
+  it('allows Hard from a weak launch world when another controlled world reaches tier four', async () => {
+    await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: f.playerIds[0]! }).where(eq(planets.id, f.planetIds[1]!));
+    expect((await send()).wave.status).toBe('OUTBOUND');
+  });
+});
+
 describe('Easy commander access', () => {
+  beforeEach(async () => {
+    for (const id of f.planetIds) await setLevel(f.db, id, 'CORE', 9);
+  });
   it('uses the highest controlled world tier rather than the weak launch world', async () => {
     await f.db.update(monuments).set({ difficulty: 'EASY', capacity: 1550 }).where(eq(monuments.id, target.id));
     await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: f.playerIds[0]! }).where(eq(planets.id, f.planetIds[1]!));

@@ -1,3 +1,4 @@
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
@@ -81,7 +82,7 @@ describe('physical monument fleets at the season boundary', () => {
     expect(attackerStats.competition.playerLoot.deuterium).toBe(battle!.lootDeuterium);
   });
 
-  it('closes HOLD without waiting for a flight and delivers precise cargo and damaged dock lots directly once', async () => {
+  it('closes HOLD without waiting for a flight and delivers precise cargo and wounded home groups directly once', async () => {
     const before = await stock(0);
     const population = await totalUnitsOf(f.db, wave.originPlanetId);
     await close();
@@ -89,13 +90,14 @@ describe('physical monument fleets at the season boundary', () => {
     expect((await f.db.select().from(monumentWaves))[0]).toMatchObject({ status: 'HOME', returnReason: 'FREEZE', resolvedAt: at(10), fuelPaid: 18 });
     expect((await f.db.select().from(planets).where(eq(planets.id, wave.originPlanetId)))[0]!.deuterium - before.deuterium).toBeCloseTo(10.125, 8);
     expect(await totalUnitsOf(f.db, wave.originPlanetId)).toEqual(population);
-    expect((await f.db.select().from(shipDamageLots))[0]).toMatchObject({ hull: 'COURIER', damageBp: 2000, remainderBp: 0.5 });
+    expect((await readHomeHealth(f.db, wave.originPlanetId)).damage.find(lot => lot.hull === 'COURIER')).toMatchObject({ hull: 'COURIER', damageBp: 2000, remainderBp: 0.5 });
     expect(await f.db.select().from(monumentShipLots)).toHaveLength(0);
     expect((await f.db.select().from(units).where(eq(units.location, wave.unitLocation)))).toHaveLength(0);
     const saved = await f.db.select().from(planets);
     await close();
     expect(await f.db.select().from(planets)).toEqual(saved);
-    expect(await f.db.select().from(shipDamageLots)).toHaveLength(1);
+    expect((await readHomeHealth(f.db, wave.originPlanetId)).damage).toHaveLength(2);
+    expect(await f.db.select().from(shipDamageLots)).toHaveLength(0);
   });
 
   it.each([
@@ -112,8 +114,8 @@ describe('physical monument fleets at the season boundary', () => {
     const before = await stock(0);
     await close();
     expect((await f.db.select().from(monumentWaves))[0]).toMatchObject({ status: 'HOME', radiationSettledAt: at(10), fuelPaid: 18, returnReason: 'FREEZE' });
-    const cargoDock = (await f.db.select().from(shipDamageLots)).find((lot) => lot.hull === 'COURIER')!;
-    expect(cargoDock.damageBp + cargoDock.remainderBp).toBeCloseTo(expectedDamage, 8);
+    const cargoDock = (await readHomeHealth(f.db, wave.originPlanetId)).damage.find((lot) => lot.hull === 'COURIER')!;
+    expect(cargoDock.damageBp + (cargoDock.remainderBp ?? 0)).toBeCloseTo(expectedDamage, 8);
     expect((await f.db.select().from(planets).where(eq(planets.id, wave.originPlanetId)))[0]!.deuterium - before.deuterium).toBeCloseTo(0.125, 8);
     expect(await f.db.select().from(monumentBattles)).toHaveLength(0);
   });
@@ -151,7 +153,8 @@ describe('physical monument fleets at the season boundary', () => {
     await cloud(HULLS.COURIER.hp, 6, 60);
     await close();
     expect((await f.db.select().from(monumentWaves))[0]).toMatchObject({ status: 'HOME', resolvedAt: at(6), radiationSettledAt: at(6) });
-    expect((await f.db.select().from(shipDamageLots)).find((lot) => lot.hull === 'COURIER')).toMatchObject({ damageBp: 2000, remainderBp: 0.5, createdAt: at(6) });
+    expect((await readHomeHealth(f.db, wave.originPlanetId)).damage.find(lot => lot.hull === 'COURIER')).toMatchObject({ damageBp: 2000, remainderBp: 0.5 });
+    expect(await f.db.select().from(shipDamageLots)).toEqual([]);
   });
 
   it('rolls the whole close back if a fleet’s stored physical path is corrupt', async () => {
@@ -169,7 +172,8 @@ describe('physical monument fleets at the season boundary', () => {
     await Promise.all([forceSeasonEnd({ db: f.db, clock: f.clock }, f.seasonId), forceSeasonEnd({ db: f.db, clock: f.clock }, f.seasonId)]);
     expect((await f.db.select().from(monumentWaves))[0]).toMatchObject({ status: 'HOME', resolvedAt: at(2) });
     expect((await f.db.select().from(planets).where(eq(planets.id, wave.originPlanetId)))[0]!.deuterium - before.deuterium).toBeCloseTo(2.125, 8);
-    expect(await f.db.select().from(shipDamageLots)).toHaveLength(1);
+    expect((await readHomeHealth(f.db, wave.originPlanetId)).damage).toHaveLength(2);
+    expect(await f.db.select().from(shipDamageLots)).toHaveLength(0);
   });
 
   it('terminates native events atomically and makes their old delivery inert after the season froze', async () => {

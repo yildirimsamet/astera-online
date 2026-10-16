@@ -85,10 +85,40 @@ Notification dispatch already existed and was verified, not implemented here.
 When isolating this change, copy only these hunks from shared dirty files and
 regenerate the migration journal/snapshot against the destination branch. The
 current snapshot includes other pending migrations and must not be copied whole.
-Deployment is now authorized. The isolated release branch starts from the live
-`cda19955355296403c9a4bf596f378746c984cfb` so deployed renderer improvements are
-preserved. Only task-owned hunks were applied; the migration was regenerated as
-`0151_death_star_surface_hits` against that branch (one additive integer column).
-The dirty local master and unrelated pending work remain untouched. The selected
-release branch replaces the runbook's default master reference for this release;
-checkout, OCI, all runtime roles and public web still must share one pinned SHA.
+## Deployed isolated release · 14 October 2026
+
+Branch `release/death-star-20261013`, commit
+`5ce5b14b248ccf500e0c659c0b3755885da0ac54`, was deployed on the existing live
+`cda19955355296403c9a4bf596f378746c984cfb` baseline. The original dirty local
+master remains at `a8abe4ca183e3074c03f1b7ff3f9b9f2a9f5d78d`; unrelated work
+and the deployed renderer improvements were preserved.
+
+The isolated migration is `0151_death_star_surface_hits` (journal count 152),
+regenerated from the live schema. The local draft's `0156` migration is not the
+deployed migration. Future consolidation must reconcile/regenerate pending
+journals against this deployed branch; do not apply the dirty master's original
+migration history directly over the newer live journal.
+
+Release validation passed: 201 backend regressions including the full API
+contract suite, 2082 rules tests, and 6123 frontend tests (29 skipped). The initial
+frontend run exposed two failures in an evaluator that expected a single component;
+the evaluator was updated to traverse the grouping fragment, retaining its actual
+picking/compaction assertions, and the affected four files passed all 16 tests.
+All workspace typechecks, the three lint groups, and the updated test's type/lint
+checks passed. Browser checks passed at 723 px and 350 px at full, low and billboard
+detail, with real surface shaders on both default and elemental planets.
+
+Fresh production backup restore, one-second DDL lock refusal/rollback, exact
+preservation fingerprints, old/new lazy planet reads/writes, public EMP payloads,
+API preview and isolated worker/API health all passed before the live roll.
+Migration completed before the three APIs were rolled one at a time and the worker
+last. Feature flags are unchanged. The webroot was exchanged atomically, retaining
+old hashed assets for open tabs. All four live roles, OCI and public `release.txt`
+agree on the pinned SHA; all four are healthy. Failed/unknown events, overdue
+missions and orphaned neutral state are zero. Live season rules and neutral/colony
+totals match the pre-release restore. External API preview returns 200 and a fresh
+mobile browser renders without runtime, CSP or JavaScript asset errors.
+
+Rollback evidence is retained privately on the VPS at
+`/home/yildirim/releases/death-star-20261013-205424`; local captures/check logs are
+in the isolated worktree's `out/`. The temporary preview page remains removed.

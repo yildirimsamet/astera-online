@@ -1,5 +1,10 @@
+import { simCommanderPvpBalance, type SimPvpHoldings } from './pvpBalance.js';
 import {
   COMBAT,
+  coreTier,
+  pvpBalanceForTier,
+  raidableStock,
+  type PvpBalance,
   alloyRate,
   collectorCap,
   crystalRate,
@@ -104,7 +109,7 @@ export function raidReturn(stats: readonly DayStats[]): number {
   return spent > 0 ? gained / spent : NaN;
 }
 
-const capsOf = (p: SimPlayer) => ({
+const capsOf = (p: Pick<SimPlayer, 'buildings'>) => ({
   alloy: storageCap(alloyRate(p.buildings.REFINERY), p.buildings.VAULT),
   crystal: storageCap(crystalRate(p.buildings.EXTRACTOR), p.buildings.VAULT),
   deuterium: deuteriumStorageCap(
@@ -129,31 +134,31 @@ const capsOf = (p: SimPlayer) => ({
  * the number stayed plausible while meaning nothing, which is the only really
  * dangerous kind of wrong for a balance metric.
  */
-const raidableNow = (p: SimPlayer): number => {
-  const vault = vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR, p.buildings.DEUTERIUM_PLANT);
-  return (
-    Math.max(0, p.alloy - vault.alloy) +
-    Math.max(0, p.crystal - vault.crystal) +
-    p.deuterium +
-    (p.bufferAlloy + p.bufferCrystal + p.bufferDeuterium) * COMBAT.lootBufferShare
-  );
-};
+type RaidableWorld = Pick<SimPlayer,
+  'buildings' | 'alloy' | 'crystal' | 'deuterium' | 'bufferAlloy' | 'bufferCrystal' | 'bufferDeuterium'>;
 
-/** The most a player of this development could ever have exposed at once. */
-const raidableCeiling = (p: SimPlayer): number => {
+export const raidableNow = (
+  p: RaidableWorld,
+  balance: PvpBalance = pvpBalanceForTier(coreTier(p.buildings.CORE)),
+): number => raidableStock(
+  { alloy: p.alloy, crystal: p.crystal, deuterium: p.deuterium },
+  { alloy: p.bufferAlloy, crystal: p.bufferCrystal, deuterium: p.bufferDeuterium },
+  vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR, p.buildings.DEUTERIUM_PLANT),
+  'DECISIVE', balance,
+);
+
+/** The same profile and resource floors as the current exposure above. */
+const raidableCeiling = (p: SimPlayer, balance: PvpBalance): number => {
   const c = capsOf(p);
-  const vault = vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR, p.buildings.DEUTERIUM_PLANT);
   const ra = alloyRate(p.buildings.REFINERY);
   const rc = crystalRate(p.buildings.EXTRACTOR);
   const rd = deuteriumRate(p.buildings.DEUTERIUM_PLANT);
-  return Math.max(
-    1,
-    Math.max(0, c.alloy - vault.alloy) +
-      Math.max(0, c.crystal - vault.crystal) +
-      c.deuterium +
-      (collectorCap(ra) + collectorCap(rc) + deuteriumCollectorCap(rd, rc))
-        * COMBAT.lootBufferShare,
-  );
+  return Math.max(1, raidableStock(
+    c,
+    { alloy: collectorCap(ra), crystal: collectorCap(rc), deuterium: deuteriumCollectorCap(rd, rc) },
+    vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR, p.buildings.DEUTERIUM_PLANT),
+    'DECISIVE', balance,
+  ));
 };
 
 /**
@@ -165,6 +170,7 @@ export function measure(
   day: number,
   ps: readonly SimPlayer[],
   stats: DayStats,
+  holdings: SimPvpHoldings = { neutrals: [] },
 ): Invariants {
 
   const arr = median(
@@ -192,7 +198,10 @@ export function measure(
    * healthy 0.50 all season while the vault was protecting 100% of it — the
    * diagnostic missed the exact bug it existed to catch.
    */
-  const vfr = median(ps.map((p) => Math.max(0, raidableNow(p) / raidableCeiling(p))));
+  const vfr = median(ps.map((p) => {
+    const balance = simCommanderPvpBalance(holdings, p);
+    return Math.max(0, raidableNow(p, balance) / raidableCeiling(p, balance));
+  }));
 
   const cutoff = day * 1440 - 2880;
   const passive = ps.filter((p) => p.attacks.filter((x) => x > cutoff).length === 0);

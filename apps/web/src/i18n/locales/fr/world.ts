@@ -205,6 +205,12 @@ export const focus = {
     },
     deathStar: "Étoile de la Mort",
     deathStarStrike: "Étoile de la Mort · frappe EMP",
+    /** The Death Star as a folding section of the panel, beside the radiation strike (owner, 2026-10-16). */
+    deathStarSection: {
+      title: "Frappe d’Étoile de la Mort",
+      hold: "Lancer l’Étoile de la Mort",
+    },
+    strikeReady: "prêtes : {{ready}}",
     /**
 
   * LE DEUXIÈME COÛT DE LA FRAPPE. Rapport au propriétaire : « par erreur ».
@@ -219,9 +225,12 @@ export const focus = {
     strikeConfirm: {
       eyebrow: "Frappe EMP tactique",
       title: "Neutraliser {{world}}",
-      lead: "L’Étoile de la Mort est consommée par la frappe. Aucun rappel n’est possible.",
+      lead: "L’Étoile de la Mort est consommée par la frappe et ne peut pas être rappelée.",
       outage: "Panne EMP",
-      keeps: "L’Aegis est vidée et ne se régénère pas pendant une heure. Les défenses terrestres restent désactivées et ne subissent aucun dégât. Une colonie perd {{loss}} de loyauté ; à {{loss}} ou moins, elle fait sécession et devient neutre.",
+      keeps: "L’Aegis tombe à zéro et ne se recharge pas pendant 1 heure. Les défenses terrestres ne prennent part à aucun combat pendant cette heure.",
+      keepsColony: "La colonie perd {{loss}} de loyauté et subit 1 panne aléatoire. Une colonie à 100 de loyauté tombe après {{hits}} frappes de suite et devient neutre.",
+      origin: "Lancer depuis",
+      originRead: "{{world}} · prêtes : {{ready}}",
       commit: "Lancer l’EMP",
       loyalty: "Loyauté de la colonie",
       loyaltyRead: "{{value}} % · {{hits}}",
@@ -246,8 +255,7 @@ export const focus = {
     kindColony: "Colonie",
     kindNeutral: "Neutre",
     capitalProtected: "Planète capitale impossible à capturer",
-    capitalProtectedHint:
-      "L’Étoile de la Mort vide l’Aegis et bloque sa régénération pendant une heure ; les défenses terrestres restent désactivées et ne subissent aucun dégât.",
+    capitalProtectedHint: "Une Étoile de la Mort ramène l’Aegis à zéro et l’empêche de se recharger pendant 1 heure ; les défenses terrestres ne prennent part à aucun combat pendant ce temps.",
     /** Seule vraie règle de la planète capitale lorsque l’arme est désactivée. `STRATEGIC_CRAFTING_ENABLED`. */
     capitalRaidOnlyHint:
       "Un raid ne peut prendre ici que des ressources. Une planète capitale ne change jamais de mains.",
@@ -255,7 +263,7 @@ export const focus = {
     capitalRecoveringHint:
       "Une autre frappe EMP relance la suppression d’une heure ; le contrôle reste inchangé.",
     capitalEmp: "Capitale sous EMP",
-    capitalEmpHint: "L’Aegis est vide et les défenses terrestres sont désactivées et invulnérables pendant une heure.",
+    capitalEmpHint: "Jusqu’à la fin de l’EMP d’une heure, l’Aegis reste vide et les défenses terrestres ne prennent part à aucun combat.",
     yourCapital: "Ta planète capitale protégée",
     yourColony: "Ta colonie",
     transferHint: "Transfère ici des vaisseaux et des ressources, puis choisis lesquels repartent.",
@@ -331,7 +339,7 @@ export const focus = {
     occupationProtected: "Protection d’occupation",
     protectedFor: "Impossible à frapper ou capturer pendant {{duration}}.",
     firstImpact: "Dégâts + {{duration}} d’obscurité",
-    firstImpactColony: "Une colonie perd aussi {{loss}} de loyauté ; à {{loss}} ou moins, elle fait sécession et devient neutre.",
+    firstImpactColony: "Une colonie perd aussi {{loss}} de loyauté et subit 1 panne aléatoire. À 100 de loyauté, elle tombe après {{hits}} frappes de suite.",
     secondImpact: "La durée expire · le monde reste inchangé",
     deathStarReadyRequirement: "Étoile de la Mort prête",
     deathStarReadyExplain:
@@ -470,6 +478,7 @@ export const focus = {
     stateReturning: "en retour",
     stateInbound: "en route",
     noCraft: "Aucun Prospecteur chez toi",
+    measuring: "Calcul du vol en cours…",
     tooLate: "Elle se dispersera avant ton arrivée",
     resting: "Appareils en repos · {{duration}}",
     send: "Envoyer {{count}} · {{duration}}",

@@ -8,6 +8,10 @@ import { EXPLOSION_ATLAS, SMOKE_ATLAS, fireTexture } from './vfx.js';
 import { serverNow } from '../lib/clock.js';
 import { FullRate } from './frames.jsx';
 import { playSceneSound } from './audio.js';
+import { screenFloorScale } from './publicMoments.js';
+
+/** The smallest world radius, in screen pixels, a strike's fire is drawn around. */
+const BLAST_MIN_PIXELS = 7;
 import { unitModel } from './model.js';
 
 const FRAGMENT = '/assets/models/debris/wreck-plate-gd-v3.glb';
@@ -108,9 +112,11 @@ export function StrategicBlast({ event }: { event: DeathStarImpactEvent }) {
     bits.dispose();
   }, [flame, cloud, plume, ignition, bits]);
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, size }) => {
     const seconds = (serverNow() - event.at) / 1000;
     if (!Number.isFinite(seconds)) { if (root.current) root.current.visible = false; return; }
+    // Seen from across the disc the fire keeps a few pixels of world radius (owner, 2026-10-16).
+    root.current?.scale.setScalar(screenFloorScale(radius, soundPosition, camera, size.height, BLAST_MIN_PIXELS));
     const layer = strategicLayers(seconds, airborne ? 'interception' : 'surface');
     if (root.current) root.current.visible = Number.isFinite(seconds) && seconds >= 0 && seconds < 8;
     if (!heard.current && seconds >= 0) {

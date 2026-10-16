@@ -74,13 +74,13 @@ export async function closeSeasonMonuments(tx: Tx, input: { seasonId: string; cu
       throw new GameError('MONUMENT_TIMELINE_INVALID', 'The season boundary precedes an already settled fleet', 409);
     }
     const homes = await monumentHomes(tx, target, endpoints.homeIds, worlds);
-    await advanceLockedMonument(tx, target, homes, cutoff, input.adminUsernames, true);
+    await advanceLockedMonument(tx, target, homes, cutoff, input.adminUsernames, true, input.cutoff);
     for (const wave of target.waves) {
       owners.add(wave.playerId);
       if (wave.status === 'HOME' || wave.status === 'LOST') continue;
       const at = wave.status === 'RETURNING' && wave.arriveAt !== null && wave.arriveAt < cutoff ? wave.arriveAt : cutoff;
       if (wave.status === 'OUTBOUND' || wave.status === 'RETURNING') {
-        const flight = await settleMonumentFlight(tx, target, wave.id, at);
+        const flight = await settleMonumentFlight(tx, target, wave.id, at, input.cutoff);
         if (flight.wave.status === 'LOST') continue;
       }
       const homeId = await safeHomePlanet(tx, wave.playerId, wave.originPlanetId);
@@ -95,7 +95,7 @@ export async function closeSeasonMonuments(tx: Tx, input: { seasonId: string; cu
   for (const target of locked) await closeTarget(tx, target, cutoff);
   await tx.delete(scheduledEvents).where(and(eq(scheduledEvents.seasonId, season.id),
     inArray(scheduledEvents.kind, ['monument_arrival', 'monument_loss', 'monument_respawn'])));
-  for (const playerId of [...owners].sort()) await recomputePlayerWealth(tx, playerId);
+  for (const playerId of [...owners].sort()) await recomputePlayerWealth(tx, playerId, input.cutoff);
   await publishShard(tx, season.id, 'control');
 }
 

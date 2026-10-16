@@ -8,7 +8,8 @@ import {
 } from '@astera/rules';
 import { and, eq, gt, inArray, or } from 'drizzle-orm';
 import type { Queryable } from '../db/client.js';
-import { missions, planets, scheduledEvents } from '../db/schema.js';
+import { missions, planets, radiationBombFlights, scheduledEvents } from '../db/schema.js';
+import { schedule } from '../worker/queue.js';
 
 const INBOUND_RADAR_MISSION_KINDS: (typeof missions.$inferSelect.kind)[] = [
   'attack',
@@ -194,6 +195,11 @@ export async function wakeStrategicInterceptions(
     .from(planets)
     .where(eq(planets.controllerPlayerId, changed.playerId));
   if (owned.length === 0) return;
+  const bombs = await db.select({ id: radiationBombFlights.id, seasonId: radiationBombFlights.seasonId })
+    .from(radiationBombFlights).where(and(eq(radiationBombFlights.status, 'OUTBOUND'),
+      gt(radiationBombFlights.arriveAt, now), inArray(radiationBombFlights.targetPlanetId, owned.map(world => world.id))));
+  for (const bomb of bombs) await schedule(db, { seasonId: bomb.seasonId, kind: 'radiation_bomb_intercept',
+    refId: bomb.id, dedupeKey: `radiation-bomb-wake:${bomb.id}:${String(now.getTime())}`, resolveAt: now });
   const inbound = await db
     .select({ id: missions.id, seasonId: missions.seasonId })
     .from(missions)

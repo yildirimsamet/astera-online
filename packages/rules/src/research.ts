@@ -1,7 +1,7 @@
 import { profileResearch } from './economy-profile.js';
 import { ANTI_STRATEGIC, DEATH_STAR, DEUTERIUM, RESEARCH_TECH, SEASON } from './constants.js';
 import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
-import { cargoMult, hullTech, prospectorHoldMult, repairPct, robotSpeedMult, yardSpeedMult } from './tech.js';
+import { cargoMult, hullTech, prospectorHoldMult, radiationDamageMult, repairPct, robotSpeedMult, yardSpeedMult } from './tech.js';
 import { RESEARCH_PROJECT_IDS, type ResearchProjectId, type Resources } from './types.js';
 
 export interface ResearchProject {
@@ -61,11 +61,12 @@ export const strategicStockpile = (stockpileLevel: number): number =>
 /**
  * HOW MANY INTERCEPTION CHARGES ONE WORLD MAY HOLD, from the Grid rung. Owner, 2026-10-01.
  *
- * Two by default — Radar 3 is the only door to the battery itself — and four with the
- * research. The defence holds more than the weapon at every rung.
+ * Two by default, then four and six across two Grid levels. The effect clamps so
+ * research-ceiling discovery offers exactly the two useful levels.
  */
 export const interceptorCapacity = (gridLevel: number): number =>
-  gridLevel >= 1 ? ANTI_STRATEGIC.charges.researched : ANTI_STRATEGIC.charges.base;
+  Math.min(ANTI_STRATEGIC.charges.researched,
+    ANTI_STRATEGIC.charges.base + Math.max(0, Math.floor(gridLevel)) * ANTI_STRATEGIC.charges.perLevel);
 
 /**
  * THE HIGHEST DEUTERIUM PLANT A COMMANDER MAY STAND, from their research rung.
@@ -131,6 +132,8 @@ export function researchEffectAt(id: ResearchProjectId, level: number): number {
       return interceptorCapacity(rung);
     case 'INDUSTRIAL':
       return repairPct({ INDUSTRIAL: rung });
+    case 'RADIATION_SHIELDING':
+      return radiationDamageMult({ RADIATION_SHIELDING: rung });
     /*
       THE PERMISSIONS. Each opens a door and opening it twice opens nothing: the
       isotope reveals the rocks, dense cells and gravitic charges each unlock a hull.
@@ -527,6 +530,14 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
     prerequisiteLevel: 2,
   },
   PROSPECTOR_HOLDS: priced('PROSPECTOR_HOLDS'),
+  RADIATION_SHIELDING: {
+    id: 'RADIATION_SHIELDING',
+    maxLevel: RESEARCH_MAX_LEVEL.RADIATION_SHIELDING,
+    costAt: level => profileResearch('RADIATION_SHIELDING', Math.max(1, Math.floor(level))).cost,
+    availableAtMinutes: 0,
+    prerequisite: null,
+    requiredCore: 3,
+  },
   /**
    * Dearest of the three, because it is the only one that moves ARR: `fleetCargo`
    * is what caps a raid's loot. A player buying raid income should feel it.
@@ -552,8 +563,8 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
   /**
    * THE TWO STRATEGIC CAPACITIES, AND THEY ARE EACH OTHER'S ANSWER. Owner, 2026-10-01.
    *
-   * One rung each: the Grid takes a world's charges from two to four, the Stockpile
-   * its weapons from one to two. Both sit in the war act with the weapon itself,
+   * The Grid takes charges from two to four to six; the Stockpile takes weapons
+   * from one to two. Both sit in the war act with the weapon itself,
    * because a defence that arrived before the thing it defends against would be a
    * solution looking for its problem.
    */

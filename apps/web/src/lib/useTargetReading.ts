@@ -17,6 +17,7 @@ import {
   wallKnowledgeOf,
   type Fleet,
   type ForecastInput,
+  type HpDamageLots,
   type TechLevels,
 } from '@astera/rules';
 import type { IntelView, Report } from '../api/schemas.js';
@@ -43,6 +44,7 @@ export function useTargetReading({
   reports,
   tech,
   wing,
+  damage,
   rulesetVersion,
 }: {
   target: LaunchTarget;
@@ -51,6 +53,7 @@ export function useTargetReading({
   /** The commander's research, frozen into the forecast (`flightModifiers(planet).tech`). */
   tech: TechLevels;
   wing: Fleet;
+  damage?: HpDamageLots;
   /** The season's ruleset, which decides whether the escape rule applies. */
   rulesetVersion: number;
 }) {
@@ -135,11 +138,14 @@ export function useTargetReading({
     measured".
   */
   const domeCeiling = target.kind === 'world' && target.world.shielded ? shieldHp(target.world.coreLevel) : 0;
+  const wingState = useMemo(() => ({ wing, damage }), [wing, damage]);
+  const { wing: settled, damage: settledDamage } = useDeferredValue(wingState);
   const forecastInput = useMemo<ForecastInput>(() => {
     const none = { low: 0, high: 0 };
     if (isPirate) {
       return {
         attackerTech: tech,
+        ...(settledDamage?.length ? { attackerDamage: settledDamage } : {}),
         defenderTech: {},
         ...(pirateHandicap === undefined ? {} : { defenderDamageMult: pirateHandicap }),
         // Holds outliving the crew's line are taken, as the server settles it (`pirateOverrun`).
@@ -151,12 +157,13 @@ export function useTargetReading({
     }
     return {
       attackerTech: tech,
+      ...(settledDamage?.length ? { attackerDamage: settledDamage } : {}),
       defenderTech: report?.doctrines ?? {},
       shield: report?.shield ?? { low: 0, high: domeCeiling },
       unarmed: report?.unarmed ?? none,
       wall: wallKnowledgeOf(report?.classReading),
     };
-  }, [isPirate, pirateCrew, pirateHandicap, report, tech, domeCeiling]);
+  }, [isPirate, pirateCrew, pirateHandicap, report, tech, domeCeiling, settledDamage]);
 
   /*
     A FEW DOZEN BATTLES PER READING, SO IT WAITS FOR THE THUMB. The picker renders
@@ -168,7 +175,6 @@ export function useTargetReading({
     kindest wall there is. The lines are what a probe buys; before one, the box says
     "never measured" and nothing else.
   */
-  const settled = useDeferredValue(wing);
   const hasReading = opposing !== null;
   const lines = useMemo(
     () => (hasReading && fleetCount(settled) > 0 ? forecastLines(settled, forecastInput) : null),

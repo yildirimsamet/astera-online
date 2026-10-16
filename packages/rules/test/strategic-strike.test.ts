@@ -59,7 +59,7 @@ describe('the tactical EMP contract', () => {
 
   it('never grows past its researched ceiling', () => {
     expect(strategicStockpile(99)).toBe(2);
-    expect(interceptorCapacity(99)).toBe(4);
+    expect(interceptorCapacity(99)).toBe(6);
   });
 
   /**

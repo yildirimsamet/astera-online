@@ -51,10 +51,13 @@ describe('clan support in the bell', () => {
     expect(line).toMatch(/Your support fought at Vega: 5 lost, 7 still standing/);
     // A supporter's Dominion never moves (owner, 2026-10-02), so the bell names none.
     expect(line).not.toMatch(/dominion/i);
-    // The raid's grade is the raider's: a breached line is the supporter's loss, a repelled one their win.
-    expect(signalOutcome(news('clan_support_result', payload))).toBe('loss');
+    // A partial engagement is distinct from a decisive breach. Personal total
+    // loss still takes precedence, even if the defensive line repelled the raid.
+    expect(signalOutcome(news('clan_support_result', payload))).toBe('partial');
     expect(signalGlyph(news('clan_support_result', payload))).toBe('raided');
     expect(signalOutcome(news('clan_support_result', { ...payload, grade: 'REPELLED' }))).toBe('win');
+    expect(signalOutcome(news('clan_support_result', { ...payload, grade: 'DECISIVE' }))).toBe('loss');
+    expect(signalOutcome(news('clan_support_result', { ...payload, grade: 'REPELLED', survived: 0 }))).toBe('loss');
     expect(DESTINATION.clan_support_result).toEqual({ panel: 'report', stop: 'battles' });
   });
 

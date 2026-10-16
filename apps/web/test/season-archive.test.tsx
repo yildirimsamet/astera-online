@@ -65,7 +65,7 @@ async function show({
   noRewards = false,
   liveScore = 0,
   isBot = false,
-} = {}) {
+} = {}, honorScore: number | null = null) {
   await i18n.changeLanguage('en');
   const fetch = vi.fn();
   if (archiveFailure) fetch.mockRejectedValue(new Error('offline'));
@@ -121,6 +121,8 @@ async function show({
       resultId,
       rank: 1,
       commanderName: 'Archive Ace',
+      honorScore,
+      honorRank: honorScore === null ? null : 1,
       dominion: 12_500,
       title: 'Sovereign of Orion',
       self: false,
@@ -142,6 +144,10 @@ async function show({
       commanderName: 'Archive Ace',
       planetName: 'Aster Prime',
       rank: 1,
+      honorScore,
+      honorRank: honorScore === null ? null : 1,
+      honorCommanders: 20,
+      ...(honorScore === null ? {} : { commanders: 20 }),
       dominion: 12_500,
       title: 'Sovereign of Orion',
       recap: {
@@ -259,6 +265,21 @@ afterEach(async () => {
 });
 
 describe('season archive surface', () => {
+  it('does not turn a zero-Honor shared rank into a top-percent achievement', async () => {
+    await show({}, 0);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /Season 1 · EU-1/i }));
+    await user.click(screen.getByRole('button', { name: /Archive Ace/i }));
+    expect(screen.getByText('Honor')).toBeVisible();
+    expect(screen.queryByText(/Top \d+%/)).not.toBeInTheDocument();
+  });
+  it('preserves the top-percent achievement for a positive Honor record', async () => {
+    await show({}, 1_000_000);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /Season 1 · EU-1/i }));
+    await user.click(screen.getByRole('button', { name: /Archive Ace/i }));
+    expect(screen.getByText('Top 5% · 1 of 20 commanders')).toBeVisible();
+  });
   it('keeps the live leaderboard rows non-inspectable', async () => {
     const { onFocusPlanet } = await show();
     expect(screen.getByRole('button', { name: 'Live season' })).toHaveAttribute('aria-pressed', 'true');

@@ -28,13 +28,14 @@ export async function settleSpecialFlightRadiation(tx: Tx, input: {
   id: string; leg: 'OUT' | 'HOME'; seasonId: string; rulesetVersion: number;
   planetId: string; playerId: string; location: string; path: readonly Segment[];
   damage: HpDamageLots | null; tech: TechLevels; radiationSettledAt: Date | null;
+  observedAt?: Date;
 }) {
   const start = input.path[0]?.startMs ?? 0;
   const outcome = await settleFlightRadiation(tx, { ...input, fromMs: Math.max(start, input.radiationSettledAt?.getTime() ?? start) });
   if (hpRadiationApplies(input.rulesetVersion)) {
     await tellRadiationLoss(tx, { playerId: input.playerId, refId: lossRef(input.id, input.leg), toPlanetId: input.planetId },
       outcome, new Date(input.path.at(-1)?.endMs ?? start));
-    if (radiationChanged(outcome)) await recomputePlayerWealth(tx, input.playerId);
+    if (radiationChanged(outcome)) await recomputePlayerWealth(tx, input.playerId, input.observedAt);
   }
   return { ...outcome, radiationSettledAt: hpRadiationApplies(input.rulesetVersion)
     ? new Date(Math.max(input.radiationSettledAt?.getTime() ?? start, input.path.at(-1)?.endMs ?? start)) : input.radiationSettledAt };

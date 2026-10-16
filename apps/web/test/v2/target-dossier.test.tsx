@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { FAULT, distance, fleetPace, travelMinutes } from '@astera/rules';
+import { FAULT, combatValue, distance, fleetPace, travelMinutes } from '@astera/rules';
 import type { GalaxyPlanet, IntelView } from '../../src/api/schemas.js';
 import { compact } from '../../src/lib/format.js';
 import { flightModifiers, reachMinutes } from '../../src/lib/navigation.js';
@@ -63,6 +63,13 @@ const home = planetView({ fleet: { DART: 40, COURIER: 2 } });
 const show = (props: Partial<Parameters<typeof TargetDossier>[0]> = {}) => render(
   <TargetDossier target={world()} planet={home} intel={probed} reports={[]} rivalSlot={null} now={NOW} {...props} />,
 );
+
+it('compares only home ships that can join the attack, excluding critical hulls', () => {
+  const wounded = planetView({ fleet: { DART: 40 }, fleetDamage: [{ hull: 'DART', count: 39, damageBp: 9500 }] });
+  show({ planet: wounded });
+  const ruler = document.querySelector<HTMLElement>('[data-force-ruler]')!;
+  expect(within(ruler).getByText(compact(combatValue({ DART: 1 })))).toBeInTheDocument();
+});
 
 describe('the target dossier', () => {
   it('heads the page with the mark, the range and the flight', () => {

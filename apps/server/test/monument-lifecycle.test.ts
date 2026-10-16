@@ -12,7 +12,7 @@ import { seedWorld, testDb, type Fixture } from './helpers.js';
 let f: Fixture;
 let m: typeof monuments.$inferSelect;
 let wave: typeof monumentWaves.$inferSelect;
-const quiet = { runIds: [], raidIds: [], tradeIds: [], convoyIds: [] };
+const quiet = { runIds: [], raidIds: [], tradeIds: [], convoyIds: [], bombIds: [] };
 beforeEach(async () => {
   f = await seedWorld(2, 20_261_003);
   m = (await f.db.insert(monuments).values({ seasonId: f.seasonId, ordinal: 1, x: 6000, y: 0, z: 0,
@@ -28,7 +28,7 @@ async function status(value: MonumentWaveStatus) {
     returnReason: value === 'RETURNING' ? 'RECALLED' : null,
     resolvedAt: value === 'HOME' || value === 'LOST' ? f.clock.now() : null }).where(eq(monumentWaves.id, wave.id));
 }
-const business = (owner = 0) => f.db.transaction((tx) => busy(tx, [f.planetIds[owner]!], f.playerIds[owner]!, quiet));
+const business = (owner = 0) => f.db.transaction((tx) => busy(tx, [f.planetIds[owner]!], f.playerIds[owner]!, quiet, f.clock.now()));
 
 describe('monument reclaim and placement references', () => {
   it('clears every monument target, historical HP source and wave before a frozen season wipe removes players and worlds', async () => {
