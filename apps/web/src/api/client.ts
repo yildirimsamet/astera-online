@@ -1,3 +1,4 @@
+import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema } from './schemas.js';
 import { COSMETIC_IDS, type CosmeticCategory, type CosmeticId, type MobileHullId } from '@astera/rules';
 import { cosmeticEquipSchema } from './schemas.js';
 import { vacationSchema } from './schemas.js';
@@ -287,6 +288,22 @@ export class Api {
   private readonly http: typeof globalThis.fetch;
   private readonly baseUrl: string;
   private token: string | null = null;
+  private sessionAccountId: string | null = null;
+  private sessionGeneration = 0;
+  private readonly sessionListeners = new Set<(reason: 'email' | 'password' | 'expired') => void>();
+
+  onSessionEnded(listener: (reason: 'email' | 'password' | 'expired') => void): () => void {
+    this.sessionListeners.add(listener);
+    return () => { this.sessionListeners.delete(listener); };
+  }
+
+  endSession(reason: 'email' | 'password' | 'expired'): void {
+    this.sessionGeneration++;
+    this.token = null;
+    this.sessionAccountId = null;
+    this.placement = null;
+    for (const listener of this.sessionListeners) listener(reason);
+  }
   private placement: string | null = null;
   /** Deduped: five queries expiring at once must produce one refresh, not five. */
   private refreshing: Promise<boolean> | null = null;
@@ -330,6 +347,7 @@ export class Api {
      * the round trip is what has to come back off the sample.
      */
     const sentPlacement = this.placement;
+    const generation = this.sessionGeneration;
     const sentAt = Date.now();
     const res = await this.http(`${this.baseUrl}${path}`, {
       method: opts.method ?? 'GET',
@@ -347,18 +365,18 @@ export class Api {
     });
     noteServerTime(res.headers.get('x-server-time'), res.headers.get('date'), sentAt, Date.now());
 
-    if (res.status === 401 && (opts.retryOnExpiry ?? true)) {
-      opts.signal?.throwIfAborted();
-      if (await this.restore()) {
-        return this.send(path, schema, { ...opts, retryOnExpiry: false });
-      }
-    }
-
     const body: unknown = await res.json().catch(() => {
       opts.signal?.throwIfAborted();
       return null;
     });
     opts.signal?.throwIfAborted();
+    if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
+    // A rejected password is an answered credential check, not an expired token.
+    if (res.status === 401 && (opts.retryOnExpiry ?? true) && errorShape(body).error !== 'BAD_CREDENTIALS') {
+      const restored = await this.restore();
+      if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
+      if (restored) return this.send(path, schema, { ...opts, retryOnExpiry: false });
+    }
     const receivedPlacement = res.headers.get('x-placement');
     if (path === '/api/auth/me' && res.ok) {
       if (sentPlacement !== this.placement && receivedPlacement !== this.placement) {
@@ -404,22 +422,38 @@ export class Api {
 
   /* ── identity ─────────────────────────────────────────────── */
 
+  private adoptSession(session: { accountId: string; accessToken: string }, generation: number): void {
+    if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
+    if (this.sessionAccountId !== session.accountId) this.placement = null;
+    this.sessionAccountId = session.accountId;
+    this.token = session.accessToken;
+  }
+
   /** Exchange the refresh cookie for a live token. Only a rejected session returns false. */
   async restore(): Promise<boolean> {
+    const generation = this.sessionGeneration;
     this.refreshing ??= (async () => {
       try {
         const session = await this.send('/api/auth/refresh', sessionSchema, {
           method: 'POST',
           retryOnExpiry: false,
         });
-        this.token = session.accessToken;
+        if (generation !== this.sessionGeneration) return false;
+        // Another tab may have replaced the shared refresh cookie. Never replay
+        // this tab's pending action with that other account's credentials.
+        if (this.sessionAccountId !== null && this.sessionAccountId !== session.accountId) {
+          this.endSession('expired');
+          return false;
+        }
+        this.adoptSession(session, generation);
         return true;
       } catch (error) {
+        if (generation !== this.sessionGeneration) return false;
         // A rate limit or outage says nothing about the cookie's validity. Keep
         // the current identity and let the caller report the retryable failure.
         if (!(error instanceof ApiError) || error.status !== 401) throw error;
-        this.token = null;
-        this.placement = null;
+        // A first visitor with no refresh cookie never had a session to expire.
+        if (this.token !== null || this.placement !== null) this.endSession('expired');
         return false;
       } finally {
         this.refreshing = null;
@@ -435,22 +469,24 @@ export class Api {
    * yet, and a 401 from a login is the answer, not a stale token.
    */
   async register(username: string, password: string, countryCode?: CountryCode) {
+    const generation = ++this.sessionGeneration;
     const session = await this.send('/api/auth/register', sessionSchema, {
       method: 'POST',
       body: { username, password, ...(countryCode === undefined ? {} : { countryCode }) },
       retryOnExpiry: false,
     });
-    this.token = session.accessToken;
+    this.adoptSession(session, generation);
     return session;
   }
 
   async login(username: string, password: string) {
+    const generation = ++this.sessionGeneration;
     const session = await this.send('/api/auth/login', sessionSchema, {
       method: 'POST',
       body: { username, password },
       retryOnExpiry: false,
     });
-    this.token = session.accessToken;
+    this.adoptSession(session, generation);
     return session;
   }
 
@@ -463,7 +499,9 @@ export class Api {
    * is the worst possible failure mode for a shared computer.
    */
   async logout(): Promise<void> {
+    this.sessionGeneration++;
     this.token = null;
+    this.sessionAccountId = null;
     this.placement = null;
     try {
       await this.send('/api/auth/logout', okSchema, { method: 'POST', retryOnExpiry: false });
@@ -477,6 +515,22 @@ export class Api {
   applyToReturn = (placementVersion: number) => this.send('/api/return-applications', returnStatusSchema, {
     method: 'POST', body: { placementVersion },
   });
+
+  security = () => this.send('/api/auth/security', accountSecuritySchema);
+  securityRequest = (email: string, currentPassword: string, locale: string, change = false) => this.send(
+    change ? '/api/auth/email/change/request' : '/api/auth/email/request', securityChallengeSchema,
+    { method: 'POST', body: { ...(change ? { newEmail: email } : { email }), currentPassword, locale } });
+  securityVerify = (challengeId: string, code: string, purpose: 'bind' | 'change_old' | 'change_new') => this.send(
+    purpose === 'bind' ? '/api/auth/email/verify' : purpose === 'change_old' ? '/api/auth/email/change/confirm-old' : '/api/auth/email/change/confirm-new',
+    securityCompleteSchema, { method: 'POST', body: { challengeId, code } });
+  securityResend = (operationId: string) => this.send('/api/auth/email/resend', securityChallengeSchema,
+    { method: 'POST', body: { operationId } });
+  securityCancel = (operationId: string) => this.send('/api/auth/email/cancel', okSchema,
+    { method: 'POST', body: { operationId } });
+  resetRequest = (email: string, locale: string) => this.send('/api/auth/password/reset/request', securityChallengeSchema,
+    { method: 'POST', body: { email, locale }, retryOnExpiry: false });
+  resetComplete = (challengeId: string, code: string, newPassword: string) => this.send('/api/auth/password/reset/complete', securityCompleteSchema,
+    { method: 'POST', body: { challengeId, code, newPassword }, retryOnExpiry: false });
 
   me = () => this.send('/api/auth/me', meSchema);
 
@@ -544,6 +598,7 @@ export class Api {
     progress: readonly ClaimIntent[] | number,
     countryCode?: CountryCode,
   ) {
+    const generation = ++this.sessionGeneration;
     const claimed = await this.send('/api/onboarding/claim', claimSchema, {
       method: 'POST',
       // D172: the server authors the checkpoint; no local resources/fleet travel.
@@ -556,13 +611,15 @@ export class Api {
       },
       retryOnExpiry: false,
     });
-    this.token = claimed.accessToken;
+    this.adoptSession(claimed, generation);
     return claimed;
   }
 
   /** Drops the token without telling the server. For a 401 we already know about. */
   forget(): void {
+    this.sessionGeneration++;
     this.token = null;
+    this.sessionAccountId = null;
     this.placement = null;
   }
 
@@ -1166,12 +1223,20 @@ export class Api {
     signal: AbortSignal,
     onOpen?: () => void,
   ): Promise<void> {
-    const open = (): Promise<Response> =>
-      this.http(`${this.baseUrl}/api/stream`, {
+    const generation = this.sessionGeneration;
+    const open = async (): Promise<Response> => {
+      if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
+      const response = await this.http(`${this.baseUrl}/api/stream`, {
         headers: this.token ? { authorization: `Bearer ${this.token}` } : {},
         credentials: 'same-origin',
         signal,
       });
+      if (generation !== this.sessionGeneration) {
+        await response.body?.cancel();
+        throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
+      }
+      return response;
+    };
 
     /**
      * THE STREAM REFRESHES ITS OWN CREDENTIAL. D45.
@@ -1197,6 +1262,11 @@ export class Api {
     while (!signal.aborted) {
       const { done, value } = await reader.read();
       if (done) return;
+      signal.throwIfAborted();
+      if (generation !== this.sessionGeneration) {
+        await reader.cancel();
+        return;
+      }
       buffer += decoder.decode(value, { stream: true });
 
       // SSE frames are separated by a blank line; a partial frame stays buffered.

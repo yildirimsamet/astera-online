@@ -265,7 +265,7 @@ export const RADAR_FRAGMENT = /* glsl */ `
     float lonPhase = lon / 0.7853981634;
     float latEdge = abs(fract(latPhase + 0.5) - 0.5) / max(fwidth(latPhase), 1e-5);
     float lonEdge = abs(fract(lonPhase + 0.5) - 0.5) / max(fwidth(lonPhase), 1e-5);
-    float polar = smoothstep(0.995, 0.9, abs(p.y));
+    float polar = (1.0 - smoothstep(0.9, 0.995, abs(p.y)));
     float grid = max(
       1.0 - smoothstep(0.0, 1.15, latEdge),
       (1.0 - smoothstep(0.0, 1.15, lonEdge)) * polar
@@ -376,7 +376,7 @@ export const SHELL_FRAGMENT = /* glsl */ `
     float lonEdge = abs(fract(lonPhase + 0.5) - 0.5) / max(fwidth(lonPhase), 1e-5);
     // The poles are where every meridian converges; fade them out or the top of
     // the sphere becomes a bright knot.
-    float polar = smoothstep(0.995, 0.9, abs(p.y));
+    float polar = (1.0 - smoothstep(0.9, 0.995, abs(p.y)));
     float grid = max(
       1.0 - smoothstep(0.0, 1.4, latEdge),
       (1.0 - smoothstep(0.0, 1.4, lonEdge)) * polar

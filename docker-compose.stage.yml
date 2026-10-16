@@ -3,6 +3,9 @@
 name: astera-stage
 
 x-stage-environment: &stage-environment
+  ACCOUNT_EMAIL_ENABLED: ${ACCOUNT_EMAIL_ENABLED:-false}
+  PASSWORD_RECOVERY_ENABLED: ${PASSWORD_RECOVERY_ENABLED:-false}
+  MAIL_DELIVERY_ENABLED: ${MAIL_DELIVERY_ENABLED:-false}
   PADDLE_CHECKOUT_ENABLED: 'false'
   PADDLE_ENV: sandbox
   PADDLE_LIVE_API_KEY: ''

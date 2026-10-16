@@ -1,3 +1,4 @@
+import { AccountSecurityEntry } from '../screens/AccountSecuritySheet.js';
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { VacationSheet } from '../screens/VacationSheet.js';
 import { useTranslation } from 'react-i18next';
@@ -456,6 +457,7 @@ export function MenuPanel({
         backwards.
       */}
       <Section label={t('menu.accountHeading')}>
+        <AccountSecurityEntry />
         <div className="flex items-center justify-between gap-2 border-b border-v2-line pb-3">
           <div className="min-w-0"><p className="brand-small">Astera Online</p><p className="mt-1 select-all font-v2-mono text-micro text-v2-ink-2">asteraonline.space</p></div>
           <InstallButton compact />

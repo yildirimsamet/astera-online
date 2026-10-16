@@ -677,8 +677,8 @@ vec3 galaxyAt(vec2 sky, vec4 shape, float seed, vec3 coreTint, vec3 armTint, vec
   // pow() of a negative is undefined; rounding can put 0.5 + 0.5·cos a hair under zero.
   float arms = pow(max(0.0, 0.5 + 0.5 * cos(2.0 * wind + shred * 1.2)), 2.0) * (0.55 + 0.9 * shred);
   float lanes = pow(max(0.0, 0.5 + 0.5 * cos(2.0 * wind + 1.7 + shred)), 6.0) * smoothstep(0.12, 0.35, r);
-  float body = exp(-r * 2.9) * smoothstep(1.75, 1.0, r);
-  float halo = exp(-r * 1.6) * 0.08 * smoothstep(1.8, 1.2, r);
+  float body = exp(-r * 2.9) * (1.0 - smoothstep(1.0, 1.75, r));
+  float halo = exp(-r * 1.6) * 0.08 * (1.0 - smoothstep(1.2, 1.8, r));
   float bulge = exp(-r * r * 30.0);
   float nucleus = exp(-r * r * 900.0);
   float knots = pow(max(0.0, snoise(vec3(disc * 13.0, seed + 1.0))), 4.0) * arms * smoothstep(0.2, 0.45, r);
@@ -693,7 +693,7 @@ vec3 galaxyAt(vec2 sky, vec4 shape, float seed, vec3 coreTint, vec3 armTint, vec
   // Squared by hand: pow() of the negative half of a lane is undefined, and a NaN here blooms.
   float laneOffset = (p.y - 0.03 * (1.0 - thin)) / (0.045 * max(thin, 0.25));
   float lane = exp(-laneOffset * laneOffset)
-    * pow(max(0.0, 1.0 - thin), 3.0) * smoothstep(0.85, 0.25, r);
+    * pow(max(0.0, 1.0 - thin), 3.0) * (1.0 - smoothstep(0.25, 0.85, r));
   light *= 1.0 - clamp(lane * 1.5, 0.0, 0.92);
   return light * 0.06 * shape.w;
 }
@@ -797,7 +797,7 @@ void main() {
   // The dark cloud: a silhouette torn at every scale, never a disc.
   // reach() is 1 - cos, which rounding can put just under zero at the cloud's own centre.
   float darkReach = sqrt(max(0.0, reach(d, uDark))) + fbm(d * 7.0, 3) * 0.35 + fbm(d * 22.0, 4) * 0.28;
-  tau += smoothstep(1.0, 0.3, darkReach) * 2.4;
+  tau += (1.0 - smoothstep(0.3, 1.0, darkReach)) * 2.4;
 
   vec3 transmit = exp(-tau * vec3(0.8, 1.0, 1.32));
   // Dust scatters a little of what it swallows — brown, never black paint.
@@ -906,7 +906,7 @@ void main() {
   vec2 uv = vUv * 2.0 - 1.0;
   vec3 light = galaxyAt(uv * uSpan, uShape, uSeed, uCore, uArms, uKnots);
   // Nothing at the card's border, so it can never show an edge.
-  float border = smoothstep(1.0, 0.86, max(abs(uv.x), abs(uv.y)));
+  float border = (1.0 - smoothstep(0.86, 1.0, max(abs(uv.x), abs(uv.y))));
   gl_FragColor = vec4(light * border, 1.0);
 }
 `;

@@ -25,7 +25,7 @@ export type Session =
   /** Asking the cookie whether there is a session to come back to. */
   | { phase: 'starting' }
   /** No session. The front door: the premise, and a way in. */
-  | { phase: 'landing'; error?: string; open?: 'login' }
+  | { phase: 'landing'; error?: string; open?: 'login'; securityNotice?: 'email' | 'password' | 'expired' }
   /**
    * Playing the real game, on a world that does not exist yet. D56.
    *
@@ -106,6 +106,16 @@ export function useSession() {
   const queries = useQueryClient();
   const [session, setSession] = useState<Session>(readReady);
   const [resumed, setResumed] = useState(() => session.phase === 'ready');
+  // Async transitions from the previous identity must never replace its exit screen.
+  const revision = useRef(0);
+  useEffect(() => api.onSessionEnded(reason => {
+    revision.current++;
+    forgetReady();
+    queries.clear();
+    setResumed(false);
+    setSession({ phase: 'landing', open: 'login', securityNotice: reason });
+  }), [api, queries]);
+
   // StrictMode mounts effects twice in development. One restore, not two.
   const started = useRef(false);
 
@@ -154,15 +164,22 @@ export function useSession() {
 
   /** Cookie → session → screen. The whole of what happens when a tab opens cold. */
   const coldStart = useCallback(async (): Promise<void> => {
+    const startedAt = revision.current;
     try {
-      if (!(await api.restore())) {
+      const restored = await api.restore();
+      if (startedAt !== revision.current) return;
+      if (!restored) {
+        queries.clear();
         forgetReady();
         setResumed(false);
         setSession({ phase: 'landing' });
         return;
       }
-      await settle(await api.me());
+      const me = await api.me();
+      if (startedAt !== revision.current) return;
+      await settle(me);
     } catch (err) {
+      if (startedAt !== revision.current) return;
       if (err instanceof ApiError && err.status === 401) {
         forgetReady();
         setResumed(false);
@@ -175,7 +192,7 @@ export function useSession() {
       setSession((current) => current.phase === 'ready'
         ? current : { phase: 'blocked', message: messageOf(err) });
     }
-  }, [api, settle]);
+  }, [api, queries, settle]);
 
   useEffect(() => {
     if (started.current) return;
@@ -185,11 +202,13 @@ export function useSession() {
 
   const authenticate = useCallback(
     async (mode: 'login' | 'register', username: string, password: string, countryCode?: CountryCode): Promise<void> => {
+      const startedAt = ++revision.current;
       setResumed(false);
       setSession({ phase: 'starting' });
       try {
         if (mode === 'register') await api.register(username, password, countryCode);
         else await api.login(username, password);
+        if (startedAt !== revision.current) return;
         /**
          * THE FUNNEL, AND IT IS TWO EVENTS BECAUSE THERE ARE TWO WAYS IN.
          *
@@ -204,8 +223,11 @@ export function useSession() {
          * No username, no id, nothing about the person. See `analytics.ts`.
          */
         track(mode === 'register' ? 'sign_up' : 'login', { method: 'form' });
-        await settle(await api.me());
+        const me = await api.me();
+        if (startedAt !== revision.current) return;
+        await settle(me);
       } catch (err) {
+        if (startedAt !== revision.current) return;
         setSession({ phase: 'landing', error: messageOf(err) });
         // Rethrown so the form can keep what was typed and put focus back in the
         // right field. The phase above is what the rest of the app reads.
@@ -227,12 +249,17 @@ export function useSession() {
     async (code: string): Promise<void> => {
       const current = session;
       if (current.phase !== 'servers') return;
+      const startedAt = revision.current;
       setResumed(false);
       setSession({ phase: 'starting' });
       try {
         await api.joinServer(code);
-        await settle(await api.me());
+        if (startedAt !== revision.current) return;
+        const me = await api.me();
+        if (startedAt !== revision.current) return;
+        await settle(me);
       } catch (err) {
+        if (startedAt !== revision.current) return;
         setSession({ phase: 'servers', me: current.me, error: messageOf(err) });
       }
     },
@@ -312,7 +339,9 @@ export function useSession() {
       intents: readonly ClaimIntent[] | number,
       countryCode?: CountryCode,
     ): Promise<void> => {
+      const startedAt = ++revision.current;
       const result = await api.claim(username, password, intents, countryCode);
+      if (startedAt !== revision.current) return;
       rememberCommander();
       // The other door. A commander who played the rehearsal first and is only now
       // becoming an account — the conversion this whole onboarding exists for.
@@ -349,14 +378,17 @@ export function useSession() {
    * start days later — where a modal on arrival would be wrong.
    */
   const signOut = useCallback(async (): Promise<void> => {
+    const startedAt = ++revision.current;
     forgetReady();
     setResumed(false);
     setSession({ phase: 'starting' });
     try {
       await api.logout();
+      if (startedAt !== revision.current) return;
       queries.clear();
       setSession({ phase: 'landing', open: 'login' });
     } catch (err) {
+      if (startedAt !== revision.current) return;
       setSession({ phase: 'blocked', message: messageOf(err) });
     }
   }, [api, queries]);
@@ -371,13 +403,17 @@ export function useSession() {
   const rollover = useCallback((): void => {
     const current = session;
     if (current.phase !== 'ready') return;
+    const startedAt = revision.current;
     queries.clear();
     forgetReady();
     setResumed(false);
     // The world already committed its successor. Move immediately; `/me` then
     // reconciles the permanent result without putting a loading door in the way.
     setSession({ phase: 'servers', me: { ...current.me, placement: null } });
-    void api.me().then(settle).catch((err: unknown) => {
+    void api.me().then(me => {
+      if (startedAt === revision.current) return settle(me);
+    }).catch((err: unknown) => {
+      if (startedAt !== revision.current) return;
       setSession({ phase: 'blocked', message: messageOf(err) });
     });
   }, [api, queries, session, settle]);

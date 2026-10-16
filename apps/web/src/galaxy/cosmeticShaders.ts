@@ -24,6 +24,7 @@ const NOISE = `
     for (int i = 0; i < 3; i++) { sum += noise21(p) * amp; p = p * 2.03 + vec2(17.1, 9.2); amp *= .5; }
     return sum;
   }
+  float gaussian(float x) { return exp(-x * x); }
   vec2 spin(vec2 p, float a) { float c = cos(a), s = sin(a); return vec2(c * p.x - s * p.y, s * p.x + c * p.y); }
   vec3 spectrum(float h) { return .5 + .5 * cos(TAU * (h + vec3(0.0, .33, .67))); }
 `;
@@ -74,7 +75,7 @@ export const saturnFragment = `
     vec3 colour = pow(profile.rgb, vec3(2.2)) * 1.3 * (1.0 - spokes * .3);
     colour *= .7 + .3 * (.5 + .5 * cos(atan(vPlane.y, vPlane.x) - 2.3));
     vec2 cell = floor(vec2(angle * 160.0, t * 90.0));
-    float glint = step(.994, hash21(cell)) * smoothstep(.26, .3, t) * pow(.5 + .5 * sin(uTime * 2.2 + hash21(cell + 7.0) * 60.0), 16.0);
+    float glint = step(.994, hash21(cell)) * smoothstep(.26, .3, t) * pow(max(0.0, .5 + .5 * sin(uTime * 2.2 + hash21(cell + 7.0) * 60.0)), 16.0);
     colour += vec3(1.3, 1.25, 1.15) * glint;
     float alpha = clamp(density * .95 + glint * .4, 0.0, 1.0);
     if (alpha < .01) discard;
@@ -92,15 +93,15 @@ export const prismDustFragment = `
     float r = length(vPlane);
     float t = ${across(RING_SPANS.prism)};
     // Two halos under the two crystal lanes, joined by a faint veil.
-    float lanes = exp(-pow((t - .3) * 7.0, 2.0)) + .7 * exp(-pow((t - .78) * 9.0, 2.0));
+    float lanes = gaussian((t - .3) * 7.0) + .7 * gaussian((t - .78) * 9.0);
     float body = smoothstep(0.0, .12, t) * (1.0 - smoothstep(.86, 1.0, t)) * (.25 + lanes);
     vec2 moving = spin(vPlane, -uTime * .04);
     float swirl = fbm(moving * 3.2);
     float angle = atan(vPlane.y, vPlane.x);
-    float grooves = pow(.5 + .5 * sin(r * 140.0), 18.0);
+    float grooves = pow(max(0.0, .5 + .5 * sin(r * 140.0)), 18.0);
     vec3 colour = mix(vec3(.72, .9, 1.15), spectrum(t * 1.3 + angle * .16 + uTime * .025) * 1.25, .65);
     vec2 cell = floor(vec2(atan(moving.y, moving.x) * 170.0, t * 70.0));
-    float glitter = step(.982, hash21(cell)) * pow(.5 + .5 * sin(uTime * 3.4 + hash21(cell + 3.0) * 50.0), 10.0);
+    float glitter = step(.982, hash21(cell)) * pow(max(0.0, .5 + .5 * sin(uTime * 3.4 + hash21(cell + 3.0) * 50.0)), 10.0);
     float alpha = body * (.08 + .26 * smoothstep(.35, .8, swirl) + grooves * .18) + glitter * body * 1.2;
     if (alpha < .005) discard;
     gl_FragColor = vec4(colour + glitter * .8, alpha);
@@ -113,7 +114,7 @@ export const infernoFragment = `
   uniform float uTime;
   varying vec2 vPlane;
   ${NOISE}
-  float ridge(vec2 p) { return pow(1.0 - abs(2.0 * noise21(p) - 1.0), 3.0); }
+  float ridge(vec2 p) { return pow(max(0.0, 1.0 - abs(2.0 * noise21(p) - 1.0)), 3.0); }
   void main() {
     float r = length(vPlane);
     float t = ${across(RING_SPANS.inferno)};
@@ -124,7 +125,7 @@ export const infernoFragment = `
     float gas = fbm(q * 1.5 + warp * 1.8 - uTime * .15);
     float filaments = ridge(q * 2.6 + warp * 2.4 - uTime * .3) * .7 + ridge(q * 5.3 - warp * 1.5 + uTime * .2) * .35;
     float heat = body * (gas * .65 + filaments * .75) - .22;
-    float rim = exp(-pow((t - .07) * 34.0, 2.0)) * (.55 + .45 * gas);
+    float rim = gaussian((t - .07) * 34.0) * (.55 + .45 * gas);
     vec3 colour = mix(vec3(.3, .015, .0), vec3(.95, .1, .01), smoothstep(.0, .3, heat));
     colour = mix(colour, vec3(1.5, .5, .06), smoothstep(.3, .6, heat));
     colour = mix(colour, vec3(1.75, 1.4, .8), smoothstep(.62, .9, heat));
@@ -147,16 +148,16 @@ export const nebulaFragment = `
     float body = smoothstep(0.0, .14, t) * (1.0 - smoothstep(.42, 1.0, t));
     float angle = atan(vPlane.y, vPlane.x);
     float phase = 2.0 * (angle + log(r) * 2.8 - uTime * .04);
-    float arms = pow(.5 + .5 * cos(phase), 3.0);
-    float lanes = pow(.5 + .5 * cos(phase - .75), 26.0);
+    float arms = pow(max(0.0, .5 + .5 * cos(phase)), 3.0);
+    float lanes = pow(max(0.0, .5 + .5 * cos(phase - .75)), 26.0);
     vec2 moving = spin(vPlane, -uTime * .03);
     float gas = fbm(moving * 2.2 + arms * .6);
     // Round star-forming knots strung along the arms (one candidate per cell, most cells empty).
     vec2 knotAt = moving * 13.0, knotCell = floor(knotAt);
     vec2 knotCentre = vec2(hash21(knotCell), hash21(knotCell + 5.0)) * .6 + .2;
     float knotDistance = length(fract(knotAt) - knotCentre);
-    float knots = step(.74, hash21(knotCell + 9.0)) * smoothstep(.24, .0, knotDistance) * arms;
-    float knotCore = knots * smoothstep(.08, .0, knotDistance);
+    float knots = step(.74, hash21(knotCell + 9.0)) * (1.0 - smoothstep(.0, .24, knotDistance)) * arms;
+    float knotCore = knots * (1.0 - smoothstep(.0, .08, knotDistance));
     float core = exp(-t * 7.0) * body;
     float density = body * (gas * .45 + arms * .8) * (1.0 - lanes * .6);
     vec3 colour = mix(vec3(.42, .2, 1.1), vec3(1.3, .32, .95), smoothstep(.2, .8, arms + gas * .3));
@@ -193,8 +194,8 @@ export const shardFragment = `
   varying vec3 vView;
   ${NOISE}
   void main() {
-    float facing = abs(dot(normalize(vNormal), normalize(vView)));
-    float edge = pow(1.0 - facing, 1.3);
+    float facing = clamp(abs(dot(normalize(vNormal), normalize(vView))), 0.0, 1.0);
+    float edge = pow(max(0.0, 1.0 - facing), 1.3);
     vec3 film = spectrum(edge * 1.6 + vHue + uTime * .05);
     float flash = pow(max(0.0, sin(uTime * 1.3 + vHue * 47.0)), 30.0);
     // Dark glass bodies, so the thin-film colour on their edges is what the eye catches.
@@ -211,8 +212,11 @@ export const plumeVertex = `
   varying vec2 vUv;
   varying vec4 vBolts;
   varying vec4 vForks;
+  varying float vPlumePixels;
   uniform float uTime;
   uniform float uStyle;
+  uniform float uPixelHeight;
+  uniform float uNozzleCount;
   ${NOISE}
   void main() {
     vUv = uv;
@@ -236,27 +240,69 @@ export const plumeVertex = `
       }
     }
     vec4 transformed = vec4(p, 1.0);
+    vec4 diameter = vec4(.32, 0.0, 0.0, 0.0);
     #ifdef USE_INSTANCING
       transformed = instanceMatrix * transformed;
+      diameter = instanceMatrix * diameter;
     #endif
     gl_Position = projectionMatrix * modelViewMatrix * transformed;
+    // Approximate the tube's diameter in CSS pixels, including both parent and nozzle scale.
+    // Clip w handles perspective distance and stays 1 for orthographic shop previews.
+    vPlumePixels = length((modelViewMatrix * diameter).xyz) * abs(projectionMatrix[1][1])
+      * uPixelHeight * .5 / max(.01, gl_Position.w);
+    if (uv.x >= 4.0) {
+      // Exactly one motor carries the map flash; overlapping motors cannot amplify it.
+      #ifdef USE_INSTANCING
+        if (float(gl_InstanceID) != mod(floor(uTime * 6.0), max(1.0, uNozzleCount))) {
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          return;
+        }
+      #endif
+      // A 12 CSS-pixel patch, still anchored at the real motor and depth-tested.
+      vec2 corner = (uv - vec2(4.5, .5)) * 2.0;
+      vec2 aspect = vec2(abs(projectionMatrix[0][0] / projectionMatrix[1][1]), 1.0);
+      gl_Position.xy += corner * aspect * 12.0 / max(1.0, uPixelHeight) * gl_Position.w;
+    }
   }
 `;
 
-/** Forked lightning that crawls over a deep-blue plasma sheath around a thin cyan-white core. */
+/** Blue forked lightning with brief white-gold ignition flashes, bounded at map range. */
 export const tempestFragment = `
   varying float vEnvelope;
   varying vec2 vUv;
   varying vec4 vBolts;
   varying vec4 vForks;
+  varying float vPlumePixels;
   uniform float uTime;
+  uniform float uNozzleCount;
   ${NOISE}
   float arc(float around, float path, float width) {
     float d = abs(mod(around - path + PI, TAU) - PI);
-    return smoothstep(width, 0.0, d) + .45 * exp(-d * 5.0);
+    return (1.0 - smoothstep(0.0, width, d)) + .45 * exp(-d * 5.0);
+  }
+  float boltDistance(vec2 p, vec2 a, vec2 b) {
+    vec2 edge = b - a;
+    return length(p - a - edge * clamp(dot(p - a, edge) / dot(edge, edge), 0.0, 1.0));
   }
   void main() {
-    float along = vUv.y;
+    float flashClock = uTime * 6.0;
+    float flash = step(.55, hash21(vec2(floor(flashClock), 27.0)))
+      * (1.0 - smoothstep(.10, .55, fract(flashClock)));
+    float mapDetail = smoothstep(2.0, 6.0, vPlumePixels);
+    if (vUv.x >= 4.0) {
+      vec2 p = spin((vUv - vec2(4.5, .5)) * 2.0, hash21(vec2(floor(flashClock), 71.0)) * TAU);
+      float d = boltDistance(p, vec2(-.65, -.65), vec2(-.12, -.22));
+      d = min(d, boltDistance(p, vec2(-.12, -.22), vec2(-.3, .05)));
+      d = min(d, boltDistance(p, vec2(-.3, .05), vec2(.25, .25)));
+      d = min(d, boltDistance(p, vec2(.25, .25), vec2(.6, .65)));
+      d = min(d, boltDistance(p, vec2(-.12, -.22), vec2(.55, -.25)));
+      float alpha = (1.0 - smoothstep(.10, .20, d)) * flash * (1.0 - mapDetail);
+      if (alpha < .005) discard;
+      gl_FragColor = vec4(.42, .38, .2, alpha);
+      ${OUTPUT}
+      return;
+    }
+    float along = clamp(vUv.y, 0.0, 1.0);
     float tick = floor(uTime * 12.0);
     vec3 colour;
     float alpha;
@@ -279,8 +325,17 @@ export const tempestFragment = `
       colour = mix(colour, vec3(1.4, 1.6, 1.8), exp(-along * 9.0) * .5);
       alpha = (sheath + bolts * 1.25) * vEnvelope;
     }
+    // Near-view ignition hands over to the readable map lightning as the tube shrinks.
+    float flashHead = flash * mapDetail * (1.0 - smoothstep(.08, .42, along));
+    colour = mix(colour, vec3(2.0, 1.85, .9), flashHead);
+    alpha = max(alpha, flashHead * vEnvelope);
     if (alpha < .005) discard;
-    gl_FragColor = vec4(colour, min(alpha, 1.0));
+    // Subpixel front/back shells can still emit full HDR peaks into the wide bloom chain.
+    // Preserve the nearby arcs; retain a small visible flash as the nozzle shrinks.
+    // Budget the entire formation: separate motors merge into one pixel at map range.
+    float detail = smoothstep(.75, 6.0, vPlumePixels);
+    float glowGain = mix(.18, 1.0, detail) / mix(max(1.0, uNozzleCount), 1.0, detail);
+    gl_FragColor = vec4(colour, min(alpha, 1.0) * glowGain);
     ${OUTPUT}
   }
 `;
@@ -292,7 +347,7 @@ export const prismPlumeFragment = `
   uniform float uTime;
   ${NOISE}
   void main() {
-    float along = vUv.y;
+    float along = clamp(vUv.y, 0.0, 1.0);
     vec3 colour;
     float alpha;
     if (vUv.x > 1.5) {
@@ -302,7 +357,7 @@ export const prismPlumeFragment = `
       float around = vUv.x * TAU;
       float disperse = smoothstep(.04, .5, along);
       vec3 bands = spectrum(along * 1.7 - uTime * .8) * 1.4;
-      float rings = pow(.5 + .5 * sin(along * 32.0 - uTime * 10.0), 12.0) * smoothstep(.04, .22, along);
+      float rings = pow(max(0.0, .5 + .5 * sin(along * 32.0 - uTime * 10.0)), 12.0) * smoothstep(.04, .22, along);
       float silk = .5 + .5 * sin(around * 4.0 + along * 10.0 - uTime * 2.2);
       vec2 cell = floor(vec2(vUv.x * 40.0, along * 46.0 - uTime * 8.0));
       float glitter = step(.97, hash21(cell)) * smoothstep(.1, .3, along);
@@ -326,7 +381,7 @@ export const bannerVertex = `
   void main() {
     vUv = uv;
     vec3 p = position;
-    float freeEdge = pow(uv.x, 1.2);
+    float freeEdge = pow(max(0.0, uv.x), 1.2);
     p.z += (sin(uv.x * 9.0 - uTime * 2.4 + uv.y * 2.0) * .10
       + sin(uv.x * 17.0 - uTime * 3.1 + uv.y * 4.0) * .035) * freeEdge;
     p.y += sin(uv.x * 6.0 - uTime * 1.4) * .035 * freeEdge;
@@ -348,8 +403,9 @@ export const bannerFragment = `
       float thread = smoothstep(.5, .88, dot(art.rgb, vec3(.299, .587, .114)));
       float sweep = fract(uTime * .11 + .241) * 2.6 - .8;
       float across = vUv.x * .85 + (1.0 - vUv.y) * .45;
-      float glint = exp(-pow((across - sweep) * 8.0, 2.0));
-      float crest = pow(.5 + .5 * wave, 6.0);
+      float glintDistance = (across - sweep) * 8.0;
+      float glint = exp(-glintDistance * glintDistance);
+      float crest = pow(max(0.0, .5 + .5 * wave), 6.0);
       colour += ink * thread * (glint * 1.5 + crest * .22);
     }
     gl_FragColor = vec4(colour, 1.0);

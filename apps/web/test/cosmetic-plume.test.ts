@@ -39,7 +39,7 @@ it('gives Titan a shorter restrained rocket volume with a cheaper fixed geometry
 it('gives Tempest a tight arc channel and Prism a beam that fans out downstream, both closing at the tail', () => {
   for (const style of ['tempest', 'prism'] as const) {
     const geometry = createPlumeGeometry(style);
-    expect(geometry.index!.count / 3, style).toBeLessThanOrEqual(1536);
+    expect(geometry.index!.count / 3, style).toBeLessThanOrEqual(style === 'tempest' ? 1538 : 1536);
     expect(plumeRadius(1, style), style).toBe(0);
     expect(plumeRadius(0, style), style).toBeLessThan(plumeRadius(.2, style));
     geometry.computeBoundingBox();
@@ -50,4 +50,15 @@ it('gives Tempest a tight arc channel and Prism a beam that fans out downstream,
   expect(plumeRadius(.6, 'prism')).toBeGreaterThan(plumeRadius(.6, 'aurora'));
   expect(plumeRadius(.3, 'tempest')).toBeLessThan(plumeRadius(.3, 'aurora'));
   expect(plumeRadius(.3, 'tempest')).toBeGreaterThan(plumeRadius(.3, 'singularity'));
+});
+
+it('reserves just one extra two-triangle patch for Tempest map lightning', () => {
+  const tempest = createPlumeGeometry('tempest');
+  const prism = createPlumeGeometry('prism');
+  const uv = tempest.getAttribute('uv');
+  let flashVertices = 0;
+  for (let i = 0; i < uv.count; i++) if (uv.getX(i) >= 4) flashVertices++;
+  expect(flashVertices).toBe(4);
+  expect(tempest.index!.count - prism.index!.count).toBe(6);
+  tempest.dispose(); prism.dispose();
 });

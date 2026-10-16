@@ -109,7 +109,7 @@
   BAD_CLAN_MESSAGE: 'Écris entre 1 et 280 caractères',
   BAD_CLAN_NAME: 'Choisis un nom de clan de 3 à 24 caractères',
   BAD_CLAN_TAG: 'Utilise 2 à 5 lettres ou chiffres pour le tag du clan',
-  BAD_CREDENTIALS: 'Ce nom et ce mot de passe ne correspondent pas',
+  BAD_CREDENTIALS: 'Les informations de connexion ne correspondent pas',
   BAD_FLEET: 'Le nombre de {{hull}} est invalide',
   BAD_REQUEST: "Les détails de l’action n’ont pas pu être lus. Vérifie tes choix.",
   BAD_SESSION: "Ta session n’est plus valide ou a expiré. Reconnecte-toi.",

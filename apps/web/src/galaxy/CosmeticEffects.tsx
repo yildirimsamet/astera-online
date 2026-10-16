@@ -28,16 +28,19 @@ function saturnProfileTexture(): THREE.DataTexture {
 /** How far each second-wave belt undulates out of its plane (world radii). */
 const RING_LIFT: Partial<Record<CosmeticStyle, number>> = { inferno: .1, nebula: .05, prism: .03 };
 
-export function EffectSurface({ style, kind, still = false, banner, colour, secondary }: { style: CosmeticStyle; kind: number; still?: boolean; banner?: THREE.Texture; colour?: string; secondary?: string }) {
+export function EffectSurface({ style, kind, still = false, banner, colour, secondary, nozzleCount = 1 }: { style: CosmeticStyle; kind: number; still?: boolean; banner?: THREE.Texture; colour?: string; secondary?: string; nozzleCount?: number }) {
   const recipe = cosmeticEffectRecipe(style);
   const program = effectProgram(style, kind);
   const material = useRef<THREE.ShaderMaterial>(null);
-  const uniforms = useMemo(() => ({ uTime: { value: 2.7 }, uKind: { value: kind }, uStyle: { value: recipe.motion },
+  const uniforms = useMemo(() => ({ uTime: { value: 2.7 }, uPixelHeight: { value: 1 }, uNozzleCount: { value: nozzleCount }, uKind: { value: kind }, uStyle: { value: recipe.motion },
     uBanner: { value: banner ?? null }, uHasBanner: { value: banner ? 1 : 0 }, uColour: { value: new THREE.Color(colour ?? recipe.colour) }, uSecondary: { value: new THREE.Color(secondary ?? recipe.secondary) },
     uSheen: { value: recipe.sheen ? 1 : 0 }, uProfile: { value: style === 'saturn' && kind < .5 ? saturnProfileTexture() : null },
-    uLift: { value: kind < .5 ? RING_LIFT[style] ?? 0 : 0 } }), [style, kind, banner, colour, secondary]);
-  useFrame(({ clock }) => {
-    if (!still && material.current) material.current.uniforms.uTime!.value = clock.elapsedTime;
+    uLift: { value: kind < .5 ? RING_LIFT[style] ?? 0 : 0 } }), [style, kind, banner, colour, secondary, nozzleCount]);
+  useFrame(({ clock, size }) => {
+    if (!material.current) return;
+    if (!still) material.current.uniforms.uTime!.value = clock.elapsedTime;
+    // CSS pixels keep the emission budget consistent across desktop and high-DPR phones.
+    material.current.uniforms.uPixelHeight!.value = size.height;
   });
   // Saturn's ice is lit material, not light: it blends over (and partly hides) the world behind.
   const solid = kind > 1.5 || (kind < .5 && style === 'saturn');
@@ -209,7 +212,7 @@ export function FormationCosmeticEngines({ id, markers, slots, scale, aimDistanc
   if (item?.category !== 'ENGINE' || !item.style || count === 0) return null;
   // The opaque hull writes depth at order 999; flame must draw after it to respect near/far visibility.
   return <instancedMesh name="formation-cosmetic-exhaust" ref={mesh} args={[geometry, undefined, count]} frustumCulled={false} renderOrder={1000}>
-    <EffectSurface style={item.style} kind={1} />
+    <EffectSurface style={item.style} kind={1} nozzleCount={count} />
   </instancedMesh>;
 }
 

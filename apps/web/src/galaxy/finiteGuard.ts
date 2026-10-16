@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import { BlendFunction, Effect } from 'postprocessing';
 
 /**
  * THE BLOOM'S ONE DOOR, GUARDED. Owner report, 2026-10-06: black squares and rectangles
@@ -48,3 +49,18 @@ export function guardBloomInput(effect: { readonly luminanceMaterial: THREE.Shad
 export const guardBloomRef = (effect: { readonly luminanceMaterial: THREE.ShaderMaterial } | null): void => {
   if (effect) guardBloomInput(effect);
 };
+
+/**
+ * Bloom reads a guarded copy, but the final pass also reads the original scene.
+ * Sanitize that sample before blending effects, in their existing fullscreen pass.
+ * SET is deliberate: mixing NaN with zero at opacity 1 still leaves NaN.
+ */
+export class FiniteSceneEffect extends Effect {
+  constructor() {
+    super('FiniteScene', `
+      void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+        outputColor=all(lessThan(abs(inputColor),vec4(6.0e4)))?inputColor:vec4(0.0);
+      }
+    `, { blendFunction: BlendFunction.SET });
+  }
+}

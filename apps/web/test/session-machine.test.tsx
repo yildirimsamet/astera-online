@@ -106,6 +106,76 @@ describe('the session machine', () => {
     window.sessionStorage.clear();
   });
 
+  it.each([false, true])('keeps the security transition when an older cold restore finishes with %s', async restored => {
+    const { wrapper, api, queries } = harness(placed);
+    let finish: ((value: boolean) => void) | undefined;
+    const pending = new Promise<boolean>(resolve => { finish = resolve; });
+    vi.spyOn(api, 'restore').mockReturnValueOnce(pending);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    queries.setQueryData(keys.planet, planetView());
+    act(() => { api.endSession('email'); });
+    await act(async () => { finish?.(restored); await pending; });
+    expect(result.current.session).toEqual({ phase: 'landing', open: 'login', securityNotice: 'email' });
+    expect(queries.getQueryData(keys.planet)).toBeUndefined();
+    expect(window.sessionStorage.getItem('astera:ready-session')).toBeNull();
+  });
+
+  it.each(['login', 'register', 'claim'] as const)('keeps a new %s when an older cold restore finishes', async mode => {
+    const next = { ...SESSION, accountId: 'next-account', accessToken: 'next-token' };
+    const claimed = { ...next, placement: { shard: 'EU-1', shardName: 'Vantage', planetId: 'p1', planetName: 'Kestrel-12' }, applied: [], planet: planetView() };
+    const { wrapper, api } = harness({ '/api/auth/login': next, '/api/auth/register': next, '/api/auth/me': { ...next, placement: null }, '/api/onboarding/claim': claimed });
+    let finish: ((value: boolean) => void) | undefined;
+    const pending = new Promise<boolean>(resolve => { finish = resolve; });
+    vi.spyOn(api, 'restore').mockReturnValueOnce(pending);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await act(async () => {
+      if (mode === 'claim') await result.current.claim('next', 'replacement-password', []);
+      else await result.current.authenticate(mode, 'next', 'replacement-password');
+    });
+    await act(async () => { finish?.(false); await pending; });
+    expect(result.current.session).toMatchObject({ phase: mode === 'claim' ? 'ready' : 'servers', me: { accountId: 'next-account' } });
+  });
+
+  it('does not return to a signed-in server list when an old join fails after revocation', async () => {
+    const { wrapper, api } = harness(signedInOnly);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('servers'); });
+    let reject: ((reason: unknown) => void) | undefined;
+    vi.spyOn(api, 'joinServer').mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+    let joining: Promise<void> | undefined;
+    act(() => { joining = result.current.chooseServer('EU-1'); });
+    act(() => { api.endSession('expired'); });
+    await act(async () => { reject?.(new ApiError('UNAUTHENTICATED', 'Session ended', 401)); await joining; });
+    expect(result.current.session).toEqual({ phase: 'landing', open: 'login', securityNotice: 'expired' });
+  });
+
+  it('keeps the sign-in door when a cold restore finishes after explicit sign-out', async () => {
+    const { wrapper, api } = harness(placed);
+    let finish: ((value: boolean) => void) | undefined;
+    const pending = new Promise<boolean>(resolve => { finish = resolve; });
+    vi.spyOn(api, 'restore').mockReturnValueOnce(pending);
+    vi.spyOn(api, 'logout').mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await act(async () => { await result.current.signOut(); });
+    await act(async () => { finish?.(false); await pending; });
+    expect(result.current.session).toEqual({ phase: 'landing', open: 'login' });
+  });
+
+  it('keeps the security login screen when an old rollover read fails', async () => {
+    const { wrapper, api } = harness(placed);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+    let reject: ((reason: unknown) => void) | undefined;
+    const read = vi.spyOn(api, 'me').mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+    act(() => { result.current.rollover(); });
+    act(() => { api.endSession('email'); });
+    await act(async () => {
+      reject?.(new ApiError('SESSION_CHANGED', 'Session changed', 409));
+      await Promise.allSettled([read.mock.results[0]?.value]);
+    });
+    expect(result.current.session).toEqual({ phase: 'landing', open: 'login', securityNotice: 'email' });
+  });
+
   it('resumes a placed galaxy without a loading phase, then confirms the cookie', async () => {
     window.sessionStorage.setItem('astera:ready-session', JSON.stringify(placed['/api/auth/me']));
     const { wrapper, calls } = harness(placed);
@@ -117,11 +187,13 @@ describe('the session machine', () => {
 
   it('removes a stale resumed galaxy if the cookie has expired', async () => {
     window.sessionStorage.setItem('astera:ready-session', JSON.stringify(placed['/api/auth/me']));
-    const { wrapper } = harness({});
+    const { wrapper, queries } = harness({});
+    queries.setQueryData(keys.planet, planetView());
     const { result } = renderHook(() => useSession(), { wrapper });
     expect(result.current.session.phase).toBe('ready');
     await waitFor(() => { expect(result.current.session.phase).toBe('landing'); });
     expect(window.sessionStorage.getItem('astera:ready-session')).toBeNull();
+    expect(queries.getQueryData(keys.planet)).toBeUndefined();
   });
 
   it.each(['/api/auth/refresh', '/api/auth/me'] as const)('keeps the resumed galaxy when %s is rate limited', async (route) => {
@@ -188,6 +260,7 @@ describe('the session machine', () => {
     await waitFor(() => {
       expect(result.current.session.phase).toBe('landing');
     });
+    expect(result.current.session).toEqual({ phase: 'landing' });
   });
 
   it('sends a signed-in commander with no planet to the server list', async () => {

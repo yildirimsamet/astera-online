@@ -1196,8 +1196,11 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   });
 
   it('refuses a caller with no planet', async () => {
-    const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
-    const stranger = { authorization: `Bearer ${await tokens.issueAccess(crypto.randomUUID())}` };
+    // A missing account is now an invalid session. Exercise a real unplaced account.
+    const registered = await app.inject({ method: 'POST', url: '/api/auth/register',
+      payload: { username: 'UnplacedCommander', password: 'correct-horse-battery' } });
+    expect(registered.statusCode).toBe(200);
+    const stranger = { authorization: `Bearer ${registered.json<{ accessToken: string }>().accessToken}` };
     const res = await app.inject({ method: 'GET', url: '/api/galaxy/traffic', headers: stranger });
     expect(res.statusCode).toBe(404);
   });

@@ -604,3 +604,191 @@ it('rejects a delayed me response after a newer reconciliation completed', async
   finishOld!(new Response(JSON.stringify(me), { headers: { 'x-placement': 'commander:1' } }));
   await expect(old).rejects.toMatchObject({ code: 'PLACEMENT_CHANGED' });
 });
+
+
+describe('account security session boundaries', () => {
+  it.each(['login', 'register', 'claim'] as const)('cannot adopt an %s response when session end runs between parsing and adoption', async mode => {
+    const response = new Response();
+    const fetcher: typeof fetch = () => Promise.resolve(response);
+    const api = new Api({ fetch: fetcher });
+    vi.spyOn(response, 'json').mockImplementation(() => {
+      // End after send() checks the response, before its caller resumes the await.
+      queueMicrotask(() => { queueMicrotask(() => { api.endSession('email'); }); });
+      return Promise.resolve({ ...SESSION, placement: { shard: 'EU-1', shardName: 'Vantage', planetId: 'p1', planetName: 'Kestrel-12' }, applied: [], planet: PLANET });
+    });
+    const action = mode === 'claim' ? api.claim('next', 'replacement-password', []) : api[mode]('next', 'replacement-password');
+    await expect(action).rejects.toMatchObject({ code: 'SESSION_CHANGED' });
+    expect(api.accessToken).toBeNull();
+  });
+  it.each(['login', 'register', 'claim'] as const)('cannot replace an explicit %s with an older refresh response', async mode => {
+    let deliver: ((response: Response) => void) | undefined;
+    const replacement = { ...SESSION, accountId: 'new-account', accessToken: 'new-account-token',
+      placement: { shard: 'EU-1', shardName: 'Vantage', planetId: 'p1', planetName: 'Kestrel-12' }, applied: [], planet: PLANET };
+    const fetcher = vi.fn<typeof fetch>()
+      .mockImplementationOnce(() => new Promise(resolve => { deliver = resolve; }))
+      .mockImplementation(() => json(replacement));
+    const api = new Api({ fetch: fetcher }); const old = api.restore();
+    if (mode === 'claim') await api.claim('other', 'replacement-password', []);
+    else await api[mode]('other', 'replacement-password');
+    if (!deliver) throw new Error('Refresh did not start');
+    deliver(await json(SESSION));
+    expect(await old).toBe(false); expect(api.accessToken).toBe('new-account-token');
+  });
+  it('cannot restore a session after its token was explicitly forgotten', async () => {
+    let deliver: ((response: Response) => void) | undefined;
+    const fetcher: typeof fetch = () => new Promise(resolve => { deliver = resolve; });
+    const api = new Api({ fetch: fetcher }); const old = api.restore(); api.forget();
+    if (!deliver) throw new Error('Refresh did not start');
+    deliver(await json(SESSION));
+    expect(await old).toBe(false); expect(api.accessToken).toBeNull();
+  });
+  it('never replays a security mutation as another account when a different tab replaced the refresh cookie', async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockImplementationOnce(() => json(SESSION))
+      .mockImplementationOnce(() => json({ error: 'UNAUTHENTICATED', message: 'Sign in first' }, 401))
+      .mockImplementationOnce(() => json({ ...SESSION, accountId: 'another-account', username: 'other', displayName: 'Other', accessToken: 'other-token' }))
+      .mockImplementation(() => json({ challengeId: '11111111-1111-4111-8111-111111111111', purpose: 'bind', expiresAt: new Date(Date.now() + 600000).toISOString(), resendAvailableAt: new Date(Date.now() + 60000).toISOString() }));
+    const api = new Api({ fetch: fetcher }); const ended = vi.fn(); api.onSessionEnded(ended);
+    await api.login('vantage', 'same-password');
+    await expect(api.securityRequest('pilot@example.com', 'same-password', 'en')).rejects.toMatchObject({ code: 'SESSION_CHANGED', status: 409 });
+    expect(api.accessToken).toBeNull(); expect(ended).toHaveBeenCalledWith('expired');
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(['/api/auth/login', '/api/auth/email/request', '/api/auth/refresh']);
+  });
+  it('does not announce session expiry to a visitor who never had a session', async () => {
+    const fetcher: typeof fetch = () => json({ error: 'NO_SESSION', message: 'No session cookie' }, 401);
+    const api = new Api({ fetch: fetcher }); const ended = vi.fn(); api.onSessionEnded(ended);
+    expect(await api.restore()).toBe(false);
+    expect(ended).not.toHaveBeenCalled();
+  });
+  it('does not replay an old mutation when the session ends as a shared refresh resolves', async () => {
+    let finishRefresh: ((response: Response) => void) | undefined;
+    const fetcher = vi.fn<typeof fetch>()
+      .mockImplementationOnce(() => json(SESSION))
+      .mockImplementationOnce(() => new Promise(resolve => { finishRefresh = resolve; }))
+      .mockImplementationOnce(() => json({ error: 'UNAUTHENTICATED', message: 'Sign in first' }, 401))
+      .mockImplementation(() => json({ error: 'UNAUTHENTICATED', message: 'Sign in first' }, 401));
+    const api = new Api({ fetch: fetcher });
+    await api.login('vantage', 'same-password');
+    const refresh = api.restore();
+    const ended = refresh.then(() => { api.endSession('email'); });
+    const mutation = api.securityRequest('pilot@example.com', 'same-password', 'en');
+    // Let the mutation join the pending refresh before releasing its response.
+    await new Promise<void>(resolve => { queueMicrotask(resolve); });
+    if (!finishRefresh) throw new Error('Refresh did not start');
+    finishRefresh(await json(SESSION));
+    await expect(mutation).rejects.toMatchObject({ code: 'SESSION_CHANGED' });
+    await ended;
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual(['/api/auth/login', '/api/auth/refresh', '/api/auth/email/request']);
+  });
+  it('does not refresh a delayed old request after email verification ended its session', async () => {
+    let deliver: ((response: Response) => void) | undefined;
+    const fetcher = vi.fn<typeof fetch>()
+      .mockImplementationOnce(() => new Promise(resolve => { deliver = resolve; }))
+      .mockImplementation(() => json({ error: 'BAD_SESSION', message: 'Session ended' }, 401));
+    const api = new Api({ fetch: fetcher }); const ended = vi.fn(); api.onSessionEnded(ended);
+    const request = api.planet(); api.endSession('email');
+    if (!deliver) throw new Error('Request did not start');
+    deliver(new Response(JSON.stringify({ error: 'UNAUTHENTICATED', message: 'Sign in first' }), { status: 401 }));
+    await expect(request).rejects.toMatchObject({ code: 'SESSION_CHANGED' });
+    expect(fetcher).toHaveBeenCalledOnce(); expect(ended.mock.calls).toEqual([['email']]);
+  });
+  it('discards an old successful account response after the session ended', async () => {
+    let deliver: ((response: Response) => void) | undefined;
+    const fetcher: typeof fetch = () => new Promise(resolve => { deliver = resolve; });
+    const api = new Api({ fetch: fetcher });
+    const request = api.me(); api.endSession('email');
+    if (!deliver) throw new Error('Request did not start');
+    deliver(new Response(JSON.stringify({ accountId: 'a1', username: 'vantage', displayName: 'Vantage', country: 'TR', placement: null }), { headers: { 'x-placement': 'commander:1' } }));
+    await expect(request).rejects.toMatchObject({ code: 'SESSION_CHANGED' });
+  });
+  it('does not let an old stream reconnect replace the email transition notice', async () => {
+    let deliver: ((response: Response) => void) | undefined;
+    const fetcher = vi.fn<typeof fetch>()
+      .mockImplementationOnce(() => new Promise(resolve => { deliver = resolve; }))
+      .mockImplementation(() => json({ error: 'BAD_SESSION', message: 'Session ended' }, 401));
+    const api = new Api({ fetch: fetcher }); const ended = vi.fn(); api.onSessionEnded(ended);
+    const stream = api.stream(vi.fn(), new AbortController().signal); api.endSession('email');
+    if (!deliver) throw new Error('Stream did not start');
+    deliver(new Response(null, { status: 401 }));
+    await expect(stream).rejects.toMatchObject({ code: 'SESSION_CHANGED' });
+    expect(fetcher).toHaveBeenCalledOnce(); expect(ended.mock.calls).toEqual([['email']]);
+  });
+  it('discards a buffered stream frame that finishes reading after session end', async () => {
+    let writer: ReadableStreamDefaultController<Uint8Array> | undefined;
+    let opened: (() => void) | undefined;
+    const connected = new Promise<void>(resolve => { opened = resolve; });
+    const body = new ReadableStream<Uint8Array>({ start(controller) { writer = controller; } });
+    const fetcher: typeof fetch = () => Promise.resolve(new Response(body));
+    const api = new Api({ fetch: fetcher }); const onEvent = vi.fn();
+    const stream = api.stream(onEvent, new AbortController().signal, () => { opened?.(); });
+    await connected; api.endSession('email');
+    if (!writer) throw new Error('Stream did not open');
+    writer.enqueue(new TextEncoder().encode('event: raided\ndata: {"kind":"raided"}\n\n')); writer.close();
+    await stream;
+    expect(onEvent).not.toHaveBeenCalled();
+  });
+  it('cannot resurrect an old session when an earlier refresh finishes after email verification', async () => {
+    let deliver: ((response: Response) => void) | undefined;
+    const fetcher: typeof fetch = () => new Promise(resolve => { deliver = resolve; });
+    const api = new Api({ fetch: fetcher }); const ended = vi.fn(); api.onSessionEnded(ended);
+    const restore = api.restore(); api.endSession('email');
+    if (!deliver) throw new Error('Refresh did not start');
+    deliver(new Response(JSON.stringify(SESSION), { headers: { 'content-type': 'application/json' } }));
+    expect(await restore).toBe(false); expect(api.accessToken).toBeNull();
+    expect(ended).toHaveBeenCalledOnce(); expect(ended).toHaveBeenCalledWith('email');
+  });
+  it('rejects an aborted stream even if its pending read already buffered a frame', async () => {
+    let writer: ReadableStreamDefaultController<Uint8Array> | undefined;
+    let opened: (() => void) | undefined;
+    const connected = new Promise<void>(resolve => { opened = resolve; });
+    const body = new ReadableStream<Uint8Array>({ start(controller) { writer = controller; } });
+    const api = new Api({ fetch: () => Promise.resolve(new Response(body)) });
+    const controller = new AbortController(); const onEvent = vi.fn();
+    const stream = api.stream(onEvent, controller.signal, () => { opened?.(); });
+    await connected;
+    if (!writer) throw new Error('Stream did not open');
+    writer.enqueue(new TextEncoder().encode('event: raided\ndata: {}\n\n')); writer.close();
+    controller.abort();
+    await expect(stream).rejects.toMatchObject({ name: 'AbortError' });
+    expect(onEvent).not.toHaveBeenCalled();
+  });
+  it('does not replay a wrong current password as an expired session', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(() => json({ error: 'BAD_CREDENTIALS', message: 'Credentials do not match' }, 401));
+    const api = new Api({ fetch: fetcher });
+    await expect(api.securityRequest('pilot@example.com', 'wrong-password', 'en')).rejects.toMatchObject({ code: 'BAD_CREDENTIALS' });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+  it('refreshes an expired access token before retrying email verification once', async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockImplementationOnce(() => json({ error: 'UNAUTHENTICATED', message: 'Sign in first' }, 401))
+      .mockImplementationOnce(() => json(SESSION))
+      .mockImplementationOnce(() => json({ ok: true, reauthenticate: true }));
+    const api = new Api({ fetch: fetcher });
+    await expect(api.securityVerify('11111111-1111-4111-8111-111111111111', '012345', 'bind')).resolves.toMatchObject({ reauthenticate: true });
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      '/api/auth/email/verify', '/api/auth/refresh', '/api/auth/email/verify',
+    ]);
+  });
+  it('refreshes before checking the current password and never replays its rejection', async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockImplementationOnce(() => json({ error: 'UNAUTHENTICATED', message: 'Sign in first' }, 401))
+      .mockImplementationOnce(() => json(SESSION))
+      .mockImplementationOnce(() => json({ error: 'BAD_CREDENTIALS', message: 'Credentials do not match' }, 401));
+    const api = new Api({ fetch: fetcher });
+    await expect(api.securityRequest('pilot@example.com', 'wrong-password', 'en')).rejects.toMatchObject({ code: 'BAD_CREDENTIALS' });
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      '/api/auth/email/request', '/api/auth/refresh', '/api/auth/email/request',
+    ]);
+  });
+});
+
+
+it('keeps the email transition notice when a stale refresh is rejected after verification', async () => {
+  let deliver: ((response: Response) => void) | undefined;
+  const fetcher: typeof fetch = () => new Promise(resolve => { deliver = resolve; });
+  const api = new Api({ fetch: fetcher }); const ended = vi.fn(); api.onSessionEnded(ended);
+  const restore = api.restore(); api.endSession('email');
+  if (!deliver) throw new Error('Refresh did not start');
+  deliver(new Response(JSON.stringify({ error: 'BAD_SESSION', message: 'Expired session' }), { status: 401, headers: { 'content-type': 'application/json' } }));
+  expect(await restore).toBe(false); expect(ended.mock.calls).toEqual([['email']]);
+});

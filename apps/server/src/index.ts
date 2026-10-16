@@ -10,8 +10,8 @@ import { systemClock } from './clock.js';
 
 loadDotEnv();
 const env = loadEnv();
-const log = pino({ level: env.LOG_LEVEL });
-const { app, db, worker, bus, rateLimitBackend, close } = buildApp({ env, logger: log });
+const log = pino({ level: env.LOG_LEVEL, redact: ['req.headers.authorization', 'req.headers.cookie', 'req.body', 'res.headers["set-cookie"]'] });
+const { app, db, worker, bus, rateLimitBackend, mail, close } = buildApp({ env, logger: log });
 
 /**
  * One image, two roles. The api and worker process groups run the same build;
@@ -54,6 +54,7 @@ async function main(): Promise<void> {
     if (neutralCensusesScheduled > 0) {
       log.info({ neutralCensusesScheduled }, 'scheduled missing neutral censuses');
     }
+    mail.start();
     worker.start();
     log.info('event worker started');
   }

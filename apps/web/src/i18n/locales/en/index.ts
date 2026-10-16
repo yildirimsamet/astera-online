@@ -1,3 +1,4 @@
+import { accountSecurity } from './accountSecurity.js';
 import { honorBenefits } from './honorBenefits.js';
 import { vacation } from './vacation.js';
 import { silentSpace } from './silentSpace.js';
@@ -124,6 +125,7 @@ export const en = {
   repairStation,
   baseSwitch,
   researchMap,
+  accountSecurity,
 } as const;
 
 /**

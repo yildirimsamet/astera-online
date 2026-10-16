@@ -272,6 +272,8 @@ export function registerHealthRoutes(
       worker: app.worker.status(),
       projections: app.projections.status(),
       rateLimit: app.rateLimitBackend.status(),
+      // Internal metrics only: public counters could expose reset account existence.
+      mail: await app.mail.status().catch(() => ({ available: false as const })),
       database: {
         configuredProcessPoolMax: app.dbPoolMax,
         configuredPlacementPoolMax: app.placementPoolMax,

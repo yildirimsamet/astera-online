@@ -278,13 +278,16 @@ export type NotificationKind = (typeof notificationKind.enumValues)[number];
  * the same commander and cannot both be registered. `displayName` keeps whatever
  * casing the player typed, because that is the name other people read.
  *
- * `email` stays nullable and unused. Recovery is a later feature; a column that is
- * already there costs nothing, and dropping it would take the unique index with it.
+ * `email` holds only a verified sign-in/recovery address. Pending targets live in
+ * security_operations; auth_version revokes all old credentials atomically.
  */
 export const accounts = pgTable('accounts', {
   cosmeticEquipment: jsonb('cosmetic_equipment').$type<CosmeticEquipment>().notNull().default({}),
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email'),
+  legacyEmail: text('legacy_email'),
+  emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+  authVersion: integer('auth_version').notNull().default(0),
   username: text('username').notNull(),
   /** `scrypt$N$r$p$salt$hash`, all base64url. Never a bare digest. See auth/password.ts. */
   passwordHash: text('password_hash').notNull(),
@@ -296,6 +299,9 @@ export const accounts = pgTable('accounts', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('accounts_email_idx').on(t.email),
+  check('accounts_verified_email_check', sql`(${t.email} IS NULL) = (${t.emailVerifiedAt} IS NULL)`),
+  check('accounts_email_canonical_check', sql`${t.email} = lower(trim(${t.email}))`),
+  check('accounts_auth_version_check', sql`${t.authVersion} >= 0`),
   uniqueIndex('accounts_username_idx').on(t.username),
   check('accounts_country_code_check', sql`${t.countryCode} ~ '^[A-Z]{2}$'`),
   check(
@@ -4716,3 +4722,60 @@ export const honorCommitments = pgTable('honor_commitments', {
   primaryKey({ columns: [t.seasonId, t.source, t.sourceId] }),
   check('honor_commitments_source_check', sql`${t.source} IN ('WORLD', 'CLAN_WAR', 'MONUMENT', 'STRATEGIC_IMPACT', 'STRATEGIC_INTERCEPTION')`),
 ]);
+
+/** Short-lived account security proofs. A pending target never reserves an address. */
+export const securityOperations = pgTable('security_operations', {
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  version: integer('version').notNull(),
+  purpose: text('purpose').$type<'bind' | 'change_old' | 'change_new' | 'reset'>().notNull(),
+  target: text('target').notNull(),
+  codeHash: text('code_hash').notNull(),
+  locale: text('locale').notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  deadline: timestamp('deadline', { withTimezone: true }).notNull(),
+  resendAt: timestamp('resend_at', { withTimezone: true }).notNull(),
+  consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, t => [index('security_operations_account_idx').on(t.accountId), index('security_operations_expiry_idx').on(t.expiresAt)]);
+
+/** Atomic shared abuse counters; keys contain keyed digests rather than email addresses. */
+export const securityCounters = pgTable('security_counters', {
+  key: text('key').primaryKey(),
+  count: integer('count').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+});
+export const mailOutbox = pgTable('mail_outbox', {
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  version: integer('version').notNull(),
+  operationId: uuid('operation_id').references(() => securityOperations.id, { onDelete: 'set null' }),
+  codeHash: text('code_hash'),
+  recipientKey: text('recipient_key').notNull(),
+  payload: text('payload'),
+  status: text('status').$type<'queued' | 'sending' | 'sent' | 'delivered' | 'failed' | 'cancelled'>().notNull().default('queued'),
+  providerId: text('provider_id'),
+  attempts: integer('attempts').notNull().default(0),
+  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, t => [index('mail_outbox_due_idx').on(t.status, t.nextAttemptAt), uniqueIndex('mail_outbox_provider_idx').on(t.providerId)]);
+export const mailSuppressions = pgTable('mail_suppressions', {
+  recipientKey: text('recipient_key').primaryKey(),
+  reason: text('reason').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+});
+export const mailWebhookEvents = pgTable('mail_webhook_events', {
+  id: text('id').primaryKey(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+});
+
+/** Content-free security audit. Account deletion removes the link, not the event. */
+export const securityAudit = pgTable('security_audit', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  kind: text('kind').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, t => [index('security_audit_created_idx').on(t.createdAt)]);

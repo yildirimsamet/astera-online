@@ -61,6 +61,8 @@ export const registerBody = z.object({
  * tells them which names are worth guessing. Both paths end at one BAD_CREDENTIALS.
  */
 export const loginBody = z.object({
-  username: z.string().trim().min(1).max(64),
+  identifier: z.string().trim().min(1).max(254).optional(),
+  username: z.string().trim().min(1).max(254).optional(),
   password: z.string().min(1).max(200),
-});
+}).strict().refine(value => Boolean(value.identifier) !== Boolean(value.username))
+  .transform(value => ({ username: value.identifier ?? value.username ?? '', password: value.password }));

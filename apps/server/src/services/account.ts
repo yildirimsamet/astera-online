@@ -3,6 +3,7 @@ import type { Db } from '../db/client.js';
 import { accounts, accountRewards } from '../db/schema.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { normaliseUsername } from '../auth/credentials.js';
+import { normaliseEmail } from '../auth/email.js';
 import { GameError } from './planet.js';
 import { BRAND_RECALL, type CountryCode } from '@astera/rules';
 
@@ -20,6 +21,7 @@ export interface AccountRecord {
   username: string;
   displayName: string;
   country: CountryCode;
+  authVersion: number;
 }
 
 const publicShape = (row: {
@@ -27,11 +29,13 @@ const publicShape = (row: {
   username: string;
   displayName: string;
   countryCode: CountryCode;
+  authVersion: number;
 }): AccountRecord => ({
   id: row.id,
   username: row.username,
   displayName: row.displayName,
   country: row.countryCode,
+  authVersion: row.authVersion,
 });
 
 /**
@@ -94,11 +98,14 @@ export async function authenticate(
   db: Db,
   input: { username: string; password: string },
 ): Promise<AccountRecord> {
-  const username = normaliseUsername(input.username);
-  const [row] = await db.select().from(accounts).where(eq(accounts.username, username));
+  const identifier = input.username.trim();
+  const emailLogin = identifier.includes('@');
+  const [row] = await db.select().from(accounts).where(emailLogin
+    ? eq(accounts.email, normaliseEmail(identifier))
+    : eq(accounts.username, normaliseUsername(identifier)));
 
   const ok = await verifyPassword(input.password, row?.passwordHash ?? (await decoyHash()));
-  if (!row || !ok) {
+  if (!row || !ok || (emailLogin ? !row.emailVerifiedAt : row.emailVerifiedAt !== null)) {
     throw new GameError('BAD_CREDENTIALS', 'That name and password do not match', 401);
   }
   return publicShape(row);

@@ -80,6 +80,15 @@ const schema = z.object({
   POLAR_PRODUCT_SPAIN: z.string().uuid().or(z.literal('')).default(''),
   POLAR_PRODUCT_JAPAN: z.string().uuid().or(z.literal('')).default(''),
   POLAR_PRODUCT_BUNDLE: z.string().uuid().or(z.literal('')).default(''),
+  ACCOUNT_EMAIL_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  PASSWORD_RECOVERY_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  MAIL_DELIVERY_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  RESEND_API_KEY: z.string().default(''),
+  RESEND_WEBHOOK_SECRET: z.string().default(''),
+  MAIL_FROM: z.string().default('Astera Online <security@account.asteraonline.space>'),
+  MAIL_REPLY_TO: z.string().email().default('support@asteraonline.space'),
+  AUTH_CODE_HMAC_SECRET: z.string().default(''),
+  MAIL_OUTBOX_ENCRYPTION_KEY: z.string().default(''),
   ACCESS_TOKEN_MINUTES: z.coerce.number().default(15),
   REFRESH_TOKEN_DAYS: z.coerce.number().default(30),
   /**
@@ -257,6 +266,14 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
   if (parsed.data.SILENT_SPACE_ENABLED && parsed.data.ROLE !== 'api' && parsed.data.DB_POOL_MAX < 2) {
     throw new Error('DB_POOL_MAX must be at least 2 for Silent Space maintenance');
+  }
+  if (parsed.data.ACCOUNT_EMAIL_ENABLED || parsed.data.PASSWORD_RECOVERY_ENABLED || parsed.data.MAIL_DELIVERY_ENABLED) {
+    if (parsed.data.AUTH_CODE_HMAC_SECRET.length < 32 || !/^[a-f0-9]{64}$/i.test(parsed.data.MAIL_OUTBOX_ENCRYPTION_KEY)) {
+      throw new Error('Account email requires a 32-character HMAC secret and a 32-byte hex outbox key');
+    }
+    if (parsed.data.NODE_ENV === 'production' && (!parsed.data.MAIL_DELIVERY_ENABLED || !parsed.data.RESEND_API_KEY || !parsed.data.RESEND_WEBHOOK_SECRET)) {
+      throw new Error('Account email requires delivery credentials and webhook verification in production');
+    }
   }
   return parsed.data;
 }

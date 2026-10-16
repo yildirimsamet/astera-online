@@ -113,7 +113,7 @@ export const errors = {
   BAD_CLAN_MESSAGE: 'Escribe entre uno y 280 caracteres.',
   BAD_CLAN_NAME: 'Elige un nombre de clan entre 3 y 24 caracteres',
   BAD_CLAN_TAG: 'Utilice de dos a cinco letras o dígitos para la etiqueta del clan',
-  BAD_CREDENTIALS: 'Ese nombre y contraseña no coinciden',
+  BAD_CREDENTIALS: 'Los datos de acceso no coinciden',
   BAD_FLEET: 'Recuento de envío incorrecto para {{hull}}',
   BAD_REQUEST: "No se pudieron leer los detalles de la acción. Comprueba tus selecciones.",
   BAD_SESSION: "Tu sesión no es válida o ha caducado. Vuelve a iniciar sesión.",

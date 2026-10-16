@@ -109,7 +109,7 @@ export const errors = {
   BAD_CLAN_MESSAGE: '1 ile 280 karakter arasında yaz',
   BAD_CLAN_NAME: '3 ile 24 karakter arasında bir klan adı seç',
   BAD_CLAN_TAG: 'Klan etiketi için 2–5 harf veya rakam kullan',
-  BAD_CREDENTIALS: 'Bu ad ve parola eşleşmiyor',
+  BAD_CREDENTIALS: 'Giriş bilgileri eşleşmiyor',
   BAD_FLEET: '{{hull}} sayısı geçersiz',
   BAD_REQUEST: "İşlem bilgileri okunamadı. Seçimlerini kontrol et.",
   BAD_SESSION: "Oturumun geçersiz veya süresi dolmuş. Yeniden giriş yap.",

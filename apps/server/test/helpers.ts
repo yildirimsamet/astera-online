@@ -93,7 +93,7 @@ export async function testDb(): Promise<{ db: Db; close: () => Promise<void> }> 
 /** Wipe everything between tests. CASCADE handles the foreign-key order. */
 export async function truncateAll(db: Db): Promise<void> {
   await db.execute(sql`
-    TRUNCATE shopier_webhook_events, shopier_orders, shopier_purchase_codes,
+    TRUNCATE security_audit, mail_webhook_events, mail_suppressions, security_counters, mail_outbox, security_operations, shopier_webhook_events, shopier_orders, shopier_purchase_codes,
              polar_reversals, polar_webhook_events, polar_skin_orders,
              paddle_reversals, paddle_webhook_events, paddle_skin_orders,
              main_vacancies, commander_transfers, silent_space_maintenance, return_applications, return_queue_counters, announcement_reads, announcements, feedback_entries, perf_sessions,

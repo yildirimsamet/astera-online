@@ -65,7 +65,7 @@ The established model pipeline is `assets/source/models/` → `tools/models.mjs`
 
 ## Optional local reference derivatives
 
-`referenceArtManifest.json` records the six hull assignments and measured nozzle positions. `referenceArtPlugin.ts` enables the pack only when the selected rocks, explosion atlas, and all full/LOD ship derivatives exist. Missing HTTP assets fall back independently to the owned Astera hull/rock; their hit targets and gameplay identity remain.
+`referenceArtManifest.json` records the six hull assignments and measured nozzle positions. Normal local development uses Astera's owned models, as production does. An explicit review session (`ASTERA_REFERENCE_ART=true pnpm dev:web`) enables the pack only when the selected rocks, explosion atlas, and all full/LOD ship derivatives exist. Missing HTTP assets fall back independently to the owned Astera hull/rock; their hit targets and gameplay identity remain.
 
 Prepare the ignored local cache and restart Vite if the optional pack was previously disabled:
 

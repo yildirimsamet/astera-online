@@ -8,8 +8,9 @@ const inside = (parent: string, child: string): boolean => {
   return path === '' || (!path.startsWith(`..${sep}`) && path !== '..' && !isAbsolute(path));
 };
 
-/** Prepared local art only. The APK archive, raw exports and credentials have no route. */
+/** Opt-in local art review only. Normal development uses the same owned models as production. */
 export function referenceArtPlugin(repository: string): Plugin | null {
+  if (process.env.ASTERA_REFERENCE_ART !== 'true') return null;
   const candidates = [process.env.ASTERA_REFS, resolve(repository, 'astera-refs'),
     resolve(repository, '../blindspace-komutan-gemisi/astera-refs')];
   const directory = candidates.find((path): path is string => Boolean(path && existsSync(resolve(path, 'dist/v2/manifest.json'))));

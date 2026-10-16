@@ -37,6 +37,17 @@ export function createPlumeGeometry(style: CosmeticStyle = 'aurora'): BufferGeom
       }
     }
   }
+  if (style === 'tempest') {
+    // A camera-facing map crackle, expanded to a bounded CSS-pixel size by the shader.
+    // Shares the nozzle's draw and depth; UV.x >= 4 distinguishes it from both tube shells.
+    const offset = positions.length / 3;
+    for (const [x, y] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) {
+      positions.push(0, 0, -.73);
+      uv.push(4 + x, y);
+      opacity.push(1);
+    }
+    indices.push(offset, offset + 1, offset + 2, offset + 2, offset + 1, offset + 3);
+  }
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
   geometry.setAttribute('uv', new Float32BufferAttribute(uv, 2));

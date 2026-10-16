@@ -3887,3 +3887,20 @@ export const faultRepairSchema = z.object({
   readyAt: z.coerce.date(),
   cost: resources,
 });
+
+/** Private account security state; never embedded in public commander projections. */
+export const securityChallengeSchema = z.object({
+  challengeId: z.string().uuid(), purpose: z.enum(['bind', 'change_old', 'change_new', 'reset']),
+  expiresAt: z.string().datetime(), resendAvailableAt: z.string().datetime(),
+});
+export const accountSecuritySchema = z.object({
+  enabled: z.boolean(), loginMethod: z.enum(['username', 'email']), email: z.string().nullable(),
+  maskedEmail: z.string().nullable(), verifiedAt: z.string().nullable(),
+  pending: securityChallengeSchema.extend({ target: z.string(), deliveryStatus: z.enum(['queued', 'sending', 'sent', 'delivered', 'failed', 'cancelled']) }).nullable(),
+});
+export const securityCompleteSchema = z.object({ ok: z.boolean(), reauthenticate: z.boolean(),
+  challengeId: z.string().optional(), purpose: z.enum(['bind', 'change_old', 'change_new', 'reset']).optional(),
+  expiresAt: z.string().optional(), resendAvailableAt: z.string().optional(),
+});
+export type SecurityChallenge = z.infer<typeof securityChallengeSchema>;
+export type AccountSecurityStatus = z.infer<typeof accountSecuritySchema>;

@@ -1281,7 +1281,7 @@ function FormationPips({
           varying vec3 vColour;
           void main() {
             float edge = max(abs(gl_PointCoord.x - 0.5), abs(gl_PointCoord.y - 0.5)) * 2.0;
-            float alpha = smoothstep(1.0, 0.72, edge);
+            float alpha = 1.0 - smoothstep(0.72, 1.0, edge);
             gl_FragColor = vec4(vColour, alpha);
           }
         `,

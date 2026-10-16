@@ -138,7 +138,7 @@ const WIND_FRAGMENT_SHADER = `
 
   void main() {
     // A sharp head, a long fading tail, soft sides: a streak, not a bar.
-    float taper = smoothstep(0.0, 0.18, vAlong) * pow(1.0 - vAlong, 1.5);
+    float taper = smoothstep(0.0, 0.18, vAlong) * pow(max(0.0, 1.0 - vAlong), 1.5);
     float edge = exp(-vAcross * vAcross * 4.5) * (1.0 - smoothstep(0.7, 1.0, abs(vAcross)));
     float alpha = uOpacity * vLife * taper * edge;
     if (alpha < 0.002) discard;

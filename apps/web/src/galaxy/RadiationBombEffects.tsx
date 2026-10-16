@@ -49,7 +49,8 @@ void main(){
     mass=max(mass,m);
     heat=max(heat,exp(-age*1.55)*m*(.35+rolling*.85));
     // A broad, turbulent pressure front and dense ion cloud; no radial spark streaks.
-    front=max(front,exp(-pow((r-expansion)/.065,2.))*exp(-age*1.8)*life*(.35+rolling*.65));
+    float frontDistance=(r-expansion)/.065;
+    front=max(front,exp(-frontDistance*frontDistance)*exp(-age*1.8)*life*(.35+rolling*.65));
     smoke=max(smoke,m*(.25+.5*wisps)*(1.-exp(-age*3.)));
   }
   float alpha=clamp(lingering+mass*.65+front*.28,0.,.9)*edge;

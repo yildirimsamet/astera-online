@@ -17,6 +17,24 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--render-artifacts')) {
+  const { verifyRenderArtifacts } = await import('./render-artifacts-visual.mjs');
+  await verifyRenderArtifacts(process.argv[2] ?? 'out/render-artifacts');
+  process.exit(0);
+}
+
+if (process.argv.includes('--tempest-zoom')) {
+  const { verifyTempestZoom } = await import('./tempest-zoom-visual.mjs');
+  await verifyTempestZoom(process.argv[2] ?? 'out/tempest-zoom');
+  process.exit(0);
+}
+
+if (process.argv.includes('--account-security')) {
+  const { verifyAccountSecurity } = await import('./account-security-visual.mjs');
+  await verifyAccountSecurity(process.argv[2] ?? 'out/account-security');
+  process.exit(0);
+}
+
 if (process.argv.includes('--shopier-store')) {
   const { verifyShopierStore } = await import('./shopier-store-visual.mjs');
   await verifyShopierStore(process.argv[2] ?? 'out/shopier-store');

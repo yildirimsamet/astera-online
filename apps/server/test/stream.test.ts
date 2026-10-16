@@ -1,5 +1,5 @@
-import { eq } from 'drizzle-orm';
-import { players } from '../src/db/schema.js';
+import { eq, sql } from 'drizzle-orm';
+import { accounts, players } from '../src/db/schema.js';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -58,6 +58,32 @@ describe('the event stream', () => {
 
   afterEach(async () => {
     await close();
+  });
+
+  it('closes an idle revoked stream without waiting for a gameplay event', async () => {
+    app.sseHeartbeatMs = 100;
+    const controller = new AbortController();
+    const response = await fetch(url, { headers: { authorization: `Bearer ${token}` }, signal: controller.signal });
+    const reader = response.body!.getReader();
+    await reader.read();
+    await f.db.update(accounts).set({ authVersion: sql`${accounts.authVersion} + 1` }).where(eq(accounts.id, f.accountIds[0]!));
+    const deadline = setTimeout(() => { controller.abort(); }, 2000);
+    try {
+      let ended = false;
+      while (!ended) ended = (await reader.read()).done;
+      expect(ended).toBe(true);
+    } finally { clearTimeout(deadline); controller.abort(); }
+  });
+
+  it('closes an established stream before delivering another private frame after revocation', async () => {
+    const controller = new AbortController();
+    const response = await fetch(url, { headers: { authorization: `Bearer ${token}` }, signal: controller.signal });
+    const reader = response.body!.getReader();
+    await reader.read();
+    await f.db.update(accounts).set({ authVersion: sql`${accounts.authVersion} + 1` }).where(eq(accounts.id, f.accountIds[0]!));
+    await publish(f.db, f.playerIds[0]!, 'battle_resolved');
+    const deadline = setTimeout(() => { controller.abort(); }, 2000);
+    try { expect((await reader.read()).done).toBe(true); } finally { clearTimeout(deadline); controller.abort(); }
   });
 
   /**

@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { planets, players } from '../db/schema.js';
+import { accounts, planets, players } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import {
   acknowledgeReturn,
@@ -203,6 +203,7 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     // uncommitted move is only a refetch hint the gate then refuses with 409. The row
     // lock this used to take cost every frame an xid and a WAL flush (resource
     // analysis 2026-10-13). Bound the pending queue as well as the socket.
+    const tokenVersion = req.authVersion;
     let pendingBytes = 0;
     let delivery = Promise.resolve();
     const enqueue = (frame: string): void => {
@@ -217,9 +218,15 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       delivery = delivery.then(async () => {
         if (reply.raw.destroyed || reply.raw.writableEnded) return;
         const [current] = await app.db.select({ seasonId: players.seasonId,
-          placementVersion: players.placementVersion }).from(players)
+          placementVersion: players.placementVersion, authVersion: accounts.authVersion }).from(players)
+          .innerJoin(accounts, eq(accounts.id, players.accountId))
           .where(eq(players.id, playerId));
-        if (current?.seasonId !== seasonId || current.placementVersion !== placementVersion) {
+        if (!current || current.authVersion !== tokenVersion) {
+          cleanup('client');
+          reply.raw.end();
+          return;
+        }
+        if (current.seasonId !== seasonId || current.placementVersion !== placementVersion) {
           write('event: placement_changed\ndata: {"kind":"placement_changed"}\n\n');
           cleanup('client');
           reply.raw.end();
@@ -243,10 +250,10 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     const unsubscribeShard = app.bus.subscribeShard(seasonId, send);
     const unsubscribeGlobal = app.bus.subscribeGlobal(send);
 
-    // A comment line that only keeps proxies from idling the socket out. It says
-    // nothing about any galaxy, so it needs no placement check and no database.
+    // The comment keeps proxies alive and checks the account version even when
+    // no events arrive, so a revoked idle socket closes on the next heartbeat.
     const heartbeat = setInterval(() => {
-      write(`: ping\n\n`);
+      enqueue(`: ping\n\n`);
     }, app.sseHeartbeatMs);
 
     const lease = app.streams.open(() => {

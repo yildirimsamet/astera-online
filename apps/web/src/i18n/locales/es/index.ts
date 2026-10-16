@@ -1,3 +1,4 @@
+import { accountSecurity } from './accountSecurity.js';
 import { honorBenefits } from './honorBenefits.js';
 import { vacation } from './vacation.js';
 import { silentSpace } from './silentSpace.js';
@@ -29,6 +30,7 @@ import type { Resources } from '../en/index.js';
 
 /** ES — translated from the English resource tree. */
 export const es: Resources = {
+  accountSecurity,
   honorBenefits,
   brand,
   monument,

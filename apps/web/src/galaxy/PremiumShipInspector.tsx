@@ -15,6 +15,7 @@ import { SCENE_LIGHT } from './planetSurface.js';
 import { useAmbientFrames, HoldRate, FLIGHT_FPS } from './frames.js';
 import { hullVisualScale } from './flightVisual.js';
 import { guardBloomRef } from './finiteGuard.js';
+import { FiniteSceneGuard } from './FiniteSceneGuard.js';
 import { QUALITY_PRESETS, useRenderQuality } from '../lib/quality.js';
 import type { Marker } from './Squadrons.js';
 
@@ -89,6 +90,7 @@ export function PremiumShipInspector({ craft, angle, engines, engineId, reset, o
       <InspectionModel craft={craft} engines={engines} engineId={engineId} onReady={onReady} />
     </Suspense>
     <EffectComposer enableNormalPass={false} multisampling={preset.multisampling}>
+      <FiniteSceneGuard />
       <Bloom ref={guardBloomRef} intensity={0.62} luminanceThreshold={0.78} luminanceSmoothing={0.22} mipmapBlur radius={0.72} levels={6} />
       <Vignette eskil={false} offset={0.24} darkness={0.62} />
     </EffectComposer>

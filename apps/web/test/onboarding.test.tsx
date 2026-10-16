@@ -98,7 +98,7 @@ describe('the landing screen', () => {
 
     expect(screen.getByText(/your planet is ready/i)).toBeInTheDocument();
     // No form until it is asked for, and no wall of copy in front of the scene.
-    expect(screen.queryByLabelText(/commander name/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/username or email/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/one planet in a galaxy of/i)).not.toBeInTheDocument();
   });
 
@@ -194,9 +194,20 @@ describe('the landing screen', () => {
     const dialog = screen.getByRole('dialog', { name: /sign in/i });
     expect(dialog).toBeInTheDocument();
     expect(within(dialog).getByRole('heading')).toHaveClass('text-v2-ink');
-    expect(within(dialog).getByLabelText(/commander name/i)).toHaveAttribute('aria-invalid', 'false');
+    expect(within(dialog).getByLabelText(/username or email/i)).toHaveAttribute('aria-invalid', 'false');
     await userEvent.setup().click(within(dialog).getByRole('button', { name: /^close$/i }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('closes only recovery when Escape is pressed over the sign-in dialog', async () => {
+    const user = userEvent.setup(); const { wrapper: Wrapper } = harness();
+    render(<Wrapper><LandingScreen onAuthenticate={vi.fn()} onBegin={vi.fn(() => Promise.resolve())} open="login" loadAsset={instantly} /></Wrapper>);
+    await openDoor();
+    await user.click(screen.getByRole('button', { name: 'Forgot password?' }));
+    expect(screen.getByRole('dialog', { name: 'Reset password' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Reset password' })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /sign in/i })).toBeInTheDocument();
   });
 
   it('submits what was typed', async () => {
@@ -211,7 +222,7 @@ describe('the landing screen', () => {
     await openDoor();
 
     await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
-    await user.type(screen.getByLabelText(/commander name/i), 'Vantage');
+    await user.type(screen.getByLabelText(/username or email/i), 'Vantage');
     await user.type(screen.getByLabelText(/password/i), 'a-real-password');
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^sign in$/i }));
 
@@ -231,7 +242,7 @@ describe('the landing screen', () => {
 
     await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
     const form = screen.getByRole('dialog');
-    await user.type(within(form).getByLabelText(/commander name/i), '  Vantage  ');
+    await user.type(within(form).getByLabelText(/username or email/i), '  Vantage  ');
     await user.type(within(form).getByLabelText(/password/i), 'a-real-password');
     await user.click(within(form).getByRole('button', { name: /^sign in$/i }));
 
@@ -239,7 +250,7 @@ describe('the landing screen', () => {
   });
 
   it.each([
-    ['an empty name', ' ', 'a-real-password', /commander name/i],
+    ['an empty name', ' ', 'a-real-password', /username or email/i],
     ['an empty password', 'Vantage', '', /password/i],
   ])('refuses %s without a round trip', async (_label, username, password, complaint) => {
     const user = userEvent.setup();
@@ -253,13 +264,13 @@ describe('the landing screen', () => {
     await openDoor();
 
     await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
-    await user.type(screen.getByLabelText(/commander name/i), username);
+    await user.type(screen.getByLabelText(/username or email/i), username);
     if (password) await user.type(screen.getByLabelText(/password/i), password);
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^sign in$/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(complaint);
     expect(onAuthenticate).not.toHaveBeenCalled();
-    expect(screen.getByLabelText(/commander name/i)).toHaveAttribute('aria-invalid', _label === 'an empty name' ? 'true' : 'false');
+    expect(screen.getByLabelText(/username or email/i)).toHaveAttribute('aria-invalid', _label === 'an empty name' ? 'true' : 'false');
     expect(screen.getByLabelText(/password/i)).toHaveAttribute('aria-invalid', _label === 'an empty password' ? 'true' : 'false');
   });
 
@@ -285,13 +296,13 @@ describe('the landing screen', () => {
 
     await user.click(screen.getByRole('button', { name: /^i already have a commander$/i }));
     const form = screen.getByRole('dialog');
-    await user.type(within(form).getByLabelText(/commander name/i), 'Vantage');
+    await user.type(within(form).getByLabelText(/username or email/i), 'Vantage');
     await user.type(within(form).getByLabelText(/password/i), 'wrong-password');
     await user.click(within(form).getByRole('button', { name: /^sign in$/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(i18n.t(messageKey));
     expect(screen.getByRole('alert')).not.toHaveTextContent('Private authentication diagnostic');
-    expect(within(form).getByLabelText(/commander name/i)).toHaveValue('Vantage');
+    expect(within(form).getByLabelText(/username or email/i)).toHaveValue('Vantage');
     // And the button is pressable again, not stuck on "Making contact".
     expect(within(form).getByRole('button', { name: /^sign in$/i })).toBeEnabled();
   });

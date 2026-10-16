@@ -1,3 +1,4 @@
+import { InvalidSessionError } from '../auth/tokens.js';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { countryCodeSchema, loginBody, registerBody } from '../auth/credentials.js';
@@ -34,7 +35,7 @@ const setRefresh = (reply: FastifyReply, token: string, days: number): void => {
 export async function openSession(
   app: FastifyInstance,
   reply: FastifyReply,
-  account: { id: string; username: string; displayName: string; country: CountryCode },
+  account: { id: string; username: string; displayName: string; country: CountryCode; authVersion?: number },
 ): Promise<{
   accountId: string;
   username: string;
@@ -43,8 +44,8 @@ export async function openSession(
   accessToken: string;
 }> {
   const [access, refresh] = await Promise.all([
-    app.tokens.issueAccess(account.id),
-    app.tokens.issueRefresh(account.id),
+    app.tokens.issueAccess(account.id, account.authVersion ?? 0),
+    app.tokens.issueRefresh(account.id, account.authVersion ?? 0),
   ]);
   setRefresh(reply, refresh, app.tokens.refreshDays);
   return {
@@ -65,8 +66,8 @@ export async function openSession(
  * and a commander who opens the game on their laptop and finds a stranger's empire
  * has not been given a fast start; they have been given somebody else's game.
  *
- * Short access token in memory, long refresh token in an httpOnly cookie. Both
- * stateless, no session store.
+ * Short access token in memory, long refresh token in an httpOnly cookie.
+ * Account versions fence credential changes without a per-device session store.
  */
 export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled = true): void {
   /**
@@ -83,14 +84,8 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
   });
 
   /**
-   * THE BRUTE-FORCE SURFACE, AND THE EXPENSIVE ONE.
-   *
-   * There is no lockout anywhere else in the system and these tokens are
-   * stateless, so this ceiling is the whole of the defence against someone
-   * working through a password list. It is also the only route where a refusal
-   * costs the server as much as an acceptance — see `authenticate`, which hashes
-   * a decoy for a name that does not exist so that the two cannot be told apart
-   * by a stopwatch.
+   * Strict IP budget for password guessing. Missing accounts still run scrypt;
+   * email-only accounts reject their public username with the same refusal.
    */
   app.post('/api/auth/login', { config: { rateLimit: app.limits.auth } }, async (req, reply) => {
     const body = loginBody.parse(req.body ?? {});
@@ -99,18 +94,9 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
   });
 
   /**
-   * Sign out.
-   *
-   * Clears the cookie, which is the whole of it: the access token is in the tab's
-   * memory and dies with the page. The refresh token itself stays cryptographically
-   * valid until it expires — these are stateless JWTs and there is no revocation
-   * list. That is a KNOWN LIMITATION, not an oversight: a copy already stolen off
-   * the wire is not recovered by asking the browser to forget its own, and a
-   * revocation table is a session store, which is what statelessness bought us.
-   * It becomes worth building the moment accounts hold anything but a season.
-   *
-   * Public on purpose. Signing out must work when the access token has already
-   * expired, which is precisely when a player is most likely to be trying.
+   * Local logout clears this browser's cookie. Account-wide credential changes
+   * separately increment authVersion, revoking access and refresh credentials.
+   * Public so signing out still works after access expiry.
    */
   app.post('/api/auth/logout', (_req, reply) => {
     void reply.clearCookie(REFRESH_COOKIE, { path: '/' });
@@ -130,17 +116,18 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
     const cookie = req.cookies[REFRESH_COOKIE];
     if (!cookie) throw new GameError('NO_SESSION', 'No session cookie', 401);
 
-    let accountId: string;
+    let identity: { accountId: string; version: number };
     try {
-      accountId = await app.tokens.verify(cookie, 'refresh');
-    } catch {
+      identity = await app.tokens.identity(cookie, 'refresh');
+    } catch (error) {
+      if (!(error instanceof InvalidSessionError)) throw error;
       throw new GameError('BAD_SESSION', 'Session is invalid or expired', 401);
     }
 
-    const account = await findAccount(app.db, accountId);
+    const account = await findAccount(app.db, identity.accountId);
     // A token for an account that no longer exists — a wiped test database, a
     // deleted account — is a dead session, not a server fault.
-    if (!account) throw new GameError('BAD_SESSION', 'Session is invalid or expired', 401);
+    if (account?.authVersion !== identity.version) throw new GameError('BAD_SESSION', 'Session is invalid or expired', 401);
 
     return openSession(app, reply, account);
   });
@@ -202,7 +189,7 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
  * would also fire for the health check and the login form.
  */
 export async function requireAuth(req: FastifyRequest): Promise<void> {
-  if (req.accountId) {
+  if (req.accountId && req.authVersion !== undefined) {
     await req.server.presence.touch(req.accountId);
     return;
   }
@@ -212,8 +199,11 @@ export async function requireAuth(req: FastifyRequest): Promise<void> {
   }
   let accountId: string;
   try {
-    accountId = await req.server.tokens.verify(header.slice(7), 'access');
-  } catch {
+    const identity = await req.server.tokens.identity(header.slice(7), 'access');
+    accountId = identity.accountId;
+    req.authVersion = identity.version;
+  } catch (error) {
+    if (!(error instanceof InvalidSessionError)) throw error;
     throw new GameError('UNAUTHENTICATED', 'Sign in first', 401);
   }
   req.accountId = accountId;
@@ -228,15 +218,18 @@ export async function requireAuth(req: FastifyRequest): Promise<void> {
  * which says one extra thing to somebody signed in: which galaxy is already theirs.
  */
 export async function optionalAuth(req: FastifyRequest): Promise<void> {
-  if (req.accountId) {
+  if (req.accountId && req.authVersion !== undefined) {
     await req.server.presence.touch(req.accountId);
     return;
   }
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) return;
   try {
-    req.accountId = await req.server.tokens.verify(header.slice(7), 'access');
-  } catch {
+    const identity = await req.server.tokens.identity(header.slice(7), 'access');
+    req.accountId = identity.accountId;
+    req.authVersion = identity.version;
+  } catch (error) {
+    if (!(error instanceof InvalidSessionError)) throw error;
     // An expired token on a public route is not an error. The caller simply gets
     // the anonymous answer, and the client's refresh path handles the rest.
     return;

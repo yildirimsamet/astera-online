@@ -1,3 +1,4 @@
+import { PasswordResetSheet } from './PasswordResetSheet.js';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useServers } from '../api/queries.js';
@@ -40,6 +41,7 @@ export function LandingScreen({
   error,
   loadAsset,
   knownCommander,
+  securityNotice,
 }: {
   onAuthenticate: (mode: Mode, username: string, password: string) => Promise<void>;
   /**
@@ -53,6 +55,7 @@ export function LandingScreen({
   onBegin: () => Promise<void>;
   /** A form to open on arrival, for somebody sent back here to sign in. */
   open?: Mode;
+  securityNotice?: 'email' | 'password' | 'expired';
   error?: string;
   /**
    * How one asset is fetched. Overridden only under test.
@@ -343,6 +346,7 @@ export function LandingScreen({
 
       {mode !== null && (
         <AuthDialog
+          securityNotice={securityNotice}
           onBegin={begin}
           onClose={() => {
             setMode(null);
@@ -406,12 +410,15 @@ function AuthDialog({
   onBegin,
   onClose,
   onSubmit,
+  securityNotice,
 }: {
   onBegin: () => void;
   onClose: () => void;
   onSubmit: (mode: Mode, username: string, password: string) => Promise<void>;
+  securityNotice?: 'email' | 'password' | 'expired' | undefined;
 }) {
   const { t } = useTranslation();
+  const [resetOpen, setResetOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -431,16 +438,16 @@ function AuthDialog({
   // Escape closes it. Anything modal that traps a player is worse than no modal.
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape' && !resetOpen) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
     };
-  }, [onClose]);
+  }, [onClose, resetOpen]);
 
   const check = (): { message: string; field: 'name' | 'password' } | null => {
-    if (username.trim().length === 0) return { message: t('landing.form.noName'), field: 'name' };
+    if (username.trim().length === 0) return { message: t('accountSecurity.identifierRequired'), field: 'name' };
     if (password.length === 0) return { message: t('landing.form.noPassword'), field: 'password' };
     return null;
   };
@@ -510,8 +517,12 @@ function AuthDialog({
           </button>
         </div>
 
+        {securityNotice ? <p role="status" className="mt-4 rounded-control border border-v2-self/40 bg-v2-self/10 p-3 text-caption leading-relaxed text-v2-ink">{t(securityNotice === 'email' ? 'accountSecurity.emailNotice' : securityNotice === 'password' ? 'accountSecurity.passwordNotice' : 'accountSecurity.expiredNotice')}</p> : null}
+        <p className="mt-4 text-caption text-v2-ink-2">{t('accountSecurity.loginHint')}</p>
+        <button type="button" className="mt-2 min-h-10 text-caption text-v2-self" onClick={() => { setResetOpen(true); }}>{t('accountSecurity.forgot')}</button>
+        {resetOpen ? <PasswordResetSheet onClose={() => { setResetOpen(false); }} /> : null}
         <label className="mt-5 block text-micro font-semibold uppercase tracking-wide text-v2-ink-2" htmlFor={nameId}>
-          {t('landing.form.nameLabel')}
+          {t('accountSecurity.loginLabel')}
         </label>
         <input
           id={nameId}
@@ -528,8 +539,8 @@ function AuthDialog({
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          maxLength={64}
-          placeholder={t('landing.form.namePlaceholder')}
+          maxLength={254}
+          placeholder={t('accountSecurity.loginLabel')}
         />
 
         <label className="mt-4 block text-micro font-semibold uppercase tracking-wide text-v2-ink-2" htmlFor={passwordId}>

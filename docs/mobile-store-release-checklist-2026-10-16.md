@@ -60,7 +60,7 @@ Ortak React / Three.js ekranları + ortak oyun kuralları
 
 ### Önerilen kod sınırları — henüz oluşturulmadı
 
-`apps/web/src/platform/` altında küçük adaptörler oluştur: `runtime`, `capabilities`, `authTransport`, `lifecycle`, `navigation`, `billing`, `push`, `externalLinks`. Başlangıçta tek ihtiyaç için geniş framework kurma; ortak oyun ekranlarını üç kopyaya ayırma.
+`apps/web/src/platform/` altında küçük adaptörler oluştur: `runtime`, `capabilities`, `authTransport`, `lifecycle`, `navigation`, `billing`, `localNotifications`, `push`, `externalLinks`. Başlangıçta tek ihtiyaç için geniş framework kurma; ortak oyun ekranlarını üç kopyaya ayırma.
 
 Runtime kimliği `Capacitor.isNativePlatform()` ve `Capacitor.getPlatform()` ile belirlenir. Build hedefi ayrıca doğrulanır: `web`, `native-local`, `native-staging`, `native-production`. Native build'in yanlışlıkla normal tarayıcıda açılması store satışını etkinleştirmemeli. Her adaptörün browser-safe karşılığı ve testte enjekte edilebilir arayüzü olmalı; modül import edilir edilmez izin penceresi veya native çağrı başlamamalı.
 
@@ -83,7 +83,8 @@ Bu tablo uygulama ve test sözleşmesidir. “Gizle” yalnız CSS ile görünme
 | Kozmetik envanter/equip/deneme | Ortak backend sahipliği | Aynı | Aynı; desteklenen katalog | Aynı; desteklenen katalog |
 | Satın alımları geri yükle | Backend hesabı üzerinden sahiplik | Aynı | Store restore + backend doğrulama | Store restore + backend doğrulama |
 | Reklam scriptleri | Mevcut web politikasına göre | Web ile aynı | İlk sürümde kapalı | İlk sürümde kapalı |
-| Bildirim izinleri | Ayrı web push işi varsa tarayıcı izni | Ayrı web push işi | Android OS izni + FCM | iOS OS izni + APNs |
+| Bildirim izinleri | Ayrı web push işi varsa tarayıcı izni | Ayrı web push işi | İlk aşama OS izni + yerel zamanlama; sonraki push aşamasında FCM | İlk aşama OS izni + yerel zamanlama; sonraki push aşamasında APNs |
+| Üretim hatırlatması | Native zamanlama uygulanmaz | Native zamanlama uygulanmaz | `@capacitor/local-notifications` | `@capacitor/local-notifications` |
 | Oyun içi Signals/bildirim kutusu | Ortak | Ortak | Ortak; push bunun yerine geçmez | Ortak |
 | Geri davranışı | Mevcut ekran/history davranışı | Aynı | Klavye → üst overlay → panel → OS | Ekran içi geri/kapat; OS gesture ile uyum |
 | Dış link | Güvenli web linki | Güvenli web linki | Sistem tarayıcısı veya Browser adaptörü | Sistem tarayıcısı veya Browser adaptörü |
@@ -292,7 +293,34 @@ Refund/revoke olayları sahipliği günceller; ilgili store'un server bildirimle
 
 **Kabul:** Çift dokunma, iki cihaz, callback+webhook yarışı, ödeme sonrası process kill, pending→paid, paid→refund, refund→gecikmiş paid, sahte receipt, başka hesaba receipt taşıma, unknown SKU, provider erişilemezliği ve restore testleri geçer. Finansal destek işlemi için transaction üzerinden iz sürülebilir.
 
-### 13 — Push bildirimlerini mevcut olay sistemine bağla
+### 13 — Önce yerel üretim hatırlatmaları, sonra sunucudan push
+
+#### 13A — İlk aşama: cihazda zamanlanan üretim hatırlatmaları
+
+**Kullanıcıyla kararlaştırılan başlangıç (16 Ekim 2026):** Bina, gemi üretimi ve araştırma için resmî `@capacitor/local-notifications` eklentisini kullan. Firebase, APNs sunucu bağlantısı, push token kaydı veya bildirim anında API sorgusu gerekmez. Bildirim başına servis ücreti/ek bildirim sunucusu yoktur; mevcut oyun backend'i çalışmaya devam eder. Bu bölüm plan kararıdır; plugin henüz uygulanmış veya cihazda doğrulanmış sayılmaz. [Capacitor Local Notifications](https://capacitorjs.com/docs/apis/local-notifications)
+
+**Veri kaynağı ve sınır:** Üretimi başlatan mevcut API isteği sunucuda kabul edilir; istemci onaylanan işin `finishesAt` değerini kullanarak işletim sistemine bildirim kaydeder. `apps/web/src/api/schemas.ts` içindeki construction/yard/research order şemalarında bu zaman ve isteğe bağlı `pausedAt` mevcut. Staged prova işleri sunucu zamanı taşımaz; onlar için zamanlama yapma. `apps/server/src/services/buildQueue.ts` iptal ve kuyruk zamanlarının yeniden düzenlenmesini yönetir. Süreyi istemcide oyun formülleriyle tekrar hesaplama; mevcut server-clock yaklaşımını inceleyip cihaz saati farkını hesaba kat.
+
+Bildirim zamanı geldiğinde internet veya çalışan WebView gerekmez; zamanlamayı native işletim sistemi yapar. JS `setTimeout`, sürekli polling, arka planda açık socket veya foreground service üzerinden bildirim sistemi kurma. Bildirim yalnız hatırlatmadır: kaynak/ödül teslim etmez, işi tamamlamaz, sunucudaki oyun durumunu değiştirmez.
+
+**Doğruluk sınırı:** Başka cihazdan/web'den iptal, duraklatma, kuyruk değişikliği veya dünya sahipliği değişimi kapalı/offline uygulamaya ulaşmayabilir. Yerel bildirim bu nedenle tamamlanmış sonucun kanıtı değildir. İlk metin örneği: “Üretim zamanını kontrol et”; açıklama: “Planlanan tamamlanma zamanı geldi. Güncel durumu görmek için oyunu aç.” Sunucudan doğrulanmadan kesin “filon hazır” sonucu vaat etme. Sonucun mutlaka doğrulanmış olması istenirse o olay 13B kapsamındaki push'a taşınır. Uygulama kapalıyken web'de başlatılan yeni bir iş de telefona kendiliğinden zamanlanmaz; sonraki uygulama senkronizasyonunda öğrenilir.
+
+**Uygulama sırası ve davranış sözleşmesi:**
+
+1. Platform capability'sine `localNotifications` ekle; yalnız native ortamda desteklenen, core ile uyumlu sabit plugin sürümünü kullan. Web/PWA bu adaptörü çalıştırmaz. Önce zamanlama/iptal/eşitleme testlerini FAIL durumunda yaz.
+2. Bildirim tercihlerinde inşaat, tersane ve araştırmayı ayrı yönet. Kullanıcı özelliği açarken Android/iOS OS iznini iste; reddi oyun girişini engellemesin, her açılışta tekrar sorma. Android kanalları ile uygulama içi tercihleri birlikte kontrol et.
+3. İlk başarılı hesap/dünya yüklemesinde, uygulama ön plana döndüğünde ve ilgili mutation/SSE güncellemesinde sunucunun güncel iş listesi ile bekleyen yerel bildirimleri eşitle. Duraklamış, iptal edilmiş, bitmiş, geçmiş tarihli veya artık erişilemeyen işleri planlama; süresi değişeni yeniden zamanla. Eksik/başarısız API cevabını boş iş listesi sanıp bütün bildirimleri silme.
+4. Kalıcı eşlemeyi ortam + hesap + sezon/yerleşim + iş ID ile tut; plugin'in sayısal bildirim ID'si için çakışmaları önle. Yeniden açılış/senkronizasyon aynı işi çoğaltmasın. Her gemiye ayrı bildirim yerine üretim siparişi başına tek bildirim kullan; toplu tercihler kapalıysa ilgili bekleyenleri kaldır. OS'nin bekleyen bildirim sınırını seçilen sürümde doğrula; sınırı aşan kuyruğu sessizce kaybetme, en yakın işleri önceliklendirip sonraki açılışta yenile.
+5. Logout, hesap silme veya hesap/ortam değişiminde önceki bağlama ait bekleyen ve gösterilmiş yerel bildirimleri temizle. Payload'a token veya hassas oyun bilgisi koyma. Tıklamada bölüm 08'deki doğrulanan intent akışını kullan; doğru hesap ve güncel API verisi geldikten sonra gezegen/kuyruk ekranını aç. Offline ise tamamlanmış gibi göstermeden bağlantı durumunu açıkla.
+6. İlk aşamada bu olaylara ayrıca push gönderme. İleride push'a geçişte olay türü/cihaz için tek teslimat yöntemi seç; ilgili eski yerel planları iptal et. Eski uygulama sürümlerinde kalan planları da hesaba kat; yalnız ortak event ID eklemek OS tarafından gösterilmiş iki bildirimi önlemez.
+
+**Zamanlama garantisi:** İlk sürümde özel exact-alarm izinlerine dayanma; `USE_EXACT_ALARM` ekleme. Seçilen plugin sürümünün izinsiz/inexact zamanlama davranışını doğrula. Android bazı inexact alarm yöntemlerinde normal koşullarda dahi bir saate kadar teslim penceresi tanımlar; Doze/pil kısıtlamaları daha fazla geciktirebilir. “Tam saniyesinde” veya “en fazla birkaç dakika” garantisi verme. Normal uygulama kapanışı, Android ayarlarından force-stop, cihazın kapatılması ve yeniden başlatılması ayrı durumlardır. Yeniden başlatmada plugin'in kalıcı planları geri kurma davranışını cihazda doğrula; eksikse kalıcı kayıt + desteklenen native yeniden kurma yolu uygula. Bildirim izni, kanal, Focus/sessiz mod ve OS kısıtlamaları görünürlüğü etkiler. [Android alarm davranışları](https://developer.android.com/develop/background-work/services/alarms)
+
+**Kabul:** Önce bir Android cihazda kısa süreli gerçek üretimle dene; sonra iOS'ta ayrı doğrula. Ön plan, ekran kilidi, normal process kapanışı, internet/USB yokluğu, Doze, izin/kanal reddi, yeniden başlatma, saat değişimi, iptal/duraklatma/yeniden zamanlama, başka cihazdan değişiklik, iki hesap ve cold-start tıklama senaryolarını kaydet. Force-stop veya stale offline plan için garanti verilmeyen davranışı raporla. Yinelenen senkronizasyonda tek bekleyen kayıt bulunmalı; ön planda gereksiz OS + oyun içi çift uyarı olmamalı. Yerel bildirim ile sunucunun gerçek tamamlanma durumu testte ayrı kontrol edilmeli.
+
+#### 13B — Sonraki aşama: sunucudan doğrulanmış olaylar için push
+
+**Kapsam:** Önceden bilinmeyen, mevcut oyun kurallarınca oyuncuya görünür olaylar ve kesin sonuç doğrulaması istenen bildirimler. 13A'yı denemek için bu altyapıyı kurmak gerekmez; push ilk yerel bildirim sürümünün önkoşulu değildir. Aşağıdaki işler push aşaması açıldığında uygulanır.
 
 **Varsayılan:** Android FCM; iOS APNs. `@capacitor/push-notifications` Android'de FCM token, iOS'ta APNs token verir. Bunları aynı token türü sanma. Bu planın en az ek SDK yolu backend'de Android FCM + iOS APNs adaptörüdür. İleride iOS'u da FCM üzerinden göndermek seçilirse Firebase Messaging iOS entegrasyonu ve APNs anahtar bağlantısı ayrıca yapılır. [Capacitor Push](https://capacitorjs.com/docs/apis/push-notifications), [Firebase iOS kurulumu](https://firebase.google.com/docs/cloud-messaging/ios/get-started)
 
@@ -304,7 +332,7 @@ Kapalı uygulamaya görünür bildirim için Android'de `notification` + gerekli
 
 `services/notifications.ts::notify()` transaction içinde bildirim yazar ve commit'e bağlı yayın yapar. Aynı transaction'da outbox kaydı üret; FCM/APNs ağ isteğini oyun transaction'ının içinde çalıştırma. Outbox retry/backoff, event+device tekilleştirme, TTL ve ölü token temizliği yapsın. Retry aynı bildirimi tekrar gönderebilir; teslimat ise hiç gerçekleşmeyebilir. Mutlak “tam bir push” garantisi verme; payload/event ID ve collapse stratejisi tekrarları azaltır.
 
-İlk kapsam: sonuç/geri dönüş/araştırma tamamlanması gibi mevcut, oyuncunun görmeye yetkili olduğu olaylar. Saldırı/erken uyarı bildirimi yeni istihbarat veya PvP avantajı üretmemeli; mevcut görünürlük/uyarı zamanını aşan içerik eklemek ürün kararıdır. Kanal, sessiz saatler ve içerik gizliliği ayarlanabilir olsun; pazarlama bildirimi ayrı tercih gerektirir. Push gecikebilir veya hiç gelmeyebilir; oyun sonucu ve zamanlayıcıları ona bağlanmaz.
+Push kapsamı: mevcut, oyuncunun görmeye yetkili olduğu mesaj/sonuç/geri dönüş olayları; araştırma ve üretim ancak yerel hatırlatmadan push'a açıkça geçirildiyse dahil edilir. Saldırı/erken uyarı bildirimi yeni istihbarat veya PvP avantajı üretmemeli; mevcut görünürlük/uyarı zamanını aşan içerik eklemek ürün kararıdır. Kanal, sessiz saatler ve içerik gizliliği ayarlanabilir olsun; pazarlama bildirimi ayrı tercih gerektirir. Push gecikebilir veya hiç gelmeyebilir; oyun sonucu ve zamanlayıcıları ona bağlanmaz.
 
 **Logout yarışının sınırı:** FCM/APNs'ye önceden verilmiş alert'i cihazdan geri çağırma garantisi yoktur; bu nedenle “logout sonrası hiçbir eski bildirim görünmez” sözü verilemez. İlk sürümde kilit ekranı metni genel olur (“Yeni oyun bildirimin var”), özel mesaj/koordinat/saldırgan/filo bilgisi taşımaz. Ayrıntı yalnız app açıldığında mevcut oturumla API'den çekilir. Logout/hesap değişiminde token bağını ve bekleyen outbox işlerini iptal et, gönderim öncesi binding sürümünü tekrar kontrol et, gösterilmiş bildirimleri temizle; offline logout'u kalıcı yerel detach işiyle ağ geldiğinde tamamla. Yolda kalmış bildirim farklı hesaba özel veri açamaz. Push verisi account/environment hedefiyle eşleşmezse intent işlenmez.
 
@@ -414,6 +442,7 @@ Her davranış değişikliğinde önce happy path + edge case listesi → test F
 | Lifecycle | Home, ekran kilidi, 5+ dakika background, process kill, bellek/context kaybı | Dönüşte güncel dünya, tek stream, çift mutation yok |
 | Ödeme | Başarılı, iptal, pending, banka uygulamasından dönüş, çift olay, yanlış hesap, restore, refund, bundle+tekil+web grant çakışması | Sandbox transaction + kaynak ledger'ı; imza/ortam ayrımı |
 | Push | İzin/kanal kabul-ret, token rotation, çoklu cihaz, offline logout, yoldaki bildirim, expired event, cold/warm tap | FCM/APNs ve doğru ekran; hesap değişince özel veri sızıntısı yok |
+| Yerel bildirim | Normal kapanış, offline, Doze, reboot, saat değişimi, izin/kanal reddi, iptal/pause, web'den değişim, hesap değişimi, tekrar sync, cold/warm tap | 13A cihaz kaydı; tek bekleyen iş, doğru hedef, gecikme ve eski plan sınırları açık |
 | UGC/silme | Report/block/moderasyon, silme, access token+SSE iptali, saklama/backup restore, gecikmiş webhook | Yetki/DB regresyonu + UI tamamlanma kanıtı |
 | Eski cihaz/motor | Minimum OS/WebView, WebGL2 yokluğu, CSS/JS uyumu, uygulama parse olmadan fallback | Destek matrisi; yanlış minimum sürüm ilanı yok |
 | Görsel/erişilebilirlik | Çentik, alt gesture bar, küçük ekran, font ölçeği, screen reader, landscape | `node tools/visual.mjs` + native screenshot/oynama |
@@ -432,14 +461,14 @@ Her adımın kapanışına şunları yaz: değişen dosyalar, test komutu ve son
 | --- | --- | --- |
 | M0 — mevcut | Yerel wrapper denemesi | USB + Vite ile güncel local kodu oynama; mağaza sürümü değil |
 | M1 — bağımsız Android test | 01–09'un ortak/Android kısmı | USB'siz, staging sunuculu, dosyaları paketlenmiş APK; native satış/reklam kapalı |
-| M2 — satın alma/bildirim test | M1 + 10–13'ün ortak/Android kısmı + 18'den internal-track signing hazırlığı | Play internal track'te doğrulanmış IAP/restore/refund, oyun olayından push |
+| M2 — satın alma/bildirim test | M1 + 10–12 ve 13A'nın ortak/Android kısmı + 18'den internal-track signing hazırlığı; 13B sonraki push aşaması | Play internal track'te doğrulanmış IAP/restore/refund ve yerel üretim hatırlatması |
 | M3 — Google Play adayı | M2 + 14–16, 18–20 ve Android testleri | İmzalı AAB + tamamlanmış console/review paketi |
 | M4 — App Store adayı | Ortak işler + 17'de 02–16'nın iOS kanıtı + 18–20'nin iOS kısmı | TestFlight'ta doğrulanmış iOS archive ve review paketi; Play yayınının tamamlanması şart değil |
 | M5 — işletilen yayın | 21 | Kademeli rollout ve izlenen prod sürümleri |
 
 **Store release engelleri:** dev URL/HTTP/debug açık; auth veya SSE paket origin'inde bozuk; native içinde kontrolsüz web satış CTA'sı; doğrulanmadan verilen satın alma; restore/refund eksikliği; yanlış hesaba push/hak aktarımı; in-app hesap silme talebi yok; UGC güvenlik akışı eksik; privacy/izin beyanı yanlış; imzalama/SDK/16 KB gereksinimi karşılanmıyor; tekrarlanabilir crash/ANR/siyah ekran; reviewer oyuna erişemiyor.
 
-İlk private cihaz testinde satışın kapalı olması uygundur. Bunu mağaza yayını için otomatik muafiyet sayma. Push iki mağazanın her oyun için zorunlu tuttuğu özellik değildir; burada ürünün planlanan mobil kapsamıdır. Web push, reklam monetizasyonu, sosyal login, abonelik, tablet için ayrı tasarım ve agresif FPS optimizasyonu ayrı sonraki işlerdir; ilk yayın için gerekmedikçe kapsam büyütülmez.
+İlk private cihaz testinde satışın kapalı olması uygundur. Bunu mağaza yayını için otomatik muafiyet sayma. Push iki mağazanın her oyun için zorunlu tuttuğu özellik değildir; güncel başlangıç kararı 13A yerel üretim hatırlatmalarıdır. 13B sonraki aşamadır: belgedeki push token/outbox/APNs testi ve Push capability şartları yalnız push etkinleştirilen sürüm için uygulanır; ilk sürümde yerel bildirimlerin Android/iOS kabulü gerekir. Web push, reklam monetizasyonu, sosyal login, abonelik, tablet için ayrı tasarım ve agresif FPS optimizasyonu ayrı sonraki işlerdir; ilk yayın için gerekmedikçe kapsam büyütülmez.
 
 ## 8. Sahip/hesap girdileri ve karar kayıtları
 

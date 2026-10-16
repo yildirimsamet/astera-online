@@ -1,3 +1,6 @@
+import { AccountSecurity } from './services/accountSecurity.js';
+import { MailQueue, ResendMailer, type TransactionalMailer } from './services/mail.js';
+import { registerAccountSecurityRoutes } from './routes/accountSecurity.js';
 import { installPlacementGate } from './services/placementGate.js';
 import { registerReturnApplicationRoutes } from './routes/returnApplications.js';
 import cookie from '@fastify/cookie';
@@ -9,13 +12,15 @@ import Fastify, {
   type FastifyInstance,
   type FastifyRequest,
 } from 'fastify';
+import { eq } from 'drizzle-orm';
+import { accounts } from './db/schema.js';
 import { ZodError } from 'zod';
 import { pino } from 'pino';
 import type { Env } from './env.js';
 import type { Clock } from './clock.js';
 import { systemClock } from './clock.js';
 import { createDb, type Db } from './db/client.js';
-import { TokenService } from './auth/tokens.js';
+import { InvalidSessionError, TokenService } from './auth/tokens.js';
 import { GameError } from './services/planet.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerPlanetRoutes } from './routes/planet.js';
@@ -84,6 +89,8 @@ declare module 'fastify' {
     db: Db;
     clock: Clock;
     tokens: TokenService;
+    accountSecurity: AccountSecurity;
+    mail: MailQueue;
     presence: Presence;
     worker: EventWorker;
     bus: EventBus;
@@ -102,6 +109,7 @@ declare module 'fastify' {
   interface FastifyRequest {
     /** Set by `requireAuth`. Absent on public routes. */
     accountId?: string;
+    authVersion?: number;
     capacityStartedAt?: number;
     capacityResponseBytes?: number;
   }
@@ -112,9 +120,11 @@ export interface BuildAppOptions {
   clock?: Clock;
   logger?: FastifyBaseLogger;
   db?: Db;
+  mailer?: TransactionalMailer;
 }
 
 export interface BuiltApp {
+  mail: MailQueue;
   app: FastifyInstance;
   /** The pool the app is using, so the boot path can check the schema against it. */
   db: Db;
@@ -132,7 +142,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   // Annotated, not asserted. Passing a concrete pino Logger would specialise
   // Fastify's logger generic and propagate a non-default FastifyInstance type
   // into every route signature in the app; pino satisfies this interface anyway.
-  const log: FastifyBaseLogger = opts.logger ?? pino({ level: opts.env.LOG_LEVEL });
+  const log: FastifyBaseLogger = opts.logger ?? pino({ level: opts.env.LOG_LEVEL, redact: ['req.headers.authorization', 'req.headers.cookie', 'req.body', 'res.headers["set-cookie"]'] });
 
   const idleBound = opts.env.ROLE === 'api'
     ? { idleInTransactionTimeoutMs: opts.env.DB_IDLE_IN_TRANSACTION_TIMEOUT_MS }
@@ -158,6 +168,10 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     opts.env.JWT_SECRET,
     opts.env.ACCESS_TOKEN_MINUTES,
     opts.env.REFRESH_TOKEN_DAYS,
+    async (id, version) => {
+      const [account] = await db.select({ version: accounts.authVersion }).from(accounts).where(eq(accounts.id, id));
+      return account?.version === version;
+    },
   );
   const worker = new EventWorker(
     db,
@@ -176,6 +190,9 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     log,
   );
 
+  const mail = new MailQueue(db, opts.env, clock, opts.mailer ?? new ResendMailer(opts.env), log);
+  app.decorate('mail', mail);
+  app.decorate('accountSecurity', new AccountSecurity(db, opts.env, clock, mail));
   app.decorate('db', db);
   app.decorate('clock', clock);
   app.decorate('tokens', tokens);
@@ -268,10 +285,13 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       const header = req.headers.authorization;
       if (!header?.startsWith('Bearer ')) return ipLimitKey(req);
       try {
-        const accountId = await tokens.verify(header.slice(7), 'access');
+        const identity = await tokens.identity(header.slice(7), 'access');
+        const accountId = identity.accountId;
         req.accountId = accountId;
+        req.authVersion = identity.version;
         return `account:${accountId}`;
-      } catch {
+      } catch (error) {
+        if (!(error instanceof InvalidSessionError)) throw error;
         return ipLimitKey(req);
       }
     },
@@ -376,7 +396,11 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       metrics.observeRefusal(req.method, route, 'BAD_REQUEST');
       return reply.status(400).send({ error: 'BAD_REQUEST', message: error.message });
     }
-    req.log.error({ err: error }, 'unhandled route error');
+    if (route.startsWith('/api/auth/') || route === '/api/mail/resend/webhook') {
+      req.log.error({ errorName: error.name }, 'account security request failed');
+    } else {
+      req.log.error({ err: error }, 'unhandled route error');
+    }
     return reply.status(500).send({ error: 'INTERNAL', message: 'Something went wrong' });
   });
 
@@ -409,6 +433,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     // an accidental fourth public API replica merely because metrics need a port.
     if (opts.env.ROLE === 'worker') return;
     registerAuthRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
+    registerAccountSecurityRoutes(app, opts.env);
     registerServerRoutes(app);
     registerPreviewRoutes(app);
     registerOnboardingRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
@@ -440,6 +465,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   });
 
   return {
+    mail,
     app,
     /** The pool the app is using, so the boot path can check the schema against it. */
     db,
@@ -450,6 +476,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     metrics,
     streams,
     close: async () => {
+      await mail.stop();
       await databasePoolProbe?.stop();
       await worker.stop();
       const closing = app.close();

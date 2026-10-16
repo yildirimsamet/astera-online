@@ -13,9 +13,9 @@ import { seedWorld, testDb, testEnv, TEST_DATABASE_URL, type Fixture } from './h
  * Every frame, heartbeats included, used to open a transaction and take
  * `players … FOR SHARE`. A row lock assigns an xid, so each frame paid a commit
  * with a WAL flush: ~4.9 per second across production, the same order as every
- * WAL sync the database made. A heartbeat is a comment line that tells nobody
- * anything; an event frame only needs to know the placement it was subscribed
- * under still holds, which one plain read answers.
+ * WAL sync the database made. Credential changes now also revoke idle sockets:
+ * heartbeats check the account version with a plain read. Neither kind of frame
+ * may open a transaction or take a row lock for its credential/placement check.
  */
 let f: Fixture;
 let built: ReturnType<typeof buildApp>;
@@ -67,7 +67,7 @@ async function readUntil(controller: AbortController, until: (text: string) => b
 
 let onConnected: () => Promise<void> = async () => { /* replaced per test */ };
 
-it('sends heartbeats without touching the database', async () => {
+it('checks idle credentials with plain reads and no transaction or row lock', async () => {
   const controller = new AbortController();
   let window: string[] = [];
   onConnected = async () => {
@@ -79,7 +79,9 @@ it('sends heartbeats without touching the database', async () => {
   const text = await readUntil(controller, seen => (seen.match(/: ping/g) ?? []).length >= 3);
   controller.abort();
   expect((text.match(/: ping/g) ?? []).length).toBeGreaterThanOrEqual(3);
-  expect(window.filter(query => query.includes('"players"'))).toEqual([]);
+  expect(window.filter(query => query.includes('"accounts"') && query.includes('"auth_version"')).length).toBeGreaterThanOrEqual(3);
+  expect(window.filter(query => /\bfor (share|update|key share|no key update)\b/.test(query))).toEqual([]);
+  expect(window.filter(query => /^\s*begin\b/.test(query))).toEqual([]);
 });
 
 it('checks an event frame’s placement with one plain read and no row lock', async () => {

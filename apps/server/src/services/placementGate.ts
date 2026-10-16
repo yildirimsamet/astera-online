@@ -73,7 +73,10 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
   };
 
   app.addHook('onRoute', route => {
-    if (!route.url.startsWith('/api/') || route.url === '/api/stream') return;
+    if (!route.url.startsWith('/api/') || route.url === '/api/stream'
+      || route.url === '/api/auth/security' || route.url === '/api/auth/capabilities'
+      || route.url.startsWith('/api/auth/email/') || route.url.startsWith('/api/auth/password/reset/')
+      || route.url === '/api/mail/resend/webhook') return;
     const handler = route.handler;
     // /me is the authority used to reconcile. Return endpoints already carry
     // their own versioned intent and expose status needed by older clients.

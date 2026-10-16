@@ -113,7 +113,7 @@ export const errors = {
   BAD_CLAN_MESSAGE: "1 ～ 280 文字で記述してください",
   BAD_CLAN_NAME: "クラン名を 3 ～ 24 文字で選択してください",
   BAD_CLAN_TAG: "クランタグには 2 ～ 5 個の文字または数字を使用してください",
-  BAD_CREDENTIALS: "その名前とパスワードが一致しません",
+  BAD_CREDENTIALS: "ログイン情報が一致しません",
   BAD_FLEET: "{{hull}}の船数が正しくありません。",
   BAD_REQUEST: "操作の内容を読み取れませんでした。選択した内容を確認してください。",
   BAD_SESSION: "セッションが無効、または期限切れです。再度ログインしてください。",

@@ -50,9 +50,10 @@ describe('the bloom input guard', () => {
   });
 
   it('guards every bloom the game mounts', () => {
-    for (const file of ['src/galaxy/GalaxyPostprocessing.tsx', 'src/landing/LandingScene.tsx']) {
+    for (const file of ['src/galaxy/GalaxyPostprocessing.tsx', 'src/landing/LandingScene.tsx', 'src/galaxy/PremiumShipInspector.tsx']) {
       const source = readFileSync(file, 'utf8');
       expect(source, file).toMatch(/<Bloom\s+ref=\{guardBloomRef\}/);
+      expect(source, file).toMatch(/<FiniteSceneGuard\b/);
     }
   });
 });
@@ -80,5 +81,27 @@ describe('the shaders that could feed it a NaN', () => {
   it('never asks atan for the angle of the origin', () => {
     expect(rings).not.toMatch(/= atan\(p\.z, p\.x\)/);
     expect(satellites).not.toMatch(/= atan\(n\.z, n\.x\)/);
+  });
+});
+
+describe('the original scene sample', () => {
+  it('sanitizes the base scene before bloom composition without adding another fullscreen pass', async () => {
+    const { FiniteSceneEffect } = await import('../src/galaxy/finiteGuard.js');
+    const { EffectPass, BlendFunction, VignetteEffect } = await import('postprocessing');
+    const guard = new FiniteSceneEffect();
+    const bloom = new BloomEffect({ luminanceThreshold: .78, mipmapBlur: true });
+    const vignette = new VignetteEffect();
+    const pass = new EffectPass(undefined, guard, bloom, vignette);
+    pass.recompile();
+    expect(guard.blendMode.blendFunction).toBe(BlendFunction.SET);
+    const material = pass.fullscreenMaterial;
+    if (!(material instanceof THREE.ShaderMaterial)) throw new Error('Expected an effect shader material');
+    const shader = material.fragmentShader;
+    expect(shader).toContain('all(lessThan(abs(inputColor),vec4(6.0e4)))');
+    expect(shader.indexOf('e0MainImage(color0')).toBeLessThan(shader.indexOf('e1MainImage(color0'));
+    // SET must replace NaN rather than mix it at opacity 1: NaN * 0 is still NaN.
+    expect(shader).toContain('return src;');
+    expect(shader).toContain('e2MainImage');
+    pass.dispose();
   });
 });

@@ -103,8 +103,9 @@ varying vec3 vPlanetImpactPosition;
 uniform sampler2D uPlanetImpactMask;
 uniform float uPlanetImpactTime;`)
       .replace('#include <map_fragment>', `#include <map_fragment>
-vec3 impactDirection = normalize(vPlanetImpactPosition);
-vec2 impactUv = vec2(atan(impactDirection.z, impactDirection.x) / 6.28318530718 + 0.5,
+vec3 impactDirection = vPlanetImpactPosition / max(length(vPlanetImpactPosition), 1e-6);
+float impactLon = abs(impactDirection.x) + abs(impactDirection.z) < 1e-6 ? 0.0 : atan(impactDirection.z, impactDirection.x);
+vec2 impactUv = vec2(impactLon / 6.28318530718 + 0.5,
   asin(clamp(impactDirection.y, -1.0, 1.0)) / 3.14159265359 + 0.5);
 vec2 impactScar = texture2D(uPlanetImpactMask, impactUv).rg;
 diffuseColor.rgb *= 1.0 - impactScar.g * 0.65;`)
@@ -119,5 +120,5 @@ impactGlow *= vColor.rgb;
 #endif
 totalEmissiveRadiance += impactGlow;`);
   };
-  material.customProgramCacheKey = () => `${program}|planet-impact-uv-v2`;
+  material.customProgramCacheKey = () => `${program}|planet-impact-uv-v3`;
 }

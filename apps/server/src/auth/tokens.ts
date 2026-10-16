@@ -1,15 +1,6 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 
-/**
- * Guest-first auth.
- *
- * The Return Test requires a player to be looking at their own planet inside 60
- * seconds; a login wall makes that impossible. So an account is created on first
- * contact with no form to fill in, and email is an optional upgrade later that
- * attaches to the same account.
- *
- * Short access token + long refresh cookie, both stateless. No session store.
- */
+/** Signed credentials carry the durable account version; legacy tokens use version zero. */
 
 export interface AccessClaims extends JWTPayload {
   sub: string;
@@ -20,6 +11,8 @@ export interface RefreshClaims extends JWTPayload {
   sub: string;
   typ: 'refresh';
 }
+
+export class InvalidSessionError extends Error {}
 
 export class TokenService {
   private readonly key: Uint8Array;
@@ -34,12 +27,13 @@ export class TokenService {
      * is signed in and an API that does not.
      */
     readonly refreshDays: number,
+    private readonly isCurrent?: (accountId: string, version: number) => Promise<boolean>,
   ) {
     this.key = new TextEncoder().encode(secret);
   }
 
-  async issueAccess(accountId: string): Promise<string> {
-    return new SignJWT({ typ: 'access' })
+  async issueAccess(accountId: string, version = 0): Promise<string> {
+    return new SignJWT({ typ: 'access', ver: version })
       .setProtectedHeader({ alg: 'HS256' })
       .setSubject(accountId)
       .setIssuedAt()
@@ -47,8 +41,8 @@ export class TokenService {
       .sign(this.key);
   }
 
-  async issueRefresh(accountId: string): Promise<string> {
-    return new SignJWT({ typ: 'refresh' })
+  async issueRefresh(accountId: string, version = 0): Promise<string> {
+    return new SignJWT({ typ: 'refresh', ver: version })
       .setProtectedHeader({ alg: 'HS256' })
       .setSubject(accountId)
       .setIssuedAt()
@@ -62,14 +56,22 @@ export class TokenService {
    * The `typ` check matters: without it a refresh token — which lives in a cookie
    * for thirty days — would be accepted as an access token.
    */
-  async verify(token: string, expected: 'access' | 'refresh'): Promise<string> {
-    const { payload } = await jwtVerify(token, this.key, {
-      algorithms: ['HS256'],
-    });
-    if (payload.typ !== expected) throw new Error(`expected a ${expected} token`);
+  async identity(token: string, expected: 'access' | 'refresh'): Promise<{ accountId: string; version: number }> {
+    let payload: JWTPayload;
+    try {
+      ({ payload } = await jwtVerify(token, this.key, { algorithms: ['HS256'] }));
+    } catch { throw new InvalidSessionError('Invalid signature or expiry'); }
+    if (payload.typ !== expected) throw new InvalidSessionError(`expected a ${expected} token`);
     if (typeof payload.sub !== 'string' || payload.sub.length === 0) {
-      throw new Error('token has no subject');
+      throw new InvalidSessionError('token has no subject');
     }
-    return payload.sub;
+    const version = payload.ver === undefined ? 0 : payload.ver;
+    if (typeof version !== 'number' || !Number.isSafeInteger(version) || version < 0) throw new InvalidSessionError('invalid token version');
+    if (this.isCurrent && !await this.isCurrent(payload.sub, version)) throw new InvalidSessionError('revoked session');
+    return { accountId: payload.sub, version };
+  }
+
+  async verify(token: string, expected: 'access' | 'refresh'): Promise<string> {
+    return (await this.identity(token, expected)).accountId;
   }
 }

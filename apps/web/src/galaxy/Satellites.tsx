@@ -488,7 +488,7 @@ const SHIELD_VERT = `
  * a trace of fill, so it reads as panelling rather than as a honeycomb texture.
  */
 const SHIELD_FRAG = `
-  precision mediump float;
+  precision highp float;
   varying vec3 vNormalW;
   varying vec3 vViewW;
   varying vec3 vColour;
@@ -532,7 +532,8 @@ const SHIELD_FRAG = `
     // max only widens it once a cell has shrunk below a pixel, which is what stops
     // the grid shimmering as the camera pulls out. It is NOT called half, which
     // is a reserved word in GLSL ES.
-    float aa = fwidth(d);
+    // A flat derivative must not collapse smoothstep's two edges into one.
+    float aa = max(fwidth(d), 1e-5);
     float lineHalf = max(0.018, aa * 0.8);
     float edge = smoothstep(0.5 - lineHalf - aa, 0.5 - lineHalf, d);
 

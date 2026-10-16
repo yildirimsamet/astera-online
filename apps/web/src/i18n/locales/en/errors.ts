@@ -113,7 +113,7 @@ export const errors = {
   BAD_CLAN_MESSAGE: 'Write between one and 280 characters',
   BAD_CLAN_NAME: 'Choose a clan name between 3 and 24 characters',
   BAD_CLAN_TAG: 'Use two to five letters or digits for the clan tag',
-  BAD_CREDENTIALS: 'That name and password do not match',
+  BAD_CREDENTIALS: 'The sign-in details do not match',
   BAD_FLEET: 'Bad ship count for {{hull}}',
   BAD_REQUEST: "The action details could not be read. Check your selections.",
   BAD_SESSION: "Your session is invalid or has expired. Sign in again.",
