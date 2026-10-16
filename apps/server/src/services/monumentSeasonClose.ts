@@ -58,11 +58,30 @@ export async function closeSeasonMonuments(tx: Tx, input: { seasonId: string; cu
   if (season?.status !== 'live') return;
   const cutoff = new Date(Math.min(input.cutoff.getTime(), season.endsAt.getTime()));
   if (!Number.isSafeInteger(cutoff.getTime()) || cutoff < season.startsAt) throw new GameError('MONUMENT_TIMELINE_INVALID', 'Invalid season boundary', 409);
-  const targets = await tx.select({ id: monuments.id }).from(monuments).where(eq(monuments.seasonId, season.id)).orderBy(asc(monuments.id));
-  if (targets.length === 0) return;
+  const landed = await landMonumentFleets(tx, { seasonId: season.id, cutoff, observedAt: input.cutoff, adminUsernames: input.adminUsernames, closing: true });
+  if (!landed) return;
+  await closeMonumentProbes(tx, season.id, cutoff);
+  for (const target of landed.locked) await closeTarget(tx, target, cutoff);
+  await tx.delete(scheduledEvents).where(and(eq(scheduledEvents.seasonId, season.id),
+    inArray(scheduledEvents.kind, ['monument_arrival', 'monument_loss', 'monument_respawn'])));
+  for (const playerId of landed.owners) await recomputePlayerWealth(tx, playerId, input.cutoff);
+  await publishShard(tx, season.id, 'control');
+}
+
+/**
+ * Settles every monument of a season to `cutoff`, then lands every fleet still out there at its
+ * owner's safe home with its ships, health, cargo and unspent fuel reserve. The caller holds the
+ * season row lock and decides what happens to the targets and their lifecycle afterwards.
+ */
+export async function landMonumentFleets(tx: Tx, input: {
+  seasonId: string; cutoff: Date; observedAt: Date; adminUsernames: readonly string[]; closing: boolean;
+}): Promise<{ locked: LockedMonument[]; owners: string[] } | null> {
+  const { cutoff } = input;
+  const targets = await tx.select({ id: monuments.id }).from(monuments).where(eq(monuments.seasonId, input.seasonId)).orderBy(asc(monuments.id));
+  if (targets.length === 0) return null;
   const endpoints = await monumentEndpoints(tx, targets.map((row) => row.id));
   const owned = await tx.select({ id: planets.id, playerId: planets.controllerPlayerId }).from(planets)
-    .where(and(eq(planets.seasonId, season.id), isNotNull(planets.controllerPlayerId)));
+    .where(and(eq(planets.seasonId, input.seasonId), isNotNull(planets.controllerPlayerId)));
   const worldIds = [...new Set([...endpoints.planetIds, ...owned.map((world) => world.id)])];
   const worlds = worldIds.length === 0 ? new Map<string, typeof planets.$inferSelect>() : await lockWorlds(tx, worldIds);
   const locked = await lockMonuments(tx, targets.map((row) => row.id), { requireLive: false,
@@ -74,13 +93,13 @@ export async function closeSeasonMonuments(tx: Tx, input: { seasonId: string; cu
       throw new GameError('MONUMENT_TIMELINE_INVALID', 'The season boundary precedes an already settled fleet', 409);
     }
     const homes = await monumentHomes(tx, target, endpoints.homeIds, worlds);
-    await advanceLockedMonument(tx, target, homes, cutoff, input.adminUsernames, true, input.cutoff);
+    await advanceLockedMonument(tx, target, homes, cutoff, input.adminUsernames, input.closing, input.observedAt);
     for (const wave of target.waves) {
       owners.add(wave.playerId);
       if (wave.status === 'HOME' || wave.status === 'LOST') continue;
       const at = wave.status === 'RETURNING' && wave.arriveAt !== null && wave.arriveAt < cutoff ? wave.arriveAt : cutoff;
       if (wave.status === 'OUTBOUND' || wave.status === 'RETURNING') {
-        const flight = await settleMonumentFlight(tx, target, wave.id, at, input.cutoff);
+        const flight = await settleMonumentFlight(tx, target, wave.id, at, input.observedAt);
         if (flight.wave.status === 'LOST') continue;
       }
       const homeId = await safeHomePlanet(tx, wave.playerId, wave.originPlanetId);
@@ -91,12 +110,7 @@ export async function closeSeasonMonuments(tx: Tx, input: { seasonId: string; cu
   // A delayed return that reached home before the boundary is delivered first.
   deliveries.sort((a, b) => a.at.getTime() - b.at.getTime() || a.wave.id.localeCompare(b.wave.id));
   for (const delivery of deliveries) await deliver(tx, delivery);
-  await closeMonumentProbes(tx, season.id, cutoff);
-  for (const target of locked) await closeTarget(tx, target, cutoff);
-  await tx.delete(scheduledEvents).where(and(eq(scheduledEvents.seasonId, season.id),
-    inArray(scheduledEvents.kind, ['monument_arrival', 'monument_loss', 'monument_respawn'])));
-  for (const playerId of [...owners].sort()) await recomputePlayerWealth(tx, playerId, input.cutoff);
-  await publishShard(tx, season.id, 'control');
+  return { locked, owners: [...owners].sort() };
 }
 
 async function closeTarget(tx: Tx, locked: LockedMonument, cutoff: Date): Promise<void> {

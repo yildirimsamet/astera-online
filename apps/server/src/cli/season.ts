@@ -19,6 +19,7 @@ import { hashPassword } from '../auth/password.js';
 import { createSeason, liveSeason } from '../services/season.js';
 import { adoptMonumentLayout } from '../services/monumentAdoption.js';
 import { activateMonumentMotion } from '../services/monumentMotionAdoption.js';
+import { recallMonumentFleets } from '../services/monumentRecall.js';
 import { activateMonumentRadiation } from '../services/monumentRadiationAdoption.js';
 import { activateRadiationBombs } from '../services/radiationBombAdoption.js';
 import { activateTempoSlowdown } from '../services/tempoAdoption.js';
@@ -92,6 +93,13 @@ season adopt-monuments --shard CODE [--yes]
                                    LIVE galaxy. Requires no held monuments, active
                                    fleets, probes or joint operations. Dry run unless
                                    --yes; safe to run twice. Keeps target IDs/history.
+
+season recall-monuments --shard CODE [--yes]
+                                   MAINTENANCE ONLY, LIVE SEASON STAYS OPEN: land every
+                                   monument fleet at home with ships, health, cargo and
+                                   unspent return fuel; vacated monuments get the normal
+                                   24h garrison return. Refuses travelling probes and
+                                   clan operations. Dry run unless --yes; safe to rerun.
 
 season activate-monument-motion --shard CODE [--yes]
                                    start 8h/16h motion in an idle LIVE galaxy.
@@ -276,6 +284,19 @@ async function main(): Promise<void> {
           if (values.yes === true) process.exitCode = 1;
         } else if (result.status === 'ALREADY_UPDATED') console.log('The monument layout is already updated. Nothing was written.');
         else console.log('Nothing was written; pass --yes to apply.');
+        break;
+      }
+
+      case 'recall-monuments': {
+        if (!values.shard) throw new Error('recall-monuments requires an explicit --shard CODE');
+        const live = await liveSeason(db, values.shard);
+        if (!live) throw new Error(`no live season on ${values.shard}`);
+        const result = await recallMonumentFleets(db, { seasonId: live.season.id, clock: systemClock,
+          apply: values.yes === true, adminUsernames: env.ADMIN_USERNAMES });
+        console.log(`${values.shard}: ${result.status}; at=${result.at.toISOString()}; fleets=${String(result.fleets)}, probes=${String(result.probes)}, operations=${String(result.operations)}`);
+        if (result.applied) console.log('Landed every monument fleet at home. The season stays open; vacated monuments follow the 24h garrison rule.');
+        else console.log(result.status === 'IDLE' ? 'No monument fleet is out. Nothing was written.' : 'Nothing was written.');
+        if (result.status === 'BUSY' && values.yes === true) process.exitCode = 1;
         break;
       }
 
