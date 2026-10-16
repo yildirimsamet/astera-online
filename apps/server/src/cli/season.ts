@@ -20,6 +20,7 @@ import { createSeason, liveSeason } from '../services/season.js';
 import { adoptMonumentLayout } from '../services/monumentAdoption.js';
 import { activateMonumentMotion } from '../services/monumentMotionAdoption.js';
 import { recallMonumentFleets } from '../services/monumentRecall.js';
+import { activateSpawnGate } from '../services/spawnGate.js';
 import { activateMonumentRadiation } from '../services/monumentRadiationAdoption.js';
 import { activateRadiationBombs } from '../services/radiationBombAdoption.js';
 import { activateTempoSlowdown } from '../services/tempoAdoption.js';
@@ -93,6 +94,11 @@ season adopt-monuments --shard CODE [--yes]
                                    LIVE galaxy. Requires no held monuments, active
                                    fleets, probes or joint operations. Dry run unless
                                    --yes; safe to run twice. Keeps target IDs/history.
+
+season activate-spawn-gate --shard CODE [--yes]
+                                   cap drifting asteroids (showers exempt) and pirate fleets at
+                                   the people who played in the last 5 minutes, from now on.
+                                   Existing rocks and pirates stay. Dry run unless --yes.
 
 season recall-monuments --shard CODE [--yes]
                                    MAINTENANCE ONLY, LIVE SEASON STAYS OPEN: land every
@@ -287,6 +293,16 @@ async function main(): Promise<void> {
         break;
       }
 
+      case 'activate-spawn-gate': {
+        if (!values.shard) throw new Error('activate-spawn-gate requires an explicit --shard CODE');
+        const live = await liveSeason(db, values.shard);
+        if (!live) throw new Error(`no live season on ${values.shard}`);
+        const result = await activateSpawnGate(db, { seasonId: live.season.id, clock: systemClock, apply: values.yes === true });
+        console.log(`${values.shard}: ${result.status}; start=${result.startsAt.toISOString()}`);
+        console.log(result.applied ? 'Spawn gate on. The worker decides every later birth.' : 'Nothing was written.');
+        break;
+      }
+
       case 'recall-monuments': {
         if (!values.shard) throw new Error('recall-monuments requires an explicit --shard CODE');
         const live = await liveSeason(db, values.shard);
@@ -427,6 +443,7 @@ async function main(): Promise<void> {
           startsAt: systemClock.now(),
           days: num(values.days, SEASON.days),
           playerCap: capacity,
+          spawnGate: true,
           ...(values.ruleset === undefined ? {} : { rulesetVersion: num(values.ruleset, MULTI_WORLD.rulesetVersion) }),
         });
 

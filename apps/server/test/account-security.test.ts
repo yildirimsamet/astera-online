@@ -35,6 +35,22 @@ describe('account credential migration', () => {
     const emailLogin = await built.app.inject({ method: 'POST', url: '/api/auth/login', payload: { identifier: ' PILOT@EXAMPLE.COM ', password } });
     expect(emailLogin.statusCode).toBe(200);
     expect(emailLogin.json<{ displayName: string }>().displayName).toBe('Vantage');
+    expect(emailLogin.json<{ loginEmail?: string }>().loginEmail).toBe('pilot@example.com');
+    expect(emailLogin.headers['cache-control']).toBe('no-store');
+    const emailCookie = String(emailLogin.headers['set-cookie']).split(';')[0]!;
+    const refreshed = await built.app.inject({ method: 'POST', url: '/api/auth/refresh', headers: { cookie: emailCookie } });
+    expect(refreshed.statusCode).toBe(200);
+    expect(refreshed.json<{ loginEmail?: string }>().loginEmail).toBe('pilot@example.com');
+    const owner = await built.app.inject({ url: '/api/auth/me', headers: { authorization: `Bearer ${emailLogin.json<{ accessToken: string }>().accessToken}` } });
+    expect(owner.statusCode).toBe(200);
+    expect(owner.json()).not.toHaveProperty('loginEmail');
+    expect(owner.json()).not.toHaveProperty('email');
+  });
+  it('does not provide an email hint for an account without a verified address', async () => {
+    const { account, cookie } = await register();
+    expect(account).not.toHaveProperty('loginEmail');
+    const refreshed = await built.app.inject({ method: 'POST', url: '/api/auth/refresh', headers: { cookie } });
+    expect(refreshed.json()).not.toHaveProperty('loginEmail');
   });
 });
 

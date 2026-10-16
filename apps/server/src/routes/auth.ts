@@ -35,13 +35,14 @@ const setRefresh = (reply: FastifyReply, token: string, days: number): void => {
 export async function openSession(
   app: FastifyInstance,
   reply: FastifyReply,
-  account: { id: string; username: string; displayName: string; country: CountryCode; authVersion?: number },
+  account: { id: string; username: string; displayName: string; country: CountryCode; authVersion?: number; loginEmail?: string },
 ): Promise<{
   accountId: string;
   username: string;
   displayName: string;
   country: CountryCode;
   accessToken: string;
+  loginEmail?: string;
 }> {
   const [access, refresh] = await Promise.all([
     app.tokens.issueAccess(account.id, account.authVersion ?? 0),
@@ -54,6 +55,7 @@ export async function openSession(
     displayName: account.displayName,
     country: account.country,
     accessToken: access,
+    ...(account.loginEmail === undefined ? {} : { loginEmail: account.loginEmail }),
   };
 }
 

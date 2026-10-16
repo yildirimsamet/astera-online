@@ -61,7 +61,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Asteroidenschauer",
-      summary: "Die normale Rate beträgt {{rate}} Asteroiden pro aktivem Kommandanten und Stunde. Ein Schauer multipliziert diese Rate während des Ereignisses. Die Hälfte der zusätzlichen Asteroiden verteilt sich auf die ersten {{frontMinutes}} Minuten. Asteroiden bleiben, bis sie abgebaut sind oder ihre Zeit abläuft.",
+      summary: "Die normale Rate beträgt {{rate}} Asteroiden pro aktivem Kommandanten und Stunde. Ein Schauer multipliziert diese Rate während des Ereignisses. Die Hälfte der zusätzlichen Asteroiden verteilt sich auf die ersten {{frontMinutes}} Minuten. Asteroiden bleiben, bis sie abgebaut sind oder ihre Zeit abläuft. Außerhalb von Schauern treiben nie mehr Asteroiden in der Galaxie, als in den letzten {{window}} Minuten Spieler aktiv waren; für Piratenflotten gilt diese Grenze immer.",
     },
     trade: {
       title: "Handelsschiff",

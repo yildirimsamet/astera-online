@@ -149,6 +149,7 @@ export function App() {
       <LandingScreen
         onAuthenticate={authenticate}
         {...(session.securityNotice ? { securityNotice: session.securityNotice } : {})}
+        {...(session.loginEmail ? { loginEmail: session.loginEmail } : {})}
         onBegin={rehearse}
         {...(session.open === undefined ? {} : { open: session.open })}
         {...(session.error === undefined ? {} : { error: session.error })}

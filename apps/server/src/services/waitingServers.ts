@@ -57,7 +57,7 @@ export async function ensureWaitingSeason(
       shardCode: code, shardName: 'Silent Space', role: 'WAITING', ordinal,
       seed: hashSeed('waiting-season', source.cycleId, code) & 0x7fffffff,
       startsAt: source.startsAt, endsAt: source.endsAt, initializedAt: now,
-      rulesetVersion: source.rulesetVersion, playerCap: SERVERS.capacity,
+      rulesetVersion: source.rulesetVersion, playerCap: SERVERS.capacity, spawnGate: true,
     });
     return created.season;
   });

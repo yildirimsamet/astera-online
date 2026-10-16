@@ -209,6 +209,20 @@ describe('the landing screen', () => {
     expect(screen.queryByRole('dialog', { name: 'Reset password' })).not.toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: /sign in/i })).toBeInTheDocument();
   });
+  it('prefills the verified email, focuses the empty password and lets the player change the identifier', async () => {
+    const user = userEvent.setup(); const { wrapper: Wrapper } = harness();
+    const authenticate = vi.fn(() => Promise.resolve());
+    render(<Wrapper><LandingScreen onAuthenticate={authenticate} onBegin={vi.fn(() => Promise.resolve())} open="login" loginEmail="pilot@example.com" loadAsset={instantly} /></Wrapper>);
+    await openDoor();
+    const identifier = screen.getByLabelText(/username or email/i);
+    const password = screen.getByLabelText('Password');
+    expect(identifier).toHaveValue('pilot@example.com');
+    expect(password).toHaveValue(''); expect(password).toHaveFocus();
+    await user.clear(identifier); await user.type(identifier, 'another@example.com');
+    await user.type(password, 'a-correct-password');
+    await user.click(screen.getByRole('button', { name: /^Sign in$/ }));
+    await waitFor(() => { expect(authenticate).toHaveBeenCalledWith('login', 'another@example.com', 'a-correct-password'); });
+  });
 
   it('submits what was typed', async () => {
     const user = userEvent.setup();

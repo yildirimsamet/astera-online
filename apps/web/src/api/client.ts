@@ -4,7 +4,7 @@ import { cosmeticEquipSchema } from './schemas.js';
 import { vacationSchema } from './schemas.js';
 import { honorTargetSchema } from './schemas.js';
 import { returnStatusSchema } from './schemas.js';
-import type { z } from 'zod';
+import { z } from 'zod';
 import type {
   Fleet,
   BuildingId,
@@ -289,20 +289,26 @@ export class Api {
   private readonly baseUrl: string;
   private token: string | null = null;
   private sessionAccountId: string | null = null;
+  private emailForLogin: string | undefined;
   private sessionGeneration = 0;
-  private readonly sessionListeners = new Set<(reason: 'email' | 'password' | 'expired') => void>();
+  private readonly sessionListeners = new Set<(reason: 'email' | 'password' | 'expired', loginEmail?: string) => void>();
 
-  onSessionEnded(listener: (reason: 'email' | 'password' | 'expired') => void): () => void {
+  onSessionEnded(listener: (reason: 'email' | 'password' | 'expired', loginEmail?: string) => void): () => void {
     this.sessionListeners.add(listener);
     return () => { this.sessionListeners.delete(listener); };
   }
 
-  endSession(reason: 'email' | 'password' | 'expired'): void {
+  endSession(reason: 'email' | 'password' | 'expired', loginEmail?: string): void {
+    const hint = z.string().trim().toLowerCase().email().safeParse(loginEmail);
     this.sessionGeneration++;
     this.token = null;
     this.sessionAccountId = null;
+    this.emailForLogin = undefined;
     this.placement = null;
-    for (const listener of this.sessionListeners) listener(reason);
+    for (const listener of this.sessionListeners) {
+      if (hint.success) listener(reason, hint.data);
+      else listener(reason);
+    }
   }
   private placement: string | null = null;
   /** Deduped: five queries expiring at once must produce one refresh, not five. */
@@ -315,6 +321,10 @@ export class Api {
 
   get accessToken(): string | null {
     return this.token;
+  }
+
+  get verifiedEmail(): string | undefined {
+    return this.emailForLogin;
   }
 
   /**
@@ -422,10 +432,11 @@ export class Api {
 
   /* ── identity ─────────────────────────────────────────────── */
 
-  private adoptSession(session: { accountId: string; accessToken: string }, generation: number): void {
+  private adoptSession(session: { accountId: string; accessToken: string; loginEmail?: string | undefined }, generation: number): void {
     if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
     if (this.sessionAccountId !== session.accountId) this.placement = null;
     this.sessionAccountId = session.accountId;
+    this.emailForLogin = session.loginEmail;
     this.token = session.accessToken;
   }
 
@@ -470,6 +481,7 @@ export class Api {
    */
   async register(username: string, password: string, countryCode?: CountryCode) {
     const generation = ++this.sessionGeneration;
+    this.emailForLogin = undefined;
     const session = await this.send('/api/auth/register', sessionSchema, {
       method: 'POST',
       body: { username, password, ...(countryCode === undefined ? {} : { countryCode }) },
@@ -481,6 +493,7 @@ export class Api {
 
   async login(username: string, password: string) {
     const generation = ++this.sessionGeneration;
+    this.emailForLogin = undefined;
     const session = await this.send('/api/auth/login', sessionSchema, {
       method: 'POST',
       body: { username, password },
@@ -502,6 +515,7 @@ export class Api {
     this.sessionGeneration++;
     this.token = null;
     this.sessionAccountId = null;
+    this.emailForLogin = undefined;
     this.placement = null;
     try {
       await this.send('/api/auth/logout', okSchema, { method: 'POST', retryOnExpiry: false });
@@ -599,6 +613,7 @@ export class Api {
     countryCode?: CountryCode,
   ) {
     const generation = ++this.sessionGeneration;
+    this.emailForLogin = undefined;
     const claimed = await this.send('/api/onboarding/claim', claimSchema, {
       method: 'POST',
       // D172: the server authors the checkpoint; no local resources/fleet travel.
@@ -620,6 +635,7 @@ export class Api {
     this.sessionGeneration++;
     this.token = null;
     this.sessionAccountId = null;
+    this.emailForLogin = undefined;
     this.placement = null;
   }
 

@@ -128,6 +128,8 @@ export interface CreateSeasonInput {
   rulesetVersion?: number;
   /** Explicit announced successor policy; null opts out, undefined inherits. */
   honorVersion?: HonorVersion | null;
+  /** Production galaxies open with the spawn gate on (owner rule 2026-10-17, `spawnGate.ts`). */
+  spawnGate?: boolean;
 }
 
 export async function createSeason(db: Db, input: CreateSeasonInput) {
@@ -188,6 +190,8 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
         startsAt: input.startsAt,
         endsAt,
         tempoStartsAt: input.startsAt,
+        spawnGateFrom: input.spawnGate === true ? input.startsAt : null,
+        spawnGateThrough: input.spawnGate === true ? input.startsAt : null,
         radiationBombStartsAt: (input.rulesetVersion ?? MULTI_WORLD.rulesetVersion) >= 18 ? input.startsAt : null,
         rulesetVersion: input.rulesetVersion ?? MULTI_WORLD.rulesetVersion,
         statsVersion: cycle.statsVersion,

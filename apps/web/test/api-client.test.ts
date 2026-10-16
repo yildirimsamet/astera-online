@@ -31,6 +31,54 @@ const SESSION = {
   accessToken: 'fresh-token',
 };
 
+describe('verified email for the next sign-in', () => {
+  it('reads the owner-only email on cookie restore and clears it with credentials', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(() => json({ ...SESSION, loginEmail: 'pilot@example.com' }));
+    const api = new Api({ fetch: fetcher });
+    expect(await api.restore()).toBe(true);
+    expect(api.verifiedEmail).toBe('pilot@example.com');
+    await api.logout();
+    expect(api.verifiedEmail).toBeUndefined();
+  });
+  it('sends the newly verified address with the session-ended event', () => {
+    const api = new Api(); const ended = vi.fn(); api.onSessionEnded(ended);
+    api.endSession('email', ' NEW@EXAMPLE.COM ');
+    expect(ended).toHaveBeenCalledWith('email', 'new@example.com');
+    expect(api.verifiedEmail).toBeUndefined();
+  });
+  it('does not carry a previous account email into a new or failed sign-in', async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockImplementationOnce(() => json({ ...SESSION, loginEmail: 'pilot@example.com' }))
+      .mockImplementationOnce(() => json({ error: 'BAD_CREDENTIALS', message: 'Wrong credentials' }, 401))
+      .mockImplementationOnce(() => json(SESSION));
+    const api = new Api({ fetch: fetcher });
+    await api.restore();
+    expect(api.verifiedEmail).toBe('pilot@example.com');
+    await expect(api.login('other', 'wrong-password')).rejects.toMatchObject({ status: 401 });
+    expect(api.verifiedEmail).toBeUndefined();
+    await api.login('other', 'correct-password');
+    expect(api.verifiedEmail).toBeUndefined();
+  });
+  it('rejects a stale refresh hint after another explicit account signs in', async () => {
+    let finish: ((response: Response) => void) | undefined;
+    const fetcher = vi.fn<typeof fetch>()
+      .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }))
+      .mockImplementationOnce(() => json({ ...SESSION, accountId: 'other-account', loginEmail: 'other@example.com' }));
+    const api = new Api({ fetch: fetcher }); const pending = api.restore();
+    await api.login('other@example.com', 'correct-password');
+    if (!finish) throw new Error('Refresh did not start');
+    finish(await json({ ...SESSION, loginEmail: 'old@example.com' }));
+    expect(await pending).toBe(false);
+    expect(api.verifiedEmail).toBe('other@example.com');
+    api.forget(); expect(api.verifiedEmail).toBeUndefined();
+  });
+  it('does not publish a malformed email as a login hint', () => {
+    const api = new Api(); const ended = vi.fn(); api.onSessionEnded(ended);
+    api.endSession('email', 'not-an-email');
+    expect(ended).toHaveBeenCalledWith('email');
+  });
+});
+
 /**
  * The payload this test feeds to the real parser.
  *

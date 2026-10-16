@@ -22,6 +22,8 @@ export interface AccountRecord {
   displayName: string;
   country: CountryCode;
   authVersion: number;
+  /** Owner-only session hint, never part of the public commander identity. */
+  loginEmail?: string;
 }
 
 const publicShape = (row: {
@@ -30,12 +32,15 @@ const publicShape = (row: {
   displayName: string;
   countryCode: CountryCode;
   authVersion: number;
+  email: string | null;
+  emailVerifiedAt: Date | null;
 }): AccountRecord => ({
   id: row.id,
   username: row.username,
   displayName: row.displayName,
   country: row.countryCode,
   authVersion: row.authVersion,
+  ...(row.emailVerifiedAt !== null && row.email !== null ? { loginEmail: row.email } : {}),
 });
 
 /**

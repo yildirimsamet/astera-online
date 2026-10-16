@@ -11,6 +11,7 @@ import { performance } from 'node:perf_hooks';
 import { eq, sql } from 'drizzle-orm';
 import { scheduledEvents } from '../db/schema.js';
 import { VACATION_EVENT_KINDS } from '../services/vacation.js';
+import { advanceSpawnGates } from '../services/spawnGate.js';
 
 export interface WorkerOptions {
   pollMs: number;
@@ -93,6 +94,8 @@ export interface WorkerStatus {
  * be something to find.
  */
 const SWEEP_EVERY_MS = 30_000;
+/** Spawn gate decisions (owner rule 2026-10-17): a planned birth waits at most this long to be shown. */
+const SPAWN_GATE_EVERY_MS = 15_000;
 
 export class EventWorker {
   private timer: NodeJS.Timeout | null = null;
@@ -109,6 +112,7 @@ export class EventWorker {
    * than a minute later.
    */
   private botsSweptAt = 0;
+  private spawnGateAt = -Infinity;
   private silentSpaceAt = -Infinity;
   private silentSpaceTask: Promise<void> | null = null;
   private ticks = 0;
@@ -203,6 +207,21 @@ export class EventWorker {
         }
       } catch (err) {
         this.log.error({ err }, 'stranded-flight sweep failed; the queue carries on regardless');
+      }
+    }
+
+    /**
+     * THE SPAWN GATE, on its own clock and its own catch like the sweeps above: a birth that
+     * waits fifteen seconds to be decided costs nothing; a gate failure must never delay a raid.
+     */
+    if (now.getTime() - this.spawnGateAt >= SPAWN_GATE_EVERY_MS) {
+      this.spawnGateAt = now.getTime();
+      try {
+        await advanceSpawnGates(this.db, this.clock, (err, seasonId) => {
+          this.log.error({ err, seasonId }, 'spawn gate failed for one season; it retries next pass');
+        });
+      } catch (err) {
+        this.log.error({ err }, 'spawn gate pass failed; the queue carries on regardless');
       }
     }
 

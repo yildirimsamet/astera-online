@@ -61,7 +61,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Asteroid Shower",
-      summary: "The normal spawn rate is {{rate}} asteroids per active commander per hour. A shower multiplies this rate during its window. Half the bonus rocks are spread over the first {{frontMinutes}} minutes. Rocks remain until depleted or expired.",
+      summary: "The normal spawn rate is {{rate}} asteroids per active commander per hour. A shower multiplies this rate during its window. Half the bonus rocks are spread over the first {{frontMinutes}} minutes. Rocks remain until depleted or expired. Outside showers, the galaxy never holds more drifting rocks than people who played in the last {{window}} minutes; pirate fleets always follow this cap.",
     },
     trade: {
       title: "Trade Ship",

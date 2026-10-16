@@ -51,7 +51,7 @@ function AccountSecuritySheet({ status, onClose, refresh }: { status: AccountSec
     } else if (challenge.purpose !== 'reset') {
       const result = await api.securityVerify(challenge.challengeId, code, challenge.purpose);
       setCode('');
-      if (result.reauthenticate) { api.endSession('email'); onClose(); }
+      if (result.reauthenticate) { api.endSession('email', email); onClose(); }
       else { setChallenge(securityChallengeSchema.parse(result)); await refresh(); }
     }
   };

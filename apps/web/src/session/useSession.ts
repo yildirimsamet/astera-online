@@ -25,7 +25,7 @@ export type Session =
   /** Asking the cookie whether there is a session to come back to. */
   | { phase: 'starting' }
   /** No session. The front door: the premise, and a way in. */
-  | { phase: 'landing'; error?: string; open?: 'login'; securityNotice?: 'email' | 'password' | 'expired' }
+  | { phase: 'landing'; error?: string; open?: 'login'; securityNotice?: 'email' | 'password' | 'expired'; loginEmail?: string }
   /**
    * Playing the real game, on a world that does not exist yet. D56.
    *
@@ -108,12 +108,12 @@ export function useSession() {
   const [resumed, setResumed] = useState(() => session.phase === 'ready');
   // Async transitions from the previous identity must never replace its exit screen.
   const revision = useRef(0);
-  useEffect(() => api.onSessionEnded(reason => {
+  useEffect(() => api.onSessionEnded((reason, loginEmail) => {
     revision.current++;
     forgetReady();
     queries.clear();
     setResumed(false);
-    setSession({ phase: 'landing', open: 'login', securityNotice: reason });
+    setSession({ phase: 'landing', open: 'login', securityNotice: reason, ...(loginEmail ? { loginEmail } : {}) });
   }), [api, queries]);
 
   // StrictMode mounts effects twice in development. One restore, not two.
@@ -379,6 +379,7 @@ export function useSession() {
    */
   const signOut = useCallback(async (): Promise<void> => {
     const startedAt = ++revision.current;
+    const loginEmail = api.verifiedEmail;
     forgetReady();
     setResumed(false);
     setSession({ phase: 'starting' });
@@ -386,7 +387,7 @@ export function useSession() {
       await api.logout();
       if (startedAt !== revision.current) return;
       queries.clear();
-      setSession({ phase: 'landing', open: 'login' });
+      setSession({ phase: 'landing', open: 'login', ...(loginEmail ? { loginEmail } : {}) });
     } catch (err) {
       if (startedAt !== revision.current) return;
       setSession({ phase: 'blocked', message: messageOf(err) });

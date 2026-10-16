@@ -35,6 +35,7 @@ import {
 import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { asteroidClaims, debrisFields, miningRuns, planets, seasons, units } from '../db/schema.js';
+import { applySpawnGate } from './spawnGateRead.js';
 import { assertFreeBay } from './flight.js';
 import { takeHomeHealth } from './homeHealth.js';
 import { landHpShips } from './shipDamage.js';
@@ -97,6 +98,15 @@ async function fieldOf(tx: Queryable, seasonId: string, now: Date): Promise<{
   startsAt: Date;
   asteroidKey: string;
 }> {
+  const raw = await rawAsteroidField(tx, seasonId, now);
+  return { ...raw.field, asteroids: await applySpawnGate(tx, raw.season, 'ASTEROID', raw.field.asteroids, now) };
+}
+
+/** The planned field before the spawn gate — only the gate itself and its tests read this. */
+export async function rawAsteroidField(tx: Queryable, seasonId: string, now: Date): Promise<{
+  season: typeof seasons.$inferSelect;
+  field: { asteroids: AsteroidSpec[]; startsAt: Date; asteroidKey: string };
+}> {
   const [season] = await tx.select().from(seasons).where(eq(seasons.id, seasonId));
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
   const dynamicFrom = season.asteroidDynamicFrom;
@@ -105,7 +115,7 @@ async function fieldOf(tx: Queryable, seasonId: string, now: Date): Promise<{
     : [];
   const hours = dynamicFrom === null ? [] : await loadAsteroidHours(tx, season.id, now);
   const hourZero = floorHour(season.startsAt).getTime();
-  return {
+  return { season, field: {
     asteroids: composeSeasonAsteroidField({
       key: season.asteroidKey,
       calendar,
@@ -124,7 +134,7 @@ async function fieldOf(tx: Queryable, seasonId: string, now: Date): Promise<{
     }),
     startsAt: season.startsAt,
     asteroidKey: season.asteroidKey,
-  };
+  } };
 }
 
 /** The frozen shower calendar, read back through the same shape it was written in. */

@@ -101,6 +101,20 @@ describe('galaxy events guide', () => {
     expect(screen.getByText(/4 saatlik üretimine kadar/i)).toBeInTheDocument();
   });
 
+  it('states the five-minute presence cap on drifting rocks and pirate fleets', () => {
+    render(<GalaxyEventsGuide onClose={vi.fn()} />);
+    expect(screen.getByText(/son 5 dakikada oyunda olan oyuncu sayısından fazla/i)).toBeInTheDocument();
+    expect(screen.getByText(/korsan filoları için bu sınır her zaman geçerlidir/i)).toBeInTheDocument();
+  });
+
+  it('states the same cap in every language', () => {
+    for (const language of ['en', 'de', 'es', 'fr', 'ja'] as const) {
+      const text = i18n.t('galaxy.eventsGuide.asteroid.summary', { lng: language, rate: '0.75', frontMinutes: 30, window: 5 });
+      expect(text).toContain('5');
+      expect(text).not.toBe(i18n.t('galaxy.eventsGuide.asteroid.summary', { lng: language, rate: '0.75', frontMinutes: 30, window: 9 }));
+    }
+  });
+
   it('explains the reward and interaction rules without technical language', () => {
     render(<GalaxyEventsGuide onClose={vi.fn()} />);
 

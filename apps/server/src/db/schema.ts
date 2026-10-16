@@ -498,6 +498,12 @@ export const seasons = pgTable('seasons', {
   status: seasonStatus('status').notNull().default('pending'),
   startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
   endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+  /**
+   * SPAWN GATE (owner rule 2026-10-17): births after `spawnGateFrom` are checked once against
+   * the five-minute presence cap; `spawnGateThrough` is how far the worker has decided. Null = off.
+   */
+  spawnGateFrom: timestamp('spawn_gate_from', { withTimezone: true }),
+  spawnGateThrough: timestamp('spawn_gate_through', { withTimezone: true }),
   /** Explicit idle-season cutover; does not change unrelated season rules. */
   monumentMotionStartsAt: timestamp('monument_motion_starts_at', { withTimezone: true }),
   monumentRadiationStartsAt: timestamp('monument_radiation_starts_at', { withTimezone: true }),
@@ -3789,6 +3795,19 @@ export const asteroidClaims = pgTable('asteroid_claims', {
  * a row is written once and never updated — changing one would move rocks already
  * in the sky.
  */
+/** A planned asteroid or pirate birth the spawn gate skipped. Never re-decided. */
+export const spawnGateSkips = pgTable('spawn_gate_skips', {
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  kind: text('kind').$type<'ASTEROID' | 'PIRATE'>().notNull(),
+  index: integer('index').notNull(),
+  appearsAt: timestamp('appears_at', { withTimezone: true }).notNull(),
+  decidedAt: timestamp('decided_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.seasonId, t.kind, t.index] }),
+  index('spawn_gate_skips_window_idx').on(t.seasonId, t.kind, t.appearsAt),
+  check('spawn_gate_skips_kind_check', sql`${t.kind} IN ('ASTEROID', 'PIRATE')`),
+]);
+
 export const asteroidSpawnHours = pgTable('asteroid_spawn_hours', {
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   hourStartsAt: timestamp('hour_starts_at', { withTimezone: true }).notNull(),

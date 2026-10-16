@@ -19,6 +19,7 @@ import {
 import { minutesSince } from '../clock.js';
 import { GameError } from './planet.js';
 import { pirateState, seasons } from '../db/schema.js';
+import { applySpawnGate } from './spawnGateRead.js';
 import type { Queryable } from '../db/client.js';
 import { loadPirateHour, loadPirateHours } from './asteroidSpawn.js';
 
@@ -291,6 +292,7 @@ export async function loadPirateSnapshot(
   db: Queryable,
   seasonId: string,
   now: Date,
+  options: { gated?: boolean } = {},
 ): Promise<PirateSnapshot> {
   const [season] = await db.select().from(seasons).where(eq(seasons.id, seasonId));
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
@@ -302,8 +304,10 @@ export async function loadPirateSnapshot(
     lootPaid: row.lootPaid,
   }]));
   if (dynamicPirates(season)) {
-    const pirates = (await loadPirateHours(db, season, now))
+    const planned = (await loadPirateHours(db, season, now))
       .flatMap((hour) => privatePirateHour(season.asteroidKey, hour));
+    // Owner rule 2026-10-17: only births the spawn gate decided and kept (see `spawnGate.ts`).
+    const pirates = options.gated === false ? planned : await applySpawnGate(db, season, 'PIRATE', planned, now);
     return snapshotOf(season, state, pirates, Infinity);
   }
   const pirates = privatePirateField(season.asteroidKey);

@@ -1,7 +1,8 @@
 # Ortak yayın ve e-posta açılışı — 17 Ekim 2026
 
 Kullanıcı e-posta çalışmasıyla birlikte diğer hazır değişikliklerin de canlıya alınmasını
-yetkilendirdi. Bu kayıt yayın boyunca güncellenir; planlanan adımlar tamamlanmış sayılmaz.
+yetkilendirdi. Yayın ve e-posta açılışı tamamlandı. Kabul zamanı: 17 Ekim 2026 02:13 TRT
+(16 Ekim 23:13 UTC). Canlı SHA: `3bde9fe61dcb26b7450875940646fd13ca82acd1`.
 
 ## Kapsam ve güncel başlangıç
 
@@ -65,5 +66,49 @@ schema uyumluluğu kanıtlanmış eski image ayrıca elde tutulur.
   `astera_email_20261017_rehearsal` DB'sine tek transaction ile geri yüklendi.
   Başlangıç: 1.565 account, 684 player, 872 planet, 25.997 mission, 116.918 event,
   journal 177. Mevcut username/password hash özeti migration öncesi/sonrası karşılaştırılır.
-- Tip/lint/build ve aynı image ile restore migration provası sürüyor.
-  Henüz bu aday sürüm deploy edilmedi.
+- Dört workspace tip kontrolü ve bütün dosyaları kapsayan üç sıralı lint grubu PASS.
+  Üretim server ve web artefaktları kesinti öncesinde hazırlandı. Web build büyük chunk
+  uyarısını verdi; build başarılı. Nginx syntax testi geçti; mevcut MIME/HoofyWood vhost
+  uyarıları bu yayında değiştirilmedi.
+- Aynı image ile restore migration provası PASS: pending 4 → 0, journal 177 → 181;
+  bütün yukarıdaki sayılar ve auth özeti aynı. Eski ve yeni image, bu şema üzerinde gerçek
+  register/login/me/refresh/logout okuma-yazma provasını geçti. Prova hesabının reward FK'sı
+  cleanup scriptinde ayrıca temizlenerek restore başlangıç özeti yeniden doğrulandı.
+- Görsel: account security 36/36, shader-family/fault-injection GPU 63/63 ve Tempest zoom /
+  17 motor ışık bütçesi PASS. Üretim webinde TR 350/1280 px login/reset dialog'ları da
+  browser error/overflow olmadan açıldı; 350 px reset screenshot'ı gözle incelendi.
+  Çıktılar `out/email-release-*` ve `out/account-mail-readiness/live-web` altında.
+- Production migration'ları lock timeout 5 saniye ve statement timeout 60 saniye ile
+  uygulandı; pending=0. Üç API sırayla ve worker sağlıklı yeni image ile yenilendi;
+  eski hashed asset'ler korunarak arayüz yayınlandı. Aynı git SHA origin/master,
+  checkout, dört runtime ve public `release.txt` üzerinde doğrulandı.
+- Image: `sha256:4464b6ef865d0deaf8a90ca6fa92bed68c8810f5b73ee688766b5d1830e8849a`.
+- Genel feature flag'ler kapalıyken, ayrı API smoke süreci gerçek production DB ve gerçek
+  Resend adapteriyle yalnız izinli test alıcısına mail gönderdi. Galaksiye hiç katılmayan
+  geçici hesapta bind → username reddi → email login → reset → eski parola reddi → yeni
+  parola ile login PASS. Bind access/refresh iptali, reset access iptali ve reset kodunun
+  ikinci kullanımının reddi PASS. Üç mailin (bind/reset/security alert) tamamı gerçek
+  imzalı Resend webhook'u ile `delivered` oldu. Kodlar test adapterinde yalnız bellekte
+  tutuldu; bu operasyon gelen kutusundan elle kod girme testi olarak sunulmaz.
+- Smoke hesabı exact ID/username ve sıfır player guard'ıyla temizlendi. Kullanıcının mevcut
+  hesabı/parolası değiştirilmedi. Geri yükleme DB'si kaldırıldı; release lock bırakıldı.
+- Ardından üç flag true yapıldı; worker önce, üç API sırayla yenilendi. Dört runtime'da
+  flag'ler true, doğru image/SHA ve health `.ok=true` doğrulandı. Public capabilities:
+  `{"email":true,"recovery":true}`. Son mail sayacı daily=3/monthly=3; queued=0, failed=0,
+  quotaWarning=false. Worker unknownEvents=0. Journal 181 / pending=0.
+- Özel sunucu kanıtı: `~/backups/email-release-20261017/release-acceptance.json`.
+  Yerel kopya: `out/account-mail-readiness/release-acceptance-2026-10-17.json`.
+  Raw secret, parola ve doğrulama kodları rapora veya git'e yazılmadı.
+
+Kalan gözlem sınırları: Gmail Authentication-Results/inbox-versus-spam ve support'a gerçek
+yanıt routing'i ayrıca kullanıcı kutusundan incelenmedi; ikinci test adresi verilmediği için
+adres değiştirme iki gerçek posta kutusuyla tekrarlanmadı (DB/API regresyonları geçti).
+Outlook/iCloud ve fiziksel Capacitor akışı bu yayında test edilmedi. Önceki teknik testin
+mailbox'a ulaştığını kullanıcı doğruladı; webhook `delivered` tek başına inbox yerleşimi değildir.
+
+Bu kapanış yalnız dokümantasyon güncellemesidir; yayınlanan uygulama artefaktı yukarıdaki
+değişmez SHA'dadır. Bu yayın çalışması kaynak kodda kabul sonrasında ek değişiklik yapmadı.
+Son yerel durum kontrolünde başka çalışmanın yeni spawn-gate dosyaları ve `0181_spawn_gate`
+migration'ı oluşmuştu; bunlar sabitlenen yayın adayından sonra başladı, incelenmiş/test edilmiş
+bu pakete dahil değildir. Bu yeni çalışma ve yerel telafi scripti aynen bırakıldı. Canlı
+checkout/image hâlâ yukarıdaki SHA ve 0180'a kadar uygulanmış şemadır.

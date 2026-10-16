@@ -56,6 +56,7 @@ function harness(routes: Route) {
 
     const key = Object.keys(routes).find((route) => path.endsWith(route));
     const body = key === undefined ? REFUSED : routes[key];
+    if (body instanceof Error) return Promise.reject(body);
     if (body instanceof Response) return Promise.resolve(body.clone());
     if (body === REFUSED || body === undefined) {
       return Promise.resolve(
@@ -503,6 +504,27 @@ describe('the session machine', () => {
     });
     expect(result.current.session.phase).toBe('landing');
     expect(result.current.session).toMatchObject({ open: 'login' });
+  });
+  it.each([false, true])('prefills the verified email after cookie restore when logout is offline=%s', async offline => {
+    const { wrapper, api } = harness({ ...placed, '/api/auth/refresh': { ...SESSION, loginEmail: 'pilot@example.com' },
+      '/api/auth/logout': offline ? new Error('offline') : { ok: true } });
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+    await act(async () => { await result.current.signOut(); });
+    expect(result.current.session).toMatchObject({ phase: 'landing', open: 'login', loginEmail: 'pilot@example.com' });
+    expect(api.accessToken).toBeNull();
+    expect(window.sessionStorage.getItem('astera:ready-session')).toBeNull();
+    for (let index = 0; index < window.sessionStorage.length; index++) {
+      const key = window.sessionStorage.key(index);
+      if (key) expect(window.sessionStorage.getItem(key)).not.toContain('pilot@example.com');
+    }
+  });
+  it('prefills a newly verified email before clearing private query state', async () => {
+    const { wrapper, api } = harness(placed);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+    act(() => { api.endSession('email', 'new@example.com'); });
+    expect(result.current.session).toMatchObject({ phase: 'landing', open: 'login', securityNotice: 'email', loginEmail: 'new@example.com' });
   });
 
   it('leaves the loading phase if sign-out cannot reach the server', async () => {

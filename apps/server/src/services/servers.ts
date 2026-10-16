@@ -443,6 +443,7 @@ async function bootstrapServersIn(
       startsAt,
       days,
       playerCap: capacity,
+      spawnGate: true,
       ...(opts.rulesetVersion === undefined ? {} : { rulesetVersion: opts.rulesetVersion }),
     });
     if (cycleId !== null && cycleId !== opened.season.cycleId) {

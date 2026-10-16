@@ -1,6 +1,6 @@
 import {
   ASTEROID_DYNAMIC,
-  ASTEROID_SHOWER_FRONT_LOAD,
+  ASTEROID_SHOWER_FRONT_LOAD, SPAWN_GATE,
   GALAXY_EVENTS,
   type GalaxyEventDays,
   type GalaxyEventKind,
@@ -151,6 +151,7 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
             summary={t('galaxy.eventsGuide.asteroid.summary', {
               rate: decimal(ASTEROID_DYNAMIC.perPlayerPerHour, 2),
               frontMinutes: ASTEROID_SHOWER_FRONT_LOAD.minutes,
+              window: SPAWN_GATE.onlineWindowMinutes,
             })}
           >
             {asteroidGroups.map((group) => (

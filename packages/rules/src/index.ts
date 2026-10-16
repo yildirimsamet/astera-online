@@ -83,3 +83,4 @@ export * from './cosmeticCatalog.js';
 export * from './pirateGeneration.js';
 export * from './pirateLoot.js';
 export * from './pirateProfit.js';
+export * from './spawnGate.js';

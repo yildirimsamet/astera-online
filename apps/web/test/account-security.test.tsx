@@ -9,16 +9,16 @@ import { PasswordResetSheet } from '../src/screens/PasswordResetSheet.js';
 import i18n from '../src/i18n/index.js';
 
 beforeEach(async () => { await i18n.changeLanguage('en'); });
-function setup(path: 'account' | 'reset' | 'pending') {
+function setup(path: 'account' | 'reset' | 'pending' | 'change') {
   const requested: { path: string; body: unknown }[] = [];
-  const challenge = { challengeId: '11111111-1111-4111-8111-111111111111', purpose: path === 'reset' ? 'reset' : 'bind', expiresAt: new Date(Date.now() + 600000).toISOString(), resendAvailableAt: new Date(Date.now() + (path === 'reset' ? 60000 : -1)).toISOString() };
+  const challenge = { challengeId: '11111111-1111-4111-8111-111111111111', purpose: path === 'reset' ? 'reset' : path === 'change' ? 'change_new' : 'bind', expiresAt: new Date(Date.now() + 600000).toISOString(), resendAvailableAt: new Date(Date.now() + (path === 'reset' ? 60000 : -1)).toISOString() };
   const fetcher: typeof fetch = (input, init) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     const body: unknown = typeof init?.body === 'string' ? JSON.parse(init.body) : null;
     requested.push({ path: url, body });
-    const result = url.endsWith('/security') ? { enabled: true, loginMethod: 'username', email: null, maskedEmail: null, verifiedAt: null,
-      pending: path === 'pending' ? { ...challenge, target: 'pilot@example.com', deliveryStatus: requested.filter(call => call.path.endsWith('/security')).length > 1 ? 'failed' : 'queued' } : null }
-      : url.endsWith('/verify') || url.endsWith('/complete') ? { ok: true, reauthenticate: true }
+    const result = url.endsWith('/security') ? { enabled: true, loginMethod: path === 'change' ? 'email' : 'username', email: path === 'change' ? 'old@example.com' : null, maskedEmail: path === 'change' ? 'o•••@example.com' : null, verifiedAt: path === 'change' ? new Date().toISOString() : null,
+      pending: path === 'pending' || path === 'change' ? { ...challenge, target: path === 'change' ? 'new@example.com' : 'pilot@example.com', deliveryStatus: requested.filter(call => call.path.endsWith('/security')).length > 1 ? 'failed' : 'queued' } : null }
+      : url.endsWith('/verify') || url.endsWith('/complete') || url.endsWith('/confirm-new') ? { ok: true, reauthenticate: true }
       : challenge;
     return Promise.resolve(new Response(JSON.stringify(result), { status: 200, headers: { 'content-type': 'application/json' } }));
   };
@@ -28,6 +28,13 @@ function setup(path: 'account' | 'reset' | 'pending') {
   return { requested, ended };
 }
 describe('account email surfaces', () => {
+  it('uses the pending new address after resuming an email change, rather than the old verified one', async () => {
+    const { ended } = setup('change');
+    fireEvent.click(await screen.findByRole('button', { name: /change email/i }));
+    fireEvent.change(screen.getByLabelText('Verification code'), { target: { value: '012345' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
+    await waitFor(() => { expect(ended).toHaveBeenCalledWith('email', 'new@example.com'); });
+  });
   it('shows a delayed delivery failure while the pending verification stays open', async () => {
     const { requested } = setup('pending');
     const entry = await screen.findByRole('button', { name: /add email/i });
@@ -51,8 +58,9 @@ describe('account email surfaces', () => {
     expect(code).toHaveAttribute('autocomplete', 'one-time-code');
     const user = userEvent.setup(); await user.click(code); await user.paste('012 345');
     expect(code).toHaveValue('012345');
+    expect(ended).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
-    await waitFor(() => { expect(ended).toHaveBeenCalledWith('email'); });
+    await waitFor(() => { expect(ended).toHaveBeenCalledWith('email', 'pilot@example.com'); });
     expect(requested.find(r => r.path.endsWith('/verify'))?.body).toMatchObject({ code: '012345' });
   });
   it('requires matching new passwords before submitting a reset code', async () => {

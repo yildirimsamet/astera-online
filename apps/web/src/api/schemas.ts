@@ -245,6 +245,8 @@ export const sessionSchema = z.object({
   displayName: z.string(),
   country: countryCode,
   accessToken: z.string(),
+  /** Owner-only; optional so sessions from older servers remain readable. */
+  loginEmail: z.string().email().optional(),
 });
 
 /**

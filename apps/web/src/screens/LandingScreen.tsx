@@ -42,6 +42,7 @@ export function LandingScreen({
   loadAsset,
   knownCommander,
   securityNotice,
+  loginEmail,
 }: {
   onAuthenticate: (mode: Mode, username: string, password: string) => Promise<void>;
   /**
@@ -56,6 +57,7 @@ export function LandingScreen({
   /** A form to open on arrival, for somebody sent back here to sign in. */
   open?: Mode;
   securityNotice?: 'email' | 'password' | 'expired';
+  loginEmail?: string;
   error?: string;
   /**
    * How one asset is fetched. Overridden only under test.
@@ -347,6 +349,7 @@ export function LandingScreen({
       {mode !== null && (
         <AuthDialog
           securityNotice={securityNotice}
+          loginEmail={loginEmail}
           onBegin={begin}
           onClose={() => {
             setMode(null);
@@ -411,15 +414,17 @@ function AuthDialog({
   onClose,
   onSubmit,
   securityNotice,
+  loginEmail,
 }: {
   onBegin: () => void;
   onClose: () => void;
   onSubmit: (mode: Mode, username: string, password: string) => Promise<void>;
   securityNotice?: 'email' | 'password' | 'expired' | undefined;
+  loginEmail?: string | undefined;
 }) {
   const { t } = useTranslation();
   const [resetOpen, setResetOpen] = useState(false);
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(loginEmail ?? '');
   const [password, setPassword] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [problemField, setProblemField] = useState<'name' | 'password' | null>(null);
@@ -427,13 +432,15 @@ function AuthDialog({
   const nameId = useId();
   const passwordId = useId();
   const nameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   // The form is why the sheet opened, so it starts focused. Autofocus via the DOM
   // rather than the attribute: React's `autoFocus` is unreliable inside a portal
   // that mounts and animates.
   useEffect(() => {
-    nameRef.current?.focus();
-  }, []);
+    if (loginEmail) passwordRef.current?.focus();
+    else nameRef.current?.focus();
+  }, [loginEmail]);
 
   // Escape closes it. Anything modal that traps a player is worse than no modal.
   useEffect(() => {
@@ -548,6 +555,7 @@ function AuthDialog({
         </label>
         <input
           id={passwordId}
+          ref={passwordRef}
           className={`mt-1.5 min-h-12 w-full rounded-control border bg-v2-deep px-3 font-v2-ui text-title text-v2-ink outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${problemField === 'password' ? 'border-v2-hostile' : 'border-v2-line-hi'}`}
           aria-invalid={problemField === 'password'}
           type="password"
