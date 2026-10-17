@@ -68,21 +68,21 @@ export function UnknownSignalSheet({ signal, planet, radar, tier, now, busy = fa
     : signal.status === 'outbound' ? 'unknownSignal.outbound' : 'unknownSignal.returning')} onClose={onClose} detents={['fit']} placement="dialog"
     footer={open ? <div className="space-y-2">
       {(quote.blocked ?? error) && <p role="status" className="text-caption text-v2-warn">{error ?? (quote.blocked ? t(`unknownSignal.${quote.blocked}`, { fuel: full(quote.fuel) }) : '')}</p>}
-      <button type="button" className="w-full rounded-control border border-cyan-200/30 bg-cyan-200/10 px-3 py-2.5 font-v2-ui text-caption font-semibold text-cyan-100 transition-colors hover:bg-cyan-200/20 disabled:opacity-40"
+      <button type="button" className="w-full rounded-control border border-v2-crystal/30 bg-v2-crystal/10 px-3 py-2.5 font-v2-ui text-caption font-semibold text-v2-crystal transition-colors hover:bg-v2-crystal/20 disabled:opacity-40"
         disabled={busy || quote.blocked !== null} onClick={() => { onSend(hull); }}>{t(busy ? 'unknownSignal.sending' : 'unknownSignal.send')}</button>
     </div> : undefined}>
     <div className="space-y-3 font-v2-ui" data-unknown-signal-sheet="">
-      {open && <div className="relative flex min-h-20 items-center gap-3 overflow-hidden rounded-control border border-cyan-200/15 bg-[radial-gradient(ellipse_at_15%_50%,#163541_0%,#09101b_65%)] px-3 py-2.5">
-        <UnknownSignalGlyph className="size-12 shrink-0 text-cyan-100 drop-shadow-[0_0_12px_#7de6ff55]" />
-        <div className="min-w-0"><p className="text-caption text-cyan-100">{t('unknownSignal.detected')}</p><p className="mt-1 text-micro leading-relaxed text-v2-ink-2">{t('unknownSignal.description')}</p></div>
+      {open && <div className="relative flex min-h-20 items-center gap-3 overflow-hidden rounded-control border border-v2-crystal/15 bg-[radial-gradient(ellipse_at_15%_50%,#163541_0%,#09101b_65%)] px-3 py-2.5">
+        <UnknownSignalGlyph className="size-12 shrink-0 text-v2-crystal drop-shadow-[0_0_12px_#7de6ff55]" />
+        <div className="min-w-0"><p className="text-caption text-v2-crystal">{t('unknownSignal.detected')}</p><p className="mt-1 text-micro leading-relaxed text-v2-ink-2">{t('unknownSignal.description')}</p></div>
       </div>}
-      {result ? <div data-testid="unknown-signal-result" className={`space-y-2 rounded-control border p-3 ${result.kind === 'PIRATES' ? 'border-v2-threat/30 bg-v2-threat/5' : 'border-cyan-200/20 bg-cyan-200/5'}`}>
+      {result ? <div data-testid="unknown-signal-result" className={`space-y-2 rounded-control border p-3 ${result.kind === 'PIRATES' ? 'border-v2-hostile/30 bg-v2-hostile/5' : 'border-v2-crystal/20 bg-v2-crystal/5'}`}>
         {result.kind === 'DERELICT' && <img src={HULL_ART[result.hull] ?? undefined} alt={hullName(result.hull) ?? result.hull} className="mx-auto h-24 w-full object-contain" />}
         {result.kind === 'SKIN' && <img src={cosmeticCard(result.cosmeticId)} alt={t(cosmeticCopy(result.cosmeticId).nameKey)} className="mx-auto h-32 w-full rounded-control object-contain" />}
         <p className="text-caption leading-relaxed text-v2-ink">{rewardCopy}</p>
         {result.kind === 'RESOURCES' && <Cost cost={result.loot} />}
-        {result.kind === 'ENERGY' && <p className="text-caption text-cyan-100">{t('unknownSignal.collector')}</p>}
-        {result.kind === 'SKIN' && <button type="button" onClick={onSkins} className="rounded-control border border-cyan-200/30 px-3 py-2 text-caption text-cyan-100">{t('unknownSignal.skins')}</button>}
+        {result.kind === 'ENERGY' && <p className="text-caption text-v2-crystal">{t('unknownSignal.collector')}</p>}
+        {result.kind === 'SKIN' && <button type="button" onClick={onSkins} className="rounded-control border border-v2-crystal/30 px-3 py-2 text-caption text-v2-crystal">{t('unknownSignal.skins')}</button>}
         {(result.kind === 'RESOURCES' || result.kind === 'DERELICT') && !derelictLost && <p className="text-micro text-v2-ink-3">{t(cargoLost
           ? 'unknownSignal.cargoLost' : signal.deliveredAt ? 'unknownSignal.delivered' : 'unknownSignal.inTransit')}</p>}
       </div> : open ? <>
@@ -99,35 +99,35 @@ export function UnknownSignalSheet({ signal, planet, radar, tier, now, busy = fa
           <div role="radiogroup" aria-label={t('unknownSignal.warship')} className="grid grid-cols-4 gap-1.5">{UNKNOWN_SIGNAL.warshipHulls.map(id => {
             const count = planet.fleet[id] ?? 0;
             return <button key={id} type="button" role="radio" aria-checked={id === hull} aria-label={`${hullName(id)} · ${String(count)}`} onClick={() => { setSelection(id); }}
-              className={`min-w-0 rounded-control border px-1 py-1.5 transition-colors ${id === hull ? 'border-cyan-200/50 bg-cyan-200/10' : 'border-v2-line bg-v2-deep/60'}`}>
+              className={`min-w-0 rounded-control border px-1 py-1.5 transition-colors ${id === hull ? 'border-v2-crystal/50 bg-v2-crystal/10' : 'border-v2-line bg-v2-deep/60'}`}>
               <img src={HULL_ART[id] ?? undefined} alt="" className="h-12 w-full object-contain" /><span className="block truncate text-micro text-v2-ink">{hullName(id)}</span>
-              <span className={`mt-0.5 block font-v2-mono text-micro ${count ? 'text-cyan-100' : 'text-v2-warn'}`}>{count ? String(count) : t('unknownSignal.missing')}</span>
+              <span className={`mt-0.5 block font-v2-mono text-micro ${count ? 'text-v2-crystal' : 'text-v2-warn'}`}>{count ? String(count) : t('unknownSignal.missing')}</span>
             </button>;
           })}</div>
-          {(planet.fleet[hull] ?? 0) === 0 && <button type="button" className="mt-1.5 text-caption text-cyan-100 underline decoration-cyan-100/30 underline-offset-4" onClick={() => { onBuild(hull); }}>{t('unknownSignal.build', { ship: hullName(hull) })}</button>}
+          {(planet.fleet[hull] ?? 0) === 0 && <button type="button" className="mt-1.5 text-caption text-v2-crystal underline decoration-v2-crystal/30 underline-offset-4" onClick={() => { onBuild(hull); }}>{t('unknownSignal.build', { ship: hullName(hull) })}</button>}
         </div>
         <div className={`${FIELD} flex items-center gap-2.5`}>
           <img src={HULL_ART.COURIER ?? undefined} alt="" className="h-11 w-16 shrink-0 object-contain" />
           <div className="min-w-0 flex-1"><p className="text-caption text-v2-ink">{t('unknownSignal.courier')} · 1</p><p className="text-micro text-v2-ink-3">{t('unknownSignal.available', { count: planet.fleet.COURIER ?? 0 })}</p></div>
-          {(planet.fleet.COURIER ?? 0) === 0 && <button type="button" onClick={() => { onBuild('COURIER'); }} className="max-w-28 text-right text-caption text-cyan-100">{t('unknownSignal.build', { ship: hullName('COURIER') })}</button>}
+          {(planet.fleet.COURIER ?? 0) === 0 && <button type="button" onClick={() => { onBuild('COURIER'); }} className="max-w-28 text-right text-caption text-v2-crystal">{t('unknownSignal.build', { ship: hullName('COURIER') })}</button>}
         </div>
         {(planet.fleet.COURIER ?? 0) === 0 && (planet.buildings.SHIPYARD ?? 0) < 1 && <p className="text-micro text-v2-warn">{t('unknownSignal.needsShipyard')}</p>}
         <div className="rounded-control border border-v2-line px-2.5 py-2">
-          <div className="mb-2 flex items-center justify-between"><span className="text-micro text-v2-ink-3">{t('unknownSignal.odds')}</span><span aria-hidden="true" className="text-micro text-cyan-100">⌁</span></div>
+          <div className="mb-2 flex items-center justify-between"><span className="text-micro text-v2-ink-3">{t('unknownSignal.odds')}</span><span aria-hidden="true" className="text-micro text-v2-crystal">⌁</span></div>
           <div className="grid grid-cols-5 gap-1">{OUTCOMES.map(([kind, label, icon]) => <div key={kind} className="min-w-0 text-center">
-            <Icon id={icon} className={`mx-auto mb-1 size-4 ${kind === 'PIRATES' ? 'text-v2-threat' : 'text-cyan-100/70'}`} />
-            <span className={`block font-v2-mono text-caption ${kind === 'PIRATES' ? 'text-v2-threat' : 'text-cyan-100'}`}>{UNKNOWN_SIGNAL.outcomeWeights[kind]}%</span>
+            <Icon id={icon} className={`mx-auto mb-1 size-4 ${kind === 'PIRATES' ? 'text-v2-hostile' : 'text-v2-crystal/70'}`} />
+            <span className={`block font-v2-mono text-caption ${kind === 'PIRATES' ? 'text-v2-hostile' : 'text-v2-crystal'}`}>{UNKNOWN_SIGNAL.outcomeWeights[kind]}%</span>
             <span className="mt-0.5 block text-micro leading-tight text-v2-ink-2">{t(`unknownSignal.${label}`)}</span>
           </div>)}</div>
           <details className="mt-2 border-t border-v2-line pt-1.5 text-micro leading-relaxed text-v2-ink-3"><summary className="cursor-pointer text-v2-ink-2">{t('unknownSignal.details')}</summary>
             <div className="mt-2 space-y-1.5">{(['resourcesInfo', 'derelictInfo', 'energyInfo', 'skinInfo', 'piratesInfo'] as const).map(key => <p key={key}>{t(`unknownSignal.${key}`, { tiers: tierOdds })}</p>)}</div>
           </details>
         </div>
-        <div className="space-y-1.5 border-l-2 border-v2-threat/60 pl-2.5"><p className="text-micro leading-relaxed text-v2-ink-2">{t('unknownSignal.risk', { warship: hullName(hull), courier: hullName('COURIER') })}</p><Cost cost={quote.risk} /></div>
+        <div className="space-y-1.5 border-l-2 border-v2-hostile/60 pl-2.5"><p className="text-micro leading-relaxed text-v2-ink-2">{t('unknownSignal.risk', { warship: hullName(hull), courier: hullName('COURIER') })}</p><Cost cost={quote.risk} /></div>
       </> : <p className="text-caption text-v2-ink-2">{t(signal.status === 'lost' ? 'unknownSignal.lostBeforeArrival' : signal.status === 'done' ? 'unknownSignal.delivered'
         : signal.status === 'outbound' ? 'unknownSignal.outbound' : 'unknownSignal.returning')}</p>}
-      <div className="rounded-control border border-cyan-200/15 bg-cyan-200/5 px-2.5 py-2 text-micro leading-relaxed text-v2-ink-3">
-        <p className="text-cyan-100">{t('unknownSignal.radarLevel', { level: radar.level, range: full(radar.range) })}</p>
+      <div className="rounded-control border border-v2-crystal/15 bg-v2-crystal/5 px-2.5 py-2 text-micro leading-relaxed text-v2-ink-3">
+        <p className="text-v2-crystal">{t('unknownSignal.radarLevel', { level: radar.level, range: full(radar.range) })}</p>
         {radar.level === 0 && <p className="mt-1.5">{t('unknownSignal.zeroRadar')}</p>}
         <p className="mt-1.5">{t('unknownSignal.radarHelp')}</p>
       </div>

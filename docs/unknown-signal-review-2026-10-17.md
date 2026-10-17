@@ -23,6 +23,7 @@ sunucu işlemleri, zamanlama, kişisel yayınlar, istemci, altı dil, Wiki ve g�
 | Reclaim, hesap silme ve Silent Space taşıması sinyal görevi/zamanlamasını tanımıyordu. | Aktif görev, eksik parked units ve sessiz oyuncu temizliği testleri. Uçuş açık blocker; eski açık sinyal kapanıyor, eski eventler temizleniyor, durmuş T4 zinciri yeniden açılmıyor. |
 | Özel spawn olayı istemci verisini yenilemiyor; filo etiketi ham ID gösteriyor; recall genel mission API'sine gidiyordu. | Query, SSE, lokalize uçuş ve API manifest/idempotency testleri. Kişisel cache ve native signal yolu bağlandı. |
 | Skin adı çeviri anahtarı gösterebiliyordu; recovery içindeki gezegenden istemci kalkış önerebiliyordu. | Gerçek kozmetik adı ve kalkış engeli testleri kırmızı oldu. Mevcut katalog/gezegen kontrolleri kullanılıyor. |
+| Sinyal ekranları tema dışı cyan sınıfları ve tanımsız `v2-threat` kullanıyordu. | Tam web koşusundaki `surface-vocabulary` kontrolüyle doğrulandı. Dört yüzeyde mevcut `v2-crystal` / `v2-hostile` tokenlarına geçildi; davranış ve ölçüler korunuyor. Son hedefli regresyon ve renk görüntüleri yayın kabul kanıtına eklenir. |
 | Sinyal simgesi, alt etiketin yüksekliği nedeniyle rota ucundan yukarı kayıyordu. | Kullanıcı görüntüsü ve gerçek DOM ölçümü: işaret merkezi ile projekte nokta eşitliği önce başarısızdı. Etiket merkez geometrisinden çıkarıldı; kontrol geçti. Gerçek OwnFleets rotasıyla 350 px görüntü alındı. |
 
 ## Son kullanıcı yönlendirmeleri
