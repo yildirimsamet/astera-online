@@ -86,7 +86,7 @@ async function nextSpawn(tx: Tx, state: typeof unknownSignalState.$inferSelect, 
 export async function resolveUnknownSignalSpawn(tx: Tx, playerId: string, dueAt: Date, clock: Clock, skip = false): Promise<void> {
   const { season } = await lockOwner(tx, playerId);
   const [state] = await tx.select().from(unknownSignalState).where(eq(unknownSignalState.playerId, playerId)).for('update');
-  if (!state?.nextAt || state.nextAt.getTime() !== dueAt.getTime() || dueAt > clock.now()) return;
+  if (state?.nextAt?.getTime() !== dueAt.getTime() || dueAt > clock.now()) return;
   const [person] = await tx.select({ id: players.id }).from(players).where(and(eq(players.id, playerId), isPerson));
   const tier = coreTier((await peakCoreLevels(tx, [playerId])).get(playerId) ?? 1);
   const stop = !person || tier > 3 || season.status !== 'live';
@@ -261,7 +261,7 @@ async function reward(tx: Tx, signal: Signal, accountId: string): Promise<Unknow
 
 export async function resolveUnknownSignalArrival(tx: Tx, id: string, clock: Clock): Promise<void> {
   const state = await getForResolution(tx, id);
-  if (!state || state.signal.status !== 'outbound' || !state.signal.arriveAt || state.signal.arriveAt > clock.now()) return;
+  if (state?.signal.status !== 'outbound' || !state.signal.arriveAt || state.signal.arriveAt > clock.now()) return;
   const { signal, season, player } = state;
   const settled = await dose(tx, signal, season.rulesetVersion, 'OUT', signal.arriveAt!);
   if (fleetCount(settled.fleet) === 0) {

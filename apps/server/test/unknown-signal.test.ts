@@ -244,7 +244,7 @@ describe('unknown signal rewards', () => {
     f.clock.set(state!.nextAt!);
     await f.db.update(scheduledEvents).set({ attempts: 4 }).where(and(eq(scheduledEvents.refId, playerId), eq(scheduledEvents.kind, 'unknown_signal_spawn')));
     const original = HANDLERS.unknown_signal_spawn;
-    HANDLERS.unknown_signal_spawn = async () => { throw new Error('transient placement failure'); };
+    HANDLERS.unknown_signal_spawn = () => Promise.reject(new Error('transient placement failure'));
     try {
       const worker = new EventWorker(f.db, f.clock, { pollMs: 50, batch: 100, staleMinutes: 5 }, pino({ level: 'silent' }));
       await worker.tick();
