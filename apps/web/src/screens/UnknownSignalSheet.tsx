@@ -67,7 +67,7 @@ export function UnknownSignalSheet({ signal, planet, radar, tier, now, busy = fa
     : signal.status === 'lost' ? 'unknownSignal.lost' : cargoLost || derelictLost ? 'unknownSignal.rewardLost' : signal.status === 'done' ? 'unknownSignal.delivered'
     : signal.status === 'outbound' ? 'unknownSignal.outbound' : 'unknownSignal.returning')} onClose={onClose} detents={['fit']} placement="dialog"
     footer={open ? <div className="space-y-2">
-      {(quote.blocked || error) && <p role="status" className="text-caption text-v2-warn">{error ?? (quote.blocked ? t(`unknownSignal.${quote.blocked}`, { fuel: full(quote.fuel) }) : '')}</p>}
+      {(quote.blocked ?? error) && <p role="status" className="text-caption text-v2-warn">{error ?? (quote.blocked ? t(`unknownSignal.${quote.blocked}`, { fuel: full(quote.fuel) }) : '')}</p>}
       <button type="button" className="w-full rounded-control border border-cyan-200/30 bg-cyan-200/10 px-3 py-2.5 font-v2-ui text-caption font-semibold text-cyan-100 transition-colors hover:bg-cyan-200/20 disabled:opacity-40"
         disabled={busy || quote.blocked !== null} onClick={() => { onSend(hull); }}>{t(busy ? 'unknownSignal.sending' : 'unknownSignal.send')}</button>
     </div> : undefined}>
@@ -117,7 +117,7 @@ export function UnknownSignalSheet({ signal, planet, radar, tier, now, busy = fa
           <div className="grid grid-cols-5 gap-1">{OUTCOMES.map(([kind, label, icon]) => <div key={kind} className="min-w-0 text-center">
             <Icon id={icon} className={`mx-auto mb-1 size-4 ${kind === 'PIRATES' ? 'text-v2-threat' : 'text-cyan-100/70'}`} />
             <span className={`block font-v2-mono text-caption ${kind === 'PIRATES' ? 'text-v2-threat' : 'text-cyan-100'}`}>{UNKNOWN_SIGNAL.outcomeWeights[kind]}%</span>
-            <span className="mt-0.5 block text-[9px] leading-tight text-v2-ink-2">{t(`unknownSignal.${label}`)}</span>
+            <span className="mt-0.5 block text-micro leading-tight text-v2-ink-2">{t(`unknownSignal.${label}`)}</span>
           </div>)}</div>
           <details className="mt-2 border-t border-v2-line pt-1.5 text-micro leading-relaxed text-v2-ink-3"><summary className="cursor-pointer text-v2-ink-2">{t('unknownSignal.details')}</summary>
             <div className="mt-2 space-y-1.5">{(['resourcesInfo', 'derelictInfo', 'energyInfo', 'skinInfo', 'piratesInfo'] as const).map(key => <p key={key}>{t(`unknownSignal.${key}`, { tiers: tierOdds })}</p>)}</div>

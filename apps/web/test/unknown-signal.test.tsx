@@ -154,24 +154,27 @@ describe('unknown signal client integration', () => {
     const invalidate = vi.spyOn(client, 'invalidateQueries');
     const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}><ApiProvider api={api}>{children}</ApiProvider></QueryClientProvider>;
     const hook = renderHook(() => ({ list: useUnknownSignals(), actions: useUnknownSignalActions() }), { wrapper });
-    await waitFor(() => expect(hook.result.current.list.data?.signals).toHaveLength(1));
+    await waitFor(() => { expect(hook.result.current.list.data?.signals).toHaveLength(1); });
     await act(async () => { await hook.result.current.actions.send.mutateAsync({ id: signal().id, originPlanetId: props().planet.planet.id, fleet: { DART: 1, COURIER: 1 }, key: 'hook-send' }); });
     expect(invalidate.mock.calls.map(([filter]) => filter?.queryKey)).toEqual(expect.arrayContaining([keys.unknownSignals, keys.pending, keys.planet, keys.planets]));
     hook.unmount(); client.clear();
   });
   it('reads privately, sends an exact manifest with a stable retry key, and recalls through its own API', async () => {
     const id = signal().id;
-    const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(url => Promise.resolve(new Response(JSON.stringify(
-      String(url).endsWith('/dispatch') ? { signalId: id, arriveAt: new Date(now + 600_000), fuel: 20 }
-        : String(url).endsWith('/recall') ? { signalId: id, returnAt: new Date(now + 300_000) } : { signals: [signal()] },
-    ), { status: 200, headers: { 'content-type': 'application/json' } })));
+    const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(input => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      return Promise.resolve(new Response(JSON.stringify(
+        url.endsWith('/dispatch') ? { signalId: id, arriveAt: new Date(now + 600_000), fuel: 20 }
+          : url.endsWith('/recall') ? { signalId: id, returnAt: new Date(now + 300_000) } : { signals: [signal()] },
+      ), { status: 200, headers: { 'content-type': 'application/json' } }));
+    });
     const api = new Api({ fetch });
     expect((await api.unknownSignals()).signals[0]?.id).toBe(id);
     await api.dispatchUnknownSignal(id, props().planet.planet.id, { WARDEN: 1, COURIER: 1 }, 'signal-test-launch');
     expect(fetch.mock.calls[1]?.[1]).toMatchObject({ method: 'POST', body: JSON.stringify({ originPlanetId: props().planet.planet.id, fleet: { WARDEN: 1, COURIER: 1 } }) });
     expect(new Headers(fetch.mock.calls[1]?.[1]?.headers).get('idempotency-key')).toBe('signal-test-launch');
     await api.recallUnknownSignal(id, 'signal-test-recall');
-    expect(String(fetch.mock.calls[2]?.[0])).toContain(`/api/unknown-signals/${id}/recall`);
+    expect(fetch.mock.calls[2]?.[0]).toBe(`/api/unknown-signals/${id}/recall`);
     expect(new Headers(fetch.mock.calls[2]?.[1]?.headers).get('idempotency-key')).toBe('signal-test-recall');
   });
 
