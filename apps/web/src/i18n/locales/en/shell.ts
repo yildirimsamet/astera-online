@@ -336,7 +336,7 @@ export const leaderboard = {
     HALF: "Reduced military return: this commander’s military strength is below yours.",
     NONE: "No positive military return at this strength difference. Your attacking losses can still reduce Honor.",
     repeated: "Fights against the same commander share a diminishing positive return.",
-    retaliation: "A recent attack allows limited retaliation. Harm beyond that allowance can still cost Honor.",
+    retaliation: "Retaliation lasts 24 hours. Harm = permanent losses + {{percent}}% of loot. The allowance is consumed; excess harm incurs a weak-target penalty. Own attack losses still reduce Honor.",
     estimate: "Current comparison; frozen at dispatch. No fixed points: damage, efficiency and shared participation determine the result.",
   },
   honorRank: "Honor rank",

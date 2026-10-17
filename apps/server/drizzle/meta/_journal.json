@@ -1282,6 +1282,20 @@
       "when": 1792217372836,
       "tag": "0182_chat_media",
       "breakpoints": true
+    },
+    {
+      "idx": 183,
+      "version": "7",
+      "when": 1792241606194,
+      "tag": "0183_honor_loot_weight",
+      "breakpoints": true
+    },
+    {
+      "idx": 184,
+      "version": "7",
+      "when": 1792241606195,
+      "tag": "0184_unknown_signals",
+      "breakpoints": true
     }
   ]
 }

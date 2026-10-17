@@ -1,5 +1,5 @@
 import { and, count, eq, inArray, isNull, like, or } from 'drizzle-orm';
-import { FAULT, colonyCapacity, dockLocation } from '@astera/rules';
+import { FAULT, colonyCapacity, coreTier, dockLocation } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
@@ -19,6 +19,7 @@ import { releaseSupportForWorldChange } from './clanSupport.js';
 import { armFaults } from './faults.js';
 import { prepareMonumentOriginChange, reanchorMonumentOrigin } from './monumentOwnership.js';
 import { observeHonorOwner } from './honorReference.js';
+import { stopUnknownSignalSchedule } from './unknownSignalSchedule.js';
 
 export interface CommanderWorld {
   playerId: string;
@@ -400,6 +401,7 @@ export async function transferPlanetControl(
   ));
   const [core] = await tx.select({ level: buildings.level }).from(buildings)
     .where(and(eq(buildings.planetId, input.targetPlanetId), eq(buildings.type, 'CORE')));
+  if (coreTier(core?.level ?? 0) > 3) await stopUnknownSignalSchedule(tx, input.newPlayerId, pair.planetSeason);
   await armFaults(tx, {
     seasonId: pair.planetSeason,
     planetId: input.targetPlanetId,

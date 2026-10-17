@@ -66,6 +66,13 @@ beforeEach(() => {
 });
 
 describe('the wired top of the shell', () => {
+  it.each([false, true])('shows the signal factor and collector reminder with recovery=%s', recovery => {
+    planet.planet.signalBoostUntil = new Date(Date.now() + 3_600_000);
+    planet.planet.productionBoostUntil = recovery ? new Date(Date.now() + 3_600_000) : null;
+    render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
+    expect(screen.getByText(`Signal production ×${recovery ? '2.5' : '2'}`)).toBeInTheDocument();
+    expect(screen.getByText(/collect during the boost/i)).toBeInTheDocument();
+  });
   it('opens the shop directly from the brand strip without routing through the commander menu', async () => {
     const onShop = vi.fn();
     const on = handlers();

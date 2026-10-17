@@ -52,6 +52,7 @@ export const RESUME_RESYNC_MS = 15_000;
  * cannot cover, because the player made the decision minutes ago.
  */
 const LIVE_READS = [
+  keys.unknownSignals,
   keys.monuments,
   keys.planet,
   keys.planets,

@@ -28,6 +28,7 @@ export interface TopBarProps {
   rewards: number;
   /** The recovery boost is running on the active world. */
   boosted: boolean;
+  boostLabel?: string;
   onCommander: () => void;
   onRewards: () => void;
   onWorld: () => void;
@@ -60,6 +61,7 @@ export function TopBar({
   bell,
   rewards,
   boosted,
+  boostLabel,
   works,
   transfer,
   onCommander,
@@ -84,7 +86,7 @@ export function TopBar({
     ...(shielded
       ? [t(shield.kind === 'RECOVERY' ? 'statusBar.recoveryShield.hint' : 'statusBar.newcomerShield.hint', { duration: shieldTime })]
       : []),
-    ...(boosted ? [t('statusBar.recoveryBoost.note')] : []),
+    ...(boosted ? [boostLabel ?? t('statusBar.recoveryBoost.note')] : []),
   ].join(' · ');
 
   return (
@@ -117,6 +119,7 @@ export function TopBar({
             cap={stock[resource].cap}
             safe={stock[resource].safe ?? 0}
             boosted={boosted}
+            boostLabel={boostLabel}
             transfer={transfer ? { id: transfer.id, ...transfer.each[resource] } : null}
             onOpen={() => { onResource(resource); }}
           />

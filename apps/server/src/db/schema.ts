@@ -55,6 +55,7 @@ import type {
   Vec3,
   RadiationBombLevel,
   CountryCode,
+  UnknownSignalOutcome,
 } from '@astera/rules';
 import type { ChatLanguage, ReactionEmoji, ChatMedia } from '@astera/rules';
 import type { HonorCatalogue, HonorStrategicCatalogue } from '@astera/rules';
@@ -165,6 +166,10 @@ export const eventKind = pgEnum('event_kind', [
   'radiation_bomb_intercept',
   'radiation_bomb_intercept_impact',
   'planet_radiation_boundary',
+  'unknown_signal_spawn',
+  'unknown_signal_expire',
+  'unknown_signal_arrival',
+  'unknown_signal_return',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -265,6 +270,7 @@ export const notificationKind = pgEnum('notification_kind', [
   /** An automatic native return starts now; its ships have not landed yet. */
   'monument_returning',
   'radiation_bomb_result',
+  'unknown_signal_result',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -1374,6 +1380,7 @@ export const planets = pgTable('planets', {
    * was attacked", and a commander with three worlds may have been hit on one.
    */
   recoveryBoostUntil: timestamp('recovery_boost_until', { withTimezone: true }),
+  signalBoostUntil: timestamp('signal_boost_until', { withTimezone: true }),
   /**
    * DEAD SINCE D179, AND KEPT ONLY SO OLD ROWS CAN BE CLEARED.
    *
@@ -4047,6 +4054,49 @@ export const pirateRaids = pgTable('pirate_raids', {
     .where(sql`status <> 'done'`),
 ]);
 
+export type UnknownSignalStatus = 'open' | 'outbound' | 'returning' | 'done' | 'expired' | 'recalled' | 'lost';
+
+/** Personal discoveries never belong in public galaxy/sensor queries. Seed and reward stay server-owned. */
+export const unknownSignals = pgTable('unknown_signals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  seed: text('seed').notNull(),
+  x: doublePrecision('x').notNull(), y: doublePrecision('y').notNull(), z: doublePrecision('z').notNull(),
+  appearedAt: timestamp('appeared_at', { withTimezone: true }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  status: text('status').$type<UnknownSignalStatus>().notNull().default('open'),
+  originPlanetId: uuid('origin_planet_id').references(() => planets.id, { onDelete: 'set null' }),
+  origin: jsonb('origin').$type<Vec3>(),
+  fleet: jsonb('fleet').$type<Fleet>(),
+  tech: jsonb('tech').$type<TechLevels>(),
+  damage: jsonb('damage').$type<HpDamageLot[]>(),
+  tierAtDispatch: integer('tier_at_dispatch'),
+  departAt: timestamp('depart_at', { withTimezone: true }),
+  arriveAt: timestamp('arrive_at', { withTimezone: true }),
+  returnDepartAt: timestamp('return_depart_at', { withTimezone: true }),
+  returnAt: timestamp('return_at', { withTimezone: true }),
+  recalledAt: timestamp('recalled_at', { withTimezone: true }),
+  radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
+  outcome: jsonb('outcome').$type<UnknownSignalOutcome>(),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => [
+  uniqueIndex('unknown_signals_one_open_idx').on(t.playerId).where(sql`${t.status} = 'open'`),
+  index('unknown_signals_owner_idx').on(t.playerId, t.status, t.appearedAt),
+  index('unknown_signals_origin_idx').on(t.originPlanetId, t.status),
+  index('unknown_signals_season_idx').on(t.seasonId, t.status),
+  check('unknown_signals_status_check', sql`${t.status} in ('open','outbound','returning','done','expired','recalled','lost')`),
+]);
+
+/** Wall-clock discovery timers intentionally do not shift during vacation. Null nextAt stops a chain. */
+export const unknownSignalState = pgTable('unknown_signal_state', {
+  playerId: uuid('player_id').primaryKey().references(() => players.id, { onDelete: 'cascade' }),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  nextAt: timestamp('next_at', { withTimezone: true }),
+  sequence: integer('sequence').notNull().default(0),
+}, t => [index('unknown_signal_state_next_idx').on(t.nextAt)]);
+
 export const tradeRunStatus = pgEnum('trade_run_status', ['outbound', 'returning', 'done']);
 
 /**
@@ -4655,6 +4705,8 @@ export const honorSeasons = pgTable('honor_seasons', {
   mode: text('mode').$type<'SHADOW' | 'ACTIVE'>().notNull(),
   /** Opt-in frozen economic program; adding the column never changes existing prices. */
   benefitsVersion: integer('benefits_version'),
+  /** New dispatches only; existing snapshots and earned retaliation stay frozen. */
+  retaliationLootPercent: integer('retaliation_loot_percent').$type<20 | 40>().notNull().default(20),
   catalogue: jsonb('catalogue').$type<HonorCatalogue>().notNull(),
   shieldCatalogue: jsonb('shield_catalogue').$type<number[]>().notNull(),
   strategicCatalogue: jsonb('strategic_catalogue').$type<HonorStrategicCatalogue>(),
@@ -4669,6 +4721,7 @@ export const honorSeasons = pgTable('honor_seasons', {
 }, (t) => [
   check('honor_seasons_version_check', sql`${t.version} > 0`),
   check('honor_seasons_mode_check', sql`${t.mode} IN ('SHADOW', 'ACTIVE')`),
+  check('honor_seasons_loot_percent_check', sql`${t.retaliationLootPercent} IN (20, 40)`),
   check('honor_seasons_ranked_boundary_check', sql`${t.rankedAt} IS NULL OR ${t.rankedAt} >= ${t.createdAt}`),
 ]);
 

@@ -137,7 +137,7 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
       return [keys.galaxyEvents, keys.notifications, keys.chronicle, keys.miningField];
     /** The deadline landed: freeze controls, standings and the permanent recap. */
     case 'season':
-      return [keys.season, keys.planet, keys.pending, keys.leaderboard];
+      return [keys.season, keys.planet, keys.pending, keys.leaderboard, ['honor-target'], keys.unknownSignals];
     /** Public clan identity or score moved; private state has its own player event. */
     case 'clan':
       return [keys.galaxy, keys.leaderboard, ['clan', 'directory'], keys.clanLeaderboard];
@@ -193,6 +193,10 @@ export const isPrivateEvent = (kind: string): boolean => kind.startsWith(PRIVATE
  */
 export function readsForPrivateEvent(kind: string): readonly (readonly string[])[] | null {
   switch (kind.slice(PRIVATE_PREFIX.length)) {
+    case 'unknown-signal-spawn':
+      return [keys.unknownSignals];
+    case 'unknown-signal':
+      return [keys.unknownSignals, keys.pending, keys.planet, keys.planets, keys.notifications, keys.skins];
     case 'honor':
       return [keys.reports, keys.planet, keys.planets, keys.leaderboard];
     case 'sensors':

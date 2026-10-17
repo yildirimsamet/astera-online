@@ -10,6 +10,7 @@ import { readHonorRelations } from './honorRelations.js';
 const reference = z.object({ id: z.string().min(1), tier: z.number().int().positive(),
   navy: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER) }).strict();
 export const honorCommitmentSchema = z.object({
+  retaliationLootPercent: honorEvidenceSchema.shape.retaliationLootPercent,
   version: z.union([z.literal(HONOR_LEGACY_VERSION), z.literal(HONOR_VERSION), z.literal(HONOR_CANDIDATE_VERSION), z.literal(HONOR_LAUNCH_VERSION)]), at: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   referenceOrder: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   /** An absent commander can genuinely join later, even within the same millisecond. */
@@ -63,6 +64,8 @@ export async function commitHonor(tx: Tx, input: {
   const roster = config.version === HONOR_LAUNCH_VERSION
     ? await tx.select({ id: players.id }).from(players).where(eq(players.seasonId, input.seasonId)).orderBy(asc(players.id)) : undefined;
   const snapshot = honorCommitmentSchema.parse({ version: config.version, at: input.at.getTime(), referenceOrder,
+    // Keep the legacy wire shape until every API/worker understands 40% contracts.
+    ...(config.retaliationLootPercent === 40 ? { retaliationLootPercent: 40 } : {}),
     ...(roster ? { presentAtLaunch: roster.map(row => row.id) } : {}),
     attack: members(attack), defence: members(defence), selectedDefenders: defence, ...relationship });
   await tx.insert(honorCommitments).values({ seasonId: input.seasonId, source: input.source, sourceId: input.id, snapshot });

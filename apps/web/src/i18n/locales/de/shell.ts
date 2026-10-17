@@ -335,7 +335,7 @@ export const leaderboard = {
     HALF: "Reduzierte militärische Wertung: Die Militärstärke dieses Kommandanten liegt unter deiner.",
     NONE: "Bei diesem Stärkeunterschied gibt es keine positive militärische Wertung. Eigene Angriffsverluste können dennoch Honor senken.",
     repeated: "Kämpfe gegen denselben Kommandanten teilen sich einen abnehmenden positiven Ertrag.",
-    retaliation: "Ein kürzlicher Angriff erlaubt begrenzte Vergeltung. Darüber hinausgehender Schaden kann Honor kosten.",
+    retaliation: "Vergeltung gilt 24 Stunden. Schaden = dauerhafte Verluste + {{percent}} % der Beute. Das Budget wird verbraucht; zusätzlicher Schaden führt zur Strafe für schwache Ziele. Eigene Angriffsverluste senken weiterhin Honor.",
     estimate: "Aktueller Vergleich; beim Start festgelegt. Keine festen Punkte: Schaden, Effizienz und gemeinsame Beteiligung bestimmen das Ergebnis.",
   },
   honorRank: "Honor-Rang",

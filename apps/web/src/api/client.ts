@@ -1,4 +1,5 @@
 import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema } from './schemas.js';
+import { unknownSignalsSchema, unknownSignalDetailsSchema, unknownSignalLaunchSchema, unknownSignalRecallSchema } from './schemas.js';
 import { COSMETIC_IDS, type CosmeticCategory, type CosmeticId, type MobileHullId } from '@astera/rules';
 import { cosmeticEquipSchema } from './schemas.js';
 import { vacationSchema } from './schemas.js';
@@ -265,9 +266,10 @@ export interface MonumentSendInput {
 }
 export interface MonumentRecallSelection { lotId: string; count: number }
 export type FlightRecallInput =
-  | { missionId: string; pirate?: boolean; monument?: never; trade?: never }
-  | { missionId: string; pirate?: never; monument: true; trade?: never }
-  | { missionId: string; pirate?: never; monument?: never; trade: true };
+  | { missionId: string; pirate?: boolean; monument?: never; trade?: never; unknownSignal?: never }
+  | { missionId: string; pirate?: never; monument: true; trade?: never; unknownSignal?: never }
+  | { missionId: string; pirate?: never; monument?: never; trade: true; unknownSignal?: never }
+  | { missionId: string; pirate?: never; monument?: never; trade?: never; unknownSignal: true };
 
 export interface IntergalacticConvoyLaunchInput {
   originPlanetId: string;
@@ -706,6 +708,15 @@ export class Api {
     });
   traffic = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/galaxy/traffic', trafficSchema, options);
   monuments = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/monuments', monumentsSchema, options);
+
+  unknownSignals = (options?: Pick<RequestOptions, 'signal'>) => this.send('/api/unknown-signals', unknownSignalsSchema, options);
+  unknownSignal = (id: string, options?: Pick<RequestOptions, 'signal'>) => this.send(`/api/unknown-signals/${encodeURIComponent(id)}`, unknownSignalDetailsSchema, options);
+  dispatchUnknownSignal = (id: string, originPlanetId: string, fleet: Fleet, key = createIdempotencyKey()) =>
+    this.send(`/api/unknown-signals/${encodeURIComponent(id)}/dispatch`, unknownSignalLaunchSchema,
+      { method: 'POST', body: { originPlanetId, fleet }, idempotencyKey: key });
+  recallUnknownSignal = (id: string, key = createIdempotencyKey()) =>
+    this.send(`/api/unknown-signals/${encodeURIComponent(id)}/recall`, unknownSignalRecallSchema,
+      { method: 'POST', body: {}, idempotencyKey: key });
   quoteMonument = (monumentId: string, input: MonumentSendInput) =>
     this.send(`/api/monuments/${encodeURIComponent(monumentId)}/quote`, monumentQuoteSchema, { method: 'POST', body: { ...input } });
   sendMonument = (monumentId: string, input: MonumentSendInput, key: string) =>

@@ -83,6 +83,7 @@ export * from './cosmeticCatalog.js';
 export * from './pirateGeneration.js';
 export * from './pirateLoot.js';
 export * from './pirateProfit.js';
+export * from './unknownSignal.js';
 export * from './spawnGate.js';
 
 export type { ChatMedia } from './chatMedia.js';

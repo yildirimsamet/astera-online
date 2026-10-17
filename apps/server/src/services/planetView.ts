@@ -377,6 +377,7 @@ export function buildPlanetView(data: PlanetViewData) {
       productionBoostUntil: p.recoveryBoostUntil !== null && p.recoveryBoostUntil > p.now
         ? p.recoveryBoostUntil
         : null,
+      signalBoostUntil: p.signalBoostUntil !== null && p.signalBoostUntil > p.now ? p.signalBoostUntil : null,
       /**
        * NO TRANSFER MAY LEAVE THIS WORLD UNTIL THIS INSTANT. Faz 2A.3.
        *

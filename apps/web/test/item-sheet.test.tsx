@@ -93,6 +93,16 @@ const show = ({
 const rung = (level: number): HTMLElement | null =>
   document.querySelector<HTMLElement>(`[data-rung="${String(level)}"]`);
 
+it('ends the refinery preview at the highest level synthesis can unlock', () => {
+  show({
+    item: { kind: 'building', id: 'DEUTERIUM_PLANT' },
+    over: { buildings: { CORE: 15, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1, DEUTERIUM_PLANT: 14 } },
+  });
+  expect(rung(15)).toBeInTheDocument();
+  expect(rung(16)).toBeNull();
+  expect(rung(17)).toBeNull();
+});
+
 describe('the Command Core tier information box', () => {
   it('opens the full level-to-tier table at the Command Core', async () => {
     show({ item: { kind: 'building', id: 'CORE' } });

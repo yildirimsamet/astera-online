@@ -207,6 +207,7 @@ export function economyAt(
     recoveryBoostUntilMinutes: row.recoveryBoostUntil
       ? minutesSince(season.startsAt, row.recoveryBoostUntil)
       : null,
+    signalBoostUntilMinutes: row.signalBoostUntil ? minutesSince(season.startsAt, row.signalBoostUntil) : null,
     faults,
     ...(leakedSoFar ? { leakedSoFar } : {}),
     pace,
@@ -309,6 +310,7 @@ export interface LockedPlanet {
   protectedUntil: Date | null;
   /** The recovery shield's production boost on this world; see `planets.recoveryBoostUntil`. */
   recoveryBoostUntil: Date | null;
+  signalBoostUntil: Date | null;
   /** When this world may send a transfer out again. Faz 2A.3; see `planets.transferReadyAt`. */
   transferReadyAt: Date | null;
   /** Klan Savunma Desteği: ESCAPE / SUPPORT / HOLD. Read only from ruleset 15. */
@@ -720,6 +722,7 @@ async function loadPlanetState(tx: Tx, planetId: string, clock: Clock,
     shieldRegenAt: row.shieldRegenAt,
     protectedUntil: row.protectedUntil,
     recoveryBoostUntil: row.recoveryBoostUntil,
+    signalBoostUntil: row.signalBoostUntil,
     transferReadyAt: row.transferReadyAt,
     defencePosture: row.defencePosture,
     buildings: levels,

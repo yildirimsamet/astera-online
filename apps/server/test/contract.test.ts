@@ -29,6 +29,7 @@ import {
   clanLootShares,
   galaxyEventOccurrences,
   galaxyEvents,
+  honorSeasons,
   miningRuns,
   missions,
   neutralPlanetState,
@@ -56,6 +57,10 @@ import { buildApp } from '../src/app.js';
 import { nextPublicGalaxyEvent } from '../src/services/galaxyEvents.js';
 import { SHARD_PREFIX } from '../src/stream/bus.js';
 import { TokenService } from '../src/auth/tokens.js';
+import { prepareHonorSeason } from '../src/services/honorLedger.js';
+import { honorTargetSchema } from '../../web/src/api/schemas.js';
+import { devUnknownSignal } from '../src/services/unknownSignal.js';
+import { unknownSignalsSchema, unknownSignalDetailsSchema, unknownSignalLaunchSchema, unknownSignalRecallSchema } from '../../web/src/api/schemas.js';
 import {
   buildSchema,
   brandRecallSchema,
@@ -372,6 +377,66 @@ describe('every payload the client parses', () => {
     expect(res.statusCode, `${url} answered ${String(res.statusCode)}: ${res.body.slice(0, 300)}`).toBe(200);
     return res.json();
   };
+
+  it('parses the dispatch Honor loot weight from the authenticated target route', async () => {
+    await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'SHADOW', f.clock));
+    await f.db.update(honorSeasons).set({ mode: 'ACTIVE', rankedAt: f.clock.now() });
+    const result = honorTargetSchema.parse(await get(`/api/honor/targets/${f.planetIds[1]!}`));
+    expect(result).toMatchObject({ enabled: true, eligible: true, retaliationLootPercent: 40 });
+  });
+
+  it('parses personal unknown signal reads, launch and recall with the client schemas', async () => {
+    const signal = await devUnknownSignal(f.db, f.playerIds[0]!, 'ENERGY', f.clock, 'test');
+    const listed = unknownSignalsSchema.parse(await get('/api/unknown-signals'));
+    expect(listed.signals[0]?.id).toBe(signal.id);
+    expect(listed.radar).toMatchObject({ capitalPlanetId: f.planetIds[0], level: 0, range: 2700 });
+    expect(listed.tier).toBe(3);
+    expect(unknownSignalDetailsSchema.parse(await get(`/api/unknown-signals/${signal.id}`)).signal.id).toBe(signal.id);
+    const foreign = await devUnknownSignal(f.db, f.playerIds[1]!, 'PIRATES', f.clock, 'test');
+    expect((await app.inject({ method: 'GET', url: `/api/unknown-signals/${foreign.id}`, headers: auth })).statusCode).toBe(404);
+    const launched = await app.inject({ method: 'POST', url: `/api/unknown-signals/${signal.id}/dispatch`,
+      headers: { ...auth, 'idempotency-key': 'contract-unknown-signal-launch' },
+      payload: { originPlanetId: f.planetIds[0], fleet: { DART: 1, COURIER: 1 } } });
+    expect(launched.statusCode, launched.body).toBe(200);
+    expect(unknownSignalLaunchSchema.parse(launched.json()).signalId).toBe(signal.id);
+    const recalled = await app.inject({ method: 'POST', url: `/api/unknown-signals/${signal.id}/recall`,
+      headers: { ...auth, 'idempotency-key': 'contract-unknown-signal-recall' }, payload: {} });
+    expect(recalled.statusCode, recalled.body).toBe(200);
+    expect(unknownSignalRecallSchema.parse(recalled.json()).signalId).toBe(signal.id);
+  });
+
+  it('keeps personal signals out of foreign reads and public galaxy payloads', async () => {
+    const before = await get('/api/galaxy');
+    await devUnknownSignal(f.db, f.playerIds[1]!, 'SKIN', f.clock, 'test');
+    expect(await get('/api/galaxy')).toEqual(before);
+    expect(unknownSignalsSchema.parse(await get('/api/unknown-signals')).signals).toEqual([]);
+  });
+
+  it('protects unknown signal routes against anonymous, malformed and forged reward requests', async () => {
+    const signal = await devUnknownSignal(f.db, f.playerIds[0]!, 'RESOURCES', f.clock, 'test');
+    for (const url of ['/api/unknown-signals', `/api/unknown-signals/${signal.id}/dispatch`, `/api/unknown-signals/${signal.id}/recall`]) {
+      const result = await app.inject({ method: url === '/api/unknown-signals' ? 'GET' : 'POST', url, payload: url === '/api/unknown-signals' ? undefined : {} });
+      expect(result.statusCode).toBe(401);
+    }
+    const url = `/api/unknown-signals/${signal.id}/dispatch`;
+    const valid = { originPlanetId: f.planetIds[0], fleet: { DART: 1, COURIER: 1 } };
+    for (const payload of [{ ...valid, outcome: { kind: 'SKIN', cosmeticId: 'planet-lava' } },
+      { ...valid, fleet: { DART: 1, COURIER: 1, VIPER: 1 } }, { ...valid, fleet: { DART: -1, COURIER: 1 } }]) {
+      expect((await app.inject({ method: 'POST', url, headers: { ...auth, 'idempotency-key': 'bad-signal' }, payload })).statusCode).toBe(400);
+    }
+    expect((await app.inject({ method: 'POST', url, headers: auth, payload: valid })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'GET', url: '/api/unknown-signals?playerId=other', headers: auth })).statusCode).toBe(400);
+    expect(unknownSignalsSchema.parse(await get('/api/unknown-signals')).signals[0]?.status).toBe('open');
+  });
+
+  it('does not register the unknown signal dev trigger in production', async () => {
+    const production = buildApp({ env: testEnv({ NODE_ENV: 'production' }), logger: silent, db: f.db, clock: f.clock });
+    try {
+      await production.app.ready();
+      const response = await production.app.inject({ method: 'POST', url: '/api/dev/unknown-signal', headers: auth, payload: { outcome: 'SKIN' } });
+      expect(response.statusCode).toBe(404);
+    } finally { await production.close(); }
+  });
 
   it('parses colony abandonment eligibility and the confirmed capital snapshot', async () => {
     const colony = f.planetIds[2]!;

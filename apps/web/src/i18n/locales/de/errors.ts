@@ -14,6 +14,11 @@
  */
 
 export const errors = {
+  UNKNOWN_SIGNAL_NOT_FOUND: "Dieses Signal existiert nicht mehr. Warte auf den nächsten Radarkontakt.",
+  UNKNOWN_SIGNAL_EXPIRED: "Das Signal ist verblasst. Warte auf den nächsten Radarkontakt.",
+  UNKNOWN_SIGNAL_TAKEN: "Eine Flotte wurde bereits zu diesem Signal geschickt.",
+  UNKNOWN_SIGNAL_FLEET: "Sende genau ein T1-Kriegsschiff und einen Kurier.",
+
   ADMIN_REQUIRED: "Nur Admins können Medien senden.",
   BAD_CHAT_MEDIA: "Wähle eine JPEG-, PNG-, WebP-, GIF-, MP4- oder WebM-Datei.",
   CHAT_MEDIA_TOO_LARGE: "Wähle eine kleinere Datei: Fotos bis 10 MB, Videos bis 50 MB.",

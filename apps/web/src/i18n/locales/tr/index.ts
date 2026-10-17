@@ -1,4 +1,5 @@
 import { accountSecurity } from './accountSecurity.js';
+import { unknownSignal } from './unknownSignal.js';
 import { honorBenefits } from './honorBenefits.js';
 import { vacation } from './vacation.js';
 import { silentSpace } from './silentSpace.js';
@@ -38,6 +39,7 @@ import type { Resources } from '../en/index.js';
  */
 export const tr: Resources = {
   honorBenefits,
+  unknownSignal,
   brand,
   monument,
   silentSpace,

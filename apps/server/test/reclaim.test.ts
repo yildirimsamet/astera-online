@@ -565,7 +565,9 @@ describe('reclaiming idle seats', () => {
     // No orphaned planet wake-ups. Galaxy-owned season beats and deadlines must
     // survive reclaiming an individual seat.
     const remainingEvents = await f.db.select().from(scheduledEvents);
-    expect(remainingEvents.map((event) => event.kind).sort()).toEqual([
+    expect(remainingEvents.filter(event => event.kind === 'unknown_signal_spawn').map(event => event.refId).sort())
+      .toEqual(f.playerIds.slice(1).sort());
+    expect(remainingEvents.filter(event => event.kind !== 'unknown_signal_spawn').map((event) => event.kind).sort()).toEqual([
       'season_act',
       'season_act',
       'season_act',

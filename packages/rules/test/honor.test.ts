@@ -55,6 +55,18 @@ describe('Honor v1: independent of Dominion and the battle grade', () => {
     expect(honorSide(facts({ eligible: false, enemyTier: 2, enemyNavy: 0, retaliationFifths: 1_000_000 })).retaliationSpentFifths).toBe(0);
   });
 
+  it.each([20, 40] as const)('uses frozen %s%% loot weight for weak sanctions and retaliation', retaliationLootPercent => {
+    const lootOnly = facts({ k: 0, enemyLoss: 0, l: 0, loot: 1, enemyTier: 2, enemyNavy: 0 });
+    const fifths = retaliationLootPercent / 20;
+    expect(honorSide({ ...lootOnly, retaliationLootPercent }).raw).toBe(-50 * fifths);
+    expect(honorSide({ ...lootOnly, retaliationLootPercent, retaliationFifths: fifths }))
+      .toMatchObject({ raw: 0, retaliationSpentFifths: fifths });
+    expect(honorSide({ ...lootOnly, retaliationLootPercent, retaliationFifths: fifths - 1 }).raw).toBe(-50);
+    expect(honorSide({ ...lootOnly, retaliationLootPercent, retaliationFifths: fifths, l: 1 }).raw).toBe(-100);
+    expect(honorSide(facts({ retaliationLootPercent, loot: 1000 })))
+      .toEqual(honorSide(facts({ loot: 1000 })));
+  });
+
   it('strong low-Core players are not protected novices; Core camping earns no upper bonus', () => {
     expect(honorChallenge(facts({ enemyTier: 2, enemyNavy: 200_000 })).kind).toBe('PEER');
     expect(honorChallenge(facts({ ownTier: 2, enemyTier: 4, ownNavy: 1_000_000 })).kind).toBe('PEER');

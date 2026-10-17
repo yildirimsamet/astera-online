@@ -159,6 +159,21 @@ describe('every upgrade row states something that actually changes', () => {
   });
 });
 
+describe('the Deuterium Refinery ceiling', () => {
+  it.each([15, 16])('does not promise production or storage from an unreachable level after L%i', (level) => {
+    const gain = buildingGain('DEUTERIUM_PLANT', level, 0, at(level));
+    expect(gain.maxed).toBe(true);
+    expect(gain.next).toBe(gain.now);
+    expect(gain.unlocks).toBeUndefined();
+  });
+
+  it('still previews the final upgrade', () => {
+    const gain = buildingGain('DEUTERIUM_PLANT', 14, 0, at(14));
+    expect(gain.maxed).not.toBe(true);
+    expect(gain.next).not.toBe(gain.now);
+  });
+});
+
 /**
  * THE HANGAR ROW STATES ROOM, AND THE CORE ROW STATES THE RUNG IT OPENS. 2026-09-18.
  *

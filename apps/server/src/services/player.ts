@@ -11,6 +11,7 @@ import { publishShard } from '../stream/bus.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 import { peopleIn } from './people.js';
 import { equipAdminCapital } from './adminCapital.js';
+import { ensureUnknownSignalSchedule } from './unknownSignalSchedule.js';
 import {
   lockGalaxyEventAudience,
   notifyActiveGalaxyEventsForPlayer,
@@ -359,6 +360,7 @@ export async function joinSeason(
         // zero, and the rank floor then protects them from every attacker forever.
         await recomputeWealth(tx, planet.id, clock.now());
         await refreshSensorEpoch(tx, planet.id, now);
+        if (seat === 'COMMANDER') await ensureUnknownSignalSchedule(tx, player.id, seasonId, now);
         await notifyActiveGalaxyEventsForPlayer(tx, {
           playerId: player.id,
           seasonId,

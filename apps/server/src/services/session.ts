@@ -187,7 +187,7 @@ export interface PendingThread {
    * caller's own craft. D153's outbound-only camera follow reads `leg`/`status`
    * off this thread too, so it dies with it.
    */
-  kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'radiation_bomb' | 'pirate' | 'trade' | 'intergalactic_convoy';
+  kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'radiation_bomb' | 'pirate' | 'trade' | 'intergalactic_convoy' | 'unknown_signal';
   targetName: string;
   /** Stable physical launch pad on a commander's own flight only. */
   originPlanetId?: string;
@@ -1201,6 +1201,23 @@ export async function pendingThreads(
       path: { from: flight.originPosition, to: flight.targetPosition, departAt: flight.departAt, arriveAt: flight.arriveAt },
     });
     }
+  }
+  const { unknownSignalsForPlayer } = await import('./unknownSignal.js');
+  const signals = playerId ? await unknownSignalsForPlayer(db, playerId, { now: () => now }) : { signals: [] };
+  for (const signal of signals.signals) {
+    if (!signal.origin || !signal.departAt || !signal.arriveAt || !['outbound', 'returning', 'recalled'].includes(signal.status)) continue;
+    const returning = signal.status !== 'outbound';
+    const arriveAt = returning ? signal.returnAt : signal.arriveAt;
+    if (!arriveAt) continue;
+    pending.push({ id: signal.id, kind: 'unknown_signal', targetName: 'UNKNOWN_SIGNAL',
+      ...(signal.originPlanetId ? { originPlanetId: signal.originPlanetId } : {}),
+      leg: returning ? 'return' : 'outbound', arriveAt,
+      ...(!returning && now < signal.arriveAt ? { recallable: true as const } : {}),
+      minutesRemaining: Math.max(0, (arriveAt.getTime() - now.getTime()) / 60_000),
+      fleet: signal.fleet ?? {}, ...(signal.damage ? { damage: signal.damage } : {}),
+      path: { from: returning ? signal.at : signal.origin, to: returning ? signal.origin : signal.at,
+        departAt: returning ? signal.returnDepartAt ?? signal.arriveAt : signal.departAt, arriveAt },
+    });
   }
   return pending;
 }

@@ -5,6 +5,8 @@ import {
   buildingCost,
   instrumentCost,
   productionMult,
+  plantCeiling,
+  RESEARCH_MAX_LEVEL,
   satelliteSlots,
   type BuildingId,
   type InstrumentId,
@@ -621,12 +623,14 @@ const levelOf = (planet: PlanetView, item: ItemRef): number => {
   return planet.orbit.includes(item.id) ? 1 : 0;
 };
 
-/** The top of a ladder, where it has one: the range tables and the Hangar. Null: none. */
+/** The permanent ceiling, independent of the player's current research rung. */
 const topOf = (item: ItemRef): number | null =>
   item.kind === 'instrument'
     ? INSTRUMENT_MAX_LEVEL[item.id]
     : item.kind === 'building'
-      ? BUILDING_TOP[item.id]
+      ? item.id === 'DEUTERIUM_PLANT'
+        ? plantCeiling(RESEARCH_MAX_LEVEL.DEUTERIUM_SYNTHESIS)
+        : BUILDING_TOP[item.id]
       : 1;
 
 /**

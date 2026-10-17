@@ -12,6 +12,7 @@ import { eq, sql } from 'drizzle-orm';
 import { scheduledEvents } from '../db/schema.js';
 import { VACATION_EVENT_KINDS } from '../services/vacation.js';
 import { advanceSpawnGates } from '../services/spawnGate.js';
+import { repairUnknownSignals } from '../services/unknownSignal.js';
 
 export interface WorkerOptions {
   pollMs: number;
@@ -113,6 +114,7 @@ export class EventWorker {
    */
   private botsSweptAt = 0;
   private spawnGateAt = -Infinity;
+  private unknownSignalSweepAt = -Infinity;
   private silentSpaceAt = -Infinity;
   private silentSpaceTask: Promise<void> | null = null;
   private ticks = 0;
@@ -223,6 +225,12 @@ export class EventWorker {
       } catch (err) {
         this.log.error({ err }, 'spawn gate pass failed; the queue carries on regardless');
       }
+    }
+
+    if (now.getTime() - this.unknownSignalSweepAt >= 60_000) {
+      this.unknownSignalSweepAt = now.getTime();
+      try { await repairUnknownSignals(this.db, this.clock); }
+      catch (err) { this.log.error({ err }, 'unknown signal clock repair failed; queue processing continues'); }
     }
 
     // Silent Space bridge: disabling transfers must preserve every commander.

@@ -3,6 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { HonorTargetCard } from '../src/ui/HonorTargetCard.js';
 
 describe('Honor rules before a player commits a raid', () => {
+  it.each([20, 40] as const)('explains the 24-hour budget with the season’s %s%% loot weight', retaliationLootPercent => {
+    render(<HonorTargetCard value={{ enabled: true, eligible: true, kind: 'WEAK', militaryReturn: 'NONE',
+      related: false, repeated: false, retaliation: true, retaliationLootPercent }} />);
+    expect(screen.getByText(new RegExp(`24 hours.*${String(retaliationLootPercent)}%`))).toBeVisible();
+    expect(screen.getByText(/Own attack losses still reduce Honor/)).toBeVisible();
+  });
   it('warns clearly when a weaker target can cost Honor, even in a victory', () => {
     render(<HonorTargetCard value={{ enabled: true, eligible: true, kind: 'WEAK', militaryReturn: 'NONE', related: false, repeated: false, retaliation: false }} />);
     expect(screen.getByText(/Weaker target/)).toBeVisible();

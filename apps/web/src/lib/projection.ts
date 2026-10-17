@@ -81,7 +81,8 @@ export function worksAt(
   const boostUntil = planet.productionBoostUntil
     ? planet.productionBoostUntil.getTime() / 60_000
     : null;
-  const hours = productionHours(from, to, until, boostUntil);
+  const signalUntil = planet.signalBoostUntil ? planet.signalBoostUntil.getTime() / 60_000 : null;
+  const hours = productionHours(from, to, until, boostUntil, signalUntil);
 
   return {
     bufferAlloy: Math.min(planet.bufferAlloyCap, planet.bufferAlloy + planet.alloyPerHour * hours),

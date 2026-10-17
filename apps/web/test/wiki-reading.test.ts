@@ -4,6 +4,18 @@ import { getWikiArticle } from '../src/wiki/catalog.js';
 import { conceptReference, number, subjectReference } from '../src/wiki/facts.js';
 
 describe('Wiki values a new player can interpret', () => {
+  it('explains personal signals, all odds, losses, radar, delivery and the production collector in both editions', () => {
+    const article = getWikiArticle('galaxy.unknown-signals');
+    expect(article).toBeDefined();
+    for (const language of ['en', 'tr'] as const) {
+      const text = JSON.stringify(article?.sections[language]);
+      for (const value of ['56', '15', '12', '16', '1', '60', '2.5', '200', '100']) expect(text).toContain(value);
+      expect(text).toMatch(/1[,.]?000/);
+      expect(text).toMatch(language === 'en' ? /offline/i : /çevrimdışı/i);
+      expect(text).toMatch(language === 'en' ? /Courier/ : /Kurye/);
+      expect(text).toMatch(language === 'en' ? /capacity stays|capacity does not/i : /kapasite.*(değişmez|büyümez)/i);
+    }
+  });
   it('teaches manual maintenance, the 5% combat limit and scrap returns', () => {
     for (const language of ['en', 'tr'] as const) {
       const article = getWikiArticle('fleet.repairs');

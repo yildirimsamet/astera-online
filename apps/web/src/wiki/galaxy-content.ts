@@ -1,6 +1,16 @@
 import { localized as l, type WikiArticle } from './model.js';
 import { topic } from './concepts.js';
+import { unknownSignal as signalEn } from '../i18n/locales/en/unknownSignal.js';
+import { unknownSignal as signalTr } from '../i18n/locales/tr/unknownSignal.js';
 export const galaxyArticles: readonly WikiArticle[] = [
+  topic('galaxy', 'unknown-signals', l(signalEn.title, signalTr.title), l(signalEn.description, signalTr.description),
+    l([signalEn.wiki, signalEn.resourcesInfo,
+      signalEn.derelictInfo.replace('{{tiers}}', 'T1 → T1 80%, T2 15%, T3 5%; T2 → T2 90%, T3 10%; T3 → T3 100%'), signalEn.energyInfo, signalEn.skinInfo],
+    [signalTr.wiki, signalTr.resourcesInfo,
+      signalTr.derelictInfo.replace('{{tiers}}', 'T1 → T1 %80, T2 %15, T3 %5; T2 → T2 %90, T3 %10; T3 → T3 %100'), signalTr.energyInfo, signalTr.skinInfo]),
+    l([signalEn.collector, 'Resources and found warships land on return; energy and cosmetics are delivered at arrival. Radiation can destroy ships on either leg. A lost Courier loses all resource cargo. Found warships land even in a full Hangar, require no production research, and use normal repair prices.'],
+      [signalTr.collector, 'Kaynak ve bulunan gemi dönüşte, enerji ve görünüm varışta teslim edilir. Radyasyon iki yönde de gemi kaybettirebilir. Kurye kaybedilirse kaynak yükünün tamamı kaybolur. Bulunan gemi Hangar dolu olsa da iner, üretim araştırması gerektirmez; normal tamir bedeli uygulanır.']),
+    ['instrument.RADAR', 'hull.COURIER', 'fleet.flights', 'fleet.repairs']),
   topic('galaxy', 'vacation', l('Vacation mode', 'Tatil modu'),
     l('Pause and protect your capital and every colony for 1–7 days, paid in deuterium.', 'Ana gezegenini ve bütün kolonilerini döteryum karşılığında 1–7 gün duraklat ve koru.'),
     l([

@@ -20,9 +20,11 @@ import type {
   RadiationSourceView,
   HpRadiationSourceView,
   PublicMonument,
+  UnknownSignalView,
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
 import { Monuments } from './Monuments.js';
+import { UnknownSignals } from './UnknownSignals.js';
 import { RadiationIndicator } from '../ui/RadiationIndicator.js';
 import { RadiationBombEffects } from './RadiationBombEffects.js';
 import { PlanetEmbers } from './PlanetEmbers.js';
@@ -188,6 +190,8 @@ const WIDE_TILT = Math.hypot(1.15, 1.75);
 const WHOLE_DISC_DISTANCE = DISC_RADIUS * WIDE_TILT;
 
 export interface GalaxyCanvasProps {
+  unknownSignals?: readonly UnknownSignalView[];
+  unknownSignalRadar?: { capitalPlanetId: string; at: { x: number; y: number; z: number }; range: number };
   cosmeticAppearance?: Contact['appearance'];
   planets: readonly GalaxyPlanet[];
   /** Your own missions. Inbound attacks carry no path and are not drawn as one. */
@@ -346,6 +350,8 @@ export function GalaxyCanvas({
   radiation,
   hpRadiation = EMPTY_HP_RADIATION,
   monuments = EMPTY_MONUMENTS,
+  unknownSignals = EMPTY_UNKNOWN_SIGNALS,
+  unknownSignalRadar,
   showTelescopeReach = false,
   showRadarReach = false,
   homePosition,
@@ -419,6 +425,11 @@ export function GalaxyCanvas({
    */
   const subject = useMemo<(() => [number, number, number] | null) | null>(() => {
     if (!focus) return null;
+
+    if (focus.kind === 'unknownSignal') {
+      const signal = unknownSignals.find(row => row.id === focus.id);
+      return signal ? () => toWorld(signal.at) : null;
+    }
 
     if (focus.kind === 'planet') {
       const node = nodes.find((n) => n.id === focus.id);
@@ -532,6 +543,7 @@ export function GalaxyCanvas({
     focus,
     nodes,
     monuments,
+    unknownSignals,
     asteroids,
     seasonStart,
     pending,
@@ -782,6 +794,10 @@ export function GalaxyCanvas({
         <PlanetEmbers nodes={nodes} />
         {/* The commander's own broken colonies, at every zoom (owner, 2026-10-16). */}
         <FaultMarks nodes={nodes} />
+        {unknownSignals.length > 0 && <UnknownSignals signals={unknownSignals} focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
+          onSelect={id => { onFocus({ kind: 'unknownSignal', id }); }} />}
+        {unknownSignalRadar && <SensorRings posts={[{ planetId: unknownSignalRadar.capitalPlanetId, at: unknownSignalRadar.at,
+          identify: 0, detect: unknownSignalRadar.range, telescope: false }]} showTelescope={false} showRadar />}
         <Monuments monuments={monuments} planets={nodes} hpRadiation={hpRadiation} focusedId={focus?.kind === 'monument' ? focus.id : null}
           onSelect={(id) => { onFocus({ kind: 'monument', id }); }} />
         {sensors && sensors.length > 0 && (
@@ -1007,6 +1023,7 @@ export function GalaxyCanvas({
 /** A stable empty set: a fresh array each render would move a prop identity. */
 const EMPTY_RIVALS: readonly RivalMark[] = [];
 const EMPTY_MONUMENTS: readonly PublicMonument[] = [];
+const EMPTY_UNKNOWN_SIGNALS: readonly UnknownSignalView[] = [];
 const EMPTY_HP_RADIATION: readonly HpRadiationSourceView[] = [];
 
 /** The claim word on a label: open, the caller's own first hour, or somebody else's. */

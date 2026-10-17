@@ -73,6 +73,7 @@ export interface FleetPageProps {
 
 /** The act as a picture: the glyph the rest of the game uses for it. */
 const MARK: Record<FlightMark, IconId> = {
+  unknown_signal: 'i-probe',
   monument: 'i-attack',
   fleet: 'i-attack',
   probe: 'i-probe',

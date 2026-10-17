@@ -1,0 +1,2 @@
+ALTER TABLE "honor_seasons" ADD COLUMN "retaliation_loot_percent" integer DEFAULT 20 NOT NULL;--> statement-breakpoint
+ALTER TABLE "honor_seasons" ADD CONSTRAINT "honor_seasons_loot_percent_check" CHECK ("honor_seasons"."retaliation_loot_percent" IN (20, 40));

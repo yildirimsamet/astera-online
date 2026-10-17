@@ -14,6 +14,11 @@
  */
 
 export const errors = {
+  UNKNOWN_SIGNAL_NOT_FOUND: "La señal ya no existe. Espera otro contacto del Radar.",
+  UNKNOWN_SIGNAL_EXPIRED: "La señal se ha desvanecido. Espera otro contacto del Radar.",
+  UNKNOWN_SIGNAL_TAKEN: "Ya se envió una flota a esta señal.",
+  UNKNOWN_SIGNAL_FLEET: "Envía exactamente una nave de guerra T1 y un Mensajero.",
+
   ADMIN_REQUIRED: "Solo un administrador puede enviar multimedia.",
   BAD_CHAT_MEDIA: "Elige un archivo JPEG, PNG, WebP, GIF, MP4 o WebM.",
   CHAT_MEDIA_TOO_LARGE: "Elige un archivo menor: fotos de hasta 10 MB, vídeos de hasta 50 MB.",

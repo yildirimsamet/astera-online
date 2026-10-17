@@ -12,6 +12,8 @@ import {
   pirateRaids,
   radiationBombFlights,
   tradeRuns,
+  unknownSignals,
+  planets,
   type ClanWarLeg,
 } from '../db/schema.js';
 import { GameError } from './planet.js';
@@ -202,7 +204,13 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
     eq(monumentWaves.originPlanetId, planetId),
     notInArray(monumentWaves.status, ['HOME', 'LOST']),
   ));
-  const [row] = await tx.execute<{ used: number }>(sql`select ((${flights}) + (${mining}) + (${pirate}) + (${trade}) + (${convoy}) + (${contributed}) + (${supporting}) + (${monument}) + (${bombs}))::int as used`);
+  const signals = tx.select({ n: sql<number>`count(*)::int` }).from(unknownSignals)
+    .innerJoin(planets, eq(planets.id, planetId))
+    .where(and(eq(planets.controllerPlayerId, unknownSignals.playerId),
+      inArray(unknownSignals.status, ['outbound', 'returning', 'recalled']),
+      or(eq(unknownSignals.originPlanetId, planetId), and(eq(planets.kind, 'CAPITAL'),
+        sql`not exists (select 1 from planets p where p.id = ${unknownSignals.originPlanetId} and p.player_id = ${unknownSignals.playerId})`))));
+  const [row] = await tx.execute<{ used: number }>(sql`select ((${flights}) + (${mining}) + (${pirate}) + (${trade}) + (${convoy}) + (${contributed}) + (${supporting}) + (${monument}) + (${bombs}) + (${signals}))::int as used`);
   return row?.used ?? 0;
 }
 

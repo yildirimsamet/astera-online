@@ -42,6 +42,7 @@ import {
 } from './radar.js';
 import { schedule } from '../worker/queue.js';
 import { armFaults } from './faults.js';
+import { stopUnknownSignalSchedule } from './unknownSignalSchedule.js';
 import { publicPlanetIdentity, recordGalaxyEvent } from './chronicle.js';
 import {
   GameError,
@@ -525,6 +526,7 @@ export async function applyBuildCompletion(
     can never double-arm.
   */
   if (order.kind === 'BUILDING' && order.subject === 'CORE') {
+    if (coreTier(planet.buildings.CORE) > 3) await stopUnknownSignalSchedule(tx, planet.playerId, planet.seasonId);
     await armFaults(tx, {
       seasonId: planet.seasonId,
       planetId: planet.planetId,

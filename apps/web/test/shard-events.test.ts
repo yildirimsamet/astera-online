@@ -39,6 +39,10 @@ describe('what a shard event asks the client to read', () => {
     expect(readsForShardEvent('shard:launch')).toEqual([keys.traffic]);
   });
 
+  it('refreshes open Honor target guidance when a season policy changes', () => {
+    expect(readsForShardEvent('shard:season')).toContainEqual(['honor-target']);
+  });
+
   /** A resolved raid empties the contact AND leaves a debris field behind. */
   it('sends an arrival to traffic and to the field it may have created', () => {
     expect(readsForShardEvent('shard:arrival')).toEqual([keys.traffic, keys.miningField]);

@@ -22,7 +22,9 @@ export function HonorTargetCard({ value }: { value: HonorTarget }) {
         {t(`leaderboard.honorTarget.${value.militaryReturn}`)}
       </p>}
     {value.repeated && <p className="text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorTarget.repeated')}</p>}
-    {value.retaliation && <p className="text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorTarget.retaliation')}</p>}
+    {value.retaliation && <p className="text-caption leading-relaxed text-v2-ink-2">{t('leaderboard.honorTarget.retaliation', {
+      percent: value.retaliationLootPercent ?? 20,
+    })}</p>}
     {value.soloCredit && <HonorSoloPolicy />}
     <p className="text-micro leading-relaxed text-v2-ink-3">{t('leaderboard.honorTarget.estimate')}</p>
   </section>;

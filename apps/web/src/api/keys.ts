@@ -20,6 +20,7 @@ export const keys = {
   planetById: (planetId: string) => ['planet', planetId] as const,
   galaxy: ['galaxy'],
   monuments: ['monuments'],
+  unknownSignals: ['unknown-signals'],
   skins: ['skins'],
   skinShop: ['skins', 'shop'],
   skinPricing: ['skins', 'pricing'],

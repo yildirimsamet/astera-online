@@ -2368,6 +2368,27 @@ export const RIVAL = {
   max: 5,
 } as const;
 
+/** Personal radar discoveries for early-tier commanders; owner decisions, 2026-10-17. */
+export const UNKNOWN_SIGNAL = {
+  tiers: [1, 2, 3],
+  gapMinutes: [120, 240],
+  lifetimeMinutes: 60,
+  minFromCapital: 400,
+  minFromAnyPlanet: 250,
+  noRadarRangeLevel: 1,
+  placementAttempts: 40,
+  warshipHulls: ['DART', 'PIKE', 'RAMPART', 'WARDEN'],
+  cargoHull: 'COURIER',
+  outcomeWeights: { RESOURCES: 56, ENERGY: 15, DERELICT: 12, PIRATES: 16, SKIN: 1 },
+  resources: { totalMax: 1000, alloyMin: 200, crystalMin: 100, deuteriumMin: 10, deuteriumMax: 100 },
+  derelictTierWeights: { 1: { 1: 80, 2: 15, 3: 5 }, 2: { 2: 90, 3: 10 }, 3: { 3: 100 } },
+  derelictDamagePct: [20, 60],
+  energyHours: [1, 2, 3, 4],
+  energyProductionBonus: 1,
+  skinCategoryWeights: { FLAG: 70, PLANET_ELEMENT: 15, RING: 15 },
+  planetElementSkins: ['planet-lava', 'planet-ice', 'planet-desert', 'planet-toxic'],
+} as const;
+
 export const GALAXY = {
   /**
    * The playable volume is one sphere centred on the origin.

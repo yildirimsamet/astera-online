@@ -427,11 +427,12 @@ export interface AirborneItem {
  * now leads with the glyph the rest of the game already uses for that act.
  */
 export type FlightMark =
-  | 'monument'
+  | 'monument' | 'unknown_signal'
   | 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'radiation_bomb'
   | 'mining' | 'salvage' | 'pirate' | 'trade' | 'intergalactic_convoy';
 
 const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
+  unknown_signal: ScanIcon,
   monument: AttackIcon,
   fleet: AttackIcon,
   probe: ScanIcon,

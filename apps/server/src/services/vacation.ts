@@ -6,7 +6,7 @@ import type { Db, Tx } from '../db/client.js';
 import { buildings, buildOrders, clanSupportWaves, clanWarContributions, clanWarOperations,
   intergalacticConvoyRuns, miningRuns, missions, monumentProbes, monumentWaves, pirateRaids,
   planetFaults, planets, players, radiationBombFlights, researchOrders, scheduledEvents,
-  seasons, shards, strategicAssets, tradeRuns, vacations } from '../db/schema.js';
+  seasons, shards, strategicAssets, tradeRuns, vacations, unknownSignals } from '../db/schema.js';
 import { GameError, loadLocked, recomputePlayerWealth } from './planet.js';
 import { publish, publishShard } from '../stream/bus.js';
 
@@ -45,6 +45,8 @@ async function holdings(tx: Tx, playerId: string) {
 /** No enemy identities or hidden arrival times escape through this eligibility answer. */
 async function flightBlockers(tx: Tx, playerId: string, ids: string[], now: Date): Promise<VacationBlockReason[]> {
   const checks: [VacationBlockReason, SQL][] = [
+    ['VACATION_FLEET', sql`exists(select 1 from ${unknownSignals} where ${unknownSignals.playerId} = ${playerId}
+      and ${unknownSignals.status} in ('outbound','returning','recalled'))`],
     ['VACATION_FLEET', sql`exists(select 1 from ${missions} where ${missions.status} = 'in_flight'
       and ${missions.ownerPlayerId} = ${playerId} and ${missions.kind} not in ('probe','clan_support','clan_war'))`],
     ['VACATION_PROBES', sql`exists(select 1 from ${missions} where ${missions.status} = 'in_flight'
@@ -160,6 +162,7 @@ async function shiftClocks(tx: Tx, playerId: string, ids: string[], delta: numbe
     shieldRegenAt: future(sql`${planets.shieldRegenAt}`),
     faultProtectedUntil: future(sql`${planets.faultProtectedUntil}`),
     recoveryBoostUntil: future(sql`${planets.recoveryBoostUntil}`), transferReadyAt: future(sql`${planets.transferReadyAt}`),
+    signalBoostUntil: future(sql`${planets.signalBoostUntil}`),
   }).where(inArray(planets.id, ids));
   await tx.update(buildOrders).set({ startedAt: sql`${buildOrders.startedAt} + ${interval}`, readyAt: sql`${buildOrders.readyAt} + ${interval}` })
     .where(and(inArray(buildOrders.planetId, ids), eq(buildOrders.status, 'BUILDING')));

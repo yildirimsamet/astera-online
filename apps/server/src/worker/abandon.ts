@@ -1,4 +1,5 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
+import { resolveUnknownSignalSpawn } from '../services/unknownSignal.js';
 import { deuteriumOf, fleetCount, fleetEntries } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
@@ -279,6 +280,9 @@ async function abandonMiningRun(
 export async function abandon(db: Db, event: EventRow, clock: Clock): Promise<boolean> {
   if (!event.refId) return false;
   switch (event.kind) {
+    case 'unknown_signal_spawn':
+      await db.transaction(tx => resolveUnknownSignalSpawn(tx, event.refId!, event.resolveAt, clock, true));
+      return true;
     case 'mission_arrival':
       return abandonMission(db, event.refId, clock.now());
     case 'mining_arrival':

@@ -19,6 +19,9 @@ import { NextSeason } from '../ui/NextSeason.js';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { monumentFinderTargets } from '../galaxy/monuments.js';
+import { UnknownSignalHud } from './UnknownSignalHud.js';
+import { subscribeUnknownSignal } from '../lib/unknownSignal.js';
+import { createIdempotencyKey } from '../api/client.js';
 import {
   miningSceneData,
   useGalaxy,
@@ -48,6 +51,9 @@ import {
   useLaunchDeathStar,
   useSettlement,
   useMonuments,
+  useUnknownSignals,
+  useUnknownSignalActions,
+  useUnknownSignalDetail,
 } from '../api/queries.js';
 import type {
   AsteroidView,
@@ -387,6 +393,8 @@ export function GalaxyView({
   const intel = useIntel();
   const season = useSeason();
   const monumentCatalog = useMonuments(hpRadiationApplies(planet.data?.rulesetVersion ?? 0));
+  const personalSignals = useUnknownSignals();
+  const signalActions = useUnknownSignalActions();
   const pending = usePending();
   const traffic = useTraffic();
   const mining = useMining();
@@ -521,6 +529,13 @@ export function GalaxyView({
   useContactWindows(traffic.data?.contacts, sensors);
 
   const [focus, setFocus] = useState<Focus | null>(null);
+  const focusedSignalId = focus?.kind === 'unknownSignal' ? focus.id : null;
+  const signalDetail = useUnknownSignalDetail(focusedSignalId, !personalSignals.data?.signals.some(row => row.id === focusedSignalId));
+  const signalData = useMemo(() => signalDetail.data && focusedSignalId && !personalSignals.data?.signals.some(row => row.id === focusedSignalId)
+    ? { ...personalSignals.data, signals: [...personalSignals.data?.signals ?? [], signalDetail.data.signal] } : personalSignals.data,
+    [personalSignals.data, signalDetail.data, focusedSignalId]);
+  useEffect(() => subscribeUnknownSignal(id => { onPanel(null); setFocus({ kind: 'unknownSignal', id }); }), [onPanel]);
+  useEffect(() => { signalActions.send.reset(); signalActions.recall.reset(); }, [focusedSignalId]);
   const [clanInitialTab, setClanInitialTab] = useState<'overview' | 'war'>('overview');
   const clanWar = useClanWar(clanBadge.data?.membership?.role === 'LEADER'
     && (focus?.kind === 'planet' || focus?.kind === 'monument'));
@@ -1206,6 +1221,8 @@ export function GalaxyView({
           probeId: cosmetics.data?.equipment?.PROBE, flagId: cosmetics.data?.clanFlagId ?? undefined,
           shipSkins: cosmetics.data?.equipment?.SHIP }}
         planets={displayPlanets}
+        unknownSignals={signalData?.signals}
+        unknownSignalRadar={focusedSignalId ? personalSignals.data?.radar ?? undefined : undefined}
         inspectionPlanetId={cosmeticTrial?.planetId}
         pending={threads}
         contacts={contacts}
@@ -1258,6 +1275,18 @@ export function GalaxyView({
       */}
       <div data-galaxy-top-corners="" className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2 pt-1">
         <div className="pointer-events-none flex min-w-0 flex-col items-start gap-1">
+          <UnknownSignalHud data={signalData} planet={planet.data} worlds={worlds}
+            focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
+            busy={signalActions.send.isPending || signalActions.recall.isPending}
+            error={signalActions.send.error ? describe(signalActions.send.error) : signalActions.recall.error ? describe(signalActions.recall.error) : null}
+            onFocus={id => { onPanel(null); onFocus({ kind: 'unknownSignal', id }); }} onClose={close} onOrigin={selectPlanet}
+            onSend={(id, hull) => {
+              if (!planet.data) return;
+              signalActions.send.mutate({ id, originPlanetId: planet.data.planet.id, fleet: { [hull]: 1, COURIER: 1 }, key: createIdempotencyKey() },
+                { onSuccess: () => { say(t('unknownSignal.sent')); }, onError: error => { say(describe(error), 'error'); } });
+            }}
+            onBuild={hull => { close(); onPanel('planet'); setRequestedPlanetGroup('reach'); setRequestedItem(hull === 'COURIER' && (planet.data?.buildings.SHIPYARD ?? 0) < 1 ? 'SHIPYARD' : hull); }}
+            onSkins={() => { close(); onPanel('skin-inventory'); }} onDetected={() => { say(t('unknownSignal.detected')); }} />
           {/*
             THE EVENTS RUNNING NOW, with their time left (owner, 2026-09-24): the context card
             says it once and is closed; this stays. Not while something is selected — the

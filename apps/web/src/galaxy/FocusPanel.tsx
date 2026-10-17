@@ -111,6 +111,7 @@ import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
  */
 
 export type Focus =
+  | { kind: 'unknownSignal'; id: string }
   | { kind: 'planet'; id: string }
   | { kind: 'monument'; id: string }
   | { kind: 'asteroid'; id: string }

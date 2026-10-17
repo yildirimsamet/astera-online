@@ -816,6 +816,7 @@ describe('the kinds of news the server can send', () => {
       'strategic_incoming',
       'strategic_intercepted',
       'target_gone',
+      'unknown_signal_result',
       'unlock',
     ]);
   });

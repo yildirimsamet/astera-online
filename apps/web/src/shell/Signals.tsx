@@ -1,3 +1,4 @@
+import { openUnknownSignal } from '../lib/unknownSignal.js';
 import { z } from 'zod';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -304,6 +305,7 @@ export function SignalsFeed({
  * is why the exhaustiveness of this map is asserted in `notification-routes.test`.
  */
 export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
+  unknown_signal_result: { panel: null },
   monument_inbound: { panel: null },
   monument_probe_lost: { panel: null },
   monument_returning: { panel: null },
@@ -539,6 +541,11 @@ function Event({
         type="button"
         aria-label={i18n.t('signals.openEvent')}
         onClick={() => {
+          if (event.kind === 'unknown_signal_result' && event.refId) {
+            onGo(null);
+            openUnknownSignal(event.refId);
+            return;
+          }
           const monument = notificationMonumentTarget(event);
           if (monument?.monumentId && destination.stop !== 'battles' && onFocusMonument) {
             onFocusMonument(monument.monumentId);

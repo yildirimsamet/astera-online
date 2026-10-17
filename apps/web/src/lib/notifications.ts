@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { FAULT_KINDS } from '@astera/rules';
 import type { NotificationView } from '../api/schemas.js';
+import { unknownSignalOutcomeSchema } from '../api/schemas.js';
+import { HULLS } from '@astera/rules';
+import { cosmeticCopy } from '../ui/cosmeticCopy.js';
 import i18n from '../i18n/index.js';
 import { hullName, monumentName, unlockCopy } from '../i18n/names.js';
 import { battleOutcome, monumentControlKey, monumentGradeKey, type BattleOutcome } from './battleOutcome.js';
@@ -733,6 +736,18 @@ export function notificationIdentity(notification: NotificationView): Notificati
  * test place a notification either side of its own arrival.
  */
 export function describeNotification(notification: NotificationView, now: number): string | null {
+  if (notification.kind === 'unknown_signal_result') {
+    const parsed = z.object({ outcome: unknownSignalOutcomeSchema }).safeParse(notification.payload);
+    if (!parsed.success) return null;
+    const outcome = parsed.data.outcome;
+    switch (outcome.kind) {
+      case 'RESOURCES': return `${i18n.t('unknownSignal.resourceResult')} ${spoils(outcome.loot.alloy, outcome.loot.crystal, outcome.loot.deuterium).join(JOIN())}`;
+      case 'ENERGY': return i18n.t('unknownSignal.energyResult', { hours: outcome.hours });
+      case 'DERELICT': return i18n.t('unknownSignal.derelictResult', { ship: hullName(outcome.hull), tier: HULLS[outcome.hull].tier, health: Math.round((10000 - outcome.damageBp) / 100) });
+      case 'PIRATES': return i18n.t('unknownSignal.pirateResult');
+      case 'SKIN': return i18n.t('unknownSignal.skinResult', { name: i18n.t(cosmeticCopy(outcome.cosmeticId).nameKey) });
+    }
+  }
   const native = notificationMonumentTarget(notification);
   if (native) {
     const name = native.label;
@@ -1468,6 +1483,10 @@ const isPirateNews = (notification: NotificationView): boolean => {
 };
 
 export function signalFamily(notification: NotificationView): SignalFamily {
+  if (notification.kind === 'unknown_signal_result') {
+    const parsed = z.object({ outcome: unknownSignalOutcomeSchema }).safeParse(notification.payload);
+    return parsed.success ? parsed.data.outcome.kind === 'PIRATES' ? 'threat' : 'gain' : 'note';
+  }
   if (notification.kind === 'radiation_bomb_result') {
     const parsed = radiationBombResult.safeParse(notification.payload);
     return parsed.success && parsed.data.outcome === 'HIT' && parsed.data.defended ? 'threat' : 'note';
@@ -1654,6 +1673,7 @@ export type SignalGlyph =
   | 'bell';
 
 export function signalGlyph(notification: NotificationView): SignalGlyph {
+  if (notification.kind === 'unknown_signal_result') return 'scan';
   // Before the kind, because a raid at a pirate and a raid at a commander are the
   // same kind and are not the same news.
   if (isPirateNews(notification)) return 'skull';

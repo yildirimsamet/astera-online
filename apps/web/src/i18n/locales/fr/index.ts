@@ -1,4 +1,5 @@
 import { accountSecurity } from './accountSecurity.js';
+import { unknownSignal } from './unknownSignal.js';
 import { honorBenefits } from './honorBenefits.js';
 import { vacation } from './vacation.js';
 import { silentSpace } from './silentSpace.js';
@@ -31,6 +32,7 @@ import type { Resources } from '../en/index.js';
 /** French resources share the source language's structure and interpolation contract. */
 export const fr: Resources = {
   honorBenefits,
+  unknownSignal,
   brand,
   monument,
   silentSpace,

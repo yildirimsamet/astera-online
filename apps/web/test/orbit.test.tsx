@@ -573,10 +573,10 @@ describe('the Deuterium Refinery', () => {
       .toHaveAttribute('data-progression-state', 'locked');
   });
 
-  it('names it again at the ceiling of the rung actually held', () => {
+  it.each([1, 2, 3, 4])('names research again at the ceiling of synthesis L%i', (level) => {
     const view = show({
-      research: rung(1),
-      buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1, DEUTERIUM_PLANT: 3 },
+      research: rung(level),
+      buildings: { CORE: 15, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1, DEUTERIUM_PLANT: level * 3 },
     }, 'grow');
     expect(view.container.querySelector('#row-DEUTERIUM_PLANT'))
       .toHaveTextContent(/Deuterium Synthesis/i);
@@ -588,6 +588,69 @@ describe('the Deuterium Refinery', () => {
       buildings: { CORE: 2, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 2 },
     }, 'grow');
     expect(view.container.querySelector('#row-DEUTERIUM_PLANT')).toHaveTextContent(/Core/i);
+  });
+
+  it.each([15, 16])('finishes the refinery ladder at L%i without asking for impossible research', async (level) => {
+    const view = show({
+      research: rung(5),
+      buildings: { CORE: 15, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1, DEUTERIUM_PLANT: level },
+    }, 'grow');
+    const row = view.container.querySelector('#row-DEUTERIUM_PLANT');
+    expect(row?.querySelector('[data-progression-state]')).toHaveAttribute('data-progression-state', 'complete');
+    expect(row).toHaveTextContent(/at its highest level/i);
+    expect(row).not.toHaveTextContent(/requires|Deuterium Synthesis|Core L16/i);
+    if (!(row instanceof HTMLElement)) throw new Error('Refinery row must render');
+    await userEvent.click(within(row).getByRole('button', { name: /about Deuterium Refinery/i }));
+    const sheet = screen.getByRole('dialog', { name: 'Deuterium Refinery' });
+    expect(sheet).toHaveTextContent(/at its highest level/i);
+    expect(sheet.querySelector('[data-rung]')).toBeNull();
+    expect(within(sheet).queryByRole('button', { name: /raise|research|requires/i })).toBeNull();
+  });
+
+  it('still offers the last refinery level with completed synthesis', () => {
+    const view = show({
+      research: rung(5),
+      buildings: { CORE: 15, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1, DEUTERIUM_PLANT: 14 },
+    }, 'grow');
+    const row = view.container.querySelector('#row-DEUTERIUM_PLANT');
+    expect(row?.querySelector('[data-progression-state]')).toHaveAttribute('data-progression-state', 'owned');
+    expect(row).not.toHaveTextContent(/highest level|Deuterium Synthesis/i);
+  });
+
+  it('does not offer another level when the last refinery upgrade is queued', async () => {
+    const view = show({
+      research: rung(5),
+      buildings: { CORE: 15, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1, DEUTERIUM_PLANT: 14 },
+      queues: { CONSTRUCTION: [{ id: 'last-refinery', slot: 0, queue: 'CONSTRUCTION', optimistic: true, kind: 'BUILDING', subject: 'DEUTERIUM_PLANT', count: 1, cost: { alloy: 1, crystal: 1, deuterium: 0 } }], YARD: [] },
+    }, 'grow');
+    const row = view.container.querySelector('#row-DEUTERIUM_PLANT');
+    expect(row).toHaveTextContent(/queued/i);
+    expect(row).not.toHaveTextContent(/Deuterium Synthesis/i);
+    if (!(row instanceof HTMLElement)) throw new Error('Refinery row must render');
+    await userEvent.click(within(row).getByRole('button', { name: /about Deuterium Refinery/i }));
+    const sheet = screen.getByRole('dialog', { name: 'Deuterium Refinery' });
+    expect(sheet.querySelector('[data-act]')).toHaveTextContent(/queued/i);
+    expect(sheet.querySelector('[data-act]')).not.toHaveTextContent(/highest level/i);
+    expect(sheet.querySelector('[data-rung]')).toBeNull();
+    expect(sheet.querySelector('[data-act] button')).toBeNull();
+  });
+
+  it('keeps a maxed refinery complete under a lower Core and a full queue', () => {
+    const view = show({
+      research: rung(5),
+      buildings: { CORE: 10, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1, DEUTERIUM_PLANT: 15 },
+      queues: {
+        CONSTRUCTION: ['REFINERY', 'EXTRACTOR', 'VAULT'].map((subject, slot) => ({
+          id: `other-${String(slot)}`, slot, queue: 'CONSTRUCTION', optimistic: true, kind: 'BUILDING', subject, count: 1,
+          cost: { alloy: 1, crystal: 1, deuterium: 0 },
+        })),
+        YARD: [],
+      },
+    }, 'grow');
+    const row = view.container.querySelector('#row-DEUTERIUM_PLANT');
+    expect(row?.querySelector('[data-progression-state]')).toHaveAttribute('data-progression-state', 'complete');
+    expect(row).toHaveTextContent(/at its highest level/i);
+    expect(row?.querySelector('[data-has-fix]')).toBeNull();
   });
 
   it('shows the Core and research gates together when both are unmet', () => {

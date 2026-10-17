@@ -59,6 +59,7 @@ import {
   shipDamageLots,
   radiationBombFlights,
   hpRadiationSources,
+  unknownSignals,
 } from '../db/schema.js';
 import { prepareClanReclaimMonuments, reconcileClanPlayerReclaim } from './clan.js';
 import { addDominionCounters } from './dominion.js';
@@ -289,6 +290,11 @@ export async function busy(
   rows: { runIds: string[]; raidIds: string[]; tradeIds: string[]; convoyIds: string[]; bombIds: string[] },
   now: Date,
 ): Promise<boolean> {
+  const [signal] = await tx.select({ id: unknownSignals.id }).from(unknownSignals).where(and(
+    inArray(unknownSignals.status, ['outbound', 'returning', 'recalled']),
+    or(eq(unknownSignals.playerId, playerId), inArray(unknownSignals.originPlanetId, planetIds)),
+  )).limit(1);
+  if (signal) return true;
   if (rows.bombIds.length > 0) {
     const [bomb] = await tx.select({ id: radiationBombFlights.id }).from(radiationBombFlights).where(and(
       inArray(radiationBombFlights.id, rows.bombIds),
@@ -660,6 +666,8 @@ export async function demolish(
   const refs = [
     ...missionIds, ...runIds, ...raidIds, ...tradeIds, ...convoyIds,
     ...planetIds, ...assetIds, ...buildOrderIds, ...bombIds,
+    playerId,
+    ...(await tx.select({ id: unknownSignals.id }).from(unknownSignals).where(eq(unknownSignals.playerId, playerId))).map(row => row.id),
   ];
   if (refs.length > 0) {
     await tx.delete(scheduledEvents).where(inArray(scheduledEvents.refId, refs));

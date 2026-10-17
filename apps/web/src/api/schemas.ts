@@ -59,7 +59,7 @@ export const honorTargetSchema = z.union([
   z.object({ enabled: z.literal(true), eligible: z.literal(false) }),
   z.object({ enabled: z.literal(true), eligible: z.literal(true), kind: z.enum(['PEER', 'UPPER', 'WEAK']),
     militaryReturn: z.enum(['NONE', 'HALF', 'FULL']), related: z.boolean(), repeated: z.boolean(), retaliation: z.boolean(),
-    soloCredit: z.boolean().optional() }),
+    soloCredit: z.boolean().optional(), retaliationLootPercent: z.union([z.literal(20), z.literal(40)]).optional() }),
 ]);
 export type HonorTarget = z.infer<typeof honorTargetSchema>;
 export const countryCode = z.enum(COUNTRY_CODES);
@@ -146,6 +146,28 @@ const fleetEscapeRecord = z.discriminatedUnion('kind', [
 const techLevels = z.record(researchProjectId, z.number().int().nonnegative());
 const vec3 = z.object({ x: z.number(), y: z.number(), z: z.number() });
 const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
+export const unknownSignalOutcomeSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('RESOURCES'), loot: resources }),
+  z.object({ kind: z.literal('ENERGY'), hours: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]) }),
+  z.object({ kind: z.literal('DERELICT'), hull: hullId, damageBp: z.number().int().min(2000).max(6000) }),
+  z.object({ kind: z.literal('PIRATES') }),
+  z.object({ kind: z.literal('SKIN'), cosmeticId: z.enum(COSMETIC_IDS) }),
+]);
+export const unknownSignalSchema = z.object({
+  id: z.string().uuid(), at: vec3, status: z.enum(['open', 'outbound', 'returning', 'done', 'expired', 'recalled', 'lost']),
+  appearedAt: z.coerce.date(), expiresAt: z.coerce.date(), originPlanetId: z.string().uuid().nullable(), origin: vec3.nullable(),
+  fleet: fleet.nullable(), damage: z.array(z.object({ hull: hullId, count: z.number().int().positive(), damageBp: z.number().int().min(0).max(9999),
+    remainderBp: z.number().finite().min(0).lt(1).optional() })).nullable(),
+  departAt: z.coerce.date().nullable(), arriveAt: z.coerce.date().nullable(),
+  returnDepartAt: z.coerce.date().nullable(), returnAt: z.coerce.date().nullable(), recalledAt: z.coerce.date().nullable(),
+  outcome: unknownSignalOutcomeSchema.nullable(), deliveredAt: z.coerce.date().nullable(),
+});
+export const unknownSignalsSchema = z.object({ signals: z.array(unknownSignalSchema), tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  radar: z.object({ capitalPlanetId: z.string().uuid(), at: vec3, level: z.number().int().nonnegative(), range: z.number().positive() }).nullable().optional() });
+export const unknownSignalDetailsSchema = z.object({ signal: unknownSignalSchema });
+export type UnknownSignalView = z.infer<typeof unknownSignalSchema>;
+export const unknownSignalLaunchSchema = z.object({ signalId: z.string().uuid(), arriveAt: z.coerce.date(), fuel: z.number().nonnegative() });
+export const unknownSignalRecallSchema = z.object({ signalId: z.string().uuid(), returnAt: z.coerce.date().nullable() });
 const band = z.object({ low: z.number(), high: z.number() });
 
 /**
@@ -913,6 +935,7 @@ export const planetSchema = z.object({
      * Optional so a payload from a server that predates it reads as no boost.
      */
     productionBoostUntil: z.coerce.date().nullable().optional(),
+    signalBoostUntil: z.coerce.date().nullable().optional(),
   }),
   pvpBalance: pvpBalanceSchema.optional(),
   buildings: z.record(buildingId, z.number()),
@@ -2575,7 +2598,7 @@ const pendingThread = z.object({
    */
   kind: z.enum([
     'fleet', 'probe', 'incoming', 'transfer', 'settlement', 'death_star', 'pirate', 'trade',
-    'intergalactic_convoy', 'monument', 'radiation_bomb',
+    'intergalactic_convoy', 'monument', 'radiation_bomb', 'unknown_signal',
   ]),
   targetName: z.string(),
   originPlanetId: z.string().uuid().optional(),

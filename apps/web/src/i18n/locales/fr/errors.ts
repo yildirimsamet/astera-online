@@ -12,6 +12,11 @@
 * ce ne sont pas des erreurs, mais les règles du jeu.
   */
   export const errors = {
+  UNKNOWN_SIGNAL_NOT_FOUND: "Ce signal n’existe plus. Attends un nouveau contact Radar.",
+  UNKNOWN_SIGNAL_EXPIRED: "Le signal a disparu. Attends un nouveau contact Radar.",
+  UNKNOWN_SIGNAL_TAKEN: "Une flotte a déjà été envoyée vers ce signal.",
+  UNKNOWN_SIGNAL_FLEET: "Envoie exactement un vaisseau de guerre T1 et un Courrier.",
+
   ADMIN_REQUIRED: "Seul un administrateur peut envoyer des médias.",
   BAD_CHAT_MEDIA: "Choisis un fichier JPEG, PNG, WebP, GIF, MP4 ou WebM.",
   CHAT_MEDIA_TOO_LARGE: "Choisis un fichier plus petit : photo de 10 Mo ou vidéo de 50 Mo maximum.",

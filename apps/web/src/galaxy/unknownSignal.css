@@ -1,0 +1,6 @@
+.unknown-signal-marker { position: relative; width: 48px; height: 48px; color: #c5f7ff; transition: opacity 1s linear; }
+.unknown-signal-hit { pointer-events: auto; width: 48px; height: 48px; border-radius: 50%; touch-action: manipulation; filter: drop-shadow(0 0 8px #79e5ff80); }
+.unknown-signal-wave { transform-origin: 24px 24px; opacity: .45; }
+.unknown-signal-pulse .unknown-signal-wave { animation: unknown-signal-wave 1.6s linear infinite; will-change: transform, opacity; }
+.unknown-signal-flash .unknown-signal-hit { filter: drop-shadow(0 0 16px #dcfcff); transform: scale(1.5); }
+@keyframes unknown-signal-wave { from { transform: scale(.5); opacity: .95; } to { transform: scale(3); opacity: 0; } }

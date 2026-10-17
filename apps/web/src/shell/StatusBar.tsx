@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SignalBoostNote } from '../ui/SignalBoostNote.js';
 import { collectorCap } from '@astera/rules';
 import { useCollect, usePlanet, useRewards, useSeason } from '../api/queries.js';
 import { compact, full } from '../lib/format.js';
@@ -172,6 +173,7 @@ export function StatusBar({
       {!lesson && boosted && (
         <RecoveryBoostNote remainingMs={boostUntil.getTime() - now} />
       )}
+      {!lesson && <SignalBoostNote until={data.planet.signalBoostUntil} recoveryUntil={boostUntil} now={now} />}
     </header>
   );
 }

@@ -1,4 +1,5 @@
 import { accountSecurity } from './accountSecurity.js';
+import { unknownSignal } from './unknownSignal.js';
 import { honorBenefits } from './honorBenefits.js';
 import { vacation } from './vacation.js';
 import { silentSpace } from './silentSpace.js';
@@ -44,6 +45,7 @@ import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold
  */
 export const en = {
   honorBenefits,
+  unknownSignal,
   brand,
   monument,
   silentSpace,

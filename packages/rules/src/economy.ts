@@ -24,6 +24,7 @@ import {
   SEASON,
   UPLINK_BUILD_MINUTES,
   SHIELD,
+  UNKNOWN_SIGNAL,
 } from './constants.js';
 import {
   INSTRUMENT_IDS,
@@ -779,11 +780,11 @@ export function productiveMinutes(from: number, to: number, until = 0): number {
 }
 
 /**
- * HOURS OF PRODUCTION A SPAN IS WORTH, WITH THE RECOVERY BOOST APPLIED. 2026-09-16.
+ * Production hours including independent recovery and signal windows.
  *
- * Productive hours, plus the extra share `ABUSE.recoveryProductionMult` pays for
- * every productive minute before `boostUntil`. One statement for the server's lazy
- * tick and the client's works projection, so the vessel the player watches fill
+ * Productive hours, plus recovery's +50% and the signal's +100% for their respective
+ * productive minutes. Overlapping windows add to 2.5x. One statement for the server's
+ * lazy tick and the client's works projection, so the vessel the player watches fill
  * and the figure a collection moves cannot disagree about a boosted hour.
  *
  * The boost is bounded by wall time and paid on productive time: a disruption
@@ -795,13 +796,15 @@ export function productionHours(
   to: number,
   disruptedUntil = 0,
   boostUntil: number | null = null,
+  signalBoostUntil: number | null = null,
 ): number {
   const ordinary = productiveMinutes(from, to, disruptedUntil);
-  if (boostUntil === null || !Number.isFinite(boostUntil) || boostUntil <= from) {
-    return ordinary / 60;
-  }
-  const boosted = productiveMinutes(from, Math.min(to, boostUntil), disruptedUntil);
-  return (ordinary + boosted * (ABUSE.recoveryProductionMult - 1)) / 60;
+  const boostedMinutes = (until: number | null): number =>
+    until === null || !Number.isFinite(until) || until <= from
+      ? 0 : productiveMinutes(from, Math.min(to, until), disruptedUntil);
+  return (ordinary
+    + boostedMinutes(boostUntil) * (ABUSE.recoveryProductionMult - 1)
+    + boostedMinutes(signalBoostUntil) * UNKNOWN_SIGNAL.energyProductionBonus) / 60;
 }
 
 /* ── The lazy tick ──────────────────────────────────────────────── */
@@ -870,6 +873,8 @@ export interface PlanetEconomyInput {
    * spent, so this function never has to know about the commander's shield itself.
   */
   recoveryBoostUntilMinutes?: number | null;
+  /** Capital's signal energy bonus deadline, in season minutes; additive with recovery. */
+  signalBoostUntilMinutes?: number | null;
   /**
    * HOW FAST THE WORKS RUN, BETWEEN 0 AND 1. D212: `SILENT_SPACE.productionPace` there, 1 elsewhere.
    *
@@ -943,16 +948,16 @@ export function advanceEconomy(
   }
 
   /*
-    HOURS OF PRODUCTION, NOT HOURS OF CLOCK. With no recovery boost this is exactly
-    the productive hours it always was; with one, every boosted productive minute
-    counts double. The collector ceilings below read the RATE, which the boost does
-    not touch — the same vessel fills faster and is never made bigger.
+    HOURS OF PRODUCTION, NOT HOURS OF CLOCK. Recovery and signal bonuses count only
+    their productive minutes. The collector ceilings below read the RATE, which the
+    boost does not touch — the same vessel fills faster and is never made bigger.
   */
   const producing = productionHours(
     state.lastTickMinutes,
     nowMinutes,
     state.disruptedUntilMinutes,
     input.recoveryBoostUntilMinutes ?? null,
+    input.signalBoostUntilMinutes ?? null,
   );
   const shieldStart = Math.max(
     state.lastTickMinutes,

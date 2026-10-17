@@ -6,6 +6,7 @@ import { DESTINATION, Signals } from '../src/shell/Signals.js';
 import { describeNotification } from '../src/lib/notifications.js';
 import type { NotificationView } from '../src/api/schemas.js';
 import { keepsPlanetGroup, nextPanelStop, rivalMenuRows } from '../src/shell/panelRoute.js';
+import { subscribeUnknownSignal } from '../src/lib/unknownSignal.js';
 
 /**
  * A NOTIFICATION IS A DOOR, AND EVERY ONE OF THEM HAS TO OPEN. D121.
@@ -61,11 +62,13 @@ const EVERY_KIND = [
   'strategic_intercepted',
   'target_gone',
   'unlock',
+  'unknown_signal_result',
   'defence_posture_reset',
 ] as const;
 
 /** A payload each kind's parser will actually accept, so a row really renders. */
 const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
+  unknown_signal_result: { signalId: '00000000-0000-4000-8000-000000000003', outcome: { kind: 'ENERGY', hours: 2 } },
   convoy_result: { trip: 'intergalactic_convoy', runId: '00000000-0000-4000-8000-000000000002', resourceReward: { alloy: 10, crystal: 0, deuterium: 0 }, awardedFleet: {}, inTransit: true },
   monument_returning: { targetKind: 'MONUMENT', monumentId: '00000000-0000-4000-8000-000000000001', monumentOrdinal: 1, reason: 'CAPACITY', craft: 2, arriveAt: '2026-08-26T12:40:00.000Z' },
   monument_inbound: { monumentId: '00000000-0000-4000-8000-000000000001', monumentOrdinal: 1, arriveAt: '2026-08-26T12:20:00.000Z' },
@@ -158,6 +161,17 @@ const openSheet = async (): Promise<void> => {
 };
 
 describe('where a notification takes you', () => {
+  it('opens the personal signal result named by its notification', async () => {
+    const id = '00000000-0000-4000-8000-000000000003';
+    const focused = vi.fn(); const stop = subscribeUnknownSignal(focused);
+    try {
+      const { onOpen } = mount([{ ...notification('unknown_signal_result'), refId: id }]);
+      await openSheet();
+      await userEvent.click(screen.getByRole('button', { name: 'Open related report' }));
+      expect(onOpen).toHaveBeenCalledWith(null, undefined, undefined, undefined);
+      expect(focused).toHaveBeenCalledWith(id);
+    } finally { stop(); }
+  });
   it('does not replay an old report when Intel is later opened normally', () => {
     const deepLink = nextPanelStop(null, 'battles', 'mission-raided');
     expect(deepLink).toMatchObject({

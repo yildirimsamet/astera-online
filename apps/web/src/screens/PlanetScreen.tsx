@@ -35,6 +35,7 @@ import {
   instrumentMaxed,
   interceptionRange,
   plantCeiling,
+  RESEARCH_MAX_LEVEL,
   productionMult,
   prospectorCeiling,
   prospectorRoom,
@@ -1144,6 +1145,10 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
     // compares — `level >= ceiling` there and here, so the two cannot drift.
     const plantCapped = id === 'DEUTERIUM_PLANT'
       && nextLevel >= plantCeiling(projected.research.get('DEUTERIUM_SYNTHESIS') ?? 0);
+    // The final ceiling has no research rung beyond it to send the player to.
+    const plantMaxed = id === 'DEUTERIUM_PLANT'
+      && nextLevel >= plantCeiling(RESEARCH_MAX_LEVEL.DEUTERIUM_SYNTHESIS);
+    const completed = plantMaxed ? queued ?? i18n.t('planet.blocked.maxed') : undefined;
     /*
       THE HANGAR'S RUNGS OPEN AT THE CORE'S TIER CHANGES — 4, 7, 10, 13, 16 — not one
       per Core level, so the generic "Core L{{core + 1}}" would send a Core-5
@@ -1163,16 +1168,18 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
       ...(coreGate === null ? [] : [i18n.t('planet.blocked.core', { level: coreGate })]),
       ...(plantCapped ? [i18n.t('planet.blocked.plantRung')] : []),
     ];
-    const blocked: Blocked | undefined = hangarMaxed
-      ? { reason: i18n.t('planet.blocked.maxed') }
-      : prerequisites.length > 0
-        ? {
-          reason: i18n.t('planet.blocked.requirements', { requirements: prerequisites.join(' · ') }),
-          onFix: () => { onNeed(coreGate !== null ? 'CORE' : 'DEUTERIUM_SYNTHESIS'); },
-        }
-        : orders.length >= BUILD.queueDepth
-          ? { reason: i18n.t('planet.blocked.queueFull') }
-          : undefined;
+    const blocked: Blocked | undefined = completed
+      ? undefined
+      : hangarMaxed
+        ? { reason: i18n.t('planet.blocked.maxed') }
+        : prerequisites.length > 0
+          ? {
+            reason: i18n.t('planet.blocked.requirements', { requirements: prerequisites.join(' · ') }),
+            onFix: () => { onNeed(coreGate !== null ? 'CORE' : 'DEUTERIUM_SYNTHESIS'); },
+          }
+          : orders.length >= BUILD.queueDepth
+            ? { reason: i18n.t('planet.blocked.queueFull') }
+            : undefined;
 
     return {
       level,
@@ -1180,6 +1187,7 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
       projectedLevels: projected.buildings,
       cost,
       blocked,
+      ...(completed ? { completed } : {}),
       queued,
       pending: upgrade.isPending,
       act: () => {
@@ -2572,6 +2580,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
           income={income}
           takes={orderMinutes('BUILDING', plant.cost, planet, 1, { building: 'DEUTERIUM_PLANT', level: plant.actionLevel + 1 })}
           unowned={plant.level === 0}
+          {...(plant.completed ? { completed: plant.completed } : {})}
           {...(plant.blocked ? { blocked: plant.blocked } : {})}
           {...(plant.queued ? { queued: plant.queued } : {})}
           queuedActionable

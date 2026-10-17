@@ -27,6 +27,7 @@ import { describe, useToast } from '../../ui/Toast.js';
 import { NowLine } from '../hud/NowLine.js';
 import { TopBar, type CollectionTransfer } from '../hud/TopBar.js';
 import { BrandMasthead } from '../../brand/Identity.js';
+import { SignalBoostNote } from '../../ui/SignalBoostNote.js';
 
 export interface HudTopProps {
   commander: string;
@@ -86,6 +87,9 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
   const active = worlds.find((world) => world.planet.id === activePlanetId) ?? null;
   const shieldUntil = season?.shieldUntil ?? null;
   const boostUntil = data?.planet.productionBoostUntil ?? null;
+  const signalUntil = data?.planet.signalBoostUntil ?? null;
+  const signalActive = signalUntil !== null && signalUntil.getTime() > now;
+  const signalLabel = signalActive ? t('unknownSignal.boost', { factor: boostUntil && boostUntil.getTime() > now ? 2.5 : 2 }) : undefined;
 
   /*
     THE WORKS, ON THE TOP BAR (owner, 2026-09-25): the same reading, request and toast the
@@ -174,7 +178,8 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
         }}
         bell={bellState(notifications, now)}
         rewards={rewards}
-        boosted={boostUntil !== null && boostUntil.getTime() > now}
+        boosted={signalActive || (boostUntil !== null && boostUntil.getTime() > now)}
+        boostLabel={signalLabel}
         {...(works ? { works } : {})}
         transfer={transfer?.planetId === data?.planet.id ? transfer : null}
         onCommander={onCommander}
@@ -184,6 +189,7 @@ export function HudTop({ commander, onShop, onCommander, onRewards, onWorlds, on
         onBell={onBell}
         {...(tabs === undefined ? {} : { tabs })}
       />
+      <SignalBoostNote until={signalUntil} recoveryUntil={boostUntil} now={now} />
       <NowLine
         floating
         entries={entries}

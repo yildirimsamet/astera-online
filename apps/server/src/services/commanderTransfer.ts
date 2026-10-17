@@ -8,7 +8,7 @@ import { accounts, buildOrders, clanMemberships, clanRequests, clans, honorObser
   clanSupportWaves, clanWarContributions, clanWarOperations, commanderTransfers, debrisFields, mainVacancies,
   miningRuns, missions, planets, playerRivals, players, probeWorldMemories, researchOrders, returnApplications,
   scheduledEvents, seasons, shards, strategicAssets, strategicInterceptions, units, watches, pirateRaids, tradeRuns,
-  intergalacticConvoyRuns, radiationBombFlights, hpRadiationSources } from '../db/schema.js';
+  intergalacticConvoyRuns, radiationBombFlights, hpRadiationSources, unknownSignals, unknownSignalState } from '../db/schema.js';
 import { loadLocked } from './planet.js';
 import { observeHonorOwner } from './honorReference.js';
 import { lockAdmission } from './returnQueue.js';
@@ -18,6 +18,7 @@ import { reconcileClanPlayerReclaim } from './clan.js';
 import { publish, publishShard, publishSight } from '../stream/bus.js';
 import { notifyDmPeers } from './dm.js';
 import { hasMonumentActivity } from './monumentLifecycle.js';
+import { ensureUnknownSignalSchedule } from './unknownSignalSchedule.js';
 
 export type TransferStatus = 'MOVED' | 'ACTIVE' | 'PLACEMENT' | 'SEASON' | 'CAPACITY' | 'FLIGHT' | 'EVENT' | 'EFFECT' | 'UNITS' | 'CONTENTION' | 'APPLICATION';
 class Deferred extends Error { constructor(readonly status: TransferStatus) { super(status); } }
@@ -155,6 +156,11 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       const [trade] = await tx.select({ id: tradeRuns.id }).from(tradeRuns).where(and(ne(tradeRuns.status, 'done'), or(eq(tradeRuns.ownerPlayerId, playerId), inArray(tradeRuns.planetId, ids)))).limit(1);
       const [convoy] = await tx.select({ id: intergalacticConvoyRuns.id }).from(intergalacticConvoyRuns).where(and(ne(intergalacticConvoyRuns.status, 'done'), or(eq(intergalacticConvoyRuns.ownerPlayerId, playerId), inArray(intergalacticConvoyRuns.planetId, ids)))).limit(1);
       if (mining || pirate || trade || convoy) defer('FLIGHT');
+      const [signalFlight] = await tx.select({ id: unknownSignals.id }).from(unknownSignals).where(and(
+        inArray(unknownSignals.status, ['outbound', 'returning', 'recalled']),
+        or(eq(unknownSignals.playerId, playerId), inArray(unknownSignals.originPlanetId, ids)),
+      )).limit(1);
+      if (signalFlight) defer('FLIGHT');
       const [foreign] = await tx.select({ id: units.planetId }).from(units).where(and(gt(units.count, 0), or(
         // A docked ship stands on its world and moves with it: it is not away (Kalıcı gemi hasarı).
         and(inArray(units.planetId, ids), or(
@@ -324,6 +330,17 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
         eq(playerRivals.targetPlayerId, playerId),
       ));
       for (const event of events) await tx.update(scheduledEvents).set({ seasonId: target.id }).where(eq(scheduledEvents.id, event.id));
+      // Discovery coordinates belong to the old galaxy. A dormant cadence moves
+      // with its commander; a permanently stopped T4 cadence remains stopped.
+      await tx.update(unknownSignals).set({ status: 'expired' }).where(and(eq(unknownSignals.playerId, playerId), eq(unknownSignals.status, 'open')));
+      await tx.delete(scheduledEvents).where(and(eq(scheduledEvents.refId, playerId), eq(scheduledEvents.kind, 'unknown_signal_spawn')));
+      const [signalState] = await tx.select().from(unknownSignalState).where(eq(unknownSignalState.playerId, playerId));
+      if (signalState?.nextAt === null) {
+        await tx.update(unknownSignalState).set({ seasonId: target.id }).where(eq(unknownSignalState.playerId, playerId));
+      } else {
+        await tx.delete(unknownSignalState).where(eq(unknownSignalState.playerId, playerId));
+        await ensureUnknownSignalSchedule(tx, playerId, target.id, now);
+      }
       for (const w of worlds) await refreshSensorEpoch(tx, w.id, now);
       for (const observer of observers) await publishSight(tx, observer.id);
       await publish(tx, playerId, 'placement_changed');

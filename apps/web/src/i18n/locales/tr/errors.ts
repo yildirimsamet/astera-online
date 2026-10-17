@@ -11,6 +11,11 @@
  */
 
 export const errors = {
+  UNKNOWN_SIGNAL_NOT_FOUND: "Bu sinyal artık yok. Yeni radar temasını bekle.",
+  UNKNOWN_SIGNAL_EXPIRED: "Sinyal kayboldu. Yeni radar temasını bekle.",
+  UNKNOWN_SIGNAL_TAKEN: "Bu sinyale zaten bir filo gönderildi.",
+  UNKNOWN_SIGNAL_FLEET: "Tam olarak bir T1 savaş gemisi ve bir Kurye gönder.",
+
   ADMIN_REQUIRED: "Medyayı yalnızca yönetici gönderebilir.",
   BAD_CHAT_MEDIA: "JPEG, PNG, WebP, GIF, MP4 veya WebM dosyası seç.",
   CHAT_MEDIA_TOO_LARGE: "Daha küçük bir dosya seç: fotoğraf en fazla 10 MB, video en fazla 50 MB.",

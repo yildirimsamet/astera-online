@@ -22,6 +22,7 @@ export interface ResourceMeterProps {
   onOpen?: () => void;
   /** Production is boosted (the recovery boost): a rising mark beside the figure. */
   boosted?: boolean;
+  boostLabel?: string;
   /** How much of the store a raid cannot take (the Vault's floor), bracketed as the Base does. */
   safe?: number;
   transfer?: { id: number; from: number; to: number } | null;
@@ -32,10 +33,10 @@ export interface ResourceMeterProps {
  * the shield and ends with it, so it wears the same colour as the shield on the
  * commander chip. Owner instruction, 2026-09-16.
  */
-function BoostMark() {
+function BoostMark({ label }: { label?: string }) {
   const { t } = useTranslation();
   return (
-    <span role="img" aria-label={t('statusBar.recoveryBoost.mark')} className="shrink-0 text-v2-self">
+    <span role="img" aria-label={label ?? t('statusBar.recoveryBoost.mark')} className="shrink-0 text-v2-self">
       <svg viewBox="0 0 10 12" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="h-2.5 w-2">
         <path d="M5 10.5V2" />
         <path d="M1.5 5.2 5 1.7l3.5 3.5" />
@@ -52,7 +53,7 @@ function BoostMark() {
  * warn notch and nothing on the meter turns hostile red (H2) — red is reserved for
  * something happening to you.
  */
-export function ResourceMeter({ resource, value, cap, onOpen, boosted = false, safe = 0, transfer = null }: ResourceMeterProps) {
+export function ResourceMeter({ resource, value, cap, onOpen, boosted = false, boostLabel, safe = 0, transfer = null }: ResourceMeterProps) {
   const { t } = useTranslation();
   const isFull = cap > 0 && value >= cap - 0.5;
   const name = t(isFull ? 'meter.full' : 'meter.reading', {
@@ -66,7 +67,7 @@ export function ResourceMeter({ resource, value, cap, onOpen, boosted = false, s
       <span className="flex items-center gap-1">
         <img src={RESOURCE_ART[resource]} alt="" draggable={false} className="size-4 shrink-0 object-contain" />
         <span className="font-v2-mono text-body tabular-nums text-v2-ink">{stock(value)}</span>
-        {boosted && <BoostMark />}
+        {boosted && <BoostMark label={boostLabel} />}
       </span>
       {/* The Base's own store bar, compact (owner, 2026-09-25: the two did not match). */}
       {/* Full by the meter's own reading, so the name and the cap never disagree over a fraction. */}

@@ -14,6 +14,11 @@
  */
 
 export const errors = {
+  UNKNOWN_SIGNAL_NOT_FOUND: "この信号はもう存在しません。次のレーダー接触を待ってください。",
+  UNKNOWN_SIGNAL_EXPIRED: "信号が消えました。次のレーダー接触を待ってください。",
+  UNKNOWN_SIGNAL_TAKEN: "この信号にはすでに艦隊を派遣しています。",
+  UNKNOWN_SIGNAL_FLEET: "T1軍艦1隻とクーリエ1隻を派遣してください。",
+
   ADMIN_REQUIRED: "メディアを送信できるのは管理者だけです。",
   BAD_CHAT_MEDIA: "JPEG、PNG、WebP、GIF、MP4、WebM形式のファイルを選択してください。",
   CHAT_MEDIA_TOO_LARGE: "写真は10 MB以下、動画は50 MB以下のファイルを選択してください。",

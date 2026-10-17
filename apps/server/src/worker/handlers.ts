@@ -80,6 +80,8 @@ import {
   probeReports,
   researchOrders,
   pirateRaids,
+  unknownSignals,
+  unknownSignalState,
   tradeRuns,
   scheduledEvents,
   seasonResults,
@@ -113,6 +115,7 @@ import { emptySeasonStats } from '../services/seasonArchive.js';
 import { buildGalaxyRecord } from '../services/galaxyRecord.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { resolvePirateArrival, resolvePirateReturn } from '../services/pirateRaid.js';
+import { resolveUnknownSignalArrival, resolveUnknownSignalExpire, resolveUnknownSignalReturn, resolveUnknownSignalSpawn } from '../services/unknownSignal.js';
 import {
   clanWarEscrowPlanetIds,
   resolveClanWarExpiry,
@@ -2099,7 +2102,7 @@ async function freezeSeason(
       // Recovery guard for pre-D85 rows and same-instant worker ordering. Delete
       // this processing event and replace it atomically; EventWorker's later
       // `complete()` update simply finds no old row.
-      const [[missionCount], [miningCount], [buildCount], [strategicCount], [researchCount], [pirateCount], [tradeCount], [convoyCount], [clanWarCount], [supportCount]] = await Promise.all([
+      const [[missionCount], [miningCount], [buildCount], [strategicCount], [researchCount], [pirateCount], [tradeCount], [convoyCount], [clanWarCount], [supportCount], [signalCount]] = await Promise.all([
       tx
         .select({ n: sql<number>`count(*)::int` })
         .from(missions)
@@ -2145,6 +2148,8 @@ async function freezeSeason(
           eq(clanSupportWaves.seasonId, seasonId),
           inArray(clanSupportWaves.status, ['OUTBOUND', 'STATIONED', 'RETURNING']),
         )),
+      tx.select({ n: sql<number>`count(*)::int` }).from(unknownSignals)
+        .where(and(eq(unknownSignals.seasonId, seasonId), inArray(unknownSignals.status, ['outbound', 'returning', 'recalled']))),
       ]);
       if (
         (missionCount?.n ?? 0) > 0
@@ -2157,6 +2162,7 @@ async function freezeSeason(
         || (convoyCount?.n ?? 0) > 0
         || (clanWarCount?.n ?? 0) > 0
         || (supportCount?.n ?? 0) > 0
+        || (signalCount?.n ?? 0) > 0
       ) {
         await tx.delete(scheduledEvents).where(eq(scheduledEvents.id, event.id));
         await schedule(tx, {
@@ -2638,6 +2644,8 @@ async function freezeSeason(
         })).onConflictDoNothing();
       }
     }
+    await tx.update(unknownSignals).set({ status: 'expired' }).where(and(eq(unknownSignals.seasonId, seasonId), eq(unknownSignals.status, 'open')));
+    await tx.update(unknownSignalState).set({ nextAt: null }).where(eq(unknownSignalState.seasonId, seasonId));
     await tx.update(seasons).set({
       status: 'frozen',
       closedAt: capturedThrough,
@@ -3091,6 +3099,22 @@ export const onClanSupportExpiry: Handler = async ({ db, clock }, event) => {
 };
 
 export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
+  unknown_signal_spawn: async ({ db, clock }, event) => {
+    if (!event.refId) throw new Error('unknown_signal_spawn without player');
+    await db.transaction(tx => resolveUnknownSignalSpawn(tx, event.refId!, event.resolveAt, clock));
+  },
+  unknown_signal_expire: async ({ db, clock }, event) => {
+    if (!event.refId) throw new Error('unknown_signal_expire without signal');
+    await db.transaction(tx => resolveUnknownSignalExpire(tx, event.refId!, clock));
+  },
+  unknown_signal_arrival: async ({ db, clock }, event) => {
+    if (!event.refId) throw new Error('unknown_signal_arrival without signal');
+    await db.transaction(tx => resolveUnknownSignalArrival(tx, event.refId!, clock));
+  },
+  unknown_signal_return: async ({ db, clock }, event) => {
+    if (!event.refId) throw new Error('unknown_signal_return without signal');
+    await db.transaction(tx => resolveUnknownSignalReturn(tx, event.refId!, clock));
+  },
   radiation_bomb_arrival: onRadiationBombArrival,
   radiation_bomb_intercept: onRadiationBombIntercept,
   radiation_bomb_intercept_impact: onRadiationBombInterceptImpact,

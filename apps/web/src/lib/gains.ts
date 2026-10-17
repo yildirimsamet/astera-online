@@ -236,12 +236,15 @@ export function buildingGain(
       };
     }
     /** An hourly rate, in the same shape the other two producers are sold in. T5. */
-    case 'DEUTERIUM_PLANT':
+    case 'DEUTERIUM_PLANT': {
+      const maxed = level >= plantCeiling(RESEARCH_MAX_LEVEL.DEUTERIUM_SYNTHESIS);
+      const now = i18n.t('gains.plant.value', {
+        rate: full(Math.round(deuteriumRate(level) * running)),
+      });
+      if (maxed) return { label: i18n.t('gains.plant.label'), now, next: now, maxed: true };
       return {
         label: i18n.t('gains.plant.label'),
-        now: i18n.t('gains.plant.value', {
-          rate: full(Math.round(deuteriumRate(level) * running)),
-        }),
+        now,
         next: i18n.t('gains.plant.value', {
           rate: full(Math.round(deuteriumRate(next) * running)),
         }),
@@ -258,6 +261,7 @@ export function buildingGain(
           )),
         }),
       };
+    }
   }
 }
 

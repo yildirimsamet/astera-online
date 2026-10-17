@@ -17,6 +17,18 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--refinery-ceiling')) {
+  const { verifyRefineryCeiling } = await import('./refinery-ceiling-visual.mjs');
+  await verifyRefineryCeiling(process.argv[2] ?? 'out/refinery-ceiling');
+  process.exit(0);
+}
+
+if (process.argv.includes('--unknown-signal')) {
+  const { verifyUnknownSignal } = await import('./unknown-signal-visual.mjs');
+  await verifyUnknownSignal(process.argv[2] ?? 'out/unknown-signal');
+  process.exit(0);
+}
+
 if (process.argv.includes('--render-artifacts')) {
   const { verifyRenderArtifacts } = await import('./render-artifacts-visual.mjs');
   await verifyRenderArtifacts(process.argv[2] ?? 'out/render-artifacts');

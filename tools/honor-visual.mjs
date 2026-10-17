@@ -124,7 +124,7 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
           : state.startsWith('target-') ? h('div', { className: 'p-3' }, h(HonorTargetCard, {
             value: { enabled: true, eligible: true, kind: state === 'target-weak' ? 'WEAK' : state === 'target-upper' ? 'UPPER' : 'PEER',
               militaryReturn: state === 'target-upper' ? 'HALF' : 'FULL', related: state === 'target-related',
-              repeated: true, retaliation: state === 'target-weak', soloCredit: true },
+              repeated: true, retaliation: state === 'target-weak', retaliationLootPercent: 40, soloCredit: true },
           })) : state === 'segmented' ? h('div', { className: 'grid gap-5 p-3 font-v2-ui' },
             h('p', { className: 'text-body font-semibold text-v2-ink' }, i18n.t('leaderboard.honorPrimary')),
             h(LegacySegments, { label: i18n.t('leaderboard.rankingChoice'), value: 'HONOR', onSelect: noop, segments: [

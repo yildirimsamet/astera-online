@@ -761,6 +761,33 @@ export function useMonuments(enabled = true) {
   return result;
 }
 
+export function useUnknownSignals() {
+  const api = useApi();
+  const result = useQuery({ queryKey: keys.unknownSignals, queryFn: ({ signal }) => api.unknownSignals({ signal }), ...READ, refetchInterval: NET_MS });
+  const moments = useMemo(() => (result.data?.signals ?? []).flatMap(signal =>
+    signal.status === 'open' ? [signal.expiresAt.getTime()]
+      : signal.status === 'outbound' && signal.arriveAt ? [signal.arriveAt.getTime()]
+      : (signal.status === 'returning' || signal.status === 'recalled') && signal.returnAt ? [signal.returnAt.getTime()] : []).sort((a, b) => a - b), [result.data]);
+  useRefetchOnArrival(moments, [keys.unknownSignals, keys.pending, keys.planet, keys.planets, keys.notifications, keys.skins]);
+  return result;
+}
+
+export function useUnknownSignalActions() {
+  const api = useApi();
+  const invalidate = useInvalidator();
+  const refresh = () => { invalidate(keys.unknownSignals, keys.pending, keys.planet, keys.planets, keys.notifications, keys.skins); };
+  return {
+    send: useMutation({ mutationFn: ({ id, originPlanetId, fleet, key }: { id: string; originPlanetId: string; fleet: Fleet; key: string }) =>
+      api.dispatchUnknownSignal(id, originPlanetId, fleet, key), onSuccess: refresh }),
+    recall: useMutation({ mutationFn: ({ id, key }: { id: string; key: string }) => api.recallUnknownSignal(id, key), onSuccess: refresh }),
+  };
+}
+
+export function useUnknownSignalDetail(id: string | null, enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: [...keys.unknownSignals, id], queryFn: ({ signal }) => api.unknownSignal(id!, { signal }), enabled: enabled && id !== null, ...READ });
+}
+
 export function useMonumentActions() {
   const api = useApi();
   const client = useQueryClient();
@@ -2394,13 +2421,15 @@ export function useRecallFlight() {
   const api = useApi();
   const invalidate = useInvalidator();
   return useMutation({
-    mutationFn: async ({ missionId, pirate, monument, trade }: FlightRecallInput) => {
+    mutationFn: async ({ missionId, pirate, monument, trade, unknownSignal }: FlightRecallInput) => {
+      if (unknownSignal) return api.recallUnknownSignal(missionId);
       if (trade) return api.recallTrade(missionId);
       if (monument) return api.recallMonumentFlight(missionId);
       return pirate === true ? api.recallPirateRaid(missionId) : api.recallFlight(missionId);
     },
-    onSuccess: (_result, { pirate, monument, trade }) => {
+    onSuccess: (_result, { pirate, monument, trade, unknownSignal }) => {
       invalidate(keys.pending, keys.planet, keys.planets, ...(pirate === true ? [keys.pirates] : []),
+        ...(unknownSignal ? [keys.unknownSignals] : []),
         ...(trade ? [keys.traffic, keys.notifications] : []),
         ...(monument ? [keys.monuments, keys.galaxy, keys.traffic, keys.notifications, keys.reports, keys.clanWar, keys.season] : []));
     },
