@@ -13,7 +13,14 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm lint
+      # Release each group's type programs before the next; retain the 4 GiB cap
+      # and the complete coverage documented in engineering-standards.md.
+      - name: Lint server and rules
+        run: pnpm lint --ignore-pattern 'apps/web/**' --ignore-pattern 'packages/sim/**' --ignore-pattern 'tools/**'
+      - name: Lint web
+        run: pnpm lint --ignore-pattern 'apps/server/**' --ignore-pattern 'packages/**' --ignore-pattern 'tools/**'
+      - name: Lint remaining files
+        run: pnpm lint --ignore-pattern 'apps/**' --ignore-pattern 'packages/rules/**'
       - name: Build production web client
         run: pnpm --filter @astera/web build
       # Ordinary rules and UI tests. Persistence tests run below on isolated databases.
