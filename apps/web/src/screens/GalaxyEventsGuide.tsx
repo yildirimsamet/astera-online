@@ -144,8 +144,8 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="mt-3 space-y-3">
-          <section className="rounded-chip border border-cyan-200/20 bg-cyan-200/5 p-3">
-            <h3 className="text-caption font-semibold text-cyan-100">{t('unknownSignal.title')}</h3>
+          <section className="rounded-chip border border-v2-crystal/20 bg-v2-crystal/5 p-3">
+            <h3 className="text-caption font-semibold text-v2-crystal">{t('unknownSignal.title')}</h3>
             <p className="mt-2 text-caption leading-relaxed text-dim">{t('unknownSignal.wiki')}</p>
             <p className="mt-2 text-caption leading-relaxed text-dim">{t('unknownSignal.collector')}</p>
           </section>

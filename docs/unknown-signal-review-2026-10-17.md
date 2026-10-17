@@ -23,7 +23,7 @@ sunucu işlemleri, zamanlama, kişisel yayınlar, istemci, altı dil, Wiki ve g�
 | Reclaim, hesap silme ve Silent Space taşıması sinyal görevi/zamanlamasını tanımıyordu. | Aktif görev, eksik parked units ve sessiz oyuncu temizliği testleri. Uçuş açık blocker; eski açık sinyal kapanıyor, eski eventler temizleniyor, durmuş T4 zinciri yeniden açılmıyor. |
 | Özel spawn olayı istemci verisini yenilemiyor; filo etiketi ham ID gösteriyor; recall genel mission API'sine gidiyordu. | Query, SSE, lokalize uçuş ve API manifest/idempotency testleri. Kişisel cache ve native signal yolu bağlandı. |
 | Skin adı çeviri anahtarı gösterebiliyordu; recovery içindeki gezegenden istemci kalkış önerebiliyordu. | Gerçek kozmetik adı ve kalkış engeli testleri kırmızı oldu. Mevcut katalog/gezegen kontrolleri kullanılıyor. |
-| Sinyal ekranları tema dışı cyan sınıfları ve tanımsız `v2-threat` kullanıyordu. | Tam web koşusundaki `surface-vocabulary` kontrolüyle doğrulandı. Dört yüzeyde mevcut `v2-crystal` / `v2-hostile` tokenlarına geçildi; davranış ve ölçüler korunuyor. Son hedefli regresyon ve renk görüntüleri yayın kabul kanıtına eklenir. |
+| Sinyal ekranları tema dışı cyan sınıfları ve tanımsız `v2-threat` kullanıyordu. | Tam web koşusundaki `surface-vocabulary` kontrolüyle doğrulandı. Sinyal yüzeyleri ve rehberde mevcut `v2-crystal` / `v2-hostile` tokenlarına geçildi; davranış ve ölçüler korunuyor. Son hedefli regresyon 5 dosya/37 test geçti; renk görüntüleri 96 panel/120 görüntü olarak tamamlandı. |
 | Sinyal simgesi, alt etiketin yüksekliği nedeniyle rota ucundan yukarı kayıyordu. | Kullanıcı görüntüsü ve gerçek DOM ölçümü: işaret merkezi ile projekte nokta eşitliği önce başarısızdı. Etiket merkez geometrisinden çıkarıldı; kontrol geçti. Gerçek OwnFleets rotasıyla 350 px görüntü alındı. |
 
 ## Son kullanıcı yönlendirmeleri
@@ -67,7 +67,7 @@ söyleyecek biçimde düzeltildi. Menzil sayısı mekanik değişikliğiyle kü�
 - Rules/server/web/sim typecheck tamamlandı. Üç kapsamlı lint grubu geçti;
   son test mock'u ve görsel harness değişiklikleri ayrıca lint edildi.
 - Son hedefli web koşusu: **6 dosya, 97/97**; API sözleşmeleri **102/102**.
-  Tam web koşusunun nihai sonucu özel yayın kabul kanıtında tutulur.
+  Tam web koşusu 6744 test geçti, 29 atlandı; tek hata tema sınıfları kontrolüydü. Bu hata düzeltildikten sonra ilgili kontrol ve sinyal/efekt regresyonları 37/37 geçti. Nihai kanıt özel yayın kabul dizininde tutulur.
 - Altı dil × 350/1280 genişlik: **96 pencere durumu, 120 görüntü**.
   `out/unknown-signal-release-visual/measurements.json`; tarayıcı hatası yok,
   taşma ve düğme durumları doğrulandı. Görsel fixture gerçek sunucu saatini
