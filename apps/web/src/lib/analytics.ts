@@ -36,6 +36,8 @@
  * for them rather than invented ones.
  */
 
+import { capabilities } from '../platform/runtime.js';
+
 const MEASUREMENT_ID: string = import.meta.env.VITE_GA_ID ?? '';
 
 type GtagArgs = [command: string, ...rest: unknown[]];
@@ -58,7 +60,7 @@ let started = false;
  * first frame, which on this app is after the galaxy has been drawn.
  */
 export function startAnalytics(): void {
-  if (started || MEASUREMENT_ID === '' || typeof window === 'undefined') return;
+  if (started || !capabilities().webAnalytics || MEASUREMENT_ID === '' || typeof window === 'undefined') return;
   started = true;
 
   window.dataLayer ??= [];
@@ -109,9 +111,9 @@ export function startAnalytics(): void {
  * invented one has to be built into a custom report by hand.
  */
 export function track(event: string, params: Record<string, string | number> = {}): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !capabilities().webAnalytics) return;
   window.gtag?.('event', event, params);
 }
 
 /** Exposed for the test that proves an unconfigured build fetches nothing. */
-export const analyticsConfigured = (): boolean => MEASUREMENT_ID !== '';
+export const analyticsConfigured = (): boolean => capabilities().webAnalytics && MEASUREMENT_ID !== '';

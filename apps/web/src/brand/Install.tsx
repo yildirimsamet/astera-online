@@ -6,6 +6,7 @@ import { Icon } from '../v2/icons.js';
 import { BrandLockup, useBrandPanelFocus } from './Panel.js';
 import { installProfile, isBraveBrowser, type InstallBrowser } from './installProfile.js';
 import { copyText } from '../lib/clipboard.js';
+import { capabilities } from '../platform/runtime.js';
 import { findsInstalledPwa, forgetInstalledPwa, INSTALLED_PWA_KEY, rememberInstalledPwa, remembersInstalledPwa, runningAsPwa } from './installedPwa.js';
 
 interface InstallEvent extends Event {
@@ -19,6 +20,10 @@ const browserNames: Record<InstallBrowser, string> = { brave: 'Brave', chrome: '
 
 /** Retain a prompt received on landing through all later session transitions. */
 export function InstallProvider({ children }: { children: ReactNode }) {
+  return capabilities().pwaInstall ? <WebInstallProvider>{children}</WebInstallProvider> : children;
+}
+
+function WebInstallProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const deferred = useRef<InstallEvent | null>(null);
   const [installed, setInstalled] = useState(() => runningAsPwa() || remembersInstalledPwa());
@@ -187,6 +192,7 @@ export function useInstalled(): boolean {
 export function InstallButton({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
   const install = useContext(InstallContext);
+  if (!capabilities().pwaInstall) return null;
   if (install ? install.installed || install.checking : runningAsPwa() || remembersInstalledPwa()) return null;
   if (!install) return <InstallProvider><InstallButton compact={compact} /></InstallProvider>;
   return <Button size={compact ? 'sm' : 'md'} variant="primary" onClick={install.request}>{t(install.desktop ? 'brand.installDesktop' : 'brand.install')}</Button>;

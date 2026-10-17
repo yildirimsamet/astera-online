@@ -4800,6 +4800,18 @@ export const honorCommitments = pgTable('honor_commitments', {
   check('honor_commitments_source_check', sql`${t.source} IN ('WORLD', 'CLAN_WAR', 'MONUMENT', 'STRATEGIC_IMPACT', 'STRATEGIC_INTERCEPTION')`),
 ]);
 
+/** Native-only rotating credentials; browser HttpOnly-cookie sessions remain separate. */
+export const nativeSessions = pgTable('native_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  version: integer('version').notNull(),
+  refreshHash: text('refresh_hash').notNull(),
+  previousHash: text('previous_hash'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, t => [index('native_sessions_account_idx').on(t.accountId), index('native_sessions_expiry_idx').on(t.expiresAt)]);
+
 /** Short-lived account security proofs. A pending target never reserves an address. */
 export const securityOperations = pgTable('security_operations', {
   id: uuid('id').primaryKey(),

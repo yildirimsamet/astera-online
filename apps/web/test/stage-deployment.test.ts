@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 const root = resolve(import.meta.dirname, '../../..');
 const sha = '1'.repeat(40);
 
-function compose(stage: boolean, image = `astera-server:${sha}`) {
+function compose(stage: boolean, image = `astera-server:${sha}`, native: Record<string, string> = {}) {
   return spawnSync('docker', [
     'compose', '--env-file', '/dev/null', '-f', 'docker-compose.prod.yml',
     ...(stage ? ['-f', 'docker-compose.stage.yml'] : []),
@@ -19,6 +19,7 @@ function compose(stage: boolean, image = `astera-server:${sha}`) {
       POSTGRES_USER: 'astera', POSTGRES_DB: 'astera',
       POSTGRES_PASSWORD: 'stage-test-password', JWT_SECRET: 'stage-test-secret-at-least-sixteen',
       ASTERA_GIT_COMMIT: sha, ASTERA_STAGE_IMAGE: image,
+      NATIVE_AUTH_ENABLED: 'false', NATIVE_APP_ORIGINS: '', ...native,
       PADDLE_CHECKOUT_ENABLED: 'true', PADDLE_LIVE_API_KEY: 'production-key-must-be-cleared',
       PADDLE_CLIENT_SIDE_TOKEN: 'production-token-must-be-cleared', PADDLE_WEBHOOK_SECRET: 'production-secret-must-be-cleared',
       POLAR_CHECKOUT_ENABLED: 'true', POLAR_ACCESS_TOKEN: 'production-token-must-be-cleared',
@@ -35,6 +36,25 @@ function compose(stage: boolean, image = `astera-server:${sha}`) {
 }
 
 describe('stage uses production topology with its own resources', () => {
+  it.each([false, true])('keeps native auth closed by default (stage=%s)', stage => {
+    const result = compose(stage);
+    expect(result.status, result.stderr).toBe(0);
+    const config: unknown = JSON.parse(result.stdout);
+    for (const service of ['api1', 'api2', 'api3', 'worker']) {
+      expect(config).toMatchObject({ services: { [service]: { environment: { NATIVE_AUTH_ENABLED: 'false', NATIVE_APP_ORIGINS: '' } } } });
+    }
+  });
+
+  it.each([false, true])('passes explicit native flags to every replica (stage=%s)', stage => {
+    const origins = 'https://localhost,capacitor://localhost';
+    const result = compose(stage, `astera-server:${sha}`, { NATIVE_AUTH_ENABLED: 'true', NATIVE_APP_ORIGINS: origins });
+    expect(result.status, result.stderr).toBe(0);
+    const config: unknown = JSON.parse(result.stdout);
+    for (const service of ['api1', 'api2', 'api3', 'worker']) {
+      expect(config).toMatchObject({ services: { [service]: { environment: { NATIVE_AUTH_ENABLED: 'true', NATIVE_APP_ORIGINS: origins } } } });
+    }
+  });
+
   it('uses a separate project, containers, loopback ports, volume and pinned server image', () => {
     const result = compose(true);
     expect(result.status, result.stderr).toBe(0);

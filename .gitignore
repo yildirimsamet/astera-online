@@ -9,6 +9,7 @@ coverage/
 out
 artifacts/capacity/
 .deploy-web/
+mobile-dist/
 
 # The local bring-up (`pnpm start`) writes its dev-server log here.
 .dev/

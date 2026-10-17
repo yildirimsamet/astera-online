@@ -178,7 +178,12 @@ export function registerSessionRoutes(app: FastifyInstance): void {
     const { playerId, seasonId, placementVersion } = await whoAndWhere(req.accountId!);
 
     reply.hijack();
+    // Hijacking bypasses Fastify's normal header flush, including the CORS hook.
+    for (const [name, value] of Object.entries(reply.getHeaders())) {
+      if (value !== undefined) reply.raw.setHeader(name, value);
+    }
     reply.raw.writeHead(200, {
+      'x-server-time': String(app.clock.now().getTime()),
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
@@ -221,7 +226,8 @@ export function registerSessionRoutes(app: FastifyInstance): void {
           placementVersion: players.placementVersion, authVersion: accounts.authVersion }).from(players)
           .innerJoin(accounts, eq(accounts.id, players.accountId))
           .where(eq(players.id, playerId));
-        if (!current || current.authVersion !== tokenVersion) {
+        if (!current || current.authVersion !== tokenVersion
+          || (req.nativeSessionId && !await app.nativeSessions.isCurrent(req.nativeSessionId, req.accountId!, tokenVersion))) {
           cleanup('client');
           reply.raw.end();
           return;

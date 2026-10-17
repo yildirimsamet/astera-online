@@ -1,10 +1,20 @@
 apply plugin: 'com.android.application'
 
+// Capacitor sync does not rewrite applicationId on an existing native project.
+def capacitorConfig = new groovy.json.JsonSlurper().parse(file('src/main/assets/capacitor.config.json'))
+def mobileTarget = capacitorConfig.plugins?.AsteraSession?.target ?: 'live-reload'
+def appIds = ['live-reload': 'space.asteraonline.app.debug', 'native-local': 'space.asteraonline.app.local',
+    'native-staging': 'space.asteraonline.app.staging', 'native-production': 'space.asteraonline.app']
+if (!appIds.containsKey(mobileTarget) || capacitorConfig.appId != appIds[mobileTarget]) {
+    throw new GradleException('Capacitor target/applicationId mismatch; sync the intended target first')
+}
+
 android {
     namespace = "space.asteraonline.app.debug"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "space.asteraonline.app.debug"
+        applicationId capacitorConfig.appId
+        manifestPlaceholders = [asteraAppName: capacitorConfig.appName]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -24,7 +34,7 @@ android {
     }
 }
 
-// This shell loads the developer's working tree; it cannot produce a store artifact.
+// Bundled debug validation comes first; store signing/release is a later acceptance gate.
 androidComponents {
     beforeVariants(selector().withBuildType("release")) { variantBuilder ->
         variantBuilder.enable = false
@@ -42,8 +52,13 @@ dependencies {
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation "androidx.webkit:webkit:$androidxWebkitVersion"
+    // 5.5 requires compileSdk 37; 5.4 is the latest compatible with this API 36 host.
+    implementation "com.squareup.okhttp3:okhttp:5.4.0"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
+    // JVM tests use a real JSON parser; Android's unit-test jar contains stubs.
+    testImplementation "org.json:json:20250517"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')

@@ -12,8 +12,13 @@ node_modules
 # deploy that ships whatever was last on the developer's machine.
 dist
 **/dist
+**/mobile-dist
 out
 .deploy-web
+
+# Linux images build server/web only; native projects contain local SDKs and binaries.
+apps/web/android
+apps/web/ios
 
 # Source art and rendering scratch. `apps/web/public/assets` holds the exported
 # copies the client actually loads; this is the 25 MB it was exported FROM.

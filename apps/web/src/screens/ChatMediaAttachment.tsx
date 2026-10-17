@@ -6,9 +6,59 @@ import { useApi } from '../api/context.js';
 import { CloseIcon } from '../ui/icons/index.js';
 import type { ChatChannel } from './ChatScreen.js';
 
-export function ChatMediaAttachment({ media, channel, messageId, onLoad, preview = false }: {
+interface AttachmentProps {
   media: ChatMedia; channel?: ChatChannel; messageId?: string; onLoad?: () => void; preview?: boolean;
-}) {
+}
+
+export function ChatMediaAttachment(props: AttachmentProps) {
+  const api = useApi();
+  if (api.mediaNeedsBearer && props.media.kind !== 'youtube') return <NativeAttachment
+    key={`${props.media.kind}:${props.media.assetId}:${props.channel ?? ''}:${props.messageId ?? ''}`} {...props} media={props.media} />;
+  return <AttachmentView {...props} />;
+}
+
+/** Avoid eager 50 MB video downloads; images start near the viewport, with abort/URL cleanup. */
+function NativeAttachment(props: AttachmentProps & { media: Exclude<ChatMedia, { kind: 'youtube' }> }) {
+  const { t } = useTranslation();
+  const api = useApi();
+  const anchor = useRef<HTMLDivElement>(null);
+  const [requested, setRequested] = useState(false);
+  const [source, setSource] = useState<{ url: string; key: string } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const key = `${props.media.assetId}:${props.channel ?? ''}:${props.messageId ?? ''}`;
+  useEffect(() => {
+    if (props.media.kind !== 'image') return;
+    if (!('IntersectionObserver' in window)) { setRequested(true); return; }
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) { setRequested(true); observer.disconnect(); }
+    }, { rootMargin: '160px' });
+    if (anchor.current) observer.observe(anchor.current);
+    return () => { observer.disconnect(); };
+  }, [key, props.media.kind]);
+  useEffect(() => {
+    if (!requested) return;
+    const controller = new AbortController();
+    let release: (() => void) | undefined;
+    setSource(null); setFailed(false);
+    void api.chatMediaSource(props.media, props.channel, props.messageId, controller.signal).then(value => {
+      if (controller.signal.aborted) { value.release(); return; }
+      release = value.release; setSource({ url: value.url, key });
+    }).catch(() => { if (!controller.signal.aborted) setFailed(true); });
+    return () => { controller.abort(); release?.(); };
+  }, [api, key, requested]);
+  if (failed) return <p role="status" className="my-2 text-micro text-v2-warn">{t('chat.media.loadFailed')}</p>;
+  return <div ref={anchor}>
+    {source?.key === key ? <AttachmentView {...props} sourceUrl={source.url} autoPlay={props.media.kind === 'video'} />
+      : props.media.kind === 'video' && !requested ? <button type="button" onClick={() => { setRequested(true); }}
+        className="my-2 flex min-h-20 w-[min(68vw,360px)] max-w-full items-center justify-center gap-2 rounded-control border border-v2-line-hi bg-v2-deep px-4 text-body text-v2-ink hover:border-v2-self/50">
+        <span aria-hidden="true">▶</span>{t('chat.media.play')}
+      </button> : <div role="status" className="my-2 flex min-h-20 w-[min(68vw,360px)] max-w-full animate-pulse items-center justify-center rounded-control border border-v2-line-hi bg-v2-deep text-micro text-v2-ink-2">
+        {t(props.media.kind === 'video' ? 'chat.media.video' : 'chat.media.photo')}
+      </div>}
+  </div>;
+}
+
+function AttachmentView({ media, channel, messageId, onLoad, preview = false, sourceUrl, autoPlay = false }: AttachmentProps & { sourceUrl?: string; autoPlay?: boolean }) {
   const { t } = useTranslation();
   const api = useApi();
   const [expanded, setExpanded] = useState(false);
@@ -36,8 +86,8 @@ export function ChatMediaAttachment({ media, channel, messageId, onLoad, preview
     {!preview ? <button type="button" className="mt-1 min-h-8 rounded-control border border-v2-line-hi px-2 text-micro text-v2-ink-2 hover:border-v2-self/50 hover:text-v2-self"
       onClick={() => { setPortrait(current => !current); }}>{t(portrait ? 'chat.media.showLandscape' : 'chat.media.showPortrait')}</button> : null}
   </div>;
-  const url = api.chatMediaUrl(media.assetId, channel, messageId);
-  if (media.kind === 'video') return <video controls playsInline preload="metadata" className={`my-2 ${width} ${preview ? 'max-h-[min(8rem,18dvh)]' : 'max-h-64'} max-w-full rounded-control border border-v2-line-hi bg-v2-deep`} onLoadedMetadata={onLoad} onError={() => { setFailed(true); }} aria-label={t('chat.media.video')}>
+  const url = sourceUrl ?? api.chatMediaUrl(media.assetId, channel, messageId);
+  if (media.kind === 'video') return <video controls playsInline autoPlay={autoPlay} preload="metadata" className={`my-2 ${width} ${preview ? 'max-h-[min(8rem,18dvh)]' : 'max-h-64'} max-w-full rounded-control border border-v2-line-hi bg-v2-deep`} onLoadedMetadata={onLoad} onError={() => { setFailed(true); }} aria-label={t('chat.media.video')}>
     <source src={url} type={media.mimeType} />
   </video>;
   return <>

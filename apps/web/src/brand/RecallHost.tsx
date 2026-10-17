@@ -10,6 +10,7 @@ import { Icon } from '../v2/icons.js';
 import { BrandQuiz, type BrandQuizResult } from './BrandQuiz.js';
 import { InstallButton, useDesktopInstall, useInstalled } from './Install.js';
 import { advanceRecall, readRecall, saveRecall } from './recallState.js';
+import { capabilities } from '../platform/runtime.js';
 
 type AnswerResult = BrandQuizResult;
 
@@ -20,6 +21,7 @@ export function RecallHost({ accountId, paused = false }: { accountId: string; p
   const applyPlanet = useApplyPlanet();
   const { t } = useTranslation();
   const installed = useInstalled();
+  const offerInstall = capabilities().pwaInstall && !installed;
   const desktop = useDesktopInstall();
   const key = ['brandRecall', accountId] as const;
   const status = useQuery({ queryKey: key, queryFn: () => api.brandRecallStatus(), staleTime: Infinity });
@@ -70,7 +72,7 @@ export function RecallHost({ accountId, paused = false }: { accountId: string; p
       if (!playing || blocked.current || document.querySelector('[data-sheet-panel], [role="dialog"], [data-consent-notice]')) return;
       if (!progress.current.quizDone && progress.current.activeMs >= BRAND_RECALL.delayMs) {
         if (surfaceRef.current !== 'quiz') setSurface('quiz');
-      } else if (!installed && !progress.current.returnShown && progress.current.activeMs >= BRAND_RECALL.returnDelayMs) {
+      } else if (offerInstall && !progress.current.returnShown && progress.current.activeMs >= BRAND_RECALL.returnDelayMs) {
         progress.current = saveRecall(accountId, { ...progress.current, returnShown: true });
         setSurface('return');
       }
@@ -88,7 +90,7 @@ export function RecallHost({ accountId, paused = false }: { accountId: string; p
       window.removeEventListener('storage', onStorage);
       saveRecall(accountId, progress.current);
     };
-  }, [accountId, eligible, installed]);
+  }, [accountId, eligible, offerInstall]);
 
   if (surface === 'quiz') return <BrandQuiz
     result={result} message={message} pending={answer.isPending}
@@ -96,7 +98,7 @@ export function RecallHost({ accountId, paused = false }: { accountId: string; p
     onAnswer={(value) => { setMessage(null); answer.mutate(value); }}
     onClose={() => { if (answer.isPending) return; if (result?.completed) setSurface(null); else answer.mutate(null); }}
   />;
-  if (surface !== 'return' || paused || installed) return null;
+  if (surface !== 'return' || paused || !offerInstall) return null;
   return <aside data-testid="return-card" className="brand-return-card" aria-label={t('brand.returnTitle')}>
     <div className="flex items-start gap-2">
       <div className="min-w-0 flex-1">

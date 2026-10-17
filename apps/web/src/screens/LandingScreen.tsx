@@ -14,6 +14,7 @@ import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
 import { Wordmark } from '../ui/Wordmark.jsx';
 import { commanderKnownHere } from '../lib/returning.js';
 import { publisherUrl } from '../lib/publisherPages.js';
+import { capabilities } from '../platform/runtime.js';
 import { describeError } from '../i18n/errors.js';
 
 /**
@@ -333,7 +334,7 @@ export function LandingScreen({
                 ['pricing', 'landing.pricingLink'],
                 ['contact', 'landing.contactLink'],
               ] as const
-            ).map(([page, label]) => (
+            ).filter(([page]) => capabilities().webCheckout || (page !== 'pricing' && page !== 'refunds')).map(([page, label]) => (
               <a
                 key={page}
                 className="text-micro text-v2-ink-3 underline decoration-transparent underline-offset-4 transition-colors hover:text-v2-ink-2 hover:decoration-v2-ink-3/50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-v2-self"

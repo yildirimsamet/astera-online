@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { render, screen } from '@testing-library/react';
@@ -71,6 +72,15 @@ const showLanding = (): void => {
     </Wrapper>,
   );
 };
+
+it.each(['android', 'ios'])('does not advertise web prices/refunds from native %s entry', platform => {
+  vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+  vi.spyOn(Capacitor, 'getPlatform').mockReturnValue(platform);
+  showLanding();
+  expect(screen.queryByRole('link', { name: i18n.t('landing.pricingLink') })).toBeNull();
+  expect(screen.queryByRole('link', { name: i18n.t('landing.refundsLink') })).toBeNull();
+  expect(screen.getByRole('link', { name: i18n.t('landing.privacyLink') })).toBeVisible();
+});
 
 /** Every page, with the language it is written in and the heading it opens on. */
 const PAGES = [

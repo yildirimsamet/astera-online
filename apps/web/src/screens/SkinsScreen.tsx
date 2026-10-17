@@ -27,6 +27,8 @@ import { CosmeticNavigation } from './CosmeticNavigation.js';
 import { ApiError } from '../api/client.js';
 import { describeError } from '../i18n/errors.js';
 import { ShopierPayButton, ShopierProgress, shopierPrice, useShopierCheckout, type ShopierOffer } from './ShopierCheckout.js';
+import { capabilities } from '../platform/runtime.js';
+import SkinInventoryScreen from './SkinInventoryScreen.js';
 
 type Collection = z.infer<typeof skinCollectionSchema>;
 type Pricing = z.infer<typeof polarPricingSchema>;
@@ -444,6 +446,13 @@ function PlanetShopContent({
 const SECOND_PRESS = 'flex h-10 w-full items-center justify-center gap-1.5 rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink-2 transition-colors hover:bg-v2-raise hover:text-v2-ink';
 
 export default function SkinsScreen({ commander, onOpenInventory, onTry, initialId }: { commander: string; onOpenInventory: () => void; onTry?: (id: CosmeticId) => void; initialId?: CosmeticId }) {
+  // Do not mount web pricing/checkout hooks in an app, including a stale shop route.
+  return capabilities().webCheckout
+    ? <WebSkinsScreen commander={commander} onOpenInventory={onOpenInventory} onTry={onTry} initialId={initialId} />
+    : <SkinInventoryScreen onOpenShop={onOpenInventory} />;
+}
+
+function WebSkinsScreen({ commander, onOpenInventory, onTry, initialId }: { commander: string; onOpenInventory: () => void; onTry?: (id: CosmeticId) => void; initialId?: CosmeticId }) {
   const { t } = useTranslation();
   const collection = useSkins();
   const shop = usePolarShop();

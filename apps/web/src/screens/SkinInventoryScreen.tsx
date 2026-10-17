@@ -14,6 +14,7 @@ import { PLANET_SKIN_CATALOG } from '../ui/skinCatalog.js';
 import { Button, EmptyState, Note, SectionHead } from '../v2/kit/Surface.js';
 import { Icon } from '../v2/icons.js';
 import { CosmeticNavigation } from './CosmeticNavigation.js';
+import { capabilities } from '../platform/runtime.js';
 
 type Collection = z.infer<typeof skinCollectionSchema>;
 
@@ -62,6 +63,7 @@ function PlanetInventoryContent({
   const { t } = useTranslation();
   const owned = collection.ownedSkinIds;
   const name = (id: PlanetSkinId) => t(PLANET_SKIN_CATALOG[id].nameKey);
+  const showShop = capabilities().webCheckout;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-3 pb-[calc(24px+env(safe-area-inset-bottom))] pt-2 font-v2-ui text-v2-ink">
@@ -71,7 +73,7 @@ function PlanetInventoryContent({
         <EmptyState
           icon={<Icon id="i-spark" className="size-6 text-v2-premium" />}
           title={t('skins.noOwnedSkins')}
-          action={<Button variant="primary" onClick={onOpenShop}>{t('skins.openShop')}</Button>}
+          action={showShop ? <Button variant="primary" onClick={onOpenShop}>{t('skins.openShop')}</Button> : undefined}
         />
       ) : (
         <>
@@ -86,10 +88,10 @@ function PlanetInventoryContent({
             </span>
             <span className="min-w-0 truncate text-caption text-v2-ink-2">{t('skins.ownedSkins')}</span>
             <span className="font-v2-mono text-caption tabular-nums text-v2-ink">{owned.length}/{PLANET_SKIN_IDS.length}</span>
-            <button type="button" onClick={onOpenShop}
+            {showShop && <button type="button" onClick={onOpenShop}
               className="ml-auto shrink-0 text-caption font-semibold text-v2-premium underline decoration-v2-premium/40 underline-offset-4">
               {t('skins.openShop')}
-            </button>
+            </button>}
           </section>
 
           <section aria-label={t('skins.worlds')} className="flex flex-col gap-2">

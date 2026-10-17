@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { cosmeticCategoriesFor, cosmeticsInCategory, type CosmeticCategory, type CosmeticId, type CosmeticEquipment, type CosmeticDefinition, type MobileHullId } from '@astera/rules';
 import { CosmeticPreview } from './CosmeticPreview.jsx';
 import { hullLabel } from '../i18n/names.js';
+import { capabilities } from '../platform/runtime.js';
 
 export function CosmeticCategories({ active, onChange, owned, inventory }: {
   active: CosmeticCategory; onChange: (category: CosmeticCategory) => void; owned: readonly string[]; inventory: boolean;
@@ -39,7 +40,7 @@ export function CosmeticCollection({ category, inventory, owned, equipment, onOp
   if (!selected) return <section className="mx-auto max-w-2xl px-3 py-12 text-center">
     <p className="text-body font-semibold text-v2-ink">{t(inventory ? 'skins.categoryEmpty' : 'skins.modelsComing')}</p>
     <p className="mx-auto mt-2 max-w-sm text-caption text-v2-ink-3">{t(inventory ? 'skins.categoryEmptyHint' : 'skins.modelsComingHint')}</p>
-    {inventory && <button type="button" onClick={onOpenOther} className="mt-5 min-h-11 rounded-control border border-v2-premium/60 px-5 text-caption text-v2-premium">{t('skins.openShop')}</button>}
+    {inventory && capabilities().webCheckout && <button type="button" onClick={onOpenOther} className="mt-5 min-h-11 rounded-control border border-v2-premium/60 px-5 text-caption text-v2-premium">{t('skins.openShop')}</button>}
   </section>;
   const isOwned = selected.free || owned.includes(selected.id);
   const equipped = worn(selected);

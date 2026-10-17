@@ -6,7 +6,7 @@ import { defineConfig } from 'eslint/config';
 
 export default defineConfig(
   // Local scratch output and pre-existing agent worktrees are not build input.
-  { ignores: ['**/dist/**', '**/node_modules/**', 'legacy/**', '**/drizzle/**', '.dev/**', '.claude/worktrees/**', '**/out/**', 'apps/web/android/**/build/**', 'apps/web/android/app/src/main/assets/**', 'apps/web/android/capacitor-cordova-android-plugins/**'] },
+  { ignores: ['**/dist/**', '**/mobile-dist/**', '**/node_modules/**', 'legacy/**', '**/drizzle/**', '.dev/**', '.claude/worktrees/**', '**/out/**', 'apps/web/android/**/build/**', 'apps/web/android/app/src/main/assets/**', 'apps/web/android/capacitor-cordova-android-plugins/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,

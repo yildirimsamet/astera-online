@@ -54,7 +54,9 @@ export async function verifyShopShowcase(output) {
         const after = await card.boundingBox();
         assert.deepEqual(after, before, 'Image arrival must not move or resize the card');
         assert.equal(await card.locator('canvas').count(), 0);
-        assert.equal(await card.locator('img').count(), 1);
+        // The inventory row has its own atmosphere image; only the hero owns the poster.
+        assert.equal(await card.locator('[data-showcase-art] img').count(), 1);
+        assert.equal(await card.locator('img[data-atmosphere-image]').count(), 1);
         assert.equal(await card.locator('.shop-showcase-hero').evaluate(hero => hero.getAnimations({ subtree: true }).length), 0);
         assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
         assert.equal(await image.evaluate(element => element.naturalWidth), 512);

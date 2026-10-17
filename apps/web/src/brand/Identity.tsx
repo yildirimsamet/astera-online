@@ -3,6 +3,7 @@ import sigil from './sigil.svg?raw';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../v2/icons.js';
 import { FullscreenButton } from './FullscreenButton.js';
+import { capabilities } from '../platform/runtime.js';
 const wordmarkMarkup = { __html: wordmark };
 const sigilMarkup = { __html: sigil };
 
@@ -17,7 +18,8 @@ export function AsteraSigil({ className = '' }: { className?: string }) {
 
 export function BrandMasthead({ onShop }: { onShop?: () => void }) {
   const { t } = useTranslation();
-  return <div className={`brand-masthead${onShop ? ' brand-masthead-with-shop' : ''}`}>
+  const showShop = Boolean(onShop) && capabilities().webCheckout;
+  return <div className={`brand-masthead${showShop ? ' brand-masthead-with-shop' : ''}`}>
     <div className="brand-masthead-lockup" aria-label="Astera Online">
       <AsteraSigil className="brand-masthead-sigil" />
       <span className="sr-only">Astera Online</span>
@@ -25,7 +27,7 @@ export function BrandMasthead({ onShop }: { onShop?: () => void }) {
       <span className="brand-masthead-online" aria-hidden="true">ONLINE</span>
     </div>
     <span className="brand-masthead-rule" aria-hidden="true" />
-    {onShop ? (
+    {showShop ? (
       <div className="brand-masthead-actions">
         <button type="button" data-shop-button className="brand-masthead-shop" onClick={onShop}>
           <span className="brand-masthead-shop-face">

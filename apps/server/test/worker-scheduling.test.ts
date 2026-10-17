@@ -6,6 +6,8 @@ import { EventWorker } from '../src/worker/loop.js';
 import { HANDLERS, type Handler } from '../src/worker/handlers.js';
 import * as queue from '../src/worker/queue.js';
 import * as repairs from '../src/worker/abandon.js';
+import * as spawnGates from '../src/services/spawnGate.js';
+import * as signals from '../src/services/unknownSignal.js';
 
 // These tests isolate queue draining from per-commander admission fences.
 // Global lifecycle events cannot be suspended by vacation and need no DB read.
@@ -33,6 +35,8 @@ beforeEach(() => {
   vi.spyOn(queue, 'complete').mockResolvedValue(undefined);
   vi.spyOn(queue, 'fail').mockResolvedValue({ exhausted: false });
   vi.spyOn(repairs, 'sweepStranded').mockResolvedValue(0);
+  vi.spyOn(spawnGates, 'advanceSpawnGates').mockResolvedValue(0);
+  vi.spyOn(signals, 'repairUnknownSignals').mockResolvedValue(undefined);
   lifecycleHandler.mockReset().mockResolvedValue(undefined);
   HANDLERS.galaxy_event_start = lifecycleHandler;
   worker = new EventWorker(pool.db, clock, { pollMs: 60_000, batch: 2, staleMinutes: 5 }, log);

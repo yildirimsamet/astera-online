@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -75,6 +76,19 @@ const show = (props: Partial<MenuProps> = {}) => {
 
 /** A destination's accessible name: what it is, then what is behind it. */
 const named = (label: string, hint: string): string => `${label}. ${hint}`;
+
+it.each(['android', 'ios'])('retains inventory and account controls without web sales/consent on %s', platform => {
+  vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+  vi.spyOn(Capacitor, 'getPlatform').mockReturnValue(platform);
+  const open = vi.fn();
+  const view = show({ onOpen: open });
+  expect(screen.queryByRole('button', { name: new RegExp(`^${i18n.t('community.donate.menuLabel')}\\.`) })).toBeNull();
+  expect(view.container.querySelector('[data-consent-settings]')).toBeNull();
+  expect(view.container.querySelector('.shop-showcase-hero')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: named(i18n.t('menu.skinsInventoryLabel'), i18n.t('menu.skinsInventoryHint')) }));
+  expect(open).toHaveBeenCalledWith('skin-inventory');
+  expect(screen.getByRole('button', { name: i18n.t('galaxy.commander.signOut') })).toBeVisible();
+});
 
 const follows = (first: Element | null | undefined, second: Element | null): boolean => {
   if (!first || !second) return false;

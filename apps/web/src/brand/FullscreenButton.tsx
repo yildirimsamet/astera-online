@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { installProfile } from './installProfile.js';
 import { runningAsPwa } from './installedPwa.js';
+import { capabilities } from '../platform/runtime.js';
 
 interface FullscreenDocument extends Document {
   readonly webkitFullscreenEnabled?: boolean;
@@ -32,6 +33,10 @@ interface Transition { leaving: boolean; timer: number }
 
 /** Document fullscreen includes every body-mounted overlay. Only a click can enter. */
 export function FullscreenButton() {
+  return capabilities().browserFullscreen ? <WebFullscreenButton /> : null;
+}
+
+function WebFullscreenButton() {
   const { t } = useTranslation();
   const [view, setView] = useState(snapshot);
   const [busy, setBusy] = useState(false);

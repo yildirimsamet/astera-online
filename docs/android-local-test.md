@@ -2,6 +2,25 @@
 
 Bu ilk APK, bilgisayardaki güncel web sunucusunu açar. Commit edilmemiş yerel değişiklikler dahil; kaydedilen web değişiklikleri Vite üzerinden telefona da yansır. APK oyun dosyalarının bağımsız bir kopyası değildir. Bilgisayar, yerel API ve web sunucusu çalışır durumda kalmalı.
 
+## 17 Ekim: dosyaları içinde taşıyan yerel APK
+
+Artık iki ayrı test hedefi vardır. Aşağıdaki yeni `.local` paket oyun dosyalarını içinde taşır; eski `.debug` live-reload paketi aşağıdaki eski komutlarla korunur. Birlikte kurulabilirler. **İkisi de mağaza release'i değildir.** Gerçek cihaz kabulünün sonucu [geliştirme günlüğündedir](mobile-implementation-log-2026-10-17.md).
+
+Yerel DB migration 0185'e gelmeli. Native auth yalnız yerel API sürecinde `NATIVE_AUTH_ENABLED=true` ve `NATIVE_APP_ORIGINS=http://localhost,https://localhost,capacitor://localhost` ile açılır. `.env.example` varsayılanı kapalıdır. **Çalışan sunucu varken ikinci API/worker başlatma**; mevcut süreci doğru ayarla yeniden aç. Production flag'i bütün replikalar ve migration güncellenmeden açılmaz.
+
+```bash
+# Repo kökünden; Java JDK 21 ve API 36/build-tools 36.0.0 gereklidir.
+export JAVA_HOME="$HOME/.local/share/astera/jdk-21"
+pnpm android:bundle native-local
+pnpm android:install native-local
+```
+
+Bu hedefte varsayılan API `http://localhost:3100`; sadece backend için USB reverse 3100 kullanılır. Vite/5173 gerekmez. **USB'siz ağ testi değildir:** bilgisayarın API'si ve USB reverse hâlâ gerekir. Yerel HTTP istisnası bu debug hedefiyle sınırlıdır. Uzak staging/production hedefi için HTTPS API origin'i zorunludur; erişilebilir test backend'i ayrıca hazırlanmalıdır.
+
+Çıktı: `out/mobile-artifacts/native-local/astera-native-local.apk`, `native-build.json`, `SHA256SUMS`. Uygulama `space.asteraonline.app.local` / **Astera Bundled Local**. Build kaynak ağacını öncesi/sonrası SHA-256 ile karşılaştırır; build sırasında kaynak değişirse artifact teslimini reddeder. Kurulum checksum ve APK kimliğini ADB'den önce doğrular. Args shell'e birleştirilmez. Birden fazla cihazda `ANDROID_SERIAL` kullanılır.
+
+`pnpm android:install` args olmadan hâlâ yalnız `.debug` live-reload paketini bekler. Son Gradle çıktısı `.local` ise yanlış uygulamayı açmak yerine kimlik uyuşmazlığıyla durur; hedefi açıkça ver veya `pnpm android:apk` ile debug paketi yeniden üret. **Bundled artefact'leri genel Gradle çıktı yolundan paylaşma:** tüm debug hedefleri o dosyayı sırayla üzerine yazar. Hedefe ait `out/mobile-artifacts/…` kopyasını kullan.
+
 ## Yeniden üretme ve kurma
 
 Gerekenler: Node 22+, pnpm, Java **JDK** 21 (`javac` dahil), Android SDK API 36 ve build-tools 36. SDK yolu `ANDROID_HOME` ile tanımlanmalı veya Android projesinin git'e alınmayan `local.properties` dosyasında bulunmalı. Bu bilgisayardaki mevcut Java 21 yalnız runtime içerdiği için tam JDK ayrıca `$HOME/.local/share/astera/jdk-21` içine kuruldu.

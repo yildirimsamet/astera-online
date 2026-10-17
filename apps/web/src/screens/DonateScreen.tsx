@@ -4,6 +4,7 @@ import { Button, Note, Section } from '../v2/kit/Surface.js';
 import { Icon } from '../v2/icons.js';
 import { copyText } from '../lib/clipboard.js';
 import { haptic } from '../lib/haptics.js';
+import { capabilities } from '../platform/runtime.js';
 
 /**
  * THE ONE SCREEN IN THE GAME WITH NOTHING TO SELL.
@@ -58,6 +59,10 @@ export const SUPPORT_CARDS: readonly SupportCard[] = [
 ];
 
 export function DonateScreen({ cards = SUPPORT_CARDS }: { cards?: readonly SupportCard[] } = {}) {
+  return capabilities().webCheckout ? <WebDonateScreen cards={cards} /> : null;
+}
+
+function WebDonateScreen({ cards }: { cards: readonly SupportCard[] }) {
   const { t } = useTranslation();
 
   return (

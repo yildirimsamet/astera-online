@@ -116,7 +116,7 @@ export async function authenticate(
   return publicShape(row);
 }
 
-export async function findAccount(db: Db, accountId: string): Promise<AccountRecord | null> {
+export async function findAccount(db: Pick<Db, 'select'>, accountId: string): Promise<AccountRecord | null> {
   const [row] = await db.select().from(accounts).where(eq(accounts.id, accountId));
   return row ? publicShape(row) : null;
 }

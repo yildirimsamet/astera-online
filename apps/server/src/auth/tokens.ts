@@ -1,10 +1,11 @@
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
+import { z } from 'zod';
 
 /** Signed credentials carry the durable account version; legacy tokens use version zero. */
 
 export interface AccessClaims extends JWTPayload {
   sub: string;
-  typ: 'access';
+  typ: 'access' | 'native-access';
 }
 
 export interface RefreshClaims extends JWTPayload {
@@ -27,13 +28,14 @@ export class TokenService {
      * is signed in and an API that does not.
      */
     readonly refreshDays: number,
-    private readonly isCurrent?: (accountId: string, version: number) => Promise<boolean>,
+    private readonly isCurrent?: (accountId: string, version: number, nativeSessionId?: string) => Promise<boolean>,
   ) {
     this.key = new TextEncoder().encode(secret);
   }
 
-  async issueAccess(accountId: string, version = 0): Promise<string> {
-    return new SignJWT({ typ: 'access', ver: version })
+  async issueAccess(accountId: string, version = 0, nativeSessionId?: string): Promise<string> {
+    // Older replicas reject the new purpose instead of silently ignoring per-device revocation.
+    return new SignJWT({ typ: nativeSessionId ? 'native-access' : 'access', ver: version, ...(nativeSessionId ? { sid: nativeSessionId } : {}) })
       .setProtectedHeader({ alg: 'HS256' })
       .setSubject(accountId)
       .setIssuedAt()
@@ -56,19 +58,24 @@ export class TokenService {
    * The `typ` check matters: without it a refresh token — which lives in a cookie
    * for thirty days — would be accepted as an access token.
    */
-  async identity(token: string, expected: 'access' | 'refresh'): Promise<{ accountId: string; version: number }> {
+  async identity(token: string, expected: 'access' | 'refresh'): Promise<{ accountId: string; version: number; nativeSessionId?: string }> {
     let payload: JWTPayload;
     try {
       ({ payload } = await jwtVerify(token, this.key, { algorithms: ['HS256'] }));
     } catch { throw new InvalidSessionError('Invalid signature or expiry'); }
-    if (payload.typ !== expected) throw new InvalidSessionError(`expected a ${expected} token`);
+    const native = payload.typ === 'native-access' && expected === 'access';
+    if (payload.typ !== expected && !native) throw new InvalidSessionError(`expected a ${expected} token`);
     if (typeof payload.sub !== 'string' || payload.sub.length === 0) {
       throw new InvalidSessionError('token has no subject');
     }
     const version = payload.ver === undefined ? 0 : payload.ver;
     if (typeof version !== 'number' || !Number.isSafeInteger(version) || version < 0) throw new InvalidSessionError('invalid token version');
-    if (this.isCurrent && !await this.isCurrent(payload.sub, version)) throw new InvalidSessionError('revoked session');
-    return { accountId: payload.sub, version };
+    const sessionId = native ? z.string().uuid().safeParse(payload.sid) : null;
+    if (native && !sessionId?.success) throw new InvalidSessionError('invalid native session');
+    if (!native && payload.sid !== undefined) throw new InvalidSessionError('unexpected native session');
+    const nativeSessionId = sessionId?.success ? sessionId.data : undefined;
+    if (this.isCurrent && !await this.isCurrent(payload.sub, version, nativeSessionId)) throw new InvalidSessionError('revoked session');
+    return { accountId: payload.sub, version, ...(nativeSessionId ? { nativeSessionId } : {}) };
   }
 
   async verify(token: string, expected: 'access' | 'refresh'): Promise<string> {

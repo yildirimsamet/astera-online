@@ -1,4 +1,7 @@
 import { AccountSecurity } from './services/accountSecurity.js';
+import cors from '@fastify/cors';
+import { NativeSessions } from './services/nativeSessions.js';
+import { registerNativeAuthRoutes } from './routes/nativeAuth.js';
 import { MailQueue, ResendMailer, type TransactionalMailer } from './services/mail.js';
 import { registerAccountSecurityRoutes } from './routes/accountSecurity.js';
 import { installPlacementGate } from './services/placementGate.js';
@@ -91,6 +94,7 @@ declare module 'fastify' {
     db: Db;
     clock: Clock;
     tokens: TokenService;
+    nativeSessions: NativeSessions;
     accountSecurity: AccountSecurity;
     mail: MailQueue;
     presence: Presence;
@@ -112,6 +116,7 @@ declare module 'fastify' {
     /** Set by `requireAuth`. Absent on public routes. */
     accountId?: string;
     authVersion?: number;
+    nativeSessionId?: string;
     capacityStartedAt?: number;
     capacityResponseBytes?: number;
   }
@@ -166,15 +171,17 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     trustProxy: opts.env.TRUST_PROXY,
   });
   const closePlacementGate = installPlacementGate(app, opts.env.DATABASE_URL, opts.env.PLACEMENT_POOL_MAX, idleBound);
-  const tokens = new TokenService(
+  const tokens: TokenService = new TokenService(
     opts.env.JWT_SECRET,
     opts.env.ACCESS_TOKEN_MINUTES,
     opts.env.REFRESH_TOKEN_DAYS,
-    async (id, version) => {
+    async (id, version, nativeSessionId) => {
+      if (nativeSessionId) return nativeSessions.isCurrent(nativeSessionId, id, version);
       const [account] = await db.select({ version: accounts.authVersion }).from(accounts).where(eq(accounts.id, id));
       return account?.version === version;
     },
   );
+  const nativeSessions = new NativeSessions(db, clock, tokens);
   const worker = new EventWorker(
     db,
     clock,
@@ -195,6 +202,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   const mail = new MailQueue(db, opts.env, clock, opts.mailer ?? new ResendMailer(opts.env), log);
   app.decorate('mail', mail);
   app.decorate('accountSecurity', new AccountSecurity(db, opts.env, clock, mail));
+  app.decorate('nativeSessions', nativeSessions);
   app.decorate('db', db);
   app.decorate('clock', clock);
   app.decorate('tokens', tokens);
@@ -248,6 +256,16 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
   });
   app.decorate('adminUsernames', new Set(opts.env.ADMIN_USERNAMES));
 
+  if (opts.env.ROLE !== 'worker' && opts.env.NATIVE_APP_ORIGINS.length > 0) {
+    void app.register(cors, {
+      origin: opts.env.NATIVE_APP_ORIGINS,
+      credentials: false,
+      methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Authorization', 'Content-Type', 'x-placement', 'idempotency-key', 'x-astera-cosmetics', 'x-media-type'],
+      exposedHeaders: ['x-server-time', 'x-placement', 'Date'],
+      maxAge: 600,
+    });
+  }
   void app.register(cookie);
 
   /**
@@ -291,6 +309,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
         const accountId = identity.accountId;
         req.accountId = accountId;
         req.authVersion = identity.version;
+        req.nativeSessionId = identity.nativeSessionId;
         return `account:${accountId}`;
       } catch (error) {
         if (!(error instanceof InvalidSessionError)) throw error;
@@ -326,9 +345,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
    * of time on this server (A13), and a test that fixes it must see the API agree
    * with the world it is fixing.
    *
-   * SAME-ORIGIN ONLY, deliberately: the web client is served from this host and in
-   * dev goes through the Vite proxy, so no CORS exposure is needed. Serving the
-   * client from another origin would require `Access-Control-Expose-Headers`.
+   * Web remains same-origin through the Vite proxy or production host. Explicit
+   * native origins expose this clock through the CORS registration above.
    */
   app.addHook('onSend', (_req, reply, payload, done) => {
     reply.header('x-server-time', String(clock.now().getTime()));
@@ -435,6 +453,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     // an accidental fourth public API replica merely because metrics need a port.
     if (opts.env.ROLE === 'worker') return;
     registerAuthRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
+    if (opts.env.NATIVE_AUTH_ENABLED) registerNativeAuthRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
     registerAccountSecurityRoutes(app, opts.env);
     registerServerRoutes(app);
     registerPreviewRoutes(app);

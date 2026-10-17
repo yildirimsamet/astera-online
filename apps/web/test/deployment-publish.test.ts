@@ -1,13 +1,16 @@
+// @vitest-environment node
 import { spawnSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import config from '../vite.config.js';
 
 const publishScript = resolve(import.meta.dirname, '../../../deploy/publish-web.sh');
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
@@ -92,10 +95,12 @@ describe('the per-request CSP nonce', () => {
   };
 
   it('stamps the same literal the server rewrites', async () => {
-    const vite = await read('apps/web/vite.config.ts');
+    vi.stubEnv('VITE_ASTERA_PLATFORM', 'web');
+    if (typeof config !== 'function') throw new Error('Expected environment-dependent Vite config');
+    const vite = config({ command: 'build', mode: 'production', isSsrBuild: false, isPreview: false });
     const location = await indexLocation();
 
-    expect(vite).toContain("html: { cspNonce: '__CSP_NONCE__' }");
+    expect(vite.html?.cspNonce).toBe('__CSP_NONCE__');
     expect(location).toContain("sub_filter '__CSP_NONCE__' $request_id;");
     expect(location).toContain('sub_filter_once off;');
     expect(location).toContain('sub_filter_types text/html;');

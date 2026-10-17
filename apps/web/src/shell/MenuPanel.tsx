@@ -55,6 +55,7 @@ import { countryName } from '../v2/identity/country.js';
 import { ShopShowcase } from './ShopShowcase.js';
 import { ATMOSPHERE, type AtmosphereArt } from '../ui/atmosphere.js';
 import { AtmosphereImage } from '../ui/AtmosphereArt.js';
+import { capabilities } from '../platform/runtime.js';
 
 /**
  * THE MENU — everything the game has that is not the galaxy.
@@ -172,6 +173,7 @@ export function MenuPanel({
   onCountryChange?: (country: CountryCode) => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
+  const platform = capabilities();
   /**
    * READ AT RENDER, NOT HELD IN STATE. The notice writes the decision straight
    * to storage and the menu is remounted every time it opens, so a read here is
@@ -345,7 +347,7 @@ export function MenuPanel({
           }}
         />
         {/* Open since its Shopier pages went live (owner 2026-09-27). */}
-        <MenuTile
+        {platform.webCheckout && <MenuTile
           icon={<HeartIcon className="size-5" />}
           label={t('community.donate.menuLabel')}
           art={ATMOSPHERE.donate}
@@ -354,7 +356,7 @@ export function MenuPanel({
           onClick={() => {
             onOpen('donate');
           }}
-        />
+        />}
         {isAdmin && (
           <MenuTile
             icon={<LockIcon className="size-5" />}
@@ -431,7 +433,7 @@ export function MenuPanel({
             reopen it. Everywhere else that call reports failure and the game's
             own notice comes up.
           */}
-          <SettingRow label={t('consent.menuRowLabel')}>
+          {(platform.webAds || platform.webAnalytics) && <SettingRow label={t('consent.menuRowLabel')}>
             <button
               type="button"
               data-consent-settings
@@ -444,7 +446,7 @@ export function MenuPanel({
               <span className="min-w-0 truncate text-label text-v2-ink">{t(consentHint)}</span>
               <ChevronIcon className="size-4 shrink-0 text-v2-ink-3" />
             </button>
-          </SettingRow>
+          </SettingRow>}
         </div>
       </Section>
 

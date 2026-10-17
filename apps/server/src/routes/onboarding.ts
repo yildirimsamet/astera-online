@@ -63,7 +63,7 @@ type Applied =
   | { kind: Intent['kind']; ok: true }
   | { kind: Intent['kind']; ok: false; error: string; params?: Record<string, string | number> };
 
-export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEnabled = true): void {
+export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEnabled = true, sessionOpener: typeof openSession = openSession, path = '/api/onboarding/claim'): void {
   /**
    * THE ONE UNAUTHENTICATED ROUTE THAT SPENDS A SCARCE THING.
    *
@@ -74,7 +74,7 @@ export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEn
    * frontier in the time it takes to write the loop, and every real player who
    * arrives afterwards lands in a galaxy of ghosts.
    */
-  app.post('/api/onboarding/claim', { config: { rateLimit: app.limits.signup } }, async (req, reply) => {
+  app.post(path, { config: { rateLimit: app.limits.signup } }, async (req, reply) => {
     const body = claimBody.parse(req.body ?? {});
 
     const account = await claimAccount(app, body.username, body.password, body.countryCode, firstGameShieldEnabled);
@@ -115,7 +115,7 @@ export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEn
       joined.playerId,
     );
 
-    const session = await openSession(app, reply, account);
+    const session = await sessionOpener(app, reply, account);
 
     return {
       ...session,

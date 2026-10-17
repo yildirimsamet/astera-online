@@ -1,0 +1,38 @@
+// @vitest-environment node
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { assertNativeArtifacts } from '../mobileBuildCli.js';
+
+const roots: string[] = [];
+afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
+function artifact() {
+  const root = mkdtempSync(join(tmpdir(), 'astera-native-artifact-')); roots.push(root);
+  writeFileSync(join(root, 'index.html'), '<html><head><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'self\'; connect-src \'self\' blob: https://api.example.test"></head><script type="module" src="/assets/app.js"></script></html>');
+  writeFileSync(join(root, 'native-build.json'), JSON.stringify({ target: 'native-staging', apiUrl: 'https://api.example.test', bundled: true, storeReady: false }));
+  mkdirSync(join(root, 'assets')); writeFileSync(join(root, 'assets/app.js'), 'console.log("game");');
+  return root;
+}
+const expected = { target: 'native-staging', apiUrl: 'https://api.example.test' };
+describe('native artifact gate before Capacitor copies files', () => {
+  it('accepts a bundled game with the expected target, API and script', () => {
+    expect(() => { assertNativeArtifacts(artifact(), expected); }).not.toThrow();
+  });
+  it.each(['checkout.html', 'pricing.html', 'h5-ads.js', 'consent-bootstrap.js', 'v2-gallery.html', 'manifest.webmanifest', 'ads.txt'])('rejects a stale web/dev file: %s', name => {
+    const root = artifact(); writeFileSync(join(root, name), 'stale');
+    expect(() => { assertNativeArtifacts(root, expected); }).toThrow();
+  });
+  it('rejects an artifact for a different API even when the directory name is correct', () => {
+    expect(() => { assertNativeArtifacts(artifact(), { ...expected, apiUrl: 'https://different.example.test' }); }).toThrow(/metadata|API/i);
+  });
+  it('rejects a missing script rather than producing a blank-screen APK', () => {
+    const root = artifact(); rmSync(join(root, 'assets/app.js'));
+    expect(() => { assertNativeArtifacts(root, expected); }).toThrow(/script/i);
+  });
+  it('rejects an HTML document that still needs the nginx nonce or loads a web ad', () => {
+    const root = artifact();
+    writeFileSync(join(root, 'index.html'), '<script nonce="__CSP_NONCE__" src="https://pagead2.googlesyndication.com/adsbygoogle.js"></script>');
+    expect(() => { assertNativeArtifacts(root, expected); }).toThrow();
+  });
+});

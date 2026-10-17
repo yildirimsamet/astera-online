@@ -25,6 +25,9 @@ import type {
   TransferReturnPlan,
 } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
+import { capabilities } from '../platform/runtime.js';
+import { createNativeAuthTransport, isSessionPath, type AuthTransport } from '../platform/authTransport.js';
+import { CHAT_MEDIA } from '@astera/rules';
 import { adminChatScopesSchema, adminPlayersSchema, adminMuteSchema, adminMaskSchema, type AdminMuteInput, type AdminMaskInput } from './adminSchemas.js';
 import {
   tradeRecallSchema,
@@ -204,6 +207,7 @@ export class ApiError extends Error {
 export interface ApiDeps {
   fetch?: typeof globalThis.fetch;
   baseUrl?: string;
+  authTransport?: AuthTransport | null;
 }
 
 interface RequestOptions {
@@ -285,17 +289,19 @@ export interface IntergalacticConvoyLaunchInput {
 /**
  * Everything the client knows how to ask for.
  *
- * The access token lives here, in memory only. The refresh token is an httpOnly
- * cookie the page cannot read — which is the point: XSS cannot steal a thirty-day
- * credential from a variable it can reach, because the credential is not there.
+ * Access tokens live in memory. Web refresh uses an HttpOnly cookie; bundled apps
+ * use the narrow native transport and encrypted native storage. Neither exposes
+ * a durable refresh credential to JavaScript. Short access still requires XSS defences.
  */
 export class Api {
   private readonly http: typeof globalThis.fetch;
   private readonly baseUrl: string;
+  private readonly auth: AuthTransport | null;
   private token: string | null = null;
   private sessionAccountId: string | null = null;
   private emailForLogin: string | undefined;
   private sessionGeneration = 0;
+  private readonly mediaCleanups = new Set<() => void>();
   private readonly sessionListeners = new Set<(reason: 'email' | 'password' | 'expired', loginEmail?: string) => void>();
 
   onSessionEnded(listener: (reason: 'email' | 'password' | 'expired', loginEmail?: string) => void): () => void {
@@ -306,10 +312,12 @@ export class Api {
   endSession(reason: 'email' | 'password' | 'expired', loginEmail?: string): void {
     const hint = z.string().trim().toLowerCase().email().safeParse(loginEmail);
     this.sessionGeneration++;
+    this.clearMedia();
     this.token = null;
     this.sessionAccountId = null;
     this.emailForLogin = undefined;
     this.placement = null;
+    this.clearNativeAuth();
     for (const listener of this.sessionListeners) {
       if (hint.success) listener(reason, hint.data);
       else listener(reason);
@@ -321,8 +329,19 @@ export class Api {
 
   constructor(deps: ApiDeps = {}) {
     this.http = deps.fetch ?? globalThis.fetch.bind(globalThis);
-    this.baseUrl = deps.baseUrl ?? '';
+    this.auth = deps.authTransport === undefined ? createNativeAuthTransport() : deps.authTransport;
+    this.baseUrl = deps.baseUrl ?? (this.auth ? import.meta.env.VITE_ASTERA_API_URL ?? '' : '');
   }
+
+  private clearNativeAuth(): void {
+    if (this.auth) void this.auth.clear().catch(() => { console.warn('Native session cleanup failed'); });
+  }
+
+  private clearMedia(): void {
+    for (const release of this.mediaCleanups) release();
+  }
+
+  get mediaNeedsBearer(): boolean { return this.auth !== null; }
 
   get accessToken(): string | null {
     return this.token;
@@ -352,6 +371,11 @@ export class Api {
     opts: RequestOptions = {},
   ): Promise<T> {
     opts.signal?.throwIfAborted();
+    // Defence against an old mounted screen or accidental direct hook/API use.
+    // This is a client distribution rule, never proof of platform to the server.
+    if (!capabilities().webCheckout && /^\/api\/skins\/(?:shop|pricing|purchase|polar-shop|polar-pricing|polar-purchase|shopier-shop|shopier-code)$/.test(path)) {
+      throw new ApiError('CHECKOUT_UNAVAILABLE', 'Web checkout is unavailable in this app', 403);
+    }
     /**
      * EVERY ANSWER CARRIES THE SERVER'S CLOCK, so the offset costs no request. D52.
      *
@@ -364,7 +388,7 @@ export class Api {
     const sentPlacement = this.placement;
     const generation = this.sessionGeneration;
     const sentAt = Date.now();
-    const res = await this.http(`${this.baseUrl}${path}`, {
+    const res = this.auth && isSessionPath(path) ? await this.auth.request(path, opts.body) : await this.http(`${this.baseUrl}${path}`, {
       method: opts.method ?? 'GET',
       headers: {
         ...opts.headers,
@@ -375,7 +399,7 @@ export class Api {
       },
       ...(opts.body === undefined ? {} : { body: JSON.stringify(opts.body) }),
       // Sends the refresh cookie. Same-origin in dev via the Vite proxy.
-      credentials: 'same-origin',
+      credentials: this.auth ? 'omit' : 'same-origin',
       ...(opts.signal === undefined ? {} : { signal: opts.signal }),
     });
     noteServerTime(res.headers.get('x-server-time'), res.headers.get('date'), sentAt, Date.now());
@@ -486,6 +510,7 @@ export class Api {
    */
   async register(username: string, password: string, countryCode?: CountryCode) {
     const generation = ++this.sessionGeneration;
+    this.clearMedia();
     this.emailForLogin = undefined;
     const session = await this.send('/api/auth/register', sessionSchema, {
       method: 'POST',
@@ -498,6 +523,7 @@ export class Api {
 
   async login(username: string, password: string) {
     const generation = ++this.sessionGeneration;
+    this.clearMedia();
     this.emailForLogin = undefined;
     const session = await this.send('/api/auth/login', sessionSchema, {
       method: 'POST',
@@ -518,6 +544,7 @@ export class Api {
    */
   async logout(): Promise<void> {
     this.sessionGeneration++;
+    this.clearMedia();
     this.token = null;
     this.sessionAccountId = null;
     this.emailForLogin = undefined;
@@ -618,6 +645,7 @@ export class Api {
     countryCode?: CountryCode,
   ) {
     const generation = ++this.sessionGeneration;
+    this.clearMedia();
     this.emailForLogin = undefined;
     const claimed = await this.send('/api/onboarding/claim', claimSchema, {
       method: 'POST',
@@ -638,10 +666,12 @@ export class Api {
   /** Drops the token without telling the server. For a 401 we already know about. */
   forget(): void {
     this.sessionGeneration++;
+    this.clearMedia();
     this.token = null;
     this.sessionAccountId = null;
     this.emailForLogin = undefined;
     this.placement = null;
+    this.clearNativeAuth();
   }
 
   /* ── choosing a galaxy ────────────────────────────────────── */
@@ -869,6 +899,59 @@ export class Api {
   chatMediaUrl = (assetId: string, channel?: 'general' | 'clan' | 'dm', messageId?: string) =>
     `${this.baseUrl}/api/chat/media/${encodeURIComponent(assetId)}${channel && messageId ? `?channel=${channel}&messageId=${encodeURIComponent(messageId)}` : ''}`;
 
+  /** HTML media cannot attach a bearer header. Native owns a bounded, account-scoped object URL. */
+  async chatMediaSource(media: Exclude<ChatMedia, { kind: 'youtube' }>, channel: 'general' | 'clan' | 'dm' | undefined,
+    messageId: string | undefined, signal: AbortSignal): Promise<{ url: string; release: () => void }> {
+    signal.throwIfAborted();
+    const path = this.chatMediaUrl(media.assetId, channel, messageId);
+    if (!this.auth) return { url: path, release: () => undefined };
+    const generation = this.sessionGeneration;
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+    const release = () => {
+      controller.abort();
+      signal.removeEventListener('abort', release);
+      this.mediaCleanups.delete(release);
+      if (objectUrl !== null) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+    };
+    signal.addEventListener('abort', release, { once: true });
+    this.mediaCleanups.add(release);
+    const current = () => {
+      controller.signal.throwIfAborted();
+      if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
+    };
+    const request = () => this.http(path, { headers: { ...(this.token ? { authorization: `Bearer ${this.token}` } : {}) },
+      credentials: 'omit', cache: 'no-store', redirect: 'error', signal: controller.signal });
+    try {
+      let response = await request(); current();
+      if (response.status === 401) {
+        await response.body?.cancel();
+        if (await this.restore()) { current(); response = await request(); current(); }
+      }
+      const mime = response.headers.get('content-type')?.split(';')[0]?.trim();
+      const limit = media.kind === 'image' ? CHAT_MEDIA.imageMaxBytes : CHAT_MEDIA.videoMaxBytes;
+      if (!response.ok || !response.body || mime !== media.mimeType || !CHAT_MEDIA.mimeTypes.some(type => type === mime)
+        || Number(response.headers.get('content-length')) > limit) {
+        await response.body?.cancel();
+        throw new ApiError('CHAT_MEDIA_NOT_FOUND', 'Media unavailable', response.ok ? 502 : response.status);
+      }
+      const reader = response.body.getReader();
+      const chunks: ArrayBuffer[] = []; let size = 0;
+      try {
+        for (;;) {
+          const chunk = await reader.read(); current();
+          if (chunk.done) break;
+          size += chunk.value.byteLength;
+          if (size > limit) throw new ApiError('CHAT_MEDIA_TOO_LARGE', 'Media is too large', 413);
+          chunks.push(new Uint8Array(chunk.value).buffer);
+        }
+      } finally { await reader.cancel().catch(() => undefined); reader.releaseLock(); }
+      current();
+      objectUrl = URL.createObjectURL(new Blob(chunks, { type: mime }));
+      return { url: objectUrl, release };
+    } catch (error) { release(); throw error; }
+  }
+
   async uploadChatMedia(file: File, signal: AbortSignal, onProgress: (percent: number) => void) {
     const generation = this.sessionGeneration;
     const attempt = async (retry: boolean): Promise<z.infer<typeof chatMediaUploadSchema>> => {
@@ -878,7 +961,7 @@ export class Api {
           const xhr = new XMLHttpRequest();
           const abort = () => { xhr.abort(); reject(new DOMException('Upload canceled', 'AbortError')); };
           xhr.open('POST', `${this.baseUrl}/api/admin/chat/media`);
-          xhr.withCredentials = true;
+          xhr.withCredentials = this.auth === null;
           xhr.timeout = 120_000;
           xhr.ontimeout = () => { reject(new ApiError('UNREACHABLE', 'Upload timed out; try again', 0)); };
           xhr.setRequestHeader('content-type', 'application/octet-stream');
@@ -1302,7 +1385,7 @@ export class Api {
       if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
       const response = await this.http(`${this.baseUrl}/api/stream`, {
         headers: this.token ? { authorization: `Bearer ${this.token}` } : {},
-        credentials: 'same-origin',
+        credentials: this.auth ? 'omit' : 'same-origin',
         signal,
       });
       if (generation !== this.sessionGeneration) {

@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { Capacitor } from '@capacitor/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -35,6 +36,15 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe('first real-game minutes', () => {
+  it.each(['android', 'ios'])('skips installation reminders but preserves the earned quiz on %s', async platform => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue(platform);
+    show();
+    await advance(61_000);
+    expect(screen.queryByTestId('return-card')).toBeNull();
+    await advance(120_000);
+    expect(screen.getByTestId('brand-quiz')).toBeInTheDocument();
+  });
   it('shows the return card after sixty foreground seconds and remembers having shown it', async () => {
     const first = show();
     await advance(59_999);

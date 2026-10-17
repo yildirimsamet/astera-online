@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/kit/index.js';
 import { publisherUrl } from '../lib/publisherPages.js';
+import { capabilities } from '../platform/runtime.js';
 import {
   CONSENT_EVENT,
   applyStoredConsent,
@@ -43,6 +44,11 @@ import {
  * covers the galaxy.
  */
 export function ConsentNotice() {
+  const platform = capabilities();
+  return platform.webAds || platform.webAnalytics ? <WebConsentNotice /> : null;
+}
+
+function WebConsentNotice() {
   const { t, i18n } = useTranslation();
   /**
    * `null` until the first effect has run.

@@ -28,6 +28,10 @@ const schema = z.object({
    * variable naming "the" shard could only ever be wrong for nine of them.
    */
   JWT_SECRET: z.string().min(16).default('dev-only-secret-do-not-ship-me'),
+  /** Enable only after every API/worker replica and the additive migration are current. */
+  NATIVE_AUTH_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  NATIVE_APP_ORIGINS: z.string().default('').transform(value => value.split(',').map(origin => origin.trim()).filter(Boolean))
+    .pipe(z.array(z.enum(['https://localhost', 'capacitor://localhost', 'http://localhost']))),
   /** Enable new registrations only after every replica supports consuming this grant. */
   FIRST_GAME_SHIELD_ENABLED: z.enum(['true', 'false']).default('true').transform(value => value === 'true'),
   /** Live checkout stays closed until all three secrets are supplied and enabled. */
@@ -264,6 +268,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
   if (parsed.data.NODE_ENV === 'production' && parsed.data.JWT_SECRET.startsWith('dev-only')) {
     throw new Error('JWT_SECRET must be set in production');
+  }
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.NATIVE_APP_ORIGINS.includes('http://localhost')) {
+    throw new Error('The HTTP native-local origin is not allowed in production');
   }
   if (parsed.data.SILENT_SPACE_ENABLED && parsed.data.ROLE !== 'api' && parsed.data.DB_POOL_MAX < 2) {
     throw new Error('DB_POOL_MAX must be at least 2 for Silent Space maintenance');

@@ -30,6 +30,7 @@
     "phone": "node tools/phone.mjs",
     "android:sync": "pnpm --filter @astera/web run android:sync",
     "android:apk": "pnpm --filter @astera/web run android:apk",
+    "android:bundle": "pnpm --filter @astera/web run android:bundle",
     "android:install": "pnpm --filter @astera/web run android:install",
     "fleet-assets": "node tools/fleet-v2-assets.mjs",
     "models": "node tools/models.mjs",

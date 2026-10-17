@@ -204,6 +204,7 @@ export async function requireAuth(req: FastifyRequest): Promise<void> {
     const identity = await req.server.tokens.identity(header.slice(7), 'access');
     accountId = identity.accountId;
     req.authVersion = identity.version;
+    req.nativeSessionId = identity.nativeSessionId;
   } catch (error) {
     if (!(error instanceof InvalidSessionError)) throw error;
     throw new GameError('UNAUTHENTICATED', 'Sign in first', 401);
@@ -230,6 +231,7 @@ export async function optionalAuth(req: FastifyRequest): Promise<void> {
     const identity = await req.server.tokens.identity(header.slice(7), 'access');
     req.accountId = identity.accountId;
     req.authVersion = identity.version;
+    req.nativeSessionId = identity.nativeSessionId;
   } catch (error) {
     if (!(error instanceof InvalidSessionError)) throw error;
     // An expired token on a public route is not an error. The caller simply gets

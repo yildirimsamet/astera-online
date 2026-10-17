@@ -1,4 +1,6 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
+import { mobileBuild } from './mobileBuild.js';
+import { nativeBundlePlugin } from './nativeBundlePlugin.js';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { adsensePlugin } from './src/lib/adsense.js';
@@ -25,11 +27,21 @@ const apiProxy = {
   },
 };
 
-export default defineConfig(({ command }) => {
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, fileURLToPath(new URL('.', import.meta.url)), 'VITE_ASTERA_');
+  const mobile = mobileBuild(env);
+  const { target } = mobile;
   const references = command === 'serve' ? referenceArtPlugin(fileURLToPath(new URL('../..', import.meta.url))) : null;
   return {
-  plugins: [react(), tailwindcss(), openingScreenPlugin(), adsensePlugin(), wikiPlugin(), references],
-  define: { 'import.meta.env.VITE_ASTERA_REFERENCE_ART': JSON.stringify(references ? 'true' : 'false') },
+  plugins: [react(), tailwindcss(), openingScreenPlugin(), target === 'web' && adsensePlugin(), target === 'web' && wikiPlugin(), references,
+    mobile.target !== 'web' && nativeBundlePlugin(mobile.apiUrl, target, fileURLToPath(new URL('.', import.meta.url)))],
+  publicDir: target === 'web' ? 'public' : false,
+  define: {
+    'import.meta.env.VITE_ASTERA_PLATFORM': JSON.stringify(target),
+    'import.meta.env.VITE_ASTERA_REFERENCE_ART': JSON.stringify(references ? 'true' : 'false'),
+    ...(mobile.target === 'web' ? {} : { 'import.meta.env.VITE_ASTERA_API_URL': JSON.stringify(mobile.apiUrl) }),
+    ...(mobile.target === 'web' ? {} : { 'import.meta.env.VITE_VISUAL_TEST': JSON.stringify('0') }),
+  },
   /**
    * THE CSP NONCE PLACEHOLDER, FILLED IN PER REQUEST BY NGINX.
    *
@@ -46,7 +58,7 @@ export default defineConfig(({ command }) => {
    * `deploy.sh` therefore refuses to pre-compress `index.html`, because a
    * gzipped body is one `sub_filter` cannot rewrite.
    */
-  html: { cspNonce: '__CSP_NONCE__' },
+  html: target === 'web' ? { cspNonce: '__CSP_NONCE__' } : {},
   /**
    * ONE THREE, STATED RATHER THAN HOPED FOR.
    *
@@ -70,6 +82,6 @@ export default defineConfig(({ command }) => {
   // same-origin API seam in preview makes those captures immune to an unrelated
   // source file being saved halfway through a Playwright frame sequence.
   preview: { host: true, proxy: apiProxy },
-  build: { target: 'es2022' },
+  build: { target: 'es2022', ...(mobile.target === 'web' ? {} : { outDir: mobile.webDir }) },
   };
 });

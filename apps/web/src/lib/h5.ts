@@ -1,5 +1,6 @@
 import type { HtmlTagDescriptor } from 'vite';
 import { musicEnabled, subscribeMusic } from './music.js';
+import { capabilities } from '../platform/runtime.js';
 
 /**
  * H5 GAMES ADS — THE CONFIGURATION HALF, WHICH IS THE HALF THAT SHIPS.
@@ -108,7 +109,7 @@ function declare(config: AdConfig): void {
  * only honest answer until a placement exists.
  */
 export function configureH5Ads(): void {
-  if (configured || !h5BridgeReady()) return;
+  if (!capabilities().webAds || configured || !h5BridgeReady()) return;
   configured = true;
   declaredSound = currentSound();
   declare({ preloadAdBreaks: 'auto', sound: declaredSound });
@@ -122,7 +123,7 @@ export function configureH5Ads(): void {
  * is ignored, so repeating it would be noise in the queue rather than an error.
  */
 export function syncH5Sound(): void {
-  if (!configured || !h5BridgeReady()) return;
+  if (!capabilities().webAds || !configured || !h5BridgeReady()) return;
   const sound = currentSound();
   if (sound === declaredSound) return;
   declaredSound = sound;
