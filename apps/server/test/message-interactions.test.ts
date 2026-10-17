@@ -1,3 +1,4 @@
+import { messageReactionDetailsSchema } from '../../web/src/api/schemas.js';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { z } from 'zod';
@@ -68,6 +69,34 @@ describe('message reactions and replies', () => {
     expect((await sendGeneral(1, 'wrong language', target.id, 'en')).statusCode).toBe(404);
   });
 
+  it('lists reaction authors without changing reactions and rejects unrelated channels', async () => {
+    const target = post.parse((await sendGeneral(0, 'Reaction roster')).json()).message;
+    await react(0, 'general', target.id, '👍');
+    await react(1, 'general', target.id, '❤️');
+    const details = await app.inject({ method: 'GET', url: `/api/chat/reactions?channel=general&messageId=${target.id}`, headers: auth[2] });
+    expect(details.statusCode, details.body).toBe(200);
+    expect(messageReactionDetailsSchema.parse(details.json()).participants).toEqual(expect.arrayContaining([
+      { playerId: f.playerIds[0], username: 'Tester0', emoji: '👍' },
+      { playerId: f.playerIds[1], username: 'Tester1', emoji: '❤️' },
+    ]));
+    expect(messageReactionDetailsSchema.parse(details.json()).participants).toHaveLength(2);
+    const listed = page.parse((await app.inject({ method: 'GET', url: '/api/chat/messages?language=tr', headers: auth[2] })).json()).messages;
+    expect(listed[0]?.reactions).toEqual([{ emoji: '👍', count: 1, mine: false }, { emoji: '❤️', count: 1, mine: false }]);
+    expect((await app.inject({ method: 'GET', url: `/api/chat/reactions?channel=dm&messageId=${target.id}`, headers: auth[2] })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'GET', url: '/api/chat/reactions?channel=general&messageId=bad', headers: auth[0] })).statusCode).toBe(400);
+  });
+
+  it('allows only DM participants to read reaction authors, including blocked history', async () => {
+    const target = dmPost.parse((await sendDm(0, f.playerIds[1]!, 'Private reactions')).json()).message;
+    await react(1, 'dm', target.id, '👏');
+    const url = `/api/chat/reactions?channel=dm&messageId=${target.id}`;
+    expect((await app.inject({ method: 'GET', url, headers: auth[2] })).statusCode).toBe(404);
+    await app.inject({ method: 'POST', url: '/api/dm/blocks', headers: auth[0], payload: { targetPlayerId: f.playerIds[1]! } });
+    const details = await app.inject({ method: 'GET', url, headers: auth[0] });
+    expect(details.statusCode, details.body).toBe(200);
+    expect(messageReactionDetailsSchema.parse(details.json()).participants).toEqual([{ playerId: f.playerIds[1], username: 'Tester1', emoji: '👏' }]);
+  });
+
   it('limits clan interaction to messages visible since joining', async () => {
     const [clan] = await f.db.insert(clans).values({
       seasonId: f.seasonId, name: 'Orion Guard', nameKey: 'orion guard', tag: 'OG', createdAt: f.clock.now(),
@@ -91,6 +120,11 @@ describe('message reactions and replies', () => {
     expect(listed[1]?.replyTo?.content).toBe('Clan plan');
     await f.db.update(seasons).set({ status: 'frozen' }).where(eq(seasons.id, f.seasonId));
     expect((await react(1, 'clan', target.id, '👍')).statusCode).toBe(200);
+    const url = `/api/chat/reactions?channel=clan&messageId=${target.id}`;
+    expect((await app.inject({ method: 'GET', url, headers: auth[2] })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'GET', url, headers: auth[1] })).statusCode).toBe(200);
+    await f.db.update(clanMemberships).set({ joinedAt: new Date(f.clock.now().getTime() + 1), matureAt: new Date(f.clock.now().getTime() + 1) }).where(eq(clanMemberships.playerId, f.playerIds[1]!));
+    expect((await app.inject({ method: 'GET', url, headers: auth[1] })).statusCode).toBe(404);
   });
 
   it('does not react after a concurrent clan departure', async () => {

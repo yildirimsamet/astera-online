@@ -31,7 +31,7 @@ export async function archiveSeasonChat(tx: Tx, now: Date): Promise<void> {
       clanName: sql<string | null>`null::text`.as('clan_name'),
       authorAccountId: accounts.id,
       authorName: accounts.displayName,
-      content: chatMessages.content,
+      content: chatMessages.content, media: chatMessages.media,
       createdAt: chatMessages.createdAt,
       archivedAt: sql<Date>`${now.toISOString()}::timestamptz`.as('archived_at'),
     })
@@ -51,7 +51,7 @@ export async function archiveSeasonChat(tx: Tx, now: Date): Promise<void> {
       clanName: clans.name,
       authorAccountId: accounts.id,
       authorName: accounts.displayName,
-      content: clanMessages.content,
+      content: clanMessages.content, media: clanMessages.media,
       createdAt: clanMessages.createdAt,
       archivedAt: sql<Date>`${now.toISOString()}::timestamptz`.as('archived_at'),
     })
@@ -66,11 +66,11 @@ export async function archiveSeasonChat(tx: Tx, now: Date): Promise<void> {
   await tx.execute(sql`
     INSERT INTO dm_archive (
       id, season_id, sender_account_id, recipient_account_id,
-      sender_name, recipient_name, content, created_at, archived_at
+      sender_name, recipient_name, content, media, created_at, archived_at
     )
     SELECT m.id, c.season_id, sender_account.id, recipient_account.id,
            sender_account.display_name, recipient_account.display_name,
-           m.content, m.created_at, ${now.toISOString()}::timestamptz
+           m.content, m.media, m.created_at, ${now.toISOString()}::timestamptz
       FROM dm_messages m
       JOIN dm_conversations c ON c.id = m.conversation_id
       JOIN players sender ON sender.id = m.author_player_id

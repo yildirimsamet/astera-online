@@ -18,6 +18,7 @@ import type {
   PlanetSkinId,
   ChatLanguage,
   ReactionEmoji,
+  ChatMedia,
   CountryCode,
   MissionPace,
   TransferReturnPlan,
@@ -114,6 +115,8 @@ import {
   chatPageSchema,
   chatPostSchema,
   messageReactionResultSchema,
+  chatMediaUploadSchema,
+  messageReactionDetailsSchema,
   chatReadSchema,
   chatUnreadSchema,
   dmContactsSchema,
@@ -567,8 +570,8 @@ export class Api {
   adminMute = (input: AdminMuteInput) => this.send('/api/admin/chat/mute', adminMuteSchema, { method: 'POST', body: { ...input } });
   adminMask = (input: AdminMaskInput) => this.send('/api/admin/chat/mask', adminMaskSchema, { method: 'POST', body: { ...input } });
   adminClanChat = (clanId: string, before?: string) => this.send(`/api/admin/clans/${encodeURIComponent(clanId)}/chat${before ? `?before=${encodeURIComponent(before)}` : ''}`, clanChatPageSchema);
-  adminPostClanChat = (clanId: string, content: string, replyToMessageId?: string) =>
-    this.send(`/api/admin/clans/${encodeURIComponent(clanId)}/chat`, clanChatPostSchema, { method: 'POST', body: { content, ...(replyToMessageId ? { replyToMessageId } : {}) } });
+  adminPostClanChat = (clanId: string, content: string, replyToMessageId?: string, media?: ChatMedia) =>
+    this.send(`/api/admin/clans/${encodeURIComponent(clanId)}/chat`, clanChatPostSchema, { method: 'POST', body: { content, ...(replyToMessageId ? { replyToMessageId } : {}), ...(media ? { media } : {}) } });
   postPerfSession = (session: PerfPayload) =>
     this.send('/api/admin/perf', perfSessionSavedSchema, { method: 'POST', body: { ...session } });
   /** Records a look paid for elsewhere; the same order again is a harmless replay. */
@@ -842,16 +845,60 @@ export class Api {
   claimClanDepot = () => this.clanMutation('/api/clan/depot/claim', clanDepotClaimSchema);
   launchClanAid = (input: ClanAidInput) =>
     this.clanMutation('/api/clan/aid/launch', clanAidLaunchSchema, { ...input });
-  postClanChat = (content: string, replyToMessageId?: string) =>
-    this.clanMutation('/api/clan/chat/messages', clanChatPostSchema, { content, ...(replyToMessageId ? { replyToMessageId } : {}) });
+  postClanChat = (content: string, replyToMessageId?: string, media?: ChatMedia) =>
+    this.clanMutation('/api/clan/chat/messages', clanChatPostSchema, { content, ...(replyToMessageId ? { replyToMessageId } : {}), ...(media ? { media } : {}) });
   markClanChatRead = (messageId: string) =>
     this.clanMutation('/api/clan/chat/read', clanChatReadSchema, { messageId });
   markClanSeen = () => this.clanMutation('/api/clan/read', clanSeenSchema);
 
   chatMessages = (language: ChatLanguage, before?: string) =>
     this.send(`/api/chat/messages?language=${language}&limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`, chatPageSchema);
-  postChat = (language: ChatLanguage, content: string, replyToMessageId?: string) =>
-    this.send('/api/chat/messages', chatPostSchema, { method: 'POST', body: { content, language, ...(replyToMessageId ? { replyToMessageId } : {}) } });
+  postChat = (language: ChatLanguage, content: string, replyToMessageId?: string, media?: ChatMedia) =>
+    this.send('/api/chat/messages', chatPostSchema, { method: 'POST', body: { content, language, ...(replyToMessageId ? { replyToMessageId } : {}), ...(media ? { media } : {}) } });
+  chatMediaUrl = (assetId: string, channel?: 'general' | 'clan' | 'dm', messageId?: string) =>
+    `${this.baseUrl}/api/chat/media/${encodeURIComponent(assetId)}${channel && messageId ? `?channel=${channel}&messageId=${encodeURIComponent(messageId)}` : ''}`;
+
+  async uploadChatMedia(file: File, signal: AbortSignal, onProgress: (percent: number) => void) {
+    const generation = this.sessionGeneration;
+    const attempt = async (retry: boolean): Promise<z.infer<typeof chatMediaUploadSchema>> => {
+      signal.throwIfAborted();
+      try {
+        return await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          const abort = () => { xhr.abort(); reject(new DOMException('Upload canceled', 'AbortError')); };
+          xhr.open('POST', `${this.baseUrl}/api/admin/chat/media`);
+          xhr.withCredentials = true;
+          xhr.timeout = 120_000;
+          xhr.ontimeout = () => { reject(new ApiError('UNREACHABLE', 'Upload timed out; try again', 0)); };
+          xhr.setRequestHeader('content-type', 'application/octet-stream');
+          xhr.setRequestHeader('x-media-type', file.type);
+          if (this.token) xhr.setRequestHeader('authorization', `Bearer ${this.token}`);
+          if (this.placement) xhr.setRequestHeader('x-placement', this.placement);
+          xhr.upload.onprogress = event => { if (event.lengthComputable) onProgress(Math.round(event.loaded / event.total * 100)); };
+          xhr.onloadend = () => { signal.removeEventListener('abort', abort); };
+          xhr.onerror = () => { reject(new ApiError('UNREACHABLE', 'Upload failed; try again', 0)); };
+          xhr.onabort = () => { reject(new DOMException('Upload canceled', 'AbortError')); };
+          xhr.onload = () => {
+            if (generation !== this.sessionGeneration) { reject(new ApiError('SESSION_CHANGED', 'Session changed', 409)); return; }
+            let body: unknown;
+            try { body = JSON.parse(xhr.responseText) as unknown; } catch { reject(new ApiError('UNREACHABLE', 'Upload failed; try again', xhr.status)); return; }
+            if (xhr.status < 200 || xhr.status >= 300) { const error = errorShape(body); if (xhr.status === 409 && error.error === 'PLACEMENT_CHANGED') window.dispatchEvent(new Event('astera:placement-changed')); reject(new ApiError(error.error, error.message, xhr.status, error.params)); return; }
+            const result = chatMediaUploadSchema.safeParse(body);
+            if (result.success) resolve(result.data); else reject(result.error);
+          };
+          signal.addEventListener('abort', abort, { once: true });
+          xhr.send(file);
+        });
+      } catch (error) {
+        if (retry && error instanceof ApiError && error.status === 401 && await this.restore()) return attempt(false);
+        throw error;
+      }
+    };
+    return attempt(true);
+  }
+
+  messageReactionDetails = (channel: 'general' | 'clan' | 'dm', messageId: string) =>
+    this.send(`/api/chat/reactions?channel=${channel}&messageId=${encodeURIComponent(messageId)}`, messageReactionDetailsSchema);
   reactToMessage = (channel: 'general' | 'clan' | 'dm', messageId: string, emoji: ReactionEmoji | null) =>
     this.send('/api/chat/reactions', messageReactionResultSchema, { method: 'POST', body: { channel, messageId, emoji } });
   chatUnread = (language: ChatLanguage) => this.send(`/api/chat/unread?language=${language}`, chatUnreadSchema);
@@ -864,8 +911,8 @@ export class Api {
     `/api/dm/conversations/${encodeURIComponent(conversationId)}/messages?limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`,
     dmPageSchema,
   );
-  postDm = (recipientPlayerId: string, content: string, replyToMessageId?: string) => this.send('/api/dm/messages', dmPostSchema, {
-    method: 'POST', body: { recipientPlayerId, content, ...(replyToMessageId ? { replyToMessageId } : {}) },
+  postDm = (recipientPlayerId: string, content: string, replyToMessageId?: string, media?: ChatMedia) => this.send('/api/dm/messages', dmPostSchema, {
+    method: 'POST', body: { recipientPlayerId, content, ...(replyToMessageId ? { replyToMessageId } : {}), ...(media ? { media } : {}) },
   });
   markDmRead = (conversationId: string, messageId: string) => this.send(
     `/api/dm/conversations/${encodeURIComponent(conversationId)}/read`, dmReadSchema,

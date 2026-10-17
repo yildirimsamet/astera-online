@@ -56,7 +56,7 @@ import type {
   RadiationBombLevel,
   CountryCode,
 } from '@astera/rules';
-import type { ChatLanguage, ReactionEmoji } from '@astera/rules';
+import type { ChatLanguage, ReactionEmoji, ChatMedia } from '@astera/rules';
 import type { HonorCatalogue, HonorStrategicCatalogue } from '@astera/rules';
 import type { HonorAccountedEvent, HonorAccountingState, HonorEvidence } from '../services/honorAccounting.js';
 import type { HonorCommitment } from '../services/honorCommitment.js';
@@ -1000,12 +1000,13 @@ export const clanMessages = pgTable('clan_messages', {
   clanId: uuid('clan_id').notNull().references(() => clans.id),
   authorPlayerId: uuid('author_player_id').notNull().references(() => players.id),
   content: text('content').notNull(),
+  media: jsonb('media').$type<ChatMedia>(),
   replyToMessageId: uuid('reply_to_message_id').references((): AnyPgColumn => clanMessages.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
   index('clan_messages_cursor_idx').on(t.clanId, t.createdAt, t.id),
   index('clan_messages_author_rate_idx').on(t.authorPlayerId, t.createdAt),
-  check('clan_messages_content_check', sql`char_length(btrim(${t.content})) BETWEEN 1 AND 280`),
+  check('clan_messages_content_check', sql`char_length(btrim(${t.content})) <= 280 AND (char_length(btrim(${t.content})) >= 1 OR ${t.media} IS NOT NULL)`),
 ]);
 
 /** Private, immutable management history; player ids are snapshots, not foreign keys. */
@@ -1036,6 +1037,7 @@ export const chatMessages = pgTable('chat_messages', {
   authorPlayerId: uuid('author_player_id').notNull().references(() => players.id),
   language: text('language').$type<ChatLanguage>().notNull().default('tr'),
   content: text('content').notNull(),
+  media: jsonb('media').$type<ChatMedia>(),
   replyToMessageId: uuid('reply_to_message_id').references((): AnyPgColumn => chatMessages.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -1066,6 +1068,7 @@ export const chatArchive = pgTable('chat_archive', {
   authorAccountId: uuid('author_account_id').notNull().references(() => accounts.id),
   authorName: text('author_name').notNull(),
   content: text('content').notNull(),
+  media: jsonb('media').$type<ChatMedia>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   archivedAt: timestamp('archived_at', { withTimezone: true }).notNull(),
 }, (t) => [
@@ -1101,12 +1104,13 @@ export const dmMessages = pgTable('dm_messages', {
   conversationId: uuid('conversation_id').notNull().references(() => dmConversations.id, { onDelete: 'cascade' }),
   authorPlayerId: uuid('author_player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
   content: text('content').notNull(),
+  media: jsonb('media').$type<ChatMedia>(),
   replyToMessageId: uuid('reply_to_message_id').references((): AnyPgColumn => dmMessages.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
   index('dm_messages_cursor_idx').on(t.conversationId, t.createdAt, t.id),
   index('dm_messages_author_rate_idx').on(t.authorPlayerId, t.createdAt),
-  check('dm_messages_content_check', sql`char_length(btrim(${t.content})) BETWEEN 1 AND 280`),
+  check('dm_messages_content_check', sql`char_length(btrim(${t.content})) <= 280 AND (char_length(btrim(${t.content})) >= 1 OR ${t.media} IS NOT NULL)`),
 ]);
 
 export const dmReadMarkers = pgTable('dm_read_markers', {
@@ -1151,6 +1155,7 @@ export const dmArchive = pgTable('dm_archive', {
   senderName: text('sender_name').notNull(),
   recipientName: text('recipient_name').notNull(),
   content: text('content').notNull(),
+  media: jsonb('media').$type<ChatMedia>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   archivedAt: timestamp('archived_at', { withTimezone: true }).notNull(),
 }, (t) => [
@@ -4798,3 +4803,16 @@ export const securityAudit = pgTable('security_audit', {
   kind: text('kind').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, t => [index('security_audit_created_idx').on(t.createdAt)]);
+
+/** Upload ownership and claims outlive season players; files live on the shared media volume. */
+export const chatMediaAssets = pgTable('chat_media_assets', {
+  id: uuid('id').primaryKey(),
+  ownerAccountId: uuid('owner_account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  kind: text('kind').$type<'image' | 'video'>().notNull(),
+  mimeType: text('mime_type').notNull(),
+  byteSize: integer('byte_size').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  channel: text('channel').$type<'general' | 'clan' | 'dm'>(),
+  messageId: uuid('message_id'),
+}, t => [index('chat_media_assets_pending_idx').on(t.claimedAt, t.createdAt)]);

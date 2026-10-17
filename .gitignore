@@ -12,3 +12,6 @@ artifacts/capacity/
 
 # The local bring-up (`pnpm start`) writes its dev-server log here.
 .dev/
+
+# Persistent local chat uploads.
+.data/

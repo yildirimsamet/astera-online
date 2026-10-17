@@ -24,6 +24,7 @@
     "@polar-sh/sdk": "1.0.0-alpha.22",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.2.0",
+    "file-type": "^21",
     "ioredis": "^6.0.0",
     "jose": "^5.9.6",
     "pino": "^9.5.0",

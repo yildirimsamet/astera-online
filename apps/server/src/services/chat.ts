@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { claimChatMedia } from './chatMedia.js';
+import type { ChatMedia } from '@astera/rules';
 import { and, count, desc, eq, gt, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { CHAT, type ChatLanguage } from '@astera/rules';
 import type { Clock } from '../clock.js';
@@ -16,6 +19,7 @@ export interface ChatMessageView {
   username: string;
   clanTag: string | null;
   content: string;
+  media?: ChatMedia | null;
   language: ChatLanguage;
   createdAt: Date;
   self: boolean;
@@ -98,7 +102,7 @@ export async function readChat(
       username: accounts.displayName,
       clanTag: clans.tag,
       login: accounts.username,
-      content: chatMessages.content,
+      content: chatMessages.content, media: chatMessages.media,
       replyToMessageId: chatMessages.replyToMessageId,
       language: chatMessages.language,
       createdAt: chatMessages.createdAt,
@@ -160,6 +164,7 @@ export async function postChat(
   /** Same boundary resolution as `readChat`, so the sender sees their own mark. */
   adminUsernames: ReadonlySet<string> = new Set(),
   replyToMessageId?: string,
+  mediaInput?: ChatMedia,
 ): Promise<ChatMessageView> {
   const me = await chatPlayer(db, accountId);
   const requestedAt = clock.now();
@@ -167,7 +172,7 @@ export async function postChat(
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`chat:${me.player.seasonId}`}))`);
     await assertChatAllowed(tx, accountId, 'general', clock);
     const [replyTo] = replyToMessageId ? await tx.select({
-      id: chatMessages.id, content: chatMessages.content, username: accounts.displayName,
+      id: chatMessages.id, content: chatMessages.content, media: chatMessages.media, username: accounts.displayName,
     }).from(chatMessages)
       .innerJoin(players, eq(players.id, chatMessages.authorPlayerId))
       .innerJoin(accounts, eq(accounts.id, players.accountId))
@@ -197,9 +202,12 @@ export async function postChat(
       });
     }
 
+    const messageId = randomUUID();
+    const media = await claimChatMedia(tx, accountId, mediaInput, adminUsernames, requestedAt, 'general', messageId);
     const [message] = await tx
       .insert(chatMessages)
       .values({
+        id: messageId, media,
         seasonId: me.player.seasonId,
         authorPlayerId: me.player.id,
         language,
@@ -211,7 +219,7 @@ export async function postChat(
         id: chatMessages.id,
         authorPlayerId: chatMessages.authorPlayerId,
         language: chatMessages.language,
-        content: chatMessages.content,
+        content: chatMessages.content, media: chatMessages.media,
         createdAt: chatMessages.createdAt,
       });
     if (!message) throw new Error('chat insert returned no row');

@@ -1,12 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { and, asc, eq, isNull } from 'drizzle-orm';
-import { CHAT, CHAT_LANGUAGES } from '@astera/rules';
+import { CHAT_LANGUAGES } from '@astera/rules';
 import { adminActions, clans, seasons, shards } from '../db/schema.js';
 import { requireAdmin } from './community.js';
 import { listAdminPlayers } from '../services/adminPlayers.js';
 import { maskChatMessages, setChatMute } from '../services/chatModeration.js';
 import { postClanChat, readClanChat } from '../services/clanChat.js';
+import { chatMessageBody } from '../services/chatMedia.js';
 import { clanActor } from '../services/clan.js';
 
 const username = z.string().trim().min(1).max(64);
@@ -21,10 +22,7 @@ const maskBody = z.discriminatedUnion('channel', [
   z.object({ ...maskBase, channel: z.literal('general'), seasonId: z.string().uuid(), language: z.enum(CHAT_LANGUAGES) }).strict(),
   z.object({ ...maskBase, channel: z.literal('clan'), clanId: z.string().uuid() }).strict(),
 ]);
-const messageBody = z.object({
-  content: z.string().trim().min(1).refine(value => Array.from(value).length <= CHAT.maxChars),
-  replyToMessageId: z.string().uuid().optional(),
-}).strict();
+const messageBody = chatMessageBody;
 
 export function registerAdminRoutes(app: FastifyInstance): void {
   app.get('/api/admin/players', { preHandler: requireAdmin }, req =>

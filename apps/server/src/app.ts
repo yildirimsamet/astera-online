@@ -42,6 +42,7 @@ import { registerSeasonRoutes } from './routes/season.js';
 import { registerServerRoutes } from './routes/servers.js';
 import { registerPreviewRoutes } from './routes/preview.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
+import { registerChatMediaRoutes } from './routes/chatMedia.js';
 import { registerChatRoutes } from './routes/chat.js';
 import { registerDmRoutes } from './routes/dm.js';
 import { registerChronicleRoutes } from './routes/chronicle.js';
@@ -452,6 +453,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerBrandRecallRoutes(app);
     registerReturnApplicationRoutes(app);
     registerChatRoutes(app);
+    registerChatMediaRoutes(app, opts.env.CHAT_MEDIA_DIR);
     registerDmRoutes(app);
     registerChronicleRoutes(app);
     registerGalaxyEventRoutes(app);

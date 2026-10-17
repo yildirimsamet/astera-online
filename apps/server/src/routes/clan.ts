@@ -34,6 +34,7 @@ import {
 } from '../services/clanWar.js';
 import { idempotentMutation } from '../services/idempotency.js';
 import { claimClanLoot, readClanDepot } from '../services/clanLoot.js';
+import { chatMessageBody } from '../services/chatMedia.js';
 import { markClanChatRead, postClanChat, readClanChat } from '../services/clanChat.js';
 import { launchClanAid, quoteClanAid, readClanAid } from '../services/clanAid.js';
 import { readClanStrength } from '../services/clanStrength.js';
@@ -72,10 +73,7 @@ const settingsBody = z.object({
   recruiting: z.boolean(),
 }).strict();
 const aidPolicyBody = z.object({ enabled: z.boolean() }).strict();
-const messageBody = z.object({
-  content: z.string().transform((value) => value.trim()).pipe(z.string().min(1).max(560)),
-  replyToMessageId: z.string().uuid().optional(),
-}).strict();
+const messageBody = chatMessageBody;
 const chatReadBody = z.object({ messageId: z.string().uuid() }).strict();
 const emptyBody = z.object({}).strict();
 const resourcesBody = z.object({
@@ -651,7 +649,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
       body,
       now,
     }, (tx) => postClanChat(tx, { playerId: actor.playerId, content: body.content, clock: app.clock,
-      replyToMessageId: body.replyToMessageId }, app.adminUsernames))
+      replyToMessageId: body.replyToMessageId, media: body.media }, app.adminUsernames))
       .then((message) => ({ message }));
   });
 

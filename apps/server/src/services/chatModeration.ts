@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { ChatLanguage } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
@@ -74,14 +74,14 @@ export async function maskChatMessages(db: Db, actorAccountId: string, input: Ma
     const scope = input.channel === 'general'
       ? and(eq(chatMessages.seasonId, input.seasonId), eq(chatMessages.language, input.language))
       : eq(clanMessages.clanId, input.clanId);
-    const rows = await tx.select({ id: table.id, content: table.content }).from(table)
+    const rows = await tx.select({ id: table.id, content: table.content, media: table.media }).from(table)
       .innerJoin(players, eq(players.id, table.authorPlayerId))
       .where(and(scope, eq(players.accountId, target.id)))
       .orderBy(desc(table.createdAt), desc(table.id)).limit(input.count);
     // Count the same last X on retry; never walk backwards into older, unselected text.
-    const changed = rows.filter(row => row.content !== '**');
+    const changed = rows.filter(row => row.content !== '**' || row.media !== null);
     if (changed.length > 0) {
-      await tx.update(table).set({ content: '**' }).where(and(inArray(table.id, changed.map(row => row.id)), ne(table.content, '**')));
+      await tx.update(table).set({ content: '**', media: null }).where(inArray(table.id, changed.map(row => row.id)));
       await tx.insert(adminActions).values({ actorAccountId, targetAccountId: target.id, action: 'CHAT_MASK',
         details: { ...input, messages: changed }, createdAt: now });
       if (input.channel === 'general') await publishShard(tx, seasonId, 'chat');

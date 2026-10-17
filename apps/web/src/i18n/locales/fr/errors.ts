@@ -12,6 +12,12 @@
 * ce ne sont pas des erreurs, mais les règles du jeu.
   */
   export const errors = {
+  ADMIN_REQUIRED: "Seul un administrateur peut envoyer des médias.",
+  BAD_CHAT_MEDIA: "Choisis un fichier JPEG, PNG, WebP, GIF, MP4 ou WebM.",
+  CHAT_MEDIA_TOO_LARGE: "Choisis un fichier plus petit : photo de 10 Mo ou vidéo de 50 Mo maximum.",
+  CHAT_MEDIA_NOT_FOUND: "Cet envoi est indisponible. Sélectionne à nouveau le fichier.",
+  CHAT_MEDIA_USED: "Ce fichier a déjà été envoyé. Sélectionne-le à nouveau.",
+
   HONOR_QUOTE_CHANGED: 'Votre palier Honor a changé. Vérifiez le nouveau prix avant de confirmer.',
   HONOR_TRADE_TOO_SMALL: 'Il ne resterait rien après la commission. Augmentez l’échange.',
   VACATION_ACTIVE: "Termine les vacances avant de donner des ordres.",

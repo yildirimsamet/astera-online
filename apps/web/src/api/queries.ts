@@ -1,3 +1,4 @@
+import type { ChatMedia } from '@astera/rules';
 import { refreshQueries } from './refreshQueries.js';
 import { playSound } from '../lib/sound.js';
 import { ApiError, type MaintenanceAction, type MaintenanceSelection, type RepairRequest } from './client.js';
@@ -1025,8 +1026,8 @@ export function useClanActions() {
     onSettled: (_data, _error, _vars, turn) => { originLane.leave(turn); },
   });
   const postChat = useMutation({
-    mutationFn: (body: string | { content: string; replyToMessageId?: string }) =>
-      typeof body === 'string' ? api.postClanChat(body) : api.postClanChat(body.content, body.replyToMessageId),
+    mutationFn: (body: string | { content: string; replyToMessageId?: string; media?: ChatMedia }) =>
+      typeof body === 'string' ? api.postClanChat(body) : body.media ? api.postClanChat(body.content, body.replyToMessageId, body.media) : api.postClanChat(body.content, body.replyToMessageId),
     onMutate: async () => {
       await client.cancelQueries({ queryKey: keys.clanChat });
     },
@@ -1172,8 +1173,8 @@ export function usePostDm() {
   const api = useApi();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ recipientPlayerId, content, replyToMessageId }: { recipientPlayerId: string; content: string; replyToMessageId?: string }) =>
-      replyToMessageId ? api.postDm(recipientPlayerId, content, replyToMessageId) : api.postDm(recipientPlayerId, content),
+    mutationFn: ({ recipientPlayerId, content, replyToMessageId, media }: { recipientPlayerId: string; content: string; replyToMessageId?: string; media?: ChatMedia }) =>
+      media ? api.postDm(recipientPlayerId, content, replyToMessageId, media) : replyToMessageId ? api.postDm(recipientPlayerId, content, replyToMessageId) : api.postDm(recipientPlayerId, content),
     onSuccess: ({ conversationId, message }) => {
       client.setQueryData<InfiniteData<DmPage, string | null>>(keys.dmMessagesFor(conversationId), (current) => {
         if (!current) return {
@@ -1303,8 +1304,8 @@ export function usePostChat(language: ChatLanguage = currentLanguage()) {
   const api = useApi();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: string | { content: string; replyToMessageId?: string }) =>
-      typeof body === 'string' ? api.postChat(language, body) : api.postChat(language, body.content, body.replyToMessageId),
+    mutationFn: (body: string | { content: string; replyToMessageId?: string; media?: ChatMedia }) =>
+      typeof body === 'string' ? api.postChat(language, body) : body.media ? api.postChat(language, body.content, body.replyToMessageId, body.media) : api.postChat(language, body.content, body.replyToMessageId),
     onMutate: async () => {
       // A GET started before Send cannot be allowed to land after the
       // authoritative POST response and erase the new message from the cache.

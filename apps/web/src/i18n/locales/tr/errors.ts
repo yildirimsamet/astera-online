@@ -11,6 +11,12 @@
  */
 
 export const errors = {
+  ADMIN_REQUIRED: "Medyayı yalnızca yönetici gönderebilir.",
+  BAD_CHAT_MEDIA: "JPEG, PNG, WebP, GIF, MP4 veya WebM dosyası seç.",
+  CHAT_MEDIA_TOO_LARGE: "Daha küçük bir dosya seç: fotoğraf en fazla 10 MB, video en fazla 50 MB.",
+  CHAT_MEDIA_NOT_FOUND: "Bu yükleme kullanılamıyor. Dosyayı yeniden seç.",
+  CHAT_MEDIA_USED: "Bu dosya zaten gönderildi. Dosyayı yeniden seç.",
+
   HONOR_QUOTE_CHANGED: 'Honor kademen değişti. Onaylamadan önce güncel fiyatı incele.',
   HONOR_TRADE_TOO_SMALL: 'Komisyondan sonra kaynak kalmıyor. İşlem miktarını artır.',
   VACATION_ACTIVE: "Emir vermeden önce tatil modunu bitir.",

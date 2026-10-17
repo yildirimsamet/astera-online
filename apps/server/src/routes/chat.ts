@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { CHAT, CHAT_LANGUAGES, REACTION_EMOJIS } from '@astera/rules';
+import { CHAT_LANGUAGES, REACTION_EMOJIS } from '@astera/rules';
 import { markChatRead, postChat, readChat, unreadChat } from '../services/chat.js';
-import { setMessageReaction } from '../services/messageReactions.js';
+import { readMessageReactions, setMessageReaction } from '../services/messageReactions.js';
+import { chatMessageBody } from '../services/chatMedia.js';
 import { requireAuth } from './auth.js';
 
 const listQuery = z.object({
@@ -10,20 +11,15 @@ const listQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(50),
   language: z.enum(CHAT_LANGUAGES).default('tr'),
 });
-const messageBody = z.object({
-  replyToMessageId: z.string().uuid().optional(),
-  content: z.string()
-    .transform((value) => value.trim())
-    .pipe(z.string().min(1).refine(
-      (value) => Array.from(value).length <= CHAT.maxChars,
-      `Must contain at most ${String(CHAT.maxChars)} characters`,
-    )),
-}).strict();
 const languageBody = z.enum(CHAT_LANGUAGES).default('tr');
-const messageBodyWithLanguage = messageBody.extend({ language: languageBody });
+const messageBodyWithLanguage = chatMessageBody.innerType().extend({ language: languageBody }).refine(value => value.content.length > 0 || value.media !== undefined);
 const readBody = z.object({ messageId: z.string().uuid(), language: languageBody }).strict();
 
 export function registerChatRoutes(app: FastifyInstance): void {
+  app.get('/api/chat/reactions', { preHandler: requireAuth }, async req => {
+    const query = z.object({ channel: z.enum(['general', 'clan', 'dm']), messageId: z.string().uuid() }).strict().parse(req.query);
+    return readMessageReactions(app.db, req.accountId!, query.channel, query.messageId, app.adminUsernames, app.clock.now());
+  });
   app.post('/api/chat/reactions', { preHandler: requireAuth }, async (req) => {
     const body = z.object({
       channel: z.enum(['general', 'clan', 'dm']),
@@ -49,7 +45,7 @@ export function registerChatRoutes(app: FastifyInstance): void {
     const body = messageBodyWithLanguage.parse(req.body);
     return {
       message: await postChat(
-        app.db, req.accountId!, body.content, app.clock, body.language, app.adminUsernames, body.replyToMessageId,
+        app.db, req.accountId!, body.content, app.clock, body.language, app.adminUsernames, body.replyToMessageId, body.media,
       ),
     };
   });

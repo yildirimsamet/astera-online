@@ -14,6 +14,12 @@
  */
 
 export const errors = {
+  ADMIN_REQUIRED: "メディアを送信できるのは管理者だけです。",
+  BAD_CHAT_MEDIA: "JPEG、PNG、WebP、GIF、MP4、WebM形式のファイルを選択してください。",
+  CHAT_MEDIA_TOO_LARGE: "写真は10 MB以下、動画は50 MB以下のファイルを選択してください。",
+  CHAT_MEDIA_NOT_FOUND: "アップロードを利用できません。ファイルを選び直してください。",
+  CHAT_MEDIA_USED: "このファイルは送信済みです。ファイルを選び直してください。",
+
   HONOR_QUOTE_CHANGED: 'Honorの段階が変わりました。確定前に更新された価格を確認してください。',
   HONOR_TRADE_TOO_SMALL: '手数料を引くと資源が残りません。取引量を増やしてください。',
   VACATION_ACTIVE: "命令を出す前に休暇を終了してください。",

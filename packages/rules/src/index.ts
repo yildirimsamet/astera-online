@@ -84,3 +84,6 @@ export * from './pirateGeneration.js';
 export * from './pirateLoot.js';
 export * from './pirateProfit.js';
 export * from './spawnGate.js';
+
+export type { ChatMedia } from './chatMedia.js';
+export { CHAT_MEDIA } from './chatMedia.js';

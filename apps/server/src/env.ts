@@ -4,6 +4,7 @@ import { COSMETIC_IDS, EXTRA_COSMETIC_IDS, cosmeticById, MULTI_WORLD } from '@as
 import { BOTS } from './services/bots/personas.js';
 
 const schema = z.object({
+  CHAT_MEDIA_DIR: z.string().min(1).default('.data/chat-media'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   /** 'api' serves HTTP, 'worker' drains scheduled events, 'both' does both. */
   ROLE: z.enum(['api', 'worker', 'both']).default('both'),

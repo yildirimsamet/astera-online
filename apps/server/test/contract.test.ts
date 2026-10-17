@@ -92,6 +92,7 @@ import {
   clanWarTargetResultSchema,
   clanWarContributionResultSchema,
   clanWarStartResultSchema,
+  messageReactionDetailsSchema,
   chatPageSchema,
   chatPostSchema,
   chatReadSchema,
@@ -1710,6 +1711,7 @@ describe('every payload the client parses', () => {
 
   it('POST /api/chat/messages and /api/chat/read parse', async () => {
     const sent = chatPostSchema.parse(await post('/api/chat/messages', { content: 'hello galaxy' }));
+    messageReactionDetailsSchema.parse(await get(`/api/chat/reactions?channel=general&messageId=${sent.message.id}`));
     expect(sent.message.self).toBe(true);
     expect(sent.message).toHaveProperty('clanTag');
     const marked = chatReadSchema.parse(await post('/api/chat/read', { messageId: sent.message.id }));

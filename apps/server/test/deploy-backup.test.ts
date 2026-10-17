@@ -14,7 +14,7 @@ import { expect, it } from 'vitest';
  */
 const script = readFileSync(new URL('../../../deploy/backup.sh', import.meta.url), 'utf8');
 
-function run(options: { keep?: number; existing?: string[]; dumpFails?: boolean } = {}) {
+function run(options: { keep?: number; existing?: string[]; dumpFails?: boolean; mediaFails?: boolean } = {}) {
   const root = mkdtempSync(resolve(tmpdir(), 'astera-backup-test-'));
   const bin = resolve(root, 'bin');
   const dest = resolve(root, 'backups');
@@ -26,7 +26,7 @@ function run(options: { keep?: number; existing?: string[]; dumpFails?: boolean 
   for (const name of options.existing ?? []) writeFileSync(resolve(dest, name), 'old');
   writeFileSync(resolve(bin, 'docker'), options.dumpFails
     ? '#!/bin/bash\necho "pg_dump: connection refused" >&2\nexit 1\n'
-    : '#!/bin/bash\necho "-- PostgreSQL database dump complete"\n', { mode: 0o755 });
+    : '#!/bin/bash\nif [[ "$*" == *" tar "* ]]; then\n  '+(options.mediaFails ? 'exit 1' : 'echo media-archive')+'\nelse\n  echo "-- PostgreSQL database dump complete"\nfi\n', { mode: 0o755 });
   const result = spawnSync('/bin/bash', ['deploy/backup.sh'], {
     cwd: root,
     encoding: 'utf8',
@@ -60,6 +60,20 @@ it('prunes beyond the retention count and still exits 0', () => {
 
 it('fails, and leaves no finished dump, when pg_dump fails', () => {
   const result = run({ dumpFails: true });
+  expect(result.status).not.toBe(0);
+  expect(result.dumps).toEqual([]);
+});
+
+it('backs up media alongside the database and prunes matching media archives', () => {
+  const result = run({ keep: 1, existing: ['astera-20200101-000000.sql.gz', 'astera-20200101-000000.media.tar.gz'] });
+  expect(result.status, result.stderr).toBe(0);
+  const archive = result.dumps[0]!.replace('.sql.gz', '.media.tar.gz');
+  expect(result.files).toContain(archive);
+  expect(result.files).not.toContain('astera-20200101-000000.media.tar.gz');
+});
+
+it('does not publish a finished dump when the matching media backup fails', () => {
+  const result = run({ mediaFails: true });
   expect(result.status).not.toBe(0);
   expect(result.dumps).toEqual([]);
 });

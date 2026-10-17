@@ -29,6 +29,7 @@ function show(
   initialChannel: 'general' | 'clan' = 'general',
   generalData: unknown = initial,
   initialClanDraft?: string,
+  isAdmin = false,
 ) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   vi.spyOn(api, 'markChatRead').mockResolvedValue({ ok: true, readAt: at });
@@ -73,7 +74,7 @@ function show(
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}><ApiProvider api={api}>{children}</ApiProvider></QueryClientProvider>
   );
-  const { unmount } = render(<Wrapper><ChatScreen initialChannel={initialChannel} onFocusPlanet={onFocusPlanet} {...(initialClanDraft ? { initialClanDraft } : {})} /></Wrapper>);
+  const { unmount } = render(<Wrapper><ChatScreen isAdmin={isAdmin} initialChannel={initialChannel} onFocusPlanet={onFocusPlanet} {...(initialClanDraft ? { initialClanDraft } : {})} /></Wrapper>);
   return { api, post, postClan, client, onFocusPlanet, unmount };
 }
 
@@ -121,6 +122,109 @@ describe('galaxy chat surface', () => {
     const picker = screen.getByRole('group', { name: 'Choose an emoji' });
     expect(bubble).not.toContainElement(picker);
     expect(picker.querySelectorAll('button')).toHaveLength(6);
+  });
+
+  it('opens a read-only three-row reaction roster from a counter', async () => {
+    const { api } = show(vi.fn(), 'general', { ...initial, pages: [{ ...initial.pages[0], messages: [
+      { ...initial.pages[0]!.messages[0], reactions: [{ emoji: '👍', count: 1, mine: true }] },
+    ] }] });
+    vi.spyOn(api, 'messageReactionDetails').mockResolvedValue({ participants: [
+      { playerId: 'mine', username: 'Vantage', emoji: '👍' },
+    ] });
+    await userEvent.setup().click(screen.getByRole('button', { name: /👍.*1/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Reactions' });
+    expect(await screen.findByText('Vantage')).toBeInTheDocument();
+    expect(dialog.querySelector('[data-reaction-roster]')).toHaveStyle({ height: '108px', overflowY: 'auto' });
+    expect(api.reactToMessage).not.toHaveBeenCalled();
+    const user = userEvent.setup();
+    await user.keyboard('{Tab}');
+    expect(screen.getByRole('button', { name: /^Close$/ })).toHaveFocus();
+    await user.keyboard('{Tab}');
+    expect(dialog.querySelector('[data-reaction-roster]')).toHaveFocus();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('removes my reaction only by selecting it in the picker', async () => {
+    const { api } = show(vi.fn(), 'general', { ...initial, pages: [{ ...initial.pages[0], messages: [
+      { ...initial.pages[0]!.messages[0], reactions: [{ emoji: '👍', count: 1, mine: true }] },
+    ] }] });
+    fireEvent.contextMenu(document.querySelector('[data-chat-message="one"]')!);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Add emoji reaction' }));
+    const emoji = screen.getByRole('button', { name: 'React with 👍' });
+    expect(emoji).toHaveAttribute('aria-pressed', 'true');
+    await user.click(emoji);
+    expect(api.reactToMessage).toHaveBeenCalledWith('general', 'one', null);
+  });
+
+  it('shows media actions only to admins and sends a playable YouTube attachment without text', async () => {
+    const view = show();
+    expect(screen.queryByRole('button', { name: 'Add media' })).toBeNull();
+    view.unmount();
+    const { post } = show(vi.fn(), 'general', initial, undefined, true);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Add media' }));
+    await user.click(screen.getByRole('button', { name: 'YouTube video' }));
+    await user.type(screen.getByRole('textbox', { name: 'YouTube link' }), 'https://youtu.be/dQw4w9WgXcQ');
+    await user.click(screen.getByRole('button', { name: 'Attach video' }));
+    expect(screen.getByRole('button', { name: 'Remove attachment' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', '', undefined, { kind: 'youtube', videoId: 'dQw4w9WgXcQ' }); });
+    await waitFor(() => { expect(screen.queryByRole('button', { name: 'Remove attachment' })).toBeNull(); });
+  });
+
+  it('uploads a pasted screenshot for an admin and waits for Send', async () => {
+    const { api, post } = show(vi.fn(), 'general', initial, undefined, true);
+    const media = { kind: 'image' as const, assetId: '00000000-0000-4000-8000-000000000001', mimeType: 'image/png' };
+    const upload = vi.spyOn(api, 'uploadChatMedia').mockResolvedValue({ media });
+    const screenshot = new File(['screenshot'], 'Screenshot.png', { type: 'image/png' });
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    fireEvent.change(composer, { target: { value: 'Look at this' } });
+    const accepted = fireEvent.paste(composer, { clipboardData: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => screenshot }], files: [screenshot] } });
+    expect(accepted).toBe(false);
+    await waitFor(() => { expect(upload).toHaveBeenCalledWith(screenshot, expect.any(AbortSignal), expect.any(Function)); });
+    expect(await screen.findByRole('button', { name: 'Remove attachment' })).toBeInTheDocument();
+    expect(composer).toHaveValue('Look at this');
+    expect(post).not.toHaveBeenCalled();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'Look at this', undefined, media); });
+  });
+
+  it('blocks upload retries while a message is being sent', async () => {
+    const { api, post } = show(vi.fn(), 'general', initial, undefined, true);
+    const upload = vi.spyOn(api, 'uploadChatMedia').mockRejectedValue(new Error('offline'));
+    const screenshot = new File(['screenshot'], 'Screenshot.png', { type: 'image/png' });
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    fireEvent.paste(composer, { clipboardData: { items: [], files: [screenshot] } });
+    const retry = await screen.findByRole('button', { name: 'Try upload again' });
+    post.mockReturnValueOnce(new Promise(() => { /* Keep the send pending during the retry check. */ }));
+    fireEvent.change(composer, { target: { value: 'Text only' } });
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Send' }));
+    expect(retry).toBeDisabled();
+    await userEvent.setup().click(retry);
+    expect(upload).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps ordinary text paste intact and never uploads a non-admin screenshot', () => {
+    const { api } = show();
+    const upload = vi.spyOn(api, 'uploadChatMedia');
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    const screenshot = new File(['screenshot'], 'Screenshot.png', { type: 'image/png' });
+    expect(fireEvent.paste(composer, { clipboardData: { items: [], files: [screenshot] } })).toBe(true);
+    expect(fireEvent.paste(composer, { clipboardData: { items: [], files: [], getData: () => 'Hello' } })).toBe(true);
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it('shows the YouTube player immediately without an intermediate play screen', () => {
+    show(vi.fn(), 'general', { ...initial, pages: [{ ...initial.pages[0], messages: [
+      { ...initial.pages[0]!.messages[0], content: '', media: { kind: 'youtube', videoId: 'dQw4w9WgXcQ' } },
+    ] }] });
+    expect(screen.queryByRole('button', { name: 'Play video' })).toBeNull();
+    const frame = screen.getByTitle('YouTube video');
+    expect(frame).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+    expect(frame).toHaveAttribute('loading', 'lazy');
+    expect(frame.getAttribute('src')).not.toContain('autoplay');
   });
 
   it('keeps the empty composer compact and reveals the character count near its limit', () => {
@@ -495,6 +599,20 @@ describe('galaxy chat surface', () => {
     expect(fireEvent.keyDown(composer, { key: 'Enter', repeat: true })).toBe(false);
     expect(post).not.toHaveBeenCalled();
     expect(composer).toHaveValue('Ready');
+  });
+
+  it('preserves the next draft typed while the previous message is sending', async () => {
+    const { post } = show();
+    let finish: ((value: Awaited<ReturnType<Api['postChat']>>) => void) | undefined;
+    post.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    fireEvent.change(composer, { target: { value: 'First message' } });
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Send' }));
+    fireEvent.change(composer, { target: { value: 'Keep my next draft' } });
+    if (!finish) throw new Error('Post did not start');
+    finish({ message: { id: 'posted', authorPlayerId: 'mine', username: 'Vantage', content: 'First message', language: 'en', createdAt: at, self: true } });
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled(); });
+    expect(composer).toHaveValue('Keep my next draft');
   });
 
   it('keeps the draft after a failed Enter send', async () => {

@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { claimChatMedia } from './chatMedia.js';
+import type { ChatMedia } from '@astera/rules';
 import { and, count, desc, eq, gt, gte, isNull, lt, or, sql } from 'drizzle-orm';
 import { CLAN, SEASON, clanChatMessageIsValid } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
@@ -17,6 +20,7 @@ export interface ClanMessageView {
   username: string;
   clanTag: string | null;
   content: string;
+  media?: ChatMedia | null;
   createdAt: string;
   self: boolean;
   replyTo: ReplyPreview | null;
@@ -62,7 +66,7 @@ export async function readClanChat(
     username: accounts.displayName,
     login: accounts.username,
     clanTag: clans.tag,
-    content: clanMessages.content,
+    content: clanMessages.content, media: clanMessages.media,
     replyToMessageId: clanMessages.replyToMessageId,
     createdAt: clanMessages.createdAt,
   }).from(clanMessages)
@@ -103,10 +107,10 @@ export async function readClanChat(
   };
 }
 
-function assertClanChatOpen(
-  season: typeof seasons.$inferSelect | undefined,
+export function assertClanChatOpen(
+  season: Pick<typeof seasons.$inferSelect, 'status' | 'endsAt'> | undefined,
   now: Date,
-): asserts season is typeof seasons.$inferSelect {
+): asserts season is Pick<typeof seasons.$inferSelect, 'status' | 'endsAt'> {
   if (season?.status === 'live') return;
   if (
     season?.status === 'frozen'
@@ -117,12 +121,12 @@ function assertClanChatOpen(
 
 export async function postClanChat(
   tx: Tx,
-  input: { playerId: string; content: string; clock: Clock; replyToMessageId?: string; adminClanId?: string },
+  input: { playerId: string; content: string; clock: Clock; media?: ChatMedia; replyToMessageId?: string; adminClanId?: string },
   adminUsernames: ReadonlySet<string> = new Set(),
 ): Promise<ClanMessageView> {
   const now = input.clock.now();
   const content = input.content.trim();
-  if (!clanChatMessageIsValid(content)) {
+  if (!clanChatMessageIsValid(content) && !(input.media && content.length === 0)) {
     throw new GameError('BAD_CLAN_MESSAGE', 'Write between one and 280 characters', 400);
   }
   const actor = await clanActorForPlayer(tx, input.playerId);
@@ -139,7 +143,7 @@ export async function postClanChat(
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`clan-chat:${membership.clanId}`}))`);
   await assertChatAllowed(tx, actor.accountId, 'clan', input.clock);
   const [replyTo] = input.replyToMessageId ? await tx.select({
-    id: clanMessages.id, content: clanMessages.content, username: accounts.displayName,
+    id: clanMessages.id, content: clanMessages.content, media: clanMessages.media, username: accounts.displayName,
   }).from(clanMessages)
     .innerJoin(players, eq(players.id, clanMessages.authorPlayerId))
     .innerJoin(accounts, eq(accounts.id, players.accountId))
@@ -165,7 +169,10 @@ export async function postClanChat(
       seconds: CLAN.chatWindowSeconds,
     });
   }
+  const messageId = randomUUID();
+  const media = await claimChatMedia(tx, actor.accountId, input.media, adminUsernames, now, 'clan', messageId);
   const [message] = await tx.insert(clanMessages).values({
+    id: messageId, media,
     seasonId,
     clanId: membership.clanId,
     authorPlayerId: input.playerId,
@@ -175,7 +182,7 @@ export async function postClanChat(
   }).returning({
     id: clanMessages.id,
     authorPlayerId: clanMessages.authorPlayerId,
-    content: clanMessages.content,
+    content: clanMessages.content, media: clanMessages.media,
     createdAt: clanMessages.createdAt,
   });
   if (!message) throw new Error('clan message insert returned no row');

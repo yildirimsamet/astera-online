@@ -23,6 +23,7 @@ DEST="${BACKUP_DIR:-$HOME/backups}"
 KEEP="${BACKUP_KEEP:-14}"
 STAMP=$(date -u +%Y%m%d-%H%M%S)
 OUT="$DEST/astera-$STAMP.sql.gz"
+MEDIA_OUT="$DEST/astera-$STAMP.media.tar.gz"
 
 mkdir -p "$DEST"
 
@@ -34,6 +35,10 @@ docker exec astera-postgres-prod \
 
 # Renamed only once the dump has finished, so a run killed halfway can never be
 # mistaken for a good backup by the retention sweep below.
+# Files are immutable after sending. Copying them after the DB dump includes
+# every referenced file plus any newer uploads; a partial pair is never published.
+docker exec astera-api1-prod tar -C /data/chat-media -czf - . > "$MEDIA_OUT.partial"
+mv "$MEDIA_OUT.partial" "$MEDIA_OUT"
 mv "$OUT.partial" "$OUT"
 echo "wrote $OUT ($(du -h "$OUT" | cut -f1))"
 
@@ -42,7 +47,7 @@ mapfile -t old < <(ls -1 "$DEST"/astera-*.sql.gz 2>/dev/null | head -n -"$KEEP")
 # `if`, not `&&`: a false test as the loop's last command made a good backup exit 1.
 for f in "${old[@]:-}"; do
   if [[ -n "$f" ]]; then
-    rm -f "$f"
+    rm -f "$f" "${f%.sql.gz}.media.tar.gz"
     echo "pruned $(basename "$f")"
   fi
 done

@@ -2120,13 +2120,24 @@ export const clanAidLaunchSchema = z.object({
   planet: planetSchema,
 });
 
+export const chatMediaSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('image'), assetId: z.string().uuid(), mimeType: z.string() }),
+  z.object({ kind: z.literal('video'), assetId: z.string().uuid(), mimeType: z.string() }),
+  z.object({ kind: z.literal('youtube'), videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/) }),
+]);
+export const chatMediaUploadSchema = z.object({ media: chatMediaSchema });
+
 const messageInteractionSchema = {
+  media: chatMediaSchema.nullable().optional(),
   supporter: z.boolean().optional(),
   previousSeasonRank: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   previousSeasonRanking: z.enum(['HONOR', 'DOMINION']).optional(),
-  replyTo: z.object({ id: z.string(), username: z.string(), content: z.string() }).nullable().optional(),
+  replyTo: z.object({ id: z.string(), username: z.string(), content: z.string(), media: chatMediaSchema.nullable().optional() }).nullable().optional(),
   reactions: z.array(z.object({ emoji: z.enum(REACTION_EMOJIS), count: z.number().int().positive(), mine: z.boolean() })).optional(),
 };
+export const messageReactionDetailsSchema = z.object({ participants: z.array(z.object({
+  playerId: z.string(), username: z.string(), emoji: z.enum(REACTION_EMOJIS),
+})) });
 export const messageReactionResultSchema = z.object({ reactions: messageInteractionSchema.reactions.unwrap() });
 
 const clanMessageSchema = z.object({

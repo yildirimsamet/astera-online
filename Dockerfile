@@ -93,6 +93,8 @@ COPY apps/server/drizzle  ./apps/server/drizzle
 RUN apk add --no-cache tini && chmod -R a+rX /app
 ENTRYPOINT ["/sbin/tini", "--"]
 
+RUN mkdir -p /data/chat-media && chown node:node /data/chat-media
+
 USER node
 # The binary is under the PACKAGE, not the root. A filtered pnpm install links a
 # dependency's executable into the node_modules/.bin of the package that asked for

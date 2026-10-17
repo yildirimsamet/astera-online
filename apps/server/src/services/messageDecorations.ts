@@ -1,10 +1,10 @@
 import { sql } from 'drizzle-orm';
-import { REACTION_EMOJIS, type ReactionEmoji } from '@astera/rules';
+import { REACTION_EMOJIS, type ReactionEmoji, type ChatMedia } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import { supporterPlayers } from './supporters.js';
 
 export type MessageChannel = 'general' | 'clan' | 'dm';
-export interface ReplyPreview { id: string; username: string; content: string }
+export interface ReplyPreview { id: string; username: string; content: string; media?: ChatMedia | null }
 export interface ReactionView { emoji: ReactionEmoji; count: number; mine: boolean }
 export type PodiumPlace = 1 | 2 | 3;
 export interface AuthorRecognition { previousSeasonRank?: PodiumPlace; previousSeasonRanking?: 'HONOR' | 'DOMINION'; supporter?: boolean }
@@ -62,7 +62,7 @@ const tableFor = (channel: MessageChannel): string => channel === 'general' ? 'c
 const reactionColumnFor = (channel: MessageChannel): string => channel === 'general' ? 'chat_message_id'
   : channel === 'clan' ? 'clan_message_id' : 'dm_message_id';
 
-interface ReplyRow extends Record<string, unknown> { id: string; username: string; content: string }
+interface ReplyRow extends Record<string, unknown> { id: string; username: string; content: string; media: ChatMedia | null }
 interface ReactionRow extends Record<string, unknown> {
   messageId: string; emoji: ReactionEmoji; count: number; mine: boolean;
 }
@@ -75,14 +75,14 @@ export async function replyPreviews(
   const table = sql.raw(tableFor(channel));
   const values = sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `);
   const rows = await db.execute<ReplyRow>(sql`
-    SELECT m.id, a.display_name AS username, m.content
+    SELECT m.id, a.display_name AS username, m.content, m.media
       FROM ${table} m
       JOIN players p ON p.id = m.author_player_id
       JOIN accounts a ON a.id = p.account_id
      WHERE m.id IN (${values})
        ${earliest ? sql`AND m.created_at >= ${earliest.toISOString()}::timestamptz` : sql``}
   `);
-  return new Map(rows.map(({ id, username, content }) => [id, { id, username, content }]));
+  return new Map(rows.map(({ id, username, content, media }) => [id, { id, username, content, ...(media ? { media } : {}) }]));
 }
 
 export async function reactionViews(

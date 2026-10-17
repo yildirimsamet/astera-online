@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { CHAT } from '@astera/rules';
 import {
   dmContacts, dmConversationsFor, dmPage, dmUnread, markDmRead, postDm, setDmBlock,
 } from '../services/dm.js';
+import { chatMessageBody } from '../services/chatMedia.js';
 import { requireAuth } from './auth.js';
 
 const uuid = z.string().uuid();
@@ -11,14 +11,7 @@ const contactQuery = z.object({ q: z.string().max(64).default('') });
 const pageQuery = z.object({ before: uuid.optional(), limit: z.coerce.number().int().min(1).max(50).default(50) });
 const conversationParams = z.object({ id: uuid });
 const blockParams = z.object({ targetPlayerId: uuid });
-const sendBody = z.object({
-  recipientPlayerId: uuid,
-  replyToMessageId: uuid.optional(),
-  content: z.string().transform((value) => value.trim()).pipe(z.string().min(1).refine(
-    (value) => Array.from(value).length <= CHAT.maxChars,
-    `Must contain at most ${String(CHAT.maxChars)} characters`,
-  )),
-}).strict();
+const sendBody = chatMessageBody.innerType().extend({ recipientPlayerId: uuid }).refine(value => value.content.length > 0 || value.media !== undefined);
 
 export function registerDmRoutes(app: FastifyInstance): void {
   app.get('/api/dm/contacts', { preHandler: requireAuth }, async (req) =>
@@ -38,8 +31,8 @@ export function registerDmRoutes(app: FastifyInstance): void {
   });
 
   app.post('/api/dm/messages', { preHandler: requireAuth }, async (req) => {
-    const { recipientPlayerId, content, replyToMessageId } = sendBody.parse(req.body);
-    return postDm(app.db, req.accountId!, recipientPlayerId, content, app.clock, replyToMessageId);
+    const { recipientPlayerId, content, replyToMessageId, media } = sendBody.parse(req.body);
+    return postDm(app.db, req.accountId!, recipientPlayerId, content, app.clock, replyToMessageId, media, app.adminUsernames);
   });
 
   app.post('/api/dm/conversations/:id/read', { preHandler: requireAuth }, async (req) => {

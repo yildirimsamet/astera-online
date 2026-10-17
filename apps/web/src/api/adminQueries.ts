@@ -1,3 +1,4 @@
+import type { ChatMedia } from '@astera/rules';
 import { refreshQueries } from './refreshQueries.js';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from './context.js';
@@ -44,8 +45,8 @@ export function useAdminClanChat(clanId: string) {
 export function useAdminPostClanChat(clanId: string) {
   const api = useApi();
   const client = useQueryClient();
-  return useMutation({ mutationFn: (input: { content: string; replyToMessageId?: string }) =>
-    api.adminPostClanChat(clanId, input.content, input.replyToMessageId),
+  return useMutation({ mutationFn: (input: { content: string; replyToMessageId?: string; media?: ChatMedia }) =>
+    api.adminPostClanChat(clanId, input.content, input.replyToMessageId, input.media),
   onSuccess: () => { void refreshQueries(client, { queryKey: ['admin', 'clanChat', clanId] }); },
   });
 }

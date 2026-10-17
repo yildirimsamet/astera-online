@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { claimChatMedia } from './chatMedia.js';
+import type { ChatMedia } from '@astera/rules';
 import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { CHAT } from '@astera/rules';
 import type { Clock } from '../clock.js';
@@ -166,7 +169,7 @@ export async function dmPage(db: Db, accountId: string, conversationId: string, 
   }
   const rows = await db.select({
     id: dmMessages.id, authorPlayerId: dmMessages.authorPlayerId,
-    username: accounts.displayName, content: dmMessages.content,
+    username: accounts.displayName, content: dmMessages.content, media: dmMessages.media,
     replyToMessageId: dmMessages.replyToMessageId, createdAt: dmMessages.createdAt,
   }).from(dmMessages)
     .innerJoin(players, eq(players.id, dmMessages.authorPlayerId))
@@ -198,7 +201,7 @@ export async function dmPage(db: Db, accountId: string, conversationId: string, 
   };
 }
 
-export async function postDm(db: Db, accountId: string, recipientPlayerId: string, content: string, clock: Clock, replyToMessageId?: string) {
+export async function postDm(db: Db, accountId: string, recipientPlayerId: string, content: string, clock: Clock, replyToMessageId?: string, mediaInput?: ChatMedia, adminUsernames: ReadonlySet<string> = new Set()) {
   const requestedAt = clock.now();
   return db.transaction(async (tx) => {
     const me = await commander(tx, accountId);
@@ -237,7 +240,7 @@ export async function postDm(db: Db, accountId: string, recipientPlayerId: strin
     const conversationId = inserted?.id ?? existing?.id;
     if (!conversationId) throw new Error('DM conversation insert returned no row');
     const [replyTo] = replyToMessageId ? await tx.select({
-      id: dmMessages.id, content: dmMessages.content, username: accounts.displayName,
+      id: dmMessages.id, content: dmMessages.content, media: dmMessages.media, username: accounts.displayName,
     }).from(dmMessages)
       .innerJoin(players, eq(players.id, dmMessages.authorPlayerId))
       .innerJoin(accounts, eq(accounts.id, players.accountId))
@@ -248,10 +251,13 @@ export async function postDm(db: Db, accountId: string, recipientPlayerId: strin
       .orderBy(desc(dmMessages.createdAt), desc(dmMessages.id)).limit(1);
     const createdAt = latest && latest.createdAt >= requestedAt
       ? new Date(latest.createdAt.getTime() + 1) : requestedAt;
+    const messageId = randomUUID();
+    const media = await claimChatMedia(tx, accountId, mediaInput, adminUsernames, requestedAt, 'dm', messageId);
     const [message] = await tx.insert(dmMessages).values({
+      id: messageId, media,
       conversationId, authorPlayerId: me.id, content, replyToMessageId: replyToMessageId ?? null, createdAt,
     }).returning({ id: dmMessages.id, authorPlayerId: dmMessages.authorPlayerId,
-      content: dmMessages.content, createdAt: dmMessages.createdAt });
+      content: dmMessages.content, media: dmMessages.media, createdAt: dmMessages.createdAt });
     if (!message) throw new Error('DM insert returned no row');
     await publish(tx, me.id, 'private:dm');
     await publish(tx, recipientPlayerId, 'private:dm');

@@ -80,7 +80,7 @@ export function installPlacementGate(app: FastifyInstance, url: string, max = 2,
     const handler = route.handler;
     // /me is the authority used to reconcile. Return endpoints already carry
     // their own versioned intent and expose status needed by older clients.
-    const reconcile = route.url === '/api/auth/me' || route.url === '/api/return-applications';
+    const reconcile = route.url === '/api/chat/media/:id' || route.url === '/api/auth/me' || route.url === '/api/return-applications';
 
     if (typeof route.method === 'string' && PLACEMENT_READ_ROUTES.has(`${route.method} ${route.url}`)) {
       route.handler = async function (req, reply) {

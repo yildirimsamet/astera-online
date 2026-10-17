@@ -14,6 +14,12 @@
  */
 
 export const errors = {
+  ADMIN_REQUIRED: "Only an admin can send media.",
+  BAD_CHAT_MEDIA: "Choose a JPEG, PNG, WebP, GIF, MP4 or WebM file.",
+  CHAT_MEDIA_TOO_LARGE: "Choose a smaller file: photos up to 10 MB, videos up to 50 MB.",
+  CHAT_MEDIA_NOT_FOUND: "This upload is unavailable. Choose the file again.",
+  CHAT_MEDIA_USED: "This upload was already sent. Choose the file again.",
+
   HONOR_QUOTE_CHANGED: 'Your Honor tier changed. Review the refreshed price before confirming.',
   HONOR_TRADE_TOO_SMALL: 'Nothing would remain after commission. Increase the trade.',
   VACATION_ACTIVE: "End vacation mode before giving orders.",

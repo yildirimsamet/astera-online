@@ -3,13 +3,14 @@ import { SEASON, type ReactionEmoji } from '@astera/rules';
 import { addMinutes } from '../clock.js';
 import type { Db } from '../db/client.js';
 import {
-  chatMessages, clanMessages, dmBlocks, dmConversations, dmMessages, messageReactions,
+  accounts, chatMessages, clanMessages, dmBlocks, dmConversations, dmMessages, messageReactions,
   players, seasons, shards,
 } from '../db/schema.js';
 import { publish, publishPrivate, publishShard } from '../stream/bus.js';
 import { activeClanMembership, activeClanPlayerIds } from './clanCombat.js';
 import { lockDmPair } from './dm.js';
 import { reactionViews, type MessageChannel } from './messageDecorations.js';
+import { assertMessageReadable } from './messageAccess.js';
 import { GameError } from './planet.js';
 
 /** Replaces the actor's sole reaction atomically, after checking current visibility. */
@@ -98,4 +99,19 @@ export async function setMessageReaction(
     const reactions = await reactionViews(tx, channel, [messageId], me.id);
     return { reactions: reactions.get(messageId) ?? [] };
   });
+}
+
+/** Names are fetched only when requested; message pages keep their compact totals. */
+export async function readMessageReactions(
+  db: Db, accountId: string, channel: MessageChannel, messageId: string,
+  adminUsernames: ReadonlySet<string>, now: Date,
+) {
+  await assertMessageReadable(db, accountId, channel, messageId, adminUsernames, now);
+  const key = channel === 'general' ? messageReactions.chatMessageId
+    : channel === 'clan' ? messageReactions.clanMessageId : messageReactions.dmMessageId;
+  const participants = await db.select({ playerId: players.id, username: accounts.displayName, emoji: messageReactions.emoji })
+    .from(messageReactions).innerJoin(players, eq(players.id, messageReactions.playerId))
+    .innerJoin(accounts, eq(accounts.id, players.accountId))
+    .where(eq(key, messageId)).orderBy(asc(messageReactions.createdAt), asc(messageReactions.id));
+  return { participants };
 }

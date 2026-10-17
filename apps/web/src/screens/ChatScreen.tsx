@@ -1,5 +1,10 @@
+import { ChatMediaAttachment } from './ChatMediaAttachment.js';
+import { ChatMediaComposer } from './ChatMediaComposer.js';
+import type { ChatMedia } from '@astera/rules';
+import { ChatReactionRoster } from './ChatReactionRoster.js';
 import { CHAT, CLAN, REACTION_EMOJIS, type ReactionEmoji } from '@astera/rules';
 import {
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -61,6 +66,7 @@ interface MessageRow {
   username: string;
   clanTag?: string | null;
   content: string;
+  media?: ChatMedia | null;
   createdAt: Date;
   self: boolean;
   /** The author speaks with admin authority. Marked in rose, distinct from the gold podium. */
@@ -68,7 +74,7 @@ interface MessageRow {
   supporter?: boolean;
   previousSeasonRank?: Place;
   previousSeasonRanking?: 'HONOR' | 'DOMINION';
-  replyTo?: { id: string; username: string; content: string } | null;
+  replyTo?: { id: string; username: string; content: string; media?: ChatMedia | null } | null;
   reactions?: { emoji: ReactionEmoji; count: number; mine: boolean }[];
 }
 
@@ -235,15 +241,16 @@ export function ChatScreen({
               onMarkRead={(id) => { markGeneral.mutate(id); }}
               posting={postGeneral.isPending}
               postError={postGeneral.isError ? postGeneral.error : null}
-              onPost={(content, replyToMessageId, done) => {
-                postGeneral.mutate(replyToMessageId ? { content, replyToMessageId } : content, { onSuccess: done });
+              onPost={(content, replyToMessageId, done, media) => {
+                postGeneral.mutate(media ? { content, replyToMessageId, media } : replyToMessageId ? { content, replyToMessageId } : content, { onSuccess: done });
               }}
               maxChars={CHAT.maxChars}
+              isAdmin={isAdmin}
               tone="general"
             />
           )
         ) : channel === 'dm' ? (
-          <DmPanel />
+          <DmPanel isAdmin={isAdmin} />
         ) : isAdmin ? (
           <AdminClanChannel onFocusPlanet={onFocusPlanet} />
         ) : !inClan ? (
@@ -277,8 +284,8 @@ export function ChatScreen({
             onMarkRead={(id) => { clanActions.readChat.mutate(id); }}
             posting={clanActions.postChat.isPending}
             postError={clanActions.postChat.isError ? clanActions.postChat.error : null}
-            onPost={(content, replyToMessageId, done) => {
-              clanActions.postChat.mutate(replyToMessageId ? { content, replyToMessageId } : content, { onSuccess: done });
+            onPost={(content, replyToMessageId, done, media) => {
+              clanActions.postChat.mutate(media ? { content, replyToMessageId, media } : replyToMessageId ? { content, replyToMessageId } : content, { onSuccess: done });
             }}
             maxChars={CLAN.chatMaxChars}
             tone="clan"
@@ -325,11 +332,11 @@ function AdminSelectedClanChat({ clanId, onFocusPlanet }: { clanId: string; onFo
     hasNextPage={chat.hasNextPage} fetchingOlder={chat.isFetchingNextPage} onOlder={() => chat.fetchNextPage()}
     onMarkRead={() => { /* Admin reads never change a member's read marker. */ }}
     posting={post.isPending} postError={post.error}
-    onPost={(content, replyToMessageId, done) => { post.mutate({ content, ...(replyToMessageId ? { replyToMessageId } : {}) }, { onSuccess: done }); }}
-    maxChars={CLAN.chatMaxChars} tone="clan" canReact={false} />;
+    onPost={(content, replyToMessageId, done, media) => { post.mutate({ content, ...(media ? { media } : {}), ...(replyToMessageId ? { replyToMessageId } : {}) }, { onSuccess: done }); }}
+    maxChars={CLAN.chatMaxChars} tone="clan" isAdmin canReact={false} />;
 }
 
-function DmPanel() {
+function DmPanel({ isAdmin }: { isAdmin: boolean }) {
   const { t } = useTranslation();
   const conversations = useDmConversations();
   const [selectedPeerId, setSelectedPeerId] = useState<string | null>(null);
@@ -496,10 +503,11 @@ function DmPanel() {
               }}
               posting={post.isPending}
               postError={post.isError ? post.error : null}
-              onPost={(content, replyToMessageId, done) => {
-                post.mutate({ recipientPlayerId: activePeerId, content, ...(replyToMessageId ? { replyToMessageId } : {}) }, { onSuccess: done });
+              onPost={(content, replyToMessageId, done, media) => {
+                post.mutate({ recipientPlayerId: activePeerId, content, ...(media ? { media } : {}), ...(replyToMessageId ? { replyToMessageId } : {}) }, { onSuccess: done });
               }}
               maxChars={CHAT.maxChars}
+              isAdmin={isAdmin}
               tone="dm"
               disabledReason={disabledReason}
             />
@@ -532,6 +540,7 @@ function ChannelPanel({
   tone,
   disabledReason = null,
   canReact = true,
+  isAdmin = false,
   mutedPlayers = NO_PERSONAL_MUTES,
   onMute,
 }: {
@@ -551,12 +560,13 @@ function ChannelPanel({
   onMarkRead: (messageId: string) => void;
   posting: boolean;
   postError: unknown;
-  onPost: (content: string, replyToMessageId: string | undefined, done: () => void) => void;
+  onPost: (content: string, replyToMessageId: string | undefined, done: () => void, media?: ChatMedia) => void;
   /** Each channel's own server ceiling. The two are separate rules, not one. */
   maxChars: number;
   tone: 'general' | 'clan' | 'dm';
   disabledReason?: string | null;
   canReact?: boolean;
+  isAdmin?: boolean;
   mutedPlayers?: readonly MutedChatPlayer[];
   onMute?: (author: ChatMuteAuthor) => void;
 }) {
@@ -582,7 +592,13 @@ function ChannelPanel({
   const recognitionHintId = useId();
   const [recognitionHint, setRecognitionHint] = useState<RecognitionHint | null>(null);
   const recognitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [media, setMedia] = useState<ChatMedia | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const composition = useRef({ draft, replyId: replyTarget?.id });
+  composition.current = { draft, replyId: replyTarget?.id };
   const reaction = useMessageReaction();
+  const [roster, setRoster] = useState<{ messageId: string; anchor: HTMLButtonElement } | null>(null);
+  const closeRoster = useCallback(() => { setRoster(null); }, []);
   const clearHold = () => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
     holdTimer.current = null;
@@ -727,8 +743,12 @@ function ChannelPanel({
   const submit = (event: SyntheticEvent<HTMLFormElement>): void => {
     event.preventDefault();
     const content = draft.trim();
-    if (!content || posting || disabledReason) return;
-    onPost(content, replyTarget?.id, () => { onDraft(''); onReplyTarget(null); });
+    if ((!content && !media) || posting || uploading || disabledReason) return;
+    onPost(content, replyTarget?.id, () => {
+      if (composition.current.draft === draft) onDraft('');
+      if (composition.current.replyId === replyTarget?.id) onReplyTarget(null);
+      setMedia(current => current === media ? null : current);
+    }, media ?? undefined);
   };
 
   // Your own words in your colour; in the clan's room, in the allies' colour.
@@ -774,7 +794,7 @@ function ChannelPanel({
                     tabIndex={0}
                     aria-label={t('chat.messageActions', { name: message.username })}
                     onPointerDown={(event) => {
-                      if (disabledReason || (event.target instanceof Element && event.target.closest('button, a'))) return;
+                      if (disabledReason || (event.target instanceof Element && event.target.closest('button, a, video, iframe'))) return;
                       clearHold();
                       holdTimer.current = setTimeout(() => { openActions(message.id); haptic('tap'); }, 450);
                     }}
@@ -782,7 +802,7 @@ function ChannelPanel({
                     onPointerCancel={clearHold}
                     onPointerLeave={clearHold}
                     onDoubleClick={(event) => {
-                      if (disabledReason || (event.target instanceof Element && event.target.closest('button, a'))) return;
+                      if (disabledReason || (event.target instanceof Element && event.target.closest('button, a, video, iframe'))) return;
                       event.preventDefault();
                       clearHold();
                       openActions(message.id);
@@ -856,9 +876,10 @@ function ChannelPanel({
                     {message.replyTo ? (
                       <div className="mt-1 max-w-full rounded-control border-l-2 border-v2-self bg-v2-raise px-2 py-1 text-micro" data-chat-reply={message.replyTo.id}>
                         <span className="block font-semibold text-v2-self">{message.replyTo.username}</span>
-                        <span className="block truncate text-v2-ink-3">{message.replyTo.content}</span>
+                        <span className="block truncate text-v2-ink-3">{message.replyTo.content || (message.replyTo.media ? t(`chat.media.${message.replyTo.media.kind === 'image' ? 'photo' : message.replyTo.media.kind === 'video' ? 'video' : 'youtube'}`) : '')}</span>
                       </div>
                     ) : null}
+                    {message.media ? <ChatMediaAttachment key={message.media.kind === 'youtube' ? message.media.videoId : message.media.assetId} media={message.media} channel={tone} messageId={message.id} onLoad={() => { const log = history.current; if (log && followingLatest.current) log.scrollTop = log.scrollHeight; }} /> : null}
                     <p className="mt-0.5 whitespace-pre-wrap break-words text-body leading-snug text-v2-ink-2">
                       {message.content}
                     </p>
@@ -866,11 +887,10 @@ function ChannelPanel({
                   {message.reactions?.length ? (
                     <div className="relative z-10 -mt-1 ml-2 flex flex-wrap gap-1" aria-label={t('chat.reactions')}>
                       {message.reactions.map((item) => (
-                        <button key={item.emoji} type="button" disabled={!canReact || disabledReason !== null || reaction.isPending}
+                        <button key={item.emoji} type="button" aria-haspopup="dialog"
                           aria-label={t('chat.reactionCount', { emoji: item.emoji, count: item.count })}
-                          aria-pressed={item.mine}
                           className={`relative min-h-7 rounded-pill border bg-v2-deep px-2 py-0.5 text-micro leading-none shadow-sm after:absolute after:inset-x-0 after:-inset-y-1.5 ${item.mine ? 'border-v2-self text-v2-self' : 'border-v2-line-hi text-v2-ink-2'}`}
-                          onClick={() => { reaction.mutate({ channel: tone, messageId: message.id, emoji: item.mine ? null : item.emoji }); }}
+                          onClick={(event) => { setActionMessageId(null); setPickerMessageId(null); setRoster({ messageId: message.id, anchor: event.currentTarget }); }}
                         >{item.emoji} {item.count}</button>
                       ))}
                     </div>
@@ -903,9 +923,9 @@ function ChannelPanel({
                   {canReact && pickerMessageId === message.id && !disabledReason ? (
                     <div data-chat-reaction-picker className={`absolute ${message.self ? 'right-0' : 'left-0'} z-30 grid w-max grid-cols-6 gap-0.5 rounded-pill border border-v2-line-hi bg-v2-raise p-1 shadow-xl ${pickerBelow ? 'bottom-1/2 mt-14' : 'bottom-1/2'}`} role="group" aria-label={t('chat.chooseReaction')}>
                       {REACTION_EMOJIS.map((emoji) => (
-                        <button key={emoji} type="button" aria-label={t('chat.reactWith', { emoji })}
+                        <button key={emoji} type="button" aria-label={t('chat.reactWith', { emoji })} aria-pressed={message.reactions?.some(item => item.emoji === emoji && item.mine) ?? false}
                           disabled={reaction.isPending} className="grid size-7 place-items-center rounded-full text-caption hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
-                          onClick={() => { reaction.mutate({ channel: tone, messageId: message.id, emoji }); setPickerMessageId(null); setActionMessageId(null); }}
+                          onClick={() => { reaction.mutate({ channel: tone, messageId: message.id, emoji: message.reactions?.some(item => item.emoji === emoji && item.mine) ? null : emoji }); setPickerMessageId(null); setActionMessageId(null); }}
                         >{emoji}</button>
                       ))}
                     </div>
@@ -917,6 +937,8 @@ function ChannelPanel({
         )}
       </div>
 
+      {roster ? <ChatReactionRoster channel={tone} messageId={roster.messageId} anchor={roster.anchor} onClose={closeRoster} /> : null}
+
       {recognitionHint !== null && createPortal(
         <span id={recognitionHintId} role="tooltip" aria-live="polite"
           className={`pointer-events-none fixed z-[100] rounded-control border border-current/35 bg-v2-raise px-3 py-2 text-left font-v2-ui text-label leading-snug shadow-xl ${recognitionHint.ink}`}
@@ -926,12 +948,13 @@ function ChannelPanel({
       )}
 
       <form onSubmit={submit} className="shrink-0 border-t border-v2-line px-3 py-2">
+        {isAdmin ? <ChatMediaComposer pasteTarget={composer} value={media} onChange={setMedia} onBusy={setUploading} disabled={posting || disabledReason !== null} /> : null}
         {disabledReason ? <p role="status" className="mb-2 text-micro text-v2-warn">{disabledReason}</p> : null}
         {replyTarget ? (
           <div className="mb-2 flex min-w-0 items-start gap-2 rounded-control border-l-2 border-v2-self bg-v2-raise px-2 py-1" data-chat-composer-reply={replyTarget.id}>
             <div className="min-w-0 flex-1 text-micro">
               <span className="block font-semibold text-v2-self">{t('chat.replyingTo', { name: replyTarget.username })}</span>
-              <span className="block truncate text-v2-ink-2">{replyTarget.content}</span>
+              <span className="block truncate text-v2-ink-2">{replyTarget.content || (replyTarget.media ? t(`chat.media.${replyTarget.media.kind === 'image' ? 'photo' : replyTarget.media.kind === 'video' ? 'video' : 'youtube'}`) : '')}</span>
             </div>
             <button type="button" aria-label={t('chat.cancelReply')} onClick={() => { onReplyTarget(null); }}><CloseIcon className="size-4" /></button>
           </div>
@@ -961,7 +984,7 @@ function ChannelPanel({
           <button
             type="submit"
             aria-label={t('chat.send')}
-            disabled={!draft.trim() || posting || disabledReason !== null}
+            disabled={(!draft.trim() && !media) || posting || uploading || disabledReason !== null}
             onClick={() => { haptic('tap'); }}
             className="grid size-10 shrink-0 place-items-center rounded-full bg-v2-self text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3"
           >

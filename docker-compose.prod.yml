@@ -15,6 +15,8 @@ x-api: &api
       ASTERA_GIT_COMMIT: ${ASTERA_GIT_COMMIT:-unknown}
   image: astera-server
   restart: unless-stopped
+  volumes:
+    - astera_chat_media:/data/chat-media
   # A runaway API must be killed before it can force PostgreSQL out of memory.
   # Three 1 GiB ceilings leave ample room on the 11.7 GiB D99 host.
   mem_limit: ${API_MEMORY_LIMIT:-1g}
@@ -72,6 +74,7 @@ x-api: &api
     shopier_prod_access_token: ${shopier_prod_access_token:-}
     SHOPIER_WEBHOOK_TOKEN: ${SHOPIER_WEBHOOK_TOKEN:-}
     SHOPIER_PRODUCTS: ${SHOPIER_PRODUCTS:-}
+    CHAT_MEDIA_DIR: /data/chat-media
     ADMIN_USERNAMES: ${ADMIN_USERNAMES:-}
     BOTS_PER_GALAXY: ${BOTS_PER_GALAXY:-100}
     TRUST_PROXY: 'true'
@@ -236,4 +239,5 @@ services:
     logging: *app-logging
 
 volumes:
+  astera_chat_media:
   astera_pgdata:
