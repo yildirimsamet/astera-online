@@ -122,8 +122,14 @@ export async function verifyUnknownSignal(output) {
         await page.waitForTimeout(200);
         await page.screenshot({ path: join(output, `${language}-${width}-outbound-route.png`) });
       }
+      await page.evaluate(() => window.__signalReview.show('outbound'));
+      await page.waitForTimeout(1500);
       await page.evaluate(() => window.__signalReview.show('ambush'));
-      await page.waitForTimeout(1200);
+      await page.waitForFunction(() => {
+        const node = window.__signalReview.scene.getObjectByName('death-star-interception-blast');
+        return node?.visible;
+      }, undefined, { timeout: 2500 });
+      await page.waitForTimeout(200);
       const blast = await page.evaluate(() => {
         const node = window.__signalReview.scene.getObjectByName('death-star-interception-blast');
         return { exists: Boolean(node), visible: node?.visible ?? false };

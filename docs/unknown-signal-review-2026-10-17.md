@@ -55,20 +55,54 @@ söyleyecek biçimde düzeltildi. Menzil sayısı mekanik değişikliğiyle kü�
 - Bildirimden eski sonuca ulaşma, UUID sınırı, dinleyici temizliği, kişisel
   invalidation, ortak üretim projeksiyonu, altı dil ve Wiki metinleri.
 
-## Doğrulama durumu
+## Son yayın doğrulaması
 
-- Son sinyal+bildirim sunucu koşusu: **84/84**; ardından ek ödül gemisi
-  radyasyon regresyonu **1/1** geçti. Sinyal dosyası şimdi 66 test içeriyor.
-- Son hedefli web koşusu: **6 dosya, 97/97**.
-- Önceki API sözleşme koşusu: **102/102**.
-- İşaret geometrisi/rota ve düğmesiz gönderim sonrası pencere 350×812 DPR2
-  tarayıcı kontrolünden geçti: `out/unknown-signal-route-review/`.
-- Final bütün çalışma alanları typecheck, üç lint grubu ve tam normal testler
-  sırada. Altı dil × telefon/masaüstü tam görsel koşusu henüz tamamlanmadı.
+- Rules tam normal koşusu: **140 dosya, 2493/2493 test**.
+- Sunucu tam normal koşusu: GitHub CI **8/8 parça başarılı**,
+  [koşu 39038684319](https://github.com/yildirimsamet/astera-online/actions/runs/39038684319).
+  Bu koşunun `32872f3d` sürümü ile yayın adayının `apps/server` ve
+  `packages/rules` ağaçları birebir; kaynak eşitliği `git diff --exit-code`
+  ile doğrulandı. Yerel uzun sunucu tekrarı bunun ardından sonlandırıldı.
+- Rules/server/web/sim typecheck tamamlandı. Üç kapsamlı lint grubu geçti;
+  son test mock'u ve görsel harness değişiklikleri ayrıca lint edildi.
+- Son hedefli web koşusu: **6 dosya, 97/97**; API sözleşmeleri **102/102**.
+  Tam web koşusunun nihai sonucu özel yayın kabul kanıtında tutulur.
+- Altı dil × 350/1280 genişlik: **96 pencere durumu, 120 görüntü**.
+  `out/unknown-signal-release-visual/measurements.json`; tarayıcı hatası yok,
+  taşma ve düğme durumları doğrulandı. Görsel fixture gerçek sunucu saatini
+  kullanıyor ve pusu öncesi gerçek outbound asset hazırlığını çalıştırıyor.
+- Gerçek oyun, HTTP oturumu, gerçek sinyal ve OwnFleets rotası ayrıca
+  `out/unknown-signal-native/` ve `out/unknown-signal-route-review/` içinde.
+- Önceki sürümün tam test kaydında doğrulanan `wrapEffect` mock eksikliği
+  giderildi. Uygulamanın efekt kodu değiştirilmedi; mock gerçek bağımlılığın
+  yeni export'unu içeriyor.
+- Canlı yedeği özel dizine alındı, checksum ve dump listesi doğrulandı,
+  ayrı veritabanına tamamen geri yüklendi. `0184_unknown_signals` migration'ı
+  **194 ms** sürdü; 3 sn kilit/30 sn statement bütçesinde tamamlandı.
+  Hesap/sezon/oyuncu/gezegen/görev/inşa/araştırma kayıtlarının migration
+  öncesi ve sonrası hash/count değerleri birebir.
+- Restore üzerinde önceki ve yeni gerçek Docker imajlarının her biri
+  **4 özel okuma + collector yazma** kontrolünden geçti. Yeni sinyal okuması
+  200, production dev tetikleyicisi 404; eski/yeni API ve yeni worker sağlıklı,
+  tanınmayan olay yok. Rehearsal worker yalnız restore veritabanını kullandı.
 
-Başka oturumun Honor değişiklikleri korunuyor. Kısa hedefli testlerin başka
-oturumun koşusuyla eşzamanlı çalışması için kullanıcı açık izin verdi; kapsamlı
-kapılar yine seri bekletiliyor. Uzun ekonomi/sezon simülasyonu, commit veya
-deploy yapılmadı. Ana oyun veritabanına dokunulmadı; manuel deneme ayrı
+## Yayın kapsamı ve işletim
+
+Owner tüm yerel değişiklikleri, döteryum rafineri/sentez tavan düzeltmesini de
+kapsayacak şekilde commit/push/deploy için açıkça yetkilendirdi. Honor canlı
+prefix'i ve mevcut %40 politikası korunur. Döteryum düzeltmesinin kapsamı ve
+150 hedefli kontrolü `deuterium-refinery-ceiling-fix-2026-10-17.md` içindedir.
+Uzun ekonomi/sezon simülasyonu çalıştırılmadı.
+
+Migration additive; önce üç API, sonra tek worker, sonra önceden üretilmiş web
+paketi yayınlanır. Eski hash'li web dosyaları korunur. Yeni sinyal job'ları
+oluştuktan sonra eski worker'a dönüş uyumsuzdur; uyumlu worker veya ileri yönlü
+düzeltme gerekir. Sezon sıfırlama, adoption veya özellik bayrağı değişikliği yok.
+
+Canlı yayın ancak sabit pushed SHA, OCI etiketi, dört runtime, checkout ve
+`release.txt` eşitliği; sağlık/kuyruk/dünya kontrolleri ve yayın sonrası kısa
+log/istek gözlemi tamamlandığında kabul edilir. Son yayın kanıtı sunucudaki
+özel `~/backups/unknown-signal-20261017-135439/` dizininde tutulur; sırlar ve
+oyuncu kayıtları git'e eklenmez. Yerel manuel deneme ayrı
 `astera_unknown_signal_visual_test`, otomatik sunucu testleri ayrı
-`astera_unknown_signal_test` veritabanını kullanıyor.
+`astera_unknown_signal_test` veritabanını kullanır.

@@ -155,3 +155,13 @@ yerel geliştirme verisi değiştirilmedi. Release 0183 şemasının ayrı test 
 0184 geçişi başarıyla uygulandı. Eski numaralandırmayı uygulamış geçici test
 veritabanları yeniden kullanılmadan önce journal uyumu kontrol edilmeli;
 bu kopyalar üzerinde migration'ı körlemesine tekrarlamayın.
+
+### Final yayın hazırlığı
+
+Güncel review ve kabul kanıtı `unknown-signal-review-2026-10-17.md` içindedir.
+Rules 2493/2493; tam sunucu CI 8/8 parça; dört workspace typecheck ve üç lint
+grubu başarılı. Altı dilde 96 panel/120 görüntü ve gerçek oyun rota kontrolü
+tamamlandı. Canlı yedek restore'u, 0184 migration hash koruması ve eski/yeni
+gerçek imajların okuma/yazma provası geçti. Tam web regresyonu ve son canlı
+kabul kontrolleri sonuçlanmadan yayın tamamlandı sayılmaz. Owner tüm yerel
+değişiklikleri (döteryum tavan düzeltmesi dahil) deploy için yetkilendirdi.
