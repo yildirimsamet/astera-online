@@ -510,6 +510,8 @@ export const chat = {
   },
   addReaction: 'Emoji tepkisi ekle',
   media: {
+    showPortrait: "Dikey göster",
+    showLandscape: "Yatay göster",
     pasteHint: "Mesaj alanına Ctrl+V ile ekran görüntüsü de yapıştırabilirsin.",
     add: "Medya ekle",
     photo: "Fotoğraf",

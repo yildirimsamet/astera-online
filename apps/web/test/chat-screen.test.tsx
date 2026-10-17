@@ -227,6 +227,25 @@ describe('galaxy chat surface', () => {
     expect(frame.getAttribute('src')).not.toContain('autoplay');
   });
 
+  it('enlarges an existing vertical YouTube video without reloading it or changing other players', async () => {
+    const { post, api } = show(vi.fn(), 'general', { ...initial, pages: [{ ...initial.pages[0], messages: [
+      { ...initial.pages[0]!.messages[0], content: '', media: { kind: 'youtube', videoId: 'dQw4w9WgXcQ' } },
+      { ...initial.pages[0]!.messages[1], content: '', media: { kind: 'youtube', videoId: 'M7lc1UVf-VE' } },
+    ] }] });
+    const [first, second] = screen.getAllByTitle('YouTube video');
+    expect(first?.parentElement).toHaveStyle({ aspectRatio: '16 / 9' });
+    const user = userEvent.setup();
+    await user.click(screen.getAllByRole('button', { name: 'Show portrait' })[0]!);
+    expect(first?.parentElement).toHaveStyle({ aspectRatio: '9 / 16' });
+    expect(second?.parentElement).toHaveStyle({ aspectRatio: '16 / 9' });
+    expect(screen.getAllByTitle('YouTube video')[0]).toBe(first);
+    await user.click(screen.getByRole('button', { name: 'Show landscape' }));
+    expect(first?.parentElement).toHaveStyle({ aspectRatio: '16 / 9' });
+    expect(screen.getAllByTitle('YouTube video')[0]).toBe(first);
+    expect(post).not.toHaveBeenCalled();
+    expect(api.reactToMessage).not.toHaveBeenCalled();
+  });
+
   it('keeps the empty composer compact and reveals the character count near its limit', () => {
     show();
     expect(screen.queryByText('280 characters left')).not.toBeInTheDocument();

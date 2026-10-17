@@ -45,7 +45,7 @@ export async function verifyChatMedia(output) {
             { id: 'reaction', username: 'Aurora', content: 'Hazırız! Galakside görüşürüz.', reactions: [{ emoji: '👍', count: 6, mine: true }, { emoji: '❤️', count: 3, mine: false }] },
           ].map((row, index) => ({ authorPlayerId: row.id, language, createdAt: new Date(now.getTime() - (4 - index) * 60000), self: false, ...row }));
           const badge = { available: true, membership: null, attention: false, attentionCount: 0, clanChatUnread: 0 };
-          const review = { mutations: [], unexpected: [], closed: 0, focused: 0, labels: Object.fromEntries(['add', 'youtube', 'url', 'attach', 'remove', 'photo'].map(key => [key, i18n.t(`chat.media.${key}`)])), send: i18n.t('chat.send'), reactions: i18n.t('chat.reactions') };
+          const review = { mutations: [], unexpected: [], closed: 0, focused: 0, labels: Object.fromEntries(['add', 'youtube', 'url', 'attach', 'remove', 'photo', 'showPortrait', 'showLandscape'].map(key => [key, i18n.t(`chat.media.${key}`)])), send: i18n.t('chat.send'), reactions: i18n.t('chat.reactions') };
           window.__chatMediaReview = review;
           const api = new Api({ fetch: async (input, options) => {
             const path = new URL(String(input), location.origin).pathname;
@@ -91,6 +91,23 @@ export async function verifyChatMedia(output) {
         const uploadedVideo = page.locator('video');
         await uploadedVideo.evaluate(async element => { if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true })); });
         assert(await uploadedVideo.evaluate(element => element.controls && !element.autoplay && element.duration > 0));
+        const youtubeMessage = page.locator('[data-chat-message="youtube"]');
+        const youtubeFrame = youtubeMessage.locator('iframe');
+        const landscape = await youtubeFrame.boundingBox();
+        assert(landscape);
+        await youtubeFrame.evaluate(frame => { frame.dataset.orientationProbe = 'same-player'; });
+        await youtubeMessage.getByRole('button', { name: labels.showPortrait, exact: true }).click();
+        const portrait = await youtubeFrame.evaluate(frame => {
+          const rect = frame.getBoundingClientRect();
+          return { width: rect.width, height: rect.height, fits: rect.left >= 0 && rect.right <= innerWidth, player: frame.dataset.orientationProbe };
+        });
+        assert(portrait.fits && portrait.height > landscape.height + (viewportHeight >= 600 ? 40 : 0), JSON.stringify({ landscape, portrait }));
+        assert(Math.abs(portrait.height / portrait.width - 16 / 9) < 0.03);
+        assert.equal(portrait.player, 'same-player');
+        await youtubeMessage.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: join(output, `${width}x${viewportHeight}-${language}-portrait.png`) });
+        await youtubeMessage.getByRole('button', { name: labels.showLandscape, exact: true }).click();
+        assert.equal(await youtubeFrame.getAttribute('data-orientation-probe'), 'same-player');
         await page.getByRole('button', { name: labels.add, exact: true }).click();
         await page.locator('input[type=file]').setInputFiles({ name: 'astera.webp', mimeType: 'image/webp', buffer: photo });
         await page.getByRole('button', { name: labels.remove }).waitFor();
@@ -122,7 +139,7 @@ export async function verifyChatMedia(output) {
         assert(review.mutations.some(item => item.media?.videoId === 'dQw4w9WgXcQ' && item.content === ''));
         assert.equal(review.unexpected.length, 0); assert.equal(review.closed, 0); assert.equal(review.focused, 0); assert.equal(errors.length, 0, errors.join('\n'));
         assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
-        results.push({ width, viewportHeight, language, ...geometry, errors }); await page.close();
+        results.push({ width, viewportHeight, language, ...geometry, portrait, errors }); await page.close();
       }
     }
     await writeFile(join(output, 'review.json'), JSON.stringify(results, null, 2));

@@ -573,6 +573,8 @@ export const chat = {
   },
   addReaction: 'Add emoji reaction',
   media: {
+    showPortrait: "Show portrait",
+    showLandscape: "Show landscape",
     pasteHint: "You can also paste a screenshot into the message field with Ctrl+V.",
     add: "Add media",
     photo: "Photo",

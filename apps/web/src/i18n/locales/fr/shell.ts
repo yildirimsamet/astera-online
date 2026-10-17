@@ -523,6 +523,8 @@ export const chat = {
   },
   addReaction: "Ajouter une réaction emoji",
   media: {
+    showPortrait: "Afficher en portrait",
+    showLandscape: "Afficher en paysage",
     pasteHint: "Tu peux aussi coller une capture dans le champ du message avec Ctrl+V.",
     add: "Ajouter un média",
     photo: "Photo jointe",

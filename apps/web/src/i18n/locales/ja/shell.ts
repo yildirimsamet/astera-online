@@ -573,6 +573,8 @@ export const chat = {
   },
   addReaction: "絵文字リアクションを追加",
   media: {
+    showPortrait: "縦長で表示",
+    showLandscape: "横長で表示",
     pasteHint: "メッセージ欄にCtrl+Vでスクリーンショットを貼り付けることもできます。",
     add: "メディアを追加",
     photo: "写真を添付",

@@ -572,6 +572,8 @@ export const chat = {
   },
   addReaction: 'Emoji-Reaktion hinzufügen',
   media: {
+    showPortrait: "Hochformat anzeigen",
+    showLandscape: "Querformat anzeigen",
     pasteHint: "Du kannst auch einen Screenshot mit Strg+V in das Nachrichtenfeld einfügen.",
     add: "Medien hinzufügen",
     photo: "Foto anhängen",

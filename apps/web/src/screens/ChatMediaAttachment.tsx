@@ -12,6 +12,7 @@ export function ChatMediaAttachment({ media, channel, messageId, onLoad, preview
   const { t } = useTranslation();
   const api = useApi();
   const [expanded, setExpanded] = useState(false);
+  const [portrait, setPortrait] = useState(false);
   const [failed, setFailed] = useState(false);
   const dialog = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
@@ -27,9 +28,13 @@ export function ChatMediaAttachment({ media, channel, messageId, onLoad, preview
   }, [expanded]);
   if (failed) return <p role="status" className="my-2 text-micro text-v2-warn">{t('chat.media.loadFailed')}</p>;
   const width = preview ? 'w-[min(44vw,240px,32dvh)]' : 'w-[min(68vw,360px)]';
-  if (media.kind === 'youtube') return <div className={`my-2 ${width} max-w-full overflow-hidden rounded-control border border-v2-line-hi bg-v2-deep`} style={{ aspectRatio: '16 / 9' }}>
-    <iframe title={t('chat.media.youtube')} src={`https://www.youtube-nocookie.com/embed/${media.videoId}`} loading="lazy"
-      className="h-full w-full border-0" referrerPolicy="strict-origin-when-cross-origin" allow="fullscreen; encrypted-media; picture-in-picture" allowFullScreen />
+  if (media.kind === 'youtube') return <div className="my-2 max-w-full">
+    <div className={`${portrait ? 'w-[min(68vw,240px,18dvh)]' : width} max-w-full overflow-hidden rounded-control border border-v2-line-hi bg-v2-deep`} style={{ aspectRatio: portrait ? '9 / 16' : '16 / 9' }}>
+      <iframe title={t('chat.media.youtube')} src={`https://www.youtube-nocookie.com/embed/${media.videoId}`} loading="lazy"
+        className="h-full w-full border-0" referrerPolicy="strict-origin-when-cross-origin" allow="fullscreen; encrypted-media; picture-in-picture" allowFullScreen />
+    </div>
+    {!preview ? <button type="button" className="mt-1 min-h-8 rounded-control border border-v2-line-hi px-2 text-micro text-v2-ink-2 hover:border-v2-self/50 hover:text-v2-self"
+      onClick={() => { setPortrait(current => !current); }}>{t(portrait ? 'chat.media.showLandscape' : 'chat.media.showPortrait')}</button> : null}
   </div>;
   const url = api.chatMediaUrl(media.assetId, channel, messageId);
   if (media.kind === 'video') return <video controls playsInline preload="metadata" className={`my-2 ${width} ${preview ? 'max-h-[min(8rem,18dvh)]' : 'max-h-64'} max-w-full rounded-control border border-v2-line-hi bg-v2-deep`} onLoadedMetadata={onLoad} onError={() => { setFailed(true); }} aria-label={t('chat.media.video')}>

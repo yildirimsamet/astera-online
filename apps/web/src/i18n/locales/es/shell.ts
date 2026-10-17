@@ -572,6 +572,8 @@ export const chat = {
   },
   addReaction: 'Añadir reacción emoji',
   media: {
+    showPortrait: "Ver en vertical",
+    showLandscape: "Ver en horizontal",
     pasteHint: "También puedes pegar una captura en el campo del mensaje con Ctrl+V.",
     add: "Añadir multimedia",
     photo: "Foto adjunta",
