@@ -73,7 +73,7 @@ export async function verifyUnknownSignal(output) {
           return h('div', { style: { position: 'absolute', inset: 0 } },
             h(Canvas, { camera: { position: [8, 2, 12], fov: 45 }, frameloop: 'always', onCreated: state => { state.camera.lookAt(8, 0, 0); review.scene = state.scene; } },
               h(UnknownSignals, { signals: [signal], focusedId, onSelect: setFocus }),
-              signal.status === 'outbound' && h(OwnFleets, { nodes: [], focusedKey: null, onSelect: () => {}, pending: [{
+              signal.status === 'outbound' && h(OwnFleets, { nodes: [], focusedKey: null, onSelect: action('flight'), pending: [{
                 id, kind: 'unknown_signal', leg: 'outbound', targetName: 'UNKNOWN_SIGNAL', arriveAt: signal.arriveAt,
                 minutesRemaining: 5, fleet: signal.fleet, path: { from: signal.origin, to: signal.at, departAt: signal.departAt, arriveAt: signal.arriveAt },
               }] })),
