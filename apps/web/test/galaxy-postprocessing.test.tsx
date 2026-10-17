@@ -13,6 +13,7 @@ vi.mock('@react-three/postprocessing', () => ({
   },
   Bloom: () => null,
   Vignette: () => null,
+  wrapEffect: () => () => null,
 }));
 beforeEach(() => { vi.clearAllMocks(); });
 
