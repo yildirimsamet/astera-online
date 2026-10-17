@@ -24,10 +24,10 @@ export async function verifyUnknownSignal(output) {
         const fiber = resources.find(name => /\/@react-three_fiber\.js\?/.test(name));
         if (!react || !dom || !fiber) throw new Error('Gallery modules not loaded');
         const [{ default: { createElement: h, useState } }, { default: { createRoot } }, { Canvas },
-          { UnknownSignalHud }, { UnknownSignals }, { OwnFleets }, { SignalBoostNote }, { planetView }, { default: i18n }] = await Promise.all([
+          { UnknownSignalHud }, { UnknownSignals }, { OwnFleets }, { SignalBoostNote }, { planetView }, { default: i18n }, { serverNow }] = await Promise.all([
           import(react), import(dom), import(fiber), import(url('/src/screens/UnknownSignalHud.tsx')),
           import(url('/src/galaxy/UnknownSignals.tsx')), import(url('/src/galaxy/Fleets.tsx')), import(url('/src/ui/SignalBoostNote.tsx')),
-          import(url('/test/fixtures.ts')), import(url('/src/i18n/index.ts')),
+          import(url('/test/fixtures.ts')), import(url('/src/i18n/index.ts')), import(url('/src/lib/clock.ts')),
         ]);
         await i18n.changeLanguage(language);
         document.getElementById('root').style.display = 'none';
@@ -39,9 +39,9 @@ export async function verifyUnknownSignal(output) {
         window.__signalReview = review;
         function Review() {
           const [mode, setMode] = useState('map'); const [focusedId, setFocus] = useState(null);
-          const [impactAt, setImpactAt] = useState(() => Date.now());
-          review.show = next => { setImpactAt(Date.now()); setMode(next); setFocus(next === 'map' || next === 'ambush' ? null : id); };
-          const now = Date.now();
+          const [impactAt, setImpactAt] = useState(() => serverNow());
+          review.show = next => { setImpactAt(serverNow()); setMode(next); setFocus(next === 'map' || next === 'ambush' ? null : id); };
+          const now = serverNow();
           const planet = planetView({ fleet: { DART: 1, PIKE: 1, RAMPART: 1, WARDEN: 1, COURIER: 1 }, buildings: { CORE: 3, SHIPYARD: 1 } }, { deuterium: 1000 });
           const signal = { id, at: { x: 400, y: 0, z: 0 }, status: 'open', appearedAt: new Date(now - 15 * 60_000),
             expiresAt: new Date(now + 45 * 60_000), originPlanetId: planet.planet.id, origin: planet.planet.position,
