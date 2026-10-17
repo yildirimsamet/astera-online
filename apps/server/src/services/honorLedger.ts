@@ -53,7 +53,7 @@ export async function prepareHonorSeason(tx: Tx, seasonId: string, mode: 'SHADOW
     return;
   }
   const legacySources = await pendingHonorLegacySources(tx, seasonId);
-  const [inserted] = await tx.insert(honorSeasons).values({ seasonId, version, mode,
+  const [inserted] = await tx.insert(honorSeasons).values({ seasonId, version, mode, retaliationLootPercent: 40,
     catalogue: createHonorCatalogue(), shieldCatalogue: [...createHonorShieldCatalogue()],
     strategicCatalogue: honorAdvancedPolicy(version) ? createHonorStrategicCatalogue(version === HONOR_LAUNCH_VERSION) : null,
     legacySources, state: emptyHonorState(), createdAt: now,

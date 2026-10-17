@@ -63,6 +63,8 @@ export function honorChallenge(q: HonorComparison): HonorChallenge {
 }
 
 export interface HonorSideInput extends HonorComparison {
+  /** Frozen at dispatch; absent historical contracts use 20%. */
+  retaliationLootPercent?: 20 | 40;
   /** Enemy permanent armed losses, net of free ground reconstruction. */
   k: number;
   enemyLoss: number;
@@ -73,7 +75,7 @@ export interface HonorSideInput extends HonorComparison {
   weakRepeat: number;
   related: boolean;
   eligible: boolean;
-  /** Five times resource value: preserves loot / 5 without fractional accounting. */
+  /** Five times resource value: preserves 20%/40% loot without fractional accounting. */
   retaliationFifths: number;
 }
 
@@ -90,6 +92,12 @@ export function honorCombatBase(k: bigint, l: bigint): bigint {
   return k === 0n ? 0n : 1000n * k * (2n * k + l) / (2n * (k + l));
 }
 
+/** One common measure for provocation, retaliation consumption and weak sanctions. */
+export function honorHarmFifths(loss: number, loot: number, lootPercent = 20): bigint {
+  if (lootPercent !== 20 && lootPercent !== 40) throw new RangeError('Invalid Honor loot percentage');
+  return 5n * honorInteger(loss) + BigInt(lootPercent / 20) * honorInteger(loot);
+}
+
 export function honorSide(q: HonorSideInput): HonorSideResult {
   const c = honorChallenge(q), k = honorInteger(q.k), l = honorInteger(q.l);
   const enemyLoss = honorInteger(q.enemyLoss), loot = honorInteger(q.loot);
@@ -102,7 +110,7 @@ export function honorSide(q: HonorSideInput): HonorSideResult {
   const lossDebit = q.defending ? 0n : 100n * l;
   const bullying = !q.defending && c.kind === 'WEAK';
   if (bullying) {
-    const exposure = 5n * enemyLoss + loot;
+    const exposure = honorHarmFifths(q.enemyLoss, q.loot, q.retaliationLootPercent);
     const used = budget < exposure ? budget : exposure;
     const weakDebit = 50n * (exposure - used) * BigInt(2 + Math.min(q.weakRepeat, 2)) / 2n;
     return { ...zero, raw: honorNumber(-weakDebit - lossDebit), lossDebit: honorNumber(lossDebit),

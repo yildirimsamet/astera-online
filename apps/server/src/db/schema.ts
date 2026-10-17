@@ -4655,6 +4655,8 @@ export const honorSeasons = pgTable('honor_seasons', {
   mode: text('mode').$type<'SHADOW' | 'ACTIVE'>().notNull(),
   /** Opt-in frozen economic program; adding the column never changes existing prices. */
   benefitsVersion: integer('benefits_version'),
+  /** New dispatches only; existing snapshots and earned retaliation stay frozen. */
+  retaliationLootPercent: integer('retaliation_loot_percent').$type<20 | 40>().notNull().default(20),
   catalogue: jsonb('catalogue').$type<HonorCatalogue>().notNull(),
   shieldCatalogue: jsonb('shield_catalogue').$type<number[]>().notNull(),
   strategicCatalogue: jsonb('strategic_catalogue').$type<HonorStrategicCatalogue>(),
@@ -4669,6 +4671,7 @@ export const honorSeasons = pgTable('honor_seasons', {
 }, (t) => [
   check('honor_seasons_version_check', sql`${t.version} > 0`),
   check('honor_seasons_mode_check', sql`${t.mode} IN ('SHADOW', 'ACTIVE')`),
+  check('honor_seasons_loot_percent_check', sql`${t.retaliationLootPercent} IN (20, 40)`),
   check('honor_seasons_ranked_boundary_check', sql`${t.rankedAt} IS NULL OR ${t.rankedAt} >= ${t.createdAt}`),
 ]);
 

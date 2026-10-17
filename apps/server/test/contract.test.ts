@@ -29,6 +29,7 @@ import {
   clanLootShares,
   galaxyEventOccurrences,
   galaxyEvents,
+  honorSeasons,
   miningRuns,
   missions,
   neutralPlanetState,
@@ -56,6 +57,8 @@ import { buildApp } from '../src/app.js';
 import { nextPublicGalaxyEvent } from '../src/services/galaxyEvents.js';
 import { SHARD_PREFIX } from '../src/stream/bus.js';
 import { TokenService } from '../src/auth/tokens.js';
+import { prepareHonorSeason } from '../src/services/honorLedger.js';
+import { honorTargetSchema } from '../../web/src/api/schemas.js';
 import {
   buildSchema,
   brandRecallSchema,
@@ -372,6 +375,13 @@ describe('every payload the client parses', () => {
     expect(res.statusCode, `${url} answered ${String(res.statusCode)}: ${res.body.slice(0, 300)}`).toBe(200);
     return res.json();
   };
+
+  it('parses the dispatch Honor loot weight from the authenticated target route', async () => {
+    await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'SHADOW', f.clock));
+    await f.db.update(honorSeasons).set({ mode: 'ACTIVE', rankedAt: f.clock.now() });
+    const result = honorTargetSchema.parse(await get(`/api/honor/targets/${f.planetIds[1]!}`));
+    expect(result).toMatchObject({ enabled: true, eligible: true, retaliationLootPercent: 40 });
+  });
 
   it('parses colony abandonment eligibility and the confirmed capital snapshot', async () => {
     const colony = f.planetIds[2]!;

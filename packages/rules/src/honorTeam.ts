@@ -1,5 +1,5 @@
 import {
-  honorChallenge, honorCombatBase, honorInteger, honorNumber, honorPairCredit, honorSplit,
+  honorChallenge, honorCombatBase, honorHarmFifths, honorInteger, honorNumber, honorPairCredit, honorSplit,
   type HonorShare, type HonorWeight,
 } from './honor.js';
 
@@ -30,6 +30,8 @@ export interface HonorRelation {
 }
 
 export interface HonorTeamInput {
+  /** Frozen dispatch term; legacy evidence omits it and retains 20%. */
+  retaliationLootPercent?: 20 | 40;
   /** Frozen v3 policy: shared sides retain attacking debits but have no positive gain. */
   soloPositiveOnly?: boolean;
   /** Candidate policy: genuine reactive defence need not have owned a navy at launch. */
@@ -141,7 +143,7 @@ export function honorTeam(input: HonorTeamInput): HonorTeamPool {
     }
     let numerator = 0n;
     for (const d of enemy) {
-      const harm = defending ? 0 : honorNumber(5n * BigInt(d.loss) + BigInt(d.lootLost));
+      const harm = defending ? 0 : honorNumber(honorHarmFifths(d.loss, d.lootLost, input.retaliationLootPercent));
       const harmShares = honorSplit(harm, weights);
       for (const a of own) {
         const relation = relations.get(honorPairKey(a.id, d.id));

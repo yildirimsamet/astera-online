@@ -51,7 +51,7 @@ describe('read-only Honor target guidance', () => {
       expect((await app.inject({ url })).statusCode).toBe(401);
       const result = await app.inject({ url, headers: { authorization } });
       expect(result.statusCode).toBe(200);
-      expect(honorTargetSchema.parse(result.json())).toMatchObject({ enabled: true, eligible: true, kind: 'PEER', militaryReturn: 'FULL' });
+      expect(honorTargetSchema.parse(result.json())).toMatchObject({ enabled: true, eligible: true, kind: 'PEER', militaryReturn: 'FULL', retaliationLootPercent: 40 });
     } finally { await close(); }
   });
   it('refuses to invent lost reference history from current inventory', async () => {

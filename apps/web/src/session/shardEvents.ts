@@ -137,7 +137,7 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
       return [keys.galaxyEvents, keys.notifications, keys.chronicle, keys.miningField];
     /** The deadline landed: freeze controls, standings and the permanent recap. */
     case 'season':
-      return [keys.season, keys.planet, keys.pending, keys.leaderboard];
+      return [keys.season, keys.planet, keys.pending, keys.leaderboard, ['honor-target']];
     /** Public clan identity or score moved; private state has its own player event. */
     case 'clan':
       return [keys.galaxy, keys.leaderboard, ['clan', 'directory'], keys.clanLeaderboard];

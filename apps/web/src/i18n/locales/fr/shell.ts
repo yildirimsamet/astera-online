@@ -279,7 +279,7 @@ export const leaderboard = {
     HALF: "Rendement militaire réduit : la force militaire de ce commandant est inférieure à la tienne.",
     NONE: "Cet écart de force ne donne aucun rendement militaire positif. Tes pertes en attaque peuvent encore réduire Honor.",
     repeated: "Les combats contre le même commandant partagent un rendement positif décroissant.",
-    retaliation: "Une attaque récente permet des représailles limitées. Les dégâts au-delà de cette limite peuvent coûter Honor.",
+    retaliation: "Les représailles durent 24 heures. Dégâts = pertes définitives + {{percent}} % du butin. Le crédit est consommé ; les dégâts supplémentaires entraînent une pénalité pour cible faible. Vos pertes en attaque réduisent toujours Honor.",
     estimate: "Comparaison actuelle, figée au départ. Aucun score fixe : dégâts, efficacité et participation collective déterminent le résultat.",
   },
   honorRank: "Rang Honor",

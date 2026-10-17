@@ -335,7 +335,7 @@ export const leaderboard = {
     HALF: "Rendimiento militar reducido: la fuerza militar de este comandante es inferior a la tuya.",
     NONE: "Esta diferencia de fuerza no otorga rendimiento militar positivo. Tus pérdidas al atacar aún pueden reducir Honor.",
     repeated: "Los combates contra el mismo comandante comparten un rendimiento positivo decreciente.",
-    retaliation: "Un ataque reciente permite represalias limitadas. El daño que supere ese límite puede costar Honor.",
+    retaliation: "Las represalias duran 24 horas. Daño = pérdidas permanentes + {{percent}} % del botín. El margen se consume; el daño adicional conlleva una penalización por objetivo débil. Las pérdidas propias al atacar siguen reduciendo Honor.",
     estimate: "Comparación actual, fijada al enviar. No hay puntos fijos: daño, eficiencia y participación conjunta determinan el resultado.",
   },
   honorRank: "Puesto de Honor",

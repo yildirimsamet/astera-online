@@ -179,6 +179,26 @@ After activation, API rollback must also understand stored v2 snapshots. Retain 
 Turning the flag off affects future hours only; it does not make an older parser compatible with already stored v2 rows.
 No production deployment is claimed by this repository change. Evidence/checks: [PvE task record](pve-rebalance-2026-10-12.md).
 
+### 17 October Honor loot: new dispatches use 40%
+
+Migration `0183_honor_loot_weight` is additive and leaves existing season rates at
+20%. New preparations use 40%. Before activation, new writers omit the optional
+20% snapshot field, so old workers can read their contracts during a compatible
+roll. Roll every API and the worker and publish the client before enabling 40%.
+
+```bash
+pnpm season honor-loot --season UUID
+pnpm season honor-loot --season UUID --yes
+```
+
+The season UPDATE lock orders dispatch SHARE locks, even at identical timestamps.
+The command works for live MAIN SHADOW and ACTIVE configurations, preserves their
+mode, scores, history, flights and already earned retaliation, and is idempotent.
+Each new commitment freezes 40%; legacy/old flights keep 20% when they arrive.
+Replay reads each event's frozen percentage. Do not downgrade to a parser that
+rejects the optional field after 40% contracts exist; use a compatible forward fix.
+The pending Unknown Signal worktree/migration is excluded from this release.
+
 ## 1. Production contract and non-negotiable gates
 
 | Component | Contract |

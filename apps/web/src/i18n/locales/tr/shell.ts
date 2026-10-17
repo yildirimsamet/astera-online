@@ -273,7 +273,7 @@ export const leaderboard = {
     HALF: "Azaltılmış askerî karşılık: rakibin askerî gücü seninkinin altında.",
     NONE: "Bu güç farkında pozitif askerî karşılık yok. Saldırıda kendi kayıpların yine Honor’u azaltabilir.",
     repeated: "Aynı komutanla savaşlar ortak, giderek azalan pozitif karşılık verir.",
-    retaliation: "Yakın zamanda yapılan saldırı sınırlı karşılık hakkı verir. Bu sınırı aşan zarar Honor kaybettirebilir.",
+    retaliation: "Karşılık hakkı 24 saat geçerlidir. Zarar değeri: kalıcı kayıplar + yağmanın %{{percent}} oranındaki kısmı. Bu hak tüketilir; aşan zarar zayıf hedef cezası getirir. Saldırıdaki kendi kayıpların yine Honor azaltır.",
     estimate: "Güncel karşılaştırma gönderimde sabitlenir. Kesin puan yok: hasar, verimlilik ve ortak katılım sonucu belirler.",
   },
   honorRank: "Honor sırası",

@@ -119,6 +119,22 @@ describe('Honor common-side settlement', () => {
     expect(r.attack.exposures.reduce((n, e) => n + e.retaliationSpentFifths, 0)).toBe(5000);
   });
 
+  it.each([20, 40] as const)('matches solo loot weighting and conserves %s%% harm across shared attackers', retaliationLootPercent => {
+    const facts = battle({ attack: [member('A', { tier: 4 })],
+      defence: [member('D', { navy: 50_000, loss: 1000, combatLoss: 1000, lootLost: 3 })] });
+    const r = honorTeam({ ...facts, retaliationLootPercent });
+    expect(r.attack.exposures[0]?.harmFifths).toBe(5000 + 3 * retaliationLootPercent / 20);
+    expect(r.attack.raw).toBe(honorSide({ k: 1000, enemyLoss: 1000, l: 0, loot: 3,
+      ownTier: 4, enemyTier: 3, ownNavy: 100_000, enemyNavy: 50_000,
+      defending: false, related: false, eligible: true, weakRepeat: 0, retaliationFifths: 0,
+      retaliationLootPercent }).raw);
+    const shared = honorTeam({ ...facts, retaliationLootPercent,
+      attack: [member('A', { tier: 4 }), member('B', { tier: 4 })] });
+    expect(shared.attack.exposures.reduce((sum, row) => sum + row.harmFifths, 0))
+      .toBe(r.attack.exposures[0]?.harmFifths);
+    expect(shared.attack.raw).toBe(r.attack.raw);
+  });
+
   it('exhausted pair credit reduces the common pool; participants still share the result together', () => {
     const r = honorTeam(battle({ attack: [member('A'), member('B')] }));
     const fresh = honorTeamCredit(r, []), exhausted = honorTeamCredit(r, [{ a: 'A', b: 'D', raw: 1_000_000_000 }]);

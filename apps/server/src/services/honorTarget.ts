@@ -43,6 +43,7 @@ export async function honorTargetPreview(db: Db, playerId: string, targetPlanetI
     if (!relationships.eligible) return { enabled: true as const, eligible: false as const };
     const state = honorStateSchema.parse(config.state), since = now.getTime() - HONOR_HISTORY_HOURS * 3_600_000;
     return { enabled: true as const, eligible: true as const, kind: comparison.kind,
+      retaliationLootPercent: config.retaliationLootPercent,
       soloCredit: isSupportedHonorVersion(config.version) && honorSoloCredit(config.version),
       militaryReturn: comparison.gainFactor === 0 ? 'NONE' as const : comparison.gainFactor === 500_000 ? 'HALF' as const : 'FULL' as const,
       related: relationships.relations.some(row => row.related),

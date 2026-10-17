@@ -59,7 +59,7 @@ export const honorTargetSchema = z.union([
   z.object({ enabled: z.literal(true), eligible: z.literal(false) }),
   z.object({ enabled: z.literal(true), eligible: z.literal(true), kind: z.enum(['PEER', 'UPPER', 'WEAK']),
     militaryReturn: z.enum(['NONE', 'HALF', 'FULL']), related: z.boolean(), repeated: z.boolean(), retaliation: z.boolean(),
-    soloCredit: z.boolean().optional() }),
+    soloCredit: z.boolean().optional(), retaliationLootPercent: z.union([z.literal(20), z.literal(40)]).optional() }),
 ]);
 export type HonorTarget = z.infer<typeof honorTargetSchema>;
 export const countryCode = z.enum(COUNTRY_CODES);

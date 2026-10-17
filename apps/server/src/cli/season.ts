@@ -26,6 +26,7 @@ import { activateRadiationBombs } from '../services/radiationBombAdoption.js';
 import { activateTempoSlowdown } from '../services/tempoAdoption.js';
 import { activateHonorShadow, openHonorRanking } from '../services/honorActivation.js';
 import { enableHonorBenefits } from '../services/honorBenefits.js';
+import { enableHonorLootWeight } from '../services/honorLootWeight.js';
 import {
   restampFutureOccurrences,
   syncMissingFixedOccurrences,
@@ -143,6 +144,11 @@ season honor-benefits --season UUID [--yes]
                                    Honor season. Dry run unless --yes. Existing paid
                                    repairs and launched flights keep their terms.
 
+season honor-loot --season UUID [--yes]
+                                   use 40% loot in new Honor dispatch contracts.
+                                   Dry run unless --yes. Preserves old flights,
+                                   scored history and earned retaliation budgets.
+
   --shard CODE      shard code, for 'create'   (default: EU-1)
   --seed N          galaxy seed / seed base    (default: random)
   --days N          season length              (default: ${String(SEASON.days)})
@@ -239,6 +245,17 @@ async function main(): Promise<void> {
 
   try {
     switch (command) {
+      case 'honor-loot': {
+        if (!values.season || positionals.length !== 1
+          || Object.keys(values).some(key => key !== 'season' && key !== 'yes')) {
+          throw new Error('Usage: season honor-loot --season UUID [--yes]');
+        }
+        const result = await enableHonorLootWeight(db, { seasonId: values.season, clock: systemClock, apply: values.yes === true });
+        console.log(JSON.stringify(result));
+        console.log(result.applied ? 'New Honor dispatches use 40% loot. Existing flights, scores and budgets keep their terms.'
+          : result.status === 'ALREADY_ACTIVE' ? 'Already active. Nothing was written.' : 'Nothing was written; pass --yes to apply.');
+        break;
+      }
       case 'honor-benefits': {
         if (!values.season || positionals.length !== 1
           || Object.keys(values).some(key => key !== 'season' && key !== 'yes')) {
