@@ -221,6 +221,7 @@ services:
       SILENT_SPACE_ENABLED: ${SILENT_SPACE_ENABLED:-false}
       SILENT_SPACE_BATCH: ${SILENT_SPACE_BATCH:-5}
       SILENT_SPACE_MAX_SHARDS: ${SILENT_SPACE_MAX_SHARDS:-16}
+      SILENT_SPACE_EXEMPT_ACCOUNT_IDS: ${SILENT_SPACE_EXEMPT_ACCOUNT_IDS:-}
       # The worker registers no public routes, so it needs no shared limiter.
       RATE_LIMIT_REDIS_URL: ''
     ports:

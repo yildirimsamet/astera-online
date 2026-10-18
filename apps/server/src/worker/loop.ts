@@ -31,6 +31,7 @@ export interface WorkerOptions {
   silentSpaceEnabled?: boolean;
   silentSpaceBatch?: number;
   silentSpaceMaxShards?: number;
+  silentSpaceExemptAccountIds?: readonly string[];
   /** Configured operator accounts are spectators to Dominion competition. */
   adminUsernames?: ReadonlySet<string>;
 }
@@ -344,6 +345,7 @@ export class EventWorker {
         onError: (err) => { this.log.error({ err }, 'Silent Space commander deferred after an error'); },
         batchSize: this.opts.silentSpaceBatch ?? 5, maxWaitingShards: this.opts.silentSpaceMaxShards ?? 16,
         adminUsernames: this.opts.adminUsernames ? [...this.opts.adminUsernames] : undefined,
+        exemptAccountIds: this.opts.silentSpaceExemptAccountIds,
       }).then(result => {
         if (result.ran) this.log.info(result, 'Silent Space five-minute maintenance');
       }).catch((err: unknown) => {

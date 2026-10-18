@@ -206,6 +206,10 @@ const schema = z.object({
   SILENT_SPACE_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   SILENT_SPACE_BATCH: z.coerce.number().int().min(1).max(20).default(5),
   SILENT_SPACE_MAX_SHARDS: z.coerce.number().int().min(1).max(32).default(16),
+  /** Exact review account identities; no privileges beyond automatic departure exemption. */
+  SILENT_SPACE_EXEMPT_ACCOUNT_IDS: z.string().default('')
+    .transform(value => value.split(',').map(id => id.trim()).filter(Boolean))
+    .pipe(z.array(z.string().uuid()).max(20)).transform(ids => [...new Set(ids)]),
   WORKER_POLL_MS: z.coerce.number().default(1000),
   WORKER_BATCH: z.coerce.number().default(100),
   /** A claim older than this is assumed dead and returned to the queue. */

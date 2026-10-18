@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, lte, notInArray, sql } from 'drizzle-orm';
 import { SILENT_SPACE, silentSpaceDue } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import type { Clock } from '../clock.js';
@@ -10,7 +10,7 @@ export const SILENT_SPACE_INTERVAL_MS = 5 * 60_000;
 export interface SilentSpaceResult { ran: boolean; movedOut: number; returned: number; checked: number; deferred: Record<string, number>; failed: number }
 
 /** One bounded maintenance pass per five minutes across replicas, independently of fleet ticks. */
-export async function runSilentSpaceSweep(db: Db, clock: Clock, options: { batchSize?: number; maxWaitingShards?: number; adminUsernames?: readonly string[]; onError?: (error: unknown) => void } = {}): Promise<SilentSpaceResult> {
+export async function runSilentSpaceSweep(db: Db, clock: Clock, options: { batchSize?: number; maxWaitingShards?: number; adminUsernames?: readonly string[]; exemptAccountIds?: readonly string[]; onError?: (error: unknown) => void } = {}): Promise<SilentSpaceResult> {
   const result: SilentSpaceResult = { ran: false, movedOut: 0, returned: 0, checked: 0, deferred: {}, failed: 0 };
   const batchSize = options.batchSize ?? 5;
   if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 20) throw new RangeError('Invalid Silent Space batch size');
@@ -60,6 +60,7 @@ export async function runSilentSpaceSweep(db: Db, clock: Clock, options: { batch
     const candidates = await db.select({ player: players, season: seasons }).from(players)
       .innerJoin(seasons, eq(players.seasonId, seasons.id)).innerJoin(shards, eq(shards.id, seasons.shardId))
       .where(and(eq(shards.role, 'MAIN'), eq(seasons.status, 'live'), gt(seasons.endsAt, now),
+        options.exemptAccountIds?.length ? notInArray(players.accountId, [...options.exemptAccountIds]) : undefined,
         sql`greatest(${players.lastProgressAt}, ${players.joinedAt}, ${players.mainEnteredAt}, ${players.silentSpaceResetAt}) <= ${cutoff.toISOString()}::timestamptz`,
         sql`(${players.vacationUntil} is null or ${players.vacationUntil} <= ${now.toISOString()}::timestamptz)`,
         state.cursorPlayerId ? gt(players.id, state.cursorPlayerId) : undefined))
