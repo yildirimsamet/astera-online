@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Astera Local</string>
-    <string name="title_activity_main">Astera Local</string>
+    <string name="app_name">Astera Online</string>
+    <string name="title_activity_main">Astera Online</string>
     <string name="package_name">space.asteraonline.app.debug</string>
     <string name="custom_url_scheme">space.asteraonline.app.debug</string>
 </resources>

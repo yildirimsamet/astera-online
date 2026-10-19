@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -17,5 +17,34 @@ describe('the local Android host', () => {
     expect(host).toContain('WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE');
     expect(host).not.toContain('setOnApplyWindowInsetsListener');
     expect(host).not.toContain('setDecorFitsSystemWindows');
+  });
+
+  it('stays upright on phones: the 350px layout has no landscape form', () => {
+    const manifest = new DOMParser().parseFromString(readAndroid('app/src/main/AndroidManifest.xml'), 'text/xml');
+    expect(manifest.querySelector('activity')?.getAttribute('android:screenOrientation')).toBe('portrait');
+  });
+
+  it('shares only the camera capture folder through its file provider', () => {
+    const paths = new DOMParser().parseFromString(readAndroid('app/src/main/res/xml/file_paths.xml'), 'text/xml');
+    expect([...paths.documentElement.children].map(node => `${node.tagName}:${node.getAttribute('path') ?? ''}`))
+      .toEqual(['external-files-path:Pictures/']);
+  });
+
+  it('keeps the whole emblem inside launcher and splash masks', () => {
+    for (const icon of ['ic_launcher', 'ic_launcher_round']) {
+      expect(readAndroid(`app/src/main/res/mipmap-anydpi-v26/${icon}.xml`)).toContain('android:drawable="@drawable/astera_icon_adaptive"');
+    }
+    expect(readAndroid('app/src/main/res/drawable/astera_icon_adaptive.xml')).toMatch(/<inset[^>]+android:drawable="@drawable\/astera_icon"[^>]+android:inset="9%"/);
+    expect(readAndroid('app/src/main/res/values/styles.xml')).toContain('<item name="windowSplashScreenAnimatedIcon">@drawable/astera_icon_adaptive</item>');
+  });
+
+  it('ships the store name and none of the Capacitor template art', () => {
+    expect(readAndroid('app/src/main/res/values/strings.xml')).toContain('<string name="app_name">Astera Online</string>');
+    for (const density of ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']) {
+      for (const orientation of ['port', 'land']) expect(existsSync(resolve('android', `app/src/main/res/drawable-${orientation}-${density}/splash.png`))).toBe(false);
+      expect(existsSync(resolve('android', `app/src/main/res/mipmap-${density}/ic_launcher_foreground.png`))).toBe(false);
+    }
+    expect(existsSync(resolve('android', 'app/src/main/res/drawable/splash.png'))).toBe(false);
+    expect(existsSync(resolve('android', 'app/src/main/res/drawable-v24/ic_launcher_foreground.xml'))).toBe(false);
   });
 });
