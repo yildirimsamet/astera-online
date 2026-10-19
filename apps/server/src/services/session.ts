@@ -1,3 +1,4 @@
+import { rewardFlightFleet } from './fleetTowing.js';
 import { and, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
@@ -30,6 +31,7 @@ import {
   clanWarMissions,
   clanWarOperations,
   intergalacticConvoyRuns,
+  unknownSignals,
   missions,
   monuments,
   radiationBombFlights,
@@ -282,6 +284,8 @@ export interface PendingThread {
    * read.
    */
   fleet?: Fleet;
+  /** Prize hulls already included in fleet; return legs only. */
+  towing?: Fleet;
   /**
    * How big the inbound force looks. RADAR L4. D123.
    *
@@ -618,10 +622,10 @@ export async function pendingThreads(
     .from(planets)
     .where(eq(planets.id, planetId));
   const playerId = observer?.playerId;
-  const ownedIds = playerId
-    ? (await db.select({ id: planets.id }).from(planets)
-        .where(eq(planets.controllerPlayerId, playerId))).map((world) => world.id)
-    : [planetId];
+  const ownedWorlds = playerId
+    ? await db.select({id: planets.id, kind: planets.kind, x: planets.x, y: planets.y, z: planets.z})
+      .from(planets).where(eq(planets.controllerPlayerId, playerId)) : [];
+  const ownedIds = playerId ? ownedWorlds.map(world => world.id) : [planetId];
 
   const [inFlight, levels] = await Promise.all([
     db
@@ -986,7 +990,8 @@ export async function pendingThreads(
         leg: returning ? 'return' : 'outbound',
         // Turnable once, until its engagement begins — the server's word, as for a fleet (owner, 2026-10-08).
         ...(!returning && raid.recalledAt === null && now.getTime() < raid.arriveAt.getTime() ? { recallable: true } : {}),
-        fleet: projection?.fleet ?? aboard.get(`pirate:${raid.id}`) ?? raid.fleet,
+        ...rewardFlightFleet(projection?.fleet ?? aboard.get(`pirate:${raid.id}`) ?? raid.fleet,
+          returning && raid.capturedHull ? { [raid.capturedHull]: 1 } : undefined, model.model === 'HP'),
         ...(projection?.fadeAt ? { fadeAt: projection.fadeAt } : {}),
         path: {
           from: returning ? meet : home,
@@ -1152,7 +1157,8 @@ export async function pendingThreads(
       engagementEndsAt: run.engagementEndsAt,
       homeAt: run.homeAt,
       leg: returning ? 'return' : 'outbound',
-      fleet: projection?.fleet ?? run.fleet,
+      ...rewardFlightFleet(projection?.fleet ?? run.fleet,
+        run.status === 'returning' ? run.awardedFleet : undefined, model.model === 'HP'),
       ...(projection?.fadeAt ? { fadeAt: projection.fadeAt } : {}),
       path: {
         from: returning ? engagementEnd : home,
@@ -1202,21 +1208,38 @@ export async function pendingThreads(
     });
     }
   }
-  const { unknownSignalsForPlayer } = await import('./unknownSignal.js');
-  const signals = playerId ? await unknownSignalsForPlayer(db, playerId, { now: () => now }) : { signals: [] };
-  for (const signal of signals.signals) {
-    if (!signal.origin || !signal.departAt || !signal.arriveAt || !['outbound', 'returning', 'recalled'].includes(signal.status)) continue;
+  const signals = playerId ? await db.select().from(unknownSignals).where(and(
+    eq(unknownSignals.playerId, playerId), inArray(unknownSignals.status, ['outbound', 'returning', 'recalled']),
+  )) : [];
+  const signalFleets = await physicalFleets(db, signals.map(signal => `unknown-signal:${signal.id}`));
+  for (const signal of signals) {
+    if (!signal.origin || !signal.departAt || !signal.arriveAt) continue;
     const returning = signal.status !== 'outbound';
     const arriveAt = returning ? signal.returnAt : signal.arriveAt;
     if (!arriveAt) continue;
+    const home = returning ? ownedWorlds.find(world => world.id === signal.originPlanetId)
+      ?? ownedWorlds.find(world => world.kind === 'CAPITAL') : undefined;
+    const origin = home ? {x: home.x, y: home.y, z: home.z} : signal.origin;
+    const site = {x: signal.x, y: signal.y, z: signal.z};
+    const from = returning ? site : origin;
+    const to = returning ? origin : site;
+    const departAt = returning ? signal.returnDepartAt ?? signal.arriveAt : signal.departAt;
+    const model = await liveRadiationFor(db, signal.seasonId, radiation);
+    const projection = model.model === 'HP' ? projectHpFlight([{
+      fleet: signalFleets.get(`unknown-signal:${signal.id}`) ?? {}, damage: signal.damage,
+      tech: signal.tech ?? {}, paidAt: signal.radiationSettledAt,
+    }], [flightSegment(from, to, departAt, arriveAt)], now, model) : null;
+    if (projection && fleetCount(projection.fleet) === 0) continue;
     pending.push({ id: signal.id, kind: 'unknown_signal', targetName: 'UNKNOWN_SIGNAL',
       ...(signal.originPlanetId ? { originPlanetId: signal.originPlanetId } : {}),
       leg: returning ? 'return' : 'outbound', arriveAt,
       ...(!returning && now < signal.arriveAt ? { recallable: true as const } : {}),
       minutesRemaining: Math.max(0, (arriveAt.getTime() - now.getTime()) / 60_000),
-      fleet: signal.fleet ?? {}, ...(signal.damage ? { damage: signal.damage } : {}),
-      path: { from: returning ? signal.at : signal.origin, to: returning ? signal.origin : signal.at,
-        departAt: returning ? signal.returnDepartAt ?? signal.arriveAt : signal.departAt, arriveAt },
+      ...rewardFlightFleet(projection?.fleet ?? signal.fleet ?? {}, signal.status === 'returning' && signal.outcome?.kind === 'DERELICT'
+        ? { [signal.outcome.hull]: 1 } : undefined, true),
+      ...(signal.damage ? { damage: signal.damage } : {}),
+      ...(projection?.fadeAt ? {fadeAt: projection.fadeAt} : {}),
+      path: { from, to, departAt, arriveAt },
     });
   }
   return pending;

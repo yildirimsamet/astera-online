@@ -18,6 +18,7 @@ import { WebLandingGate } from './landing/public/WebLandingGate.js';
 import { runtime } from './platform/runtime.js';
 import { useUpdateRequired } from './platform/updateGate.js';
 import { UpdateRequired } from './shell/UpdateRequired.js';
+import { commanderKnownHere } from './lib/returning.js';
 import type { StripFocus } from './shell/PendingStrip.js';
 import {
   nextPanelFocus,
@@ -146,7 +147,7 @@ function SessionApp() {
    * refuses.
    */
   const publicWeb = (import.meta.env.VITE_ASTERA_PLATFORM ?? 'web') === 'web' && runtime() === 'web';
-  if (session.phase === 'starting' && publicWeb) return <WebLandingGate restoring onAuthenticate={authenticate} onBegin={rehearse} />;
+  if (session.phase === 'starting' && publicWeb && !commanderKnownHere()) return <WebLandingGate restoring onAuthenticate={authenticate} onBegin={rehearse} />;
   if (session.phase === 'starting') {
     return <LoadingScreen caption={t('loading.contact')} />;
   }

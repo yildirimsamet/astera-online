@@ -1,3 +1,4 @@
+import { rewardFlightFleet } from './fleetTowing.js';
 import { loadCosmeticTraffic, decorateCosmeticContacts } from './cosmeticTraffic.js';
 import { and, eq, gte, inArray, ne, or, sql } from 'drizzle-orm';
 import {
@@ -35,6 +36,7 @@ import {
   clanWarMissions,
   clanWarOperations,
   intergalacticConvoyRuns,
+  unknownSignals,
   miningRuns,
   missions,
   pirateRaids,
@@ -91,10 +93,11 @@ import { flightSegment } from './specialFlightRadiation.js';
  *   · THREE ZONES. Outside reach there is no payload row. Radar publishes a moving
  *     question mark and earns size/kind on its upper rungs. Telescope identifies
  *     the craft and, for a fleet, its exact hulls and counts.
- *   · CARGO IS NEVER PUBLIC. What a Prospector is bringing home, and what a raider
- *     took, belong to the owner alone. A contact carries no ore, no loot and no
- *     resource figure of any kind — those live on `/api/mining` and the battle
- *     report, both of which answer only to the player they belong to.
+ *   · RESOURCE CARGO IS NEVER PUBLIC. Ore and resource loot belong to the owner
+ *     alone. A contact carries no resource figures — those live on `/api/mining`
+ *     and the owner's battle report. Physical prize hulls are the deliberate
+ *     exception: exact identification sees them in the manifest and its towing
+ *     subset, because observers can see the ships being pulled home.
  *   · NO OWNER AND NO WORLD. There is no planet id, no player id and no name in
  *     here. You can see what is flying; you cannot see whose it is.
  *
@@ -222,6 +225,8 @@ export interface Contact {
   endAt: Date;
   /** Exact hull composition, present only for a fleet inside Telescope sight. */
   fleet?: Fleet;
+  /** Prize hulls already counted in fleet; identified return flights only. */
+  towing?: Fleet;
   /** Combined strikes only, after exact Telescope identification. */
   clanFleet?: { clanId: string; tag: string; label: string };
   /**
@@ -508,6 +513,7 @@ function windowOf(
  * column — a sentinel string is a 500 from the driver, which is how this was found.
  */
 export interface TrafficSnapshot {
+  signalRows?: readonly (typeof unknownSignals.$inferSelect)[];
   bombRows?: readonly (typeof radiationBombFlights.$inferSelect)[];
   cosmeticAppearances?: ReadonlyMap<string, NonNullable<Contact['appearance']>>;
   radiation?: FlightRadiation;
@@ -573,7 +579,7 @@ export async function loadTrafficSnapshot(
   now: Date = new Date(),
 ): Promise<TrafficSnapshot> {
   const impactCutoff = new Date(now.getTime() - DEATH_STAR.impactSeconds * 1000);
-  const [missionRows, miningRows, pirateRaidRows, tradeRunRows, convoyRunRows, interceptionRows, impactRows, monumentTraffic, bombRows] =
+  const [missionRows, miningRows, pirateRaidRows, tradeRunRows, convoyRunRows, interceptionRows, impactRows, monumentTraffic, bombRows, signalRows] =
     await Promise.all([
     db
       .select({ mission: missions })
@@ -631,7 +637,23 @@ export async function loadTrafficSnapshot(
       or(eq(radiationBombFlights.status, 'OUTBOUND'),
         and(eq(radiationBombFlights.status, 'INTERCEPTED'),
           sql`(${radiationBombFlights.interception}->>'impactAt')::timestamptz >= ${impactCutoff.toISOString()}::timestamptz`)))),
+    db.select().from(unknownSignals).where(and(eq(unknownSignals.seasonId, seasonId),
+      inArray(unknownSignals.status, ['outbound', 'returning', 'recalled']))),
   ]);
+
+  const returningSignalOwners = [...new Set(signalRows.filter(signal => signal.status !== 'outbound').map(signal => signal.playerId))];
+  const signalHomes = returningSignalOwners.length ? await db.select({id: planets.id, owner: planets.controllerPlayerId,
+    kind: planets.kind, x: planets.x, y: planets.y, z: planets.z}).from(planets)
+    .where(inArray(planets.controllerPlayerId, returningSignalOwners)) : [];
+  for (const signal of signalRows) {
+    if (signal.status === 'outbound') continue;
+    const home = signalHomes.find(world => world.owner === signal.playerId && world.id === signal.originPlanetId)
+      ?? signalHomes.find(world => world.owner === signal.playerId && world.kind === 'CAPITAL');
+    if (home) {
+      signal.origin = {x: home.x, y: home.y, z: home.z};
+      signal.originPlanetId = home.id;
+    }
+  }
 
   const jointMissionIds = missionRows
     .filter(({ mission }) => mission.kind === 'clan_war')
@@ -655,10 +677,12 @@ export async function loadTrafficSnapshot(
       ...pirateRaidRows.map(({ raid }) => `pirate:${raid.id}`),
       ...tradeRunRows.map(({ run }) => `trade:${run.id}`),
       ...convoyRunRows.map(({ run }) => `intergalactic-convoy:${run.id}`),
+      ...signalRows.map(signal => `unknown-signal:${signal.id}`),
     ]),
   ]) : [undefined, undefined];
 
   const ids = new Set<string>();
+  for (const signal of signalRows) if (signal.originPlanetId) ids.add(signal.originPlanetId);
   for (const { mission } of missionRows) {
     ids.add(mission.originPlanetId);
     ids.add(mission.targetPlanetId);
@@ -689,7 +713,7 @@ export async function loadTrafficSnapshot(
   if (ids.size === 0) {
     return {
       radiation, missionCohorts: cohorts, physicalFleets: physical,
-      monumentTraffic, bombRows,
+      monumentTraffic, bombRows, signalRows,
       missionRows,
       clanFleetByMission,
       miningRows,
@@ -732,7 +756,7 @@ export async function loadTrafficSnapshot(
   );
   const snapshot: TrafficSnapshot = {
     radiation, missionCohorts: cohorts, physicalFleets: physical,
-    monumentTraffic, bombRows,
+    monumentTraffic, bombRows, signalRows,
     missionRows,
     clanFleetByMission,
     miningRows,
@@ -1927,7 +1951,8 @@ export function projectGalaxyTraffic(
       kind: 'fleet',
       ...slice,
       mass: massClass(aboard),
-      fleet: aboard,
+      ...rewardFlightFleet(aboard, returning && raid.capturedHull ? { [raid.capturedHull]: 1 } : undefined,
+        snapshot.radiation?.model === 'HP'),
     });
   }
 
@@ -2244,8 +2269,44 @@ export function projectGalaxyTraffic(
       kind: 'fleet',
       ...slice,
       mass: massClass(run.fleet),
-      fleet: run.fleet,
+      ...rewardFlightFleet(run.fleet, run.status === 'returning' ? run.awardedFleet : undefined,
+        snapshot.radiation?.model === 'HP'),
     });
+  }
+
+  // The discovery site and outcome stay private. Only the physical flight follows sensor sight.
+  for (const signal of snapshot.signalRows ?? []) {
+    if (signal.playerId === ownPlayerId || (!ownPlayerId && signal.originPlanetId && ownedPlanets.has(signal.originPlanetId))) continue;
+    if (!signal.origin || !signal.departAt || !signal.arriveAt || !signal.fleet) continue;
+    const returning = signal.status !== 'outbound';
+    const arriveAt = returning ? signal.returnAt : signal.arriveAt;
+    if (!arriveAt) continue;
+    const departAt = returning ? signal.returnDepartAt ?? signal.arriveAt : signal.departAt;
+    const site = { x: signal.x, y: signal.y, z: signal.z };
+    const home = signal.origin;
+    const rawFrom = returning ? site : home;
+    const rawTo = returning ? home : site;
+    const surface = surfaceStandoff(worldRadius(coreLevels.get(signal.originPlanetId ?? '') ?? 1));
+    const leg = visualLeg(rawFrom, rawTo, returning ? 0 : surface, returning ? surface : 0);
+    const slice = windowOf(leg.from, leg.to, departAt, arriveAt, now);
+    if (!slice) continue;
+    const projection = snapshot.radiation?.model === 'HP' ? projectHpFlight([{
+      fleet: snapshot.physicalFleets?.get(`unknown-signal:${signal.id}`) ?? {},
+      damage: signal.damage, tech: signal.tech ?? {}, paidAt: signal.radiationSettledAt,
+    }], [flightSegment(rawFrom, rawTo, departAt, arriveAt)], now, snapshot.radiation) : null;
+    const fleet = projection?.fleet ?? signal.fleet;
+    if (fleetCount(fleet) === 0) continue;
+    const zone = zoneAt(slice.from);
+    if (zone === 'NONE') continue;
+    if (zone === 'CONTACT') {
+      const reveal = radarReveal(slice.from);
+      out.push({id: signal.id, kind: 'unknown', ...slice,
+        ...(reveal.size ? {mass: massClass(fleet)} : {}), ...(reveal.kind ? {silhouette: 'fleet'} : {})});
+      continue;
+    }
+    out.push({id: signal.id, kind: 'fleet', ...slice, mass: massClass(fleet),
+      ...rewardFlightFleet(fleet, signal.status === 'returning' && signal.outcome?.kind === 'DERELICT'
+        ? {[signal.outcome.hull]: 1} : undefined, true)});
   }
 
   return decorateCosmeticContacts(out, snapshot.cosmeticAppearances);

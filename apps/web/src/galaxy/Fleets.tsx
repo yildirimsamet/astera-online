@@ -1,3 +1,5 @@
+import { towingFormation } from './towing.js';
+import { TowedShips } from './TowedShips.js';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
 import { useGalaxyCulling, useVisualFrame } from './visualFrame.js';
 import { createLocalVisibility, localSphereVisible, hullPartRadius } from './formationVisibility.js';
@@ -400,7 +402,7 @@ export function formationLodParts(scene: THREE.Object3D, url: string, full: read
 }
 
 /** Body and outline are submitted once per hull type inside this formation. */
-function FormationHulls({
+export function FormationHulls({
   markers,
   slots,
   scale,
@@ -840,16 +842,17 @@ function Flight({
    * A probe is always exactly one craft and gets no pips — empty slots above
    * a scout would be stating a capacity it does not have.
    */
-  const markers = useMemo(
-    () => (isProbe || isDeathStar || isBomb ? null : markersFor(thread.fleet ?? {})),
-    [isProbe, isDeathStar, isBomb, thread.fleet],
-  );
+  const towing = useMemo(() => towingFormation(thread.fleet ?? {}, thread.leg === 'return' ? thread.towing : undefined, style.scale),
+    [thread.fleet, thread.towing, thread.leg, style.scale]);
+  const markers = isProbe || isDeathStar || isBomb ? null : towing.markers;
 
   /** Sized by the largest drawn hull, so capital craft cannot overlap a Dart grid. */
-  const formation = useMemo(() => formationLayout(markers, style.scale), [markers, style.scale]);
+  const formation = useMemo(() => markers ? towing : formationLayout(null, style.scale), [markers, towing, style.scale]);
   const slots = formation.slots;
   const formationScale = formation.scale;
-  const hitBox = useMemo(() => formationHitBox(slots, formationScale), [slots, formationScale]);
+  const hitBox = useMemo(() => formationHitBox([...slots, ...towing.tows.map(tow => tow.position)],
+    Math.max(formationScale, ...towing.tows.map(tow => hullVisualScale(tow.hull, style.scale)))),
+    [slots, formationScale, towing.tows, style.scale]);
 
   const engaging = useEngagement(
     path ? path.arriveAt.getTime() : null,
@@ -1023,6 +1026,9 @@ function Flight({
                 focused={focused}
                 shipSkins={appearance?.shipSkins}
               />
+              {towing.tugIndex !== null && towing.tows.length > 0 && <TowedShips HullsComponent={FormationHulls} shipSkins={appearance?.shipSkins}
+                tows={towing.tows} tug={markers[towing.tugIndex]!} tugSlot={slots[towing.tugIndex]!}
+                scale={style.scale} aimDistance={formationAim} focused={focused} />}
             </>
           ) : (
             <>
@@ -2554,9 +2560,11 @@ function Foreign({
   }, [contact.kind, contact.inbound, contact.radiationBombLevel]);
   // Polling advances the flight window, while structural sharing retains the fleet.
   // Only formation inputs should rebuild slots, hull buckets and GPU buffers.
+  const towing = useMemo(() => towingFormation(contact.fleet ?? {}, contact.kind === 'fleet' ? contact.towing : undefined, style.scale),
+    [contact.fleet, contact.towing, contact.kind, style.scale]);
   const markers = useMemo(
-    () => contactMarkers(contact),
-    [contact.kind, contact.fleet, contact.craft, contact.mass],
+    () => contact.kind === 'fleet' && contact.fleet ? towing.markers : contactMarkers(contact),
+    [contact.kind, contact.fleet, contact.craft, contact.mass, towing.markers],
   );
   /*
     EXACT-COUNT PIPS BELONG TO ACTUAL SIGHT. D123.
@@ -2637,10 +2645,13 @@ function Foreign({
     () => (fight ? engagementTargetPosition(fight, serverNow()) : null),
     [fight],
   );
-  const formation = useMemo(() => formationLayout(markers, style.scale), [markers, style.scale]);
+  const formation = useMemo(() => contact.kind === 'fleet' && contact.fleet ? towing : formationLayout(markers, style.scale),
+    [contact.kind, contact.fleet, towing, markers, style.scale]);
   const slots = formation.slots;
   const formationScale = formation.scale;
-  const hitBox = useMemo(() => formationHitBox(slots, formationScale), [slots, formationScale]);
+  const hitBox = useMemo(() => formationHitBox([...slots, ...towing.tows.map(tow => tow.position)],
+    Math.max(formationScale, ...towing.tows.map(tow => hullVisualScale(tow.hull, style.scale)))),
+    [slots, formationScale, towing.tows, style.scale]);
 
 
   useFrame((_, delta) => {
@@ -2810,6 +2821,9 @@ function Foreign({
                 focused={focused}
                 shipSkins={contact.kind === 'fleet' ? contact.appearance?.shipSkins : undefined}
               />
+              {contact.kind === 'fleet' && towing.tugIndex !== null && towing.tows.length > 0 && <TowedShips HullsComponent={FormationHulls} shipSkins={contact.appearance?.shipSkins}
+                tows={towing.tows} tug={markers[towing.tugIndex]!} tugSlot={slots[towing.tugIndex]!}
+                scale={style.scale} aimDistance={formationAim} focused={focused} />}
               {contact.kind === 'pirate' && (
                 <PirateMark scale={style.scale} focused={focused} />
               )}

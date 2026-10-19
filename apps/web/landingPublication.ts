@@ -4,6 +4,7 @@ import { LANGUAGES, type Language } from './src/i18n/languages.js';
 import { LANDING_COPY } from './src/landing/public/content.js';
 import { PublicLanding, LANDING_HERO } from './src/landing/public/PublicLanding.js';
 import { PUBLISHER_ORIGIN } from './src/lib/publisherPages.js';
+import { startupBody, startupStyles } from './landingStartup.js';
 
 const escape = (value: string) => value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character);
 
@@ -20,6 +21,17 @@ ${LANGUAGES.map(lang => `<link rel="alternate" hreflang="${lang}" href="${PUBLIS
 <meta property="og:image" content="${PUBLISHER_ORIGIN}/assets/images/general/og-image.png"><meta property="og:image:width" content="1733"><meta property="og:image:height" content="907"><meta property="og:image:alt" content="Astera Online">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escape(copy.title)}"><meta name="twitter:description" content="${escape(copy.description)}"><meta name="twitter:image" content="${PUBLISHER_ORIGIN}/assets/images/general/og-image.png">
 <link rel="stylesheet" href="/landing/style.css">
+<style nonce="__CSP_NONCE__" data-session-boot>html,body{margin:0;background:#04060b}[data-session-restoring] #root > [data-public-landing]{visibility:hidden}${startupStyles()}</style>
+<script nonce="__CSP_NONCE__" data-session-boot>
+(() => {
+  // Refresh cookies are HttpOnly. Existing device hints only choose the opening frame.
+  try {
+    if (localStorage.getItem('astera.commander') !== '1' && !sessionStorage.getItem('astera:ready-session')) return;
+    document.documentElement.setAttribute('data-session-restoring', '');
+    document.documentElement.removeAttribute('data-public-surface');
+  } catch { /* Unavailable storage keeps the public introduction visible. */ }
+})();
+</script>
 <link rel="preload" as="image" href="${LANDING_HERO}" media="(min-width: 641px)"><link rel="preload" as="image" href="/assets/images/landing/orbit-hero-mobile-v1.webp" media="(max-width: 640px)">
 <script type="application/ld+json" nonce="__CSP_NONCE__">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'VideoGame', name: 'Astera Online', url: canonical, description: copy.description, inLanguage: language, genre: ['Strategy', 'Space'], gamePlatform: 'Web browser', playMode: 'MultiPlayer', image: `${PUBLISHER_ORIGIN}/assets/images/general/og-image.png` }).replace(/</g, '\\u003c')}</script>`;
   const content = renderToStaticMarkup(createElement(PublicLanding, { language }));
@@ -33,8 +45,12 @@ ${LANGUAGES.map(lang => `<link rel="alternate" hreflang="${lang}" href="${PUBLIS
     .replace(/<link\b[^>]*rel="preload"[^>]*href="\/assets\/images\/landing\/[^>]*>/g, '')
     .replace(/<script\b[^>]*type="application\/ld\+json"[^>]*>[\s\S]*?<\/script>/g, '')
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/g, '')
+    .replace(/<script\b[^>]*data-session-boot[^>]*>[\s\S]*?<\/script>/g, '')
+    .replace(/<template id="web-startup-template">[\s\S]*?<\/template>/g, '')
+    .replace(/<script\b[^>]*data-startup-recovery[^>]*>[\s\S]*?<\/script>/g, '')
     .replace(/<script\b[^>]*data-viewport-boot[^>]*>[\s\S]*?<\/script>/g, '')
     .replace(/<noscript>[\s\S]*?<\/noscript>/, '')
     .replace(/<div id="root">[\s\S]*?<\/div>\s*(?=<!-- ASTERA_PUBLIC_CONTENT_END -->)/, `<div id="root">${content}</div>\n`)
+    .replace('<!-- ASTERA_PUBLIC_CONTENT_END -->', `<!-- ASTERA_PUBLIC_CONTENT_END -->\n${startupBody(language)}`)
     .replace('</head>', `${metadata}\n</head>`);
 }

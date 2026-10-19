@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--fleet-towing')) {
+  const { verifyFleetTowing } = await import('./fleet-towing-visual.mjs');
+  await verifyFleetTowing(process.argv[2] ?? 'out/fleet-towing');
+  process.exit(0);
+}
+
 if (process.argv.includes('--native-external-media')) {
   const { verifyNativeExternalMedia } = await import('./native-external-media-visual.mjs');
   await verifyNativeExternalMedia(process.argv[2] ?? 'out/native-external-media');
@@ -74,6 +80,12 @@ if (process.argv.includes('--refinery-ceiling')) {
 if (process.argv.includes('--unknown-signal')) {
   const { verifyUnknownSignal } = await import('./unknown-signal-visual.mjs');
   await verifyUnknownSignal(process.argv[2] ?? 'out/unknown-signal');
+  process.exit(0);
+}
+
+if (process.argv.includes('--unknown-signal-guide')) {
+  const { verifyUnknownSignalGuide } = await import('./unknown-signal-guide-visual.mjs');
+  await verifyUnknownSignalGuide(process.argv[2] ?? 'out/unknown-signal-guide');
   process.exit(0);
 }
 

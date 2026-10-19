@@ -2633,6 +2633,8 @@ const pendingThread = z.object({
    * inbound-warning channel that Radar L5 earns when a fleet is coming for you.
    */
   fleet: fleet.optional(),
+  /** Subset of the manifest being towed on a resolved return leg. */
+  towing: fleet.optional(),
   /** How big the inbound force looks. RADAR L4. D123. */
   mass: massClass.optional(),
   /** Which world it left. RADAR L5, the top of the ladder. D123. */
@@ -3560,6 +3562,8 @@ export const trafficSchema = z.object({
       mass: massClass.optional(),
       /** Exact hull tally, only for an identified fleet inside Telescope sight. */
       fleet: fleet.optional(),
+      /** Physical prize hulls, only after exact identification. */
+      towing: fleet.optional(),
       /** Identified combined strike; Radar contacts never carry this identity. */
       clanFleet: z.object({ clanId: z.string(), tag: z.string(), label: z.string() }).optional(),
       /**

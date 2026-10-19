@@ -14,6 +14,7 @@ export async function loadCosmeticTraffic(db: Queryable, seasonId: string, snaps
   for (const { raid } of snapshot.pirateRaidRows) if (raid.ownerPlayerId) ownerByFlight.set(raid.id, raid.ownerPlayerId);
   for (const { run } of snapshot.tradeRunRows) ownerByFlight.set(run.id, run.ownerPlayerId);
   for (const { run } of snapshot.convoyRunRows) ownerByFlight.set(run.id, run.ownerPlayerId);
+  for (const signal of snapshot.signalRows ?? []) ownerByFlight.set(signal.id, signal.playerId);
   for (const flight of snapshot.monumentTraffic?.flights ?? []) ownerByFlight.set(flight.id, flight.ownerPlayerId);
   const ids = [...new Set(ownerByFlight.values())];
   if (!ids.length) return new Map();

@@ -731,6 +731,27 @@ describe('an intergalactic convoy strike launch', () => {
     expect(home?.count).toBe(3 + (returning.awardedFleet.VIPER ?? 0));
   });
 
+  it('shows all three awarded ships as a separate tow on both return projections', async () => {
+    const live = await convoyUp();
+    const fleet = { VIPER: 3 } satisfies Fleet;
+    await armed(fleet);
+    const order = await live.order(fleet);
+    const launch = await f.db.transaction(tx => launchIntergalacticConvoy(tx, {
+      planetId: mine, expectedPlayerId: f.playerIds[0]!, order, clock: f.clock,
+    }));
+    const towing = { VIPER: 2, DART: 1 } satisfies Fleet;
+    await f.db.update(intergalacticConvoyRuns).set({status: 'returning', awardedFleet: towing, resourceReward: {alloy: 0, crystal: 0, deuterium: 0}})
+      .where(eq(intergalacticConvoyRuns.id, launch.runId));
+    const now = new Date((launch.engagementEndsAt.getTime() + launch.homeAt.getTime()) / 2);
+    const own = (await pendingThreads(f.db, mine, now)).find(t => t.id === launch.runId);
+    expect(own).toMatchObject({leg: 'return', fleet: {VIPER: 5, DART: 1}, towing});
+    const eye = [{ ...sensorSphere(launch.engagementEnd, 900, 900, f.planetIds[1]),
+      planetId: f.planetIds[1]!, telescope: true, warn: 0, revealsSize: true, revealsKind: true }];
+    const contacts = projectGalaxyTraffic(await loadTrafficSnapshot(f.db, f.seasonId, now),
+      null, now, f.playerIds[1]!, [f.planetIds[1]!], eye, new Set(), null, new Set());
+    expect(contacts.find(t => t.id === launch.runId)).toMatchObject({fleet: {VIPER: 5, DART: 1}, towing});
+  });
+
   it('keeps the attacking fleet behind sensor fog but publishes an anonymous engagement flash', async () => {
     const live = await convoyUp();
     const fleet = { VIPER: 3 } satisfies Fleet;

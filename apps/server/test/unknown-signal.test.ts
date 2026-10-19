@@ -263,15 +263,18 @@ describe('unknown signal rewards', () => {
     expect(await f.db.select().from(scheduledEvents).where(and(eq(scheduledEvents.refId, signal.id), eq(scheduledEvents.kind, 'unknown_signal_arrival')))).toHaveLength(1);
   });
 
-  it('publishes every signal lifecycle exclusively to its owner personal stream', async () => {
+  it('keeps discovery private and anonymously refreshes sensor traffic at flight changes', async () => {
     const shard = vi.spyOn(bus, 'publishShard');
     const personal = vi.spyOn(bus, 'publish');
     try {
       const signal = await nowSignal('ENERGY');
+      expect(shard).not.toHaveBeenCalled();
       await launch(signal.id);
       await arrive(signal.id);
       await land(signal.id);
-      expect(shard).not.toHaveBeenCalled();
+      expect(shard.mock.calls.map(call => call.slice(1))).toEqual([
+        [f.seasonId, 'launch'], [f.seasonId, 'arrival'], [f.seasonId, 'arrival'],
+      ]);
       expect(personal.mock.calls.every(call => call[1] === playerId)).toBe(true);
     } finally { shard.mockRestore(); personal.mockRestore(); }
   });

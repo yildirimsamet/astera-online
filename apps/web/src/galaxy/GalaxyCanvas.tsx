@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type Compo
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import { GalaxyVisualPhase } from './visualFrame.js';
+import { UnknownSignalGuide, UnknownSignalGuideTracker } from './UnknownSignalGuide.js';
 import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
 import { useGpuContext } from './gpuContext.js';
 import { ViewOffset } from './ViewOffset.js';
@@ -619,8 +620,10 @@ export function GalaxyCanvas({
   const [preparedEpoch, setPreparedEpoch] = useState(-1);
   const prepared = preparedEpoch === gpu.epoch;
   const onCompiled = useCallback(() => { setPreparedEpoch(gpu.epoch); }, [gpu.epoch]);
+  const signalGuide = useRef<HTMLButtonElement>(null);
 
   return (
+    <>
     <Canvas
       frameloop="demand"
       camera={{ position: initialHomeCameraPosition(...home), fov: GALAXY_FOV, near: 0.1, far: Math.max(600, navigationRadius * 5) }}
@@ -796,6 +799,7 @@ export function GalaxyCanvas({
         <FaultMarks nodes={nodes} />
         {unknownSignals.length > 0 && <UnknownSignals signals={unknownSignals} focusedId={focus?.kind === 'unknownSignal' ? focus.id : null}
           onSelect={id => { onFocus({ kind: 'unknownSignal', id }); }} />}
+        <UnknownSignalGuideTracker signals={unknownSignals} element={signalGuide} />
         {unknownSignalRadar && <SensorRings posts={[{ planetId: unknownSignalRadar.capitalPlanetId, at: unknownSignalRadar.at,
           identify: 0, detect: unknownSignalRadar.range, telescope: false }]} showTelescope={false} showRadar />}
         <Monuments monuments={monuments} planets={nodes} hpRadiation={hpRadiation} focusedId={focus?.kind === 'monument' ? focus.id : null}
@@ -990,6 +994,8 @@ export function GalaxyCanvas({
       {/* Drills, probes and fleets cross the disc at thirty (owner, 2026-09-19). */}
       <HoldRate fps={FLIGHT_FPS} active={anythingInFlight({ pending, runs, contacts })} />
     </Canvas>
+    <UnknownSignalGuide signals={unknownSignals} element={signalGuide} onSelect={id => { onFocus({ kind: 'unknownSignal', id }); }} />
+    </>
   );
 }
 

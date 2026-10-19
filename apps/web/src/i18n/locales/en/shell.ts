@@ -577,6 +577,7 @@ export const chat = {
     openYouTube: "Open on YouTube",
     externalNotice: "This opens outside Astera Online. YouTube may show ads and process data under its own policies.",
     openExternalImage: "Open external image",
+
     showPortrait: "Show portrait",
     showLandscape: "Show landscape",
     pasteHint: "You can also paste a screenshot into the message field with Ctrl+V.",

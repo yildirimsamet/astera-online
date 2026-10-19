@@ -11,7 +11,7 @@ import type { Clock } from '../clock.js';
 import { addMinutes, minutesSince } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import { buildings, cosmeticEntitlements, planets, players, satellites, scheduledEvents, seasons, shards, units, unknownSignals, unknownSignalState, vacations } from '../db/schema.js';
-import { publish } from '../stream/bus.js';
+import { publish, publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
@@ -208,6 +208,7 @@ export async function dispatchUnknownSignal(db: Db, playerId: string, id: string
       dedupeKey: `unknown-signal:arrival:${id}` });
     await recomputePlayerWealth(tx, playerId, origin.now);
     await publish(tx, playerId, 'private:unknown-signal');
+    await publishShard(tx, signal.seasonId, 'launch');
     return { signalId: id, arriveAt: arriveAt.toISOString(), fuel };
   });
 }
@@ -269,6 +270,7 @@ export async function resolveUnknownSignalArrival(tx: Tx, id: string, clock: Clo
     await tx.update(unknownSignals).set({ status: 'lost', fleet: {}, damage: settled.damage }).where(eq(unknownSignals.id, id));
     await recomputePlayerWealth(tx, player.id, clock.now());
     await publish(tx, player.id, 'private:unknown-signal');
+    await publishShard(tx, signal.seasonId, 'arrival');
     return;
   }
   const outcome = await reward(tx, signal, player.accountId);
@@ -329,6 +331,7 @@ export async function resolveUnknownSignalArrival(tx: Tx, id: string, clock: Clo
     payload: { signalId: id, outcome, fleet: signal.fleet, returnAt: returnAt?.toISOString() ?? null } });
   await recomputePlayerWealth(tx, player.id, clock.now());
   await publish(tx, player.id, 'private:unknown-signal');
+  await publishShard(tx, signal.seasonId, 'arrival');
 }
 
 export async function resolveUnknownSignalReturn(tx: Tx, id: string, clock: Clock): Promise<void> {
@@ -352,6 +355,7 @@ export async function resolveUnknownSignalReturn(tx: Tx, id: string, clock: Cloc
     payload: { trip: 'unknown_signal', ships: fleetCount(settled.fleet), ...(signal.recalledAt ? { recalled: true } : {}),
       lootAlloy: loot.alloy, lootCrystal: loot.crystal, lootDeuterium: loot.deuterium, ...dockNotice(report) } });
   await publish(tx, signal.playerId, 'private:unknown-signal');
+  await publishShard(tx, signal.seasonId, 'arrival');
 }
 
 export async function recallUnknownSignal(db: Db, playerId: string, id: string, key: string, clock: Clock) {
@@ -378,6 +382,7 @@ export async function recallUnknownSignal(db: Db, playerId: string, id: string, 
       dedupeKey: `unknown-signal:return:${id}` });
     await recomputePlayerWealth(tx, playerId, now);
     await publish(tx, playerId, 'private:unknown-signal');
+    await publishShard(tx, signal.seasonId, 'launch');
     return { signalId: id, returnAt: lost ? null : returnAt.toISOString() };
   });
 }
