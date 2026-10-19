@@ -65,6 +65,14 @@ describe('galaxy chat', () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it('refuses a profane message, names the word and stores nothing', async () => {
+    const res = await post(0, 'iyi oyunlar S1KT1R');
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'MESSAGE_NOT_ALLOWED', params: { word: 's1kt1r' } });
+    expect(await f.db.select().from(chatMessages)).toHaveLength(0);
+    expect((await post(0, 'şikayet ettim, sıkıldım ama buraya koyayım')).statusCode).toBe(200);
+  });
+
   it('trims content, preserves Unicode and accepts exactly 280 characters', async () => {
     expect((await post(0, '   ')).statusCode).toBe(400);
     const unicode = `  İzci 🚀 ${'🌌'.repeat(273)}  `;

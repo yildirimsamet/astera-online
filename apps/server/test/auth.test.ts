@@ -79,6 +79,15 @@ describe('auth', () => {
       expect((await register('Ａｙｓ̧ｅ')).statusCode).toBe(200);
     });
 
+    it.each([
+      ['Siktir', 'siktir'], ['KralOrospu', 'kralorospu'], ['amk_avcisi', 'amk'], ['S1kt1r', 's1kt1r'],
+    ])('refuses the profane commander name %j and creates nothing', async (name, word) => {
+      const res = await register(name);
+      expect(res.statusCode).toBe(400);
+      expect(res.json<ErrorResponse & { params?: { word?: string } }>()).toMatchObject({ error: 'NAME_NOT_ALLOWED', params: { word } });
+      expect(await db.select().from(accounts)).toHaveLength(0);
+    });
+
     it('rejects format controls, blank padding and normalized duplicate names', async () => {
       expect((await register('李 小龙')).statusCode).toBe(200);
       expect((await register('李  小龙')).statusCode).toBe(400);

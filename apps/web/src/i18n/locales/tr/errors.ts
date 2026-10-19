@@ -12,6 +12,9 @@
 
 export const errors = {
   COMMUNITY_POLICY_REQUIRED: "Komutan oluşturmadan veya paylaşım yapmadan önce topluluk kurallarını inceleyip kabul et. Gerekirse uygulamayı yeniden aç.",
+  NAME_NOT_ALLOWED: "Başka bir komutan adı seç. “{{word}}” topluluk kurallarına aykırı.",
+  CLAN_NAME_NOT_ALLOWED: "Başka bir klan adı veya etiketi seç. “{{word}}” topluluk kurallarına aykırı.",
+  MESSAGE_NOT_ALLOWED: "“{{word}}” topluluk kurallarına aykırı. Mesajı düzenleyip yeniden gönder.",
   UNKNOWN_SIGNAL_NOT_FOUND: "Bu sinyal artık yok. Yeni radar temasını bekle.",
   UNKNOWN_SIGNAL_EXPIRED: "Sinyal kayboldu. Yeni radar temasını bekle.",
   UNKNOWN_SIGNAL_TAKEN: "Bu sinyale zaten bir filo gönderildi.",

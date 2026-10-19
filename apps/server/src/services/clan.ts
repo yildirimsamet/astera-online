@@ -22,6 +22,7 @@ import {
   clanNameIsValid,
   clanNameKey,
   clanTagIsValid,
+  findProfanity,
   normaliseClanName,
   normaliseClanTag,
 } from '@astera/rules';
@@ -709,6 +710,8 @@ export async function createClan(
   const description = input.description.trim();
   if (!clanNameIsValid(name)) throw new GameError('BAD_CLAN_NAME', 'Choose a valid clan name', 400);
   if (!clanTagIsValid(tag)) throw new GameError('BAD_CLAN_TAG', 'Use two to five letters or digits', 400);
+  const word = findProfanity(name) ?? findProfanity(tag);
+  if (word) throw new GameError('CLAN_NAME_NOT_ALLOWED', 'Choose another clan name or tag', 400, { word });
   if (Array.from(description).length > CLAN.descriptionMaxChars) {
     throw new GameError('BAD_CLAN_DESCRIPTION', 'Clan description is too long', 400);
   }

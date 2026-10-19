@@ -15,6 +15,9 @@
 
 export const errors = {
   COMMUNITY_POLICY_REQUIRED: "Revisa y acepta las normas antes de crear un comandante o publicar. Vuelve a abrir la aplicación si es necesario.",
+  NAME_NOT_ALLOWED: "Elige otro nombre de comandante. «{{word}}» incumple las normas de la comunidad.",
+  CLAN_NAME_NOT_ALLOWED: "Elige otro nombre o etiqueta de clan. «{{word}}» incumple las normas de la comunidad.",
+  MESSAGE_NOT_ALLOWED: "«{{word}}» incumple las normas de la comunidad. Edita el mensaje y vuelve a enviarlo.",
   UNKNOWN_SIGNAL_NOT_FOUND: "La señal ya no existe. Espera otro contacto del Radar.",
   UNKNOWN_SIGNAL_EXPIRED: "La señal se ha desvanecido. Espera otro contacto del Radar.",
   UNKNOWN_SIGNAL_TAKEN: "Ya se envió una flota a esta señal.",

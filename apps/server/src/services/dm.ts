@@ -12,7 +12,7 @@ import {
 } from '../db/schema.js';
 import { CHANNEL, publish } from '../stream/bus.js';
 import { GameError } from './planet.js';
-import { assertChatAllowed } from './chatModeration.js';
+import { assertChatAllowed, assertCleanMessage } from './chatModeration.js';
 import { messageDecorations, authorRecognition } from './messageDecorations.js';
 
 interface Commander {
@@ -213,6 +213,7 @@ export async function dmPage(db: Db, accountId: string, conversationId: string, 
 }
 
 export async function postDm(db: Db, accountId: string, recipientPlayerId: string, content: string, clock: Clock, replyToMessageId?: string, mediaInput?: ChatMedia, adminUsernames: ReadonlySet<string> = new Set()) {
+  assertCleanMessage(content);
   const requestedAt = clock.now();
   return db.transaction(async (tx) => {
     const me = await commander(tx, accountId);

@@ -10,7 +10,7 @@ import { accounts, clanMemberships, clanMessages, clans, planets, players, seaso
 import { publishPrivate } from '../stream/bus.js';
 import { activeClanMembership, activeClanPlayerIds, lockClanPlayers } from './clanCombat.js';
 import { clanActor } from './clan.js';
-import { assertChatAllowed } from './chatModeration.js';
+import { assertChatAllowed, assertCleanMessage } from './chatModeration.js';
 import { GameError, lockSeason } from './planet.js';
 import { messageDecorations, authorRecognition, type PodiumPlace, type ReactionView, type ReplyPreview } from './messageDecorations.js';
 
@@ -131,6 +131,7 @@ export async function postClanChat(
   if (!clanChatMessageIsValid(content) && !(input.media && content.length === 0)) {
     throw new GameError('BAD_CLAN_MESSAGE', 'Write between one and 280 characters', 400);
   }
+  assertCleanMessage(content);
   const actor = await clanActorForPlayer(tx, input.playerId);
   const [selectedClan] = input.adminClanId ? await tx.select({ seasonId: clans.seasonId }).from(clans)
     .where(and(eq(clans.id, input.adminClanId), isNull(clans.disbandedAt))).limit(1) : [];

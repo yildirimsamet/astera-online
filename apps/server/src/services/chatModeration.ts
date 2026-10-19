@@ -1,5 +1,5 @@
 import { and, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
-import type { ChatLanguage } from '@astera/rules';
+import { findProfanity, type ChatLanguage } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { accounts, adminActions, chatMessages, chatMutes, clanMessages, clans, players, seasons } from '../db/schema.js';
@@ -10,6 +10,12 @@ import { GameError } from './planet.js';
 export type ModeratedChannel = 'general' | 'clan' | 'dm';
 export const MUTE_MINUTES = { '5m': 5, '15m': 15, '1h': 60, '4h': 240, '1d': 1440 } as const;
 export type MuteDuration = keyof typeof MUTE_MINUTES | 'permanent' | 'remove';
+
+/** Every channel refuses the same words; the player sees which one and keeps the draft. */
+export function assertCleanMessage(content: string): void {
+  const word = findProfanity(content);
+  if (word) throw new GameError('MESSAGE_NOT_ALLOWED', 'This message breaks the community rules', 400, { word });
+}
 
 /** Shared by senders and exclusive for mute changes, across API replicas. */
 export async function assertChatAllowed(tx: Tx, accountId: string, channel: ModeratedChannel, clock: Clock): Promise<void> {

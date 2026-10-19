@@ -15,6 +15,9 @@
 
 export const errors = {
   COMMUNITY_POLICY_REQUIRED: "Lies und akzeptiere die Gemeinschaftsregeln, bevor du einen Kommandanten erstellst oder etwas veröffentlichst. Öffne die App bei Bedarf erneut.",
+  NAME_NOT_ALLOWED: "Wähle einen anderen Kommandantennamen. „{{word}}“ verstößt gegen die Gemeinschaftsregeln.",
+  CLAN_NAME_NOT_ALLOWED: "Wähle einen anderen Clannamen oder ein anderes Clan-Tag. „{{word}}“ verstößt gegen die Gemeinschaftsregeln.",
+  MESSAGE_NOT_ALLOWED: "„{{word}}“ verstößt gegen die Gemeinschaftsregeln. Bearbeite die Nachricht und sende sie erneut.",
   UNKNOWN_SIGNAL_NOT_FOUND: "Dieses Signal existiert nicht mehr. Warte auf den nächsten Radarkontakt.",
   UNKNOWN_SIGNAL_EXPIRED: "Das Signal ist verblasst. Warte auf den nächsten Radarkontakt.",
   UNKNOWN_SIGNAL_TAKEN: "Eine Flotte wurde bereits zu diesem Signal geschickt.",

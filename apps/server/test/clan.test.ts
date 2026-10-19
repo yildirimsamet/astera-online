@@ -10,6 +10,7 @@ import {
   clanEvents,
   clanLootShares,
   clanMemberships,
+  clanMessages,
   clanRaidRoster,
   clans,
   missions,
@@ -239,6 +240,30 @@ describe('ruleset-v3 clans', () => {
     const [membership] = await f.db.select().from(clanMemberships)
       .where(eq(clanMemberships.playerId, actor.playerId));
     expect(membership).toMatchObject({ role: 'LEADER', matureAt: membership!.joinedAt });
+  });
+
+  it.each([
+    { name: 'Orospu Filosu', tag: 'OF', word: 'orospu' },
+    { name: 'Orion Guard', tag: 'AMK', word: 'amk' },
+  ])('refuses profanity in a clan name or tag ($name / $tag) before charging', async ({ name, tag, word }) => {
+    const f = await setup(1);
+    const actor = await clanActor(f.db, f.accountIds[0]!);
+    const [before] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+    await expect(f.db.transaction(tx => createClan(tx, {
+      actor, name, tag, description: '', recruiting: true, clock: f.clock,
+    }))).rejects.toMatchObject({ code: 'CLAN_NAME_NOT_ALLOWED', status: 400, params: { word } });
+    expect(await f.db.select().from(clans)).toHaveLength(0);
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+    expect(after!.alloy).toBe(before!.alloy);
+  });
+
+  it('refuses a profane clan chat message and stores nothing', async () => {
+    const f = await setup(1);
+    await foundClan(f);
+    await expect(f.db.transaction((tx) => postClanChat(tx, {
+      playerId: f.playerIds[0]!, content: 'bu savaş a.m.k', clock: f.clock,
+    }))).rejects.toMatchObject({ code: 'MESSAGE_NOT_ALLOWED', status: 400, params: { word: 'amk' } });
+    expect(await f.db.select().from(clanMessages)).toHaveLength(0);
   });
 
   it('gives chat and friendly-fire safety immediately, while aid waits twelve hours', async () => {

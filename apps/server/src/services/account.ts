@@ -5,7 +5,7 @@ import { hashPassword, verifyPassword } from '../auth/password.js';
 import { normaliseUsername } from '../auth/credentials.js';
 import { normaliseEmail } from '../auth/email.js';
 import { GameError } from './planet.js';
-import { BRAND_RECALL, type CountryCode } from '@astera/rules';
+import { BRAND_RECALL, findProfanity, type CountryCode } from '@astera/rules';
 
 /**
  * Accounts with a name and a password. D21.
@@ -58,6 +58,8 @@ export async function registerAccount(
   firstGameShieldAvailable = true,
   now = new Date(),
 ): Promise<AccountRecord> {
+  const word = findProfanity(input.username);
+  if (word) throw new GameError('NAME_NOT_ALLOWED', 'Choose another commander name', 400, { word });
   const username = normaliseUsername(input.username);
   const passwordHash = await hashPassword(input.password);
 

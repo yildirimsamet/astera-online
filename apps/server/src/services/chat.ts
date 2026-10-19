@@ -10,7 +10,7 @@ import { accounts, chatMessages, chatReadMarkers, clanMemberships, clans, planet
 import { GameError } from './planet.js';
 import { locationIsKnown, type LocationSight } from './locationSight.js';
 import { publishShard } from '../stream/bus.js';
-import { assertChatAllowed } from './chatModeration.js';
+import { assertChatAllowed, assertCleanMessage } from './chatModeration.js';
 import { messageDecorations, authorRecognition, type PodiumPlace, type ReactionView, type ReplyPreview } from './messageDecorations.js';
 
 export interface ChatMessageView {
@@ -168,6 +168,7 @@ export async function postChat(
   replyToMessageId?: string,
   mediaInput?: ChatMedia,
 ): Promise<ChatMessageView> {
+  assertCleanMessage(content);
   const me = await chatPlayer(db, accountId);
   const requestedAt = clock.now();
   return db.transaction(async (tx) => {

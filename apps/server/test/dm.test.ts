@@ -75,6 +75,14 @@ describe('seasonal direct messages', () => {
     expect((await app.inject({ method: 'POST', url: `/api/dm/conversations/${id}/read`, headers: auth[2], payload: { messageId: conversationResult.parse(mine.json()).conversations[0]!.lastMessage.id } })).statusCode).toBe(404);
   });
 
+  it('refuses a profane direct message and opens no conversation', async () => {
+    const res = await send(0, fixture.playerIds[1]!, 'naber o r o s p u');
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toMatchObject({ error: 'MESSAGE_NOT_ALLOWED', params: { word: 'orospu' } });
+    expect(await fixture.db.select().from(dmMessages)).toHaveLength(0);
+    expect(await fixture.db.select().from(dmConversations)).toHaveLength(0);
+  });
+
   it('keeps one thread per pair, trims Unicode and counts unread per recipient', async () => {
     expect((await send(0, fixture.playerIds[0]!)).statusCode).toBe(400);
     expect((await send(0, fixture.playerIds[1]!, '   ')).statusCode).toBe(400);
