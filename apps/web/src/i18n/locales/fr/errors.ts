@@ -16,6 +16,7 @@
   NAME_NOT_ALLOWED: "Choisis un autre nom de commandant. « {{word}} » enfreint les règles de la communauté.",
   CLAN_NAME_NOT_ALLOWED: "Choisis un autre nom ou tag de clan. « {{word}} » enfreint les règles de la communauté.",
   MESSAGE_NOT_ALLOWED: "« {{word}} » enfreint les règles de la communauté. Modifie le message, puis renvoie-le.",
+  TARGET_LEAVING: "Ce commandant quitte Astera. Les vols déjà en route arrivent quand même ; choisis une autre cible.",
   UNKNOWN_SIGNAL_NOT_FOUND: "Ce signal n’existe plus. Attends un nouveau contact Radar.",
   UNKNOWN_SIGNAL_EXPIRED: "Le signal a disparu. Attends un nouveau contact Radar.",
   UNKNOWN_SIGNAL_TAKEN: "Une flotte a déjà été envoyée vers ce signal.",

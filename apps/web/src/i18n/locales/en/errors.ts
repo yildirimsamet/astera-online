@@ -18,6 +18,7 @@ export const errors = {
   NAME_NOT_ALLOWED: "Choose another commander name. “{{word}}” breaks the community rules.",
   CLAN_NAME_NOT_ALLOWED: "Choose another clan name or tag. “{{word}}” breaks the community rules.",
   MESSAGE_NOT_ALLOWED: "“{{word}}” breaks the community rules. Edit the message and send it again.",
+  TARGET_LEAVING: "That commander is leaving Astera. Flights already on the way still arrive; choose another target.",
   UNKNOWN_SIGNAL_NOT_FOUND: "That signal no longer exists. Wait for another Radar contact.",
   UNKNOWN_SIGNAL_EXPIRED: "That signal has faded. Wait for another Radar contact.",
   UNKNOWN_SIGNAL_TAKEN: "A fleet has already been sent to this signal.",

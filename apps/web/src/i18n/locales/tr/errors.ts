@@ -15,6 +15,7 @@ export const errors = {
   NAME_NOT_ALLOWED: "Başka bir komutan adı seç. “{{word}}” topluluk kurallarına aykırı.",
   CLAN_NAME_NOT_ALLOWED: "Başka bir klan adı veya etiketi seç. “{{word}}” topluluk kurallarına aykırı.",
   MESSAGE_NOT_ALLOWED: "“{{word}}” topluluk kurallarına aykırı. Mesajı düzenleyip yeniden gönder.",
+  TARGET_LEAVING: "Bu komutan Astera'dan ayrılıyor. Yoldaki uçuşlar yine varır; başka bir hedef seç.",
   UNKNOWN_SIGNAL_NOT_FOUND: "Bu sinyal artık yok. Yeni radar temasını bekle.",
   UNKNOWN_SIGNAL_EXPIRED: "Sinyal kayboldu. Yeni radar temasını bekle.",
   UNKNOWN_SIGNAL_TAKEN: "Bu sinyale zaten bir filo gönderildi.",

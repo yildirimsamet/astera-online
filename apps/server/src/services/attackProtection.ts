@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, isNull, lt, lte, ne, or } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNotNull, isNull, lt, lte, ne, or } from 'drizzle-orm';
 import {
   STANDARD_PVP_BALANCE,
   type PvpBalance,
@@ -21,6 +21,7 @@ import {
 } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
 import {
+  accounts,
   battleReports,
   buildings,
   clanWarContributions,
@@ -658,8 +659,23 @@ export async function assertTargetReachable(
   defenderPlayerId: string,
   now: Date,
 ): Promise<void> {
+  await assertCommanderStaying(tx, defenderPlayerId);
   const protections = await protectionsOf(tx, [defenderPlayerId], now);
   refuseProtectedTarget(protections.get(defenderPlayerId) ?? null);
+}
+
+/**
+ * A COMMANDER WHOSE DELETION IS APPROVED IS LEAVING. Owner decision, 2026-10-19.
+ *
+ * The account is erased once nothing is flying toward it, so a new launch at it
+ * is the one way somebody could keep it in the game forever. Flights already in
+ * the air still land; nothing new departs for this commander.
+ */
+export async function assertCommanderStaying(tx: Queryable, playerId: string): Promise<void> {
+  const [leaving] = await tx.select({ id: players.id }).from(players)
+    .innerJoin(accounts, eq(accounts.id, players.accountId))
+    .where(and(eq(players.id, playerId), isNotNull(accounts.deletionApprovedAt))).limit(1);
+  if (leaving) throw new GameError('TARGET_LEAVING', 'That commander is leaving Astera.', 409);
 }
 
 export async function assertAttackProtections(
@@ -677,6 +693,7 @@ export async function assertAttackProtections(
   const onVacation = await tx.select({ id: players.id }).from(players)
     .where(and(inArray(players.id, ids), gt(players.vacationUntil, input.now)));
   if (onVacation.length) throw new GameError(onVacation.some(p => p.id === input.attackerPlayerId) ? 'VACATION_ACTIVE' : 'TARGET_VACATION', 'Vacation mode blocks this launch.', 409);
+  await assertCommanderStaying(tx, input.defenderPlayerId);
   const protections = await protectionsOf(tx, ids, input.now);
   const protectionOf = (id: string): AttackProtection | null => protections.get(id) ?? null;
 

@@ -68,6 +68,7 @@ import {
   totalUnitsOf,
   type LockedPlanet,
 } from './planet.js';
+import { assertCommanderStaying } from './attackProtection.js';
 import { planetView, type PlanetView } from './planetView.js';
 import { peakCoreLevels } from './player.js';
 import { techOf } from './researchState.js';
@@ -230,6 +231,7 @@ async function gatherSupport(tx: Tx, input: SupportInput): Promise<SupportContex
     throw new GameError('CLAN_SUPPORT_SELF', 'Support goes to a clanmate, not to your own worlds', 400);
   }
   if (host.vacationUntil && host.vacationUntil > origin.now) throw new GameError('TARGET_VACATION', 'That commander is on vacation.', 409);
+  await assertCommanderStaying(tx, host.controllerPlayerId);
   for (const [hull, n] of Object.entries(input.fleet) as [HullId, number][]) {
     if ((origin.homeFleet[hull] ?? 0) < n) {
       throw new GameError('NOT_ENOUGH_SHIPS', `Not enough ${hull} at home`, 400, { hull });

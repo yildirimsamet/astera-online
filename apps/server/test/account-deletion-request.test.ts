@@ -14,6 +14,7 @@ import { testDb, testEnv, truncateAll } from './helpers.js';
 import { joinSettled, giveUnits, fuelUp, placeAt, TEST_SPACING } from './helpers.js';
 import { createSeason } from '../src/services/season.js';
 import { launchAttack } from '../src/services/mission.js';
+import { launchProbe } from '../src/services/intel.js';
 import { announcements, chatMediaAssets, commanderTransfers, returnApplications, paddleSkinOrders, polarSkinOrders, shopierOrders, shopierPurchaseCodes, mediaDeletionQueue } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
 
@@ -187,6 +188,18 @@ describe('operator approval of a verified deletion request', () => {
     expect(await built.db.execute(sql`select id from planets where id = ${target.planetId}`)).toHaveLength(1);
     expect(await built.db.execute(sql`select id from missions where target_planet_id = ${target.planetId} and status = 'in_flight'`)).toHaveLength(1);
     expect(await count()).toBe(1);
+  });
+  it('refuses new flights toward an approved commander, so nobody can keep them busy', async () => {
+    const { owner, requestId } = await pending(); const operator = await register('PolicyOperator');
+    const target = await world(owner.accountId);
+    const attacker = await joinSettled(built.db, operator.accountId, target.season.id, clock);
+    await placeAt(built.db, target.planetId, { x: 0 }); await placeAt(built.db, attacker.planetId, { x: TEST_SPACING });
+    await giveUnits(built.db, attacker.planetId, { DART: 3 }); await fuelUp(built.db, attacker.planetId);
+    expect((await approve(requestId, operator.headers)).statusCode).toBe(200);
+    await expect(launchAttack(built.db, attacker.planetId, target.planetId, { DART: 1 }, clock)).rejects.toMatchObject({ code: 'TARGET_LEAVING', status: 409 });
+    await expect(launchProbe(built.db, attacker.planetId, target.planetId, clock)).rejects.toMatchObject({ code: 'TARGET_LEAVING', status: 409 });
+    expect(await built.db.execute(sql`select id from missions where target_planet_id = ${target.planetId}`)).toHaveLength(0);
+    expect((await complete(requestId, operator.headers)).statusCode).toBe(200);
   });
   it('anonymises move/news history and closes a queued return while preserving shared records', async () => {
     const { owner, requestId } = await pending(); const operator = await register('PolicyOperator');

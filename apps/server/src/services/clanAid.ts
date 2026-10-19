@@ -52,6 +52,7 @@ import {
   saveResources,
   setUnits,
 } from './planet.js';
+import { assertCommanderStaying } from './attackProtection.js';
 import { landShips } from './shipDamage.js';
 import { takeHomeHealth } from './homeHealth.js';
 import { flightWitness, settleMissionRadiation, tellRadiationLoss } from './radiation.js';
@@ -366,6 +367,7 @@ export async function quoteClanAid(
     throw new GameError('CLAN_AID_TARGET', 'Choose a world that clanmate controls', 404);
   }
   if (target.vacationUntil && target.vacationUntil > input.now) throw new GameError('TARGET_VACATION', 'That commander is on vacation.', 409);
+  await assertCommanderStaying(db, input.recipientPlayerId);
   const [orbit, coreLevel, tech] = await Promise.all([
     orbitOf(db, origin.id),
     db.select({ level: buildings.level }).from(buildings).where(and(
@@ -485,6 +487,7 @@ export async function launchClanAid(
   if (target?.controllerPlayerId !== input.recipientPlayerId) {
     throw new GameError('CLAN_AID_TARGET', 'Choose a world that clanmate controls', 404);
   }
+  await assertCommanderStaying(tx, input.recipientPlayerId);
   await lockClanPlayers(tx, [input.senderPlayerId, input.recipientPlayerId]);
   const relationship = await assertAidRelationship(
     tx,

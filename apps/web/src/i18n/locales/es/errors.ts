@@ -18,6 +18,7 @@ export const errors = {
   NAME_NOT_ALLOWED: "Elige otro nombre de comandante. «{{word}}» incumple las normas de la comunidad.",
   CLAN_NAME_NOT_ALLOWED: "Elige otro nombre o etiqueta de clan. «{{word}}» incumple las normas de la comunidad.",
   MESSAGE_NOT_ALLOWED: "«{{word}}» incumple las normas de la comunidad. Edita el mensaje y vuelve a enviarlo.",
+  TARGET_LEAVING: "Este comandante deja Astera. Los vuelos ya en camino llegan igualmente; elige otro objetivo.",
   UNKNOWN_SIGNAL_NOT_FOUND: "La señal ya no existe. Espera otro contacto del Radar.",
   UNKNOWN_SIGNAL_EXPIRED: "La señal se ha desvanecido. Espera otro contacto del Radar.",
   UNKNOWN_SIGNAL_TAKEN: "Ya se envió una flota a esta señal.",

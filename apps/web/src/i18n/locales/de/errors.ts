@@ -18,6 +18,7 @@ export const errors = {
   NAME_NOT_ALLOWED: "Wähle einen anderen Kommandantennamen. „{{word}}“ verstößt gegen die Gemeinschaftsregeln.",
   CLAN_NAME_NOT_ALLOWED: "Wähle einen anderen Clannamen oder ein anderes Clan-Tag. „{{word}}“ verstößt gegen die Gemeinschaftsregeln.",
   MESSAGE_NOT_ALLOWED: "„{{word}}“ verstößt gegen die Gemeinschaftsregeln. Bearbeite die Nachricht und sende sie erneut.",
+  TARGET_LEAVING: "Dieser Kommandant verlässt Astera. Bereits gestartete Flüge kommen noch an; wähle ein anderes Ziel.",
   UNKNOWN_SIGNAL_NOT_FOUND: "Dieses Signal existiert nicht mehr. Warte auf den nächsten Radarkontakt.",
   UNKNOWN_SIGNAL_EXPIRED: "Das Signal ist verblasst. Warte auf den nächsten Radarkontakt.",
   UNKNOWN_SIGNAL_TAKEN: "Eine Flotte wurde bereits zu diesem Signal geschickt.",

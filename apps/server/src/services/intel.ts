@@ -79,6 +79,7 @@ import {
   orbitFromRows,
   saveResources,
 } from './planet.js';
+import { assertCommanderStaying } from './attackProtection.js';
 import { neutralStanding } from './neutral.js';
 import { schedule } from '../worker/queue.js';
 import { publishReward, publishShard, publishWorldMemory } from '../stream/bus.js';
@@ -621,6 +622,7 @@ export async function launchProbe(
     }
     if (target.vacationUntil && target.vacationUntil > origin.now) throw new GameError('TARGET_VACATION', 'That commander is on vacation.', 409);
     if (target.controllerPlayerId) {
+      await assertCommanderStaying(tx, target.controllerPlayerId);
       await lockClanPlayers(tx, [origin.playerId, target.controllerPlayerId]);
       await assertClanHostilityAllowed(
         tx,

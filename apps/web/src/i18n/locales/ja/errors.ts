@@ -18,6 +18,7 @@ export const errors = {
   NAME_NOT_ALLOWED: "別の司令官名を選んでください。「{{word}}」はコミュニティルールに違反しています。",
   CLAN_NAME_NOT_ALLOWED: "別のクラン名またはタグを選んでください。「{{word}}」はコミュニティルールに違反しています。",
   MESSAGE_NOT_ALLOWED: "「{{word}}」はコミュニティルールに違反しています。メッセージを編集して再送信してください。",
+  TARGET_LEAVING: "この司令官は Astera を去ります。すでに出発した飛行は到着します。別の目標を選んでください。",
   UNKNOWN_SIGNAL_NOT_FOUND: "この信号はもう存在しません。次のレーダー接触を待ってください。",
   UNKNOWN_SIGNAL_EXPIRED: "信号が消えました。次のレーダー接触を待ってください。",
   UNKNOWN_SIGNAL_TAKEN: "この信号にはすでに艦隊を派遣しています。",
