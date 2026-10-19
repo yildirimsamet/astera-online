@@ -294,6 +294,8 @@ export const accounts = pgTable('accounts', {
   legacyEmail: text('legacy_email'),
   emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
   authVersion: integer('auth_version').notNull().default(0),
+  /** Approved deletion closes every authentication path while safe cleanup waits. */
+  deletionApprovedAt: timestamp('deletion_approved_at', { withTimezone: true }),
   username: text('username').notNull(),
   /** `scrypt$N$r$p$salt$hash`, all base64url. Never a bare digest. See auth/password.ts. */
   passwordHash: text('password_hash').notNull(),
@@ -327,12 +329,80 @@ export const accounts = pgTable('accounts', {
   ),
 ]);
 
+/** One durable, password-verified deletion request per account. No deletion on submission. */
+export const accountDeletionRequests = pgTable('account_deletion_requests', {
+  accountId: uuid('account_id').primaryKey().references(() => accounts.id, { onDelete: 'cascade' }),
+  requestId: uuid('request_id').notNull().defaultRandom(),
+  requestedAt: timestamp('requested_at', { withTimezone: true }).notNull(),
+  locale: text('locale').notNull(),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+}, t => [
+  uniqueIndex('account_deletion_requests_receipt_idx').on(t.requestId),
+  index('account_deletion_requests_queue_idx').on(t.requestedAt),
+  check('account_deletion_requests_locale_check', sql`${t.locale} in ('en', 'tr', 'fr', 'de', 'es', 'ja')`),
+]);
+
+/** Post-commit erasure outbox: no account FK, so retry survives account deletion. */
+export const mediaDeletionQueue = pgTable('media_deletion_queue', {
+  assetId: uuid('asset_id').primaryKey(),
+  requestId: uuid('request_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, t => [index('media_deletion_queue_request_idx').on(t.requestId)]);
+
+/** Explicit user acceptance; never inferred from advertising consent or an existing login. */
+export const communityPolicyAcceptances = pgTable('community_policy_acceptances', {
+  accountId: uuid('account_id').primaryKey().references(() => accounts.id, { onDelete: 'cascade' }),
+  version: text('version').notNull(),
+  locale: text('locale').$type<'en' | 'tr' | 'de' | 'fr' | 'es' | 'ja'>().notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }).notNull(),
+}, t => [check('community_policy_locale_check', sql`${t.locale} in ('en','tr','de','fr','es','ja')`)]);
+
+/** Social safety follows accounts across devices and player/season replacement. */
+export const communityBlocks = pgTable('community_blocks', {
+  blockerAccountId: uuid('blocker_account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  targetAccountId: uuid('target_account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, t => [primaryKey({ columns: [t.blockerAccountId, t.targetAccountId] }),
+  index('community_blocks_target_idx').on(t.targetAccountId),
+  check('community_blocks_distinct_check', sql`${t.blockerAccountId} <> ${t.targetAccountId}`),
+]);
+
+/** Private moderation evidence, collected by the server from a readable target. */
+export const contentReports = pgTable('content_reports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  reporterAccountId: uuid('reporter_account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+  targetAccountId: uuid('target_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  targetKey: text('target_key').notNull(),
+  kind: text('kind').$type<'message' | 'player'>().notNull(),
+  channel: text('channel').$type<'general' | 'clan' | 'dm'>(),
+  messageId: uuid('message_id'),
+  reason: text('reason').notNull(),
+  details: text('details').notNull(),
+  evidence: jsonb('evidence').$type<{ username: string; playerId: string; content: string; media: ChatMedia | null }>().notNull(),
+  status: text('status').$type<'PENDING' | 'RESOLVED' | 'DISMISSED'>().notNull().default('PENDING'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  moderatorAccountId: uuid('moderator_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+}, t => [
+  uniqueIndex('content_reports_reporter_target_idx').on(t.reporterAccountId, t.targetKey),
+  index('content_reports_queue_idx').on(t.status, t.createdAt, t.id),
+  index('content_reports_retention_idx').on(t.createdAt),
+  index('content_reports_target_account_idx').on(t.targetAccountId),
+  check('content_reports_kind_check', sql`${t.kind} in ('message', 'player')`),
+  check('content_reports_channel_check', sql`${t.channel} in ('general', 'clan', 'dm')`),
+  check('content_reports_reason_check', sql`${t.reason} in ('SPAM', 'HARASSMENT', 'HATE', 'SEXUAL', 'VIOLENCE', 'INAPPROPRIATE_NAME', 'OTHER')`),
+  check('content_reports_details_check', sql`char_length(${t.details}) <= 1000`),
+  check('content_reports_status_check', sql`${t.status} in ('PENDING', 'RESOLVED', 'DISMISSED')`),
+  check('content_reports_target_check', sql`(${t.kind} = 'message' AND ${t.channel} IS NOT NULL AND ${t.messageId} IS NOT NULL) OR (${t.kind} = 'player' AND ${t.channel} IS NULL AND ${t.messageId} IS NULL)`),
+  check('content_reports_resolution_check', sql`(${t.status} = 'PENDING') = (${t.resolvedAt} IS NULL)`),
+]);
+
 export type FeedbackKind = 'BUG' | 'SUGGESTION' | 'PRAISE';
 
 /** Global, admin-authored news. The stored body has already crossed the server allow-list. */
 export const announcements = pgTable('announcements', {
   id: uuid('id').primaryKey().defaultRandom(),
-  authorAccountId: uuid('author_account_id').notNull().references(() => accounts.id),
+  authorAccountId: uuid('author_account_id').references(() => accounts.id, { onDelete: 'set null' }),
   title: text('title').notNull(),
   bodyHtml: text('body_html').notNull(),
   publishedAt: timestamp('published_at', { withTimezone: true }).notNull(),
@@ -4669,7 +4739,7 @@ export const shopierWebhookEvents = pgTable('shopier_webhook_events', {
 export const commanderTransfers = pgTable('commander_transfers', {
   id: uuid('id').primaryKey().defaultRandom(),
   playerId: uuid('player_id').notNull(),
-  accountId: uuid('account_id').notNull().references(() => accounts.id),
+  accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'set null' }),
   cycleId: uuid('cycle_id').notNull().references(() => seasonCycles.id),
   sourceSeasonId: uuid('source_season_id').notNull().references(() => seasons.id),
   targetSeasonId: uuid('target_season_id').notNull().references(() => seasons.id),

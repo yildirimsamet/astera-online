@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -77,7 +77,7 @@ describe('the front door on a device nobody has played on', () => {
     const { onBegin } = show(false);
 
     const door = loudDoor();
-    expect(door?.textContent).toMatch(/explore your planet/i);
+    expect(door?.textContent).toMatch(/start playing/i);
     expect(door).toHaveClass('bg-v2-self', 'rounded-control');
 
     await userEvent.setup().click(door!);
@@ -98,7 +98,7 @@ describe('the front door on a device that has held a commander', () => {
     const door = loudDoor();
     expect(door?.textContent).toMatch(/sign in/i);
     // The whole bug in one assertion: the loud control must not start a rehearsal.
-    expect(door?.textContent).not.toMatch(/explore your planet/i);
+    expect(door?.textContent).not.toMatch(/start playing/i);
 
     await userEvent.setup().click(door!);
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
@@ -172,7 +172,41 @@ describe('remembering a commander', () => {
       </Wrapper>,
     );
 
-    expect(loudDoor()?.textContent).toMatch(/explore your planet/i);
+    expect(loudDoor()?.textContent).toMatch(/start playing/i);
     spy.mockRestore();
   });
+});
+
+
+it('closes native sign-in Back without starting training or authentication', async () => {
+  const { onBegin } = show(false);
+  await userEvent.setup().click(screen.getByRole('button', { name: /already have a commander/i }));
+  fireEvent(screen.getByRole('dialog'), new Event('astera:native-back', { bubbles: true, cancelable: true }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(onBegin).not.toHaveBeenCalled();
+});
+
+it('keeps Tab and Shift+Tab inside the sign-in form and restores its opener', async () => {
+  show(false);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: /already have a commander/i }));
+  const form = screen.getByRole('dialog').querySelector('form');
+  const controls = form?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])');
+  const first = controls?.[0]; const last = controls?.[controls.length - 1];
+  expect(first).toBeDefined(); expect(last).toBeDefined();
+  last?.focus();
+  await user.tab();
+  expect(first).toHaveFocus();
+  await user.tab({ shift: true });
+  expect(last).toHaveFocus();
+  await user.keyboard('{Escape}');
+  expect(loudDoor()).toHaveFocus();
+});
+
+it('opens the public wiki on HTTPS from a bundled native landing screen', () => {
+  vi.stubEnv('VITE_ASTERA_PLATFORM', 'native-production');
+  try {
+    show(false);
+    expect(screen.getByRole('link', { name: 'Wiki' })).toHaveAttribute('href', 'https://asteraonline.space/wiki');
+  } finally { vi.unstubAllEnvs(); }
 });

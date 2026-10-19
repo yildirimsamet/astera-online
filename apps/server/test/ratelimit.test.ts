@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
@@ -110,7 +111,7 @@ describe('rate limiting', () => {
       app.inject({
         method: 'POST',
         url: '/api/onboarding/claim',
-        payload: { username: name, password: PASSWORD, intents: [] },
+        payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: name, password: PASSWORD, intents: [] },
       });
 
     // Nothing is bootstrapped in this fixture, so the claim itself refuses with
@@ -150,7 +151,7 @@ describe('rate limiting', () => {
     const register = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { username: 'fresh_name', password: PASSWORD },
+      payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: 'fresh_name', password: PASSWORD },
     });
     expect(register.statusCode).toBe(200);
   });

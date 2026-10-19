@@ -4,6 +4,7 @@ import type { ReturnStatus } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
 import { full } from '../lib/format.js';
 import { Button } from '../ui/kit/index.js';
+import { useNativeBack } from '../platform/nativeBack.js';
 
 /** One explanation per verified placement on this device; the menu can always reopen it. */
 export function SilentSpaceNotice({ data, open, allowAutomatic, onClose, onApply }: {
@@ -29,12 +30,13 @@ export function SilentSpaceNotice({ data, open, allowAutomatic, onClose, onApply
     dialog.current?.querySelector<HTMLButtonElement>('button')?.focus();
     return () => { if (previous instanceof HTMLElement && previous.isConnected) previous.focus(); };
   }, [visible, data.application?.id]);
-  if (!visible) return null;
   const dismiss = (): void => {
     setAcknowledged(true);
     try { localStorage.setItem(storageKey, 'seen'); } catch { /* Session state still dismisses it. */ }
     onClose();
   };
+  useNativeBack(dialog, dismiss, visible);
+  if (!visible) return null;
   const apply = (): void => {
     if (busy || !data.canApply || data.application) return;
     setBusy(true);

@@ -1,3 +1,4 @@
+import { LANGUAGES } from '../src/i18n/languages.js';
 import type { ReactNode } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { readFile } from 'node:fs/promises';
@@ -90,6 +91,8 @@ const PAGES = [
   { path: '/hizli-baslangic-rehberi.html', language: 'tr', heading: /hızlı başlangıç/i, pair: '/quick-start-guide.html' },
   { path: '/privacy.html', language: 'en', heading: /privacy policy/i, pair: '/gizlilik-politikasi.html' },
   { path: '/gizlilik-politikasi.html', language: 'tr', heading: /gizlilik politikası/i, pair: '/privacy.html' },
+  { path: '/account-deletion.html', language: 'en', heading: /delete your astera online account/i, pair: '/hesap-silme.html' },
+  { path: '/hesap-silme.html', language: 'tr', heading: /astera online hesabını sil/i, pair: '/account-deletion.html' },
   { path: '/cookies.html', language: 'en', heading: /cookie policy/i, pair: '/cerez-politikasi.html' },
   { path: '/cerez-politikasi.html', language: 'tr', heading: /çerez politikası/i, pair: '/cookies.html' },
   { path: '/terms.html', language: 'en', heading: /terms of use/i, pair: '/kullanim-kosullari.html' },
@@ -222,7 +225,7 @@ describe('crawl instructions', () => {
     expect(sitemap.querySelector('parsererror')).toBeNull();
     expect(urls[0]).toBe(`${PUBLISHER_ORIGIN}/`);
     expect([...urls.slice(1)].sort()).toEqual(
-      [...publisherPaths(), ...wikiPages.map(page => page.path)].map((path) => `${PUBLISHER_ORIGIN}${path}`).sort(),
+      [...LANGUAGES.map(language => `/${language}/`), ...publisherPaths(), ...wikiPages.map(page => page.path)].map((path) => `${PUBLISHER_ORIGIN}${path}`).sort(),
     );
   });
 
@@ -234,6 +237,21 @@ describe('crawl instructions', () => {
 });
 
 describe('the legal set says what it has to say', () => {
+  it.each(['/account-deletion.html', '/hesap-silme.html'])('%s provides a deletion path and visible data/timing details without JavaScript or reinstalling', async path => {
+    const document = await parse(path);
+    expect(document.querySelector('h1')?.textContent).toContain('Astera Online');
+    const request = document.querySelector('#request-deletion');
+    expect(request?.querySelector('a[href^="mailto:samety3503@gmail.com?subject="]')).toBeTruthy();
+    expect(request?.querySelectorAll('ol li').length).toBeGreaterThanOrEqual(3);
+    for (const id of ['deleted-data', 'retained-data', 'timing']) expect(document.querySelector(`#${id}`)?.textContent.trim().length).toBeGreaterThan(50);
+    expect(document.querySelector('#retained-data')?.textContent).toMatch(/30/);
+    expect(document.querySelector('#timing')?.textContent).toMatch(/approv|onay/i);
+    expect(document.querySelector('script,canvas,iframe')).toBeNull();
+    expect(document.body.textContent).toMatch(/never send your password|parolanı.*gönderme/i);
+  });
+  it.each([['/privacy.html', '/account-deletion.html'], ['/gizlilik-politikasi.html', '/hesap-silme.html']] as const)('%s prominently links its deletion instructions', async (path, target) => {
+    expect((await parse(path)).querySelector(`main a[href="${target}"]`)).toBeTruthy();
+  });
   it('explains the lifespan of paid skins without waiving refund rights', async () => {
     for (const path of ['/terms.html', '/kullanim-kosullari.html', '/pricing.html', '/fiyatlar.html']) {
       const page = await publicFile(path);
@@ -493,7 +511,7 @@ describe('public navigation from the front door', () => {
     showLanding();
 
     expect(screen.getByRole('link', { name: /about astera/i })).toHaveAttribute('href', '/about.html');
-    expect(screen.getByRole('link', { name: 'Wiki' })).toHaveAttribute('href', '/wiki');
+    for (const link of screen.getAllByRole('link', { name: 'Wiki' })) expect(link).toHaveAttribute('href', '/wiki');
     expect(screen.getByRole('link', { name: /how to play/i })).toHaveAttribute('href', '/quick-start-guide.html');
     expect(screen.getByRole('link', { name: /privacy/i })).toHaveAttribute('href', '/privacy.html');
     expect(screen.getByRole('link', { name: /terms/i })).toHaveAttribute('href', '/terms.html');

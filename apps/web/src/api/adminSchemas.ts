@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { accountDeletionRequestSchema } from './schemas.js';
 import type { CHAT_LANGUAGES } from '@astera/rules';
 
 export const MODERATED_CHANNELS = ['general', 'clan', 'dm'] as const;
@@ -32,3 +33,10 @@ export const adminMuteSchema = z.object({
   duration: z.enum(['5m', '15m', '1h', '4h', '1d', 'permanent', 'remove']), expiresAt: z.coerce.date().nullable(),
 });
 export const adminMaskSchema = z.object({ masked: z.number().int().nonnegative() });
+
+export const adminDeletionQueueSchema = z.object({
+  requests: z.array(accountDeletionRequestSchema.extend({ accountId: z.string().uuid(), username: z.string(), displayName: z.string() })),
+  mediaPending: z.array(z.object({ requestId: z.string().uuid(), files: z.number().int().positive() })),
+});
+export const adminDeletionCompletedSchema = z.object({ requestId: z.string().uuid(), status: z.literal('completed'), mediaCleanupPending: z.boolean().optional() });
+export const adminDeletionMediaSchema = z.object({ requestId: z.string().uuid(), mediaCleanupPending: z.boolean() });

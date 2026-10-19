@@ -11,6 +11,8 @@
  * hooks concern to begin with.
  */
 export const keys = {
+  communityBlocks: ['community', 'blocks'],
+  communityPolicy: ['community', 'policy'],
   vacation: ['vacation'],
   returnStatus: ['return-status'],
   servers: ['servers'],

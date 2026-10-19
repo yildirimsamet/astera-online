@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { pino } from 'pino';
 import { eq } from 'drizzle-orm';
@@ -47,7 +48,7 @@ beforeEach(async () => {
     AUTH_CODE_HMAC_SECRET: 'test-hmac-secret-that-is-at-least-32-characters', MAIL_OUTBOX_ENCRYPTION_KEY: 'ab'.repeat(32),
   }), mailer: { send: (message, key) => { sendKeys.push(key); if (failures-- > 0) return Promise.reject(new MailSendError(false)); sent.push(message); return Promise.resolve(`mail-${sent.length}`); } } });
   await built.app.ready();
-  const response = await post('/api/auth/register', { username: 'Vantage', password }, false);
+  const response = await post('/api/auth/register', { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: 'Vantage', password }, false);
   ({ accessToken: token, accountId } = response.json<{ accessToken: string; accountId: string }>());
 });
 afterEach(async () => { await built.close(); });
@@ -162,7 +163,7 @@ describe('security failure and concurrency boundaries', () => {
   });
   it('allows only one account to bind an address without reserving it while pending', async () => {
     const first = await request(); const firstCode = lastCode(); const firstToken = token;
-    const registration = await post('/api/auth/register', { username: 'OtherCommander', password }, false);
+    const registration = await post('/api/auth/register', { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: 'OtherCommander', password }, false);
     token = registration.json<{ accessToken: string }>().accessToken; clock.advance(1.01);
     const second = await request(); const secondCode = lastCode();
     const results = await Promise.all([

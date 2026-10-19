@@ -9,6 +9,57 @@ if (!appIds.containsKey(mobileTarget) || capacitorConfig.appId != appIds[mobileT
     throw new GradleException('Capacitor target/applicationId mismatch; sync the intended target first')
 }
 
+// Store builds are explicit and use private, repository-external signing files.
+def storeRelease = providers.gradleProperty('asteraStoreRelease').orNull == 'true'
+def releaseInputs = [:]
+if (storeRelease) {
+    def api = new URI(capacitorConfig.plugins?.AsteraSession?.apiUrl ?: '')
+    if (mobileTarget != 'native-production' || capacitorConfig.server?.url ||
+        capacitorConfig.server?.cleartext != false || api.scheme != 'https' || !api.host ||
+        api.host == 'localhost' || api.host.contains(':') || api.host ==~ /[0-9.]+/ ||
+        api.userInfo || !(api.path in ['', '/']) || api.query || api.fragment ||
+        capacitorConfig.android?.loggingBehavior != 'none' || capacitorConfig.android?.useLegacyBridge != false ||
+        capacitorConfig.android?.webContentsDebuggingEnabled == true) {
+        throw new GradleException('Store release requires a bundled native-production HTTPS configuration')
+    }
+    def required = { name ->
+        def value = System.getenv(name)
+        if (!value) throw new GradleException("Missing ${name}")
+        value
+    }
+    def code = required('ASTERA_ANDROID_VERSION_CODE')
+    if (!(code ==~ /[1-9][0-9]*/) || code.size() > 10 || code.toLong() > 2100000000L) {
+        throw new GradleException('Invalid ASTERA_ANDROID_VERSION_CODE')
+    }
+    def version = required('ASTERA_ANDROID_VERSION_NAME')
+    def alias = required('ASTERA_ANDROID_KEY_ALIAS')
+    if (!version.trim() || version.contains('\n') || version.contains('\r') || version.contains('\u0000')) {
+        throw new GradleException('Invalid ASTERA_ANDROID_VERSION_NAME')
+    }
+    if (!(alias ==~ /[a-zA-Z0-9._-]{1,64}/)) throw new GradleException('Invalid ASTERA_ANDROID_KEY_ALIAS')
+    def repository = rootProject.projectDir.parentFile.parentFile.parentFile.canonicalFile.toPath()
+    def privateFile = { name ->
+        def input = new File(required(name))
+        def path = input.canonicalFile.toPath()
+        if (!input.isAbsolute() || !input.isFile() || path.startsWith(repository)) {
+            throw new GradleException("${name} must be a private regular file outside the repository")
+        }
+        def permissions = java.nio.file.Files.getPosixFilePermissions(path)
+        if (permissions.any { it.name().startsWith('GROUP_') || it.name().startsWith('OTHERS_') }) {
+            throw new GradleException("${name} requires private permissions (0600)")
+        }
+        path.toFile()
+    }
+    def keystore = privateFile('ASTERA_ANDROID_KEYSTORE_PATH')
+    def passwordFile = privateFile('ASTERA_ANDROID_PASSWORD_FILE')
+    def lines = passwordFile.readLines('UTF-8')
+    if (lines.isEmpty() || lines.first().isEmpty()) {
+        throw new GradleException('Empty ASTERA_ANDROID_PASSWORD_FILE')
+    }
+    releaseInputs = [versionCode: code.toInteger(), versionName: version,
+        keystore: keystore, password: lines.first(), alias: alias]
+}
+
 android {
     namespace = "space.asteraonline.app.debug"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -17,8 +68,8 @@ android {
         manifestPlaceholders = [asteraAppName: capacitorConfig.appName]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode storeRelease ? releaseInputs.versionCode : 1
+        versionName storeRelease ? releaseInputs.versionName : '1.0'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -26,18 +77,30 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (storeRelease) {
+            upload {
+                storeFile releaseInputs.keystore
+                storePassword releaseInputs.password
+                keyAlias releaseInputs.alias
+                keyPassword releaseInputs.password
+            }
+        }
+    }
     buildTypes {
         release {
+            debuggable false
+            if (storeRelease) signingConfig signingConfigs.upload
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
 }
 
-// Bundled debug validation comes first; store signing/release is a later acceptance gate.
+// Default sync/debug builds cannot accidentally produce an unsigned store artifact.
 androidComponents {
     beforeVariants(selector().withBuildType("release")) { variantBuilder ->
-        variantBuilder.enable = false
+        variantBuilder.enable = storeRelease
     }
 }
 

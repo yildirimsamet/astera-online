@@ -126,6 +126,22 @@ strong { color: #f5f8ff; }
 .footer-nav a:hover { color: #e9eef8; text-decoration: underline; }
 .footer-nav a[aria-current="page"] { color: #7dd8ff; }
 
+/* Account controls follow the game's ui-v2 relationship colours and compact surfaces. */
+.account-deletion-page { background: radial-gradient(ellipse at 30% 0%, #101c2a, transparent 44rem), #04060b; color: #eef3ff; }
+.account-deletion-page .site-header { background: #080d18f5; border-color: #1d2842; }
+.account-deletion-page a, .account-deletion-page .eyebrow { color: #2ee6c8; }
+.account-deletion-page .page { padding-block: clamp(2rem, 5vw, 4rem); }
+.account-deletion-page h1 { font-size: clamp(2rem, 7vw, 3.5rem); max-width: 22ch; }
+.account-deletion-page h2 { letter-spacing: -.02em; }
+.account-deletion-page .lede, .account-deletion-page section { color: #a4b1cd; }
+.account-deletion-page strong { color: #eef3ff; }
+.account-deletion-page section { scroll-margin-top: 8rem; }
+.account-deletion-page li { margin-block: .75rem; padding-left: .25rem; }
+.account-deletion-page .deletion-action { display: inline-flex; align-items: center; min-height: 44px; padding: .65rem 1rem; border: 1px solid #2ee6c840; border-radius: 8px; background: #2ee6c810; font-weight: 650; text-decoration: none; }
+.account-deletion-page #request-deletion { margin-top: 2rem; padding: 0 1rem 1rem; border: 1px solid #1d2842; border-radius: 10px; background: #080d18; }
+.account-deletion-page #request-deletion h2 { margin-top: 1.25rem; }
+.deletion-policy-link { padding: .8rem 1rem; border: 1px solid #2ee6c840; border-radius: 8px; background: #2ee6c808; }
+
 @media (max-width: 620px) {
   .site-nav { flex-wrap: wrap; gap: .7rem 1rem; padding-block: .75rem; }
   .site-nav .brand { width: 100%; }

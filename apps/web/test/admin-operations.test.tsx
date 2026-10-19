@@ -1,3 +1,5 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
+import { keys } from '../src/api/keys.js';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -49,6 +51,7 @@ function show(chat = false, failure = false, playerPages: (Omit<typeof players, 
   };
   const api = new Api({ fetch });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: new Date() });
   render(<QueryClientProvider client={client}><ApiProvider api={api}>
     {chat ? <ChatScreen isAdmin initialChannel="clan" onFocusPlanet={() => { /* no camera in this fixture */ }} /> : <AdminPanel />}
   </ApiProvider></QueryClientProvider>);

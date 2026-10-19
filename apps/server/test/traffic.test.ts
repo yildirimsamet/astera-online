@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { and, eq } from 'drizzle-orm';
 import {
   COMBAT,
@@ -1198,7 +1199,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   it('refuses a caller with no planet', async () => {
     // A missing account is now an invalid session. Exercise a real unplaced account.
     const registered = await app.inject({ method: 'POST', url: '/api/auth/register',
-      payload: { username: 'UnplacedCommander', password: 'correct-horse-battery' } });
+      payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: 'UnplacedCommander', password: 'correct-horse-battery' } });
     expect(registered.statusCode).toBe(200);
     const stranger = { authorization: `Bearer ${registered.json<{ accessToken: string }>().accessToken}` };
     const res = await app.inject({ method: 'GET', url: '/api/galaxy/traffic', headers: stranger });

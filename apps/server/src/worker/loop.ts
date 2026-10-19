@@ -13,6 +13,9 @@ import { scheduledEvents } from '../db/schema.js';
 import { VACATION_EVENT_KINDS } from '../services/vacation.js';
 import { advanceSpawnGates } from '../services/spawnGate.js';
 import { repairUnknownSignals } from '../services/unknownSignal.js';
+import { processMediaDeletionQueue } from '../services/mediaErasure.js';
+import { pruneErasureJournal } from '../services/erasureJournal.js';
+import { expireContentReports } from '../services/contentReports.js';
 
 export interface WorkerOptions {
   pollMs: number;
@@ -34,6 +37,9 @@ export interface WorkerOptions {
   silentSpaceExemptAccountIds?: readonly string[];
   /** Configured operator accounts are spectators to Dominion competition. */
   adminUsernames?: ReadonlySet<string>;
+  /** Shared private upload directory; API replicas never run this worker task. */
+  mediaDirectory?: string;
+  erasureSecret?: string;
 }
 
 export interface TickResult {
@@ -118,6 +124,8 @@ export class EventWorker {
   private unknownSignalSweepAt = -Infinity;
   private silentSpaceAt = -Infinity;
   private silentSpaceTask: Promise<void> | null = null;
+  private mediaDeletionTask: Promise<void> | null = null;
+  private mediaDeletionAt = -Infinity;
   private ticks = 0;
   private tickErrors = 0;
   private processed = 0;
@@ -358,6 +366,23 @@ export class EventWorker {
       });
     }
 
+    if (this.opts.mediaDirectory && !this.stopped && !this.mediaDeletionTask && now.getTime() - this.mediaDeletionAt >= 60_000) {
+      this.mediaDeletionAt = now.getTime();
+      const directory = this.opts.mediaDirectory; const secret = this.opts.erasureSecret;
+      this.mediaDeletionTask = processMediaDeletionQueue(this.db, this.opts.mediaDirectory)
+        .then(result => {
+          if (result.deferred > 0) this.log.error(result, 'Media erasure deferred; retrying next minute');
+        })
+        .catch(() => { this.log.error('Media erasure queue unavailable; fleet processing continues'); })
+        .then(async () => {
+          if (secret) await pruneErasureJournal(this.db, { directory, secret }, now);
+        })
+        .catch(() => { this.log.error('Erasure journal maintenance unavailable; retrying next minute'); })
+        .then(async () => { await expireContentReports(this.db, now); })
+        .catch(() => { this.log.error('Content report expiry unavailable; retrying next minute'); })
+        .finally(() => { this.mediaDeletionTask = null; });
+    }
+
     return {
       claimed: due.length,
       processed,
@@ -446,5 +471,6 @@ export class EventWorker {
     // Let an in-flight tick finish rather than tearing its transaction down.
     while (this.running) await new Promise((r) => setTimeout(r, 20));
     await this.silentSpaceTask;
+    await this.mediaDeletionTask;
   }
 }

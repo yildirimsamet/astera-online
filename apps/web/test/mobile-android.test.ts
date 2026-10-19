@@ -11,4 +11,11 @@ describe('the local Android host', () => {
     expect(activity?.getAttribute('android:windowSoftInputMode')).toBe('adjustResize');
     expect(manifest.querySelector('application')?.getAttribute('android:hardwareAccelerated')).toBe('true');
   });
+
+  it('allows temporary OS bars by edge swipe while preserving Capacitor inset handling', () => {
+    const host = readAndroid('app/src/main/java/space/asteraonline/app/debug/MainActivity.java');
+    expect(host).toContain('WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE');
+    expect(host).not.toContain('setOnApplyWindowInsetsListener');
+    expect(host).not.toContain('setDecorFitsSystemWindows');
+  });
 });

@@ -1,4 +1,5 @@
 import { AccountSecurityEntry } from './AccountSecuritySheet.js';
+import { AccountDeletionEntry } from './AccountDeletionSheet.js';
 import { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { SERVERS } from '@astera/rules';
@@ -72,7 +73,7 @@ export function ServersScreen({
           {t('servers.signOut')}
         </Button>
       </header>
-      <div className="mt-4 max-w-md"><AccountSecurityEntry /></div>
+      <div className="mt-4 flex max-w-md flex-col gap-2"><AccountSecurityEntry /><AccountDeletionEntry /></div>
 
       <p className="mt-6 max-w-md text-body leading-relaxed text-dim">{t('servers.rule', { seats: SERVERS.capacity })}</p>
 

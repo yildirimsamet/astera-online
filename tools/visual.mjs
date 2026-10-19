@@ -17,6 +17,54 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--native-external-media')) {
+  const { verifyNativeExternalMedia } = await import('./native-external-media-visual.mjs');
+  await verifyNativeExternalMedia(process.argv[2] ?? 'out/native-external-media');
+  process.exit(0);
+}
+
+if (process.argv.includes('--content-report-media')) {
+  const { verifyContentReportMedia } = await import('./content-report-media-visual.mjs');
+  await verifyContentReportMedia(process.argv[2] ?? 'out/content-report-media');
+  process.exit(0);
+}
+
+if (process.argv.includes('--community-policy')) {
+  const { verifyCommunityPolicy } = await import('./community-policy-visual.mjs');
+  await verifyCommunityPolicy(process.argv[2] ?? 'out/community-policy');
+  process.exit(0);
+}
+
+if (process.argv.includes('--community-blocks')) {
+  const { verifyCommunityBlocks } = await import('./community-blocks-visual.mjs');
+  await verifyCommunityBlocks(process.argv[2] ?? 'out/community-blocks');
+  process.exit(0);
+}
+
+if (process.argv.includes('--content-reports')) {
+  const { verifyContentReports } = await import('./content-reports-visual.mjs');
+  await verifyContentReports(process.argv[2] ?? 'out/content-reports');
+  process.exit(0);
+}
+
+if (process.argv.includes('--account-deletion')) {
+  const { verifyAccountDeletion } = await import('./account-deletion-visual.mjs');
+  await verifyAccountDeletion(process.argv[2] ?? 'out/account-deletion');
+  process.exit(0);
+}
+
+if (process.argv.includes('--public-landing-performance')) {
+  const { measurePublicLanding } = await import('./public-landing-performance.mjs');
+  await measurePublicLanding(process.argv[2] ?? 'out/landing-premium-2026-10-18/performance');
+  process.exit(0);
+}
+
+if (process.argv.includes('--public-landing')) {
+  const { verifyPublicLanding } = await import('./public-landing-visual.mjs');
+  await verifyPublicLanding(process.argv[2] ?? 'out/landing-premium-2026-10-18/visual');
+  process.exit(0);
+}
+
 if (process.argv.includes('--refinery-ceiling')) {
   const { verifyRefineryCeiling } = await import('./refinery-ceiling-visual.mjs');
   await verifyRefineryCeiling(process.argv[2] ?? 'out/refinery-ceiling');
@@ -217,6 +265,12 @@ if (process.argv.includes('--shop-showcase')) {
 if (process.argv.includes('--chat-media')) {
   const { verifyChatMedia } = await import('./chat-media-visual.mjs');
   await verifyChatMedia(process.argv[2] ?? 'out/chat-media');
+  process.exit(0);
+}
+
+if (process.argv.includes('--native-startup')) {
+  const { verifyNativeStartup } = await import('./native-startup-visual.mjs');
+  await verifyNativeStartup(process.argv[2] ?? 'out/native-startup');
   process.exit(0);
 }
 

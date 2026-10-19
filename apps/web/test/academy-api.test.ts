@@ -1,3 +1,5 @@
+import type { CommunityPolicyConsent } from '../src/api/communityPolicySchemas.js';
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { describe, expect, it, vi } from 'vitest';
 import { ACADEMY_STEPS, academyLessonFleet, academyPirateHomecoming, engagementEndsAt, SENSOR } from '@astera/rules';
 import { ACADEMY_SIGHT_IDS, ACADEMY_TARGET_ID } from '../src/onboarding/academyViews.js';
@@ -95,8 +97,8 @@ describe('Academy uses the production API locally', () => {
       return Promise.resolve(new Response(JSON.stringify({ error: 'NO_FRONTIER', message: 'NO_FRONTIER' }), { status: 409 }));
     };
     const api = new Api({ fetch });
-    await expect(api.claim('Pilot', 'a-long-password', 40)).rejects.toMatchObject({ code: 'NO_FRONTIER' });
-    expect(bodies).toEqual([{ username: 'Pilot', password: 'a-long-password', step: 40 }]);
+    await expect(api.claim('Pilot', 'a-long-password', 40, undefined, policyProof)).rejects.toMatchObject({ code: 'NO_FRONTIER' });
+    expect(bodies).toEqual([{ username: 'Pilot', password: 'a-long-password', step: 40, communityPolicyVersion: COMMUNITY_POLICY_VERSION, communityPolicyLocale: 'en' }]);
   });
   it('pays an upgrade once, publishes its clock, then exposes its reward', async () => {
     const f = fixture('core');
@@ -326,3 +328,5 @@ describe('the squadron that flies home from the pirate', () => {
     expect(back!.fleet?.WARDEN).toBe(1);
   });
 });
+
+const policyProof: CommunityPolicyConsent = { version: COMMUNITY_POLICY_VERSION, locale: 'en' };

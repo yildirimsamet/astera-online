@@ -6,6 +6,7 @@ import { EVENT_NAME } from '../../lib/nowLine.js';
 import { duration } from '../../lib/time.js';
 import { Icon, type IconId } from '../icons.js';
 import type { MonumentDifficulty } from '@astera/rules';
+import { useNativeBack } from '../../platform/nativeBack.js';
 
 /**
  * THE GALAXY'S CORNERS. Owner feedback, 2026-09-24.
@@ -66,6 +67,7 @@ export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget
     }
   }, [openKind, targets]);
   const listed = openKind === null ? [] : targets.filter((target) => target.kind === openKind);
+  useNativeBack(root, () => { setOpenKind(null); }, openKind !== null && listed.length > 0);
   if (openKind === 'monument') {
     const order = (target: GalaxyTarget) => target.difficulty === 'HARD' ? 0 : target.difficulty === 'EASY' ? 1 : 2;
     listed.sort((a, b) => order(a) - order(b) || (a.ordinal ?? 0) - (b.ordinal ?? 0));
@@ -96,6 +98,7 @@ export function GalaxyReadout({ onlineToday, counts, targets = [], onFocusTarget
     <div
       ref={root}
       data-galaxy-readout
+      data-native-back-layer={openKind !== null && listed.length > 0 ? 'popover' : undefined}
       className="pointer-events-none relative flex max-w-[58vw] flex-col items-end gap-0.5 text-right font-v2-ui [text-shadow:0_1px_3px_var(--color-v2-void)]"
     >
       {/* Owner, 2026-10-11: daily activity only; live counts reveal quiet attack windows. */}

@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -940,7 +941,7 @@ describe('every payload the client parses', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/onboarding/claim',
-      payload: {
+      payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION,
         username: 'contract_claimer',
         password: 'correct-horse-battery',
         intents: [
@@ -2325,7 +2326,7 @@ describe('every payload the client parses', () => {
     const registered = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { username, password },
+      payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username, password },
     });
     expect(registered.statusCode, registered.body.slice(0, 200)).toBe(200);
     expect(sessionSchema.parse(registered.json()).username).toBe(username.toLowerCase());
@@ -2362,7 +2363,7 @@ describe('every payload the client parses', () => {
     const registered = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { username, password: 'correct-horse-battery' },
+      payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username, password: 'correct-horse-battery' },
     });
     const token = sessionSchema.parse(registered.json()).accessToken;
 

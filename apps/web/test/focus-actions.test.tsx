@@ -1832,3 +1832,18 @@ describe('the raider\'s first hour on the colony route', () => {
     expect(screen.getByRole('button', { name: /^Found colony$/ })).toBeEnabled();
   });
 });
+
+
+it('collapses the expanded context before clearing selection on native Back', () => {
+  const Wrapper = harness(); const onToggle = vi.fn(); const onClose = vi.fn();
+  const scene = (open: boolean) => <Wrapper><PlanetFocus target={target()} planet={mine} intel={intel} reports={[]} now={NOW}
+    onClose={onClose} onAttack={vi.fn()} onInstallTelescope={vi.fn()} onLaunched={vi.fn()} open={open} onToggle={onToggle} /></Wrapper>;
+  const view = render(scene(true));
+  const back = () => {
+    const rail = view.container.querySelector('[data-focus-rail]');
+    if (!rail) throw new Error('No focus rail');
+    fireEvent(rail, new Event('astera:native-back', { cancelable: true }));
+  };
+  back(); expect(onToggle).toHaveBeenCalledOnce(); expect(onClose).not.toHaveBeenCalled();
+  view.rerender(scene(false)); back(); expect(onClose).toHaveBeenCalledOnce();
+});

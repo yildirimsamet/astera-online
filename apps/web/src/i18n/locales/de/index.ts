@@ -1,3 +1,5 @@
+import { moderation } from './moderation.js';
+import { accountDeletion } from './accountDeletion.js';
 import { accountSecurity } from './accountSecurity.js';
 import { unknownSignal } from './unknownSignal.js';
 import { honorBenefits } from './honorBenefits.js';
@@ -31,6 +33,8 @@ import type { Resources } from '../en/index.js';
 
 /** DE — translated from the English resource tree. */
 export const de: Resources = {
+  moderation,
+  accountDeletion,
   accountSecurity,
   honorBenefits,
   unknownSignal,

@@ -1,3 +1,4 @@
+import type { CommunityPolicyConsent } from '../api/communityPolicySchemas.js';
 import { refreshQueries } from '../api/refreshQueries.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +34,7 @@ import type { CountryCode } from '@astera/rules';
  * subtree receives the authenticated client or its token, including replay.
  */
 export function Academy({ onClaim, onSignIn, onLeave, replay = false }: {
-  onClaim: (username: string, password: string, step: number, countryCode?: CountryCode) => Promise<void>;
+  onClaim: (username: string, password: string, step: number, countryCode?: CountryCode, policy?: CommunityPolicyConsent) => Promise<void>;
   onSignIn: () => void;
   onLeave: () => void;
   replay?: boolean;
@@ -48,7 +49,7 @@ export function Academy({ onClaim, onSignIn, onLeave, replay = false }: {
     client.setQueryData(keys.planet, academyPlanet(next));
     void refreshQueries(client);
   }, [client, replay]);
-  const api = useMemo(() => new Api({ fetch: academyFetch(() => live.current, write) }), [write]);
+  const api = useMemo(() => new Api({ fetch: academyFetch(() => live.current, write), authTransport: null, baseUrl: '' }), [write]);
   useEffect(() => {
     const timer = window.setInterval(() => {
       const before = live.current;
@@ -60,7 +61,7 @@ export function Academy({ onClaim, onSignIn, onLeave, replay = false }: {
   }, [client, write]);
   return <QueryClientProvider client={client}><ApiProvider api={api}>
     <AcademyScreen world={world} write={write} api={api} replay={replay}
-      onClaim={async (username, password, step, countryCode) => { await onClaim(username, password, step, countryCode); if (!replay) clearAcademy(); }}
+      onClaim={async (username, password, step, countryCode, policy) => { await onClaim(username, password, step, countryCode, policy); if (!replay) clearAcademy(); }}
       onSignIn={onSignIn} onLeave={onLeave} />
   </ApiProvider></QueryClientProvider>;
 }
@@ -170,7 +171,7 @@ const exercise = new Set<AcademyStepId>(['welcome', 'core', 'refinery', 'extract
 
 export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, replay }: {
   world: AcademyWorld; write: (world: AcademyWorld) => void; api: Api;
-  onClaim: (username: string, password: string, step: number, countryCode?: CountryCode) => Promise<void>;
+  onClaim: (username: string, password: string, step: number, countryCode?: CountryCode, policy?: CommunityPolicyConsent) => Promise<void>;
   onSignIn: () => void; onLeave: () => void; replay: boolean;
 }) {
   useSilenceToasts();
@@ -439,7 +440,7 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
       </section>
     </>}
     {claiming && <ClaimDialog planetName={world.preview.reserved.name} onSignIn={onSignIn} introduction={t('academy.claim')}
-      onClaim={async (username, password, countryCode) => { try { await onClaim(username, password, world.step, countryCode); } catch (e) { setProblem(describeError(e)); throw e; } }}
+      onClaim={async (username, password, countryCode, policy) => { try { await onClaim(username, password, world.step, countryCode, policy); } catch (e) { setProblem(describeError(e)); throw e; } }}
       {...(problem ? { error: problem } : {})} />}
   </div></AcademyLessonContext.Provider>;
 }

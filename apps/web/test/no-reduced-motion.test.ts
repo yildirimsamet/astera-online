@@ -13,12 +13,12 @@ async function sourceFiles(directory: string): Promise<string[]> {
   return files.flat().filter((path) => /\.(?:css|ts|tsx)$/.test(path));
 }
 
-describe('motion is always enabled', () => {
+describe('game motion stays enabled; the public landing honours its explicit accessibility requirement', () => {
   it('has no OS reduced-motion query, hook or conditional path anywhere in web source', async () => {
     const forbidden = /prefers-reduced-motion|useReducedMotion|reducedMotion|motion-safe:|motion-reduce:/;
     const offenders: string[] = [];
     for (const path of await sourceFiles(sourceRoot)) {
-      if (forbidden.test(await readFile(path, 'utf8'))) offenders.push(path.slice(sourceRoot.length + 1));
+      if (path !== resolve(sourceRoot, 'landing/public/public-landing.css') && forbidden.test(await readFile(path, 'utf8'))) offenders.push(path.slice(sourceRoot.length + 1));
     }
     expect(offenders).toEqual([]);
   });

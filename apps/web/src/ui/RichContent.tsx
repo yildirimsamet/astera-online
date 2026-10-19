@@ -1,3 +1,7 @@
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n/index.js';
+import { capabilities } from '../platform/runtime.js';
+import { youtubeVideoId } from '../lib/chatMedia.js';
 import { useMemo } from 'react';
 import DOMPurify from 'dompurify';
 
@@ -13,7 +17,7 @@ const YOUTUBE_HOSTS = new Set([
   'www.youtube.com', 'youtube.com', 'www.youtube-nocookie.com', 'youtube-nocookie.com',
 ]);
 
-const isRelativePath = (value: string): boolean => value.startsWith('/') && !value.startsWith('//');
+const isRelativePath = (value: string): boolean => value.startsWith('/') && !value.startsWith('//') && !value.includes('\\');
 
 const safeImageSource = (value: string): boolean => {
   if (isRelativePath(value)) return true;
@@ -45,7 +49,7 @@ const safeYoutubeEmbed = (value: string): boolean => {
 };
 
 /** A second allow-list at the exact browser sink, even though the server stores only clean HTML. */
-export function sanitizeRenderedHtml(raw: string): string {
+export function sanitizeRenderedHtml(raw: string, embeds = capabilities().thirdPartyEmbeds, labels = { youtube: i18n.t('chat.media.openYouTube'), image: i18n.t('chat.media.openExternalImage') }): string {
   const clean = DOMPurify.sanitize(raw, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
@@ -59,11 +63,34 @@ export function sanitizeRenderedHtml(raw: string): string {
       frame.remove();
       continue;
     }
+    if (!embeds) {
+      const id = youtubeVideoId(frame.getAttribute('src') ?? '');
+      if (!id) { frame.remove(); continue; }
+      const link = document.createElement('a');
+      link.href = `https://www.youtube.com/watch?v=${id}`;
+      link.textContent = labels.youtube;
+      frame.replaceWith(link);
+      continue;
+    }
     frame.setAttribute('loading', 'lazy');
     frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
     frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
     frame.setAttribute('allow', 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture');
     frame.setAttribute('allowfullscreen', '');
+  }
+  for (const image of template.content.querySelectorAll('img')) {
+    const source = image.getAttribute('src') ?? '';
+    if (!safeImageSource(source)) { image.remove(); continue; }
+    if (!embeds && !isRelativePath(source)) {
+      const link = document.createElement('a');
+      link.href = source;
+      const alt = image.getAttribute('alt')?.trim();
+      link.textContent = `${labels.image}${alt ? ` · ${alt}` : ''}`;
+      image.replaceWith(link);
+      continue;
+    }
+    image.setAttribute('loading', 'lazy');
+    image.setAttribute('referrerpolicy', 'no-referrer');
   }
   for (const link of template.content.querySelectorAll('a')) {
     if (!safeLinkTarget(link.getAttribute('href') ?? '')) {
@@ -75,19 +102,15 @@ export function sanitizeRenderedHtml(raw: string): string {
     link.setAttribute('target', '_blank');
     link.setAttribute('rel', 'noopener noreferrer nofollow');
   }
-  for (const image of template.content.querySelectorAll('img')) {
-    if (!safeImageSource(image.getAttribute('src') ?? '')) {
-      image.remove();
-      continue;
-    }
-    image.setAttribute('loading', 'lazy');
-    image.setAttribute('referrerpolicy', 'no-referrer');
-  }
   return template.innerHTML;
 }
 
 export function RichContent({ html, className = '' }: { html: string; className?: string }) {
-  const safe = useMemo(() => sanitizeRenderedHtml(html), [html]);
+  const { t } = useTranslation();
+  const embeds = capabilities().thirdPartyEmbeds;
+  const safe = useMemo(() => sanitizeRenderedHtml(html, embeds, {
+    youtube: t('chat.media.openYouTube'), image: t('chat.media.openExternalImage'),
+  }), [html, embeds, t]);
   return (
     <div
       className={`announcement-content ${className}`}

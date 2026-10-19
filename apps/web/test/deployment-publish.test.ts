@@ -32,6 +32,26 @@ async function fixture(): Promise<{ stage: string; live: string }> {
 }
 
 describe('web deployment keeps lazy chunks requested by open tabs', () => {
+  it('gives locale game entry documents the same nonce substitution as the root entry', async () => {
+    const nginx = await readFile(resolve(import.meta.dirname, '../../../deploy/nginx/astera.conf'), 'utf8');
+    const locale = nginx.split('location ~ ^/(?:tr|en|fr|de|es|ja)/index\\.html$ {')[1]?.split('\n    }')[0];
+    expect(locale).toBeDefined();
+    expect(locale).toContain('gzip_static off;');
+    expect(locale).toContain("sub_filter '__CSP_NONCE__' $request_id;");
+    expect(locale).toContain("script-src 'nonce-$request_id' 'strict-dynamic'");
+    expect(locale).toContain('try_files $uri =404;');
+  });
+  it('publishes locale entry documents and removes stale precompressed copies', async () => {
+    const { stage, live } = await fixture();
+    await mkdir(join(stage, 'tr'), { recursive: true });
+    await mkdir(join(live, 'tr'), { recursive: true });
+    await writeFile(join(stage, 'tr/index.html'), 'Yeni Türkçe açılış');
+    await writeFile(join(live, 'tr/index.html.gz'), 'stale compressed locale');
+    const result = spawnSync('bash', [publishScript, stage, live], { encoding: 'utf8' });
+    expect(result.status, result.stderr).toBe(0);
+    expect(await readFile(join(live, 'tr/index.html'), 'utf8')).toBe('Yeni Türkçe açılış');
+    await expect(readFile(join(live, 'tr/index.html.gz'))).rejects.toThrow();
+  });
   it('does not mark a missing asset as immutable for a year', async () => {
     const nginx = await readFile(resolve(import.meta.dirname, '../../../deploy/nginx/astera.conf'), 'utf8');
     const assetLocation = /location \/assets\/ \{(?<body>[\s\S]*?)\n\s*\}/u.exec(nginx)?.groups?.body;

@@ -13,6 +13,7 @@
 # Installed by the operator as a cron entry; see docs/deployment.md.
 
 set -euo pipefail
+umask 077
 
 cd "$(dirname "$0")/.."
 [[ -f .env ]] || { echo "No .env beside docker-compose.prod.yml."; exit 1; }
@@ -42,12 +43,5 @@ mv "$MEDIA_OUT.partial" "$MEDIA_OUT"
 mv "$OUT.partial" "$OUT"
 echo "wrote $OUT ($(du -h "$OUT" | cut -f1))"
 
-# Retention. Sorted by name, which is chronological because the stamp is.
-mapfile -t old < <(ls -1 "$DEST"/astera-*.sql.gz 2>/dev/null | head -n -"$KEEP")
-# `if`, not `&&`: a false test as the loop's last command made a good backup exit 1.
-for f in "${old[@]:-}"; do
-  if [[ -n "$f" ]]; then
-    rm -f "$f" "${f%.sql.gz}.media.tar.gz"
-    echo "pruned $(basename "$f")"
-  fi
-done
+# The independent hourly cron also runs this if pg_dump/media backup fails.
+python3 deploy/backup-retention.py --directory "$DEST" --keep "$KEEP" --apply

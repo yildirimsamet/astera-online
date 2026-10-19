@@ -1,3 +1,4 @@
+import { watchAppActivity } from '../platform/activity.js';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -211,12 +212,12 @@ export function TimedImpact({ event }: { event: DeathStarImpactEvent }) {
     sync();
     arm(event.at);
     arm(event.at + DEATH_STAR_IMPACT_MS);
-    document.addEventListener('visibilitychange', sync);
+    const stopActivity = watchAppActivity(sync);
     window.addEventListener('focus', sync);
     window.addEventListener('pageshow', sync);
     return () => {
       timers.forEach(clearTimeout);
-      document.removeEventListener('visibilitychange', sync);
+      stopActivity();
       window.removeEventListener('focus', sync);
       window.removeEventListener('pageshow', sync);
     };

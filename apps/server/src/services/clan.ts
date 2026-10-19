@@ -1,3 +1,5 @@
+import { assertCommunityPolicyAccepted } from './communityPolicy.js';
+import { chatVisibleTo } from './communityBlocks.js';
 import {
   and,
   asc,
@@ -526,6 +528,7 @@ export async function readClanBadge(db: Db, accountId: string, now: Date) {
     db.select({ value: count() }).from(clanMessages).where(and(
       eq(clanMessages.clanId, membership.clanId),
       ne(clanMessages.authorPlayerId, actor.playerId),
+      chatVisibleTo(accountId, clanMessages.authorPlayerId),
       gte(clanMessages.createdAt, membership.joinedAt),
       membership.lastChatReadAt ? gt(clanMessages.createdAt, membership.lastChatReadAt) : undefined,
     )),
@@ -699,6 +702,7 @@ export async function createClan(
     adminUsernames?: readonly string[];
   },
 ) {
+  await assertCommunityPolicyAccepted(tx, input.actor.accountId);
   const now = input.clock.now();
   const name = normaliseClanName(input.name);
   const tag = normaliseClanTag(input.tag);
@@ -825,6 +829,7 @@ export async function updateClanSettings(
   tx: Tx,
   input: { actor: ClanActor; description: string; recruiting: boolean; now: Date },
 ) {
+  await assertCommunityPolicyAccepted(tx, input.actor.accountId);
   await lockSeason(tx, input.actor.seasonId);
   const { membership } = await lockLedClan(tx, input.actor);
   const description = input.description.trim();

@@ -1,3 +1,5 @@
+import type { CommunityPolicyConsent } from '../src/api/communityPolicySchemas.js';
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { Capacitor } from '@capacitor/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -20,8 +22,8 @@ describe('native auth without changing web fetch or buffering SSE', () => {
     const { api, request, fetcher } = harness();
     await api.login('pilot', 'password-for-native');
     expect(request).toHaveBeenCalledWith('/api/auth/login', { username: 'pilot', password: 'password-for-native' });
-    await api.register('pilot', 'password-for-native', 'TR');
-    expect(request).toHaveBeenCalledWith('/api/auth/register', { username: 'pilot', password: 'password-for-native', countryCode: 'TR' });
+    await api.register('pilot', 'password-for-native', 'TR', policyProof);
+    expect(request).toHaveBeenCalledWith('/api/auth/register', { username: 'pilot', password: 'password-for-native', countryCode: 'TR', communityPolicyVersion: COMMUNITY_POLICY_VERSION, communityPolicyLocale: 'en' });
     expect(await api.restore()).toBe(true);
     expect(request).toHaveBeenCalledWith('/api/auth/refresh', undefined);
     request.mockResolvedValueOnce(json({ ok: true }));
@@ -143,3 +145,5 @@ describe('native plugin selection', () => {
     expect(done).toHaveBeenCalledWith(expect.objectContaining({ status: 503 }));
   });
 });
+
+const policyProof: CommunityPolicyConsent = { version: COMMUNITY_POLICY_VERSION, locale: 'en' };

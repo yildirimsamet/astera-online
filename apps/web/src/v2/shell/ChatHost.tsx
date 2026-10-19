@@ -1,3 +1,4 @@
+import { BlockedPlayersSheet } from '../../screens/CommunityBlocks.js';
 import { useEffect, useState } from 'react';
 import { addChatMute, readChatMutes, writeChatMutes, type ChatMuteAuthor } from '../../lib/chatMutes.js';
 import { MuteIcon } from '../../ui/icons/index.js';
@@ -34,6 +35,7 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
   const { t } = useTranslation();
   const [mutedPlayers, setMutedPlayers] = useState(() => readChatMutes(accountId));
   const [showMuted, setShowMuted] = useState(false);
+  const [showBlocked, setShowBlocked] = useState(false);
   useEffect(() => { writeChatMutes(accountId, mutedPlayers); }, [accountId, mutedPlayers]);
   const mute = (author: ChatMuteAuthor): void => { setMutedPlayers(current => addChatMute(current, author)); };
   const generalUnread = useChatUnread().data?.count ?? 0;
@@ -42,14 +44,17 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
 
   return (
     <>
-      <Sheet title={t('bell.chat')} titleAction={(
+      <Sheet title={t('bell.chat')} titleAction={(<>
         <button type="button" aria-label={t('chat.personalMutes.title')} aria-haspopup="dialog"
           className="relative grid size-8 shrink-0 place-items-center rounded-control border border-v2-line text-v2-ink-2 hover:border-v2-self/50 hover:text-v2-self focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
           onClick={() => { setShowMuted(true); }}>
           <MuteIcon className="size-4" />
           {mutedPlayers.length > 0 && <span aria-hidden className="absolute -top-1 -right-1 min-w-3.5 rounded-pill bg-v2-self px-0.5 font-v2-mono text-micro text-v2-self-ink">{mutedPlayers.length}</span>}
         </button>
-      )} onClose={onClose} detents={['full']} contained fixedHeight>
+        <button type="button" aria-label={t('moderation.blocks.title')} aria-haspopup="dialog" className="grid size-8 shrink-0 place-items-center rounded-control border border-v2-line text-v2-ink-2 hover:border-v2-self/50 hover:text-v2-self focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self" onClick={() => { setShowBlocked(true); }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-4" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3ZM8 12h8" /></svg>
+        </button>
+      </>)} onClose={onClose} detents={['full']} contained fixedHeight>
         <div className="min-h-0 flex-1">
           <ChatScreen
             isAdmin={isAdmin}
@@ -64,6 +69,7 @@ function PersonalChatHost({ accountId, onClose, onFocusPlanet, channel, draft, i
           />
         </div>
       </Sheet>
+      {showBlocked ? <BlockedPlayersSheet onClose={() => { setShowBlocked(false); }} /> : null}
       {showMuted && <Sheet title={t('chat.personalMutes.title')} detents={['fit']} onClose={() => { setShowMuted(false); }}>
         <p className="mb-3 text-caption leading-relaxed text-v2-ink-2">{t('chat.personalMutes.hint')}</p>
         {mutedPlayers.length === 0 ? <p className="py-4 text-center text-caption text-v2-ink-2">{t('chat.personalMutes.empty')}</p> : (

@@ -14,6 +14,8 @@ describe('the local Android wrapper configuration', () => {
     expect(config.server?.url).toBe('http://localhost:5173');
     expect(config.server?.cleartext).toBe(true);
     expect(config.appId).toBe('space.asteraonline.app.debug');
+    expect(config.plugins?.App).toMatchObject({ disableBackButtonHandler: true });
+    expect(config.plugins?.SystemBars).toMatchObject({ hidden: true, style: 'DARK', insetsHandling: 'css' });
   });
 
   it('refuses to configure a remote-URL app without an explicit debug opt-in', async () => {

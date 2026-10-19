@@ -35,7 +35,7 @@ import {
 } from '../services/galaxyEvents.js';
 import { joinSeason } from '../services/player.js';
 import { grantReward } from '../services/rewards.js';
-import { deleteAccount, describeAccount } from '../services/accountDeletion.js';
+import { describeAccount } from '../services/accountDeletion.js';
 import { departToSilentSpace, describeSilentSpaceDeparture } from '../services/silentSpace.js';
 import {
   bootstrapServers,
@@ -68,12 +68,9 @@ season silent-space NAME [--yes] MOVE ONE PERSON out of their main galaxy into
                                    colony sites reopen as caretaker worlds. Dry
                                    run unless --yes. Refuses, writing nothing,
                                    while anything of theirs is in the air.
-season delete-account NAME [--yes] ERASE ONE PERSON at their own request: the
-                                   account, the commander, the capital and every
-                                   row either was the reason for. A captured
-                                   colony is handed back to the galaxy as the
-                                   caretaker world it was born as. Dry run unless
-                                   --yes. Refuses while anything is in the air.
+season delete-account NAME        inspect a legacy name-based deletion preview.
+                                   Destructive --yes is retired: use the verified
+                                   admin account-deletion workflow and journal.
 season restamp [--yes] [options]    re-deal the effect of every window of ONE event
                                    kind that has NOT opened yet, from today's
                                    rules. Dry run unless --yes; opened windows are
@@ -235,6 +232,7 @@ async function main(): Promise<void> {
   });
 
   const command = positionals[0];
+  if (command === 'delete-account' && values.yes) throw new Error('Use the verified account-deletion workflow; legacy --yes cannot bypass approval and the erasure journal');
   loadDotEnv();
   const env = loadEnv();
   const { db, close } = createDb(env.DATABASE_URL, {
@@ -628,7 +626,7 @@ async function main(): Promise<void> {
       /**
        * MOVING ONE PERSON WHO ASKED TO BE MOVED.
        *
-       * A COMMAND RATHER THAN A ROUTE, for the reason `delete-account` is one:
+       * A COMMAND RATHER THAN AN AUTOMATIC SWEEP:
        * the thing being confirmed is a HUMAN REQUEST that no server-side check
        * can verify. Silent Space is otherwise entered by absence alone, and it
        * stays that way — this waives the activity clock for one named commander
@@ -688,52 +686,18 @@ async function main(): Promise<void> {
         return;
       }
 
-      /**
-       * ERASING ONE PERSON WHO ASKED TO BE ERASED.
-       *
-       * A COMMAND RATHER THAN A ROUTE, and rather than a sweep, for two reasons:
-       * a player deletes themselves roughly never, and the thing being confirmed
-       * is a HUMAN REQUEST that no server-side check can verify. The operator read
-       * the message; the server can only be told the answer.
-       *
-       * Dry run by default. It prints who would go and what they hold, because the
-       * one failure this command must never have is deleting the wrong person on a
-       * name collision — and the operator is typing a name they read in a message,
-       * not a uuid.
-       */
+      /** Legacy inspection only; all erasures use the verified admin request workflow. */
       case 'delete-account': {
         const name = positionals[1];
         if (name === undefined) throw new Error('Which commander? season delete-account NAME');
-
-        if (values.yes !== true) {
-          const found = await describeAccount(db, name);
-          if (!found) throw new Error(`No commander named ${name}`);
-          console.log(
-            [
-              `WOULD DELETE  ${found.account}  (login ${found.username})`,
-              `joined        ${found.createdAt.toISOString()}`,
-              `worlds        ${
-                found.worlds.length === 0
-                  ? '(none)'
-                  : found.worlds
-                    .map((world) => `${world.name} [${world.kind} @${String(world.slotIndex)}]`)
-                    .join(', ')
-              }`,
-              '',
-              'Nothing was written. Re-run with --yes to erase this person.',
-            ].join('\n'),
-          );
-          return;
-        }
-
-        const result = await deleteAccount(db, systemClock, name);
-        console.log(
-          [
-            `deleted      ${result.account} (login ${result.username})`,
-            `worlds gone  ${result.worldsRemoved.join(', ') || '(none)'}`,
-            `given back   ${result.coloniesReturned.join(', ') || '(none)'}`,
-          ].join('\n'),
-        );
+        const found = await describeAccount(db, name);
+        if (!found) throw new Error(`No commander named ${name}`);
+        console.log([
+          `LEGACY PREVIEW  ${found.account} (login ${found.username})`,
+          `joined          ${found.createdAt.toISOString()}`,
+          `worlds          ${found.worlds.map(world => `${world.name} [${world.kind} @${String(world.slotIndex)}]`).join(', ') || '(none)'}`,
+          'Nothing was written. Use the verified admin account-deletion workflow for erasure.',
+        ].join('\n'));
         return;
       }
 

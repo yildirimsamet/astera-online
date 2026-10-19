@@ -1,3 +1,4 @@
+import type { CommunityPolicyConsent } from '../api/communityPolicySchemas.js';
 import { refreshQueries } from '../api/refreshQueries.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,6 +12,8 @@ import { track } from '../lib/analytics.js';
 import { rememberCommander } from '../lib/returning.js';
 import { academyPreview } from '../onboarding/academyWorld.js';
 import { serverNow } from '../lib/clock.js';
+import { isAppActive, isAppActivityKnown, watchAppActivity } from '../platform/activity.js';
+import { isNetworkOnline, watchNetworkStatus } from '../platform/network.js';
 
 /** Where the player is standing, as one word. */
 export type Phase = Session['phase'];
@@ -108,6 +111,13 @@ export function useSession() {
   const [resumed, setResumed] = useState(() => session.phase === 'ready');
   // Async transitions from the previous identity must never replace its exit screen.
   const revision = useRef(0);
+  const mounted = useRef(false);
+  const currentSession = useRef(session);
+  const recoverableCold = useRef<number | null>(null);
+  const coldPromise = useRef<Promise<void> | null>(null);
+  const coldFlight = useRef<{ revision: number; canQueue: boolean; requested: boolean } | null>(null);
+  useEffect(() => { currentSession.current = session; }, [session]);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => api.onSessionEnded((reason, loginEmail) => {
     revision.current++;
     forgetReady();
@@ -163,50 +173,99 @@ export function useSession() {
   );
 
   /** Cookie → session → screen. The whole of what happens when a tab opens cold. */
-  const coldStart = useCallback(async (): Promise<void> => {
+  const coldStart = useCallback((queueInitialReturn = false): Promise<void> => {
+    if (coldPromise.current && coldFlight.current?.revision === revision.current) return coldPromise.current;
     const startedAt = revision.current;
-    try {
-      const restored = await api.restore();
-      if (startedAt !== revision.current) return;
-      if (!restored) {
-        queries.clear();
-        forgetReady();
-        setResumed(false);
-        setSession({ phase: 'landing' });
-        return;
+    const stillCurrent = () => mounted.current && startedAt === revision.current;
+    const flight = { revision: startedAt, canQueue: queueInitialReturn, requested: false };
+    coldFlight.current = flight;
+    const attempt = async (): Promise<void> => {
+      recoverableCold.current = null;
+      try {
+        const restored = await api.restore();
+        if (!stillCurrent()) return;
+        if (!restored) {
+          queries.clear();
+          forgetReady();
+          setResumed(false);
+          setSession({ phase: 'landing' });
+          return;
+        }
+        const me = await api.me();
+        if (!stillCurrent()) return;
+        await settle(me);
+      } catch (err) {
+        if (!stillCurrent()) return;
+        if (err instanceof ApiError && err.status === 401) {
+          forgetReady();
+          setResumed(false);
+          setSession({ phase: 'landing', error: messageOf(err) });
+          return;
+        }
+        // Temporary refresh/profile failures must not eject a resumed commander
+        // or discard their world. Existing queries can recover on their next read;
+        // a cold visitor gets the localized failure and the existing retry action.
+        if (currentSession.current.phase !== 'ready' && err instanceof ApiError && err.status >= 500 && err.status < 600) {
+          recoverableCold.current = startedAt;
+        }
+        setSession((current) => current.phase === 'ready'
+          ? current : { phase: 'blocked', message: messageOf(err) });
       }
-      const me = await api.me();
-      if (startedAt !== revision.current) return;
-      await settle(me);
-    } catch (err) {
-      if (startedAt !== revision.current) return;
-      if (err instanceof ApiError && err.status === 401) {
-        forgetReady();
-        setResumed(false);
-        setSession({ phase: 'landing', error: messageOf(err) });
-        return;
+    };
+    const task = (async () => {
+      await attempt();
+      // A return can race the first failed read. Retain one fresh pass, not a loop.
+      flight.canQueue = false;
+      if (flight.requested && recoverableCold.current === startedAt
+        && stillCurrent() && isAppActive() && isNetworkOnline()) await attempt();
+    })().finally(() => {
+      if (coldFlight.current === flight) {
+        coldFlight.current = null;
+        coldPromise.current = null;
       }
-      // Temporary refresh/profile failures must not eject a resumed commander
-      // or discard their world. Existing queries can recover on their next read;
-      // a cold visitor gets the localized failure and the existing retry action.
-      setSession((current) => current.phase === 'ready'
-        ? current : { phase: 'blocked', message: messageOf(err) });
-    }
+    });
+    coldPromise.current = task;
+    return task;
   }, [api, queries, settle]);
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    void coldStart();
+    void coldStart(true);
+  }, [coldStart]);
+
+  useEffect(() => {
+    let wasActive = isAppActive();
+    let known = isAppActivityKnown();
+    const recover = (): void => {
+      if (!mounted.current || !isAppActive() || !isNetworkOnline()) return;
+      const flight = coldFlight.current;
+      if (flight?.revision === revision.current) {
+        if (flight.canQueue) flight.requested = true;
+        return;
+      }
+      if (recoverableCold.current === revision.current && currentSession.current.phase === 'blocked') void coldStart();
+    };
+    const activity = (): void => {
+      const active = isAppActive();
+      // The first native getState result establishes a baseline, not a resume.
+      const returned = active && known && !wasActive;
+      wasActive = active;
+      known = isAppActivityKnown();
+      if (returned) recover();
+    };
+    const stopActivity = watchAppActivity(activity);
+    const stopNetwork = watchNetworkStatus(recover);
+    return () => { stopActivity(); stopNetwork(); };
   }, [coldStart]);
 
   const authenticate = useCallback(
-    async (mode: 'login' | 'register', username: string, password: string, countryCode?: CountryCode): Promise<void> => {
+    async (mode: 'login' | 'register', username: string, password: string, countryCode?: CountryCode, policy?: CommunityPolicyConsent): Promise<void> => {
       const startedAt = ++revision.current;
       setResumed(false);
       setSession({ phase: 'starting' });
       try {
-        if (mode === 'register') await api.register(username, password, countryCode);
+        if (mode === 'register') await api.register(username, password, countryCode, policy);
         else await api.login(username, password);
         if (startedAt !== revision.current) return;
         /**
@@ -338,9 +397,10 @@ export function useSession() {
       password: string,
       intents: readonly ClaimIntent[] | number,
       countryCode?: CountryCode,
+      policy?: CommunityPolicyConsent,
     ): Promise<void> => {
       const startedAt = ++revision.current;
-      const result = await api.claim(username, password, intents, countryCode);
+      const result = await api.claim(username, password, intents, countryCode, policy);
       if (startedAt !== revision.current) return;
       rememberCommander();
       // The other door. A commander who played the rehearsal first and is only now

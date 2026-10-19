@@ -3,6 +3,21 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { runInNewContext } from 'node:vm';
 import { lockViewportZoom } from '../src/lib/viewport.js';
 
+it('keeps the game loading viewport locked when Suspense retains a hidden public tree', () => {
+  const publicPage = document.createElement('main');
+  publicPage.dataset.publicLanding = '';
+  publicPage.style.display = 'none';
+  const loading = document.createElement('div');
+  loading.dataset.loadingScreen = '';
+  document.body.append(publicPage, loading);
+  const stop = lockViewportZoom();
+  try {
+    const pinch = new WheelEvent('wheel', { ctrlKey: true, cancelable: true });
+    window.dispatchEvent(pinch);
+    expect(pinch.defaultPrevented).toBe(true);
+  } finally { stop(); publicPage.remove(); loading.remove(); }
+});
+
 /**
  * THE PAGE DOES NOT ZOOM; THE GALAXY DOES.
  *
@@ -47,6 +62,19 @@ describe('page zoom is refused and the disc keeps its gestures', () => {
     const scroll = new WheelEvent('wheel', { deltaY: 120, cancelable: true });
     window.dispatchEvent(scroll);
     expect(scroll.defaultPrevented).toBe(false);
+  });
+
+  it('allows magnification while reading the public landing and restores the game guard afterwards', () => {
+    const page = document.createElement('main'); page.dataset.publicLanding = ''; document.body.append(page);
+    lock();
+    try {
+      const pinch = new WheelEvent('wheel', { ctrlKey: true, cancelable: true }); window.dispatchEvent(pinch);
+      const gesture = new Event('gesturestart', { cancelable: true }); document.dispatchEvent(gesture);
+      expect(pinch.defaultPrevented).toBe(false); expect(gesture.defaultPrevented).toBe(false);
+      page.remove();
+      const gamePinch = new WheelEvent('wheel', { ctrlKey: true, cancelable: true }); window.dispatchEvent(gamePinch);
+      expect(gamePinch.defaultPrevented).toBe(true);
+    } finally { page.remove(); }
   });
 
   it('releases every listener when torn down', () => {

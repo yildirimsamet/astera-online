@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
@@ -86,7 +87,7 @@ describe('onboarding claim', () => {
     const reg = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { username: `neighbour${String(seq)}`, password: 'correct-horse-battery' },
+      payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: `neighbour${String(seq)}`, password: 'correct-horse-battery' },
     });
     const who = reg.json<{ accessToken: string }>();
     const res = await app.inject({
@@ -99,7 +100,7 @@ describe('onboarding claim', () => {
   };
 
   const claim = (payload: Record<string, unknown>) =>
-    app.inject({ method: 'POST', url: '/api/onboarding/claim', payload });
+    app.inject({ method: 'POST', url: '/api/onboarding/claim', payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, ...payload } });
 
   it('accepts and stores the country selected by the Academy claim', async () => {
     await openWorld();

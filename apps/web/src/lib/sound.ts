@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { z } from 'zod';
+import { isAppActive, watchAppActivity } from '../platform/activity.js';
 
 export type SoundCue = 'tap' | 'confirm' | 'alert' | 'launch' | 'cargo' | 'weapon' | 'shield' | 'impact' | 'strategic' | 'mining';
 const CUES: readonly SoundCue[] = ['tap', 'confirm', 'alert', 'launch', 'cargo', 'weapon', 'shield', 'impact', 'strategic', 'mining'];
@@ -52,7 +53,7 @@ class SoundMixer {
 
   /** Called synchronously from a real gesture, including the first tap. */
   unlock = (): void => {
-    if (this.disposed || !preference.enabled || preference.volume === 0 || document.visibilityState === 'hidden' || typeof AudioContext === 'undefined') return;
+    if (this.disposed || !preference.enabled || preference.volume === 0 || !isAppActive() || typeof AudioContext === 'undefined') return;
     if (!this.context) {
       let context: AudioContext | null = null;
       try {
@@ -94,7 +95,7 @@ class SoundMixer {
 
   play(cue: SoundCue, { gain = 1, pan = 0, key }: SoundOptions): void {
     const context = this.context, master = this.master, buffer = this.buffers.get(cue);
-    if (this.disposed || !preference.enabled || preference.volume === 0 || document.visibilityState === 'hidden'
+    if (this.disposed || !preference.enabled || preference.volume === 0 || !isAppActive()
       || context?.state !== 'running' || !master || !buffer || !Number.isFinite(gain) || gain <= 0 || !Number.isFinite(pan)) return;
     const now = performance.now();
     if (key && (this.seen.get(key) ?? -Infinity) > now - 60_000) return;
@@ -130,10 +131,10 @@ class SoundMixer {
     this.voices.clear();
   }
   visibility = (): void => {
-    if (document.visibilityState === 'hidden') {
+    if (!isAppActive()) {
       this.stop();
       if (this.context?.state === 'running') void this.context.suspend().catch(() => { /* OS already suspended. */ });
-    } else this.unlock();
+    } else if (this.context) this.unlock();
   };
   click = (event: MouseEvent): void => {
     if (event.defaultPrevented || !event.isTrusted || !(event.target instanceof Element)) return;
@@ -163,12 +164,12 @@ export function useSoundEffects(): void {
     document.addEventListener('pointerdown', controller.unlock, { passive: true });
     document.addEventListener('keydown', controller.keyboard);
     document.addEventListener('click', controller.click);
-    document.addEventListener('visibilitychange', controller.visibility);
+    const stopActivity = watchAppActivity(controller.visibility);
     return () => {
       document.removeEventListener('pointerdown', controller.unlock);
       document.removeEventListener('keydown', controller.keyboard);
       document.removeEventListener('click', controller.click);
-      document.removeEventListener('visibilitychange', controller.visibility);
+      stopActivity();
       if (mixer === controller) mixer = null;
       controller.destroy();
     };

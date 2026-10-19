@@ -1,0 +1,32 @@
+# İşletim günlüklerinin saklanması — 19 Ekim 2026
+
+Owner kişisel veri içerebilen günlükler ve özel yayın yedekleri için en fazla 30 gün seçti. Yedek temizliği kurulmuş olsa da canlı Docker json-file günlükleri yalnız boyuta göre dönüyor; bu, 30 günlük zaman sınırı sağlamıyor. Mevcut Nginx günlükleri günlük/14 kopya ile dönüyor; boş dosyanın dönüşünü atlaması ayrıca denetlenmeli. Bu kapı kapanmadan bütün günlükler için 30 gün uygulanıyor denmez.
+
+Gereksinimler: yalnız Astera günlüklerini yönet; başka proje veya host günlüklerini temizleme. Güncel uygulama/sunucu davranışını değiştirmeden mevcut rsyslog servisine özel Unix socket ve ruleset kullan. Uygulama stdout/stderr kayıtları journald/genel syslog içine çoğaltılmamalı. Docker dual logging cache kapalı olmalı; boyut dönüşlü gizli ikinci kopya bırakılmamalı. Alıcı dosya adları mesajın beyan ettiği tarihten değil sunucunun UTC alma tarihinden türetilmeli. Private dosyalar günlük ayrılmalı; saatlik temizleme, günlük dosyanın en erken kaydını ve bir saatlik gecikme payını hesaba katmalı. Kopyalamak/touch etmek süreyi uzatmamalı. Dry-run varsayılan, apply açık olmalı; symlink, alt dizin, yabancı ad ve geniş kök reddedilmeli.
+
+Testler: eski/yeninin ayrımı ve dry-run/apply/idempotence; yeni mtime'a rağmen eski tarih silinir; geçersiz gün ve symlink/yabancı dosya korunur; güvenli olmayan kök reddedilir. Gerçek rsyslog config doğrulaması, izole Docker emit/probe ve ikinci kopya yokluğu ayrıca gerekir. Çökme/cron/alıcı hatası operasyonel izlemedir; test geçişi sonsuz çalışma garantisi değildir.
+
+Etki: mevcut uygulama kodu, DB, oyuncu kimliği veya ekonomi değişmez. Üretim dört app rolünün logging değişimi normal image roll'a katılabilir. PostgreSQL/Valkey gibi diğer log kaynakları ayrı incelenir; PostgreSQL yeniden başlatması gerekecekse deployment.md'nin olağan roll dışı kesinti onayı kapısı geçerlidir. Böyle bir kesinti henüz uygulanmadı. Eski logların silinmesi ve Console beyanı canlı kabul gerektirir.
+
+Resmî araştırma:
+- [Docker syslog driver](https://docs.docker.com/engine/logging/drivers/syslog/): container bazında Unix/Unixgram adres ve rfc5424micro desteklenir; Docker daemon'u genel olarak yeniden başlatmak gerekmez.
+- [Docker dual logging](https://docs.docker.com/engine/logging/dual-logging/): uzak driver'ın varsayılan local cache'i zaman sınırı sağlamaz; cache-disabled=true gerekir.
+- [rsyslog imuxsock](https://docs.rsyslog.com/doc/configuration/modules/imuxsock.html): özel socket ayrı ruleset'e bağlanabilir. Varsayılan /dev/log kullanımı journald kopyası bırakabileceği için özel giriş seçildi.
+
+Yerel doğrulama: başlangıçta retention testi 2FAIL/1PASS; günlük temizleyici eklendikten sonra retention ve mevcut yedek kontrolleri toplam 12PASS. Saatlik pay dosya tarihine uygulanır; yeni mtime süreyi uzatmaz.
+
+VPS rsyslog 8.2312.0 çalışıyor ve host timezone Etc/UTC. İlk kontrol yalnız UTC yazımını kabul ettiği için ön koşulda durdu; eşdeğer Etc/UTC de kabul edildi. Rsyslog'un AppArmor profili home altındaki private config'i okumayı reddetti; profil devre dışı bırakılmadı. Geçici, otomatik include edilmeyen /etc/rsyslog.d/astera-qualification.tmp üzerinden gerçek rsyslogd -N1 doğrulaması PASS. Profil ayrıca özel socket için dar bir ek izin gerektiriyor; deploy/logging/astera-apparmor yalnız bu yolu açar. Genel rsyslog/journald yetkileri genişletilmez.
+
+Docker logging overlay opt-in'dir; mevcut production compose'un varsayılanlarını kendiliğinden değiştirmez. API/worker roll'u ve PostgreSQL'in ayrıca onay gerektiren yeniden başlatılması ayrıdır. Yeni runtime alıcısı, ikinci kopya bulunmadığı ve periyodik temizliğin canlı kabulü henüz tamamlanmadı.
+
+İlk AppArmor ekinin explicit unix addr kuralı gerçek parser tarafından reddedildi; özgün profil otomatik geri yüklendi, rsyslog değiştirilmedi. [Resmî AppArmor manual](https://www.apparmor.net/man/4.0/apparmor.d/): filesystem socket'leri dosya yol kurallarıyla yönetilir; addr yalnız abstract/anonymous socket koşuludur. Ek yalnız iki dar dosya yol iznine indirildi; geniş unix bind izni verilmedi.
+
+Alıcı 19 Ekim VPS'ye kuruldu; AppArmor açık kaldı. İzole, network=none ve 64MiB sınırında Docker fixture gerçek günlük dosyasına yazdı; Docker secondary cache kapalı, journal/default syslog kopyası yok. İlk kopya kontrolü kendi sudo denetim komutunu yakaladığı için false positive verdi; takip eden root helper marker'ı argv'ye koymadan kontrol etti. journalctl eşleşme yokken exit1 döndürdüğünden validator bunun boş stdout/stderr ile geçerli yokluk olduğunu ayırdı. Son gerçek probe PASS. Saatlik dakika19 runtime retention kuruldu; dry-run/apply0. Private kanıt: ~/backups/astera-play-release-20261019T143306Z/runtime-logging-probe.json. Canlı API/worker/PostgreSQL/Valkey container logging ayarları halen eski; bu kurulum onları değiştirmedi.
+
+Nginx adayında yalnız üç Astera vhost'u aynı alıcıya yönlendirilir. Access formatı query/body/header/referrer içermez; IP, yol, yöntem, protokol, durum, boyut ve süreyi tutar. Error log'ları da zaman sınırına girer. Kaynak testleri önce2RED; gerçek Nginx syntax ve izole HTTP/log kabulü henüz açık. [Nginx syslog](https://nginx.org/en/docs/syslog.html), [access log formatı](https://nginx.org/en/docs/http/ngx_http_log_module.html). Diğer sitelerin vhost/günlük ayarları değişmedi. Bu Nginx dosyası henüz canlıya konmadı; locale CSP nedeniyle webroot yayınından sonra uygulanır.
+
+Gerçek Nginx ilk syntax RED: tag içinde tire kabul edilmiyor. Etiketler astera_web/astera_web_error olarak düzeltildi. Son gerçek full candidate nginx -t ve izole 127.0.0.1:3427 HTTP204/dedicated file/query bilgisi yok kabulü PASS. Prova Nginx master'ı kapatıldı; production Nginx reload edilmedi. Kanıt: private nginx-log-acceptance.json.
+
+Boot incelemesi: Docker After/Wants içinde rsyslog bulunmadı (gerçek ön koşul RED). Container'lar receiver socket'i oluşmadan otomatik başlatılırsa logging initialization başarısız olabilir. Dar systemd drop-in yalnız Wants/After=rsyslog.service ekler; daemon-reload çalışan Docker'ı yeniden başlatmaz. Mevcut servis sırası ve sonraki gerçek boot kabulü ayrı kanıtlardır; VPS reboot yapılmaz.
+
+Drop-in /etc/systemd/system/docker.service.d/astera-logging.conf kuruldu; daemon-reload sonrası gerçek After ve Wants içinde rsyslog.service görüldü (GREEN). Docker MainPID değişmedi, Docker ve rsyslog active. Boot/reboot yapılmadı; dört app rolü sağlıklı ve önceki image'larında.

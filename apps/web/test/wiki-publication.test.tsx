@@ -1,3 +1,4 @@
+import { LANGUAGES } from '../src/i18n/languages.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
@@ -148,7 +149,7 @@ describe('the published Wiki contract', () => {
     const doc = new DOMParser().parseFromString(wikiSitemap(), 'application/xml');
     expect(doc.querySelector('parsererror')).toBeNull();
     const urls = [...doc.querySelectorAll('loc')].map(n => n.textContent);
-    const expected = ['/', ...publisherPaths(), ...wikiPages.map(p => p.path)].map(p => `${PUBLISHER_ORIGIN}${p}`);
+    const expected = ['/', ...LANGUAGES.map(language => `/${language}/`), ...publisherPaths(), ...wikiPages.map(p => p.path)].map(p => `${PUBLISHER_ORIGIN}${p}`);
     expect(urls).toEqual(expected);
     const assets = wikiAssets();
     expect(assets.get('sitemap.xml')).toBe(wikiSitemap());

@@ -2251,6 +2251,7 @@ export const dmConversationsSchema = z.object({
     peer: z.object({ playerId: z.string(), username: z.string(), country: z.string() }),
     lastMessage: z.object({ id: z.string(), content: z.string(), createdAt: z.coerce.date() }),
     unreadCount: z.number().int().nonnegative(), blockedByMe: z.boolean(),
+    communityBlockedByMe: z.boolean().optional(),
     canSend: z.boolean(), unavailableReason: z.enum(['WAITING', 'BLOCKED', 'SEASON_ENDED']).nullable(),
   })),
   totalUnread: z.number().int().nonnegative(),
@@ -3940,3 +3941,9 @@ export const securityCompleteSchema = z.object({ ok: z.boolean(), reauthenticate
 });
 export type SecurityChallenge = z.infer<typeof securityChallengeSchema>;
 export type AccountSecurityStatus = z.infer<typeof accountSecuritySchema>;
+
+export const accountDeletionRequestSchema = z.object({
+  requestId: z.string().uuid(), requestedAt: z.string().datetime(), status: z.enum(['requested', 'approved']),
+});
+export const accountDeletionStatusSchema = z.object({ request: accountDeletionRequestSchema.nullable() });
+export const accountDeletionSubmittedSchema = z.object({ request: accountDeletionRequestSchema });

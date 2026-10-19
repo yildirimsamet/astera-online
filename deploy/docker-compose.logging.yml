@@ -1,0 +1,26 @@
+# Opt-in only after deploy/logging is installed and the receiver is verified.
+# Apply app roles during their ordinary roll. Recreating postgres requires the
+# separately authorized interruption described in docs/deployment.md.
+x-astera-logging: &astera-logging
+  driver: syslog
+  options:
+    syslog-address: unixgram:///run/astera-runtime/log.sock
+    syslog-format: rfc5424micro
+    tag: '{{.Name}}'
+    cache-disabled: 'true'
+    mode: non-blocking
+    max-buffer-size: 1m
+
+services:
+  api1:
+    logging: *astera-logging
+  api2:
+    logging: *astera-logging
+  api3:
+    logging: *astera-logging
+  worker:
+    logging: *astera-logging
+  postgres:
+    logging: *astera-logging
+  valkey:
+    logging: *astera-logging

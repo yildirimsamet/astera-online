@@ -31,10 +31,13 @@ describe('bundled mobile configuration', () => {
     const { default: config } = await import('../capacitor.config.js');
     expect(config.server?.url).toBeUndefined();
     expect(config.server?.cleartext).toBe(false);
+    expect(config.server?.errorPath).toBe('assets/native-startup.html');
     expect(config.server?.allowNavigation ?? []).toEqual([]);
     expect(config.webDir).toBe('mobile-dist/native-staging');
     expect(config.plugins?.CapacitorHttp).toEqual({ enabled: false });
     expect(config.plugins?.AsteraSession).toMatchObject({ apiUrl: 'https://api.example.test', target: 'native-staging' });
     expect(config.android?.loggingBehavior).toBe('none');
+    expect(config.plugins?.App).toMatchObject({ disableBackButtonHandler: true });
+    expect(config.plugins?.SystemBars).toMatchObject({ hidden: true, style: 'DARK', insetsHandling: 'css' });
   });
 });

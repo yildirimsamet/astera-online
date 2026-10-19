@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { useMarkSeen, useNotifications } from '../api/queries.js';
 import { isReportSignal } from '../lib/dock.js';
+import { isAppActive, watchAppActivity } from '../platform/activity.js';
 
 const supportRef = z.object({ reportId: z.string() });
 
@@ -12,11 +13,10 @@ export function useReadReportSignals(visible: boolean, refs: readonly string[]):
   const { data } = useNotifications(false);
   const { mutate } = useMarkSeen();
   const requested = useRef(new Set<string>());
-  const [foreground, setForeground] = useState(() => document.visibilityState === 'visible');
+  const [foreground, setForeground] = useState(isAppActive);
   useEffect(() => {
-    const update = () => { setForeground(document.visibilityState === 'visible'); };
-    document.addEventListener('visibilitychange', update);
-    return () => { document.removeEventListener('visibilitychange', update); };
+    const update = () => { setForeground(isAppActive()); };
+    return watchAppActivity(update);
   }, []);
   useEffect(() => {
     if (!visible || !foreground) {

@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -64,9 +65,9 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
     { alloy: 0, crystal: 5, deuterium: 0 }, 'home', true),
     { occurrenceId: 'merchant', fleet: { ATLAS: 1 }, give: { alloy: 10, crystal: 0, deuterium: 0 },
       want: { alloy: 0, crystal: 5, deuterium: 0 }, originPlanetId: 'home', acknowledgeRadiationLoss: true }],
-  ['register', (a) => a.register('vantage', 'a-long-enough-password', 'DE'), { username: 'vantage', password: 'a-long-enough-password', countryCode: 'DE' }],
+  ['register', (a) => a.register('vantage', 'a-long-enough-password', 'DE', { version: COMMUNITY_POLICY_VERSION, locale: 'de' }), { username: 'vantage', password: 'a-long-enough-password', countryCode: 'DE', communityPolicyVersion: COMMUNITY_POLICY_VERSION, communityPolicyLocale: 'de' }],
   ['login', (a) => a.login('vantage', 'a-long-enough-password'), { username: 'vantage', password: 'a-long-enough-password' }],
-  ['claim', (a) => a.claim('vantage', 'a-long-enough-password', [], 'FR'), { username: 'vantage', password: 'a-long-enough-password', countryCode: 'FR', intents: [] }],
+  ['claim', (a) => a.claim('vantage', 'a-long-enough-password', [], 'FR', { version: COMMUNITY_POLICY_VERSION, locale: 'fr' }), { username: 'vantage', password: 'a-long-enough-password', countryCode: 'FR', intents: [], communityPolicyVersion: COMMUNITY_POLICY_VERSION, communityPolicyLocale: 'fr' }],
   ['updateCountry', (a) => a.updateCountry('JP'), { country: 'JP' }],
   ['setRival', (a) => a.setRival('p-2'), { planetId: 'p-2' }],
   ['upgrade', (a) => a.upgrade('CORE'), { type: 'CORE' }],

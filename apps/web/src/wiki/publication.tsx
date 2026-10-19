@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { LANGUAGES } from '../i18n/languages.js';
 import { PUBLISHER_ORIGIN, publisherPaths } from '../lib/publisherPages.js';
 import { getWikiArticle, wikiCategories, wikiCategoryPath, wikiPages, wikiRoot, translatedWikiPath } from './catalog.js';
 import { WikiBreadcrumbs, WikiMenu, WikiNavigation, WikiPageContent } from './WikiContent.js';
@@ -44,7 +45,7 @@ export function renderWiki404(language: WikiLanguage): string {
   return '<!doctype html>' + renderToStaticMarkup(<html lang={language}><head><meta charSet="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex,follow" /><title>404 | Astera Online Wiki</title><link rel="stylesheet" href="/wiki/tokens.css" /><link rel="stylesheet" href="/wiki/style.css" /></head><body className="wiki-public"><main className="wiki wiki-error"><p className="wiki-eyebrow">ASTERA ONLINE / WIKI / 404</p><h1>{words.notFound}</h1><p>{words.notFoundText}</p><a className="wiki-start" href={wikiRoot(language)}>{words.home} →</a></main></body></html>);
 }
 export function wikiSitemap(): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', ...publisherPaths(), ...wikiPages.map(p => p.path)].map(path => `  <url><loc>${absolute(path)}</loc></url>`).join('\n')}\n</urlset>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', ...LANGUAGES.map(language => `/${language}/`), ...publisherPaths(), ...wikiPages.map(p => p.path)].map(path => `  <url><loc>${absolute(path)}</loc></url>`).join('\n')}\n</urlset>\n`;
 }
 export function wikiAssets(): Map<string, string> {
   return new Map([['sitemap.xml', wikiSitemap()], ['wiki/404.html', renderWiki404('en')], ...wikiPages.map(page => [page.fileName, renderWikiPage(page)] as const)]);

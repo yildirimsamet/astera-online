@@ -573,6 +573,9 @@ export const chat = {
   },
   addReaction: "絵文字リアクションを追加",
   media: {
+    openYouTube: "YouTubeで開く",
+    externalNotice: "Astera Onlineの外部で開きます。YouTubeは独自のポリシーに基づき広告を表示し、データを処理する場合があります。",
+    openExternalImage: "外部の画像を開く",
     showPortrait: "縦長で表示",
     showLandscape: "横長で表示",
     pasteHint: "メッセージ欄にCtrl+Vでスクリーンショットを貼り付けることもできます。",

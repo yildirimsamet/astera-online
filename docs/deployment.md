@@ -5,6 +5,24 @@ Use `docker-compose.prod.yml` only. The development Compose uses tmpfs and an un
 
 This compact runbook consolidates the supplied notes through 10 October 2026. Inspection and rehearsal records are point-in-time evidence, not proof that a release is deployed. Refresh the actual SHA, migration journal, flags and live shards before each release. Repository-relative links below refer to supporting files in the project.
 
+### 19 October Play candidate: prepared, application rollout pending
+
+The owner authorized the required public pages/shared backend and a new first AAB for **closed testing**. The isolated release candidate excludes concurrent Honor top-tier and UnknownSignalGuide work. Production remains at the 18 October SHA below; local checks are not deployment evidence. Track [the candidate](mobile-play-candidate-2026-10-19.md), [account deletion](mobile-account-deletion-2026-10-19.md), [community safety](mobile-ugc-2026-10-19.md) and [closed-test handoff](mobile-closed-test-2026-10-19.md).
+
+The dedicated rsyslog receiver and hourly UTC runtime-log retention are installed, with confined AppArmor permissions. An isolated Docker emitter and isolated Nginx HTTP/log probe passed; no production container logging option or production Nginx configuration has changed. The optional `deploy/docker-compose.logging.yml` applies the receiver with Docker dual cache disabled. Once active, `docker logs` is intentionally unavailable for those roles: inspect `/var/log/astera/runtime-YYYY-MM-DD.log` privately instead. Read [the log operations record](mobile-log-retention-2026-10-19.md) before installation, restart, rollback or retention changes.
+
+Use the logging overlay only after receiver/socket/boot-order validation. App roles can adopt it during a proven compatible image roll. Adopting it for PostgreSQL requires a separate database-container restart and the measured owner approval required by gate 5 below; no such interruption has been performed. Preserve the current database volume and exact runtime environment. New Nginx logging and localized CSP must be syntax-tested and published **after** the matching webroot. Keep backups/private evidence bounded to 30 days.
+
+### 18 October review/admin inactivity exemption: deployed
+
+Current production API1/API2/API3, singleton worker and public web are **962439cc224ada7f3d10ee9a84215473c2d9317d**. Image `sha256:5e3ed58d67838591da28952e977ed3bcae66b2f9ad007b1556c436f593656bd0`; migration journal186 unchanged, pending0. Active Compose project `astera` uses `~/astera/docker-compose.prod.yml` plus **~/backups/astera-review-account-20261018T171124Z/pinned-compose.yml**. Preserve worker `SILENT_SPACE_EXEMPT_ACCOUNT_IDS` for the exact testaccount/adminlesh IDs recorded in the [release acceptance](mobile-store-review-account-2026-10-18.md); resetting it to the example's empty default removes their protection. Native auth/origins/JWT and existing gameplay settings remain unchanged. Private backup/env/web/previous image remain in that same backup directory. Older f937 rollback does not understand the exemption.
+
+Owner authorized removing HoofyWood services; the five verified HoofyWood containers were stopped/removed, with PostgreSQL volume and source files retained. Host preflight now passes; no Candely/Astera/stage data was removed. Full server4511PASS, actual-image restore/API compatibility and bounded sweep proof PASS, live four-role/web/native-origin and world/queue postflight PASS. Current staged neutral census uses source/ruleset+snapshot acceptance rather than the stale65-world constant. Qualified Network DEBUG APK is installed and passed physical Wi-Fi/cellular automatic recovery; signed AAB exists locally, with final frontend validation and store policy/Console steps tracked separately. The earlier native-auth release below is historical evidence.
+
+### 18 October mobile native authentication: deployed
+
+At the native-auth release, production API1/API2/API3/worker and public web were **`f9378f1c405590942de3c0d7e85c3f7c9d016033`**; postflight health/capacity passed, journal186 includes additive `0185_gorgeous_mercury`. Native auth is enabled for Android `https://localhost` and future iOS `capacitor://localhost`; web cookies/JWT secret and existing accounts/world remain shared. The release was qualified on a restored private database with old/new API writes, worker processing and native session/CORS/SSE/media checks. Keep the private rollback artifacts; leave the additive table in place for a compatible code rollback, never restore the old dump over newer player writes. Details and exact pinned Compose/backup paths: [mobile rollout record](mobile-backend-rollout-2026-10-17.md). The f9378f1c debug APK passed real Samsung HTTPS login/refresh, shared API/SSE and offline/process-kill recovery without USB reverse. Further Android review fixes are local; the replacement APK, cellular/physical cable removal, remaining native shell matrix and app-store release still require acceptance. See the [18 October code review](mobile-code-review-2026-10-18.md). Historical prepared/deployed notes below are point-in-time records.
+
 ### 15 October radiation bombs: prepared, not deployed
 
 The current local implementation adds migration `0166_radiation_bomb` and the
@@ -211,7 +229,7 @@ The pending Unknown Signal worktree/migration is excluded from this release.
 | Network | Published application/database ports bind to `127.0.0.1`; single origin, `SameSite=Lax`, `credentials: 'same-origin'`, no CORS |
 | Realtime | SSE `/api/stream`; `api.`, `www.` and `socket.` redirect to apex |
 | Shards | Two MAIN galaxies filled in ordinal order, plus WAITING; EU-1/EU-2/WAIT-1 had `player_cap=1000` on 10 October |
-| Neutral pool | MAIN seed: 65 worlds, tiers 38/19/8; played MAIN galaxies conserve neutrals + colonies = 65 |
+| Neutral pool | Inspect the live season ruleset: staged census starts with 26 worlds (15/8/3) and can open up to 130 addresses (76/38/16). Historical 65-world constants are not current acceptance gates. |
 
 An API without PostgreSQL LISTEN is unready: it loses both realtime and cache invalidations. `stream="not listening"` is expected only on the worker.
 
@@ -324,7 +342,7 @@ find "$web_stage" -type f \
 
 ## 4. Rehearse backup, migration and compatibility
 
-Confirm PostgreSQL/Valkey healthy. Use a fresh consistent private release dump; avoid retention pruning during preparation. The ordinary helper is below; preserve release backups outside its rotating set.
+Confirm PostgreSQL/Valkey healthy. Use a fresh consistent private release dump; avoid retention pruning during preparation. The ordinary helper is below; preserve release backups outside its count-based rotating set, but include them in the owner-approved maximum 30-day age policy (19 October).
 
 ```bash
 "${compose[@]}" up -d postgres valkey
@@ -488,7 +506,7 @@ SELECT sh.ordinal,
 
 Require each season's intended creation ruleset, allowing mixed rulesets across rollover. A code deploy alone does not upgrade a season. MAIN joins expose only the lowest non-full ordinal as `open`; later galaxies stay `locked`. EU-2 is human-only: zero joined bot profiles.
 
-For each current MAIN galaxy require neutrals + colonies = 65; all capitals/colonies controlled, neutrals uncontrolled and `orphaned_neutral_state=0`. Fresh MAIN galaxies have tiers 38/19/8; played galaxies need conservation, not 65 remaining neutrals. WAITING has no 65-world acceptance constant.
+For each current MAIN galaxy validate its actual ruleset and retained pre-release snapshot. Current ruleset 16 uses staged neutral census (initial 15/8/3, address ceiling 76/38/16); neutrals + colonies can vary as the census opens worlds. The historical constant 65 is stale. For an unchanged-rules release compare the current census/world state with the backup, accounting for legitimate intervening gameplay and census events. Require all capitals/colonies controlled, neutrals uncontrolled and `orphaned_neutral_state=0`. WAITING has no MAIN neutral-pool acceptance constant. See [18 October live proof](mobile-store-review-account-2026-10-18.md).
 
 ```sql
 SELECT sh.code, p.kind, count(*) AS worlds,
@@ -802,16 +820,24 @@ EU-2 remains human-only. Inspect health seated/awake and per-galaxy human/target
 
 ### Account deletion and manual Silent Space transfer
 
-Use package-local CLI through `"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts`:
+19 October local account-deletion implementation is **not yet deployed**. For its rollout, keep account-deletion migrations0186–0189 and every later migration in the candidate journal (including UGC0190 when bundled), shared media volume and runtime JWT secret; update all API replicas and the worker before any approval. Full evidence and remaining gates: [account deletion](mobile-account-deletion-2026-10-19.md).
 
-| Operation | Dry run, then separately append `--yes` |
-| --- | --- |
-| Requested account erasure | `delete-account 'ExactName'` |
-| Requested manual transfer | `silent-space 'ExactName'` |
+For verified account deletion use **Admin → Deletion requests**: an app request is password-verified; a support request must first be verified by the operator and recorded using its original unique registration username. Recording preserves access; approval closes it; completion waits for busy flights/shared operations. Select the request UUID and check the displayed account. Personal purchase metadata is removed while minimal delivery/refund tombstones remain. News/transfer account links are removed without destroying shared history; queued returns close transactionally. Never bypass `WORLD_BUSY`, `DELETION_BUSY` or `BOT_ACCOUNT`. Media jobs remain visible and retryable after account deletion. A private journal storage error503 prevents erasure and must be repaired before retrying.
 
-Rehearse a fresh backup first, verify resolved identity (display names may collide), counts and MAIN conservation. Erasure deletes the account plus both sides' battle reports/probe/watch history; count collateral history before applying. Captured colonies return to their original seeded neutral slot/tier/profile/name; nonseeded departure addresses stay empty. Refusals: `WORLD_BUSY`, `BOT_ACCOUNT` (retire instead), `ANNOUNCEMENT_AUTHOR`, `TRANSFER_HISTORY`, `RETURN_QUEUED`; never bypass them.
+The old `season delete-account NAME` is now a read-only diagnostic; its `--yes` is retired so it cannot bypass verified identity, approval and the restore journal. Historical CLI guards remain in the test/rehearsal service. Do not use a colliding display name as an identity selector.
 
-Manual transfer waives only activity age. World IDs, buildings, stock, fleet and research move; ordinary in-game return remains available under current placement policy. `FLIGHT`, `EVENT`, `EFFECT`, `UNITS`, `CAPACITY`, `CONTENTION` refuse without writes. Wait for completion, never clear blockers. Rehearsal snapshots can show overdue `EVENT` solely because time advanced after the dump. MAIN pool remains 65 and orphaned state zero; WAITING pool is not 65. Historical return-address anecdotes do not override the current activation policy.
+For a requested manual Silent Space transfer, use the package-local `season silent-space 'ExactName'`, then separately append `--yes` after preview and identity verification. It waives only activity age. World IDs, buildings, stock, fleet and research move; ordinary in-game return remains available under current placement policy. `FLIGHT`, `EVENT`, `EFFECT`, `UNITS`, `CAPACITY`, `CONTENTION` refuse without writes. Never clear blockers. Rehearsal snapshots can show overdue `EVENT` because time advanced after the dump. Verify the ruleset's current staged neutral census; the old fixed65-world acceptance is stale.
+
+### Restoring a backup without reopening erased accounts
+
+This is an incident recovery procedure, **not authorization to replace current player writes**. No production restore has been performed for the mobile task.
+
+1. Enter Nginx maintenance and stop every API and the worker. Preserve the current private `.account-erasure-ledger` from the shared media volume into a mode0700 safety folder under `~/backups/astera-restore-safety-<UTCstamp>/`. A stopped API container can still be the source for `docker cp`. Preserve the current JWT secret privately; do not print it. Ensure no approved/completed request can be added after the copy.
+2. Verify the safety copy, snapshot age/checksum and restore decision. A missing, stale or unverifiable journal does not mean no erasures occurred: keep maintenance and reconcile against a verified current copy/operator records. A total loss of the host plus latest journal has no RPO0 guarantee without an up-to-date independent copy.
+3. Restore the chosen DB/media under maintenance, preserving the newer safety journal. When extracting an old media archive, exclude both `.account-erasure-ledger` and `./.account-erasure-ledger`; never replace the current journal with the copy inside an old tarball. Mount the protected safety parent read-only into the maintenance container. Apply the new schema with no application writers.
+4. Preview through the new image: `apps/server/node_modules/.bin/tsx apps/server/src/cli/erasureRestore.ts --journal-dir /restore-safety`. The path contains `.account-erasure-ledger`. Counts only are printed; UUIDs/names/emails/keys are not. After verifying maintenance, append `--apply --maintenance-confirmed`. This flag is the operator's assertion, not an automatic proxy/replica stop. Wrong signatures, malformed records and conflicting request IDs refuse the operation.
+5. Verify matched accounts have closed access and approved requests before reopening traffic. The tool changes authentication/request state only; it does not remove worlds or accelerate fleet resolution. Restart the updated worker/API behind maintenance, let existing operations finish normally, and use the verified admin queue for safe completion. Reopening ordinary traffic is safe only after all matching erased-account identities remain blocked. Preserve the journal on the live shared media volume for future retries/restores.
+6. The singleton worker prunes markers for absent accounts after the30-day cleanup horizon; still-existing accounts remain protected. This follows the ordinary/private-backup29day23hour threshold plus hourly sweep margin. JWT key rotation must preserve the ability to verify retained journals; keep a private current signed copy and the necessary key history during maintenance. Never rotate blindly or open an unverifiable restore.
 
 ## 13. First install, routine operations and capacity
 
@@ -829,7 +855,7 @@ docker compose -f docker-compose.prod.yml run -T --rm --no-deps api1 \
   apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts status </dev/null
 ```
 
-Nightly backup: `./deploy/backup.sh` (retains fourteen dumps). Cron:
+Nightly backup: `./deploy/backup.sh` (retains at most fourteen daily pairs). All personal-data daily/private release backups also expire within 30 days. The independent hourly retention job and live installation evidence are recorded in [account deletion operations](mobile-account-deletion-2026-10-19.md). Preserve only the nonpersonal root `pinned-compose.yml` inside expired release folders because running Compose commands reference it; never place new snapshots in an old release folder. Cron:
 
 ```cron
 17 3 * * * cd /home/yildirim/astera && ./deploy/backup.sh >> /home/yildirim/backups/astera-backup.log 2>&1

@@ -81,6 +81,7 @@ export function registerAuthRoutes(app: FastifyInstance, firstGameShieldEnabled 
    */
   app.post('/api/auth/register', { config: { rateLimit: app.limits.signup } }, async (req, reply) => {
     const body = registerBody.parse(req.body ?? {});
+    requireCurrentCommunityPolicy(body.communityPolicyVersion);
     const account = await registerAccount(app.db, body, firstGameShieldEnabled, app.clock.now());
     return openSession(app, reply, account);
   });
@@ -240,3 +241,4 @@ export async function optionalAuth(req: FastifyRequest): Promise<void> {
   }
   await req.server.presence.touch(req.accountId);
 }
+import { requireCurrentCommunityPolicy } from '../services/communityPolicy.js';

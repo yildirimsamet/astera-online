@@ -1,5 +1,7 @@
 import i18n, { currentLanguage } from './index.js';
 import { writeStored, type Language } from './languages.js';
+import { LANDING_COPY } from '../landing/public/content.js';
+import { runtime } from '../platform/runtime.js';
 
 /**
  * THE THREE THINGS OUTSIDE REACT'S REACH, AND THE ONE CONTROL THAT MOVES THEM.
@@ -49,4 +51,23 @@ export function syncDocumentLanguage(): void {
 
   const manifest = document.querySelector('link[rel="manifest"]');
   if (manifest) manifest.setAttribute('href', i18n.t('document.manifest'));
+
+  if ((import.meta.env.VITE_ASTERA_PLATFORM ?? 'web') === 'web' && runtime() === 'web' && document.documentElement.hasAttribute('data-public-surface')) {
+    const language = currentLanguage();
+    const copy = LANDING_COPY[language];
+    const path = `/${language}/`;
+    const url = `https://asteraonline.space${path}`;
+    // Replace the current public URL, retaining security/recovery/campaign parameters.
+    if (/^\/(?:tr|en|fr|de|es|ja)?\/?$/.test(location.pathname)) history.replaceState(null, '', `${path}${location.search}${location.hash}`);
+    document.title = copy.title;
+    document.querySelector('link[rel="canonical"]')?.setAttribute('href', url);
+    const meta: Record<string, string> = {
+      'meta[name="description"]': copy.description, 'meta[property="og:title"]': copy.title,
+      'meta[property="og:description"]': copy.description, 'meta[property="og:url"]': url,
+      'meta[name="twitter:title"]': copy.title, 'meta[name="twitter:description"]': copy.description,
+    };
+    for (const [selector, content] of Object.entries(meta)) document.querySelector(selector)?.setAttribute('content', content);
+    const schema = document.querySelector('script[type="application/ld+json"]');
+    if (schema) schema.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'VideoGame', name: 'Astera Online', url, description: copy.description, inLanguage: language, genre: ['Strategy', 'Space'], gamePlatform: 'Web browser', playMode: 'MultiPlayer' });
+  }
 }

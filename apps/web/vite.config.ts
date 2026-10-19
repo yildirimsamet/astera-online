@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { adsensePlugin } from './src/lib/adsense.js';
 import { wikiPlugin } from './wikiPlugin.js';
+import { landingPlugin } from './landingPlugin.js';
 import { openingScreenPlugin } from './openingScreenPlugin.js';
 import { fileURLToPath } from 'node:url';
 import { referenceArtPlugin } from './src/lib/referenceArtPlugin.js';
@@ -33,7 +34,7 @@ export default defineConfig(({ command, mode }) => {
   const { target } = mobile;
   const references = command === 'serve' ? referenceArtPlugin(fileURLToPath(new URL('../..', import.meta.url))) : null;
   return {
-  plugins: [react(), tailwindcss(), openingScreenPlugin(), target === 'web' && adsensePlugin(), target === 'web' && wikiPlugin(), references,
+  plugins: [react(), tailwindcss(), openingScreenPlugin(), target === 'web' && adsensePlugin(), target === 'web' && wikiPlugin(), target === 'web' && landingPlugin(), references,
     mobile.target !== 'web' && nativeBundlePlugin(mobile.apiUrl, target, fileURLToPath(new URL('.', import.meta.url)))],
   publicDir: target === 'web' ? 'public' : false,
   define: {

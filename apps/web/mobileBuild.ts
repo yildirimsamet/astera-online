@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { isIP } from 'node:net';
 
 const targetSchema = z.enum(['web', 'native-local', 'native-staging', 'native-production']).default('web');
+export const NATIVE_STARTUP_PATH = 'assets/native-startup.html';
 
 /** Shared build-time contract; no secrets or backend credentials belong in VITE_ variables. */
 export function mobileBuild(env: Record<string, string | undefined>) {

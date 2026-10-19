@@ -1,18 +1,21 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSession } from './session/useSession.js';
 import { useEventStream } from './session/useEventStream.js';
 import { useLiveAlerts } from './session/useLiveAlerts.js';
 import { LandingScreen } from './screens/LandingScreen.jsx';
-import { Academy } from './onboarding/Academy.jsx';
-import { ServersScreen } from './screens/ServersScreen.jsx';
-import { GalaxyView, type Panel, type PanelStop } from './screens/GalaxyView.jsx';
+const Academy = lazy(() => import('./onboarding/Academy.jsx').then(module => ({ default: module.Academy })));
+const ServersScreen = lazy(() => import('./screens/ServersScreen.jsx').then(module => ({ default: module.ServersScreen })));
+import type { Panel, PanelStop } from './screens/GalaxyView.jsx';
+const GalaxyView = lazy(() => import('./screens/GalaxyView.jsx').then(module => ({ default: module.GalaxyView })));
 import { LoadingScreen } from './shell/LoadingScreen.js';
 import { useAmbientMusic } from './lib/music.js';
 import { useSoundEffects } from './lib/sound.js';
 import { WorldProvider } from './api/world.js';
 import { Button } from './ui/kit/index.js';
-import { GameShell } from './v2/shell/GameShell.js';
+const GameShell = lazy(() => import('./v2/shell/GameShell.js').then(module => ({ default: module.GameShell })));
+import { WebLandingGate } from './landing/public/WebLandingGate.js';
+import { runtime } from './platform/runtime.js';
 import type { StripFocus } from './shell/PendingStrip.js';
 import {
   nextPanelFocus,
@@ -51,7 +54,7 @@ import {
  * still in flight is on the Now line and the Fleet tab, permanently — a stronger reading
  * of Design Law #1 than a screen shown once and dismissed.
  */
-export function App() {
+function SessionApp() {
   /**
    * THE WHOLE TREE SUBSCRIBES TO THE LANGUAGE HERE, AND ONLY HERE.
    *
@@ -140,13 +143,16 @@ export function App() {
    * request nobody can decompose would be the exact dishonesty `LoadingScreen`
    * refuses.
    */
+  const publicWeb = (import.meta.env.VITE_ASTERA_PLATFORM ?? 'web') === 'web' && runtime() === 'web';
+  if (session.phase === 'starting' && publicWeb) return <WebLandingGate restoring onAuthenticate={authenticate} onBegin={rehearse} />;
   if (session.phase === 'starting') {
     return <LoadingScreen caption={t('loading.contact')} />;
   }
 
   if (session.phase === 'landing') {
+    const FrontDoor = publicWeb ? WebLandingGate : LandingScreen;
     return (
-      <LandingScreen
+      <FrontDoor restoring={false}
         onAuthenticate={authenticate}
         {...(session.securityNotice ? { securityNotice: session.securityNotice } : {})}
         {...(session.loginEmail ? { loginEmail: session.loginEmail } : {})}
@@ -191,6 +197,7 @@ export function App() {
   }
 
   if (session.phase === 'blocked') {
+    if (publicWeb) return <LandingScreen onAuthenticate={authenticate} onBegin={rehearse} error={session.message} onRetry={retry} />;
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-8 text-center">
         <p className="legend">{t('app.blockedTitle')}</p>
@@ -249,4 +256,10 @@ export function App() {
       />
     </WorldProvider>
   );
+}
+
+/** Heavy game branches load after the public page has become useful. */
+export function App() {
+  const { t } = useTranslation();
+  return <Suspense fallback={<LoadingScreen caption={t('loading.contact')} />}><SessionApp /></Suspense>;
 }

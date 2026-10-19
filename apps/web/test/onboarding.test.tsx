@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiProvider } from '../src/api/context.js';
 import { Api, ApiError } from '../src/api/client.js';
 import i18n from '../src/i18n/index.js';
@@ -79,7 +79,9 @@ const openDoor = async (): Promise<void> => {
   await screen.findByRole('button', { name: i18n.t('landing.register') });
 };
 
-describe('the landing screen', () => {
+describe('the compact native landing screen', () => {
+  beforeEach(() => { vi.stubEnv('VITE_ASTERA_PLATFORM', 'native-production'); });
+  afterEach(() => { vi.unstubAllEnvs(); });
   /**
    * THE MIDDLE OF THIS PAGE IS THE GAME, NOT A PARAGRAPH. Owner decision.
    *

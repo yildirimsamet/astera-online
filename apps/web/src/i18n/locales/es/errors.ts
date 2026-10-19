@@ -14,6 +14,7 @@
  */
 
 export const errors = {
+  COMMUNITY_POLICY_REQUIRED: "Revisa y acepta las normas antes de crear un comandante o publicar. Vuelve a abrir la aplicación si es necesario.",
   UNKNOWN_SIGNAL_NOT_FOUND: "La señal ya no existe. Espera otro contacto del Radar.",
   UNKNOWN_SIGNAL_EXPIRED: "La señal se ha desvanecido. Espera otro contacto del Radar.",
   UNKNOWN_SIGNAL_TAKEN: "Ya se envió una flota a esta señal.",

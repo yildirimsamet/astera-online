@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -39,6 +40,7 @@ function show() {
   vi.spyOn(api, 'blockDm').mockImplementation(() => { blocked = true; return Promise.resolve({ blocked }); });
   vi.spyOn(api, 'unblockDm').mockImplementation(() => { blocked = false; return Promise.resolve({ blocked }); });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: new Date('2026-10-19T00:00:00Z') });
   client.setQueryData(keys.chatMessagesFor('en'), { pages: [{ messages: [], nextBefore: null }], pageParams: [null] });
   client.setQueryData(keys.chatUnreadFor('en'), { count: 0 });
   client.setQueryData(keys.clanBadge, { available: false, membership: null, clanChatUnread: 0 });

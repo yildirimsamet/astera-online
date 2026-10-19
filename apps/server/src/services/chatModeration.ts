@@ -13,6 +13,7 @@ export type MuteDuration = keyof typeof MUTE_MINUTES | 'permanent' | 'remove';
 
 /** Shared by senders and exclusive for mute changes, across API replicas. */
 export async function assertChatAllowed(tx: Tx, accountId: string, channel: ModeratedChannel, clock: Clock): Promise<void> {
+  await assertCommunityPolicyAccepted(tx, accountId);
   await tx.execute(sql`select pg_advisory_xact_lock_shared(hashtextextended(${`chat-moderation:${accountId}`}, 0))`);
   const now = clock.now();
   const [mute] = await tx.select({ expiresAt: chatMutes.expiresAt }).from(chatMutes).where(and(
@@ -90,3 +91,4 @@ export async function maskChatMessages(db: Db, actorAccountId: string, input: Ma
     return { masked: changed.length };
   });
 }
+import { assertCommunityPolicyAccepted } from './communityPolicy.js';

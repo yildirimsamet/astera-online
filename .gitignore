@@ -16,3 +16,11 @@ mobile-dist/
 
 # Persistent local chat uploads.
 .data/
+
+# Android upload signing material belongs outside the repository.
+*.p12
+*.pfx
+*.jks
+*.keystore
+android-upload.pass
+keystore.properties

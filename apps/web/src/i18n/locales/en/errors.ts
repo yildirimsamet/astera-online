@@ -14,6 +14,7 @@
  */
 
 export const errors = {
+  COMMUNITY_POLICY_REQUIRED: "Review and accept the community rules before creating a commander or posting. Reopen the app if needed.",
   UNKNOWN_SIGNAL_NOT_FOUND: "That signal no longer exists. Wait for another Radar contact.",
   UNKNOWN_SIGNAL_EXPIRED: "That signal has faded. Wait for another Radar contact.",
   UNKNOWN_SIGNAL_TAKEN: "A fleet has already been sent to this signal.",

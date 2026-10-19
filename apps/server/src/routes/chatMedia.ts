@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { CHAT_MEDIA } from '@astera/rules';
@@ -14,7 +14,7 @@ import { requireAuth } from './auth.js';
 import { requireAdmin } from './community.js';
 
 /** Native image/video requests use the same HttpOnly session cookie as token refresh. */
-async function requireMediaReader(req: FastifyRequest): Promise<void> {
+export async function requireMediaReader(req: FastifyRequest): Promise<void> {
   if (req.headers.authorization) return requireAuth(req);
   const cookie = req.cookies.bs_refresh;
   if (!cookie) throw new GameError('UNAUTHENTICATED', 'Sign in first', 401);
@@ -56,7 +56,14 @@ export function registerChatMediaRoutes(app: FastifyInstance, directory: string)
     } else if (asset.ownerAccountId !== req.accountId || asset.createdAt.getTime() + CHAT_MEDIA.uploadLifetimeMs <= app.clock.now().getTime()) {
       throw new GameError('CHAT_MEDIA_NOT_FOUND', 'Media not found', 404);
     }
-    const file = join(directory, id);
+    return sendChatMediaFile(req, reply, asset, directory);
+  });
+}
+
+
+/** Shared bounded file/range response; each caller must authorize its own scope first. */
+export async function sendChatMediaFile(req: FastifyRequest, reply: FastifyReply, asset: Pick<typeof chatMediaAssets.$inferSelect, 'id' | 'mimeType' | 'byteSize'>, directory: string) {
+    const file = join(directory, asset.id);
     const info = await stat(file).catch(() => null);
     if (info?.size !== asset.byteSize) throw new GameError('CHAT_MEDIA_NOT_FOUND', 'Media not found; ask the sender to resend it', 404);
     void reply.header('content-type', asset.mimeType).header('cache-control', 'private, no-store')
@@ -74,5 +81,4 @@ export function registerChatMediaRoutes(app: FastifyInstance, directory: string)
         .header('content-length', end - start + 1).send(createReadStream(file, { start, end }));
     }
     return reply.header('content-length', info.size).send(createReadStream(file));
-  });
 }

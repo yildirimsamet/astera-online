@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { randomBytes } from 'node:crypto';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { pino } from 'pino';
@@ -25,7 +26,7 @@ beforeEach(async () => {
   clock = new FixedClock(new Date());
   built = buildApp({ db, clock, env: testEnv({ NATIVE_AUTH_ENABLED: 'true' }), logger: pino({ level: 'silent' }) });
   await built.app.ready();
-  const created = await built.app.inject({ method: 'POST', url: '/api/auth/register', payload: { username, password } });
+  const created = await built.app.inject({ method: 'POST', url: '/api/auth/register', payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username, password } });
   expect(created.statusCode).toBe(200);
 });
 afterEach(async () => { await built.close(); });
@@ -59,7 +60,7 @@ describe('native sessions on the shared Astera account', () => {
 
   it('registers with the existing country/identity rules without setting a browser cookie', async () => {
     const response = await built.app.inject({ method: 'POST', url: '/api/native/auth/register',
-      payload: { username: 'New Native Pilot', password, countryCode: 'DE' } });
+      payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: 'New Native Pilot', password, countryCode: 'DE' } });
     expect(response.statusCode).toBe(200);
     const session = nativeSession.parse(response.json<unknown>());
     expect(session.country).toBe('DE');
@@ -164,7 +165,7 @@ describe('native sessions on the shared Astera account', () => {
   it('opens the same Academy claim with a native session and a parseable planet response', async () => {
     await bootstrapServers(built.db, clock, { count: 1, capacity: 6, seedBase: 1000 });
     const response = await built.app.inject({ method: 'POST', url: '/api/native/onboarding/claim',
-      payload: { username: 'Native Academy', password, step: 0, countryCode: 'TR' } });
+      payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: 'Native Academy', password, step: 0, countryCode: 'TR' } });
     expect(response.statusCode).toBe(200);
     const native = nativeSession.parse(response.json<unknown>());
     const claimed = claimSchema.parse(response.json<unknown>());

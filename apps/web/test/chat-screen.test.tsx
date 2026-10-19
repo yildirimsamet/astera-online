@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -48,6 +49,7 @@ function show(
   });
   vi.spyOn(api, 'reactToMessage').mockResolvedValue({ reactions: [{ emoji: '👍', count: 1, mine: true }] });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: new Date('2026-10-19T00:00:00Z') });
   const language = currentLanguage();
   client.setQueryData(keys.chatMessagesFor(language), generalData);
   client.setQueryData(keys.chatUnreadFor(language), { count: 1 });
@@ -808,6 +810,7 @@ describe('the admin speaking in chat', () => {
     const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
     vi.spyOn(api, 'markChatRead').mockResolvedValue({ ok: true, readAt: at });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: new Date('2026-10-19T00:00:00Z') });
     client.setQueryData(keys.chatMessagesFor('en'), {
       pages: [{
         messages: [

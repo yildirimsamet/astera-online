@@ -67,3 +67,12 @@ it('keeps keyboard focus inside the modal and supports Escape', () => {
   fireEvent.keyDown(apply, { key: 'Escape' });
   expect(screen.queryByRole('dialog')).toBeNull();
 });
+
+
+it('dismisses native Back without submitting a return application', () => {
+  const p = props();
+  render(<SilentSpaceNotice {...p} />);
+  fireEvent(screen.getByRole('dialog'), new Event('astera:native-back', { cancelable: true }));
+  expect(p.onClose).toHaveBeenCalledOnce();
+  expect(p.onApply).not.toHaveBeenCalled();
+});

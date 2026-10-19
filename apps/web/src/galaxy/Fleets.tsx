@@ -1,3 +1,4 @@
+import { isAppActive, watchAppActivity } from '../platform/activity.js';
 import { useGalaxyCulling, useVisualFrame } from './visualFrame.js';
 import { createLocalVisibility, localSphereVisible, hullPartRadius } from './formationVisibility.js';
 import { cosmeticById } from '@astera/rules';
@@ -3041,13 +3042,13 @@ export function useStrikeConsumed(at: number | null): boolean {
 
     settle();
     const wake = (): void => {
-      if (document.visibilityState === 'visible') settle();
+      if (isAppActive()) settle();
     };
-    document.addEventListener('visibilitychange', wake);
+    const stopActivity = watchAppActivity(wake);
     window.addEventListener('pageshow', wake);
 
     return () => {
-      document.removeEventListener('visibilitychange', wake);
+      stopActivity();
       window.removeEventListener('pageshow', wake);
       if (timer !== undefined) clearTimeout(timer);
     };
@@ -3110,12 +3111,12 @@ export function useEngagement(arriveAt: number | null, explicitEndsAt?: number):
 
     settle();
     const wake = (): void => {
-      if (document.visibilityState === 'visible') settle();
+      if (isAppActive()) settle();
     };
-    document.addEventListener('visibilitychange', wake);
+    const stopActivity = watchAppActivity(wake);
 
     return () => {
-      document.removeEventListener('visibilitychange', wake);
+      stopActivity();
       for (const timer of timers) clearTimeout(timer);
     };
   }, [arriveAt, explicitEndsAt]);

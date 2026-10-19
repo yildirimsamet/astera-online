@@ -4,6 +4,7 @@ import { useAcademyLesson } from '../../onboarding/lessonScope.js';
 import { IconButton } from './Button.js';
 import { useOwnPress } from './useOwnPress.js';
 import { claimEscape } from '../../lib/sheet.js';
+import { useNativeBack } from '../../platform/nativeBack.js';
 import { ArrowIcon, CloseIcon } from '../icons/index.js';
 
 /**
@@ -88,6 +89,7 @@ export function Sheet({
   const { t } = useTranslation();
   const lesson = useAcademyLesson();
   const panel = useRef<HTMLDivElement>(null);
+  useNativeBack(panel, onBack ?? onClose);
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (claimEscape(event, panel.current)) onClose();

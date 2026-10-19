@@ -1,3 +1,5 @@
+import type { CommunityPolicyConsent } from '../src/api/communityPolicySchemas.js';
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -177,8 +179,9 @@ describe('the country picker', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm country' }));
     expect(screen.getByRole('button', { name: /Japan/ })).toBeInTheDocument();
     await user.type(screen.getByLabelText('Password'), 'a-real-password');
+    await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
     await user.click(screen.getByRole('button', { name: /claim/i }));
-    expect(onClaim).toHaveBeenCalledWith('NewPilot', 'a-real-password', 'JP');
+    expect(onClaim).toHaveBeenCalledWith('NewPilot', 'a-real-password', 'JP', policyProof);
   });
 
   it('uses the v2 identity surface and marks a refused field accessibly', async () => {
@@ -201,6 +204,7 @@ describe('the country picker', () => {
     await user.type(screen.getByLabelText('Commander name'), '李 小龙');
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.type(screen.getByLabelText('Password'), 'a-real-password');
+    await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
     await user.click(screen.getByRole('button', { name: /claim/i }));
     view.rerender(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} error="Name taken" />);
     expect(screen.getByLabelText('Commander name')).toHaveAttribute('aria-invalid', 'true');
@@ -208,7 +212,7 @@ describe('the country picker', () => {
     await user.clear(screen.getByLabelText('Commander name'));
     await user.type(screen.getByLabelText('Commander name'), 'عَلِيّ');
     await user.click(screen.getByRole('button', { name: /claim/i }));
-    expect(onClaim).toHaveBeenLastCalledWith('عَلِيّ', 'a-real-password', expect.any(String));
+    expect(onClaim).toHaveBeenLastCalledWith('عَلِيّ', 'a-real-password', expect.any(String), policyProof);
   });
 
   it('marks only the field that failed local validation', async () => {
@@ -222,6 +226,7 @@ describe('the country picker', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     const password = screen.getByLabelText('Password');
     await user.type(password, 'short');
+    await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
     await user.click(screen.getByRole('button', { name: /claim/i }));
     expect(password).toHaveAttribute('aria-invalid', 'true');
     expect(name).toHaveAttribute('aria-invalid', 'false');
@@ -237,6 +242,7 @@ describe('the country picker', () => {
     await user.type(screen.getByLabelText('Commander name'), 'First Pilot');
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.type(screen.getByLabelText('Password'), 'a-real-password');
+    await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
     await user.click(screen.getByRole('button', { name: /claim/i }));
     view.rerender(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} error="Name taken" />);
     expect(screen.getByRole('alert')).toHaveTextContent('Name taken');
@@ -266,3 +272,5 @@ describe('the country picker', () => {
     expect(onCountryChange).toHaveBeenCalledWith('ES');
   });
 });
+
+const policyProof: CommunityPolicyConsent = { version: COMMUNITY_POLICY_VERSION, locale: 'en' };

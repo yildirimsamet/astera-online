@@ -1,3 +1,7 @@
+import { CommunityPolicyGate } from './CommunityPolicy.js';
+import { useCommunityPolicy, policyIsAccepted } from '../api/communityPolicy.js';
+import { BlockPlayerSheet, BlockedPlayersSheet, type BlockSubject } from './CommunityBlocks.js';
+import { ContentReportSheet, type ReportSubject } from './ContentReportSheet.js';
 import { ChatMediaAttachment } from './ChatMediaAttachment.js';
 import { ChatMediaComposer } from './ChatMediaComposer.js';
 import type { ChatMedia } from '@astera/rules';
@@ -343,6 +347,7 @@ function DmPanel({ isAdmin }: { isAdmin: boolean }) {
   const [closedPeers, setClosedPeers] = useState<ReadonlySet<string>>(() => new Set());
   const [temporaryPeers, setTemporaryPeers] = useState<{ playerId: string; username: string; country: string }[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [showBlocked, setShowBlocked] = useState(false);
   const [search, setSearch] = useState('');
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [replies, setReplies] = useState<Record<string, MessageRow | null>>({});
@@ -397,6 +402,7 @@ function DmPanel({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {showBlocked ? <BlockedPlayersSheet onClose={() => { setShowBlocked(false); }} /> : null}
       <div className="flex shrink-0 items-stretch gap-1 border-b border-v2-line px-3 py-1.5">
         <div role="tablist" aria-label={t('chat.dm.conversations')} className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-1.5">
           {tabs.map((peer) => (
@@ -468,7 +474,7 @@ function DmPanel({ isAdmin }: { isAdmin: boolean }) {
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex shrink-0 items-center justify-between border-b border-v2-line px-3 py-1.5">
             <span className="min-w-0 truncate text-caption font-semibold text-v2-ink">{activePeer.username}</span>
-            {activeConversation ? (
+            {activeConversation?.communityBlockedByMe ? <button type="button" aria-label={t('moderation.blocks.manage')} className="min-h-9 shrink-0 px-2 text-micro text-v2-self underline underline-offset-2" onClick={() => { setShowBlocked(true); }}>{t('moderation.blocks.manage')}</button> : activeConversation ? (
               <button
                 type="button"
                 disabled={block.isPending}
@@ -572,6 +578,8 @@ function ChannelPanel({
 }) {
   const { t } = useTranslation();
   const now = useNow(30_000);
+  const policy = useCommunityPolicy();
+  const policyAccepted = policyIsAccepted(policy);
   // Keep the original history for read cursors and pagination; only its visible rows change.
   const visibleMessages = useMemo(() => {
     if (tone === 'dm' || mutedPlayers.length === 0) return messages;
@@ -587,6 +595,8 @@ function ChannelPanel({
   const previousLatestId = useRef<string | undefined>(undefined);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [actionMessageId, setActionMessageId] = useState<string | null>(null);
+  const [reportSubject, setReportSubject] = useState<ReportSubject | null>(null);
+  const [blockSubject, setBlockSubject] = useState<BlockSubject | null>(null);
   const [pickerMessageId, setPickerMessageId] = useState<string | null>(null);
   const [pickerBelow, setPickerBelow] = useState(false);
   const recognitionHintId = useId();
@@ -759,6 +769,8 @@ function ChannelPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {blockSubject ? <BlockPlayerSheet subject={blockSubject} onClose={() => { setBlockSubject(null); }} onBlocked={() => { if (replyTarget?.authorPlayerId === blockSubject.playerId) onReplyTarget(null); }} /> : null}
+      {reportSubject ? <ContentReportSheet subject={reportSubject} onClose={() => { setReportSubject(null); }} /> : null}
       <div
         ref={history}
         className="relative min-h-0 flex-1 overflow-y-auto px-3 pb-3"
@@ -794,7 +806,7 @@ function ChannelPanel({
                     tabIndex={0}
                     aria-label={t('chat.messageActions', { name: message.username })}
                     onPointerDown={(event) => {
-                      if (disabledReason || (event.target instanceof Element && event.target.closest('button, a, video, iframe'))) return;
+                      if (event.target instanceof Element && event.target.closest('button, a, video, iframe')) return;
                       clearHold();
                       holdTimer.current = setTimeout(() => { openActions(message.id); haptic('tap'); }, 450);
                     }}
@@ -802,7 +814,7 @@ function ChannelPanel({
                     onPointerCancel={clearHold}
                     onPointerLeave={clearHold}
                     onDoubleClick={(event) => {
-                      if (disabledReason || (event.target instanceof Element && event.target.closest('button, a, video, iframe'))) return;
+                      if (event.target instanceof Element && event.target.closest('button, a, video, iframe')) return;
                       event.preventDefault();
                       clearHold();
                       openActions(message.id);
@@ -810,11 +822,11 @@ function ChannelPanel({
                     }}
                     onContextMenu={(event) => {
                       event.preventDefault();
-                      if (!disabledReason) openActions(message.id);
+                      openActions(message.id);
                     }}
                     onKeyDown={(event) => {
                       if (event.target !== event.currentTarget) return;
-                      if ((event.key === 'Enter' || (event.shiftKey && event.key === 'F10')) && !disabledReason) {
+                      if (event.key === 'Enter' || (event.shiftKey && event.key === 'F10')) {
                         event.preventDefault(); openActions(message.id);
                       }
                     }}
@@ -895,9 +907,9 @@ function ChannelPanel({
                       ))}
                     </div>
                   ) : null}
-                  {actionMessageId === message.id && !disabledReason ? (
-                    <div data-chat-message-actions className={`absolute ${message.self ? 'right-0' : 'left-0'} z-20 mt-1 flex w-full min-w-24 items-center justify-between rounded-pill border border-v2-line-hi bg-v2-raise/95 p-0.5 shadow-lg ${message.reactions?.length ? 'top-1/2' : 'top-1/2'} !py-0`}>
-                      {canReact ? <button type="button" aria-label={t('chat.addReaction')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
+                  {actionMessageId === message.id ? (
+                    <div data-chat-message-actions className={`absolute ${message.self ? 'right-0' : 'left-0'} z-20 mt-1 flex w-full min-w-36 items-center justify-between rounded-pill border border-v2-line-hi bg-v2-raise/95 p-0.5 shadow-lg ${message.reactions?.length ? 'top-1/2' : 'top-1/2'} !py-0`}>
+                      {canReact && policyAccepted && !disabledReason ? <button type="button" aria-label={t('chat.addReaction')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
                         onClick={(event) => {
                           const log = history.current;
                           const row = event.currentTarget.closest('[data-chat-row]');
@@ -905,7 +917,7 @@ function ChannelPanel({
                           setPickerMessageId(pickerMessageId === message.id ? null : message.id);
                         }}
                       >☺</button> : null}
-                      {onMute && tone !== 'dm' && !message.self && message.admin !== true ? (
+                      {onMute && !disabledReason && tone !== 'dm' && !message.self && message.admin !== true ? (
                         <button type="button" data-chat-mute aria-label={t('chat.personalMutes.mute', { name: message.username })}
                           className="grid size-7 place-items-center rounded-full text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
                           onClick={() => {
@@ -915,12 +927,18 @@ function ChannelPanel({
                           }}
                         ><MuteIcon className="size-4" /></button>
                       ) : null}
-                      <button type="button" aria-label={t('chat.reply')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self !py-0"
+                      {!disabledReason ? <button type="button" aria-label={t('chat.reply')} className="grid size-7 place-items-center rounded-full text-figure text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self !py-0"
                         onClick={() => { onReplyTarget(message); setActionMessageId(null); setPickerMessageId(null); composer.current?.focus(); }}
-                      >↩</button>
+                      >↩</button> : null}
+                      {!message.self ? <button type="button" aria-label={t('moderation.report')} className="grid size-7 place-items-center rounded-full text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
+                        onClick={() => { setReportSubject({ channel: tone, messageId: message.id, playerId: message.authorPlayerId, username: message.username }); setActionMessageId(null); setPickerMessageId(null); }}
+                      ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-4" aria-hidden="true"><path d="M5 21V3m0 1c5-4 9 4 14 0v10c-5 4-9-4-14 0" /></svg></button> : null}
+                      {!message.self ? <button type="button" aria-label={t('moderation.blocks.action')} className="grid size-7 place-items-center rounded-full text-v2-ink-2 hover:bg-v2-line/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self"
+                        onClick={() => { setBlockSubject({ playerId: message.authorPlayerId, username: message.username }); setActionMessageId(null); setPickerMessageId(null); }}
+                      ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-4" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3ZM8 12h8" /></svg></button> : null}
                     </div>
                   ) : null}
-                  {canReact && pickerMessageId === message.id && !disabledReason ? (
+                  {canReact && policyAccepted && pickerMessageId === message.id && !disabledReason ? (
                     <div data-chat-reaction-picker className={`absolute ${message.self ? 'right-0' : 'left-0'} z-30 grid w-max grid-cols-6 gap-0.5 rounded-pill border border-v2-line-hi bg-v2-raise p-1 shadow-xl ${pickerBelow ? 'bottom-1/2 mt-14' : 'bottom-1/2'}`} role="group" aria-label={t('chat.chooseReaction')}>
                       {REACTION_EMOJIS.map((emoji) => (
                         <button key={emoji} type="button" aria-label={t('chat.reactWith', { emoji })} aria-pressed={message.reactions?.some(item => item.emoji === emoji && item.mine) ?? false}
@@ -947,7 +965,7 @@ function ChannelPanel({
         </span>, document.body,
       )}
 
-      <form onSubmit={submit} className="shrink-0 border-t border-v2-line px-3 py-2">
+      <CommunityPolicyGate policy={policy}><form onSubmit={submit} className="shrink-0 border-t border-v2-line px-3 py-2">
         {isAdmin ? <ChatMediaComposer pasteTarget={composer} value={media} onChange={setMedia} onBusy={setUploading} disabled={posting || disabledReason !== null} /> : null}
         {disabledReason ? <p role="status" className="mb-2 text-micro text-v2-warn">{disabledReason}</p> : null}
         {replyTarget ? (
@@ -999,7 +1017,7 @@ function ChannelPanel({
             ) : null}
           </div>
         ) : null}
-      </form>
+      </form></CommunityPolicyGate>
     </div>
   );
 }

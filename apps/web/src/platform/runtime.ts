@@ -18,6 +18,7 @@ export function resolveCapabilities(platform: Runtime, buildTarget: string) {
     webCheckout: web,
     webAds: web,
     webAnalytics: web,
+    thirdPartyEmbeds: web,
     // A bridge alone does not mean these services have been integrated or configured.
     storeBilling: false,
     nativeRewardedAds: false,

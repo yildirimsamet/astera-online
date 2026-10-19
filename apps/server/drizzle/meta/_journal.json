@@ -1303,6 +1303,62 @@
       "when": 1792262638926,
       "tag": "0185_gorgeous_mercury",
       "breakpoints": true
+    },
+    {
+      "idx": 186,
+      "version": "7",
+      "when": 1792358403623,
+      "tag": "0186_account_deletion_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 187,
+      "version": "7",
+      "when": 1792358934088,
+      "tag": "0187_account_deletion_approval",
+      "breakpoints": true
+    },
+    {
+      "idx": 188,
+      "version": "7",
+      "when": 1792359813662,
+      "tag": "0188_account_deletion_shared_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 189,
+      "version": "7",
+      "when": 1792360343416,
+      "tag": "0189_account_media_erasure",
+      "breakpoints": true
+    },
+    {
+      "idx": 190,
+      "version": "7",
+      "when": 1792388335958,
+      "tag": "0190_content_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 191,
+      "version": "7",
+      "when": 1792389209896,
+      "tag": "0191_content_report_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1792414854692,
+      "tag": "0192_community_blocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 193,
+      "version": "7",
+      "when": 1792416307717,
+      "tag": "0193_community_policy_acceptances",
+      "breakpoints": true
     }
   ]
 }

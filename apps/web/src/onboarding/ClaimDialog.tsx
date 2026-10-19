@@ -1,9 +1,14 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
+import type { CommunityPolicyConsent } from '../api/communityPolicySchemas.js';
+import { CommunityPolicyAgreement } from '../screens/CommunityPolicy.js';
+import { matchLanguage } from '../i18n/languages.js';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MIN_PASSWORD, validUsername } from '../lib/credentials.js';
 import { Button } from '../v2/kit/Surface.js';
 import type { CountryCode } from '@astera/rules';
 import { CountryPicker } from '../v2/identity/CountryPicker.js';
+import { useNativeBack } from '../platform/nativeBack.js';
 import { Flag } from '../v2/identity/Flag.js';
 import { browserTimeZone, countryName, detectCountry } from '../v2/identity/country.js';
 
@@ -37,7 +42,7 @@ export function ClaimDialog({
   introduction,
 }: {
   planetName: string;
-  onClaim: (username: string, password: string, countryCode?: CountryCode) => Promise<void>;
+  onClaim: (username: string, password: string, countryCode?: CountryCode, policy?: CommunityPolicyConsent) => Promise<void>;
   onSignIn: () => void;
   /** A refusal from the claim, already translated. */
   error?: string;
@@ -48,6 +53,7 @@ export function ClaimDialog({
   const [step, setStep] = useState<'name' | 'password'>('name');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [policyAccepted, setPolicyAccepted] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [problemField, setProblemField] = useState<'name' | 'password' | null>(null);
   const [busy, setBusy] = useState(false);
@@ -58,6 +64,7 @@ export function ClaimDialog({
   const passwordId = useId();
   const nameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
 
   // Whichever field the step is about starts focused. Via the DOM rather than the
   // `autoFocus` attribute, which is unreliable inside a portal that animates.
@@ -70,6 +77,12 @@ export function ClaimDialog({
   }, [error, step]);
 
   const naming = step === 'name';
+  const backToName = (): void => {
+    setProblem(null);
+    setProblemField(null);
+    setStep('name');
+  };
+  useNativeBack(panel, busy ? () => undefined : naming ? undefined : backToName);
   /** What this form got wrong first, then what the server refused. */
   const complaint = problem ?? (!busy && submittedUsername === username.trim() ? error : undefined);
   const serverComplaint = !problem && !busy && submittedUsername === username.trim() && !!error;
@@ -95,13 +108,14 @@ export function ClaimDialog({
       setProblemField('password');
       return;
     }
+    if (!policyAccepted) { setProblem(t('moderation.policy.required')); setProblemField(null); return; }
     setProblem(null);
     setProblemField(null);
     setSubmittedUsername(username.trim());
     setBusy(true);
     void (async () => {
       try {
-        await onClaim(username.trim(), password, countryCode);
+        await onClaim(username.trim(), password, countryCode, { version: COMMUNITY_POLICY_VERSION, locale: matchLanguage(i18n.resolvedLanguage) ?? 'en' });
       } catch {
         // The refusal arrives through `error`; what this owns is letting the
         // player press again without retyping anything.
@@ -113,6 +127,7 @@ export function ClaimDialog({
   return (
     <div
       className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4"
+      ref={panel}
       role="dialog"
       aria-modal="true"
       aria-label={naming
@@ -210,7 +225,8 @@ export function ClaimDialog({
           </p>
         )}
 
-        <Button type="submit" variant="primary" size="lg" full disabled={busy} className="mt-5">
+        {!naming ? <div className="mt-3"><CommunityPolicyAgreement checked={policyAccepted} onChange={setPolicyAccepted} disabled={busy} /></div> : null}
+        <Button type="submit" variant="primary" size="lg" full disabled={busy || !naming && !policyAccepted} className="mt-5">
           {busy
             ? t('onboarding.claim.working')
             : naming
@@ -230,11 +246,7 @@ export function ClaimDialog({
             <button
               type="button"
               className="min-h-10 text-right text-caption text-v2-ink-2 underline-offset-4 hover:text-v2-ink hover:underline focus-visible:outline-2 focus-visible:outline-v2-self"
-              onClick={() => {
-                setProblem(null);
-                setProblemField(null);
-                setStep('name');
-              }}
+              onClick={backToName}
             >
               {t('onboarding.claim.back')}
             </button>

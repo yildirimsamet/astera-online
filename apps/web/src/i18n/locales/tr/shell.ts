@@ -510,6 +510,9 @@ export const chat = {
   },
   addReaction: 'Emoji tepkisi ekle',
   media: {
+    openYouTube: "YouTube’da aç",
+    externalNotice: "Bu bağlantı Astera Online dışında açılır. YouTube kendi politikalarına göre reklam gösterebilir ve veri işleyebilir.",
+    openExternalImage: "Harici görseli aç",
     showPortrait: "Dikey göster",
     showLandscape: "Yatay göster",
     pasteHint: "Mesaj alanına Ctrl+V ile ekran görüntüsü de yapıştırabilirsin.",

@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -61,7 +62,7 @@ describe('auth', () => {
     app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { username, password, ...(countryCode === undefined ? {} : { countryCode }) },
+      payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username, password, ...(countryCode === undefined ? {} : { countryCode }) },
     });
 
   const login = async (username: string, password: string) =>

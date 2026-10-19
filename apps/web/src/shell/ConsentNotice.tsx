@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Button } from '../ui/kit/index.js';
+import { Button } from '../v2/kit/Surface.js';
 import { publisherUrl } from '../lib/publisherPages.js';
 import { capabilities } from '../platform/runtime.js';
 import {
@@ -43,12 +44,13 @@ import {
  * here. What does it cost — two taps at most, ever, on a surface that never
  * covers the galaxy.
  */
-export function ConsentNotice() {
+export function ConsentNotice({ inlineHost }: { inlineHost?: HTMLElement | null } = {}) {
   const platform = capabilities();
-  return platform.webAds || platform.webAnalytics ? <WebConsentNotice /> : null;
+  if (!platform.webAds && !platform.webAnalytics) return null;
+  return inlineHost ? createPortal(<WebConsentNotice inlineHost={inlineHost} />, inlineHost) : <WebConsentNotice />;
 }
 
-function WebConsentNotice() {
+function WebConsentNotice({ inlineHost }: { inlineHost?: HTMLElement } = {}) {
   const { t, i18n } = useTranslation();
   /**
    * `null` until the first effect has run.
@@ -79,12 +81,13 @@ function WebConsentNotice() {
   useEffect(() => {
     const reopen = (): void => {
       setState((current) => ({ open: true, answered: current?.answered ?? readConsent() !== null }));
+      inlineHost?.scrollIntoView({ block: 'center' });
     };
     window.addEventListener(CONSENT_EVENT, reopen);
     return () => {
       window.removeEventListener(CONSENT_EVENT, reopen);
     };
-  }, []);
+  }, [inlineHost]);
 
   if (!state?.open) return null;
 
@@ -97,31 +100,17 @@ function WebConsentNotice() {
     <div
       role="dialog"
       aria-labelledby="consent-title"
-      /*
-        FULL-BLEED AND OPAQUE, not a floating card.
-
-        The first version was a `plate`, which is translucent by design — the
-        galaxy read straight through the text and the surface looked like
-        something that had failed to finish loading. A privacy notice is the one
-        surface in this game that has to be legible on the first glance, so it
-        gets its own solid ground and a hairline to sit on, the way the status
-        bar does. Edge to edge, because a 350px phone has no room for a gutter
-        that only makes the words narrower.
-
-        `pb-[max(…,env(safe-area-inset-bottom))]`: on a phone with a home
-        indicator the bottom row of a bottom-anchored surface is the one that
-        ends up underneath it, and here that row is the two buttons.
-      */
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-deep pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2.5"
+      // Public landing supplies a normal-flow host; game retains its safe-area bar.
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-v2-line bg-v2-panel pb-[max(0.5rem,env(safe-area-inset-bottom))] font-v2-ui text-v2-ink"
     >
-      <div className="mx-auto w-full max-w-sm space-y-2 px-3">
+      <div className="mx-auto w-full max-w-md space-y-2 px-3 pt-2.5">
         {/* Title and the rule, on one row: the detail is one tap, not a wall. */}
         <div className="flex items-baseline gap-2">
-          <h2 id="consent-title" className="flex-1 text-label font-semibold text-bone">
+          <h2 id="consent-title" className="consent-heading flex-1 text-caption font-semibold text-v2-ink">
             {t('consent.title')}
           </h2>
           <a
-            className="text-caption text-crystal underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-crystal"
+            className="shrink-0 text-micro text-v2-self underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-v2-self"
             href={publisherUrl('cookies', i18n.resolvedLanguage)}
           >
             {t('consent.policy')}
@@ -135,7 +124,7 @@ function WebConsentNotice() {
           {state.answered && (
             <button
               type="button"
-              className="text-caption text-faint underline-offset-4 hover:text-bone hover:underline focus-visible:outline-2 focus-visible:outline-crystal"
+              className="text-micro text-v2-ink-2 underline-offset-4 hover:text-v2-ink hover:underline focus-visible:outline-2 focus-visible:outline-v2-self"
               onClick={() => {
                 setState({ open: false, answered: true });
               }}
@@ -146,8 +135,7 @@ function WebConsentNotice() {
         </div>
 
         {/* What is kept whatever they choose, then what the choice controls. */}
-        <p className="text-micro leading-snug text-faint">{t('consent.essentials')}</p>
-        <p className="text-caption leading-snug text-dim">{t('consent.optional')}</p>
+        <p className="consent-copy text-micro leading-relaxed text-v2-ink-2">{t('consent.essentials')} {t('consent.optional')}</p>
 
         {/*
           EQUAL WEIGHT, SIDE BY SIDE, SAME SIZE. Refusing has to be exactly as
@@ -158,7 +146,7 @@ function WebConsentNotice() {
         */}
         <div className="flex gap-2 pt-0.5">
           <Button
-            size="sm"
+            size="md"
             full
             onClick={() => {
               answer('denied');
@@ -167,7 +155,7 @@ function WebConsentNotice() {
             {t('consent.refuse')}
           </Button>
           <Button
-            size="sm"
+            size="md"
             variant="primary"
             full
             onClick={() => {

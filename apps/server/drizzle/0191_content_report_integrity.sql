@@ -1,0 +1,3 @@
+CREATE INDEX "content_reports_target_account_idx" ON "content_reports" USING btree ("target_account_id");--> statement-breakpoint
+ALTER TABLE "content_reports" ADD CONSTRAINT "content_reports_target_check" CHECK (("content_reports"."kind" = 'message' AND "content_reports"."channel" IS NOT NULL AND "content_reports"."message_id" IS NOT NULL) OR ("content_reports"."kind" = 'player' AND "content_reports"."channel" IS NULL AND "content_reports"."message_id" IS NULL));--> statement-breakpoint
+ALTER TABLE "content_reports" ADD CONSTRAINT "content_reports_resolution_check" CHECK (("content_reports"."status" = 'PENDING') = ("content_reports"."resolved_at" IS NULL));

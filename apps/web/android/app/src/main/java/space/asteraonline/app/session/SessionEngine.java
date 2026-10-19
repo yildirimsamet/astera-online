@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.function.LongSupplier;
 
 /** No Android/HTTP dependencies: the durable rotation and logout race protocol. */
 public final class SessionEngine {
@@ -15,7 +16,7 @@ public final class SessionEngine {
     public record Reply(int status, String body, String serverTime, Credential credential) {
         public Reply publicReply() { return new Reply(status, body, serverTime, null); }
     }
-    public record Ticket(String operation, long generation) {}
+    public record Ticket(String operation, long generation, long queuedAtNanos) {}
     public interface Store {
         State load() throws IOException;
         void save(State value) throws IOException;
@@ -27,12 +28,20 @@ public final class SessionEngine {
     private final Store store;
     private final Network network;
     private final Supplier<String> random;
+    private final LongSupplier nanoTime;
+    // 20s queue + SessionHttp's 20s call budget stays below the JS bridge's 45s timeout.
+    private static final long MAX_QUEUE_WAIT_NANOS = 20_000_000_000L;
     private State state;
     private long generation;
     private boolean healthy = true;
 
     public SessionEngine(Store store, Network network, Supplier<String> random) throws IOException {
+        this(store, network, random, System::nanoTime);
+    }
+
+    public SessionEngine(Store store, Network network, Supplier<String> random, LongSupplier nanoTime) throws IOException {
         this.store = store; this.network = network; this.random = random;
+        this.nanoTime = nanoTime;
         state = store.load();
     }
 
@@ -49,7 +58,7 @@ public final class SessionEngine {
             if (state.active() != null) queue.add(state.active());
             persist(new State(null, queue));
         }
-        return new Ticket(operation, generation);
+        return new Ticket(operation, generation, nanoTime.getAsLong());
     }
 
     /** The plugin serializes executions; begin() remains free while network is in flight. */
@@ -62,6 +71,9 @@ public final class SessionEngine {
         synchronized (this) {
             if (!healthy) throw new IOException("Secure storage unavailable");
             if (ticket.generation() != generation) return changed();
+            if (nanoTime.getAsLong() - ticket.queuedAtNanos() >= MAX_QUEUE_WAIT_NANOS) {
+                return new Reply(503, "{\"error\":\"UNREACHABLE\",\"message\":\"Sign-in is unavailable. Try again.\"}", null, null);
+            }
             if (ticket.operation().equals("refresh")) {
                 credential = state.active();
                 if (credential == null) return new Reply(401, "{\"error\":\"BAD_SESSION\",\"message\":\"Sign in again\"}", null, null);

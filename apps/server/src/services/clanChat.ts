@@ -1,3 +1,4 @@
+import { chatVisibleTo } from './communityBlocks.js';
 import { randomUUID } from 'node:crypto';
 import { claimChatMedia } from './chatMedia.js';
 import type { ChatMedia } from '@astera/rules';
@@ -82,6 +83,7 @@ export async function readClanChat(
     .leftJoin(clans, and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)))
     .where(and(
       eq(clanMessages.clanId, membership.clanId),
+      chatVisibleTo(accountId, clanMessages.authorPlayerId),
       gte(clanMessages.createdAt, membership.joinedAt),
       cursor ? or(
         lt(clanMessages.createdAt, cursor.createdAt),
@@ -148,6 +150,7 @@ export async function postClanChat(
     .innerJoin(players, eq(players.id, clanMessages.authorPlayerId))
     .innerJoin(accounts, eq(accounts.id, players.accountId))
     .where(and(eq(clanMessages.id, input.replyToMessageId), eq(clanMessages.clanId, membership.clanId),
+      chatVisibleTo(actor.accountId, clanMessages.authorPlayerId),
       gte(clanMessages.createdAt, membership.joinedAt))).limit(1) : [];
   if (input.replyToMessageId && !replyTo) throw new GameError('CLAN_MESSAGE_NOT_VISIBLE', 'That message is not visible', 404);
   const [clan] = await tx.select({ tag: clans.tag }).from(clans)
@@ -235,6 +238,7 @@ export async function markClanChatRead(
     .from(clanMessages).where(and(
       eq(clanMessages.id, input.messageId),
       eq(clanMessages.clanId, membership.clanId),
+      chatVisibleTo(actor.accountId, clanMessages.authorPlayerId),
       gte(clanMessages.createdAt, membership.joinedAt),
     ));
   if (!message) throw new GameError('CLAN_MESSAGE_NOT_VISIBLE', 'That message is not visible', 404);

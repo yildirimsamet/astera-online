@@ -1,3 +1,4 @@
+import type { CommunityPolicyConsent } from '../api/communityPolicySchemas.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -82,7 +83,7 @@ export function Rehearsal({
    * `REHEARSAL_ONLY` — and even reaching the server through it would leave the
    * access token on a client the game is about to discard.
    */
-  onClaim: (username: string, password: string, intents: readonly ClaimIntent[], countryCode?: CountryCode) => Promise<void>;
+  onClaim: (username: string, password: string, intents: readonly ClaimIntent[], countryCode?: CountryCode, policy?: CommunityPolicyConsent) => Promise<void>;
   /** They already have a commander. The rehearsal is discarded. */
   onSignIn: () => void;
   /** Out, without an account. Back to the front door. */
@@ -125,6 +126,8 @@ export function Rehearsal({
   const api = useMemo(
     () =>
       new Api({
+        authTransport: null,
+        baseUrl: '',
         fetch: rehearsalFetch(
           () => ({ preview, world: worldRef.current }),
           (next) => {
@@ -284,10 +287,10 @@ export function Rehearsal({
   );
 
   const claim = useCallback(
-    async (username: string, password: string, countryCode?: CountryCode): Promise<void> => {
+    async (username: string, password: string, countryCode?: CountryCode, policy?: CommunityPolicyConsent): Promise<void> => {
       setRefusal(undefined);
       try {
-        await onClaim(username, password, worldRef.current.intents, countryCode);
+        await onClaim(username, password, worldRef.current.intents, countryCode, policy);
       } catch (err) {
         setRefusal(describe(err));
         throw err;

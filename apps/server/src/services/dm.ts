@@ -1,3 +1,4 @@
+import { accountForPlayer, chatVisibleTo, lockCommunityPair } from './communityBlocks.js';
 import { randomUUID } from 'node:crypto';
 import { claimChatMedia } from './chatMedia.js';
 import type { ChatMedia } from '@astera/rules';
@@ -58,7 +59,9 @@ async function isBlocked(db: Queryable, a: string, b: string): Promise<boolean> 
     and(eq(dmBlocks.blockerPlayerId, a), eq(dmBlocks.targetPlayerId, b)),
     and(eq(dmBlocks.blockerPlayerId, b), eq(dmBlocks.targetPlayerId, a)),
   )).limit(1);
-  return row !== undefined;
+  if (row) return true;
+  const [community] = await db.execute<{ blocked: boolean }>(sql`SELECT NOT ${chatVisibleTo(accountForPlayer(a), sql`${b}::uuid`)} AS blocked`);
+  return community?.blocked ?? false;
 }
 
 export async function dmContacts(db: Db, accountId: string, query: string) {
@@ -72,6 +75,7 @@ export async function dmContacts(db: Db, accountId: string, query: string) {
     .leftJoin(botProfiles, eq(botProfiles.accountId, accounts.id))
     .where(and(
       eq(players.seasonId, me.seasonId), isNull(botProfiles.accountId),
+      chatVisibleTo(accountId, players.id),
       sql`${players.id} <> ${me.id}`,
       sql`${accounts.displayName} ILIKE ${pattern} ESCAPE '\\'`,
       sql`NOT EXISTS (
@@ -94,6 +98,8 @@ interface ConversationRow extends Record<string, unknown> {
   peerSeasonId: string;
   blockedByMe: boolean;
   blockedByPeer: boolean;
+  communityBlockedByMe: boolean;
+  communityBlocked: boolean;
   unreadCount: number;
   lastId: string;
   lastContent: string;
@@ -107,9 +113,12 @@ export async function dmConversationsFor(db: Db, accountId: string) {
            peer.id AS "peerId", a.display_name AS username, a.country_code AS country,
            peer.season_id AS "peerSeasonId",
            (mine.blocker_player_id IS NOT NULL) AS "blockedByMe",
+           EXISTS(SELECT 1 FROM community_blocks cb WHERE cb.blocker_account_id=${accountId} AND cb.target_account_id=peer.account_id) AS "communityBlockedByMe",
+           (NOT ${chatVisibleTo(accountId, sql`peer.id`)}) AS "communityBlocked",
            (theirs.blocker_player_id IS NOT NULL) AS "blockedByPeer",
            (SELECT count(*)::int FROM dm_messages m
              WHERE m.conversation_id = c.id AND m.author_player_id <> ${me.id}
+               AND ${chatVisibleTo(accountId, sql`m.author_player_id`)}
                AND (r.read_at IS NULL OR m.created_at > r.read_at)) AS "unreadCount",
            last.id AS "lastId", last.content AS "lastContent", last.created_at AS "lastCreatedAt"
       FROM dm_conversations c
@@ -131,13 +140,14 @@ export async function dmConversationsFor(db: Db, accountId: string) {
       : me.seasonId !== row.conversationSeasonId
         || row.peerSeasonId !== row.conversationSeasonId || me.role !== 'MAIN'
         ? 'WAITING' as const
-      : row.blockedByMe || row.blockedByPeer ? 'BLOCKED' as const : null;
+      : row.blockedByMe || row.blockedByPeer || row.communityBlocked ? 'BLOCKED' as const : null;
     return {
       id: row.id,
       peer: { playerId: row.peerId, username: row.username, country: row.country },
       lastMessage: { id: row.lastId, content: row.lastContent, createdAt: row.lastCreatedAt },
       unreadCount: row.unreadCount,
       blockedByMe: row.blockedByMe,
+      communityBlockedByMe: row.communityBlockedByMe,
       canSend: unavailableReason === null,
       unavailableReason,
     };
@@ -154,6 +164,7 @@ export async function dmUnread(db: Db, accountId: string): Promise<number> {
       LEFT JOIN dm_read_markers r ON r.conversation_id = c.id AND r.player_id = ${me.id}
      WHERE (c.player_low_id = ${me.id} OR c.player_high_id = ${me.id})
        AND (r.read_at IS NULL OR m.created_at > r.read_at)
+       AND ${chatVisibleTo(accountId, sql`m.author_player_id`)}
   `);
   return row?.count ?? 0;
 }
@@ -219,6 +230,7 @@ export async function postDm(db: Db, accountId: string, recipientPlayerId: strin
       throw new GameError('DM_UNAVAILABLE', 'Both commanders must be in the same live galaxy', 409);
     }
     await lockDmPair(tx, me.id, recipientPlayerId);
+    await lockCommunityPair(tx, accountId, recipient.accountId);
     await assertChatAllowed(tx, accountId, 'dm', clock);
     if (await isBlocked(tx, me.id, recipientPlayerId)) {
       throw new GameError('DM_BLOCKED', 'This conversation cannot receive messages', 403);

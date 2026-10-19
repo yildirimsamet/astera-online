@@ -1,21 +1,20 @@
-import { PasswordResetSheet } from './PasswordResetSheet.js';
-import { useEffect, useId, useRef, useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useServers } from '../api/queries.js';
-import { LandingScene } from '../landing/LandingScene.jsx';
+const LandingScene = lazy(() => import('../landing/LandingScene.jsx').then(module => ({ default: module.LandingScene })));
+import { PublicLandingScreen } from '../landing/public/PublicLandingScreen.js';
+import { AuthDialog } from './LandingAuthDialog.js';
+import { runtime } from '../platform/runtime.js';
 import { full } from '../lib/format.js';
 import { LANDING_ASSETS, usePreload, type Loader } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useOpeningCover } from '../lib/openingCover.js';
-import { useOwnPress } from '../ui/kit/index.js';
 import { Button as V2Button } from '../v2/kit/Surface.js';
-import { Icon } from '../v2/icons.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
 import { Wordmark } from '../ui/Wordmark.jsx';
 import { commanderKnownHere } from '../lib/returning.js';
-import { publisherUrl } from '../lib/publisherPages.js';
+import { publisherUrl, publisherWikiUrl } from '../lib/publisherPages.js';
 import { capabilities } from '../platform/runtime.js';
-import { describeError } from '../i18n/errors.js';
 
 /**
  * THE FRONT DOOR. D21.
@@ -35,7 +34,7 @@ import { describeError } from '../i18n/errors.js';
  * fourteen-day season kept in one browser's cookie jar is a season you lose by
  * opening your laptop.
  */
-export function LandingScreen({
+function CompactLandingScreen({
   onAuthenticate,
   onBegin,
   open,
@@ -57,6 +56,10 @@ export function LandingScreen({
   onBegin: () => Promise<void>;
   /** A form to open on arrival, for somebody sent back here to sign in. */
   open?: Mode;
+  /** Public startup may defer opening a form until cookie restoration settles. */
+  onRequestLogin?: () => boolean;
+  /** Retry a failed web connection without replacing the public introduction. */
+  onRetry?: () => void;
   securityNotice?: 'email' | 'password' | 'expired';
   loginEmail?: string;
   error?: string;
@@ -124,7 +127,7 @@ export function LandingScreen({
 
   return (
     <main className="relative min-h-dvh overflow-hidden bg-v2-void font-v2-ui">
-      <LandingScene onReady={() => { setDrawn(true); }} />
+      <Suspense fallback={null}><LandingScene onReady={() => { setDrawn(true); }} /></Suspense>
 
       {/**
        * The copy sits in its own stacking context above the canvas, over a scrim
@@ -323,7 +326,7 @@ export function LandingScreen({
             aria-label={t('landing.publicLinksLabel')}
             className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-v2-line pt-3"
           >
-            <a className="text-micro text-v2-ink-3 underline underline-offset-4 hover:text-v2-ink-2" href={i18n.resolvedLanguage === 'tr' ? '/wiki/tr' : '/wiki'}>Wiki</a>
+            <a className="text-micro text-v2-ink-3 underline underline-offset-4 hover:text-v2-ink-2" href={publisherWikiUrl(i18n.resolvedLanguage)}>Wiki</a>
             {(
               [
                 ['about', 'landing.aboutLink'],
@@ -406,195 +409,11 @@ function Population({ commanders, online }: { commanders: number | null; online:
 /* ── the form ───────────────────────────────────────────────── */
 
 
-/**
- * Sign-in only. A new commander goes through training before ClaimDialog asks
- * for credentials; registering here bypassed both teaching and opening orders.
- */
-function AuthDialog({
-  onBegin,
-  onClose,
-  onSubmit,
-  securityNotice,
-  loginEmail,
-}: {
-  onBegin: () => void;
-  onClose: () => void;
-  onSubmit: (mode: Mode, username: string, password: string) => Promise<void>;
-  securityNotice?: 'email' | 'password' | 'expired' | undefined;
-  loginEmail?: string | undefined;
-}) {
-  const { t } = useTranslation();
-  const [resetOpen, setResetOpen] = useState(false);
-  const [username, setUsername] = useState(loginEmail ?? '');
-  const [password, setPassword] = useState('');
-  const [problem, setProblem] = useState<string | null>(null);
-  const [problemField, setProblemField] = useState<'name' | 'password' | null>(null);
-  const [busy, setBusy] = useState(false);
-  const nameId = useId();
-  const passwordId = useId();
-  const nameRef = useRef<HTMLInputElement>(null);
-  const passwordRef = useRef<HTMLInputElement>(null);
 
-  // The form is why the sheet opened, so it starts focused. Autofocus via the DOM
-  // rather than the attribute: React's `autoFocus` is unreliable inside a portal
-  // that mounts and animates.
-  useEffect(() => {
-    if (loginEmail) passwordRef.current?.focus();
-    else nameRef.current?.focus();
-  }, [loginEmail]);
+export type LandingProps = Parameters<typeof CompactLandingScreen>[0];
 
-  // Escape closes it. Anything modal that traps a player is worse than no modal.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && !resetOpen) onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [onClose, resetOpen]);
-
-  const check = (): { message: string; field: 'name' | 'password' } | null => {
-    if (username.trim().length === 0) return { message: t('accountSecurity.identifierRequired'), field: 'name' };
-    if (password.length === 0) return { message: t('landing.form.noPassword'), field: 'password' };
-    return null;
-  };
-
-  const submit = (): void => {
-    if (busy) return;
-    const bad = check();
-    if (bad) {
-      setProblem(bad.message);
-      setProblemField(bad.field);
-      return;
-    }
-    setProblem(null);
-    setProblemField(null);
-    setBusy(true);
-    void (async () => {
-      try {
-        await onSubmit('login', username.trim(), password);
-      } catch (err) {
-        // The session hook has already set the phase back; this is the part the
-        // form owns — say what happened without discarding what was typed.
-        setProblem(describeError(err));
-        setProblemField(null);
-        setBusy(false);
-      }
-    })();
-  };
-
-  // Same shape as the sheet scrim (D109a): a dismiss control must not answer the
-  // tail of the gesture that opened the thing it dismisses.
-  const dismiss = useOwnPress(onClose);
-
-  return (
-    <div
-      className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('landing.form.labelLogin')}
-    >
-      <button
-        type="button"
-        aria-hidden="true"
-        tabIndex={-1}
-        className="absolute inset-0 bg-v2-void/70"
-        {...dismiss}
-      />
-
-      <form
-        className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto border border-b-0 border-v2-line bg-v2-panel px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-3 font-v2-ui text-v2-ink shadow-2xl sm:rounded-sheet sm:border-b sm:p-6"
-        onSubmit={(event) => {
-          event.preventDefault();
-          submit();
-        }}
-      >
-        <span aria-hidden="true" className="mx-auto mb-4 block h-1 w-9 rounded-full bg-v2-line-hi sm:hidden" />
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">
-              {t('landing.form.eyebrowLogin')}
-            </p>
-            <h2 className="mt-1 text-figure font-semibold leading-tight text-v2-ink">
-              {t('landing.form.headingLogin')}
-            </h2>
-          </div>
-          <button type="button" aria-label={t('landing.form.close')} className="grid size-9 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-raise text-v2-ink-2 hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self" onClick={onClose}>
-            <Icon id="i-close" className="size-4" />
-          </button>
-        </div>
-
-        {securityNotice ? <p role="status" className="mt-4 rounded-control border border-v2-self/40 bg-v2-self/10 p-3 text-caption leading-relaxed text-v2-ink">{t(securityNotice === 'email' ? 'accountSecurity.emailNotice' : securityNotice === 'password' ? 'accountSecurity.passwordNotice' : 'accountSecurity.expiredNotice')}</p> : null}
-        <p className="mt-4 text-caption text-v2-ink-2">{t('accountSecurity.loginHint')}</p>
-        <button type="button" className="mt-2 min-h-10 text-caption text-v2-self" onClick={() => { setResetOpen(true); }}>{t('accountSecurity.forgot')}</button>
-        {resetOpen ? <PasswordResetSheet onClose={() => { setResetOpen(false); }} /> : null}
-        <label className="mt-5 block text-micro font-semibold uppercase tracking-wide text-v2-ink-2" htmlFor={nameId}>
-          {t('accountSecurity.loginLabel')}
-        </label>
-        <input
-          id={nameId}
-          ref={nameRef}
-          className={`mt-1.5 min-h-12 w-full rounded-control border bg-v2-deep px-3 font-v2-ui text-title text-v2-ink placeholder:text-v2-ink-3 outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${problemField === 'name' ? 'border-v2-hostile' : 'border-v2-line-hi'}`}
-          aria-invalid={problemField === 'name'}
-          value={username}
-          onChange={(event) => {
-            setUsername(event.target.value);
-            setProblem(null);
-            setProblemField(null);
-          }}
-          autoComplete="username"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          maxLength={254}
-          placeholder={t('accountSecurity.loginLabel')}
-        />
-
-        <label className="mt-4 block text-micro font-semibold uppercase tracking-wide text-v2-ink-2" htmlFor={passwordId}>
-          {t('landing.form.passwordLabel')}
-        </label>
-        <input
-          id={passwordId}
-          ref={passwordRef}
-          className={`mt-1.5 min-h-12 w-full rounded-control border bg-v2-deep px-3 font-v2-ui text-title text-v2-ink outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${problemField === 'password' ? 'border-v2-hostile' : 'border-v2-line-hi'}`}
-          aria-invalid={problemField === 'password'}
-          type="password"
-          value={password}
-          onChange={(event) => {
-            setPassword(event.target.value);
-            setProblem(null);
-            setProblemField(null);
-          }}
-          autoComplete="current-password"
-          maxLength={200}
-        />
-
-        {problem !== null && (
-          <p className="mt-3 text-caption text-v2-hostile" role="alert">
-            {problem}
-          </p>
-        )}
-
-        {/* No onClick: the form's own submit handler is the single entry point.
-            Wiring both would run `submit` twice per press, and the `busy` guard
-            cannot stop that — React has not re-rendered between the two calls. */}
-        <V2Button type="submit" variant="primary" size="lg" full disabled={busy} className="mt-5">
-          {busy
-            ? t('landing.form.submitBusy')
-            : t('landing.form.submitLogin')}
-        </V2Button>
-
-        <button
-          type="button"
-          className="mt-3 min-h-10 w-full rounded-control text-center text-caption text-v2-ink-2 underline decoration-v2-ink-3/50 underline-offset-4 hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
-          onClick={() => {
-            onBegin();
-          }}
-        >
-          {t('landing.form.switchToRegister')}
-        </button>
-      </form>
-    </div>
-  );
+/** Browser marketing is separate from the compact native front door; identity is shared. */
+export function LandingScreen(props: LandingProps) {
+  return (import.meta.env.VITE_ASTERA_PLATFORM ?? 'web') === 'web' && runtime() === 'web'
+    ? <PublicLandingScreen {...props} /> : <CompactLandingScreen {...props} />;
 }

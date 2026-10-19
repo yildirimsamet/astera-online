@@ -1,3 +1,4 @@
+import { chatVisibleTo } from './communityBlocks.js';
 import { randomUUID } from 'node:crypto';
 import { claimChatMedia } from './chatMedia.js';
 import type { ChatMedia } from '@astera/rules';
@@ -117,6 +118,7 @@ export async function readChat(
     .leftJoin(clans, and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)))
     .where(and(
       eq(chatMessages.seasonId, me.player.seasonId),
+      chatVisibleTo(accountId, chatMessages.authorPlayerId),
       eq(chatMessages.language, language),
       cursor
         ? or(
@@ -177,6 +179,7 @@ export async function postChat(
       .innerJoin(players, eq(players.id, chatMessages.authorPlayerId))
       .innerJoin(accounts, eq(accounts.id, players.accountId))
       .where(and(eq(chatMessages.id, replyToMessageId), eq(chatMessages.seasonId, me.player.seasonId),
+        chatVisibleTo(accountId, chatMessages.authorPlayerId),
         eq(chatMessages.language, language))).limit(1) : [];
     if (replyToMessageId && !replyTo) throw new GameError('CHAT_MESSAGE_NOT_VISIBLE', 'That message is not visible', 404);
     const [latest] = await tx
@@ -247,6 +250,7 @@ export async function unreadChat(db: Db, accountId: string, language: ChatLangua
     .from(chatMessages)
     .where(and(
       eq(chatMessages.seasonId, me.player.seasonId),
+      chatVisibleTo(accountId, chatMessages.authorPlayerId),
       eq(chatMessages.language, language),
       ne(chatMessages.authorPlayerId, me.player.id),
       marker?.readAt ? gt(chatMessages.createdAt, marker.readAt) : undefined,
@@ -268,6 +272,7 @@ export async function markChatRead(
       .where(and(
         eq(chatMessages.id, messageId),
         eq(chatMessages.seasonId, me.player.seasonId),
+        chatVisibleTo(accountId, chatMessages.authorPlayerId),
         eq(chatMessages.language, language),
       ))
       .limit(1);

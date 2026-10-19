@@ -572,6 +572,9 @@ export const chat = {
   },
   addReaction: 'Emoji-Reaktion hinzufügen',
   media: {
+    openYouTube: "Auf YouTube öffnen",
+    externalNotice: "Dieser Link wird außerhalb von Astera Online geöffnet. YouTube kann gemäß seinen Richtlinien Werbung zeigen und Daten verarbeiten.",
+    openExternalImage: "Externes Bild öffnen",
     showPortrait: "Hochformat anzeigen",
     showLandscape: "Querformat anzeigen",
     pasteHint: "Du kannst auch einen Screenshot mit Strg+V in das Nachrichtenfeld einfügen.",

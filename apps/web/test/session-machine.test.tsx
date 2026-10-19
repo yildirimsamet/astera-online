@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
-import { renderHook, waitFor, act } from '@testing-library/react';
+import type { CommunityPolicyConsent } from '../src/api/communityPolicySchemas.js';
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
+import { StrictMode, type ReactNode } from 'react';
+import { renderHook, waitFor, act, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api, ApiError } from '../src/api/client.js';
@@ -99,6 +101,145 @@ const signedInOnly = {
   '/api/auth/me': { ...SESSION, placement: null },
 };
 
+describe('cold-start connection recovery', () => {
+  beforeEach(() => { vi.restoreAllMocks(); window.sessionStorage.clear(); });
+  afterEach(() => { cleanup(); Reflect.deleteProperty(document, 'visibilityState'); vi.restoreAllMocks(); });
+  const outage = () => new Response(JSON.stringify({ error: 'UNREACHABLE', message: 'offline' }), { status: 503 });
+  const online = () => { window.dispatchEvent(new Event('online')); };
+  const visible = (value: 'hidden' | 'visible') => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value });
+    document.dispatchEvent(new Event('visibilitychange'));
+  };
+
+  it.each(['/api/auth/refresh', '/api/auth/me'])('recovers an unreachable %s on network return without asking for credentials', async path => {
+    const routes: Route = { ...placed, [path]: outage() };
+    const { wrapper } = harness(routes);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('blocked'); });
+    routes[path] = placed[path === '/api/auth/refresh' ? '/api/auth/refresh' : '/api/auth/me'];
+    act(online);
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+  });
+
+  it('recovers an already failed cold start on a real foreground return', async () => {
+    const routes: Route = { ...placed, '/api/auth/refresh': outage() };
+    const { wrapper } = harness(routes);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('blocked'); });
+    routes['/api/auth/refresh'] = SESSION;
+    act(() => { visible('hidden'); visible('visible'); });
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+  });
+
+  it('recognizes the first visible return when the browser cold-started hidden', async () => {
+    visible('hidden');
+    const routes: Route = { ...placed, '/api/auth/refresh': outage() };
+    const { wrapper } = harness(routes);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('blocked'); });
+    routes['/api/auth/refresh'] = SESSION;
+    act(() => { visible('visible'); });
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+  });
+
+  it('joins online, foreground and manual retry while a recovery is already in flight', async () => {
+    const { wrapper, api } = harness(placed);
+    const restore = vi.spyOn(api, 'restore').mockRejectedValueOnce(new ApiError('UNREACHABLE', 'offline', 503));
+    let finish: ((value: boolean) => void) | undefined;
+    const pending = new Promise<boolean>(resolve => { finish = resolve; });
+    restore.mockReturnValueOnce(pending);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('blocked'); });
+    act(() => { online(); visible('hidden'); visible('visible'); result.current.retry(); result.current.retry(); online(); });
+    expect(restore).toHaveBeenCalledTimes(2);
+    await act(async () => { finish?.(true); await pending; });
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+  });
+
+  it('keeps sign-out when an automatic recovery returns late', async () => {
+    const { wrapper, api } = harness(placed);
+    const restore = vi.spyOn(api, 'restore').mockRejectedValueOnce(new ApiError('UNREACHABLE', 'offline', 503));
+    let finish: ((value: boolean) => void) | undefined;
+    const pending = new Promise<boolean>(resolve => { finish = resolve; });
+    restore.mockReturnValueOnce(pending);
+    vi.spyOn(api, 'logout').mockResolvedValue(undefined);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('blocked'); });
+    act(online);
+    expect(restore).toHaveBeenCalledTimes(2);
+    await act(async () => { await result.current.signOut(); });
+    await act(async () => { finish?.(true); await pending; });
+    expect(result.current.session).toEqual({ phase: 'landing', open: 'login' });
+  });
+
+  it('retains one return signal that arrives before the first offline restore fails', async () => {
+    const { wrapper, api } = harness(placed);
+    let fail: ((reason: unknown) => void) | undefined;
+    const pending = new Promise<boolean>((_resolve, reject) => { fail = reject; });
+    const restore = vi.spyOn(api, 'restore').mockReturnValueOnce(pending).mockResolvedValue(true);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    act(online);
+    await act(async () => { fail?.(new ApiError('UNREACHABLE', 'offline', 503)); await pending.catch(() => undefined); });
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+    expect(restore).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not loop retries when the connection is still unavailable', async () => {
+    const { wrapper, api } = harness(placed);
+    const restore = vi.spyOn(api, 'restore').mockRejectedValue(new ApiError('UNREACHABLE', 'offline', 503));
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('blocked'); });
+    act(online);
+    await waitFor(() => { expect(restore).toHaveBeenCalledTimes(2); });
+    expect(result.current.session.phase).toBe('blocked');
+  });
+
+  it.each([401, 403, 429])('never treats auth/refusal status %s as a connection recovery', async status => {
+    const { wrapper, api } = harness(placed);
+    const restore = vi.spyOn(api, 'restore').mockRejectedValue(new ApiError('REFUSED', 'refused', status));
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe(status === 401 ? 'landing' : 'blocked'); });
+    act(() => { online(); visible('hidden'); visible('visible'); });
+    expect(restore).toHaveBeenCalledOnce();
+  });
+
+  it('waits while the browser still knows it is offline', async () => {
+    const { wrapper, api } = harness(placed);
+    const restore = vi.spyOn(api, 'restore').mockRejectedValue(new ApiError('UNREACHABLE', 'offline', 503));
+    let connected = false;
+    vi.spyOn(navigator, 'onLine', 'get').mockImplementation(() => connected);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('blocked'); });
+    act(() => { online(); visible('hidden'); visible('visible'); });
+    expect(restore).toHaveBeenCalledOnce();
+    connected = true;
+    act(online);
+    await waitFor(() => { expect(restore).toHaveBeenCalledTimes(2); });
+  });
+
+  it('does not settle a cold read after its hook has unmounted', async () => {
+    const { wrapper, api } = harness(placed);
+    let finish: ((value: boolean) => void) | undefined;
+    const pending = new Promise<boolean>(resolve => { finish = resolve; });
+    vi.spyOn(api, 'restore').mockReturnValueOnce(pending);
+    const me = vi.spyOn(api, 'me');
+    const view = renderHook(() => useSession(), { wrapper });
+    view.unmount();
+    await act(async () => { finish?.(true); await pending; });
+    expect(me).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem('astera:ready-session')).toBeNull();
+  });
+
+  it('keeps one restore across the StrictMode setup/cleanup replay', async () => {
+    const { wrapper: Provider, api } = harness(placed);
+    const restore = vi.spyOn(api, 'restore');
+    const wrapper = ({ children }: { children: ReactNode }) => <StrictMode><Provider>{children}</Provider></StrictMode>;
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+    expect(restore).toHaveBeenCalledOnce();
+  });
+});
+
 describe('the session machine', () => {
   afterEach(async () => { await i18n.changeLanguage('en'); });
 
@@ -130,8 +271,8 @@ describe('the session machine', () => {
     vi.spyOn(api, 'restore').mockReturnValueOnce(pending);
     const { result } = renderHook(() => useSession(), { wrapper });
     await act(async () => {
-      if (mode === 'claim') await result.current.claim('next', 'replacement-password', []);
-      else await result.current.authenticate(mode, 'next', 'replacement-password');
+      if (mode === 'claim') await result.current.claim('next', 'replacement-password', [], undefined, policyProof);
+      else await result.current.authenticate(mode, 'next', 'replacement-password', undefined, mode === 'register' ? policyProof : undefined);
     });
     await act(async () => { finish?.(false); await pending; });
     expect(result.current.session).toMatchObject({ phase: mode === 'claim' ? 'ready' : 'servers', me: { accountId: 'next-account' } });
@@ -609,3 +750,5 @@ describe('the session machine', () => {
     });
   });
 });
+
+const policyProof: CommunityPolicyConsent = { version: COMMUNITY_POLICY_VERSION, locale: 'en' };

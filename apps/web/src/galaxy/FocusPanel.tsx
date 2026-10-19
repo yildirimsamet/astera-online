@@ -91,6 +91,7 @@ import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Icon } from '../v2/icons.js';
 import { TargetDossier } from '../v2/hud/TargetDossier.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
+import { useNativeBack } from '../platform/nativeBack.js';
 
 /**
  * FOCUS — what is this thing, and what do I know about it?
@@ -226,6 +227,8 @@ function Shell({
    */
   const toggle = useOwnPress(onToggle);
   const clear = useOwnPress(onClose);
+  const panel = useRef<HTMLElement>(null);
+  useNativeBack(panel, open ? onToggle : onClose);
 
   return (
     <section
@@ -235,6 +238,8 @@ function Shell({
        * commitment is inside it — without leaving the rest of the screen live too.
        */
       data-focus-rail
+      ref={panel}
+      data-native-back-layer="context"
       data-open={open ? 'true' : 'false'}
       /*
         THE MOCK'S TWO SHAPES (image.png, image copy 5). Closed, the context card: inset,

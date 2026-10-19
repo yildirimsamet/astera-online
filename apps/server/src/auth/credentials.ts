@@ -48,6 +48,8 @@ export const normaliseUsername = (name: string): string => name.trim().normalize
 export const countryCodeSchema = z.enum(COUNTRY_CODES);
 
 export const registerBody = z.object({
+  communityPolicyVersion: z.string().max(64).optional(),
+  communityPolicyLocale: z.enum(['en', 'tr', 'de', 'fr', 'es', 'ja']).optional(),
   username: usernameSchema,
   password: passwordSchema,
   countryCode: countryCodeSchema.optional(),

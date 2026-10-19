@@ -6,6 +6,7 @@ import { haptic } from '../lib/haptics.js';
 import { AttackIcon, ClanIcon, GalaxyIcon, LeaderboardIcon, ShieldedIcon } from '../ui/icons/index.js';
 import { NextSeason } from '../ui/NextSeason.js';
 import { useOwnPress } from '../ui/kit/index.js';
+import { useNativeBack } from '../platform/nativeBack.js';
 import { RankingScores } from '../ui/RankingScores.js';
 import { HonorIcon } from '../ui/icons/index.js';
 
@@ -91,6 +92,8 @@ export function SeasonRecap({
     haptic('tap');
     onClose();
   }, [onClose, result]);
+  const panel = useRef<HTMLDivElement>(null);
+  useNativeBack(panel, close);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -121,6 +124,7 @@ export function SeasonRecap({
   return (
     <div
       className="fixed inset-0 z-50 overflow-y-auto bg-void/95"
+      ref={panel}
       role="dialog"
       aria-modal="true"
       aria-labelledby="season-recap-title"

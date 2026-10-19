@@ -1,3 +1,4 @@
+import { accountForPlayer, chatVisibleTo } from './communityBlocks.js';
 import { sql } from 'drizzle-orm';
 import { REACTION_EMOJIS, type ReactionEmoji, type ChatMedia } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
@@ -68,7 +69,7 @@ interface ReactionRow extends Record<string, unknown> {
 }
 
 export async function replyPreviews(
-  db: Queryable, channel: MessageChannel, ids: readonly string[], earliest?: Date,
+  db: Queryable, channel: MessageChannel, ids: readonly string[], earliest?: Date, viewerPlayerId?: string,
 ): Promise<Map<string, ReplyPreview>> {
   if (ids.length === 0) return new Map();
   // Both identifiers come from a closed server-side choice, never request text.
@@ -80,6 +81,7 @@ export async function replyPreviews(
       JOIN players p ON p.id = m.author_player_id
       JOIN accounts a ON a.id = p.account_id
      WHERE m.id IN (${values})
+       ${viewerPlayerId ? sql`AND ${chatVisibleTo(accountForPlayer(viewerPlayerId), sql`m.author_player_id`)}` : sql``}
        ${earliest ? sql`AND m.created_at >= ${earliest.toISOString()}::timestamptz` : sql``}
   `);
   return new Map(rows.map(({ id, username, content, media }) => [id, { id, username, content, ...(media ? { media } : {}) }]));
@@ -96,6 +98,7 @@ export async function reactionViews(
            bool_or(player_id = ${playerId}::uuid) AS mine
       FROM message_reactions
      WHERE ${column} IN (${values})
+       AND ${chatVisibleTo(accountForPlayer(playerId), sql`player_id`)}
      GROUP BY ${column}, emoji
   `);
   const byMessage = new Map<string, ReactionView[]>();
@@ -118,7 +121,7 @@ export async function messageDecorations(
   earliest?: Date,
 ): Promise<Map<string, MessageDecoration>> {
   const [previews, reactions, recognition] = await Promise.all([
-    replyPreviews(db, channel, rows.flatMap((row) => row.replyToMessageId ? [row.replyToMessageId] : []), earliest),
+    replyPreviews(db, channel, rows.flatMap((row) => row.replyToMessageId ? [row.replyToMessageId] : []), earliest, playerId),
     reactionViews(db, channel, rows.map((row) => row.id), playerId),
     authorRecognition(db, rows.map((row) => row.authorPlayerId)),
   ]);

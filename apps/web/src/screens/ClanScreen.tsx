@@ -1,3 +1,5 @@
+import { useCommunityPolicy } from '../api/communityPolicy.js';
+import { CommunityPolicyGate } from './CommunityPolicy.js';
 import {
   CLAN,
   CLAN_TRANSFERABLE_HULLS,
@@ -739,6 +741,7 @@ function Benefit({ icon, title, body, featured = false }: { icon: ReactNode; tit
 }
 
 function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions }) {
+  const policy = useCommunityPolicy();
   const { t } = useTranslation();
   const [name, setName] = useState('');
   const [tag, setTag] = useState('');
@@ -783,7 +786,7 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
         ) : null}
         <Note>{t('clan.found.identityNote')}</Note>
 
-        <form onSubmit={submit} className="mt-2 flex flex-col gap-2">
+        <CommunityPolicyGate policy={policy}><form onSubmit={submit} className="mt-2 flex flex-col gap-2">
           <label>
             <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{t('clan.found.nameLabel')}</span>
             <input
@@ -836,7 +839,7 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
           <Button type="submit" full variant="primary" disabled={!canCreate || actions.create.isPending}>
             {t('clan.found.submit')}
           </Button>
-        </form>
+        </form></CommunityPolicyGate>
         {created ? <p role="status" className="mt-3 text-caption text-v2-self">{t('clan.found.created')}</p> : null}
         <MutationError mutation={actions.create} />
       </Plate>
@@ -1293,6 +1296,7 @@ function ClanMembers({
   selfPlayerId: string | undefined;
   actions: Actions;
 }) {
+  const policy = useCommunityPolicy();
   const { t } = useTranslation();
   const [confirm, setConfirm] = useState<{ kind: 'kick' | 'leadership' | 'leave' | 'disband'; member?: Member } | null>(null);
   const treasury = useClanWar(confirm?.kind === 'disband' && home.clan.role === 'LEADER');
@@ -1459,7 +1463,7 @@ function ClanMembers({
             </Plate>
           </Section>
 
-          <Section label={t('clan.settings.heading')}>
+          <Section label={t('clan.settings.heading')}><CommunityPolicyGate policy={policy}>
             <Plate className="px-2 py-2">
               <label>
                 <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{t('clan.settings.description')}</span>
@@ -1496,7 +1500,7 @@ function ClanMembers({
               <Note>{t('clan.settings.identityLocked')}</Note>
               <MutationError mutation={actions.settings} />
             </Plate>
-          </Section>
+          </CommunityPolicyGate></Section>
         </>
       ) : null}
 

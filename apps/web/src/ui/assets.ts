@@ -9,7 +9,7 @@ import {
   type ResearchProjectId,
   type SatelliteId,
 } from '@astera/rules';
-import { noseVector, type CraftPose, type Facing } from '../galaxy/model.js';
+import { noseVector, type CraftPose, type Facing } from '../galaxy/craftMetadata.js';
 import { FLEET_V2_ASSET_MANIFEST } from './fleet-v2-assets.js';
 export { FLEET_V2_ASSET_MANIFEST, FLEET_V2_LANDING_MODELS } from './fleet-v2-assets.js';
 

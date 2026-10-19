@@ -193,6 +193,8 @@ export const isPrivateEvent = (kind: string): boolean => kind.startsWith(PRIVATE
  */
 export function readsForPrivateEvent(kind: string): readonly (readonly string[])[] | null {
   switch (kind.slice(PRIVATE_PREFIX.length)) {
+    case 'community-block':
+      return [keys.communityBlocks, keys.chatMessages, keys.chatUnread, keys.clanChat, keys.clanBadge, keys.dmConversations, keys.dmUnread, keys.dmMessages, ['dm', 'contacts']];
     case 'unknown-signal-spawn':
       return [keys.unknownSignals];
     case 'unknown-signal':

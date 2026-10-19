@@ -1,3 +1,5 @@
+import type { CommunityPolicyConsent } from '../src/api/communityPolicySchemas.js';
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { describe, expect, it, vi } from 'vitest';
 import { Api, ApiError } from '../src/api/client.js';
 import { planetView } from './fixtures.js';
@@ -458,7 +460,7 @@ describe('the API client', () => {
       const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
 
       expect(api.accessToken).toBeNull();
-      const session = await api.register('Vantage', 'a-real-password');
+      const session = await api.register('Vantage', 'a-real-password', undefined, policyProof);
 
       expect(session.username).toBe('vantage');
       expect(api.accessToken).toBe('fresh-token');
@@ -664,7 +666,7 @@ describe('account security session boundaries', () => {
       queueMicrotask(() => { queueMicrotask(() => { api.endSession('email'); }); });
       return Promise.resolve({ ...SESSION, placement: { shard: 'EU-1', shardName: 'Vantage', planetId: 'p1', planetName: 'Kestrel-12' }, applied: [], planet: PLANET });
     });
-    const action = mode === 'claim' ? api.claim('next', 'replacement-password', []) : api[mode]('next', 'replacement-password');
+    const action = mode === 'claim' ? api.claim('next', 'replacement-password', [], undefined, policyProof) : mode === 'register' ? api.register('next', 'replacement-password', undefined, policyProof) : api.login('next', 'replacement-password');
     await expect(action).rejects.toMatchObject({ code: 'SESSION_CHANGED' });
     expect(api.accessToken).toBeNull();
   });
@@ -676,8 +678,9 @@ describe('account security session boundaries', () => {
       .mockImplementationOnce(() => new Promise(resolve => { deliver = resolve; }))
       .mockImplementation(() => json(replacement));
     const api = new Api({ fetch: fetcher }); const old = api.restore();
-    if (mode === 'claim') await api.claim('other', 'replacement-password', []);
-    else await api[mode]('other', 'replacement-password');
+    if (mode === 'claim') await api.claim('other', 'replacement-password', [], undefined, policyProof);
+    else if (mode === 'register') await api.register('other', 'replacement-password', undefined, policyProof);
+    else await api.login('other', 'replacement-password');
     if (!deliver) throw new Error('Refresh did not start');
     deliver(await json(SESSION));
     expect(await old).toBe(false); expect(api.accessToken).toBe('new-account-token');
@@ -840,3 +843,5 @@ it('keeps the email transition notice when a stale refresh is rejected after ver
   deliver(new Response(JSON.stringify({ error: 'BAD_SESSION', message: 'Expired session' }), { status: 401, headers: { 'content-type': 'application/json' } }));
   expect(await restore).toBe(false); expect(ended.mock.calls).toEqual([['email']]);
 });
+
+const policyProof: CommunityPolicyConsent = { version: COMMUNITY_POLICY_VERSION, locale: 'en' };

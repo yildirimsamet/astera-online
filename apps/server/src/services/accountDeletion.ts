@@ -3,9 +3,9 @@
  *
  * `reclaim.ts` takes a SEASON PRESENCE from somebody who stopped coming back and
  * deliberately keeps the account, because they are expected to return. This takes
- * the account too, because they asked to be forgotten. There is no UI for it and
- * there should not be: it is an operator command, run once, for one person who
- * wrote in.
+ * the account too, because they asked to be forgotten. The legacy command keeps
+ * its historical guards; the app request path requires exact request identity
+ * and operator approval before calling the same destructive implementation.
  *
  * ── IT DOES NOT HOLD A SECOND OPINION ABOUT WHAT A WORLD IS ─────────────────
  *
@@ -18,29 +18,26 @@
  *
  * ── WHAT IS DIFFERENT FROM A RECLAIM ────────────────────────────────────────
  *
- *   1. A CAPTURED COLONY GOES BACK TO THE GALAXY. D209 seeds a season with 65
- *      caretaker worlds and `docs/deployment.md` accepts a live shard on
- *      `neutrals + colonies = 65`. A colony deleted outright is a world that has
+ *   1. A CAPTURED COLONY GOES BACK TO THE GALAXY. The ruleset's staged census
+ *      determines how many caretaker worlds exist. A colony deleted outright is a world that has
  *      LEFT — one fewer thing for everybody else to fight over for the rest of the
  *      season, and that acceptance query permanently red. So the address is
  *      re-seeded through `createNeutralWorld`, from the same generator the season
  *      was born from: same slot, same tier, same profile seed, same name. An
  *      address the generator never put a neutral at — a Silent Space departure
- *      site — is simply left empty, because inventing one there would make a 66th
- *      world.
+ *      site — is simply left empty, because inventing one changes the census.
  *   2. THE ACCOUNT ROW GOES, and with it the once-and-for-ever ledger a reclaim
  *      protects. `account_rewards` survives a reclaim because the person is coming
  *      back; it cannot survive the person.
  *
  * ── AND WHAT IT REFUSES, IN WORDS ───────────────────────────────────────────
  *
- * Four guards, and each of them would otherwise be a constraint name in a stack
- * trace at three in the morning: a commander the server plays, an author of public
- * news, an account with Silent Space move history other people's return addresses
- * hang off, and a queued return application whose CHECK forbids the null this
- * deletion would write. Every one is answered before a single row is removed.
+ * Bots are never erased. The legacy command also refuses news authors, move
+ * history and queued returns. An approved request anonymises shared history and
+ * cancels queued returns transactionally; all live-world busy guards still apply.
  */
 import { and, eq, isNull, or } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import {
   MULTI_WORLD,
   SERVERS,
@@ -54,16 +51,23 @@ import type { Db, Tx } from '../db/client.js';
 import { publishShard } from '../stream/bus.js';
 import { normaliseUsername } from '../auth/credentials.js';
 import {
+  accountDeletionRequests,
   accountRewards,
   accounts,
   announcementReads,
   announcements,
   botProfiles,
   chatArchive,
+  chatMediaAssets,
+  mediaDeletionQueue,
   dmArchive,
   commanderTransfers,
   feedbackEntries,
   perfSessions,
+  paddleSkinOrders,
+  polarSkinOrders,
+  shopierOrders,
+  shopierPurchaseCodes,
   planets,
   players,
   returnApplications,
@@ -114,7 +118,9 @@ function originalNeutral(
 }
 
 /** Everything about the person that is not about a season. */
-async function forgetAccount(tx: Tx, accountId: string): Promise<void> {
+async function forgetAccount(tx: Tx, accountId: string, requestId: string = randomUUID()): Promise<void> {
+  const media = await tx.select({ assetId: chatMediaAssets.id }).from(chatMediaAssets).where(eq(chatMediaAssets.ownerAccountId, accountId));
+  if (media.length > 0) await tx.insert(mediaDeletionQueue).values(media.map(asset => ({ ...asset, requestId }))).onConflictDoNothing();
   await tx.delete(accountRewards).where(eq(accountRewards.accountId, accountId));
   await tx.delete(announcementReads).where(eq(announcementReads.accountId, accountId));
   await tx.delete(feedbackEntries).where(eq(feedbackEntries.accountId, accountId));
@@ -129,6 +135,11 @@ async function forgetAccount(tx: Tx, accountId: string): Promise<void> {
   // 0100's recordings reference the account with no cascade: left here, the
   // delete below failed on the key and the person could not be erased at all.
   await tx.delete(perfSessions).where(eq(perfSessions.accountId, accountId));
+  // Keep immutable delivery/refund references, without customer details or checkout capabilities.
+  await tx.update(paddleSkinOrders).set({ customerId: null }).where(eq(paddleSkinOrders.accountId, accountId));
+  await tx.update(polarSkinOrders).set({ checkoutUrl: null }).where(eq(polarSkinOrders.accountId, accountId));
+  await tx.update(shopierOrders).set({ note: null, code: null }).where(eq(shopierOrders.accountId, accountId));
+  await tx.delete(shopierPurchaseCodes).where(eq(shopierPurchaseCodes.accountId, accountId));
   await tx.delete(accounts).where(eq(accounts.id, accountId));
 }
 
@@ -144,7 +155,6 @@ export async function deleteAccount(
   clock: Clock,
   name: string,
 ): Promise<DeleteAccountResult> {
-  const now = clock.now();
   return db.transaction(async (tx) => {
     /**
      * TWO EXACT MATCHES, AND DELIBERATELY NO `lower()` — the same rule
@@ -177,159 +187,175 @@ export async function deleteAccount(
       );
     if (!found) throw new GameError('PLAYER_NOT_FOUND', `No commander named ${name}`, 404);
 
-    // The row is read again under a lock, so nothing can join, move or be granted
-    // anything between the search above and the deletion below.
-    const [locked] = await tx
-      .select({ id: accounts.id })
-      .from(accounts)
-      .where(eq(accounts.id, found.id))
-      .for('update');
-    if (!locked) throw new GameError('PLAYER_NOT_FOUND', `No commander named ${name}`, 404);
+    return eraseAccount(tx, clock, found, false);
+  });
+}
 
-    const [bot] = await tx
-      .select({ accountId: botProfiles.accountId })
-      .from(botProfiles)
-      .where(eq(botProfiles.accountId, found.id));
-    if (bot) {
-      throw new GameError(
-        'BOT_ACCOUNT',
-        `${found.displayName} is a commander the server plays. Retire it with 'pnpm bots retire' instead.`,
-        409,
-      );
-    }
 
-    const [authored] = await tx
-      .select({ id: announcements.id })
-      .from(announcements)
-      .where(eq(announcements.authorAccountId, found.id));
-    if (authored) {
-      throw new GameError(
-        'ANNOUNCEMENT_AUTHOR',
-        `${found.displayName} has authored public news, which outlives its author. Reassign it first.`,
-        409,
-      );
-    }
+/** Only the verified request path may anonymise shared history instead of refusing it. */
+export async function deleteRequestedAccount(tx: Tx, clock: Clock, accountId: string, requestId: string): Promise<DeleteAccountResult> {
+  const [account] = await tx.select().from(accounts).where(eq(accounts.id, accountId)).for('update');
+  const [request] = await tx.select().from(accountDeletionRequests).where(and(eq(accountDeletionRequests.accountId, accountId), eq(accountDeletionRequests.requestId, requestId)));
+  if (!account?.deletionApprovedAt || !request?.approvedAt) throw new GameError('DELETION_NOT_APPROVED', 'Deletion has not been approved', 409);
+  return eraseAccount(tx, clock, account, true, requestId);
+}
 
-    /**
-     * Silent Space move history is not this command's to take. `main_vacancies`
-     * hangs return addresses off `commander_transfers`, and somebody else may be
-     * queued for one of them; deleting the history would take an address a
-     * different person is waiting on.
-     */
-    const [moved] = await tx
-      .select({ id: commanderTransfers.id })
-      .from(commanderTransfers)
-      .where(eq(commanderTransfers.accountId, found.id));
-    if (moved) {
-      throw new GameError(
-        'TRANSFER_HISTORY',
-        `${found.displayName} has Silent Space move history other return addresses hang off. Not deletable here.`,
-        409,
-      );
-    }
+async function eraseAccount(tx: Tx, clock: Clock, found: Pick<typeof accounts.$inferSelect, 'id' | 'username' | 'displayName'>, approvedRequest: boolean, requestId?: string): Promise<DeleteAccountResult> {
+  const now = clock.now();
+  // The row is read again under a lock, so nothing can join, move or be granted
+  // anything between the search above and the deletion below.
+  const [locked] = await tx
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.id, found.id))
+    .for('update');
+  if (!locked) throw new GameError('PLAYER_NOT_FOUND', `No commander named ${found.displayName}`, 404);
 
-    const [player] = await tx
-      .select({
-        id: players.id,
-        seasonId: players.seasonId,
-        seed: seasons.seed,
-      })
-      .from(players)
-      .innerJoin(seasons, eq(seasons.id, players.seasonId))
-      .where(eq(players.accountId, found.id))
-      .for('update', { of: players });
+  const [bot] = await tx
+    .select({ accountId: botProfiles.accountId })
+    .from(botProfiles)
+    .where(eq(botProfiles.accountId, found.id));
+  if (bot) {
+    throw new GameError(
+      'BOT_ACCOUNT',
+      `${found.displayName} is a commander the server plays. Retire it with 'pnpm bots retire' instead.`,
+      409,
+    );
+  }
 
-    // An account between galaxies is still a person, and still deletable.
-    if (!player) {
-      await forgetAccount(tx, found.id);
-      return {
-        account: found.displayName,
-        username: found.username,
-        worldsRemoved: [],
-        coloniesReturned: [],
-      };
-    }
+  const [authored] = await tx
+    .select({ id: announcements.id })
+    .from(announcements)
+    .where(eq(announcements.authorAccountId, found.id));
+  if (authored && !approvedRequest) {
+    throw new GameError(
+      'ANNOUNCEMENT_AUTHOR',
+      `${found.displayName} has authored public news, which outlives its author. Reassign it first.`,
+      409,
+    );
+  }
 
-    const [queued] = await tx
-      .select({ id: returnApplications.id })
-      .from(returnApplications)
-      .where(and(
-        eq(returnApplications.playerId, player.id),
-        eq(returnApplications.status, 'QUEUED'),
-      ));
-    if (queued) {
-      throw new GameError(
-        'RETURN_QUEUED',
-        `${found.displayName} has a queued return application. Close it before deleting the account.`,
-        409,
-      );
-    }
+  /**
+   * Silent Space move history is not this command's to take. `main_vacancies`
+   * hangs return addresses off `commander_transfers`, and somebody else may be
+   * queued for one of them; deleting the history would take an address a
+   * different person is waiting on.
+   */
+  const [moved] = await tx
+    .select({ id: commanderTransfers.id })
+    .from(commanderTransfers)
+    .where(eq(commanderTransfers.accountId, found.id));
+  if (moved && !approvedRequest) {
+    throw new GameError(
+      'TRANSFER_HISTORY',
+      `${found.displayName} has Silent Space move history other return addresses hang off. Not deletable here.`,
+      409,
+    );
+  }
 
-    /**
-     * Read ONCE and used by both the quiet check and the deletion, so what is
-     * checked and what is removed can never be different sets. See `commanderRows`.
-     */
-    const worlds = await tx
-      .select({
-        id: planets.id,
-        name: planets.name,
-        kind: planets.kind,
-        slotIndex: planets.slotIndex,
-      })
-      .from(planets)
-      .where(eq(planets.controllerPlayerId, player.id))
-      .orderBy(planets.slotIndex);
-    const planetIds = worlds.map((world) => world.id);
-    const rows = await commanderRows(tx, planetIds, player.id);
-    if (await busy(tx, planetIds, player.id, rows, now)) {
-      throw new GameError(
-        'WORLD_BUSY',
-        `${found.displayName} still has craft in the air. Let them land and run this again.`,
-        409,
-      );
-    }
+  const [player] = await tx
+    .select({
+      id: players.id,
+      seasonId: players.seasonId,
+      seed: seasons.seed,
+    })
+    .from(players)
+    .innerJoin(seasons, eq(seasons.id, players.seasonId))
+    .where(eq(players.accountId, found.id))
+    .for('update', { of: players });
 
-    await reconcileClanPlayerReclaim(tx, {
-      playerId: player.id,
-      seasonId: player.seasonId,
-      displayName: found.displayName,
-      now,
-      activeCutoff: new Date(now.getTime() - SERVERS.idleDays * 24 * 60 * 60_000),
-    });
-    await demolish(tx, planetIds, player.id, rows);
-
-    /**
-     * AND NOW GIVE THE GALAXY BACK WHAT WAS NEVER THIS COMMANDER'S TO REMOVE.
-     *
-     * After `demolish`, not before: the address is only free once the colony row
-     * is gone, and `createNeutralWorld` inserts a new planet at the same slot.
-     */
-    const coloniesReturned: string[] = [];
-    for (const world of worlds) {
-      if (world.kind !== 'COLONY') continue;
-      const original = originalNeutral(player.seed, world.slotIndex);
-      if (!original) continue;
-      await createNeutralWorld(tx, player.seasonId, original.neutral, now, original.number);
-      coloniesReturned.push(world.name);
-    }
-
-    await forgetAccount(tx, found.id);
-
-    // A public world left, some of them came back, a ladder row went and any
-    // authored chat with it. Distinct query families; the client's coalescer turns
-    // the transactional broadcasts into one visible refresh.
-    await publishShard(tx, player.seasonId, 'world');
-    await publishShard(tx, player.seasonId, 'mining');
-    await publishShard(tx, player.seasonId, 'chat');
-    await publishShard(tx, player.seasonId, 'score');
-
+  // An account between galaxies is still a person, and still deletable.
+  if (!player) {
+    await forgetAccount(tx, found.id, requestId);
     return {
       account: found.displayName,
       username: found.username,
-      worldsRemoved: worlds.map((world) => world.name),
-      coloniesReturned,
+      worldsRemoved: [],
+      coloniesReturned: [],
     };
+  }
+
+  const [queued] = await tx
+    .select({ id: returnApplications.id })
+    .from(returnApplications)
+    .where(and(
+      eq(returnApplications.playerId, player.id),
+      eq(returnApplications.status, 'QUEUED'),
+    ));
+  if (queued && !approvedRequest) {
+    throw new GameError(
+      'RETURN_QUEUED',
+      `${found.displayName} has a queued return application. Close it before deleting the account.`,
+      409,
+    );
+  }
+
+  if (queued) await tx.update(returnApplications).set({ status: 'CANCELLED', closedAt: now, updatedAt: now, closedReason: 'ACCOUNT_DELETION' }).where(eq(returnApplications.id, queued.id));
+
+  /**
+   * Read ONCE and used by both the quiet check and the deletion, so what is
+   * checked and what is removed can never be different sets. See `commanderRows`.
+   */
+  const worlds = await tx
+    .select({
+      id: planets.id,
+      name: planets.name,
+      kind: planets.kind,
+      slotIndex: planets.slotIndex,
+    })
+    .from(planets)
+    .where(eq(planets.controllerPlayerId, player.id))
+    .orderBy(planets.slotIndex);
+  const planetIds = worlds.map((world) => world.id);
+  const rows = await commanderRows(tx, planetIds, player.id);
+  if (await busy(tx, planetIds, player.id, rows, now)) {
+    throw new GameError(
+      'WORLD_BUSY',
+      `${found.displayName} still has craft in the air. Let them land and run this again.`,
+      409,
+    );
+  }
+
+  await reconcileClanPlayerReclaim(tx, {
+    playerId: player.id,
+    seasonId: player.seasonId,
+    displayName: found.displayName,
+    now,
+    activeCutoff: new Date(now.getTime() - SERVERS.idleDays * 24 * 60 * 60_000),
   });
+  await demolish(tx, planetIds, player.id, rows);
+
+  /**
+   * AND NOW GIVE THE GALAXY BACK WHAT WAS NEVER THIS COMMANDER'S TO REMOVE.
+   *
+   * After `demolish`, not before: the address is only free once the colony row
+   * is gone, and `createNeutralWorld` inserts a new planet at the same slot.
+   */
+  const coloniesReturned: string[] = [];
+  for (const world of worlds) {
+    if (world.kind !== 'COLONY') continue;
+    const original = originalNeutral(player.seed, world.slotIndex);
+    if (!original) continue;
+    await createNeutralWorld(tx, player.seasonId, original.neutral, now, original.number);
+    coloniesReturned.push(world.name);
+  }
+
+  await forgetAccount(tx, found.id, requestId);
+
+  // A public world left, some of them came back, a ladder row went and any
+  // authored chat with it. Distinct query families; the client's coalescer turns
+  // the transactional broadcasts into one visible refresh.
+  await publishShard(tx, player.seasonId, 'world');
+  await publishShard(tx, player.seasonId, 'mining');
+  await publishShard(tx, player.seasonId, 'chat');
+  await publishShard(tx, player.seasonId, 'score');
+
+  return {
+    account: found.displayName,
+    username: found.username,
+    worldsRemoved: worlds.map((world) => world.name),
+    coloniesReturned,
+  };
 }
 
 /** Not exported for anything but the CLI's dry run; nothing routes to this file. */

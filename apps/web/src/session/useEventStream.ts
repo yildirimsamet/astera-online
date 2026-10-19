@@ -3,6 +3,8 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../api/context.js';
 import { keys } from '../api/queries.js';
+import { isAppActive, watchAppActivity } from '../platform/activity.js';
+import { isNetworkOnline, watchNetworkStatus } from '../platform/network.js';
 import {
   isGlobalEvent,
   isPrivateEvent,
@@ -165,33 +167,39 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
     // edges that can hide a lost event. Each used to resync the whole client.
     let lifecycleResyncTimer: ReturnType<typeof setTimeout> | null = null;
     let lastLifecycleResync = 0;
-    let hiddenAt: number | null = document.visibilityState === 'hidden' ? Date.now() : null;
+    let networkReturnPending = false;
+    let hiddenAt: number | null = !isAppActive() ? Date.now() : null;
     const scheduleLifecycleResync = (): void => {
-      if (document.visibilityState === 'hidden' || lifecycleResyncTimer !== null) return;
+      if (!isAppActive() || !isNetworkOnline() || lifecycleResyncTimer !== null) return;
       lifecycleResyncTimer = setTimeout(() => {
         lifecycleResyncTimer = null;
         const now = Date.now();
-        if (!controller.signal.aborted && now - lastLifecycleResync >= 250) {
+        if (!controller.signal.aborted && isAppActive() && isNetworkOnline() && now - lastLifecycleResync >= 250) {
           lastLifecycleResync = now;
+          networkReturnPending = false;
           resync();
         }
       }, 0);
     };
     const onVisibility = (): void => {
-      if (document.visibilityState === 'hidden') {
+      if (!isAppActive()) {
         hiddenAt ??= Date.now();
         return;
       }
       const away = hiddenAt === null ? 0 : Date.now() - hiddenAt;
       hiddenAt = null;
-      if (away >= RESUME_RESYNC_MS) scheduleLifecycleResync();
+      if (away >= RESUME_RESYNC_MS || networkReturnPending) scheduleLifecycleResync();
     };
     const onPageShow = (event: Event): void => {
       if ('persisted' in event && event.persisted === true) scheduleLifecycleResync();
     };
-    document.addEventListener('visibilitychange', onVisibility);
+    const stopActivity = watchAppActivity(onVisibility);
     window.addEventListener('pageshow', onPageShow);
-    window.addEventListener('online', scheduleLifecycleResync);
+    const stopNetwork = watchNetworkStatus(() => {
+      if (!isNetworkOnline()) return;
+      networkReturnPending = true;
+      scheduleLifecycleResync();
+    });
 
     // A changed world's cross-replica consistency is the heavy lane's own delay now
     // (`shardEvents.ts`): it reads once, never sooner than `CONSISTENCY_MS` after.
@@ -350,9 +358,9 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       if (reconnectResyncTimer !== null) clearTimeout(reconnectResyncTimer);
       if (lifecycleResyncTimer !== null) clearTimeout(lifecycleResyncTimer);
       if (trafficConsistencyTimer !== null) clearTimeout(trafficConsistencyTimer);
-      document.removeEventListener('visibilitychange', onVisibility);
+      stopActivity();
       window.removeEventListener('pageshow', onPageShow);
-      window.removeEventListener('online', scheduleLifecycleResync);
+      stopNetwork();
       shard.cancel();
     };
   }, [api, client, enabled, onRollover]);

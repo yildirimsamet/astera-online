@@ -1,5 +1,7 @@
 # Astera Online — Android APK ve iOS uygulama planı
 
+> **18 Ekim güncel durum:** Bu belge ilk plan/live-reload denemesinin tarihsel kaydıdır. Geçerli bundled oturum kararı Android Keystore / ileride iOS Keychain + ortak API'dir; aşağıdaki eski native-cookie adayı uygulanmış mimari değildir. Gerçek cihaz/production kanıtı [uygulama günlüğünde](mobile-implementation-log-2026-10-17.md), son düzeltmeler ve kalan kabul adımları [code review kaydında](mobile-code-review-2026-10-18.md). Android yayını önce, iOS sonra.
+
 Tarih: 16 Ekim 2026. Bu çalışma plan ve araştırmadır; uygulama kodu, paketler ve sunucular değiştirilmedi. Sürüm ve mağaza kuralları yayın tarihinde yeniden doğrulanmalıdır.
 
 ## Karar

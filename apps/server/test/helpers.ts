@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { createDb, type Db } from '../src/db/client.js';
 import { runMigrations } from '../src/db/migrate.js';
@@ -8,6 +9,7 @@ import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
 import {
   accounts,
+  communityPolicyAcceptances,
   buildOrders,
   debrisFields,
   planets,
@@ -93,7 +95,7 @@ export async function testDb(): Promise<{ db: Db; close: () => Promise<void> }> 
 /** Wipe everything between tests. CASCADE handles the foreign-key order. */
 export async function truncateAll(db: Db): Promise<void> {
   await db.execute(sql`
-    TRUNCATE native_sessions, security_audit, mail_webhook_events, mail_suppressions, security_counters, mail_outbox, security_operations, shopier_webhook_events, shopier_orders, shopier_purchase_codes,
+    TRUNCATE media_deletion_queue, native_sessions, security_audit, mail_webhook_events, mail_suppressions, security_counters, mail_outbox, security_operations, shopier_webhook_events, shopier_orders, shopier_purchase_codes,
              polar_reversals, polar_webhook_events, polar_skin_orders,
              paddle_reversals, paddle_webhook_events, paddle_skin_orders,
              main_vacancies, commander_transfers, silent_space_maintenance, return_applications, return_queue_counters, announcement_reads, announcements, feedback_entries, perf_sessions,
@@ -210,6 +212,8 @@ export async function makeAccount(
     .insert(accounts)
     .values({ username, passwordHash: 'not-a-real-hash', displayName: name })
     .returning();
+  // Ordinary fixtures model an established, consenting player. Policy tests explicitly remove this evidence.
+  await db.insert(communityPolicyAcceptances).values({ accountId: account!.id, version: COMMUNITY_POLICY_VERSION, locale: 'en', acceptedAt: new Date('2026-01-01T00:00:00Z') });
   return { id: account!.id, username };
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { isAppActive, watchAppActivity } from '../platform/activity.js';
 
 /**
  * THE SCORE, UNDER EVERYTHING, FOR AS LONG AS THE TAB IS IN FRONT OF SOMEBODY.
@@ -36,7 +37,7 @@ import { useEffect, useRef, useSyncExternalStore } from 'react';
  *      twice in development, which is exactly the case that turns a missed
  *      teardown into two tracks playing over each other.
  *
- * `visibilitychange` IS THE WHOLE OF THE PAUSE RULE, and `blur` is deliberately
+ * Shared document/native activity owns the pause rule; `blur` is deliberately
  * not part of it. The brief is "another tab, or the window in the background",
  * and those are the two things this event fires for. `blur` also fires for
  * clicking an iframe, opening devtools and focusing the address bar — none of
@@ -372,7 +373,7 @@ export function useAmbientMusic(): void {
       // `musicEnabled()` and not a captured boolean: this runs from a visibility
       // handler and from a gesture listener, both of which can fire long after the
       // effect closed over anything.
-      if (disposed || dead || document.hidden || !musicEnabled()) return;
+      if (disposed || dead || !isAppActive() || !musicEnabled()) return;
       /**
        * Older browsers return undefined rather than a promise, and so does jsdom.
        * Treating that as a promise is a TypeError in a `useEffect`, which React
@@ -431,7 +432,7 @@ export function useAmbientMusic(): void {
     }
 
     const onVisibility = (): void => {
-      if (document.hidden) {
+      if (!isAppActive()) {
         // Keeps `currentTime`, which is the whole of "resume where it left off".
         audio.pause();
       } else {
@@ -453,7 +454,7 @@ export function useAmbientMusic(): void {
     audio.addEventListener('error', onError);
     audio.addEventListener('ended', onEnded);
     for (const type of CLOCK_EVENTS) audio.addEventListener(type, report);
-    document.addEventListener('visibilitychange', onVisibility);
+    const stopActivity = watchAppActivity(onVisibility);
     control.current = {
       resume: attempt,
       pause: () => {
@@ -499,7 +500,7 @@ export function useAmbientMusic(): void {
     return () => {
       disposed = true;
       control.current = null;
-      document.removeEventListener('visibilitychange', onVisibility);
+      stopActivity();
       audio.removeEventListener('error', onError);
       audio.removeEventListener('ended', onEnded);
       for (const type of CLOCK_EVENTS) audio.removeEventListener(type, report);

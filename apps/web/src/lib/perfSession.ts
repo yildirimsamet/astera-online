@@ -1,3 +1,4 @@
+import { isAppActive } from '../platform/activity.js';
 import { useSyncExternalStore } from 'react';
 import { renderQuality } from './quality.js';
 import {
@@ -164,7 +165,7 @@ export function startPerfSession(): void {
     active.flush(performance.now(), {
       heapMb: heapMb(),
       galaxy: galaxyContext !== null,
-      hidden: typeof document !== 'undefined' && document.visibilityState === 'hidden',
+      hidden: !isAppActive(),
       ctx: { ...(galaxyContext ?? {}), ...extras },
     });
     publish({ seconds: active.samples().length });

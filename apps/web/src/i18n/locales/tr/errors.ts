@@ -11,6 +11,7 @@
  */
 
 export const errors = {
+  COMMUNITY_POLICY_REQUIRED: "Komutan oluşturmadan veya paylaşım yapmadan önce topluluk kurallarını inceleyip kabul et. Gerekirse uygulamayı yeniden aç.",
   UNKNOWN_SIGNAL_NOT_FOUND: "Bu sinyal artık yok. Yeni radar temasını bekle.",
   UNKNOWN_SIGNAL_EXPIRED: "Sinyal kayboldu. Yeni radar temasını bekle.",
   UNKNOWN_SIGNAL_TAKEN: "Bu sinyale zaten bir filo gönderildi.",

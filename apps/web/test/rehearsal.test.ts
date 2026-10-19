@@ -1,3 +1,5 @@
+import type { CommunityPolicyConsent } from '../src/api/communityPolicySchemas.js';
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { describe, expect, it, vi } from 'vitest';
 import {
   HULLS,
@@ -454,7 +456,7 @@ describe('the rehearsal fetch', () => {
    */
   it('refuses the claim, because that call belongs to the real client', async () => {
     const { api } = harness();
-    await expect(api.claim('kaptan', 'correct-horse-battery', [])).rejects.toMatchObject({
+    await expect(api.claim('kaptan', 'correct-horse-battery', [], undefined, policyProof)).rejects.toMatchObject({
       code: 'REHEARSAL_ONLY',
     });
   });
@@ -467,3 +469,5 @@ describe('the rehearsal fetch', () => {
     expect(real).not.toHaveBeenCalled();
   });
 });
+
+const policyProof: CommunityPolicyConsent = { version: COMMUNITY_POLICY_VERSION, locale: 'en' };

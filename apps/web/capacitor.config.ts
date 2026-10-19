@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 import { isIP } from 'node:net';
 import { z } from 'zod';
 // Capacitor's CommonJS TS loader resolves source extensions, unlike Vite's bundler.
-import { mobileBuild } from './mobileBuild';
+import { mobileBuild, NATIVE_STARTUP_PATH } from './mobileBuild';
 
 /** This first wrapper opens the working tree, and must never become a store build. */
 const mobile = mobileBuild(process.env);
@@ -33,12 +33,14 @@ const config: CapacitorConfig = mobile.target === 'web' ? {
   backgroundColor: '#05070D',
   server: { url: rawUrl, cleartext: url.protocol === 'http:' },
   android: { backgroundColor: '#05070D', loggingBehavior: 'debug' },
+  plugins: { App: { disableBackButtonHandler: true }, SystemBars: { hidden: true, style: 'DARK', insetsHandling: 'css' } },
 } : {
   appId: mobile.appId, appName: mobile.appName, webDir: mobile.webDir,
   backgroundColor: '#05070D',
-  server: { androidScheme: mobile.androidScheme, cleartext: mobile.cleartext, allowNavigation: [] },
+  server: { androidScheme: mobile.androidScheme, cleartext: mobile.cleartext, allowNavigation: [], errorPath: NATIVE_STARTUP_PATH },
   android: { backgroundColor: '#05070D', loggingBehavior: 'none', useLegacyBridge: false },
-  plugins: { CapacitorHttp: { enabled: false }, AsteraSession: { apiUrl: mobile.apiUrl, target: mobile.target } },
+  plugins: { App: { disableBackButtonHandler: true }, SystemBars: { hidden: true, style: 'DARK', insetsHandling: 'css' },
+    CapacitorHttp: { enabled: false }, AsteraSession: { apiUrl: mobile.apiUrl, target: mobile.target } },
 };
 
 export default config;

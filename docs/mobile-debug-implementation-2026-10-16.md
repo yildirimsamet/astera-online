@@ -1,5 +1,7 @@
 # Yerel Android cihaz denemesi — uygulama notu
 
+> **18 Ekim güncel durum:** Bu belge ilk plan/live-reload denemesinin tarihsel kaydıdır. Geçerli bundled oturum kararı Android Keystore / ileride iOS Keychain + ortak API'dir; aşağıdaki eski native-cookie adayı uygulanmış mimari değildir. Gerçek cihaz/production kanıtı [uygulama günlüğünde](mobile-implementation-log-2026-10-17.md), son düzeltmeler ve kalan kabul adımları [code review kaydında](mobile-code-review-2026-10-18.md). Android yayını önce, iOS sonra.
+
 ## Gereksinim ve kapsam
 
 Kullanıcı Android telefonunda mevcut oyunun tıklama, FPS ve klavye davranışını görmek istiyor. Commit edilmemiş bütün yerel değişiklikler dahil. İlk APK yerel sunucuyu açacak; kaynak snapshot'ı veya eski dist kullanılmayacak. Backend ve oyun davranışı değiştirilmeyecek.

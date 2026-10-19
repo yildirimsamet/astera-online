@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ACADEMY_STEPS, PLANET_START } from '@astera/rules';
+import { ACADEMY_STEPS, PLANET_START, type ChatLanguage } from '@astera/rules';
 import { registerBody } from '../auth/credentials.js';
 import type { Tx } from '../db/client.js';
 import { buildOrders, missions, planets, units } from '../db/schema.js';
@@ -76,8 +76,10 @@ export function registerOnboardingRoutes(app: FastifyInstance, firstGameShieldEn
    */
   app.post(path, { config: { rateLimit: app.limits.signup } }, async (req, reply) => {
     const body = claimBody.parse(req.body ?? {});
+    const policyVersion = requireCurrentCommunityPolicy(body.communityPolicyVersion);
 
-    const account = await claimAccount(app, body.username, body.password, body.countryCode, firstGameShieldEnabled);
+    const account = await claimAccount(app, body.username, body.password, body.countryCode, firstGameShieldEnabled,
+      { version: policyVersion, locale: body.communityPolicyLocale ?? 'en' });
 
     /**
      * The frontier, resolved at CLAIM TIME rather than taken from the client.
@@ -161,16 +163,21 @@ async function claimAccount(
   password: string,
   countryCode: z.infer<typeof registerBody>['countryCode'],
   firstGameShieldEnabled: boolean,
+  policy: { version: string; locale: ChatLanguage },
 ): Promise<Awaited<ReturnType<typeof registerAccount>>> {
   try {
-    return await registerAccount(app.db, { username, password, countryCode }, firstGameShieldEnabled, app.clock.now());
+    return await registerAccount(app.db, { username, password, countryCode, communityPolicyVersion: policy.version, communityPolicyLocale: policy.locale }, firstGameShieldEnabled, app.clock.now());
   } catch (err) {
     if (err instanceof GameError && err.code === 'USERNAME_TAKEN') {
+      let account;
       try {
-        return await authenticate(app.db, { username, password });
+        account = await authenticate(app.db, { username, password });
       } catch {
         throw err;
       }
+      // The fallback authenticates the existing owner before recording explicit acceptance.
+      await acceptCommunityPolicy(app.db, app.clock, account.id, policy.version, policy.locale);
+      return account;
     }
     throw err;
   }
@@ -338,3 +345,4 @@ async function nameOf(app: FastifyInstance, planetId: string): Promise<string> {
     .where(eq(planets.id, planetId));
   return row?.name ?? '';
 }
+import { acceptCommunityPolicy, requireCurrentCommunityPolicy } from '../services/communityPolicy.js';

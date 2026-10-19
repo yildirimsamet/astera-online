@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useOwnPress } from '../src/ui/kit/index.js';
+import { AuthDialog } from '../src/screens/LandingAuthDialog.js';
 
 /**
  * THE WHOLE CLASS, NOT THE ONE INSTANCE. D109a.
@@ -88,9 +89,28 @@ describe('every surface that can mount under a finger is guarded', () => {
   it.each([
     ['the sheet scrim, which every decision surface floats on', 'src/ui/kit/Sheet.tsx'],
     ['the focus rail, which mounts on the bottom edge when a world is tapped', 'src/galaxy/FocusPanel.tsx'],
-    ['the front door dialog, the first surface a stranger meets', 'src/screens/LandingScreen.tsx'],
+    ['the front door dialog, the first surface a stranger meets', 'src/screens/LandingAuthDialog.tsx'],
     ['the season recap, which covers the screen when a result lands', 'src/screens/SeasonRecap.tsx'],
   ])('%s', (_name, file) => {
     expect(readFileSync(file, 'utf8')).toContain('useOwnPress');
   });
+});
+
+it('ignores a stray pointer click on the sign-in close control while keeping owned and keyboard presses', () => {
+  const onClose = vi.fn();
+  const view = render(<AuthDialog onClose={onClose} onBegin={vi.fn()} onSubmit={vi.fn().mockResolvedValue(undefined)} />);
+  const close = view.getByRole('button', { name: 'Close' });
+  const scrim = view.container.querySelector('button[aria-hidden="true"]');
+  if (!scrim) throw new Error('Missing sign-in scrim');
+  fireEvent.click(close, { detail: 1 });
+  expect(onClose).not.toHaveBeenCalled();
+  fireEvent.pointerDown(scrim);
+  fireEvent.click(close, { detail: 1 });
+  expect(onClose).not.toHaveBeenCalled();
+  fireEvent.pointerDown(close); fireEvent.click(close, { detail: 1 });
+  expect(onClose).toHaveBeenCalledTimes(1);
+  fireEvent.click(close, { detail: 1 });
+  expect(onClose).toHaveBeenCalledTimes(1);
+  fireEvent.click(close, { detail: 0 });
+  expect(onClose).toHaveBeenCalledTimes(2);
 });

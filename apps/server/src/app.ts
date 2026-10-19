@@ -1,4 +1,8 @@
 import { AccountSecurity } from './services/accountSecurity.js';
+import { registerAccountDeletionRoutes } from './routes/accountDeletion.js';
+import { registerContentReportRoutes } from './routes/contentReports.js';
+import { registerCommunityBlockRoutes } from './routes/communityBlocks.js';
+import { registerCommunityPolicyRoutes } from './routes/communityPolicy.js';
 import cors from '@fastify/cors';
 import { NativeSessions } from './services/nativeSessions.js';
 import { registerNativeAuthRoutes } from './routes/nativeAuth.js';
@@ -177,8 +181,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     opts.env.REFRESH_TOKEN_DAYS,
     async (id, version, nativeSessionId) => {
       if (nativeSessionId) return nativeSessions.isCurrent(nativeSessionId, id, version);
-      const [account] = await db.select({ version: accounts.authVersion }).from(accounts).where(eq(accounts.id, id));
-      return account?.version === version;
+      const [account] = await db.select({ version: accounts.authVersion, deletionApprovedAt: accounts.deletionApprovedAt }).from(accounts).where(eq(accounts.id, id));
+      return account?.version === version && account.deletionApprovedAt === null;
     },
   );
   const nativeSessions = new NativeSessions(db, clock, tokens);
@@ -196,6 +200,8 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       silentSpaceMaxShards: opts.env.SILENT_SPACE_MAX_SHARDS,
       silentSpaceExemptAccountIds: opts.env.SILENT_SPACE_EXEMPT_ACCOUNT_IDS,
       adminUsernames: new Set(opts.env.ADMIN_USERNAMES),
+      mediaDirectory: opts.env.CHAT_MEDIA_DIR,
+      erasureSecret: opts.env.JWT_SECRET,
     },
     log,
   );
@@ -456,6 +462,10 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerAuthRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
     if (opts.env.NATIVE_AUTH_ENABLED) registerNativeAuthRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
     registerAccountSecurityRoutes(app, opts.env);
+    registerAccountDeletionRoutes(app, opts.env.CHAT_MEDIA_DIR, opts.env.JWT_SECRET);
+    registerContentReportRoutes(app, opts.env.CHAT_MEDIA_DIR);
+    registerCommunityBlockRoutes(app);
+    registerCommunityPolicyRoutes(app);
     registerServerRoutes(app);
     registerPreviewRoutes(app);
     registerOnboardingRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);

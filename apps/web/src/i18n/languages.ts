@@ -66,6 +66,12 @@ export function matchLanguage(tag: string | undefined | null): Language | null {
  * 3. Turkish.
  */
 export function detectLanguage(nav: Pick<Navigator, 'language' | 'languages'> = navigator): Language {
+  // An explicitly shared public URL is authoritative; Wiki and game paths keep their policy.
+  // This module is also consumed by Node-based contract tests and static publishing.
+  const page: unknown = Reflect.get(globalThis, 'location');
+  const pathname = typeof page === 'object' && page !== null && 'pathname' in page && typeof page.pathname === 'string' ? page.pathname : '';
+  const route = /^\/(tr|en|fr|de|es|ja)\/?$/.exec(pathname)?.[1];
+  if (isLanguage(route)) return route;
   const stored = readStored();
   if (stored) return stored;
 

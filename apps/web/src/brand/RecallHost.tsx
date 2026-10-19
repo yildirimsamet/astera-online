@@ -1,3 +1,4 @@
+import { isAppActive, watchAppActivity } from '../platform/activity.js';
 import { refreshQueries } from '../api/refreshQueries.js';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -56,11 +57,11 @@ export function RecallHost({ accountId, paused = false }: { accountId: string; p
   useEffect(() => {
     if (!eligible || progress.current.quizDone) return;
     let last = performance.now();
-    let playing = document.visibilityState === 'visible' && !document.querySelector('[data-loading-screen]');
+    let playing = isAppActive() && !document.querySelector('[data-loading-screen]');
     let savedAt = last;
     const tick = () => {
       const now = performance.now();
-      const visible = document.visibilityState === 'visible';
+      const visible = isAppActive();
       const loaded = !document.querySelector('[data-loading-screen]');
       if (playing && visible && loaded) progress.current = advanceRecall(progress.current, now - last);
       playing = visible && loaded;
@@ -78,14 +79,14 @@ export function RecallHost({ accountId, paused = false }: { accountId: string; p
       }
     };
     const interval = window.setInterval(tick, 500);
-    const onVisibility = () => { tick(); last = performance.now(); playing = document.visibilityState === 'visible' && !document.querySelector('[data-loading-screen]'); };
+    const onVisibility = () => { tick(); last = performance.now(); playing = isAppActive() && !document.querySelector('[data-loading-screen]'); };
     const onStorage = () => { progress.current = saveRecall(accountId, progress.current); if (progress.current.quizDone) setSurface(null); };
-    document.addEventListener('visibilitychange', onVisibility);
+    const stopActivity = watchAppActivity(onVisibility);
     window.addEventListener('pagehide', tick);
     window.addEventListener('storage', onStorage);
     return () => {
       window.clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisibility);
+      stopActivity();
       window.removeEventListener('pagehide', tick);
       window.removeEventListener('storage', onStorage);
       saveRecall(accountId, progress.current);

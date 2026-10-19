@@ -1,3 +1,4 @@
+import { AdminContentReports } from './AdminContentReports.js';
 import { useId, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -23,10 +24,13 @@ import { PLANET_SKIN_CATALOG, SKIN_COLLECTIONS } from '../ui/skinCatalog.js';
 import { HeartIcon } from '../ui/icons/index.js';
 import { AdminPlayersPanel } from './AdminPlayersPanel.js';
 import { AdminShopierQueue } from './AdminShopierQueue.js';
+import { AdminDeletionQueue } from './AdminDeletionQueue.js';
 
-type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SHOPIER' | 'SUPPORTERS' | 'PLAYERS';
+type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SHOPIER' | 'SUPPORTERS' | 'PLAYERS' | 'DELETION' | 'REPORTS';
 
 const ADMIN_TAB_ID: Record<AdminTab, string> = {
+  REPORTS: 'admin-reports-tab',
+  DELETION: 'admin-deletion-tab',
   PLAYERS: 'admin-players-tab',
   COMPOSE: 'admin-compose-tab',
   FEEDBACK: 'admin-feedback-tab',
@@ -58,6 +62,8 @@ export default function AdminPanel() {
           tabId={(id) => ADMIN_TAB_ID[id]}
           options={[
             { id: 'PLAYERS', label: t('community.admin.ops.playersTab') },
+            { id: 'DELETION', label: t('accountDeletion.admin.tab') },
+            { id: 'REPORTS', label: t('moderation.admin.tab') },
             { id: 'COMPOSE', label: t('community.admin.composeTab') },
             { id: 'FEEDBACK', label: t('community.admin.feedbackTab') },
             { id: 'PERF', label: t('community.admin.perfTab') },
@@ -72,7 +78,7 @@ export default function AdminPanel() {
         aria-labelledby={ADMIN_TAB_ID[tab]}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-6"
       >
-        {tab === 'PLAYERS' ? <AdminPlayersPanel /> : tab === 'COMPOSE' ? <AnnouncementComposer />
+        {tab === 'REPORTS' ? <AdminContentReports /> : tab === 'DELETION' ? <AdminDeletionQueue /> : tab === 'PLAYERS' ? <AdminPlayersPanel /> : tab === 'COMPOSE' ? <AnnouncementComposer />
           : tab === 'FEEDBACK' ? <AdminFeedbackList />
             : tab === 'PERF' ? <PerfRecorderPanel />
               : tab === 'SKINS' ? <SkinGrantForm /> : tab === 'SHOPIER' ? <AdminShopierQueue /> : <SupporterForm />}

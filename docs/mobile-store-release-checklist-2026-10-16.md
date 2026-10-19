@@ -1,8 +1,20 @@
+> **19 Ekim güncel durum:** Android yeni yayın adayı hazırlanıyor; Console’a yükleme yapılmadı. Hesap silme (uygulama/admin/dış URL/restore journal),30gün yedek politikası ve yeni şikâyet/moderasyon akışı yerelde uygulandı. Şikâyet60 ve hesap silme52 gerçekbrowser görünümü geçti; UGCkalıcıengelleme/kuralkabulü ve son yayın kabulü açık. Önceki AAB yeni kaynakları içermez. Güncel kapılar: [19Ekim yayın durumu](mobile-play-readiness-2026-10-19.md), [silme](mobile-account-deletion-2026-10-19.md), [UGC](mobile-ugc-2026-10-19.md). Alt kayıtlar tarihlerindeki durumu anlatır.
+
+> **18 Ekim son kontrol:** testaccount+adminlesh Silent Space koruması962439cc… ile canlıda doğrulandı;4511 server testi PASS. d5538745… Network DEBUG APK telefona kuruldu; Wi-Fi+cellular otomatik recovery ve native API/SSE PASS. İmzalı AAB77,8MB/bundletool/signature/debuggable=false kabulü ve83 odaklı test PASS; son geniş frontend kontrolü sürüyor. [Güncel durum](mobile-play-upload-status-2026-10-18.md). Alt kayıtlar kronolojiktir.
+
 # Astera Online — web, Android ve iOS ayrımı ve mağazaya çıkış planı
+
+> **Önceki 18 Ekim ara kontrolü (güncel durum üstte):** Kurulu241de81… APK'da fullscreen/IME Back,30s ses/render pause ve uzun kilit dönüşü geçti. Foreground offline cold-start→Wi-Fi otomatik toparlanması **FAIL** bulundu; yeni native Network kodu109 odaklı ve6.974 tam web testini geçti, yeni79,7MB DEBUG APK d5538745… üretildi,75 paket ve19 JVM testi geçti; **telefona kurulmadı**, cihaz kabulü bekliyor. Review hesabı Silent Space muafiyeti yerelde15 yeni+231 regresyon testini geçti, **production'a henüz uygulanmadı**. [Güncel yükleme/yayın eksikleri](mobile-play-upload-status-2026-10-18.md), [ağ](mobile-native-network-recovery-2026-10-18.md), [review hesabı](mobile-store-review-account-2026-10-18.md), [cihaz](mobile-lifecycle-device-acceptance-2026-10-18.md). Signing/AAB/store kabulü açık; iOS Android yayını sonrasında. Alt kayıtlar kronolojiktir.
 
 Tarih: **16 Ekim 2026**. Durum: **uygulama başladı; mağaza kabulü tamamlanmadı**. Gerçek uygulama/test/cihaz ilerlemesi [17 Ekim geliştirme günlüğünde](mobile-implementation-log-2026-10-17.md) tutulur. Kaynak kod ve testler mevcut durumun asıl kanıtıdır; mağaza kuralları gönderim gününde tekrar kontrol edilir.
 
 **Review revizyonu: 16 Ekim 2026.** Bölüm 10, incelemede bulunan yanlış/eksik varsayımları ve düzeltme kanıtlarını kaydeder. “Doğrulandı” kaynak/politika veya kod incelemesini anlatır; cihazda henüz uygulanmamış entegrasyon için başarı iddiası değildir. Aşağıdaki mimari seçimler proje önerisidir; mağazanın zorunlu tuttuğu teknoloji tercihleri değildir.
+
+## 18 Ekim — canlı API hazırlığı tamamlandı, cihaz/mağaza kabulü açık
+
+Production backend/web **`f9378f1c405590942de3c0d7e85c3f7c9d016033`** sürümünde: üç API + worker sağlıklı, journal186, native auth açık. Aynı SHA'dan gerçek API adresli bundled production **DEBUG** APK Samsung SM-S901E'ye kuruldu; API `https://asteraonline.space`. Sahibi mevcut hesabıyla giriş yaptı: USB reverse olmadan gerçek Java HTTPS refresh200, ortak API200, SSE200/connected, otomatik kill/relaunch ve offline kill→Wi-Fi dönüşü geçti. IME ilk geriyle doğru kapanıyor; ikinci geri panel yerine uygulamayı arka plana attığından navigation düzeltmesi yeni yerel APK'da uygulandı; yeni paketin cihaz kabulü açık. Yerel `.local` cihaz oturum/Keystore/offline kabulü geçti; production fiziksel kablosuz/mobil veri matrisi açık. **M1 ve Google Play yayını tamamlanmadı.** Back/lifecycle/IME/safe-area/link ve medya cihaz matrisi, signing/AAB, privacy/UGC/silme, Console ve closed test kapıları açık; iOS yayını Android'den sonra. Ayrıntı [yayın kaydında](mobile-backend-rollout-2026-10-17.md) ve [cihaz komutlarında](android-local-test.md).
+
+**18 Ekim review:** Ortak temel ve henüz cihazda denenmeyen yerel navigation/queue/link/eğitim izolasyonu ve eski renderer başlangıç koruması düzeltmeleri [code review kaydındadır](mobile-code-review-2026-10-18.md). Android release önceliği ve sonrasında iOS sırası korunur.
 
 ## 17 Ekim 2026 — güncel durum ve sahibin yayın sırası
 
@@ -223,6 +235,8 @@ Shopier/Polar hook'ları native mağaza mount'unda bile çağrılmasın; yalnız
 
 ### 06 — Sistem barları, klavye, dokunma ve geri davranışı
 
+**18 Ekim owner kararı:** Saat/status ve navigation bar gizlensin istendi. [SystemBars immersive uygulaması](mobile-fullscreen-2026-10-18.md) telefona kuruldu; kenar swipe ile geçici erişim korunur. Aşağıdaki “gizlemek şart değil” ilk planı bu sonraki kullanıcı tercihini geçersiz kılmaz. Kapsamlı fullscreen IME/cutout/resume kabulü açık.
+
 **İş:** Native edge-to-edge düzen, koyu arka plan ve okunur sistem ikonları kullan. İlk sürümde tarayıcı fullscreen düğmesi kaldırılır; status bar'ı gizleme/immersive zorlaması şart değildir. Navigation gesture/çentik alanı OS ile uyumlu kalır. Safe-area padding'in hem CSS hem native tarafından iki kez eklenmesini önle. Android 16 başlangıç safe-area hatasını release build'de tekrar ölç; upstream düzeltme/uyumlu sürüm veya gerekçeli minimal fix uygula. [Önceki hata kaydı](https://github.com/ionic-team/capacitor/issues/8530)
 
 Klavye: login, kayıt, chat, DM, sayısal miktar alanları, alt sheet ve satın alma formu dahil test et. `adjustResize` mevcut; iOS resize/accessory/autofill ayrı davranır. `@capacitor/keyboard` yalnız gereken seçenekler için eklenir. [Keyboard API](https://capacitorjs.com/docs/apis/keyboard)
@@ -234,6 +248,8 @@ Portrait ana tasarımdır; landscape/tablet/foldable/çoklu pencere geldiğinde 
 **Kabul:** Samsung'a ek en az bir farklı Android düzeninde, gesture ve üç tuş navigasyonda; iOS aşamasında çentikli iPhone'da klavye/geri/safe-area senaryoları geçer. 320–430 CSS px telefon genişliklerinde kritik CTA'lar erişilir.
 
 ### 07 — Arka plan, ağ kopması ve geri dönüşü güvenilir yap
+
+**18 Ekim uygulaması:** [Ortak activity + cold-start toparlanması](mobile-lifecycle-2026-10-18.md) kod/test/browser ve yeni APK export aşamasında doğrulandı; yeni kaynaklar henüz telefona kurulmadı. Cihaz matrisini test sonucu olmadan kapatma.
 
 **İş:** `@capacitor/app` lifecycle olaylarını mevcut `useEventStream` visibility/pageshow/online akışıyla birleştir. İki dinleyici aynı anda çift reconnect/refetch üretmesin. Arka planda gereksiz WebGL render, ses ve polling durur; oyun worker'ı sunucuda çalışmaya devam eder. Geri gelince saat/oturum ve güncel dünya snapshot'ı doğrulanır, stream tek bağlantıyla kurulur. [App API](https://capacitorjs.com/docs/apis/app)
 
@@ -445,6 +461,8 @@ Target SDK ile Billing Library sürümünü ayrı denetle: 31 Ağustos 2026 sonr
 **Kabul:** Kritik/yüksek öncelikli açık hata yok; diğer bulgular sahipli ve kayıtlı. Gerçek store sandbox satın alma/restore/refund ile push/deep-link testi geçti. Oturum/ağ değişimi ve uzun kullanım kanıtı var.
 
 ### 20 — Mağaza sayfaları ve review paketini hazırla
+
+**18 Ekim owner girdisi / açık yayın engeli:** Production'da `testaccount` açıldı ve Console'a inceleme hesabı olarak verildi. Bu kesin hesabın otomatik Silent Space'e alınmaması için dar istisna uygulanıp production'da doğrulanmalı. Ayrıntı ve açık iş [inceleme hesabı kaydında](mobile-store-review-account-2026-10-18.md); parolayı repo belgelerine yazma. Henüz uygulandı sayılmaz.
 
 **İş:** Gerçek app'ten ekran görüntüleri; ad, kısa/uzun açıklama, kategori, yaş derecesi, diller, IAP açıklamaları, support/privacy/deletion URL'leri hazırlanır. Web sayfası ekran görüntüsünü app kanıtı gibi sunma. İkon ve görseller mağaza yönergelerine göre kontrol edilir.
 

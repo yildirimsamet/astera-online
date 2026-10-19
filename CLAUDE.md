@@ -120,7 +120,7 @@ Hiç bir tasarımı baştan savma yapamazsın! Biz; premium AAA kalite bir oyun 
 Görsellik, tasarım, design çok önemli.
 **Her zaman**: ui-v2 ilkeleri ile uyumlu kaliteli, premium, bakanın hayran kalacagı tasarımlar yapmalısın.
 Oyunumuzda insanları etkileyen en önemli başlıca faktörlerden birisi tasarım görsellik kalite premium hissiyat.
-(prefers-reduced-motion tüm projede yasaklı)
+(Oyun hareketleri OS hareket tercihinden bağımsızdır. Owner’ın 18 Ekim 2026 tarihli açık erişilebilirlik talebiyle yalnız public landing CSS’i istisnadır; bkz. docs/landing-premium-redesign-2026-10-18.md.)
 
 #### The question behind all four
 

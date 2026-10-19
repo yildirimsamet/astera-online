@@ -138,4 +138,44 @@ public class SessionEngineTest {
         assertThrows(IllegalArgumentException.class, () -> engine.begin("https://evil.test"));
         assertEquals(INITIAL, store.state.active());
     }
+
+    @Test public void neverStartsAuthenticationThatOutlivedTheSafeQueueBudget() throws Exception {
+        for (String operation : new String[]{"login", "register", "claim"}) {
+            MemoryStore store = new MemoryStore();
+            java.util.concurrent.atomic.AtomicLong time = new java.util.concurrent.atomic.AtomicLong(-1_000_000);
+            SessionEngine engine = new SessionEngine(store, (op, body, credential) -> { fail("expired request must not reach HTTP"); return issued(); }, () -> "next", time::get);
+            SessionEngine.Ticket ticket = engine.begin(operation);
+            time.addAndGet(20_000_000_000L);
+            assertEquals(503, engine.execute(ticket, "{}").status());
+            assertNull(store.state.active());
+        }
+    }
+
+    @Test public void expiredQueuedRefreshPreservesTheDurablePendingPair() throws Exception {
+        MemoryStore store = new MemoryStore();
+        SessionEngine.Credential pending = new SessionEngine.Credential(INITIAL.id(), INITIAL.current(), "persisted-next");
+        store.state = new SessionEngine.State(pending, Collections.emptyList());
+        java.util.concurrent.atomic.AtomicLong time = new java.util.concurrent.atomic.AtomicLong();
+        SessionEngine engine = new SessionEngine(store, (op, body, credential) -> { fail("expired refresh must not reach HTTP"); return refreshed(); }, () -> "unused", time::get);
+        SessionEngine.Ticket ticket = engine.begin("refresh");
+        time.set(60_000_000_000L);
+        assertEquals(503, engine.execute(ticket, null).status());
+        assertEquals(pending, store.state.active());
+    }
+
+    @Test public void freshRefreshAtTheQueueBoundaryStillWorksAndLogoutWins() throws Exception {
+        MemoryStore store = new MemoryStore();
+        store.state = new SessionEngine.State(INITIAL, Collections.emptyList());
+        java.util.concurrent.atomic.AtomicLong time = new java.util.concurrent.atomic.AtomicLong();
+        SessionEngine engine = new SessionEngine(store, (op, body, credential) -> refreshed(), () -> "next", time::get);
+        SessionEngine.Ticket ticket = engine.begin("refresh");
+        time.set(19_999_999_999L);
+        assertEquals(200, engine.execute(ticket, null).status());
+        assertEquals("next", store.state.active().current());
+        SessionEngine.Ticket stale = engine.begin("refresh");
+        engine.begin("logout");
+        time.addAndGet(60_000_000_000L);
+        assertEquals(409, engine.execute(stale, null).status());
+        assertNull(store.state.active());
+    }
 }

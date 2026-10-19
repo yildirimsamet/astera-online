@@ -69,6 +69,7 @@ export class NativeSessions {
       .innerJoin(accounts, eq(accounts.id, nativeSessions.accountId))
       .where(and(eq(nativeSessions.id, id), eq(nativeSessions.accountId, accountId),
         eq(nativeSessions.version, version), eq(accounts.authVersion, version),
+        isNull(accounts.deletionApprovedAt),
         isNull(nativeSessions.revokedAt), gt(nativeSessions.expiresAt, this.clock.now())));
     return row !== undefined;
   }

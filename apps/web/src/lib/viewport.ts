@@ -31,15 +31,17 @@
  * two-finger gesture that fires by accident on a game played with two thumbs.
  */
 export function lockViewportZoom(): () => void {
+  const publicPageVisible = (): boolean => document.querySelector('[data-public-landing]') !== null
+    && document.querySelector('[data-loading-screen]:not([data-departing="true"])') === null;
   const refuse = (event: Event): void => {
-    event.preventDefault();
+    if (!publicPageVisible()) event.preventDefault();
   };
 
   const refusePinch = (event: WheelEvent): void => {
     // Not `deltaMode` or magnitude: a trackpad pinch and a ctrl-scroll are the
     // same event, and the flag is the only thing that separates either from an
     // ordinary scroll the page still needs.
-    if (event.ctrlKey) event.preventDefault();
+    if (event.ctrlKey && !publicPageVisible()) event.preventDefault();
   };
 
   // Keyboard zoom is useful on ready pages, but must not leave a loading game

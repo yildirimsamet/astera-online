@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { QueryClientProvider, type QueryClient } from '@tanstack/react-query';
+import { focusManager, QueryClientProvider, type QueryClient } from '@tanstack/react-query';
 import { LazyMotion, domMax } from 'motion/react';
 import { lockViewportZoom } from './lib/viewport.js';
 import { I18nextProvider } from 'react-i18next';
@@ -18,9 +18,11 @@ import { createQueryClient } from './api/queryClient.js';
 import { ApiProvider } from './api/context.js';
 import { ToastProvider } from './ui/Toast.js';
 import { ErrorBoundary } from './shell/ErrorBoundary.js';
-import { ConsentNotice } from './shell/ConsentNotice.js';
+import { ConsentPlacement } from './landing/public/ConsentPlacement.js';
 import { App } from './App.js';
 import { InstallProvider } from './brand/Install.js';
+import { startAndroidBack } from './platform/nativeBack.js';
+import { isAppActive, watchAppActivity } from './platform/activity.js';
 import './styles.css';
 
 syncDocumentLanguage();
@@ -59,6 +61,12 @@ if (import.meta.env.DEV || import.meta.env.VITE_VISUAL_TEST === '1') {
   (window as unknown as { __api?: Api }).__api = api;
 }
 
+focusManager.setEventListener(handleFocus => {
+  const update = () => { handleFocus(isAppActive()); };
+  const stopActivity = watchAppActivity(update);
+  update();
+  return stopActivity;
+});
 const client = createQueryClient();
 
 /**
@@ -75,6 +83,8 @@ if (!root) throw new Error('no #root element');
 
 // Refuses the two zoom gestures the viewport meta and `touch-action` cannot.
 lockViewportZoom();
+const stopAndroidBack = startAndroidBack();
+if (import.meta.hot) import.meta.hot.dispose(stopAndroidBack);
 
 /**
  * Motion, loaded the small way.
@@ -109,15 +119,7 @@ createRoot(root).render(
           <QueryClientProvider client={client}>
             <ApiProvider api={api}>
               <ToastProvider>
-                <InstallProvider><App /></InstallProvider>
-                {/*
-                  BESIDE THE APP RATHER THAN INSIDE IT, because `App` returns
-                  early for every session phase and the ad tag is already running
-                  on the first of them — the landing screen. A notice mounted
-                  below one of those branches would miss exactly the visitor it
-                  exists for: the one who has not signed in yet.
-                */}
-                <ConsentNotice />
+                <ConsentPlacement><InstallProvider><App /></InstallProvider></ConsentPlacement>
               </ToastProvider>
             </ApiProvider>
           </QueryClientProvider>

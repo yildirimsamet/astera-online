@@ -1,4 +1,6 @@
-import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema } from './schemas.js';
+import { communityPolicyConsentSchema, communityPolicyStatusSchema, type CommunityPolicyConsent } from './communityPolicySchemas.js';
+import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema, accountDeletionStatusSchema, accountDeletionSubmittedSchema } from './schemas.js';
+import { contentReportReceiptSchema, contentReportQueueSchema, contentReportDecisionSchema, communityBlocksSchema, communityBlockResultSchema, type ReportTarget, type ReportReason } from './contentReportSchemas.js';
 import { unknownSignalsSchema, unknownSignalDetailsSchema, unknownSignalLaunchSchema, unknownSignalRecallSchema } from './schemas.js';
 import { COSMETIC_IDS, type CosmeticCategory, type CosmeticId, type MobileHullId } from '@astera/rules';
 import { cosmeticEquipSchema } from './schemas.js';
@@ -29,6 +31,7 @@ import { capabilities } from '../platform/runtime.js';
 import { createNativeAuthTransport, isSessionPath, type AuthTransport } from '../platform/authTransport.js';
 import { CHAT_MEDIA } from '@astera/rules';
 import { adminChatScopesSchema, adminPlayersSchema, adminMuteSchema, adminMaskSchema, type AdminMuteInput, type AdminMaskInput } from './adminSchemas.js';
+import { adminDeletionQueueSchema, adminDeletionCompletedSchema, adminDeletionMediaSchema } from './adminSchemas.js';
 import {
   tradeRecallSchema,
   adminFeedbackPageSchema,
@@ -508,13 +511,15 @@ export class Api {
    * `retryOnExpiry: false` on all three of these: there is no session to refresh
    * yet, and a 401 from a login is the answer, not a stale token.
    */
-  async register(username: string, password: string, countryCode?: CountryCode) {
+  async register(username: string, password: string, countryCode?: CountryCode, policy?: CommunityPolicyConsent) {
+    const proof = communityPolicyConsentSchema.safeParse(policy);
+    if (!proof.success) throw new ApiError('COMMUNITY_POLICY_REQUIRED', 'Explicit agreement is required', 403);
     const generation = ++this.sessionGeneration;
     this.clearMedia();
     this.emailForLogin = undefined;
     const session = await this.send('/api/auth/register', sessionSchema, {
       method: 'POST',
-      body: { username, password, ...(countryCode === undefined ? {} : { countryCode }) },
+      body: { username, password, communityPolicyVersion: proof.data.version, communityPolicyLocale: proof.data.locale, ...(countryCode === undefined ? {} : { countryCode }) },
       retryOnExpiry: false,
     });
     this.adoptSession(session, generation);
@@ -563,6 +568,17 @@ export class Api {
   });
 
   security = () => this.send('/api/auth/security', accountSecuritySchema);
+  accountDeletion = () => this.send('/api/auth/account-deletion', accountDeletionStatusSchema);
+  communityPolicy = () => this.send('/api/community/policy', communityPolicyStatusSchema);
+  acceptCommunityPolicy = (consent: CommunityPolicyConsent) => this.send('/api/community/policy', communityPolicyStatusSchema, { method: 'POST', body: consent });
+  communityBlocks = () => this.send('/api/community/blocks', communityBlocksSchema);
+  blockCommunityPlayer = (targetPlayerId: string) => this.send('/api/community/blocks', communityBlockResultSchema, { method: 'POST', body: { targetPlayerId } });
+  unblockCommunityAccount = (accountId: string) => this.send(`/api/community/blocks/${encodeURIComponent(accountId)}`, communityBlockResultSchema, { method: 'DELETE' });
+  reportContent = (target: ReportTarget, reason: ReportReason, details: string) => this.send('/api/community/reports', contentReportReceiptSchema, { method: 'POST', body: { ...target, reason, details } });
+  adminContentReports = () => this.send('/api/admin/content-reports', contentReportQueueSchema);
+  adminResolveContentReport = (id: string, action: 'MASK' | 'DISMISS') => this.send(`/api/admin/content-reports/${encodeURIComponent(id)}/resolve`, contentReportDecisionSchema, { method: 'POST', body: { action, confirm: true } });
+  requestAccountDeletion = (currentPassword: string, locale: string) => this.send('/api/auth/account-deletion', accountDeletionSubmittedSchema,
+    { method: 'POST', body: { currentPassword, locale }, retryOnExpiry: false });
   securityRequest = (email: string, currentPassword: string, locale: string, change = false) => this.send(
     change ? '/api/auth/email/change/request' : '/api/auth/email/request', securityChallengeSchema,
     { method: 'POST', body: { ...(change ? { newEmail: email } : { email }), currentPassword, locale } });
@@ -594,6 +610,15 @@ export class Api {
   sendFeedback = (kind: FeedbackKind, message: string) =>
     this.send('/api/feedback', feedbackSubmittedSchema, { method: 'POST', body: { kind, message } });
   adminFeedback = () => this.send('/api/admin/feedback', adminFeedbackPageSchema);
+  adminDeletionQueue = () => this.send('/api/admin/account-deletion', adminDeletionQueueSchema);
+  adminRecordSupportDeletion = (username: string, locale: string) => this.send('/api/admin/account-deletion', accountDeletionSubmittedSchema,
+    { method: 'POST', body: { username, locale, confirm: true } });
+  adminApproveDeletion = (requestId: string) => this.send(`/api/admin/account-deletion/${encodeURIComponent(requestId)}/approve`, accountDeletionSubmittedSchema,
+    { method: 'POST', body: { confirm: true } });
+  adminCompleteDeletion = (requestId: string) => this.send(`/api/admin/account-deletion/${encodeURIComponent(requestId)}/complete`, adminDeletionCompletedSchema,
+    { method: 'POST', body: { confirm: true } });
+  adminRetryDeletionMedia = (requestId: string) => this.send(`/api/admin/account-deletion/${encodeURIComponent(requestId)}/media-cleanup`, adminDeletionMediaSchema,
+    { method: 'POST', body: { confirm: true } });
   adminPlayers = (before?: string) => this.send(`/api/admin/players${before ? `?before=${encodeURIComponent(before)}` : ''}`, adminPlayersSchema);
   adminChatScopes = () => this.send('/api/admin/clans', adminChatScopesSchema);
   adminMute = (input: AdminMuteInput) => this.send('/api/admin/chat/mute', adminMuteSchema, { method: 'POST', body: { ...input } });
@@ -643,7 +668,10 @@ export class Api {
     password: string,
     progress: readonly ClaimIntent[] | number,
     countryCode?: CountryCode,
+    policy?: CommunityPolicyConsent,
   ) {
+    const proof = communityPolicyConsentSchema.safeParse(policy);
+    if (!proof.success) throw new ApiError('COMMUNITY_POLICY_REQUIRED', 'Explicit agreement is required', 403);
     const generation = ++this.sessionGeneration;
     this.clearMedia();
     this.emailForLogin = undefined;
@@ -654,6 +682,8 @@ export class Api {
       body: {
         username,
         password,
+        communityPolicyVersion: proof.data.version,
+        communityPolicyLocale: proof.data.locale,
         ...(countryCode === undefined ? {} : { countryCode }),
         ...(typeof progress === 'number' ? { step: progress } : { intents: progress }),
       },
@@ -902,8 +932,17 @@ export class Api {
   /** HTML media cannot attach a bearer header. Native owns a bounded, account-scoped object URL. */
   async chatMediaSource(media: Exclude<ChatMedia, { kind: 'youtube' }>, channel: 'general' | 'clan' | 'dm' | undefined,
     messageId: string | undefined, signal: AbortSignal): Promise<{ url: string; release: () => void }> {
+    return this.privateMediaSource(this.chatMediaUrl(media.assetId, channel, messageId), media, signal);
+  }
+
+  async adminReportMediaSource(reportId: string, media: Exclude<ChatMedia, { kind: 'youtube' }>, signal: AbortSignal): Promise<{ url: string; release: () => void }> {
+    const id = z.string().uuid().parse(reportId);
+    return this.privateMediaSource(`${this.baseUrl}/api/admin/content-reports/${encodeURIComponent(id)}/media`, media, signal);
+  }
+
+  /** One account/session boundary for chat and operator review; routes authorize distinct scopes. */
+  private async privateMediaSource(path: string, media: Exclude<ChatMedia, { kind: 'youtube' }>, signal: AbortSignal): Promise<{ url: string; release: () => void }> {
     signal.throwIfAborted();
-    const path = this.chatMediaUrl(media.assetId, channel, messageId);
     if (!this.auth) return { url: path, release: () => undefined };
     const generation = this.sessionGeneration;
     const controller = new AbortController();

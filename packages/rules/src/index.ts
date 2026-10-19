@@ -88,3 +88,4 @@ export * from './spawnGate.js';
 
 export type { ChatMedia } from './chatMedia.js';
 export { CHAT_MEDIA } from './chatMedia.js';
+export { COMMUNITY_POLICY_VERSION } from './communityPolicy.js';

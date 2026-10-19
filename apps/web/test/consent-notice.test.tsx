@@ -41,6 +41,21 @@ const show = (): void => {
   render(<ConsentNotice />);
 };
 
+it('keeps the public-page choice inside its normal-flow host without changing refusal', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const view = render(<ConsentNotice inlineHost={host} />);
+  expect(host).toContainElement(screen.getByRole('dialog'));
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Reddet' }));
+  expect(readConsent()?.decision).toBe('denied');
+  const scrollIntoView = vi.fn();
+  host.scrollIntoView = scrollIntoView;
+  act(() => { openConsentNotice(); });
+  expect(scrollIntoView).toHaveBeenCalledOnce();
+  view.unmount();
+  host.remove();
+});
+
 describe('when there is nothing to consent to', () => {
   it('renders nothing on a build with no Google tag', () => {
     delete window.__asteraConsentDefaults;

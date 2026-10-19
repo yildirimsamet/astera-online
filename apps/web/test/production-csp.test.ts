@@ -4,16 +4,16 @@ import { describe, expect, it } from 'vitest';
 
 const nginxConfig = resolve(import.meta.dirname, '../../../deploy/nginx/astera.conf');
 
-const policies = async (): Promise<{ origin: string; checkout: string; document: string }> => {
+const policies = async (): Promise<{ origin: string; checkout: string; localized: string; document: string }> => {
   const config = await readFile(nginxConfig, 'utf8');
   const headers = config
     .split('\n')
     .filter((line) => line.includes('add_header Content-Security-Policy'));
 
-  // Publisher, guest checkout, and game each have a separate permission boundary.
-  expect(headers).toHaveLength(3);
-  const [origin, checkout, document] = headers;
-  return { origin: origin ?? '', checkout: checkout ?? '', document: document ?? '' };
+  // Publisher and checkout are separate; both game entry locations share one policy.
+  expect(headers).toHaveLength(4);
+  const [origin, checkout, localized, document] = headers;
+  return { origin: origin ?? '', checkout: checkout ?? '', localized: localized ?? '', document: document ?? '' };
 };
 
 const directive = (policy: string, name: string): string =>
@@ -79,6 +79,12 @@ describe('the guest checkout document', () => {
 });
 
 describe('the game document', () => {
+  it('gives localized entry documents the same complete policy as the root entry', async () => {
+    const { document, localized } = await policies();
+    expect(localized).toBe(document);
+    expect(directive(localized, 'script-src')).toContain("'nonce-$request_id'");
+  });
+
   it('allows the blob textures and narrow WebAssembly execution Three.js needs', async () => {
     const { document } = await policies();
 

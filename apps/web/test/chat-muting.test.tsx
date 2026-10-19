@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -23,6 +24,7 @@ function show(accountId = 'account-a') {
   const mark = vi.spyOn(api, 'markChatRead').mockResolvedValue({ ok: true, readAt: at });
   vi.spyOn(api, 'markClanChatRead').mockResolvedValue({ readAt: at });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: new Date('2026-10-19T00:00:00Z') });
   client.setQueryData(keys.chatMessagesFor('en'), page());
   client.setQueryData(keys.chatMessagesFor('tr'), page(messages.map(message => ({ ...message, language: 'tr' }))));
   client.setQueryData(keys.chatUnreadFor('en'), { count: 1 });

@@ -16,6 +16,7 @@ export function registerNativeAuthRoutes(app: FastifyInstance, firstGameShieldEn
   });
   app.post('/api/native/auth/register', { bodyLimit: 4096, config: { rateLimit: app.limits.signup } }, async req => {
     const body = registerBody.strict().parse(req.body ?? {});
+    requireCurrentCommunityPolicy(body.communityPolicyVersion);
     const account = await registerAccount(app.db, body, firstGameShieldEnabled, app.clock.now());
     return app.nativeSessions.open(account);
   });
@@ -31,3 +32,4 @@ export function registerNativeAuthRoutes(app: FastifyInstance, firstGameShieldEn
   registerOnboardingRoutes(app, firstGameShieldEnabled,
     (_app, _reply, account) => app.nativeSessions.open({ ...account, authVersion: account.authVersion ?? 0 }), '/api/native/onboarding/claim');
 }
+import { requireCurrentCommunityPolicy } from '../services/communityPolicy.js';

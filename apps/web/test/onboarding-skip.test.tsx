@@ -1,3 +1,5 @@
+import type { CommunityPolicyConsent } from '../src/api/communityPolicySchemas.js';
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -79,13 +81,14 @@ describe('skipping the onboarding rehearsal', () => {
     await user.click(screen.getByRole('button', { name: /Change$/ }));
     await user.click(screen.getByRole('button', { name: 'United States' }));
     await user.click(screen.getByRole('button', { name: 'Confirm country' }));
+    await user.click(screen.getByRole('checkbox', { name: /I agree/ }));
     await user.click(screen.getByRole('button', { name: /claim/i }));
     expect(onClaim).toHaveBeenCalledWith('NewPilot', 'a-real-password', [
       { kind: 'upgrade', building: 'CORE' },
       { kind: 'upgrade', building: 'REFINERY' },
       { kind: 'upgrade', building: 'EXTRACTOR' },
       { kind: 'build', hull: 'DART', count: 2 },
-    ], 'US');
+    ], 'US', policyProof);
   });
 
   it('opens the final commander-credentials step instead of returning to the landing screen', async () => {
@@ -106,3 +109,5 @@ describe('skipping the onboarding rehearsal', () => {
     expect(screen.getByLabelText('Commander name')).toHaveFocus();
   });
 });
+
+const policyProof: CommunityPolicyConsent = { version: COMMUNITY_POLICY_VERSION, locale: 'en' };

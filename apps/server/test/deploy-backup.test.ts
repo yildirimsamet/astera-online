@@ -13,6 +13,11 @@ import { expect, it } from 'vitest';
  * that checks the exit status (a release script, a monitor) saw a failed backup.
  */
 const script = readFileSync(new URL('../../../deploy/backup.sh', import.meta.url), 'utf8');
+const retention = readFileSync(new URL('../../../deploy/backup-retention.py', import.meta.url), 'utf8');
+const recent = (hours: number) => {
+  const date = new Date(Date.now() - hours * 3_600_000).toISOString().replaceAll(/[-:]/g, '');
+  return `astera-${date.slice(0, 8)}-${date.slice(9, 15)}.sql.gz`;
+};
 
 function run(options: { keep?: number; existing?: string[]; dumpFails?: boolean; mediaFails?: boolean } = {}) {
   const root = mkdtempSync(resolve(tmpdir(), 'astera-backup-test-'));
@@ -22,6 +27,7 @@ function run(options: { keep?: number; existing?: string[]; dumpFails?: boolean;
   mkdirSync(resolve(root, 'deploy'));
   mkdirSync(dest);
   writeFileSync(resolve(root, 'deploy/backup.sh'), script);
+  writeFileSync(resolve(root, 'deploy/backup-retention.py'), retention);
   writeFileSync(resolve(root, '.env'), 'POSTGRES_USER=astera\nPOSTGRES_DB=astera\n');
   for (const name of options.existing ?? []) writeFileSync(resolve(dest, name), 'old');
   writeFileSync(resolve(bin, 'docker'), options.dumpFails
@@ -51,11 +57,12 @@ it('exits 0 after a good dump even when nothing needs pruning', () => {
 });
 
 it('prunes beyond the retention count and still exits 0', () => {
-  const result = run({ keep: 2, existing: ['astera-20200101-000000.sql.gz', 'astera-20200102-000000.sql.gz'] });
+  const oldest = recent(2);
+  const result = run({ keep: 2, existing: [oldest, recent(1)] });
   expect(result.status, result.stderr).toBe(0);
   expect(result.dumps).toHaveLength(2);
-  expect(result.dumps).not.toContain('astera-20200101-000000.sql.gz');
-  expect(result.stdout).toContain('pruned astera-20200101-000000.sql.gz');
+  expect(result.dumps).not.toContain(oldest);
+  expect(result.stdout).toContain(`pruned ${oldest}`);
 });
 
 it('fails, and leaves no finished dump, when pg_dump fails', () => {

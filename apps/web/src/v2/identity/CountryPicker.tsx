@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useNativeBack } from '../../platform/nativeBack.js';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { CountryCode } from '@astera/rules';
@@ -12,13 +13,15 @@ export function CountryPicker({ value, onSelect, onClose }: {
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
+  const panel = useRef<HTMLDivElement>(null);
+  useNativeBack(panel, onClose);
   const [selected, setSelected] = useState<CountryCode>(value);
   const [query, setQuery] = useState('');
   const language = i18n.resolvedLanguage ?? 'en';
   const options = useMemo(() => countryOptions(language, selected, query), [language, query, selected]);
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-v2-void/70 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center" role="dialog" aria-modal="true" aria-label={t('country.choose')}>
+    <div ref={panel} className="fixed inset-0 z-[60] flex items-end justify-center bg-v2-void/70 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center" role="dialog" aria-modal="true" aria-label={t('country.choose')}>
       <section className="flex max-h-[min(720px,92dvh)] w-full max-w-xl flex-col gap-3 rounded-sheet border border-v2-line bg-v2-panel p-3 font-v2-ui">
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0">

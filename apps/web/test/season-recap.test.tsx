@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, renderHook, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import i18n from '../src/i18n/index.js';
 import {
@@ -161,4 +161,14 @@ describe('the personal season ending', () => {
     });
     expect(seenOpen).not.toHaveBeenCalled();
   });
+});
+
+
+it('acknowledges and closes the recap on native Back', () => {
+  const onClose = vi.fn();
+  const recap = result();
+  render(<SeasonRecap result={recap} galaxy="Vantage" onClose={onClose} />);
+  fireEvent(screen.getByRole('dialog'), new Event('astera:native-back', { cancelable: true }));
+  expect(onClose).toHaveBeenCalledOnce();
+  expect(seasonRecapSeen(recap)).toBe(true);
 });

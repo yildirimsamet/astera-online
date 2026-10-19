@@ -1,9 +1,11 @@
+import { capabilities } from '../platform/runtime.js';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { ChatMedia } from '@astera/rules';
 import { useApi } from '../api/context.js';
 import { CloseIcon } from '../ui/icons/index.js';
+import { useNativeBack } from '../platform/nativeBack.js';
 import type { ChatChannel } from './ChatScreen.js';
 
 interface AttachmentProps {
@@ -65,6 +67,7 @@ function AttachmentView({ media, channel, messageId, onLoad, preview = false, so
   const [portrait, setPortrait] = useState(false);
   const [failed, setFailed] = useState(false);
   const dialog = useRef<HTMLDivElement>(null);
+  useNativeBack(dialog, () => { setExpanded(false); }, expanded);
   const opener = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!expanded) return;
@@ -78,6 +81,10 @@ function AttachmentView({ media, channel, messageId, onLoad, preview = false, so
   }, [expanded]);
   if (failed) return <p role="status" className="my-2 text-micro text-v2-warn">{t('chat.media.loadFailed')}</p>;
   const width = preview ? 'w-[min(44vw,240px,32dvh)]' : 'w-[min(68vw,360px)]';
+  if (media.kind === 'youtube' && !capabilities().thirdPartyEmbeds) return <div className="my-2 grid max-w-full gap-1 rounded-control border border-v2-line-hi bg-v2-deep px-3 py-2">
+    <a href={`https://www.youtube.com/watch?v=${media.videoId}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center text-body text-v2-self underline underline-offset-4">{t('chat.media.openYouTube')}</a>
+    <p className="text-micro leading-relaxed text-v2-ink-2">{t('chat.media.externalNotice')}</p>
+  </div>;
   if (media.kind === 'youtube') return <div className="my-2 max-w-full">
     <div className={`${portrait ? 'w-[min(68vw,240px,18dvh)]' : width} max-w-full overflow-hidden rounded-control border border-v2-line-hi bg-v2-deep`} style={{ aspectRatio: portrait ? '9 / 16' : '16 / 9' }}>
       <iframe title={t('chat.media.youtube')} src={`https://www.youtube-nocookie.com/embed/${media.videoId}`} loading="lazy"

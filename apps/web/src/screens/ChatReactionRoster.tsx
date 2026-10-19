@@ -6,6 +6,7 @@ import { useApi } from '../api/context.js';
 import { keys } from '../api/keys.js';
 import { describeError } from '../i18n/errors.js';
 import { CloseIcon } from '../ui/icons/index.js';
+import { useNativeBack } from '../platform/nativeBack.js';
 import type { ChatChannel } from './ChatScreen.js';
 
 export function ChatReactionRoster({ channel, messageId, anchor, onClose }: {
@@ -14,6 +15,7 @@ export function ChatReactionRoster({ channel, messageId, anchor, onClose }: {
   const { t } = useTranslation();
   const api = useApi();
   const panel = useRef<HTMLDivElement>(null);
+  useNativeBack(panel, onClose);
   const [position, setPosition] = useState({ left: 8, top: 8 });
   const prefix = channel === 'general' ? keys.chatMessages : channel === 'clan' ? keys.clanChat : keys.dmMessages;
   const details = useQuery({ queryKey: [...prefix, 'reactions', messageId], queryFn: () => api.messageReactionDetails(channel, messageId), refetchInterval: 5_000 });

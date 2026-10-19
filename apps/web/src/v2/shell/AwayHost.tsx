@@ -1,3 +1,4 @@
+import { isAppActive, watchAppActivity } from '../../platform/activity.js';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../../api/context.js';
@@ -84,7 +85,7 @@ export function AwayHost({
   useEffect(() => {
     if (!data || telling) return undefined;
     const timer = setInterval(() => {
-      if (document.visibilityState !== 'hidden') close.current(new Date(serverNow()));
+      if (isAppActive()) close.current(new Date(serverNow()));
     }, keepAliveMs);
     return () => { clearInterval(timer); };
   }, [data, telling, keepAliveMs]);
@@ -93,7 +94,7 @@ export function AwayHost({
   useEffect(() => {
     let hiddenAt: number | null = null;
     const onVisibility = (): void => {
-      if (document.visibilityState === 'hidden') {
+      if (!isAppActive()) {
         hiddenAt ??= serverNow();
         return;
       }
@@ -104,8 +105,7 @@ export function AwayHost({
       // Emptied first, so neither the old story nor its keep-alive runs while the new one loads.
       void client.resetQueries({ queryKey: keys.returnStory });
     };
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => { document.removeEventListener('visibilitychange', onVisibility); };
+    return watchAppActivity(onVisibility);
   }, [client]);
 
   if (!telling) return null;

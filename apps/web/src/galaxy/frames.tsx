@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
+import { isAppActive, watchAppActivity } from '../platform/activity.js';
 
 /**
  * WHO ASKS FOR FRAMES, AND HOW OFTEN. D53.
@@ -217,6 +218,7 @@ export function useAmbientFrames(): void {
     let skip = 0;
 
     const tick = (at: number): void => {
+      if (!isAppActive()) { handle = 0; return; }
       handle = requestAnimationFrame(tick);
 
       if (previous !== 0) {
@@ -240,8 +242,20 @@ export function useAmbientFrames(): void {
       invalidate(credit);
     };
 
-    handle = requestAnimationFrame(tick);
+    const sync = (): void => {
+      if (!isAppActive()) {
+        cancelAnimationFrame(handle);
+        handle = 0;
+      } else if (handle === 0) {
+        previous = 0;
+        skip = 0;
+        handle = requestAnimationFrame(tick);
+      }
+    };
+    const stopActivity = watchAppActivity(sync);
+    sync();
     return () => {
+      stopActivity();
       cancelAnimationFrame(handle);
     };
   }, [invalidate]);

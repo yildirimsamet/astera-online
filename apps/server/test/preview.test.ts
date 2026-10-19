@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
@@ -107,7 +108,7 @@ describe('preview', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/auth/register',
-      payload: { username: `commander${String(seq)}`, password: 'correct-horse-battery' },
+      payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: `commander${String(seq)}`, password: 'correct-horse-battery' },
     });
     expect(res.statusCode).toBe(200);
     return res.json<{ accessToken: string }>();

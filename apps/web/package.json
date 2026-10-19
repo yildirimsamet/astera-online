@@ -11,13 +11,16 @@
     "test": "vitest run",
     "android:sync": "ASTERA_MOBILE_DEBUG=1 cap sync android",
     "android:bundle": "tsx mobileBuildCli.ts",
+    "android:release": "tsx mobileBuildCli.ts --release native-production",
     "android:apk": "pnpm run android:sync && cd android && nice -n 10 ./gradlew --no-daemon --no-parallel --max-workers=1 '-Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=512m' assembleDebug",
     "android:install": "tsx mobileInstall.ts"
   },
   "dependencies": {
     "@astera/rules": "workspace:*",
     "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.5.3",
+    "@capacitor/network": "8.0.1",
     "@fontsource-variable/archivo": "^5.3.0",
     "@paddle/paddle-js": "^1.6.5",
     "@react-three/drei": "^10.7.8",

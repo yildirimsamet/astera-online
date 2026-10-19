@@ -1,0 +1,4 @@
+# Included by the host's existing rsyslog.d AppArmor directory.
+# Grant only the dedicated local input; keep the rest of the profile enforced.
+/{,var/}run/astera-runtime/ rw,
+/{,var/}run/astera-runtime/log.sock rw,

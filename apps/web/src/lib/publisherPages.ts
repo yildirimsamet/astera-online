@@ -1,3 +1,5 @@
+import { runtime } from '../platform/runtime.js';
+
 /**
  * THE PUBLISHER SITE, AS ONE TABLE THE TYPE SYSTEM CAN SEE.
  *
@@ -36,6 +38,7 @@ export type PublisherPage =
   | 'about'
   | 'guide'
   | 'privacy'
+  | 'accountDeletion'
   | 'cookies'
   | 'terms'
   | 'refunds'
@@ -52,6 +55,7 @@ const PAGES: Record<PublisherPage, Record<PublisherLanguage, string | null>> = {
   about: { en: '/about.html', tr: '/hakkinda.html' },
   guide: { en: '/quick-start-guide.html', tr: '/hizli-baslangic-rehberi.html' },
   privacy: { en: '/privacy.html', tr: '/gizlilik-politikasi.html' },
+  accountDeletion: { en: '/account-deletion.html', tr: '/hesap-silme.html' },
   cookies: { en: '/cookies.html', tr: '/cerez-politikasi.html' },
   terms: { en: '/terms.html', tr: '/kullanim-kosullari.html' },
   refunds: { en: '/refunds.html', tr: '/iade-politikasi.html' },
@@ -63,6 +67,20 @@ const PAGES: Record<PublisherPage, Record<PublisherLanguage, string | null>> = {
 
 /** The origin every canonical and sitemap entry is written against. */
 export const PUBLISHER_ORIGIN = 'https://asteraonline.space';
+
+/** Node's static publisher generator has no Vite environment. */
+function nativePublisherBuild(env: ImportMetaEnv | undefined): boolean {
+  return (env?.VITE_ASTERA_PLATFORM ?? 'web') !== 'web';
+}
+
+/** Bundled apps contain game assets only; static publisher pages remain on the public site. */
+function siteUrl(path: string): string {
+  return runtime() !== 'web' || nativePublisherBuild(import.meta.env)
+    ? `${PUBLISHER_ORIGIN}${path}` : path;
+}
+
+export const publisherWikiUrl = (language: string | undefined): string =>
+  siteUrl(language?.toLowerCase().startsWith('tr') ? '/wiki/tr' : '/wiki');
 
 /**
  * Where a page lives for a reader in this language.
@@ -79,7 +97,7 @@ export function publisherUrl(page: PublisherPage, language: string | undefined):
   // reader too, in Turkish, because that is the document that exists.
   const url = entry[lang] ?? entry[lang === 'tr' ? 'en' : 'tr'];
   if (url === null) throw new Error(`publisher page ${page} has no address`);
-  return url;
+  return siteUrl(url);
 }
 
 /** Every real address on the publisher site, for the sitemap and its test. */

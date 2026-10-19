@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -82,7 +83,7 @@ const directory = {
   total: 2,
 };
 
-function show(home: ClanHome) {
+function show(home: ClanHome, accepted = true) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   vi.spyOn(api, 'clanHome').mockResolvedValue(home);
   vi.spyOn(api, 'clans').mockResolvedValue(directory);
@@ -115,6 +116,7 @@ function show(home: ClanHome) {
     ],
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  client.setQueryData(keys.communityPolicy, { version: COMMUNITY_POLICY_VERSION, acceptedAt: accepted ? now : null });
   client.setQueryData(keys.clanHome, home);
   client.setQueryData(keys.clanBadge, {
     available: true,
@@ -456,4 +458,18 @@ describe('clan command surface', () => {
     expect(screen.getByRole('button', { name: 'Klan kur' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Orbit Wardens klanına başvur' })).toBeInTheDocument();
   });
+});
+
+it('offers community agreement before creating public clan text while keeping clan discovery available', async () => {
+  show(outside, false);
+  expect(await screen.findByRole('checkbox', { name: 'I agree to the community guidelines and terms of use.' })).not.toBeChecked();
+  expect(screen.queryByLabelText('Clan name')).toBeNull();
+  expect(screen.getByText('Orbit Wardens')).toBeInTheDocument();
+});
+it('offers community agreement for leader text edits while retaining membership controls', async () => {
+  show(member, false);
+  await userEvent.setup().click(screen.getByRole('tab', { name: 'Members' }));
+  expect(await screen.findByRole('checkbox', { name: 'I agree to the community guidelines and terms of use.' })).not.toBeChecked();
+  expect(screen.queryByRole('button', { name: 'Save settings' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Disband clan' })).toBeInTheDocument();
 });

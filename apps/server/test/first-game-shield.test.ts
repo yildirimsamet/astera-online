@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { readFileSync } from 'node:fs';
 import { eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
@@ -165,7 +166,7 @@ describe('one first-game shield per new human account', () => {
       try {
         const response = await app.inject({
           method: 'POST', url: path === 'register' ? '/api/auth/register' : '/api/onboarding/claim',
-          payload: {
+          payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION,
             username: `Pilot${String(enabled)}`, password: PASSWORD, step: 0,
             // Untrusted input cannot change the server's activation setting.
             ...(path === 'register' ? { firstGameShieldAvailable: !enabled } : {}),
@@ -189,7 +190,7 @@ describe('one first-game shield per new human account', () => {
     try {
       const response = await app.inject({
         method: 'POST', url: '/api/onboarding/claim',
-        payload: { username: account.username, password: PASSWORD, step: 0 },
+        payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: account.username, password: PASSWORD, step: 0 },
       });
       expect(response.statusCode).toBe(200);
       const [player] = await f.db.select().from(players).where(eq(players.accountId, account.id));

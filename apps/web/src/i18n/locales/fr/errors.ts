@@ -12,6 +12,7 @@
 * ce ne sont pas des erreurs, mais les règles du jeu.
   */
   export const errors = {
+  COMMUNITY_POLICY_REQUIRED: "Consulte et accepte les règles avant de créer un commandant ou de publier. Rouvre l’application si nécessaire.",
   UNKNOWN_SIGNAL_NOT_FOUND: "Ce signal n’existe plus. Attends un nouveau contact Radar.",
   UNKNOWN_SIGNAL_EXPIRED: "Le signal a disparu. Attends un nouveau contact Radar.",
   UNKNOWN_SIGNAL_TAKEN: "Une flotte a déjà été envoyée vers ce signal.",

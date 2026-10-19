@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { claimEscape, dragStep, nextDetent, type Detent } from '../../lib/sheet.js';
+import { useNativeBack } from '../../platform/nativeBack.js';
 import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 import { Icon } from '../icons.js';
 import { AtmosphereImage } from '../../ui/AtmosphereArt.js';
@@ -134,6 +135,7 @@ export function Sheet({
   const dragged = useRef(false);
   const release = useRef<((event: PointerEvent) => void) | null>(null);
   const panel = useRef<HTMLDivElement>(null);
+  useNativeBack(panel, onBack ?? onClose);
 
   const settle = (direction: 'up' | 'down'): void => {
     const next = nextDetent(detents, detent, direction);

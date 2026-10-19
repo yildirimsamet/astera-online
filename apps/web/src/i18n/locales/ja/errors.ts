@@ -14,6 +14,7 @@
  */
 
 export const errors = {
+  COMMUNITY_POLICY_REQUIRED: "司令官の作成や投稿の前にコミュニティルールを確認して同意してください。必要に応じてアプリを開き直してください。",
   UNKNOWN_SIGNAL_NOT_FOUND: "この信号はもう存在しません。次のレーダー接触を待ってください。",
   UNKNOWN_SIGNAL_EXPIRED: "信号が消えました。次のレーダー接触を待ってください。",
   UNKNOWN_SIGNAL_TAKEN: "この信号にはすでに艦隊を派遣しています。",

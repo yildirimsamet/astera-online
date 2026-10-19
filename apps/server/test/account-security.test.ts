@@ -1,3 +1,4 @@
+import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { pino } from 'pino';
 import { sql } from 'drizzle-orm';
@@ -15,7 +16,7 @@ beforeEach(async () => {
 });
 afterEach(async () => { await built.close(); });
 const register = async () => {
-  const response = await built.app.inject({ method: 'POST', url: '/api/auth/register', payload: { username: 'Vantage', password } });
+  const response = await built.app.inject({ method: 'POST', url: '/api/auth/register', payload: { communityPolicyVersion: COMMUNITY_POLICY_VERSION, username: 'Vantage', password } });
   return { account: response.json<{ accountId: string; accessToken: string }>(), cookie: String(response.headers['set-cookie']).split(';')[0]! };
 };
 describe('account credential migration', () => {

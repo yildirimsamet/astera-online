@@ -25,13 +25,14 @@ vi.mock('../src/onboarding/Academy.jsx', () => ({ Academy: ({ onLeave }: { onLea
   <button onClick={onLeave}>Leave Academy</button> }));
 
 describe('the replay boundary', () => {
-  it('suspends the real stream and alerts while practising and reconnects on return', () => {
+  it('suspends the real stream and alerts while practising and reconnects on return', async () => {
     render(<App />);
     expect(vi.mocked(useEventStream).mock.lastCall?.[0]).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Replay Academy' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Replay Academy' }));
     expect(vi.mocked(useEventStream).mock.lastCall?.[0]).toBe(false);
     expect(vi.mocked(useLiveAlerts).mock.lastCall?.[0]).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: 'Leave Academy' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Academy' }));
+    await screen.findByRole('button', { name: 'Replay Academy' });
     expect(vi.mocked(useEventStream).mock.lastCall?.[0]).toBe(true);
     expect(vi.mocked(useLiveAlerts).mock.lastCall?.[0]).toBe(true);
   });

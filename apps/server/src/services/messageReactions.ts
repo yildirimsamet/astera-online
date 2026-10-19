@@ -12,6 +12,7 @@ import { lockDmPair } from './dm.js';
 import { reactionViews, type MessageChannel } from './messageDecorations.js';
 import { assertMessageReadable } from './messageAccess.js';
 import { GameError } from './planet.js';
+import { chatVisibleTo, communityPairBlocked, lockCommunityPair } from './communityBlocks.js';
 
 /** Replaces the actor's sole reaction atomically, after checking current visibility. */
 export async function setMessageReaction(
@@ -62,12 +63,16 @@ export async function setMessageReaction(
       const peerId = row.low === me.id ? row.high : row.low;
       // Transfer takes an UPDATE lock on the player. SHARE makes this permission
       // check wait for it, while remaining compatible with block's FK key locks.
-      const currentPlayers = await tx.select({ id: players.id, seasonId: players.seasonId })
+      const currentPlayers = await tx.select({ id: players.id, seasonId: players.seasonId, accountId: players.accountId })
         .from(players).where(inArray(players.id, [me.id, peerId]))
         .orderBy(asc(players.id)).for('share');
       const currentMe = currentPlayers.find((player) => player.id === me.id);
       const peer = currentPlayers.find((player) => player.id === peerId);
       await lockDmPair(tx, me.id, peerId);
+      if (peer) {
+        await lockCommunityPair(tx, accountId, peer.accountId);
+        if (await communityPairBlocked(tx, accountId, peer.accountId)) throw new GameError('COMMUNITY_BLOCKED', 'This interaction is blocked', 403);
+      }
       const [currentSeason] = currentMe ? await tx.select({ status: seasons.status, role: shards.role })
         .from(seasons).innerJoin(shards, eq(shards.id, seasons.shardId))
         .where(eq(seasons.id, currentMe.seasonId)).limit(1) : [];
@@ -89,6 +94,13 @@ export async function setMessageReaction(
       notify = async () => { await publish(tx, me.id, 'private:dm'); await publish(tx, peerId, 'private:dm'); };
     }
 
+    const table = channel === 'general' ? chatMessages : channel === 'clan' ? clanMessages : dmMessages;
+    const [author] = await tx.select({ accountId: players.accountId }).from(table)
+      .innerJoin(players, eq(players.id, table.authorPlayerId)).where(eq(table.id, messageId));
+    if (!author) throw new GameError('CHAT_MESSAGE_NOT_VISIBLE', 'Message not visible', 404);
+    await lockCommunityPair(tx, accountId, author.accountId);
+    if (await communityPairBlocked(tx, accountId, author.accountId)) throw new GameError('COMMUNITY_BLOCKED', 'This interaction is blocked', 403);
+    if (emoji !== null) await assertCommunityPolicyAccepted(tx, accountId);
     const key = channel === 'general' ? messageReactions.chatMessageId
       : channel === 'clan' ? messageReactions.clanMessageId : messageReactions.dmMessageId;
     await tx.delete(messageReactions).where(and(eq(key, messageId), eq(messageReactions.playerId, me.id)));
@@ -112,6 +124,7 @@ export async function readMessageReactions(
   const participants = await db.select({ playerId: players.id, username: accounts.displayName, emoji: messageReactions.emoji })
     .from(messageReactions).innerJoin(players, eq(players.id, messageReactions.playerId))
     .innerJoin(accounts, eq(accounts.id, players.accountId))
-    .where(eq(key, messageId)).orderBy(asc(messageReactions.createdAt), asc(messageReactions.id));
+    .where(and(eq(key, messageId), chatVisibleTo(accountId, players.id))).orderBy(asc(messageReactions.createdAt), asc(messageReactions.id));
   return { participants };
 }
+import { assertCommunityPolicyAccepted } from './communityPolicy.js';

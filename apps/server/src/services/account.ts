@@ -54,7 +54,7 @@ const publicShape = (row: {
  */
 export async function registerAccount(
   db: Db,
-  input: { username: string; password: string; countryCode?: CountryCode },
+  input: { username: string; password: string; countryCode?: CountryCode; communityPolicyVersion?: string; communityPolicyLocale?: ChatLanguage },
   firstGameShieldAvailable = true,
   now = new Date(),
 ): Promise<AccountRecord> {
@@ -77,6 +77,10 @@ export async function registerAccount(
 
     if (!created) {
       throw new GameError('USERNAME_TAKEN', 'That name is already flying', 409);
+    }
+    if (input.communityPolicyVersion !== undefined) {
+      requireCurrentCommunityPolicy(input.communityPolicyVersion);
+      await recordCommunityPolicy(tx, created.id, input.communityPolicyLocale ?? 'en', now);
     }
     // Only creation enrolls a commander. Login, claim retries and season rollover
     // must never turn an established account into a first-session quiz candidate.
@@ -110,7 +114,7 @@ export async function authenticate(
     : eq(accounts.username, normaliseUsername(identifier)));
 
   const ok = await verifyPassword(input.password, row?.passwordHash ?? (await decoyHash()));
-  if (!row || !ok || (emailLogin ? !row.emailVerifiedAt : row.emailVerifiedAt !== null)) {
+  if (!row || !ok || row.deletionApprovedAt !== null || (emailLogin ? !row.emailVerifiedAt : row.emailVerifiedAt !== null)) {
     throw new GameError('BAD_CREDENTIALS', 'That name and password do not match', 401);
   }
   return publicShape(row);
@@ -118,7 +122,7 @@ export async function authenticate(
 
 export async function findAccount(db: Pick<Db, 'select'>, accountId: string): Promise<AccountRecord | null> {
   const [row] = await db.select().from(accounts).where(eq(accounts.id, accountId));
-  return row ? publicShape(row) : null;
+  return row?.deletionApprovedAt === null ? publicShape(row) : null;
 }
 
 /**
@@ -132,3 +136,5 @@ export async function findAccount(db: Pick<Db, 'select'>, accountId: string): Pr
 let decoy: Promise<string> | null = null;
 const decoyHash = (): Promise<string> =>
   (decoy ??= hashPassword('astera-decoy-never-a-real-password'));
+import { recordCommunityPolicy, requireCurrentCommunityPolicy } from './communityPolicy.js';
+import type { ChatLanguage } from '@astera/rules';

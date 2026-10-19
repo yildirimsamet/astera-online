@@ -27,7 +27,7 @@ The simulation workspace also disables test discovery without
 
 Owner instruction (7 September 2026): web animations run independently of OS motion
 preferences. Do not introduce reduced-motion media queries, hooks, or Tailwind
-conditional motion variants. `no-reduced-motion.test.ts` scans all web sources.
+conditional motion variants in gameplay. Owner’s explicit public-landing accessibility requirement (18 October 2026) permits only `src/landing/public/public-landing.css` to honour the OS preference. `no-reduced-motion.test.ts` enforces that narrow exception; game motion stays unchanged.
 
 ## Typing
 

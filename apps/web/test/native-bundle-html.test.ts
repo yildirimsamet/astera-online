@@ -19,3 +19,14 @@ describe('native CSP without the web server nonce', () => {
     expect(() => nativeHtml('<head><script src="https://example.test/tracker.js"></script></head>', 'https://api.example.test')).toThrow(/script/i);
   });
 });
+
+
+it('checks rendering support before loading the app module and hashes the guard', () => {
+  const html = nativeHtml('<html><head><meta charset="UTF-8"><script type="module" src="/assets/main.js"></script></head></html>', 'https://api.example.test');
+  expect(html).toContain('data-native-compatibility');
+  expect(html.indexOf('data-native-compatibility')).toBeLessThan(html.indexOf('type="module"'));
+  const script = /<script data-native-compatibility>([\s\S]*?)<\/script>/.exec(html)?.[1];
+  expect(script).toBeTruthy();
+  expect(html).toContain("'sha256-" + createHash('sha256').update(script ?? '').digest('base64') + "'");
+  expect(html).not.toContain('navigator.userAgent');
+});
