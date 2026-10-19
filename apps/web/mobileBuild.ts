@@ -19,8 +19,13 @@ export function mobileBuild(env: Record<string, string | undefined>) {
       : api.protocol !== 'https:' || api.hostname === 'localhost' || isIP(api.hostname.replace(/^\[|\]$/g, '')) !== 0)) {
     throw new Error('Invalid native API origin: HTTPS domain required; native-local permits only HTTP localhost');
   }
+  // The update gate compares this with MIN_NATIVE_BUILD; it is the Android versionCode.
+  const nativeBuild = env.VITE_ASTERA_NATIVE_BUILD === undefined || env.VITE_ASTERA_NATIVE_BUILD === '' ? '1' : env.VITE_ASTERA_NATIVE_BUILD;
+  if (!/^[1-9]\d{0,9}$/.test(nativeBuild) || Number(nativeBuild) > 2_100_000_000) {
+    throw new Error('Invalid VITE_ASTERA_NATIVE_BUILD: use the Android versionCode');
+  }
   return {
-    target, apiUrl: api.origin, webDir: `mobile-dist/${target}`,
+    target, apiUrl: api.origin, webDir: `mobile-dist/${target}`, nativeBuild,
     appId: `space.asteraonline.app${local ? '.local' : target === 'native-staging' ? '.staging' : ''}`,
     appName: local ? 'Astera Bundled Local' : target === 'native-staging' ? 'Astera Staging' : 'Astera Online',
     androidScheme: local ? 'http' : 'https', cleartext: local,

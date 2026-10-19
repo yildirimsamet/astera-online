@@ -49,14 +49,16 @@ function main(): void {
   const release = args[0] === '--release';
   const targetArgs = release ? args.slice(1) : args;
   const target = z.enum(['native-local', 'native-staging', 'native-production']).parse(targetArgs.length === 1 ? targetArgs[0] : undefined);
-  const mobile = mobileBuild({ VITE_ASTERA_PLATFORM: target,
+  // A debug package is versionCode 1 in Gradle; a release names its own.
+  const nativeBuild = release ? process.env.ASTERA_ANDROID_VERSION_CODE : '1';
+  const mobile = mobileBuild({ VITE_ASTERA_PLATFORM: target, VITE_ASTERA_NATIVE_BUILD: nativeBuild,
     VITE_ASTERA_API_URL: process.env.VITE_ASTERA_API_URL ?? (target === 'native-local' ? 'http://localhost:3100' : undefined) });
   if (mobile.target === 'web') throw new Error('A bundled target is required');
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const releaseConfig = release ? androidRelease({ ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl }, root) : undefined;
   const web = resolve(root, 'apps/web');
   const android = resolve(web, 'android');
-  const environment = { ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl,
+  const environment = { ...process.env, VITE_ASTERA_PLATFORM: target, VITE_ASTERA_API_URL: mobile.apiUrl, VITE_ASTERA_NATIVE_BUILD: mobile.nativeBuild,
     ASTERA_MOBILE_DEBUG: '', ASTERA_MOBILE_DEV_URL: '', NODE_OPTIONS: '--max-old-space-size=4096',
     JAVA_HOME: process.env.JAVA_HOME ?? resolve(homedir(), '.local/share/astera/jdk-21') };
   function run(command: string, commandArgs: string[], cwd: string) {

@@ -16,6 +16,8 @@ import { Button } from './ui/kit/index.js';
 const GameShell = lazy(() => import('./v2/shell/GameShell.js').then(module => ({ default: module.GameShell })));
 import { WebLandingGate } from './landing/public/WebLandingGate.js';
 import { runtime } from './platform/runtime.js';
+import { useUpdateRequired } from './platform/updateGate.js';
+import { UpdateRequired } from './shell/UpdateRequired.js';
 import type { StripFocus } from './shell/PendingStrip.js';
 import {
   nextPanelFocus,
@@ -261,5 +263,6 @@ function SessionApp() {
 /** Heavy game branches load after the public page has become useful. */
 export function App() {
   const { t } = useTranslation();
+  if (useUpdateRequired()) return <UpdateRequired />;
   return <Suspense fallback={<LoadingScreen caption={t('loading.contact')} />}><SessionApp /></Suspense>;
 }

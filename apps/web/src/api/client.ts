@@ -1,4 +1,5 @@
 import { communityPolicyConsentSchema, communityPolicyStatusSchema, type CommunityPolicyConsent } from './communityPolicySchemas.js';
+import { buildHeader, reportUpdateRequired } from '../platform/updateGate.js';
 import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema, accountDeletionStatusSchema, accountDeletionSubmittedSchema } from './schemas.js';
 import { contentReportReceiptSchema, contentReportQueueSchema, contentReportDecisionSchema, communityBlocksSchema, communityBlockResultSchema, type ReportTarget, type ReportReason } from './contentReportSchemas.js';
 import { unknownSignalsSchema, unknownSignalDetailsSchema, unknownSignalLaunchSchema, unknownSignalRecallSchema } from './schemas.js';
@@ -399,6 +400,7 @@ export class Api {
         ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
         ...(sentPlacement ? { 'x-placement': sentPlacement } : {}),
         ...(opts.idempotencyKey ? { 'idempotency-key': opts.idempotencyKey } : {}),
+        ...buildHeader(),
       },
       ...(opts.body === undefined ? {} : { body: JSON.stringify(opts.body) }),
       // Sends the refresh cookie. Same-origin in dev via the Vite proxy.
@@ -412,6 +414,7 @@ export class Api {
       return null;
     });
     opts.signal?.throwIfAborted();
+    if (res.status === 426 && errorShape(body).error === 'UPDATE_REQUIRED') reportUpdateRequired();
     if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
     // A rejected password is an answered credential check, not an expired token.
     if (res.status === 401 && (opts.retryOnExpiry ?? true) && errorShape(body).error !== 'BAD_CREDENTIALS') {
@@ -1423,7 +1426,7 @@ export class Api {
     const open = async (): Promise<Response> => {
       if (generation !== this.sessionGeneration) throw new ApiError('SESSION_CHANGED', 'Session changed', 409);
       const response = await this.http(`${this.baseUrl}/api/stream`, {
-        headers: this.token ? { authorization: `Bearer ${this.token}` } : {},
+        headers: { ...(this.token ? { authorization: `Bearer ${this.token}` } : {}), ...buildHeader() },
         credentials: this.auth ? 'omit' : 'same-origin',
         signal,
       });
@@ -1446,6 +1449,7 @@ export class Api {
      */
     let res = await open();
     if (res.status === 401 && (await this.restore())) res = await open();
+    if (res.status === 426) reportUpdateRequired();
     if (!res.ok || !res.body) throw new ApiError('STREAM_FAILED', 'Stream unavailable', res.status);
 
     // Headers are in and the body is open: from here the client hears everything.

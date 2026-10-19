@@ -268,12 +268,26 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       origin: opts.env.NATIVE_APP_ORIGINS,
       credentials: false,
       methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Authorization', 'Content-Type', 'x-placement', 'idempotency-key', 'x-astera-cosmetics', 'x-media-type'],
+      allowedHeaders: ['Authorization', 'Content-Type', 'x-placement', 'idempotency-key', 'x-astera-cosmetics', 'x-media-type', 'x-astera-build'],
       exposedHeaders: ['x-server-time', 'x-placement', 'Date'],
       maxAge: 600,
     });
   }
   void app.register(cookie);
+
+  /**
+   * A bundled app cannot be hot-fixed like the web: when the API moves past it, it
+   * must say "update" instead of failing request by request. The web sends no build.
+   */
+  const minimumBuild = opts.env.MIN_NATIVE_BUILD;
+  if (minimumBuild > 0) {
+    app.addHook('onRequest', (req, reply, done) => {
+      const build = req.headers['x-astera-build'];
+      if (build === undefined || !req.url.startsWith('/api/')) { done(); return; }
+      if (typeof build === 'string' && /^\d{1,10}$/.test(build) && Number(build) >= minimumBuild) { done(); return; }
+      void reply.status(426).send({ error: 'UPDATE_REQUIRED', message: 'Update Astera Online to keep playing' });
+    });
+  }
 
   /**
    * A CEILING ON WHAT ONE ADDRESS CAN ASK FOR.

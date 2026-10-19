@@ -95,6 +95,9 @@ export const servers = {
 } as const;
 
 export const app = {
+  updateTitle: "アップデートが必要です",
+  updateBody: "このバージョンの Astera Online はゲームサーバーで使用できなくなりました。銀河に戻るにはアプリをアップデートしてください。アカウントと進行状況はサーバーに保存されています。",
+  updateStore: "Google Play でアップデート",
   blockedTitle: "ゲームに接続できませんでした",
   blockedRetry: "再試行",
   /** What `useSession` says when a request failed with no message of its own. */
