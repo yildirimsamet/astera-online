@@ -2,4 +2,4 @@
 <!-- Launcher and splash masks show the centre two thirds: the inset keeps the ship's tip inside. -->
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/astera_icon"
-    android:inset="9%" />
+    android:inset="15%" />

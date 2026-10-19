@@ -34,7 +34,7 @@ describe('the local Android host', () => {
     for (const icon of ['ic_launcher', 'ic_launcher_round']) {
       expect(readAndroid(`app/src/main/res/mipmap-anydpi-v26/${icon}.xml`)).toContain('android:drawable="@drawable/astera_icon_adaptive"');
     }
-    expect(readAndroid('app/src/main/res/drawable/astera_icon_adaptive.xml')).toMatch(/<inset[^>]+android:drawable="@drawable\/astera_icon"[^>]+android:inset="9%"/);
+    expect(readAndroid('app/src/main/res/drawable/astera_icon_adaptive.xml')).toMatch(/<inset[^>]+android:drawable="@drawable\/astera_icon"[^>]+android:inset="15%"/);
     expect(readAndroid('app/src/main/res/values/styles.xml')).toContain('<item name="windowSplashScreenAnimatedIcon">@drawable/astera_icon_adaptive</item>');
   });
 
