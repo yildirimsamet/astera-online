@@ -14,6 +14,9 @@ export function HonorTargetCard({ value }: { value: HonorTarget }) {
       <span>Honor</span><span aria-hidden className="text-v2-ink-3">·</span>
       <span>{t(`leaderboard.honorTarget.${value.kind}`)}</span>
     </div>
+    {value.topTierPeer && <p className="text-caption leading-relaxed text-v2-self">
+      {t('leaderboard.honorTarget.topTierPeer')}
+    </p>}
     {(!value.related || value.kind === 'WEAK') && <p className="text-caption leading-relaxed text-v2-ink-2">
       {t(`leaderboard.honorTarget.${value.kind === 'WEAK' ? 'weakWarning' : 'eligible'}`)}
     </p>}

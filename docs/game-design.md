@@ -844,6 +844,19 @@ tier 6 one who was refused a raid back. Pirates, transfers and neutral worlds �
 are outside it entirely. The check is made at launch only; a fleet already in the air is not turned back when either
 commander's tier moves.
 
+**Honor's galaxy leader exception (owner, 2026-10-19):** a commander at the
+galaxy/season's highest Honor tier treats an attack on exactly one tier below as
+an equal-tier attack. All commanders tied at the top qualify. The lower-tier
+commander's upward bonus conditions remain unchanged. Military-value bands,
+casualty debits, relationship restrictions and shared-side rules still apply.
+The maximum uses the existing Honor season Core peaks of commanders currently
+in that galaxy, including current owned Core levels not yet journalled. Excluded
+bot and admin identities do not set it. The maximum is
+frozen at dispatch and carried through military and strategic evidence; later
+upgrades or transfers cannot rewrite the flight's conditions. Old commitments
+without this term retain their previous policy. This does not change the ±1
+attack band. See `docs/honor-top-tier-peer-2026-10-19.md`.
+
 **Ordinary raids involving tier 1–3 commanders have a twelve-hour battle-time cooldown**
 (owner, 2026-10-12). If either commander is tier 1–3, each direction is independent:
 one ordinary raid may be sent, and the next may be sent twelve hours after the battle

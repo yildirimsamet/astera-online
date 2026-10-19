@@ -92,13 +92,15 @@ describe.each([{ rulesetVersion: 1, honorVersion: 3 }, { rulesetVersion: MULTI_W
   it('a genuinely lower-tier and smaller target loses the attacker Honor without debiting the victim', async () => {
     // Arrange genuine initial weakness before activation; downgrading an already-recorded
     // large fleet would retain its 24h reference and would test a different case.
-    f = await seedWorld(2, 9922);
+    f = await seedWorld(3, 9922);
     await f.db.update(seasons).set({ rulesetVersion }).where(eq(seasons.id, f.seasonId));
     await f.db.update(planets).set({ defencePosture: 'HOLD' }).where(eq(planets.seasonId, f.seasonId));
     await grant(f.db, f.planetIds[1]!, 10_000, 2000);
     await fuelUp(f.db, f.planetIds[0]!, 50_000);
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 9);
     await setLevel(f.db, f.planetIds[1]!, 'CORE', 6);
+    // This is the ordinary weak-target case, not the galaxy leader exception.
+    await setLevel(f.db, f.planetIds[2]!, 'CORE', 10);
     await giveUnits(f.db, f.planetIds[0]!, { BALLISTA: 60 });
     await giveUnits(f.db, f.planetIds[1]!, { BALLISTA: 6 });
     await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, honorVersion === 4 ? 'SHADOW' : 'ACTIVE', f.clock, honorVersion));

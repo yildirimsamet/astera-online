@@ -63,6 +63,7 @@ export function honorBattleEvidence(input: {
       normalAbsorbed: Math.floor(shield.normalAbsorbed) })));
   }
   return honorEvidenceSchema.parse({ source: input.source, id: input.id, at: input.at,
+    ...(frozen.galaxyTopTier === undefined ? {} : { galaxyTopTier: frozen.galaxyTopTier }),
     ...(frozen.retaliationLootPercent === undefined ? {} : { retaliationLootPercent: frozen.retaliationLootPercent }),
     ...(frozen.selectedDefenders === undefined ? {} : { selectedDefenders: frozen.selectedDefenders }),
     eligible: frozen.eligible, exclusion: frozen.exclusion, relations: frozen.relations, attack, defence });

@@ -8,7 +8,7 @@ import { settlePlanetRadiationAt } from '../src/services/planetRadiation.js';
 import { giveUnits, grant, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 let f: Fixture;
 beforeEach(async () => {
-  f = await seedWorld(2, 7719);
+  f = await seedWorld(3, 7719);
   await f.db.update(seasons).set({ rulesetVersion: 18, radiationBombStartsAt: f.clock.now() });
   for (const id of f.planetIds) {
     await setLevel(f.db, id, 'CORE', 12); await setLevel(f.db, id, 'SHIPYARD', 5);
@@ -46,12 +46,19 @@ it('credits real new radiation damage in small capped increments, without requir
   expect(all.reduce((sum, r) => sum + r.outcome.attack.total, 0)).toBeLessThanOrEqual(2_500_000);
   expect(all.every(r => r.evidence.tacticalCap?.id === `bomb:${sent.flightId}`)).toBe(true);
 });
-it('does not award empty-target impact and penalises real weak-target radiation pressure', async () => {
+it.each([true, false])('does not award empty impact and classifies actual radiation pressure: leader=%s', async leader => {
   await setLevel(f.db, f.planetIds[0]!, 'CORE', 15);
+  if (!leader) await setLevel(f.db, f.planetIds[2]!, 'CORE', 16);
   await hit();
   f.clock.advance(1);
   await f.db.transaction(tx => settlePlanetRadiationAt(tx, f.planetIds[1]!, f.clock.now()));
-  expect((await f.db.select().from(honorEvents)).reduce((sum,r) => sum+r.outcome.attack.total,0)).toBeLessThan(0);
+  const entries = await f.db.select().from(honorEvents);
+  expect(entries.length).toBeGreaterThan(0);
+  expect(entries.every(row => row.evidence.galaxyTopTier === (leader ? 5 : 6))).toBe(true);
+  expect(entries.every(row => row.outcome.pool.attack.exposures[0]?.bullying === !leader)).toBe(true);
+  const total = entries.reduce((sum, row) => sum + row.outcome.attack.total, 0);
+  if (leader) expect(total).toBeGreaterThan(0);
+  else expect(total).toBeLessThan(0);
 });
 it('empty or civilian-only target cannot provide positive military credit', async () => {
   await f.db.delete(units).where(and(eq(units.planetId, f.planetIds[1]!), eq(units.location, 'home')));

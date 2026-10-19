@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, lte, notInArray, sql } from 'drizzle-orm';
 import { coreTier, honorReferenceAt } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
-import { buildings, honorObservations, honorSeasons, planets, players } from '../db/schema.js';
+import { accounts, botProfiles, buildings, honorObservations, honorSeasons, planets, players } from '../db/schema.js';
 import { ownedHonorNavy } from './honorNavy.js';
 
 /**
@@ -44,4 +44,34 @@ export async function honorOwnerReference(db: Queryable, seasonId: string, playe
     ...(throughOrder === undefined ? [] : [lte(honorObservations.id, throughOrder)])))
     .orderBy(asc(honorObservations.at), asc(honorObservations.id));
   return honorReferenceAt(rows.map(row => ({ at: row.at.getTime(), order: row.id, navy: row.navy, coreTier: row.coreTier })), at.getTime());
+}
+
+/** One read snapshot, no new locks. Match Honor's season Core peak, including
+ * current Core not yet journalled, but only for commanders still in this galaxy.
+ * A neutral world, old resident, bot, admin or another galaxy cannot move it. */
+export async function honorGalaxyTopTier(db: Queryable, seasonId: string, at: Date,
+  adminUsernames: ReadonlySet<string>): Promise<number> {
+  const [row] = await db.execute<{ tier: number; level: number }>(sql`
+    WITH honor_contenders AS (
+      SELECT ${players.id} FROM ${players}
+      INNER JOIN ${accounts} ON ${accounts.id} = ${players.accountId}
+      LEFT JOIN ${botProfiles} ON ${botProfiles.accountId} = ${players.accountId}
+      WHERE ${players.seasonId} = ${seasonId} AND ${botProfiles.accountId} IS NULL
+        AND ${adminUsernames.size > 0 ? notInArray(accounts.username, [...adminUsernames]) : sql`true`}
+    )
+    SELECT
+      (SELECT coalesce(max(${honorObservations.coreTier}), 1)::int
+       FROM ${honorObservations}
+       INNER JOIN honor_contenders ON honor_contenders.id = ${honorObservations.playerId}
+       WHERE ${honorObservations.seasonId} = ${seasonId}
+         AND ${honorObservations.at} <= ${at.toISOString()}::timestamptz) AS tier,
+      (SELECT coalesce(max(${buildings.level}), 1)::int
+       FROM ${buildings}
+       INNER JOIN ${planets} ON ${planets.id} = ${buildings.planetId}
+       INNER JOIN honor_contenders ON honor_contenders.id = ${planets.controllerPlayerId}
+       WHERE ${buildings.type} = 'CORE'
+         AND ${planets.seasonId} = ${seasonId}) AS level
+  `);
+  if (!row) throw new Error('Missing Honor galaxy tier');
+  return Math.max(row.tier, coreTier(Math.max(1, row.level)));
 }

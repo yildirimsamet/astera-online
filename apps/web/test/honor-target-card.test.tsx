@@ -1,8 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { HonorTargetCard } from '../src/ui/HonorTargetCard.js';
+import { honorTargetSchema } from '../src/api/schemas.js';
 
 describe('Honor rules before a player commits a raid', () => {
+  it('explains why a galaxy leader treats the adjacent tier as a peer without removing military limits', () => {
+    const value = honorTargetSchema.parse({ enabled: true, eligible: true, kind: 'PEER', militaryReturn: 'HALF',
+      related: false, repeated: false, retaliation: false, topTierPeer: true });
+    render(<HonorTargetCard value={value} />);
+    expect(screen.getByText(/highest tier in this galaxy/)).toBeVisible();
+    expect(screen.getByText(/one tier below.*equal-tier/)).toBeVisible();
+    expect(screen.getByText(/attacking upward.*bonus/)).toBeVisible();
+    expect(screen.getByText(/Reduced military return/)).toBeVisible();
+  });
   it.each([20, 40] as const)('explains the 24-hour budget with the season’s %s%% loot weight', retaliationLootPercent => {
     render(<HonorTargetCard value={{ enabled: true, eligible: true, kind: 'WEAK', militaryReturn: 'NONE',
       related: false, repeated: false, retaliation: true, retaliationLootPercent }} />);

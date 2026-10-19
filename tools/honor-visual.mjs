@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { chromium } from 'playwright';
 
 /** Real React screens with deterministic API-shaped fixtures; no game database writes. */
-export async function verifyHonor(output, states = ['leaderboard', 'dominion-prizes', 'segmented', 'commander', 'success', 'breakdown', 'weak-target', 'defence', 'archive', 'long-score', 'target-weak', 'target-upper', 'target-related']) {
+export async function verifyHonor(output, states = ['leaderboard', 'dominion-prizes', 'segmented', 'commander', 'success', 'breakdown', 'weak-target', 'defence', 'archive', 'long-score', 'target-weak', 'target-upper', 'target-related', 'target-top-tier']) {
   await mkdir(output, { recursive: true });
   const browser = await chromium.launch();
   const measurements = [];
@@ -124,6 +124,7 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
           : state.startsWith('target-') ? h('div', { className: 'p-3' }, h(HonorTargetCard, {
             value: { enabled: true, eligible: true, kind: state === 'target-weak' ? 'WEAK' : state === 'target-upper' ? 'UPPER' : 'PEER',
               militaryReturn: state === 'target-upper' ? 'HALF' : 'FULL', related: state === 'target-related',
+              topTierPeer: state === 'target-top-tier',
               repeated: true, retaliation: state === 'target-weak', retaliationLootPercent: 40, soloCredit: true },
           })) : state === 'segmented' ? h('div', { className: 'grid gap-5 p-3 font-v2-ui' },
             h('p', { className: 'text-body font-semibold text-v2-ink' }, i18n.t('leaderboard.honorPrimary')),
@@ -168,7 +169,8 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
         };
         window.__honorShow('leaderboard');
         window.__honorLanguage = () => ({ language: i18n.resolvedLanguage, heading: i18n.t('leaderboard.honorPrimary'),
-          rules: i18n.t('leaderboard.honorRules'), prizeHint: i18n.t('leaderboard.honorPrizeHint') });
+          rules: i18n.t('leaderboard.honorRules'), prizeHint: i18n.t('leaderboard.honorPrizeHint'),
+          topTierRule: i18n.t('leaderboard.honorTarget.topTierPeer') });
       }, language);
       for (const state of states) {
         await page.evaluate(state => window.__honorShow(state === 'dominion-prizes' || state === 'prize-rules' ? 'leaderboard' : state), state);
@@ -220,6 +222,10 @@ export async function verifyHonor(output, states = ['leaderboard', 'dominion-pri
         await page.waitForTimeout(200);
         const locale = await page.evaluate(() => window.__honorLanguage());
         assert.equal(locale.language, language, `${language}/${width}/${state}: wrong fixture language`);
+        if (state === 'target-top-tier') {
+          assert(!locale.topTierRule.startsWith('leaderboard.'), `${language}/${width}: untranslated top-tier rule`);
+          assert(await panel.getByText(locale.topTierRule, { exact: true }).isVisible(), `${language}/${width}: missing top-tier explanation`);
+        }
         if (!['emp', 'radiation', 'emp-launch'].includes(state)) assert(await panel.getByText(locale.heading, { exact: true }).count() > 0,
           `${language}/${width}/${state}: untranslated heading`);
         if (['emp', 'radiation', 'emp-launch'].includes(state)) assert(!/leaderboard\.|reports\.|planet\./.test(await panel.innerText()), `${language}/${width}/${state}: untranslated tactical copy`);

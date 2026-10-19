@@ -6,6 +6,7 @@ import { buildings, honorObservations, honorSeasons, planets, players } from '..
 import { honorStateSchema } from './honorAccounting.js';
 import { readHonorRelations } from './honorRelations.js';
 import { ownedHonorNavy } from './honorNavy.js';
+import { honorGalaxyTopTier } from './honorReference.js';
 import { GameError } from './planet.js';
 
 /** Coarse decision guidance only. GET never writes observations, commitments or points. */
@@ -21,11 +22,12 @@ export async function honorTargetPreview(db: Db, playerId: string, targetPlanetI
     if (!target || target.owner === playerId) throw new GameError('INVALID_TARGET', 'Invalid Honor target', 400);
     if (target.owner === null) return { enabled: true as const, eligible: false as const };
     const now = clock.now(), ids = [playerId, target.owner];
-    const [history, currentNavies, core] = await Promise.all([
+    const [history, currentNavies, core, galaxyTopTier] = await Promise.all([
       tx.select().from(honorObservations).where(and(eq(honorObservations.seasonId, owner.seasonId), inArray(honorObservations.playerId, ids))),
       Promise.all(ids.map(id => ownedHonorNavy(tx, id, config))),
       tx.select({ owner: planets.controllerPlayerId, level: buildings.level }).from(buildings)
         .innerJoin(planets, eq(planets.id, buildings.planetId)).where(and(eq(buildings.type, 'CORE'), inArray(planets.controllerPlayerId, ids))),
+      honorGalaxyTopTier(tx, owner.seasonId, now, adminUsernames),
     ]);
     const references = ids.map((id, index) => {
       const rows = history.filter(row => row.playerId === id && row.at <= now);
@@ -38,11 +40,12 @@ export async function honorTargetPreview(db: Db, playerId: string, targetPlanetI
     });
     const [own, enemy] = references;
     if (!own || !enemy) throw new Error('Missing Honor preview reference');
-    const comparison = honorChallenge({ ownTier: own.tier, ownNavy: own.navy, enemyTier: enemy.tier, enemyNavy: enemy.navy });
+    const comparison = honorChallenge({ ownTier: own.tier, ownNavy: own.navy, enemyTier: enemy.tier, enemyNavy: enemy.navy, galaxyTopTier });
     const relationships = await readHonorRelations(tx, { seasonId: owner.seasonId, attack: [playerId], defence: [target.owner], at: now, adminUsernames });
     if (!relationships.eligible) return { enabled: true as const, eligible: false as const };
     const state = honorStateSchema.parse(config.state), since = now.getTime() - HONOR_HISTORY_HOURS * 3_600_000;
     return { enabled: true as const, eligible: true as const, kind: comparison.kind,
+      ...(own.tier === galaxyTopTier && enemy.tier === own.tier - 1 ? { topTierPeer: true as const } : {}),
       retaliationLootPercent: config.retaliationLootPercent,
       soloCredit: isSupportedHonorVersion(config.version) && honorSoloCredit(config.version),
       militaryReturn: comparison.gainFactor === 0 ? 'NONE' as const : comparison.gainFactor === 500_000 ? 'HALF' as const : 'FULL' as const,

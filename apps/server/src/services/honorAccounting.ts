@@ -9,6 +9,7 @@ const identity = z.string().min(1);
 const member = z.object({ id: identity, tier: amount.min(1), navy: amount, defenceNavy: amount.optional(), efficiencyCost: amount.optional(), weight: amount,
   civilianWeight: amount, loss: amount, combatLoss: amount, lootLost: amount }).strict();
 export const honorEvidenceSchema = z.object({
+  galaxyTopTier: amount.min(1).optional(),
   retaliationLootPercent: z.union([z.literal(20), z.literal(40)]).optional(),
   source: z.enum(['WORLD', 'CLAN_WAR', 'MONUMENT', 'STRATEGIC_IMPACT', 'STRATEGIC_INTERCEPTION']),
   id: identity, at: amount, eligible: z.boolean(), attack: z.array(member).min(1), defence: z.array(member),

@@ -30,7 +30,7 @@ describe('read-only Honor target guidance', () => {
   });
   it.each([
     [100, 100, 9, 9, 'PEER', 'FULL'], [100, 100, 9, 12, 'UPPER', 'FULL'],
-    [100, 20, 9, 6, 'WEAK', 'NONE'], [100, 60, 9, 9, 'PEER', 'HALF'],
+    [100, 20, 9, 6, 'PEER', 'NONE'], [100, 60, 9, 9, 'PEER', 'HALF'],
     [100, 20, 9, 9, 'PEER', 'NONE'], [20, 100, 9, 6, 'PEER', 'FULL'],
   ] as const)('classifies %s/%s hulls and Core %s/%s as %s with %s military return', async (own, enemy, a, d, kind, militaryReturn) => {
     await setup('ACTIVE', own, enemy, a, d);
@@ -43,7 +43,7 @@ describe('read-only Honor target guidance', () => {
     await expect(preview(randomUUID())).rejects.toThrow('Honor target');
   });
   it('exposes authenticated coarse guidance through the actual client contract', async () => {
-    await setup();
+    await setup('ACTIVE', 100, 99, 22, 19);
     const { app, close } = buildApp({ db: f.db, clock: f.clock, env: testEnv(), logger: pino({ level: 'silent' }) });
     try {
       const authorization = `Bearer ${await new TokenService('test-secret-that-is-long-enough', 15, 30).issueAccess(f.accountIds[0]!)}`;
@@ -51,7 +51,7 @@ describe('read-only Honor target guidance', () => {
       expect((await app.inject({ url })).statusCode).toBe(401);
       const result = await app.inject({ url, headers: { authorization } });
       expect(result.statusCode).toBe(200);
-      expect(honorTargetSchema.parse(result.json())).toMatchObject({ enabled: true, eligible: true, kind: 'PEER', militaryReturn: 'FULL', retaliationLootPercent: 40 });
+      expect(honorTargetSchema.parse(result.json())).toMatchObject({ enabled: true, eligible: true, kind: 'PEER', militaryReturn: 'FULL', retaliationLootPercent: 40, topTierPeer: true });
     } finally { await close(); }
   });
   it('refuses to invent lost reference history from current inventory', async () => {

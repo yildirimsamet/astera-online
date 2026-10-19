@@ -49,6 +49,7 @@ describe('Honor is the primary player-visible race', () => {
     expect(screen.getByText(/122.5 Honor/)).toBeInTheDocument();
     await userEvent.click(screen.getByText('How Honor works'));
     expect(screen.getByText(/Defending never reduces your Honor/)).toBeVisible();
+    expect(screen.getByText(/highest tier in the galaxy.*one tier below.*equal-tier/)).toBeVisible();
   });
 
   it('shows the solo-credit rule prominently only when the server announces it', async () => {

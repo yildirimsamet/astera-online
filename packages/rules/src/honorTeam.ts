@@ -30,6 +30,8 @@ export interface HonorRelation {
 }
 
 export interface HonorTeamInput {
+  /** Frozen galaxy leader exception; applies only to offensive comparisons. */
+  galaxyTopTier?: number;
   /** Frozen dispatch term; legacy evidence omits it and retains 20%. */
   retaliationLootPercent?: 20 | 40;
   /** Frozen v3 policy: shared sides retain attacking debits but have no positive gain. */
@@ -149,7 +151,8 @@ export function honorTeam(input: HonorTeamInput): HonorTeamPool {
         const relation = relations.get(honorPairKey(a.id, d.id));
         const ownNavy = defending && input.defendingCurrentNavy ? Math.max(a.navy, a.defenceNavy ?? a.navy)
           : defending && input.defendingZeroNavyFloor && a.navy === 0 ? a.weight : a.navy;
-        const c = honorChallenge({ ownTier: a.tier, enemyTier: d.tier, ownNavy, enemyNavy: d.navy });
+        const c = honorChallenge({ ownTier: a.tier, enemyTier: d.tier, ownNavy, enemyNavy: d.navy,
+          galaxyTopTier: defending ? undefined : input.galaxyTopTier });
         const bullying = !defending && c.kind === 'WEAK'
           && (input.selectedDefenders === undefined || input.selectedDefenders.includes(d.id));
         const harmFifths = harmShares.find(row => row.actor === a.id)?.points ?? 0;
@@ -176,7 +179,8 @@ export function honorTeam(input: HonorTeamInput): HonorTeamPool {
       if (!a || !d || W === 0n) throw new Error('Tactical effect has no committed participant');
       const exposure = exposures.find(row => row.actor === a.id && row.enemy === d.id)!;
       const relation = relations.get(honorPairKey(a.id, d.id));
-      const c = honorChallenge({ ownTier: a.tier, enemyTier: d.tier, ownNavy: a.navy, enemyNavy: d.navy });
+      const c = honorChallenge({ ownTier: a.tier, enemyTier: d.tier, ownNavy: a.navy, enemyNavy: d.navy,
+        galaxyTopTier: input.galaxyTopTier });
       const pressure = effect.pressureFifths;
       exposure.harmFifths = honorNumber(BigInt(exposure.harmFifths) + BigInt(pressure));
       if (exposure.bullying) {

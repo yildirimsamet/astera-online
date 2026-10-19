@@ -7,7 +7,7 @@ import { onMissionArrival } from '../src/worker/handlers.js';
 import { giveInstrument, giveSatellite, giveUnits, levelWorld, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 let f: Fixture;
 beforeEach(async () => {
-  f = await seedWorld(2, 24017);
+  f = await seedWorld(3, 24017);
   await levelWorld(f.db, f.planetIds);
   for (const id of f.planetIds) {
     await setLevel(f.db, id, 'CORE', 12);
@@ -50,13 +50,19 @@ it('does not reward a repeated blackout with no new effect', async () => {
   expect(entry).toBeDefined();
   expect(entry?.outcome.attack.total).toBe(0);
 });
-it('preserves actual weak-target pressure without inventing casualties', async () => {
+it.each([true, false])('respects the leader exception for actual EMP pressure: leader=%s', async leader => {
   await setLevel(f.db, f.planetIds[0]!, 'CORE', 15);
+  if (!leader) await setLevel(f.db, f.planetIds[2]!, 'CORE', 16);
   await f.db.update(planets).set({ shield: 500 }).where(eq(planets.id, f.planetIds[1]!));
   const sent = await strike();
   const [entry] = await f.db.select().from(honorEvents);
   expect(entry?.evidence.id).toBe(sent.missionId);
-  expect(entry?.outcome.attack.total).toBeLessThan(0);
+  expect(entry?.evidence.galaxyTopTier).toBe(leader ? 5 : 6);
+  expect(entry?.outcome.pool.attack.exposures[0]?.bullying).toBe(!leader);
+  expect(entry?.evidence.attack[0]?.loss).toBe(0);
+  expect(entry?.evidence.defence[0]?.loss).toBe(0);
+  if (leader) expect(entry?.outcome.attack.total).toBeGreaterThan(0);
+  else expect(entry?.outcome.attack.total).toBeLessThan(0);
 });
 it('a real intercepted weapon rewards its defender and records only the attacker weapon as a permanent loss', async () => {
   await giveSatellite(f.db, f.planetIds[1]!, 'UPLINK');
