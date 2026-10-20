@@ -329,8 +329,11 @@ describe('chronological monument arrivals and physical battle settlement', () =>
 
   it('carries neutral wounds between independent attacks and keeps the respawn template whole', async () => {
     await f.db.update(monuments).set({ garrison: { CITADEL: 1 }, garrisonTemplate: { CITADEL: 1 } }).where(eq(monuments.id, m.id));
-    const first = await wave(0, { DART: 1 });
-    const second = await wave(1, { DART: 1 }, { eta: 2 });
+    // A Citadel's 2,158 ship shield stops a single Dart outright. Two waves of 70 Darts wound it
+    // and leave it standing in 20,000 of 20,000 seeded pairs (2026-10-20); 60 cannot scratch it,
+    // 100 kill it.
+    const first = await wave(0, { DART: 70 });
+    const second = await wave(1, { DART: 70 }, { eta: 2 });
     await arrive(first);
     const [before] = await f.db.select().from(monuments);
     expect(before!.garrisonDamage.length).toBeGreaterThan(0);

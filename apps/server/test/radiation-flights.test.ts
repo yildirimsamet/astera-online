@@ -159,14 +159,15 @@ describe('a raid flying through a cloud', () => {
 describe('a wing coming home through a cloud', () => {
   it('loses the ships the fight had worn down, lands the rest, and only the loot they can hold', async () => {
     await grant(f.db, target, 60_000, 30_000);
-    await giveUnits(f.db, target, { STRONGHOLD: 1 });
-    await giveUnits(f.db, raider, { DART: 4 });
-    const launch = await launchAttack(f.db, raider, target, { DART: 4 }, f.clock);
+    await giveUnits(f.db, target, { PIKE: 2 });
+    await giveUnits(f.db, raider, { DART: 10 });
+    const launch = await launchAttack(f.db, raider, target, { DART: 10 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker().tick();
     const [report] = await f.db.select().from(battleReports).where(eq(battleReports.missionId, launch.missionId));
     const [back] = await f.db.select().from(missions).where(eq(missions.parentMissionId, launch.missionId));
-    // Measured over 1,500 seeds: one Dart comes out 53–78% damaged, the rest whole.
+    // Measured over 20,000 seeds with ship shields (2026-10-20): the Pikes always fall, every worn
+    // Dart comes out more than half damaged, and some come out whole.
     const worn = report!.attackerDamage.reduce((n, lot) => n + lot.count, 0);
     const whole = fleetCount(back!.fleet) - worn;
     expect(worn).toBeGreaterThan(0);

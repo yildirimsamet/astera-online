@@ -59,8 +59,9 @@ async function homeOf(db: Awaited<ReturnType<typeof testDb>>['db'], planetId: st
 
 describe('a raid on a caretaker world', () => {
   /**
-   * Two Darts against one Stronghold leave a Dart 53–78% damaged across the whole roll
-   * band (measured with `resolveCombat` over 1,500 seeds), so the lot always docks.
+   * Two Darts against three Strongholds always come home with a lot that needs the dock
+   * (20,000 of 20,000 `resolveCombat` seeds, 2026-10-20). With ship shields one
+   * Stronghold (68 attack) can no longer get past a Dart's 77-point shield at all.
    */
   it('brings the raider\'s damage home and leaves the caretaker nothing to carry', async () => {
     const { db } = await testDb();
@@ -80,7 +81,7 @@ describe('a raid on a caretaker world', () => {
     await db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, joined.planetId));
     await db.delete(units).where(eq(units.planetId, target.id));
     await db.insert(units).values({
-      planetId: target.id, ownerPlayerId: null, hull: 'STRONGHOLD', location: 'home', count: 1,
+      planetId: target.id, ownerPlayerId: null, hull: 'STRONGHOLD', location: 'home', count: 3,
     });
     await setLevel(db, joined.planetId, 'CORE', 5);
     await giveUnits(db, joined.planetId, { DART: 2 });
@@ -127,11 +128,13 @@ describe('a raid on a pirate', () => {
 
       `asteroidKey` is `defaultRandom()`, so an unpinned season dealt a different first
       pirate every run: across 40 keys, 2 could wipe this wing and some left it unhurt,
-      which is how this test went red intermittently. Pinned, it deals the same level-1
-      crew every run; against it 60 Darts survived with a part-hit ship in 50,000 of
-      50,000 combat seeds (`resolveCombat`, the raid id being the only other input).
+      which is how this test went red intermittently. Pinned, it deals the same level-2
+      crew every run; against it 30 Darts survived with a part-hit ship in 20,000 of
+      20,000 combat seeds (`resolveBattle` + `pirateOverrun`, the raid id being the only
+      other input). 2026-10-20: re-pinned for ship shields — the old level-1 crew's 31.5
+      damage a round never got past a single Dart's shield, so nothing was ever part-hit.
     */
-    await db.update(seasons).set({ asteroidKey: pinnedKey(4514) }).where(eq(seasons.id, season.id));
+    await db.update(seasons).set({ asteroidKey: pinnedKey(4510) }).where(eq(seasons.id, season.id));
     const joined = [];
     for (let i = 0; i < 8; i++) {
       joined.push(await joinSeason(db, (await makeAccount(db, `Hunter${String(i)}`)).id, season.id, clock));
@@ -143,14 +146,14 @@ describe('a raid on a pirate', () => {
     const spec = snapshot.pirates[0];
     if (!spec) throw new Error('the hour dealt no pirate');
     expect({ level: spec.level, roster: spec.roster }, 'the pinned key deals the measured pirate')
-      .toEqual({ level: 1, roster: { PIKE: 1, DART: 1 } });
+      .toEqual({ level: 2, roster: { VIPER: 1, SENTINEL: 1, PIKE: 1, DART: 1 } });
     const minute = Math.ceil(spec.appearsAt) + 2;
     const at = piratePosition(spec, minute);
     const mine = joined[0]!.planetId;
     await db.update(planets).set({ x: at.x + 60, y: at.y, z: at.z }).where(eq(planets.id, mine));
     clock.set(new Date(start.getTime() + minute * 60_000));
 
-    const wing: Fleet = { DART: 60 };
+    const wing: Fleet = { DART: 30 };
     await grant(db, mine, 200_000, 40_000);
     await giveUnits(db, mine, wing);
     await fuelUp(db, mine);

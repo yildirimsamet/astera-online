@@ -37,12 +37,12 @@ async function hit(fleet: Fleet) {
   await resolveRadiationBomb(f.db, sent.flightId, f.clock);
 }
 
-async function raid() {
+async function raid(darts = 1) {
   const [mission] = await f.db.insert(missions).values({ seasonId: f.seasonId, kind: 'attack', ownerPlayerId: f.playerIds[0]!,
-    originPlanetId: f.planetIds[0]!, targetPlanetId: npc, fleet: { DART: 1 }, damage: [], tech: {}, fuelPaid: 0,
+    originPlanetId: f.planetIds[0]!, targetPlanetId: npc, fleet: { DART: darts }, damage: [], tech: {}, fuelPaid: 0,
     distance: 1000, departAt: f.clock.now(), arriveAt: f.clock.now() }).returning();
   await f.db.insert(units).values({ planetId: f.planetIds[0]!, ownerPlayerId: f.playerIds[0]!,
-    hull: 'DART', location: mission!.id, count: 1 });
+    hull: 'DART', location: mission!.id, count: darts });
   await f.db.transaction(tx => resolveNeutralBattle(tx, mission!, f.clock, 18));
   const [report] = await f.db.select().from(battleReports).where(eq(battleReports.missionId, mission!.id));
   return { mission: mission!, report: report! };
@@ -52,8 +52,10 @@ it('fights with the NPC’s radiation wounds and preserves the surviving HP in s
   await hit({ CITADEL: 1 });
   f.clock.advance(1);
   const wounded = applyHpDose({ CITADEL: 1 }, [], 9);
-  const { mission, report } = await raid();
-  const expected = resolveBattle([soloStack({ DART: 1 }, { tech: {} }, [])],
+  // One Dart never gets past a Citadel's 2,158 ship shield. Seventy wound it further and leave it
+  // standing in 20,000 of 20,000 seeds (2026-10-20).
+  const { mission, report } = await raid(70);
+  const expected = resolveBattle([soloStack({ DART: 70 }, { tech: {} }, [])],
     [{ stackId: 'neutral', playerId: '', fleet: { CITADEL: 1 }, damage: wounded.lots, tech: { tech: {} }, maintenanceExempt: true }],
     0, seededFrom(mission.id), 'HP_PLANET', true);
   expect(report.defenderLosses).toEqual(expected.defenderLosses);

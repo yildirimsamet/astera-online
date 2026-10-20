@@ -23,8 +23,10 @@ it.each([{ afterLaunch: false, rankedOpening: false, openBeforeLaunch: false, ve
   const f = await supportWorld(4, 5519);
   const clanId = await formClan(f, 0, [1, 2]);
   await f.db.update(clans).set({ level: 5 }).where(eq(clans.id, clanId));
-  await giveUnits(f.db, f.planetIds[3]!, { DART: 4 });
-  await giveUnits(f.db, f.planetIds[3]!, { DART: 116 }, randomUUID());
+  // Twenty Darts at home fire 420 a round: whatever way it splits across the two waves, one
+  // wave takes more than a Dart's 77 shield + 77 hull, so the combined attack always loses ships.
+  await giveUnits(f.db, f.planetIds[3]!, { DART: 20 });
+  await giveUnits(f.db, f.planetIds[3]!, { DART: 100 }, randomUUID());
   await f.db.transaction(async tx => {
     if (!afterLaunch) {
       await prepareHonorSeason(tx, f.seasonId, 'SHADOW', f.clock, version);

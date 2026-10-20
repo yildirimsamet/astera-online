@@ -191,9 +191,11 @@ describe('a raid on a pirate', () => {
   /**
    * A bot reads the pirate as the server settles it: holds that outlive the crew's last warship
    * are taken (`pirateOverrun`, 2026-10-06), so a wing that kills the line clears the pirate.
+   * Four Darts fire 84 a round, under a Courier's 90-point ship shield: the holds never fall
+   * to the guns, only to the overrun.
    */
   it('counts a crew whose holds outlive its line as cleared', () => {
-    const crew: Fleet = { RAMPART: 3, COURIER: 2 };
+    const crew: Fleet = { PIKE: 1, COURIER: 2 };
     const plan = planPirateRaid({ ...base, fleet: { DART: 5 }, crew, damageMult: pirateStats(1).damageMult,
       hoard: pirateHoard(crew), nerve: careful });
     expect(plan?.wing).toEqual({ DART: 4 });

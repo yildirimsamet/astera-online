@@ -28,7 +28,9 @@ describe('v4 release rehearsal: real raids across a clean ranked opening', () =>
   });
   afterAll(async () => { await (await testDb()).close(); });
   const open = () => openHonorRanking(f.db, { seasonId: f.seasonId, clock: f.clock, apply: true });
-  const launch = () => launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 20 }, f.clock);
+  // Forty Darts lose to eighty but always take 10–12 with them (ship shields, 5,000 seeds), so the
+  // raider ends with Honor above zero and Dominion below it: each side tops a different ladder.
+  const launch = () => launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 40 }, f.clock);
   const land = async (raid: Awaited<ReturnType<typeof launch>>) => {
     f.clock.set(settledAt(raid.arriveAt));
     const [event] = await f.db.select().from(scheduledEvents)

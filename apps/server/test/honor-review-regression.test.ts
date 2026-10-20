@@ -100,8 +100,10 @@ it('an Honor-only score movement publishes a ranking refresh to other commanders
 
     expect(entry!.outcome.attack.total).toBeGreaterThan(0);
     expect(entry!.outcome.defence.total).toBeGreaterThan(0);
-    expect(commanders.every(row => row.dominionTaken === row.dominionLost)).toBe(true);
-    expect(publishing.mock.calls.some(row => row[2] === 'score')).toBe(true);
+    // With ship shields a mirror fight no longer ends level, so Dominion may move too and publish
+    // once itself. The Honor ledger's own refresh is the one counted on top of it.
+    const dominionMoved = commanders.some(row => row.dominionTaken !== row.dominionLost);
+    expect(publishing.mock.calls.filter(row => row[2] === 'score')).toHaveLength(dominionMoved ? 2 : 1);
   } finally { publishing.mockRestore(); }
 });
 
