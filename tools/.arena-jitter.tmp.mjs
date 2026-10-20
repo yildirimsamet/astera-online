@@ -56,8 +56,6 @@ const r = await page.evaluate(snapOff => new Promise(done => {
   requestAnimationFrame(tick);
 }), snapOff);
 await page.keyboard.up('KeyD');
-const diffs = await page.evaluate(() => window.__arena.network.debugDiffs.slice(-90));
-console.log(diffs.filter(d => d[3] > 0.01).slice(0, 25).map(d => d.map(v => +v.toFixed(2)).join(' ')).join('\n'), '\nof', diffs.length);
 const rates = r.out.map(x => x[0]);
 const jerk = rates.slice(1).map((v, i) => Math.abs(v - rates[i]));
 const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
