@@ -40,6 +40,8 @@ const HIT_SITES: readonly (readonly [string, string])[] = [
   ['src/galaxy/IntergalacticConvoy.tsx', 'convoy'],
   ['src/galaxy/Wrecks.tsx', 'wreck'],
   ['src/galaxy/Fleets.tsx', 'pirate'],
+  // 2026-10-20 admin draw count: the eight monuments' opacity-0 spheres were eight draws a frame.
+  ['src/galaxy/Monuments.tsx', 'monument'],
 ];
 
 beforeEach(() => {
@@ -56,6 +58,7 @@ describe('the hit-box colour key', () => {
         'deathStar',
         'fleet',
         'miner',
+        'monument',
         'pirate',
         'planet',
         'probe',

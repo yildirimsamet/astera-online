@@ -62,9 +62,12 @@ it.each(['full', 'far'] as const)('keeps %s body compaction separate from pick i
   const camera = new THREE.PerspectiveCamera(60, 1, 1, 100);
   const state = { camera, clock: { elapsedTime: 1 } } as RootState;
   const frame = () => { vi.mocked(useFrame).mock.lastCall![0](state, 0); };
-  frame();
   const mesh = result.current.body;
+  // 2026-10-20 admin profile: an empty bucket still walked the whole render path every frame.
+  expect(mesh.visible).toBe(false);
+  frame();
   expect(mesh.count).toBe(1);
+  expect(mesh.visible).toBe(true);
   expect(mesh.instanceMatrix.count).toBe(4);
   const ray = new THREE.Raycaster(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1));
   const hit = ray.intersectObject(result.current.hits)[0];
@@ -78,6 +81,7 @@ it.each(['full', 'far'] as const)('keeps %s body compaction separate from pick i
   camera.position.x = 200;
   frame();
   expect(mesh.count).toBe(0);
+  expect(mesh.visible).toBe(false);
   camera.position.x = 0;
   state.clock.elapsedTime = 30;
   frame();
@@ -89,6 +93,7 @@ it.each(['full', 'far'] as const)('keeps %s body compaction separate from pick i
   rerender({ members: [replacement] });
   frame();
   expect(mesh.count).toBe(1);
+  expect(mesh.visible).toBe(true);
   const matrix = new THREE.Matrix4(); mesh.getMatrixAt(0, matrix);
   expect(new THREE.Vector3().setFromMatrixPosition(matrix).x).toBe(3);
   const intersections = new THREE.Raycaster(new THREE.Vector3(3, 0, 0), new THREE.Vector3(0, 0, -1)).intersectObject(result.current.hits);

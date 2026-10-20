@@ -11,6 +11,7 @@ import { radiationAtTarget } from '../lib/targetRadiation.js';
 import { useNow } from '../lib/time.js';
 import { MonumentModel, monumentScale } from './MonumentModel.js';
 import { MonumentOrbit } from './MonumentOrbit.js';
+import { HitboxMaterial } from './hitboxDebug.js';
 import { monumentName } from '../i18n/names.js';
 import { markHit, wasTap } from './tap.js';
 import { createMonumentVisibility } from './monumentVisibility.js';
@@ -55,7 +56,7 @@ export function Monuments({ monuments, planets, hpRadiation = [], focusedId, onS
       event.stopPropagation(); markHit(); onSelect(monument.id);
     }}>
     <MonumentModel ordinal={monument.ordinal} difficulty={monument.difficulty} focused={focusedId === monument.id} />
-    <mesh><sphereGeometry args={[monumentScale(monument.difficulty) / 2, 12, 8]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} /></mesh>
+    <mesh><sphereGeometry args={[monumentScale(monument.difficulty) / 2, 12, 8]} /><HitboxMaterial kind="monument" /></mesh>
     <Html position={[0, monumentScale(monument.difficulty) / 2 + 0.35, 0]} center distanceFactor={20} zIndexRange={[8, 0]} style={{ pointerEvents: 'none', visibility: hidden.has(monument.id) ? 'hidden' : 'visible' }}>
       <div className={`whitespace-nowrap rounded-control border px-2 py-1 text-center font-v2-ui shadow-sm ${focusedId === monument.id ? `${monument.difficulty === 'HARD' ? 'border-v2-hostile text-v2-hostile' : 'border-v2-self text-v2-self'} bg-v2-panel/90` : 'border-v2-line bg-v2-panel/70 text-v2-ink-2'}`}>
         <p className="text-caption font-semibold">{monumentName(monument.ordinal)}</p>

@@ -525,6 +525,8 @@ function ModelInstances({
     // Picking keeps the complete, stable node order and its original touch area.
     if (hits.current) placePickSpheres(hits.current, nodes);
     mesh.count = 0;
+    // An empty bucket leaves the render list (shaders still compile: `compile` walks hidden meshes).
+    mesh.visible = false;
     visible.view.primed = false;
     visible.members.length = 0;
     // Allocate colour before compilation, including an initially offscreen bucket.
@@ -540,6 +542,7 @@ function ModelInstances({
     const changed = updateVisibleMembers(visible, camera, mesh, nodes, PLANET_SKIN_BODY_SCALE);
     if (changed) {
       mesh.count = visible.members.length;
+      mesh.visible = mesh.count > 0;
       visible.members.forEach((node, i) => {
         const light = bodyLight(node.stance, node.intel);
         const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];

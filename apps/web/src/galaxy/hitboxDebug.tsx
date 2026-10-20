@@ -61,7 +61,9 @@ export type HitboxKind =
   /** The merchant. */
   | 'trade'
   /** The intergalactic convoy, with a narrow box along the train. */
-  | 'convoy';
+  | 'convoy'
+  /** A monument: a sphere round the hull. */
+  | 'monument';
 
 export const HITBOX_KINDS = [
   'planet',
@@ -75,10 +77,11 @@ export const HITBOX_KINDS = [
   'pirate',
   'trade',
   'convoy',
+  'monument',
 ] as const satisfies readonly HitboxKind[];
 
 /**
- * ELEVEN HUES THAT SURVIVE BEING OVERLAID ON EACH OTHER.
+ * TWELVE HUES THAT SURVIVE BEING OVERLAID ON EACH OTHER.
  *
  * Not the game's own craft palette, and that is the point: a pirate is violet on
  * the disc and red here, so nobody mistakes a debug volume for the thing it wraps.
@@ -98,6 +101,7 @@ export const HITBOX_COLOURS: Record<HitboxKind, string> = {
   pirate: '#ef4444',
   trade: '#2dd4bf',
   convoy: '#8b5cf6',
+  monument: '#a16207',
 };
 
 /**
@@ -231,7 +235,7 @@ try {
 }
 
 /**
- * THE COLOUR KEY, because eleven hues is more than anyone holds in their head.
+ * THE COLOUR KEY, because twelve hues is more than anyone holds in their head.
  *
  * Deliberately not translated and deliberately not styled like the game: this is
  * an instrument, it is only ever on screen when a developer asked for it, and a
@@ -248,7 +252,7 @@ export function HitboxLegend() {
     >
       <div className="mb-1 tracking-wide text-white/50">HIT BOXES</div>
       {/*
-        TWO COLUMNS, because eleven rows down the left edge of a 350px phone is a
+        TWO COLUMNS, because twelve rows down the left edge of a 350px phone is a
         strip across the very galaxy the key is there to help read.
       */}
       <div className="grid grid-cols-2 gap-x-2">

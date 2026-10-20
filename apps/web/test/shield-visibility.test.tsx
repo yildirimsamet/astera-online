@@ -25,6 +25,7 @@ it('moves every shield attribute with its instance and avoids unchanged uploads'
   const check = (index: number) => {
     const dome = domes[index]!;
     expect(mesh.count).toBe(1);
+    expect(mesh.visible).toBe(true);
     const colour = mesh.geometry.getAttribute('aColour');
     expect(colour.getX(0)).toBeCloseTo(dome.colour[0]);
     expect(colour.getY(0)).toBeCloseTo(dome.colour[1]);
@@ -47,6 +48,8 @@ it('moves every shield attribute with its instance and avoids unchanged uploads'
   camera.position.x = 200;
   frame(state, 0);
   expect(mesh.count).toBe(0);
+  // An empty bucket leaves the render list rather than walking it with nothing to draw.
+  expect(mesh.visible).toBe(false);
   camera.position.x = 0;
   frame(state, 0);
   check(1);

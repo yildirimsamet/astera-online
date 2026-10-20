@@ -341,6 +341,7 @@ function Ring({
 
     node.count = drawn;
     rim.count = drawn;
+    node.visible = rim.visible = drawn > 0;
     node.instanceMatrix.needsUpdate = true;
     rim.instanceMatrix.needsUpdate = true;
   });
@@ -680,7 +681,10 @@ export function Shields({
   const visible = useMemo(() => createInstanceVisibility<ShieldInstance>(), []);
   const place = useMemo(() => new THREE.Object3D(), []);
   useLayoutEffect(() => {
-    if (mesh.current) mesh.current.count = 0;
+    if (mesh.current) {
+      mesh.current.count = 0;
+      mesh.current.visible = false;
+    }
     visible.view.primed = false;
     visible.members.length = 0;
   }, [domes, geometry, visible]);
@@ -706,6 +710,7 @@ export function Shields({
       phase.setX(i, dome.phase);
     });
     node.count = visible.members.length;
+    node.visible = node.count > 0;
     node.instanceMatrix.needsUpdate = true;
     colour.needsUpdate = opacity.needsUpdate = breath.needsUpdate = phase.needsUpdate = true;
   });
