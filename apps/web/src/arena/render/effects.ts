@@ -401,7 +401,7 @@ export class Effects {
     world.smoke.forEach((puff, i) => {
       if (!puff.active) return;
       const grow = Math.min(1, puff.age / T.smokeGrow);
-      const fade = Math.max(0, Math.min(1, (T.smokeLife - puff.age) / 1.2));
+      const fade = Math.max(0, Math.min(1, (T.smokeLife - puff.age) / T.smokeFade));
       for (let k = 0; k < 2; k++) {
         pool.put(puff.p.x + Math.sin(i * 3.1 + k) * 6, puff.p.y + Math.cos(i * 1.7 + k) * 5, puff.p.z,
           T.smokeRadius * 2.6 * (0.4 + 0.6 * grow) * (k === 0 ? 1 : 0.8), i * 1.3 + k + time * 0.05 * (k === 0 ? 1 : -1),

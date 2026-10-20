@@ -92,7 +92,8 @@ gemi dünyadan çıkar ve sonuç ekranı açılır ([07](07-hud-ve-ekranlar.md#s
 
 **Duman (S22, S56, S76)**
 - Dokununca `smokeEmitDuration` boyunca kuyruktan `smokePuffInterval` aralıkla küre bulutlar
-  bırakır; her bulut `smokeGrow` içinde `smokeRadius`'a büyür, `smokeLife` yaşar. Bekleme `smokeCooldown`.
+  bırakır; her bulut `smokeGrow` içinde `smokeRadius`'a büyür, `smokeLife` yaşar; son `smokeFade` boyunca
+  incelerek dağılır ve görüş engeli kenardan daralır. Bekleme `smokeCooldown`.
 - **Yalnız görüş:** hasar yok, hız etkisi yok, mermiyi durdurmaz.
 - Görüş hattı fonksiyonu `lineOfSight(from, to, puffs)` (KG-T18): bakan → hedef segmenti bir
   bulutun etkin yarıçapını kesiyorsa hedef **görünmez sayılır** → isim etiketi, hedef çerçevesi,
@@ -253,7 +254,7 @@ Diğer belgeler bu değerleri **adıyla** anar; çelişki olursa bu tablo geçer
 | `assistMax` / `assistCos` / `assistRange` | 0,32 / cos 9° / 900 m | ateş ederken direksiyon mıknatısı; sunucu kırpar |
 | `botRespawn` | 8 sn | |
 | `smokeEmitDuration` / `smokePuffInterval` | 1,5 sn / 0,15 sn | |
-| `smokeRadius` / `smokeGrow` / `smokeLife` / `smokeCooldown` | 45,5 m / 0,6 sn / 10,5 sn / 18 sn | sahip 2026-10-21: süre +%50, alan +%30, görsel yoğunluk +%25 |
+| `smokeRadius` / `smokeGrow` / `smokeLife` / `smokeFade` / `smokeCooldown` | 45,5 m / 0,6 sn / 12,5 sn / 3,2 sn / 18 sn | sahip 2026-10-21: süre +%50, alan +%30, görsel yoğunluk +%25, dağılma +2 sn (dağılırken engel kenardan daralır) |
 | `cloakDuration` / `cloakCooldown` / `cloakShimmerDist` | 4 sn / 25 sn / 60 m | |
 | `fuelOutRescueDelay` | 10 sn | KG-K10 |
 | `linkLostAfter` | 1 sn | mobil ağda sert gelirse 2–3 sn |

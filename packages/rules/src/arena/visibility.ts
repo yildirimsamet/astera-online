@@ -10,7 +10,8 @@ export function hiddenBySmoke(smoke: readonly SmokePuff[], a: Vec3, b: Vec3): bo
     if (!puff.active) continue;
     const projection = Math.max(0, Math.min(1, ((puff.p.x - a.x) * dx + (puff.p.y - a.y) * dy + (puff.p.z - a.z) * dz) / length));
     const x = a.x + dx * projection - puff.p.x; const y = a.y + dy * projection - puff.p.y; const z = a.z + dz * projection - puff.p.z;
-    const radius = T.smokeRadius * Math.min(1, puff.age / T.smokeGrow);
+    // Grows in, then thins from the edge while it disperses: the drawn cloud and the blocked sight agree.
+    const radius = T.smokeRadius * Math.min(1, puff.age / T.smokeGrow, Math.max(0, (T.smokeLife - puff.age) / T.smokeFade));
     if (x * x + y * y + z * z < radius * radius) return true;
   }
   return false;

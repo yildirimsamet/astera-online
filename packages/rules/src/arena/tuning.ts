@@ -74,7 +74,9 @@ export const ARENA_TUNING = Object.freeze({
   // Owner 2026-10-21: half again as long, 30 % wider (35 m / 7 s before).
   smokeRadius: 45.5,
   smokeGrow: 0.6,
-  smokeLife: 10.5,
+  // Owner 2026-10-21: dispersal takes 2 s longer (1.2 → 3.2 s); the dense phase is unchanged.
+  smokeLife: 12.5,
+  smokeFade: 3.2,
   smokeCooldown: 18,
   cloakDuration: 4,
   cloakCooldown: 25,

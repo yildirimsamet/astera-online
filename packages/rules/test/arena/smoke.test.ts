@@ -13,15 +13,24 @@ describe('smoke screen', () => {
     expect(hiddenBySmoke([puff(1)], { x: -200, y: 47, z: 0 }, { x: 200, y: 47, z: 0 })).toBe(false);
   });
 
-  it('hangs for ten and a half seconds', () => {
+  it('hangs for twelve and a half seconds', () => {
     const world = createSandboxWorld();
     const smoke = world.smoke[0]; if (!smoke) throw new Error('no puff');
     Object.assign(smoke, puff(0));
     const input = createInput();
-    for (let tick = 0; tick < 10 * T.tickRate; tick++) stepSandboxWorld(world, input);
+    for (let tick = 0; tick < 12 * T.tickRate; tick++) stepSandboxWorld(world, input);
     expect(smoke.active).toBe(true);
     for (let tick = 0; tick < 0.6 * T.tickRate; tick++) stepSandboxWorld(world, input);
     expect(smoke.active).toBe(false);
+  });
+
+  it('stays dense to 9.3 s, then thins out over its last 3.2 s (owner: dispersal 2 s longer)', () => {
+    const line = (offset: number) => [{ x: -200, y: offset, z: 0 }, { x: 200, y: offset, z: 0 }] as const;
+    expect(hiddenBySmoke([puff(9.3)], ...line(45))).toBe(true);
+    // Halfway through dispersing, only the core still blocks sight.
+    expect(hiddenBySmoke([puff(10.9)], ...line(30))).toBe(false);
+    expect(hiddenBySmoke([puff(10.9)], ...line(15))).toBe(true);
+    expect(hiddenBySmoke([puff(12.45)], ...line(5))).toBe(false);
   });
 
   it('holds every puff of eight pilots smoking at once', () => {
