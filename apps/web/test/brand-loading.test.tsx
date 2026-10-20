@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useOpeningCover } from '../src/lib/openingCover.js';
@@ -88,9 +88,10 @@ describe('the loading cover is the top layer', () => {
       const path = join(dir, name);
       return statSync(path).isDirectory() ? files(path) : /\.(tsx?|css)$/.test(name) ? [path] : [];
     });
-    const css = readFileSync('src/brand/opening.css', 'utf8');
+    const src = resolve(__dirname, '../src');
+    const css = readFileSync(join(src, 'brand/opening.css'), 'utf8');
     const cover = Number(/\.brand-loading\s*\{[^}]*z-index:\s*(\d+)/s.exec(css)?.[1]);
-    const others = files('src').filter(path => !path.endsWith('opening.css')).flatMap(path => {
+    const others = files(src).filter(path => !path.endsWith('opening.css')).flatMap(path => {
       const text = readFileSync(path, 'utf8');
       return [...text.matchAll(/z-\[(\d+)\]|z-(\d+)\b|z-index:\s*(\d+)|zIndex:\s*(\d+)/g)]
         .map(match => Number(match[1] ?? match[2] ?? match[3] ?? match[4]));
