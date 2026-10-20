@@ -173,7 +173,7 @@ export function Sheet({
         {/* `min-h-0` is what actually lets a flex child scroll instead of growing. */}
         <div
           data-sheet-scroll
-          className={`min-h-0 flex-1 ${bleed ? '' : 'px-2 py-2'} ${
+          className={`relative min-h-0 flex-1 ${bleed ? '' : 'px-2 py-2'} ${
             contained ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain'
           }`}
         >

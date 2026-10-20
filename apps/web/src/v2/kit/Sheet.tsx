@@ -270,7 +270,7 @@ export function Sheet({
 
         <div
           data-sheet-body=""
-          className={`min-h-0 flex-auto ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
+          className={`relative min-h-0 flex-auto ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
         >
           {typeof children === 'function' ? children(detent) : children}
         </div>

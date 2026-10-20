@@ -308,6 +308,18 @@ describe('the sheet', () => {
     expect(container.querySelector('[data-sheet-body]')).not.toHaveClass('overflow-y-auto');
   });
 
+  /*
+   * OWNER, 2026-10-20: after "Find my crew" the clan sheet lost its header and left an empty band
+   * above the dock. The search label's `sr-only` span is absolutely positioned; with no positioned
+   * body it was placed against the panel, made the clipped panel scrollable, and the jump to the
+   * search field scrolled the panel itself. The scrolling body is the containing block.
+   */
+  it('keeps absolutely placed content inside the scrolling body, never the panel', () => {
+    render(<><Sheet title="Clan" onClose={vi.fn()}>body</Sheet><OldSheet title="Planet" onClose={vi.fn()}>body</OldSheet></>);
+    expect(document.querySelector('[data-sheet-body]')).toHaveClass('relative');
+    expect(document.querySelector('[data-sheet-scroll]')).toHaveClass('relative');
+  });
+
   it('offers a way back when it was opened from another surface', async () => {
     const onBack = vi.fn();
     render(<Sheet title="Kestrel" onClose={vi.fn()} onBack={onBack}>body</Sheet>);
