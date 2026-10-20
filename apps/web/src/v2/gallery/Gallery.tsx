@@ -22,7 +22,7 @@ import { ClanScreen } from '../../screens/ClanScreen.js';
 import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
-import { PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
+import { MonumentFocus, PlanetFocus, StrikeSheet, ThreadFocus } from '../../galaxy/FocusPanel.js';
 import { StrategicReportSheet } from '../../screens/BattleReports.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
@@ -631,6 +631,20 @@ function GalleryCountryPicker() {
  * row sets the caller's own tier beside the world's — its note, one tap deeper, is
  * the rule and the range.
  */
+/** A selected monument under bomb radiation: the closed rail must stay short enough to frame it. */
+function GalleryMonumentFocus() {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [],
+      hpRadiation: [{ id: 'bomb', mode: 'EMIT', center: { x: 0, y: 7000, z: 0 }, radius: 1500, intensityHpPerMinute: 12.5,
+        activeFrom: new Date(0), activeUntil: null, target: { kind: 'MONUMENT', id: 'monument-2' } }] });
+    return null;
+  });
+  return <MonumentFocus monument={{ id: 'monument-2', ordinal: 2, difficulty: 'HARD', position: { x: 0, y: 7000, z: 0 },
+    controller: { kind: 'NEUTRAL' }, capacity: 7270, used: 0, productionPerMinute: 8, radiationHpPerMinute: 12.5,
+    emptySince: null, respawnAt: null }} onInspect={noop} onClose={noop} />;
+}
+
 function GalleryBand() {
   const client = useQueryClient();
   useState(() => {
@@ -735,6 +749,7 @@ function Views({ view }: { view: string }) {
   if (view === 'transfer-radiation') return <GalleryRadiation surface="transfer" />;
   if (view === 'focus-radiation') return <GalleryRadiation surface="focus" />;
   if (view === 'focus-band') return <GalleryBand />;
+  if (view === 'focus-monument') return <GalleryMonumentFocus />;
   if (view === 'clan') return <GalleryClan tab="overview" />;
   if (view === 'clan-strength') return <GalleryClan tab="strength" />;
   if (view === 'clan-members') return <GalleryClan tab="members" />;
@@ -1205,8 +1220,8 @@ export function Gallery({ view }: { view: string | null }) {
             {...slotBase}
             suggestion={{
               id: 'undefended',
-              kind: 'growth',
-              title: 'Your shield ends in 3h 00m: build a ground defence',
+              kind: 'threat',
+              title: 'This world has no ground defence',
               detail: '456 is exposed to raids. Build Thorns or Bastions for permanent defence.',
               action: { label: 'Build defence', screen: 'planet', group: 'defend' },
               weight: 820,

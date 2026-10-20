@@ -11,28 +11,22 @@ import { countdown } from '../../lib/time.js';
 import { RESOURCE_ART } from '../../ui/assets.js';
 import { Icon } from '../icons.js';
 
-type Tone = 'hostile' | 'self' | 'warn' | 'neutral';
+type Tone = 'hostile' | 'self';
 
 const ACCENT: Record<Tone, { bar: string; eyebrow: string; action: string }> = {
   hostile: { bar: 'bg-v2-hostile', eyebrow: 'text-v2-hostile', action: 'border-v2-hostile/60 bg-v2-hostile/15' },
   self: { bar: 'bg-v2-self', eyebrow: 'text-v2-self', action: 'border-v2-self/60 bg-v2-self/15' },
-  warn: { bar: 'bg-v2-warn', eyebrow: 'text-v2-warn', action: 'border-v2-warn/60 bg-v2-warn/10' },
-  neutral: { bar: 'bg-v2-line-hi', eyebrow: 'text-v2-ink-3', action: 'border-v2-line-hi bg-v2-raise' },
 };
 
-/** A suggestion wears what it is: red only for something happening to you, warn for a gap. */
+/** A suggestion wears what it is: red only for something happening to you. */
 const SUGGESTION_TONE: Record<DirectiveKind, Tone> = {
   threat: 'hostile',
   opportunity: 'self',
-  growth: 'warn',
-  idle: 'neutral',
 };
 
 const SUGGESTION_LABEL = {
   threat: 'directives.kindThreat',
   opportunity: 'directives.kindOpportunity',
-  growth: 'directives.kindGrowth',
-  idle: 'directives.kindIdle',
 } as const satisfies Record<DirectiveKind, string>;
 
 interface Action {

@@ -264,3 +264,28 @@ describe('it never throws the page away', () => {
     getItem.mockRestore();
   });
 });
+
+/*
+  Owner, 2026-10-20: during the Academy the bar sat over the claim sheet's Continue button.
+  While it is open it is exempt from the lesson gate and publishes its height, so a
+  bottom sheet can stand on top of it instead of underneath.
+*/
+describe('the notice among other bottom surfaces', () => {
+  it('marks itself as the privacy choice the lesson gate never locks', () => {
+    show();
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-consent-notice');
+  });
+
+  it('publishes its height while open and withdraws it once answered', async () => {
+    show();
+    expect(document.documentElement.style.getPropertyValue('--consent-h')).toMatch(/^\d+px$/);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Reddet' }));
+    expect(document.documentElement.style.getPropertyValue('--consent-h')).toBe('');
+  });
+
+  it('withdraws its height when it leaves the page', () => {
+    const view = render(<ConsentNotice />);
+    view.unmount();
+    expect(document.documentElement.style.getPropertyValue('--consent-h')).toBe('');
+  });
+});

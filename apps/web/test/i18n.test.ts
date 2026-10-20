@@ -87,7 +87,6 @@ describe('the Command Core explanation respects independent upgrades', () => {
   it.each(Object.entries(LOCALES))('names the Hangar exception in %s', (_, locale) => {
     expect(locale.vocabulary.building.CORE.detail).toContain(locale.vocabulary.building.HANGAR.name);
     expect(locale.planet.roles.coreClear).toContain(locale.vocabulary.building.HANGAR.name);
-    expect(locale.directives.coreCeilingDetail).toContain(locale.vocabulary.building.HANGAR.name);
   });
 
   it('does not claim that Core levels shorten building upgrade timers', () => {
@@ -755,11 +754,9 @@ describe('an unlock never promises what a gate refuses', () => {
 });
 
 describe('Telescope copy explains the asteroid discovery rule', () => {
-  it('names asteroid discovery on both the upgrade card and the missing-instrument hint', () => {
+  it('names asteroid discovery on the upgrade card', () => {
     expect(en.vocabulary.instrument.TELESCOPE.detail).toMatch(/asteroid/i);
-    expect(en.directives.noTelescopeDetail).toMatch(/asteroid/i);
     expect(tr.vocabulary.instrument.TELESCOPE.detail).toMatch(/asteroi[td]/i);
-    expect(tr.directives.noTelescopeDetail).toMatch(/asteroi[td]/i);
   });
 });
 

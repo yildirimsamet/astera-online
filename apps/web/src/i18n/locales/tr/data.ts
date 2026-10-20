@@ -526,7 +526,6 @@ export const directives = {
   inboundAction: 'Hemen harca',
 
   undefendedTitle: 'Bu gezegende yer savunması yok',
-  undefendedShieldedTitle: 'Kalkanın {{duration}} sonra biter: yer savunması kur',
   undefendedDetail:
     '{{amount}} kaynak akına açık. Kalıcı savunma için Kirpi veya Tabya kurabilirsin.',
   undefendedAction: 'Savunma kur',
@@ -552,34 +551,8 @@ export const directives = {
   storageFullDetail: 'Depon dolu, havuz boşalacak yer bulamıyor. Kaynak harcayıp depoda yer aç.',
   storageFullAction: 'Harca',
 
-  noTelescopeTitle: 'Yalnızca çıplak göz mesafesini görüyorsun',
-  noTelescopeDetail:
-    'Ücretsiz görüşün yakından geçen bir asteroidi zaten keşfedebilir. Teleskop bu keşif alanını büyütür, uzaktaki araçları tanır ve bir gezegeni sessizce izleyip filosu kalktığında sana söyler.',
-  noTelescopeAction: 'Teleskop kur',
-
-  noRadarTitle: 'Buraya bir filo habersiz inebilir',
-  noRadarDetail:
-    'İlk Radar seviyesi bile çemberine giren ve bu dünyaya yönelen filoyu varış süresiyle işaretler. Sonraki seviyeler menzili ve açıklanan bilgiyi artırır.',
-  noRadarAction: 'Radara bak',
-
-  coreCeilingTitle: 'Komuta Çekirdeği {{count}} yükseltmeyi tıkıyor',
-  coreCeilingDetail: "Komuta Çekirdeği, Hangar dışındaki binaların seviye sınırını belirler. Sınıra ulaşan binayı geliştirmek için önce Çekirdeği yükselt.",
-  coreCeilingAction: 'Çekirdeği yükselt',
-
-  idleTitle: 'Devam eden uçuş yok',
-  idleDetailHasShips: 'Rampaların boş. Akın, transfer veya madencilik görevi başlatabilirsin; sondalar rampa kullanmaz.',
-  idleDetailNoShips: 'Evde gemin yok. Ya yenisini yap ya da dışarıdakilerin dönmesini bekle.',
-  idleAction: 'Hedef bul',
-
-  baysFreeTitle_one: 'Bir rampa hâlâ boş',
-  baysFreeTitle_other: '{{count}} rampa hâlâ boş',
-  baysFreeDetail: 'Akınlar, transferler ve madencilik seferleri bir rampa kullanır; sondalar kullanmaz.',
-  baysFreeAction: 'Etrafa bak',
-
   kindThreat: 'Tehdit',
   kindOpportunity: 'Fırsat',
-  kindGrowth: 'Açık',
-  kindIdle: 'Bekleyen yok',
 
   /** The fold. One word each way: the card is small enough that a label is the control. */
   hide: 'Gizle',

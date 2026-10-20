@@ -451,7 +451,6 @@ export const directives = {
   inboundAction: 'Jetzt ausgeben',
 
   undefendedTitle: 'Diese Welt hat keine Bodenverteidigung',
-  undefendedShieldedTitle: 'Ihr Schild endet in {{duration}}: Bauen Sie eine Bodenverteidigung',
   undefendedDetail: '{{amount}} ist Überfalls ausgesetzt. Bauen Sie Dornen oder Bastionen zur dauerhaften Verteidigung.',
   undefendedAction: 'Verteidigung aufbauen',
 
@@ -476,34 +475,9 @@ export const directives = {
     'Ihr Laden ist voll, sodass die Werke nirgendwo entleert werden können. Gib etwas aus und beanspruche es.',
   storageFullAction: 'Gib es aus',
 
-  noTelescopeTitle: 'Sie können nur mit bloßem Auge sehen',
-  noTelescopeDetail:
-    'Ihre freie Sicht kann bereits einen vorbeiziehenden Asteroiden in der Nähe erkennen. Ein Teleskop erweitert den Entdeckungsbereich, identifiziert weiter entfernte Schiffe und kann stillschweigend einen Planeten beobachten, um Ihnen mitzuteilen, wann seine Flotte abfliegt.',
-  noTelescopeAction: 'Installieren Sie ein Teleskop',
-
-  noRadarTitle: 'Eine Flotte könnte hier ohne Vorwarnung landen',
-  noRadarDetail: 'Radar L1 markiert bereits eine auf Sie gerichtete Bedrohung mit der Ankunftszeit innerhalb des Kreises. Höhere Ebenen erweitern den Bereich und offenbaren mehr Details.',
-  noRadarAction: 'Schauen Sie sich Radar an',
-
-  coreCeilingTitle: 'Kommandokern blockiert {{count}}-Upgrades',
-  coreCeilingDetail: "Der Befehlskern begrenzt Gebäudestufen, außer beim Hangar. Verbessere zuerst den Kern, um diese Grenze zu erhöhen.",
-  coreCeilingAction: 'Erhöhe den Kern',
-
-  idleTitle: 'Nichts ist im Flug',
-  idleDetailHasShips: 'Ihre Buchten sind leer. Sie können einen Überfall-, Transfer- oder Mining-Lauf starten; Sonden verwenden keine Buchten.',
-  idleDetailNoShips: 'Du hast keine Schiffe zu Hause. Bauen Sie welche oder warten Sie, bis Ihre zurückkommt.',
-  idleAction: 'Finde ein Ziel',
-
-  baysFreeTitle_one: 'Ein Schacht ist noch frei',
-  baysFreeTitle_other: '{{count}} Einschübe sind noch frei',
-  baysFreeDetail: 'Überfalls, Transfers und Mining-Runs dauern einen. Sonden verwenden keine Buchten.',
-  baysFreeAction: 'Suchen Sie nach etwas',
-
   /** The card that carries the top directive. */
   kindThreat: 'Bedrohung',
   kindOpportunity: 'Gelegenheit',
-  kindGrowth: 'Schwäche',
-  kindIdle: 'Nichts ausstehend',
 
   /** The fold. One word each way: the card is small enough that a label is the control. */
   hide: 'Ausblenden',

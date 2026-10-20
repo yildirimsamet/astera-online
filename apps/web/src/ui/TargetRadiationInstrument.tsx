@@ -5,8 +5,8 @@ import { radiationAtTarget } from '../lib/targetRadiation.js';
 import { useNow } from '../lib/time.js';
 import { RadiationIndicator } from './RadiationIndicator.js';
 
-export function TargetRadiationInstrument({ target, tech, planetProtection }: {
-  target: { kind: 'PLANET' | 'MONUMENT'; id: string }; tech?: TechLevels; planetProtection?: number;
+export function TargetRadiationInstrument({ target, tech, planetProtection, variant = 'dial' }: {
+  target: { kind: 'PLANET' | 'MONUMENT'; id: string }; tech?: TechLevels; planetProtection?: number; variant?: 'bar' | 'dial';
 }) {
   const { data } = useGalaxy();
   const { worlds } = useWorld();
@@ -14,5 +14,5 @@ export function TargetRadiationInstrument({ target, tech, planetProtection }: {
   const protection = planetProtection ?? (target.kind === 'PLANET'
     ? worlds.find(world => world.planet.id === target.id)?.planet.radiationProtectionHpPerMinute : undefined);
   const state = radiationAtTarget(target, data?.hpRadiation ?? [], now, tech, protection);
-  return state ? <RadiationIndicator state={state} variant="dial" now={now} /> : null;
+  return state ? <RadiationIndicator state={state} variant={variant} now={now} /> : null;
 }

@@ -451,7 +451,6 @@ export const directives = {
   inboundAction: 'Spend it now',
 
   undefendedTitle: 'This world has no ground defence',
-  undefendedShieldedTitle: 'Your shield ends in {{duration}}: build a ground defence',
   undefendedDetail: '{{amount}} is exposed to raids. Build Thorns or Bastions for permanent defence.',
   undefendedAction: 'Build defence',
 
@@ -476,34 +475,9 @@ export const directives = {
     'Your store is full, so the works have nowhere to empty into. Spend something and claim it.',
   storageFullAction: 'Spend it',
 
-  noTelescopeTitle: 'You only have naked-eye sight',
-  noTelescopeDetail:
-    'Your free sight can already reveal a passing asteroid nearby. A Telescope extends that discovery area, identifies moving craft farther out and can silently watch a planet to tell you when its fleet leaves.',
-  noTelescopeAction: 'Install a Telescope',
-
-  noRadarTitle: 'A fleet could land here without warning',
-  noRadarDetail: 'Radar L1 already marks a threat aimed at you with its arrival time inside the circle. Higher levels expand the range and reveal more detail.',
-  noRadarAction: 'Look at Radar',
-
-  coreCeilingTitle: 'Command Core is blocking {{count}} upgrades',
-  coreCeilingDetail: "The Command Core sets building level limits, except for the Hangar. Upgrade the Core before raising a building beyond that limit.",
-  coreCeilingAction: 'Raise the Core',
-
-  idleTitle: 'Nothing is in flight',
-  idleDetailHasShips: 'Your bays are idle. You can launch a raid, transfer or mining run; probes do not use bays.',
-  idleDetailNoShips: 'You have no ships at home. Build some, or wait for yours to come back.',
-  idleAction: 'Find a target',
-
-  baysFreeTitle_one: 'One bay is still free',
-  baysFreeTitle_other: '{{count}} bays are still free',
-  baysFreeDetail: 'Raids, transfers and mining runs take one. Probes do not use bays.',
-  baysFreeAction: 'Look for something',
-
   /** The card that carries the top directive. */
   kindThreat: 'Threat',
   kindOpportunity: 'Opportunity',
-  kindGrowth: 'Weakness',
-  kindIdle: 'Nothing pending',
 
   /** The fold. One word each way: the card is small enough that a label is the control. */
   hide: 'Hide',

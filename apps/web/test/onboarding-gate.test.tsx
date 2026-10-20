@@ -243,6 +243,11 @@ function Harness({
           skip
         </button>
       </div>
+      <div data-consent-notice>
+        <button type="button" onClick={() => { pressed.push('consent'); }}>
+          allow cookies
+        </button>
+      </div>
     </div>
   );
 }
@@ -296,6 +301,17 @@ describe('the gate', () => {
     const { user, onRefused } = setup();
     await user.click(screen.getByRole('button', { name: 'skip' }));
     expect(pressed).toEqual(['card']);
+    expect(onRefused).not.toHaveBeenCalled();
+  });
+
+  /*
+    Owner, 2026-10-20: the cookie bar sat over a third of the Academy for its whole length
+    and refused every press. A legal choice is answerable on any screen, lesson or not.
+  */
+  it('always lets the privacy choice through, whatever else is locked', async () => {
+    const { user, onRefused } = setup();
+    await user.click(screen.getByRole('button', { name: 'allow cookies' }));
+    expect(pressed).toEqual(['consent']);
     expect(onRefused).not.toHaveBeenCalled();
   });
 

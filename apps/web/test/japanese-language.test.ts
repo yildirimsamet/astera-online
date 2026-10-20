@@ -115,7 +115,6 @@ describe('Japanese language support', () => {
     expect(ja.now.work).toBe('作業完了');
     expect(i18n.t('galaxy.onlineToday', { count: 100 })).toBe('過去24時間に<0>100</0>人がオンライン');
     expect(ja.galaxy.worlds).toContain('惑星');
-    expect(ja.directives.undefendedShieldedTitle).toContain('シールドが切れるまで');
   });
 
   it('uses clear actions while the new commander claims a planet', () => {

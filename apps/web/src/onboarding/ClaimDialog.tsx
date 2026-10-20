@@ -126,7 +126,8 @@ export function ClaimDialog({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4"
+      // Stands on an open cookie bar rather than under it (`ConsentNotice` publishes its height).
+      className="fixed inset-0 z-40 flex items-end justify-center pb-[var(--consent-h,0px)] sm:items-center sm:p-4 sm:pb-[calc(1rem+var(--consent-h,0px))]"
       ref={panel}
       role="dialog"
       aria-modal="true"

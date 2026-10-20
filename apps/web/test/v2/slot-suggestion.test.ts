@@ -25,18 +25,16 @@ describe('the suggestion', () => {
     expect(slotSuggestion(situation(null), Date.now())).toBeNull();
   });
 
-  it('coaches one who did, with the section that fixes the gap', () => {
-    const next = slotSuggestion(situation(), Date.now());
-    expect(next?.id).toBe('no-telescope');
-    expect(next?.action).toMatchObject({ screen: 'planet', group: 'orbit' });
+  /* Owner, 2026-10-20: a new commander's quiet world gets no weakness or idle card. */
+  it('has nothing to say to a new commander with no threat or opportunity', () => {
+    expect(slotSuggestion(situation(), Date.now())).toBeNull();
   });
 
   /** Spec H1: the host's clock reaches the engine, so a shielded world is not told it is in danger. */
   it('reads the attack shield against the host clock', () => {
     const now = Date.parse('2026-09-23T12:00:00Z');
     const s: Situation = { ...situation(), held: { alloy: 4000, crystal: 400, deuterium: 0 }, shieldUntil: new Date(now + 90 * 60_000) };
-    expect(slotSuggestion(s, now)?.title).toContain('Your shield ends in 1h 30m');
-    expect(slotSuggestion(s, now)?.kind).not.toBe('threat');
+    expect(slotSuggestion(s, now)).toBeNull();
     expect(slotSuggestion(s, now + 90 * 60_000)?.kind).toBe('threat');
   });
 
@@ -46,9 +44,11 @@ describe('the suggestion', () => {
    */
   it('passes over a suggestion the player closed and offers the next', () => {
     const now = Date.now();
-    const first = slotSuggestion(situation(), now);
+    // Undefended and over-stocked, with no shield: two threats to offer in turn.
+    const exposed: Situation = { ...situation(), held: { alloy: 4000, crystal: 400, deuterium: 0 } };
+    const first = slotSuggestion(exposed, now);
     expect(first).not.toBeNull();
-    const next = slotSuggestion(situation(), now, new Set([`suggestion:${first!.id}`]));
+    const next = slotSuggestion(exposed, now, new Set([`suggestion:${first!.id}`]));
     expect(next).not.toBeNull();
     expect(next?.id).not.toBe(first?.id);
   });

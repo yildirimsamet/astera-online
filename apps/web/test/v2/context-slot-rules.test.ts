@@ -66,7 +66,7 @@ describe('the context slot', () => {
 describe('the suggestion', () => {
   const directive = (id: string): Directive => ({
     id,
-    kind: id === 'inbound' ? 'threat' : 'growth',
+    kind: id === 'inbound' ? 'threat' : 'opportunity',
     title: id,
     detail: '',
     action: { label: '', screen: 'planet' },

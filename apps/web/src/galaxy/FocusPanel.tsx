@@ -158,7 +158,8 @@ export function MonumentFocus({ monument, onInspect, onClose }: {
       <span className="block text-v2-warn">{monument.difficulty === 'LEGACY'
         ? t('monument.radiationRate', { rate: decimal(monument.radiationHpPerMinute) })
         : t('monument.radiationLevelRate', { level: MONUMENT_BALANCE[monument.difficulty].radiationLevel, rate: decimal(monument.radiationHpPerMinute) })}</span></>}
-    peek={<TargetRadiationInstrument target={{ kind: 'MONUMENT', id: monument.id }} />}
+    // One meter line, not the dial: the dial made the rail taller than the monument it frames.
+    peek={<div className="flex"><TargetRadiationInstrument target={{ kind: 'MONUMENT', id: monument.id }} variant="bar" /></div>}
     open={false} onToggle={onInspect} onClose={onClose}>{null}</Shell>;
 }
 

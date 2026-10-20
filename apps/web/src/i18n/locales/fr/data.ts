@@ -526,7 +526,6 @@ export const directives = {
   inboundAction: 'Dépensez-le maintenant',
 
   undefendedTitle: 'Ce monde n\'a pas de défense terrestre',
-  undefendedShieldedTitle: 'Votre bouclier tombe dans {{duration}} : construisez une défense terrestre',
   undefendedDetail:
     '{{amount}} est exposé aux raids. Construisez des épines ou des bastions pour une défense permanente.',
   undefendedAction: 'Construire la défense',
@@ -552,34 +551,8 @@ export const directives = {
   storageFullDetail: 'Votre magasin est plein, les œuvres n’ont donc nulle part où se vider. Dépensez quelque chose et réclamez-le.',
   storageFullAction: 'Dépensez-le',
 
-  noTelescopeTitle: 'Tu n\'as qu\'une vue à l\'oeil nu',
-  noTelescopeDetail:
-    'Votre vue libre peut déjà révéler un astéroïde qui passe à proximité. Un télescope étend cette zone de découverte, identifie les engins en mouvement plus loin et peut observer silencieusement une planète pour vous avertir du départ de sa flotte.',
-  noTelescopeAction: 'Installer un télescope',
-
-  noRadarTitle: 'Une flotte pourrait atterrir ici sans avertissement',
-  noRadarDetail:
-    'Le radar L1 marque déjà une menace qui vous vise avec son heure d\'arrivée à l\'intérieur du cercle. Des niveaux plus élevés élargissent la plage et révèlent plus de détails.',
-  noRadarAction: 'Regardez le radar',
-
-  coreCeilingTitle: 'Le Noyau de commandement bloque {{count}} amélioration(s)',
-  coreCeilingDetail: "Le Noyau de commande limite le niveau des bâtiments, sauf le Hangar. Améliore le Noyau avant de dépasser cette limite.",
-  coreCeilingAction: 'Élevez le noyau',
-
-  idleTitle: 'Rien n\'est en vol',
-  idleDetailHasShips: 'Vos baies sont inactives. Vous pouvez lancer un raid, un transfert ou une opération minière ; les sondes n\'utilisent pas de baies.',
-  idleDetailNoShips: 'Vous n\'avez pas de navires chez vous. Construisez-en ou attendez que le vôtre revienne.',
-  idleAction: 'Trouver une cible',
-
-  baysFreeTitle_one: 'Une baie est encore libre',
-  baysFreeTitle_other: 'Les baies {{count}} sont toujours libres',
-  baysFreeDetail: 'Les raids, les transferts et les opérations minières en prennent un. Les sondes n\'utilisent pas de baies.',
-  baysFreeAction: 'Cherche quelque chose',
-
   kindThreat: 'Menace',
   kindOpportunity: 'Opportunité',
-  kindGrowth: 'Faiblesse',
-  kindIdle: 'Rien en attente',
 
   /** The fold. One word each way: the card is small enough that a label is the control. */
   hide: 'Cacher',

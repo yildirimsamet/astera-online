@@ -135,8 +135,8 @@ describe('the situation engine', () => {
     expect(primary(list)?.title).toContain('6m');
   });
 
-  /** An open window is worth more than any amount of self-improvement advice. */
-  it('ranks an open attack window above every growth suggestion', () => {
+  /** An open window is the card a quiet planet shows. */
+  it('puts an open attack window on top', () => {
     const list = directives(
       situation({ planet: planet({ instruments: {} }), galaxy: galaxyWith('AWAY') }),
     );
@@ -218,17 +218,13 @@ describe('the situation engine', () => {
         intel: scannedIntel,
       };
 
-      it('raises no threat on an undefended, exposed, scanned world', () => {
+      /*
+        Owner, 2026-10-20: the shielded variants of these were the "Weakness" cards a new
+        commander closed one after another. Under the shield there is no card at all.
+      */
+      it('raises no card on an undefended, exposed, scanned world', () => {
         const list = directives(situation({ ...exposedWorld, shieldUntil, now }));
-        expect(list.filter((d) => d.kind === 'threat')).toEqual([]);
-        expect(list.find((d) => d.id === 'undefended')?.kind).toBe('growth');
-        expect(list.find((d) => d.id === 'exposed-stock')?.kind).toBe('growth');
-        expect(list.find((d) => d.id === 'scanned')?.kind).toBe('growth');
-      });
-
-      it('says when the shield ends', () => {
-        const list = directives(situation({ ...exposedWorld, shieldUntil, now }));
-        expect(list.find((d) => d.id === 'undefended')?.title).toBe('Your shield ends in 2h 00m: build a ground defence');
+        expect(list.filter((d) => ['undefended', 'exposed-stock', 'scanned'].includes(d.id))).toEqual([]);
       });
 
       it('turns back into a threat the moment the shield ends', () => {
@@ -289,60 +285,19 @@ describe('the situation engine', () => {
     expect(list.some((d) => d.id === 'storage-full')).toBe(false);
   });
 
-  it('tells a blind player that they are blind', () => {
-    const list = directives(situation({ planet: planet({ instruments: {} }) }));
-    const blind = list.find((d) => d.id === 'no-telescope');
-    expect(blind).toBeDefined();
-    expect(blind?.action.group).toBe('orbit');
-  });
-
-  it('does not mention the telescope once one is installed', () => {
-    expect(directives(situation()).some((d) => d.id === 'no-telescope')).toBe(false);
-  });
-
-  it('flags the Core only when it is blocking more than one thing', () => {
-    const oneBlocked = planet({ buildings: { CORE: 3, REFINERY: 3, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 } });
-    expect(directives(situation({ planet: oneBlocked })).some((d) => d.id === 'core-ceiling')).toBe(
-      false,
-    );
-
-    const manyBlocked = planet({ buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 1, SHIPYARD: 0 } });
-    const found = directives(situation({ planet: manyBlocked })).find((d) => d.id === 'core-ceiling');
-    expect(found?.title).toContain('3 upgrades');
-  });
-
-  /** DESIGN LAW #1, surfaced: an empty pending list is itself the prompt. */
-  it('says so when nothing is in flight', () => {
-    const list = directives(situation({ pending: [] }));
-    expect(list.some((d) => d.id === 'idle')).toBe(true);
-  });
-
-  it('stays quiet about idleness while something is still in the air', () => {
-    expect(directives(situation()).some((d) => d.id === 'idle')).toBe(false);
-  });
-
-  /**
-   * A free bay is worth noticing and is never worth shouting about. D28.
-   *
-   * The moment this outranks a threat or an opportunity it has become a streak
-   * counter with better manners, which `game-design.md` excludes by name.
-   */
-  it('mentions a free bay quietly, and never above anything that matters', () => {
-    const list = directives(situation());
-    const free = list.find((d) => d.id === 'bays-free');
-    expect(free).toBeDefined();
-    for (const d of list) {
-      if (d.kind === 'threat' || d.kind === 'opportunity') {
-        expect(d.weight).toBeGreaterThan(free!.weight);
-      }
+  /*
+    Owner, 2026-10-20: "Bu weakness kartlarını iptal et sil istemiyorum", and no "Nothing is in
+    flight" card either. A blind, Core-capped, idle world with free bays gets no advice card.
+  */
+  it('offers no weakness or idle advice, only threats and opportunities', () => {
+    const blindCappedIdle = planet({ instruments: {}, buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 1, SHIPYARD: 0 } });
+    for (const pending of [[], situation().pending]) {
+      const list = directives(situation({ planet: blindCappedIdle, pending }));
+      expect(list.map((d) => d.id)).toEqual([]);
     }
-  });
-
-  it('says nothing about bays when every one of them is occupied', () => {
-    const full = situation();
-    const list = directives({ ...full, planet: { ...full.planet, flight: { used: 3, total: 3 } } });
-    expect(list.some((d) => d.id === 'bays-free')).toBe(false);
-    expect(list.some((d) => d.id === 'idle')).toBe(false);
+    const busy = directives(situation({ planet: planet({ ground: {} }), held: { alloy: 4000, crystal: 400 }, galaxy: galaxyWith('AWAY') }));
+    expect(busy.length).toBeGreaterThan(0);
+    expect(busy.map((d) => d.id)).toContain('undefended');
   });
 
   it('returns directives in descending order of weight, always', () => {

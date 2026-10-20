@@ -1,9 +1,4 @@
-import {
-  fleetCount,
-  fleetValue,
-  radarDetectsFleets,
-  vaultProtects,
-} from '@astera/rules';
+import { fleetCount, vaultProtects } from '@astera/rules';
 import type { GalaxyView, IntelView, PendingThread, PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { compact, full } from './format.js';
@@ -24,9 +19,13 @@ import { duration } from './time.js';
  * the player learns to skip it.
  *
  * Deliberately capped and deliberately quiet when the answer is "nothing urgent".
+ *
+ * THREATS AND OPPORTUNITIES ONLY (owner, 2026-10-20): *"Bu weakness kartlarını iptal et sil
+ * istemiyorum"* — a new commander closed one advice card after another. Build tips, the
+ * shielded "prepare" variants and the "nothing in flight" card are gone.
  */
 
-export type DirectiveKind = 'threat' | 'opportunity' | 'growth' | 'idle';
+export type DirectiveKind = 'threat' | 'opportunity';
 export type Screen = 'planet' | 'galaxy' | 'intel';
 /**
  * The planet screen's sections, named for the problem each one solves.
@@ -62,8 +61,8 @@ export interface Situation {
    * WHEN THE ATTACK SHIELD ENDS, IF ONE HOLDS (`season.shieldUntil`). Spec H1.
    *
    * Newcomer or recovery, no raid can be launched at this commander until then, so
-   * what would otherwise be a threat is preparation — and red is for something
-   * happening to you. A fleet already in the air stays a threat regardless.
+   * exposure is not worth a card — red is for something happening to you. A fleet
+   * already in the air stays a threat regardless.
    */
   shieldUntil?: Date | null;
   /** The instant the shield is read against: the host's server clock. */
@@ -75,14 +74,11 @@ export function directives(s: Situation): Directive[] {
   const { planet } = s;
 
   const ground = fleetCount(planet.ground);
-  const home = fleetCount(planet.fleet);
   const stock = s.held.alloy + s.held.crystal + (s.held.deuterium ?? 0);
   const protectedFloor = planet.planet.vaultFloor;
   const exposed = Math.max(0, stock - protectedFloor);
-  const shieldLeftMs = s.shieldUntil ? s.shieldUntil.getTime() - (s.now ?? Date.now()) : 0;
-  const shielded = shieldLeftMs > 0;
-  /** What a danger to this world is while nothing can be launched at it. */
-  const danger: DirectiveKind = shielded ? 'growth' : 'threat';
+  /** While nothing can be launched at this world, its exposure is not a card. */
+  const shielded = s.shieldUntil ? s.shieldUntil.getTime() > (s.now ?? Date.now()) : false;
 
   /* ── threats ──────────────────────────────────────────────── */
 
@@ -103,13 +99,11 @@ export function directives(s: Situation): Directive[] {
 
   // Nothing on the ground and nothing at home is the one state where a raid takes
   // everything and costs the attacker nothing.
-  if (ground === 0 && exposed > protectedFloor) {
+  if (!shielded && ground === 0 && exposed > protectedFloor) {
     out.push({
       id: 'undefended',
-      kind: danger,
-      title: shielded
-        ? i18n.t('directives.undefendedShieldedTitle', { duration: duration(shieldLeftMs / 60_000) })
-        : i18n.t('directives.undefendedTitle'),
+      kind: 'threat',
+      title: i18n.t('directives.undefendedTitle'),
       detail: i18n.t('directives.undefendedDetail', { amount: full(exposed) }),
       action: { label: i18n.t('directives.undefendedAction'), screen: 'planet', group: 'defend' },
       weight: 820,
@@ -118,7 +112,7 @@ export function directives(s: Situation): Directive[] {
 
   // The vault is the only thing a raid cannot reach, so the gap between stock and
   // floor is literally the amount at risk this minute.
-  if (exposed > protectedFloor * 3) {
+  if (!shielded && exposed > protectedFloor * 3) {
     // The ceiling one level up, across both stores — the same figure the upgrade
     // card quotes, so the directive and the row it sends you to agree.
     const nextFloor = vaultProtects(
@@ -130,7 +124,7 @@ export function directives(s: Situation): Directive[] {
     const next = nextFloor.alloy + nextFloor.crystal;
     out.push({
       id: 'exposed-stock',
-      kind: danger,
+      kind: 'threat',
       title: i18n.t('directives.exposedTitle', { amount: full(exposed) }),
       detail: i18n.t('directives.exposedDetail', {
         now: full(protectedFloor),
@@ -142,10 +136,10 @@ export function directives(s: Situation): Directive[] {
   }
 
   const scans = s.intel?.radarLog.length ?? 0;
-  if (scans > 0) {
+  if (!shielded && scans > 0) {
     out.push({
       id: 'scanned',
-      kind: danger,
+      kind: 'threat',
       title: i18n.t('directives.scannedTitle', { count: scans }),
       detail: i18n.t('directives.scannedDetail'),
       action: { label: i18n.t('directives.scannedAction'), screen: 'intel' },
@@ -212,101 +206,8 @@ export function directives(s: Situation): Directive[] {
     });
   }
 
-  /* ── growth ───────────────────────────────────────────────── */
-
-  // Blind is the default state and it is the one the whole game is about.
-  const telescope = planet.instruments.TELESCOPE ?? 0;
-  if (telescope === 0) {
-    out.push({
-      id: 'no-telescope',
-      kind: 'growth',
-      title: i18n.t('directives.noTelescopeTitle'),
-      detail: i18n.t('directives.noTelescopeDetail'),
-      action: { label: i18n.t('directives.noTelescopeAction'), screen: 'planet', group: 'orbit' },
-      weight: 600,
-    });
-  }
-
-  const radar = planet.instruments.RADAR ?? 0;
-  if (!radarDetectsFleets(radar) && fleetValue(planet.ground) + fleetValue(planet.fleet) > 0) {
-    out.push({
-      id: 'no-radar',
-      kind: 'growth',
-      title: i18n.t('directives.noRadarTitle'),
-      detail: i18n.t('directives.noRadarDetail'),
-      action: { label: i18n.t('directives.noRadarAction'), screen: 'planet', group: 'orbit' },
-      weight: radar === 0 ? 480 : 300,
-    });
-  }
-
-  // The Core ceiling is the most common invisible wall: several rows refuse at
-  // once and the reason is one level away.
-  const core = planet.buildings.CORE ?? 0;
-  const capped = (['REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD'] as const).filter(
-    (id) => (planet.buildings[id] ?? 0) >= core,
-  ).length;
-  if (capped >= 2) {
-    out.push({
-      id: 'core-ceiling',
-      kind: 'growth',
-      title: i18n.t('directives.coreCeilingTitle', { count: capped }),
-      detail: i18n.t('directives.coreCeilingDetail'),
-      action: { label: i18n.t('directives.coreCeilingAction'), screen: 'planet', group: 'grow' },
-      weight: 440,
-    });
-  }
-
-  /* ── the empty state is itself a directive ────────────────── */
-
-  /**
-   * READ OFF THE BAYS, NOT OFF `pending`. D28.
-   *
-   * `/api/session/pending` carries missions only — a Prospector out at a rock
-   * produces no thread — so `pending.length === 0` told a miner that nothing was in
-   * flight while three of their bays were occupied. `flight.used` is the count the
-   * server enforces launches against, so it is the one that can be trusted here.
-   */
-  const bays = planet.flight;
-
-  if (bays.used === 0) {
-    out.push({
-      id: 'idle',
-      kind: 'idle',
-      title: i18n.t('directives.idleTitle'),
-      detail:
-        home > 0
-          ? i18n.t('directives.idleDetailHasShips')
-          : i18n.t('directives.idleDetailNoShips'),
-      action: { label: i18n.t('directives.idleAction'), screen: 'galaxy' },
-      weight: 200,
-    });
-  } else if (bays.used < bays.total) {
-    /**
-     * DELIBERATELY THE QUIETEST THING ON THE LIST.
-     *
-     * It states a fact and stops. The moment this argues — "don't waste your
-     * bays!" — it is a streak counter with better manners, and `game-design.md`
-     * excludes those by name. A player who has committed something and chosen not
-     * to commit more has made a decision, and this must read as noticing it rather
-     * than as correcting it.
-     */
-    const free = bays.total - bays.used;
-    out.push({
-      id: 'bays-free',
-      kind: 'idle',
-      title: i18n.t('directives.baysFreeTitle', { count: free }),
-      detail: i18n.t('directives.baysFreeDetail'),
-      action: { label: i18n.t('directives.baysFreeAction'), screen: 'galaxy' },
-      weight: 120,
-    });
-  }
-
   return out.sort((a, b) => b.weight - a.weight);
 }
 
 /** The one thing the player should look at. */
 export const primary = (list: Directive[]): Directive | undefined => list[0];
-
-/** Threats and opportunities only — what a player would want on every screen. */
-export const urgent = (list: Directive[]): Directive[] =>
-  list.filter((d) => d.kind === 'threat' || d.kind === 'opportunity');

@@ -44,13 +44,13 @@ const trade: ActiveGalaxyEvent = {
   orbit: { radius: 100, period: 60, phase: 0, inclination: 0, ascendingNode: 0, speed: 1 },
 };
 
-const growth: Directive = {
-  id: 'undefended',
-  kind: 'growth',
-  title: 'Your shield ends in 3h 00m: build a ground defence',
-  detail: '456 is exposed to raids.',
-  action: { label: 'Build defence', screen: 'planet', group: 'defend' },
-  weight: 820,
+const advice: Directive = {
+  id: 'storage-full',
+  kind: 'opportunity',
+  title: '456 cannot be collected',
+  detail: '456 is waiting in the works.',
+  action: { label: 'Spend it', screen: 'planet', group: 'grow' },
+  weight: 640,
 };
 
 const props = (over: Partial<ContextSlotProps> = {}): ContextSlotProps => ({
@@ -125,7 +125,7 @@ describe('the context slot', () => {
 
   it('leads with the nearest attack, in red, with its clock and a way to prepare', async () => {
     const onPrepare = vi.fn();
-    render(<ContextSlot {...props({ threats: [attack(30), attack(9)], events: [shower], suggestion: growth, onPrepare })} />);
+    render(<ContextSlot {...props({ threats: [attack(30), attack(9)], events: [shower], suggestion: advice, onPrepare })} />);
     const card = screen.getByRole('region', { name: 'Incoming attack' });
     expect(card).toHaveAttribute('data-tone', 'hostile');
     expect(within(card).getByText('lands in 9m 00s')).toBeInTheDocument();
@@ -154,11 +154,11 @@ describe('the context slot', () => {
   });
 
   it('falls to the event, then the suggestion, as each is dismissed', async () => {
-    render(<Hosted threats={[attack(9)]} events={[shower]} suggestion={growth} />);
+    render(<Hosted threats={[attack(9)]} events={[shower]} suggestion={advice} />);
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.getByRole('region', { name: 'Galaxy event' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
-    expect(screen.getByRole('region', { name: 'Weakness' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Opportunity' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByRole('region')).toBeNull();
   });
@@ -186,13 +186,13 @@ describe('the context slot', () => {
     expect(onShowEvent).toHaveBeenCalledWith(convoy);
   });
 
-  it('carries a suggestion in the colour of what it is, never red for a gap', async () => {
+  it('carries a suggestion in the colour of what it is', async () => {
     const onAct = vi.fn();
-    render(<ContextSlot {...props({ suggestion: growth, onAct })} />);
-    const card = screen.getByRole('region', { name: 'Weakness' });
-    expect(card).toHaveAttribute('data-tone', 'warn');
-    await userEvent.click(within(card).getByRole('button', { name: 'Build defence' }));
-    expect(onAct).toHaveBeenCalledWith(growth);
+    render(<ContextSlot {...props({ suggestion: advice, onAct })} />);
+    const card = screen.getByRole('region', { name: 'Opportunity' });
+    expect(card).toHaveAttribute('data-tone', 'self');
+    await userEvent.click(within(card).getByRole('button', { name: 'Spend it' }));
+    expect(onAct).toHaveBeenCalledWith(advice);
   });
 
   /**
@@ -203,16 +203,16 @@ describe('the context slot', () => {
   it('folds a suggestion to one line and remembers it, without acting on the press', async () => {
     localStorage.clear();
     const onAct = vi.fn();
-    const first = render(<ContextSlot {...props({ suggestion: growth, onAct })} />);
+    const first = render(<ContextSlot {...props({ suggestion: advice, onAct })} />);
     await userEvent.click(screen.getByRole('button', { name: 'Hide' }));
     expect(onAct).not.toHaveBeenCalled();
-    expect(screen.queryByText('456 is exposed to raids.')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Show' })).toHaveTextContent(growth.title);
+    expect(screen.queryByText('456 is waiting in the works.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Show' })).toHaveTextContent(advice.title);
     first.unmount();
-    render(<ContextSlot {...props({ suggestion: growth, onAct })} />);
-    expect(screen.queryByText('456 is exposed to raids.')).toBeNull();
+    render(<ContextSlot {...props({ suggestion: advice, onAct })} />);
+    expect(screen.queryByText('456 is waiting in the works.')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Show' }));
-    expect(screen.getByText('456 is exposed to raids.')).toBeInTheDocument();
+    expect(screen.getByText('456 is waiting in the works.')).toBeInTheDocument();
     localStorage.clear();
   });
 

@@ -29,6 +29,8 @@ import { useEffect, useState } from 'react';
 
 /** Activation events. A press begins at one of these and ends at `click`. */
 const ACTIVATIONS = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click'] as const;
+/** Surfaces no lesson may lock: the way out, and the privacy choice. */
+const UNGATED = '[data-beat-card], [data-consent-notice]';
 
 export function useGate(
   targets: () => readonly Element[],
@@ -42,9 +44,10 @@ export function useGate(
       const node = event.target;
       if (!(node instanceof Node)) return;
 
-      // The card that is doing the instructing, and whatever it carries.
-      if (node instanceof Element && node.closest('[data-beat-card]')) return;
-      if (node.parentElement?.closest('[data-beat-card]')) return;
+      // The card that is doing the instructing, and whatever it carries — and the cookie
+      // choice, which is a legal answer owed on every screen (owner, 2026-10-20).
+      if (node instanceof Element && node.closest(UNGATED)) return;
+      if (node.parentElement?.closest(UNGATED)) return;
 
       for (const allowed of targets()) {
         if (allowed === node || allowed.contains(node)) return;

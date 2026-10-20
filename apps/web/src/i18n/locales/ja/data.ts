@@ -451,7 +451,6 @@ export const directives = {
   inboundAction: "今すぐ資源を使う",
 
   undefendedTitle: "この惑星に地上防衛はありません",
-  undefendedShieldedTitle: "シールドが切れるまで{{duration}} · 地上防衛を建造しましょう",
   undefendedDetail: "資源{{amount}}は襲撃で奪われる可能性があります。ソーンかバスティオンを建造すれば継続して防衛できます。",
   undefendedAction: "地上防衛を建造",
 
@@ -476,34 +475,9 @@ export const directives = {
     "貯蔵庫が満杯のため、生産施設の資源を移せません。資源を使って空きを作ってから回収してください。",
   storageFullAction: "資源を使う",
 
-  noTelescopeTitle: "今は肉眼で見える範囲だけです",
-  noTelescopeDetail:
-    "無料の視界でも近くを通る小惑星は発見できます。望遠鏡を設置すると発見範囲が広がり、遠くの艦船を識別できます。惑星を密かに監視して、艦隊が出航した時も分かります。",
-  noTelescopeAction: "望遠鏡を設置",
-
-  noRadarTitle: "敵艦隊が警告なしに到着する可能性があります",
-  noRadarDetail: "レーダーL1があれば、探知範囲内のあなたを狙う脅威と到着時刻が分かります。レベルを上げると範囲が広がり、詳細な情報も得られます。",
-  noRadarAction: "レーダーを確認",
-
-  coreCeilingTitle: "司令中枢の上限で{{count}}件の強化が止まっています",
-  coreCeilingDetail: "司令中枢は格納庫以外の建物のレベル上限を決めます。上限に達した建物を強化するには、先にコアを強化してください。",
-  coreCeilingAction: "司令中枢を強化",
-
-  idleTitle: "飛行中の艦隊はありません",
-  idleDetailHasShips: "発進枠が空いています。襲撃、移送、採掘に使えます。探査機は発進枠を使いません。",
-  idleDetailNoShips: "この惑星に艦船がいません。建造するか、帰還を待ってください。",
-  idleAction: "標的を探す",
-
-  baysFreeTitle_one: "発進枠が1つ空いています",
-  baysFreeTitle_other: "発進枠が{{count}}個空いています",
-  baysFreeDetail: "襲撃、移送、採掘はそれぞれ発進枠を1つ使います。探査機は使いません。",
-  baysFreeAction: "行き先を探す",
-
   /** The card that carries the top directive. */
   kindThreat: "脅威",
   kindOpportunity: "機会",
-  kindGrowth: "弱点",
-  kindIdle: "保留中のものはありません",
 
   /** The fold. One word each way: the card is small enough that a label is the control. */
   hide: "隠す",

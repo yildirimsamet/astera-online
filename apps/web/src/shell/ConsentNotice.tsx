@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../v2/kit/Surface.js';
@@ -89,6 +89,26 @@ function WebConsentNotice({ inlineHost }: { inlineHost?: HTMLElement } = {}) {
     };
   }, [inlineHost]);
 
+  /*
+    ITS HEIGHT, FOR WHATEVER ELSE OWNS THE BOTTOM EDGE (owner, 2026-10-20). The claim sheet
+    stood under the bar with its Continue hidden; it now reads `--consent-h` and stands on top.
+  */
+  const bar = useRef<HTMLDivElement>(null);
+  const open = state?.open === true;
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const element = bar.current;
+    if (!open || !element) return undefined;
+    const publish = (): void => { root.style.setProperty('--consent-h', `${String(element.offsetHeight)}px`); };
+    publish();
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(publish) : null;
+    observer?.observe(element);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty('--consent-h');
+    };
+  }, [open]);
+
   if (!state?.open) return null;
 
   const answer = (decision: ConsentDecision): void => {
@@ -98,7 +118,9 @@ function WebConsentNotice({ inlineHost }: { inlineHost?: HTMLElement } = {}) {
 
   return (
     <div
+      ref={bar}
       role="dialog"
+      data-consent-notice=""
       aria-labelledby="consent-title"
       // Public landing supplies a normal-flow host; game retains its safe-area bar.
       className="fixed inset-x-0 bottom-0 z-50 border-t border-v2-line bg-v2-panel pb-[max(0.5rem,env(safe-area-inset-bottom))] font-v2-ui text-v2-ink"

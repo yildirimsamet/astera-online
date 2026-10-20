@@ -15,9 +15,10 @@ import { keys } from '../src/api/keys.js';
 import { monumentScale } from '../src/galaxy/MonumentModel.js';
 import type * as Queries from '../src/api/queries.js';
 
+const galaxy = vi.hoisted(() => ({ hpRadiation: [] as HpRadiationSourceView[] }));
 vi.mock('../src/api/queries.js', async importOriginal => ({
   ...await importOriginal<typeof Queries>(),
-  useGalaxy: () => ({ data: { hpRadiation: [] } }),
+  useGalaxy: () => ({ data: galaxy }),
 }));
 
 const target: PublicMonument = { id: 'monument-1', ordinal: 1, difficulty: 'LEGACY', position: { x: 0, y: 7000, z: 0 },
@@ -84,6 +85,19 @@ describe('public monument navigation', () => {
       expect(select).toHaveBeenCalledWith({ kind: 'monument', id: 'monument-8' });
       expect(screen.queryByRole('list')).toBeNull();
     } finally { setMonumentHonorees([]); }
+  });
+  /*
+    Owner, 2026-10-20: the closed rail drew the full radiation dial, the sheet grew past the
+    monument and hid it. The summary states the level; the rail adds one live meter line and
+    the dial waits in the inspected sheet.
+  */
+  it('keeps the closed rail short: a one-line live meter, never the dial', () => {
+    galaxy.hpRadiation = [{ ...cloud, activeFrom: new Date(Date.now() - 60_000), target: { kind: 'MONUMENT', id: target.id } }];
+    try {
+      const view = render(<MonumentFocus monument={target} onInspect={vi.fn()} onClose={vi.fn()} />);
+      expect(screen.getByRole('meter', { name: 'Radiation' })).toHaveAttribute('aria-valuenow', '4');
+      expect(view.container.querySelector('[data-radiation-dial]')).toBeNull();
+    } finally { galaxy.hpRadiation = []; }
   });
   it.each([['EASY', 1, 2], ['HARD', 2, 5]] as const)('states the %s radiation level and real HP rate before inspection', (difficulty, level, rate) => {
     render(<MonumentFocus monument={{ ...target, difficulty, radiationHpPerMinute: rate }} onInspect={vi.fn()} onClose={vi.fn()} />);

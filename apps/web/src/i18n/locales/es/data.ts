@@ -451,7 +451,6 @@ export const directives = {
   inboundAction: 'Gástalo ahora',
 
   undefendedTitle: 'Este mundo no tiene defensa terrestre.',
-  undefendedShieldedTitle: 'Tu escudo termina en {{duration}}: construye una defensa terrestre.',
   undefendedDetail: '{{amount}} está expuesto a redadas. Construye espinas o bastiones para una defensa permanente.',
   undefendedAction: 'Construir defensa',
 
@@ -476,34 +475,9 @@ export const directives = {
     'Tu almacén está llena, por lo que las obras no tienen dónde vaciar. Gasta algo y reclámalo.',
   storageFullAction: 'Gastarlo',
 
-  noTelescopeTitle: 'Sólo tienes vista a simple vista',
-  noTelescopeDetail:
-    'Tu vista libre ya puede revelar un asteroide que pasa cerca. Un telescopio amplía esa área de descubrimiento, identifica naves en movimiento a mayor distancia y puede observar silenciosamente un planeta para avisarle cuándo parte su flota.',
-  noTelescopeAction: 'Instalar un telescopio',
-
-  noRadarTitle: 'Una flota podría aterrizar aquí sin previo aviso',
-  noRadarDetail: 'El radar L1 ya marca una amenaza dirigida a ti con su hora de llegada dentro del círculo. Los niveles más altos amplían el rango y revelan más detalles.',
-  noRadarAction: 'Mira el radar',
-
-  coreCeilingTitle: 'Núcleo de Mando está bloqueando las actualizaciones de {{count}}',
-  coreCeilingDetail: "El Núcleo de comando limita el nivel de los edificios, salvo el Hangar. Mejora el Núcleo para aumentar ese límite.",
-  coreCeilingAction: 'Elevar el núcleo',
-
-  idleTitle: 'No hay nada en vuelo',
-  idleDetailHasShips: 'Tus bahías están inactivas. Puedes iniciar una incursión, una transferencia o una carrera minera; Las sondas no utilizan bahías.',
-  idleDetailNoShips: 'No tienes naves en casa. Construye algunos o espera a que vuelva el tuyo.',
-  idleAction: 'Encuentra un objetivo',
-
-  baysFreeTitle_one: 'Una bahía aún está libre',
-  baysFreeTitle_other: '{{count}} las bahías aún están libres',
-  baysFreeDetail: 'Las incursiones, transferencias y operaciones de minería requieren uno. Las sondas no utilizan bahías.',
-  baysFreeAction: 'Busca algo',
-
   /** The card that carries the top directive. */
   kindThreat: 'Amenaza',
   kindOpportunity: 'Oportunidad',
-  kindGrowth: 'Debilidad',
-  kindIdle: 'Nada pendiente',
 
   /** The fold. One word each way: the card is small enough that a label is the control. */
   hide: 'Ocultar',
