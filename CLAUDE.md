@@ -1,10 +1,11 @@
-# CLAUDE.md — Astera Online
+# CLAUDE.md — Astera Online | Bu dosyadaki kuralları unutma. Bir geliştirme yaparken, iş uzadıgında bu dosyadaki kuralları unutup sapma!
+**Development discipline, Tasarım/Design discipline, Mindset'in nasıl olmalı,Bağlam ve dosya okuma stratejisi senin için unutulacak konular değil!**
 
 Cold-agent operating manual. Read first each session. **Keep this file small:** only cross-cutting rules needed to avoid wrong implementation belong here. Rationale/history/measurements live in `docs/`; local traps live in file docblocks.
 
 ## Product
 
-Astera Online is a **mobile-first persistent multiplayer space game** for up to 300 real players per galaxy. One commander owns one protected capital and may capture up to three colonies. Holdings are private until discovered.
+Astera Online is a **mobile-first persistent multiplayer space game** for up to 300-1000 real players per galaxy. One commander owns one protected capital and may capture up to three colonies. Holdings are private until discovered.
 
 > **The fleet is the bet. The information is the game. The planet is the stake.**
 
@@ -49,13 +50,13 @@ If context is lost: `CLAUDE.md → docs/decisions.md → docs/balance.md → cod
 
 1. Requirement'ı analiz et
 2. Tüm happy path ve tüm edge case'leri çıkart. Eksik, yanlış, çelişkili veya ucu açık sorular varsa owner'a sor. Tüm bu çıktıyı not al.
-3. Bu task'ı yaparken; nerelere dokunulacak dokunacak? Çalışan bir logic'i kıracakmıyız veya kırabilir miyiz detaylıca incele not'una ekle.
+3. Bu task'ı yaparken; nerelere dokunulacak? Çalışan bir logic'i kıracakmıyız veya kırabilir miyiz detaylıca incele not'una ekle.
 3. Önce testleri yaz/güncelle/ekle
-4. Gerekli testleri çalıştır → FAIL
+4. Gerekli testleri çalıştır → FAIL (bu aşamada tüm testleri çalıştırmana gerek yok)
 5. **Implementation yaz (Her zaman şunu düşünmelisin: şuan bu yaptığım işi en temiz, en basit, en stabil, en az bug çıkartacak şekilde ve istenilen ile tamamen uyumlu bir şekilde nasıl yaparım. Over engineering yapmaya gerek yok. Kod yazmadan veya kod silerek veya bazı ufak tefek güncellemeler ile çözülebiliyor mu incelemelisin.)**
 6. Gerekli testleri çalıştır → PASS
 7. Son bir code review yap: eksik, yanlış, hatalı, unutulan bir yer var mı kontrol et. Bir yeri kırdık mı kontrol et.
-7. Tüm testleri çalıştır.
+7. Tüm testleri çalıştır. (eğer bir çok yere dokunulduysa tüm testleri çalıştırmalısın, eğer sadece belirli yerlere az bir kısıma dokunduysan tüm testleri çalıştırmana gerek yok. Yani bu aşamada ya tüm testler çalıştırılacak yada tekrar dokunulan yerler veya yaptıgın geliştirme testleri ile birlikte bağlantılı olabilecegini düşündügün yerlerin testleri çalıştırılacak (sen karar vereceksin sorumluluk sende!))
 
 ### Tasarım/Design discipline
 
@@ -199,7 +200,71 @@ talimatlar kapsam içindedir. Bu standart yazım kuralıdır; mekanikleri kod ve
 | `docs/review-onboarding.md`     | Onboarding / new-player experience   |
 | `docs/glossary.md`              | Terms                                |
 | `docs/komutan-gemisi/README.md` | Touching Komutan Gemisi / Savaş Alanı (real-time pilot arena) |
+for others check docs folder.
+
+## Mindset'in nasıl olmalı:
+
+1. Think Before Coding
+Don't assume. Don't hide confusion. Surface tradeoffs.
+
+Before implementing:
+
+State your assumptions explicitly. If uncertain, ask.
+If multiple interpretations exist, present them - don't pick silently.
+If a simpler approach exists, say so. Push back when warranted.
+If something is unclear, stop. Name what's confusing. Ask.
+2. Simplicity First
+Minimum code that solves the problem. Nothing speculative.
+
+No features beyond what was asked.
+No abstractions for single-use code.
+No "flexibility" or "configurability" that wasn't requested.
+No error handling for impossible scenarios.
+If you write 200 lines and it could be 50, rewrite it.
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+3. Surgical Changes
+Touch only what you must. Clean up only your own mess.
+
+When editing existing code:
+
+Don't "improve" adjacent code, comments, or formatting.
+Don't refactor things that aren't broken.
+Match existing style, even if you'd do it differently.
+If you notice unrelated dead code, mention it - don't delete it.
+When your changes create orphans:
+
+Remove imports/variables/functions that YOUR changes made unused.
+Don't remove pre-existing dead code unless asked.
+The test: Every changed line should trace directly to the user's request.
+
+4. Goal-Driven Execution
+Define success criteria. Loop until verified.
+
+Transform tasks into verifiable goals:
+
+"Add validation" → "Write tests for invalid inputs, then make them pass"
+"Fix the bug" → "Write a test that reproduces it, then make it pass"
+"Refactor X" → "Ensure tests pass before and after"
+For multi-step tasks, state a brief plan:
+
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+These guidelines are working if: fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+
+**Bağlam ve dosya okuma stratejisi:**
+Gereksiz, tekrarlı ve amaçsız dosya okumalarından kaçın. Önce hedefli aramalarla ilgili dosyaları, bağımlılıkları ve çağrı zincirlerini belirle. Ardından değişikliğin doğruluğunu ve mevcut sistemlerle uyumluluğunu sağlamak için gereken tüm kodu incele.
+
+Token tasarrufu uğruna gerekli incelemelerden, bağımlılık analizinden veya testlerden ödün verme. Büyük dosyalarda önce ilgili bölümleri oku; ihtiyaç duyarsan kapsamı genişlet. Daha önce okuduğun ve değişmediğini bildiğin içerikleri gereksiz yere tekrar okuma.
+
+En önemlisi: bana gereksiz çıktı verme, gereksiz uzunlukta çıktı verme, çıktı vermen gerekiyorsa: kısa, net ve benim anlayabilecegim şekilde yaz.
+
+**Öncelik her zaman doğruluk ve güvenilirliktir; verimlilik ikinci sıradadır.**
 
 ## One thing to remember
 
-> **Build a multiplayer game that leaves players wondering, “What happened?” after they close it. AAA+ Premium Visual Quality Optimized for browser**
+> **Build a multiplayer game that leaves players wondering, “What happened?” after they close it. AAA+ Premium Visual Quality Optimized browser and app game**
