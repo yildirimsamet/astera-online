@@ -87,6 +87,23 @@ if (run('shield')) {
   await page.evaluate(() => { window.__arena.world.pilot.shield = 0; });
   await shot('51-shield-off', 600);
 }
+if (run('loop')) {
+  await page.evaluate(() => { const a = window.__arena; const w = a.world; w.pilot.shield = 0;
+    const d = w.cargoDrops.find(d => d.field && d.active && d.amount > 0);
+    window.__place(w.pilot, { x: d.p.x, y: d.p.y, z: d.p.z - 70 }, d.p, w.previous); a.controls.setThrottle(0.5); });
+  await shot('60-approach', 700);
+  await page.waitForTimeout(1500);
+  console.log('hold', await page.evaluate(() => JSON.stringify(window.__arena.world.pilot.hold)));
+  await shot('61-picked', 0);
+  await page.evaluate(() => { const a = window.__arena; const w = a.world; const e = w.layout.exits[1];
+    window.__place(w.pilot, { x: e.x + 30, y: e.y + 10, z: e.z - 30 }, e, w.previous); a.controls.setThrottle(0); });
+  await shot('62-exiting', 1600);
+  await page.waitForSelector('[data-screen="result"]', { timeout: 15000 }).catch(() => console.log('no result screen'));
+  await shot('63-result', 800);
+  await page.waitForTimeout(6000);
+  console.log('screen after', await page.evaluate(() => document.querySelector('[data-screen]')?.getAttribute('data-screen')));
+  await shot('64-after', 0);
+}
 if (run('fps')) {
   await page.evaluate(() => { const a = window.__arena; const w = a.world; window.__place(w.pilot, { x: 0, y: 40, z: -900 }, { x: 0, y: 0, z: 0 }, w.previous); a.controls.setThrottle(0.6); });
   for (let i = 0; i < 5; i++) { await page.waitForTimeout(1000); console.log('fly', await fps()); }

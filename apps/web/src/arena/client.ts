@@ -18,6 +18,7 @@ import { ShipVisual, type ShipPose } from './render/ships.js';
 import { buildStage } from './render/stage.js';
 import { createOre } from './render/ore.js';
 import { applyCorrection, decayCorrection } from './smoothing.js';
+import { createResolution, stepResolution } from './resolution.js';
 import { describeGpu } from './diagnostics.js';
 import { createLandingAssist, findLandingTarget } from './landing.js';
 import type { HudStore } from './store.js';
@@ -129,6 +130,7 @@ export function createArenaClient(options: ClientOptions) {
   const landedOffset = { index: -1, offset: 0 };
   const focus = { id: -1, locked: false };
   const metrics = { fps: 0, frameMs: 0, calls: 0, triangles: 0 };
+  const resolution = createResolution(renderer.getPixelRatio());
   const deathPoint = new THREE.Vector3();
   const raycaster = new THREE.Raycaster();
   const probeMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
@@ -402,7 +404,8 @@ export function createArenaClient(options: ClientOptions) {
   const draw = (now: number, alpha: number): void => {
     if (lost) return;
     const time = now / 1000;
-    const dt = Math.min(0.1, Math.max(0, time - (seen.lastDraw || time)));
+    const frame = Math.max(0, time - (seen.lastDraw || time));
+    const dt = Math.min(0.1, frame);
     seen.lastDraw = time;
     const pilot = world.pilot;
     const blend = phase === 'flight' ? alpha : 1;
@@ -560,6 +563,8 @@ export function createArenaClient(options: ClientOptions) {
     metrics.calls = renderer.info.render.calls; metrics.triangles = renderer.info.render.triangles;
     metrics.fps = metrics.fps === 0 ? 1 / Math.max(dt, 0.001) : metrics.fps * 0.92 + 0.08 / Math.max(dt, 0.001);
     metrics.frameMs = performance.now() - now;
+    const ratio = stepResolution(resolution, frame);
+    if (ratio !== null) { renderer.setPixelRatio(ratio); resize(); options.log(`dpr ${String(ratio)} · holding the frame rate`); }
     if (import.meta.env.DEV && seen.drawn % 180 === 1) {
       const gl = renderer.getContext();
       const error = gl.getError();
