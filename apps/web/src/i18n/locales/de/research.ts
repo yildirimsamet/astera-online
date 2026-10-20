@@ -14,6 +14,17 @@
  * on a ship. The day either is reworded the other must not move with it.
  */
 export const research = {
+  shipShieldStage: "2 · Schiffsschilde absorbieren Feuer",
+  shipShieldHullDamage: "Nach den Schilden erreichten {{amount}} Angriffsschaden die verteidigenden Hüllen.",
+  shipShieldsName: "Schiffsschilde",
+  shipShieldsTag: "Fängt in jeder Runde Kampffeuer ab",
+  shipShieldsRole: "Jedes Schiff beginnt mit einem Schild in Höhe seiner maximalen Hülle. Vier Forschungsstufen erhöhen diesen Basisschild insgesamt um 25%, 50%, 70% und 100%.",
+  shipShieldsDetail: "Schilde laden zu Beginn jeder Runde auf. Hüllenschäden bleiben. Strahlung umgeht Schilde und beschädigt direkt die Hülle. Bodenverteidigung hat keinen persönlichen Schild. Panzerung erhöht maximale Hülle und Schildkapazität. Entsandte Flotten behalten ihre Forschung vom Abflug.",
+  shipShieldGain: "Schiffsschildbonus",
+  shipShieldScope: "Gilt für alle mobilen Schiffe. Boni sind Gesamtsteigerungen gegenüber dem Basisschild; Stufen werden nicht multipliziert.",
+  shipShieldStat: "Schiffsschild (HP)",
+  shipShieldRound: "Diese Runde absorbierten deine Schiffsschilde {{your}} und gegnerische Schiffsschilde {{their}} Schaden.",
+  shipShieldHint: "Schiffsschilde laden jede Runde auf. Strahlung beschädigt direkt die Hülle.",
   shieldingCeiling: "Bei Stufe {{level}}: {{rate}} HP/min",
   shieldingName: "Strahlenschutz",
   shieldingTag: "Verringert Strahlungsschaden an Schiffen",
@@ -39,14 +50,12 @@ export const research = {
     "Wähle einen Stern auf der Karte. Bis zu drei Projekte können hier warten.",
 
   frontierBand: "Grenze",
-  frontierNote:
-    "Wird durch bestimmte Ereignisse in der Galaxie aufgedeckt und dann durch den Einsatz von Ressourcen und Forschungszeit vervollständigt.",
+  frontierNote: "Freischaltungen und Strahlenschutz. Jedes Projekt zeigt seine eigenen Entdeckungsbedingungen und Voraussetzungen.",
   industryBand: "Industrie",
   industryNote:
     "Verbessert Produktion, Bau- und Reparaturzeit sowie Ladekapazität. Jedes Projekt zeigt seine Stufengrenze und Voraussetzungen.",
   doctrineBand: "Lehre",
-  doctrineNote:
-    "Öffnet erweiterte Rumpfstufen und verbessert Angriff, Panzerung oder Antrieb auf separaten begrenzten Leitern. Die Kampfstufen sind per Sonde sichtbar.",
+  doctrineNote: "Schaltet fortgeschrittene Schiffe frei und verbessert Angriff, Panzerung, Kampfschilde oder Antrieb. Sonden können Kampfforschung aufdecken.",
   strategicBand: "Strategisch",
   strategicNote: "Erhöht, wie viele Todessterne und Abfangladungen jede deiner Welten halten kann.",
 

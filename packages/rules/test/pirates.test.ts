@@ -20,6 +20,7 @@ import {
   interceptAsteroid,
   interceptOrbit,
   mulberry32,
+  missionFuel,
   orbitRadius,
   pirateActive,
   pirateCapture,
@@ -361,14 +362,14 @@ describe('the pirate hoard', () => {
         values.push(
           loot.alloy + loot.crystal + loot.deuterium
           + (fleetValue(result.attackerLosses) + fleetValue(result.defenderLosses)) * DEBRIS.share
-          - fleetValue(result.attackerLosses),
+          - fleetValue(result.attackerLosses) - missionFuel(fleet, 600, 2),
         );
       }
       return values.reduce((sum, v) => sum + v, 0) / Math.max(1, values.length);
     };
 
     for (const level of LEVELS) {
-      const guns = 30 * level * level;
+      const guns = 60 * level * level;
       // Guns to win the fight and a hold to carry the prize.
       expect(net(level, { DART: guns, COURIER: level + 1 })).toBeGreaterThan(0);
       // The same budget with nothing that shoots.
@@ -451,7 +452,7 @@ describe('the holds a pirate is left with', () => {
     });
 
   it('takes the holds that outlived the last warship', () => {
-    const raw = fight({ DART: 4 }, { RAMPART: 3, COURIER: 2 });
+    const raw = fight({ DART: 7 }, { RAMPART: 3, COURIER: 2 });
     // The premise: the line died in the last round and the holds were never shot at.
     expect(raw.grade).toBe('PARTIAL');
     expect(raw.defenderSurvivors.COURIER).toBe(2);

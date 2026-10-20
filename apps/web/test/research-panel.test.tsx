@@ -43,6 +43,16 @@ const GROUPS = ['frontier', 'industry', 'doctrine', 'strategic'] as const;
 
 type ResearchState = PlanetView['research'][number];
 
+it('offers Ship Shields with its cumulative gain, radiation bypass and four-level ceiling', async () => {
+  const view = show();
+  const card = pick(view, 'SHIP_SHIELDS');
+  expect(card).toHaveTextContent('25%');
+  const sheet = await open(view, 'SHIP_SHIELDS');
+  expect(sheet).toHaveTextContent(/100%/);
+  expect(sheet).toHaveTextContent(/radiation.*hull/i);
+  expect(sheet).toHaveTextContent(/each round/i);
+});
+
 it('states shielding’s level-four damage instead of labelling it as maximum damage', async () => {
   const view = show();
   const card = pick(view, 'RADIATION_SHIELDING');
@@ -315,7 +325,8 @@ describe('the groups', () => {
       INTERCEPTION_GRID: 'strategic',
       STRATEGIC_STOCKPILE: 'strategic',
       INDUSTRIAL: 'industry',
-      RADIATION_SHIELDING: 'doctrine',
+      RADIATION_SHIELDING: 'frontier',
+      SHIP_SHIELDS: 'doctrine',
     };
     for (const id of ALL) expect(groupOf(view, id), id).toBe(expected[id]);
   });

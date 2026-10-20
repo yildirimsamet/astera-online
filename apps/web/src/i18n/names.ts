@@ -182,6 +182,7 @@ const RESEARCH_NAME_KEY = {
   STARSHIP_ENGINEERING: 'research.engineeringName',
   SHIP_POWER: 'research.powerName',
   SHIP_ARMOR: 'research.armorName',
+  SHIP_SHIELDS: 'research.shipShieldsName',
   SHIP_PROPULSION: 'research.propulsionName',
   EMPLACEMENT_DOCTRINE: 'research.groundDoctrineName',
   INTERCEPTION_GRID: 'research.gridName',

@@ -251,6 +251,9 @@ colony 20 loyalty; at 20 or less it secedes to NEUTRAL.
 
 ```
 3 rounds · simultaneous fire · ±8% variance
+mobile ship shield = researched maximum HP × [1, 1.25, 1.5, 1.7, 2] at research L0–L4
+personal shields fully recharge each round; hull wounds persist; radiation bypasses them
+ground guns: no personal shield · Aegis absorbs combat fire first
 counter cycle: SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER   at 1.6× / 0.625×
 support hulls: prey to everything, deal nothing, shielded while escorted
 
@@ -302,7 +305,7 @@ must not be copied forward as the Fleet V2 price table.
 **The table is priced on `atk · hp / value²`** — equal-budget power when damage is spread across a
 force. Not attack-per-resource, which is the quantity that made the old Bulwark lose every
 equal-budget matchup including against the Lance it counters. **A tech tier buys about 15%; the
-counter cycle buys 156%.** Information beats tech, by construction.
+counter cycle buys 156%.** This is the hull-pricing baseline. Regenerating personal shields and shield research also affect battle endurance; the stat product alone does not predict an equal-budget battle.
 
 These are the design-baseline prices used for the equal-budget derivation. The active tempo applies
 `1.25×` to ordinary hull resources and, by owner instruction, an additional `1.15×` to the Crystal

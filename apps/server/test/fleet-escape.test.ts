@@ -215,11 +215,12 @@ describe('the fleet escape on a raid', () => {
     expect(await tank(target)).toBeCloseTo(LIFT - 1 - report.loot.deuterium, 6);
   });
 
-  it('fights a two-to-one raid exactly as it always did', async () => {
+  it('fights a two-to-one raid without retreating and keeps the shielded survivors home', async () => {
     const report = await raid(DOUBLE);
     expect(report.fleetEscape).toBeNull();
-    expect(report.defenderLosses).toEqual(LINE);
-    expect(await home(target)).toEqual({ PROSPECTOR: 2 });
+    expect(report.defenderLosses.DART).toBeGreaterThan(0);
+    expect(report.defenderLosses.DART).toBeLessThan(LINE.DART!);
+    expect(await home(target)).toEqual({ DART: LINE.DART! - report.defenderLosses.DART!, PROSPECTOR: 2 });
   });
 
   it('keeps a running season on the rule it was dealt', async () => {

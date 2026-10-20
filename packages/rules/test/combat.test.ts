@@ -65,7 +65,7 @@ describe('counter cycle', () => {
    * And one gun is not a wall: the swarm still clears it outright.
    */
   it('is overwhelmed by a Dart swarm, but never for free', () => {
-    const r = resolveCombat({ DART: 26 }, { BASTION: 1 }, 0, flat(), NO_TECH);
+    const r = resolveCombat({ DART: 26 }, { BASTION: 2 }, 0, flat(), NO_TECH);
     expect(r.grade).toBe('DECISIVE');
     expect(fleetCount(r.attackerLosses)).toBeGreaterThan(0);
     expect(fleetCount(r.attackerLosses)).toBeLessThan(10);

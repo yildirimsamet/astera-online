@@ -19,6 +19,7 @@ export const RESEARCH_GROUPS = [
     note: 'research.frontierNote',
     projects: [
       'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES',
+      'RADIATION_SHIELDING',
     ],
   },
   {
@@ -40,7 +41,7 @@ export const RESEARCH_GROUPS = [
     note: 'research.doctrineNote',
     projects: [
       'STARSHIP_ENGINEERING', 'SHIP_POWER', 'SHIP_ARMOR',
-      'SHIP_PROPULSION', 'EMPLACEMENT_DOCTRINE', 'RADIATION_SHIELDING',
+      'SHIP_PROPULSION', 'EMPLACEMENT_DOCTRINE', 'SHIP_SHIELDS',
     ],
   },
   {

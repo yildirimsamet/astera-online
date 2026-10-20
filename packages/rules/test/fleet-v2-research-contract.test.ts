@@ -164,7 +164,7 @@ describe('Fleet V2 research effects — D148', () => {
 
   it('exposes exactly combat-changing projects to probe and report consumers', () => {
     expect(runtimeProperty(rules, 'COMBAT_RESEARCH_PROJECTS')).toEqual([
-      'SHIP_POWER', 'SHIP_ARMOR', 'EMPLACEMENT_DOCTRINE',
+      'SHIP_POWER', 'SHIP_ARMOR', 'EMPLACEMENT_DOCTRINE', 'SHIP_SHIELDS',
     ]);
   });
 });

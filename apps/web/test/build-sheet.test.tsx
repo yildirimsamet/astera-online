@@ -622,7 +622,8 @@ describe('fleet holdings beside each hull name', () => {
 });
 
 describe('the quantity picker', () => {
-  it.each(['darts', 'reinforcements'] as const)('offers the exact two-Dart lesson order on the first Build press in %s', async (lesson) => {
+  it.each(['darts', 'reinforcements'] as const)('offers the authored Dart lesson order on the first Build press in %s', async (lesson) => {
+    const count = lesson === 'darts' ? 4 : 2;
     current = rich();
     build.mockClear();
     const client = new QueryClient();
@@ -630,14 +631,14 @@ describe('the quantity picker', () => {
       <PlanetScreen focusGroup="reach" />
     </AcademyLessonContext.Provider></ToastProvider></QueryClientProvider>);
     await userEvent.click(document.querySelector('#row-DART button')!);
-    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('2');
-    // The lesson's count is the whole offer: Max says two, and no reason pretends otherwise.
-    expect(screen.getByRole('button', { name: /max dart/i })).toHaveTextContent('Max · 2');
+    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue(String(count));
+    // Each lesson offers its authored amount with no manual adjustment needed.
+    expect(screen.getByRole('button', { name: /max dart/i })).toHaveTextContent(`Max · ${count}`);
     expect(document.querySelector('[data-fits]')).toBeNull();
     expect(screen.getByRole('button', { name: /fewer dart/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /more dart/i })).toBeDisabled();
-    await userEvent.click(screen.getByRole('button', { name: /build 2/i }));
-    expect(build).toHaveBeenCalledWith({ hull: 'DART', count: 2 }, expect.anything());
+    await userEvent.click(screen.getByRole('button', { name: new RegExp(`build ${count}`, 'i') }));
+    expect(build).toHaveBeenCalledWith({ hull: 'DART', count }, expect.anything());
   });
   /**
    * THE HANGAR IS BACK, AND THE STEPPER ANSWERS TO IT. 2026-09-18.
@@ -917,7 +918,7 @@ describe('the hull hero', () => {
     const art = document.querySelector('[data-build-art]');
     const stats = document.querySelector('[data-build-stats]');
     expect(art).toContainElement(stats as HTMLElement);
-    expect(stats?.querySelectorAll('[data-stat]')).toHaveLength(7);
+    expect(stats?.querySelectorAll('[data-stat]')).toHaveLength(8);
   });
 
   /** One price per sheet: the figure shown is the one the commit button quotes. */
@@ -1122,7 +1123,7 @@ describe('the room figure on a craft sheet', () => {
     show();
     await openSheet('Dart');
 
-    expect(document.querySelectorAll('[data-build-stats] [data-stat]')).toHaveLength(7);
+    expect(document.querySelectorAll('[data-build-stats] [data-stat]')).toHaveLength(8);
   });
 
   it('explains the ship-only research protection independently of the home Aegis', async () => {

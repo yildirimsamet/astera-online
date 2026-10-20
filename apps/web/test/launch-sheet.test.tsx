@@ -21,6 +21,7 @@ import {
   fleetCargo,
   forecastLines,
   forecastLoss,
+
   shieldHp,
   wallKnowledgeOf,
   type Fleet,
@@ -46,7 +47,7 @@ describe('pirate profit updates with the committed fleet', () => {
       onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper },
   );
 
-  it('recomputes the stronger wing’s net haul including paid repair for every wound', async () => {
+  it('recomputes the stronger wing’s net haul with personal shield protection', async () => {
     open();
     expect(screen.getByText(/choose ships.*estimate/i)).toBeVisible();
     const user = userEvent.setup();
@@ -59,8 +60,10 @@ describe('pirate profit updates with the committed fleet', () => {
     for (const hull of ['Cataclysm', 'Corsair', 'Citadel', 'Paladin']) {
       await user.click(screen.getByRole('button', { name: `Max ${hull}` }));
     }
-    expect(await screen.findByText('Profit is uncertain')).toBeVisible();
-    expect(document.querySelector('[data-profit-net="alloy"]')).toHaveTextContent('−');
+    // Personal shields now reduce repair losses; the panel must follow the current
+    // engine rather than promise the old negative result for this same wing.
+    expect(await screen.findByText('Likely profitable')).toBeVisible();
+    expect(document.querySelector('[data-profit-net="alloy"]')).not.toHaveTextContent('−');
     expect(document.querySelector('[data-profit-net="deuterium"]')).not.toBeNull();
   });
 
@@ -957,7 +960,7 @@ describe('a fleet that cannot fight', () => {
  */
 describe('the picker while a lesson is running', () => {
   const holding = planetView({
-    fleet: { DART: 4, COURIER: 1, WARDEN: 1, PROSPECTOR: 1 },
+    fleet: { DART: academyLessonFleet('raid').DART ?? 0, COURIER: 1, WARDEN: 1, PROSPECTOR: 1 },
     buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 },
   });
 
@@ -1016,7 +1019,7 @@ describe('the picker while a lesson is running', () => {
     }
   });
 
-  it('caps the pirate lesson at two Darts even though three are standing', async () => {
+  it('caps the pirate lesson at its authored count even when more are standing', async () => {
     const user = userEvent.setup();
     lessonSheet('pirate');
     for (const max of screen.getAllByRole('button', { name: /max/i })) await user.click(max);
@@ -1045,7 +1048,7 @@ describe('the picker while a lesson is running', () => {
  */
 describe('the order a lesson lists ships in', () => {
   const holding = planetView({
-    fleet: { DART: 4, COURIER: 1, WARDEN: 1, PROSPECTOR: 1 },
+    fleet: { DART: academyLessonFleet('raid').DART ?? 0, COURIER: 1, WARDEN: 1, PROSPECTOR: 1 },
     buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 },
   });
 

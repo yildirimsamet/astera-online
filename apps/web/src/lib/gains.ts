@@ -11,6 +11,7 @@ import {
   prospectorHoldMult,
   plantCeiling,
   hullTech,
+  shipShieldMult,
   cargoMult,
   radiationDamageMult,
   RADIATION_LEVEL_HP_PER_MINUTE,
@@ -521,6 +522,9 @@ export function researchGain(id: ResearchProjectId, level: number): Gain {
 
   switch (id) {
     /* ── the three Fleet V2 stat ladders ───────────────────── */
+    case 'SHIP_SHIELDS':
+      return step(i18n.t('research.shipShieldGain'),
+        rung => shipShieldMult({ SHIP_SHIELDS: rung }) - 1, i18n.t('research.shipShieldScope'));
     case 'SHIP_POWER':
       return step(
         i18n.t('gains.research.powerLabel'),

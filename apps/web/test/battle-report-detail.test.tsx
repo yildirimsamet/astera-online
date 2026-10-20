@@ -72,6 +72,15 @@ const base: BattleReport = {
   wreckValue: 0,
 };
 
+it('separates personal shield absorption from Aegis and swaps it for a defender’s view', async () => {
+  await openSheet(report({ attacking: false, rounds: [detailedRound({
+    attackerShipShieldAbsorbed: 120, defenderShipShieldAbsorbed: 240,
+  })] }));
+  const line = document.querySelector('[data-round-ship-shields]');
+  expect(line).toHaveTextContent('your ship shields absorbed 240');
+  expect(line).toHaveTextContent('enemy ship shields absorbed 120');
+});
+
 const report = (over: Partial<BattleReport> = {}): BattleReport => ({ ...base, ...over });
 
 const detailedRound = (
@@ -1003,6 +1012,19 @@ describe('what a report about a pirate explains', () => {
     const sheet = screen.getByRole('dialog');
     expect(within(sheet).queryByText(/Aegis/i)).toBeNull();
     expect(within(sheet).queryByText(/shield/i)).toBeNull();
+  });
+
+  it('explains personal shields in a new pirate report without claiming the shot was unobstructed', async () => {
+    await openSheet(pirate({ rounds: [detailedRound({
+      shieldBefore: 0, shieldAfter: 0, shieldAbsorbed: 0,
+      attackerShipShieldAbsorbed: 120, defenderShipShieldAbsorbed: 240,
+      attackerHullDamage: 560,
+    })] }));
+    await userEvent.click(screen.getByText('Show this round’s shot calculation'));
+    const calculation = within(document.querySelector<HTMLElement>('[data-round-calculation]')!);
+    expect(calculation.getByText('2 · Ship shields absorb fire')).toBeVisible();
+    expect(calculation.queryByText(/nothing between/i)).toBeNull();
+    expect(calculation.getByText(/560 attack damage reached defending hulls/)).toBeVisible();
   });
 
   /**

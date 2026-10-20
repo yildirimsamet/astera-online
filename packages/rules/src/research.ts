@@ -1,7 +1,7 @@
 import { profileResearch } from './economy-profile.js';
 import { ANTI_STRATEGIC, DEATH_STAR, DEUTERIUM, RESEARCH_TECH, SEASON } from './constants.js';
 import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
-import { cargoMult, hullTech, prospectorHoldMult, radiationDamageMult, repairPct, robotSpeedMult, yardSpeedMult } from './tech.js';
+import { cargoMult, hullTech, prospectorHoldMult, radiationDamageMult, repairPct, robotSpeedMult, shipShieldMult, yardSpeedMult } from './tech.js';
 import { RESEARCH_PROJECT_IDS, type ResearchProjectId, type Resources } from './types.js';
 
 export interface ResearchProject {
@@ -122,6 +122,8 @@ export function researchEffectAt(id: ResearchProjectId, level: number): number {
       return hullTech({ SHIP_POWER: rung }, 'DART').atk;
     case 'SHIP_ARMOR':
       return hullTech({ SHIP_ARMOR: rung }, 'DART').hp;
+    case 'SHIP_SHIELDS':
+      return shipShieldMult({ SHIP_SHIELDS: rung });
     case 'SHIP_PROPULSION':
       return hullTech({ SHIP_PROPULSION: rung }, 'DART').speed;
     case 'EMPLACEMENT_DOCTRINE':
@@ -552,6 +554,13 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
   },
   SHIP_ARMOR: {
     ...priced('SHIP_ARMOR'),
+    prerequisite: 'STARSHIP_ENGINEERING',
+  },
+  SHIP_SHIELDS: {
+    id: 'SHIP_SHIELDS',
+    maxLevel: RESEARCH_MAX_LEVEL.SHIP_SHIELDS,
+    costAt: level => profileResearch('SHIP_SHIELDS', level).cost,
+    availableAtMinutes: 0,
     prerequisite: 'STARSHIP_ENGINEERING',
   },
   SHIP_PROPULSION: {

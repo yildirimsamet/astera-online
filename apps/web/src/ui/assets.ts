@@ -189,6 +189,7 @@ export const RESEARCH_ART: Record<ResearchProjectId, string> = {
   STARSHIP_ENGINEERING: `${RESEARCH_BASE}/starship-engineering-v1.webp`,
   SHIP_POWER: `${RESEARCH_BASE}/ship-power-v1.webp`,
   SHIP_ARMOR: `${RESEARCH_BASE}/ship-armor-v1.webp`,
+  SHIP_SHIELDS: `${RESEARCH_BASE}/ship-shields-v1.webp`,
   SHIP_PROPULSION: `${RESEARCH_BASE}/ship-propulsion-v1.webp`,
   EMPLACEMENT_DOCTRINE: `${RESEARCH_BASE}/emplacement-doctrine-v1.webp`,
   INTERCEPTION_GRID: `${RESEARCH_BASE}/interception-grid-v1.webp`,

@@ -6,6 +6,7 @@ import {
   CLAN_SUPPORT, CLAN_LEVEL_MAX, GALAXY_EVENTS, TRADE, MONUMENT_BALANCE, MONUMENT_PROBE_LOSS_CHANCE, MONUMENT_SEASON_DEFAULTS,
   CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION, INACTIVITY_MS, SILENT_SPACE, SETTLEMENT_CLAIM_MINUTES, SETTLEMENT_PRIORITY_MINUTES, TRAVEL,
   alloyRate, buildingCost, buildingMinutes, crystalRate, deuteriumRate,
+  shipShieldHp,
   flightSlots, groundSlots, hangarCapacity, hullBulk, shipyardTimeReduction, instrumentCost, radarRange,
   researchEffectAt, interceptorCapacity, satelliteCost, satelliteSlots, shieldHp, telescopeSlots,
   telescopeRange, telescopeWatchRange, telescopeCooldownHours, researchMinutes,
@@ -37,6 +38,7 @@ export function subjectReference(subject: WikiSubject, language: WikiLanguage): 
       blocks = [{ kind: 'note', text: words.ruleNote }, { kind: 'stats', items: [
         { key: 'attack', label: label(language, 'Attack', 'Saldırı'), value: n(h.atk) },
         { key: 'hull', label: label(language, 'Hull strength (HP)', 'Gövde dayanımı (HP)'), value: n(h.hp) },
+        ...(!h.ground ? [{ key: 'ship-shield', label: label(language, 'Base ship shield (HP)', 'Temel gemi kalkanı (HP)'), value: n(shipShieldHp({}, h.id)) }] : []),
         { key: 'speed', label: label(language, 'Speed (map units/min)', 'Hız (harita birimi/dakika)'), value: h.ground ? label(language, 'Cannot fly', 'Uçamaz') : n(h.speed / TRAVEL.distanceFactor) },
         { key: 'cargo', label: label(language, 'Cargo capacity (resources)', 'Kargo kapasitesi (kaynak)'), value: n(h.cargo) },
         { key: 'bulk', label: h.ground ? label(language, 'Ground capacity used', 'Kullanılan yer kapasitesi') : label(language, 'Hangar room used', 'Kullanılan Hangar alanı'), value: n(hullBulk(h.id)) },
@@ -56,6 +58,7 @@ export function subjectReference(subject: WikiSubject, language: WikiLanguage): 
           if (subject.id === 'CARGO_HOLDS') text = label(language, `${n(effect)}× cargo capacity`, `${n(effect)} kat kargo kapasitesi`);
           if (subject.id === 'SHIP_POWER') text = label(language, `${n(effect)}× ship attack`, `${n(effect)} kat gemi saldırısı`);
           if (subject.id === 'SHIP_ARMOR') text = label(language, `${n(effect)}× hull strength`, `${n(effect)} kat gövde dayanımı`);
+          if (subject.id === 'SHIP_SHIELDS') text = label(language, `${n(effect)}× maximum hull as shield each round`, `Her tur azami canın ${n(effect)} katı gemi kalkanı`);
           if (subject.id === 'SHIP_PROPULSION') text = label(language, `${n(effect)}× ship speed`, `${n(effect)} kat gemi hızı`);
           if (subject.id === 'EMPLACEMENT_DOCTRINE') text = label(language, `${n(effect)}× ground attack and hull strength`, `${n(effect)} kat yer savunması saldırısı ve dayanımı`);
           if (subject.id === 'INDUSTRIAL') text = label(language, `${n(effect)}% of repair cost & time`, `Onarım bedeli ve süresinin %${n(effect)}’i`);

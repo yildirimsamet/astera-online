@@ -25,7 +25,7 @@ describe('fixed radiation levels and commander shielding', () => {
     }
     expect(radiationDamageMult({})).toBe(1);
     expect(radiationDamageMult({ RADIATION_SHIELDING: 99 })).toBe(.42);
-    expect(RESEARCH_PROJECT_IDS.at(-1)).toBe('RADIATION_SHIELDING');
+    expect(RESEARCH_PROJECT_IDS).toContain('RADIATION_SHIELDING');
     expect(RESEARCH_PROJECTS.RADIATION_SHIELDING).toMatchObject({ maxLevel: 4, requiredCore: 3, prerequisite: null });
     expect([1, 2, 3, 4].map(level => RESEARCH_PROJECTS.RADIATION_SHIELDING.costAt(level))).toEqual([
       { alloy: 2331, crystal: 1434, deuterium: 0 }, { alloy: 4196, crystal: 2582, deuterium: 0 },

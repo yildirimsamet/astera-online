@@ -480,10 +480,10 @@ export const gains = {
   research: {
     powerLabel: 'Attaque de navire de guerre',
     powerScope:
-      'Chaque navire de guerre de votre flotte. La puissance et l\'armure totalisent au maximum 56 % de puissance de combat à budget égal ; les transports et la défense terrestre ne sont pas affectés.',
+      "Augmente l’attaque de tous les vaisseaux de guerre de votre flotte. Les transports et les défenses au sol ne sont pas affectés.",
     armorLabel: 'Résistance de la coque du navire',
     armorScope:
-      'Tous les navires de votre flotte, transports inclus. La puissance et l\'armure totalisent au maximum 56 % de puissance de combat à budget égal ; la défense au sol n’est pas affectée.',
+      "Augmente la résistance maximale de la coque et la capacité du bouclier personnel de tous les vaisseaux mobiles, transports inclus. Les défenses au sol ne sont pas affectées.",
     speedLabel: 'Vitesse de la flotte',
     speedScope:
       'Tous les navires de votre flotte. Une flotte mixte vole toujours à la vitesse améliorée de son membre le plus lent ; Les prospecteurs et sondeurs ne sont pas affectés.',

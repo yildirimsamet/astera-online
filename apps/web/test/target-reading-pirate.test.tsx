@@ -25,7 +25,7 @@ describe('the forecast against a pirate crew', () => {
       target: { kind: 'pirate', pirate },
       reports: [],
       tech: {},
-      wing: { DART: 4 },
+      wing: { DART: 7 },
       rulesetVersion: 15,
     }));
     expect(result.current.lines).not.toBeNull();

@@ -30,6 +30,13 @@ const ladderAt = (ladder: readonly number[], level: number): number => {
   return rung === 0 ? 1 : ladder[rung - 1] ?? 1;
 };
 
+/** Personal shields only stop combat fire; radiation always reads hull HP. */
+export const shipShieldMult = (tech: TechLevels): number =>
+  ladderAt(RESEARCH_TECH.shipShieldLadder, tech.SHIP_SHIELDS ?? 0);
+
+export const shipShieldHp = (tech: TechLevels, id: HullId): number =>
+  HULLS[id].ground ? 0 : HULLS[id].hp * hullTech(tech, id).hp * shipShieldMult(tech);
+
 /** One flat source dose is reduced equally for every hull in this dispatch snapshot. */
 export const radiationDamageMult = (tech: TechLevels): number =>
   ladderAt(RESEARCH_TECH.radiationDamageLadder, tech.RADIATION_SHIELDING ?? 0);
@@ -137,18 +144,15 @@ const propulsionSide = (level: number): number =>
 /**
  * WHAT THIS COMMANDER'S RESEARCH DOES TO ONE HULL. T9.
  *
- * THE ONE HARD RULE IN THE WHOLE TASK: the COMBINED effect of every weapon project
- * may never raise a hull's equal-budget power above `RESEARCH_TECH.powerCeiling`,
- * and that ceiling is now read off the ladder rather than the ladder off it.
+ * Power and Armor's ATK × hull-HP product is bounded by `RESEARCH_TECH.powerCeiling`.
+ * Personal shields (owner, 2026-10-20) are calculated separately by `shipShieldHp`;
+ * this stat ceiling does not bound their regenerating combat protection.
  *
  *   information (the counter cycle)  1.6 / 0.625 = 2.56x   =  156%
  *   technology  (Power x Armor)      1.25 x 1.25 = 1.5625x =   56%
  *
- * `hulls.ts` states the claim the game rests on — "information beats tech by
- * construction". D169 gave attack and hit points 25% EACH on the owner's
- * instruction, so the product is 1.5625x and the information lead narrowed from
- * six times to 1.64x. It is still a lead, and `test/tech.test.ts` walks every hull
- * at every rung to hold it rather than trusting this paragraph.
+ * D169 gave attack and hull HP 25% each. `test/tech.test.ts` holds that stat
+ * contract; battle outcomes also depend on shields, composition and round limits.
  */
 export function hullTech(
   tech: TechLevels,
@@ -175,11 +179,11 @@ export function hullTech(
 /**
  * The doctrines a probe brings home. T9 · D124.
  *
- * A 56% multiplier (D169) nobody can see would silently eat the value of every scouting
+ * Combat research nobody can see would silently eat the value of every scouting
  * flight, and D124 is blunt about it: a rule the player cannot SEE is not a rule.
  * This is the list that goes into the silhouette — frozen at the look and stale
  * from then on, exactly like everything else D127 put there.
  */
 export const COMBAT_RESEARCH_PROJECTS: readonly ResearchProjectId[] = [
-  'SHIP_POWER', 'SHIP_ARMOR', 'EMPLACEMENT_DOCTRINE',
+  'SHIP_POWER', 'SHIP_ARMOR', 'EMPLACEMENT_DOCTRINE', 'SHIP_SHIELDS',
 ];

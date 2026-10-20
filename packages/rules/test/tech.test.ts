@@ -7,6 +7,7 @@ import {
   RESEARCH_TECH,
   COMBAT_RESEARCH_PROJECTS,
   hullTech,
+  shipShieldMult,
   cargoMult,
   fleetCargo,
   prospectorHold,
@@ -145,18 +146,7 @@ describe('the economy ladders', () => {
   });
 });
 
-/**
- * THE ONE HARD RULE IN THE WEAPON LADDERS, AND IT IS THE GAME'S CENTRAL CLAIM. T9.
- *
- *   information (the counter cycle)  1.6 / 0.625 = 2.56x   =  156% advantage
- *   technology  (every project)                    1.25x   =   25% advantage
- *
- * `hulls.ts` says it outright: "information beats tech by construction, and that
- * is the claim the whole game rests on." Give attack and hit points 25% EACH and
- * the product is 1.5625x — 56%, not 25% — which lands close enough to the counter
- * cycle that knowing what your opponent flies stops being decisive. Every one of
- * these walks the real functions rather than trusting the paragraph.
- */
+/** Power × Armor's stat product; regenerating ship shields are tested separately. */
 describe('the Fleet V2 military ceiling', () => {
   const maxed: TechLevels = {
     SHIP_POWER: RESEARCH_TECH.weaponMaxLevel,
@@ -179,20 +169,7 @@ describe('the Fleet V2 military ceiling', () => {
     expect(atk * hp).toBeGreaterThan(RESEARCH_TECH.powerCeiling * 0.99);
   });
 
-  /**
-   * THE COMPARISON THAT MATTERS. A commander who has researched everything still
-   * loses to the counter cycle by a wide margin — which is what makes a probe
-   * worth flying and what makes this whole ladder a side bet rather than the game.
-   */
-  /**
-   * D169 NARROWED IT FROM A DIFFERENT LEAGUE TO A LEAD, on the owner's decision.
-   *
-   * The ceiling was 1.25 against a 2.56x counter cycle — information beat tech by
-   * six times over. Power and Armor now pay a quarter EACH, so the product is
-   * 1.5625 and the margin is 1.64x. Information still wins every equal-budget
-   * fight it is brought to; a probe is still the best thing a commander can spend
-   * on. What it no longer is, is the only thing worth spending on.
-   */
+  /** Compares stat multipliers only; it does not promise a battle outcome. */
   it('stays below what knowing your enemy buys', () => {
     const counter = COMBAT.strongMult / COMBAT.weakMult;
     expect(RESEARCH_TECH.powerCeiling).toBeLessThan(counter);
@@ -242,7 +219,7 @@ describe('the Fleet V2 military ceiling', () => {
       const changes = ALL_HULLS.some((hull) => {
         const solo: TechLevels = { [id]: RESEARCH_TECH.weaponMaxLevel };
         const { atk, hp } = hullTech(solo, hull);
-        return atk !== 1 || hp !== 1;
+        return atk !== 1 || hp !== 1 || shipShieldMult(solo) !== 1;
       });
       expect(changes, `${id} visibility`).toBe(covered.has(id));
     }

@@ -252,6 +252,9 @@ export function ResearchPanel({ onNeed, focus }: {
           role: t('research.armorRole'),
           detail: t('research.armorDetail'),
         };
+      case 'SHIP_SHIELDS':
+        return { name: t('research.shipShieldsName'), tag: t('research.shipShieldsTag'),
+          role: t('research.shipShieldsRole'), detail: t('research.shipShieldsDetail') };
       case 'SHIP_PROPULSION':
         return {
           name: t('research.propulsionName'),

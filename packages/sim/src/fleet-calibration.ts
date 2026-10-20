@@ -107,6 +107,7 @@ export function measureFleetBattle(attacker: Fleet, defender: Fleet, options: Ba
 
 export const MAX_FLEET_TECH: TechLevels = {
   SHIP_POWER: RESEARCH_TECH.weaponMaxLevel, SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel,
+  SHIP_SHIELDS: RESEARCH_TECH.shipShieldLadder.length,
   SHIP_PROPULSION: RESEARCH_TECH.propulsionMaxLevel,
 };
 

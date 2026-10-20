@@ -236,7 +236,7 @@ export const reports = {
   roundLossesYours: 'Senden yok edilenler',
   roundLossesTheirs: 'Rakipten yok edilenler',
   roundNoCasualties: 'Kayıp yok',
-  roundShield: 'Savunanın kalkanı {{amount}} hasarı karşıladı.',
+  roundShield: "Savunanın Aegis’i {{amount}} hasar karşıladı.",
   turningPointSupport: '{{round}}. tur sonunda ateş edebilen birliğin kalmadı. Kalan {{support}} destek gemisi saldırı yapamadı.',
   turningPointWiped: '{{round}}. tur sonunda bütün birliklerin yok edildi.',
   roundDamageNote: 'Hasar sayıları, savunanın kalkanının karşıladığı hasarı da içerir.',

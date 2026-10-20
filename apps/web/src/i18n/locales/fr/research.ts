@@ -7,6 +7,17 @@
 * pas une file indépendante, mais un seul poste de travail.
   */
 export const research = {
+  shipShieldStage: "2 · Les boucliers des vaisseaux absorbent les tirs",
+  shipShieldHullDamage: "Après les boucliers, {{amount}} dégâts ont atteint les coques défensives.",
+  shipShieldsName: "Boucliers de vaisseau",
+  shipShieldsTag: "Absorbe les tirs à chaque tour",
+  shipShieldsRole: "Chaque vaisseau possède un bouclier égal à sa coque maximale. Quatre niveaux augmentent ce bouclier de base de 25%, 50%, 70% et 100% au total.",
+  shipShieldsDetail: "Les boucliers se rechargent au début de chaque tour. Les dégâts de coque restent. La radiation traverse les boucliers et endommage directement la coque. Les défenses au sol n’ont pas de bouclier personnel. Le blindage augmente la coque maximale et le bouclier. Les flottes envoyées gardent leur recherche de départ.",
+  shipShieldGain: "Bonus de bouclier",
+  shipShieldScope: "Pour tous les vaisseaux mobiles. Les bonus sont des augmentations totales du bouclier de base ; les niveaux ne se multiplient pas.",
+  shipShieldStat: "Bouclier de vaisseau (HP)",
+  shipShieldRound: "Ce tour, tes boucliers ont absorbé {{your}} ; les boucliers ennemis ont absorbé {{their}} dégâts.",
+  shipShieldHint: "Les boucliers se rechargent chaque tour. La radiation endommage directement la coque.",
   shieldingCeiling: "Niveau {{level}} : {{rate}} HP/min",
   shieldingName: "Protection antiradiation",
   shieldingTag: "Réduit les dégâts de radiation des vaisseaux",
@@ -29,14 +40,12 @@ export const research = {
   idleHint:
     "Choisis une étoile sur la carte. Jusqu’à trois projets peuvent attendre dans cette file.",
   frontierBand: "Pointe",
-  frontierNote:
-    "Ces recherches se découvrent grâce à certains événements de la galaxie. Une fois découvertes, elles doivent être terminées en dépensant des ressources et du temps de recherche.",
+  frontierNote: "Autorisations et protection contre la radiation. Chaque projet indique ses conditions de découverte et ses prérequis.",
   industryBand: "Industrie",
   industryNote:
     "Améliore la production, les temps de construction et de réparation, et les capacités de transport. Chaque projet indique sa limite de niveaux et ses prérequis.",
   doctrineBand: "Doctrine",
-  doctrineNote:
-    "Débloque les vaisseaux de haut palier et améliore séparément l’attaque, le blindage et la propulsion par étapes limitées. Les niveaux de combat apparaissent dans les rapports de sonde.",
+  doctrineNote: "Débloque des vaisseaux avancés et améliore attaque, blindage, boucliers de combat ou propulsion. Les sondes peuvent révéler la recherche de combat.",
   strategicBand: "Stratégique",
   strategicNote: "Augmente le nombre d’Étoiles de la Mort et de charges d’interception que chacun de tes mondes peut détenir.",
   act: "Rechercher",

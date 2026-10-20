@@ -842,16 +842,18 @@ describe('weapon doctrines', () => {
 
   it('freezes the attacker’s ladders onto the mission at launch', async () => {
     await giveResearch(f.db, mine, 'SHIP_POWER', 3);
+    await giveResearch(f.db, mine, 'SHIP_SHIELDS', 2);
     await giveUnits(f.db, mine, { DART: 20 });
 
     const launched = await launchAttack(f.db, mine, enemy, { DART: 20 }, f.clock);
     const [mission] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
-    expect(mission?.tech).toMatchObject({ SHIP_POWER: 3 });
+    expect(mission?.tech).toMatchObject({ SHIP_POWER: 3, SHIP_SHIELDS: 2 });
 
     // Finishing a rung mid-flight must not change a battle already committed to.
     await giveResearch(f.db, mine, 'SHIP_POWER', 5);
+    await giveResearch(f.db, mine, 'SHIP_SHIELDS', 4);
     const [again] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
-    expect(again?.tech).toMatchObject({ SHIP_POWER: 3 });
+    expect(again?.tech).toMatchObject({ SHIP_POWER: 3, SHIP_SHIELDS: 2 });
   });
 
   it('carries no ladders at all for a commander who has researched none', async () => {
@@ -863,6 +865,7 @@ describe('weapon doctrines', () => {
 
   it('brings the target’s doctrines home on a probe, and only a probe', async () => {
     await giveResearch(f.db, enemy, 'SHIP_ARMOR', 2);
+    await giveResearch(f.db, enemy, 'SHIP_SHIELDS', 4);
     await giveResearch(f.db, enemy, 'CARGO_HOLDS', 4);
     await giveInstrument(f.db, mine, 'TELESCOPE', 1);
 
@@ -873,7 +876,7 @@ describe('weapon doctrines', () => {
     await worker(f).tick();
 
     const [report] = await f.db.select().from(probeReports);
-    expect(report?.silhouette?.doctrines).toMatchObject({ SHIP_ARMOR: 2 });
+    expect(report?.silhouette?.doctrines).toMatchObject({ SHIP_ARMOR: 2, SHIP_SHIELDS: 4 });
     // Only what changes a battle is published; the economy ladders stay private.
     expect(report?.silhouette?.doctrines).not.toHaveProperty('CARGO_HOLDS');
   });
@@ -995,7 +998,7 @@ describe('what is open from the first minute', () => {
   });
 
   it('shows stat ladders immediately but keeps them behind their prerequisites', async () => {
-    for (const id of ['SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION'] as const) {
+    for (const id of ['SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION', 'SHIP_SHIELDS'] as const) {
       const state = await stateOf(id);
       expect(state.discovered, id).toBe(true);
       expect(state.available, id).toBe(false);
@@ -1004,6 +1007,22 @@ describe('what is open from the first minute', () => {
 
   it('actually lets one be bought', async () => {
     await expect(completeResearch(f.db, mine, 'CARGO_HOLDS', f.clock)).resolves.toBeTruthy();
+  });
+
+  it('charges and completes all four ship shield levels, then refuses a fifth', async () => {
+    await giveResearch(f.db, mine, 'STARSHIP_ENGINEERING', 1);
+    for (let level = 1; level <= 4; level++) {
+      const [before] = await f.db.select().from(planets).where(eq(planets.id, mine));
+      await completeResearch(f.db, mine, 'SHIP_SHIELDS', f.clock);
+      const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
+      const cost = RESEARCH_PROJECTS.SHIP_SHIELDS.costAt(level);
+      expect(before!.alloy - after!.alloy).toBe(cost.alloy);
+      expect(before!.crystal - after!.crystal).toBe(cost.crystal);
+      expect(before!.deuterium - after!.deuterium).toBe(cost.deuterium);
+      await settleBuilds(f, mine);
+      expect(await stateOf('SHIP_SHIELDS')).toMatchObject({ level, maxLevel: 4, completed: level === 4 });
+    }
+    await expect(completeResearch(f.db, mine, 'SHIP_SHIELDS', f.clock)).rejects.toThrow();
   });
 
   /** The Frontier three are unchanged: they are still found rather than opened. */
@@ -1085,7 +1104,7 @@ describe('the reason a shut project is shut', () => {
 
   /** Every project whose only gate is a project, never the season clock. */
   const BEHIND_A_PROJECT = [
-    'SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION',
+    'SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION', 'SHIP_SHIELDS',
     'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE',
   ] as const;
 

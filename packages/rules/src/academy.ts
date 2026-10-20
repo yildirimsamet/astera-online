@@ -69,7 +69,11 @@ export const ACADEMY_PIRATE_FLEET: Fleet = { WARDEN: 1 };
  * has not taught the answer to. It stays on the pad; the roster screen is
  * where a captured hull is meant to be discovered.
  */
-export const ACADEMY_PIRATE_RAID_FLEET: Fleet = { DART: 2 };
+export const ACADEMY_PIRATE_RAID_FLEET = { DART: 4 } satisfies Fleet;
+
+/** The build picker, order validator and checkpoint all use this lesson quantity. */
+export const academyBuildCount = (step: AcademyStepId): number =>
+  step === 'darts' ? ACADEMY_PIRATE_RAID_FLEET.DART : step === 'reinforcements' ? 2 : 1;
 
 /**
  * WHAT COMES HOME FROM THE PIRATE LESSON: the survivors, plus the prize.
@@ -130,7 +134,7 @@ function lessonCost(step: (typeof ACADEMY_STEPS)[number] | undefined, state: Aca
   const id = step.id === 'darts' || step.id === 'reinforcements' ? 'DART'
     : step.id === 'prospector' ? 'PROSPECTOR' : step.id === 'courier' ? 'COURIER' : null;
   if (!id) return empty;
-  const count = id === 'DART' ? 2 : 1;
+  const count = academyBuildCount(step.id);
   return { alloy: HULLS[id].alloy * count, crystal: HULLS[id].crystal * count, deuterium: HULLS[id].deuterium * count };
 }
 
@@ -179,7 +183,7 @@ export function academyCheckpoint(completed: number): AcademyCheckpoint {
       case 'intel': state.satellites.push('UPLINK'); state.instruments.TELESCOPE = 1; break;
       case 'telescope': state.instruments.RADAR = 1; break;
       case 'aegis': spend(instrumentCost('AEGIS', 0)); state.instruments.AEGIS = 1; break;
-      case 'darts': case 'reinforcements': build('DART', 2); break;
+      case 'darts': case 'reinforcements': build('DART', academyBuildCount(step.id)); break;
       case 'prospector': build('PROSPECTOR', 1); break;
       case 'courier': build('COURIER', 1); break;
       case 'pirate': {

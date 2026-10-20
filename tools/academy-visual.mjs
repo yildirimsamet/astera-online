@@ -32,7 +32,8 @@ export async function verifyAcademy(out) {
         await page.locator('#row-DART').click();
         const sheet = page.locator('[data-build-sheet]');
         const offered = await sheet.getByRole('textbox', { name: /quantity|adedi/i }).inputValue();
-        if (offered !== '2') throw new Error(`Lesson ${step + 1} did not offer two Darts`);
+        const wanted = step === 25 ? '4' : '2';
+        if (offered !== wanted) throw new Error(`Lesson ${step + 1} offered ${offered} Darts instead of ${wanted}`);
         await sheet.locator('[data-commit] button').click();
         await sheet.waitFor({ state: 'detached' });
         await page.waitForTimeout(700);
@@ -41,7 +42,7 @@ export async function verifyAcademy(out) {
         await page.screenshot({ path: `${out}/academy-build-${step + 1}.png` });
         await page.waitForFunction((step) => JSON.parse(localStorage.getItem('astera.academy.v1')).step > step, step);
         if (requests.length || errors.length) throw new Error(JSON.stringify({ requests, errors }));
-        console.log(`Lesson ${step + 1}: one Build press ordered two Darts, revealed the queue, and advanced`);
+        console.log(`Lesson ${step + 1}: one Build press ordered ${wanted} Darts, revealed the queue, and advanced`);
       }
       return;
     }
@@ -177,7 +178,7 @@ export async function verifyAcademy(out) {
           const sheet = page.locator('[data-build-sheet]');
           if (hull) {
             await sheet.waitFor({ state: 'attached' });
-            const wanted = id === 'darts' || id === 'reinforcements' ? '2' : '1';
+            const wanted = id === 'darts' ? '4' : id === 'reinforcements' ? '2' : '1';
             const offered = await sheet.getByRole('textbox', { name: /quantity|adedi/i }).inputValue();
             if (offered !== wanted) throw new Error(`Lesson ${id} offered ${offered} ships instead of ${wanted}`);
             await sheet.locator('[data-commit] button').click();

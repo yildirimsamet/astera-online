@@ -319,6 +319,14 @@ Three rounds, simultaneous fire, ±8% variance, no player input. Variance is del
 small: the whole game is built on information reducing uncertainty. **If randomness dominated
 outcomes, intel would be worthless.**
 
+Owner decision, 2026-10-20: every mobile ship has a personal combat shield equal to
+its researched maximum hull HP. Shields recharge fully each round; hull wounds persist.
+Ship Shields research has four cumulative bonuses over that base: 25%, 50%, 70%, 100%.
+Aegis absorbs fire first, then personal shields, then hull. Unhit ships cannot share
+their shields with a ship under fire. Ground emplacements have no personal shields.
+Radiation bypasses personal shields and reduces hull HP directly. Personal shield
+absorption earns no hull-damage Dominion contribution and causes no repair bill.
+
 Graded on **resource value destroyed**, not `ATK × HP` — that metric ignores the counter
 matrix, so two equal-looking numeric totals can resolve in opposite directions after class and
 composition are applied.

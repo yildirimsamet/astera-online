@@ -590,7 +590,7 @@ describe('the combined attacking board', () => {
       defence,
       0,
       seeded(),
-      NO_TECH,
+      { ...NO_TECH, damageMult: 0 },
     );
     const oneResearched = resolveJointCombat(
       [
@@ -600,7 +600,7 @@ describe('the combined attacking board', () => {
       defence,
       0,
       seeded(),
-      NO_TECH,
+      { ...NO_TECH, damageMult: 0 },
     );
     const damage = (r: typeof plain, id: string) =>
       r.contributions.find((c) => c.contributionId === id)!.hullDamage;

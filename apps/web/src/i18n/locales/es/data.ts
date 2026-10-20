@@ -404,10 +404,10 @@ export const gains = {
   research: {
     powerLabel: 'Ataque de buque de guerra',
     powerScope:
-      'Todos los buques de guerra de tu flota. El poder y la armadura juntos suman como máximo un 56% de poder de combate con igual presupuesto; Los transportes y la defensa terrestre no se ven afectados.',
+      "Aumenta el ataque de todas las naves de guerra de tu flota. Los transportes y las defensas terrestres no se ven afectados.",
     armorLabel: 'Resistencia del casco del nave',
     armorScope:
-      'Todos los naves de tu flota, incluidos los transportes. El poder y la armadura juntos suman como máximo un 56% de poder de combate con igual presupuesto; La defensa terrestre no se ve afectada.',
+      "Aumenta la resistencia máxima del casco y la capacidad del escudo personal de todas las naves móviles, incluidos los transportes. Las defensas terrestres no se ven afectadas.",
     speedLabel: 'Velocidad de la flota',
     speedScope:
       'Todos los naves de tu flota. Una flota mixta todavía vuela a la velocidad (mejorada) de su miembro más lento; Los buscadores y las sondas no se ven afectados.',

@@ -14,6 +14,17 @@
  * on a ship. The day either is reworded the other must not move with it.
  */
 export const research = {
+  shipShieldStage: "2 · Los escudos de las naves absorben los disparos",
+  shipShieldHullDamage: "Tras los escudos, {{amount}} de daño alcanzó los cascos defensores.",
+  shipShieldsName: "Escudos de nave",
+  shipShieldsTag: "Absorbe fuego de combate cada ronda",
+  shipShieldsRole: "Cada nave comienza con un escudo igual a su casco máximo. Cuatro niveles de investigación aumentan este escudo base un 25%, 50%, 70% y 100% en total.",
+  shipShieldsDetail: "Los escudos se recargan al inicio de cada ronda. El daño del casco permanece. La radiación atraviesa los escudos y daña directamente el casco. Las defensas terrestres no tienen escudo personal. El blindaje aumenta el casco máximo y el escudo. Las flotas enviadas conservan su investigación de salida.",
+  shipShieldGain: "Aumento del escudo",
+  shipShieldScope: "Se aplica a todas las naves móviles. Las bonificaciones son aumentos totales sobre el escudo base; no se multiplican entre niveles.",
+  shipShieldStat: "Escudo de nave (HP)",
+  shipShieldRound: "Esta ronda tus escudos absorbieron {{your}}; los escudos enemigos absorbieron {{their}} de daño.",
+  shipShieldHint: "Los escudos se recargan cada ronda. La radiación daña directamente el casco.",
   shieldingCeiling: "Nivel {{level}}: {{rate}} HP/min",
   shieldingName: "Blindaje antirradiación",
   shieldingTag: "Reduce el daño por radiación a las naves",
@@ -39,14 +50,12 @@ export const research = {
     "Elige una estrella en el mapa. Hasta tres proyectos pueden esperar aquí.",
 
   frontierBand: "Frontera",
-  frontierNote:
-    "Revelado por eventos específicos en la galaxia, luego completado al gastar recursos y tiempo de investigación.",
+  frontierNote: "Permisos y protección contra la radiación. Cada proyecto indica sus condiciones de descubrimiento y requisitos.",
   industryBand: "Industria",
   industryNote:
     "Mejora la producción, los tiempos de construcción y reparación, y la capacidad de carga. Cada proyecto muestra su límite de niveles y requisitos.",
   doctrineBand: "Doctrina",
-  doctrineNote:
-    "Abre niveles avanzados de casco y mejora el ataque, el blindaje o la propulsión en escaleras delimitadas separadas. Los niveles de combate son visibles mediante sonda.",
+  doctrineNote: "Desbloquea naves avanzadas y mejora ataque, blindaje, escudos de combate o propulsión. Las sondas pueden revelar investigación de combate.",
   strategicBand: "Estratégico",
   strategicNote: "Aumenta cuántas Estrellas de la Muerte y cargas interceptoras puede tener cada uno de tus mundos.",
 

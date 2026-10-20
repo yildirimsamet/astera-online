@@ -1689,6 +1689,14 @@ function BattleRound({ report, round }: { report: OrdinaryReport; round: Round }
           {t('reports.roundShield', { amount: full(round.shieldAbsorbed) })}
         </p>
       ) : null}
+      {round.attackerShipShieldAbsorbed !== undefined && round.defenderShipShieldAbsorbed !== undefined ? (
+        <p data-round-ship-shields className="mt-2 text-caption leading-relaxed text-v2-crystal">
+          {t('research.shipShieldRound', {
+            your: full(report.attacking ? round.attackerShipShieldAbsorbed : round.defenderShipShieldAbsorbed),
+            their: full(report.attacking ? round.defenderShipShieldAbsorbed : round.attackerShipShieldAbsorbed),
+          })}
+        </p>
+      ) : null}
       <RoundCasualties
         yours={report.attacking ? round.attackerLosses : round.defenderLosses}
         theirs={report.attacking ? round.defenderLosses : round.attackerLosses}
@@ -1735,7 +1743,9 @@ function RoundCalculation({ report, round }: { report: OrdinaryReport; round: Ro
         <p className="text-caption font-semibold text-v2-ink">
           {t(
             report.pirate
-              ? 'reports.calculation.openSpace'
+              ? round.defenderShipShieldAbsorbed !== undefined
+                ? 'research.shipShieldStage'
+                : 'reports.calculation.openSpace'
               : before > 0
                 ? 'reports.calculation.aegis'
                 : 'reports.calculation.noAegis',
@@ -1743,7 +1753,7 @@ function RoundCalculation({ report, round }: { report: OrdinaryReport; round: Ro
         </p>
         {report.pirate ? (
           <p className="mt-2 text-micro leading-relaxed text-v2-ink-2">
-            {t('reports.calculation.openSpaceNote', { amount: full(round.attackerHullDamage!) })}
+            {t(round.defenderShipShieldAbsorbed !== undefined ? 'research.shipShieldHullDamage' : 'reports.calculation.openSpaceNote', { amount: full(round.attackerHullDamage!) })}
           </p>
         ) : before > 0 ? (
           <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1768,7 +1778,7 @@ function RoundCalculation({ report, round }: { report: OrdinaryReport; round: Ro
           </div>
         ) : (
           <p className="mt-2 text-micro leading-relaxed text-v2-ink-2">
-            {t('reports.calculation.noAegisNote', { amount: full(round.attackerHullDamage!) })}
+            {t(round.defenderShipShieldAbsorbed !== undefined ? 'research.shipShieldHullDamage' : 'reports.calculation.noAegisNote', { amount: full(round.attackerHullDamage!) })}
           </p>
         )}
       </div>

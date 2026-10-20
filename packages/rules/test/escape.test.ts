@@ -98,11 +98,11 @@ describe('the escape rule, as the owner set it', () => {
     expect(ESCAPE.minimumCombatShips).toBe(5);
     for (const count of [1, 2, 3, 4]) {
       const line: Fleet = { DART: count };
-      const wing: Fleet = { DART: count * 4 };
+      const wing: Fleet = { DART: count * 6 };
       expect(plain(wing, line).grade).toBe('DECISIVE');
       expect(raid(wing, line).escape).toBeNull();
     }
-    expect(raid({ DART: 20 }, { DART: 5 }).escape?.kind).toBe('ESCAPED');
+    expect(raid({ DART: 30 }, { DART: 5 }).escape?.kind).toBe('ESCAPED');
   });
 
   it('does not count transports or ground guns toward the minimum', () => {
@@ -111,7 +111,7 @@ describe('the escape rule, as the owner set it', () => {
   });
 
   it('keeps the former escape rule in a season dealt before the minimum', () => {
-    expect(raid({ DART: 4 }, { DART: 1 }, { rulesetVersion: 12 }).escape?.kind)
+    expect(raid({ DART: 6 }, { DART: 1 }, { rulesetVersion: 12 }).escape?.kind)
       .toBe('ESCAPED');
   });
 

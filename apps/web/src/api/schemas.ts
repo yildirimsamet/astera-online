@@ -103,7 +103,7 @@ export const researchProjectId = z.enum([
   'DEUTERIUM_SYNTHESIS', 'YARD_AUTOMATION', 'PROSPECTOR_HOLDS', 'CARGO_HOLDS',
   'STARSHIP_ENGINEERING', 'SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION',
   'EMPLACEMENT_DOCTRINE', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE',
-  'AI_ROBOTS', 'INDUSTRIAL', 'RADIATION_SHIELDING',
+  'AI_ROBOTS', 'INDUSTRIAL', 'RADIATION_SHIELDING', 'SHIP_SHIELDS',
 ]);
 
 // If any of these stop compiling, the rules changed and this file has not.
@@ -2491,8 +2491,8 @@ export const intelSchema = z.object({
       /**
        * WHAT THIS COMMANDER HAS RESEARCHED INTO THEIR HULLS. T9 · D137.
        *
-       * Up to a 56% combat multiplier (D169), and the invariant is explicit: doctrine
-       * that decides a battle must be probe-visible. Absent on a caretaker world
+       * Combat research, including personal shields, must be probe-visible.
+       * Absent on a caretaker world
        * and on reports written before it existed — absent means "this reading was
        * never taken", never "they have researched nothing".
        */
@@ -2871,6 +2871,8 @@ const ordinaryBattleReport = z.object({
           shieldAfter: z.number().nullable().optional(),
           shieldAbsorbed: z.number(),
           shieldBreakerDamage: z.number(),
+          attackerShipShieldAbsorbed: z.number().nonnegative().optional(),
+          defenderShipShieldAbsorbed: z.number().nonnegative().optional(),
           attackerHullDamage: z.number().nullable().optional(),
           attackerLosses: fleet,
           defenderLosses: fleet,

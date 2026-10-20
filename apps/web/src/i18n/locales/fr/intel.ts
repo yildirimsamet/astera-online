@@ -260,7 +260,7 @@ export const reports = {
   roundLossesYours: "Tes unités détruites",
   roundLossesTheirs: "Unités ennemies détruites",
   roundNoCasualties: "Aucune perte",
-  roundShield: "Le bouclier du défenseur a absorbé {{amount}} dégâts.",
+  roundShield: "L’Aegis du défenseur a absorbé {{amount}} dégâts.",
   turningPointSupport:
     "À la fin du tour {{round}}, tu n’avais plus aucune unité capable de tirer. Les {{support}} vaisseaux de soutien restants ne pouvaient pas attaquer.",
   turningPointWiped:

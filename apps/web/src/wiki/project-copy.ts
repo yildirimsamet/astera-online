@@ -16,6 +16,7 @@ export const projectCopy: Readonly<Record<ResearchProjectId, Localized<ProjectCo
   STARSHIP_ENGINEERING: l({ name: en.engineeringName, role: en.engineeringRole, detail: en.engineeringDetail }, { name: tr.engineeringName, role: tr.engineeringRole, detail: tr.engineeringDetail }),
   SHIP_POWER: l({ name: en.powerName, role: en.powerRole, detail: en.powerDetail }, { name: tr.powerName, role: tr.powerRole, detail: tr.powerDetail }),
   SHIP_ARMOR: l({ name: en.armorName, role: en.armorRole, detail: en.armorDetail }, { name: tr.armorName, role: tr.armorRole, detail: tr.armorDetail }),
+  SHIP_SHIELDS: l({ name: en.shipShieldsName, role: en.shipShieldsRole, detail: en.shipShieldsDetail }, { name: tr.shipShieldsName, role: tr.shipShieldsRole, detail: tr.shipShieldsDetail }),
   SHIP_PROPULSION: l({ name: en.propulsionName, role: en.propulsionRole, detail: en.propulsionDetail }, { name: tr.propulsionName, role: tr.propulsionRole, detail: tr.propulsionDetail }),
   EMPLACEMENT_DOCTRINE: l({ name: en.groundDoctrineName, role: en.doctrineRole, detail: en.groundDoctrineDetail }, { name: tr.groundDoctrineName, role: tr.doctrineRole, detail: tr.groundDoctrineDetail }),
   INTERCEPTION_GRID: l({ name: en.gridName, role: en.gridRole, detail: en.gridDetail }, { name: tr.gridName, role: tr.gridRole, detail: tr.gridDetail }),

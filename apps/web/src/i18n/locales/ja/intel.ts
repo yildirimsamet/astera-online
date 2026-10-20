@@ -259,7 +259,7 @@ export const reports = {
   roundLossesYours: "あなたのユニットは破壊されました",
   roundLossesTheirs: "敵ユニットを破壊しました",
   roundNoCasualties: "損失なし",
-  roundShield: "防御側のシールドが {{amount}} のダメージを吸収しました。",
+  roundShield: "防衛側のAegisが{{amount}}のダメージを吸収しました。",
   turningPointSupport: "{{round}} ラウンドの後、発砲できるユニットはありませんでした。 {{support}} 残りの支援船は攻撃できませんでした。",
   turningPointWiped: "{{round}} ラウンドの後、あなたの部隊全体が破壊されました。",
   roundDamageNote: "ダメージ数値には、防御側のシールドによって吸収されたダメージが含まれます。",

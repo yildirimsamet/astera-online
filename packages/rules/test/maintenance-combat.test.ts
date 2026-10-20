@@ -36,9 +36,9 @@ describe('maintenance combat participation is fixed when the battle starts', () 
     expect(result.rounds[1]?.attackerDamage).toBeGreaterThan(0);
   });
   it('uses a wounded home host’s real HP in the solo defender path', () => {
-    const result = resolveBattle([a({ DART: 1 })], [d({ DART: 1 }, [{ hull: 'DART', count: 1, damageBp: 9000 }])], 0, flat, 'HP_PLANET', true);
+    const result = resolveBattle([a({ DART: 5 })], [d({ DART: 1 }, [{ hull: 'DART', count: 1, damageBp: 9000 }])], 0, flat, 'HP_PLANET', true);
     expect(result.defenderLosses.DART).toBe(1);
-    const healthy = resolveBattle([a({ DART: 1 })], [d({ DART: 1 })], 0, flat, 'HP_PLANET');
+    const healthy = resolveBattle([a({ DART: 5 })], [d({ DART: 1 })], 0, flat, 'HP_PLANET');
     expect(result.rounds[0]?.defenderDamage).toBe(healthy.rounds[0]?.defenderDamage);
   });
 
@@ -52,7 +52,7 @@ describe('maintenance combat participation is fixed when the battle starts', () 
   });
 
   it('keeps critically wounded monument ships targetable but prevents their fire', () => {
-    const result = resolveBattle([a({ DART: 1 })], [d({ DART: 10 }, [{ hull: 'DART', count: 10, damageBp: 9500 }])], 0, flat, 'MONUMENT', true);
+    const result = resolveBattle([a({ DART: 40 })], [d({ DART: 10 }, [{ hull: 'DART', count: 10, damageBp: 9500 }])], 0, flat, 'MONUMENT', true);
     expect(result.rounds.every((round) => round.defenderDamage === 0)).toBe(true);
     expect(result.defenderLosses.DART).toBe(10);
     expect(result.attackerLosses).toEqual({});

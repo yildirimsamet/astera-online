@@ -289,6 +289,7 @@ const RESEARCH_DETAIL_KEYS = {
   STRATEGIC_STOCKPILE: 'stockpileDetail',
   INDUSTRIAL: 'industrialDetail',
   RADIATION_SHIELDING: 'shieldingDetail',
+  SHIP_SHIELDS: 'shipShieldsDetail',
 } as const satisfies Record<ResearchProjectId, keyof typeof en.research>;
 
 /**

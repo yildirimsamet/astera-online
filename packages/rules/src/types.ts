@@ -199,7 +199,8 @@ export type ResearchProjectId =
   | 'STRATEGIC_STOCKPILE'
   | 'AI_ROBOTS'
   | 'INDUSTRIAL'
-  | 'RADIATION_SHIELDING';
+  | 'RADIATION_SHIELDING'
+  | 'SHIP_SHIELDS';
 export const RESEARCH_PROJECT_IDS = [
   'ISOTOPE_SPECTROMETRY',
   'DENSE_FUEL_CELLS',
@@ -234,6 +235,7 @@ export const RESEARCH_PROJECT_IDS = [
   /** The Repair Station's ladder. Kalıcı gemi hasarı, owner K6 (2026-09-29). */
   'INDUSTRIAL',
   'RADIATION_SHIELDING',
+  'SHIP_SHIELDS',
 ] as const;
 
 export interface ResearchRequirement {

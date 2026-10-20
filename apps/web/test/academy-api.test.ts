@@ -51,7 +51,7 @@ describe('Academy uses the production API locally', () => {
     f.tick();
     const notification = (await f.api.notifications()).notifications[0]!;
     expect(notification.seen).toBe(false);
-    expect(notification.payload).toMatchObject({ shipsHome: 3 });
+    expect(notification.payload).toMatchObject({ shipsHome: Object.values(academyPirateHomecoming()).reduce((n, count) => n + count, 0) });
     expect(await f.api.markSeen(['unknown'])).toEqual({ marked: 0 });
     expect(await f.api.markSeen([notification.id])).toEqual({ marked: 1 });
     expect((await f.api.notifications()).notifications[0]?.seen).toBe(true);
@@ -119,10 +119,10 @@ describe('Academy uses the production API locally', () => {
   });
   it('handles world-specific build and instrument routes with the same clocks', async () => {
     const f = fixture('darts');
-    const built = await f.api.build(f.read().preview.reserved.id, 'DART', 2);
+    const built = await f.api.build(f.read().preview.reserved.id, 'DART', 4);
     expect(built.planet.queues?.YARD).toHaveLength(1);
     f.tick();
-    expect((await f.api.planet()).fleet.DART).toBe(2);
+    expect((await f.api.planet()).fleet.DART).toBe(4);
     const a = fixture('aegis');
     await a.api.raiseInstrument(a.read().preview.reserved.id, 'AEGIS');
     a.tick();

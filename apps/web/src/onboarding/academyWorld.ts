@@ -1,3 +1,4 @@
+import { academyBuildCount } from '@astera/rules';
 import {
   ACADEMY_STEPS, academyCheckpoint, buildingCost, buildMinutes, HULLS,
   instrumentCost, shipMinutes, groundSlots, hangarCapacity, hangarCeiling, hangarLoad, shieldHp, SHIELD, wealth,
@@ -94,7 +95,7 @@ export function beginAcademyOrder(w: AcademyWorld, action: AcademyStepId, now: n
     const hull = step.id === 'darts' || step.id === 'reinforcements' ? 'DART'
       : step.id === 'prospector' ? 'PROSPECTOR' : step.id === 'courier' ? 'COURIER' : null;
     if (!hull) throw new Error('ACADEMY_ACTION_REFUSED');
-    const count = hull === 'DART' ? 2 : 1;
+    const count = academyBuildCount(step.id);
     order = {
       ...clocks, id: `academy-${step.id}`, queue: 'YARD', slot: 0, kind: 'HULL', subject: hull, count,
       cost: { alloy: HULLS[hull].alloy * count, crystal: HULLS[hull].crystal * count, deuterium: HULLS[hull].deuterium * count },

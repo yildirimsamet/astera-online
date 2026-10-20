@@ -8,7 +8,7 @@ import { readBattleReports } from '../src/services/reports.js';
 import { readHomeHealth } from '../src/services/homeHealth.js';
 import { dockLotsOf } from '../src/services/shipDamage.js';
 import { EventWorker } from '../src/worker/loop.js';
-import { fuelUp, giveUnits, levelWorld, seedWorld, setLevel, settledAt, testDb, type Fixture } from './helpers.js';
+import { fuelUp, giveResearch, giveUnits, levelWorld, seedWorld, setLevel, settledAt, testDb, type Fixture } from './helpers.js';
 
 /**
  * KALICI GEMİ HASARI ON A RAID. Owner decision K1, 2026-09-29 (`plan.md` F3).
@@ -19,9 +19,10 @@ import { fuelUp, giveUnits, levelWorld, seedWorld, setLevel, settledAt, testDb, 
  * are written on the report and told in the bell.
  *
  * The fleets are chosen so the outcome holds across the whole ±8% roll band — the
- * battle is seeded from a random mission id — measured with `resolveCombat` over 1,500
- * seeds: two Darts against one Stronghold leave the Stronghold 49–57% damaged and one
- * Dart 53–78%; one Dart against two Talons leaves a Talon 11–13% damaged.
+ * battle is seeded from a random mission id. With personal shields, eleven Power-I
+ * Darts against three Strongholds leave both sides wounded (1,500 seeds: defender
+ * 31–84%, attacker 52–79%). Nine Power-IV Darts against two Armor-III Talons leave
+ * a light defender wound (2–20%). The old tiny wings never penetrated the shields.
  */
 
 const silent = pino({ level: 'silent' });
@@ -84,15 +85,16 @@ describe('persistent damage on a raid', () => {
   });
 
   it('keeps defender and returning raider wounds at home without automatic docking', async () => {
-    await giveUnits(f.db, target, { STRONGHOLD: 1 });
-    const { report, back } = await raid({ DART: 2 });
+    await giveUnits(f.db, target, { STRONGHOLD: 3 });
+    await giveResearch(f.db, raider, 'SHIP_POWER', 1);
+    const { report, back } = await raid({ DART: 11 });
 
     // The defender: judged on the spot.
     expect(report.defenderDamage).toHaveLength(1);
     const [hit] = report.defenderDamage;
     expect(hit).toMatchObject({ hull: 'STRONGHOLD', count: 1 });
     expect(needsDock(hit!.damageBp)).toBe(true);
-    expect((await home(target)).STRONGHOLD ?? 0).toBe(1);
+    expect((await home(target)).STRONGHOLD ?? 0).toBe(3);
     expect((await readHomeHealth(f.db, target)).damage).toEqual(report.defenderDamage);
     expect(await dockLotsOf(f.db, target)).toEqual([]);
     expect(await payloadOf(f.playerIds[1]!, 'raided')).not.toHaveProperty('docked');
@@ -125,7 +127,9 @@ describe('persistent damage on a raid', () => {
 
   it('keeps a lightly wounded defender damaged until paid repair', async () => {
     await giveUnits(f.db, target, { TALON: 2 });
-    const { report } = await raid({ DART: 1 });
+    await giveResearch(f.db, target, 'SHIP_ARMOR', 3);
+    await giveResearch(f.db, raider, 'SHIP_POWER', 4);
+    const { report } = await raid({ DART: 9 });
 
     expect(report.defenderDamage).toHaveLength(1);
     expect(report.defenderDamage[0]).toMatchObject({ hull: 'TALON', count: 1 });

@@ -30,6 +30,9 @@ import {
   hangarLoad,
   hullBulk,
   hullFuelRate,
+  hullTech,
+  shipShieldHp,
+  academyBuildCount,
   salvageCapacity,
   instrumentCost,
   instrumentMaxed,
@@ -2740,7 +2743,7 @@ function BuildSheet({
   const [cycle, setCycle] = useState(false);
   // The hand points straight to Build. Offer the authored quantity, not the
   // live game's default of one, which the local lesson correctly refuses.
-  const lessonCount = hull === 'DART' && (lesson === 'darts' || lesson === 'reinforcements') ? 2
+  const lessonCount = hull === 'DART' && (lesson === 'darts' || lesson === 'reinforcements') ? academyBuildCount(lesson)
     : (hull === 'PROSPECTOR' && lesson === 'prospector') || (hull === 'COURIER' && lesson === 'courier') ? 1 : null;
 
   /**
@@ -3077,11 +3080,12 @@ const HULL_SKY = {
  */
 export function HullStats({ hull, tech }: { hull: HullId; tech: TechLevels }) {
   const spec = HULLS[hull];
+  const effects = hullTech(tech, hull);
   const salvage = salvageCapacity({ [hull]: 1 });
   const fuel = hullFuelRate(hull);
   const cells: { id: string; label: string; value: string }[] = [
-    { id: 'attack', label: i18n.t('action.statAttack'), value: compact(spec.atk) },
-    { id: 'hull', label: i18n.t('action.statHull'), value: compact(spec.hp) },
+    { id: 'attack', label: i18n.t('action.statAttack'), value: compact(spec.atk * effects.atk) },
+    { id: 'hull', label: i18n.t('action.statHull'), value: compact(spec.hp * effects.hp) },
     { id: 'speed', label: i18n.t('action.statSpeed'), value: spec.speed === 0 ? i18n.t('action.statSpeedFixed') : compact(spec.speed) },
     salvage > 0
       ? { id: 'salvage', label: i18n.t('action.statSalvage'), value: compact(salvage) }
@@ -3105,7 +3109,15 @@ export function HullStats({ hull, tech }: { hull: HullId; tech: TechLevels }) {
           <dd className="font-v2-mono text-caption tabular-nums text-v2-ink">{cell.value}</dd>
         </div>
       ))}
+      {!spec.ground ? (
+        <div data-stat="ship-shield" className="col-span-3 flex items-center gap-2 rounded-control border border-v2-crystal/30 bg-v2-crystal/5 px-3 py-2">
+          <Icon id="i-shield" className="size-4 shrink-0 text-v2-crystal" />
+          <dt className="flex-1 text-micro text-v2-ink-2">{i18n.t('research.shipShieldStat')}</dt>
+          <dd className="font-v2-mono text-caption tabular-nums text-v2-crystal">{compact(shipShieldHp(tech, hull))}</dd>
+        </div>
+      ) : null}
       <ShipRadiationProtection hull={hull} tech={tech} />
+      {!spec.ground ? <p className="col-span-3 text-micro leading-relaxed text-v2-ink-3">{i18n.t('research.shipShieldHint')}</p> : null}
     </dl>
   );
 }

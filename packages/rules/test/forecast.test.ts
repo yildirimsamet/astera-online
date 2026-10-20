@@ -155,13 +155,13 @@ describe('the lines a wing is drawn against', () => {
   });
 
   /** The measured rule of thumb, reproduced by the engine rather than typed in. */
-  it('asks for about half as much again to clear a Raider-profile mirror', () => {
+  it('requires a larger Raider wing to clear regenerating personal shields', () => {
     const wing: Fleet = { VIPER: 30 };
     const f = forecastLines(wing, blind({ wall: { kind: 'EXACT', fleet: { VIPER: 1 } } }));
     const mine = combatValue(wing);
-    expect(f.clears.low).toBeGreaterThan(mine / 1.8);
-    expect(f.clears.low).toBeLessThan(mine / 1.2);
-    expect(f.breaks.low).toBeGreaterThan(mine * 0.9);
+    expect(f.clears.low).toBeGreaterThan(mine / 3);
+    expect(f.clears.low).toBeLessThan(mine / 2);
+    expect(f.breaks.low).toBeGreaterThan(mine * 0.7);
   });
 
   /**
@@ -170,7 +170,7 @@ describe('the lines a wing is drawn against', () => {
    * sides in one salvo, which the server grades DECISIVE and pays nothing for — nobody is left to
    * carry the loot home. The lines promise a wing that comes back.
    */
-  it('does not count a mutual wipe as a success', () => {
+  it('grades shielded Lance mirrors by the actual survivors and defender losses', () => {
     const wing: Fleet = { TALON: 30 };
     for (const count of [28, 29, 30, 31, 32, 33]) {
       const crew: Fleet = { TALON: count };
@@ -183,8 +183,8 @@ describe('the lines a wing is drawn against', () => {
       expect(combatValue(crew) < f.clears.low, `clears ${String(count)}`).toBe(home && r.grade === 'DECISIVE');
       expect(combatValue(crew) < f.breaks.low, `breaks ${String(count)}`).toBe(home && r.grade !== 'REPELLED');
       if (count === 30) {
-        expect(r.grade).toBe('DECISIVE');
-        expect(combatValue(r.attackerSurvivors)).toBe(0);
+        expect(r.grade).toBe('PARTIAL');
+        expect(combatValue(r.attackerSurvivors)).toBeGreaterThan(0);
         expect(combatValue(crew) < f.clears.low).toBe(false);
       }
     }
@@ -192,7 +192,7 @@ describe('the lines a wing is drawn against', () => {
 
   /** And a pirate's holds do not escape once its line is gone (`pirateOverrun`). */
   it('counts a pirate whose holds outlive its line as cleared', () => {
-    const wing: Fleet = { DART: 4 };
+    const wing: Fleet = { DART: 7 };
     const crew: Fleet = { RAMPART: 3, COURIER: 2 };
     const base = blind({ wall: { kind: 'EXACT', fleet: crew }, defenderDamageMult: pirateStats(1).damageMult });
     expect(combatValue(crew)).toBeGreaterThanOrEqual(forecastLines(wing, base).clears.low);

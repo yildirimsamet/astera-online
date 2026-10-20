@@ -6,6 +6,17 @@
  * değil, tek bir tezgâh.
  */
 export const research = {
+  shipShieldStage: "2 · Gemi kalkanları ateşi karşılar",
+  shipShieldHullDamage: "Kalkanlardan sonra savunan gemilerin gövdesine {{amount}} saldırı hasarı ulaştı.",
+  shipShieldsName: "Gemi Kalkanları",
+  shipShieldsTag: "Her tur savaş ateşini karşılar",
+  shipShieldsRole: "Her geminin başlangıç kalkanı azami canına eşittir. Dört araştırma seviyesi bu temel kalkanı toplam %25, %50, %70 ve %100 artırır.",
+  shipShieldsDetail: "Kalkanlar her turun başında yenilenir. Gövde yaraları kalır. Radyasyon kalkanı geçerek doğrudan canı azaltır. Yer savunmalarının kişisel kalkanı yoktur. Zırh hem azami canı hem kalkan kapasitesini artırır. Gönderilen filolar çıkıştaki araştırmalarını korur.",
+  shipShieldGain: "Gemi kalkanı artışı",
+  shipShieldScope: "Bütün mobil gemilere uygulanır. Bonuslar temel kalkana göre toplam artıştır; seviyeler birbiriyle çarpılmaz.",
+  shipShieldStat: "Gemi kalkanı (HP)",
+  shipShieldRound: "Bu tur gemi kalkanların {{your}}, düşmanın gemi kalkanları {{their}} hasar karşıladı.",
+  shipShieldHint: "Gemi kalkanı her tur yenilenir. Radyasyon doğrudan canı azaltır.",
   shieldingCeiling: "Seviye {{level}}: {{rate}} HP/dk",
   shieldingName: "Radyasyon Kalkanı",
   shieldingTag: "Gemilerin radyasyon hasarını azaltır",
@@ -30,14 +41,12 @@ export const research = {
     "Haritadan bir yıldız seç. Burada üç proje sıraya girebilir.",
 
   frontierBand: "Ufuk",
-  frontierNote:
-    "Galaksideki belirli olaylarla keşfedilir. Keşfettikten sonra kaynak ve araştırma süresi harcayarak tamamlarsın.",
+  frontierNote: "İzinler ve radyasyon koruması. Her araştırma kendi keşif koşullarını ve ön koşullarını gösterir.",
   industryBand: "Endüstri",
   industryNote:
     "Üretimi, yapım ve onarım süresini, taşıma kapasitesini geliştirir. Seviye sınırını ve ön koşulları her projenin ayrıntısında görebilirsin.",
   doctrineBand: "Doktrin",
-  doctrineNote:
-    "Üst seviye gemileri açar; saldırı, zırh ve itki değerlerini ayrı ve sınırlı basamaklarda geliştirir. Savaş seviyeleri sonda raporlarında görünür.",
+  doctrineNote: "Gelişmiş gemileri açar; saldırı, zırh, savaş kalkanı veya itişi artırır. Sondalar savaş araştırmalarını gösterebilir.",
   strategicBand: "Stratejik",
   strategicNote: "Her dünyanın tutabileceği Ölüm Yıldızı ve önleyici şarj sayısını artırır.",
 

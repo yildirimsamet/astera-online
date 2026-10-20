@@ -443,6 +443,7 @@ describe('Fleet V2 research identity contract', () => {
       // The Repair Station's ladder. Kalıcı gemi hasarı, owner K6 (2026-09-29).
       'INDUSTRIAL',
       'RADIATION_SHIELDING',
+      'SHIP_SHIELDS',
     ];
 
     expect([...RESEARCH_PROJECT_IDS].sort()).toEqual(expected.sort());

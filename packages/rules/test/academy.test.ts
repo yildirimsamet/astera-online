@@ -107,7 +107,7 @@ describe('the authored Academy boundary', () => {
     expect(TUTORIAL_EXIT.buildings).toMatchObject({ CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 });
     expect(TUTORIAL_EXIT.instruments.AEGIS).toBe(1);
     expect(TUTORIAL_EXIT.fleet).toMatchObject({ DART: (academyPirateHomecoming().DART ?? 0) + 2, WARDEN: 1, PROSPECTOR: 1, COURIER: 1 });
-    expect(TUTORIAL_EXIT.builtEver.DART).toBe(4);
+    expect(TUTORIAL_EXIT.builtEver.DART).toBe(6);
     expect(TUTORIAL_EXIT.claimedRewards).toEqual(expect.arrayContaining(['EXTRACTOR:2', 'VAULT:1', 'AEGIS:1', 'PIRATE:1', 'SHIPS:2', 'MINE:1']));
     expect(TUTORIAL_EXIT.queue?.building).toBe('CORE');
     expect(TUTORIAL_EXIT.queue?.seconds).toBeGreaterThan(60);

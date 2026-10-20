@@ -367,6 +367,7 @@ const researchWork: Record<ResearchProjectId, { stage: number; hours: number; gr
   STARSHIP_ENGINEERING: { stage: 4, hours: 7.5, growth: 5.5, fuel: 0 },
   SHIP_POWER: { stage: 4, hours: 3, growth: 2.3, fuel: 0.5 },
   SHIP_ARMOR: { stage: 4, hours: 3, growth: 2.3, fuel: 0.5 },
+  SHIP_SHIELDS: { stage: 4, hours: 3, growth: 1.8, fuel: 0.5 },
   SHIP_PROPULSION: { stage: 4, hours: 2.5, growth: 2.1, fuel: 1 },
   EMPLACEMENT_DOCTRINE: { stage: 4, hours: 2, growth: 2.1, fuel: 0.5 },
   INTERCEPTION_GRID: { stage: 9, hours: 8, growth: 1.8, fuel: 8 },

@@ -45,6 +45,7 @@ export const RESEARCH_SCENES = {
   STARSHIP_ENGINEERING: { src: `${BASE}/research-starship-engineering-scene-v1.webp`, position: '60% 46%' },
   SHIP_POWER: { src: `${BASE}/research-ship-power-scene-v1.webp`, position: '60% 46%' },
   SHIP_ARMOR: { src: `${BASE}/research-ship-armor-scene-v1.webp`, position: '60% 46%' },
+  SHIP_SHIELDS: { src: RESEARCH_ART.SHIP_SHIELDS, position: '50% 50%', fit: 'contain' },
   SHIP_PROPULSION: { src: `${BASE}/research-ship-propulsion-scene-v1.webp`, position: '60% 46%' },
   EMPLACEMENT_DOCTRINE: { src: `${BASE}/research-emplacement-doctrine-scene-v1.webp`, position: '60% 46%' },
   INTERCEPTION_GRID: { src: `${BASE}/research-interception-grid-scene-v1.webp`, position: '60% 46%' },

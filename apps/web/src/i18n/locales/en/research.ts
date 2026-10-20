@@ -14,6 +14,17 @@
  * on a ship. The day either is reworded the other must not move with it.
  */
 export const research = {
+  shipShieldStage: "2 · Ship shields absorb fire",
+  shipShieldHullDamage: "After shields, {{amount}} attack damage reached defending hulls.",
+  shipShieldsName: "Ship Shields",
+  shipShieldsTag: "Absorbs combat fire each round",
+  shipShieldsRole: "Every ship starts with a shield equal to its maximum hull strength. Four research levels add 25%, 50%, 70% and 100% to this base shield.",
+  shipShieldsDetail: "Shields recharge at the start of each round. Hull wounds remain. Radiation bypasses shields and damages hull directly. Ground defences have no personal shield. Armour increases both maximum hull and shield capacity. Dispatched fleets keep their departure research.",
+  shipShieldGain: "Ship shield increase",
+  shipShieldScope: "Applies to every mobile ship. Bonuses are totals over the base shield, not multiplied between levels.",
+  shipShieldStat: "Ship shield (HP)",
+  shipShieldRound: "Each round: your ship shields absorbed {{your}}; enemy ship shields absorbed {{their}}.",
+  shipShieldHint: "Ship shields recharge each round. Radiation damages hull directly.",
   shieldingCeiling: "At level {{level}}: {{rate}} HP/min",
   shieldingName: "Radiation Shielding",
   shieldingTag: "Reduces radiation damage to ships",
@@ -39,14 +50,12 @@ export const research = {
     "Pick a star on the map. Up to three projects can wait here.",
 
   frontierBand: "Frontier",
-  frontierNote:
-    "Revealed by specific events in the galaxy, then completed by spending resources and research time.",
+  frontierNote: "Permissions and radiation protection. Each project shows its own discovery conditions and prerequisites.",
   industryBand: "Industry",
   industryNote:
     "Improves production, build and repair time, and carrying capacity. Each project shows its own level limit and prerequisites.",
   doctrineBand: "Doctrine",
-  doctrineNote:
-    "Unlocks advanced ship tiers and improves attack, armour or propulsion through research levels. Probes can reveal combat research levels.",
+  doctrineNote: "Unlocks advanced ships and improves attack, armour, combat shields or propulsion. Probes can reveal combat research.",
   strategicBand: "Strategic",
   strategicNote: "Raises how many Death Stars and interceptor charges each of your worlds can hold.",
 

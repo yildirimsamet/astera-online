@@ -259,7 +259,7 @@ export const reports = {
   roundLossesYours: 'Ihre Einheiten zerstört',
   roundLossesTheirs: 'Feindliche Einheiten zerstört',
   roundNoCasualties: 'Keine Verluste',
-  roundShield: 'Der Schild des Verteidigers absorbierte {{amount}} Schaden.',
+  roundShield: "Die Aegis des Verteidigers absorbierte {{amount}} Schaden.",
   turningPointSupport: 'Nach Runde {{round}} hatten Sie keine feuerfähigen Einheiten. Die {{support}} verbleibenden Unterstützungsschiffe konnten nicht angreifen.',
   turningPointWiped: 'Nach Runde {{round}} wurde Ihre gesamte Streitmacht zerstört.',
   roundDamageNote: 'Die Schadenswerte beinhalten jeglichen vom Schild des Verteidigers absorbierten Schaden.',

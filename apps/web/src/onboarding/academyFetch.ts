@@ -1,3 +1,4 @@
+import { academyBuildCount } from '@astera/rules';
 import { z } from 'zod';
 import { ACADEMY_STEPS, REWARD_CHAINS, rewardId, findRewardTier, coreTier, PROSPECTOR, academyFuel, academyLessonFleet, sensorSphere } from '@astera/rules';
 import type { RewardsView } from '../api/schemas.js';
@@ -164,7 +165,7 @@ export function academyFetch(
           const { hull, count } = z.object({ hull: z.string(), count: z.number().int().positive() }).strict().parse(body);
           const wanted = step.id === 'darts' || step.id === 'reinforcements' ? 'DART'
             : step.id === 'prospector' ? 'PROSPECTOR' : step.id === 'courier' ? 'COURIER' : null;
-          if (hull !== wanted || count !== (wanted === 'DART' ? 2 : 1)) throw new Error('ACADEMY_ACTION_REFUSED');
+          if (hull !== wanted || count !== academyBuildCount(step.id)) throw new Error('ACADEMY_ACTION_REFUSED');
           const next = beginAcademyOrder(world, step.id, time);
           write(next);
           return reply({ hull, built: count, ...next.checkpoint.resources, planet: academyPlanet(next) });

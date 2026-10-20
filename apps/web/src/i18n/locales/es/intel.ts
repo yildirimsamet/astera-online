@@ -259,7 +259,7 @@ export const reports = {
   roundLossesYours: 'Tus unidades destruidas',
   roundLossesTheirs: 'Unidades enemigas destruidas',
   roundNoCasualties: 'Sin pérdidas',
-  roundShield: 'El escudo del defensor absorbió el daño {{amount}}.',
+  roundShield: "La Aegis del defensor absorbió {{amount}} de daño.",
   turningPointSupport: 'Después de la ronda {{round}}, no tenías unidades capaces de disparar. Las {{support}} naves de apoyo restantes no pudieron atacar.',
   turningPointWiped: 'Después de la ronda {{round}}, toda tu fuerza fue destruida.',
   roundDamageNote: 'Las cifras de daño incluyen cualquier daño absorbido por el escudo del defensor.',

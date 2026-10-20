@@ -14,6 +14,17 @@
  * on a ship. The day either is reworded the other must not move with it.
  */
 export const research = {
+  shipShieldStage: "2 · 艦船のシールドが砲火を吸収",
+  shipShieldHullDamage: "シールド通過後、防衛側の船体に{{amount}}の攻撃ダメージが到達。",
+  shipShieldsName: "艦船シールド",
+  shipShieldsTag: "毎ラウンド戦闘射撃を吸収",
+  shipShieldsRole: "各艦船は最大船体HPと同量のシールドを持ちます。4段階の研究で基本シールドが合計25%、50%、70%、100%増加します。",
+  shipShieldsDetail: "シールドは各ラウンド開始時に全回復します。船体の損傷は残ります。放射線はシールドを通過し、船体HPを直接減らします。地上防衛に個別シールドはありません。装甲は最大船体HPとシールド容量の両方を増やします。派遣艦隊は出発時の研究を維持します。",
+  shipShieldGain: "艦船シールド増加",
+  shipShieldScope: "すべての移動可能な艦船に適用。効果は基本シールドに対する合計増加率で、研究レベル間で乗算されません。",
+  shipShieldStat: "艦船シールド (HP)",
+  shipShieldRound: "このラウンドのシールド吸収量：自軍{{your}}、敵軍{{their}}。",
+  shipShieldHint: "艦船シールドは毎ラウンド回復。放射線は船体HPを直接減らします。",
   shieldingCeiling: "レベル{{level}}：{{rate}} HP/分",
   shieldingName: "放射線防護",
   shieldingTag: "艦船の放射線ダメージを軽減",
@@ -39,14 +50,12 @@ export const research = {
     "マップ上の星を選んでください。最大3件の研究を待機させられます。",
 
   frontierBand: "フロンティア",
-  frontierNote:
-    "銀河で特定の出来事が起きると現れます。資源と研究時間を使って完了します。",
+  frontierNote: "機能の解禁と放射線対策。各研究に発見条件と前提条件を表示します。",
   industryBand: "産業",
   industryNote:
     "生産量、建設と修理の時間、積載量を改善します。各研究の詳細にレベル上限と前提条件を表示します。",
   doctrineBand: "ドクトリン",
-  doctrineNote:
-    "上位の船を解放し、攻撃力・装甲・推進力をそれぞれの上限まで強化します。敵の戦闘研究は探査機で確認できます。",
+  doctrineNote: "上位艦船を解禁し、攻撃、装甲、戦闘シールド、推進を強化します。探査機で戦闘研究を確認できます。",
   strategicBand: "戦略",
   strategicNote: "各惑星が保有できるデス・スターと迎撃弾の数を増やします。",
 

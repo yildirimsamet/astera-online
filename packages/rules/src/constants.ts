@@ -1714,11 +1714,10 @@ export const PROBE = {
  *   information (the counter cycle)  1.6 / 0.625 = 2.56x   =  156% advantage
  *   technology  (Power x Armor)      1.25 x 1.25 = 1.5625x =   56% advantage
  *
- * D137 held the PRODUCT at 1.25 so that knowing what your opponent flies stayed
- * decisive by a factor of six. At 1.5625 the margin is 1.64x — information still
- * wins, and `test/tech.test.ts` still asserts that it does, but the gap is now a
- * lead rather than a different league. This was the owner's call, made against
- * that arithmetic and not around it.
+ * These compare the Power × Armor stat product with the counter multiplier.
+ * Personal shield research (owner, 2026-10-20) adds regenerating protection on a
+ * separate ladder. Neither this product nor its test bounds total combat power
+ * or promises the outcome of an equal-budget battle.
  *
  * The economy ladders are separate. `cargoLadder` is the one that moves ARR —
  * `fleetCargo` caps what a raid carries home — and it now reaches 2.5x, which is
@@ -1755,8 +1754,8 @@ const DOCTRINE_LADDER = [1.05, 1.10, 1.15, 1.20, 1.25] as const;
 
 export const RESEARCH_TECH = {
   /**
-   * Equal-budget power a fully-teched hull may reach: the PRODUCT of the two fleet
-   * ladders, derived from them so it can never disagree with what is sold.
+   * Product of the Power and Armor stat ladders. Personal shield research has its
+   * own ladder; this number bounds ATK × hull HP, not total battle endurance.
    */
   powerCeiling: ladderTop(FLEET_STAT_LADDER) * ladderTop(FLEET_STAT_LADDER),
   /** Rungs on a weapon doctrine, and on each economy project — the tables' own lengths. */
@@ -1769,6 +1768,8 @@ export const RESEARCH_TECH = {
   holdLadder: HOLD_LADDER,
   cargoLadder: CARGO_LADDER,
   fleetStatLadder: FLEET_STAT_LADDER,
+  /** Personal combat shield / researched maximum hull. Cumulative, not compounded. */
+  shipShieldLadder: [1.25, 1.5, 1.7, 2] as const,
   doctrineLadder: DOCTRINE_LADDER,
   repairLadder: REPAIR_LADDER,
   /** Remaining source intensity; never a percentage of the ship's HP. */

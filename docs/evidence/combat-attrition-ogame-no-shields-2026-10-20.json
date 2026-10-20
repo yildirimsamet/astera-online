@@ -1,0 +1,1565 @@
+{
+  "source": "https://github.com/klaasvp/trashsim-public",
+  "sourceRevision": "6358da5ef43bc3d662d106933ba70595756457c3",
+  "hashes": {
+    "src/Resources/js-libs/entityInfo.js": "b6335617a706f8176189acd52bd845c9d4addb1c4285e0660fc6b88bc3d3b6e6",
+    "src/Resources/js/workers/simulator/party.class.js": "eb237d76ea48cadb09df8886dee53d45fe6a0d55c78c523263899fcd0b25915b",
+    "src/Resources/js/workers/simulator/simulator.js": "b29a73d61d44548c7f0ced18aeeb2dbb070b320c99649ebcf7359fc0a6f52a6c"
+  },
+  "battles": 6400,
+  "samplesPerCell": 200,
+  "settings": {
+    "techs": {
+      "weapon": 10,
+      "shield": 10,
+      "armour": 10
+    },
+    "rapidFire": true,
+    "shields": false,
+    "mirrorsOnly": true,
+    "classes": false,
+    "lifeforms": false,
+    "recovery": false,
+    "note": "Classic published TrashSim JS worker, not the current proprietary Gameforge server. Every input and engine source hash retained. Seed 0xA57E0000+i. Mirror ratios exact; cross ratios rounded down to integer ships. Resource budget = M+C+D. Classical unit stats taken from the source."
+  },
+  "roster": {
+    "202": {
+      "speed": 5000,
+      "cargo_capacity": 5000,
+      "fuel_usage": 10,
+      "armour": 4000,
+      "shield": 0,
+      "weapon": 5,
+      "rapidfire_from": {
+        "205": 3,
+        "214": 250,
+        "215": 3
+      },
+      "rapidfire_against": {
+        "210": 5,
+        "212": 5,
+        "217": 5
+      },
+      "type": 202,
+      "resources": {
+        "metal": 2000,
+        "crystal": 2000,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "203": {
+      "speed": 7500,
+      "cargo_capacity": 25000,
+      "fuel_usage": 50,
+      "armour": 12000,
+      "shield": 0,
+      "weapon": 5,
+      "rapidfire_from": {
+        "214": 250,
+        "215": 3
+      },
+      "rapidfire_against": {
+        "210": 5,
+        "212": 5,
+        "217": 5
+      },
+      "type": 203,
+      "resources": {
+        "metal": 6000,
+        "crystal": 6000,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "204": {
+      "speed": 12500,
+      "cargo_capacity": 50,
+      "fuel_usage": 20,
+      "armour": 4000,
+      "shield": 0,
+      "weapon": 50,
+      "rapidfire_from": {
+        "206": 6,
+        "214": 200,
+        "219": 3
+      },
+      "rapidfire_against": {
+        "210": 5,
+        "212": 5,
+        "217": 5
+      },
+      "type": 204,
+      "resources": {
+        "metal": 3000,
+        "crystal": 1000,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "205": {
+      "speed": 10000,
+      "cargo_capacity": 100,
+      "fuel_usage": 75,
+      "armour": 10000,
+      "shield": 0,
+      "weapon": 150,
+      "rapidfire_from": {
+        "214": 100,
+        "215": 4,
+        "219": 2
+      },
+      "rapidfire_against": {
+        "202": 3,
+        "210": 5,
+        "212": 5,
+        "217": 5
+      },
+      "type": 205,
+      "resources": {
+        "metal": 6000,
+        "crystal": 4000,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "206": {
+      "speed": 15000,
+      "cargo_capacity": 800,
+      "fuel_usage": 300,
+      "armour": 27000,
+      "shield": 0,
+      "weapon": 400,
+      "rapidfire_from": {
+        "214": 33,
+        "215": 4,
+        "219": 3
+      },
+      "rapidfire_against": {
+        "204": 6,
+        "210": 5,
+        "212": 5,
+        "217": 5,
+        "401": 10
+      },
+      "type": 206,
+      "resources": {
+        "metal": 20000,
+        "crystal": 7000,
+        "deuterium": 2000,
+        "energy": 0
+      }
+    },
+    "207": {
+      "speed": 10000,
+      "cargo_capacity": 1500,
+      "fuel_usage": 500,
+      "armour": 60000,
+      "shield": 0,
+      "weapon": 1000,
+      "rapidfire_from": {
+        "214": 30,
+        "215": 7,
+        "218": 7
+      },
+      "rapidfire_against": {
+        "210": 5,
+        "212": 5,
+        "217": 5,
+        "219": 5
+      },
+      "type": 207,
+      "resources": {
+        "metal": 45000,
+        "crystal": 15000,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "208": {
+      "speed": 2500,
+      "cargo_capacity": 7500,
+      "fuel_usage": 1000,
+      "armour": 30000,
+      "shield": 0,
+      "weapon": 50,
+      "rapidfire_from": {
+        "214": 250
+      },
+      "rapidfire_against": {
+        "210": 5,
+        "212": 5,
+        "217": 5
+      },
+      "type": 208,
+      "resources": {
+        "metal": 10000,
+        "crystal": 20000,
+        "deuterium": 10000,
+        "energy": 0
+      }
+    },
+    "209": {
+      "speed": 2000,
+      "cargo_capacity": 20000,
+      "fuel_usage": 300,
+      "armour": 16000,
+      "shield": 0,
+      "weapon": 1,
+      "rapidfire_from": {
+        "214": 250
+      },
+      "rapidfire_against": {
+        "210": 5,
+        "212": 5,
+        "217": 5
+      },
+      "type": 209,
+      "resources": {
+        "metal": 10000,
+        "crystal": 6000,
+        "deuterium": 2000,
+        "energy": 0
+      }
+    },
+    "210": {
+      "speed": 100000000,
+      "cargo_capacity": 0,
+      "fuel_usage": 1,
+      "armour": 1000,
+      "shield": 0,
+      "weapon": 0,
+      "rapidfire_from": {
+        "202": 5,
+        "203": 5,
+        "204": 5,
+        "205": 5,
+        "206": 5,
+        "207": 5,
+        "208": 5,
+        "209": 5,
+        "211": 5,
+        "213": 5,
+        "214": 1250,
+        "215": 5,
+        "218": 5,
+        "219": 5
+      },
+      "rapidfire_against": [],
+      "type": 210,
+      "resources": {
+        "metal": 0,
+        "crystal": 1000,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "211": {
+      "speed": 4000,
+      "cargo_capacity": 500,
+      "fuel_usage": 700,
+      "armour": 75000,
+      "shield": 0,
+      "weapon": 1000,
+      "rapidfire_from": {
+        "214": 25,
+        "218": 4
+      },
+      "rapidfire_against": {
+        "210": 5,
+        "212": 5,
+        "217": 5,
+        "401": 20,
+        "402": 20,
+        "403": 10,
+        "404": 5,
+        "405": 10,
+        "406": 5
+      },
+      "type": 211,
+      "resources": {
+        "metal": 50000,
+        "crystal": 25000,
+        "deuterium": 15000,
+        "energy": 0
+      }
+    },
+    "212": {
+      "speed": 0,
+      "cargo_capacity": 0,
+      "fuel_usage": 0,
+      "armour": 2000,
+      "shield": 0,
+      "weapon": 1,
+      "rapidfire_from": {
+        "202": 5,
+        "203": 5,
+        "204": 5,
+        "205": 5,
+        "206": 5,
+        "207": 5,
+        "208": 5,
+        "209": 5,
+        "211": 5,
+        "213": 5,
+        "214": 1250,
+        "215": 5,
+        "218": 5,
+        "219": 5
+      },
+      "rapidfire_against": [],
+      "type": 212,
+      "resources": {
+        "metal": 0,
+        "crystal": 2000,
+        "deuterium": 500,
+        "energy": 0
+      }
+    },
+    "213": {
+      "speed": 5000,
+      "cargo_capacity": 2000,
+      "fuel_usage": 1000,
+      "armour": 110000,
+      "shield": 0,
+      "weapon": 2000,
+      "rapidfire_from": {
+        "214": 5,
+        "218": 3
+      },
+      "rapidfire_against": {
+        "210": 5,
+        "212": 5,
+        "215": 2,
+        "217": 5,
+        "402": 10
+      },
+      "type": 213,
+      "resources": {
+        "metal": 60000,
+        "crystal": 50000,
+        "deuterium": 15000,
+        "energy": 0
+      }
+    },
+    "214": {
+      "speed": 100,
+      "cargo_capacity": 1000000,
+      "fuel_usage": 1,
+      "armour": 9000000,
+      "shield": 0,
+      "weapon": 200000,
+      "rapidfire_from": [],
+      "rapidfire_against": {
+        "202": 250,
+        "203": 250,
+        "204": 200,
+        "205": 100,
+        "206": 33,
+        "207": 30,
+        "208": 250,
+        "209": 250,
+        "210": 1250,
+        "211": 25,
+        "212": 1250,
+        "213": 5,
+        "215": 15,
+        "217": 1250,
+        "218": 10,
+        "219": 30,
+        "401": 200,
+        "402": 200,
+        "403": 100,
+        "404": 50,
+        "405": 100
+      },
+      "type": 214,
+      "resources": {
+        "metal": 5000000,
+        "crystal": 4000000,
+        "deuterium": 1000000,
+        "energy": 0
+      }
+    },
+    "215": {
+      "speed": 10000,
+      "cargo_capacity": 750,
+      "fuel_usage": 250,
+      "armour": 70000,
+      "shield": 0,
+      "weapon": 700,
+      "rapidfire_from": {
+        "213": 2,
+        "214": 15
+      },
+      "rapidfire_against": {
+        "202": 3,
+        "203": 3,
+        "205": 4,
+        "206": 4,
+        "207": 7,
+        "210": 5,
+        "212": 5,
+        "217": 5
+      },
+      "type": 215,
+      "resources": {
+        "metal": 30000,
+        "crystal": 40000,
+        "deuterium": 15000,
+        "energy": 0
+      }
+    },
+    "217": {
+      "speed": 0,
+      "cargo_capacity": 0,
+      "fuel_usage": 0,
+      "armour": 4000,
+      "shield": 0,
+      "weapon": 1,
+      "rapidfire_from": {
+        "202": 5,
+        "203": 5,
+        "204": 5,
+        "205": 5,
+        "206": 5,
+        "207": 5,
+        "208": 5,
+        "209": 5,
+        "211": 5,
+        "213": 5,
+        "214": 1250,
+        "215": 5,
+        "218": 5,
+        "219": 5
+      },
+      "rapidfire_against": [],
+      "type": 217,
+      "resources": {
+        "metal": 2000,
+        "crystal": 2000,
+        "deuterium": 1000,
+        "energy": 50
+      }
+    },
+    "218": {
+      "speed": 7000,
+      "cargo_capacity": 10000,
+      "fuel_usage": 1100,
+      "armour": 140000,
+      "shield": 0,
+      "weapon": 2800,
+      "rapidfire_from": {
+        "214": 10,
+        "405": 2
+      },
+      "rapidfire_against": {
+        "207": 7,
+        "210": 5,
+        "211": 4,
+        "212": 5,
+        "213": 3,
+        "217": 5
+      },
+      "type": 218,
+      "resources": {
+        "metal": 85000,
+        "crystal": 55000,
+        "deuterium": 20000,
+        "energy": 0
+      }
+    },
+    "219": {
+      "speed": 12000,
+      "cargo_capacity": 10000,
+      "fuel_usage": 300,
+      "armour": 23000,
+      "shield": 0,
+      "weapon": 200,
+      "rapidfire_from": {
+        "207": 5,
+        "214": 30
+      },
+      "rapidfire_against": {
+        "204": 3,
+        "205": 2,
+        "206": 3,
+        "210": 5,
+        "212": 5,
+        "217": 5
+      },
+      "type": 219,
+      "resources": {
+        "metal": 8000,
+        "crystal": 15000,
+        "deuterium": 8000,
+        "energy": 0
+      }
+    },
+    "401": {
+      "armour": 2000,
+      "shield": 0,
+      "weapon": 80,
+      "rapidfire_from": {
+        "206": 10,
+        "211": 20,
+        "214": 200
+      },
+      "rapidfire_against": [],
+      "type": 401,
+      "resources": {
+        "metal": 2000,
+        "crystal": 0,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "402": {
+      "armour": 2000,
+      "shield": 0,
+      "weapon": 100,
+      "rapidfire_from": {
+        "211": 20,
+        "213": 10,
+        "214": 200
+      },
+      "rapidfire_against": [],
+      "type": 402,
+      "resources": {
+        "metal": 1500,
+        "crystal": 500,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "403": {
+      "armour": 8000,
+      "shield": 0,
+      "weapon": 250,
+      "rapidfire_from": {
+        "211": 10,
+        "214": 100
+      },
+      "rapidfire_against": [],
+      "type": 403,
+      "resources": {
+        "metal": 6000,
+        "crystal": 2000,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "404": {
+      "armour": 35000,
+      "shield": 0,
+      "weapon": 1100,
+      "rapidfire_from": {
+        "211": 5,
+        "214": 50
+      },
+      "rapidfire_against": [],
+      "type": 404,
+      "resources": {
+        "metal": 20000,
+        "crystal": 15000,
+        "deuterium": 2000,
+        "energy": 0
+      }
+    },
+    "405": {
+      "armour": 8000,
+      "shield": 0,
+      "weapon": 150,
+      "rapidfire_from": {
+        "211": 10,
+        "214": 100
+      },
+      "rapidfire_against": {
+        "218": 2
+      },
+      "type": 405,
+      "resources": {
+        "metal": 5000,
+        "crystal": 3000,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "406": {
+      "armour": 100000,
+      "shield": 0,
+      "weapon": 3000,
+      "rapidfire_from": {
+        "211": 5
+      },
+      "rapidfire_against": [],
+      "type": 406,
+      "resources": {
+        "metal": 50000,
+        "crystal": 50000,
+        "deuterium": 30000,
+        "energy": 0
+      }
+    },
+    "407": {
+      "armour": 20000,
+      "shield": 0,
+      "weapon": 1,
+      "rapidfire_from": [],
+      "rapidfire_against": [],
+      "type": 407,
+      "resources": {
+        "metal": 10000,
+        "crystal": 10000,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "408": {
+      "armour": 100000,
+      "shield": 0,
+      "weapon": 1,
+      "rapidfire_from": [],
+      "rapidfire_against": [],
+      "type": 408,
+      "resources": {
+        "metal": 50000,
+        "crystal": 50000,
+        "deuterium": 0,
+        "energy": 0
+      }
+    },
+    "502": {
+      "speed": 0,
+      "cargo_capacity": 0,
+      "fuel_usage": 0,
+      "armour": 8000,
+      "shield": 0,
+      "weapon": 1,
+      "rapidfire_from": [],
+      "rapidfire_against": [],
+      "type": 502,
+      "resources": {
+        "metal": 8000,
+        "crystal": 0,
+        "deuterium": 2000,
+        "energy": 0
+      }
+    },
+    "503": {
+      "speed": 0,
+      "cargo_capacity": 0,
+      "fuel_usage": 0,
+      "armour": 15000,
+      "shield": 0,
+      "weapon": 12000,
+      "rapidfire_from": [],
+      "rapidfire_against": [],
+      "type": 503,
+      "resources": {
+        "metal": 12500,
+        "crystal": 2500,
+        "deuterium": 10000,
+        "energy": 0
+      }
+    }
+  },
+  "cells": [
+    {
+      "a": "LIGHT_FIGHTER",
+      "d": "LIGHT_FIGHTER",
+      "ratio": 1,
+      "actualRatio": 1,
+      "attacker": {
+        "204": 500
+      },
+      "defender": {
+        "204": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 0,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 0,
+        "eitherNearCount": 0,
+        "eitherNearValue": 0,
+        "attackerLossCount": 163.4420000000001,
+        "defenderLossCount": 162.84199999999998,
+        "attackerLossValue": 163.4420000000001,
+        "defenderLossValue": 162.84199999999998,
+        "draws": 200,
+        "rounds": 1200
+      }
+    },
+    {
+      "a": "LIGHT_FIGHTER",
+      "d": "LIGHT_FIGHTER",
+      "ratio": 1.5,
+      "actualRatio": 1.5,
+      "attacker": {
+        "204": 750
+      },
+      "defender": {
+        "204": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 31.819999999999997,
+        "defenderLossCount": 200,
+        "attackerLossValue": 31.819999999999997,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 998
+      }
+    },
+    {
+      "a": "LIGHT_FIGHTER",
+      "d": "LIGHT_FIGHTER",
+      "ratio": 2,
+      "actualRatio": 2,
+      "attacker": {
+        "204": 1000
+      },
+      "defender": {
+        "204": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 9.770999999999997,
+        "defenderLossCount": 200,
+        "attackerLossValue": 9.770999999999997,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 800
+      }
+    },
+    {
+      "a": "LIGHT_FIGHTER",
+      "d": "LIGHT_FIGHTER",
+      "ratio": 3,
+      "actualRatio": 3,
+      "attacker": {
+        "204": 1500
+      },
+      "defender": {
+        "204": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 1.6613333333333347,
+        "defenderLossCount": 200,
+        "attackerLossValue": 1.6613333333333347,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 600
+      }
+    },
+    {
+      "a": "HEAVY_FIGHTER",
+      "d": "HEAVY_FIGHTER",
+      "ratio": 1,
+      "actualRatio": 1,
+      "attacker": {
+        "205": 500
+      },
+      "defender": {
+        "205": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 0,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 0,
+        "eitherNearCount": 162,
+        "eitherNearValue": 162,
+        "attackerLossCount": 176.6899999999999,
+        "defenderLossCount": 178.2279999999999,
+        "attackerLossValue": 176.6899999999999,
+        "defenderLossValue": 178.2279999999999,
+        "draws": 200,
+        "rounds": 1200
+      }
+    },
+    {
+      "a": "HEAVY_FIGHTER",
+      "d": "HEAVY_FIGHTER",
+      "ratio": 1.5,
+      "actualRatio": 1.5,
+      "attacker": {
+        "205": 750
+      },
+      "defender": {
+        "205": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 47.890666666666625,
+        "defenderLossCount": 200,
+        "attackerLossValue": 47.890666666666625,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 803
+      }
+    },
+    {
+      "a": "HEAVY_FIGHTER",
+      "d": "HEAVY_FIGHTER",
+      "ratio": 2,
+      "actualRatio": 2,
+      "attacker": {
+        "205": 1000
+      },
+      "defender": {
+        "205": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 20.53300000000002,
+        "defenderLossCount": 200,
+        "attackerLossValue": 20.53300000000002,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 663
+      }
+    },
+    {
+      "a": "HEAVY_FIGHTER",
+      "d": "HEAVY_FIGHTER",
+      "ratio": 3,
+      "actualRatio": 3,
+      "attacker": {
+        "205": 1500
+      },
+      "defender": {
+        "205": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 6.363333333333335,
+        "defenderLossCount": 200,
+        "attackerLossValue": 6.363333333333335,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 600
+      }
+    },
+    {
+      "a": "CRUISER",
+      "d": "CRUISER",
+      "ratio": 1,
+      "actualRatio": 1,
+      "attacker": {
+        "206": 500
+      },
+      "defender": {
+        "206": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 0,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 0,
+        "eitherNearCount": 13,
+        "eitherNearValue": 13,
+        "attackerLossCount": 170.06600000000006,
+        "defenderLossCount": 169.00600000000003,
+        "attackerLossValue": 170.06600000000006,
+        "defenderLossValue": 169.00600000000003,
+        "draws": 200,
+        "rounds": 1200
+      }
+    },
+    {
+      "a": "CRUISER",
+      "d": "CRUISER",
+      "ratio": 1.5,
+      "actualRatio": 1.5,
+      "attacker": {
+        "206": 750
+      },
+      "defender": {
+        "206": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 32.847999999999985,
+        "defenderLossCount": 200,
+        "attackerLossValue": 32.847999999999985,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 929
+      }
+    },
+    {
+      "a": "CRUISER",
+      "d": "CRUISER",
+      "ratio": 2,
+      "actualRatio": 2,
+      "attacker": {
+        "206": 1000
+      },
+      "defender": {
+        "206": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 10.036999999999995,
+        "defenderLossCount": 200,
+        "attackerLossValue": 10.036999999999995,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 800
+      }
+    },
+    {
+      "a": "CRUISER",
+      "d": "CRUISER",
+      "ratio": 3,
+      "actualRatio": 3,
+      "attacker": {
+        "206": 1500
+      },
+      "defender": {
+        "206": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 1.7499999999999993,
+        "defenderLossCount": 200,
+        "attackerLossValue": 1.7499999999999993,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 600
+      }
+    },
+    {
+      "a": "BATTLESHIP",
+      "d": "BATTLESHIP",
+      "ratio": 1,
+      "actualRatio": 1,
+      "attacker": {
+        "207": 500
+      },
+      "defender": {
+        "207": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 0,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 0,
+        "eitherNearCount": 198,
+        "eitherNearValue": 198,
+        "attackerLossCount": 180.67399999999995,
+        "defenderLossCount": 180.80199999999994,
+        "attackerLossValue": 180.67399999999995,
+        "defenderLossValue": 180.80199999999994,
+        "draws": 200,
+        "rounds": 1200
+      }
+    },
+    {
+      "a": "BATTLESHIP",
+      "d": "BATTLESHIP",
+      "ratio": 1.5,
+      "actualRatio": 1.5,
+      "attacker": {
+        "207": 750
+      },
+      "defender": {
+        "207": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 49.00000000000002,
+        "defenderLossCount": 200,
+        "attackerLossValue": 49.00000000000002,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 800
+      }
+    },
+    {
+      "a": "BATTLESHIP",
+      "d": "BATTLESHIP",
+      "ratio": 2,
+      "actualRatio": 2,
+      "attacker": {
+        "207": 1000
+      },
+      "defender": {
+        "207": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 21.26500000000001,
+        "defenderLossCount": 200,
+        "attackerLossValue": 21.26500000000001,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 611
+      }
+    },
+    {
+      "a": "BATTLESHIP",
+      "d": "BATTLESHIP",
+      "ratio": 3,
+      "actualRatio": 3,
+      "attacker": {
+        "207": 1500
+      },
+      "defender": {
+        "207": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 6.685333333333332,
+        "defenderLossCount": 200,
+        "attackerLossValue": 6.685333333333332,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 595
+      }
+    },
+    {
+      "a": "BATTLECRUISER",
+      "d": "BATTLECRUISER",
+      "ratio": 1,
+      "actualRatio": 1,
+      "attacker": {
+        "215": 500
+      },
+      "defender": {
+        "215": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 0,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 0,
+        "eitherNearCount": 0,
+        "eitherNearValue": 0,
+        "attackerLossCount": 153.88200000000003,
+        "defenderLossCount": 153.25599999999994,
+        "attackerLossValue": 153.88200000000003,
+        "defenderLossValue": 153.25599999999994,
+        "draws": 200,
+        "rounds": 1200
+      }
+    },
+    {
+      "a": "BATTLECRUISER",
+      "d": "BATTLECRUISER",
+      "ratio": 1.5,
+      "actualRatio": 1.5,
+      "attacker": {
+        "215": 750
+      },
+      "defender": {
+        "215": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 30.497333333333327,
+        "defenderLossCount": 200,
+        "attackerLossValue": 30.497333333333327,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 1000
+      }
+    },
+    {
+      "a": "BATTLECRUISER",
+      "d": "BATTLECRUISER",
+      "ratio": 2,
+      "actualRatio": 2,
+      "attacker": {
+        "215": 1000
+      },
+      "defender": {
+        "215": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 9.30399999999999,
+        "defenderLossCount": 200,
+        "attackerLossValue": 9.30399999999999,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 800
+      }
+    },
+    {
+      "a": "BATTLECRUISER",
+      "d": "BATTLECRUISER",
+      "ratio": 3,
+      "actualRatio": 3,
+      "attacker": {
+        "215": 1500
+      },
+      "defender": {
+        "215": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 1.5446666666666684,
+        "defenderLossCount": 200,
+        "attackerLossValue": 1.5446666666666684,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 600
+      }
+    },
+    {
+      "a": "DESTROYER",
+      "d": "DESTROYER",
+      "ratio": 1,
+      "actualRatio": 1,
+      "attacker": {
+        "213": 500
+      },
+      "defender": {
+        "213": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 0,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 0,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 182.9579999999999,
+        "defenderLossCount": 183.02399999999975,
+        "attackerLossValue": 182.9579999999999,
+        "defenderLossValue": 183.02399999999975,
+        "draws": 200,
+        "rounds": 1200
+      }
+    },
+    {
+      "a": "DESTROYER",
+      "d": "DESTROYER",
+      "ratio": 1.5,
+      "actualRatio": 1.5,
+      "attacker": {
+        "213": 750
+      },
+      "defender": {
+        "213": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 50.186666666666696,
+        "defenderLossCount": 200,
+        "attackerLossValue": 50.186666666666696,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 800
+      }
+    },
+    {
+      "a": "DESTROYER",
+      "d": "DESTROYER",
+      "ratio": 2,
+      "actualRatio": 2,
+      "attacker": {
+        "213": 1000
+      },
+      "defender": {
+        "213": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 22.165,
+        "defenderLossCount": 200,
+        "attackerLossValue": 22.165,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 604
+      }
+    },
+    {
+      "a": "DESTROYER",
+      "d": "DESTROYER",
+      "ratio": 3,
+      "actualRatio": 3,
+      "attacker": {
+        "213": 1500
+      },
+      "defender": {
+        "213": 500
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 6.924666666666668,
+        "defenderLossCount": 200,
+        "attackerLossValue": 6.924666666666668,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 586
+      }
+    },
+    {
+      "a": "MIX_LF_CR_BS",
+      "d": "MIX_LF_CR_BS",
+      "ratio": 1,
+      "actualRatio": 1,
+      "attacker": {
+        "204": 1000,
+        "206": 100,
+        "207": 100
+      },
+      "defender": {
+        "204": 1000,
+        "206": 100,
+        "207": 100
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 0,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 0,
+        "eitherNearCount": 200,
+        "eitherNearValue": 0,
+        "attackerLossCount": 183.8258333333333,
+        "defenderLossCount": 184.17833333333348,
+        "attackerLossValue": 136.5331782945736,
+        "defenderLossValue": 137.5175193798449,
+        "draws": 200,
+        "rounds": 1200
+      }
+    },
+    {
+      "a": "MIX_LF_CR_BS",
+      "d": "MIX_LF_CR_BS",
+      "ratio": 1.5,
+      "actualRatio": 1.5,
+      "attacker": {
+        "204": 1500,
+        "206": 150,
+        "207": 150
+      },
+      "defender": {
+        "204": 1000,
+        "206": 100,
+        "207": 100
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 109.36166666666665,
+        "defenderLossCount": 200,
+        "attackerLossValue": 50.85984496124029,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 1016
+      }
+    },
+    {
+      "a": "MIX_LF_CR_BS",
+      "d": "MIX_LF_CR_BS",
+      "ratio": 2,
+      "actualRatio": 2,
+      "attacker": {
+        "204": 2000,
+        "206": 200,
+        "207": 200
+      },
+      "defender": {
+        "204": 1000,
+        "206": 100,
+        "207": 100
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 71.36583333333336,
+        "defenderLossCount": 200,
+        "attackerLossValue": 30.449651162790698,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 804
+      }
+    },
+    {
+      "a": "MIX_LF_CR_BS",
+      "d": "MIX_LF_CR_BS",
+      "ratio": 3,
+      "actualRatio": 3,
+      "attacker": {
+        "204": 3000,
+        "206": 300,
+        "207": 300
+      },
+      "defender": {
+        "204": 1000,
+        "206": 100,
+        "207": 100
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 39.77527777777778,
+        "defenderLossCount": 200,
+        "attackerLossValue": 16.22090439276486,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 617
+      }
+    },
+    {
+      "a": "MIX_LF_BC_DEST",
+      "d": "MIX_LF_BC_DEST",
+      "ratio": 1,
+      "actualRatio": 1,
+      "attacker": {
+        "204": 1000,
+        "213": 100,
+        "215": 100
+      },
+      "defender": {
+        "204": 1000,
+        "213": 100,
+        "215": 100
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 0,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 0,
+        "eitherNearCount": 0,
+        "eitherNearValue": 0,
+        "attackerLossCount": 169.65249999999995,
+        "defenderLossCount": 169.13083333333336,
+        "attackerLossValue": 89.39323999999999,
+        "defenderLossValue": 88.09799999999998,
+        "draws": 200,
+        "rounds": 1200
+      }
+    },
+    {
+      "a": "MIX_LF_BC_DEST",
+      "d": "MIX_LF_BC_DEST",
+      "ratio": 1.5,
+      "actualRatio": 1.5,
+      "attacker": {
+        "204": 1500,
+        "213": 150,
+        "215": 150
+      },
+      "defender": {
+        "204": 1000,
+        "213": 100,
+        "215": 100
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 199,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 199,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 86.20388888888894,
+        "defenderLossCount": 199.99916666666667,
+        "attackerLossValue": 24.845519999999997,
+        "defenderLossValue": 199.9966,
+        "draws": 1,
+        "rounds": 1200
+      }
+    },
+    {
+      "a": "MIX_LF_BC_DEST",
+      "d": "MIX_LF_BC_DEST",
+      "ratio": 2,
+      "actualRatio": 2,
+      "attacker": {
+        "204": 2000,
+        "213": 200,
+        "215": 200
+      },
+      "defender": {
+        "204": 1000,
+        "213": 100,
+        "215": 100
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 51.01416666666667,
+        "defenderLossCount": 200,
+        "attackerLossValue": 12.233500000000003,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 1000
+      }
+    },
+    {
+      "a": "MIX_LF_BC_DEST",
+      "d": "MIX_LF_BC_DEST",
+      "ratio": 3,
+      "actualRatio": 3,
+      "attacker": {
+        "204": 3000,
+        "213": 300,
+        "215": 300
+      },
+      "defender": {
+        "204": 1000,
+        "213": 100,
+        "215": 100
+      },
+      "totals": {
+        "samples": 200,
+        "eitherWiped": 200,
+        "bothWiped": 0,
+        "attackerWiped": 0,
+        "defenderWiped": 200,
+        "eitherNearCount": 200,
+        "eitherNearValue": 200,
+        "attackerLossCount": 25.944444444444454,
+        "defenderLossCount": 200,
+        "attackerLossValue": 5.543306666666666,
+        "defenderLossValue": 200,
+        "draws": 0,
+        "rounds": 800
+      }
+    }
+  ]
+}

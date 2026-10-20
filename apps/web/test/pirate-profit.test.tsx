@@ -5,6 +5,7 @@ import { PirateProfitCard } from '../src/ui/PirateProfitCard.js';
 
 const input = { attacker: { CORSAIR: 12, ARGOSY: 1 }, crew: { DART: 2 }, level: 1 as const,
   tech: {}, rulesetVersion: 16, hoard: { alloy: 1000, crystal: 500, deuterium: 333 },
+  damage: [{ hull: 'ARGOSY' as const, count: 1, damageBp: 1, remainderBp: 0.25 }],
   paid: { alloy: 0, crystal: 0, deuterium: 0 }, fuel: 80 };
 
 describe('pirate profit decision card', () => {

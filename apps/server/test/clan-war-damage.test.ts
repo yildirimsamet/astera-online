@@ -24,7 +24,7 @@ import { readBattleReports } from '../src/services/reports.js';
 import { dockLotsOf } from '../src/services/shipDamage.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { forceSeasonEnd } from '../src/worker/handlers.js';
-import { giveUnits, grant, levelWorld, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
+import { giveResearch, giveUnits, grant, levelWorld, seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
 /**
  * KALICI GEMİ HASARI IN A CLAN'S JOINT WAR. `plan.md` F3.
@@ -34,8 +34,8 @@ import { giveUnits, grant, levelWorld, seedWorld, setLevel, testDb, type Fixture
  * its own return leg, the commander's personal result says what they carry, and the
  * Repair Station judges them where each wave lands.
  *
- * Three Darts against one Stronghold leave the Stronghold 79–92% damaged and a Dart
- * 53–78% across the whole roll band (measured with `resolveCombat` over 1,500 seeds).
+ * Eleven Power-I Darts against three Strongholds penetrate their personal shields
+ * and leave both sides wounded (1,500 seeds: Stronghold 31–84%, Dart 52–79%).
  */
 
 const silent = pino({ level: 'silent' });
@@ -109,13 +109,14 @@ const send = (f: Fixture, accountIndex: number, originPlanetId: string, fleet: F
     originPlanetId, fleet, acknowledgeShieldLoss: true, clock: f.clock,
   }));
 
-/** Two waves of Darts against a lone Stronghold, up to the settled battle. */
+/** Equal-tech waves share casualties and shields, then carry their own wounds home. */
 async function fightIt(f: Fixture): Promise<void> {
   await readyOperation(f);
   await f.db.delete(units).where(eq(units.planetId, f.planetIds[2]!));
-  await giveUnits(f.db, f.planetIds[2]!, { STRONGHOLD: 1 });
-  await send(f, 0, f.planetIds[0]!, { DART: 2 });
-  await send(f, 1, f.planetIds[1]!, { DART: 1 });
+  await giveUnits(f.db, f.planetIds[2]!, { STRONGHOLD: 3 });
+  for (const index of [0, 1]) await giveResearch(f.db, f.planetIds[index]!, 'SHIP_POWER', 1);
+  await send(f, 0, f.planetIds[0]!, { DART: 6 });
+  await send(f, 1, f.planetIds[1]!, { DART: 5 });
   await land(f);
   await f.db.transaction(async (tx) => startClanWar(tx, {
     actor: await clanActor(tx, f.accountIds[0]!), acknowledgeShieldLoss: true, clock: f.clock,
@@ -185,7 +186,7 @@ describe('persistent damage in a joint war', () => {
     expect(await dockLotsOf(f.db, f.planetIds[2]!)).toEqual([]);
     const [world] = await f.db.select().from(units)
       .where(and(eq(units.planetId, f.planetIds[2]!), eq(units.location, 'home'), eq(units.hull, 'STRONGHOLD')));
-    expect(world?.count).toBe(1);
+    expect(world?.count).toBe(3);
     expect((await f.db.select().from(clanWarContributions)).every((wave) => wave.damage === null)).toBe(true);
   });
 });

@@ -259,7 +259,7 @@ export const reports = {
   roundLossesYours: 'Your units destroyed',
   roundLossesTheirs: 'Enemy units destroyed',
   roundNoCasualties: 'No losses',
-  roundShield: 'The defender\u2019s shield absorbed {{amount}} damage.',
+  roundShield: "The defender’s Aegis absorbed {{amount}} damage.",
   turningPointSupport: 'After round {{round}}, you had no units able to fire. The {{support}} remaining support ships could not attack.',
   turningPointWiped: 'After round {{round}}, your entire force was destroyed.',
   roundDamageNote: 'The damage figures include any damage absorbed by the defender\u2019s shield.',

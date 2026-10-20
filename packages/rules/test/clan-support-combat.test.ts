@@ -171,7 +171,7 @@ describe('resolveBattle — several commanders hold one line', () => {
 
   it('spends fire on a supporter’s damaged ships before anyone’s healthy ones', () => {
     const result = resolveBattle(
-      [attacker({ DART: 1 })],
+      [attacker({ DART: 20 })],
       [
         host({ DART: 10 }),
         supporter({ DART: 10 }, 'w1', 's1', {}, [{ hull: 'DART', count: 5, damageBp: 9_500 }]),

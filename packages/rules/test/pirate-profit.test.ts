@@ -102,7 +102,8 @@ describe('pirate launch economics', () => {
   it('does not call an ore-versus-fuel tradeoff likely profit when paid repairs consume the ore return', () => {
     const attacker = { CORSAIR: 12 };
     const forecast = forecastPirateProfit({ ...input, attacker, crew: { PALADIN: 3 },
-      fuel: missionFuel(attacker, 900, 2) });
+      fuel: missionFuel(attacker, 900, 2), hoard: { alloy: 1950, crystal: 1050, deuterium: 2000 },
+      damage: [{ hull: 'CORSAIR', count: 12, damageBp: 3000 }] });
     expect(forecast.net.alloy + forecast.net.crystal).toBeLessThan(0);
     expect(forecast.net.deuterium).toBeGreaterThan(0);
     expect(forecast.verdict).toBe('RISK');

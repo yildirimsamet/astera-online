@@ -134,9 +134,9 @@ describe('research prices', () => {
     }
     // Industrial (owner K6, 2026-09-29) added the seventeenth project and its two rungs;
     // the Death Star Protocol's retirement (owner, 2026-10-01) took one project and one rung.
-    expect(RESEARCH_PROJECT_IDS.length).toBe(17);
+    expect(RESEARCH_PROJECT_IDS.length).toBe(18);
     // Interception Grid now adds a second useful level (owner, 2026-10-15).
-    expect(rungs).toBe(58);
+    expect(rungs).toBe(62);
   });
 
   it('still charges whole positive resources at every rung', () => {

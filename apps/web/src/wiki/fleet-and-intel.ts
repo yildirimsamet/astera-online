@@ -46,10 +46,12 @@ export const fleetAndIntelArticles: readonly WikiArticle[] = [
     l([
       "Combat has a limited number of rounds. Both sides fire in the same round. Only surviving combat-ready ships and ground defences fire. Attack, remaining hull strength, research and opposing classes affect damage. Shot variation can change a close result.",
       "An active Aegis absorbs damage before defending units. Nullifier’s extra shield damage affects only Aegis; it does not pass into ships. Without combat-ready defenders, Aegis alone cannot hold the planet. Prospectors do not take part in home defence.",
+      "Every mobile ship has its own shield, equal to its maximum hull strength before shield research. It recharges each round; hull wounds remain. [[research.SHIP_SHIELDS|Ship Shields]] adds 25%, 50%, 70% or 100% to this base. Radiation bypasses ship shields and damages hull directly. Ground defences have no personal shield.",
       "A decisive victory clears the defending force and its active battle shield, or takes an undefended target. Partial success destroys the required share of defending resource value without clearing everything. Otherwise, the attack is repelled. The outcome sets loot share and the production pause.",
     ], [
       "Savaş sınırlı sayıda turda sonuçlanır. İki taraf aynı turda ateş eder. Yalnız sağ kalan, savaşabilecek gemiler ve yer savunmaları ateş eder. Saldırı gücü, kalan dayanım, araştırmalar ve karşı sınıflar hasarı etkiler. Atışlardaki değişkenlik, yakın savaşlarda sonucu değiştirebilir.",
       "Aktif Aegis, savunmadaki birimlerden önce hasarı emer. Söndürücünün ek kalkan hasarı yalnız Aegis’e uygulanır; gemilere geçmez. Savaşabilecek savunmacı yoksa Aegis tek başına gezegeni savunamaz. Kazıcılar gezegen savunmasına katılmaz.",
+      "Her mobil geminin araştırma öncesi kalkanı azami canına eşittir. Kalkan her tur yenilenir; gövde yaraları kalır. [[research.SHIP_SHIELDS|Gemi Kalkanları]] bu tabanı toplam %25, %50, %70 veya %100 artırır. Radyasyon gemi kalkanını geçerek doğrudan canı azaltır. Yer savunmalarının kişisel kalkanı yoktur.",
       "Kesin zafer, savunmadaki kuvveti ve aktif savaş kalkanını ortadan kaldırır veya savunmasız hedefte elde edilir. Kısmi başarı, savunmanın toplam kaynak değerinin gereken payını yok eder. Bu koşul da sağlanmazsa saldırı püskürtülür. Sonuç, ganimet payını ve üretimin duracağı süreyi belirler.",
     ]),
     l([

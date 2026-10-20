@@ -84,8 +84,8 @@ function battles(): unknown[] {
     const defender = random() < 0.15 ? {} : fleetFrom(ALL_HULLS, int(1, 4), int(1, 300));
     const shield = random() < 0.5 ? 0 : int(0, 60_000);
     const result = resolveCombat(attacker, defender, shield, mulberry32(int(1, 1_000_000)), {
-      attacker: { tech: techFor() },
-      defender: { tech: techFor(), ...(random() < 0.2 ? { damageMult: 0.6 } : {}) },
+      attacker: { tech: techFor(), shipShields: false },
+      defender: { tech: techFor(), shipShields: false, ...(random() < 0.2 ? { damageMult: 0.6 } : {}) },
     });
     out.push(legacy(result));
   }
@@ -100,13 +100,13 @@ function battles(): unknown[] {
         contributionId: `c${String(s)}`,
         playerId: `p${String(s % 2)}`,
         fleet,
-        tech: { tech: random() < 0.5 ? {} : techFor() },
+        tech: { tech: random() < 0.5 ? {} : techFor(), shipShields: false },
       });
     }
     const defender = fleetFrom(ALL_HULLS, int(1, 4), int(1, 400));
     const shield = random() < 0.5 ? 0 : int(0, 80_000);
     out.push(legacyJoint(resolveJointCombat(stacks, defender, shield, mulberry32(int(1, 1_000_000)), {
-      tech: techFor(),
+      tech: techFor(), shipShields: false,
     })));
   }
   return out;

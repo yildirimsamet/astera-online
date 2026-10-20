@@ -404,10 +404,10 @@ export const gains = {
   research: {
     powerLabel: 'Kriegsschiffangriff',
     powerScope:
-      'Jedes Kriegsschiff Ihrer Flotte. Kraft und Panzerung ergeben zusammen höchstens 56 % der Kampfkraft mit gleichem Budget; Transporte und Bodenverteidigung bleiben davon unberührt.',
+      "Erhöht den Angriff aller Kriegsschiffe deiner Flotte. Transporter und Bodenverteidigung sind nicht betroffen.",
     armorLabel: 'Schiffsrumpfstärke',
     armorScope:
-      'Alle Schiffe Ihrer Flotte, inklusive Transporte. Kraft und Panzerung ergeben zusammen höchstens 56 % der Kampfkraft mit gleichem Budget; Die Bodenverteidigung bleibt davon unberührt.',
+      "Erhöht die maximale Rumpfstärke und die persönliche Schildkapazität aller mobilen Schiffe, einschließlich Transporter. Die Bodenverteidigung ist nicht betroffen.",
     speedLabel: 'Flottengeschwindigkeit',
     speedScope:
       'Alle Schiffe Ihrer Flotte. Eine gemischte Flotte fliegt immer noch mit der – verbesserten – Geschwindigkeit ihres langsamsten Mitglieds; Prospektoren und Sonden sind davon nicht betroffen.',

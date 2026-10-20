@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--ship-shields')) {
+  const { verifyShipShields } = await import('./ship-shields-visual.mjs');
+  await verifyShipShields(process.argv[2] ?? 'out/ship-shields');
+  process.exit(0);
+}
+
 if (process.argv.includes('--fleet-towing')) {
   const { verifyFleetTowing } = await import('./fleet-towing-visual.mjs');
   await verifyFleetTowing(process.argv[2] ?? 'out/fleet-towing');

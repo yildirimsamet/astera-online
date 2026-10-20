@@ -404,10 +404,10 @@ export const gains = {
   research: {
     powerLabel: 'Warship attack',
     powerScope:
-      'Every warship in your fleet. Power and Armor together add at most 56% equal-budget combat power; transports and ground defence are unaffected.',
+      "Every warship in your fleet. Increases attack; transports and ground defence are unaffected.",
     armorLabel: 'Ship hull strength',
     armorScope:
-      'All ships in your fleet, transports included. Power and Armor together add at most 56% equal-budget combat power; ground defence is unaffected.',
+      "All mobile ships, transports included. Increases maximum hull strength and personal shield capacity. Ground defence is unaffected.",
     speedLabel: 'Fleet speed',
     speedScope:
       'All ships in your fleet. A mixed fleet still flies at its slowest member’s — improved — speed; Prospectors and probes are unaffected.',

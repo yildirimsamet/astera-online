@@ -44,35 +44,39 @@ function carryAfterThreeRounds(shot: number, hull: HullId): { killed: number; ca
   let carry = 0;
   let killed = 0;
   for (let round = 0; round < COMBAT.rounds; round++) {
-    const effective = shot * 1 + carry;
-    const k = Math.floor(effective / hp(hull));
-    killed += k;
-    carry = effective - k * hp(hull);
+    let remaining = shot;
+    while (remaining > 0) {
+      remaining = Math.max(0, remaining - hp(hull)); // this ship's fresh shield
+      const taken = Math.min(remaining, hp(hull) - carry);
+      carry += taken;
+      remaining -= taken;
+      if (carry >= hp(hull)) { killed++; carry = 0; }
+    }
   }
   return { killed, carry };
 }
 
 describe('the carry comes out of the battle as damage', () => {
   it('leaves the defender one part-damaged ship per hull', () => {
-    const { killed, carry } = carryAfterThreeRounds(dartShot(), 'COURIER');
+    const { killed, carry } = carryAfterThreeRounds(5 * dartShot(), 'COURIER');
     expect(killed).toBe(1);
-    const result = resolveCombat({ DART: 1 }, { COURIER: 50 }, 0, MID, NO_TECH);
+    const result = resolveCombat({ DART: 5 }, { COURIER: 50 }, 0, MID, NO_TECH);
     expect(result.defenderLosses).toEqual({ COURIER: killed });
     expect(result.defenderDamage).toEqual([lot('COURIER', 1, Math.round((carry / hp('COURIER')) * 10_000))]);
     expect(result.attackerDamage).toEqual([]);
   });
 
   it('leaves the attacker one part-damaged ship per hull, on its contribution', () => {
-    const { killed, carry } = carryAfterThreeRounds(dartShot(), 'COURIER');
+    const { killed, carry } = carryAfterThreeRounds(5 * dartShot(), 'COURIER');
     const expected = [lot('COURIER', 1, Math.round((carry / hp('COURIER')) * 10_000))];
-    const solo = resolveCombat({ COURIER: 50 }, { DART: 1 }, 0, MID, NO_TECH);
+    const solo = resolveCombat({ COURIER: 50 }, { DART: 5 }, 0, MID, NO_TECH);
     expect(solo.attackerLosses).toEqual({ COURIER: killed });
     expect(solo.attackerDamage).toEqual(expected);
     expect(solo.defenderDamage).toEqual([]);
 
     const joint = resolveJointCombat(
       [{ contributionId: 'c', playerId: 'p', fleet: { COURIER: 50 }, tech: { tech: {} } }],
-      { DART: 1 }, 0, MID, { tech: {} },
+      { DART: 5 }, 0, MID, { tech: {} },
     );
     expect(joint.contributions[0]?.survivorDamage).toEqual(expected);
     expect(joint.attackerDamage).toEqual(expected);
@@ -93,7 +97,7 @@ describe('the carry comes out of the battle as damage', () => {
 
 describe('an attacker that arrives damaged loses its most damaged ships first', () => {
   /** The defender's handicap tunes one Dart to exactly a quarter of a transport per round. */
-  const quarter = (0.25 * hp('COURIER')) / dartShot();
+  const quarter = (1.25 * hp('COURIER')) / dartShot();
 
   it('kills the half-dead transport and wounds the next damaged one, not a healthy one', () => {
     const result = resolveCombat(
@@ -104,15 +108,15 @@ describe('an attacker that arrives damaged loses its most damaged ships first', 
       { attacker: { tech: {} }, defender: { tech: {}, damageMult: quarter } },
       [lot('COURIER', 2, 5000)],
     );
-    // Three quarters of a hull: the first half-damaged ship dies on half of it, and the
-    // quarter left lands on the second, which now carries three quarters of damage.
+    // Each round first spends one full shield. The first wound dies in round two;
+    // round three leaves the second damaged ship at 75% hull damage.
     expect(result.attackerLosses).toEqual({ COURIER: 1 });
     expect(result.attackerSurvivors).toEqual({ COURIER: 4 });
     expect(result.attackerDamage).toEqual([lot('COURIER', 1, 7500)]);
   });
 
   it('spends a damaged wave first inside a shared cohort, and gives the leftover to the largest healthy wave', () => {
-    const fifth = (0.2 * hp('COURIER')) / dartShot();
+    const fifth = (1.25 * hp('COURIER')) / dartShot();
     const stacks: JointAttackerStack[] = [
       { contributionId: 'a', playerId: 'p1', fleet: { COURIER: 10 }, tech: { tech: {} } },
       { contributionId: 'b', playerId: 'p2', fleet: { COURIER: 4 }, tech: { tech: {} }, damage: [lot('COURIER', 1, 9000)] },
@@ -122,13 +126,14 @@ describe('an attacker that arrives damaged loses its most damaged ships first', 
     expect(b?.losses).toEqual({ COURIER: 1 });
     expect(b?.survivorDamage).toEqual([]);
     expect(a?.losses).toEqual({});
-    // Three fifths of a hull: one tenth kills b's wreck, half a hull is left on a healthy ship.
+    // Round one finishes the wounded ship and hits the next shield; rounds two
+    // and three each remove a quarter hull from the healthy cohort.
     expect(a?.survivorDamage).toEqual([lot('COURIER', 1, 5000)]);
     expect(result.attackerDamage).toEqual([lot('COURIER', 1, 5000)]);
   });
 
   it('breaks an even tie by contribution id, so the answer never depends on array order', () => {
-    const tenth = (0.1 * hp('COURIER')) / dartShot();
+    const tenth = (1.1 * hp('COURIER')) / dartShot();
     const stacks = (order: 'ab' | 'ba'): JointAttackerStack[] => {
       const rows: JointAttackerStack[] = [
         { contributionId: 'a', playerId: 'p1', fleet: { COURIER: 5 }, tech: { tech: {} } },
