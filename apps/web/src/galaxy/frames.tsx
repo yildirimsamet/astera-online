@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
+import { galaxyCover, watchGalaxyCover } from '../lib/galaxyCover.js';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
 
 /**
@@ -103,6 +104,12 @@ const STRIDE_TOLERANCE = 0.05;
 export const FULL_RATE_FPS = 60;
 /** Anything crossing the disc — a drill, a probe, a fleet. Owner, 2026-09-19. */
 export const FLIGHT_FPS = 30;
+/**
+ * THE DIMMED GALAXY BEHIND A MODAL SHEET (`lib/galaxyCover.ts`), whatever is held. 2026-10-20.
+ * The player is reading the sheet; the disc above it only has to stay alive, and the frames it
+ * no longer draws are the ones the sheet's taps and scrolls were waiting behind.
+ */
+export const COVERED_FPS = 15;
 
 /**
  * A METEOR MOVES ON EVERY FRAME THE DISC DRAWS, AND RAISES NOTHING.
@@ -157,8 +164,11 @@ export const currentFps = (): number => wantedFps();
 function wantedFps(): number {
   let fps = AMBIENT_FPS;
   for (const held of holds.values()) fps = Math.max(fps, held);
-  return fps;
+  return galaxyCover() === 'part' ? Math.min(fps, COVERED_FPS) : fps;
 }
+
+/** Hidden behind a page, or the app is not in front: nobody would see a frame. */
+const drawing = (): boolean => isAppActive() && galaxyCover() !== 'whole';
 
 /**
  * Smoothing on the measured refresh interval.
@@ -218,7 +228,7 @@ export function useAmbientFrames(): void {
     let skip = 0;
 
     const tick = (at: number): void => {
-      if (!isAppActive()) { handle = 0; return; }
+      if (!drawing()) { handle = 0; return; }
       handle = requestAnimationFrame(tick);
 
       if (previous !== 0) {
@@ -243,7 +253,7 @@ export function useAmbientFrames(): void {
     };
 
     const sync = (): void => {
-      if (!isAppActive()) {
+      if (!drawing()) {
         cancelAnimationFrame(handle);
         handle = 0;
       } else if (handle === 0) {
@@ -253,9 +263,11 @@ export function useAmbientFrames(): void {
       }
     };
     const stopActivity = watchAppActivity(sync);
+    const stopCover = watchGalaxyCover(sync);
     sync();
     return () => {
       stopActivity();
+      stopCover();
       cancelAnimationFrame(handle);
     };
   }, [invalidate]);

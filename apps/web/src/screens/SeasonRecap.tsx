@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SeasonInfo } from '../api/schemas.js';
 import { full, signed } from '../lib/format.js';
+import { coverGalaxy } from '../lib/galaxyCover.js';
 import { haptic } from '../lib/haptics.js';
 import { AttackIcon, ClanIcon, GalaxyIcon, LeaderboardIcon, ShieldedIcon } from '../ui/icons/index.js';
 import { NextSeason } from '../ui/NextSeason.js';
@@ -94,6 +95,8 @@ export function SeasonRecap({
   }, [onClose, result]);
   const panel = useRef<HTMLDivElement>(null);
   useNativeBack(panel, close);
+  // A full screen over the disc: nothing behind it needs drawing.
+  useEffect(() => coverGalaxy('whole'), []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {

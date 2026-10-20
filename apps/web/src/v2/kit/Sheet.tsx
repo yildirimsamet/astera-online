@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { claimEscape, dragStep, nextDetent, type Detent } from '../../lib/sheet.js';
+import { useGalaxyCover } from '../../lib/galaxyCover.js';
 import { useNativeBack } from '../../platform/nativeBack.js';
 import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 import { Icon } from '../icons.js';
@@ -182,6 +183,7 @@ export function Sheet({
   const dismiss = useOwnPress(onClose);
   const atTop = detent === detents[detents.length - 1];
   const modal = detent !== 'peek';
+  useGalaxyCover(panel, modal);
 
   return (
     <div

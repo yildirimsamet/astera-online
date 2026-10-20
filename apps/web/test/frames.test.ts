@@ -15,7 +15,9 @@ import {
   strideFor,
   useAmbientFrames,
   useCommittedDemandFrame,
+  COVERED_FPS,
 } from '../src/galaxy/frames.js';
+import { coverGalaxy } from '../src/lib/galaxyCover.js';
 
 /**
  * `useAmbientFrames` reads one thing off the R3F store and nothing else, so the
@@ -467,5 +469,99 @@ describe('full rate', () => {
     const view = renderHook(() => FullRate());
     expect(view.result.current).toBeNull();
     view.unmount();
+  });
+});
+
+/**
+ * NOBODY PAYS FOR A GALAXY NOBODY CAN SEE. Owner, 2026-10-20: "menü, chat vs gibi komple bir
+ * yavaşlık hantallık var". With a page over the whole disc the ticker stops; with a modal
+ * sheet over part of it the dimmed remainder steps at `COVERED_FPS`, whatever is held.
+ */
+describe('the galaxy under a sheet', () => {
+  afterEach(() => {
+    invalidate.mockClear();
+    vi.unstubAllGlobals();
+  });
+
+  function display(refreshMs: number) {
+    let now = 0;
+    let next = 1;
+    const queue = new Map<number, FrameRequestCallback>();
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback): number => {
+      const id = next++;
+      queue.set(id, cb);
+      return id;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number): void => {
+      queue.delete(id);
+    });
+    return {
+      step(): void {
+        now += refreshMs;
+        const due = [...queue.values()];
+        queue.clear();
+        act(() => {
+          for (const cb of due) cb(now);
+        });
+      },
+      queued: () => queue.size,
+    };
+  }
+  const bought = (from: number): number =>
+    invalidate.mock.calls.slice(from).reduce((n, [frames]) => n + (frames ?? 1), 0);
+
+  it('stops drawing while a sheet hides the whole galaxy, and draws at once when it leaves', () => {
+    const screen = display(1000 / 60);
+    renderHook(() => {
+      useAmbientFrames();
+    });
+    for (let i = 0; i < 10; i += 1) screen.step();
+    const release = coverGalaxy('whole');
+    const mark = invalidate.mock.calls.length;
+    for (let i = 0; i < 120; i += 1) screen.step();
+    expect(invalidate.mock.calls.length).toBe(mark);
+    // Not even a callback per frame while hidden.
+    expect(screen.queued()).toBe(0);
+
+    release();
+    screen.step();
+    expect(invalidate.mock.calls.length).toBe(mark + 1);
+  });
+
+  it('steps the dimmed galaxy at the covered rate under a partial sheet, even through a held moment', () => {
+    const screen = display(1000 / 60);
+    renderHook(() => {
+      useAmbientFrames();
+    });
+    const held = holdRate(FULL_RATE_FPS);
+    const release = coverGalaxy('part');
+    for (let i = 0; i < 60; i += 1) screen.step();
+    const mark = invalidate.mock.calls.length;
+    for (let i = 0; i < 120; i += 1) screen.step();
+    expect(bought(mark)).toBeGreaterThanOrEqual(COVERED_FPS * 2 - 1);
+    expect(bought(mark)).toBeLessThanOrEqual(COVERED_FPS * 2 + 1);
+
+    release();
+    for (let i = 0; i < 10; i += 1) screen.step();
+    const after = invalidate.mock.calls.length;
+    for (let i = 0; i < 120; i += 1) screen.step();
+    expect(bought(after)).toBeGreaterThanOrEqual(119);
+    held();
+  });
+
+  it('a whole cover outranks a partial one', () => {
+    const screen = display(1000 / 60);
+    renderHook(() => {
+      useAmbientFrames();
+    });
+    const part = coverGalaxy('part');
+    const whole = coverGalaxy('whole');
+    const mark = invalidate.mock.calls.length;
+    for (let i = 0; i < 60; i += 1) screen.step();
+    expect(invalidate.mock.calls.length).toBe(mark);
+    whole();
+    for (let i = 0; i < 60; i += 1) screen.step();
+    expect(invalidate.mock.calls.length).toBeGreaterThan(mark);
+    part();
   });
 });
