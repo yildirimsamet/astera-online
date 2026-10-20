@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useOpeningCover } from '../src/lib/openingCover.js';
@@ -74,4 +76,26 @@ it('removes the galaxy cover at seven seconds without extending the deadline by 
   expect(screen.queryByRole('status', { hidden: true })).not.toBeInTheDocument();
   expect(screen.getByTestId('scene')).toBeInTheDocument();
   vi.useRealTimers();
+});
+
+/*
+  OWNER, 2026-10-20: nothing speaks over the loading screen — a toast ("The trade ship has left
+  the galaxy") drew on top of it. The cover is the highest layer in the app.
+*/
+describe('the loading cover is the top layer', () => {
+  it('stacks above every other layer the app declares', () => {
+    const files = (dir: string): string[] => readdirSync(dir).flatMap(name => {
+      const path = join(dir, name);
+      return statSync(path).isDirectory() ? files(path) : /\.(tsx?|css)$/.test(name) ? [path] : [];
+    });
+    const css = readFileSync('src/brand/opening.css', 'utf8');
+    const cover = Number(/\.brand-loading\s*\{[^}]*z-index:\s*(\d+)/s.exec(css)?.[1]);
+    const others = files('src').filter(path => !path.endsWith('opening.css')).flatMap(path => {
+      const text = readFileSync(path, 'utf8');
+      return [...text.matchAll(/z-\[(\d+)\]|z-(\d+)\b|z-index:\s*(\d+)|zIndex:\s*(\d+)/g)]
+        .map(match => Number(match[1] ?? match[2] ?? match[3] ?? match[4]));
+    });
+    expect(others.length).toBeGreaterThan(0);
+    expect(cover).toBeGreaterThan(Math.max(...others));
+  });
 });

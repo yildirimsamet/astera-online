@@ -1,6 +1,7 @@
-/* Shared by first HTML and React. No downloads, canvas or per-frame JavaScript. */
+/* Shared by first HTML and React. No downloads, canvas or per-frame JavaScript.
+   The top layer of the app (owner, 2026-10-20): no toast or sheet speaks over loading. */
 .brand-loading {
-  position: fixed; inset: 0; z-index: 70; overflow: hidden;
+  position: fixed; inset: 0; z-index: 1000; overflow: hidden;
   touch-action: none;
   display: grid; place-items: center; box-sizing: border-box;
   padding: max(20px, env(safe-area-inset-top)) 24px max(72px, env(safe-area-inset-bottom));
