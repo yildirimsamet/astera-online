@@ -44,6 +44,12 @@ export function createMonumentOrbit(motion: MonumentMotion, bodyScale: number) {
   object.add(path, arrows);
   const at = new Vector3(), heading = new Vector3(), view = new Vector3(), side = new Vector3();
   const span = Math.max(motion.periodXMs, motion.periodYMs);
+  /**
+   * A sixteen-hour loop moves its head a pixel a minute: rebuilding 385 points on every frame was
+   * the galaxy's hottest function (2026-10-20 profile). Rebuilt after a sixteenth of a segment.
+   */
+  const resampleMs = span / SEGMENTS / 16;
+  let sampledAt = Number.NaN;
 
   function update(now: number, camera: Camera, viewportHeight: number, focused: boolean, hasFocus: boolean) {
     const velocity = motionVelocityAt(motion, now);
@@ -54,10 +60,13 @@ export function createMonumentOrbit(motion: MonumentMotion, bodyScale: number) {
     const resting = hasFocus ? RECEDED_OPACITY : IDLE_OPACITY;
     path.material.opacity = focused ? 0.32 : resting;
     arrows.material.opacity = focused ? 0.95 : resting;
-    for (let i = 0; i <= SEGMENTS; i++) {
-      pathPositions.setXYZ(i, ...toWorld(motionPositionAt(motion, now + span * i / SEGMENTS)));
+    if (!(now >= sampledAt && now - sampledAt < resampleMs)) {
+      sampledAt = now;
+      for (let i = 0; i <= SEGMENTS; i++) {
+        pathPositions.setXYZ(i, ...toWorld(motionPositionAt(motion, now + span * i / SEGMENTS)));
+      }
+      pathPositions.needsUpdate = true;
     }
-    pathPositions.needsUpdate = true;
 
     at.set(...toWorld(motionPositionAt(motion, now)));
     // Four-to-six-pixel arrowheads survive the map zoom, while a close camera keeps them delicate.

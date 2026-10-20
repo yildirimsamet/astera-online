@@ -1,5 +1,5 @@
 import { monumentMotion, motionPositionAt, motionVelocityAt, toWorld } from '@astera/rules';
-import { PerspectiveCamera, Raycaster, Vector3 } from 'three';
+import { BufferAttribute, PerspectiveCamera, Raycaster, Vector3 } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { createMonumentOrbit } from '../src/galaxy/monumentOrbit.js';
 
@@ -146,6 +146,34 @@ describe('monument trajectories and direction cues', () => {
     orbit.update(0, camera, 850, true, true);
     expect(orbit.arrows.material.opacity).toBeGreaterThanOrEqual(idle * 10);
     expect(orbit.path.material.opacity).toBeGreaterThanOrEqual(idle * 10);
+    orbit.dispose();
+  });
+  /**
+   * 2026-10-20 admin profile: rebuilding all 385 points of every trajectory on every frame was the
+   * hottest function the galaxy owns, for a line whose sixteen-hour loop moves a pixel a minute.
+   * The trajectory is rebuilt once the monument has moved a sixteenth of a segment; the chevrons,
+   * which follow the camera, still move every frame.
+   */
+  it('rebuilds the trajectory only once the monument has moved, while the chevrons follow every frame', () => {
+    const orbit = createMonumentOrbit(motion, 6.4);
+    const points = orbit.path.geometry.getAttribute('position');
+    const arrows = orbit.arrows.geometry.getAttribute('position');
+    if (!(points instanceof BufferAttribute) || !(arrows instanceof BufferAttribute)) throw new Error('Expected plain buffers');
+    const now = motion.epochMs + 5_000_000;
+    orbit.update(now, camera, 850, false, false);
+    const path = points.version;
+    const chevrons = arrows.version;
+    for (let frame = 1; frame <= 30; frame++) orbit.update(now + frame * 33, camera, 850, false, false);
+    expect(points.version).toBe(path);
+    expect(arrows.version).toBeGreaterThan(chevrons);
+
+    const later = now + 60_000;
+    orbit.update(later, camera, 850, false, false);
+    expect(points.version).toBeGreaterThan(path);
+    expect(new Vector3().fromBufferAttribute(points, 0).distanceTo(new Vector3(...toWorld(motionPositionAt(motion, later))))).toBeLessThan(0.00002);
+    const rebuilt = points.version;
+    orbit.update(later - 1_000, camera, 850, false, false);
+    expect(points.version).toBeGreaterThan(rebuilt);
     orbit.dispose();
   });
 });
