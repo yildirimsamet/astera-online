@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AsteraWordmark } from '../brand/Identity.js';
 import { OpeningScene } from '../brand/OpeningScene.js';
 
@@ -23,7 +24,9 @@ export function LoadingScreen({ caption, progress, visible = true, immediateExit
   const pct = Math.round(Math.min(1, Math.max(0, progress ?? 0)) * 100);
   if (!visible && (immediateExit || !present)) return null;
 
-  return <main data-loading-screen data-departing={!visible} className="brand-loading" role="status" aria-live="polite" aria-busy={visible} aria-hidden={!visible}>
+  // On the page root: the game shell is its own stacking context (`relative z-10`), and a cover
+  // mounted inside it sat under the toasts however high its z-index (owner, 2026-10-20).
+  return createPortal(<main data-loading-screen data-departing={!visible} className="brand-loading" role="status" aria-live="polite" aria-busy={visible} aria-hidden={!visible}>
     <div className="brand-loading-composition">
       <OpeningScene />
       <div className="brand-loading-center">
@@ -44,5 +47,5 @@ export function LoadingScreen({ caption, progress, visible = true, immediateExit
       </div>
     </div>
     <p className="brand-loading-address">asteraonline<span>.space</span></p>
-  </main>;
+  </main>, document.body);
 }

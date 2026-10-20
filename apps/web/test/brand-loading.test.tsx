@@ -8,10 +8,10 @@ import { LoadingScreen } from '../src/shell/LoadingScreen.js';
 describe('branded loading with truthful progress', () => {
   afterEach(() => { vi.useRealTimers(); });
   it('updates measured progress without restarting the artwork or caption', () => {
-    const { container, rerender } = render(<LoadingScreen caption="Loading assets" progress={0.2} />);
-    const scene = container.querySelector('.opening-stage');
+    const { rerender } = render(<LoadingScreen caption="Loading assets" progress={0.2} />);
+    const scene = document.querySelector('.opening-stage');
     rerender(<LoadingScreen caption="Loading assets" progress={0.8} />);
-    expect(container.querySelector('.opening-stage')).toBe(scene);
+    expect(document.querySelector('.opening-stage')).toBe(scene);
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '80');
   });
 
@@ -83,6 +83,19 @@ it('removes the galaxy cover at seven seconds without extending the deadline by 
   the galaxy") drew on top of it. The cover is the highest layer in the app.
 */
 describe('the loading cover is the top layer', () => {
+  /*
+    OWNER, 2026-10-20, again after z-index 1000 shipped to stage: the toast still drew over the
+    galaxy's loading screen. The game shell is \`relative z-10\` — its own stacking context — so a
+    cover mounted inside it is capped at 10 against the toast layer outside. The cover lives on
+    the page's root context instead.
+  */
+  it('mounts on the page root, outside any stacking context it is rendered from', () => {
+    render(<div className="relative z-10" data-testid="shell"><LoadingScreen caption="Raising the galaxy" /></div>);
+    const cover = document.querySelector('[data-loading-screen]');
+    expect(cover?.parentElement).toBe(document.body);
+    expect(screen.getByTestId('shell')).toBeEmptyDOMElement();
+  });
+
   it('stacks above every other layer the app declares', () => {
     const files = (dir: string): string[] => readdirSync(dir).flatMap(name => {
       const path = join(dir, name);
