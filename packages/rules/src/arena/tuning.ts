@@ -96,9 +96,14 @@ export const ARENA_TUNING = Object.freeze({
   alloyDeposits: 14,
   deuteriumDeposits: 6,
   botRespawn: 8,
-  inputBuffer: 2,
-  inputQueueMax: 6,
-  inputRepeatMax: 3,
+  /**
+   * Input playout (owner 2026-10-20: not a twitch shooter, the buffer may be loose).
+   * 100 ms first wait; a Wi-Fi stall keeps the last input for 300 ms instead of
+   * going neutral after 100; the buffer may grow to 400 ms after stalls.
+   */
+  inputBuffer: 3,
+  inputQueueMax: 12,
+  inputRepeatMax: 9,
   linkLostAfter: 1,
   linkLostGrace: 30,
   interpDelay: 0.133,

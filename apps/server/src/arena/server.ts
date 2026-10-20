@@ -11,6 +11,7 @@ import { InvalidSessionError } from '../auth/tokens.js';
 import { accounts, arenaPilots } from '../db/schema.js';
 import type { Env } from '../env.js';
 import { registerArenaReferences } from './references.js';
+import { createPlayout, playInput, queueInput, resetPlayout, type Playout } from './playout.js';
 
 const inputSchema = z.object({ kind: z.literal('in'), values: z.tuple([
   z.number().int().nonnegative().max(100000000), z.number().int().min(-1000).max(1000),
@@ -29,9 +30,8 @@ const messageSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('dev'), action: z.enum(['restart', 'exit', 'fuel', 'cargo', 'position']),
     p: pointSchema.optional(), value: z.number().finite().min(0).max(400).optional() }),
 ]);
-interface QueuedInput { seq: number; due: number; input: ArenaIntent }
 interface Participant {
-  key: string; pilot: Pilot; socket: WebSocket | null; queue: QueuedInput[]; input: ArenaIntent;
+  key: string; pilot: Pilot; socket: WebSocket | null; playout: Playout<ArenaIntent>; input: ArenaIntent;
   settings: SteeringSettings; ack: number; lastSeq: number; lastInput: number; endedAt: number;
   name: string; seenKills: number; deathCounted: boolean; extractionCounted: boolean;
 }
@@ -89,7 +89,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     const fresh = createPilot(entry.pilot.id);
     spawnFlight(fresh, spawnRandom);
     fresh.shield = T.spawnShield * T.tickRate;
-    Object.assign(entry.pilot, fresh); entry.queue.length = 0; entry.endedAt = 0; entry.seenKills = 0; entry.deathCounted = false; entry.extractionCounted = false;
+    Object.assign(entry.pilot, fresh); resetPlayout(entry.playout); entry.endedAt = 0; entry.seenKills = 0; entry.deathCounted = false; entry.extractionCounted = false;
     Object.assign(entry.input, NEUTRAL); entry.lastInput = world.tick;
     const index = world.drones.indexOf(entry.pilot); const prior = world.dronePrevious[index]; if (prior) copyFlight(prior, entry.pilot);
   };
@@ -118,11 +118,12 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
   const step = (): void => {
     const started = performance.now();
     for (const entry of participants.values()) {
-      const next = entry.queue[0];
-      if (next && next.due <= world.tick) {
-        entry.queue.shift(); Object.assign(entry.input, next.input); entry.ack = next.seq; entry.lastInput = world.tick;
+      const next = playInput(entry.playout, world.tick, T.inputRepeatMax);
+      if (next === 'neutral') Object.assign(entry.input, NEUTRAL);
+      else if (next !== 'repeat') {
+        Object.assign(entry.input, next.input); entry.ack = next.seq; entry.lastInput = world.tick;
         entry.pilot.linkLost = 0;
-      } else if (world.tick - entry.lastInput > T.inputRepeatMax) Object.assign(entry.input, NEUTRAL);
+      }
       if (world.tick - entry.lastInput >= T.linkLostAfter * T.tickRate && entry.pilot.linkLost === 0
         && (entry.pilot.phase === 'flying' || entry.pilot.phase === 'fuelOut')) entry.pilot.linkLost = T.linkLostGrace * T.tickRate;
     }
@@ -203,14 +204,14 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
           if (!entry) {
             if (participants.size >= 8) { kick(socket, 'full'); return; }
             const pilot = createPilot(nextId++);
-            entry = { key, pilot, socket: null, queue: [], input: createInput(), settings: { sensitivity: 1, invertPitch: false },
+            entry = { key, pilot, socket: null, playout: createPlayout(), input: createInput(), settings: { sensitivity: 1, invertPitch: false },
               ack: 0, lastSeq: 0, lastInput: world.tick, endedAt: 0, name, seenKills: 0, deathCounted: false, extractionCounted: false };
             world.drones.push(pilot); const prior = createFlightState(); world.dronePrevious.push(prior);
             participants.set(entry.key, entry); inputs.set(pilot.id, entry.input); settings.set(pilot.id, entry.settings); restart(entry);
             if (!scores.has(key)) scores.set(key, { points: 0, kills: 0, deaths: 0 });
           }
           if (entry.socket && entry.socket !== socket) kick(entry.socket, 'replaced');
-          participant = entry; entry.socket = socket; entry.pilot.linkLost = 0; entry.lastInput = world.tick; entry.queue.length = 0;
+          participant = entry; entry.socket = socket; entry.pilot.linkLost = 0; entry.lastInput = world.tick; resetPlayout(entry.playout);
           send(socket, { kind: 'welcome', v: ARENA_PROTOCOL, pilotId: entry.pilot.id, tick: world.tick, seq: entry.lastSeq,
             tickRate: T.tickRate, snapshotRate: T.snapshotRate, layoutVersion: ARENA_LAYOUT.version, pilots: roster() });
           send(socket, snapshot(entry)); broadcastRoster();
@@ -238,7 +239,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
         if (msg.action === 'restart') restart(entry);
         else if (msg.action === 'exit') {
           const exit = ARENA_LAYOUT.exits[1]; if (exit) Object.assign(entry.pilot.p, { x: exit.x, y: exit.y + 1, z: exit.z });
-          entry.pilot.s = 0; entry.pilot.throttle = 0; entry.pilot.landed = 0; entry.queue.length = 0; Object.assign(entry.input, NEUTRAL);
+          entry.pilot.s = 0; entry.pilot.throttle = 0; entry.pilot.landed = 0; resetPlayout(entry.playout); Object.assign(entry.input, NEUTRAL);
         }
         else if (msg.action === 'fuel') entry.pilot.fuel = Math.min(T.fuelTank, msg.value ?? 0);
         else if (msg.action === 'cargo') {
@@ -248,7 +249,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
         else if (msg.p) {
           Object.assign(entry.pilot.p, msg.p); Object.assign(entry.pilot.q, { x: 0, y: 0, z: 0, w: 1 }); entry.pilot.landed = 0;
           entry.pilot.s = 0; entry.pilot.throttle = 0; entry.pilot.omegaYaw = 0; entry.pilot.omegaPitch = 0;
-          entry.queue.length = 0; Object.assign(entry.input, NEUTRAL);
+          resetPlayout(entry.playout); Object.assign(entry.input, NEUTRAL);
         }
         send(socket, snapshot(entry)); return;
       }
@@ -258,8 +259,8 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
         assistX: clampAssist(ax / 1000), assistY: clampAssist(ay / 1000),
         fire: (buttons & 1) !== 0, turbo: (buttons & 2) !== 0, smoke: (buttons & 4) !== 0,
         cloak: (buttons & 8) !== 0, turboBurst: (buttons & 16) !== 0 };
-      if (entry.queue.length >= T.inputQueueMax) {
-        const lost = entry.queue.shift(); if (lost) {
+      if (entry.playout.queue.length >= T.inputQueueMax) {
+        const lost = entry.playout.queue.shift(); if (lost) {
           input.fire = input.fire === true || lost.input.fire === true;
           input.smoke = input.smoke === true || lost.input.smoke === true;
           input.cloak = input.cloak === true || lost.input.cloak === true;
@@ -267,12 +268,12 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
           input.turboBurst = input.turboBurst === true || lost.input.turboBurst === true;
         }
       }
-      entry.queue.push({ seq, due: world.tick + T.inputBuffer, input });
+      queueInput(entry.playout, seq, input, world.tick, T.inputBuffer);
     });
     socket.on('close', () => {
       clearTimeout(helloTimer);
       if (participant?.socket === socket) {
-        participant.socket = null; participant.queue.length = 0; Object.assign(participant.input, NEUTRAL);
+        participant.socket = null; resetPlayout(participant.playout); Object.assign(participant.input, NEUTRAL);
         if (participant.pilot.phase === 'flying' || participant.pilot.phase === 'fuelOut') participant.pilot.linkLost = T.linkLostGrace * T.tickRate;
       }
     });

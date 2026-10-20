@@ -16,6 +16,7 @@ import { createPost } from './render/post.js';
 import { proceduralShip } from './render/procedural.js';
 import { ShipVisual, type ShipPose } from './render/ships.js';
 import { buildStage } from './render/stage.js';
+import { applyCorrection, decayCorrection } from './smoothing.js';
 import { describeGpu } from './diagnostics.js';
 import { createLandingAssist, findLandingTarget } from './landing.js';
 import type { HudStore } from './store.js';
@@ -405,6 +406,8 @@ export function createArenaClient(options: ClientOptions) {
     const blend = phase === 'flight' ? alpha : 1;
     // Own ship.
     interpolate(ownPose, world.previous, pilot, blend);
+    const net = options.network();
+    if (net) { decayCorrection(net.correction, dt); applyCorrection(net.correction, ownPose); }
     ownPose.throttle = pilot.throttle; ownPose.speed = pilot.s; ownPose.turbo = pilot.turboActive;
     ownPose.omegaYaw = pilot.omegaYaw; ownPose.omegaPitch = pilot.omegaPitch; ownPose.landed = pilot.landed > 0;
     ownPose.mining = pilot.mining; ownPose.shield = pilot.shield; ownPose.cloak = pilot.cloak; ownPose.hull = pilot.hull;

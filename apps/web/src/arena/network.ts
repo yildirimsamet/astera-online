@@ -3,6 +3,7 @@ import { ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_TUNING as T, copyFlight, createFlig
   decodeArenaSnapshot, predictPilot, stepPredictedTracers, unpackPilot, type ArenaIntent, type ArenaSnapshot, type ArenaWorld,
   type SteeringSettings } from '@astera/rules/arena';
 import { createIdempotencyKey } from '../api/client.js';
+import { absorbCorrection, createCorrection } from './smoothing.js';
 
 const rosterRow = z.object({ id: z.number().int().nonnegative(), name: z.string().max(32),
   role: z.enum(['hunter', 'miner', 'patrol']).optional(),
@@ -48,7 +49,9 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
    */
   const remote = new Map<number, { pilot: ReturnType<typeof createPilot>; previous: ReturnType<typeof createFlightState>; step: number }>();
   let interpolations = 0;
-  const before = createFlightState();
+  const before = createFlightState(); const prior = createFlightState();
+  /** What is left of the last reconcile on screen; the renderer adds it to our ship and lets it melt. */
+  const correction = createCorrection();
   const names = new Map<number, string>();
   const roles = new Map<number, 'hunter' | 'miner' | 'patrol'>();
   const guestKey = 'astera-arena-prototype-guest';
@@ -93,14 +96,14 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
   const receive = (snap: ArenaSnapshot): void => {
     if (snap.tick < lastSnapshot) return;
     lastSnapshot = snap.tick;
-    copyFlight(before, world.pilot);
+    copyFlight(before, world.pilot); copyFlight(prior, world.previous);
     unpackPilot(snap.self, world.pilot); world.tick = snap.tick; world.shots = world.pilot.shots;
     while (history[0] && history[0].seq <= snap.ack) history.shift();
     for (const pending of history) predictPilot(world, pending.input, settings);
-    copyFlight(world.previous, world.pilot);
-    // Small corrections interpolate from the view already on screen. Teleports snap.
-    const x = before.p.x - world.pilot.p.x; const y = before.p.y - world.pilot.p.y; const zz = before.p.z - world.pilot.p.z;
-    if (x * x + y * y + zz * zz < 25) copyFlight(world.previous, before);
+    // The replay overwrote the interpolation start; restore it, then fold the difference
+    // into the on-screen correction so nothing jumps. Teleports snap.
+    copyFlight(world.previous, prior);
+    absorbCorrection(correction, world.previous, before, world.pilot);
     effects(snap);
     remotes.push({ at: performance.now(), snapshot: snap }); if (remotes.length > 12) remotes.shift();
   };
@@ -178,7 +181,7 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     for (const [id, entry] of remote) if (entry.step !== step) remote.delete(id);
   };
   return {
-    names, roles,
+    names, roles, correction,
     getSnapshot: (): Readonly<NetworkStatus> => status,
     subscribe: (listener: () => void): (() => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     connect(): void { stopped = false; attempts = 0; if (retry) clearTimeout(retry); if (socket) socket.close(); connected = false; open(); },

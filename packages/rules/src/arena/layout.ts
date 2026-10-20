@@ -213,7 +213,7 @@ export function buildArenaLayout(seed: number): ArenaLayout {
 
   // Ore veins on landable rock: alloy is common, deuterium rare. Picked from rock
   // already placed, so the colliders above never move.
-  const veinable = obstacles.filter(o => o.kind === 'rock' && o.shape === 'sphere' && o.radius >= 14 && o.radius <= 45).map(o => o.id);
+  const veinable = obstacles.filter(o => o.kind === 'rock' && o.radius >= 14 && o.radius <= 45).map(o => o.id);
   for (let i = veinable.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [veinable[i], veinable[j]] = [veinable[j] ?? 0, veinable[i] ?? 0];
