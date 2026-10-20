@@ -206,7 +206,13 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
           let entry = participants.get(key);
           if (!entry && msg.mode === 'resume') { kick(socket, 'ended'); return; }
           if (!entry) {
-            if (participants.size >= 8) { kick(socket, 'full'); return; }
+            if (participants.size >= 8) {
+              // A finished pilot who left only keeps the seat to read the result; a newcomer flies.
+              const idle = [...participants.values()].filter(other => !other.socket && other.endedAt > 0)
+                .sort((x, y) => x.endedAt - y.endedAt)[0];
+              if (!idle) { kick(socket, 'full'); return; }
+              remove(idle);
+            }
             const pilot = createPilot(nextId++);
             entry = { key, pilot, socket: null, playout: createPlayout(), input: createInput(), settings: { sensitivity: 1, invertPitch: false },
               ack: 0, lastSeq: 0, lastInput: world.tick, endedAt: 0, name, seenKills: 0, deathCounted: false, extractionCounted: false };

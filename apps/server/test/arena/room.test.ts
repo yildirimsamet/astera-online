@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
-import { ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_TUNING as T, PILOT_WIDTH, decodeArenaSnapshot, type ArenaSnapshot } from '@astera/rules/arena';
+import { ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_TUNING as T, PHASES, PILOT_WIDTH, decodeArenaSnapshot, type ArenaSnapshot } from '@astera/rules/arena';
 import { registerArena } from '../../src/arena/server.js';
 import { systemClock } from '../../src/clock.js';
 import { loadEnv } from '../../src/env.js';
@@ -93,4 +93,18 @@ describe('arena room protocol v2', () => {
     for (const row of snap.others) for (const n of row) expect(decimals(n), String(n)).toBeLessThanOrEqual(4);
     expect(snap.self.some(n => decimals(n) > 4)).toBe(true);
   });
+  it('gives a full room\'s seat to a newcomer once a finished, disconnected pilot is holding it', async () => {
+    const url = await room();
+    const seated = await Promise.all(Array.from({ length: 8 }, (_, i) => connect(url, `guest-room-seat-${String(i)}`)));
+    await Promise.all(seated.map(s => s.next(kind('welcome'))));
+    const late = await connect(url, 'guest-room-seat-late');
+    expect(await late.next(m => kind('kick')(m) || kind('welcome')(m))).toMatchObject({ kind: 'kick', reason: 'full' });
+    const leaver = seated[0]; if (!leaver) throw new Error('no pilot');
+    leaver.socket.send(JSON.stringify({ kind: 'dev', action: 'exit' }));
+    await leaver.next(m => isSnap(m) && m.self[PILOT_WIDTH - 1] === PHASES.indexOf('extracted'));
+    leaver.socket.close();
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const newcomer = await connect(url, 'guest-room-seat-new');
+    expect(await newcomer.next(m => kind('kick')(m) || kind('welcome')(m))).toMatchObject({ kind: 'welcome' });
+  }, 15_000);
 });
