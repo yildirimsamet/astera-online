@@ -258,7 +258,7 @@ Diğer belgeler bu değerleri **adıyla** anar; çelişki olursa bu tablo geçer
 | `fuelOutRescueDelay` | 10 sn | KG-K10 |
 | `linkLostAfter` | 1 sn | mobil ağda sert gelirse 2–3 sn |
 | `linkLostGrace` ✱ | 30 sn | KG-K5 |
-| `inputBuffer` / `inputQueueMax` / `inputRepeatMax` | 2 tick / 6 / 3 tick | [05 §6](05-ag-ve-sunucu.md#girdi) |
+| `inputBuffer` / `inputQueueMax` / `inputRepeatMax` | 3 tick / 12 / 9 tick (KG-K27) | [05 §6](05-ag-ve-sunucu.md#girdi) |
 | `resultKeep` | 10 dk | yeniden bağlanana son sonuç ([05 §3](05-ag-ve-sunucu.md#uc-nokta)) |
 | `testCargo` / `cargoCapacity` | 60 / 100 | |
 | `cargoScatterCount` / `pickupRadius` / `dropLife` | 6 / 25 m / 300 sn | |

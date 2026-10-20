@@ -160,6 +160,17 @@ uzar, alev turuncuya döner. Değerler [04 §13](04-savas-mekanikleri.md#baslang
 bağlı bir yaydır, hızlanırken gemi kameradan kopar, hız oturunca kamera yetişir; turboda kameranın
 hemen etrafında ikinci bir yoğun toz katmanı açılır.
 
+#### KG-K27
+**Özel deneme uçuşu ve his ayarları** (2026-10-20). Sahip:
+- Canlıda yalnız arkadaşlarla özel deneme; herkese açılmaz. Admin paneline yazılan komutanlar
+  menüde *Katıl* görür ([KG-T45](#kg-t45)).
+- Denemede referans paketindeki model/doku/sesler kullanılabilir; yayından önce benzerleri
+  sahip adına yaptırılır, değişen yalnız modeller olur.
+- Döngü: tarlada toplanabilir cevher (tek/çoklu parça) ve kazılabilir yataklar (alaşım, kristal,
+  döteryum); vurulan geminin ambarı saçılır; çıkış ambarı puana çevirir, pilot alana döner.
+- Hızlı dönüşte titreme olmamalı; tampon "CS:GO gibi değil" diye gevşetilebilir, düzeltme ~200 ms'de
+  erir ([KG-T43](#kg-t43), [KG-T44](#kg-t44)). Oda başına 8 pilot şimdilik yeterli.
+
 ---
 
 ## Teknik kararlar (KG-T)
@@ -453,6 +464,38 @@ sabit bir bölgeye kıstırılır ve parmağı izlemez.
 - Ekran uzayındaki her şey (nişangâh, önleme işareti, radar) kameranın izlediği **ara değerlenmiş**
   pozdan hesaplanır, 30 Hz simülasyon durumundan değil. Aksi hâlde dönüşte nişangâh tick karesi ile ara
   kare arasında ~23 px gidip gelir ve göz iki nişangâh görür (ölçüldü: 90 karede 84 yön değişimi → 0).
+#### KG-T43
+**Girdi oynatma saati.** Eski kuyruk her girdiyi kendi `due` tick'ine bağlıyordu; Wi-Fi'de >100 ms
+takılmada kuyruk boşalıp nötre düşüyor, gemi dönüşün ortasında bir an düzleşiyordu. Şimdi ilk girdi
+tampon kadar bekler, sonra saat gibi tick başına bir girdi çalınır (`playout.ts`); boşlukta son girdi
+`inputRepeatMax` (9 tick = 300 ms) tekrar edilir. Ölçüm (300 ms takılma, 80 ms jitter): 6 düzeltme /
+85°/s en büyük sıçrama → 1–2 / ~20°/s. 450 ms takılmalar hâlâ hissedilir (aşırı ağ).
+
+#### KG-T44
+**Düzeltme yumuşatma.** Uzlaştırma sonrası çizilen poz yerinde kalır: fark konum + kuaterniyon ofseti
+olur ve üstel söner (τ = 67 ms, %95 ≈ 200 ms). Ara değer başlangıcı (`previous`) da aynı farkla
+kaydırılır ki kare içi süreklilik bozulmasın. Simülasyon her zaman doğru durumdadır; yalnız görüntü
+yumuşar. Test: `smoothing.test.ts`.
+
+#### KG-T45
+**Özel deneme erişimi ve referans paketi.**
+- `arena_pilots` tablosu (migration 0196); admin `GET/POST /api/admin/arena-pilots`. Arena kimliği
+  `pilot` bayrağını döner; `ARENA_PILOTS` (`*` veya ad listesi) geliştirme içindir.
+- Paket depoda değil: üretimde `ARENA_REF_DIR` altındaki `dist/` ve `audio/`, yalnız oturmuş pilota
+  `POST /arena/ref-session` ile verilen 6 saatlik HMAC çerezle (`/__ref`, HttpOnly, SameSite=Strict)
+  servis edilir; her ret 404'tür, yol kaçışı realpath ile engellenir (`references.ts`).
+
+#### KG-T46
+**Telefon dostu sunum.**
+- Cevher: türün renginde, koyu doygun, metalik yansımalı kristal kümesi + kenar parıltısı (AgX açık
+  renkleri kâğıda çevirir). Kazılabilir kayalarda 6 damar; rezerv azaldıkça küçülür, kuruyken yok.
+  Tür başına tek instanced çizim (`render/ore.ts`).
+- Doğuş kalkanı gövdeyi kaplayan jöle değil, ince kenar ışığı + tarama çizgisidir.
+- Çözünürlük regülatörü (`resolution.ts`): 2 sn ortalaması 48 fps altındaysa piksel oranı 0,25'lik
+  adımlarla 1'e kadar iner; tutabilen cihaza dokunulmaz, geri çıkmaz (salınım olmasın).
+- Anlık görüntü yuvarlama: 4 pilotlu dev odada 2744 → 1279 B (%53). Sıkıştırma (`perMessageDeflate`)
+  bilinçli kapalı kalır.
+
 ---
 
 ## Açık sorular (KG-A)

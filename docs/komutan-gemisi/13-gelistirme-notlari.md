@@ -130,6 +130,16 @@ Bulunan ve düzeltilenler:
   duman ve kargo her karede yeni nesne yaratıyordu → doğrudan tampon. Duman tamponu her bulutu çizecek
   kadar büyütüldü.
 
+## Özel deneme: canlıya çıkış adımları (sahip onayıyla)
+
+1. Dalı it; VPS'te `VITE_ARENA=1` ile web derle.
+2. Migration 0196 (`arena_pilots`); `when` sırasını kontrol et (drizzle sıra dışı zamanı atlar).
+3. `.env`: `ARENA_ENABLED=true`; compose `arena` servisi (`ARENA_REF_DIR=/refs`, salt okunur birim).
+4. nginx: `/arena/` ve `/__ref/` → 3220.
+5. Paketin kullanılan alt kümesini (~76 MB, `manifest.json`'daki dosyalar + `audio/`)
+   `/opt/astera/arena-refs`'e rsync et.
+6. Admin paneli → ARENA sekmesi: arkadaşları ekle; menüde *Katıl* çıkar.
+
 ## Sınırlar ve sıradaki iş
 
 - Referans varlıklar geçicidir; yayından önce hepsi sahibin yaptıracağı karşılıklarla değişir

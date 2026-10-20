@@ -118,8 +118,10 @@ zamanlayıcıyı değil `room.step()`'i çağırır; son tarihler (sezon) enjekt
 <a id="girdi"></a>
 ## 6. Girdi disiplini (KG-T12)
 
-- Pilot başına sınırlı FIFO (`inputQueueMax`); uygulama `inputBuffer` tick geriden başlar
-  (jitter tamponu). Tick başına **en çok bir** girdi uygulanır (iki girdi = zaman genişletme hilesi).
+- Pilot başına sınırlı FIFO (`inputQueueMax`). **Oynatma saati** (`playout.ts`, KG-T43): ilk girdi
+  `inputBuffer` tick bekler, sonra her tick bir girdi çalınır; kuyruk boşalınca son girdi tekrarlanır,
+  `inputRepeatMax` aşılınca nötr ve yeniden tamponlama. Tick başına **en çok bir** girdi uygulanır
+  (iki girdi = zaman genişletme hilesi).
 - **Taşkın** (TCP patlaması): kuyruk tavanı aşarsa en eski girdiler atılır, ama **basış bitleri**
   (ateş, duman, görünmezlik, turbo) sonraki uygulanan girdiye OR'lanır — kısa dokunuş kaybolmaz.
 - **Boşluk:** girdi yoksa sonuncusu en çok `inputRepeatMax` tick tekrar edilir (basış olayları
@@ -128,6 +130,10 @@ zamanlayıcıyı değil `room.step()`'i çağırır; son tarihler (sezon) enjekt
 - Her alan kırpılır (steer [-1000, 1000], throttle [0, 100]). Bağlantı başına ≤ 60 mesaj/sn: aşan
   mesaj **düşürülür**, bağlantı kesilmez. 4 KB üstü mesaj bağlantıyı kapatır; arka arkaya 10 bozuk
   mesaj → `kick{flood}`.
+- **Düzeltme yumuşatma** (`smoothing.ts`, KG-T44): uzlaştırma farkı ekrana tek karede inmez; görsel
+  ofset olur ve ~200 ms'de (%95) erir. 30 m / 1 rad üstü ışınlanmadır, anında oturur.
+- **Anlık görüntü boyutu** (KG-T46): ortak satırlar (diğer pilotlar 4 hane, mermi/duman/kargo/çarpma
+  2 hane) yuvarlanır; kendi pilot tam hassasiyette kalır, tekrar oynatma ondan başlar.
 - İstemci: tick aralığından kısa dokunuşları (< 33 ms) bir sonraki girdiye **kilitler**; tahmini
   gönderdiği nicemlenmiş girdiyle koşar. **Konum göndermez**; yalnız niyet.
 

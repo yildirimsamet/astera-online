@@ -1,6 +1,6 @@
 # Komutan Gemisi + Savaş Alanı — Özelliğin beyni
 
-> **Durum:** Yerel oynanabilir MVP (2026-10-08), ayrı worktree'de; F7 sahip incelemesi bekliyor.
+> **Durum:** Özel deneme sürümü (2026-10-20) `release/arena-playtest-20261020` dalında, prod e88cab68 üstünde; canlıya çıkış sahip onayı bekliyor (KG-K27). F7 sahip incelemesi bu denemeyle yapılır.
 > Çalıştırma ve doğrulama: [13](13-gelistirme-notlari.md). Faz durumu: [panoda](#durum-panosu).
 > **Hedef okuyucu:** Bu özelliği **hiç görmemiş** ve geliştirmeyi sahibin bilgisayarında yapacak
 > agent. Sahip brief'i sana ayrıca vermeyecek: **bu klasör tek kaynaktır** (KG-K7).
@@ -90,7 +90,7 @@ telefonunda oynayıp **hissi onaylamadan** kapsam büyümez.
 | F4 PvP | dev MVP'de oynanabilir | 30 Hz sunucu, tahmin/uzlaştırma, 15 Hz snapshot, iki istemci çatışması |
 | F5 Extraction | dev MVP'de oynanabilir | kalkan, test kargosu, çıkış/ölüm/kurtarma; kalıcı ödül yok |
 | F6 Yetenekler | dev MVP'de oynanabilir | turbo/duman/gizlenme; görünürlük sunucuda filtrelenir |
-| F7 Sahip incelemesi (kapı) | bekliyor | canlı telefon URL'si 13'te; cihaz hissi/termal ölçümü ve sahip kabulü yapılmadı |
+| F7 Sahip incelemesi (kapı) | özel deneme hazır | canlı telefon URL'si 13'te; cihaz hissi/termal ölçümü ve sahip kabulü yapılmadı |
 | F8–F11 | bekliyor | F7 onayından sonra |
 
 <a id="calisma-duzeni"></a>
