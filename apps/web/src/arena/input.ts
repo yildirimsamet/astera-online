@@ -33,6 +33,27 @@ export function stickHome(touch: { x: number; y: number }, pad: Rect, keys: read
   return { x, y };
 }
 
+export interface Circle { x: number; y: number; r: number }
+
+/**
+ * What one thumb on FIRE / TURBO holds (owner 2026-10-21: turbo with the tip, fire with
+ * the middle of the same thumb). A phone reports a thumb as ONE point, the middle of its
+ * contact, so a thumb across both keys lands between them: that strip holds both. A
+ * key's own face holds only that key; `contact` (the reported contact radius) lets a
+ * flat thumb that covers both keys hold both.
+ */
+export function chordAt(x: number, y: number, contact: number, fire: Circle, turbo: Circle): ('fire' | 'turbo')[] {
+  const on = (c: Circle): boolean => Math.hypot(x - c.x, y - c.y) <= c.r + contact;
+  const dx = turbo.x - fire.x; const dy = turbo.y - fire.y; const length = Math.hypot(dx, dy) || 1;
+  const s = ((x - fire.x) * dx + (y - fire.y) * dy) / length;
+  const off = Math.abs((x - fire.x) * dy - (y - fire.y) * dx) / length;
+  const bridge = s >= fire.r * 0.75 && s <= length - turbo.r * 0.75 && off <= Math.min(fire.r, turbo.r) * 0.75;
+  const held: ('fire' | 'turbo')[] = [];
+  if (bridge || on(fire)) held.push('fire');
+  if (bridge || on(turbo)) held.push('turbo');
+  return held;
+}
+
 /** Throttle stops the rail snaps to: stop, landing speed, cruise, full. */
 export const THROTTLE_DETENTS = [0, 0.15, 0.5, 1] as const;
 export const LANDING_THROTTLE = 0.15;

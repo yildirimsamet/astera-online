@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from 'react';
 import { ARENA_TUNING as T } from '@astera/rules/arena';
-import { KNOB_TRAVEL, LANDING_THROTTLE, THROTTLE_DETENTS, stickHome, type ArenaAction, type ArenaControls } from './input.js';
+import { KNOB_TRAVEL, LANDING_THROTTLE, THROTTLE_DETENTS, chordAt, stickHome, type ArenaAction, type ArenaControls, type Circle } from './input.js';
 import type { HudSnapshot, HudStore } from './store.js';
 import { arenaCopy } from './copy.js';
 
@@ -39,8 +39,32 @@ function LandKey({ status, onLand, onCancel, onTakeOff }: { status: HudSnapshot;
   return <button className="ac-land" onPointerDown={event => { event.preventDefault(); onLand(); }}>{c.land}</button>;
 }
 
+const circleOf = (element: HTMLElement): Circle => {
+  const r = element.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2 };
+};
+
 export function FlightControls({ controls, store, onLand, onCancel }: { controls: ArenaControls; store: HudStore; onLand: () => void; onCancel: () => void }) {
   const c = arenaCopy();
+  const keys = useRef(new Map<ArenaAction, HTMLButtonElement>());
+  // FIRE and TURBO share one touch zone so one thumb across both holds both (chordAt).
+  const chords = useRef(new Map<number, Set<ArenaAction>>());
+  const [held, setHeld] = useState<ReadonlySet<ArenaAction>>(new Set());
+  const chord = (event: PointerEvent<HTMLDivElement>, phase: 'move' | 'up' | 'cancel'): void => {
+    const fire = keys.current.get('fire'); const turbo = keys.current.get('turbo');
+    const id = event.pointerId; const had = chords.current.get(id);
+    if (!fire || !turbo || (phase === 'move' && !had)) return;
+    const contact = event.pointerType === 'touch' ? Math.max(event.width, event.height) / 2 : 0;
+    const next = phase === 'move' && !fire.disabled ? chordAt(event.clientX, event.clientY, contact, circleOf(fire), circleOf(turbo)) : [];
+    const mine = had ?? new Set<ArenaAction>();
+    // A thumb rolling off a key is not a tap: only a lift may count as a turbo tap-burst.
+    for (const action of [...mine]) if (!next.includes(action as 'fire' | 'turbo')) {
+      controls.actionUp(action, id, event.timeStamp, phase !== 'up'); mine.delete(action);
+    }
+    for (const action of next) if (!mine.has(action) && controls.actionDown(action, id, event.timeStamp)) mine.add(action);
+    if (phase === 'move') chords.current.set(id, mine); else chords.current.delete(id);
+    setHeld(new Set([...chords.current.values()].flatMap(set => [...set])));
+  };
   const ring = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
   const pad = useRef<HTMLDivElement>(null);
@@ -106,19 +130,31 @@ export function FlightControls({ controls, store, onLand, onCancel }: { controls
     </div>
     {alive && (status.landed || status.landing === 'approach' || status.canLand) && <LandKey status={status} onLand={onLand}
       onCancel={onCancel} onTakeOff={() => { controls.takeOff(); }} />}
+    <div className="ac-chord" aria-hidden
+      onPointerDown={event => {
+        event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId);
+        chords.current.set(event.pointerId, new Set()); chord(event, 'move');
+      }}
+      onPointerMove={event => { chord(event, 'move'); }}
+      onPointerUp={event => { chord(event, 'up'); }} onPointerCancel={event => { chord(event, 'cancel'); }}
+      onLostPointerCapture={event => { chord(event, 'cancel'); }} />
     {(['fire', 'turbo', 'smoke', 'cloak'] as const).map(action => {
       const wait = seconds(action);
       const charge = cooldown(action);
-      return <button key={action} className={`ac-action ac-${action} ${action === 'turbo' && status.turboActive ? 'is-active' : ''} ${action === 'fire' && status.locked ? 'is-locked' : ''}`}
+      const chorded = action === 'fire' || action === 'turbo';
+      return <button key={action} ref={element => { if (element) keys.current.set(action, element); else keys.current.delete(action); }}
+        className={`ac-action ac-${action} ${action === 'turbo' && status.turboActive ? 'is-active' : ''} ${action === 'fire' && status.locked ? 'is-locked' : ''} ${chorded ? 'is-chorded' : ''} ${held.has(action) ? 'is-pressed' : ''}`}
         aria-label={c[action]} disabled={!alive || wait > 0}
         style={{ '--charge': String(Math.max(0, Math.min(1, charge))) } as React.CSSProperties}
-        onPointerDown={event => {
-          event.preventDefault();
-          if (controls.actionDown(action, event.pointerId, event.timeStamp)) event.currentTarget.setPointerCapture(event.pointerId);
-        }}
-        onPointerUp={event => { controls.actionUp(action, event.pointerId, event.timeStamp); }}
-        onPointerCancel={event => { controls.actionUp(action, event.pointerId, event.timeStamp, true); }}
-        onLostPointerCapture={event => { controls.actionUp(action, event.pointerId, event.timeStamp, true); }}>
+        {...(chorded ? {} : {
+          onPointerDown: (event: PointerEvent<HTMLButtonElement>) => {
+            event.preventDefault();
+            if (controls.actionDown(action, event.pointerId, event.timeStamp)) event.currentTarget.setPointerCapture(event.pointerId);
+          },
+          onPointerUp: (event: PointerEvent<HTMLButtonElement>) => { controls.actionUp(action, event.pointerId, event.timeStamp); },
+          onPointerCancel: (event: PointerEvent<HTMLButtonElement>) => { controls.actionUp(action, event.pointerId, event.timeStamp, true); },
+          onLostPointerCapture: (event: PointerEvent<HTMLButtonElement>) => { controls.actionUp(action, event.pointerId, event.timeStamp, true); },
+        })}>
         <svg className="ac-ring" viewBox="0 0 100 100" aria-hidden><circle cx="50" cy="50" r="47" /></svg>
         <span className="ac-icon" aria-hidden>{ICONS[action]}</span>
         <small>{wait > 0 ? String(Math.ceil(wait)) : c[action]}</small>
