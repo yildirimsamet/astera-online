@@ -82,4 +82,15 @@ describe('arena room protocol v2', () => {
     const acks = pilot.messages.slice(before).filter(isSnap).map(m => m.ack);
     expect(acks.every(ack => ack < 41)).toBe(true);
   });
+  it('keeps the stream light: shared rows rounded, the own pilot exact for reconciliation', async () => {
+    const url = await room();
+    const pilot = await connect(url, 'guest-room-test-c');
+    await pilot.next(kind('welcome'));
+    const snap = await pilot.next(m => isSnap(m) && m.cargo.length > 0);
+    if (!isSnap(snap)) throw new Error('no snapshot');
+    const decimals = (n: number): number => { const text = String(n); const dot = text.indexOf('.'); return dot < 0 ? 0 : text.length - dot - 1; };
+    for (const row of [...snap.cargo, ...snap.bullets, ...snap.smoke, ...snap.impacts]) for (const n of row) expect(decimals(n), String(n)).toBeLessThanOrEqual(2);
+    for (const row of snap.others) for (const n of row) expect(decimals(n), String(n)).toBeLessThanOrEqual(4);
+    expect(snap.self.some(n => decimals(n) > 4)).toBe(true);
+  });
 });

@@ -93,18 +93,22 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     Object.assign(entry.input, NEUTRAL); entry.lastInput = world.tick;
     const index = world.drones.indexOf(entry.pilot); const prior = world.dronePrevious[index]; if (prior) copyFlight(prior, entry.pilot);
   };
+  // Shared rows only draw: centimetres are plenty, and full doubles were most of the
+  // stream. The own pilot stays exact; reconciliation replays from it.
+  const cm = (n: number): number => Math.round(n * 100) / 100;
+  const fine = (n: number): number => Math.round(n * 1e4) / 1e4;
   const snapshot = (entry: Participant): ArenaSnapshot => {
     const self = entry.pilot;
     const others = world.drones.filter(other => {
       if (other.id === self.id || other.phase === 'dead' || other.phase === 'towed' || other.phase === 'extracted' || !pilotVisible(world, self, other)) return false;
       const x = self.p.x - other.p.x; const y = self.p.y - other.p.y; const z = self.p.z - other.p.z;
       return x * x + y * y + z * z <= T.aoiRadius * T.aoiRadius;
-    }).map(packPilot);
+    }).map(other => packPilot(other).map(fine));
     return { kind: 'snap', tick: world.tick, ack: entry.ack, self: packPilot(self), others,
-      bullets: world.projectiles.flatMap((b, i) => b.life > 0 ? [[i, b.p.x, b.p.y, b.p.z, b.previous.x, b.previous.y, b.previous.z, b.v.x, b.v.y, b.v.z, b.life, b.owner]] : []),
-      smoke: world.smoke.flatMap((p, i) => p.active ? [[i, p.p.x, p.p.y, p.p.z, p.age, p.owner]] : []),
-      cargo: world.cargoDrops.flatMap((d, i) => d.active ? [[i, d.p.x, d.p.y, d.p.z, d.amount, d.age, d.kind]] : []),
-      impacts: world.impacts.flatMap((hit, i) => hit.active ? [[i, hit.p.x, hit.p.y, hit.p.z, hit.age, hit.kind === 'ship' ? 1 : hit.kind === 'shield' ? 2 : hit.kind === 'explosion' ? 3 : 0]] : []),
+      bullets: world.projectiles.flatMap((b, i) => b.life > 0 ? [[i, b.p.x, b.p.y, b.p.z, b.previous.x, b.previous.y, b.previous.z, b.v.x, b.v.y, b.v.z, b.life, b.owner].map(cm)] : []),
+      smoke: world.smoke.flatMap((p, i) => p.active ? [[i, p.p.x, p.p.y, p.p.z, p.age, p.owner].map(cm)] : []),
+      cargo: world.cargoDrops.flatMap((d, i) => d.active ? [[i, d.p.x, d.p.y, d.p.z, d.amount, d.age, d.kind].map(cm)] : []),
+      impacts: world.impacts.flatMap((hit, i) => hit.active ? [[i, hit.p.x, hit.p.y, hit.p.z, hit.age, hit.kind === 'ship' ? 1 : hit.kind === 'shield' ? 2 : hit.kind === 'explosion' ? 3 : 0].map(cm)] : []),
       minerals: world.minerals.map(value => Math.round(value * 100) / 100),
       dry: world.dry.map(value => value ? 1 : 0),
     };
