@@ -142,6 +142,16 @@ const PLUME = new THREE.PlaneGeometry(2, 1, 1, 12).translate(0, 0.5, 0);
  * carries everything bolted to the hull (engines, lights), so a plume never slides off
  * its nozzle in a turn; `body` scales the unit-length model to metres.
  */
+const ownGlow = new WeakMap<THREE.MeshStandardMaterial, { color: THREE.Color; intensity: number }>();
+
+/** A hit tints the hull warm; once it fades every part gets its own glow back. */
+export function flashHull(material: THREE.MeshStandardMaterial, flash: number): void {
+  let own = ownGlow.get(material);
+  if (!own) { own = { color: material.emissive.clone(), intensity: material.emissiveIntensity }; ownGlow.set(material, own); }
+  if (flash > 0) { material.emissive.setRGB(1, 0.75, 0.5); material.emissiveIntensity = flash * 1.4; }
+  else { material.emissive.copy(own.color); material.emissiveIntensity = own.intensity; }
+}
+
 export class ShipVisual {
   readonly group = new THREE.Group();
   private readonly tilt = new THREE.Group();
@@ -230,13 +240,13 @@ export class ShipVisual {
     const shieldMaterial = new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
       uniforms: { color: { value: new THREE.Color('#5fb4ff') }, strength: { value: 0 }, time: { value: 0 } },
-      vertexShader: `varying vec3 vN; varying vec3 vV; varying vec3 vP; void main(){ vec3 p = position + normal * 0.035;
+      vertexShader: `varying vec3 vN; varying vec3 vV; varying vec3 vP; void main(){ vec3 p = position + normal * 0.012;
         vec4 mv = modelViewMatrix * vec4(p, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); vP = position;
         gl_Position = projectionMatrix * mv; }`,
       fragmentShader: `uniform vec3 color; uniform float strength; uniform float time; varying vec3 vN; varying vec3 vV; varying vec3 vP;
-        void main(){ float rim = pow(clamp(1.0 - abs(dot(normalize(vN), normalize(vV))), 0.0, 1.0), 2.2);
-          float sweep = smoothstep(0.9, 1.0, sin(vP.z * 9.0 - time * 5.0) * 0.5 + 0.5);
-          gl_FragColor = vec4(color * (rim * 1.1 + sweep * 0.5) * strength, 1.0); }`,
+        void main(){ float rim = pow(clamp(1.0 - abs(dot(normalize(vN), normalize(vV))), 0.0, 1.0), 4.0);
+          float sweep = smoothstep(0.97, 1.0, sin(vP.z * 6.0 - time * 4.0) * 0.5 + 0.5);
+          gl_FragColor = vec4(color * (rim * 1.4 + sweep * 0.6) * strength, 1.0); }`,
     });
     this.shield = new THREE.Group();
     for (const part of model.parts) this.shield.add(new THREE.Mesh(part.geometry, shieldMaterial));
@@ -333,10 +343,7 @@ export class ShipVisual {
       const original = this.materials[i];
       if (!original) return;
       child.material = cloaked ? this.cloakMaterial : original;
-      original.emissiveIntensity = (original.userData.baseEmissive as number | undefined) ?? original.emissiveIntensity;
-      if (original.userData.baseEmissive === undefined) original.userData.baseEmissive = original.emissiveIntensity;
-      if (this.hitFlash > 0) { original.emissive.setRGB(1, 0.75, 0.5); original.emissiveIntensity = this.hitFlash * 1.4; }
-      else if (original.userData.baseEmissive === 0) original.emissive.setRGB(0, 0, 0);
+      flashHull(original, this.hitFlash);
     });
     setUniform(this.cloakMaterial, 'time', time);
     setUniform(this.shieldMaterial, 'time', time);

@@ -35,10 +35,21 @@ if (run('field')) {
       const entry = [...groups.values()].find(g => pick === 'many' ? g.length >= 3 : g.length === 1);
       if (!entry) return false;
       const c = entry[0].p;
-      window.__place(w.pilot, { x: c.x - 40, y: c.y + 18, z: c.z - 110 }, c, w.previous); a.controls.setThrottle(0);
+      window.__place(w.pilot, { x: c.x - 25, y: c.y + 12, z: c.z - 70 }, c, w.previous); a.controls.setThrottle(0);
       return true;
     }, pick);
     if (ok) await shot(name, 1200); else console.log(name, 'no group');
+  }
+}
+if (run('close')) {
+  for (const [name, kind] of [['25-close-alloy', 0], ['26-close-crystal', 1], ['27-close-deut', 2]]) {
+    const ok = await page.evaluate(kind => {
+      const a = window.__arena; const w = a.world;
+      const d = w.cargoDrops.find(d => d.field && d.active && d.amount > 0 && d.kind === kind) ?? w.cargoDrops.find(d => d.field && d.active);
+      if (!d) return false; if (d.kind !== kind) { d.kind = kind; }
+      window.__place(w.pilot, { x: d.p.x - 6, y: d.p.y + 6, z: d.p.z - 32 }, d.p, w.previous); a.controls.setThrottle(0); return true;
+    }, kind);
+    if (ok) await shot(name, 900);
   }
 }
 if (run('mine')) {
@@ -69,6 +80,12 @@ if (run('combat')) {
   });
   await page.keyboard.down('Space'); await shot('40-firing', 500); await page.keyboard.up('Space');
   await shot('41-burst', 400); await shot('42-scatter', 1500);
+}
+if (run('shield')) {
+  await page.evaluate(() => { const a = window.__arena; const w = a.world; window.__place(w.pilot, { x: 0, y: 40, z: -900 }, { x: 0, y: 0, z: 0 }, w.previous); a.controls.setThrottle(0); });
+  await shot('50-shield-on', 1200);
+  await page.evaluate(() => { window.__arena.world.pilot.shield = 0; });
+  await shot('51-shield-off', 600);
 }
 if (run('fps')) {
   await page.evaluate(() => { const a = window.__arena; const w = a.world; window.__place(w.pilot, { x: 0, y: 40, z: -900 }, { x: 0, y: 0, z: 0 }, w.previous); a.controls.setThrottle(0.6); });
