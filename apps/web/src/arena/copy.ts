@@ -17,7 +17,7 @@ const tr = {
     'Puan yalnız çıkışta yazılır: kapı pistinde 3 sn hasar almadan dur.',
     'Duman görüşü kapatır. Turboyla tek başına kaçamazsın; yön değiştir.',
   ],
-  goalTitle: 'Döngü', goals: goals(['Topla', 'Ore\'ların içinden geç · yatağa in, kaz'], ['Koru ya da al', 'Vurulanın ambarı saçılır'], ['Çık', 'Kapı pistinde 3 sn · ambar puana döner']),
+  goalTitle: 'Döngü', goals: goals(['Topla', 'Cevherden geç · yatağa in, kaz'], ['Koru ya da al', 'Vurulanın ambarı saçılır'], ['Çık', 'Kapı pistinde 3 sn · ambar puana döner']),
   hull: 'Gövde', fuel: 'Yakıt', cargo: 'Ambar', rear: 'Arka', speed: 'm/s', stopped: 'Durdu', landedChip: 'İndi', turboChip: 'Turbo',
   fire: 'Ateş', turbo: 'Turbo', smoke: 'Duman', cloak: 'Gizlen', throttle: 'Gaz', land: 'İn', takeOff: 'Kalk', landStop: 'İniş',
   takeOffHold: 'Kalk · basılı tut', cancelLanding: 'İptal', landingNote: 'İniş yapılıyor', landingHint: 'Çubuğu oynatırsan iniş iptal olur',

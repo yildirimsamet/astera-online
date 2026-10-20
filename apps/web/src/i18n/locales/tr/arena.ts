@@ -5,7 +5,7 @@ export const arena = {
   "nav": "Komutan gemisi",
   "trial": "Uçuş denemesi",
   "title": "Geminin kontrolü sende",
-  "intro": "Davetli pilotlarla aynı alanda alaşım, kristal ve döteryum topla. Ore'ların içinden geç, yataklara inip kaz; vurulanın ambarı yere saçılır. Çıkışa ulaştırdığın her birim puan olur.",
+  "intro": "Davetli pilotlarla aynı alanda alaşım, kristal ve döteryum topla. Parlayan cevherlerin içinden geç, yataklara inip kaz; vurulanın ambarı yere saçılır. Çıkışa ulaştırdığın her birim puan olur.",
   "enter": "Uçuşu başlat",
   "start": "Başla",
   "leave": "Galaksiye dön",
