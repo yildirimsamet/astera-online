@@ -35,11 +35,13 @@ export function ViewOffset() {
     let frame = 0;
     const read = (): void => {
       frame = 0;
-      const canvas = gl.domElement.getBoundingClientRect();
-      const panels = [...document.querySelectorAll('[data-sheet-panel]')].map((panel) => panel.getBoundingClientRect());
-      const next = rightCover(canvas, panels);
-      const trials = [...document.querySelectorAll('[data-cosmetic-trial]')].map(panel => panel.getBoundingClientRect());
-      const nextBottom = bottomCover(canvas, trials);
+      const pages = document.querySelectorAll('[data-sheet-panel]');
+      const trialPanels = document.querySelectorAll('[data-cosmetic-trial]');
+      // Nothing can cover the galaxy: no box to read, and no layout forced on every DOM change.
+      const open = pages.length > 0 || trialPanels.length > 0;
+      const canvas = open ? gl.domElement.getBoundingClientRect() : null;
+      const next = canvas ? rightCover(canvas, [...pages].map((panel) => panel.getBoundingClientRect())) : 0;
+      const nextBottom = canvas ? bottomCover(canvas, [...trialPanels].map((panel) => panel.getBoundingClientRect())) : 0;
       if (next !== target.current || nextBottom !== bottomTarget.current) {
         target.current = next;
         bottomTarget.current = nextBottom;

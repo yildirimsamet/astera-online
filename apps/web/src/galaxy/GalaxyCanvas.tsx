@@ -1039,7 +1039,7 @@ function claimTag(claim: ReturnType<typeof claimLabelOf>, t: TFunction) {
   return <span className="text-opportunity">· {t(claim === 'MINE' ? 'galaxy.claimMine' : 'galaxy.claimOpen')}</span>;
 }
 
-function Labels({
+export function Labels({
   nodes,
   hpRadiation,
   selectedId,
@@ -1051,7 +1051,6 @@ function Labels({
   rivals: readonly RivalMark[];
 }) {
   const { t } = useTranslation();
-  const radiationNow = useNow(1000);
   const radiationByWorld = useMemo(() => {
     const sources = new Map<string, HpRadiationSourceView[]>();
     for (const source of hpRadiation) {
@@ -1061,6 +1060,8 @@ function Labels({
     }
     return sources;
   }, [hpRadiation]);
+  // The radiation bar is the only part of a name that changes by the second.
+  const radiationNow = useNow(radiationByWorld.size > 0 ? 1000 : 60_000);
   // Nearby earned identities need no tap. Unknown worlds remain unnamed, and
   // remembered identities keep their record age. Only the visible, non-colliding
   // pool mounts Html; the eye remains in PlanetField's spatial marker stack.
@@ -1092,6 +1093,37 @@ function Labels({
     clock.current = 0.1;
     invalidate();
   }, [invalidate]);
+
+  /*
+    ONE REF PER NAME, kept for as long as it is mounted. An inline ref is a new function on every
+    render, and React detaches and re-attaches it: with the radiation clock that was every second,
+    a forced layout and a requested galaxy frame per label (2026-10-20, profiled on a phone).
+    Size changes after mounting arrive through the ResizeObserver below.
+  */
+  const refs = useRef(new Map<string, (element: HTMLSpanElement | null) => void>());
+  const labelRef = (id: string) => {
+    let attach = refs.current.get(id);
+    if (!attach) {
+      attach = (element) => {
+        if (element) {
+          boxes.current.set(id, element);
+          clock.current = 0.1;
+          // Html's child root can commit after our post-commit frame. Its
+          // own ref is the reliable point to request the first projection.
+          measure(id, element);
+          observer.current?.observe(element);
+          invalidate();
+          return;
+        }
+        const previous = boxes.current.get(id);
+        if (previous) observer.current?.unobserve(previous);
+        boxes.current.delete(id);
+        refs.current.delete(id);
+      };
+      refs.current.set(id, attach);
+    }
+    return attach;
+  };
 
   useEffect(() => {
     // Font, language and status changes can resize a name without a camera move.
@@ -1171,22 +1203,7 @@ function Labels({
             is what the standoff was measured for.
           */}
           <span
-            ref={(element) => {
-              if (element) {
-                boxes.current.set(node.id, element);
-                clock.current = 0.1;
-                // Html's child root can commit after our post-commit frame. Its
-                // own ref is the reliable point to request the first projection.
-                measure(node.id, element);
-                observer.current?.observe(element);
-                invalidate();
-              }
-              else {
-                const previous = boxes.current.get(node.id);
-                if (previous) observer.current?.unobserve(previous);
-                boxes.current.delete(node.id);
-              }
-            }}
+            ref={labelRef(node.id)}
             data-world-label={node.id}
             data-world-label-detail={detail || undefined}
             data-world-label-intel={node.intel}
