@@ -68,6 +68,35 @@ describe('the real season honor-shadow command', () => {
     expect(await snapshot()).toEqual(opened);
   });
 
+  it('previews and hides an opened race with the real honor-hide command', async () => {
+    const now = new Date();
+    f.clock.set(new Date(now.getTime() - 2 * 86_400_000));
+    await f.db.transaction(tx => prepareHonorSeason(tx, f.seasonId, 'SHADOW', f.clock));
+    expect((await command(['--season', f.seasonId, '--yes'], 'honor-open')).ok).toBe(true);
+    const before = await snapshot();
+    const preview = await command(['--season', f.seasonId], 'honor-hide');
+    expect(preview.ok, preview.stderr).toBe(true);
+    expect(preview.stdout).toContain('"applied":false');
+    expect(await snapshot()).toEqual(before);
+    const applied = await command(['--season', f.seasonId, '--yes'], 'honor-hide');
+    expect(applied.ok, applied.stderr).toBe(true);
+    expect(applied.stdout).toContain('"applied":true');
+    expect((await f.db.select().from(honorSeasons))[0]).toMatchObject({ mode: 'SHADOW', rankedAt: null, successorAnnounced: true });
+    const hidden = await snapshot();
+    const retry = await command(['--season', f.seasonId, '--yes'], 'honor-hide');
+    expect(retry.ok, retry.stderr).toBe(true);
+    expect(retry.stdout).toContain('ALREADY_HIDDEN');
+    expect(await snapshot()).toEqual(hidden);
+  });
+
+  it.each([[], ['--season', 'not-a-season'], ['--season', 'missing', '--days', '2']]
+    .map(args => ({ args })))('rejects malformed honor-hide input: $args', async ({ args }) => {
+    const before = await snapshot();
+    const result = await command(args, 'honor-hide');
+    expect(result.ok).toBe(false);
+    expect(await snapshot()).toEqual(before);
+  });
+
   it.each([[], ['--shard', 'EU-1'], ['--season', 'not-a-season'], ['--season', 'missing', '--days', '2']]
     .map(args => ({ args })))('rejects malformed honor-open input: $args', async ({ args }) => {
     const before = await snapshot();

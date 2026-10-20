@@ -1,0 +1,1 @@
+ALTER TABLE "honor_seasons" ADD COLUMN "successor_announced" boolean DEFAULT false NOT NULL;

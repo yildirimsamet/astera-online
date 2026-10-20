@@ -4788,6 +4788,8 @@ export const honorSeasons = pgTable('honor_seasons', {
   /** Announced race boundary. Observation history keeps its original createdAt. */
   rankedAt: timestamp('ranked_at', { withTimezone: true }),
   closedAt: timestamp('closed_at', { withTimezone: true }),
+  /** A hidden race the operator promised to the next cycle; it carries like an ACTIVE one. */
+  successorAnnounced: boolean('successor_announced').notNull().default(false),
 }, (t) => [
   check('honor_seasons_version_check', sql`${t.version} > 0`),
   check('honor_seasons_mode_check', sql`${t.mode} IN ('SHADOW', 'ACTIVE')`),

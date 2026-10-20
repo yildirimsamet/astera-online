@@ -24,7 +24,7 @@ import { activateSpawnGate } from '../services/spawnGate.js';
 import { activateMonumentRadiation } from '../services/monumentRadiationAdoption.js';
 import { activateRadiationBombs } from '../services/radiationBombAdoption.js';
 import { activateTempoSlowdown } from '../services/tempoAdoption.js';
-import { activateHonorShadow, openHonorRanking } from '../services/honorActivation.js';
+import { activateHonorShadow, hideHonorRanking, openHonorRanking } from '../services/honorActivation.js';
 import { enableHonorBenefits } from '../services/honorBenefits.js';
 import { enableHonorLootWeight } from '../services/honorLootWeight.js';
 import {
@@ -129,6 +129,12 @@ season honor-open --season UUID [--yes]
                                    Starts competitive points/budgets at zero, preserves
                                    military history and excludes already sent attacks.
                                    Dry run unless --yes; retries never reset the race.
+
+season honor-hide --season UUID [--yes]
+                                   return an opened Honor race to invisible
+                                   observation: every point becomes evidence again,
+                                   Dominion decides this season and the next season
+                                   starts ranked. Dry run unless --yes.
 
 season honor-shadow --season UUID [--yes]
                                    collect invisible Honor evidence in ONE open
@@ -273,6 +279,17 @@ async function main(): Promise<void> {
         console.log(JSON.stringify(result));
         if (result.applied) console.log('Honor ranking opened with zero competitive points and budgets. Observation history and Dominion are preserved.');
         else console.log(result.status === 'ALREADY_ACTIVE' ? 'Already active. Nothing was written.' : 'Announce the rules and opening before applying. Nothing was written; pass --yes to apply.');
+        break;
+      }
+      case 'honor-hide': {
+        if (!values.season || positionals.length !== 1
+          || Object.keys(values).some(key => key !== 'season' && key !== 'yes')) {
+          throw new Error('Usage: season honor-hide --season UUID [--yes]');
+        }
+        const result = await hideHonorRanking(db, { seasonId: values.season, clock: systemClock, apply: values.yes === true });
+        console.log(JSON.stringify(result));
+        if (result.applied) console.log('Honor is invisible again; Dominion decides this season. The next season starts with ranked Honor.');
+        else console.log(result.status === 'ALREADY_HIDDEN' ? 'Already hidden. Nothing was written.' : 'Nothing was written; pass --yes to apply.');
         break;
       }
       case 'honor-shadow': {

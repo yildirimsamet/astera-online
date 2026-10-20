@@ -1,10 +1,11 @@
-import { and, desc, eq, exists, lte } from 'drizzle-orm';
+import { and, desc, eq, exists, lte, or } from 'drizzle-orm';
 import { isHonorCandidate, isSupportedHonorVersion, type HonorVersion } from '@astera/rules';
 import type { Tx } from '../db/client.js';
 import { honorSeasons, seasonCycles, seasons, shards } from '../db/schema.js';
 
 /** Continue the announced main-galaxy program, never promote an invisible trial.
- * A same-cycle new galaxy can inherit the program, as can the next cycle. */
+ * A same-cycle new galaxy can inherit the program, as can the next cycle. A race
+ * hidden with a promise of the next season is announced, not a trial. */
 async function latestHonorPrograms(tx: Tx, startsAt: Date) {
   const [latest] = await tx.select({ id: seasonCycles.id }).from(seasonCycles)
     .where(and(lte(seasonCycles.startsAt, startsAt), exists(tx.select({ id: seasons.id }).from(seasons)
@@ -13,7 +14,8 @@ async function latestHonorPrograms(tx: Tx, startsAt: Date) {
   if (!latest) return [];
   return tx.select({ version: honorSeasons.version, benefitsVersion: honorSeasons.benefitsVersion }).from(honorSeasons)
     .innerJoin(seasons, eq(seasons.id, honorSeasons.seasonId)).innerJoin(shards, eq(shards.id, seasons.shardId))
-    .where(and(eq(seasons.cycleId, latest.id), eq(shards.role, 'MAIN'), eq(honorSeasons.mode, 'ACTIVE')));
+    .where(and(eq(seasons.cycleId, latest.id), eq(shards.role, 'MAIN'),
+      or(eq(honorSeasons.mode, 'ACTIVE'), eq(honorSeasons.successorAnnounced, true))));
 }
 
 export async function inheritedHonorProgram(tx: Tx, startsAt: Date): Promise<HonorVersion | undefined> {
