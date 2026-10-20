@@ -104,6 +104,27 @@ if (run('loop')) {
   console.log('screen after', await page.evaluate(() => document.querySelector('[data-screen]')?.getAttribute('data-screen')));
   await shot('64-after', 0);
 }
+if (run('turbofire')) {
+  await page.evaluate(() => { const a = window.__arena; const w = a.world; w.pilot.shield = 0; window.__place(w.pilot, { x: 0, y: 60, z: -1500 }, { x: 0, y: 60, z: 0 }, w.previous); a.controls.setThrottle(1); });
+  await page.waitForTimeout(800);
+  await page.keyboard.down('Space'); await page.keyboard.down('ShiftLeft');
+  await shot('80-turbofire-a', 700); await shot('81-turbofire-b', 500);
+  await page.keyboard.up('ShiftLeft'); await page.keyboard.up('Space');
+}
+if (run('stick')) {
+  const pad = await page.locator('.ac-stick-pad').boundingBox();
+  await page.mouse.move(pad.x + 185, pad.y + pad.height - 150); await page.mouse.down();
+  await page.mouse.move(pad.x + 330, pad.y + pad.height - 140, { steps: 2 });
+  await shot('82-stick-right', 150);
+  await page.mouse.up();
+}
+if (run('smokescreen')) {
+  await page.evaluate(() => { const a = window.__arena; const w = a.world; const d = w.drones[0];
+    window.__place(w.pilot, { x: 0, y: 60, z: -1500 }, { x: 0, y: 60, z: -1300 }, w.previous); a.controls.setThrottle(0);
+    window.__place(d, { x: 0, y: 60, z: -1340 }, { x: 0, y: 60, z: -1000 }, w.dronePrevious[0]); d.throttle = 0; d.s = 0;
+    w.smoke.slice(0, 9).forEach((p, i) => Object.assign(p, { p: { x: (i % 3 - 1) * 25, y: 60 + (Math.floor(i / 3) - 1) * 20, z: -1350 + (i % 2) * 15 }, age: 1, active: true, owner: 99 })); });
+  await shot('83-smoke', 500);
+}
 if (run('fps')) {
   await page.evaluate(() => { const a = window.__arena; const w = a.world; window.__place(w.pilot, { x: 0, y: 40, z: -900 }, { x: 0, y: 0, z: 0 }, w.previous); a.controls.setThrottle(0.6); });
   for (let i = 0; i < 5; i++) { await page.waitForTimeout(1000); console.log('fly', await fps()); }

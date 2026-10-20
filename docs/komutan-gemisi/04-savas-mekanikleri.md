@@ -253,7 +253,7 @@ Diğer belgeler bu değerleri **adıyla** anar; çelişki olursa bu tablo geçer
 | `assistMax` / `assistCos` / `assistRange` | 0,32 / cos 9° / 900 m | ateş ederken direksiyon mıknatısı; sunucu kırpar |
 | `botRespawn` | 8 sn | |
 | `smokeEmitDuration` / `smokePuffInterval` | 1,5 sn / 0,15 sn | |
-| `smokeRadius` / `smokeGrow` / `smokeLife` / `smokeCooldown` | 35 m / 0,6 sn / 7 sn / 18 sn | |
+| `smokeRadius` / `smokeGrow` / `smokeLife` / `smokeCooldown` | 45,5 m / 0,6 sn / 10,5 sn / 18 sn | sahip 2026-10-21: süre +%50, alan +%30, görsel yoğunluk +%25 |
 | `cloakDuration` / `cloakCooldown` / `cloakShimmerDist` | 4 sn / 25 sn / 60 m | |
 | `fuelOutRescueDelay` | 10 sn | KG-K10 |
 | `linkLostAfter` | 1 sn | mobil ağda sert gelirse 2–3 sn |

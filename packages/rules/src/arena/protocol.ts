@@ -68,7 +68,7 @@ export function decodeArenaSnapshot(value: unknown): ArenaSnapshot | null {
     || !('self' in value) || !numbers(value.self, PILOT_WIDTH) || !validPilot(value.self)
     || !('others' in value) || !rows(value.others, PILOT_WIDTH, MAX_REMOTE_PILOTS) || !value.others.every(validPilot)
     || !('bullets' in value) || !rows(value.bullets, 12, 512)
-    || !('smoke' in value) || !rows(value.smoke, 6, 64)
+    || !('smoke' in value) || !rows(value.smoke, 6, 96)
     || !('cargo' in value) || !rows(value.cargo, 7, T.fieldGroups * FIELD_GROUP_SIZE + T.wreckDrops)
     || !value.cargo.every(row => FARM_KINDS[row[6] ?? -1] !== undefined)
     || !('impacts' in value) || !rows(value.impacts, 6, 48)

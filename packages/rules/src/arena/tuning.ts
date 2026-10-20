@@ -71,9 +71,10 @@ export const ARENA_TUNING = Object.freeze({
   turboTapBurst: 0.35,
   smokeEmitDuration: 1.5,
   smokePuffInterval: 0.15,
-  smokeRadius: 35,
+  // Owner 2026-10-21: half again as long, 30 % wider (35 m / 7 s before).
+  smokeRadius: 45.5,
   smokeGrow: 0.6,
-  smokeLife: 7,
+  smokeLife: 10.5,
   smokeCooldown: 18,
   cloakDuration: 4,
   cloakCooldown: 25,

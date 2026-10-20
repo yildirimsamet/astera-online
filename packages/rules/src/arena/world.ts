@@ -51,7 +51,7 @@ export function createSandboxWorld(options: WorldOptions = {}): ArenaWorld {
     minerals: layout.deposits.map(() => T.crystalReserve), dry: layout.deposits.map(() => false),
     tick: 0, droneInput: createInput(), neutralInput: createInput(),
     projectiles: Array.from({ length: 512 }, projectile), ghosts: Array.from({ length: 64 }, projectile),
-    smoke: Array.from({ length: 64 }, () => ({ p: point(), age: 0, active: false, owner: -1 })),
+    smoke: Array.from({ length: 96 }, () => ({ p: point(), age: 0, active: false, owner: -1 })),
     impacts: Array.from({ length: 48 }, () => ({ p: point(), age: 0, kind: 'rock', active: false })),
     cargoDrops: Array.from({ length: T.fieldGroups * FIELD_GROUP_SIZE + T.wreckDrops },
       (_, i) => ({ p: point(), amount: 0, active: false, age: 0, field: i < T.fieldGroups * FIELD_GROUP_SIZE, kind: 0 })),
