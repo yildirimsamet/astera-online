@@ -2372,6 +2372,8 @@ export const RIVAL = {
 export const UNKNOWN_SIGNAL = {
   tiers: [1, 2, 3],
   gapMinutes: [120, 240],
+  /** A first game's first signal (owner, 2026-10-20): soon, and never pirates. */
+  firstGameGapMinutes: [2, 10],
   lifetimeMinutes: 60,
   minFromCapital: 400,
   minFromAnyPlanet: 250,

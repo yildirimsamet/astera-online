@@ -1366,6 +1366,13 @@
       "when": 1792450253874,
       "tag": "0194_honor_successor_announced",
       "breakpoints": true
+    },
+    {
+      "idx": 195,
+      "version": "7",
+      "when": 1792491596443,
+      "tag": "0195_first_signal_pirate_free",
+      "breakpoints": true
     }
   ]
 }

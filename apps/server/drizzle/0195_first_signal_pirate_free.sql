@@ -1,0 +1,2 @@
+ALTER TABLE "unknown_signal_state" ADD COLUMN "first_signal_spared" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "unknown_signals" ADD COLUMN "pirate_free" boolean DEFAULT false NOT NULL;

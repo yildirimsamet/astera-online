@@ -75,14 +75,33 @@ export function rollUnknownSignalResources(seed: string | number): Resources {
   };
 }
 
-/** Server-only seed and arrival-time account ownership; the client never rolls a reward. */
+const SPARED_OUTCOMES = OUTCOMES.filter(value => value !== 'PIRATES');
+
+/** The percentages a player is shown; without pirates the rest keep their proportions. */
+export function unknownSignalOdds(pirates: boolean): Record<typeof OUTCOMES[number], number> {
+  const weights = UNKNOWN_SIGNAL.outcomeWeights;
+  if (pirates) return { ...weights };
+  const total = SPARED_OUTCOMES.reduce((sum, value) => sum + weights[value], 0);
+  const share = (value: typeof SPARED_OUTCOMES[number]) => Math.round(weights[value] * 100 / total);
+  return { RESOURCES: share('RESOURCES'), ENERGY: share('ENERGY'), DERELICT: share('DERELICT'), PIRATES: 0, SKIN: share('SKIN') };
+}
+
+/**
+ * Server-only seed and arrival-time account ownership; the client never rolls a reward.
+ * Without `pirates` an ambush is redrawn once from the other four, so every seed that
+ * was never an ambush keeps exactly its ordinary reward.
+ */
 export function rollUnknownSignalOutcome(
   seed: string | number,
   tierAtDispatch: UnknownSignalTier,
   ownedSkinIds: readonly string[],
+  pirates = true,
 ): UnknownSignalOutcome {
   const rng = seededFrom('unknown-signal:outcome:v1', seed);
-  const kind = weighted(OUTCOMES.map(value => [value, UNKNOWN_SIGNAL.outcomeWeights[value]] as const), rng);
+  const first = weighted(OUTCOMES.map(value => [value, UNKNOWN_SIGNAL.outcomeWeights[value]] as const), rng);
+  const kind = first === 'PIRATES' && !pirates
+    ? weighted(SPARED_OUTCOMES.map(value => [value, UNKNOWN_SIGNAL.outcomeWeights[value]] as const), rng)
+    : first;
   switch (kind) {
     case 'RESOURCES': return { kind, loot: rollUnknownSignalResources(seed) };
     case 'ENERGY': return { kind, hours: pick(UNKNOWN_SIGNAL.energyHours, rng) };

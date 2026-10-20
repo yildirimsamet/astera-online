@@ -114,9 +114,10 @@ export async function resolveUnknownSignalSpawn(tx: Tx, playerId: string, dueAt:
   // An old open row can outlive its expire event after downtime, but never blocks a fresh discovery.
   await tx.update(unknownSignals).set({ status: 'expired' }).where(and(eq(unknownSignals.playerId, playerId),
     eq(unknownSignals.status, 'open'), lte(unknownSignals.expiresAt, dueAt)));
-  const [signal] = await tx.insert(unknownSignals).values({ playerId, seasonId: season.id, seed, ...at, appearedAt: dueAt, expiresAt })
-    .onConflictDoNothing().returning({ id: unknownSignals.id });
+  const [signal] = await tx.insert(unknownSignals).values({ playerId, seasonId: season.id, seed, ...at, appearedAt: dueAt, expiresAt,
+    pirateFree: state.firstSignalSpared }).onConflictDoNothing().returning({ id: unknownSignals.id });
   if (!signal) return;
+  if (state.firstSignalSpared) await tx.update(unknownSignalState).set({ firstSignalSpared: false }).where(eq(unknownSignalState.playerId, playerId));
   await schedule(tx, { seasonId: season.id, kind: 'unknown_signal_expire', refId: signal.id, resolveAt: expiresAt,
     dedupeKey: `unknown-signal:expire:${signal.id}` });
   await publish(tx, playerId, 'private:unknown-signal-spawn');
@@ -250,7 +251,7 @@ async function reward(tx: Tx, signal: Signal, accountId: string): Promise<Unknow
   for (let attempt = 0; attempt <= 100; attempt++) {
     const owned = await tx.select({ id: cosmeticEntitlements.cosmeticId }).from(cosmeticEntitlements)
       .where(and(eq(cosmeticEntitlements.accountId, accountId), isNull(cosmeticEntitlements.revokedAt)));
-    const outcome = rollUnknownSignalOutcome(signal.seed, tier, owned.map(item => item.id));
+    const outcome = rollUnknownSignalOutcome(signal.seed, tier, owned.map(item => item.id), !signal.pirateFree);
     if (outcome.kind !== 'SKIN') return outcome;
     const [inserted] = await tx.insert(cosmeticEntitlements).values({ accountId, cosmeticId: outcome.cosmeticId,
       source: 'UNKNOWN_SIGNAL', orderRef: signal.id, grantedAt: signal.arriveAt ?? signal.appearedAt })
@@ -402,7 +403,7 @@ export async function unknownSignalsForPlayer(db: Queryable, playerId: string, c
     origin: home && (signal.status === 'returning' || signal.status === 'recalled') ? { x: home.x, y: home.y, z: home.z } : signal.origin,
     fleet: signal.fleet, damage: signal.damage, departAt: signal.departAt, arriveAt: signal.arriveAt,
     returnDepartAt: signal.returnDepartAt, returnAt: signal.returnAt, recalledAt: signal.recalledAt,
-    outcome: signal.outcome, deliveredAt: signal.deliveredAt };
+    outcome: signal.outcome, deliveredAt: signal.deliveredAt, pirateFree: signal.pirateFree };
   }) };
 }
 

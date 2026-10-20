@@ -22,7 +22,7 @@ const signal = (outcome: UnknownSignalOutcome | null = null): UnknownSignalView 
   id: '00000000-0000-4000-8000-000000000001', at: { x: 2000, y: 0, z: 0 }, status: outcome ? 'returning' : 'open',
   appearedAt: new Date(now), expiresAt: new Date(now + 3_600_000), originPlanetId: null, origin: null,
   fleet: null, damage: null, departAt: null, arriveAt: null, returnDepartAt: null, returnAt: null,
-  recalledAt: null, outcome, deliveredAt: null,
+  recalledAt: null, outcome, deliveredAt: null, pirateFree: false,
 });
 const props = () => ({ signal: signal(), planet: planetView({ fleet: { DART: 1, PIKE: 1, RAMPART: 1, COURIER: 1 },
   buildings: { CORE: 3, REFINERY: 1, EXTRACTOR: 1, SHIPYARD: 1, VAULT: 0 } }, { deuterium: 1000 }),
@@ -50,6 +50,16 @@ describe('unknown signal commitment sheet', () => {
     for (const percent of ['56%', '15%', '12%', '16%', '1%']) expect(screen.getByText(percent)).toBeInTheDocument();
     expect(screen.getByText(/If pirates are waiting/)).toBeInTheDocument();
     expect(screen.getByText(/You have no Radar yet/)).toBeInTheDocument();
+  });
+
+  /* Owner, 2026-10-20: a first game's first signal holds no pirates, and its sheet says so. */
+  it('shows a pirate-free signal with pirates at zero, the other odds rescaled, and no ambush warning', () => {
+    const p = props(); p.signal = { ...signal(), pirateFree: true };
+    render(<UnknownSignalSheet {...p} />);
+    for (const percent of ['67%', '18%', '14%', '0%', '1%']) expect(screen.getByText(percent)).toBeInTheDocument();
+    expect(screen.queryByText('16%')).toBeNull();
+    expect(screen.queryByText(/If pirates are waiting/)).toBeNull();
+    expect(screen.getByText(/first signal.*no pirates/i)).toBeInTheDocument();
   });
 
   it('sends exactly the selected warship and Courier through its single commitment action', () => {

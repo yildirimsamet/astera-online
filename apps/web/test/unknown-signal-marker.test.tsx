@@ -15,7 +15,7 @@ const signal: UnknownSignalView = {
   id: '00000000-0000-4000-8000-000000000001', at: { x: 400, y: 0, z: 0 }, status: 'open',
   appearedAt: new Date(now), expiresAt: new Date(now + 3_600_000), originPlanetId: null, origin: null,
   fleet: null, damage: null, departAt: null, arriveAt: null, returnDepartAt: null, returnAt: null,
-  recalledAt: null, outcome: null, deliveredAt: null,
+  recalledAt: null, outcome: null, deliveredAt: null, pirateFree: false,
 };
 beforeEach(() => { vi.clearAllMocks(); });
 

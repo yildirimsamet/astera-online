@@ -4150,6 +4150,8 @@ export const unknownSignals = pgTable('unknown_signals', {
   radiationSettledAt: timestamp('radiation_settled_at', { withTimezone: true }),
   outcome: jsonb('outcome').$type<UnknownSignalOutcome>(),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  /** A first game's first signal: its roll never ambushes (owner, 2026-10-20). */
+  pirateFree: boolean('pirate_free').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, t => [
   uniqueIndex('unknown_signals_one_open_idx').on(t.playerId).where(sql`${t.status} = 'open'`),
@@ -4165,6 +4167,8 @@ export const unknownSignalState = pgTable('unknown_signal_state', {
   seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
   nextAt: timestamp('next_at', { withTimezone: true }),
   sequence: integer('sequence').notNull().default(0),
+  /** Set by a first-game join; the first signal that actually appears spends it. */
+  firstSignalSpared: boolean('first_signal_spared').notNull().default(false),
 }, t => [index('unknown_signal_state_next_idx').on(t.nextAt)]);
 
 export const tradeRunStatus = pgEnum('trade_run_status', ['outbound', 'returning', 'done']);

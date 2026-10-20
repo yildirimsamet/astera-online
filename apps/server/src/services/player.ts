@@ -360,7 +360,7 @@ export async function joinSeason(
         // zero, and the rank floor then protects them from every attacker forever.
         await recomputeWealth(tx, planet.id, clock.now());
         await refreshSensorEpoch(tx, planet.id, now);
-        if (seat === 'COMMANDER') await ensureUnknownSignalSchedule(tx, player.id, seasonId, now);
+        if (seat === 'COMMANDER') await ensureUnknownSignalSchedule(tx, player.id, seasonId, now, false, firstGame.length > 0);
         await notifyActiveGalaxyEventsForPlayer(tx, {
           playerId: player.id,
           seasonId,

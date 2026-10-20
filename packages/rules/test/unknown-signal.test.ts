@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   COSMETICS, GALAXY, HULLS, MULTI_WORLD, UNKNOWN_SIGNAL,
   distance, generateGalaxy, placeUnknownSignal, radarContactRange,
-  rollUnknownSignalOutcome, rollUnknownSignalResources, validateUnknownSignalFleet,
+  rollUnknownSignalOutcome, rollUnknownSignalResources, unknownSignalOdds, validateUnknownSignalFleet,
   type CosmeticId, type Vec3,
 } from '../src/index.js';
 
@@ -25,6 +25,38 @@ describe('unknown signal owner decisions', () => {
     expect(UNKNOWN_SIGNAL.outcomeWeights).toEqual({
       RESOURCES: 56, ENERGY: 15, DERELICT: 12, PIRATES: 16, SKIN: 1,
     });
+  });
+});
+
+/*
+  Owner, 2026-10-20: a first-game commander's first signal comes within 2–10 minutes and never
+  holds pirates — "daha ilk tutunda korsan denk getirip filosunu öldürmeyelim".
+*/
+describe('the first signal of a first game', () => {
+  it('arrives within 2–10 minutes, before any ordinary signal could', () => {
+    expect(UNKNOWN_SIGNAL.firstGameGapMinutes).toEqual([2, 10]);
+    expect(UNKNOWN_SIGNAL.firstGameGapMinutes[1]).toBeLessThan(UNKNOWN_SIGNAL.gapMinutes[0]);
+  });
+
+  it('never rolls pirates, and every seed that would have keeps its non-pirate roll otherwise', () => {
+    const kinds = new Set<string>();
+    let unchanged = true;
+    for (let seed = 0; seed < 20_000; seed++) {
+      const spared = rollUnknownSignalOutcome(seed, 1, [], false);
+      kinds.add(spared.kind);
+      const ordinary = rollUnknownSignalOutcome(seed, 1, []);
+      if (ordinary.kind !== 'PIRATES' && JSON.stringify(ordinary) !== JSON.stringify(spared)) unchanged = false;
+    }
+    expect(kinds.has('PIRATES')).toBe(false);
+    expect([...kinds].sort()).toEqual(['DERELICT', 'ENERGY', 'RESOURCES', 'SKIN']);
+    expect(unchanged).toBe(true);
+  });
+
+  it('shows the odds the roll uses: the ordinary table, or pirates at zero and the rest rescaled', () => {
+    expect(unknownSignalOdds(true)).toEqual(UNKNOWN_SIGNAL.outcomeWeights);
+    const spared = unknownSignalOdds(false);
+    expect(spared).toEqual({ RESOURCES: 67, ENERGY: 18, DERELICT: 14, PIRATES: 0, SKIN: 1 });
+    expect(Object.values(spared).reduce((sum, value) => sum + value, 0)).toBe(100);
   });
 });
 

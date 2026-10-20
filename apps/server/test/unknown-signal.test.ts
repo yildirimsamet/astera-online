@@ -20,6 +20,8 @@ import { baysInUse } from '../src/services/flight.js';
 import { loadLocked } from '../src/services/planet.js';
 import { busy, commanderRows, demolish } from '../src/services/reclaim.js';
 import { transferCommander } from '../src/services/commanderTransfer.js';
+import { registerAccount } from '../src/services/account.js';
+import { joinSeason } from '../src/services/player.js';
 import { ensureWaitingSeason } from '../src/services/waitingServers.js';
 import { applyBuildCompletion } from '../src/services/buildQueue.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
@@ -50,6 +52,65 @@ beforeEach(async () => {
   originId = f.planetIds[0]!;
   await giveUnits(f.db, originId, { DART: 4, PIKE: 1, COURIER: 4 });
   await grant(f.db, originId, 10_000, 5000);
+});
+
+/*
+  Owner, 2026-10-20: the commander of a first game (the three-day shield) meets their first
+  signal within 2–10 minutes, and it never holds pirates. Every later signal is ordinary.
+*/
+describe('a first game\'s first signal', () => {
+  const firstGame = async () => {
+    const account = await registerAccount(f.db, { username: 'FirstPilot', password: 'correct-horse-battery' }, true);
+    return (await joinSeason(f.db, account.id, f.seasonId, f.clock)).playerId;
+  };
+  const spawn = async (id: string) => {
+    const [state] = await f.db.select().from(unknownSignalState).where(eq(unknownSignalState.playerId, id));
+    f.clock.set(state!.nextAt!);
+    await f.db.transaction(tx => resolveUnknownSignalSpawn(tx, id, state!.nextAt!, f.clock));
+    const [open] = await f.db.select().from(unknownSignals).where(and(eq(unknownSignals.playerId, id), eq(unknownSignals.status, 'open')));
+    return open!;
+  };
+
+  it('appears within 2–10 minutes, pirate-free, and the next one is ordinary', async () => {
+    const id = await firstGame();
+    const joinedAt = f.clock.now().getTime();
+    const [state] = await f.db.select().from(unknownSignalState).where(eq(unknownSignalState.playerId, id));
+    const gap = (state!.nextAt!.getTime() - joinedAt) / 60_000;
+    expect(gap).toBeGreaterThanOrEqual(2);
+    expect(gap).toBeLessThanOrEqual(10);
+    const first = await spawn(id);
+    expect(first.pirateFree).toBe(true);
+    expect((await unknownSignalsForPlayer(f.db, id, f.clock)).signals[0]).toMatchObject({ id: first.id, pirateFree: true });
+    const [next] = await f.db.select().from(unknownSignalState).where(eq(unknownSignalState.playerId, id));
+    const after = (next!.nextAt!.getTime() - first.appearedAt.getTime()) / 60_000;
+    expect(after).toBeGreaterThanOrEqual(120);
+    expect(after).toBeLessThanOrEqual(240);
+    expect((await spawn(id)).pirateFree).toBe(false);
+  });
+
+  it('keeps the gift for the first signal that actually appears when the first discovery is skipped', async () => {
+    const id = await firstGame();
+    const [state] = await f.db.select().from(unknownSignalState).where(eq(unknownSignalState.playerId, id));
+    f.clock.set(new Date(state!.nextAt!.getTime() + 90 * 60_000));
+    await f.db.transaction(tx => resolveUnknownSignalSpawn(tx, id, state!.nextAt!, f.clock));
+    expect(await f.db.select().from(unknownSignals).where(eq(unknownSignals.playerId, id))).toHaveLength(0);
+    expect((await spawn(id)).pirateFree).toBe(true);
+  });
+
+  it('gives an ordinary commander an ordinary first signal', async () => {
+    expect((await spawn(playerId)).pirateFree).toBe(false);
+  });
+
+  it('turns a seed that would ambush into a reward, and the fleet comes home', async () => {
+    const signal = await nowSignal('PIRATES');
+    await f.db.update(unknownSignals).set({ pirateFree: true }).where(eq(unknownSignals.id, signal.id));
+    await launch(signal.id);
+    await arrive(signal.id);
+    const resolved = await row(signal.id);
+    expect(resolved.outcome?.kind).not.toBe('PIRATES');
+    expect(resolved.status).toBe('returning');
+    expect(resolved.outcome).toEqual(rollUnknownSignalOutcome(resolved.seed, 1, [], false));
+  });
 });
 
 describe('unknown signal personal scheduling', () => {

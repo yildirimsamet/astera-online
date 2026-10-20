@@ -162,6 +162,8 @@ export const unknownSignalSchema = z.object({
   departAt: z.coerce.date().nullable(), arriveAt: z.coerce.date().nullable(),
   returnDepartAt: z.coerce.date().nullable(), returnAt: z.coerce.date().nullable(), recalledAt: z.coerce.date().nullable(),
   outcome: unknownSignalOutcomeSchema.nullable(), deliveredAt: z.coerce.date().nullable(),
+  /** A first game's first signal: the roll holds no pirates. */
+  pirateFree: z.boolean(),
 });
 export const unknownSignalsSchema = z.object({ signals: z.array(unknownSignalSchema), tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   radar: z.object({ capitalPlanetId: z.string().uuid(), at: vec3, level: z.number().int().nonnegative(), range: z.number().positive() }).nullable().optional() });

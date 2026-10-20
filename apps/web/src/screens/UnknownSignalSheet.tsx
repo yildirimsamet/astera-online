@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HULLS, UNKNOWN_SIGNAL, type MobileHullId, type UnknownSignalTier, type UnknownSignalWarshipHull } from '@astera/rules';
+import { HULLS, UNKNOWN_SIGNAL, unknownSignalOdds, type MobileHullId, type UnknownSignalTier, type UnknownSignalWarshipHull } from '@astera/rules';
 import type { PlanetView, UnknownSignalView } from '../api/schemas.js';
 import { hullName } from '../i18n/names.js';
 import { full } from '../lib/format.js';
@@ -54,6 +54,7 @@ export function UnknownSignalSheet({ signal, planet, radar, tier, now, busy = fa
   const open = signal.status === 'open' || signal.status === 'expired';
   const expired = signal.expiresAt.getTime() <= now;
   const left = Math.max(0, signal.expiresAt.getTime() - now);
+  const odds = unknownSignalOdds(!signal.pirateFree);
   const tierOdds = tier === 1 ? 'T1 80% · T2 15% · T3 5%' : tier === 2 ? 'T2 90% · T3 10%' : 'T3 100%';
   const facts = [['oneWay', durationPrecise(quote.minutes)], ['roundTrip', durationPrecise(quote.roundTripMinutes)], ['fuel', full(quote.fuel)]] as const;
   const rewardCopy = result?.kind === 'RESOURCES' ? t('unknownSignal.resources')
@@ -115,15 +116,17 @@ export function UnknownSignalSheet({ signal, planet, radar, tier, now, busy = fa
         <div className="rounded-control border border-v2-line px-2.5 py-2">
           <div className="mb-2 flex items-center justify-between"><span className="text-micro text-v2-ink-3">{t('unknownSignal.odds')}</span><span aria-hidden="true" className="text-micro text-v2-crystal">⌁</span></div>
           <div className="grid grid-cols-5 gap-1">{OUTCOMES.map(([kind, label, icon]) => <div key={kind} className="min-w-0 text-center">
-            <Icon id={icon} className={`mx-auto mb-1 size-4 ${kind === 'PIRATES' ? 'text-v2-hostile' : 'text-v2-crystal/70'}`} />
-            <span className={`block font-v2-mono text-caption ${kind === 'PIRATES' ? 'text-v2-hostile' : 'text-v2-crystal'}`}>{UNKNOWN_SIGNAL.outcomeWeights[kind]}%</span>
+            <Icon id={icon} className={`mx-auto mb-1 size-4 ${odds[kind] === 0 ? 'text-v2-ink-3' : kind === 'PIRATES' ? 'text-v2-hostile' : 'text-v2-crystal/70'}`} />
+            <span className={`block font-v2-mono text-caption ${odds[kind] === 0 ? 'text-v2-ink-3 line-through' : kind === 'PIRATES' ? 'text-v2-hostile' : 'text-v2-crystal'}`}>{odds[kind]}%</span>
             <span className="mt-0.5 block text-micro leading-tight text-v2-ink-2">{t(`unknownSignal.${label}`)}</span>
           </div>)}</div>
           <details className="mt-2 border-t border-v2-line pt-1.5 text-micro leading-relaxed text-v2-ink-3"><summary className="cursor-pointer text-v2-ink-2">{t('unknownSignal.details')}</summary>
-            <div className="mt-2 space-y-1.5">{(['resourcesInfo', 'derelictInfo', 'energyInfo', 'skinInfo', 'piratesInfo'] as const).map(key => <p key={key}>{t(`unknownSignal.${key}`, { tiers: tierOdds })}</p>)}</div>
+            <div className="mt-2 space-y-1.5">{(['resourcesInfo', 'derelictInfo', 'energyInfo', 'skinInfo', ...(signal.pirateFree ? [] : ['piratesInfo'] as const)] as const).map(key => <p key={key}>{t(`unknownSignal.${key}`, { tiers: tierOdds })}</p>)}</div>
           </details>
         </div>
-        <div className="space-y-1.5 border-l-2 border-v2-hostile/60 pl-2.5"><p className="text-micro leading-relaxed text-v2-ink-2">{t('unknownSignal.risk', { warship: hullName(hull), courier: hullName('COURIER') })}</p><Cost cost={quote.risk} /></div>
+        {signal.pirateFree
+          ? <p className="border-l-2 border-v2-crystal/60 pl-2.5 text-micro leading-relaxed text-v2-crystal">{t('unknownSignal.firstSafe')}</p>
+          : <div className="space-y-1.5 border-l-2 border-v2-hostile/60 pl-2.5"><p className="text-micro leading-relaxed text-v2-ink-2">{t('unknownSignal.risk', { warship: hullName(hull), courier: hullName('COURIER') })}</p><Cost cost={quote.risk} /></div>}
       </> : <p className="text-caption text-v2-ink-2">{t(signal.status === 'lost' ? 'unknownSignal.lostBeforeArrival' : signal.status === 'done' ? 'unknownSignal.delivered'
         : signal.status === 'outbound' ? 'unknownSignal.outbound' : 'unknownSignal.returning')}</p>}
       <div className="rounded-control border border-v2-crystal/15 bg-v2-crystal/5 px-2.5 py-2 text-micro leading-relaxed text-v2-ink-3">
