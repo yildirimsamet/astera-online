@@ -224,7 +224,7 @@ export class Effects {
     // Two quads per authoritative puff (64): every puff of a smoke screen must be drawn.
     this.puffs = new ParticlePool(fx.get('smoke') ?? fx.get('steam'), 128, 'luma');
     // Two quads a piece (halo + hot core) for every field and wreck slot.
-    this.cargo = new ParticlePool(fx.get('glowDot') ?? fx.get('flare'), 2 * (T.fieldGroups * FIELD_GROUP_SIZE + T.wreckDrops), 'add');
+    this.cargo = new ParticlePool(fx.get('glowDot') ?? fx.get('flare'), T.fieldGroups * FIELD_GROUP_SIZE + T.wreckDrops, 'add');
     this.smokeLayer = this.puffs;
     this.heads = new ParticlePool(fx.get('glowDot') ?? fx.get('flare'), 600, 'add');
     this.flash = new ParticlePool(fx.get('muzzleBlue') ?? fx.get('flare'), 64, 'add');
@@ -395,14 +395,14 @@ export class Effects {
     });
     pool.end();
     this.cargo.begin();
-    // Farm pieces in their kind's colour; a bigger piece glows bigger, so value reads at a glance.
+    // Farm pieces glow in their kind's colour; a bigger piece glows bigger, so value reads at a glance.
     world.cargoDrops.forEach((drop, i) => {
       if (!drop.active) return;
       const [r, g, b] = FARM_RGB[drop.kind] ?? FARM_RGB[0] ?? [1, 1, 1];
       const size = 9 + Math.min(drop.amount, T.dropChunk) * 1.3;
       const bob = Math.sin(time * 1.6 + i * 1.7) * 1.2;
-      this.cargo.put(drop.p.x, drop.p.y + bob, drop.p.z, size * (1 + Math.sin(time * 3 + i) * 0.12), time * 0.4 + i, r * 0.55, g * 0.55, b * 0.55, 0.85);
-      this.cargo.put(drop.p.x, drop.p.y + bob, drop.p.z, size * 0.32, 0, 1.2 + r * 0.3, 1.2 + g * 0.3, 1.2 + b * 0.3, 1);
+      // The crystal itself is drawn by the ore layer; this is its glow, wide enough to find from afar.
+      this.cargo.put(drop.p.x, drop.p.y + bob, drop.p.z, size * 1.5 * (1 + Math.sin(time * 3 + i) * 0.12), time * 0.4 + i, r * 0.4, g * 0.4, b * 0.4, 0.7);
     });
     this.cargo.end();
   }

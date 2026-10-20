@@ -16,6 +16,7 @@ import { createPost } from './render/post.js';
 import { proceduralShip } from './render/procedural.js';
 import { ShipVisual, type ShipPose } from './render/ships.js';
 import { buildStage } from './render/stage.js';
+import { createOre } from './render/ore.js';
 import { applyCorrection, decayCorrection } from './smoothing.js';
 import { describeGpu } from './diagnostics.js';
 import { createLandingAssist, findLandingTarget } from './landing.js';
@@ -80,6 +81,7 @@ export function createArenaClient(options: ClientOptions) {
   const camera = chase.camera;
   const post = createPost(renderer, scene, camera, options.quality.multisampling);
   const effects = new Effects(scene, assets.fx);
+  const ore = createOre(scene, world.layout, world.cargoDrops.length);
   const dust = createDust();
   // Turbo only: a dense swarm right around the lens, the nearest and fastest reference there is.
   const rush = createDust({ count: 320, size: 64, width: 0.06, near: [6, 15], boostOnly: true, stretch: 0.4 });
@@ -537,6 +539,7 @@ export function createArenaClient(options: ClientOptions) {
     dust.update(camera.position, forward, ownPose.turbo, alive(pilot) && phase === 'flight', dt);
     rush.update(camera.position, forward, ownPose.turbo, alive(pilot) && phase === 'flight', dt);
     stage.update(time, world, camera.position);
+    ore.update(world, time);
     post.haze(stage.haze.color, stage.haze.amount);
     scratch.set(1, 0, 0).applyQuaternion(camera.quaternion);
     audio.listen(camera.position.x, camera.position.y, camera.position.z, scratch.x, scratch.y, scratch.z);
@@ -645,7 +648,7 @@ export function createArenaClient(options: ClientOptions) {
       cancelAnimationFrame(handle); handle = 0;
       observer.disconnect(); canvas.removeEventListener('webglcontextlost', onLost);
       own.dispose(scene); for (const visual of others.values()) visual.dispose(scene);
-      stage.dispose(); post.dispose(); rearTarget.dispose(); renderer.dispose();
+      ore.dispose(); stage.dispose(); post.dispose(); rearTarget.dispose(); renderer.dispose();
     },
   };
 }
