@@ -110,9 +110,9 @@ export function Sheet({
   const dismiss = useOwnPress(onClose);
 
   return (
-    // Above the v2 dock when one is on screen (`--v2-dock-h`, published by `.v2-shell`), so a
-    // tab stays one press away from any page; the full screen everywhere else.
-    <div className="fixed inset-x-0 top-0 z-[40] flex flex-col justify-end v2-split:left-auto v2-split:top-(--v2-top-h) v2-split:w-[440px] v2-desk:w-[min(720px,50vw)]" style={{ bottom: 'var(--v2-dock-h, 0px)' }}>
+    // Between the v2 top bar and dock when they are on screen (`--v2-top-h`, `--v2-dock-h`, published
+    // by `.v2-shell`), so the purse stays read and a tab stays one press away; the full screen elsewhere.
+    <div className="fixed inset-x-0 top-[var(--v2-top-h,0px)] z-[40] flex flex-col justify-end v2-split:left-auto v2-split:w-[440px] v2-desk:w-[min(720px,50vw)]" style={{ bottom: 'var(--v2-dock-h, 0px)' }}>
       <button
         type="button"
         aria-hidden="true"

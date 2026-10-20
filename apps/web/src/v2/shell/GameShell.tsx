@@ -94,15 +94,24 @@ export function GameShell({ accountId, commander, panel, onPanel, onFocusPlanet,
   const [topHeight, setTopHeight] = useState<number | null>(null);
 
   /**
-   * The top bar and the Now line are as tall as what they hold; a page docked to the
-   * right on a wide screen starts under both (`--v2-top-h`, read by both sheet kits).
+   * The top bar and the Now line are as tall as what they hold; every page starts under
+   * both (`--v2-top-h`, read by both sheet kits — owner, 2026-10-20: a page that ran to the
+   * screen top hid its close on some phones). Sheets portaled to the body read it from the
+   * document, so it is published there too while the shell is on screen.
    */
   useEffect(() => {
     const node = top.current;
     if (!node || typeof ResizeObserver === 'undefined') return undefined;
-    const observer = new ResizeObserver(() => { setTopHeight(node.offsetHeight); });
+    const root = document.documentElement.style;
+    const observer = new ResizeObserver(() => {
+      setTopHeight(node.offsetHeight);
+      root.setProperty('--v2-top-h', `${String(node.offsetHeight)}px`);
+    });
     observer.observe(node);
-    return () => { observer.disconnect(); };
+    return () => {
+      observer.disconnect();
+      root.removeProperty('--v2-top-h');
+    };
   }, []);
 
   /** Leave whatever page is open, so the next thing opens alone. */

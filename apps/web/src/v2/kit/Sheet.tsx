@@ -10,15 +10,15 @@ import type { AtmosphereArt } from '../../ui/atmosphere.js';
 /**
  * Peek and half are ceilings: a sheet with little in it is only as tall as its
  * content, because empty height is space with no purpose (seen on the gallery: a
- * two-row queue sheet stood half the screen tall). Full can reach the screen top
- * when the content needs the room.
+ * two-row queue sheet stood half the screen tall). Full can rise to the top bar's
+ * foot when the content needs the room, never over it (owner, 2026-10-20).
  */
 const HEIGHT: Record<Detent, string> = {
   peek: 'max-h-[140px]',
   half: 'max-h-[55dvh]',
   /** As tall as what it holds, up to a page: an item sheet over empty space was the report. */
   fit: 'max-h-full',
-  /** The room from the screen top to the dock, used only when content needs it. */
+  /** The room from the top bar's foot to the dock, used only when content needs it. */
   full: 'max-h-full',
 };
 
@@ -38,17 +38,17 @@ type Placement = 'page' | 'dialog' | 'card';
 */
 const FRAME: Record<Placement, { holder: string; scrim: string; panel: string }> = {
   page: {
-    holder: 'justify-end v2-split:left-auto v2-split:top-(--v2-top-h) v2-split:w-[440px] v2-desk:w-[min(720px,50vw)]',
+    holder: 'justify-end v2-split:left-auto v2-split:w-[440px] v2-desk:w-[min(720px,50vw)]',
     scrim: 'v2-split:hidden',
     panel: 'v2-split:max-h-full! v2-split:max-w-none! v2-split:rounded-none v2-split:border-t-0',
   },
   dialog: {
-    holder: 'justify-end v2-split:top-(--v2-top-h) v2-split:items-center v2-split:justify-center v2-split:p-6',
+    holder: 'justify-end v2-split:items-center v2-split:justify-center v2-split:p-6',
     scrim: '',
     panel: 'v2-split:max-h-full! v2-split:max-w-[32rem]! v2-split:rounded-sheet v2-split:border-b',
   },
   card: {
-    holder: 'items-center justify-center px-4 v2-split:top-(--v2-top-h)',
+    holder: 'items-center justify-center px-4',
     scrim: '',
     panel: 'max-w-sm! rounded-sheet border-b pt-2',
   },
@@ -185,7 +185,7 @@ export function Sheet({
 
   return (
     <div
-      className={`pointer-events-none fixed inset-x-0 top-0 z-40 flex flex-col ${FRAME[placement].holder}`}
+      className={`pointer-events-none fixed inset-x-0 top-[var(--v2-top-h,0px)] z-40 flex flex-col ${FRAME[placement].holder}`}
       /* From the screen top to above the dock; a short page keeps its own height. */
       style={{ bottom: 'var(--v2-dock-h, 0px)' }}
     >

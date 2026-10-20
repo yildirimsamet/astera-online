@@ -21,7 +21,7 @@ export function BlockPlayerSheet({ subject, onClose, onBlocked }: { subject: Blo
     try { const result = await api.blockCommunityPlayer(subject.playerId); if (!result.blocked) throw new Error('Block was not confirmed'); setDone(true); onBlocked?.(); refreshSocialViews(queries); }
     catch { setProblem(true); } finally { active.current = false; setBusy(false); }
   };
-  return createPortal(<div className="[--v2-top-h:0px] [--v2-dock-h:0px]">
+  return createPortal(<div className="[--v2-dock-h:0px]">
     <Sheet title={t('moderation.blocks.action')} placement="dialog" detents={['full']} onClose={onClose} onBack={onClose}>
       <div className="grid gap-3 pb-3">
         <p className="break-words text-caption font-semibold text-v2-ink">{subject.username}</p>
@@ -46,7 +46,7 @@ export function BlockedPlayersSheet({ onClose }: { onClose: () => void }) {
     try { const result = await api.unblockCommunityAccount(accountId); if (result.blocked) throw new Error('Unblock was not confirmed'); refreshSocialViews(queries); }
     catch { setProblem(true); } finally { active.current = false; setBusy(null); }
   };
-  return createPortal(<div className="[--v2-top-h:0px] [--v2-dock-h:0px]">
+  return createPortal(<div className="[--v2-dock-h:0px]">
     <Sheet title={t('moderation.blocks.title')} placement="dialog" detents={['full']} onClose={onClose} onBack={onClose}>
       <div className="grid gap-3 pb-3">
         <p className="text-caption leading-relaxed text-v2-ink-2">{t('moderation.blocks.scope')}</p>

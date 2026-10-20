@@ -36,7 +36,7 @@ export function PasswordResetSheet({ onClose }: { onClose: () => void }) {
       else { await api.resetComplete(challenge.challengeId, code, password); saveChallenge(null); api.endSession('password'); onClose(); }
     } catch (error) { setProblem(describe(error)); } finally { active.current = false; setBusy(false); }
   };
-  return createPortal(<div className="[--v2-top-h:0px] [--v2-dock-h:0px]">
+  return createPortal(<div className="[--v2-dock-h:0px]">
     <Sheet title={t('accountSecurity.resetTitle')} placement="dialog" onClose={onClose} onBack={onClose} detents={['full']}>
       <form className="flex flex-col gap-4 pb-4" onSubmit={event => { event.preventDefault(); event.stopPropagation(); void submit(); }}>
         <p className="text-caption leading-relaxed text-v2-ink-2">{t(challenge ? 'accountSecurity.resetInfo' : 'accountSecurity.noRecovery')}</p>

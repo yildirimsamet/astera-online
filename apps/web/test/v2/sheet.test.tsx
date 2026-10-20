@@ -92,13 +92,25 @@ describe('the sheet', () => {
    * while a page is open, so a page runs from under the top bar (`--v2-top-h`, which the
    * shell publishes) down to the dock, and a full page fills that and no more.
    */
-  it('can rise to the screen top and fits short content at full', () => {
+  it('rises no higher than the top bar and fits short content at full', () => {
     render(<Sheet title="Fleet" detents={['full']} onClose={vi.fn()}>body</Sheet>);
     const dialog = screen.getByRole('dialog', { name: 'Fleet' });
-    expect(dialog.parentElement).toHaveClass('top-0');
+    expect(dialog.parentElement).toHaveClass('top-[var(--v2-top-h,0px)]');
+    expect(dialog.parentElement).not.toHaveClass('top-0');
     expect(dialog).toHaveClass('max-h-full');
     expect(dialog).not.toHaveClass('h-full');
     expect(dialog.className).not.toMatch(/h-\[92dvh\]/);
+  });
+
+  /**
+   * Owner 2026-10-20: on some phones a page running to the screen top hid its own close
+   * under the status area. Every page, in both kits, stops at the top bar's foot.
+   */
+  it('keeps the old-kit pages under the top bar too', () => {
+    render(<OldSheet title="Base" onClose={vi.fn()}>body</OldSheet>);
+    const holder = screen.getByRole('dialog', { name: 'Base' }).parentElement;
+    expect(holder).toHaveClass('top-[var(--v2-top-h,0px)]');
+    expect(holder).not.toHaveClass('top-0');
   });
 
   /** The return story's card (M4): in the middle at every width, and with no handle to pull. */

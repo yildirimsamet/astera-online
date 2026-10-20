@@ -27,7 +27,7 @@ export function ContentReportSheet({ subject, onClose }: { subject: ReportSubjec
     } catch (error) { setProblem(t(error instanceof ApiError && error.code === 'RATE_LIMITED' ? 'moderation.limited' : 'moderation.failed')); }
     finally { active.current = false; setBusy(false); }
   };
-  return createPortal(<div className="[--v2-top-h:0px] [--v2-dock-h:0px]">
+  return createPortal(<div className="[--v2-dock-h:0px]">
     <Sheet placement="dialog" title={t('moderation.title')} onClose={onClose} onBack={onClose} detents={['full']}>
       <div className="grid gap-3 pb-3">
         <p className="break-words text-caption font-semibold text-v2-ink">{subject.username}</p>

@@ -120,7 +120,7 @@ function WebFullscreenButton() {
         </svg>
       </span>
     </button>
-    {help && profile && createPortal(<div className="[--v2-top-h:0px] [--v2-dock-h:0px]">
+    {help && profile && createPortal(<div className="[--v2-dock-h:0px]">
       <Sheet title={t('brand.fullscreen.title')} detents={['fit']} placement="card" onClose={() => { setHelp(null); }}>
         <div className="flex flex-col gap-3 py-1 text-caption leading-snug text-v2-ink-2">
           <p role={help === 'unsupported' ? 'status' : 'alert'}>{t(`brand.fullscreen.${help}`)}</p>

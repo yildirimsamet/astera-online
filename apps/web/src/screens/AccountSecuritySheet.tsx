@@ -55,7 +55,7 @@ function AccountSecuritySheet({ status, onClose, refresh }: { status: AccountSec
       else { setChallenge(securityChallengeSchema.parse(result)); await refresh(); }
     }
   };
-  return createPortal(<div className="[--v2-top-h:0px] [--v2-dock-h:0px]">
+  return createPortal(<div className="[--v2-dock-h:0px]">
     <Sheet placement="dialog" title={t('accountSecurity.title')} onBack={onClose} onClose={onClose} detents={['full']}>
       <form className="flex flex-col gap-4 pb-4" onSubmit={event => { event.preventDefault(); void perform(submit); }}>
         <div className="rounded-control border border-v2-self/25 bg-v2-self/5 p-3">

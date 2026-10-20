@@ -417,3 +417,25 @@ describe('the v2 shell', () => {
     expect(screen.getByText('home 0 worlds 1')).toBeInTheDocument();
   });
 });
+
+/**
+ * Owner 2026-10-20: no page may rise over the top bar. Sheets portaled to the body (the
+ * menu's account, vacation and report sheets) sit outside the shell's own style, so the
+ * shell also publishes the measured top on the document while it is on screen.
+ */
+describe('the top bar the pages stop under', () => {
+  it('publishes the measured top bar on the document, and takes it back on leaving', () => {
+    desk(false);
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(private readonly callback: () => void) {}
+      observe(): void { this.callback(); }
+      disconnect(): void { /* nothing to release */ }
+    });
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(97);
+    const { unmount } = shell();
+    expect(document.documentElement.style.getPropertyValue('--v2-top-h')).toBe('97px');
+    unmount();
+    expect(document.documentElement.style.getPropertyValue('--v2-top-h')).toBe('');
+    vi.restoreAllMocks();
+  });
+});

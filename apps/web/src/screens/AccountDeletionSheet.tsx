@@ -35,7 +35,7 @@ function AccountDeletionSheet({ onClose }: { onClose: () => void }) {
     } catch (error) { setProblem(describe(error)); }
     finally { active.current = false; setBusy(false); }
   };
-  return createPortal(<div className="[--v2-top-h:0px] [--v2-dock-h:0px]">
+  return createPortal(<div className="[--v2-dock-h:0px]">
     <Sheet placement="dialog" title={t('accountDeletion.title')} onBack={onClose} onClose={onClose} detents={['full']}>
       <div className="flex flex-col gap-4 pb-4">
         <p className="text-caption leading-relaxed text-v2-ink">{t('accountDeletion.scope')}</p>

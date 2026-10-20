@@ -36,8 +36,8 @@ export function VacationSheet({ onClose }: { onClose: () => void }) {
     });
   };
   const error = start.error ?? end.error;
-  // The body portal sits outside the shell that normally supplies this sheet offset.
-  return createPortal(<div className="[--v2-top-h:0px]">
+  // The body portal sits outside the shell; the shell publishes the top bar on the document.
+  return createPortal(<div>
     <Sheet placement="dialog" title={t('vacation.title')} onClose={onClose} detents={['full']}
       footer={q ? active ? <Button size="lg" full variant="commit" disabled={pending || active.endsAt.getTime() <= now}
         onClick={() => { setReturnConfirm(true); }}>{t('vacation.end')}</Button>
