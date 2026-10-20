@@ -1,6 +1,7 @@
 # Komutan Gemisi — Uçuş ve kontroller
 
-> **Durum:** Tasarım + prototip planı (2026-10-07). Sayılar burada **değil**,
+> **Durum:** MVP'de uygulandı (2026-10-08); kamera 3. şahıs (KG-K19), hafif nişan yardımı (KG-K20)
+> ve iniş yardımı (KG-T41) eklendi. Sayılar burada **değil**,
 > [04 §Başlangıç değerleri](04-savas-mekanikleri.md#baslangic-degerleri) tablosundadır; burada
 > parametre adları ve kurallar var.
 > **Hedef okuyucu:** Uçuş simülasyonunu ve dokunmatik kontrolleri yazacak agent.
@@ -27,7 +28,7 @@ açısal hız `ω = (pitch, yaw)`, turbo durumu, yakıt.
 1. İleri vektör `f = q · (0,0,1)` — repo model kuralı: burun **+Z**, yukarı **+Y**
    (`docs/visual-design.md`). Hız vektörü **daima** `v = f · s`: kayma yok, **geri gitme yok**
    (S14). `s` asla negatif olamaz.
-2. Hedef hız `s* = τ · speedMax` (turbo aktifse `· turboSpeedMul`). `s < s*` ise `accel`,
+2. Hedef hız `s* = τ · speedMax`; turbo aktifse gazdan bağımsız `speedMax · turboSpeedMul` (KG-K26). `s < s*` ise `accel`,
    `s > s*` ise `decel` ile yaklaşır. Gaz 0 → gemi `decel` ile **yavaşlayıp durur** (S15);
    `s < stopEpsilon` olunca tam 0 ("DURDU" durumu — çıkış için gerekli).
 3. Yön: çubuk vektörü `(x, y)` (birim daire içinde) §4'teki eğriden **büyüklük olarak** geçer
@@ -35,6 +36,8 @@ açısal hız `ω = (pitch, yaw)`, turbo durumu, yakıt.
    **kritik sönümlü, birinci dereceden** yaklaşır
    (`turnResponse` zaman sabiti, ~60 ms): hızlı ama sarsıntısız, **asla aşma yapmaz**.
    Çubuk bırakılınca `ω* = 0` → dönüş ~0,1 sn içinde durur, gemi o doğrultuda kalır (S61).
+   Yaklaşma katsayısı `min(1, dt / turnResponse)`; nötr girdide kalan hız
+   `turnRateMax · turnStopRatio` altına indiğinde tam 0 olur (en çok dört tick).
 4. Turbo aktifken `turnRateMax · turboTurnMul` (< 1): turbo düz kaçışta hız verir ama dönüşte
    kovalayan köşeyi kesebilir — turbo tek başına garantili kaçış değildir (S78).
 5. Kuaterniyon güncellemesi yalnız aritmetik + `sqrt`: `q ← normalize(q ⊗ (1, ½ωx·dt, ½ωy·dt, 0))`
@@ -44,7 +47,7 @@ açısal hız `ω = (pitch, yaw)`, turbo durumu, yakıt.
    içinde) roll hatası `e = dot(sağ, +Y)` ile `rollLevelRate · e` hızında sıfıra çekilir. Dik
    tırmanış/dalışta kapalı (takla atmasın). Kamera bu düzeltme dışında **yatmaz** (S55).
 7. Yakıt: saniyede `idleBurn + throttleBurn · τ` (+ turbo aktifse `turboBurn`); durmuş gemi de
-   `idleBurn` yakar (S16). Her atış `shotFuelCost` düşer (tek depo varsayımı, KG-A3). Yakıt 0 →
+   `idleBurn` yakar (S16). Her atış `shotFuelCost` düşer (tek ortak depo, KG-K11). Yakıt 0 →
    [04 §Yakıt bitmesi](04-savas-mekanikleri.md#yakit-bitmesi).
 8. İntegrasyondan sonra: asteroit/yapı itmesi (KG-T19), alan sınırı (KG-T20).
 9. Aynı başlangıç durumu + aynı girdi dizisi → **bit düzeyinde aynı sonuç** (sunucu ve her
@@ -66,12 +69,14 @@ ayarlanır. Aynı başparmakla **eşzamanlı** basılması gereken iki kontrol y
 
 ## 4. Yön çubuğu (yüzen hız-joystick'i)
 
-- Sol bölgede (ekranın sol ~%45'i, alt ~%40'ı) parmağın değdiği yer merkez olur; yarıçap `R`
-  (~56 px, görsel halka ~112 px). Parmak `1,4R`'yi aşarsa merkez onu izler (çubuk "bitmez").
+- Sol alttaki bölgede parmağın değdiği yer merkez olur, ama merkez sabit bir **ev alanına**
+  kıstırılır (ekranın sol kenarından ~200 px, alttan ~250 px; `Controls.tsx`). Yarıçap
+  `STICK_RADIUS` = 72 px (uzun yol = aynı dönüş için daha ince nişan). Merkez parmağı **izlemez**: parmak halkanın dışına çıkınca çubuk tam
+  sapmada kalır, taban ekranda gezinmez (sahip, 2026-10-08).
 - Ölü bölge `deadzone` (~%6). Büyüklük `m` ölü bölge sonrası 0–1'e yeniden ölçeklenir, eğri
   **büyüklüğe** uygulanır (eksen başına değil — kare tepki olmasın):
-  `m' = m · (k + (1−k) · m²)`, `k = stickLinear` (~0,3). Küçük sapma çok yavaş, hassas dönüş;
-  tam sapma `turnRateMax`. (Örnek, k=0,3: %10 → maks'ın %3'ü; %50 → %24'ü; %100 → %100.)
+  `m' = m · (k + (1−k) · m²)`, `k = stickLinear`. Küçük sapma çok yavaş, hassas dönüş;
+  tam sapma `turnRateMax`. (Örnek, k=0,15: %10 → maks'ın ~%1,6'sı; %50 → ~%18'i; %100 → %100.)
 - Ayarlar: **hassasiyet** (k ve ölçek; isabetten bağımsız, S55), **pitch ters çevir** (varsayılan:
   yukarı itince burun yukarı).
 - Her kontrol kendi `pointerId`'sini yakalar (Pointer Events) → çoklu dokunma güvenli; bölge
@@ -79,8 +84,9 @@ ayarlanır. Aynı başparmakla **eşzamanlı** basılması gereken iki kontrol y
 
 ## 5. Gaz kolu (yapışkan)
 
-- Dikey kol; parmakla sürüklenen seviye **bırakınca kalır** (S62). 0–100 %, segmentli gösterge +
-  sayı. Alt %10 **0'a yapışma** bölgesi; üstte %100 yapışma.
+- Dikey kol, sağ kenarda; parmakla sürüklenen seviye **bırakınca kalır** (S62). 0–100 %, sayı
+  ile. Yapışma noktaları: 0 (dur), %15 (iniş hızı, kolda "İN" yazar), %50 (seyir), %100
+  (`THROTTLE_DETENTS`, `input.ts`).
 - **Çift dokunuş:** 0 ↔ son sıfır olmayan değer (çıkışta hızlı durma, sonra hızlı kalkış).
 - Turbo kolda değildir (sağ başparmak).
 
@@ -114,12 +120,14 @@ Referans görsellerdeki yerleşim **test edilmeden aynen uygulanmaz** (S53).
 
 ## 8. Kamera ve silahlar
 
-- Birinci şahıs, burunda; kokpit çerçevesi **yok** (S10). Dikey FOV ~75–80° (dikeyde yatay görüş
-  dar kalır: ~40°; bu, yatay mod kararının bir girdisidir).
-- **Sarsıntı yok:** ateşte kamera tepmesi yok; hasar alınca ≤0,3°, ≤120 ms tek tepme (yönlü).
-  Yaw'da kamera yatmaz. Turbo'da FOV birkaç derece açılır (hız hissi), yumuşak geçişle.
-- Silah modelleri ayrı geçişte (KG-T24), sol ve sağ altta, ekran yüksekliğinin **≤ %18**'i; merkez
-  açık (S56). İvmede çok küçük (1–2 px) kozmetik salınım.
+- **3. şahıs takip kamerası** (KG-K19, KG-T36; `render/camera.ts`). Kol geminin **gecikmeli**
+  yönelimiyle arkada asılır, kamera geminin **gerçek** burnunun ilerisine bakar. Dönüşte gemi
+  ekranda dönüşün dışına kayar ve yan yüzünü gösterir; yukarı çekince kamera alttan yetişir; düz
+  uçuşta gemi alt ortada sabittir. Hız ve turbo kolu yavaşça uzatır.
+- FOV dikeyde 72°, yatayda 56°; hızla birkaç derece, turboda ~9° açılır (yumuşak geçiş).
+- Kamera dönüşe yalnız hafifçe yatar; gövdenin yatışı yalnız görseldir. Sarsıntı "trauma"
+  modelidir: hasar, sert sekme ve öldürmede kısa, karesiyle sönen titreme; ateşte tepme yok.
+- Kol bir kayanın içine girecekse gemiye doğru kısalır.
 - **Yakınsama:** iki namludan çıkan mermiler nişangâh doğrultusunda sabit `convergeDist`
   mesafesinde kesişir (+ dağılım). Namlu noktaları `rules/arena` verisidir; sunucu aynı hesabı
   yapar. Yakın mesafede yanal sapma vuruş yarıçapının çok altında kalır.
@@ -129,7 +137,10 @@ Referans görsellerdeki yerleşim **test edilmeden aynen uygulanmaz** (S53).
 
 - Nişangâh = geminin ileri yönü. **Hassasiyet ayarı yalnız çubuk eğrisini, isabet özelliği yalnız
   dağılımı** etkiler (S55, S66).
-- **Otomatik nişan yok:** hedefe dönme, yapışma, kilit yok (S72, KG-X1).
+- **Hafif nişan yardımı** (KG-K20, KG-T34): ateş basılıyken önleme noktası nişangâhın çok
+  yakınındaysa gemi hafifçe hedefe döner; hedef üzerindeyken çubuk yavaşlar (sürtünme). Sunucu,
+  görünür hedefin önleme noktası burundan birkaç derece içindeyse namluyu oraya yöneltir. Kilit
+  yoktur; görünmez ya da duman arkasındaki hedefe yardım yoktur.
 - **İzlenen hedef** (KG-T16): nişangâha en yakın, menzil içinde, görünür düşman; kilit değil,
   yalnız önleme işaretinin kime ait olduğunu seçer.
 - **Önleme işareti** (S73): mermi gemi hızını miras aldığından göreli çözülür: `p_rel` = hedef −
@@ -138,6 +149,19 @@ Referans görsellerdeki yerleşim **test edilmeden aynen uygulanmaz** (S53).
   taşınır: `H = interpDelay + RTT + inputBuffer − headStart` (≥ 0; nedeni [05 §8](05-ag-ve-sunucu.md#isabet)).
   Çözüm yoksa veya `t` mermi ömründen büyükse işaret gösterilmez. Duman arkasında ya da görünmez
   hedefte işaret yoktur (S76–S77). İşaret mermiyi **yönlendirmez**, isabeti **garanti etmez**.
+
+## 9b. İniş (KG-K21, KG-T35, KG-T41)
+
+- **Kural:** toplam hız ≤ `landSpeed` iken yüzeye değmek iniştir. Daha hızlı değmek sekmedir:
+  gemi yüzeyden geri itilir, kafa kafaya çarpışta hızının çoğunu kaybeder. Hasar yoktur.
+- **İN** düğmesi (yakında yüzey varken görünür): tek dokunuş. Nişangâha en yakın yüzey seçilir
+  (menzil 260 m, canlı kristal öncelikli), iniş noktasında halka belirir; gemi oraya yönelip
+  mesafeye göre gazı düşürür. Düğme **İPTAL** olur ve kalan mesafeyi gösterir. Çubuğu belirgin
+  oynatmak da yardımı keser.
+- **KALK** 0,55 sn basılı tutma ister; yanlışlıkla art arda dokunuş kalkış yapmaz. Gaz kolunu
+  itmek de kalkıştır. Turbo da kalkıştır: inmiş gemide turbo gemiyi
+  kaldırıp doğrudan hızlandırır (kazıda pusuya düşen pilotun kaçışı). Turbo, iniş yardımını da iptal eder.
+- Kristale inen gemi kazar; kazı ışını uzaktan görünür.
 
 ## 10. Mobil web ayrıntıları (atlanırsa kontroller bozulur)
 

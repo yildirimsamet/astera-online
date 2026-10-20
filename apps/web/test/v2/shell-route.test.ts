@@ -18,6 +18,7 @@ describe('which tab is lit', () => {
   it('lights the tab that owns the open page', () => {
     expect(tabOfPanel('planet', false)).toBe('base');
     expect(tabOfPanel('research', false)).toBe('base');
+    expect(tabOfPanel('ship', false)).toBe('base');
     expect(tabOfPanel('intel', false)).toBe('intel');
     expect(tabOfPanel('report', false)).toBe('intel');
     expect(tabOfPanel('clan', false)).toBe('clan');

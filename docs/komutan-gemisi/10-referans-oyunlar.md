@@ -1,7 +1,6 @@
 # Komutan Gemisi — Referans oyunlar: neden iyi, ne alırız, ne almayız
 
-> **Durum:** Araştırma özeti (2026-10-07, web kaynakları) + cihazda/çıkarılan veride yapılacak
-> inceleme listesi.
+> **Durum:** İlk araştırma + 2026-10-08 APK/üretici kaynakları incelemesi ve MVP uygulama kaydı.
 > **Hedef okuyucu:** Kontrol, his ve gelişim kararlarını verecek agent.
 > **Dayanak:** S4 ([01](01-urun.md)); sahibin talimatları aşağıda (R1–R3).
 
@@ -35,11 +34,14 @@
 **Neden iyi:** girdi az (yön + ateş), derinlik hız yönetiminde; lead nişangâhı topçuluğu
 öğrenilebilir yapıyor; tehdit bilgisi net (kilit uyarısı, mini harita); dokunmatikte seçenek bol.
 
-**Alırız:** isteğe bağlı önleme işareti (otomatik dönüş olmadan, KG-T16) · gaz + turbo + turbo'da
+**Alırız:** isteğe bağlı önleme işareti (KG-T16) · ateşte **hafif** hedefe dönüş ve nişangâh
+sürtünmesi (2026-10-08 sahip kararı, KG-K20; ayarı KG-T34: kısa koni, kırpılmış güç, görünür
+hedef şartı) · gaz + turbo + turbo'da
 dönüş cezasıyla hız yönetimi derinliği (KG-T30, [03](03-ucus-ve-kontroller.md)) · net tehdit
 farkındalığı (arka görüş + hasar yönü — onların mini harita/kilit uyarısının karşılığı) ·
 PC-mobil eşitliği ilkesi (KG-A18) · birden çok kontrol şeması fikri (A/B, ileride tilt seçeneği).
-**Almayız (şimdilik):** ateşte otomatik hizalama (S72, KG-X1) · füze/kilit (spec'te yok) ·
+**Almayız (şimdilik):** Metalstorm'daki kadar cömert otomatik hizalama ve kilit (KG-X1) ·
+füze (spec'te yok) ·
 güç farkı yaratan para modeli ([08](08-ilerleme-ve-ekonomi.md) kartopu önlemleri) · maç yapısı
 (bizimki sürekli açık extraction alanı).
 
@@ -96,7 +98,7 @@ savaşta zayıf ama çok taşır).
 | Ders | Kaynak | Bizdeki karşılığı |
 |---|---|---|
 | Az girdi, derinlik tek bir yönetilen kaynakta | Metalstorm (hız) | gaz/turbo/dönüş cezası, yakıt menzili |
-| Nişan yardımı oyunu pasifleştirebilir | Space Commander | otomatik nişan yok, yalnız önleme işareti |
+| Nişan yardımı oyunu pasifleştirebilir | Space Commander | yalnız çok yakında hafif mıknatıs, kilit yok (KG-K20) |
 | Arka/çevre farkındalığı kaçış kararını mümkün kılar | Vendetta, Metalstorm | arka görüş, hasar yönü, ekran dışı göstergeler |
 | Kaldıkça artan risk "bir tur daha" yaratır | Subdivision | extraction döngüsü, F9 önerisi |
 | Para/kalıcı güç farkı yeni oyuncuyu kaçırır | Metalstorm eleştirisi | sezonluk gelişim, seviye bütçesi, güç farkı sınırı |
@@ -107,3 +109,26 @@ Kaynaklar: [Metalstorm Wiki — Getting Started](https://metalstorm.wiki.gg/wiki
 [TheSixthAxis — Subdivision Infinity DX](https://www.thesixthaxis.com/2019/08/07/subdivision-infinity-dx-review/) ·
 [Digitally Downloaded — Space Commander](https://www.digitallydownloaded.net/2021/05/review-space-commander-war-and-trade.html) ·
 [Massively OP — Vendetta mobile](https://massivelyop.com/?p=306121).
+
+## 7. 2026-10-08 inceleme ve MVP'ye uygulama
+
+Üretici kılavuzları incelendi; APK'lardan çıkarılan modeller gerçek Three.js önizlemesinde
+farklı açılardan karşılaştırıldı. Bu kayıt bütün oyunlarda telefonda oynanmış bir oturum iddiası değildir.
+İlk araştırmadaki oyuncu/inceleme yorumları üretici belgesi olarak değerlendirilmez.
+
+| Doğrudan incelenen kaynak | Çıkarılan ders ve mevcut MVP karşılığı |
+|---|---|
+| [Metalstorm başlangıç kılavuzu](https://metalstorm.wiki.gg/wiki/Getting_Started), [temel rehber](https://metalstorm.wiki.gg/wiki/Basic_Guide) | Kontrol seçenekleri, hız/yakıt, top önleme işareti ve çevre farkındalığı birlikte ele alınır. Bizde gaz, turbo şarjı ve dönüş cezası, önleme elması, ateşte hafif hedef mıknatısı (KG-K20), canlı arka görüş ve hasar yönü vardır. Kilit yoktur. |
+| [Vendetta taktik HUD](https://www.vendetta-online.com/manual/hud_tactical.html), [ön/arka radar](https://www.vendetta-online.com/manual/hud_radar.html) | Silah ve turbo enerji kararını paylaşır; arka taraf da sürekli izlenir. Bizde sahip kararıyla ortak döteryum deposu, kalan uçuş süresi, atış tüketimi ve arka kamera aynı uçuş ekranındadır. Newtonian uçuş aktarılmadı. |
+| [MistFly — Subdivision Infinity](https://www.mistfly.games/subdivision-infinity) ve çıkarılan gemi/kaya/efektler | Gemi silueti, doku detayları, normal haritaları ve uzay fonunun okunaklılığı birlikte seçildi. KG-K22 sonrası paket büyük ölçüde Subdivision'dır: gemiler, kayalar, yapı parçaları, 2048² gökyüzü, efekt dokuları ve sesler; 3. şahıs takip kamerası da Subdivision'daki gecikmeli kamera örnek alınarak kuruldu (KG-K19). |
+| [HomeNetGames — Space Commander](https://store.steampowered.com/app/1449750/Space_Commander_War_and_Trade/) ve çıkarılan sesler/parçalar | Farklı gemi rolleri yük/çatışma tercihine bağlanır. Bizde test kargolu taşıyıcı bir hedef oluşturur; örneklerden motor, atış/isabet, turbo, patlama, müzik ve UI ses katmanları seçildi. |
+
+**Görsel seçimde bulunan sorunlar:** Subdivision DFME UV yönü glTF'te düzeltilmeden doku
+panelleri ters ve kayaların bazı yüzleri siyah görünüyordu. Albedo/normal bağımlılıklarıyla
+birlikte düzeltildi. Gökyüzü küpünde bir yüzün boyutu farklıydı; hazırlanmış kopyalar eşitlendi.
+Çevre yansıması için ayrı küçük küp kullanıldı; orijinal yüksek çözünürlüklü dosyalar korunur.
+
+**Vuruş hissi:** dönüşümlü namlu flaşı ve geri tepme, fiziksel mermi izi, onaylı isabette X,
+öldürme halkası, gerçek atlas animasyonu, yerel ses örnekleri, uzaklık/yöne göre karşı atış
+sesleri ve desteklenen cihazlarda titreşim birlikte çalışır. Bunlar iki tarayıcıdaki gerçek
+sunucu çatışmasıyla incelenir; fiziksel telefon hissi/F7 onayı ayrıca gerekir.

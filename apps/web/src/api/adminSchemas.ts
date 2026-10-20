@@ -40,3 +40,7 @@ export const adminDeletionQueueSchema = z.object({
 });
 export const adminDeletionCompletedSchema = z.object({ requestId: z.string().uuid(), status: z.literal('completed'), mediaCleanupPending: z.boolean().optional() });
 export const adminDeletionMediaSchema = z.object({ requestId: z.string().uuid(), mediaCleanupPending: z.boolean() });
+export const adminArenaPilotsSchema = z.object({
+  pilots: z.array(z.object({ accountId: z.string(), username: z.string(), name: z.string(), grantedAt: z.coerce.date() })),
+});
+export const adminArenaPilotSchema = z.object({ accountId: z.string(), username: z.string(), pilot: z.boolean() });

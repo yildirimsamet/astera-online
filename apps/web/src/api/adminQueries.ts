@@ -50,3 +50,15 @@ export function useAdminPostClanChat(clanId: string) {
   onSuccess: () => { void refreshQueries(client, { queryKey: ['admin', 'clanChat', clanId] }); },
   });
 }
+/** Komutan Gemisi playtest seats. */
+export function useAdminArenaPilots() {
+  const api = useApi();
+  return useQuery({ queryKey: ['admin', 'arenaPilots'], queryFn: api.adminArenaPilots, staleTime: 15_000 });
+}
+export function useAdminSetArenaPilot() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({ mutationFn: (input: { username: string; pilot: boolean }) => api.adminSetArenaPilot(input.username, input.pilot),
+    onSuccess: () => { void refreshQueries(client, { queryKey: ['admin', 'arenaPilots'] }); },
+  });
+}

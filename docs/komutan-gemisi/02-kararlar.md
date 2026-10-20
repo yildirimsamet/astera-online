@@ -1,6 +1,6 @@
 # Komutan Gemisi — Karar kaydı
 
-> **Durum:** Canlı belge. Son güncelleme 2026-10-07 (ilk yazım: planlama oturumu).
+> **Durum:** Canlı belge. Son güncelleme 2026-10-08, 3. şahıs v2 (ilk yazım: planlama oturumu).
 > **Hedef okuyucu:** Geliştirmeyi yapan agent. Her yeni karar, sahip cevabı ve denenip
 > bırakılan yol **buraya** yazılır (kurallar: [README §Belge bakımı](README.md#belge-bakimi)).
 > **Önekler:** `KG-K` sahip kararı (yeniden sorulmaz) · `KG-T` teknik karar (agent'ın; gerekçeli,
@@ -40,8 +40,9 @@ koparmak savaştan kaçış yolu olmasın. Ayrıntı: [04 §Bağlantı kopması]
 #### KG-K6
 **Referans varlıklar** (2026-10-07): geliştirmeyi yapan agent, sahibin telefonuna ADB ile
 bağlanıp Vendetta Online, Space Commander: War and Trade, Subdivision Infinity ve Metalstorm'u
-inceler, uygun modelleri/parçaları/sesleri çıkarır. Bunlar **geçicidir**, **depo dışında**
-tutulur, yalnız **yerel geliştirmede** kullanılır; yayına ve public depoya **asla** girmez.
+inceler, uygun modelleri/parçaları/sesleri çıkarır. Bunlar **geçicidir**, yalnız **yerel
+geliştirmede** kullanılır; yayına ve public depoya **asla** girmez. Depolama konumu için
+sonraki sahip talimatı KG-K17 geçerlidir.
 Sahip "Tamam, oyun oldu" dediğinde hepsi Astera'nın kendi modelleriyle değiştirilir.
 Prosedür: [09](09-varliklar-ve-referans-cikarma.md).
 
@@ -49,6 +50,115 @@ Prosedür: [09](09-varliklar-ve-referans-cikarma.md).
 **Çalışma biçimi** (2026-10-07): geliştirmeyi, bu özellikten habersiz bir agent sahibin
 bilgisayarında yapar. Sahip ona brief'i ayrıca vermez; **bu klasör tek kaynaktır**. Belgeler
 geliştirme boyunca güncel tutulur.
+
+#### KG-K8
+**Özellik ayrı worktree'de geliştirilir** (2026-10-08). Sahibin açık talimatı;
+ana çalışma alanı `master` üzerinde kalır. Güncel çalışma alanı ve dal:
+[13 §Çalışma alanı](13-gelistirme-notlari.md#çalışma-alanı).
+
+#### KG-K9
+**Doğuş kalkanının bitişi** (2026-10-08): ateş, çıkış alanına giriş, kargo toplama veya
+60 saniyeden **ilk gerçekleşen** kalkanı kaldırır. Sahip KG-A1 önerisini onayladı.
+
+#### KG-K10
+**Yakıt bitince kurtarma** (2026-10-08): gemi yavaşlayıp durur; **10 saniye savunmasız**
+kurtarma bekler. Bu sürede yok edilirse yok edilme kuralları uygulanır. Sahip KG-A2 önerisini onayladı.
+
+#### KG-K11
+**Tek ortak döteryum deposu** (2026-10-08): uçuş ve mühimmat aynı depodan tüketilir;
+her atış kaçış için kalan yakıtı da azaltır. Sahip KG-A3 önerisini onayladı.
+
+#### KG-K12
+**PR düzeni** (2026-10-08): özelliğin tamamı **tek PR** olarak sunulur. Fazlar bu dalda
+ilerler; faz başına ayrı PR açılmaz.
+
+#### KG-K13
+**Sorudan önce doküman incelemesi** (2026-10-08): plan boyunca sahibe sorulacak her
+konu önce plan dokümanları ve karar kayıtlarında araştırılır. Yanıt varsa uygulanır;
+yalnız yanıt bulunamazsa soru sorulur. Önceden cevaplanan kararlar yeniden açılmaz.
+
+#### KG-K14
+**Önce oynanabilir, plana uygun MVP** (2026-10-08). Sahip bu aşamada dil/TDD çalışmalarını
+erteledi; öncelik prototipin tasarımı, kontrolü, savaşı ve hissidir. Bu çalışma diliminde
+yeni birim testleri veya dil yayılımı açılmaz; tip/build, gerçek tarayıcı ve oynanış doğrulaması
+yapılır. Daha önce yazılmış testler korunur. F7 kapısı ve gerçek ekonomi sınırı değişmez.
+
+#### KG-K15
+**Eklenen görseller kabaca referanstır** (2026-10-08). `~/astera-ref-assets/Pasted image*.png`
+dosyaları incelendi. Yerleşimler ve oranlar kullanılabilirlik kontrolünden geçirilir;
+görsellerin birebir kopyalanması istenmedi.
+
+#### KG-K16
+**Kalite hedefi: premium AAA+ hissi** (2026-10-08). Sahip tasarım, modeller, kontroller,
+butonlar, efektler, ses ve vuruş hissinde mümkün olan en iyi işi istedi. Kalite iddiası
+oynanabilir sonuç ve görsel incelemeyle desteklenir; yalnız derlenen prototip yeterli değildir.
+
+#### KG-K17
+**Tam referans arşivi ve önce arşive bakma kuralı** (2026-10-08). APK'lardaki kullanılabilir
+ve ileride kullanılabilecek bütün içerik projedeki `astera-refs/` altında düzenli çıkarılır.
+Yeni bir model/doku/efekt/ses ihtiyacında önce bu arşive bakılır; kendi varlık üretimimiz
+minimum tutulur. Prototip geçicidir; sahip son görüntünün yakın, tamamen Astera'ya ait
+karşılıklarını yaptıracaktır. Proje içindeki klasör **Git dışında** ve yalnız dev servisidir;
+KG-K6'nın yayına/public depoya dâhil etmeme kuralı sürer. Özel biçimlerde çözülemeyen içerik
+ham hâliyle ve açık dönüşüm notlarıyla saklanır; dönüştürülmüş diye sunulmaz.
+
+#### KG-K18
+**Referans oyunları doğrudan incele** (2026-10-08). Belgedeki oyunlar APK veya internet
+üzerinden incelenir; iyi yaptıkları şeyler ve Astera'ya uygulanma gerekçesi kaydedilir.
+2026-10-08 inceleme ve uygulama kaydı: [10 §7](10-referans-oyunlar.md#7-2026-10-08-inceleme-ve-mvpye-uygulama).
+
+#### KG-K19
+**Oynanış 3. şahıs** (2026-10-08). Sahip MVP'yi inceledi ve kararı değiştirdi: gemi **arkadan
+görülür**. S9–S10'daki birinci şahıs ve kokpitten görünen namlular geçersiz. Kamera Subdivision
+örneğindeki gibi **gecikmeli takip kamerasıdır**: dönüşte gemi ekranda dönüşün dışına kayıp yatar,
+yukarı çekince kamera alttan yetişir, düz uçuşta gemi ortada sabittir. Arka görüş penceresi (S11)
+korunur. Uygulama: [03 §8](03-ucus-ve-kontroller.md), KG-T36.
+
+#### KG-K20
+**Hafif nişan yardımı istenir** (2026-10-08). Kontrol ve nişan için Metalstorm örnek alınır: hedefin
+**çok yakınına** ateş edilirken gemi hafifçe hedefe döner ("hafif mıknatıs"). S72 ve eski KG-X1
+bu kararla değişti. Dikey ekranda iki başparmak için yön, manevra, hızlanma/yavaşlama ve yetenekler
+en kolay kullanılacak biçimde yerleştirilir (yerleşim F7'de doğrulanır, KG-A4).
+Uygulama: KG-T34.
+
+#### KG-K21
+**İniş: kaz, saklan, mola ver** (2026-10-08; KG-A12'nin cevabı). Kayalara inilip **kazı** yapılır;
+bazı yapıların yanına, üstüne ve içine inilebilir. İniş hem farm, hem saklanma, hem de kısa mola
+için kullanılır. Prototip yorumu: yavaş temas iniştir; kristal kayaya inen gemi kazar ve kazı ışını
+uzaktan görünür (usul usul farm atan da avlanabilir); uzaktaki inmiş ve kazmayan gemi işaret ve
+radarda görünmez; çıkış kapıları da birer iniş pistidir. Kurallar: [04 §13](04-savas-mekanikleri.md#baslangic-degerleri), KG-T35.
+
+#### KG-K22
+**Varlıklarda öncelik Subdivision** (2026-10-08). Model, efekt, gökyüzü, kaya, atmosfer ve seslerde
+büyük çoğunlukla Subdivision kullanılır; boşluklar diğer referans oyunlardan doldurulur. Sahip, oyun
+"tamam" olduğunda hepsinin benzerini kendisi yaptıracak (KG-K6, KG-K17 sürer). Paket: [09](09-varliklar-ve-referans-cikarma.md).
+
+#### KG-K23
+**Alan ölçüsü ve dokusu** (2026-10-08). Alan ne sürekli çatışma çıkacak kadar küçük ne de birini
+bulmak 10 dakika sürecek kadar büyük olur. Sakin farm da deli gibi av da mümkündür, ama farm
+güvenlik garantisi değildir. Alanda binalar ve yapılar, sık ve seyrek kaya kuşakları bulunur; oyuncu
+bazen yönünü kaybedebilmelidir. Hız kontrolü, yavaşlama ve iniş iyi oturmalıdır. Uygulama: KG-T33.
+
+#### KG-K24
+**Görüntü kalitesi önce gelir; yükleme uzayabilir** (2026-10-08). Kenarlar tırtıklı, gökyüzü
+bulanık olamaz. Gerekirse yükleme ekranı uzun tutulur ve bütün varlıklar uçuştan önce yüklenir.
+Uygulama: KG-T37.
+
+#### KG-K25
+**Bu görevde TDD ertelendi** (2026-10-08). Sahip: "Önce istediğim şekilde yap, testleri MVP'den
+sonra yazarız." Kurallar paketi için yazılan testler korunur ve yeşil kalır; istemci testleri MVP
+onayından sonra yeniden yazılır. KG-K14 ile aynı kapsam sınırı geçerlidir.
+
+#### KG-K26
+**Turbo: daha hızlı, iki kat uzun, dolum aynı** (2026-10-09). Sahip: "Turbo biraz daha hızlı olmalı,
+2 kat daha uzun sürmeli ama dolum süresi aynı kalmalı; ileri ivme hissini alamıyorum." Uygulama:
+turbo artık gaz seviyesinden bağımsız olarak tam turbo hızına çıkar (eskiden %50 gazda turbo yalnız
+96 m/s veriyordu, hissin kaybolma nedeni buydu), ivmesi sertleşti, şarj 6 sn, boştan dolum yine
+7,5 sn. İstemcide his: kamera geride kalıp yetişir, görüş açılır, kenarlar hızla akar, toz çizgileri
+uzar, alev turuncuya döner. Değerler [04 §13](04-savas-mekanikleri.md#baslangic-degerleri).
+İkinci tur (sahip: "ivmelenme hissi yok"): ivme iki katına çıktı (60 → 216 ≈ 0,65 sn); kamera kolu ivmeye
+bağlı bir yaydır, hızlanırken gemi kameradan kopar, hız oturunca kamera yetişir; turboda kameranın
+hemen etrafında ikinci bir yoğun toz katmanı açılır.
 
 ---
 
@@ -203,7 +313,7 @@ adımını atar ve `advance()` çağırır; tek öncelikli `useFrame` **yalnız 
 modelleri (derinlik temizlenip ayrı geçiş) → arka görüş (düşük çözünürlüklü render target'a iki
 karede bir; her karede ayna çevrilerek kompozit). Kare politikası `strideFor(60, …)` 60 fps'in
 altına düşmeyen adımdır, **tavan değildir** (60 Hz→60, 90→90, 120→60, 144→72). Prototipte
-post-processing yok. Ayrıntı: [06 §4](06-istemci.md#render). `frameloop="always"`: [KG-X10](#kg-x10).
+MVP'nin güncel görsel hattı KG-T32'de. Ayrıntı: [06 §4](06-istemci.md#render). `frameloop="always"`: [KG-X10](#kg-x10).
 
 #### KG-T25
 **HUD mimarisi.** Oyun durumu React dışında düz TS modüllerinde, önceden ayrılmış tamponlarla.
@@ -240,29 +350,115 @@ dosya var.
 ATEŞ + yetenekler; gaz yapışkan kol, iki konumda (A: sol çubuğun yanı, B: sağ kenar) dev
 anahtarıyla denenir. Ayrıntı ve ölçütler: [03](03-ucus-ve-kontroller.md).
 
+#### KG-T31
+**Yerel ortak MVP odası.** `ROLE=arena` ayrı süreç, `ARENA_DEV` guest oturumu, en çok 8 insan
+ve 3 test botu. 30 Hz paylaşılan kurallar, 15 Hz snapshot; input buffer/sequence, tahmin ve
+uzlaştırma, diğer pilotlarda gecikmeli aradeğerleme. İstemci isabet, kargo veya sonucu bildirmez.
+Üretim hesabı/galaksi kimliği ve oda orkestrasyonu henüz bağlanmadı; prod dev araçları reddedilir.
+Boş alana girişte test yükü yenilenir; gerçek ekonomi/ödül yazımı yoktur (F8–F9 kapsamı değil).
+
+#### KG-T32
+**APK görsel hattı ve render sunumu.** Seçilen native GLB/dokular; ayrı yüksek çözünürlüklü
+gökyüzü ve küçük yansıma küpü; native atlaslarla GPU sprite instancing; ACES ve ölçülü bloom.
+Tek canvas; açılışta 3B gemi; uçuşta ayrı namlu geçişi, yarı hızda arka kamera. Sesler kullanıcı
+başlatma dokunuşunda decode edilir; native örnekler motor/ambiyans/olay katmanlarında, karşı
+atışlar uzaklık/yöne göre çalınır. F7'de gerçek cihaz performans/his incelemesi gerekir.
+
+#### KG-T33
+**Alan v2: tohumlu düz disk.** `buildArenaLayout(ARENA_SEED)` (rules/arena/layout.ts) yalnız aritmetikle
+her eşte aynı alanı üretir (KG-T11): merkez istasyon (sekizgen disk + kule), 4 çıkış kapısı (pist +
+iki pilon), içi uçulabilir bölmeli 2 maden üssü, ikiye kırılmış ve altından geçilebilen enkaz, 3 röle;
+3 sık kuşak (~125 kaya + 5 kristal), 5 dev kaya (her birinde iki kristal), ~245 seyrek kaya ve
+açıkta 4 kristal. Girişler ve çıkış bölgeleri her zaman açıktır. Çarpıştırıcılar küre ve yalnız
+dikey eksende dönen kutulardır; görsel model yapıyı giydirir, kutunun kendisi de çizilir ki pist
+göründüğü yerde olsun. Geniş faz: `queryObstacles` sabit ızgara (100 m, CSR, tahsis yok).
+
+#### KG-T34
+**Nişan yardımı iki katmanlı.** (1) *Direksiyon mıknatısı:* istemci, ateş basılıyken önleme
+noktası `assistCos` konisi ve `assistRange` içindeyse gemiyi ~0,25 sn'de hedefe çevirecek bir dönüş
+komutu üretir; oyuncunun kendi çubuğu güçlendikçe zayıflar. Bu komut girdinin ayrı kanalıdır
+(`assistX/Y`), ağda gider ve sunucu `assistMax`'a kırpar; tahmin aynı girdiyle aynı sonucu verir.
+Hedef üzerindeyken çubuk %68'e yavaşlar (nişangâh sürtünmesi). (2) *Namlu gimbal'ı (sunucu):* görünür
+(gizlenmemiş, duman arkasında olmayan) bir geminin önleme noktası burundan `gimbalCos` içinde ve
+`gimbalRange` yakınında ise mermi oraya yönelir; dağılım yine uygulanır (isabet özelliği anlamını
+korur). Sayılar [04 §13](04-savas-mekanikleri.md#baslangic-degerleri).
+
+#### KG-T35
+**İniş, sekme, kazı ve yavaş dönüş kuralları.** Toplam hız ≤ `landSpeed` iken yüzeye temas iniştir.
+İnen gemi durur, gövdesini yüzey normaline hizalar, yalnız normal etrafında döner, ateş ve yetenek
+kullanabilir. Gaz, inişten beri görülen en düşük değerin üstüne çıkınca kalkar; istemci inişte kolu
+sıfırlar. Daha hızlı temas **sekmedir** (sahip, 2026-10-08): yüzeye dik yaklaşma hızı × `bounce` kadar
+normal boyunca geri itme hızı eklenir ve `knockDecay` ile söner; ileri hız kafa kafaya çarpmada
+`bounceLoss` oranında düşer, sıyırmada neredeyse korunur. Hasar yoktur (KG-T19 sürer). Kristale inen gemi
+`mineRate` hızında kazar; kazı kalkanı kaldırır (kargo toplama sayılır, KG-K9). Gemi yavaşken
+`slowTurnBonus` kadar daha dar döner. Testler: `packages/rules/test/arena/`.
+
+#### KG-T36
+**3. şahıs kamera ve gemi sunumu.** `render/camera.ts`: kol, geminin **gecikmeli** yönelimiyle arkada
+asılır; kamera geminin **gerçek** burnunun önündeki noktaya bakar; hız ve turbo kolu yavaşça uzatır,
+FOV açılır; sarsıntı "trauma" modelidir (hasar, sürtünme, öldürme); kol kayaya girmez. Gemi gövdesi
+dönüşe yatar (yalnız görsel). Motor alevi kameraya yüzünü dönen bir şerittir: Subdivision'ın iz dokusu
+geriye kayar ve dalgalı gürültüyle bükülür; beyaz-sıcak çekirdek, seyirde mavi, turboda kehribar-turuncu,
+şok elmasları ve geriye savrulan kıvılcımlar. Gaza göre uzar.
+Kendi gemide motor izi çizilmez (KG-X17); başka gemilerde iz zamana bağlı yaşlanıp söner. İnen
+geminin görseli kayanın gerçek yüzeyine ışın atılarak oturtulur.
+
+#### KG-T37
+**Render hattı.** R3F yerine düz Three.js `WebGLRenderer` + kendi sabit adımlı sürücümüz (KG-T24 sürer).
+Post: pmndrs `postprocessing`, **çok örnekli (MSAA) half-float** hedef, mipmap bloom, AgX ton eşleme,
+vinyet, hasarda kromatik vuruş; galakside kullanılan sonlu değer koruması bloom girişini korur.
+Piksel oranı en düşük kalite ayarı dışında 2'ye kadar. Kayalar model başına tek örneklenmiş çizim;
+her karede CPU'da görüş konisi + mesafe kırpması yapılır (1,16 M → 50–310 bin üçgen). Gökyüzü 2048²
+küp (Subdivision set 4), ışık için ayrı küçük küpten PMREM. Bütün shader'larda `pow` tabanları
+kıstırılır: MSAA kenar örnekleri UV'yi aralık dışına taşır ve NaN siyah çizgi olarak görünür.
+
+#### KG-T38
+**Yükleme ve tanı.** Bütün varlıklar uçuştan önce gerçek ilerleme çubuğuyla yüklenir; ardından
+`renderer.compileAsync` ile shader'lar derlenir (ilk atışta takılma olmaz). Dev'de ekranda tanı
+paneli (`&diag` ya da sol alttaki "tanı"): hatalar, GPU/WebGL yetenekleri, yükleme süreleri, FPS,
+çizim çağrısı ve üçgen sayısı.
+
+#### KG-T39
+**Protokol v2.** `ARENA_PROTOCOL = 2`; pilot `PILOT_WIDTH` = 47 sayı (iniş, normal, kalkış, temas,
+sekme hızı `kx/ky/kz` ve kazı alanları eklendi; faz en sonda); anlık görüntüde kristal rezervleri ve
+kuru bayrakları (`dry`: kristal yarıya dolana kadar kuru kalır, istemci bunu tahmin etmez); anlık görüntüde kristal rezervleri; girdi 7 sayı (nişan kanalı). Oyuncu
+listesi botların rolünü taşır. Kendi atışların anında görünmesi için istemci tahmini mermi izleri
+çizer (`ghosts`); bunlar hasar vermez, sunucunun kendi mermileri çizilmez.
+
+#### KG-T40
+**Botlar.** Üç rol: *avcı* (görünür insan pilotu önleme noktasıyla kovalar, aralıklı ateş eder, çok
+hasar alınca dumanla kaçar), *madenci* (kristale yavaşça iner, kazar, saldırıya uğrayınca kaçar,
+dolunca çıkışa gider; oyuncunun avı), *devriye* (kuşaklar arasında dolaşır, yakına gelene saldırır).
+Hepsi ileriye bakıp kayadan kaçınır; görünmez/duman arkasındaki pilotu hedeflemez.
+
+#### KG-T41
+**İniş yardımı ve kontrol güvenlikleri.** *İn* tek dokunuştur. Nişangâha en yakın yüzey seçilir;
+menzil 260 m ve canlı kristal önceliklidir. Seçilen yüzeyde iniş noktası halkası çizilir ve gemi
+oraya yönelip mesafeye göre gazı düşürerek konar. Bu yalnız girdi üretir (`landing.ts`), dolayısıyla
+sunucu ve tahmin aynı kalır. Çubuğun belirgin oynatılması (> 0,4) yardımı iptal eder. *Kalk* 0,55 sn
+basılı tutma ister; gaz itmek de kalkıştır. Joystick tabanı dokunulan yerde açılır, ama sol alttaki
+sabit bir bölgeye kıstırılır ve parmağı izlemez.
+
+#### KG-T42
+**Kontrol ve HUD güvenlikleri (2026-10-09 inceleme).**
+- Turbo inişteyken kalkıştır (`world.ts`, `flight.ts`; test: `world.test.ts`).
+- `controls.clear()` yalnız basılı olanı bırakır, gaz kolu yerinde kalır: menü, odak kaybı ve bağlantı
+  kopması gemiyi durdurmaz.
+- Sonuç ekranı yalnız canlıdan bitişe gerçek geçişte açılır.
+- Uzaktaki pilotlar sıra ile değil id ile eşlenir (`network.ts`).
+- Kilit sesi kilit kurulduğunda bir kez çalar; düşük yakıt uyarısı eşikte bir kez, sonra 20 sn'de bir.
+- HUD notlarında öncelik: ambar dolu ve doğuş kalkanı "İnebilirsin"in önünde.
+- Ekran dışı işaretler kendi geminin üstünde biter; bağlantı etiketi arka görüş çerçevesinde durur.
+- Takip kamerası kutu yapıların duvarına girmez.
+- Ekran uzayındaki her şey (nişangâh, önleme işareti, radar) kameranın izlediği **ara değerlenmiş**
+  pozdan hesaplanır, 30 Hz simülasyon durumundan değil. Aksi hâlde dönüşte nişangâh tick karesi ile ara
+  kare arasında ~23 px gidip gelir ve göz iki nişangâh görür (ölçüldü: 90 karede 84 yön değişimi → 0).
 ---
 
 ## Açık sorular (KG-A)
 
 Biçim: **Soru** · Öneri · Prototip varsayılanı (sahip cevaplayana kadar) · Ne zaman sorulur.
 Sahip cevaplayınca madde KG-K'ye taşınır, buradan silinir.
-
-#### KG-A1
-**Doğuş kalkanı ne zaman biter?** Spec: 60 sn veya ateş. Sorun: 60 sn × ~120 m/s her çıkışa
-yetiyor → kalkanlı gemi dokunulmaz biçimde çıkabilir; kaynak toplama gelince kalkanlı toplama da
-olur (kovalamaca testini de bozar). · **Öneri:** hangisi önce olursa: ateş, çıkış alanına giriş,
-kargo toplama, 60 sn. · Varsayılan: öneri. · **F0'da sor** (kilitli kurala ek).
-
-#### KG-A2
-**Yakıt bitince çekilme anlık mı?** Anlıksa "ölmek üzereyken yakıtı ateşle tüket, hasarsız
-kurtul" kaçışı doğar (ateş de döteryum yakar). · **Öneri:** gemi sürüklenip durur, "Kurtarma
-yolda" sayacıyla **10 sn** savunmasız kalır; bu sürede yok edilirse yok edilme sayılır. ·
-Varsayılan: öneri. · **F0'da sor.**
-
-#### KG-A3
-**Yakıt ve mühimmat döteryumu tek depodan mı?** · **Öneri:** tek depo; HUD "bu hızla kalan
-süre"yi gösterir; her atış depodan düşer (atmak = kaçış menzilinden yemek, anlamlı karar). ·
-Varsayılan: öneri. · **F0'da sor.**
 
 #### KG-A4
 **Son kontrol yerleşimi ve dikey/yatay.** · Öneri: F7'deki ölçümlerle (ölçütler [03](03-ucus-ve-kontroller.md#dikey-mi-yatay-mi)). · Varsayılan: A/B dev anahtarı, dikey. · **F7.**
@@ -295,11 +491,6 @@ yalnız arenada kazanılır (galaksi ekonomisini şişirmez); kartlar sonra monu
 
 #### KG-A11
 **Maliyetler, seviye tavanları, azalan getiri** (S39). · Öneri: [08](08-ilerleme-ve-ekonomi.md). · F8.
-
-#### KG-A12
-**Kaynak toplama yöntemi** (S44, S48). · Öneri: asteroidi silahla kırınca çıkan kapsülü üstünden
-geçerek toplamak (yeni kontrol yok, silah ve uçuş becerisini kullanır). Alternatif: Subdivision
-tarzı madencilik ışını (yeni kontrol + yeni durum). · F9.
 
 #### KG-A13
 **Arena PvP'si Dominion'u besler mi?** Dominion galaksinin sıfır toplamlı ladder'ı. · Öneri:
@@ -388,9 +579,8 @@ Varsayılan: öneri. · **F0'da bilgi ver, F5 başlamadan onay al.**
 Biçim: tek satır — ne, neden olmadı. Önemsizleşenler silinir.
 
 #### KG-X1
-Otomatik nişan, hedefe yapışma, kilitlenme (prototipte) — sahip istemedi (S72); Space Commander'da
-cömert kilitlenme savaşı "eller serbest" ve sıkıcı yaptı. Metalstorm'un "ateşte hafif hizalama"sı
-da bir nişan yardımıdır, prototipte yok.
+Otomatik nişansız prototip (S72) — sahip MVP'den sonra hafif mıknatıs istedi (KG-K20). Space Commander'daki
+cömert kilit ise hâlâ istenmez: yardım yalnız ateş ederken ve hedefe çok yakınken çalışır.
 
 #### KG-X2
 İstemcinin isabeti bildirmesi — sunucu tek otorite (S51, `architecture.md`).
@@ -432,3 +622,48 @@ Varsayılan geri sarma — kurban kaçtıktan sonra vurulur; kaç/kovala döngü
 #### KG-X12
 Rules köküne düz `arena*.ts` dosyaları — ana barrel'a bağlanır, canlı galaksi kurallarından
 yalıtım zayıflar; alt klasör + subpath export seçildi.
+
+#### KG-X13
+Three.js `Lensflare` — çerçeve tamponunu kopyalıyor; MSAA hedefinde GL hatası verip kareyi karartıyordu.
+Yerine gökyüzünün ışık kaynağına uzak bir hale sprite'ı + bloom.
+
+#### KG-X14
+Doğuş kalkanı için gemiyi saran küre — 3. şahıs kamerada ekranın yarısını kaplıyordu. Yerine gövdeyi
+saran fresnel enerji kabuğu.
+
+#### KG-X15
+Kayalarda tek parça örneklenmiş çizim ve GPU'nun kendi kırpması — örnekli ağ bütün kopyaları çizer;
+kare başına 1,16 M üçgen. Yerine örnek başına CPU kırpması (KG-T37).
+
+#### KG-X16
+İnişi gaz seviyesine bağlamak (yalnız gaz ≤ %20 iken iniş) — %50 gazla yüzeye yavaş değen gemi inmeden
+sürtünüp "dırr" sesiyle yüzeyi kazıyordu (sahip bildirdi). Yerine hız kuralı + sekme (KG-T35).
+
+#### KG-X17
+Kendi gemide motor izi — 3. şahıs kamerada iz kameraya doğru akıp ekranın altında projektör huzmesi
+gibi görünüyordu. Kendi gemide yalnız alev; iz başka gemilerde.
+
+#### KG-X18
+Yalnız gaz seviyesi ayarlayan *İn* düğmesi — oyuncu dokunduktan sonra ne olacağını göremiyor, üst üste
+basıp yanlışlıkla *Kalk*'a basıyordu. Yerine hedefli iniş yardımı ve basılı tutarak kalkış (KG-T41).
+
+#### KG-X19
+Hasarı gemi üstünde büyük, yanıp sönen tek kıvılcım sprite'ıyla göstermek — gövde düşükken burnun
+önünde sürekli turuncu bir patlama gibi kaldı (sahip bildirdi). Yerine gövdeden ara ara kısa kıvılcım
+çizikleri ve kritik gövdede ince duman izi (`ShipVisual.damage`).
+
+#### KG-X20
+Kuşak pusunu kameranın etrafında üst üste binen büyük bulut sprite'larıyla vermek — kuşağın içinde
+her biri tam ekran dolum demekti, telefonda FPS düşüyordu (sahip bildirdi). Bulutlar kamera girmeden
+söner; içerideki pus tek katmanlık bir küre ve post-process perdesidir. Sis rengini kuşak tonuna
+kaydırmak da denendi: uzak kayalar karanlık gökyüzü önünde düz açık mavi siluetler oldu.
+
+#### KG-X22
+Motor alevini açık bir koniyle çizmek — keskin geometrik kenarı ve düz renk geçişiyle "basit, çocuksu"
+göründü (sahip). Turbo ateşlemesinde motorların etrafında genişleyen halka da denendi, çizgi film gibi
+durdu. Yerine dokulu alev şeridi ve yalnız bir ateşleme parlaması (KG-T36).
+
+#### KG-X21
+Kayaya çarpma için Metalstorm `snd-damaged` ve hasarda `self-damage` sesleri — ikisi de 7–9 sn'lik
+bip dizileriydi ("dit dit dit", sahip bildirdi). Yerine 0,74 sn'lik Subdivision darbe sesi, kritik
+gövdede tek uyarı; her tek seferlik ses bir süre tavanıyla kesilir (`audio.ts` `cut`).

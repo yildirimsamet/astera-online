@@ -17,6 +17,10 @@ interface ImportMetaEnv {
   readonly VITE_GA_ID?: string;
   /** Local reference archive, supplied by the development server only. */
   readonly VITE_ASTERA_REFERENCE_ART?: string;
+  /** Admin prototype entry outside local development; only '1' opens it. */
+  readonly VITE_ARENA?: string;
+  /** Explicitly built visual-test sandbox; never set for a public build. */
+  readonly VITE_VISUAL_TEST?: string;
 }
 
 interface ImportMeta {

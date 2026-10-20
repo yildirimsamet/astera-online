@@ -1,7 +1,7 @@
 # Komutan Gemisi — Varlıklar ve referans varlık çıkarma (ADB)
 
-> **Durum:** Prosedür (2026-10-07). Telefon gerektiren adımlar **yalnız sahibin bilgisayarında**
-> yapılabilir (bulut oturumunda USB yok).
+> **Durum:** Yerel APK çekimi ve tam içerik taraması yapıldı (2026-10-08).
+> Güncel sonuç ve sınırlamalar [13](13-gelistirme-notlari.md)'te; aşağıdaki prosedür yeniden çekim içindir.
 > **Hedef okuyucu:** Varlık hattını (V fazı, [12](12-yol-haritasi.md)) yürütecek agent.
 > **Dayanak:** KG-K6, KG-T26 ([02](02-kararlar.md)); sahibin isteği aşağıda (V1–V15).
 
@@ -51,36 +51,62 @@
 ## 3. Kod tarafı: değiştirilebilirlik
 
 <a id="kayit-defteri"></a>
-### 3.1 Kayıt defteri (repo'da)
+### 3.1 Paket sözleşmesi (repo'da)
 
-`apps/web/src/arena/assets/registry.ts`: kod **mantıksal kimliğe** bağlanır (KG-T26). Her kimlik:
-tür, varsayılan kaynak (kendi `/assets/...` yolu veya `procedural:<ad>`), beklenen özellik
-(üçgen bütçesi, ölçek, burun +Z, pivot, düğümler `muzzle`/`engine_*`). Oyun geometrisi (vuruş
-yarıçapı, namlu noktası) `rules/arena` verisidir, modelden okunmaz.
+`apps/web/src/arena/assets/manifest.ts` referans paketinin biçimini Zod ile tanımlar ve yalnız
+`/__ref/dist/...` ya da `/__ref/audio/...` yollarını kabul eder. `assets/load.ts`, dev'de
+`/__ref/dist/v2/manifest.json`'ı okur ve her şeyi uçuştan önce gerçek ilerlemeyle yükler. Kod
+mantıksal adlara bağlıdır: `ships.hero|rivals`, `rocks`, `giants`, `crystals`, `shards`,
+`structures`, `props`, `textures`, `sky.faces|env`, `fx.*`, `sounds.*`, `music`.
+Gemi kaydı model yolunu, `uvFlip` / `rotateY` düzeltmesini ve motor noktalarını (`engines`)
+taşır. Oyun geometrisi (vuruş yarıçapı, çarpıştırıcılar, namlu noktası) `rules/arena`
+verisidir, modelden okunmaz.
 
-Başlangıç kimlikleri: `ship.pilot` · `gun.left` · `gun.right` · `asteroid.s|m|l` (+ varyant) ·
-`debris.*` · `structure.station` · `structure.exitBeacon` · `structure.entryGate` · `env.satellite`
-· `cargo.canister` · `sky.arena` · `fx.muzzle` · `fx.tracer` · `fx.impact.ship` · `fx.impact.rock` ·
-`fx.shield` · `fx.explosion` · `fx.smoke` · `fx.engineFlame` · `fx.cloakShimmer` · ses:
-`sfx.fire.own|other` · `sfx.hit.confirm|shield|rock` · `sfx.explosion` · `sfx.engine` · `sfx.turbo`
-· `sfx.smoke` · `sfx.cloak.on|break` · `sfx.warn.fuel|damage` · `sfx.exit.tick` · `sfx.ui.*`.
+**Yedek:** manifest yoksa (prod, CI, temiz klon) ya da bir dosya yüklenemezse o parçanın
+prosedürel karşılığı çizilir (`render/procedural.ts`). Prod ve testler referans varlığa
+muhtaç değildir.
 
-**Çözüm sırası:** (yalnız DEV) `/__ref/manifest.json`'daki eşleme → kendi varlığımız →
-**prosedürel yer tutucu** (kodla üretilen basit geometri/sprite). Prosedürel yer tutucu her kimlik
-için **her zaman** vardır → CI, görsel testler ve prod referans varlığa asla muhtaç değildir.
+### 3.1b v2 paketi (KG-K22, 2026-10-08)
 
-### 3.2 Depo dışı depolama ve dev servisi
+`astera-refs/prepare_v2.py` paketi üretir (orijinallere dokunmaz):
 
-- Dizin: `ASTERA_REF_ASSETS_DIR` (öneri `~/astera-ref-assets`), `apps/web/.env.local`'da (kökteki
+```sh
+~/astera-ref-assets/.tools-venv/bin/python -I astera-refs/prepare_v2.py astera-refs
+```
+
+Çıktı: `dist/v2/sky` (2048² gökyüzü küpü, Subdivision set 4 + 256² ışık küpü), `dist/v2/tex`
+(1024 px webp dokular), `dist/v2/fx`, `audio/v2/*.ogg`, `dist/v2/manifest.json`.
+
+| Grup | Kaynak |
+|---|---|
+| Gemiler, kayalar, dev kayalar, kristaller, yapı parçaları, gökyüzü, efekt dokuları, müzik | Subdivision |
+| Motor, ambiyans, kayaya çarpma | Subdivision |
+| Atış, isabet, turbo, kalkan, gemi patlaması, kilit, kazı döngüsü | Space Commander |
+| Uzak/yakın patlama, sekme, hasar uyarısı, öldürme, duman, gizlenme, UI | Metalstorm |
+
+Subdivision'ın FMOD bankasında ayrık efekt sesi az olduğu için seslerin çoğu diğer iki oyundan
+gelir. Gemi motor noktaları modellerin nozul ağlarından ölçülüp `prepare_v2.py`'ye yazıldı.
+
+### 3.2 Yerel arşiv ve dev servisi
+
+- Güncel arşiv: worktree kökündeki **`astera-refs/`** (KG-K17), `.gitignore` ve ESLint dışında.
+  Orijinal APK'lar `~/astera-ref-assets/raw/` altında korunur; `raw-source.json` konumu kaydeder.
+  `extract/`: ham ve tüm dışa aktarılan içerik; `catalog/`: kaynak/kayıt/dönüşüm notları;
+  `dist/`: Three.js'e hazırlanmış kopyalar; `audio/`: seçilen örnekler; `manifest.json`: mantıksal eşlemeler.
+- Alternatif dizin: `ASTERA_REF_ASSETS_DIR`, `apps/web/.env.local`'da (kökteki
   `.gitignore` `.env.local`'ı her dizinde dışlar) veya kabuk ortamında.
 - Vite eklentisi `apps/web/src/lib/refAssetsPlugin.ts` (`apply: 'serve'` — build'de hiç yok):
-  `/__ref/*` → `$DIR/dist` ve `$DIR/audio`; `/__ref/manifest.json`. Dizin **repo içindeyse
-  başlatmayı reddeder**; değişken yoksa hiçbir şey yapmaz. Vite `VITE_` öneki olmayan değişkenleri
+  `/__ref/*` → `$DIR/dist` ve `$DIR/audio`; `/__ref/manifest.json`. Proje içinde yalnız tam
+  `astera-refs/` yolu kabul edilir; diğer proje içi yollar reddedilir. Değişken yoksa bu
+  klasörde manifest aranır; o da yoksa referans servisi açılmaz. Gerçek yol kontrolü,
+  symlink ve traversal korumaları vardır. Ham APK/Unity dosyaları ve katalog HTTP ile servis edilmez.
+  Vite `VITE_` öneki olmayan değişkenleri
   `.env.local`'dan `process.env`'e yüklemez: `vite.config.ts` değeri `loadEnv(mode, root, '')` ile
   okuyup eklentiye verir (önce kabuk ortamı).
-- Koruyucular: `.gitignore`'a `astera-ref-assets/`, `**/__ref/**`, `*.ref.glb`; `git ls-files`
-  ile bu desenlerde izlenen dosya olmadığını doğrulayan test; F10'da `apps/web/dist` içinde
-  `__ref` geçmediği kontrolü; kayıt defterinin varsayılanlarının `/__ref/`'e işaret etmediği testi.
+- Koruyucular: `.gitignore`'a `astera-refs/`, `astera-ref-assets/`, `**/__ref/**`, `*.ref.glb`; `git ls-files`
+  ile bu desenlerde izlenen dosya olmadığını doğrulayan kontrol; build'e referans dosyası
+  kopyalanmadığı ve prod'da dev servisinin bulunmadığı kontrolü; kayıt defterinin varsayılanları
+  `/__ref/`'e işaret etmez. Kodda sınır doğrulama için `/__ref/` metni bulunması varlığın paketlendiği anlamına gelmez.
 - Referans varlıklar **`tools/models.mjs`'ten geçirilmez** (çıktısı `public/`'e yazar).
 - İçinde referans varlık görünen görüntü/video yalnız `.dev/arena/` veya `$DIR/captures`.
 

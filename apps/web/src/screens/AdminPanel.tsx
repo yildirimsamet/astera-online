@@ -25,8 +25,9 @@ import { HeartIcon } from '../ui/icons/index.js';
 import { AdminPlayersPanel } from './AdminPlayersPanel.js';
 import { AdminShopierQueue } from './AdminShopierQueue.js';
 import { AdminDeletionQueue } from './AdminDeletionQueue.js';
+import { AdminArenaPilots } from './AdminArenaPilots.js';
 
-type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SHOPIER' | 'SUPPORTERS' | 'PLAYERS' | 'DELETION' | 'REPORTS';
+type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF' | 'SKINS' | 'SHOPIER' | 'SUPPORTERS' | 'PLAYERS' | 'DELETION' | 'REPORTS' | 'ARENA';
 
 const ADMIN_TAB_ID: Record<AdminTab, string> = {
   REPORTS: 'admin-reports-tab',
@@ -38,6 +39,7 @@ const ADMIN_TAB_ID: Record<AdminTab, string> = {
   SKINS: 'admin-skins-tab',
   SHOPIER: 'admin-shopier-tab',
   SUPPORTERS: 'admin-supporters-tab',
+  ARENA: 'admin-arena-tab',
 };
 
 /** The Gözlemevi field: one height, one border, your colour when it has the caret. */
@@ -70,6 +72,7 @@ export default function AdminPanel() {
             { id: 'SKINS', label: t('community.admin.skinsTab') },
             { id: 'SHOPIER', label: t('community.admin.shopierTab') },
             { id: 'SUPPORTERS', label: t('community.admin.supportersTab') },
+            { id: 'ARENA', label: t('community.admin.arena.tab') },
           ]}
         />
       </div>
@@ -81,7 +84,7 @@ export default function AdminPanel() {
         {tab === 'REPORTS' ? <AdminContentReports /> : tab === 'DELETION' ? <AdminDeletionQueue /> : tab === 'PLAYERS' ? <AdminPlayersPanel /> : tab === 'COMPOSE' ? <AnnouncementComposer />
           : tab === 'FEEDBACK' ? <AdminFeedbackList />
             : tab === 'PERF' ? <PerfRecorderPanel />
-              : tab === 'SKINS' ? <SkinGrantForm /> : tab === 'SHOPIER' ? <AdminShopierQueue /> : <SupporterForm />}
+              : tab === 'SKINS' ? <SkinGrantForm /> : tab === 'SHOPIER' ? <AdminShopierQueue /> : tab === 'ARENA' ? <AdminArenaPilots /> : <SupporterForm />}
       </div>
     </div>
   );

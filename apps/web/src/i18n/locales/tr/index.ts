@@ -4,6 +4,7 @@ import { accountSecurity } from './accountSecurity.js';
 import { unknownSignal } from './unknownSignal.js';
 import { honorBenefits } from './honorBenefits.js';
 import { vacation } from './vacation.js';
+import { arena } from './arena.js';
 import { silentSpace } from './silentSpace.js';
 import { brand } from './brand.js';
 import { monument } from './monument.js';
@@ -44,6 +45,7 @@ export const tr: Resources = {
   accountDeletion,
   honorBenefits,
   unknownSignal,
+  arena,
   brand,
   monument,
   silentSpace,

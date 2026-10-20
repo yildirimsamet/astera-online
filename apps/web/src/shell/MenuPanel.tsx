@@ -43,6 +43,7 @@ import {
   HeartIcon,
   HonorIcon,
 } from '../ui/icons/index.js';
+import { ThornHull } from '../ui/icons/hulls.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
 import { publisherUrl } from '../lib/publisherPages.js';
 import { openConsentNotice, readConsent, reopenGoogleCmp } from '../lib/consent.js';
@@ -142,6 +143,7 @@ export function MenuPanel({
   isAdmin = false,
   country = 'TR',
   onCountryChange,
+  onEnterArena,
 }: {
   galaxy: string | null;
   shard: string | null;
@@ -172,6 +174,8 @@ export function MenuPanel({
   isAdmin?: boolean;
   country?: CountryCode;
   onCountryChange?: (country: CountryCode) => Promise<void>;
+  /** Present only for a commander seated in the Komutan Gemisi playtest. */
+  onEnterArena?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const platform = capabilities();
@@ -197,6 +201,7 @@ export function MenuPanel({
 
   return (
     <div data-v2-commander-menu className="flex flex-col gap-5 px-1 pb-3 font-v2-ui text-v2-ink">
+      {onEnterArena && <ArenaInvite onEnter={onEnterArena} />}
       <MenuRow icon={<LockIcon className="size-5" />} label={t('vacation.title')}
         hint={t('vacation.hint')} onClick={() => { setVacationOpen(true); }} />
       {vacationOpen && <VacationSheet onClose={() => { setVacationOpen(false); }} />}
@@ -675,6 +680,39 @@ function MenuTile({
  * two callers (a readable season result, a Silent Space placement) are both cases
  * where the game owes the commander a decision rather than offering one.
  */
+/**
+ * THE PLAYTEST DOOR (owner 2026-10-20: "Bu oyuncularda menüde katıl butonu çıksa").
+ * Only a seated pilot is handed `onEnterArena`, so this card is an invitation, never
+ * a locked tease. The pill names the act; the hint says what the flight is for.
+ */
+function ArenaInvite({ onEnter }: { onEnter: () => void }) {
+  const { t } = useTranslation();
+  const label = t('arena.menuLabel'), hint = t('arena.menuHint');
+  return (
+    <button
+      type="button"
+      data-menu-arena
+      onClick={() => {
+        haptic('tap');
+        onEnter();
+      }}
+      aria-label={`${label}. ${hint}`}
+      className="relative flex w-full items-center gap-2.5 overflow-hidden rounded-control border border-v2-self/50 bg-[radial-gradient(ellipse_at_12%_50%,var(--color-v2-self)/22%,transparent_65%)] px-3 py-2.5 text-left transition-colors hover:border-v2-self focus-visible:outline-2 focus-visible:outline-v2-self"
+    >
+      <span className="grid size-9 shrink-0 place-items-center rounded-control border border-v2-self/40 bg-v2-deep text-v2-self">
+        <ThornHull className="size-6" />
+      </span>
+      <span aria-hidden className="min-w-0 flex-1">
+        <span className="block truncate text-caption font-semibold text-v2-ink">{label}</span>
+        <span className="mt-0.5 block truncate text-micro leading-tight text-v2-ink-2">{hint}</span>
+      </span>
+      <span aria-hidden className="shrink-0 rounded-chip bg-v2-self px-3 py-1 text-micro font-bold uppercase tracking-wide text-v2-deep">
+        {t('arena.join')}
+      </span>
+    </button>
+  );
+}
+
 function MenuRow({
   icon,
   label,

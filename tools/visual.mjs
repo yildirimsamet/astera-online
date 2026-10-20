@@ -327,6 +327,12 @@ if (process.argv.includes('--planet-selection')) {
   process.exit(0);
 }
 
+if (process.argv.includes('--arena')) {
+  const { verifyArena } = await import('./arena-visual.mjs');
+  await verifyArena(process.argv[2] ?? '.dev/arena');
+  process.exit(0);
+}
+
 if (process.argv.includes('--first-game-shield')) {
   const { verifyFirstGameShield } = await import('./first-game-shield-visual.mjs');
   await verifyFirstGameShield(process.argv[2] ?? 'out/first-game-shield');

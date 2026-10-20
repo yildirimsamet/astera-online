@@ -1,6 +1,8 @@
 import { defineConfig, loadEnv } from 'vite';
 import { mobileBuild } from './mobileBuild.js';
 import { nativeBundlePlugin } from './nativeBundlePlugin.js';
+import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { adsensePlugin } from './src/lib/adsense.js';
@@ -9,6 +11,7 @@ import { landingPlugin } from './landingPlugin.js';
 import { openingScreenPlugin } from './openingScreenPlugin.js';
 import { fileURLToPath } from 'node:url';
 import { referenceArtPlugin } from './src/lib/referenceArtPlugin.js';
+import { refAssetsPlugin } from './src/lib/refAssetsPlugin.js';
 
 /**
  * Everything is served same-origin in dev, through this proxy.
@@ -18,7 +21,9 @@ import { referenceArtPlugin } from './src/lib/referenceArtPlugin.js';
  * and two more things to get wrong — for no benefit in a single-deployment game.
  */
 const API = process.env.ASTERA_API ?? 'http://localhost:3100';
+const referenceDirectory = resolve(process.cwd(), '../../astera-refs');
 const apiProxy = {
+  '/arena': { target: process.env.ASTERA_ARENA ?? 'http://localhost:3101', ws: true },
   '/api': {
     target: API,
     changeOrigin: true,
@@ -33,8 +38,13 @@ export default defineConfig(({ command, mode }) => {
   const mobile = mobileBuild(env);
   const { target } = mobile;
   const references = command === 'serve' ? referenceArtPlugin(fileURLToPath(new URL('../..', import.meta.url))) : null;
+  // Arena reference pack (Komutan Gemisi); dev server only, never in a build.
+  const arenaReferences = command === 'serve' ? refAssetsPlugin(
+    process.env.ASTERA_REF_ASSETS_DIR ?? loadEnv(mode, process.cwd(), '').ASTERA_REF_ASSETS_DIR
+      ?? (existsSync(resolve(referenceDirectory, 'manifest.json')) ? referenceDirectory : undefined),
+    resolve(process.cwd(), '../..')) : null;
   return {
-  plugins: [react(), tailwindcss(), openingScreenPlugin(), target === 'web' && adsensePlugin(), target === 'web' && wikiPlugin(), target === 'web' && landingPlugin(), references,
+  plugins: [react(), tailwindcss(), openingScreenPlugin(), target === 'web' && adsensePlugin(), target === 'web' && wikiPlugin(), target === 'web' && landingPlugin(), references, arenaReferences,
     mobile.target !== 'web' && nativeBundlePlugin(mobile.apiUrl, target, fileURLToPath(new URL('.', import.meta.url)))],
   publicDir: target === 'web' ? 'public' : false,
   define: {

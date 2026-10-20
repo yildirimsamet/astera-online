@@ -4,7 +4,7 @@
 > bu dosyadaki [başlangıç değerleri](#baslangic-degerleri) tablosudur;** kodda
 > `packages/rules/src/arena/tuning.ts` olarak yaşar.
 > **Hedef okuyucu:** Savaş kurallarını (`rules/arena`) ve sunucu odasını yazacak agent.
-> **Dayanak:** S18–S37, S43–S44, S64–S79 ([01](01-urun.md)); KG-K4, KG-K5, KG-A1, KG-A2, KG-A3,
+> **Dayanak:** S18–S37, S43–S44, S64–S79 ([01](01-urun.md)); KG-K4, KG-K5, KG-K9, KG-K10, KG-K11,
 > KG-T15–T20 ([02](02-kararlar.md)).
 
 Her kural **sunucuda** uygulanır (S51). İstemci aynı fonksiyonları yalnız tahmin ve görsel için koşar.
@@ -49,7 +49,7 @@ gemi dünyadan çıkar ve sonuç ekranı açılır ([07](07-hud-ve-ekranlar.md#s
 ## 2. Ateş ve mermi
 
 - **Ateş (S64):** ATEŞ basılıyken `fireRate` hızında; sol/sağ namlu sırayla. İlk mermi basışta.
-  Her atış `shotFuelCost` döteryum düşer (KG-A3, tek depo varsayımı); yakıt yetmezse atış olmaz.
+  Her atış `shotFuelCost` döteryum düşer (KG-K11, tek ortak depo); yakıt yetmezse atış olmaz.
 - **Doğuş:** namlu noktasından (`rules/arena` verisi, modelden değil — KG-T26), nişangâh
   doğrultusunda `convergeDist` uzaklıktaki noktaya doğru, üstüne dağılım (§3).
 - **Hız:** `gemi hızı + yön · muzzleSpeed` (miras, KG-T15). **Takip yok** (S65).
@@ -87,7 +87,8 @@ gemi dünyadan çıkar ve sonuç ekranı açılır ([07](07-hud-ve-ekranlar.md#s
 - Şarj `turboCharge` saniye; aktifken saniyede 1 azalır; bırakınca `turboRegenDelay` sonra
   `turboRegen` hızında dolar. En az `turboMinStart` şarjla başlar.
 - Basılı = şarj bitene kadar; kısa basış = `turboTapBurst` süreli patlama.
-- Etki: `turboSpeedMul`, `turboAccelMul`, dönüş tavanı `turboTurnMul` (< 1), ek yakıt `turboBurn`.
+- Etki: gazdan bağımsız hedef hız `speedMax · turboSpeedMul` (KG-K26), `turboAccelMul`, dönüş tavanı
+  `turboTurnMul` (< 1), ek yakıt `turboBurn`. Bırakınca gemi `decel` ile gaz hızına süzülür.
 
 **Duman (S22, S56, S76)**
 - Dokununca `smokeEmitDuration` boyunca kuyruktan `smokePuffInterval` aralıkla küre bulutlar
@@ -110,9 +111,9 @@ gemi dünyadan çıkar ve sonuç ekranı açılır ([07](07-hud-ve-ekranlar.md#s
   motor sesi başkalarında yoktur.
 - Sahibinin ekranında: hafif renk filtresi + "GÖRÜNMEZ 3,2 sn" sayacı.
 
-**Doğuş kalkanı (S29, KG-A1)**
+**Doğuş kalkanı (S29, KG-K9)**
 - `spawnShield` saniye. Biter: **ateş** (spec) — prototip varsayılanıyla ayrıca **çıkış alanına
-  giriş** ve **kargo toplama** (KG-A1, sahibe F0'da sorulur) — ya da süre dolunca.
+  giriş** ve **kargo toplama** (KG-K9, sahip onayladı) — ya da süre dolunca.
 - Kalkan başkalarına balon olarak görünür; sahibinin HUD'unda geri sayım. Kalkış anı **nedeniyle**
   açıkça gösterilir (S58): "KALKAN KALKTI — ateş ettin" · "— çıkış alanına girdin" · "— kargo
   aldın" · "— süre doldu".
@@ -150,11 +151,11 @@ tam durmuşken** (`s = 0`) ilerler, `exitHold` saniyeye ulaşınca `extracted`.
   "Tekrar gir".
 
 <a id="yakit-bitmesi"></a>
-## 8. Yakıt bitmesi (S35–S37, KG-A2)
+## 8. Yakıt bitmesi (S35–S37, KG-K10)
 
 Yakıt 0 → motor kapanır (gaz zorla 0), gemi yavaşlayıp durur, **hiçbir girdi alınmaz**. HUD
 "Yakıt bitti — kurtarma yolda · 10 sn"; gemi **`fuelOutRescueDelay` boyunca savunmasızdır**
-(prototip varsayılanı, KG-A2). Süre bitince `towed`: yeni hasar yok, eski hasar kalır (S36), kargo
+(sahip kararı, KG-K10). Süre bitince `towed`: yeni hasar yok, eski hasar kalır (S36), kargo
 **o konuma** kapsül olarak bırakılır (S37). Bu sürede yok edilirse yok edilme kuralları geçerlidir.
 Çıkış alanında durmuşken yakıt biterse sayaç sürer ([§1](#durum-olay)).
 
@@ -215,26 +216,27 @@ Diğer belgeler bu değerleri **adıyla** anar; çelişki olursa bu tablo geçer
 | Ad | Değer | Not |
 |---|---|---|
 | `tickRate` / `snapshotRate` | 30 Hz / 15 Hz | KG-T10 |
-| `arenaRadius` | 3000 m | |
-| `ringRadius` | 2200 m | dış giriş/çıkış çemberi |
-| `centerSplit` | 350 m | merkez giriş ↔ çıkış ayrımı (yarısı) |
-| `spawnJitter` | 80 m | |
+| `arenaRadius` / `arenaHalfHeight` | 2600 m / ±650 m | düz disk (KG-T33): tam gazda çaprazlama ≈ 43 sn |
+| `ringRadius` | 2050 m | dış giriş/çıkış çemberi |
+| `centerSplit` | 380 m | merkez giriş ↔ çıkış ayrımı (yarısı); merkez istasyonun üstü ve altı |
+| `spawnJitter` / `spawnClear` | 60 m / 160 m | girişin çevresi her zaman açık |
 | `exitRadius` | 120 m | |
 | `exitHold` ✱ | 3 sn | S31 |
 | `spawnShield` ✱ | 60 sn | S29 |
 | `speedMax` | 120 m/s | referans HUD "HIZ 120" |
-| `accel` / `decel` | 30 / 40 m/s² | 0→120 ≈ 4 sn; 120→0 ≈ 3 sn |
+| `accel` / `decel` | 34 / 20 m/s² | 0→120 ≈ 3,5 sn; 120→0 ≈ 6 sn (süzülerek durur) |
 | `stopEpsilon` | 0,5 m/s | altı tam 0 |
-| `turnRateMax` | 90°/sn | 180° ≈ 2 sn |
+| `turnRateMax` / `slowTurnBonus` | 1,25 rad/sn (~72°/sn) / +%30 | %50 gazda ~82°/sn, durmuşken ~93°/sn; hız yönetimi beceridir (KG-T35) |
 | `turnResponse` | 0,06 sn | aşmasız yaklaşma |
-| `stickLinear` / `deadzone` | 0,3 / 0,06 | [03 §4](03-ucus-ve-kontroller.md) |
+| `turnStopRatio` | 0,05 | o anki dönüş tavanına oranla; nötr girdide en çok dört tick |
+| `stickLinear` / `deadzone` | 0,15 / 0,06 | merkezde çok yumuşak, kenarda tam dönüş ([03 §4](03-ucus-ve-kontroller.md)) |
 | `rollLevelRate` | 1,5 /sn | |
-| `turboSpeedMul` / `turboAccelMul` / `turboTurnMul` | 1,6 / 2,0 / 0,6 | |
-| `turboCharge` / `turboRegen` / `turboRegenDelay` | 3 sn / 0,4 sn/sn / 1 sn | |
+| `turboSpeedMul` / `turboAccelMul` / `turboTurnMul` | 1,8 / 7 / 0,6 | turbo 216 m/s, her gazda; 60 → 216 ≈ 0,65 sn |
+| `turboCharge` / `turboRegen` / `turboRegenDelay` | 6 sn / 0,8 sn/sn / 1 sn | boştan dolum 7,5 sn (+1 sn bekleme) |
 | `turboMinStart` / `turboTapBurst` | 0,3 sn / 0,35 sn | |
 | `fuelTank` | 100 | döteryum birimi |
 | `throttleBurn` / `idleBurn` / `turboBurn` | 0,25 / 0,02 / +0,25 /sn | tam gazda 100 / 0,27 ≈ 6,2 dk; sürekli ateşte ≈ 3,9 dk (KG-A19) |
-| `shotFuelCost` | 0,02 /atış | KG-A3 |
+| `shotFuelCost` | 0,02 /atış | KG-K11 |
 | `hull` | 400 | |
 | `damage` | 10 /isabet | |
 | `fireRate` | 8 /sn | sol-sağ sırayla |
@@ -242,11 +244,18 @@ Diğer belgeler bu değerleri **adıyla** anar; çelişki olursa bu tablo geçer
 | `projectileLife` | 1,5 sn | menzil ≈ 900–1080 m |
 | `convergeDist` | 350 m | |
 | `spreadBase` / `spreadMin` | 1,5° / 0,5° | yarı açı |
-| `shipHitRadius` | 6 m | |
+| `shipHitRadius` | 6 m | görsel gemi boyu 15 m |
+| `landSpeed` / `landSettle` / `landedYawRate` | 24 m/s / 0,35 sn / 1,2 rad/sn | bu hızın altında temas = iniş (KG-K21) |
+| `liftSpeed` / `liftTicks` / `landedTurboRegenMul` | 14 m/s / 12 tick / ×2 | kalkış itişi; inişte turbo iki kat dolar |
+| `bounce` / `bounceLoss` / `knockDecay` | 0,6 / 0,85 / 1,6 /sn | sekme: dik yaklaşma × 0,6 geri itme; kafa kafaya ileri hızın %85'i gider |
+| `mineRate` / `crystalReserve` / `crystalRegen` | 4 /sn / 40 / 0,35 /sn | tükenen kristal yarısına dolana kadar kazılmaz |
+| `gimbalCos` / `gimbalRange` | cos 3,5° / 700 m | namlu, burna yakın görünür hedefin önleme noktasına döner (KG-K20) |
+| `assistMax` / `assistCos` / `assistRange` | 0,32 / cos 9° / 900 m | ateş ederken direksiyon mıknatısı; sunucu kırpar |
+| `botRespawn` | 8 sn | |
 | `smokeEmitDuration` / `smokePuffInterval` | 1,5 sn / 0,15 sn | |
 | `smokeRadius` / `smokeGrow` / `smokeLife` / `smokeCooldown` | 35 m / 0,6 sn / 7 sn / 18 sn | |
 | `cloakDuration` / `cloakCooldown` / `cloakShimmerDist` | 4 sn / 25 sn / 60 m | |
-| `fuelOutRescueDelay` | 10 sn | KG-A2 |
+| `fuelOutRescueDelay` | 10 sn | KG-K10 |
 | `linkLostAfter` | 1 sn | mobil ağda sert gelirse 2–3 sn |
 | `linkLostGrace` ✱ | 30 sn | KG-K5 |
 | `inputBuffer` / `inputQueueMax` / `inputRepeatMax` | 2 tick / 6 / 3 tick | [05 §6](05-ag-ve-sunucu.md#girdi) |
@@ -256,12 +265,25 @@ Diğer belgeler bu değerleri **adıyla** anar; çelişki olursa bu tablo geçer
 | `roomCap` | 48 | KG-T4 |
 | `interpDelay` | 133 ms (iki snapshot aralığı; uyarlanır 133–200) | KG-T14 |
 | `extrapolationCap` / `headStartCap` | 150 ms / 100 ms | KG-T14, KG-T15 |
-| `aoiRadius` | 1500 m | snapshot'a giren uzaklık |
+| `aoiRadius` | 1600 m | snapshot'a giren uzaklık |
 | `offscreenEnemyDist` | 800 m | [07](07-hud-ve-ekranlar.md) |
-| `boundaryWarn` | 150 m | KG-T20 |
+| `boundaryWarn` | 200 m | KG-T20; sınır ızgarası yaklaşınca belirir |
 
 **Değişiklik günlüğü:** her değişiklik bu tablonun altına tek satır: tarih · ad · eski → yeni ·
 neden (hangi gözlem/ölçüm).
+
+- 2026-10-08 · alan küreden diske: `arenaRadius` 3000 → 2600, `arenaHalfHeight` yeni ±650 · sahip: "ne sürekli
+  savaş ne 10 dk arama"; düz referans düzlemi yön bulmayı kolaylaştırır, sık kuşak yine kaybettirir.
+- 2026-10-08 · `accel` 30 → 34, `decel` 40 → 42 · 3. şahıs kamerada hızlanma/yavaşlama daha hissedilir.
+- 2026-10-08 · iniş, kazı, nişan yardımı ve yavaş dönüş bonusu değerleri eklendi (KG-K20, KG-K21).
+- 2026-10-08 · `decel` 42 → 20 · sahip: "hızı kesince çok hızlı duruyor".
+- 2026-10-08 · `stickLinear` 0,3 → 0,15 ve çubuk yarıçapı 52 → 64 px · sahip: "joystick fazla hassas".
+- 2026-10-08 · `scrapeKeep` kaldırıldı, `bounce`/`bounceLoss`/`knockDecay` eklendi · sahip: belli hızın üstünde sekme.
+- 2026-10-09 · `turboSpeedMul` 1,6 → 1,8, `turboAccelMul` 2 → 3,5, `turboCharge` 3 → 6, `turboRegen` 0,4 → 0,8;
+  turbo hedefi gazdan bağımsız · sahip: "turbo biraz daha hızlı, 2 kat uzun, dolum aynı" (KG-K26).
+- 2026-10-09 · `turboAccelMul` 3,5 → 7 · sahip: "turbo ivmelenme olmamış".
+- 2026-10-09 · `turnRateMax` 90 → ~72°/sn, `slowTurnBonus` 0,45 → 0,3, çubuk yarıçapı 64 → 72 px · sahip: "yön
+  değiştirme seri, nişan almak zor".
 
 ## 14. Ayar yöntemi (S82)
 

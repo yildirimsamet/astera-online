@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Segmented } from '../kit/Segmented.js';
 
-export type BaseView = 'world' | 'research';
+export type BaseView = 'world' | 'research' | 'ship';
 
 /**
  * THIS WORLD | RESEARCH. Decision K6 (docs/ui-v2/gozlemevi.md).
@@ -11,7 +11,9 @@ export type BaseView = 'world' | 'research';
  * (`planet`, `research`), so a notification or a refusal that names either still lands
  * on it; this is only the door between them.
  */
-export function BaseSwitch({ value, onChange }: { value: BaseView; onChange: (view: BaseView) => void }) {
+export function BaseSwitch({ value, onChange, arenaAvailable = false }: {
+  value: BaseView; onChange: (view: BaseView) => void; arenaAvailable?: boolean;
+}) {
   const { t } = useTranslation();
   return (
     <div className="px-3 pb-2 pt-1">
@@ -20,6 +22,7 @@ export function BaseSwitch({ value, onChange }: { value: BaseView; onChange: (vi
         options={[
           { id: 'world', label: t('baseSwitch.world') },
           { id: 'research', label: t('baseSwitch.research') },
+          ...(arenaAvailable ? [{ id: 'ship' as const, label: t('arena.nav') }] : []),
         ]}
         value={value}
         onChange={onChange}

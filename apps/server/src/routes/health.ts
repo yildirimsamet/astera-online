@@ -57,7 +57,7 @@ function hostCpuCounters(): {
 
 export function registerHealthRoutes(
   app: FastifyInstance,
-  options: { streamRequired: boolean; role: 'api' | 'worker' | 'both'; botCap: number },
+  options: { streamRequired: boolean; role: 'api' | 'worker' | 'both' | 'arena'; botCap: number },
 ): void {
   /**
    * EXEMPT FROM THE RATE LIMIT, because this is the one route whose caller is a

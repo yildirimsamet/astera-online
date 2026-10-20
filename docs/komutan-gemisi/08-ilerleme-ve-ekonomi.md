@@ -3,7 +3,7 @@
 > **Durum:** Çerçeve + öneri (2026-10-07). Sayılar **hipotezdir**; F8 öncesi ekonomi etüdü ve
 > sahip onayı olmadan kalıcı fiyat/seviye yazılmaz.
 > **Hedef okuyucu:** F8 (kalıcılık, geliştirme, tamir) ve F9 (kaynak toplama) işini yapacak agent.
-> **Dayanak:** S17, S19–S21, S25, S33–S39, S41, S59 ([01](01-urun.md)); KG-K3, KG-A3, KG-A8–A11,
+> **Dayanak:** S17, S19–S21, S25, S33–S39, S41, S59 ([01](01-urun.md)); KG-K3, KG-K11, KG-A8–A11,
 > KG-A17, KG-A24 ([02](02-kararlar.md)).
 
 ---
@@ -60,7 +60,7 @@ kaynak eve taşındığında yağmalanabilir mi, yoksa yalnız gemiye mi harcan�
   "oynayamaz" yapmaz; para harcayan hızlanır.
 - Yakıt bitmesinde çekilme ücretsiz tamir değildir (S36).
 
-## 5. Yakıt ve mühimmat (S17, S20–S21, KG-A3)
+## 5. Yakıt ve mühimmat (S17, S20–S21, KG-K11)
 
 - Öneri: **tek döteryum deposu** (motor + atış). Sefer öncesi başkentin döteryumundan doldurulur;
   kullanılmayan yakıt gemide kalır (yok edilmede de korunur, S34).

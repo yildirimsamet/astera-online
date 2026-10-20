@@ -118,6 +118,21 @@ let volume = ((): number => {
 const listeners = new Set<() => void>();
 
 export const musicEnabled = (): boolean => enabled;
+let suppressionCount = 0;
+const musicAudible = (): boolean => enabled && suppressionCount === 0;
+
+/** Arena audio owns the speakers temporarily; the player's saved choice stays intact. */
+export function suppressMusic(): () => void {
+  suppressionCount++;
+  for (const notify of listeners) notify();
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    suppressionCount--;
+    for (const notify of listeners) notify();
+  };
+}
 export const musicVolume = (): number => volume;
 
 export function setMusicEnabled(next: boolean): void {
@@ -303,7 +318,7 @@ const CLOCK_EVENTS = ['loadedmetadata', 'durationchange', 'timeupdate'] as const
  * some screens and not others would restart the track on every phase change.
  */
 export function useAmbientMusic(): void {
-  const on = useMusicEnabled();
+  const on = useSyncExternalStore(subscribe, musicAudible, () => true);
   const level = useMusicVolume();
   const track = useMusicTrack();
   /**
@@ -373,7 +388,7 @@ export function useAmbientMusic(): void {
       // `musicEnabled()` and not a captured boolean: this runs from a visibility
       // handler and from a gesture listener, both of which can fire long after the
       // effect closed over anything.
-      if (disposed || dead || !isAppActive() || !musicEnabled()) return;
+      if (disposed || dead || !isAppActive() || !musicAudible()) return;
       /**
        * Older browsers return undefined rather than a promise, and so does jsdom.
        * Treating that as a promise is a TypeError in a `useEffect`, which React

@@ -1,6 +1,6 @@
 # Komutan Gemisi — İstemci (web) mimarisi
 
-> **Durum:** Mimari karar + uygulama rehberi (2026-10-07), koda karşı doğrulandı (HEAD `2fa122f`).
+> **Durum:** Mimari karar + uygulama rehberi (2026-10-07). §4, §9 ve §10 MVP koduna göre güncel (2026-10-08).
 > **Hedef okuyucu:** Arena sahnesini, girişini, efektlerini ve HUD katmanını yazacak agent.
 > **Dayanak:** S8–S11, S47, S52–S58, S69 ([01](01-urun.md)); KG-T23–T29 ([02](02-kararlar.md)).
 > **Önce oku:** `docs/interface.md`, `docs/visual-design.md`, `docs/visual-quality.md`,
@@ -70,58 +70,55 @@
   F8'de Üs → Komutan Gemisi görünümü açılır.
 
 <a id="render"></a>
-## 4. Render mimarisi (KG-T24, KG-T25)
+## 4. Render mimarisi (KG-T24, KG-T37)
 
-- `<Canvas frameloop="never">`. Kendi `requestAnimationFrame` sürücüsü; kare politikası
-  `strideFor(60, refreshMs)`: ekranın her N'inci karesi, 60 fps'in altına düşmeden (60 Hz→60,
-  90→90, 120→60, 144→72). Bu bir **tavan değildir**: 90 Hz telefon 90 fps çizer. Isınma ölçülürse
-  önce kalite kademesi (DPR), sonra arka görüş; düzensiz aralıklı, zaman kapılı tavan kullanılmaz
-  (`frames.tsx` docblock'undaki "beat" sorunu). Sürücü her çizilen karede:
-  1. Sabit adım biriktirici: gerekirse `world.step` / tahmin adımları (1/30 sn). **Sim adımını
-     yalnız sürücü atar.**
-  2. İnterpolasyon katsayısı ile kendi gemi + diğerleri + mermiler konumlanır.
-  3. `advance(timestamp)` → tek öncelikli `useFrame` **yalnız çizer**:
-     **(a) ana sahne** (kamera burunda) → **(b) silahlar** (`renderer.clearDepth()` sonrası ayrı
-     sahne/katman, sabit FOV; asteroide gömülmez) → **(c) arka görüş:** geriye bakan kamera düşük
-     çözünürlüklü bir `WebGLRenderTarget`'a (ör. ölçek 0,5) **iki karede bir** çizilir; doku **her
-     karede** HUD çerçevesinin ölçülmüş dikdörtgenine, U ekseni çevrilerek (ayna, §6) kompozit
-     edilir. Toz/küçük nesneler katmanla dışarıda. Scissor'la doğrudan çizim olmaz: tuval her
-     karede silinir (`preserveDrawingBuffer: false`), atlanan karede titrer ve çözünürlük düşmez.
-- **Draw call bütçesi** (`docs/visual-quality.md` savaş tavanı 100 içinde): ana ≤ 60, silahlar
-  ≤ 6, arka görüş ≤ 25. Üçgen/doku tavanları aynı tablodan.
-- **F1–F2 (çevrimdışı):** aynı `rules/arena` dünya adımı (`world.step`, dronlar dahil) istemcide
-  yerel koşar. F3'te dünya sunucuya taşınır, istemci yalnız kendi gemisini tahmin eder; bu yüzden
-  sim kodu baştan "yerel dünya" ve "sunucu dünyası" arasında değiştirilebilir kurulur.
-- Post-processing yok (bloom yerine emissive malzeme + eklemeli sprite). Galaksiyle tutarlı:
-  tone mapping yok, sRGB çıkış.
-- Instancing: mermiler (halka tampon, ör. 512), duman bulutları (billboard), asteroitler (tür
-  başına), toz (`Points`).
-- **Bellek ayırma disiplini:** kare/tick yollarında `new` yok; vektör/kuaterniyon/matris önceden
-  ayrılır. Sıcak modüller düz TS'tir ve Node'da test edilir (`test/frame-allocations.test.ts`
-  yalnız galaksi kamerasının bir dilimini kontrol ediyor — arenayı korumaz).
-- Oyun durumu React dışında; HUD bir DOM katmanı: ~10 Hz güncellenen dış store
-  (`useSyncExternalStore`); nişangâh, isabet işareti, önleme işareti, hasar yönü yayları **ref
-  ile** her karede.
-- Kalite: DPR `useRenderQuality`'den; arenaya özgü: arka görüş çözünürlük ölçeği, duman bulutu
-  tavanı, toz sayısı kademeye göre. Bağlam kaybı: `useGpuContext`; kayıpta sim ve ağ sürer,
-  "Grafik yeniden yükleniyor" katmanı.
+> 2026-10-08 MVP'de uygulanan hâl. Eski plandaki R3F canvas'ı, ayrı silah geçişi ve "post yok"
+> kararı geçersiz (KG-K19 3. şahıs, KG-K24 görüntü kalitesi).
+
+- **Düz Three.js:** `client.ts` tek `WebGLRenderer` kurar; React yalnız HUD ve kontrolleri çizer.
+  Kare sürücüsü `driver.ts`: sabit adım biriktirici (1/30 sn), **sim adımını yalnız sürücü
+  atar**; sonra interpolasyonla kendi gemi, diğerleri ve mermiler yerleşir ve kare çizilir.
+- **Post** (`render/post.ts`, pmndrs `postprocessing`): MSAA'lı half-float hedef → tek birleşik geçiş:
+  mercek (turboda radyal hız bulanıklığı + hasarda kromatik vuruş) → mipmap bloom (girişi sonlu değer
+  korumasından geçer) → kuşak pusu perdesi → vinyet → AgX ton eşleme.
+  DPR en düşük kalite ayarı dışında 2'ye kadar.
+- **Sahne** (`render/stage.ts`): 2048² Subdivision gökyüzü küpü, ışık için ayrı küçük küpten
+  PMREM, güneş halesi, kaya grupları (model başına tek örneklenmiş çizim + her karede CPU'da
+  görüş konisi ve mesafe kırpması), kristal haleleri, yapılar (kutu çarpıştırıcısı triplanar
+  gövde shader'ıyla çizilir, `render/materials.ts`), kapı fenerleri ve portal, alan sınırı ızgarası.
+  Sık kuşakların bulutları kamera içlerine girmeden söner; kuşağın içinde kameranın etrafındaki tek
+  bir pus küresi, post perdesi ve koyu sis devralır. Sisin tamamen gizlediği kaya çizilmez (KG-X20).
+- **Gemiler** (`render/ships.ts`): gövde yatışı, dokulu motor alevi şeridi (seyirde mavi, turboda turuncu),
+  nozul parlaması, başka gemilerde motor izi, seyir ışıkları, gövdeye sarılı kalkan, gizlenme
+  titreşimi, isabet parlaması, hasar kıvılcımı, kazı ışını.
+- **Efektler** (`render/effects.ts`, `render/dust.ts`): parçacık havuzları (`add` / `alpha` /
+  `luma` karışımı), mermi izleri (iki yüzlü, prosedürel çekirdek), namlu parlaması, patlama,
+  sekme kıvılcımı, duman; kamera yakınında hıza göre uzayan toz çizgileri.
+- **Arka görüş:** ayrı kamera iki karede bir küçük bir half-float hedefe çizilir (kendi gemi
+  gizlenir); doku her karede HUD çerçevesine aynalı kompozit edilir.
+- **Bellek:** kare/tick yollarında `new` yok; vektörler önceden ayrılır.
+- Oyun durumu React dışında; HUD ~10 Hz dış store (`store.ts`, `useSyncExternalStore`);
+  nişangâh, önleme işareti, düşman çerçeveleri, iniş halkası ve radar her karede DOM'a yazılır.
+- Shader kuralı: bütün `pow` tabanları kıstırılır (MSAA kenar örnekleri NaN üretir, KG-T37);
+  kameraya göre dönen dörtgenler iki yüzlü çizilir (sarılma yönü çevrilebilir).
 
 ## 5. Efektler ve his (S47, S58, S69)
 
 | Olay | Görsel | Ses | Kural |
 |---|---|---|---|
 | Atış | namlu ucunda küçük eklemeli parlama (40–60 ms) | kısa atış | **nişangâhı kapatmaz** |
-| Uçuş | ince eklemeli iz (instanced); kendi izin açık renk, düşman izi tehdit rengi | — | |
+| Uçuş | motor alevi; başka gemilerde zamanla sönen iz (kendi gemide iz yok, KG-X17) | motor katmanları | |
+| Ağır hasar (gövde < %50) | gövdeden ara ara kısa kıvılcım çizikleri; < %30'da ince duman izi | %30'a ilk düşüşte tek uyarı | sürekli yanan efekt yok (KG-X19) |
 | Gemiye isabet (onaylı) | kıvılcım + nişangâhta beyaz X | belirgin "tık" | **yalnız sunucu `hit`'iyle** |
-| Asteroide/yapıya çarpma | toz/taş parçası | boğuk | gemi isabetinden ayırt edilir |
+| Asteroide/yapıya çarpma | sekme + kıvılcım/taş parçası, sert çarpışta sarsıntı | tek seferlik boğuk vuruş (döngü yok) | gemi isabetinden ayırt edilir |
 | Kalkana çarpma | mavi dalgalanma | "kalkan" sesi | hasar yok |
 | Yok edilme | patlama + ışık + enkaz | patlama | ayrıca "öldürme" işareti |
 | Hız | kamera yakınında hıza göre uzayan toz çizgileri, paralaks | motor perdesi hızla | gaz kesilince çizgiler kısalır, perde düşer |
-| Turbo | FOV +birkaç derece, kenarlarda çizgi | turbo uğultusu | merkez temiz |
+| Turbo | ateşleme parlaması; ivmede gemi kameradan kopar, hız oturunca kamera yetişir; FOV ~+10°, kenarlarda radyal bulanıklık, kameranın etrafında yoğun toz, uzun turuncu alev ve kıvılcımlar | turbo başlangıcı + uğultu | merkez keskin kalır |
 | Hasar alma | yönlü yay + o kenarda ince kırmızı | uyarı | titreşim (Android) |
 | Duman | yumuşak parçacık (derinlikle solan), arka görüşte de | püskürme | aşırı çizim bütçesi |
 | Görünmezlik | sahibine hafif renk filtresi; başkalarına yalnız yakın titreşim | açılış/bozulma | bozulma her iki tarafa net |
-| Kalkan | gemi çevresinde balon; kalkışta çözülme | kalkış sesi | "KALKAN KALKTI" metni |
+| Kalkan | gövdeye sarılı ince parıltı; kalkışta çözülme | kalkış sesi | "KALKAN KALKTI" metni |
 
 ## 6. Arka görüş (S11, S52)
 
@@ -156,33 +153,27 @@ Düşman köşe çerçeveleri (küçük) burada da çizilir, isimler gizli. Perf
   (`test/v2/tokens.test.ts`, ham renk yasağı) burada da geçerli olsun diye. ESLint `text-[Npx]`
   yasağı → tipografi yalnız rol ölçekleriyle ([07](07-hud-ve-ekranlar.md)).
 
-## 9. Hata ayıklama ve ölçüm (KG-T29)
+## 9. Hata ayıklama ve ölçüm (KG-T29, KG-T38)
 
-- Dev katmanı (`` ` `` ile aç/kapa): fps, kare ms p50/p95, draw call, üçgen, doku/geometri sayısı
-  (`renderer.info`), RTT, jitter, snapshot yaşı, uzlaştırma hatası (m), indirme KB/sn, oda tick p95
-  (sunucudan).
-- `window.__arena` (yalnız `import.meta.env.DEV` veya `VITE_VISUAL_TEST==='1'`): durum, ölçüler,
-  girdi enjeksiyonu, dev mesajları (bot ekle, ağ koşullayıcı) — `tools/arena-visual.mjs` bunu kullanır.
-- `perfRecorder` entegrasyonu: arena kareleri de kaydedilir (admin "kayıt" arenada da çalışır;
-  sahibin telefonunda ölçüm için).
+- Tanı paneli (`diagnostics.ts`; adreste `&diag` ya da uçuşta sol alttaki "fps · tanı"): yakalanan
+  hatalar, GPU/WebGL yetenekleri, yükleme süreleri, FPS, çizim çağrısı ve üçgen sayısı.
+- `window.__arena` (yalnız dev / `VITE_VISUAL_TEST`): durum ve girdi enjeksiyonu;
+  `tools/arena-visual.mjs` bunu kullanır.
 
-## 10. Dosya yerleşimi (öneri)
+## 10. Dosya yerleşimi (2026-10-08)
 
 ```
-packages/rules/src/arena/      tuning, vec (aritmetik), controls, flight, weapons, spread(tablo),
-                               collision, abilities, shield, exit, fuel, cargo, layout, pilot,
-                               world(step), los, protocol, codec, index
-packages/rules/test/arena/     *.test.ts (fast-check ile özellik testleri dahil)
-apps/server/src/arena/         register(upgrade + odaları başlat; `buildApp`/`index.ts`'ten),
-                               auth, schemas, room, rooms, connection, bots, netsim,
-                               lifecycle(bus, presence, sezon, boşaltma), settle (F8)
-apps/server/test/arena/        *.test.ts
-apps/web/src/arena/            ArenaRoot, loader(importWithRetry), net/(socket, clock),
-                               sim/(predict, interpolate, store), render/(driver, passes,
-                               rearView, effects/*), input/(joystick, throttle, keyboard, layouts),
-                               audio/sfx, assets/registry, dev/
-apps/web/src/v2/arena/         HUD ve ekran bileşenleri (DOM)
-apps/web/src/i18n/locales/*/arena.ts
-apps/web/test/arena/           *.test.ts(x)
+packages/rules/src/arena/   tuning, types, vec, controls, flight, fuel, collision, grid, layout,
+                            aim, pilot, visibility, combat, bots, world, protocol, index
+packages/rules/test/arena/  *.test.ts (arithmetic: KG-T11 tarayıcısı)
+apps/server/src/arena/      server.ts (oda, WS, bot dünyası, snapshot)
+apps/server/test/arena/     room.test.ts (gerçek WS), env.test.ts
+apps/web/src/arena/         ArenaEntry/ArenaGate/flags (giriş), Sandbox (yükleme → hazırlık →
+                            uçuş → sonuç), client (sahne + tahmin + HUD izdüşümü), driver,
+                            network, input, Controls, Hud, store, landing, audio, copy,
+                            diagnostics, loading, arena.css
+apps/web/src/arena/render/  camera, stage, ships, effects, dust, materials, post, procedural
+apps/web/src/arena/assets/  manifest (Zod), load (ilerlemeli yükleme, model hazırlama)
+apps/web/test/arena/        *.test.ts(x) — istemci testleri MVP onayından sonra yeniden yazılacak (KG-K25)
 tools/arena-visual.mjs
 ```

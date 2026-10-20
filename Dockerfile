@@ -51,6 +51,9 @@ COPY tsconfig.base.json ./
 # Google; see `apps/web/src/lib/analytics.ts`.
 ARG VITE_GA_ID=""
 ENV VITE_GA_ID=$VITE_GA_ID
+# Komutan Gemisi playtest door; the arena process still decides who may enter.
+ARG VITE_ARENA=""
+ENV VITE_ARENA=$VITE_ARENA
 RUN pnpm --filter @astera/web build
 
 # A filesystem, not an image. `docker build --target web-dist --output` writes it

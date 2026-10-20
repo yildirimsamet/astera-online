@@ -9,6 +9,7 @@ import { maskChatMessages, setChatMute } from '../services/chatModeration.js';
 import { postClanChat, readClanChat } from '../services/clanChat.js';
 import { chatMessageBody } from '../services/chatMedia.js';
 import { clanActor } from '../services/clan.js';
+import { listArenaPilots, setArenaPilot } from '../services/arenaPilots.js';
 
 const username = z.string().trim().min(1).max(64);
 const pageQuery = z.object({ before: z.string().uuid().optional(), limit: z.coerce.number().int().min(1).max(100).default(50) }).strict();
@@ -23,6 +24,7 @@ const maskBody = z.discriminatedUnion('channel', [
   z.object({ ...maskBase, channel: z.literal('clan'), clanId: z.string().uuid() }).strict(),
 ]);
 const messageBody = chatMessageBody;
+const arenaPilotBody = z.object({ username, pilot: z.boolean() }).strict();
 
 export function registerAdminRoutes(app: FastifyInstance): void {
   app.get('/api/admin/players', { preHandler: requireAdmin }, req =>
@@ -54,4 +56,11 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     setChatMute(app.db, req.accountId!, muteBody.parse(req.body), app.clock));
   app.post('/api/admin/chat/mask', { preHandler: requireAdmin }, req =>
     maskChatMessages(app.db, req.accountId!, maskBody.parse(req.body), app.clock.now()));
+  app.get('/api/admin/arena-pilots', { preHandler: requireAdmin }, async () => ({ pilots: await listArenaPilots(app.db) }));
+  app.post('/api/admin/arena-pilots', { preHandler: requireAdmin }, async req => {
+    const body = arenaPilotBody.parse(req.body ?? {});
+    const result = await setArenaPilot(app.db, app.clock, req.accountId!, body.username, body.pilot);
+    req.log.info({ operatorAccountId: req.accountId, accountId: result.accountId, pilot: result.pilot }, 'Arena pilot seat');
+    return result;
+  });
 }

@@ -4631,6 +4631,13 @@ export const cosmeticEntitlements = pgTable('cosmetic_entitlements', {
   uniqueIndex('cosmetic_entitlements_order_idx').on(t.source, t.orderRef),
 ]);
 
+/** Komutan Gemisi playtest seats, granted by name from the admin desk. */
+export const arenaPilots = pgTable('arena_pilots', {
+  accountId: uuid('account_id').primaryKey().references(() => accounts.id, { onDelete: 'cascade' }),
+  grantedByAccountId: uuid('granted_by_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  grantedAt: timestamp('granted_at', { withTimezone: true }).notNull(),
+});
+
 /** Local intent binds a signed Paddle transaction to an account and the chosen offer. */
 export const paddleSkinOrders = pgTable('paddle_skin_orders', {
   id: uuid('id').primaryKey().defaultRandom(),

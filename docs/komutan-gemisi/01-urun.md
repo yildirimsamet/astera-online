@@ -36,6 +36,8 @@
 ## 3. Kamera ve mobil kontrol
 
 - **S9** Oynanış **dikey ekranda** ve **birinci şahıs** bakış açısındadır.
+  *(2026-10-08: sahip 3. şahısa çevirdi, [KG-K19](02-kararlar.md#kg-k19). S10'daki kokpit hissi
+  ve görünen namlular geçersiz; nişangâh ve arka görüş sürer.)*
 - **S10** Kamera, geminin önünden ve kokpitten bakılıyormuş hissi verir; ama görüşü çevreleyen
   bir **kokpit çizimi yapılmaz**. Ekranın **ortasında nişangâh**, sağında ve solunda geminin ateş
   eden **namluları veya silah mekanizmaları** görünür.
@@ -63,8 +65,8 @@
 - **S19** Geliştirilebilir özellikler (sekiz): **Can · Saldırı gücü · Hareket hızı · Mermi hızı ·
   Atış hızı · İsabet oranı · Yakıt deposu kapasitesi · Ambar kapasitesi.**
 - **S20** **Mühimmat kullanımı da döteryum tüketir.**
-- **S21** Yakıt ve mühimmat için döteryumun **nasıl yükleneceği veya ayrılacağı ayrıca
-  belirlenecek** ([KG-A3](02-kararlar.md#kg-a3)).
+- **S21** Yakıt ve mühimmat döteryumu **tek ortak depodan tüketilir**; her atış kaçış için
+  kalan yakıtı da azaltır ([KG-K11](02-kararlar.md#kg-k11)). Yükleme maliyeti F8'de belirlenir.
 
 ## 6. Aktif yetenekler
 
@@ -86,8 +88,9 @@
   çemberde** üç giriş + üç çıkış.
 - **S28** Oyuncu girdiğinde dört girişten **rastgele birinde** doğar. Ayrılmak için **istediği
   çıkışı** kullanır.
-- **S29** Yeni doğan oyuncuya **60 saniyelik hasar almama kalkanı** verilir. Oyuncu **ateş ettiği
-  anda**, süre dolmamış olsa bile kalkan kalkar. (Ek bitiş koşulu önerisi: [KG-A1](02-kararlar.md#kg-a1).)
+- **S29** Yeni doğan oyuncuya **60 saniyelik hasar almama kalkanı** verilir. Ateş, çıkış alanına
+  giriş, kargo toplama veya 60 saniyeden **ilk gerçekleşen** kalkanı kaldırır
+  ([KG-K9](02-kararlar.md#kg-k9)).
 
 ## 8. Savaş alanından çıkış
 
@@ -107,7 +110,7 @@
 ## 10. Yakıtın bitmesi
 
 - **S35** Gemi çıkışa ulaşmadan yakıtını bitirirse **kurtarma yoluyla** ana gezegene çekilir.
-  (Çekilmenin zamanlaması: [KG-A2](02-kararlar.md#kg-a2).)
+  (Çekilmenin zamanlaması: [KG-K10](02-kararlar.md#kg-k10).)
 - **S36** Yakıtın bitmesi **yeni hasar vermez**. Önceden alınmış hasar **korunur**; çekilme
   **ücretsiz tamir sağlamaz**.
 - **S37** Toplanan kaynaklar eve **taşınmaz**; yakıtın bittiği **konumda bırakılır**.
@@ -146,7 +149,7 @@
 
 - **S45** İlk sürümün önceliği **gemiyi sürmenin ve savaşmanın hissini doğru kurmaktır.**
 - **S46** MVP listesi:
-  1. Dikey ekranda birinci şahıs uçuş.
+  1. Dikey ekranda birinci şahıs uçuş. *(→ 3. şahıs, [KG-K19](02-kararlar.md#kg-k19))*
   2. Gaz, yavaşlama, durma ve yakıt tüketimi.
   3. Nişangâh, görünür silah mekanizmaları ve ateş etme.
   4. Mermi hızı, atış hızı ve isabet dağılımı.
@@ -241,6 +244,7 @@ değiştirecek önerilerini önce bana sun."
 ### Nişan desteği
 - **S71** Kontrol hassasiyeti, önleme işareti ve otomatik nişan yardımı **ayrı ayrı** değerlendirilir.
 - **S72** İlk prototipte **otomatik hedefe dönme veya hedefe yapışma olmadan** rahat nişan hedeflenir.
+  *(2026-10-08: sahip hafif nişan yardımı istedi, [KG-K20](02-kararlar.md#kg-k20).)*
 - **S73** Hareketli hedefin önünde nereye ateş edilmesi gerektiğini gösteren **isteğe bağlı bir
   önleme işareti** denenir. Bu işaret mermileri **yönlendirmez** ve isabeti **garanti etmez**.
 
