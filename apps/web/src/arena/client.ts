@@ -131,6 +131,7 @@ export function createArenaClient(options: ClientOptions) {
   const focus = { id: -1, locked: false };
   const metrics = { fps: 0, frameMs: 0, calls: 0, triangles: 0 };
   const resolution = createResolution(renderer.getPixelRatio());
+  const boltMuzzle = new THREE.Vector3(); const boltForward = new THREE.Vector3();
   const deathPoint = new THREE.Vector3();
   const raycaster = new THREE.Raycaster();
   const probeMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
@@ -535,7 +536,9 @@ export function createArenaClient(options: ClientOptions) {
     }
     // World effects.
     effects.watchImpacts(world, pilot.id, () => undefined, () => undefined);
-    effects.drawBolts(world, blend, pilot.id, options.network() !== null);
+    boltForward.set(0, 0, 1).applyQuaternion(ownPose.quaternion);
+    boltMuzzle.copy(ownPose.position).addScaledVector(boltForward, 4);
+    effects.drawBolts(world, blend, pilot.id, options.network() !== null, boltMuzzle, boltForward);
     effects.drawSmoke(world, time);
     effects.update(dt);
     forward.set(0, 0, 1).applyQuaternion(ownPose.quaternion).multiplyScalar(ownPose.speed);

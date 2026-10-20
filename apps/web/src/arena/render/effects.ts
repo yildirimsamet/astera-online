@@ -187,6 +187,20 @@ class BoltPool {
   }
 }
 
+interface Point { x: number; y: number; z: number }
+
+/**
+ * How much of a bolt's tail may show. A bolt keeps the speed its ship had when it fired,
+ * so a ship that accelerates (turbo) runs into its own tracers; the tail stops at the
+ * ship's muzzle plane instead of reaching back past the hull (owner 2026-10-21).
+ */
+export function clipTail(head: Point, dir: Point, length: number, muzzle: Point, forward: Point): number {
+  const along = dir.x * forward.x + dir.y * forward.y + dir.z * forward.z;
+  if (along <= 0.05) return length;
+  const ahead = (head.x - muzzle.x) * forward.x + (head.y - muzzle.y) * forward.y + (head.z - muzzle.z) * forward.z;
+  return Math.max(0, Math.min(length, ahead / along));
+}
+
 const OWN = new THREE.Color('#5fe9ff');
 const ENEMY = new THREE.Color('#ff5a3c');
 const random = (lo: number, hi: number): number => lo + Math.random() * (hi - lo);
@@ -221,8 +235,8 @@ export class Effects {
     this.smoke = new ParticlePool(fx.get('smoke') ?? fx.get('steam'), 160, 'luma');
     this.debris = new ParticlePool(fx.get('asteroidDebris'), 160, 'alpha', 8);
     this.dust = new ParticlePool(fx.get('dust'), 96, 'alpha');
-    // Two quads per authoritative puff (64): every puff of a smoke screen must be drawn.
-    this.puffs = new ParticlePool(fx.get('smoke') ?? fx.get('steam'), 128, 'luma');
+    // Two quads per authoritative puff (96): every puff of a smoke screen must be drawn.
+    this.puffs = new ParticlePool(fx.get('smoke') ?? fx.get('steam'), 192, 'luma');
     // Two quads a piece (halo + hot core) for every field and wreck slot.
     this.cargo = new ParticlePool(fx.get('glowDot') ?? fx.get('flare'), T.fieldGroups * FIELD_GROUP_SIZE + T.wreckDrops, 'add');
     this.smokeLayer = this.puffs;
@@ -333,7 +347,7 @@ export class Effects {
   }
 
   /** Authoritative bolts (and predicted own ones) drawn every frame at their interpolated spot. */
-  drawBolts(world: ArenaWorld, alpha: number, ownId: number, ghosts: boolean): void {
+  drawBolts(world: ArenaWorld, alpha: number, ownId: number, ghosts: boolean, muzzle: Point, forward: Point): void {
     this.bolts.begin();
     this.heads.begin();
     const add = (bullet: Projectile, own: boolean): void => {
@@ -350,10 +364,11 @@ export class Effects {
       const flown = age * T.muzzleSpeed;
       // Own bolts fly straight away from the chase camera, so they need a long tail and a
       // bright head to read as fire at all; enemy bolts cross the view and stay tighter.
-      const length = Math.min(own ? 180 : 46, flown);
+      const dir = { x: bullet.v.x / speed, y: bullet.v.y / speed, z: bullet.v.z / speed };
+      const length = own ? clipTail({ x, y, z }, dir, Math.min(180, flown), muzzle, forward) : Math.min(46, flown);
       if (length < 0.5) return;
       const color = own ? OWN : ENEMY;
-      this.bolts.add(x, y, z, bullet.v.x / speed, bullet.v.y / speed, bullet.v.z / speed, length, own ? 1.3 : 1.5, color.r, color.g, color.b);
+      this.bolts.add(x, y, z, dir.x, dir.y, dir.z, length, own ? 1.3 : 1.5, color.r, color.g, color.b);
       this.heads.put(x, y, z, own ? 6 : 6.5, 0, color.r * 1.6, color.g * 1.6, color.b * 1.6);
     };
     for (const bullet of world.projectiles) if (!(ghosts && bullet.owner === ownId)) add(bullet, bullet.owner === ownId);
@@ -390,7 +405,8 @@ export class Effects {
       for (let k = 0; k < 2; k++) {
         pool.put(puff.p.x + Math.sin(i * 3.1 + k) * 6, puff.p.y + Math.cos(i * 1.7 + k) * 5, puff.p.z,
           T.smokeRadius * 2.6 * (0.4 + 0.6 * grow) * (k === 0 ? 1 : 0.8), i * 1.3 + k + time * 0.05 * (k === 0 ? 1 : -1),
-          0.42, 0.47, 0.55, 0.72 * fade);
+          // Owner 2026-10-21: a quarter denser, a ship inside is hard to make out.
+          0.42, 0.47, 0.55, 0.9 * fade);
       }
     });
     pool.end();

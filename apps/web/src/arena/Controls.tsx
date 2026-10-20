@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from 'react';
 import { ARENA_TUNING as T } from '@astera/rules/arena';
-import { LANDING_THROTTLE, STICK_RADIUS, THROTTLE_DETENTS, type ArenaAction, type ArenaControls } from './input.js';
+import { KNOB_TRAVEL, LANDING_THROTTLE, THROTTLE_DETENTS, stickHome, type ArenaAction, type ArenaControls } from './input.js';
 import type { HudSnapshot, HudStore } from './store.js';
 import { arenaCopy } from './copy.js';
 
@@ -15,7 +15,7 @@ const ICONS: Record<ArenaAction, React.ReactNode> = {
  * Two-thumb portrait layout. Left thumb: a floating stick anywhere in the lower left.
  * Right thumb: FIRE at rest, TURBO beside it (used together with steering), SMOKE and
  * CLOAK further away so they are never hit by accident, and a sticky throttle rail on
- * the right edge. A contextual LAND / TAKE OFF key sits between the thumbs.
+ * the right edge. A contextual LAND / TAKE OFF key sits centred under the ship.
  */
 /** One key, three states. Landing is a tap; taking off needs a short hold so a stray tap never launches you. */
 function LandKey({ status, onLand, onCancel, onTakeOff }: { status: HudSnapshot; onLand: () => void; onCancel: () => void; onTakeOff: () => void }) {
@@ -58,7 +58,7 @@ export function FlightControls({ controls, store, onLand, onCancel }: { controls
         ring.current.style.left = `${String(controls.stickCenter.x - bounds.left)}px`;
         ring.current.style.top = `${String(controls.stickCenter.y - bounds.top)}px`;
       } else { ring.current.style.left = ''; ring.current.style.top = ''; }
-      knob.current.style.transform = `translate(${String(controls.stick.x * STICK_RADIUS)}px, ${String(controls.stick.y * STICK_RADIUS)}px)`;
+      knob.current.style.transform = `translate(${String(controls.stick.x * KNOB_TRAVEL)}px, ${String(controls.stick.y * KNOB_TRAVEL)}px)`;
     };
     frame = requestAnimationFrame(paint);
     return () => { cancelAnimationFrame(frame); };
@@ -76,10 +76,9 @@ export function FlightControls({ controls, store, onLand, onCancel }: { controls
       onPointerDown={event => {
         event.preventDefault();
         // The base appears where the thumb lands, but only inside a fixed home area.
-        const b = event.currentTarget.getBoundingClientRect();
-        const cx = Math.max(b.left + STICK_RADIUS + 18, Math.min(b.left + 196, event.clientX));
-        const cy = Math.max(b.bottom - 250, Math.min(b.bottom - STICK_RADIUS - 24, event.clientY));
-        if (controls.stickDown(event.pointerId, cx, cy)) {
+        const keys = [...(event.currentTarget.parentElement?.querySelectorAll('.ac-action, .ac-land') ?? [])].map(key => key.getBoundingClientRect());
+        const home = stickHome({ x: event.clientX, y: event.clientY }, event.currentTarget.getBoundingClientRect(), keys);
+        if (controls.stickDown(event.pointerId, home.x, home.y)) {
           event.currentTarget.setPointerCapture(event.pointerId);
           controls.stickMove(event.pointerId, event.clientX, event.clientY);
         }

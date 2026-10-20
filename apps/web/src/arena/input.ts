@@ -2,6 +2,37 @@ import { createInput, sampleAssist, sampleInput, type ArenaIntent } from '@aster
 
 /** Thumb travel to full deflection: longer travel means finer aim for the same turn. */
 export const STICK_RADIUS = 72;
+/** The drawn base ring's radius, and how far the knob moves inside it (knob radius 23). */
+export const STICK_RING = 76;
+export const KNOB_TRAVEL = 52;
+
+export interface Rect { left: number; top: number; right: number; bottom: number }
+
+/**
+ * Where the stick base opens: under the thumb, kept inside a home area in the lower
+ * left and never over a key (owner 2026-10-21: a fast pull pushed it onto TURBO/SMOKE).
+ * A ring that would touch a key moves the shorter way out — left of it, or below it.
+ */
+export function stickHome(touch: { x: number; y: number }, pad: Rect, keys: readonly Rect[]): { x: number; y: number } {
+  const minX = pad.left + STICK_RING + 14; const maxX = pad.left + 196;
+  const minY = pad.bottom - 250; const maxY = pad.bottom - STICK_RING - 24;
+  let x = Math.max(minX, Math.min(maxX, touch.x)); let y = Math.max(minY, Math.min(maxY, touch.y));
+  const reach = STICK_RING + 6;
+  // Leaving one key can touch another; a few passes settle it.
+  for (let pass = 0; pass < 4; pass++) {
+    for (const key of keys) {
+      const dx = Math.max(key.left - x, 0, x - key.right); const dy = Math.max(key.top - y, 0, y - key.bottom);
+      if (dx * dx + dy * dy >= reach * reach) continue;
+      const left = key.left - reach; const below = key.bottom + reach;
+      const canLeft = left >= minX; const canBelow = below <= maxY;
+      if (canLeft && (!canBelow || x - left <= below - y)) x = left;
+      else if (canBelow) y = below;
+      else { x = minX; y = maxY; }
+    }
+  }
+  return { x, y };
+}
+
 /** Throttle stops the rail snaps to: stop, landing speed, cruise, full. */
 export const THROTTLE_DETENTS = [0, 0.15, 0.5, 1] as const;
 export const LANDING_THROTTLE = 0.15;

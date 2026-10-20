@@ -233,7 +233,7 @@
 .ac-turbo.is-active { box-shadow: 0 0 26px color-mix(in srgb, #67d4ff 60%, transparent); border-color: #9fe6ff !important; color: #fff; }
 .ac-smoke { right: 112px; bottom: calc(122px + var(--safe-bottom)); width: 50px; height: 50px; color: #cfd8e3; }
 .ac-cloak { right: 34px; bottom: calc(148px + var(--safe-bottom)); width: 50px; height: 50px; color: #cfe6ff; }
-.ac-land { position: absolute; left: 22px; bottom: calc(204px + var(--safe-bottom)); pointer-events: auto; min-width: 74px; height: 36px; padding: 0 14px;
+.ac-land { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(204px + var(--safe-bottom)); pointer-events: auto; min-width: 74px; height: 36px; padding: 0 14px;
   border-radius: 19px !important; font: 700 12px var(--font-v2-ui) !important; letter-spacing: .08em; text-transform: uppercase;
   background: color-mix(in srgb, var(--crystal) 18%, #061220) !important; border: 1px solid color-mix(in srgb, var(--crystal) 60%, transparent) !important;
   color: #dff4ff !important; box-shadow: 0 0 18px color-mix(in srgb, var(--crystal) 30%, transparent); animation: ah-in .2s ease-out; }
