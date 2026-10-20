@@ -12,6 +12,7 @@ import type { PlanetNode, Vec3Tuple } from './scene.js';
 import { cosmeticEffectRecipe, effectProgram, fleetFlagPose } from './cosmeticEffects.js';
 import { prismShardTransforms, RING_SPANS, saturnRingProfile } from './cosmeticRings.js';
 import { shardFragment, shardVertex } from './cosmeticShaders.js';
+import { createTempestFlashClock } from './tempestFlash.js';
 
 let saturnProfile: THREE.DataTexture | null = null;
 /** One small radial profile shared by every Saturn ring on the map. */
@@ -25,6 +26,9 @@ function saturnProfileTexture(): THREE.DataTexture {
   return saturnProfile;
 }
 
+const TEMPEST_YELLOW = new THREE.Color(1, .78, .22);
+const TEMPEST_WHITE = new THREE.Color(.92, .95, 1);
+
 /** How far each second-wave belt undulates out of its plane (world radii). */
 const RING_LIFT: Partial<Record<CosmeticStyle, number>> = { inferno: .1, nebula: .05, prism: .03 };
 
@@ -35,12 +39,28 @@ export function EffectSurface({ style, kind, still = false, banner, colour, seco
   const uniforms = useMemo(() => ({ uTime: { value: 2.7 }, uPixelHeight: { value: 1 }, uNozzleCount: { value: nozzleCount }, uKind: { value: kind }, uStyle: { value: recipe.motion },
     uBanner: { value: banner ?? null }, uHasBanner: { value: banner ? 1 : 0 }, uColour: { value: new THREE.Color(colour ?? recipe.colour) }, uSecondary: { value: new THREE.Color(secondary ?? recipe.secondary) },
     uSheen: { value: recipe.sheen ? 1 : 0 }, uProfile: { value: style === 'saturn' && kind < .5 ? saturnProfileTexture() : null },
-    uLift: { value: kind < .5 ? RING_LIFT[style] ?? 0 : 0 } }), [style, kind, banner, colour, secondary, nozzleCount]);
+    uLift: { value: kind < .5 ? RING_LIFT[style] ?? 0 : 0 },
+    uFlash: { value: 0 }, uFlashColour: { value: new THREE.Color() }, uFlashOuter: { value: 18 }, uFlashCore: { value: 4 }, uFlashMotor: { value: 0 } }),
+  [style, kind, banner, colour, secondary, nozzleCount]);
+  // Each Tempest drive keeps its own flash clock, so formations never flash in step.
+  const flashes = useMemo(() => (style === 'tempest' && kind > .5 && kind < 1.5 ? createTempestFlashClock(Math.random, 0, nozzleCount) : null),
+    [style, kind, nozzleCount]);
   useFrame(({ clock, size }) => {
     if (!material.current) return;
-    if (!still) material.current.uniforms.uTime!.value = clock.elapsedTime;
+    const live = material.current.uniforms;
+    if (!still) live.uTime!.value = clock.elapsedTime;
     // CSS pixels keep the emission budget consistent across desktop and high-DPR phones.
-    material.current.uniforms.uPixelHeight!.value = size.height;
+    live.uPixelHeight!.value = size.height;
+    if (flashes && !still) {
+      const flash = flashes.sample(clock.elapsedTime);
+      live.uFlash!.value = flash.intensity;
+      if (flash.intensity > 0) {
+        (live.uFlashColour!.value as THREE.Color).set(flash.white ? TEMPEST_WHITE : TEMPEST_YELLOW);
+        live.uFlashOuter!.value = flash.outerPx;
+        live.uFlashCore!.value = flash.corePx;
+        live.uFlashMotor!.value = flash.motor;
+      }
+    }
   });
   // Saturn's ice is lit material, not light: it blends over (and partly hides) the world behind.
   const solid = kind > 1.5 || (kind < .5 && style === 'saturn');

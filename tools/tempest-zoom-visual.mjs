@@ -28,6 +28,7 @@ export async function verifyTempestZoom(output) {
       const geometry = createPlumeGeometry('tempest');
       const material = new T.ShaderMaterial({ ...effectProgram('tempest', 1), uniforms: {
         uTime: { value: 0 }, uStyle: { value: 40 }, uPixelHeight: { value: 480 }, uNozzleCount: { value: 1 },
+        uFlash: { value: 0 }, uFlashColour: { value: new T.Color() }, uFlashOuter: { value: 26 }, uFlashCore: { value: 8 }, uFlashMotor: { value: 0 },
       }, transparent: true, depthWrite: false, side: T.DoubleSide, forceSinglePass: true, blending: T.AdditiveBlending, toneMapped: false });
       const mesh = new T.InstancedMesh(geometry, material, 17);
       for (let i = 0; i < 17; i++) mesh.setMatrixAt(i, new T.Matrix4());
@@ -36,6 +37,11 @@ export async function verifyTempestZoom(output) {
       const target = new T.WebGLRenderTarget(640, 480, { type: T.FloatType });
       const pixels = new Float32Array(640 * 480 * 4);
       const samples = [];
+      // tempestFlash.ts owns the timing; the sweep lights every fourth frame, yellow then white.
+      const flashAt = frame => {
+        material.uniforms.uFlash.value = frame % 4 === 0 ? 1 : 0;
+        material.uniforms.uFlashColour.value.setRGB(...(frame % 8 === 0 ? [1, .78, .22] : [.92, .95, 1]));
+      };
       for (const orthographic of [false, true]) {
         mesh.visible = !orthographic; preview.visible = orthographic;
         for (const distance of [4, 40, 160, 640]) {
@@ -45,7 +51,7 @@ export async function verifyTempestZoom(output) {
           let peak = 0, energy = 0, warmFrames = 0, maxWarmPixels = 0, flashImage, flashTime;
           // Sweep the actual reseeding animation, including sparse arc and bright ignition frames.
           for (let frame = 0; frame < 24; frame++) {
-            material.uniforms.uTime.value = 2 + frame / 12;
+            material.uniforms.uTime.value = 2 + frame / 12; flashAt(frame);
             renderer.setRenderTarget(target); renderer.render(scene, camera);
             renderer.readRenderTargetPixels(target, 0, 0, 640, 480, pixels);
             let warmPixels = 0;
@@ -74,7 +80,7 @@ export async function verifyTempestZoom(output) {
       camera.position.set(0, 128, 94.5); camera.lookAt(0, 0, -1.5); camera.updateMatrixWorld();
       let peak = 0, energy = 0;
       for (let frame = 0; frame < 24; frame++) {
-        material.uniforms.uTime.value = 2 + frame / 12;
+        material.uniforms.uTime.value = 2 + frame / 12; flashAt(frame);
         renderer.setRenderTarget(target); renderer.render(scene, camera);
         renderer.readRenderTargetPixels(target, 0, 0, 640, 480, pixels);
         for (let i = 0; i < pixels.length; i += 4) {
@@ -103,7 +109,8 @@ export async function verifyTempestZoom(output) {
         if (sample.distance >= 160) assert(sample.peak < .78, `Subpixel Tempest still overfeeds bloom: ${JSON.stringify(sample)}`);
         if (!sample.nozzles) {
           assert(sample.warmFrames > 0 && sample.warmFrames < 18, `Missing intermittent white-yellow flash: ${JSON.stringify(sample)}`);
-          if (sample.distance >= 160) assert(sample.maxWarmPixels >= 8 && sample.maxWarmPixels <= 80, `Map lightning must remain readable but compact: ${JSON.stringify(sample)}`);
+          // Owner 2026-10-20: a flash is at most 26 CSS px across — a disc of ~530 px.
+          if (sample.distance >= 160) assert(sample.maxWarmPixels >= 8 && sample.maxWarmPixels <= 531, `Map flash must remain readable but compact: ${JSON.stringify(sample)}`);
         }
       }
     }
@@ -128,7 +135,10 @@ export async function verifyTempestZoom(output) {
         state.camera.position.copy(position).multiplyScalar(factor);
         state.camera.lookAt(0, 0, 0); state.camera.updateMatrixWorld();
         state.scene.traverse(node => {
-          if (node.name === 'formation-cosmetic-exhaust') node.material.uniforms.uTime.value = flashTime;
+          if (node.name !== 'formation-cosmetic-exhaust') return;
+          node.material.uniforms.uTime.value = flashTime;
+          node.material.uniforms.uFlash.value = 1;
+          node.material.uniforms.uFlashColour.value.setRGB(1, .78, .22);
         });
         composer.render(0);
         let height = 0, nozzles = 0, expectedNozzles = 0;

@@ -217,6 +217,8 @@ export const plumeVertex = `
   uniform float uStyle;
   uniform float uPixelHeight;
   uniform float uNozzleCount;
+  uniform float uFlashMotor;
+  uniform float uFlashOuter;
   ${NOISE}
   void main() {
     vUv = uv;
@@ -251,22 +253,22 @@ export const plumeVertex = `
     vPlumePixels = length((modelViewMatrix * diameter).xyz) * abs(projectionMatrix[1][1])
       * uPixelHeight * .5 / max(.01, gl_Position.w);
     if (uv.x >= 4.0) {
-      // Exactly one motor carries the map flash; overlapping motors cannot amplify it.
+      // Exactly one motor carries the map flash (tempestFlash.ts); overlapping motors cannot amplify it.
       #ifdef USE_INSTANCING
-        if (float(gl_InstanceID) != mod(floor(uTime * 6.0), max(1.0, uNozzleCount))) {
+        if (float(gl_InstanceID) != uFlashMotor) {
           gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
           return;
         }
       #endif
-      // A 12 CSS-pixel patch, still anchored at the real motor and depth-tested.
+      // A round patch the flash's own size in CSS pixels, still anchored at the real motor and depth-tested.
       vec2 corner = (uv - vec2(4.5, .5)) * 2.0;
       vec2 aspect = vec2(abs(projectionMatrix[0][0] / projectionMatrix[1][1]), 1.0);
-      gl_Position.xy += corner * aspect * 12.0 / max(1.0, uPixelHeight) * gl_Position.w;
+      gl_Position.xy += corner * aspect * uFlashOuter / max(1.0, uPixelHeight) * gl_Position.w;
     }
   }
 `;
 
-/** Blue forked lightning with brief white-gold ignition flashes, bounded at map range. */
+/** Blue forked lightning with yellow/white ignition flashes (`tempestFlash.ts`), round at map range. */
 export const tempestFragment = `
   varying float vEnvelope;
   varying vec2 vUv;
@@ -275,30 +277,29 @@ export const tempestFragment = `
   varying float vPlumePixels;
   uniform float uTime;
   uniform float uNozzleCount;
+  uniform float uFlash;
+  uniform vec3 uFlashColour;
+  uniform float uFlashOuter;
+  uniform float uFlashCore;
   ${NOISE}
   float arc(float around, float path, float width) {
     float d = abs(mod(around - path + PI, TAU) - PI);
     return (1.0 - smoothstep(0.0, width, d)) + .45 * exp(-d * 5.0);
   }
-  float boltDistance(vec2 p, vec2 a, vec2 b) {
-    vec2 edge = b - a;
-    return length(p - a - edge * clamp(dot(p - a, edge) / dot(edge, edge), 0.0, 1.0));
-  }
   void main() {
-    float flashClock = uTime * 6.0;
-    float flash = step(.55, hash21(vec2(floor(flashClock), 27.0)))
-      * (1.0 - smoothstep(.10, .55, fract(flashClock)));
+    float flash = uFlash;
     float mapDetail = smoothstep(2.0, 6.0, vPlumePixels);
     if (vUv.x >= 4.0) {
-      vec2 p = spin((vUv - vec2(4.5, .5)) * 2.0, hash21(vec2(floor(flashClock), 71.0)) * TAU);
-      float d = boltDistance(p, vec2(-.65, -.65), vec2(-.12, -.22));
-      d = min(d, boltDistance(p, vec2(-.12, -.22), vec2(-.3, .05)));
-      d = min(d, boltDistance(p, vec2(-.3, .05), vec2(.25, .25)));
-      d = min(d, boltDistance(p, vec2(.25, .25), vec2(.6, .65)));
-      d = min(d, boltDistance(p, vec2(-.12, -.22), vec2(.55, -.25)));
-      float alpha = (1.0 - smoothstep(.10, .20, d)) * flash * (1.0 - mapDetail);
+      // Round: a dense core of uFlashCore px, fading to nothing at the uFlashOuter px edge.
+      float r = length((vUv - vec2(4.5, .5)) * 2.0);
+      float coreEdge = uFlashCore / max(1.0, uFlashOuter);
+      float core = 1.0 - smoothstep(coreEdge * .55, coreEdge, r);
+      float halo = pow(max(0.0, 1.0 - r), 2.4);
+      float alpha = clamp(core + halo * .9, 0.0, 1.0) * flash * (1.0 - mapDetail);
       if (alpha < .005) discard;
-      gl_FragColor = vec4(.42, .38, .2, alpha);
+      // With the subpixel tubes beneath, the peak stays under the galaxy bloom threshold (.78):
+      // bloom would swell the flash past its size.
+      gl_FragColor = vec4(mix(uFlashColour, vec3(1.0), core * .35) * .55, alpha);
       ${OUTPUT}
       return;
     }
@@ -327,7 +328,7 @@ export const tempestFragment = `
     }
     // Near-view ignition hands over to the readable map lightning as the tube shrinks.
     float flashHead = flash * mapDetail * (1.0 - smoothstep(.08, .42, along));
-    colour = mix(colour, vec3(2.0, 1.85, .9), flashHead);
+    colour = mix(colour, uFlashColour * 2.0, flashHead);
     alpha = max(alpha, flashHead * vEnvelope);
     if (alpha < .005) discard;
     // Subpixel front/back shells can still emit full HDR peaks into the wide bloom chain.
