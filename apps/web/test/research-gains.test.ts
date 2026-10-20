@@ -134,21 +134,24 @@ describe('what a rung of research buys', () => {
         commander can see); the distinction it draws is what is asserted.
       */
       expect(researchGain('SHIP_POWER', 0).unlocks).toMatch(/warship/i);
-      expect(researchGain('SHIP_ARMOR', 0).unlocks).toMatch(/all ships.*transports/i);
+      expect(researchGain('SHIP_ARMOR', 0).unlocks).toMatch(/all mobile ships.*transports.*shield/i);
       expect(researchGain('SHIP_PROPULSION', 0).unlocks).toMatch(/all ships/i);
     });
 
-    /** The combined Power × Armor ceiling is the one hard research rule. */
-    it('names the combined ceiling on the Power and Armor rows', () => {
+    /*
+      Power × Armor still tops out at the stat ceiling, but since Ship Shields (owner,
+      2026-10-20) that product no longer bounds a fleet's battle endurance — so the rows
+      must not quote it as a cap on combat power.
+    */
+    it('keeps the Power × Armor stat ceiling without quoting it as a combat-power cap', () => {
       const both = hullTech(
         { SHIP_POWER: RESEARCH_TECH.weaponMaxLevel, SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel },
         'DART',
       );
       expect(both.atk * both.hp).toBeCloseTo(RESEARCH_TECH.powerCeiling, 6);
-      expect(researchGain('SHIP_POWER', 0).unlocks)
-        .toMatch(new RegExp(String(Math.round((RESEARCH_TECH.powerCeiling - 1) * 100))));
-      expect(researchGain('SHIP_ARMOR', 0).unlocks)
-        .toMatch(new RegExp(String(Math.round((RESEARCH_TECH.powerCeiling - 1) * 100))));
+      const cap = new RegExp(`${String(Math.round((RESEARCH_TECH.powerCeiling - 1) * 100))}%`);
+      expect(researchGain('SHIP_POWER', 0).unlocks).not.toMatch(cap);
+      expect(researchGain('SHIP_ARMOR', 0).unlocks).not.toMatch(cap);
     });
   });
 
