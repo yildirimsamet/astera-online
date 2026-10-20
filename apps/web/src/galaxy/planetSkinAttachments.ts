@@ -10,7 +10,6 @@ export interface PlanetSkinAttachmentAsset extends SkinAttachment {
 }
 
 export const PLANET_SKIN_FULL_ANGULAR_RADIUS = 1 / 28;
-export const PLANET_SKIN_MODEL_ANGULAR_RADIUS = 1 / 90;
 export const PLANET_SKIN_BODY_SCALE = 0.96;
 export const PLANET_SKIN_SPIN_RATE = 0.08;
 /** One authored prop, repeated as a clearly small, original, and large landmark. */
@@ -83,7 +82,7 @@ export function resolvePlanetSkinAttachments(
 }
 
 /** Props disappear before they become sub-pixel triangle work. */
-export const planetSkinAttachmentsVisible = (lod: 'full' | 'low' | 'billboard'): boolean =>
+export const planetSkinAttachmentsVisible = (lod: 'full' | 'low'): boolean =>
   lod === 'full';
 
 const UNIT_ATTACHMENT_GEOMETRY = new WeakMap<THREE.Mesh, THREE.BufferGeometry>();

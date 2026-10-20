@@ -135,6 +135,13 @@ describe('a modelled world’s pick volume', () => {
     expect(defaults).not.toMatch(/hits\.current\?\.setMatrixAt/);
     expect(defaults).toMatch(/<HitboxMaterial kind="planet" \/>/);
   });
+
+  /* Owner, 2026-10-20: a skin is 3D at every distance now, so it lost its billboard's square too. */
+  it('is the same size for a skinned world as for a default one', () => {
+    const model = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
+    const skins = model.slice(model.indexOf('function LoadedPlanetSkinModel('), model.indexOf('export function DefaultPlanetModel('));
+    expect(skins).toMatch(/setScalar\(node\.radius \* MODEL_PICK_SCALE\);\s*helper\.updateMatrix\(\);\s*hits\.current\?\.setMatrixAt\(hitCount, helper\.matrix\)/);
+  });
 });
 
 /**

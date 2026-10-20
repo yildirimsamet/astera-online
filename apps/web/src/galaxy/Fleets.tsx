@@ -73,7 +73,7 @@ import {
   type PlanetNode,
   type Vec3Tuple,
 } from './scene.js';
-import { trackingMarkStyle, type TrackingKind } from './trackingMark.js';
+import { trackingMarkStyle, trackingTicksGeometry, type TrackingKind } from './trackingMark.js';
 import {
   PER_MODEL,
   formationHitBox,
@@ -95,6 +95,7 @@ import {
   hullVisualScale,
 } from './flightVisual.js';
 import { threadKey } from './threadKey.js';
+import { useModelWarmup } from './SceneWarmup.js';
 import {
   bucketFormationHulls,
   createFormationHullMatrixScratch,
@@ -365,6 +366,9 @@ function LoadedHull({ url, scale, glow, focused, fog = true, foreground = true }
   useEffect(() => () => {
     model.traverse((node) => { if (isMesh(node)) materialsOf(node).forEach((material) => { material.dispose(); }); });
   }, [model]);
+  // A monument first seen on a zoom out compiled and uploaded its maps in that frame.
+  useModelWarmup(model);
+  useModelWarmup(outline);
 
   return (
     <group scale={scale} name="craft-hull">
@@ -2937,6 +2941,13 @@ function TrackingMark({
     : unknown
       ? UNKNOWN_CONTACT_MARK.ringOuter
       : TRACKING_MARK.ringOuter;
+  const ticks = useMemo(() => look.ticks ? trackingTicksGeometry(
+    radius,
+    scale * (strategic ? 0.02 : TRACKING_MARK.fleetTickWidth),
+    scale * (strategic ? 0.225 : TRACKING_MARK.fleetTickLength),
+  ) : null, [look.ticks, radius, scale, strategic]);
+  // Passed by reference, so the reticle owns and frees it.
+  useEffect(() => () => { ticks?.dispose(); }, [ticks]);
   return (
     <Billboard follow lockX={false} lockY={false} lockZ={false}>
       <group name={`tracking-mark-${kind}`} rotation={[0, 0, kind === 'probe' ? Math.PI / 4 : 0]}>
@@ -2966,24 +2977,11 @@ function TrackingMark({
             <meshBasicMaterial color={look.colour} transparent opacity={opacity} depthWrite={false} />
           </mesh>
         )}
-        {look.ticks && [0, 1, 2, 3].map((quarter) => (
-          <mesh
-            key={quarter}
-            position={[
-              Math.sin(quarter * Math.PI / 2) * radius,
-              Math.cos(quarter * Math.PI / 2) * radius,
-              0,
-            ]}
-            rotation={[0, 0, quarter * Math.PI / 2]}
-            renderOrder={SHIP_ORDER + 3}
-          >
-            <planeGeometry args={[
-              scale * (strategic ? 0.02 : TRACKING_MARK.fleetTickWidth),
-              scale * (strategic ? 0.225 : TRACKING_MARK.fleetTickLength),
-            ]} />
+        {ticks && (
+          <mesh geometry={ticks} renderOrder={SHIP_ORDER + 3}>
             <meshBasicMaterial color={look.colour} transparent opacity={opacity} depthWrite={false} />
           </mesh>
-        ))}
+        )}
         {strategic && (
           <mesh renderOrder={SHIP_ORDER + 3}>
             <ringGeometry args={[radius * 1.11, radius * 1.135, 32]} />

@@ -13,7 +13,6 @@ import {
 import { maskOpaquePlanetBillboard } from '../src/galaxy/planetBillboardMaterial.js';
 import * as THREE from 'three';
 import {
-  planetSkinBillboardVisible,
   planetSkinLod,
   unitPlanetGeometry,
 } from '../src/galaxy/PlanetSkinModel.js';
@@ -343,10 +342,23 @@ describe('first planet skin visuals', () => {
     expect(partitionPlanetSkins([world]).png).toHaveLength(1);
   });
 
-  it('moves a skin from full model to low model and finally its PNG billboard', () => {
+  /*
+    Owner, 2026-10-20: a skinned world stays 3D at every distance, like the sixteen default
+    worlds. The country low models are 192 triangles (Turkey 950), lighter than a default
+    world's 512-triangle far model, so the low model is the far tier.
+  */
+  it('moves a skin from full model to low model and never to a PNG billboard', () => {
     expect(planetSkinLod(1, 20)).toBe('full');
     expect(planetSkinLod(1, 40)).toBe('low');
-    expect(planetSkinLod(1, 91)).toBe('billboard');
+    expect(planetSkinLod(1, 91)).toBe('low');
+    expect(planetSkinLod(1, 100_000)).toBe('low');
+  });
+
+  it('keeps every country low model within a default world’s far budget or near it', () => {
+    for (const country of ['france', 'germany', 'japan', 'spain', 'turkey']) {
+      const binary = readFileSync(resolve('public/assets/models/planets/country', `planet_${country}-lod.glb`));
+      expect(glbTriangles(binary), country).toBeLessThanOrEqual(country === 'turkey' ? 1_000 : 512);
+    }
   });
 
   it('mounts all sixteen matching low-detail surface assets inside mobile budgets', () => {
@@ -393,7 +405,6 @@ describe('first planet skin visuals', () => {
   it('keeps surface geometry on the full model only', () => {
     expect(planetSkinAttachmentsVisible('full')).toBe(true);
     expect(planetSkinAttachmentsVisible('low')).toBe(false);
-    expect(planetSkinAttachmentsVisible('billboard')).toBe(false);
   });
 
   it('normalises authored props onto a centred unit footprint with a grounded base', () => {
@@ -512,14 +523,11 @@ describe('first planet skin visuals', () => {
     expect(source).toMatch(/<SkinAssetBoundary fallback=\{null\}>\s*<Suspense fallback=\{null\}>/);
   });
 
-  it('keeps loading fallbacks and the shared far billboard bucket complementary', () => {
-    expect(planetSkinBillboardVisible('full', 'near')).toBe(true);
-    expect(planetSkinBillboardVisible('low', 'near')).toBe(true);
-    expect(planetSkinBillboardVisible('billboard', 'near')).toBe(false);
-    expect(planetSkinBillboardVisible('full', 'far')).toBe(false);
-    expect(planetSkinBillboardVisible('billboard', 'far')).toBe(true);
-    expect(planetSkinBillboardVisible('full', 'all')).toBe(true);
-    expect(planetSkinBillboardVisible('billboard', 'all')).toBe(true);
+  it('draws a skin’s catalogue art only while its model loads or after it fails', () => {
+    const field = readFileSync('src/galaxy/PlanetField.tsx', 'utf8');
+    expect(field).not.toMatch(/<SkinBillboards[^>]*mode=/);
+    expect(field).toMatch(/fallback=\{<SkinBillboards nodes=\{group\.nodes\} onSelect=\{onSelect\} \/>\}/);
+    expect(field).toMatch(/<OpeningAssetPending \/><SkinBillboards nodes=\{group\.nodes\} onSelect=\{onSelect\} \/>/);
   });
 
   it('cuts the opaque catalogue preview background away on far billboards', () => {

@@ -17,9 +17,6 @@ import {
   DefaultPlanetModel,
   PlanetSkinModel,
   PlanetWarmup,
-  planetSkinBillboardVisible,
-  planetSkinLod,
-  type PlanetSkinBillboardMode,
 } from './PlanetSkinModel.jsx';
 import { approachingFull, groupPlanetsByLod, lodFor, screenRadius, selectPlanetWarmupTargets, type PlanetLod } from './planetLod.js';
 import { seat, settleMembers } from './planetPick.js';
@@ -73,7 +70,6 @@ export function PlanetField({
   onSelect: (id: string) => void;
 }) {
   const { png: defaults, models: skinGroups } = useMemo(() => partitionPlanetSkins(nodes), [nodes]);
-  const skinNodes = useMemo(() => skinGroups.flatMap((group) => group.nodes), [skinGroups]);
   const openingWork = useContext(OpeningWork);
   const onPreparationError = useCallback(() => { openingWork?.begin()('failed'); }, [openingWork]);
   const warmId = (defaults.find((node) => node.stance === 'self') ?? defaults[0])?.id;
@@ -177,17 +173,15 @@ export function PlanetField({
         );
       })}
       {/*
-        A SKIN SEEN SMALL IS ITS CATALOGUE ART (master, 2026-09-24): one far bucket for the whole
-        disc, and the near worlds' cards only while their model loads or if it fails — the two
-        never draw a world twice (`planetSkinBillboardVisible`).
+        A SKIN IS 3D AT EVERY DISTANCE (owner, 2026-10-20; `planetSkinLod`). Its catalogue art
+        is only the stand-in while the model loads or if it fails.
       */}
-      <SkinBillboards nodes={skinNodes} onSelect={onSelect} mode="far" />
       {skinGroups.map((group) => (
         <SkinAssetBoundary
           key={`${group.skinId}:${group.status}`}
-          fallback={<SkinBillboards nodes={group.nodes} onSelect={onSelect} mode="near" />}
+          fallback={<SkinBillboards nodes={group.nodes} onSelect={onSelect} />}
         >
-          <Suspense fallback={<><OpeningAssetPending /><SkinBillboards nodes={group.nodes} onSelect={onSelect} mode="near" /></>}>
+          <Suspense fallback={<><OpeningAssetPending /><SkinBillboards nodes={group.nodes} onSelect={onSelect} /></>}>
             <PlanetSkinModel
               skinId={group.skinId}
               status={group.status}
@@ -547,11 +541,9 @@ const FORWARD = new THREE.Vector3(0, 0, 1);
 function SkinBillboards({
   nodes,
   onSelect,
-  mode,
 }: {
   nodes: readonly PlanetNode[];
   onSelect: (id: string) => void;
-  mode: PlanetSkinBillboardMode;
 }) {
   const groups = useMemo<Group[]>(() => {
     const byTexture = new Map<string, PlanetNode[]>();
@@ -572,7 +564,7 @@ function SkinBillboards({
   // the scene's one boundary and hide every world with it (F9, `scene-boundaries`).
   return groups.map((group) => (
     <Suspense key={group.texture} fallback={null}>
-      <PlanetInstances group={group} onSelect={onSelect} mode={mode} />
+      <PlanetInstances group={group} onSelect={onSelect} />
     </Suspense>
   ));
 }
@@ -580,12 +572,9 @@ function SkinBillboards({
 function PlanetInstances({
   group,
   onSelect,
-  mode = 'all',
 }: {
   group: Group;
   onSelect: (id: string) => void;
-  /** Splits model-loading fallback and far LOD without drawing either twice. */
-  mode?: PlanetSkinBillboardMode;
 }) {
   const texture = useLoader(THREE.TextureLoader, group.texture);
   const ref = useRef<THREE.InstancedMesh>(null);
@@ -617,15 +606,6 @@ function PlanetInstances({
     let drawn = 0;
     let seated = false;
     for (const node of group.nodes) {
-      if (mode !== 'all') {
-        const distance = Math.hypot(
-          camera.position.x - node.position[0],
-          camera.position.y - node.position[1],
-          camera.position.z - node.position[2],
-        );
-        const lod = planetSkinLod(node.radius, distance);
-        if (!planetSkinBillboardVisible(lod, mode)) continue;
-      }
       /**
        * OUT OF SENSOR REACH IS DIMMER AND COLDER. D126.
        *
@@ -679,7 +659,7 @@ function PlanetInstances({
       mesh.material.needsUpdate = true;
     }
 
-  }, [camera, group.nodes, mode, tint]);
+  }, [camera, group.nodes, tint]);
 
   useLayoutEffect(() => {
     const mesh = ref.current;
@@ -727,7 +707,7 @@ function PlanetInstances({
       view.current.primed = false;
     }
     if (!viewChanged(view.current, camera, group.nodes, 0)) return;
-    writeInstances(mesh, painted, mode !== 'all');
+    writeInstances(mesh, painted, false);
   });
 
   const pick = (event: ThreeEvent<PointerEvent>): void => {

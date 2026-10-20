@@ -1,11 +1,14 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useContext, useEffect, useRef, type RefObject } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { OpeningWork } from './OpeningViews.js';
+import { queuePlanetTextures } from './planetTextureQueue.js';
 
 const isMaterial = (value: unknown): value is THREE.Material => value instanceof THREE.Material;
+const isTexture = (value: unknown): value is THREE.Texture => value instanceof THREE.Texture;
 
 /** Live model replacement must not dispose a program compileAsync is still polling. */
-function warmupSnapshot(scene: THREE.Scene) {
+function warmupSnapshot(scene: THREE.Object3D) {
   const probes = new THREE.Group();
   const materials = new Map<THREE.Material, THREE.Material>();
   const copy = (source: unknown): THREE.Material => {
@@ -65,6 +68,48 @@ export function SceneWarmup({ onCompiled, dataReady = true }: { onCompiled: () =
     return () => { live = false; window.clearTimeout(start); };
   }, [gl, scene, camera, invalidate, onCompiled, dataReady]);
   return null;
+}
+
+/** Every map a model's materials draw with, once each. */
+function texturesOf(object: THREE.Object3D): THREE.Texture[] {
+  const textures = new Set<THREE.Texture>();
+  object.traverse(node => {
+    if (!(node instanceof THREE.Mesh)) return;
+    const materials: unknown[] = Array.isArray(node.material) ? node.material : [node.material];
+    for (const material of materials) {
+      if (!isMaterial(material)) continue;
+      for (const value of Object.values(material)) if (isTexture(value)) textures.add(value);
+    }
+  });
+  return [...textures];
+}
+
+/**
+ * A MODEL THAT ARRIVES AFTER THE OPENING'S WARMUP PREPARES ITSELF. 2026-10-20 performance
+ * recording (Galaxy S22): the first zoom out froze for 548 ms as +4 programs and +20
+ * textures appeared in one frame — the eight monuments' maps, 1280² to 2048². Its shaders
+ * compile in parallel the way `SceneWarmup` does it, then its maps go through the shared
+ * texture queue one idle slot at a time, so the first frame that shows it only draws.
+ */
+export function useModelWarmup(object: THREE.Object3D): void {
+  const gl = useThree((state) => state.gl);
+  const scene = useThree((state) => state.scene);
+  const camera = useThree((state) => state.camera);
+  const work = useContext(OpeningWork);
+  useEffect(() => {
+    let live = true;
+    let cancelTextures = (): void => undefined;
+    const snapshot = warmupSnapshot(object);
+    const upload = () => {
+      snapshot.dispose();
+      if (!live) return;
+      cancelTextures = queuePlanetTextures(gl, texturesOf(object), () => work?.covered ?? false).cancel;
+    };
+    void gl.compileAsync(snapshot.probes, camera, scene)
+      .then(() => { if (live) gl.compile(object, camera, scene); })
+      .then(upload, upload);
+    return () => { live = false; cancelTextures(); };
+  }, [gl, scene, camera, object, work]);
 }
 
 /**

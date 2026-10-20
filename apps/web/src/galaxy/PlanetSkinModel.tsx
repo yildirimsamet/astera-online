@@ -10,7 +10,7 @@ import { planetSkinVisual } from '../ui/planetSkins.js';
 import { createCountryRecoveryMaterial, createPlanetSkinMaterial } from './planetSkinMaterial.js';
 import { planetSurface, solidPlanetMaterial } from './planetSurface.js';
 import { addPlanetImpact, planetImpactGroups } from './planetImpactMaterial.js';
-import type { PlanetLod } from './planetLod.js';
+import { MODEL_PICK_SCALE, type PlanetLod } from './planetLod.js';
 import { placeBodies, placePickSpheres, seat, settleMembers } from './planetPick.js';
 import { bodyLight } from './PlanetField.jsx';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
@@ -27,30 +27,23 @@ import { PlanetSkinAttachments } from './PlanetSkinAttachments.jsx';
 import {
   PLANET_SKIN_BODY_SCALE,
   PLANET_SKIN_FULL_ANGULAR_RADIUS,
-  PLANET_SKIN_MODEL_ANGULAR_RADIUS,
   planetSkinRotation,
 } from './planetSkinAttachments.js';
 
 type SkinNode = Pick<PlanetNode, 'id' | 'position' | 'radius' | 'stance' | 'intel'> & { state?: PlanetNode['state'] };
 
-export type PlanetSkinLod = 'full' | 'low' | 'billboard';
-export type PlanetSkinBillboardMode = 'all' | 'near' | 'far';
+export type PlanetSkinLod = 'full' | 'low';
 
 /** Palette/status buckets share the same meshes returned by the GLTF cache. */
 const UNIT_PLANET_GEOMETRY_CACHE = new WeakMap<THREE.Mesh, THREE.BufferGeometry>();
 
+/**
+ * A SKIN IS 3D AT EVERY DISTANCE (owner, 2026-10-20), like the sixteen default worlds. Its
+ * low model is the far tier: the country ones are 192 triangles (Turkey 950), lighter than
+ * a default world's 512-triangle far model.
+ */
 export function planetSkinLod(radius: number, distance: number): PlanetSkinLod {
-  if (radius >= distance * PLANET_SKIN_FULL_ANGULAR_RADIUS) return 'full';
-  if (radius >= distance * PLANET_SKIN_MODEL_ANGULAR_RADIUS) return 'low';
-  return 'billboard';
-}
-
-export function planetSkinBillboardVisible(
-  lod: PlanetSkinLod,
-  mode: PlanetSkinBillboardMode,
-): boolean {
-  if (mode === 'all') return true;
-  return mode === 'far' ? lod === 'billboard' : lod !== 'billboard';
+  return radius >= distance * PLANET_SKIN_FULL_ANGULAR_RADIUS ? 'full' : 'low';
 }
 
 /** gltfpack positions are often quantised integers; bake transforms only in floats. */
@@ -242,7 +235,7 @@ export function PlanetSkinModel({
   status: PlanetSkinStatus;
   nodes: readonly SkinNode[];
   onSelect?: (id: string) => void;
-  /** The shop preview has no billboard peer, so only the galaxy enables switching. */
+  /** The shop preview shows its one world at full detail; only the galaxy switches tiers. */
   galaxyLod?: boolean;
   previewPhaseOffset?: number;
   freezeRotation?: boolean;
@@ -354,7 +347,6 @@ function LoadedPlanetSkinModel({
     nodes.forEach((node) => {
       const distance = camera.position.distanceTo(helper.position.set(...node.position));
       const lod = galaxyLod ? planetSkinLod(node.radius, distance) : 'full';
-      if (lod === 'billboard') return;
       if (!sphereInFrustum(frustum, node.position, node.radius)) return;
       helper.position.set(...node.position);
       helper.rotation.set(
@@ -370,6 +362,9 @@ function LoadedPlanetSkinModel({
       const light = bodyLight(node.stance, node.intel);
       const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
       mesh.setColorAt(index, tint.setRGB(light * cool[0]!, light * cool[1]!, light * cool[2]!));
+      // The pick sphere covers the card's area, as a default world's does (`MODEL_PICK_SCALE`).
+      helper.scale.setScalar(node.radius * MODEL_PICK_SCALE);
+      helper.updateMatrix();
       hits.current?.setMatrixAt(hitCount, helper.matrix);
       if (seat(hitNodes.current, hitCount, node)) seated = true;
       hitCount += 1;
