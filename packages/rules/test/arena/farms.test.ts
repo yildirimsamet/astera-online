@@ -96,7 +96,7 @@ describe('field ore', () => {
     const anchors: Vec3[] = [];
     for (let g = 0; g < T.fieldGroups; g++) {
       const live = group(world, g).filter(drop => drop.active);
-      const spawn = FIELD_SPAWNS.find(s => s.pieces === live.length && s.kind === live[0]?.kind && s.amount === live[0]?.amount);
+      const spawn = FIELD_SPAWNS.find(s => s.pieces === live.length && s.kind === live[0]?.kind && s.amount === live[0].amount);
       expect(spawn).toBeDefined();
       expect(live.every(drop => drop.field && drop.kind === live[0]?.kind)).toBe(true);
       const anchor = spots.find(spot => live.every(drop => distance(spot, drop.p) <= T.clusterRadius + 1e-9));
