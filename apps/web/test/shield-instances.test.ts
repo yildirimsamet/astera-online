@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   REMEMBERED_SHIELD,
+  SHIELD_FAR_PX,
+  SHIELD_FAR_SEGMENTS,
   SHIELD_SEGMENTS,
   SHIELD_TIER,
   shieldInstances,
   shieldLook,
+  shieldTier,
 } from '../src/galaxy/Satellites.js';
 import type { PlanetNode } from '../src/galaxy/scene.js';
 
@@ -93,3 +96,28 @@ describe('the dome sphere', () => {
   });
 });
 
+
+/*
+  OWNER, 2026-10-20: the evening recording's heaviest single draw was the Aegis domes — 126 domes
+  at 720 triangles each, most of them a few pixels across on a zoomed-out disc. A dome that small
+  is drawn from a sphere a quarter of the size; its facets are under half a pixel.
+*/
+describe('a far dome is a lighter sphere', () => {
+  const triangles = ([width, height]: readonly [number, number]) =>
+    new THREE.SphereGeometry(1, width, height).index!.count / 3;
+
+  it('carries about a quarter of the near dome\'s triangles', () => {
+    expect(triangles(SHIELD_FAR_SEGMENTS)).toBeLessThan(triangles(SHIELD_SEGMENTS) / 4);
+  });
+
+  it('keeps its outline within half a pixel at the size it is used up to', () => {
+    const sag = SHIELD_FAR_PX * (1 - Math.cos(Math.PI / SHIELD_FAR_SEGMENTS[0]));
+    expect(sag).toBeLessThan(0.5);
+  });
+
+  it('switches by size on screen, not by distance alone', () => {
+    expect(shieldTier(SHIELD_FAR_PX - 0.1)).toBe('far');
+    expect(shieldTier(SHIELD_FAR_PX)).toBe('near');
+    expect(shieldTier(80)).toBe('near');
+  });
+});

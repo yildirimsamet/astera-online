@@ -8,6 +8,7 @@ import { SATELLITE_IDS, type SatelliteId } from '@astera/rules';
 import { SATELLITE_MODEL, SATELLITE_NEON } from '../ui/assets.js';
 import { configureOpaqueTransparentBody, unitModel } from './model.js';
 import { isWrecked, type PlanetNode, type Vec3Tuple } from './scene.js';
+import { screenRadius } from './planetLod.js';
 
 /**
  * EVERY INSTRUMENT ANYONE HAS BUILT, IN ORBIT, VISIBLE TO EVERYONE.
@@ -612,6 +613,25 @@ export function shieldInstances(
 export const SHIELD_SEGMENTS = [24, 16] as const;
 
 /**
+ * THE DOME SEEN SMALL (owner, 2026-10-20). The evening recording's heaviest draw was 126 domes
+ * at 720 triangles each, most a few pixels across. Under `SHIELD_FAR_PX` of screen radius a dome
+ * is drawn from a sphere a quarter of the size, whose facets stay under half a pixel there.
+ */
+export const SHIELD_FAR_SEGMENTS = [12, 8] as const;
+export const SHIELD_FAR_PX = 12;
+
+export const shieldTier = (radiusPx: number): 'near' | 'far' => (radiusPx < SHIELD_FAR_PX ? 'far' : 'near');
+
+function domeGeometry(segments: readonly [number, number], count: number): THREE.SphereGeometry {
+  const geometry = new THREE.SphereGeometry(1, segments[0], segments[1]);
+  geometry.setAttribute('aColour', new THREE.InstancedBufferAttribute(new Float32Array(count * 3), 3));
+  geometry.setAttribute('aOpacity', new THREE.InstancedBufferAttribute(new Float32Array(count), 1));
+  geometry.setAttribute('aBreath', new THREE.InstancedBufferAttribute(new Float32Array(count), 1));
+  geometry.setAttribute('aPhase', new THREE.InstancedBufferAttribute(new Float32Array(count), 1));
+  return geometry;
+}
+
+/**
  * EVERY DOME IN ONE DRAW. Owner decision, 2026-09-19.
  *
  * Each shielded world used to be its own mesh, material and frame callback — a
@@ -637,27 +657,14 @@ export function Shields({
 }) {
   const domes = useMemo(() => shieldInstances(nodes, ownLevel, ownId), [nodes, ownLevel, ownId]);
   const mesh = useRef<THREE.InstancedMesh>(null);
+  const farMesh = useRef<THREE.InstancedMesh>(null);
+  const size = useThree((state) => state.size);
 
-  const geometry = useMemo(() => {
-    const g = new THREE.SphereGeometry(1, SHIELD_SEGMENTS[0], SHIELD_SEGMENTS[1]);
-    const count = Math.max(1, domes.length);
-    const colour = new Float32Array(count * 3);
-    const opacity = new Float32Array(count);
-    const breath = new Float32Array(count);
-    const phase = new Float32Array(count);
-    domes.forEach((dome, i) => {
-      colour.set(dome.colour, i * 3);
-      opacity[i] = dome.opacity;
-      breath[i] = dome.breathes ? 1 : 0;
-      phase[i] = dome.phase;
-    });
-    g.setAttribute('aColour', new THREE.InstancedBufferAttribute(colour, 3));
-    g.setAttribute('aOpacity', new THREE.InstancedBufferAttribute(opacity, 1));
-    g.setAttribute('aBreath', new THREE.InstancedBufferAttribute(breath, 1));
-    g.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phase, 1));
-    return g;
-  }, [domes]);
+  // Every attribute is written per frame from the visible list, so the buffers start empty.
+  const geometry = useMemo(() => domeGeometry(SHIELD_SEGMENTS, Math.max(1, domes.length)), [domes]);
+  const farGeometry = useMemo(() => domeGeometry(SHIELD_FAR_SEGMENTS, Math.max(1, domes.length)), [domes]);
   useEffect(() => () => { geometry.dispose(); }, [geometry]);
+  useEffect(() => () => { farGeometry.dispose(); }, [farGeometry]);
 
   const material = useMemo(
     () => new THREE.ShaderMaterial({
@@ -673,6 +680,7 @@ export function Shields({
       blending: THREE.AdditiveBlending,
       // Both faces: the far wall is what gives the limb its brightness.
       side: THREE.DoubleSide,
+      forceSinglePass: true,
     }),
     [],
   );
@@ -680,51 +688,80 @@ export function Shields({
 
   const visible = useMemo(() => createInstanceVisibility<ShieldInstance>(), []);
   const place = useMemo(() => new THREE.Object3D(), []);
+  const centre = useMemo(() => new THREE.Vector3(), []);
+  /** Each visible dome's tier as last written: a zoom that moves one across rewrites the draws. */
+  const tiers = useMemo<('near' | 'far')[]>(() => [], []);
   useLayoutEffect(() => {
-    if (mesh.current) {
-      mesh.current.count = 0;
-      mesh.current.visible = false;
+    for (const node of [mesh.current, farMesh.current]) {
+      if (!node) continue;
+      node.count = 0;
+      node.visible = false;
     }
     visible.view.primed = false;
     visible.members.length = 0;
-  }, [domes, geometry, visible]);
+    tiers.length = 0;
+  }, [domes, geometry, farGeometry, visible, tiers]);
 
   useVisualFrame(({ camera, clock }) => {
     const time = material.uniforms.uTime;
     if (time) time.value = clock.elapsedTime;
-    const node = mesh.current;
+    const near = mesh.current;
+    const far = farMesh.current;
+    if (!near || !far) return;
     // Maximum shader breath, so the animated limb cannot pop at a screen edge.
-    if (!node || !updateVisibleMembers(visible, camera, node, domes, 1.012)) return;
-    const colour = geometry.getAttribute('aColour');
-    const opacity = geometry.getAttribute('aOpacity');
-    const breath = geometry.getAttribute('aBreath');
-    const phase = geometry.getAttribute('aPhase');
+    let changed = updateVisibleMembers(visible, camera, near, domes, 1.012);
+    const fov = camera instanceof THREE.PerspectiveCamera ? camera.fov : 45;
     visible.members.forEach((dome, i) => {
+      const tier = shieldTier(screenRadius(dome.radius, camera.position.distanceTo(centre.set(...dome.position)), fov, size.height));
+      if (tiers[i] !== tier) changed = true;
+      tiers[i] = tier;
+    });
+    tiers.length = visible.members.length;
+    if (!changed) return;
+    let nearCount = 0;
+    let farCount = 0;
+    visible.members.forEach((dome, i) => {
+      const isFar = tiers[i] === 'far';
+      const node = isFar ? far : near;
+      const target = isFar ? farGeometry : geometry;
+      const at = isFar ? farCount++ : nearCount++;
       place.position.set(...dome.position);
       place.scale.setScalar(dome.radius);
       place.updateMatrix();
-      node.setMatrixAt(i, place.matrix);
-      colour.setXYZ(i, ...dome.colour);
-      opacity.setX(i, dome.opacity);
-      breath.setX(i, dome.breathes ? 1 : 0);
-      phase.setX(i, dome.phase);
+      node.setMatrixAt(at, place.matrix);
+      target.getAttribute('aColour').setXYZ(at, ...dome.colour);
+      target.getAttribute('aOpacity').setX(at, dome.opacity);
+      target.getAttribute('aBreath').setX(at, dome.breathes ? 1 : 0);
+      target.getAttribute('aPhase').setX(at, dome.phase);
     });
-    node.count = visible.members.length;
-    node.visible = node.count > 0;
-    node.instanceMatrix.needsUpdate = true;
-    colour.needsUpdate = opacity.needsUpdate = breath.needsUpdate = phase.needsUpdate = true;
+    for (const [node, target, count] of [[near, geometry, nearCount], [far, farGeometry, farCount]] as const) {
+      node.count = count;
+      node.visible = count > 0;
+      node.instanceMatrix.needsUpdate = true;
+      for (const name of ['aColour', 'aOpacity', 'aBreath', 'aPhase']) target.getAttribute(name).needsUpdate = true;
+    }
   });
 
   if (domes.length === 0) return null;
   return (
-    <instancedMesh
-      // A new table is a new buffer size; remount rather than resize in place.
-      key={domes.length}
-      ref={mesh}
-      args={[geometry, material, domes.length]}
-      frustumCulled={false}
-      renderOrder={3}
-      name="aegis-domes"
-    />
+    <>
+      <instancedMesh
+        // A new table is a new buffer size; remount rather than resize in place.
+        key={domes.length}
+        ref={mesh}
+        args={[geometry, material, domes.length]}
+        frustumCulled={false}
+        renderOrder={3}
+        name="aegis-domes"
+      />
+      <instancedMesh
+        key={`far:${String(domes.length)}`}
+        ref={farMesh}
+        args={[farGeometry, material, domes.length]}
+        frustumCulled={false}
+        renderOrder={3}
+        name="aegis-domes-far"
+      />
+    </>
   );
 }

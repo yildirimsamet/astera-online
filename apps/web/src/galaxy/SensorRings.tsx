@@ -723,6 +723,7 @@ function RadarSweep({ centre, radius }: { centre: THREE.Vector3; radius: number 
         transparent
         depthWrite={false}
         side={THREE.DoubleSide}
+        forceSinglePass
         blending={THREE.AdditiveBlending}
         toneMapped={false}
       />
