@@ -1,7 +1,7 @@
 /* Komutan Gemisi · Savaş Alanı. Portrait first (350×812), two thumbs, glass over deep space. */
 .arena-root {
-  --glass: color-mix(in srgb, #050a13 58%, transparent);
-  --glass-hi: color-mix(in srgb, #0a1424 72%, transparent);
+  --glass: color-mix(in srgb, #050a13 66%, transparent);
+  --glass-hi: color-mix(in srgb, #0a1424 80%, transparent);
   --edge: color-mix(in srgb, #9fd8ff 16%, transparent);
   --edge-hi: color-mix(in srgb, #9fd8ff 30%, transparent);
   --self: var(--color-v2-self);
@@ -49,9 +49,9 @@
 .arena-preflight header p { margin: 8px 0 0; font-size: 22px; font-weight: 600; letter-spacing: .02em; }
 .arena-preflight header small { display: block; margin-top: 6px; font: 9px var(--font-v2-mono); letter-spacing: .26em; text-transform: uppercase; color: var(--self); }
 .ap-card, .ar-card, .arena-menu section { width: 100%; max-width: 420px; margin: 0 auto; padding: 16px; border-radius: 14px;
-  background: linear-gradient(180deg, color-mix(in srgb, #0b1626 82%, transparent), color-mix(in srgb, #050a13 90%, transparent));
+  background: linear-gradient(180deg, color-mix(in srgb, #0b1626 90%, transparent), color-mix(in srgb, #050a13 95%, transparent));
   border: 1px solid var(--edge); box-shadow: 0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 color-mix(in srgb, #bfe7ff 10%, transparent);
-  backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); }
+  }
 .ap-eyebrow { margin: 0 0 10px; font: 9px var(--font-v2-mono); letter-spacing: .24em; text-transform: uppercase; color: var(--color-v2-ink-3); }
 .ap-goals { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; }
 .ap-goals li { display: grid; grid-template-columns: 20px auto 1fr; gap: 9px; align-items: baseline; padding: 8px 10px; border-radius: 8px;
@@ -76,7 +76,7 @@
 .ah-top { position: absolute; top: calc(8px + var(--safe-top)); left: 10px; right: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr 34px; gap: 5px; }
 .ah-gauge { --fill: 1; position: relative; display: grid; grid-template-columns: 14px 1fr; align-items: center; column-gap: 5px; height: 34px;
   padding: 0 8px 4px; border-radius: 8px; background: var(--glass); border: 1px solid var(--edge); overflow: hidden;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  }
 .ah-gauge-icon { width: 14px; height: 14px; color: var(--tone); }
 .ah-gauge-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .ah-gauge strong { justify-self: end; font: 600 12.5px var(--font-v2-mono); font-variant-numeric: tabular-nums; color: var(--color-v2-ink); }
@@ -123,7 +123,7 @@
 .ah-note { --tone: var(--self); position: absolute; top: calc(124px + var(--safe-top)); left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px);
   display: grid; justify-items: center; gap: 2px; padding: 7px 14px 8px; border-radius: 10px; background: var(--glass-hi);
   border: 1px solid color-mix(in srgb, var(--tone) 38%, transparent); box-shadow: 0 0 22px color-mix(in srgb, var(--tone) 14%, transparent);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); animation: ah-in .25s ease-out; text-align: center; }
+  animation: ah-in .25s ease-out; text-align: center; }
 @keyframes ah-in { from { opacity: 0; transform: translate(-50%, -4px); } }
 .ah-note strong { font-size: 12px; font-weight: 600; color: var(--tone); letter-spacing: .01em; }
 .ah-note span { font-size: 10.5px; color: var(--color-v2-ink-2); }
@@ -191,8 +191,8 @@
 .ac-stick { position: absolute; left: 96px; top: calc(100% - 116px - var(--safe-bottom)); width: 0; height: 0; opacity: .55; transition: opacity .15s; }
 .ac-stick[data-active] { opacity: 1; transition: none; }
 .ac-stick::before { content: ''; position: absolute; width: 152px; height: 152px; margin: -76px; border-radius: 50%;
-  border: 1px solid var(--edge-hi); background: radial-gradient(circle, color-mix(in srgb, #0a1626 30%, transparent), color-mix(in srgb, #0a1626 62%, transparent));
-  box-shadow: inset 0 0 20px rgba(0,0,0,.35); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  border: 1px solid var(--edge-hi); background: radial-gradient(circle, color-mix(in srgb, #0a1626 36%, transparent), color-mix(in srgb, #0a1626 68%, transparent));
+  box-shadow: inset 0 0 20px rgba(0,0,0,.35); }
 .ac-stick > i { position: absolute; width: 0; height: 0; border: 4px solid transparent; }
 .ac-stick > i:nth-of-type(1) { border-bottom-color: var(--color-v2-ink-3); transform: translate(-4px, -72px); }
 .ac-stick > i:nth-of-type(2) { border-top-color: var(--color-v2-ink-3); transform: translate(-4px, 64px); }
@@ -214,7 +214,7 @@
 .ac-action { --charge: 0; position: absolute; pointer-events: auto; touch-action: none; border-radius: 50% !important; display: grid; place-items: center;
   background: radial-gradient(circle at 50% 35%, color-mix(in srgb, #12253a 82%, transparent), color-mix(in srgb, #050b14 85%, transparent)) !important;
   border: 1px solid var(--edge-hi) !important; box-shadow: 0 6px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: transform .06s, box-shadow .15s; }
+  transition: transform .06s, box-shadow .15s; }
 .ac-action:active:not(:disabled) { transform: scale(.94); }
 /* FIRE and TURBO take their touches through the shared zone below them (one thumb, both keys). */
 .ac-action.is-chorded { pointer-events: none; }
@@ -257,7 +257,7 @@
 .arena-result, .arena-menu { position: absolute; inset: 0; z-index: 25; display: flex; align-items: flex-end; padding: 16px 16px calc(18px + var(--safe-bottom));
   background: linear-gradient(180deg, transparent 30%, rgba(2,5,10,.85)); animation: ah-fade .4s ease-out; }
 @keyframes ah-fade { from { opacity: 0; } }
-.arena-menu { align-items: center; background: rgba(2,5,10,.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.arena-menu { align-items: center; background: rgba(2,5,10,.78); }
 .ar-card h2, .arena-menu h2 { margin: 0 0 6px; font-size: 22px; font-weight: 650; }
 .ar-card > p:not(.ap-eyebrow):not(.ap-keys) { margin: 0 0 14px; font-size: 12.5px; line-height: 1.5; color: var(--color-v2-ink-2); }
 .ar-card.is-extracted h2 { color: var(--self); } .ar-card.is-dead h2 { color: #ff8a73; } .ar-card.is-towed h2 { color: var(--warn); }
