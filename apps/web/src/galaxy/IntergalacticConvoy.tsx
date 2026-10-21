@@ -5,7 +5,7 @@ import { INTERGALACTIC_CONVOY, convoyFormationSlots, type MobileHullId } from '@
 import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { FLEET_V2_ASSET_MANIFEST } from '../ui/fleet-v2-assets.js';
 import { serverNow } from '../lib/clock.js';
-import { FormationLightField, FormationWakes, Hull } from './Fleets.jsx';
+import { FormationHulls, FormationLightField, FormationWakes, HullBatchLayer } from './Fleets.jsx';
 import {
   CRAFT_SCALE,
   SCALE,
@@ -273,7 +273,6 @@ export function IntergalacticConvoy({
   onSelect?: (id: string) => void;
 }) {
   const group = useRef<THREE.Group>(null);
-  const shipNodes = useRef<(THREE.Group | null)[]>([]);
   const wakeAimDistance = useRef(1_000);
   const slots = useMemo(() => convoyFormationSlots(FORMATION_VERSION), []);
   const visualSlots = useMemo<readonly VisualSlot[]>(() => slots.map((slot) => ({
@@ -322,19 +321,12 @@ export function IntergalacticConvoy({
     return quaternion.setFromUnitVectors(forward, direction);
   }, [event]);
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     const node = group.current;
     if (!node || !event || !seasonStart) return;
     const at = intergalacticConvoyWorldPosition(event, seasonStart, serverNow());
     node.position.set(...at);
     node.quaternion.copy(heading);
-    visualSlots.forEach((slot, index) => {
-      shipNodes.current[index]?.position.set(
-        slot.position[0],
-        slot.position[1],
-        slot.position[2] + convoyLongitudinalOffset(index, clock.elapsedTime),
-      );
-    });
   });
 
   if (!event || !seasonStart) return null;
@@ -369,27 +361,18 @@ export function IntergalacticConvoy({
         longitudinalOffset={convoyLongitudinalOffset}
         longitudinalOffsetBound={CONVOY_DRIFT_AMPLITUDE}
       />
-      {slots.map((slot, index) => {
-        const asset = FLEET_V2_ASSET_MANIFEST[slot.hull];
-        return (
-          <group
-            ref={(node) => { shipNodes.current[index] = node; }}
-            key={`${String(slot.rank)}:${String(slot.column)}`}
-            position={[
-              slot.localPosition.x / SCALE,
-              slot.localPosition.y / SCALE,
-              slot.localPosition.z / SCALE,
-            ]}
-          >
-            <Hull
-              url={asset.model}
-              scale={CONVOY_HULL_SCALE * asset.scale}
-              glow={asset.light.color}
-              focused={focused}
-            />
-          </group>
-        );
-      })}
+      {/* The convoy's hulls are fleet hulls: shared batches and the distance model (2026-10-20). */}
+      <HullBatchLayer>
+        <FormationHulls
+          markers={markers}
+          slots={wakeSlots}
+          scale={CONVOY_HULL_SCALE}
+          aimDistance={wakeAimDistance}
+          focused={focused}
+          longitudinalOffset={convoyLongitudinalOffset}
+          longitudinalOffsetBound={CONVOY_DRIFT_AMPLITUDE}
+        />
+      </HullBatchLayer>
       {onSelect ? (
         <mesh name="intergalactic-convoy-hit" position={hitBox.centre} onPointerUp={pick} renderOrder={-1}>
           <boxGeometry args={hitBox.size} />
