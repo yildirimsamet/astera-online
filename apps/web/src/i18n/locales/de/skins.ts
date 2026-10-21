@@ -125,7 +125,7 @@ export const skins = {
   modelUnavailable: 'Modell nicht verfügbar',
   normal: 'Normal',
   recovery: 'Wiederherstellungsschild',
-  recoveryNote: "Der Planet zeigt dieses beschädigte Aussehen während des Erholungsschilds. Er hält 8 Stunden; ein Angriff kann ihn vorzeitig beenden. Das Aussehen gehört zum Skin.",
+  recoveryNote: "Der Planet zeigt dieses beschädigte Aussehen während des Erholungsschilds. Er hält 12 Stunden; ein Angriff kann ihn vorzeitig beenden. Das Aussehen gehört zum Skin.",
   collection: 'Die Sammlung',
   owned: 'Im Besitz',
   worlds: 'Deine Planeten',

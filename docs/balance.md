@@ -267,12 +267,12 @@ defenceSalvage 0.60 · lootBufferShare 0.50 · engagementSeconds 10
 
 ```
 fleet escape (ruleset 11, `ESCAPE`):
-  ships run ⇔ combatValue(wing) ≥ 3.5 × combatValue(line)  ∧  standing fight DECISIVE  ∧  tank ≥ lift
+  ships run ⇔ combatValue(wing) ≥ 3 × combatValue(line)  ∧  standing fight DECISIVE  ∧  tank ≥ lift
   lift = missionFuel(ships, 600, 2)
   ruleset 13+: defending line must also hold ≥5 fighting ships (transports and guns excluded)
 ```
 
-The fixed ratio rose from 3 to 3.5 on the owner's instruction (2026-10-09). Equality
+The fixed ratio was lowered from 3.5 to 3 by owner instruction (2026-10-21). Equality
 qualifies. The defending line includes active ground guns; all other escape conditions remain.
 
 The live ship catalog now moves alloy into crystal at constant economic value
@@ -939,14 +939,14 @@ happened to be looking. Measured over five seeds, raw active-field growth at +5 
 unchanged to six decimal places. Gated on the occurrence's definition version (4 → **5**), so a
 window that has already opened keeps the arrival times its rocks were derived under.
 
-**Eight hours of protection after a heavy defeat, measured in the defender's own production
-hours (reworked 2026-09-20; bar set to four hours and the production boost to +50%).** A commander whose net loss over the last six hours reaches **four average hours** of
+**Twelve hours of protection after a heavy defeat, measured in the defender's own production
+hours (duration extended 2026-10-21; reworked 2026-09-20; bar set to four hours and the production boost to +50%).** A commander whose net loss over the last six hours reaches **four average hours** of
 their own works — everything carried off PLUS every hull destroyed that did not rebuild from its
-own wreckage — is unreachable for eight hours, on every world they hold, against Raid and Death Star.
+own wreckage — is unreachable for twelve hours, on every world they hold, against Raid, Death Star and Radiation Bomb launches.
 The struck world produces at +50% while that shield stands.
 The window and the loss bar are independent controls. It is the first-day
-shield's contract, earned rather than given, and given up the same way; a Death Star impact on a
-player's world grants it outright.
+shield's contract, earned rather than given, and given up the same way. Active protection
+also blocks new Death Star launches against the commander.
 
 *What it replaces, and why.* The rule that shipped on 2026-09-14 asked for half of the struck
 world's raidable stock AND a twentieth of the commander's total STORAGE. Measured against the
@@ -962,7 +962,7 @@ Crystal and Deuterium loss is divided by that resource's hourly production acros
 and the three durations are averaged. Zero loss contributes zero hours; a loss in a resource the
 commander cannot produce is repriced into the first resource they can produce.
 
-*Eight hours is the owner-set bar.* The earlier 97-battle measurement used the superseded combined
+*Four production hours is the standard owner-set loss bar; twelve hours is the protection window.* The earlier 97-battle measurement used the superseded combined
 resource-value formula and does not describe this rule's grant rate. `battle_reports.recovery_loss_hours`
 records what every resolved battle scored so the new average can be measured from real battles.
 

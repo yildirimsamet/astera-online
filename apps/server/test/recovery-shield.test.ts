@@ -163,12 +163,12 @@ describe('the recovery shield', () => {
 
   /* ── what earns it ───────────────────────────────────────── */
 
-  it('gives the defender eight hours after a battle that took half of everything', async () => {
+  it('gives the defender twelve hours after a battle that took half of everything', async () => {
     const report = await overwhelm();
     const until = await recoveryOf(f.playerIds[1]!);
     expect(until).not.toBeNull();
     expect(until!.getTime())
-      .toBe(report.createdAt.getTime() + ABUSE.recoveryShieldHours * HOUR);
+      .toBe(report.createdAt.getTime() + 12 * HOUR);
   });
 
   /**
@@ -346,7 +346,7 @@ describe('the recovery shield', () => {
     const extended = await recoveryOf(f.playerIds[1]!);
     expect(extended).not.toBeNull();
 
-    // Pushed out to eight hours from the SECOND battle, not sixteen from the first.
+    // Pushed out to twelve hours from the SECOND battle, not twenty-four from the first.
     expect(extended!.getTime()).toBeGreaterThan(granted!.getTime());
     expect(extended!.getTime() - granted!.getTime())
       .toBeLessThan(ABUSE.recoveryShieldHours * HOUR);
@@ -407,10 +407,14 @@ describe('the recovery shield', () => {
     expect(scout.missionId).toBeTypeOf('string');
   });
 
-  it('lets the raid through the moment the eight hours are over', async () => {
+  it('lets the raid through the moment the twelve hours are over', async () => {
     await overwhelm();
     await tierFourCommanders();
-    f.clock.advance(ABUSE.recoveryShieldHours * 60 + 1);
+    const until = (await recoveryOf(f.playerIds[1]!))!;
+    f.clock.set(new Date(until.getTime() - 1));
+    await expect(launchAttack(f.db, mine, theirs, { DART: 10 }, f.clock))
+      .rejects.toMatchObject({ code: 'NEWCOMER_SHIELDED' });
+    f.clock.set(until);
     await giveUnits(f.db, mine, { DART: 10 });
     const launched = await launchAttack(f.db, mine, theirs, { DART: 10 }, f.clock);
     expect(launched.missionId).toBeTypeOf('string');

@@ -42,8 +42,8 @@ afterAll(async () => {
 /** Twenty Darts at home; the lift is priced by the shared fuel formula. */
 const LINE: Fleet = { DART: 20 };
 const LIFT = escapeFuel(LINE);
-/** Exactly 3.5 times the line; unarmed cargo does not count toward it. */
-const THRESHOLD: Fleet = { DART: 70, COURIER: 20 };
+/** Exactly 3 times the line; unarmed cargo does not count toward it. */
+const THRESHOLD: Fleet = { DART: 60, COURIER: 20 };
 const DOUBLE: Fleet = { DART: 40, COURIER: 20 };
 const TANK = 1_000;
 
@@ -106,18 +106,21 @@ describe('the fleet escape on a raid', () => {
     await giveUnits(f.db, target, { ...LINE, PROSPECTOR: 2 });
   });
 
-  it('lifts the ships off an exactly 3.5-to-one raid and leaves every one of them home', async () => {
-    const report = await raid(THRESHOLD);
-    expect(report.fleetEscape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: LIFT });
-    expect(await home(target)).toEqual({ ...LINE, PROSPECTOR: 2 });
-    // Nothing stood in the line, so the raid was a walkover and took its share.
-    expect(report.grade).toBe('DECISIVE');
-    expect(report.defenderLosses).toEqual({});
-    expect(report.defenderFleet).toEqual({});
-    expect(report.loot.alloy).toBeGreaterThan(0);
-  });
+  it.each([MULTI_WORLD.fleetEscapeRulesetVersion, MULTI_WORLD.rulesetVersion])(
+    'lifts the ships off an exactly 3-to-one raid in ruleset %i and leaves them home', async version => {
+      await rulesetOf(version);
+      const report = await raid(THRESHOLD);
+      expect(report.fleetEscape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: LIFT });
+      expect(await home(target)).toEqual({ ...LINE, PROSPECTOR: 2 });
+      // Nothing stood in the line, so the raid was a walkover and took its share.
+      expect(report.grade).toBe('DECISIVE');
+      expect(report.defenderLosses).toEqual({});
+      expect(report.defenderFleet).toEqual({});
+      expect(report.loot.alloy).toBeGreaterThan(0);
+    },
+  );
 
-  it.each([60, 69])('fights instead of escaping against %i Darts, below 3.5-to-one', async (darts) => {
+  it.each([58, 59])('fights instead of escaping against %i Darts, below 3-to-one', async (darts) => {
     const report = await raid({ DART: darts, COURIER: 20 });
     expect(report.fleetEscape).toBeNull();
     expect(report.defenderLosses).toEqual(LINE);

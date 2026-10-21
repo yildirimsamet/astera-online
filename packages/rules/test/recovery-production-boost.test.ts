@@ -14,7 +14,7 @@ import {
 } from '../src/index.js';
 
 /**
- * THE STRUCK WORLD WORKS AT +50% WHILE ITS EIGHT-HOUR RECOVERY SHIELD STANDS.
+ * THE STRUCK WORLD WORKS AT +50% WHILE ITS TWELVE-HOUR RECOVERY SHIELD STANDS.
  *
  * The pure half lives here: how many hours of production a span is worth when part
  * of it is boosted, and what the lazy tick does with that. Who gets the boost, and
@@ -22,8 +22,8 @@ import {
  */
 
 describe('the recovery production boost, as a figure', () => {
-  it('is fifty per cent on an eight-hour window', () => {
-    expect(ABUSE.recoveryShieldHours).toBe(8);
+  it('is fifty per cent on a twelve-hour window', () => {
+    expect(ABUSE.recoveryShieldHours).toBe(12);
     expect(ABUSE.recoveryProductionMult).toBe(1.5);
   });
 });
@@ -72,6 +72,12 @@ describe('production hours across a span', () => {
   });
 });
 
+it('boosts the full twelve-hour recovery window and stops at its deadline', () => {
+  const end = ABUSE.recoveryShieldHours * 60;
+  expect(productionHours(0, 13 * 60, 0, end)).toBe(19);
+  expect(productionHours(12 * 60, 13 * 60, 0, end)).toBe(1);
+});
+
 describe('the lazy tick under a recovery boost', () => {
   const input = {
     refineryLevel: 5,
@@ -112,7 +118,7 @@ describe('the lazy tick under a recovery boost', () => {
   /**
    * THE COLLECTOR DOES NOT GROW WITH THE BOOST, AND THAT IS LOAD-BEARING.
    *
-   * A ceiling that grew for eight hours would shrink back when the shield fell, and
+   * A ceiling that grew for twelve hours would shrink back when the shield fell, and
    * the next tick would clamp the buffer down to it — the commander would lose ore
    * they had already made. So the boost fills the SAME vessel faster; it never makes
    * the vessel bigger.

@@ -132,7 +132,7 @@ export const skins = {
   normal: "Intacte",
   recovery: "Bouclier de récupération (Endommagée)",
   recoveryNote:
-    "La planète utilise cet aspect endommagé pendant son bouclier de récupération. Il dure 8 heures ; lancer une attaque peut l’arrêter plus tôt. Cet aspect est inclus dans le skin.",
+    "La planète utilise cet aspect endommagé pendant son bouclier de récupération. Il dure 12 heures ; lancer une attaque peut l’arrêter plus tôt. Cet aspect est inclus dans le skin.",
   collection: "Collection",
   owned: "Possédée",
   worlds: "Tes planètes",

@@ -56,7 +56,7 @@ describe('what counts as a heavy defeat', () => {
     expect(ABUSE.recoveryLossHours).toBe(4);
     expect(ABUSE.recoveryLookbackHours).toBe(6);
     // The recovery window and its loss threshold are independent owner controls.
-    expect(ABUSE.recoveryShieldHours).toBe(8);
+    expect(ABUSE.recoveryShieldHours).toBe(12);
   });
 
   /**
@@ -327,16 +327,34 @@ describe('what the last six hours cost, net', () => {
 });
 
 describe('the recovery window', () => {
-  it('runs eight hours from the instant the battle resolved', () => {
-    expect(recoveryShieldUntil(NOW)).toBe(NOW + 8 * HOUR);
+  it('runs twelve hours from the instant the battle resolved', () => {
+    expect(recoveryShieldUntil(NOW)).toBe(NOW + 12 * HOUR);
   });
 
   it('extends to the later end rather than adding a second window', () => {
     const first = recoveryShieldUntil(NOW);
-    expect(extendRecoveryShield(first, NOW + HOUR)).toBe(NOW + 9 * HOUR);
-    expect(extendRecoveryShield(NOW + 9 * HOUR, NOW)).toBe(NOW + 9 * HOUR);
-    expect(extendRecoveryShield(null, NOW)).toBe(NOW + 8 * HOUR);
-    expect(extendRecoveryShield(Number.NaN, NOW)).toBe(NOW + 8 * HOUR);
+    expect(extendRecoveryShield(first, NOW + HOUR)).toBe(NOW + 13 * HOUR);
+    expect(extendRecoveryShield(NOW + 13 * HOUR, NOW)).toBe(NOW + 13 * HOUR);
+    expect(extendRecoveryShield(null, NOW)).toBe(NOW + 12 * HOUR);
+    expect(extendRecoveryShield(Number.NaN, NOW)).toBe(NOW + 12 * HOUR);
+  });
+});
+
+describe('recovery deadline boundaries after the twelve-hour revision', () => {
+  it('protects until twelve hours and expires exactly at the deadline', () => {
+    const until = recoveryShieldUntil(NOW);
+    expect(effectiveAttackProtection(null, until, NOW + 12 * HOUR - 1))
+      .toEqual({ kind: 'RECOVERY', until });
+    expect(effectiveAttackProtection(null, until, NOW + 12 * HOUR)).toBeNull();
+  });
+
+  it('reads an existing eight-hour deadline without extending it implicitly', () => {
+    const legacy = NOW + 8 * HOUR;
+    expect(effectiveAttackProtection(null, legacy, legacy - 1))
+      .toEqual({ kind: 'RECOVERY', until: legacy });
+    expect(effectiveAttackProtection(null, legacy, legacy)).toBeNull();
+    expect(extendRecoveryShield(legacy, NOW)).toBe(NOW + 12 * HOUR);
+    expect(extendRecoveryShield(NOW + 15 * HOUR, NOW)).toBe(NOW + 15 * HOUR);
   });
 });
 

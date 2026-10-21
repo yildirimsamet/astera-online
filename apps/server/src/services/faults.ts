@@ -289,7 +289,7 @@ export async function breakFaultsWithEffects(
      * WHICH LANE THIS BREAK IS, AND IT DECIDES THE POOL. Required, never defaulted.
      *
      * `CLOCK` draws from all eight; `ATTACK` spares the production line, because the same blow
-     * just bought the defender eight hours of BOOSTED output and an outage would take it straight
+     * just bought the defender twelve hours of BOOSTED output and an outage would take it straight
      * back (`FAULT.attackSpares`). `STRIKE` is a Death Star or Radiation Bomb hit:
      * all eight, since neither strike grants a production boost.
      *
