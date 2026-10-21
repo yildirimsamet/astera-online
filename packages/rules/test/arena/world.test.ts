@@ -15,8 +15,8 @@ function soloWorld(layout: ArenaLayout = ARENA_LAYOUT): ArenaWorld {
   return world;
 }
 
-function landOn(world: ArenaWorld): void {
-  const slow = intent({ throttle: 0.12 });
+function landOn(world: ArenaWorld, land = false): void {
+  const slow = intent({ throttle: 0.12, land });
   for (let i = 0; i < 900 && !world.pilot.landed; i++) stepSandboxWorld(world, slow);
   if (!world.pilot.landed) throw new Error('never landed');
 }
@@ -88,7 +88,8 @@ describe('mining a crystal by landing on it', () => {
   it('does not mine plain rock', () => {
     const world = soloWorld(crystalField);
     world.pilot.q.y = 1; world.pilot.q.w = 0;
-    landOn(world);
+    // Plain rock takes a ship down only on LAND (owner 2026-10-21).
+    landOn(world, true);
     expect(world.pilot.landed).toBe(2);
     for (let i = 0; i < T.tickRate; i++) stepSandboxWorld(world, intent());
     expect(world.pilot.cargo).toBe(0);

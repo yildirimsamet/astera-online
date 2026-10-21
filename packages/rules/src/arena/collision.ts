@@ -92,13 +92,14 @@ export function clampToArena(p: Vec3, r: number, layout: ArenaLayout): boolean {
 /**
  * Moves the ship in sub-steps no longer than half its radius, so no collider can be
  * skipped. Motion is the heading times speed plus a decaying knock-back velocity.
- * Touching anything at or under `landSpeed` lands. Faster, the ship bounces: it gets
+ * A slow touch (at or under `landSpeed`) lands on a deposit, or on anything while LAND
+ * is held (owner 2026-10-21: rocks and buildings only on request). Otherwise the ship bounces: it gets
  * pushed off along the surface normal in proportion to how hard it came in, and loses
  * forward speed in proportion to how head-on the hit was. A graze barely nudges it.
  * The heading itself never changes here.
  */
 export function moveFlight(state: FlightState, layout: ArenaLayout, fx: number, fy: number, fz: number,
-  dt: number, r: number, tuning: FlightTuning): void {
+  dt: number, r: number, tuning: FlightTuning, land = false): void {
   state.bump = 0;
   const p = state.p;
   let vx = fx * state.s + state.kx; let vy = fy * state.s + state.ky; let vz = fz * state.s + state.kz;
@@ -112,7 +113,7 @@ export function moveFlight(state: FlightState, layout: ArenaLayout, fx: number, 
     const nx = contact.nx; const ny = contact.ny; const nz = contact.nz;
     const approach = -(vx * nx + vy * ny + vz * nz);
     const speed = Math.sqrt(vx * vx + vy * vy + vz * vz);
-    if (speed > 0 && speed <= tuning.landSpeed && state.liftoff === 0) {
+    if (speed > 0 && speed <= tuning.landSpeed && state.liftoff === 0 && (land || layout.deposits.includes(contact.index))) {
       state.landed = contact.index + 1;
       state.nx = nx; state.ny = ny; state.nz = nz;
       state.s = 0; state.kx = 0; state.ky = 0; state.kz = 0;

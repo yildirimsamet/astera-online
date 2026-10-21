@@ -107,4 +107,11 @@ describe('arena room protocol v2', () => {
     const newcomer = await connect(url, 'guest-room-seat-new');
     expect(await newcomer.next(m => kind('kick')(m) || kind('welcome')(m))).toMatchObject({ kind: 'welcome' });
   }, 15_000);
+  it('accepts the LAND bit in an input (owner 2026-10-21: rocks and buildings land only on request)', async () => {
+    const url = await room();
+    const pilot = await connect(url, 'guest-room-test-land');
+    await pilot.next(kind('welcome'));
+    pilot.socket.send(JSON.stringify({ kind: 'in', values: [1, 0, 0, 15, 32, 0, 0] }));
+    expect(await pilot.next(m => isSnap(m) && m.ack >= 1)).toBeTruthy();
+  });
 });

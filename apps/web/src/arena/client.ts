@@ -181,6 +181,8 @@ export function createArenaClient(options: ClientOptions) {
     const flying = landing.steer(pilot, stick, performance.now(), autopilot);
     if (flying) controls.setThrottle(autopilot.throttle);
     const intent = controls.sample(friction, magnet.x, magnet.y, flying ? autopilot : undefined);
+    // Only a LAND approach may touch down on rock or a building; a deposit takes any slow ship.
+    intent.land = flying;
     const network = options.network();
     if (network) network.step(intent);
     else stepSandboxWorld(world, intent, settings);

@@ -15,11 +15,11 @@ import { createPlayout, playInput, queueInput, resetPlayout, type Playout } from
 
 const inputSchema = z.object({ kind: z.literal('in'), values: z.tuple([
   z.number().int().nonnegative().max(100000000), z.number().int().min(-1000).max(1000),
-  z.number().int().min(-1000).max(1000), z.number().int().min(0).max(100), z.number().int().min(0).max(31),
+  z.number().int().min(-1000).max(1000), z.number().int().min(0).max(100), z.number().int().min(0).max(63),
   z.number().int().min(-1000).max(1000), z.number().int().min(-1000).max(1000),
 ]) });
 const pointSchema = z.object({ x: z.number().finite().min(-3000).max(3000), y: z.number().finite().min(-3000).max(3000), z: z.number().finite().min(-3000).max(3000) });
-const NEUTRAL = { ...createInput(), fire: false, smoke: false, cloak: false, turboBurst: false };
+const NEUTRAL = { ...createInput(), fire: false, smoke: false, cloak: false, turboBurst: false, land: false };
 const messageSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('hello'), v: z.literal(ARENA_PROTOCOL), guestId: z.string().regex(/^[a-zA-Z0-9-]{8,96}$/).optional(),
     token: z.string().min(1).max(4096).optional(), mode: z.enum(['enter', 'resume']) }),
@@ -268,7 +268,7 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
       const input: ArenaIntent = { steerX: x / 1000, steerY: y / 1000, throttle: throttle / 100,
         assistX: clampAssist(ax / 1000), assistY: clampAssist(ay / 1000),
         fire: (buttons & 1) !== 0, turbo: (buttons & 2) !== 0, smoke: (buttons & 4) !== 0,
-        cloak: (buttons & 8) !== 0, turboBurst: (buttons & 16) !== 0 };
+        cloak: (buttons & 8) !== 0, turboBurst: (buttons & 16) !== 0, land: (buttons & 32) !== 0 };
       if (entry.playout.queue.length >= T.inputQueueMax) {
         const lost = entry.playout.queue.shift(); if (lost) {
           input.fire = input.fire === true || lost.input.fire === true;

@@ -191,7 +191,8 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
       const signature = `${String(settings.sensitivity)}:${String(settings.invertPitch)}`;
       if (signature !== settingSignature) { send({ kind: 'settings', ...settings }); settingSignature = signature; }
       const input: ArenaIntent = { ...source };
-      const buttons = Number(input.fire) | Number(input.turbo) << 1 | Number(input.smoke) << 2 | Number(input.cloak) << 3 | Number(input.turboBurst) << 4;
+      const buttons = Number(input.fire) | Number(input.turbo) << 1 | Number(input.smoke) << 2 | Number(input.cloak) << 3 | Number(input.turboBurst) << 4
+        | Number(input.land === true) << 5;
       send({ kind: 'in', values: [++seq, Math.round(input.steerX * 1000), Math.round(input.steerY * 1000), Math.round(input.throttle * 100), buttons,
         Math.round(input.assistX * 1000), Math.round(input.assistY * 1000)] });
       history.push({ seq, input }); if (history.length > 128) history.shift();

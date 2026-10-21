@@ -71,7 +71,7 @@ export function stepFlight(state: FlightState, input: FlightInput, layout: Arena
 
   const q = state.q;
   moveFlight(state, layout, 2 * (q.x * q.z + q.w * q.y), 2 * (q.y * q.z - q.w * q.x),
-    1 - 2 * (q.x * q.x + q.y * q.y), dt, tuning.shipHitRadius, tuning);
+    1 - 2 * (q.x * q.x + q.y * q.y), dt, tuning.shipHitRadius, tuning, input.land === true);
   if (state.liftoff > 0) state.liftoff--;
   if (powered) state.fuel = Math.max(0, state.fuel - fuelBurn(state.throttle, turbo, tuning) * dt);
 }

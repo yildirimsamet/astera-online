@@ -13,6 +13,8 @@ export interface FlightInput {
   turbo: boolean;
   assistX: number;
   assistY: number;
+  /** LAND is flying the approach: a slow touch on any surface lands, not only on a deposit. */
+  land?: boolean;
 }
 export interface SteeringSettings { sensitivity: number; invertPitch: boolean }
 export interface FlightState {

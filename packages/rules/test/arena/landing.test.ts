@@ -16,16 +16,46 @@ const forward = (s: FlightState): Vec3 => {
 const dot = (a: Vec3, b: Vec3): number => a.x * b.x + a.y * b.y + a.z * b.z;
 const rock = layoutWith([sphere(0, 0, 0, 60, 30)]);
 
-/** Fly slowly into the rock ahead until the ship touches down. */
+/** Fly slowly into the rock ahead, LAND held, until the ship touches down. */
 function touchDown(state: FlightState, throttle = 0.15): number {
   const input = createInput();
-  input.throttle = throttle;
+  input.throttle = throttle; input.land = true;
   for (let i = 0; i < 600; i++) {
     stepFlight(state, input, rock);
     if (state.landed) return i;
   }
   throw new Error('never landed');
 }
+
+/**
+ * Owner 2026-10-21: touching a rock or a building slowly no longer lands the ship on its
+ * own. Only a deposit (alloy, crystal, deuterium) takes a slow ship down by itself;
+ * anything else needs LAND.
+ */
+describe('what lands without LAND', () => {
+  const slowInto = (layout: ReturnType<typeof layoutWith>, land: boolean): FlightState => {
+    const state = createFlightState();
+    const input = createInput(); input.throttle = 0.15; input.land = land;
+    for (let i = 0; i < 600 && !state.landed; i++) stepFlight(state, input, layout);
+    return state;
+  };
+
+  it('glances off a plain rock or a building at landing speed', () => {
+    const plain = slowInto(rock, false);
+    expect(plain.landed).toBe(0);
+    expect(Math.sqrt(plain.p.x ** 2 + plain.p.y ** 2 + (plain.p.z - 60) ** 2)).toBeGreaterThanOrEqual(30 + r - 1e-6);
+    expect(slowInto(layoutWith([box(0, 0, 0, 40, 60, 60, 2)]), false).landed).toBe(0);
+  });
+
+  it('settles onto a deposit by itself', () => {
+    expect(slowInto(layoutWith([sphere(0, 0, 0, 60, 30, 'crystal')]), false).landed).toBe(1);
+  });
+
+  it('lands on a plain rock or a building while LAND is held', () => {
+    expect(slowInto(rock, true).landed).toBe(1);
+    expect(slowInto(layoutWith([box(0, 0, 0, 40, 60, 60, 2)]), true).landed).toBe(1);
+  });
+});
 
 describe('landing on any surface', () => {
   it('lands on a slow contact: stopped, resting on the surface, with the outward normal', () => {
@@ -75,7 +105,7 @@ describe('landing on any surface', () => {
     const wall = layoutWith([box(0, 0, 0, 40, 60, 60, 2)]);
     const state = createFlightState();
     const input = createInput();
-    input.throttle = 0.1;
+    input.throttle = 0.1; input.land = true;
     for (let i = 0; i < 600 && !state.landed; i++) stepFlight(state, input, wall);
     expect(state.landed).toBe(1);
     expect(state.nx).toBeCloseTo(0, 12);
