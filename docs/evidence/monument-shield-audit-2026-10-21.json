@@ -1,0 +1,2784 @@
+{
+  "date": "2026-10-21",
+  "scope": "Local battle engine audit, healthy inputs unless explicit damage; no production database read or gameplay modification",
+  "runsPerCell": 512,
+  "battles": 50688,
+  "rounds": 3,
+  "stats": {
+    "CORSAIR": {
+      "id": "CORSAIR",
+      "name": "Corsair",
+      "tier": 4,
+      "family": "OFFENSIVE",
+      "profile": "RAIDER",
+      "cls": "SKIRMISHER",
+      "atk": 408,
+      "hp": 1508,
+      "speed": 121.34831460674155,
+      "cargo": 285,
+      "alloy": 5070,
+      "crystal": 1950,
+      "deuterium": 20,
+      "minShipyard": 6,
+      "requiredResearch": [
+        {
+          "project": "STARSHIP_ENGINEERING",
+          "level": 2
+        },
+        {
+          "project": "SHIP_POWER",
+          "level": 2
+        }
+      ],
+      "ground": false,
+      "bulk": 13,
+      "workMinutes": 28,
+      "referenceRoundTrip": 15,
+      "shield": 1508
+    },
+    "ARGOSY": {
+      "id": "ARGOSY",
+      "name": "Argosy",
+      "tier": 4,
+      "family": "CARGO",
+      "profile": "TRANSPORT",
+      "cls": "SUPPORT",
+      "atk": 0,
+      "hp": 1350,
+      "speed": 118.94273127753303,
+      "cargo": 26000,
+      "alloy": 10010,
+      "crystal": 4225,
+      "deuterium": 130,
+      "minShipyard": 6,
+      "requiredResearch": [
+        {
+          "project": "STARSHIP_ENGINEERING",
+          "level": 2
+        },
+        {
+          "project": "SHIP_PROPULSION",
+          "level": 2
+        }
+      ],
+      "ground": false,
+      "bulk": 30,
+      "workMinutes": 28,
+      "referenceRoundTrip": 38,
+      "shield": 1350
+    },
+    "CATACLYSM": {
+      "id": "CATACLYSM",
+      "name": "Cataclysm",
+      "tier": 4,
+      "family": "OFFENSIVE",
+      "profile": "STRIKER",
+      "cls": "LANCE",
+      "atk": 816,
+      "hp": 754,
+      "speed": 90.75630252100841,
+      "cargo": 380,
+      "alloy": 5070,
+      "crystal": 1950,
+      "deuterium": 20,
+      "minShipyard": 6,
+      "requiredResearch": [
+        {
+          "project": "STARSHIP_ENGINEERING",
+          "level": 2
+        },
+        {
+          "project": "SHIP_POWER",
+          "level": 2
+        }
+      ],
+      "ground": false,
+      "bulk": 13,
+      "workMinutes": 28,
+      "referenceRoundTrip": 20,
+      "shield": 754
+    }
+  },
+  "cells": [
+    {
+      "id": "corsair-1-old",
+      "attack": {
+        "CORSAIR": 1
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": true,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 1224.3942552456303,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 7040,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-2-old",
+      "attack": {
+        "CORSAIR": 2
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": true,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 31.8359375,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 68.1640625,
+      "meanHullDamage": 2806.9627356898404,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 1.318359375,
+      "attackerValue": 14080,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-3-old",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": true,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-4-old",
+      "attack": {
+        "CORSAIR": 4
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": true,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 28160,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-5-old",
+      "attack": {
+        "CORSAIR": 5
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": true,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 35200,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-6-old",
+      "attack": {
+        "CORSAIR": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": true,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 42240,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-8-old",
+      "attack": {
+        "CORSAIR": 8
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": true,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 56320,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-10-old",
+      "attack": {
+        "CORSAIR": 10
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": true,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 70400,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-12-old",
+      "attack": {
+        "CORSAIR": 12
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": true,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 84480,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-15-old",
+      "attack": {
+        "CORSAIR": 15
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": true,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 105600,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-1-current",
+      "attack": {
+        "CORSAIR": 1
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 7040,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-2-current",
+      "attack": {
+        "CORSAIR": 2
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 14080,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-3-current",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-4-current",
+      "attack": {
+        "CORSAIR": 4
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 373.9004007143318,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 28160,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-5-current",
+      "attack": {
+        "CORSAIR": 5
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 68.5546875,
+      "cargoBlocksPct": 68.5546875,
+      "meanHullDamage": 1480.1158440467646,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0.685546875,
+      "attackerValue": 35200,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-6-current",
+      "attack": {
+        "CORSAIR": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 42240,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-8-current",
+      "attack": {
+        "CORSAIR": 8
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 56320,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-10-current",
+      "attack": {
+        "CORSAIR": 10
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 70400,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-12-current",
+      "attack": {
+        "CORSAIR": 12
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 84480,
+      "defenderValue": 21405
+    },
+    {
+      "id": "corsair-15-current",
+      "attack": {
+        "CORSAIR": 15
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 105600,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield0-3",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 0
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield0-5",
+      "attack": {
+        "CORSAIR": 5
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 0
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 68.5546875,
+      "cargoBlocksPct": 68.5546875,
+      "meanHullDamage": 1480.1158440467646,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0.685546875,
+      "attackerValue": 35200,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield0-6",
+      "attack": {
+        "CORSAIR": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 0
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 42240,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield0-8",
+      "attack": {
+        "CORSAIR": 8
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 0
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 56320,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield0-10",
+      "attack": {
+        "CORSAIR": 10
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 0
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 70400,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield0-12",
+      "attack": {
+        "CORSAIR": 12
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 0
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 84480,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield0-15",
+      "attack": {
+        "CORSAIR": 15
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 0
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 105600,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield1-3",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 1
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield1-5",
+      "attack": {
+        "CORSAIR": 5
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 1
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 467.37550089291443,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 35200,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield1-6",
+      "attack": {
+        "CORSAIR": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 1
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 82.421875,
+      "cargoBlocksPct": 82.421875,
+      "meanHullDamage": 1492.3651712948977,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0.82421875,
+      "attackerValue": 42240,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield1-8",
+      "attack": {
+        "CORSAIR": 8
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 1
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 56320,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield1-10",
+      "attack": {
+        "CORSAIR": 10
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 1
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 70400,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield1-12",
+      "attack": {
+        "CORSAIR": 12
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 1
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 84480,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield1-15",
+      "attack": {
+        "CORSAIR": 15
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 1
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 105600,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield2-3",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 2
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield2-5",
+      "attack": {
+        "CORSAIR": 5
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 2
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 35200,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield2-6",
+      "attack": {
+        "CORSAIR": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 2
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 560.850601071498,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 42240,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield2-8",
+      "attack": {
+        "CORSAIR": 8
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 2
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 56320,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield2-10",
+      "attack": {
+        "CORSAIR": 10
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 2
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 70400,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield2-12",
+      "attack": {
+        "CORSAIR": 12
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 2
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 84480,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield2-15",
+      "attack": {
+        "CORSAIR": 15
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 2
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 105600,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield3-3",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 3
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield3-5",
+      "attack": {
+        "CORSAIR": 5
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 3
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 35200,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield3-6",
+      "attack": {
+        "CORSAIR": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 3
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 51.5625,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 22.840538362183263,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 42240,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield3-8",
+      "attack": {
+        "CORSAIR": 8
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 3
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 29.296875,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 99.21875,
+      "cargoBlocksPct": 69.921875,
+      "meanHullDamage": 1902.956703164531,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 1.28515625,
+      "attackerValue": 56320,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield3-10",
+      "attack": {
+        "CORSAIR": 10
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 3
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 70400,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield3-12",
+      "attack": {
+        "CORSAIR": 12
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 3
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 84480,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield3-15",
+      "attack": {
+        "CORSAIR": 15
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 3
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 105600,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield4-3",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 4
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield4-5",
+      "attack": {
+        "CORSAIR": 5
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 4
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 35200,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield4-6",
+      "attack": {
+        "CORSAIR": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 4
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 42240,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield4-8",
+      "attack": {
+        "CORSAIR": 8
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 4
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 747.8008014286636,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 56320,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield4-10",
+      "attack": {
+        "CORSAIR": 10
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 4
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 70400,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield4-12",
+      "attack": {
+        "CORSAIR": 12
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 4
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 84480,
+      "defenderValue": 21405
+    },
+    {
+      "id": "def-shield4-15",
+      "attack": {
+        "CORSAIR": 15
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {
+        "SHIP_SHIELDS": 4
+      },
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 105600,
+      "defenderValue": 21405
+    },
+    {
+      "id": "atk-power0",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {
+        "SHIP_POWER": 0
+      },
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "atk-power1",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {
+        "SHIP_POWER": 1
+      },
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "atk-power3",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {
+        "SHIP_POWER": 3
+      },
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 86.1328125,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0.8735524644954111,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "atk-power5",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {
+        "SHIP_POWER": 5
+      },
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 6.4453125,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 126.36311076212601,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "scale1",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "scale2",
+      "attack": {
+        "CORSAIR": 6
+      },
+      "defence": {
+        "CORSAIR": 2,
+        "ARGOSY": 2
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2453.7235851850787,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 1,
+      "attackerValue": 42240,
+      "defenderValue": 42810
+    },
+    {
+      "id": "scale5",
+      "attack": {
+        "CORSAIR": 15
+      },
+      "defence": {
+        "CORSAIR": 5,
+        "ARGOSY": 5
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 85.7421875,
+      "cargoBlocksPct": 85.7421875,
+      "meanHullDamage": 7516.826912403176,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 4.857421875,
+      "attackerValue": 105600,
+      "defenderValue": 107025
+    },
+    {
+      "id": "scale10",
+      "attack": {
+        "CORSAIR": 30
+      },
+      "defence": {
+        "CORSAIR": 10,
+        "ARGOSY": 10
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 99.609375,
+      "cargoBlocksPct": 99.609375,
+      "meanHullDamage": 15079.531044633259,
+      "meanAttackerLosses": 1.080078125,
+      "meanDefenderLosses": 9.99609375,
+      "attackerValue": 211200,
+      "defenderValue": 214050
+    },
+    {
+      "id": "scale30",
+      "attack": {
+        "CORSAIR": 90
+      },
+      "defence": {
+        "CORSAIR": 30,
+        "ARGOSY": 30
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 100,
+      "meanHullDamage": 45240,
+      "meanAttackerLosses": 6.29296875,
+      "meanDefenderLosses": 30,
+      "attackerValue": 633600,
+      "defenderValue": 642150
+    },
+    {
+      "id": "scale100",
+      "attack": {
+        "CORSAIR": 300
+      },
+      "defence": {
+        "CORSAIR": 100,
+        "ARGOSY": 100
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 100,
+      "meanHullDamage": 150800,
+      "meanAttackerLosses": 23.30859375,
+      "meanDefenderLosses": 100,
+      "attackerValue": 2112000,
+      "defenderValue": 2140500
+    },
+    {
+      "id": "PIKE-3",
+      "attack": {
+        "PIKE": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 3,
+      "meanDefenderLosses": 0,
+      "attackerValue": 1275,
+      "defenderValue": 21405
+    },
+    {
+      "id": "PIKE-6",
+      "attack": {
+        "PIKE": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 6,
+      "meanDefenderLosses": 0,
+      "attackerValue": 2550,
+      "defenderValue": 21405
+    },
+    {
+      "id": "TALON-3",
+      "attack": {
+        "TALON": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 3,
+      "meanDefenderLosses": 0,
+      "attackerValue": 3351,
+      "defenderValue": 21405
+    },
+    {
+      "id": "TALON-6",
+      "attack": {
+        "TALON": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 3,
+      "meanDefenderLosses": 0,
+      "attackerValue": 6702,
+      "defenderValue": 21405
+    },
+    {
+      "id": "BALLISTA-3",
+      "attack": {
+        "BALLISTA": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 31.640625,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 33.26101161134437,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 8265,
+      "defenderValue": 21405
+    },
+    {
+      "id": "BALLISTA-6",
+      "attack": {
+        "BALLISTA": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 99.21875,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0.78125,
+      "meanHullDamage": 2857.973261316636,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 1.9921875,
+      "attackerValue": 16530,
+      "defenderValue": 21405
+    },
+    {
+      "id": "CATACLYSM-3",
+      "attack": {
+        "CATACLYSM": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "CATACLYSM-6",
+      "attack": {
+        "CATACLYSM": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 42240,
+      "defenderValue": 21405
+    },
+    {
+      "id": "DART-3",
+      "attack": {
+        "DART": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 3,
+      "meanDefenderLosses": 0,
+      "attackerValue": 1275,
+      "defenderValue": 21405
+    },
+    {
+      "id": "DART-6",
+      "attack": {
+        "DART": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 6,
+      "meanDefenderLosses": 0,
+      "attackerValue": 2550,
+      "defenderValue": 21405
+    },
+    {
+      "id": "TEMPEST-3",
+      "attack": {
+        "TEMPEST": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 8265,
+      "defenderValue": 21405
+    },
+    {
+      "id": "TEMPEST-6",
+      "attack": {
+        "TEMPEST": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 16530,
+      "defenderValue": 21405
+    },
+    {
+      "id": "CORSAIR-3",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "CORSAIR-6",
+      "attack": {
+        "CORSAIR": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 42240,
+      "defenderValue": 21405
+    },
+    {
+      "id": "CITADEL-3",
+      "attack": {
+        "CITADEL": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 26400,
+      "defenderValue": 21405
+    },
+    {
+      "id": "CITADEL-6",
+      "attack": {
+        "CITADEL": 6
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 483.8625329439856,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 52800,
+      "defenderValue": 21405
+    },
+    {
+      "id": "easy-corsair3",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "STRONGHOLD": 3
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 945,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 3,
+      "attackerValue": 21120,
+      "defenderValue": 4197
+    },
+    {
+      "id": "easy-corsair6",
+      "attack": {
+        "CORSAIR": 6
+      },
+      "defence": {
+        "STRONGHOLD": 3
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 945,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 3,
+      "attackerValue": 42240,
+      "defenderValue": 4197
+    },
+    {
+      "id": "easy-corsair10",
+      "attack": {
+        "CORSAIR": 10
+      },
+      "defence": {
+        "STRONGHOLD": 3
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 945,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 3,
+      "attackerValue": 70400,
+      "defenderValue": 4197
+    },
+    {
+      "id": "easy-corsair20",
+      "attack": {
+        "CORSAIR": 20
+      },
+      "defence": {
+        "STRONGHOLD": 3
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 945,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 3,
+      "attackerValue": 140800,
+      "defenderValue": 4197
+    },
+    {
+      "id": "easy-corsair30",
+      "attack": {
+        "CORSAIR": 30
+      },
+      "defence": {
+        "STRONGHOLD": 3
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 945,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 3,
+      "attackerValue": 211200,
+      "defenderValue": 4197
+    },
+    {
+      "id": "easy-corsair50",
+      "attack": {
+        "CORSAIR": 50
+      },
+      "defence": {
+        "STRONGHOLD": 3
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 945,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 3,
+      "attackerValue": 352000,
+      "defenderValue": 4197
+    },
+    {
+      "id": "hard-corsair3",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "LEVIATHAN": 10
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2403,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 3,
+      "attackerValue": 21120,
+      "defenderValue": 34450
+    },
+    {
+      "id": "hard-corsair6",
+      "attack": {
+        "CORSAIR": 6
+      },
+      "defence": {
+        "LEVIATHAN": 10
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 4877.479808904035,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 6,
+      "attackerValue": 42240,
+      "defenderValue": 34450
+    },
+    {
+      "id": "hard-corsair10",
+      "attack": {
+        "CORSAIR": 10
+      },
+      "defence": {
+        "LEVIATHAN": 10
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 8010,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 10,
+      "attackerValue": 70400,
+      "defenderValue": 34450
+    },
+    {
+      "id": "hard-corsair20",
+      "attack": {
+        "CORSAIR": 20
+      },
+      "defence": {
+        "LEVIATHAN": 10
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 8010,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 10,
+      "attackerValue": 140800,
+      "defenderValue": 34450
+    },
+    {
+      "id": "hard-corsair30",
+      "attack": {
+        "CORSAIR": 30
+      },
+      "defence": {
+        "LEVIATHAN": 10
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 8010,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 10,
+      "attackerValue": 211200,
+      "defenderValue": 34450
+    },
+    {
+      "id": "hard-corsair50",
+      "attack": {
+        "CORSAIR": 50
+      },
+      "defence": {
+        "LEVIATHAN": 10
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 8010,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 10,
+      "attackerValue": 352000,
+      "defenderValue": 34450
+    },
+    {
+      "id": "only-cargo-3",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 1350,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 1,
+      "attackerValue": 21120,
+      "defenderValue": 14365
+    },
+    {
+      "id": "only-cargo-1",
+      "attack": {
+        "CORSAIR": 1
+      },
+      "defence": {
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 100,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 7040,
+      "defenderValue": 14365
+    },
+    {
+      "id": "wounded-def50",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [
+        {
+          "hull": "CORSAIR",
+          "count": 1,
+          "damageBp": 5000
+        }
+      ],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "wounded-atk96",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [
+        {
+          "hull": "CORSAIR",
+          "count": 3,
+          "damageBp": 9600
+        }
+      ],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "confirmed-example",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": false,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 0,
+      "zeroHullDamagePct": 100,
+      "corKilledPct": 0,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 0,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 0,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    },
+    {
+      "id": "confirmed-old",
+      "attack": {
+        "CORSAIR": 3
+      },
+      "defence": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerTech": {},
+      "defenderTech": {},
+      "historical": true,
+      "arrivalDamage": [],
+      "defenceDamage": [],
+      "runs": 512,
+      "capturePct": 100,
+      "zeroHullDamagePct": 0,
+      "corKilledPct": 100,
+      "cargoBlocksPct": 0,
+      "meanHullDamage": 2858,
+      "meanAttackerLosses": 0,
+      "meanDefenderLosses": 2,
+      "attackerValue": 21120,
+      "defenderValue": 21405
+    }
+  ],
+  "serverLotShapeParity": {
+    "cases": 768,
+    "passed": true
+  },
+  "meanExample": {
+    "attack": {
+      "CORSAIR": 3
+    },
+    "defence": {
+      "CORSAIR": 1,
+      "ARGOSY": 1
+    },
+    "result": {
+      "grade": "REPELLED",
+      "lossRatio": 0,
+      "rounds": [
+        {
+          "round": 1,
+          "attackerRoll": 1,
+          "defenderRoll": 1,
+          "attackerDamage": 1224,
+          "defenderDamage": 408,
+          "shieldBefore": 0,
+          "shieldAfter": 0,
+          "shieldAbsorbed": 0,
+          "shieldBreakerDamage": 0,
+          "attackerShipShieldAbsorbed": 408,
+          "defenderShipShieldAbsorbed": 1224,
+          "attackerHullDamage": 0,
+          "attackerLosses": {},
+          "defenderLosses": {}
+        },
+        {
+          "round": 2,
+          "attackerRoll": 1,
+          "defenderRoll": 1,
+          "attackerDamage": 1224,
+          "defenderDamage": 408,
+          "shieldBefore": 0,
+          "shieldAfter": 0,
+          "shieldAbsorbed": 0,
+          "shieldBreakerDamage": 0,
+          "attackerShipShieldAbsorbed": 408,
+          "defenderShipShieldAbsorbed": 1224,
+          "attackerHullDamage": 0,
+          "attackerLosses": {},
+          "defenderLosses": {}
+        },
+        {
+          "round": 3,
+          "attackerRoll": 1,
+          "defenderRoll": 1,
+          "attackerDamage": 1224,
+          "defenderDamage": 408,
+          "shieldBefore": 0,
+          "shieldAfter": 0,
+          "shieldAbsorbed": 0,
+          "shieldBreakerDamage": 0,
+          "attackerShipShieldAbsorbed": 408,
+          "defenderShipShieldAbsorbed": 1224,
+          "attackerHullDamage": 0,
+          "attackerLosses": {},
+          "defenderLosses": {}
+        }
+      ],
+      "shieldLeft": 0,
+      "shieldProtectedArmed": 0,
+      "attackerSurvivors": {
+        "CORSAIR": 3
+      },
+      "defenderSurvivors": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "attackerLosses": {},
+      "defenderLosses": {},
+      "attackerLossValue": 0,
+      "defenderLossValue": 0,
+      "defenceSalvage": {},
+      "attackerDamage": [],
+      "defenderDamage": [],
+      "contributions": [
+        {
+          "contributionId": "a",
+          "playerId": "a",
+          "sent": {
+            "CORSAIR": 3
+          },
+          "survivors": {
+            "CORSAIR": 3
+          },
+          "losses": {},
+          "lossValue": 0,
+          "hullDamage": 0,
+          "survivorDamage": []
+        }
+      ],
+      "defenders": [
+        {
+          "stackId": "d",
+          "playerId": "d",
+          "sent": {
+            "CORSAIR": 1,
+            "ARGOSY": 1
+          },
+          "survivors": {
+            "CORSAIR": 1,
+            "ARGOSY": 1
+          },
+          "losses": {},
+          "lossValue": 0,
+          "survivorDamage": []
+        }
+      ],
+      "control": "DEFENDER"
+    }
+  },
+  "provenance": {
+    "commit": "540c5ad70f27b01a44cf395b250fe35f03eea073",
+    "seeds": "mulberry32, integers 0..511 per cell; 0..127 per lot parity combination",
+    "maintenance": true,
+    "sourceSha256": {
+      "packages/rules/src/combat.ts": "649e68d6c4810301d51c53f22b7ea16584f952b2ec5f169594c14ce94b0fbc1e",
+      "packages/rules/src/shipShield.ts": "092e5e45486d87bd12a747c162b16a118315b61b2a999b63bdf0bff0cc5ba91e",
+      "packages/rules/src/monumentCombat.ts": "4229f3abdec0b3a1ad6f37eb592b213433410defa5041c3e05d46c3a0d20c380",
+      "packages/rules/src/economy-profile.ts": "b1735c584138b79a8270ebd79bcade93d5e824d9eacb407cf94134132fbbe187",
+      "apps/server/src/services/monumentArrival.ts": "9c5e7e778154bff9f49f74eb33d9084c901e7dce60ad3d9c3bce88d3823e21a5"
+    }
+  }
+}

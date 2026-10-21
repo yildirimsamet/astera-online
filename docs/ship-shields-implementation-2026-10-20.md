@@ -1,5 +1,9 @@
 # Gemi kalkanları — uygulama kapsamı
 
+> Bu kayıt 20 Ekim uygulamasıdır. 21 Ekim owner kararıyla savaş içi kalkan
+> yenilenmesi kaldırıldı; güncel kural ve anıt kargo çekilmesi için
+> [güncelleme kaydı](monument-cargo-retreat-and-shields-2026-10-21.md).
+
 Owner kararı: her mobil gemide azami (zırh araştırmalı) canı kadar savaş
 kalkanı. Gemi Kalkanları araştırması dört seviyede tabana toplam %25, %50,
 %70, %100 ekler; artışlar birbiri üzerine çarpılmaz. Her tur yenilenir.

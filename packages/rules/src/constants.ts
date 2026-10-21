@@ -1715,7 +1715,7 @@ export const PROBE = {
  *   technology  (Power x Armor)      1.25 x 1.25 = 1.5625x =   56% advantage
  *
  * These compare the Power × Armor stat product with the counter multiplier.
- * Personal shield research (owner, 2026-10-20) adds regenerating protection on a
+ * Personal shield research (owner, 2026-10-20) adds personal shield protection on a
  * separate ladder. Neither this product nor its test bounds total combat power
  * or promises the outcome of an equal-budget battle.
  *

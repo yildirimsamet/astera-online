@@ -72,7 +72,7 @@ const spread = (s: { low: number; high: number }) => s.high / Math.max(1, s.low)
 describe('the lines a wing is drawn against', () => {
   it('uses the attacking ships’ real remaining HP when estimating losses', () => {
     const wing: Fleet = { DART: 20 };
-    const crew: Fleet = { DART: 5 };
+    const crew: Fleet = { DART: 6 };
     const input = blind({ wall: { kind: 'EXACT', fleet: crew } });
     const wounded = { ...input, attackerDamage: [{ hull: 'DART' as const, count: 20, damageBp: 9000, remainderBp: 0.25 }] };
     const power = combatValue(crew);

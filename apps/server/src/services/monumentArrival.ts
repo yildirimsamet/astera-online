@@ -184,6 +184,7 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
     fleet: locked.monument.garrison, damage: locked.monument.garrisonDamage, tech: { tech: locked.monument.garrisonTech }, maintenanceExempt: true }]
     : dBefore.map((lot) => ({ stackId: lot.id, playerId: lot.playerId, fleet: { [lot.hull]: lot.count }, damage: [lot], tech: { tech: lot.tech } })),
   seededFrom('monument-battle', incoming.id), true);
+  const defenderCargoRetreated = result.control === 'ATTACKER' && fleetCount(result.defenderSurvivors) > 0;
   const survivors: MonumentShipLot[] = [];
   const aDead: MonumentShipLot[] = [];
   const dDead: MonumentShipLot[] = [];
@@ -264,7 +265,7 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
     await bookPersonalScore(tx, participant.playerId, participant.dominionDelta);
     await notify(tx, { playerId: participant.playerId, kind: 'raid_result', refId: battle.id, at,
       payload: { targetKind: 'MONUMENT', monumentId: battle.monumentId, monumentOrdinal: battle.monumentOrdinal,
-        attacking: participant.side === 'ATTACK', grade: battle.grade, control: battle.control,
+        attacking: participant.side === 'ATTACK', grade: battle.grade, control: battle.control, defenderCargoRetreated,
         survivors: fleetCount(participant.survivors), unitsLost: fleetCount(participant.losses),
         lootDeuterium: participant.lootDeuterium, lostFuel, dominion: participant.dominionDelta, opponents } });
   }
@@ -280,6 +281,15 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
     m.garrisonDamage = result.defenderDamage;
   }
   if (result.control === 'ATTACKER') {
+    // Survivors keep their wounds and cargo. Eject them before capacity is
+    // assigned to the winner; returning ships are no longer HOLD occupants.
+    for (const defender of defenders) {
+      const remaining = after.filter((lot) => lot.waveId === defender.id);
+      if (remaining.length === 0) continue;
+      const home = homes.get(defender.id);
+      if (!home) throw new GameError('PLACEMENT_CHANGED', 'The return world changed; refresh and try again', 409);
+      await beginMonumentReturn(tx, locked, defender, remaining.map(lot => ({ lotId: lot.id, count: lot.count })), home, at, 'DEFEAT', observedAt);
+    }
     m.controllerClanId = locked.memberships.get(incoming.playerId) ?? null;
     m.controllerPlayerId = m.controllerClanId === null ? incoming.playerId : null;
     m.garrison = {};

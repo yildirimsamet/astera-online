@@ -252,7 +252,7 @@ colony 20 loyalty; at 20 or less it secedes to NEUTRAL.
 ```
 3 rounds · simultaneous fire · ±8% variance
 mobile ship shield = researched maximum HP × [1, 1.25, 1.5, 1.7, 2] at research L0–L4
-personal shields fully recharge each round; hull wounds persist; radiation bypasses them
+personal shields start full each battle; no recharge between rounds; hull wounds persist; radiation bypasses them
 ground guns: no personal shield · Aegis absorbs combat fire first
 counter cycle: SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER   at 1.6× / 0.625×
 support hulls: prey to everything, deal nothing, shielded while escorted

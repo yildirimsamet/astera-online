@@ -34,7 +34,7 @@ export interface CombatRound {
   shieldAbsorbed: number;
   /** Bonus shield-only damage actually absorbed; never spills into unit HP. D95. */
   shieldBreakerDamage: number;
-  /** Personal ship shields consumed by ordinary fire; fully recharge next round. */
+  /** Personal ship shields consumed by ordinary fire; no recharge during combat. */
   attackerShipShieldAbsorbed?: number;
   defenderShipShieldAbsorbed?: number;
   /** Ordinary attacker fire left after Aegis and personal shields, including hull overkill. */
@@ -152,6 +152,7 @@ function applyCasualties(
   passRatio: number,
   carry: Map<HullId, number>,
   own: SideStats,
+  shields: Map<HullId, number>,
 ): AppliedDamage {
   const losses: Fleet = {};
   let shieldAbsorbed = 0;
@@ -159,8 +160,9 @@ function applyCasualties(
   for (const [id, dmg] of damage) {
     if (own.shield(id) > 0) {
       const count = fleet[id] ?? 0;
-      const hit = shipShieldHit(count, own.hp(id), carry.get(id) ?? 0, dmg * passRatio, own.shield(id));
+      const hit = shipShieldHit(count, own.hp(id), carry.get(id) ?? 0, dmg * passRatio, own.shield(id), shields.get(id) ?? own.shield(id));
       carry.set(id, hit.wound);
+      shields.set(id, hit.shieldLeft);
       fleet[id] = hit.count;
       if (count > hit.count) losses[id] = count - hit.count;
       shieldAbsorbed += hit.absorbed;
@@ -339,6 +341,8 @@ function jointReturnFire(
 interface Wounded {
   count: number;
   hpLeft: number;
+  /** Absent until hit: an arrival wound starts with its owner's full shield. */
+  shieldLeft?: number;
   /** An untouched precise wound survives without an HP → BP round trip. */
   arrivalDamage?: HpDamageLot;
 }
@@ -397,6 +401,7 @@ function spendOnWounded(
     .flatMap((entry) => (wounded[entry.index]!.get(cohort.hull) ?? []).map((group) => ({ entry, group })))
     .sort((a, b) =>
       a.group.hpLeft - b.group.hpLeft
+      || (a.group.shieldLeft ?? cohort.shield) - (b.group.shieldLeft ?? cohort.shield)
       || a.entry.contributionId.localeCompare(b.entry.contributionId)
       || a.entry.index - b.entry.index);
   let left = cohort.entries.reduce((sum, entry) => sum + entry.damage, 0);
@@ -404,7 +409,7 @@ function spendOnWounded(
   for (const { entry, group } of queue) {
     if (!(left > 0)) break;
     if (cohort.shield > 0) {
-      const hit = shipShieldHit(group.count, group.hpLeft, 0, left, cohort.shield);
+      const hit = shipShieldHit(group.count, group.hpLeft, 0, left, cohort.shield, group.shieldLeft ?? cohort.shield);
       const killed = group.count - hit.count;
       group.count = hit.count;
       if (killed > 0) {
@@ -415,10 +420,15 @@ function spendOnWounded(
       absorbed += hit.absorbed;
       hullDamage += hit.hullDamage;
       left = hit.left;
-      if (hit.wound > 0) {
+      if (hit.count > 0 && (hit.wound > 0 || hit.shieldLeft < cohort.shield)) {
         group.count -= 1;
-        wounded[entry.index]!.get(cohort.hull)!.push({ count: 1, hpLeft: group.hpLeft - hit.wound });
+        wounded[entry.index]!.get(cohort.hull)!.push({ count: 1, hpLeft: group.hpLeft - hit.wound,
+          shieldLeft: hit.shieldLeft,
+          ...(hit.wound === 0 && group.arrivalDamage ? { arrivalDamage: group.arrivalDamage } : {}),
+        });
       }
+      // Remaining identical ships in this row have never been hit.
+      delete group.shieldLeft;
       continue;
     }
     const killed = Math.min(group.count, Math.floor(left / group.hpLeft));
@@ -472,6 +482,7 @@ function applyJointCasualties(
   carry: Map<string, number>,
   contributionIds: readonly string[],
   wounded: readonly WoundMap[],
+  shields: Map<string, number>,
 ): AppliedDamage {
   const cohorts = new Map<string, Cohort>();
   for (let index = 0; index < fleets.length; index++) {
@@ -506,9 +517,10 @@ function applyJointCasualties(
     const effective = cohort.shield === 0 && !hasWounded
       ? cohort.entries.reduce((sum, entry) => sum + entry.damage, oldCarry)
       : damaged.left + oldCarry;
-    const hit = cohort.shield > 0 ? shipShieldHit(totalCount, cohort.hp, oldCarry, damaged.left, cohort.shield) : null;
+    const hit = cohort.shield > 0 ? shipShieldHit(totalCount, cohort.hp, oldCarry, damaged.left, cohort.shield, shields.get(key) ?? cohort.shield) : null;
     const killed = hit ? totalCount - hit.count : Math.min(totalCount, Math.floor(effective / cohort.hp));
     carry.set(key, hit ? hit.wound : effective - killed * cohort.hp);
+    if (hit) shields.set(key, hit.shieldLeft);
     shieldAbsorbed += damaged.absorbed + (hit?.absorbed ?? 0);
     hullDamage.set(key, damaged.hullDamage + (hit?.hullDamage ?? Math.min(damaged.left, Math.max(0, totalCount * cohort.hp - oldCarry))));
     if (killed === 0) continue;
@@ -593,6 +605,8 @@ export function resolveJointCombat(
   const defValueBefore = fleetValue(D);
   const carryA = new Map<string, number>();
   const carryD = new Map<HullId, number>();
+  const shieldsA = new Map<string, number>();
+  const shieldsD = new Map<HullId, number>();
   const credited = stacks.map(() => 0);
   const rounds: CombatRound[] = [];
   let shieldLeft = shield;
@@ -656,9 +670,9 @@ export function resolveJointCombat(
     const shieldAfter = Math.max(0, Math.round(shieldLeft));
     const passRatio = incoming > 0 ? (incoming - absorbed) / incoming : 0;
 
-    const defenderApplied = applyCasualties(D, toD, passRatio, carryD, d);
+    const defenderApplied = applyCasualties(D, toD, passRatio, carryD, d, shieldsD);
     const attackerApplied = applyJointCasualties(
-      live, toA, stats, carryA, stacks.map((stack) => stack.contributionId), wounded,
+      live, toA, stats, carryA, stacks.map((stack) => stack.contributionId), wounded, shieldsA,
     );
     const landed = incoming - absorbed - defenderApplied.shieldAbsorbed;
     /*
@@ -1037,6 +1051,8 @@ export function resolveBattle(
   const defValueBefore = fleetValue(mergedFleet(dStarts));
   const carryA = new Map<string, number>();
   const carryD = new Map<string, number>();
+  const shieldsA = new Map<string, number>();
+  const shieldsD = new Map<string, number>();
   const credited = stacks.map(() => 0);
   const rounds: CombatRound[] = [];
   let shieldLeft = shield;
@@ -1118,9 +1134,9 @@ export function resolveBattle(
       for (const [hull, value] of map) scaled.set(hull, value * passRatio);
       return scaled;
     });
-    const defenderApplied = applyJointCasualties(dLive, scaledToD, dStats, carryD, dIds, dWounded);
+    const defenderApplied = applyJointCasualties(dLive, scaledToD, dStats, carryD, dIds, dWounded, shieldsD);
     const attackerApplied = applyJointCasualties(
-      live, toA, stats, carryA, stacks.map((stack) => stack.contributionId), wounded,
+      live, toA, stats, carryA, stacks.map((stack) => stack.contributionId), wounded, shieldsA,
     );
     const landed = incoming - absorbed - defenderApplied.shieldAbsorbed;
     for (const [key, { hull, members }] of cohorts) {

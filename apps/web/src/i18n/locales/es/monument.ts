@@ -1,5 +1,6 @@
 export const monument = {
   battleResult: {
+  cargoRetreat: "Los cargueros defensores se retiraron.",
   "control": {
     "attacking": {
       "ATTACKER": "Tu bando capturó el monumento.",
@@ -27,7 +28,7 @@ export const monument = {
   "wiped": "Toda tu flota fue destruida.",
   "rulesTitle": "Reglas de combate",
   "roundRule": "El combate dura como máximo {{rounds}} rondas. Las naves de carga están protegidas mientras sobrevivan naves armadas.",
-  "captureRule": "Para capturar debes eliminar toda la defensa y conservar una nave armada capaz de combatir. Las naves de carga solas pueden mantener el control existente.",
+  "captureRule": "Si al defensor solo le quedan cargueros y el atacante conserva una nave de guerra capaz de combatir, los cargueros vuelven a casa y el atacante toma el control. Si ambos bandos solo conservan cargueros, el defensor permanece y el atacante regresa.",
   "partialRule": "El éxito parcial exige destruir al menos {{threshold}} del valor en recursos de la flota defensora. Las supervivientes dañadas no cuentan como destruidas. El resultado y los puntos no determinan el control."
 },
   radiationLossForecast: "Primera pérdida por radiación en {{time}}, sin daño de combate.",
