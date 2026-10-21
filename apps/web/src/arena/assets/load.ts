@@ -136,19 +136,33 @@ const empty = (): ArenaAssets => ({
 });
 
 /**
+ * Browsers whose tab dies well short of the full pack's ~580 MB of decoded textures
+ * (owner 2026-10-21: an iPhone 12 mini, in Safari and Chrome — every iOS browser is
+ * WebKit). An iPad asking for the desktop site reports a Mac with touch points.
+ */
+export function memoryTight(nav: { userAgent: string; maxTouchPoints: number; deviceMemory?: number }): boolean {
+  return /iPhone|iPad|iPod/.test(nav.userAgent) || (/Macintosh/.test(nav.userAgent) && nav.maxTouchPoints > 1)
+    || (nav.deviceMemory !== undefined && nav.deviceMemory <= 4);
+}
+
+const PACKS = { full: '/__ref/dist/v2/manifest.json', lite: '/__ref/dist/v2/manifest-lite.json' } as const;
+
+/**
  * Loads the whole reference pack before the flight begins. A longer loading screen is
  * the deliberate price of a flight that never hitches on a first texture upload.
  */
 export async function loadArenaAssets(references: boolean, anisotropy: number, onProgress: (p: LoadProgress) => void,
-  fetcher: typeof fetch = fetch): Promise<ArenaAssets> {
+  fetcher: typeof fetch = fetch, lite = memoryTight(navigator)): Promise<ArenaAssets> {
   const assets = empty();
   let manifest: ReferenceManifest | null = null;
   onProgress({ done: 0, total: 1, stage: 'manifest' });
-  if (references) {
+  // The lite pack halves every image; a server without it still serves the full one.
+  for (const path of references ? lite ? [PACKS.lite, PACKS.full] : [PACKS.full] : []) {
     try {
-      const response = await fetcher('/__ref/dist/v2/manifest.json');
+      const response = await fetcher(path);
       if (response.ok) manifest = parseReferenceManifest(await response.json());
     } catch { /* No reference pack is a complete, supported configuration. */ }
+    if (manifest) break;
   }
   if (!manifest) { onProgress({ done: 1, total: 1, stage: 'ready' }); return assets; }
   const m = manifest;
