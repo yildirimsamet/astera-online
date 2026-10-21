@@ -243,7 +243,7 @@
   color: #dff4ff !important; box-shadow: 0 0 18px color-mix(in srgb, var(--crystal) 30%, transparent); animation: ah-in .2s ease-out; }
 .ac-land.is-takeoff { position: absolute; overflow: hidden; background: color-mix(in srgb, var(--self) 14%, #061220) !important; border-color: color-mix(in srgb, var(--self) 60%, transparent) !important; }
 .ac-land.is-takeoff i { position: absolute; inset: 0; background: color-mix(in srgb, var(--self) 38%, transparent); transform-origin: left; transform: scaleX(0); }
-.ac-land.is-takeoff.is-holding i { transform: scaleX(1); transition: transform .55s linear; }
+.ac-land.is-takeoff.is-holding i { transform: scaleX(1); transition: transform var(--hold, .165s) linear; }
 .ac-land.is-cancel { background: color-mix(in srgb, var(--warn) 14%, #061220) !important; border-color: color-mix(in srgb, var(--warn) 60%, transparent) !important; color: #fff1cc !important; display: flex; gap: 8px; align-items: center; }
 .ac-land.is-cancel small { font: 600 10px var(--font-v2-mono); opacity: .8; }
 .ah-landing { display: none; width: 0; height: 0; }

@@ -18,15 +18,18 @@ const ICONS: Record<ArenaAction, React.ReactNode> = {
  * the right edge. A contextual LAND / TAKE OFF key sits centred under the ship.
  */
 /** One key, three states. Landing is a tap; taking off needs a short hold so a stray tap never launches you. */
-function LandKey({ status, onLand, onCancel, onTakeOff }: { status: HudSnapshot; onLand: () => void; onCancel: () => void; onTakeOff: () => void }) {
+/** Owner 2026-10-21: 70 % shorter than the first 550 ms. */
+export const TAKEOFF_HOLD_MS = 165;
+
+export function LandKey({ status, onLand, onCancel, onTakeOff }: { status: HudSnapshot; onLand: () => void; onCancel: () => void; onTakeOff: () => void }) {
   const c = arenaCopy();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [holding, setHolding] = useState(false);
   const release = (): void => { if (timer.current) clearTimeout(timer.current); timer.current = null; setHolding(false); };
   useEffect(() => release, []);
   if (status.landed) {
-    return <button className={`ac-land is-takeoff ${holding ? 'is-holding' : ''}`}
-      onPointerDown={event => { event.preventDefault(); setHolding(true); timer.current = setTimeout(() => { release(); onTakeOff(); }, 550); }}
+    return <button className={`ac-land is-takeoff ${holding ? 'is-holding' : ''}`} style={{ '--hold': `${String(TAKEOFF_HOLD_MS)}ms` } as React.CSSProperties}
+      onPointerDown={event => { event.preventDefault(); setHolding(true); timer.current = setTimeout(() => { release(); onTakeOff(); }, TAKEOFF_HOLD_MS); }}
       onPointerUp={release} onPointerCancel={release} onPointerLeave={release}>
       <i aria-hidden />{c.takeOffHold}
     </button>;

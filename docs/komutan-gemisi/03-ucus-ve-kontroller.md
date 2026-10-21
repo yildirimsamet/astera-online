@@ -158,7 +158,7 @@ Referans görsellerdeki yerleşim **test edilmeden aynen uygulanmaz** (S53).
   (menzil 260 m, canlı kristal öncelikli), iniş noktasında halka belirir; gemi oraya yönelip
   mesafeye göre gazı düşürür. Düğme **İPTAL** olur ve kalan mesafeyi gösterir. Çubuğu belirgin
   oynatmak da yardımı keser.
-- **KALK** 0,55 sn basılı tutma ister; yanlışlıkla art arda dokunuş kalkış yapmaz. Gaz kolunu
+- **KALK** 0,165 sn basılı tutma ister (sahip 2026-10-21: 0,55 sn'den %70 kısa); yanlışlıkla art arda dokunuş kalkış yapmaz. Gaz kolunu
   itmek de kalkıştır. Turbo da kalkıştır: inmiş gemide turbo gemiyi
   kaldırıp doğrudan hızlandırır (kazıda pusuya düşen pilotun kaçışı). Turbo, iniş yardımını da iptal eder.
 - Kristale inen gemi kazar; kazı ışını uzaktan görünür.

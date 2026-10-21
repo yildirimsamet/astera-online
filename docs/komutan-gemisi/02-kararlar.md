@@ -446,7 +446,7 @@ Hepsi ileriye bakıp kayadan kaçınır; görünmez/duman arkasındaki pilotu he
 **İniş yardımı ve kontrol güvenlikleri.** *İn* tek dokunuştur. Nişangâha en yakın yüzey seçilir;
 menzil 260 m ve canlı kristal önceliklidir. Seçilen yüzeyde iniş noktası halkası çizilir ve gemi
 oraya yönelip mesafeye göre gazı düşürerek konar. Bu yalnız girdi üretir (`landing.ts`), dolayısıyla
-sunucu ve tahmin aynı kalır. Çubuğun belirgin oynatılması (> 0,4) yardımı iptal eder. *Kalk* 0,55 sn
+sunucu ve tahmin aynı kalır. Çubuğun belirgin oynatılması (> 0,4) yardımı iptal eder. *Kalk* 0,165 sn
 basılı tutma ister; gaz itmek de kalkıştır. Joystick tabanı dokunulan yerde açılır, ama sol alttaki
 sabit bir bölgeye kıstırılır ve parmağı izlemez.
 
