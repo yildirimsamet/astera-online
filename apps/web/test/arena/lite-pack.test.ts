@@ -26,11 +26,11 @@ describe('memory-tight browsers', () => {
 });
 
 describe('the lite reference pack', () => {
-  const fetcher = (answers: Record<string, number>, asked: string[]): typeof fetch => (input => {
+  const fetcher = (answers: Record<string, number>, asked: string[]): typeof fetch => input => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     asked.push(url);
     return Promise.resolve(new Response('{}', { status: answers[url] ?? 404 }));
-  }) as typeof fetch;
+  };
 
   it('asks a memory-tight browser for the lite manifest first and falls back to the full one', async () => {
     const asked: string[] = [];
