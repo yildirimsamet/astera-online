@@ -141,7 +141,7 @@ const empty = (): ArenaAssets => ({
  * WebKit). An iPad asking for the desktop site reports a Mac with touch points.
  */
 export function memoryTight(nav: { userAgent: string; maxTouchPoints: number; deviceMemory?: number }): boolean {
-  return /iPhone|iPad|iPod/.test(nav.userAgent) || (/Macintosh/.test(nav.userAgent) && nav.maxTouchPoints > 1)
+  return /iPhone|iPad|iPod/.test(nav.userAgent) || (nav.userAgent.includes('Macintosh') && nav.maxTouchPoints > 1)
     || (nav.deviceMemory !== undefined && nav.deviceMemory <= 4);
 }
 
