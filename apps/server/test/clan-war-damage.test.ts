@@ -34,8 +34,8 @@ import { giveResearch, giveUnits, grant, levelWorld, seedWorld, setLevel, testDb
  * its own return leg, the commander's personal result says what they carry, and the
  * Repair Station judges them where each wave lands.
  *
- * Eleven Power-I Darts against three Strongholds penetrate their personal shields
- * and leave both sides wounded (1,500 seeds: Stronghold 31–84%, Dart 52–79%).
+ * Five Power-I Darts against two Power-II Strongholds penetrate their one-time
+ * shields and leave both sides wounded (1,500 seeds: Stronghold 45–68%, Dart 36–92%).
  */
 
 const silent = pino({ level: 'silent' });
@@ -113,10 +113,11 @@ const send = (f: Fixture, accountIndex: number, originPlanetId: string, fleet: F
 async function fightIt(f: Fixture): Promise<void> {
   await readyOperation(f);
   await f.db.delete(units).where(eq(units.planetId, f.planetIds[2]!));
-  await giveUnits(f.db, f.planetIds[2]!, { STRONGHOLD: 3 });
+  await giveUnits(f.db, f.planetIds[2]!, { STRONGHOLD: 2 });
+  await giveResearch(f.db, f.planetIds[2]!, 'SHIP_POWER', 2);
   for (const index of [0, 1]) await giveResearch(f.db, f.planetIds[index]!, 'SHIP_POWER', 1);
-  await send(f, 0, f.planetIds[0]!, { DART: 6 });
-  await send(f, 1, f.planetIds[1]!, { DART: 5 });
+  await send(f, 0, f.planetIds[0]!, { DART: 3 });
+  await send(f, 1, f.planetIds[1]!, { DART: 2 });
   await land(f);
   await f.db.transaction(async (tx) => startClanWar(tx, {
     actor: await clanActor(tx, f.accountIds[0]!), acknowledgeShieldLoss: true, clock: f.clock,
@@ -186,7 +187,7 @@ describe('persistent damage in a joint war', () => {
     expect(await dockLotsOf(f.db, f.planetIds[2]!)).toEqual([]);
     const [world] = await f.db.select().from(units)
       .where(and(eq(units.planetId, f.planetIds[2]!), eq(units.location, 'home'), eq(units.hull, 'STRONGHOLD')));
-    expect(world?.count).toBe(3);
+    expect(world?.count).toBe(2);
     expect((await f.db.select().from(clanWarContributions)).every((wave) => wave.damage === null)).toBe(true);
   });
 });

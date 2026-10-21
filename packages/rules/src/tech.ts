@@ -146,7 +146,7 @@ const propulsionSide = (level: number): number =>
  *
  * Power and Armor's ATK × hull-HP product is bounded by `RESEARCH_TECH.powerCeiling`.
  * Personal shields (owner, 2026-10-20) are calculated separately by `shipShieldHp`;
- * this stat ceiling does not bound their regenerating combat protection.
+ * this stat ceiling does not bound their combat shield protection.
  *
  *   information (the counter cycle)  1.6 / 0.625 = 2.56x   =  156%
  *   technology  (Power x Armor)      1.25 x 1.25 = 1.5625x =   56%

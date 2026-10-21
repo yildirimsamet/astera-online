@@ -1,5 +1,6 @@
 export const monument = {
   battleResult: {
+  cargoRetreat: "Savunanın yük gemileri geri çekildi.",
   "control": {
     "attacking": {
       "ATTACKER": "Tarafın anıtın kontrolünü aldı.",
@@ -27,7 +28,7 @@ export const monument = {
   "wiped": "Filonun tamamı yok oldu.",
   "rulesTitle": "Savaş kuralları",
   "roundRule": "Savaş en fazla {{rounds}} tur sürer. Savaş gemileri yaşarken yük gemileri korunur.",
-  "captureRule": "Ele geçirmek için savunmanın tamamını temizlemeli ve savaşabilecek bir savaş gemisini hayatta tutmalısın. Yalnız yük gemileri mevcut kontrolü koruyabilir.",
+  "captureRule": "Savunanda yalnız yük gemileri kalırsa ve sende savaşabilecek bir savaş gemisi sağsa, savunanın yük gemileri eve döner ve tarafın yerleşir. İki tarafta da yalnız yük gemileri kalırsa savunan tutmaya devam eder, saldıran eve döner.",
   "partialRule": "Kısmi başarı için savunan filonun kaynak değerinin en az {{threshold}} kadarını yok etmelisin. Hasarlı sağ kalan gemiler imha sayılmaz. Derece ve puan, anıt kontrolünü belirlemez."
 },
   radiationLossForecast: "Savaş hasarı hariç ilk radyasyon kaybı: {{time}} sonra.",

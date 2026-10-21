@@ -1,5 +1,6 @@
 export const monument = {
   battleResult: {
+  cargoRetreat: "Die verteidigenden Frachter haben sich zurückgezogen.",
   "control": {
     "attacking": {
       "ATTACKER": "Deine Seite hat das Monument erobert.",
@@ -27,7 +28,7 @@ export const monument = {
   "wiped": "Deine gesamte Flotte wurde zerstört.",
   "rulesTitle": "Kampfregeln",
   "roundRule": "Der Kampf dauert höchstens {{rounds}} Runden. Frachter sind geschützt, solange bewaffnete Schiffe überleben.",
-  "captureRule": "Zur Eroberung musst du die gesamte Verteidigung vernichten und ein kampffähiges bewaffnetes Schiff behalten. Frachter allein können bestehende Kontrolle halten.",
+  "captureRule": "Bleiben nur verteidigende Frachter und überlebt ein kampffähiges Kriegsschiff des Angreifers, kehren die Frachter heim und der Angreifer übernimmt. Haben beide Seiten nur Frachter, hält der Verteidiger weiter und der Angreifer kehrt heim.",
   "partialRule": "Ein Teilerfolg erfordert die Vernichtung von mindestens {{threshold}} des Ressourcenwerts der verteidigenden Flotte. Beschädigte Überlebende zählen nicht als zerstört. Kampfergebnis und Punkte bestimmen die Kontrolle nicht."
 },
   radiationLossForecast: "Erster Strahlungsverlust in {{time}}, ohne Kampfschaden.",

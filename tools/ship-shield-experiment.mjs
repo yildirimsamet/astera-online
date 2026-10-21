@@ -32,7 +32,7 @@ export function shieldHit(count, hp, wound, damage, personalShield) {
 const clean = fleet => Object.fromEntries(fleetEntries(fleet));
 export function shieldBattle({
   attacker, defender, seed, coefficient = 0, basis = 'HP',
-  attackerTech = {}, defenderTech = {}, shield = 0,
+  attackerTech = {}, defenderTech = {}, shield = 0, rechargeEachRound = true,
 }) {
   if (!Number.isFinite(coefficient) || coefficient < 0 || !['HP', 'ATK'].includes(basis)) {
     throw new RangeError('bad experimental shield');
@@ -58,6 +58,16 @@ export function shieldBattle({
   function apply(fleet, wounds, own, damage, pass) {
     for (const [id, amount] of Object.entries(damage)) {
       const personalShield = HULLS[id].ground ? 0 : coefficient * own[id][basis === 'HP' ? 'hp' : 'atk'];
+      if (!rechargeEachRound) {
+        // Prototype carry includes shield expenditure. Target weights above still
+        // use hull HP; only the focused casualty budget gains the one-time shield.
+        const endurance = own[id].hp + personalShield;
+        const effective = (wounds[id] ?? 0) + amount * pass;
+        const killed = Math.min(fleet[id] ?? 0, Math.floor(effective / endurance));
+        fleet[id] = (fleet[id] ?? 0) - killed;
+        wounds[id] = fleet[id] > 0 ? effective - killed * endurance : 0;
+        continue;
+      }
       const hit = shieldHit(fleet[id] ?? 0, own[id].hp, wounds[id] ?? 0, amount * pass, personalShield);
       fleet[id] = hit.count;
       wounds[id] = hit.wound;

@@ -308,6 +308,10 @@ creates the escort decision: bring enough combat hulls to cover the cargo you br
 At a **pirate** (owner, 2026-10-06), holds left without a single warship are taken once the fight
 ends, provided the raiders still have a gun (`pirateOverrun`): destroyed, wreckage, a DECISIVE
 grade that pays the hoard and may tow one home. PvP worlds keep the plain rule.
+At a **monument** (owner, 2026-10-21), surviving defending cargo retreats home with
+its load when a combat-ready attacking warship survives and no defending warship
+remains. If both sides retain only cargo, the defender keeps HOLD and the attacker
+returns. Retreating ships are survivors, never destroyed hulls or loot.
 
 The launch ruler's **success lines** count a fight as success only when the defender is broken and
 at least one of the wing's ships comes home (owner, 2026-10-06) — a mutual wipe graded DECISIVE is
@@ -320,7 +324,7 @@ small: the whole game is built on information reducing uncertainty. **If randomn
 outcomes, intel would be worthless.**
 
 Owner decision, 2026-10-20: every mobile ship has a personal combat shield equal to
-its researched maximum hull HP. Shields recharge fully each round; hull wounds persist.
+its researched maximum hull HP. Shields start full each battle and never recharge between rounds (owner update, 2026-10-21); hull wounds persist.
 Ship Shields research has four cumulative bonuses over that base: 25%, 50%, 70%, 100%.
 Aegis absorbs fire first, then personal shields, then hull. Unhit ships cannot share
 their shields with a ship under fire. Ground emplacements have no personal shields.

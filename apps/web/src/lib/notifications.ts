@@ -574,6 +574,7 @@ export interface NotificationIdentity {
 
 const monumentTarget = z.object({ monumentId: z.string().uuid(), monumentOrdinal: z.number().int().min(1).max(8).optional() });
 const monumentResult = monumentTarget.extend({ lostFuel: z.number().finite().nonnegative().optional(), targetKind: z.literal('MONUMENT'), attacking: z.boolean(),
+  defenderCargoRetreated: z.boolean().optional(),
   grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']), control: z.enum(['ATTACKER', 'DEFENDER', 'EMPTY']),
   survivors: z.number().int().nonnegative(), unitsLost: z.number().int().nonnegative(),
   lootDeuterium: z.number().finite().nonnegative(), dominion: z.number().int().safe(),

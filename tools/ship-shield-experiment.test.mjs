@@ -58,12 +58,18 @@ test('production shields match the independent healthy-battle prototype at every
         attacker: { tech: { ...cell.attackerTech, SHIP_SHIELDS: level } },
         defender: { tech: { ...cell.defenderTech, SHIP_SHIELDS: level } },
       });
-      const experiment = shieldBattle({ ...cell, seed, coefficient });
+      const experiment = shieldBattle({ ...cell, seed, coefficient, rechargeEachRound: false });
       assert.deepEqual(clean(actual.attackerSurvivors), experiment.attacker);
       assert.deepEqual(clean(actual.defenderSurvivors), experiment.defender);
       assert.equal(actual.rounds.length, experiment.rounds);
     }
   }
+});
+test('no-recharge prototype accumulates shield hits over the whole battle', () => {
+  const result = shieldBattle({ attacker: { CORSAIR: 3 }, defender: { CORSAIR: 1 },
+    seed: 42, coefficient: 1, rechargeEachRound: false });
+  assert.deepEqual(result.defender, {});
+  assert.equal(result.rounds, 3);
 });
 test('fixed inputs remain reproducible and unmodified', () => {
   const attacker = { CORSAIR: 100 }, defender = { CATACLYSM: 100 };

@@ -4,6 +4,7 @@ import { reportsSchema, type NotificationView } from '../src/api/schemas.js';
 import { activeMonumentInbound, describeNotification, isAlarming, notificationIdentity, signalFamily } from '../src/lib/notifications.js';
 import { BattleReportDoor, reportFor } from '../src/screens/BattleReports.js';
 import { SignalsFeed } from '../src/shell/Signals.js';
+import { MonumentReportSheet } from '../src/screens/MonumentReportSheet.js';
 
 const id = '00000000-0000-4000-8000-000000000003';
 const at = new Date('2026-10-04T12:00:00.000Z');
@@ -22,6 +23,19 @@ const notice = (kind: string, payload: unknown): NotificationView => ({ id: 'n1'
 const target = { targetKind: 'MONUMENT', monumentId: id, monumentOrdinal: 3 };
 
 describe('monument reports and actionable news', () => {
+  it('explains a cargo retreat in the report and news without calling the capture repelled', () => {
+    const displacement = { ...wire, grade: 'REPELLED', control: 'ATTACKER', defenderCargoRetreated: true };
+    const parsed = reportsSchema.parse({ reports: [displacement], rivals: [] }).reports[0];
+    if (parsed?.kind !== 'MONUMENT') throw new Error('Expected a monument report');
+    expect(parsed).toHaveProperty('defenderCargoRetreated', true);
+    render(<MonumentReportSheet report={parsed} onClose={vi.fn()} />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Defending cargo ships retreated.');
+    expect(dialog).not.toHaveTextContent('Attack repelled.');
+    const event = notice('raid_result', { ...target, attacking: true, grade: 'REPELLED', control: 'ATTACKER',
+      defenderCargoRetreated: true, survivors: 1, unitsLost: 0, lootDeuterium: 0, dominion: 0 });
+    expect(describeNotification(event, at.getTime())).toContain('Defending cargo ships retreated.');
+  });
   it.each([[6, 'Fragmented Dyson Sphere'], [7, 'Sleeping Guardian'], [8, 'Ancient War Cemetery']] as const)(
     'keeps the new monument %i actionable in inbound news, probe deliveries and native battle reports', (ordinal, name) => {
       const added = { ...target, monumentOrdinal: ordinal };
