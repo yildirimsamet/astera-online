@@ -9,9 +9,11 @@ import type { Rng } from '../types.js';
 import type { ArenaLayout, Vec3 } from './types.js';
 
 export type BotRole = 'hunter' | 'miner' | 'patrol';
-export type BotMode = 'roam' | 'engage' | 'approach' | 'mine' | 'flee' | 'extract';
+export type BotMode = 'roam' | 'engage' | 'extend' | 'approach' | 'mine' | 'flee' | 'extract';
 export interface BotBrain {
   role: BotRole; mode: BotMode; target: number; goal: number; timer: number; wander: Vec3; burst: number;
+  /** Ticks spent close to the target without a firing line; a long tangle ends in an extension. */
+  close: number;
 }
 export interface BotWorld {
   layout: ArenaLayout; tick: number; pilot: Pilot; drones: Pilot[]; smoke: SmokePuff[];
@@ -19,7 +21,7 @@ export interface BotWorld {
 }
 
 export const createBrain = (role: BotRole): BotBrain =>
-  ({ role, mode: role === 'miner' ? 'approach' : 'roam', target: -1, goal: -1, timer: 0, wander: { x: 0, y: 0, z: 0 }, burst: 0 });
+  ({ role, mode: role === 'miner' ? 'approach' : 'roam', target: -1, goal: -1, timer: 0, wander: { x: 0, y: 0, z: 0 }, burst: 0, close: 0 });
 
 const local = { x: 0, y: 0, z: 0 };
 const avoid: Contact = { index: -1, nx: 0, ny: 0, nz: 0, depth: 0 };
@@ -77,7 +79,7 @@ function nearestVisible(world: BotWorld, bot: Pilot, range: number): Pilot | und
   let best: Pilot | undefined; let bestDistance = range * range;
   for (let j = 0; j <= world.drones.length; j++) {
     const other = j === 0 ? world.pilot : world.drones[j - 1];
-    if (!other || other === bot || world.brains.has(other.id) || !alive(other) || !pilotVisible(world, bot, other)) continue;
+    if (!other || other === bot || !alive(other) || !pilotVisible(world, bot, other)) continue;
     const dx = other.p.x - bot.p.x; const dy = other.p.y - bot.p.y; const dz = other.p.z - bot.p.z;
     const d = dx * dx + dy * dy + dz * dz;
     if (d < bestDistance) { bestDistance = d; best = other; }
@@ -93,21 +95,27 @@ function engage(world: BotWorld, bot: Pilot, brain: BotBrain, target: Pilot, out
   const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
   // A slow, readable aiming wobble keeps the bot beatable.
   const wobble = ((world.tick + bot.id * 37) % 90) / 45 - 1;
-  const ex = wobble * 7; const ey = -wobble * 4;
-  if (leadPoint(leadOut, bot, target.p, velocity)) steerTo(out, bot, bot.p.x + leadOut.x + ex, bot.p.y + leadOut.y + ey, bot.p.z + leadOut.z, 3.2);
-  else steerTo(out, bot, target.p.x, target.p.y, target.p.z, 3.2);
+  const ex = wobble * T.botAimWobble; const ey = -wobble * T.botAimWobble * 0.55;
+  if (leadPoint(leadOut, bot, target.p, velocity)) steerTo(out, bot, bot.p.x + leadOut.x + ex, bot.p.y + leadOut.y + ey, bot.p.z + leadOut.z, T.botTurnGain);
+  else steerTo(out, bot, target.p.x, target.p.y, target.p.z, T.botTurnGain);
   out.throttle = distance > 700 ? 1 : distance > 220 ? 0.8 : 0.5;
   out.turbo = eager && distance > 750 && bot.turboCharge > 1.5;
   toLocal(local, bot.q, leadOut.x, leadOut.y, leadOut.z);
-  const onTarget = local.z > 0 && local.x * local.x + local.y * local.y < local.z * local.z * 0.0025;
-  brain.burst = (brain.burst + 1) % Math.round(T.tickRate * 2);
-  const inBurst = brain.burst < T.tickRate * 1.25;
+  // On target while the lead sits inside the hull's apparent size, never tighter than 2.9°.
+  const cone = Math.max(0.05, T.shipHitRadius * T.botHullAim / Math.max(1, distance));
+  const onTarget = local.z > 0 && local.x * local.x + local.y * local.y < local.z * local.z * cone * cone;
+  brain.burst = (brain.burst + 1) % Math.round(T.tickRate * T.botBurstCycle);
+  const inBurst = brain.burst < T.tickRate * T.botBurstOn;
   const clear = segmentObstacles(world.layout, bot.p.x, bot.p.y, bot.p.z, target.p.x, target.p.y, target.p.z, 0) > 1;
-  out.fire = onTarget && inBurst && clear && distance < 650;
+  out.fire = onTarget && inBurst && clear && distance < T.botFireRange;
+  // Two ships circling each other never line up: after a while in a tight tangle, open
+  // the range straight ahead and come back for another pass.
+  brain.close = distance < T.botTangleRange && !onTarget ? brain.close + 1 : 0;
+  if (brain.close > T.botTangle * T.tickRate) { brain.mode = 'extend'; brain.timer = T.botExtend * T.tickRate; brain.close = 0; }
   assistSteer(magnet, bot, target.p, velocity, out.steerX, out.steerY, out.fire);
   sampleAssist(out, magnet.x, magnet.y);
   // Badly hurt and chased: smoke, turbo away and break the line of fire.
-  if (bot.hull < T.hull * 0.35 && world.tick - bot.lastDamage < T.tickRate * 2) {
+  if (bot.hull < T.hull * T.botFleeHull && world.tick - bot.lastDamage < T.tickRate * 2) {
     brain.mode = 'flee'; brain.timer = T.tickRate * 6;
   }
 }
@@ -173,7 +181,7 @@ function mine(world: BotWorld, bot: Pilot, brain: BotBrain, out: ArenaIntent): v
   avoidance(world, bot, out, brain.goal);
 }
 
-/** One decision tick for a sandbox bot. Bots only ever chase non-bot pilots. */
+/** One decision tick for a bot. Bots chase the nearest pilot they can see, bot or not. */
 export function thinkBot(world: BotWorld, bot: Pilot, brain: BotBrain, out: ArenaIntent): void {
   out.steerX = 0; out.steerY = 0; out.throttle = 0.6; out.turbo = false; out.assistX = 0; out.assistY = 0;
   out.fire = false; out.smoke = false; out.cloak = false; out.turboBurst = false;
@@ -185,8 +193,14 @@ export function thinkBot(world: BotWorld, bot: Pilot, brain: BotBrain, out: Aren
     if (--brain.timer <= 0) brain.mode = 'roam';
     return;
   }
-  const range = brain.role === 'hunter' ? 1600 : 750;
-  const target = nearestVisible(world, bot, brain.mode === 'engage' ? range * 1.3 : range);
+  if (brain.mode === 'extend') {
+    out.throttle = 1;
+    avoidance(world, bot, out, -1);
+    if (--brain.timer <= 0) brain.mode = 'roam';
+    return;
+  }
+  const range = brain.role === 'hunter' ? T.botSightHunter : T.botSightPatrol;
+  const target = nearestVisible(world, bot, brain.mode === 'engage' ? range * T.botChaseHold : range);
   if (target) {
     brain.mode = 'engage'; brain.target = target.id;
     engage(world, bot, brain, target, out, brain.role === 'hunter');

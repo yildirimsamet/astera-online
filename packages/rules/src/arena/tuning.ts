@@ -100,6 +100,27 @@ export const ARENA_TUNING = Object.freeze({
   deuteriumDeposits: 6,
   botRespawn: 8,
   /**
+   * Bot temper (owner 2026-10-21: a little less sharp, accurate and stubborn — not simple).
+   * Sight per role in metres; a chase holds to sight × botChaseHold. The aim wobbles by
+   * botAimWobble metres and tracks at botTurnGain; the trigger is held botBurstOn of every
+   * botBurstCycle seconds, inside botFireRange. Hurt below botFleeHull under fire, it breaks off.
+   */
+  botSightHunter: 1300,
+  botSightPatrol: 650,
+  botChaseHold: 1.1,
+  botAimWobble: 12,
+  botTurnGain: 2.7,
+  botBurstOn: 0.8,
+  botBurstCycle: 2,
+  botFireRange: 560,
+  botFleeHull: 0.45,
+  /** Fires while the lead is within this many hull radii of the nose line (bot ↔ bot tangles). */
+  botHullAim: 2.7,
+  /** Closer than botTangleRange with no firing line for botTangle seconds: extend for botExtend. */
+  botTangleRange: 120,
+  botTangle: 4,
+  botExtend: 3,
+  /**
    * Input playout (owner 2026-10-20: not a twitch shooter, the buffer may be loose).
    * 100 ms first wait; a Wi-Fi stall keeps the last input for 300 ms instead of
    * going neutral after 100; the buffer may grow to 400 ms after stalls.

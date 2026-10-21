@@ -54,8 +54,8 @@ function accountIdentity(app: FastifyInstance): ArenaIdentify {
 }
 
 /**
- * One shared room. ARENA_DEV admits guests and keeps bots and debug actions; the live
- * playtest admits accounts seated from the admin desk (or named in ARENA_PILOTS), with no bots and no debug actions.
+ * One shared room with three bots. ARENA_DEV admits guests and keeps debug actions; the live
+ * playtest admits accounts seated from the admin desk (or named in ARENA_PILOTS), with no debug actions.
  * No account, resource, sortie or repair writes either way.
  */
 export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIdentify = accountIdentity(app)): { world: ArenaWorld } {
@@ -63,7 +63,8 @@ export function registerArena(app: FastifyInstance, env: Env, identify: ArenaIde
     account.pilot || env.ARENA_PILOTS.includes('*') || env.ARENA_PILOTS.includes(account.username);
   const origins = new Set(env.ARENA_ALLOWED_ORIGINS.split(',').map(value => value.trim()).filter(Boolean));
   const sockets = new WebSocketServer({ noServer: true, perMessageDeflate: false, maxPayload: 4096 });
-  const world = createSandboxWorld({ seed: Date.now() >>> 0, ...(env.ARENA_DEV ? {} : { bots: 0 }) });
+  // Owner 2026-10-21: the live room flies its three bots (hunter, patrol, miner) too.
+  const world = createSandboxWorld({ seed: Date.now() >>> 0 });
   const spawnRandom = mulberry32((Date.now() ^ 0x5eed) >>> 0);
   // Pilot zero is the offline sandbox slot; shared guests live in the remote pool.
   world.pilot.phase = 'towed';

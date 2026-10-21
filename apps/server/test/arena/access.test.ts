@@ -7,8 +7,9 @@ import { systemClock } from '../../src/clock.js';
 import { loadEnv } from '../../src/env.js';
 
 /**
- * The live playtest path: no guests, no bots, no debug actions. Pilots are real
- * accounts on the ARENA_PILOTS list, identified by their access token.
+ * The live playtest path: no guests, no debug actions. Pilots are real accounts on the
+ * ARENA_PILOTS list, identified by their access token. Owner 2026-10-21: three bots
+ * fly the room beside them.
  */
 const ORIGIN = 'https://asteraonline.space';
 const ACCOUNTS: Record<string, { accountId: string; username: string; name: string; pilot: boolean }> = {
@@ -87,16 +88,17 @@ describe('arena live playtest access', () => {
     expect(await carol.next(kind('kick'))).toEqual({ kind: 'kick', reason: 'denied' });
   });
 
-  it('seats listed pilots under their display names, with no bots in the room', async () => {
+  it('seats listed pilots under their display names, beside the room\'s three bots', async () => {
     const { url } = await room();
     const alice = await connect(url, { token: 'token-alice' });
     await alice.next(kind('welcome'));
     const bob = await connect(url, { token: 'token-bob' });
     const welcome = await bob.next(kind('welcome'));
-    expect(pilotsOf(welcome).map(p => p.name).sort()).toEqual(['Alice', 'Bob']);
-    expect(pilotsOf(welcome).some(p => p.role !== undefined)).toBe(false);
-    const roster = await alice.next(m => kind('roster')(m) && pilotsOf(m).length === 2);
-    expect(pilotsOf(roster).every(p => p.points === 0 && p.kills === 0 && p.deaths === 0)).toBe(true);
+    const people = (m: unknown): RosterRow[] => pilotsOf(m).filter(p => p.role === undefined);
+    expect(people(welcome).map(p => p.name).sort()).toEqual(['Alice', 'Bob']);
+    expect(pilotsOf(welcome).flatMap(p => p.role ?? []).sort()).toEqual(['hunter', 'miner', 'patrol']);
+    const roster = await alice.next(m => kind('roster')(m) && people(m).length === 2);
+    expect(people(roster).every(p => p.points === 0 && p.kills === 0 && p.deaths === 0)).toBe(true);
   });
 
   it('opens the room to any signed-in account when the list is a star', async () => {
