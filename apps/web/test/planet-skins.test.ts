@@ -230,7 +230,7 @@ describe('first planet skin visuals', () => {
   });
 
   it('keeps palette and country planet bodies opaque when their GLTF material is translucent', () => {
-    const source = new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.5, depthWrite: false });
+    const source = new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide });
     const visual = planetSkinVisual('planet-lava')!;
     if (visual.finish.kind !== 'PALETTE') throw new Error('Expected palette');
     const palette = createPlanetSkinMaterial(source, visual.finish).material;
@@ -239,6 +239,7 @@ describe('first planet skin visuals', () => {
       expect(material.transparent).toBe(false);
       expect(material.opacity).toBe(1);
       expect(material.depthWrite).toBe(true);
+      expect(material.side).toBe(THREE.FrontSide);
     }
   });
 

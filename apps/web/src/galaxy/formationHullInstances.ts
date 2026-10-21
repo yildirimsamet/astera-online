@@ -6,6 +6,8 @@ import type { Vec3Tuple } from './scene.js';
 export interface FormationHullMember {
   marker: Marker;
   offset: Vec3Tuple;
+  /** The marker's place in the formation, which a per-ship clock (the convoy's drift) keys on. */
+  index: number;
 }
 
 export interface FormationHullBucket {
@@ -22,7 +24,7 @@ export function bucketFormationHulls(
 ): FormationHullBucket[] {
   const byHull = new Map<Marker['hull'], FormationHullBucket>();
   markers.forEach((marker, index) => {
-    const member = { marker, offset: slots[index] ?? ORIGIN };
+    const member = { marker, offset: slots[index] ?? ORIGIN, index };
     const bucket = byHull.get(marker.hull);
     if (bucket) bucket.members.push(member);
     else byHull.set(marker.hull, { hull: marker.hull, members: [member] });

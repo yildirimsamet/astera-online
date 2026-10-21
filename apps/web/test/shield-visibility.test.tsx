@@ -1,6 +1,6 @@
-import { isValidElement, type RefObject } from 'react';
+import { Children, isValidElement, type ReactNode, type RefObject } from 'react';
 import { renderHook } from '@testing-library/react';
-import { useFrame, type RootState } from '@react-three/fiber';
+import { useFrame, useThree, type RootState } from '@react-three/fiber';
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { Shields, shieldInstances } from '../src/galaxy/Satellites.js';
@@ -12,11 +12,19 @@ it('moves every shield attribute with its instance and avoids unchanged uploads'
     { id: 'off', position: [100, 0, -10], radius: 1, shielded: true, intel: 'REMEMBERED' },
     { id: 'own', position: [0, 0, -10], radius: 1, shielded: true, intel: 'RESOLVED' },
   ] as PlanetNode[];
+  vi.mocked(useThree).mockImplementation((selector) => selector?.({ size: { width: 800, height: 800 } } as RootState));
   const { result } = renderHook(() => Shields({ nodes, ownLevel: 5, ownId: 'own' }));
-  const element = result.current;
-  if (!isValidElement<{ args: [THREE.BufferGeometry, THREE.Material, number]; ref: RefObject<THREE.InstancedMesh | null> }>(element)) throw new Error('Missing shield draw');
-  const mesh = new THREE.InstancedMesh(...element.props.args);
-  element.props.ref.current = mesh;
+  interface Draw { args: [THREE.BufferGeometry, THREE.Material, number]; ref: RefObject<THREE.InstancedMesh | null> }
+  const fragment = result.current;
+  if (!isValidElement<{ children: ReactNode }>(fragment)) throw new Error('Missing shield draws');
+  // Near domes first, then the lighter sphere a dome under a dozen pixels is drawn from.
+  const [mesh, far] = Children.toArray(fragment.props.children).map((element) => {
+    if (!isValidElement<Draw>(element)) throw new Error('Missing shield draw');
+    const node = new THREE.InstancedMesh(...element.props.args);
+    element.props.ref.current = node;
+    return node;
+  });
+  if (!mesh || !far) throw new Error('Missing near or far domes');
   const camera = new THREE.PerspectiveCamera(60, 1, 1, 100);
   const state = { camera, clock: { elapsedTime: 1 } } as RootState;
   const frame = vi.mocked(useFrame).mock.lastCall![0];
@@ -53,4 +61,14 @@ it('moves every shield attribute with its instance and avoids unchanged uploads'
   camera.position.x = 0;
   frame(state, 0);
   check(1);
+  expect(far.count).toBe(0);
+  // Backed far off, the same dome moves to the light sphere with its look intact.
+  camera.position.z = 85;
+  frame(state, 0);
+  expect(mesh.count).toBe(0);
+  expect(far.count).toBe(1);
+  expect(far.visible).toBe(true);
+  expect(far.geometry.getAttribute('aOpacity').getX(0)).toBeCloseTo(domes[1]!.opacity);
+  const transform = new THREE.Matrix4(); far.getMatrixAt(0, transform);
+  expect(new THREE.Vector3().setFromMatrixPosition(transform).toArray()).toEqual(domes[1]!.position);
 });

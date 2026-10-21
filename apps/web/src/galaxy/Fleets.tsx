@@ -3,6 +3,7 @@ import { TowedShips } from './TowedShips.js';
 import { isAppActive, watchAppActivity } from '../platform/activity.js';
 import { useGalaxyCulling, useVisualFrame } from './visualFrame.js';
 import { createLocalVisibility, localSphereVisible, hullPartRadius } from './formationVisibility.js';
+import { createHullBatches, shownInScene, type HullBatch, type HullBatches } from './hullBatches.js';
 import { cosmeticById } from '@astera/rules';
 import type { ShipCosmeticEquipment } from '@astera/rules';
 import { shipHullModels } from './shipCosmetics.js';
@@ -18,14 +19,17 @@ import { FleetCosmeticFlag, FormationCosmeticEngines } from './CosmeticEffects.j
 import { ProbeSkinBeam } from './ProbeSkinBeam.js';
 import {
   Suspense,
+  createContext,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type RefObject,
 } from 'react';
-import { useFrame, type ThreeEvent } from '@react-three/fiber';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Billboard, useGLTF, useTexture } from '@react-three/drei';
 import { useGltfPair } from './useGltfPair.js';
 import * as THREE from 'three';
@@ -149,7 +153,7 @@ export function OwnFleets({
   if (flying.length === 0) return null;
 
   return (
-    <>
+    <HullBatchLayer>
       {flying.map((thread, i) => {
         const key = threadKey(thread, i);
         return (
@@ -166,7 +170,7 @@ export function OwnFleets({
           />
         );
       })}
-    </>
+    </HullBatchLayer>
   );
 }
 
@@ -405,7 +409,7 @@ export function formationLodParts(scene: THREE.Object3D, url: string, full: read
   return formationHullParts(scene, url).map((part, index) => ({ ...part, material: full[index]?.material ?? part.material }));
 }
 
-/** Body and outline are submitted once per hull type inside this formation. */
+/** Each hull type writes its members into the fleet layer's shared body and outline batches. */
 export function FormationHulls({
   markers,
   slots,
@@ -413,6 +417,8 @@ export function FormationHulls({
   aimDistance,
   focused,
   shipSkins,
+  longitudinalOffset,
+  longitudinalOffsetBound = 0,
 }: {
   markers: readonly Marker[];
   slots: readonly Vec3Tuple[];
@@ -420,6 +426,10 @@ export function FormationHulls({
   aimDistance: RefObject<number>;
   focused: boolean;
   shipSkins?: ShipCosmeticEquipment;
+  /** A ship's own drift along the formation (the convoy's), by its marker index and the clock. */
+  longitudinalOffset?: (index: number, elapsedSeconds: number) => number;
+  /** The most that drift can move a ship, so culling never drops one at the edge. */
+  longitudinalOffsetBound?: number;
 }) {
   const buckets = useMemo(() => bucketFormationHulls(markers, slots), [markers, slots]);
   return (
@@ -433,6 +443,8 @@ export function FormationHulls({
           aimDistance={aimDistance}
           focused={focused}
           shipSkins={shipSkins}
+          longitudinalOffset={longitudinalOffset}
+          longitudinalOffsetBound={longitudinalOffsetBound}
         />
       ))}
     </>
@@ -446,6 +458,8 @@ interface FormationHullBucketProps {
   aimDistance: RefObject<number>;
   focused: boolean;
   shipSkins?: ShipCosmeticEquipment;
+  longitudinalOffset?: (index: number, elapsedSeconds: number) => number;
+  longitudinalOffsetBound: number;
 }
 
 function FormationHullBucket(props: FormationHullBucketProps) {
@@ -464,7 +478,7 @@ function FormationHullBucket(props: FormationHullBucketProps) {
   );
 }
 
-function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused, url, lowUrl }:
+function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused, url, lowUrl, longitudinalOffset, longitudinalOffsetBound }:
   FormationHullBucketProps & { url: string; lowUrl: string }) {
   const [full, low] = useGltfPair(url, lowUrl);
   const scene = full.scene;
@@ -475,11 +489,13 @@ function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused,
     if (lowScene === scene) return fullParts;
     return formationLodParts(lowScene, url, fullParts);
   }, [lowScene, scene, url, fullParts]);
+  const anchor = useRef<THREE.Group>(null);
   return (
-    <group name={`formation-hulls-${hull.toLowerCase()}`}>
+    <group ref={anchor} name={`formation-hulls-${hull.toLowerCase()}`}>
       {fullParts.map((part, index) => (
         <FormationHullPartMesh
           key={`full:${part.geometry.uuid}:${String(index)}`}
+          anchor={anchor}
           part={part}
           lod="full"
           members={members}
@@ -487,11 +503,14 @@ function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused,
           aimDistance={aimDistance}
           glow={HULL_LIGHT[hull].glow}
           focused={focused}
+          longitudinalOffset={longitudinalOffset}
+          longitudinalOffsetBound={longitudinalOffsetBound}
         />
       ))}
       {lowParts.map((part, index) => (
         <FormationHullPartMesh
           key={`low:${part.geometry.uuid}:${String(index)}`}
+          anchor={anchor}
           part={part}
           lod="low"
           members={members}
@@ -499,13 +518,81 @@ function LoadedFormationHullBucket({ hull, members, scale, aimDistance, focused,
           aimDistance={aimDistance}
           glow={HULL_LIGHT[hull].glow}
           focused={focused}
+          longitudinalOffset={longitudinalOffset}
+          longitudinalOffsetBound={longitudinalOffsetBound}
         />
       ))}
     </group>
   );
 }
 
+/**
+ * WHERE EVERY FORMATION'S HULLS ARE DRAWN (owner, 2026-10-20: "fps'te çok fazla dalgalanma
+ * olmamalı"). One layer per fleet root; see `hullBatches.ts` for why a frame is a number.
+ */
+export const HullBatchContext = createContext<HullBatches | null>(null);
+
+export function HullBatchLayer({ children }: { children: ReactNode }) {
+  const batches = useMemo(createHullBatches, []);
+  // The batches hold world matrices, so they hang off the scene itself, never a moving group.
+  const scene = useThree((state) => state.scene);
+  useEffect(() => {
+    scene.add(batches.root);
+    return () => { scene.remove(batches.root); };
+  }, [scene, batches]);
+  useVisualFrame(({ clock }) => { batches.settle(clock.elapsedTime); });
+  return <HullBatchContext.Provider value={batches}>{children}</HullBatchContext.Provider>;
+}
+
+function useHullBatches(): HullBatches {
+  const batches = useContext(HullBatchContext);
+  if (!batches) throw new Error('Formation hulls are drawn inside a HullBatchLayer');
+  return batches;
+}
+
+function hullBodyMaterial(source: THREE.Material | THREE.Material[]): THREE.Material | THREE.Material[] {
+  const clones = (Array.isArray(source) ? source : [source]).map((material) => {
+    const clone = material.clone();
+    configureOpaqueTransparentBody(clone);
+    if (clone instanceof THREE.MeshStandardMaterial) clone.roughness = Math.max(0.38, Math.min(0.86, clone.roughness));
+    return clone;
+  });
+  return Array.isArray(source) ? clones : clones[0]!;
+}
+
+function hullOutlineMaterial(glow: string, focused: boolean): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uColour: { value: new THREE.Color(glow) },
+      uOpacity: { value: focused ? 0.4875 : 0.315 },
+    },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    vertexShader: `
+      void main() {
+        vec4 expanded = vec4(position + normal * 0.004, 1.0);
+        #ifdef USE_INSTANCING
+          expanded = instanceMatrix * expanded;
+        #endif
+        gl_Position = projectionMatrix * modelViewMatrix * expanded;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uColour;
+      uniform float uOpacity;
+      void main() { gl_FragColor = vec4(uColour, uOpacity); }
+    `,
+    toneMapped: false,
+  });
+}
+
+const materialIds = (material: THREE.Material | THREE.Material[]): string =>
+  (Array.isArray(material) ? material : [material]).map((row) => row.uuid).join(',');
+
 function FormationHullPartMesh({
+  anchor,
   part,
   lod,
   members,
@@ -513,7 +600,11 @@ function FormationHullPartMesh({
   aimDistance,
   glow,
   focused,
+  longitudinalOffset,
+  longitudinalOffsetBound,
 }: {
+  /** The bucket's group: the formation space every member's matrix is written from. */
+  anchor: RefObject<THREE.Group | null>;
   part: FormationHullPart;
   lod: ShipLod;
   members: readonly FormationHullMember[];
@@ -521,125 +612,77 @@ function FormationHullPartMesh({
   aimDistance: RefObject<number>;
   glow: string;
   focused: boolean;
+  longitudinalOffset?: (index: number, elapsedSeconds: number) => number;
+  longitudinalOffsetBound: number;
 }) {
-  const body = useRef<THREE.InstancedMesh>(null);
-  const outline = useRef<THREE.InstancedMesh>(null);
-  const bodyMaterial = useMemo(() => {
-    const source = Array.isArray(part.material) ? part.material : [part.material];
-    const clones = source.map((material) => {
-      const clone = material.clone();
-      configureOpaqueTransparentBody(clone);
-      if (clone instanceof THREE.MeshStandardMaterial) clone.roughness = Math.max(0.38, Math.min(0.86, clone.roughness));
-      return clone;
-    });
-    return Array.isArray(part.material) ? clones : clones[0]!;
-  }, [part.material]);
-  const outlineMaterial = useMemo(() => {
-    const material = new THREE.ShaderMaterial({
-      uniforms: {
-        uColour: { value: new THREE.Color(glow) },
-        uOpacity: { value: focused ? 0.4875 : 0.315 },
-      },
-      transparent: true,
-      depthWrite: false,
-      side: THREE.BackSide,
-      blending: THREE.AdditiveBlending,
-      vertexShader: `
-        void main() {
-          vec4 expanded = vec4(position + normal * 0.004, 1.0);
-          #ifdef USE_INSTANCING
-            expanded = instanceMatrix * expanded;
-          #endif
-          gl_Position = projectionMatrix * modelViewMatrix * expanded;
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 uColour;
-        uniform float uOpacity;
-        void main() { gl_FragColor = vec4(uColour, uOpacity); }
-      `,
-      toneMapped: false,
-    });
-    return material;
-  }, [focused, glow]);
+  const batches = useHullBatches();
+  const body = useRef<HullBatch | null>(null);
+  const outline = useRef<HullBatch | null>(null);
+
+  useEffect(() => {
+    const batch = batches.acquire(`body:${lod}:${part.geometry.uuid}:${materialIds(part.material)}`, () => ({
+      geometry: part.geometry, material: hullBodyMaterial(part.material), renderOrder: SHIP_ORDER, name: `formation-hull-bodies-${lod}`,
+    }));
+    body.current = batch;
+    return () => {
+      body.current = null;
+      batches.release(batch);
+    };
+  }, [batches, lod, part.geometry, part.material]);
+  useEffect(() => {
+    const batch = batches.acquire(`outline:${lod}:${part.geometry.uuid}:${glow}:${String(focused)}`, () => ({
+      geometry: part.geometry, material: hullOutlineMaterial(glow, focused), renderOrder: SHIP_ORDER - 1, name: `formation-hull-outlines-${lod}`,
+    }));
+    outline.current = batch;
+    return () => {
+      outline.current = null;
+      batches.release(batch);
+    };
+  }, [batches, lod, part.geometry, glow, focused]);
+
   const rootMatrix = useMemo(() => new THREE.Matrix4(), []);
   const instanceMatrix = useMemo(() => new THREE.Matrix4(), []);
   const worldPoint = useMemo(() => new THREE.Vector3(), []);
   const scratch = useMemo(createFormationHullMatrixScratch, []);
-
-  useLayoutEffect(() => {
-    body.current?.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    outline.current?.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  }, []);
-
-  useEffect(() => () => {
-    const materials = Array.isArray(bodyMaterial) ? bodyMaterial : [bodyMaterial];
-    materials.forEach((material) => { material.dispose(); });
-  }, [bodyMaterial]);
-  useEffect(() => () => { outlineMaterial.dispose(); }, [outlineMaterial]);
+  const drifted = useMemo<Vec3Tuple>(() => [0, 0, 0], []);
 
   const culling = useGalaxyCulling();
   const visibility = useMemo(createLocalVisibility, []);
   const radius = useMemo(() => {
     const partRadius = hullPartRadius(part.geometry, part.matrix);
     return members.reduce((bound, member) => Math.max(bound,
-      Math.hypot(...member.offset) + Math.abs(hullVisualScale(member.marker.hull, scale)) * partRadius), 0);
-  }, [members, part, scale]);
-  useVisualFrame(({ camera }) => {
+      Math.hypot(...member.offset) + Math.abs(hullVisualScale(member.marker.hull, scale)) * partRadius), 0) + longitudinalOffsetBound;
+  }, [members, part, scale, longitudinalOffsetBound]);
+  useVisualFrame(({ camera, clock }) => {
+    const space = anchor.current;
     const bodies = body.current;
     const rims = outline.current;
-    if (!bodies || !rims) return;
-    const visible = !culling || localSphereVisible(visibility, camera, bodies, radius);
-    bodies.visible = rims.visible = visible;
-    if (!visible) return;
-    if (!culling) bodies.updateWorldMatrix(true, false);
-    const parentScale = bodies.matrixWorld.getMaxScaleOnAxis();
-    let count = 0;
+    if (!space || !bodies || !rims || !shownInScene(space)) return;
+    if (!culling) space.updateWorldMatrix(true, false);
+    else if (!localSphereVisible(visibility, camera, space, radius)) return;
+    const parentScale = space.matrixWorld.getMaxScaleOnAxis();
     members.forEach((member) => {
-      worldPoint.set(...member.offset).applyMatrix4(bodies.matrixWorld);
+      drifted[0] = member.offset[0];
+      drifted[1] = member.offset[1];
+      drifted[2] = member.offset[2] + (longitudinalOffset?.(member.index, clock.elapsedTime) ?? 0);
+      worldPoint.set(...drifted).applyMatrix4(space.matrixWorld);
       const radius = hullVisualScale(member.marker.hull, scale) * parentScale * 0.5;
       if (shipLod(radius, camera.position.distanceTo(worldPoint)) !== lod) return;
       formationHullMatrix(
         member.marker,
-        member.offset,
+        drifted,
         scale,
         aimDistance.current,
         rootMatrix,
         scratch,
       );
-      instanceMatrix.multiplyMatrices(rootMatrix, part.matrix);
-      bodies.setMatrixAt(count, instanceMatrix);
-      rims.setMatrixAt(count, instanceMatrix);
-      count += 1;
+      instanceMatrix.multiplyMatrices(space.matrixWorld, rootMatrix).multiply(part.matrix);
+      batches.write(bodies, clock.elapsedTime, instanceMatrix);
+      batches.write(rims, clock.elapsedTime, instanceMatrix);
     });
-    bodies.count = count;
-    rims.count = count;
-    bodies.visible = count > 0;
-    rims.visible = count > 0;
-    bodies.instanceMatrix.needsUpdate = true;
-    rims.instanceMatrix.needsUpdate = true;
   });
 
-  return (
-    <>
-      <instancedMesh
-        ref={outline}
-        args={[part.geometry, outlineMaterial, members.length]}
-        frustumCulled={false}
-        renderOrder={SHIP_ORDER - 1}
-        name={`formation-hull-outlines-${lod}`}
-        raycast={() => null}
-      />
-      <instancedMesh
-        ref={body}
-        args={[part.geometry, bodyMaterial, members.length]}
-        frustumCulled={false}
-        renderOrder={SHIP_ORDER}
-        name={`formation-hull-bodies-${lod}`}
-        raycast={() => null}
-      />
-    </>
-  );
+  return null;
 }
 
 /**
@@ -2153,7 +2196,7 @@ export function Traffic({
   if (contacts.length === 0) return null;
 
   return (
-    <>
+    <HullBatchLayer>
       {contacts.map((contact) => (
         contactPresentation(contact) === 'effect' ? (
           <ConcealedEngagement key={contact.id} contact={contact} nodes={nodes} />
@@ -2169,7 +2212,7 @@ export function Traffic({
           />
         )
       ))}
-    </>
+    </HullBatchLayer>
   );
 }
 

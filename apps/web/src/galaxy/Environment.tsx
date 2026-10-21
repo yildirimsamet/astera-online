@@ -137,6 +137,7 @@ function galaxyCard(galaxy: SkyGalaxy, index: number) {
     opacity: 0,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
+    forceSinglePass: true,
     fog: false,
     toneMapped: false,
   }));
@@ -893,6 +894,7 @@ function MeteorField({ pool }: { pool: number }) {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide,
+      forceSinglePass: true,
       fog: false,
       uniforms: { uResolution: { value: resolution }, uPixelRatio: { value: 1 } },
     });
@@ -1197,6 +1199,7 @@ export function Disc() {
                   ref={(node) => { materials.current[materialIndex] = node; }}
                   map={texture}
                   side={THREE.DoubleSide}
+                  forceSinglePass
                   transparent
                   opacity={0}
                   depthWrite={false}
