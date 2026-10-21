@@ -86,6 +86,17 @@ describe('a world’s surface', () => {
     expect(source.transparent).toBe(true);
   });
 
+  /**
+   * Owner, 2026-10-20 ("performans düşmanı yanlış kullanım"): the models export double-sided,
+   * so every world shaded its far half too. A closed solid sphere never shows its inside.
+   */
+  it('draws only the outside of the world', () => {
+    const source = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
+    expect(planetSurface(source, true).side).toBe(THREE.FrontSide);
+    expect(planetSurface(source, false).side).toBe(THREE.FrontSide);
+    expect(source.side).toBe(THREE.DoubleSide);
+  });
+
   it('removes physical light transmission from a planet body', () => {
     const source = new THREE.MeshPhysicalMaterial({ transmission: 0.6 });
     const surface = planetSurface(source, true) as THREE.MeshPhysicalMaterial;

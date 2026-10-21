@@ -16,8 +16,13 @@ export const NIGHT_FLOOR = 0.3;
  */
 export const SCENE_LIGHT = { ambient: 0.6, key: 2.6 } as const;
 
-/** Applied only to owned material clones; props such as rings keep their authored alpha. */
+/**
+ * Applied only to owned material clones; props such as rings keep their authored alpha.
+ * The models export double-sided; a closed solid world never shows its inside, so its far
+ * half is not shaded.
+ */
 export function solidPlanetMaterial<T extends THREE.Material>(material: T): T {
+  material.side = THREE.FrontSide;
   material.transparent = false;
   material.opacity = 1;
   material.alphaTest = 0;

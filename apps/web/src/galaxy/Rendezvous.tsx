@@ -123,6 +123,7 @@ export function AimMark({ from, to }: { from: Vec3Tuple; to: Vec3Tuple }) {
           transparent
           opacity={0.85}
           side={THREE.DoubleSide}
+          forceSinglePass
           depthWrite={false}
         />
       </mesh>

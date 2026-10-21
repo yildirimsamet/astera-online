@@ -450,6 +450,7 @@ function Tails({
         transparent: true,
         depthWrite: false,
         side: THREE.DoubleSide,
+        forceSinglePass: true,
         blending: THREE.AdditiveBlending,
         vertexShader: `
           varying vec2 vUv;
