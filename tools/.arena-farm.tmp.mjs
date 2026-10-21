@@ -31,7 +31,7 @@ if (run('field')) {
     const ok = await page.evaluate(pick => {
       const a = window.__arena; const w = a.world;
       const live = w.cargoDrops.filter(d => d.field && d.amount > 0);
-      const groups = new Map(); live.forEach((d, i) => { const g = Math.floor(w.cargoDrops.indexOf(d) / 4); groups.set(g, [...(groups.get(g) ?? []), d]); });
+      const groups = new Map(); live.forEach(d => { const g = Math.floor(w.cargoDrops.indexOf(d) / 4); groups.set(g, [...(groups.get(g) ?? []), d]); });
       const entry = [...groups.values()].find(g => pick === 'many' ? g.length >= 3 : g.length === 1);
       if (!entry) return false;
       const c = entry[0].p;
