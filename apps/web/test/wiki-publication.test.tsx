@@ -216,7 +216,7 @@ it('publishes tier-specific storage, Works and recovery values in both languages
         expect(text).toContain(language === 'en' ? '12 h' : '12 sa');
         expect(text).toContain(language === 'en' ? '2 h' : '2 sa');
         const rows = [...documentFor(renderWikiPage(page)).querySelectorAll('article tr')];
-        const standard = rows.find(row => row.textContent?.includes(language === 'en' ? 'Tier 4+' : 'Kademe 4+'));
+        const standard = rows.find(row => row.textContent.includes(language === 'en' ? 'Tier 4+' : 'Kademe 4+'));
         expect(standard?.lastElementChild?.textContent).toBe(language === 'en' ? '12 h' : '12 sa');
       }
     }
