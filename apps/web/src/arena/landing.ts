@@ -2,11 +2,15 @@ import { ARENA_TUNING as T, toLocal, type ArenaLayout, type ArenaObstacle, type 
 
 /**
  * Landing assist: one tap picks a touchdown point on the nearest surface ahead and flies
- * the ship onto it at landing speed. It only produces stick and throttle values, so the
- * shared simulation, the server and prediction all see an ordinary pilot input.
+ * the ship onto it at landing speed. It only produces stick, throttle and the LAND bit
+ * (rock and buildings take a ship down only with it), so the shared simulation, the
+ * server and prediction all see an ordinary pilot input.
  */
 export interface LandingTarget { index: number; point: Vec3; normal: Vec3 }
 export type LandingPhase = 'idle' | 'approach' | 'landed';
+
+/** LAND and the touchdown ring are offered only at landing speed or slower (owner 2026-10-21). */
+export const landingOffered = (ship: { s: number; landed: number }): boolean => ship.landed === 0 && ship.s <= T.landSpeed;
 
 const local = { x: 0, y: 0, z: 0 };
 const REACH = 260;

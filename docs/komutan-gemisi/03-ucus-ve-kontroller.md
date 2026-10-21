@@ -85,7 +85,7 @@ ayarlanır. Aynı başparmakla **eşzamanlı** basılması gereken iki kontrol y
 ## 5. Gaz kolu (yapışkan)
 
 - Dikey kol, sağ kenarda; parmakla sürüklenen seviye **bırakınca kalır** (S62). 0–100 %, sayı
-  ile. Yapışma noktaları: 0 (dur), %15 (iniş hızı, kolda "İN" yazar), %50 (seyir), %100
+  ile. Yapışma noktaları: 0 (dur), %20 (iniş hızı 24 m/s, kolda "İNİŞ" yazar), %50 (seyir), %100
   (`THROTTLE_DETENTS`, `input.ts`).
 - **Çift dokunuş:** 0 ↔ son sıfır olmayan değer (çıkışta hızlı durma, sonra hızlı kalkış).
 - Turbo kolda değildir (sağ başparmak).
@@ -152,9 +152,11 @@ Referans görsellerdeki yerleşim **test edilmeden aynen uygulanmaz** (S53).
 
 ## 9b. İniş (KG-K21, KG-T35, KG-T41)
 
-- **Kural:** toplam hız ≤ `landSpeed` iken yüzeye değmek iniştir. Daha hızlı değmek sekmedir:
+- **Kural:** toplam hız ≤ `landSpeed` iken maden yatağına (alaşım, kristal, döteryum) değmek iniştir;
+  kaya ve yapılara yalnız **İN** yaklaşması indirir (girdi biti 32; sahip 2026-10-21), yoksa yavaş temas da
+  sekmedir. Daha hızlı değmek her zaman sekmedir:
   gemi yüzeyden geri itilir, kafa kafaya çarpışta hızının çoğunu kaybeder. Hasar yoktur.
-- **İN** düğmesi (yakında yüzey varken görünür): tek dokunuş. Nişangâha en yakın yüzey seçilir
+- **İN** düğmesi (yakında yüzey varken ve hız ≤ `landSpeed` iken görünür; iniş çemberi de): tek dokunuş. Nişangâha en yakın yüzey seçilir
   (menzil 260 m, canlı kristal öncelikli), iniş noktasında halka belirir; gemi oraya yönelip
   mesafeye göre gazı düşürür. Düğme **İPTAL** olur ve kalan mesafeyi gösterir. Çubuğu belirgin
   oynatmak da yardımı keser.

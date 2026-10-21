@@ -20,7 +20,7 @@ import { createOre } from './render/ore.js';
 import { applyCorrection, decayCorrection } from './smoothing.js';
 import { createResolution, stepResolution } from './resolution.js';
 import { describeGpu } from './diagnostics.js';
-import { createLandingAssist, findLandingTarget } from './landing.js';
+import { createLandingAssist, findLandingTarget, landingOffered } from './landing.js';
 import type { HudStore } from './store.js';
 import { arenaCopy } from './copy.js';
 import { FARM_HEX } from './farmColors.js';
@@ -340,7 +340,8 @@ export function createArenaClient(options: ClientOptions) {
     if (hud.radar && seen.drawn % 3 === 0) drawRadar(hud.radar);
     // Touchdown marker: where the landing assist is taking you, or where a tap would.
     if (hud.landing) {
-      const target = landing.target ?? (flying && !pilot.landed && pilot.s < 90 && seen.drawn % 6 === 0 ? findLandingTarget(world.layout, pilot, crystalLive) : seen.landTarget);
+      const target = landing.target ?? (!flying || !landingOffered(pilot) ? null
+        : seen.drawn % 6 === 0 ? findLandingTarget(world.layout, pilot, crystalLive) : seen.landTarget);
       if (seen.drawn % 6 === 0 && !landing.target) seen.landTarget = target;
       if (target && flying && !pilot.landed) {
         const p = project(target.point.x, target.point.y, target.point.z);
@@ -580,7 +581,7 @@ export function createArenaClient(options: ClientOptions) {
 
   const canLand = (): boolean => {
     const pilot = world.pilot;
-    if (!alive(pilot) || pilot.landed || pilot.s > 90) return false;
+    if (!alive(pilot) || !landingOffered(pilot)) return false;
     return findLandingTarget(world.layout, pilot, crystalLive) !== null;
   };
 

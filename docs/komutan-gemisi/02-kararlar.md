@@ -395,7 +395,8 @@ Hedef üzerindeyken çubuk %68'e yavaşlar (nişangâh sürtünmesi). (2) *Namlu
 korur). Sayılar [04 §13](04-savas-mekanikleri.md#baslangic-degerleri).
 
 #### KG-T35
-**İniş, sekme, kazı ve yavaş dönüş kuralları.** Toplam hız ≤ `landSpeed` iken yüzeye temas iniştir.
+**İniş, sekme, kazı ve yavaş dönüş kuralları.** Toplam hız ≤ `landSpeed` iken maden yatağına temas iniştir;
+kaya ve yapılara yalnız İN yaklaşmasıyla (girdi `land` biti) inilir (sahip 2026-10-21).
 İnen gemi durur, gövdesini yüzey normaline hizalar, yalnız normal etrafında döner, ateş ve yetenek
 kullanabilir. Gaz, inişten beri görülen en düşük değerin üstüne çıkınca kalkar; istemci inişte kolu
 sıfırlar. Daha hızlı temas **sekmedir** (sahip, 2026-10-08): yüzeye dik yaklaşma hızı × `bounce` kadar

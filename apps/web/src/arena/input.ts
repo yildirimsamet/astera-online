@@ -55,8 +55,9 @@ export function chordAt(x: number, y: number, contact: number, fire: Circle, tur
 }
 
 /** Throttle stops the rail snaps to: stop, landing speed, cruise, full. */
-export const THROTTLE_DETENTS = [0, 0.15, 0.5, 1] as const;
-export const LANDING_THROTTLE = 0.15;
+export const THROTTLE_DETENTS = [0, 0.2, 0.5, 1] as const;
+/** 24 m/s, the landing speed (owner 2026-10-21; was 18). */
+export const LANDING_THROTTLE = 0.2;
 export type ArenaAction = 'fire' | 'turbo' | 'smoke' | 'cloak';
 
 const snap = (value: number): number => {
