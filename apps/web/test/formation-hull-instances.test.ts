@@ -26,6 +26,9 @@ describe('formation-local hull instancing', () => {
     expect(buckets[0]?.members.map((member) => member.marker.ordinal)).toEqual([0, 1]);
     expect(buckets[0]?.members.map((member) => member.offset)).toEqual([slots[0], slots[2]]);
     expect(buckets[1]?.members[0]?.offset).toBe(slots[1]);
+    // A per-ship clock (the convoy's drift) is keyed by the marker's place in the formation.
+    expect(buckets[0]?.members.map((member) => member.index)).toEqual([0, 2]);
+    expect(buckets[1]?.members[0]?.index).toBe(1);
   });
 
   it('keeps every marker when a defensive caller supplies fewer slots', () => {

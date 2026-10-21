@@ -6,7 +6,8 @@ import * as THREE from 'three';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Contact } from '../src/api/schemas.js';
 import { shareStructure } from '../src/api/structural.js';
-import { FormationWakes, Traffic, Wake } from '../src/galaxy/Fleets.js';
+import { FormationHulls, FormationWakes, HullBatchContext, Traffic, Wake } from '../src/galaxy/Fleets.js';
+import { createHullBatches } from '../src/galaxy/hullBatches.js';
 import { EngineJets, type EngineUnit } from '../src/galaxy/EngineJets.js';
 import { GalaxyVisualPhase } from '../src/galaxy/visualFrame.js';
 import { markersFor } from '../src/galaxy/Squadrons.js';
@@ -252,37 +253,42 @@ describe('independent resource lifetimes', () => {
     const sourceDisposals = sources.map(source => vi.spyOn(source, 'dispose'));
     const sourceGeometryDispose = vi.spyOn(geometry, 'dispose');
     const value = contact({ fleet: { DART: 10 } });
+    // Hull materials now live in the fleet layer's shared batches, one per hull part.
+    const batches = createHullBatches();
+    const wrapper = ({ children }: { children: ReactNode }) => <HullBatchContext.Provider value={batches}>{children}</HullBatchContext.Provider>;
+    // `instanceof` narrows to InstancedMesh<any, any>; three's own flag narrows with real types.
+    const isInstanced = (node: THREE.Object3D): node is THREE.InstancedMesh => 'isInstancedMesh' in node && node.isInstancedMesh === true;
+    const drawn = () => batches.root.children.filter(isInstanced);
     const useHull = (focused: boolean) => {
       const formation = evaluate(component(useForeign(value, focused), 'FormationHulls'));
       const bucket = evaluate(component(formation, 'FormationHullBucket'));
       const loaded = evaluate(component(bucket, 'LoadedFormationHullBucket'));
-      const part = evaluate(component(loaded, 'FormationHullPartMesh'));
-      if (!isValidElement<{ children: ReactNode }>(part)) throw new Error('Missing hull part draws');
-      const materials: THREE.Material[] = [];
-      for (const child of Children.toArray(part.props.children)) {
-        if (isValidElement<{ args: [THREE.BufferGeometry, THREE.Material | THREE.Material[], number] }>(child)) {
-          const material = child.props.args[1];
-          materials.push(...(Array.isArray(material) ? material : [material]));
-        }
-      }
-      return { outline: materials[0]!, bodies: materials.slice(1) };
+      void evaluate(component(loaded, 'FormationHullPartMesh'));
     };
-    const { result, rerender, unmount } = renderHook(({ focused }) => useHull(focused), { initialProps: { focused: false } });
-    const first = result.current;
+    const materials = () => {
+      const outline = drawn().find((mesh) => mesh.name === 'formation-hull-outlines-full')?.material;
+      const body = drawn().find((mesh) => mesh.name === 'formation-hull-bodies-full')?.material;
+      if (!(outline instanceof THREE.Material) || !body) throw new Error('Missing hull part batches');
+      return { outline, bodies: Array.isArray(body) ? body : [body] };
+    };
+    const { rerender, unmount } = renderHook(({ focused }) => { useHull(focused); }, { initialProps: { focused: false }, wrapper });
+    const first = materials();
     const oldOutlineDispose = vi.spyOn(first.outline, 'dispose');
     const bodyDisposals = first.bodies.map(material => vi.spyOn(material, 'dispose'));
     rerender({ focused: true });
-    expect(result.current.bodies).toEqual(first.bodies);
-    expect(result.current.outline).not.toBe(first.outline);
+    const second = materials();
+    expect(second.bodies).toEqual(first.bodies);
+    expect(second.outline).not.toBe(first.outline);
     expect(oldOutlineDispose).toHaveBeenCalledOnce();
     bodyDisposals.forEach(dispose => { expect(dispose).not.toHaveBeenCalled(); });
-    const finalOutlineDispose = vi.spyOn(result.current.outline, 'dispose');
+    const finalOutlineDispose = vi.spyOn(second.outline, 'dispose');
     unmount();
     bodyDisposals.forEach(dispose => { expect(dispose).toHaveBeenCalledOnce(); });
     expect(oldOutlineDispose).toHaveBeenCalledOnce();
     expect(finalOutlineDispose).toHaveBeenCalledOnce();
     sourceDisposals.forEach(dispose => { expect(dispose).not.toHaveBeenCalled(); });
     expect(sourceGeometryDispose).not.toHaveBeenCalled();
+    expect(drawn()).toHaveLength(0);
   });
 
   it('replaces a wake colour buffer without disposing the live shader', () => {
@@ -432,4 +438,39 @@ it('keeps every engine particle attached to a drifting convoy hull without rebui
     expect(node.instanceMatrix.array[i * 16 + 14]! - initial[i * 16 + 14]!).toBeCloseTo(0.25, 5);
   }
   expect(units[0]!.at).toEqual([0, 0, 0]);
+});
+
+it('writes a drifting convoy hull into the shared batch at its drifted place', async () => {
+  const { useFrame } = await import('@react-three/fiber');
+  const scene = new THREE.Group();
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial()));
+  assets.read.mockReturnValue({ scene });
+  const batches = createHullBatches();
+  const wrapper = ({ children }: { children: ReactNode }) => <HullBatchContext.Provider value={batches}>{children}</HullBatchContext.Provider>;
+  const markers = [{ hull: 'DART' as const, ordinal: 0, filled: 1 }, { hull: 'DART' as const, ordinal: 1, filled: 1 }];
+  const slots: Vec3Tuple[] = [[0, 0, 0], [0, 0, 0]];
+  const space = new THREE.Group();
+  const zOf = (drift?: (index: number, seconds: number) => number) => {
+    vi.mocked(useFrame).mockClear();
+    const { unmount } = renderHook(() => {
+      const formation = evaluate(<FormationHulls markers={markers} slots={slots} scale={1} aimDistance={{ current: 1000 }}
+        focused={false} longitudinalOffset={drift} longitudinalOffsetBound={drift ? 2 : 0} />);
+      const bucket = evaluate(component(formation, 'FormationHullBucket'));
+      const loaded = evaluate(component(bucket, 'LoadedFormationHullBucket'));
+      const part = component<{ anchor: RefObject<THREE.Group | null> }>(loaded, 'FormationHullPartMesh');
+      part.props.anchor.current = space;
+      void evaluate(part);
+    }, { wrapper });
+    const state = { camera: new THREE.PerspectiveCamera(60, 1, 0.1, 5000), clock: { elapsedTime: 2 } } as Fiber.RootState;
+    state.camera.position.set(0, 0.3, 0);
+    for (const [callback] of vi.mocked(useFrame).mock.calls) callback(state, 0);
+    const mesh = batches.root.children.find((node): node is THREE.InstancedMesh => 'isInstancedMesh' in node && node.name === 'formation-hull-bodies-full');
+    if (!mesh) throw new Error('Missing full body batch');
+    const z = [0, 1].map((index) => { const matrix = new THREE.Matrix4(); mesh.getMatrixAt(index, matrix); return matrix.elements[14]; });
+    expect(mesh.count).toBe(2);
+    unmount();
+    return z[1]! - z[0]!;
+  };
+  expect(zOf()).toBeCloseTo(0, 5);
+  expect(zOf((index, seconds) => index * 0.5 + seconds * 0.1)).toBeCloseTo(0.5, 5);
 });
