@@ -251,15 +251,18 @@ colony 20 loyalty; at 20 or less it secedes to NEUTRAL.
 
 ```
 3 rounds · simultaneous fire · ±8% variance
-mobile ship shield = researched maximum HP × [1, 1.25, 1.5, 1.7, 2] at research L0–L4
+mobile ship shield = 0.25 × researched maximum HP × [1, 1.25, 1.5, 1.7, 2] at research L0–L4
 personal shields start full each battle; no recharge between rounds; hull wounds persist; radiation bypasses them
 ground guns: no personal shield · Aegis absorbs combat fire first
 counter cycle: SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER   at 1.6× / 0.625×
 support hulls: prey to everything, deal nothing, shielded while escorted
 
-grade on VALUE destroyed:
-  all defenders dead        → DECISIVE → loot 60%
-  ≥42% of value destroyed   → PARTIAL  → loot 30%
+one shot per eligible unit; random live combat target first, then cargo in the same round
+retreat only after rounds 1–2; side ratio/HP windows: see docs/game-design.md Combat
+
+grade on VALUE destroyed or retreated:
+  no active defenders        → DECISIVE → loot 60%
+  ≥42% removed from combat   → PARTIAL  → loot 30%
   below that                → REPELLED → nothing
 
 defenceSalvage 0.60 · lootBufferShare 0.50 · engagementSeconds 10
@@ -267,12 +270,12 @@ defenceSalvage 0.60 · lootBufferShare 0.50 · engagementSeconds 10
 
 ```
 fleet escape (ruleset 11, `ESCAPE`):
-  ships run ⇔ combatValue(wing) ≥ 3 × combatValue(line)  ∧  standing fight DECISIVE  ∧  tank ≥ lift
+  ships run ⇔ combatValue(wing) ≥ 4 × combatValue(line)  ∧  standing fight DECISIVE  ∧  tank ≥ lift
   lift = missionFuel(ships, 600, 2)
   ruleset 13+: defending line must also hold ≥5 fighting ships (transports and guns excluded)
 ```
 
-The fixed ratio was lowered from 3.5 to 3 by owner instruction (2026-10-21). Equality
+The fixed ratio was raised from 3 to 4 by owner instruction (2026-10-22). Equality
 qualifies. The defending line includes active ground guns; all other escape conditions remain.
 
 The live ship catalog now moves alloy into crystal at constant economic value

@@ -316,10 +316,9 @@ describe('Fleet V2 catalog contract — D148', () => {
 
     const [firstRound, ...laterRounds] = result.rounds;
     if (!firstRound) throw new Error('missing support-order round');
-    expect(runtimeProperty(firstRound.attackerLosses, 'COURIER')).toBeUndefined();
-    expect(laterRounds.some(
-      (round) => Number(runtimeProperty(round.attackerLosses, 'COURIER') ?? 0) > 0,
-    )).toBe(true);
+    expect(runtimeProperty(firstRound.attackerLosses, 'DART')).toBe(1);
+    expect(Number(runtimeProperty(firstRound.attackerLosses, 'COURIER') ?? 0)).toBeGreaterThan(0);
+    expect(laterRounds.length).toBeLessThanOrEqual(2);
   });
 
   it('makes the scouted counter win the equal-budget exchange in the full resolver', () => {

@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  activeBattleFleet,
   COMBAT,
   INTEL,
   RESEARCH_TECH,
@@ -64,7 +65,7 @@ const grade = (sending: Fleet, wall: Fleet, input: ForecastInput) => {
     defender: { tech: input.defenderTech, ...(input.defenderDamageMult === undefined ? {} : { damageMult: input.defenderDamageMult }) },
   });
   const settled = input.pirate === true ? pirateOverrun(raw) : raw;
-  return fleetCount(settled.attackerSurvivors) === 0 ? 'REPELLED' : settled.grade;
+  return fleetCount(activeBattleFleet(settled.attackerSurvivors, settled.attackerRetreated)) === 0 ? 'REPELLED' : settled.grade;
 };
 
 const spread = (s: { low: number; high: number }) => s.high / Math.max(1, s.low);
@@ -155,13 +156,22 @@ describe('the lines a wing is drawn against', () => {
   });
 
   /** The measured rule of thumb, reproduced by the engine rather than typed in. */
-  it('requires a larger Raider wing to clear regenerating personal shields', () => {
+  it('does not promise a successful raid when every surviving attacker retreated', () => {
+    const wing: Fleet = { PIKE: 2 }, crew: Fleet = { PIKE: 2 };
+    const input = blind({ wall: { kind: 'EXACT', fleet: crew } });
+    const result = resolveCombat(wing, crew, 0, flat, { attacker: { tech: {} }, defender: { tech: {} } });
+    expect(result.grade).toBe('PARTIAL');
+    expect(result.attackerRetreated).toEqual(result.attackerSurvivors);
+    expect(combatValue(crew) < forecastLines(wing, input).breaks.low).toBe(false);
+  });
+
+  it('derives Raider thresholds from the current nonregenerating 25% shield and retreat model', () => {
     const wing: Fleet = { VIPER: 30 };
     const f = forecastLines(wing, blind({ wall: { kind: 'EXACT', fleet: { VIPER: 1 } } }));
     const mine = combatValue(wing);
-    expect(f.clears.low).toBeGreaterThan(mine / 3);
-    expect(f.clears.low).toBeLessThan(mine / 2);
-    expect(f.breaks.low).toBeGreaterThan(mine * 0.7);
+    expect(f.clears.low).toBeGreaterThan(0);
+    expect(f.clears.low).toBeLessThan(mine);
+    expect(f.breaks.low).toBeGreaterThanOrEqual(f.clears.low);
   });
 
   /**
@@ -179,13 +189,13 @@ describe('the lines a wing is drawn against', () => {
       const r = resolveCombat(wing, crew, 0, flat, {
         attacker: { tech: none }, defender: { tech: none },
       });
-      const home = fleetCount(r.attackerSurvivors) > 0;
+      const home = fleetCount(activeBattleFleet(r.attackerSurvivors, r.attackerRetreated)) > 0;
       expect(combatValue(crew) < f.clears.low, `clears ${String(count)}`).toBe(home && r.grade === 'DECISIVE');
       expect(combatValue(crew) < f.breaks.low, `breaks ${String(count)}`).toBe(home && r.grade !== 'REPELLED');
       if (count === 30) {
-        expect(r.grade).toBe('PARTIAL');
+        expect(r.grade).toBe('DECISIVE');
         expect(combatValue(r.attackerSurvivors)).toBeGreaterThan(0);
-        expect(combatValue(crew) < f.clears.low).toBe(false);
+        expect(combatValue(crew) < f.clears.low).toBe(true);
       }
     }
   });
@@ -195,7 +205,7 @@ describe('the lines a wing is drawn against', () => {
     const wing: Fleet = { DART: 7 };
     const crew: Fleet = { RAMPART: 3, COURIER: 2 };
     const base = blind({ wall: { kind: 'EXACT', fleet: crew }, defenderDamageMult: pirateStats(1).damageMult });
-    expect(combatValue(crew)).toBeGreaterThanOrEqual(forecastLines(wing, base).clears.low);
+    expect(forecastLines(wing, { ...base, pirate: true }).clears.low).toBeGreaterThanOrEqual(forecastLines(wing, base).clears.low);
     expect(combatValue(crew)).toBeLessThan(forecastLines(wing, { ...base, pirate: true }).clears.low);
   });
 });

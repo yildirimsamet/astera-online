@@ -139,6 +139,9 @@ export const intel = {
 } as const;
 
 export const reports = {
+  retreated: 'Retreated alive: {{count}}. These ships kept their hull damage.',
+  enemyRetreated: "Enemy ships that retreated and survived: {{count}}.",
+  turningPointRetreated: "After round {{round}}, no warships remained fighting. Some ships retreated alive.",
   heading: 'Battle reports',
   newest: 'newest first',
   empty:
@@ -232,7 +235,7 @@ export const reports = {
         REPELLED: 'The enemy kept defending. You took no loot.',
       },
       defending: {
-        DECISIVE: 'All your defending units were destroyed in this battle.',
+        DECISIVE: "No units remained fighting in your defence.",
         PARTIAL: 'The attacker did not fully succeed: your units or shield were still standing.',
         REPELLED: 'Your defence held. The attacker took no loot.',
       },
@@ -281,7 +284,7 @@ export const reports = {
     after: 'After battle',
     note: 'The planet shield takes damage before any defending unit does.',
     brokenUnitsRemain: 'The shield reports 0, but defending units survived.',
-    brokenDefenceGone: 'The shield broke. All defending units were also destroyed in this battle.',
+    brokenDefenceGone: "The shield broke and no defending units remained fighting.",
     brokenMeaning: 'Shield strength is rounded. A reported 0 alone does not prove that all defending forces were destroyed.',
     absorbed: '{{amount}} shield damage absorbed',
   },
@@ -342,23 +345,23 @@ export const reports = {
     formulaBase: '1 · Base: unit count × attack × research.',
     formulaCounter: '2 · Counter: strong match ×{{strong}}; weak match ×{{weak}}.',
     formulaRoll: '3 · Shot change: −{{min}}% to +{{max}}%.',
-    formulaHp: 'Damage is split by the targets’ share of total HP.',
-    formulaCarry: 'A unit needs all its HP to fall; unfinished damage carries into the next round.',
-    formulaSupport: 'Support ships stay protected while at least one combat unit on their side remains.',
+    formulaHp: "Each armed unit fires once at a random living enemy. A shot’s overkill is lost.",
+    formulaCarry: "Hull damage and spent ship shields carry between rounds. Neither regenerates during battle.",
+    formulaSupport: "Cargo is targeted after combat units, including by remaining shots in the same round.",
     resultHeading: 'How the result is decided',
     resultDecisive:
-      'DECISIVE · every defending unit is gone and the shield is at zero · {{decisiveLoot}}% of stored resources above the Store protection and {{decisiveBuffer}}% of uncollected Works can be taken before cargo limits.',
+      "DECISIVE · no defending unit remains fighting and the active shield is cleared · up to {{decisiveLoot}}% of exposed stock and {{decisiveBuffer}}% of uncollected Works before active cargo limits.",
     /**
      * THE SAME RULE WITHOUT THE HALF THAT CANNOT APPLY. A shield is a structure on
      * a world; a legend that names one out at a rendezvous is describing a
      * condition the reader could never have met or failed.
      */
     resultDecisivePirate:
-      'DECISIVE · every ship in the crew is gone · {{decisiveLoot}}% of the hoard can be taken before cargo limits, and only here can a hull be towed home.',
+      "DECISIVE · no crew remains fighting · up to {{decisiveLoot}}% of the hoard before active cargo limits. Only a physically destroyed ship may be captured.",
     resultPartial:
-      'PARTIAL · at least {{threshold}}% of defending unit value is destroyed · {{partialLoot}}% of stored resources above the Store protection and {{partialBuffer}}% of uncollected Works can be taken before cargo limits.',
+      "PARTIAL · at least {{threshold}}% of defending value was destroyed or retreated · {{partialLoot}}% of stock above Store protection and {{partialBuffer}}% of uncollected Works can be taken before active cargo limits.",
     resultRepelled:
-      'REPELLED · less than {{threshold}}% of defending unit value is destroyed · nothing can be taken.',
+      "REPELLED · less than {{threshold}}% of defending value was destroyed or retreated · no loot.",
     round: 'Round {{round}}',
     fire: '1 · Simultaneous fire',
     fireNote: 'Both sides fire before losses are removed. A unit destroyed in this round still fires.',
@@ -435,21 +438,21 @@ export const reports = {
    */
   why: {
     attacking: {
-      DECISIVE: 'You destroyed everything defending it and broke the shield, which is what opens the full haul.',
-      DECISIVE_WIPED: 'You destroyed every defending unit, but none of your ships survived to carry loot home.',
-      DECISIVE_WITHOUT_SHIELD: 'You destroyed everything defending it, which is what opens the full haul.',
+      DECISIVE: "All defending units were destroyed or left combat, and you broke the shield. Available loot was open to ships still present.",
+      DECISIVE_WIPED: "All defending units were destroyed or retreated. No attacking ships survived to carry loot.",
+      DECISIVE_WITHOUT_SHIELD: "All defending units were destroyed or left combat. Available loot was open to ships still present.",
       WALKOVER: 'No defending units stood here; the available loot was open to your fleet.',
-      PARTIAL: 'You dealt enough damage for partial success, but not full success. Only part of the loot became available; without surviving cargo space, nothing can be taken.',
-      PARTIAL_WIPED: 'You dealt enough damage for partial success, but none of your ships survived to carry loot home.',
-      REPELLED: 'The destroyed units\u2019 resource value did not reach {{threshold}}% of all defending units\u2019 starting value. That is why the raid was repelled; ship count or breaking the shield alone does not decide the result.',
+      PARTIAL: "You forced enough defending value out of combat through destruction or retreat for partial success. Only part of the loot became available.",
+      PARTIAL_WIPED: "Enough defending value was destroyed or retreated for partial success. No attacking ships survived to carry loot.",
+      REPELLED: "Destroyed or retreated defending units did not reach {{threshold}}% of the starting defending value. The attack was repelled.",
     },
     defending: {
-      DECISIVE: 'All your defending units fell and the shield broke, opening the available loot to the raiders. The amount taken depends on their surviving cargo space.',
-      DECISIVE_WITHOUT_SHIELD: 'All your defending units fell, opening the available loot to the raiders. The amount taken depends on their surviving cargo space.',
-      DECISIVE_WIPED: 'All your defending units fell — and so did every ship they came with. The loot was open and there was nothing left alive to carry it home.',
+      DECISIVE: "All defending units were destroyed or left combat. Available loot was open to ships still present.",
+      DECISIVE_WITHOUT_SHIELD: "All defending units were destroyed or left combat. Available loot was open to ships still present.",
+      DECISIVE_WIPED: "All defending units were destroyed or retreated. No attacking ships survived to carry loot.",
       WALKOVER: 'No defending units stood on your world, so the available loot was open to the raiders.',
-      PARTIAL: 'The attacker dealt enough damage for partial success, but not full success. Only part of the loot became available.',
-      PARTIAL_WIPED: 'The attacker dealt enough damage for partial success, but not one of their ships survived to carry it. Nothing left your world.',
+      PARTIAL: "The attacker forced enough of your defending value out of combat through destruction or retreat for partial success. Only part of the loot became available.",
+      PARTIAL_WIPED: "Enough defending value was destroyed or retreated for partial success. No attacking ships survived to carry loot.",
       REPELLED: 'Your defence held. They got through nothing, and took nothing.',
     },
   },

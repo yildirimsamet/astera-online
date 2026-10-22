@@ -139,6 +139,9 @@ export const intel = {
 } as const;
 
 export const reports = {
+  retreated: 'Se retiraron con vida: {{count}}. Estas naves conservan el daño del casco.',
+  enemyRetreated: "{{count}} naves enemigas huyeron y sobrevivieron.",
+  turningPointRetreated: "Tras la ronda {{round}} no quedaron naves de guerra combatiendo. Algunas huyeron con vida.",
   heading: 'Informes de batalla',
   newest: 'más nuevo primero',
   empty:
@@ -232,7 +235,7 @@ export const reports = {
         REPELLED: 'El enemigo siguió defendiendo. No tomaste ningún botín.',
       },
       defending: {
-        DECISIVE: 'Todas tus unidades defensoras fueron destruidas en esta batalla.',
+        DECISIVE: "Ninguna unidad siguió combatiendo en tu defensa.",
         PARTIAL: 'El atacante no tuvo éxito del todo: tus unidades o tu escudo todavía estaban en pie.',
         REPELLED: 'Tu defensa aguantó. El atacante no se llevó ningún botín.',
       },
@@ -281,7 +284,7 @@ export const reports = {
     after: 'Después de la batalla',
     note: 'El escudo del planeta sufre daños antes que cualquier unidad defensora.',
     brokenUnitsRemain: 'El escudo informa 0, pero las unidades defensoras sobrevivieron.',
-    brokenDefenceGone: 'El escudo se rompió. Todas las unidades defensoras también fueron destruidas en esta batalla.',
+    brokenDefenceGone: "El escudo se rompió y ninguna unidad defensora siguió combatiendo.",
     brokenMeaning: 'La fuerza del escudo está redondeada. Un 0 por sí solo no prueba que todas las fuerzas defensoras hayan sido destruidas.',
     absorbed: '{{amount}} daño del escudo absorbido',
   },
@@ -342,23 +345,23 @@ export const reports = {
     formulaBase: '1 · Base: recuento de unidades × ataque × investigación.',
     formulaCounter: '2 · Contador: coincidencia fuerte ×{{strong}}; coincidencia débil ×{{weak}}.',
     formulaRoll: '3 · Cambio de tiro: −{{min}}% a +{{max}}%.',
-    formulaHp: 'El daño se divide por la proporción de HP total de los objetivos.',
-    formulaCarry: 'Una unidad necesita que todos sus HP caigan; el daño incompleto se traslada a la siguiente ronda.',
-    formulaSupport: 'Los naves de apoyo permanecen protegidos mientras al menos una unidad de combate permanece de su lado.',
+    formulaHp: "Cada unidad armada dispara una vez a un objetivo vivo aleatorio. El daño sobrante de un disparo se pierde.",
+    formulaCarry: "El daño del casco y el escudo gastado persisten entre rondas. No se regeneran durante la batalla.",
+    formulaSupport: "Tras las unidades de combate, los disparos restantes de esa misma ronda alcanzan los cargueros.",
     resultHeading: 'Cómo se decide el resultado',
     resultDecisive:
-      'DECISIVO · todas las unidades defensoras han desaparecido y el escudo está en cero · {{decisiveLoot}}% del material expuesto se puede tomar antes de los límites de carga. Producción sin recoger: {{decisiveBuffer}}%.',
+      "DECISIVO · ninguna unidad defensora sigue combatiendo y el escudo activo fue superado · {{decisiveLoot}}% del almacén expuesto y {{decisiveBuffer}}% de la producción sin recoger, antes del límite de carga activa.",
     /**
      * THE SAME RULE WITHOUT THE HALF THAT CANNOT APPLY. A shield is a structure on
      * a world; a legend that names one out at a rendezvous is describing a
      * condition the reader could never have met or failed.
      */
     resultDecisivePirate:
-      'DECISIVO · todos los naves de la tripulación se han ido · {{decisiveLoot}}% del tesoro se puede tomar antes de los límites de carga, y solo aquí se puede remolcar un casco a casa.',
+      "DECISIVO · ningún pirata sigue combatiendo · {{decisiveLoot}}% del tesoro antes del límite de carga activa. Solo puede capturarse una nave realmente destruida.",
     resultPartial:
-      'PARCIAL · al menos {{threshold}}% del valor de la unidad defensora se destruye · {{partialLoot}}% del stock expuesto se puede tomar antes de los límites de carga. Producción sin recoger: {{partialBuffer}}%.',
+      "PARCIAL · al menos {{threshold}}% del valor defensor destruido o retirado · {{partialLoot}}% del almacén expuesto y {{partialBuffer}}% de la producción sin recoger, antes del límite de carga activa.",
     resultRepelled:
-      'REPELIDO · menos del {{threshold}}% del valor de la unidad defensora es destruido · no se puede tomar nada.',
+      "REPELIDO · menos del {{threshold}}% del valor defensor destruido o retirado · sin botín.",
     round: 'Ronda {{round}}',
     fire: '1 · Fuego simultáneo',
     fireNote: 'Ambos bandos disparan antes de que se eliminen las pérdidas. Una unidad destruida en esta ronda seguirá disparando.',
@@ -435,21 +438,21 @@ export const reports = {
    */
   why: {
     attacking: {
-      DECISIVE: 'Destruiste todo lo que lo defendía y rompiste el escudo, que es lo que abre el botín completo.',
-      DECISIVE_WIPED: 'Destruiste todas las unidades defensoras, pero ninguna de tus naves sobrevivió para llevar el botín a casa.',
-      DECISIVE_WITHOUT_SHIELD: 'Destruiste todo defendiéndolo, que es lo que abre el recorrido completo.',
+      DECISIVE: "Todas las unidades defensoras fueron destruidas o se retiraron. El botín disponible quedó abierto a las naves presentes.",
+      DECISIVE_WIPED: "Todas las unidades defensoras fueron destruidas o se retiraron. Ninguna nave atacante sobrevivió para transportar botín.",
+      DECISIVE_WITHOUT_SHIELD: "Todas las unidades defensoras fueron destruidas o se retiraron. El botín disponible quedó abierto a las naves presentes.",
       WALKOVER: 'No había unidades defensoras aquí; el botín disponible estaba abierto a tu flota.',
-      PARTIAL: 'Infligiste suficiente daño para un éxito parcial, pero no para un éxito total. Sólo una parte del botín estuvo disponible; sin espacio de carga restante, no se puede llevar nada.',
-      PARTIAL_WIPED: 'Causaste suficiente daño para lograr un éxito parcial, pero ninguno de tus naves sobrevivió para llevar el botín a casa.',
-      REPELLED: 'El valor de recursos de las unidades destruidas no alcanzó el {{threshold}}% del valor inicial de todas las unidades defensoras. Por eso fue repelida la incursión; El recuento de naves o romper el escudo por sí solo no decide el resultado.',
+      PARTIAL: "Se destruyó o retiró suficiente valor defensor para un éxito parcial. Se liberó parte del botín.",
+      PARTIAL_WIPED: "Suficiente valor defensor fue destruido o se retiró para lograr un éxito parcial. Ninguna nave atacante sobrevivió para transportar botín.",
+      REPELLED: "Las unidades destruidas o retiradas no alcanzaron el {{threshold}}% del valor defensor inicial. El ataque fue repelido.",
     },
     defending: {
-      DECISIVE: 'Todas tus unidades defensoras cayeron y el escudo se rompió, abriendo el botín disponible para los asaltantes. La cantidad extraída depende del espacio de carga restante.',
-      DECISIVE_WITHOUT_SHIELD: 'Todas tus unidades defensoras cayeron, abriendo el botín disponible a los asaltantes. La cantidad extraída depende del espacio de carga restante.',
-      DECISIVE_WIPED: 'Todas tus unidades defensoras cayeron, al igual que todos los naves con los que vinieron. El botín estaba abierto y no quedaba nada vivo para llevarlo a casa.',
+      DECISIVE: "Todas las unidades defensoras fueron destruidas o se retiraron. El botín disponible quedó abierto a las naves presentes.",
+      DECISIVE_WITHOUT_SHIELD: "Todas las unidades defensoras fueron destruidas o se retiraron. El botín disponible quedó abierto a las naves presentes.",
+      DECISIVE_WIPED: "Todas las unidades defensoras fueron destruidas o se retiraron. Ninguna nave atacante sobrevivió para transportar botín.",
       WALKOVER: 'No había unidades defensoras en tu mundo, por lo que el botín disponible estaba abierto a los asaltantes.',
-      PARTIAL: 'El atacante causó suficiente daño para un éxito parcial, pero no total. Sólo una parte del botín estuvo disponible.',
-      PARTIAL_WIPED: 'El atacante causó suficiente daño para lograr un éxito parcial, pero ninguno de sus naves sobrevivió para transportarlo. Nada salió de tu mundo.',
+      PARTIAL: "Se destruyó o retiró suficiente valor defensor para un éxito parcial. Se liberó parte del botín.",
+      PARTIAL_WIPED: "Suficiente valor defensor fue destruido o se retiró para lograr un éxito parcial. Ninguna nave atacante sobrevivió para transportar botín.",
       REPELLED: 'Tu defensa aguantó. No superaron nada y no se llevaron nada.',
     },
   },

@@ -42,8 +42,8 @@ afterAll(async () => {
 /** Twenty Darts at home; the lift is priced by the shared fuel formula. */
 const LINE: Fleet = { DART: 20 };
 const LIFT = escapeFuel(LINE);
-/** Exactly 3 times the line; unarmed cargo does not count toward it. */
-const THRESHOLD: Fleet = { DART: 60, COURIER: 20 };
+/** Exactly 4 times the line; unarmed cargo does not count toward it. */
+const THRESHOLD: Fleet = { DART: 80, COURIER: 20 };
 const DOUBLE: Fleet = { DART: 40, COURIER: 20 };
 const TANK = 1_000;
 
@@ -107,7 +107,7 @@ describe('the fleet escape on a raid', () => {
   });
 
   it.each([MULTI_WORLD.fleetEscapeRulesetVersion, MULTI_WORLD.rulesetVersion])(
-    'lifts the ships off an exactly 3-to-one raid in ruleset %i and leaves them home', async version => {
+    'lifts the ships off an exactly 4-to-one raid in ruleset %i and leaves them home', async version => {
       await rulesetOf(version);
       const report = await raid(THRESHOLD);
       expect(report.fleetEscape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: LIFT });
@@ -120,10 +120,11 @@ describe('the fleet escape on a raid', () => {
     },
   );
 
-  it.each([58, 59])('fights instead of escaping against %i Darts, below 3-to-one', async (darts) => {
+  it.each([78, 79])('fights instead of escaping against %i Darts, below 4-to-one', async (darts) => {
     const report = await raid({ DART: darts, COURIER: 20 });
     expect(report.fleetEscape).toBeNull();
-    expect(report.defenderLosses).toEqual(LINE);
+    expect((report.defenderLosses.DART ?? 0) + ((await home(target)).DART ?? 0)).toBe(LINE.DART);
+    expect(report.defenderFleet.DART).toBe(LINE.DART);
   });
 
   it('counts online ground guns when comparing the forces', async () => {
@@ -167,7 +168,7 @@ describe('the fleet escape on a raid', () => {
     const [report] = await f.db.select().from(battleReports).where(eq(battleReports.missionId, launch.missionId));
     expect(report).toBeDefined();
     expect(report!.fleetEscape).toBeNull();
-    expect(report!.defenderLosses).toEqual(LINE);
+    expect((report!.defenderLosses.DART ?? 0) + ((await home(target)).DART ?? 0)).toBe(LINE.DART);
   });
 
   it('serialises two first deliveries of the same raid before charging fuel', async () => {
@@ -212,8 +213,9 @@ describe('the fleet escape on a raid', () => {
     expect(report.fleetEscape).toEqual({
       kind: 'STRANDED', ships: LINE, fuel: LIFT, available: LIFT - 1,
     });
-    expect(report.defenderLosses).toEqual(LINE);
-    expect(await home(target)).toEqual({ PROSPECTOR: 2 });
+    expect((report.defenderLosses.DART ?? 0) + ((await home(target)).DART ?? 0)).toBe(LINE.DART);
+    expect(report.defenderFleet.DART).toBe(LINE.DART);
+    expect((await home(target)).PROSPECTOR).toBe(2);
     // Nothing lifted, so nothing was burned: whatever left the tank left in a hold.
     expect(await tank(target)).toBeCloseTo(LIFT - 1 - report.loot.deuterium, 6);
   });
@@ -230,7 +232,8 @@ describe('the fleet escape on a raid', () => {
     await rulesetOf(MULTI_WORLD.fleetEscapeRulesetVersion - 1);
     const report = await raid(THRESHOLD);
     expect(report.fleetEscape).toBeNull();
-    expect(report.defenderLosses).toEqual(LINE);
+    expect((report.defenderLosses.DART ?? 0) + ((await home(target)).DART ?? 0)).toBe(LINE.DART);
+    expect(report.defenderFleet.DART).toBe(LINE.DART);
     expect(await tank(target)).toBeCloseTo(TANK - report.loot.deuterium, 6);
   });
 

@@ -1,3 +1,4 @@
+import * as rules from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -562,6 +563,35 @@ describe('what a pirate raid comes home with', () => {
     const both =
       flying(report!.attackerLosses) + flying(report!.defenderLosses);
     expect(total).toBeCloseTo(both * DEBRIS.share, 2);
+  });
+
+  it('cannot tow a pirate that retreated alive, even when the capture roll succeeds', async () => {
+    const target = await findVisible();
+    const fleet = await overwhelming();
+    const launch = await launchPirateRaid(f.db, mine, target.id, fleet, f.clock);
+    // Isolate the settlement contract. Physics/retreat rolls have separate oracle coverage.
+    const originalBattle = rules.resolveBattle;
+    const originalCapture = rules.pirateCapture;
+    const battleSpy = vi.spyOn(rules, 'resolveBattle').mockImplementationOnce((stacks, defenders, shield, rng, context, maintenance) => {
+      const battle = originalBattle(stacks, defenders, shield, rng, context, maintenance);
+      const survivors = { ...defenders[0]!.fleet };
+      return { ...battle, grade: 'DECISIVE', defenderSurvivors: survivors, defenderRetreated: survivors,
+        defenderLosses: {}, defenderLossValue: 0, defenderDamage: [], defenderRetreatDamage: [],
+        defenders: battle.defenders.map(row => ({ ...row, survivors: { ...row.sent }, retreated: { ...row.sent }, losses: {}, lossValue: 0, survivorDamage: [] })) };
+    });
+    const captureSpy = vi.spyOn(rules, 'pirateCapture').mockImplementation((level, crew, grade) => originalCapture(level, crew, grade, () => 0));
+    try {
+      f.clock.set(settledAt(launch.arriveAt));
+      await worker().tick();
+      const [raid] = await f.db.select().from(pirateRaids).where(eq(pirateRaids.id, launch.raidId));
+      const [report] = await f.db.select().from(battleReports);
+      expect(report!.defenderLosses).toEqual({});
+      expect(captureSpy).toHaveBeenCalled();
+      expect(raid!.capturedHull).toBeNull();
+    } finally {
+      battleSpy.mockRestore();
+      captureSpy.mockRestore();
+    }
   });
 
   it('brings the hoard and, on a wipe, sometimes a ship home', async () => {

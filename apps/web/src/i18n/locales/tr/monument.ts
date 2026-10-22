@@ -27,9 +27,10 @@ export const monument = {
   },
   "wiped": "Filonun tamamı yok oldu.",
   "rulesTitle": "Savaş kuralları",
-  "roundRule": "Savaş en fazla {{rounds}} tur sürer. Savaş gemileri yaşarken yük gemileri korunur.",
-  "captureRule": "Savunanda yalnız yük gemileri kalırsa ve sende savaşabilecek bir savaş gemisi sağsa, savunanın yük gemileri eve döner ve tarafın yerleşir. İki tarafta da yalnız yük gemileri kalırsa savunan tutmaya devam eder, saldıran eve döner.",
-  "partialRule": "Kısmi başarı için savunan filonun kaynak değerinin en az {{threshold}} kadarını yok etmelisin. Hasarlı sağ kalan gemiler imha sayılmaz. Derece ve puan, anıt kontrolünü belirlemez."
+  "roundRule": "Savaş en fazla {{rounds}} tur sürer. Savaşa devam eden savaş gemileri yük gemilerini korur.",
+  "captureRule": "Kontrol hesabına yalnız savaşa devam eden gemiler katılır. Savunanda yalnız yük gemileri kalırsa ve sende savaşabilecek bir savaş gemisi sağsa, savunanın yük gemileri eve döner ve tarafın yerleşir. İki tarafta da yalnız yük gemileri kalırsa savunan tutmaya devam eder, saldıran eve döner.",
+  "retreatRule": "İlk iki turun sonunda yaralı gemiler kaçabilir. Yaraları kalır ve savaşmaya devam etmezler. Kaçanlar kontrol hesabında savaş dışıdır; ölü sayılmazlar. Kazananın kaçanları tutan filoya katılır, kaybedenin sağları eve döner.",
+  "partialRule": "Kısmi başarı için savunan kaynak değerinin en az {{threshold}} kadarını yok etmeli veya savaştan kaçırmalısın. Kaçanlar imha puanı veya enkaz oluşturmaz. Derece ve puan anıt kontrolünü belirlemez."
 },
   radiationLossForecast: "Savaş hasarı hariç ilk radyasyon kaybı: {{time}} sonra.",
   radiationCargoForecast: "Savaş hasarı hariç ilk yük gemisi kaybı: {{time}} sonra.",

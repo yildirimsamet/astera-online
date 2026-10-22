@@ -1,4 +1,4 @@
-import { RESEARCH_TECH } from './constants.js';
+import { COMBAT, RESEARCH_TECH } from './constants.js';
 import { HULLS } from './hulls.js';
 import type { HullId, ResearchProjectId } from './types.js';
 
@@ -35,7 +35,7 @@ export const shipShieldMult = (tech: TechLevels): number =>
   ladderAt(RESEARCH_TECH.shipShieldLadder, tech.SHIP_SHIELDS ?? 0);
 
 export const shipShieldHp = (tech: TechLevels, id: HullId): number =>
-  HULLS[id].ground ? 0 : HULLS[id].hp * hullTech(tech, id).hp * shipShieldMult(tech);
+  HULLS[id].ground ? 0 : HULLS[id].hp * hullTech(tech, id).hp * COMBAT.shipShieldFraction * shipShieldMult(tech);
 
 /** One flat source dose is reduced equally for every hull in this dispatch snapshot. */
 export const radiationDamageMult = (tech: TechLevels): number =>

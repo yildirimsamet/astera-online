@@ -1,4 +1,5 @@
 import { monthlyPirateSupplyAtRate } from './monthly-supply.js';
+import { activeBattleFleet } from './battleRetreat.js';
 import { PIRATE_ADMISSION_PRICES } from './pirate-admission-prices.js';
 import { FUEL, PIRATE, SEASON, DEBRIS } from './constants.js';
 import { COMBAT_HULLS, HULLS, MOBILE_HULLS, fleetEntries, fleetValue } from './hulls.js';
@@ -220,7 +221,7 @@ export const pirateStats = (level: PirateLevel): { damageMult: number } => ({
  * to the damage table, so the pirate that is cheapest to beat carries the ship
  * worth least, and the level 4 prize stays a story rather than a routine.
  *
- * DRAWN FROM THE CREW THIS RAID MET, weighted by how many of each were standing,
+ * DRAWN FROM THE SHIPS PHYSICALLY DESTROYED IN THIS RAID, weighted by count,
  * so a wing of four Darts around one Cataclysm usually yields a Dart. On a
  * DECISIVE win that crew is exactly what the attacker destroyed — the ship towed
  * home is one they shot down, and never one an earlier commander had already
@@ -229,13 +230,13 @@ export const pirateStats = (level: PirateLevel): { damageMult: number } => ({
 export function pirateCapture(
   level: PirateLevel,
   /**
-   * THE CREW THAT WAS STANDING WHEN THE SHOOTING STARTED — not the launch roster.
+   * THE SHIPS PHYSICALLY DESTROYED IN THIS FIGHT — not the launch roster.
    *
    * A pirate can be worn down by several commanders before anyone finishes it, and
    * reading `spec.roster` let the raid that landed the last blow tow home a hull
    * that somebody else had destroyed hours earlier — weighted by its ORIGINAL
    * count, so the Cataclysm a level 4 pirate is hunted for could be won by whoever
-   * happened to clean up its last Dart. You take what you shot down.
+   * happened to clean up its last Dart. Retreated ships cannot be towed either.
    */
   crew: Fleet,
   grade: Grade,
@@ -274,10 +275,11 @@ export function pirateCapture(
  * PvP is untouched: a world's line has an Aegis and ground guns, and its rules are their own.
  */
 export function pirateOverrun(result: CombatResult, combatReadyAtStart?: Fleet): CombatResult {
-  const left = fleetEntries(result.defenderSurvivors);
+  const activeDefenders = activeBattleFleet(result.defenderSurvivors, result.defenderRetreated);
+  const left = fleetEntries(activeDefenders);
   if (left.length === 0) return result;
   if (left.some(([id]) => HULLS[id].cls !== 'SUPPORT')) return result;
-  const armed = fleetEntries(result.attackerSurvivors)
+  const armed = fleetEntries(result.attackerCombatSurvivors ?? activeBattleFleet(result.attackerSurvivors, result.attackerRetreated))
     .some(([id]) => HULLS[id].cls !== 'SUPPORT' && HULLS[id].atk > 0
       && (combatReadyAtStart === undefined || (combatReadyAtStart[id] ?? 0) > 0));
   if (!armed) return result;
@@ -288,10 +290,10 @@ export function pirateOverrun(result: CombatResult, combatReadyAtStart?: Fleet):
     ...result,
     grade: 'DECISIVE',
     lossRatio: 1,
-    defenderSurvivors: {},
+    defenderSurvivors: { ...result.defenderRetreated },
     defenderLosses,
-    defenderLossValue: result.defenderLossValue + fleetValue(result.defenderSurvivors),
-    defenderDamage: [],
+    defenderLossValue: result.defenderLossValue + fleetValue(activeDefenders),
+    defenderDamage: result.defenderRetreatDamage ?? [],
   };
 }
 

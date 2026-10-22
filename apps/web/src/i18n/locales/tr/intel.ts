@@ -126,6 +126,9 @@ export const intel = {
 } as const;
 
 export const reports = {
+  retreated: 'Sağ kaçan: {{count}}. Bu gemilerin gövde hasarı korundu.',
+  enemyRetreated: "Düşmanın {{count}} gemisi kaçarak sağ kaldı.",
+  turningPointRetreated: "{{round}}. tur sonunda savaşmaya devam eden savaş gemin kalmadı. Bazı gemiler sağ kaçtı.",
   heading: 'Savaş raporları',
   newest: 'en yeni önce',
   empty:
@@ -217,7 +220,7 @@ export const reports = {
         REPELLED: 'Rakibin savunması devam etti. Ganimet alamadın.',
       },
       defending: {
-        DECISIVE: 'Bu savaşta tüm savunma birliklerin yok edildi.',
+        DECISIVE: "Savunmanda savaşmaya devam eden birlik kalmadı.",
         PARTIAL: 'Saldıran tam başarı sağlayamadı: birliklerin veya kalkanın ayakta kaldı.',
         REPELLED: 'Savunman devam etti. Saldıran ganimet alamadı.',
       },
@@ -258,7 +261,7 @@ export const reports = {
     after: 'Savaş sonunda',
     note: 'Gezegen kalkanı, savunmadaki birliklerden önce hasar alır.',
     brokenUnitsRemain: 'Kalkan gücü raporda 0 görünüyor, ama savunmadaki birlikler hayatta kaldı.',
-    brokenDefenceGone: 'Kalkan kırıldı. Savunmadaki tüm birlikler de bu savaşta yok edildi.',
+    brokenDefenceGone: "Kalkan kırıldı ve savaşmaya devam eden savunma birliği kalmadı.",
     brokenMeaning: 'Kalkan gücü yuvarlanarak gösterilir. 0 görünmesi, tek başına tüm savunmanın yok edildiğini göstermez.',
     absorbed: '{{amount}} kalkan hasarı emildi',
   },
@@ -303,23 +306,23 @@ export const reports = {
     formulaBase: '1 · Temel: birlik adedi × saldırı × araştırma.',
     formulaCounter: '2 · Sınıf avantajı: güçlü eşleşme ×{{strong}}; zayıf eşleşme ×{{weak}}.',
     formulaRoll: '3 · Turun şans etkisi: −%{{min}} ile +%{{max}}.',
-    formulaHp: 'Hasar, hedef türlerin toplam can içindeki payına göre bölünür.',
-    formulaCarry: 'Bir birliğin yok olması için tüm canı bitmelidir; yarım kalan hasar sonraki tura taşınır.',
-    formulaSupport: 'Destek gemileri, kendi taraflarında en az bir savaş birliği kaldığı sürece korunur.',
+    formulaHp: "Her silahlı birlik rastgele canlı bir hedefe bir kez ateş eder. Tek atışın fazla hasarı başka hedefe geçmez.",
+    formulaCarry: "Gövde hasarı ve harcanan gemi kalkanı sonraki tura taşınır. Savaş sırasında ikisi de yenilenmez.",
+    formulaSupport: "Savaş birlikleri düşünce aynı turdaki kalan atışlar da yük gemilerine yönelir.",
     resultHeading: 'Sonuç nasıl belirlenir',
     resultDecisive:
-      'KESİN · savunmadaki tüm birlikler yok olmuş ve kalkan sıfıra inmiştir · ambar sınırından önce Depo koruması üzerindeki stokun %{{decisiveLoot}} kadarı ve toplanmamış Havuzun %{{decisiveBuffer}} kadarı alınabilir.',
+      "KESİN · savaşmaya devam eden savunma birliği kalmadı ve aktif kalkan aşıldı · aktif kargo sınırından önce açık stokun %{{decisiveLoot}}, toplanmamış Havuzun %{{decisiveBuffer}} kadarı alınabilir.",
     /**
      * AYNI KURAL, UYGULANAMAYACAK YARISI OLMADAN. Kalkan bir dünya üzerindeki
      * yapıdır; randevu noktasında kalkandan söz eden bir açıklama, okuyucunun asla
      * karşılaşmadığı bir koşulu anlatır.
      */
     resultDecisivePirate:
-      'KESİN · mürettebattaki her gemi yok edildi · kargo sınırlarından önce ganimetin %{{decisiveLoot}} kadarı alınabilir; bir gövdeyi çekerek getirmek yalnızca burada mümkündür.',
+      "KESİN · savaşmaya devam eden korsan kalmadı · aktif kargo sınırından önce hazinenin %{{decisiveLoot}} kadarı alınabilir. Yalnız gerçekten imha edilen bir gemi ele geçirilebilir.",
     resultPartial:
-      'KISMİ · savunma birliklerinin değer olarak en az %{{threshold}} kadarı yok edilmiştir · ambar sınırından önce Depo koruması üzerindeki stokun %{{partialLoot}} kadarı ve toplanmamış Havuzun %{{partialBuffer}} kadarı alınabilir.',
+      "KISMİ · savunma değerinin en az %{{threshold}} kadarı imha edildi veya kaçtı · aktif kargo sınırından önce koruma üzeri stokun %{{partialLoot}}, toplanmamış Havuzun %{{partialBuffer}} kadarı alınabilir.",
     resultRepelled:
-      'PÜSKÜRTÜLDÜ · savunma birliklerinin değer olarak %{{threshold}} kadarından azı yok edilmiştir · kaynak alınamaz.',
+      "PÜSKÜRTÜLDÜ · imha veya kaçışla savaş dışı kalan savunma değeri %{{threshold}} altında · yağma yok.",
     round: '{{round}}. tur',
     fire: '1 · Aynı anda ateş',
     fireNote: 'İki taraf aynı anda ateş eder. Bu turda yok edilen bir gemi de o turun atışını yapar.',
@@ -388,21 +391,21 @@ export const reports = {
    */
   why: {
     attacking: {
-      DECISIVE: 'Savunan ne varsa yok ettin, kalkanı da düşürdün; yağmanın tamamı bu yüzden açıldı.',
-      DECISIVE_WIPED: 'Savunmadaki bütün birlikleri yok ettin; ancak hiçbir gemin hayatta kalmadığı için ganimet taşıyamadın.',
-      DECISIVE_WITHOUT_SHIELD: 'Savunan ne varsa yok ettin; yağmanın tamamı bu yüzden açıldı.',
+      DECISIVE: "Savunmadaki birliklerin tamamı imha edildi veya savaştan çekildi. Yağmalanabilir kaynaklar savaşta kalan gemilere açıldı.",
+      DECISIVE_WIPED: "Savunmadaki birliklerin tamamı imha edildi veya kaçtı. Ganimet taşıyacak saldırı gemisi sağ kalmadı.",
+      DECISIVE_WITHOUT_SHIELD: "Savunmadaki birliklerin tamamı imha edildi veya savaştan çekildi. Yağmalanabilir kaynaklar savaşta kalan gemilere açıldı.",
       WALKOVER: 'Savunacak birlik yoktu; yağmalanabilir kaynaklar filona açıktı.',
-      PARTIAL: 'Kısmi başarı için gereken hasarı verdin, ama tam başarı sağlayamadın. Ganimetin yalnızca bir bölümü açıldı; taşıyacak gemin kalmadıysa kaynak alamazsın.',
-      PARTIAL_WIPED: 'Savunmaya kısmi başarı sağlayacak kadar zarar verdin; ancak hiçbir gemin hayatta kalmadığı için ganimet taşıyamadın.',
-      REPELLED: 'Yok ettiğin birliklerin kaynak değeri, savaş başındaki tüm savunma birliklerinin değerinin %{{threshold}}\u2019sine ulaşmadı. Bu yüzden saldırı püskürtüldü; gemi sayısı veya yalnız kalkanı kırmak sonucu belirlemez.',
+      PARTIAL: "Yeterli savunma değeri imha veya kaçışla savaş dışı kaldı. Ganimetin bir bölümü açıldı.",
+      PARTIAL_WIPED: "Yeterli savunma değeri imha veya kaçışla savaş dışı kaldı. Ganimet taşıyacak saldırı gemisi sağ kalmadı.",
+      REPELLED: "İmha edilen veya kaçan savunma değeri başlangıç değerinin %{{threshold}} kadarına ulaşmadı. Saldırı püskürtüldü.",
     },
     defending: {
-      DECISIVE: 'Savunmadaki bütün birliklerin düştü, kalkanın da kırıldı; yağmalanabilir kaynaklar saldıran filoya açıldı. Alınan miktar, hayatta kalan gemilerin taşıma kapasitesine bağlıdır.',
-      DECISIVE_WITHOUT_SHIELD: 'Savunmadaki bütün birliklerin düştü; yağmalanabilir kaynaklar saldıran filoya açıldı. Alınan miktar, hayatta kalan gemilerin taşıma kapasitesine bağlıdır.',
-      DECISIVE_WIPED: 'Savunmadaki bütün birliklerin düştü; ama saldıranın geldiği gemilerden de hiçbiri sağ kalmadı. Ganimet açıldı, taşıyacak kimse kalmadı.',
+      DECISIVE: "Savunmadaki birliklerin tamamı imha edildi veya savaştan çekildi. Yağmalanabilir kaynaklar savaşta kalan gemilere açıldı.",
+      DECISIVE_WITHOUT_SHIELD: "Savunmadaki birliklerin tamamı imha edildi veya savaştan çekildi. Yağmalanabilir kaynaklar savaşta kalan gemilere açıldı.",
+      DECISIVE_WIPED: "Savunmadaki birliklerin tamamı imha edildi veya kaçtı. Ganimet taşıyacak saldırı gemisi sağ kalmadı.",
       WALKOVER: 'Dünyanda savunacak birlik yoktu; yağmalanabilir kaynaklar saldıran filoya açıktı.',
-      PARTIAL: 'Saldıran kısmi başarı için gereken hasarı verdi, ama tam başarı sağlayamadı. Ganimetin yalnızca bir bölümü açıldı.',
-      PARTIAL_WIPED: 'Saldıran kısmi başarı için gereken hasarı verdi; ama taşıyacak tek bir gemisi bile sağ kalmadı. Dünyandan hiçbir şey çıkmadı.',
+      PARTIAL: "Yeterli savunma değeri imha veya kaçışla savaş dışı kaldı. Ganimetin bir bölümü açıldı.",
+      PARTIAL_WIPED: "Yeterli savunma değeri imha veya kaçışla savaş dışı kaldı. Ganimet taşıyacak saldırı gemisi sağ kalmadı.",
       REPELLED: 'Savunman dayandı. İçeri giremediler ve kaynak götüremediler.',
     },
   },

@@ -1,3 +1,4 @@
+import { BattleRetreatNote } from '../ui/BattleRetreatNote.js';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STANDARD_PVP_BALANCE, type PvpBalance, COMBAT, DEATH_STAR, HULLS, fleetCount, fleetEntries, type Fleet, type Grade, type HullId } from '@astera/rules';
@@ -92,6 +93,10 @@ function forceAfterRound(report: BattleReport, round: Round, enemy = false) {
     const losses = report.attacking !== enemy
       ? completed.attackerLosses
       : completed.defenderLosses;
+    const retreated = enemy ? undefined : completed.yourRetreated;
+    // Opponent retreat hulls are private; avoid inventing active class counts.
+    if (enemy && (completed.theirRetreatedCount ?? 0) > 0) return null;
+    for (const [hull, count] of fleetEntries(retreated ?? {})) lost[hull] = (lost[hull] ?? 0) + count;
     for (const [hull, count] of fleetEntries(losses)) {
       lost[hull] = (lost[hull] ?? 0) + count;
     }
@@ -1701,6 +1706,7 @@ function BattleRound({ report, round }: { report: OrdinaryReport; round: Round }
         yours={report.attacking ? round.attackerLosses : round.defenderLosses}
         theirs={report.attacking ? round.defenderLosses : round.attackerLosses}
       />
+      <BattleRetreatNote fleet={round.yourRetreated} enemyCount={round.theirRetreatedCount} />
       <RoundStanding report={report} round={round} />
       {hasCalculationTelemetry(round) ? (
         <details className="mt-2 border-t border-v2-line/60">
@@ -2016,9 +2022,11 @@ function CombatTurningPoint({ report }: { report: OrdinaryReport }) {
   if (!depleted) return null;
   const standing = forceAfterRound(report, depleted);
   if (!standing) return null;
+  const escaped = report.rounds.filter(round => round.round <= depleted.round)
+    .reduce((n, round) => n + unitCount(round.yourRetreated ?? {}), 0);
   return (
     <p data-combat-turning-point className="mt-2 text-caption font-semibold leading-relaxed text-v2-ink">
-      {t(standing.support > 0 ? 'reports.turningPointSupport' : 'reports.turningPointWiped', {
+      {t(escaped > 0 ? 'reports.turningPointRetreated' : standing.support > 0 ? 'reports.turningPointSupport' : 'reports.turningPointWiped', {
         round: depleted.round,
         support: full(standing.support),
       })}
@@ -2286,7 +2294,7 @@ function TheirBoard({ report }: { report: OrdinaryReport }) {
   // A decisive result proves completeness only to the attacker. On a legacy
   // defender report without `theirFleet`, the casualty list is still not the
   // attacker's complete arriving roster.
-  const complete = report.attacking && report.grade === 'DECISIVE';
+  const complete = report.attacking && report.grade === 'DECISIVE' && (report.theirRetreatedCount ?? 0) === 0;
   const entries = fleetEntries(report.theirLosses);
   const emptyAtStart = complete && report.rounds.length === 0 && entries.length === 0;
   const ground = entries.filter(([hull]) => HULLS[hull].ground);

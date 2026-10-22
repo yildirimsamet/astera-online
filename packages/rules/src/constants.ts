@@ -1015,6 +1015,7 @@ export const BUILD = {
 
 export const COMBAT = {
   rounds: 3,
+  shipShieldFraction: 0.25,
   varianceMin: 0.92,
   varianceMax: 1.08,
 
@@ -2320,7 +2321,7 @@ export const ESCAPE = {
   /** A token garrison is not a fleet to save. Applies from ruleset 13. */
   minimumCombatShips: 5,
   /**
-   * FIXED AT 3. Owner decision, 2026-10-21; lowered from 3.5 with the other escape
+   * FIXED AT 4. Owner decision, 2026-10-22; raised from 3 with the other escape
    * conditions unchanged, including active ground defence and equality at the threshold.
    * Measured 2026-09-23, the engine clears a mirrored line from
    * 1.5× and the counter-built lines tried from 3×, so a 1:2 fight between near-equals
@@ -2331,7 +2332,7 @@ export const ESCAPE = {
    * on the top, so a roll between 3 and 4 raised the informed raider's kill rate
    * from 72% to 87%.
    */
-  ratio: 3,
+  ratio: 4,
   /**
    * THE LIFT IS A LAUNCH, SO IT BURNS LIKE ONE (T6). Owner: *"yakıt yetmedi,
    * kaçamadı"*. The ships pay `missionFuel` for a round trip of this many units —

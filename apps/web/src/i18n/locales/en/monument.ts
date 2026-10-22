@@ -27,9 +27,10 @@ export const monument = {
   },
   "wiped": "Your entire fleet was destroyed.",
   "rulesTitle": "Battle rules",
-  "roundRule": "Combat lasts at most {{rounds}} rounds. Cargo ships are protected while armed ships survive.",
-  "captureRule": "If only defending cargo ships remain and you have a surviving combat-ready warship, their cargo ships return home and your side takes control. If both sides have only cargo ships, the defender keeps holding and the attacker returns home.",
-  "partialRule": "Partial success requires destroying at least {{threshold}} of the defending fleet’s resource value. Damaged survivors are not destroyed ships. Grade and score do not determine monument control."
+  "roundRule": "Combat lasts at most {{rounds}} rounds. Cargo is protected while armed ships remain in combat.",
+  "captureRule": "Only ships still fighting count for control. If only defending cargo ships remain and you have a surviving combat-ready warship, their cargo ships return home and your side takes control. If both sides have only cargo ships, the defender keeps holding and the attacker returns home.",
+  "retreatRule": "At rounds 1 and 2 end, wounded ships may retreat. They keep their damage and stop fighting. Retreats count as leaving combat, not destruction. The winner’s retreats rejoin its hold; the loser’s survivors return home.",
+  "partialRule": "Partial success requires destroying or forcing the retreat of at least {{threshold}} of defending resource value. Retreats do not create destruction points or wreckage. Grade and score do not determine monument control."
 },
   radiationLossForecast: "First radiation loss in {{time}}, before battle damage.",
   radiationCargoForecast: "First cargo loss in {{time}}, before battle damage.",

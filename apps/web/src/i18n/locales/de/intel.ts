@@ -139,6 +139,9 @@ export const intel = {
 } as const;
 
 export const reports = {
+  retreated: 'Lebend zurückgezogen: {{count}}. Diese Schiffe behalten ihre Hüllenschäden.',
+  enemyRetreated: "{{count}} feindliche Schiffe sind geflohen und haben überlebt.",
+  turningPointRetreated: "Nach Runde {{round}} kämpften keine Kriegsschiffe mehr. Einige Schiffe sind lebend geflohen.",
   heading: 'Kampfberichte',
   newest: 'Neueste zuerst',
   empty:
@@ -232,7 +235,7 @@ export const reports = {
         REPELLED: 'Der Feind verteidigte weiter. Du hast keine Beute gemacht.',
       },
       defending: {
-        DECISIVE: 'Alle Ihre verteidigenden Einheiten wurden in dieser Schlacht zerstört.',
+        DECISIVE: "Keine Einheit kämpfte mehr in deiner Verteidigung.",
         PARTIAL: 'Der Angreifer hatte keinen vollständigen Erfolg: Ihre Einheiten oder Ihr Schild standen noch.',
         REPELLED: 'Ihre Verteidigung hat gehalten. Der Angreifer erbeutete keine Beute.',
       },
@@ -281,7 +284,7 @@ export const reports = {
     after: 'Nach dem Kampf',
     note: 'Der Planetenschild erleidet Schaden, bevor es eine verteidigende Einheit erleidet.',
     brokenUnitsRemain: 'Der Schild meldet 0, aber die verteidigenden Einheiten haben überlebt.',
-    brokenDefenceGone: 'Der Schild ist kaputt. Auch alle verteidigenden Einheiten wurden in dieser Schlacht vernichtet.',
+    brokenDefenceGone: "Der Schild brach und keine verteidigende Einheit kämpfte weiter.",
     brokenMeaning: 'Schildstärke ist gerundet. Ein gemeldeter Wert von 0 allein beweist nicht, dass alle verteidigenden Streitkräfte vernichtet wurden.',
     absorbed: '{{amount}} Schildschaden absorbiert',
   },
@@ -342,23 +345,23 @@ export const reports = {
     formulaBase: '1 · Basis: Einheitenanzahl × Angriff × Forschung.',
     formulaCounter: '2 · Zähler: starke Übereinstimmung ×{{strong}}; schwache Übereinstimmung ×{{weak}}.',
     formulaRoll: '3 · Schussänderung: −{{min}}% zu +{{max}}%.',
-    formulaHp: 'Der Schaden wird durch den Anteil des Ziels an den Gesamt-HP aufgeteilt.',
-    formulaCarry: 'Eine Einheit benötigt alle HP, um zu fallen; Unvollendeter Schaden geht in die nächste Runde über.',
-    formulaSupport: 'Unterstützungsschiffe bleiben geschützt, während mindestens eine Kampfeinheit auf ihrer Seite verbleibt.',
+    formulaHp: "Jede bewaffnete Einheit schießt einmal auf ein zufälliges lebendes Ziel. Überschüssiger Schaden verfällt.",
+    formulaCarry: "Hüllenschaden und verbrauchte Schiffsschilde bleiben zwischen Runden erhalten. Im Kampf regeneriert keines davon.",
+    formulaSupport: "Nach den Kampfeinheiten treffen übrige Schüsse derselben Runde die Frachter.",
     resultHeading: 'Wie über das Ergebnis entschieden wird',
     resultDecisive:
-      'ENTSCHEIDEND · jede verteidigende Einheit ist verschwunden und der Schild ist auf Null · {{decisiveLoot}} % des exponierten Bestands können vor dem Frachtlimit eingenommen werden. Nicht eingesammelte Produktion: {{decisiveBuffer}}%.',
+      "ENTSCHEIDEND · keine verteidigende Einheit kämpft weiter und der aktive Schild ist überwunden · {{decisiveLoot}}% des offenen Vorrats und {{decisiveBuffer}}% der nicht eingesammelten Produktion vor aktiven Frachtraumgrenzen.",
     /**
      * THE SAME RULE WITHOUT THE HALF THAT CANNOT APPLY. A shield is a structure on
      * a world; a legend that names one out at a rendezvous is describing a
      * condition the reader could never have met or failed.
      */
     resultDecisivePirate:
-      'ENTSCHEIDEND · jedes Schiff der Besatzung ist verschwunden · {{decisiveLoot}} % des Horts können vor den Frachtgrenzen eingenommen werden, und nur hier kann ein Rumpf nach Hause geschleppt werden.',
+      "ENTSCHEIDEND · kein Pirat kämpft weiter · {{decisiveLoot}}% des Horts vor aktiven Frachtraumgrenzen. Nur ein tatsächlich zerstörtes Schiff kann erbeutet werden.",
     resultPartial:
-      'TEILWEISE · mindestens {{threshold}} % des Wertes der verteidigenden Einheit sind zerstört · {{partialLoot}} % des ungeschützten Bestands können vor dem Frachtlimit genommen werden. Nicht eingesammelte Produktion: {{partialBuffer}}%.',
+      "TEILERFOLG · mindestens {{threshold}}% des Verteidigungswerts zerstört oder geflohen · {{partialLoot}}% des ungeschützten Vorrats und {{partialBuffer}}% der nicht eingesammelten Produktion vor aktiven Frachtraumgrenzen.",
     resultRepelled:
-      'ABGEWEHRT · weniger als {{threshold}} % des Wertes der verteidigenden Einheit werden zerstört · nichts kann genommen werden.',
+      "ABGEWEHRT · weniger als {{threshold}}% des Verteidigungswerts zerstört oder geflohen · keine Beute.",
     round: 'Runde {{round}}',
     fire: '1 · Gleichzeitiges Feuer',
     fireNote: 'Beide Seiten schießen, bevor die Verluste beseitigt sind. Eine in dieser Runde zerstörte Einheit feuert immer noch.',
@@ -435,21 +438,21 @@ export const reports = {
    */
   why: {
     attacking: {
-      DECISIVE: 'Du hast alles zerstört, was es verteidigt hat, und den Schild zerbrochen, was den vollständigen Beutezug freigibt.',
-      DECISIVE_WIPED: 'Du hast jede verteidigende Einheit zerstört, aber keines deiner Schiffe hat überlebt, um Beute nach Hause zu transportieren.',
-      DECISIVE_WITHOUT_SHIELD: 'Du hast alles zerstört, was dich verteidigt hat, was den vollständigen Angriff eröffnet.',
+      DECISIVE: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Verfügbare Beute steht nur noch anwesenden Schiffen offen.",
+      DECISIVE_WIPED: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Kein angreifendes Schiff überlebte, um Beute zu tragen.",
+      DECISIVE_WITHOUT_SHIELD: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Verfügbare Beute steht nur noch anwesenden Schiffen offen.",
       WALKOVER: 'Hier standen keine verteidigenden Einheiten; Die verfügbare Beute stand Ihrer Flotte offen.',
-      PARTIAL: 'Du hast genug Schaden für einen teilweisen Erfolg verursacht, aber keinen vollständigen Erfolg. Nur ein Teil der Beute wurde verfügbar; Ohne überlebenden Laderaum kann nichts mitgenommen werden.',
-      PARTIAL_WIPED: 'Du hast genug Schaden für einen Teilerfolg verursacht, aber keines deiner Schiffe hat überlebt, um Beute nach Hause zu transportieren.',
-      REPELLED: 'Der Ressourcenwert der zerstörten Einheiten erreichte nicht {{threshold}} % des Startwerts aller verteidigenden Einheiten. Deshalb wurde der Überfall abgewehrt; Die Anzahl der Schiffe oder das Brechen des Schildes allein entscheiden nicht über das Ergebnis.',
+      PARTIAL: "Genug Verteidigungswert wurde zerstört oder zog sich zurück. Ein Teil der Beute wurde freigegeben.",
+      PARTIAL_WIPED: "Genug Verteidigungswert wurde zerstört oder zog sich für einen Teilerfolg zurück. Kein angreifendes Schiff überlebte, um Beute zu tragen.",
+      REPELLED: "Zerstörte oder geflohene Einheiten erreichten nicht {{threshold}}% des anfänglichen Verteidigungswerts. Der Angriff wurde abgewehrt.",
     },
     defending: {
-      DECISIVE: 'Alle Ihre verteidigenden Einheiten fielen und der Schild brach, wodurch die verfügbare Beute den Plünderern zugänglich gemacht wurde. Die entnommene Menge hängt von ihrem verbleibenden Laderaum ab.',
-      DECISIVE_WITHOUT_SHIELD: 'Alle deine verteidigenden Einheiten sind gefallen, wodurch die verfügbare Beute den Plünderern zugänglich gemacht wurde. Die entnommene Menge hängt von ihrem verbleibenden Laderaum ab.',
-      DECISIVE_WIPED: 'Alle Ihre verteidigenden Einheiten fielen – und auch jedes Schiff, mit dem sie kamen. Die Beute war offen und es war nichts mehr übrig, was sie nach Hause hätte tragen können.',
+      DECISIVE: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Verfügbare Beute steht nur noch anwesenden Schiffen offen.",
+      DECISIVE_WITHOUT_SHIELD: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Verfügbare Beute steht nur noch anwesenden Schiffen offen.",
+      DECISIVE_WIPED: "Alle verteidigenden Einheiten wurden zerstört oder zogen sich zurück. Kein angreifendes Schiff überlebte, um Beute zu tragen.",
       WALKOVER: 'Auf Ihrer Welt standen keine verteidigenden Einheiten, daher stand die verfügbare Beute den Plünderern offen.',
-      PARTIAL: 'Der Angreifer hat genug Schaden für einen teilweisen Erfolg verursacht, aber keinen vollständigen Erfolg. Nur ein Teil der Beute wurde verfügbar.',
-      PARTIAL_WIPED: 'Der Angreifer verursachte genug Schaden für einen Teilerfolg, aber keines seiner Schiffe überlebte, um ihn zu tragen. Nichts hat deine Welt verlassen.',
+      PARTIAL: "Genug Verteidigungswert wurde zerstört oder zog sich zurück. Ein Teil der Beute wurde freigegeben.",
+      PARTIAL_WIPED: "Genug Verteidigungswert wurde zerstört oder zog sich für einen Teilerfolg zurück. Kein angreifendes Schiff überlebte, um Beute zu tragen.",
       REPELLED: 'Ihre Verteidigung hat gehalten. Sie haben nichts überstanden und nichts mitgenommen.',
     },
   },

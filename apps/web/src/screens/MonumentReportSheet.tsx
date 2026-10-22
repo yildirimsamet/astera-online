@@ -1,3 +1,4 @@
+import { BattleRetreatNote } from '../ui/BattleRetreatNote.js';
 import { fleetCount, fleetEntries, type Fleet } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import type { MonumentBattleReport } from '../api/schemas.js';
@@ -42,6 +43,7 @@ export function MonumentReportSheet({ report, onClose, onFocusMonument }: {
           <span>{hullLabel(hull)}</span><span className="font-v2-mono">{t('monument.reportHull', { sent, left: report.yourSurvivors[hull] ?? 0, lost: report.yourLosses[hull] ?? 0 })}</span>
         </p>)}
       </div>
+      <BattleRetreatNote fleet={report.yourRetreated} enemyCount={report.theirRetreatedCount} />
       {report.yourDamage.map((lot, index) => <p key={`${lot.hull}:${String(index)}`} className="text-micro text-v2-ink-2">
         {t('monument.reportHealth', { count: lot.count, hull: hullLabel(lot.hull), health: decimal((10_000 - lot.damageBp - lot.remainderBp) / 100, 4) })}
       </p>)}

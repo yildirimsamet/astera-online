@@ -10,7 +10,7 @@ export const research = {
   shipShieldHullDamage: "Kalkanlardan sonra savunan gemilerin gövdesine {{amount}} saldırı hasarı ulaştı.",
   shipShieldsName: "Gemi Kalkanları",
   shipShieldsTag: "Savaş ateşini karşılar",
-  shipShieldsRole: "Her geminin başlangıç kalkanı azami canına eşittir. Dört araştırma seviyesi bu temel kalkanı toplam %25, %50, %70 ve %100 artırır.",
+  shipShieldsRole: "Her geminin başlangıç kalkanı azami canının %25’idir. Dört araştırma seviyesi bu temel kalkanı toplam %25, %50, %70 ve %100 artırır.",
   shipShieldsDetail: "Kalkanlar her savaşa tam dolu başlar ve savaş sırasında yenilenmez. Gövde yaraları kalır. Radyasyon kalkanı geçerek doğrudan canı azaltır. Yer savunmalarının kişisel kalkanı yoktur. Zırh hem azami canı hem kalkan kapasitesini artırır. Gönderilen filolar çıkıştaki araştırmalarını korur.",
   shipShieldGain: "Gemi kalkanı artışı",
   shipShieldScope: "Bütün mobil gemilere uygulanır. Bonuslar temel kalkana göre toplam artıştır; seviyeler birbiriyle çarpılmaz.",

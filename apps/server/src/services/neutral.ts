@@ -1,6 +1,7 @@
 import { refreshPlanetAegis, syncPlanetAegis } from './planetAegis.js';
 import { and, eq, inArray, isNull, lte, or } from 'drizzle-orm';
 import {
+  activeBattleFleet,
   ALL_HULLS,
   DEBRIS,
   HULLS,
@@ -235,7 +236,7 @@ export async function resolveNeutralBattle(
     fleetEntries(standing).filter(([hull]) => !HULLS[hull].ground),
   ) as Fleet;
   const defenders = garrisonOf(mobile, defenceDark ? {} : ground);
-  const result = resolveBattle([soloStack(attackingFleet, { tech: mission.tech ?? {} }, mission.damage ?? undefined)],
+  const result = resolveBattle([{ ...soloStack(attackingFleet, { tech: mission.tech ?? {} }, mission.damage ?? undefined), contributionId: mission.id, playerId: mission.ownerPlayerId }],
     [{ stackId: 'neutral', playerId: '', fleet: defenders, damage: neutral.radiationEnabled ? health.damage : [],
       tech: { tech: {} }, maintenanceExempt: true }],
     defenceDark ? 0 : neutral.shield, seededFrom(mission.id), hpRadiationApplies(rulesetVersion) ? 'HP_PLANET' : 'PLANET', true);
@@ -271,7 +272,7 @@ export async function resolveNeutralBattle(
       player path has always used the snapshot; this one disagreed with the rule,
       with the other path, and with its own combat call.
     */
-    fleetCargo(result.attackerSurvivors, mission.tech ?? {}),
+    fleetCargo(activeBattleFleet(result.attackerSurvivors, result.attackerRetreated), mission.tech ?? {}),
   ), state.tier);
   const uncappedLoot = scaleNeutralDeuteriumLoot(computeLoot(
     { alloy: neutral.alloy, crystal: neutral.crystal, deuterium: neutral.deuterium },
@@ -290,7 +291,7 @@ export async function resolveNeutralBattle(
   */
   const { salvage, field: wreck } = settleWreck(
     attackerWreck(result.attackerLosses),
-    result.attackerSurvivors,
+    activeBattleFleet(result.attackerSurvivors, result.attackerRetreated),
   );
   const lifted = salvage.alloy + salvage.crystal + salvage.deuterium > 0;
   await saveResources(tx, mission.targetPlanetId, {

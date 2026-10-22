@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   SENSOR,
   sensorReach,
+  activeBattleFleet,
   ALL_HULLS,
   MOBILE_HULLS,
   MULTI_WORLD,
@@ -126,11 +127,11 @@ describe('combat invariants — must hold for ALL inputs', () => {
     );
   });
 
-  it('DECISIVE implies the defence is actually gone', () => {
+  it('DECISIVE implies no active defence remains; retreat is not destruction', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
         const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } });
-        if (r.grade === 'DECISIVE') expect(fleetCount(r.defenderSurvivors)).toBe(0);
+        if (r.grade === 'DECISIVE') expect(fleetCount(activeBattleFleet(r.defenderSurvivors, r.defenderRetreated))).toBe(0);
       }),
       { numRuns: 300 },
     );

@@ -9,6 +9,7 @@ import { allocateJointDominion, type JointDominionShare } from './clanWar.js';
 import { applyHpDose, type HpDamageLots } from './radiationHp.js';
 import type { Fleet, Rng } from './types.js';
 import { partitionCombatFleet } from './shipMaintenance.js';
+import { activeBattleFleet } from './battleRetreat.js';
 
 const MOBILE: ReadonlySet<string> = new Set(MOBILE_HULLS);
 const byId = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
@@ -98,11 +99,11 @@ export function resolveMonumentCombat(
   for (const outcome of result.contributions) {
     const initial = a.find((stack) => stack.contributionId === outcome.contributionId)!;
     const ready = maintenance ? partitionCombatFleet(initial.fleet, initial.damage).eligible : initial.fleet;
-    for (const [hull, count] of fleetEntries(outcome.survivors)) capturing[hull] = (capturing[hull] ?? 0) + Math.min(count, ready[hull] ?? 0);
+    for (const [hull, count] of fleetEntries(activeBattleFleet(outcome.survivors, outcome.retreated))) capturing[hull] = (capturing[hull] ?? 0) + Math.min(count, ready[hull] ?? 0);
   }
   return {
     ...result,
     defenders: defenders.length > 0 ? result.defenders : [],
-    control: monumentBattleControl(capturing, result.defenderSurvivors),
+    control: monumentBattleControl(result.attackerCombatSurvivors ?? capturing, activeBattleFleet(result.defenderSurvivors, result.defenderRetreated)),
   };
 }

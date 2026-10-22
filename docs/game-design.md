@@ -303,7 +303,7 @@ you had to scout to find out.** Loot capacity is where the information layer cas
 number. Courier, Wayfarer, Atlas and Argosy add a second cargo decision: exposure window versus
 capacity. A deeper hold does not replace Courier because the slowest included hull owns the fleet clock.
 
-Support hulls are **shielded from fire while any combat hull on their side survives**, which
+Support hulls are **shielded from fire while a combat hull on their side remains in combat**, which
 creates the escort decision: bring enough combat hulls to cover the cargo you brought.
 At a **pirate** (owner, 2026-10-06), holds left without a single warship are taken once the fight
 ends, provided the raiders still have a gun (`pirateOverrun`): destroyed, wreckage, a DECISIVE
@@ -324,21 +324,41 @@ small: the whole game is built on information reducing uncertainty. **If randomn
 outcomes, intel would be worthless.**
 
 Owner decision, 2026-10-20: every mobile ship has a personal combat shield equal to
-its researched maximum hull HP. Shields start full each battle and never recharge between rounds (owner update, 2026-10-21); hull wounds persist.
+25% of its researched maximum hull HP (owner update, 2026-10-22). Shields start full each battle and never recharge between rounds (owner update, 2026-10-21); hull wounds persist.
 Ship Shields research has four cumulative bonuses over that base: 25%, 50%, 70%, 100%.
 Aegis absorbs fire first, then personal shields, then hull. Unhit ships cannot share
 their shields with a ship under fire. Ground emplacements have no personal shields.
 Radiation bypasses personal shields and reduces hull HP directly. Personal shield
 absorption earns no hull-damage Dominion contribution and causes no repair bill.
 
-Graded on **resource value destroyed**, not `ATK × HP` — that metric ignores the counter
+Each eligible armed unit fires one shot at a uniformly random live target. Combat units
+are targeted before cargo; remaining shots may hit cargo in that same round. Single-shot
+overkill is wasted. Firing rights are simultaneous and frozen at round entry.
+
+Only after rounds one and two, surviving mobile ships may retreat. The battle-start
+armed resource-value ratio fixes the chance and hull-HP window; cargo adds no power:
+
+| Larger/smaller entry power | Weak: chance / HP limit | Strong: chance / HP limit |
+|---|---|---|
+| 1 to <1.5 | 25% / ≤25% | 25% / ≤25% |
+| 1.5 to <2 | 33% / ≤30% | 20% / ≤30% |
+| 2 to <3 | 55% / ≤55% | 15% / ≤30% |
+| ≥3 | 70% / ≤70% | 10% / ≤25% |
+
+Escaped ships keep their wounds and cannot fire or take further hits. Planet defenders
+keep physical survivors, attackers return with theirs. At monuments the winner’s escaped
+ships rejoin HOLD and the loser’s survivors return. Only actual deaths create wreckage
+or destruction score; escaped collectors do not collect and escaped cargo does not loot.
+Reports disclose own escaped hulls and the enemy’s total escaped count.
+
+Graded on **resource value removed from combat by destruction or retreat**, not `ATK × HP` — that metric ignores the counter
 matrix, so two equal-looking numeric totals can resolve in opposite directions after class and
 composition are applied.
 
 | Grade | Condition | Loot |
 |---|---|---|
-| `DECISIVE` | No defending units stand at contact, or none survive after the shield is depleted | Tier 1–3 defender: 25% of unprotected stock + 15% of Works; otherwise 60% + 30% |
-| `PARTIAL` | ≥42% of defender value destroyed | Half of the decisive stock and Works shares |
+| `DECISIVE` | No defending units stand at contact, or none remain fighting after the shield is depleted | Tier 1–3 defender: 25% of unprotected stock + 15% of Works; otherwise 60% + 30% |
+| `PARTIAL` | ≥42% of defender value destroyed or retreated | Half of the decisive stock and Works shares |
 | `REPELLED` | Below that | Nothing |
 
 Three grades rather than win/lose: binary outcomes make marginal attacks worthless and punish
@@ -386,7 +406,7 @@ door around the information game.
 ### The defence chain
 
 ```
-Aegis shield → ground defence → home fleet → loot phase → disruption
+Aegis → targeted ship’s personal shield → hull → active survivors’ loot capacity
 ```
 
 **Ground defence has one gun in each counter class (D27).** A Bastion is Bulwark-class: it breaks
@@ -409,7 +429,7 @@ an otherwise certain retreat as uncertain in a new season because a power readin
 does not reveal the defender's ship count.
 
 **The ships of a defending line lift off instead of fighting when the wing that arrived has at
-least 3 times the line's armed-unit resource value AND the line would have been wiped out anyway — if the
+least 4 times the line's armed-unit resource value AND the standing fight would be DECISIVE — if the
 world's tank pays the lift.** OGame's tactical retreat, corrected twice by this engine's numbers
 (`escape.ts`). Both sides are measured in `combatValue`, the axis the probe's defence band and the
 launch sheet already share; the line counts its guns, and the wing counts only what fires, so
@@ -417,14 +437,14 @@ cargo cannot buy the threshold. The guns and the Aegis stay and fight alone, the
 raided, and every downstream rule reads the battle that actually happened. Nothing moves on the
 disc: the ships are simply still at home afterwards.
 
-The fixed threshold was lowered from 3.5 to 3 on 2026-10-21, by owner instruction. Exactly
-3 qualifies and there is no upper limit. Active ground guns remain part of the defending line;
+The fixed threshold was raised from 3 to 4 on 2026-10-22, by owner instruction. Exactly
+4 qualifies and there is no upper limit. Active ground guns remain part of the defending line;
 guns disabled by a Core outage or EMP do not count until they are operational again.
 
 - **Why the DECISIVE guard.** Under the original 3× ratio, a transport wall worth 9k could
   hold off a 27k raid yet run from it on the ratio alone and hand over the stores; a fleet
   under a charged Aegis could also leave the dome to a walkover. The guard requires the
-  standing line to be wiped out. Mutual destruction also qualifies: it does not require
+  standing fight to be DECISIVE, including destruction or mid-battle retreat. Mutual destruction also qualifies: it does not require
   attacker survivors or guarantee a better economic outcome
   ([verified example](fleet-escape-review-2026-10-09.md)).
 - **The lift is a launch (T6).** `missionFuel` for a 600-unit round trip, from the tank including

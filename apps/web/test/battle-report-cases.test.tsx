@@ -128,6 +128,42 @@ describe('the walkover — a DECISIVE with no rounds at all', () => {
   });
 });
 
+describe('a successful attack with no physical survivor', () => {
+  it.each(['DECISIVE', 'PARTIAL'] as const)('explains why %s still brings no loot home', async grade => {
+    const view = await openSheet(report({ grade, yourFleet: { DART: 1 }, yourLosses: { DART: 1 },
+      theirRetreatedCount: 1, lootAlloy: 0, lootCrystal: 0, lootDeuterium: 0 }));
+    expect(view.container.textContent).toContain('No attacking ships survived to carry loot.');
+  });
+});
+
+describe('decisive battles with recorded retreats', () => {
+  it('does not turn the enemy casualty list into a complete starting roster', async () => {
+    const view = await openSheet(report({ grade: 'DECISIVE', yourRetreated: {}, theirRetreatedCount: 1, theirLosses: {} }));
+    expect(view.container.querySelector('[data-their-board="floor"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-their-board="complete"]')).toBeNull();
+    expect(view.container.textContent).not.toContain('All were destroyed in this battle.');
+  });
+
+  it('removes own retreats from later-round firepower without calling them destroyed', async () => {
+    const view = await openSheet(report({ yourFleet: { DART: 3 }, yourLosses: { DART: 1 },
+      yourRetreated: { DART: 2 }, theirRetreatedCount: 1,
+      rounds: [{ ...base.rounds[0]!, attackerLosses: { DART: 1 }, yourRetreated: { DART: 2 }, theirRetreatedCount: 1 }] }));
+    expect(view.container.querySelector('[data-round-standing="1"]')).toHaveTextContent('0 units able to fire');
+    expect(view.container.querySelector('[data-combat-turning-point]')).toHaveTextContent('Some ships retreated alive.');
+    expect(view.container.querySelector('[data-combat-turning-point]')).not.toHaveTextContent('entire force was destroyed');
+    expect(view.container.querySelector('[data-enemy-retreat]')).toHaveTextContent('1');
+  });
+
+  it('does not tell a living retreating defender that every ship died', async () => {
+    const view = await openSheet(report({ grade: 'DECISIVE', attacking: false,
+      yourFleet: { CORSAIR: 1 }, yourLosses: {}, yourRetreated: { CORSAIR: 1 },
+      yourDamage: [{ hull: 'CORSAIR', count: 1, damageBp: 6000 }] }));
+    expect(view.container.querySelector('[data-verdict-summary]')).toHaveTextContent('No units remained fighting in your defence.');
+    expect(view.container.querySelector('[data-battle-reason]')).not.toHaveTextContent('All your defending units fell');
+    expect(view.container.querySelector('[data-battle-retreat]')).toBeVisible();
+  });
+});
+
 describe('what was on the other side', () => {
   /**
    * ON A DECISIVE THE LIST IS COMPLETE. Nothing survived, so their losses ARE

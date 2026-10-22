@@ -32,6 +32,7 @@ import { baysInUse } from '../src/services/flight.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   giveUnits,
+  giveResearch,
   grant,
   levelWorld,
   giveInstrument,
@@ -79,6 +80,8 @@ interface ReportView {
   opponentPlanetId: string | null;
   neutral: boolean;
   yourLosses: Record<string, number>;
+  yourRetreated?: Record<string, number>;
+  theirRetreatedCount?: number;
   theirLosses: Record<string, number>;
   /** The caller's OWN board at contact. Never the opponent's. D121. */
   yourFleet: Record<string, number>;
@@ -162,7 +165,7 @@ describe('battle reports', () => {
   };
 
   /** A raid that actually resolves, with something worth taking. */
-  const raid = async (wasps = 40): Promise<string> => {
+  const raid = async (wasps = 68): Promise<string> => {
     await grant(f.db, theirs, 40_000, 4_000);
     await giveUnits(f.db, theirs, { BASTION: 6 });
     await giveUnits(f.db, mine, { DART: wasps, COURIER: 3 });
@@ -171,6 +174,52 @@ describe('battle reports', () => {
     await worker().tick();
     return launch.missionId;
   };
+
+  /** Three single shots need two hits per Bastion: exactly one of two guns dies. */
+  const partialRaid = async (): Promise<string> => {
+    await grant(f.db, theirs, 40_000, 4_000);
+    await giveUnits(f.db, theirs, { BASTION: 2 });
+    await giveUnits(f.db, mine, { CATACLYSM: 1 });
+    await giveResearch(f.db, mine, 'SHIP_POWER', 5);
+    await giveResearch(f.db, mine, 'SHIP_ARMOR', 5);
+    await giveResearch(f.db, mine, 'SHIP_SHIELDS', 4);
+    const launch = await launchAttack(f.db, mine, theirs, { CATACLYSM: 1 }, f.clock);
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+    return launch.missionId;
+  };
+
+  it('publishes only the viewer’s own retreat count and strips raw owner telemetry', async () => {
+    const missionId = await raid();
+    const [stored] = await f.db.select().from(battleReports).where(eq(battleReports.missionId, missionId));
+    const rounds = stored!.rounds.map((round, i) => i === 0 ? { ...round, attackerLosses: { DART: 3 }, casualties: [
+      { side: 'ATTACK' as const, stackId: missionId, playerId: f.playerIds[0]!, fleet: { DART: 1 } },
+      { side: 'ATTACK' as const, stackId: 'ally', playerId: f.playerIds[2]!, fleet: { DART: 2 } },
+    ], retreats: [
+      { side: 'ATTACK' as const, stackId: missionId, playerId: f.playerIds[0]!, fleet: { DART: 1 } },
+      { side: 'DEFENCE' as const, stackId: 'host', playerId: f.playerIds[1]!, fleet: { CORSAIR: 2 } },
+    ] } : { ...round, retreats: [] });
+    await f.db.update(battleReports).set({ rounds }).where(eq(battleReports.id, stored!.id));
+    const [a] = await reportsFor(0), [d] = await reportsFor(1);
+    expect(a!.yourRetreated).toEqual({ DART: 1 });
+    expect(a!.theirRetreatedCount).toBe(2);
+    expect(a!.rounds[0]!.attackerLosses).toEqual({ DART: 1 });
+    expect(d!.theirRetreatedCount).toBe(1);
+    expect(d!.yourRetreated).toEqual({ CORSAIR: 2 });
+    for (const r of [a!, d!]) {
+      expect(r).not.toHaveProperty('theirRetreated');
+      for (const round of r.rounds) {
+        expect(round).not.toHaveProperty('retreats');
+        expect(round).not.toHaveProperty('casualties');
+      }
+    }
+    // Missing telemetry means a historical battle, not a recorded zero retreat.
+    const legacy = rounds.map(({ retreats: _retreats, ...round }) => round);
+    await f.db.update(battleReports).set({ rounds: legacy }).where(eq(battleReports.id, stored!.id));
+    const [old] = await reportsFor(0);
+    expect(old!.yourRetreated).toBeUndefined();
+    expect(old!.theirRetreatedCount).toBeUndefined();
+  });
 
   it('tells the attacker what they destroyed and what it cost', async () => {
     const missionId = await raid();
@@ -269,7 +318,7 @@ describe('battle reports', () => {
     );
     expect(defender!.dominionBreakdown).toEqual({
       ruleVersion: MULTI_WORLD.dominionLinearRulesetVersion,
-      lootValue: -breakdown.lootValue,
+      lootValue: -breakdown.lootValue || 0,
       enemyPermanentLossValue: breakdown.ownPermanentLossValue,
       ownPermanentLossValue: breakdown.enemyPermanentLossValue,
       rawExchange: defender!.dominion,
@@ -553,7 +602,7 @@ describe('battle reports', () => {
 
     /** A partial success takes loot, but combat itself never switches production off. */
     it('reports no production downtime to either side after a partial raid', async () => {
-      await raid();
+      await partialRaid();
       const [attacker] = await reportsFor(0);
       const [defender] = await reportsFor(1);
 
@@ -565,7 +614,7 @@ describe('battle reports', () => {
     it('takes 15 loyalty from a lightly defeated colony below the fault gate and shows it', async () => {
       await f.db.update(planets).set({ kind: 'COLONY' }).where(eq(planets.id, theirs));
       await setLevel(f.db, theirs, 'CORE', 5);
-      const missionId = await raid();
+      const missionId = await partialRaid();
       const [report] = await f.db.select().from(battleReports)
         .where(eq(battleReports.missionId, missionId));
       expect(report!.grade).toBe('PARTIAL');
@@ -891,7 +940,7 @@ describe('what a battle leaves behind', () => {
   });
 
   const fight = async (): Promise<void> => {
-    await giveUnits(f.db, theirs, { BASTION: 6 });
+    await giveUnits(f.db, theirs, { BASTION: 6, CORSAIR: 2 });
     await giveUnits(f.db, mine, { DART: 80, COURIER: 3 });
     const launch = await launchAttack(f.db, mine, theirs, { DART: 80, COURIER: 3 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MOBILE_HULLS, MONUMENT_CAPACITY, MULTI_WORLD, allocateMonumentDominion, fleetValue, hangarLoad, type Fleet } from '@astera/rules';
+import { MOBILE_HULLS, MONUMENT_CAPACITY, MULTI_WORLD, allocateMonumentDominion, fleetValue, hangarLoad, resolveMonumentCombat, seededFrom, fleetCount, type Fleet, type TechLevels } from '@astera/rules';
 import { clanMemberships, clans, hpRadiationSources, monumentBattles, monumentBattleParticipants, monuments, monumentShipLots, monumentWaves, notifications, planets, players, scheduledEvents, seasons, units } from '../src/db/schema.js';
 import { resolveMonumentArrival } from '../src/services/monumentArrival.js';
 import { lockMonument, settleMonument } from '../src/services/monument.js';
@@ -15,13 +15,13 @@ let f: Fixture;
 let m: typeof monuments.$inferSelect;
 let start: number;
 const at = (minutes: number) => new Date(start + minutes * 60_000);
-async function wave(owner: number, fleet: Fleet, options: { eta?: number; hold?: boolean; cargo?: number; damageBp?: number; remainderBp?: number; purpose?: 'ATTACK' | 'REINFORCE'; id?: string } = {}) {
+async function wave(owner: number, fleet: Fleet, options: { eta?: number; hold?: boolean; cargo?: number; damageBp?: number; remainderBp?: number; purpose?: 'ATTACK' | 'REINFORCE'; id?: string; tech?: TechLevels } = {}) {
   const id = options.id ?? randomUUID();
   const origin = (await f.db.select().from(planets).where(eq(planets.id, f.planetIds[owner]!)))[0]!;
   const eta = at(options.eta ?? 1);
   const [row] = await f.db.insert(monumentWaves).values({ id, seasonId: f.seasonId, monumentId: m.id,
     playerId: f.playerIds[owner]!, originPlanetId: origin.id, unitLocation: `monument:${id}`, purpose: options.purpose ?? 'ATTACK',
-    sentFleet: fleet, tech: {}, route: [{ from: { x: origin.x, y: origin.y, z: origin.z }, to: { x: m.x, y: m.y, z: m.z }, startMs: start, endMs: eta.getTime() }],
+    sentFleet: fleet, tech: options.tech ?? {}, route: [{ from: { x: origin.x, y: origin.y, z: origin.z }, to: { x: m.x, y: m.y, z: m.z }, startMs: start, endMs: eta.getTime() }],
     status: options.hold ? 'HOLD' : 'OUTBOUND', arriveAt: options.hold ? null : eta, heldAt: options.hold ? at(0) : null,
     sentAt: at(0), radiationSettledAt: at(0), fuelPaid: 0,
     reservedBulk: options.purpose === 'REINFORCE' ? hangarLoad(fleet) : 0,
@@ -54,31 +54,120 @@ beforeEach(async () => {
 afterAll(async () => { await (await testDb()).close(); });
 
 describe('chronological monument arrivals and physical battle settlement', () => {
-  it('returns surviving defender cargo with its load and makes room for the attacker exactly once', async () => {
-    const attackFleet = { CORSAIR: 3, COURIER: 1 };
-    await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!,
-      capacity: hangarLoad(attackFleet), productionPerMinute: 0 }).where(eq(monuments.id, m.id));
-    const defender = await wave(1, { CORSAIR: 1, COURIER: 1 }, { hold: true, cargo: 12.5 });
-    await f.db.update(monumentShipLots).set({ returnFuelReserve: 2000 }).where(and(
-      eq(monumentShipLots.waveId, defender.id), eq(monumentShipLots.hull, 'COURIER')));
-    const attacker = await wave(0, attackFleet);
+  it.each([[2, 1, 0], [3, 1, 0], [5, 2, 0], [2, 1, 2500], [3, 1, 2500], [5, 2, 2500]])(
+    'settles the reported happy path: %i Corsairs take %i holding Corsairs carrying %i bp damage', async (sent, held, damageBp) => {
+      await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!, productionPerMinute: 0 }).where(eq(monuments.id, m.id));
+      const defender = await wave(1, { CORSAIR: held }, { hold: true, damageBp });
+      const attacker = await wave(0, { CORSAIR: sent });
+      await arrive(attacker);
+      await arrive(attacker);
+      const battles = await f.db.select().from(monumentBattles);
+      expect(battles).toHaveLength(1);
+      expect(battles[0]!.control).toBe('ATTACKER');
+      expect((await f.db.select().from(monuments))[0]?.controllerPlayerId).toBe(f.playerIds[0]);
+      expect((await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, attacker.id)))[0]?.status).toBe('HOLD');
+      const [own] = await f.db.transaction(tx => readMonumentBattleReports(tx, f.playerIds[1]!, 10));
+      const alive = own!.yourSurvivors.CORSAIR ?? 0;
+      expect(alive + (own!.yourLosses.CORSAIR ?? 0)).toBe(held);
+      expect(own!.yourRetreated.CORSAIR ?? 0).toBe(alive);
+      const [back] = await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, defender.id));
+      expect(back!.status).toBe(alive > 0 ? 'RETURNING' : 'LOST');
+      if (alive > 0) {
+        const lots = await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, back!.id));
+        expect(lots.reduce((n, lot) => n + lot.count, 0)).toBe(alive);
+        expect(lots.every(lot => lot.damageBp >= damageBp)).toBe(true);
+      }
+    },
+  );
+
+  it('returns BOTH sides when every active warship retreats and nobody can hold the monument', async () => {
+    await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!, productionPerMinute: 0 }).where(eq(monuments.id, m.id));
+    const damage = [{ hull: 'CORSAIR' as const, count: 1, damageBp: 7000 }];
+    const ids = Array.from({ length: 512 }, (_, i) => `00000000-0000-4000-9000-${String(i + 1).padStart(12, '0')}`);
+    const id = ids.find(id => {
+      const r = resolveMonumentCombat([{ contributionId: 'a', playerId: 'a', fleet: { CORSAIR: 1 }, damage, tech: { tech: {} } }],
+        [{ stackId: 'd', playerId: 'd', fleet: { CORSAIR: 1 }, damage, tech: { tech: {} } }], seededFrom('monument-battle', id), true);
+      return r.control === 'EMPTY' && fleetCount(r.attackerRetreated ?? {}) === 1 && fleetCount(r.defenderRetreated ?? {}) === 1;
+    });
+    if (!id) throw new Error('the deterministic fixture could not arrange mutual retreat');
+    const defender = await wave(1, { CORSAIR: 1 }, { hold: true, damageBp: 7000 });
+    const attacker = await wave(0, { CORSAIR: 1 }, { id, damageBp: 7000 });
+    await arrive(attacker);
+    for (const row of [attacker, defender]) {
+      expect((await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, row.id)))[0]?.status).toBe('RETURNING');
+    }
+    expect((await f.db.select().from(monuments))[0]).toMatchObject({ controllerPlayerId: null, controllerClanId: null, emptySince: at(1) });
+    const [battle] = await f.db.select().from(monumentBattles);
+    expect(battle).toMatchObject({ control: 'EMPTY', attackerLossValue: 0, defenderLossValue: 0 });
+  });
+
+  it('returns a retreated warship with its exact wounds, explains it privately, and never calls it cargo', async () => {
+    await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!, productionPerMinute: 0 }).where(eq(monuments.id, m.id));
+    const ids = Array.from({ length: 64 }, (_, i) => `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`);
+    const id = ids.find(id => fleetCount(resolveMonumentCombat([
+      { contributionId: 'a', playerId: 'a', fleet: { CORSAIR: 3 }, tech: { tech: {} } },
+    ], [{ stackId: 'd', playerId: 'd', fleet: { CORSAIR: 1 }, tech: { tech: {} } }], seededFrom('monument-battle', id), true).defenderRetreated ?? {}) === 1);
+    if (!id) throw new Error('the deterministic fixture could not arrange a retreat');
+    const defender = await wave(1, { CORSAIR: 1 }, { hold: true });
+    const attacker = await wave(0, { CORSAIR: 3 }, { id });
     await arrive(attacker);
     await arrive(attacker);
     const [battle] = await f.db.select().from(monumentBattles);
-    expect(battle).toMatchObject({ control: 'ATTACKER', defenderSurvivors: { CORSAIR: 0, COURIER: 1 }, lootDeuterium: 0 });
+    expect(await f.db.select().from(monumentBattles)).toHaveLength(1);
+    expect(battle).toMatchObject({ control: 'ATTACKER', defenderSurvivors: { CORSAIR: 1 }, defenderLossValue: 0 });
+    const [back] = await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, defender.id));
+    expect(back).toMatchObject({ status: 'RETURNING', returnReason: 'DEFEAT' });
+    const [lot] = await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, defender.id));
+    expect(lot!.damageBp).toBeGreaterThan(0);
+    const [own] = await f.db.transaction(tx => readMonumentBattleReports(tx, f.playerIds[1]!, 10));
+    const [enemy] = await f.db.transaction(tx => readMonumentBattleReports(tx, f.playerIds[0]!, 10));
+    expect(own).toMatchObject({ yourRetreated: { CORSAIR: 1 }, yourSurvivors: { CORSAIR: 1 }, yourLosses: {}, defenderCargoRetreated: false });
+    expect(enemy).toMatchObject({ yourRetreated: {}, theirRetreatedCount: 1, theirLosses: {}, defenderCargoRetreated: false });
+    expect(enemy).not.toHaveProperty('theirRetreated');
+    expect(enemy).not.toHaveProperty('retreats');
+    const [notice] = await f.db.select().from(notifications).where(and(eq(notifications.refId, battle!.id), eq(notifications.playerId, f.playerIds[1]!)));
+    expect(notice!.payload).toMatchObject({ retreated: 1, unitsLost: 0, defenderCargoRetreated: false });
+    await f.db.transaction(tx => resolveMonumentReturn(tx, { waveId: back!.id, generation: back!.generation, at: back!.arriveAt! }));
+    const landed = await f.db.select().from(units).where(and(eq(units.planetId, f.planetIds[1]!), eq(units.hull, 'CORSAIR'), eq(units.location, 'home')));
+    expect(landed.reduce((n, row) => n + row.count, 0)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('returns surviving defender cargo with its load and makes room for the attacker exactly once', async () => {
+    const attackFleet = { CORSAIR: 3, ARGOSY: 1 };
+    const tech = { SHIP_ARMOR: 5, SHIP_SHIELDS: 4 };
+    // Stronger defender armour makes the last cargo survive the SAME-round fire.
+    // Pin the mission seed so the test covers actual cargo yield, not warship retreat.
+    const ids = Array.from({ length: 128 }, (_, i) => `00000000-0000-4000-a000-${String(i + 1).padStart(12, '0')}`);
+    const id = ids.find(id => {
+      const r = resolveMonumentCombat([{ contributionId: 'a', playerId: 'a', fleet: attackFleet, tech: { tech: {} } }],
+        [{ stackId: 'd', playerId: 'd', fleet: { CORSAIR: 1, ARGOSY: 1 }, tech: { tech } }], seededFrom('monument-battle', id), true);
+      return r.control === 'ATTACKER' && (r.defenderSurvivors.CORSAIR ?? 0) === 0
+        && r.defenderSurvivors.ARGOSY === 1 && r.defenderDamage.every(lot => lot.hull !== 'ARGOSY');
+    });
+    if (!id) throw new Error('the deterministic fixture could not preserve defending cargo');
+    await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!,
+      capacity: hangarLoad(attackFleet), productionPerMinute: 0 }).where(eq(monuments.id, m.id));
+    const defender = await wave(1, { CORSAIR: 1, ARGOSY: 1 }, { hold: true, tech });
+    await f.db.update(monumentShipLots).set({ returnFuelReserve: 2000, deuterium: 12.5 }).where(and(
+      eq(monumentShipLots.waveId, defender.id), eq(monumentShipLots.hull, 'ARGOSY')));
+    const attacker = await wave(0, attackFleet, { id });
+    await arrive(attacker);
+    await arrive(attacker);
+    const [battle] = await f.db.select().from(monumentBattles);
+    expect(battle).toMatchObject({ control: 'ATTACKER', defenderSurvivors: { ARGOSY: 1 }, lootDeuterium: 0 });
     expect(await f.db.select().from(monumentBattles)).toHaveLength(1);
     const [retreat] = await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, defender.id));
     expect(retreat).toMatchObject({ status: 'RETURNING', returnReason: 'DEFEAT' });
     expect((await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, attacker.id)))[0]?.status).toBe('HOLD');
     expect((await f.db.select().from(monuments))[0]).toMatchObject({ controllerPlayerId: f.playerIds[0], emptySince: null });
     const [cargo] = await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, defender.id));
-    expect(cargo).toMatchObject({ hull: 'COURIER', count: 1, deuterium: 12.5, damageBp: 0 });
+    expect(cargo).toMatchObject({ hull: 'ARGOSY', count: 1, deuterium: 12.5, damageBp: 0 });
     expect(cargo!.returnFuelReserve).toBe(0);
     expect(cargo!.fuelRefund).toBeGreaterThan(0);
     expect(cargo!.fuelRefund).toBeLessThan(2000);
     const [participant] = await f.db.select().from(monumentBattleParticipants).where(and(
       eq(monumentBattleParticipants.battleId, battle!.id), eq(monumentBattleParticipants.playerId, f.playerIds[1]!)));
-    expect(participant).toMatchObject({ losses: { CORSAIR: 1 }, survivors: { COURIER: 1 } });
+    expect(participant).toMatchObject({ losses: { CORSAIR: 1 }, survivors: { ARGOSY: 1 } });
     const reports = await f.db.transaction(tx => readMonumentBattleReports(tx, f.playerIds[0]!, 10));
     expect(reports[0]).toMatchObject({ defenderCargoRetreated: true, theirLosses: { CORSAIR: 1 } });
     const land = () => f.db.transaction(tx => resolveMonumentReturn(tx, {
@@ -86,7 +175,7 @@ describe('chronological monument arrivals and physical battle settlement', () =>
     }));
     expect((await land())?.deliveredDeuterium).toBe(12.5);
     expect(await land()).toBeNull();
-    expect((await f.db.select().from(units).where(and(eq(units.planetId, f.planetIds[1]!), eq(units.hull, 'COURIER'), eq(units.location, 'home'))))[0]?.count).toBe(1);
+    expect((await f.db.select().from(units).where(and(eq(units.planetId, f.planetIds[1]!), eq(units.hull, 'ARGOSY'), eq(units.location, 'home'))))[0]?.count).toBe(1);
   });
 
   it('keeps cargo-only defenders holding when both sides have only cargo', async () => {
@@ -426,8 +515,8 @@ describe('chronological monument arrivals and physical battle settlement', () =>
     await f.db.update(monuments).set({ garrison: { CITADEL: 1 }, garrisonTemplate: { CITADEL: 1 } }).where(eq(monuments.id, m.id));
     // One initial shield per battle: 28 Darts penetrate it over three rounds,
     // but two full attacks still leave this Citadel alive across the ±8% band.
-    const first = await wave(0, { DART: 28 });
-    const second = await wave(1, { DART: 28 }, { eta: 2 });
+    const first = await wave(0, { DART: 8 });
+    const second = await wave(1, { DART: 8 }, { eta: 2 });
     await arrive(first);
     const [before] = await f.db.select().from(monuments);
     expect(before!.garrisonDamage.length).toBeGreaterThan(0);

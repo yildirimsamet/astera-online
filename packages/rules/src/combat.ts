@@ -20,8 +20,20 @@ import {
 } from './hulls.js';
 import type { Fleet, Grade, HullId, Rng } from './types.js';
 import { partitionCombatFleet } from './shipMaintenance.js';
+import { resolveRandomBattle } from './randomBattle.js';
+
+export interface CombatOwnerFleet {
+  side: 'ATTACK' | 'DEFENCE';
+  playerId: string;
+  stackId: string;
+  fleet: Fleet;
+}
 
 export interface CombatRound {
+  /** Immutable owner-specific departures, never physical casualties. */
+  retreats?: CombatOwnerFleet[];
+  /** Owner-specific physical deaths; never includes retreats. */
+  casualties?: CombatOwnerFleet[];
   round: number;
   /** The bounded shot multiplier rolled for each side. Present on newly resolved reports. */
   attackerRoll?: number;
@@ -44,6 +56,13 @@ export interface CombatRound {
 }
 
 export interface CombatResult {
+  /** Active armed survivors that had firing eligibility at entry, preserving per-ship identity. */
+  attackerCombatSurvivors?: Fleet;
+  /** Included in physical survivors; excluded from later fire, control and loot. */
+  attackerRetreated?: Fleet;
+  defenderRetreated?: Fleet;
+  attackerRetreatDamage?: HpDamageLot[];
+  defenderRetreatDamage?: HpDamageLot[];
   /** Exact normal fire absorbed while a firing armed defender remained; excludes Nullifier bonus. */
   shieldProtectedArmed?: number;
   grade: Grade;
@@ -251,13 +270,14 @@ export interface JointAttackerStack {
   tech: CombatSide;
   /**
    * DAMAGE THE WAVE ARRIVED WITH — radiation on the way in. Absent means every ship is
-   * whole, which is every battle a defender fights: nothing at `home` is ever damaged.
+   * whole. Home and station fleets may also carry unrepaired wounds.
    */
   damage?: HpDamageLots;
 }
 
 /** What one contribution did and what it cost, once the board is settled. */
 export interface JointContributionOutcome {
+  retreated?: Fleet;
   contributionId: string;
   playerId: string;
   sent: Fleet;
@@ -591,6 +611,11 @@ export function resolveJointCombat(
   defenderTech: CombatSide,
   preciseDamage = false,
 ): JointCombatResult {
+  if (defenderTech.shipShields !== false || stacks.some(stack => stack.tech.shipShields !== false)) {
+    const { defenders: _defenders, ...joint } = resolveRandomBattle(stacks, [{ stackId: 'host', playerId: '', fleet: defender, tech: defenderTech }],
+      shield, rng, preciseDamage, false);
+    return joint;
+  }
   if (stacks.length === 0) {
     throw new RangeError('a combined attack needs at least one contribution');
   }
@@ -708,10 +733,6 @@ export function resolveJointCombat(
       // is exact even when the resolver carried fractional damage internally.
       shieldAbsorbed: shieldBefore - shieldAfter,
       shieldBreakerDamage: Math.round(specialistAbsorbed),
-      ...(defenderTech.shipShields === false && stacks.every(stack => stack.tech.shipShields === false) ? {} : {
-        attackerShipShieldAbsorbed: Math.round(attackerApplied.shieldAbsorbed),
-        defenderShipShieldAbsorbed: Math.round(defenderApplied.shieldAbsorbed),
-      }),
       attackerHullDamage: Math.round(landed),
       attackerLosses,
       defenderLosses,
@@ -907,6 +928,8 @@ export function resolveCombat(
   );
   return {
     grade: joint.grade,
+    ...(joint.attackerRetreated ? { attackerCombatSurvivors: joint.attackerCombatSurvivors, attackerRetreated: joint.attackerRetreated, defenderRetreated: joint.defenderRetreated,
+      attackerRetreatDamage: joint.attackerRetreatDamage, defenderRetreatDamage: joint.defenderRetreatDamage } : {}),
     lossRatio: joint.lossRatio,
     rounds: joint.rounds,
     shieldLeft: joint.shieldLeft,
@@ -946,6 +969,7 @@ export interface DefenderStack {
 
 /** What one defending stack sent in, kept and lost. */
 export interface DefenderOutcome {
+  retreated?: Fleet;
   stackId: string;
   playerId: string;
   sent: Fleet;
@@ -982,19 +1006,10 @@ const mergedFleet = (fleets: readonly Fleet[]): Fleet => {
 };
 
 /**
- * THE BATTLE, WHOEVER HOLDS THE LINE.
- *
- * ONE DEFENDING STACK IS `resolveJointCombat`, CALLED, not re-derived: every battle
- * without clan support — which is every battle in a season dealt before ruleset 15 —
- * goes down the exact path `combat-parity-digest.test.ts` pins.
- *
- * SEVERAL STACKS reuse the attacking side's own machinery in the other direction. The
- * attackers' fire is split across (stack, hull) by hit points — `jointReturnFire`, the
- * function the defender always used against a joint pool — and the line's casualties go
- * through `applyJointCasualties`, so equal hulls at equal armour form one cohort whoever
- * owns them and a supporter's damaged ships die first. The line fires back stack by
- * stack, each at its owner's research. Support cover, the Aegis and the grade are the
- * whole line's. Still one attacker roll and one defender roll a round.
+ * Shared solo/joint/supported entrypoint. The current engine fires one random shot
+ * per eligible ship and preserves physical retreats with their owner and wounds.
+ * Explicit shipShields:false on EVERY side retains the historical cohort replay
+ * arithmetic below; golden replay tests pin that path.
  */
 export function resolveBattle(
   stacks: readonly JointAttackerStack[],
@@ -1014,6 +1029,9 @@ export function resolveBattle(
   }) : defendingLine;
   if (monument && shield !== 0) throw new RangeError('a monument fleet has no planet shield');
   assertDefendingLine(defenders, monument, precise, maintenance);
+  if (defenders.some(stack => stack.tech.shipShields !== false) || stacks.some(stack => stack.tech.shipShields !== false)) {
+    return resolveRandomBattle(stacks, defenders, shield, rng, precise, maintenance);
+  }
   const passiveAttackers = maintenance && stacks.some((stack) => fleetCount(partitionCombatFleet(stack.fleet, stack.damage).excluded) > 0);
   if (defenders.length === 1 && !monument && !passiveAttackers && combatLots(defenders[0]!.fleet, defenders[0]!.damage, precise).length === 0) {
     const only = defenders[0]!;

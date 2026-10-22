@@ -155,7 +155,7 @@ describe('what it says about the reading', () => {
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/armed ships’ and ground guns’ resource value/i);
-    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/3\.5 times/i);
+    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/4\.0 times/i);
     expect(screen.getByTestId('ruler-rule')).not.toHaveTextContent('{{');
     // Why a line is a range, and what a success is.
     expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/partial and full success require at least one ship surviving/i);
@@ -163,7 +163,7 @@ describe('what it says about the reading', () => {
   });
 
   it.each([
-    ['en', '3.5'], ['tr', '3,5'], ['de', '3,5'], ['fr', '3,5'], ['es', '3,5'], ['ja', '3.5'],
+    ['en', '4.0'], ['tr', '4,0'], ['de', '4,0'], ['fr', '4,0'], ['es', '4,0'], ['ja', '4.0'],
   ] as const)('resolves the current retreat ratio in the rule and verdicts in %s', async (language, ratio) => {
     await i18n.changeLanguage(language);
     const { rerender } = render(

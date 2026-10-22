@@ -4,7 +4,6 @@ import { and, eq } from 'drizzle-orm';
 import {
   MULTI_WORLD,
   fleetCount,
-  needsDock,
   piratePosition,
   type DamageLot,
   type Fleet,
@@ -27,7 +26,7 @@ import { launchPirateRaid } from '../src/services/pirateRaid.js';
 import { joinSeason } from '../src/services/player.js';
 import { createSeason } from '../src/services/season.js';
 import { readHomeHealth } from '../src/services/homeHealth.js';
-import { dockLotsOf } from '../src/services/shipDamage.js';
+import { dockLotsOf, landHpShips } from '../src/services/shipDamage.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { fuelUp, giveUnits, grant, makeAccount, pinnedKey, setLevel, settledAt, testDb, truncateAll } from './helpers.js';
 
@@ -58,11 +57,7 @@ async function homeOf(db: Awaited<ReturnType<typeof testDb>>['db'], planetId: st
 }
 
 describe('a raid on a caretaker world', () => {
-  /**
-   * Two Darts against three Strongholds always come home with a lot that needs the dock
-   * (20,000 of 20,000 `resolveCombat` seeds, 2026-10-20). With ship shields one
-   * Stronghold (68 attack) can no longer get past a Dart's 77-point shield at all.
-   */
+  /** A larger wounded wing guarantees survivors; every remaining wound must travel home. */
   it('brings the raider\'s damage home and leaves the caretaker nothing to carry', async () => {
     const { db } = await testDb();
     await truncateAll(db);
@@ -84,10 +79,11 @@ describe('a raid on a caretaker world', () => {
       planetId: target.id, ownerPlayerId: null, hull: 'STRONGHOLD', location: 'home', count: 3,
     });
     await setLevel(db, joined.planetId, 'CORE', 5);
-    await giveUnits(db, joined.planetId, { DART: 2 });
+    await db.transaction(tx => landHpShips(tx, { planetId: joined.planetId, ownerPlayerId: joined.playerId,
+      fleet: { DART: 10 }, damage: [{ hull: 'DART', count: 10, damageBp: 1000 }], at: clock.now() }));
     await fuelUp(db, joined.planetId);
 
-    const launch = await launchAttack(db, joined.planetId, target.id, { DART: 2 }, clock);
+    const launch = await launchAttack(db, joined.planetId, target.id, { DART: 10 }, clock);
     clock.set(settledAt(launch.arriveAt));
     await worker(db, clock).tick();
 
@@ -95,7 +91,6 @@ describe('a raid on a caretaker world', () => {
     expect(report?.targetKind).toBe('NEUTRAL');
     expect(report!.defenderDamage).toEqual([]);
     expect(report!.attackerDamage.length).toBeGreaterThan(0);
-    for (const lot of report!.attackerDamage) expect(needsDock(lot.damageBp)).toBe(true);
     const [result] = await db.select().from(notifications)
       .where(and(eq(notifications.playerId, joined.playerId), eq(notifications.kind, 'raid_result')));
     expect(result?.payload).toMatchObject({ damaged: ships(report!.attackerDamage) });

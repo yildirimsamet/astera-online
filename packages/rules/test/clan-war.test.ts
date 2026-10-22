@@ -15,6 +15,7 @@ import {
   counterMult,
   fleetCargo,
   fleetValue,
+  hullTech,
   hangarCapacity,
   jointWarFuel,
   jointWarFuelLegs,
@@ -497,7 +498,7 @@ describe('the combined attacking board', () => {
     expect(joint.attackerLossValue).toBe(single.attackerLossValue);
     expect(joint.defenderLossValue).toBe(single.defenderLossValue);
     expect(joint.defenceSalvage).toEqual(single.defenceSalvage);
-    expect(joint.rounds).toEqual(single.rounds);
+    expect(joint.rounds.map(({ retreats: _retreats, casualties: _casualties, ...round }) => round)).toEqual(single.rounds.map(({ retreats: _retreats, casualties: _casualties, ...round }) => round));
   });
 
   it('spends the same number of rolls however many owners are in the pool', () => {
@@ -517,7 +518,7 @@ describe('the combined attacking board', () => {
       stack('c3', 'p3', { CORSAIR: 25 }),
       stack('c4', 'p4', { CORSAIR: 25 }),
     ]);
-    expect(one).toBe(COMBAT.rounds * 2);
+    expect(one).toBe(2 + COMBAT.rounds * 2);
     expect(four).toBe(one);
   });
 
@@ -578,16 +579,17 @@ describe('the combined attacking board', () => {
       expect(split.attackerSurvivors).toEqual(whole.attackerSurvivors);
       expect(split.grade).toBe(whole.grade);
       expect(split.contributions.reduce((sum, row) => sum + (row.losses.DART ?? 0), 0))
-        .toBe(whole.attackerLosses.DART);
+        .toBe(whole.attackerLosses.DART ?? 0);
     };
     compare(100, 4);
     compare(50, 8);
   });
 
   it('fires each owner with their own research and no one elses', () => {
+    const wall: Fleet = { BASTION: 1000 };
     const plain = resolveJointCombat(
       [stack('c1', 'p1', { DART: 20 }), stack('c2', 'p2', { DART: 20 })],
-      defence,
+      wall,
       0,
       seeded(),
       { ...NO_TECH, damageMult: 0 },
@@ -597,18 +599,21 @@ describe('the combined attacking board', () => {
         stack('c1', 'p1', { DART: 20 }, { SHIP_POWER: 10 }),
         stack('c2', 'p2', { DART: 20 }),
       ],
-      defence,
+      wall,
       0,
       seeded(),
       { ...NO_TECH, damageMult: 0 },
     );
     const damage = (r: typeof plain, id: string) =>
       r.contributions.find((c) => c.contributionId === id)!.hullDamage;
-    // Identical wings with identical research land identically...
-    expect(damage(plain, 'c1')).toBeCloseTo(damage(plain, 'c2'), 6);
-    // ...and one commander's Ship Power lifts THEIR wing and nobody else's.
-    expect(damage(oneResearched, 'c1')).toBeGreaterThan(damage(oneResearched, 'c2'));
-    expect(damage(oneResearched, 'c1')).toBeGreaterThan(damage(plain, 'c1'));
+    const expected = (r: typeof plain, researched: boolean) => 20 * HULLS.DART.atk
+      * counterMult(HULLS.DART.cls, HULLS.BASTION.cls)
+      * hullTech(researched ? { SHIP_POWER: 10 } : {}, 'DART').atk
+      * r.rounds.reduce((sum, row) => sum + row.attackerRoll!, 0);
+    expect(damage(plain, 'c1')).toBeCloseTo(expected(plain, false), 6);
+    expect(damage(plain, 'c2')).toBeCloseTo(expected(plain, false), 6);
+    expect(damage(oneResearched, 'c1')).toBeCloseTo(expected(oneResearched, true), 6);
+    expect(damage(oneResearched, 'c2')).toBeCloseTo(expected(oneResearched, false), 6);
   });
 
   it('keeps every casualty with the owner who sent it', () => {
@@ -683,38 +688,13 @@ describe('the combined attacking board', () => {
     expect(credited).toBeGreaterThan(0);
   });
 
-  it('caps each defender hull before assigning mixed-class damage credit', () => {
-    const stacks = [
-      stack('darts', 'p1', { DART: 100 }),
-      stack('pikes', 'p2', { PIKE: 10 }),
-    ];
-    const defenders: Fleet = { THORN: 1, BASTION: 1 };
-    const out = resolveJointCombat(stacks, defenders, 0, flat(), NO_TECH);
-    const defenderHp = Object.entries(defenders).reduce(
-      (sum, [hull, count]) => sum + HULLS[hull as keyof Fleet].hp * count,
-      0,
-    );
-    const expected = stacks.map(() => 0);
-    for (const [defender, count] of Object.entries(defenders) as [keyof Fleet, number][]) {
-      const hp = HULLS[defender].hp * count;
-      const perStack = stacks.map((attacker) => Object.entries(attacker.fleet).reduce(
-        (sum, [hull, amount]) => sum
-          + HULLS[hull as keyof Fleet].atk * amount
-          * counterMult(HULLS[hull as keyof Fleet].cls, HULLS[defender].cls)
-          * hp / defenderHp,
-        0,
-      ));
-      const incoming = perStack.reduce((sum, damage) => sum + damage, 0);
-      const cap = incoming > hp ? hp / incoming : 1;
-      for (let index = 0; index < perStack.length; index += 1) {
-        expected[index]! += perStack[index]! * cap;
-      }
-    }
-
-    expect(out.contributions.find((row) => row.contributionId === 'darts')!.hullDamage)
-      .toBeCloseTo(expected[0]!, 6);
-    expect(out.contributions.find((row) => row.contributionId === 'pikes')!.hullDamage)
-      .toBeCloseTo(expected[1]!, 6);
+  it('caps actual per-shot credit at the hull the hit target had left, excluding overkill', () => {
+    const out = resolveJointCombat([stack('darts', 'p1', { DART: 100 }), stack('pikes', 'p2', { PIKE: 10 })],
+      { THORN: 1, BASTION: 1 }, 0, flat(), NO_TECH);
+    const total = out.contributions.reduce((sum, row) => sum + row.hullDamage, 0);
+    expect(out.defenderSurvivors).toEqual({});
+    expect(total).toBeCloseTo(HULLS.THORN.hp + HULLS.BASTION.hp, 6);
+    for (const row of out.contributions) expect(row.hullDamage).toBeGreaterThanOrEqual(0);
   });
 
   it('spends the Aegis once for the whole allied side', () => {

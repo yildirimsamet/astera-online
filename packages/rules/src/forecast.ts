@@ -1,4 +1,5 @@
 import { resolveBattle, resolveCombat, soloStack, type CombatResult, type CombatSide } from './combat.js';
+import { activeBattleFleet } from './battleRetreat.js';
 import { partitionCombatFleet } from './shipMaintenance.js';
 import type { HpDamageLots } from './radiationHp.js';
 import { pirateOverrun } from './pirates.js';
@@ -317,7 +318,7 @@ function fight(wing: Fleet, wall: Fleet, shield: number, input: ForecastInput) {
  * the wing does not survive is no success at all, on both lines.
  */
 const successOf = (result: CombatResult): Grade =>
-  fleetCount(result.attackerSurvivors) === 0 ? 'REPELLED' : result.grade;
+  fleetCount(activeBattleFleet(result.attackerSurvivors, result.attackerRetreated)) === 0 ? 'REPELLED' : result.grade;
 
 /**
  * THE WALK IS UPWARD, FROM NOTHING, AND STOPS AT THE FIRST LOSS.

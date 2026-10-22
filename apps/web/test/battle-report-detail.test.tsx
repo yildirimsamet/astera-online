@@ -351,7 +351,7 @@ describe('what a battle report explains', () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByText(/You dealt enough damage for partial success/)).toBeVisible();
+    expect(await screen.findByText(/You forced enough defending value out of combat/)).toBeVisible();
   });
   /**
    * THE DENOMINATOR. Twelve of fifteen is a disaster and twelve of eighty is the
@@ -613,7 +613,7 @@ describe('what a battle report explains', () => {
    */
   it('explains the word stamped at the top, without a number to decode', async () => {
     await openSheet(report({ grade: 'PARTIAL' }));
-    expect(screen.getByText(/You dealt enough damage for partial success/)).toBeVisible();
+    expect(screen.getByText(/You forced enough defending value out of combat/)).toBeVisible();
     expect(screen.queryByText(/broke most/)).not.toBeInTheDocument();
     expect(screen.queryByText(/defence value/)).not.toBeInTheDocument();
     expect(document.querySelector('[data-battle-reason]')).not.toHaveTextContent(/42%/);
@@ -633,7 +633,7 @@ describe('what a battle report explains', () => {
    */
   it('tells the defender what happened to THEM, not what happened to someone', async () => {
     await openSheet(report({ attacking: false, grade: 'PARTIAL' }));
-    expect(screen.getByText(/The attacker dealt enough damage for partial success/)).toBeVisible();
+    expect(screen.getByText(/The attacker forced enough of your defending value out of combat/)).toBeVisible();
     expect(screen.queryByText(/You broke most of the defence/)).not.toBeInTheDocument();
   });
 
@@ -732,9 +732,9 @@ describe('what a battle report explains', () => {
     expect(key.getByText(/strong match ×1.6/)).toBeVisible();
     expect(key.getByText(/weak match ×0.625/)).toBeVisible();
     expect(key.getByText(/−8% to \+8%/)).toBeVisible();
-    expect(key.getByText(/split by the targets’ share of total HP/)).toBeVisible();
-    expect(key.getByText(/unfinished damage carries into the next round/)).toBeVisible();
-    expect(key.getByText(/Support ships stay protected/)).toBeVisible();
+    expect(key.getByText(/random living enemy/)).toBeVisible();
+    expect(key.getByText(/Hull damage and spent ship shields carry between rounds/)).toBeVisible();
+    expect(key.getByText(/remaining shots in the same round/)).toBeVisible();
   });
 
   it('shows the exact result and loot rules without revealing hidden survivors', async () => {
@@ -743,9 +743,9 @@ describe('what a battle report explains', () => {
 
     const formula = within(document.querySelector<HTMLElement>('[data-combat-formula]')!);
     expect(formula.getByText('How the result is decided')).toBeVisible();
-    expect(formula.getByText(/DECISIVE.*every defending unit.*shield.*60%/)).toBeVisible();
+    expect(formula.getByText(/DECISIVE.*no defending unit.*shield.*60%/)).toBeVisible();
     expect(formula.getByText(/PARTIAL.*42%.*30%/)).toBeVisible();
-    expect(formula.getByText(/REPELLED.*less than 42%.*nothing/)).toBeVisible();
+    expect(formula.getByText(/REPELLED.*less than 42%.*no loot/)).toBeVisible();
     expect(formula.queryByText(/survivors/i)).not.toBeInTheDocument();
   });
 
@@ -1011,7 +1011,7 @@ describe('what a report about a pirate explains', () => {
     await openSheet(pirate());
     const sheet = screen.getByRole('dialog');
     expect(within(sheet).queryByText(/Aegis/i)).toBeNull();
-    expect(within(sheet).queryByText(/shield/i)).toBeNull();
+    expect(within(sheet).queryByText(/No active Aegis/i)).toBeNull();
   });
 
   it('explains personal shields in a new pirate report without claiming the shot was unobstructed', async () => {

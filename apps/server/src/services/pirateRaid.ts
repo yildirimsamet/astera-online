@@ -1,5 +1,6 @@
 import { and, eq, gt, inArray } from 'drizzle-orm';
 import {
+  activeBattleFleet,
   ENGAGEMENT_STANDOFF,
   HULLS,
   MOBILE_HULLS,
@@ -568,7 +569,7 @@ async function settleArrival(
     attacker: { tech: raid.tech ?? {} },
     defender: { tech: {}, damageMult: pirateStats(spec.level).damageMult },
   };
-  const fought = resolveBattle([soloStack(attacking, combatTech.attacker, raid.damage ?? undefined)],
+  const fought = resolveBattle([{ ...soloStack(attacking, combatTech.attacker, raid.damage ?? undefined), contributionId: raid.id, playerId: raid.ownerPlayerId }],
     [{ stackId: 'pirate', playerId: '', fleet: crew, tech: combatTech.defender, maintenanceExempt: true }],
     0, seededFrom(raid.id), hpRadiationApplies(origin.rulesetVersion) ? 'HP_PLANET' : 'PLANET', true);
   /*
@@ -629,7 +630,7 @@ async function settleArrival(
         result.grade,
         // WHAT THEY CAN CARRY, and the real throttle on this whole feature: cargo
         // room is bought with combat power on the way out. T8/D150.
-        fleetCargo(result.attackerSurvivors, raid.tech ?? {}),
+        fleetCargo(activeBattleFleet(result.attackerSurvivors, result.attackerRetreated), raid.tech ?? {}),
       )
     : null;
   /**
@@ -667,10 +668,10 @@ async function settleArrival(
     && uncapped.alloy + uncapped.crystal + uncapped.deuterium
       > loot.alloy + loot.crystal + loot.deuterium;
 
-  // The crew this raid actually met, so the towed hull is one it shot down rather
-  // than one an earlier commander had already destroyed.
-  const captured = survived
-    ? pirateCapture(spec.level, crew, result.grade, seededFrom('pirate:capture', raid.id))
+  // Only a ship physically destroyed in this fight can be towed. Retreats
+  // are living ships, and raiders that left cannot claim a capture.
+  const captured = fleetCount(activeBattleFleet(result.attackerSurvivors, result.attackerRetreated)) > 0
+    ? pirateCapture(spec.level, result.defenderLosses, result.grade, seededFrom('pirate:capture', raid.id))
     : null;
 
   /**
@@ -692,7 +693,7 @@ async function settleArrival(
   */
   const { salvage, field: wreck } = settleWreck(
     pirateBattleWreck(result.attackerLosses, result.defenderLosses),
-    result.attackerSurvivors,
+    activeBattleFleet(result.attackerSurvivors, result.attackerRetreated),
   );
   const lifted = salvage.alloy + salvage.crystal + salvage.deuterium > 0;
   const wreckValue = wreck ? wreck.alloy + wreck.crystal + wreck.deuterium : 0;

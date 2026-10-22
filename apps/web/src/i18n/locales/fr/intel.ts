@@ -135,6 +135,9 @@ export const intel = {
   },
 } as const;
 export const reports = {
+  retreated: 'Retraite en vie : {{count}}. Ces vaisseaux conservent leurs dégâts de coque.',
+  enemyRetreated: "{{count}} vaisseaux ennemis ont fui et survécu.",
+  turningPointRetreated: "Après le tour {{round}}, aucun vaisseau de guerre ne combattait encore. Certains ont fui vivants.",
   heading: "Rapports de combat",
   newest: "plus récents d’abord",
   empty:
@@ -240,7 +243,7 @@ export const reports = {
       },
       defending: {
         DECISIVE:
-          "Toutes tes unités défensives ont été détruites lors de ce combat.",
+          "Aucune unité ne combattait encore pour ta défense.",
         PARTIAL:
           "L’attaquant n’a pas obtenu une victoire totale : certaines de tes unités ou ton bouclier ont tenu.",
         REPELLED: "Ta défense a tenu. L’attaquant n’a obtenu aucun butin.",
@@ -287,7 +290,7 @@ export const reports = {
     brokenUnitsRemain:
       "Le rapport affiche 0 de bouclier, mais certaines unités défensives ont survécu.",
     brokenDefenceGone:
-      "Le bouclier a été brisé. Toutes les unités défensives ont également été détruites pendant ce combat.",
+      "Le bouclier a cédé et aucune unité défensive ne combattait encore.",
     brokenMeaning:
       "La valeur du bouclier est arrondie dans le rapport. Voir 0 ne signifie pas à lui seul que toute la défense a été détruite.",
     absorbed: "{{amount}} dégâts absorbés par le bouclier",
@@ -339,14 +342,14 @@ export const reports = {
       "2 · Avantage de classe : affrontement favorable ×{{strong}} ; défavorable ×{{weak}}.",
     formulaRoll: "3 · Effet aléatoire du tour : de −%{{min}} à +%{{max}}.",
     formulaHp:
-      "Les dégâts sont répartis selon la part de chaque type de cible dans les points de vie totaux.",
+      "Chaque unité armée tire une fois sur une cible vivante aléatoire. Les dégâts excédentaires d’un tir sont perdus.",
     formulaCarry:
-      "Une unité n’est détruite que lorsque tous ses points de vie sont épuisés ; les dégâts partiels sont conservés au tour suivant.",
+      "Les dégâts de coque et le bouclier dépensé persistent entre les tours. Ils ne se régénèrent pas pendant la bataille.",
     formulaSupport:
-      "Les vaisseaux de soutien restent protégés tant qu’au moins une unité de combat survit de leur côté.",
+      "Après les unités de combat, les tirs restants du même tour atteignent les cargos.",
     resultHeading: "Détermination du résultat",
     resultDecisive:
-      "DÉCISIF · toutes les unités défensives ont été détruites et le bouclier est tombé à zéro · jusqu’à %{{decisiveLoot}} des réserves exposées peuvent être prises avant la limite de soute. Production non collectée : {{decisiveBuffer}} %.",
+      "DÉCISIF · aucune unité défensive ne combat encore et le bouclier actif est franchi · {{decisiveLoot}}% du stock exposé et {{decisiveBuffer}}% de la production non collectée, avant les limites de soute active.",
     /**
 
     * MÊME RÈGLE, SANS SA MOITIÉ INAPPLICABLE. Le bouclier est une structure
@@ -354,11 +357,11 @@ export const reports = {
     * que le joueur ne peut jamais rencontrer ici.
       */
     resultDecisivePirate:
-      "DÉCISIF · tous les vaisseaux de l’équipage ont été détruits · jusqu’à %{{decisiveLoot}} du butin peut être pris avant les limites de cargaison ; remorquer une coque n’est possible que dans ce cas.",
+      "DÉCISIF · aucun pirate ne combat encore · {{decisiveLoot}}% du trésor avant les limites de soute active. Seul un vaisseau réellement détruit peut être capturé.",
     resultPartial:
-      "PARTIEL · au moins %{{threshold}} de la valeur des unités défensives a été détruite · jusqu’à %{{partialLoot}} des réserves exposées peuvent être prises avant la limite de soute. Production non collectée : {{partialBuffer}} %.",
+      "PARTIEL · au moins {{threshold}}% de la valeur défensive détruite ou retirée · {{partialLoot}}% du stock exposé et {{partialBuffer}}% de la production non collectée, avant les limites de soute active.",
     resultRepelled:
-      "REPOUSSÉ · moins de %{{threshold}} de la valeur des unités défensives a été détruite · aucune ressource ne peut être prise.",
+      "REPOUSSÉ · moins de {{threshold}}% de la valeur défensive détruite ou retirée · aucun butin.",
     round: "Tour {{round}}",
     fire: "1 · Tirs simultanés",
     fireNote:
@@ -431,33 +434,33 @@ export const reports = {
   why: {
     attacking: {
       DECISIVE:
-        "Tu as détruit tout ce qui défendait la cible et fait tomber son bouclier ; c’est pourquoi tout le butin disponible s’est ouvert.",
+        "Toutes les unités défensives ont été détruites ou se sont retirées. Le butin disponible est accessible aux vaisseaux encore présents.",
       DECISIVE_WIPED:
-        "Tu as détruit toutes les unités défensives, mais aucun de tes vaisseaux n’a survécu pour transporter le butin.",
+        "Toutes les unités défensives ont été détruites ou se sont retirées. Aucun vaisseau attaquant n’a survécu pour transporter du butin.",
       DECISIVE_WITHOUT_SHIELD:
-        "Tu as détruit tout ce qui défendait la cible ; c’est pourquoi tout le butin disponible s’est ouvert.",
+        "Toutes les unités défensives ont été détruites ou se sont retirées. Le butin disponible est accessible aux vaisseaux encore présents.",
       WALKOVER:
         "Aucune unité ne défendait la cible ; les ressources pillables étaient directement accessibles à ta flotte.",
       PARTIAL:
-        "Tu as infligé assez de dégâts pour obtenir un succès partiel, mais pas une victoire totale. Seule une partie du butin s’est ouverte ; si aucun de tes vaisseaux n’a survécu pour le transporter, tu ne peux rien prendre.",
+        "Une valeur défensive suffisante a été détruite ou s’est retirée. Une partie du butin est disponible.",
       PARTIAL_WIPED:
-        "Tu as suffisamment endommagé la défense pour obtenir un succès partiel, mais aucun de tes vaisseaux n’a survécu pour transporter le butin.",
+        "Une valeur défensive suffisante a été détruite ou s’est retirée pour un succès partiel. Aucun vaisseau attaquant n’a survécu pour transporter du butin.",
       REPELLED:
-        "La valeur en ressources des unités détruites n’a pas atteint %{{threshold}} de la valeur totale des unités défensives présentes au début du combat. L’attaque a donc été repoussée ; le nombre de vaisseaux ou le simple fait de briser le bouclier ne suffit pas.",
+        "Les unités détruites ou retirées n’ont pas atteint {{threshold}}% de la valeur défensive initiale. L’attaque a été repoussée.",
     },
     defending: {
       DECISIVE:
-        "Toutes tes unités défensives sont tombées et ton bouclier a été brisé ; tes ressources pillables se sont ouvertes à la flotte attaquante. La quantité emportée dépend de la capacité de transport des survivants.",
+        "Toutes les unités défensives ont été détruites ou se sont retirées. Le butin disponible est accessible aux vaisseaux encore présents.",
       DECISIVE_WITHOUT_SHIELD:
-        "Toutes tes unités défensives sont tombées ; tes ressources pillables se sont ouvertes à la flotte attaquante. La quantité emportée dépend de la capacité de transport des survivants.",
+        "Toutes les unités défensives ont été détruites ou se sont retirées. Le butin disponible est accessible aux vaisseaux encore présents.",
       DECISIVE_WIPED:
-        "Toutes tes unités défensives sont tombées, mais aucun vaisseau attaquant n’a survécu. Le butin était accessible, mais plus personne ne pouvait le transporter.",
+        "Toutes les unités défensives ont été détruites ou se sont retirées. Aucun vaisseau attaquant n’a survécu pour transporter du butin.",
       WALKOVER:
         "Aucune unité ne défendait ton monde ; les ressources pillables étaient directement accessibles à la flotte attaquante.",
       PARTIAL:
-        "L’attaquant a infligé assez de dégâts pour obtenir un succès partiel, mais pas une victoire totale. Seule une partie du butin s’est ouverte.",
+        "Une valeur défensive suffisante a été détruite ou s’est retirée. Une partie du butin est disponible.",
       PARTIAL_WIPED:
-        "L’attaquant a infligé assez de dégâts pour obtenir un succès partiel, mais aucun de ses vaisseaux n’a survécu pour transporter quoi que ce soit. Rien n’a quitté ton monde.",
+        "Une valeur défensive suffisante a été détruite ou s’est retirée pour un succès partiel. Aucun vaisseau attaquant n’a survécu pour transporter du butin.",
       REPELLED:
         "Ta défense a tenu. Ils n’ont pas réussi à passer et n’ont emporté aucune ressource.",
     },
