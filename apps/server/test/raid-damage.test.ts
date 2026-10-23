@@ -150,12 +150,16 @@ describe('persistent damage on a raid', () => {
 
   it('leaves a season dealt before the rule exactly as it was', async () => {
     await ruleset(13);
-    await giveUnits(f.db, target, { STRONGHOLD: 1 });
-    const { report, back } = await raid({ DART: 2 });
+    await giveUnits(f.db, target, { CITADEL: 2 });
+    for (const planetId of [raider, target]) {
+      await giveResearch(f.db, planetId, 'SHIP_ARMOR', 5);
+      await giveResearch(f.db, planetId, 'SHIP_SHIELDS', 4);
+    }
+    const { report, back } = await raid({ CITADEL: 2 });
 
     expect(report.defenderDamage).toEqual([]);
     expect(report.attackerDamage).toEqual([]);
-    expect((await home(target)).STRONGHOLD).toBe(1);
+    expect((await home(target)).CITADEL ?? 0).toBe(2 - (report.defenderLosses.CITADEL ?? 0));
     expect(await dockLotsOf(f.db, target)).toEqual([]);
     expect(back?.damage ?? null).toBeNull();
     expect(await payloadOf(f.playerIds[1]!, 'raided')).not.toHaveProperty('docked');
@@ -163,7 +167,7 @@ describe('persistent damage on a raid', () => {
     const survivors = fleetCount(back!.fleet);
     f.clock.set(back!.arriveAt);
     await worker().tick();
-    expect((await home(raider)).DART).toBe(survivors);
+    expect((await home(raider)).CITADEL).toBe(survivors);
     expect(await dockLotsOf(f.db, raider)).toEqual([]);
   });
 });

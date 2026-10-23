@@ -228,3 +228,10 @@ Diğer işlerin kirli ana çalışma dizinine dokunmadan ayrı dal/worktree kull
 - Honor kayıp fixture'ı için bağımsız sayısal kontrol: 60 Dart'ın toplam
   can + kalkanı 5775; 16 Harpoon + 20 Dart'ın en düşük ilk tur hasarı
   6038,88. Gerçek ölüm/debit yolu tek hedefe ateş varsayımına dayanmıyor.
+- Node 22'deki son sekiz-dosya koşusu 103 PASS / 1 FAIL verdi; yedi dosya tamamen
+  geçti. Ek hata eski sezon solo baskın fixture'ında iki Dart'ın bazen tamamının
+  ölmesine karşın mutlaka dönüş misyonu beklenmesiydi. Aynı test, araştırmalı
+  ikişer Kale ile kuruldu; savunan envanteri fiziksel kayıplara göre, saldıranın
+  dönüşü gerçek sağ kalanlara göre kontrol ediliyor. Eski sezon hâlâ kalıcı yara
+  kaydetmiyor. Bu tek dosyanın üç testi temiz geçince önceki yedi temiz dosyayla
+  birlikte VPS kapsamı 104 başarılı teste tamamlanır; ilk koşu gizlenmez.
