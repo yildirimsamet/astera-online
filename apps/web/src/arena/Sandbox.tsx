@@ -1,14 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefCallback } from 'react';
-import { ARENA_TUNING as T, FARM_POINTS, createSandboxWorld, holdPoints, type Pilot, type SteeringSettings } from '@astera/rules/arena';
+import { ARENA_TUNING as T, FARM_POINTS, SHIP_CLASSES, TACTICS, createSandboxWorld, holdPoints, type Pilot, type ShipClass, type SteeringSettings,
+  type Tactic } from '@astera/rules/arena';
+import { ClassPicker, TacticPicker } from './ClassPicker.js';
 import { FARM_TONE } from './farmColors.js';
-import { renderPreset } from '../lib/quality.js';
+import { arenaGraphics, setArenaGraphics, type ArenaGraphicsChoice } from './graphics.js';
+import { GraphicsPicker } from './GraphicsPicker.js';
+import { LoopLine } from './LoopLine.js';
+import { PingWheel } from './PingWheel.js';
+import { placesOf } from './landmarks.js';
 import { loadArenaAssets, type ArenaAssets, type LoadProgress } from './assets/load.js';
+import { assetTextureBytes } from './assets/memory.js';
 import { openReferenceSession } from './access.js';
 import { createArenaAudio } from './audio.js';
 import { createArenaClient, type ArenaClient, type HudRefs } from './client.js';
 import { FlightControls } from './Controls.js';
+import { ModelCredits } from './credits.js';
 import { ArenaHud, type HudBind } from './Hud.js';
-import { createControls } from './input.js';
+import { GAME_KEY, ONE_PRESS_KEYS, createControls } from './input.js';
 import { createArenaNetwork, type Standing } from './network.js';
 import { createHudStore } from './store.js';
 import { arenaCopy, type ArenaCopy } from './copy.js';
@@ -18,6 +26,16 @@ import './arena.css';
 type Screen = 'loading' | 'preflight' | 'flight' | 'result';
 /** Seconds the result stays up before the pilot is flown back in: the loop never stops on a menu. */
 const RETURN_AFTER = 5;
+/** The class picked last, remembered on this device only; the Kılavuz, the middle ship, for a first flight. */
+const SHIP_KEY = 'astera-arena-ship';
+function storedShip(): ShipClass {
+  try { const stored = localStorage.getItem(SHIP_KEY); return SHIP_CLASSES.find(ship => ship === stored) ?? 'kilavuz'; } catch { return 'kilavuz'; }
+}
+/** The B slot picked last (Y4c), likewise; smoke for a first flight. */
+const TACTIC_KEY = 'astera-arena-tactic';
+function storedTactic(): Tactic {
+  try { const stored = localStorage.getItem(TACTIC_KEY); return TACTICS.find(tactic => tactic === stored) ?? 'smoke'; } catch { return 'smoke'; }
+}
 
 function useRefList<T extends HTMLElement>(count: number): [(index: number) => RefCallback<T>, T[]] {
   const list = useMemo<T[]>(() => [], []);
@@ -27,7 +45,9 @@ function useRefList<T extends HTMLElement>(count: number): [(index: number) => R
 
 export default function Sandbox({ onLeave, credential }: { onLeave: () => void; credential?: () => Promise<string | null> }) {
   const c = arenaCopy();
-  const [world] = useState(() => createSandboxWorld());
+  const [ship, setShip] = useState<ShipClass>(storedShip);
+  const [tactic, setTactic] = useState<Tactic>(storedTactic);
+  const [world] = useState(() => createSandboxWorld({ ship, tactic }));
   const [controls] = useState(createControls);
   const [store] = useState(createHudStore);
   const [audio] = useState(createArenaAudio);
@@ -35,6 +55,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const diagLines = useSyncExternalStore(listener => diag.subscribe(listener), () => diag.lines.length > 0 ? diag.lines[diag.lines.length - 1] ?? '' : '', () => '');
   const [diagOpen, setDiagOpen] = useState(() => new URLSearchParams(location.search).has('diag'));
   const [settings] = useState<SteeringSettings>(() => ({ sensitivity: 1, invertPitch: false }));
+  const [graphics, setGraphics] = useState<ArenaGraphicsChoice>(arenaGraphics);
   const [network] = useState(() => createArenaNetwork(world, settings, () => { controls.clear(); }, credential));
   const connection = useSyncExternalStore(network.subscribe, network.getSnapshot, network.getSnapshot);
   // A signed-in pilot came for the shared room; solo stays one tap away for practice.
@@ -47,21 +68,32 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const [warming, setWarming] = useState(false);
   const [menu, setMenu] = useState(false);
   const [tip, setTip] = useState(0);
-  const status = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+  // The page needs the flight's phase. The HUD numbers change ten times a second; the page
+  // re-rendering for them rebuilt everything under it, most of an S22 frame (V6g).
+  const phase = useSyncExternalStore(store.subscribe, () => store.getSnapshot().phase, () => store.getSnapshot().phase);
   const canvas = useRef<HTMLCanvasElement>(null);
   const client = useRef<ArenaClient | null>(null);
+  const pickGraphics = (choice: ArenaGraphicsChoice): void => {
+    audio.ui(); setArenaGraphics(choice); setGraphics(choice); client.current?.setGraphics(choice);
+  };
   const root = useRef<HTMLElement>(null);
   const [enemyRef, enemies] = useRefList<HTMLDivElement>(12);
   const [threatRef, threats] = useRefList<HTMLDivElement>(8);
-  const refs = useRef<Partial<Record<keyof Omit<HudRefs, 'enemies' | 'threats'>, HTMLElement | null>>>({});
-  const single = useCallback((key: keyof Omit<HudRefs, 'enemies' | 'threats' | 'radar'>) => (node: HTMLDivElement | null) => { refs.current[key] = node; }, []);
+  const [placeRef, places] = useRefList<HTMLDivElement>(placesOf(world.layout).length);
+  const [pingRef, pings] = useRefList<HTMLDivElement>(3);
+  const refs = useRef<Partial<Record<keyof Omit<HudRefs, 'enemies' | 'threats' | 'places' | 'pings'>, HTMLElement | null>>>({});
+  // The map mounts and unmounts while flying: the client reads this one object every frame.
+  const mapRefs = useRef<HudRefs['map']>({ self: null, altitude: null });
+  const single = useCallback((key: keyof Omit<HudRefs, 'enemies' | 'threats' | 'places' | 'pings' | 'radar'>) => (node: HTMLDivElement | null) => { refs.current[key] = node; }, []);
   const bind = useMemo<HudBind>(() => ({
     reticle: single('reticle'), lead: single('lead'), hit: single('hit'), kill: single('kill'), exit: single('exit'),
-    landing: single('landing'),
-    crystal: single('crystal'), damage: single('damage'), rear: single('rear'),
+    landing: single('landing'), circle: single('circle'), incoming: single('incoming'),
+    crystal: single('crystal'), damage: single('damage'),
     radar: (node: HTMLCanvasElement | null) => { refs.current.radar = node; },
-    enemies: enemyRef, threats: threatRef,
-  }), [single, enemyRef, threatRef]);
+    mapSelf: (node: SVGGElement | null) => { mapRefs.current.self = node; },
+    mapAltitude: (node: HTMLElement | null) => { mapRefs.current.altitude = node; },
+    enemies: enemyRef, threats: threatRef, places: placeRef, pings: pingRef,
+  }), [single, enemyRef, threatRef, placeRef, pingRef]);
 
   useEffect(() => () => { audio.dispose(); network.dispose(); diag.dispose(); }, [audio, network, diag]);
   useEffect(() => { const id = setInterval(() => { setTip(n => n + 1); }, 4200); return () => { clearInterval(id); }; }, []);
@@ -75,9 +107,11 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     diag.push(`load start · ${navigator.userAgent.slice(0, 80)}`);
     const references = import.meta.env.DEV ? Promise.resolve(true)
       : packCredential ? packCredential().then(openReferenceSession) : Promise.resolve(false);
-    void references.then(on => loadArenaAssets(on, 16, p => { if (live) setProgress(p); })).then(result => {
-      if (!live) return;
-      diag.push(`assets ${String(Math.round(performance.now() - started))} ms · models ${String(result.rocks.length + result.rivals.length + 1)} · fx ${String(result.fx.size)}`);
+    // Not for a mount already taken back (StrictMode's in development): two packs side by side
+    // killed a phone's renderer.
+    void references.then(on => live ? loadArenaAssets(on, 16, p => { if (live) setProgress(p); }) : null).then(result => {
+      if (!live || !result) return;
+      diag.push(`assets ${String(Math.round(performance.now() - started))} ms · models ${String(result.colliders.size + result.rivals.length + result.classes.size + 1)} · fx ${String(result.fx.size)} · tex ${String(Math.round(assetTextureBytes(result) / 1048576))} MB`);
       audio.setSources(result.sounds, result.music);
       setAssets(result);
     });
@@ -90,7 +124,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     try {
     created = createArenaClient({
       canvas: canvas.current, assets, world, controls, audio, settings, network: () => modeRef.current === 'online' ? network : null, store,
-      quality: renderPreset(),
+      graphics: arenaGraphics(),
       name: (pilot: Pilot) => {
         const role = network.roles.get(pilot.id) ?? world.brains.get(pilot.id)?.role;
         if (role) return c.roles[role];
@@ -118,39 +152,43 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     client.current?.setHud({
       reticle: refs.current.reticle ?? null, lead: refs.current.lead ?? null, hit: refs.current.hit ?? null, kill: refs.current.kill ?? null,
       exit: refs.current.exit ?? null, crystal: refs.current.crystal ?? null, damage: refs.current.damage ?? null,
-      landing: refs.current.landing ?? null,
-      rear: refs.current.rear ?? null, radar: refs.current.radar instanceof HTMLCanvasElement ? refs.current.radar : null,
-      enemies, threats,
+      landing: refs.current.landing ?? null, circle: refs.current.circle ?? null, incoming: refs.current.incoming ?? null,
+      radar: refs.current.radar instanceof HTMLCanvasElement ? refs.current.radar : null,
+      enemies, threats, places, pings, map: mapRefs.current,
     });
-  }, [screen, enemies, threats, assets, warming]);
+  }, [screen, enemies, threats, places, pings, assets, warming]);
 
   // The result follows a flight that actually ended. Right after "fly again" the store can
   // still hold the last flight's end for a frame; that must not end the new one.
   const [ended, setEnded] = useState(false);
-  const lastPhase = useRef(status.phase);
+  const lastPhase = useRef(phase);
   // The hold as it was in flight: a destroyed ship's hold is already scattered by the time the result shows.
   const lastHold = useRef<readonly number[]>([0, 0, 0]);
-  if (status.phase === 'flying' || status.phase === 'fuelOut') lastHold.current = status.hold;
+  useEffect(() => store.subscribe(() => {
+    const s = store.getSnapshot();
+    if (s.phase === 'flying' || s.phase === 'fuelOut') lastHold.current = s.hold;
+  }), [store]);
   useEffect(() => {
-    const was = lastPhase.current; lastPhase.current = status.phase;
-    const over = ['dead', 'extracted', 'towed'].includes(status.phase);
+    const was = lastPhase.current; lastPhase.current = phase;
+    const over = ['dead', 'extracted', 'towed'].includes(phase);
     if (screen === 'flight' && over && (was === 'flying' || was === 'fuelOut')) setEnded(true);
-  }, [screen, status.phase]);
+  }, [screen, phase]);
   useEffect(() => {
     if (!ended || screen !== 'flight') return;
     controls.clear();
-    const timer = setTimeout(() => { setScreen('result'); setEnded(false); }, status.phase === 'dead' ? 2600 : status.phase === 'extracted' ? 1500 : 800);
+    const timer = setTimeout(() => { setScreen('result'); setEnded(false); }, phase === 'dead' ? 2600 : phase === 'extracted' ? 1500 : 800);
     return () => { clearTimeout(timer); };
-  }, [ended, screen, status.phase, controls]);
+  }, [ended, screen, phase, controls]);
 
   useEffect(() => {
     const clear = (): void => { controls.clear(); };
     const hidden = (): void => { if (document.hidden) { clear(); audio.silence(); } };
     const down = (event: KeyboardEvent): void => {
       if (screen !== 'flight' || menu || event.target instanceof HTMLInputElement) return;
-      if (event.repeat && ['KeyQ', 'KeyE', 'KeyL', 'KeyT', 'KeyX'].includes(event.code)) return;
+      if (event.repeat && ONE_PRESS_KEYS.includes(event.code)) return;
       if (event.code === 'KeyL') { event.preventDefault(); client.current?.land(); return; }
-      if (/^(Key[WASDRFXQET]|Space|Shift(Left|Right)|Arrow(Up|Down|Left|Right))$/.test(event.code)) { event.preventDefault(); controls.keyDown(event.code); }
+      if (import.meta.env.DEV && event.code === 'KeyC') { client.current?.toggleColliders(); return; }
+      if (GAME_KEY.test(event.code)) { event.preventDefault(); controls.keyDown(event.code); }
     };
     const up = (event: KeyboardEvent): void => { controls.keyUp(event.code); };
     window.addEventListener('keydown', down); window.addEventListener('keyup', up);
@@ -168,10 +206,22 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
     onLeave();
   };
+  /** The hangar shows the picked class at once; the flight starts in it. */
+  const pickShip = (next: ShipClass): void => {
+    audio.ui(); setShip(next); world.pilot.ship = next;
+    try { localStorage.setItem(SHIP_KEY, next); } catch { /* A private window keeps the choice for this visit only. */ }
+  };
+  const pickTactic = (next: Tactic): void => {
+    audio.ui(); setTactic(next); world.pilot.tactic = next;
+    try { localStorage.setItem(TACTIC_KEY, next); } catch { /* As the class. */ }
+  };
+  /** A missile goes on one press; a shield or repair is aimed (input.ts). Q and E press the B slot flown. */
+  const arm = (): void => { controls.setSignature({ aimed: ship !== 'akinci', self: () => world.pilot.id }); controls.setTactic(tactic); };
   const launch = (): void => {
     audio.unlock(); audio.ui(true); setEnded(false);
-    if (mode === 'online') network.connect();
-    controls.setThrottle(0.5);
+    if (mode === 'online') network.connect(ship, tactic);
+    else Object.assign(world, createSandboxWorld({ ship, tactic }));
+    controls.setThrottle(0.5); arm();
     client.current?.reset();
     setScreen('flight');
     if (root.current?.requestFullscreen && matchMedia('(pointer: coarse)').matches) void root.current.requestFullscreen().catch(() => undefined);
@@ -181,8 +231,8 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const again = (): void => {
     audio.ui(true); controls.clear(); setEnded(false);
     if (mode === 'online') network.dev('restart');
-    else Object.assign(world, createSandboxWorld());
-    controls.setThrottle(0.5);
+    else Object.assign(world, createSandboxWorld({ ship, tactic }));
+    controls.setThrottle(0.5); arm();
     client.current?.reset();
     setScreen('flight');
   };
@@ -201,17 +251,21 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   }, [screen]);
 
   const percent = Math.round(progress.done / Math.max(1, progress.total) * 100);
-  const result = status.phase === 'extracted' ? 'extracted' : status.phase === 'dead' ? 'dead' : 'towed';
+  const status = store.getSnapshot();
+  const result = phase === 'extracted' ? 'extracted' : phase === 'dead' ? 'dead' : 'towed';
   const flown = result === 'extracted' ? status.hold : lastHold.current;
   const flownPoints = holdPoints(flown);
   return <main ref={root} className={`arena-root screen-${screen}`} onContextMenu={event => { event.preventDefault(); }} data-arena="sandbox" data-screen={screen}>
     <canvas ref={canvas} className="arena-canvas" />
     {screen === 'flight' && <>
-      <ArenaHud store={store} bind={bind} onMenu={() => { audio.ui(); controls.clear(); setMenu(true); }}
+      <PingWheel c={c} aim={(x, y) => client.current?.aim(x, y) ?? null}
+        onPing={(kind, target) => { if (target) { client.current?.ping(kind, target); audio.ui(true); } }} />
+      <ArenaHud store={store} bind={bind} layout={world.layout} onMenu={() => { audio.ui(); controls.clear(); setMenu(true); }}
         connection={mode === 'online' ? <div className={`ah-link is-${connection.phase}`}>
-          {connection.phase === 'online' ? <><i />{c.live} · {standingLine(connection.board, c)}<small>{connection.rtt} ms</small></>
+          {connection.phase === 'online' ? <><i role="img" aria-label={c.live} /><span>{standingLine(connection.board, c)}</span><small>{connection.rtt} ms</small></>
             : connection.phase === 'failed' ? <><span>{c.kicks[connection.reason] ?? c.connectionFailed}</span>
-              {connection.reason !== 'denied' && <button onClick={() => { network.connect(); }}>{c.reconnect}</button>}</>
+              {/* Reconnecting cannot help a refusal or an outdated page. */}
+              {connection.reason !== 'denied' && connection.reason !== 'version' && <button onClick={() => { network.connect(ship, tactic); }}>{c.reconnect}</button>}</>
               : <span>{connection.phase === 'reconnecting' ? c.reconnecting : c.connecting}</span>}
         </div> : null} />
       <FlightControls controls={controls} store={store}
@@ -228,9 +282,10 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     </section>}
     {screen === 'preflight' && <section className="arena-preflight">
       <header><span>ASTERA</span><p>{c.brand}</p><small>{c.sector}</small></header>
-      <div className="ap-card">
-        <p className="ap-eyebrow">{c.goalTitle}</p>
-        <ol className="ap-goals">{c.goals.map(([title, detail], i) => <li key={title}><b>{String(i + 1)}</b><strong>{title}</strong><span>{detail}</span></li>)}</ol>
+      <div className="ap-dock">
+        <LoopLine c={c} />
+        <ClassPicker c={c} value={ship} onPick={pickShip} />
+        <TacticPicker c={c} value={tactic} onPick={pickTactic} />
         <div className="ap-mode" role="radiogroup">
           {(['solo', 'online'] as const).map(value => <button key={value} role="radio" aria-checked={mode === value}
             className={mode === value ? 'is-selected' : ''} onClick={() => { audio.ui(); setMode(value); }}>{value === 'solo' ? c.solo : c.shared}</button>)}
@@ -269,10 +324,12 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
       <label>{c.sensitivity}<input type="range" min="0.5" max="1.5" step="0.05" defaultValue={settings.sensitivity}
         onChange={event => { settings.sensitivity = Number(event.target.value); }} /></label>
       <label className="is-check"><input type="checkbox" defaultChecked={settings.invertPitch} onChange={event => { settings.invertPitch = event.target.checked; }} />{c.invert}</label>
+      <GraphicsPicker c={c} value={graphics} onPick={pickGraphics} />
       <label className="is-check"><input type="checkbox" defaultChecked={audio.enabled} onChange={event => { audio.enabled = event.target.checked; }} />{c.sound}</label>
       <p className="ap-keys">{c.keyboard}</p>
       <button className="ap-launch" onClick={() => { audio.ui(); setMenu(false); }}>{c.resume}</button>
       <button className="ap-leave" onClick={leave}>{c.leave}</button>
+      <ModelCredits c={c} />
     </section></div>}
     {import.meta.env.DEV && <button className="arena-dev" onClick={() => { setDiagOpen(open => !open); }}>
       fps {Math.round(client.current?.metrics.fps ?? 0)} · {T.tickRate} Hz · tanı</button>}

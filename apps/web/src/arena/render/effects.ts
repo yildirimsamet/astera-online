@@ -223,6 +223,8 @@ export class Effects {
   private readonly smokeLayer: ParticlePool;
   private readonly heads: ParticlePool;
   private readonly flash: ParticlePool;
+  private readonly trail: ParticlePool;
+  private readonly burn: ParticlePool;
 
   constructor(scene: THREE.Scene, fx: Map<string, THREE.Texture>) {
     this.bolts = new BoltPool(fx.get('laserBlue'), 600);
@@ -242,8 +244,11 @@ export class Effects {
     this.smokeLayer = this.puffs;
     this.heads = new ParticlePool(fx.get('glowDot') ?? fx.get('flare'), 600, 'add');
     this.flash = new ParticlePool(fx.get('muzzleBlue') ?? fx.get('flare'), 64, 'add');
-    for (const pool of [this.smoke, this.debris, this.dust, this.puffs]) scene.add(pool.mesh);
-    for (const pool of [this.glow, this.sparks, this.impacts, this.fire, this.explosion, this.rings, this.cargo, this.heads, this.flash]) scene.add(pool.mesh);
+    // Missile exhaust (Y4c): grey smoke left hanging along the path, hot sparks just behind the motor.
+    this.trail = new ParticlePool(fx.get('smoke') ?? fx.get('steam'), 480, 'luma');
+    this.burn = new ParticlePool(fx.get('glowDot') ?? fx.get('flare'), 160, 'add');
+    for (const pool of [this.smoke, this.debris, this.dust, this.puffs, this.trail]) scene.add(pool.mesh);
+    for (const pool of [this.glow, this.sparks, this.impacts, this.fire, this.explosion, this.rings, this.cargo, this.heads, this.flash, this.burn]) scene.add(pool.mesh);
     scene.add(this.bolts.mesh);
   }
 
@@ -269,6 +274,19 @@ export class Effects {
     this.glow.spawn({ x, y, z, life: 0.12, size0: 14, size1: 6, r: color.r, g: color.g, b: color.b });
     for (let i = 0; i < 10; i++) this.sparks.spawn({ x, y, z, vx: random(-70, 70), vy: random(-70, 70), vz: random(-70, 70), drag: 4,
       life: random(0.2, 0.45), size0: 1.4, size1: 0.3, r: color.r * 1.5, g: color.g * 1.5, b: color.b * 1.5 });
+  }
+
+  /** An illusion breaking (Y4d): a cyan flash and its hull scattering as light, no fire, no wreck. */
+  shatter(x: number, y: number, z: number): void {
+    this.glow.spawn({ x, y, z, life: 0.3, size0: 28, size1: 6, r: 0.45, g: 1.4, b: 1.6 });
+    this.rings.spawn({ x, y, z, life: 0.45, size0: 4, size1: 30, r: 0.35, g: 1.1, b: 1.4, rot: Math.random() * 6 });
+    for (let i = 0; i < 36; i++) {
+      const s = random(30, 110);
+      const vx = random(-1, 1); const vy = random(-1, 1); const vz = random(-1, 1);
+      const length = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1;
+      this.sparks.spawn({ x: x + random(-3, 3), y: y + random(-1.5, 1.5), z: z + random(-3, 3), vx: vx / length * s, vy: vy / length * s, vz: vz / length * s,
+        drag: 2.6, life: random(0.35, 0.8), size0: random(1.2, 2.2), size1: 0.2, r: 0.5, g: 1.4, b: 1.7 });
+    }
   }
 
   boom(x: number, y: number, z: number, scale: number): void {
@@ -340,6 +358,12 @@ export class Effects {
       rot: Math.random() * 6, spin: random(-0.8, 0.8), r: 0.2, g: 0.19, b: 0.19, a: 0.3 + damage * 0.25 });
   }
 
+  /** One mote of a running repair: a green glint off the hull that rises a little and is left behind. */
+  mendMote(at: THREE.Vector3, velocity: THREE.Vector3): void {
+    this.glow.spawn({ x: at.x, y: at.y, z: at.z, vx: velocity.x * 0.85 + random(-2, 2), vy: velocity.y * 0.85 + random(3, 7),
+      vz: velocity.z * 0.85 + random(-2, 2), drag: 1.2, life: random(0.7, 1.1), fadeIn: 0.08, size0: 2.2, size1: 4.2, r: 0.7, g: 2.2, b: 1.2 });
+  }
+
   mining(x: number, y: number, z: number, nx: number, ny: number, nz: number): void {
     this.sparks.spawn({ x, y, z, vx: nx * 30 + random(-25, 25), vy: ny * 30 + random(-25, 25), vz: nz * 30 + random(-25, 25), drag: 2,
       life: random(0.3, 0.6), size0: 1.4, size1: 0.3, r: 0.5, g: 1.5, b: 1.6 });
@@ -347,7 +371,7 @@ export class Effects {
   }
 
   /** Authoritative bolts (and predicted own ones) drawn every frame at their interpolated spot. */
-  drawBolts(world: ArenaWorld, alpha: number, ownId: number, ghosts: boolean, muzzle: Point, forward: Point): void {
+  drawBolts(world: ArenaWorld, alpha: number, ownId: number, ghosts: boolean, muzzle: Point, forward: Point, dt: number): void {
     this.bolts.begin();
     this.heads.begin();
     const add = (bullet: Projectile, own: boolean): void => {
@@ -373,8 +397,37 @@ export class Effects {
     };
     for (const bullet of world.projectiles) if (!(ghosts && bullet.owner === ownId)) add(bullet, bullet.owner === ownId);
     if (ghosts) for (const bullet of world.ghosts) add(bullet, true);
+    this.drawMissiles(world, alpha, dt);
     this.bolts.end();
     this.heads.end();
+  }
+
+  /**
+   * Homing missiles (Y4c), drawn at their interpolated spot: a short hot body with a bright motor,
+   * sparks just behind it and smoke left hanging along the path, so a missile's line reads from afar.
+   */
+  private drawMissiles(world: ArenaWorld, alpha: number, dt: number): void {
+    for (const missile of world.missiles) {
+      if (missile.life <= 0) continue;
+      const x = missile.previous.x + (missile.p.x - missile.previous.x) * alpha;
+      const y = missile.previous.y + (missile.p.y - missile.previous.y) * alpha;
+      const z = missile.previous.z + (missile.p.z - missile.previous.z) * alpha;
+      const speed = Math.sqrt(missile.v.x * missile.v.x + missile.v.y * missile.v.y + missile.v.z * missile.v.z) || 1;
+      const dx = missile.v.x / speed; const dy = missile.v.y / speed; const dz = missile.v.z / speed;
+      this.bolts.add(x, y, z, dx, dy, dz, 7, 1.1, 1, 0.62, 0.3);
+      this.heads.put(x - dx * 3.5, y - dy * 3.5, z - dz * 3.5, 11, 0, 2.1, 1.35, 0.6);
+      // Spread along the stretch flown since the last frame: an even line, not clumps per frame.
+      const emit = Math.max(1, Math.round(dt * 80));
+      for (let i = 0; i < emit; i++) {
+        const back = 3 + Math.random() * speed * dt;
+        const px = x - dx * back; const py = y - dy * back; const pz = z - dz * back;
+        this.trail.spawn({ x: px, y: py, z: pz, vx: random(-1.5, 1.5), vy: random(-1.5, 1.5), vz: random(-1.5, 1.5), drag: 0.5,
+          life: random(1.3, 1.8), fadeIn: 0.05, size0: 1.6, size1: random(6, 8), rot: Math.random() * 6, spin: random(-0.6, 0.6),
+          r: 0.55, g: 0.55, b: 0.58, a: 0.42 });
+        this.burn.spawn({ x: px, y: py, z: pz, vx: -dx * 30 + random(-6, 6), vy: -dy * 30 + random(-6, 6), vz: -dz * 30 + random(-6, 6), drag: 3,
+          life: random(0.1, 0.2), size0: 3.2, size1: 0.8, r: 1.9, g: 1.1, b: 0.45 });
+      }
+    }
   }
 
   /** Spawns visuals for impacts the simulation reported since the last frame. */
@@ -388,6 +441,7 @@ export class Effects {
       this.impactSeen[k] = hit.p.x; this.impactSeen[k + 1] = hit.p.y; this.impactSeen[k + 2] = hit.p.z; this.impactSeen[k + 3] = hit.age;
       if (!fresh || hit.age > 0.25) return;
       if (hit.kind === 'explosion') { this.boom(hit.p.x, hit.p.y, hit.p.z, 1); onExplosion(hit.p.x, hit.p.y, hit.p.z); return; }
+      if (hit.kind === 'hologram') { this.shatter(hit.p.x, hit.p.y, hit.p.z); return; }
       this.hit(hit.p.x, hit.p.y, hit.p.z, hit.kind, ownId >= 0);
       onHit(hit.kind, hit.p.x, hit.p.y, hit.p.z);
     });
@@ -425,6 +479,6 @@ export class Effects {
 
   update(dt: number): void {
     // Simulated pools only; the immediate ones (heads, smoke screens, cargo) are rebuilt in draw.
-    for (const pool of [this.glow, this.sparks, this.impacts, this.fire, this.explosion, this.rings, this.smoke, this.debris, this.dust, this.flash]) pool.update(dt);
+    for (const pool of [this.glow, this.sparks, this.impacts, this.fire, this.explosion, this.rings, this.smoke, this.debris, this.dust, this.flash, this.trail, this.burn]) pool.update(dt);
   }
 }

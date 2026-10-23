@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ARENA_LAYOUT, ARENA_TUNING as T, FARM_POINTS, FIELD_GROUP_SIZE, FIELD_SPAWNS, buildArenaLayout, createInput,
-  createSandboxWorld, holdPoints, pickFieldSpawn, scatter, stepSandboxWorld, type ArenaWorld, type CargoDrop, type Vec3,
+  ARENA_CATALOG, ARENA_LAYOUT, ARENA_TUNING as T, FARM_POINTS, FIELD_GROUP_SIZE, FIELD_SPAWNS, buildArenaLayout, createInput,
+  createSandboxWorld, holdPoints, obstacleSize, pickFieldSpawn, scatter, stepSandboxWorld, surfaceGap, type ArenaWorld, type CargoDrop, type Vec3,
 } from '../../src/arena/index.js';
 import { layoutWith, sphere } from './helpers.js';
 
@@ -46,12 +46,16 @@ describe('farm values', () => {
 
 describe('the zone layout', () => {
   it('places the same clear farm spots on every peer, inside the disc and outside every collider and gate zone', () => {
+    // A kit room's cargo bay is inside the building's bounding ball: there the real walls count.
     expect(buildArenaLayout(20261008).farmSpots).toEqual(ARENA_LAYOUT.farmSpots);
     expect(ARENA_LAYOUT.farmSpots).toHaveLength(T.farmSpots);
     for (const p of ARENA_LAYOUT.farmSpots) {
       expect(Math.hypot(p.x, p.z)).toBeLessThan(T.arenaRadius - 40);
       expect(Math.abs(p.y)).toBeLessThan(T.arenaHalfHeight - 40);
-      for (const o of ARENA_LAYOUT.obstacles) expect(distance(p, o.p)).toBeGreaterThan(o.radius + T.clusterRadius + 5);
+      for (const o of ARENA_LAYOUT.obstacles) {
+        if (o.kind === 'structure') expect(surfaceGap(ARENA_LAYOUT, o.id, p)).toBeGreaterThan(T.clusterRadius + 5);
+        else expect(distance(p, o.p)).toBeGreaterThan(o.radius + T.clusterRadius + 5);
+      }
       for (const gate of [...ARENA_LAYOUT.exits, ...ARENA_LAYOUT.entries]) expect(distance(p, gate)).toBeGreaterThan(T.exitRadius);
     }
   });
@@ -64,10 +68,12 @@ describe('the zone layout', () => {
     expect(of(ALLOY)).toHaveLength(T.alloyDeposits);
     expect(of(DEUTERIUM)).toHaveLength(T.deuteriumDeposits);
     for (const o of [...of(ALLOY), ...of(DEUTERIUM)]) {
-      expect(o?.kind).toBe('rock');
-      expect(o?.shape).toBe('sphere');
-      expect(o?.radius).toBeGreaterThanOrEqual(14);
-      expect(o?.radius).toBeLessThanOrEqual(45);
+      if (o?.shape !== 'mesh') throw new Error('a veined rock is a scanned rock (Y2)');
+      expect(o.kind).toBe('rock');
+      // Field rock a ship can land on, never a landmark giant.
+      expect(ARENA_CATALOG[o.mesh]?.family).toBe('rock');
+      expect(obstacleSize(L, o)).toBeGreaterThanOrEqual(14);
+      expect(obstacleSize(L, o)).toBeLessThanOrEqual(45);
     }
     expect(new Set(L.deposits).size).toBe(L.deposits.length);
     expect(buildArenaLayout(20261008).depositKinds).toEqual(L.depositKinds);
@@ -140,15 +146,16 @@ describe('field ore', () => {
     expect(world.cargoDrops.slice(0, FIELD_SLOTS)).toEqual(before);
   });
 
-  it('leaves the rest of a piece in place when the hold fills up', () => {
+  // Owner 2026-10-22: a piece is never split between two players (magnet.test.ts).
+  it('leaves a piece the hold cannot take whole where it is, whole', () => {
     const world = openWorld();
     const piece = world.cargoDrops.find(drop => drop.active);
     if (!piece) throw new Error('no piece');
     world.pilot.hold[ALLOY] = T.cargoCapacity - 2; world.pilot.cargo = T.cargoCapacity - 2;
     const amount = piece.amount;
     take(world, piece);
-    expect(world.pilot.cargo).toBe(T.cargoCapacity);
-    expect(piece).toMatchObject({ active: true, amount: amount - 2 });
+    expect(world.pilot.cargo).toBe(T.cargoCapacity - 2);
+    expect(piece).toMatchObject({ active: true, amount });
   });
 });
 

@@ -1,4 +1,4 @@
-import { ARENA_TUNING as T, toLocal, type ArenaLayout, type ArenaObstacle, type FlightState, type Vec3 } from '@astera/rules/arena';
+import { ARENA_TUNING as T, closestSurface, surfaceGap, toLocal, type ArenaLayout, type ArenaObstacle, type FlightState, type SurfacePoint, type Vec3 } from '@astera/rules/arena';
 
 /**
  * Landing assist: one tap picks a touchdown point on the nearest surface ahead and flies
@@ -15,26 +15,13 @@ export const landingOffered = (ship: { s: number; landed: number }): boolean => 
 const local = { x: 0, y: 0, z: 0 };
 const REACH = 260;
 
-/** Nearest point of one collider's surface to `from`, lifted by the hull radius, with its normal. */
-function surfacePoint(o: ArenaObstacle, from: Vec3, out: LandingTarget): void {
-  if (o.shape === 'sphere') {
-    let nx = from.x - o.p.x; let ny = from.y - o.p.y; let nz = from.z - o.p.z;
-    const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
-    const reach = o.radius + T.shipHitRadius;
-    out.point = { x: o.p.x + nx * reach, y: o.p.y + ny * reach, z: o.p.z + nz * reach };
-    out.normal = { x: nx, y: ny, z: nz };
-    return;
-  }
-  const dx = from.x - o.p.x; const dz = from.z - o.p.z;
-  const lx = dx * o.ux + dz * o.uz; const ly = from.y - o.p.y; const lz = -dx * o.uz + dz * o.ux;
-  const qx = Math.max(-o.hx, Math.min(o.hx, lx)); const qy = Math.max(-o.hy, Math.min(o.hy, ly)); const qz = Math.max(-o.hz, Math.min(o.hz, lz));
-  let ex = lx - qx; let ey = ly - qy; let ez = lz - qz;
-  let el = Math.hypot(ex, ey, ez);
-  if (el === 0) { ey = 1; el = 1; }
-  ex /= el; ey /= el; ez /= el;
-  const px = qx + ex * T.shipHitRadius; const py = qy + ey * T.shipHitRadius; const pz = qz + ez * T.shipHitRadius;
-  out.point = { x: o.p.x + px * o.ux - pz * o.uz, y: o.p.y + py, z: o.p.z + px * o.uz + pz * o.ux };
-  out.normal = { x: ex * o.ux - ez * o.uz, y: ey, z: ex * o.uz + ez * o.ux };
+const near: SurfacePoint = { x: 0, y: 0, z: 0, nx: 0, ny: 0, nz: 0, d: 0, inside: false };
+
+/** Nearest point of one collider's real surface to `from`, lifted by the hull's belly, with its normal. */
+function surfacePoint(layout: ArenaLayout, o: ArenaObstacle, from: Vec3, out: LandingTarget): void {
+  if (!closestSurface(layout, o.id, from, Infinity, near)) return;
+  out.point = { x: near.x + near.nx * T.bodyRadius, y: near.y + near.ny * T.bodyRadius, z: near.z + near.nz * T.bodyRadius };
+  out.normal = { x: near.nx, y: near.ny, z: near.nz };
 }
 
 /**
@@ -49,7 +36,9 @@ export function findLandingTarget(layout: ArenaLayout, ship: FlightState, crysta
   for (const o of layout.obstacles) {
     const vx = o.p.x - ship.p.x; const vy = o.p.y - ship.p.y; const vz = o.p.z - ship.p.z;
     const centre = Math.hypot(vx, vy, vz);
-    const surface = centre - o.radius;
+    // The bounding ball rules a collider out cheaply; what counts is its real surface (Y2).
+    if (centre - o.radius > REACH) continue;
+    const surface = surfaceGap(layout, o.id, ship.p, REACH);
     if (surface > REACH) continue;
     const facing = centre > 0 ? (vx * fx + vy * fy + vz * fz) / centre : 1;
     const near = surface < 30;
@@ -60,7 +49,7 @@ export function findLandingTarget(layout: ArenaLayout, ship: FlightState, crysta
   }
   if (!best) return null;
   const target: LandingTarget = { index: best.id, point: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 1, z: 0 } };
-  surfacePoint(best, ship.p, target);
+  surfacePoint(layout, best, ship.p, target);
   return target;
 }
 

@@ -1,26 +1,36 @@
 import * as THREE from 'three';
 import {
-  ARENA_TUNING as T, alive, assistSteer, createFlightState, holdPoints, leadPoint, pilotVisible, stepSandboxWorld,
-  type ArenaWorld, type FlightState, type Pilot, type SteeringSettings,
+  ARENA_TUNING as T, CLASS_STATS, aimCone, alive, circleAim, classTuning, createFlightState, holdPoints, leadPoint, lockShare, MAX_REMOTE_PILOTS, pilotInSight, pilotVisible, scanTargets, stepSandboxWorld,
+  type AimCone, type ArenaWorld, type FlightState, type Pilot, type ShipClass, type SteeringSettings, type Vec3,
 } from '@astera/rules/arena';
-import type { QualityPreset } from '../lib/quality.js';
 import type { ArenaAssets, PreparedModel } from './assets/load.js';
 import type { ArenaAudio } from './audio.js';
+import { shipModelFor } from './classes.js';
+import { nearestDeposit } from './compass.js';
 import { createFrameDriver } from './driver.js';
 import type { ArenaControls } from './input.js';
 import type { ArenaNetwork } from './network.js';
+import { altitudeShare, selfTransform } from './map.js';
+import { MARK_RANGE, enemyMarked, sighting, type Sighting } from './marks.js';
 import { ChaseCamera } from './render/camera.js';
-import { createDust } from './render/dust.js';
+import { createDust, RUSH_DUST } from './render/dust.js';
 import { Effects } from './render/effects.js';
 import { createPost } from './render/post.js';
 import { proceduralShip } from './render/procedural.js';
-import { ShipVisual, type ShipPose } from './render/ships.js';
+import { ShipCrowd } from './render/crowd.js';
+import { ShipVisual, type FlameSet, type ShipPose } from './render/ships.js';
+import { ENGINE_FLAME_NOISE_URL } from '../vfx/engineFlames.js';
 import { buildStage } from './render/stage.js';
+import { createColliderView } from './render/colliders.js';
 import { createOre } from './render/ore.js';
 import { applyCorrection, decayCorrection } from './smoothing.js';
 import { createResolution, stepResolution } from './resolution.js';
+import { graphicsFor, type ArenaGraphicsChoice } from './graphics.js';
+import { declutter, landmarkSight, placePriority, placesOf } from './landmarks.js';
+import { createPings, PING_LIFE, pingTarget, type PingKind } from './pings.js';
 import { describeGpu } from './diagnostics.js';
 import { createLandingAssist, findLandingTarget, landingOffered } from './landing.js';
+import { scrapePoint } from './surface.js';
 import type { HudStore } from './store.js';
 import { arenaCopy } from './copy.js';
 import { FARM_HEX } from './farmColors.js';
@@ -30,12 +40,21 @@ export const SHIP_LENGTH = 15;
 export interface HudRefs {
   reticle: HTMLElement | null; lead: HTMLElement | null; hit: HTMLElement | null; kill: HTMLElement | null;
   enemies: HTMLElement[]; threats: HTMLElement[]; exit: HTMLElement | null; crystal: HTMLElement | null;
-  damage: HTMLElement | null; rear: HTMLElement | null; radar: HTMLCanvasElement | null; landing: HTMLElement | null;
+  /** One per named place, in `placesOf(layout)` order. */
+  places: HTMLElement[];
+  /** Slots for the live pings, newest first. */
+  pings: HTMLElement[];
+  damage: HTMLElement | null; radar: HTMLCanvasElement | null; landing: HTMLElement | null;
+  circle: HTMLElement | null;
+  /** Whatever aims at the pilot: on it while it is on screen, on the edge towards it while it is not (Y4c). */
+  incoming: HTMLElement | null;
+  /** The map sheet's own arrow and altitude marker; null while the map is closed. */
+  map: { self: SVGGElement | null; altitude: HTMLElement | null };
 }
 
 export interface ClientOptions {
   canvas: HTMLCanvasElement; assets: ArenaAssets; world: ArenaWorld; controls: ArenaControls; audio: ArenaAudio;
-  settings: SteeringSettings; network: () => ArenaNetwork | null; store: HudStore; quality: QualityPreset;
+  settings: SteeringSettings; network: () => ArenaNetwork | null; store: HudStore; graphics: ArenaGraphicsChoice;
   name: (pilot: Pilot) => string; onContextLost: () => void; log: (line: string) => void;
 }
 
@@ -44,9 +63,24 @@ export type ClientPhase = 'preflight' | 'flight' | 'paused';
 const scratch = new THREE.Vector3();
 const forward = new THREE.Vector3();
 const leadOut = { x: 0, y: 0, z: 0 };
+const focusCone: AimCone = { ex: 0, ey: 0, ez: 0, ax: 0, ay: 0, az: 0, cos: 1 };
 /** Our ship as drawn this frame (interpolated), for HUD maths that must move with the camera. */
 const shooterView = createFlightState();
-const magnet = { x: 0, y: 0 };
+/** Where the guns point this frame (unit, world): the aim circle's answer, or the nose. */
+const gunAim = { x: 0, y: 0, z: 0 };
+/** The focused target moved forward by the aim horizon: where a shot fired now will meet it. */
+const ahead = { x: 0, y: 0, z: 0 };
+const cameraUp = new THREE.Vector3();
+const viewDirection = new THREE.Vector3();
+const TAN_CIRCLE = Math.tan(Math.acos(T.aimCircleCos));
+/** Metres from the centre to the radar's rim. */
+const RADAR_RANGE = 1000;
+/** No sweep running: no marks. */
+const NO_SCAN: readonly number[] = [];
+const moveAhead = (out: { x: number; y: number; z: number }, p: { x: number; y: number; z: number },
+  v: { x: number; y: number; z: number }, horizon: number): void => {
+  out.x = p.x + v.x * horizon; out.y = p.y + v.y * horizon; out.z = p.z + v.z * horizon;
+};
 
 function interpolate(out: { position: THREE.Vector3; quaternion: THREE.Quaternion }, previous: FlightState, current: FlightState, alpha: number): void {
   out.position.set(previous.p.x + (current.p.x - previous.p.x) * alpha, previous.p.y + (current.p.y - previous.p.y) * alpha,
@@ -65,14 +99,14 @@ const velocityOf = (out: { x: number; y: number; z: number }, p: Pilot): void =>
 export function createArenaClient(options: ClientOptions) {
   const { canvas, assets, world, controls, audio, settings, store } = options;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance', stencil: false });
-  // The arena scene is lighter per pixel than the galaxy, so it can afford a sharper frame:
-  // up to 2× except on the lowest preset (owner: edges and sky must be crisp).
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, options.quality.dprCap <= 1 ? 1.25 : 2));
+  // The player's graphics choice (graphics.ts): a fixed sharpness, or Otomatik.
+  let graphics = graphicsFor(options.graphics, window.devicePixelRatio);
+  renderer.setPixelRatio(graphics.ratio);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
   renderer.info.autoReset = false;
   options.log(describeGpu(renderer.getContext()));
-  options.log(`dpr ${String(renderer.getPixelRatio())} · samples ${String(options.quality.multisampling)} · refs ${String(assets.references)} · rocks ${String(assets.rocks.length)} · sounds ${String(assets.sounds.size)}`);
+  options.log(`dpr ${String(renderer.getPixelRatio())} · samples ${String(graphics.samples)} · ${options.graphics} · refs ${String(assets.references)} · rocks ${String(assets.colliders.size)} · sounds ${String(assets.sounds.size)}`);
   const anisotropy = renderer.capabilities.getMaxAnisotropy();
   for (const texture of assets.textures.values()) texture.anisotropy = anisotropy;
 
@@ -80,36 +114,39 @@ export function createArenaClient(options: ClientOptions) {
   const scene = stage.scene;
   const chase = new ChaseCamera(SHIP_LENGTH, world.layout);
   const camera = chase.camera;
-  const post = createPost(renderer, scene, camera, options.quality.multisampling);
+  const post = createPost(renderer, scene, camera, graphics.samples);
   const effects = new Effects(scene, assets.fx);
+  // The engine flames' flow noise: a public 41 KB map, loaded while the pilot reads the preflight.
+  const flameNoise = new THREE.TextureLoader().load(ENGINE_FLAME_NOISE_URL);
+  flameNoise.wrapS = THREE.RepeatWrapping; flameNoise.wrapT = THREE.RepeatWrapping; flameNoise.colorSpace = THREE.NoColorSpace;
+  const flames: FlameSet = { noise: flameNoise, quality: graphics.light || navigator.maxTouchPoints > 0 ? 'mobile' : 'standard' };
   const ore = createOre(scene, world.layout, world.cargoDrops.length);
+  const colliderView = createColliderView(scene, world.layout);
+  const drawnHulls: { pose: THREE.Object3D; ship: ShipClass }[] = [];
   const dust = createDust();
-  // Turbo only: a dense swarm right around the lens, the nearest and fastest reference there is.
-  const rush = createDust({ count: 320, size: 64, width: 0.06, near: [6, 15], boostOnly: true, stretch: 0.4 });
+  const rush = createDust(RUSH_DUST);
   scene.add(dust.mesh, rush.mesh);
 
-  const heroModel: PreparedModel = assets.hero ?? proceduralShip('#d6e4f2');
-  const own = new ShipVisual(heroModel, assets.fx, SHIP_LENGTH, true, scene, effects);
+  // Until the hangar picks a class (Y4), the pilot flies the Akıncı.
+  // Made once each: a model is compared by identity to tell a ship whose class changed.
+  let heroFallback: PreparedModel | null = null; let rivalFallback: PreparedModel | null = null; let pilotFallback: PreparedModel | null = null;
+  /** Our ship: the class we fly (Y4), else the pack's hero, else a procedural hull. */
+  const ownModel = (pilot: Pilot): PreparedModel => assets.classes.get(pilot.ship) ?? assets.hero ?? (heroFallback ??= proceduralShip('#d6e4f2'));
+  let own = new ShipVisual(ownModel(world.pilot), assets.fx, SHIP_LENGTH, true, scene, effects, flames);
   const others = new Map<number, ShipVisual>();
+  // Ships past CROWD_RANGE are drawn together, by model (docs/komutan-gemisi/18-kademeli-gorunurluk-plani.md).
+  const crowd = new ShipCrowd(scene, assets.fx.get('glowDot') ?? assets.fx.get('flare'), [...assets.classes.values(), ...assets.rivals], MAX_REMOTE_PILOTS, flames);
+  const bufferSize = new THREE.Vector2();
+  const viewFrustum = new THREE.Frustum(); const viewMatrix = new THREE.Matrix4();
   const modelFor = (pilot: Pilot): PreparedModel => {
     const role = options.network()?.roles.get(pilot.id) ?? world.brains.get(pilot.id)?.role;
-    const rivals = assets.rivals;
-    if (rivals.length === 0) return proceduralShip(role ? '#c48a6a' : '#9fb0c2');
-    const pick = role === 'miner' ? rivals.length - 1 : role === 'hunter' ? 0 : role === 'patrol' ? 1 % rivals.length : (pilot.id * 7) % rivals.length;
-    return rivals[pick] ?? rivals[0] ?? proceduralShip();
+    return shipModelFor(assets, pilot.ship, role, pilot.id)
+      ?? (role ? rivalFallback ??= proceduralShip('#c48a6a') : pilotFallback ??= proceduralShip('#9fb0c2'));
   };
 
-  // Rear view: a second camera into a small HDR target, composited into the HUD window.
-  const rearCamera = new THREE.PerspectiveCamera(70, 2.6, 0.5, 20000);
-  const rearTarget = new THREE.WebGLRenderTarget(320, 120, { type: THREE.HalfFloatType, samples: 2 });
-  const rearScene = new THREE.Scene();
-  const rearQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: rearTarget.texture, depthTest: false, depthWrite: false, toneMapped: true }));
-  const uv = rearQuad.geometry.getAttribute('uv');
-  for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i)); // a mirror, like a real one
-  rearScene.add(rearQuad);
-  const rearOrtho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-
-  let hud: HudRefs = { reticle: null, lead: null, hit: null, kill: null, enemies: [], threats: [], exit: null, crystal: null, damage: null, rear: null, radar: null, landing: null };
+  let hud: HudRefs = { reticle: null, lead: null, hit: null, kill: null, enemies: [], threats: [], places: [], pings: [], exit: null, crystal: null, damage: null, radar: null, landing: null, circle: null, incoming: null, map: { self: null, altitude: null } };
+  const places = placesOf(world.layout);
+  const pings = createPings();
   const landing = createLandingAssist();
   const crystalLive = (index: number): boolean => {
     const slot = world.layout.deposits.indexOf(index);
@@ -120,36 +157,45 @@ export function createArenaClient(options: ClientOptions) {
   let width = 1; let height = 1;
   let lost = false;
   const ownPose: ShipPose = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), throttle: 0, speed: 0, turbo: false,
-    omegaYaw: 0, omegaPitch: 0, landed: false, mining: false, shield: 0, cloak: 0, hull: T.hull, hullMax: T.hull, visible: true, hitAt: 0, normal: new THREE.Vector3() };
+    omegaYaw: 0, omegaPitch: 0, landed: false, mining: false, shield: 0, cloak: 0, hull: T.hull, hullMax: T.hull, visible: true, hitAt: 0, normal: new THREE.Vector3(),
+    ward: 0, mend: false, hologram: false };
   const otherPose: ShipPose = { ...ownPose, position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), normal: new THREE.Vector3() };
   const seen = { compassKind: -1, shots: 0, hits: 0, kills: 0, damage: -100000, landed: 0, phase: 'flying' as Pilot['phase'], hitAt: -10, killAt: -10,
-    damageAt: -10, damageAngle: 0, extractedAt: -1, deadAt: -1, warpIn: true, drawn: 0, lastHud: 0, time: 0, lastDraw: 0, bump: 0, turbo: false,
+    damageAt: -10, damageAngle: 0, extractedAt: -1, deadAt: -1, warpIn: true, drawn: 0, lastHud: 0, time: 0, lastDraw: 0, bump: 0, turbo: false, circle: 0, reticleAt: 0,
     landTarget: null as ReturnType<typeof findLandingTarget> };
   const droneShots = new Map<number, number>();
   const droneHull = new Map<number, { hull: number; at: number }>();
-  const landedOffset = { index: -1, offset: 0 };
-  const focus = { id: -1, locked: false };
+  /** `tracked`: its hull or lead mark is inside the aim circle, so the guns follow it. */
+  const focus = { id: -1, tracked: false };
+  /** Where each enemy was last seen: rock cuts the marks, not the position (see marks.ts). */
+  const sightings = new Map<number, Sighting>();
+  /** The reticle eases to where the guns point instead of jumping there (screen px offset). */
+  const reticleOffset = { x: 0, y: 0 };
   const metrics = { fps: 0, frameMs: 0, calls: 0, triangles: 0 };
-  const resolution = createResolution(renderer.getPixelRatio());
+  let resolution = createResolution(renderer.getPixelRatio());
   const boltMuzzle = new THREE.Vector3(); const boltForward = new THREE.Vector3();
   const deathPoint = new THREE.Vector3();
-  const raycaster = new THREE.Raycaster();
-  const probeMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
-  probeMesh.matrixAutoUpdate = false;
 
-  /** The visible enemy nearest the nose: it owns the lead marker and the magnet. */
+  /**
+   * The visible enemy nearest the middle of the aim circle as the pilot sees it (from the
+   * camera's eye, like the circle rule): it owns the lead marker and the aim circle.
+   */
+  /** The ships our own radar sweep marks right now (Y4d): the sandbox's sweep, or the room's word for it. */
+  const sweptBy = (pilot: Pilot): readonly number[] => world.scans.length > 0 ? scanTargets(world, pilot.id) : NO_SCAN;
   const selectFocus = (): Pilot | undefined => {
     const pilot = world.pilot;
     const q = pilot.q;
     const fx = 2 * (q.x * q.z + q.w * q.y); const fy = 2 * (q.y * q.z - q.w * q.x); const fz = 1 - 2 * (q.x * q.x + q.y * q.y);
+    aimCone(focusCone, pilot);
     let best: Pilot | undefined; let bestCos = Math.cos(THREE.MathUtils.degToRad(24));
     for (const drone of world.drones) {
-      if (!alive(drone) || !pilotVisible(world, pilot, drone)) continue;
+      if (!alive(drone) || drone.id === pilot.decoy) continue;
       const dx = drone.p.x - pilot.p.x; const dy = drone.p.y - pilot.p.y; const dz = drone.p.z - pilot.p.z;
       const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (distance > 1600 || distance < 1) continue;
-      const cos = (dx * fx + dy * fy + dz * fz) / distance;
-      if (cos > bestCos) { bestCos = cos; best = drone; }
+      if (distance > MARK_RANGE || distance < 1 || dx * fx + dy * fy + dz * fz <= 0) continue;
+      const ex = drone.p.x - focusCone.ex; const ey = drone.p.y - focusCone.ey; const ez = drone.p.z - focusCone.ez;
+      const cos = (ex * focusCone.ax + ey * focusCone.ay + ez * focusCone.az) / Math.sqrt(ex * ex + ey * ey + ez * ez);
+      if (cos > bestCos && pilotInSight(world, pilot, drone)) { bestCos = cos; best = drone; }
     }
     focus.id = best?.id ?? -1;
     return best;
@@ -159,28 +205,22 @@ export function createArenaClient(options: ClientOptions) {
     if (phase !== 'flight') return;
     const pilot = world.pilot;
     const target = alive(pilot) ? selectFocus() : undefined;
-    let friction = 1; magnet.x = 0; magnet.y = 0;
+    let tracked = false;
     if (target) {
       velocityOf(leadOut, target);
-      assistSteer(magnet, pilot, target.p, leadOut, controls.stick.x, controls.stick.y, controls.firing);
-      if (leadPoint(scratch, pilot, target.p, leadOut)) {
-        const q = pilot.q;
-        const fx = 2 * (q.x * q.z + q.w * q.y); const fy = 2 * (q.y * q.z - q.w * q.x); const fz = 1 - 2 * (q.x * q.x + q.y * q.y);
-        const length = scratch.length();
-        if (length > 0 && (scratch.x * fx + scratch.y * fy + scratch.z * fz) / length > 0.9986) friction = 0.68;
-      }
+      moveAhead(ahead, target.p, leadOut, world.aimHorizon);
+      tracked = circleAim(gunAim, pilot, ahead, leadOut) !== 0;
     }
-    const locked = magnet.x !== 0 || magnet.y !== 0;
-    // One tone when the magnet takes hold, not a metronome for as long as it holds.
-    if (locked && !focus.locked) audio.lock();
-    focus.locked = locked;
+    // One tone when the guns take hold, not a metronome for as long as they hold.
+    if (tracked && !focus.tracked) audio.lock();
+    focus.tracked = tracked;
     // Landing assist flies the approach; a deliberate stick input, turbo, or the end of
     // powered flight hands control back.
     if (landing.phase === 'approach' && (pilot.phase !== 'flying' || controls.pressed('turbo') || pilot.turboActive)) landing.cancel();
     const stick = Math.hypot(controls.stick.x, controls.stick.y);
     const flying = landing.steer(pilot, stick, performance.now(), autopilot);
     if (flying) controls.setThrottle(autopilot.throttle);
-    const intent = controls.sample(friction, magnet.x, magnet.y, flying ? autopilot : undefined);
+    const intent = controls.sample(flying ? autopilot : undefined);
     // Only a LAND approach may touch down on rock or a building; a deposit takes any slow ship.
     intent.land = flying;
     const network = options.network();
@@ -223,29 +263,77 @@ export function createArenaClient(options: ClientOptions) {
     // Markers pushed to the bottom edge must not land on the hull that is drawn there.
     const hull = project(ownPose.position.x, ownPose.position.y, ownPose.position.z);
     bandBottom = Math.max(260, Math.min(height - 300, hull.behind ? height - 300 : hull.y - 70));
-    // Reticle: where the two guns converge.
+    // Aim circle round the nose (where the two guns converge), drawn at the convergence
+    // distance so its size on screen follows the speed-widened field of view.
+    const aim = project(ownPose.position.x + forward.x * T.convergeDist, ownPose.position.y + forward.y * T.convergeDist, ownPose.position.z + forward.z * T.convergeDist);
+    cameraUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    const reach = T.convergeDist * TAN_CIRCLE;
+    const rim = project(ownPose.position.x + forward.x * T.convergeDist + cameraUp.x * reach,
+      ownPose.position.y + forward.y * T.convergeDist + cameraUp.y * reach, ownPose.position.z + forward.z * T.convergeDist + cameraUp.z * reach);
+    const radius = Math.hypot(rim.x - aim.x, rim.y - aim.y);
+    // Lead (S73) and guns. The target as drawn, moved forward by the aim horizon: the server
+    // flies our shot against where it is then, not where it is drawn (KG-T16).
+    const target = world.drones.find(drone => drone.id === focus.id);
+    let leadMark: ReturnType<typeof project> | null = null;
+    let mode: 0 | 1 | 2 = 0; let tx = 0; let ty = 0;
+    if (target && flying) {
+      velocityOf(leadOut, target);
+      moveAhead(ahead, others.get(target.id)?.group.position ?? target.p, leadOut, world.aimHorizon);
+      // On the rim the guns point at the lead's depth: drawn there, the reticle sits on the circle up close too.
+      let depth: number = T.convergeDist;
+      if (leadPoint(scratch, shooterView, ahead, leadOut)) {
+        depth = scratch.length();
+        leadMark = project(ownPose.position.x + scratch.x, ownPose.position.y + scratch.y, ownPose.position.z + scratch.z);
+      }
+      mode = circleAim(gunAim, shooterView, ahead, leadOut);
+      if (mode !== 0) {
+        const p = mode === 1 && leadMark ? leadMark : project(ownPose.position.x + gunAim.x * depth,
+          ownPose.position.y + gunAim.y * depth, ownPose.position.z + gunAim.z * depth);
+        if (!p.behind) { tx = p.x - aim.x; ty = p.y - aim.y; }
+        const r = Math.hypot(tx, ty);
+        if (r > radius) { tx *= radius / r; ty *= radius / r; }
+      }
+    }
+    // Reticle: where the guns point. Inside the circle it slides onto the lead and stops at the
+    // rim; the heading never moves (owner 2026-10-21). It eases over ~60 ms: guns slew, not jump.
+    const ease = 1 - Math.exp(-Math.max(0, time - seen.reticleAt) / 0.06); seen.reticleAt = time;
+    reticleOffset.x += (tx - reticleOffset.x) * ease; reticleOffset.y += (ty - reticleOffset.y) * ease;
+    const tracking = mode !== 0;
     if (hud.reticle) {
-      const aim = project(ownPose.position.x + forward.x * T.convergeDist, ownPose.position.y + forward.y * T.convergeDist, ownPose.position.z + forward.z * T.convergeDist);
-      hud.reticle.style.transform = `translate3d(${aim.x.toFixed(1)}px,${aim.y.toFixed(1)}px,0)`;
+      hud.reticle.style.transform = `translate3d(${(aim.x + reticleOffset.x).toFixed(1)}px,${(aim.y + reticleOffset.y).toFixed(1)}px,0)`;
       hud.reticle.style.opacity = flying && !aim.behind ? '1' : '0';
-      hud.reticle.toggleAttribute('data-locked', focus.locked);
+      hud.reticle.toggleAttribute('data-locked', tracking);
       if (hud.hit) hud.hit.style.transform = hud.reticle.style.transform;
       if (hud.kill) hud.kill.style.transform = hud.reticle.style.transform;
     }
+    if (hud.circle) {
+      // A custom property restyles the subtree: only when it moved by more than half a pixel.
+      if (Math.abs(radius - seen.circle) > 0.5) { seen.circle = radius; hud.circle.style.setProperty('--r', `${radius.toFixed(1)}px`); }
+      hud.circle.style.transform = `translate3d(${aim.x.toFixed(1)}px,${aim.y.toFixed(1)}px,0)`;
+      hud.circle.style.opacity = flying && !aim.behind ? '1' : '0';
+      hud.circle.toggleAttribute('data-track', tracking);
+      hud.circle.toggleAttribute('data-assist', tracking && controls.firing);
+    }
     if (hud.hit) hud.hit.style.opacity = time - seen.hitAt < 0.15 ? '1' : '0';
     if (hud.kill) { const k = Math.max(0, 1 - (time - seen.killAt) / 1.1); hud.kill.style.opacity = String(k); hud.kill.style.setProperty('--k', String(1 - k)); }
-    // Enemies: bracket on screen, arrow on the edge when off screen and close.
-    let slot = 0; let threat = 0;
+    // Enemies within MARK_RANGE: bracket on screen, arrow on the edge when off screen.
+    // Our sweep's marks (Y4d) are marked wherever they are; our own copy is no enemy.
+    let slot = 0; let threat = 0; const swept = sweptBy(pilot);
     for (const drone of world.drones) {
-      if (!alive(drone) || !pilotVisible(world, pilot, drone)) continue;
-      const dx = drone.p.x - pilot.p.x; const dy = drone.p.y - pilot.p.y; const dz = drone.p.z - pilot.p.z;
-      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      // A landed pilot far away is quiet: no marker, unless the mining beam gives it away.
-      if (drone.landed && !drone.mining && distance > 320) continue;
-      if (distance > (drone.mining ? 2400 : 1600)) continue;
+      if (drone.id === pilot.decoy) { sightings.delete(drone.id); continue; }
       const visual = others.get(drone.id);
       const at = visual ? visual.group.position : scratch.set(drone.p.x, drone.p.y, drone.p.z);
-      const screen = project(at.x, at.y, at.z);
+      const scanned = swept.includes(drone.id);
+      // The radar reaches miners at 1.6 km: past that no mark needs the sight ray.
+      const near = Math.hypot(drone.p.x - pilot.p.x, drone.p.y - pilot.p.y, drone.p.z - pilot.p.z) < RADAR_RANGE * 1.6;
+      const mark = alive(drone) && (scanned || (near && pilotVisible(world, pilot, drone)))
+        ? sighting(sightings, drone.id, scanned || pilotInSight(world, pilot, drone), at, time) : undefined;
+      if (!mark) { sightings.delete(drone.id); continue; }
+      const dx = mark.x - pilot.p.x; const dy = mark.y - pilot.p.y; const dz = mark.z - pilot.p.z;
+      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (!enemyMarked(drone, distance, scanned)) continue;
+      const lost = mark.level < 1;
+      const screen = project(mark.x, mark.y, mark.z);
       const onScreen = !screen.behind && screen.x > 8 && screen.x < width - 8 && screen.y > 60 && screen.y < height - 120;
       if (onScreen && slot < hud.enemies.length) {
         const node = hud.enemies[slot++];
@@ -256,36 +344,48 @@ export function createArenaClient(options: ClientOptions) {
         node.style.setProperty('--size', `${size.toFixed(0)}px`);
         node.toggleAttribute('data-focus', drone.id === focus.id);
         node.toggleAttribute('data-mining', drone.mining);
+        node.toggleAttribute('data-lost', lost);
+        node.toggleAttribute('data-scan', scanned);
+        const lock = drone.id === pilot.lockTarget ? lockShare(pilot) : 0;
+        node.toggleAttribute('data-lock', lock > 0);
+        node.toggleAttribute('data-locked', lock >= 1);
+        if (lock > 0) node.style.setProperty('--lock', lock.toFixed(2));
+        node.style.opacity = lost ? (mark.level * 0.75).toFixed(2) : '';
         if (seen.drawn % 6 === 0) {
           const name = node.querySelector('[data-name]'); if (name) name.textContent = options.name(drone);
           const label = node.querySelector('[data-distance]'); if (label) label.textContent = `${String(Math.round(distance))} m`;
           // Width is a layout write: with the labels, not every frame.
-          const bar = node.querySelector<HTMLElement>('[data-hull]'); if (bar) bar.style.width = `${String(drone.hull / T.hull * 100)}%`;
+          const bar = node.querySelector<HTMLElement>('[data-hull]'); if (bar) bar.style.width = `${String(drone.hull / CLASS_STATS[drone.ship].hull * 100)}%`;
         }
-      } else if (!onScreen && distance < 1100 && threat < hud.threats.length) {
+      } else if (!onScreen && threat < hud.threats.length) {
         const node = hud.threats[threat++];
         if (!node) continue;
         const e = edge(screen.x, screen.y, screen.behind, 26);
         node.style.display = 'block';
         node.style.transform = `translate3d(${e.x.toFixed(1)}px,${e.y.toFixed(1)}px,0) rotate(${e.angle.toFixed(3)}rad)`;
-        node.style.opacity = String(0.45 + 0.55 * (1 - distance / 1100));
+        node.toggleAttribute('data-scan', scanned);
+        node.style.opacity = scanned ? '0.9' : String((0.45 + 0.55 * (1 - distance / MARK_RANGE)) * (lost ? mark.level * 0.6 : 1));
       }
     }
     for (let i = slot; i < hud.enemies.length; i++) { const node = hud.enemies[i]; if (node) node.style.display = 'none'; }
     for (let i = threat; i < hud.threats.length; i++) { const node = hud.threats[i]; if (node) node.style.display = 'none'; }
-    // Lead: where to shoot so the bolt meets the focused target (S73).
-    const target = world.drones.find(drone => drone.id === focus.id);
+    // A lock or a missile on the pilot points at its source: on it in view, on the edge towards it when not.
+    if (hud.incoming) {
+      const level = flying ? pilot.threat : 0;
+      if (level > 0) {
+        const p = project(pilot.threatX, pilot.threatY, pilot.threatZ);
+        const inside = !p.behind && p.x > 24 && p.x < width - 24 && p.y > 60 && p.y < height - 120;
+        const e = inside ? { x: p.x, y: p.y, angle: 0 } : edge(p.x, p.y, p.behind, 30);
+        hud.incoming.style.display = 'block';
+        hud.incoming.dataset.threat = String(level);
+        hud.incoming.toggleAttribute('data-edge', !inside);
+        hud.incoming.style.transform = `translate3d(${e.x.toFixed(1)}px,${e.y.toFixed(1)}px,0)`;
+        hud.incoming.style.setProperty('--angle', `${e.angle.toFixed(3)}rad`);
+      } else hud.incoming.style.display = 'none';
+    }
     if (hud.lead) {
-      if (target && flying) {
-        velocityOf(leadOut, target);
-        // The target as drawn (its interpolated hull), seen from our ship as drawn.
-        const seenAt = others.get(target.id)?.group.position ?? target.p;
-        if (leadPoint(scratch, shooterView, seenAt, leadOut)) {
-          const p = project(ownPose.position.x + scratch.x, ownPose.position.y + scratch.y, ownPose.position.z + scratch.z);
-          hud.lead.style.display = p.behind ? 'none' : 'block';
-          hud.lead.style.transform = `translate3d(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px,0)`;
-        } else hud.lead.style.display = 'none';
-      } else hud.lead.style.display = 'none';
+      hud.lead.style.display = leadMark && !leadMark.behind ? 'block' : 'none';
+      if (leadMark) hud.lead.style.transform = `translate3d(${leadMark.x.toFixed(1)}px,${leadMark.y.toFixed(1)}px,0)`;
     }
     // Nearest exit: always findable.
     if (hud.exit) {
@@ -310,26 +410,60 @@ export function createArenaClient(options: ClientOptions) {
         }
       } else hud.exit.style.display = 'none';
     }
+    // Named places: small, and only while the view points their way (landmarks.ts).
+    camera.getWorldDirection(viewDirection);
+    const marks = places.map(place => {
+      const level = flying ? landmarkSight(camera.position, viewDirection, place.p, place.radius) : 0;
+      const p = level > 0.01 ? project(place.p.x, place.p.y, place.p.z) : null;
+      const onScreen = p !== null && !p.behind && p.x > 30 && p.x < width - 30 && p.y > 205 && p.y < bandBottom;
+      return { level, x: p?.x ?? 0, y: p?.y ?? 0, distance: onScreen ? Math.hypot(place.p.x - pilot.p.x, place.p.y - pilot.p.y, place.p.z - pilot.p.z) : Infinity };
+    });
+    const shown = declutter(marks.map((m, i) => ({ x: m.x, y: m.y, distance: placePriority(places[i]?.kind ?? 'outpost', m.distance) })), 96, 24);
+    marks.forEach((mark, i) => {
+      const node = hud.places[i];
+      if (!node) return;
+      if (!shown[i] || mark.distance === Infinity) { node.style.display = 'none'; return; }
+      node.style.display = 'block'; node.style.opacity = mark.level.toFixed(2);
+      node.style.transform = `translate3d(${mark.x.toFixed(1)}px,${mark.y.toFixed(1)}px,0)`;
+      if (seen.drawn % 6 === i % 6) {
+        const label = node.querySelector('[data-distance]');
+        if (label) label.textContent = `${(mark.distance / 1000).toFixed(1)} km`;
+      }
+    });
+    // Pings: a point in the world, drawn from here; off screen, an arrow on the band's edge.
+    const live = pings.live(performance.now() / 1000);
+    hud.pings.forEach((node, i) => {
+      const mark = live[i];
+      if (!mark || !flying) { node.style.display = 'none'; return; }
+      const p = project(mark.p.x, mark.p.y, mark.p.z);
+      const inside = !p.behind && p.x > 30 && p.x < width - 30 && p.y > 205 && p.y < bandBottom;
+      const e = inside ? { x: p.x, y: p.y, angle: 0 } : edge(p.x, p.y, p.behind, 30);
+      node.style.display = 'block';
+      node.dataset.kind = mark.kind;
+      node.toggleAttribute('data-edge', !inside);
+      node.style.transform = `translate3d(${e.x.toFixed(1)}px,${e.y.toFixed(1)}px,0)`;
+      node.style.setProperty('--angle', `${e.angle.toFixed(3)}rad`);
+      node.style.setProperty('--life', (1 - (performance.now() / 1000 - mark.at) / PING_LIFE).toFixed(3));
+      const label = node.querySelector('[data-distance]');
+      if (label) label.textContent = `${String(Math.round(Math.hypot(mark.p.x - pilot.p.x, mark.p.y - pilot.p.y, mark.p.z - pilot.p.z)))} m`;
+      const name = node.querySelector('[data-kind]');
+      if (name) name.textContent = arenaCopy().pings[mark.kind];
+    });
     // Nearest live deposit while the hold has room: the farmer's compass, in the deposit's colour.
     if (hud.crystal) {
-      let best = -1; let bestDistance = 760; let bestKind = 1;
-      world.layout.deposits.forEach((index, slotIndex) => {
-        const o = world.layout.obstacles[index];
-        if (!o || world.dry[slotIndex] || (world.minerals[slotIndex] ?? 0) < 6) return;
-        const d = Math.hypot(o.p.x - pilot.p.x, o.p.y - pilot.p.y, o.p.z - pilot.p.z) - o.radius;
-        if (d < bestDistance) { bestDistance = d; best = index; bestKind = world.layout.depositKinds[slotIndex] ?? 1; }
-      });
+      const deposit = nearestDeposit(world, pilot.p);
+      const best = deposit?.index ?? -1; const bestKind = deposit?.kind ?? 1;
       if (seen.compassKind !== bestKind) {
         seen.compassKind = bestKind;
         hud.crystal.style.setProperty('--crystal', FARM_HEX[bestKind] ?? FARM_HEX[1]);
         const name = hud.crystal.querySelector('[data-kind]'); if (name) name.textContent = arenaCopy().kinds[bestKind] ?? '';
       }
       const o = world.layout.obstacles[best];
-      if (o && flying && !pilot.landed && pilot.cargo < T.cargoCapacity) {
+      if (o && flying && !pilot.landed && pilot.cargo < CLASS_STATS[pilot.ship].cargoCapacity) {
         const p = project(o.p.x, o.p.y, o.p.z);
         hud.crystal.style.display = p.behind ? 'none' : 'block';
         hud.crystal.style.transform = `translate3d(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px,0)`;
-        if (seen.drawn % 6 === 0) { const label = hud.crystal.querySelector('[data-distance]'); if (label) label.textContent = `${String(Math.round(Math.max(0, bestDistance)))} m`; }
+        if (seen.drawn % 6 === 0) { const label = hud.crystal.querySelector('[data-distance]'); if (label) label.textContent = `${String(Math.round(deposit?.distance ?? 0))} m`; }
       } else hud.crystal.style.display = 'none';
     }
     if (hud.damage) {
@@ -338,6 +472,10 @@ export function createArenaClient(options: ClientOptions) {
       hud.damage.style.transform = `translate(-50%,-50%) rotate(${seen.damageAngle.toFixed(3)}rad)`;
     }
     if (hud.radar && seen.drawn % 3 === 0) drawRadar(hud.radar);
+    if (hud.map.self && seen.drawn % 3 === 0) {
+      hud.map.self.setAttribute('transform', selfTransform(ownPose.position.x, ownPose.position.z, forward.x, forward.z));
+      if (hud.map.altitude) hud.map.altitude.style.bottom = `${(altitudeShare(ownPose.position.y, world.layout.halfHeight) * 100).toFixed(1)}%`;
+    }
     // Touchdown marker: where the landing assist is taking you, or where a tap would.
     if (hud.landing) {
       const target = landing.target ?? (!flying || !landingOffered(pilot) ? null
@@ -355,9 +493,8 @@ export function createArenaClient(options: ClientOptions) {
   const drawRadar = (canvasElement: HTMLCanvasElement): void => {
     const ctx = canvasElement.getContext('2d');
     if (!ctx) return;
-    const size = canvasElement.width; const r = size / 2; const range = 1000;
+    const size = canvasElement.width; const r = size / 2; const range = RADAR_RANGE;
     ctx.clearRect(0, 0, size, size);
-    const pilot = world.pilot;
     // Heading and centre as drawn this frame, like the reticle (see drawHud).
     const q = shooterView.q; const me = shooterView.p;
     const fx = 2 * (q.x * q.z + q.w * q.y); const fz = 1 - 2 * (q.x * q.x + q.y * q.y);
@@ -390,18 +527,28 @@ export function createArenaClient(options: ClientOptions) {
       if (distance > range) { const a = Math.atan2(y - r, x - r); x = r + Math.cos(a) * r * 0.92; y = r + Math.sin(a) * r * 0.92; }
       ctx.strokeStyle = '#2ee6c8'; ctx.lineWidth = 1.5; ctx.strokeRect(x - 3, y - 3, 6, 6);
     }
+    const swept = sweptBy(world.pilot);
     for (const drone of world.drones) {
-      if (!alive(drone) || !pilotVisible(world, pilot, drone)) continue;
-      const distance = Math.hypot(drone.p.x - me.x, drone.p.z - me.z);
-      if (drone.landed && !drone.mining && distance > 320) continue;
-      if (distance > range * (drone.mining ? 1.6 : 1)) continue;
-      const [x, y] = place(drone.p.x, drone.p.z);
-      const dy = drone.p.y - me.y;
+      // Behind rock: the faded point it was last seen at (drawHud keeps the sightings). An illusion
+      // is no dot: the radar shows the truth (plan 14 §4).
+      const mark = sightings.get(drone.id);
+      if (!mark || drone.decoyOf >= 0) continue;
+      const distance = Math.hypot(mark.x - me.x, mark.z - me.z);
+      // A ship our sweep marks shows wherever it is: past the radar's reach, on its rim towards it, ringed.
+      const scanned = swept.includes(drone.id);
+      if (!scanned && drone.landed && !drone.mining && distance > 320) continue;
+      if (!scanned && distance > range * (drone.mining ? 1.6 : 1)) continue;
+      let [x, y] = place(mark.x, mark.z);
+      if (scanned && Math.hypot(x - r, y - r) > r * 0.92) { const a = Math.atan2(y - r, x - r); x = r + Math.cos(a) * r * 0.92; y = r + Math.sin(a) * r * 0.92; }
+      const dy = mark.y - me.y;
+      ctx.globalAlpha = mark.level < 1 ? mark.level * 0.6 : 1;
       const cx = Math.min(size - 4, Math.max(4, x)); const cy = Math.min(size - 4, Math.max(4, y));
       ctx.strokeStyle = 'rgba(255,90,60,0.6)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - Math.max(-10, Math.min(10, dy / 40))); ctx.stroke();
       ctx.fillStyle = drone.mining ? '#ffd166' : '#ff5a3c';
       ctx.beginPath(); ctx.arc(cx, cy - Math.max(-10, Math.min(10, dy / 40)), drone.id === focus.id ? 3.4 : 2.6, 0, Math.PI * 2); ctx.fill();
+      if (scanned) { ctx.strokeStyle = 'rgba(46,230,200,0.85)'; ctx.beginPath(); ctx.arc(cx, cy - Math.max(-10, Math.min(10, dy / 40)), 5, 0, Math.PI * 2); ctx.stroke(); }
     }
+    ctx.globalAlpha = 1;
     ctx.fillStyle = '#e6fbff'; ctx.beginPath(); ctx.moveTo(r, r - 5); ctx.lineTo(r + 3.5, r + 4); ctx.lineTo(r - 3.5, r + 4); ctx.closePath(); ctx.fill();
   };
 
@@ -420,6 +567,8 @@ export function createArenaClient(options: ClientOptions) {
     ownPose.throttle = pilot.throttle; ownPose.speed = pilot.s; ownPose.turbo = pilot.turboActive;
     ownPose.omegaYaw = pilot.omegaYaw; ownPose.omegaPitch = pilot.omegaPitch; ownPose.landed = pilot.landed > 0;
     ownPose.mining = pilot.mining; ownPose.shield = pilot.shield; ownPose.cloak = pilot.cloak; ownPose.hull = pilot.hull;
+    ownPose.ward = pilot.ward > 0 && pilot.shieldMax > 0 ? pilot.shieldHp / pilot.shieldMax : 0; ownPose.mend = pilot.mend > 0;
+    ownPose.hullMax = CLASS_STATS[pilot.ship].hull;
     ownPose.normal.set(pilot.nx, pilot.ny, pilot.nz);
     ownPose.visible = alive(pilot) || (pilot.phase === 'extracted' && time - seen.extractedAt < 1.1);
     if (pilot.lastDamage > seen.damage) {
@@ -431,25 +580,6 @@ export function createArenaClient(options: ClientOptions) {
         seen.damageAngle = Math.atan2(scratch.x, scratch.y);
       }
     }
-    // Landed: rest the hull on the rock's real surface, not on its round collider. `lift` is
-    // how far along the normal the drawn ship moves from the simulated centre.
-    if (pilot.landed) {
-      if (landedOffset.index !== pilot.landed) {
-        const half = heroModel.size.y * SHIP_LENGTH * 0.42;
-        landedOffset.index = pilot.landed; landedOffset.offset = half - T.shipHitRadius;
-        const rock = stage.rockInstances.get(pilot.landed - 1);
-        if (rock) {
-          const normal = ownPose.normal;
-          probeMesh.geometry = rock.geometry; probeMesh.matrixWorld.copy(rock.matrix);
-          raycaster.set(scratch.copy(ownPose.position).addScaledVector(normal, 40), forward.copy(normal).negate());
-          raycaster.far = 120;
-          const hit = raycaster.intersectObject(probeMesh, false)[0];
-          if (hit) landedOffset.offset = 40 - hit.distance + half;
-          landedOffset.offset = Math.max(-T.shipHitRadius * 1.6, Math.min(T.shipHitRadius, landedOffset.offset));
-        }
-      }
-      ownPose.position.addScaledVector(ownPose.normal, landedOffset.offset);
-    } else landedOffset.index = -1;
     if (pilot.phase === 'extracted') {
       if (seen.extractedAt < 0) { seen.extractedAt = time; effects.warp(ownPose.position.x, ownPose.position.y, ownPose.position.z, '#57ffe0'); }
       const t = time - seen.extractedAt;
@@ -464,17 +594,19 @@ export function createArenaClient(options: ClientOptions) {
     seen.turbo = boosting;
     if (pilot.phase === 'dead' && seen.deadAt < 0) { seen.deadAt = time; deathPoint.copy(ownPose.position); chase.kick(1); post.hurt(1); }
     if (pilot.phase !== 'dead') seen.deadAt = -1;
+    // A new class (picked in the hangar, or a new flight) is a new ship.
+    if (own.model !== ownModel(pilot)) { own.dispose(scene); own = new ShipVisual(ownModel(pilot), assets.fx, SHIP_LENGTH, true, scene, effects, flames); }
     own.update(ownPose, time, dt);
     if (pilot.bump > 0.12 && alive(pilot) && pilot.bump !== seen.bump) {
-      // One burst per impact, at the side of the hull that hit.
-      scratch.set(-pilot.kx, -pilot.ky, -pilot.kz);
-      if (scratch.lengthSq() > 0) scratch.normalize().multiplyScalar(T.shipHitRadius);
-      effects.scrape(ownPose.position.x + scratch.x, ownPose.position.y + scratch.y, ownPose.position.z + scratch.z, pilot.bump);
+      // One burst per impact, on the rock face the hull met.
+      if (!scrapePoint(world.layout, ownPose.position, classTuning(pilot.ship), scratch)) scratch.copy(ownPose.position);
+      effects.scrape(scratch.x, scratch.y, scratch.z, pilot.bump);
       chase.kick(pilot.bump * 0.6);
     }
     seen.bump = pilot.bump;
     if (pilot.mining && seen.drawn % 2 === 0) {
-      effects.mining(ownPose.position.x - pilot.nx * 5, ownPose.position.y - pilot.ny * 5, ownPose.position.z - pilot.nz * 5, pilot.nx, pilot.ny, pilot.nz);
+      // Sparks where the belly meets the rock: the hull rests a body radius off the surface.
+      effects.mining(ownPose.position.x - pilot.nx * T.bodyRadius, ownPose.position.y - pilot.ny * T.bodyRadius, ownPose.position.z - pilot.nz * T.bodyRadius, pilot.nx, pilot.ny, pilot.nz);
     }
     if (seen.warpIn && phase === 'flight') { seen.warpIn = false; effects.warp(ownPose.position.x, ownPose.position.y, ownPose.position.z, '#7fdcff'); }
     // Own fire: a flash at the gun that fired.
@@ -491,22 +623,27 @@ export function createArenaClient(options: ClientOptions) {
     seen.kills = pilot.kills;
     // Other pilots.
     const present = new Set<number>();
+    crowd.begin();
     world.drones.forEach((drone, i) => {
       const previous = world.dronePrevious[i];
       if (!previous) return;
       present.add(drone.id);
       let visual = others.get(drone.id);
-      if (!visual) { visual = new ShipVisual(modelFor(drone), assets.fx, SHIP_LENGTH, false, scene, effects); others.set(drone.id, visual); }
+      // The roster can name a ship's class after its first row: it is redrawn as that class.
+      if (visual && visual.model !== modelFor(drone)) { visual.dispose(scene); others.delete(drone.id); visual = undefined; }
+      if (!visual) { visual = new ShipVisual(modelFor(drone), assets.fx, SHIP_LENGTH, false, scene, effects, flames, crowd); others.set(drone.id, visual); }
       interpolate(otherPose, previous, drone, blend);
       otherPose.throttle = drone.throttle; otherPose.speed = drone.s; otherPose.turbo = drone.turboActive;
       otherPose.omegaYaw = drone.omegaYaw; otherPose.omegaPitch = drone.omegaPitch; otherPose.landed = drone.landed > 0;
       otherPose.mining = drone.mining; otherPose.shield = drone.shield; otherPose.cloak = drone.cloak; otherPose.hull = drone.hull;
+      // Others' rows carry only that a shield is up, not how much of it is left.
+      otherPose.ward = drone.ward > 0 ? (drone.shieldMax > 0 ? drone.shieldHp / drone.shieldMax : 1) : 0; otherPose.mend = drone.mend > 0;
+      otherPose.hullMax = CLASS_STATS[drone.ship].hull; otherPose.hologram = drone.id === pilot.decoy;
       otherPose.visible = alive(drone) && drone.cloak === 0;
       const record = droneHull.get(drone.id);
       if (record && drone.hull < record.hull) record.at = time;
       if (!record) droneHull.set(drone.id, { hull: drone.hull, at: -10 }); else record.hull = drone.hull;
       otherPose.hitAt = droneHull.get(drone.id)?.at ?? -10;
-      if (otherPose.landed) otherPose.position.addScaledVector(scratch.set(drone.nx, drone.ny, drone.nz), -(T.shipHitRadius - 2.4));
       visual.update(otherPose, time, dt);
       const shots = droneShots.get(drone.id);
       if (shots !== undefined && drone.shots > shots && otherPose.visible) {
@@ -515,11 +652,21 @@ export function createArenaClient(options: ClientOptions) {
         effects.muzzle(scratch, forward, false, drone.s);
       }
       droneShots.set(drone.id, drone.shots);
-      if (drone.mining && seen.drawn % 3 === 0) effects.mining(otherPose.position.x - drone.nx * 5, otherPose.position.y - drone.ny * 5, otherPose.position.z - drone.nz * 5, drone.nx, drone.ny, drone.nz);
+      if (drone.mining && seen.drawn % 3 === 0) effects.mining(otherPose.position.x - drone.nx * T.bodyRadius, otherPose.position.y - drone.ny * T.bodyRadius, otherPose.position.z - drone.nz * T.bodyRadius, drone.nx, drone.ny, drone.nz);
     });
+    crowd.end(camera, renderer.getDrawingBufferSize(bufferSize).y, time);
     for (const [id, visual] of others) {
       if (present.has(id)) continue;
       visual.dispose(scene); others.delete(id); droneShots.delete(id); droneHull.delete(id);
+    }
+    if (colliderView.visible) {
+      drawnHulls.length = 0;
+      if (own.group.visible) drawnHulls.push({ pose: own.group, ship: pilot.ship });
+      for (const drone of world.drones) {
+        const visual = others.get(drone.id);
+        if (visual?.group.visible) drawnHulls.push({ pose: visual.group, ship: drone.ship });
+      }
+      colliderView.ships(drawnHulls);
     }
     // Camera.
     const aspect = width / Math.max(1, height);
@@ -531,7 +678,8 @@ export function createArenaClient(options: ClientOptions) {
       const t = time * 0.12;
       chase.snap();
       camera.position.copy(ownPose.position).add(scratch.set(Math.sin(t) * 34, 9 + Math.sin(t * 0.7) * 3, Math.cos(t) * 34));
-      camera.up.set(0, 1, 0); camera.lookAt(ownPose.position);
+      // Aimed a little below the ship, so it rides above the launch dock instead of behind it.
+      camera.up.set(0, 1, 0); camera.lookAt(ownPose.position.x, ownPose.position.y - 7, ownPose.position.z);
       camera.fov = aspect < 1 ? 58 : 45; camera.aspect = aspect; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
     } else if (pilot.phase !== 'extracted' || time - seen.extractedAt < 0.2) {
       chase.update({ position: ownPose.position, quaternion: ownPose.quaternion, speed: ownPose.speed, speedMax: T.speedMax,
@@ -541,13 +689,15 @@ export function createArenaClient(options: ClientOptions) {
     effects.watchImpacts(world, pilot.id, () => undefined, () => undefined);
     boltForward.set(0, 0, 1).applyQuaternion(ownPose.quaternion);
     boltMuzzle.copy(ownPose.position).addScaledVector(boltForward, 4);
-    effects.drawBolts(world, blend, pilot.id, options.network() !== null, boltMuzzle, boltForward);
+    effects.drawBolts(world, blend, pilot.id, options.network() !== null, boltMuzzle, boltForward, dt);
     effects.drawSmoke(world, time);
     effects.update(dt);
     forward.set(0, 0, 1).applyQuaternion(ownPose.quaternion).multiplyScalar(ownPose.speed);
     dust.update(camera.position, forward, ownPose.turbo, alive(pilot) && phase === 'flight', dt);
     rush.update(camera.position, forward, ownPose.turbo, alive(pilot) && phase === 'flight', dt);
     stage.update(time, world, camera.position);
+    viewFrustum.setFromProjectionMatrix(viewMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    for (const visual of others.values()) visual.view(camera.position, viewFrustum, dt);
     ore.update(world, time);
     post.haze(stage.haze.color, stage.haze.amount);
     scratch.set(1, 0, 0).applyQuaternion(camera.quaternion);
@@ -556,7 +706,7 @@ export function createArenaClient(options: ClientOptions) {
     drawHud(time);
     if (time - seen.lastHud > 0.1) {
       seen.lastHud = time;
-      store.publish(world, phase, focus.locked, canLand(), pilot.landed ? 'landed' : landing.phase === 'approach' ? 'approach' : 'idle',
+      store.publish(world, phase, focus.tracked, canLand(), pilot.landed ? 'landed' : landing.phase === 'approach' ? 'approach' : 'idle',
         landing.distance(pilot));
     }
     // Frame.
@@ -564,12 +714,11 @@ export function createArenaClient(options: ClientOptions) {
     renderer.setRenderTarget(null);
     stage.cull(camera, 3800, world);
     post.render(dt);
-    renderRear();
     seen.drawn++;
     metrics.calls = renderer.info.render.calls; metrics.triangles = renderer.info.render.triangles;
     metrics.fps = metrics.fps === 0 ? 1 / Math.max(dt, 0.001) : metrics.fps * 0.92 + 0.08 / Math.max(dt, 0.001);
     metrics.frameMs = performance.now() - now;
-    const ratio = stepResolution(resolution, frame);
+    const ratio = graphics.adaptive ? stepResolution(resolution, frame) : null;
     if (ratio !== null) { renderer.setPixelRatio(ratio); resize(); options.log(`dpr ${String(ratio)} · holding the frame rate`); }
     if (import.meta.env.DEV && seen.drawn % 180 === 1) {
       const gl = renderer.getContext();
@@ -583,34 +732,6 @@ export function createArenaClient(options: ClientOptions) {
     const pilot = world.pilot;
     if (!alive(pilot) || !landingOffered(pilot)) return false;
     return findLandingTarget(world.layout, pilot, crystalLive) !== null;
-  };
-
-  const renderRear = (): void => {
-    const node = hud.rear;
-    if (!node || phase !== 'flight' || !alive(world.pilot)) return;
-    const box = node.getBoundingClientRect(); const frame = canvas.getBoundingClientRect();
-    const w = Math.round(box.width); const h = Math.round(box.height);
-    if (w < 10 || h < 10) return;
-    const dpr = renderer.getPixelRatio();
-    if (seen.drawn % 2 === 0) {
-      const tw = Math.round(w * Math.min(dpr, 1.5)); const th = Math.round(h * Math.min(dpr, 1.5));
-      if (rearTarget.width !== tw || rearTarget.height !== th) rearTarget.setSize(tw, th);
-      rearCamera.aspect = w / h; rearCamera.updateProjectionMatrix();
-      rearCamera.position.copy(ownPose.position).add(scratch.set(0, SHIP_LENGTH * 0.25, 0).applyQuaternion(ownPose.quaternion));
-      rearCamera.up.set(0, 1, 0).applyQuaternion(ownPose.quaternion);
-      rearCamera.lookAt(scratch.set(0, 0, -100).applyQuaternion(ownPose.quaternion).add(rearCamera.position));
-      stage.cull(rearCamera, 1800, world);
-      own.group.visible = false; own.setExhaustVisible(false);
-      renderer.setRenderTarget(rearTarget); renderer.clear(); renderer.render(scene, rearCamera);
-      renderer.setRenderTarget(null);
-      own.group.visible = true; own.setExhaustVisible(true);
-    }
-    const x = box.left - frame.left; const y = frame.height - (box.top - frame.top) - h;
-    renderer.setViewport(x, y, w, h); renderer.setScissor(x, y, w, h); renderer.setScissorTest(true);
-    renderer.toneMapping = THREE.AgXToneMapping;
-    renderer.render(rearScene, rearOrtho);
-    renderer.toneMapping = THREE.NoToneMapping;
-    renderer.setScissorTest(false); renderer.setViewport(0, 0, width, height);
   };
 
   const driver = createFrameDriver(step, draw);
@@ -637,14 +758,34 @@ export function createArenaClient(options: ClientOptions) {
       phase = next;
     },
     setHud(refs: HudRefs): void { hud = refs; },
+    /** Applies a new graphics choice at once: sharpness, samples, and whether Otomatik may adapt. */
+    setGraphics(choice: ArenaGraphicsChoice): void {
+      graphics = graphicsFor(choice, window.devicePixelRatio);
+      renderer.setPixelRatio(graphics.ratio);
+      resolution = createResolution(graphics.ratio);
+      post.setSamples(graphics.samples);
+      resize();
+      options.log(`graphics ${choice} · dpr ${String(graphics.ratio)} · samples ${String(graphics.samples)}`);
+    },
     /** One tap: pick a touchdown point ahead and fly onto it. */
     land(): boolean { return landing.begin(world.layout, world.pilot, performance.now(), crystalLive); },
+    /** The world spot under a screen point (client px), fixed when the ping wheel opens (pings.ts). */
+    aim(clientX: number, clientY: number): Vec3 {
+      const rect = canvas.getBoundingClientRect();
+      scratch.set((clientX - rect.left) / Math.max(1, rect.width) * 2 - 1, -((clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1, 0.5)
+        .unproject(camera).sub(camera.position).normalize();
+      return pingTarget(world.layout, camera.position, scratch);
+    },
+    /** Marks a spot for five seconds, drawn from every viewer's own angle. */
+    ping(kind: PingKind, target: Vec3): void { pings.add(kind, target, performance.now() / 1000); },
     cancelLanding(): void { landing.cancel(); },
+    /** Developer view (plan §8.4): collider wireframes over the drawn world. */
+    toggleColliders(): void { colliderView.visible = !colliderView.visible; },
     /** Compiles every shader before the first flight frame (no hitch on first fire). */
     async warm(): Promise<void> {
       resize();
       const started = performance.now();
-      try { await renderer.compileAsync(scene, camera); }
+      try { await post.compile(); }
       catch (error) { options.log(`compile failed: ${error instanceof Error ? error.message : String(error)}`); }
       options.log(`shaders ${String(Math.round(performance.now() - started))} ms · ${String(width)}×${String(height)}`);
       draw(performance.now(), 1);
@@ -658,8 +799,8 @@ export function createArenaClient(options: ClientOptions) {
     dispose(): void {
       cancelAnimationFrame(handle); handle = 0;
       observer.disconnect(); canvas.removeEventListener('webglcontextlost', onLost);
-      own.dispose(scene); for (const visual of others.values()) visual.dispose(scene);
-      ore.dispose(); stage.dispose(); post.dispose(); rearTarget.dispose(); renderer.dispose();
+      own.dispose(scene); for (const visual of others.values()) visual.dispose(scene); crowd.dispose(); flameNoise.dispose();
+      ore.dispose(); colliderView.dispose(); stage.dispose(); post.dispose(); renderer.dispose();
     },
   };
 }

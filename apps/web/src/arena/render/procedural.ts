@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32 } from '@astera/rules';
+import { ARENA_CATALOG, catalogMeshes, decodeEntry } from '@astera/rules/arena';
 import type { PreparedModel } from '../assets/load.js';
 
 /**
@@ -28,6 +29,33 @@ export function proceduralRock(seed: number, crystal = false): PreparedModel {
   }
   geometry.computeBoundingSphere();
   return { parts, radius: 1, mean: 0.95, size: new THREE.Vector3(2, 2, 2), engines: [] };
+}
+
+/**
+ * A collider catalog shape drawn as the simulation hits it (Y2), for a pack without its
+ * model: faceted rock, and a crystal's shards (triangles from `glowFrom` on) as a part that glows.
+ */
+export function catalogRock(index: number): PreparedModel {
+  const entry = ARENA_CATALOG[index]; const mesh = catalogMeshes()[index];
+  if (!entry || !mesh) return proceduralRock(index);
+  const { positions, indices } = decodeEntry(entry);
+  const position = new THREE.Float32BufferAttribute(positions, 3);
+  const part = (from: number, to: number): THREE.BufferGeometry => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', position);
+    geometry.setIndex(new THREE.BufferAttribute(indices.slice(from * 3, to * 3), 1));
+    geometry.computeVertexNormals(); geometry.computeBoundingSphere();
+    return geometry;
+  };
+  const crystal = entry.family === 'crystal';
+  const parts = [{ geometry: part(0, entry.glowFrom), glow: false,
+    material: new THREE.MeshStandardMaterial({ color: crystal ? '#3b4a55' : '#4a4d52', roughness: 0.92, metalness: 0.05, flatShading: true }) }];
+  if (crystal) {
+    parts.push({ geometry: part(entry.glowFrom, indices.length / 3), glow: true,
+      material: new THREE.MeshStandardMaterial({ color: '#9ff6ff', emissive: '#36e6ff', emissiveIntensity: 1.6, flatShading: true }) });
+  }
+  const box = new THREE.Box3().setFromBufferAttribute(position);
+  return { parts, radius: mesh.radius, mean: mesh.mean, size: box.getSize(new THREE.Vector3()), engines: [] };
 }
 
 export function proceduralShip(tint = '#9fb0c2'): PreparedModel {

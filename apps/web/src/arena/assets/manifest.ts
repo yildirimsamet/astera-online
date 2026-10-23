@@ -24,18 +24,36 @@ export const modelDescriptor = z.object({
   rotateY: z.number(),
   /** Nozzle centres in the normalised model (length 1 along Z, centred). */
   engines: z.array(z.tuple([z.number(), z.number(), z.number()])).optional(),
+  /** Nozzle exit radius in the same space, measured on the model: how wide the flame leaves it. */
+  nozzle: z.number().positive().optional(),
   maps: maps.optional(),
   /** Per-mesh maps, in mesh order, for models made of several parts. */
   meshMaps: z.array(maps).optional(),
   /** Index of the mesh that glows (crystal shards). */
   glowMesh: z.number().int().nonnegative().optional(),
+  /**
+   * Already normalised by its tool (the collider catalog's unit space, or a class ship at
+   * length 1 along Z): drawn exactly as written, never recentred or rescaled.
+   */
+  unit: z.boolean().optional(),
+  /** The file's own PBR maps and factors (roughness, metal, occlusion, emission) are kept as authored. */
+  pbr: z.boolean().optional(),
+  /** Levels of detail in the file, as nodes `lod0`, `lod1`…: the first is the full model. */
+  lods: z.number().int().min(1).max(4).optional(),
 });
 export type ModelDescriptor = z.infer<typeof modelDescriptor>;
 export type MapSet = z.infer<typeof maps>;
 
+/** The three ship classes of the Rift (plan 14 §3): attack, defence, support. Their numbers live in the rules. */
+export { SHIP_CLASSES, type ShipClass } from '@astera/rules/arena';
+
 export const referenceManifest = z.object({
   version: z.literal(2),
-  ships: z.object({ hero: modelDescriptor, rivals: z.array(modelDescriptor).min(1) }),
+  ships: z.object({
+    hero: modelDescriptor, rivals: z.array(modelDescriptor).min(1),
+    /** Y3: one ship per class from tools/arena-ships.mjs; all three or none. */
+    classes: z.object({ akinci: modelDescriptor, muhafiz: modelDescriptor, kilavuz: modelDescriptor }).optional(),
+  }),
   rocks: z.array(modelDescriptor).min(1),
   giants: z.array(modelDescriptor).min(1),
   crystals: z.array(modelDescriptor).min(1),
@@ -46,10 +64,16 @@ export const referenceManifest = z.object({
   }),
   props: z.object({ debris: z.array(modelDescriptor), cargo: modelDescriptor }),
   textures: z.record(z.string(), referencePath),
-  sky: z.object({ faces: z.array(referencePath).length(6), env: z.array(referencePath).length(6) }),
+  sky: z.object({
+    faces: z.array(referencePath).length(6), env: z.array(referencePath).length(6),
+    /** Y3: the same six faces as one KTX2 cube (tools/arena-ktx2.mjs); the faces stay as its fallback. */
+    cube: referencePath.optional(),
+  }),
   fx: z.record(z.string(), referencePath),
   sounds: z.record(z.string(), z.array(referencePath)),
   music: z.array(referencePath),
+  /** Y2: one model per collider catalog shape, by catalog key (tools/arena-colliders.mjs). */
+  colliders: z.record(z.string(), modelDescriptor).optional(),
 });
 export type ReferenceManifest = z.infer<typeof referenceManifest>;
 

@@ -1,6 +1,7 @@
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
 import { COSMETIC_IDS, EXTRA_COSMETIC_IDS, cosmeticById, MULTI_WORLD } from '@astera/rules';
+import { ARENA_MAX_SEATS } from '@astera/rules/arena';
 import { BOTS } from './services/bots/personas.js';
 
 const schema = z.object({
@@ -13,6 +14,8 @@ const schema = z.object({
   /** Local bots, network conditioning and debug controls must never reach production. */
   ARENA_DEV: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   ARENA_ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://127.0.0.1:5173'),
+  /** Pilots one room seats (owner 2026-10-23: 100, headroom over the 48 the v6 map is sized for). */
+  ARENA_SEATS: z.coerce.number().int().positive().max(ARENA_MAX_SEATS).default(100),
   /** Private playtest reference pack on this host; unset serves none and the arena draws its procedural set. */
   ARENA_REF_DIR: z.string().min(1).optional(),
   /** Usernames that may fly the live playtest arena; `*` admits every signed-in account. */

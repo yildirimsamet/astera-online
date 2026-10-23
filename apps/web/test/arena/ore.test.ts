@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { ARENA_TUNING as T, createSandboxWorld } from '@astera/rules/arena';
+import { ARENA_TUNING as T, closestSurface, createSandboxWorld, obstacleSize, type SurfacePoint } from '@astera/rules/arena';
 import { createOre } from '../../src/arena/render/ore.js';
 
 /**
@@ -14,7 +14,7 @@ const setup = () => {
   const ore = createOre(scene, world.layout, world.cargoDrops.length);
   const meshes = scene.children.filter((c): c is THREE.InstancedMesh => c instanceof THREE.InstancedMesh);
   const veined = world.layout.deposits.map((index, slot) => ({ slot, o: world.layout.obstacles[index] }))
-    .filter(({ o }) => o?.shape === 'sphere' && o.kind !== 'crystal');
+    .filter(({ o }) => o?.kind === 'rock');
   return { world, ore, meshes, veined };
 };
 const scaleOf = (mesh: THREE.InstancedMesh, i: number) => {
@@ -29,6 +29,28 @@ describe('arena ore', () => {
     expect(veined.length).toBeGreaterThan(0);
     ore.update(world, 0);
     expect(meshes.reduce((n, m) => n + m.count, 0)).toBe(veined.length * 6);
+  });
+
+  it('roots every vein on its rock\'s real surface and grows it outwards (Y2: mesh rock)', () => {
+    const { world, ore, meshes, veined } = setup();
+    ore.update(world, 0);
+    const seen = [0, 0, 0];
+    const matrix = new THREE.Matrix4(); const root = new THREE.Vector3(); const turn = new THREE.Quaternion(); const scale = new THREE.Vector3();
+    const near: SurfacePoint = { x: 0, y: 0, z: 0, nx: 0, ny: 0, nz: 0, d: 0, inside: false };
+    for (const { slot, o } of veined) {
+      if (o?.shape !== 'mesh') throw new Error('veined rock is not a mesh rock');
+      const kind = world.layout.depositKinds[slot] ?? 0;
+      const mesh = meshes[kind]; if (!mesh) throw new Error('no batch');
+      const size = obstacleSize(world.layout, o);
+      for (let i = 0; i < 6; i++) {
+        mesh.getMatrixAt(seen[kind] ?? 0, matrix); seen[kind] = (seen[kind] ?? 0) + 1;
+        matrix.decompose(root, turn, scale);
+        expect(closestSurface(world.layout, o.id, root, Infinity, near)).toBe(true);
+        expect(near.d).toBeLessThanOrEqual(size * 0.2);
+        const out = root.clone().sub(new THREE.Vector3(o.p.x, o.p.y, o.p.z)).normalize();
+        expect(new THREE.Vector3(0, 1, 0).applyQuaternion(turn).dot(out)).toBeGreaterThan(0);
+      }
+    }
   });
 
   it('hides a dry rock\'s veins and shrinks a mined one\'s', () => {

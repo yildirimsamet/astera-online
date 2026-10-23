@@ -59,11 +59,27 @@ class HazeEffect extends Effect {
 }
 
 /**
+ * Compiles every scene shader for the target the scene is really drawn into. A program's key
+ * holds the target's tone mapping and colour space: compiled for the screen, the composer's
+ * first frame compiled them again, and anything off screen then compiled mid-fight.
+ */
+export async function compileFor(renderer: Pick<THREE.WebGLRenderer, 'getRenderTarget' | 'setRenderTarget' | 'compileAsync'>,
+  target: THREE.WebGLRenderTarget, scene: THREE.Object3D, camera: THREE.Camera): Promise<void> {
+  const previous = renderer.getRenderTarget();
+  renderer.setRenderTarget(target);
+  try { await renderer.compileAsync(scene, camera); } finally { renderer.setRenderTarget(previous); }
+}
+
+/** Exposure into the AgX curve (owner 2026-10-22: the arena read ~15–20 % too dark). */
+export const ARENA_EXPOSURE = 1.3;
+
+/**
  * The frame: scene into a multisampled half-float target (geometry edges stay clean at
  * any pixel ratio), mipmap bloom for engines, bolts and crystals, AgX tone mapping, a
  * vignette that frames the portrait view, a lens for turbo and hits, and belt haze.
  */
 export function createPost(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, samples: number) {
+  renderer.toneMappingExposure = ARENA_EXPOSURE;
   const composer = new EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType, multisampling: samples });
   const render = new RenderPass(scene, camera);
   const bloom = new BloomEffect({ mipmapBlur: true, luminanceThreshold: 0.72, luminanceSmoothing: 0.22, intensity: 1.05, radius: 0.7 });
@@ -80,6 +96,9 @@ export function createPost(renderer: THREE.WebGLRenderer, scene: THREE.Scene, ca
   return {
     composer,
     setSize(width: number, height: number): void { composer.setSize(width, height, false); },
+    setSamples(samples: number): void { composer.multisampling = samples; },
+    /** Shaders for the scene pass, before the first frame (no compile when something first comes into view). */
+    compile: (): Promise<void> => compileFor(renderer, composer.inputBuffer, scene, camera),
     hurt(amount: number): void { kick = Math.min(1, kick + amount); },
     /** 0 at rest, 1 in full turbo; `punch` adds a brief overshoot when turbo lights. */
     speed(level: number, punch = 0): void { speedTarget = level; speed = Math.min(1.6, speed + punch); },

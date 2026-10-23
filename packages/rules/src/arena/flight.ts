@@ -1,5 +1,5 @@
 import { DEFAULT_STEERING, clampAssist, steeringGain } from './controls.js';
-import { moveFlight } from './collision.js';
+import { moveFlight, settleLanded } from './collision.js';
 import { fuelBurn } from './fuel.js';
 import { ARENA_LAYOUT } from './layout.js';
 import { ARENA_TUNING, type FlightTuning } from './tuning.js';
@@ -38,6 +38,7 @@ export function stepFlight(state: FlightState, input: FlightInput, layout: Arena
       state.omegaYaw = powered ? -steerX * gain * tuning.landedYawRate : 0;
       rotateWorld(state.q, state.nx, state.ny, state.nz, state.omegaYaw * dt);
       alignUp(state.q, state.nx, state.ny, state.nz, dt / tuning.landSettle);
+      settleLanded(state, layout, tuning);
       if (powered) state.fuel = Math.max(0, state.fuel - fuelBurn(0, false, tuning) * dt);
       return;
     }
@@ -71,7 +72,7 @@ export function stepFlight(state: FlightState, input: FlightInput, layout: Arena
 
   const q = state.q;
   moveFlight(state, layout, 2 * (q.x * q.z + q.w * q.y), 2 * (q.y * q.z - q.w * q.x),
-    1 - 2 * (q.x * q.x + q.y * q.y), dt, tuning.shipHitRadius, tuning, input.land === true);
+    1 - 2 * (q.x * q.x + q.y * q.y), dt, tuning, input.land === true);
   if (state.liftoff > 0) state.liftoff--;
   if (powered) state.fuel = Math.max(0, state.fuel - fuelBurn(state.throttle, turbo, tuning) * dt);
 }

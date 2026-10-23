@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ARENA_TUNING as T, createInput, createSandboxWorld, stepSandboxWorld, type ArenaWorld, type BotRole, type Pilot,
+  ARENA_TUNING as T, CLASS_STATS, createInput, createSandboxWorld, stepSandboxWorld, type ArenaWorld, type BotRole, type Pilot,
 } from '../../src/arena/index.js';
 import { thinkBot } from '../../src/arena/bots.js';
+import { layoutWith, sphere } from './helpers.js';
 
 const rest = createInput();
 const alive = (p: Pilot): boolean => p.phase === 'flying' || p.phase === 'fuelOut';
@@ -40,19 +41,45 @@ describe('sandbox bots', () => {
     expect(mined).toBe(true);
   });
 
+  it('leave a deposit by the rim alone: the rim guard would turn the miner back from it forever', () => {
+    // Measured 2026-10-22: a rock vein at 5010 m on the 5200 m disc kept a miner circling for 120 s.
+    const rim = sphere(0, 4980, 0, 0, 20, 'crystal');
+    const inner = sphere(1, 3800, 0, 0, 20, 'crystal');
+    const world = createSandboxWorld({ layout: layoutWith([rim, inner], 5200, 1300) });
+    const miner = only(world, 'miner');
+    place(miner, 0); miner.p.x = 4600;
+    const brain = world.brains.get(miner.id);
+    if (!brain) throw new Error('no brain');
+    thinkBot(world, miner, brain, createInput());
+    expect(brain.goal).toBe(inner.id);
+  });
+
+  it('mine in the open and leave the veins inside buildings to the pilots (V6d)', () => {
+    // Steering by avoidance alone, a miner would hang on a building's wall trying to reach a vein in it.
+    const indoors = sphere(0, 4100, 0, 0, 15, 'crystal');
+    const open = sphere(1, 3000, 0, 0, 20, 'crystal');
+    const outpost = { id: 0, kind: 'outpost' as const, p: { x: 4000, y: 0, z: 0 }, ux: 1, uz: 0, scale: 380, colliders: [], decks: [] };
+    const world = createSandboxWorld({ layout: { ...layoutWith([indoors, open], 5200, 1300), structures: [outpost] } });
+    const miner = only(world, 'miner');
+    place(miner, 0); miner.p.x = 4600;
+    const brain = world.brains.get(miner.id);
+    if (!brain) throw new Error('no brain');
+    thinkBot(world, miner, brain, createInput());
+    expect(brain.goal).toBe(open.id);
+  });
+
   it('include a hunter that attacks a visible pilot and leaves a cloaked one alone', () => {
+    // The hunter alone: a miner born at the same mouth is a nearer, equally fair target.
     const visible = createSandboxWorld();
     visible.pilot.shield = 0;
-    const hunter = visible.drones.find(bot => visible.brains.get(bot.id)?.role === 'hunter');
-    if (!hunter) throw new Error('no hunter bot');
+    const hunter = only(visible, 'hunter');
     hunter.p.x = visible.pilot.p.x; hunter.p.y = visible.pilot.p.y; hunter.p.z = visible.pilot.p.z - 500;
     run(visible, 25);
     expect(visible.pilot.hull).toBeLessThan(T.hull);
 
     const hidden = createSandboxWorld();
     hidden.pilot.shield = 0;
-    const stalker = hidden.drones.find(bot => hidden.brains.get(bot.id)?.role === 'hunter');
-    if (!stalker) throw new Error('no hunter bot');
+    const stalker = only(hidden, 'hunter');
     stalker.p.x = hidden.pilot.p.x; stalker.p.y = hidden.pilot.p.y; stalker.p.z = hidden.pilot.p.z - 500;
     run(hidden, 25, () => { hidden.pilot.cloak = 99999; });
     expect(hidden.pilot.hull).toBe(T.hull);
@@ -77,7 +104,8 @@ const place = (p: Pilot, z: number): void => { Object.assign(p.p, { x: 0, y: 0, 
 
 /** A hunter 400 m behind a pilot who flies on; seconds to the kill (or 30) and hull lost. */
 function duel(weave: boolean): { killedAt: number; lost: number } {
-  const world = createSandboxWorld();
+  // Open space: the real layout's hub sits on the start point and turned this into a test of bouncing.
+  const world = createSandboxWorld({ layout: layoutWith([], 8000, 8000) });
   const hunter = only(world, 'hunter');
   place(world.pilot, 0); place(hunter, -400);
   const input = createInput(); input.throttle = 0.6;
@@ -135,8 +163,9 @@ describe('room bots', () => {
   it('break off sooner when badly hurt and still under fire', () => {
     const world = createSandboxWorld();
     const hunter = only(world, 'hunter');
-    place(world.pilot, 300); place(hunter, 0);
-    hunter.hull = T.hull * 0.42; hunter.lastDamage = world.tick;
+    // Open space on the rim: the hub's structures at the origin now cut the bot's sight.
+    place(world.pilot, 300); place(hunter, 0); world.pilot.p.x = 2700; hunter.p.x = 2700;
+    hunter.hull = CLASS_STATS[hunter.ship].hull * 0.42; hunter.lastDamage = world.tick;
     const brain = world.brains.get(hunter.id);
     if (!brain) throw new Error('no brain');
     thinkBot(world, hunter, brain, createInput());
@@ -144,13 +173,17 @@ describe('room bots', () => {
   });
 
   it('shoot a little worse than before, but still kill a pilot who flies straight', () => {
-    // Before the owner's request: dead in 21 s flying straight, 130 hull lost weaving for 30 s.
+    // Measured in open space (2026-10-21): with the old 6 m ball, dead in 13.1 s flying straight
+    // and 270 hull lost weaving for 30 s; with the Y2 hull 16.7 s and 260. Weaving still saves you.
+    // At 80 m/s (KG-X25) a weave moves the hull less: tracking at 2.7 killed the weaver in 22.6 s;
+    // at 1.8, 16.9 s straight and 28.1 s weaving. The owner kept 80/160 knowing weaving buys less.
+    // Y4: the hunter flies the Akıncı (117 hull a second, 80 before) at a 72 m/s Kılavuz: 12.3 s
+    // straight, 18.8 s weaving — the same tracking, the times shorter by the damage.
     const straight = duel(false);
-    expect(straight.killedAt).toBeGreaterThan(24);
-    expect(straight.killedAt).toBeLessThan(30);
     const weaving = duel(true);
-    expect(weaving.lost).toBeGreaterThanOrEqual(50);
-    expect(weaving.lost).toBeLessThanOrEqual(110);
+    expect(straight.killedAt).toBeGreaterThan(9);
+    expect(straight.killedAt).toBeLessThan(16);
+    expect(weaving.killedAt).toBeGreaterThan(straight.killedAt * 1.4);
   });
 });
 

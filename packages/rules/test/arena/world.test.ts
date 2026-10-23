@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARENA_LAYOUT, ARENA_TUNING as T, createInput, createPilot, createSandboxWorld, stepSandboxWorld,
-  type ArenaIntent, type ArenaLayout, type ArenaWorld,
+  type ArenaIntent, type ArenaLayout, type ArenaWorld, type ShipClass,
 } from '../../src/arena/index.js';
 import { layoutWith, sphere } from './helpers.js';
 
@@ -112,11 +112,11 @@ describe('extraction on a gate deck', () => {
   });
 });
 
-describe('gun gimbal in combat', () => {
-  function duel(x: number, cloak = false): number {
+describe('aim circle in combat (owner 2026-10-21: 8.5°, the guns follow inside it)', () => {
+  function duel(x: number, cloak = false, ship: ShipClass = 'kilavuz'): number {
     const world = soloWorld(layoutWith());
     world.pilot.shield = 0;
-    const target = createPilot(9);
+    const target = createPilot(9, ship);
     target.p.x = x; target.p.z = 300;
     if (cloak) target.cloak = 10 * T.tickRate;
     world.drones.push(target);
@@ -131,11 +131,15 @@ describe('gun gimbal in combat', () => {
   }
 
   it('lands near-miss shots on a visible target just off the nose', () => {
-    expect(duel(12)).toBeGreaterThan(4);
+    // Half the one-second burst at 300 m, tail-on: shots meet the drawn hull plus hitPad (Y2),
+    // no longer a 12 m ball, so the 1.5° spread loses a few.
+    expect(duel(12)).toBeGreaterThanOrEqual(4);
   });
 
-  it('does not bend shots outside its cone or towards a cloaked ship', () => {
-    expect(duel(34)).toBe(0);
-    expect(duel(12, true)).toBe(0);
+  it('does not bend shots outside the circle or towards a cloaked ship', () => {
+    // 55 m at 300 m is 10.4° off the nose: beyond the 8.5° circle.
+    expect(duel(55)).toBe(0);
+    // The Akıncı: the Kılavuz's 8.9 m wings (Y4b) would reach the unbent shots on their own.
+    expect(duel(12, true, 'akinci')).toBe(0);
   });
 });

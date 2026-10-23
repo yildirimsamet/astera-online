@@ -50,7 +50,7 @@ function connect(url: string, hello: Record<string, unknown>): Promise<{ socket:
     });
     socket.on('error', reject);
     socket.on('open', () => {
-      socket.send(JSON.stringify({ kind: 'hello', v: ARENA_PROTOCOL, mode: 'enter', ...hello }));
+      socket.send(JSON.stringify({ kind: 'hello', v: ARENA_PROTOCOL, mode: 'enter', ship: 'kilavuz', tactic: 'smoke', ...hello }));
       closers.push(async () => { socket.close(); await Promise.resolve(); });
       resolve({ socket, messages, next: match => new Promise(done => {
         const found = messages.find(match);

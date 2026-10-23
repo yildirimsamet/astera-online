@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ARENA_TUNING as T } from '@astera/rules/arena';
 
 export interface DustOptions {
   count: number; size: number; width: number;
@@ -10,7 +11,25 @@ export interface DustOptions {
   stretch: number;
 }
 
-const FIELD: DustOptions = { count: 520, size: 190, width: 0.11, near: [6, 22], boostOnly: false, stretch: 1 };
+// Owner 2026-10-22: the lines were too bright, too long and too many (520 + 320 motes, ~42 m
+// in turbo, brightness 1.2). Now about half as many, capped at MAX_STREAK, ~40% dimmer.
+export const FIELD_DUST: DustOptions = { count: 280, size: 190, width: 0.1, near: [6, 22], boostOnly: false, stretch: 0.8 };
+/** Turbo only: a swarm right around the lens, the nearest and fastest reference there is. */
+export const RUSH_DUST: DustOptions = { count: 140, size: 64, width: 0.05, near: [6, 15], boostOnly: true, stretch: 0.35 };
+/** Longest streak in metres, whatever the speed. */
+export const MAX_STREAK = 14;
+
+/** The distance the ship covers in a short "shutter", growing faster than speed, capped. */
+export function streakLength(speed: number, turbo: boolean, stretch: number): number {
+  return Math.min(MAX_STREAK, (speed * 0.045 + speed * speed * (turbo ? 0.0007 : 0.00045)) * stretch);
+}
+
+/** How bright the motes burn: dim when drifting, brighter with speed; none with no pilot flying. */
+export function dustGlow(speed: number, turbo: boolean, active: boolean, boostOnly: boolean): number {
+  if (!active) return 0;
+  if (boostOnly) return turbo ? 0.5 : 0;
+  return 0.12 + Math.min(1, speed / T.speedMax) * 0.5 + (turbo ? 0.1 : 0);
+}
 
 /**
  * Motes wrapped in a box around the camera and stretched along the ship's motion.
@@ -21,7 +40,7 @@ const FIELD: DustOptions = { count: 520, size: 190, width: 0.11, near: [6, 22], 
  * speed: dots when drifting, long lines in turbo. With no pilot flying (dead, extracted)
  * they fade out instead of hanging in the air.
  */
-export function createDust(options: DustOptions = FIELD): { mesh: THREE.Mesh; update(eye: THREE.Vector3, velocity: THREE.Vector3, turbo: boolean, active: boolean, dt: number): void } {
+export function createDust(options: DustOptions = FIELD_DUST): { mesh: THREE.Mesh; update(eye: THREE.Vector3, velocity: THREE.Vector3, turbo: boolean, active: boolean, dt: number): void } {
   const COUNT = options.count; const SIZE = options.size;
   const geometry = new THREE.InstancedBufferGeometry();
   geometry.setIndex([0, 1, 2, 0, 2, 3]);
@@ -63,8 +82,8 @@ export function createDust(options: DustOptions = FIELD): { mesh: THREE.Mesh; up
       const speed = active ? velocity.length() : 0;
       if (speed > 0.01) uniforms.motion.value.copy(velocity).divideScalar(speed);
       const k = 1 - Math.exp(-dt * 7);
-      stretch += ((speed * 0.045 + speed * speed * (turbo ? 0.0007 : 0.00045)) * options.stretch - stretch) * k;
-      const target = !active ? 0 : options.boostOnly ? (turbo ? 0.9 : 0) : 0.18 + Math.min(1, speed / 120) * 0.82 + (turbo ? 0.2 : 0);
+      stretch += (streakLength(speed, turbo, options.stretch) - stretch) * k;
+      const target = dustGlow(speed, turbo, active, options.boostOnly);
       glow += (target - glow) * (1 - Math.exp(-dt * (active && target > glow ? (options.boostOnly ? 9 : 4) : 6)));
       uniforms.stretch.value = stretch; uniforms.glow.value = glow;
       mesh.visible = glow > 0.005;

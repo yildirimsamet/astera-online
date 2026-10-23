@@ -76,12 +76,30 @@ export function tickHull(material: THREE.Material, time: number): void {
   }
 }
 
+const FOG_MIX = 'gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );';
+/**
+ * The fog chunk with the glow fading to black instead of to the fog colour. Light added to the
+ * frame (additive blending) fades to nothing in fog; mixed towards the fog colour it lights its
+ * whole quad (owner 2026-10-22: farm glows seen through a dust cloud read as squares).
+ */
+export function fogToBlack(fragmentShader: string): string {
+  if (!THREE.ShaderChunk.fog_fragment.includes(FOG_MIX)) throw new Error('three.js fog chunk changed: update fogToBlack');
+  return fragmentShader.replace('#include <fog_fragment>', THREE.ShaderChunk.fog_fragment.replace(FOG_MIX, 'gl_FragColor.rgb *= 1.0 - fogFactor;'));
+}
+
+/** An additive material that fades into fog as light should: to nothing. */
+export function additiveFog<M extends THREE.Material>(material: M): M {
+  material.onBeforeCompile = shader => { shader.fragmentShader = fogToBlack(shader.fragmentShader); };
+  material.customProgramCacheKey = () => 'fog-black';
+  return material;
+}
+
 /** Soft additive sprite material shared by glows, flares and beams. */
 export function glowMaterial(texture: THREE.Texture | undefined, color: string, opacity = 1): THREE.SpriteMaterial {
-  return new THREE.SpriteMaterial({
+  return additiveFog(new THREE.SpriteMaterial({
     map: texture ?? null, color: new THREE.Color(color), transparent: true, opacity,
     blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
-  });
+  }));
 }
 
 /** Writes a shader uniform if the material declares it. */

@@ -8,6 +8,19 @@ import { layoutWith } from './helpers.js';
 const empty = layoutWith();
 
 describe('fixed-step arena flight', () => {
+  // Owner 2026-10-23: ships were too fast to hit, the aim box sat far ahead of the hull.
+  // The fastest ship flies at most 80 m/s, 160 m/s in turbo.
+  it('tops out at 80 m/s and 160 m/s in turbo', () => {
+    const state = createFlightState();
+    const input = createInput();
+    input.throttle = 1;
+    for (let i = 0; i < 300; i++) stepFlight(state, input, empty);
+    expect(state.s).toBe(80);
+    input.turbo = true;
+    for (let i = 0; i < 60; i++) stepFlight(state, input, empty);
+    expect(state.s).toBeCloseTo(160, 9);
+  });
+
   it('accelerates towards the selected throttle and never flies backwards', () => {
     const state = createFlightState();
     const input = createInput();

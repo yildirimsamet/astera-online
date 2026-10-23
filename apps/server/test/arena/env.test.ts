@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ARENA_MAX_SEATS } from '@astera/rules/arena';
 import { loadEnv } from '../../src/env.js';
 
 const base = {
@@ -24,6 +25,15 @@ describe('arena feature flags', () => {
   it('refuses development tools in a production process', () => {
     expect(() => loadEnv({ ...base, NODE_ENV: 'production', ARENA_DEV: 'true' }))
       .toThrow(/ARENA_DEV.*production/);
+  });
+
+  // Owner 2026-10-23: the room took 8 pilots, a limit from the 3-bot prototype; 100 is the
+  // headroom over the 48-pilot room the v6 map is sized for.
+  it('seats 100 pilots by default, and reads a whole positive seat count', () => {
+    expect(loadEnv(base).ARENA_SEATS).toBe(100);
+    expect(loadEnv({ ...base, ARENA_SEATS: '8' }).ARENA_SEATS).toBe(8);
+    for (const value of ['0', '-3', '2.5', 'many', String(ARENA_MAX_SEATS + 1)]) expect(() => loadEnv({ ...base, ARENA_SEATS: value })).toThrow(/ARENA_SEATS/);
+    expect(loadEnv({ ...base, ARENA_SEATS: String(ARENA_MAX_SEATS) }).ARENA_SEATS).toBe(ARENA_MAX_SEATS);
   });
 
   it('reads the arena pilot list as canonical usernames, empty by default', () => {

@@ -32,15 +32,16 @@ describe('the lite reference pack', () => {
     return Promise.resolve(new Response('{}', { status: answers[url] ?? 404 }));
   };
 
-  it('asks a memory-tight browser for the lite manifest first and falls back to the full one', async () => {
+  it('asks a memory-tight browser for the lite manifest first and falls back to the full one, KTX2 before webp', async () => {
     const asked: string[] = [];
     await loadArenaAssets(true, 1, () => undefined, fetcher({}, asked), true);
-    expect(asked).toEqual(['/__ref/dist/v2/manifest-lite.json', '/__ref/dist/v2/manifest.json']);
+    expect(asked).toEqual(['/__ref/dist/v2/manifest-lite-ktx2.json', '/__ref/dist/v2/manifest-lite.json',
+      '/__ref/dist/v2/manifest-ktx2.json', '/__ref/dist/v2/manifest.json']);
   });
 
-  it('gives every other browser the full pack only', async () => {
+  it('gives every other browser the full pack only, KTX2 before webp', async () => {
     const asked: string[] = [];
     await loadArenaAssets(true, 1, () => undefined, fetcher({}, asked), false);
-    expect(asked).toEqual(['/__ref/dist/v2/manifest.json']);
+    expect(asked).toEqual(['/__ref/dist/v2/manifest-ktx2.json', '/__ref/dist/v2/manifest.json']);
   });
 });

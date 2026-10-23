@@ -1,12 +1,13 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
-  ARENA_LAYOUT, ARENA_TUNING as T, createFlightState, createInput, queryObstacles, stepFlight,
+  ARENA_LAYOUT, ARENA_TUNING as T, createFlightState, createInput, hullGap, queryObstacles, stepFlight,
 } from '../../src/arena/index.js';
 import { box, layoutWith, sphere } from './helpers.js';
 
 const r = T.shipHitRadius;
-const length = (x: number, y: number, z: number): number => Math.sqrt(x * x + y * y + z * z);
+/** The fuselage's reach along the nose (Y2 hull). */
+const nose = T.bodyLength / 2;
 
 describe('broad-phase obstacle grid', () => {
   it('never misses an obstacle whose bounds overlap the query, and never repeats one', () => {
@@ -34,8 +35,9 @@ describe('ship collision against rocks, structures and the boundary', () => {
     input.throttle = 1;
     state.s = 9000;
     stepFlight(state, input, layoutWith([sphere(0, 0, 0, 80, 8)]), undefined, { ...T, speedMax: 9000 });
-    expect(state.p.z).toBeLessThanOrEqual(80 - 8 - r);
-    expect(state.s).toBeLessThan(9000 * (1 - T.bounceLoss) + 1e-6);
+    expect(state.p.z).toBeLessThanOrEqual(80 - 8 - nose + 1e-6);
+    // Head-on: all forward speed is lost, part of it comes back as knock-back.
+    expect(state.s).toBe(0);
     expect(state.kz).toBeLessThan(0);
     expect(state.landed).toBe(0);
     expect(state.bump).toBe(1);
@@ -43,8 +45,9 @@ describe('ship collision against rocks, structures and the boundary', () => {
 
   it('resolves a ship that starts inside a rock without NaN or a landing', () => {
     const state = createFlightState();
-    stepFlight(state, createInput(), layoutWith([sphere(0, 0, 0, 0, 8)]));
-    expect(length(state.p.x, state.p.y, state.p.z)).toBeGreaterThanOrEqual(8 + r);
+    const layout = layoutWith([sphere(0, 0, 0, 0, 8)]);
+    stepFlight(state, createInput(), layout);
+    expect(hullGap(layout, 0, state.p, state.q, T)).toBeGreaterThanOrEqual(-1e-6);
     expect(Number.isFinite(state.p.x + state.p.y + state.p.z)).toBe(true);
     expect(state.landed).toBe(0);
   });
@@ -58,7 +61,7 @@ describe('ship collision against rocks, structures and the boundary', () => {
     const layout = layoutWith([box(0, 0, 0, 40, 50, 50, 1)]);
     for (let i = 0; i < 60; i++) {
       stepFlight(state, input, layout);
-      expect(state.p.z).toBeLessThanOrEqual(39 - r + 1e-9);
+      expect(state.p.z).toBeLessThanOrEqual(39 - nose + 1e-6);
     }
   });
 
@@ -66,7 +69,8 @@ describe('ship collision against rocks, structures and the boundary', () => {
     const state = createFlightState();
     state.p.x = 18;
     stepFlight(state, createInput(), layoutWith([box(0, 0, 0, 0, 20, 30, 30)]));
-    expect(state.p.x).toBeGreaterThanOrEqual(20 + r - 1e-9);
+    // Out through the near face, far enough for the wing tip to clear it.
+    expect(state.p.x).toBeGreaterThanOrEqual(20 + T.wingSpan / 2 - 1e-6);
     expect(Math.abs(state.p.z)).toBeLessThan(1e-9);
   });
 
@@ -82,14 +86,14 @@ describe('ship collision against rocks, structures and the boundary', () => {
     for (let i = 0; i < 60; i++) {
       stepFlight(state, input, layout);
       deepest = Math.max(deepest, state.p.z);
-      expect(state.p.z).toBeLessThanOrEqual(100 - 30 * Math.SQRT2 - r + 1e-6);
+      expect(state.p.z).toBeLessThanOrEqual(100 - 30 * Math.SQRT2 - nose + 1e-6);
     }
-    expect(deepest).toBeGreaterThan(100 - 30 * Math.SQRT2 - r - 2);
+    expect(deepest).toBeGreaterThan(100 - 30 * Math.SQRT2 - nose - 2);
   });
 
   it('scrapes along a rock at a shallow angle, keeping speed and heading', () => {
-    // A huge rock whose surface the flight line just grazes.
-    const layout = layoutWith([sphere(0, 400 + r - 3, 0, 1500, 400)]);
+    // A huge rock whose surface reaches 1 m into the canopy along the flight line.
+    const layout = layoutWith([sphere(0, 400 + T.bodyRadius - 1, 0, 1500, 400)]);
     const state = createFlightState();
     state.s = T.speedMax;
     const input = createInput();
@@ -99,9 +103,7 @@ describe('ship collision against rocks, structures and the boundary', () => {
     for (let i = 0; i < 1200 && state.p.z < 1800; i++) {
       stepFlight(state, input, layout);
       if (state.bump > 0) bumped = true;
-      const o = layout.obstacles[0];
-      if (!o) throw new Error('missing rock');
-      expect(length(state.p.x - o.p.x, state.p.y - o.p.y, state.p.z - o.p.z)).toBeGreaterThanOrEqual(o.radius + r - 1e-6);
+      expect(hullGap(layout, 0, state.p, state.q, T)).toBeGreaterThanOrEqual(-1e-6);
       expect(state.landed).toBe(0);
     }
     expect(bumped).toBe(true);

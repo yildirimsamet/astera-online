@@ -1,4 +1,4 @@
-import { createInput, sampleAssist, sampleInput, type ArenaIntent } from '@astera/rules/arena';
+import { createInput, sampleInput, type ArenaIntent, type Tactic } from '@astera/rules/arena';
 
 /** Thumb travel to full deflection: longer travel means finer aim for the same turn. */
 export const STICK_RADIUS = 72;
@@ -44,21 +44,43 @@ export interface Circle { x: number; y: number; r: number }
  */
 export function chordAt(x: number, y: number, contact: number, fire: Circle, turbo: Circle): ('fire' | 'turbo')[] {
   const on = (c: Circle): boolean => Math.hypot(x - c.x, y - c.y) <= c.r + contact;
-  const dx = turbo.x - fire.x; const dy = turbo.y - fire.y; const length = Math.hypot(dx, dy) || 1;
-  const s = ((x - fire.x) * dx + (y - fire.y) * dy) / length;
-  const off = Math.abs((x - fire.x) * dy - (y - fire.y) * dx) / length;
-  const bridge = s >= fire.r * 0.75 && s <= length - turbo.r * 0.75 && off <= Math.min(fire.r, turbo.r) * 0.75;
+  const link = chordLink(fire, turbo);
+  const cos = Math.cos(link.angle); const sin = Math.sin(link.angle);
+  const s = (x - link.x) * cos + (y - link.y) * sin;
+  const off = Math.abs((y - link.y) * cos - (x - link.x) * sin);
+  const bridge = s >= link.start && s <= link.end && off <= link.half;
   const held: ('fire' | 'turbo')[] = [];
   if (bridge || on(fire)) held.push('fire');
   if (bridge || on(turbo)) held.push('turbo');
   return held;
 }
 
+/**
+ * The strip that holds both keys (owner 2026-10-22: drawn, joined to both): from TURBO's
+ * centre (`x`, `y`) towards FIRE's at `angle`, `start`–`end` px along, `half` px either
+ * side. Both ends lie under the keys, so only the neck between them shows.
+ */
+export function chordLink(fire: Circle, turbo: Circle): { x: number; y: number; angle: number; start: number; end: number; half: number } {
+  const length = Math.hypot(fire.x - turbo.x, fire.y - turbo.y);
+  return { x: turbo.x, y: turbo.y, angle: Math.atan2(fire.y - turbo.y, fire.x - turbo.x),
+    start: turbo.r * 0.75, end: length - fire.r * 0.75, half: Math.min(fire.r, turbo.r) * 0.75 };
+}
+
 /** Throttle stops the rail snaps to: stop, landing speed, cruise, full. */
-export const THROTTLE_DETENTS = [0, 0.2, 0.5, 1] as const;
-/** 24 m/s, the landing speed (owner 2026-10-21; was 18). */
-export const LANDING_THROTTLE = 0.2;
-export type ArenaAction = 'fire' | 'turbo' | 'smoke' | 'cloak';
+export const THROTTLE_DETENTS = [0, 0.3, 0.5, 1] as const;
+/** 24 m/s, the landing speed (owner 2026-10-21; was 18): 0.3 of the 80 m/s top speed. */
+export const LANDING_THROTTLE = 0.3;
+/** Holding Kalk lifts off at a third of the throttle (owner 2026-10-22; was at least half). */
+export const TAKEOFF_THROTTLE = 0.33;
+export type ArenaAction = 'fire' | 'turbo' | Tactic | 'signature';
+/** An aimed signature (shield, repair): a second tap this soon casts it on oneself (Y4c, owner 2026-10-23). */
+export const DOUBLE_TAP_MS = 300;
+/** Keys the flight page hands to the controls; the rest stay the browser's. */
+export const GAME_KEY = /^(Key[WASDRFXQETV]|Space|Shift(Left|Right)|Arrow(Up|Down|Left|Right))$/;
+/** Keys that act once a press: the browser's auto-repeat must not fire them again. */
+export const ONE_PRESS_KEYS: readonly string[] = ['KeyQ', 'KeyE', 'KeyL', 'KeyT', 'KeyX', 'KeyV'];
+/** How long one tap waits for the friend to be tapped. */
+export const AIM_WINDOW_MS = 3000;
 
 const snap = (value: number): number => {
   for (const detent of THROTTLE_DETENTS) if (Math.abs(value - detent) < 0.045) return detent;
@@ -83,11 +105,26 @@ export function createControls() {
   let lastTap = -Infinity;
   let turboPressedAt = 0;
   let fire = false; let turbo = false;
-  let smoke = false; let cloak = false; let turboBurst = false;
+  let smoke = false; let cloak = false; let illusion = false; let radar = false; let turboBurst = false;
+  /** The B slot this flight carries: what Q and E press. */
+  let tactic: Tactic = 'smoke';
+  const pressTactic = (which: Tactic): void => {
+    if (which === 'smoke') smoke = true; else if (which === 'cloak') cloak = true; else if (which === 'illusion') illusion = true; else radar = true;
+  };
+  // The A slot: a missile goes at once; a shield or repair is aimed (`aimedAt`: when the wait began).
+  let signatureMode = { aimed: false, self: (): number => -1 };
+  let signature = false; let signatureTarget = -1; let aimedAt = -Infinity;
+  const pressSignature = (time: number): void => {
+    if (!signatureMode.aimed) { signature = true; signatureTarget = -1; return; }
+    if (time - aimedAt <= DOUBLE_TAP_MS && time >= aimedAt) { signature = true; signatureTarget = signatureMode.self(); aimedAt = -Infinity; }
+    else aimedAt = time;
+  };
   const listeners = new Set<() => void>();
   const changed = (): void => { for (const listener of listeners) listener(); };
-  const setThrottle = (value: number): void => {
-    const next = snap(Number.isFinite(value) ? value : 0);
+  // `exact` skips the detents: Kalk's 0.33 sits next to the landing stop and must not snap onto it.
+  const setThrottle = (value: number, exact = false): void => {
+    const clean = Number.isFinite(value) ? value : 0;
+    const next = exact ? Math.max(0, Math.min(1, clean)) : snap(clean);
     if (next === throttle) return;
     throttle = next;
     if (throttle > 0) lastThrottle = throttle;
@@ -103,9 +140,22 @@ export function createControls() {
     get throttle(): number { return throttle; },
     get firing(): boolean { return fire; },
     get stickPointer(): number | null { return stickPointer; },
+    /** When the current aimed signature began waiting for its friend; -Infinity when none waits. */
+    get aimedAt(): number { return aimedAt; },
     subscribe(listener: () => void): () => void { listeners.add(listener); return () => { listeners.delete(listener); }; },
     setThrottle,
-    takeOff(): void { setThrottle(Math.max(0.5, lastThrottle)); },
+    takeOff(): void { setThrottle(TAKEOFF_THROTTLE, true); },
+    /** The flight's A slot: `aimed` for a shield or repair; `self` reads the pilot's own id (the room's, once it has given one). */
+    setSignature(mode: { aimed: boolean; self: () => number }): void { signatureMode = mode; aimedAt = -Infinity; },
+    /** The flight's B slot (Y4d): the one tactic Q and E press. */
+    setTactic(next: Tactic): void { tactic = next; },
+    /** Waiting for the friend an aimed signature goes to. */
+    aiming(time: number): boolean { return time - aimedAt <= AIM_WINDOW_MS && time >= aimedAt; },
+    /** The friend tapped while aiming. */
+    signatureAt(target: number, time: number): void {
+      if (time - aimedAt > AIM_WINDOW_MS || time < aimedAt) return;
+      signature = true; signatureTarget = target; aimedAt = -Infinity; changed();
+    },
     stop(): void { setThrottle(0); },
     stickDown(pointer: number, x: number, y: number): boolean {
       if (stickPointer !== null) return false;
@@ -137,8 +187,8 @@ export function createControls() {
       actions.set(action, pointer);
       if (action === 'fire') fire = true;
       if (action === 'turbo') { turbo = true; turboPressedAt = time; }
-      if (action === 'smoke') smoke = true;
-      if (action === 'cloak') cloak = true;
+      if (action === 'signature') pressSignature(time);
+      else if (action !== 'fire' && action !== 'turbo') pressTactic(action);
       changed();
       return true;
     },
@@ -158,8 +208,8 @@ export function createControls() {
       if (code === 'KeyT') setThrottle(Math.max(0.5, lastThrottle));
       if (code === 'Space') fire = true;
       if (code === 'ShiftLeft' || code === 'ShiftRight') turbo = true;
-      if (code === 'KeyQ') smoke = true;
-      if (code === 'KeyE') cloak = true;
+      if (code === 'KeyQ' || code === 'KeyE') pressTactic(tactic);
+      if (code === 'KeyV') { pressSignature(performance.now()); changed(); }
       keyboardStick();
     },
     keyUp(code: string): void {
@@ -169,15 +219,15 @@ export function createControls() {
       keyboardStick();
     },
     /**
-     * The tick's intent. `friction` < 1 slows the stick while the reticle rests on a
-     * target (console-style aim friction); the assist channel is the steering magnet.
+     * The tick's intent. The heading is the pilot's alone (owner 2026-10-21): no aim
+     * friction, no steering magnet — the aim circle moves the guns, not the ship.
      */
-    sample(friction = 1, assistX = 0, assistY = 0, autopilot?: { x: number; y: number }): ArenaIntent {
+    sample(autopilot?: { x: number; y: number }): ArenaIntent {
       if (autopilot) sampleInput(intent, autopilot.x, autopilot.y, throttle, turbo);
-      else sampleInput(intent, stick.x * friction, stick.y * friction, throttle, turbo);
-      sampleAssist(intent, assistX, assistY);
-      intent.fire = fire; intent.smoke = smoke; intent.cloak = cloak; intent.turboBurst = turboBurst;
-      smoke = false; cloak = false; turboBurst = false;
+      else sampleInput(intent, stick.x, stick.y, throttle, turbo);
+      intent.fire = fire; intent.smoke = smoke; intent.cloak = cloak; intent.illusion = illusion; intent.radar = radar; intent.turboBurst = turboBurst;
+      intent.signature = signature; intent.signatureTarget = signatureTarget;
+      smoke = false; cloak = false; illusion = false; radar = false; turboBurst = false; signature = false; signatureTarget = -1;
       return intent;
     },
     /**
@@ -187,7 +237,8 @@ export function createControls() {
      */
     clear(): void {
       keys.clear(); actions.clear(); stickPointer = null; throttlePointer = null;
-      stick.x = 0; stick.y = 0; fire = false; turbo = false; smoke = false; cloak = false; turboBurst = false;
+      stick.x = 0; stick.y = 0; fire = false; turbo = false; smoke = false; cloak = false; illusion = false; radar = false; turboBurst = false;
+      signature = false; signatureTarget = -1; aimedAt = -Infinity;
       lastTap = -Infinity; changed();
     },
     intent,

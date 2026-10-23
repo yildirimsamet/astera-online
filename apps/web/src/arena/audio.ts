@@ -1,4 +1,4 @@
-import { ARENA_TUNING as T, type ArenaWorld, type Pilot, type Vec3 } from '@astera/rules/arena';
+import { ARENA_TUNING as T, CLASS_STATS, classTuning, lowFuel, type ArenaWorld, type Pilot, type Vec3 } from '@astera/rules/arena';
 
 interface Loop { source: AudioBufferSourceNode; gain: GainNode }
 interface Listener { x: number; y: number; z: number; rx: number; ry: number; rz: number }
@@ -125,7 +125,7 @@ export function createArenaAudio() {
         if (typeof navigator.vibrate === 'function' && audio.enabled) navigator.vibrate([18, 24, 12]);
       }
       // Crossing into critical hull warns once; it re-arms only after a repair or respawn.
-      const critical = flying && pilot.hull < T.hull * 0.3;
+      const critical = flying && pilot.hull < CLASS_STATS[pilot.ship].hull * 0.3;
       if (critical && !last.critical) play('warn', 0.45, { cut: 0.9 });
       last.critical = critical;
       if (pilot.cargo > last.cargo + 0.9 && !pilot.mining) play('cargo', 0.5);
@@ -141,7 +141,7 @@ export function createArenaAudio() {
       if (pilot.phase === 'extracted' && last.phase !== 'extracted') play('warp', 0.9);
       if (pilot.phase === 'dead' && last.phase !== 'dead') { play('shipExplode', 1); play('explosionNear', 0.8); }
       // Low fuel: once on the way down, then a reminder every 20 s (the HUD carries the count).
-      if (flying && pilot.fuel < 15 && performance.now() - last.warnAt > 20000) { last.warnAt = performance.now(); play('warn', 0.4, { cut: 0.9 }); }
+      if (flying && lowFuel(pilot.fuel, classTuning(pilot.ship)) && performance.now() - last.warnAt > 20000) { last.warnAt = performance.now(); play('warn', 0.4, { cut: 0.9 }); }
       if (pilot.fuel >= 15) last.warnAt = 0;
       for (const drone of world.drones) {
         const seen = shotsSeen.get(drone.id);
