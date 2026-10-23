@@ -52,10 +52,10 @@ it('fights with the NPC’s radiation wounds and preserves the surviving HP in s
   await hit({ CITADEL: 1 });
   f.clock.advance(1);
   const wounded = applyHpDose({ CITADEL: 1 }, [], 9);
-  // One Dart never gets past a Citadel's 2,158 ship shield. Seventy wound it further and leave it
-  // standing in 20,000 of 20,000 seeds (2026-10-20).
-  const { mission, report } = await raid(70);
-  const expected = resolveBattle([soloStack({ DART: 70 }, { tech: {} }, [])],
+  // Under six-round distributed fire, seventy Darts kill the Citadel. Ten Darts
+  // leave it alive with additional hull damage in all 256 checked fixture seeds.
+  const { mission, report } = await raid(10);
+  const expected = resolveBattle([soloStack({ DART: 10 }, { tech: {} }, [])],
     [{ stackId: 'neutral', playerId: '', fleet: { CITADEL: 1 }, damage: wounded.lots, tech: { tech: {} }, maintenanceExempt: true }],
     0, seededFrom(mission.id), 'HP_PLANET', true);
   expect(report.defenderLosses).toEqual(expected.defenderLosses);

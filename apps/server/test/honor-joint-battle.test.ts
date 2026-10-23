@@ -23,9 +23,10 @@ it.each([{ afterLaunch: false, rankedOpening: false, openBeforeLaunch: false, ve
   const f = await supportWorld(4, 5519);
   const clanId = await formClan(f, 0, [1, 2]);
   await f.db.update(clans).set({ level: 5 }).where(eq(clans.id, clanId));
-  // A Harpoon kills at least one attacking Dart in its simultaneous first volley.
-  // Random spread alone need not destroy any ship; this case must exercise real loss debits.
-  await giveUnits(f.db, f.planetIds[3]!, { DART: 20, HARPOON: 1 });
+  // Sixteen Harpoons keep the incoming first volley above the whole 60-Dart wing's
+  // HP + shield budget, even at minimum variance. Distributed fire must therefore
+  // inflict real losses: this case exercises Honor debits, not a harmless shield hit.
+  await giveUnits(f.db, f.planetIds[3]!, { DART: 20, HARPOON: 16 });
   await giveUnits(f.db, f.planetIds[3]!, { DART: 100 }, randomUUID());
   await f.db.transaction(async tx => {
     if (!afterLaunch) {

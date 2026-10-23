@@ -128,6 +128,9 @@ describe('a raid on a pirate', () => {
       20,000 combat seeds (`resolveBattle` + `pirateOverrun`, the raid id being the only
       other input). 2026-10-20: re-pinned for ship shields — the old level-1 crew's 31.5
       damage a round never got past a single Dart's shield, so nothing was ever part-hit.
+      2026-10-23: distributed shots share that fire across every Dart's shield;
+      30 Darts now return healthy. Ten Darts survive with real hull wounds in all
+      256 independently checked seeds, keeping this a non-vacuous persistence test.
     */
     await db.update(seasons).set({ asteroidKey: pinnedKey(4510) }).where(eq(seasons.id, season.id));
     const joined = [];
@@ -148,7 +151,7 @@ describe('a raid on a pirate', () => {
     await db.update(planets).set({ x: at.x + 60, y: at.y, z: at.z }).where(eq(planets.id, mine));
     clock.set(new Date(start.getTime() + minute * 60_000));
 
-    const wing: Fleet = { DART: 30 };
+    const wing: Fleet = { DART: 10 };
     await grant(db, mine, 200_000, 40_000);
     await giveUnits(db, mine, wing);
     await fuelUp(db, mine);

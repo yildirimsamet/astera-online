@@ -98,10 +98,10 @@ Diğer işlerin kirli ana çalışma dizinine dokunmadan ayrı dal/worktree kull
 
 - [x] Gereksinim ve ilk etki incelemesi / plan
 - [x] Kurallarda RED → GREEN
-- [ ] Ortak yollar, sunucu ve rapor regresyonları
+- [x] Ortak yollar, sunucu ve rapor regresyonları
 - [x] Web açıklamaları ve görsel doğrulama
-- [ ] Performans, lint/typecheck/build ve son inceleme
-- [ ] Kullanıcıya sonuç; deploy ayrıca
+- [x] Performans, lint/typecheck/build ve son inceleme
+- [ ] Canlıya alma ve yayın sonrası sağlık kontrolleri
 
 ## İnceleme sırasında doğrulananlar
 
@@ -146,7 +146,7 @@ Diğer işlerin kirli ana çalışma dizinine dokunmadan ayrı dal/worktree kull
   olağan. Tamirhane “Tümünü seç” butonu bu durumda işlemi engelleyen bir seçim
   yaratıyordu. Aynı 50-grup API sınırı korunup buton açıkça “İlk 50 can grubunu seç”
   olarak kullanılabilir ilk parçayı seçer. Kullanıcı onaylamadan taşıma/onarım yok.
-  Diğer gruplar kaybolmaz; sonraki işlemde alınır. TDD RED→GREEN, i18n dahil110PASS.
+  Diğer gruplar kaybolmaz; sonraki işlemde alınır. TDD RED→GREEN, i18n dahil 110 PASS.
 - Tarihî deney araçları `4d58d123` gövde motoru, tur sabiti ve kaçış politikasını
   git'ten okuyor. 16 başlangıç örneğinin bağımsız eski çalışma alanından alınmış
   SHA-256'sı `278123b86a78a6e51ea0d9c4c68a36d945afb85d63b190e903d53ff85439ef83`.
@@ -156,39 +156,75 @@ Diğer işlerin kirli ana çalışma dizinine dokunmadan ayrı dal/worktree kull
   canlı PostgreSQL'e dokunulmadı. Yeniden kurulan test DB disk volume kullanıyor.
 - Sunucu kapsamı: battle/raid, anıt, solo/joint/support, Honor savaş kanıtları,
   escape/capture, NPC, iade, radyasyon/tamir, ganimet/enkaz/puan ve raporlarla
-  ilişkili78 normal test dosyası. Tam normal API sözleşme dosyası102testPASS;
+  ilişkili 78 normal test dosyası. Tam normal API sözleşme dosyası 102 test PASS;
   yeni altı turlu anıt sözleşmesi ayrıca API→istemci parserı üzerinden doğrulanır.
   Ekonomi/sezon/snowball uzun çalışmaları koşulmadı.
 
 - Gerçek tarayıcı görsel kabulü: 350/1280 px, 6 dilde kurallar; TR/EN normal
-  ve anıt raporunda altı tur/5. tur kaçışı, Wiki ve51gruplu onarım seçimi.
-  22kontrolPASS; Worker hesaplarken ana iş parçacığı zamanlayıcısı ilerledi.
+  ve anıt raporunda altı tur/5. tur kaçışı, Wiki ve 51 gruplu onarım seçimi.
+  22 kontrol PASS; Worker hesaplarken ana iş parçacığı zamanlayıcısı ilerledi.
   Görseller ve ölçümler `out/six-round-integration/visual/` altında.
-- Yeni API sözleşmesi ve kalıcı yara kontrolü: iki gerçekDB testiPASS.
+- Yeni API sözleşmesi ve kalıcı yara kontrolü: iki gerçek DB testi PASS.
   Anıt lotlarının rasgele UUID sırası farklı olduğundan karşılaştırma kanonik
   yara gruplarıyla yapılır; lot kimlikleri yara bilgisine karıştırılmaz.
 
 ### Son bağlı test incelemesi
 
-- Ortak filo dönüş testi100Dart'ın yeni dağıtımda hiç fiziksel ölüm vermediği
+- Ortak filo dönüş testi 100 Dart'ın yeni dağıtımda hiç fiziksel ölüm vermediği
   bir savunma kullanıyordu; fiziksel kayıp + sağ kalan gerektiren dönüş senaryosu
-  aynı gemi sayısı ve daha dayanıklı savunmayla yeniden kuruldu.128tohumda hem
-  kayıp hem sağ kalan doğrulandı; gerçek DB dönüş testiPASS. Esas envanter/iniş
+  aynı gemi sayısı ve daha dayanıklı savunmayla yeniden kuruldu. 128 tohumda hem
+  kayıp hem sağ kalan doğrulandı; gerçek DB dönüş testi PASS. Esas envanter/iniş
   eşitliği gevşetilmedi.
-- Eski üç turluk kargo iade fixture'ında6tur sonunda küçük Kurye gerçekten
+- Eski üç turluk kargo iade fixture'ında 6 tur sonunda küçük Kurye gerçekten
   ölüyor; rollback testi daha dayanıklı Argosi ile gerçek iade yolunu test ediyor.
-- Bir savaş gemisi + kargo savunmasında,6turdan sonra tek Argosi ya ölüyor ya
-  muharebeden kaçıyordu; zorunlu kargo tahliyesi fixture'ı ikiArgosi ile kuruldu.
+- Bir savaş gemisi + kargo savunmasında, 6 turdan sonra tek Argosi ya ölüyor ya
+  muharebeden kaçıyordu; zorunlu kargo tahliyesi fixture'ı iki Argosi ile kuruldu.
   Aynı tohumla ortak motordan alınan yaralar; anıt lotlarında, eve dönüşte ve
-  raporda korunuyor.12,5döteryum,4.000rezervin kalan yakıt iadesi, mülkiyet,
-  tek işlem/idempotency ve anıtın el değiştirmesi birlikte doğrulandı.3/3DBtestPASS.
+  raporda korunuyor. 12,5 döteryum, 4.000 rezervin kalan yakıt iadesi, mülkiyet,
+  tek işlem/idempotency ve anıtın el değiştirmesi birlikte doğrulandı. 3/3 DB test PASS.
 - Yeni klan savunması rapor testi: her iki savunanın tur kayıp/kaçış toplamı
   yalnız kendi nihai katılımcı satırına eşit. Rakibin yarası/kalan filosu ve ham
   oyuncu telemetrisi yok. Tarihî sahiplik telemetrisi silinmiş örnekte ayrıntı
-  üretilmiyor; toplam rapor okunuyor.1/1DBtestPASS.
+  üretilmiyor; toplam rapor okunuyor.1/1 DB test PASS.
 - Ortak filo kalıcı yara testindeki üç turdan kalma 5 Dart / 2 Stronghold dizilimi
   altı turda istenen yaralı sağ kalanları bırakmıyordu. Yara testleri için iki
   sahibin birer Kale'si ile iki savunan Kale, Zırh V / Kalkan IV kullanıldı:
   128 tohumun hepsinde dört gemi de gerçek gövde yarasıyla hayatta. Kalıcı yara
   öncesi ruleset aynı dizilimde yara saklamıyor. İmha puanı, radyasyon ve sezon
   muhasebesi testleri kendi eski imhalı dizilimini koruyor. Dosyanın 6 testi PASS.
+
+- Kapsamlı sunucu koşusunda ayrıca üç eski yara dizilimi doğrulandı ve düzeltildi:
+  korsan ateşi 30 Dart'ın bütün kalkanlarına yayılınca gövdeye ulaşmıyor; 10 Dart
+  256 tohumda yaralı dönüyor. Radyasyonlu NPC Kale'yi 70 Dart öldürüyor; 10 Dart
+  256 tohumda hem yaşatıp hem ek gövde yarası bırakıyor. İlgili iki dosya 5 test PASS.
+- Solo baskın yara dönüşü iki tarafta Zırh V / Kalkan IV'lü ikişer Kale ile
+  doğrulandı. Hafif yaranın iyileştirilmemesi, baştan %10 yaralı Stronghold'un
+  atışları kalkanında karşılayıp tam aynı yarayla kalmasıyla ayrıca doğrulandı.
+  Dosya 3/3 PASS; önceki ruleset'in yara saklamaması da korunuyor.
+- Honor ortak filo testinde bir Harpoon'un yayılmış atışı artık kesin fiziksel
+  kayıp oluşturmuyor. On altı Harpoon'un en düşük varyanslı ilk tur hasarı bütün
+  60 Dart'ın kalkan + can bütçesini aştığından gerçek kayıp/debit yolu sınanıyor.
+  Yedi açılış/sürüm sınırı, birebir kayıp puanı ve idempotency testi PASS.
+- Kök lint üç ardışık grupta bütün dosyalar için sıfır hatayla tamamlandı.
+  Sonradan düzeltilen fixture'lar aynı ESLint yapılandırmasıyla ayrıca kontrol ediliyor.
+  Rules/server/web/sim tip kontrolleri PASS; son fixture eklemeleri sonrası sunucu
+  tip kontrolü ayrıca tekrarlanıyor. Uzun simülasyon çalıştırılmadı.
+- Gerçek üretim web derlemesindeki `battleForecast.worker` tarayıcıda 100 Korsan
+  örneğini ortak motorla birebir çözdü: 3,43 s boyunca ana iş parçacığı 341 kez
+  ilerledi. Canlı CSP'de `worker-src self` desteği korundu.
+- Özel canlı yedeği ayrı PostgreSQL'e geri yüklendi. Eski ve yeni gerçek sunucu
+  imajıyla okuma/yazma, sonda/tamirhane, yara/kaçış, altı turlu rapor JSON'u ve
+  kalıcı satır sayılarının korunması PASS. Test trafiği canlıya yazmadı.
+
+- 78 dosyalık geniş sunucu koşusu tamamlandı: 1067 PASS / 13 FAIL / 2 mevcut skip.
+  On üç başarısızlık yukarıda açıklanan eski savaş dizilimleriyle sınırlıydı.
+  Etkilenen yedi dosyanın **tamamı** düzeltmeden sonra ayrı koşularda PASS:
+  `clan-war-battle` 40, `monument-arrival` 38, `clan-war-damage` 6,
+  `npc-battle-damage` 2, `raid-damage` 3, `radiation-bomb-neutral` 3,
+  `honor-joint-battle` 7. Beklenen fiziksel kayıp, yara ve iade eşitlikleri
+  gevşetilmedi. Böylece bu kapsamda 1080 test PASS, 2 mevcut skip; VPS'in
+  Node 22 ortamında düzeltilen dosyalar ayrıca tek işçiyle yeniden çalıştırılır.
+  Tek bir kesintisiz 78-dosya koşusu temizmiş gibi raporlanmaz.
+- Honor kayıp fixture'ı için bağımsız sayısal kontrol: 60 Dart'ın toplam
+  can + kalkanı 5775; 16 Harpoon + 20 Dart'ın en düşük ilk tur hasarı
+  6038,88. Gerçek ölüm/debit yolu tek hedefe ateş varsayımına dayanmıyor.
