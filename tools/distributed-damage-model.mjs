@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { HULLS, counterMult } from '../packages/rules/src/hulls.ts';
+import { HULLS, combatValue, counterMult } from '../packages/rules/src/hulls.ts';
 import { SHIELD_BREAKER } from '../packages/rules/src/constants.ts';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -106,4 +106,30 @@ export async function prepareStudyEngine() {
     return { baseline: baseline.resolveRandomBattle, candidate: changed.resolveRandomBattle, trace: changed.studyTrace, sourceHash: hash };
   })();
   return prepared;
+}
+
+/** Simulation-only percentage override. Damage, target selection and timing are untouched. */
+export function retreatPolicyFor(attacker, defender, rows) {
+  const a = combatValue(attacker), d = combatValue(defender), small = Math.min(a, d);
+  const ratio = a === d ? 1 : small > 0 ? Math.max(a, d) / small : Infinity;
+  const row = rows.findLast(value => ratio >= value.minRatio);
+  return { attacker: a < d ? row.weak : row.strong, defender: d < a ? row.weak : row.strong };
+}
+
+const policyEngines = new Map();
+export async function preparePolicyEngine(rows) {
+  const key = createHash('sha256').update(JSON.stringify(rows)).digest('hex').slice(0, 16);
+  if (!policyEngines.has(key)) policyEngines.set(key, (async () => {
+    const base = await prepareStudyEngine(), dir = resolve(ROOT, 'out/distributed-damage-20261023');
+    const source = readFileSync(resolve(dir, 'candidate.ts'), 'utf8');
+    const anchor = 'const policy = battleRetreatPolicy(startA, startD);';
+    if (source.split(anchor).length !== 2) throw new Error('policy anchor changed');
+    const changed = `import { retreatPolicyFor } from '../../tools/distributed-damage-model.mjs';\n`
+      + source.replace(anchor, `const policy = retreatPolicyFor(startA, startD, ${JSON.stringify(rows)});`);
+    const file = resolve(dir, `policy-${key}.ts`);
+    writeFileSync(file, changed);
+    const engine = await import(pathToFileURL(file).href);
+    return { candidate: engine.resolveRandomBattle, trace: engine.studyTrace, sourceHash: base.sourceHash };
+  })());
+  return policyEngines.get(key);
 }
