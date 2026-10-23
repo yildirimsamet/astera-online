@@ -1,5 +1,10 @@
 # Rastgele dağıtımda kaçış yüzdelerinin hafif kalibrasyonu
 
+**Sonraki kullanıcı açıklaması:** Bu çalışmanın toplam kurtulmayı artıran
+`targeted` önerisi, daha sonra açıklanan yakın güçte %10–20 sağ kalma hedefiyle
+uyumlu değildir. [Yeni hedef ve teşhis](combat-survival-targets-2026-10-23.md)
+esas alınmalıdır; bu rapor önceki denemenin kaydıdır, uygulama onayı değildir.
+
 **Talep:** Onaylanan hasar dağıtımını koruyarak kaçış şansı ve can eşiğinde küçük
 değişiklikler dene; kırılgan/dayanıklı gemiler arasındaki sonuç farkını azalt.
 Bu çalışma simülasyondur; canlı ayar değişikliği veya deploy yetkisi değildir.
