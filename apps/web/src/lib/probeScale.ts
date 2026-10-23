@@ -1,4 +1,4 @@
-import { combatValue, computeLoot, fleetCount, fleetEntries, type Fleet } from '@astera/rules';
+import { combatValue, computeLoot, fleetCount, fleetEntries, partitionCombatFleet, type Fleet } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 
 /** Your own world, measured the way a probe measures a target. */
@@ -7,7 +7,7 @@ export interface Yardstick {
   stock: number;
   /** The armed value of everything at home that fires, ground guns included. */
   defence: number;
-  /** Every craft at home, unarmed ones too. */
+  /** Every craft on the world, including unarmed and workshop ships. */
   ships: number;
 }
 
@@ -30,7 +30,10 @@ export function yardstickOf(planet: PlanetView): Yardstick {
   for (const [hull, count] of [...fleetEntries(planet.fleet), ...fleetEntries(planet.ground)]) {
     home[hull] = (home[hull] ?? 0) + count;
   }
-  return { stock: loot.alloy + loot.crystal + loot.deuterium, defence: combatValue(home), ships: fleetCount(home) };
+  const ready = partitionCombatFleet(home, planet.fleetDamage).eligible;
+  const docked = planet.dock?.lots.reduce((sum, lot) => sum + lot.count, 0) ?? 0;
+  return { stock: loot.alloy + loot.crystal + loot.deuterium,
+    defence: combatValue(ready), ships: fleetCount(home) + docked };
 }
 
 /** Room past the larger mark, so neither the reading's top nor yours sits on the edge. */

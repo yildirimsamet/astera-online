@@ -70,7 +70,8 @@ export async function verifyShipMaintenance(output) {
             { key: 'radiation', planet: { ...base, workshopRadiation: true }, held: stock, onClose: () => undefined }))))));
         root.render(h(ApiProvider, { api }, h(QueryClientProvider, { client }, h(WorldProvider, null,
           h(ToastProvider, null, h(RepairStationSheet, { planet: base, held: stock, onClose: () => undefined }))))));
-        return Object.fromEntries(['scrap', 'scrapAction', 'workshop', 'return', 'move'].map(key => [key, i18n.t(`repairStation.maintenance.${key}`)]));
+        return { ...Object.fromEntries(['scrap', 'scrapAction', 'workshop', 'return', 'move', 'clear'].map(key => [key, i18n.t(`repairStation.maintenance.${key}`)])),
+          selectAll: i18n.t('repairStation.selectAll') };
       }, language);
       const panel = page.getByRole('dialog').last();
       await panel.getByTestId('health-group').first().waitFor();
@@ -89,6 +90,12 @@ export async function verifyShipMaintenance(output) {
         results.push({ width, language, state, ...dimensions });
       };
       await measure('hangar');
+      await panel.getByTestId('health-group').first().getByRole('textbox').fill('1');
+      await panel.getByRole('button', { name: labels.selectAll, exact: true }).click();
+      assert.deepEqual(await panel.getByRole('textbox').evaluateAll(nodes => nodes.map(node => Number(node.value)).sort((a, b) => a - b)), [2, 12]);
+      await measure('hangar-selected-all');
+      await panel.getByRole('button', { name: labels.clear, exact: true }).click();
+      assert.deepEqual(await panel.getByRole('textbox').evaluateAll(nodes => nodes.map(node => Number(node.value))), [0, 0]);
       await panel.getByRole('tab', { name: labels.scrap, exact: true }).click();
       await panel.getByTestId('health-group').last().getByRole('textbox').fill('1');
       await panel.getByRole('button', { name: labels.scrapAction, exact: true }).click();

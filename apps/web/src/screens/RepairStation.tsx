@@ -308,6 +308,9 @@ function RepairStationContent({ planet, held, onClose }: RepairStationSheetProps
   const allRows = place === 'HOME' ? home : dockMaintenanceRows(lots, planet.workshopRadiation ? 'LOT' : 'HEALTH');
   const rows = mode === 'SCRAP' ? allRows : allRows.filter((row) => row.damageBp > 0 || (row.remainderBp ?? 0) > 0);
   const choice = maintenanceChoice(rows, quantities, dock?.pct ?? 100);
+  const selectable = rows.filter(row => !row.busy && row.count > 0);
+  const allSelected = selectable.length > 0 && !choice.stale
+    && selectable.every(row => quantities[row.key] === row.count);
   const adjustedRepairCost = planet.honorBenefits ? honorRepairResources(choice.repairCost, planet.honorBenefits) : choice.repairCost;
   const busy = start.isPending || cancel.isPending || maintenance.isPending;
   const canPay = adjustedRepairCost.alloy <= held.alloy && adjustedRepairCost.crystal <= held.crystal
@@ -411,8 +414,18 @@ function RepairStationContent({ planet, held, onClose }: RepairStationSheetProps
       ]} value={place} onChange={switchPlace} />
       <p className="text-micro leading-snug text-v2-ink-3">{mode === 'SCRAP' ? t('repairStation.maintenance.scrapRule')
         : place === 'HOME' ? t('repairStation.maintenance.homeHint') : t('repairStation.maintenance.dockRule')}</p>
-      {Object.values(quantities).some((count) => count > 0) && <button type="button" onClick={() => { setQuantities({}); }}
-        className="self-end text-micro font-semibold text-v2-self">{t('repairStation.maintenance.clear')}</button>}
+      {(mode === 'REPAIR' || Object.values(quantities).some(count => count > 0)) && <div className="flex flex-wrap items-center justify-end gap-2">
+        {mode === 'REPAIR' && <button type="button" disabled={busy || selectable.length === 0 || allSelected}
+          onClick={() => { setQuantities(Object.fromEntries(selectable.map(row => [row.key, row.count]))); }}
+          className="min-h-9 rounded-control px-2 text-micro font-semibold text-v2-self focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v2-self disabled:opacity-40">
+          {t('repairStation.selectAll')}
+        </button>}
+        {Object.values(quantities).some(count => count > 0) && <button type="button" disabled={busy}
+          onClick={() => { setQuantities({}); }}
+          className="min-h-9 rounded-control px-2 text-micro font-semibold text-v2-self focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v2-self disabled:opacity-40">
+          {t('repairStation.maintenance.clear')}
+        </button>}
+      </div>}
       {rows.length === 0 ? <p className="py-2 text-caption text-v2-ink-3">{t('repairStation.maintenance.empty')}</p>
         : <ShipHealthInventory rows={rows} quantities={quantities} disabled={busy}
           onQuantity={(key, count) => { setQuantities((current) => ({ ...current, [key]: count })); }} />}

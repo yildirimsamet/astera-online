@@ -79,6 +79,22 @@ describe('your own world, measured as a probe measures', () => {
     expect(yardstickOf(world).defence).toBeGreaterThan(combatValue({ DART: 12 }));
   });
 
+  it('includes waiting and repairing workshop ships in the same count used for the enemy reading', () => {
+    const lot = { id: 'waiting', hull: 'CORSAIR' as const, count: 4, damageBp: 7000, remainderBp: 0,
+      repairing: false, orderId: null, minutes: 10, cost: { alloy: 100, crystal: 0, deuterium: 0 } };
+    const docked = { ...world, fleetAway: { DART: 99 }, dock: { pct: 100,
+      lots: [lot, { ...lot, id: 'repairing', count: 5, repairing: true, orderId: 'job' }],
+      waiting: { cost: lot.cost, minutes: 10 } } };
+    expect(yardstickOf(docked).ships).toBe(26);
+    expect(yardstickOf(docked).defence).toBe(yardstickOf(world).defence);
+  });
+
+  it('excludes critical home ships from the defence comparison without hiding their physical count', () => {
+    const wounded = { ...world, fleetDamage: [{ hull: 'DART' as const, count: 2, damageBp: 9500, remainderBp: 0 }] };
+    expect(yardstickOf(wounded).defence).toBe(combatValue({ DART: 10, PROSPECTOR: 2, THORN: 3 }));
+    expect(yardstickOf(wounded).ships).toBe(17);
+  });
+
   it('counts every craft at home, the unarmed ones too', () => {
     expect(yardstickOf(world).ships).toBe(17);
   });
