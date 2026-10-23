@@ -133,3 +133,25 @@ export async function preparePolicyEngine(rows) {
   })());
   return policyEngines.get(key);
 }
+
+const roundEngines = new Map();
+export async function prepareRoundEngine(rows, rounds) {
+  if (![3, 4, 6].includes(rounds)) throw new RangeError('this study compares only three, four and six rounds');
+  const base = await preparePolicyEngine(rows);
+  if (rounds === 3) return base;
+  const key = createHash('sha256').update(JSON.stringify(rows)).digest('hex').slice(0, 16);
+  const roundKey = `${key}-${rounds}`;
+  if (!roundEngines.has(roundKey)) roundEngines.set(roundKey, (async () => {
+    const dir = resolve(ROOT, 'out/distributed-damage-20261023');
+    let source = readFileSync(resolve(dir, `policy-${key}.ts`), 'utf8');
+    for (const [before, after] of [['round <= COMBAT.rounds', `round <= ${rounds}`], ['if (round < 3)', `if (round < ${rounds})`]]) {
+      if (source.split(before).length !== 2) throw new Error(`round anchor changed: ${before}`);
+      source = source.replace(before, after);
+    }
+    const file = resolve(dir, `${rounds}-rounds-${key}.ts`);
+    writeFileSync(file, source);
+    const engine = await import(pathToFileURL(file).href);
+    return { candidate: engine.resolveRandomBattle, trace: engine.studyTrace, sourceHash: base.sourceHash };
+  })());
+  return roundEngines.get(roundKey);
+}

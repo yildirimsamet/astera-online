@@ -14,7 +14,7 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const count = (fleet, armed = false) => Object.entries(fleet ?? {}).reduce((sum, [id, n]) => sum + (!HULLS[id].ground && (!armed || HULLS[id].atk > 0) ? n : 0), 0);
 const scaleFleet = (fleet, scale) => Object.fromEntries(Object.entries(fleet).map(([id, n]) => [id, n * scale]));
 
-export function summarizeBattle(input, result, trace = []) {
+export function summarizeBattle(input, result, trace = [], retreatRounds = 2) {
   const side = (name, fleet) => {
     const prefix = name === 'ATTACK' ? 'attacker' : 'defender';
     const sent = count(fleet), survivors = result[`${prefix}Survivors`], retreated = result[`${prefix}Retreated`] ?? {};
@@ -25,8 +25,8 @@ export function summarizeBattle(input, result, trace = []) {
     return {
       sent, armedSent: count(fleet, true), physicalCount: count(survivors), armedPhysicalCount: count(survivors, true),
       physical: count(survivors) / total, active: count(active) / total, dead: count(result[`${prefix}Losses`]) / total,
-      escape: [1, 2].map(round => result.rounds.filter(r => r.round === round).flatMap(r => r.retreats ?? []).filter(row => row.side === name).reduce((sum, row) => sum + count(row.fleet), 0) / total),
-      eligible: [1, 2].map(round => (trace.find(row => row.round === round)?.[prefix].eligible ?? 0) / total),
+      escape: Array.from({ length: retreatRounds }, (_, i) => i + 1).map(round => result.rounds.filter(r => r.round === round).flatMap(r => r.retreats ?? []).filter(row => row.side === name).reduce((sum, row) => sum + count(row.fleet), 0) / total),
+      eligible: Array.from({ length: retreatRounds }, (_, i) => i + 1).map(round => (trace.find(row => row.round === round)?.[prefix].eligible ?? 0) / total),
     };
   };
   const attacker = side('ATTACK', input.attacker), defender = side('DEFENCE', input.defender);
@@ -44,11 +44,11 @@ export function summarizeBattle(input, result, trace = []) {
   };
 }
 
-export function aggregateSamples(samples) {
+export function aggregateSamples(samples, retreatRounds = 2) {
   assert.ok(samples.length > 0);
   const mean = fn => samples.reduce((sum, sample) => sum + fn(sample), 0) / samples.length;
   const side = name => ({ physical: mean(s => s[name].physical), active: mean(s => s[name].active), dead: mean(s => s[name].dead),
-    escape: [0, 1].map(i => mean(s => s[name].escape[i])), eligible: [0, 1].map(i => mean(s => s[name].eligible[i])) });
+    escape: Array.from({ length: retreatRounds }, (_, i) => mean(s => s[name].escape[i])), eligible: Array.from({ length: retreatRounds }, (_, i) => mean(s => s[name].eligible[i])) });
   return { n: samples.length,
     anyPhysicalWipe: mean(s => s.anyPhysicalWipe), bothPhysicalWipe: mean(s => s.bothPhysicalWipe),
     anyActiveWipe: mean(s => s.anyActiveWipe), anyArmedPhysicalWipe: mean(s => s.anyArmedPhysicalWipe),

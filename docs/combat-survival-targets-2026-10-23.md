@@ -62,3 +62,19 @@ Bu sınırlar bile %10–20 hedefinin üzerinde. Üstelik gerçek rastgele dağ�
 Önceki kullanıcı onayında üç tur ve yalnız ilk iki turun sonunda kaçış sabitti. Bu sınırların yeni hedef kapsamında nasıl ele alınacağı kullanıcıya soruldu; yanıt beklenirken hasar/kaçış/tur mantığı değiştirilmedi.
 
 [Ham teşhis verisi](evidence/combat-survival-target-feasibility-2026-10-23.json).
+
+## Sonraki netleştirme
+
+Kullanıcı önce üç tur/ilk iki tur sonunda kaçış sınırını yeniden teyit etti,
+ardından **dört turu simüle etmeyi** istedi. Dört tur denemesi için ayrıca
+kaçışın **1., 2. ve 3. turun sonunda** olmasını seçti. Yeni tur içinde veya
+ölümcül hasardan önce kaçış onayı yoktur; bu mekanikler denenmez.
+
+Tek gemi 0 veya 1 kurtulan verir; %10–30 filo kurtarma hedefini tek gemilik
+kontrole zorlamak yanlıştır. Yüzde hedefleri ana matriste güçsüz tarafta en az
+20 gemi olan filolarla değerlendirilir. [Dört tur çalışması](combat-four-rounds-study-2026-10-23.md).
+
+Sonraki yönlendirme dört yerine **altı tur** ve kaçış şansını güç farkıyla artan
+can pencereleri üzerinden kalibre etmektir. Son tur hariç kaçış 1–5. tur
+sonlarında uygulanarak [altı tur denemesi](combat-six-rounds-calibration-2026-10-23.md)
+tamamlandı; hedefin karşılanan ve karşılanmayan kısımları ayrı raporlandı.
