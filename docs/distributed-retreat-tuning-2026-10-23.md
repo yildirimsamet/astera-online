@@ -109,7 +109,7 @@ Bu seçim matematiksel tek optimum iddiası değildir.
 | Korsan + Kıyamet, kalkan araştırması 0 | %89,0 → %80,5 | %10,4 → %12,6 |
 | Korsan + Kıyamet, kalkan araştırması 4 | %24,6 → %15,7 | %13,5 → %21,5 |
 
-- Eşit güçte Korsan ve Kale savaşlarında her iki ayarda da fiziksel sağ kalma %100 olarak kaldı; gereksiz kaçış oluşmadı.
+- Eşit güçte Korsan fiziksel sağ kalması iki ayarda da %99,96875, Kale %100 olarak kaldı. Korsan'ın %100'e yuvarlanması nadir küçük-filo kayıplarını gizlediği için burada hassas değer verildi; bu senaryolarda adayın fiziksel sağ kalma sonucu mevcut ayarla aynı.
 - Araştırmasız 1:3 toplamında tamamen silinme %41,5 → %41,8: iyileşme iddiası yok, küçük fark örnekleme ve politika etkisi birlikte olabilir. Güçsüz tarafta sağ kalan %40,4 → %38,5. Kalkan 4 için silinme %44,2 → %43,2, sağ kalan %29,6 → %33,8.
 - Saf Kıyamet güçsüz tarafı 1:2 ve üzerindeki karşılaştırmalarda tamamen silinmeye devam ediyor. İlk turda canı sıfırlanan gemiye tur sonu ihtimal artışı yardım etmiyor. Bu sınırın çözülmesi başka bir mekanik/istatistik değişikliği gerektirir; bu çalışmada böyle bir değişiklik yapılmadı.
 - Daha yüksek can eşiği daha erken fırsat sağlıyor; %65 kaçış şansı ise 3× güçsüz tarafta eski %70’e göre bu erken fırsatın toplu kaçışı aşırı büyütmesini sınırlıyor. Bu açıklama tabloyu tanımlar; her gemide kurtulmanın artacağı garantisi değildir.
