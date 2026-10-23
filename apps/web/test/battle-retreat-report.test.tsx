@@ -30,7 +30,7 @@ describe('own retreated ships remain distinct from battle deaths', () => {
   });
   it('explains how a monument can be lost with a physical survivor', () => {
     const r = reportsSchema.parse({ rivals: [], reports: [monument] }).reports[0];
-    if (!r || r.kind !== 'MONUMENT') throw new Error('wrong fixture');
+    if (r?.kind !== 'MONUMENT') throw new Error('wrong fixture');
     render(<MonumentReportSheet report={r} onClose={vi.fn()} />);
     expect(screen.getByText('Retreated alive: 1. These ships kept their hull damage.')).toBeVisible();
     expect(screen.getByText('Enemy ships that retreated and survived: 2.')).toBeVisible();

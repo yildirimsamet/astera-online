@@ -9,7 +9,7 @@ import { readBattleReports } from '../src/services/reports.js';
 import { forceSeasonEnd, onMissionArrival, onSeasonRollover } from '../src/worker/handlers.js';
 import { enableHonorBenefits } from '../src/services/honorBenefits.js';
 import { joinSeason } from '../src/services/player.js';
-import { fuelUp, giveUnits, seedWorld, setLevel, settledAt, testDb, type Fixture } from './helpers.js';
+import { fuelUp, giveResearch, giveUnits, seedWorld, setLevel, settledAt, testDb, type Fixture } from './helpers.js';
 
 // Release gate: real v4 cutover must work before the policy becomes selectable.
 // Frozen v3 coverage remains in honor-opening-battle.test.ts.
@@ -28,8 +28,8 @@ describe('v4 release rehearsal: real raids across a clean ranked opening', () =>
   });
   afterAll(async () => { await (await testDb()).close(); });
   const open = () => openHonorRanking(f.db, { seasonId: f.seasonId, clock: f.clock, apply: true });
-  // Forty Darts lose to eighty but always take 10–12 with them (ship shields, 5,000 seeds), so the
-  // raider ends with Honor above zero and Dominion below it: each side tops a different ladder.
+  // Unequal real fleets exercise the cutover with a non-zero combat award. The
+  // closing/reward case below separately guarantees positive ranked Honor.
   const launch = () => launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 40 }, f.clock);
   const land = async (raid: Awaited<ReturnType<typeof launch>>) => {
     f.clock.set(settledAt(raid.arriveAt));
@@ -99,7 +99,13 @@ describe('v4 release rehearsal: real raids across a clean ranked opening', () =>
   it('closes a real ranked v4 result, grants rewards once and carries the program into playable successors', async () => {
     await open();
     await enableHonorBenefits(f.db, f.seasonId, f.clock, true);
-    const raid = await launch(); await land(raid);
+    // The reward test needs a positive rank across random targets, rather than
+    // assuming an outnumbered raid always earns positive Honor. Equal full wings
+    // and researched attack/armour keep physical enemy losses above own losses.
+    await giveResearch(f.db, f.planetIds[0]!, 'SHIP_POWER', 5);
+    await giveResearch(f.db, f.planetIds[0]!, 'SHIP_ARMOR', 5);
+    const raid = await launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 80 }, f.clock);
+    await land(raid);
     const before = await f.db.select().from(honorTotals).orderBy(honorTotals.playerId);
     expect(before.some(row => row.score > 0)).toBe(true);
     await forceSeasonEnd({ db: f.db, clock: f.clock }, f.seasonId);

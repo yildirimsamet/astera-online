@@ -1016,7 +1016,7 @@ export function resolveBattle(
   defendingLine: readonly DefenderStack[],
   shield: number,
   rng: Rng,
-  /** New ruleset callers explicitly opt in; legacy planet battles retain exact parity. */
+  /** HP_PLANET and MONUMENT preserve fractional wounds; PLANET keeps rounded legacy wound output. */
   context: 'PLANET' | 'MONUMENT' | 'HP_PLANET' = 'PLANET',
   maintenance = false,
 ): BattleResult {

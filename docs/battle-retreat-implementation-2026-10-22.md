@@ -67,7 +67,8 @@ Exercise solo/joint vs solo/supported planets, solo/joint vs solo/multiple monum
 return/idempotency and report/API contracts on an isolated `_test` Postgres database.
 Run checks sequentially, one worker/CPU and hard memory ceilings (Node <=1536 MiB heap,
 local checks <=2 GiB total; smaller test runner alongside bounded Postgres;
-VPS checks bounded separately to 3 GiB with one worker per isolated test database). Never use live DB
+VPS tests/types bounded separately to 3 GiB, with one worker per isolated test database;
+full web lint uses the standard 4 GiB Node heap inside a 4.5 GiB VPS-only hard limit). Never use live DB
 for tests. Finish review, typecheck, lint, builds and visual report verification before
 release. Prepare a reviewable commit; notify owner before production deployment.
 
@@ -118,10 +119,36 @@ real single-shot attacker deaths; the assertions still require actual wreck and
 salvage. A radar distance sweep also exceeded the 30-second default on the bounded
 VPS; it is rerun with the same assertions and a 60-second runner timeout.
 The first pass's 94 completed successful files were inventoried. Remaining files
-(including both failures) are split between two independent `_test` databases on
-the VPS, each with one Vitest worker and 2 GiB hard limit; simulation remains
-single-threaded. Full web, remaining server, final types/lint/build gates are pending.
-No deployment is claimed by this record.
+(including both failures) were split between two independent `_test` databases on
+the VPS, each with one Vitest worker and 2 GiB hard limit; simulation remained
+single-threaded. The final per-file union covers all 372 ordinary server test files / 4,730 successful tests;
+all initial failures have a successful rerun. Three existing skipped tests remain
+skipped. Tool-dependent shell tests passed unchanged on the bounded host. All four workspace typechecks passed. Full web coverage is 592 successful files /
+7,365 successful tests, with the pre-existing one file / 29 skipped tests retained.
+Five tooling-dependent files initially failed only because the minimal Node container
+had no Docker/Git/rsync; all five passed (29 tests) on the bounded host with those
+prerequisites, without source or assertion changes. Rules, tools and simulation lint
+passed. Full web lint exceeded its artificial 3 GiB container cap even when split;
+the web and server VPS lint groups use 4.5 GiB hard memory, retaining root's
+4 GiB Node heap.
+Local checks stay at 2 GiB total (the visual browser/Vite pair peaked within 2.8 GiB),
+and simulations remain single-threaded at <=2 GiB.
+
+The bot judgement test's old four-Dart expectation also became stale: with the new
+shield, two Darts suffice. The revised test passed all 20 judgement scenarios and
+additionally resolves the proposed wing, proves cargo survives normal fire, and
+checks the actual overrun result. The event-bus reconnect test had a cache-priming
+heartbeat race under simultaneous VPS database load; unchanged assertions passed
+all five scenarios against an isolated, bounded local database. No event-bus code
+or heartbeat interval was changed. Two Honor fixtures also assumed deterministic
+physical kills from the old targeting model. The joint debit fixture now guarantees
+a real attacker loss with one Harpoon and still asserts the exact loss debit. The
+season reward fixture uses equal full fleets with researched attack/armour and
+retains the positive-score and idempotent reward checks. Both complete files passed
+(seven tests each); a separate 1,024-seed check confirmed their required physical
+loss conditions. All lint groups and all four workspace typechecks passed with zero errors,
+including the final server recheck after these fixture updates. No deployment is
+claimed by this record.
 
 ### Report review and later owner clarification
 
@@ -162,3 +189,19 @@ services and already fails on the seventh, deployed Arena service; record this
 exact baseline mismatch and verify the seven known services explicitly. Its 6 GiB
 available-memory gate must be checked again after disposable check containers stop.
 Production data, seasons, flags, exemption accounts and database schema are unchanged.
+
+Both candidate artifacts build successfully. A fresh private production dump was
+restored into a separately named database in the disposable check Postgres, never
+into production. Old and new actual server images each passed schema/no-pending-
+migration checks, public and authenticated API reads, an authenticated notification
+write, real combat/report persistence and cleanup with durable counts preserved.
+The new image also proved that a retreated enemy is alive, counted in the public
+retreat total, and absent from casualties and raw public ownership telemetry.
+The rehearsal's SQL field name and unique-mission fixture errors were corrected in
+the private probe only; no product schema or constraint was relaxed.
+
+The live served entry proves Arena was compiled with `VITE_ARENA=1`, despite that
+key being absent from production `.env`; keep that existing build flag and analytics
+ID. Atomic directory exchange was rehearsed with two disposable directories on
+`/var/www`'s actual filesystem before using it for web publication. APIs/worker,
+Nginx and live web remain untouched at preparation time.
