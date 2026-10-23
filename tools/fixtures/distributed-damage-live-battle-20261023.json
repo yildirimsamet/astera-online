@@ -1,0 +1,199 @@
+{
+  "report": {
+    "attacker_player_id": "e52985f2-d921-4ed6-99b0-f15a56488152",
+    "defender_player_id": "296774fa-0b41-4aaf-8d1a-609fd046eeff",
+    "attacker_fleet": {
+      "ATLAS": 1,
+      "CITADEL": 3,
+      "CORSAIR": 5,
+      "PALADIN": 5,
+      "CATACLYSM": 11
+    },
+    "defender_fleet": {
+      "DART": 235,
+      "THORN": 15,
+      "COURIER": 2
+    },
+    "rounds": [
+      {
+        "round": 1,
+        "retreats": [],
+        "casualties": [
+          {
+            "side": "DEFENCE",
+            "fleet": {
+              "DART": 23,
+              "THORN": 1
+            },
+            "stackId": "host",
+            "playerId": "296774fa-0b41-4aaf-8d1a-609fd046eeff"
+          }
+        ],
+        "shieldAfter": 0,
+        "attackerRoll": 0.9585855862498284,
+        "defenderRoll": 1.0759640852734447,
+        "shieldBefore": 150,
+        "attackerDamage": 22836,
+        "attackerLosses": {},
+        "defenderDamage": 6776,
+        "defenderLosses": {
+          "DART": 23,
+          "THORN": 1
+        },
+        "shieldAbsorbed": 150,
+        "attackerHullDamage": 22243,
+        "shieldBreakerDamage": 0,
+        "attackerShipShieldAbsorbed": 6776,
+        "defenderShipShieldAbsorbed": 443
+      },
+      {
+        "round": 2,
+        "retreats": [],
+        "casualties": [
+          {
+            "side": "DEFENCE",
+            "fleet": {
+              "DART": 23,
+              "THORN": 1
+            },
+            "stackId": "host",
+            "playerId": "296774fa-0b41-4aaf-8d1a-609fd046eeff"
+          }
+        ],
+        "shieldAfter": 0,
+        "attackerRoll": 0.9224906150251627,
+        "defenderRoll": 0.9221744252741337,
+        "shieldBefore": 0,
+        "attackerDamage": 21976,
+        "attackerLosses": {},
+        "defenderDamage": 5220,
+        "defenderLosses": {
+          "DART": 23,
+          "THORN": 1
+        },
+        "shieldAbsorbed": 0,
+        "attackerHullDamage": 21533,
+        "shieldBreakerDamage": 0,
+        "attackerShipShieldAbsorbed": 5220,
+        "defenderShipShieldAbsorbed": 443
+      },
+      {
+        "round": 3,
+        "retreats": [],
+        "casualties": [
+          {
+            "side": "DEFENCE",
+            "fleet": {
+              "DART": 24
+            },
+            "stackId": "host",
+            "playerId": "296774fa-0b41-4aaf-8d1a-609fd046eeff"
+          }
+        ],
+        "shieldAfter": 0,
+        "attackerRoll": 0.9327220880612731,
+        "defenderRoll": 1.0409460651502014,
+        "shieldBefore": 0,
+        "attackerDamage": 22220,
+        "attackerLosses": {},
+        "defenderDamage": 5398,
+        "defenderLosses": {
+          "DART": 24
+        },
+        "shieldAbsorbed": 0,
+        "attackerHullDamage": 21758,
+        "shieldBreakerDamage": 0,
+        "attackerShipShieldAbsorbed": 4824,
+        "defenderShipShieldAbsorbed": 462
+      }
+    ],
+    "attacker_damage": [
+      {
+        "hull": "CATACLYSM",
+        "count": 1,
+        "damageBp": 920,
+        "remainderBp": 0.33704031948116153
+      },
+      {
+        "hull": "CATACLYSM",
+        "count": 1,
+        "damageBp": 877,
+        "remainderBp": 0.5951715261829804
+      },
+      {
+        "hull": "CATACLYSM",
+        "count": 1,
+        "damageBp": 31,
+        "remainderBp": 0.9603866241150492
+      },
+      {
+        "hull": "CITADEL",
+        "count": 1,
+        "damageBp": 373,
+        "remainderBp": 0.050595691937076026
+      },
+      {
+        "hull": "CITADEL",
+        "count": 1,
+        "damageBp": 149,
+        "remainderBp": 0.03461725722979736
+      },
+      {
+        "hull": "PALADIN",
+        "count": 1,
+        "damageBp": 719,
+        "remainderBp": 0.08455622504322946
+      },
+      {
+        "hull": "PALADIN",
+        "count": 1,
+        "damageBp": 486,
+        "remainderBp": 0.03798271736809511
+      },
+      {
+        "hull": "PALADIN",
+        "count": 1,
+        "damageBp": 64,
+        "remainderBp": 0.4193394662681129
+      }
+    ],
+    "defender_damage": [],
+    "grade": "REPELLED",
+    "attacker_losses": {},
+    "defender_losses": {
+      "DART": 70,
+      "THORN": 2
+    }
+  },
+  "missions": [
+    {
+      "id": "9865571b-fda2-4af5-86e7-a051712410d2",
+      "kind": "attack",
+      "tech": {
+        "AI_ROBOTS": 1,
+        "INDUSTRIAL": 2,
+        "SHIP_ARMOR": 5,
+        "SHIP_POWER": 5,
+        "CARGO_HOLDS": 3,
+        "SHIP_SHIELDS": 4,
+        "SHIP_PROPULSION": 4,
+        "YARD_AUTOMATION": 2,
+        "DENSE_FUEL_CELLS": 1,
+        "GRAVITIC_CHARGES": 1,
+        "PROSPECTOR_HOLDS": 5,
+        "INTERCEPTION_GRID": 2,
+        "DEUTERIUM_SYNTHESIS": 5,
+        "RADIATION_SHIELDING": 4,
+        "STRATEGIC_STOCKPILE": 1,
+        "EMPLACEMENT_DOCTRINE": 4,
+        "ISOTOPE_SPECTROMETRY": 1,
+        "STARSHIP_ENGINEERING": 2
+      }
+    }
+  ],
+  "defenderTech": {
+    "DEUTERIUM_SYNTHESIS": 2,
+    "STARSHIP_ENGINEERING": 1,
+    "SHIP_POWER": 2
+  }
+}
