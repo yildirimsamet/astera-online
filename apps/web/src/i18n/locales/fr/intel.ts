@@ -135,6 +135,10 @@ export const intel = {
   },
 } as const;
 export const reports = {
+  distributedRulesTitle: "Déroulement de ce combat",
+  distributedRetreatRule: "Les vaisseaux endommagés peuvent fuir à la fin des tours 1–{{lastRound}}. Ils gardent leurs dégâts et cessent de combattre.",
+  distributedDamageNote: "Les totaux des tirs ordinaires comprennent les dégâts absorbés par Aegis et les boucliers des vaisseaux, puis ceux réellement infligés aux coques. Les excédents redistribués ne sont pas comptés deux fois. Les totaux couvrent tout le camp, alliés compris. Votre liste de pertes concerne uniquement vos vaisseaux.",
+
   retreated: 'Retraite en vie : {{count}}. Ces vaisseaux conservent leurs dégâts de coque.',
   enemyRetreated: "{{count}} vaisseaux ennemis ont fui et survécu.",
   turningPointRetreated: "Après le tour {{round}}, aucun vaisseau de guerre ne combattait encore. Certains ont fui vivants.",

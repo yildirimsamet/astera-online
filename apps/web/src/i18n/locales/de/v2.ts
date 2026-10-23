@@ -327,6 +327,7 @@ export const repairStation = {
   ruleCancel: "Ein Abbruch erstattet den halben Preis; die Schiffe warten wieder.",
   industrialChip: "{{industrial}} −{{off}} %",
   damagedHeading: "Beschädigte Schiffe",
+  selectBatch: "Erste {{max}} Zustandsgruppen wählen",
   selectAll: "Alle wählen",
   selectNone: "Leeren",
   choose: "{{name}} ×{{count}} reparieren",

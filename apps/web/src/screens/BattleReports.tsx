@@ -1,3 +1,4 @@
+import { DistributedFireRules } from '../ui/DistributedFireRules.js';
 import { BattleRetreatNote } from '../ui/BattleRetreatNote.js';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -886,6 +887,7 @@ function ReportSheet({
       <>
       <h3 className="mt-4 text-caption font-semibold text-v2-ink">{t('reports.howItWent')}</h3>
       <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">{t('reports.calculation.fireNote')}</p>
+      {report.rounds.some(round => round.distributedFire === true) ? <DistributedFireRules /> : null}
       {!report.pirate ? <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">{t('reports.roundDamageNote')}</p> : null}
       <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-2">
         {report.rounds.map((round) => (

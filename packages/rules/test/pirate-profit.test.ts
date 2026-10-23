@@ -69,7 +69,7 @@ describe('pirate launch economics', () => {
   });
 
   it('does not let a collector that retreated alive lift wreck after the battle', () => {
-    const config = { ...input, attacker: { DART: 20, GARBAGE_COLLECTOR: 1 }, crew: { CORSAIR: 1 },
+    const config = { ...input, attacker: { DART: 20, GARBAGE_COLLECTOR: 1 }, crew: { CORSAIR: 2 },
       level: 1 as const, tech: {}, hoard: zero, fuel: 0,
       damage: [{ hull: 'GARBAGE_COLLECTOR' as const, count: 1, damageBp: 8000 }] };
     const fight = resolveBattle([soloStack(config.attacker, { tech: {} }, config.damage)],

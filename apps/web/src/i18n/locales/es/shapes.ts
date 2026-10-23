@@ -93,6 +93,8 @@ export const counter = {
   compareMeaning: 'Coste de recursos, no daño de ataque. Una flota más grande por sí sola no garantiza la victoria.',
   compareRule:
     "Se compara el valor en recursos de naves armadas y defensas terrestres; escudos y naves desarmadas quedan excluidos. La previsión también considera clases, investigaciones y el escudo conocido. El éxito parcial y total requieren al menos una nave superviviente. Las incógnitas crean intervalos: izquierda significa peor caso, derecha mejor caso. Las pérdidas estimadas muestran el coste posible. La información puede estar desactualizada; no se incluye la variación aleatoria de disparos.",
+  forecastCalculating: "Calculando la estimación de batalla…",
+  forecastFailed: "Estimación no disponible. Cambia la flota para reintentarlo.",
   linesClears: 'Éxito total si su defensa es como máximo {{at}}',
   linesBreaks: 'Al menos éxito parcial si es como máximo {{at}}',
   lineJoin: ' · ',

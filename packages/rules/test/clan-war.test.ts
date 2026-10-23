@@ -502,14 +502,14 @@ describe('the combined attacking board', () => {
   });
 
   it('spends the same number of rolls however many owners are in the pool', () => {
-    // A board neither side can wipe inside three rounds, so the loop always runs
-    // its full length and the count is about the POOL rather than about the fight.
+    // Identical fleets must consume the same outer rolls regardless of owner count.
+    // The battle may finish before the sixth round.
     const wall: Fleet = { CITADEL: 100 };
-    const count = (stacks: readonly JointAttackerStack[]): number => {
+    const count = (stacks: readonly JointAttackerStack[]) => {
       let calls = 0;
       const source = seeded();
-      resolveJointCombat(stacks, wall, 0, () => { calls++; return source(); }, NO_TECH);
-      return calls;
+      const result = resolveJointCombat(stacks, wall, 0, () => { calls++; return source(); }, NO_TECH);
+      return { calls, rounds: result.rounds.length };
     };
     const one = count([stack('c1', 'p1', { CORSAIR: 100 })]);
     const four = count([
@@ -518,17 +518,12 @@ describe('the combined attacking board', () => {
       stack('c3', 'p3', { CORSAIR: 25 }),
       stack('c4', 'p4', { CORSAIR: 25 }),
     ]);
-    expect(one).toBe(2 + COMBAT.rounds * 2);
-    expect(four).toBe(one);
+    expect(one.calls).toBe(2 + one.rounds * 2);
+    expect(one.rounds).toBeLessThanOrEqual(COMBAT.rounds);
+    expect(four).toEqual(one);
   });
 
-  /**
-   * Splitting one wing between two commanders is very nearly a no-op, and the
-   * residue is deliberate: each owner's casualties are floored against THEIR OWN
-   * hit points, because their research is their own. Two part-damaged hulls can
-   * survive where one whole one would have died, so the two boards converge
-   * rather than matching to the unit.
-   */
+  /** Identical per-ship stats preserve the aggregate outcome across owner splitting. */
   it('gives nearly the same board when one wing is split between two owners', () => {
     const wall: Fleet = { CITADEL: 30 };
     const whole = resolveJointCombat(
@@ -545,7 +540,7 @@ describe('the combined attacking board', () => {
       seeded(),
       NO_TECH,
     );
-    expect(whole.attackerLosses.DART).toBeGreaterThan(0);
+    expect(whole.attackerDamage.some(lot => lot.damageBp > 0)).toBe(true);
     expect(whole.defenderLosses.CITADEL).toBeGreaterThan(0);
     expect(split.grade).toBe(whole.grade);
     expect(split.contributions).toHaveLength(2);
@@ -561,7 +556,7 @@ describe('the combined attacking board', () => {
     const sent = split.contributions.reduce((sum, c) => sum + (c.sent.DART ?? 0), 0);
     const lost = split.contributions.reduce((sum, c) => sum + (c.losses.DART ?? 0), 0);
     expect(sent).toBe(1_000);
-    expect(lost).toBe(split.attackerLosses.DART);
+    expect(lost).toBe(split.attackerLosses.DART ?? 0);
   });
 
   it('cannot avoid casualties by splitting one owner’s identical wing into tiny waves', () => {

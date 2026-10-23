@@ -73,7 +73,7 @@ const spread = (s: { low: number; high: number }) => s.high / Math.max(1, s.low)
 describe('the lines a wing is drawn against', () => {
   it('uses the attacking ships’ real remaining HP when estimating losses', () => {
     const wing: Fleet = { DART: 20 };
-    const crew: Fleet = { DART: 6 };
+    const crew: Fleet = { DART: 10 };
     const input = blind({ wall: { kind: 'EXACT', fleet: crew } });
     const wounded = { ...input, attackerDamage: [{ hull: 'DART' as const, count: 20, damageBp: 9000, remainderBp: 0.25 }] };
     const power = combatValue(crew);
@@ -117,7 +117,7 @@ describe('the lines a wing is drawn against', () => {
 
   it('sits where the battle engine grades, when the wall is known exactly', () => {
     const wing: Fleet = { TALON: 20 };
-    const crew: Fleet = { TALON: 13 };
+    const crew: Fleet = { TALON: 21 };
     const input = blind({ wall: { kind: 'EXACT', fleet: crew } });
     const f = forecastLines(wing, input);
 
@@ -157,10 +157,10 @@ describe('the lines a wing is drawn against', () => {
 
   /** The measured rule of thumb, reproduced by the engine rather than typed in. */
   it('does not promise a successful raid when every surviving attacker retreated', () => {
-    const wing: Fleet = { PIKE: 2 }, crew: Fleet = { PIKE: 2 };
+    const wing: Fleet = { DART: 17 }, crew: Fleet = { DART: 17 };
     const input = blind({ wall: { kind: 'EXACT', fleet: crew } });
     const result = resolveCombat(wing, crew, 0, flat, { attacker: { tech: {} }, defender: { tech: {} } });
-    expect(result.grade).toBe('PARTIAL');
+    expect(result.grade).toBe('DECISIVE');
     expect(result.attackerRetreated).toEqual(result.attackerSurvivors);
     expect(combatValue(crew) < forecastLines(wing, input).breaks.low).toBe(false);
   });
@@ -195,7 +195,8 @@ describe('the lines a wing is drawn against', () => {
       if (count === 30) {
         expect(r.grade).toBe('DECISIVE');
         expect(combatValue(r.attackerSurvivors)).toBeGreaterThan(0);
-        expect(combatValue(crew) < f.clears.low).toBe(true);
+        expect(home).toBe(false);
+        expect(combatValue(crew) < f.clears.low).toBe(false);
       }
     }
   });
@@ -301,7 +302,7 @@ describe('what the fight is expected to cost', () => {
   });
 
   it('is one figure against a crew seen exactly', () => {
-    const crew: Fleet = { TALON: 13 };
+    const crew: Fleet = { TALON: 21 };
     const s = forecastLoss(wing, { low: combatValue(crew), high: combatValue(crew) }, blind({
       wall: { kind: 'EXACT', fleet: crew },
     }));
@@ -490,4 +491,14 @@ describe('the distribution a reading resolved', () => {
       expect(named + m.unknownShare).toBeCloseTo(1, 9);
     }
   });
+});
+
+
+it('keeps a positive sub-ulp survivor representable while walking a 24-Dart forecast', () => {
+  const result = forecastLines({ DART: 24 }, blind());
+  for (const line of [result.clears, result.breaks]) {
+    expect(Number.isFinite(line.low)).toBe(true);
+    expect(Number.isFinite(line.high)).toBe(true);
+    expect(line.low).toBeLessThanOrEqual(line.high);
+  }
 });

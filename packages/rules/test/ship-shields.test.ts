@@ -27,18 +27,24 @@ describe('personal ship shields', () => {
       resolveJointCombat(attack, { CORSAIR: 1 }, 0, mean, side),
       resolveBattle(attack, [...d, { stackId: 'empty', playerId: 'ally', fleet: {}, tech: side }], 0, mean),
       resolveBattle(attack, d, 0, mean, 'MONUMENT')]) {
-      expect(result.rounds.map(row => row.defenderShipShieldAbsorbed)).toEqual([377, 0, 0]);
-      expect(result.rounds.map(row => row.attackerShipShieldAbsorbed)).toEqual([377, 0, 0]);
-      expect(result.defenderDamage[0]!.damageBp).toBeGreaterThan(5000);
+      expect(result.rounds.map(row => row.defenderShipShieldAbsorbed)).toEqual([377, 0, 0, 0, 0]);
+      expect(result.rounds.map(row => row.attackerShipShieldAbsorbed)).toEqual([377, 0, 0, 0, 0]);
+      expect(result.defenderSurvivors).toEqual({});
+      expect(result.rounds[4]!.defenderLosses).toEqual({ CORSAIR: 1 });
     }
   });
 
   it('starts the next battle with a fresh shield but keeps the previous hull wounds', () => {
-    const a: JointAttackerStack[] = [{ contributionId: 'a', playerId: 'a', fleet: { CORSAIR: 1 }, tech: side }];
-    const first = resolveBattle(a, [{ stackId: 'd', playerId: 'd', fleet: { CORSAIR: 1 }, tech: side }], 0, mean, 'MONUMENT');
-    const second = resolveBattle(a, [{ stackId: 'd', playerId: 'd', fleet: first.defenderSurvivors, damage: first.defenderDamage, tech: side }], 0, mean, 'MONUMENT');
-    expect(second.rounds[0]!.defenderShipShieldAbsorbed).toBe(377);
-    expect(second.rounds[0]!.attackerHullDamage).toBe(31);
+    const armor = { tech: { SHIP_SHIELDS: 4 } };
+    const a: JointAttackerStack[] = [{ contributionId: 'a', playerId: 'a', fleet: { CITADEL: 1 }, tech: armor }];
+    const first = resolveBattle(a, [{ stackId: 'd', playerId: 'd', fleet: { CITADEL: 1 }, tech: armor }], 0, mean, 'MONUMENT');
+    const second = resolveBattle(a.map(stack => ({ ...stack, tech: { ...armor, damageMult: .1 } })), [{ stackId: 'd', playerId: 'd', fleet: first.defenderSurvivors, damage: first.defenderDamage, tech: armor }], 0, mean, 'MONUMENT');
+    expect(first.defenderDamage[0]!.damageBp).toBeGreaterThan(0);
+    expect(second.rounds[0]!.defenderShipShieldAbsorbed).toBe(45);
+    expect(second.rounds[0]!.attackerHullDamage).toBe(0);
+    expect(second.defenderSurvivors).toEqual({ CITADEL: 1 });
+    expect(second.defenderDamage).toEqual(first.defenderDamage);
+    expect(second.rounds.every(round => round.attackerHullDamage === 0)).toBe(true);
   });
 
   it('keeps arrival wounds behind a shield without crediting shield hits as hull damage', () => {

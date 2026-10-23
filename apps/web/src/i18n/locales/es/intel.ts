@@ -139,6 +139,10 @@ export const intel = {
 } as const;
 
 export const reports = {
+  distributedRulesTitle: "Cómo se resolvió esta batalla",
+  distributedRetreatRule: "Las naves dañadas pueden retirarse al terminar las rondas 1–{{lastRound}}. Conservan sus daños y dejan de combatir.",
+  distributedDamageNote: "Los totales de disparos normales incluyen el daño absorbido por Aegis y los escudos de las naves, más el daño aplicado al casco. El daño sobrante redistribuido no se cuenta dos veces. Los totales cubren todo el bando, incluidos los aliados. Tu lista de bajas solo incluye tus naves.",
+
   retreated: 'Se retiraron con vida: {{count}}. Estas naves conservan el daño del casco.',
   enemyRetreated: "{{count}} naves enemigas huyeron y sobrevivieron.",
   turningPointRetreated: "Tras la ronda {{round}} no quedaron naves de guerra combatiendo. Algunas huyeron con vida.",

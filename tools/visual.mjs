@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--six-round-combat')) {
+  const { verifySixRoundCombat } = await import('./six-round-combat-visual.mjs');
+  await verifySixRoundCombat(process.argv[2] ?? 'out/six-round-combat');
+  process.exit(0);
+}
+
 if (process.argv.includes('--ship-shields')) {
   const { verifyShipShields } = await import('./ship-shields-visual.mjs');
   await verifyShipShields(process.argv[2] ?? 'out/ship-shields');

@@ -93,7 +93,7 @@ describe('monument battle carries every owner’s HP damage', () => {
     const healthy = resolveMonumentCombat(a, [defender({ DART: 10 })], flat());
     const wounded = resolveMonumentCombat(a, [defender({ DART: 10 }, 'd', [{ hull: 'DART', count: 5, damageBp: 9500 }])], flat());
     expect(wounded.rounds[0]?.defenderLosses.DART ?? 0).toBeGreaterThan(0);
-    expect(wounded.defenderLossValue).toBeGreaterThan(healthy.defenderLossValue);
+    expect(wounded.rounds[0]!.defenderLosses.DART ?? 0).toBeGreaterThan(healthy.rounds[0]!.defenderLosses.DART ?? 0);
     expect(wounded.defenders[0]?.losses.DART).toBeGreaterThanOrEqual(5);
   });
 
@@ -119,8 +119,9 @@ describe('monument battle carries every owner’s HP damage', () => {
     const worn = result.defenders.find(row => row.playerId === 'worn')!;
     expect((worn.losses.DART ?? 0) + (worn.survivors.DART ?? 0)).toBe(10);
     expect(worn.survivorDamage.reduce((sum, row) => sum + row.count, 0)).toBeGreaterThanOrEqual(5 - (worn.losses.DART ?? 0));
-    expect(result.defenders.find((row) => row.playerId === 'healthy')?.losses.DART ?? 0)
-      .toBeLessThan(result.defenders.find((row) => row.playerId === 'worn')?.losses.DART ?? 0);
+    const deaths = result.rounds[0]!.casualties ?? [];
+    expect(deaths.find(row => row.side === 'DEFENCE' && row.playerId === 'healthy')?.fleet.DART ?? 0)
+      .toBeLessThan(deaths.find(row => row.side === 'DEFENCE' && row.playerId === 'worn')?.fleet.DART ?? 0);
   });
 
   it('reads each defender’s own armor and leaves transports covered by ally combat ships', () => {
@@ -135,12 +136,11 @@ describe('monument battle carries every owner’s HP damage', () => {
     expect(cargo.survivorDamage[0]?.remainderBp).toBeCloseTo(0.25, 8);
     const plain = result.defenders.find((row) => row.playerId === 'plain')!;
     const armored = result.defenders.find((row) => row.playerId === 'armored')!;
-    // The shared pool apportions fire by effective HP, so these equal-count
-    // hulls carry the same percentage; the armored stack absorbed more HP.
+    // Each stack keeps its own armor; the protected cargo retains exact arrival wounds.
     expect(plain.sent).toEqual({ CITADEL: 2 });
     expect(armored.sent).toEqual({ CITADEL: 2 });
-    const plainSolo = resolveMonumentCombat([attacker({ DART: 100 })], [defender({ CITADEL: 2 }, 'plain')], flat());
-    const armoredSolo = resolveMonumentCombat([attacker({ DART: 100 })], [defender({ CITADEL: 2 }, 'armored', undefined, { SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel })], flat());
+    const plainSolo = resolveMonumentCombat([attacker({ DART: 40 })], [defender({ CITADEL: 2 }, 'plain')], flat());
+    const armoredSolo = resolveMonumentCombat([attacker({ DART: 40 })], [defender({ CITADEL: 2 }, 'armored', undefined, { SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel })], flat());
     expect(plainSolo.defenderLossValue).toBeGreaterThan(armoredSolo.defenderLossValue);
   });
 

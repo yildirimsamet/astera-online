@@ -1,6 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { reportsSchema } from '../src/api/schemas.js';
+import { COMBAT } from '@astera/rules';
+import i18n from '../src/i18n/index.js';
+import { MonumentBattleRules } from '../src/screens/MonumentBattleRules.js';
+import { getWikiArticle } from '../src/wiki/catalog.js';
+import { conceptReference } from '../src/wiki/facts.js';
 import { ReportScene } from '../src/v2/hud/ReportScene.js';
 import { MonumentReportSheet } from '../src/screens/MonumentReportSheet.js';
 
@@ -35,4 +40,39 @@ describe('own retreated ships remain distinct from battle deaths', () => {
     expect(screen.getByText('Retreated alive: 1. These ships kept their hull damage.')).toBeVisible();
     expect(screen.getByText('Enemy ships that retreated and survived: 2.')).toBeVisible();
   });
+});
+
+
+describe('six-round public combat rules', () => {
+  it.each(['en', 'tr', 'de', 'fr', 'es', 'ja'])('explains the last retreat round in %s', async language => {
+    await i18n.changeLanguage(language);
+    const { container } = render(<MonumentBattleRules />);
+    expect(container.textContent).toContain(String(COMBAT.rounds));
+    expect(container.textContent).toContain(String(COMBAT.rounds - 1));
+    expect(container.textContent).not.toContain('{{');
+    await i18n.changeLanguage('en');
+  });
+  it.each(['en', 'tr'] as const)('publishes distribution, collector protection and all five retreat windows in %s', language => {
+    const text = JSON.stringify(getWikiArticle('combat.model')?.sections[language]);
+    expect(text).toMatch(language === 'en' ? /all eligible.*random/i : /bütün uygun.*rastgele/i);
+    expect(text).toMatch(language === 'en' ? /Garbage Collector/ : /Hurdacı/);
+    expect(text).toContain('1–5');
+    const blocks = JSON.stringify(conceptReference('combat.model', language));
+    expect(blocks).toContain('1–5');
+    expect(blocks).toContain('66');
+    expect(blocks).toContain('80');
+  });
+});
+
+
+it('opens all six monument rounds and keeps fifth-round escapes distinct from deaths', () => {
+  const rounds = Array.from({ length: 6 }, (_, i) => ({ round: i + 1, yourLosses: i === 5 ? { CORSAIR: 1 } : {},
+    theirLosses: {}, yourRetreated: i === 4 ? { CORSAIR: 1 } : {}, theirRetreatedCount: i === 4 ? 2 : 0 }));
+  const parsed = reportsSchema.parse({ rivals: [], reports: [{ ...monument, roundCount: 6, rounds }] }).reports[0];
+  if (parsed?.kind !== 'MONUMENT') throw new Error('wrong fixture');
+  expect(parsed).toHaveProperty('rounds', rounds);
+  render(<MonumentReportSheet report={parsed} onClose={vi.fn()} />);
+  expect(document.querySelectorAll('[data-monument-round]')).toHaveLength(6);
+  expect(document.querySelector('[data-monument-round="5"]')).toHaveTextContent('Retreated alive: 1.');
+  expect(document.querySelector('[data-monument-round="6"]')).not.toHaveTextContent('Retreated alive');
 });

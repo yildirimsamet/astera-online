@@ -9,15 +9,18 @@ import { battleRetreatPolicy, type RetreatWindow } from './battleRetreat.js';
 import type { Fleet, HullId, Rng } from './types.js';
 import type { BattleResult, CombatRound, CombatOwnerFleet, DefenderStack, JointAttackerStack } from './combat.js';
 
-interface Ship {
+/** The immutable inputs a volley needs; full battle ships also carry wound identity. */
+export interface VolleyShip {
   hull: HullId;
   owner: number;
   hp: number;
-  maxHp: number;
   shield: number;
   attack: number;
   canFire: boolean;
   retreated: boolean;
+}
+interface Ship extends VolleyShip {
+  maxHp: number;
   arrival: HpDamageLot;
   arrivalHp: number;
 }
@@ -27,9 +30,9 @@ const fleetOf = (ships: readonly Ship[], include: (ship: Ship) => boolean): Flee
   for (const ship of ships) if (include(ship)) add(fleet, ship.hull);
   return fleet;
 };
-const alive = (ship: Ship) => ship.hp > 0;
-const active = (ship: Ship) => alive(ship) && !ship.retreated;
-const firing = (ship: Ship) => active(ship) && ship.canFire && ship.attack > 0;
+const alive = (ship: VolleyShip) => ship.hp > 0;
+const active = (ship: VolleyShip) => alive(ship) && !ship.retreated;
+const firing = (ship: VolleyShip) => active(ship) && ship.canFire && ship.attack > 0;
 const byString = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
 const hullOrder = new Map(ALL_HULLS.map((hull, index) => [hull, index]));
 const ownerId = (stack: JointAttackerStack | DefenderStack): string => 'contributionId' in stack ? stack.contributionId : stack.stackId;
@@ -50,48 +53,87 @@ function shipsOf(stacks: readonly (JointAttackerStack | DefenderStack)[], mainte
     || byString(ownerId(stacks[a.owner]!), ownerId(stacks[b.owner]!)));
 }
 
-function shuffle(items: Ship[], rng: Rng): void {
+function shuffle(items: VolleyShip[], rng: Rng): void {
   for (let i = items.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [items[i], items[j]] = [items[j]!, items[i]!];
   }
 }
 
-/** Predict only this volley's kills. Both real populations retain their entry firing rights. */
-function volley(from: readonly Ship[], to: readonly Ship[], roll: number, rng: Rng, aegis: number, owners: number) {
+/**
+ * Predict a volley without changing either population's round-entry firing rights.
+ * Each shooter spreads BASE damage over every eligible target with independent
+ * positive random weights. A target's counter is applied once; excess returns to
+ * base units before redistribution. SUPPORT (including collectors) stays covered
+ * until the last armed target dies, even within the same shot.
+ */
+export function resolveVolley(from: readonly VolleyShip[], to: readonly VolleyShip[], roll: number, rng: Rng, aegis: number, owners: number) {
   const hp = to.map(ship => ship.hp), shields = to.map(ship => ship.shield);
   const combat: number[] = [], cargo: number[] = [];
   for (let i = 0; i < to.length; i++) if (active(to[i]!)) (HULLS[to[i]!.hull].cls === 'SUPPORT' ? cargo : combat).push(i);
+  // Reuse storage and class multipliers: large fleets otherwise allocate and look
+  // up counters for every shooter-target pair. Target order and RNG draws stay exact.
+  const weights = new Float64Array(to.length);
+  const counters = new Map<HullId, Float64Array>();
   const shooters = from.filter(firing);
   shuffle(shooters, rng);
   let incoming = 0, personal = 0, hullDamage = 0, specialistAbsorbed = 0, normalAbsorbed = 0;
   const credited = Array.from({ length: owners }, () => 0);
   for (const ship of shooters) {
-    const pool = combat.length > 0 ? combat : cargo;
-    if (pool.length === 0) break;
-    const slot = Math.floor(rng() * pool.length), index = pool[slot]!, target = to[index]!;
-    let damage = ship.attack * roll * counterMult(HULLS[ship.hull].cls, HULLS[target.hull].cls);
-    incoming += damage;
-    if (ship.hull === 'NULLIFIER') {
-      const bonus = Math.min(aegis, damage * SHIELD_BREAKER.bonusShieldDamageMult);
-      aegis -= bonus;
-      specialistAbsorbed += bonus;
+    if (combat.length === 0 && cargo.length === 0) break;
+    let multipliers = counters.get(ship.hull);
+    if (!multipliers) {
+      const cls = HULLS[ship.hull].cls;
+      multipliers = Float64Array.from(to, target => counterMult(cls, HULLS[target.hull].cls));
+      counters.set(ship.hull, multipliers);
     }
-    const absorbed = Math.min(aegis, damage);
-    aegis -= absorbed;
-    damage -= absorbed;
-    normalAbsorbed += absorbed;
-    const ownAbsorbed = Math.min(shields[index]!, damage);
-    shields[index]! -= ownAbsorbed;
-    damage -= ownAbsorbed;
-    personal += ownAbsorbed;
-    hullDamage += damage;
-    const landed = Math.min(hp[index]!, damage);
-    credited[ship.owner]! += landed;
-    hp[index] = Math.max(0, hp[index]! - damage);
-    if (hp[index] === 0) {
-      pool[slot] = pool[pool.length - 1]!;
-      pool.pop();
+    const specialist = ship.hull === 'NULLIFIER';
+    let budget = ship.attack * roll;
+    while (budget > 0 && (combat.length > 0 || cargo.length > 0)) {
+      const pool = combat.length > 0 ? combat : cargo;
+      let total = 0;
+      for (let slot = 0; slot < pool.length; slot++) {
+        const weight = 1 - rng();
+        weights[slot] = weight;
+        total += weight;
+      }
+      let remainingShare = budget, overflow = 0, dead = false;
+      for (let slot = 0; slot < pool.length; slot++) {
+        const index = pool[slot]!;
+        const share = slot === pool.length - 1 ? remainingShare : Math.min(remainingShare, budget * weights[slot]! / total);
+        remainingShare -= share;
+        const multiplier = multipliers[index]!;
+        let damage = share * multiplier;
+        if (specialist) {
+          const bonus = Math.min(aegis, damage * SHIELD_BREAKER.bonusShieldDamageMult);
+          aegis -= bonus;
+          specialistAbsorbed += bonus;
+        }
+        const absorbed = Math.min(aegis, damage);
+        aegis -= absorbed;
+        damage -= absorbed;
+        normalAbsorbed += absorbed;
+        const ownAbsorbed = Math.min(shields[index]!, damage);
+        shields[index]! -= ownAbsorbed;
+        damage -= ownAbsorbed;
+        personal += ownAbsorbed;
+        const landed = Math.min(hp[index]!, damage);
+        hp[index] = Math.max(0, hp[index]! - landed);
+        credited[ship.owner]! += landed;
+        hullDamage += landed;
+        incoming += absorbed + ownAbsorbed + landed;
+        if (hp[index] === 0) {
+          dead = true;
+          overflow += Math.max(0, damage - landed) / multiplier;
+        }
+      }
+      if (dead) {
+        let kept = 0;
+        for (const index of pool) if (hp[index]! > 0) pool[kept++] = index;
+        pool.length = kept;
+      }
+      // Any overflow killed a target, so each extra pass makes finite progress.
+      budget = overflow;
     }
   }
   const losses: Fleet = {};
@@ -99,7 +141,7 @@ function volley(from: readonly Ship[], to: readonly Ship[], roll: number, rng: R
   return { hp, shields, incoming, personal, hullDamage, specialistAbsorbed, normalAbsorbed, aegis, credited, losses };
 }
 
-function apply(ships: Ship[], result: ReturnType<typeof volley>): void {
+function apply(ships: Ship[], result: ReturnType<typeof resolveVolley>): void {
   for (let i = 0; i < ships.length; i++) {
     ships[i]!.hp = result.hp[i]!;
     ships[i]!.shield = result.shields[i]!;
@@ -122,7 +164,8 @@ function damageOf(ships: readonly Ship[], precise: boolean): HpDamageLot[] {
     }
     const lost = ship.maxHp - ship.hp;
     if (!precise) {
-      const damageBp = carryToBp(lost, ship.maxHp);
+      // Positive HP can be smaller than one ulp of maxHp, making subtraction round to maxHp.
+      const damageBp = lost < ship.maxHp ? carryToBp(lost, ship.maxHp) : SHIP_DAMAGE.destroyedBp - 1;
       if (damageBp > 0) lots.push({ hull: ship.hull, count: 1, damageBp });
       continue;
     }
@@ -155,8 +198,8 @@ export function resolveRandomBattle(
     const attackerRoll = COMBAT.varianceMin + rng() * (COMBAT.varianceMax - COMBAT.varianceMin);
     const defenderRoll = COMBAT.varianceMin + rng() * (COMBAT.varianceMax - COMBAT.varianceMin);
     const shieldBefore = Math.round(shieldLeft);
-    const outgoing = volley(a, d, attackerRoll, targetRng, shieldLeft, stacks.length);
-    const incoming = volley(d, a, defenderRoll, targetRng, 0, defenders.length);
+    const outgoing = resolveVolley(a, d, attackerRoll, targetRng, shieldLeft, stacks.length);
+    const incoming = resolveVolley(d, a, defenderRoll, targetRng, 0, defenders.length);
     if (d.some(firing)) shieldProtectedArmed += outgoing.normalAbsorbed;
     shieldLeft = outgoing.aegis;
     for (let i = 0; i < credited.length; i++) credited[i]! += outgoing.credited[i]!;
@@ -175,7 +218,7 @@ export function resolveRandomBattle(
     apply(a, incoming);
     apply(d, outgoing);
     const beforeA = a.map(ship => ship.retreated), beforeD = d.map(ship => ship.retreated);
-    if (round < 3) {
+    if (round < COMBAT.rounds) {
       retreat(a, policy.attacker, retreatRng);
       retreat(d, policy.defender, retreatRng);
     }
@@ -193,7 +236,7 @@ export function resolveRandomBattle(
         retreats.push({ side, playerId: owner.playerId, stackId: 'contributionId' in owner ? owner.contributionId : owner.stackId, fleet });
       }
     }
-    rounds.push({ round, attackerRoll, defenderRoll,
+    rounds.push({ round, distributedFire: true, attackerRoll, defenderRoll,
       attackerDamage: Math.round(outgoing.incoming), defenderDamage: Math.round(incoming.incoming),
       shieldBefore, shieldAfter: Math.round(shieldLeft), shieldAbsorbed: shieldBefore - Math.round(shieldLeft),
       shieldBreakerDamage: Math.round(outgoing.specialistAbsorbed),

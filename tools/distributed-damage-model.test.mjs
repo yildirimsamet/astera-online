@@ -3,8 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { HULLS, fleetCount } from '../packages/rules/src/hulls.ts';
 import { mulberry32, seededFrom } from '../packages/rules/src/rng.ts';
-import { resolveRandomBattle } from '../packages/rules/src/randomBattle.ts';
-import { battleRetreatPolicy } from '../packages/rules/src/battleRetreat.ts';
+import { createHash } from 'node:crypto';
 import { distributedVolley, prepareStudyEngine } from './distributed-damage-model.mjs';
 
 const ship = (hull, hp = 1000, attack = 0, shield = 0) => ({ hull, hp, maxHp: hp, attack, shield, owner: 0, canFire: true, retreated: false });
@@ -109,12 +108,15 @@ test('random adversarial volleys conserve base damage across counters/shields/ca
   }
 });
 
-test('untouched copied resolver is bit-for-bit equal to production, including actual battle', async () => {
-  const { baseline } = await prepareStudyEngine();
+test('historical baseline stays bit-for-bit pinned after production integration, including actual battle', async () => {
+  const { baseline, sourceHash } = await prepareStudyEngine();
+  assert.equal(sourceHash, 'd4d863b05c613ad2f9e030b07f8e6aa0e0ea27751702a50f3b1001dbe9409ad1');
+  const digest = createHash('sha256');
   for (let seed = 0; seed < 16; seed++) {
     const a = aStack({ CORSAIR: 8, CATACLYSM: 4, COURIER: 2 }), d = dStack({ PIKE: 11, THORN: 4, GARBAGE_COLLECTOR: 1 });
-    assert.deepEqual(baseline(a, d, 150, mulberry32(seed), true, true), resolveRandomBattle(a, d, 150, mulberry32(seed), true, true));
+    digest.update(JSON.stringify(baseline(a, d, 150, mulberry32(seed), true, true)));
   }
+  assert.equal(digest.digest('hex'), '278123b86a78a6e51ea0d9c4c68a36d945afb85d63b190e903d53ff85439ef83');
   const { report: r, missions, defenderTech } = JSON.parse(readFileSync(new URL('./fixtures/distributed-damage-live-battle-20261023.json', import.meta.url), 'utf8'));
   const mission = missions.find(m => m.kind === 'attack');
   const a = [{ ...aStack(r.attacker_fleet, mission.tech)[0], contributionId: mission.id, playerId: r.attacker_player_id }];
@@ -133,7 +135,7 @@ test('simultaneous firing survives same-round annihilation; dead ships cannot re
 });
 
 test('engine is deterministic and maintains survivors/deaths/retreat accounting for every round', async () => {
-  const { candidate, trace } = await prepareStudyEngine();
+  const { candidate, trace, policy: battleRetreatPolicy } = await prepareStudyEngine();
   for (let seed = 0; seed < 32; seed++) {
     const a = aStack({ CORSAIR: 20, GARBAGE_COLLECTOR: 2 }), d = dStack({ CORSAIR: 10, COURIER: 3 });
     const result = candidate(a, d, 0, mulberry32(seed), true, true);

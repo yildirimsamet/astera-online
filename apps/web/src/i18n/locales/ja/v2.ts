@@ -334,6 +334,7 @@ export const repairStation = {
   ruleCancel: "キャンセルすると費用の半分が戻り、艦船は再び修理待ちになります。",
   industrialChip: "{{industrial}} −{{off}}%",
   damagedHeading: "損傷した艦船",
+  selectBatch: "最初の{{max}}耐久度グループを選択",
   selectAll: "すべて選択",
   selectNone: "クリア",
   choose: "{{name}}×{{count}}を修理",

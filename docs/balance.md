@@ -250,15 +250,17 @@ the Grid), so a loaded world falls to several worlds striking together. A hit co
 colony 20 loyalty; at 20 or less it secedes to NEUTRAL.
 
 ```
-3 rounds · simultaneous fire · ±8% variance
+6 rounds · simultaneous fire · ±8% variance
 mobile ship shield = 0.25 × researched maximum HP × [1, 1.25, 1.5, 1.7, 2] at research L0–L4
 personal shields start full each battle; no recharge between rounds; hull wounds persist; radiation bypasses them
 ground guns: no personal shield · Aegis absorbs combat fire first
 counter cycle: SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER   at 1.6× / 0.625×
 support hulls: prey to everything, deal nothing, shielded while escorted
 
-one shot per eligible unit; random live combat target first, then cargo in the same round
-retreat only after rounds 1–2; side ratio/HP windows: see docs/game-design.md Combat
+one shot per eligible unit, spread over all living eligible targets with random weights
+armed targets first, then all SUPPORT (cargo + collector), including within the same shot
+excess returns to base damage and is redistributed; counters apply once per target
+retreat only after rounds 1–5; side ratio/HP windows: see docs/game-design.md Combat
 
 grade on VALUE destroyed or retreated:
   no active defenders        → DECISIVE → loot 60%

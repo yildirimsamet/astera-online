@@ -1,4 +1,5 @@
 /** Simulation only. Production source, database and deployed services are never mutated. */
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -7,6 +8,8 @@ import { HULLS, combatValue, counterMult } from '../packages/rules/src/hulls.ts'
 import { SHIELD_BREAKER } from '../packages/rules/src/constants.ts';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+// Historical studies must keep their three-round baseline after production adopts six.
+const STUDY_BASE = '4d58d123b0483ae00f2d77110f18c6898ba7ed18';
 
 /**
  * Independent Uniform(0,1] weights, normalized per firing ship and redistribution pass.
@@ -81,9 +84,12 @@ export async function prepareStudyEngine() {
   prepared = (async () => {
     const dir = resolve(ROOT, 'out/distributed-damage-20261023');
     mkdirSync(dir, { recursive: true });
-    const source = readFileSync(resolve(ROOT, 'packages/rules/src/randomBattle.ts'), 'utf8');
+    const historical = name => execFileSync('git', ['show', `${STUDY_BASE}:packages/rules/src/${name}.ts`], { cwd: ROOT, encoding: 'utf8' });
+    const imports = source => source.replaceAll(/from '\.\/([\w-]+)\.js'/g, "from '../../packages/rules/src/$1.ts'");
+    for (const name of ['constants', 'battleRetreat']) writeFileSync(resolve(dir, `${name}.ts`), imports(historical(name)));
+    const source = historical('randomBattle');
     const hash = createHash('sha256').update(source).digest('hex');
-    const rewritten = source.replaceAll(/from '\.\/(\w+)\.js'/g, "from '../../packages/rules/src/$1.ts'");
+    const rewritten = imports(source).replace("from '../../packages/rules/src/constants.ts'", "from './constants.ts'").replace("from '../../packages/rules/src/battleRetreat.ts'", "from './battleRetreat.ts'");
     writeFileSync(resolve(dir, 'baseline.ts'), rewritten);
     const start = rewritten.indexOf('function volley('), end = rewritten.indexOf('\nfunction apply(');
     if (start < 0 || end <= start || rewritten.indexOf('function volley(', start + 1) !== -1) throw new Error('volley anchors changed');
@@ -99,11 +105,12 @@ export async function prepareStudyEngine() {
       `    studyTrace.push({ round, attacker: capture(a, policy.attacker), defender: capture(d, policy.defender) });\n    const beforeA = a.map(ship => ship.retreated), beforeD = d.map(ship => ship.retreated);`);
     candidate += `\nexport const studyTrace: unknown[] = [];\nfunction capture(ships: readonly Ship[], policy: RetreatWindow) {\n  const eligibleHp = ships.filter(ship => active(ship) && !HULLS[ship.hull].ground && ship.hp / ship.maxHp <= policy.threshold + 1e-12).map(ship => ship.hp / ship.maxHp);\n  return { eligible: eligibleHp.length, eligibleHp, threshold: policy.threshold, chance: policy.chance };\n}\n`;
     writeFileSync(resolve(dir, 'candidate.ts'), candidate);
-    const [baseline, changed] = await Promise.all([
+    const [baseline, changed, policy] = await Promise.all([
       import(pathToFileURL(resolve(dir, 'baseline.ts')).href),
       import(pathToFileURL(resolve(dir, 'candidate.ts')).href),
+      import(pathToFileURL(resolve(dir, 'battleRetreat.ts')).href),
     ]);
-    return { baseline: baseline.resolveRandomBattle, candidate: changed.resolveRandomBattle, trace: changed.studyTrace, sourceHash: hash };
+    return { baseline: baseline.resolveRandomBattle, candidate: changed.resolveRandomBattle, trace: changed.studyTrace, sourceHash: hash, policy: policy.battleRetreatPolicy };
   })();
   return prepared;
 }

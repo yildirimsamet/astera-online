@@ -1,6 +1,8 @@
 import { orbitFingerprint } from './orbitFingerprint.js';
 import { describe, expect, it } from 'vitest';
 import {
+  soloStack,
+  resolveBattle,
   resolveCombat,
   computeLoot,
   DEBRIS,
@@ -452,13 +454,19 @@ describe('the holds a pirate is left with', () => {
     });
 
   it('never seizes cargo which already retreated alive when the active line was cleared', () => {
-    const raw = fight({ DART: 7 }, { RAMPART: 3, COURIER: 2 });
-    expect(raw.grade).toBe('DECISIVE');
-    expect(fleetCount(raw.defenderRetreated ?? {})).toBeGreaterThan(0);
-    const settled = pirateOverrun(raw);
-    expect(settled.defenderSurvivors).toEqual(raw.defenderSurvivors);
-    expect(settled.defenderLosses).toEqual(raw.defenderLosses);
-    expect(settled.rounds).toBe(raw.rounds);
+    let checked = 0;
+    for (let seed = 0; seed < 32; seed++) {
+      const raw = resolveBattle([soloStack({ DART: 7 }, { tech: {} })], [{ stackId: 'pirate', playerId: '',
+        fleet: { RAMPART: 3, COURIER: 2 }, tech: { tech: {}, ...pirateStats(1) },
+        damage: [{ hull: 'COURIER', count: 2, damageBp: 9000 }] }], 0, mulberry32(seed), 'HP_PLANET', true);
+      if (raw.grade !== 'DECISIVE' || fleetCount(raw.defenderRetreated ?? {}) === 0) continue;
+      checked++;
+      const settled = pirateOverrun(raw);
+      expect(settled.defenderSurvivors).toEqual(raw.defenderSurvivors);
+      expect(settled.defenderLosses).toEqual(raw.defenderLosses);
+      expect(settled.rounds).toBe(raw.rounds);
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 
   it('a retreated attacker cannot overrun a pirate hold', () => {
@@ -467,8 +475,8 @@ describe('the holds a pirate is left with', () => {
     expect(pirateOverrun(departed)).toEqual(departed);
   });
 
-  it('takes a lone hold that three rounds could not sink', () => {
-    const raw = fight({ DART: 2 }, { ATLAS: 1 });
+  it('takes a lone hold that six rounds could not sink', () => {
+    const raw = fight({ DART: 1 }, { ATLAS: 1 });
     expect(raw.grade).toBe('REPELLED');
     expect(raw.defenderSurvivors.ATLAS).toBe(1);
     const settled = pirateOverrun(raw);

@@ -139,6 +139,10 @@ export const intel = {
 } as const;
 
 export const reports = {
+  distributedRulesTitle: "この戦闘の処理",
+  distributedRetreatRule: "損傷した艦船は第1～{{lastRound}}ラウンド終了時に撤退できます。損傷は残り、以後は戦闘に参加しません。",
+  distributedDamageNote: "通常射撃の合計にはAegisと艦船シールドが吸収した分、および船体に実際に与えた分が含まれます。再分配された余剰ダメージは二重に計上されません。合計は味方を含む各陣営全体の値です。自分の損失一覧には自分の艦船だけが表示されます。",
+
   retreated: '生還して撤退：{{count}}隻。これらの艦船には船体ダメージが残っています。',
   enemyRetreated: "敵艦{{count}}隻が撤退して生還しました。",
   turningPointRetreated: "第{{round}}ラウンド終了後、戦闘を続ける戦闘艦はありません。一部の艦は撤退して生還しました。",

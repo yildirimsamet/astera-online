@@ -10,8 +10,6 @@ import {
   fleetEscapeApplies,
   fleetEscapeMinimumApplies,
   ESCAPE,
-  forecastLines,
-  forecastLoss,
   matchupsAgainst,
   shieldHp,
   wallKnowledgeOf,
@@ -24,6 +22,7 @@ import type { IntelView, Report } from '../api/schemas.js';
 import { combatClassLabel } from '../i18n/names.js';
 import { serverNow } from './clock.js';
 import { fieldedAtLeast, sourceLabel } from './dossier.js';
+import { useBattleForecast } from './useBattleForecast.js';
 import { matchupHint } from './matchup.js';
 import { factorLabel, raiderFactorCeiling } from './supportFactor.js';
 import type { ForceReading } from '../ui/ForceCompare.js';
@@ -165,21 +164,12 @@ export function useTargetReading({
     };
   }, [isPirate, pirateCrew, pirateHandicap, report, tech, domeCeiling, settledDamage]);
 
-  /*
-    A FEW DOZEN BATTLES PER READING, SO IT WAITS FOR THE THUMB. The picker renders
-    the new count first and the lines follow in the deferred pass; on a phone a "+"
-    must never stall behind a forecast.
-
-    AND ONLY AGAINST A READING. With nobody having looked, every input about the
-    wall — research, dome, transports — is a guess, and the guess was always the
-    kindest wall there is. The lines are what a probe buys; before one, the box says
-    "never measured" and nothing else.
-  */
-  const hasReading = opposing !== null;
-  const lines = useMemo(
-    () => (hasReading && fleetCount(settled) > 0 ? forecastLines(settled, forecastInput) : null),
-    [hasReading, settled, forecastInput],
-  );
+  // Distributed shots make large forecasts expensive. A worker keeps the picker and
+  // map responsive; a changed fleet cancels its old computation rather than queuing it.
+  const forecastRequest = useMemo(() => opposing !== null && fleetCount(settled) > 0
+    ? { wing: settled, input: forecastInput, power: { low: opposing.low, high: opposing.high } }
+    : null, [settled, forecastInput, opposing?.low, opposing?.high]);
+  const { lines, loss, pending: forecastPending, error: forecastError } = useBattleForecast(forecastRequest);
   /**
    * WHAT THE WING'S CLASSES DO AGAINST THE WALL THE PROBE READ — AND WHAT IT DID NOT READ.
    *
@@ -203,13 +193,6 @@ export function useTargetReading({
     if (said.kind === 'BRING') return t('counter.matchupBring', { class: combatClassLabel(said.cls) });
     return t(said.kind === 'SINGLE' ? 'counter.matchupSingle' : 'counter.matchupProbe');
   }, [matchups, t]);
-
-  const loss = useMemo(
-    () => (lines !== null && opposing !== null
-      ? forecastLoss(settled, { low: opposing.low, high: opposing.high }, forecastInput)
-      : null),
-    [lines, settled, opposing?.low, opposing?.high, forecastInput],
-  );
 
   /**
    * TAKTİK GERİ ÇEKİLME, DRAWN WHERE THE WING IS SIZED. Owner decision, 2026-09-23.
@@ -257,6 +240,8 @@ export function useTargetReading({
    * narrow line is never mistaken for a certain one.
    */
   const notes: string[] = [];
+  if (forecastPending) notes.push(t('counter.forecastCalculating'));
+  if (forecastError) notes.push(t('counter.forecastFailed'));
   if (target.kind === 'world') {
     const world = target.world;
     if (world.shielded && !report?.shield) notes.push(t('counter.noteShieldUnmeasured'));

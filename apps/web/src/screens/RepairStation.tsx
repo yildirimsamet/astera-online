@@ -309,8 +309,9 @@ function RepairStationContent({ planet, held, onClose }: RepairStationSheetProps
   const rows = mode === 'SCRAP' ? allRows : allRows.filter((row) => row.damageBp > 0 || (row.remainderBp ?? 0) > 0);
   const choice = maintenanceChoice(rows, quantities, dock?.pct ?? 100);
   const selectable = rows.filter(row => !row.busy && row.count > 0);
+  const bulkSelection = selectable.slice(0, SHIP_DAMAGE.repairLotsPerOrder);
   const allSelected = selectable.length > 0 && !choice.stale
-    && selectable.every(row => quantities[row.key] === row.count);
+    && bulkSelection.every(row => quantities[row.key] === row.count) && choice.selected.length === bulkSelection.length;
   const adjustedRepairCost = planet.honorBenefits ? honorRepairResources(choice.repairCost, planet.honorBenefits) : choice.repairCost;
   const busy = start.isPending || cancel.isPending || maintenance.isPending;
   const canPay = adjustedRepairCost.alloy <= held.alloy && adjustedRepairCost.crystal <= held.crystal
@@ -416,9 +417,10 @@ function RepairStationContent({ planet, held, onClose }: RepairStationSheetProps
         : place === 'HOME' ? t('repairStation.maintenance.homeHint') : t('repairStation.maintenance.dockRule')}</p>
       {(mode === 'REPAIR' || Object.values(quantities).some(count => count > 0)) && <div className="flex flex-wrap items-center justify-end gap-2">
         {mode === 'REPAIR' && <button type="button" disabled={busy || selectable.length === 0 || allSelected}
-          onClick={() => { setQuantities(Object.fromEntries(selectable.map(row => [row.key, row.count]))); }}
+          onClick={() => { setQuantities(Object.fromEntries(bulkSelection.map(row => [row.key, row.count]))); }}
           className="min-h-9 rounded-control px-2 text-micro font-semibold text-v2-self focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v2-self disabled:opacity-40">
-          {t('repairStation.selectAll')}
+          {selectable.length > SHIP_DAMAGE.repairLotsPerOrder
+            ? t('repairStation.selectBatch', { max: SHIP_DAMAGE.repairLotsPerOrder }) : t('repairStation.selectAll')}
         </button>}
         {Object.values(quantities).some(count => count > 0) && <button type="button" disabled={busy}
           onClick={() => { setQuantities({}); }}

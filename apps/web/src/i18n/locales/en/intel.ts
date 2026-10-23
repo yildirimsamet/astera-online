@@ -139,6 +139,10 @@ export const intel = {
 } as const;
 
 export const reports = {
+  distributedRulesTitle: "How this battle was fought",
+  distributedRetreatRule: "Wounded ships can retreat at the end of rounds 1–{{lastRound}}. Retreated ships keep their wounds and stop fighting.",
+  distributedDamageNote: "Ordinary shot totals show damage absorbed by Aegis and ship shields, plus damage delivered to hulls. Redistributed excess is not counted twice. Totals cover each whole side, including allies. Your casualty list covers only your own ships.",
+
   retreated: 'Retreated alive: {{count}}. These ships kept their hull damage.',
   enemyRetreated: "Enemy ships that retreated and survived: {{count}}.",
   turningPointRetreated: "After round {{round}}, no warships remained fighting. Some ships retreated alive.",

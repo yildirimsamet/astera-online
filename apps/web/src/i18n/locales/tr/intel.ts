@@ -126,6 +126,10 @@ export const intel = {
 } as const;
 
 export const reports = {
+  distributedRulesTitle: "Bu savaş nasıl işlendi?",
+  distributedRetreatRule: "Yaralı gemiler 1–{{lastRound}}. turların sonunda kaçabilir. Kaçanlar yaralarını korur ve savaşmaya devam etmez.",
+  distributedDamageNote: "Normal atış hasarı toplamı, Aegis ve gemi kalkanlarının emdiği hasarla gövdeye uygulanan hasarı gösterir. Yeniden dağıtılan artan hasar iki kez sayılmaz. Toplamlar, müttefikler dahil tarafın bütün atışlarını kapsar. Senin kayıp listen yalnız kendi gemilerini gösterir.",
+
   retreated: 'Sağ kaçan: {{count}}. Bu gemilerin gövde hasarı korundu.',
   enemyRetreated: "Düşmanın {{count}} gemisi kaçarak sağ kaldı.",
   turningPointRetreated: "{{round}}. tur sonunda savaşmaya devam eden savaş gemin kalmadı. Bazı gemiler sağ kaçtı.",

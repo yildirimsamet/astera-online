@@ -2862,6 +2862,7 @@ const ordinaryBattleReport = z.object({
       rounds: z.array(
         z.object({
           round: z.number(),
+          distributedFire: z.literal(true).optional(),
           /** Null means the immutable report predates detailed calculation telemetry. */
           attackerRoll: z.number().nullable().optional(),
           defenderRoll: z.number().nullable().optional(),
@@ -3072,6 +3073,8 @@ const monumentBattleReport = z.object({
   defenderCargoRetreated: z.boolean().optional(),
   yourRetreated: fleet.optional(),
           theirRetreatedCount: z.number().int().nonnegative().optional(),
+  rounds: z.array(z.object({ round: z.number().int().positive(), distributedFire: z.literal(true).optional(),
+    yourLosses: fleet, theirLosses: fleet, yourRetreated: fleet, theirRetreatedCount: z.number().int().nonnegative() })).optional(),
   roundCount: z.number().int().nonnegative(), yourFleet: fleet, yourSurvivors: fleet, yourLosses: fleet,
   yourDamage: z.array(monumentLotSchema.pick({ hull: true, count: true, damageBp: true, remainderBp: true })),
   theirLosses: fleet, lootDeuterium: z.number().finite().nonnegative(), dominion: dominionInteger,

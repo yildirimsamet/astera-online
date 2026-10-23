@@ -327,6 +327,7 @@ export const repairStation = {
   ruleCancel: "İptal edersen bedelin yarısı geri döner; gemiler yeniden beklemeye geçer.",
   industrialChip: "{{industrial}} −%{{off}}",
   damagedHeading: "Hasarlı gemiler",
+  selectBatch: "İlk {{max}} can grubunu seç",
   selectAll: "Tümünü seç",
   selectNone: "Temizle",
   choose: "{{name}} ×{{count}} onar",

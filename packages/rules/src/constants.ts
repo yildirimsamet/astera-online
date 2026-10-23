@@ -1014,7 +1014,7 @@ export const BUILD = {
 } as const;
 
 export const COMBAT = {
-  rounds: 3,
+  rounds: 6,
   shipShieldFraction: 0.25,
   varianceMin: 0.92,
   varianceMax: 1.08,

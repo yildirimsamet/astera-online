@@ -28,8 +28,9 @@ export const monument = {
   "wiped": "Deine gesamte Flotte wurde zerstört.",
   "rulesTitle": "Kampfregeln",
   "roundRule": "Der Kampf dauert höchstens {{rounds}} Runden. Frachter sind geschützt, solange bewaffnete Schiffe weiterkämpfen.",
+  "fireRule": "Jedes bewaffnete Schiff verteilt seinen Schuss zufällig auf alle zulässigen lebenden Ziele. Frachter und Schrottsammler werden erst getroffen, wenn ihre letzte bewaffnete Eskorte fällt. Überschüssiger Schaden geht im selben Schuss an verbleibende Ziele. Hülle und Schilde regenerieren zwischen den Runden nicht.",
   "captureRule": "Nur weiterkämpfende Schiffe zählen für die Kontrolle. Bleiben nur verteidigende Frachter und überlebt ein kampffähiges Kriegsschiff des Angreifers, kehren die Frachter heim und der Angreifer übernimmt. Haben beide Seiten nur Frachter, hält der Verteidiger weiter und der Angreifer kehrt heim.",
-  "retreatRule": "Am Ende von Runde 1 und 2 können beschädigte Schiffe fliehen. Schäden bleiben; sie kämpfen nicht weiter. Flucht zählt als Ausscheiden, nicht als Zerstörung. Geflohene Sieger kehren zur Besatzung zurück; Überlebende der Verlierer fliegen heim.",
+  "retreatRule": "Am Ende der Runden 1–{{lastRound}} können beschädigte Schiffe fliehen. Schäden bleiben; sie kämpfen nicht weiter. Flucht zählt als Ausscheiden, nicht als Zerstörung. Geflohene Sieger kehren zur Besatzung zurück; Überlebende der Verlierer fliegen heim.",
   "partialRule": "Teilerfolg erfordert, mindestens {{threshold}} des Verteidigungswerts zu zerstören oder zum Rückzug zu zwingen. Rückzüge erzeugen keine Zerstörungspunkte oder Trümmer. Kampfnote und Punkte bestimmen nicht die Monumentkontrolle."
 },
   radiationLossForecast: "Erster Strahlungsverlust in {{time}}, ohne Kampfschaden.",

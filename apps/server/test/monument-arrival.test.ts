@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MOBILE_HULLS, MONUMENT_CAPACITY, MULTI_WORLD, allocateMonumentDominion, fleetValue, hangarLoad, resolveMonumentCombat, seededFrom, fleetCount, type Fleet, type TechLevels } from '@astera/rules';
+import { MOBILE_HULLS, MONUMENT_CAPACITY, MULTI_WORLD, normalizeHpDamage, allocateMonumentDominion, fleetValue, hangarLoad, resolveMonumentCombat, seededFrom, fleetCount, type Fleet, type TechLevels } from '@astera/rules';
 import { clanMemberships, clans, hpRadiationSources, monumentBattles, monumentBattleParticipants, monuments, monumentShipLots, monumentWaves, notifications, planets, players, scheduledEvents, seasons, units } from '../src/db/schema.js';
 import { resolveMonumentArrival } from '../src/services/monumentArrival.js';
 import { lockMonument, settleMonument } from '../src/services/monument.js';
 import { recallMonument, resolveMonumentReturn } from '../src/services/monumentMovement.js';
+import { readHomeHealth } from '../src/services/homeHealth.js';
 import { readMonumentBattleReports } from '../src/services/monumentReports.js';
 import { assertDominionLedgers } from '../src/services/dominion.js';
 import { totalUnitsOf } from '../src/services/planet.js';
@@ -133,49 +134,56 @@ describe('chronological monument arrivals and physical battle settlement', () =>
   });
 
   it('returns surviving defender cargo with its load and makes room for the attacker exactly once', async () => {
-    const attackFleet = { CORSAIR: 3, ARGOSY: 1 };
+    const attackFleet = { CORSAIR: 2, ARGOSY: 1 };
     const tech = { SHIP_ARMOR: 5, SHIP_SHIELDS: 4 };
-    // Stronger defender armour makes the last cargo survive the SAME-round fire.
+    // Stronger defender armour lets the last cargo survive, with its actual combat wounds.
     // Pin the mission seed so the test covers actual cargo yield, not warship retreat.
     const ids = Array.from({ length: 128 }, (_, i) => `00000000-0000-4000-a000-${String(i + 1).padStart(12, '0')}`);
     const id = ids.find(id => {
       const r = resolveMonumentCombat([{ contributionId: 'a', playerId: 'a', fleet: attackFleet, tech: { tech: {} } }],
-        [{ stackId: 'd', playerId: 'd', fleet: { CORSAIR: 1, ARGOSY: 1 }, tech: { tech } }], seededFrom('monument-battle', id), true);
+        [{ stackId: 'd', playerId: 'd', fleet: { CORSAIR: 1, ARGOSY: 2 }, tech: { tech } }], seededFrom('monument-battle', id), true);
       return r.control === 'ATTACKER' && (r.defenderSurvivors.CORSAIR ?? 0) === 0
-        && r.defenderSurvivors.ARGOSY === 1 && r.defenderDamage.every(lot => lot.hull !== 'ARGOSY');
+        && r.defenderSurvivors.ARGOSY === 2 && (r.defenderRetreated?.ARGOSY ?? 0) === 0
+        && r.defenderDamage.some(lot => lot.hull === 'ARGOSY');
     });
     if (!id) throw new Error('the deterministic fixture could not preserve defending cargo');
+    const expected = resolveMonumentCombat([{ contributionId: 'a', playerId: 'a', fleet: attackFleet, tech: { tech: {} } }],
+      [{ stackId: 'd', playerId: 'd', fleet: { CORSAIR: 1, ARGOSY: 2 }, tech: { tech } }], seededFrom('monument-battle', id), true);
+    const expectedCargo = expected.defenderDamage.filter(lot => lot.hull === 'ARGOSY');
     await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!,
       capacity: hangarLoad(attackFleet), productionPerMinute: 0 }).where(eq(monuments.id, m.id));
-    const defender = await wave(1, { CORSAIR: 1, ARGOSY: 1 }, { hold: true, tech });
-    await f.db.update(monumentShipLots).set({ returnFuelReserve: 2000, deuterium: 12.5 }).where(and(
+    const defender = await wave(1, { CORSAIR: 1, ARGOSY: 2 }, { hold: true, tech });
+    await f.db.update(monumentShipLots).set({ returnFuelReserve: 4000, deuterium: 12.5 }).where(and(
       eq(monumentShipLots.waveId, defender.id), eq(monumentShipLots.hull, 'ARGOSY')));
     const attacker = await wave(0, attackFleet, { id });
     await arrive(attacker);
     await arrive(attacker);
     const [battle] = await f.db.select().from(monumentBattles);
-    expect(battle).toMatchObject({ control: 'ATTACKER', defenderSurvivors: { ARGOSY: 1 }, lootDeuterium: 0 });
+    expect(battle).toMatchObject({ control: 'ATTACKER', defenderSurvivors: { ARGOSY: 2 }, lootDeuterium: 0 });
     expect(await f.db.select().from(monumentBattles)).toHaveLength(1);
     const [retreat] = await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, defender.id));
     expect(retreat).toMatchObject({ status: 'RETURNING', returnReason: 'DEFEAT' });
     expect((await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, attacker.id)))[0]?.status).toBe('HOLD');
     expect((await f.db.select().from(monuments))[0]).toMatchObject({ controllerPlayerId: f.playerIds[0], emptySince: null });
-    const [cargo] = await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, defender.id));
-    expect(cargo).toMatchObject({ hull: 'ARGOSY', count: 1, deuterium: 12.5, damageBp: 0 });
-    expect(cargo!.returnFuelReserve).toBe(0);
-    expect(cargo!.fuelRefund).toBeGreaterThan(0);
-    expect(cargo!.fuelRefund).toBeLessThan(2000);
+    const cargo = await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, defender.id));
+    expect(cargo.reduce((sum, lot) => sum + lot.count, 0)).toBe(2);
+    expect(cargo.reduce((sum, lot) => sum + lot.deuterium, 0)).toBe(12.5);
+    expect(normalizeHpDamage({ ARGOSY: 2 }, cargo.map(({ hull, count, damageBp, remainderBp }) => ({ hull, count, damageBp, remainderBp })))).toEqual(expectedCargo);
+    expect(cargo.every(lot => lot.returnFuelReserve === 0)).toBe(true);
+    expect(cargo.reduce((sum, lot) => sum + lot.fuelRefund, 0)).toBeGreaterThan(0);
+    expect(cargo.reduce((sum, lot) => sum + lot.fuelRefund, 0)).toBeLessThan(4000);
     const [participant] = await f.db.select().from(monumentBattleParticipants).where(and(
       eq(monumentBattleParticipants.battleId, battle!.id), eq(monumentBattleParticipants.playerId, f.playerIds[1]!)));
-    expect(participant).toMatchObject({ losses: { CORSAIR: 1 }, survivors: { ARGOSY: 1 } });
+    expect(participant).toMatchObject({ losses: { CORSAIR: 1 }, survivors: { ARGOSY: 2 } });
     const reports = await f.db.transaction(tx => readMonumentBattleReports(tx, f.playerIds[0]!, 10));
     expect(reports[0]).toMatchObject({ defenderCargoRetreated: true, theirLosses: { CORSAIR: 1 } });
     const land = () => f.db.transaction(tx => resolveMonumentReturn(tx, {
       waveId: defender.id, generation: retreat!.generation, at: retreat!.arriveAt!,
     }));
     expect((await land())?.deliveredDeuterium).toBe(12.5);
+    expect((await readHomeHealth(f.db, f.planetIds[1]!)).damage.filter(lot => lot.hull === 'ARGOSY')).toEqual(expectedCargo);
     expect(await land()).toBeNull();
-    expect((await f.db.select().from(units).where(and(eq(units.planetId, f.planetIds[1]!), eq(units.hull, 'ARGOSY'), eq(units.location, 'home'))))[0]?.count).toBe(1);
+    expect((await f.db.select().from(units).where(and(eq(units.planetId, f.planetIds[1]!), eq(units.hull, 'ARGOSY'), eq(units.location, 'home'))))[0]?.count).toBe(2);
   });
 
   it('keeps cargo-only defenders holding when both sides have only cargo', async () => {
@@ -191,7 +199,7 @@ describe('chronological monument arrivals and physical battle settlement', () =>
 
   it('rolls back cargo retreat, return events and capture together, then safely retries', async () => {
     await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!, productionPerMinute: 0 }).where(eq(monuments.id, m.id));
-    const defender = await wave(1, { COURIER: 1 }, { hold: true, cargo: 12.5 });
+    const defender = await wave(1, { ARGOSY: 1 }, { hold: true });
     const attacker = await wave(0, { DART: 1 });
     const beforeLots = await f.db.select().from(monumentShipLots);
     const beforeWaves = await f.db.select().from(monumentWaves);
@@ -543,4 +551,27 @@ describe('chronological monument arrivals and physical battle settlement', () =>
       await f.db.update(monuments).set({ garrison: m.garrison, garrisonTemplate: m.garrisonTemplate, garrisonTech: {}, garrisonDamage: [] }).where(eq(monuments.id, m.id));
     }
   });
+});
+
+
+it('persists all six rounds, exact wounds and owner-only round reports on a shielded mirror', async () => {
+  await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!, productionPerMinute: 0 }).where(eq(monuments.id, m.id));
+  const tech = { SHIP_SHIELDS: 4 };
+  const defender = await wave(1, { CITADEL: 20 }, { hold: true, tech });
+  const attacker = await wave(0, { CITADEL: 20 }, { tech });
+  await arrive(attacker);
+  const [battle] = await f.db.select().from(monumentBattles);
+  expect(battle!.rounds).toHaveLength(6);
+  expect(battle!.rounds[5]!.retreats).toEqual([]);
+  for (const [owner, sent] of [[0, attacker], [1, defender]] as const) {
+    const [report] = await f.db.transaction(tx => readMonumentBattleReports(tx, f.playerIds[owner]!, 10));
+    expect(report!.roundCount).toBe(6);
+    expect(report).toHaveProperty('rounds');
+    expect(report!.rounds).toHaveLength(6);
+    const lots = await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, sent.id));
+    expect(normalizeHpDamage(report!.yourSurvivors, lots.map(({ hull, count, damageBp, remainderBp }) => ({ hull, count, damageBp, remainderBp }))))
+      .toEqual(normalizeHpDamage(report!.yourSurvivors, report!.yourDamage));
+    expect(report!.yourDamage.length).toBeGreaterThan(0);
+    expect(report).not.toHaveProperty('theirDamage');
+  }
 });

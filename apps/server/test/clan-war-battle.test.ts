@@ -543,7 +543,7 @@ describe('after the battle', () => {
   it('does not restore a leader-capital wave to its pre-battle roster while its survivors return', async () => {
     const f = await setup();
     await readyOperation(f);
-    await armDefender(f, { BASTION: 4, CORSAIR: 2 });
+    await armDefender(f, { BASTION: 4, CORSAIR: 4 });
     await send(f, 0, f.planetIds[0]!, { DART: 100 });
     await start(f);
     await land(f);

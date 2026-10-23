@@ -157,7 +157,7 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
     ],
   )];
   if (id === 'combat.model') blocks.push(table(
-    t('Round 1–2 retreat: chance / remaining hull limit', '1–2. tur kaçışı: şans / kalan can sınırı'),
+    t(`Round 1–${COMBAT.rounds - 1} retreat: chance / remaining hull limit`, `1–${COMBAT.rounds - 1}. tur kaçışı: şans / kalan can sınırı`),
     [t('Entry power ratio', 'Başlangıç güç oranı'), t('Weaker side', 'Güçsüz taraf'), t('Stronger side', 'Güçlü taraf')],
     [100, 150, 200, 300].map(amount => {
       const policy = battleRetreatPolicy({ CORSAIR: amount }, { CORSAIR: 100 });

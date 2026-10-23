@@ -9,6 +9,8 @@ import {
   HULLS,
   MULTI_WORLD,
   fleetCount,
+  resolveCombat,
+  seededFrom,
   type HullId,
 } from '@astera/rules';
 import {
@@ -175,15 +177,23 @@ describe('battle reports', () => {
     return launch.missionId;
   };
 
-  /** Three single shots need two hits per Bastion: exactly one of two guns dies. */
+  /** Arrange a genuinely partial six-round fight; this suite tests settlement/reporting, not a historical damage balance. */
   const partialRaid = async (): Promise<string> => {
     await grant(f.db, theirs, 40_000, 4_000);
-    await giveUnits(f.db, theirs, { BASTION: 2 });
     await giveUnits(f.db, mine, { CATACLYSM: 1 });
     await giveResearch(f.db, mine, 'SHIP_POWER', 5);
     await giveResearch(f.db, mine, 'SHIP_ARMOR', 5);
     await giveResearch(f.db, mine, 'SHIP_SHIELDS', 4);
     const launch = await launchAttack(f.db, mine, theirs, { CATACLYSM: 1 }, f.clock);
+    // A random mission UUID fixes combat RNG. Pick a wall that actually produces
+    // PARTIAL with that seed, rather than making this unrelated report test flaky.
+    const walls = Array.from({ length: 9 }, (_, thorn) => Array.from({ length: 7 }, (_, stronghold) =>
+      ({ THORN: thorn, STRONGHOLD: stronghold }))).flat();
+    const wall = walls.find(fleet => resolveCombat({ CATACLYSM: 1 }, fleet, 0, seededFrom(launch.missionId), {
+      attacker: { tech: { SHIP_POWER: 5, SHIP_ARMOR: 5, SHIP_SHIELDS: 4 } }, defender: { tech: {} },
+    }).grade === 'PARTIAL');
+    if (!wall) throw new Error('could not arrange a partial raid with this mission seed');
+    await giveUnits(f.db, theirs, wall);
     f.clock.set(settledAt(launch.arriveAt));
     await worker().tick();
     return launch.missionId;

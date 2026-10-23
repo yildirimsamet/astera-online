@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { battleRetreatPolicy } from '../packages/rules/src/battleRetreat.ts';
 import { mulberry32 } from '../packages/rules/src/rng.ts';
 import { BASE_POLICY, POLICY_CANDIDATES } from './distributed-retreat-tuning.mjs';
 import { retreatPolicyFor, preparePolicyEngine, prepareStudyEngine } from './distributed-damage-model.mjs';
@@ -8,7 +7,8 @@ import { retreatPolicyFor, preparePolicyEngine, prepareStudyEngine } from './dis
 const aStack = fleet => [{ contributionId: 'a', playerId: 'a', fleet, tech: { tech: {} } }];
 const dStack = fleet => [{ stackId: 'host', playerId: 'd', fleet, tech: { tech: {} } }];
 
-test('baseline table exactly matches production at all tier boundaries and in both directions', () => {
+test('baseline table exactly matches the pinned study baseline at every boundary', async () => {
+  const { policy: battleRetreatPolicy } = await prepareStudyEngine();
   for (const n of [100, 149, 150, 199, 200, 299, 300, 500]) {
     const a = { CORSAIR: n }, d = { CORSAIR: 100 };
     assert.deepEqual(retreatPolicyFor(a, d, BASE_POLICY), battleRetreatPolicy(a, d));

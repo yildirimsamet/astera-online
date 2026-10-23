@@ -319,7 +319,7 @@ no success on the ruler.
 
 ## Combat
 
-Three rounds, simultaneous fire, ±8% variance, no player input. Variance is deliberately
+Six rounds, simultaneous fire, ±8% variance, no player input. Variance is deliberately
 small: the whole game is built on information reducing uncertainty. **If randomness dominated
 outcomes, intel would be worthless.**
 
@@ -331,19 +331,22 @@ their shields with a ship under fire. Ground emplacements have no personal shiel
 Radiation bypasses personal shields and reduces hull HP directly. Personal shield
 absorption earns no hull-damage Dominion contribution and causes no repair bill.
 
-Each eligible armed unit fires one shot at a uniformly random live target. Combat units
-are targeted before cargo; remaining shots may hit cargo in that same round. Single-shot
-overkill is wasted. Firing rights are simultaneous and frozen at round entry.
+Each eligible armed unit spreads its shot over all currently eligible living targets, using
+new independent positive random weights for each shot. Combat units are targeted before all
+SUPPORT hulls, including cargo and collectors. Excess from a destroyed target returns to
+base damage before redistribution, so counters apply exactly once per target. The same
+shot can reach cargo after the last armed target dies. Firing rights are simultaneous and
+frozen at round entry. Hull damage credits count actual damage delivered, not recycled excess.
 
-Only after rounds one and two, surviving mobile ships may retreat. The battle-start
+Only after rounds 1–5, surviving mobile ships may retreat; there is no retreat after the final, sixth round. The battle-start
 armed resource-value ratio fixes the chance and hull-HP window; cargo adds no power:
 
 | Larger/smaller entry power | Weak: chance / HP limit | Strong: chance / HP limit |
 |---|---|---|
-| 1 to <1.5 | 25% / ≤25% | 25% / ≤25% |
-| 1.5 to <2 | 33% / ≤30% | 20% / ≤30% |
-| 2 to <3 | 55% / ≤55% | 15% / ≤30% |
-| ≥3 | 70% / ≤70% | 10% / ≤25% |
+| 1 to <1.5 | 10% / ≤30% | 10% / ≤30% |
+| 1.5 to <2 | 20% / ≤46% | 10% / ≤30% |
+| 2 to <3 | 28% / ≤66% | 10% / ≤30% |
+| ≥3 | 40% / ≤80% | 6% / ≤26% |
 
 Escaped ships keep their wounds and cannot fire or take further hits. Planet defenders
 keep physical survivors, attackers return with theirs. At monuments the winner’s escaped

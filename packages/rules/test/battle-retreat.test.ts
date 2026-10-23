@@ -22,16 +22,16 @@ describe('approved shared random-fire and damaged-ship retreat', () => {
   });
 
   it.each([
-    [100, 100, [.25, .25], [.25, .25]],
-    [149, 100, [.25, .25], [.25, .25]],
-    [150, 100, [.20, .30], [.33, .30]],
-    [199, 100, [.20, .30], [.33, .30]],
-    [200, 100, [.15, .30], [.55, .55]],
-    [299, 100, [.15, .30], [.55, .55]],
-    [300, 100, [.10, .25], [.70, .70]],
-    [400, 100, [.10, .25], [.70, .70]],
-    [100, 0, [.10, .25], [.70, .70]],
-    [0, 0, [.25, .25], [.25, .25]],
+    [100, 100, [.10, .30], [.10, .30]],
+    [149, 100, [.10, .30], [.10, .30]],
+    [150, 100, [.10, .30], [.20, .46]],
+    [199, 100, [.10, .30], [.20, .46]],
+    [200, 100, [.10, .30], [.28, .66]],
+    [299, 100, [.10, .30], [.28, .66]],
+    [300, 100, [.06, .26], [.40, .80]],
+    [400, 100, [.06, .26], [.40, .80]],
+    [100, 0, [.06, .26], [.40, .80]],
+    [0, 0, [.10, .30], [.10, .30]],
   ] as const)('freezes the exact policy band for %i:%i in both orientations, excluding cargo', (a, d, attack, defence) => {
     const expectedA = { chance: attack[0], threshold: attack[1] };
     const expectedD = { chance: defence[0], threshold: defence[1] };
@@ -42,13 +42,13 @@ describe('approved shared random-fire and damaged-ship retreat', () => {
 
   it('has simultaneous firing and never regenerates hull or shield between rounds', () => {
     const r = resolveCombat({ CORSAIR: 1 }, { CORSAIR: 1 }, 0, mean, { attacker: side, defender: side });
-    expect(r.rounds).toHaveLength(3);
-    expect(r.rounds.map(x => x.attackerShipShieldAbsorbed)).toEqual([377, 0, 0]);
-    expect(r.rounds.map(x => x.defenderShipShieldAbsorbed)).toEqual([377, 0, 0]);
-    expect(r.attackerSurvivors).toEqual({ CORSAIR: 1 });
-    expect(r.defenderSurvivors).toEqual({ CORSAIR: 1 });
+    expect(r.rounds).toHaveLength(5);
+    expect(r.rounds.map(x => x.attackerShipShieldAbsorbed)).toEqual([377, 0, 0, 0, 0]);
+    expect(r.rounds.map(x => x.defenderShipShieldAbsorbed)).toEqual([377, 0, 0, 0, 0]);
+    expect(r.attackerSurvivors).toEqual({});
+    expect(r.defenderSurvivors).toEqual({});
     expect(r.attackerDamage).toEqual(r.defenderDamage);
-    expect(r.attackerDamage[0]!.damageBp).toBeGreaterThan(5000);
+    expect(r.rounds[4]!.attackerLosses).toEqual({ CORSAIR: 1 });
     expect(count(r.attackerRetreated) + count(r.defenderRetreated)).toBe(0);
   });
 
@@ -92,24 +92,24 @@ describe('approved shared random-fire and damaged-ship retreat', () => {
         expect(r.defenders[0]!.retreated).toEqual({ CORSAIR: 1 });
         expect(r.rounds).toHaveLength(1);
       }
-      expect(r.rounds[2]?.retreats ?? []).toEqual([]);
+      expect(r.rounds[5]?.retreats ?? []).toEqual([]);
     }
-    expect(retreats).toBeGreaterThan(65);
-    expect(retreats).toBeLessThan(110);
+    expect(retreats).toBeGreaterThan(35);
+    expect(retreats).toBeLessThan(70);
   });
 
-  it('the new 55% HP window reaches the simulation and ignores cargo in the power ratio', () => {
+  it('the new 66% HP window reaches the simulation and ignores cargo in the power ratio', () => {
     let found = 0;
     for (let seed = 0; seed < 64; seed++) {
       const r = resolveBattle([attack('a', { CORSAIR: 2 })], [{ ...defence('d', { CORSAIR: 1 }),
         damage: [{ hull: 'CORSAIR', count: 1, damageBp: 1800 }] }], 0, mulberry32(seed), 'MONUMENT');
       if (r.rounds.length === 1 && count(r.defenderRetreated)) {
         const damage = r.defenders[0]!.survivorDamage[0]!;
-        expect(damage.damageBp).toBeGreaterThanOrEqual(4500);
-        if (damage.damageBp < 5000) found++;
+        expect(damage.damageBp).toBeGreaterThanOrEqual(3400);
+        if (damage.damageBp < 4500) found++;
       }
     }
-    expect(found).toBeGreaterThan(10);
+    expect(found).toBeGreaterThan(0);
   });
 
   it('one ship cannot capture after retreating, and a defender keeps its retreated survivors physically', () => {
@@ -138,7 +138,7 @@ describe('approved shared random-fire and damaged-ship retreat', () => {
         damage: [{ hull: 'PIKE' as const, count: 1, damageBp: 9900 }],
         tech: { tech: {}, shipShields: false }, maintenanceExempt: true }];
       const result = resolveMonumentCombat(attackers, defenders, mulberry32(seed), true);
-      if (result.attackerSurvivors.DART !== 1 || count(result.attackerRetreated) > 0 || result.defenderSurvivors.PIKE || result.attackerDamage[0]?.damageBp !== 9500) continue;
+      if (result.attackerSurvivors.DART !== 1 || count(result.attackerRetreated) > 0 || result.defenderSurvivors.PIKE || result.attackerDamage[0]?.damageBp !== 9500 || (result.attackerDamage[0].remainderBp ?? 0) !== 0) continue;
       checked++;
       expect(result.attackerDamage[0].damageBp).toBe(9500);
       expect(result.control).toBe('DEFENDER');

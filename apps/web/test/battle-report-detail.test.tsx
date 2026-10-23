@@ -1250,3 +1250,27 @@ it('reports the preserved shield deadline when a tier-four grant keeps a longer 
   }));
   expect(document.querySelector('[data-recovery-shield]')).toHaveTextContent(/11 h recovery shield/i);
 });
+
+
+it('renders all six rounds and retreats from rounds four and five', async () => {
+  const rounds = Array.from({ length: 6 }, (_, i) => ({ ...base.rounds[0]!, round: i + 1,
+    yourRetreated: i === 3 || i === 4 ? { DART: 1 } : {}, theirRetreatedCount: i === 4 ? 2 : 0 }));
+  const parsed = reportsSchema.parse({ rivals: [], reports: [report({ rounds, yourRetreated: { DART: 2 }, theirRetreatedCount: 2 })] }).reports[0];
+  if (!parsed || parsed.kind === 'MONUMENT' || parsed.kind === 'STRATEGIC') throw new Error('wrong report');
+  expect(parsed.rounds).toHaveLength(6);
+  expect(parsed.rounds[4]?.yourRetreated).toEqual({ DART: 1 });
+  await openSheet(parsed);
+  expect(document.querySelectorAll('[data-round-standing]')).toHaveLength(6);
+  expect(screen.getByText('Retreated alive: 2. These ships kept their hull damage.')).toBeVisible();
+});
+
+
+it('explains distributed fire only on reports that recorded that model', async () => {
+  await openSheet(report({ rounds: [{ ...base.rounds[0]!, distributedFire: true }] }));
+  expect(document.querySelector('[data-distributed-fire-rules]')).toHaveTextContent('remaining targets in the same shot');
+  expect(document.querySelector('[data-distributed-fire-rules]')).toHaveTextContent('1–5');
+});
+it('does not claim old report damage used the new distribution model', async () => {
+  await openSheet(report());
+  expect(document.querySelector('[data-distributed-fire-rules]')).toBeNull();
+});

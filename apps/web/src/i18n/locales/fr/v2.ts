@@ -327,6 +327,7 @@ export const repairStation = {
   ruleCancel: "Une annulation rend la moitié du prix ; les vaisseaux attendent à nouveau.",
   industrialChip: "{{industrial}} −{{off}} %",
   damagedHeading: "Vaisseaux endommagés",
+  selectBatch: "Choisir les {{max}} premiers groupes de santé",
   selectAll: "Tout choisir",
   selectNone: "Vider",
   choose: "Réparer {{name}} ×{{count}}",

@@ -119,14 +119,18 @@ describe('select all damaged ships in the Repair Station', () => {
     expect(selection.groups.every(group => group.count === 1)).toBe(true);
   });
 
-  it('does not silently truncate a selection above the existing request limit', async () => {
+  it('explicitly selects a usable first batch when distributed wounds exceed one request', async () => {
     render(content(planetView({ ...world(), fleet: { DART: 51 }, fleetDamage: Array.from({ length: 51 }, (_, index) =>
-      ({ hull: 'DART' as const, count: 1, damageBp: index + 1 })) })));
-    await userEvent.click(all());
-    expect(counts()).toEqual(Array.from({ length: 51 }, () => 1));
-    expect(screen.getByRole('status')).toHaveTextContent('Choose at most 50 health groups per action.');
-    expect(screen.getByRole('button', { name: 'Move to workshop' })).toBeDisabled();
-    expect(mutations.maintenance).not.toHaveBeenCalled();
+      ({ hull: 'DART' as const, count: 1, damageBp: index + 1, remainderBp: .25 })) })));
+    await userEvent.click(screen.getByRole('button', { name: 'Select first 50 health groups' }));
+    expect(counts()).toEqual([0, ...Array.from({ length: 50 }, () => 1)]);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Move to workshop' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Move to workshop' }));
+    const selected = mutations.maintenance.mock.calls[0]?.[0].selection;
+    if (selected?.source !== 'HOME') throw new Error('Expected home selection');
+    expect(selected.groups).toHaveLength(50);
+    expect(selected.groups.every(group => group.remainderBp === .25)).toBe(true);
   });
 
   it('keeps radiation restrictions and explicit scrap selection in place', async () => {

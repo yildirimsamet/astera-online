@@ -139,6 +139,10 @@ export const intel = {
 } as const;
 
 export const reports = {
+  distributedRulesTitle: "So wurde dieser Kampf ausgetragen",
+  distributedRetreatRule: "Beschädigte Schiffe können am Ende der Runden 1–{{lastRound}} fliehen. Sie behalten ihre Schäden und kämpfen nicht weiter.",
+  distributedDamageNote: "Die Summen normaler Schüsse umfassen von Aegis und Schiffsschilden absorbierten Schaden sowie tatsächlichen Hüllenschaden. Weiterverteilter überschüssiger Schaden zählt nicht doppelt. Die Summen gelten für die ganze Seite einschließlich Verbündeter. Deine Verlustliste enthält nur deine eigenen Schiffe.",
+
   retreated: 'Lebend zurückgezogen: {{count}}. Diese Schiffe behalten ihre Hüllenschäden.',
   enemyRetreated: "{{count}} feindliche Schiffe sind geflohen und haben überlebt.",
   turningPointRetreated: "Nach Runde {{round}} kämpften keine Kriegsschiffe mehr. Einige Schiffe sind lebend geflohen.",

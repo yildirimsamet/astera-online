@@ -137,11 +137,11 @@ describe('combat invariants — must hold for ALL inputs', () => {
     );
   });
 
-  it('resolves in at most three rounds', () => {
+  it('resolves in at most six rounds', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
         const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } });
-        expect(r.rounds.length).toBeLessThanOrEqual(3);
+        expect(r.rounds.length).toBeLessThanOrEqual(6);
       }),
       { numRuns: 200 },
     );

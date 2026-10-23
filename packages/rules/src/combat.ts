@@ -22,6 +22,9 @@ import type { Fleet, Grade, HullId, Rng } from './types.js';
 import { partitionCombatFleet } from './shipMaintenance.js';
 import { resolveRandomBattle } from './randomBattle.js';
 
+/** Only the explicitly shield-disabled historical cohort replay uses these rounds. */
+const LEGACY_COMBAT_ROUNDS = 3;
+
 export interface CombatOwnerFleet {
   side: 'ATTACK' | 'DEFENCE';
   playerId: string;
@@ -30,6 +33,8 @@ export interface CombatOwnerFleet {
 }
 
 export interface CombatRound {
+  /** Recorded by the distributed-fire model; absent on immutable historical rounds. */
+  distributedFire?: true;
   /** Immutable owner-specific departures, never physical casualties. */
   retreats?: CombatOwnerFleet[];
   /** Owner-specific physical deaths; never includes retreats. */
@@ -49,7 +54,7 @@ export interface CombatRound {
   /** Personal ship shields consumed by ordinary fire; no recharge during combat. */
   attackerShipShieldAbsorbed?: number;
   defenderShipShieldAbsorbed?: number;
-  /** Ordinary attacker fire left after Aegis and personal shields, including hull overkill. */
+  /** Ordinary attacker fire reaching hulls; current distributed fire excludes recycled overkill. */
   attackerHullDamage?: number;
   attackerLosses: Fleet;
   defenderLosses: Fleet;
@@ -637,7 +642,7 @@ export function resolveJointCombat(
   let shieldLeft = shield;
   let shieldProtectedArmed = 0;
 
-  for (let r = 0; r < COMBAT.rounds; r++) {
+  for (let r = 0; r < LEGACY_COMBAT_ROUNDS; r++) {
     let alive = 0;
     for (const fleet of live) alive += fleetCount(fleet);
     if (alive === 0) break;
@@ -1006,8 +1011,8 @@ const mergedFleet = (fleets: readonly Fleet[]): Fleet => {
 };
 
 /**
- * Shared solo/joint/supported entrypoint. The current engine fires one random shot
- * per eligible ship and preserves physical retreats with their owner and wounds.
+ * Shared solo/joint/supported entrypoint. Every eligible ship distributes one shot
+ * across live targets; physical retreats retain their owner and wounds.
  * Explicit shipShields:false on EVERY side retains the historical cohort replay
  * arithmetic below; golden replay tests pin that path.
  */
@@ -1076,7 +1081,7 @@ export function resolveBattle(
   let shieldLeft = shield;
   let shieldProtectedArmed = 0;
 
-  for (let r = 0; r < COMBAT.rounds; r++) {
+  for (let r = 0; r < LEGACY_COMBAT_ROUNDS; r++) {
     let alive = 0;
     for (const fleet of live) alive += fleetCount(fleet);
     if (alive === 0) break;

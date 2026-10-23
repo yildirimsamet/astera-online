@@ -9,12 +9,12 @@ export function battleRetreatPolicy(attacker: Fleet, defender: Fleet): { attacke
   const a = combatValue(attacker), d = combatValue(defender);
   const small = Math.min(a, d), ratio = a === d ? 1 : small > 0 ? Math.max(a, d) / small : Infinity;
   const [weak, strong]: [RetreatWindow, RetreatWindow] = ratio >= 3
-    ? [{ chance: 0.7, threshold: 0.7 }, { chance: 0.1, threshold: 0.25 }]
+    ? [{ chance: 0.40, threshold: 0.80 }, { chance: 0.06, threshold: 0.26 }]
     : ratio >= 2
-      ? [{ chance: 0.55, threshold: 0.55 }, { chance: 0.15, threshold: 0.3 }]
+      ? [{ chance: 0.28, threshold: 0.66 }, { chance: 0.10, threshold: 0.30 }]
       : ratio >= 1.5
-        ? [{ chance: 0.33, threshold: 0.3 }, { chance: 0.2, threshold: 0.3 }]
-        : [{ chance: 0.25, threshold: 0.25 }, { chance: 0.25, threshold: 0.25 }];
+        ? [{ chance: 0.20, threshold: 0.46 }, { chance: 0.10, threshold: 0.30 }]
+        : [{ chance: 0.10, threshold: 0.30 }, { chance: 0.10, threshold: 0.30 }];
   return { attacker: a < d ? weak : strong, defender: d < a ? weak : strong };
 }
 

@@ -40,14 +40,13 @@ describe('counter cycle', () => {
    * guns at 1.6x equal-budget power, because they can never leave, never loot and
    * never take Dominion — so breaking a wall now costs the attacker something.
    *
-   * Measured: at budget parity a Dart swarm only manages PARTIAL. It needs about a
-   * third more than the defence is worth to clear it outright, and then it destroys
-   * a bit over twice what it loses. That is what "cheaply" has to mean once defence
-   * actually works — an exchange the attacker wins, not one they walk.
+   * With six rounds, a budget-parity Dart swarm can finish clearing the wall. The
+   * stronger counter formation still earns a favourable physical-loss exchange.
    */
   it('Darts break Bastions at a favourable exchange — the anti-turtle tool', () => {
     const parity = resolveCombat({ DART: Math.floor(fleetValue({ BASTION: 4 }) / fleetValue({ DART: 1 })) }, { BASTION: 4 }, 0, flat(), NO_TECH);
-    expect(parity.grade).not.toBe('DECISIVE');
+    expect(parity.grade).toBe('DECISIVE');
+    expect(parity.rounds.length).toBeGreaterThan(3);
 
     const r = resolveCombat({ DART: 100 }, { BASTION: 4 }, 0, flat(), NO_TECH);
     expect(r.grade).toBe('DECISIVE');
@@ -55,20 +54,20 @@ describe('counter cycle', () => {
   });
 
   /**
-   * A LONE GUN IS OVERWHELMED, AND TAKES A FEW WITH IT.
+   * AN OVERWHELMED GUN STILL DEALS REAL DAMAGE.
    *
    * It used to take none: 34 ATK x 0.625 into Skirmishers was 21 damage against a
    * Dart's 24 HP, so a Bastion facing a swarm was decoration that had been paid
-   * for. At 118 ATK it kills five of twenty-six — still hopeless against the
-   * counter, but never free. A defence nobody has to respect is not a decision.
+   * for. Distributed fire can spread the return volley across the swarm without
+   * destroying a whole Dart. Those wounds persist and still require paid repair.
    *
    * And one gun is not a wall: the swarm still clears it outright.
    */
-  it('is overwhelmed by a Dart swarm, but never for free', () => {
+  it('is overwhelmed by a Dart swarm, but still leaves repairable damage', () => {
     const r = resolveCombat({ DART: 26 }, { BASTION: 2 }, 0, flat(), NO_TECH);
     expect(r.grade).toBe('DECISIVE');
-    expect(fleetCount(r.attackerLosses)).toBeGreaterThan(0);
-    expect(fleetCount(r.attackerLosses)).toBeLessThan(10);
+    expect(fleetCount(r.attackerLosses)).toBe(0);
+    expect(r.attackerDamage.some(lot => lot.damageBp > 0)).toBe(true);
   });
 
   it('Pikes lose badly into Bastions', () => {
@@ -83,21 +82,22 @@ describe('counter cycle', () => {
   });
 
   /**
-   * PLAYER COMPLAINT: 150 Pikes lost about 35; 250 Pikes later lost about 30
+   * HISTORICAL PLAYER COMPLAINT: 150 Pikes lost about 35; 250 Pikes later lost about 30
    * against nearly the same board.
    *
-   * That shape is not an inverted scaling bug. Fire is simultaneous, so every
-   * Pike on the board receives the defender's complete first salvo before any
-   * destroyed gun is removed. The larger formation earns its advantage in round
+   * Fire is simultaneous: both formations receive the same total first salvo
+   * before destroyed defending guns stop firing. With distributed shots this
+   * can wound many Pikes instead of killing a few immediately. The larger formation earns its advantage in round
    * two by removing more of that board in round one. A few added Darts also matter:
    * Darts counter Pikes at 1.6x.
    */
-  it('reproduces the reported Pike losses as simultaneous fire, not larger-fleet punishment', () => {
+  it('distributes the same simultaneous defending volley across larger Pike fleets', () => {
     const defence = { DART: 10, BASTION: 10, THORN: 30 };
     const small = resolveCombat({ PIKE: 150 }, defence, 0, flat(), NO_TECH);
     const large = resolveCombat({ PIKE: 250 }, defence, 0, flat(), NO_TECH);
 
-    expect(small.rounds[0]?.attackerLosses.PIKE).toBeGreaterThan(0);
+    expect(small.rounds[0]?.attackerLosses.PIKE ?? 0).toBe(0);
+    expect(small.rounds[0]?.attackerShipShieldAbsorbed).toBeGreaterThan(0);
     expect(large.rounds[0]?.defenderDamage).toBe(small.rounds[0]?.defenderDamage);
     expect(fleetCount(large.attackerLosses) / 250).toBeLessThan(
       fleetCount(small.attackerLosses) / 150,
@@ -742,6 +742,7 @@ describe('a side that fights at a penalty', () => {
   });
 
   it('carries the penalty into the casualties, not only into the damage line', () => {
+    const attackers = { DART: 10 };
     const full = resolveCombat(attackers, defenders, 0, flat(), NO_TECH);
     const half = resolveCombat(attackers, defenders, 0, flat(), {
       attacker: { tech: {} },
