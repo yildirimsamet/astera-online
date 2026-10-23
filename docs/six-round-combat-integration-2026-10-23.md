@@ -186,3 +186,9 @@ Diğer işlerin kirli ana çalışma dizinine dokunmadan ayrı dal/worktree kull
   yalnız kendi nihai katılımcı satırına eşit. Rakibin yarası/kalan filosu ve ham
   oyuncu telemetrisi yok. Tarihî sahiplik telemetrisi silinmiş örnekte ayrıntı
   üretilmiyor; toplam rapor okunuyor.1/1DBtestPASS.
+- Ortak filo kalıcı yara testindeki üç turdan kalma 5 Dart / 2 Stronghold dizilimi
+  altı turda istenen yaralı sağ kalanları bırakmıyordu. Yara testleri için iki
+  sahibin birer Kale'si ile iki savunan Kale, Zırh V / Kalkan IV kullanıldı:
+  128 tohumun hepsinde dört gemi de gerçek gövde yarasıyla hayatta. Kalıcı yara
+  öncesi ruleset aynı dizilimde yara saklamıyor. İmha puanı, radyasyon ve sezon
+  muhasebesi testleri kendi eski imhalı dizilimini koruyor. Dosyanın 6 testi PASS.
