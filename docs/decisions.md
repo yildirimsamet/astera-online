@@ -36,3 +36,13 @@ bir tasarım kararını canlı oyunda zaten uygulanıyor kabul etme.
   %20/60, %40/75 (güçsüz) olarak doğrulandı. Bu bir **adaydır**: varsayılan
   kalkanla 1:1 ortalaması ~%17, 1:2 kaçışı ~%13, 1:3 kaçışı ~%24;
   1:1,5 güçlü taraf kaybı ve kalkan 4/kompozisyon ayrışmaları hedefi tam karşılamaz.
+
+- **2026-10-23 — Öncelikli hedefler, çift yüzdeler ve üretim entegrasyonu:**
+  Kullanıcı önce 1:2'de %15–25 ve 1:3'te %20–30 gerçek kaçış hedefini seçti;
+  doğrulamadan sonra kaçış yüzdelerinin çift tam sayıya yuvarlanmasını istedi.
+  [Son tablo ve kanıt](combat-six-rounds-priority-2026-10-23.md): güçsüz için
+  şans/can penceresi %10/30, %20/46, %28/66, %40/80; güçlü için %10/30,
+  %10/30, %10/30, %6/26. Güç basamakları 1/1,5/2/3; altı tur, son tur hariç
+  1–5. tur sonlarında kaçış. Gemi istatistikleri, %25 temel kalkan ve araştırma
+  aynı. Kullanıcı artık asıl kod entegrasyonunu istedi; önce etki planı ve TDD.
+  Simülasyon sonuçlarının üretime uygulanması/deploy henüz tamamlanmış değildir.
