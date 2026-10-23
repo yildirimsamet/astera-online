@@ -63,9 +63,11 @@ describe('Wiki values a new player can interpret', () => {
     if (!article) throw new Error('Missing monument article');
     const text = (language: 'en' | 'tr') => article.sections[language].flatMap(section =>
       section.blocks.flatMap(block => block.kind === 'text' ? [block.text] : [])).join(' ');
-    expect(text('en')).toMatch(/whole defence.*armed ship/i);
+    expect(text('en')).toMatch(/defending warships are gone.*combat-ready attacking warship survives/i);
+    expect(text('en')).toMatch(/cargo ships return home with their loads/i);
+    expect(text('en')).toMatch(/both sides have only cargo ships.*defender stays.*attacker returns home/i);
     expect(text('en')).toMatch(/positive.*Dominion.*without.*captur/i);
-    expect(text('tr')).toMatch(/savunmanın tamamını/);
+    expect(text('tr')).toMatch(/Savunanın savaş gemileri kalmaz.*yük gemileri yükleriyle eve döner/);
     expect(text('tr')).toMatch(/Hâkimiyet.*ele geçireme/);
   });
   it('compares Shipyard levels by time saved from each preceding level, for all units', () => {

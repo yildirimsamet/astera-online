@@ -22,10 +22,11 @@ function assertMonumentFleet(fleet: Fleet, damage?: HpDamageLots): void {
 
 export type MonumentBattleControl = 'ATTACKER' | 'DEFENDER' | 'EMPTY';
 
-/** Cargo can preserve existing control, but cannot capture an empty monument. */
+/** Cargo yields to a surviving attacking warship; two cargo-only sides keep the defender. */
 export function monumentBattleControl(attacker: Fleet, defender: Fleet): MonumentBattleControl {
   assertMonumentFleet(attacker);
   assertMonumentFleet(defender);
+  if (combatValue(attacker) > 0 && combatValue(defender) === 0) return 'ATTACKER';
   if (fleetCount(defender) > 0) return 'DEFENDER';
   return combatValue(attacker) > 0 ? 'ATTACKER' : 'EMPTY';
 }

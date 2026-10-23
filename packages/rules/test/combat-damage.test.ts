@@ -43,14 +43,17 @@ const dartShot = (mult = 1): number =>
 function carryAfterThreeRounds(shot: number, hull: HullId): { killed: number; carry: number } {
   let carry = 0;
   let killed = 0;
+  let shieldLeft = hp(hull);
   for (let round = 0; round < COMBAT.rounds; round++) {
     let remaining = shot;
     while (remaining > 0) {
-      remaining = Math.max(0, remaining - hp(hull)); // this ship's fresh shield
+      const absorbed = Math.min(remaining, shieldLeft);
+      shieldLeft -= absorbed;
+      remaining -= absorbed;
       const taken = Math.min(remaining, hp(hull) - carry);
       carry += taken;
       remaining -= taken;
-      if (carry >= hp(hull)) { killed++; carry = 0; }
+      if (carry >= hp(hull)) { killed++; carry = 0; shieldLeft = hp(hull); }
     }
   }
   return { killed, carry };
@@ -59,7 +62,7 @@ function carryAfterThreeRounds(shot: number, hull: HullId): { killed: number; ca
 describe('the carry comes out of the battle as damage', () => {
   it('leaves the defender one part-damaged ship per hull', () => {
     const { killed, carry } = carryAfterThreeRounds(5 * dartShot(), 'COURIER');
-    expect(killed).toBe(1);
+    expect(killed).toBe(2);
     const result = resolveCombat({ DART: 5 }, { COURIER: 50 }, 0, MID, NO_TECH);
     expect(result.defenderLosses).toEqual({ COURIER: killed });
     expect(result.defenderDamage).toEqual([lot('COURIER', 1, Math.round((carry / hp('COURIER')) * 10_000))]);
@@ -96,8 +99,8 @@ describe('the carry comes out of the battle as damage', () => {
 });
 
 describe('an attacker that arrives damaged loses its most damaged ships first', () => {
-  /** The defender's handicap tunes one Dart to exactly a quarter of a transport per round. */
-  const quarter = (1.25 * hp('COURIER')) / dartShot();
+  /** Three hits spend the first wound's 1.5 hulls and the next wound's 1.25 hulls. */
+  const quarter = (2.75 / COMBAT.rounds * hp('COURIER')) / dartShot();
 
   it('kills the half-dead transport and wounds the next damaged one, not a healthy one', () => {
     const result = resolveCombat(
@@ -108,15 +111,15 @@ describe('an attacker that arrives damaged loses its most damaged ships first', 
       { attacker: { tech: {} }, defender: { tech: {}, damageMult: quarter } },
       [lot('COURIER', 2, 5000)],
     );
-    // Each round first spends one full shield. The first wound dies in round two;
-    // round three leaves the second damaged ship at 75% hull damage.
+    // No shield refill: 2.75 hulls of fire finish the first half-dead ship
+    // and remove a quarter hull behind the second ship's shield.
     expect(result.attackerLosses).toEqual({ COURIER: 1 });
     expect(result.attackerSurvivors).toEqual({ COURIER: 4 });
     expect(result.attackerDamage).toEqual([lot('COURIER', 1, 7500)]);
   });
 
   it('spends a damaged wave first inside a shared cohort, and gives the leftover to the largest healthy wave', () => {
-    const fifth = (1.25 * hp('COURIER')) / dartShot();
+    const fifth = (2.6 / COMBAT.rounds * hp('COURIER')) / dartShot();
     const stacks: JointAttackerStack[] = [
       { contributionId: 'a', playerId: 'p1', fleet: { COURIER: 10 }, tech: { tech: {} } },
       { contributionId: 'b', playerId: 'p2', fleet: { COURIER: 4 }, tech: { tech: {} }, damage: [lot('COURIER', 1, 9000)] },
@@ -126,14 +129,14 @@ describe('an attacker that arrives damaged loses its most damaged ships first', 
     expect(b?.losses).toEqual({ COURIER: 1 });
     expect(b?.survivorDamage).toEqual([]);
     expect(a?.losses).toEqual({});
-    // Round one finishes the wounded ship and hits the next shield; rounds two
-    // and three each remove a quarter hull from the healthy cohort.
+    // 1.1 hulls finish b's wreck; the remaining 1.5 spend the next shield
+    // and leave half a hull of damage on the healthy cohort.
     expect(a?.survivorDamage).toEqual([lot('COURIER', 1, 5000)]);
     expect(result.attackerDamage).toEqual([lot('COURIER', 1, 5000)]);
   });
 
   it('breaks an even tie by contribution id, so the answer never depends on array order', () => {
-    const tenth = (1.1 * hp('COURIER')) / dartShot();
+    const tenth = (1.3 / COMBAT.rounds * hp('COURIER')) / dartShot();
     const stacks = (order: 'ab' | 'ba'): JointAttackerStack[] => {
       const rows: JointAttackerStack[] = [
         { contributionId: 'a', playerId: 'p1', fleet: { COURIER: 5 }, tech: { tech: {} } },

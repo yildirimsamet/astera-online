@@ -13,6 +13,7 @@ export interface MonumentReportView {
   attacking: boolean;
   grade: Grade;
   control: 'ATTACKER' | 'DEFENDER' | 'EMPTY';
+  defenderCargoRetreated: boolean;
   roundCount: number;
   yourFleet: Fleet;
   yourSurvivors: Fleet;
@@ -41,6 +42,7 @@ export async function readMonumentBattleReports(tx: Tx, playerId: string, limit:
     kind: 'MONUMENT', id: battle.id, at: battle.createdAt,
     monument: { id: battle.monumentId, ordinal: battle.monumentOrdinal, position: battle.monumentPosition },
     attacking: own.side === 'ATTACK', grade: battle.grade, control: battle.control, roundCount: battle.rounds.length,
+    defenderCargoRetreated: battle.control === 'ATTACKER' && fleetCount(battle.defenderSurvivors) > 0,
     yourFleet: own.fleet, yourSurvivors: own.survivors, yourLosses: own.losses, yourDamage: own.damage,
     theirLosses: own.side === 'ATTACK' ? fleetDiff(battle.defenderFleet, battle.defenderSurvivors)
       : fleetDiff(battle.attackerFleet, battle.attackerSurvivors),

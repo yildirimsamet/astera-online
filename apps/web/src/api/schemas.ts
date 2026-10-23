@@ -3065,6 +3065,7 @@ const monumentBattleReport = z.object({
   kind: z.literal('MONUMENT'), id: z.string(), at: z.coerce.date(),
   monument: z.object({ id: z.string(), ordinal: z.number().int().min(1).max(8), position: publicMonumentSchema.shape.position }),
   attacking: z.boolean(), grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']), control: z.enum(['ATTACKER', 'DEFENDER', 'EMPTY']),
+  defenderCargoRetreated: z.boolean().optional(),
   roundCount: z.number().int().nonnegative(), yourFleet: fleet, yourSurvivors: fleet, yourLosses: fleet,
   yourDamage: z.array(monumentLotSchema.pick({ hull: true, count: true, damageBp: true, remainderBp: true })),
   theirLosses: fleet, lootDeuterium: z.number().finite().nonnegative(), dominion: dominionInteger,

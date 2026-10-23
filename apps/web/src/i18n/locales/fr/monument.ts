@@ -1,5 +1,6 @@
 export const monument = {
   battleResult: {
+  cargoRetreat: "Les cargos de la défense se sont retirés.",
   "control": {
     "attacking": {
       "ATTACKER": "Votre camp a pris le contrôle du monument.",
@@ -27,7 +28,7 @@ export const monument = {
   "wiped": "Votre flotte entière a été détruite.",
   "rulesTitle": "Règles de combat",
   "roundRule": "Le combat dure au maximum {{rounds}} tours. Les cargos sont protégés tant que des navires armés survivent.",
-  "captureRule": "La capture exige d’éliminer toute la défense et de conserver un navire armé capable de combattre. Les cargos seuls peuvent conserver un contrôle existant.",
+  "captureRule": "Si la défense ne garde que des cargos et qu’un vaisseau de guerre capable de combattre survit chez l’attaquant, les cargos rentrent et l’attaquant prend le contrôle. Si les deux camps ne gardent que des cargos, le défenseur reste et l’attaquant rentre.",
   "partialRule": "Un succès partiel exige de détruire au moins {{threshold}} de la valeur en ressources de la flotte en défense. Les survivants endommagés ne sont pas détruits. Le résultat et les points ne déterminent pas le contrôle."
 },
   radiationLossForecast: "Première perte par radiation dans {{time}}, hors dégâts de combat.",

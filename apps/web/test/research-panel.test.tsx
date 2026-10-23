@@ -50,7 +50,7 @@ it('offers Ship Shields with its cumulative gain, radiation bypass and four-leve
   const sheet = await open(view, 'SHIP_SHIELDS');
   expect(sheet).toHaveTextContent(/100%/);
   expect(sheet).toHaveTextContent(/radiation.*hull/i);
-  expect(sheet).toHaveTextContent(/each round/i);
+  expect(sheet).toHaveTextContent(/do not recharge during battle/i);
 });
 
 it('states shielding’s level-four damage instead of labelling it as maximum damage', async () => {

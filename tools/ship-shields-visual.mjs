@@ -44,6 +44,7 @@ const { QueryClient, QueryClientProvider } = await import('${queryModule}');
 const { ApiProvider } = await import('/src/api/context.tsx'); const { Api } = await import('/src/api/client.ts');
 const { HullStats } = await import('/src/screens/PlanetScreen.tsx');
 const { BattleReports } = await import('/src/screens/BattleReports.tsx');
+const { MonumentReportSheet } = await import('/src/screens/MonumentReportSheet.tsx');
 const { ToastProvider } = await import('/src/ui/Toast.tsx');
 const { reportsSchema } = await import('/src/api/schemas.ts');
 const i18n = (await import('/src/i18n/index.ts')).default;
@@ -64,6 +65,15 @@ window.drawHull = level => root.render(h('main', {style:{maxWidth:'600px',paddin
   h('h1', null, 'Corsair · '+level+'/4'), h(HullStats, {hull:'CORSAIR', tech:{SHIP_ARMOR:2, SHIP_SHIELDS:level}})));
 window.drawReport = () => root.render(h(QueryClientProvider, {client}, h(ApiProvider, {api},
   h(ToastProvider, null, h(BattleReports, {open:{missionId:'shield-mission',request:1}})))));
+window.drawMonument = attacking => {
+  const monument = reportsSchema.parse({reports:[{kind:'MONUMENT',id:'cargo-retreat',at:new Date(),
+    attacking,grade:'REPELLED',control:'ATTACKER',defenderCargoRetreated:true,roundCount:3,
+    monument:{id:'monument',ordinal:1,position:{x:6000,y:0,z:0}},
+    yourFleet:attacking?{CORSAIR:3}:{CORSAIR:1,ARGOSY:1},yourSurvivors:attacking?{CORSAIR:3}:{ARGOSY:1},
+    yourLosses:attacking?{}:{CORSAIR:1},yourDamage:[],theirLosses:attacking?{CORSAIR:1}:{},
+    lootDeuterium:0,dominion:0}],rivals:[]}).reports[0];
+  root.render(h(MonumentReportSheet,{report:monument,onClose:()=>{}}));
+};
 window.drawHull(0);
 </script></body></html>` }));
       await page.goto(`${web}/ship-shields-preview`);
@@ -84,6 +94,14 @@ window.drawHull(0);
       await absorption.scrollIntoViewIfNeeded();
       assert((await absorption.textContent()).includes('120') && (await absorption.textContent()).includes('240'));
       await page.screenshot({ path: `${output}/${language}-${width}-report.png`, fullPage: true });
+      for (const attacking of [true, false]) {
+        await page.evaluate(attacking => window.drawMonument(attacking), attacking);
+        const retreat = page.getByText(language === 'tr' ? 'Savunanın yük gemileri geri çekildi.' : 'Defending cargo ships retreated.', { exact: true });
+        await retreat.waitFor();
+        await page.getByText(language === 'tr' ? 'Savaş kuralları' : 'Battle rules', { exact: true }).click();
+        await page.screenshot({ path: `${output}/${language}-${width}-monument-${attacking ? 'attack' : 'defence'}.png`, fullPage: true });
+        assert(!await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), 'Monument report overflows');
+      }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
       assert(!overflow, `${language}/${width}: overflow`);
       assert.deepEqual(errors, []);

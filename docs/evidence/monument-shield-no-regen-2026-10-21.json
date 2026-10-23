@@ -1,0 +1,530 @@
+{
+  "date": "2026-10-21",
+  "hypothesis": "Shields start full at battle entry and never regenerate during its three rounds. Healthy solo only; no Nullifier, wounds on arrival, maintenance exclusions, radiation, ownership settlement, or inter-battle shield persistence modelled. Focused target selection and hull-HP target weights unchanged.",
+  "runs": 512,
+  "battles": 23552,
+  "cells": [
+    {
+      "cargo": false,
+      "n": 1,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": false,
+      "n": 1,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": false,
+      "n": 2,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": false,
+      "n": 2,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": false,
+      "n": 3,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": false,
+      "n": 3,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 1
+    },
+    {
+      "cargo": false,
+      "n": 4,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": false,
+      "n": 4,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 1
+    },
+    {
+      "cargo": false,
+      "n": 5,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 68.5546875,
+      "eitherWipedPct": 68.5546875,
+      "meanDefenderLost": 0.685546875
+    },
+    {
+      "cargo": false,
+      "n": 5,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 1
+    },
+    {
+      "cargo": false,
+      "n": 6,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 1
+    },
+    {
+      "cargo": false,
+      "n": 6,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 1
+    },
+    {
+      "cargo": false,
+      "n": 8,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 1
+    },
+    {
+      "cargo": false,
+      "n": 8,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 1
+    },
+    {
+      "cargo": false,
+      "n": 10,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 1
+    },
+    {
+      "cargo": false,
+      "n": 10,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 1
+    },
+    {
+      "cargo": true,
+      "n": 1,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": true,
+      "n": 1,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": true,
+      "n": 2,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": true,
+      "n": 2,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": true,
+      "n": 3,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": true,
+      "n": 3,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 1
+    },
+    {
+      "cargo": true,
+      "n": 4,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0
+    },
+    {
+      "cargo": true,
+      "n": 4,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 31.8359375,
+      "eitherWipedPct": 31.8359375,
+      "meanDefenderLost": 1.318359375
+    },
+    {
+      "cargo": true,
+      "n": 5,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanDefenderLost": 0.685546875
+    },
+    {
+      "cargo": true,
+      "n": 5,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 2
+    },
+    {
+      "cargo": true,
+      "n": 6,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 2
+    },
+    {
+      "cargo": true,
+      "n": 6,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 2
+    },
+    {
+      "cargo": true,
+      "n": 8,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 2
+    },
+    {
+      "cargo": true,
+      "n": 8,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 2
+    },
+    {
+      "cargo": true,
+      "n": 10,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 2
+    },
+    {
+      "cargo": true,
+      "n": 10,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanDefenderLost": 2
+    },
+    {
+      "name": "scaled-30-10-cargo",
+      "attacker": {
+        "CORSAIR": 30
+      },
+      "defender": {
+        "CORSAIR": 10,
+        "ARGOSY": 10
+      },
+      "coefficient": 1,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 96.39973958333226,
+      "meanDefenderValueRetainedPct": 67.12333566923559
+    },
+    {
+      "name": "scaled-30-10-cargo",
+      "attacker": {
+        "CORSAIR": 30
+      },
+      "defender": {
+        "CORSAIR": 10,
+        "ARGOSY": 10
+      },
+      "coefficient": 1,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 93.33333333333364,
+      "meanDefenderValueRetainedPct": 67.11048820369014
+    },
+    {
+      "name": "large-1to1",
+      "attacker": {
+        "CORSAIR": 100
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 1,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 65.73632812500001,
+      "meanDefenderValueRetainedPct": 65.75390625000003
+    },
+    {
+      "name": "large-1to1",
+      "attacker": {
+        "CORSAIR": 100
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 1,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 65.0058593749998,
+      "meanDefenderValueRetainedPct": 65.02734374999983
+    },
+    {
+      "name": "large-2to1",
+      "attacker": {
+        "CORSAIR": 200
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 1,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 85.6025390625007,
+      "meanDefenderValueRetainedPct": 24.880859374999986
+    },
+    {
+      "name": "large-2to1",
+      "attacker": {
+        "CORSAIR": 200
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 1,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 85.24414062500068,
+      "meanDefenderValueRetainedPct": 24.181640624999986
+    },
+    {
+      "name": "large-3to1",
+      "attacker": {
+        "CORSAIR": 300
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 1,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanAttackerValueRetainedPct": 92.23046875000067,
+      "meanDefenderValueRetainedPct": 0
+    },
+    {
+      "name": "large-3to1",
+      "attacker": {
+        "CORSAIR": 300
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 1,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 100,
+      "eitherWipedPct": 100,
+      "meanAttackerValueRetainedPct": 91.99739583333397,
+      "meanDefenderValueRetainedPct": 0
+    },
+    {
+      "name": "max-shield-1to1",
+      "attacker": {
+        "CORSAIR": 100
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 2,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 76.59374999999955,
+      "meanDefenderValueRetainedPct": 76.58984374999956
+    },
+    {
+      "name": "max-shield-1to1",
+      "attacker": {
+        "CORSAIR": 100
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 2,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 75.7050781249997,
+      "meanDefenderValueRetainedPct": 75.69726562499972
+    },
+    {
+      "name": "max-shield-2to1",
+      "attacker": {
+        "CORSAIR": 200
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 2,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 89.49609374999929,
+      "meanDefenderValueRetainedPct": 49.431640625
+    },
+    {
+      "name": "max-shield-2to1",
+      "attacker": {
+        "CORSAIR": 200
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 2,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 89.0644531249992,
+      "meanDefenderValueRetainedPct": 48.576171874999936
+    },
+    {
+      "name": "max-shield-3to1",
+      "attacker": {
+        "CORSAIR": 300
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 2,
+      "regen": true,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 93.78710937499997,
+      "meanDefenderValueRetainedPct": 22.275390624999947
+    },
+    {
+      "name": "max-shield-3to1",
+      "attacker": {
+        "CORSAIR": 300
+      },
+      "defender": {
+        "CORSAIR": 100
+      },
+      "coefficient": 2,
+      "regen": false,
+      "runs": 512,
+      "capturePct": 0,
+      "eitherWipedPct": 0,
+      "meanAttackerValueRetainedPct": 93.52083333333351,
+      "meanDefenderValueRetainedPct": 21.44531249999999
+    }
+  ],
+  "prototype": {
+    "hit": "endurance = hullHp + personalShield; effective = spentOnFrontShip + incomingDamage; destroyed = min(count, floor(effective / endurance)); carry = survivors > 0 ? effective - destroyed * endurance : 0; carry includes shield and hull expenditure. Target weighting continues to use hull HP.",
+    "tests": 3,
+    "testsPassed": 3,
+    "productionBaselineParityCases": 8192,
+    "seeds": "0..511 per cell, mulberry32",
+    "sha256": "83270a30801d86454bb1e6f8785fbd69195a53f6ae21302356673c2d6da47eb1"
+  }
+}

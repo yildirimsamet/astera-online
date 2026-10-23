@@ -58,7 +58,7 @@ export function subjectReference(subject: WikiSubject, language: WikiLanguage): 
           if (subject.id === 'CARGO_HOLDS') text = label(language, `${n(effect)}× cargo capacity`, `${n(effect)} kat kargo kapasitesi`);
           if (subject.id === 'SHIP_POWER') text = label(language, `${n(effect)}× ship attack`, `${n(effect)} kat gemi saldırısı`);
           if (subject.id === 'SHIP_ARMOR') text = label(language, `${n(effect)}× hull strength`, `${n(effect)} kat gövde dayanımı`);
-          if (subject.id === 'SHIP_SHIELDS') text = label(language, `${n(effect)}× maximum hull as shield each round`, `Her tur azami canın ${n(effect)} katı gemi kalkanı`);
+          if (subject.id === 'SHIP_SHIELDS') text = label(language, `${n(effect)}× maximum hull as shield at battle start`, `Savaş başında azami canın ${n(effect)} katı gemi kalkanı`);
           if (subject.id === 'SHIP_PROPULSION') text = label(language, `${n(effect)}× ship speed`, `${n(effect)} kat gemi hızı`);
           if (subject.id === 'EMPLACEMENT_DOCTRINE') text = label(language, `${n(effect)}× ground attack and hull strength`, `${n(effect)} kat yer savunması saldırısı ve dayanımı`);
           if (subject.id === 'INDUSTRIAL') text = label(language, `${n(effect)}% of repair cost & time`, `Onarım bedeli ve süresinin %${n(effect)}’i`);

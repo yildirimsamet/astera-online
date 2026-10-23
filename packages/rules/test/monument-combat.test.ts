@@ -28,18 +28,46 @@ const defender = (fleet: Fleet, id = 'defender', damage?: HpDamageLots, tech: Te
 const compact = (fleet: Fleet): Fleet => Object.fromEntries(fleetEntries(fleet));
 
 describe('monument capture condition', () => {
-  it('captures only after the whole defence is gone and a combat attacker survives', () => {
+  it('takes control from cargo-only defence only when a combat attacker survives', () => {
     expect(monumentBattleControl({ DART: 1, COURIER: 2 }, {})).toBe('ATTACKER');
     expect(monumentBattleControl({ COURIER: 2 }, {})).toBe('EMPTY');
     expect(monumentBattleControl({}, {})).toBe('EMPTY');
-    expect(monumentBattleControl({ DART: 100 }, { COURIER: 1 })).toBe('DEFENDER');
+    expect(monumentBattleControl({ DART: 100 }, { COURIER: 1 })).toBe('ATTACKER');
+    expect(monumentBattleControl({ COURIER: 1 }, { ARGOSY: 1 })).toBe('DEFENDER');
+    expect(monumentBattleControl({ DART: 1 }, { CORSAIR: 1, ARGOSY: 1 })).toBe('DEFENDER');
     expect(monumentBattleControl({}, { DART: 1 })).toBe('DEFENDER');
+  });
+
+  it('displaces surviving cargo after the last defending warship dies without counting it as destroyed', () => {
+    const result = resolveMonumentCombat([attacker({ CORSAIR: 3 })], [defender({ CORSAIR: 1, ARGOSY: 1 })], flat(), true);
+    expect(result.control).toBe('ATTACKER');
+    expect(result.defenderSurvivors).toMatchObject({ CORSAIR: 0, ARGOSY: 1 });
+    expect(result.defenderLosses).toEqual({ CORSAIR: 1 });
+    expect(result.defenderLossValue).toBe(fleetValue({ CORSAIR: 1 }));
+  });
+
+  it('cannot displace cargo with a surviving warship that arrived unable to fight', () => {
+    const result = resolveMonumentCombat([
+      attacker({ CORSAIR: 1, ARGOSY: 1 }, 'a', [{ hull: 'CORSAIR', count: 1, damageBp: 9500 }]),
+    ], [defender({ ARGOSY: 1 })], flat(), true);
+    expect(result.control).toBe('DEFENDER');
   });
 
   it('keeps cargo-only control after a repelled attack', () => {
     const result = resolveMonumentCombat([attacker({ COURIER: 1 })], [defender({ COURIER: 1 })], flat());
     expect(result.control).toBe('DEFENDER');
     expect(result.defenderSurvivors.COURIER).toBe(1);
+  });
+
+  it('keeps the defender when both sides lose their warships and retain only cargo', () => {
+    const damage = [{ hull: 'PIKE' as const, count: 1, damageBp: 9400 }];
+    const result = resolveMonumentCombat([attacker({ PIKE: 1, COURIER: 1 }, 'a', damage)],
+      [defender({ PIKE: 1, ARGOSY: 1 }, 'd', damage)], flat(), true);
+    expect(result.attackerSurvivors.PIKE ?? 0).toBe(0);
+    expect(result.defenderSurvivors.PIKE ?? 0).toBe(0);
+    expect(result.attackerSurvivors.COURIER).toBe(1);
+    expect(result.defenderSurvivors.ARGOSY).toBe(1);
+    expect(result.control).toBe('DEFENDER');
   });
 
   it('handles an empty monument without allowing a cargo-only capture', () => {
@@ -107,8 +135,8 @@ describe('monument battle carries every owner’s HP damage', () => {
     // The shared pool apportions fire by effective HP, so these equal-count
     // hulls carry the same percentage; the armored stack absorbed more HP.
     expect(plain.survivorDamage[0]?.damageBp).toBe(armored.survivorDamage[0]?.damageBp);
-    const plainSolo = resolveMonumentCombat([attacker({ DART: 150 })], [defender({ CITADEL: 2 }, 'plain')], flat());
-    const armoredSolo = resolveMonumentCombat([attacker({ DART: 150 })], [defender({ CITADEL: 2 }, 'armored', undefined, { SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel })], flat());
+    const plainSolo = resolveMonumentCombat([attacker({ DART: 100 })], [defender({ CITADEL: 2 }, 'plain')], flat());
+    const armoredSolo = resolveMonumentCombat([attacker({ DART: 100 })], [defender({ CITADEL: 2 }, 'armored', undefined, { SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel })], flat());
     expect(plainSolo.defenderLossValue).toBeGreaterThan(armoredSolo.defenderLossValue);
   });
 

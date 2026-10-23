@@ -1,5 +1,6 @@
 export const monument = {
   battleResult: {
+  cargoRetreat: "Defending cargo ships retreated.",
   "control": {
     "attacking": {
       "ATTACKER": "Your side captured the monument.",
@@ -27,7 +28,7 @@ export const monument = {
   "wiped": "Your entire fleet was destroyed.",
   "rulesTitle": "Battle rules",
   "roundRule": "Combat lasts at most {{rounds}} rounds. Cargo ships are protected while armed ships survive.",
-  "captureRule": "Capture requires clearing the whole defence and retaining an armed ship able to fight. Cargo alone can retain existing control.",
+  "captureRule": "If only defending cargo ships remain and you have a surviving combat-ready warship, their cargo ships return home and your side takes control. If both sides have only cargo ships, the defender keeps holding and the attacker returns home.",
   "partialRule": "Partial success requires destroying at least {{threshold}} of the defending fleet’s resource value. Damaged survivors are not destroyed ships. Grade and score do not determine monument control."
 },
   radiationLossForecast: "First radiation loss in {{time}}, before battle damage.",
