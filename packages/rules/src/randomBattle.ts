@@ -213,7 +213,9 @@ export function resolveRandomBattle(
   const lossRatio = before > 0 ? 1 - fleetValue(defenderActive) / before : unableToFight ? 0 : 1;
   const grade = unableToFight ? 'REPELLED' : fleetCount(defenderActive) === 0 && (before === 0 || shieldLeft <= 0)
     ? 'DECISIVE' : lossRatio >= COMBAT.partialThreshold ? 'PARTIAL' : 'REPELLED';
-  return { grade, lossRatio, rounds, shieldLeft: Math.max(0, Math.round(shieldLeft)), shieldProtectedArmed,
+  // Per-shot floating sums may exceed the entry charge by an ulp; Honor validates this physical budget strictly.
+  return { grade, lossRatio, rounds, shieldLeft: Math.max(0, Math.round(shieldLeft)),
+    shieldProtectedArmed: Math.min(shield, shieldProtectedArmed),
     attackerSurvivors, defenderSurvivors, attackerRetreated, defenderRetreated,
     attackerCombatSurvivors: fleetOf(a, firing),
     attackerRetreatDamage: damageOf(a.filter(ship => ship.retreated), precise),

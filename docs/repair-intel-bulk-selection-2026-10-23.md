@@ -88,3 +88,34 @@ complete selected fleet directly, avoiding a matcher that introduced an unsafe
 The final review found no remaining confirmed defect in the changed flows.
 No database migration, ruleset change, dependency change or live setting is needed.
 This task has not been deployed; production remains a separate operation.
+
+## Deployment preflight: existing Aegis/Honor failure
+
+Before this deployment, all live roles reported `failedEvents=1`. A previously
+exhausted mission-arrival handler failed on `Invalid Honor shield absorption`.
+The battle transaction rolled back and the existing abandonment transaction
+cancelled the attack and returned all 42 ships; its return notification exists,
+there are no units at the old mission location and no battle report was committed.
+Do not replay this cancelled attack or alter ships, loot, ownership or scores.
+
+The issue belongs to the preceding random-fire engine: summed per-shot floating
+absorption can exceed actual charge by an ulp. A deterministic 42-Warden/seed40
+regression returned `100.00000000000001` against charge100. New rules regressions
+also reproduced overflow at real Aegis charges and with joint/supported forces.
+The engine now bounds this accounting field by the actual entry charge. It changes
+no shot, hull damage, shield depletion, RNG, loss, retreat or outcome. Honor's strict
+invalid-input guard remains intact.
+
+Both the engine and actual Honor adapter regression failed before this correction.
+Afterward the full ordinary rules suite passed 157 files / 2,876 tests; the complete
+Honor battle-evidence file passed 12 tests. All three newly affected files passed
+root typed lint, and the rules typecheck passed.
+
+Deployment must preserve the existing five Compose inputs and append an image pin
+for the three APIs and worker. Current API/worker54 already share the private-report
+projection, so mixed old/new versions are compatible. A normal worker-first roll
+can prevent further instances of this producer bug before rolling the APIs. Archive
+and acknowledge only the individually verified, safely cancelled failed event as
+an explicit operational action; retain its original error/attempt history, do not
+requeue it, and require all health/queue/world gates green afterward. Retain a fresh
+private dump, old image, webroot and exact environment before any live action.
