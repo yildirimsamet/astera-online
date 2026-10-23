@@ -101,7 +101,7 @@ Diğer işlerin kirli ana çalışma dizinine dokunmadan ayrı dal/worktree kull
 - [x] Ortak yollar, sunucu ve rapor regresyonları
 - [x] Web açıklamaları ve görsel doğrulama
 - [x] Performans, lint/typecheck/build ve son inceleme
-- [ ] Canlıya alma ve yayın sonrası sağlık kontrolleri
+- [x] Canlıya alma ve yayın sonrası sağlık kontrolleri
 
 ## İnceleme sırasında doğrulananlar
 
@@ -235,3 +235,32 @@ Diğer işlerin kirli ana çalışma dizinine dokunmadan ayrı dal/worktree kull
   dönüşü gerçek sağ kalanlara göre kontrol ediliyor. Eski sezon hâlâ kalıcı yara
   kaydetmiyor. Bu tek dosyanın üç testi temiz geçince önceki yedi temiz dosyayla
   birlikte VPS kapsamı 104 başarılı teste tamamlanır; ilk koşu gizlenmez.
+
+## Yayın kabulü
+
+- Yayınlanan kaynak: `3b953f9f61143531f3622bac862b2970bb364fbd`; ayrı
+  `feature/six-round-distributed-combat-20261023` dalından, canlı `4d58d123`
+  temeli üzerine yalnız bu işin commit'leri. Güncel master'daki diğer işler
+  alınmadı; kullanıcının kirli ana çalışma alanına dokunulmadı.
+- Son eski sezon düzeltmesinden sonra VPS'te solo baskın dosyası 3/3 PASS,
+  ESLint PASS. Önceki yedi temiz dosyayla toplam 104 ilgili test doğrulandı.
+- Yayın öncesi kapasite kapısı testlerden kalan 634 MiB swap nedeniyle ilk
+  denemeyi, canlı checkout/container değişmeden durdurdu. Etkin bellek baskısı
+  olmadığı ve 8,8 GiB kullanılabilir RAM bulunduğu ölçüldü. Yalnız kendi test
+  PostgreSQL'i kapatıldı; swap güvenli RAM payıyla geri alınıp yeniden açıldı.
+  İkinci kapasite kontrolü PASS; yayın sonrası swap kullanımı sıfır.
+- Üç API → worker sırasıyla güncellendi, web atomik dizin değişimiyle açıldı.
+  Dördünün imaj/metrics SHA'sı tam olarak yayın SHA'sına eşit. `/health`
+  dört serviste PASS; failedEvents, strandedFlights, tickErrors, unknownEvents
+  ve handlerFailures sıfır. Worker yeni sürümde gerçek olayları işledi.
+- Dışarıdan ana sayfa, sunucular, preview, release, Wiki ve yasal sayfalar PASS.
+  350/1280 px gerçek tarayıcıda JS/CSP hatası veya taşma yok; nonce yenileniyor.
+  Canlı hashed Worker, bağımsız ortak motor sonucuyla birebir eşit. Tarayıcı
+  kontrolü yalnız GET/HEAD/OPTIONS kullanıp yazma isteklerini engelledi.
+- Eski istemcinin bütün immutable asset dosyaları korundu. Arena konteynerinin
+  kimliği ve imajı değişmedi. Aktif sezon/ruleset, dünya sayıları ve 197 kayıtlık
+  migration günlüğü aynı; yeni migration/season reset yok. Altı tur ortak motor
+  sayesinde aktif sezonda ve gelecekte açılacak sezonlarda geçerli.
+- Özel yedek, restore/read-write kanıtları, eski web ve pinned Compose ile yayın
+  manifesti VPS'teki özel yayın kaydında tutuldu. Geçici test altyapısı kapatılır;
+  canlıya sentetik oyuncu/savaş yazılmadı.
