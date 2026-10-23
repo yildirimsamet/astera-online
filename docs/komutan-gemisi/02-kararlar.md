@@ -58,15 +58,16 @@ ana çalışma alanı `master` üzerinde kalır. Güncel çalışma alanı ve da
 
 #### KG-K9
 **Doğuş kalkanının bitişi** (2026-10-08): ateş, çıkış alanına giriş, kargo toplama veya
-60 saniyeden **ilk gerçekleşen** kalkanı kaldırır. Sahip KG-A1 önerisini onayladı.
+15 saniyeden (sahip 2026-10-22; önce 60) **ilk gerçekleşen** kalkanı kaldırır. Sahip KG-A1 önerisini onayladı.
 
 #### KG-K10
 **Yakıt bitince kurtarma** (2026-10-08): gemi yavaşlayıp durur; **10 saniye savunmasız**
 kurtarma bekler. Bu sürede yok edilirse yok edilme kuralları uygulanır. Sahip KG-A2 önerisini onayladı.
 
 #### KG-K11
-**Tek ortak döteryum deposu** (2026-10-08): uçuş ve mühimmat aynı depodan tüketilir;
-her atış kaçış için kalan yakıtı da azaltır. Sahip KG-A3 önerisini onayladı.
+~~**Tek ortak döteryum deposu** (2026-10-08): uçuş ve mühimmat aynı depodan tüketilir;
+her atış kaçış için kalan yakıtı da azaltır. Sahip KG-A3 önerisini onayladı.~~
+**Yerine [KG-K29](#kg-k29)** (2026-10-21): yakıt ve mühimmat ayrı.
 
 #### KG-K12
 **PR düzeni** (2026-10-08): özelliğin tamamı **tek PR** olarak sunulur. Fazlar bu dalda
@@ -171,12 +172,66 @@ hemen etrafında ikinci bir yoğun toz katmanı açılır.
 - Hızlı dönüşte titreme olmamalı; tampon "CS:GO gibi değil" diye gevşetilebilir, düzeltme ~200 ms'de
   erir ([KG-T43](#kg-t43), [KG-T44](#kg-t44)). Oda başına 8 pilot şimdilik yeterli.
 
+#### KG-K28
+**Nişan çemberi; yön oyuncunun** (2026-10-21). Sahip: *"Aim assist aktifken geminin yönü düşmanı
+takip etmeyecek; ortadaki alanın sınırına kadar crosshair hedefi takip edecek; yönü kullanıcı
+ayarlamalı, hedefi o alan içinde kullanıcı tutmaya çalışmalı."* Subdivision benzeri, ondan küçük
+bir çember (8,5°; ilk hâli 7°, sahip 2026-10-21: "birazcık daha büyüsün"). Hedefin gövdesi ya da ◇ önleme işareti çemberdeyken nişangâh ve mermiler önleme
+noktasına kayar, çemberin kenarında durur; ikisi de çıkınca nişangâh merkeze döner. Gemiyi
+çeviren mıknatıs ve çubuk sürtünmesi oyuncu için kalktı; botlar eskisi gibi. [KG-K20](#kg-k20)'yi
+değiştirir. Uygulama: [KG-T47](#kg-t47).
+
+#### KG-K29
+**Can, kalkan, yakıt, mühimmat: dört ayrı şey** (2026-10-21). Sahip: *"can ayrı olmalı, kalkan ayrı
+olmalı (skill ile gelen shield), yakıt ayrı olmalı, mühimmat ayrı olmalı."* [KG-K11](#kg-k11)'i
+değiştirir.
+- **Mühimmat:** uçuşa dolu şarjörle girilir (`ammoCapacity`, v1 480 mermi = 60 sn kesintisiz ateş),
+  uçuşta dolmaz. Atış artık yakıt yemez; şarjör boşken ATEŞ kilitlenir. Botların deposu ve
+  şarjörü hep dolu (yönetmezler).
+- **Kalkan katmanı:** `shieldHp` / `shieldMax`, yetenekten gelir; hasar önce kalkandan düşer,
+  artanı cana geçer; uçuşta kendiliğinden dolmaz. Kalkandaki hasar da hasardır (çıkış sayacını
+  bozar). Doğuş kalkanı ayrı kuraldır (süre boyunca hiçbir şey geçmez). Kaynağı Y4 yetenekleri;
+  bugün kimsede yok.
+- **HUD:** can göstergesi altıgen + artı ikonu (kalkan ikonu artık yalnız kalkanın); kalkan,
+  can göstergesinde kendi mavi çizgisi ve sayısıyla, yalnız varken görünür. Şarjör, harcandığı
+  yerde: ATEŞ tuşunun halkası boşalır, altında kalan mermi; boşken "Boş" + bağlam notu.
+- Protokol 4 (pilot 53 sayı: `ammo`, `shieldHp`, `shieldMax`; sınırlar doğrulanır).
+- **Açık:** can, yakıt deposu ve şarjör kapasitesi sınıfa ve seviyeye bağlanacak (Y4,
+  [14 §3](14-yarik-plani.md)); bugün herkes için sabit.
+
+#### KG-K30
+**Kargo mıknatısı** (2026-10-22). Sahip: *"tam olarak içinden geçmeden de biraz yakınından geçerken
+de magnet gibi çekip toplanabilmeli (yanlışlıkla iki kişiye birden gitmesin, kim önce çekerse)."*
+- Serbest parça, `magnetRadius` (50 m) içine giren ve parçayı **bütün** taşıyabilecek ilk uçan
+  gemiye kilitlenir. Aynı tick'te iki gemi: yakın olan. Kilitli parçayı başkası alamaz.
+- Parça çekene doğru uçar (geminin hızı + `magnetPull` 90 m/sn; turbodaki gemiye de yetişir) ve
+  gövdeye değince ambara girer. Yoldaki parçalar ambardan düşülür; ambar asla taşmaz.
+- Ambara bütün sığmayan parça çekilmez, yerinde bütün kalır. Eski "sığanı al, kalanı bırak"
+  kalktı: kalanı başkası alırsa parça bölünmüş olurdu.
+- Çeken uçmayı bırakırsa (ölüm, çıkış), çok uzaklaşırsa ya da ambarı başka yoldan dolarsa parça
+  olduğu yerde durur ve yeniden serbest kalır.
+- Kümeden geçen gemi kümenin tamamını çeker (`clusterRadius` 30 m < 50 m).
+- Gizlenmiş gemi de çeker; uçan parça onu ele verebilir.
+
+#### KG-K31
+**Kaya ve yapı görüşü keser** (2026-10-22, sahip onayı: "Evet, kesilsin"; [15 §6](15-yarik-haritasi.md)).
+- Kaya ya da yapı iki gemi arasındaki çizgiyi kesince hedef işareti, mesafe etiketi, kilit,
+  silah yönlendirmesi (gimbal) ve radar noktası düşer; bot da o gemiyi hedef seçmez
+  (`pilotInSight` = `pilotVisible` + `segmentObstacles`).
+- Sunucu konumu göndermeye devam eder (`pilotVisible`): gemi çıkınca hemen çizilir.
+- **Son görülen yer:** görüş kesilince köşeli işaret ve radar noktası geminin girdiği yerde
+  kesik çizgili, soluk kalır ve `LAST_SEEN` (2 sn) içinde söner; can çubuğu gizlenir.
+  Takipçi nereye girdiğini bilir, şimdi nerede olduğunu bilmez.
+- Duman ve görünmezlik eskisi gibi anında gizler (son görülen yer bırakmaz).
+
 ---
 
 ## Teknik kararlar (KG-T)
 
 Agent'ın kararlarıdır; daha iyisi ölçümle kanıtlanırsa değişir (değişiklik buraya yazılır,
 eskisi KG-X'e tek satır olarak taşınır).
+
+
 
 #### KG-T1
 **Kod adları.** Gemi `commanderShip` (TS) / `commander_ships` (DB), alan `arena`, tek giriş-çıkış
@@ -399,10 +454,18 @@ korur). Sayılar [04 §13](04-savas-mekanikleri.md#baslangic-degerleri).
 kaya ve yapılara yalnız İN yaklaşmasıyla (girdi `land` biti) inilir (sahip 2026-10-21).
 İnen gemi durur, gövdesini yüzey normaline hizalar, yalnız normal etrafında döner, ateş ve yetenek
 kullanabilir. Gaz, inişten beri görülen en düşük değerin üstüne çıkınca kalkar; istemci inişte kolu
-sıfırlar. Daha hızlı temas **sekmedir** (sahip, 2026-10-08): yüzeye dik yaklaşma hızı × `bounce` kadar
-normal boyunca geri itme hızı eklenir ve `knockDecay` ile söner; ileri hız kafa kafaya çarpmada
-`bounceLoss` oranında düşer, sıyırmada neredeyse korunur. Hasar yoktur (KG-T19 sürer). Kristale inen gemi
-`mineRate` hızında kazar; kazı kalkanı kaldırır (kargo toplama sayılır, KG-K9). Gemi yavaşken
+sıfırlar. Daha hızlı temas **sekmedir** (sahip, 2026-10-08; açı ve hız kuralı 2026-10-21):
+- Hızın yüzeye giren kısmı esneklik katsayısıyla geri seker. Katsayı çarpma hızıyla `bounceMin`'den
+  `bounceMax`'a yükselir (`bounceHalf` m/s'de yarı yol). Yavaş temas hafif, sert çarpma güçlü seker;
+  tavan aşılmaz.
+- Yüzey boyunca kayan kısım sürtünmeyle yavaşlar (`scrapeFriction` × dik itki); hiçbir zaman ters dönmez.
+- Gemi burnu dönmez: yeni hızın burun yönündeki kısmı ileri hız kalır, kalanı geri itmedir ve
+  `knockDecay` ile söner.
+- Sonuç: sıyırma kayarak geçer, 45° çarpma hızın yaklaşık yarısını alır, kafa kafaya çarpma ileri hızı
+  sıfırlar. Kafa kafaya geri itme: 30 m/s → ~4 m, 120 m/s → ~23 m, turbo → ~45 m.
+- Hasar yoktur (KG-T19 sürer).
+
+Kristale inen gemi `mineRate` hızında kazar; kazı kalkanı kaldırır (kargo toplama sayılır, KG-K9). Gemi yavaşken
 `slowTurnBonus` kadar daha dar döner. Testler: `packages/rules/test/arena/`.
 
 #### KG-T36
@@ -411,7 +474,8 @@ asılır; kamera geminin **gerçek** burnunun önündeki noktaya bakar; hız ve 
 FOV açılır; sarsıntı "trauma" modelidir (hasar, sürtünme, öldürme); kol kayaya girmez. Gemi gövdesi
 dönüşe yatar (yalnız görsel). Motor alevi kameraya yüzünü dönen bir şerittir: Subdivision'ın iz dokusu
 geriye kayar ve dalgalı gürültüyle bükülür; beyaz-sıcak çekirdek, seyirde mavi, turboda kehribar-turuncu,
-şok elmasları ve geriye savrulan kıvılcımlar. Gaza göre uzar.
+şok elmasları ve geriye savrulan kıvılcımlar. Gaza göre uzar. *(Alev 2026-10-22'de stüdyonun hacim
+alevine geçti: KG-T50.)*
 Kendi gemide motor izi çizilmez (KG-X17); başka gemilerde iz zamana bağlı yaşlanıp söner. İnen
 geminin görseli kayanın gerçek yüzeyine ışın atılarak oturtulur.
 
@@ -496,6 +560,77 @@ yumuşar. Test: `smoothing.test.ts`.
   adımlarla 1'e kadar iner; tutabilen cihaza dokunulmaz, geri çıkmaz (salınım olmasın).
 - Anlık görüntü yuvarlama: 4 pilotlu dev odada 2744 → 1279 B (%53). Sıkıştırma (`perMessageDeflate`)
   bilinçli kapalı kalır.
+
+#### KG-T47
+**Nişan çemberi kuralı** ([KG-K28](#kg-k28)). `circleAim`: hedefin gövdesi ya da önleme noktası
+çemberin içinde, geminin önünde ve `aimRange` (900 m) içindeyse namlu önleme noktasına döner; önleme
+noktası kenarın dışındaysa namlu kenarda durur (trigonometrisiz, KG-T11).
+- **Çember ekranda görüldüğü gibidir** (sahip 2026-10-21: "yakın kapışmada assist yakalamıyor").
+  Çember burnun `convergeDist` (350 m) önüne `aimCircleCos` (8,5°) ile çizilir, oyuncu onu arkadaki
+  kameradan görür. Burundan çıkan bir koni yakın hedefte bu çizimle örtüşmüyordu: 60 m'de çemberin
+  üst yarısındaki hedef koninin dışında kalıyordu. Kural artık kameranın gözünden (`aimEyeBack`
+  34 m geri, `aimEyeUp` 7,2 m yukarı; `aimCone`) çizili çemberden geçen konidir. Ekranda içerideyse
+  kuralda da içeridedir (40–700 m arası testli). Göz, kamera kolunun seyir hâlindeki yeridir; web
+  testi ikisini birlikte tutar.
+- **Mermi 2 kat hızlı** (sahip 2026-10-21: "◇ hedefin çok önünde kalıyor"): `muzzleSpeed` 600 → 1200
+  m/s, `projectileLife` 1,5 → 0,75 sn; menzil 900 m'de kaldı. ◇ gövdeye yarı yarıya yaklaştı. Sunucu oyuncunun mermisini
+böyle yönlendirir; botlar `gimbalCos` (3,5°) ve mıknatısla kalır. Diğer gemiler `aimHorizon` kadar
+geriden çizilir (`interpDelay` + RTT + girdi tamponu, tick farkından ölçülür, en çok 0,6 sn;
+KG-T16): ◇, HUD nişangâhı ve istemcinin kendi mermi izi hedefi bu kadar ileri taşıyarak hesaplar.
+Ölçüm (300 m, 0,3 sn gecikme): eski mıknatıs düz geçen hedefe %0–5; çember düz %75, sert zikzak %40,
+turbo %55 ([14 §11](14-yarik-plani.md)). 1200 m/s ile: düz %85, zikzak %65, turbo %55. Mermi havada
+yarı süre kaldığı için zikzak artık daha az kurtarır; 600 m'de düz %40, zikzak %35.
+
+#### KG-T48
+**Çarpışma gövdeleri: görünen kaya, çarpılan kayadır** (Y2, [14 §8](14-yarik-plani.md)).
+- **Katalog:** `tools/arena-colliders.mjs` her kaynağı sadeleştirir, ortalar, sınır yarıçapı 1'e
+  ölçekler ve int16'ya nicemler. Çarpıştırıcı kataloğu (`catalog.generated.ts`, 11 şekil) ile
+  çizilen GLB aynı köşelerden yazılır. Araç GLB'yi geri okur, 1e-6 m'den büyük farkta durur.
+  Kristal; kaya ile altıgen kristallerin tek kapalı yüzeye birleşimidir (manifold-3d). Kristal
+  üçgenleri `glowFrom`'dan başlar ve parlar.
+- **Yerleşim v4:** alan kayası, dev kaya ve kristal = katalog şekli + konum + dönüş + ölçek.
+  `obstacleSize` ortalama yarıçaptır. `radius` yalnız geniş faz için sınırlayıcı küredir. Dev
+  kayalardaki kristal damarları gerçek yüzeye oturur, parıltısı dışa bakar.
+- **Gemi:** gövde kapsülü (15 m, r 2,2) + kanat kapsülü (9 m, r 1). Kaya, yapı ve mermi bunlara
+  çarpar; mermide `hitPad` 1,5 m. Model uyumu Y4'e kaldı (14 §8'de ölçüm).
+- **İstemci:** her kaya kendi katalog modeliyle, çarpıştırıcının matrisiyle çizilir. Paket yoksa
+  çarpıştırıcının kendisi çizilir. Manifest'te `colliders` + `unit` (yeniden ölçeklenmez). İnen gemi
+  kapsülüyle oturur, çizimde ek kaydırma yoktur. Pusula, iniş hedefi, damarlar, kazı ve sıyırma
+  kıvılcımı gerçek yüzeyi kullanır (`surfaceGap`, `closestSurface`).
+- **Dev görünümü:** geliştirmede **C** tuşu çarpıştırıcıları tel kafes çizer. Kaya pembe, yapı
+  sarı, gemi kapsülü yeşildir.
+- **Ölçüm:** sunucu tick ortalaması ~0,2 ms, p99 1–2 ms (VPS, 8–31 bot). Masaüstünde kuşak
+  görünümü ~600 bin üçgen; LOD Y3'te.
+
+#### KG-T49
+**Varlık hattı: sınıf gemileri, LOD, KTX2** (Y3, [14 §14.1](14-yarik-plani.md)).
+- **Sınıf gemileri** (`tools/arena-ships.mjs`): Akıncı = Space Fighter (Comrade1280), Muhafız =
+  Spaceship Concept (marum3s), Kılavuz = SpaceShip (JazOone); üçü de CC BY 4.0 (`CREDITS.md`,
+  arena menüsünde "Emeği geçenler"). Burun +Z, boy 1, üç LOD düğümü (`lod0..2`), meshopt +
+  nicemleme. Muhafız'ın dokusu yok: 24 bin üçgene indirilip xatlas ile açıldı, detayı tam modelden
+  normal/AO/renk/ışıma haritalarına pişirildi. LOD sınırları 8 ve 25 gemi boyu, %10 tutma payı;
+  geçiş 0,35 sn titreşimli çözülme (`render/detail.ts`). Eski hero/rival seti, sınıflar varken
+  yüklenmez. Hangar seçene kadar pilot Akıncı uçar; botlar rollerine göre (avcı Akıncı, madenci
+  Muhafız, devriye Kılavuz).
+- **KTX2** (`tools/arena-ktx2.mjs`): renk haritaları ETC1S, normal/veri haritaları UASTC, gökyüzü
+  tek UASTC küp (ETC1S soluk yıldızları siliyor, gezegen kenarını basamaklıyor). Efektler webp kalır.
+  Webp manifestlerine dokunulmaz; istemci önce `manifest(-lite)-ktx2.json`'ı dener. Araç
+  arena-ships ve arena-colliders'tan sonra koşar.
+- **Ölçüm (GPU doku belleği, masaüstü tarayıcı, 2026-10-22):** lite paket 161 → 51,5 MB (iOS kapısı
+  ≤ 120 MB); tam paket 621 → 183 MB. Masaüstü ETC1S'i BC7'ye (8 bit/piksel) açar; iPhone ETC2'ye
+  (opak 4 bit/piksel), yani iOS'taki değer bundan düşüktür. İndirilen dönüştürülmüş dosyalar: lite
+  7,5 → 16,2 MB, tam 20,8 → 53,1 MB (webp'ten büyük: KTX2 mip'leri ve blok verisini taşır).
+
+#### KG-T50
+**Motor alevi: stüdyonun hacim alevi** (sahip 2026-10-21: "solar ve cryo'yu kullanabilirsin").
+`src/vfx/engineFlames.ts` (Codex/Blender reçeteleri) gemi başına tek `EngineFlameBatch` çizimiyle
+kullanılır (`render/flames.ts`). Her nozulda seyir için Cryo (mavi-beyaz), turbo için Solar
+(beyaz-sarı boğaz, turuncu kuyruk) vardır; turbo yanıp sönerken ikisi çapraz geçer, böylece
+"turbo yakıyor" rengi korunur. Turbo alevi seyirdekinin iki katı uzar. Telefonda 8, masaüstünde 12
+adım. KG-T36'daki şerit alev ve nozul çekirdek sprite'ları kaldırıldı.
+Nozul yerleri ve çapları modelde ölçülür (`tools/arena-ships.mjs`: arkadan +Z yönünde ışın atılır,
+üç dik görünümde işaretlenir) ve manifeste `engines` + `nozzle` olarak yazılır; alev o çapta çıkar.
+Akıncı'nın alevleri kuyruk ucundan değil, yan gövdelerdeki yuvarlak nozullardan çıkar (sahip 2026-10-22).
 
 ---
 
@@ -711,3 +846,110 @@ durdu. Yerine dokulu alev şeridi ve yalnız bir ateşleme parlaması (KG-T36).
 Kayaya çarpma için Metalstorm `snd-damaged` ve hasarda `self-damage` sesleri — ikisi de 7–9 sn'lik
 bip dizileriydi ("dit dit dit", sahip bildirdi). Yerine 0,74 sn'lik Subdivision darbe sesi, kritik
 gövdede tek uyarı; her tek seferlik ses bir süre tavanıyla kesilir (`audio.ts` `cut`).
+
+#### KG-X23
+Arka görüş penceresi (sahip, 2026-10-23) — sahneyi ikinci kamerayla yeniden çiziyordu: 320×120 ve
+iki karede bir olmasına rağmen savaşta üçgenlerin %41'i (228k → 134k), çizim çağrılarının %27'si
+(161 → 117). Ucuz ayna (yalnız gemiler + gökyüzü, en hafif LOD, 15 Hz) maliyeti tahminen ~%90
+düşürür ama kayasız, yapısız bir ayna sahte durur; takipçiyi tehdit işaretleri ve hasar yönü
+zaten gösteriyor. Kapalı kalır; dönerse 3D ayna değil, takipçi göstergesi olarak düşünülür.
+
+#### KG-X24
+Oda 100 pilot (sahip, 2026-10-23; "100'ü pek sık bulmayız ama buffer verdim") — `ARENA_SEATS`,
+varsayılan 100, en çok `ARENA_MAX_SEATS` (120). 8 pilot sınırı kalktı. Gerektirdikleri:
+istemci kadroyu 120 + bot satır kabul eder; kadro yarım saniyede bir birleşik gider; paylaşılan
+satırlar (mermi, duman, çarpma, kargo, kristal) protokol 5 ile değişiklik olarak gider
+(`17-paket-kucultme-plani.md`). Haritanın ölçüsü hâlâ 48 pilot (16-yarik-v6-plani.md).
+
+#### KG-X25
+Hız en çok 80 m/s, turbo 160 m/s (sahip, 2026-10-23: "gemiler fazla hızlı, vurmak çok zor; nişan
+kutusu gemilerin çok önünde"). Önce 120 / 216. Üç sınıf gelince en hızlısı bu; yavaşlar altında
+kalır. Gerektirdikleri: gaz çubuğunun iniş durağı 0,2 → 0,3 (iniş hızı 24 m/s kalır); Kalk'ın
+0,33'ü durağa yapışmaz (iniş durağında inen gemi kalkamıyordu). Yakma hızları aynı: Kenar → Kalp →
+çıkış yolculuğu deponun ~%20'si yerine ~%30'u. Zikzak artık az korur (zikzak atan gemiye isabet
+%65 → %80, düz gidene %85); sahip bunu bilerek 80/160'ı seçti. Botlar zikzakçıyı 22,6 sn'de
+öldürüyordu: nişan takibi `botTurnGain` 2,7 → 1,8 (düz 16,9 sn, zikzak 28,1 sn; önce 30 sn'de 240
+hasar). 1,2 eski hâli birebir veriyordu ama botlar arası ateşi üçte birine düşürüyordu; tepki
+süresi (hedefin hızını gecikmeli okumak) zikzak sonucunu değiştirmedi: sapma fiziksel, ~8 m → ~5 m.
+
+#### KG-X26
+Kademeli görünürlük ve toplu çizim (sahip, 2026-10-23: "800 m, 1,6 km, 2,4 km üçe ayıralım; en az
+30, yapabilirsen 50 gemi"). Protokol 7: her pilota en yakın **50** gemi, 2,4 km'ye kadar, üç
+dizide. `others` ≤ 800 m her anlık görüntüde (15 Hz); `mid` 800 m–1,6 km tam satır, her
+`MID_EVERY` = 4 tickte (7,5 Hz); `far` 1,6–2,4 km uzak satır (konum, yön, hız, bayrak), her
+`FAR_EVERY` = 6 tickte (5 Hz). Kademe değiştiren geminin satırı o tick gider; anahtar karede hepsi.
+Sınırlarda ±50 m bant: sınırda gidip gelen gemi kademe değiştirmez. `interpDelay` 4 tick: orta
+kademe gemisi hep iki örnek arasında ara değerlenir. İstemci gemiyi kendi kademesinin süresi kadar
+görmezse siler. 50 pilotluk savaşta paket ort. 4,33 KB (protokol 6) → 3,19 KB.
+
+Çizim (`ShipCrowd`): 800 m (±40 m bant) ötesindeki gövdeler en ucuz LOD'dan modele göre tek
+instanced çizim; bütün motor parıltıları ve seyir ışıkları tek `Points`; bütün izler tek şerit;
+bütün alevler tek `EngineFlameBatch` (toplamalı, sırası önemsiz). Seyir ışığı 700 m'ye, alev ve
+iz 1,2 km'ye kadar; ekran dışındaki iz ne çizilir ne yüklenir, geçmişi akmaya devam eder. İsabetle
+parlayan, kalkanlı veya gizlenen gemi kendi görselinde kalır: oyuncunun okuduğu şey mesafeyle
+değişmez. S22, 30–39 gemi: kare 26,6 → 21,9 ms (~46 fps), çizim çağrısı ~220 → 92; 40–49 gemi
+21,0 ms. Gövdeler neredeyse bedavaydı; maliyet efektlerdeydi (iz, alev, sprite). Web ve arena
+**birlikte** deploy edilir (6 → 7).
+
+#### KG-X27
+Üç sınıfın seviye 1 değerleri (Y4a, sahip 2026-10-23: "bu tablo"). Planın (14 §3.1) oranları
+bugünkü gemiye ölçeklendi: bugünkü gemi Kılavuz, Akıncı KG-X25 tavanında. Akıncı 80/160 m/s, 82°/sn,
+gövde 340, 13 × 9/sn, 1,3°, yakıt 220, ambar 70, şarjör 540 · Kılavuz 72/144, 72°/sn, 400, 10 × 8,
+1,5°, 250, 100, 480 · Muhafız 60/120, 58°/sn, 600, 18 × 5,5, 1,8°, 280, 160, 330. %60 isabette ayna
+TTK: 4,8 / 8,3 / 10,1 sn. Mermi hızı ve menzil herkeste aynı (1200 m/s, 900 m). Hasar mermiye ateşte
+yazılır: ateş eden ölse ya da çıksa da mermi kendi hasarıyla vurur. Sınıf `hello` ile seçilir, bir
+sonraki uçuşta geçer (protokol 8). Sezonluk kilit ve 24 saatlik değişim hakkı kalıcılıkla gelir (Y6);
+deneme uçuşunda her girişte seçilir. Botlar rolünün gemisinde: avcı Akıncı, madenci Muhafız, devriye
+Kılavuz. Avcının vuruşu 80/sn'den 117/sn'ye çıktı: düz uçan Kılavuz 16,9 → 12,3 sn'de, zikzakçı
+28,1 → 18,8 sn'de düşüyor (aynı takip, kısalan süre hasardan). Yakıt saniye başına aynı yanar; Muhafız
+daha yavaş ama deposu büyük: Kenar → Kalp → çıkış tam gazda depo payı Akıncı %35, Kılavuz %34,
+Muhafız %36.
+
+#### KG-X28
+Her sınıf kendi modeline oturan kapsüllerle çarpışır ve vurulur (Y4b, 2026-10-23). Bir gövde
+kapsülü + iki ayna çift; model 15 m'de LOD0 yüzeyinden her 0,15 m'de örneklenir, hiçbir nokta
+kapsüllerin 0,5 m'den fazla dışında kalmaz (`tools/arena-hulls.mjs check`: Akıncı 0,456, Muhafız
+0,451, Kılavuz 0,457 m). Kaya, yapı, mermi ve sıyırma kıvılcımı aynı kapsülleri kullanır. Sonuç:
+Kılavuz'un ileri açılı kanatları 8,9 m'ye uzanır, en geniş hedef odur; Akıncı en dar (4,2 m),
+Muhafız arkada geniş motor bloğuyla 4,8 m. Genel kapsül (`ARENA_TUNING`) yalnız sınıfsız testlerde
+kalır. Her mermi önce geminin tüm kapsüllerini saran tek küreyle elenir.
+
+#### KG-X29
+A ve B yuvaları (Y4c, sahip, 2026-10-23). Sağ başparmakta dört düğme: ATEŞ, TURBO, A, B.
+- **A, sınıfa sabit imza.** Akıncı: güdümlü füze. Kilit kendiliğinden kurulur: düşman nişan
+  çemberinde ve görüşte 1 sn kalır. Kilit tutunca A füzeyi atar (260 m/s, 60°/sn dönüş, 80 hasar,
+  bekleme 14 sn). Muhafız: kalkan. 80 hasar emer, 20 sn sürer; kıran vuruşun artanı gövdeye
+  geçmez (bekleme 22 sn). Kılavuz: 4 sn'de 120 gövde onarım, kendine de 120; ateş altında yarı
+  hızda (bekleme 20 sn). Kalkan ve onarım hedeflidir: A'ya bas ve dosta dokun; kendine atmak için
+  A'ya çift dokun (300 ms). Hedef bekleme 3 sn sürer. Arenada klanlar gelene dek dost yoktur;
+  mekanik hazırdır, şimdilik yalnız kendine gider. Bekleme yalnız yetenek gerçekten çıkınca başlar.
+- **B, hangarda seçilen tek taktik:** Duman veya Gizlen. Uçuşta yalnız seçilen düğme görünür.
+  İllüzyon ve Radar Y4d'de gelir.
+- **Bilgi:** kilitlenen pilot uyarılır: "Kilit alınıyor" → "Kilitlendin" → "Füze geliyor".
+  Uyarının yanında ne yapacağı yazar. Ekranda kaynağı gösteren bir halka, ekran dışındaysa
+  kenarda bir rozet çıkar. Kilitleyen, hedefin çevresinde kapanan bir elmas görür; kilit
+  tutunca elmas kırmızı yanar. Füze; dumana giren, gizlenen veya ölen hedefi kaybeder ve
+  dümdüz uçar. Kaya füzeyi durdurur.
+- **Görünüm:** başkasının kalkanı, geminin çevresinde altıgen örgülü bir balondur. Kendi kalkanın
+  gövdeyi saran kaplamadır: takip kamerasında balon ekranın alt yarısını kaplıyordu. Kalkana
+  gelen mermi kalkan kıvılcımı çıkarır. Onarım gövdeyi yeşil kaplar, gövdeden yeşil zerreler
+  saçılır.
+
+#### KG-X30
+B yuvasının son iki taktiği (Y4d, 2026-10-23; plan §4 önerisi uygulandı). Hangarda artık dört
+seçenek var: Duman, Gizlen, İllüzyon, Tarama. Klavyede Q ve E, uçuşun taktiğine basar.
+- **İllüzyon (6 sn, bekleme 20 sn):** kopya geminin tam içinde doğar. Pilotun yön girdisinin tam
+  tersini yapar (sağ↔sol ve yukarı↔aşağı); gaz, turbo ve tetik aynıdır. Gemi döndükçe ikisi
+  ayrılır. Kopyanın mermileri boştur. Kopya çeyrek gövde hasar alınca, süresi bitince, pilotu
+  ölünce ya da yeniden uçunca hologram gibi kırılır: enkaz, ganimet, öldürme sayılmaz.
+  Düşman kopyayı kilitleyebilir; pilotu kilitleyemez. Kopya kazmaz, kargo çekmez, çıkış yapmaz.
+- **Görünüm:** düşman kopyayı sıradan bir gemi olarak görür. Aynı ad ve sınıfla görünür; uzaktan
+  çizilen satırı da gerçek bir geminin satırıyla aynıdır. Kopyanın sahibi onu camgöbeği bir
+  hologram olarak görür, kendi düşman işaretlerinde göremez. **Radar gerçeği gösterir:** kopya
+  radar ekranına nokta düşmez. Sıralamada yer almaz, pilot sayısına katılmaz.
+- **Tarama (3 sn, bekleme 30 sn):** alandaki her düşman işaretlenir: menzil dışındakiler, kaya
+  arkasındakiler, tozun içindekiler de. Görünmezler ve kopyalar işaretlenmez. Sunucu taranan
+  gemileri görüş ve menzil sınırı olmadan gönderir. İşaret düşmanın çevresinde camgöbeği bir
+  sonar halkasıdır; ekran dışındaysa kenar oku camgöbeği olur. Radar ekranında nokta kenarda,
+  halkalı durur. Taranan pilot "Tarandın" uyarısını alır, taramanın geldiği yönü görür.
+  Tarama uyarısı en düşük önceliktir: kilit ve füze uyarısı onu her zaman bastırır.

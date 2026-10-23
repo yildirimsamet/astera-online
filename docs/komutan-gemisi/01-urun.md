@@ -64,9 +64,9 @@
   isabette nişangâh çevresinde daha geniş bir alana dağılır.
 - **S19** Geliştirilebilir özellikler (sekiz): **Can · Saldırı gücü · Hareket hızı · Mermi hızı ·
   Atış hızı · İsabet oranı · Yakıt deposu kapasitesi · Ambar kapasitesi.**
-- **S20** **Mühimmat kullanımı da döteryum tüketir.**
-- **S21** Yakıt ve mühimmat döteryumu **tek ortak depodan tüketilir**; her atış kaçış için
-  kalan yakıtı da azaltır ([KG-K11](02-kararlar.md#kg-k11)). Yükleme maliyeti F8'de belirlenir.
+- **S20–S21** ~~Mühimmat da döteryum tüketir; yakıt ve mühimmat tek ortak depodan.~~ **Değişti
+  (sahip 2026-10-21, [KG-K29](02-kararlar.md#kg-k29)):** yakıt ve mühimmat ayrı; şarjör uçuşa dolu
+  girer, uçuşta dolmaz. Yükleme maliyeti F8'de belirlenir.
 
 ## 6. Aktif yetenekler
 
@@ -88,8 +88,8 @@
   çemberde** üç giriş + üç çıkış.
 - **S28** Oyuncu girdiğinde dört girişten **rastgele birinde** doğar. Ayrılmak için **istediği
   çıkışı** kullanır.
-- **S29** Yeni doğan oyuncuya **60 saniyelik hasar almama kalkanı** verilir. Ateş, çıkış alanına
-  giriş, kargo toplama veya 60 saniyeden **ilk gerçekleşen** kalkanı kaldırır
+- **S29** Yeni doğan oyuncuya **15 saniyelik hasar almama kalkanı** (sahip 2026-10-22; önce 60) verilir. Ateş, çıkış alanına
+  giriş, kargo toplama veya 15 saniyeden **ilk gerçekleşen** kalkanı kaldırır
   ([KG-K9](02-kararlar.md#kg-k9)).
 
 ## 8. Savaş alanından çıkış

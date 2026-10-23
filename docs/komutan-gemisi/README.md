@@ -74,6 +74,8 @@ telefonunda oynayıp **hissi onaylamadan** kapsam büyümez.
 | [11-test-ve-playtest.md](11-test-ve-playtest.md) | TDD katmanları, ölçüm, bot senaryoları, sahiple oturum |
 | [12-yol-haritasi.md](12-yol-haritasi.md) | Fazlar, riskler, sorular, kabul ölçütleri |
 | [13-gelistirme-notlari.md](13-gelistirme-notlari.md) | Güncel çalışma dilimi, sınırlar, riskler ve doğrulama kaydı |
+| [14-yarik-plani.md](14-yarik-plani.md) | Yarık büyük planı: sınıflar, yetenekler, seviye, ekonomi, harita, takım, amiral (v1, 2026-10-21) |
+| [15-yarik-haritasi.md](15-yarik-haritasi.md) | Y5 harita tasarımı: bölgeler, mağara ve terk edilmiş istasyon, çizilen = çarpılan yapılar, çıkış iskelesi, görüş kuralı, harita ekranı (v1, 2026-10-22) |
 | Sahibin yerel referans görselleri | Eklendi ve incelendi; kabaca yön verir (KG-K15, konum ve metin dökümü [07 §1](07-hud-ve-ekranlar.md)) |
 
 <a id="durum-panosu"></a>

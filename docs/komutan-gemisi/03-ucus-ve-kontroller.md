@@ -47,7 +47,7 @@ açısal hız `ω = (pitch, yaw)`, turbo durumu, yakıt.
    içinde) roll hatası `e = dot(sağ, +Y)` ile `rollLevelRate · e` hızında sıfıra çekilir. Dik
    tırmanış/dalışta kapalı (takla atmasın). Kamera bu düzeltme dışında **yatmaz** (S55).
 7. Yakıt: saniyede `idleBurn + throttleBurn · τ` (+ turbo aktifse `turboBurn`); durmuş gemi de
-   `idleBurn` yakar (S16). Her atış `shotFuelCost` düşer (tek ortak depo, KG-K11). Yakıt 0 →
+   `idleBurn` yakar (S16). Atış yakıt yemez; şarjörden düşer ([KG-K29](02-kararlar.md#kg-k29)). Yakıt 0 →
    [04 §Yakıt bitmesi](04-savas-mekanikleri.md#yakit-bitmesi).
 8. İntegrasyondan sonra: asteroit/yapı itmesi (KG-T19), alan sınırı (KG-T20).
 9. Aynı başlangıç durumu + aynı girdi dizisi → **bit düzeyinde aynı sonuç** (sunucu ve her

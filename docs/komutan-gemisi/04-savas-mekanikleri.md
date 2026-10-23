@@ -18,7 +18,7 @@ Her kural **sunucuda** uygulanır (S51). İstemci aynı fonksiyonları yalnız t
  spawn ──► flying ──(çıkış alanında, durdu)──► exiting ──(3 sn hasarsız)──► extracted
    │         │  ▲                                  │
    │ kalkan  │  └──────────(hareket / alandan çıkış)┘
-   │ (60 sn) ├──(gövde ≤ 0)─────────────────────────────────────────────► destroyed ─► towed
+   │ (15 sn) ├──(gövde ≤ 0)─────────────────────────────────────────────► destroyed ─► towed
    │         ├──(yakıt = 0)──► fuelOut (kurtarma sayacı) ───────────────────────────► towed
    │         └──(girdi yok, linkLostAfter)──► linkLost (30 sn) ──(dönerse)──► flying
    │                                         └──(dönmezse)──────────────────────────► towed
@@ -49,7 +49,8 @@ gemi dünyadan çıkar ve sonuç ekranı açılır ([07](07-hud-ve-ekranlar.md#s
 ## 2. Ateş ve mermi
 
 - **Ateş (S64):** ATEŞ basılıyken `fireRate` hızında; sol/sağ namlu sırayla. İlk mermi basışta.
-  Her atış `shotFuelCost` döteryum düşer (KG-K11, tek ortak depo); yakıt yetmezse atış olmaz.
+  Her atış şarjörden bir mermi düşer; şarjör boşsa atış olmaz, uçuşta dolmaz (KG-K29).
+- **Kalkan katmanı (KG-K29):** isabet önce `shieldHp`'den düşer, artanı gövdeye geçer.
 - **Doğuş:** namlu noktasından (`rules/arena` verisi, modelden değil — KG-T26), nişangâh
   doğrultusunda `convergeDist` uzaklıktaki noktaya doğru, üstüne dağılım (§3).
 - **Hız:** `gemi hızı + yön · muzzleSpeed` (miras, KG-T15). **Takip yok** (S65).
@@ -101,6 +102,10 @@ gemi dünyadan çıkar ve sonuç ekranı açılır ([07](07-hud-ve-ekranlar.md#s
   açık yayından önce sunucu da snapshot'tan çıkarır.
 - Bulutlar arka görüşte de görünür (kendi dumanın arkanı kapatır — bilinçli takas).
 
+**Kaya ve yapı ([KG-K31](02-kararlar.md#kg-k31))**
+- Kaya ya da yapı görüş çizgisini keser: işaret, kilit, gimbal, radar noktası düşer; bot hedef
+  seçmez. Sunucu konumu göndermeye devam eder. İşaret 2 sn "son görülen yer" olarak soluk kalır.
+
 **Görünmezlik (S24, S77, KG-K4)**
 - `cloakDuration` sürer; bitince `cloakCooldown` başlar.
 - **Ateş anında bozulur** (sunucu, atış girdisini işlediği tick'te). Bozulma hem sahibine hem
@@ -145,7 +150,8 @@ tam durmuşken** (`s = 0`) ilerler, `exitHold` saniyeye ulaşınca `extracted`.
 - Gövde ≤ 0 → `destroyed`. Olay: öldüren, konum, son hasarın yönü.
 - Patlama efekti; gemi dünyadan çıkar. Kargo `cargoScatterCount` kapsüle bölünüp patlama
   noktasından rastgele (tohumlu) hızlarla saçılır, yavaşlar, `dropLife` sonra kaybolur.
-  Kapsülü **herkes** (öldüren dahil) üstünden geçerek alır (`pickupRadius`, ambar kapasitesi kadar).
+  Kapsülü **herkes** (öldüren dahil) yanından geçerek mıknatısla çeker (`magnetRadius`, [KG-K30](02-kararlar.md#kg-k30)):
+  ilk çeken alır, parça bölünmez; ambara bütün sığmıyorsa çekilmez.
 - Kalan yakıt ve mühimmat korunur (S34); gemi eve çekilir, tamir gerekir (S33; F8).
 - Sonuç ekranı: seni kim, kaç metreden vurdu · aldığın hasar · düşen kargo · korunan yakıt ·
   "Tamir gerekli" · **"Ana gezegene dön"**. Prototipte buton galaksiye döner; dev modunda ayrıca
@@ -223,32 +229,32 @@ Diğer belgeler bu değerleri **adıyla** anar; çelişki olursa bu tablo geçer
 | `spawnJitter` / `spawnClear` | 60 m / 160 m | girişin çevresi her zaman açık |
 | `exitRadius` | 120 m | |
 | `exitHold` ✱ | 3 sn | S31 |
-| `spawnShield` ✱ | 60 sn | S29 |
-| `speedMax` | 120 m/s | referans HUD "HIZ 120" |
-| `accel` / `decel` | 34 / 20 m/s² | 0→120 ≈ 3,5 sn; 120→0 ≈ 6 sn (süzülerek durur) |
+| `spawnShield` ✱ | 15 sn (sahip 2026-10-22; önce 60) | S29 |
+| `speedMax` | 80 m/s (sahip 2026-10-23; önce 120) | KG-X25: vurulabilir hız |
+| `accel` / `decel` | 34 / 20 m/s² | 0→80 ≈ 2,4 sn; 80→0 ≈ 4 sn (süzülerek durur) |
 | `stopEpsilon` | 0,5 m/s | altı tam 0 |
 | `turnRateMax` / `slowTurnBonus` | 1,25 rad/sn (~72°/sn) / +%30 | %50 gazda ~82°/sn, durmuşken ~93°/sn; hız yönetimi beceridir (KG-T35) |
 | `turnResponse` | 0,06 sn | aşmasız yaklaşma |
 | `turnStopRatio` | 0,05 | o anki dönüş tavanına oranla; nötr girdide en çok dört tick |
 | `stickLinear` / `deadzone` | 0,15 / 0,06 | merkezde çok yumuşak, kenarda tam dönüş ([03 §4](03-ucus-ve-kontroller.md)) |
 | `rollLevelRate` | 1,5 /sn | |
-| `turboSpeedMul` / `turboAccelMul` / `turboTurnMul` | 1,8 / 7 / 0,6 | turbo 216 m/s, her gazda; 60 → 216 ≈ 0,65 sn |
+| `turboSpeedMul` / `turboAccelMul` / `turboTurnMul` | 2 / 7 / 0,6 | turbo 160 m/s, her gazda (KG-X25); 40 → 160 ≈ 0,5 sn |
 | `turboCharge` / `turboRegen` / `turboRegenDelay` | 6 sn / 0,8 sn/sn / 1 sn | boştan dolum 7,5 sn (+1 sn bekleme) |
 | `turboMinStart` / `turboTapBurst` | 0,3 sn / 0,35 sn | |
 | `fuelTank` | 100 | döteryum birimi |
 | `throttleBurn` / `idleBurn` / `turboBurn` | 0,25 / 0,02 / +0,25 /sn | tam gazda 100 / 0,27 ≈ 6,2 dk; sürekli ateşte ≈ 3,9 dk (KG-A19) |
-| `shotFuelCost` | 0,02 /atış | KG-K11 |
+| `ammoCapacity` | 480 mermi | uçuşa dolu girer, uçuşta dolmaz (KG-K29) |
 | `hull` | 400 | |
 | `damage` | 10 /isabet | |
 | `fireRate` | 8 /sn | sol-sağ sırayla |
-| `muzzleSpeed` | 600 m/s | + gemi hızı |
-| `projectileLife` | 1,5 sn | menzil ≈ 900–1080 m |
+| `muzzleSpeed` | 1200 m/s | + gemi hızı (sahip 2026-10-21: 600'den 2 kat) |
+| `projectileLife` | 0,75 sn | menzil ≈ 900–990 m |
 | `convergeDist` | 350 m | |
 | `spreadBase` / `spreadMin` | 1,5° / 0,5° | yarı açı |
 | `shipHitRadius` | 6 m | görsel gemi boyu 15 m |
 | `landSpeed` / `landSettle` / `landedYawRate` | 24 m/s / 0,35 sn / 1,2 rad/sn | bu hızın altında temas = iniş (KG-K21) |
 | `liftSpeed` / `liftTicks` / `landedTurboRegenMul` | 14 m/s / 12 tick / ×2 | kalkış itişi; inişte turbo iki kat dolar |
-| `bounce` / `bounceLoss` / `knockDecay` | 0,6 / 0,85 / 1,6 /sn | sekme: dik yaklaşma × 0,6 geri itme; kafa kafaya ileri hızın %85'i gider |
+| `bounceMin` / `bounceMax` / `bounceHalf` / `scrapeFriction` / `knockDecay` | 0,15 / 0,4 / 50 m/s / 0,25 / 1,6 /sn | sekme: dik hız, çarpma hızıyla 0,15→0,4 esneklikle geri seker; kayma, dik itkinin 0,25'i kadar yavaşlar (KG-T35) |
 | `mineRate` / `crystalReserve` / `crystalRegen` | 4 /sn / 40 / 0,35 /sn | tükenen kristal yarısına dolana kadar kazılmaz |
 | `gimbalCos` / `gimbalRange` | cos 3,5° / 700 m | namlu, burna yakın görünür hedefin önleme noktasına döner (KG-K20) |
 | `assistMax` / `assistCos` / `assistRange` | 0,32 / cos 9° / 900 m | ateş ederken direksiyon mıknatısı; sunucu kırpar |
@@ -262,7 +268,7 @@ Diğer belgeler bu değerleri **adıyla** anar; çelişki olursa bu tablo geçer
 | `inputBuffer` / `inputQueueMax` / `inputRepeatMax` | 3 tick / 12 / 9 tick (KG-K27) | [05 §6](05-ag-ve-sunucu.md#girdi) |
 | `resultKeep` | 10 dk | yeniden bağlanana son sonuç ([05 §3](05-ag-ve-sunucu.md#uc-nokta)) |
 | `testCargo` / `cargoCapacity` | 60 / 100 | |
-| `cargoScatterCount` / `pickupRadius` / `dropLife` | 6 / 25 m / 300 sn | |
+| `cargoScatterCount` / `magnetRadius` / `magnetPull` / `dropLife` | 6 / 50 m / gemi hızı + 90 m/sn / 300 sn | KG-K30 |
 | `roomCap` | 48 | KG-T4 |
 | `interpDelay` | 133 ms (iki snapshot aralığı; uyarlanır 133–200) | KG-T14 |
 | `extrapolationCap` / `headStartCap` | 150 ms / 100 ms | KG-T14, KG-T15 |
