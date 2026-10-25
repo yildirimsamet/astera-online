@@ -19,7 +19,8 @@ import Fastify, {
   type FastifyInstance,
   type FastifyRequest,
 } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { and, eq, not } from 'drizzle-orm';
+import { accountIsBanned } from './services/accountBan.js';
 import { accounts } from './db/schema.js';
 import { ZodError } from 'zod';
 import { pino } from 'pino';
@@ -182,7 +183,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     opts.env.REFRESH_TOKEN_DAYS,
     async (id, version, nativeSessionId) => {
       if (nativeSessionId) return nativeSessions.isCurrent(nativeSessionId, id, version);
-      const [account] = await db.select({ version: accounts.authVersion, deletionApprovedAt: accounts.deletionApprovedAt }).from(accounts).where(eq(accounts.id, id));
+      const [account] = await db.select({ version: accounts.authVersion, deletionApprovedAt: accounts.deletionApprovedAt }).from(accounts).where(and(eq(accounts.id, id), not(accountIsBanned)));
       return account?.version === version && account.deletionApprovedAt === null;
     },
   );

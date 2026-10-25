@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { and, eq, gt, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull, not } from 'drizzle-orm';
+import { accountIsBanned } from './accountBan.js';
 import type { Db } from '../db/client.js';
 import { accounts, nativeSessions } from '../db/schema.js';
 import type { Clock } from '../clock.js';
@@ -69,7 +70,7 @@ export class NativeSessions {
       .innerJoin(accounts, eq(accounts.id, nativeSessions.accountId))
       .where(and(eq(nativeSessions.id, id), eq(nativeSessions.accountId, accountId),
         eq(nativeSessions.version, version), eq(accounts.authVersion, version),
-        isNull(accounts.deletionApprovedAt),
+        isNull(accounts.deletionApprovedAt), not(accountIsBanned),
         isNull(nativeSessions.revokedAt), gt(nativeSessions.expiresAt, this.clock.now())));
     return row !== undefined;
   }
