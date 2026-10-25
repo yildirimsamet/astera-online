@@ -1,3 +1,4 @@
+import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
 import { and, eq, gt, inArray } from 'drizzle-orm';
 import {
   activeBattleFleet,
@@ -569,9 +570,11 @@ async function settleArrival(
     attacker: { tech: raid.tech ?? {} },
     defender: { tech: {}, damageMult: pirateStats(spec.level).damageMult },
   };
-  const fought = resolveBattle([{ ...soloStack(attacking, combatTech.attacker, raid.damage ?? undefined), contributionId: raid.id, playerId: raid.ownerPlayerId }],
-    [{ stackId: 'pirate', playerId: '', fleet: crew, tech: combatTech.defender, maintenanceExempt: true }],
-    0, seededFrom(raid.id), hpRadiationApplies(origin.rulesetVersion) ? 'HP_PLANET' : 'PLANET', true);
+  const replayAttackers = [{ ...soloStack(attacking, combatTech.attacker, raid.damage ?? undefined), contributionId: raid.id, playerId: raid.ownerPlayerId }];
+  const replayDefenders = [{ stackId: 'pirate', playerId: '', fleet: crew, tech: combatTech.defender, maintenanceExempt: true }];
+  const replayCapture = prepareBattleReplay(replayAttackers, replayDefenders);
+  const fought = resolveBattle(replayAttackers, replayDefenders,
+    0, seededFrom(raid.id), hpRadiationApplies(origin.rulesetVersion) ? 'HP_PLANET' : 'PLANET', true, replayCapture.recording);
   /*
     UNESCORTED HOLDS DO NOT ESCAPE (owner report, 2026-10-06): once the crew's last warship is down
     and this wing still has a gun, the holds left are taken — destroyed, wreckage, a DECISIVE grade.
@@ -699,7 +702,7 @@ async function settleArrival(
   const wreckValue = wreck ? wreck.alloy + wreck.crystal + wreck.deuterium : 0;
   await createVoidDebris(tx, raid, wreck, now);
 
-  await tx.insert(battleReports).values({
+  const [replayReport] = await tx.insert(battleReports).values({
     seasonId: raid.seasonId,
     missionId: null,
     targetPlanetId: null,
@@ -741,7 +744,11 @@ async function settleArrival(
      */
     dominionSwing: 0,
     createdAt: now,
-  });
+  }).returning({ id: battleReports.id });
+  if (!replayReport) throw new Error('pirate battle report insert returned no row');
+  await persistBattleReplay(tx, { source: { kind: 'BATTLE', id: replayReport.id }, seasonId: raid.seasonId, capture: replayCapture, result,
+    context: { environment: 'MONUMENT', aegisCapacity: 0, defenceOffline: false, escape: null, control: null,
+      ...(result !== fought ? { aftermath: 'PIRATE_OVERRUN' } : {}) }, at: now });
 
   await notify(tx, {
     // The same rule as the report above and the delivery below: D150's column.

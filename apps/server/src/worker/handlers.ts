@@ -1,3 +1,4 @@
+import { prepareBattleReplay, persistBattleReplay } from '../services/battleReplay.js';
 import { commanderPvpBalance } from '../services/pvpBalance.js';
 import { and, eq, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm';
 import {
@@ -919,9 +920,13 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       now: defender.now,
     });
     const defenceNavy = await honorDefenceNavy(tx, mission.seasonId, [defender.playerId, ...supporterIds]);
+    const replayAttackers = [{ ...soloStack(attackingFleet, { tech: attackerTech }, flown.damage ?? undefined), contributionId: missionId, playerId: mission.ownerPlayerId }];
+    const replayCapture = prepareBattleReplay(replayAttackers, [{ stackId: 'host', playerId: defender.playerId, fleet: defenders,
+      tech: { tech: defenderTech }, damage: homePartition.damage.filter(lot => !NON_COMBATANT_HULLS.includes(lot.hull)) }, ...stations.map(station => station.stack)]);
     const raid = resolveRaid({
+      recording: replayCapture.recording,
       // What the wing arrived with in damage (radiation on the way in); null when whole.
-      stacks: [{ ...soloStack(attackingFleet, { tech: attackerTech }, flown.damage ?? undefined), contributionId: missionId, playerId: mission.ownerPlayerId }],
+      stacks: replayAttackers,
       line: defenders,
       homeDamage: homePartition.damage.filter((lot) => !NON_COMBATANT_HULLS.includes(lot.hull)),
       maintenance: true,
@@ -1311,6 +1316,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       createdAt: defender.now,
     }).returning({ id: battleReports.id });
     if (!reportRow) throw new Error('battle report insert returned no row');
+    await persistBattleReplay(tx, { source: { kind: 'BATTLE', id: reportRow.id }, seasonId: mission.seasonId, capture: replayCapture, result,
+      context: { environment: 'PLANET', aegisCapacity: shieldHp(defender.effectiveInstruments.AEGIS ?? 0), defenceOffline: defenceDark, escape: raid.escape, control: null }, at: defender.now });
     if (supportedLine) {
       /*
         A SUPPORTED LINE KEEPS ITS OWN JOURNAL. `dominion_events` holds one attacker and

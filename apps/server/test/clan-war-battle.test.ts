@@ -1,3 +1,5 @@
+import { readBattleReplay } from '../src/services/battleReplay.js';
+import { battleReplays } from '../src/db/schema.js';
 import { pino } from 'pino';
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -230,6 +232,11 @@ describe('a combined strike settling', () => {
     const [raw] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[2]!));
     await workerFor(f).tick();
     const [report] = await f.db.select().from(battleReports);
+    expect((await f.db.select().from(battleReplays).where(eq(battleReplays.battleReportId, report!.id)))[0]?.status).toBe('AVAILABLE');
+    const replayReaders = await Promise.all([0, 1, 2].map(index => readBattleReplay(f.db, { playerId: f.playerIds[index]!, seasonId: f.seasonId }, { kind: 'BATTLE', id: report!.id })));
+    expect(replayReaders.map(row => row.viewer)).toEqual(['ATTACK', 'ATTACK', 'DEFENCE']);
+    expect(replayReaders.every(row => row.ownPlayerIds.length === 1)).toBe(true);
+    expect(replayReaders[0]!.ownPlayerIds).not.toEqual(replayReaders[1]!.ownPlayerIds);
     const balance = pvpBalanceForTier(core === 7 ? 3 : 4);
     expect(report!.pvpBalance).toEqual(balance);
     const p = before.planet;

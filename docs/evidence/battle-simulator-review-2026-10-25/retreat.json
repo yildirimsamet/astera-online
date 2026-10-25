@@ -1,0 +1,1994 @@
+[
+  {
+    "name": "desktop-tiny-damage",
+    "time": 43.38,
+    "aegis": 0,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 90,
+        "shield": 22.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A1",
+        "hp": 146.26029657582336,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A2",
+        "hp": 199.36082640566227,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A3",
+        "hp": 168.24047391947965,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A4",
+        "hp": 216.266755590291,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A5",
+        "hp": 95.53518401433901,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A6",
+        "hp": 196.51684797095547,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A7",
+        "hp": 1508,
+        "shield": 343.0280657621681,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A8",
+        "hp": 1508,
+        "shield": 290.87032403687226,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A9",
+        "hp": 1508,
+        "shield": 283.3708540751995,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A10",
+        "hp": 1508,
+        "shield": 259.78814462890045,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D1",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D2",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D3",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D4",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D5",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D6",
+        "hp": 2095.5792096287287,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D7",
+        "hp": 2026.6315953666958,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D8",
+        "hp": 448.05343742503635,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D9",
+        "hp": 225.2123233367269,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D10",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      }
+    ],
+    "phase": "DEFENCE",
+    "pendingFire": [
+      "D0"
+    ],
+    "activeSourceId": "D0",
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "readouts": [
+      {
+        "id": "A0",
+        "opacity": "1",
+        "text": "90\n/ 90"
+      },
+      {
+        "id": "A1",
+        "opacity": "1",
+        "text": "147\n/ 223\n−3,2"
+      },
+      {
+        "id": "A2",
+        "opacity": "1",
+        "text": "200\n/ 223\n−3,4"
+      },
+      {
+        "id": "A3",
+        "opacity": "1",
+        "text": "169\n/ 223\n−0,8"
+      },
+      {
+        "id": "A4",
+        "opacity": "1",
+        "text": "217\n/ 223\n−0,5"
+      },
+      {
+        "id": "A5",
+        "opacity": "1",
+        "text": "96\n/ 282\n−2,5"
+      },
+      {
+        "id": "A6",
+        "opacity": "1",
+        "text": "197\n/ 282\n−0"
+      },
+      {
+        "id": "A7",
+        "opacity": "1",
+        "text": "1508\n/ 1508\n◈ −0,4"
+      },
+      {
+        "id": "A8",
+        "opacity": "1",
+        "text": "1508\n/ 1508\n◈ −2,5"
+      },
+      {
+        "id": "A9",
+        "opacity": "1",
+        "text": "1508\n/ 1508\n◈ −2,9"
+      },
+      {
+        "id": "A10",
+        "opacity": "1",
+        "text": "1508\n/ 1508\n◈ −3,3"
+      },
+      {
+        "id": "D0",
+        "opacity": "1",
+        "text": "Ok #D0\n0\n/ 77\nBu tur ateş edecek"
+      },
+      {
+        "id": "D1",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D2",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D3",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D4",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D5",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D6",
+        "opacity": "1",
+        "text": "2096\n/ 2158"
+      },
+      {
+        "id": "D7",
+        "opacity": "1",
+        "text": "2027\n/ 2158"
+      },
+      {
+        "id": "D8",
+        "opacity": "1",
+        "text": "449\n/ 1000"
+      },
+      {
+        "id": "D9",
+        "opacity": "1",
+        "text": "226\n/ 1000"
+      },
+      {
+        "id": "D10",
+        "opacity": "0",
+        "text": "0\n/ 215"
+      }
+    ],
+    "badges": [
+      {
+        "id": "A1",
+        "text": "−3,2"
+      },
+      {
+        "id": "A2",
+        "text": "−3,4"
+      },
+      {
+        "id": "A3",
+        "text": "−0,8"
+      },
+      {
+        "id": "A4",
+        "text": "−0,5"
+      },
+      {
+        "id": "A5",
+        "text": "−2,5"
+      },
+      {
+        "id": "A6",
+        "text": "−0"
+      },
+      {
+        "id": "A7",
+        "text": "◈ −0,4"
+      },
+      {
+        "id": "A8",
+        "text": "◈ −2,5"
+      },
+      {
+        "id": "A9",
+        "text": "◈ −2,9"
+      },
+      {
+        "id": "A10",
+        "text": "◈ −3,3"
+      }
+    ],
+    "headers": [
+      "Savunan\nSavaşta 4\nİmha 7\nÇekildi 0",
+      "Saldıran\nSavaşta 11\nİmha 0\nÇekildi 0"
+    ],
+    "phaseText": "Savunan karşılık veriyor\nOk #D0 ateş ediyor\nBu tur ateş edecek",
+    "results": []
+  },
+  {
+    "name": "retreat-before",
+    "time": 308.65,
+    "aegis": 0,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 1.7819420754821085,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A1",
+        "hp": 26.13799500264728,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A2",
+        "hp": 6.246637510192919,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A3",
+        "hp": 1.6554553895727095,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A4",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A5",
+        "hp": 4.497400173806448,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A6",
+        "hp": 22.865331173957127,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A7",
+        "hp": 23.996186803216276,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A8",
+        "hp": 38.108159812465736,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A9",
+        "hp": 17.061392402142044,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A10",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A11",
+        "hp": 12.484104892139042,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A12",
+        "hp": 8.22461012465363,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A13",
+        "hp": 19.656544519809803,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A14",
+        "hp": 12.914050881265146,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A15",
+        "hp": 4.5664097376773265,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A16",
+        "hp": 4.160237991460244,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A17",
+        "hp": 20.893908141183857,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D1",
+        "hp": 20.888326684408838,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D2",
+        "hp": 23.60866341394936,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D3",
+        "hp": 4.362546887343429,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D4",
+        "hp": 34.181525616951326,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D5",
+        "hp": 16.325669008265827,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D6",
+        "hp": 18.9256952524096,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D7",
+        "hp": 11.106145735567939,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D8",
+        "hp": 7.533889650910709,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D9",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D10",
+        "hp": 13.099219126543662,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D11",
+        "hp": 15.962409429017656,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D12",
+        "hp": 26.412546062202846,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D13",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D14",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D15",
+        "hp": 20.5593932533621,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D16",
+        "hp": 17.57173164740265,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D17",
+        "hp": 4.365039329593407,
+        "shield": 0,
+        "status": "ACTIVE"
+      }
+    ],
+    "phase": "DEFENCE",
+    "pendingFire": [],
+    "activeSourceId": null,
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "selected": "Ok #A13\nGövde canı 19,66 / 77\nGemi kalkanı 0 / 19,25\nSaldırı 21\n×",
+    "readouts": [
+      {
+        "id": "A0",
+        "opacity": "1",
+        "text": "2\n/ 77"
+      },
+      {
+        "id": "A1",
+        "opacity": "1",
+        "text": "27\n/ 77"
+      },
+      {
+        "id": "A2",
+        "opacity": "1",
+        "text": "7\n/ 77"
+      },
+      {
+        "id": "A3",
+        "opacity": "1",
+        "text": "2\n/ 77"
+      },
+      {
+        "id": "A4",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A5",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "A6",
+        "opacity": "1",
+        "text": "23\n/ 77\n−1,6"
+      },
+      {
+        "id": "A7",
+        "opacity": "1",
+        "text": "24\n/ 77"
+      },
+      {
+        "id": "A8",
+        "opacity": "1",
+        "text": "39\n/ 77"
+      },
+      {
+        "id": "A9",
+        "opacity": "1",
+        "text": "18\n/ 77"
+      },
+      {
+        "id": "A10",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A11",
+        "opacity": "1",
+        "text": "13\n/ 77"
+      },
+      {
+        "id": "A12",
+        "opacity": "1",
+        "text": "9\n/ 77\n−1,8"
+      },
+      {
+        "id": "A13",
+        "opacity": "1",
+        "text": "Ok #A13\n20\n/ 77"
+      },
+      {
+        "id": "A14",
+        "opacity": "1",
+        "text": "13\n/ 77"
+      },
+      {
+        "id": "A15",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "A16",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "A17",
+        "opacity": "1",
+        "text": "21\n/ 77"
+      },
+      {
+        "id": "D0",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D1",
+        "opacity": "1",
+        "text": "21\n/ 77"
+      },
+      {
+        "id": "D2",
+        "opacity": "1",
+        "text": "24\n/ 77"
+      },
+      {
+        "id": "D3",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "D4",
+        "opacity": "1",
+        "text": "35\n/ 77"
+      },
+      {
+        "id": "D5",
+        "opacity": "1",
+        "text": "17\n/ 77"
+      },
+      {
+        "id": "D6",
+        "opacity": "1",
+        "text": "19\n/ 77"
+      },
+      {
+        "id": "D7",
+        "opacity": "1",
+        "text": "12\n/ 77"
+      },
+      {
+        "id": "D8",
+        "opacity": "1",
+        "text": "8\n/ 77"
+      },
+      {
+        "id": "D9",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D10",
+        "opacity": "1",
+        "text": "14\n/ 77"
+      },
+      {
+        "id": "D11",
+        "opacity": "1",
+        "text": "16\n/ 77"
+      },
+      {
+        "id": "D12",
+        "opacity": "1",
+        "text": "27\n/ 77"
+      },
+      {
+        "id": "D13",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D14",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D15",
+        "opacity": "1",
+        "text": "21\n/ 77"
+      },
+      {
+        "id": "D16",
+        "opacity": "1",
+        "text": "18\n/ 77"
+      },
+      {
+        "id": "D17",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      }
+    ],
+    "badges": [
+      {
+        "id": "A6",
+        "text": "−1,6"
+      },
+      {
+        "id": "A12",
+        "text": "−1,8"
+      }
+    ],
+    "headers": [
+      "Savunan\nSavaşta 14\nİmha 4\nÇekildi 0",
+      "Saldıran\nSavaşta 16\nİmha 2\nÇekildi 0"
+    ],
+    "phaseText": "Savunan karşılık veriyor",
+    "results": []
+  },
+  {
+    "name": "retreat-during",
+    "time": 309.35,
+    "aegis": 0,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 1.7819420754821085,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A1",
+        "hp": 26.13799500264728,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A2",
+        "hp": 6.246637510192919,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A3",
+        "hp": 1.6554553895727095,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A4",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A5",
+        "hp": 4.497400173806448,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A6",
+        "hp": 22.865331173957127,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A7",
+        "hp": 23.996186803216276,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A8",
+        "hp": 38.108159812465736,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A9",
+        "hp": 17.061392402142044,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A10",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A11",
+        "hp": 12.484104892139042,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A12",
+        "hp": 8.22461012465363,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A13",
+        "hp": 19.656544519809803,
+        "shield": 0,
+        "status": "RETREATED"
+      },
+      {
+        "id": "A14",
+        "hp": 12.914050881265146,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A15",
+        "hp": 4.5664097376773265,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A16",
+        "hp": 4.160237991460244,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A17",
+        "hp": 20.893908141183857,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D1",
+        "hp": 20.888326684408838,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D2",
+        "hp": 23.60866341394936,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D3",
+        "hp": 4.362546887343429,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D4",
+        "hp": 34.181525616951326,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D5",
+        "hp": 16.325669008265827,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D6",
+        "hp": 18.9256952524096,
+        "shield": 0,
+        "status": "RETREATED"
+      },
+      {
+        "id": "D7",
+        "hp": 11.106145735567939,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D8",
+        "hp": 7.533889650910709,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D9",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D10",
+        "hp": 13.099219126543662,
+        "shield": 0,
+        "status": "RETREATED"
+      },
+      {
+        "id": "D11",
+        "hp": 15.962409429017656,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D12",
+        "hp": 26.412546062202846,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D13",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D14",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D15",
+        "hp": 20.5593932533621,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D16",
+        "hp": 17.57173164740265,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D17",
+        "hp": 4.365039329593407,
+        "shield": 0,
+        "status": "ACTIVE"
+      }
+    ],
+    "phase": "RETREAT",
+    "pendingFire": [],
+    "activeSourceId": null,
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "selected": "Ok #A13\nGövde canı 19,66 / 77\nGemi kalkanı 0 / 19,25\nSaldırı 21\n×",
+    "readouts": [
+      {
+        "id": "A0",
+        "opacity": "1",
+        "text": "2\n/ 77"
+      },
+      {
+        "id": "A1",
+        "opacity": "1",
+        "text": "27\n/ 77"
+      },
+      {
+        "id": "A2",
+        "opacity": "1",
+        "text": "7\n/ 77"
+      },
+      {
+        "id": "A3",
+        "opacity": "1",
+        "text": "2\n/ 77"
+      },
+      {
+        "id": "A4",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A5",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "A6",
+        "opacity": "1",
+        "text": "23\n/ 77"
+      },
+      {
+        "id": "A7",
+        "opacity": "1",
+        "text": "24\n/ 77"
+      },
+      {
+        "id": "A8",
+        "opacity": "1",
+        "text": "39\n/ 77"
+      },
+      {
+        "id": "A9",
+        "opacity": "1",
+        "text": "18\n/ 77"
+      },
+      {
+        "id": "A10",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A11",
+        "opacity": "1",
+        "text": "13\n/ 77"
+      },
+      {
+        "id": "A12",
+        "opacity": "1",
+        "text": "9\n/ 77"
+      },
+      {
+        "id": "A13",
+        "opacity": "0",
+        "text": "Ok #A13\n20\n/ 77"
+      },
+      {
+        "id": "A14",
+        "opacity": "1",
+        "text": "13\n/ 77"
+      },
+      {
+        "id": "A15",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "A16",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "A17",
+        "opacity": "1",
+        "text": "21\n/ 77"
+      },
+      {
+        "id": "D0",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D1",
+        "opacity": "1",
+        "text": "21\n/ 77"
+      },
+      {
+        "id": "D2",
+        "opacity": "1",
+        "text": "24\n/ 77"
+      },
+      {
+        "id": "D3",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "D4",
+        "opacity": "1",
+        "text": "35\n/ 77"
+      },
+      {
+        "id": "D5",
+        "opacity": "1",
+        "text": "17\n/ 77"
+      },
+      {
+        "id": "D6",
+        "opacity": "0",
+        "text": "19\n/ 77"
+      },
+      {
+        "id": "D7",
+        "opacity": "1",
+        "text": "12\n/ 77"
+      },
+      {
+        "id": "D8",
+        "opacity": "1",
+        "text": "8\n/ 77"
+      },
+      {
+        "id": "D9",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D10",
+        "opacity": "0",
+        "text": "14\n/ 77"
+      },
+      {
+        "id": "D11",
+        "opacity": "1",
+        "text": "16\n/ 77"
+      },
+      {
+        "id": "D12",
+        "opacity": "1",
+        "text": "27\n/ 77"
+      },
+      {
+        "id": "D13",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D14",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D15",
+        "opacity": "1",
+        "text": "21\n/ 77"
+      },
+      {
+        "id": "D16",
+        "opacity": "1",
+        "text": "18\n/ 77"
+      },
+      {
+        "id": "D17",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      }
+    ],
+    "badges": [],
+    "headers": [
+      "Savunan\nSavaşta 12\nİmha 4\nÇekildi 2",
+      "Saldıran\nSavaşta 15\nİmha 2\nÇekildi 1"
+    ],
+    "phaseText": "Tur sonu geri çekilmeler",
+    "results": []
+  },
+  {
+    "name": "retreat-after",
+    "time": 310.15,
+    "aegis": 0,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 1.7819420754821085,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A1",
+        "hp": 26.13799500264728,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A2",
+        "hp": 6.246637510192919,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A3",
+        "hp": 1.6554553895727095,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A4",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A5",
+        "hp": 4.497400173806448,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A6",
+        "hp": 22.865331173957127,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A7",
+        "hp": 23.996186803216276,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A8",
+        "hp": 38.108159812465736,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A9",
+        "hp": 17.061392402142044,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A10",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A11",
+        "hp": 12.484104892139042,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A12",
+        "hp": 8.22461012465363,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A13",
+        "hp": 19.656544519809803,
+        "shield": 0,
+        "status": "RETREATED"
+      },
+      {
+        "id": "A14",
+        "hp": 12.914050881265146,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A15",
+        "hp": 4.5664097376773265,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A16",
+        "hp": 4.160237991460244,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A17",
+        "hp": 20.893908141183857,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D1",
+        "hp": 20.888326684408838,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D2",
+        "hp": 23.60866341394936,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D3",
+        "hp": 4.362546887343429,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D4",
+        "hp": 34.181525616951326,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D5",
+        "hp": 16.325669008265827,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D6",
+        "hp": 18.9256952524096,
+        "shield": 0,
+        "status": "RETREATED"
+      },
+      {
+        "id": "D7",
+        "hp": 11.106145735567939,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D8",
+        "hp": 7.533889650910709,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D9",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D10",
+        "hp": 13.099219126543662,
+        "shield": 0,
+        "status": "RETREATED"
+      },
+      {
+        "id": "D11",
+        "hp": 15.962409429017656,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D12",
+        "hp": 26.412546062202846,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D13",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D14",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D15",
+        "hp": 20.5593932533621,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D16",
+        "hp": 17.57173164740265,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D17",
+        "hp": 4.365039329593407,
+        "shield": 0,
+        "status": "ACTIVE"
+      }
+    ],
+    "phase": "RETREAT",
+    "pendingFire": [],
+    "activeSourceId": null,
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "selected": "Ok #A13\nGövde canı 19,66 / 77\nGemi kalkanı 0 / 19,25\nSaldırı 21\n×",
+    "readouts": [
+      {
+        "id": "A0",
+        "opacity": "1",
+        "text": "2\n/ 77"
+      },
+      {
+        "id": "A1",
+        "opacity": "1",
+        "text": "27\n/ 77"
+      },
+      {
+        "id": "A2",
+        "opacity": "1",
+        "text": "7\n/ 77"
+      },
+      {
+        "id": "A3",
+        "opacity": "1",
+        "text": "2\n/ 77"
+      },
+      {
+        "id": "A4",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A5",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "A6",
+        "opacity": "1",
+        "text": "23\n/ 77"
+      },
+      {
+        "id": "A7",
+        "opacity": "1",
+        "text": "24\n/ 77"
+      },
+      {
+        "id": "A8",
+        "opacity": "1",
+        "text": "39\n/ 77"
+      },
+      {
+        "id": "A9",
+        "opacity": "1",
+        "text": "18\n/ 77"
+      },
+      {
+        "id": "A10",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A11",
+        "opacity": "1",
+        "text": "13\n/ 77"
+      },
+      {
+        "id": "A12",
+        "opacity": "1",
+        "text": "9\n/ 77"
+      },
+      {
+        "id": "A13",
+        "opacity": "0",
+        "text": "Ok #A13\n20\n/ 77"
+      },
+      {
+        "id": "A14",
+        "opacity": "1",
+        "text": "13\n/ 77"
+      },
+      {
+        "id": "A15",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "A16",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "A17",
+        "opacity": "1",
+        "text": "21\n/ 77"
+      },
+      {
+        "id": "D0",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D1",
+        "opacity": "1",
+        "text": "21\n/ 77"
+      },
+      {
+        "id": "D2",
+        "opacity": "1",
+        "text": "24\n/ 77"
+      },
+      {
+        "id": "D3",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      },
+      {
+        "id": "D4",
+        "opacity": "1",
+        "text": "35\n/ 77"
+      },
+      {
+        "id": "D5",
+        "opacity": "1",
+        "text": "17\n/ 77"
+      },
+      {
+        "id": "D6",
+        "opacity": "0",
+        "text": "19\n/ 77"
+      },
+      {
+        "id": "D7",
+        "opacity": "1",
+        "text": "12\n/ 77"
+      },
+      {
+        "id": "D8",
+        "opacity": "1",
+        "text": "8\n/ 77"
+      },
+      {
+        "id": "D9",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D10",
+        "opacity": "0",
+        "text": "14\n/ 77"
+      },
+      {
+        "id": "D11",
+        "opacity": "1",
+        "text": "16\n/ 77"
+      },
+      {
+        "id": "D12",
+        "opacity": "1",
+        "text": "27\n/ 77"
+      },
+      {
+        "id": "D13",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D14",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D15",
+        "opacity": "1",
+        "text": "21\n/ 77"
+      },
+      {
+        "id": "D16",
+        "opacity": "1",
+        "text": "18\n/ 77"
+      },
+      {
+        "id": "D17",
+        "opacity": "1",
+        "text": "5\n/ 77"
+      }
+    ],
+    "badges": [],
+    "headers": [
+      "Savunan\nSavaşta 12\nİmha 4\nÇekildi 2",
+      "Saldıran\nSavaşta 15\nİmha 2\nÇekildi 1"
+    ],
+    "phaseText": "Tur sonu geri çekilmeler",
+    "results": []
+  },
+  {
+    "name": "retreat-keyboard-end",
+    "time": 360.23,
+    "aegis": 0,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A1",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A2",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A3",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A4",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A5",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A6",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A7",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A8",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A9",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A10",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A11",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A12",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A13",
+        "hp": 19.656544519809803,
+        "shield": 0,
+        "status": "RETREATED"
+      },
+      {
+        "id": "A14",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A15",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A16",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "A17",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D0",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D1",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D2",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D3",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D4",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D5",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D6",
+        "hp": 18.9256952524096,
+        "shield": 0,
+        "status": "RETREATED"
+      },
+      {
+        "id": "D7",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D8",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D9",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D10",
+        "hp": 13.099219126543662,
+        "shield": 0,
+        "status": "RETREATED"
+      },
+      {
+        "id": "D11",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D12",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D13",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D14",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D15",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D16",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D17",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      }
+    ],
+    "phase": "RETREAT",
+    "pendingFire": [],
+    "activeSourceId": null,
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "selected": "Ok #A13\nGövde canı 19,66 / 77\nGemi kalkanı 0 / 19,25\nSaldırı 21\n×",
+    "readouts": [
+      {
+        "id": "A0",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A1",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A2",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A3",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A4",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A5",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A6",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A7",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A8",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A9",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A10",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A11",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A12",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A13",
+        "opacity": "0",
+        "text": "Ok #A13\n20\n/ 77"
+      },
+      {
+        "id": "A14",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A15",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A16",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "A17",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D0",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D1",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D2",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D3",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D4",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D5",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D6",
+        "opacity": "0",
+        "text": "19\n/ 77"
+      },
+      {
+        "id": "D7",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D8",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D9",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D10",
+        "opacity": "0",
+        "text": "14\n/ 77"
+      },
+      {
+        "id": "D11",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D12",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D13",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D14",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D15",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D16",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      },
+      {
+        "id": "D17",
+        "opacity": "0",
+        "text": "0\n/ 77"
+      }
+    ],
+    "badges": [],
+    "headers": [
+      "Savunan\nSavaşta 0\nİmha 16\nÇekildi 2",
+      "Saldıran\nSavaşta 0\nİmha 17\nÇekildi 1"
+    ],
+    "phaseText": "Tur sonu geri çekilmeler",
+    "results": []
+  }
+]

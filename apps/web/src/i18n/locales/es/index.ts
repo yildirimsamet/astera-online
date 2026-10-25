@@ -1,4 +1,5 @@
 import { moderation } from './moderation.js';
+import { simulator } from './simulator.js';
 import { accountDeletion } from './accountDeletion.js';
 import { accountSecurity } from './accountSecurity.js';
 import { unknownSignal } from './unknownSignal.js';
@@ -34,6 +35,7 @@ import type { Resources } from '../en/index.js';
 
 /** ES — translated from the English resource tree. */
 export const es: Resources = {
+  simulator,
   moderation,
   accountDeletion,
   accountSecurity,

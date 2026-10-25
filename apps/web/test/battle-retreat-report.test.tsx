@@ -54,7 +54,7 @@ describe('six-round public combat rules', () => {
   });
   it.each(['en', 'tr'] as const)('publishes distribution, collector protection and all five retreat windows in %s', language => {
     const text = JSON.stringify(getWikiArticle('combat.model')?.sections[language]);
-    expect(text).toMatch(language === 'en' ? /all eligible.*random/i : /bütün uygun.*rastgele/i);
+    expect(text).toMatch(language === 'en' ? /up to 10.*random/i : /en fazla 10.*rastgele/i);
     expect(text).toMatch(language === 'en' ? /Garbage Collector/ : /Hurdacı/);
     expect(text).toContain('1–5');
     const blocks = JSON.stringify(conceptReference('combat.model', language));

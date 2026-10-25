@@ -1,3 +1,4 @@
+import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
 import { refreshPlanetAegis, syncPlanetAegis } from './planetAegis.js';
 import { and, eq, inArray, isNull, lte, or } from 'drizzle-orm';
 import {
@@ -236,10 +237,12 @@ export async function resolveNeutralBattle(
     fleetEntries(standing).filter(([hull]) => !HULLS[hull].ground),
   ) as Fleet;
   const defenders = garrisonOf(mobile, defenceDark ? {} : ground);
-  const result = resolveBattle([{ ...soloStack(attackingFleet, { tech: mission.tech ?? {} }, mission.damage ?? undefined), contributionId: mission.id, playerId: mission.ownerPlayerId }],
-    [{ stackId: 'neutral', playerId: '', fleet: defenders, damage: neutral.radiationEnabled ? health.damage : [],
-      tech: { tech: {} }, maintenanceExempt: true }],
-    defenceDark ? 0 : neutral.shield, seededFrom(mission.id), hpRadiationApplies(rulesetVersion) ? 'HP_PLANET' : 'PLANET', true);
+  const replayAttackers = [{ ...soloStack(attackingFleet, { tech: mission.tech ?? {} }, mission.damage ?? undefined), contributionId: mission.id, playerId: mission.ownerPlayerId }];
+  const replayDefenders = [{ stackId: 'neutral', playerId: '', fleet: defenders, damage: neutral.radiationEnabled ? health.damage : [], tech: { tech: {} }, maintenanceExempt: true }];
+  const replayCapture = prepareBattleReplay(replayAttackers, replayDefenders);
+  const replayCapacity = shieldHp((await neutralOrbit(tx, neutral.id)).find(row => row.type === 'AEGIS')?.level ?? 0);
+  const result = resolveBattle(replayAttackers, replayDefenders,
+    defenceDark ? 0 : neutral.shield, seededFrom(mission.id), hpRadiationApplies(rulesetVersion) ? 'HP_PLANET' : 'PLANET', true, replayCapture.recording);
   /*
     Bomb-enabled garrisons carry their real surviving HP, like monument NPCs;
     a subsequent raid or reinforcement cannot heal radiation wounds. Legacy
@@ -357,7 +360,7 @@ export async function resolveNeutralBattle(
       });
     }
   }
-  await tx.insert(battleReports).values({
+  const [replayReport] = await tx.insert(battleReports).values({
     seasonId: mission.seasonId,
     missionId: mission.id,
     attackerPlayerId: mission.ownerPlayerId,
@@ -389,7 +392,10 @@ export async function resolveNeutralBattle(
     shieldAbsorbed: result.rounds.reduce((sum, round) => sum + round.shieldAbsorbed, 0),
     dominionSwing: 0,
     createdAt: clock.now(),
-  });
+  }).returning({ id: battleReports.id });
+  if (!replayReport) throw new Error('neutral battle report insert returned no row');
+  await persistBattleReplay(tx, { source: { kind: 'BATTLE', id: replayReport.id }, seasonId: mission.seasonId, capture: replayCapture, result: { ...result, defenceSalvage: {} },
+    context: { environment: 'PLANET', aegisCapacity: replayCapacity, defenceOffline: defenceDark, escape: null, control: null }, at: clock.now() });
   /**
    * THE RAIDER IS TOLD. D121a.
    *

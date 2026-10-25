@@ -1,12 +1,13 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
-  COMBAT, HULLS, counterMult, battleRetreatPolicy, fleetCount, mulberry32, resolveBattle,
+  COMBAT, HULLS, counterMult, battleRetreatPolicy, fleetCount, fleetEntries, mulberry32, resolveBattle,
   resolveCombat, resolveMonumentCombat, resolveRaid, seededFrom,
   type Fleet, type HullId, type JointAttackerStack,
 } from '../src/index.js';
 import { resolveRandomBattle, resolveVolley, type VolleyShip } from '../src/randomBattle.js';
 import { distributedCombatReference } from './fixtures/distributed-combat-reference.js';
+import { createBattleRecording, type RecordedShot } from '../src/battleRecording.js';
 
 const ship = (hull: HullId, hp = 1000, attack = 0, shield = 0): VolleyShip =>
   ({ hull, hp, attack, shield, owner: 0, canFire: true, retreated: false });
@@ -16,12 +17,32 @@ const defence = (fleet: Fleet) => [{ stackId: 'd', playerId: 'd', fleet, tech: {
 const mean = () => .5;
 
 describe('six-round distributed combat: approved production contract', () => {
-  it.each(distributedCombatReference)('$name exactly matches the frozen, independently captured calibration model', spec => {
-    const rng = typeof spec.seed === 'string' ? seededFrom(spec.seed) : mulberry32(spec.seed);
-    const result = resolveRandomBattle(spec.attackers, spec.defenders, spec.shield, rng, spec.precise, spec.maintenance);
-    expect(result.rounds.every(round => round.distributedFire === true)).toBe(true);
-    // The simulator predates the additive report marker; all numeric/ownership fields stay identical.
-    expect({ ...result, rounds: result.rounds.map(({ distributedFire: _model, ...round }) => round) }).toEqual(spec.expected);
+  it.each(distributedCombatReference)('$name preserves ownership, shot budgets and determinism under the new target cap', spec => {
+    // These inputs cover the earlier all-target calibration. Its numeric golden
+    // results remain in the fixture as history, not as expectations for this new rule.
+    const rng = () => typeof spec.seed === 'string' ? seededFrom(spec.seed) : mulberry32(spec.seed);
+    const recording = createBattleRecording();
+    const result = resolveRandomBattle(spec.attackers, spec.defenders, spec.shield, rng(), spec.precise, spec.maintenance, recording);
+    expect(result).toEqual(resolveRandomBattle(spec.attackers, spec.defenders, spec.shield, rng(), spec.precise, spec.maintenance));
+    expect(result.rounds.every(round => round.distributedFire === true && round.targetLimit === 10)).toBe(true);
+    const unchangedSelection = [spec.attackers, spec.defenders].every(side =>
+      side.reduce((sum, owner) => sum + fleetCount(owner.fleet), 0) <= COMBAT.targetsPerShot
+      && new Set(side.flatMap(owner => fleetEntries(owner.fleet).map(([hull]) => HULLS[hull].cls))).size <= 1);
+    const unchangedOpening = spec.shield === 0 || spec.attackers.every(owner => (owner.fleet.NULLIFIER ?? 0) === 0);
+    if (unchangedSelection && unchangedOpening) expect({ ...result, rounds: result.rounds.map(({ distributedFire: _model, targetLimit: _cap, ...round }) => round) }).toEqual(spec.expected);
+    for (const owner of [...result.contributions, ...result.defenders]) {
+      expect(fleetCount(owner.sent)).toBe(fleetCount(owner.survivors) + fleetCount(owner.losses));
+      expect(fleetCount(owner.retreated ?? {})).toBeLessThanOrEqual(fleetCount(owner.survivors));
+    }
+    for (const round of recording.rounds) for (const shot of [...round.attackerShots, ...round.defenderShots]) {
+      expect(new Set(shot.hits.map(hit => hit.targetId)).size).toBeLessThanOrEqual(10);
+      expect(shot.hits.reduce((sum, hit) => sum + (hit.normalAegisDamage + hit.shieldDamage + hit.hullDamage) / hit.counter, shot.unusedBaseDamage)).toBeCloseTo(shot.baseDamage, 7);
+      for (const hit of shot.hits) {
+        expect(hit.hpAfter).toBeGreaterThanOrEqual(0);
+        expect(hit.hpBefore - hit.hpAfter).toBeCloseTo(hit.hullDamage, 7);
+        expect(hit.shieldBefore - hit.shieldAfter).toBeCloseTo(hit.shieldDamage, 7);
+      }
+    }
   });
 
   it('uses six rounds and the rounded percentage windows, excluding support power', () => {
@@ -41,7 +62,7 @@ describe('six-round distributed combat: approved production contract', () => {
     }
   });
 
-  it('splits ONE shot among every eligible ship without mutating the live round snapshot', () => {
+  it('splits ONE shot among ten eligible ships without mutating the live round snapshot', () => {
     const from = [ship('CORSAIR', 1000, 408)], to = Array.from({ length: 10 }, () => ship('DART'));
     const before = structuredClone({ from, to });
     const r = resolveVolley(from, to, 1, mulberry32(19), 0, 1);
@@ -154,7 +175,9 @@ it('conserves base-shot energy through mixed counters, shields, cargo and repeat
     fc.integer({ min: 1, max: 10000 }), fc.nat(), (hull, targets, power, seed) => {
       const to = targets.map(target => ({ ...ship(target.hull, target.hp, 0, target.shield), retreated: target.retreated }));
       const from = [ship(hull, 1000, power / 4), { ...ship(hull, 1000, power * 3 / 4), owner: 1 }];
-      const r = resolveVolley(from, to, 1, mulberry32(seed), 0, 2);
+      const shots: RecordedShot[] = [];
+      const r = resolveVolley(from, to, 1, mulberry32(seed), 0, 2,
+        { fromIds: ['a', 'b'], toIds: to.map((_, i) => String(i)), shots });
       let capacity = 0, consumed = 0, actualHull = 0;
       for (let i = 0; i < to.length; i++) {
         const before = to[i]!;
@@ -170,7 +193,12 @@ it('conserves base-shot energy through mixed counters, shields, cargo and repeat
         expect(r.hp[i]).toBeGreaterThanOrEqual(0);
         expect(r.shields[i]).toBeGreaterThanOrEqual(0);
       }
-      expect(consumed).toBeCloseTo(Math.min(capacity, power), 7);
+      const unused = shots.reduce((sum, shot) => sum + shot.unusedBaseDamage, 0)
+        + (shots.some(shot => shot.sourceId === 'a') ? 0 : power / 4)
+        + (shots.some(shot => shot.sourceId === 'b') ? 0 : power * 3 / 4);
+      expect(consumed).toBeLessThanOrEqual(Math.min(capacity, power) + 1e-7);
+      expect(consumed + unused).toBeCloseTo(power, 7);
+      for (const shot of shots) expect(new Set(shot.hits.map(hit => hit.targetId)).size).toBeLessThanOrEqual(10);
       expect(r.credited.reduce((sum, value) => sum + value, 0)).toBeCloseTo(actualHull, 7);
       expect(r.hullDamage).toBeCloseTo(actualHull, 7);
     }), { seed: 20261023, numRuns: 150 });

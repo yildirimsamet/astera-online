@@ -1,5 +1,6 @@
 import * as rules from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
+import { battleReplays } from '../src/db/schema.js';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { and, eq, sql } from 'drizzle-orm';
@@ -513,6 +514,7 @@ describe('what a pirate raid comes home with', () => {
     const [report] = await f.db.select().from(battleReports);
     expect(report).toBeDefined();
     expect(report!.targetKind).toBe('PIRATE');
+    expect((await f.db.select().from(battleReplays).where(eq(battleReplays.battleReportId, report!.id)))[0]?.status).toBe('AVAILABLE');
     expect(report!.pirateRaidId).toBe(launch.raidId);
     expect(report!.missionId).toBeNull();
     expect(report!.targetPlanetId).toBeNull();

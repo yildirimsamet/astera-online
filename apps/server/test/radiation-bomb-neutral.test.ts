@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, expect, it } from 'vitest';
 import { HULLS, MULTI_WORLD, applyHpDose, fleetEntries, resolveBattle, seededFrom, soloStack, type Fleet } from '@astera/rules';
-import { battleReports, missions, neutralPlanetState, notifications, planets, seasons, strategicAssets, units } from '../src/db/schema.js';
+import { battleReplays, battleReports, missions, neutralPlanetState, notifications, planets, seasons, strategicAssets, units } from '../src/db/schema.js';
 import { buildRadiationBomb, launchRadiationBomb, resolveRadiationBomb } from '../src/services/radiationBomb.js';
 import { advanceNeutralEconomy, reinforceNeutral, resolveNeutralBattle } from '../src/services/neutral.js';
 import { readHomeHealth } from '../src/services/homeHealth.js';
@@ -71,6 +71,7 @@ it('settles unprocessed radiation deaths before a raid, without counting them as
   await hit({ DART: 1 });
   f.clock.advance(10);
   const { report } = await raid();
+  expect((await f.db.select().from(battleReplays).where(eq(battleReplays.battleReportId, report.id)))[0]?.status).toBe('AVAILABLE');
   expect(report.defenderFleet.DART ?? 0).toBe(0);
   expect(report.defenderLosses.DART ?? 0).toBe(0);
   expect((await readHomeHealth(f.db, npc)).fleet.DART ?? 0).toBe(0);
@@ -98,4 +99,12 @@ it('keeps old wounds on reinforcement, births only the missing NPCs at the curre
   expect(newborn.damageBp + (newborn.remainderBp ?? 0)).toBeCloseTo(protectedDose / HULLS.DART.hp * 10000);
   expect((await f.db.select().from(units).where(and(eq(units.planetId, npc), eq(units.location, 'home'))))
     .every(row => row.ownerPlayerId === null)).toBe(true);
+});
+
+it('does not claim that neutral ground losses were rebuilt when settlement salvages nothing', async () => {
+  await hit({ BASTION: 3 });
+  const { report } = await raid(100);
+  expect(report.defenderLosses.BASTION).toBeGreaterThan(0);
+  const [replay] = await f.db.select().from(battleReplays).where(eq(battleReplays.battleReportId, report.id));
+  expect(replay!.data!.result.defenceSalvage).toEqual(report.defenceSalvage);
 });

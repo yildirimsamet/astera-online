@@ -1,3 +1,4 @@
+import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
 import { commanderPvpBalance } from './pvpBalance.js';
 import { and, eq } from 'drizzle-orm';
 import {
@@ -320,7 +321,10 @@ export async function resolveClanWarBattle(
     now: defender.now,
   });
   const defenceNavy = await honorDefenceNavy(tx, mission.seasonId, [defender.playerId, ...supporterIds]);
+  const replayCapture = prepareBattleReplay(stacks, [{ stackId: 'host', playerId: defender.playerId, fleet: defenders,
+    tech: { tech: defenderTech }, damage: homePartition.damage.filter(lot => !NON_COMBATANT_HULLS.includes(lot.hull)) }, ...stations.map(station => station.stack)]);
   const raid = resolveRaid({
+    recording: replayCapture.recording,
     stacks,
     line: defenders,
     homeDamage: homePartition.damage.filter((lot) => !NON_COMBATANT_HULLS.includes(lot.hull)),
@@ -677,6 +681,8 @@ export async function resolveClanWarBattle(
     createdAt: defender.now,
   }).returning({ id: battleReports.id });
   if (!report) throw new Error('clan war battle report insert returned no row');
+  await persistBattleReplay(tx, { source: { kind: 'BATTLE', id: report.id }, seasonId: mission.seasonId, capture: replayCapture, result,
+    context: { environment: 'PLANET', aegisCapacity: shieldHp(defender.effectiveInstruments.AEGIS ?? 0), defenceOffline: defenceDark, escape: raid.escape, control: null }, at: defender.now });
 
   const sentByPlayer = new Map<string, Fleet>();
   const lostByPlayer = new Map<string, Fleet>();

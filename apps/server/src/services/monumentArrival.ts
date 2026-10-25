@@ -1,3 +1,4 @@
+import { prepareBattleReplay, persistBattleReplay } from './battleReplay.js';
 import { monumentPosition } from './monumentMotion.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -180,12 +181,13 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
   const dBefore = locked.lots.filter((lot) => defenderIds.has(lot.waveId));
   const neutral = dBefore.length === 0 && fleetCount(locked.monument.garrison) > 0;
   const defenceNavy = await honorDefenceNavy(tx, locked.season.id, dBefore.map(lot => lot.playerId));
-  const result = resolveMonumentCombat(aBefore.map((lot) => ({ contributionId: lot.id, playerId: lot.playerId,
-    fleet: { [lot.hull]: lot.count }, damage: [lot], tech: { tech: lot.tech } })),
-  neutral ? [{ stackId: `neutral:${locked.monument.id}`, playerId: `neutral:${locked.monument.id}`,
+  const replayAttackers = aBefore.map((lot) => ({ contributionId: lot.id, playerId: lot.playerId,
+    fleet: { [lot.hull]: lot.count }, damage: [lot], tech: { tech: lot.tech } }));
+  const replayDefenders = neutral ? [{ stackId: `neutral:${locked.monument.id}`, playerId: `neutral:${locked.monument.id}`,
     fleet: locked.monument.garrison, damage: locked.monument.garrisonDamage, tech: { tech: locked.monument.garrisonTech }, maintenanceExempt: true }]
-    : dBefore.map((lot) => ({ stackId: lot.id, playerId: lot.playerId, fleet: { [lot.hull]: lot.count }, damage: [lot], tech: { tech: lot.tech } })),
-  seededFrom('monument-battle', incoming.id), true);
+    : dBefore.map((lot) => ({ stackId: lot.id, playerId: lot.playerId, fleet: { [lot.hull]: lot.count }, damage: [lot], tech: { tech: lot.tech } }));
+  const replayCapture = prepareBattleReplay(replayAttackers, replayDefenders, { wingIds: new Map([...aBefore, ...dBefore].map(lot => [lot.id, lot.waveId])) });
+  const result = resolveMonumentCombat(replayAttackers, replayDefenders, seededFrom('monument-battle', incoming.id), true, replayCapture.recording);
   const defenderCargoRetreated = result.control === 'ATTACKER'
     && fleetCount(activeBattleFleet(result.defenderSurvivors, result.defenderRetreated)) > 0;
   const survivors: MonumentShipLot[] = [];
@@ -225,6 +227,9 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
     defenderLossValue: result.defenderLossValue, rulesetVersion: locked.season.rulesetVersion, eligible,
     rawExchange: score?.rawExchange ?? 0, transfer, createdAt: at }).returning();
   if (!battle) throw new Error('monument battle insert returned no row');
+  await persistBattleReplay(tx, { source: { kind: 'MONUMENT', id: battle.id }, seasonId: locked.season.id, capture: replayCapture, result,
+    context: { environment: 'MONUMENT', aegisCapacity: 0, defenceOffline: false, escape: null, control: result.control,
+      ...(defenderCargoRetreated ? { aftermath: 'CARGO_WITHDRAWAL' } : {}) }, at });
   const participantIds = [...new Set([...aBefore, ...dBefore].map((lot) => lot.playerId))];
   const identities = participantIds.length === 0 ? [] : await tx.select({ id: players.id, name: accounts.displayName })
     .from(players).innerJoin(accounts, eq(accounts.id, players.accountId)).where(inArray(players.id, participantIds));

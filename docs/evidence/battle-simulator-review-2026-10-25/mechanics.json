@@ -1,0 +1,363 @@
+{
+  "tinyBadges": [
+    {
+      "at": 43.36999999999999,
+      "source": "D0",
+      "target": "A6",
+      "hull": 0.024767272414393804,
+      "shield": 0
+    },
+    {
+      "at": 71.23131578947361,
+      "source": "D9",
+      "target": "A3",
+      "hull": 0.049596279897771364,
+      "shield": 0
+    },
+    {
+      "at": 71.34710526315783,
+      "source": "D9",
+      "target": "A9",
+      "hull": 0,
+      "shield": 0.028253732453272506
+    }
+  ],
+  "retreat": {
+    "seed": 0,
+    "event": {
+      "kind": "RETREAT",
+      "shipId": "A13",
+      "round": 4,
+      "at": 308.75000000000085
+    },
+    "ship": {
+      "id": "A13",
+      "hp": 77,
+      "shield": 19.25,
+      "status": "ACTIVE",
+      "side": "ATTACK",
+      "hull": "DART",
+      "playerId": "a:1",
+      "stackId": "a:1",
+      "maxHp": 77,
+      "maxShield": 19.25,
+      "attack": 21,
+      "canFire": true
+    },
+    "duration": 360.2350000000006,
+    "retreats": [
+      {
+        "kind": "RETREAT",
+        "shipId": "A13",
+        "round": 4,
+        "at": 308.75000000000085
+      },
+      {
+        "kind": "RETREAT",
+        "shipId": "D6",
+        "round": 4,
+        "at": 308.75000000000085
+      },
+      {
+        "kind": "RETREAT",
+        "shipId": "D10",
+        "round": 4,
+        "at": 308.75000000000085
+      }
+    ],
+    "final": {
+      "grade": "DECISIVE",
+      "lossRatio": 1,
+      "rounds": [
+        {
+          "round": 1,
+          "distributedFire": true,
+          "targetLimit": 10,
+          "attackerRoll": 0.9557235243916512,
+          "defenderRoll": 0.9433923436701298,
+          "attackerDamage": 361,
+          "defenderDamage": 357,
+          "shieldBefore": 0,
+          "shieldAfter": 0,
+          "shieldAbsorbed": 0,
+          "shieldBreakerDamage": 0,
+          "attackerShipShieldAbsorbed": 303,
+          "defenderShipShieldAbsorbed": 298,
+          "attackerHullDamage": 63,
+          "attackerLosses": {},
+          "defenderLosses": {},
+          "retreats": [],
+          "casualties": []
+        },
+        {
+          "round": 2,
+          "distributedFire": true,
+          "targetLimit": 10,
+          "attackerRoll": 0.9947724516689778,
+          "defenderRoll": 1.0072078532353044,
+          "attackerDamage": 376,
+          "defenderDamage": 381,
+          "shieldBefore": 0,
+          "shieldAfter": 0,
+          "shieldAbsorbed": 0,
+          "shieldBreakerDamage": 0,
+          "attackerShipShieldAbsorbed": 43,
+          "defenderShipShieldAbsorbed": 49,
+          "attackerHullDamage": 327,
+          "attackerLosses": {},
+          "defenderLosses": {},
+          "retreats": [],
+          "casualties": []
+        },
+        {
+          "round": 3,
+          "distributedFire": true,
+          "targetLimit": 10,
+          "attackerRoll": 1.0184402215108277,
+          "defenderRoll": 1.0238376607745887,
+          "attackerDamage": 385,
+          "defenderDamage": 387,
+          "shieldBefore": 0,
+          "shieldAfter": 0,
+          "shieldAbsorbed": 0,
+          "shieldBreakerDamage": 0,
+          "attackerShipShieldAbsorbed": 0,
+          "defenderShipShieldAbsorbed": 0,
+          "attackerHullDamage": 385,
+          "attackerLosses": {},
+          "defenderLosses": {},
+          "retreats": [],
+          "casualties": []
+        },
+        {
+          "round": 4,
+          "distributedFire": true,
+          "targetLimit": 10,
+          "attackerRoll": 0.9929611540213228,
+          "defenderRoll": 1.0129950348287822,
+          "attackerDamage": 375,
+          "defenderDamage": 383,
+          "shieldBefore": 0,
+          "shieldAfter": 0,
+          "shieldAbsorbed": 0,
+          "shieldBreakerDamage": 0,
+          "attackerShipShieldAbsorbed": 0,
+          "defenderShipShieldAbsorbed": 0,
+          "attackerHullDamage": 375,
+          "attackerLosses": {
+            "DART": 2
+          },
+          "defenderLosses": {
+            "DART": 4
+          },
+          "retreats": [
+            {
+              "side": "ATTACK",
+              "playerId": "a:1",
+              "stackId": "a:1",
+              "fleet": {
+                "DART": 1
+              }
+            },
+            {
+              "side": "DEFENCE",
+              "playerId": "d:1",
+              "stackId": "d:1",
+              "fleet": {
+                "DART": 2
+              }
+            }
+          ],
+          "casualties": [
+            {
+              "side": "ATTACK",
+              "playerId": "a:1",
+              "stackId": "a:1",
+              "fleet": {
+                "DART": 2
+              }
+            },
+            {
+              "side": "DEFENCE",
+              "playerId": "d:1",
+              "stackId": "d:1",
+              "fleet": {
+                "DART": 4
+              }
+            }
+          ]
+        },
+        {
+          "round": 5,
+          "distributedFire": true,
+          "targetLimit": 10,
+          "attackerRoll": 0.9594012048095465,
+          "defenderRoll": 0.9356562711670995,
+          "attackerDamage": 203,
+          "defenderDamage": 206,
+          "shieldBefore": 0,
+          "shieldAfter": 0,
+          "shieldAbsorbed": 0,
+          "shieldBreakerDamage": 0,
+          "attackerShipShieldAbsorbed": 0,
+          "defenderShipShieldAbsorbed": 0,
+          "attackerHullDamage": 203,
+          "attackerLosses": {
+            "DART": 15
+          },
+          "defenderLosses": {
+            "DART": 12
+          },
+          "retreats": [],
+          "casualties": [
+            {
+              "side": "ATTACK",
+              "playerId": "a:1",
+              "stackId": "a:1",
+              "fleet": {
+                "DART": 15
+              }
+            },
+            {
+              "side": "DEFENCE",
+              "playerId": "d:1",
+              "stackId": "d:1",
+              "fleet": {
+                "DART": 12
+              }
+            }
+          ]
+        }
+      ],
+      "shieldLeft": 0,
+      "shieldProtectedArmed": 0,
+      "attackerSurvivors": {
+        "DART": 1
+      },
+      "defenderSurvivors": {
+        "DART": 2
+      },
+      "attackerRetreated": {
+        "DART": 1
+      },
+      "defenderRetreated": {
+        "DART": 2
+      },
+      "attackerCombatSurvivors": {},
+      "attackerRetreatDamage": [
+        {
+          "hull": "DART",
+          "count": 1,
+          "damageBp": 7447,
+          "remainderBp": 0.20201041431209887
+        }
+      ],
+      "defenderRetreatDamage": [
+        {
+          "hull": "DART",
+          "count": 1,
+          "damageBp": 8298,
+          "remainderBp": 0.8027108384849271
+        },
+        {
+          "hull": "DART",
+          "count": 1,
+          "damageBp": 7542,
+          "remainderBp": 0.11749968706590153
+        }
+      ],
+      "attackerLosses": {
+        "DART": 17
+      },
+      "defenderLosses": {
+        "DART": 16
+      },
+      "attackerLossValue": 7225,
+      "defenderLossValue": 6800,
+      "defenceSalvage": {},
+      "attackerDamage": [
+        {
+          "hull": "DART",
+          "count": 1,
+          "damageBp": 7447,
+          "remainderBp": 0.20201041431209887
+        }
+      ],
+      "defenderDamage": [
+        {
+          "hull": "DART",
+          "count": 1,
+          "damageBp": 8298,
+          "remainderBp": 0.8027108384849271
+        },
+        {
+          "hull": "DART",
+          "count": 1,
+          "damageBp": 7542,
+          "remainderBp": 0.11749968706590153
+        }
+      ],
+      "contributions": [
+        {
+          "contributionId": "a:1",
+          "playerId": "a:1",
+          "sent": {
+            "DART": 18
+          },
+          "survivors": {
+            "DART": 1
+          },
+          "retreated": {
+            "DART": 1
+          },
+          "losses": {
+            "DART": 17
+          },
+          "lossValue": 7225,
+          "hullDamage": 1353.9750856210464,
+          "survivorDamage": [
+            {
+              "hull": "DART",
+              "count": 1,
+              "damageBp": 7447,
+              "remainderBp": 0.20201041431209887
+            }
+          ]
+        }
+      ],
+      "defenders": [
+        {
+          "stackId": "d:1",
+          "playerId": "d:1",
+          "sent": {
+            "DART": 18
+          },
+          "survivors": {
+            "DART": 2
+          },
+          "retreated": {
+            "DART": 2
+          },
+          "losses": {
+            "DART": 16
+          },
+          "lossValue": 6800,
+          "survivorDamage": [
+            {
+              "hull": "DART",
+              "count": 1,
+              "damageBp": 8298,
+              "remainderBp": 0.8027108384849271
+            },
+            {
+              "hull": "DART",
+              "count": 1,
+              "damageBp": 7542,
+              "remainderBp": 0.11749968706590153
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

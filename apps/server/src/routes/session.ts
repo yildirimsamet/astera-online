@@ -11,6 +11,7 @@ import {
   markNotificationsSeen,
   pendingThreads,
 } from '../services/session.js';
+import { readBattleReplay } from '../services/battleReplay.js';
 import { readBattleReports } from '../services/reports.js';
 import { requireAuth } from './auth.js';
 
@@ -101,6 +102,11 @@ export function registerSessionRoutes(app: FastifyInstance): void {
       .parse(req.query);
     const playerId = await me(req.accountId!);
     return readBattleReports(app.db, playerId, query.limit);
+  });
+
+  app.get('/api/reports/:kind/:id/replay', { preHandler: requireAuth }, async req => {
+    const source = z.object({ kind: z.enum(['BATTLE', 'MONUMENT']), id: z.string().uuid() }).parse(req.params);
+    return readBattleReplay(app.db, await whoAndWhere(req.accountId!), source);
   });
 
   app.get('/api/session/unlocks', { preHandler: requireAuth }, async (req) => {

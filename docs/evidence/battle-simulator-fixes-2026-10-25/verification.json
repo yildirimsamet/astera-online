@@ -1,0 +1,14 @@
+{
+  "tests": {
+    "files": 13,
+    "passed": 172
+  },
+  "typecheck": "passed",
+  "lint": "passed",
+  "build": "passed",
+  "preview": "http://localhost:5184/?simulator=1",
+  "screenshots": 20,
+  "apiRequests": 0,
+  "browserErrors": [],
+  "knownEngineFinding": "K01: global Nullifier Aegis bonus priority remains open; no PvP rule changes in this review-fix pass."
+}

@@ -1,3 +1,5 @@
+import { readBattleReplay } from '../src/services/battleReplay.js';
+import { battleReplays } from '../src/db/schema.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
@@ -64,7 +66,9 @@ describe('chronological monument arrivals and physical battle settlement', () =>
       await arrive(attacker);
       const battles = await f.db.select().from(monumentBattles);
       expect(battles).toHaveLength(1);
+      expect((await f.db.select().from(battleReplays).where(eq(battleReplays.monumentBattleId, battles[0]!.id)))[0]?.status).toBe('AVAILABLE');
       expect(battles[0]!.control).toBe('ATTACKER');
+      for (const index of [0, 1]) expect((await readBattleReplay(f.db, { playerId: f.playerIds[index]!, seasonId: f.seasonId }, { kind: 'MONUMENT', id: battles[0]!.id })).viewer).toBe(index === 0 ? 'ATTACK' : 'DEFENCE');
       expect((await f.db.select().from(monuments))[0]?.controllerPlayerId).toBe(f.playerIds[0]);
       expect((await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, attacker.id)))[0]?.status).toBe('HOLD');
       const [own] = await f.db.transaction(tx => readMonumentBattleReports(tx, f.playerIds[1]!, 10));
@@ -223,8 +227,9 @@ describe('chronological monument arrivals and physical battle settlement', () =>
 
   it('handles racing duplicate arrivals without duplicating a cargo retreat', async () => {
     await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!, productionPerMinute: 0 }).where(eq(monuments.id, m.id));
-    const defender = await wave(1, { COURIER: 1 }, { hold: true, cargo: 12.5 });
-    const attacker = await wave(0, { DART: 1 });
+    // Freeze battle randomness: the test isolates duplicate settlement, not cargo survival odds.
+    const defender = await wave(1, { COURIER: 1 }, { hold: true, cargo: 12.5, tech: { SHIP_ARMOR: 4, SHIP_SHIELDS: 4 } });
+    const attacker = await wave(0, { DART: 1 }, { id: '00000000-0000-4000-8000-000000000001' });
     await Promise.all([arrive(attacker), arrive(attacker)]);
     expect(await f.db.select().from(monumentBattles)).toHaveLength(1);
     expect(await f.db.select().from(monumentWaves)).toHaveLength(2);

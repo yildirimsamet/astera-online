@@ -1,0 +1,2410 @@
+{
+  "base": "http://localhost:5186/?simulator=1",
+  "apiRequests": 0,
+  "errors": [],
+  "observations": [
+    {
+      "name": "desktop-initial",
+      "state": {
+        "time": 0,
+        "aegis": 854.25,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 1000,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 1000,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 215,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "READY",
+        "pendingFire": [],
+        "activeSourceId": null,
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Filolar hazır",
+      "result": [],
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1020,
+        "height": 708,
+        "top": 151.5,
+        "right": 1320,
+        "bottom": 859.5,
+        "left": 300
+      },
+      "hpFont": "8px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\n\nİki filo kur. Her atışı izle.\n\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nÖrnek savaş\nKarma filolar\nAegis ve Söndürücüler\nAteş altındaki konvoy\nYer savunma hattı\nSavaşı simüle et\n↗\nSaldıran\nSavunan\nFilo 1\n11 birlik\nAraştırmalar\nGemi Gücü\n0\n1\n2\n3\n4\n5\nGemi Zırhı\n0\n1\n2\n3\n4\n5\nGemi Kalkanları\n0\n1\n2\n3\n4\nYer Savunma Doktrini\n0\n1\n2\n3\n4\n5\nGemiler\nFiloyu temizle\nOk\nSaldırı 21 · 77 HP\nKargı\nSaldırı 42 · 38 HP\nSur\nSaldırı 24 · 106 HP\nMuhafız\nSaldırı 29 · 87 HP\nKurye\nSaldırı 0 · 90 HP\nBaşlangıç canı %\n%\nEngerek\nSaldırı 60 · 223 HP\nBaşlangıç canı %\n%\nPençe\nSaldırı 120 · 111 HP\nHisar\nSaldırı 68 · 315 HP\nNöbetçi\nSaldırı 85 · 252 HP\nSeyyah\nSaldırı 0 · 225 HP\nKasırga\nSaldırı 152 · 564 HP\nBalista\nSaldırı 305 · 282 HP\nLeviathan\nSaldırı 169 · 801 HP\nPraetoryen\nSaldırı 217 · 626 HP\nAtlas\nSaldırı 0 · 540 HP\nSöndürücü\nSaldırı 305 · 282 HP\nBaşlangıç canı %\n%\nHurdacı\nSaldırı 0 · 540 HP\nKıyamet\nSaldırı 816 · 754 HP\nKorsan\nSaldırı 408 · 1508 HP\nBaşlangıç canı %\n%\nKale\nSaldırı 445 · 2158 HP\nPalatin\nSaldırı 583 · 1647 HP\nArgosi\nSaldırı 0 · 1350 HP\n+ Müttefik filo ekle\n\nSimülasyon başına en fazla 400 birlik. Gerçek filoların etkilenmez.\n\nSavaş tohumu\nYeni tohum\n\nHer atış en fazla 10 hedef seçer; daha fazla hasar verebildiği sınıflar önceliklidir. Her tur iki taraf da ateş eder. Kalkanlar yenilenmez. Son tur hariç, ateş bittikten sonra kaçışlar hesaplanır.\n\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n2158\n/ 2158\n2158\n/ 2158\n1000\n/ 1000\n1000\n/ 1000\n215\n/ 215\nSavunan\nSavaşta 11\nİmha 0\nÇekildi 0\nTur 1 / 6\nFilolar hazır\nAegis 854,25 / 1.139\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nDöndürmek için sürükle · yakınlaştırmak için kıstır\n0.0s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nAtış dökümü\nGövde hasarı\nSaldıran\nSavunan\nSöndürücü #A6\n1. atış · Saldırı 311,64\n159,76\nKorsan #A9\n2. atış · Saldırı 416,88\n355,81\nEngerek #A1\n3. atış · Saldırı 61,31\n48,94\nSöndürücü #A5\n4. atış · Saldırı 311,64\n275,91\nEngerek #A3\n5. atış · Saldırı 61,31\n57,33\nKorsan #A7\n6. atış · Saldırı 416,88\n493,76\nEngerek #A2\n7. atış · Saldırı 61,31\n65,75\nEngerek #A4\n8. atış · Saldırı 61,31\n58,18\nKorsan #A10\n9. atış · Saldırı 416,88\n233,43\nKorsan #A8\n10. atış · Saldırı 416,88\n448,66\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nASTERA / FLIGHT OPERATIONS\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 1600,
+      "pageWidth": 1600
+    },
+    {
+      "name": "desktop-aegis-impact",
+      "state": {
+        "time": 1.48,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 1000,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 1000,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 215,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [],
+        "activeSourceId": "A6",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nSöndürücü #A6 ateş ediyor",
+      "detail": "Söndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0",
+      "result": [],
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1020,
+        "height": 708,
+        "top": 151.5,
+        "right": 1320,
+        "bottom": 859.5,
+        "left": 300
+      },
+      "hpFont": "8px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\n\nİki filo kur. Her atışı izle.\n\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nÖrnek savaş\nKarma filolar\nAegis ve Söndürücüler\nAteş altındaki konvoy\nYer savunma hattı\nSavaşı simüle et\n↗\nSaldıran\nSavunan\nFilo 1\n11 birlik\nAraştırmalar\nGemi Gücü\n0\n1\n2\n3\n4\n5\nGemi Zırhı\n0\n1\n2\n3\n4\n5\nGemi Kalkanları\n0\n1\n2\n3\n4\nYer Savunma Doktrini\n0\n1\n2\n3\n4\n5\nGemiler\nFiloyu temizle\nOk\nSaldırı 21 · 77 HP\nKargı\nSaldırı 42 · 38 HP\nSur\nSaldırı 24 · 106 HP\nMuhafız\nSaldırı 29 · 87 HP\nKurye\nSaldırı 0 · 90 HP\nBaşlangıç canı %\n%\nEngerek\nSaldırı 60 · 223 HP\nBaşlangıç canı %\n%\nPençe\nSaldırı 120 · 111 HP\nHisar\nSaldırı 68 · 315 HP\nNöbetçi\nSaldırı 85 · 252 HP\nSeyyah\nSaldırı 0 · 225 HP\nKasırga\nSaldırı 152 · 564 HP\nBalista\nSaldırı 305 · 282 HP\nLeviathan\nSaldırı 169 · 801 HP\nPraetoryen\nSaldırı 217 · 626 HP\nAtlas\nSaldırı 0 · 540 HP\nSöndürücü\nSaldırı 305 · 282 HP\nBaşlangıç canı %\n%\nHurdacı\nSaldırı 0 · 540 HP\nKıyamet\nSaldırı 816 · 754 HP\nKorsan\nSaldırı 408 · 1508 HP\nBaşlangıç canı %\n%\nKale\nSaldırı 445 · 2158 HP\nPalatin\nSaldırı 583 · 1647 HP\nArgosi\nSaldırı 0 · 1350 HP\n+ Müttefik filo ekle\n\nSimülasyon başına en fazla 400 birlik. Gerçek filoların etkilenmez.\n\nSavaş tohumu\nYeni tohum\n\nHer atış en fazla 10 hedef seçer; daha fazla hasar verebildiği sınıflar önceliklidir. Her tur iki taraf da ateş eder. Kalkanlar yenilenmez. Son tur hariç, ateş bittikten sonra kaçışlar hesaplanır.\n\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\nSöndürücü #A6\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n2158\n/ 2158\n2158\n/ 2158\n1000\n/ 1000\n1000\n/ 1000\n215\n/ 215\nSavunan\nSavaşta 11\nİmha 0\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nSöndürücü #A6 ateş ediyor\nAegis 0 / 1.139\n−854,25\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nDöndürmek için sürükle · yakınlaştırmak için kıstır\n1.5s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nAtış dökümü\nGövde hasarı\nSaldıran\nSavunan\nSöndürücü #A6\n1. atış · Saldırı 311,64\n159,76\nKorsan #A9\n2. atış · Saldırı 416,88\n355,81\nEngerek #A1\n3. atış · Saldırı 61,31\n48,94\nSöndürücü #A5\n4. atış · Saldırı 311,64\n275,91\nEngerek #A3\n5. atış · Saldırı 61,31\n57,33\nKorsan #A7\n6. atış · Saldırı 416,88\n493,76\nEngerek #A2\n7. atış · Saldırı 61,31\n65,75\nEngerek #A4\n8. atış · Saldırı 61,31\n58,18\nKorsan #A10\n9. atış · Saldırı 416,88\n233,43\nKorsan #A8\n10. atış · Saldırı 416,88\n448,66\nSöndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0\n\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nASTERA / FLIGHT OPERATIONS\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 1600,
+      "pageWidth": 1600
+    },
+    {
+      "name": "desktop-first-shot",
+      "state": {
+        "time": 1.48,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 1000,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 1000,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 215,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [],
+        "activeSourceId": "A6",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nSöndürücü #A6 ateş ediyor",
+      "detail": "Söndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0",
+      "selected": "Söndürücü #A6\nGövde canı 282 / 282\nGemi kalkanı 70,5 / 70,5\nSaldırı 305\n×",
+      "result": [],
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1020,
+        "height": 708,
+        "top": 151.5,
+        "right": 1320,
+        "bottom": 859.5,
+        "left": 300
+      },
+      "hpFont": "8px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\n\nİki filo kur. Her atışı izle.\n\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nÖrnek savaş\nKarma filolar\nAegis ve Söndürücüler\nAteş altındaki konvoy\nYer savunma hattı\nSavaşı simüle et\n↗\nSaldıran\nSavunan\nFilo 1\n11 birlik\nAraştırmalar\nGemi Gücü\n0\n1\n2\n3\n4\n5\nGemi Zırhı\n0\n1\n2\n3\n4\n5\nGemi Kalkanları\n0\n1\n2\n3\n4\nYer Savunma Doktrini\n0\n1\n2\n3\n4\n5\nGemiler\nFiloyu temizle\nOk\nSaldırı 21 · 77 HP\nKargı\nSaldırı 42 · 38 HP\nSur\nSaldırı 24 · 106 HP\nMuhafız\nSaldırı 29 · 87 HP\nKurye\nSaldırı 0 · 90 HP\nBaşlangıç canı %\n%\nEngerek\nSaldırı 60 · 223 HP\nBaşlangıç canı %\n%\nPençe\nSaldırı 120 · 111 HP\nHisar\nSaldırı 68 · 315 HP\nNöbetçi\nSaldırı 85 · 252 HP\nSeyyah\nSaldırı 0 · 225 HP\nKasırga\nSaldırı 152 · 564 HP\nBalista\nSaldırı 305 · 282 HP\nLeviathan\nSaldırı 169 · 801 HP\nPraetoryen\nSaldırı 217 · 626 HP\nAtlas\nSaldırı 0 · 540 HP\nSöndürücü\nSaldırı 305 · 282 HP\nBaşlangıç canı %\n%\nHurdacı\nSaldırı 0 · 540 HP\nKıyamet\nSaldırı 816 · 754 HP\nKorsan\nSaldırı 408 · 1508 HP\nBaşlangıç canı %\n%\nKale\nSaldırı 445 · 2158 HP\nPalatin\nSaldırı 583 · 1647 HP\nArgosi\nSaldırı 0 · 1350 HP\n+ Müttefik filo ekle\n\nSimülasyon başına en fazla 400 birlik. Gerçek filoların etkilenmez.\n\nSavaş tohumu\nYeni tohum\n\nHer atış en fazla 10 hedef seçer; daha fazla hasar verebildiği sınıflar önceliklidir. Her tur iki taraf da ateş eder. Kalkanlar yenilenmez. Son tur hariç, ateş bittikten sonra kaçışlar hesaplanır.\n\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\nSöndürücü #A6\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n2158\n/ 2158\n2158\n/ 2158\n1000\n/ 1000\n1000\n/ 1000\n215\n/ 215\nSavunan\nSavaşta 11\nİmha 0\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nSöndürücü #A6 ateş ediyor\nAegis 0 / 1.139\n−854,25\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nDöndürmek için sürükle · yakınlaştırmak için kıstır\nSöndürücü #A6\nGövde canı 282 / 282\nGemi kalkanı 70,5 / 70,5\nSaldırı 305\n×\n2.1s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nAtış dökümü\nGövde hasarı\nSaldıran\nSavunan\nSöndürücü #A6\n1. atış · Saldırı 311,64\n159,76\nKorsan #A9\n2. atış · Saldırı 416,88\n355,81\nEngerek #A1\n3. atış · Saldırı 61,31\n48,94\nSöndürücü #A5\n4. atış · Saldırı 311,64\n275,91\nEngerek #A3\n5. atış · Saldırı 61,31\n57,33\nKorsan #A7\n6. atış · Saldırı 416,88\n493,76\nEngerek #A2\n7. atış · Saldırı 61,31\n65,75\nEngerek #A4\n8. atış · Saldırı 61,31\n58,18\nKorsan #A10\n9. atış · Saldırı 416,88\n233,43\nKorsan #A8\n10. atış · Saldırı 416,88\n448,66\nSöndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0\n\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nASTERA / FLIGHT OPERATIONS\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 1600,
+      "pageWidth": 1600
+    },
+    {
+      "name": "desktop-ground-selected",
+      "state": {
+        "time": 2.0500000000000003,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 35.59130026898766,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 30.701744691478325,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 507.46799888415325,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 968.7054023020148,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 972.3325295312488,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 201.9127245986947,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [],
+        "activeSourceId": "A6",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nSöndürücü #A6 ateş ediyor",
+      "detail": "Söndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0",
+      "selected": "Tabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×",
+      "result": [],
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1020,
+        "height": 708,
+        "top": 151.5,
+        "right": 1320,
+        "bottom": 859.5,
+        "left": 300
+      },
+      "hpFont": "8px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\n\nİki filo kur. Her atışı izle.\n\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nÖrnek savaş\nKarma filolar\nAegis ve Söndürücüler\nAteş altındaki konvoy\nYer savunma hattı\nSavaşı simüle et\n↗\nSaldıran\nSavunan\nFilo 1\n11 birlik\nAraştırmalar\nGemi Gücü\n0\n1\n2\n3\n4\n5\nGemi Zırhı\n0\n1\n2\n3\n4\n5\nGemi Kalkanları\n0\n1\n2\n3\n4\nYer Savunma Doktrini\n0\n1\n2\n3\n4\n5\nGemiler\nFiloyu temizle\nOk\nSaldırı 21 · 77 HP\nKargı\nSaldırı 42 · 38 HP\nSur\nSaldırı 24 · 106 HP\nMuhafız\nSaldırı 29 · 87 HP\nKurye\nSaldırı 0 · 90 HP\nBaşlangıç canı %\n%\nEngerek\nSaldırı 60 · 223 HP\nBaşlangıç canı %\n%\nPençe\nSaldırı 120 · 111 HP\nHisar\nSaldırı 68 · 315 HP\nNöbetçi\nSaldırı 85 · 252 HP\nSeyyah\nSaldırı 0 · 225 HP\nKasırga\nSaldırı 152 · 564 HP\nBalista\nSaldırı 305 · 282 HP\nLeviathan\nSaldırı 169 · 801 HP\nPraetoryen\nSaldırı 217 · 626 HP\nAtlas\nSaldırı 0 · 540 HP\nSöndürücü\nSaldırı 305 · 282 HP\nBaşlangıç canı %\n%\nHurdacı\nSaldırı 0 · 540 HP\nKıyamet\nSaldırı 816 · 754 HP\nKorsan\nSaldırı 408 · 1508 HP\nBaşlangıç canı %\n%\nKale\nSaldırı 445 · 2158 HP\nPalatin\nSaldırı 583 · 1647 HP\nArgosi\nSaldırı 0 · 1350 HP\n+ Müttefik filo ekle\n\nSimülasyon başına en fazla 400 birlik. Gerçek filoların etkilenmez.\n\nSavaş tohumu\nYeni tohum\n\nHer atış en fazla 10 hedef seçer; daha fazla hasar verebildiği sınıflar önceliklidir. Her tur iki taraf da ateş eder. Kalkanlar yenilenmez. Son tur hariç, ateş bittikten sonra kaçışlar hesaplanır.\n\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\nSöndürücü #A6\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n36\n/ 77\n−41,4\n◈ −19,3\n31\n/ 77\n−46,3\n◈ −19,3\n2158\n/ 2158\n2158\n/ 2158\n◈ −32\n969\n/ 1000\n−31,3\n973\n/ 1000\n−27,7\n202\n/ 215\n−13,1\nSavunan\nSavaşta 11\nİmha 0\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nSöndürücü #A6 ateş ediyor\nAegis 0 / 1.139\n−854,25\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nDöndürmek için sürükle · yakınlaştırmak için kıstır\nTabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×\n2.1s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nAtış dökümü\nGövde hasarı\nSaldıran\nSavunan\nSöndürücü #A6\n1. atış · Saldırı 311,64\n159,76\nKorsan #A9\n2. atış · Saldırı 416,88\n355,81\nEngerek #A1\n3. atış · Saldırı 61,31\n48,94\nSöndürücü #A5\n4. atış · Saldırı 311,64\n275,91\nEngerek #A3\n5. atış · Saldırı 61,31\n57,33\nKorsan #A7\n6. atış · Saldırı 416,88\n493,76\nEngerek #A2\n7. atış · Saldırı 61,31\n65,75\nEngerek #A4\n8. atış · Saldırı 61,31\n58,18\nKorsan #A10\n9. atış · Saldırı 416,88\n233,43\nKorsan #A8\n10. atış · Saldırı 416,88\n448,66\nSöndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0\n\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nASTERA / FLIGHT OPERATIONS\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 1600,
+      "pageWidth": 1600
+    },
+    {
+      "name": "desktop-next-shot-after-selection",
+      "state": {
+        "time": 2.0500000000000003,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 35.59130026898766,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 30.701744691478325,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 507.46799888415325,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 968.7054023020148,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 972.3325295312488,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 201.9127245986947,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [],
+        "activeSourceId": "A6",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nKorsan #A9 ateş ediyor\nBu tur ateş edecek",
+      "detail": "Söndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0",
+      "selected": "Tabya #D9\nGövde canı 899,96 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×",
+      "result": [],
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1020,
+        "height": 708,
+        "top": 151.5,
+        "right": 1320,
+        "bottom": 859.5,
+        "left": 300
+      },
+      "hpFont": "8px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\n\nİki filo kur. Her atışı izle.\n\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nÖrnek savaş\nKarma filolar\nAegis ve Söndürücüler\nAteş altındaki konvoy\nYer savunma hattı\nSavaşı simüle et\n↗\nSaldıran\nSavunan\nFilo 1\n11 birlik\nAraştırmalar\nGemi Gücü\n0\n1\n2\n3\n4\n5\nGemi Zırhı\n0\n1\n2\n3\n4\n5\nGemi Kalkanları\n0\n1\n2\n3\n4\nYer Savunma Doktrini\n0\n1\n2\n3\n4\n5\nGemiler\nFiloyu temizle\nOk\nSaldırı 21 · 77 HP\nKargı\nSaldırı 42 · 38 HP\nSur\nSaldırı 24 · 106 HP\nMuhafız\nSaldırı 29 · 87 HP\nKurye\nSaldırı 0 · 90 HP\nBaşlangıç canı %\n%\nEngerek\nSaldırı 60 · 223 HP\nBaşlangıç canı %\n%\nPençe\nSaldırı 120 · 111 HP\nHisar\nSaldırı 68 · 315 HP\nNöbetçi\nSaldırı 85 · 252 HP\nSeyyah\nSaldırı 0 · 225 HP\nKasırga\nSaldırı 152 · 564 HP\nBalista\nSaldırı 305 · 282 HP\nLeviathan\nSaldırı 169 · 801 HP\nPraetoryen\nSaldırı 217 · 626 HP\nAtlas\nSaldırı 0 · 540 HP\nSöndürücü\nSaldırı 305 · 282 HP\nBaşlangıç canı %\n%\nHurdacı\nSaldırı 0 · 540 HP\nKıyamet\nSaldırı 816 · 754 HP\nKorsan\nSaldırı 408 · 1508 HP\nBaşlangıç canı %\n%\nKale\nSaldırı 445 · 2158 HP\nPalatin\nSaldırı 583 · 1647 HP\nArgosi\nSaldırı 0 · 1350 HP\n+ Müttefik filo ekle\n\nSimülasyon başına en fazla 400 birlik. Gerçek filoların etkilenmez.\n\nSavaş tohumu\nYeni tohum\n\nHer atış en fazla 10 hedef seçer; daha fazla hasar verebildiği sınıflar önceliklidir. Her tur iki taraf da ateş eder. Kalkanlar yenilenmez. Son tur hariç, ateş bittikten sonra kaçışlar hesaplanır.\n\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\nSöndürücü #A6\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n36\n/ 77\n−41,4\n◈ −19,3\n31\n/ 77\n−46,3\n◈ −19,3\n2158\n/ 2158\n2158\n/ 2158\n◈ −32\n969\n/ 1000\n−31,3\nTabya #D9\n973\n/ 1000\n−27,7\n202\n/ 215\n−13,1\nSavunan\nSavaşta 9\nİmha 2\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nKorsan #A9 ateş ediyor\nBu tur ateş edecek\nAegis 0 / 1.139\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nDöndürmek için sürükle · yakınlaştırmak için kıstır\nTabya #D9\nGövde canı 899,96 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×\n4.3s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nAtış dökümü\nGövde hasarı\nSaldıran\nSavunan\nSöndürücü #A6\n1. atış · Saldırı 311,64\n159,76\nKorsan #A9\n2. atış · Saldırı 416,88\n355,81\nEngerek #A1\n3. atış · Saldırı 61,31\n48,94\nSöndürücü #A5\n4. atış · Saldırı 311,64\n275,91\nEngerek #A3\n5. atış · Saldırı 61,31\n57,33\nKorsan #A7\n6. atış · Saldırı 416,88\n493,76\nEngerek #A2\n7. atış · Saldırı 61,31\n65,75\nEngerek #A4\n8. atış · Saldırı 61,31\n58,18\nKorsan #A10\n9. atış · Saldırı 416,88\n233,43\nKorsan #A8\n10. atış · Saldırı 416,88\n448,66\nSöndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0\n\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nASTERA / FLIGHT OPERATIONS\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 1600,
+      "pageWidth": 1600
+    },
+    {
+      "name": "desktop-zoom",
+      "state": {
+        "time": 4.3,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 46.442989427985864,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 45.19775458495105,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 75.09368414165634,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 38.56656817233641,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D5",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 483.36067606651324,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 477.00016658333806,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 854.2576181209494,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 899.9620840625548,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 201.9127245986947,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [
+          "D4",
+          "D5"
+        ],
+        "activeSourceId": "A9",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nKorsan #A9 ateş ediyor\nBu tur ateş edecek",
+      "detail": "Söndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0",
+      "selected": "Tabya #D9\nGövde canı 899,96 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×",
+      "result": [],
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1020,
+        "height": 708,
+        "top": 151.5,
+        "right": 1320,
+        "bottom": 859.5,
+        "left": 300
+      },
+      "hpFont": "8px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\n\nİki filo kur. Her atışı izle.\n\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nÖrnek savaş\nKarma filolar\nAegis ve Söndürücüler\nAteş altındaki konvoy\nYer savunma hattı\nSavaşı simüle et\n↗\nSaldıran\nSavunan\nFilo 1\n11 birlik\nAraştırmalar\nGemi Gücü\n0\n1\n2\n3\n4\n5\nGemi Zırhı\n0\n1\n2\n3\n4\n5\nGemi Kalkanları\n0\n1\n2\n3\n4\nYer Savunma Doktrini\n0\n1\n2\n3\n4\n5\nGemiler\nFiloyu temizle\nOk\nSaldırı 21 · 77 HP\nKargı\nSaldırı 42 · 38 HP\nSur\nSaldırı 24 · 106 HP\nMuhafız\nSaldırı 29 · 87 HP\nKurye\nSaldırı 0 · 90 HP\nBaşlangıç canı %\n%\nEngerek\nSaldırı 60 · 223 HP\nBaşlangıç canı %\n%\nPençe\nSaldırı 120 · 111 HP\nHisar\nSaldırı 68 · 315 HP\nNöbetçi\nSaldırı 85 · 252 HP\nSeyyah\nSaldırı 0 · 225 HP\nKasırga\nSaldırı 152 · 564 HP\nBalista\nSaldırı 305 · 282 HP\nLeviathan\nSaldırı 169 · 801 HP\nPraetoryen\nSaldırı 217 · 626 HP\nAtlas\nSaldırı 0 · 540 HP\nSöndürücü\nSaldırı 305 · 282 HP\nBaşlangıç canı %\n%\nHurdacı\nSaldırı 0 · 540 HP\nKıyamet\nSaldırı 816 · 754 HP\nKorsan\nSaldırı 408 · 1508 HP\nBaşlangıç canı %\n%\nKale\nSaldırı 445 · 2158 HP\nPalatin\nSaldırı 583 · 1647 HP\nArgosi\nSaldırı 0 · 1350 HP\n+ Müttefik filo ekle\n\nSimülasyon başına en fazla 400 birlik. Gerçek filoların etkilenmez.\n\nSavaş tohumu\nYeni tohum\n\nHer atış en fazla 10 hedef seçer; daha fazla hasar verebildiği sınıflar önceliklidir. Her tur iki taraf da ateş eder. Kalkanlar yenilenmez. Son tur hariç, ateş bittikten sonra kaçışlar hesaplanır.\n\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\nKorsan #A9\n1508\n/ 1508\n1508\n/ 1508\n47\n/ 77\n−30,6\n◈ −19,3\n46\n/ 77\n−31,8\n◈ −19,3\n76\n/ 77\n−1,9\n◈ −19,3\n39\n/ 77\n−38,4\n◈ −19,3\n0\n/ 77\nBu tur ateş edecek\n−35,6\n0\n/ 77\nBu tur ateş edecek\n−30,7\n2158\n/ 2158\n◈ −56,1\n2158\n/ 2158\n◈ −30,5\n855\n/ 1000\n−114,4\nTabya #D9\n900\n/ 1000\n−72,4\n202\n/ 215\nSavunan\nSavaşta 9\nİmha 2\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nKorsan #A9 ateş ediyor\nBu tur ateş edecek\nAegis 0 / 1.139\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nDöndürmek için sürükle · yakınlaştırmak için kıstır\nTabya #D9\nGövde canı 899,96 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×\n4.3s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nAtış dökümü\nGövde hasarı\nSaldıran\nSavunan\nSöndürücü #A6\n1. atış · Saldırı 311,64\n159,76\nKorsan #A9\n2. atış · Saldırı 416,88\n355,81\nEngerek #A1\n3. atış · Saldırı 61,31\n48,94\nSöndürücü #A5\n4. atış · Saldırı 311,64\n275,91\nEngerek #A3\n5. atış · Saldırı 61,31\n57,33\nKorsan #A7\n6. atış · Saldırı 416,88\n493,76\nEngerek #A2\n7. atış · Saldırı 61,31\n65,75\nEngerek #A4\n8. atış · Saldırı 61,31\n58,18\nKorsan #A10\n9. atış · Saldırı 416,88\n233,43\nKorsan #A8\n10. atış · Saldırı 416,88\n448,66\nSöndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0\n\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nASTERA / FLIGHT OPERATIONS\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 1600,
+      "pageWidth": 1600
+    },
+    {
+      "name": "desktop-pan",
+      "state": {
+        "time": 4.3,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 46.442989427985864,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 45.19775458495105,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 75.09368414165634,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 38.56656817233641,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D5",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 483.36067606651324,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 477.00016658333806,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 854.2576181209494,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 899.9620840625548,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 201.9127245986947,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [
+          "D4",
+          "D5"
+        ],
+        "activeSourceId": "A9",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nKorsan #A9 ateş ediyor\nBu tur ateş edecek",
+      "detail": "Söndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0",
+      "result": [],
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1020,
+        "height": 708,
+        "top": 151.5,
+        "right": 1320,
+        "bottom": 859.5,
+        "left": 300
+      },
+      "hpFont": "8px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\n\nİki filo kur. Her atışı izle.\n\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nÖrnek savaş\nKarma filolar\nAegis ve Söndürücüler\nAteş altındaki konvoy\nYer savunma hattı\nSavaşı simüle et\n↗\nSaldıran\nSavunan\nFilo 1\n11 birlik\nAraştırmalar\nGemi Gücü\n0\n1\n2\n3\n4\n5\nGemi Zırhı\n0\n1\n2\n3\n4\n5\nGemi Kalkanları\n0\n1\n2\n3\n4\nYer Savunma Doktrini\n0\n1\n2\n3\n4\n5\nGemiler\nFiloyu temizle\nOk\nSaldırı 21 · 77 HP\nKargı\nSaldırı 42 · 38 HP\nSur\nSaldırı 24 · 106 HP\nMuhafız\nSaldırı 29 · 87 HP\nKurye\nSaldırı 0 · 90 HP\nBaşlangıç canı %\n%\nEngerek\nSaldırı 60 · 223 HP\nBaşlangıç canı %\n%\nPençe\nSaldırı 120 · 111 HP\nHisar\nSaldırı 68 · 315 HP\nNöbetçi\nSaldırı 85 · 252 HP\nSeyyah\nSaldırı 0 · 225 HP\nKasırga\nSaldırı 152 · 564 HP\nBalista\nSaldırı 305 · 282 HP\nLeviathan\nSaldırı 169 · 801 HP\nPraetoryen\nSaldırı 217 · 626 HP\nAtlas\nSaldırı 0 · 540 HP\nSöndürücü\nSaldırı 305 · 282 HP\nBaşlangıç canı %\n%\nHurdacı\nSaldırı 0 · 540 HP\nKıyamet\nSaldırı 816 · 754 HP\nKorsan\nSaldırı 408 · 1508 HP\nBaşlangıç canı %\n%\nKale\nSaldırı 445 · 2158 HP\nPalatin\nSaldırı 583 · 1647 HP\nArgosi\nSaldırı 0 · 1350 HP\n+ Müttefik filo ekle\n\nSimülasyon başına en fazla 400 birlik. Gerçek filoların etkilenmez.\n\nSavaş tohumu\nYeni tohum\n\nHer atış en fazla 10 hedef seçer; daha fazla hasar verebildiği sınıflar önceliklidir. Her tur iki taraf da ateş eder. Kalkanlar yenilenmez. Son tur hariç, ateş bittikten sonra kaçışlar hesaplanır.\n\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\nKorsan #A9\n1508\n/ 1508\n1508\n/ 1508\n47\n/ 77\n−30,6\n◈ −19,3\n46\n/ 77\n−31,8\n◈ −19,3\n76\n/ 77\n−1,9\n◈ −19,3\n39\n/ 77\n−38,4\n◈ −19,3\n0\n/ 77\nBu tur ateş edecek\n−35,6\n0\n/ 77\nBu tur ateş edecek\n−30,7\n2158\n/ 2158\n◈ −56,1\n2158\n/ 2158\n◈ −30,5\n855\n/ 1000\n−114,4\n900\n/ 1000\n−72,4\n202\n/ 215\nSavunan\nSavaşta 9\nİmha 2\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nKorsan #A9 ateş ediyor\nBu tur ateş edecek\nAegis 0 / 1.139\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nDöndürmek için sürükle · yakınlaştırmak için kıstır\n4.3s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nAtış dökümü\nGövde hasarı\nSaldıran\nSavunan\nSöndürücü #A6\n1. atış · Saldırı 311,64\n159,76\nKorsan #A9\n2. atış · Saldırı 416,88\n355,81\nEngerek #A1\n3. atış · Saldırı 61,31\n48,94\nSöndürücü #A5\n4. atış · Saldırı 311,64\n275,91\nEngerek #A3\n5. atış · Saldırı 61,31\n57,33\nKorsan #A7\n6. atış · Saldırı 416,88\n493,76\nEngerek #A2\n7. atış · Saldırı 61,31\n65,75\nEngerek #A4\n8. atış · Saldırı 61,31\n58,18\nKorsan #A10\n9. atış · Saldırı 416,88\n233,43\nKorsan #A8\n10. atış · Saldırı 416,88\n448,66\nSöndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0\n\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nASTERA / FLIGHT OPERATIONS\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 1600,
+      "pageWidth": 1600
+    },
+    {
+      "name": "desktop-mutual-wipe",
+      "state": {
+        "time": 35.34,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D0",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          }
+        ],
+        "phase": "RETREAT",
+        "pendingFire": [],
+        "activeSourceId": null,
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Tur sonu geri çekilmeler",
+      "result": [],
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1020,
+        "height": 708,
+        "top": 151.5,
+        "right": 1320,
+        "bottom": 859.5,
+        "left": 300
+      },
+      "hpFont": "8px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\n\nİki filo kur. Her atışı izle.\n\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nÖrnek savaş\nKarma filolar\nAegis ve Söndürücüler\nAteş altındaki konvoy\nYer savunma hattı\nSavaşı simüle et\n↗\nSaldıran\nSavunan\nYer savunmaları\nAegis seviyesi\nAegis doluluğu %\nEMP / savunmalar devre dışı\nSavaş öncesi otomatik geri çekilme\nFilo 1\n1 birlik\nAraştırmalar\nGemi Gücü\n0\n1\n2\n3\n4\n5\nGemi Zırhı\n0\n1\n2\n3\n4\n5\nGemi Kalkanları\n0\n1\n2\n3\n4\nYer Savunma Doktrini\n0\n1\n2\n3\n4\n5\nGemiler\nFiloyu temizle\nOk\nSaldırı 21 · 77 HP\nBaşlangıç canı %\n%\nKargı\nSaldırı 42 · 38 HP\nSur\nSaldırı 24 · 106 HP\nMuhafız\nSaldırı 29 · 87 HP\nKurye\nSaldırı 0 · 90 HP\nEngerek\nSaldırı 60 · 223 HP\nPençe\nSaldırı 120 · 111 HP\nHisar\nSaldırı 68 · 315 HP\nNöbetçi\nSaldırı 85 · 252 HP\nSeyyah\nSaldırı 0 · 225 HP\nKasırga\nSaldırı 152 · 564 HP\nBalista\nSaldırı 305 · 282 HP\nLeviathan\nSaldırı 169 · 801 HP\nPraetoryen\nSaldırı 217 · 626 HP\nAtlas\nSaldırı 0 · 540 HP\nSöndürücü\nSaldırı 305 · 282 HP\nHurdacı\nSaldırı 0 · 540 HP\nKıyamet\nSaldırı 816 · 754 HP\nKorsan\nSaldırı 408 · 1508 HP\nKale\nSaldırı 445 · 2158 HP\nPalatin\nSaldırı 583 · 1647 HP\nArgosi\nSaldırı 0 · 1350 HP\nYer savunmaları\nTabya\nSaldırı 144 · 1000 HP\nZıpkın\nSaldırı 240 · 150 HP\nKirpi\nSaldırı 42 · 215 HP\n+ Müttefik filo ekle\n\nSimülasyon başına en fazla 400 birlik. Gerçek filoların etkilenmez.\n\nSavunanın korsan çarpanı\nNormal komutan\nKorsan seviye 1\nKorsan seviye 2\nKorsan seviye 3\nKorsan seviye 4\nSavaş tohumu\nYeni tohum\n\nHer atış en fazla 10 hedef seçer; daha fazla hasar verebildiği sınıflar önceliklidir. Her tur iki taraf da ateş eder. Kalkanlar yenilenmez. Son tur hariç, ateş bittikten sonra kaçışlar hesaplanır.\n\n0\n/ 77\n0\n/ 77\nSavunan\nSavaşta 0\nİmha 1\nÇekildi 0\nTur 5 / 6\nTur sonu geri çekilmeler\nSaldıran\nSavaşta 0\nİmha 1\nÇekildi 0\nDöndürmek için sürükle · yakınlaştırmak için kıstır\n35.3s\n35.3s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nTur 4 / 6\nTur 5 / 6\nAtış dökümü\nGövde hasarı\nSaldıran\nSavunan\nOk #A0\n1. atış · Saldırı 20,15\n13,05\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nASTERA / FLIGHT OPERATIONS\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 1600,
+      "pageWidth": 1600
+    },
+    {
+      "name": "desktop-emp-without-aegis",
+      "state": {
+        "time": 0.20000000000000728,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "READY",
+        "pendingFire": [],
+        "activeSourceId": null,
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Filolar hazır",
+      "result": [],
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1020,
+        "height": 732,
+        "top": 151.5,
+        "right": 1320,
+        "bottom": 883.5,
+        "left": 300
+      },
+      "hpFont": "8px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\n\nİki filo kur. Her atışı izle.\n\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nÖrnek savaş\nKarma filolar\nAegis ve Söndürücüler\nAteş altındaki konvoy\nYer savunma hattı\nSavaşı simüle et\n↗\nSaldıran\nSavunan\nYer savunmaları\nAegis seviyesi\nAegis doluluğu %\nEMP / savunmalar devre dışı\nSavaş öncesi otomatik geri çekilme\nFilo 1\n15 birlik\nAraştırmalar\nGemi Gücü\n0\n1\n2\n3\n4\n5\nGemi Zırhı\n0\n1\n2\n3\n4\n5\nGemi Kalkanları\n0\n1\n2\n3\n4\nYer Savunma Doktrini\n0\n1\n2\n3\n4\n5\nGemiler\nFiloyu temizle\nOk\nSaldırı 21 · 77 HP\nKargı\nSaldırı 42 · 38 HP\nSur\nSaldırı 24 · 106 HP\nMuhafız\nSaldırı 29 · 87 HP\nKurye\nSaldırı 0 · 90 HP\nEngerek\nSaldırı 60 · 223 HP\nPençe\nSaldırı 120 · 111 HP\nHisar\nSaldırı 68 · 315 HP\nNöbetçi\nSaldırı 85 · 252 HP\nSeyyah\nSaldırı 0 · 225 HP\nKasırga\nSaldırı 152 · 564 HP\nBalista\nSaldırı 305 · 282 HP\nLeviathan\nSaldırı 169 · 801 HP\nPraetoryen\nSaldırı 217 · 626 HP\nAtlas\nSaldırı 0 · 540 HP\nSöndürücü\nSaldırı 305 · 282 HP\nHurdacı\nSaldırı 0 · 540 HP\nKıyamet\nSaldırı 816 · 754 HP\nKorsan\nSaldırı 408 · 1508 HP\nKale\nSaldırı 445 · 2158 HP\nPalatin\nSaldırı 583 · 1647 HP\nArgosi\nSaldırı 0 · 1350 HP\nYer savunmaları\nTabya\nSaldırı 144 · 1000 HP\nBaşlangıç canı %\n%\nZıpkın\nSaldırı 240 · 150 HP\nBaşlangıç canı %\n%\nKirpi\nSaldırı 42 · 215 HP\nBaşlangıç canı %\n%\n+ Müttefik filo ekle\n\nSimülasyon başına en fazla 400 birlik. Gerçek filoların etkilenmez.\n\nSavunanın korsan çarpanı\nNormal komutan\nKorsan seviye 1\nKorsan seviye 2\nKorsan seviye 3\nKorsan seviye 4\nSavaş tohumu\nYeni tohum\n\nHer atış en fazla 10 hedef seçer; daha fazla hasar verebildiği sınıflar önceliklidir. Her tur iki taraf da ateş eder. Kalkanlar yenilenmez. Son tur hariç, ateş bittikten sonra kaçışlar hesaplanır.\n\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\nSavunan\nSavaşta 0\nİmha 0\nÇekildi 0\nFilolar hazır\nFilolar hazır\nSaldıran\nSavaşta 3\nİmha 0\nÇekildi 0\nDöndürmek için sürükle · yakınlaştırmak için kıstır\n0.2s\n1.0s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nAtış dökümü\nGövde hasarı\nSaldıran\nSavunan\n\nAtış yapılmadı.\n\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nASTERA / FLIGHT OPERATIONS\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 1600,
+      "pageWidth": 1600
+    },
+    {
+      "name": "mobile-aegis",
+      "state": {
+        "time": 1.48,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 1000,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 1000,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 215,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [],
+        "activeSourceId": "A6",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nSöndürücü #A6 ateş ediyor",
+      "detail": "Söndürücü #A6HedefAegisGemi kalkanıGövde canıOk #D0 · ×1.675,6400Ok #D1 · ×1.6149,100Ok #D2 · ×1.6318,5100Ok #D3 · ×1.688,6800Ok #D4 · ×1.6222,3219,2541,41Ok #D5 · ×1.6019,2546,3Kirpi #D10 · ×1.60013,09Tabya #D9 · ×0.6250027,67Kale #D7 · ×0.625032,030Tabya #D8 · ×0.6250031,29Emilen normal hasar: 126,39Yalnız kalkana ek hasar: 727,86Kullanılmayan temel hasar: 0",
+      "result": [],
+      "stage": {
+        "x": 0,
+        "y": 119,
+        "width": 350,
+        "height": 552.5,
+        "top": 119,
+        "right": 350,
+        "bottom": 671.5,
+        "left": 0
+      },
+      "hpFont": "7px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nSavaşı simüle et\n↗\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\nSöndürücü #A6\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n2158\n/ 2158\n2158\n/ 2158\n1000\n/ 1000\n1000\n/ 1000\n215\n/ 215\nSavunan\nSavaşta 11\nİmha 0\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nSöndürücü #A6 ateş ediyor\nAegis 0 / 1.139\n−854,25\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\n1.5s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nAtış dökümü\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 350,
+      "pageWidth": 350
+    },
+    {
+      "name": "mobile-shot-log",
+      "state": {
+        "time": 2.0500000000000003,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 35.59130026898766,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 30.701744691478325,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 507.46799888415325,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 968.7054023020148,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 972.3325295312488,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 201.9127245986947,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [],
+        "activeSourceId": "A6",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nSöndürücü #A6 ateş ediyor",
+      "detail": "Söndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0",
+      "selected": "Söndürücü #A6\nGövde canı 282 / 282\nGemi kalkanı 70,5 / 70,5\nSaldırı 305\n×",
+      "result": [],
+      "stage": {
+        "x": 0,
+        "y": 119,
+        "width": 350,
+        "height": 552.5,
+        "top": 119,
+        "right": 350,
+        "bottom": 671.5,
+        "left": 0
+      },
+      "hpFont": "7px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nSavaşı simüle et\n↗\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\nSöndürücü #A6\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n36\n/ 77\n−41,4\n◈ −19,3\n31\n/ 77\n−46,3\n◈ −19,3\n2158\n/ 2158\n2158\n/ 2158\n◈ −32\n969\n/ 1000\n−31,3\n973\n/ 1000\n−27,7\n202\n/ 215\n−13,1\nSavunan\nSavaşta 11\nİmha 0\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nSöndürücü #A6 ateş ediyor\nAegis 0 / 1.139\n−854,25\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nSöndürücü #A6\nGövde canı 282 / 282\nGemi kalkanı 70,5 / 70,5\nSaldırı 305\n×\n2.1s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nAtış dökümü\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nAtış dökümü\nGövde hasarı\n×\nSaldıran\nSavunan\nSöndürücü #A6\n1. atış · Saldırı 311,64\n159,76\nKorsan #A9\n2. atış · Saldırı 416,88\n355,81\nEngerek #A1\n3. atış · Saldırı 61,31\n48,94\nSöndürücü #A5\n4. atış · Saldırı 311,64\n275,91\nEngerek #A3\n5. atış · Saldırı 61,31\n57,33\nKorsan #A7\n6. atış · Saldırı 416,88\n493,76\nEngerek #A2\n7. atış · Saldırı 61,31\n65,75\nEngerek #A4\n8. atış · Saldırı 61,31\n58,18\nKorsan #A10\n9. atış · Saldırı 416,88\n233,43\nKorsan #A8\n10. atış · Saldırı 416,88\n448,66\nSöndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0\n\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 350,
+      "pageWidth": 350
+    },
+    {
+      "name": "mobile-ground-from-log",
+      "state": {
+        "time": 2.0500000000000003,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 35.59130026898766,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 30.701744691478325,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 507.46799888415325,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 968.7054023020148,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 972.3325295312488,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 201.9127245986947,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [],
+        "activeSourceId": "A6",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nSöndürücü #A6 ateş ediyor",
+      "detail": "Söndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0",
+      "selected": "Tabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×",
+      "result": [],
+      "stage": {
+        "x": 0,
+        "y": 119,
+        "width": 350,
+        "height": 552.5,
+        "top": 119,
+        "right": 350,
+        "bottom": 671.5,
+        "left": 0
+      },
+      "hpFont": "7px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nSavaşı simüle et\n↗\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\nSöndürücü #A6\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n36\n/ 77\n−41,4\n◈ −19,3\n31\n/ 77\n−46,3\n◈ −19,3\n2158\n/ 2158\n2158\n/ 2158\n◈ −32\n969\n/ 1000\n−31,3\n973\n/ 1000\n−27,7\n202\n/ 215\n−13,1\nSavunan\nSavaşta 11\nİmha 0\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nSöndürücü #A6 ateş ediyor\nAegis 0 / 1.139\n−854,25\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nTabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×\n2.1s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nAtış dökümü\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nAtış dökümü\nGövde hasarı\n×\nSaldıran\nSavunan\nSöndürücü #A6\n1. atış · Saldırı 311,64\n159,76\nKorsan #A9\n2. atış · Saldırı 416,88\n355,81\nEngerek #A1\n3. atış · Saldırı 61,31\n48,94\nSöndürücü #A5\n4. atış · Saldırı 311,64\n275,91\nEngerek #A3\n5. atış · Saldırı 61,31\n57,33\nKorsan #A7\n6. atış · Saldırı 416,88\n493,76\nEngerek #A2\n7. atış · Saldırı 61,31\n65,75\nEngerek #A4\n8. atış · Saldırı 61,31\n58,18\nKorsan #A10\n9. atış · Saldırı 416,88\n233,43\nKorsan #A8\n10. atış · Saldırı 416,88\n448,66\nSöndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0\n\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 350,
+      "pageWidth": 350
+    },
+    {
+      "name": "mobile-log-scrolled-escape",
+      "state": {
+        "time": 2.0500000000000003,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 35.59130026898766,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 30.701744691478325,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 507.46799888415325,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 968.7054023020148,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 972.3325295312488,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 201.9127245986947,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [],
+        "activeSourceId": "A6",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nSöndürücü #A6 ateş ediyor",
+      "detail": "Söndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0",
+      "selected": "Tabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×",
+      "result": [],
+      "stage": {
+        "x": 0,
+        "y": 119,
+        "width": 350,
+        "height": 552.5,
+        "top": 119,
+        "right": 350,
+        "bottom": 671.5,
+        "left": 0
+      },
+      "hpFont": "7px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nSavaşı simüle et\n↗\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\nSöndürücü #A6\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n36\n/ 77\n−41,4\n◈ −19,3\n31\n/ 77\n−46,3\n◈ −19,3\n2158\n/ 2158\n2158\n/ 2158\n◈ −32\n969\n/ 1000\n−31,3\nTabya #D9\n973\n/ 1000\n−27,7\n202\n/ 215\n−13,1\nSavunan\nSavaşta 11\nİmha 0\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nSöndürücü #A6 ateş ediyor\nAegis 0 / 1.139\n−854,25\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nTabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×\n2.1s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nAtış dökümü\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nAtış dökümü\nGövde hasarı\n×\nSaldıran\nSavunan\nSöndürücü #A6\n1. atış · Saldırı 311,64\n159,76\nKorsan #A9\n2. atış · Saldırı 416,88\n355,81\nEngerek #A1\n3. atış · Saldırı 61,31\n48,94\nSöndürücü #A5\n4. atış · Saldırı 311,64\n275,91\nEngerek #A3\n5. atış · Saldırı 61,31\n57,33\nKorsan #A7\n6. atış · Saldırı 416,88\n493,76\nEngerek #A2\n7. atış · Saldırı 61,31\n65,75\nEngerek #A4\n8. atış · Saldırı 61,31\n58,18\nKorsan #A10\n9. atış · Saldırı 416,88\n233,43\nKorsan #A8\n10. atış · Saldırı 416,88\n448,66\nSöndürücü #A6\nHedef\tAegis\tGemi kalkanı\tGövde canı\nOk #D0 · ×1.6\t75,64\t0\t0\nOk #D1 · ×1.6\t149,1\t0\t0\nOk #D2 · ×1.6\t318,51\t0\t0\nOk #D3 · ×1.6\t88,68\t0\t0\nOk #D4 · ×1.6\t222,32\t19,25\t41,41\nOk #D5 · ×1.6\t0\t19,25\t46,3\nKirpi #D10 · ×1.6\t0\t0\t13,09\nTabya #D9 · ×0.625\t0\t0\t27,67\nKale #D7 · ×0.625\t0\t32,03\t0\nTabya #D8 · ×0.625\t0\t0\t31,29\n\nEmilen normal hasar: 126,39\n\nYalnız kalkana ek hasar: 727,86\n\nKullanılmayan temel hasar: 0\n\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 350,
+      "pageWidth": 350
+    },
+    {
+      "name": "mobile-pinch-pan",
+      "state": {
+        "time": 2.0500000000000003,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 35.59130026898766,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 30.701744691478325,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 507.46799888415325,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 968.7054023020148,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 972.3325295312488,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 201.9127245986947,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [],
+        "activeSourceId": "A6",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nSöndürücü #A6 ateş ediyor",
+      "detail": "Söndürücü #A6HedefAegisGemi kalkanıGövde canıOk #D0 · ×1.675,6400Ok #D1 · ×1.6149,100Ok #D2 · ×1.6318,5100Ok #D3 · ×1.688,6800Ok #D4 · ×1.6222,3219,2541,41Ok #D5 · ×1.6019,2546,3Kirpi #D10 · ×1.60013,09Tabya #D9 · ×0.6250027,67Kale #D7 · ×0.625032,030Tabya #D8 · ×0.6250031,29Emilen normal hasar: 126,39Yalnız kalkana ek hasar: 727,86Kullanılmayan temel hasar: 0",
+      "selected": "Tabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×",
+      "result": [],
+      "stage": {
+        "x": 0,
+        "y": 119,
+        "width": 350,
+        "height": 552.5,
+        "top": 119,
+        "right": 350,
+        "bottom": 671.5,
+        "left": 0
+      },
+      "hpFont": "7px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nSavaşı simüle et\n↗\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\nSöndürücü #A6\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n36\n/ 77\n−41,4\n◈ −19,3\n31\n/ 77\n−46,3\n◈ −19,3\n2158\n/ 2158\n2158\n/ 2158\n◈ −32\n969\n/ 1000\n−31,3\nTabya #D9\n973\n/ 1000\n−27,7\n202\n/ 215\n−13,1\nSavunan\nSavaşta 11\nİmha 0\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nSöndürücü #A6 ateş ediyor\nAegis 0 / 1.139\n−854,25\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nTabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×\n2.1s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nAtış dökümü\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 350,
+      "pageWidth": 350
+    },
+    {
+      "name": "mobile-editor",
+      "state": {
+        "time": 2.0500000000000003,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 35.59130026898766,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 30.701744691478325,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 507.46799888415325,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 968.7054023020148,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 972.3325295312488,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 201.9127245986947,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [],
+        "activeSourceId": "A6",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nSöndürücü #A6 ateş ediyor",
+      "detail": "Söndürücü #A6HedefAegisGemi kalkanıGövde canıOk #D0 · ×1.675,6400Ok #D1 · ×1.6149,100Ok #D2 · ×1.6318,5100Ok #D3 · ×1.688,6800Ok #D4 · ×1.6222,3219,2541,41Ok #D5 · ×1.6019,2546,3Kirpi #D10 · ×1.60013,09Tabya #D9 · ×0.6250027,67Kale #D7 · ×0.625032,030Tabya #D8 · ×0.6250031,29Emilen normal hasar: 126,39Yalnız kalkana ek hasar: 727,86Kullanılmayan temel hasar: 0",
+      "selected": "Tabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×",
+      "result": [],
+      "stage": {
+        "x": 0,
+        "y": 119,
+        "width": 350,
+        "height": 552.5,
+        "top": 119,
+        "right": 350,
+        "bottom": 671.5,
+        "left": 0
+      },
+      "hpFont": "7px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nSavaşı simüle et\n↗\nSaldıran\nSavunan\n×\nFilo 1\n11 birlik\nAraştırmalar\nGemi Gücü\n0\n1\n2\n3\n4\n5\nGemi Zırhı\n0\n1\n2\n3\n4\n5\nGemi Kalkanları\n0\n1\n2\n3\n4\nYer Savunma Doktrini\n0\n1\n2\n3\n4\n5\nGemiler\nFiloyu temizle\nOk\nSaldırı 21 · 77 HP\nKargı\nSaldırı 42 · 38 HP\nSur\nSaldırı 24 · 106 HP\nMuhafız\nSaldırı 29 · 87 HP\nKurye\nSaldırı 0 · 90 HP\nBaşlangıç canı %\n%\nEngerek\nSaldırı 60 · 223 HP\nBaşlangıç canı %\n%\nPençe\nSaldırı 120 · 111 HP\nHisar\nSaldırı 68 · 315 HP\nNöbetçi\nSaldırı 85 · 252 HP\nSeyyah\nSaldırı 0 · 225 HP\nKasırga\nSaldırı 152 · 564 HP\nBalista\nSaldırı 305 · 282 HP\nLeviathan\nSaldırı 169 · 801 HP\nPraetoryen\nSaldırı 217 · 626 HP\nAtlas\nSaldırı 0 · 540 HP\nSöndürücü\nSaldırı 305 · 282 HP\nBaşlangıç canı %\n%\nHurdacı\nSaldırı 0 · 540 HP\nKıyamet\nSaldırı 816 · 754 HP\nKorsan\nSaldırı 408 · 1508 HP\nBaşlangıç canı %\n%\nKale\nSaldırı 445 · 2158 HP\nPalatin\nSaldırı 583 · 1647 HP\nArgosi\nSaldırı 0 · 1350 HP\n+ Müttefik filo ekle\n\nSimülasyon başına en fazla 400 birlik. Gerçek filoların etkilenmez.\n\nSavaş tohumu\nYeni tohum\n\nHer atış en fazla 10 hedef seçer; daha fazla hasar verebildiği sınıflar önceliklidir. Her tur iki taraf da ateş eder. Kalkanlar yenilenmez. Son tur hariç, ateş bittikten sonra kaçışlar hesaplanır.\n\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\nSöndürücü #A6\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n36\n/ 77\n−41,4\n◈ −19,3\n31\n/ 77\n−46,3\n◈ −19,3\n2158\n/ 2158\n2158\n/ 2158\n◈ −32\n969\n/ 1000\n−31,3\nTabya #D9\n973\n/ 1000\n−27,7\n202\n/ 215\n−13,1\nSavunan\nSavaşta 11\nİmha 0\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nSöndürücü #A6 ateş ediyor\nAegis 0 / 1.139\n−854,25\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nTabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×\n2.1s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nAtış dökümü\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 350,
+      "pageWidth": 350
+    },
+    {
+      "name": "mobile-editor-escape",
+      "state": {
+        "time": 2.0500000000000003,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A2",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A3",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 223,
+            "shield": 55.75,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A6",
+            "hp": 282,
+            "shield": 70.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A10",
+            "hp": 1508,
+            "shield": 377,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D1",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D2",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D3",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D4",
+            "hp": 35.59130026898766,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D5",
+            "hp": 30.701744691478325,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D6",
+            "hp": 2158,
+            "shield": 539.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D7",
+            "hp": 2158,
+            "shield": 507.46799888415325,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D8",
+            "hp": 968.7054023020148,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D9",
+            "hp": 972.3325295312488,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D10",
+            "hp": 201.9127245986947,
+            "shield": 0,
+            "status": "ACTIVE"
+          }
+        ],
+        "phase": "ATTACK",
+        "pendingFire": [],
+        "activeSourceId": "A6",
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true
+      },
+      "phase": "Saldıran ateş ediyor\nSöndürücü #A6 ateş ediyor",
+      "detail": "Söndürücü #A6HedefAegisGemi kalkanıGövde canıOk #D0 · ×1.675,6400Ok #D1 · ×1.6149,100Ok #D2 · ×1.6318,5100Ok #D3 · ×1.688,6800Ok #D4 · ×1.6222,3219,2541,41Ok #D5 · ×1.6019,2546,3Kirpi #D10 · ×1.60013,09Tabya #D9 · ×0.6250027,67Kale #D7 · ×0.625032,030Tabya #D8 · ×0.6250031,29Emilen normal hasar: 126,39Yalnız kalkana ek hasar: 727,86Kullanılmayan temel hasar: 0",
+      "selected": "Tabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×",
+      "result": [],
+      "stage": {
+        "x": 0,
+        "y": 119,
+        "width": 350,
+        "height": 552.5,
+        "top": 119,
+        "right": 350,
+        "bottom": 671.5,
+        "left": 0
+      },
+      "hpFont": "7px",
+      "body": "ASTERA\nONLINE\nSavaş simülatörü\nDil seç\nTürkçe\nEnglish\nFrançais\nDeutsch\nEspañol\n日本語\nFiloları düzenle\nSavaş alanı\nGezegen saldırısı\nAnıt savaşı\nSavaşı simüle et\n↗\nSaldıran\nSavunan\n×\nFilo 1\n11 birlik\nAraştırmalar\nGemi Gücü\n0\n1\n2\n3\n4\n5\nGemi Zırhı\n0\n1\n2\n3\n4\n5\nGemi Kalkanları\n0\n1\n2\n3\n4\nYer Savunma Doktrini\n0\n1\n2\n3\n4\n5\nGemiler\nFiloyu temizle\nOk\nSaldırı 21 · 77 HP\nKargı\nSaldırı 42 · 38 HP\nSur\nSaldırı 24 · 106 HP\nMuhafız\nSaldırı 29 · 87 HP\nKurye\nSaldırı 0 · 90 HP\nBaşlangıç canı %\n%\nEngerek\nSaldırı 60 · 223 HP\nBaşlangıç canı %\n%\nPençe\nSaldırı 120 · 111 HP\nHisar\nSaldırı 68 · 315 HP\nNöbetçi\nSaldırı 85 · 252 HP\nSeyyah\nSaldırı 0 · 225 HP\nKasırga\nSaldırı 152 · 564 HP\nBalista\nSaldırı 305 · 282 HP\nLeviathan\nSaldırı 169 · 801 HP\nPraetoryen\nSaldırı 217 · 626 HP\nAtlas\nSaldırı 0 · 540 HP\nSöndürücü\nSaldırı 305 · 282 HP\nBaşlangıç canı %\n%\nHurdacı\nSaldırı 0 · 540 HP\nKıyamet\nSaldırı 816 · 754 HP\nKorsan\nSaldırı 408 · 1508 HP\nBaşlangıç canı %\n%\nKale\nSaldırı 445 · 2158 HP\nPalatin\nSaldırı 583 · 1647 HP\nArgosi\nSaldırı 0 · 1350 HP\n+ Müttefik filo ekle\n\nSimülasyon başına en fazla 400 birlik. Gerçek filoların etkilenmez.\n\nSavaş tohumu\nYeni tohum\n\nHer atış en fazla 10 hedef seçer; daha fazla hasar verebildiği sınıflar önceliklidir. Her tur iki taraf da ateş eder. Kalkanlar yenilenmez. Son tur hariç, ateş bittikten sonra kaçışlar hesaplanır.\n\n90\n/ 90\n223\n/ 223\n223\n/ 223\n223\n/ 223\n223\n/ 223\n282\n/ 282\nSöndürücü #A6\n282\n/ 282\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n1508\n/ 1508\n77\n/ 77\n77\n/ 77\n77\n/ 77\n77\n/ 77\n36\n/ 77\n−41,4\n◈ −19,3\n31\n/ 77\n−46,3\n◈ −19,3\n2158\n/ 2158\n2158\n/ 2158\n◈ −32\n969\n/ 1000\n−31,3\nTabya #D9\n973\n/ 1000\n−27,7\n202\n/ 215\n−13,1\nSavunan\nSavaşta 11\nİmha 0\nÇekildi 0\nTur 1 / 6\nSaldıran ateş ediyor\nSöndürücü #A6 ateş ediyor\nAegis 0 / 1.139\n−854,25\nSaldıran\nSavaşta 11\nİmha 0\nÇekildi 0\nTabya #D9\nGövde canı 972,33 / 1.000\nGemi kalkanı 0 / 0\nYer savunmaları 144\n×\n2.1s\n91.4s\n↺\n‹\n▶\n›\n0.25×\n0.5×\n1×\n2×\n4×\n8×\n16×\n⇅\nAtış dökümü\nTur 1 / 6\nTur 2 / 6\nTur 3 / 6\nFiloları sen seçersin. Oyundaki savaş kuralları uygulanır.\nÇerez ve reklam tercihin\nÇerez Politikası\n\nGiriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil. Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.\n\nReddet\nKabul et",
+      "width": 350,
+      "pageWidth": 350
+    }
+  ]
+}

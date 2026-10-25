@@ -1,3 +1,4 @@
+import { readBattleReplayMetadata, replayStatusFor } from './battleReplay.js';
 import { spatialHistory } from './spatialHistory.js';
 import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -14,6 +15,7 @@ import {
   deuteriumOf,
   factorValue,
   supportFactor,
+  type BattleReplayStatus,
   type CombatRound,
   type DamageLot,
   type Fleet,
@@ -102,6 +104,7 @@ function subtractFleet(sent: Fleet, lost: Fleet): Fleet {
  */
 
 export interface BattleReportView {
+  replayStatus?: BattleReplayStatus;
   pvpBalance: PvpBalance | null;
   kind: 'BATTLE';
   id: string;
@@ -529,6 +532,8 @@ async function readBattleReportsIn(
       .orderBy(desc(strategicImpacts.createdAt)),
   ]);
 
+  const replayMetadata = await readBattleReplayMetadata(tx, 'BATTLE', rows.map(row => row.id));
+
   // A launch participant or actual notified impact witness may read this report.
   // Merely acquiring the planet later never grants its private impact history.
   const bombRows = await tx.select({ flight: radiationBombFlights, intent: honorCommitments.snapshot, impactPayload: notifications.payload,
@@ -875,6 +880,7 @@ async function readBattleReportsIn(
 
     return {
       kind: 'BATTLE',
+      replayStatus: replayStatusFor(replayMetadata.get(row.id), attacking),
       id: row.id,
       missionId: row.missionId,
       pirateRaidId: row.pirateRaidId,

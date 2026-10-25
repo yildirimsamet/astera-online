@@ -1,4 +1,5 @@
 import { moderation } from './moderation.js';
+import { simulator } from './simulator.js';
 import { accountDeletion } from './accountDeletion.js';
 import { accountSecurity } from './accountSecurity.js';
 import { unknownSignal } from './unknownSignal.js';
@@ -47,6 +48,7 @@ import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold
  * between English and Turkish — the other must not move with it.
  */
 export const en = {
+  simulator,
   moderation,
   accountDeletion,
   honorBenefits,

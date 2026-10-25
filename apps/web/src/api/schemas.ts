@@ -2818,6 +2818,7 @@ export const unlocksSchema = z.object({ unlocked: z.array(unlockable) });
  * comes from and empties the one that is not owed; nothing on this side chooses.
  */
 const ordinaryBattleReport = z.object({
+  replayStatus: z.enum(['AVAILABLE', 'NOT_RECORDED', 'INSUFFICIENT_FORCE', 'TOO_LARGE']).optional(),
       /** Absent only on battle reports cached before strategic reports existed. */
       kind: z.literal('BATTLE').optional(),
       id: z.string(),
@@ -2863,6 +2864,7 @@ const ordinaryBattleReport = z.object({
         z.object({
           round: z.number(),
           distributedFire: z.literal(true).optional(),
+          targetLimit: z.number().int().positive().optional(),
           /** Null means the immutable report predates detailed calculation telemetry. */
           attackerRoll: z.number().nullable().optional(),
           defenderRoll: z.number().nullable().optional(),
@@ -3067,13 +3069,14 @@ const strategicBattleReport = z.object({
 });
 
 const monumentBattleReport = z.object({
+  replayStatus: z.enum(['AVAILABLE', 'NOT_RECORDED', 'INSUFFICIENT_FORCE', 'TOO_LARGE']).optional(),
   kind: z.literal('MONUMENT'), id: z.string(), at: z.coerce.date(),
   monument: z.object({ id: z.string(), ordinal: z.number().int().min(1).max(8), position: publicMonumentSchema.shape.position }),
   attacking: z.boolean(), grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']), control: z.enum(['ATTACKER', 'DEFENDER', 'EMPTY']),
   defenderCargoRetreated: z.boolean().optional(),
   yourRetreated: fleet.optional(),
           theirRetreatedCount: z.number().int().nonnegative().optional(),
-  rounds: z.array(z.object({ round: z.number().int().positive(), distributedFire: z.literal(true).optional(),
+  rounds: z.array(z.object({ round: z.number().int().positive(), distributedFire: z.literal(true).optional(), targetLimit: z.number().int().positive().optional(),
     yourLosses: fleet, theirLosses: fleet, yourRetreated: fleet, theirRetreatedCount: z.number().int().nonnegative() })).optional(),
   roundCount: z.number().int().nonnegative(), yourFleet: fleet, yourSurvivors: fleet, yourLosses: fleet,
   yourDamage: z.array(monumentLotSchema.pick({ hull: true, count: true, damageBp: true, remainderBp: true })),

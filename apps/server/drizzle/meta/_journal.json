@@ -1380,6 +1380,20 @@
       "when": 1792526054551,
       "tag": "0196_arena_pilots",
       "breakpoints": true
+    },
+    {
+      "idx": 197,
+      "version": "7",
+      "when": 1792907310519,
+      "tag": "0197_glamorous_veda",
+      "breakpoints": true
+    },
+    {
+      "idx": 198,
+      "version": "7",
+      "when": 1792909588527,
+      "tag": "0198_bitter_korath",
+      "breakpoints": true
     }
   ]
 }

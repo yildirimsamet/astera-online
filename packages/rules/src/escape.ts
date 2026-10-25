@@ -12,6 +12,7 @@ import { HULLS, combatValue, fleetCount, fleetEntries } from './hulls.js';
 import type { Fleet, Rng } from './types.js';
 import type { HpDamageLots } from './radiationHp.js';
 import { partitionCombatFleet } from './shipMaintenance.js';
+import { createBattleRecording, type BattleRecording } from './battleRecording.js';
 
 /**
  * TAKTİK GERİ ÇEKİLME — THE FLEET ESCAPE. Owner decision, 2026-09-23.
@@ -133,6 +134,7 @@ export interface RaidResolution {
 }
 
 export interface RaidInput {
+  recording?: BattleRecording;
   homeDamage?: HpDamageLots;
   maintenance?: boolean;
   stacks: readonly JointAttackerStack[];
@@ -168,6 +170,7 @@ const tankOf = (deuterium: number): number =>
   Number.isFinite(deuterium) ? Math.floor(Math.max(0, deuterium)) : 0;
 
 export function resolveRaid(input: RaidInput): RaidResolution {
+  if (input.recording && (input.recording.ships.length > 0 || input.recording.rounds.length > 0)) throw new RangeError('use a fresh battle recording');
   const context = input.preciseDamage ? 'HP_PLANET' : 'PLANET';
   const partition = input.maintenance ? partitionCombatFleet(input.line, input.homeDamage) : null;
   const line = partition?.eligible ?? input.line;
@@ -178,35 +181,40 @@ export function resolveRaid(input: RaidInput): RaidResolution {
   if (support.length > 0) {
     if (input.escape) throw new RangeError('a line holding clan support never lifts');
     return {
-      result: resolveBattle(input.stacks, [host(line), ...support], input.shield, input.rng(), context, input.maintenance),
+      result: resolveBattle(input.stacks, [host(line), ...support], input.shield, input.rng(), context, input.maintenance, input.recording),
       escape: null,
     };
   }
-  const standing = resolveBattle(input.stacks, [host(line)], input.shield, input.rng(), context, input.maintenance);
-  if (!input.escape) return { result: standing, escape: null };
+  const trial = input.recording && input.escape ? createBattleRecording({ hitLimit: input.recording.hitLimit }) : input.recording;
+  const standing = resolveBattle(input.stacks, [host(line)], input.shield, input.rng(), context, input.maintenance, trial);
+  const keepStanding = (escape: EscapeOutcome | null): RaidResolution => {
+    if (input.recording && trial && input.recording !== trial) Object.assign(input.recording, trial);
+    return { result: standing, escape };
+  };
+  if (!input.escape) return keepStanding(null);
 
   const ships = escapingShips(line);
-  if (fleetCount(ships) === 0) return { result: standing, escape: null };
+  if (fleetCount(ships) === 0) return keepStanding(null);
   if (escapeCombatShipCount(line) < input.minimumCombatShips) {
-    return { result: standing, escape: null };
+    return keepStanding(null);
   }
 
   const power = input.stacks.reduce((sum, stack) => sum + combatValue(input.maintenance
     ? partitionCombatFleet(stack.fleet, stack.damage).eligible : stack.fleet), 0);
   if (!outmatches(power, combatValue(line)) || standing.grade !== 'DECISIVE') {
-    return { result: standing, escape: null };
+    return keepStanding(null);
   }
 
   const fuel = escapeFuel(ships);
   const available = tankOf(input.deuterium);
   if (available < fuel) {
-    return { result: standing, escape: { kind: 'STRANDED', ships, fuel, available } };
+    return keepStanding({ kind: 'STRANDED', ships, fuel, available });
   }
 
   const guns: Fleet = {};
   for (const [id, count] of fleetEntries(line)) {
     if (HULLS[id].ground) guns[id] = count;
   }
-  const result = resolveBattle(input.stacks, [host(guns)], input.shield, input.rng(), context, input.maintenance);
+  const result = resolveBattle(input.stacks, [host(guns)], input.shield, input.rng(), context, input.maintenance, input.recording);
   return { result, escape: { kind: 'ESCAPED', ships, fuel } };
 }

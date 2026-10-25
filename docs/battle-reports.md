@@ -170,3 +170,11 @@ exists: the viewer's own physical losses and retreats, confirmed enemy physical 
 and enemy retreat count. Allied owner identities, the enemy's starting/surviving roster
 and its wounds are not exposed. Historical rounds without owner telemetry retain the
 aggregate summary instead of fabricating personal round losses. Arrays have no three-round cap.
+
+### Counter-priority target cap (2026-10-25)
+
+New rounds additionally store `targetLimit: 10`. The limit counts distinct targets
+across a whole shot, including overflow. Higher counter classes have selection
+priority; equal-priority targets are selected randomly. Ordinary and monument API
+views preserve this public rule marker. Reports without the marker retain the
+historical all-target explanation; neither old round numbers nor outcomes are recomputed.

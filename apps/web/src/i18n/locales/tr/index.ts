@@ -1,4 +1,5 @@
 import { moderation } from './moderation.js';
+import { simulator } from './simulator.js';
 import { accountDeletion } from './accountDeletion.js';
 import { accountSecurity } from './accountSecurity.js';
 import { unknownSignal } from './unknownSignal.js';
@@ -41,6 +42,7 @@ import type { Resources } from '../en/index.js';
  * anahtarı yakalar ama boş bir dizeyi yakalamaz.
  */
 export const tr: Resources = {
+  simulator,
   moderation,
   accountDeletion,
   honorBenefits,

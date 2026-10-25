@@ -310,7 +310,7 @@ export function ReportScene({
           {watchable && (
             <button type="button" onClick={onWatch} className={GHOST}>
               <Icon id="i-play" className="size-3.5" />
-              {t('reportScene.watch')}
+              {t(report.replayStatus === 'AVAILABLE' ? 'reports.howItWent' : 'reportScene.watch')}
             </button>
           )}
           {share && (

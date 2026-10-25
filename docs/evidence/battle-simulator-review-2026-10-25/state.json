@@ -1,0 +1,822 @@
+{
+  "workerFailure": {
+    "editor": "flex",
+    "alerts": [
+      "Savaş hesaplanamadı. Tekrar dene."
+    ],
+    "loading": [
+      "Savaş alanı hazırlanıyor…"
+    ]
+  },
+  "workerRetry": {
+    "time": 0.26659999999999995,
+    "aegis": 854.25,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 90,
+        "shield": 22.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A1",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A2",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A3",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A4",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A5",
+        "hp": 282,
+        "shield": 70.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A6",
+        "hp": 282,
+        "shield": 70.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A7",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A8",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A9",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A10",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D1",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D2",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D3",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D4",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D5",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D6",
+        "hp": 2158,
+        "shield": 539.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D7",
+        "hp": 2158,
+        "shield": 539.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D8",
+        "hp": 1000,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D9",
+        "hp": 1000,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D10",
+        "hp": 215,
+        "shield": 0,
+        "status": "ACTIVE"
+      }
+    ],
+    "phase": "READY",
+    "pendingFire": [],
+    "activeSourceId": null,
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "editor": "flex",
+    "playLabel": "Savaşı oynat",
+    "alerts": [],
+    "loading": []
+  },
+  "beforeResize": {
+    "time": 0.26659999999999995,
+    "aegis": 854.25,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 90,
+        "shield": 22.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A1",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A2",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A3",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A4",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A5",
+        "hp": 282,
+        "shield": 70.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A6",
+        "hp": 282,
+        "shield": 70.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A7",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A8",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A9",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A10",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D1",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D2",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D3",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D4",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D5",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D6",
+        "hp": 2158,
+        "shield": 539.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D7",
+        "hp": 2158,
+        "shield": 539.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D8",
+        "hp": 1000,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D9",
+        "hp": 1000,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D10",
+        "hp": 215,
+        "shield": 0,
+        "status": "ACTIVE"
+      }
+    ],
+    "phase": "READY",
+    "pendingFire": [],
+    "activeSourceId": null,
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "editor": "flex",
+    "playLabel": "Duraklat",
+    "alerts": [],
+    "loading": []
+  },
+  "afterResize": {
+    "time": 0.49990000000000007,
+    "aegis": 854.25,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 90,
+        "shield": 22.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A1",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A2",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A3",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A4",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A5",
+        "hp": 282,
+        "shield": 70.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A6",
+        "hp": 282,
+        "shield": 70.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A7",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A8",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A9",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A10",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D1",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D2",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D3",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D4",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D5",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D6",
+        "hp": 2158,
+        "shield": 539.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D7",
+        "hp": 2158,
+        "shield": 539.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D8",
+        "hp": 1000,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D9",
+        "hp": 1000,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D10",
+        "hp": 215,
+        "shield": 0,
+        "status": "ACTIVE"
+      }
+    ],
+    "phase": "READY",
+    "pendingFire": [],
+    "activeSourceId": null,
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "editor": "flex",
+    "playLabel": "Duraklat",
+    "alerts": [],
+    "loading": []
+  },
+  "backgroundPause": {
+    "time": 2.3833000000000015,
+    "aegis": 0,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 90,
+        "shield": 22.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A1",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A2",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A3",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A4",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A5",
+        "hp": 282,
+        "shield": 70.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A6",
+        "hp": 282,
+        "shield": 70.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A7",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A8",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A9",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A10",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D1",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D2",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D3",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D4",
+        "hp": 35.59130026898766,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D5",
+        "hp": 30.701744691478325,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D6",
+        "hp": 2158,
+        "shield": 539.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D7",
+        "hp": 2158,
+        "shield": 507.46799888415325,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D8",
+        "hp": 968.7054023020148,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D9",
+        "hp": 972.3325295312488,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D10",
+        "hp": 201.9127245986947,
+        "shield": 0,
+        "status": "ACTIVE"
+      }
+    ],
+    "phase": "ATTACK",
+    "pendingFire": [],
+    "activeSourceId": "A6",
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "editor": "none",
+    "playLabel": "Savaşı oynat",
+    "alerts": [],
+    "loading": []
+  },
+  "backgroundRestore": {
+    "time": 2.3833000000000015,
+    "aegis": 0,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 90,
+        "shield": 22.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A1",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A2",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A3",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A4",
+        "hp": 223,
+        "shield": 55.75,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A5",
+        "hp": 282,
+        "shield": 70.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A6",
+        "hp": 282,
+        "shield": 70.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A7",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A8",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A9",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "A10",
+        "hp": 1508,
+        "shield": 377,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D1",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D2",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D3",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D4",
+        "hp": 35.59130026898766,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D5",
+        "hp": 30.701744691478325,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D6",
+        "hp": 2158,
+        "shield": 539.5,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D7",
+        "hp": 2158,
+        "shield": 507.46799888415325,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D8",
+        "hp": 968.7054023020148,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D9",
+        "hp": 972.3325295312488,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D10",
+        "hp": 201.9127245986947,
+        "shield": 0,
+        "status": "ACTIVE"
+      }
+    ],
+    "phase": "ATTACK",
+    "pendingFire": [],
+    "activeSourceId": "A6",
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "editor": "none",
+    "playLabel": "Savaşı oynat",
+    "alerts": [],
+    "loading": []
+  },
+  "gpuLost": {
+    "supported": true,
+    "editor": "none",
+    "playLabel": "Savaşı oynat",
+    "alerts": [],
+    "loading": []
+  },
+  "gpuRestored": {
+    "editor": "none",
+    "playLabel": "Savaşı oynat",
+    "alerts": [],
+    "loading": []
+  },
+  "roundSix": {
+    "time": 40.97,
+    "aegis": 0,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 607.7612171096725,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 573.2978584533555,
+        "shield": 0,
+        "status": "ACTIVE"
+      }
+    ],
+    "phase": "RETREAT",
+    "pendingFire": [],
+    "activeSourceId": null,
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "editor": "flex",
+    "playLabel": "Savaşı oynat",
+    "alerts": [],
+    "loading": []
+  },
+  "invalidHealth": {
+    "time": 40.97,
+    "aegis": 0,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 607.7612171096725,
+        "shield": 0,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 573.2978584533555,
+        "shield": 0,
+        "status": "ACTIVE"
+      }
+    ],
+    "phase": "RETREAT",
+    "pendingFire": [],
+    "activeSourceId": null,
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "editor": "flex",
+    "playLabel": "Savaşı oynat",
+    "alerts": [
+      "Adetleri ve araştırma seviyelerini kontrol et. En fazla 400 birlik kullan."
+    ],
+    "loading": []
+  }
+}

@@ -157,7 +157,7 @@ describe('the lines a wing is drawn against', () => {
 
   /** The measured rule of thumb, reproduced by the engine rather than typed in. */
   it('does not promise a successful raid when every surviving attacker retreated', () => {
-    const wing: Fleet = { DART: 17 }, crew: Fleet = { DART: 17 };
+    const wing: Fleet = { DART: 18 }, crew: Fleet = { DART: 18 };
     const input = blind({ wall: { kind: 'EXACT', fleet: crew } });
     const result = resolveCombat(wing, crew, 0, flat, { attacker: { tech: {} }, defender: { tech: {} } });
     expect(result.grade).toBe('DECISIVE');
@@ -194,7 +194,7 @@ describe('the lines a wing is drawn against', () => {
       expect(combatValue(crew) < f.breaks.low, `breaks ${String(count)}`).toBe(home && r.grade !== 'REPELLED');
       if (count === 30) {
         expect(r.grade).toBe('DECISIVE');
-        expect(combatValue(r.attackerSurvivors)).toBeGreaterThan(0);
+        expect(combatValue(r.attackerSurvivors)).toBe(0);
         expect(home).toBe(false);
         expect(combatValue(crew) < f.clears.low).toBe(false);
       }

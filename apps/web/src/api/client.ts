@@ -1,3 +1,4 @@
+import { battleReplayResponseSchema } from './battleReplaySchemas.js';
 import { communityPolicyConsentSchema, communityPolicyStatusSchema, type CommunityPolicyConsent } from './communityPolicySchemas.js';
 import { buildHeader, reportUpdateRequired } from '../platform/updateGate.js';
 import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema, accountDeletionStatusSchema, accountDeletionSubmittedSchema } from './schemas.js';
@@ -1068,6 +1069,8 @@ export class Api {
   intel = () => this.send('/api/intel', intelSchema);
   /** The closing link of the loop: what a fight actually taught you. */
   reports = () => this.send('/api/reports?limit=50', reportsSchema);
+  battleReplay = (kind: 'BATTLE' | 'MONUMENT', id: string, options?: Pick<RequestOptions, 'signal'>) =>
+    this.send(`/api/reports/${kind}/${encodeURIComponent(id)}/replay`, battleReplayResponseSchema, options);
 
   upgrade = (planetIdOrType: string, explicitType?: BuildingId, confirmedLevel?: number) => {
     const type = explicitType ?? planetIdOrType as BuildingId;

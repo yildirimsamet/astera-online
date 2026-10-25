@@ -1,0 +1,172 @@
+{
+  "keyboardEnd": {
+    "finished": true,
+    "rewind": true
+  },
+  "navigation": {
+    "passed": true
+  },
+  "orbit": {
+    "beforeOrbit": {
+      "attackY": 596.3159346147017,
+      "defenceY": 349.97833251953125,
+      "correctMarkers": true
+    },
+    "afterOrbit": {
+      "attackY": 356.33273870294744,
+      "defenceY": 594.0347179066051,
+      "correctMarkers": true
+    },
+    "reset": true
+  },
+  "phoneFocus": {
+    "width": 350,
+    "pageWidth": 350,
+    "stage": {
+      "x": 0,
+      "y": 106,
+      "width": 350,
+      "height": 525,
+      "top": 106,
+      "right": 350,
+      "bottom": 631,
+      "left": 0
+    },
+    "transport": {
+      "x": 10,
+      "y": 667.5,
+      "width": 330,
+      "height": 48,
+      "top": 667.5,
+      "right": 340,
+      "bottom": 715.5,
+      "left": 10
+    },
+    "log": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "top": 0,
+      "right": 0,
+      "bottom": 0,
+      "left": 0
+    },
+    "card": {
+      "x": 10,
+      "y": 303.25,
+      "width": 330,
+      "height": 288.75,
+      "top": 303.25,
+      "right": 340,
+      "bottom": 592,
+      "left": 10
+    },
+    "unit": {
+      "x": 162.82989501953125,
+      "y": 143.11520385742188,
+      "width": 24,
+      "height": 53
+    }
+  },
+  "phoneLog": {
+    "width": 350,
+    "pageWidth": 350,
+    "stage": {
+      "x": 0,
+      "y": 106,
+      "width": 350,
+      "height": 525,
+      "top": 106,
+      "right": 350,
+      "bottom": 631,
+      "left": 0
+    },
+    "transport": {
+      "x": 10,
+      "y": 667.5,
+      "width": 330,
+      "height": 48,
+      "top": 667.5,
+      "right": 340,
+      "bottom": 715.5,
+      "left": 10
+    },
+    "log": {
+      "x": 0,
+      "y": 358,
+      "width": 350,
+      "height": 273,
+      "top": 358,
+      "right": 350,
+      "bottom": 631,
+      "left": 0
+    },
+    "escaped": true
+  },
+  "retreat": {
+    "escapeAt": 308.75000000000085,
+    "ships": [
+      {
+        "id": "A13",
+        "hp": 19.656544519809803,
+        "shield": 0,
+        "status": "RETREATED"
+      },
+      {
+        "id": "D6",
+        "hp": 18.9256952524096,
+        "shield": 0,
+        "status": "RETREATED"
+      },
+      {
+        "id": "D10",
+        "hp": 13.099219126543662,
+        "shield": 0,
+        "status": "RETREATED"
+      }
+    ],
+    "rewind": true
+  },
+  "landscape": {
+    "width": 812,
+    "pageWidth": 812,
+    "stage": {
+      "x": 0,
+      "y": 54,
+      "width": 812,
+      "height": 194,
+      "top": 54,
+      "right": 812,
+      "bottom": 248,
+      "left": 0
+    },
+    "transport": {
+      "x": 10,
+      "y": 281.5,
+      "width": 792,
+      "height": 39.5,
+      "top": 281.5,
+      "right": 802,
+      "bottom": 321,
+      "left": 10
+    },
+    "log": {
+      "x": 0,
+      "y": 0,
+      "width": 0,
+      "height": 0,
+      "top": 0,
+      "right": 0,
+      "bottom": 0,
+      "left": 0
+    }
+  },
+  "gpu": {
+    "sameTime": true,
+    "sameShips": true,
+    "expectedRecoveryErrors": []
+  },
+  "requests": 0,
+  "errors": []
+}

@@ -21,6 +21,7 @@ import {
 import type { Fleet, Grade, HullId, Rng } from './types.js';
 import { partitionCombatFleet } from './shipMaintenance.js';
 import { resolveRandomBattle } from './randomBattle.js';
+import type { BattleRecording } from './battleRecording.js';
 
 /** Only the explicitly shield-disabled historical cohort replay uses these rounds. */
 const LEGACY_COMBAT_ROUNDS = 3;
@@ -33,6 +34,8 @@ export interface CombatOwnerFleet {
 }
 
 export interface CombatRound {
+  /** New target selection contract; absent on historical all-target rounds. */
+  targetLimit?: number;
   /** Recorded by the distributed-fire model; absent on immutable historical rounds. */
   distributedFire?: true;
   /** Immutable owner-specific departures, never physical casualties. */
@@ -1024,6 +1027,7 @@ export function resolveBattle(
   /** HP_PLANET and MONUMENT preserve fractional wounds; PLANET keeps rounded legacy wound output. */
   context: 'PLANET' | 'MONUMENT' | 'HP_PLANET' = 'PLANET',
   maintenance = false,
+  recording?: BattleRecording,
 ): BattleResult {
   const monument = context === 'MONUMENT';
   const precise = context !== 'PLANET' || maintenance;
@@ -1035,8 +1039,9 @@ export function resolveBattle(
   if (monument && shield !== 0) throw new RangeError('a monument fleet has no planet shield');
   assertDefendingLine(defenders, monument, precise, maintenance);
   if (defenders.some(stack => stack.tech.shipShields !== false) || stacks.some(stack => stack.tech.shipShields !== false)) {
-    return resolveRandomBattle(stacks, defenders, shield, rng, precise, maintenance);
+    return resolveRandomBattle(stacks, defenders, shield, rng, precise, maintenance, recording);
   }
+  if (recording) throw new RangeError('historical cohort battles have no per-ship recording');
   const passiveAttackers = maintenance && stacks.some((stack) => fleetCount(partitionCombatFleet(stack.fleet, stack.damage).excluded) > 0);
   if (defenders.length === 1 && !monument && !passiveAttackers && combatLots(defenders[0]!.fleet, defenders[0]!.damage, precise).length === 0) {
     const only = defenders[0]!;

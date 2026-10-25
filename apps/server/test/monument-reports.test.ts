@@ -95,6 +95,7 @@ describe('monument participant reports and result delivery', () => {
       expect(report).toHaveProperty('rounds');
       expect(report.rounds).toHaveLength(battle!.rounds.length);
       for (const round of report.rounds ?? []) {
+        expect(round).toHaveProperty('targetLimit', 10);
         expect(round).not.toHaveProperty('casualties');
         expect(round).not.toHaveProperty('retreats');
         expect(round).not.toHaveProperty('playerId');

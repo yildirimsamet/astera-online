@@ -1,3 +1,4 @@
+import { BattleReplayAction } from '../battle-simulator/BattleReplayAction.js';
 import { BattleRetreatNote } from '../ui/BattleRetreatNote.js';
 import { fleetCount, fleetEntries, type Fleet } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +29,7 @@ export function MonumentReportSheet({ report, onClose, onFocusMonument }: {
     : [];
   return <Sheet title={name} onClose={onClose}>
     <div data-monument-report className="grid gap-3 font-v2-ui text-caption text-v2-ink">
+      <BattleReplayAction kind="MONUMENT" id={report.id} status={report.replayStatus} />
       <p className="text-micro text-v2-ink-3">{dayClock(report.at, serverNow())} · {t('reports.rounds', { count: report.roundCount })}</p>
       <section data-battle-outcome={outcome} className={`grid gap-2 rounded-control border p-3 ${battleTone[outcome]}`}>
         <p className="font-semibold text-v2-ink">{t(monumentControlKey(report))}</p>
@@ -62,7 +64,7 @@ export function MonumentReportSheet({ report, onClose, onFocusMonument }: {
           </section>)}
         </div>
       </details>}
-      <MonumentBattleRules />
+      <MonumentBattleRules targetLimit={report.rounds?.find(round => round.targetLimit !== undefined)?.targetLimit ?? null} />
       {onFocusMonument && <button type="button" className="min-h-10 rounded-control border border-v2-line px-3 font-semibold text-v2-self"
         onClick={() => { onClose(); onFocusMonument(report.monument.id); }}>{t('monument.look', { name })}</button>}
     </div>

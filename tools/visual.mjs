@@ -17,6 +17,24 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--battle-simulator')) {
+  const { verifyBattleSimulator } = await import('./battle-simulator-visual.mjs');
+  await verifyBattleSimulator(process.argv[2] ?? 'out/battle-simulator');
+  process.exit(0);
+}
+
+if (process.argv.includes('--battle-simulator-review')) {
+  const { verifyBattleSimulatorReview } = await import('./battle-simulator-review-visual.mjs');
+  await verifyBattleSimulatorReview(process.argv[2] ?? 'out/battle-simulator-review-fixes');
+  process.exit(0);
+}
+
+if (process.argv.includes('--battle-simulator-asset-retry')) {
+  const { verifyBattleAssetRetry } = await import('./battle-simulator-review-visual.mjs');
+  await verifyBattleAssetRetry(process.argv[2] ?? 'out/battle-simulator-asset-retry');
+  process.exit(0);
+}
+
 if (process.argv.includes('--six-round-combat')) {
   const { verifySixRoundCombat } = await import('./six-round-combat-visual.mjs');
   await verifySixRoundCombat(process.argv[2] ?? 'out/six-round-combat');
@@ -432,6 +450,12 @@ if (process.argv.includes('--radiation-haze')) {
 if (process.argv.includes('--monument-models')) {
   const { verifyMonumentModels } = await import('./monument-model-visual.mjs');
   await verifyMonumentModels(process.argv[2] ?? 'out/monument-models');
+  process.exit(0);
+}
+
+if (process.argv.includes('--real-battle-replay')) {
+  const { verifyRealBattleReplay } = await import('./real-battle-replay-visual.mjs');
+  await verifyRealBattleReplay(process.argv[2] ?? 'out/real-battle-replay');
   process.exit(0);
 }
 

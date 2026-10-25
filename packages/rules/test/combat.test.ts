@@ -86,8 +86,8 @@ describe('counter cycle', () => {
    * against nearly the same board.
    *
    * Fire is simultaneous: both formations receive the same total first salvo
-   * before destroyed defending guns stop firing. With distributed shots this
-   * can wound many Pikes instead of killing a few immediately. The larger formation earns its advantage in round
+   * before destroyed defending guns stop firing. Ten-target shots concentrate
+   * fire and can kill Pikes immediately. The larger formation earns its advantage in round
    * two by removing more of that board in round one. A few added Darts also matter:
    * Darts counter Pikes at 1.6x.
    */
@@ -96,7 +96,7 @@ describe('counter cycle', () => {
     const small = resolveCombat({ PIKE: 150 }, defence, 0, flat(), NO_TECH);
     const large = resolveCombat({ PIKE: 250 }, defence, 0, flat(), NO_TECH);
 
-    expect(small.rounds[0]?.attackerLosses.PIKE ?? 0).toBe(0);
+    expect(small.rounds[0]?.attackerLosses.PIKE ?? 0).toBeGreaterThan(0);
     expect(small.rounds[0]?.attackerShipShieldAbsorbed).toBeGreaterThan(0);
     expect(large.rounds[0]?.defenderDamage).toBe(small.rounds[0]?.defenderDamage);
     expect(fleetCount(large.attackerLosses) / 250).toBeLessThan(

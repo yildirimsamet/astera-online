@@ -331,11 +331,15 @@ their shields with a ship under fire. Ground emplacements have no personal shiel
 Radiation bypasses personal shields and reduces hull HP directly. Personal shield
 absorption earns no hull-damage Dominion contribution and causes no repair bill.
 
-Each eligible armed unit spreads its shot over all currently eligible living targets, using
-new independent positive random weights for each shot. Combat units are targeted before all
+Each eligible armed unit selects at most ten different living targets. Higher class
+damage multipliers have priority (1.6, then 1, then 0.625); selection within a priority
+is random without replacement. Damage is split with new positive random weights.
+Combat units are targeted before all
 SUPPORT hulls, including cargo and collectors. Excess from a destroyed target returns to
 base damage before redistribution, so counters apply exactly once per target. The same
-shot can reach cargo after the last armed target dies. Firing rights are simultaneous and
+shot can reach cargo after the last armed target dies if distinct-target slots remain.
+Overflow stays among selected living targets; after ten distinct targets die it remains
+unused, never spilling to an eleventh target. Firing rights are simultaneous and
 frozen at round entry. Hull damage credits count actual damage delivered, not recycled excess.
 
 Only after rounds 1–5, surviving mobile ships may retreat; there is no retreat after the final, sixth round. The battle-start

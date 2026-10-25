@@ -74,10 +74,10 @@ describe('pirate launch economics', () => {
       damage: [{ hull: 'GARBAGE_COLLECTOR' as const, count: 1, damageBp: 8000 }] };
     const fight = resolveBattle([soloStack(config.attacker, { tech: {} }, config.damage)],
       [{ stackId: 'pirate', playerId: '', fleet: config.crew, tech: { tech: {}, damageMult: pirateStats(1).damageMult }, maintenanceExempt: true }],
-      0, seededFrom('retreated-collector', 0), 'HP_PLANET', true);
+      0, seededFrom('retreated-collector', 1), 'HP_PLANET', true);
     expect(fight.attackerRetreated?.GARBAGE_COLLECTOR).toBe(1);
     expect(fleetCount(fight.attackerLosses)).toBeGreaterThan(0);
-    const trial = pirateRaidTrial(config, seededFrom('retreated-collector', 0));
+    const trial = pirateRaidTrial(config, seededFrom('retreated-collector', 1));
     expect(trial.returning.GARBAGE_COLLECTOR).toBe(1);
     expect(trial.salvage).toEqual(zero);
   });

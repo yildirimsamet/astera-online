@@ -10,6 +10,7 @@ import { applyHpDose, type HpDamageLots } from './radiationHp.js';
 import type { Fleet, Rng } from './types.js';
 import { partitionCombatFleet } from './shipMaintenance.js';
 import { activeBattleFleet } from './battleRetreat.js';
+import type { BattleRecording } from './battleRecording.js';
 
 const MOBILE: ReadonlySet<string> = new Set(MOBILE_HULLS);
 const byId = (a: string, b: string): number => a < b ? -1 : a > b ? 1 : 0;
@@ -78,6 +79,7 @@ export function resolveMonumentCombat(
   defenders: readonly DefenderStack[],
   rng: Rng,
   maintenance = false,
+  recording?: BattleRecording,
 ): MonumentCombatResult {
   const identities = new Set<string>();
   for (const row of attackers) {
@@ -94,7 +96,7 @@ export function resolveMonumentCombat(
   const d: DefenderStack[] = defenders.length > 0
     ? [...defenders].sort((left, right) => byId(left.stackId, right.stackId))
     : [{ stackId: '', playerId: '', fleet: {}, tech: { tech: {} } }];
-  const result = resolveBattle(a, d, 0, rng, 'MONUMENT', maintenance);
+  const result = resolveBattle(a, d, 0, rng, 'MONUMENT', maintenance, recording);
   const capturing: Fleet = {};
   for (const outcome of result.contributions) {
     const initial = a.find((stack) => stack.contributionId === outcome.contributionId)!;

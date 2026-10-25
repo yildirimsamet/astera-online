@@ -1,0 +1,1217 @@
+{
+  "evidence": [
+    {
+      "viewer": "ATTACK",
+      "width": 1600,
+      "replayRequests": 1,
+      "finalStateMatchesSettlement": true,
+      "identity": {
+        "correctMarkers": true,
+        "ownY": 584.2374494397963,
+        "enemyY": 291.29227170077235
+      },
+      "state": {
+        "time": 384.03499999999974,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 77,
+            "shield": 10.733270331745176,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A2",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A3",
+            "hp": 21.182274910736297,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 31.07459430812476,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A6",
+            "hp": 66.90062027857188,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 73.86099201888538,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 53.97287146412767,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A10",
+            "hp": 77,
+            "shield": 7.3594476547525165,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A11",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A12",
+            "hp": 77,
+            "shield": 5.081584067841227,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A13",
+            "hp": 77,
+            "shield": 4.443388200533494,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A14",
+            "hp": 67.38471240512797,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A15",
+            "hp": 77,
+            "shield": 17.090154276174466,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A16",
+            "hp": 64.87873330100399,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A17",
+            "hp": 77,
+            "shield": 3.951930925903362,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A18",
+            "hp": 77,
+            "shield": 5.4860789263442955,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A19",
+            "hp": 72.40669176797687,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A20",
+            "hp": 35.15955403753563,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A21",
+            "hp": 7.159154876274264,
+            "shield": 0,
+            "status": "RETREATED"
+          },
+          {
+            "id": "A22",
+            "hp": 34.06938420510776,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A23",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A24",
+            "hp": 77,
+            "shield": 6.917721519169422,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A25",
+            "hp": 77,
+            "shield": 3.6562793361959054,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A26",
+            "hp": 36.75697747044773,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A27",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A28",
+            "hp": 77,
+            "shield": 16.655782132697297,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A29",
+            "hp": 77,
+            "shield": 5.773785547488707,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A30",
+            "hp": 26.912803382165116,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A31",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A32",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A33",
+            "hp": 77,
+            "shield": 18.545883486226376,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A34",
+            "hp": 16.148071058278965,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A35",
+            "hp": 20.098227712175138,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A36",
+            "hp": 65.386956469794,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A37",
+            "hp": 77,
+            "shield": 15.387655931806684,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A38",
+            "hp": 42.47158771207962,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A39",
+            "hp": 71.32010263394262,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A40",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A41",
+            "hp": 72.83712724118035,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A42",
+            "hp": 76.18698367694013,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A43",
+            "hp": 53.466040276415356,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A44",
+            "hp": 48.53050975743937,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A45",
+            "hp": 77,
+            "shield": 2.2002985821302747,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A46",
+            "hp": 3.7064704083719215,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A47",
+            "hp": 77,
+            "shield": 5.299920814284281,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A48",
+            "hp": 72.18412351380756,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A49",
+            "hp": 40.79484545213213,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A50",
+            "hp": 77,
+            "shield": 18.920501662384428,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A51",
+            "hp": 11.564629039897252,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A52",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A53",
+            "hp": 77,
+            "shield": 4.7719917372316205,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A54",
+            "hp": 77,
+            "shield": 6.456969655431691,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A55",
+            "hp": 72.54790867572315,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A56",
+            "hp": 76.53693131407127,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A57",
+            "hp": 76.72231239222485,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A58",
+            "hp": 76.44916260553993,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A59",
+            "hp": 77,
+            "shield": 2.5971165069190505,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A60",
+            "hp": 77,
+            "shield": 11.506553689452424,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A61",
+            "hp": 72.00102029102541,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A62",
+            "hp": 42.160021083999524,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A63",
+            "hp": 77,
+            "shield": 14.291947786637333,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A64",
+            "hp": 68.79473442987937,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A65",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A66",
+            "hp": 77,
+            "shield": 10.24511913329183,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A67",
+            "hp": 77,
+            "shield": 13.378010759534213,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A68",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A69",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A70",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A71",
+            "hp": 153.7303094263998,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A72",
+            "hp": 145.35380546113498,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A73",
+            "hp": 2.937678108415639,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D1",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D2",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D3",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D4",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D5",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D6",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D7",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D8",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D9",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D10",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D11",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D12",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D13",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D14",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D15",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D16",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D17",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D18",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D19",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D20",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D21",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          }
+        ],
+        "phase": "FINISHED",
+        "pendingFire": [],
+        "activeSourceId": null,
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true,
+        "width": 1600,
+        "pageWidth": 1600,
+        "stageHeight": 699
+      }
+    },
+    {
+      "viewer": "DEFENCE",
+      "width": 350,
+      "replayRequests": 2,
+      "finalStateMatchesSettlement": true,
+      "identity": {
+        "correctMarkers": true,
+        "ownY": 450.3384926535866,
+        "enemyY": 288.9608875996358
+      },
+      "state": {
+        "time": 384.03499999999974,
+        "aegis": 0,
+        "ships": [
+          {
+            "id": "A0",
+            "hp": 77,
+            "shield": 10.733270331745176,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A1",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A2",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A3",
+            "hp": 21.182274910736297,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A4",
+            "hp": 31.07459430812476,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A5",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A6",
+            "hp": 66.90062027857188,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A7",
+            "hp": 73.86099201888538,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A8",
+            "hp": 53.97287146412767,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A9",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A10",
+            "hp": 77,
+            "shield": 7.3594476547525165,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A11",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A12",
+            "hp": 77,
+            "shield": 5.081584067841227,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A13",
+            "hp": 77,
+            "shield": 4.443388200533494,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A14",
+            "hp": 67.38471240512797,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A15",
+            "hp": 77,
+            "shield": 17.090154276174466,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A16",
+            "hp": 64.87873330100399,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A17",
+            "hp": 77,
+            "shield": 3.951930925903362,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A18",
+            "hp": 77,
+            "shield": 5.4860789263442955,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A19",
+            "hp": 72.40669176797687,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A20",
+            "hp": 35.15955403753563,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A21",
+            "hp": 7.159154876274264,
+            "shield": 0,
+            "status": "RETREATED"
+          },
+          {
+            "id": "A22",
+            "hp": 34.06938420510776,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A23",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A24",
+            "hp": 77,
+            "shield": 6.917721519169422,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A25",
+            "hp": 77,
+            "shield": 3.6562793361959054,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A26",
+            "hp": 36.75697747044773,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A27",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A28",
+            "hp": 77,
+            "shield": 16.655782132697297,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A29",
+            "hp": 77,
+            "shield": 5.773785547488707,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A30",
+            "hp": 26.912803382165116,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A31",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A32",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A33",
+            "hp": 77,
+            "shield": 18.545883486226376,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A34",
+            "hp": 16.148071058278965,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A35",
+            "hp": 20.098227712175138,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A36",
+            "hp": 65.386956469794,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A37",
+            "hp": 77,
+            "shield": 15.387655931806684,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A38",
+            "hp": 42.47158771207962,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A39",
+            "hp": 71.32010263394262,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A40",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A41",
+            "hp": 72.83712724118035,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A42",
+            "hp": 76.18698367694013,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A43",
+            "hp": 53.466040276415356,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A44",
+            "hp": 48.53050975743937,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A45",
+            "hp": 77,
+            "shield": 2.2002985821302747,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A46",
+            "hp": 3.7064704083719215,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A47",
+            "hp": 77,
+            "shield": 5.299920814284281,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A48",
+            "hp": 72.18412351380756,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A49",
+            "hp": 40.79484545213213,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A50",
+            "hp": 77,
+            "shield": 18.920501662384428,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A51",
+            "hp": 11.564629039897252,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A52",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "A53",
+            "hp": 77,
+            "shield": 4.7719917372316205,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A54",
+            "hp": 77,
+            "shield": 6.456969655431691,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A55",
+            "hp": 72.54790867572315,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A56",
+            "hp": 76.53693131407127,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A57",
+            "hp": 76.72231239222485,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A58",
+            "hp": 76.44916260553993,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A59",
+            "hp": 77,
+            "shield": 2.5971165069190505,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A60",
+            "hp": 77,
+            "shield": 11.506553689452424,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A61",
+            "hp": 72.00102029102541,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A62",
+            "hp": 42.160021083999524,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A63",
+            "hp": 77,
+            "shield": 14.291947786637333,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A64",
+            "hp": 68.79473442987937,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A65",
+            "hp": 77,
+            "shield": 19.25,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A66",
+            "hp": 77,
+            "shield": 10.24511913329183,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A67",
+            "hp": 77,
+            "shield": 13.378010759534213,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A68",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A69",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A70",
+            "hp": 90,
+            "shield": 22.5,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A71",
+            "hp": 153.7303094263998,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A72",
+            "hp": 145.35380546113498,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "A73",
+            "hp": 2.937678108415639,
+            "shield": 0,
+            "status": "ACTIVE"
+          },
+          {
+            "id": "D0",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D1",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D2",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D3",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D4",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D5",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D6",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D7",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D8",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D9",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D10",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D11",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D12",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D13",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D14",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D15",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D16",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D17",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D18",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D19",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D20",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          },
+          {
+            "id": "D21",
+            "hp": 0,
+            "shield": 0,
+            "status": "DESTROYED"
+          }
+        ],
+        "phase": "FINISHED",
+        "pendingFire": [],
+        "activeSourceId": null,
+        "drawCalls": 1,
+        "triangles": 1,
+        "finite": true,
+        "width": 350,
+        "pageWidth": 350,
+        "stageHeight": 529.5
+      }
+    },
+    {
+      "moduleDownloadRecovery": {
+        "passed": true,
+        "requests": 2,
+        "reportPreserved": true
+      }
+    }
+  ],
+  "errors": [],
+  "complete": true
+}

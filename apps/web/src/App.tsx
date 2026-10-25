@@ -9,6 +9,7 @@ import { arenaCredential, useArenaAccess } from './arena/access.js';
 import { useApi } from './api/context.js';
 import { LandingScreen } from './screens/LandingScreen.jsx';
 const Academy = lazy(() => import('./onboarding/Academy.jsx').then(module => ({ default: module.Academy })));
+const BattleSimulator = lazy(() => import('./battle-simulator/BattleSimulator.js').then(module => ({ default: module.BattleSimulator })));
 const ServersScreen = lazy(() => import('./screens/ServersScreen.jsx').then(module => ({ default: module.ServersScreen })));
 import type { Panel, PanelStop } from './screens/GalaxyView.jsx';
 const GalaxyView = lazy(() => import('./screens/GalaxyView.jsx').then(module => ({ default: module.GalaxyView })));
@@ -276,7 +277,12 @@ function SessionApp() {
 export function App() {
   const { t } = useTranslation();
   const [sandbox, setSandbox] = useState(() => canOpenArenaSandbox(import.meta.env, location.search));
+  const [simulator, setSimulator] = useState(() => new URLSearchParams(location.search).get('simulator') === '1');
   const updateRequired = useUpdateRequired();
+  if (simulator) return <Suspense fallback={<LoadingScreen caption={t('simulator.stageLoading')} />}><BattleSimulator onLeave={() => {
+    const url = new URL(location.href); url.searchParams.delete('simulator'); history.replaceState(null, '', url);
+    setSimulator(false);
+  }} /></Suspense>;
   if (sandbox) return <ArenaGate onLeave={() => {
     const url = new URL(location.href);
     url.searchParams.delete('arena');

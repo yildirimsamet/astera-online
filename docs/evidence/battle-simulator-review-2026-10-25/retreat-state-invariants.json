@@ -1,0 +1,28 @@
+{
+  "event": {
+    "kind": "RETREAT",
+    "shipId": "A13",
+    "round": 4,
+    "at": 308.75000000000085
+  },
+  "before": {
+    "id": "A13",
+    "hp": 19.656544519809803,
+    "shield": 0,
+    "status": "ACTIVE"
+  },
+  "after": {
+    "id": "A13",
+    "hp": 19.656544519809803,
+    "shield": 0,
+    "status": "RETREATED"
+  },
+  "rewind": {
+    "id": "A13",
+    "hp": 19.656544519809803,
+    "shield": 0,
+    "status": "ACTIVE"
+  },
+  "laterShots": 0,
+  "laterHits": 0
+}

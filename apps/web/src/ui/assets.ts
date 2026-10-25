@@ -131,6 +131,9 @@ const TIER_SUFFIX = { far: '-far', lite: '-lod', full: '' } as const;
 export const planetModel = (planetId: string, tier: keyof typeof TIER_SUFFIX): string =>
   planetFile(`models/planets/defaults/planet_${String(planetLook(planetId))}${TIER_SUFFIX[tier]}.glb`);
 
+/** A close battlefield uses the full rocky surface, rather than a distant galaxy LOD. */
+export const BATTLEFIELD_PLANET_MODEL = planetFile('models/planets/defaults/planet_4.glb');
+
 /**
  * Every world render there is.
  *

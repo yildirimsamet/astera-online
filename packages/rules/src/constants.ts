@@ -1015,6 +1015,8 @@ export const BUILD = {
 
 export const COMBAT = {
   rounds: 6,
+  /** Distinct targets per shot, including any same-shot overflow into support. */
+  targetsPerShot: 10,
   shipShieldFraction: 0.25,
   varianceMin: 0.92,
   varianceMax: 1.08,

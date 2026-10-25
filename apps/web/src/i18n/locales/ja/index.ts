@@ -1,4 +1,5 @@
 import { moderation } from './moderation.js';
+import { simulator } from './simulator.js';
 import { accountDeletion } from './accountDeletion.js';
 import { accountSecurity } from './accountSecurity.js';
 import { unknownSignal } from './unknownSignal.js';
@@ -34,6 +35,7 @@ import type { Resources } from '../en/index.js';
 
 /** Japanese resources share the source language's structure and interpolation contract. */
 export const ja: Resources = {
+  simulator,
   moderation,
   accountDeletion,
   honorBenefits,

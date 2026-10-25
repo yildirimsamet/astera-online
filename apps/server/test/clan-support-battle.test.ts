@@ -1,3 +1,4 @@
+import { readBattleReplay } from '../src/services/battleReplay.js';
 import { pino } from 'pino';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -111,6 +112,9 @@ describe('a raid on a supported world', () => {
 
     const [report] = await f.db.select().from(battleReports).where(eq(battleReports.missionId, missionId));
     expect(report!.defenderCount).toBe(2);
+    const replay = await readBattleReplay(f.db, { playerId: f.playerIds[0]!, seasonId: f.seasonId }, { kind: 'BATTLE', id: report!.id });
+    expect(replay.viewer).toBe('DEFENCE');
+    expect(replay.replay.owners.filter(owner => owner.side === 'DEFENCE')).toHaveLength(2);
     expect(report!.defenderFleet.PIKE).toBe(40);
 
     // No Pike ever lands in the host's home, whatever the wave lost.

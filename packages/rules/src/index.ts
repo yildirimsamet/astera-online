@@ -33,6 +33,7 @@ export * from './fuel.js';
 export * from './tech.js';
 export * from './travel.js';
 export * from './combat.js';
+export * from './battleRecording.js';
 export * from './shipShield.js';
 export * from './battleRetreat.js';
 export * from './damage.js';

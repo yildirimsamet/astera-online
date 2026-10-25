@@ -1,0 +1,1226 @@
+{
+  "playerRequests": 0,
+  "failures": [],
+  "captures": [
+    {
+      "name": "1600-fire",
+      "time": 3.5,
+      "aegis": 0,
+      "ships": [
+        {
+          "id": "A0",
+          "hp": 90,
+          "shield": 22.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A1",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A2",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A3",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A4",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A5",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A6",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A7",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A8",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A9",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A10",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D0",
+          "hp": 77,
+          "shield": 4.122234835586852,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D1",
+          "hp": 66.43046535523006,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D2",
+          "hp": 32.548484462322,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D3",
+          "hp": 77,
+          "shield": 1.513200337866781,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D4",
+          "hp": 35.59130026898766,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D5",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D6",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D7",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D8",
+          "hp": 1000,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D9",
+          "hp": 1000,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D10",
+          "hp": 215,
+          "shield": 0,
+          "status": "ACTIVE"
+        }
+      ],
+      "phase": "ATTACK",
+      "pendingFire": [],
+      "activeSourceId": "A6",
+      "drawCalls": 1,
+      "triangles": 1,
+      "finite": true,
+      "viewportWidth": 1600,
+      "pageWidth": 1600,
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1000,
+        "height": 662,
+        "top": 151.5,
+        "right": 1300,
+        "bottom": 813.5,
+        "left": 300
+      }
+    },
+    {
+      "name": "1600-defender",
+      "time": 3.5,
+      "aegis": 0,
+      "ships": [
+        {
+          "id": "A0",
+          "hp": 90,
+          "shield": 22.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A1",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A2",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A3",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A4",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A5",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A6",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A7",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A8",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A9",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A10",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D0",
+          "hp": 77,
+          "shield": 4.122234835586852,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D1",
+          "hp": 66.43046535523006,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D2",
+          "hp": 32.548484462322,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D3",
+          "hp": 77,
+          "shield": 1.513200337866781,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D4",
+          "hp": 35.59130026898766,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D5",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D6",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D7",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D8",
+          "hp": 1000,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D9",
+          "hp": 1000,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D10",
+          "hp": 215,
+          "shield": 0,
+          "status": "ACTIVE"
+        }
+      ],
+      "phase": "ATTACK",
+      "pendingFire": [],
+      "activeSourceId": "A6",
+      "drawCalls": 1,
+      "triangles": 1,
+      "finite": true,
+      "viewportWidth": 1600,
+      "pageWidth": 1600,
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1000,
+        "height": 662,
+        "top": 151.5,
+        "right": 1300,
+        "bottom": 813.5,
+        "left": 300
+      }
+    },
+    {
+      "name": "1600-shot-detail",
+      "time": 3.6999999999999997,
+      "aegis": 0,
+      "ships": [
+        {
+          "id": "A0",
+          "hp": 90,
+          "shield": 22.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A1",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A2",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A3",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A4",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A5",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A6",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A7",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A8",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A9",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A10",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D0",
+          "hp": 77,
+          "shield": 4.122234835586852,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D1",
+          "hp": 66.43046535523006,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D2",
+          "hp": 32.548484462322,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D3",
+          "hp": 77,
+          "shield": 1.513200337866781,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D4",
+          "hp": 35.59130026898766,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D5",
+          "hp": 30.701744691478325,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D6",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D7",
+          "hp": 2158,
+          "shield": 507.46799888415325,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D8",
+          "hp": 968.7054023020148,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D9",
+          "hp": 972.3325295312488,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D10",
+          "hp": 201.9127245986947,
+          "shield": 0,
+          "status": "ACTIVE"
+        }
+      ],
+      "phase": "ATTACK",
+      "pendingFire": [],
+      "activeSourceId": "A6",
+      "drawCalls": 1,
+      "triangles": 1,
+      "finite": true,
+      "viewportWidth": 1600,
+      "pageWidth": 1600,
+      "stage": {
+        "x": 300,
+        "y": 151.5,
+        "width": 1000,
+        "height": 662,
+        "top": 151.5,
+        "right": 1300,
+        "bottom": 813.5,
+        "left": 300
+      }
+    },
+    {
+      "name": "350-fire",
+      "time": 3.5,
+      "aegis": 0,
+      "ships": [
+        {
+          "id": "A0",
+          "hp": 90,
+          "shield": 22.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A1",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A2",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A3",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A4",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A5",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A6",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A7",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A8",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A9",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A10",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D0",
+          "hp": 77,
+          "shield": 4.122234835586852,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D1",
+          "hp": 66.43046535523006,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D2",
+          "hp": 32.548484462322,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D3",
+          "hp": 77,
+          "shield": 1.513200337866781,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D4",
+          "hp": 35.59130026898766,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D5",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D6",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D7",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D8",
+          "hp": 1000,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D9",
+          "hp": 1000,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D10",
+          "hp": 215,
+          "shield": 0,
+          "status": "ACTIVE"
+        }
+      ],
+      "phase": "ATTACK",
+      "pendingFire": [],
+      "activeSourceId": "A6",
+      "drawCalls": 1,
+      "triangles": 1,
+      "finite": true,
+      "viewportWidth": 350,
+      "pageWidth": 350,
+      "stage": {
+        "x": 0,
+        "y": 106,
+        "width": 350,
+        "height": 525,
+        "top": 106,
+        "right": 350,
+        "bottom": 631,
+        "left": 0
+      }
+    },
+    {
+      "name": "350-defender",
+      "time": 3.5,
+      "aegis": 0,
+      "ships": [
+        {
+          "id": "A0",
+          "hp": 90,
+          "shield": 22.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A1",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A2",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A3",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A4",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A5",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A6",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A7",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A8",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A9",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A10",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D0",
+          "hp": 77,
+          "shield": 4.122234835586852,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D1",
+          "hp": 66.43046535523006,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D2",
+          "hp": 32.548484462322,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D3",
+          "hp": 77,
+          "shield": 1.513200337866781,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D4",
+          "hp": 35.59130026898766,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D5",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D6",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D7",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D8",
+          "hp": 1000,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D9",
+          "hp": 1000,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D10",
+          "hp": 215,
+          "shield": 0,
+          "status": "ACTIVE"
+        }
+      ],
+      "phase": "ATTACK",
+      "pendingFire": [],
+      "activeSourceId": "A6",
+      "drawCalls": 1,
+      "triangles": 1,
+      "finite": true,
+      "viewportWidth": 350,
+      "pageWidth": 350,
+      "stage": {
+        "x": 0,
+        "y": 106,
+        "width": 350,
+        "height": 525,
+        "top": 106,
+        "right": 350,
+        "bottom": 631,
+        "left": 0
+      }
+    },
+    {
+      "name": "350-settings",
+      "time": 94.56499999999993,
+      "aegis": 0,
+      "ships": [
+        {
+          "id": "A0",
+          "hp": 90,
+          "shield": 22.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A1",
+          "hp": 89.04561365277296,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A2",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "A3",
+          "hp": 100.25703364455305,
+          "shield": 0,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A4",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "A5",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "A6",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "A7",
+          "hp": 1508,
+          "shield": 148.72785655216808,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A8",
+          "hp": 1508,
+          "shield": 61.60465930641767,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A9",
+          "hp": 1508,
+          "shield": 177.8136860483411,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A10",
+          "hp": 1508,
+          "shield": 138.3511441968718,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D0",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "D1",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "D2",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "D3",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "D4",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "D5",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "D6",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "D7",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "D8",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "D9",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        },
+        {
+          "id": "D10",
+          "hp": 0,
+          "shield": 0,
+          "status": "DESTROYED"
+        }
+      ],
+      "phase": "FINISHED",
+      "pendingFire": [],
+      "activeSourceId": null,
+      "drawCalls": 1,
+      "triangles": 1,
+      "finite": true,
+      "viewportWidth": 350,
+      "pageWidth": 350,
+      "stage": {
+        "x": 0,
+        "y": 106,
+        "width": 350,
+        "height": 460,
+        "top": 106,
+        "right": 350,
+        "bottom": 566,
+        "left": 0
+      }
+    },
+    {
+      "name": "350-space",
+      "time": 0.38340000000000146,
+      "aegis": 0,
+      "ships": [
+        {
+          "id": "A0",
+          "hp": 90,
+          "shield": 22.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A1",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A2",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A3",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A4",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A5",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A6",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A7",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A8",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A9",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A10",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D0",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D1",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D2",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D3",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D4",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D5",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D6",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D7",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        }
+      ],
+      "phase": "READY",
+      "pendingFire": [],
+      "activeSourceId": null,
+      "drawCalls": 1,
+      "triangles": 1,
+      "finite": true,
+      "viewportWidth": 350,
+      "pageWidth": 350,
+      "stage": {
+        "x": 0,
+        "y": 106,
+        "width": 350,
+        "height": 525,
+        "top": 106,
+        "right": 350,
+        "bottom": 631,
+        "left": 0
+      }
+    },
+    {
+      "name": "350-shot-detail",
+      "time": 0.38340000000000146,
+      "aegis": 0,
+      "ships": [
+        {
+          "id": "A0",
+          "hp": 90,
+          "shield": 22.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A1",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A2",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A3",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A4",
+          "hp": 223,
+          "shield": 55.75,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A5",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A6",
+          "hp": 282,
+          "shield": 70.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A7",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A8",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A9",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "A10",
+          "hp": 1508,
+          "shield": 377,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D0",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D1",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D2",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D3",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D4",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D5",
+          "hp": 77,
+          "shield": 19.25,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D6",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        },
+        {
+          "id": "D7",
+          "hp": 2158,
+          "shield": 539.5,
+          "status": "ACTIVE"
+        }
+      ],
+      "phase": "READY",
+      "pendingFire": [],
+      "activeSourceId": null,
+      "drawCalls": 1,
+      "triangles": 1,
+      "finite": true,
+      "viewportWidth": 350,
+      "pageWidth": 350,
+      "stage": {
+        "x": 0,
+        "y": 106,
+        "width": 350,
+        "height": 525,
+        "top": 106,
+        "right": 350,
+        "bottom": 631,
+        "left": 0
+      }
+    }
+  ]
+}

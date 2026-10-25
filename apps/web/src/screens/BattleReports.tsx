@@ -1,3 +1,4 @@
+import { BattleReplayAction } from '../battle-simulator/BattleReplayAction.js';
 import { DistributedFireRules } from '../ui/DistributedFireRules.js';
 import { BattleRetreatNote } from '../ui/BattleRetreatNote.js';
 import { useEffect, useRef, useState } from 'react';
@@ -670,6 +671,7 @@ function ReportSheet({
       onClose={onClose}
     >
       <div data-battle-report className="battle-report">
+      <div className="mb-3"><BattleReplayAction kind="BATTLE" id={report.id} status={report.replayStatus} /></div>
       {/*
         THE SCENE FIRST (B15, the mock's "KISMİ ZAFER"): the world, the haul, both sides, one
         sentence of why and the balance. The sheet's title already carries the verdict and is
@@ -887,7 +889,7 @@ function ReportSheet({
       <>
       <h3 className="mt-4 text-caption font-semibold text-v2-ink">{t('reports.howItWent')}</h3>
       <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">{t('reports.calculation.fireNote')}</p>
-      {report.rounds.some(round => round.distributedFire === true) ? <DistributedFireRules /> : null}
+      {report.rounds.some(round => round.distributedFire === true) ? <DistributedFireRules targetLimit={report.rounds.find(round => round.targetLimit !== undefined)?.targetLimit} /> : null}
       {!report.pirate ? <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">{t('reports.roundDamageNote')}</p> : null}
       <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-2">
         {report.rounds.map((round) => (

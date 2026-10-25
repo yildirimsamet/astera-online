@@ -1,0 +1,73 @@
+{
+  "beforeOrbit": {
+    "A": 651.8735906427556,
+    "D": 382.1383999911222
+  },
+  "afterOrbit": {
+    "A": 341.2718783291903,
+    "D": 557.5035955255681
+  },
+  "headers": [
+    "Savunan",
+    "Saldıran"
+  ],
+  "seekEnd": {
+    "max": "35.34999999999999",
+    "time": 0.6333000000000031,
+    "aegis": 0,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      },
+      {
+        "id": "D0",
+        "hp": 77,
+        "shield": 19.25,
+        "status": "ACTIVE"
+      }
+    ],
+    "phase": "READY",
+    "pendingFire": [],
+    "activeSourceId": null,
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "results": []
+  },
+  "playEnd": {
+    "time": 35.34999999999999,
+    "aegis": 0,
+    "ships": [
+      {
+        "id": "A0",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      },
+      {
+        "id": "D0",
+        "hp": 0,
+        "shield": 0,
+        "status": "DESTROYED"
+      }
+    ],
+    "phase": "FINISHED",
+    "pendingFire": [],
+    "activeSourceId": null,
+    "drawCalls": 1,
+    "triangles": 1,
+    "finite": true,
+    "results": [
+      "Saldırın başarılı oldu"
+    ]
+  },
+  "landscape": {
+    "x": 280,
+    "y": 149.5,
+    "width": 532,
+    "height": 34
+  }
+}

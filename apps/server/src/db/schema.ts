@@ -21,6 +21,7 @@ import {
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import type {
+  BattleReplayData,
   CombatRound,
   PvpBalance,
   BuildQueueId,
@@ -4964,3 +4965,24 @@ export const chatMediaAssets = pgTable('chat_media_assets', {
   channel: text('channel').$type<'general' | 'clan' | 'dm'>(),
   messageId: uuid('message_id'),
 }, t => [index('chat_media_assets_pending_idx').on(t.claimedAt, t.createdAt)]);
+
+/** Private immutable telemetry, kept out of ordinary report-list SELECTs. */
+export const battleReplays = pgTable('battle_replays', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  battleReportId: uuid('battle_report_id').references(() => battleReports.id, { onDelete: 'cascade' }),
+  monumentBattleId: uuid('monument_battle_id').references(() => monumentBattles.id, { onDelete: 'cascade' }),
+  attackerVisible: boolean('attacker_visible').notNull(),
+  /** Server-only owner lookup; the public packet contains only per-battle aliases. */
+  participants: jsonb('participants').$type<{ playerId: string; alias: string }[]>().notNull().default([]),
+  status: text('status').$type<'AVAILABLE' | 'TOO_LARGE' | 'NOT_RECORDED'>().notNull(),
+  data: jsonb('data').$type<BattleReplayData>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, t => [
+  uniqueIndex('battle_replays_report_idx').on(t.battleReportId),
+  uniqueIndex('battle_replays_monument_idx').on(t.monumentBattleId),
+  index('battle_replays_season_idx').on(t.seasonId),
+  check('battle_replays_source_check', sql`num_nonnulls(${t.battleReportId}, ${t.monumentBattleId}) = 1`),
+  check('battle_replays_data_check', sql`(${t.status} = 'AVAILABLE' AND ${t.data} IS NOT NULL)
+    OR (${t.status} IN ('TOO_LARGE', 'NOT_RECORDED') AND ${t.data} IS NULL)`),
+]);
