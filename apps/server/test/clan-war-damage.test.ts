@@ -2,7 +2,7 @@ import { readHomeHealth } from '../src/services/homeHealth.js';
 import { pino } from 'pino';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
-import { CLAN, MULTI_WORLD, fleetEntries, needsDock, normalizeHpDamage, type DamageLot, type Fleet } from '@astera/rules';
+import { CLAN, MULTI_WORLD, fleetEntries, normalizeHpDamage, type DamageLot, type Fleet } from '@astera/rules';
 import {
   battleReports,
   clanWarContributions,
@@ -34,8 +34,9 @@ import { giveResearch, giveUnits, grant, levelWorld, seedWorld, setLevel, testDb
  * its own return leg, the commander's personal result says what they carry, and the
  * Repair Station judges them where each wave lands.
  *
- * Five Power-I Darts against two Power-II Strongholds penetrate their one-time
- * shields and leave both sides wounded (1,500 seeds: Stronghold 45–68%, Dart 36–92%).
+ * Two Power-I Citadels against two Power-II Citadels, both with Armor V and
+ * Shields IV, leave both owners and the defender wounded after six rounds.
+ * All 128 independent fixture seeds preserve all four ships with real hull damage.
  */
 
 const silent = pino({ level: 'silent' });
@@ -110,14 +111,21 @@ const send = (f: Fixture, accountIndex: number, originPlanetId: string, fleet: F
   }));
 
 /** Equal-tech waves share casualties and shields, then carry their own wounds home. */
-async function fightIt(f: Fixture): Promise<void> {
+async function fightIt(f: Fixture, preserveWounds = false): Promise<void> {
   await readyOperation(f);
   await f.db.delete(units).where(eq(units.planetId, f.planetIds[2]!));
-  await giveUnits(f.db, f.planetIds[2]!, { STRONGHOLD: 2 });
+  await giveUnits(f.db, f.planetIds[2]!, preserveWounds ? { CITADEL: 2 } : { STRONGHOLD: 2 });
+  if (preserveWounds) {
+    for (const index of [0, 1, 2]) {
+      await giveResearch(f.db, f.planetIds[index]!, 'SHIP_ARMOR', 5);
+      await giveResearch(f.db, f.planetIds[index]!, 'SHIP_SHIELDS', 4);
+    }
+    for (const index of [0, 1]) await giveUnits(f.db, f.planetIds[index]!, { CITADEL: 1 });
+  }
   await giveResearch(f.db, f.planetIds[2]!, 'SHIP_POWER', 2);
   for (const index of [0, 1]) await giveResearch(f.db, f.planetIds[index]!, 'SHIP_POWER', 1);
-  await send(f, 0, f.planetIds[0]!, { DART: 3 });
-  await send(f, 1, f.planetIds[1]!, { DART: 2 });
+  await send(f, 0, f.planetIds[0]!, preserveWounds ? { CITADEL: 1 } : { DART: 3 });
+  await send(f, 1, f.planetIds[1]!, preserveWounds ? { CITADEL: 1 } : { DART: 2 });
   await land(f);
   await f.db.transaction(async (tx) => startClanWar(tx, {
     actor: await clanActor(tx, f.accountIds[0]!), acknowledgeShieldLoss: true, clock: f.clock,
@@ -133,12 +141,11 @@ const payloadOf = async (f: Fixture, playerId: string, kind: 'raided' | 'raid_re
 describe('persistent damage in a joint war', () => {
   it('keeps the defender wounds at home and sends each wave home with its own wounds', async () => {
     const f = await setup(MULTI_WORLD.shipDamageRulesetVersion);
-    await fightIt(f);
+    await fightIt(f, true);
 
     const [report] = await f.db.select().from(battleReports);
-    expect(report?.defenderDamage).toHaveLength(1);
-    expect(report!.defenderDamage[0]).toMatchObject({ hull: 'STRONGHOLD', count: 1 });
-    expect(needsDock(report!.defenderDamage[0]!.damageBp)).toBe(true);
+    expect(report!.defenderDamage.length).toBeGreaterThan(0);
+    expect(report!.defenderDamage.every(lot => lot.hull === 'CITADEL' && lot.damageBp > 0)).toBe(true);
     expect((await readHomeHealth(f.db, f.planetIds[2]!)).damage).toEqual(report!.defenderDamage);
     expect(await dockLotsOf(f.db, f.planetIds[2]!)).toEqual([]);
     expect((await payloadOf(f, f.playerIds[2]!, 'raided'))[0]).not.toHaveProperty('docked');
@@ -180,13 +187,13 @@ describe('persistent damage in a joint war', () => {
 
   it('leaves a season dealt before the rule exactly as it was', async () => {
     const f = await setup(MULTI_WORLD.clanJointWarRulesetVersion);
-    await fightIt(f);
+    await fightIt(f, true);
     const [report] = await f.db.select().from(battleReports);
     expect(report?.defenderDamage).toEqual([]);
     expect(report?.attackerDamage).toEqual([]);
     expect(await dockLotsOf(f.db, f.planetIds[2]!)).toEqual([]);
     const [world] = await f.db.select().from(units)
-      .where(and(eq(units.planetId, f.planetIds[2]!), eq(units.location, 'home'), eq(units.hull, 'STRONGHOLD')));
+      .where(and(eq(units.planetId, f.planetIds[2]!), eq(units.location, 'home'), eq(units.hull, 'CITADEL')));
     expect(world?.count).toBe(2);
     expect((await f.db.select().from(clanWarContributions)).every((wave) => wave.damage === null)).toBe(true);
   });

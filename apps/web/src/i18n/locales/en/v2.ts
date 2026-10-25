@@ -334,6 +334,7 @@ export const repairStation = {
   ruleCancel: "A cancel gives back half the price; the ships wait again.",
   industrialChip: "{{industrial}} −{{off}}%",
   damagedHeading: "Damaged ships",
+  selectBatch: "Select first {{max}} health groups",
   selectAll: "Select all",
   selectNone: "Clear",
   choose: "Repair {{name}} ×{{count}}",

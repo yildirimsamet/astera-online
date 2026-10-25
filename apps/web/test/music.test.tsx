@@ -15,6 +15,7 @@ import {
   setMusicEnabled,
   setMusicVolume,
   useAmbientMusic,
+  suppressMusic,
 } from '../src/lib/music.js';
 
 /**
@@ -232,6 +233,30 @@ describe('the ambient score', () => {
  * the element must not depend on the flag, and these tests are what hold that.
  */
 describe('the sound switch', () => {
+  it('temporarily silences the arena without changing the saved preference or restarting the track', () => {
+    render(<Harness />);
+    const saved = globalThis.localStorage.getItem('astera.music');
+    let release: () => void = () => undefined;
+    act(() => { release = suppressMusic(); });
+    expect(fake.pause).toHaveBeenCalledTimes(1);
+    expect(musicEnabled()).toBe(true);
+    expect(globalThis.localStorage.getItem('astera.music')).toBe(saved);
+    setHidden(true);
+    setHidden(false);
+    expect(fake.play).toHaveBeenCalledTimes(1);
+    act(() => { release(); release(); });
+    expect(fake.play).toHaveBeenCalledTimes(2);
+    expect(fake.load).not.toHaveBeenCalled();
+  });
+
+  it('keeps a player-selected mute when the arena releases its suppression', () => {
+    render(<Harness />);
+    let release: () => void = () => undefined;
+    act(() => { release = suppressMusic(); setMusicEnabled(false); });
+    act(() => { release(); });
+    expect(musicEnabled()).toBe(false);
+    expect(fake.play).toHaveBeenCalledTimes(1);
+  });
   it('pauses without tearing the element down, and resumes where it was', () => {
     render(<Harness />);
     expect(fake.play).toHaveBeenCalledTimes(1);

@@ -258,13 +258,13 @@ describe('Fleet V2 catalog contract — D148', () => {
     });
   });
 
-  it('keeps the visible counter cycle and bounded three-round combat', () => {
+  it('keeps the visible counter cycle and bounded six-round combat', () => {
     expect(counterMult('SKIRMISHER', 'BULWARK')).toBe(1.6);
     expect(counterMult('BULWARK', 'LANCE')).toBe(1.6);
     expect(counterMult('LANCE', 'SKIRMISHER')).toBe(1.6);
     expect(counterMult('BULWARK', 'SKIRMISHER')).toBe(0.625);
     expect(COMBAT).toMatchObject({
-      rounds: 3,
+      rounds: 6,
       varianceMin: 0.92,
       varianceMax: 1.08,
       strongMult: 1.6,
@@ -316,10 +316,9 @@ describe('Fleet V2 catalog contract — D148', () => {
 
     const [firstRound, ...laterRounds] = result.rounds;
     if (!firstRound) throw new Error('missing support-order round');
-    expect(runtimeProperty(firstRound.attackerLosses, 'COURIER')).toBeUndefined();
-    expect(laterRounds.some(
-      (round) => Number(runtimeProperty(round.attackerLosses, 'COURIER') ?? 0) > 0,
-    )).toBe(true);
+    expect(runtimeProperty(firstRound.attackerLosses, 'DART')).toBe(1);
+    expect(Number(runtimeProperty(firstRound.attackerLosses, 'COURIER') ?? 0)).toBeGreaterThan(0);
+    expect(laterRounds.length).toBeLessThanOrEqual(2);
   });
 
   it('makes the scouted counter win the equal-budget exchange in the full resolver', () => {

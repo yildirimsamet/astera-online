@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   COMBAT, HULLS, capLoadToSurvivors, claimPirateLoot, currentPirateGeneration,
   forecastPirateProfit, fleetCargo, fleetCount, missionFuel, pirateHoard, pirateOverrun,
-  pirateRaidTrial, resolveBattle, seededFrom, shipHpRepairCost, soloStack,
+  pirateRaidTrial, pirateStats, resolveBattle, seededFrom, shipHpRepairCost, soloStack,
   type Resources,
 } from '../src/index.js';
 
@@ -66,6 +66,20 @@ describe('pirate launch economics', () => {
     expect(collected.salvage.alloy + collected.salvage.crystal).toBeGreaterThan(0);
     expect(keys.reduce((sum, key) => sum + collected.salvage[key], 0)).toBeLessThanOrEqual(7500);
     expect(collected).not.toHaveProperty('capturedHull');
+  });
+
+  it('does not let a collector that retreated alive lift wreck after the battle', () => {
+    const config = { ...input, attacker: { DART: 20, GARBAGE_COLLECTOR: 1 }, crew: { CORSAIR: 2 },
+      level: 1 as const, tech: {}, hoard: zero, fuel: 0,
+      damage: [{ hull: 'GARBAGE_COLLECTOR' as const, count: 1, damageBp: 8000 }] };
+    const fight = resolveBattle([soloStack(config.attacker, { tech: {} }, config.damage)],
+      [{ stackId: 'pirate', playerId: '', fleet: config.crew, tech: { tech: {}, damageMult: pirateStats(1).damageMult }, maintenanceExempt: true }],
+      0, seededFrom('retreated-collector', 0), 'HP_PLANET', true);
+    expect(fight.attackerRetreated?.GARBAGE_COLLECTOR).toBe(1);
+    expect(fleetCount(fight.attackerLosses)).toBeGreaterThan(0);
+    const trial = pirateRaidTrial(config, seededFrom('retreated-collector', 0));
+    expect(trial.returning.GARBAGE_COLLECTOR).toBe(1);
+    expect(trial.salvage).toEqual(zero);
   });
 
   it('includes outbound destruction and full launch fuel when the fleet never reaches the fight', () => {

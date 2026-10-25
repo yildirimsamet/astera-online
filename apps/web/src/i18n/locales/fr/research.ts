@@ -11,7 +11,7 @@ export const research = {
   shipShieldHullDamage: "Après les boucliers, {{amount}} dégâts ont atteint les coques défensives.",
   shipShieldsName: "Boucliers de vaisseau",
   shipShieldsTag: "Absorbe les tirs de combat",
-  shipShieldsRole: "Chaque vaisseau possède un bouclier égal à sa coque maximale. Quatre niveaux augmentent ce bouclier de base de 25%, 50%, 70% et 100% au total.",
+  shipShieldsRole: "Chaque vaisseau possède un bouclier égal à 25% de sa coque maximale. Quatre niveaux augmentent ce bouclier de base de 25%, 50%, 70% et 100% au total.",
   shipShieldsDetail: "Les boucliers commencent chaque combat pleins et ne se rechargent pas pendant le combat. Les dégâts de coque restent. La radiation traverse les boucliers et endommage directement la coque. Les défenses au sol n’ont pas de bouclier personnel. Le blindage augmente la coque maximale et le bouclier. Les flottes envoyées gardent leur recherche de départ.",
   shipShieldGain: "Bonus de bouclier",
   shipShieldScope: "Pour tous les vaisseaux mobiles. Les bonus sont des augmentations totales du bouclier de base ; les niveaux ne se multiplient pas.",

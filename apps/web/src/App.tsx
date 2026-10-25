@@ -3,6 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useSession } from './session/useSession.js';
 import { useEventStream } from './session/useEventStream.js';
 import { useLiveAlerts } from './session/useLiveAlerts.js';
+import { ArenaGate } from './arena/ArenaGate.js';
+import { canEnterArena, canOpenArenaSandbox } from './arena/flags.js';
+import { arenaCredential, useArenaAccess } from './arena/access.js';
+import { useApi } from './api/context.js';
 import { LandingScreen } from './screens/LandingScreen.jsx';
 const Academy = lazy(() => import('./onboarding/Academy.jsx').then(module => ({ default: module.Academy })));
 const ServersScreen = lazy(() => import('./screens/ServersScreen.jsx').then(module => ({ default: module.ServersScreen })));
@@ -83,6 +87,9 @@ function SessionApp() {
   } = useSession();
   const ready = session.phase === 'ready';
   const [academyReplay, setAcademyReplay] = useState(false);
+  const [arenaOpen, setArenaOpen] = useState(false);
+  const api = useApi();
+  const arenaAllowed = useArenaAccess(api, ready && import.meta.env.VITE_ARENA === '1');
 
   /**
    * ABOVE EVERY EARLY RETURN IN THIS COMPONENT, and it has to be.
@@ -213,6 +220,8 @@ function SessionApp() {
   if (academyReplay) return <Academy replay onClaim={() => Promise.reject(new Error('REPLAY_ONLY'))}
     onSignIn={() => { setAcademyReplay(false); }} onLeave={() => { setAcademyReplay(false); }} />;
 
+  if (arenaOpen) return <ArenaGate credential={() => arenaCredential(api)} onLeave={() => { setArenaOpen(false); setPanel('ship'); }} />;
+
   return (
     <WorldProvider>
       {/*
@@ -249,6 +258,8 @@ function SessionApp() {
             onCountryChange={updateCountry}
             onPlacementLost={rollover}
             onReplayAcademy={() => { setPanel(null); setAcademyReplay(true); }}
+            onEnterArena={canEnterArena(import.meta.env, arenaAllowed)
+              ? () => { setPanel(null); setArenaOpen(true); } : undefined}
             homeRequest={homeRequest}
             worldsRequest={worldsRequest}
             centerRequest={centerRequest}
@@ -264,6 +275,14 @@ function SessionApp() {
 /** Heavy game branches load after the public page has become useful. */
 export function App() {
   const { t } = useTranslation();
-  if (useUpdateRequired()) return <UpdateRequired />;
+  const [sandbox, setSandbox] = useState(() => canOpenArenaSandbox(import.meta.env, location.search));
+  const updateRequired = useUpdateRequired();
+  if (sandbox) return <ArenaGate onLeave={() => {
+    const url = new URL(location.href);
+    url.searchParams.delete('arena');
+    history.replaceState(null, '', url);
+    setSandbox(false);
+  }} />;
+  if (updateRequired) return <UpdateRequired />;
   return <Suspense fallback={<LoadingScreen caption={t('loading.contact')} />}><SessionApp /></Suspense>;
 }

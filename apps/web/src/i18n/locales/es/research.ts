@@ -18,7 +18,7 @@ export const research = {
   shipShieldHullDamage: "Tras los escudos, {{amount}} de daño alcanzó los cascos defensores.",
   shipShieldsName: "Escudos de nave",
   shipShieldsTag: "Absorbe los disparos de combate",
-  shipShieldsRole: "Cada nave comienza con un escudo igual a su casco máximo. Cuatro niveles de investigación aumentan este escudo base un 25%, 50%, 70% y 100% en total.",
+  shipShieldsRole: "Cada nave comienza con un escudo igual al 25% de su casco máximo. Cuatro niveles de investigación aumentan este escudo base un 25%, 50%, 70% y 100% en total.",
   shipShieldsDetail: "Los escudos empiezan cada combate llenos y no se recargan durante el combate. El daño del casco permanece. La radiación atraviesa los escudos y daña directamente el casco. Las defensas terrestres no tienen escudo personal. El blindaje aumenta el casco máximo y el escudo. Las flotas enviadas conservan su investigación de salida.",
   shipShieldGain: "Aumento del escudo",
   shipShieldScope: "Se aplica a todas las naves móviles. Las bonificaciones son aumentos totales sobre el escudo base; no se multiplican entre niveles.",

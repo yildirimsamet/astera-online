@@ -1,8 +1,10 @@
+import * as rules from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { and, eq, sql } from 'drizzle-orm';
 import {
+  battleRetreated,
   DEBRIS,
   ENGAGEMENT_STANDOFF,
   GALAXY,
@@ -564,6 +566,35 @@ describe('what a pirate raid comes home with', () => {
     expect(total).toBeCloseTo(both * DEBRIS.share, 2);
   });
 
+  it('cannot tow a pirate that retreated alive, even when the capture roll succeeds', async () => {
+    const target = await findVisible();
+    const fleet = await overwhelming();
+    const launch = await launchPirateRaid(f.db, mine, target.id, fleet, f.clock);
+    // Isolate the settlement contract. Physics/retreat rolls have separate oracle coverage.
+    const originalBattle = rules.resolveBattle;
+    const originalCapture = rules.pirateCapture;
+    const battleSpy = vi.spyOn(rules, 'resolveBattle').mockImplementationOnce((stacks, defenders, shield, rng, context, maintenance) => {
+      const battle = originalBattle(stacks, defenders, shield, rng, context, maintenance);
+      const survivors = { ...defenders[0]!.fleet };
+      return { ...battle, grade: 'DECISIVE', defenderSurvivors: survivors, defenderRetreated: survivors,
+        defenderLosses: {}, defenderLossValue: 0, defenderDamage: [], defenderRetreatDamage: [],
+        defenders: battle.defenders.map(row => ({ ...row, survivors: { ...row.sent }, retreated: { ...row.sent }, losses: {}, lossValue: 0, survivorDamage: [] })) };
+    });
+    const captureSpy = vi.spyOn(rules, 'pirateCapture').mockImplementation((level, crew, grade) => originalCapture(level, crew, grade, () => 0));
+    try {
+      f.clock.set(settledAt(launch.arriveAt));
+      await worker().tick();
+      const [raid] = await f.db.select().from(pirateRaids).where(eq(pirateRaids.id, launch.raidId));
+      const [report] = await f.db.select().from(battleReports);
+      expect(report!.defenderLosses).toEqual({});
+      expect(captureSpy).toHaveBeenCalled();
+      expect(raid!.capturedHull).toBeNull();
+    } finally {
+      battleSpy.mockRestore();
+      captureSpy.mockRestore();
+    }
+  });
+
   it('brings the hoard and, on a wipe, sometimes a ship home', async () => {
     const target = await findVisible();
     const fleet = await overwhelming();
@@ -614,7 +645,7 @@ describe('what a pirate raid comes home with', () => {
    * warship dying, and the lone hold then "repelled" every later raid with no damage on either
    * side. A crew left with holds only is taken by a wing that still has a gun.
    */
-  it('takes a crew of holds alone, destroys the pirate and reports the holds as lost', async () => {
+  it('clears a holds-only crew and distinguishes destroyed from escaped holds', async () => {
     const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
     const key = season!.asteroidKey;
     // Well inside the season, so the raid and its way home both fit.
@@ -646,7 +677,8 @@ describe('what a pirate raid comes home with', () => {
     expect(report!.grade).toBe('DECISIVE');
     const holds: Fleet = {};
     for (const [id, n] of fleetEntries(target.spec.roster)) if (HULLS[id].cls === 'SUPPORT') holds[id] = n;
-    expect(report!.defenderLosses).toMatchObject(holds);
+    const escaped = battleRetreated(report!.rounds, 'DEFENCE');
+    for (const [hull, count] of fleetEntries(holds)) expect((report!.defenderLosses[hull] ?? 0) + (escaped[hull] ?? 0)).toBe(count);
     expect(fleetCount(report!.attackerLosses)).toBe(0);
     const [state] = await f.db.select().from(pirateState).where(and(
       eq(pirateState.seasonId, f.seasonId), eq(pirateState.index, target.spec.index),

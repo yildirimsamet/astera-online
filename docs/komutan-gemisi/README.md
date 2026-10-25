@@ -1,6 +1,7 @@
 # Komutan Gemisi + Savaş Alanı — Özelliğin beyni
 
-> **Durum:** Planlama tamam (2026-10-07); geliştirme başlamadı. Faz durumu: [panoda](#durum-panosu).
+> **Durum:** Özel deneme sürümü (2026-10-20) `release/arena-playtest-20261020` dalında, prod e88cab68 üstünde; canlıya çıkış sahip onayı bekliyor (KG-K27). F7 sahip incelemesi bu denemeyle yapılır.
+> Çalıştırma ve doğrulama: [13](13-gelistirme-notlari.md). Faz durumu: [panoda](#durum-panosu).
 > **Hedef okuyucu:** Bu özelliği **hiç görmemiş** ve geliştirmeyi sahibin bilgisayarında yapacak
 > agent. Sahip brief'i sana ayrıca vermeyecek: **bu klasör tek kaynaktır** (KG-K7).
 > **Okuma sırası:** `CLAUDE.md` → bu dosya → [01-urun](01-urun.md) → [02-kararlar](02-kararlar.md)
@@ -36,8 +37,9 @@ telefonunda oynayıp **hissi onaylamadan** kapsam büyümez.
    çekirdek döngü, risk/ödül, PvP, sahiplik, sezonlar, ilerleme, kimlik.
 2. Teknik ayrıntıyı (mimari, kütüphane, test, küçük UX) **sen karar ver**. Kararı
    [02](02-kararlar.md)'ye KG-T olarak yaz.
-3. **TDD zorunlu** (tasarım/stil hariç). **Dört soru** her yüzeyde zorunlu. **Sunucu tek
-   otorite.** Bağlayıcı belgeler: `CLAUDE.md`, `docs/engineering-standards.md`.
+3. Bu MVP diliminde sahibin **KG-K14** talimatı geçerlidir: TDD ve dil yayılımı ertelendi;
+   tip/build ve gerçek oynanış doğrulanır. **Dört soru** her yüzeyde zorunlu. **Sunucu tek
+   otorite.** Diğer bağlayıcı belgeler: `CLAUDE.md`, `docs/engineering-standards.md`.
 4. **Depo public.** Telefondan çıkarılan referans varlıklar ve onlardan türeyen hiçbir şey git'e,
    `public/`'e, build'e ya da PR'a girmez ([09](09-varliklar-ve-referans-cikarma.md)).
 5. **F7 kapısı:** sahip "kontrol rahatlığı ve savaş hissi yeterince iyi" demeden F8 ve sonrası başlamaz.
@@ -49,17 +51,11 @@ telefonunda oynayıp **hissi onaylamadan** kapsam büyümez.
 2. `pnpm install` → `docker compose up -d` → `pnpm verify`. Başarısız test **adlarını** panoya
    yaz: bu, "yeşil" tanımının **temel çizgisidir** ([Çalışma düzeni](#calisma-duzeni)). Önceden
    kırık olanı düzeltme, yalnız kaydet.
-3. Sahibe şu üç soruyu sor (önerilerle birlikte):
-   - [KG-A1](02-kararlar.md#kg-a1): kalkan ne zaman biter?
-   - [KG-A2](02-kararlar.md#kg-a2): yakıt bitince kurtarma gecikmesi.
-   - [KG-A3](02-kararlar.md#kg-a3): tek döteryum deposu.
-
-   [KG-A27](02-kararlar.md#kg-a27)'yi (durum × olay kuralları) bilgi olarak anlat; onayı F5'ten
-   önce gerekir. Ayrıca dal/PR düzenini sor (önerim: `feature/komutan-gemisi` dalı, faz başına
-   bir PR). **Cevap bekleme:** gelene kadar prototip varsayılanlarıyla ilerle.
-4. [12 F0](12-yol-haritasi.md#f0) adımlarını yap. Ardından F1'e başla.
-5. Varlık hattı (V) için sahibe hazır olduğunu söyle; telefon bağlama prosedürü
-   [09 §5](09-varliklar-ve-referans-cikarma.md). F1 bu hatta bağımlı değildir.
+3. KG-K8–K18'i oku; kalkan, kurtarma, ortak depo ve **tek PR** kararları cevaplandı,
+   yeniden sorulmaz. Yeni soruyu önce belgelerde ara. KG-A27 prototip varsayılanları,
+   canlı PvP ürün onayı alınmış kurallar olarak sunulmaz.
+4. Güncel çalışmayı [13](13-gelistirme-notlari.md)'ten devral. Ana worktree'de geliştirme yapma.
+5. Varlık hattı tamamlandı; yeni varlık ihtiyacında önce `astera-refs/` arşivini incele (KG-K17).
 
 ## Belge haritası
 
@@ -77,7 +73,8 @@ telefonunda oynayıp **hissi onaylamadan** kapsam büyümez.
 | [10-referans-oyunlar.md](10-referans-oyunlar.md) | Metalstorm, Subdivision, Vendetta, Space Commander dersleri |
 | [11-test-ve-playtest.md](11-test-ve-playtest.md) | TDD katmanları, ölçüm, bot senaryoları, sahiple oturum |
 | [12-yol-haritasi.md](12-yol-haritasi.md) | Fazlar, riskler, sorular, kabul ölçütleri |
-| `referans-gorseller/` | Sahibin 4 görseli — **sahip ayrıca verir**, bu klasöre koy (adlar ve metin dökümü [07 §1](07-hud-ve-ekranlar.md)) |
+| [13-gelistirme-notlari.md](13-gelistirme-notlari.md) | Güncel çalışma dilimi, sınırlar, riskler ve doğrulama kaydı |
+| Sahibin yerel referans görselleri | Eklendi ve incelendi; kabaca yön verir (KG-K15, konum ve metin dökümü [07 §1](07-hud-ve-ekranlar.md)) |
 
 <a id="durum-panosu"></a>
 ## Durum panosu
@@ -85,15 +82,15 @@ telefonunda oynayıp **hissi onaylamadan** kapsam büyümez.
 | Faz | Durum | Not |
 |---|---|---|
 | Belgeler | tamam | 2026-10-07, planlama oturumu |
-| F0 Hazırlık | başlamadı | temel `pnpm verify`: — |
-| V Referans varlıklar | başlamadı | |
-| F1 Çevrimdışı uçuş | başlamadı | |
-| F2 Çevrimdışı silahlar | başlamadı | |
-| F3 Sunucu + WS | başlamadı | |
-| F4 PvP | başlamadı | |
-| F5 Extraction | başlamadı | |
-| F6 Yetenekler | başlamadı | |
-| F7 Sahip incelemesi (kapı) | başlamadı | |
+| F0 Hazırlık | MVP temeli hazır | ayrı worktree, kapalı prod bayrakları, baz çizgisi kaydı |
+| V Referans varlıklar | yerel tam tarama hazır | 12 GB arşiv; özel biçim sınırlamaları 13'te; gerçek varlıklarla seçim/önizleme |
+| F1 Çevrimdışı uçuş | MVP'de oynanabilir | yön/gaz, klavye/dokunma, arka görüş, dar telefon HUD'u |
+| F2 Çevrimdışı silahlar | MVP'de oynanabilir | iki namlu, fiziksel mermi, isabet/patlama/ses, test botları |
+| F3 Sunucu + WS | dev ortak alan hazır | ayrı arena süreci; guest kimlik; üretim auth/oda orkestrasyonu bekliyor |
+| F4 PvP | dev MVP'de oynanabilir | 30 Hz sunucu, tahmin/uzlaştırma, 15 Hz snapshot, iki istemci çatışması |
+| F5 Extraction | dev MVP'de oynanabilir | kalkan, test kargosu, çıkış/ölüm/kurtarma; kalıcı ödül yok |
+| F6 Yetenekler | dev MVP'de oynanabilir | turbo/duman/gizlenme; görünürlük sunucuda filtrelenir |
+| F7 Sahip incelemesi (kapı) | özel deneme hazır | canlı telefon URL'si 13'te; cihaz hissi/termal ölçümü ve sahip kabulü yapılmadı |
 | F8–F11 | bekliyor | F7 onayından sonra |
 
 <a id="calisma-duzeni"></a>

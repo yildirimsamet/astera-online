@@ -23,9 +23,10 @@ it.each([{ afterLaunch: false, rankedOpening: false, openBeforeLaunch: false, ve
   const f = await supportWorld(4, 5519);
   const clanId = await formClan(f, 0, [1, 2]);
   await f.db.update(clans).set({ level: 5 }).where(eq(clans.id, clanId));
-  // Twenty Darts at home fire 420 a round: whatever way it splits across the two waves, one
-  // wave takes more than a Dart's 77 shield + 77 hull, so the combined attack always loses ships.
-  await giveUnits(f.db, f.planetIds[3]!, { DART: 20 });
+  // Sixteen Harpoons keep the incoming first volley above the whole 60-Dart wing's
+  // HP + shield budget, even at minimum variance. Distributed fire must therefore
+  // inflict real losses: this case exercises Honor debits, not a harmless shield hit.
+  await giveUnits(f.db, f.planetIds[3]!, { DART: 20, HARPOON: 16 });
   await giveUnits(f.db, f.planetIds[3]!, { DART: 100 }, randomUUID());
   await f.db.transaction(async tx => {
     if (!afterLaunch) {
@@ -71,7 +72,9 @@ it.each([{ afterLaunch: false, rankedOpening: false, openBeforeLaunch: false, ve
   expect(entry?.outcome.attack.shares.map(row => row.actor).sort()).toEqual([f.playerIds[1]!, f.playerIds[2]!].sort());
   expect(entry?.outcome.attack.shares.some(row => row.actor === f.playerIds[0])).toBe(false);
   expect(entry?.outcome.attack.total).toBeLessThanOrEqual(0);
-  expect(entry?.outcome.attack.total).toBe(-100 * entry!.evidence.attack.reduce((sum, row) => sum + row.loss, 0));
+  const losses = entry!.evidence.attack.reduce((sum, row) => sum + row.loss, 0);
+  expect(losses).toBeGreaterThan(0);
+  expect(entry?.outcome.attack.total).toBe(-100 * losses);
   expect(entry?.outcome.pool.attack.exposures.every(row => row.positive === 0)).toBe(true);
   expect(Math.abs(entry!.outcome.attack.shares[0]!.points - entry!.outcome.attack.shares[1]!.points)).toBeLessThanOrEqual(1);
   const contributions = await f.db.select().from(clanWarContributions);

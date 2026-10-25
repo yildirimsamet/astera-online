@@ -101,7 +101,7 @@ uzlaştırma hatası (m), gecikme kovası başına isabet oranı, his (sahip). F
 | B4 | Dev komutuyla yakıt düşük | kurtarma sayacı, kargo düşmesi, sonuç ekranı |
 | B5 | Sahip yok edilir | patlama → sonuç → bot kapsülleri toplar |
 | B6 | Uygulama 10 sn ve 40 sn arka planda; sayfa yeniden yüklenince | devam / çekilme / `resume` |
-| B7 | Doğuş, ateş; doğuş, çıkışa giriş | kalkan kalkışının anlaşılması (KG-A1) |
+| B7 | Doğuş, ateş; doğuş, çıkışa giriş | kalkan kalkışının anlaşılması (KG-K9) |
 | B8 | B1, 150 ms gecikmeyle | gecikme hissi |
 | B9 | En kötü sahne | performans |
 | B10 | Telefon vs masaüstü (F10) | PC/mobil farkı |

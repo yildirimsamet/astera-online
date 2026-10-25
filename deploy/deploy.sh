@@ -173,7 +173,8 @@ rm -rf "$STAGE"
 # client ships with no tag at all, which is the correct behaviour and not a
 # degraded one.
 GA_ID=$(grep -E '^VITE_GA_ID=' .env | cut -d= -f2- || true)
-docker build --target web-dist --build-arg "VITE_GA_ID=${GA_ID}" \
+ARENA=$(grep -E '^VITE_ARENA=' .env | cut -d= -f2- || true)
+docker build --target web-dist --build-arg "VITE_GA_ID=${GA_ID}" --build-arg "VITE_ARENA=${ARENA}" \
   --output "type=local,dest=$STAGE" .
 [[ -n "$GA_ID" ]] && echo "  analytics: $GA_ID" || echo "  analytics: not configured"
 [[ -f "$STAGE/index.html" ]] || { echo "Client build produced no index.html."; exit 1; }

@@ -27,9 +27,11 @@ export const monument = {
   },
   "wiped": "Toda tu flota fue destruida.",
   "rulesTitle": "Reglas de combate",
-  "roundRule": "El combate dura como máximo {{rounds}} rondas. Las naves de carga están protegidas mientras sobrevivan naves armadas.",
-  "captureRule": "Si al defensor solo le quedan cargueros y el atacante conserva una nave de guerra capaz de combatir, los cargueros vuelven a casa y el atacante toma el control. Si ambos bandos solo conservan cargueros, el defensor permanece y el atacante regresa.",
-  "partialRule": "El éxito parcial exige destruir al menos {{threshold}} del valor en recursos de la flota defensora. Las supervivientes dañadas no cuentan como destruidas. El resultado y los puntos no determinan el control."
+  "roundRule": "El combate dura como máximo {{rounds}} rondas. Los cargueros están protegidos mientras haya naves armadas combatiendo.",
+  "fireRule": "Cada nave armada reparte su disparo al azar entre todos los objetivos vivos válidos. Cargueros y recolectores solo reciben daño cuando cae su última escolta armada. El daño sobrante pasa a los objetivos restantes en el mismo disparo. El casco y los escudos no se recuperan entre rondas.",
+  "captureRule": "Solo las naves que siguen combatiendo cuentan para el control. Si al defensor solo le quedan cargueros y el atacante conserva una nave de guerra capaz de combatir, los cargueros vuelven a casa y el atacante toma el control. Si ambos bandos solo conservan cargueros, el defensor permanece y el atacante regresa.",
+  "retreatRule": "Al terminar las rondas 1–{{lastRound}}, las naves dañadas pueden retirarse. Conservan el daño y dejan de combatir. Retirarse no es morir. Las retiradas del vencedor vuelven a ocupar; los supervivientes del perdedor regresan a casa.",
+  "partialRule": "El éxito parcial requiere destruir o forzar la retirada de al menos {{threshold}} del valor defensor. Las retiradas no generan puntos de destrucción ni escombros. El grado y los puntos no determinan el control del monumento."
 },
   radiationLossForecast: "Primera pérdida por radiación en {{time}}, sin daño de combate.",
   radiationCargoForecast: "Primera pérdida de carguero en {{time}}, sin daño de combate.",

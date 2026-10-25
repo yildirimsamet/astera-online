@@ -24,3 +24,9 @@ mobile-dist/
 *.keystore
 android-upload.pass
 keystore.properties
+
+# Temporary APK assets are local working files, excluded from Git and builds.
+astera-refs/
+astera-ref-assets/
+**/__ref/**
+*.ref.glb

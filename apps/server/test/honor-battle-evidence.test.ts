@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createHonorCatalogue, honorFleetValue, resolveRaid, seededFrom, soloStack } from '@astera/rules';
+import { createHonorCatalogue, honorFleetValue, resolveCombat, mulberry32, resolveRaid, seededFrom, soloStack } from '@astera/rules';
 import { honorBattleEvidence, type HonorBattleStack } from '../src/services/honorBattleEvidence.js';
 import type { HonorCommitment } from '../src/services/honorCommitment.js';
 import { advanceHonor, emptyHonorState } from '../src/services/honorAccounting.js';
@@ -29,6 +29,18 @@ describe('Honor uses real battle evidence rather than grades or individual last 
     if (scenario === 'empty' || scenario === 'escape') expect(result.attack.total).toBe(0);
     if (scenario === 'defeat') expect(result.attack.total).toBeLessThan(0);
     if (scenario === 'victory') expect(result.attack.total).toBeGreaterThan(0);
+  });
+
+  it('accepts actual shield accounting from the formerly overflowing Warden battle', () => {
+    const sent = { WARDEN: 42 }, held = { CORSAIR: 30, DART: 10 };
+    const result = resolveCombat(sent, held, 100, mulberry32(40), {
+      attacker: { tech: {} }, defender: { tech: {} },
+    });
+    expect(() => honorBattleEvidence({ catalogue, commitment, source: 'WORLD', id: 'fractional-shield', at: 2000,
+      attack: [stack('A', { sent, active: sent, losses: result.attackerLosses })],
+      defence: [stack('D', { sent: held, active: held, losses: result.defenderLosses, rebuilt: result.defenceSalvage })],
+      shield: { host: 'D', investment: 1000, capacity: 100, normalAbsorbed: result.shieldProtectedArmed ?? 0 },
+    })).not.toThrow();
   });
 
   it('shares a team’s result by initial active participation even if one member tanks all losses', () => {

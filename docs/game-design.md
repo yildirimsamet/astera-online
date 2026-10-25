@@ -303,7 +303,7 @@ you had to scout to find out.** Loot capacity is where the information layer cas
 number. Courier, Wayfarer, Atlas and Argosy add a second cargo decision: exposure window versus
 capacity. A deeper hold does not replace Courier because the slowest included hull owns the fleet clock.
 
-Support hulls are **shielded from fire while any combat hull on their side survives**, which
+Support hulls are **shielded from fire while a combat hull on their side remains in combat**, which
 creates the escort decision: bring enough combat hulls to cover the cargo you brought.
 At a **pirate** (owner, 2026-10-06), holds left without a single warship are taken once the fight
 ends, provided the raiders still have a gun (`pirateOverrun`): destroyed, wreckage, a DECISIVE
@@ -319,26 +319,49 @@ no success on the ruler.
 
 ## Combat
 
-Three rounds, simultaneous fire, ±8% variance, no player input. Variance is deliberately
+Six rounds, simultaneous fire, ±8% variance, no player input. Variance is deliberately
 small: the whole game is built on information reducing uncertainty. **If randomness dominated
 outcomes, intel would be worthless.**
 
 Owner decision, 2026-10-20: every mobile ship has a personal combat shield equal to
-its researched maximum hull HP. Shields start full each battle and never recharge between rounds (owner update, 2026-10-21); hull wounds persist.
+25% of its researched maximum hull HP (owner update, 2026-10-22). Shields start full each battle and never recharge between rounds (owner update, 2026-10-21); hull wounds persist.
 Ship Shields research has four cumulative bonuses over that base: 25%, 50%, 70%, 100%.
 Aegis absorbs fire first, then personal shields, then hull. Unhit ships cannot share
 their shields with a ship under fire. Ground emplacements have no personal shields.
 Radiation bypasses personal shields and reduces hull HP directly. Personal shield
 absorption earns no hull-damage Dominion contribution and causes no repair bill.
 
-Graded on **resource value destroyed**, not `ATK × HP` — that metric ignores the counter
+Each eligible armed unit spreads its shot over all currently eligible living targets, using
+new independent positive random weights for each shot. Combat units are targeted before all
+SUPPORT hulls, including cargo and collectors. Excess from a destroyed target returns to
+base damage before redistribution, so counters apply exactly once per target. The same
+shot can reach cargo after the last armed target dies. Firing rights are simultaneous and
+frozen at round entry. Hull damage credits count actual damage delivered, not recycled excess.
+
+Only after rounds 1–5, surviving mobile ships may retreat; there is no retreat after the final, sixth round. The battle-start
+armed resource-value ratio fixes the chance and hull-HP window; cargo adds no power:
+
+| Larger/smaller entry power | Weak: chance / HP limit | Strong: chance / HP limit |
+|---|---|---|
+| 1 to <1.5 | 10% / ≤30% | 10% / ≤30% |
+| 1.5 to <2 | 20% / ≤46% | 10% / ≤30% |
+| 2 to <3 | 28% / ≤66% | 10% / ≤30% |
+| ≥3 | 40% / ≤80% | 6% / ≤26% |
+
+Escaped ships keep their wounds and cannot fire or take further hits. Planet defenders
+keep physical survivors, attackers return with theirs. At monuments the winner’s escaped
+ships rejoin HOLD and the loser’s survivors return. Only actual deaths create wreckage
+or destruction score; escaped collectors do not collect and escaped cargo does not loot.
+Reports disclose own escaped hulls and the enemy’s total escaped count.
+
+Graded on **resource value removed from combat by destruction or retreat**, not `ATK × HP` — that metric ignores the counter
 matrix, so two equal-looking numeric totals can resolve in opposite directions after class and
 composition are applied.
 
 | Grade | Condition | Loot |
 |---|---|---|
-| `DECISIVE` | No defending units stand at contact, or none survive after the shield is depleted | Tier 1–3 defender: 25% of unprotected stock + 15% of Works; otherwise 60% + 30% |
-| `PARTIAL` | ≥42% of defender value destroyed | Half of the decisive stock and Works shares |
+| `DECISIVE` | No defending units stand at contact, or none remain fighting after the shield is depleted | Tier 1–3 defender: 25% of unprotected stock + 15% of Works; otherwise 60% + 30% |
+| `PARTIAL` | ≥42% of defender value destroyed or retreated | Half of the decisive stock and Works shares |
 | `REPELLED` | Below that | Nothing |
 
 Three grades rather than win/lose: binary outcomes make marginal attacks worthless and punish
@@ -386,7 +409,7 @@ door around the information game.
 ### The defence chain
 
 ```
-Aegis shield → ground defence → home fleet → loot phase → disruption
+Aegis → targeted ship’s personal shield → hull → active survivors’ loot capacity
 ```
 
 **Ground defence has one gun in each counter class (D27).** A Bastion is Bulwark-class: it breaks
@@ -409,7 +432,7 @@ an otherwise certain retreat as uncertain in a new season because a power readin
 does not reveal the defender's ship count.
 
 **The ships of a defending line lift off instead of fighting when the wing that arrived has at
-least 3.5 times the line's armed-unit resource value AND the line would have been wiped out anyway — if the
+least 4 times the line's armed-unit resource value AND the standing fight would be DECISIVE — if the
 world's tank pays the lift.** OGame's tactical retreat, corrected twice by this engine's numbers
 (`escape.ts`). Both sides are measured in `combatValue`, the axis the probe's defence band and the
 launch sheet already share; the line counts its guns, and the wing counts only what fires, so
@@ -417,14 +440,14 @@ cargo cannot buy the threshold. The guns and the Aegis stay and fight alone, the
 raided, and every downstream rule reads the battle that actually happened. Nothing moves on the
 disc: the ships are simply still at home afterwards.
 
-The fixed threshold rose from 3 to 3.5 on 2026-10-09, by owner instruction. Exactly
-3.5 qualifies and there is no upper limit. Active ground guns remain part of the defending line;
+The fixed threshold was raised from 3 to 4 on 2026-10-22, by owner instruction. Exactly
+4 qualifies and there is no upper limit. Active ground guns remain part of the defending line;
 guns disabled by a Core outage or EMP do not count until they are operational again.
 
 - **Why the DECISIVE guard.** Under the original 3× ratio, a transport wall worth 9k could
   hold off a 27k raid yet run from it on the ratio alone and hand over the stores; a fleet
   under a charged Aegis could also leave the dome to a walkover. The guard requires the
-  standing line to be wiped out. Mutual destruction also qualifies: it does not require
+  standing fight to be DECISIVE, including destruction or mid-battle retreat. Mutual destruction also qualifies: it does not require
   attacker survivors or guarantee a better economic outcome
   ([verified example](fleet-escape-review-2026-10-09.md)).
 - **The lift is a launch (T6).** `missionFuel` for a 600-unit round trip, from the tank including
@@ -1011,7 +1034,7 @@ time left; the launch confirmation explains that choosing to attack spends it.
 Owner, 2026-10-16: a defending commander whose highest currently controlled Core
 is 1–9 (tier 1–3) receives 12 hours of recovery protection at 2 average net
 production hours lost within the last 8 hours. Tier 4+ retains the 4-hour threshold,
-6-hour history and 8-hour shield described below. All worlds count toward commander
+6-hour history; its shield is also 12 hours as of 2026-10-21. All worlds count toward commander
 tier; a small colony cannot lower it. The struck world's existing +50% output boost
 lasts with its granted window. Colony battle faults retain the standard
 4-hour loss / 6-hour history condition. New battle reports freeze the applied profile;
@@ -1022,13 +1045,11 @@ The first day answers "what protects somebody who has not started yet". This ans
 it cannot: **what happens to a commander who has already committed to the war and just lost
 badly.** When the NET loss of the last six hours reaches **four average hours of that commander's
 own production** (owner, 2026-09-18; see *Judged on the lookback* below), the defeat that got it there leaves
-them unreachable for eight hours, on every world they hold, against Raid and Death Star. **While it
+them unreachable for twelve hours, on every world they hold, against Raid, Death Star and Radiation Bomb launches. **While it
 stands, the world that was struck produces +50%** (owner instruction, 2026-09-20): the works fill
 half again as fast, the collector ceiling does not grow, and the boost ends with the shield — including
 the instant the commander spends it by attacking. The header marks each store with a rising arrow
-and states the rule and its countdown. A Death
-Star impact on a player's world grants it outright — it destroys rather than loots, so there is
-nothing carried off to measure, and it is the loudest thing one commander can do to another.
+and states the rule and its countdown. The same protection also blocks new Death Star launches.
 
 **It is the first day's contract, not a second mechanism.** Same scope, same forfeit, same
 confirmation: raiding somebody spends it after one refusal, and both shields go together, because
@@ -1050,7 +1071,7 @@ HOURS, so the absolute figure the developed one has to lose is larger by exactly
 their works, and no second ladder has to be kept in step with the Core. A commander caught with an
 empty store is judged on what the defeat cost them rather than on a ceiling they were nowhere
 near — which is precisely what the first version of this rule got wrong, and why it was replaced.
-The average must reach four hours; the protection window is eight.
+The average must reach four hours; the protection window is twelve.
 
 **Judged on the lookback, not on one battle** (owner instruction, 2026-09-18: *"ufak ufak saldırı
 yemeye devam ederse oyuncu hiç gelişme şansı bulamıyor"*). On every PvP defeat that cost anything,
@@ -1070,7 +1091,7 @@ exactly as people do, along with the first day — which they wait out rather th
 are people now).
 
 **What it does not do.** It never turns a fleet back: anything legally in the air when the window
-opens still arrives, and a second heavy defeat pushes the end out to eight hours from that battle
+opens still arrives, and a second heavy defeat pushes the end out to twelve hours from that battle
 rather than stacking a second window. Pirates, probes, mining, transfers, settlement, trade and
 clan aid neither grant it nor spend it.
 

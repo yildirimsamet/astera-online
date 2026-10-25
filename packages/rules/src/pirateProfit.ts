@@ -1,3 +1,4 @@
+import { activeBattleFleet } from './battleRetreat.js';
 import { resolveBattle, soloStack } from './combat.js';
 import { DEBRIS } from './constants.js';
 import { capLoadToSurvivors, shipDamageApplies } from './damage.js';
@@ -78,8 +79,8 @@ export function pirateRaidTrial(input: PirateProfitInput, rng: Rng) {
   const lived = fleetCount(fight.attackerSurvivors) > 0;
   const available = claimPirateLoot(input.hoard, input.paid, fight.grade, Number.MAX_SAFE_INTEGER);
   const loaded = lived ? claimPirateLoot(input.hoard, input.paid, fight.grade,
-    fleetCargo(fight.attackerSurvivors, input.tech)).fromStock : zero();
-  const lifted = settleWreck(pirateBattleWreck(fight.attackerLosses, fight.defenderLosses), fight.attackerSurvivors).salvage;
+    fleetCargo(activeBattleFleet(fight.attackerSurvivors, fight.attackerRetreated), input.tech)).fromStock : zero();
+  const lifted = settleWreck(pirateBattleWreck(fight.attackerLosses, fight.defenderLosses), activeBattleFleet(fight.attackerSurvivors, fight.attackerRetreated)).salvage;
   const back = hp ? applyHpDose(fight.attackerSurvivors, fight.attackerDamage,
     input.radiation?.returnHp ?? 0, input.tech) : { fleet: fight.attackerSurvivors, lots: fight.attackerDamage };
   const cargo = capLoadToSurvivors({ loot: loaded, salvage: lifted }, back.fleet, input.tech);

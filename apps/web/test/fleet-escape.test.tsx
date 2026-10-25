@@ -220,17 +220,19 @@ describe('the launch sheet’s comparison', () => {
   it('keeps the rule one tap deeper, beside the others', async () => {
     render(<ForceCompare yours={30_000} theirs={theirs} lines={lines} escape={{ at: 10_000, verdict: null }} />);
     await userEvent.click(screen.getByRole('button', { name: /what is this/i }));
-    expect(screen.getByTestId('compare-escape-rule')).toHaveTextContent(/3\.5 times/i);
+    expect(screen.getByTestId('compare-escape-rule')).toHaveTextContent(/4\.0 times/i);
   });
 
   it.each([
-    ['en', '3.5'], ['tr', '3,5'], ['de', '3,5'], ['fr', '3,5'], ['es', '3,5'], ['ja', '3.5'],
+    ['en', '4.0'], ['tr', '4,0'], ['de', '4,0'], ['fr', '4,0'], ['es', '4,0'], ['ja', '4.0'],
   ] as const)('states the current ratio with local decimal notation in %s', async (language, ratio) => {
     await i18n.changeLanguage(language);
     render(<ForceCompare yours={35_000} theirs={theirs} lines={lines} escape={{ at: 10_000, verdict: 'RUN' }} />);
     await userEvent.click(screen.getByRole('button'));
     expect(screen.getByTestId('compare-escape-rule')).toHaveTextContent(ratio);
+    expect(screen.getByTestId('compare-escape-rule')).not.toHaveTextContent(/3[.,]5/);
     expect(screen.getByTestId('compare-escape')).toHaveTextContent(ratio);
+    expect(screen.getByTestId('compare-escape')).not.toHaveTextContent(/3[.,]5/);
     expect(screen.getByTestId('compare-escape-rule')).not.toHaveTextContent('{{');
   });
 
@@ -253,14 +255,14 @@ describe('the defender’s own readout', () => {
   it('states the firepower their ships run from and whether the tank can pay', () => {
     render(<EscapeReadout fleet={{ ...LINE, PROSPECTOR: 2 }} ground={{}} deuterium={500} />);
     const line = screen.getByTestId('escape-readout');
-    expect(line).toHaveTextContent(compact(3.5 * combatValue(LINE)));
+    expect(line).toHaveTextContent(compact(4 * combatValue(LINE)));
     expect(line).toHaveTextContent(String(LIFT));
   });
 
   it('counts the guns in the line, because the rule does', () => {
     render(<EscapeReadout fleet={LINE} ground={{ BASTION: 2 }} deuterium={500} />);
     expect(screen.getByTestId('escape-readout'))
-      .toHaveTextContent(compact(3.5 * combatValue({ ...LINE, BASTION: 2 })));
+      .toHaveTextContent(compact(4 * combatValue({ ...LINE, BASTION: 2 })));
   });
 
   it('warns when the tank cannot pay for the lift', () => {

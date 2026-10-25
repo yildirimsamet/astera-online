@@ -125,7 +125,7 @@ export const skins = {
   modelUnavailable: 'Modelo no disponible',
   normal: 'Normal',
   recovery: 'Escudo de recuperación',
-  recoveryNote: "El planeta usa este aspecto dañado mientras su escudo de recuperación está activo. Dura 8 horas; iniciar un ataque puede terminarlo antes. El aspecto está incluido en el skin.",
+  recoveryNote: "El planeta usa este aspecto dañado mientras su escudo de recuperación está activo. Dura 12 horas; iniciar un ataque puede terminarlo antes. El aspecto está incluido en el skin.",
   collection: 'La colección',
   owned: 'Propiedad',
   worlds: 'Tus planetas',

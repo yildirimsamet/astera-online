@@ -949,12 +949,17 @@ export async function resolveProbe(
 
   const unitRows = await tx.select().from(units).where(eq(units.planetId, target.id));
   const home: Record<string, number> = {};
+  let presentCount = 0;
   let anyAway = false;
   for (const u of unitRows) {
     if (u.count <= 0) continue;
-    if (u.location === 'home') home[u.hull] = (home[u.hull] ?? 0) + u.count;
-    // A docked ship has not left the world (see `fleetTruthFor`).
-    else if (!isDockLocation(u.location)) anyAway = true;
+    if (u.location === 'home') {
+      home[u.hull] = (home[u.hull] ?? 0) + u.count;
+      presentCount += u.count;
+    } else if (isDockLocation(u.location)) {
+      // Workshop ships are physically here, but never belong to the defending line.
+      presentCount += u.count;
+    } else anyAway = true;
   }
   const homeFleet = home as Partial<Record<HullId, number>>;
 
@@ -1058,7 +1063,7 @@ export async function resolveProbe(
   */
   const ready = partitionCombatFleet(homeFleet, unitRows.filter(row => row.location === 'home').flatMap(row => row.damage)).eligible;
   const defence = fuzzBand(combatValue(ready), accuracy, rng);
-  const size = fuzzBand(fleetCount(homeFleet), accuracy, rng);
+  const size = fuzzBand(presentCount, accuracy, rng);
   /*
     THE THREE READINGS THAT TURN A FIREPOWER FIGURE INTO A FIGHT. D199.
 

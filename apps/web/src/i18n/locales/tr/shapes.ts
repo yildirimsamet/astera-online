@@ -62,6 +62,8 @@ export const counter = {
   compareMeaning: 'Kaynak maliyetidir; saldırı hasarı değildir. Büyük filo tek başına zafer garantisi vermez.',
   compareRule:
     "İki tarafın ateş edebilen gemi ve yer savunmaları kaynak değeriyle karşılaştırılır; kalkan ve silahsız gemiler bu değere dahil değildir. Tahmin, sınıfları, araştırmaları ve bilinen kalkanı da kullanır. Kısmi ve tam başarı için en az bir geminin sağ kalması gerekir. Bilinmeyen sınıflar veya kalkan, eşikleri aralık haline getirir: sol uç en kötü, sağ uç en iyi durumdur. Alttaki kayıp tahmini savaşın olası bedelini gösterir. Bilgi eski olabilir; rastgele atış değişimleri tahmine dahil değildir.",
+  forecastCalculating: "Savaş tahmini hesaplanıyor…",
+  forecastFailed: "Savaş tahmini hesaplanamadı. Filoyu değiştirerek tekrar deneyebilirsin.",
   linesClears: 'Savunma en çok {{at}} ise tam başarı',
   linesBreaks: 'Savunma en çok {{at}} ise en az kısmi başarı',
   lineJoin: ' · ',

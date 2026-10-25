@@ -1,6 +1,7 @@
 import { commanderPvpBalance } from './pvpBalance.js';
 import { and, eq } from 'drizzle-orm';
 import {
+  activeBattleFleet,
   DEBRIS,
   FAULT,
   NON_COMBATANT_HULLS,
@@ -410,7 +411,7 @@ export async function resolveClanWarBattle(
     return {
       playerId: outcome.playerId,
       contributionId: outcome.contributionId,
-      cargo: fleetCargo(outcome.survivors, wave.tech),
+      cargo: fleetCargo(activeBattleFleet(outcome.survivors, outcome.retreated), wave.tech),
     };
   });
   const totalCargo = survivorCargo.reduce((sum, share) => sum + share.cargo, 0);
@@ -498,12 +499,12 @@ export async function resolveClanWarBattle(
         flyingDeuterium(result.attackerLosses) + flyingDeuterium(result.defenderLosses),
       ),
     },
-    result.attackerSurvivors,
+    activeBattleFleet(result.attackerSurvivors, result.attackerRetreated),
   );
   const salvageShares = allocateJointSalvage(salvage, result.contributions.map((outcome) => ({
     playerId: outcome.playerId,
     contributionId: outcome.contributionId,
-    cargo: salvageCapacity(outcome.survivors),
+    cargo: salvageCapacity(activeBattleFleet(outcome.survivors, outcome.retreated)),
   })));
   const salvageByContribution = new Map(
     salvageShares.map((row) => [row.contributionId, row.resources]),

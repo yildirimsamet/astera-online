@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MOBILE_HULLS, type Fleet } from '@astera/rules';
+import { MOBILE_HULLS, battleRetreated, fleetCount, fleetEntries, type Fleet } from '@astera/rules';
 import { clanMemberships, clans, monumentBattles, monumentBattleParticipants, monuments, monumentShipLots, monumentWaves, notifications, planets, seasons, units } from '../src/db/schema.js';
 import { resolveMonumentArrival } from '../src/services/monumentArrival.js';
 import { readBattleReports } from '../src/services/reports.js';
@@ -92,6 +92,13 @@ describe('monument participant reports and result delivery', () => {
       expect(report).toMatchObject({ kind: 'MONUMENT', id: battle!.id, attacking: owner === 0,
         yourFleet: own.fleet, yourLosses: own.losses, yourSurvivors: own.survivors,
         yourDamage: own.damage, lootDeuterium: own.lootDeuterium, dominion: own.dominionDelta });
+      expect(report).toHaveProperty('rounds');
+      expect(report.rounds).toHaveLength(battle!.rounds.length);
+      for (const round of report.rounds ?? []) {
+        expect(round).not.toHaveProperty('casualties');
+        expect(round).not.toHaveProperty('retreats');
+        expect(round).not.toHaveProperty('playerId');
+      }
       expect(report).not.toHaveProperty('theirFleet');
       expect(report).not.toHaveProperty('theirSurvivors');
       expect(report).not.toHaveProperty('theirDamage');
@@ -125,4 +132,39 @@ describe('monument participant reports and result delivery', () => {
     const notice = (await f.db.select().from(notifications).where(and(eq(notifications.playerId, f.playerIds[0]!), eq(notifications.kind, 'raid_result'))))[0];
     expect(notice?.payload).toMatchObject({ opponents: [{ kind: 'PLAYER', name: 'Tester1', clanName: 'Report Guard', clanTag: 'RPG' }] });
   });
+});
+
+
+it('keeps round losses and retreats personal for both members of a defending clan', async () => {
+  const [clan] = await f.db.insert(clans).values({ seasonId: f.seasonId, name: 'Round Guards', nameKey: 'round guards', tag: 'RDG', level: 1, createdAt: start }).returning();
+  for (const [slot, owner] of [1, 2].entries()) await f.db.insert(clanMemberships).values({ seasonId: f.seasonId, clanId: clan!.id,
+    playerId: f.playerIds[owner]!, slot, role: slot === 0 ? 'LEADER' : 'MEMBER', joinedAt: start, matureAt: start, aidPolicyChangedAt: start });
+  await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: null, controllerClanId: clan!.id, productionPerMinute: 0 }).where(eq(monuments.id, target.id));
+  await addWave(1, { DART: 10 }, true);
+  await addWave(2, { DART: 20 }, true);
+  const incoming = await addWave(0, { CORSAIR: 3 });
+  await resolve(incoming);
+  const [battle] = await f.db.select().from(monumentBattles);
+  for (const owner of [0, 1, 2]) {
+    const [view] = (await readBattleReports(f.db, f.playerIds[owner]!)).reports;
+    if (view?.kind !== 'MONUMENT' || !view.rounds) throw new Error('missing owned round report');
+    const losses: Fleet = {}, escaped: Fleet = {};
+    for (const round of view.rounds) {
+      for (const [hull, n] of fleetEntries(round.yourLosses)) losses[hull] = (losses[hull] ?? 0) + n;
+      for (const [hull, n] of fleetEntries(round.yourRetreated)) escaped[hull] = (escaped[hull] ?? 0) + n;
+      expect(round).not.toHaveProperty('playerId');
+      expect(round).not.toHaveProperty('casualties');
+      expect(round).not.toHaveProperty('retreats');
+    }
+    expect(losses).toEqual(view.yourLosses);
+    expect(escaped).toEqual(view.yourRetreated);
+    expect(view.theirRetreatedCount).toBe(fleetCount(battleRetreated(battle!.rounds, owner === 0 ? 'DEFENCE' : 'ATTACK')));
+    expect(view).not.toHaveProperty('theirSurvivors');
+    expect(view).not.toHaveProperty('theirDamage');
+  }
+  // An older immutable report cannot identify which ally lost which ship.
+  await f.db.update(monumentBattles).set({ rounds: battle!.rounds.map(({ casualties: _owners, ...round }) => round) }).where(eq(monumentBattles.id, battle!.id));
+  const [legacy] = (await readBattleReports(f.db, f.playerIds[1]!)).reports;
+  expect(legacy).not.toHaveProperty('rounds');
+  expect(legacy).toHaveProperty('roundCount', battle!.rounds.length);
 });

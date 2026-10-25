@@ -108,7 +108,7 @@ shipped resolver.
 | Repelled clean | small fleet vs Citadels | REPELLED, attacker wiped, **defender loses nothing** |
 | Support-only attacker | Couriers alone | REPELLED, all cargo dies, defender untouched (`counterMult` SUPPORT = 0) |
 | Shield never breaks | small fleet vs big Aegis | REPELLED, shield still nearly full |
-| Early finish | one side emptied | fewer than three rounds — **`rounds.length` is 0..3, never assume 3** |
+| Early finish | one side emptied | fewer than six rounds — **current `rounds.length` is 0..6; historical reports may stop at 3** |
 
 ### The two cases the surface got wrong
 
@@ -156,3 +156,17 @@ boundary, including a positive remainder above exactly 20%. Changes are limited 
 the client report contract and damage presentation, with real API and UI regressions;
 combat, ownership, score, rewards and stored reports remain unchanged. The fix needs
 the new web bundle on deployment; it requires no database migration or report rewrite.
+
+### Six-round distributed fire (2026-10-23)
+
+Fresh rounds carry optional `distributedFire: true`. This is additive JSON telemetry;
+legacy stored reports remain unchanged. The ordinary report shows the new distribution,
+retreat-window and delivered-damage explanations only for marked battles. Normal-shot
+figures count Aegis absorption, personal shield absorption and actual hull damage once;
+Nullifier's bonus shield-only damage remains separate. Recycled excess is not counted twice.
+
+Monument reports now include a per-round ledger when immutable owner casualty telemetry
+exists: the viewer's own physical losses and retreats, confirmed enemy physical losses,
+and enemy retreat count. Allied owner identities, the enemy's starting/surviving roster
+and its wounds are not exposed. Historical rounds without owner telemetry retain the
+aggregate summary instead of fabricating personal round losses. Arrays have no three-round cap.

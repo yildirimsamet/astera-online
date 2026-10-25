@@ -76,6 +76,17 @@ describe('tier-specific PvP settlement and recovery', () => {
     expect(attacked.reports[0]).toMatchObject({ recovery: null });
   });
 
+  it('preserves a historical eight-hour report profile and its actual deadline', async () => {
+    await pastDefeat(0, 4);
+    const until = new Date(f.clock.now().getTime() + 8 * HOUR);
+    const legacy = { ...pvpBalanceForTier(4), recoveryShieldHours: 8 };
+    await f.db.update(battleReports).set({
+      recoveryLossHours: 4, recoveryShieldUntil: until, pvpBalance: legacy,
+    }).where(eq(battleReports.defenderPlayerId, them));
+    const defended = reportsSchema.parse(await f.db.transaction(tx => readBattleReports(tx, them)));
+    expect(defended.reports[0]).toMatchObject({ pvpBalance: legacy, recovery: { until, shielded: true } });
+  });
+
   it.each([6, 5.999])('keeps the colony fault cutoff at six hours (defeat age %s)', async age => {
     await pastDefeat(age, 3);
     const result = await giveShield(1);
@@ -102,17 +113,18 @@ describe('tier-specific PvP settlement and recovery', () => {
     expect(result.until).toBeNull();
   });
 
-  it('keeps the tier-four threshold, six-hour history and eight-hour duration', async () => {
+  it('keeps the tier-four threshold, six-hour history and twelve-hour duration', async () => {
     await setLevel(f.db, theirs, 'CORE', 10);
     await pastDefeat(7, 10);
     expect((await giveShield(2)).until).toBeNull();
     const result = await giveShield(4);
     expect(result.hours).toBeCloseTo(4);
-    expect(result.until?.getTime()).toBe(f.clock.now().getTime() + 8 * HOUR);
+    expect(result.until?.getTime()).toBe(f.clock.now().getTime() + 12 * HOUR);
     expect(result.earned).toBe(true);
   });
 
-  it('an outright recovery grant uses twelve hours for a low-tier commander', async () => {
+  it.each([7, 10])('an outright recovery grant uses twelve hours at Core %i', async core => {
+    await setLevel(f.db, theirs, 'CORE', core);
     const until = await f.db.transaction(tx => forceRecoveryShield(tx, { playerId: them, planetId: theirs, now: f.clock.now() }));
     expect(until?.getTime()).toBe(f.clock.now().getTime() + 12 * HOUR);
   });
@@ -122,7 +134,7 @@ describe('tier-specific PvP settlement and recovery', () => {
     await f.db.update(planets).set({ controllerPlayerId: them, kind: 'COLONY' }).where(eq(planets.id, colony));
     await setLevel(f.db, colony, 'CORE', 10);
     const until = await f.db.transaction(tx => forceRecoveryShield(tx, { playerId: them, planetId: theirs, now: f.clock.now() }));
-    expect(until?.getTime()).toBe(f.clock.now().getTime() + 8 * HOUR);
+    expect(until?.getTime()).toBe(f.clock.now().getTime() + 12 * HOUR);
   });
 
   it('never shortens an existing shield when a commander reaches tier four', async () => {

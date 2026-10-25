@@ -65,6 +65,8 @@ export const counter = {
     "Il s’agit du coût en ressources, pas des dégâts d’attaque. Une grande flotte ne garantit pas à elle seule la victoire.",
   compareRule:
     "La comparaison utilise la valeur en ressources des vaisseaux armés et défenses au sol ; bouclier et vaisseaux sans armes sont exclus. L’estimation considère aussi les classes, recherches et le bouclier connu. Les succès partiels et totaux exigent au moins un vaisseau survivant. Les inconnues créent des intervalles : gauche signifie pire cas, droite meilleur cas. Les pertes estimées montrent le coût possible. Les observations peuvent être anciennes ; les variations aléatoires des tirs sont exclues.",
+  forecastCalculating: "Calcul de l’estimation du combat…",
+  forecastFailed: "Estimation indisponible. Modifiez la flotte pour réessayer.",
   linesClears: "Victoire totale si leur défense vaut au plus {{at}}",
   linesBreaks: "Au moins une réussite partielle si au plus {{at}}",
   lineJoin: " · ",

@@ -1,4 +1,5 @@
 import {
+  battleRetreatPolicy,
   LOW_TIER_PVP_BALANCE, STANDARD_PVP_BALANCE,
   ABUSE, ANTI_STRATEGIC, BUILD, COMBAT, CORE_TOP_LEVEL, DEATH_STAR, DEUTERIUM,
   ECON, ESCAPE, FAULT, HANGAR, HULLS, INSTRUMENT_MAX_LEVEL, MULTI_WORLD,
@@ -58,7 +59,7 @@ export function subjectReference(subject: WikiSubject, language: WikiLanguage): 
           if (subject.id === 'CARGO_HOLDS') text = label(language, `${n(effect)}× cargo capacity`, `${n(effect)} kat kargo kapasitesi`);
           if (subject.id === 'SHIP_POWER') text = label(language, `${n(effect)}× ship attack`, `${n(effect)} kat gemi saldırısı`);
           if (subject.id === 'SHIP_ARMOR') text = label(language, `${n(effect)}× hull strength`, `${n(effect)} kat gövde dayanımı`);
-          if (subject.id === 'SHIP_SHIELDS') text = label(language, `${n(effect)}× maximum hull as shield at battle start`, `Savaş başında azami canın ${n(effect)} katı gemi kalkanı`);
+          if (subject.id === 'SHIP_SHIELDS') text = label(language, `${n(effect * COMBAT.shipShieldFraction)}× maximum hull as shield at battle start`, `Savaş başında azami canın ${n(effect * COMBAT.shipShieldFraction)} katı gemi kalkanı`);
           if (subject.id === 'SHIP_PROPULSION') text = label(language, `${n(effect)}× ship speed`, `${n(effect)} kat gemi hızı`);
           if (subject.id === 'EMPLACEMENT_DOCTRINE') text = label(language, `${n(effect)}× ground attack and hull strength`, `${n(effect)} kat yer savunması saldırısı ve dayanımı`);
           if (subject.id === 'INDUSTRIAL') text = label(language, `${n(effect)}% of repair cost & time`, `Onarım bedeli ve süresinin %${n(effect)}’i`);
@@ -143,9 +144,9 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
   ])];
   if (id === 'combat.model' || id === 'combat.loot') blocks = [pairs(language, t('Battle outcome rules', 'Savaş sonuç kuralları'), [
     [t('Maximum rounds', 'Azami tur'), n(COMBAT.rounds)],
-    [t('Partial: defending value destroyed', 'Kısmi: yok edilen savunma değeri'), percent(COMBAT.partialThreshold, language)],
+    [t('Partial: defending value destroyed or retreated', 'Kısmi: ölen veya kaçan savunma değeri'), percent(COMBAT.partialThreshold, language)],
     [t('Ground losses rebuilt free', 'Ücretsiz yenilenen yer kaybı'), percent(COMBAT.defenceSalvage, language)],
-    [t('Wreck resources per surviving Garbage Collector', 'Sağ kalan Hurdacı başına enkaz kaynağı'), n(SALVAGE.perCollector)],
+    [t('Wreck resources per Garbage Collector still present', 'Savaşta kalan Hurdacı başına enkaz kaynağı'), n(SALVAGE.perCollector)],
   ]), table(t('Loot before surviving cargo limits', 'Sağ kalan kargo sınırından önce yağma'),
     [t('Defending commander', 'Savunan komutan'), t('Result', 'Sonuç'), t('Stock above Store protection', 'Depo koruması üzerindeki stok'), t('Uncollected Works', 'Toplanmamış Havuz')],
     [
@@ -155,6 +156,15 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
       ]),
     ],
   )];
+  if (id === 'combat.model') blocks.push(table(
+    t(`Round 1–${COMBAT.rounds - 1} retreat: chance / remaining hull limit`, `1–${COMBAT.rounds - 1}. tur kaçışı: şans / kalan can sınırı`),
+    [t('Entry power ratio', 'Başlangıç güç oranı'), t('Weaker side', 'Güçsüz taraf'), t('Stronger side', 'Güçlü taraf')],
+    [100, 150, 200, 300].map(amount => {
+      const policy = battleRetreatPolicy({ CORSAIR: amount }, { CORSAIR: 100 });
+      const cell = (window: { chance: number; threshold: number }) => `${percent(window.chance, language)} / ≤${percent(window.threshold, language)}`;
+      return [`1:${n(amount / 100)}${amount === 300 ? '+' : ''}`, cell(policy.defender), cell(policy.attacker)];
+    }),
+  ));
   if (id === 'combat.eligibility') blocks = [pairs(language, t('PvP boundaries', 'PvP sınırları'), [
     [t('Development tier', 'Gelişim kademesi'), t('Highest owned Core level ÷ 3, rounded up', 'Sahip olduğun en yüksek Çekirdek seviyesi ÷ 3; yukarı yuvarlanır')],
     [t('Maximum tier difference', 'İzin verilen kademe farkı'), `±${n(ABUSE.tierBand)}`],

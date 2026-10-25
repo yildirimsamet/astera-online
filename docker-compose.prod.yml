@@ -242,6 +242,45 @@ services:
       start_period: 20s
     logging: *app-logging
 
+  # Komutan Gemisi live playtest (docs/komutan-gemisi/13). One shared real-time room
+  # on its own process: a 30 Hz loop must never share an event loop with the API.
+  # Closed unless ARENA_ENABLED=true; only ARENA_PILOTS usernames may fly (`*` = all).
+  # Reads accounts to identify a pilot and writes nothing.
+  arena:
+    image: astera-server
+    container_name: astera-arena-prod
+    restart: unless-stopped
+    mem_limit: ${ARENA_MEMORY_LIMIT:-384m}
+    mem_reservation: ${ARENA_MEMORY_RESERVATION:-128m}
+    environment:
+      <<: *api-environment
+      ROLE: arena
+      PORT: 3220
+      DB_POOL_MAX: 2
+      PLACEMENT_POOL_MAX: 1
+      ARENA_ENABLED: ${ARENA_ENABLED:-false}
+      ARENA_PILOTS: ${ARENA_PILOTS:-}
+      ARENA_ALLOWED_ORIGINS: ${ARENA_ALLOWED_ORIGINS:-https://asteraonline.space}
+      # Private playtest only: the reference pack is copied to the host by hand, never
+      # built into an image; seated pilots read it through a signed cookie.
+      ARENA_REF_DIR: /refs
+      RATE_LIMIT_REDIS_URL: ''
+    volumes:
+      - ${ARENA_REF_HOST_DIR:-/opt/astera/arena-refs}:/refs:ro
+    ports:
+      - '127.0.0.1:${ARENA_PORT:-3220}:3220'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stop_grace_period: 5s
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O- http://127.0.0.1:3220/health || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    logging: *app-logging
+
 volumes:
   astera_chat_media:
   astera_pgdata:

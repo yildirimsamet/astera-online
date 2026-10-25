@@ -1,0 +1,4348 @@
+{
+  "sourceHash": "d4d863b05c613ad2f9e030b07f8e6aa0e0ea27751702a50f3b1001dbe9409ad1",
+  "pairedBattles": 28000,
+  "exampleBattles": 14,
+  "rows": [
+    {
+      "id": "2-korsan-vs-1",
+      "shieldLevel": 0,
+      "attacker": {
+        "CORSAIR": 2
+      },
+      "defender": {
+        "CORSAIR": 1
+      },
+      "tech": {},
+      "actualRatio": 2,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.428,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.428,
+        "weak": {
+          "physical": 0.572,
+          "active": 0,
+          "dead": 0.428,
+          "escape": [
+            0,
+            0.572
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.572,
+          "active": 0,
+          "dead": 0.428,
+          "escape": [
+            0,
+            0.572
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.428,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.428,
+        "weak": {
+          "physical": 0.572,
+          "active": 0,
+          "dead": 0.428,
+          "escape": [
+            0,
+            0.572
+          ],
+          "eligible": [
+            0,
+            1
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.572,
+          "active": 0,
+          "dead": 0.428,
+          "escape": [
+            0,
+            0.572
+          ],
+          "eligible": [
+            0,
+            1
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "example": {
+        "grade": "DECISIVE",
+        "lossRatio": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 874,
+            "defenderDamage": 378,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 378,
+            "defenderShipShieldAbsorbed": 377,
+            "attackerHullDamage": 497,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 818,
+            "defenderDamage": 416,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 306,
+            "defenderShipShieldAbsorbed": 0,
+            "attackerHullDamage": 818,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "CORSAIR": 1
+                }
+              }
+            ],
+            "casualties": []
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "CORSAIR": 2
+        },
+        "defenderSurvivors": {
+          "CORSAIR": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "CORSAIR": 1
+        },
+        "attackerCombatSurvivors": {
+          "CORSAIR": 2
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 8722,
+            "remainderBp": 0.12205739489400003
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {},
+        "attackerLossValue": 0,
+        "defenderLossValue": 0,
+        "defenceSalvage": {},
+        "attackerDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 730,
+            "remainderBp": 0.3431621874238999
+          }
+        ],
+        "defenderDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 8722,
+            "remainderBp": 0.12205739489400003
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "CORSAIR": 2
+            },
+            "survivors": {
+              "CORSAIR": 2
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 1315.2960062551501,
+            "survivorDamage": [
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 730,
+                "remainderBp": 0.3431621874238999
+              }
+            ]
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "CORSAIR": 1
+            },
+            "survivors": {
+              "CORSAIR": 1
+            },
+            "retreated": {
+              "CORSAIR": 1
+            },
+            "losses": {},
+            "lossValue": 0,
+            "survivorDamage": [
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 8722,
+                "remainderBp": 0.12205739489400003
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "2-korsan-vs-1",
+      "shieldLevel": 4,
+      "attacker": {
+        "CORSAIR": 2
+      },
+      "defender": {
+        "CORSAIR": 1
+      },
+      "tech": {
+        "SHIP_SHIELDS": 4
+      },
+      "actualRatio": 2,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.443,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.443,
+        "weak": {
+          "physical": 0.557,
+          "active": 0,
+          "dead": 0.443,
+          "escape": [
+            0,
+            0.557
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.557,
+          "active": 0,
+          "dead": 0.443,
+          "escape": [
+            0,
+            0.557
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.443,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.443,
+        "weak": {
+          "physical": 0.557,
+          "active": 0,
+          "dead": 0.443,
+          "escape": [
+            0,
+            0.557
+          ],
+          "eligible": [
+            0,
+            1
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.557,
+          "active": 0,
+          "dead": 0.443,
+          "escape": [
+            0,
+            0.557
+          ],
+          "eligible": [
+            0,
+            1
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "example": {
+        "grade": "DECISIVE",
+        "lossRatio": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 874,
+            "defenderDamage": 378,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 378,
+            "defenderShipShieldAbsorbed": 754,
+            "attackerHullDamage": 120,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 818,
+            "defenderDamage": 416,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 416,
+            "defenderShipShieldAbsorbed": 0,
+            "attackerHullDamage": 818,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "CORSAIR": 1
+                }
+              }
+            ],
+            "casualties": []
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "CORSAIR": 2
+        },
+        "defenderSurvivors": {
+          "CORSAIR": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "CORSAIR": 1
+        },
+        "attackerCombatSurvivors": {
+          "CORSAIR": 2
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 6222,
+            "remainderBp": 0.12205739489400003
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {},
+        "attackerLossValue": 0,
+        "defenderLossValue": 0,
+        "defenceSalvage": {},
+        "attackerDamage": [],
+        "defenderDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 6222,
+            "remainderBp": 0.12205739489400003
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "CORSAIR": 2
+            },
+            "survivors": {
+              "CORSAIR": 2
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 938.29600625515,
+            "survivorDamage": []
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "CORSAIR": 1
+            },
+            "survivors": {
+              "CORSAIR": 1
+            },
+            "retreated": {
+              "CORSAIR": 1
+            },
+            "losses": {},
+            "lossValue": 0,
+            "survivorDamage": [
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 6222,
+                "remainderBp": 0.12205739489400003
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "3-korsan-vs-1-plus-argosy",
+      "shieldLevel": 0,
+      "attacker": {
+        "CORSAIR": 3
+      },
+      "defender": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "tech": {},
+      "actualRatio": 3,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.281,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.281,
+        "weak": {
+          "physical": 0.3595,
+          "active": 0,
+          "dead": 0.6405,
+          "escape": [
+            0.3595,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.3595,
+          "active": 0,
+          "dead": 0.6405,
+          "escape": [
+            0.3595,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.111,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.281,
+        "weak": {
+          "physical": 0.4445,
+          "active": 0,
+          "dead": 0.5555,
+          "escape": [
+            0.3595,
+            0.085
+          ],
+          "eligible": [
+            0.5,
+            0.1255
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.4445,
+          "active": 0,
+          "dead": 0.5555,
+          "escape": [
+            0.3595,
+            0.085
+          ],
+          "eligible": [
+            0.5,
+            0.1255
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "example": {
+        "grade": "DECISIVE",
+        "lossRatio": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 1312,
+            "defenderDamage": 378,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 378,
+            "defenderShipShieldAbsorbed": 377,
+            "attackerHullDamage": 935,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "CORSAIR": 1
+                }
+              }
+            ],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 1688,
+            "defenderDamage": 0,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 0,
+            "defenderShipShieldAbsorbed": 338,
+            "attackerHullDamage": 1350,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "ARGOSY": 1
+            },
+            "retreats": [],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "ARGOSY": 1
+                }
+              }
+            ]
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "CORSAIR": 3
+        },
+        "defenderSurvivors": {
+          "CORSAIR": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "CORSAIR": 1
+        },
+        "attackerCombatSurvivors": {
+          "CORSAIR": 3
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 6197,
+            "remainderBp": 0.8484909457783942
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {
+          "ARGOSY": 1
+        },
+        "attackerLossValue": 0,
+        "defenderLossValue": 14365,
+        "defenceSalvage": {},
+        "attackerDamage": [],
+        "defenderDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 6197,
+            "remainderBp": 0.8484909457783942
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "CORSAIR": 3
+            },
+            "survivors": {
+              "CORSAIR": 3
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 2284.6355524346236,
+            "survivorDamage": []
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "CORSAIR": 1,
+              "ARGOSY": 1
+            },
+            "survivors": {
+              "CORSAIR": 1
+            },
+            "retreated": {
+              "CORSAIR": 1
+            },
+            "losses": {
+              "ARGOSY": 1
+            },
+            "lossValue": 14365,
+            "survivorDamage": [
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 6197,
+                "remainderBp": 0.8484909457783942
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "3-korsan-vs-1-plus-argosy",
+      "shieldLevel": 4,
+      "attacker": {
+        "CORSAIR": 3
+      },
+      "defender": {
+        "CORSAIR": 1,
+        "ARGOSY": 1
+      },
+      "tech": {
+        "SHIP_SHIELDS": 4
+      },
+      "actualRatio": 3,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.179,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0.575,
+        "anyArmedPhysicalWipe": 0.603,
+        "weak": {
+          "physical": 0.5055,
+          "active": 0.2125,
+          "dead": 0.4945,
+          "escape": [
+            0.198,
+            0.095
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.5055,
+          "active": 0.2125,
+          "dead": 0.4945,
+          "escape": [
+            0.198,
+            0.095
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0.575,
+          "PARTIAL": 0,
+          "REPELLED": 0.425
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.517,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0.913,
+        "anyArmedPhysicalWipe": 0.603,
+        "weak": {
+          "physical": 0.3365,
+          "active": 0.0435,
+          "dead": 0.6635,
+          "escape": [
+            0.198,
+            0.095
+          ],
+          "eligible": [
+            0.29,
+            0.1435
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.3365,
+          "active": 0.0435,
+          "dead": 0.6635,
+          "escape": [
+            0.198,
+            0.095
+          ],
+          "eligible": [
+            0.29,
+            0.1435
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0.913,
+          "PARTIAL": 0,
+          "REPELLED": 0.087
+        }
+      },
+      "example": {
+        "grade": "DECISIVE",
+        "lossRatio": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 1312,
+            "defenderDamage": 378,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 378,
+            "defenderShipShieldAbsorbed": 754,
+            "attackerHullDamage": 558,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "CORSAIR": 1
+                }
+              }
+            ],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 1963,
+            "defenderDamage": 0,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 0,
+            "defenderShipShieldAbsorbed": 675,
+            "attackerHullDamage": 1288,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "ARGOSY": 1
+                }
+              }
+            ],
+            "casualties": []
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "CORSAIR": 3
+        },
+        "defenderSurvivors": {
+          "CORSAIR": 1,
+          "ARGOSY": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "CORSAIR": 1,
+          "ARGOSY": 1
+        },
+        "attackerCombatSurvivors": {
+          "CORSAIR": 3
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 3697,
+            "remainderBp": 0.8484909457779395
+          },
+          {
+            "hull": "ARGOSY",
+            "count": 1,
+            "damageBp": 9539,
+            "remainderBp": 0.9520823478724196
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {},
+        "attackerLossValue": 0,
+        "defenderLossValue": 0,
+        "defenceSalvage": {},
+        "attackerDamage": [],
+        "defenderDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 3697,
+            "remainderBp": 0.8484909457779395
+          },
+          {
+            "hull": "ARGOSY",
+            "count": 1,
+            "damageBp": 9539,
+            "remainderBp": 0.9520823478724196
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "CORSAIR": 3
+            },
+            "survivors": {
+              "CORSAIR": 3
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 1845.5290835515862,
+            "survivorDamage": []
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "CORSAIR": 1,
+              "ARGOSY": 1
+            },
+            "survivors": {
+              "CORSAIR": 1,
+              "ARGOSY": 1
+            },
+            "retreated": {
+              "CORSAIR": 1,
+              "ARGOSY": 1
+            },
+            "losses": {},
+            "lossValue": 0,
+            "survivorDamage": [
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 3697,
+                "remainderBp": 0.8484909457779395
+              },
+              {
+                "hull": "ARGOSY",
+                "count": 1,
+                "damageBp": 9539,
+                "remainderBp": 0.9520823478724196
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "5-korsan-vs-2",
+      "shieldLevel": 0,
+      "attacker": {
+        "CORSAIR": 5
+      },
+      "defender": {
+        "CORSAIR": 2
+      },
+      "tech": {},
+      "actualRatio": 2.5,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.48,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.48,
+        "weak": {
+          "physical": 0.26,
+          "active": 0,
+          "dead": 0.74,
+          "escape": [
+            0.2595,
+            0.0005
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 0.9997999999999999,
+          "dead": 0,
+          "escape": [
+            0,
+            0.0002
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 0.9997999999999999,
+          "dead": 0,
+          "escape": [
+            0,
+            0.0002
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.26,
+          "active": 0,
+          "dead": 0.74,
+          "escape": [
+            0.2595,
+            0.0005
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.526,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.526,
+        "weak": {
+          "physical": 0.2395,
+          "active": 0,
+          "dead": 0.7605,
+          "escape": [
+            0.239,
+            0.0005
+          ],
+          "eligible": [
+            0.438,
+            0.0005
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.2395,
+          "active": 0,
+          "dead": 0.7605,
+          "escape": [
+            0.239,
+            0.0005
+          ],
+          "eligible": [
+            0.438,
+            0.0005
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "example": {
+        "grade": "DECISIVE",
+        "lossRatio": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 2186,
+            "defenderDamage": 756,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 756,
+            "defenderShipShieldAbsorbed": 754,
+            "attackerHullDamage": 1432,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "CORSAIR": 1
+                }
+              }
+            ],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 853,
+            "defenderDamage": 416,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 416,
+            "defenderShipShieldAbsorbed": 0,
+            "attackerHullDamage": 853,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "CORSAIR": 1
+            },
+            "retreats": [],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "CORSAIR": 1
+                }
+              }
+            ]
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "CORSAIR": 5
+        },
+        "defenderSurvivors": {
+          "CORSAIR": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "CORSAIR": 1
+        },
+        "attackerCombatSurvivors": {
+          "CORSAIR": 5
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 5150,
+            "remainderBp": 0.18319014954431623
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {
+          "CORSAIR": 1
+        },
+        "attackerLossValue": 0,
+        "defenderLossValue": 7040,
+        "defenceSalvage": {},
+        "attackerDamage": [],
+        "defenderDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 5150,
+            "remainderBp": 0.18319014954431623
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "CORSAIR": 5
+            },
+            "survivors": {
+              "CORSAIR": 5
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 2284.6476250745513,
+            "survivorDamage": []
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "CORSAIR": 2
+            },
+            "survivors": {
+              "CORSAIR": 1
+            },
+            "retreated": {
+              "CORSAIR": 1
+            },
+            "losses": {
+              "CORSAIR": 1
+            },
+            "lossValue": 7040,
+            "survivorDamage": [
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 5150,
+                "remainderBp": 0.18319014954431623
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "5-korsan-vs-2",
+      "shieldLevel": 4,
+      "attacker": {
+        "CORSAIR": 5
+      },
+      "defender": {
+        "CORSAIR": 2
+      },
+      "tech": {
+        "SHIP_SHIELDS": 4
+      },
+      "actualRatio": 2.5,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.329,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.329,
+        "weak": {
+          "physical": 0.382,
+          "active": 0,
+          "dead": 0.618,
+          "escape": [
+            0.0985,
+            0.2835
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.382,
+          "active": 0,
+          "dead": 0.618,
+          "escape": [
+            0.0985,
+            0.2835
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.314,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.314,
+        "weak": {
+          "physical": 0.4175,
+          "active": 0,
+          "dead": 0.5825,
+          "escape": [
+            0.0105,
+            0.407
+          ],
+          "eligible": [
+            0.026,
+            0.752
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.4175,
+          "active": 0,
+          "dead": 0.5825,
+          "escape": [
+            0.0105,
+            0.407
+          ],
+          "eligible": [
+            0.026,
+            0.752
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "example": {
+        "grade": "DECISIVE",
+        "lossRatio": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 2186,
+            "defenderDamage": 756,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 756,
+            "defenderShipShieldAbsorbed": 1508,
+            "attackerHullDamage": 678,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 2045,
+            "defenderDamage": 832,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 832,
+            "defenderShipShieldAbsorbed": 0,
+            "attackerHullDamage": 2045,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "CORSAIR": 1
+                }
+              }
+            ],
+            "casualties": []
+          },
+          {
+            "round": 3,
+            "attackerRoll": 0.9558819125965238,
+            "defenderRoll": 0.9817690262198449,
+            "attackerDamage": 34,
+            "defenderDamage": 401,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 401,
+            "defenderShipShieldAbsorbed": 0,
+            "attackerHullDamage": 34,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "CORSAIR": 1
+            },
+            "retreats": [],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "CORSAIR": 1
+                }
+              }
+            ]
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "CORSAIR": 5
+        },
+        "defenderSurvivors": {
+          "CORSAIR": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "CORSAIR": 1
+        },
+        "attackerCombatSurvivors": {
+          "CORSAIR": 5
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 8282,
+            "remainderBp": 0.6351969477236707
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {
+          "CORSAIR": 1
+        },
+        "attackerLossValue": 0,
+        "defenderLossValue": 7040,
+        "defenceSalvage": {},
+        "attackerDamage": [],
+        "defenderDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 8282,
+            "remainderBp": 0.6351969477236707
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "CORSAIR": 5
+            },
+            "survivors": {
+              "CORSAIR": 5
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 2757.0213876997173,
+            "survivorDamage": []
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "CORSAIR": 2
+            },
+            "survivors": {
+              "CORSAIR": 1
+            },
+            "retreated": {
+              "CORSAIR": 1
+            },
+            "losses": {
+              "CORSAIR": 1
+            },
+            "lossValue": 7040,
+            "survivorDamage": [
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 8282,
+                "remainderBp": 0.6351969477236707
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "4-ok-vs-2-kargi-kurye",
+      "shieldLevel": 0,
+      "attacker": {
+        "DART": 4
+      },
+      "defender": {
+        "PIKE": 2,
+        "COURIER": 1
+      },
+      "tech": {},
+      "actualRatio": 2,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.081,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0.4,
+        "anyArmedPhysicalWipe": 0.529,
+        "weak": {
+          "physical": 0.38499999999999807,
+          "active": 0.20000000000000132,
+          "dead": 0.6150000000000004,
+          "escape": [
+            0.14933333333333332,
+            0.035666666666666645
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 0.77675,
+          "active": 0.77675,
+          "dead": 0.22325,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 0.77675,
+          "active": 0.77675,
+          "dead": 0.22325,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.38499999999999807,
+          "active": 0.20000000000000132,
+          "dead": 0.6150000000000004,
+          "escape": [
+            0.14933333333333332,
+            0.035666666666666645
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0.4,
+          "PARTIAL": 0.6,
+          "REPELLED": 0
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.455,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0.971,
+        "anyArmedPhysicalWipe": 0.483,
+        "weak": {
+          "physical": 0.2410000000000006,
+          "active": 0.009666666666666665,
+          "dead": 0.758999999999999,
+          "escape": [
+            0.17666666666666725,
+            0.05466666666666678
+          ],
+          "eligible": [
+            0.3163333333333329,
+            0.09533333333333306
+          ]
+        },
+        "strong": {
+          "physical": 0.969,
+          "active": 0.941,
+          "dead": 0.031,
+          "escape": [
+            0.00075,
+            0.02725
+          ],
+          "eligible": [
+            0.00425,
+            0.19125
+          ]
+        },
+        "attacker": {
+          "physical": 0.969,
+          "active": 0.941,
+          "dead": 0.031,
+          "escape": [
+            0.00075,
+            0.02725
+          ],
+          "eligible": [
+            0.00425,
+            0.19125
+          ]
+        },
+        "defender": {
+          "physical": 0.2410000000000006,
+          "active": 0.009666666666666665,
+          "dead": 0.758999999999999,
+          "escape": [
+            0.17666666666666725,
+            0.05466666666666678
+          ],
+          "eligible": [
+            0.3163333333333329,
+            0.09533333333333306
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0.971,
+          "PARTIAL": 0.029,
+          "REPELLED": 0
+        }
+      },
+      "example": {
+        "grade": "DECISIVE",
+        "lossRatio": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 56,
+            "defenderDamage": 124,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 77,
+            "defenderShipShieldAbsorbed": 19,
+            "attackerHullDamage": 37,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "PIKE": 1
+                }
+              }
+            ],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 95,
+            "defenderDamage": 69,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 0,
+            "defenderShipShieldAbsorbed": 23,
+            "attackerHullDamage": 73,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "PIKE": 1
+            },
+            "retreats": [],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "PIKE": 1
+                }
+              }
+            ]
+          },
+          {
+            "round": 3,
+            "attackerRoll": 0.9558819125965238,
+            "defenderRoll": 0.9817690262198449,
+            "attackerDamage": 42,
+            "defenderDamage": 0,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 0,
+            "defenderShipShieldAbsorbed": 0,
+            "attackerHullDamage": 42,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "COURIER": 1
+            },
+            "retreats": [],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "COURIER": 1
+                }
+              }
+            ]
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "DART": 4
+        },
+        "defenderSurvivors": {
+          "PIKE": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "PIKE": 1
+        },
+        "attackerCombatSurvivors": {
+          "DART": 4
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "PIKE",
+            "count": 1,
+            "damageBp": 6449,
+            "remainderBp": 0.16390256863451214
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {
+          "PIKE": 1,
+          "COURIER": 1
+        },
+        "attackerLossValue": 0,
+        "defenderLossValue": 1293,
+        "defenceSalvage": {},
+        "attackerDamage": [
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 5358,
+            "remainderBp": 0.5548257761583955
+          },
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 5015,
+            "remainderBp": 0.24608654357780324
+          },
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 2353,
+            "remainderBp": 0.22907129722307218
+          },
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 2336,
+            "remainderBp": 0.16043237231269813
+          }
+        ],
+        "defenderDamage": [
+          {
+            "hull": "PIKE",
+            "count": 1,
+            "damageBp": 6449,
+            "remainderBp": 0.16390256863451214
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "DART": 4
+            },
+            "survivors": {
+              "DART": 4
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 152.5068228297608,
+            "survivorDamage": [
+              {
+                "hull": "DART",
+                "count": 1,
+                "damageBp": 5358,
+                "remainderBp": 0.5548257761583955
+              },
+              {
+                "hull": "DART",
+                "count": 1,
+                "damageBp": 5015,
+                "remainderBp": 0.24608654357780324
+              },
+              {
+                "hull": "DART",
+                "count": 1,
+                "damageBp": 2353,
+                "remainderBp": 0.22907129722307218
+              },
+              {
+                "hull": "DART",
+                "count": 1,
+                "damageBp": 2336,
+                "remainderBp": 0.16043237231269813
+              }
+            ]
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "PIKE": 2,
+              "COURIER": 1
+            },
+            "survivors": {
+              "PIKE": 1
+            },
+            "retreated": {
+              "PIKE": 1
+            },
+            "losses": {
+              "PIKE": 1,
+              "COURIER": 1
+            },
+            "lossValue": 1293,
+            "survivorDamage": [
+              {
+                "hull": "PIKE",
+                "count": 1,
+                "damageBp": 6449,
+                "remainderBp": 0.16390256863451214
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "4-ok-vs-2-kargi-kurye",
+      "shieldLevel": 4,
+      "attacker": {
+        "DART": 4
+      },
+      "defender": {
+        "PIKE": 2,
+        "COURIER": 1
+      },
+      "tech": {
+        "SHIP_SHIELDS": 4
+      },
+      "actualRatio": 2,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0.07,
+        "anyArmedPhysicalWipe": 0.245,
+        "weak": {
+          "physical": 0.6170000000000008,
+          "active": 0.3206666666666657,
+          "dead": 0.38299999999999945,
+          "escape": [
+            0.11033333333333284,
+            0.1860000000000007
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 0.69125,
+          "active": 0.69125,
+          "dead": 0.30875,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 0.69125,
+          "active": 0.69125,
+          "dead": 0.30875,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.6170000000000008,
+          "active": 0.3206666666666657,
+          "dead": 0.38299999999999945,
+          "escape": [
+            0.11033333333333284,
+            0.1860000000000007
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 0.968,
+          "DEFENDER": 0.032,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0.07,
+          "PARTIAL": 0.898,
+          "REPELLED": 0.032
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.004,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0.278,
+        "anyArmedPhysicalWipe": 0.323,
+        "weak": {
+          "physical": 0.5039999999999981,
+          "active": 0.24066666666666914,
+          "dead": 0.49600000000000183,
+          "escape": [
+            0.02966666666666663,
+            0.23366666666666763
+          ],
+          "eligible": [
+            0.047333333333333394,
+            0.4303333333333321
+          ]
+        },
+        "strong": {
+          "physical": 0.94325,
+          "active": 0.931,
+          "dead": 0.05675,
+          "escape": [
+            0,
+            0.01225
+          ],
+          "eligible": [
+            0,
+            0.082
+          ]
+        },
+        "attacker": {
+          "physical": 0.94325,
+          "active": 0.931,
+          "dead": 0.05675,
+          "escape": [
+            0,
+            0.01225
+          ],
+          "eligible": [
+            0,
+            0.082
+          ]
+        },
+        "defender": {
+          "physical": 0.5039999999999981,
+          "active": 0.24066666666666914,
+          "dead": 0.49600000000000183,
+          "escape": [
+            0.02966666666666663,
+            0.23366666666666763
+          ],
+          "eligible": [
+            0.047333333333333394,
+            0.4303333333333321
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0.278,
+          "PARTIAL": 0.722,
+          "REPELLED": 0
+        }
+      },
+      "example": {
+        "grade": "PARTIAL",
+        "lossRatio": 0.4947613504074505,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 56,
+            "defenderDamage": 124,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 124,
+            "defenderShipShieldAbsorbed": 38,
+            "attackerHullDamage": 18,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 53,
+            "defenderDamage": 137,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 30,
+            "defenderShipShieldAbsorbed": 0,
+            "attackerHullDamage": 53,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "PIKE": 1
+            },
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "PIKE": 1
+                }
+              }
+            ],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "PIKE": 1
+                }
+              }
+            ]
+          },
+          {
+            "round": 3,
+            "attackerRoll": 0.9558819125965238,
+            "defenderRoll": 0.9817690262198449,
+            "attackerDamage": 128,
+            "defenderDamage": 0,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 0,
+            "defenderShipShieldAbsorbed": 45,
+            "attackerHullDamage": 83,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [],
+            "casualties": []
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "DART": 4
+        },
+        "defenderSurvivors": {
+          "PIKE": 1,
+          "COURIER": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "PIKE": 1
+        },
+        "attackerCombatSurvivors": {
+          "DART": 4
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "PIKE",
+            "count": 1,
+            "damageBp": 8652,
+            "remainderBp": 0.45753624721692177
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {
+          "PIKE": 1
+        },
+        "attackerLossValue": 0,
+        "defenderLossValue": 425,
+        "defenceSalvage": {},
+        "attackerDamage": [
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 6564,
+            "remainderBp": 0.5147889730060342
+          },
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 3318,
+            "remainderBp": 0.41937116791450535
+          },
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 2535,
+            "remainderBp": 0.19301282587002788
+          },
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 1542,
+            "remainderBp": 0.2770603154770015
+          }
+        ],
+        "defenderDamage": [
+          {
+            "hull": "PIKE",
+            "count": 1,
+            "damageBp": 8652,
+            "remainderBp": 0.45753624721692177
+          },
+          {
+            "hull": "COURIER",
+            "count": 1,
+            "damageBp": 9274,
+            "remainderBp": 0.5032281080893881
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "DART": 4
+            },
+            "survivors": {
+              "DART": 4
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 154.34986769071224,
+            "survivorDamage": [
+              {
+                "hull": "DART",
+                "count": 1,
+                "damageBp": 6564,
+                "remainderBp": 0.5147889730060342
+              },
+              {
+                "hull": "DART",
+                "count": 1,
+                "damageBp": 3318,
+                "remainderBp": 0.41937116791450535
+              },
+              {
+                "hull": "DART",
+                "count": 1,
+                "damageBp": 2535,
+                "remainderBp": 0.19301282587002788
+              },
+              {
+                "hull": "DART",
+                "count": 1,
+                "damageBp": 1542,
+                "remainderBp": 0.2770603154770015
+              }
+            ]
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "PIKE": 2,
+              "COURIER": 1
+            },
+            "survivors": {
+              "PIKE": 1,
+              "COURIER": 1
+            },
+            "retreated": {
+              "PIKE": 1
+            },
+            "losses": {
+              "PIKE": 1
+            },
+            "lossValue": 425,
+            "survivorDamage": [
+              {
+                "hull": "PIKE",
+                "count": 1,
+                "damageBp": 8652,
+                "remainderBp": 0.45753624721692177
+              },
+              {
+                "hull": "COURIER",
+                "count": 1,
+                "damageBp": 9274,
+                "remainderBp": 0.5032281080893881
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "1-korsan-vs-10-ok",
+      "shieldLevel": 0,
+      "attacker": {
+        "CORSAIR": 1
+      },
+      "defender": {
+        "DART": 10
+      },
+      "tech": {},
+      "actualRatio": 1.6564705882352941,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0,
+        "anyArmedPhysicalWipe": 0,
+        "weak": {
+          "physical": 0.7000000000000064,
+          "active": 0.7000000000000064,
+          "dead": 0.30000000000000565,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.7000000000000064,
+          "active": 0.7000000000000064,
+          "dead": 0.30000000000000565,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 0,
+          "DEFENDER": 1,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0,
+          "PARTIAL": 0,
+          "REPELLED": 1
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.302,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.302,
+        "weak": {
+          "physical": 0.12119999999999978,
+          "active": 0,
+          "dead": 0.8787999999999923,
+          "escape": [
+            0.02540000000000005,
+            0.09579999999999989
+          ],
+          "eligible": [
+            0.07080000000000024,
+            0.2702999999999999
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.12119999999999978,
+          "active": 0,
+          "dead": 0.8787999999999923,
+          "escape": [
+            0.02540000000000005,
+            0.09579999999999989
+          ],
+          "eligible": [
+            0.07080000000000024,
+            0.2702999999999999
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "example": {
+        "grade": "DECISIVE",
+        "lossRatio": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 437,
+            "defenderDamage": 194,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 194,
+            "defenderShipShieldAbsorbed": 193,
+            "attackerHullDamage": 245,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 409,
+            "defenderDamage": 214,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 183,
+            "defenderShipShieldAbsorbed": 0,
+            "attackerHullDamage": 409,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "DART": 5
+            },
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "DART": 1
+                }
+              }
+            ],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "DART": 5
+                }
+              }
+            ]
+          },
+          {
+            "round": 3,
+            "attackerRoll": 0.9558819125965238,
+            "defenderRoll": 0.9817690262198449,
+            "attackerDamage": 111,
+            "defenderDamage": 82,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 0,
+            "defenderShipShieldAbsorbed": 0,
+            "attackerHullDamage": 111,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "DART": 4
+            },
+            "retreats": [],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "DART": 4
+                }
+              }
+            ]
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "CORSAIR": 1
+        },
+        "defenderSurvivors": {
+          "DART": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "DART": 1
+        },
+        "attackerCombatSurvivors": {
+          "CORSAIR": 1
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 9317,
+            "remainderBp": 0.2744273604184855
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {
+          "DART": 9
+        },
+        "attackerLossValue": 0,
+        "defenderLossValue": 3825,
+        "defenceSalvage": {},
+        "attackerDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 756,
+            "remainderBp": 0.3309790062587581
+          }
+        ],
+        "defenderDamage": [
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 9317,
+            "remainderBp": 0.2744273604184855
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "CORSAIR": 1
+            },
+            "survivors": {
+              "CORSAIR": 1
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 764.7430130906753,
+            "survivorDamage": [
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 756,
+                "remainderBp": 0.3309790062587581
+              }
+            ]
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "DART": 10
+            },
+            "survivors": {
+              "DART": 1
+            },
+            "retreated": {
+              "DART": 1
+            },
+            "losses": {
+              "DART": 9
+            },
+            "lossValue": 3825,
+            "survivorDamage": [
+              {
+                "hull": "DART",
+                "count": 1,
+                "damageBp": 9317,
+                "remainderBp": 0.2744273604184855
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "1-korsan-vs-10-ok",
+      "shieldLevel": 4,
+      "attacker": {
+        "CORSAIR": 1
+      },
+      "defender": {
+        "DART": 10
+      },
+      "tech": {
+        "SHIP_SHIELDS": 4
+      },
+      "actualRatio": 1.6564705882352941,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0,
+        "anyArmedPhysicalWipe": 0,
+        "weak": {
+          "physical": 0.7000000000000064,
+          "active": 0.7000000000000064,
+          "dead": 0.30000000000000565,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.7000000000000064,
+          "active": 0.7000000000000064,
+          "dead": 0.30000000000000565,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 0,
+          "DEFENDER": 1,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0,
+          "PARTIAL": 0,
+          "REPELLED": 1
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.42,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0.988,
+        "anyArmedPhysicalWipe": 0.42,
+        "weak": {
+          "physical": 0.07730000000000008,
+          "active": 0.0015999999999999999,
+          "dead": 0.9226999999999922,
+          "escape": [
+            0.003700000000000002,
+            0.07200000000000027
+          ],
+          "eligible": [
+            0.013199999999999976,
+            0.2239999999999992
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.07730000000000008,
+          "active": 0.0015999999999999999,
+          "dead": 0.9226999999999922,
+          "escape": [
+            0.003700000000000002,
+            0.07200000000000027
+          ],
+          "eligible": [
+            0.013199999999999976,
+            0.2239999999999992
+          ]
+        },
+        "controls": {
+          "ATTACKER": 0.988,
+          "DEFENDER": 0.012,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0.988,
+          "PARTIAL": 0.012,
+          "REPELLED": 0
+        }
+      },
+      "example": {
+        "grade": "DECISIVE",
+        "lossRatio": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 437,
+            "defenderDamage": 194,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 194,
+            "defenderShipShieldAbsorbed": 342,
+            "attackerHullDamage": 95,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 409,
+            "defenderDamage": 214,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 214,
+            "defenderShipShieldAbsorbed": 43,
+            "attackerHullDamage": 366,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "DART": 3
+            },
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "DART": 1
+                }
+              }
+            ],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "DART": 3
+                }
+              }
+            ]
+          },
+          {
+            "round": 3,
+            "attackerRoll": 0.9558819125965238,
+            "defenderRoll": 0.9817690262198449,
+            "attackerDamage": 299,
+            "defenderDamage": 124,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 124,
+            "defenderShipShieldAbsorbed": 0,
+            "attackerHullDamage": 299,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "DART": 6
+            },
+            "retreats": [],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "DART": 6
+                }
+              }
+            ]
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "CORSAIR": 1
+        },
+        "defenderSurvivors": {
+          "DART": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "DART": 1
+        },
+        "attackerCombatSurvivors": {
+          "CORSAIR": 1
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 8720,
+            "remainderBp": 0.21218992764988798
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {
+          "DART": 9
+        },
+        "attackerLossValue": 0,
+        "defenderLossValue": 3825,
+        "defenceSalvage": {},
+        "attackerDamage": [],
+        "defenderDamage": [
+          {
+            "hull": "DART",
+            "count": 1,
+            "damageBp": 8720,
+            "remainderBp": 0.21218992764988798
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "CORSAIR": 1
+            },
+            "survivors": {
+              "CORSAIR": 1
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 760.1456338624429,
+            "survivorDamage": []
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "DART": 10
+            },
+            "survivors": {
+              "DART": 1
+            },
+            "retreated": {
+              "DART": 1
+            },
+            "losses": {
+              "DART": 9
+            },
+            "lossValue": 3825,
+            "survivorDamage": [
+              {
+                "hull": "DART",
+                "count": 1,
+                "damageBp": 8720,
+                "remainderBp": 0.21218992764988798
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "collectors-cargo-3x",
+      "shieldLevel": 0,
+      "attacker": {
+        "CORSAIR": 6,
+        "COURIER": 2,
+        "GARBAGE_COLLECTOR": 2
+      },
+      "defender": {
+        "CORSAIR": 2,
+        "COURIER": 2,
+        "GARBAGE_COLLECTOR": 2
+      },
+      "tech": {},
+      "actualRatio": 3,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.222,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.35,
+        "weak": {
+          "physical": 0.20700000000000005,
+          "active": 0,
+          "dead": 0.793,
+          "escape": [
+            0.14766666666666664,
+            0.05933333333333322
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.20700000000000005,
+          "active": 0,
+          "dead": 0.793,
+          "escape": [
+            0.14766666666666664,
+            0.05933333333333322
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.111,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.134,
+        "weak": {
+          "physical": 0.21833333333333343,
+          "active": 0,
+          "dead": 0.7816666666666664,
+          "escape": [
+            0.21416666666666687,
+            0.004166666666666665
+          ],
+          "eligible": [
+            0.31016666666666654,
+            0.005333333333333334
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.21833333333333343,
+          "active": 0,
+          "dead": 0.7816666666666664,
+          "escape": [
+            0.21416666666666687,
+            0.004166666666666665
+          ],
+          "eligible": [
+            0.31016666666666654,
+            0.005333333333333334
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "example": {
+        "grade": "DECISIVE",
+        "lossRatio": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 2623,
+            "defenderDamage": 756,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 756,
+            "defenderShipShieldAbsorbed": 754,
+            "attackerHullDamage": 1869,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "CORSAIR": 2
+                }
+              }
+            ],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 1575,
+            "defenderDamage": 0,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 0,
+            "defenderShipShieldAbsorbed": 315,
+            "attackerHullDamage": 1260,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "COURIER": 2,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "retreats": [],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "COURIER": 2,
+                  "GARBAGE_COLLECTOR": 2
+                }
+              }
+            ]
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "COURIER": 2,
+          "GARBAGE_COLLECTOR": 2,
+          "CORSAIR": 6
+        },
+        "defenderSurvivors": {
+          "CORSAIR": 2
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "CORSAIR": 2
+        },
+        "attackerCombatSurvivors": {
+          "CORSAIR": 6
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 6540,
+            "remainderBp": 0.6586679180918509
+          },
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 5855,
+            "remainderBp": 0.038313973464028095
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {
+          "COURIER": 2,
+          "GARBAGE_COLLECTOR": 2
+        },
+        "attackerLossValue": 0,
+        "defenderLossValue": 40736,
+        "defenceSalvage": {},
+        "attackerDamage": [],
+        "defenderDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 6540,
+            "remainderBp": 0.6586679180918509
+          },
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 5855,
+            "remainderBp": 0.038313973464028095
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "CORSAIR": 6,
+              "COURIER": 2,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "survivors": {
+              "COURIER": 2,
+              "GARBAGE_COLLECTOR": 2,
+              "CORSAIR": 6
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 3129.2711048692468,
+            "survivorDamage": []
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "CORSAIR": 2,
+              "COURIER": 2,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "survivors": {
+              "CORSAIR": 2
+            },
+            "retreated": {
+              "CORSAIR": 2
+            },
+            "losses": {
+              "COURIER": 2,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "lossValue": 40736,
+            "survivorDamage": [
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 6540,
+                "remainderBp": 0.6586679180918509
+              },
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 5855,
+                "remainderBp": 0.038313973464028095
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "collectors-cargo-3x",
+      "shieldLevel": 4,
+      "attacker": {
+        "CORSAIR": 6,
+        "COURIER": 2,
+        "GARBAGE_COLLECTOR": 2
+      },
+      "defender": {
+        "CORSAIR": 2,
+        "COURIER": 2,
+        "GARBAGE_COLLECTOR": 2
+      },
+      "tech": {
+        "SHIP_SHIELDS": 4
+      },
+      "actualRatio": 3,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.375,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.375,
+        "weak": {
+          "physical": 0.16666666666666666,
+          "active": 0,
+          "dead": 0.8333333333333321,
+          "escape": [
+            0.11983333333333406,
+            0.04683333333333327
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.16666666666666666,
+          "active": 0,
+          "dead": 0.8333333333333321,
+          "escape": [
+            0.11983333333333406,
+            0.04683333333333327
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0.221,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 1,
+        "anyArmedPhysicalWipe": 0.315,
+        "weak": {
+          "physical": 0.18016666666666634,
+          "active": 0,
+          "dead": 0.8198333333333359,
+          "escape": [
+            0.12350000000000111,
+            0.05666666666666654
+          ],
+          "eligible": [
+            0.17433333333333254,
+            0.08083333333333335
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 0.18016666666666634,
+          "active": 0,
+          "dead": 0.8198333333333359,
+          "escape": [
+            0.12350000000000111,
+            0.05666666666666654
+          ],
+          "eligible": [
+            0.17433333333333254,
+            0.08083333333333335
+          ]
+        },
+        "controls": {
+          "ATTACKER": 1,
+          "DEFENDER": 0,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 1,
+          "PARTIAL": 0,
+          "REPELLED": 0
+        }
+      },
+      "example": {
+        "grade": "DECISIVE",
+        "lossRatio": 1,
+        "rounds": [
+          {
+            "round": 1,
+            "attackerRoll": 1.0715976735576989,
+            "defenderRoll": 0.9261757426336408,
+            "attackerDamage": 2623,
+            "defenderDamage": 756,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 756,
+            "defenderShipShieldAbsorbed": 1508,
+            "attackerHullDamage": 1115,
+            "attackerLosses": {},
+            "defenderLosses": {},
+            "retreats": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "CORSAIR": 2
+                }
+              }
+            ],
+            "casualties": []
+          },
+          {
+            "round": 2,
+            "attackerRoll": 1.0022944909706712,
+            "defenderRoll": 1.0194724165648223,
+            "attackerDamage": 1890,
+            "defenderDamage": 0,
+            "shieldBefore": 0,
+            "shieldAfter": 0,
+            "shieldAbsorbed": 0,
+            "shieldBreakerDamage": 0,
+            "attackerShipShieldAbsorbed": 0,
+            "defenderShipShieldAbsorbed": 630,
+            "attackerHullDamage": 1260,
+            "attackerLosses": {},
+            "defenderLosses": {
+              "COURIER": 2,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "retreats": [],
+            "casualties": [
+              {
+                "side": "DEFENCE",
+                "playerId": "d",
+                "stackId": "host",
+                "fleet": {
+                  "COURIER": 2,
+                  "GARBAGE_COLLECTOR": 2
+                }
+              }
+            ]
+          }
+        ],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "COURIER": 2,
+          "GARBAGE_COLLECTOR": 2,
+          "CORSAIR": 6
+        },
+        "defenderSurvivors": {
+          "CORSAIR": 2
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {
+          "CORSAIR": 2
+        },
+        "attackerCombatSurvivors": {
+          "CORSAIR": 6
+        },
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 4040,
+            "remainderBp": 0.6586679180927604
+          },
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 3355,
+            "remainderBp": 0.038313973464028095
+          }
+        ],
+        "attackerLosses": {},
+        "defenderLosses": {
+          "COURIER": 2,
+          "GARBAGE_COLLECTOR": 2
+        },
+        "attackerLossValue": 0,
+        "defenderLossValue": 40736,
+        "defenceSalvage": {},
+        "attackerDamage": [],
+        "defenderDamage": [
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 4040,
+            "remainderBp": 0.6586679180927604
+          },
+          {
+            "hull": "CORSAIR",
+            "count": 1,
+            "damageBp": 3355,
+            "remainderBp": 0.038313973464028095
+          }
+        ],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "CORSAIR": 6,
+              "COURIER": 2,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "survivors": {
+              "COURIER": 2,
+              "GARBAGE_COLLECTOR": 2,
+              "CORSAIR": 6
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 2375.2711048692468,
+            "survivorDamage": []
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "CORSAIR": 2,
+              "COURIER": 2,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "survivors": {
+              "CORSAIR": 2
+            },
+            "retreated": {
+              "CORSAIR": 2
+            },
+            "losses": {
+              "COURIER": 2,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "lossValue": 40736,
+            "survivorDamage": [
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 4040,
+                "remainderBp": 0.6586679180927604
+              },
+              {
+                "hull": "CORSAIR",
+                "count": 1,
+                "damageBp": 3355,
+                "remainderBp": 0.038313973464028095
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "support-only",
+      "shieldLevel": 0,
+      "attacker": {
+        "COURIER": 3,
+        "GARBAGE_COLLECTOR": 2
+      },
+      "defender": {
+        "COURIER": 1,
+        "GARBAGE_COLLECTOR": 1
+      },
+      "tech": {},
+      "actualRatio": 0,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0,
+        "anyArmedPhysicalWipe": 0,
+        "weak": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 0,
+          "DEFENDER": 1,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0,
+          "PARTIAL": 0,
+          "REPELLED": 1
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0,
+        "anyArmedPhysicalWipe": 0,
+        "weak": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 0,
+          "DEFENDER": 1,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0,
+          "PARTIAL": 0,
+          "REPELLED": 1
+        }
+      },
+      "example": {
+        "grade": "REPELLED",
+        "lossRatio": 0,
+        "rounds": [],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "COURIER": 3,
+          "GARBAGE_COLLECTOR": 2
+        },
+        "defenderSurvivors": {
+          "COURIER": 1,
+          "GARBAGE_COLLECTOR": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {},
+        "attackerCombatSurvivors": {},
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [],
+        "attackerLosses": {},
+        "defenderLosses": {},
+        "attackerLossValue": 0,
+        "defenderLossValue": 0,
+        "defenceSalvage": {},
+        "attackerDamage": [],
+        "defenderDamage": [],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "COURIER": 3,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "survivors": {
+              "COURIER": 3,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 0,
+            "survivorDamage": []
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "COURIER": 1,
+              "GARBAGE_COLLECTOR": 1
+            },
+            "survivors": {
+              "COURIER": 1,
+              "GARBAGE_COLLECTOR": 1
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "survivorDamage": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "support-only",
+      "shieldLevel": 4,
+      "attacker": {
+        "COURIER": 3,
+        "GARBAGE_COLLECTOR": 2
+      },
+      "defender": {
+        "COURIER": 1,
+        "GARBAGE_COLLECTOR": 1
+      },
+      "tech": {
+        "SHIP_SHIELDS": 4
+      },
+      "actualRatio": 0,
+      "trials": 1000,
+      "baseline": {
+        "n": 1000,
+        "anyPhysicalWipe": 0,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0,
+        "anyArmedPhysicalWipe": 0,
+        "weak": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 0,
+          "DEFENDER": 1,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0,
+          "PARTIAL": 0,
+          "REPELLED": 1
+        }
+      },
+      "candidate": {
+        "n": 1000,
+        "anyPhysicalWipe": 0,
+        "bothPhysicalWipe": 0,
+        "anyActiveWipe": 0,
+        "anyArmedPhysicalWipe": 0,
+        "weak": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "strong": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "attacker": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "defender": {
+          "physical": 1,
+          "active": 1,
+          "dead": 0,
+          "escape": [
+            0,
+            0
+          ],
+          "eligible": [
+            0,
+            0
+          ]
+        },
+        "controls": {
+          "ATTACKER": 0,
+          "DEFENDER": 1,
+          "EMPTY": 0
+        },
+        "grades": {
+          "DECISIVE": 0,
+          "PARTIAL": 0,
+          "REPELLED": 1
+        }
+      },
+      "example": {
+        "grade": "REPELLED",
+        "lossRatio": 0,
+        "rounds": [],
+        "shieldLeft": 0,
+        "shieldProtectedArmed": 0,
+        "attackerSurvivors": {
+          "COURIER": 3,
+          "GARBAGE_COLLECTOR": 2
+        },
+        "defenderSurvivors": {
+          "COURIER": 1,
+          "GARBAGE_COLLECTOR": 1
+        },
+        "attackerRetreated": {},
+        "defenderRetreated": {},
+        "attackerCombatSurvivors": {},
+        "attackerRetreatDamage": [],
+        "defenderRetreatDamage": [],
+        "attackerLosses": {},
+        "defenderLosses": {},
+        "attackerLossValue": 0,
+        "defenderLossValue": 0,
+        "defenceSalvage": {},
+        "attackerDamage": [],
+        "defenderDamage": [],
+        "contributions": [
+          {
+            "contributionId": "a",
+            "playerId": "a",
+            "sent": {
+              "COURIER": 3,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "survivors": {
+              "COURIER": 3,
+              "GARBAGE_COLLECTOR": 2
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "hullDamage": 0,
+            "survivorDamage": []
+          }
+        ],
+        "defenders": [
+          {
+            "stackId": "host",
+            "playerId": "d",
+            "sent": {
+              "COURIER": 1,
+              "GARBAGE_COLLECTOR": 1
+            },
+            "survivors": {
+              "COURIER": 1,
+              "GARBAGE_COLLECTOR": 1
+            },
+            "retreated": {},
+            "losses": {},
+            "lossValue": 0,
+            "survivorDamage": []
+          }
+        ]
+      }
+    }
+  ]
+}

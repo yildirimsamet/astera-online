@@ -54,7 +54,7 @@ const report = { id: 'shield-preview', missionId: 'shield-mission', at: new Date
   rounds: [{ round: 1, attackerDamage: 800, defenderDamage: 300, shieldBefore: 100, shieldAfter: 0,
     shieldAbsorbed: 100, shieldBreakerDamage: 0, attackerHullDamage: 460, attackerRoll: 1, defenderRoll: 1,
     attackerShipShieldAbsorbed: 120, defenderShipShieldAbsorbed: 240, attackerLosses: {DART: 2}, defenderLosses: {DART: 3} }],
-  yourFleet: {DART: 10}, yourLosses: {DART: 2}, theirFleet: {}, theirLosses: {DART: 3},
+  theirRetreatedCount:2,yourRetreated: {DART: 1}, yourDamage: [{hull:'DART',count:1,damageBp:6000}], yourFleet: {DART: 10}, yourLosses: {DART: 2}, theirFleet: {}, theirLosses: {DART: 3},
   lootAlloy: 100, lootCrystal: 50, lootDeuterium: 0, dominion: 0, dominionBreakdown: null, shieldBefore: 100, shieldAfter: 0, shieldAbsorbed: 100 };
 const data = reportsSchema.parse({ reports: [report], rivals: [] });
 const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
@@ -69,8 +69,8 @@ window.drawMonument = attacking => {
   const monument = reportsSchema.parse({reports:[{kind:'MONUMENT',id:'cargo-retreat',at:new Date(),
     attacking,grade:'REPELLED',control:'ATTACKER',defenderCargoRetreated:true,roundCount:3,
     monument:{id:'monument',ordinal:1,position:{x:6000,y:0,z:0}},
-    yourFleet:attacking?{CORSAIR:3}:{CORSAIR:1,ARGOSY:1},yourSurvivors:attacking?{CORSAIR:3}:{ARGOSY:1},
-    yourLosses:attacking?{}:{CORSAIR:1},yourDamage:[],theirLosses:attacking?{CORSAIR:1}:{},
+    yourFleet:attacking?{CORSAIR:3}:{CORSAIR:1,ARGOSY:1},yourSurvivors:attacking?{CORSAIR:3}:{CORSAIR:1,ARGOSY:1},
+    yourLosses:{},theirRetreatedCount:2,yourRetreated:{CORSAIR:1},yourDamage:[{hull:'CORSAIR',count:1,damageBp:6000,remainderBp:0}],theirLosses:{},
     lootDeuterium:0,dominion:0}],rivals:[]}).reports[0];
   root.render(h(MonumentReportSheet,{report:monument,onClose:()=>{}}));
 };
@@ -87,6 +87,16 @@ window.drawHull(0);
         assert(await shield.isVisible());
       }
       await page.evaluate(() => window.drawReport());
+      try {
+        await page.locator('[data-battle-retreat]').waitFor();
+      } catch (error) {
+        await page.screenshot({ path: `${output}/${language}-${width}-report-failed.png`, fullPage: true });
+        console.error(await page.locator('body').innerText());
+        throw error;
+      }
+      assert(await page.locator('[data-battle-retreat]').isVisible(), 'Ordinary retreat explanation is missing');
+      await page.locator('[data-battle-retreat]').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: `${output}/${language}-${width}-report-retreat.png`, fullPage: true });
       const toggle = page.getByText(language === 'tr' ? 'Tur tur ne oldu' : 'How the battle unfolded', { exact: false });
       if (await toggle.count()) await toggle.click();
       const absorption = page.locator('[data-round-ship-shields]');
@@ -96,6 +106,8 @@ window.drawHull(0);
       await page.screenshot({ path: `${output}/${language}-${width}-report.png`, fullPage: true });
       for (const attacking of [true, false]) {
         await page.evaluate(attacking => window.drawMonument(attacking), attacking);
+        await page.locator('[data-battle-retreat]').waitFor();
+        assert(await page.locator('[data-battle-retreat]').isVisible(), 'Monument retreat explanation is missing');
         const retreat = page.getByText(language === 'tr' ? 'Savunanın yük gemileri geri çekildi.' : 'Defending cargo ships retreated.', { exact: true });
         await retreat.waitFor();
         await page.getByText(language === 'tr' ? 'Savaş kuralları' : 'Battle rules', { exact: true }).click();

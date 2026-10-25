@@ -2862,6 +2862,7 @@ const ordinaryBattleReport = z.object({
       rounds: z.array(
         z.object({
           round: z.number(),
+          distributedFire: z.literal(true).optional(),
           /** Null means the immutable report predates detailed calculation telemetry. */
           attackerRoll: z.number().nullable().optional(),
           defenderRoll: z.number().nullable().optional(),
@@ -2874,6 +2875,8 @@ const ordinaryBattleReport = z.object({
           attackerShipShieldAbsorbed: z.number().nonnegative().optional(),
           defenderShipShieldAbsorbed: z.number().nonnegative().optional(),
           attackerHullDamage: z.number().nullable().optional(),
+          yourRetreated: fleet.optional(),
+          theirRetreatedCount: z.number().int().nonnegative().optional(),
           attackerLosses: fleet,
           defenderLosses: fleet,
         }),
@@ -2888,6 +2891,8 @@ const ordinaryBattleReport = z.object({
       yourPlanet: z.string().default(''),
       yourPlanetId: z.string().nullable().optional(),
       yourLosses: fleet,
+      yourRetreated: fleet.optional(),
+          theirRetreatedCount: z.number().int().nonnegative().optional(),
       theirLosses: fleet,
       /** The caller's own board at contact. Empty on reports written before D121. */
       yourFleet: fleet.default({}),
@@ -3066,6 +3071,10 @@ const monumentBattleReport = z.object({
   monument: z.object({ id: z.string(), ordinal: z.number().int().min(1).max(8), position: publicMonumentSchema.shape.position }),
   attacking: z.boolean(), grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']), control: z.enum(['ATTACKER', 'DEFENDER', 'EMPTY']),
   defenderCargoRetreated: z.boolean().optional(),
+  yourRetreated: fleet.optional(),
+          theirRetreatedCount: z.number().int().nonnegative().optional(),
+  rounds: z.array(z.object({ round: z.number().int().positive(), distributedFire: z.literal(true).optional(),
+    yourLosses: fleet, theirLosses: fleet, yourRetreated: fleet, theirRetreatedCount: z.number().int().nonnegative() })).optional(),
   roundCount: z.number().int().nonnegative(), yourFleet: fleet, yourSurvivors: fleet, yourLosses: fleet,
   yourDamage: z.array(monumentLotSchema.pick({ hull: true, count: true, damageBp: true, remainderBp: true })),
   theirLosses: fleet, lootDeuterium: z.number().finite().nonnegative(), dominion: dominionInteger,

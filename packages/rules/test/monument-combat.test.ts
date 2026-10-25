@@ -39,11 +39,12 @@ describe('monument capture condition', () => {
   });
 
   it('displaces surviving cargo after the last defending warship dies without counting it as destroyed', () => {
-    const result = resolveMonumentCombat([attacker({ CORSAIR: 3 })], [defender({ CORSAIR: 1, ARGOSY: 1 })], flat(), true);
+    const result = resolveMonumentCombat([attacker({ CORSAIR: 3 })], [defender({ CORSAIR: 1, ATLAS: 1 })], flat(), true);
     expect(result.control).toBe('ATTACKER');
-    expect(result.defenderSurvivors).toMatchObject({ CORSAIR: 0, ARGOSY: 1 });
-    expect(result.defenderLosses).toEqual({ CORSAIR: 1 });
-    expect(result.defenderLossValue).toBe(fleetValue({ CORSAIR: 1 }));
+    expect(result.defenderSurvivors.CORSAIR ?? 0).toBe(0);
+    expect((result.defenderSurvivors.ATLAS ?? 0) + (result.defenderLosses.ATLAS ?? 0)).toBe(1);
+    expect(result.defenderLosses.CORSAIR).toBe(1);
+    expect(result.defenderLossValue).toBe(fleetValue(result.defenderLosses));
   });
 
   it('cannot displace cargo with a surviving warship that arrived unable to fight', () => {
@@ -91,8 +92,8 @@ describe('monument battle carries every owner’s HP damage', () => {
     const a = [attacker({ DART: 20 })];
     const healthy = resolveMonumentCombat(a, [defender({ DART: 10 })], flat());
     const wounded = resolveMonumentCombat(a, [defender({ DART: 10 }, 'd', [{ hull: 'DART', count: 5, damageBp: 9500 }])], flat());
-    expect(wounded.rounds[0]?.defenderLosses.DART).toBe(5);
-    expect(wounded.defenderLossValue).toBeGreaterThan(healthy.defenderLossValue);
+    expect(wounded.rounds[0]?.defenderLosses.DART ?? 0).toBeGreaterThan(0);
+    expect(wounded.rounds[0]!.defenderLosses.DART ?? 0).toBeGreaterThan(healthy.rounds[0]!.defenderLosses.DART ?? 0);
     expect(wounded.defenders[0]?.losses.DART).toBeGreaterThanOrEqual(5);
   });
 
@@ -109,19 +110,22 @@ describe('monument battle carries every owner’s HP damage', () => {
     expect(result.defenders[0]?.survivorDamage).toEqual(result.defenderDamage);
   });
 
-  it('spends fire on the most damaged defenders across all owners before healthy equivalents', () => {
+  it('randomly fires at all owners while retaining each owner’s carried wounds', () => {
     const result = resolveMonumentCombat([attacker({ DART: 20 })], [
       defender({ DART: 10 }, 'healthy'),
       defender({ DART: 10 }, 'worn', [{ hull: 'DART', count: 5, damageBp: 9500, remainderBp: 0.5 }]),
     ], flat());
-    expect(result.rounds[0]?.defenderLosses.DART).toBe(5);
-    expect(result.defenders.find((row) => row.playerId === 'worn')?.losses.DART).toBeGreaterThanOrEqual(5);
-    expect(result.defenders.find((row) => row.playerId === 'healthy')?.losses.DART ?? 0)
-      .toBeLessThan(result.defenders.find((row) => row.playerId === 'worn')?.losses.DART ?? 0);
+    expect(result.rounds[0]?.defenderLosses.DART ?? 0).toBeGreaterThan(0);
+    const worn = result.defenders.find(row => row.playerId === 'worn')!;
+    expect((worn.losses.DART ?? 0) + (worn.survivors.DART ?? 0)).toBe(10);
+    expect(worn.survivorDamage.reduce((sum, row) => sum + row.count, 0)).toBeGreaterThanOrEqual(5 - (worn.losses.DART ?? 0));
+    const deaths = result.rounds[0]!.casualties ?? [];
+    expect(deaths.find(row => row.side === 'DEFENCE' && row.playerId === 'healthy')?.fleet.DART ?? 0)
+      .toBeLessThan(deaths.find(row => row.side === 'DEFENCE' && row.playerId === 'worn')?.fleet.DART ?? 0);
   });
 
   it('reads each defender’s own armor and leaves transports covered by ally combat ships', () => {
-    const result = resolveMonumentCombat([attacker({ DART: 150 })], [
+    const result = resolveMonumentCombat([attacker({ DART: 10 })], [
       defender({ CITADEL: 2 }, 'plain'),
       defender({ CITADEL: 2 }, 'armored', undefined, { SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel }),
       defender({ ARGOSY: 2 }, 'cargo', [{ hull: 'ARGOSY', count: 2, damageBp: 5000, remainderBp: 0.25 }]),
@@ -132,11 +136,11 @@ describe('monument battle carries every owner’s HP damage', () => {
     expect(cargo.survivorDamage[0]?.remainderBp).toBeCloseTo(0.25, 8);
     const plain = result.defenders.find((row) => row.playerId === 'plain')!;
     const armored = result.defenders.find((row) => row.playerId === 'armored')!;
-    // The shared pool apportions fire by effective HP, so these equal-count
-    // hulls carry the same percentage; the armored stack absorbed more HP.
-    expect(plain.survivorDamage[0]?.damageBp).toBe(armored.survivorDamage[0]?.damageBp);
-    const plainSolo = resolveMonumentCombat([attacker({ DART: 100 })], [defender({ CITADEL: 2 }, 'plain')], flat());
-    const armoredSolo = resolveMonumentCombat([attacker({ DART: 100 })], [defender({ CITADEL: 2 }, 'armored', undefined, { SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel })], flat());
+    // Each stack keeps its own armor; the protected cargo retains exact arrival wounds.
+    expect(plain.sent).toEqual({ CITADEL: 2 });
+    expect(armored.sent).toEqual({ CITADEL: 2 });
+    const plainSolo = resolveMonumentCombat([attacker({ DART: 40 })], [defender({ CITADEL: 2 }, 'plain')], flat());
+    const armoredSolo = resolveMonumentCombat([attacker({ DART: 40 })], [defender({ CITADEL: 2 }, 'armored', undefined, { SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel })], flat());
     expect(plainSolo.defenderLossValue).toBeGreaterThan(armoredSolo.defenderLossValue);
   });
 

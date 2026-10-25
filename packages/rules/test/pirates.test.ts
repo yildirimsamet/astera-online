@@ -1,6 +1,8 @@
 import { orbitFingerprint } from './orbitFingerprint.js';
 import { describe, expect, it } from 'vitest';
 import {
+  soloStack,
+  resolveBattle,
   resolveCombat,
   computeLoot,
   DEBRIS,
@@ -451,25 +453,30 @@ describe('the holds a pirate is left with', () => {
       attacker: { tech: {} }, defender: { tech: {}, ...pirateStats(level) },
     });
 
-  it('takes the holds that outlived the last warship', () => {
-    const raw = fight({ DART: 7 }, { RAMPART: 3, COURIER: 2 });
-    // The premise: the line died in the last round and the holds were never shot at.
-    expect(raw.grade).toBe('PARTIAL');
-    expect(raw.defenderSurvivors.COURIER).toBe(2);
-    const settled = pirateOverrun(raw);
-    expect(settled.grade).toBe('DECISIVE');
-    expect(settled.lossRatio).toBe(1);
-    expect(fleetCount(settled.defenderSurvivors)).toBe(0);
-    expect(settled.defenderLosses).toMatchObject({ RAMPART: 3, COURIER: 2 });
-    expect(settled.defenderLossValue).toBe(fleetValue({ RAMPART: 3, COURIER: 2 }));
-    expect(settled.defenderDamage).toEqual([]);
-    // The rounds are the fight as it was fought; the overrun is not a round.
-    expect(settled.rounds).toBe(raw.rounds);
-    expect(settled.attackerSurvivors).toEqual(raw.attackerSurvivors);
+  it('never seizes cargo which already retreated alive when the active line was cleared', () => {
+    let checked = 0;
+    for (let seed = 0; seed < 32; seed++) {
+      const raw = resolveBattle([soloStack({ DART: 7 }, { tech: {} })], [{ stackId: 'pirate', playerId: '',
+        fleet: { RAMPART: 3, COURIER: 2 }, tech: { tech: {}, ...pirateStats(1) },
+        damage: [{ hull: 'COURIER', count: 2, damageBp: 9000 }] }], 0, mulberry32(seed), 'HP_PLANET', true);
+      if (raw.grade !== 'DECISIVE' || fleetCount(raw.defenderRetreated ?? {}) === 0) continue;
+      checked++;
+      const settled = pirateOverrun(raw);
+      expect(settled.defenderSurvivors).toEqual(raw.defenderSurvivors);
+      expect(settled.defenderLosses).toEqual(raw.defenderLosses);
+      expect(settled.rounds).toBe(raw.rounds);
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 
-  it('takes a lone hold that three rounds could not sink', () => {
+  it('a retreated attacker cannot overrun a pirate hold', () => {
     const raw = fight({ DART: 2 }, { ATLAS: 1 });
+    const departed = { ...raw, attackerRetreated: raw.attackerSurvivors, attackerCombatSurvivors: {} };
+    expect(pirateOverrun(departed)).toEqual(departed);
+  });
+
+  it('takes a lone hold that six rounds could not sink', () => {
+    const raw = fight({ DART: 1 }, { ATLAS: 1 });
     expect(raw.grade).toBe('REPELLED');
     expect(raw.defenderSurvivors.ATLAS).toBe(1);
     const settled = pirateOverrun(raw);

@@ -1,3 +1,4 @@
+import { BattleRetreatNote } from '../ui/BattleRetreatNote.js';
 import { fleetCount, fleetEntries, type Fleet } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import type { MonumentBattleReport } from '../api/schemas.js';
@@ -42,12 +43,25 @@ export function MonumentReportSheet({ report, onClose, onFocusMonument }: {
           <span>{hullLabel(hull)}</span><span className="font-v2-mono">{t('monument.reportHull', { sent, left: report.yourSurvivors[hull] ?? 0, lost: report.yourLosses[hull] ?? 0 })}</span>
         </p>)}
       </div>
+      <BattleRetreatNote fleet={report.yourRetreated} enemyCount={report.theirRetreatedCount} />
       {report.yourDamage.map((lot, index) => <p key={`${lot.hull}:${String(index)}`} className="text-micro text-v2-ink-2">
         {t('monument.reportHealth', { count: lot.count, hull: hullLabel(lot.hull), health: decimal((10_000 - lot.damageBp - lot.remainderBp) / 100, 4) })}
       </p>)}
       {fleetCount(report.theirLosses) > 0 && <p>{t('monument.reportEnemyLosses', { fleet: fleetLine(report.theirLosses) })}</p>}
       <p>{t('monument.reportLoot', { amount: decimal(report.lootDeuterium, 3) })}</p>
       {!report.honor ? <RankingScores dominion={report.dominion} /> : null}
+      {report.rounds && report.rounds.length > 0 && <details className="rounded-control border border-v2-line/60 px-3 py-2">
+        <summary className="cursor-pointer min-h-8 font-semibold text-v2-crystal">{t('reports.howItWent')}</summary>
+        <div className="mt-2 grid gap-3">
+          {report.rounds.map(round => <section key={round.round} data-monument-round={round.round}
+            className="grid gap-2 border-t border-v2-line/60 pt-2">
+            <h3 className="font-semibold">{t('reports.calculation.round', { round: round.round })}</h3>
+            <p>{t('reports.roundLossesYours')}: {fleetLine(round.yourLosses) || t('reports.roundNoCasualties')}</p>
+            <p>{t('reports.roundLossesTheirs')}: {fleetLine(round.theirLosses) || t('reports.roundNoCasualties')}</p>
+            <BattleRetreatNote fleet={round.yourRetreated} enemyCount={round.theirRetreatedCount} />
+          </section>)}
+        </div>
+      </details>}
       <MonumentBattleRules />
       {onFocusMonument && <button type="button" className="min-h-10 rounded-control border border-v2-line px-3 font-semibold text-v2-self"
         onClick={() => { onClose(); onFocusMonument(report.monument.id); }}>{t('monument.look', { name })}</button>}

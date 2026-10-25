@@ -526,7 +526,7 @@ describe('bir seferde birden fazla arıza', () => {
 /**
  * AĞIR BİR YENİLGİ, KALKANIN AZ ÖNCE SÖZ VERDİĞİ ÜRETİMİ KIRAMAZ.
  *
- * `ABUSE.recoveryShieldHours` + `recoveryProductionMult` bir yenilgiden sonra dünyaya 8 saat koruma
+ * `ABUSE.recoveryShieldHours` + `recoveryProductionMult` bir yenilgiden sonra dünyaya 12 saat koruma
  * ve %50 fazla üretim veriyor. `FAULT.attackFaults` ise AYNI olayda iki arıza çekiyor ve sekiz
  * arızanın üçü (rafineri, çıkarıcı, tesis) doğrudan üretimi durduruyor — iki çekilişte en az
  * birinin gelme olasılığı %64. Yani söz verilen telafi, onu veren olay tarafından iptal ediliyordu.

@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import { fleetCount, fleetDiff, type Fleet, type Grade, type HpDamageLot, type Vec3 } from '@astera/rules';
+import { activeBattleFleet, battleCasualties, battleRetreated, fleetCount, fleetDiff, type Fleet, type Grade, type HpDamageLot, type Vec3 } from '@astera/rules';
 import type { Tx } from '../db/client.js';
 import { monumentBattles, monumentBattleParticipants } from '../db/schema.js';
 import { readHonorReceipts, type HonorReportReceipt } from './honorReports.js';
@@ -15,8 +15,13 @@ export interface MonumentReportView {
   control: 'ATTACKER' | 'DEFENDER' | 'EMPTY';
   defenderCargoRetreated: boolean;
   roundCount: number;
+  /** Present only when immutable owner casualty telemetry can identify personal losses. */
+  rounds?: { round: number; distributedFire?: true; yourLosses: Fleet; theirLosses: Fleet;
+    yourRetreated: Fleet; theirRetreatedCount: number }[];
   yourFleet: Fleet;
   yourSurvivors: Fleet;
+  yourRetreated: Fleet;
+  theirRetreatedCount: number;
   yourLosses: Fleet;
   yourDamage: HpDamageLot[];
   /** Confirmed destruction, never the opponent's starting board or remaining force. */
@@ -42,8 +47,18 @@ export async function readMonumentBattleReports(tx: Tx, playerId: string, limit:
     kind: 'MONUMENT', id: battle.id, at: battle.createdAt,
     monument: { id: battle.monumentId, ordinal: battle.monumentOrdinal, position: battle.monumentPosition },
     attacking: own.side === 'ATTACK', grade: battle.grade, control: battle.control, roundCount: battle.rounds.length,
-    defenderCargoRetreated: battle.control === 'ATTACKER' && fleetCount(battle.defenderSurvivors) > 0,
+    ...(battle.rounds.every(round => round.casualties !== undefined) ? { rounds: battle.rounds.map(round => ({
+      round: round.round, distributedFire: round.distributedFire,
+      yourLosses: battleCasualties([round], own.side, playerId),
+      theirLosses: own.side === 'ATTACK' ? round.defenderLosses : round.attackerLosses,
+      yourRetreated: battleRetreated([round], own.side, playerId),
+      theirRetreatedCount: fleetCount(battleRetreated([round], own.side === 'ATTACK' ? 'DEFENCE' : 'ATTACK')),
+    })) } : {}),
+    defenderCargoRetreated: battle.control === 'ATTACKER'
+      && fleetCount(activeBattleFleet(battle.defenderSurvivors, battleRetreated(battle.rounds, 'DEFENCE'))) > 0,
     yourFleet: own.fleet, yourSurvivors: own.survivors, yourLosses: own.losses, yourDamage: own.damage,
+    yourRetreated: battleRetreated(battle.rounds, own.side, playerId),
+    theirRetreatedCount: fleetCount(battleRetreated(battle.rounds, own.side === 'ATTACK' ? 'DEFENCE' : 'ATTACK')),
     theirLosses: own.side === 'ATTACK' ? fleetDiff(battle.defenderFleet, battle.defenderSurvivors)
       : fleetDiff(battle.attackerFleet, battle.attackerSurvivors),
     lootDeuterium: own.lootDeuterium, dominion: own.dominionDelta,

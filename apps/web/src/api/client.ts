@@ -31,7 +31,7 @@ import { noteServerTime } from '../lib/clock.js';
 import { capabilities } from '../platform/runtime.js';
 import { createNativeAuthTransport, isSessionPath, type AuthTransport } from '../platform/authTransport.js';
 import { CHAT_MEDIA } from '@astera/rules';
-import { adminChatScopesSchema, adminPlayersSchema, adminMuteSchema, adminMaskSchema, type AdminMuteInput, type AdminMaskInput } from './adminSchemas.js';
+import { adminArenaPilotSchema, adminArenaPilotsSchema, adminChatScopesSchema, adminPlayersSchema, adminMuteSchema, adminMaskSchema, type AdminMuteInput, type AdminMaskInput } from './adminSchemas.js';
 import { adminDeletionQueueSchema, adminDeletionCompletedSchema, adminDeletionMediaSchema } from './adminSchemas.js';
 import {
   tradeRecallSchema,
@@ -626,6 +626,9 @@ export class Api {
   adminChatScopes = () => this.send('/api/admin/clans', adminChatScopesSchema);
   adminMute = (input: AdminMuteInput) => this.send('/api/admin/chat/mute', adminMuteSchema, { method: 'POST', body: { ...input } });
   adminMask = (input: AdminMaskInput) => this.send('/api/admin/chat/mask', adminMaskSchema, { method: 'POST', body: { ...input } });
+  adminArenaPilots = () => this.send('/api/admin/arena-pilots', adminArenaPilotsSchema);
+  adminSetArenaPilot = (username: string, pilot: boolean) =>
+    this.send('/api/admin/arena-pilots', adminArenaPilotSchema, { method: 'POST', body: { username, pilot } });
   adminClanChat = (clanId: string, before?: string) => this.send(`/api/admin/clans/${encodeURIComponent(clanId)}/chat${before ? `?before=${encodeURIComponent(before)}` : ''}`, clanChatPageSchema);
   adminPostClanChat = (clanId: string, content: string, replyToMessageId?: string, media?: ChatMedia) =>
     this.send(`/api/admin/clans/${encodeURIComponent(clanId)}/chat`, clanChatPostSchema, { method: 'POST', body: { content, ...(replyToMessageId ? { replyToMessageId } : {}), ...(media ? { media } : {}) } });

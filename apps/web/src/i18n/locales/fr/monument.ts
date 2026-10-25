@@ -27,9 +27,11 @@ export const monument = {
   },
   "wiped": "Votre flotte entière a été détruite.",
   "rulesTitle": "Règles de combat",
-  "roundRule": "Le combat dure au maximum {{rounds}} tours. Les cargos sont protégés tant que des navires armés survivent.",
-  "captureRule": "Si la défense ne garde que des cargos et qu’un vaisseau de guerre capable de combattre survit chez l’attaquant, les cargos rentrent et l’attaquant prend le contrôle. Si les deux camps ne gardent que des cargos, le défenseur reste et l’attaquant rentre.",
-  "partialRule": "Un succès partiel exige de détruire au moins {{threshold}} de la valeur en ressources de la flotte en défense. Les survivants endommagés ne sont pas détruits. Le résultat et les points ne déterminent pas le contrôle."
+  "roundRule": "Le combat dure au maximum {{rounds}} tours. Les cargos sont protégés tant que des vaisseaux armés combattent encore.",
+  "fireRule": "Chaque vaisseau armé répartit son tir aléatoirement entre toutes les cibles vivantes admissibles. Cargos et récupérateurs ne subissent des tirs qu’après la chute de leur dernière escorte armée. Les dégâts excédentaires passent aux cibles restantes pendant le même tir. Coque et boucliers ne se régénèrent pas entre les tours.",
+  "captureRule": "Seuls les vaisseaux encore au combat comptent pour le contrôle. Si la défense ne garde que des cargos et qu’un vaisseau de guerre capable de combattre survit chez l’attaquant, les cargos rentrent et l’attaquant prend le contrôle. Si les deux camps ne gardent que des cargos, le défenseur reste et l’attaquant rentre.",
+  "retreatRule": "À la fin des tours 1–{{lastRound}}, les vaisseaux endommagés peuvent fuir. Ils gardent leurs dégâts et cessent de combattre. Une fuite ne compte pas comme une destruction. Les fuyards du vainqueur rejoignent la garnison ; les survivants du perdant rentrent.",
+  "partialRule": "Un succès partiel exige de détruire ou de faire fuir au moins {{threshold}} de la valeur défensive. Les fuites ne créent ni points de destruction ni débris. Le grade et les points ne déterminent pas le contrôle du monument."
 },
   radiationLossForecast: "Première perte par radiation dans {{time}}, hors dégâts de combat.",
   radiationCargoForecast: "Première perte de cargo dans {{time}}, hors dégâts de combat.",

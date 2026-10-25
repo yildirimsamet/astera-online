@@ -1,0 +1,5237 @@
+{
+  "battles": 7200,
+  "rows": [
+    {
+      "hull": "CORSAIR",
+      "ratio": 1,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.2987161803713527,
+      "maxDamagePerStartShip": 1321.92,
+      "durability": 1885
+    },
+    {
+      "hull": "CORSAIR",
+      "ratio": 1,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.41559681697612727,
+      "maxDamagePerStartShip": 1321.92,
+      "durability": 2262
+    },
+    {
+      "hull": "CORSAIR",
+      "ratio": 1.5,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0.12,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0.2,
+          "anyArmedPhysicalWipe": 0.12,
+          "weak": {
+            "physical": 0.4554999999999999,
+            "active": 0.4489999999999999,
+            "dead": 0.5445,
+            "escape": [
+              0,
+              0.006499999999999999
+            ],
+            "eligible": [
+              0,
+              0.019500000000000007
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.4554999999999999,
+            "active": 0.4489999999999999,
+            "dead": 0.5445,
+            "escape": [
+              0,
+              0.006499999999999999
+            ],
+            "eligible": [
+              0,
+              0.019500000000000007
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0.2,
+            "DEFENDER": 0.8,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0.2,
+            "PARTIAL": 0.36,
+            "REPELLED": 0.44
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 0.16,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0.16,
+          "anyArmedPhysicalWipe": 0.16,
+          "weak": {
+            "physical": 0.4599999999999999,
+            "active": 0.4599999999999999,
+            "dead": 0.54,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 0.4599999999999999,
+            "active": 0.4599999999999999,
+            "dead": 0.54,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0.16,
+            "DEFENDER": 0.84,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0.16,
+            "PARTIAL": 0.39,
+            "REPELLED": 0.45
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0.03,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0.29,
+          "anyArmedPhysicalWipe": 0.03,
+          "weak": {
+            "physical": 0.4299999999999999,
+            "active": 0.40349999999999986,
+            "dead": 0.5700000000000002,
+            "escape": [
+              0,
+              0.026499999999999996
+            ],
+            "eligible": [
+              0,
+              0.09049999999999996
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.4299999999999999,
+            "active": 0.40349999999999986,
+            "dead": 0.5700000000000002,
+            "escape": [
+              0,
+              0.026499999999999996
+            ],
+            "eligible": [
+              0,
+              0.09049999999999996
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0.29,
+            "DEFENDER": 0.71,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0.29,
+            "PARTIAL": 0.32,
+            "REPELLED": 0.39
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.5324774535809018,
+      "maxDamagePerStartShip": 1321.92,
+      "durability": 1885
+    },
+    {
+      "hull": "CORSAIR",
+      "ratio": 1.5,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.6103978779840848,
+      "maxDamagePerStartShip": 1321.92,
+      "durability": 2262
+    },
+    {
+      "hull": "CORSAIR",
+      "ratio": 2,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.5339999999999999,
+            "active": 0,
+            "dead": 0.4660000000000001,
+            "escape": [
+              0.0005,
+              0.5335
+            ],
+            "eligible": [
+              0.0015000000000000002,
+              0.9840000000000004
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.5339999999999999,
+            "active": 0,
+            "dead": 0.4660000000000001,
+            "escape": [
+              0.0005,
+              0.5335
+            ],
+            "eligible": [
+              0.0015000000000000002,
+              0.9840000000000004
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0.9840000000000004
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0.9840000000000004
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.5355,
+            "active": 0,
+            "dead": 0.4645,
+            "escape": [
+              0.0095,
+              0.5259999999999999
+            ],
+            "eligible": [
+              0.021,
+              0.9630000000000005
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.5355,
+            "active": 0,
+            "dead": 0.4645,
+            "escape": [
+              0.0095,
+              0.5259999999999999
+            ],
+            "eligible": [
+              0.021,
+              0.9630000000000005
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.6493580901856764,
+      "maxDamagePerStartShip": 1321.92,
+      "durability": 1885
+    },
+    {
+      "hull": "CORSAIR",
+      "ratio": 2,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.5225,
+            "active": 0,
+            "dead": 0.4775,
+            "escape": [
+              0,
+              0.5225
+            ],
+            "eligible": [
+              0,
+              0.9645000000000006
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.5225,
+            "active": 0,
+            "dead": 0.4775,
+            "escape": [
+              0,
+              0.5225
+            ],
+            "eligible": [
+              0,
+              0.9645000000000006
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.5349999999999999,
+            "active": 0,
+            "dead": 0.4650000000000001,
+            "escape": [
+              0,
+              0.5349999999999999
+            ],
+            "eligible": [
+              0,
+              0.9905000000000002
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.5349999999999999,
+            "active": 0,
+            "dead": 0.4650000000000001,
+            "escape": [
+              0,
+              0.5349999999999999
+            ],
+            "eligible": [
+              0,
+              0.9905000000000002
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.7077984084880636,
+      "maxDamagePerStartShip": 1321.92,
+      "durability": 2262
+    },
+    {
+      "hull": "CORSAIR",
+      "ratio": 3,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.694,
+            "active": 0,
+            "dead": 0.306,
+            "escape": [
+              0.694,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.694,
+            "active": 0,
+            "dead": 0.306,
+            "escape": [
+              0.694,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.6469999999999996,
+            "active": 0,
+            "dead": 0.35300000000000004,
+            "escape": [
+              0.6469999999999996,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.6469999999999996,
+            "active": 0,
+            "dead": 0.35300000000000004,
+            "escape": [
+              0.6469999999999996,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.7662387267904509,
+      "maxDamagePerStartShip": 1321.92,
+      "durability": 1885
+    },
+    {
+      "hull": "CORSAIR",
+      "ratio": 3,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0.02,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0.02,
+          "weak": {
+            "physical": 0.376,
+            "active": 0,
+            "dead": 0.6239999999999999,
+            "escape": [
+              0.37549999999999994,
+              0.0005
+            ],
+            "eligible": [
+              0.5419999999999999,
+              0.001
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.376,
+            "active": 0,
+            "dead": 0.6239999999999999,
+            "escape": [
+              0.37549999999999994,
+              0.0005
+            ],
+            "eligible": [
+              0.5419999999999999,
+              0.001
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0.001
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0.001
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.5144999999999998,
+            "active": 0,
+            "dead": 0.4855000000000001,
+            "escape": [
+              0.5144999999999998,
+              0
+            ],
+            "eligible": [
+              0.7879999999999999,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.5144999999999998,
+            "active": 0,
+            "dead": 0.4855000000000001,
+            "escape": [
+              0.5144999999999998,
+              0
+            ],
+            "eligible": [
+              0.7879999999999999,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.8051989389920424,
+      "maxDamagePerStartShip": 1321.92,
+      "durability": 2262
+    },
+    {
+      "hull": "CITADEL",
+      "ratio": 1,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.46550509731232614,
+      "maxDamagePerStartShip": 1441.8000000000002,
+      "durability": 2697.5
+    },
+    {
+      "hull": "CITADEL",
+      "ratio": 1,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.5545875810936052,
+      "maxDamagePerStartShip": 1441.8000000000002,
+      "durability": 3237
+    },
+    {
+      "hull": "CITADEL",
+      "ratio": 1.5,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.6436700648748841,
+      "maxDamagePerStartShip": 1441.8000000000002,
+      "durability": 2697.5
+    },
+    {
+      "hull": "CITADEL",
+      "ratio": 1.5,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.7030583873957368,
+      "maxDamagePerStartShip": 1441.8000000000002,
+      "durability": 3237
+    },
+    {
+      "hull": "CITADEL",
+      "ratio": 2,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.5335,
+            "active": 0,
+            "dead": 0.4665000000000001,
+            "escape": [
+              0,
+              0.5335
+            ],
+            "eligible": [
+              0,
+              0.9860000000000002
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.5335,
+            "active": 0,
+            "dead": 0.4665000000000001,
+            "escape": [
+              0,
+              0.5335
+            ],
+            "eligible": [
+              0,
+              0.9860000000000002
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 0.43,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0.43,
+          "anyArmedPhysicalWipe": 0.43,
+          "weak": {
+            "physical": 0.31299999999999994,
+            "active": 0.31299999999999994,
+            "dead": 0.6869999999999998,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 0.31299999999999994,
+            "active": 0.31299999999999994,
+            "dead": 0.6869999999999998,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0.43,
+            "DEFENDER": 0.57,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0.43,
+            "PARTIAL": 0.3,
+            "REPELLED": 0.27
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.542,
+            "active": 0,
+            "dead": 0.45799999999999996,
+            "escape": [
+              0,
+              0.542
+            ],
+            "eligible": [
+              0,
+              0.9995
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.542,
+            "active": 0,
+            "dead": 0.45799999999999996,
+            "escape": [
+              0,
+              0.542
+            ],
+            "eligible": [
+              0,
+              0.9995
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.732752548656163,
+      "maxDamagePerStartShip": 1441.8000000000002,
+      "durability": 2697.5
+    },
+    {
+      "hull": "CITADEL",
+      "ratio": 2,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 1,
+            "active": 0.9900000000000003,
+            "dead": 0,
+            "escape": [
+              0,
+              0.010000000000000002
+            ],
+            "eligible": [
+              0,
+              0.01750000000000001
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 1,
+            "active": 0.9900000000000003,
+            "dead": 0,
+            "escape": [
+              0,
+              0.010000000000000002
+            ],
+            "eligible": [
+              0,
+              0.01750000000000001
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.9995,
+            "active": 0.9995,
+            "dead": 0.0005,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 0.9995,
+            "active": 0.9995,
+            "dead": 0.0005,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0,
+            "REPELLED": 1
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 0,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.9934999999999999,
+            "active": 0.9405000000000006,
+            "dead": 0.0065000000000000014,
+            "escape": [
+              0,
+              0.052999999999999964
+            ],
+            "eligible": [
+              0,
+              0.09899999999999995
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.9934999999999999,
+            "active": 0.9405000000000006,
+            "dead": 0.0065000000000000014,
+            "escape": [
+              0,
+              0.052999999999999964
+            ],
+            "eligible": [
+              0,
+              0.09899999999999995
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 1,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 0,
+            "PARTIAL": 0.01,
+            "REPELLED": 0.99
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.7772937905468026,
+      "maxDamagePerStartShip": 1441.8000000000002,
+      "durability": 3237
+    },
+    {
+      "hull": "CITADEL",
+      "ratio": 3,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.6255,
+            "active": 0,
+            "dead": 0.37450000000000006,
+            "escape": [
+              0.6255,
+              0
+            ],
+            "eligible": [
+              0.8975000000000003,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.6255,
+            "active": 0,
+            "dead": 0.37450000000000006,
+            "escape": [
+              0.6255,
+              0
+            ],
+            "eligible": [
+              0.8975000000000003,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0.331
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0.331
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.6384999999999997,
+            "active": 0,
+            "dead": 0.36150000000000004,
+            "escape": [
+              0.6384999999999997,
+              0
+            ],
+            "eligible": [
+              0.9855000000000003,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.6384999999999997,
+            "active": 0,
+            "dead": 0.36150000000000004,
+            "escape": [
+              0.6384999999999997,
+              0
+            ],
+            "eligible": [
+              0.9855000000000003,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.821835032437442,
+      "maxDamagePerStartShip": 1441.8000000000002,
+      "durability": 2697.5
+    },
+    {
+      "hull": "CITADEL",
+      "ratio": 3,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.694,
+            "active": 0,
+            "dead": 0.306,
+            "escape": [
+              0.0015000000000000002,
+              0.6925
+            ],
+            "eligible": [
+              0.0015000000000000002,
+              0.9985
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.694,
+            "active": 0,
+            "dead": 0.306,
+            "escape": [
+              0.0015000000000000002,
+              0.6925
+            ],
+            "eligible": [
+              0.0015000000000000002,
+              0.9985
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0.9995
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              1
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0.9995
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0,
+          "weak": {
+            "physical": 0.6489999999999995,
+            "active": 0,
+            "dead": 0.35100000000000003,
+            "escape": [
+              0.0045,
+              0.6444999999999996
+            ],
+            "eligible": [
+              0.008000000000000002,
+              0.9955000000000002
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.6489999999999995,
+            "active": 0,
+            "dead": 0.35100000000000003,
+            "escape": [
+              0.0045,
+              0.6444999999999996
+            ],
+            "eligible": [
+              0.008000000000000002,
+              0.9955000000000002
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.8515291936978684,
+      "maxDamagePerStartShip": 1441.8000000000002,
+      "durability": 3237
+    },
+    {
+      "hull": "CATACLYSM",
+      "ratio": 1,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0.09,
+          "bothPhysicalWipe": 0.01,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0.09,
+          "weak": {
+            "physical": 0.1505,
+            "active": 0,
+            "dead": 0.8495000000000001,
+            "escape": [
+              0.1505,
+              0
+            ],
+            "eligible": [
+              0.5765000000000002,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 0.13699999999999998,
+            "active": 0,
+            "dead": 0.863,
+            "escape": [
+              0.13699999999999998,
+              0
+            ],
+            "eligible": [
+              0.5505,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 0.13699999999999998,
+            "active": 0,
+            "dead": 0.863,
+            "escape": [
+              0.13699999999999998,
+              0
+            ],
+            "eligible": [
+              0.5505,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.1505,
+            "active": 0,
+            "dead": 0.8495000000000001,
+            "escape": [
+              0.1505,
+              0
+            ],
+            "eligible": [
+              0.5765000000000002,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 0,
+            "EMPTY": 1
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 1,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0.853,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0.8365,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0.8365,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0.853,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 0,
+            "EMPTY": 1
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0.02,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0.02,
+          "weak": {
+            "physical": 0.22750000000000004,
+            "active": 0,
+            "dead": 0.7725000000000002,
+            "escape": [
+              0.22750000000000004,
+              0
+            ],
+            "eligible": [
+              0.7459999999999997,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 0.22049999999999995,
+            "active": 0,
+            "dead": 0.7794999999999997,
+            "escape": [
+              0.22049999999999995,
+              0
+            ],
+            "eligible": [
+              0.7450000000000001,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 0.22049999999999995,
+            "active": 0,
+            "dead": 0.7794999999999997,
+            "escape": [
+              0.22049999999999995,
+              0
+            ],
+            "eligible": [
+              0.7450000000000001,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.22750000000000004,
+            "active": 0,
+            "dead": 0.7725000000000002,
+            "escape": [
+              0.22750000000000004,
+              0
+            ],
+            "eligible": [
+              0.7459999999999997,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 0,
+            "EMPTY": 1
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0,
+      "maxDamagePerStartShip": 2643.84,
+      "durability": 942.5
+    },
+    {
+      "hull": "CATACLYSM",
+      "ratio": 1,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0.8,
+          "bothPhysicalWipe": 0.34,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0.8,
+          "weak": {
+            "physical": 0.0265,
+            "active": 0,
+            "dead": 0.9735000000000007,
+            "escape": [
+              0.0265,
+              0
+            ],
+            "eligible": [
+              0.12299999999999998,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 0.033,
+            "active": 0,
+            "dead": 0.9670000000000007,
+            "escape": [
+              0.033,
+              0
+            ],
+            "eligible": [
+              0.134,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 0.033,
+            "active": 0,
+            "dead": 0.9670000000000007,
+            "escape": [
+              0.033,
+              0
+            ],
+            "eligible": [
+              0.134,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.0265,
+            "active": 0,
+            "dead": 0.9735000000000007,
+            "escape": [
+              0.0265,
+              0
+            ],
+            "eligible": [
+              0.12299999999999998,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 0,
+            "EMPTY": 1
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 1,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0.9984999999999999,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0.9965,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0.9965,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0.9984999999999999,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 0,
+            "EMPTY": 1
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0.3,
+          "bothPhysicalWipe": 0.03,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0.3,
+          "weak": {
+            "physical": 0.09449999999999996,
+            "active": 0,
+            "dead": 0.9055000000000005,
+            "escape": [
+              0.09449999999999996,
+              0
+            ],
+            "eligible": [
+              0.3035,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 0.08749999999999995,
+            "active": 0,
+            "dead": 0.9125000000000004,
+            "escape": [
+              0.08749999999999995,
+              0
+            ],
+            "eligible": [
+              0.3225,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 0.08749999999999995,
+            "active": 0,
+            "dead": 0.9125000000000004,
+            "escape": [
+              0.08749999999999995,
+              0
+            ],
+            "eligible": [
+              0.3225,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.09449999999999996,
+            "active": 0,
+            "dead": 0.9055000000000005,
+            "escape": [
+              0.09449999999999996,
+              0
+            ],
+            "eligible": [
+              0.3035,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 0,
+            "DEFENDER": 0,
+            "EMPTY": 1
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0,
+      "maxDamagePerStartShip": 2643.84,
+      "durability": 1131
+    },
+    {
+      "hull": "CATACLYSM",
+      "ratio": 1.5,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 0.9990000000000001,
+            "dead": 0,
+            "escape": [
+              0.001,
+              0
+            ],
+            "eligible": [
+              0.010333333333333332,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 0.9990000000000001,
+            "dead": 0,
+            "escape": [
+              0.001,
+              0
+            ],
+            "eligible": [
+              0.010333333333333332,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 0.9990000000000001,
+            "dead": 0,
+            "escape": [
+              0.001,
+              0
+            ],
+            "eligible": [
+              0.010333333333333332,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 0.9990000000000001,
+            "dead": 0,
+            "escape": [
+              0.001,
+              0
+            ],
+            "eligible": [
+              0.010333333333333332,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0,
+      "maxDamagePerStartShip": 2643.84,
+      "durability": 942.5
+    },
+    {
+      "hull": "CATACLYSM",
+      "ratio": 1.5,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 0.98,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0.98,
+          "weak": {
+            "physical": 0.001,
+            "active": 0,
+            "dead": 0.9990000000000001,
+            "escape": [
+              0.001,
+              0
+            ],
+            "eligible": [
+              0.0025,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.001,
+            "active": 0,
+            "dead": 0.9990000000000001,
+            "escape": [
+              0.001,
+              0
+            ],
+            "eligible": [
+              0.0025,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0.0025,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0.03
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0.03
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0.0025,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 0.98,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 0.98,
+          "weak": {
+            "physical": 0.001,
+            "active": 0,
+            "dead": 0.9990000000000001,
+            "escape": [
+              0.001,
+              0
+            ],
+            "eligible": [
+              0.0025,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0.001,
+            "active": 0,
+            "dead": 0.9990000000000001,
+            "escape": [
+              0.001,
+              0
+            ],
+            "eligible": [
+              0.0025,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0,
+      "maxDamagePerStartShip": 2643.84,
+      "durability": 1131
+    },
+    {
+      "hull": "CATACLYSM",
+      "ratio": 2,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0,
+      "maxDamagePerStartShip": 2643.84,
+      "durability": 942.5
+    },
+    {
+      "hull": "CATACLYSM",
+      "ratio": 2,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0,
+      "maxDamagePerStartShip": 2643.84,
+      "durability": 1131
+    },
+    {
+      "hull": "CATACLYSM",
+      "ratio": 3,
+      "shieldLevel": 0,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.06495490716180363,
+      "maxDamagePerStartShip": 2643.84,
+      "durability": 942.5
+    },
+    {
+      "hull": "CATACLYSM",
+      "ratio": 3,
+      "shieldLevel": 4,
+      "trials": 100,
+      "outcomes": {
+        "current": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "no-retreat-diagnostic": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              1,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        },
+        "previous-proposal": {
+          "n": 100,
+          "anyPhysicalWipe": 1,
+          "bothPhysicalWipe": 0,
+          "anyActiveWipe": 1,
+          "anyArmedPhysicalWipe": 1,
+          "weak": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "strong": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "attacker": {
+            "physical": 1,
+            "active": 1,
+            "dead": 0,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "defender": {
+            "physical": 0,
+            "active": 0,
+            "dead": 1,
+            "escape": [
+              0,
+              0
+            ],
+            "eligible": [
+              0,
+              0
+            ]
+          },
+          "controls": {
+            "ATTACKER": 1,
+            "DEFENDER": 0,
+            "EMPTY": 0
+          },
+          "grades": {
+            "DECISIVE": 1,
+            "PARTIAL": 0,
+            "REPELLED": 0
+          }
+        }
+      },
+      "optimisticMinimumStrongPhysical": 0.2207957559681697,
+      "maxDamagePerStartShip": 2643.84,
+      "durability": 1131
+    }
+  ]
+}

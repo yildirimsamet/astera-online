@@ -351,7 +351,7 @@ async function lookbackLedger(
  *
  * The one refusal that is about the DEFENDER's own conduct. Without it, a
  * commander who has committed a raid and taken a counter-punch on the way would
- * collect eight hours of immunity WHILE their own fleet is still in the air toward
+ * collect twelve hours of immunity WHILE their own fleet is still in the air toward
  * a target that cannot answer back — a shield earned by attacking, which inverts
  * what the rule is for.
  *
@@ -388,7 +388,7 @@ async function hasOutboundPvpStrike(
 
     A contributed wave is not a `missions` row while it waits in escrow, so
     without this a commander whose ships are already committed to an operation
-    could take a beating, collect eight hours of immunity, and then have their
+    could take a beating, collect twelve hours of immunity, and then have their
     fleet arrive at the defender anyway — a shield earned WHILE attacking, which
     is the exact inversion this refusal exists to prevent.
 
@@ -602,7 +602,7 @@ export async function forceRecoveryShield(
  * WHAT REMAINS IS ONE NARROW WINDOW, stated rather than glossed: a launch that has
  * read its rows but not yet committed its mission is invisible to a settlement
  * resolving in that instant, so a shield can be granted to a commander whose raid
- * is a few milliseconds from the air. It closes itself — the window is eight hours,
+ * is a few milliseconds from the air. It closes itself — the window is twelve hours,
  * their own next launch clears it, and it costs the galaxy one commander who could
  * not be hit back for one evening. Closing it properly means taking the player
  * locks BEFORE the planet locks in `startAttack`, which is a change to the launch

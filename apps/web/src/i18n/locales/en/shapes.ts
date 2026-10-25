@@ -93,6 +93,8 @@ export const counter = {
   compareMeaning: 'Resource cost, not attack damage. A bigger fleet alone does not guarantee victory.',
   compareRule:
     "The comparison uses armed ships’ and ground guns’ resource value; shields and unarmed ships are excluded. The forecast also uses classes, research and the known shield. Both partial and full success require at least one ship surviving. Unknown classes or shield create threshold ranges: the left edge is the worst case, the right edge the best. Estimated losses below show the possible cost. Readings may be outdated; random shot variation is excluded.",
+  forecastCalculating: "Calculating the battle estimate…",
+  forecastFailed: "Battle estimate unavailable. Change the fleet to try again.",
   linesClears: 'Full success if their defence is at most {{at}}',
   linesBreaks: 'At least partial success if at most {{at}}',
   lineJoin: ' · ',

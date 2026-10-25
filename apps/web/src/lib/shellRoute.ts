@@ -5,6 +5,7 @@ import type { DockTab } from './dock.js';
 const OWNER: Partial<Record<NonNullable<Panel>, DockTab>> = {
   planet: 'base',
   research: 'base',
+  ship: 'base',
   intel: 'intel',
   report: 'intel',
   clan: 'clan',

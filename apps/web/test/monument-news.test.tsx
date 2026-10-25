@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { COMBAT } from '@astera/rules';
 import { reportsSchema, type NotificationView } from '../src/api/schemas.js';
 import { activeMonumentInbound, describeNotification, isAlarming, notificationIdentity, signalFamily } from '../src/lib/notifications.js';
 import { BattleReportDoor, reportFor } from '../src/screens/BattleReports.js';
@@ -92,7 +93,8 @@ describe('monument reports and actionable news', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveTextContent(/partial/i);
     expect(dialog).toHaveTextContent(/not captured/i);
-    expect(dialog).toHaveTextContent(/3 rounds/i);
+    expect(dialog).toHaveTextContent(`${String(wire.roundCount)} rounds`);
+    expect(dialog).toHaveTextContent(`Combat lasts at most ${String(COMBAT.rounds)} rounds`);
     expect(dialog).toHaveTextContent(/42%/);
     expect(dialog).not.toHaveTextContent(/enemy.*health/i);
   });

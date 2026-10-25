@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { and, eq, inArray } from 'drizzle-orm';
 import {
   allocateMonumentDominion,
+  activeBattleFleet,
+  battleRetreated,
   battleDominion,
   fleetCount,
   hangarLoad,
@@ -184,7 +186,8 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
     fleet: locked.monument.garrison, damage: locked.monument.garrisonDamage, tech: { tech: locked.monument.garrisonTech }, maintenanceExempt: true }]
     : dBefore.map((lot) => ({ stackId: lot.id, playerId: lot.playerId, fleet: { [lot.hull]: lot.count }, damage: [lot], tech: { tech: lot.tech } })),
   seededFrom('monument-battle', incoming.id), true);
-  const defenderCargoRetreated = result.control === 'ATTACKER' && fleetCount(result.defenderSurvivors) > 0;
+  const defenderCargoRetreated = result.control === 'ATTACKER'
+    && fleetCount(activeBattleFleet(result.defenderSurvivors, result.defenderRetreated)) > 0;
   const survivors: MonumentShipLot[] = [];
   const aDead: MonumentShipLot[] = [];
   const dDead: MonumentShipLot[] = [];
@@ -267,6 +270,7 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
       payload: { targetKind: 'MONUMENT', monumentId: battle.monumentId, monumentOrdinal: battle.monumentOrdinal,
         attacking: participant.side === 'ATTACK', grade: battle.grade, control: battle.control, defenderCargoRetreated,
         survivors: fleetCount(participant.survivors), unitsLost: fleetCount(participant.losses),
+        retreated: fleetCount(battleRetreated(result.rounds, participant.side, participant.playerId)),
         lootDeuterium: participant.lootDeuterium, lostFuel, dominion: participant.dominionDelta, opponents } });
   }
   if (eligible) await bookClanScores(tx, locked, battle, participants);
@@ -277,8 +281,8 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
   }
   const m = locked.monument;
   if (neutral) {
-    m.garrison = result.defenderSurvivors;
-    m.garrisonDamage = result.defenderDamage;
+    m.garrison = result.control === 'EMPTY' ? {} : result.defenderSurvivors;
+    m.garrisonDamage = result.control === 'EMPTY' ? [] : result.defenderDamage;
   }
   if (result.control === 'ATTACKER') {
     // Survivors keep their wounds and cargo. Eject them before capacity is
@@ -308,7 +312,8 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
       m.generation += 1;
     }
     await saveControl(tx, locked);
-    for (const incoming of incomingWaves.filter((wave) => after.some((lot) => lot.waveId === wave.id))) {
+    const returning = result.control === 'EMPTY' ? [...incomingWaves, ...defenders] : incomingWaves;
+    for (const incoming of returning.filter((wave) => after.some((lot) => lot.waveId === wave.id))) {
       const home = homes.get(incoming.id);
       if (!home) throw new GameError('PLACEMENT_CHANGED', 'The return world changed; refresh and try again', 409);
       await beginMonumentReturn(tx, locked, incoming, after.filter((lot) => lot.waveId === incoming.id).map((lot) => ({ lotId: lot.id, count: lot.count })), home, at, 'DEFEAT', observedAt);

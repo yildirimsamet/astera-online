@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { FAULT, combatValue, distance, fleetPace, travelMinutes } from '@astera/rules';
@@ -6,6 +6,7 @@ import type { GalaxyPlanet, IntelView } from '../../src/api/schemas.js';
 import { compact } from '../../src/lib/format.js';
 import { flightModifiers, reachMinutes } from '../../src/lib/navigation.js';
 import { duration } from '../../src/lib/time.js';
+import { ControlledWorker } from '../forecastWorker.js';
 import { TargetDossier } from '../../src/v2/hud/TargetDossier.js';
 import { planetView } from '../fixtures.js';
 
@@ -271,4 +272,21 @@ describe('the development band in the header', () => {
     show({ target: commander, ownPeakCore: null });
     expect(document.querySelector('[data-dossier-band]')).toBeNull();
   });
+});
+
+
+it('does not restart the forecast worker when its result renders the dossier', async () => {
+  vi.stubGlobal('Worker', ControlledWorker);
+  ControlledWorker.instances = [];
+  const view = show();
+  try {
+    await waitFor(() => { expect(ControlledWorker.instances).toHaveLength(1); });
+    act(() => { ControlledWorker.instances[0]!.complete(); });
+    expect(ControlledWorker.instances).toHaveLength(1);
+    expect(screen.queryByText('Calculating the battle estimate…')).toBeNull();
+  } finally {
+    view.unmount();
+    vi.unstubAllGlobals();
+    ControlledWorker.instances = [];
+  }
 });

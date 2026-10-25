@@ -1,0 +1,117 @@
+import Fastify from 'fastify';
+import { afterEach, describe, expect, it } from 'vitest';
+import { WebSocket } from 'ws';
+import { ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_TUNING as T, PHASES, PILOT_WIDTH, decodeArenaSnapshot, type ArenaSnapshot } from '@astera/rules/arena';
+import { registerArena } from '../../src/arena/server.js';
+import { systemClock } from '../../src/clock.js';
+import { loadEnv } from '../../src/env.js';
+
+const ORIGIN = 'http://localhost:5198';
+const env = loadEnv({ DATABASE_URL: 'postgres://test/arena_test', JWT_SECRET: 'test-secret-that-is-long-enough',
+  ROLE: 'arena', ARENA_ENABLED: 'true', ARENA_DEV: 'true', ARENA_ALLOWED_ORIGINS: ORIGIN });
+
+const closers: (() => Promise<void>)[] = [];
+afterEach(async () => { while (closers.length) await closers.pop()?.(); });
+
+async function room(): Promise<string> {
+  const app = Fastify();
+  app.decorate('clock', systemClock);
+  registerArena(app, env);
+  await app.listen({ port: 0, host: '127.0.0.1' });
+  closers.push(() => app.close());
+  const address = app.server.address();
+  if (!address || typeof address === 'string') throw new Error('no port');
+  return `ws://127.0.0.1:${String(address.port)}/arena/ws`;
+}
+
+function connect(url: string, guestId: string): Promise<{ socket: WebSocket; messages: unknown[]; next: (match: (m: unknown) => boolean) => Promise<unknown> }> {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(url, { origin: ORIGIN });
+    const messages: unknown[] = [];
+    const waiters: { match: (m: unknown) => boolean; done: (m: unknown) => void }[] = [];
+    socket.on('message', raw => {
+      const text = Array.isArray(raw) ? Buffer.concat(raw).toString('utf8') : Buffer.isBuffer(raw) ? raw.toString('utf8') : Buffer.from(raw).toString('utf8');
+      const value: unknown = JSON.parse(text);
+      messages.push(value);
+      for (const waiter of [...waiters]) if (waiter.match(value)) { waiters.splice(waiters.indexOf(waiter), 1); waiter.done(value); }
+    });
+    socket.on('error', reject);
+    socket.on('open', () => {
+      socket.send(JSON.stringify({ kind: 'hello', v: ARENA_PROTOCOL, guestId, mode: 'enter' }));
+      closers.push(async () => { socket.close(); await Promise.resolve(); });
+      resolve({ socket, messages, next: match => new Promise(done => {
+        const found = messages.find(match);
+        if (found) done(found); else waiters.push({ match, done });
+      }) });
+    });
+  });
+}
+
+const isSnap = (m: unknown): m is ArenaSnapshot => decodeArenaSnapshot(m) !== null;
+const kind = (k: string) => (m: unknown): boolean => typeof m === 'object' && m !== null && 'kind' in m && m.kind === k;
+
+describe('arena room protocol v2', () => {
+  it('welcomes a guest with the v2 layout and streams decodable snapshots with mineral state', async () => {
+    const url = await room();
+    const pilot = await connect(url, 'guest-room-test-a');
+    const welcome = await pilot.next(kind('welcome'));
+    expect(welcome).toMatchObject({ v: ARENA_PROTOCOL, layoutVersion: ARENA_LAYOUT.version });
+    const snap = await pilot.next(isSnap);
+    if (!isSnap(snap)) throw new Error('no snapshot');
+    expect(snap.self).toHaveLength(PILOT_WIDTH);
+    expect(snap.minerals).toHaveLength(ARENA_LAYOUT.deposits.length);
+    expect(snap.dry).toEqual(ARENA_LAYOUT.deposits.map(() => 0));
+    const roster = (welcome as { pilots: { role?: string }[] }).pilots.map(p => p.role).filter(Boolean);
+    expect(roster.sort()).toEqual(['hunter', 'miner', 'patrol']);
+  });
+
+  it('clamps an oversized aim-assist channel and rejects out-of-range input', async () => {
+    const url = await room();
+    const pilot = await connect(url, 'guest-room-test-b');
+    await pilot.next(kind('welcome'));
+    const send = (values: number[]): void => { pilot.socket.send(JSON.stringify({ kind: 'in', values })); };
+    for (let seq = 1; seq <= 40; seq++) send([seq, 0, 0, 100, 0, 1000, 0]);
+    const later = await pilot.next(m => isSnap(m) && m.ack >= 30);
+    if (!isSnap(later)) throw new Error('no snapshot');
+    const omegaYaw = later.self[10] ?? 0;
+    expect(Math.abs(omegaYaw)).toBeLessThanOrEqual(T.assistMax * T.turnRateMax * (1 + T.slowTurnBonus) + 1e-9);
+    expect(Math.abs(omegaYaw)).toBeGreaterThan(0);
+    const before = pilot.messages.length;
+    send([41, 0, 0, 100, 0, 5000, 0]);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const acks = pilot.messages.slice(before).filter(isSnap).map(m => m.ack);
+    expect(acks.every(ack => ack < 41)).toBe(true);
+  });
+  it('keeps the stream light: shared rows rounded, the own pilot exact for reconciliation', async () => {
+    const url = await room();
+    const pilot = await connect(url, 'guest-room-test-c');
+    await pilot.next(kind('welcome'));
+    const snap = await pilot.next(m => isSnap(m) && m.cargo.length > 0);
+    if (!isSnap(snap)) throw new Error('no snapshot');
+    const decimals = (n: number): number => { const text = String(n); const dot = text.indexOf('.'); return dot < 0 ? 0 : text.length - dot - 1; };
+    for (const row of [...snap.cargo, ...snap.bullets, ...snap.smoke, ...snap.impacts]) for (const n of row) expect(decimals(n), String(n)).toBeLessThanOrEqual(2);
+    for (const row of snap.others) for (const n of row) expect(decimals(n), String(n)).toBeLessThanOrEqual(4);
+    expect(snap.self.some(n => decimals(n) > 4)).toBe(true);
+  });
+  it('gives a full room\'s seat to a newcomer once a finished, disconnected pilot is holding it', async () => {
+    const url = await room();
+    const seated = await Promise.all(Array.from({ length: 8 }, (_, i) => connect(url, `guest-room-seat-${String(i)}`)));
+    await Promise.all(seated.map(s => s.next(kind('welcome'))));
+    const late = await connect(url, 'guest-room-seat-late');
+    expect(await late.next(m => kind('kick')(m) || kind('welcome')(m))).toMatchObject({ kind: 'kick', reason: 'full' });
+    const leaver = seated[0]; if (!leaver) throw new Error('no pilot');
+    leaver.socket.send(JSON.stringify({ kind: 'dev', action: 'exit' }));
+    await leaver.next(m => isSnap(m) && m.self[PILOT_WIDTH - 1] === PHASES.indexOf('extracted'));
+    leaver.socket.close();
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const newcomer = await connect(url, 'guest-room-seat-new');
+    expect(await newcomer.next(m => kind('kick')(m) || kind('welcome')(m))).toMatchObject({ kind: 'welcome' });
+  }, 15_000);
+  it('accepts the LAND bit in an input (owner 2026-10-21: rocks and buildings land only on request)', async () => {
+    const url = await room();
+    const pilot = await connect(url, 'guest-room-test-land');
+    await pilot.next(kind('welcome'));
+    pilot.socket.send(JSON.stringify({ kind: 'in', values: [1, 0, 0, 15, 32, 0, 0] }));
+    expect(await pilot.next(m => isSnap(m) && m.ack >= 1)).toBeTruthy();
+  });
+});

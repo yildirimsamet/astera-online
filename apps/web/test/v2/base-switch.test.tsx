@@ -10,6 +10,14 @@ import { BaseSwitch } from '../../src/v2/hud/BaseSwitch.js';
  * is still the commander's, which the research page says itself.
  */
 describe('the Base switch', () => {
+  it('offers the commander ship only when this session can enter the arena', async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<BaseSwitch value="world" onChange={onChange} arenaAvailable={false} />);
+    expect(screen.queryByRole('tab', { name: 'Commander ship' })).not.toBeInTheDocument();
+    rerender(<BaseSwitch value="world" onChange={onChange} arenaAvailable />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Commander ship' }));
+    expect(onChange).toHaveBeenCalledWith('ship');
+  });
   it('offers this world and research, with the page it is on selected', async () => {
     const onChange = vi.fn();
     render(<BaseSwitch value="world" onChange={onChange} />);
@@ -25,7 +33,7 @@ describe('the galaxy hosts it on both Base pages', () => {
   it('heads the world page and the research page with the same switch', () => {
     const world = source.slice(source.indexOf("{panel === 'planet' && planet.data && ("), source.indexOf('<PlanetScreen'));
     const research = source.slice(source.indexOf("{panel === 'research' && ("), source.indexOf('<ResearchPanel'));
-    expect(world).toMatch(/<BaseSwitch value="world" onChange=\{openBase\} \/>/);
-    expect(research).toMatch(/<BaseSwitch value="research" onChange=\{openBase\} \/>/);
+    expect(world).toMatch(/<BaseSwitch value="world" onChange=\{openBase\} arenaAvailable=\{arenaAvailable\} \/>/);
+    expect(research).toMatch(/<BaseSwitch value="research" onChange=\{openBase\} arenaAvailable=\{arenaAvailable\} \/>/);
   });
 });

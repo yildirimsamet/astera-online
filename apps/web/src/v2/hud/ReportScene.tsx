@@ -1,3 +1,4 @@
+import { BattleRetreatNote } from '../../ui/BattleRetreatNote.js';
 import { ordinaryBattleOutcome } from '../../lib/battleOutcome.js';
 import { useTranslation } from 'react-i18next';
 import { FAULT, HULLS } from '@astera/rules';
@@ -251,6 +252,7 @@ export function ReportScene({
         />
       </div>
 
+      <BattleRetreatNote fleet={report.yourRetreated} enemyCount={report.theirRetreatedCount} />
       {report.yourDamage.length > 0 && (
         <div data-report-damage className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
           <p className="text-caption font-semibold text-v2-ink">{t('reportScene.damageTitle')}</p>

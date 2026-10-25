@@ -93,6 +93,8 @@ export const counter = {
   compareMeaning: 'Ressourcenkosten, kein Angriffsschaden. Eine größere Flotte allein garantiert keinen Sieg.',
   compareRule:
     "Verglichen wird der Ressourcenwert bewaffneter Schiffe und Bodengeschütze; Schild und unbewaffnete Schiffe zählen nicht dazu. Die Prognose berücksichtigt auch Klassen, Forschung und den bekannten Schild. Teilweiser und voller Erfolg erfordern mindestens ein überlebendes Schiff. Unbekannte Klassen oder Schilde erzeugen Schwellenbereiche: links der schlechteste, rechts der beste Fall. Geschätzte Verluste zeigen mögliche Kosten. Messungen können veraltet sein; zufällige Schussvariation bleibt unberücksichtigt.",
+  forecastCalculating: "Kampfschätzung wird berechnet…",
+  forecastFailed: "Kampfschätzung nicht verfügbar. Ändere die Flotte für einen neuen Versuch.",
   linesClears: 'Voller Erfolg bei höchstens {{at}} Verteidigung',
   linesBreaks: 'Mindestens Teilerfolg bei höchstens {{at}}',
   lineJoin: ' · ',

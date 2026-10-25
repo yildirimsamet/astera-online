@@ -385,7 +385,7 @@ describe('a Garbage Collector in a raid on a caretaker world', () => {
     await db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, joined.planetId));
     await db.delete(units).where(eq(units.planetId, target.id));
     await db.insert(units).values({
-      planetId: target.id, ownerPlayerId: null, hull: 'DART', location: 'home', count: 60,
+      planetId: target.id, ownerPlayerId: null, hull: 'CORSAIR', location: 'home', count: 2,
     });
     await setLevel(db, joined.planetId, 'CORE', 5);
     const wing: Fleet = { DART: 300, GARBAGE_COLLECTOR: 1 };
@@ -400,6 +400,7 @@ describe('a Garbage Collector in a raid on a caretaker world', () => {
       .where(eq(battleReports.missionId, launch.missionId));
     expect(report?.targetKind).toBe('NEUTRAL');
     expect(report!.attackerLosses.GARBAGE_COLLECTOR).toBeUndefined();
+    // Corsair single shots ensure real attacker deaths even with random targeting.
     // A caretaker's hulls leave nothing; only the raider's own dead are wreck.
     const wreck = wreckOf(report!.attackerLosses);
     expect(total(wreck), 'the raid must lose something for there to be a wreck').toBeGreaterThan(0);

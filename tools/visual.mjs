@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--six-round-combat')) {
+  const { verifySixRoundCombat } = await import('./six-round-combat-visual.mjs');
+  await verifySixRoundCombat(process.argv[2] ?? 'out/six-round-combat');
+  process.exit(0);
+}
+
 if (process.argv.includes('--ship-shields')) {
   const { verifyShipShields } = await import('./ship-shields-visual.mjs');
   await verifyShipShields(process.argv[2] ?? 'out/ship-shields');
@@ -324,6 +330,12 @@ if (process.argv.includes('--colony-abandonment')) {
 if (process.argv.includes('--planet-selection')) {
   const { verifyPlanetSelection } = await import('./planet-selection-visual.mjs');
   await verifyPlanetSelection(process.argv[2] ?? 'out/planet-selection');
+  process.exit(0);
+}
+
+if (process.argv.includes('--arena')) {
+  const { verifyArena } = await import('./arena-visual.mjs');
+  await verifyArena(process.argv[2] ?? '.dev/arena');
   process.exit(0);
 }
 

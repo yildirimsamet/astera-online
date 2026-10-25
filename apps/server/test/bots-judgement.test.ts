@@ -6,6 +6,8 @@ import {
   missionFuel,
   pirateHoard,
   pirateStats,
+  pirateOverrun,
+  resolveCombat,
   type Fleet,
 } from '@astera/rules';
 import {
@@ -191,14 +193,20 @@ describe('a raid on a pirate', () => {
   /**
    * A bot reads the pirate as the server settles it: holds that outlive the crew's last warship
    * are taken (`pirateOverrun`, 2026-10-06), so a wing that kills the line clears the pirate.
-   * Four Darts fire 84 a round, under a Courier's 90-point ship shield: the holds never fall
-   * to the guns, only to the overrun.
+   * The 25% base shield lets a smaller wing clear the armed line. Verify that actual
+   * cargo still survives normal fire and is then taken by overrun.
    */
   it('counts a crew whose holds outlive its line as cleared', () => {
     const crew: Fleet = { PIKE: 1, COURIER: 2 };
     const plan = planPirateRaid({ ...base, fleet: { DART: 5 }, crew, damageMult: pirateStats(1).damageMult,
       hoard: pirateHoard(crew), nerve: careful });
-    expect(plan?.wing).toEqual({ DART: 4 });
+    expect(plan?.wing).toEqual({ DART: 2 });
+    const fought = resolveCombat(plan!.wing, crew, 0, () => .5, {
+      attacker: { tech: {} }, defender: { tech: {}, damageMult: pirateStats(1).damageMult },
+    });
+    expect(fought.defenderSurvivors.COURIER ?? 0).toBeGreaterThan(0);
+    expect(pirateOverrun(fought).grade).toBe('DECISIVE');
+    expect(pirateOverrun(fought).defenderSurvivors).toEqual({});
   });
 
   it('takes a crew it clears, with the smallest wing that does', () => {

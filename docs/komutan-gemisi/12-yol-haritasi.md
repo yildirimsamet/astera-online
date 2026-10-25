@@ -17,10 +17,10 @@
   test **adlarını** README panosuna yaz: bu **temel çizgidir** (eski `docs/test-baseline-2026-09-18.md`
   güncel olmayabilir). Önceden kırık testi düzeltme, yalnız kaydet.
 - `master`'dan özellik dalı (ör. `feature/komutan-gemisi`).
-- **Sahibe sor:** [KG-A1](02-kararlar.md#kg-a1) (kalkan bitişi), [KG-A2](02-kararlar.md#kg-a2)
-  (yakıt bitince kurtarma gecikmesi), [KG-A3](02-kararlar.md#kg-a3) (tek depo); [KG-A27](02-kararlar.md#kg-a27)'yi
-  bilgi olarak anlat (onay F5'ten önce). Cevapları KG-K'ye taşı. Cevap beklenmez: gelene kadar
-  prototip varsayılanıyla devam.
+- **Kararlar alındı:** [KG-K9](02-kararlar.md#kg-k9) (kalkan bitişi), [KG-K10](02-kararlar.md#kg-k10)
+  (yakıt bitince kurtarma gecikmesi), [KG-K11](02-kararlar.md#kg-k11) (tek depo).
+  [KG-A27](02-kararlar.md#kg-a27) bilgi olarak anlatıldı; onay F5'ten önce alınır.
+  Sonraki sorular önce dokümanlarda araştırılır (KG-K13).
 - `.gitignore` koruyucuları + koruma testi; `ASTERA_REF_ASSETS_DIR`; bayrakların tipleri
   (`VITE_ARENA` → `vite-env.d.ts`; `ARENA_ENABLED`, `ARENA_DEV` → `env.ts`).
 - **Kabul:** temel çizgi kayıtlı, koruyucular ve test yerinde, sorular soruldu (cevap ya da

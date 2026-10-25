@@ -1373,6 +1373,13 @@
       "when": 1792491596443,
       "tag": "0195_first_signal_pirate_free",
       "breakpoints": true
+    },
+    {
+      "idx": 196,
+      "version": "7",
+      "when": 1792526054551,
+      "tag": "0196_arena_pilots",
+      "breakpoints": true
     }
   ]
 }

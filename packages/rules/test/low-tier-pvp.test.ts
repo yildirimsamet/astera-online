@@ -22,7 +22,7 @@ describe('the defending commander’s tier selects PvP protection', () => {
     'keeps standard rules for tier %s or absent/invalid context', tier => {
       expect(pvpBalanceForTier(tier)).toMatchObject({
         lootDecisive: 0.6, lootPartial: 0.3, lootBufferShare: 0.5,
-        recoveryLossHours: 4, recoveryLookbackHours: 6, recoveryShieldHours: 8,
+        recoveryLossHours: 4, recoveryLookbackHours: 6, recoveryShieldHours: 12,
       });
     },
   );
@@ -105,6 +105,6 @@ describe('low-tier recovery', () => {
     expect(recoveryShieldUntil(1_000, balance)).toBe(1_000 + 12 * 3_600_000);
     expect(extendRecoveryShield(1_000 + 5 * 3_600_000, 1_000, balance)).toBe(1_000 + 12 * 3_600_000);
     expect(extendRecoveryShield(1_000 + 15 * 3_600_000, 1_000, balance)).toBe(1_000 + 15 * 3_600_000);
-    expect(recoveryShieldUntil(1_000, pvpBalanceForTier(4))).toBe(1_000 + 8 * 3_600_000);
+    expect(recoveryShieldUntil(1_000, pvpBalanceForTier(4))).toBe(1_000 + 12 * 3_600_000);
   });
 });

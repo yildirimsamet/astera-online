@@ -12,6 +12,7 @@ import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
 import { CommanderHost } from '../v2/shell/CommanderHost.js';
 import { BaseSwitch, type BaseView } from '../v2/hud/BaseSwitch.js';
+import { ArenaEntry } from '../arena/ArenaEntry.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
 import { VIEW, hpRadiationApplies } from '@astera/rules';
@@ -222,12 +223,12 @@ const WikiScreen = lazy(async () => { const module = await import('./WikiScreen.
 export const PERF_PANEL_CODES = [
   'planet', 'research', 'intel', 'report', 'leaderboard', 'clan', 'chat', 'chronicle',
   'rewards', 'announcements', 'feedback', 'donate', 'skin-shop', 'skin-inventory', 'admin',
-  'recap', 'menu', 'return', 'wiki',
+  'recap', 'menu', 'return', 'wiki', 'ship',
 ] as const;
 export const perfPanelCode = (panel: Panel): number =>
   panel === null ? 0 : PERF_PANEL_CODES.indexOf(panel) + 1;
 
-export type Panel = 'planet' | 'research' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'skin-shop' | 'skin-inventory' | 'admin' | 'recap' | 'menu' | 'return' | 'wiki' | null;
+export type Panel = 'planet' | 'research' | 'ship' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'skin-shop' | 'skin-inventory' | 'admin' | 'recap' | 'menu' | 'return' | 'wiki' | null;
 
 /**
  * WHICH SHELF INSIDE A PANEL, WHEN THE PANEL ALONE IS NOT AN ANSWER. D121.
@@ -257,6 +258,7 @@ export function GalaxyView({
   onSignOut,
   onCountryChange,
   onReplayAcademy,
+  onEnterArena,
   onPlacementLost,
   onFocused,
   planetGroup,
@@ -306,6 +308,8 @@ export function GalaxyView({
   onSignOut: () => void;
   onCountryChange?: (country: CountryCode) => Promise<void>;
   onReplayAcademy?: () => void;
+  /** F1–F7 prototype entry; absent in the public build and in the Academy. */
+  onEnterArena?: () => void;
   /** Safety net when the rollover broadcast was missed while this tab slept. */
   onPlacementLost?: () => void;
   /**
@@ -1140,8 +1144,9 @@ export function GalaxyView({
   /** K6: the Base's two pages, one switch apart. */
   const openBase = (view: BaseView): void => {
     setResearchFocus(null);
-    onPanel(view === 'world' ? 'planet' : 'research');
+    onPanel(view === 'world' ? 'planet' : view === 'ship' ? 'ship' : 'research');
   };
+  const arenaAvailable = onEnterArena !== undefined;
 
   const tryCosmetic = (cosmeticId: CosmeticId): void => {
     const item = cosmeticById(cosmeticId);
@@ -1771,7 +1776,7 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
-          <BaseSwitch value="world" onChange={openBase} />
+          <BaseSwitch value="world" onChange={openBase} arenaAvailable={arenaAvailable} />
           <PlanetScreen
             onOpenResearch={(project) => {
               setResearchFocus(project);
@@ -1806,7 +1811,7 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
-          <BaseSwitch value="research" onChange={openBase} />
+          <BaseSwitch value="research" onChange={openBase} arenaAvailable={arenaAvailable} />
           <ResearchPanel
             {...(researchFocus === null ? {} : { focus: researchFocus })}
             onNeed={(id) => {
@@ -1817,6 +1822,13 @@ export function GalaxyView({
               setRequestedPlanetGroup(TAB_OF[id] ?? 'grow');
             }}
           />
+        </V2Sheet>
+      )}
+
+      {panel === 'ship' && onEnterArena && (
+        <V2Sheet detents={['full']} quietTitle title={t('arena.nav')} onClose={() => { onPanel(null); }}>
+          <BaseSwitch value="ship" onChange={openBase} arenaAvailable />
+          <ArenaEntry onEnter={onEnterArena} />
         </V2Sheet>
       )}
 
@@ -1843,6 +1855,7 @@ export function GalaxyView({
             <CommanderHost name={commander} />
           </div>
           <MenuPanel
+            onEnterArena={onEnterArena}
             galaxy={season.data?.shardName ?? null}
             shard={season.data?.shard ?? null}
             endsAt={season.data?.endsAt ?? null}

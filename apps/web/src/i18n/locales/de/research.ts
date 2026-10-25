@@ -18,7 +18,7 @@ export const research = {
   shipShieldHullDamage: "Nach den Schilden erreichten {{amount}} Angriffsschaden die verteidigenden Hüllen.",
   shipShieldsName: "Schiffsschilde",
   shipShieldsTag: "Fängt Kampffeuer ab",
-  shipShieldsRole: "Jedes Schiff beginnt mit einem Schild in Höhe seiner maximalen Hülle. Vier Forschungsstufen erhöhen diesen Basisschild insgesamt um 25%, 50%, 70% und 100%.",
+  shipShieldsRole: "Jedes Schiff beginnt mit einem Schild in Höhe von 25% seiner maximalen Hülle. Vier Forschungsstufen erhöhen diesen Basisschild insgesamt um 25%, 50%, 70% und 100%.",
   shipShieldsDetail: "Schilde starten jeden Kampf voll und laden während des Kampfes nicht nach. Hüllenschäden bleiben. Strahlung umgeht Schilde und beschädigt direkt die Hülle. Bodenverteidigung hat keinen persönlichen Schild. Panzerung erhöht maximale Hülle und Schildkapazität. Entsandte Flotten behalten ihre Forschung vom Abflug.",
   shipShieldGain: "Schiffsschildbonus",
   shipShieldScope: "Gilt für alle mobilen Schiffe. Boni sind Gesamtsteigerungen gegenüber dem Basisschild; Stufen werden nicht multipliziert.",

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
@@ -23,6 +24,9 @@ import {
   accounts,
   accountRewards,
   battleReports,
+  monuments,
+  monumentWaves,
+  monumentShipLots,
   cosmeticEntitlements,
   clanMemberships,
   buildings,
@@ -46,6 +50,7 @@ import {
   units,
 } from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
+import { resolveMonumentArrival } from '../src/services/monumentArrival.js';
 import { launchAttack } from '../src/services/mission.js';
 import { resolveRadiationBomb } from '../src/services/radiationBomb.js';
 import { launchProbe, rememberWorld } from '../src/services/intel.js';
@@ -1528,6 +1533,39 @@ describe('every payload the client parses', () => {
     const parsed = pendingSchema.parse(await get('/api/session/pending'));
     const thread = parsed.pending.find((t) => t.kind === 'fleet');
     expect(thread?.id).toBe(launch.missionId);
+  });
+
+  it('GET /api/reports preserves all six monument rounds without leaking owner telemetry', async () => {
+    const now = f.clock.now();
+    const [monument] = await f.db.insert(monuments).values({ seasonId: f.seasonId, ordinal: 1,
+      x: 6000, y: 0, z: 0, capacity: 7270, productionPerMinute: 0, garrison: {}, garrisonTemplate: {},
+      controllerPlayerId: f.playerIds[1]!, settledAt: now }).returning();
+    const ids = [randomUUID(), randomUUID()];
+    for (const owner of [0, 1]) {
+      const [home] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[owner]!));
+      const id = ids[owner]!;
+      await f.db.insert(monumentWaves).values({ id, seasonId: f.seasonId, monumentId: monument!.id,
+        playerId: f.playerIds[owner]!, originPlanetId: home!.id, unitLocation: `monument:${id}`, purpose: 'ATTACK',
+        sentFleet: { CITADEL: 20 }, tech: { SHIP_SHIELDS: 4 }, sentAt: now, radiationSettledAt: now, fuelPaid: 0,
+        status: owner === 0 ? 'OUTBOUND' : 'HOLD', arriveAt: owner === 0 ? now : null, heldAt: owner === 1 ? now : null,
+        route: [{ from: { x: home!.x, y: home!.y, z: home!.z }, to: { x: 6000, y: 0, z: 0 }, startMs: now.getTime() - 60000, endMs: now.getTime() }] });
+      await f.db.insert(monumentShipLots).values({ waveId: id, hull: 'CITADEL', count: 20, damageBp: 0, remainderBp: 0, deuterium: 0 });
+      await f.db.insert(units).values({ planetId: home!.id, ownerPlayerId: f.playerIds[owner]!, location: `monument:${id}`, hull: 'CITADEL', count: 20 });
+    }
+    await f.db.transaction(tx => resolveMonumentArrival(tx, { waveId: ids[0]!, generation: 0, at: now, adminUsernames: [] }));
+    const parsed = reportsSchema.parse(await get('/api/reports?limit=20'));
+    const report = parsed.reports.find(report => report.kind === 'MONUMENT');
+    if (report?.kind !== 'MONUMENT') throw new Error('missing monument report');
+    expect(report.roundCount).toBe(6);
+    expect(report.rounds).toHaveLength(6);
+    expect(report.rounds?.every(round => round.distributedFire)).toBe(true);
+    for (const round of report.rounds ?? []) {
+      expect(round).not.toHaveProperty('retreats');
+      expect(round).not.toHaveProperty('casualties');
+      expect(round).not.toHaveProperty('playerId');
+    }
+    expect(report).not.toHaveProperty('theirDamage');
+    expect(report).not.toHaveProperty('theirSurvivors');
   });
 
   it('GET /api/reports parses', async () => {

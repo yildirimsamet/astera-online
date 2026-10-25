@@ -3,6 +3,9 @@ import { and, desc, eq, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { clanWarPlanetTarget } from './clanWar.js';
 import {
+  battleRetreated,
+  battleCasualties,
+  fleetCount,
   type EscapeOutcome,
   type FaultKind,
   FAULT_KINDS,
@@ -186,6 +189,8 @@ export interface BattleReportView {
   neutral: boolean;
   /** What the caller lost, and what the caller destroyed. */
   yourLosses: Fleet;
+  yourRetreated?: Fleet;
+  theirRetreatedCount?: number;
   theirLosses: Fleet;
   /**
    * THE CALLER'S OWN BOARD WHEN THE SHOOTING STARTED — never the opponent's.
@@ -389,8 +394,10 @@ export interface BattleReportView {
 
 type BattleReportRoundView = Omit<
   CombatRound,
-  'attackerRoll' | 'defenderRoll' | 'shieldBefore' | 'shieldAfter' | 'attackerHullDamage'
+  'attackerRoll' | 'defenderRoll' | 'shieldBefore' | 'shieldAfter' | 'attackerHullDamage' | 'retreats' | 'casualties'
 > & {
+  yourRetreated?: Fleet;
+  theirRetreatedCount?: number;
   attackerRoll: number | null;
   defenderRoll: number | null;
   shieldBefore: number | null;
@@ -817,8 +824,15 @@ async function readBattleReportsIn(
     const commitment = row.missionId === null
       ? undefined
       : commitmentByMission.get(row.missionId);
-    const rounds: BattleReportRoundView[] = row.rounds.map((round) => ({
+    const rounds: BattleReportRoundView[] = row.rounds.map(({ retreats, casualties, ...round }) => ({
       ...round,
+      ...(casualties === undefined ? {} : attacking
+        ? { attackerLosses: battleCasualties([{ ...round, casualties }], 'ATTACK', playerId) }
+        : { defenderLosses: battleCasualties([{ ...round, casualties }], 'DEFENCE', playerId) }),
+      ...(retreats === undefined ? {} : {
+        yourRetreated: battleRetreated([{ ...round, retreats }], attacking ? 'ATTACK' : 'DEFENCE', playerId),
+        theirRetreatedCount: fleetCount(battleRetreated([{ ...round, retreats }], attacking ? 'DEFENCE' : 'ATTACK')),
+      }),
       // JSON reports are immutable. Missing means the battle predates detailed
       // calculation telemetry; null is honest where reconstructing would guess.
       attackerRoll: round.attackerRoll ?? null,
@@ -918,6 +932,10 @@ async function readBattleReportsIn(
       } } : {}),
       neutral,
       yourLosses,
+      ...(row.rounds.some(round => round.retreats !== undefined) ? {
+        yourRetreated: battleRetreated(row.rounds, attacking ? 'ATTACK' : 'DEFENCE', playerId),
+        theirRetreatedCount: fleetCount(battleRetreated(row.rounds, attacking ? 'DEFENCE' : 'ATTACK')),
+      } : {}),
       theirLosses,
       yourFleet: attacking ? operation ? personal?.sent ?? {} : row.attackerFleet : share?.sent ?? row.defenderFleet,
       // What arrived over the reader's own world — see the field. One direction:

@@ -18,7 +18,7 @@ export const research = {
   shipShieldHullDamage: "After shields, {{amount}} attack damage reached defending hulls.",
   shipShieldsName: "Ship Shields",
   shipShieldsTag: "Absorbs combat fire",
-  shipShieldsRole: "Every ship starts with a shield equal to its maximum hull strength. Four research levels add 25%, 50%, 70% and 100% to this base shield.",
+  shipShieldsRole: "Every ship starts with a shield equal to 25% of its maximum hull strength. Four research levels add 25%, 50%, 70% and 100% to this base shield.",
   shipShieldsDetail: "Shields start full for each battle and do not recharge during battle. Hull wounds remain. Radiation bypasses shields and damages hull directly. Ground defences have no personal shield. Armour increases both maximum hull and shield capacity. Dispatched fleets keep their departure research.",
   shipShieldGain: "Ship shield increase",
   shipShieldScope: "Applies to every mobile ship. Bonuses are totals over the base shield, not multiplied between levels.",

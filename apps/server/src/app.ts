@@ -69,6 +69,7 @@ import { RuntimeMetrics } from './services/runtimeMetrics.js';
 import { StreamRegistry } from './services/streamRegistry.js';
 import { DatabasePoolProbe } from './services/databasePoolProbe.js';
 import { performance } from 'node:perf_hooks';
+import { registerArena } from './arena/server.js';
 
 /**
  * THE TWO ROUTES THAT COST MORE THAN THEY LOOK, AND THEIR WINDOWS.
@@ -472,6 +473,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     });
     // A worker exposes only its loopback operations surface. It must never become
     // an accidental fourth public API replica merely because metrics need a port.
+    if (opts.env.ROLE === 'arena') { registerArena(app, opts.env); return; }
     if (opts.env.ROLE === 'worker') return;
     registerAuthRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);
     if (opts.env.NATIVE_AUTH_ENABLED) registerNativeAuthRoutes(app, opts.env.FIRST_GAME_SHIELD_ENABLED);

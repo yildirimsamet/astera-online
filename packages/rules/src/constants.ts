@@ -1014,7 +1014,8 @@ export const BUILD = {
 } as const;
 
 export const COMBAT = {
-  rounds: 3,
+  rounds: 6,
+  shipShieldFraction: 0.25,
   varianceMin: 0.92,
   varianceMax: 1.08,
 
@@ -2193,27 +2194,24 @@ export const ABUSE = {
    * 2026-09-14: *"Ağır bir PvP kaybından sonra 4 saatlik saldırı koruması ver."*
    * Raised to EIGHT on 2026-09-20, with `recoveryProductionMult`, so the window
    * is now a rebuild the struck world is actively paid for rather than only a pause.
+   * Extended to TWELVE hours by owner instruction, 2026-10-21.
    *
    * IT IS THE FIRST-DAY SHIELD'S CONTRACT, NOT A SECOND MECHANISM. Same scope —
-   * the commander and every world they hold, against Raid and Death Star only —
+   * the commander and every world they hold, against raids and strategic strikes —
    * and the same forfeit: attacking another commander gives it up, once, after a
    * confirmation. What makes it a different DECISION from D183's is that it can be
    * earned again, so it answers the question a beginner's window cannot: what
    * happens to somebody who has already committed to the war and just lost badly.
    *
-   * EIGHT HOURS BECAUSE IT IS A REBUILD, NOT A REST. A raid resolves in minutes and
-   * this game is played in gaps, so the window has to be long enough to open the
-   * game once and put an order in, and short enough that a defeat is not a day off
-   * the board for whoever won. Production timers came down a quarter in the same
-   * package, so six hours buys more rebuilding than it would have last week — a
-   * coupling that is deliberate and measured rather than incidental.
+   * A raid resolves in minutes and this game is played in gaps; the window gives
+   * the commander time to return and rebuild. The loss bar remains independent.
    *
    * IT LIVES IN ITS OWN COLUMN. `players.recoveryShieldUntil` is nullable and
    * separate from `newcomerShieldUntil` on purpose: overloading one column would
    * make "has this commander ever fired" — which the first-day rule answers by
    * PRESENCE — unanswerable the first time a recovery shield was granted and spent.
    */
-  recoveryShieldHours: 8,
+  recoveryShieldHours: 12,
 
   /**
    * WHAT THE STRUCK WORLD'S WORKS MAKE WHILE THE RECOVERY SHIELD STANDS. Owner
@@ -2227,8 +2225,8 @@ export const ABUSE = {
    * commander gives up the window, and the boost goes with it at that instant —
    * the owner's words are "while this shield is active".
    *
-   * THE COLLECTOR DOES NOT GROW. The works fill the same vessel twice as fast; a
-   * ceiling that grew for eight hours would shrink back and clamp away ore the
+   * THE COLLECTOR DOES NOT GROW. The works fill the same vessel 50% faster; a
+   * ceiling that grew for twelve hours would shrink back and clamp away ore the
    * commander had already made. `productionHours` is the one statement of the rule.
    */
   recoveryProductionMult: 1.5,
@@ -2323,7 +2321,7 @@ export const ESCAPE = {
   /** A token garrison is not a fleet to save. Applies from ruleset 13. */
   minimumCombatShips: 5,
   /**
-   * FIXED AT 3.5. Owner decision, 2026-10-09; raised from 3 with the other escape
+   * FIXED AT 4. Owner decision, 2026-10-22; raised from 3 with the other escape
    * conditions unchanged, including active ground defence and equality at the threshold.
    * Measured 2026-09-23, the engine clears a mirrored line from
    * 1.5× and the counter-built lines tried from 3×, so a 1:2 fight between near-equals
@@ -2334,7 +2332,7 @@ export const ESCAPE = {
    * on the top, so a roll between 3 and 4 raised the informed raider's kill rate
    * from 72% to 87%.
    */
-  ratio: 3.5,
+  ratio: 4,
   /**
    * THE LIFT IS A LAUNCH, SO IT BURNS LIKE ONE (T6). Owner: *"yakıt yetmedi,
    * kaçamadı"*. The ships pay `missionFuel` for a round trip of this many units —
@@ -3847,14 +3845,14 @@ export const FAULT = {
    * Two if two fit, one if one does, none if the world is already fully broken. The
    * trigger is the recovery-shield bar rather than a second threshold of its own: the game
    * already has one statement of "this blow was heavy", and a fault bar that disagreed
-   * with it would give a commander eight hours of immunity for a raid that left their
+   * with it would give a commander twelve hours of immunity for a raid that left their
    * colony running — or break a colony over a raid the shield called a scratch.
    */
   attackFaults: 2,
   /**
    * WHAT A HEAVY DEFEAT MAY NOT BREAK, AND THE REASON IS ANOTHER RULE'S PROMISE.
    *
-   * `ABUSE.recoveryShieldHours` hands the struck world eight hours of cover and
+   * `ABUSE.recoveryShieldHours` hands the struck world twelve hours of cover and
    * `recoveryProductionMult` hands it fifty per cent more output for the whole of them —
    * *"a rebuild the struck world is actively paid for"*. `attackFaults` above fires on the SAME
    * trigger, and three of the eight kinds shut a producer off: measured over the draw, a 64%

@@ -85,13 +85,14 @@ describe('resolveBattle — one defending stack is the resolver it always was', 
       const battle = resolveBattle(attackers, [host(line, hostTech)], shield, mulberry32(seed));
 
       const { defenders, ...aggregate } = battle;
-      expect(aggregate).toEqual(legacy);
+      expect({ ...aggregate, rounds: aggregate.rounds.map(({ retreats: _retreats, casualties: _casualties, ...round }) => round) }).toEqual({ ...legacy, rounds: legacy.rounds.map(({ retreats: _retreats, casualties: _casualties, ...round }) => round) });
       expect(defenders).toHaveLength(1);
       expect(defenders[0]).toEqual({
         stackId: 'host',
         playerId: 'p-host',
         sent: line,
         survivors: legacy.defenderSurvivors,
+        retreated: legacy.defenderRetreated,
         losses: legacy.defenderLosses,
         lossValue: legacy.defenderLossValue,
         survivorDamage: legacy.defenderDamage,
@@ -114,7 +115,7 @@ describe('resolveBattle — several commanders hold one line', () => {
         0,
         counter.rng,
       );
-      expect(counter.calls()).toBe(2 * result.rounds.length);
+      expect(counter.calls()).toBe(2 + 2 * result.rounds.length);
     }
   });
 
@@ -169,7 +170,7 @@ describe('resolveBattle — several commanders hold one line', () => {
     )).toThrow(RangeError);
   });
 
-  it('spends fire on a supporter’s damaged ships before anyone’s healthy ones', () => {
+  it('randomly targets wounded supporters and keeps every casualty with its owner', () => {
     const result = resolveBattle(
       [attacker({ DART: 20 })],
       [
@@ -179,10 +180,10 @@ describe('resolveBattle — several commanders hold one line', () => {
       0,
       flat(),
     );
-    expect(result.rounds[0]!.defenderLosses.DART).toBe(5);
+    expect(result.rounds[0]!.defenderLosses.DART ?? 0).toBeGreaterThan(0);
     const wave = result.defenders.find((row) => row.stackId === 'w1')!;
     const home = result.defenders.find((row) => row.stackId === 'host')!;
-    expect(wave.losses.DART ?? 0).toBeGreaterThanOrEqual(5);
+    expect((wave.losses.DART ?? 0) + (wave.survivors.DART ?? 0)).toBe(10);
     expect(home.losses.DART ?? 0).toBeLessThanOrEqual(wave.losses.DART ?? 0);
   });
 

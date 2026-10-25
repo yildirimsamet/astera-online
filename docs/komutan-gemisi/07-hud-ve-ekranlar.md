@@ -1,6 +1,6 @@
 # Komutan Gemisi — HUD ve ekranlar
 
-> **Durum:** Tasarım (2026-10-07). Görsel doğrulama zorunlu (`CLAUDE.md`: `node tools/visual.mjs`;
+> **Durum:** Tasarım (2026-10-07); §2 ve §5 MVP koduna göre güncel (2026-10-08). Görsel doğrulama zorunlu (`CLAUDE.md`: `node tools/visual.mjs`;
 > arena için `tools/arena-visual.mjs`, [11](11-test-ve-playtest.md)).
 > **Hedef okuyucu:** HUD'u, sonuç ekranlarını, yükleme ekranını ve yönetim sayfasını yapacak agent.
 > **Dayanak:** S6–S8, S10–S11, S32, S53–S59, S69, S74–S77 ([01](01-urun.md)); CLAUDE.md "dört
@@ -11,8 +11,9 @@
 ## 1. Sahibin referans görselleri (`referans-gorseller/`)
 
 Görseller **görsel yöndür; kontrol yerleşimleri test edilmeden aynen uygulanmaz** (S53).
-PNG dosyalarını **sahip ayrıca verir**; `docs/komutan-gemisi/referans-gorseller/` altına aşağıdaki
-adlarla koy. Gelene kadar aşağıdaki metin dökümleri tek kaynaktır.
+PNG dosyaları `~/astera-ref-assets/Pasted image*.png` olarak sahip tarafından eklendi ve
+incelendi (KG-K15). Sahip bunların kabaca referans olduğunu belirtti; dosyalar yerel tutulur.
+Aşağıdaki adlar ve metin dökümleri görsellerin plan içindeki karşılıklarıdır.
 
 `01-cikis-alani.png` — **çıkışta durmuş gemi.** Üstte üç ince çerçeveli şerit: GÖVDE (dolu
 çubuk, 100), YAKIT (çubuk, 78), AMBAR (boş, 0/100). Altında geniş "ARKA GÖRÜŞ" penceresi (içinde
@@ -53,24 +54,27 @@ yoğunluk (S56); "+" satın alma girişleri (mağaza kararı değil); %72'de gir
 
 ## 2. HUD tel kafesi (350 × 812 CSS px, dikey, güvenli alan içinde)
 
+> 2026-10-08 MVP hâli (`Hud.tsx`, `Controls.tsx`, `arena.css`). 3. şahıs kamerayla (KG-K19)
+> namlu modelleri kalktı; gemi alt ortada görünür.
+
 ```
 ┌──────────────────────────────────────────────┐
-│ [♥ GÖVDE ▮▮▮▮▮▮ 400] [⛽ YAKIT ▮▮▮ 78 · 4:49] [▣ AMBAR 60/100] │  ~34 px
-│          ┌──────────── ARKA GÖRÜŞ ───────────┐               │
-│          │   (canlı arka kamera, yarı hız)    │  ~80 px       │
-│          └───────────────────────────────────┘               │
-│        [ BAĞLAM PANELİ: tek seferde bir tane ]                │  çıkış / kalkan / yakıt / bağlantı
+│ [♥ GÖVDE %] [⛽ YAKIT 4:49] [▣ AMBAR 60]  [≡]               │  34 px, ikonlu dolum
+│ (radar)  ┌──────── ARKA GÖRÜŞ ────────┐  [ HIZ ]           │  66 px
+│  66 px   │  canlı, aynalı, 2 karede 1 │  [ 84  ]           │
+│          └────────────────────────────┘  [ %50 ]           │  durum çipi
+│        [ BAĞLAM NOTU: çıkış / kalkan / iniş / kazı / yakıt ] │
 │                                                               │
 │  ‹◇ ÇIKIŞ • 850 m          ⌜ ⌝ RAKİP • 320 m                 │
-│                            ⌞ ⌟  ▬▬ (izlenen hedefin gövdesi)  │
-│                 ◇ (önleme işareti)                            │
+│                            ⌞ ⌟  ▬▬ gövde                      │
+│                 ◇ önleme işareti     ◎ iniş noktası halkası   │
 │                       ┼   ← nişangâh (+ isabet X'i)           │
 │                    ◜   ◝  ← hasar yönü yayları                │
-│                                                               │
-│ ╲ sol namlu                                   sağ namlu ╱     │  ≤ %18 yükseklik
-│                                   [GİZLEN] [DUMAN] [TURBO]    │
-│   ( yön çubuğu )  ║GAZ║                                       │
-│                   ║ % ║          HIZ 120         (  ATEŞ  )   │
+│                     ▲ kendi gemin (3. şahıs)                  │
+│                                                   [GİZLEN]  ║ │
+│  [ İN / İPTAL 84 m / KALK (basılı) ]     [DUMAN]           ║ │  gaz kolu
+│   ( yön çubuğu, ev alanında açılır )                        ║ │  sağ kenar
+│                                       [TURBO]   (  ATEŞ  )    │
 └──────────────────────────────────────────────┘
 ```
 
@@ -122,6 +126,14 @@ hasar yaylarına ayrılır (S56). Sahneyi kapatan HUD öğeleri toplamda güvenl
 - **Hasar yönü:** nişangâh çevresinde saldırgan yönüne yay; arkadan geliyorsa alt yay +
   arka görüş çerçevesi bir an parlar.
 - **Arka görüşte:** düşmanlara küçük köşe çerçevesi, isim yok.
+- **Radar** (sol üst, 66 px, burun yukarı): görünür pilotlar (kazan sarı), çıkışlar ve canlı
+  kristaller; yükseklik farkı noktanın sapına çizilir. 320 m'den uzaktaki inmiş ve kazmayan gemi
+  görünmez (KG-K21).
+- **Kristal işareti:** en yakın canlı kristal + mesafe (farm hedefi).
+- **İniş halkası:** *İN* basıldığında seçilen yüzeyde iniş noktası; yaklaşırken bağlam notu
+  "İniş yapılıyor · Çubuğu oynatırsan iniş iptal olur" der, *İN* düğmesi kalan mesafeyle
+  *İPTAL* olur ([03 §9b](03-ucus-ve-kontroller.md)).
+- **Hız kutusu:** sayı + durum çipi (gaz %, TURBO, İNDİ, DURDU).
 
 <a id="sonuc-ekranlari"></a>
 ## 6. Sonuç ekranları (S32, S35–S37, KG-K5)
@@ -159,7 +171,7 @@ ipucu dönüşümlü ("Sol başparmak yön verir, bırakınca gemi düz gider" v
   derindeki sayfada (kademeli gösterim); onay sayfadan. Satırda "neye yarar" tek cümle
   (ör. "İsabet: mermiler nişangâha daha yakın gider. Kontrolü değiştirmez.").
 - **Tamir:** ücretsiz süre sayacı + kaynakla anında tamir (KG-A9 cevabına göre).
-- **Hazırlık:** yakıt doldurma (maliyet + tahmini uçuş süresi) — KG-A3'e göre.
+- **Hazırlık:** yakıt doldurma (maliyet + tahmini uçuş süresi) — KG-K11'e göre.
 - **"Savaş alanına gir":** 0,6 sn basılı tutma (`v2/kit/HoldButton.tsx`; repo kuralı: kalkışlar
   basılı tutmayla) yükleme ekranını açar. Tam ekran ve ses, yükleme sonundaki BAŞLA dokunuşunda
   açılır (basılı tutma kullanıcı etkinleştirmesi vermez, [03 §10](03-ucus-ve-kontroller.md)).

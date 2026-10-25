@@ -1,6 +1,7 @@
 import { commanderPvpBalance } from '../services/pvpBalance.js';
 import { and, eq, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm';
 import {
+  activeBattleFleet,
   FAULT,
   PROBE,
   defendedTransfer,
@@ -920,7 +921,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     const defenceNavy = await honorDefenceNavy(tx, mission.seasonId, [defender.playerId, ...supporterIds]);
     const raid = resolveRaid({
       // What the wing arrived with in damage (radiation on the way in); null when whole.
-      stacks: [soloStack(attackingFleet, { tech: attackerTech }, flown.damage ?? undefined)],
+      stacks: [{ ...soloStack(attackingFleet, { tech: attackerTech }, flown.damage ?? undefined), contributionId: missionId, playerId: mission.ownerPlayerId }],
       line: defenders,
       homeDamage: homePartition.damage.filter((lot) => !NON_COMBATANT_HULLS.includes(lot.hull)),
       maintenance: true,
@@ -1035,7 +1036,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       vaultFloor,
       result.grade,
       // The ATTACKER's holds: it is their fleet carrying it home. T8.
-      fleetCargo(result.attackerSurvivors, attackerTech),
+      fleetCargo(activeBattleFleet(result.attackerSurvivors, result.attackerRetreated), attackerTech),
       pvpBalance,
     );
     /**
@@ -1250,7 +1251,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
           flyingDeuterium(result.attackerLosses) + flyingDeuterium(result.defenderLosses),
         ),
       },
-      result.attackerSurvivors,
+      activeBattleFleet(result.attackerSurvivors, result.attackerRetreated),
     );
     const wreckValue = wreck ? wreck.alloy + wreck.crystal + wreck.deuterium : 0;
     const lifted = salvage.alloy + salvage.crystal + salvage.deuterium > 0;

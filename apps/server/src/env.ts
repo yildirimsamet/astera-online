@@ -7,7 +7,21 @@ const schema = z.object({
   CHAT_MEDIA_DIR: z.string().min(1).default('.data/chat-media'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   /** 'api' serves HTTP, 'worker' drains scheduled events, 'both' does both. */
-  ROLE: z.enum(['api', 'worker', 'both']).default('both'),
+  ROLE: z.enum(['api', 'worker', 'both', 'arena']).default('both'),
+  /** Real-time pilot mode (Komutan Gemisi arena) runs only when its process says so. */
+  ARENA_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  /** Local bots, network conditioning and debug controls must never reach production. */
+  ARENA_DEV: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  ARENA_ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://127.0.0.1:5173'),
+  /** Private playtest reference pack on this host; unset serves none and the arena draws its procedural set. */
+  ARENA_REF_DIR: z.string().min(1).optional(),
+  /** Usernames that may fly the live playtest arena; `*` admits every signed-in account. */
+  ARENA_PILOTS: z.string().default('').transform((value) =>
+    value
+      .split(',')
+      .map((username) => username.trim().toLocaleLowerCase('en-US'))
+      .filter((username) => username.length > 0),
+  ),
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().min(1),
   /** Request-pool budget per process; LISTEN uses one additional connection. */
@@ -277,6 +291,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
   if (parsed.data.NODE_ENV === 'production' && parsed.data.NATIVE_APP_ORIGINS.includes('http://localhost')) {
     throw new Error('The HTTP native-local origin is not allowed in production');
+  }
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.ARENA_DEV) {
+    throw new Error('ARENA_DEV cannot be enabled in production');
   }
   if (parsed.data.SILENT_SPACE_ENABLED && parsed.data.ROLE !== 'api' && parsed.data.DB_POOL_MAX < 2) {
     throw new Error('DB_POOL_MAX must be at least 2 for Silent Space maintenance');
