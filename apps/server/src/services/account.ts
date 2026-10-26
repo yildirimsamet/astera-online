@@ -1,4 +1,5 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, not } from 'drizzle-orm';
+import { accountIsBanned } from './accountBan.js';
 import type { Db } from '../db/client.js';
 import { accounts, accountRewards } from '../db/schema.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
@@ -111,9 +112,9 @@ export async function authenticate(
 ): Promise<AccountRecord> {
   const identifier = input.username.trim();
   const emailLogin = identifier.includes('@');
-  const [row] = await db.select().from(accounts).where(emailLogin
+  const [row] = await db.select().from(accounts).where(and(not(accountIsBanned), emailLogin
     ? eq(accounts.email, normaliseEmail(identifier))
-    : eq(accounts.username, normaliseUsername(identifier)));
+    : eq(accounts.username, normaliseUsername(identifier))));
 
   const ok = await verifyPassword(input.password, row?.passwordHash ?? (await decoyHash()));
   if (!row || !ok || row.deletionApprovedAt !== null || (emailLogin ? !row.emailVerifiedAt : row.emailVerifiedAt !== null)) {
@@ -123,7 +124,7 @@ export async function authenticate(
 }
 
 export async function findAccount(db: Pick<Db, 'select'>, accountId: string): Promise<AccountRecord | null> {
-  const [row] = await db.select().from(accounts).where(eq(accounts.id, accountId));
+  const [row] = await db.select().from(accounts).where(and(eq(accounts.id, accountId), not(accountIsBanned)));
   return row?.deletionApprovedAt === null ? publicShape(row) : null;
 }
 
