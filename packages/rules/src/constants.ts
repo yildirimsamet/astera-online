@@ -1045,9 +1045,10 @@ export const COMBAT = {
    */
   handicap: {
     ratios: [1, 1.2, 1.4, 1.6, 1.8, 2, 2.5, 3, 4],
-    // The stronger side loses 80, 65, 50, 40, 30% from 1:1.2 to 1:2 (owner), then 15% and 8%
-    // at 1:2.5 and 1:3, carrying that trend to the fleet escape instead of dropping off a cliff.
-    exponents: [2, 2, 1.9, 1.75, 1.75, 1.65, 1.5, 1.35, 0],
+    // Fitted 2026-10-26 to 63/48/37/27/19/10/5% strong loss, eased wherever any scenario would
+    // have the weaker side out-trade the stronger one (owner K8): never more than the weaker
+    // side in absolute terms. What it then measured is `outcomeTargets.strongLost`.
+    exponents: [1.35, 1.35, 1.3, 1.35, 1.35, 1.25, 1.3, 1.2, 0],
   } as { readonly ratios: readonly number[]; readonly exponents: readonly number[] },
   /** Tier edges by the WEAKER side's matchup power: 0–25k, 25–100k, 100–300k, 300k+. */
   retreatTiers: [25_000, 100_000, 300_000],
@@ -1058,31 +1059,37 @@ export const COMBAT = {
    * leaves with `chance` at each round end. The 1:1 column is both sides'; the stronger
    * side's chance fades to nothing by 1:1.2. Fitted by tools/combat-v3-calibration.ts to
    * the owner's table: the weak side keeps 10/15/20/25% at 1:1 by tier, then 20, 25, 30,
-   * 40, 50% to 1:2 and 60, 70% at 1:2.5 and 1:3 (docs/evidence/combat-v3-calibration-2026-10-25.json).
+   * 40, 50% to 1:2 and 60, 70% at 1:2.5 and 1:3 (docs/evidence/combat-v3-calibration-2026-10-26.json).
    */
   retreatWindows: [
-    [{ threshold: 0.45, chance: 0.05 }, { threshold: 0.45, chance: 0.90 }, { threshold: 0.60, chance: 0.60 }, { threshold: 0.60, chance: 0.85 },
-      { threshold: 0.75, chance: 0.55 }, { threshold: 0.75, chance: 0.85 }, { threshold: 0.90, chance: 0.65 }, { threshold: 0.90, chance: 0.80 }],
-    [{ threshold: 0.45, chance: 0.30 }, { threshold: 0.45, chance: 0.85 }, { threshold: 0.60, chance: 0.65 }, { threshold: 0.60, chance: 0.90 },
-      { threshold: 0.75, chance: 0.55 }, { threshold: 0.75, chance: 0.85 }, { threshold: 0.90, chance: 0.65 }, { threshold: 0.90, chance: 0.95 }],
-    [{ threshold: 0.75, chance: 0.15 }, { threshold: 0.45, chance: 0.95 }, { threshold: 0.60, chance: 0.70 }, { threshold: 0.60, chance: 1.00 },
-      { threshold: 0.75, chance: 0.60 }, { threshold: 0.75, chance: 0.90 }, { threshold: 0.90, chance: 0.75 }, { threshold: 0.90, chance: 0.95 }],
-    [{ threshold: 0.60, chance: 0.60 }, { threshold: 0.60, chance: 0.95 }, { threshold: 0.60, chance: 0.70 }, { threshold: 0.60, chance: 0.90 },
-      { threshold: 0.75, chance: 0.65 }, { threshold: 0.75, chance: 0.90 }, { threshold: 0.90, chance: 0.80 }, { threshold: 0.90, chance: 1.00 }],
+    [{ threshold: 0.30, chance: 0.05 }, { threshold: 0.60, chance: 0.60 }, { threshold: 0.60, chance: 0.85 }, { threshold: 0.60, chance: 0.90 },
+      { threshold: 0.75, chance: 0.65 }, { threshold: 0.75, chance: 0.90 }, { threshold: 0.90, chance: 0.70 }, { threshold: 0.90, chance: 0.90 }],
+    [{ threshold: 0.60, chance: 0.05 }, { threshold: 0.60, chance: 0.65 }, { threshold: 0.60, chance: 0.85 }, { threshold: 0.60, chance: 0.95 },
+      { threshold: 0.75, chance: 0.70 }, { threshold: 0.75, chance: 1.00 }, { threshold: 0.90, chance: 0.70 }, { threshold: 0.90, chance: 0.90 }],
+    [{ threshold: 0.75, chance: 0.15 }, { threshold: 0.60, chance: 0.65 }, { threshold: 0.60, chance: 0.90 }, { threshold: 0.75, chance: 0.50 },
+      { threshold: 0.75, chance: 0.85 }, { threshold: 0.90, chance: 0.70 }, { threshold: 0.90, chance: 0.75 }, { threshold: 1.00, chance: 0.50 }],
+    [{ threshold: 0.75, chance: 0.25 }, { threshold: 0.60, chance: 0.95 }, { threshold: 0.60, chance: 0.85 }, { threshold: 0.60, chance: 0.95 },
+      { threshold: 0.75, chance: 0.85 }, { threshold: 0.90, chance: 0.65 }, { threshold: 0.90, chance: 0.80 }, { threshold: 1.00, chance: 0.50 }],
   ] as readonly (readonly { readonly threshold: number; readonly chance: number }[])[],
   /** The stronger side stops retreating at this ratio. */
   strongRetreatUntil: 1.2,
   /**
    * THE OWNER'S TABLE (2026-10-25) the windows and the handicap are fitted to: on average, the
    * share of its fleet the weaker side keeps and the share the stronger side loses, by entry
-   * ratio. At 1:1 both sides keep their tier's even share. Past 1:2 the stronger side's loss
-   * carries the owner's falling trend on to the 3× fleet escape (approved 2026-10-25).
+   * ratio. At 1:1 both sides keep their tier's even share.
+   *
+   * STRONG LOSS REDRAWN 2026-10-26 (owner K8). The first column (80/65/50/40/30/15/8%) was a
+   * share of a fleet R times the weaker one, so from 1:1.2 to 1:2 the stronger side lost ~1.2×
+   * what the weaker side did — attacking a bigger fleet paid. The fit aimed at 95% of the weaker
+   * side's loss at 1:1.2 falling to half at 1:3 (63/48/37/27/19/10/5%), with no scenario allowed
+   * past 100%; that guard eased the handicap, so the column is what the held-out validation
+   * measured (docs/evidence/combat-v3-calibration-2026-10-26.json) — the attack sheet shows it.
    */
   outcomeTargets: {
     evenKept: [0.10, 0.15, 0.20, 0.25],
     ratios: [1.2, 1.4, 1.6, 1.8, 2, 2.5, 3],
     weakKept: [0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.70],
-    strongLost: [0.80, 0.65, 0.50, 0.40, 0.30, 0.15, 0.08],
+    strongLost: [0.54, 0.39, 0.30, 0.22, 0.13, 0.08, 0.03],
   } as { readonly evenKept: readonly number[]; readonly ratios: readonly number[]; readonly weakKept: readonly number[]; readonly strongLost: readonly number[] },
   shipShieldFraction: 0.25,
   varianceMin: 0.92,

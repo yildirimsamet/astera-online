@@ -106,12 +106,17 @@ tur 1..8:
 bitiş: bir taraf yok oldu/kaçtı veya 8 tur doldu → derece, ganimet ve hasar bugünkü kurallarla
 ```
 
-### 3.2 Hedef seçimi: tek hedef, sınıf önceliği korunur
+### 3.2 Hedef seçimi: tek hedef, rastgele (K9, 2026-10-26)
 
 - **Tek hedef:** Her gemi her turda tek bir hedefe ateş eder. Hedef ölürse artan hasar aynı
   kuralla seçilen yeni hedefe geçer. Sonuç gemi sayısından bağımsızdır: 3–3, 10–10 ve 100–100
   Kargı – Ok aynı sonucu verdi (%35–39).
-- **Sınıf önceliği (owner, 25 Ekim — Codex işi):** Atıcı önce ×1,6 vurduğu sınıfı, yoksa ×1'i,
+- ✔ **K9 (owner, 2026-10-26) — sınıf önceliği kalktı:** Her atış silahlı hattan rastgele bir gemi
+  seçer; counter çarpanı vurduğu gemi sınıfınınkidir. Sıkı öncelikte küçük karma filo, büyük
+  filoda kontrladığı sınıfı savaş boyunca bulurken büyük filo küçük filodaki hedeflerini hızla
+  bitiriyordu: 1:3'te güçlü, zayıfın kaybının 1,8–2,3 katını kaybediyordu. Rastgele hedefte karma
+  filolar tek tip filoların bandına iner (T4 karma 1:3: ×1,82 → ×1,01, eski tabloyla).
+- ~~**Sınıf önceliği (owner, 25 Ekim — Codex işi):**~~ Atıcı önce ×1,6 vurduğu sınıfı, yoksa ×1'i,
   en son ×0,625'i seçer; aynı öncelikte rastgele. Ölçüm (tek hedef, sıkı öncelik): karma
   counter filolarda sonucu en çok ±13 puan oynatıyor, gemi sayısından bağımsızlığı bozmuyor.
 - **10 hedef kuralı kalkar:** 3 gemilik savaşta herkese, 100 gemilikte onda birine yayıldığı için
@@ -269,12 +274,19 @@ bitiş: bir taraf yok oldu/kaçtı veya 8 tur doldu → derece, ganimet ve hasar
 | | 1:1,2 | 1:1,4 | 1:1,6 | 1:1,8 | 1:2 |
 | --- | --- | --- | --- | --- | --- |
 | Güçsüzde kalan | %20 | %25 | %30 | %40 | %50 |
-| Güçlünün en az kaybı | %80 | %65 | %50 | %40 | %30 |
+| Güçlünün kaybı (K8, ölçülen) | %54 | %39 | %30 | %22 | %13 |
 
 - ✔ **K6 (owner, 2026-10-25) — süreklilik:** Güçsüzde kalan, kendi kademesinin 1:1 değerinin
   altına düşmez. 300k+ için 1:1,2'de %25, 100–300k için %20. Kaçış tablosu bu yüzden kademe
   başına tutulur.
-- 1:2 sonrası (K3): 1:2,5'te %60, 1:3'te %70 kalan. Güçlünün kaybı için alt sınır yok.
+- 1:2 sonrası (K3): 1:2,5'te %60, 1:3'te %70 kalan; güçlü %8 ve %3 kaybeder (ölçülen).
+- ✔ **K8 (owner, 2026-10-26) — güçlünün kaybı yeniden çizildi:** İlk sütun (%80/65/50/40/30)
+  R kat büyük filonun yüzdesiydi; 1:1,2–1:2 arası güçlü, zayıfın mutlak kaybının ~1,2 katını
+  kaybediyor, büyüğe saldırmak kâr getiriyordu. Yeni kural: güçlünün mutlak kaybı 1:1,2'de
+  zayıfınkinin %95'i, 1:3'te yarısı. Kalibrasyon, hiçbir senaryoda güçlünün mutlak kaybı
+  zayıfınkini geçmeyecek şekilde törpüyü gerekirse yumuşatır (tools/combat-v3-calibration.ts).
+  Hedef %63/48/37/27/19/10/5 idi; bu koruma törpüyü yumuşattığı için ortalama biraz altında
+  kaldı. Oyuncuya ölçülen ortalama gösterilir (evidence/combat-v3-calibration-2026-10-26.json).
 - **Test matrisi (her biri ≥40 tohum):**
   - 4 kademe × oranlar 1; 1,2; 1,4; 1,6; 1,8; 2; 2,5; 3; 4
   - Kompozisyonlar: saf Akıncı / Mızrak / Sur, karma, counter ve ters counter, alt kademe
@@ -338,4 +350,11 @@ bitiş: bir taraf yok oldu/kaçtı veya 8 tur doldu → derece, ganimet ve hasar
 - ✔ **K5** Sonda: bugünkü eğim, tavan %80 — §5
 - ✔ **K6** 1:1,2'de güçsüz, kademesinin 1:1 değerinin altına düşmez — §7
 - ✔ **K7** Canlı dal + Codex işi master'da — §9
+- ✔ **K8** Güçlünün kaybı: zayıfın mutlak kaybının %95'inden (1:1,2) yarısına (1:3) — §7
+- ✔ **K9** Hedef seçimi rastgele; counter çarpanı kalır — §3.2
+- ✔ **K10 (owner, 2026-10-26)** Üstünlük törpüsü oyuncuya **manevra** olarak anlatılır: zayıf
+  taraf manevra yapar, güçlü tarafın isabet etkisi düşer; 4× farkta manevra işe yaramaz. Gizli
+  değil, formülsüz: raporda "isabet etkisi %X", kural cümlesi bir dokunuş derinde. Törpüsüz
+  çalışma (pencereler yeniden kalibre): güçlü 1:2'de %2 kaybeder, savaş 1–2 tur, 1:3'te zayıf
+  en çok %53 kurtarır — reddedildi. Filo kaçışı 3×'te kalır (2,5× önerisi geri çekildi).
 - ⚑ **Açık:** yayın zamanı (3 Kasım yeni sezonla mı, sezon ortasında mı)

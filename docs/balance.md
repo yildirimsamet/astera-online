@@ -257,9 +257,9 @@ ground guns: no personal shield · Aegis absorbs combat fire first
 counter cycle: SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER   at 1.6× / 0.625×
 support hulls: prey to everything, deal nothing, shielded while escorted
 
-one shot per eligible unit, at most 10 distinct targets; higher class counters first, random within each priority
+one shot per eligible unit on one target, any armed ship alike (combat v3; counter-first removed 2026-10-26)
 armed targets first, then all SUPPORT (cargo + collector), including within the same shot
-excess returns to base damage and is redistributed within that shot's 10-target cap; counters apply once per target
+excess returns to base damage and moves to the next target; counters apply once per target
 retreat only after rounds 1–5; side ratio/HP windows: see docs/game-design.md Combat
 
 grade on VALUE destroyed or retreated:

@@ -11,7 +11,8 @@ import { resolveVolley, type VolleyShip } from '../src/randomBattle.js';
 /**
  * SAVAŞ v3 — owner decisions K1–K7, 2026-10-25 (docs/combat-v3-plan-2026-10-25.md).
  *
- * One target per shot, counter first, overflow carried; one battle-wide tempo; the stronger
+ * One target per shot, picked at random from the armed line, overflow carried (owner 2026-10-26:
+ * strict counter-first targeting let a smaller mixed line bleed a larger one); one battle-wide tempo; the stronger
  * side's fire filed down by its advantage up to 1:2 and not at all from 1:3; ships hit below
  * 70% hull may break apart; only the weaker side retreats once the gap reaches 1:1.2; nobody
  * retreats from an enemy that can no longer fire; eight rounds.
@@ -52,7 +53,7 @@ describe('v3 constants', () => {
   });
 });
 
-describe('one target per shot, counter first, overflow carried', () => {
+describe('one target per shot, random across the armed line, overflow carried', () => {
   it('lands a shot that kills nothing on exactly one ship', () => {
     const r = fire(Array.from({ length: 40 }, () => ship('DART')));
     expect(r.ids).toHaveLength(1);
@@ -60,25 +61,26 @@ describe('one target per shot, counter first, overflow carried', () => {
     expect(r.hullDamage).toBeCloseTo(100, 8);
   });
 
-  it('prefers the class it counters, then neutral, then the class that counters it — ground guns too', () => {
+  it('picks any armed ship alike whatever its class — ground guns too — and hits it with that class’s counter', () => {
     // A Dart is a Skirmisher: ×1.6 on Bulwark (Bastion), ×1 on Skirmisher (Thorn), ×0.625 on Lance (Harpoon).
     const all = [ship('HARPOON'), ship('THORN'), ship('BASTION'), ship('HARPOON'), ship('THORN')];
-    for (let seed = 0; seed < 20; seed++) expect(fire(all, 100, seed).ids).toEqual([2]);
-    const noBulwark = [ship('HARPOON'), ship('THORN'), ship('HARPOON')];
-    for (let seed = 0; seed < 20; seed++) expect(fire(noBulwark, 100, seed).ids).toEqual([1]);
+    const hits = [0, 0, 0, 0, 0];
+    for (let seed = 0; seed < 1000; seed++) {
+      const r = fire(all, 100, seed), index = r.ids[0]!;
+      hits[index]!++;
+      expect(r.hullDamage).toBeCloseTo(100 * counterMult('SKIRMISHER', HULLS[all[index]!.hull].cls), 8);
+    }
+    for (const count of hits) expect(count).toBeGreaterThan(150);
     expect(fire([ship('HARPOON')], 100).hullDamage).toBeCloseTo(100 * COMBAT.weakMult, 8);
   });
 
-  it('picks uniformly within the preferred class and repeats exactly for a seed', () => {
-    const targets = Array.from({ length: 8 }, () => ship('DART'));
-    const seen = new Set<number>();
-    for (let seed = 0; seed < 200; seed++) seen.add(fire(targets, 100, seed).ids[0]!);
-    expect(seen.size).toBe(8);
+  it('repeats exactly for a seed', () => {
+    const targets = [ship('DART'), ship('CITADEL'), ship('CATACLYSM')];
     expect(fire(targets, 100, 11)).toEqual(fire(targets, 100, 11));
   });
 
   it('carries overflow, at base value, to the next target chosen by the same rule', () => {
-    // A Cataclysm is a Lance: ×1.6 on the Dart first, then ×0.625 on the Citadel.
+    // A Cataclysm is a Lance: ×1.6 on the Dart it rolls first, then ×0.625 on the Citadel.
     const r = resolveVolley([ship('CATACLYSM', 1000, 100)], [ship('CITADEL', 1000), ship('DART', 30)], 1, () => 0, 0, 1);
     expect(r.hp[1]).toBe(0);
     expect(r.hp[0]).toBeCloseTo(1000 - (100 - 30 / COMBAT.strongMult) * COMBAT.weakMult, 10);
@@ -345,8 +347,18 @@ describe('the outcome table the fight is tuned to', () => {
     const rows = combatOutcomeTable();
     expect(rows.map(row => row.ratio)).toEqual([1, 1.2, 1.4, 1.6, 1.8, 2, 2.5, 3]);
     expect(rows[0]).toEqual({ ratio: 1, weakKeeps: { low: 0.1, high: 0.25 }, strongLoses: { low: 0.75, high: 0.9 } });
-    expect(rows[1]).toEqual({ ratio: 1.2, weakKeeps: { low: 0.2, high: 0.25 }, strongLoses: { low: 0.8, high: 0.8 } });
+    expect(rows[1]).toEqual({ ratio: 1.2, weakKeeps: { low: 0.2, high: 0.25 }, strongLoses: { low: 0.54, high: 0.54 } });
     expect(rows.slice(2).map(row => [row.weakKeeps.low, row.strongLoses.low]))
-      .toEqual([[0.25, 0.65], [0.3, 0.5], [0.4, 0.4], [0.5, 0.3], [0.6, 0.15], [0.7, 0.08]]);
+      .toEqual([[0.25, 0.39], [0.3, 0.3], [0.4, 0.22], [0.5, 0.13], [0.6, 0.08], [0.7, 0.03]]);
+  });
+
+  it('never has the stronger side lose more than the weaker one in absolute terms (owner 2026-10-26)', () => {
+    // At 1:R the stronger fleet is R times the weaker: its share lost × R is its loss in weaker-fleet units.
+    const rows = combatOutcomeTable().slice(1);
+    for (const row of rows) expect(row.strongLoses.high * row.ratio, `1:${String(row.ratio)}`).toBeLessThan(1 - row.weakKeeps.low);
+    // ...and the stronger side's edge grows with its lead, but it always pays something.
+    const shares = rows.map(row => row.strongLoses.high * row.ratio / (1 - row.weakKeeps.low));
+    for (let i = 1; i < shares.length; i++) expect(shares[i]!).toBeLessThan(shares[i - 1]!);
+    for (const row of rows) expect(row.strongLoses.high).toBeGreaterThan(0);
   });
 });

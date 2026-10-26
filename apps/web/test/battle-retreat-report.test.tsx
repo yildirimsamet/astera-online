@@ -55,7 +55,11 @@ describe('six-round public combat rules', () => {
   /** Combat v3 (owner 2026-10-25): one target per shot, retreats after rounds 1–7, the owner's outcome table. */
   it.each(['en', 'tr'] as const)('publishes one target per shot, collector protection, the retreat rounds and the outcome table in %s', language => {
     const text = JSON.stringify(getWikiArticle('combat.model')?.sections[language]);
-    expect(text).toMatch(language === 'en' ? /one living target/i : /tek bir canlı hedefe/i);
+    expect(text).toMatch(language === 'en' ? /one living armed target chosen at random/i : /rastgele seçilen tek bir canlı silahlı hedefe/i);
+    expect(text).not.toMatch(language === 'en' ? /first a class/i : /önce daha fazla hasar/i);
+    // Owner 2026-10-26: the handicap is the outmatched side's manoeuvre, never a cut to the stronger side's fire.
+    expect(text).toMatch(language === 'en' ? /manoeuvre/i : /manevra/i);
+    expect(text).not.toMatch(language === 'en' ? /fire is also reduced/i : /ateşi de/i);
     expect(text).not.toMatch(language === 'en' ? /up to 10/i : /en fazla 10/i);
     expect(text).toMatch(language === 'en' ? /Garbage Collector/ : /Hurdacı/);
     expect(text).toContain(`1–${COMBAT.rounds - 1}`);
@@ -65,7 +69,7 @@ describe('six-round public combat rules', () => {
     expect(table.rows).toHaveLength(combatOutcomeTable().length);
     const half = table.rows.find((row) => row[0] === '1:2')!;
     expect(half[1]).toMatch(/50/);
-    expect(half[2]).toMatch(/30/);
+    expect(half[2]).toMatch(/13/);
   });
 
   it.each(['en', 'tr'] as const)('states the fleet escape on power, not resource value, in %s', language => {

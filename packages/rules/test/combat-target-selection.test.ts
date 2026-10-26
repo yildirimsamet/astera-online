@@ -4,9 +4,10 @@ import { createBattleRecording, type RecordedShot } from '../src/battleRecording
 import { resolveVolley, type VolleyShip } from '../src/randomBattle.js';
 
 /**
- * TARGET SELECTION — combat v3 (owner 2026-10-25). One target per shot, the favourable
- * counter class first (owner 2026-10-25, carried over from the ten-target rule it replaces),
- * overflow carried to the next target by the same rule, cargo covered while armed ships stand.
+ * TARGET SELECTION — combat v3 (owner 2026-10-25). One target per shot, any armed ship alike
+ * (owner 2026-10-26: counter-first targeting let a smaller mixed line bleed a larger one), the
+ * counter multiplier of the class it hits, overflow carried to the next target by the same rule,
+ * cargo covered while armed ships stand.
  */
 const ship = (hull: HullId, hp = 10000, attack = 0): VolleyShip =>
   ({ hull, hp, attack, shield: 0, owner: 0, canFire: true, retreated: false });
@@ -17,7 +18,7 @@ function fire(targets: VolleyShip[], attack = 100, seed = 7, hull: HullId = 'DAR
   return { ...result, shot: shots[0], ids: shots[0]?.hits.map(hit => hit.targetId) ?? [] };
 }
 
-describe('one target per shot, preferring favourable counters', () => {
+describe('one target per shot, any armed ship alike', () => {
   it.each([0, 1, 9, 10, 11, 200])('a shot that kills nothing touches one of %i eligible targets', count => {
     const result = fire(Array.from({ length: count }, () => ship('DART')));
     expect(result.ids).toHaveLength(Math.min(1, count));

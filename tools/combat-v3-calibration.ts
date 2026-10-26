@@ -16,7 +16,9 @@ import type { Fleet } from '../packages/rules/src/types.js';
  * weaker side's matchup power, per anchor ratio, the {hull threshold, chance} that leaves
  * the weak side its target share. The stronger side's loss is not fitted — the handicap
  * (α) sets it — but reported against the owner's minimums, and among windows that hit the
- * weak target the one that makes the strong side pay most is kept.
+ * weak target the one that makes the strong side pay most is kept. Owner 2026-10-26: in no
+ * scenario may the stronger side lose more than the weaker one in absolute terms; where it
+ * would, the handicap is eased until it does not.
  *
  * Run: `nice -n 10 npx tsx tools/combat-v3-calibration.ts` (minutes; owner-requested study).
  */
@@ -29,7 +31,7 @@ const T = COMBAT.outcomeTargets;
 export const EVEN_KEPT = T.evenKept;
 /** Weak side's share kept by ratio; 1:2.5 and 1:3 extend the table toward the 3× fleet escape (K3). */
 const WEAK_KEPT: Record<number, number> = Object.fromEntries(T.ratios.map((r, i) => [r, T.weakKept[i]!]));
-/** The least the stronger side should lose of its own fleet: the owner's table, to 1:2. */
+/** The share of its own fleet the stronger side should lose: the owner's table, to 1:2. */
 export const STRONG_LOSS_MIN: Record<number, number> = Object.fromEntries(T.ratios.filter(r => r <= 2).map((r) => [r, T.strongLost[T.ratios.indexOf(r)]!]));
 /**
  * Past 1:2 the owner set no floor. Fitted to none, the handicap fell to almost nothing and
@@ -105,6 +107,12 @@ export function strongAt(s: Scenario, ratio: number): Fleet {
 
 export interface Measure { ratio: number; weakKept: number; strongKept: number; strongLost: number; rounds: number }
 
+/** The stronger side's loss over the weaker side's, both in the weaker fleet's units: above 1 the weaker side out-traded it. */
+export function strongOverWeak(m: { ratio: number; weakKept: number; strongLost: number }): number {
+  const weakLost = 1 - m.weakKept;
+  return weakLost > 0 ? m.strongLost * m.ratio / weakLost : m.strongLost > 0 ? Infinity : 0;
+}
+
 /** Strong side raids the weak one; physical survivors (retreated ones included) are what a side kept. */
 export function measure(s: Scenario, strong: Fleet, seeds: readonly number[]): Measure {
   let weakKept = 0, strongKept = 0, rounds = 0;
@@ -139,7 +147,7 @@ const round2 = (x: number) => Math.round(x * 100) / 100;
 const uniform = (window: { threshold: number; chance: number }): Windows =>
   COMBAT.retreatWindows.map(tier => tier.map(() => window));
 
-interface Fit { threshold: number; chance: number; kept: number; spread: number; strongLost: number; strongLostMin: number; rounds: number }
+interface Fit { threshold: number; chance: number; kept: number; spread: number; strongLost: number; strongLostMin: number; worstTrade: number; rounds: number }
 
 /** Mean over the tier's scenarios at one ratio, the same window on every anchor so rounding never interpolates. */
 function evaluate(rows: readonly { s: Scenario; strong: Fleet }[], window: { threshold: number; chance: number }, seeds: readonly number[], ratio: number): Fit {
@@ -149,7 +157,7 @@ function evaluate(rows: readonly { s: Scenario; strong: Fleet }[], window: { thr
   const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
   return { ...window, kept: mean(kept), spread: Math.max(...kept) - Math.min(...kept),
     strongLost: mean(measured.map(m => m.strongLost)), strongLostMin: Math.min(...measured.map(m => m.strongLost)),
-    rounds: mean(measured.map(m => m.rounds)) };
+    worstTrade: ratio <= 1 ? 0 : Math.max(...measured.map(strongOverWeak)), rounds: mean(measured.map(m => m.rounds)) };
 }
 
 /** Per threshold, the chance (in 5% steps) that lands the weak share on target; then the window the strong side pays most under. */
@@ -187,27 +195,34 @@ const mean = (xs: readonly number[]) => xs.reduce((a, b) => a + b, 0) / xs.lengt
 /**
  * One ratio: the handicap exponent (shared by every tier), then each tier's window under it.
  * The exponent is the least that makes the stronger side lose its floor, so being stronger
- * keeps every advantage the owner's table leaves it.
+ * keeps every advantage the owner's table leaves it — eased, 0.05 at a time, while any
+ * scenario still has the weaker side out-trade it.
  */
 export function fitRatio(ratio: number, seeds: readonly number[]): { exponent: number; tiers: Fit[] } {
   const fitTiers = () => TIERS.map(tier => fitAnchor(tier, ratio, seeds));
   const floor = strongLossFloor(ratio);
-  const exponent = floor === undefined ? 0
+  let exponent = floor === undefined ? 0
     : leastExponent(e => withExponent(e, () => mean(fitTiers().map(f => f.strongLost)) >= floor - .01));
-  return { exponent, tiers: withExponent(exponent, fitTiers) };
+  let tiers = withExponent(exponent, fitTiers);
+  while (exponent > 0 && Math.max(...tiers.map(f => f.worstTrade)) > 1) {
+    exponent = round2(exponent - .05);
+    tiers = withExponent(exponent, fitTiers);
+  }
+  return { exponent, tiers };
 }
 
+export const EVIDENCE = resolve(fileURLToPath(new URL('../', import.meta.url)), 'docs/evidence/combat-v3-calibration-2026-10-26.json');
 const seedsFrom = (base: number, n: number) => Array.from({ length: n }, (_, i) => Math.imul(base + i, 0x9E3779B1) >>> 0);
 const pct = (x: number) => String(Math.round(x * 100));
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const started = Date.now(), fitSeeds = seedsFrom(1, Number(process.env.SEEDS ?? 10)), holdout = seedsFrom(10_001, 12);
+  const started = Date.now(), fitSeeds = seedsFrom(1, Number(process.env.SEEDS ?? 10)), holdout = seedsFrom(10_001, 24);
   const rows = COMBAT.retreatRatios.map(ratio => {
     const fit = fitRatio(ratio, fitSeeds);
     console.log(`1:${String(ratio)} üs ${fit.exponent.toFixed(2)}`);
     fit.tiers.forEach((f, tier) => { console.log(`  T${String(tier)} gövde ≤%${pct(f.threshold)} şans %${pct(f.chance)}`
       + ` · zayıf kalan %${pct(f.kept)} (hedef %${pct(keptTarget(tier, ratio))}, yayılım ${pct(f.spread)})`
-      + ` · güçlü kayıp %${pct(f.strongLost)} (en az %${pct(f.strongLostMin)}) · ${f.rounds.toFixed(1)} tur`); });
+      + ` · güçlü kayıp %${pct(f.strongLost)} (en az %${pct(f.strongLostMin)}, en kötü takas ×${f.worstTrade.toFixed(2)}) · ${f.rounds.toFixed(1)} tur`); });
     return fit;
   });
   // An even fight is never filed down; its slot carries the 1:1.2 exponent so 1–1.2 reads flat.
@@ -220,13 +235,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       const m = measure(s, strongAt(s, ratio), holdout);
       return { tier: s.tier, scenario: s.name, ratio: round2(m.ratio), weakKept: round2(m.weakKept), strongLost: round2(m.strongLost), rounds: round2(m.rounds) };
     }))));
-  const file = resolve(fileURLToPath(new URL('../', import.meta.url)), 'docs/evidence/combat-v3-calibration-2026-10-25.json');
+  const file = EVIDENCE;
   writeFileSync(file, `${JSON.stringify({ generated: new Date().toISOString(), fitSeeds: fitSeeds.length, holdoutSeeds: holdout.length,
     tempo: COMBAT.tempo, rounds: COMBAT.rounds, handicap,
     table: rows.flatMap((row, i) => row.tiers.map((f, tier) => ({ tier, ratio: COMBAT.retreatRatios[i], exponent: row.exponent,
       target: keptTarget(tier, COMBAT.retreatRatios[i]!), strongLossFloor: strongLossFloor(COMBAT.retreatRatios[i]!) ?? null,
       threshold: f.threshold, chance: f.chance, kept: round2(f.kept), spread: round2(f.spread), strongLost: round2(f.strongLost),
-      strongLostMin: round2(f.strongLostMin), rounds: round2(f.rounds) }))),
+      strongLostMin: round2(f.strongLostMin), worstTrade: round2(f.worstTrade), rounds: round2(f.rounds) }))),
     validation }, null, 2)}\n`);
   console.log(`\nhandicap.exponents: [${exponents.map(e => e.toFixed(2)).join(', ')}]`);
   console.log(`retreatWindows: [\n${windows.map(tier => `  [${tier.map(w => `{ threshold: ${w.threshold.toFixed(2)}, chance: ${w.chance.toFixed(2)} }`).join(', ')}],`).join('\n')}\n]`);

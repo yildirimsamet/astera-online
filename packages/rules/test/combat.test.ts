@@ -764,17 +764,19 @@ describe('a side that fights at a penalty', () => {
       THE SPEC SAYS "DEALS LESS DAMAGE", NOT "IS EASIER TO KILL". A level 4 pirate
       flies a Cataclysm and has to stay genuinely dangerous to shoot at — its 448
       hit points are the reason a wrong fleet still loses to it. Since the modifier
-      touches `atk` alone, cutting the defender's output must leave what the
-      attacker destroys bit-for-bit unchanged.
+      touches `atk` alone, cutting the defender's output must leave the hull and
+      shield every one of its ships enters with bit-for-bit unchanged. What the
+      attacker then destroys may move: combat v3's shared tempo reads the softer
+      fire into the matchup, and that scale is the battle's, not the side's.
     */
-    const full = resolveCombat(attackers, defenders, 0, flat(), NO_TECH);
-    const half = resolveCombat(attackers, defenders, 0, flat(), {
-      attacker: { tech: {} },
-      defender: { tech: {}, damageMult: 0.5 },
-    });
-    expect(half.defenderLosses).toEqual(full.defenderLosses);
-    expect(half.defenderSurvivors).toEqual(full.defenderSurvivors);
-    expect(half.grade).toBe(full.grade);
+    const entering = (damageMult: number) => {
+      const recording = createBattleRecording();
+      resolveBattle([{ contributionId: 'a', playerId: 'a', fleet: attackers, tech: { tech: {} } }],
+        [{ stackId: 'd', playerId: 'd', fleet: defenders, tech: { tech: {}, damageMult } }], 0, flat(), 'PLANET', false, recording);
+      return recording.ships.filter(ship => ship.side === 'DEFENCE').map(({ hull, hp, maxHp, shield }) => ({ hull, hp, maxHp, shield }));
+    };
+    expect(entering(0.5)).toEqual(entering(1));
+    expect(entering(1)).toHaveLength(6);
   });
 
   it('leaves a side that declares no penalty exactly where it was', () => {

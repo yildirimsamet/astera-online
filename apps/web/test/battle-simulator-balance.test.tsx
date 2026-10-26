@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { COMBAT } from '@astera/rules';
 import { BattleBalance } from '../src/battle-simulator/BattleBalance.js';
 import { DEFAULT_SCENARIO, scenarioSchema, simulateScenario } from '../src/battle-simulator/scenario.js';
 
@@ -31,6 +32,16 @@ describe('battle balance strip', () => {
     const noDefence = strip(fought({ defenders: [{ id: 'd', fleet: { ARGOSY: 3 } }] }));
     expect(noDefence).toHaveTextContent('Defender has no firepower');
     expect(noDefence).not.toHaveTextContent('∞');
+  });
+
+  /** Owner 2026-10-26: the handicap is told as the outmatched side's manoeuvre, never as a cut to the stronger side's fire. */
+  it('tells the stronger side’s reduced hits as the outmatched side’s manoeuvre', () => {
+    const run = fought({ attackers: [{ id: 'a', fleet: { CORSAIR: 16 } }], defenders: [{ id: 'd', fleet: { CORSAIR: 8 } }] });
+    const text = strip(run).textContent;
+    expect(text).toMatch(/Attacker hit effect \d+%/);
+    expect(text).toMatch(/manoeuvres/i);
+    expect(text).toContain(`${String(COMBAT.handicap.ratios.at(-1))}×`);
+    expect(text).not.toMatch(/fire ×|fire is reduced/i);
   });
 
   it('names an attacker with no firepower the same way', () => {

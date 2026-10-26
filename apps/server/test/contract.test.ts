@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { COMMUNITY_POLICY_VERSION } from '@astera/rules';
+import { COMBAT, COMMUNITY_POLICY_VERSION } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -1535,12 +1535,13 @@ describe('every payload the client parses', () => {
     expect(thread?.id).toBe(launch.missionId);
   });
 
-  it('GET /api/reports preserves all six monument rounds without leaking owner telemetry', async () => {
+  it('GET /api/reports preserves every monument round without leaking owner telemetry', async () => {
     const now = f.clock.now();
     const [monument] = await f.db.insert(monuments).values({ seasonId: f.seasonId, ordinal: 1,
       x: 6000, y: 0, z: 0, capacity: 7270, productionPerMinute: 0, garrison: {}, garrisonTemplate: {},
       controllerPlayerId: f.playerIds[1]!, settledAt: now }).returning();
-    const ids = [randomUUID(), randomUUID()];
+    // A pinned attacker id freezes the dice: combat v3 lets an even fight end before the last round.
+    const ids = ['00000000-0000-4000-8000-000000000021', randomUUID()];
     for (const owner of [0, 1]) {
       const [home] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[owner]!));
       const id = ids[owner]!;
@@ -1556,8 +1557,9 @@ describe('every payload the client parses', () => {
     const parsed = reportsSchema.parse(await get('/api/reports?limit=20'));
     const report = parsed.reports.find(report => report.kind === 'MONUMENT');
     if (report?.kind !== 'MONUMENT') throw new Error('missing monument report');
-    expect(report.roundCount).toBe(6);
-    expect(report.rounds).toHaveLength(6);
+    expect(report.roundCount).toBeGreaterThan(0);
+    expect(report.roundCount).toBeLessThanOrEqual(COMBAT.rounds);
+    expect(report.rounds).toHaveLength(report.roundCount);
     expect(report.rounds?.every(round => round.distributedFire)).toBe(true);
     for (const round of report.rounds ?? []) {
       expect(round).not.toHaveProperty('retreats');

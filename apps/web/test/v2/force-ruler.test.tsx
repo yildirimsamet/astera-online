@@ -173,7 +173,7 @@ describe('the rule, one tap deep', () => {
     expect(rows[0]).toHaveTextContent('10–25%');
     expect(rows[5]).toHaveTextContent('1:2');
     expect(rows[5]).toHaveTextContent('50%');
-    expect(rows[5]).toHaveTextContent('30%');
+    expect(rows[5]).toHaveTextContent('13%');
     expect(rule).toHaveTextContent(/5 fighting ships/i);
     expect(rule).not.toHaveTextContent('{{');
   });

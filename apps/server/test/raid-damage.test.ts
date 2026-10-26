@@ -19,10 +19,11 @@ import { fuelUp, giveResearch, giveUnits, levelWorld, seedWorld, setLevel, settl
  * are written on the report and told in the bell.
  *
  * Damage persists for every surviving ship, including retreats. Random target fire
- * can leave several distinct lots. The return fixture uses matching Citadels with
- * Armor V / Shields IV to preserve both sides over six rounds. The light-wound
- * fixture starts a Stronghold at 10% damage: its shield stops a lone Dart, and
- * combat must not heal its existing wound or send it to the workshop.
+ * can leave several distinct lots. Combat v3 can wipe one side of an even fight out,
+ * so the return fixture sends six Armor V / Shields IV Citadels against twelve: both
+ * sides came out wounded in every sampled raid. The light-wound fixture starts a
+ * Citadel at 10% damage against a lone Dart that cannot break through: combat must
+ * not heal its existing wound or send it to the workshop.
  */
 
 const silent = pino({ level: 'silent' });
@@ -85,19 +86,19 @@ describe('persistent damage on a raid', () => {
   });
 
   it('keeps defender and returning raider wounds at home without automatic docking', async () => {
-    await giveUnits(f.db, target, { CITADEL: 2 });
+    await giveUnits(f.db, target, { CITADEL: 12 });
     for (const planetId of [raider, target]) {
       await giveResearch(f.db, planetId, 'SHIP_ARMOR', 5);
       await giveResearch(f.db, planetId, 'SHIP_SHIELDS', 4);
     }
     await giveResearch(f.db, target, 'SHIP_POWER', 2);
     await giveResearch(f.db, raider, 'SHIP_POWER', 1);
-    const { report, back } = await raid({ CITADEL: 2 });
+    const { report, back } = await raid({ CITADEL: 6 });
 
     // The defender: judged on the spot.
     expect(report.defenderDamage.length).toBeGreaterThan(0);
     expect(report.defenderDamage.every(lot => lot.hull === 'CITADEL' && lot.damageBp > 0)).toBe(true);
-    expect((await home(target)).CITADEL ?? 0).toBe(2 - (report.defenderLosses.CITADEL ?? 0));
+    expect((await home(target)).CITADEL ?? 0).toBe(12 - (report.defenderLosses.CITADEL ?? 0));
     expect((await readHomeHealth(f.db, target)).damage).toEqual(report.defenderDamage);
     expect(await dockLotsOf(f.db, target)).toEqual([]);
     expect(await payloadOf(f.playerIds[1]!, 'raided')).not.toHaveProperty('docked');
@@ -129,18 +130,19 @@ describe('persistent damage on a raid', () => {
 
   it('keeps a lightly wounded defender damaged until paid repair', async () => {
     await f.db.transaction(tx => landHpShips(tx, { planetId: target, ownerPlayerId: f.playerIds[1]!,
-      fleet: { STRONGHOLD: 1 }, damage: [{ hull: 'STRONGHOLD', count: 1, damageBp: 1000 }], at: f.clock.now() }));
-    await giveResearch(f.db, raider, 'SHIP_POWER', 3);
+      fleet: { CITADEL: 1 }, damage: [{ hull: 'CITADEL', count: 1, damageBp: 1000 }], at: f.clock.now() }));
     for (const planetId of [raider, target]) {
       await giveResearch(f.db, planetId, 'SHIP_ARMOR', 5);
       await giveResearch(f.db, planetId, 'SHIP_SHIELDS', 4);
     }
+    // A lone Dart falls to a Citadel in the first round without breaking through (512 of 512
+    // seeds under combat v3), so the wound must come out exactly as it went in.
     const { report } = await raid({ DART: 1 });
 
     expect(report.defenderDamage).toHaveLength(1);
-    expect(report.defenderDamage[0]).toMatchObject({ hull: 'STRONGHOLD', count: 1, damageBp: 1000 });
+    expect(report.defenderDamage[0]).toMatchObject({ hull: 'CITADEL', count: 1, damageBp: 1000 });
     expect(needsDock(report.defenderDamage[0]!.damageBp)).toBe(false);
-    expect((await home(target)).STRONGHOLD).toBe(1);
+    expect((await home(target)).CITADEL).toBe(1);
     expect(await dockLotsOf(f.db, target)).toEqual([]);
     const raided = await payloadOf(f.playerIds[1]!, 'raided');
     expect((await readHomeHealth(f.db, target)).damage).toEqual(report.defenderDamage);
@@ -150,16 +152,17 @@ describe('persistent damage on a raid', () => {
 
   it('leaves a season dealt before the rule exactly as it was', async () => {
     await ruleset(13);
-    await giveUnits(f.db, target, { CITADEL: 2 });
+    // The same six-against-twelve as the return fixture, so the raider always has a leg home.
+    await giveUnits(f.db, target, { CITADEL: 12 });
     for (const planetId of [raider, target]) {
       await giveResearch(f.db, planetId, 'SHIP_ARMOR', 5);
       await giveResearch(f.db, planetId, 'SHIP_SHIELDS', 4);
     }
-    const { report, back } = await raid({ CITADEL: 2 });
+    const { report, back } = await raid({ CITADEL: 6 });
 
     expect(report.defenderDamage).toEqual([]);
     expect(report.attackerDamage).toEqual([]);
-    expect((await home(target)).CITADEL ?? 0).toBe(2 - (report.defenderLosses.CITADEL ?? 0));
+    expect((await home(target)).CITADEL ?? 0).toBe(12 - (report.defenderLosses.CITADEL ?? 0));
     expect(await dockLotsOf(f.db, target)).toEqual([]);
     expect(back?.damage ?? null).toBeNull();
     expect(await payloadOf(f.playerIds[1]!, 'raided')).not.toHaveProperty('docked');

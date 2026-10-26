@@ -36,10 +36,11 @@ describe('target selection explanation follows the recorded battle rule', () => 
     expect(screen.getByText(/across all eligible living targets/i)).toBeInTheDocument();
     expect(screen.queryByText(/up to 10/i)).not.toBeInTheDocument();
   });
-  /** Combat v3 (owner 2026-10-25): one target per shot, class priority, the kill's excess carried on. */
-  it('explains one target per shot, the class order, the carried excess and break-up on v3 reports', () => {
+  /** Combat v3: one target per shot, any armed ship at random (owner 2026-10-26), the kill's excess carried on. */
+  it('explains one random target per shot, the class matchup, the carried excess and break-up on v3 reports', () => {
     render(<DistributedFireRules targetLimit={COMBAT.targetsPerShot} />);
-    const rule = screen.getByText(/one living target/i);
+    const rule = screen.getByText(/one living armed target chosen at random/i);
+    expect(rule).not.toHaveTextContent(/first a class|priority/i);
     expect(rule).toHaveTextContent(/class/i);
     expect(rule).toHaveTextContent(/excess/i);
     expect(rule).toHaveTextContent(percent(COMBAT.criticalBelow));
@@ -47,7 +48,7 @@ describe('target selection explanation follows the recorded battle rule', () => 
   });
   it('teaches the current rule in public monument rules', () => {
     render(<MonumentBattleRules />);
-    expect(screen.getByText(/one living target/i)).toHaveTextContent(/class/i);
+    expect(screen.getByText(/one living armed target chosen at random/i)).toHaveTextContent(/class/i);
     expect(screen.queryByText(/up to 1 /i)).not.toBeInTheDocument();
   });
   it('states the one-target rule in every language', async () => {

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MOBILE_HULLS, battleRetreated, fleetCount, fleetEntries, type Fleet } from '@astera/rules';
+import { COMBAT, MOBILE_HULLS, battleRetreated, fleetCount, fleetEntries, type Fleet } from '@astera/rules';
 import { clanMemberships, clans, monumentBattles, monumentBattleParticipants, monuments, monumentShipLots, monumentWaves, notifications, planets, seasons, units } from '../src/db/schema.js';
 import { resolveMonumentArrival } from '../src/services/monumentArrival.js';
 import { readBattleReports } from '../src/services/reports.js';
@@ -95,7 +95,7 @@ describe('monument participant reports and result delivery', () => {
       expect(report).toHaveProperty('rounds');
       expect(report.rounds).toHaveLength(battle!.rounds.length);
       for (const round of report.rounds ?? []) {
-        expect(round).toHaveProperty('targetLimit', 10);
+        expect(round).toHaveProperty('targetLimit', COMBAT.targetsPerShot);
         expect(round).not.toHaveProperty('casualties');
         expect(round).not.toHaveProperty('retreats');
         expect(round).not.toHaveProperty('playerId');

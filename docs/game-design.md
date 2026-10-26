@@ -331,13 +331,13 @@ their shields with a ship under fire. Ground emplacements have no personal shiel
 Radiation bypasses personal shields and reduces hull HP directly. Personal shield
 absorption earns no hull-damage Dominion contribution and causes no repair bill.
 
-Each eligible armed unit selects at most ten different living targets. Higher class
-damage multipliers have priority (1.6, then 1, then 0.625); selection within a priority
-is random without replacement. Damage is split with new positive random weights.
-Combat units are targeted before all
-SUPPORT hulls, including cargo and collectors. Excess from a destroyed target returns to
-base damage before redistribution, so counters apply exactly once per target. The same
-shot can reach cargo after the last armed target dies if distinct-target slots remain.
+Combat v3 (owner 2026-10-25/26): each eligible armed unit puts its whole shot on ONE
+living target, any armed ship alike, hit with that ship's class multiplier (1.6, 1 or
+0.625). Strict counter-first targeting was removed on 2026-10-26: it let a smaller mixed
+line out-trade a larger one. Combat units are targeted before all SUPPORT hulls,
+including cargo and collectors. Excess from a destroyed target returns to base damage
+and moves to the next target chosen the same way, so counters apply exactly once per
+target; the shot that kills the last armed target may reach cargo.
 Overflow stays among selected living targets; after ten distinct targets die it remains
 unused, never spilling to an eleventh target. Firing rights are simultaneous and
 frozen at round entry. Hull damage credits count actual damage delivered, not recycled excess.

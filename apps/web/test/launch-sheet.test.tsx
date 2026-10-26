@@ -57,10 +57,10 @@ describe('pirate profit updates with the committed fleet', () => {
     for (const hull of ['Cataclysm', 'Corsair', 'Citadel', 'Paladin']) {
       await user.click(screen.getByRole('button', { name: `Max ${hull}` }));
     }
-    // The panel follows the current engine for the wing now picked. Combat v3 (2026-10-25):
-    // its pace lets even a 5× crew hit back for a few rounds, so this small hoard no longer
-    // pays for the repairs — the card must say so rather than keep the old verdict.
-    expect(await screen.findByText('Profit is uncertain')).toBeVisible();
+    // The panel follows the current engine for the wing now picked. Since the strong-loss
+    // table was redrawn (owner 2026-10-26) a far stronger wing pays little in repairs, so the
+    // hoard covers them — the card must say so rather than keep the old verdict.
+    expect(await screen.findByText('Likely profitable')).toBeVisible();
     expect(screen.queryByText(/likely to lose resources/i)).toBeNull();
     expect(document.querySelector('[data-profit-net="deuterium"]')).not.toHaveTextContent('−');
   });

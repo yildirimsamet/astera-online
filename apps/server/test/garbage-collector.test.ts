@@ -155,7 +155,9 @@ describe('a Garbage Collector in a raid on a commander', () => {
   };
 
   it('lifts its share of the wreck in the wreck’s proportions, and leaves the rest in orbit', async () => {
-    const { report, ret } = await fight({ DART: 400, GARBAGE_COLLECTOR: 1 });
+    // Combat v3 lets the outmatched side save most of its line (owner K8): at 400 against 150 the
+    // garrison retreats with about 60%, so a closer 400 against 250 makes the wreck outgrow one hold.
+    const { report, ret } = await fight({ DART: 400, GARBAGE_COLLECTOR: 1 }, { DART: 250 });
 
     // It flew behind the line, so it is still there to collect.
     expect(report.attackerLosses.GARBAGE_COLLECTOR).toBeUndefined();

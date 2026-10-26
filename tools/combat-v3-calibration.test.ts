@@ -1,15 +1,16 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { COMBAT } from '../packages/rules/src/constants.js';
 import { fleetCount } from '../packages/rules/src/hulls.js';
 import { matchup, powerUnits } from '../packages/rules/src/matchupPower.js';
-import { SCENARIOS, STRONG_LOSS_MIN, keptTarget, measure, ratioOf, strongAt, strongLossFloor, tierOf, withExponent, withWindows } from './combat-v3-calibration.js';
+import { EVIDENCE, SCENARIOS, STRONG_LOSS_MIN, keptTarget, measure, ratioOf, strongAt, strongLossFloor, strongOverWeak, tierOf, withExponent, withWindows } from './combat-v3-calibration.js';
 
 describe('combat v3 calibration targets (owner 2026-10-25)', () => {
   it('keeps the owner’s table: 1:1 by tier, then the weak share by ratio, never below the tier’s even share (K6)', () => {
     expect([0, 1, 2, 3].map(tier => keptTarget(tier, 1))).toEqual([.10, .15, .20, .25]);
     expect([0, 1, 2, 3].map(tier => keptTarget(tier, 1.2))).toEqual([.20, .20, .20, .25]);
     expect([1.4, 1.6, 1.8, 2, 2.5, 3].map(ratio => keptTarget(0, ratio))).toEqual([.25, .30, .40, .50, .60, .70]);
-    expect(STRONG_LOSS_MIN).toEqual({ 1.2: .80, 1.4: .65, 1.6: .50, 1.8: .40, 2: .30 });
+    expect(STRONG_LOSS_MIN).toEqual({ 1.2: .54, 1.4: .39, 1.6: .30, 1.8: .22, 2: .13 });
   });
 
   it('carries the stronger side’s falling loss on past 1:2 instead of dropping off a cliff', () => {
@@ -78,5 +79,43 @@ describe('measurement', () => {
     const shut = withWindows(COMBAT.retreatWindows.map(row => row.map(() => ({ threshold: .01, chance: .01 }))), () => measure(s, strong, seeds));
     const open = withWindows(COMBAT.retreatWindows.map(row => row.map(() => ({ threshold: 1, chance: .8 }))), () => measure(s, strong, seeds));
     expect(open.weakKept).toBeGreaterThan(shut.weakKept);
+  });
+});
+
+describe('the shipped calibration (owner 2026-10-26)', () => {
+  interface Row { tier: number; ratio: number; threshold: number; chance: number }
+  interface Check { scenario: string; ratio: number; weakKept: number; strongLost: number }
+  const read = () => JSON.parse(readFileSync(EVIDENCE, 'utf8')) as { handicap: typeof COMBAT.handicap; table: Row[]; validation: Check[] };
+
+  it('is the table the engine ships', () => {
+    const evidence = read();
+    expect(evidence.handicap).toEqual({ ratios: [...COMBAT.handicap.ratios], exponents: [...COMBAT.handicap.exponents] });
+    for (const row of evidence.table) {
+      expect(COMBAT.retreatWindows[row.tier]![COMBAT.retreatRatios.indexOf(row.ratio)], `T${String(row.tier)} 1:${String(row.ratio)}`)
+        .toEqual({ threshold: row.threshold, chance: row.chance });
+    }
+  });
+
+  it('measures the stronger side’s loss against the weaker one’s, in the weaker fleet’s units', () => {
+    expect(strongOverWeak({ ratio: 2, weakKept: .5, strongLost: .25 })).toBeCloseTo(1, 10);
+    expect(strongOverWeak({ ratio: 3, weakKept: .7, strongLost: .05 })).toBeCloseTo(.5, 10);
+    expect(strongOverWeak({ ratio: 2, weakKept: 1, strongLost: 0 })).toBe(0);
+  });
+
+  it('never lets the weaker side out-trade the stronger one, in any scenario, at any gap from 1:1.2', () => {
+    const checked = read().validation.filter(v => v.ratio >= 1.2);
+    expect(checked.length).toBeGreaterThan(200);
+    for (const v of checked) expect(strongOverWeak(v), `${v.scenario} at 1:${String(v.ratio)}`).toBeLessThanOrEqual(1);
+  });
+
+  it('shows the player what was measured: the table is the held-out average within a few points', () => {
+    const anchors = COMBAT.outcomeTargets.ratios;
+    anchors.forEach((ratio, i) => {
+      const near = read().validation.filter(v => Math.abs(v.ratio - ratio) < .05);
+      const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+      expect(near.length, `1:${String(ratio)}`).toBeGreaterThanOrEqual(25);
+      expect(Math.abs(mean(near.map(v => v.strongLost)) - COMBAT.outcomeTargets.strongLost[i]!), `strong 1:${String(ratio)}`).toBeLessThanOrEqual(.03);
+      expect(Math.abs(mean(near.map(v => v.weakKept)) - COMBAT.outcomeTargets.weakKept[i]!), `weak 1:${String(ratio)}`).toBeLessThanOrEqual(.04);
+    });
   });
 });

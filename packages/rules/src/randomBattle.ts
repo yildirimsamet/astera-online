@@ -65,23 +65,12 @@ function shuffle(items: VolleyShip[], rng: Rng): void {
 }
 
 const TARGET_CLASSES: readonly HullClass[] = ['SKIRMISHER', 'BULWARK', 'LANCE'];
-const preferences = new Map<HullClass, readonly HullClass[]>();
-/** The order a shooter takes classes in: the one it counters, neutral, the one that counters it. */
-function preferenceOf(cls: HullClass): readonly HullClass[] {
-  let order = preferences.get(cls);
-  if (!order) {
-    order = [...TARGET_CLASSES].sort((x, y) => counterMult(cls, y) - counterMult(cls, x));
-    preferences.set(cls, order);
-  }
-  return order;
-}
 
 /**
  * Predict a volley without changing either population's round-entry firing rights.
- * Combat v3: each shooter puts its whole shot on ONE target — the class it counters
- * first, then neutral, then the class that counters it, uniformly at random within a
- * class. A kill carries the overflow, back at base value, to the next target chosen by
- * the same rule. SUPPORT stays covered until every armed target is dead; the overflow
+ * Combat v3: each shooter puts its whole shot on ONE target — any armed ship alike,
+ * hit with the counter multiplier of its class. A kill carries the overflow, back at base
+ * value, to the next target chosen by the same rule. SUPPORT stays covered until every armed target is dead; the overflow
  * of the shot that kills the last one may reach it. `roll` already carries the side's
  * battle-wide damage scale.
  */
@@ -135,22 +124,32 @@ export function resolveVolley(from: readonly VolleyShip[], to: readonly VolleySh
     if (last !== index) { pool[slot[index]!] = last; slot[last] = slot[index]!; }
     if (cls !== 'SUPPORT') armed--;
   };
-  const pick = (order: readonly HullClass[]): number => {
-    const pool = armed > 0 ? order.map(cls => pools.get(cls)!).find(list => list.length > 0)! : cargo;
-    return pool.length === 0 ? -1 : pool[Math.floor(rng() * pool.length)]!;
+  // Any armed ship alike, whatever its class (owner 2026-10-26): counter-first targeting let a
+  // smaller mixed line keep hitting its favourite class in a larger one long after the larger
+  // line had run out of its own, so the smaller side out-traded the stronger.
+  const pick = (): number => {
+    if (armed > 0) {
+      let k = Math.floor(rng() * armed);
+      for (const cls of TARGET_CLASSES) {
+        const pool = pools.get(cls)!;
+        if (k < pool.length) return pool[k]!;
+        k -= pool.length;
+      }
+    }
+    return cargo.length === 0 ? -1 : cargo[Math.floor(rng() * cargo.length)]!;
   };
   shuffle(shooters, rng);
   let incoming = 0, personal = 0, hullDamage = 0, normalAbsorbed = 0;
   const credited = Array.from({ length: owners }, () => 0);
   for (const ship of shooters) {
     if (armed === 0 && cargo.length === 0) break;
-    const cls = HULLS[ship.hull].cls, order = preferenceOf(cls);
+    const cls = HULLS[ship.hull].cls;
     let budget = ship.attack * roll;
     const shot: RecordedShot | undefined = recording && !recording.budget?.exceeded ? { sourceId: recording.fromIds[from.indexOf(ship)]!,
       order: recording.shots.length + 1, baseDamage: budget, unusedBaseDamage: 0, hits: [] } : undefined;
     let pass = 0;
     while (budget > 0) {
-      const index = pick(order);
+      const index = pick();
       if (index < 0) break;
       const multiplier = counterMult(cls, HULLS[to[index]!.hull].cls);
       let damage = budget * multiplier;

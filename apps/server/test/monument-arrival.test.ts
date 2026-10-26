@@ -227,8 +227,9 @@ describe('chronological monument arrivals and physical battle settlement', () =>
 
   it('handles racing duplicate arrivals without duplicating a cargo retreat', async () => {
     await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!, productionPerMinute: 0 }).where(eq(monuments.id, m.id));
-    // Combat v3: a lone Courier never outlives a Dart's fire, so an Argosy shares it; the pinned
-    // seed keeps the Courier alive. The test isolates duplicate settlement, not cargo survival odds.
+    // Combat v3: a lone Courier breaks apart under a Dart by round three even with Armor/Shields IV,
+    // so an Argosy shares the fire and the pinned seed keeps the Courier alive. The test isolates
+    // duplicate settlement, not cargo survival odds.
     const tech = { SHIP_ARMOR: 4, SHIP_SHIELDS: 4 };
     const id = Array.from({ length: 128 }, (_, i) => `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`).find(id => {
       const r = resolveMonumentCombat([{ contributionId: 'a', playerId: 'a', fleet: { DART: 1 }, tech: { tech: {} } }],
@@ -570,11 +571,12 @@ it('persists every round, exact wounds and owner-only round reports on a shielde
   await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!, productionPerMinute: 0 }).where(eq(monuments.id, m.id));
   const tech = { SHIP_SHIELDS: 4 };
   const defender = await wave(1, { CITADEL: 20 }, { hold: true, tech });
-  // A pinned seed: in an even fight a side may retreat unhurt, and this test needs both sides wounded.
+  // A pinned seed: combat v3 can wipe one side of an even fight out, leaving it no wounds to report;
+  // this test needs both sides alive and wounded.
   const attacker = await wave(0, { CITADEL: 20 }, { tech, id: '00000000-0000-4000-8000-000000000021' });
   await arrive(attacker);
   const [battle] = await f.db.select().from(monumentBattles);
-  // Combat v3: an even fight may end early when a side retreats; every round fought is kept.
+  // Combat v3: an even fight may end before the last round; every round fought is kept.
   const fought = battle!.rounds.length;
   expect(fought).toBeGreaterThan(0);
   expect(fought).toBeLessThanOrEqual(COMBAT.rounds);

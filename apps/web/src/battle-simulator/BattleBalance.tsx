@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { HULLS, type BattleShipSnapshot, type BattleSide, type CombatBalance, type RetreatWindow } from '@astera/rules';
+import { COMBAT, HULLS, type BattleShipSnapshot, type BattleSide, type CombatBalance, type RetreatWindow } from '@astera/rules';
 import { compact } from '../lib/format.js';
 
 /** One line: who is stronger and by how much — the strip's summary, and the replay tabs' hint. */
@@ -35,12 +35,14 @@ export function BattleBalance({ balance, ships }: { balance: CombatBalance; ship
   return <section className="sim-balance" aria-label={t('simulator.balanceHeading')}>
     <details><summary><strong>{t('simulator.balanceHeading')}</strong><span>{verdict}</span></summary>
       <div className="sim-balance-body">
-        <p>{t('simulator.balanceTempo', { value: two(balance.tempo) })}{balance.handicap !== 1 && <> · {t('simulator.balanceHandicap', { value: two(balance.handicap) })}</>}</p>
+        {/* The handicap is told as the outmatched side's manoeuvre (owner 2026-10-26). */}
+        <p>{t('simulator.balanceTempo', { value: two(balance.tempo) })}{balance.handicap !== 1 && <> · {t('simulator.balanceHandicap', {
+          side: t(attackerPower > defenderPower ? 'simulator.attacker' : 'simulator.defender'), value: percent(balance.handicap) })}</>}</p>
         <dl>
           {([['ATTACK', 'simulator.attacker', attackerPower, balance.attackerRetreat], ['DEFENCE', 'simulator.defender', defenderPower, balance.defenderRetreat]] as const)
             .map(([side, label, power, window]) => <div key={side}><dt>{t(label)}</dt><dd className="sim-balance-power">{compact(power)}</dd><dd>{retreat(side, window)}</dd></div>)}
         </dl>
-        <p className="sim-balance-rule">{t('simulator.balanceRule')}</p>
+        <p className="sim-balance-rule">{t('simulator.balanceRule', { full: COMBAT.handicap.ratios.at(-1) })}</p>
       </div>
     </details>
   </section>;

@@ -70,10 +70,10 @@ describe('the loss a habit pays, as a ratio', () => {
     const table = combatOutcomeTable();
     expect(ratioForLoss(1)).toBe(1);
     expect(ratioForLoss(table.find((row) => row.ratio === 2)!.strongLoses.high)).toBeCloseTo(2, 9);
-    expect(ratioForLoss(0.2)).toBeGreaterThan(2);
-    expect(ratioForLoss(0.2)).toBeLessThan(2.5);
-    expect(ratioForLoss(0.45)).toBeGreaterThan(1.6);
-    expect(ratioForLoss(0.45)).toBeLessThan(1.8);
+    expect(ratioForLoss(0.2)).toBeGreaterThan(1.8);
+    expect(ratioForLoss(0.2)).toBeLessThan(2);
+    expect(ratioForLoss(0.45)).toBeGreaterThan(1.2);
+    expect(ratioForLoss(0.45)).toBeLessThan(1.4);
     expect(ratioForLoss(0)).toBe(Infinity);
   });
 

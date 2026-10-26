@@ -49,14 +49,19 @@ describe('one shared pirate reward ledger', () => {
   }
 
   it('records a real partial payment, then limits the finishing raid to the original total budget', async () => {
-    const first = '00000000-0000-4000-8000-000000009001';
-    const partial = Array.from({ length: 20 }, (_, index): Fleet => ({ CORSAIR: index + 1, ARGOSY: 2 }))
-      .find(fleet => {
+    // Combat v3 makes the grade of a close fight a draw of the dice, so the fixture searches raid ids
+    // as well as wing sizes for one partial fight the wing survives.
+    let first = '', partial: Fleet | undefined;
+    search: for (let attempt = 0; attempt < 20; attempt++) {
+      const id = `00000000-0000-4000-8000-${String(9001 + attempt * 100).padStart(12, '0')}`;
+      for (let size = 1; size <= 20; size++) {
+        const fleet: Fleet = { CORSAIR: size, ARGOSY: 2 };
         const result = pirateOverrun(resolveBattle([soloStack(fleet, { tech })],
           [{ stackId: 'pirate', playerId: '', fleet: target.roster, tech: { tech: {}, damageMult: pirateStats(4).damageMult } }],
-          0, seededFrom(first), 'HP_PLANET'));
-        return result.grade === 'PARTIAL' && fleetCount(result.attackerSurvivors) > 0;
-      });
+          0, seededFrom(id), 'HP_PLANET'));
+        if (result.grade === 'PARTIAL' && fleetCount(result.attackerSurvivors) > 0) { first = id; partial = fleet; break search; }
+      }
+    }
     expect(partial, 'fixture must produce a partial fight').toBeDefined();
     await arrangedRaid(first, partial!);
     await f.db.transaction(tx => resolvePirateArrival(tx, first, f.clock));
