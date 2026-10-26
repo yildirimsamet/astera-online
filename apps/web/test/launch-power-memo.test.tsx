@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { forecastLines } from '@astera/rules';
+import { readPowerRange } from '@astera/rules';
 import type * as Rules from '@astera/rules';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
@@ -14,17 +14,16 @@ import { planetView } from './fixtures.js';
 
 vi.mock('@astera/rules', async (importOriginal) => {
   const actual = await importOriginal<typeof Rules>();
-  return { ...actual, forecastLines: vi.fn(actual.forecastLines) };
+  return { ...actual, readPowerRange: vi.fn(actual.readPowerRange) };
 });
 
 /**
- * A FEW DOZEN BATTLES PER READING, SO THEY RUN ONCE PER READING. D199.
+ * ONE POWER READING PER WING AND READING. D199, kept for combat v3.
  *
- * Found on the phone harness: the force box never settled, because the forecast was
- * recomputed on every render — `flightModifiers(planet)` builds a fresh research
- * object each call and the parent hands the sheet a fresh `target` literal each
- * render, so the memo's inputs never compared equal. A render that changes nothing
- * the forecast reads must not pay for it again.
+ * Found on the phone harness: the force box was recomputed on every render —
+ * `flightModifiers(planet)` builds a fresh research object each call and the parent hands
+ * the sheet a fresh `target` literal each render, so the memo's inputs never compared equal.
+ * A render that changes nothing the reading reads must not pay for it again.
  */
 const world: GalaxyPlanet = {
   id: 'p2',
@@ -40,7 +39,7 @@ const world: GalaxyPlanet = {
   isSelf: false,
 };
 
-/** The lines are what a probe buys, so the sheet is opened on one. */
+/** The ratio is what a probe buys, so the sheet is opened on one. */
 const intel = intelSchema.parse({
   watching: [],
   radarLog: [],
@@ -74,13 +73,13 @@ const wrap = (node: ReactNode) => (
   </QueryClientProvider>
 );
 
-describe('the forecast on the launch sheet', () => {
-  it('passes the selected home wounds to the battle forecast', async () => {
+describe('the power reading on the launch sheet', () => {
+  it('weighs the selected ships with their wounds', async () => {
     const damage = [{ hull: 'TALON' as const, count: 20, damageBp: 9000, remainderBp: 0.25 }];
     render(wrap(<LaunchSheet target={{ kind: 'world', world }} planet={planetView({ fleet: { TALON: 20 }, fleetDamage: damage })}
       intel={intel} onClose={vi.fn()} onLaunched={vi.fn()} />));
     await userEvent.click(screen.getByRole('button', { name: 'More Talon' }));
-    expect(vi.mocked(forecastLines).mock.calls.at(-1)?.[1]).toMatchObject({ attackerDamage: [{ ...damage[0], count: 1 }] });
+    expect(vi.mocked(readPowerRange).mock.calls.at(-1)?.[0]).toMatchObject({ damage: [{ ...damage[0], count: 1 }] });
   });
   it('is not recomputed by a render that changes nothing it reads', async () => {
     const planet = planetView({ fleet: { TALON: 20 } });
@@ -98,13 +97,13 @@ describe('the forecast on the launch sheet', () => {
       await userEvent.click(band);
     }
     await userEvent.click(screen.getByRole('button', { name: /max talon/i }));
-    await screen.findByTestId('ruler-lines');
-    const settled = vi.mocked(forecastLines).mock.calls.length;
+    await screen.findByTestId('ruler-ratio');
+    const settled = vi.mocked(readPowerRange).mock.calls.length;
     expect(settled).toBeGreaterThan(0);
 
     view.rerender(wrap(sheet()));
     view.rerender(wrap(sheet()));
-    await screen.findByTestId('ruler-lines');
-    expect(vi.mocked(forecastLines).mock.calls.length).toBe(settled);
+    await screen.findByTestId('ruler-ratio');
+    expect(vi.mocked(readPowerRange).mock.calls.length).toBe(settled);
   });
 });

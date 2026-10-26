@@ -88,7 +88,7 @@ export const ratioOf = (s: Scenario, strong: Fleet): number => {
   return m.attacker.power / m.defender.power;
 };
 const scale = (fleet: Fleet, by: number): Fleet =>
-  Object.fromEntries(Object.entries(fleet).map(([hull, count]) => [hull, Math.round(count * by)]).filter(([, count]) => Number(count) > 0));
+  Object.fromEntries(Object.entries(fleet).map(([hull, count]): [string, number] => [hull, Math.round(count * by)]).filter(([, count]) => count > 0));
 
 /** The template scaled to the whole-hull fleet whose ratio over the weak side sits closest to `ratio`. */
 export function strongAt(s: Scenario, ratio: number): Fleet {
@@ -205,9 +205,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const rows = COMBAT.retreatRatios.map(ratio => {
     const fit = fitRatio(ratio, fitSeeds);
     console.log(`1:${String(ratio)} üs ${fit.exponent.toFixed(2)}`);
-    fit.tiers.forEach((f, tier) => console.log(`  T${String(tier)} gövde ≤%${pct(f.threshold)} şans %${pct(f.chance)}`
+    fit.tiers.forEach((f, tier) => { console.log(`  T${String(tier)} gövde ≤%${pct(f.threshold)} şans %${pct(f.chance)}`
       + ` · zayıf kalan %${pct(f.kept)} (hedef %${pct(keptTarget(tier, ratio))}, yayılım ${pct(f.spread)})`
-      + ` · güçlü kayıp %${pct(f.strongLost)} (en az %${pct(f.strongLostMin)}) · ${f.rounds.toFixed(1)} tur`));
+      + ` · güçlü kayıp %${pct(f.strongLost)} (en az %${pct(f.strongLostMin)}) · ${f.rounds.toFixed(1)} tur`); });
     return fit;
   });
   // An even fight is never filed down; its slot carries the 1:1.2 exponent so 1–1.2 reads flat.

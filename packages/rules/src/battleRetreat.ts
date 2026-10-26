@@ -43,7 +43,7 @@ export function retreatWindows(ratio: number, weakerPower: number): { weak: Retr
   let weak: RetreatWindow = { ...table.at(-1)! };
   for (let i = 1; i < anchors.length; i++) {
     if (ratio <= anchors[i]!) {
-      weak = lerp(table[i - 1]!, table[i]!, (Math.max(ratio, anchors[0]!) - anchors[i - 1]!) / (anchors[i]! - anchors[i - 1]!));
+      weak = lerp(table[i - 1]!, table[i]!, (Math.max(ratio, anchors[0]) - anchors[i - 1]!) / (anchors[i]! - anchors[i - 1]!));
       break;
     }
   }

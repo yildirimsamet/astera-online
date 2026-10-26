@@ -3,7 +3,7 @@ import { battleReplays } from '../src/db/schema.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MOBILE_HULLS, MONUMENT_CAPACITY, MULTI_WORLD, normalizeHpDamage, allocateMonumentDominion, fleetValue, hangarLoad, resolveMonumentCombat, seededFrom, fleetCount, type Fleet, type TechLevels } from '@astera/rules';
+import { COMBAT, MOBILE_HULLS, MONUMENT_CAPACITY, MULTI_WORLD, normalizeHpDamage, allocateMonumentDominion, fleetValue, hangarLoad, resolveMonumentCombat, seededFrom, fleetCount, type Fleet, type TechLevels } from '@astera/rules';
 import { clanMemberships, clans, hpRadiationSources, monumentBattles, monumentBattleParticipants, monuments, monumentShipLots, monumentWaves, notifications, planets, players, scheduledEvents, seasons, units } from '../src/db/schema.js';
 import { resolveMonumentArrival } from '../src/services/monumentArrival.js';
 import { lockMonument, settleMonument } from '../src/services/monument.js';
@@ -227,14 +227,21 @@ describe('chronological monument arrivals and physical battle settlement', () =>
 
   it('handles racing duplicate arrivals without duplicating a cargo retreat', async () => {
     await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!, productionPerMinute: 0 }).where(eq(monuments.id, m.id));
-    // Freeze battle randomness: the test isolates duplicate settlement, not cargo survival odds.
-    const defender = await wave(1, { COURIER: 1 }, { hold: true, cargo: 12.5, tech: { SHIP_ARMOR: 4, SHIP_SHIELDS: 4 } });
-    const attacker = await wave(0, { DART: 1 }, { id: '00000000-0000-4000-8000-000000000001' });
+    // Combat v3: a lone Courier never outlives a Dart's fire, so an Argosy shares it; the pinned
+    // seed keeps the Courier alive. The test isolates duplicate settlement, not cargo survival odds.
+    const tech = { SHIP_ARMOR: 4, SHIP_SHIELDS: 4 };
+    const id = Array.from({ length: 128 }, (_, i) => `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`).find(id => {
+      const r = resolveMonumentCombat([{ contributionId: 'a', playerId: 'a', fleet: { DART: 1 }, tech: { tech: {} } }],
+        [{ stackId: 'd', playerId: 'd', fleet: { COURIER: 1, ARGOSY: 1 }, tech: { tech } }], seededFrom('monument-battle', id), true);
+      return r.control === 'ATTACKER' && r.defenderSurvivors.COURIER === 1;
+    });
+    const defender = await wave(1, { COURIER: 1, ARGOSY: 1 }, { hold: true, cargo: 12.5, tech });
+    const attacker = await wave(0, { DART: 1 }, { id: id! });
     await Promise.all([arrive(attacker), arrive(attacker)]);
     expect(await f.db.select().from(monumentBattles)).toHaveLength(1);
     expect(await f.db.select().from(monumentWaves)).toHaveLength(2);
     expect((await f.db.select().from(monumentWaves).where(eq(monumentWaves.id, defender.id)))[0]).toMatchObject({ status: 'RETURNING', generation: 1 });
-    expect((await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, defender.id)))[0]).toMatchObject({ count: 1, deuterium: 12.5 });
+    expect((await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, defender.id))).find(lot => lot.hull === 'COURIER')).toMatchObject({ count: 1, deuterium: 12.5 });
     expect((await f.db.select().from(notifications)).filter(row => row.kind === 'monument_returning')).toHaveLength(1);
   });
 
@@ -526,10 +533,10 @@ describe('chronological monument arrivals and physical battle settlement', () =>
 
   it('carries neutral wounds between independent attacks and keeps the respawn template whole', async () => {
     await f.db.update(monuments).set({ garrison: { CITADEL: 1 }, garrisonTemplate: { CITADEL: 1 } }).where(eq(monuments.id, m.id));
-    // One initial shield per battle: 28 Darts penetrate it over three rounds,
-    // but two full attacks still leave this Citadel alive across the ±8% band.
-    const first = await wave(0, { DART: 8 });
-    const second = await wave(1, { DART: 8 }, { eta: 2 });
+    // Combat v3: below 70% hull every hit may break a ship apart, so both attacks stay small
+    // enough to leave the Citadel above that line; fixed ids freeze the battle dice.
+    const first = await wave(0, { DART: 6 }, { id: '00000000-0000-4000-8000-000000000011' });
+    const second = await wave(1, { DART: 6 }, { eta: 2, id: '00000000-0000-4000-8000-000000000012' });
     await arrive(first);
     const [before] = await f.db.select().from(monuments);
     expect(before!.garrisonDamage.length).toBeGreaterThan(0);
@@ -559,20 +566,23 @@ describe('chronological monument arrivals and physical battle settlement', () =>
 });
 
 
-it('persists all six rounds, exact wounds and owner-only round reports on a shielded mirror', async () => {
+it('persists every round, exact wounds and owner-only round reports on a shielded mirror', async () => {
   await f.db.update(monuments).set({ garrison: {}, controllerPlayerId: f.playerIds[1]!, productionPerMinute: 0 }).where(eq(monuments.id, m.id));
   const tech = { SHIP_SHIELDS: 4 };
   const defender = await wave(1, { CITADEL: 20 }, { hold: true, tech });
-  const attacker = await wave(0, { CITADEL: 20 }, { tech });
+  // A pinned seed: in an even fight a side may retreat unhurt, and this test needs both sides wounded.
+  const attacker = await wave(0, { CITADEL: 20 }, { tech, id: '00000000-0000-4000-8000-000000000021' });
   await arrive(attacker);
   const [battle] = await f.db.select().from(monumentBattles);
-  expect(battle!.rounds).toHaveLength(6);
-  expect(battle!.rounds[5]!.retreats).toEqual([]);
+  // Combat v3: an even fight may end early when a side retreats; every round fought is kept.
+  const fought = battle!.rounds.length;
+  expect(fought).toBeGreaterThan(0);
+  expect(fought).toBeLessThanOrEqual(COMBAT.rounds);
   for (const [owner, sent] of [[0, attacker], [1, defender]] as const) {
     const [report] = await f.db.transaction(tx => readMonumentBattleReports(tx, f.playerIds[owner]!, 10));
-    expect(report!.roundCount).toBe(6);
+    expect(report!.roundCount).toBe(fought);
     expect(report).toHaveProperty('rounds');
-    expect(report!.rounds).toHaveLength(6);
+    expect(report!.rounds).toHaveLength(fought);
     const lots = await f.db.select().from(monumentShipLots).where(eq(monumentShipLots.waveId, sent.id));
     expect(normalizeHpDamage(report!.yourSurvivors, lots.map(({ hull, count, damageBp, remainderBp }) => ({ hull, count, damageBp, remainderBp }))))
       .toEqual(normalizeHpDamage(report!.yourSurvivors, report!.yourDamage));

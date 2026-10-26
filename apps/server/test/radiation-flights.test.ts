@@ -166,21 +166,24 @@ describe('a wing coming home through a cloud', () => {
     await worker().tick();
     const [report] = await f.db.select().from(battleReports).where(eq(battleReports.missionId, launch.missionId));
     const [back] = await f.db.select().from(missions).where(eq(missions.parentMissionId, launch.missionId));
-    // Measured over 20,000 seeds with ship shields (2026-10-20): the Pikes always fall, every worn
-    // Dart comes out more than half damaged, and some come out whole.
+    // Measured over 20,000 seeds with ship shields (2026-10-20): the Pikes always fall and some
+    // Darts come out whole. Combat v3 breaks the badly hurt apart, so a worn Dart may come out
+    // lightly scratched: the cloud below is sized to finish the least-worn one, never a whole one.
     const worn = report!.attackerDamage.reduce((n, lot) => n + lot.count, 0);
+    const leastWorn = Math.min(...report!.attackerDamage.map(lot => lot.damageBp));
+    const dose = Math.min(99, Math.floor((10_000 - leastWorn) / 100) + 1);
     const whole = fleetCount(back!.fleet) - worn;
     expect(worn).toBeGreaterThan(0);
     expect(whole).toBeGreaterThan(0);
 
-    // Half a hull on the way home: the worn ones die; the others keep their wounds at home.
-    await cloud(50, minutesOf(back!), back!.departAt);
+    // Enough hull on the way home to finish every worn Dart; the others keep their wounds at home.
+    await cloud(dose, minutesOf(back!), back!.departAt);
     const storeBefore = (await f.db.select().from(planets).where(eq(planets.id, raider)))[0]!;
     f.clock.set(back!.arriveAt);
     await worker().tick();
 
     expect((await readHomeHealth(f.db, raider)).damage.map(({ hull, count, damageBp }) => ({ hull, count, damageBp })))
-      .toEqual([{ hull: 'DART', count: whole, damageBp: 5000 }]);
+      .toEqual([{ hull: 'DART', count: whole, damageBp: dose * 100 }]);
     expect(await dockLotsOf(f.db, raider)).toEqual([]);
     const [word] = await told(f.playerIds[0]!, 'radiation_lost');
     expect(word?.payload).toMatchObject({ lost: worn, left: whole });
