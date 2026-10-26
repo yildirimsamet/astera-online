@@ -19,14 +19,11 @@ import {
   missionFuel,
   academyLessonFleet,
   fleetCargo,
-  forecastLines,
-  forecastLoss,
-
+  exactPowerRange,
+  readPowerRange,
   shieldHp,
-  wallKnowledgeOf,
   type Fleet,
   type TechLevels,
-  type ForecastInput,
 } from '@astera/rules';
 import { hullLabel } from '../src/i18n/names.js';
 
@@ -60,11 +57,12 @@ describe('pirate profit updates with the committed fleet', () => {
     for (const hull of ['Cataclysm', 'Corsair', 'Citadel', 'Paladin']) {
       await user.click(screen.getByRole('button', { name: `Max ${hull}` }));
     }
-    // Personal shields now reduce repair losses; the panel must follow the current
-    // engine rather than promise the old negative result for this same wing.
-    expect(await screen.findByText('Likely profitable')).toBeVisible();
-    expect(document.querySelector('[data-profit-net="alloy"]')).not.toHaveTextContent('−');
-    expect(document.querySelector('[data-profit-net="deuterium"]')).not.toBeNull();
+    // The panel follows the current engine for the wing now picked. Combat v3 (2026-10-25):
+    // its pace lets even a 5× crew hit back for a few rounds, so this small hoard no longer
+    // pays for the repairs — the card must say so rather than keep the old verdict.
+    expect(await screen.findByText('Profit is uncertain')).toBeVisible();
+    expect(screen.queryByText(/likely to lose resources/i)).toBeNull();
+    expect(document.querySelector('[data-profit-net="deuterium"]')).not.toHaveTextContent('−');
   });
 
   it('keeps missing rolling-deploy reward metadata unknown', async () => {
@@ -448,6 +446,9 @@ describe('what the launch costs the world it leaves', () => {
     await user.click(screen.getByRole('button', { name: /more dart/i }));
     // Four at home, one packed: three hold — counted before the button; the price line says for how long.
     expect(document.querySelector('[data-launch-figures]')).toHaveTextContent(/3 units/);
+    // Combat v3: "power" is the ruler's matchup power alone; the garrison is priced as the probe prices a wall.
+    expect(document.querySelector('[data-launch-figures]')).toHaveTextContent(/armed unit value/i);
+    expect(document.querySelector('[data-launch-figures]')).not.toHaveTextContent(/power/i);
     expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/cannot defend Kestrel-12 until it returns.*Estimated time away:/i);
     expect(document.body.textContent).not.toMatch(/cannot be recalled/i);
   });
@@ -1078,15 +1079,13 @@ describe('the order a lesson lists ships in', () => {
 });
 
 /**
- * HOW MUCH OF A WALL THE WING TAKES, ON THE SHEET WHERE IT STOPS BEING RECALLABLE.
- * D199.
+ * HOW THE WING MEASURES UP, ON THE SHEET WHERE IT STOPS BEING RECALLABLE. Combat v3.
  *
- * The comparison put the wing and the wall on one axis and left the question it
- * exists for — is this fight my size — to be answered by losing it. The lines are
- * `forecastLines` fed with everything this commander already holds: their own
- * ships and research, and what the probe read of the wall — its shape, its shield,
- * its transports and its doctrine. Asserted against the rules function itself, so
- * the sheet can never quote a line the engine would not draw.
+ * Each side's matchup power and their ratio, from `readPowerRange` fed with everything this
+ * commander already holds: their own ships and research, and what the probe read of the
+ * wall — its value, its shape, its research and its Aegis. Asserted against the rules
+ * function itself, so the sheet can never quote a power the engine would not fight with.
+ * No loss forecast and no success line (owner K4): the rule is given, the answer withheld.
  */
 describe('how much of a wall the wing takes', () => {
   const read = (over: Partial<IntelView['probeReports'][number]> = {}): IntelView =>
@@ -1137,16 +1136,13 @@ describe('how much of a wall the wing takes', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: /max talon/i }));
   };
 
-  const inputFor = (intel: IntelView): ForecastInput => {
+  const powerFor = (intel: IntelView, aegis = intel.probeReports[0]!.shield ?? { low: 0, high: 0 }) => {
     const report = intel.probeReports[0]!;
-    return {
-      attackerTech: flightModifiers(holding).tech,
-      defenderTech: report.doctrines ?? {},
-      shield: report.shield ?? { low: 0, high: 0 },
-      unarmed: report.unarmed ?? { low: 0, high: 0 },
-      wall: wallKnowledgeOf(report.classReading),
-    };
+    // The fixture's empty doctrines: a probe that looked and found no research.
+    return readPowerRange({ fleet: { TALON: 20 }, tech: flightModifiers(holding).tech },
+      [{ value: report.defence, shape: report.classReading, research: {} }], aegis)!;
   };
+  const span = (s: { low: number; high: number }) => s.low === s.high ? compact(s.low) : `${compact(s.low)}–${compact(s.high)}`;
 
   /**
    * THE COUNTER CYCLE, AND THE LIMIT OF WHAT THE PROBE BOUGHT.
@@ -1224,55 +1220,45 @@ describe('how much of a wall the wing takes', () => {
     expect(document.querySelector('[data-matchup-wall]')!.textContent).not.toMatch(/%/);
   });
 
-  it('draws no lines before a ship is picked', () => {
+  it('weighs nothing before a ship is picked', () => {
     render(
       <LaunchSheet target={{ kind: 'world', world: target }} planet={holding} intel={read()}
         onClose={vi.fn()} onLaunched={vi.fn()} />,
       { wrapper },
     );
-    expect(screen.queryByTestId('ruler-lines')).toBeNull();
+    expect(screen.getByTestId('ruler-pick')).toBeInTheDocument();
+    expect(screen.queryByTestId('ruler-ratio')).toBeNull();
   });
 
-  it('draws the lines the battle engine gives this wing against the wall the probe read', async () => {
+  it('states both powers and their ratio as the rules read this wing against the wall', async () => {
     const intel = read();
     await open(intel);
-    const expected = forecastLines({ TALON: 20 }, inputFor(intel));
-    const said = await screen.findByTestId('ruler-lines');
-    expect(said).toHaveTextContent(compact(expected.clears.low));
-    expect(said).toHaveTextContent(compact(expected.breaks.low));
+    const expected = powerFor(intel);
+    expect(await screen.findByTestId('ruler-mine')).toHaveTextContent(span(expected.mine));
+    expect(screen.getByTestId('ruler-theirs')).toHaveTextContent(span(expected.theirs));
+    expect(screen.getByTestId('ruler-ratio')).toBeInTheDocument();
   });
 
-  it('states what the fight is expected to cost against the reading', async () => {
-    const intel = read();
-    await open(intel);
-    const expected = forecastLoss({ TALON: 20 }, { low: 4_000, high: 6_000 }, inputFor(intel));
-    const loss = await screen.findByTestId('ruler-loss');
-    expect(loss).toHaveTextContent(String(Math.round(expected.low * 100)));
-    expect(loss).toHaveTextContent(String(Math.round(expected.high * 100)));
-  });
-
-  it('keeps a total-loss warning beside the held commit, without launching', async () => {
+  it('quotes no loss and no success line, beside the commit or anywhere', async () => {
     await open(read({ defence: { low: 1_000_000, high: 2_000_000 } }), target, [],
       planetView({ fleet: { TALON: 20 } }, { deuterium: 20000 }));
-    const loss = await screen.findByTestId('ruler-loss');
-    expect(loss).toHaveTextContent('100%');
+    expect(await screen.findByTestId('ruler-ratio')).toHaveTextContent(/they are/i);
+    expect(screen.queryByTestId('ruler-loss')).toBeNull();
+    expect(screen.queryByTestId('ruler-lines')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/estimated loss|none of your ships may return|full success if/i);
     const footer = document.querySelector<HTMLElement>('[data-launch-commit]')!;
-    expect(within(footer).getByText('High risk: None of your ships may return.')).toBeVisible();
     expect(within(footer).getByRole('button', { name: /^launch 20 ships$/i })).toBeVisible();
   });
 
   /**
-   * NO READING, NO LINES. Found in review: with nobody having looked, the lines were
-   * still drawn — against a wall with no research, no dome and no transports, the
-   * kindest wall there is. Every input about the wall was a guess and the guess was
-   * always in the wing's favour. The lines are what a probe buys; before one, the box
-   * says so and nothing more.
+   * NO READING, NO RATIO. With nobody having looked, every input about the wall would be a
+   * guess; the ratio is what a probe buys. Before one, the box weighs the wing alone and says so.
    */
-  it('draws no lines and no loss when nobody has looked', async () => {
+  it('draws no ratio when nobody has looked', async () => {
     await open(undefined);
     await vi.waitFor(() => { expect(document.querySelector('[data-part="unknown"]')).not.toBeNull(); });
-    expect(screen.queryByTestId('ruler-lines')).toBeNull();
-    expect(screen.queryByTestId('ruler-loss')).toBeNull();
+    expect(screen.queryByTestId('ruler-ratio')).toBeNull();
+    expect(screen.getByTestId('ruler-mine')).toBeInTheDocument();
   });
 
   /** A reading written before D199 has no shape, no charge and no hangar — and says so. */
@@ -1290,20 +1276,17 @@ describe('how much of a wall the wing takes', () => {
   /**
    * AN UNMEASURED DOME IS ANYTHING UP TO THE MOST THIS WORLD CAN HOLD — never nothing.
    * Found in review: a dome no probe measured was fought as an empty one, so the
-   * lines were drawn for the kindest case while a note said the charge was unknown.
+   * comparison was drawn for the kindest case while a note said the charge was unknown.
    * The dome is public and so is the Core that caps its Aegis, so the worst case is
-   * knowable: the lines widen to it, and the hatch says how much of them is open.
+   * knowable: their power widens to it.
    */
   it('reads a dome no probe measured as anything up to the most this world can hold', async () => {
     const intel = read({ shield: undefined });
     await open(intel, { ...target, shielded: true });
-    const bounded = forecastLines(
-      { TALON: 20 },
-      { ...inputFor(intel), shield: { low: 0, high: shieldHp(target.coreLevel) } },
-    );
-    const bare = forecastLines({ TALON: 20 }, inputFor(intel));
-    expect(compact(bounded.clears.low)).not.toBe(compact(bare.clears.low));
-    expect(await screen.findByTestId('ruler-lines')).toHaveTextContent(compact(bounded.clears.low));
+    const bounded = powerFor(intel, { low: 0, high: shieldHp(target.coreLevel) });
+    const bare = powerFor(intel, { low: 0, high: 0 });
+    expect(compact(bounded.theirs.high)).not.toBe(compact(bare.theirs.high));
+    expect(await screen.findByTestId('ruler-theirs')).toHaveTextContent(compact(bounded.theirs.high));
   });
 
   /** Seen on the phone: "5 transports" off a band that read 1–5. A band is printed as one. */
@@ -1373,19 +1356,10 @@ describe('how much of a wall the wing takes', () => {
     );
     await openAllBands(userEvent.setup());
     await userEvent.setup().click(screen.getByRole('button', { name: /max talon/i }));
-    const expected = forecastLines({ TALON: 20 }, {
-      attackerTech: flightModifiers(holding).tech,
-      defenderTech: {},
-      defenderDamageMult: 0.65,
-      pirate: true,
-      shield: { low: 0, high: 0 },
-      unarmed: { low: 0, high: 0 },
-      wall: { kind: 'EXACT', fleet: crew },
-    });
-    expect(expected.clears.low).toBe(expected.clears.high);
-    const said = await screen.findByTestId('ruler-lines');
-    expect(said).toHaveTextContent(compact(expected.clears.low));
-    expect(said).not.toHaveTextContent(new RegExp(`${compact(expected.clears.low)}–`));
+    const expected = exactPowerRange({ fleet: { TALON: 20 }, tech: flightModifiers(holding).tech }, crew, { tech: {}, damageMult: 0.65 });
+    const said = await screen.findByTestId('ruler-theirs');
+    expect(said).toHaveTextContent(compact(expected.theirs.low));
+    expect(said).not.toHaveTextContent(new RegExp(`${compact(expected.theirs.low)}–`));
   });
 
 });

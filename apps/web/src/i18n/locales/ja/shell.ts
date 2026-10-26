@@ -240,6 +240,7 @@ export const menu = {
   */
   guideLabel: "Wiki",
   guideHint: "建物、艦船、銀河のルール",
+  simulatorHint: "どんな戦闘でも組んで、結末を見届ける",
   rewardsWaiting: "受取可能{{count}}件",
   /** T12: research is a commander's, not a world's, so its way in is here. */
   researchLabel: "研究",

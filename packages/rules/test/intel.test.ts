@@ -8,6 +8,11 @@ import {
   bearingBetween,
   clarityState,
   classReading,
+  combatValue as combatValueOf,
+  COMBAT_RESEARCH_PROJECTS,
+  RESEARCH_MAX_LEVEL,
+  researchReading,
+  type Fleet,
   massClass,
   radarRevealsComposition,
   radarRevealsSize,
@@ -138,10 +143,21 @@ describe('probes', () => {
     expect(detectChance(0, 99)).toBeGreaterThan(0);
   });
 
-  it('a cheap probe gives a range, an expensive one a number', () => {
+  it('a cheap probe gives a wide range, an expensive one a narrow one', () => {
     const cheap = fuzzBand(61_000, probeAccuracy(1, 3), mulberry32(7));
     const good = fuzzBand(61_000, probeAccuracy(6, 0), mulberry32(7));
     expect(cheap.high - cheap.low).toBeGreaterThan(good.high - good.low);
+  });
+
+  it('never reads better than 80%: no probe brings home an exact number (owner 2026-10-25)', () => {
+    expect(INTEL.accuracyMax).toBe(0.8);
+    expect(probeAccuracy(3, 3)).toBeCloseTo(0.55, 12);
+    expect(probeAccuracy(4, 3)).toBeCloseTo(0.67, 12);
+    expect(probeAccuracy(5, 3)).toBeCloseTo(0.79, 12);
+    expect(probeAccuracy(6, 3)).toBe(0.8);
+    expect(probeAccuracy(20, 0)).toBe(0.8);
+    const b = fuzzBand(61_000, probeAccuracy(20, 0), mulberry32(7));
+    expect(b.high / b.low).toBeCloseTo(1.5, 2);
   });
 
   it('bands are ordered and non-negative', () => {
@@ -180,7 +196,7 @@ describe('a probe band', () => {
   });
 
   it('keeps the width each accuracy has always bought', () => {
-    for (const accuracy of [0.31, 0.43, 0.55, 0.67, 0.79, 0.91]) {
+    for (const accuracy of [0.31, 0.43, 0.55, 0.67, 0.79]) {
       const e = 1 - accuracy;
       const bought = (1 + e) / (1 - e);
       for (let seed = 1; seed <= 50; seed++) {
@@ -190,11 +206,6 @@ describe('a probe band', () => {
     }
   });
 
-  it('is a single number when the probe is perfect', () => {
-    for (let seed = 1; seed <= 20; seed++) {
-      expect(fuzzBand(61_000, 1, mulberry32(seed))).toMatchObject({ low: 61_000, high: 61_000 });
-    }
-  });
 
   /** Otherwise the band's shape would be a reading of its own, and nobody paid for it. */
   it('does not give away where inside the band the truth sits', () => {
@@ -230,45 +241,36 @@ describe('a probe band', () => {
 });
 
 /**
- * WHAT A PROBE CAN TELL ABOUT THE SHAPE OF A WALL. D199.
+ * WHAT A PROBE CAN TELL ABOUT THE SHAPE OF A WALL. D199, combat v3 (owner 2026-10-25).
  *
  * Research and the counter cycle move a fight by about the same amount, and the
  * probe showed one of them and hid the other. A commander who cannot learn what a
  * world flies has one rational fleet — an even mix — and the counter cycle stops
- * being a decision. So a par probe says which class holds the majority, a good one
- * says the split, and a weak one says nothing.
+ * being a decision. So every probe reads each class's share of the firepower as a
+ * range whose width is what the accuracy buys: ±10 points at the 80% ceiling.
  */
 describe('a probe reading the shape of a wall', () => {
+  const weak = probeAccuracy(1, 3);
   const par = probeAccuracy(3, 3);
-  const weak = probeAccuracy(2, 3);
-  const good = probeAccuracy(5, 3);
+  const best = probeAccuracy(9, 0);
+  const truthOf = (fleet: Fleet) => {
+    const value = { SKIRMISHER: 0, BULWARK: 0, LANCE: 0 };
+    for (const [id, n] of Object.entries(fleet) as [keyof typeof HULLS, number][]) {
+      const h = HULLS[id];
+      if (h.atk > 0 && h.cls !== 'SUPPORT') value[h.cls] += n * (h.alloy + h.crystal + h.deuterium);
+    }
+    const total = value.SKIRMISHER + value.BULWARK + value.LANCE;
+    return { SKIRMISHER: 100 * value.SKIRMISHER / total, BULWARK: 100 * value.BULWARK / total, LANCE: 100 * value.LANCE / total };
+  };
 
   it('says nothing fires when nothing does, however weak the probe', () => {
-    for (const accuracy of [weak, par, good]) {
-      expect(classReading({}, accuracy)).toEqual({ kind: 'NONE' });
-      expect(classReading({ ATLAS: 6, COURIER: 2 }, accuracy)).toEqual({ kind: 'NONE' });
+    for (const accuracy of [weak, par, best]) {
+      expect(classReading({}, accuracy, mulberry32(1))).toEqual({ kind: 'NONE' });
+      expect(classReading({ ATLAS: 6, COURIER: 2 }, accuracy, mulberry32(1))).toEqual({ kind: 'NONE' });
     }
   });
 
-  it('cannot tell the shape through a Veil stronger than the Shipyard that sent it', () => {
-    expect(classReading({ BASTION: 4, DART: 2 }, weak)).toEqual({ kind: 'UNREAD' });
-  });
-
-  it('names the class holding more than half at a par probe', () => {
-    // 12,000 of Bastion against 720 of Dart.
-    expect(classReading({ BASTION: 4, DART: 2 }, par)).toEqual({ kind: 'DOMINANT', cls: 'BULWARK' });
-  });
-
-  it('says no class dominates when none holds more than half', () => {
-    // Exactly half is not a majority: 3,000 of Bastion, 3,000 of Thorn.
-    expect(classReading({ BASTION: 1, THORN: 4 }, par)).toEqual({ kind: 'EVEN' });
-  });
-
-  it('gives the split, in tens that add up to a hundred, to a good probe', () => {
-    expect(classReading({ BASTION: 1, HARPOON: 2, THORN: 4 }, good)).toEqual({
-      kind: 'SHARES',
-      shares: { SKIRMISHER: 40, BULWARK: 30, LANCE: 30 },
-    });
+  it('reads every class as a range holding the truth, as wide as the accuracy leaves', () => {
     fc.assert(fc.property(
       fc.record({
         DART: fc.integer({ min: 0, max: 40 }),
@@ -277,22 +279,79 @@ describe('a probe reading the shape of a wall', () => {
         BASTION: fc.integer({ min: 0, max: 10 }),
         ATLAS: fc.integer({ min: 0, max: 10 }),
       }),
-      (fleet) => {
-        const reading = classReading(fleet, good);
-        if (reading.kind === 'NONE') return true;
-        if (reading.kind !== 'SHARES') return false;
-        const parts = Object.values(reading.shares);
-        return parts.reduce((a, b) => a + b, 0) === 100 && parts.every((p) => p % 10 === 0);
+      fc.double({ min: INTEL.accuracyMin, max: INTEL.accuracyMax, noNaN: true }),
+      fc.integer(),
+      (fleet, accuracy, seed) => {
+        const reading = classReading(fleet, accuracy, mulberry32(seed));
+        if (reading.kind === 'NONE') return combatValueOf(fleet) === 0;
+        if (reading.kind !== 'RANGES') return false;
+        const truth = truthOf(fleet), width = Math.round((1 - accuracy) * 100 + 1e-9);
+        return (['SKIRMISHER', 'BULWARK', 'LANCE'] as const).every(cls => {
+          const { low, high } = reading.shares[cls];
+          return Number.isInteger(low) && Number.isInteger(high) && low >= 0 && high <= 100
+            && low <= truth[cls] && truth[cls] <= high && high - low >= width && high - low <= width + 1;
+        });
       },
-    ));
+    ), { numRuns: 500 });
+  });
+
+  it('is ±10 points at the 80% ceiling and wider below it', () => {
+    const fleet = { BASTION: 1, HARPOON: 2, THORN: 4 };
+    for (const [accuracy, width] of [[best, 20], [par, 45], [weak, 69]] as const) {
+      const reading = classReading(fleet, accuracy, mulberry32(4));
+      if (reading.kind !== 'RANGES') throw new Error('expected ranges');
+      for (const range of Object.values(reading.shares)) expect(range.high - range.low).toBeLessThanOrEqual(width + 1);
+    }
+  });
+
+  it('does not give away where inside the range the truth sits', () => {
+    let lower = 0, upper = 0;
+    for (let seed = 1; seed <= 400; seed++) {
+      const reading = classReading({ BASTION: 1, HARPOON: 2, THORN: 4 }, par, mulberry32(seed));
+      if (reading.kind !== 'RANGES') throw new Error('expected ranges');
+      // 3,000 each of Bastion, Harpoon and Thorn: a third apiece.
+      const { low, high } = reading.shares.SKIRMISHER, truth = 100 / 3;
+      if (truth - low < high - truth) lower++; else upper++;
+    }
+    expect(lower).toBeGreaterThan(140);
+    expect(upper).toBeGreaterThan(140);
   });
 
   it('counts the guns and never the transports', () => {
-    // Transports are worth far more than the Darts and fire nothing.
-    expect(classReading({ DART: 3, ATLAS: 10 }, good)).toEqual({
-      kind: 'SHARES',
-      shares: { SKIRMISHER: 100, BULWARK: 0, LANCE: 0 },
-    });
+    const reading = classReading({ DART: 3, ATLAS: 10 }, best, mulberry32(2));
+    if (reading.kind !== 'RANGES') throw new Error('expected ranges');
+    expect(reading.shares.SKIRMISHER.high).toBe(100);
+    expect(reading.shares.BULWARK.low).toBe(0);
+  });
+});
+
+/** COMBAT RESEARCH AS A WINDOW. Owner 2026-10-25: a probe never reads research exactly. */
+describe('a probe reading combat research', () => {
+  it('reads every combat project as a window holding the truth, inside the ladder', () => {
+    fc.assert(fc.property(
+      fc.record(Object.fromEntries(COMBAT_RESEARCH_PROJECTS.map(id => [id, fc.integer({ min: 0, max: RESEARCH_MAX_LEVEL[id] })]))),
+      fc.double({ min: INTEL.accuracyMin, max: INTEL.accuracyMax, noNaN: true }),
+      fc.integer(),
+      (levels, accuracy, seed) => {
+        const reading = researchReading(levels, accuracy, mulberry32(seed));
+        const span = Math.round((1 - accuracy) * 5 + 1e-9);
+        return COMBAT_RESEARCH_PROJECTS.every(id => {
+          const { low, high } = reading[id]!, truth = levels[id] ?? 0;
+          return low <= truth && truth <= high && low >= 0 && high <= RESEARCH_MAX_LEVEL[id]
+            && high - low === Math.min(span, RESEARCH_MAX_LEVEL[id]);
+        });
+      },
+    ), { numRuns: 500 });
+  });
+
+  it('is a two-level window at the 80% ceiling, three at par, five at the floor', () => {
+    const levels = { SHIP_POWER: 3 };
+    expect(researchReading(levels, probeAccuracy(9, 0), mulberry32(1)).SHIP_POWER!.high
+      - researchReading(levels, probeAccuracy(9, 0), mulberry32(1)).SHIP_POWER!.low).toBe(1);
+    expect(researchReading(levels, probeAccuracy(3, 3), mulberry32(1)).SHIP_POWER!.high
+      - researchReading(levels, probeAccuracy(3, 3), mulberry32(1)).SHIP_POWER!.low).toBe(2);
+    expect(researchReading(levels, INTEL.accuracyMin, mulberry32(1)).SHIP_POWER!.high
+      - researchReading(levels, INTEL.accuracyMin, mulberry32(1)).SHIP_POWER!.low).toBe(4);
   });
 });
 

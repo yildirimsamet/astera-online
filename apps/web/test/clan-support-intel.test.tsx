@@ -1,5 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { readPowerRange } from '@astera/rules';
 import { reportsSchema, type GalaxyPlanet, type IntelView, type ProbeReport, type Report } from '../src/api/schemas.js';
 import { dossier, fieldedAtLeast } from '../src/lib/dossier.js';
 import { useTargetReading } from '../src/lib/useTargetReading.js';
@@ -60,6 +61,9 @@ describe('the dossier rows', () => {
     expect(read.find((fact) => fact.key === 'posture')?.value).toMatch(/clan support on · never retreats/i);
     const support = read.find((fact) => fact.key === 'support');
     expect(support?.value).toMatch(/2 supporters/);
+    // Combat v3: the probe's figure is the armed value; "power" belongs to the ruler alone.
+    expect(support?.value).toMatch(/armed value/);
+    expect(support?.value).not.toMatch(/power/);
     expect(support?.value).toMatch(/8000–11000/);
     expect(support?.value).toMatch(/30–40 ships/);
     expect(support?.source).toBe('probe');
@@ -89,9 +93,13 @@ describe('the dossier rows', () => {
 });
 
 describe('the target reading against a supported world', () => {
-  it('draws the enemy bar as the whole line — host and support — and says so', () => {
-    const read = reading(supported());
-    expect(read.opposing).toMatchObject({ low: 18_000, high: 25_000 });
+  it('weighs the wing against the whole line — host and support — and says so', () => {
+    const report = supported();
+    const read = reading(report);
+    expect(read.power).toEqual(readPowerRange({ fleet: { DART: 60 }, tech: {} }, [
+      { value: report.defence },
+      { value: report.support!.defence },
+    ], { low: 0, high: 0 }));
     expect(read.notes.join(' ')).toMatch(/2 clan supporters/i);
   });
 
@@ -115,7 +123,7 @@ describe('the target reading against a supported world', () => {
   it('keeps today’s retreat line on a world that retreats', () => {
     const read = reading(probe({ posture: 'ESCAPE', support: null }));
     expect(read.escape).not.toBeNull();
-    expect(read.opposing).toMatchObject({ low: 10_000, high: 14_000 });
+    expect(read.power).toEqual(readPowerRange({ fleet: { DART: 60 }, tech: {} }, [{ value: { low: 10_000, high: 14_000 } }], { low: 0, high: 0 }));
   });
 
   it('keeps the retreat line on a report from before the rule', () => {

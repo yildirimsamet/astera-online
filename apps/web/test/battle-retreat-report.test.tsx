@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { reportsSchema } from '../src/api/schemas.js';
-import { COMBAT } from '@astera/rules';
+import { COMBAT, combatOutcomeTable } from '@astera/rules';
 import i18n from '../src/i18n/index.js';
 import { MonumentBattleRules } from '../src/screens/MonumentBattleRules.js';
 import { getWikiArticle } from '../src/wiki/catalog.js';
@@ -52,15 +52,28 @@ describe('six-round public combat rules', () => {
     expect(container.textContent).not.toContain('{{');
     await i18n.changeLanguage('en');
   });
-  it.each(['en', 'tr'] as const)('publishes distribution, collector protection and all five retreat windows in %s', language => {
+  /** Combat v3 (owner 2026-10-25): one target per shot, retreats after rounds 1–7, the owner's outcome table. */
+  it.each(['en', 'tr'] as const)('publishes one target per shot, collector protection, the retreat rounds and the outcome table in %s', language => {
     const text = JSON.stringify(getWikiArticle('combat.model')?.sections[language]);
-    expect(text).toMatch(language === 'en' ? /up to 10.*random/i : /en fazla 10.*rastgele/i);
+    expect(text).toMatch(language === 'en' ? /one living target/i : /tek bir canlı hedefe/i);
+    expect(text).not.toMatch(language === 'en' ? /up to 10/i : /en fazla 10/i);
     expect(text).toMatch(language === 'en' ? /Garbage Collector/ : /Hurdacı/);
-    expect(text).toContain('1–5');
-    const blocks = JSON.stringify(conceptReference('combat.model', language));
-    expect(blocks).toContain('1–5');
-    expect(blocks).toContain('66');
-    expect(blocks).toContain('80');
+    expect(text).toContain(`1–${COMBAT.rounds - 1}`);
+    const table = conceptReference('combat.model', language)?.blocks.find((block) =>
+      block.kind === 'table' && block.rows.some((row) => row[0] === '1:2'));
+    if (table?.kind !== 'table') throw new Error('Missing the outcome table');
+    expect(table.rows).toHaveLength(combatOutcomeTable().length);
+    const half = table.rows.find((row) => row[0] === '1:2')!;
+    expect(half[1]).toMatch(/50/);
+    expect(half[2]).toMatch(/30/);
+  });
+
+  it.each(['en', 'tr'] as const)('states the fleet escape on power, not resource value, in %s', language => {
+    const text = JSON.stringify(getWikiArticle('combat.retreat')?.sections[language]);
+    expect(text).not.toMatch(language === 'en' ? /resource value/i : /kaynak değeri/i);
+    const blocks = JSON.stringify(conceptReference('combat.retreat', language));
+    expect(blocks).toMatch(language === 'en' ? /power/i : /güç/i);
+    expect(blocks).not.toMatch(language === 'en' ? /armed-unit value/i : /birimlerin değeri/i);
   });
 });
 

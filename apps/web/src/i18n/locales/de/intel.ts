@@ -636,6 +636,7 @@ export const dossier = {
   shapeNote: 'Nach Wert, was feuern kann. Mehr als die Hälfte ist eine Mehrheit.',
   shapeUnread: 'Nicht gelesen',
   shapeUnreadNote: 'Ihr Schleier ist stärker als der der Werft, die die Sonde geschickt hat.',
+  shapeRangesNote: "Nach Wert dessen, was feuern kann. Jeder Anteil ist ein Bereich; der wahre Anteil liegt darin.",
   shieldLabel: 'Schildladung',
   shieldNote: 'Nimmt das Feuer eines Überfalls auf, bevor es eine Hülle tut, und füllt sich im Laufe der Stunden wieder auf.',
   unarmedLabel: 'Unbewaffnet in der Reihe',
@@ -680,6 +681,7 @@ export const dossier = {
   doctrinesNone: 'Keine recherchiert',
   doctrinesNote: 'Ihre Rümpfe kämpfen besser, als die Tabelle sagt. Dies ist der Multiplikator, den Sie erreichen würden.',
   doctrinesNoneNote: 'Sie hatten nichts über ihre Hüllen untersucht, als die Sonde nachschaute.',
+  researchWindowNote: "Als Fenster gemessen: Jede wahre Stufe liegt in ihrem Fenster. Höhere Stufen lassen ihre Schiffe stärker kämpfen.",
 
   surfaceGapLabel: 'Alles über diese Welt',
   surfaceGapMissing: 'Du hast diese Welt noch nie gesehen',

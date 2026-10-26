@@ -10,14 +10,35 @@ export function destructionScale(deathAt: number | undefined, time: number): num
 export interface BattlePose { x: number; y: number; z: number; scale: number }
 export interface BattleSphere { x: number; y: number; z: number; radius: number }
 
-export function battlePlanet(ships: readonly BattleShipSnapshot[], poses: ReadonlyMap<string, BattlePose>): BattleSphere {
-  const mobileDepth = Math.max(7, ...ships.filter(ship => ship.side === 'DEFENCE' && !(ship.ground ?? HULLS[ship.hull].ground)).map(ship => poses.get(ship.id)!.z));
-  return { x: 0, y: -4.8, z: mobileDepth + 6, radius: 6 };
+const isGround = (ship: BattleShipSnapshot) => ship.ground ?? HULLS[ship.hull].ground;
+/** Guns keep full size up to 150; past that they shrink, never below 55%, so the planet stays in proportion. */
+const gunScale = (count: number) => Math.max(.55, Math.min(1, Math.sqrt(150 / Math.max(1, count))));
+const GUN_SPACING = 1.75, GUN_FIRST_ROW = 25 * Math.PI / 180, GUN_LAST_ROW = 80 * Math.PI / 180, GUN_HALF_ARC = 50 * Math.PI / 180;
+
+/**
+ * Gun batteries on the face the attacker sees: rows of latitude from the front edge up toward the
+ * top, each row filled left to right in order, so a kind of gun reads as one belt. Null when R is too
+ * small to hold them all.
+ */
+function gunRows(count: number, radius: number): { latitude: number; size: number }[] | null {
+  const spacing = gunScale(count) * GUN_SPACING, rows: { latitude: number; size: number }[] = [];
+  for (let latitude = GUN_FIRST_ROW, left = count; left > 0; latitude += spacing / radius) {
+    if (latitude > GUN_LAST_ROW) return null;
+    const size = Math.min(left, Math.floor(2 * GUN_HALF_ARC * radius * Math.cos(latitude) / spacing) + 1);
+    rows.push({ latitude, size }); left -= size;
+  }
+  return rows;
 }
 
-/** Keep a world-anchored name readable when its craft approaches the viewport edge. */
-export function fitWorldLabel(anchorX: number, width: number, viewport: number): number {
-  return Math.max(8, Math.min(viewport - width - 8, anchorX - width / 2)) - (anchorX - width / 2);
+/** The planet grows to carry its guns and to stand behind a wide defending fleet. */
+export function battlePlanet(ships: readonly BattleShipSnapshot[], poses: ReadonlyMap<string, BattlePose>): BattleSphere {
+  const mobile = ships.filter(ship => ship.side === 'DEFENCE' && !isGround(ship)).map(ship => poses.get(ship.id)!);
+  const mobileDepth = Math.max(7, ...mobile.map(pose => pose.z));
+  const width = mobile.length === 0 ? 0 : Math.max(...mobile.map(pose => pose.x)) - Math.min(...mobile.map(pose => pose.x));
+  const guns = ships.filter(isGround).length;
+  let radius = Math.max(6, width / 4);
+  while (gunRows(guns, radius) === null) radius += .5;
+  return { x: 0, y: .2 - radius * .83, z: mobileDepth + radius, radius };
 }
 
 /** Parking slots are visual only. They never enter the combat roster or target pool. */
@@ -86,11 +107,12 @@ export function battleCameraRange(poses: ReadonlyMap<string, BattlePose>, aspect
   return { maxDistance, far: Math.max(600, maxDistance + radius + 50) };
 }
 
-export function focusBattleCamera(pose: BattlePose, viewer: 'ATTACK' | 'DEFENCE', aspect: number, surface?: BattleSphere) {
+export function focusBattleCamera(pose: BattlePose, viewer: 'ATTACK' | 'DEFENCE', aspect: number, surface?: BattleSphere, compact = false) {
   const sign = viewer === 'ATTACK' ? 1 : -1;
   const distance = Math.max(5, pose.scale * 3.5 / Math.min(1, Math.max(.2, aspect)));
-  // The phone inspector occupies the lower field; put the craft in the open upper area.
-  const lift = aspect < 1 ? distance * Math.tan(43 * Math.PI / 360) * .56 : 0;
+  // The phone inspector occupies the lower field; put the craft in the open upper area. Under the
+  // phone HUD the field can be wider than tall, so the phone is named, not guessed from the aspect.
+  const lift = compact || aspect < 1 ? distance * Math.tan(43 * Math.PI / 360) * .56 : 0;
   if (surface) {
     const radius = Math.hypot(pose.x - surface.x, pose.y - surface.y, pose.z - surface.z);
     const nx = (pose.x - surface.x) * sign / radius, ny = (pose.y - surface.y) / radius, nz = (pose.z - surface.z) * sign / radius;
@@ -129,18 +151,19 @@ export function layoutBattle(recording: BattleRecording): Map<string, BattlePose
       if (ships.length > 0) depth += .4;
     }
   }
-  const ground = recording.ships.filter(ship => ship.ground ?? HULLS[ship.hull].ground);
+  const ground = recording.ships.filter(isGround).sort((a, b) => HULL_VISUAL_SCALE[b.hull] - HULL_VISUAL_SCALE[a.hull] || a.hull.localeCompare(b.hull));
   const planet = battlePlanet(recording.ships, poses);
-  for (let i = 0; i < ground.length; i++) {
-    const ship = ground[i]!;
-    const radius = planet.radius * (.66 + .27 * Math.sqrt((i + .5) / ground.length));
-    const angle = ((i * .618033988749895) % 1 - .5) * 2;
-    const x = Math.sin(angle) * radius, z = planet.z - Math.cos(angle) * radius;
-    const scale = Math.min(1, 7 / Math.sqrt(ground.length));
-    const lift = scale * .55 + .08;
-    const nx = x / planet.radius, ny = Math.sqrt(planet.radius ** 2 - radius ** 2) / planet.radius, nz = (z - planet.z) / planet.radius;
-    poses.set(ship.id, { x: x + nx * lift, z: z + nz * lift,
-      y: planet.y + ny * (planet.radius + lift), scale });
+  // A gun stands on its own plinth (`battleModelParts`): the pose is where it meets the ground.
+  const scale = gunScale(ground.length), spacing = scale * GUN_SPACING, lift = .02;
+  let next = 0;
+  for (const row of gunRows(ground.length, planet.radius) ?? []) {
+    const step = spacing / (planet.radius * Math.cos(row.latitude));
+    for (let i = 0; i < row.size; i++) {
+      const ship = ground[next++]!, azimuth = (i - (row.size - 1) / 2) * step;
+      const nx = Math.cos(row.latitude) * Math.sin(azimuth), ny = Math.sin(row.latitude), nz = -Math.cos(row.latitude) * Math.cos(azimuth);
+      const distance = planet.radius + lift;
+      poses.set(ship.id, { x: planet.x + nx * distance, y: planet.y + ny * distance, z: planet.z + nz * distance, scale });
+    }
   }
   // A wider defence must not place the attacking front inside the shared shield.
   const { aegis } = battlefieldEnvironment(recording, poses);

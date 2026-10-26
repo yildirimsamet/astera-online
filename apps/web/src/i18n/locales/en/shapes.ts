@@ -64,43 +64,39 @@ export const counter = {
   matchupLabel: '{{attacker}} against {{defender}}: {{outcome}}, ×{{mult}} damage',
   cycleLabel: 'Skirmisher beats Bulwark, Bulwark beats Lance, Lance beats Skirmisher',
   /** Above the two bars on the launch sheet — the one name of the one force unit. D199. */
-  compareHeading: 'Armed unit value',
+  /** Combat v3 force ruler (owner 2026-10-25): each side’s power, their ratio, and the rule one tap deep. */
+  compareHeading: "Relative power",
+  compareLabel: "Your power {{yours}}; their power {{theirs}}",
+  comparePick: "Pick ships to weigh them against this target.",
+  compareMeaning: "Firepower and durability against each other, counters included. The stronger side keeps more of its fleet.",
+  compareRule: "Power counts armed ships and active ground guns: their research, wounds and the counter cycle against the other side, plus the Aegis charge. Unarmed ships add nothing. A probe reads in ranges, so each side is a range; the low end of the ratio is your worst case. Readings age, and every battle rolls its shots.",
+  ratioYou: "You are {{band}}× as strong",
+  ratioThem: "They are {{band}}× as strong",
+  ratioOpen: "The reading does not settle who is stronger: they up to {{them}}×, you up to {{you}}×",
+  ratioEven: "About even",
+  ratioNoFire: "Nothing there fires back",
+  ratioUnarmed: "Your wing has nothing that fires",
+  axisTheirs: "They’re stronger",
+  axisEven: "Even",
+  axisYours: "You’re stronger",
+  outcomeHeading: "What each side keeps, on average",
+  outcomeRatio: "Ratio",
+  outcomeWeak: "Weaker keeps",
+  outcomeStrong: "Stronger loses",
+  outcomeNote: "Averages over many battles. Ships that retreat alive count as kept. At 1:1, larger fleets keep more.",
+  escapeRun: "Your power is at least {{ratio}}× theirs across the whole reading. If your wing would wipe out their line and their tank pays the lift, their ships lift off.",
+  escapeStand: "Their ships stand and fight: across the reading, your power stays under {{ratio}}× theirs.",
+  escapeRule: "Their ships lift off before the battle if your power is at least {{ratio}}× their line’s, active ground guns included. Your wing must also be able to wipe out that line. Their planet must fund a {{distance}}-unit round trip. Ground guns stay, and resources can still be raided.",
   compareYours: 'Sending',
   compareTheirs: 'Standing there',
-  /** The reading has an age and a width, and both are the fact. */
   compareRecord: '{{source}}, {{age}}',
   compareLive: '{{source}}, read now',
   compareUnknown: 'Never measured',
   compareUnknownWhy: 'A probe would put a number on this side of the bar.',
-  compareLabel: 'You are sending {{yours}}; the last reading of their world was {{theirs}}',
-  /**
-   * WHAT THE FIGURE AND THE LINES ARE, ONE TAP DEEP. D199.
-   *
-   * The figure is what the hulls and guns that can fire cost — D183 took the
-   * transports out of it. The lines are the battle engine run on this wing against
-   * every wall the reading allows, so they include the counter cycle, research and
-   * a known shield; what they leave out is said, never implied.
-   */
-  /** Taktik geri çekilme on the comparison: the verdict line and the rule one tap deeper. */
-  escapeRun: "The reading meets the {{ratio}}× retreat threshold and the line can be wiped out. With enough fuel, their ships lift off.",
-  escapeStand: "Their ships stand and fight: the reading does not meet the {{ratio}}× retreat threshold, or this wing cannot wipe out the line.",
   escapeUnsure: 'Their ships may lift off; the reading does not settle every retreat condition.',
-  escapeAt: 'Retreat power line: {{at}}',
-  escapeRule:
-    "The attacker’s armed units must be worth at least {{ratio}} times the defending armed units, including active ground guns. The standing defence must also face total defeat. The planet must fund a {{distance}}-unit round trip. If eligible, ships escape combat. Ground guns stay and resources can still be raided.",
   escapeMinimumRule: 'The defender also needs at least {{count}} fighting ships at home. A probe reading does not reveal the count.',
   compareRuleToggle: 'What is this?',
-  compareMeaning: 'Resource cost, not attack damage. A bigger fleet alone does not guarantee victory.',
-  compareRule:
-    "The comparison uses armed ships’ and ground guns’ resource value; shields and unarmed ships are excluded. The forecast also uses classes, research and the known shield. Both partial and full success require at least one ship surviving. Unknown classes or shield create threshold ranges: the left edge is the worst case, the right edge the best. Estimated losses below show the possible cost. Readings may be outdated; random shot variation is excluded.",
-  forecastCalculating: "Calculating the battle estimate…",
-  forecastFailed: "Battle estimate unavailable. Change the fleet to try again.",
-  linesClears: 'Full success if their defence is at most {{at}}',
-  linesBreaks: 'At least partial success if at most {{at}}',
   lineJoin: ' · ',
-  lossLabel: 'Your estimated loss: {{share}} of the wing (by resource value)',
-  lossUncertainty: 'This is a loss range based on current information, not a chance of winning.',
-  lossTotalRisk: 'High risk: None of your ships may return.',
   /** What the lines could not see, and what is already known about the reading. D199. */
   noteShieldUnmeasured: 'Shield charge not measured',
   noteShapeUnread: 'Shape of the wall not read',

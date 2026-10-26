@@ -2,16 +2,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { MULTI_WORLD, combatValue, escapeFuel, type Fleet } from '@astera/rules';
+import { ESCAPE, MULTI_WORLD, escapeFuel, type Fleet } from '@astera/rules';
 import type { Api } from '../src/api/client.js';
 import { reportsSchema, seasonSchema, type BattleReport } from '../src/api/schemas.js';
 import { ApiProvider } from '../src/api/context.js';
 import { describeNotification } from '../src/lib/notifications.js';
 import { BattleReports } from '../src/screens/BattleReports.js';
 import { EscapeReadout } from '../src/ui/EscapeReadout.js';
-import { ForceCompare } from '../src/ui/ForceCompare.js';
 import i18n from '../src/i18n/index.js';
-import { compact } from '../src/lib/format.js';
+import { decimal } from '../src/lib/format.js';
 
 /**
  * TAKTİK GERİ ÇEKİLME ON THE SCREEN. Owner decision, 2026-09-23.
@@ -186,83 +185,27 @@ describe('the notifications', () => {
   });
 });
 
-describe('the launch sheet’s comparison', () => {
-  const theirs = { low: 4_000, high: 9_000, source: 'Probe', ageMinutes: 12 };
-  const lines = { clears: { low: 20_000, high: 30_000 }, breaks: { low: 35_000, high: 45_000 } };
-
-  it('draws the escape line on the enemy axis and says what the reading implies', () => {
-    const view = render(
-      <ForceCompare yours={30_000} theirs={theirs} lines={lines} escape={{ at: 10_000, verdict: 'RUN' }} />,
-    );
-    const marker = view.container.querySelector<HTMLElement>('[data-part="escape-line"]');
-    expect(marker).not.toBeNull();
-    expect(Number.parseFloat(marker!.style.left)).toBeCloseTo((10_000 / 30_000) * 100, 4);
-    expect(screen.getByTestId('compare-escape')).toHaveTextContent(/lift off/i);
-  });
-
-  it('says they stand, or that it is open, in the same place', () => {
-    const { rerender } = render(
-      <ForceCompare yours={30_000} theirs={theirs} lines={lines} escape={{ at: 10_000, verdict: 'STAND' }} />,
-    );
-    expect(screen.getByTestId('compare-escape')).toHaveTextContent(/stand/i);
-    rerender(
-      <ForceCompare yours={30_000} theirs={theirs} lines={lines} escape={{ at: 10_000, verdict: 'UNSURE' }} />,
-    );
-    expect(screen.getByTestId('compare-escape')).toHaveTextContent(/may/i);
-  });
-
-  it('draws nothing where the rule does not apply', () => {
-    const view = render(<ForceCompare yours={30_000} theirs={theirs} lines={lines} />);
-    expect(view.container.querySelector('[data-part="escape-line"]')).toBeNull();
-    expect(screen.queryByTestId('compare-escape')).toBeNull();
-  });
-
-  it('keeps the rule one tap deeper, beside the others', async () => {
-    render(<ForceCompare yours={30_000} theirs={theirs} lines={lines} escape={{ at: 10_000, verdict: null }} />);
-    await userEvent.click(screen.getByRole('button', { name: /what is this/i }));
-    expect(screen.getByTestId('compare-escape-rule')).toHaveTextContent(/4\.0 times/i);
-  });
-
-  it.each([
-    ['en', '4.0'], ['tr', '4,0'], ['de', '4,0'], ['fr', '4,0'], ['es', '4,0'], ['ja', '4.0'],
-  ] as const)('states the current ratio with local decimal notation in %s', async (language, ratio) => {
-    await i18n.changeLanguage(language);
-    render(<ForceCompare yours={35_000} theirs={theirs} lines={lines} escape={{ at: 10_000, verdict: 'RUN' }} />);
-    await userEvent.click(screen.getByRole('button'));
-    expect(screen.getByTestId('compare-escape-rule')).toHaveTextContent(ratio);
-    expect(screen.getByTestId('compare-escape-rule')).not.toHaveTextContent(/3[.,]5/);
-    expect(screen.getByTestId('compare-escape')).toHaveTextContent(ratio);
-    expect(screen.getByTestId('compare-escape')).not.toHaveTextContent(/3[.,]5/);
-    expect(screen.getByTestId('compare-escape-rule')).not.toHaveTextContent('{{');
-  });
-
-  it('explains the five-ship condition for a new season', async () => {
-    render(<ForceCompare yours={30_000} theirs={theirs} lines={lines}
-      escape={{ at: 10_000, verdict: 'UNSURE', minimumCombatShips: 5 }} />);
-    await userEvent.click(screen.getByRole('button', { name: /what is this/i }));
-    expect(screen.getByTestId('compare-escape-rule')).toHaveTextContent(/5 fighting ships/i);
-  });
-});
-
 describe('the defender’s own readout', () => {
   it('shows progress toward the new minimum instead of promising a one-ship escape', () => {
     const view = render(<EscapeReadout fleet={{ DART: 1 }} ground={{}} deuterium={500} rulesetVersion={13} />);
     expect(screen.getByTestId('escape-readout')).toHaveTextContent(/1 of 5/i);
-    expect(screen.getByTestId('escape-readout')).not.toHaveTextContent(/firepower/i);
+    expect(screen.getByTestId('escape-readout')).not.toHaveTextContent(/×/);
     view.rerender(<EscapeReadout fleet={{ DART: 1 }} ground={{}} deuterium={500} rulesetVersion={12} />);
-    expect(screen.getByTestId('escape-readout')).toHaveTextContent(/firepower/i);
-  });
-  it('states the firepower their ships run from and whether the tank can pay', () => {
-    render(<EscapeReadout fleet={{ ...LINE, PROSPECTOR: 2 }} ground={{}} deuterium={500} />);
-    const line = screen.getByTestId('escape-readout');
-    expect(line).toHaveTextContent(compact(4 * combatValue(LINE)));
-    expect(line).toHaveTextContent(String(LIFT));
+    expect(screen.getByTestId('escape-readout')).toHaveTextContent('3.0×');
   });
 
-  it('counts the guns in the line, because the rule does', () => {
-    render(<EscapeReadout fleet={LINE} ground={{ BASTION: 2 }} deuterium={500} />);
-    expect(screen.getByTestId('escape-readout'))
-      .toHaveTextContent(compact(4 * combatValue({ ...LINE, BASTION: 2 })));
+  /**
+   * Combat v3: the escape reads the matchup ratio, which hangs on the raider's classes, so the
+   * defender is given the rule — the ratio, the line it is measured on, the lift — not a figure.
+   */
+  it('states the ratio their ships run from, what it is measured on, and whether the tank can pay', () => {
+    render(<EscapeReadout fleet={{ ...LINE, PROSPECTOR: 2 }} ground={{}} deuterium={500} />);
+    const line = screen.getByTestId('escape-readout');
+    expect(line).toHaveTextContent(`${decimal(ESCAPE.ratio)}×`);
+    expect(line).toHaveTextContent(/power/i);
+    expect(line).toHaveTextContent(/guns/i);
+    expect(line).toHaveTextContent(String(LIFT));
+    expect(line).not.toHaveTextContent('{{');
   });
 
   it('warns when the tank cannot pay for the lift', () => {

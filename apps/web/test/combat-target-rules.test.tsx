@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { DistributedFireRules } from '../src/ui/DistributedFireRules.js';
 import { MonumentBattleRules } from '../src/screens/MonumentBattleRules.js';
 import { reportsSchema } from '../src/api/schemas.js';
+import { COMBAT } from '@astera/rules';
+import i18n from '../src/i18n/index.js';
+import { percent } from '../src/lib/format.js';
 
 const report = { kind: 'BATTLE', id: 'r', missionId: 'm', at: '2026-10-25T00:00:00Z', grade: 'PARTIAL', attacking: true,
   opponentName: 'Enemy', opponentPlanet: 'Planet', opponentPlanetId: 'p', yourPlanet: 'Home', yourFleet: { DART: 1 },
@@ -23,7 +26,7 @@ describe('target selection explanation follows the recorded battle rule', () => 
       rounds: [{ round: 1, distributedFire: true, targetLimit: 10, yourLosses: {}, theirLosses: {}, yourRetreated: {}, theirRetreatedCount: 0 }] }] });
     expect(parsed.reports[0]).toMatchObject({ rounds: [{ targetLimit: 10 }] });
   });
-  it('explains ten random targets and class priority on new reports', () => {
+  it('keeps the ten-target explanation on reports fought by the six-round engine', () => {
     render(<DistributedFireRules targetLimit={10} />);
     expect(screen.getByText(/up to 10/i)).toHaveTextContent(/class/i);
     expect(screen.queryByText(/across all eligible living targets/i)).not.toBeInTheDocument();
@@ -33,8 +36,28 @@ describe('target selection explanation follows the recorded battle rule', () => 
     expect(screen.getByText(/across all eligible living targets/i)).toBeInTheDocument();
     expect(screen.queryByText(/up to 10/i)).not.toBeInTheDocument();
   });
-  it('teaches the current target cap in public monument rules', () => {
+  /** Combat v3 (owner 2026-10-25): one target per shot, class priority, the kill's excess carried on. */
+  it('explains one target per shot, the class order, the carried excess and break-up on v3 reports', () => {
+    render(<DistributedFireRules targetLimit={COMBAT.targetsPerShot} />);
+    const rule = screen.getByText(/one living target/i);
+    expect(rule).toHaveTextContent(/class/i);
+    expect(rule).toHaveTextContent(/excess/i);
+    expect(rule).toHaveTextContent(percent(COMBAT.criticalBelow));
+    expect(rule).not.toHaveTextContent(/up to|split/i);
+  });
+  it('teaches the current rule in public monument rules', () => {
     render(<MonumentBattleRules />);
-    expect(screen.getByText(/up to 10/i)).toHaveTextContent(/class/i);
+    expect(screen.getByText(/one living target/i)).toHaveTextContent(/class/i);
+    expect(screen.queryByText(/up to 1 /i)).not.toBeInTheDocument();
+  });
+  it('states the one-target rule in every language', async () => {
+    for (const language of ['tr', 'de', 'fr', 'es', 'ja']) {
+      await i18n.changeLanguage(language);
+      const { container, unmount } = render(<><DistributedFireRules targetLimit={1} /><MonumentBattleRules /></>);
+      expect(container.textContent).not.toMatch(/\{\{|monument\.battleResult|reports\.distributed/);
+      expect(container.textContent).toContain(percent(COMBAT.criticalBelow));
+      unmount();
+    }
+    await i18n.changeLanguage('en');
   });
 });

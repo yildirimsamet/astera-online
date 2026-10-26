@@ -36,6 +36,8 @@ export * from './combat.js';
 export * from './battleRecording.js';
 export * from './shipShield.js';
 export * from './battleRetreat.js';
+export * from './matchupPower.js';
+export * from './powerRange.js';
 export * from './damage.js';
 export * from './radiation.js';
 export * from './radiationHp.js';

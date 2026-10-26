@@ -256,9 +256,9 @@ export const planet = {
       "Yüklü mühimmat, 3. seviye Radarın algıladığı veya Teleskop görüşünde tanımlanan ilk Ölüm Yıldızı’nı imha eder; ateşlenince tükenir.",
     /** Taktik geri çekilme: savunanın kendi eşiği ve kalkışın yakıtı. */
     escapeReady:
-      "Taktik geri çekilme · {{at}}+ ateş gücünde ve bu hattı silecek bir akın gemilerini bulamaz · kalkış {{fuel}} Döteryum yakar",
+      "Taktik geri çekilme · bu hattın (gemiler ve aktif toplar) {{ratio}} katı güçte ve onu silecek bir akın gemilerini bulamaz · kalkış {{fuel}} Döteryum yakar",
     escapeShort:
-      "Taktik geri çekilme · gemilerin {{at}}+ ateş gücündeki bir akından kaçardı ama kalkış {{fuel}} Döteryum ister, depoda {{stock}} var",
+      "Taktik geri çekilme · gemilerin bu hattın (gemiler ve aktif toplar) {{ratio}} katı güçteki bir akından kaçardı ama kalkış {{fuel}} Döteryum ister, depoda {{stock}} var",
     shieldBand: "Kalkan",
     shieldNote:
       "Aegis hasarı birliklerine ulaşmadan önce karşılar. Seviyeler azami kalkanı artırır; yenilenme hızı azami değerin saatte %35’idir.",
@@ -704,7 +704,7 @@ export const launch = {
   stays: "Evde kalan",
   staysUnits_one: "{{count}} birim",
   staysUnits_other: "{{count}} birim",
-  staysPower: "güç {{value}}",
+  staysPower: "silahlı birlik değeri {{value}}",
   cargoEach: "{{amount}} kargo/gemi",
   cargoAdds: "+{{amount}} kargo",
   paceBrief: "daha az yakıt · yavaş uçuş ≤12 sa",

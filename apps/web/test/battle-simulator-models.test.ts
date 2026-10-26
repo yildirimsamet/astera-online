@@ -33,4 +33,18 @@ describe('battle models retain authored node transforms', () => {
     expect(material).not.toBe(paint);
     expect(parts[0]!.geometry).toBe(geometry);
   });
+
+  it('stands a ground gun on its plinth: the lowest point sits on the origin, centred over it', () => {
+    const scene = new THREE.Group(); scene.add(new THREE.Mesh(new THREE.BoxGeometry(2, 1, 4), new THREE.MeshStandardMaterial()));
+    const parts = battleModelParts(scene, '+z', undefined, undefined, true);
+    const box = new THREE.Box3();
+    for (const part of parts) {
+      part.geometry.computeBoundingBox();
+      box.union(part.geometry.boundingBox!.clone().applyMatrix4(part.matrix));
+    }
+    expect(box.min.y).toBeCloseTo(0);
+    expect(box.getCenter(new THREE.Vector3()).x).toBeCloseTo(0);
+    expect(box.getCenter(new THREE.Vector3()).z).toBeCloseTo(0);
+    expect(Math.max(...box.getSize(new THREE.Vector3()).toArray())).toBeCloseTo(1);
+  });
 });

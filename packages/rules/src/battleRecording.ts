@@ -68,6 +68,8 @@ export interface RecordedRound {
   attackerShots: RecordedShot[];
   defenderShots: RecordedShot[];
   retreated: string[];
+  /** Combat v3 critical damage: ships hit this round that broke apart. */
+  exploded?: string[];
   after: BattleShipState[];
 }
 /** A capture of calculation values, independent of renderer timing or current balance tables. */
@@ -75,6 +77,8 @@ export interface BattleRecording {
   schemaVersion: 1;
   roundLimit: number;
   initialAegis: number;
+  /** Combat v3: each side's damage scale (tempo × the stronger side's handicap), already inside every shot. */
+  damageScale?: { attacker: number; defender: number };
   ships: BattleShipSnapshot[];
   rounds: RecordedRound[];
   /** Settlement actions are explicit; they never invent a weapon hit or a new combat round. */

@@ -2,6 +2,7 @@ import { orbitFingerprint } from './orbitFingerprint.js';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  COMBAT,
   SENSOR,
   sensorReach,
   activeBattleFleet,
@@ -137,11 +138,11 @@ describe('combat invariants — must hold for ALL inputs', () => {
     );
   });
 
-  it('resolves in at most six rounds', () => {
+  it('resolves in at most COMBAT.rounds rounds', () => {
     fc.assert(
       fc.property(arbFleet, arbDefence, fc.nat(), (a, d, seed) => {
         const r = resolveCombat(a, d, 0, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } });
-        expect(r.rounds.length).toBeLessThanOrEqual(6);
+        expect(r.rounds.length).toBeLessThanOrEqual(COMBAT.rounds);
       }),
       { numRuns: 200 },
     );

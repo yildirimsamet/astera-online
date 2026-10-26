@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HULLS, fleetCount, mulberry32, resolveBattle, shipShieldHp, type Fleet, type JointAttackerStack } from '../src/index.js';
+import { COMBAT, HULLS, fleetCount, mulberry32, resolveBattle, shipShieldHp, type Fleet, type JointAttackerStack } from '../src/index.js';
 import { createBattleRecording, type BattleRecording } from '../src/battleRecording.js';
 
 const attack = (fleet: Fleet, id = 'a'): JointAttackerStack => ({ contributionId: id, playerId: id, fleet, tech: { tech: {} } });
@@ -25,7 +25,7 @@ describe('authoritative per-shot battle recording', () => {
       expect(new Set(recording.ships.map(s => s.id)).size).toBe(12);
       expect(recording.ships.find(s => s.hull === 'CORSAIR')?.shield).toBe(shipShieldHp(a[0]!.tech.tech, 'CORSAIR'));
       expect(recording.initialAegis).toBe(1300);
-      expect(recording.roundLimit).toBe(6);
+      expect(recording.roundLimit).toBe(COMBAT.rounds);
     }
   });
 
@@ -38,7 +38,9 @@ describe('authoritative per-shot battle recording', () => {
       for (const strike of round.aegisStrikes ?? []) { expect(strike.aegisBefore).toBe(aegis); aegis = strike.aegisAfter; }
       for (const shot of [...round.attackerShots, ...round.defenderShots]) {
         const source = recording.ships.find(s => s.id === shot.sourceId)!;
-        expect(shot.baseDamage).toBeCloseTo(source.attack * (source.side === 'ATTACK' ? round.attackerRoll : round.defenderRoll), 9);
+        // Combat v3: every shot already carries its side's tempo × handicap scale.
+        const scale = source.side === 'ATTACK' ? recording.damageScale!.attacker : recording.damageScale!.defender;
+        expect(shot.baseDamage).toBeCloseTo(source.attack * (source.side === 'ATTACK' ? round.attackerRoll : round.defenderRoll) * scale, 9);
         let usedBase = 0;
         for (const hit of shot.hits) {
           expect(hit.hpBefore).toBe(hp.get(hit.targetId));
@@ -57,8 +59,10 @@ describe('authoritative per-shot battle recording', () => {
         expect(usedBase + shot.unusedBaseDamage).toBeCloseTo(shot.baseDamage, 7);
       }
       for (const state of round.after) {
-        expect(state.hp).toBe(hp.get(state.id));
+        // A ship that broke apart after its hits ends the round at zero.
+        expect(state.hp).toBe((round.exploded ?? []).includes(state.id) ? 0 : hp.get(state.id));
         expect(state.shield).toBe(shields.get(state.id));
+        hp.set(state.id, state.hp);
       }
       expect(round.aegisAfter).toBe(aegis);
     }
@@ -110,7 +114,7 @@ describe('authoritative per-shot battle recording', () => {
           for (const hit of shot.hits) expect(retreated.has(hit.targetId)).toBe(false);
         }
         for (const id of round.retreated) { retreated.add(id); escaped++; }
-        if (round.round === 6) expect(round.retreated).toEqual([]);
+        if (round.round === COMBAT.rounds) expect(round.retreated).toEqual([]);
       }
     }
     expect(escaped).toBeGreaterThan(0);

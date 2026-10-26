@@ -64,43 +64,39 @@ export const counter = {
   matchupLabel: '{{attacker}} contra {{defender}}: {{outcome}}, ×{{mult}} daño',
   cycleLabel: 'Hostigador vence a Baluarte, Baluarte vence a Lanza, Lanza vence a Hostigador',
   /** Above the two bars on the launch sheet — the one name of the one force unit. D199. */
-  compareHeading: 'Valor de unidad armada',
+  /** Combat v3 force ruler (owner 2026-10-25): each side’s power, their ratio, and the rule one tap deep. */
+  compareHeading: "Poder relativo",
+  compareLabel: "Tu poder {{yours}}; su poder {{theirs}}",
+  comparePick: "Elige naves para compararlas con este objetivo.",
+  compareMeaning: "Potencia de fuego y resistencia una contra otra, ventajas de clase incluidas. El bando más fuerte conserva más de su flota.",
+  compareRule: "El poder cuenta naves armadas y cañones terrestres activos: su investigación, sus daños y el ciclo de clases frente al otro bando, más la carga del Aegis. Las naves desarmadas no suman nada. Una sonda lee en rangos, así que cada bando es un rango; el extremo bajo de la proporción es tu peor caso. Las lecturas envejecen, y en cada batalla los disparos caen al azar.",
+  ratioYou: "Eres {{band}}× más fuerte",
+  ratioThem: "Son {{band}}× más fuertes",
+  ratioOpen: "La lectura no aclara quién es más fuerte: ellos hasta {{them}}×, tú hasta {{you}}×",
+  ratioEven: "Más o menos iguales",
+  ratioNoFire: "Allí nada devuelve el fuego",
+  ratioUnarmed: "Tu ala no tiene nada que dispare",
+  axisTheirs: "Ellos más fuertes",
+  axisEven: "Igual",
+  axisYours: "Tú más fuerte",
+  outcomeHeading: "Lo que conserva cada bando, de media",
+  outcomeRatio: "Proporción",
+  outcomeWeak: "El débil conserva",
+  outcomeStrong: "El fuerte pierde",
+  outcomeNote: "Medias de muchas batallas. Las naves que se retiran con vida cuentan como conservadas. A 1:1, las flotas grandes conservan más.",
+  escapeRun: "En toda la lectura tu poder es al menos {{ratio}}× el suyo. Si tu ala puede aniquilar su línea y su tanque paga el despegue, sus naves despegan.",
+  escapeStand: "Sus naves se quedan a luchar: en toda la lectura tu poder queda por debajo de {{ratio}}× el suyo.",
+  escapeRule: "Sus naves despegan antes de la batalla si tu poder es al menos {{ratio}}× el de su línea, cañones terrestres activos incluidos. Tu ala también debe poder aniquilar esa línea. Su planeta debe pagar un viaje de ida y vuelta de {{distance}} unidades. Los cañones terrestres se quedan, y los recursos aún pueden saquearse.",
   compareYours: 'Enviando',
   compareTheirs: 'Parado ahí',
-  /** The reading has an age and a width, and both are the fact. */
   compareRecord: '{{source}}, {{age}}',
   compareLive: '{{source}}, leer ahora',
   compareUnknown: 'Nunca medido',
   compareUnknownWhy: 'Una sonda pondría un número en este lado de la barra.',
-  compareLabel: 'Estás enviando {{yours}}; la última lectura de su mundo fue {{theirs}}',
-  /**
-   * WHAT THE FIGURE AND THE LINES ARE, ONE TAP DEEP. D199.
-   *
-   * The figure is what the hulls and guns that can fire cost — D183 took the
-   * transports out of it. The lines are the battle engine run on this wing against
-   * every wall the reading allows, so they include the counter cycle, research and
-   * a known shield; what they leave out is said, never implied.
-   */
-  /** Taktik geri çekilme en la comparación: la conclusión y la regla un toque más adentro. */
-  escapeRun: "La lectura alcanza el umbral de retirada de {{ratio}}× y la línea puede ser aniquilada. Con combustible suficiente, sus naves despegan.",
-  escapeStand: "Sus naves se quedan a luchar: la lectura no alcanza el umbral de retirada de {{ratio}}×, o esta ala no puede aniquilar la línea.",
   escapeUnsure: 'Sus naves podrían despegar; la lectura no resuelve todas las condiciones de retirada.',
-  escapeAt: 'Umbral de retirada: {{at}}',
-  escapeRule:
-    "El valor en recursos de los atacantes armados debe ser al menos {{ratio}} veces el de los defensores armados, incluidos los cañones terrestres activos. El ataque también debe aniquilar toda la defensa presente. El planeta debe pagar un viaje de ida y vuelta de {{distance}} unidades. Si se cumplen las condiciones, las naves evitan el combate. Los cañones se quedan y los recursos pueden ser saqueados.",
   escapeMinimumRule: 'El defensor también necesita al menos {{count}} naves de combate en casa. La lectura de la sonda no muestra cuántas hay.',
   compareRuleToggle: '¿Qué es esto?',
-  compareMeaning: 'Coste de recursos, no daño de ataque. Una flota más grande por sí sola no garantiza la victoria.',
-  compareRule:
-    "Se compara el valor en recursos de naves armadas y defensas terrestres; escudos y naves desarmadas quedan excluidos. La previsión también considera clases, investigaciones y el escudo conocido. El éxito parcial y total requieren al menos una nave superviviente. Las incógnitas crean intervalos: izquierda significa peor caso, derecha mejor caso. Las pérdidas estimadas muestran el coste posible. La información puede estar desactualizada; no se incluye la variación aleatoria de disparos.",
-  forecastCalculating: "Calculando la estimación de batalla…",
-  forecastFailed: "Estimación no disponible. Cambia la flota para reintentarlo.",
-  linesClears: 'Éxito total si su defensa es como máximo {{at}}',
-  linesBreaks: 'Al menos éxito parcial si es como máximo {{at}}',
   lineJoin: ' · ',
-  lossLabel: 'Tu pérdida estimada: {{share}} del ala (por valor de recursos)',
-  lossUncertainty: 'Este es un rango de pérdida basado en información actual, no una posibilidad de ganar.',
-  lossTotalRisk: 'Riesgo alto: Ninguno de tus naves puede regresar.',
   /** What the lines could not see, and what is already known about the reading. D199. */
   noteShieldUnmeasured: 'Carga de escudo no medida',
   noteShapeUnread: 'Forma de la pared no leída',

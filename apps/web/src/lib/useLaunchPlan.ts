@@ -43,7 +43,7 @@ import { describe, useToast } from '../ui/Toast.js';
  *
  * Lifted verbatim out of `LaunchSheet` so the v2 composer and the sheet it replaces read one
  * statement of the rules — the route and its pace, the fuel, what stays home, the reading of the
- * target, the forecast lines, the escape line, the notes, every reason the launch would be
+ * target, the power ratio, the escape verdict, the notes, every reason the launch would be
  * refused, and the commitment itself. It draws nothing.
  */
 export function useLaunchPlan({
@@ -384,7 +384,7 @@ export function useLaunchPlan({
     ? recordAgeMinutes(target.world, serverNow())
     : null;
 
-  const { report, opposing, lines, matchups, hint, loss, escape, notes } = useTargetReading({
+  const { report, opposing, power, matchups, hint, escape, notes } = useTargetReading({
     target,
     intel,
     reports,
@@ -489,7 +489,7 @@ export function useLaunchPlan({
     paceReset: paces.length > 0 && pace !== wantedPace,
     total, salvageRoom, baysFree, tooLate, busy, radiation, pirateProfit, pirateProfitState,
     shipyardRevolt, holding, needsWarship, canSend, away, atHome, recordAge, opposing,
-    lines, matchups, hint, loss, escape, notes, refusal, commit,
+    power, matchups, hint, escape, notes, refusal, commit,
     /** What the probe read of the wall, for the matchup line (B6); null where nobody looked. */
     classReading: report?.classReading ?? null,
     /** The probe's reading of this world, for the haul the hold is set against (E3's cargo). */

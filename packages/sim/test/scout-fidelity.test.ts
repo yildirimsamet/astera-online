@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GROUND_HULLS, INTEL, classReading, probeAccuracy, type ClassReading } from '@astera/rules';
+import { GROUND_HULLS, INTEL, classReading, mulberry32, probeAccuracy, type ClassReading } from '@astera/rules';
 import {
   expectedDefence,
   expectedLineFromReadings,
@@ -21,24 +21,27 @@ import type { Composition } from '../src/archetypes.js';
  * the archetype ladder rests on — that the adaptive archetype out-ranks the blind one — was taken
  * against a scout that could not miss.
  */
+/** Combat v3 (owner 2026-10-25): every class as a range, as wide as the accuracy leaves. */
+const widest = (reading: ClassReading) => {
+  if (reading.kind !== 'RANGES') throw new Error(`expected ranges, got ${reading.kind}`);
+  return Math.max(...Object.values(reading.shares).map((r) => r.high - r.low));
+};
+
 describe('what a simulated scout may learn', () => {
   const wall = { BALLISTA: 100, TEMPEST: 10 };
 
   it('reads only what a probe of that accuracy sells', () => {
     const par = probeAccuracy(4, 4);
-    expect(readingOfLine(wall, par)).toEqual(classReading(wall, par));
+    expect(readingOfLine(wall, par, mulberry32(1))).toEqual(classReading(wall, par, mulberry32(1)));
   });
 
-  it('names no more than the majority at par accuracy', () => {
-    const reading = readingOfLine(wall, probeAccuracy(4, 4));
-    expect(reading.kind).toBe('DOMINANT');
+  it('reads each class to about ±22 points at par accuracy', () => {
+    expect(widest(readingOfLine(wall, probeAccuracy(4, 4), mulberry32(2)))).toBeLessThanOrEqual(46);
   });
 
-  /** Two Shipyard rungs above the Veil is what buys the whole split — and nothing less. */
-  it('reads the full split only when the probe outclasses the veil', () => {
-    expect(probeAccuracy(4, 4)).toBeLessThan(INTEL.classSharesAccuracy);
-    expect(probeAccuracy(6, 4)).toBeGreaterThanOrEqual(INTEL.classSharesAccuracy);
-    expect(readingOfLine(wall, probeAccuracy(6, 4)).kind).toBe('SHARES');
+  it('narrows the ranges to ±10 points only when the probe outclasses the veil', () => {
+    expect(probeAccuracy(7, 4)).toBe(INTEL.accuracyMax);
+    expect(widest(readingOfLine(wall, probeAccuracy(7, 4), mulberry32(3)))).toBeLessThanOrEqual(21);
   });
 
   /** A veiled world gives up less to the same probe. */
@@ -56,15 +59,24 @@ describe('what a simulated scout may learn', () => {
       { kind: 'DOMINANT', cls: 'LANCE' },
       { kind: 'DOMINANT', cls: 'BULWARK' },
     ]);
-    const shape = classReading(line, 1);
-    expect(shape.kind).toBe('SHARES');
-    if (shape.kind !== 'SHARES') throw new Error('unreachable');
-    expect(shape.shares.LANCE).toBeGreaterThan(shape.shares.BULWARK);
-    expect(shape.shares.SKIRMISHER).toBe(0);
+    const shape = classReading(line, INTEL.accuracyMax, () => 0.5);
+    if (shape.kind !== 'RANGES') throw new Error('expected ranges');
+    expect(shape.shares.LANCE.low).toBeGreaterThan(shape.shares.BULWARK.low);
+    expect(shape.shares.SKIRMISHER.low).toBe(0);
   });
 
   it('falls back to nothing when no reading resolved a class', () => {
     expect(expectedLineFromReadings([{ kind: 'EVEN' }, { kind: 'UNREAD' }])).toEqual({});
+  });
+
+  it('reads a range by its middle', () => {
+    const line = expectedLineFromReadings([{ kind: 'RANGES', shares: {
+      SKIRMISHER: { low: 0, high: 20 }, BULWARK: { low: 10, high: 30 }, LANCE: { low: 60, high: 80 },
+    } }]);
+    const shape = classReading(line, INTEL.accuracyMax, () => 0.5);
+    if (shape.kind !== 'RANGES') throw new Error('expected ranges');
+    expect(shape.shares.LANCE.low).toBeGreaterThan(shape.shares.BULWARK.high);
+    expect(shape.shares.BULWARK.low).toBeGreaterThanOrEqual(shape.shares.SKIRMISHER.low);
   });
 });
 
@@ -85,19 +97,15 @@ describe('what one simulated probe records', () => {
     buildings: { CORE: 8, REFINERY: 6, EXTRACTOR: 6, DEUTERIUM_PLANT: 2, SHIPYARD: 3, HANGAR: 3, VAULT: 4 },
   };
 
-  it('names only the majority class when the probe merely matches the veil', () => {
-    const intel = probeIntel(4, { ...target, instruments: { VEIL: 4 } }, 0, () => 0.5);
-    expect(intel.reading.kind).toBe('DOMINANT');
+  it('reads wider ranges through a veil that matches the probe than past one it outclasses', () => {
+    const par = probeIntel(4, { ...target, instruments: { VEIL: 4 } }, 0, () => 0.5);
+    const sharp = probeIntel(7, { ...target, instruments: { VEIL: 4 } }, 0, () => 0.5);
+    expect(widest(par.reading)).toBeGreaterThan(widest(sharp.reading));
   });
 
-  it('reads nothing at all from a world whose veil outclasses the probe', () => {
+  it('reads almost nothing from a world whose veil outclasses the probe', () => {
     const intel = probeIntel(1, { ...target, instruments: { VEIL: 9 } }, 0, () => 0.5);
-    expect(intel.reading.kind).toBe('UNREAD');
-  });
-
-  it('gives up the whole split only to a probe two rungs over the veil', () => {
-    const intel = probeIntel(6, { ...target, instruments: { VEIL: 4 } }, 0, () => 0.5);
-    expect(intel.reading.kind).toBe('SHARES');
+    expect(widest(intel.reading)).toBeGreaterThanOrEqual(69);
   });
 
   /**

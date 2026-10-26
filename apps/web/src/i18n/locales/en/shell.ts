@@ -240,6 +240,7 @@ export const menu = {
   */
   guideLabel: 'Wiki',
   guideHint: 'Buildings, ships and the rules of the galaxy',
+  simulatorHint: "Stage any fight and watch how it ends",
   rewardsWaiting: '{{count}} ready',
   /** T12: research is a commander's, not a world's, so its way in is here. */
   researchLabel: 'Research',

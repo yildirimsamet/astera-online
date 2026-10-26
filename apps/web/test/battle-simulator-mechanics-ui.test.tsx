@@ -65,7 +65,7 @@ describe('players can identify roles, fleets and the state being shown', () => {
 
   it('keeps a named retreat roster and removes it on rewinding', () => {
     const simulation = simulateScenario(scenarioSchema.parse({ ...DEFAULT_SCENARIO, seed: 0, aegisLevel: 0,
-      attackers: [{ id: 'a', fleet: { DART: 18 } }], defenders: [{ id: 'd', fleet: { DART: 18 } }] }));
+      attackers: [{ id: 'a', fleet: { DART: 36 } }], defenders: [{ id: 'd', fleet: { DART: 18 } }] }));
     const timeline = buildReplayTimeline(simulation.recording), event = timeline.events.find(item => item.kind === 'RETREAT')!;
     render(<BattleReplay simulation={simulation} environment="PLANET" />);
     fireEvent.change(screen.getByLabelText('Battle timeline'), { target: { value: String(event.at + .5) } });
@@ -74,7 +74,41 @@ describe('players can identify roles, fleets and the state being shown', () => {
     expect(roster).toHaveTextContent('Fleet 1');
     fireEvent.click(within(roster).getAllByRole('button', { name: /Inspect/ })[0]!);
     expect(screen.getByRole('region', { name: 'Selected unit' })).toHaveTextContent('Retreated');
-    fireEvent.click(screen.getByRole('button', { name: 'Replay from start' }));
+    fireEvent.change(screen.getByLabelText('Battle timeline'), { target: { value: '0' } });
     expect(screen.queryByRole('region', { name: 'Retreated · alive, out of combat' })).not.toBeInTheDocument();
   });
+
+  it('multiplies a v3 shot by the battle balance, so the shown factors give the shot budget', () => {
+    const simulation = simulateScenario(DEFAULT_SCENARIO);
+    const scale = simulation.recording.damageScale!.attacker;
+    expect(scale).not.toBe(1);
+    render(<BattleReplay simulation={simulation} environment="PLANET" />);
+    fireEvent.click(screen.getAllByRole('button', { name: /Show shot/ })[0]!);
+    const detail = screen.getByRole('table', { name: 'Damage distribution' }).closest('.sim-shot-detail')!;
+    expect(detail).toHaveTextContent(`battle balance ${scale.toLocaleString('en', { maximumFractionDigits: 2 })}`);
+    expect(detail).toHaveTextContent(/One target per shot/);
+    expect(detail).not.toHaveTextContent(/Up to 10/);
+  });
+
+  it('keeps the ten-target rule and no balance factor for a replay recorded before combat v3', () => {
+    const simulation = simulateScenario(DEFAULT_SCENARIO);
+    const old = { ...simulation, recording: { ...simulation.recording, damageScale: undefined } };
+    render(<BattleReplay simulation={old} environment="PLANET" />);
+    fireEvent.click(screen.getAllByRole('button', { name: /Show shot/ })[0]!);
+    const detail = screen.getByRole('table', { name: 'Damage distribution' }).closest('.sim-shot-detail')!;
+    expect(detail).toHaveTextContent(/Up to 10/);
+    expect(detail).not.toHaveTextContent(/battle balance/);
+  });
+
+  it('names the round once in the status strip, and says the battle is complete only once', () => {
+    const simulation = simulateScenario(DEFAULT_SCENARIO);
+    const timeline = buildReplayTimeline(simulation.recording);
+    render(<BattleReplay simulation={simulation} environment="PLANET" />);
+    const banner = () => document.querySelector('[data-combat-phase]')!;
+    fireEvent.change(screen.getByLabelText('Battle timeline'), { target: { value: String(timeline.rounds[0]!.openingEnd + .1) } });
+    expect(banner().textContent.match(/Round 1 \/ 8/g)).toHaveLength(1);
+    fireEvent.change(screen.getByLabelText('Battle timeline'), { target: { value: String(timeline.duration) } });
+    expect(banner().textContent.match(/Battle complete/g)).toHaveLength(1);
+  });
 });
+

@@ -85,7 +85,7 @@ describe('resolveBattle — one defending stack is the resolver it always was', 
       const battle = resolveBattle(attackers, [host(line, hostTech)], shield, mulberry32(seed));
 
       const { defenders, ...aggregate } = battle;
-      expect({ ...aggregate, rounds: aggregate.rounds.map(({ retreats: _retreats, casualties: _casualties, ...round }) => round) }).toEqual({ ...legacy, rounds: legacy.rounds.map(({ retreats: _retreats, casualties: _casualties, ...round }) => round) });
+      expect({ ...aggregate, rounds: aggregate.rounds.map(({ retreats: _retreats, casualties: _casualties, explosions: _explosions, ...round }) => round) }).toEqual({ ...legacy, rounds: legacy.rounds.map(({ retreats: _retreats, casualties: _casualties, explosions: _explosions, ...round }) => round) });
       expect(defenders).toHaveLength(1);
       expect(defenders[0]).toEqual({
         stackId: 'host',
@@ -115,7 +115,8 @@ describe('resolveBattle — several commanders hold one line', () => {
         0,
         counter.rng,
       );
-      expect(counter.calls()).toBe(2 + 2 * result.rounds.length);
+      // Combat v3 seeds three sub-streams at entry (targets, retreats, break-apart rolls).
+      expect(counter.calls()).toBe(3 + 2 * result.rounds.length);
     }
   });
 
@@ -171,20 +172,26 @@ describe('resolveBattle — several commanders hold one line', () => {
   });
 
   it('randomly targets wounded supporters and keeps every casualty with its owner', () => {
-    const result = resolveBattle(
-      [attacker({ DART: 20 })],
-      [
-        host({ DART: 10 }),
-        supporter({ DART: 10 }, 'w1', 's1', {}, [{ hull: 'DART', count: 5, damageBp: 9_500 }]),
-      ],
-      0,
-      flat(),
-    );
-    expect(result.rounds[0]!.defenderLosses.DART ?? 0).toBeGreaterThan(0);
-    const wave = result.defenders.find((row) => row.stackId === 'w1')!;
-    const home = result.defenders.find((row) => row.stackId === 'host')!;
-    expect((wave.losses.DART ?? 0) + (wave.survivors.DART ?? 0)).toBe(10);
-    expect(home.losses.DART ?? 0).toBeLessThanOrEqual(wave.losses.DART ?? 0);
+    // One target per shot is a draw: over many battles the wave's near-dead Darts are hit and die
+    // (those that live long enough also retreat, so they need not die more than the host's).
+    let waveLost = 0;
+    for (let seed = 0; seed < 30; seed++) {
+      const result = resolveBattle(
+        [attacker({ DART: 20 })],
+        [
+          host({ DART: 10 }),
+          supporter({ DART: 10 }, 'w1', 's1', {}, [{ hull: 'DART', count: 5, damageBp: 9_500 }]),
+        ],
+        0,
+        mulberry32(seed),
+      );
+      const wave = result.defenders.find((row) => row.stackId === 'w1')!;
+      const home = result.defenders.find((row) => row.stackId === 'host')!;
+      expect((wave.losses.DART ?? 0) + (wave.survivors.DART ?? 0)).toBe(10);
+      expect((home.losses.DART ?? 0) + (home.survivors.DART ?? 0)).toBe(10);
+      waveLost += wave.losses.DART ?? 0;
+    }
+    expect(waveLost).toBeGreaterThan(0);
   });
 
   it('adds every stack back up to the aggregate the report stores', () => {

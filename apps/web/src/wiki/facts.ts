@@ -1,5 +1,5 @@
 import {
-  battleRetreatPolicy,
+  combatOutcomeTable,
   LOW_TIER_PVP_BALANCE, STANDARD_PVP_BALANCE,
   ABUSE, ANTI_STRATEGIC, BUILD, COMBAT, CORE_TOP_LEVEL, DEATH_STAR, DEUTERIUM,
   ECON, ESCAPE, FAULT, HANGAR, HULLS, INSTRUMENT_MAX_LEVEL, MULTI_WORLD,
@@ -156,15 +156,15 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
       ]),
     ],
   )];
-  if (id === 'combat.model') blocks.push(table(
-    t(`Round 1–${COMBAT.rounds - 1} retreat: chance / remaining hull limit`, `1–${COMBAT.rounds - 1}. tur kaçışı: şans / kalan can sınırı`),
-    [t('Entry power ratio', 'Başlangıç güç oranı'), t('Weaker side', 'Güçsüz taraf'), t('Stronger side', 'Güçlü taraf')],
-    [100, 150, 200, 300].map(amount => {
-      const policy = battleRetreatPolicy({ CORSAIR: amount }, { CORSAIR: 100 });
-      const cell = (window: { chance: number; threshold: number }) => `${percent(window.chance, language)} / ≤${percent(window.threshold, language)}`;
-      return [`1:${n(amount / 100)}${amount === 300 ? '+' : ''}`, cell(policy.defender), cell(policy.attacker)];
-    }),
-  ));
+  if (id === 'combat.model') {
+    // Combat v3: the owner's table the retreat windows and the handicap are fitted to (2026-10-25).
+    const share = (s: { low: number; high: number }) => s.low === s.high ? percent(s.low, language) : `${percent(s.low, language)}–${percent(s.high, language)}`;
+    blocks.push(table(
+      t('Average result by power ratio at battle start', 'Savaş başındaki güç oranına göre ortalama sonuç'),
+      [t('Power ratio', 'Güç oranı'), t('Weaker side keeps', 'Zayıf taraf korur'), t('Stronger side loses', 'Güçlü taraf kaybeder')],
+      combatOutcomeTable().map(row => [`1:${n(row.ratio)}`, share(row.weakKeeps), share(row.strongLoses)]),
+    ));
+  }
   if (id === 'combat.eligibility') blocks = [pairs(language, t('PvP boundaries', 'PvP sınırları'), [
     [t('Development tier', 'Gelişim kademesi'), t('Highest owned Core level ÷ 3, rounded up', 'Sahip olduğun en yüksek Çekirdek seviyesi ÷ 3; yukarı yuvarlanır')],
     [t('Maximum tier difference', 'İzin verilen kademe farkı'), `±${n(ABUSE.tierBand)}`],
@@ -180,7 +180,7 @@ export function conceptReference(id: string, language: WikiLanguage): WikiSectio
     ],
   )];
   if (id === 'combat.retreat') blocks = [pairs(language, t('Retreat inputs', 'Çekilme girdileri'), [
-    [t('Minimum fighting ships', 'Asgari savaş gemisi'), n(ESCAPE.minimumCombatShips)], [t('Attacking armed-unit value / defending armed-unit value', 'Saldıran silahlı birimlerin değeri / savunan silahlı birimlerin değeri'), `${n(ESCAPE.ratio)}×`],
+    [t('Minimum fighting ships', 'Asgari savaş gemisi'), n(ESCAPE.minimumCombatShips)], [t('Attacking power / defending line power (classes, research, wounds and Aegis included)', 'Saldıran güç / savunan hattın gücü (sınıf, araştırma, hasar ve Aegis dahil)'), `${n(ESCAPE.ratio)}×`],
   ])];
   if (id === 'combat.death-star') blocks = [pairs(language, t('Strategic weapon requirements', 'Stratejik silah şartları'), [
     [t('Local Command Core level', 'Gezegenin Komuta Çekirdeği seviyesi'), n(DEATH_STAR.requiredCore)],

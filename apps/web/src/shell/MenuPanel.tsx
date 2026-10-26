@@ -1,6 +1,6 @@
 import { AccountSecurityEntry } from '../screens/AccountSecuritySheet.js';
 import { AccountDeletionEntry } from '../screens/AccountDeletionSheet.js';
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { VacationSheet } from '../screens/VacationSheet.js';
 import { useTranslation } from 'react-i18next';
 import { playSound, setEffectsEnabled, setEffectsVolume, useEffectsEnabled, useEffectsVolume } from '../lib/sound.js';
@@ -42,6 +42,7 @@ import {
   GuideIcon,
   HeartIcon,
   HonorIcon,
+  AttackIcon,
 } from '../ui/icons/index.js';
 import { ThornHull } from '../ui/icons/hulls.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
@@ -58,6 +59,7 @@ import { ShopShowcase } from './ShopShowcase.js';
 import { ATMOSPHERE, type AtmosphereArt } from '../ui/atmosphere.js';
 import { AtmosphereImage } from '../ui/AtmosphereArt.js';
 import { capabilities } from '../platform/runtime.js';
+import { SimulatorHost } from '../battle-simulator/SimulatorHost.js';
 
 /**
  * THE MENU — everything the game has that is not the galaxy.
@@ -196,6 +198,9 @@ export function MenuPanel({
   const announcementWaiting = announcementData?.announcements.filter((row) => !row.seen).length ?? 0;
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const [vacationOpen, setVacationOpen] = useState(false);
+  const [simulatorOpen, setSimulatorOpen] = useState(false);
+  // Focus returns to the tile that opened the simulator.
+  const simulatorOpener = useRef<HTMLElement | null>(null);
 
   const marks = rivals.filter((mark) => (mark.lost ? onClearRival : onFocusRival) !== undefined);
 
@@ -384,6 +389,18 @@ export function MenuPanel({
           hint={t('menu.guideHint')}
           onClick={() => { onOpen('wiki'); }}
         />
+        {/* Over the menu, not instead of it: closing the simulator lands back here. */}
+        <MenuTile
+          icon={<AttackIcon className="size-5" />}
+          label={t('simulator.title')}
+          art={ATMOSPHERE.simulator}
+          hint={t('menu.simulatorHint')}
+          onClick={() => {
+            simulatorOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+            setSimulatorOpen(true);
+          }}
+        />
+        {simulatorOpen && <SimulatorHost onClose={() => { setSimulatorOpen(false); simulatorOpener.current?.focus(); }} />}
         {onReplayAcademy && (
           <MenuTile
             icon={<GuideIcon className="size-5" />}

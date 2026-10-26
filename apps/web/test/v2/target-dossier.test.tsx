@@ -1,12 +1,11 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { FAULT, combatValue, distance, fleetPace, travelMinutes } from '@astera/rules';
+import { FAULT, distance, fleetPace, readPowerRange, travelMinutes } from '@astera/rules';
 import type { GalaxyPlanet, IntelView } from '../../src/api/schemas.js';
 import { compact } from '../../src/lib/format.js';
 import { flightModifiers, reachMinutes } from '../../src/lib/navigation.js';
 import { duration } from '../../src/lib/time.js';
-import { ControlledWorker } from '../forecastWorker.js';
 import { TargetDossier } from '../../src/v2/hud/TargetDossier.js';
 import { planetView } from '../fixtures.js';
 
@@ -68,8 +67,9 @@ const show = (props: Partial<Parameters<typeof TargetDossier>[0]> = {}) => rende
 it('compares only home ships that can join the attack, excluding critical hulls', () => {
   const wounded = planetView({ fleet: { DART: 40 }, fleetDamage: [{ hull: 'DART', count: 39, damageBp: 9500 }] });
   show({ planet: wounded });
-  const ruler = document.querySelector<HTMLElement>('[data-force-ruler]')!;
-  expect(within(ruler).getByText(compact(combatValue({ DART: 1 })))).toBeInTheDocument();
+  const expected = readPowerRange({ fleet: { DART: 1 }, tech: flightModifiers(wounded).tech },
+    [{ value: probed.probeReports[0]!.defence }], { low: 0, high: 0 })!;
+  expect(screen.getByTestId('ruler-mine')).toHaveTextContent(compact(expected.mine.low));
 });
 
 describe('the target dossier', () => {
@@ -103,12 +103,12 @@ describe('the target dossier', () => {
     expect(look.querySelector('[data-age]')).not.toBeNull();
   });
 
-  /** B5 in the dossier: the band the probe read, on the axis of what stands home. */
-  it('puts their band against the wing at home', () => {
+  /** B5 in the dossier: the ratio the probe allows, against what stands home. */
+  it('weighs the wing at home against the reading', () => {
     show();
     const ruler = document.querySelector<HTMLElement>('[data-force-ruler]')!;
     expect(within(ruler).getByText('Your wing at home')).toBeInTheDocument();
-    expect(ruler.querySelector('[data-part="band"]')).not.toBeNull();
+    expect(ruler.querySelector('[data-part="ratio-band"]')).not.toBeNull();
   });
 
   it('weighs the haul against the hold, and says when the hold is the wall', () => {
@@ -123,7 +123,7 @@ describe('the target dossier', () => {
   it('draws no enemy band and no haul where nobody has looked', () => {
     show({ intel: blind });
     expect(document.querySelector("[data-dossier-look]")).toHaveTextContent(/no probe has looked inside/i);
-    expect(document.querySelector('[data-force-ruler] [data-part="band"]')).toBeNull();
+    expect(document.querySelector('[data-force-ruler] [data-part="ratio-band"]')).toBeNull();
     expect(document.querySelector('[data-dossier-loot]')).toBeNull();
   });
 
@@ -205,6 +205,20 @@ describe('the target dossier, as the mock draws it', () => {
     expect(shape.querySelector('[data-share-unread]')).not.toBeNull();
   });
 
+  /** Combat v3: each class's floor is drawn solid; what the ranges leave open is hatched. */
+  it('draws a range reading as its floors, the open part hatched, and the ranges in words', () => {
+    show({ intel: shaped({ kind: 'RANGES', shares: { LANCE: { low: 50, high: 70 }, BULWARK: { low: 20, high: 40 }, SKIRMISHER: { low: 0, high: 20 } } }) });
+    const shape = document.querySelector<HTMLElement>('[data-dossier-shape]')!;
+    const parts = [...shape.querySelectorAll<HTMLElement>('[data-share]')];
+    expect(parts.map((part) => part.getAttribute('data-share'))).toEqual(['LANCE', 'BULWARK']);
+    expect(parts.map((part) => part.style.width)).toEqual(['50%', '20%']);
+    expect(shape.querySelector('[data-share-unread]')).not.toBeNull();
+    const wall = shape.querySelector<HTMLElement>('[data-matchup-wall]')!;
+    expect(wall).toHaveTextContent('Lance 50–70%');
+    expect(wall).toHaveTextContent('Skirmisher 0–20%');
+    expect(wall).not.toHaveTextContent(/unread and may counter/i);
+  });
+
   it('draws no bar where the probe could not read the shape — only the sentence', () => {
     show({ intel: shaped({ kind: 'UNREAD' }) });
     const shape = document.querySelector<HTMLElement>('[data-dossier-shape]')!;
@@ -275,18 +289,3 @@ describe('the development band in the header', () => {
 });
 
 
-it('does not restart the forecast worker when its result renders the dossier', async () => {
-  vi.stubGlobal('Worker', ControlledWorker);
-  ControlledWorker.instances = [];
-  const view = show();
-  try {
-    await waitFor(() => { expect(ControlledWorker.instances).toHaveLength(1); });
-    act(() => { ControlledWorker.instances[0]!.complete(); });
-    expect(ControlledWorker.instances).toHaveLength(1);
-    expect(screen.queryByText('Calculating the battle estimate…')).toBeNull();
-  } finally {
-    view.unmount();
-    vi.unstubAllGlobals();
-    ControlledWorker.instances = [];
-  }
-});

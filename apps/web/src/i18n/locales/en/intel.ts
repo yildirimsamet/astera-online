@@ -636,6 +636,7 @@ export const dossier = {
   shapeNote: 'By value, of what can fire. More than half is a majority.',
   shapeUnread: 'Not read',
   shapeUnreadNote: 'Their Veil is stronger than the Shipyard that sent the probe.',
+  shapeRangesNote: "By value, of what can fire. Each share is a range; the true share sits inside it.",
   shieldLabel: 'Shield charge',
   shieldNote: 'Takes a raid’s fire before any hull does, and refills over the hours.',
   unarmedLabel: 'Unarmed in the line',
@@ -680,6 +681,7 @@ export const dossier = {
   doctrinesNone: 'None researched',
   doctrinesNote: 'Their hulls fight better than the table says. This is the multiplier you would meet.',
   doctrinesNoneNote: 'They had researched nothing into their hulls when the probe looked.',
+  researchWindowNote: "Read as windows: each true level sits inside its window. Higher levels make their hulls fight harder.",
 
   surfaceGapLabel: 'Everything about this world',
   surfaceGapMissing: 'You have never seen this world',

@@ -31,6 +31,16 @@ describe('frozen real battle presentation', () => {
     const dangling = structuredClone(response);
     dangling.replay.recording.rounds[0]!.attackerShots[0]!.hits[0]!.targetId = 'unknown';
     expect(battleReplayResponseSchema.safeParse(dangling).success).toBe(false);
+    // Combat v3: the battle balance and the ships that broke apart reach the replay intact.
+    const v3 = structuredClone(response);
+    v3.replay.recording.rounds[0]!.exploded = [v3.replay.recording.ships[0]!.id];
+    const parsed = battleReplayResponseSchema.parse(v3).replay.recording;
+    expect(parsed.rounds[0]!.exploded).toEqual([v3.replay.recording.ships[0]!.id]);
+    expect(parsed.damageScale).toEqual(response.replay.recording.damageScale);
+    expect(parsed.damageScale).toBeDefined();
+    const ghost = structuredClone(v3);
+    ghost.replay.recording.rounds[0]!.exploded = ['unknown'];
+    expect(battleReplayResponseSchema.safeParse(ghost).success).toBe(false);
     const duplicate = structuredClone(response);
     duplicate.replay.recording.rounds[0]!.after[1] = duplicate.replay.recording.rounds[0]!.after[0]!;
     expect(battleReplayResponseSchema.safeParse(duplicate).success).toBe(false);
@@ -81,7 +91,8 @@ describe('frozen real battle presentation', () => {
     const timeline = buildReplayTimeline(data.recording);
     fireEvent.change(screen.getByLabelText('Battle timeline'), { target: { value: String(timeline.duration) } });
     const result = [...document.querySelectorAll('.sim-result')].map(node => node.textContent);
-    fireEvent.click(screen.getByRole('button', { name: 'Switch perspective' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Attacker Active/ }));
+    expect(screen.getByRole('button', { name: /^Attacker Active/ })).toHaveAttribute('aria-pressed', 'true');
     expect([...document.querySelectorAll('.sim-result')].map(node => node.textContent)).toEqual(result);
   });
   it('explains personal annihilation even when allied ships win the battle', () => {

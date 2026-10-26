@@ -2,7 +2,6 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FAULT,
-  combatValue,
   distance,
   fleetCargo,
   fleetCount,
@@ -186,9 +185,8 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
 
       <div className={SECTION}>
         <ForceRuler
-          yours={combatValue(wing)}
+          power={reading.power}
           theirs={reading.opposing}
-          lines={reading.lines}
           notes={reading.notes}
           yoursLabel={t('dossier.page.wing')}
           heading={t('dossier.page.power')}
@@ -315,7 +313,8 @@ function ShareBar({ wing, reading }: { wing: Fleet; reading: ClassReading }) {
     `${combatClassLabel(cls)} ${t('units.percent', { value: String(Math.round(share * 100)) })}`;
   if (!matchups || matchups.kind === 'MIXED' || matchups.wallShares.length === 0) return null;
   const width = (share: number): string => `${String(Math.round(share * 100))}%`;
-  const parts: ReactNode[] = matchups.wallShares.map((row, index) => (
+  // A range reading draws each class's floor; what the ranges leave open is hatched.
+  const parts: ReactNode[] = matchups.wallShares.filter((row) => row.share > 0).map((row, index) => (
     <span
       key={row.cls}
       data-share={row.cls}

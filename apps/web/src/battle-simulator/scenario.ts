@@ -1,12 +1,16 @@
 import { z } from 'zod';
 import {
   ALL_HULLS, BATTLE_REPLAY_RESEARCH, ESCAPE, HULLS, PIRATE, RESEARCH_PROJECTS, activeBattleFleet, createBattleRecording,
-  fleetEntries, monumentBattleControl, mulberry32, resolveBattle, resolveRaid, shieldHp,
-  type BattleReplayOwner, type DefenderStack, type EscapeOutcome, type HullId, type HpDamageLot, type JointAttackerStack,
+  fleetCount, fleetEntries, mulberry32, partitionCombatFleet, pirateOverrun, resolveBattle, resolveMonumentCombat, resolveRaid, shieldHp,
+  type BattleRecording, type BattleReplayOwner, type DefenderStack, type EscapeOutcome, type Fleet, type HullId, type HpDamageLot, type JointAttackerStack,
 } from '@astera/rules';
 
-/** Local recording budget, not a limit on fleets in the real game. Pairwise hits cost memory. */
-export const SIMULATION_UNIT_LIMIT = 400;
+/**
+ * Local budget, not a limit on fleets in the real game: 500 against 500. Combat v3 records one target
+ * per shot, so 1,000 units resolve in ~20 ms into a ~2 MB recording; the cost that sets this number
+ * is the replay stage on a mid-range phone (docs/simulator-mobile-ux-plan-2026-10-26.md).
+ */
+export const SIMULATION_UNIT_LIMIT = 1000;
 export const COMBAT_RESEARCH = BATTLE_REPLAY_RESEARCH;
 const hull = z.string().refine((value): value is HullId => ALL_HULLS.some(id => id === value), 'unknown hull');
 const fleet = z.record(hull, z.number().int().min(0).max(SIMULATION_UNIT_LIMIT)).default({});
@@ -46,6 +50,10 @@ export const scenarioSchema = z.object({
   if (input.environment === 'MONUMENT' && input.aegisLevel > 0) {
     ctx.addIssue({ code: 'custom', path: ['aegisLevel'], message: 'no planetary shield in space' });
   }
+  // A pirate is one crew in open space, with no research, Aegis or guns (`pirateRaid.ts`).
+  if (input.pirateLevel > 0 && (input.environment !== 'MONUMENT' || input.defenders.length > 1)) {
+    ctx.addIssue({ code: 'custom', path: ['pirateLevel'], message: 'a pirate is one crew in open space' });
+  }
   if (input.automaticEscape && (input.environment !== 'PLANET' || input.defenders.length > 1)) {
     ctx.addIssue({ code: 'custom', path: ['automaticEscape'], message: 'automatic fleet escape requires an unsupported planet host' });
   }
@@ -58,6 +66,23 @@ export const DEFAULT_SCENARIO: BattleScenario = scenarioSchema.parse({
   defenders: [{ id: '1', fleet: { CITADEL: 2, DART: 6, BASTION: 2, THORN: 1 } }],
 });
 
+/**
+ * What happens after the last round, written into the recording as the server writes it into a
+ * replay (`buildBattleReplay`): the defending cargo still flying is taken (a pirate's) or withdraws
+ * (a monument's), and the final state says so.
+ */
+function settleAftermath(recording: BattleRecording, kind: 'PIRATE_OVERRUN' | 'CARGO_WITHDRAWAL'): void {
+  const finalState = (recording.rounds.at(-1)?.after ?? recording.ships).map(({ id, hp, shield, status }) => ({ id, hp, shield, status }));
+  const shipIds = recording.ships.filter(ship => ship.side === 'DEFENCE' && (ship.cls ?? HULLS[ship.hull].cls) === 'SUPPORT'
+    && finalState.some(state => state.id === ship.id && state.status === 'ACTIVE' && state.hp > 0)).map(ship => ship.id);
+  for (const state of finalState) if (shipIds.includes(state.id)) {
+    state.status = kind === 'PIRATE_OVERRUN' ? 'DESTROYED' : 'RETREATED';
+    if (kind === 'PIRATE_OVERRUN') { state.hp = 0; state.shield = 0; }
+  }
+  recording.finalState = finalState;
+  if (shipIds.length > 0) recording.aftermath = [{ kind, shipIds }];
+}
+
 /** Only freely chosen scenario inputs enter here; no live player or intelligence queries. */
 export function simulateScenario(input: BattleScenario) {
   const damage = (owner: SimulationParticipant): HpDamageLot[] => fleetEntries(owner.fleet).flatMap(([hull, count]) => {
@@ -68,11 +93,14 @@ export function simulateScenario(input: BattleScenario) {
     contributionId: `a:${owner.id}`, playerId: `a:${owner.id}`, fleet: owner.fleet,
     tech: { tech: owner.tech }, damage: damage(owner),
   }));
+  const level = input.pirateLevel, pirate = level > 0;
   const defenders: DefenderStack[] = input.defenders.map(owner => ({
     stackId: `d:${owner.id}`, playerId: `d:${owner.id}`,
     fleet: Object.fromEntries(fleetEntries(owner.fleet).filter(([hull]) => !input.defenceOffline || !HULLS[hull].ground)),
-    tech: { tech: owner.tech, damageMult: input.pirateLevel === 0 ? 1 : PIRATE.damageMult[input.pirateLevel] },
+    // A pirate crew holds no research and is never grounded for maintenance (`pirateRaid.ts`).
+    tech: level === 0 ? { tech: owner.tech } : { tech: {}, damageMult: PIRATE.damageMult[level] },
     damage: damage(owner).filter(lot => !input.defenceOffline || !HULLS[lot.hull].ground),
+    ...(pirate ? { maintenanceExempt: true } : {}),
   }));
   const recording = createBattleRecording();
   const shield = input.environment === 'PLANET' && !input.defenceOffline ? shieldHp(input.aegisLevel) * input.aegisCharge / 100 : 0;
@@ -87,10 +115,23 @@ export function simulateScenario(input: BattleScenario) {
       fleet: Object.fromEntries(fleetEntries(host.fleet).filter(([hull]) => HULLS[hull].ground)),
       damage: host.damage?.filter(lot => HULLS[lot.hull].ground) };
   }
-  const result = resolveBattle(attackers, defenders, shield, mulberry32(input.seed), input.environment === 'PLANET' ? 'HP_PLANET' : 'MONUMENT', true, recording);
-  const control = input.environment === 'MONUMENT'
-    ? monumentBattleControl(result.attackerCombatSurvivors ?? activeBattleFleet(result.attackerSurvivors, result.attackerRetreated),
-      activeBattleFleet(result.defenderSurvivors, result.defenderRetreated)) : null;
+  // Each battlefield through the call the server settles it with.
+  let result, control: 'ATTACKER' | 'DEFENDER' | 'EMPTY' | null = null, aftermath: 'PIRATE_OVERRUN' | 'CARGO_WITHDRAWAL' | null = null;
+  if (pirate) {
+    const fought = resolveBattle(attackers, defenders, 0, mulberry32(input.seed), 'HP_PLANET', true, recording);
+    // Only a ship able to fire takes the holds (`pirateRaid.ts`): grounded attackers are not escorts.
+    const ready: Fleet = {};
+    for (const stack of attackers) for (const [hull, count] of fleetEntries(partitionCombatFleet(stack.fleet, stack.damage).eligible)) ready[hull] = (ready[hull] ?? 0) + count;
+    result = pirateOverrun(fought, ready);
+    if (result !== fought) aftermath = 'PIRATE_OVERRUN';
+  } else if (input.environment === 'MONUMENT') {
+    const fought = resolveMonumentCombat(attackers, defenders, mulberry32(input.seed), true, recording);
+    result = fought; control = fought.control;
+    if (control === 'ATTACKER' && fleetCount(activeBattleFleet(result.defenderSurvivors, result.defenderRetreated)) > 0) aftermath = 'CARGO_WITHDRAWAL';
+  } else {
+    result = resolveBattle(attackers, defenders, shield, mulberry32(input.seed), 'HP_PLANET', true, recording);
+  }
+  if (aftermath) settleAftermath(recording, aftermath);
   const owners: BattleReplayOwner[] = [
     ...attackers.map((owner, index) => ({ side: 'ATTACK' as const, playerId: owner.playerId, stackId: owner.contributionId, wing: index + 1, research: { ...owner.tech.tech } })),
     ...defenders.map((owner, index) => ({ side: 'DEFENCE' as const, playerId: owner.playerId, stackId: owner.stackId, wing: index + 1, research: { ...owner.tech.tech } })),

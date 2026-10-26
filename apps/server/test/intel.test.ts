@@ -79,6 +79,12 @@ async function giveInstrument(
     });
 }
 
+/** No probe reads exactly (owner 2026-10-25): every band holds the truth, at most ±20% at the 80% ceiling. */
+const holds = (band: { low: number; high: number } | null | undefined, truth: number) => {
+  expect(band!.low).toBeLessThanOrEqual(truth);
+  expect(band!.high).toBeGreaterThanOrEqual(truth);
+};
+
 const worker = (f: Fixture) =>
   new EventWorker(f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent);
 
@@ -471,9 +477,9 @@ describe('the information layer', () => {
         most expensive things standing here and not one of them fires; twenty Darts
         are the whole of what a raid would actually meet.
 
-        NO VEIL AND A DEVELOPED SHIPYARD, so `probeAccuracy` clamps at 1 and the
-        band has no width — the assertion is then about WHICH hulls were counted
-        rather than about where a fuzz landed.
+        NO VEIL AND A DEVELOPED SHIPYARD, so `probeAccuracy` sits at its 80% ceiling and
+        the band is at its narrowest (±20%) — narrow enough to tell WHICH hulls were
+        counted: the hold is worth far more than half again the guns.
       */
       const line = { DART: 20 } as const;
       await giveUnits(f.db, theirs, { ...line, ATLAS: 6, PROSPECTOR: 2 });
@@ -485,14 +491,14 @@ describe('the information layer', () => {
 
       const [report] = await f.db.select().from(probeReports);
       expect(report).toBeDefined();
-      expect(report!.accuracy).toBe(1);
-      expect(report!.defence.high).toBeCloseTo(combatValue(line), 6);
+      expect(report!.accuracy).toBe(INTEL.accuracyMax);
+      holds(report!.defence, combatValue(line));
       expect(report!.defence.high).toBeLessThan(
         fleetValue({ ...line, ATLAS: 6, PROSPECTOR: 2 }),
       );
       // The FLEET SIZE is a count of craft and DOES include them — "how many ships
       // are there" is a different question from "how much of it shoots".
-      expect(report!.fleetSize.high).toBeCloseTo(28, 6);
+      holds(report!.fleetSize, 28);
     });
 
     it('excludes critical home ships from probe firepower while preserving the physical fleet count', async () => {
@@ -505,8 +511,9 @@ describe('the information layer', () => {
       f.clock.set(scout.arriveAt);
       await worker(f).tick();
       const [report] = await f.db.select().from(probeReports);
-      expect(report?.defence).toEqual({ low: combatValue({ DART: 2 }), high: combatValue({ DART: 2 }) });
-      expect(report?.fleetSize).toEqual({ low: 5, high: 5 });
+      holds(report?.defence, combatValue({ DART: 2 }));
+      expect(report!.defence.high).toBeLessThan(combatValue({ DART: 5 }));
+      holds(report?.fleetSize, 5);
     });
 
     /**
@@ -559,12 +566,8 @@ describe('the information layer', () => {
       const [report] = await f.db.select().from(probeReports)
         .where(eq(probeReports.missionId, scout.missionId));
 
-      expect(report).toMatchObject({ accuracy: 1 });
-      expect(report!.deuteriumStock).toEqual({
-        low: expectedDeuterium,
-        high: expectedDeuterium,
-      });
-      expect(report!.stock.low).toBe(report!.stock.high);
+      expect(report).toMatchObject({ accuracy: INTEL.accuracyMax });
+      holds(report!.deuteriumStock, expectedDeuterium);
       expect(report!.stock.high).toBeGreaterThanOrEqual(expectedDeuterium);
     });
 
@@ -632,14 +635,14 @@ describe('the information layer', () => {
       expect(report!.fleetHome).toBe(false);
     });
 
-    /** A probe arriving now, at a Shipyard that clamps accuracy to 1 — a band with no width. */
+    /** A probe arriving now, at a Shipyard that reaches the 80% ceiling — the narrowest band there is. */
     const exactProbe = async () => {
       await setLevel(f.db, mine, 'SHIPYARD', 4);
       const scout = await launchProbe(f.db, mine, theirs, f.clock);
       f.clock.set(scout.arriveAt);
       await worker(f).tick();
       const [report] = await f.db.select().from(probeReports);
-      expect(report!.accuracy).toBe(1);
+      expect(report!.accuracy).toBe(INTEL.accuracyMax);
       return report!;
     };
 
@@ -693,9 +696,7 @@ describe('the information layer', () => {
 
       const report = await exactProbe();
       const { raidable } = await standingNow();
-      expect(report.stock.low).toBeLessThanOrEqual(raidable);
-      expect(report.stock.high).toBeGreaterThanOrEqual(raidable);
-      expect(report.stock.high - report.stock.low).toBeLessThanOrEqual(1);
+      holds(report.stock, raidable);
     });
 
     /**
@@ -738,8 +739,8 @@ describe('the information layer', () => {
     it('counts the unarmed hulls in the line apart from what fires', async () => {
       await giveUnits(f.db, theirs, { DART: 4, ATLAS: 6, PROSPECTOR: 2 });
       const report = await exactProbe();
-      expect(report.unarmed).toEqual({ low: 6, high: 6 });
-      expect(report.defence.high).toBe(combatValue({ DART: 4 }));
+      holds(report.unarmed, 6);
+      holds(report.defence, combatValue({ DART: 4 }));
     });
 
     /**
@@ -750,40 +751,33 @@ describe('the information layer', () => {
      * bands, so the Veil is what buys a wall its privacy.
      */
     describe('the shape of the wall', () => {
+      // 12,000 of Bastion and 850 of Dart: 93.4% Bulwark, 6.6% Skirmisher.
       const wall = { BASTION: 4, DART: 2 } as const;
-
-      it('names the majority class at a par probe', async () => {
+      const truth = { SKIRMISHER: 850 / 128.5, BULWARK: 12_000 / 128.5, LANCE: 0 };
+      const shapeAt = async (veil: number) => {
         await giveUnits(f.db, theirs, wall);
-        await giveInstrument(f, theirs, 'VEIL', 3);
+        await giveInstrument(f, theirs, 'VEIL', veil);
         const scout = await launchProbe(f.db, mine, theirs, f.clock);
         f.clock.set(scout.arriveAt);
         await worker(f).tick();
         const [report] = await f.db.select().from(probeReports);
-        expect(report!.classReading).toEqual({ kind: 'DOMINANT', cls: 'BULWARK' });
+        const shape = report!.classReading!;
+        if (shape.kind !== 'RANGES') throw new Error(`expected ranges, got ${shape.kind}`);
+        for (const cls of ['SKIRMISHER', 'BULWARK', 'LANCE'] as const) holds(shape.shares[cls], truth[cls]);
+        return Math.max(...Object.values(shape.shares).map(r => r.high - r.low));
+      };
+
+      it('reads every class as a range around the truth, ±22 points at a par probe', async () => {
+        expect(await shapeAt(3)).toBeLessThanOrEqual(46);
       });
 
-      it('reads nothing through a Veil stronger than the Shipyard', async () => {
-        await giveUnits(f.db, theirs, wall);
-        await giveInstrument(f, theirs, 'VEIL', 4);
-        const scout = await launchProbe(f.db, mine, theirs, f.clock);
-        f.clock.set(scout.arriveAt);
-        await worker(f).tick();
-        const [report] = await f.db.select().from(probeReports);
-        expect(report!.classReading).toEqual({ kind: 'UNREAD' });
+      it('leaves the ranges wide through a Veil stronger than the Shipyard', async () => {
+        expect(await shapeAt(4)).toBeGreaterThanOrEqual(56);
       });
 
-      it('gives a good probe the split in tens', async () => {
-        await giveUnits(f.db, theirs, wall);
-        await giveInstrument(f, theirs, 'VEIL', 3);
+      it('narrows a good probe to about ten points either side', async () => {
         await setLevel(f.db, mine, 'SHIPYARD', 5);
-        const scout = await launchProbe(f.db, mine, theirs, f.clock);
-        f.clock.set(scout.arriveAt);
-        await worker(f).tick();
-        const [report] = await f.db.select().from(probeReports);
-        expect(report!.classReading).toEqual({
-          kind: 'SHARES',
-          shares: { SKIRMISHER: 10, BULWARK: 90, LANCE: 0 },
-        });
+        expect(await shapeAt(3)).toBeLessThanOrEqual(22);
       });
     });
   });

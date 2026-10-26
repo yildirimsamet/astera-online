@@ -576,6 +576,7 @@ export const dossier = {
   shapeNote: 'Ateş edebilenlerin değerine göre. Yarıdan fazlası ağırlıktır.',
   shapeUnread: 'Okunamadı',
   shapeUnreadNote: 'Veil’leri sondayı gönderen tersaneden güçlü.',
+  shapeRangesNote: "Ateş edebilenlerin değerine göre. Her pay bir aralıktır; gerçek pay bu aralığın içindedir.",
   shieldLabel: 'Kalkan gücü',
   shieldNote: 'Akının ateşini gövdelerden önce emer ve saatler içinde dolar.',
   unarmedLabel: 'Savunmadaki silahsız gemi',
@@ -608,6 +609,7 @@ export const dossier = {
   doctrinesNone: 'Hiçbiri araştırılmamış',
   doctrinesNote: 'Bu araştırmalar gemilerin saldırı gücünü ve gövde dayanımını artırır. Rapordaki değerler sonda anına aittir.',
   doctrinesNoneNote: 'Sonda anında tamamlanmış muharebe araştırmaları yoktu.',
+  researchWindowNote: "Pencere olarak okundu: her gerçek seviye kendi penceresinin içindedir. Yüksek seviyeler gemilerinin savaş gücünü artırır.",
 
   surfaceGapLabel: 'Gezegen kimliği ve gelişimi',
   surfaceGapMissing: 'Bu dünyayı hiç görmedin',

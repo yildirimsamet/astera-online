@@ -23,6 +23,11 @@ import {
   PIRATE,
   mulberry32,
   pirateStats,
+  battleBalance,
+  createBattleRecording,
+  matchup,
+  powerUnits,
+  resolveBattle,
   resolveCombat,
   type Fleet,
   type HullId,
@@ -61,13 +66,15 @@ describe('counter cycle', () => {
    * for. Distributed fire can spread the return volley across the swarm without
    * destroying a whole Dart. Those wounds persist and still require paid repair.
    *
-   * And one gun is not a wall: the swarm still clears it outright.
+   * And one gun is not a wall: the swarm still clears it outright. Combat v3 (owner
+   * 2026-10-25) makes the swarm pay a few hulls for it: the stronger side's fire is slowed.
    */
   it('is overwhelmed by a Dart swarm, but still leaves repairable damage', () => {
     const r = resolveCombat({ DART: 26 }, { BASTION: 2 }, 0, flat(), NO_TECH);
     expect(r.grade).toBe('DECISIVE');
-    expect(fleetCount(r.attackerLosses)).toBe(0);
-    expect(r.attackerDamage.some(lot => lot.damageBp > 0)).toBe(true);
+    expect(r.defenderLosses).toEqual({ BASTION: 2 });
+    expect(fleetCount(r.attackerLosses)).toBeGreaterThan(0);
+    expect(fleetCount(r.attackerLosses)).toBeLessThan(13);
   });
 
   it('Pikes lose badly into Bastions', () => {
@@ -85,44 +92,37 @@ describe('counter cycle', () => {
    * HISTORICAL PLAYER COMPLAINT: 150 Pikes lost about 35; 250 Pikes later lost about 30
    * against nearly the same board.
    *
-   * Fire is simultaneous: both formations receive the same total first salvo
-   * before destroyed defending guns stop firing. Ten-target shots concentrate
-   * fire and can kill Pikes immediately. The larger formation earns its advantage in round
-   * two by removing more of that board in round one. A few added Darts also matter:
-   * Darts counter Pikes at 1.6x.
+   * Fire is simultaneous, and combat v3 scales both salvos to the matchup, so the
+   * larger formation does not face the same first salvo any more. It still earns
+   * its advantage by removing more of that board early. A few added Darts also
+   * matter: Darts counter Pikes at 1.6x.
    */
-  it('distributes the same simultaneous defending volley across larger Pike fleets', () => {
+  it('makes a larger Pike fleet lose a smaller share against the same board', () => {
     const defence = { DART: 10, BASTION: 10, THORN: 30 };
     const small = resolveCombat({ PIKE: 150 }, defence, 0, flat(), NO_TECH);
-    const large = resolveCombat({ PIKE: 250 }, defence, 0, flat(), NO_TECH);
-
     expect(small.rounds[0]?.attackerLosses.PIKE ?? 0).toBeGreaterThan(0);
     expect(small.rounds[0]?.attackerShipShieldAbsorbed).toBeGreaterThan(0);
-    expect(large.rounds[0]?.defenderDamage).toBe(small.rounds[0]?.defenderDamage);
-    expect(fleetCount(large.attackerLosses) / 250).toBeLessThan(
-      fleetCount(small.attackerLosses) / 150,
-    );
+
+    // Retreat windows roll per ship, so the share is read over seeds, not one flat roll.
+    const lostShare = (pikes: number) => {
+      let lost = 0;
+      for (let seed = 1; seed <= 24; seed++) lost += fleetCount(resolveCombat({ PIKE: pikes }, defence, 0, mulberry32(seed), NO_TECH).attackerLosses);
+      return lost / 24 / pikes;
+    };
+    expect(lostShare(250)).toBeLessThan(lostShare(150));
   });
 
-  it('makes even a few defending Darts visible in Pike casualties', () => {
-    const before = resolveCombat(
-      { PIKE: 250 },
-      { DART: 10, BASTION: 10, THORN: 30 },
-      0,
-      flat(),
-      NO_TECH,
-    );
-    const after = resolveCombat(
-      { PIKE: 250 },
-      { DART: 14, BASTION: 10, THORN: 30 },
-      0,
-      flat(),
-      NO_TECH,
-    );
-
-    expect(fleetCount(after.attackerLosses)).toBeGreaterThanOrEqual(
-      fleetCount(before.attackerLosses),
-    );
+  /*
+    Combat v3 sets a fight's losses by the matchup ratio, so a few Darts count where the
+    ratio is read: they add power to the board even though Pikes counter them.
+  */
+  it('makes even a few defending Darts visible in the matchup Pikes are fought on', () => {
+    const balance = (darts: number) => battleBalance(matchup(
+      { units: powerUnits({ PIKE: 250 }, { tech: {} }) },
+      { units: powerUnits({ DART: darts, BASTION: 10, THORN: 30 }, { tech: {} }) },
+    ));
+    expect(balance(14).defenderPower).toBeGreaterThan(balance(10).defenderPower);
+    expect(balance(14).ratio).toBeLessThan(balance(10).ratio);
   });
 });
 
@@ -730,15 +730,22 @@ describe('a side that fights at a penalty', () => {
   const attackers = { DART: 40 } as const;
   const defenders = { PIKE: 6 } as const;
 
+  /*
+    Combat v3 reads the penalty into the matchup as well, so the battle's shared tempo and
+    handicap move with it. The exact claim lives one level down: before that shared scale,
+    every shot the side fires carries the multiplier and nothing else.
+  */
+  const firstShot = (damageMult: number) => {
+    const recording = createBattleRecording();
+    resolveBattle([{ contributionId: 'a', playerId: 'a', fleet: attackers, tech: { tech: {} } }],
+      [{ stackId: 'd', playerId: 'd', fleet: defenders, tech: { tech: {}, damageMult } }], 0, flat(), 'PLANET', false, recording);
+    return recording.rounds[0]!.defenderShots[0]!.baseDamage / recording.damageScale!.defender;
+  };
+
   it('scales exactly the fire that side puts out', () => {
-    const full = resolveCombat(attackers, defenders, 0, flat(), NO_TECH);
-    const half = resolveCombat(attackers, defenders, 0, flat(), {
-      attacker: { tech: {} },
-      defender: { tech: {}, damageMult: 0.5 },
-    });
-    // Both figures are rounded for the report, so they may sit a unit apart; the
-    // relationship, not the rounding, is what is being asserted.
-    expect(half.rounds[0]!.defenderDamage).toBeCloseTo(full.rounds[0]!.defenderDamage * 0.5, -0.4);
+    expect(firstShot(0.5)).toBeCloseTo(firstShot(1) * 0.5, 9);
+    // The flat roll sits mid-variance: exactly 1.
+    expect(firstShot(1)).toBeCloseTo(HULLS.PIKE.atk, 9);
   });
 
   it('carries the penalty into the casualties, not only into the damage line', () => {
@@ -781,15 +788,8 @@ describe('a side that fights at a penalty', () => {
 
   it('reads every pirate level straight off the one table', () => {
     for (const level of [1, 2, 3, 4] as const) {
-      const soft = resolveCombat(attackers, defenders, 0, flat(), {
-        attacker: { tech: {} },
-        defender: { tech: {}, damageMult: pirateStats(level).damageMult },
-      });
-      const full = resolveCombat(attackers, defenders, 0, flat(), NO_TECH);
-      expect(soft.rounds[0]!.defenderDamage).toBeCloseTo(
-        full.rounds[0]!.defenderDamage * PIRATE.damageMult[level],
-        -0.4,
-      );
+      expect(pirateStats(level).damageMult).toBe(PIRATE.damageMult[level]);
+      expect(firstShot(pirateStats(level).damageMult)).toBeCloseTo(firstShot(1) * PIRATE.damageMult[level], 9);
     }
   });
 });

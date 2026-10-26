@@ -256,9 +256,9 @@ export const planet = {
       "One charge destroys the next Death Star detected by Radar 3 or identified in Telescope sight. The charge is spent when it fires.",
     /** Taktik geri çekilme: the defender's own threshold and the fuel it takes. */
     escapeReady:
-      "Tactical retreat · a raid of {{at}}+ firepower that would wipe this line out finds your ships gone · the lift burns {{fuel}} Deuterium",
+      "Tactical retreat · a raid with {{ratio}}× the power of this line (ships and active guns) that would wipe it out finds your ships gone · the lift burns {{fuel}} Deuterium",
     escapeShort:
-      "Tactical retreat · your ships would run from a raid of {{at}}+ firepower, but the lift needs {{fuel}} Deuterium and the tank holds {{stock}}",
+      "Tactical retreat · your ships would run from a raid with {{ratio}}× the power of this line (ships and active guns), but the lift needs {{fuel}} Deuterium and the tank holds {{stock}}",
     shieldBand: "Shield",
     shieldNote:
       "Aegis absorbs damage before it reaches your units and regenerates 35% of its maximum each hour.",
@@ -740,7 +740,7 @@ export const launch = {
   stays: "Stays home",
   staysUnits_one: "{{count}} unit",
   staysUnits_other: "{{count}} units",
-  staysPower: "power {{value}}",
+  staysPower: "armed unit value {{value}}",
   cargoEach: "{{amount}} cargo each",
   cargoAdds: "+{{amount}} cargo",
   paceBrief: "less fuel · slower legs ≤12h",

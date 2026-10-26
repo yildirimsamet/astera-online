@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import {
   ESCAPE,
-  combatValue,
   escapeCombatShipCount,
   escapeFuel,
   escapingShips,
@@ -11,22 +10,21 @@ import {
   type DefencePosture,
   type Fleet,
 } from '@astera/rules';
-import { compact } from '../lib/format.js';
+import { decimal } from '../lib/format.js';
 
 /**
  * TAKTİK GERİ ÇEKİLME, FROM THE DEFENDER'S SIDE — BEFORE ANY RAID. Owner decision, 2026-09-23.
  *
- * The rule is a plan only if the player can read it off their own world: at what
- * firepower their ships stop fighting and run, and whether the tank can pay for the
- * lift. Both are this commander's own figures — their line, their tank — so the
- * number is stated exactly; nothing here is anyone else's secret.
+ * The rule is a plan only if the player can read it off their own world: against how
+ * strong a raid their ships stop fighting and run, and whether the tank can pay for the
+ * lift. Combat v3 reads the escape on the matchup ratio, which hangs on the raider's
+ * classes and research, so the line states the ratio and what it is measured on rather
+ * than a firepower figure no raid would be held to.
  *
  * ONE LINE, IN THE DEFEND TAB. It answers the four questions in order: what it is
- * (the firepower a raid needs to make the ships run), whether big is good (a higher
- * line means the ships stay and fight more often), what it is related to (the ships
- * and guns standing here, and the tank), and what to do with it (keep the lift in the
- * tank, or keep the line strong enough to fight). The rule's wording lives in the
- * launch sheet one tap deep; here it is the figure.
+ * (how much stronger than this line a raid must be to make the ships run), what it is
+ * related to (the ships and guns standing here, and the tank), and what to do with it
+ * (keep the lift in the tank, or keep the line strong enough to fight).
  *
  * NOTHING TO SAY WITHOUT SHIPS. Guns never run, and a Prospector never stands in the
  * line, so a world with neither armed nor unarmed ships at home gets no line at all.
@@ -40,8 +38,8 @@ import { compact } from '../lib/format.js';
  * battle never keeps; the line says what the posture does and where it is changed.
  *
  * THE GUNS ARE COUNTED AS IF ONLINE. An outage or an EMP takes them out of the line
- * and lowers the real threshold; the readout states the ordinary rule rather than
- * tracking a fault clock the Defend tab already shows beside it.
+ * and weakens it; the readout states the ordinary rule rather than tracking a fault
+ * clock the Defend tab already shows beside it.
  */
 export function EscapeReadout({
   fleet,
@@ -80,7 +78,7 @@ export function EscapeReadout({
     );
   }
 
-  const at = compact(ESCAPE.ratio * combatValue(line));
+  const ratio = decimal(ESCAPE.ratio);
   const fuel = escapeFuel(ships);
   const stock = Math.floor(Math.max(0, deuterium));
   const short = stock < fuel;
@@ -92,8 +90,8 @@ export function EscapeReadout({
       className={`px-3 py-2 text-caption leading-snug ${short ? 'text-v2-warn' : 'text-v2-ink-2'}`}
     >
       {short
-        ? t('planet.defend.escapeShort', { at, fuel, stock })
-        : t('planet.defend.escapeReady', { at, fuel })}
+        ? t('planet.defend.escapeShort', { ratio, fuel, stock })
+        : t('planet.defend.escapeReady', { ratio, fuel })}
     </p>
   );
 }

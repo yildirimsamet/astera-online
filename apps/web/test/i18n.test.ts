@@ -152,15 +152,18 @@ describe('the Store protection promise', () => {
 });
 
 describe('Vocabulary describes the calibrated catalogue, not its retired stats', () => {
-  /** Owner decision, 2026-10-06: a success line counts only fights the wing comes home from. */
-  it('requires a surviving ship for success without promising the whole fleet survives', () => {
-    expect(en.counter.compareRule).toContain('at least one ship surviving');
-    expect(tr.counter.compareRule).toContain('en az bir geminin sağ kalması');
-    expect(fr.counter.compareRule).toContain('au moins un vaisseau survivant');
-    expect(de.counter.compareRule).toContain('mindestens ein überlebendes Schiff');
-    expect(es.counter.compareRule).toContain('al menos una nave superviviente');
-    expect(ja.counter.compareRule).toContain('少なくとも1隻が生き残る');
-    expect(en.counter.compareRule).not.toMatch(/all ships survive|guaranteed/i);
+  /**
+   * Combat v3, owner K4 (2026-10-25): the attack sheet draws no success line and no loss estimate.
+   * The rule says what power counts and where the worst case sits, and promises no outcome.
+   */
+  it('states the worst case of a power range and promises no outcome, in every language', () => {
+    expect(en.counter.compareRule).toMatch(/worst case/);
+    expect(tr.counter.compareRule).toMatch(/en kötü durum/);
+    for (const locale of [en, tr, fr, de, es, ja]) {
+      expect(Object.keys(locale.counter)).not.toContain('linesClears');
+      expect(Object.keys(locale.counter)).not.toContain('lossLabel');
+    }
+    expect(en.counter.compareRule).not.toMatch(/all ships survive|guaranteed|success/i);
   });
 
   it('scopes research speed to the capital Core and distinguishes transport speed', () => {

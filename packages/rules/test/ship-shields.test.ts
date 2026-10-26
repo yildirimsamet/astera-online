@@ -27,20 +27,27 @@ describe('personal ship shields', () => {
       resolveJointCombat(attack, { CORSAIR: 1 }, 0, mean, side),
       resolveBattle(attack, [...d, { stackId: 'empty', playerId: 'ally', fleet: {}, tech: side }], 0, mean),
       resolveBattle(attack, d, 0, mean, 'MONUMENT')]) {
-      expect(result.rounds.map(row => row.defenderShipShieldAbsorbed)).toEqual([377, 0, 0, 0, 0]);
-      expect(result.rounds.map(row => row.attackerShipShieldAbsorbed)).toEqual([377, 0, 0, 0, 0]);
+      // At the 0.2 tempo one even round spends exactly the 377-point shield; it never comes back.
+      for (const absorbed of [result.rounds.map(row => row.defenderShipShieldAbsorbed), result.rounds.map(row => row.attackerShipShieldAbsorbed)]) {
+        expect(absorbed[0]).toBe(377);
+        expect(absorbed.slice(1).every(value => value === 0)).toBe(true);
+      }
+      expect(result.rounds.length).toBeGreaterThan(1);
       expect(result.defenderSurvivors).toEqual({});
-      expect(result.rounds[4]!.defenderLosses).toEqual({ CORSAIR: 1 });
+      expect(result.rounds.at(-1)!.defenderLosses).toEqual({ CORSAIR: 1 });
     }
   });
 
   it('starts the next battle with a fresh shield but keeps the previous hull wounds', () => {
     const armor = { tech: { SHIP_SHIELDS: 4 } };
     const a: JointAttackerStack[] = [{ contributionId: 'a', playerId: 'a', fleet: { CITADEL: 1 }, tech: armor }];
-    const first = resolveBattle(a, [{ stackId: 'd', playerId: 'd', fleet: { CITADEL: 1 }, tech: armor }], 0, mean, 'MONUMENT');
-    const second = resolveBattle(a.map(stack => ({ ...stack, tech: { ...armor, damageMult: .1 } })), [{ stackId: 'd', playerId: 'd', fleet: first.defenderSurvivors, damage: first.defenderDamage, tech: armor }], 0, mean, 'MONUMENT');
+    // An earlier battle's survivor: a v3 mirror rarely leaves one, so the wound is handed in as one would be.
+    const first = { defenderSurvivors: { CITADEL: 1 }, defenderDamage: [{ hull: 'CITADEL' as const, count: 1, damageBp: 4000, remainderBp: 0 }] };
+    // A far weaker second wing: the tempo keeps its share of the fight small, and the shield is whole again.
+    const second = resolveBattle(a.map(stack => ({ ...stack, tech: { ...armor, damageMult: .01 } })), [{ stackId: 'd', playerId: 'd', fleet: first.defenderSurvivors, damage: first.defenderDamage, tech: armor }], 0, mean, 'MONUMENT');
     expect(first.defenderDamage[0]!.damageBp).toBeGreaterThan(0);
-    expect(second.rounds[0]!.defenderShipShieldAbsorbed).toBe(45);
+    expect(second.rounds[0]!.defenderShipShieldAbsorbed).toBeGreaterThan(0);
+    expect(second.rounds[0]!.defenderShipShieldAbsorbed).toBe(second.rounds[0]!.attackerDamage);
     expect(second.rounds[0]!.attackerHullDamage).toBe(0);
     expect(second.defenderSurvivors).toEqual({ CITADEL: 1 });
     expect(second.defenderDamage).toEqual(first.defenderDamage);
@@ -48,11 +55,14 @@ describe('personal ship shields', () => {
   });
 
   it('keeps arrival wounds behind a shield without crediting shield hits as hull damage', () => {
-    const slow = { tech: {}, damageMult: .1 };
-    const r = resolveJointCombat([{ contributionId: 'a', playerId: 'p', fleet: { DART: 1 }, tech: slow,
-      damage: [{ hull: 'DART', count: 1, damageBp: 5000 }] }], { DART: 1 }, 0, mean, slow, true);
+    // The defender fires at 1%: its one shot of the battle ends in the wounded Dart's shield.
+    const r = resolveJointCombat([{ contributionId: 'a', playerId: 'p', fleet: { DART: 1 }, tech: side,
+      damage: [{ hull: 'DART', count: 1, damageBp: 5000 }] }], { DART: 1 }, 0, mean, { tech: {}, damageMult: .01 }, true);
     expect(r.attackerDamage).toMatchObject([{ hull: 'DART', count: 1, damageBp: 5000 }]);
-    expect(r.contributions[0]!.hullDamage).toBe(0);
+    expect(r.rounds[0]!.attackerShipShieldAbsorbed).toBeGreaterThan(0);
+    expect(r.defenderLosses).toEqual({ DART: 1 });
+    // The kill is credited at the hull it took, never the shield in front of it.
+    expect(r.contributions[0]!.hullDamage).toBeCloseTo(HULLS.DART.hp * hullTech({}, 'DART').hp, 9);
   });
 
   it('identical wounded waves cannot gain shields or survival by splitting their owners', () => {
@@ -63,7 +73,7 @@ describe('personal ship shields', () => {
     expect(many.attackerSurvivors).toEqual(one.attackerSurvivors);
     expect(many.attackerRetreated).toEqual(one.attackerRetreated);
     expect(many.attackerDamage).toEqual(one.attackerDamage);
-    expect(many.rounds.map(({ retreats: _retreats, casualties: _casualties, ...round }) => round)).toEqual(one.rounds.map(({ retreats: _retreats, casualties: _casualties, ...round }) => round));
+    expect(many.rounds.map(({ retreats: _retreats, casualties: _casualties, explosions: _explosions, ...round }) => round)).toEqual(one.rounds.map(({ retreats: _retreats, casualties: _casualties, explosions: _explosions, ...round }) => round));
   });
 
   it('uses each defender’s own shield research and credits only real remaining hull on overkill', () => {

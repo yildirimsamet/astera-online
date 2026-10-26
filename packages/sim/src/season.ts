@@ -1933,14 +1933,13 @@ export function adaptiveMix(
  * WHAT A PROBE OF THIS ACCURACY LEARNS ABOUT A LINE — the shipped rule, not the roster.
  *
  * The model used to record `{ ...q.fleet, ...q.ground }`: every hull and every count, whatever the
- * scout's Shipyard or the target's Veil. The real probe sells far less. At par accuracy — 0.55,
- * what an equal Shipyard buys — it names the majority CLASS and nothing else; the whole split costs
- * two rungs over the target's Veil (`INTEL.classSharesAccuracy`).
+ * scout's Shipyard or the target's Veil. The real probe sells far less: each class's share as a
+ * range, ±22 points at par accuracy and ±10 at the 80% ceiling (combat v3, owner 2026-10-25).
  *
  * A thin naming of the rules function, so the model cannot drift from the product it is modelling.
  */
-export const readingOfLine = (line: Fleet, accuracy: number): ClassReading =>
-  classReading(line, accuracy);
+export const readingOfLine = (line: Fleet, accuracy: number, rng: Rng): ClassReading =>
+  classReading(line, accuracy, rng);
 
 /** Everything about a target a probe touches. Narrow on purpose: a probe reads a world, not a player. */
 export type ProbeTarget = Pick<
@@ -1995,7 +1994,7 @@ export function probeIntel(
   return {
     takeable: fuzzBand(raidable.alloy + raidable.crystal + raidable.deuterium, accuracy, rng).mid,
     defence: fleetValue(line),
-    reading: readingOfLine(line, accuracy),
+    reading: readingOfLine(line, accuracy, rng),
     // A probe is a flight; the reading is worth its age from when it LANDS.
     at: t + 8,
   };
@@ -2024,10 +2023,14 @@ export function expectedLineFromReadings(readings: readonly ClassReading[]): Fle
     if (reading.kind === 'DOMINANT') {
       shares[reading.cls] += 1;
       read++;
-    } else if (reading.kind === 'SHARES') {
-      const sum = COMBAT_CLASSES.reduce((total, cls) => total + Math.max(0, reading.shares[cls]), 0);
+    } else if (reading.kind === 'SHARES' || reading.kind === 'RANGES') {
+      // A range is read by its middle: what a commander takes from "60–80% Lance".
+      const share = (cls: CombatClass) => Math.max(0, reading.kind === 'SHARES'
+        ? reading.shares[cls]
+        : (reading.shares[cls].low + reading.shares[cls].high) / 2);
+      const sum = COMBAT_CLASSES.reduce((total, cls) => total + share(cls), 0);
       if (sum <= 0) continue;
-      for (const cls of COMBAT_CLASSES) shares[cls] += Math.max(0, reading.shares[cls]) / sum;
+      for (const cls of COMBAT_CLASSES) shares[cls] += share(cls) / sum;
       read++;
     }
   }

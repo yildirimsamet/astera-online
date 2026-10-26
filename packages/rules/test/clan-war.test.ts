@@ -498,12 +498,12 @@ describe('the combined attacking board', () => {
     expect(joint.attackerLossValue).toBe(single.attackerLossValue);
     expect(joint.defenderLossValue).toBe(single.defenderLossValue);
     expect(joint.defenceSalvage).toEqual(single.defenceSalvage);
-    expect(joint.rounds.map(({ retreats: _retreats, casualties: _casualties, ...round }) => round)).toEqual(single.rounds.map(({ retreats: _retreats, casualties: _casualties, ...round }) => round));
+    expect(joint.rounds.map(({ retreats: _retreats, casualties: _casualties, explosions: _explosions, ...round }) => round)).toEqual(single.rounds.map(({ retreats: _retreats, casualties: _casualties, explosions: _explosions, ...round }) => round));
   });
 
   it('spends the same number of rolls however many owners are in the pool', () => {
     // Identical fleets must consume the same outer rolls regardless of owner count.
-    // The battle may finish before the sixth round.
+    // The battle may finish before the last round.
     const wall: Fleet = { CITADEL: 100 };
     const count = (stacks: readonly JointAttackerStack[]) => {
       let calls = 0;
@@ -518,7 +518,8 @@ describe('the combined attacking board', () => {
       stack('c3', 'p3', { CORSAIR: 25 }),
       stack('c4', 'p4', { CORSAIR: 25 }),
     ]);
-    expect(one.calls).toBe(2 + one.rounds * 2);
+    // Combat v3 seeds three sub-streams at entry (targets, retreats, break-apart rolls).
+    expect(one.calls).toBe(3 + one.rounds * 2);
     expect(one.rounds).toBeLessThanOrEqual(COMBAT.rounds);
     expect(four).toEqual(one);
   });

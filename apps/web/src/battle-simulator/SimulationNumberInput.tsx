@@ -11,7 +11,7 @@ interface NumberProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'
 /** An unfinished edit is text; only blur normalises it. External preset changes still replace the display. */
 export function SimulationNumberInput({ value, min, max, integer = true, onValueChange, ...props }: NumberProps) {
   const [draft, setDraft] = useState<{ source: number; text: string } | null>(null);
-  return <input {...props} type="number" inputMode="numeric" min={min} max={max}
+  return <input {...props} type="number" inputMode={integer ? 'numeric' : 'decimal'} min={min} max={max}
     value={draft && Object.is(draft.source, value) ? draft.text : String(value)}
     onChange={event => {
       const text = event.currentTarget.value, number = text === '' ? 0 : Number(text);

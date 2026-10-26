@@ -1,6 +1,7 @@
 import {
   ALL_HULLS,
   COMBAT_CLASSES,
+  COMBAT_RESEARCH_PROJECTS,
   DEATH_STAR,
   combatValue,
   distance,
@@ -178,6 +179,15 @@ function shapeValue(shape: ProbeShape): string {
         .filter((cls) => shape.shares[cls] > 0)
         .map((cls) => `${combatClassLabel(cls)} ${i18n.t('units.percent', { value: shape.shares[cls] })}`)
         .join(' · ');
+    case 'RANGES': {
+      // Combat v3: every class as the range read, largest first; one the range rules out is left out.
+      const { shares } = shape;
+      return [...COMBAT_CLASSES]
+        .filter((cls) => shares[cls].high > 0)
+        .sort((a, b) => shares[b].low + shares[b].high - shares[a].low - shares[a].high)
+        .map((cls) => `${combatClassLabel(cls)} ${i18n.t('units.percent', { value: band(shares[cls].low, shares[cls].high) })}`)
+        .join(' · ');
+    }
     case 'UNREAD':
       return i18n.t('dossier.shapeUnread');
     default:
@@ -475,7 +485,7 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
         source: 'probe',
         ageMinutes: age,
         accuracy: report.accuracy,
-        note: shape.kind === 'UNREAD' ? i18n.t('dossier.shapeUnreadNote') : i18n.t('dossier.shapeNote'),
+        note: i18n.t(shape.kind === 'UNREAD' ? 'dossier.shapeUnreadNote' : shape.kind === 'RANGES' ? 'dossier.shapeRangesNote' : 'dossier.shapeNote'),
       });
     }
     if (report.shield) {
@@ -643,7 +653,26 @@ export function dossier({ target, planet, intel, reports, rival, ownPeakCore = n
       });
     }
 
-    if (report.doctrines !== undefined) {
+    /*
+      COMBAT v3 READS RESEARCH AS WINDOWS (owner 2026-10-25): two levels wide at the 80% ceiling,
+      the true level inside. A window closed at zero is a project they do not hold.
+    */
+    if (report.research !== undefined) {
+      const held = COMBAT_RESEARCH_PROJECTS
+        .flatMap((id) => {
+          const window = report.research?.[id];
+          return window && window.high > 0 ? [`${researchName(id)} ${band(window.low, window.high)}`] : [];
+        });
+      facts.push({
+        key: 'doctrines',
+        label: i18n.t('dossier.doctrinesLabel'),
+        value: held.length > 0 ? held.join(' · ') : i18n.t('dossier.doctrinesNone'),
+        source: 'probe',
+        ageMinutes: age,
+        accuracy: report.accuracy,
+        note: i18n.t(held.length > 0 ? 'dossier.researchWindowNote' : 'dossier.doctrinesNoneNote'),
+      });
+    } else if (report.doctrines !== undefined) {
       const held = Object.entries(report.doctrines)
         .filter(([, level]) => level > 0)
         .map(([id, level]) => `${researchName(id as ResearchProjectId)} ${String(level)}`);

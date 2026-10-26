@@ -1014,9 +1014,76 @@ export const BUILD = {
 } as const;
 
 export const COMBAT = {
-  rounds: 6,
-  /** Distinct targets per shot, including any same-shot overflow into support. */
-  targetsPerShot: 10,
+  /** Combat v3, owner 2026-10-25: eight rounds; retreats after rounds 1–7 only. */
+  rounds: 8,
+  /**
+   * One target per shot (combat v3). A shooter takes the class it counters first, then
+   * neutral, then the class that counters it, at random within a class; a kill carries
+   * the overflow, at base value, to the next target chosen by the same rule. Spreading a
+   * shot over many targets made the result depend on ship count (3 ships hit everyone,
+   * 100 ships a tenth), which the owner's "same power, different count" test forbids.
+   */
+  targetsPerShot: 1,
+  /**
+   * SAVAŞ TEMPOSU. Every hit in a battle is scaled by one factor, fixed at entry, so the
+   * geometric mean of the two sides' per-round loss (fire ÷ the other line's hit points)
+   * is this share. Hull profiles kill 5× apart: without it a Cataclysm mirror ended in one
+   * round and a Citadel mirror never, and retreat worked for one and not the other.
+   * Counters, research and the ratio between the sides are untouched.
+   */
+  tempo: 0.2,
+  /** KRİTİK HASAR: a ship hit this round below this hull share breaks apart with chance 1 − share. */
+  criticalBelow: 0.7,
+  /**
+   * ÜSTÜNLÜK TÖRPÜSÜ, owner K1: the stronger side's fire × R^−exponent, R the battle-entry
+   * matchup ratio, the exponent read by linear interpolation over `ratios` and 0 past the
+   * last. Natural rules let the stronger side lose almost nothing (1:2 → 3%) because the
+   * retreating weak side takes its fire home with it; the exponents are fitted
+   * (tools/combat-v3-calibration.ts) so it loses the owner's share instead. Never above 2,
+   * where the stronger side would lose a larger share per round than the weaker; fading
+   * out past the 3× fleet escape so a crushing fleet still wins.
+   */
+  handicap: {
+    ratios: [1, 1.2, 1.4, 1.6, 1.8, 2, 2.5, 3, 4],
+    // The stronger side loses 80, 65, 50, 40, 30% from 1:1.2 to 1:2 (owner), then 15% and 8%
+    // at 1:2.5 and 1:3, carrying that trend to the fleet escape instead of dropping off a cliff.
+    exponents: [2, 2, 1.9, 1.75, 1.75, 1.65, 1.5, 1.35, 0],
+  } as { readonly ratios: readonly number[]; readonly exponents: readonly number[] },
+  /** Tier edges by the WEAKER side's matchup power: 0–25k, 25–100k, 100–300k, 300k+. */
+  retreatTiers: [25_000, 100_000, 300_000],
+  /** Matchup ratios the retreat table is anchored at; read by linear interpolation. */
+  retreatRatios: [1, 1.2, 1.4, 1.6, 1.8, 2, 2.5, 3],
+  /**
+   * SAVAŞ İÇİ KAÇIŞ, per tier per ratio: a weak ship at or below `threshold` of its hull
+   * leaves with `chance` at each round end. The 1:1 column is both sides'; the stronger
+   * side's chance fades to nothing by 1:1.2. Fitted by tools/combat-v3-calibration.ts to
+   * the owner's table: the weak side keeps 10/15/20/25% at 1:1 by tier, then 20, 25, 30,
+   * 40, 50% to 1:2 and 60, 70% at 1:2.5 and 1:3 (docs/evidence/combat-v3-calibration-2026-10-25.json).
+   */
+  retreatWindows: [
+    [{ threshold: 0.45, chance: 0.05 }, { threshold: 0.45, chance: 0.90 }, { threshold: 0.60, chance: 0.60 }, { threshold: 0.60, chance: 0.85 },
+      { threshold: 0.75, chance: 0.55 }, { threshold: 0.75, chance: 0.85 }, { threshold: 0.90, chance: 0.65 }, { threshold: 0.90, chance: 0.80 }],
+    [{ threshold: 0.45, chance: 0.30 }, { threshold: 0.45, chance: 0.85 }, { threshold: 0.60, chance: 0.65 }, { threshold: 0.60, chance: 0.90 },
+      { threshold: 0.75, chance: 0.55 }, { threshold: 0.75, chance: 0.85 }, { threshold: 0.90, chance: 0.65 }, { threshold: 0.90, chance: 0.95 }],
+    [{ threshold: 0.75, chance: 0.15 }, { threshold: 0.45, chance: 0.95 }, { threshold: 0.60, chance: 0.70 }, { threshold: 0.60, chance: 1.00 },
+      { threshold: 0.75, chance: 0.60 }, { threshold: 0.75, chance: 0.90 }, { threshold: 0.90, chance: 0.75 }, { threshold: 0.90, chance: 0.95 }],
+    [{ threshold: 0.60, chance: 0.60 }, { threshold: 0.60, chance: 0.95 }, { threshold: 0.60, chance: 0.70 }, { threshold: 0.60, chance: 0.90 },
+      { threshold: 0.75, chance: 0.65 }, { threshold: 0.75, chance: 0.90 }, { threshold: 0.90, chance: 0.80 }, { threshold: 0.90, chance: 1.00 }],
+  ] as readonly (readonly { readonly threshold: number; readonly chance: number }[])[],
+  /** The stronger side stops retreating at this ratio. */
+  strongRetreatUntil: 1.2,
+  /**
+   * THE OWNER'S TABLE (2026-10-25) the windows and the handicap are fitted to: on average, the
+   * share of its fleet the weaker side keeps and the share the stronger side loses, by entry
+   * ratio. At 1:1 both sides keep their tier's even share. Past 1:2 the stronger side's loss
+   * carries the owner's falling trend on to the 3× fleet escape (approved 2026-10-25).
+   */
+  outcomeTargets: {
+    evenKept: [0.10, 0.15, 0.20, 0.25],
+    ratios: [1.2, 1.4, 1.6, 1.8, 2, 2.5, 3],
+    weakKept: [0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.70],
+    strongLost: [0.80, 0.65, 0.50, 0.40, 0.30, 0.15, 0.08],
+  } as { readonly evenKept: readonly number[]; readonly ratios: readonly number[]; readonly weakKept: readonly number[]; readonly strongLost: readonly number[] },
   shipShieldFraction: 0.25,
   varianceMin: 0.92,
   varianceMax: 1.08,
@@ -1277,7 +1344,12 @@ export const INTEL = {
   accuracyBase: 0.55,
   accuracySlope: 0.12,
   accuracyMin: 0.3,
-  accuracyMax: 1.0,
+  /**
+   * NO PROBE READS EXACTLY. Owner, 2026-10-25 (combat v3): counts, class shares and research
+   * are always ranges, at best ±20% / ±10 points / a two-level window. The slope is
+   * unchanged, so a Shipyard three rungs over the Veil already reads at the ceiling.
+   */
+  accuracyMax: 0.80,
 
   /**
    * WHAT A PROBE CAN TELL ABOUT THE SHAPE OF A WALL. D199.
@@ -2323,18 +2395,15 @@ export const ESCAPE = {
   /** A token garrison is not a fleet to save. Applies from ruleset 13. */
   minimumCombatShips: 5,
   /**
-   * FIXED AT 4. Owner decision, 2026-10-22; raised from 3 with the other escape
-   * conditions unchanged, including active ground defence and equality at the threshold.
-   * Measured 2026-09-23, the engine clears a mirrored line from
-   * 1.5× and the counter-built lines tried from 3×, so a 1:2 fight between near-equals
-   * is untouched. Whether running could forfeit a fight the line might have held is
-   * not the ratio's job: the DECISIVE guard in `resolveRaid` answers it, whatever the
-   * research, counters or Aegis. A RANDOM threshold was measured and
-   * refused: a raider plays the bottom of any range and a defender can only count
-   * on the top, so a roll between 3 and 4 raised the informed raider's kill rate
-   * from 72% to 87%.
+   * 3× THE MATCHUP POWER. Owner K3, 2026-10-25 (combat v3): the ratio the battle is fought
+   * with — counters, research, wounds, guns and Aegis — not resource value, which called a
+   * counter wall outmatched. Below it the in-battle retreat keeps the weak side its share
+   * (70% at 1:3), so the lift continues that curve. Whether running could forfeit a fight
+   * the line might have held is the DECISIVE guard's job in `resolveRaid`. A RANDOM
+   * threshold was measured and refused: a raider plays the bottom of any range and a
+   * defender can only count on the top.
    */
-  ratio: 4,
+  ratio: 3,
   /**
    * THE LIFT IS A LAUNCH, SO IT BURNS LIKE ONE (T6). Owner: *"yakıt yetmedi,
    * kaçamadı"*. The ships pay `missionFuel` for a round trip of this many units —

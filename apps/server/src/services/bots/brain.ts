@@ -57,7 +57,7 @@ import { researchLevels, techOf } from '../researchState.js';
 import type { PlanetView } from '../planetView.js';
 import { BOTS, personaNamed, type BotPersona } from './personas.js';
 import {
-  isBully, planPirateRaid, planWorldRaid, type ForecastBudget, type WallReading,
+  isBully, planPirateRaid, planWorldRaid, researchOf, type ForecastBudget, type WallReading,
 } from './judgement.js';
 
 /**
@@ -865,7 +865,6 @@ async function readingsOf(
       defence: probeReports.defence,
       stock: probeReports.stock,
       shield: probeReports.shield,
-      unarmed: probeReports.unarmed,
       classReading: probeReports.classReading,
       support: probeReports.support,
       fleetHome: probeReports.fleetHome,
@@ -885,11 +884,11 @@ async function readingsOf(
       defence: row.defence,
       stock: row.stock,
       shield: row.shield,
-      unarmed: row.unarmed,
       classReading: row.classReading,
-      doctrines: row.silhouette.doctrines ?? {},
+      research: researchOf(row.silhouette),
       domeCeiling: row.silhouette.shielded ? shieldHp(row.silhouette.coreLevel) : 0,
-      support: row.support?.defence ?? null,
+      // The clanmates' research is never read: anything the ladders allow.
+      support: row.support ? { value: row.support.defence, shape: row.support.classReading } : null,
     });
   }
   return out;
@@ -915,7 +914,7 @@ async function probesInFlight(db: Db, playerId: string): Promise<Set<string>> {
   return new Set(rows.map((row) => row.target));
 }
 
-/** How many candidates one turn will read the lines for. Each is a few dozen fights. */
+/** How many candidates one turn will read the power ruler for. */
 const RAID_LOOKS = 4;
 
 /**

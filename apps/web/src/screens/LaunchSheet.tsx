@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next';
 import { RadiationPreview } from '../ui/RadiationPreview.js';
 import {
   HULLS,
-  combatValue,
   fleetCargo,
   type MobileHullId,
 } from '@astera/rules';
@@ -21,7 +20,6 @@ import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { SalvageIcon } from '../ui/icons/index.js';
-import { FleetLossWarning } from '../ui/ForceCompare.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { ForceRuler } from '../v2/kit/ForceRuler.js';
@@ -98,7 +96,7 @@ export function LaunchSheet({
   const {
     sending, set, roomFor, allowance, lesson, season, honorTarget, spendsShield, pirate, mods, radiation,
     paces, pace, setWantedPace, route, fullSpeedRoute, paceReset, total, salvageRoom, baysFree, tooLate, busy,
-    holding, away, atHome, recordAge, opposing, lines, loss, escape, notes, refusal,
+    holding, away, atHome, recordAge, opposing, power, escape, notes, refusal,
     commit, classReading, report, pirateProfit, pirateProfitState,
   } = useLaunchPlan({ target, planet, intel, reports, onLaunched, onAim });
 
@@ -244,7 +242,6 @@ export function LaunchSheet({
       onClose={onClose}
       footer={
         <div data-launch-commit className="grid gap-2">
-          <FleetLossWarning loss={loss} />
           {/*
             THE PRICE, BEFORE THE BUTTON. What stays home while the fleet is out, and —
             since K8 — whether it can be turned: a raid at a world once, a pirate raid
@@ -297,10 +294,8 @@ export function LaunchSheet({
         */}
         <div className="sticky top-0 z-10 -mx-3 border-b border-v2-line bg-v2-panel px-3 pb-2.5">
           <ForceRuler
-            yours={combatValue(sending)}
+            power={power}
             theirs={opposing}
-            lines={lines}
-            loss={loss}
             notes={notes}
             escape={escape}
             heading={t('dossier.page.power')}

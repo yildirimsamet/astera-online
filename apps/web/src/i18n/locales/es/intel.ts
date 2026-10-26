@@ -636,6 +636,7 @@ export const dossier = {
   shapeNote: 'Por valor, de lo que puede disparar. Más de la mitad es mayoría.',
   shapeUnread: 'No leído',
   shapeUnreadNote: 'Su Velo es más fuerte que el Astillero que envió la sonda.',
+  shapeRangesNote: "Por valor, de lo que puede disparar. Cada parte es un rango; la parte real está dentro.",
   shieldLabel: 'Carga de escudo',
   shieldNote: 'Recibe el fuego de una incursión antes que cualquier casco y se recarga con el paso de las horas.',
   unarmedLabel: 'Desarmado en la fila',
@@ -680,6 +681,7 @@ export const dossier = {
   doctrinesNone: 'Ninguno investigado',
   doctrinesNote: 'Sus cascos luchan mejor de lo que dice la tabla. Este es el multiplicador que encontrarías.',
   doctrinesNoneNote: 'No habían investigado nada en sus cascos cuando la sonda miró.',
+  researchWindowNote: "Leído en ventanas: cada nivel real está dentro de su ventana. Los niveles altos hacen que sus naves luchen mejor.",
 
   surfaceGapLabel: 'Todo sobre este mundo',
   surfaceGapMissing: 'Nunca has visto este mundo',

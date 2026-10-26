@@ -184,6 +184,7 @@ export const menu = {
     "Récupère les ressources gagnées en atteignant des objectifs",
   guideLabel: "Wiki",
   guideHint: "Bâtiments, vaisseaux et règles de la galaxie",
+  simulatorHint: "Montez n’importe quel combat et voyez comment il finit",
   rewardsWaiting: "{{count}} prêtes",
   researchLabel: "Recherche",
   researchHint:

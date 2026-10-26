@@ -41,12 +41,18 @@ function Joined({ parts, join }: { parts: readonly ReactNode[]; join: string }) 
  *
  * A MAJORITY IS A FLOOR. A par probe cannot tell a pure wall from a 52% one, so
  * it says "more than half" and states the rest as open, never as a percentage it
- * does not have. A full split names every class it measured and drops none.
+ * does not have. A full split names every class it measured and drops none; a
+ * combat v3 reading names each class as the range it read (owner 2026-10-25).
  */
 export function MatchupLine({ wing, reading }: { wing: Fleet; reading: ClassReading | undefined }) {
   const { t } = useTranslation();
   const matchups = useMemo(() => matchupsAgainst(wing, reading), [wing, reading]);
   const join = t('counter.lineJoin');
+  // A whole percent, or a range reading's floor to its top.
+  const share = (low: number, high?: number): string => {
+    const [a, b] = [Math.round(low * 100), Math.round((high ?? low) * 100)];
+    return a === b ? String(a) : `${String(a)}${t('units.rangeJoin')}${String(b)}`;
+  };
 
   if (reading?.kind === 'UNREAD') {
     return (
@@ -66,14 +72,14 @@ export function MatchupLine({ wing, reading }: { wing: Fleet; reading: ClassRead
         {t('counter.matchupMajority', { class: combatClassLabel(matchups.wall) })}
       </Named>,
     );
-  } else if (matchups.kind !== 'SPLIT') {
+  } else if (matchups.kind !== 'SPLIT' && matchups.kind !== 'RANGES') {
     parts.push(t('counter.matchupMixed'));
   } else {
     parts.push(t('counter.matchupSplit'));
     for (const row of matchups.wallShares) {
       parts.push(
         <Named cls={row.cls} tone="text-v2-ink">
-          {combatClassLabel(row.cls)} {t('units.percent', { value: String(Math.round(row.share * 100)) })}
+          {combatClassLabel(row.cls)} {t('units.percent', { value: share(row.share, row.high) })}
         </Named>,
       );
     }
@@ -89,7 +95,8 @@ export function MatchupLine({ wing, reading }: { wing: Fleet; reading: ClassRead
   } else if (hint) {
     parts.push(<span className="text-v2-warn">{t(hint.kind === 'SINGLE' ? 'counter.matchupSingle' : 'counter.matchupProbe')}</span>);
   }
-  if (matchups.unknownShare > 0 && matchups.kind !== 'MIXED') parts.push(t('counter.matchupRemainder'));
+  // A range reading states its open part in the ranges themselves; only a majority leaves a remainder unread.
+  if (matchups.unknownShare > 0 && matchups.kind === 'MAJORITY') parts.push(t('counter.matchupRemainder'));
 
   return (
     <div className="flex flex-col gap-0.5 font-v2-ui text-caption leading-snug">
@@ -104,8 +111,8 @@ export function MatchupLine({ wing, reading }: { wing: Fleet; reading: ClassRead
               <Named cls={row.cls} tone="text-v2-ink-2">
                 {combatClassLabel(row.cls)}{' '}
                 {t('counter.matchupExposure', {
-                  strong: Math.round(row.strongShare * 100),
-                  weak: Math.round(row.weakShare * 100),
+                  strong: share(row.strongShare, row.strongHigh),
+                  weak: share(row.weakShare, row.weakHigh),
                 })}
               </Named>
             ))}

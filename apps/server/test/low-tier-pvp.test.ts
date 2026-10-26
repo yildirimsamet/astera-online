@@ -197,7 +197,7 @@ describe('tier-specific PvP settlement and recovery', () => {
     );
     const total = expected.alloy + expected.crystal + expected.deuterium;
     const [report] = await f.db.select().from(probeReports).where(eq(probeReports.missionId, scout.missionId));
-    expect(report!.accuracy).toBe(1);
+    expect(report!.accuracy).toBe(0.8);
     expect(report!.stock.low).toBeLessThanOrEqual(total);
     expect(report!.stock.high).toBeGreaterThanOrEqual(total);
     expect(view.pvpBalance).toEqual(balance);

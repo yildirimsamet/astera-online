@@ -173,12 +173,20 @@ export const unknownSignalLaunchSchema = z.object({ signalId: z.string().uuid(),
 export const unknownSignalRecallSchema = z.object({ signalId: z.string().uuid(), returnAt: z.coerce.date().nullable() });
 const band = z.object({ low: z.number(), high: z.number() });
 
+/** A whole-unit range holding the truth: a share in percents, or a research level. */
+const readingRange = z.object({ low: z.number(), high: z.number() });
+
 /**
  * THE SHAPE OF A WALL, AS A PROBE READ IT. D199. The rules' `ClassReading`, parsed:
- * the same five answers, from "nothing fires" to the whole split in tens.
+ * `RANGES` since combat v3 (each class's share as a range), the older steps on reports
+ * written before it.
  */
 const classReading = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('NONE') }),
+  z.object({
+    kind: z.literal('RANGES'),
+    shares: z.object({ SKIRMISHER: readingRange, BULWARK: readingRange, LANCE: readingRange }),
+  }),
   z.object({ kind: z.literal('UNREAD') }),
   z.object({ kind: z.literal('EVEN') }),
   z.object({ kind: z.literal('DOMINANT'), cls: z.enum(['SKIRMISHER', 'BULWARK', 'LANCE']) }),
@@ -2497,6 +2505,11 @@ export const intelSchema = z.object({
        * never taken", never "they have researched nothing".
        */
       doctrines: z.record(z.string(), z.number()).optional(),
+      /**
+       * COMBAT RESEARCH AS WINDOWS, combat v3 (owner 2026-10-25): each level read as a window
+       * holding it. A newer report carries this in place of `doctrines`; absent means the same.
+       */
+      research: z.record(z.string(), readingRange).optional(),
       /**
        * HOW MANY STRATEGIC WEAPONS THAT WORLD CAN SHOOT DOWN. T10 · owner, 2026-10-01.
        *

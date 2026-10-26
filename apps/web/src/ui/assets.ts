@@ -242,9 +242,13 @@ export function nextGroundArt(id: GroundHullId, standing: number): string | null
 export const MODEL = {
   probe: '/assets/models/ships/explorer_ship.glb',
   probeUfo: '/assets/models/probes/probe_ufo.glb',
-  /** Preserved ground batteries retain their existing geometry. They never travel. */
-  bastion: '/assets/models/ships/ship_3.glb',
-  thorn: '/assets/models/ships/ship_1.glb',
+  /**
+   * The ground guns, one low-poly turret each after its 2D render (owner 2026-10-26). They never
+   * travel; they are drawn instanced on the planet's face, barrel along +Z toward the attacker.
+   */
+  bastion: '/assets/models/ground/bastion.glb',
+  harpoon: '/assets/models/ground/harpoon.glb',
+  thorn: '/assets/models/ground/thorn.glb',
   dart: FLEET_V2_ASSET_MANIFEST.DART.model,
   pike: FLEET_V2_ASSET_MANIFEST.PIKE.model,
   rampart: FLEET_V2_ASSET_MANIFEST.RAMPART.model,
@@ -314,7 +318,8 @@ export const MODEL_FACING: Record<string, Facing> = {
     Object.values(FLEET_V2_ASSET_MANIFEST).map(({ model, facing }) => [model, facing]),
   ),
   [MODEL.probe]: '-x',
-  [MODEL.bastion]: '-x',
+  [MODEL.bastion]: '+z',
+  [MODEL.harpoon]: '+z',
   [MODEL.thorn]: '+z',
   /**
    * The drill bit leads, but its authored body is pitched rather than lying on X.
@@ -381,7 +386,7 @@ export const HULL_MODEL: Record<HullId, string> = {
   // Ground defence never travels, so it is never drawn in transit. Present only
   // so the map is total and nothing has to guard against a missing key.
   BASTION: MODEL.bastion,
-  HARPOON: MODEL.bastion,
+  HARPOON: MODEL.harpoon,
   THORN: MODEL.thorn,
   PROSPECTOR: MODEL.drill,
 };
@@ -399,7 +404,7 @@ export const HULL_LOD_MODEL: Record<HullId, string> = {
     Object.entries(FLEET_V2_ASSET_MANIFEST).map(([id, entry]) => [id, entry.lodModel]),
   ) as Pick<Record<HullId, string>, keyof typeof FLEET_V2_ASSET_MANIFEST>,
   BASTION: MODEL.bastion,
-  HARPOON: MODEL.bastion,
+  HARPOON: MODEL.harpoon,
   THORN: MODEL.thorn,
   PROSPECTOR: MODEL.drill,
 };
@@ -439,6 +444,7 @@ export const CRAFT_MODELS: readonly string[] = [
   ...Object.values(FLEET_V2_ASSET_MANIFEST).map(({ model }) => model),
   MODEL.probe,
   MODEL.bastion,
+  MODEL.harpoon,
   MODEL.thorn,
   MODEL.drill,
   MODEL.missile,

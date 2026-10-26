@@ -419,8 +419,8 @@ describe('the seasonal frontier', () => {
   it('bands what a raid could take rather than the whole tank', async () => {
     const target = f.planetIds[1]!;
     await grant(f.db, mine, 20_000, 4_000);
-    // Exact sight isolates the raidable base. An imprecise band's high end may
-    // legitimately overshoot the whole tank, depending on the mission's RNG.
+    // The sharpest sight (80%, ±20%) isolates the raidable base. A blurrier band's high end
+    // may legitimately overshoot the whole tank, depending on the mission's RNG.
     await setLevel(f.db, mine, 'SHIPYARD', 4);
     await f.db.update(planets).set({ deuterium: 3_000 }).where(eq(planets.id, target));
 
@@ -431,7 +431,7 @@ describe('the seasonal frontier', () => {
 
     // A DECISIVE raid takes `COMBAT.lootDecisive` of what is exposed, so the band
     // has to sit under the tank rather than on it.
-    expect(report!.accuracy).toBe(1);
+    expect(report!.accuracy).toBe(0.8);
     expect(report!.deuteriumStock!.high).toBeLessThan(3_000);
   });
 });
@@ -863,7 +863,8 @@ describe('weapon doctrines', () => {
     expect(mission?.tech).toEqual({});
   });
 
-  it('brings the target’s doctrines home on a probe, and only a probe', async () => {
+  // Combat v3 (owner 2026-10-25): a window of levels holding the truth, never the exact level.
+  it('brings the target’s combat research home on a probe as windows, and only a probe', async () => {
     await giveResearch(f.db, enemy, 'SHIP_ARMOR', 2);
     await giveResearch(f.db, enemy, 'SHIP_SHIELDS', 4);
     await giveResearch(f.db, enemy, 'CARGO_HOLDS', 4);
@@ -876,9 +877,14 @@ describe('weapon doctrines', () => {
     await worker(f).tick();
 
     const [report] = await f.db.select().from(probeReports);
-    expect(report?.silhouette?.doctrines).toMatchObject({ SHIP_ARMOR: 2, SHIP_SHIELDS: 4 });
+    const research = report?.silhouette?.research;
+    expect(report?.silhouette).not.toHaveProperty('doctrines');
+    for (const [id, level] of [['SHIP_ARMOR', 2], ['SHIP_SHIELDS', 4], ['SHIP_POWER', 0]] as const) {
+      expect(research?.[id]?.low, id).toBeLessThanOrEqual(level);
+      expect(research?.[id]?.high, id).toBeGreaterThanOrEqual(level);
+    }
     // Only what changes a battle is published; the economy ladders stay private.
-    expect(report?.silhouette?.doctrines).not.toHaveProperty('CARGO_HOLDS');
+    expect(research).not.toHaveProperty('CARGO_HOLDS');
   });
 });
 

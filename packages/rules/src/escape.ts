@@ -8,7 +8,8 @@ import {
 import type { DefencePosture } from './clanSupport.js';
 import { ESCAPE, MULTI_WORLD } from './constants.js';
 import { missionFuel } from './fuel.js';
-import { HULLS, combatValue, fleetCount, fleetEntries } from './hulls.js';
+import { HULLS, fleetCount, fleetEntries } from './hulls.js';
+import { matchup, powerUnits } from './matchupPower.js';
 import type { Fleet, Rng } from './types.js';
 import type { HpDamageLots } from './radiationHp.js';
 import { partitionCombatFleet } from './shipMaintenance.js';
@@ -22,8 +23,8 @@ import { createBattleRecording, type BattleRecording } from './battleRecording.j
  *
  *   1. there are ships in the line at all (guns never run);
  *   2. at least `ESCAPE.minimumCombatShips` armed ships stand in the line;
- *   3. the wing has at least `ESCAPE.ratio` times the line's armed resource value (`combatValue`
- *      on both sides — the axis a probe's defence band and the launch sheet share);
+ *   3. the wing has at least `ESCAPE.ratio` times the line's matchup power — the ratio the
+ *      battle is fought with (combat v3): counters, research, wounds, guns and Aegis in, cargo out;
  *   4. the line, standing, would have been wiped out — the full fight grades DECISIVE;
  *   5. the world's tank pays `escapeFuel` for the lift, all of it or none (T6).
  *
@@ -69,18 +70,9 @@ export function escapingShips(line: Fleet): Fleet {
 /** The lift is a launch: `missionFuel` for a round trip of `ESCAPE.fuelDistance`. */
 export const escapeFuel = (ships: Fleet): number => missionFuel(ships, ESCAPE.fuelDistance, 2);
 
-/** The strength half of the rule, inclusive at `ESCAPE.ratio`. */
+/** The strength half of the rule, inclusive at `ESCAPE.ratio`; float noise in the powers never decides it. */
 export const outmatches = (attackerPower: number, linePower: number): boolean =>
-  attackerPower >= ESCAPE.ratio * linePower;
-
-/**
- * THE ARMED RESOURCE VALUE A LINE MAY HOLD AND STILL RUN — the wing's divided by `ESCAPE.ratio`.
- *
- * On the same axis as the defence band, so the launch sheet can draw it beside the
- * clear and break lines. It is the strength half only: a line under it still stands if
- * the wing could not clear it, and still stays if the tank is dry.
- */
-export const escapeLine = (wing: Fleet): number => combatValue(wing) / ESCAPE.ratio;
+  attackerPower >= ESCAPE.ratio * linePower * (1 - 1e-9);
 
 export type EscapeVerdict = 'RUN' | 'STAND' | 'UNSURE';
 
@@ -88,35 +80,29 @@ export type EscapeVerdict = 'RUN' | 'STAND' | 'UNSURE';
  * WHAT A COMMANDER CAN EXPECT BEFORE THE PRESS — the rule applied to the reading they
  * bought, never to the truth (CLAUDE.md: form an expectation and be able to be wrong).
  *
- * `wall` is the probe's defence band — `combatValue` of everything standing at home,
- * the axis the rule itself measures — and `clears` is `forecastLines(...).clears`: the
- * firepower below which this wing wipes the line. The ships run only from a line that
- * is both outmatched and cleared, so:
+ * `ratio` is this wing's matchup power over the line's across the probe's reading, from
+ * the least favourable to the most:
  *
- *   · STAND  — even the weakest wall the band allows is over the line, or the wing
- *              clears no wall the band allows;
- *   · RUN    — every wall the band allows is at or under the line and is cleared;
+ *   · STAND  — even the most favourable ratio is under the line;
+ *   · RUN    — every ratio the reading allows is at or over it;
  *   · UNSURE — anything between.
  *
- * RUN is still conditional: the tank is never known to a raider. In ruleset 13
- * the probe also cannot establish the five-ship floor from a power band, so a
- * power-only RUN becomes UNSURE.
+ * RUN is still conditional: the tank is never known to a raider, and a line the wing
+ * could not have wiped standing never runs. `minimumShipRule` is set when the reading
+ * cannot establish the five-ship floor, and turns RUN into UNSURE.
  *
  * `posture` is the world's defence posture as the probe read it (Klan Savunma Desteği,
  * ruleset 15). A SUPPORT or HOLD world has switched the retreat off, so its line
  * always STANDs; absent means a season without postures, where the rule decides.
  */
 export function escapeVerdict(
-  wingPower: number,
-  wall: { low: number; high: number },
-  clears: { low: number; high: number },
+  ratio: { low: number; high: number },
   minimumShipRule = false,
   posture?: DefencePosture,
 ): EscapeVerdict {
   if (posture !== undefined && posture !== 'ESCAPE') return 'STAND';
-  const at = wingPower / ESCAPE.ratio;
-  if (wall.low > at || wall.low >= clears.high) return 'STAND';
-  if (wall.high <= at && wall.high < clears.low) return minimumShipRule ? 'UNSURE' : 'RUN';
+  if (!outmatches(ratio.high, 1)) return 'STAND';
+  if (outmatches(ratio.low, 1)) return minimumShipRule ? 'UNSURE' : 'RUN';
   return 'UNSURE';
 }
 
@@ -199,9 +185,9 @@ export function resolveRaid(input: RaidInput): RaidResolution {
     return keepStanding(null);
   }
 
-  const power = input.stacks.reduce((sum, stack) => sum + combatValue(input.maintenance
-    ? partitionCombatFleet(stack.fleet, stack.damage).eligible : stack.fleet), 0);
-  if (!outmatches(power, combatValue(line)) || standing.grade !== 'DECISIVE') {
+  const m = matchup({ units: input.stacks.flatMap(stack => powerUnits(stack.fleet, stack.tech, stack.damage, input.maintenance)) },
+    { units: powerUnits(line, input.defender, partition?.damage, input.maintenance), aegis: input.shield });
+  if (!outmatches(m.attacker.power, m.defender.power) || standing.grade !== 'DECISIVE') {
     return keepStanding(null);
   }
 

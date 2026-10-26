@@ -1,0 +1,3603 @@
+{
+  "generated": "2026-10-25T15:17:17.053Z",
+  "fitSeeds": 10,
+  "holdoutSeeds": 12,
+  "tempo": 0.2,
+  "rounds": 8,
+  "handicap": {
+    "ratios": [
+      1,
+      1.2,
+      1.4,
+      1.6,
+      1.8,
+      2,
+      2.5,
+      3,
+      4
+    ],
+    "exponents": [
+      2,
+      2,
+      1.9,
+      1.75,
+      1.75,
+      1.65,
+      1.5,
+      1.35,
+      0
+    ]
+  },
+  "table": [
+    {
+      "tier": 0,
+      "ratio": 1,
+      "exponent": 0,
+      "target": 0.1,
+      "strongLossFloor": null,
+      "threshold": 0.45,
+      "chance": 0.05,
+      "kept": 0.1,
+      "spread": 0.07,
+      "strongLost": 0.93,
+      "strongLostMin": 0.89,
+      "rounds": 6.34
+    },
+    {
+      "tier": 1,
+      "ratio": 1,
+      "exponent": 0,
+      "target": 0.15,
+      "strongLossFloor": null,
+      "threshold": 0.45,
+      "chance": 0.3,
+      "kept": 0.15,
+      "spread": 0.09,
+      "strongLost": 0.88,
+      "strongLostMin": 0.78,
+      "rounds": 6.2
+    },
+    {
+      "tier": 2,
+      "ratio": 1,
+      "exponent": 0,
+      "target": 0.2,
+      "strongLossFloor": null,
+      "threshold": 0.75,
+      "chance": 0.15,
+      "kept": 0.18,
+      "spread": 0.09,
+      "strongLost": 0.83,
+      "strongLostMin": 0.76,
+      "rounds": 6.59
+    },
+    {
+      "tier": 3,
+      "ratio": 1,
+      "exponent": 0,
+      "target": 0.25,
+      "strongLossFloor": null,
+      "threshold": 0.6,
+      "chance": 0.6,
+      "kept": 0.25,
+      "spread": 0.13,
+      "strongLost": 0.75,
+      "strongLostMin": 0.69,
+      "rounds": 6.81
+    },
+    {
+      "tier": 0,
+      "ratio": 1.2,
+      "exponent": 2,
+      "target": 0.2,
+      "strongLossFloor": 0.8,
+      "threshold": 0.45,
+      "chance": 0.9,
+      "kept": 0.19,
+      "spread": 0.07,
+      "strongLost": 0.79,
+      "strongLostMin": 0.66,
+      "rounds": 6.99
+    },
+    {
+      "tier": 1,
+      "ratio": 1.2,
+      "exponent": 2,
+      "target": 0.2,
+      "strongLossFloor": 0.8,
+      "threshold": 0.45,
+      "chance": 0.85,
+      "kept": 0.2,
+      "spread": 0.23,
+      "strongLost": 0.85,
+      "strongLostMin": 0.72,
+      "rounds": 6.97
+    },
+    {
+      "tier": 2,
+      "ratio": 1.2,
+      "exponent": 2,
+      "target": 0.2,
+      "strongLossFloor": 0.8,
+      "threshold": 0.45,
+      "chance": 0.95,
+      "kept": 0.22,
+      "spread": 0.16,
+      "strongLost": 0.81,
+      "strongLostMin": 0.77,
+      "rounds": 7.16
+    },
+    {
+      "tier": 3,
+      "ratio": 1.2,
+      "exponent": 2,
+      "target": 0.25,
+      "strongLossFloor": 0.8,
+      "threshold": 0.6,
+      "chance": 0.95,
+      "kept": 0.24,
+      "spread": 0.11,
+      "strongLost": 0.71,
+      "strongLostMin": 0.63,
+      "rounds": 7.14
+    },
+    {
+      "tier": 0,
+      "ratio": 1.4,
+      "exponent": 1.9,
+      "target": 0.25,
+      "strongLossFloor": 0.65,
+      "threshold": 0.6,
+      "chance": 0.6,
+      "kept": 0.24,
+      "spread": 0.1,
+      "strongLost": 0.64,
+      "strongLostMin": 0.53,
+      "rounds": 6.44
+    },
+    {
+      "tier": 1,
+      "ratio": 1.4,
+      "exponent": 1.9,
+      "target": 0.25,
+      "strongLossFloor": 0.65,
+      "threshold": 0.6,
+      "chance": 0.65,
+      "kept": 0.24,
+      "spread": 0.14,
+      "strongLost": 0.68,
+      "strongLostMin": 0.57,
+      "rounds": 6.84
+    },
+    {
+      "tier": 2,
+      "ratio": 1.4,
+      "exponent": 1.9,
+      "target": 0.25,
+      "strongLossFloor": 0.65,
+      "threshold": 0.6,
+      "chance": 0.7,
+      "kept": 0.23,
+      "spread": 0.14,
+      "strongLost": 0.66,
+      "strongLostMin": 0.58,
+      "rounds": 7.11
+    },
+    {
+      "tier": 3,
+      "ratio": 1.4,
+      "exponent": 1.9,
+      "target": 0.25,
+      "strongLossFloor": 0.65,
+      "threshold": 0.6,
+      "chance": 0.7,
+      "kept": 0.25,
+      "spread": 0.19,
+      "strongLost": 0.67,
+      "strongLostMin": 0.55,
+      "rounds": 7.4
+    },
+    {
+      "tier": 0,
+      "ratio": 1.6,
+      "exponent": 1.75,
+      "target": 0.3,
+      "strongLossFloor": 0.5,
+      "threshold": 0.6,
+      "chance": 0.85,
+      "kept": 0.29,
+      "spread": 0.14,
+      "strongLost": 0.5,
+      "strongLostMin": 0.4,
+      "rounds": 6.03
+    },
+    {
+      "tier": 1,
+      "ratio": 1.6,
+      "exponent": 1.75,
+      "target": 0.3,
+      "strongLossFloor": 0.5,
+      "threshold": 0.6,
+      "chance": 0.9,
+      "kept": 0.28,
+      "spread": 0.15,
+      "strongLost": 0.51,
+      "strongLostMin": 0.43,
+      "rounds": 6.26
+    },
+    {
+      "tier": 2,
+      "ratio": 1.6,
+      "exponent": 1.75,
+      "target": 0.3,
+      "strongLossFloor": 0.5,
+      "threshold": 0.6,
+      "chance": 1,
+      "kept": 0.3,
+      "spread": 0.16,
+      "strongLost": 0.46,
+      "strongLostMin": 0.41,
+      "rounds": 6.39
+    },
+    {
+      "tier": 3,
+      "ratio": 1.6,
+      "exponent": 1.75,
+      "target": 0.3,
+      "strongLossFloor": 0.5,
+      "threshold": 0.6,
+      "chance": 0.9,
+      "kept": 0.29,
+      "spread": 0.17,
+      "strongLost": 0.5,
+      "strongLostMin": 0.38,
+      "rounds": 7.06
+    },
+    {
+      "tier": 0,
+      "ratio": 1.8,
+      "exponent": 1.75,
+      "target": 0.4,
+      "strongLossFloor": 0.4,
+      "threshold": 0.75,
+      "chance": 0.55,
+      "kept": 0.4,
+      "spread": 0.14,
+      "strongLost": 0.39,
+      "strongLostMin": 0.27,
+      "rounds": 5.7
+    },
+    {
+      "tier": 1,
+      "ratio": 1.8,
+      "exponent": 1.75,
+      "target": 0.4,
+      "strongLossFloor": 0.4,
+      "threshold": 0.75,
+      "chance": 0.55,
+      "kept": 0.38,
+      "spread": 0.18,
+      "strongLost": 0.43,
+      "strongLostMin": 0.35,
+      "rounds": 6.11
+    },
+    {
+      "tier": 2,
+      "ratio": 1.8,
+      "exponent": 1.75,
+      "target": 0.4,
+      "strongLossFloor": 0.4,
+      "threshold": 0.75,
+      "chance": 0.6,
+      "kept": 0.38,
+      "spread": 0.24,
+      "strongLost": 0.38,
+      "strongLostMin": 0.31,
+      "rounds": 6.23
+    },
+    {
+      "tier": 3,
+      "ratio": 1.8,
+      "exponent": 1.75,
+      "target": 0.4,
+      "strongLossFloor": 0.4,
+      "threshold": 0.75,
+      "chance": 0.65,
+      "kept": 0.4,
+      "spread": 0.18,
+      "strongLost": 0.42,
+      "strongLostMin": 0.26,
+      "rounds": 6.99
+    },
+    {
+      "tier": 0,
+      "ratio": 2,
+      "exponent": 1.65,
+      "target": 0.5,
+      "strongLossFloor": 0.3,
+      "threshold": 0.75,
+      "chance": 0.85,
+      "kept": 0.48,
+      "spread": 0.21,
+      "strongLost": 0.28,
+      "strongLostMin": 0.19,
+      "rounds": 5.13
+    },
+    {
+      "tier": 1,
+      "ratio": 2,
+      "exponent": 1.65,
+      "target": 0.5,
+      "strongLossFloor": 0.3,
+      "threshold": 0.75,
+      "chance": 0.85,
+      "kept": 0.5,
+      "spread": 0.3,
+      "strongLost": 0.32,
+      "strongLostMin": 0.25,
+      "rounds": 5.57
+    },
+    {
+      "tier": 2,
+      "ratio": 2,
+      "exponent": 1.65,
+      "target": 0.5,
+      "strongLossFloor": 0.3,
+      "threshold": 0.75,
+      "chance": 0.9,
+      "kept": 0.49,
+      "spread": 0.32,
+      "strongLost": 0.27,
+      "strongLostMin": 0.15,
+      "rounds": 5.7
+    },
+    {
+      "tier": 3,
+      "ratio": 2,
+      "exponent": 1.65,
+      "target": 0.5,
+      "strongLossFloor": 0.3,
+      "threshold": 0.75,
+      "chance": 0.9,
+      "kept": 0.49,
+      "spread": 0.26,
+      "strongLost": 0.32,
+      "strongLostMin": 0.19,
+      "rounds": 6.56
+    },
+    {
+      "tier": 0,
+      "ratio": 2.5,
+      "exponent": 1.5,
+      "target": 0.6,
+      "strongLossFloor": 0.15,
+      "threshold": 0.9,
+      "chance": 0.65,
+      "kept": 0.61,
+      "spread": 0.18,
+      "strongLost": 0.13,
+      "strongLostMin": 0.06,
+      "rounds": 4.53
+    },
+    {
+      "tier": 1,
+      "ratio": 2.5,
+      "exponent": 1.5,
+      "target": 0.6,
+      "strongLossFloor": 0.15,
+      "threshold": 0.9,
+      "chance": 0.65,
+      "kept": 0.6,
+      "spread": 0.28,
+      "strongLost": 0.16,
+      "strongLostMin": 0.1,
+      "rounds": 4.9
+    },
+    {
+      "tier": 2,
+      "ratio": 2.5,
+      "exponent": 1.5,
+      "target": 0.6,
+      "strongLossFloor": 0.15,
+      "threshold": 0.9,
+      "chance": 0.75,
+      "kept": 0.61,
+      "spread": 0.34,
+      "strongLost": 0.12,
+      "strongLostMin": 0.04,
+      "rounds": 4.99
+    },
+    {
+      "tier": 3,
+      "ratio": 2.5,
+      "exponent": 1.5,
+      "target": 0.6,
+      "strongLossFloor": 0.15,
+      "threshold": 0.9,
+      "chance": 0.8,
+      "kept": 0.6,
+      "spread": 0.19,
+      "strongLost": 0.19,
+      "strongLostMin": 0.06,
+      "rounds": 5.5
+    },
+    {
+      "tier": 0,
+      "ratio": 3,
+      "exponent": 1.35,
+      "target": 0.7,
+      "strongLossFloor": 0.08,
+      "threshold": 0.9,
+      "chance": 0.8,
+      "kept": 0.69,
+      "spread": 0.22,
+      "strongLost": 0.08,
+      "strongLostMin": 0.02,
+      "rounds": 3.87
+    },
+    {
+      "tier": 1,
+      "ratio": 3,
+      "exponent": 1.35,
+      "target": 0.7,
+      "strongLossFloor": 0.08,
+      "threshold": 0.9,
+      "chance": 0.95,
+      "kept": 0.7,
+      "spread": 0.39,
+      "strongLost": 0.09,
+      "strongLostMin": 0.04,
+      "rounds": 4.11
+    },
+    {
+      "tier": 2,
+      "ratio": 3,
+      "exponent": 1.35,
+      "target": 0.7,
+      "strongLossFloor": 0.08,
+      "threshold": 0.9,
+      "chance": 0.95,
+      "kept": 0.68,
+      "spread": 0.31,
+      "strongLost": 0.06,
+      "strongLostMin": 0.02,
+      "rounds": 4.38
+    },
+    {
+      "tier": 3,
+      "ratio": 3,
+      "exponent": 1.35,
+      "target": 0.7,
+      "strongLossFloor": 0.08,
+      "threshold": 0.9,
+      "chance": 1,
+      "kept": 0.69,
+      "spread": 0.23,
+      "strongLost": 0.13,
+      "strongLostMin": 0.01,
+      "rounds": 4.7
+    }
+  ],
+  "validation": [
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 1,
+      "weakKept": 0.04,
+      "strongLost": 0.89,
+      "rounds": 6.75
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 1.1,
+      "weakKept": 0.1,
+      "strongLost": 0.69,
+      "rounds": 6.08
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 1.2,
+      "weakKept": 0.18,
+      "strongLost": 0.75,
+      "rounds": 6.67
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 1.3,
+      "weakKept": 0.22,
+      "strongLost": 0.59,
+      "rounds": 6.08
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 1.4,
+      "weakKept": 0.23,
+      "strongLost": 0.58,
+      "rounds": 6.5
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 1.6,
+      "weakKept": 0.3,
+      "strongLost": 0.41,
+      "rounds": 6
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 1.8,
+      "weakKept": 0.42,
+      "strongLost": 0.3,
+      "rounds": 6
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 2,
+      "weakKept": 0.48,
+      "strongLost": 0.2,
+      "rounds": 5.42
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 2.27,
+      "weakKept": 0.6,
+      "strongLost": 0.15,
+      "rounds": 5
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 2.5,
+      "weakKept": 0.66,
+      "strongLost": 0.08,
+      "rounds": 4.75
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 2.77,
+      "weakKept": 0.7,
+      "strongLost": 0.06,
+      "rounds": 4.33
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 3,
+      "weakKept": 0.68,
+      "strongLost": 0.04,
+      "rounds": 4
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok ayna",
+      "ratio": 3.5,
+      "weakKept": 0.54,
+      "strongLost": 0.01,
+      "rounds": 3
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 1,
+      "weakKept": 0.07,
+      "strongLost": 0.84,
+      "rounds": 6.33
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 1.11,
+      "weakKept": 0.05,
+      "strongLost": 0.65,
+      "rounds": 6.25
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 1.21,
+      "weakKept": 0.16,
+      "strongLost": 0.75,
+      "rounds": 6.83
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 1.29,
+      "weakKept": 0.16,
+      "strongLost": 0.67,
+      "rounds": 6.42
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 1.39,
+      "weakKept": 0.21,
+      "strongLost": 0.65,
+      "rounds": 7.08
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 1.61,
+      "weakKept": 0.26,
+      "strongLost": 0.43,
+      "rounds": 6.08
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 1.79,
+      "weakKept": 0.32,
+      "strongLost": 0.33,
+      "rounds": 6.08
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 2,
+      "weakKept": 0.56,
+      "strongLost": 0.21,
+      "rounds": 5.42
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 2.25,
+      "weakKept": 0.59,
+      "strongLost": 0.14,
+      "rounds": 5
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 2.5,
+      "weakKept": 0.62,
+      "strongLost": 0.08,
+      "rounds": 5
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 2.75,
+      "weakKept": 0.67,
+      "strongLost": 0.05,
+      "rounds": 4.75
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 3,
+      "weakKept": 0.68,
+      "strongLost": 0.04,
+      "rounds": 4.25
+    },
+    {
+      "tier": 0,
+      "scenario": "Kargı ayna",
+      "ratio": 3.5,
+      "weakKept": 0.55,
+      "strongLost": 0.01,
+      "rounds": 2.92
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 1,
+      "weakKept": 0.11,
+      "strongLost": 0.96,
+      "rounds": 6.67
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 1.11,
+      "weakKept": 0.16,
+      "strongLost": 0.9,
+      "rounds": 6.25
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 1.22,
+      "weakKept": 0.12,
+      "strongLost": 0.83,
+      "rounds": 6.75
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 1.28,
+      "weakKept": 0.16,
+      "strongLost": 0.86,
+      "rounds": 7.25
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 1.39,
+      "weakKept": 0.19,
+      "strongLost": 0.71,
+      "rounds": 6.42
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 1.61,
+      "weakKept": 0.22,
+      "strongLost": 0.58,
+      "rounds": 5.08
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 1.78,
+      "weakKept": 0.3,
+      "strongLost": 0.52,
+      "rounds": 5
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 2,
+      "weakKept": 0.39,
+      "strongLost": 0.43,
+      "rounds": 4.42
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 2.28,
+      "weakKept": 0.45,
+      "strongLost": 0.3,
+      "rounds": 3.92
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 2.5,
+      "weakKept": 0.49,
+      "strongLost": 0.25,
+      "rounds": 4
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 2.78,
+      "weakKept": 0.52,
+      "strongLost": 0.19,
+      "rounds": 3.67
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 3,
+      "weakKept": 0.54,
+      "strongLost": 0.15,
+      "rounds": 3.08
+    },
+    {
+      "tier": 0,
+      "scenario": "T1 karma ayna",
+      "ratio": 3.5,
+      "weakKept": 0.33,
+      "strongLost": 0.07,
+      "rounds": 2
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 1.01,
+      "weakKept": 0.13,
+      "strongLost": 0.83,
+      "rounds": 5.92
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 1.11,
+      "weakKept": 0.19,
+      "strongLost": 0.82,
+      "rounds": 6.17
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 1.22,
+      "weakKept": 0.33,
+      "strongLost": 0.9,
+      "rounds": 6.67
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 1.32,
+      "weakKept": 0.21,
+      "strongLost": 0.85,
+      "rounds": 7.25
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 1.38,
+      "weakKept": 0.2,
+      "strongLost": 0.74,
+      "rounds": 7.25
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 1.59,
+      "weakKept": 0.31,
+      "strongLost": 0.46,
+      "rounds": 6
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 1.8,
+      "weakKept": 0.34,
+      "strongLost": 0.3,
+      "rounds": 5.92
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 2.01,
+      "weakKept": 0.51,
+      "strongLost": 0.22,
+      "rounds": 5.42
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 2.23,
+      "weakKept": 0.59,
+      "strongLost": 0.08,
+      "rounds": 4.92
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 2.49,
+      "weakKept": 0.61,
+      "strongLost": 0.07,
+      "rounds": 4.83
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 2.76,
+      "weakKept": 0.67,
+      "strongLost": 0.03,
+      "rounds": 4.17
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 3.02,
+      "weakKept": 0.7,
+      "strongLost": 0.02,
+      "rounds": 4
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Kargı (güçlü counter)",
+      "ratio": 3.5,
+      "weakKept": 0.46,
+      "strongLost": 0,
+      "rounds": 3
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 0.99,
+      "weakKept": 0.15,
+      "strongLost": 0.92,
+      "rounds": 6.42
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 1.1,
+      "weakKept": 0.14,
+      "strongLost": 0.91,
+      "rounds": 7.17
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 1.2,
+      "weakKept": 0.19,
+      "strongLost": 0.8,
+      "rounds": 6.75
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 1.31,
+      "weakKept": 0.18,
+      "strongLost": 0.72,
+      "rounds": 6.75
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 1.41,
+      "weakKept": 0.23,
+      "strongLost": 0.7,
+      "rounds": 7
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 1.59,
+      "weakKept": 0.28,
+      "strongLost": 0.51,
+      "rounds": 6.08
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 1.8,
+      "weakKept": 0.38,
+      "strongLost": 0.43,
+      "rounds": 6.08
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 2.01,
+      "weakKept": 0.52,
+      "strongLost": 0.3,
+      "rounds": 5.5
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 2.25,
+      "weakKept": 0.61,
+      "strongLost": 0.21,
+      "rounds": 5.08
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 2.51,
+      "weakKept": 0.67,
+      "strongLost": 0.16,
+      "rounds": 4.92
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 2.74,
+      "weakKept": 0.71,
+      "strongLost": 0.11,
+      "rounds": 4.33
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 3.01,
+      "weakKept": 0.7,
+      "strongLost": 0.08,
+      "rounds": 4
+    },
+    {
+      "tier": 0,
+      "scenario": "Ok vs Sur (zayıf counter)",
+      "ratio": 3.5,
+      "weakKept": 0.51,
+      "strongLost": 0.02,
+      "rounds": 2.83
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 1,
+      "weakKept": 0.2,
+      "strongLost": 0.91,
+      "rounds": 5.42
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 1.13,
+      "weakKept": 0.11,
+      "strongLost": 0.68,
+      "rounds": 5.67
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 1.25,
+      "weakKept": 0.18,
+      "strongLost": 0.73,
+      "rounds": 6.25
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 1.25,
+      "weakKept": 0.18,
+      "strongLost": 0.73,
+      "rounds": 6.25
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 1.38,
+      "weakKept": 0.27,
+      "strongLost": 0.58,
+      "rounds": 6.08
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 1.62,
+      "weakKept": 0.32,
+      "strongLost": 0.4,
+      "rounds": 5.75
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 1.75,
+      "weakKept": 0.48,
+      "strongLost": 0.35,
+      "rounds": 5.5
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 2,
+      "weakKept": 0.58,
+      "strongLost": 0.21,
+      "rounds": 5.08
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 2.25,
+      "weakKept": 0.61,
+      "strongLost": 0.16,
+      "rounds": 5
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 2.5,
+      "weakKept": 0.64,
+      "strongLost": 0.08,
+      "rounds": 4.5
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 2.75,
+      "weakKept": 0.71,
+      "strongLost": 0.07,
+      "rounds": 4.17
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 3,
+      "weakKept": 0.67,
+      "strongLost": 0.03,
+      "rounds": 3.83
+    },
+    {
+      "tier": 0,
+      "scenario": "Az gemi: 8 Ok",
+      "ratio": 3.5,
+      "weakKept": 0.52,
+      "strongLost": 0.01,
+      "rounds": 2.58
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 1.03,
+      "weakKept": 0.06,
+      "strongLost": 0.92,
+      "rounds": 7.08
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 1.09,
+      "weakKept": 0.09,
+      "strongLost": 0.87,
+      "rounds": 7.25
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 1.21,
+      "weakKept": 0.15,
+      "strongLost": 0.87,
+      "rounds": 7.67
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 1.33,
+      "weakKept": 0.19,
+      "strongLost": 0.73,
+      "rounds": 6.92
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 1.39,
+      "weakKept": 0.18,
+      "strongLost": 0.72,
+      "rounds": 7.17
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 1.63,
+      "weakKept": 0.22,
+      "strongLost": 0.56,
+      "rounds": 5.83
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 1.81,
+      "weakKept": 0.31,
+      "strongLost": 0.51,
+      "rounds": 5.67
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 1.99,
+      "weakKept": 0.34,
+      "strongLost": 0.45,
+      "rounds": 4.83
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 2.23,
+      "weakKept": 0.4,
+      "strongLost": 0.36,
+      "rounds": 4.58
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 2.48,
+      "weakKept": 0.47,
+      "strongLost": 0.29,
+      "rounds": 4
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 2.78,
+      "weakKept": 0.52,
+      "strongLost": 0.21,
+      "rounds": 3.75
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 3.02,
+      "weakKept": 0.47,
+      "strongLost": 0.17,
+      "rounds": 3.42
+    },
+    {
+      "tier": 0,
+      "scenario": "Çok gemi: 50 T1 karma",
+      "ratio": 3.5,
+      "weakKept": 0.3,
+      "strongLost": 0.08,
+      "rounds": 2
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 1,
+      "weakKept": 0.1,
+      "strongLost": 0.84,
+      "rounds": 6.83
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 1.11,
+      "weakKept": 0.17,
+      "strongLost": 0.89,
+      "rounds": 7.25
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 1.19,
+      "weakKept": 0.16,
+      "strongLost": 0.69,
+      "rounds": 6.92
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 1.31,
+      "weakKept": 0.22,
+      "strongLost": 0.8,
+      "rounds": 7.58
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 1.39,
+      "weakKept": 0.19,
+      "strongLost": 0.6,
+      "rounds": 7
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 1.61,
+      "weakKept": 0.28,
+      "strongLost": 0.43,
+      "rounds": 6.42
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 1.81,
+      "weakKept": 0.37,
+      "strongLost": 0.37,
+      "rounds": 6.25
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 2,
+      "weakKept": 0.46,
+      "strongLost": 0.25,
+      "rounds": 6
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 2.25,
+      "weakKept": 0.54,
+      "strongLost": 0.17,
+      "rounds": 5.67
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 2.5,
+      "weakKept": 0.63,
+      "strongLost": 0.1,
+      "rounds": 5.08
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 2.75,
+      "weakKept": 0.68,
+      "strongLost": 0.08,
+      "rounds": 4.92
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 3,
+      "weakKept": 0.74,
+      "strongLost": 0.05,
+      "rounds": 4.17
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek ayna",
+      "ratio": 3.5,
+      "weakKept": 0.54,
+      "strongLost": 0.01,
+      "rounds": 2.83
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 1,
+      "weakKept": 0.1,
+      "strongLost": 0.84,
+      "rounds": 6.83
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 1.11,
+      "weakKept": 0.17,
+      "strongLost": 0.89,
+      "rounds": 7.25
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 1.19,
+      "weakKept": 0.16,
+      "strongLost": 0.69,
+      "rounds": 6.92
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 1.31,
+      "weakKept": 0.22,
+      "strongLost": 0.8,
+      "rounds": 7.58
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 1.39,
+      "weakKept": 0.19,
+      "strongLost": 0.6,
+      "rounds": 7
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 1.61,
+      "weakKept": 0.28,
+      "strongLost": 0.43,
+      "rounds": 6.42
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 1.81,
+      "weakKept": 0.37,
+      "strongLost": 0.37,
+      "rounds": 6.25
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 2,
+      "weakKept": 0.46,
+      "strongLost": 0.25,
+      "rounds": 6
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 2.25,
+      "weakKept": 0.54,
+      "strongLost": 0.17,
+      "rounds": 5.67
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 2.5,
+      "weakKept": 0.63,
+      "strongLost": 0.1,
+      "rounds": 5.08
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 2.75,
+      "weakKept": 0.68,
+      "strongLost": 0.08,
+      "rounds": 4.92
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 3,
+      "weakKept": 0.74,
+      "strongLost": 0.05,
+      "rounds": 4.17
+    },
+    {
+      "tier": 1,
+      "scenario": "Pençe ayna",
+      "ratio": 3.5,
+      "weakKept": 0.54,
+      "strongLost": 0.01,
+      "rounds": 2.83
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 1,
+      "weakKept": 0.1,
+      "strongLost": 0.91,
+      "rounds": 7
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 1.09,
+      "weakKept": 0.17,
+      "strongLost": 0.95,
+      "rounds": 6.75
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 1.18,
+      "weakKept": 0.14,
+      "strongLost": 0.87,
+      "rounds": 7.17
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 1.28,
+      "weakKept": 0.18,
+      "strongLost": 0.87,
+      "rounds": 7.25
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 1.39,
+      "weakKept": 0.2,
+      "strongLost": 0.76,
+      "rounds": 6.83
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 1.61,
+      "weakKept": 0.17,
+      "strongLost": 0.64,
+      "rounds": 6.08
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 1.82,
+      "weakKept": 0.25,
+      "strongLost": 0.57,
+      "rounds": 5.5
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 2,
+      "weakKept": 0.38,
+      "strongLost": 0.41,
+      "rounds": 4.58
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 2.24,
+      "weakKept": 0.44,
+      "strongLost": 0.33,
+      "rounds": 4.25
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 2.52,
+      "weakKept": 0.48,
+      "strongLost": 0.25,
+      "rounds": 4
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 2.76,
+      "weakKept": 0.56,
+      "strongLost": 0.2,
+      "rounds": 3.83
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 3,
+      "weakKept": 0.59,
+      "strongLost": 0.15,
+      "rounds": 3
+    },
+    {
+      "tier": 1,
+      "scenario": "T2 karma ayna",
+      "ratio": 3.52,
+      "weakKept": 0.34,
+      "strongLost": 0.06,
+      "rounds": 2
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 1,
+      "weakKept": 0.11,
+      "strongLost": 0.81,
+      "rounds": 6.67
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 1.09,
+      "weakKept": 0.11,
+      "strongLost": 0.72,
+      "rounds": 6.58
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 1.2,
+      "weakKept": 0.15,
+      "strongLost": 0.73,
+      "rounds": 6.67
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 1.3,
+      "weakKept": 0.18,
+      "strongLost": 0.66,
+      "rounds": 6.75
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 1.41,
+      "weakKept": 0.18,
+      "strongLost": 0.57,
+      "rounds": 6.58
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 1.6,
+      "weakKept": 0.35,
+      "strongLost": 0.48,
+      "rounds": 6.17
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 1.8,
+      "weakKept": 0.39,
+      "strongLost": 0.38,
+      "rounds": 6.17
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 2.01,
+      "weakKept": 0.57,
+      "strongLost": 0.27,
+      "rounds": 5.5
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 2.25,
+      "weakKept": 0.61,
+      "strongLost": 0.2,
+      "rounds": 5.25
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 2.5,
+      "weakKept": 0.65,
+      "strongLost": 0.14,
+      "rounds": 5.08
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 2.75,
+      "weakKept": 0.7,
+      "strongLost": 0.1,
+      "rounds": 4.92
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 2.99,
+      "weakKept": 0.77,
+      "strongLost": 0.08,
+      "rounds": 4.08
+    },
+    {
+      "tier": 1,
+      "scenario": "Hisar vs Pençe (zayıf counter)",
+      "ratio": 3.5,
+      "weakKept": 0.58,
+      "strongLost": 0.02,
+      "rounds": 2.58
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 0.99,
+      "weakKept": 0.28,
+      "strongLost": 0.94,
+      "rounds": 6.25
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 1.11,
+      "weakKept": 0.28,
+      "strongLost": 0.94,
+      "rounds": 6.83
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 1.2,
+      "weakKept": 0.3,
+      "strongLost": 0.96,
+      "rounds": 7.25
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 1.29,
+      "weakKept": 0.34,
+      "strongLost": 0.93,
+      "rounds": 7.67
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 1.41,
+      "weakKept": 0.31,
+      "strongLost": 0.8,
+      "rounds": 7.67
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 1.59,
+      "weakKept": 0.36,
+      "strongLost": 0.59,
+      "rounds": 6.92
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 1.8,
+      "weakKept": 0.4,
+      "strongLost": 0.47,
+      "rounds": 6.83
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 2.01,
+      "weakKept": 0.56,
+      "strongLost": 0.35,
+      "rounds": 6
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 2.24,
+      "weakKept": 0.59,
+      "strongLost": 0.28,
+      "rounds": 5.92
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 2.49,
+      "weakKept": 0.62,
+      "strongLost": 0.19,
+      "rounds": 5.33
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 2.75,
+      "weakKept": 0.66,
+      "strongLost": 0.14,
+      "rounds": 5
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 3,
+      "weakKept": 0.77,
+      "strongLost": 0.1,
+      "rounds": 4.08
+    },
+    {
+      "tier": 1,
+      "scenario": "Engerek araş.+2 vs Nöbetçi",
+      "ratio": 3.51,
+      "weakKept": 0.57,
+      "strongLost": 0.02,
+      "rounds": 2.75
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 1,
+      "weakKept": 0.14,
+      "strongLost": 0.87,
+      "rounds": 6.58
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 1.1,
+      "weakKept": 0.25,
+      "strongLost": 0.91,
+      "rounds": 6.58
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 1.2,
+      "weakKept": 0.14,
+      "strongLost": 0.73,
+      "rounds": 6.75
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 1.3,
+      "weakKept": 0.15,
+      "strongLost": 0.74,
+      "rounds": 6.92
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 1.4,
+      "weakKept": 0.18,
+      "strongLost": 0.61,
+      "rounds": 6.67
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 1.6,
+      "weakKept": 0.29,
+      "strongLost": 0.45,
+      "rounds": 6.17
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 1.8,
+      "weakKept": 0.34,
+      "strongLost": 0.37,
+      "rounds": 6.25
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 2,
+      "weakKept": 0.45,
+      "strongLost": 0.27,
+      "rounds": 6
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 2.25,
+      "weakKept": 0.55,
+      "strongLost": 0.15,
+      "rounds": 5.08
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 2.5,
+      "weakKept": 0.63,
+      "strongLost": 0.09,
+      "rounds": 5
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 2.75,
+      "weakKept": 0.71,
+      "strongLost": 0.07,
+      "rounds": 4.75
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 3,
+      "weakKept": 0.77,
+      "strongLost": 0.05,
+      "rounds": 4
+    },
+    {
+      "tier": 1,
+      "scenario": "Az gemi: 20 Engerek",
+      "ratio": 3.5,
+      "weakKept": 0.53,
+      "strongLost": 0,
+      "rounds": 2.75
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 1.01,
+      "weakKept": 0.15,
+      "strongLost": 0.97,
+      "rounds": 5.08
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 1.09,
+      "weakKept": 0.16,
+      "strongLost": 0.93,
+      "rounds": 5.42
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 1.18,
+      "weakKept": 0.09,
+      "strongLost": 0.88,
+      "rounds": 6.58
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 1.31,
+      "weakKept": 0.15,
+      "strongLost": 0.77,
+      "rounds": 6.17
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 1.39,
+      "weakKept": 0.16,
+      "strongLost": 0.7,
+      "rounds": 6.17
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 1.6,
+      "weakKept": 0.24,
+      "strongLost": 0.56,
+      "rounds": 5.5
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 1.81,
+      "weakKept": 0.32,
+      "strongLost": 0.49,
+      "rounds": 5.83
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 2.01,
+      "weakKept": 0.29,
+      "strongLost": 0.43,
+      "rounds": 5.83
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 2.27,
+      "weakKept": 0.32,
+      "strongLost": 0.35,
+      "rounds": 5.25
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 2.51,
+      "weakKept": 0.4,
+      "strongLost": 0.22,
+      "rounds": 5
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 2.73,
+      "weakKept": 0.4,
+      "strongLost": 0.19,
+      "rounds": 4.92
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 2.99,
+      "weakKept": 0.41,
+      "strongLost": 0.14,
+      "rounds": 4.75
+    },
+    {
+      "tier": 1,
+      "scenario": "Çok gemi: 120 T1 vs T2",
+      "ratio": 3.48,
+      "weakKept": 0.27,
+      "strongLost": 0.02,
+      "rounds": 3
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 1,
+      "weakKept": 0.2,
+      "strongLost": 0.87,
+      "rounds": 6.75
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 1.1,
+      "weakKept": 0.28,
+      "strongLost": 0.77,
+      "rounds": 7.08
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 1.21,
+      "weakKept": 0.17,
+      "strongLost": 0.68,
+      "rounds": 6.75
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 1.29,
+      "weakKept": 0.18,
+      "strongLost": 0.73,
+      "rounds": 7.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 1.4,
+      "weakKept": 0.24,
+      "strongLost": 0.59,
+      "rounds": 7.08
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 1.6,
+      "weakKept": 0.34,
+      "strongLost": 0.41,
+      "rounds": 6
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 1.79,
+      "weakKept": 0.47,
+      "strongLost": 0.37,
+      "rounds": 6.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 2,
+      "weakKept": 0.52,
+      "strongLost": 0.28,
+      "rounds": 6
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 2.25,
+      "weakKept": 0.6,
+      "strongLost": 0.16,
+      "rounds": 5.67
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 2.5,
+      "weakKept": 0.63,
+      "strongLost": 0.1,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 2.75,
+      "weakKept": 0.7,
+      "strongLost": 0.07,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 3,
+      "weakKept": 0.74,
+      "strongLost": 0.05,
+      "rounds": 4.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga ayna",
+      "ratio": 3.5,
+      "weakKept": 0.55,
+      "strongLost": 0,
+      "rounds": 3
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 1,
+      "weakKept": 0.2,
+      "strongLost": 0.87,
+      "rounds": 6.75
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 1.1,
+      "weakKept": 0.28,
+      "strongLost": 0.77,
+      "rounds": 7.08
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 1.21,
+      "weakKept": 0.17,
+      "strongLost": 0.68,
+      "rounds": 6.75
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 1.29,
+      "weakKept": 0.18,
+      "strongLost": 0.73,
+      "rounds": 7.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 1.4,
+      "weakKept": 0.24,
+      "strongLost": 0.59,
+      "rounds": 7.08
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 1.6,
+      "weakKept": 0.34,
+      "strongLost": 0.41,
+      "rounds": 6
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 1.79,
+      "weakKept": 0.47,
+      "strongLost": 0.37,
+      "rounds": 6.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 2,
+      "weakKept": 0.52,
+      "strongLost": 0.28,
+      "rounds": 6
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 2.25,
+      "weakKept": 0.6,
+      "strongLost": 0.16,
+      "rounds": 5.67
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 2.5,
+      "weakKept": 0.63,
+      "strongLost": 0.1,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 2.75,
+      "weakKept": 0.7,
+      "strongLost": 0.07,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 3,
+      "weakKept": 0.74,
+      "strongLost": 0.05,
+      "rounds": 4.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista ayna",
+      "ratio": 3.5,
+      "weakKept": 0.55,
+      "strongLost": 0,
+      "rounds": 3
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 1,
+      "weakKept": 0.16,
+      "strongLost": 0.87,
+      "rounds": 7.17
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 1.11,
+      "weakKept": 0.23,
+      "strongLost": 0.79,
+      "rounds": 6.92
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 1.21,
+      "weakKept": 0.15,
+      "strongLost": 0.73,
+      "rounds": 7.08
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 1.29,
+      "weakKept": 0.17,
+      "strongLost": 0.75,
+      "rounds": 7.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 1.39,
+      "weakKept": 0.25,
+      "strongLost": 0.61,
+      "rounds": 7
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 1.61,
+      "weakKept": 0.35,
+      "strongLost": 0.44,
+      "rounds": 6.33
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 1.79,
+      "weakKept": 0.42,
+      "strongLost": 0.38,
+      "rounds": 6.17
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 2,
+      "weakKept": 0.55,
+      "strongLost": 0.26,
+      "rounds": 6
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 2.26,
+      "weakKept": 0.62,
+      "strongLost": 0.17,
+      "rounds": 5.58
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 2.5,
+      "weakKept": 0.65,
+      "strongLost": 0.1,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 2.76,
+      "weakKept": 0.68,
+      "strongLost": 0.06,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 3,
+      "weakKept": 0.75,
+      "strongLost": 0.04,
+      "rounds": 4.58
+    },
+    {
+      "tier": 2,
+      "scenario": "Leviathan ayna",
+      "ratio": 3.5,
+      "weakKept": 0.53,
+      "strongLost": 0.01,
+      "rounds": 2.92
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 1,
+      "weakKept": 0.1,
+      "strongLost": 0.85,
+      "rounds": 7.08
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 1.12,
+      "weakKept": 0.16,
+      "strongLost": 0.87,
+      "rounds": 7.5
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 1.19,
+      "weakKept": 0.13,
+      "strongLost": 0.85,
+      "rounds": 7.42
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 1.29,
+      "weakKept": 0.21,
+      "strongLost": 0.82,
+      "rounds": 7.33
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 1.41,
+      "weakKept": 0.21,
+      "strongLost": 0.78,
+      "rounds": 7.17
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 1.59,
+      "weakKept": 0.23,
+      "strongLost": 0.67,
+      "rounds": 6.5
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 1.81,
+      "weakKept": 0.26,
+      "strongLost": 0.55,
+      "rounds": 6.08
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 2,
+      "weakKept": 0.45,
+      "strongLost": 0.45,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 2.26,
+      "weakKept": 0.47,
+      "strongLost": 0.34,
+      "rounds": 4.5
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 2.52,
+      "weakKept": 0.51,
+      "strongLost": 0.26,
+      "rounds": 4.08
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 2.74,
+      "weakKept": 0.53,
+      "strongLost": 0.22,
+      "rounds": 4
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 3,
+      "weakKept": 0.55,
+      "strongLost": 0.17,
+      "rounds": 3.58
+    },
+    {
+      "tier": 2,
+      "scenario": "T3 karma ayna",
+      "ratio": 3.52,
+      "weakKept": 0.33,
+      "strongLost": 0.06,
+      "rounds": 2
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 1.02,
+      "weakKept": 0.19,
+      "strongLost": 0.8,
+      "rounds": 6.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 1.1,
+      "weakKept": 0.17,
+      "strongLost": 0.76,
+      "rounds": 6.75
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 1.22,
+      "weakKept": 0.31,
+      "strongLost": 0.86,
+      "rounds": 7.17
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 1.29,
+      "weakKept": 0.29,
+      "strongLost": 0.86,
+      "rounds": 7.5
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 1.41,
+      "weakKept": 0.19,
+      "strongLost": 0.73,
+      "rounds": 7.83
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 1.61,
+      "weakKept": 0.34,
+      "strongLost": 0.44,
+      "rounds": 6.5
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 1.8,
+      "weakKept": 0.35,
+      "strongLost": 0.34,
+      "rounds": 7
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 2,
+      "weakKept": 0.43,
+      "strongLost": 0.24,
+      "rounds": 6.17
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 2.24,
+      "weakKept": 0.6,
+      "strongLost": 0.14,
+      "rounds": 6
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 2.51,
+      "weakKept": 0.59,
+      "strongLost": 0.07,
+      "rounds": 5.92
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 2.75,
+      "weakKept": 0.67,
+      "strongLost": 0.04,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 3.02,
+      "weakKept": 0.68,
+      "strongLost": 0.01,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "Balista araş.+2 vs Praetoryen (güçlü counter)",
+      "ratio": 3.49,
+      "weakKept": 0.55,
+      "strongLost": 0,
+      "rounds": 3
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 1,
+      "weakKept": 0.24,
+      "strongLost": 0.78,
+      "rounds": 6
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 1.1,
+      "weakKept": 0.18,
+      "strongLost": 0.73,
+      "rounds": 6.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 1.2,
+      "weakKept": 0.21,
+      "strongLost": 0.87,
+      "rounds": 7.5
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 1.3,
+      "weakKept": 0.13,
+      "strongLost": 0.61,
+      "rounds": 6.92
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 1.4,
+      "weakKept": 0.22,
+      "strongLost": 0.64,
+      "rounds": 7.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 1.6,
+      "weakKept": 0.26,
+      "strongLost": 0.4,
+      "rounds": 6.58
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 1.8,
+      "weakKept": 0.31,
+      "strongLost": 0.34,
+      "rounds": 6.75
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 2,
+      "weakKept": 0.52,
+      "strongLost": 0.18,
+      "rounds": 5.92
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 2.24,
+      "weakKept": 0.59,
+      "strongLost": 0.11,
+      "rounds": 5.58
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 2.5,
+      "weakKept": 0.64,
+      "strongLost": 0.07,
+      "rounds": 5.25
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 2.74,
+      "weakKept": 0.67,
+      "strongLost": 0.04,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 3,
+      "weakKept": 0.67,
+      "strongLost": 0.03,
+      "rounds": 4.92
+    },
+    {
+      "tier": 2,
+      "scenario": "Kasırga vs Balista (güçlü counter)",
+      "ratio": 3.51,
+      "weakKept": 0.53,
+      "strongLost": 0,
+      "rounds": 3
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 1,
+      "weakKept": 0.19,
+      "strongLost": 0.82,
+      "rounds": 6.25
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 1.09,
+      "weakKept": 0.22,
+      "strongLost": 0.77,
+      "rounds": 6.58
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 1.18,
+      "weakKept": 0.19,
+      "strongLost": 0.8,
+      "rounds": 6.92
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 1.32,
+      "weakKept": 0.16,
+      "strongLost": 0.75,
+      "rounds": 7.17
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 1.41,
+      "weakKept": 0.22,
+      "strongLost": 0.55,
+      "rounds": 6.5
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 1.59,
+      "weakKept": 0.3,
+      "strongLost": 0.43,
+      "rounds": 6.17
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 1.82,
+      "weakKept": 0.44,
+      "strongLost": 0.35,
+      "rounds": 6.25
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 2,
+      "weakKept": 0.56,
+      "strongLost": 0.25,
+      "rounds": 5.83
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 2.27,
+      "weakKept": 0.63,
+      "strongLost": 0.14,
+      "rounds": 5.25
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 2.5,
+      "weakKept": 0.67,
+      "strongLost": 0.1,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 2.77,
+      "weakKept": 0.75,
+      "strongLost": 0.07,
+      "rounds": 4.83
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 3,
+      "weakKept": 0.74,
+      "strongLost": 0.04,
+      "rounds": 4.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Az gemi: 22 Leviathan",
+      "ratio": 3.5,
+      "weakKept": 0.53,
+      "strongLost": 0,
+      "rounds": 3
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 1,
+      "weakKept": 0.11,
+      "strongLost": 0.88,
+      "rounds": 7.08
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 1.1,
+      "weakKept": 0.11,
+      "strongLost": 0.79,
+      "rounds": 7.33
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 1.18,
+      "weakKept": 0.09,
+      "strongLost": 0.69,
+      "rounds": 6.5
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 1.29,
+      "weakKept": 0.09,
+      "strongLost": 0.65,
+      "rounds": 6.42
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 1.39,
+      "weakKept": 0.14,
+      "strongLost": 0.65,
+      "rounds": 6.83
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 1.61,
+      "weakKept": 0.19,
+      "strongLost": 0.48,
+      "rounds": 5.58
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 1.79,
+      "weakKept": 0.24,
+      "strongLost": 0.43,
+      "rounds": 5.58
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 2,
+      "weakKept": 0.27,
+      "strongLost": 0.37,
+      "rounds": 5
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 2.24,
+      "weakKept": 0.33,
+      "strongLost": 0.26,
+      "rounds": 4.92
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 2.5,
+      "weakKept": 0.37,
+      "strongLost": 0.16,
+      "rounds": 4.25
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 2.74,
+      "weakKept": 0.4,
+      "strongLost": 0.12,
+      "rounds": 4
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 3,
+      "weakKept": 0.46,
+      "strongLost": 0.08,
+      "rounds": 4
+    },
+    {
+      "tier": 2,
+      "scenario": "Çok gemi: 150 T2 karma",
+      "ratio": 3.5,
+      "weakKept": 0.27,
+      "strongLost": 0.01,
+      "rounds": 2
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 1,
+      "weakKept": 0.32,
+      "strongLost": 0.76,
+      "rounds": 6.58
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 1.1,
+      "weakKept": 0.37,
+      "strongLost": 0.77,
+      "rounds": 7.08
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 1.2,
+      "weakKept": 0.26,
+      "strongLost": 0.72,
+      "rounds": 7.17
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 1.3,
+      "weakKept": 0.26,
+      "strongLost": 0.71,
+      "rounds": 7.17
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 1.4,
+      "weakKept": 0.3,
+      "strongLost": 0.63,
+      "rounds": 7.33
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 1.6,
+      "weakKept": 0.34,
+      "strongLost": 0.49,
+      "rounds": 7
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 1.8,
+      "weakKept": 0.43,
+      "strongLost": 0.39,
+      "rounds": 6.92
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 2,
+      "weakKept": 0.57,
+      "strongLost": 0.27,
+      "rounds": 6.08
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 2.25,
+      "weakKept": 0.59,
+      "strongLost": 0.17,
+      "rounds": 6
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 2.5,
+      "weakKept": 0.65,
+      "strongLost": 0.12,
+      "rounds": 5.5
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 2.75,
+      "weakKept": 0.69,
+      "strongLost": 0.08,
+      "rounds": 5
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 3,
+      "weakKept": 0.75,
+      "strongLost": 0.05,
+      "rounds": 4.67
+    },
+    {
+      "tier": 3,
+      "scenario": "Korsan ayna",
+      "ratio": 3.5,
+      "weakKept": 0.58,
+      "strongLost": 0,
+      "rounds": 3
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 1,
+      "weakKept": 0.32,
+      "strongLost": 0.76,
+      "rounds": 6.58
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 1.1,
+      "weakKept": 0.37,
+      "strongLost": 0.77,
+      "rounds": 7.08
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 1.2,
+      "weakKept": 0.26,
+      "strongLost": 0.72,
+      "rounds": 7.17
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 1.3,
+      "weakKept": 0.26,
+      "strongLost": 0.71,
+      "rounds": 7.17
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 1.4,
+      "weakKept": 0.3,
+      "strongLost": 0.63,
+      "rounds": 7.33
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 1.6,
+      "weakKept": 0.34,
+      "strongLost": 0.49,
+      "rounds": 7
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 1.8,
+      "weakKept": 0.43,
+      "strongLost": 0.39,
+      "rounds": 6.92
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 2,
+      "weakKept": 0.57,
+      "strongLost": 0.27,
+      "rounds": 6.08
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 2.25,
+      "weakKept": 0.59,
+      "strongLost": 0.17,
+      "rounds": 6
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 2.5,
+      "weakKept": 0.65,
+      "strongLost": 0.12,
+      "rounds": 5.5
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 2.75,
+      "weakKept": 0.69,
+      "strongLost": 0.08,
+      "rounds": 5
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 3,
+      "weakKept": 0.75,
+      "strongLost": 0.05,
+      "rounds": 4.67
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ayna",
+      "ratio": 3.5,
+      "weakKept": 0.58,
+      "strongLost": 0,
+      "rounds": 3
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 1,
+      "weakKept": 0.28,
+      "strongLost": 0.71,
+      "rounds": 6.58
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 1.1,
+      "weakKept": 0.35,
+      "strongLost": 0.77,
+      "rounds": 7.08
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 1.2,
+      "weakKept": 0.24,
+      "strongLost": 0.66,
+      "rounds": 6.5
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 1.3,
+      "weakKept": 0.25,
+      "strongLost": 0.68,
+      "rounds": 7.17
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 1.4,
+      "weakKept": 0.3,
+      "strongLost": 0.64,
+      "rounds": 7.33
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 1.6,
+      "weakKept": 0.38,
+      "strongLost": 0.52,
+      "rounds": 7.08
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 1.8,
+      "weakKept": 0.42,
+      "strongLost": 0.38,
+      "rounds": 6.92
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 2,
+      "weakKept": 0.49,
+      "strongLost": 0.27,
+      "rounds": 6
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 2.26,
+      "weakKept": 0.59,
+      "strongLost": 0.18,
+      "rounds": 5.92
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 2.5,
+      "weakKept": 0.63,
+      "strongLost": 0.11,
+      "rounds": 5.33
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 2.76,
+      "weakKept": 0.7,
+      "strongLost": 0.07,
+      "rounds": 5
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 3,
+      "weakKept": 0.76,
+      "strongLost": 0.05,
+      "rounds": 4.5
+    },
+    {
+      "tier": 3,
+      "scenario": "Kale ayna",
+      "ratio": 3.5,
+      "weakKept": 0.58,
+      "strongLost": 0.01,
+      "rounds": 3
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 1,
+      "weakKept": 0.18,
+      "strongLost": 0.85,
+      "rounds": 7.92
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 1.11,
+      "weakKept": 0.19,
+      "strongLost": 0.8,
+      "rounds": 7.75
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 1.18,
+      "weakKept": 0.22,
+      "strongLost": 0.73,
+      "rounds": 7.42
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 1.3,
+      "weakKept": 0.23,
+      "strongLost": 0.81,
+      "rounds": 7.83
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 1.41,
+      "weakKept": 0.22,
+      "strongLost": 0.8,
+      "rounds": 7.92
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 1.59,
+      "weakKept": 0.25,
+      "strongLost": 0.62,
+      "rounds": 7.67
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 1.82,
+      "weakKept": 0.34,
+      "strongLost": 0.47,
+      "rounds": 7.33
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 2,
+      "weakKept": 0.37,
+      "strongLost": 0.42,
+      "rounds": 6.92
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 2.26,
+      "weakKept": 0.41,
+      "strongLost": 0.34,
+      "rounds": 6.17
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 2.52,
+      "weakKept": 0.5,
+      "strongLost": 0.3,
+      "rounds": 5.08
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 2.74,
+      "weakKept": 0.55,
+      "strongLost": 0.27,
+      "rounds": 4.83
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 3,
+      "weakKept": 0.56,
+      "strongLost": 0.27,
+      "rounds": 4
+    },
+    {
+      "tier": 3,
+      "scenario": "T4 karma ayna",
+      "ratio": 3.52,
+      "weakKept": 0.24,
+      "strongLost": 0.12,
+      "rounds": 2.17
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 0.99,
+      "weakKept": 0.24,
+      "strongLost": 0.7,
+      "rounds": 6.75
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 1.09,
+      "weakKept": 0.26,
+      "strongLost": 0.51,
+      "rounds": 6.17
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 1.22,
+      "weakKept": 0.26,
+      "strongLost": 0.8,
+      "rounds": 7.33
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 1.31,
+      "weakKept": 0.27,
+      "strongLost": 0.62,
+      "rounds": 7.25
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 1.41,
+      "weakKept": 0.22,
+      "strongLost": 0.53,
+      "rounds": 7.08
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 1.6,
+      "weakKept": 0.29,
+      "strongLost": 0.42,
+      "rounds": 7
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 1.79,
+      "weakKept": 0.37,
+      "strongLost": 0.28,
+      "rounds": 6.67
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 2.01,
+      "weakKept": 0.41,
+      "strongLost": 0.21,
+      "rounds": 6.5
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 2.24,
+      "weakKept": 0.49,
+      "strongLost": 0.12,
+      "rounds": 6
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 2.49,
+      "weakKept": 0.57,
+      "strongLost": 0.05,
+      "rounds": 5.83
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 2.75,
+      "weakKept": 0.63,
+      "strongLost": 0.02,
+      "rounds": 5.08
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 3.01,
+      "weakKept": 0.73,
+      "strongLost": 0.01,
+      "rounds": 5
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet araş.+1 vs Palatin (güçlü counter)",
+      "ratio": 3.49,
+      "weakKept": 0.54,
+      "strongLost": 0,
+      "rounds": 3
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 1.01,
+      "weakKept": 0.18,
+      "strongLost": 0.85,
+      "rounds": 7.58
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 1.09,
+      "weakKept": 0.21,
+      "strongLost": 0.8,
+      "rounds": 7.92
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 1.19,
+      "weakKept": 0.21,
+      "strongLost": 0.67,
+      "rounds": 7.92
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 1.29,
+      "weakKept": 0.21,
+      "strongLost": 0.67,
+      "rounds": 8
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 1.4,
+      "weakKept": 0.18,
+      "strongLost": 0.67,
+      "rounds": 8
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 1.61,
+      "weakKept": 0.26,
+      "strongLost": 0.55,
+      "rounds": 8
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 1.79,
+      "weakKept": 0.31,
+      "strongLost": 0.49,
+      "rounds": 8
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 2,
+      "weakKept": 0.32,
+      "strongLost": 0.45,
+      "rounds": 8
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 2.26,
+      "weakKept": 0.42,
+      "strongLost": 0.41,
+      "rounds": 6.75
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 2.48,
+      "weakKept": 0.47,
+      "strongLost": 0.39,
+      "rounds": 5.83
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 2.75,
+      "weakKept": 0.5,
+      "strongLost": 0.39,
+      "rounds": 5.08
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 3.01,
+      "weakKept": 0.55,
+      "strongLost": 0.36,
+      "rounds": 4.17
+    },
+    {
+      "tier": 3,
+      "scenario": "Kıyamet ağır vs Kale ağır",
+      "ratio": 3.51,
+      "weakKept": 0.32,
+      "strongLost": 0.12,
+      "rounds": 2
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 1,
+      "weakKept": 0.29,
+      "strongLost": 0.74,
+      "rounds": 5.83
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 1.08,
+      "weakKept": 0.39,
+      "strongLost": 0.77,
+      "rounds": 6.67
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 1.21,
+      "weakKept": 0.26,
+      "strongLost": 0.68,
+      "rounds": 6.58
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 1.29,
+      "weakKept": 0.22,
+      "strongLost": 0.67,
+      "rounds": 6.75
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 1.42,
+      "weakKept": 0.29,
+      "strongLost": 0.65,
+      "rounds": 6.92
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 1.58,
+      "weakKept": 0.3,
+      "strongLost": 0.51,
+      "rounds": 6.67
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 1.79,
+      "weakKept": 0.42,
+      "strongLost": 0.43,
+      "rounds": 6.92
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 2,
+      "weakKept": 0.58,
+      "strongLost": 0.25,
+      "rounds": 6
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 2.25,
+      "weakKept": 0.6,
+      "strongLost": 0.18,
+      "rounds": 5.75
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 2.5,
+      "weakKept": 0.65,
+      "strongLost": 0.11,
+      "rounds": 5.25
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 2.75,
+      "weakKept": 0.74,
+      "strongLost": 0.08,
+      "rounds": 4.92
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 3,
+      "weakKept": 0.81,
+      "strongLost": 0.04,
+      "rounds": 4.17
+    },
+    {
+      "tier": 3,
+      "scenario": "Az gemi: 24 Kale",
+      "ratio": 3.5,
+      "weakKept": 0.61,
+      "strongLost": 0.01,
+      "rounds": 3
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 1,
+      "weakKept": 0.2,
+      "strongLost": 0.86,
+      "rounds": 7.08
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 1.1,
+      "weakKept": 0.14,
+      "strongLost": 0.86,
+      "rounds": 7.58
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 1.2,
+      "weakKept": 0.18,
+      "strongLost": 0.82,
+      "rounds": 7.5
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 1.3,
+      "weakKept": 0.19,
+      "strongLost": 0.77,
+      "rounds": 7.5
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 1.4,
+      "weakKept": 0.15,
+      "strongLost": 0.74,
+      "rounds": 7.83
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 1.6,
+      "weakKept": 0.21,
+      "strongLost": 0.62,
+      "rounds": 7.42
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 1.8,
+      "weakKept": 0.28,
+      "strongLost": 0.55,
+      "rounds": 7.67
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 2,
+      "weakKept": 0.39,
+      "strongLost": 0.5,
+      "rounds": 7
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 2.25,
+      "weakKept": 0.46,
+      "strongLost": 0.4,
+      "rounds": 7
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 2.5,
+      "weakKept": 0.49,
+      "strongLost": 0.3,
+      "rounds": 6
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 2.75,
+      "weakKept": 0.52,
+      "strongLost": 0.23,
+      "rounds": 6
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 3,
+      "weakKept": 0.56,
+      "strongLost": 0.17,
+      "rounds": 5.75
+    },
+    {
+      "tier": 3,
+      "scenario": "Çok gemi: 400 T4",
+      "ratio": 3.5,
+      "weakKept": 0.38,
+      "strongLost": 0.04,
+      "rounds": 3
+    }
+  ]
+}

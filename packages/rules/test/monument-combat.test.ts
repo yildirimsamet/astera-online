@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   MOBILE_HULLS,
   RESEARCH_TECH,
+  activeBattleFleet,
+  createBattleRecording,
   fleetCount,
   fleetEntries,
   fleetValue,
@@ -38,12 +40,12 @@ describe('monument capture condition', () => {
     expect(monumentBattleControl({}, { DART: 1 })).toBe('DEFENDER');
   });
 
-  it('displaces surviving cargo after the last defending warship dies without counting it as destroyed', () => {
+  it('displaces surviving cargo after the last defending warship leaves without counting it as destroyed', () => {
     const result = resolveMonumentCombat([attacker({ CORSAIR: 3 })], [defender({ CORSAIR: 1, ATLAS: 1 })], flat(), true);
     expect(result.control).toBe('ATTACKER');
-    expect(result.defenderSurvivors.CORSAIR ?? 0).toBe(0);
+    // Dead or retreated (combat v3), the Corsair no longer holds the field.
+    expect((result.defenderLosses.CORSAIR ?? 0) + (result.defenderRetreated?.CORSAIR ?? 0)).toBe(1);
     expect((result.defenderSurvivors.ATLAS ?? 0) + (result.defenderLosses.ATLAS ?? 0)).toBe(1);
-    expect(result.defenderLosses.CORSAIR).toBe(1);
     expect(result.defenderLossValue).toBe(fleetValue(result.defenderLosses));
   });
 
@@ -62,13 +64,19 @@ describe('monument capture condition', () => {
 
   it('keeps the defender when both sides lose their warships and retain only cargo', () => {
     const damage = [{ hull: 'PIKE' as const, count: 1, damageBp: 9400 }];
-    const result = resolveMonumentCombat([attacker({ PIKE: 1, COURIER: 1 }, 'a', damage)],
-      [defender({ PIKE: 1, ARGOSY: 1 }, 'd', damage)], flat(), true);
-    expect(result.attackerSurvivors.PIKE ?? 0).toBe(0);
-    expect(result.defenderSurvivors.PIKE ?? 0).toBe(0);
-    expect(result.attackerSurvivors.COURIER).toBe(1);
-    expect(result.defenderSurvivors.ARGOSY).toBe(1);
-    expect(result.control).toBe('DEFENDER');
+    let checked = 0;
+    for (let seed = 0; seed < 64; seed++) {
+      const result = resolveMonumentCombat([attacker({ PIKE: 1, COURIER: 1 }, 'a', damage)],
+        [defender({ PIKE: 1, ARGOSY: 1 }, 'd', damage)], mulberry32(seed), true);
+      // Lost to fire or retreated (combat v3): either way no warship holds the field.
+      if (activeBattleFleet(result.attackerSurvivors, result.attackerRetreated).PIKE
+        || activeBattleFleet(result.defenderSurvivors, result.defenderRetreated).PIKE) continue;
+      checked++;
+      expect(result.attackerSurvivors.COURIER).toBe(1);
+      expect(result.defenderSurvivors.ARGOSY).toBe(1);
+      expect(result.control).toBe('DEFENDER');
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 
   it('handles an empty monument without allowing a cargo-only capture', () => {
@@ -77,24 +85,35 @@ describe('monument capture condition', () => {
   });
 
   it('does not declare a capture on simultaneous destruction', () => {
-    const result = resolveMonumentCombat(
-      [attacker({ PIKE: 1 }, 'a', [{ hull: 'PIKE', count: 1, damageBp: 9999 }])],
-      [defender({ PIKE: 1 }, 'd', [{ hull: 'PIKE', count: 1, damageBp: 9999 }])], flat(),
-    );
-    expect(fleetCount(result.attackerSurvivors)).toBe(0);
-    expect(fleetCount(result.defenderSurvivors)).toBe(0);
-    expect(result.control).toBe('EMPTY');
+    let checked = 0;
+    for (let seed = 0; seed < 64; seed++) {
+      const result = resolveMonumentCombat(
+        [attacker({ PIKE: 1 }, 'a', [{ hull: 'PIKE', count: 1, damageBp: 9999 }])],
+        [defender({ PIKE: 1 }, 'd', [{ hull: 'PIKE', count: 1, damageBp: 9999 }])], mulberry32(seed),
+      );
+      if (fleetCount(result.attackerSurvivors) + fleetCount(result.defenderSurvivors) > 0) continue;
+      checked++;
+      expect(result.control).toBe('EMPTY');
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 });
 
 describe('monument battle carries every owner’s HP damage', () => {
   it('honors the lone defender’s damaged hull rather than treating it as a home host', () => {
     const a = [attacker({ DART: 20 })];
-    const healthy = resolveMonumentCombat(a, [defender({ DART: 10 })], flat());
-    const wounded = resolveMonumentCombat(a, [defender({ DART: 10 }, 'd', [{ hull: 'DART', count: 5, damageBp: 9500 }])], flat());
-    expect(wounded.rounds[0]?.defenderLosses.DART ?? 0).toBeGreaterThan(0);
-    expect(wounded.rounds[0]!.defenderLosses.DART ?? 0).toBeGreaterThan(healthy.rounds[0]!.defenderLosses.DART ?? 0);
-    expect(wounded.defenders[0]?.losses.DART).toBeGreaterThanOrEqual(5);
+    const whole = createBattleRecording(), hurt = createBattleRecording();
+    const healthy = resolveMonumentCombat(a, [defender({ DART: 10 })], flat(), false, whole);
+    const wounded = resolveMonumentCombat(a, [defender({ DART: 10 }, 'd', [{ hull: 'DART', count: 5, damageBp: 9500 }])], flat(), false, hurt);
+    const entered = (r: typeof hurt) => r.ships.filter(ship => ship.side === 'DEFENCE').map(ship => ship.hp / ship.maxHp).sort((x, y) => x - y);
+    expect(entered(whole)).toEqual(Array(10).fill(1));
+    entered(hurt).forEach((share, i) => { expect(share).toBeCloseTo(i < 5 ? 0.05 : 1, 9); });
+    // The wounded five fight as wounded: each is lost or leaves through the retreat window.
+    const hurtShips = hurt.ships.filter(ship => ship.side === 'DEFENCE' && ship.hp < ship.maxHp).map(ship => ship.id);
+    const standing = hurt.rounds.at(-1)!.after.filter(ship => hurtShips.includes(ship.id) && ship.hp > 0);
+    expect(standing.length).toBeLessThanOrEqual(wounded.defenderRetreated?.DART ?? 0);
+    expect(healthy.control).toBe('ATTACKER');
+    expect(wounded.control).toBe('ATTACKER');
   });
 
   it('keeps sub-bp damage on both sides when neither side fires', () => {
@@ -141,7 +160,9 @@ describe('monument battle carries every owner’s HP damage', () => {
     expect(armored.sent).toEqual({ CITADEL: 2 });
     const plainSolo = resolveMonumentCombat([attacker({ DART: 40 })], [defender({ CITADEL: 2 }, 'plain')], flat());
     const armoredSolo = resolveMonumentCombat([attacker({ DART: 40 })], [defender({ CITADEL: 2 }, 'armored', undefined, { SHIP_ARMOR: RESEARCH_TECH.weaponMaxLevel })], flat());
-    expect(plainSolo.defenderLossValue).toBeGreaterThan(armoredSolo.defenderLossValue);
+    // Armor reads into the defending power, and the same swarm pays more to clear it.
+    expect(armoredSolo.balance!.defenderPower).toBeGreaterThan(plainSolo.balance!.defenderPower);
+    expect(armoredSolo.attackerLossValue).toBeGreaterThan(plainSolo.attackerLossValue);
   });
 
   it('never heals an untouched attacker while a cargo-only defender has no return fire', () => {

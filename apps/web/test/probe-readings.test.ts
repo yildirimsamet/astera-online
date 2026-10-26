@@ -131,6 +131,14 @@ describe('firepower and what makes it a fight', () => {
         .toBe('Skirmisher 10% · Bulwark 90%');
     });
 
+    /** Combat v3: every class as a range, largest first; a class the range rules out is left out. */
+    it('prints a v3 reading as each class’s range', () => {
+      const shares = { SKIRMISHER: { low: 0, high: 0 }, BULWARK: { low: 20, high: 40 }, LANCE: { low: 60, high: 80 } };
+      const shape = fact(report({ classReading: { kind: 'RANGES', shares } }), 'shape');
+      expect(shape?.value).toBe('Lance 60–80% · Bulwark 20–40%');
+      expect(shape?.note).toMatch(/range/i);
+    });
+
     it('says a weak probe could not read it, and why', () => {
       const shape = fact(report({ classReading: { kind: 'UNREAD' } }), 'shape');
       expect(shape?.value).toBe('Not read');
@@ -198,6 +206,21 @@ describe('what a probe brings home', () => {
 
     it('says nothing at all when the reading was never taken', () => {
       expect(fact(report(), 'doctrines')).toBeUndefined();
+    });
+
+    /** Combat v3: a probe reads each combat research as a window the true level sits in. */
+    it('prints a v3 probe’s research as the windows it read, and the window as a reading', () => {
+      const found = fact(report({ research: { SHIP_POWER: { low: 2, high: 3 }, SHIP_ARMOR: { low: 0, high: 1 }, SHIP_SHIELDS: { low: 0, high: 0 } } }), 'doctrines');
+      expect(found!.value).toMatch(/2–3/);
+      expect(found!.value).toMatch(/0–1/);
+      expect(found!.value.split(' · ')).toHaveLength(2);
+      expect(found!.note).toMatch(/window/i);
+      expect(found!.source).toBe('probe');
+    });
+
+    it('says none when every window a v3 probe read is closed at zero', () => {
+      const found = fact(report({ research: { SHIP_POWER: { low: 0, high: 0 } } }), 'doctrines');
+      expect(found!.value).toMatch(/none/i);
     });
   });
 

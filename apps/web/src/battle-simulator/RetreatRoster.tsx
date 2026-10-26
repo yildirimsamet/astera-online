@@ -10,8 +10,8 @@ export function RetreatRoster({ frame, ships, viewer, ownership, wingNumber, onI
 }) {
   const { t, i18n } = useTranslation();
   if (frame.retreats.length === 0) return null;
-  return <section className="sim-retreat-roster" aria-label={t('simulator.aliveRetreated')}><details open>
-    <summary>↗ {t('simulator.retreated')} <b>{frame.retreats.length}</b><small>{t('simulator.outOfCombat')}</small></summary>
+  return <section className="sim-retreat-roster" aria-label={t('simulator.aliveRetreated')}>
+    <p className="sim-pane-title">↗ {t('simulator.retreated')} <b>{frame.retreats.length}</b><small>{t('simulator.outOfCombat')}</small></p>
     <div className="sim-retreat-scroll">{(['ATTACK', 'DEFENCE'] as const).map(side => {
       const entries = frame.retreats.filter(event => ships.get(event.shipId)?.side === side);
       if (entries.length === 0) return null;
@@ -26,5 +26,5 @@ export function RetreatRoster({ frame, ships, viewer, ownership, wingNumber, onI
         })}
       </div>;
     })}</div>
-  </details></section>;
+  </section>;
 }

@@ -256,9 +256,9 @@ export const planet = {
       "Eine Ladung zerstört den nächsten Todesstern, der von Radar 3 entdeckt oder im Visier des Teleskops identifiziert wurde. Die Ladung wird verbraucht, wenn es abgefeuert wird.",
     /** Taktik geri çekilme: die eigene Schwelle des Verteidigers und der Treibstoff dafür. */
     escapeReady:
-      "Taktischer Rückzug · ein Angriff mit {{at}}+ Feuerkraft, der diese Linie auslöschen würde, findet deine Schiffe nicht mehr vor · der Start verbrennt {{fuel}} Deuterium",
+      "Taktischer Rückzug · ein Angriff mit dem {{ratio}}-Fachen der Stärke dieser Linie (Schiffe und aktive Geschütze), der sie auslöschen würde, findet deine Schiffe nicht mehr vor · der Start verbrennt {{fuel}} Deuterium",
     escapeShort:
-      "Taktischer Rückzug · deine Schiffe würden vor {{at}}+ Feuerkraft fliehen, doch der Start braucht {{fuel}} Deuterium und der Tank hält {{stock}}",
+      "Taktischer Rückzug · deine Schiffe würden vor dem {{ratio}}-Fachen der Stärke dieser Linie (Schiffe und aktive Geschütze) fliehen, doch der Start braucht {{fuel}} Deuterium und der Tank hält {{stock}}",
     shieldBand: "Schild",
     shieldNote:
       "Aegis absorbiert Schaden, bevor er Ihre Einheiten erreicht, und regeneriert jede Stunde 35 % seines Maximums.",
@@ -736,7 +736,7 @@ export const launch = {
   stays: "Bleibt daheim",
   staysUnits_one: "{{count}} Einheit",
   staysUnits_other: "{{count}} Einheiten",
-  staysPower: "Stärke {{value}}",
+  staysPower: "Wert bewaffneter Einheiten {{value}}",
   cargoEach: "je {{amount}} Fracht",
   cargoAdds: "+{{amount}} Fracht",
   paceBrief: "weniger Treibstoff · langsamer Abschnitt ≤12 h",

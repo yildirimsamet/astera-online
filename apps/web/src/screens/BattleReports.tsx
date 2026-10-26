@@ -671,7 +671,7 @@ function ReportSheet({
       onClose={onClose}
     >
       <div data-battle-report className="battle-report">
-      <div className="mb-3"><BattleReplayAction kind="BATTLE" id={report.id} status={report.replayStatus} /></div>
+      <div className="mb-3"><BattleReplayAction kind="BATTLE" id={report.id} status={report.replayStatus} {...(report.pirate ? { pirateLevel: report.pirate.level } : {})} /></div>
       {/*
         THE SCENE FIRST (B15, the mock's "KISMİ ZAFER"): the world, the haul, both sides, one
         sentence of why and the balance. The sheet's title already carries the verdict and is

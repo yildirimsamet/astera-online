@@ -258,13 +258,13 @@ describe('Fleet V2 catalog contract — D148', () => {
     });
   });
 
-  it('keeps the visible counter cycle and bounded six-round combat', () => {
+  it('keeps the visible counter cycle and bounded eight-round combat', () => {
     expect(counterMult('SKIRMISHER', 'BULWARK')).toBe(1.6);
     expect(counterMult('BULWARK', 'LANCE')).toBe(1.6);
     expect(counterMult('LANCE', 'SKIRMISHER')).toBe(1.6);
     expect(counterMult('BULWARK', 'SKIRMISHER')).toBe(0.625);
     expect(COMBAT).toMatchObject({
-      rounds: 6,
+      rounds: 8,
       varianceMin: 0.92,
       varianceMax: 1.08,
       strongMult: 1.6,

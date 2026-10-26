@@ -1,6 +1,7 @@
 import { COMBAT } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import { percent } from '../lib/format.js';
+import { fireRule } from '../ui/DistributedFireRules.js';
 
 /** Public rules only: never derive an opponent roster or HP from a report. */
 export function MonumentBattleRules({ targetLimit = COMBAT.targetsPerShot }: { targetLimit?: number | null }) {
@@ -10,7 +11,7 @@ export function MonumentBattleRules({ targetLimit = COMBAT.targetsPerShot }: { t
     <details className="rounded-control border border-v2-line/60 px-2.5 py-2">
       <summary className="cursor-pointer font-semibold text-v2-ink">{t('monument.battleResult.rulesTitle')}</summary>
       <div className="mt-2 grid gap-2">
-        <p>{targetLimit === null ? t('monument.battleResult.fireRule') : t('monument.battleResult.targetedFireRule', { targets: targetLimit })}</p>
+        <p>{fireRule(t, targetLimit ?? undefined)}</p>
         <p>{t('monument.battleResult.captureRule')}</p>
         <p>{t('monument.battleResult.retreatRule', { lastRound: COMBAT.rounds - 1 })}</p>
         <p>{t('monument.battleResult.partialRule', { threshold: percent(COMBAT.partialThreshold) })}</p>

@@ -17,14 +17,15 @@ const recording = z.object({ schemaVersion: z.literal(1), roundLimit: nonnegativ
   rounds: z.array(z.object({ round: nonnegative.int().positive(), attackerRoll: nonnegative, defenderRoll: nonnegative,
     aegisBefore: nonnegative, aegisAfter: nonnegative, aegisStrikes: z.array(z.object({ sourceId: z.string(), baseDamage: nonnegative,
       classMultiplier: nonnegative, bonusMultiplier: nonnegative, damage: nonnegative, aegisBefore: nonnegative, aegisAfter: nonnegative })).optional(), attackerShots: z.array(shot), defenderShots: z.array(shot),
-    retreated: z.array(z.string()), after: z.array(shipState) })),
+    retreated: z.array(z.string()), exploded: z.array(z.string()).optional(), after: z.array(shipState) })),
+  damageScale: z.object({ attacker: nonnegative, defender: nonnegative }).optional(),
   aftermath: z.array(z.object({ kind: z.enum(['PIRATE_OVERRUN', 'CARGO_WITHDRAWAL']), shipIds: z.array(z.string()) })).optional(),
   finalState: z.array(shipState).optional(),
 }).superRefine((value, ctx) => {
   const ids = new Set(value.ships.map(ship => ship.id));
   const unknown = (id: string) => !ids.has(id);
   const complete = (states: { id: string }[]) => states.length === ids.size && new Set(states.map(state => state.id)).size === ids.size && !states.some(state => unknown(state.id));
-  if (ids.size !== value.ships.length || value.rounds.some(round => !complete(round.after) || round.retreated.some(unknown) || round.aegisStrikes?.some(strike => unknown(strike.sourceId)) === true
+  if (ids.size !== value.ships.length || value.rounds.some(round => !complete(round.after) || round.retreated.some(unknown) || round.exploded?.some(unknown) === true || round.aegisStrikes?.some(strike => unknown(strike.sourceId)) === true
     || [...round.attackerShots, ...round.defenderShots].some(shot => unknown(shot.sourceId) || shot.hits.some(hit => unknown(hit.targetId))))
     || value.aftermath?.some(action => action.shipIds.some(unknown)) === true || value.finalState !== undefined && !complete(value.finalState)) {
     ctx.addIssue({ code: 'custom', message: 'Recording refers to unknown or duplicate units' });

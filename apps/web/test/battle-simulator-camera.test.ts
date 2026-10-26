@@ -1,17 +1,9 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SCENARIO, simulateScenario } from '../src/battle-simulator/scenario.js';
-import { battleCameraRange, battlePlanet, fitBattleCamera, fitWorldLabel, focusBattleCamera, layoutBattle } from '../src/battle-simulator/sceneLayout.js';
+import { battleCameraRange, battlePlanet, fitBattleCamera, focusBattleCamera, layoutBattle } from '../src/battle-simulator/sceneLayout.js';
 
 describe('battle camera frames both complete fleets', () => {
-  it('keeps world and escape-area names inside the phone viewport at either edge', () => {
-    for (const anchor of [-20, 0, 35, 175, 320, 350, 380]) {
-      const offset = fitWorldLabel(anchor, 180, 350);
-      expect(anchor - 90 + offset).toBeGreaterThanOrEqual(8);
-      expect(anchor + 90 + offset).toBeLessThanOrEqual(342);
-    }
-    expect(fitWorldLabel(175, 180, 350)).toBe(0);
-  });
   it('allows the camera to frame a real 2,000-unit recording without clipping or a 260-unit orbit clamp', () => {
     const sample = simulateScenario(DEFAULT_SCENARIO).recording.ships.find(ship => ship.side === 'DEFENCE')!;
     const recording = { schemaVersion: 1 as const, roundLimit: 6, initialAegis: 0, rounds: [],
@@ -51,6 +43,19 @@ describe('battle camera frames both complete fleets', () => {
       const projected = new THREE.Vector3(pose.x * sign, pose.y, pose.z * sign).project(camera);
       expect(projected.y).toBeGreaterThan(.35); // Above the mobile inspector, not behind its plate.
     }
+  });
+  it('lifts the picked ship above the phone card even when the field under the phone HUD is wider than tall', () => {
+    const pose = { x: 4, y: .2, z: -8, scale: 1.4 }, aspect = 340 / 240;
+    for (const viewer of ['ATTACK', 'DEFENCE'] as const) {
+      const fit = focusBattleCamera(pose, viewer, aspect, undefined, true), sign = viewer === 'ATTACK' ? 1 : -1;
+      const camera = new THREE.PerspectiveCamera(43, aspect, .1, 600);
+      camera.position.set(fit.position.x, fit.position.y, fit.position.z);
+      camera.lookAt(fit.center.x, fit.center.y, fit.center.z); camera.updateMatrixWorld();
+      expect(new THREE.Vector3(pose.x * sign, pose.y, pose.z * sign).project(camera).y).toBeGreaterThan(.35);
+    }
+    // A wide desktop field keeps the ship centred.
+    const wide = focusBattleCamera(pose, 'ATTACK', aspect);
+    expect(wide.center.y).toBe(pose.y);
   });
   it('keeps ordinary ships readable in the default phone overview instead of spending the view on the planet', () => {
     const { recording } = simulateScenario(DEFAULT_SCENARIO), poses = layoutBattle(recording);

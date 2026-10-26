@@ -334,8 +334,12 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-const reading = { low: 4_000, high: 9_000, source: 'Probe', ageMinutes: 132 };
-const lines = { clears: { low: 20_000, high: 26_000 }, breaks: { low: 31_000, high: 38_000 } };
+const reading = { source: 'Probe', ageMinutes: 132 };
+const powerOf = (mine: [number, number], theirs: [number, number]) => ({
+  mine: { low: mine[0], high: mine[1] },
+  theirs: { low: theirs[0], high: theirs[1] },
+  ratio: { low: mine[0] / theirs[1], high: mine[1] / theirs[0] },
+});
 
 /**
  * THE INTEL SHEET WITH SOMETHING IN IT. D4. The live commander the camera signs in as
@@ -1137,16 +1141,14 @@ export function Gallery({ view }: { view: string | null }) {
         </Section>
 
         <Section title="B5 · force ruler + B6 matchup">
-          <ForceRuler
-            yours={30_000}
-            theirs={reading}
-            lines={lines}
-            loss={{ low: 0.35, high: 0.6 }}
-            escape={{ at: 10_000, verdict: 'RUN' }}
-          >
-            <MatchupLine wing={{ DART: 40 }} reading={{ kind: 'DOMINANT', cls: 'LANCE' }} />
+          <ForceRuler power={powerOf([30_000, 32_000], [17_000, 26_000])} theirs={reading} escape={{ verdict: 'STAND' }}>
+            <MatchupLine wing={{ DART: 40 }} reading={{ kind: 'RANGES', shares: { LANCE: { low: 50, high: 70 }, BULWARK: { low: 20, high: 40 }, SKIRMISHER: { low: 0, high: 20 } } }} />
           </ForceRuler>
-          <ForceRuler yours={30_000} theirs={null} lines={lines} onProbe={noop} />
+          <ForceRuler power={powerOf([60_000, 64_000], [14_000, 19_000])} theirs={reading} escape={{ verdict: 'RUN' }} />
+          <ForceRuler power={powerOf([14_000, 15_000], [12_000, 22_000])} theirs={reading} escape={{ verdict: 'STAND' }} />
+          <ForceRuler power={powerOf([9_000, 9_000], [21_000, 21_000])} theirs={{ source: 'Telescope', ageMinutes: null }} />
+          <ForceRuler power={powerOf([30_000, 30_000], [1, 1])} theirs={null} onProbe={noop} />
+          <ForceRuler power={null} theirs={reading} />
         </Section>
 
         <Section title="B6 · matchup readings">

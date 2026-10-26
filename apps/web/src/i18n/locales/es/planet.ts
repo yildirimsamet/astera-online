@@ -256,9 +256,9 @@ export const planet = {
       "Una carga destruye la siguiente Estrella de la Muerte detectada por el Radar 3 o identificada en la mira del Telescopio. La carga se gasta cuando dispara.",
     /** Taktik geri çekilme: el umbral del propio defensor y el combustible que cuesta. */
     escapeReady:
-      "Retirada táctica · un ataque de {{at}}+ de fuego que aniquilaría esta línea no encuentra tus naves · el despegue quema {{fuel}} de Deuterio",
+      "Retirada táctica · un ataque con {{ratio}}× el poder de esta línea (naves y cañones activos) que la aniquilaría no encuentra tus naves · el despegue quema {{fuel}} de Deuterio",
     escapeShort:
-      "Retirada táctica · tus naves huirían de un ataque de {{at}}+ de fuego, pero el despegue necesita {{fuel}} de Deuterio y el depósito tiene {{stock}}",
+      "Retirada táctica · tus naves huirían de un ataque con {{ratio}}× el poder de esta línea (naves y cañones activos), pero el despegue necesita {{fuel}} de Deuterio y el depósito tiene {{stock}}",
     shieldBand: "Escudo",
     shieldNote:
       "Égida absorbe el daño antes de que llegue a tus unidades y se regenera el 35% de su máximo cada hora.",
@@ -736,7 +736,7 @@ export const launch = {
   stays: "Se queda",
   staysUnits_one: "{{count}} unidad",
   staysUnits_other: "{{count}} unidades",
-  staysPower: "poder {{value}}",
+  staysPower: "valor de unidades armadas {{value}}",
   cargoEach: "{{amount}} de carga c/u",
   cargoAdds: "+{{amount}} de carga",
   paceBrief: "menos combustible · tramo lento ≤12 h",

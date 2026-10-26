@@ -17,6 +17,14 @@ export interface ReplayRound { round: number; start: number; openingEnd: number;
 export interface ReplayTimeline { recording: BattleRecording; events: ReplayEvent[]; rounds: ReplayRound[]; duration: number }
 export interface DamageBadge { targetId: string; hullDamage: number; shieldDamage: number; at: number }
 export const DAMAGE_BADGE_SECONDS = 1.2;
+/**
+ * The longest one side's fire is drawn, in replay seconds. A side whose shots, one at a time, would
+ * take longer fires them as one overlapping volley inside this window: 200 ships fire in 16 seconds,
+ * not seven minutes. Every recorded shot still plays, in order, and stepping still lands on each.
+ */
+export const VOLLEY_SECONDS = 16;
+const FLIGHT = .8, SHOT_GAP = .9;
+const spreadOf = (shot: RecordedShot) => Math.min(.55, shot.hits.length * .035);
 
 /** Presentation serialises the real shots. It never re-solves combat or removes a frozen firing right. */
 export function buildReplayTimeline(recording: BattleRecording): ReplayTimeline {
@@ -35,9 +43,14 @@ export function buildReplayTimeline(recording: BattleRecording): ReplayTimeline 
     const lethal = new Map<string, number>();
     for (const [side, shots] of [['ATTACK', round.attackerShots], ['DEFENCE', round.defenderShots]] as const) {
       if (side === 'DEFENCE') { cursor += .75; defenderStart = cursor; }
-      for (const shot of shots) {
-        const spread = Math.min(.55, shot.hits.length * .035);
-        const impactAt = cursor + .8, impactEnd = impactAt + spread;
+      const serial = shots.reduce((sum, shot) => sum + FLIGHT + spreadOf(shot) + SHOT_GAP, 0);
+      const stride = serial > VOLLEY_SECONDS ? VOLLEY_SECONDS / shots.length : null;
+      const phaseStart = cursor;
+      let phaseEnd = cursor;
+      for (const [index, shot] of shots.entries()) {
+        if (stride !== null) cursor = phaseStart + index * stride;
+        const spread = spreadOf(shot);
+        const impactAt = cursor + FLIGHT, impactEnd = impactAt + spread;
         const event: ShotEvent = { kind: 'SHOT', side, shot, round: round.round, at: cursor, impactAt, impactEnd };
         events.push(event); currentShots.set(shot.sourceId, event);
         for (let j = 0; j < shot.hits.length; j++) {
@@ -47,11 +60,15 @@ export function buildReplayTimeline(recording: BattleRecording): ReplayTimeline 
           events.push({ kind: 'HIT', side, shot, hit, round: round.round, at });
           if (hit.hpBefore > 0 && hit.hpAfter === 0) lethal.set(hit.targetId, at);
         }
-        cursor = impactEnd + .9;
+        cursor = impactEnd + SHOT_GAP;
+        phaseEnd = Math.max(phaseEnd, cursor);
       }
+      cursor = phaseEnd;
     }
     for (const [shipId, at] of lethal) events.push({ kind: 'DESTROY', shipId, round: round.round,
       at: Math.max(at + .08, (currentShots.get(shipId)?.impactEnd ?? 0) + .12) });
+    // Kritik hasar: ships that broke apart at the round's end blow up after the fire, before the retreats.
+    for (const shipId of round.exploded ?? []) if (!lethal.has(shipId)) events.push({ kind: 'DESTROY', shipId, round: round.round, at: cursor + .1 });
     const retreatAt = cursor + .3, end = retreatAt + 1.65;
     for (const shipId of round.retreated) events.push({ kind: 'RETREAT', shipId, round: round.round, at: retreatAt });
     events.push({ kind: 'ROUND_END', round: round.round, at: end });
@@ -111,6 +128,9 @@ export function sampleReplay(timeline: ReplayTimeline, seconds: number) {
         badge.hullDamage += event.hit.hullDamage; badge.shieldDamage += event.hit.shieldDamage; badge.at = event.at;
         badges.set(badge.targetId, badge);
       }
+    } else if (event.kind === 'DESTROY') {
+      const state = ships.get(event.shipId)!;
+      state.hp = 0; state.status = 'DESTROYED';
     } else if (event.kind === 'RETREAT') ships.get(event.shipId)!.status = 'RETREATED';
   }
   // Zero-HP defenders remain present until their recorded shot has completed.
@@ -122,3 +142,19 @@ export function sampleReplay(timeline: ReplayTimeline, seconds: number) {
     phase, retreats, damageBadges: [...badges.values()], aegisDamage, aegisNormalDamage, aegisBonusDamage };
 }
 export type ReplayFrame = ReturnType<typeof sampleReplay>;
+
+/** Field labels are a fixed pool: their cost must not grow with the fleets. */
+export const READOUT_SLOTS = 6;
+/** How long a ship that left the line keeps its "out of combat" label. */
+export const LEAVING_LABEL_SECONDS = 1.7;
+
+/** The ships the moment is about, most important first: picked, firing, newest hits, leaving. */
+export function featuredShips(frame: ReplayFrame, selected: string | null, leaving: ReadonlyMap<string, number>): string[] {
+  const ids = new Set<string>();
+  const add = (id: string | undefined) => { if (id !== undefined && ids.size < READOUT_SLOTS) ids.add(id); };
+  if (selected !== null) add(selected);
+  add(frame.activeShot?.shot.sourceId ?? frame.activeAegisStrike?.strike.sourceId);
+  for (const badge of [...frame.damageBadges].sort((a, b) => b.at - a.at)) add(badge.targetId);
+  for (const [id, at] of leaving) if (frame.time >= at && frame.time - at < LEAVING_LABEL_SECONDS) add(id);
+  return [...ids];
+}

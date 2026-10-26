@@ -13,10 +13,10 @@ import { useGpuContext } from '../galaxy/gpuContext.js';
 import { QUALITY_PRESETS, useRenderQuality } from '../lib/quality.js';
 import { FiniteSceneGuard } from '../galaxy/FiniteSceneGuard.js';
 import { guardBloomRef } from '../galaxy/finiteGuard.js';
-import { battleCameraRange, battlePlanet, battlefieldEnvironment, destructionScale, fitBattleCamera, fitWorldLabel, focusBattleCamera, layoutBattle, retreatDestinations, sampleRetreatPose, shieldIntercept, type BattlePose } from './sceneLayout.js';
+import { battleCameraRange, battlePlanet, battlefieldEnvironment, destructionScale, fitBattleCamera, focusBattleCamera, layoutBattle, retreatDestinations, sampleRetreatPose, shieldIntercept, type BattlePose } from './sceneLayout.js';
 import { hullLabel } from '../i18n/names.js';
 import { battleModelParts, isBattleMesh } from './sceneModels.js';
-import { sampleReplay, type ReplayFrame, type ReplayTimeline } from './timeline.js';
+import { LEAVING_LABEL_SECONDS, READOUT_SLOTS, featuredShips, sampleReplay, type ReplayFrame, type ReplayTimeline } from './timeline.js';
 import type { PlaybackClock } from './BattleReplay.js';
 import { damageLabel } from './presentation.js';
 
@@ -80,7 +80,11 @@ function StageAttempt({ retry, ...props }: StageProps & { retry: () => void }) {
 interface Runtime {
   frame: ReplayFrame;
   flashes: Map<string, { at: number; shield: boolean }>;
+  /** Ship id per field label slot. */
+  labels: string[];
 }
+/** Up to this many ships every ship keeps its own label; above it a fixed pool names the featured ones. */
+const LABEL_EVERY_SHIP = 64;
 declare global {
   interface Window {
     __battleSimulator?: {
@@ -94,7 +98,10 @@ function BattleWorld({ timeline, clock, viewer, selected, onSelect, environment,
   const { gl, scene } = useThree();
   const positions = useMemo(() => layoutBattle(timeline.recording), [timeline]);
   const destinations = useMemo(() => retreatDestinations(timeline, positions), [timeline, positions]);
-  const runtime = useRef<Runtime>({ frame: sampleReplay(timeline, 0), flashes: new Map() });
+  const runtime = useRef<Runtime>({ frame: sampleReplay(timeline, 0), flashes: new Map(), labels: [] });
+  const pooled = timeline.recording.ships.length > LABEL_EVERY_SHIP;
+  const shipById = useMemo(() => new Map(timeline.recording.ships.map(ship => [ship.id, ship])), [timeline]);
+  const planet = useMemo(() => battlePlanet(timeline.recording.ships, positions), [timeline, positions]);
   const buckets = useMemo(() => {
     const grouped = new Map<HullId, BattleShipSnapshot[]>();
     for (const ship of timeline.recording.ships) {
@@ -128,6 +135,7 @@ function BattleWorld({ timeline, clock, viewer, selected, onSelect, environment,
   }, [timeline, gl, scene]);
   useFrame(() => {
     runtime.current.frame = sampleReplay(timeline, clock.current.time);
+    runtime.current.labels = pooled ? featuredShips(runtime.current.frame, selected, retreats) : timeline.recording.ships.map(ship => ship.id);
     runtime.current.flashes.clear();
     for (const event of timeline.events) {
       if (event.at > clock.current.time) break;
@@ -139,12 +147,11 @@ function BattleWorld({ timeline, clock, viewer, selected, onSelect, environment,
     <StageReady onReady={onReady} />
     <BattleCamera positions={positions} destinations={destinations} timeline={timeline} clock={clock} viewer={viewer} request={cameraRequest} />
     <group rotation={[0, viewer === 'ATTACK' ? 0 : Math.PI, 0]}>
-      {environment === 'PLANET' && <PlanetBackdrop positions={positions} ships={timeline.recording.ships} deaths={deaths} clock={clock} />}
-      {buckets.map(([hull, members]) => <ShipBucket planet={battlePlanet(timeline.recording.ships, positions)} key={hull} hull={hull} members={members} positions={positions} runtime={runtime}
+      {environment === 'PLANET' && <PlanetBackdrop positions={positions} ships={timeline.recording.ships} />}
+      {buckets.map(([hull, members]) => <ShipBucket planet={planet} key={hull} hull={hull} members={members} positions={positions} runtime={runtime}
         selected={selected} viewer={viewer} onSelect={onSelect} clock={clock} deaths={deaths} retreats={retreats} destinations={destinations} />)}
-      {timeline.recording.ships.map(ship => <UnitReadout key={ship.id} ship={ship} pose={positions.get(ship.id)!} runtime={runtime} deaths={deaths} selected={selected}
-        viewer={viewer} destination={destinations.get(ship.id)} retreatAt={retreats.get(ship.id)} compact={timeline.recording.ships.length > 64} />)}
-      <FormationLabels timeline={timeline} positions={positions} viewer={viewer} runtime={runtime} destinations={destinations} />
+      {Array.from({ length: pooled ? READOUT_SLOTS : timeline.recording.ships.length }, (_, slot) => <UnitReadout key={slot} slot={slot} ships={shipById}
+        positions={positions} destinations={destinations} retreats={retreats} runtime={runtime} deaths={deaths} selected={selected} viewer={viewer} pooled={pooled} />)}
       <BattleEffects timeline={timeline} positions={positions} clock={clock} viewer={viewer} />
       <AegisField timeline={timeline} runtime={runtime} positions={positions} />
     </group>
@@ -190,7 +197,7 @@ function BattleCamera({ positions, destinations, timeline, clock, viewer, reques
     const unit = request.unitId ? present.get(request.unitId) : undefined;
     const ship = timeline.recording.ships.find(item => item.id === request.unitId);
     const surface = ship && (ship.ground ?? HULLS[ship.hull].ground) ? battlePlanet(timeline.recording.ships, positions) : undefined;
-    const view = request.kind === 'FOCUS' && unit ? focusBattleCamera(unit, viewer, size.width / Math.max(1, size.height), surface)
+    const view = request.kind === 'FOCUS' && unit ? focusBattleCamera(unit, viewer, size.width / Math.max(1, size.height), surface, window.innerWidth < 700)
       : request.kind === 'FIT' ? fitBattleCamera(present, viewer, size.width / Math.max(1, size.height)) : null;
     const center = view ? new THREE.Vector3(view.center.x, view.center.y, view.center.z) : controls.current.target.clone();
     const position = view ? new THREE.Vector3(view.position.x, view.position.y, view.position.z)
@@ -208,46 +215,7 @@ function BattleCamera({ positions, destinations, timeline, clock, viewer, reques
     minPolarAngle={.15} maxPolarAngle={1.35} minDistance={3} maxDistance={range.maxDistance} onStart={() => { desired.current = null; }} />;
 }
 
-function FormationLabels({ timeline, positions, destinations, viewer, runtime }: {
-  timeline: ReplayTimeline; positions: ReadonlyMap<string, BattlePose>; destinations: ReadonlyMap<string, BattlePose>; viewer: BattleSide; runtime: RefObject<Runtime>;
-}) {
-  const { t } = useTranslation();
-  const attack = useRef<HTMLSpanElement>(null), defence = useRef<HTMLSpanElement>(null);
-  useFrame(() => {
-    for (const [side, ref] of [['ATTACK', attack], ['DEFENCE', defence]] as const) if (ref.current) {
-      const count = runtime.current.frame.retreats.filter(event => timeline.recording.ships.find(ship => ship.id === event.shipId)?.side === side).length;
-      ref.current.style.display = count > 0 ? '' : 'none'; ref.current.textContent = `↗ ${t('simulator.outOfCombat')} · ${count}`;
-    }
-  }, -1);
-  return <>{(['ATTACK', 'DEFENCE'] as const).map(side => {
-    const ships = timeline.recording.ships.filter(ship => ship.side === side && !(ship.ground ?? HULLS[ship.hull].ground));
-    if (ships.length === 0) return null;
-    const x = Math.min(...ships.map(ship => positions.get(ship.id)!.x)) - 1;
-    const z = side === 'ATTACK' ? Math.max(...ships.map(ship => positions.get(ship.id)!.z)) : Math.min(...ships.map(ship => positions.get(ship.id)!.z));
-    const escaped = ships.map(ship => destinations.get(ship.id)).filter((pose): pose is BattlePose => pose !== undefined);
-    return <group key={side}><WorldLabel position={[x, .3, z]} viewer={viewer} side={side} className={`sim-world-force ${side === viewer ? 'is-self' : 'is-enemy'}`}>{side === viewer ? '◆' : '▲'} {t(side === 'ATTACK' ? 'simulator.attacker' : 'simulator.defender')}</WorldLabel>
-      {escaped.length > 0 && <WorldLabel position={[escaped[0]!.x, 1.6, escaped[0]!.z]} viewer={viewer} className="sim-world-escape" labelRef={side === 'ATTACK' ? attack : defence} />}
-    </group>;
-  })}</>;
-}
-
-function WorldLabel({ position, viewer, children, className, side, labelRef }: {
-  position: [number, number, number]; viewer: BattleSide; children?: ReactNode; className: string; side?: BattleSide; labelRef?: RefObject<HTMLSpanElement | null>;
-}) {
-  const own = useRef<HTMLSpanElement>(null), root = labelRef ?? own;
-  const { camera, size } = useThree();
-  const point = useMemo(() => new THREE.Vector3(), []);
-  useFrame(() => {
-    if (!root.current) return;
-    const sign = viewer === 'ATTACK' ? 1 : -1;
-    point.set(position[0] * sign, position[1], position[2] * sign).project(camera);
-    const offset = fitWorldLabel((point.x * .5 + .5) * size.width, root.current.offsetWidth, size.width);
-    root.current.style.transform = `translateX(${offset}px)`;
-  });
-  return <Html position={position} center zIndexRange={[2, 1]} style={{ pointerEvents: 'none' }}><span ref={root} data-force-label={side} className={className} style={{ display: labelRef ? 'none' : undefined }}>{children}</span></Html>;
-}
-
-function PlanetBackdrop({ positions, ships, deaths, clock }: { positions: ReadonlyMap<string, BattlePose>; ships: readonly BattleShipSnapshot[]; deaths: ReadonlyMap<string, number>; clock: RefObject<PlaybackClock> }) {
+function PlanetBackdrop({ positions, ships }: { positions: ReadonlyMap<string, BattlePose>; ships: readonly BattleShipSnapshot[] }) {
   const loaded = useGLTF(BATTLEFIELD_PLANET_MODEL, false);
   const planet = useMemo(() => {
     const meshes: THREE.Mesh[] = [];
@@ -274,43 +242,6 @@ function PlanetBackdrop({ positions, ships, deaths, clock }: { positions: Readon
         fragmentShader="varying vec3 vN;varying vec3 vV;void main(){float rim=pow(1.-abs(dot(normalize(vN),normalize(vV))),4.);gl_FragColor=vec4(.2,.55,1.,rim*.35);}"
       />
     </mesh>
-    <GroundPlatforms ships={ships} positions={positions} planet={planetPose} deaths={deaths} clock={clock} />
-  </group>;
-}
-
-/** Two shared meshes replace two draw calls per ground unit; dead foundations do not survive their guns. */
-function GroundPlatforms({ ships, positions, planet, deaths, clock }: { ships: readonly BattleShipSnapshot[]; positions: ReadonlyMap<string, BattlePose>;
-  planet: ReturnType<typeof battlePlanet>; deaths: ReadonlyMap<string, number>; clock: RefObject<PlaybackClock> }) {
-  const bases = useRef<THREE.InstancedMesh>(null), rings = useRef<THREE.InstancedMesh>(null);
-  const layouts = useMemo(() => ships.filter(ship => ship.ground ?? HULLS[ship.hull].ground).map(ship => {
-    const pose = positions.get(ship.id)!, normal = new THREE.Vector3(pose.x, pose.y - planet.y, pose.z - planet.z).normalize();
-    const orientation = new THREE.Quaternion().setFromUnitVectors(THREE.Object3D.DEFAULT_UP, normal);
-    const center = new THREE.Vector3(0, planet.y, planet.z).addScaledVector(normal, planet.radius + .08 * pose.scale);
-    const scale = new THREE.Vector3().setScalar(pose.scale);
-    const base = new THREE.Matrix4().compose(center, orientation, scale);
-    center.addScaledVector(normal, .09 * pose.scale);
-    orientation.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2));
-    return { id: ship.id, base, ring: new THREE.Matrix4().compose(center, orientation, scale) };
-  }), [ships, positions, planet]);
-  const work = useMemo(() => ({ matrix: new THREE.Matrix4(), scale: new THREE.Vector3() }), []);
-  useFrame(() => {
-    for (let index = 0; index < layouts.length; index++) {
-      const item = layouts[index]!;
-      work.scale.setScalar(destructionScale(deaths.get(item.id), clock.current.time));
-      bases.current?.setMatrixAt(index, work.matrix.copy(item.base).scale(work.scale));
-      rings.current?.setMatrixAt(index, work.matrix.copy(item.ring).scale(work.scale));
-    }
-    if (bases.current) bases.current.instanceMatrix.needsUpdate = true;
-    if (rings.current) rings.current.instanceMatrix.needsUpdate = true;
-  });
-  if (layouts.length === 0) return null;
-  return <group>
-    <instancedMesh ref={bases} args={[undefined, undefined, layouts.length]} frustumCulled={false} name="battle-ground-foundations">
-      <cylinderGeometry args={[.65, .85, .16, 6]} /><meshStandardMaterial color="#273c53" metalness={.6} roughness={.55} />
-    </instancedMesh>
-    <instancedMesh ref={rings} args={[undefined, undefined, layouts.length]} frustumCulled={false}>
-      <ringGeometry args={[.6, .64, 32]} /><meshBasicMaterial color="#5ea4da" transparent opacity={.45} />
-    </instancedMesh>
   </group>;
 }
 
@@ -324,41 +255,58 @@ function NebulaBackdrop() {
   </mesh>;
 }
 
-function UnitReadout({ ship, pose, runtime, deaths, selected, compact, destination, retreatAt, viewer }: {
-  ship: BattleShipSnapshot; pose: BattlePose; runtime: RefObject<Runtime>; deaths: ReadonlyMap<string, number>;
-  selected: string | null; compact: boolean; destination?: BattlePose; retreatAt?: number; viewer: BattleSide;
+/**
+ * One field label. It names whichever ship its slot holds this frame: the same ship for a small
+ * battle, the featured ships of a large one (featuredShips), so 1,000 ships cost six labels.
+ */
+function UnitReadout({ slot, ships, positions, destinations, retreats, runtime, deaths, selected, viewer, pooled }: {
+  slot: number; ships: ReadonlyMap<string, BattleShipSnapshot>; positions: ReadonlyMap<string, BattlePose>;
+  destinations: ReadonlyMap<string, BattlePose>; retreats: ReadonlyMap<string, number>; runtime: RefObject<Runtime>;
+  deaths: ReadonlyMap<string, number>; selected: string | null; viewer: BattleSide; pooled: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const { camera, size } = useThree();
   const point = useMemo(() => new THREE.Vector3(), []);
   const anchor = useRef<THREE.Group>(null);
-  const root = useRef<HTMLDivElement>(null), values = useRef<HTMLSpanElement>(null);
+  const root = useRef<HTMLDivElement>(null), values = useRef<HTMLSpanElement>(null), faction = useRef<HTMLSpanElement>(null);
   const damage = useRef<HTMLDivElement>(null), hullDamage = useRef<HTMLSpanElement>(null), shieldDamage = useRef<HTMLSpanElement>(null);
   const pending = useRef<HTMLSpanElement>(null), name = useRef<HTMLSpanElement>(null);
+  const hullName = useRef<HTMLSpanElement>(null), shipId = useRef<HTMLElement>(null);
+  const shown = useRef<{ id: string; viewer: BattleSide; selected: string | null } | null>(null);
   useFrame(() => {
-    const frame = runtime.current.frame, state = frame.ships.get(ship.id)!;
+    const frame = runtime.current.frame, id = runtime.current.labels[slot], ship = id === undefined ? undefined : ships.get(id);
     if (!root.current) return;
+    if (!ship) { root.current.style.opacity = '0'; return; }
+    const state = frame.ships.get(ship.id)!, pose = positions.get(ship.id)!;
+    const retreatAt = retreats.get(ship.id), destination = destinations.get(ship.id);
+    const last = shown.current;
+    if (last?.id !== ship.id || last.viewer !== viewer || last.selected !== selected) {
+      shown.current = { id: ship.id, viewer, selected };
+      root.current.className = `sim-unit-readout ${ship.side === viewer ? 'is-self' : 'is-enemy'} ${selected === ship.id ? 'is-selected' : ''}`;
+      root.current.dataset.unitReadout = ship.id;
+      if (faction.current) faction.current.textContent = ship.side === viewer ? '◆' : '▲';
+      if (hullName.current) hullName.current.textContent = `${hullLabel(ship.hull)} `;
+      if (shipId.current) shipId.current.textContent = `#${ship.id}`;
+      if (damage.current) damage.current.dataset.unitDamage = ship.id;
+    }
     const badge = frame.damageBadges.find(item => item.targetId === ship.id);
     const firing = frame.activeShot?.shot.sourceId === ship.id || frame.activeAegisStrike?.strike.sourceId === ship.id;
-    const awaiting = frame.pendingFire.has(ship.id);
+    const leaving = state.status === 'RETREATED' && frame.time - (retreatAt ?? 0) < LEAVING_LABEL_SECONDS;
+    root.current.classList.toggle('is-pending', frame.pendingFire.has(ship.id));
     const deadAt = deaths.get(ship.id);
     const present = deadAt === undefined || frame.time < deadAt + .6;
     const current = retreatAt !== undefined && destination ? sampleRetreatPose(pose, destination, ship.side, frame.time - retreatAt) : pose;
     anchor.current?.position.set(current.x, current.y + current.scale * .5, current.z);
     root.current.style.opacity = present || badge ? '1' : '0';
     if (values.current) {
-      values.current.textContent = `${Math.max(0, Math.ceil(state.hp))}\n/ ${Math.ceil(ship.maxHp)}`;
+      values.current.textContent = String(Math.max(0, Math.ceil(state.hp)));
       const sign = viewer === 'ATTACK' ? 1 : -1;
       const distance = camera.position.distanceTo(point.set(current.x * sign, current.y, current.z * sign));
       const pixels = size.height * current.scale / (2 * Math.tan(43 * Math.PI / 360) * Math.max(1, distance));
-      values.current.style.display = selected === ship.id || firing || badge || !compact && pixels >= 28 ? '' : 'none';
+      values.current.style.display = pooled || selected === ship.id || firing || badge || pixels >= 28 ? '' : 'none';
     }
-    if (name.current) { name.current.style.display = selected === ship.id || firing || state.status === 'RETREATED' && frame.time - (retreatAt ?? 0) < 1.7 ? '' : 'none'; }
-    if (pending.current) {
-      const fleeing = state.status === 'RETREATED' && (selected === ship.id || frame.time - (retreatAt ?? 0) < 1.7);
-      pending.current.style.display = awaiting || fleeing ? '' : 'none';
-      pending.current.textContent = awaiting ? t('simulator.pendingFire') : `↗ ${t('simulator.outOfCombat')}`;
-    }
+    if (name.current) name.current.style.display = selected === ship.id || firing || leaving ? '' : 'none';
+    if (pending.current) pending.current.style.display = state.status === 'RETREATED' && (selected === ship.id || leaving) ? '' : 'none';
     if (damage.current) {
       damage.current.style.opacity = badge ? '1' : '0';
       damage.current.style.transform = badge ? `translateY(${-14 - (frame.time - badge.at) * 12}px)` : 'translateY(-14px)';
@@ -366,13 +314,13 @@ function UnitReadout({ ship, pose, runtime, deaths, selected, compact, destinati
       if (shieldDamage.current) shieldDamage.current.textContent = badge && badge.shieldDamage > 0 ? `◈ ${damageLabel(badge.shieldDamage, i18n.language)}` : '';
     }
   });
-  return <group ref={anchor} position={[pose.x, pose.y + pose.scale * .5, pose.z]}><Html center zIndexRange={[3, 1]} style={{ pointerEvents: 'none' }}>
-    <div className={`sim-unit-readout ${ship.side === viewer ? 'is-self' : 'is-enemy'} ${selected === ship.id ? 'is-selected' : ''}`} ref={root} data-unit-readout={ship.id}>
-      <span className="sim-unit-faction" aria-hidden="true">{ship.side === viewer ? '◆' : '▲'}</span>
-      <span ref={name} className="sim-readout-name" style={{ display: 'none' }}>{hullLabel(ship.hull)} <small>#{ship.id}</small></span>
-      <span ref={values} className="sim-hp-value">{`${Math.ceil(ship.hp)}\n/ ${Math.ceil(ship.maxHp)}`}</span>
-      <span ref={pending} className="sim-pending-fire" style={{ display: 'none' }}>{t('simulator.pendingFire')}</span>
-      <div ref={damage} className="sim-damage-badge" style={{ opacity: 0 }} data-unit-damage={ship.id}>
+  return <group ref={anchor}><Html center zIndexRange={[3, 1]} style={{ pointerEvents: 'none' }}>
+    <div className="sim-unit-readout" ref={root} style={{ opacity: 0 }}>
+      <span ref={faction} className="sim-unit-faction" aria-hidden="true" />
+      <span ref={name} className="sim-readout-name" style={{ display: 'none' }}><span ref={hullName} /><small ref={shipId} /></span>
+      <span ref={values} className="sim-hp-value" />
+      <span ref={pending} className="sim-pending-fire" style={{ display: 'none' }}>↗ {t('simulator.outOfCombat')}</span>
+      <div ref={damage} className="sim-damage-badge" style={{ opacity: 0 }}>
         <span ref={hullDamage} className="is-hull" /><span ref={shieldDamage} className="is-shield" />
       </div>
     </div>
@@ -401,7 +349,8 @@ function ShipBucket({ planet, hull, members, positions, runtime, selected, onSel
     full.scene.traverse(node => { if (isBattleMesh(node)) materials.push(node.material); });
     return materials;
   }, [full.scene]);
-  const parts = useMemo(() => battleModelParts(loaded.scene, MODEL_FACING[HULL_MODEL[hull]] ?? '+z', MODEL_POSE[HULL_MODEL[hull]], paint), [loaded.scene, hull, paint]);
+  const parts = useMemo(() => battleModelParts(loaded.scene, MODEL_FACING[HULL_MODEL[hull]] ?? '+z', MODEL_POSE[HULL_MODEL[hull]], paint, HULLS[hull].ground),
+    [loaded.scene, hull, paint]);
   useEffect(() => () => {
     for (const part of parts) for (const material of Array.isArray(part.material) ? part.material : [part.material]) material.dispose();
   }, [parts]);

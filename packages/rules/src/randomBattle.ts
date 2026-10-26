@@ -5,8 +5,9 @@ import { normalizeHpDamage, type HpDamageLot } from './radiationHp.js';
 import { shipCanFight, shipHealthGroups } from './shipMaintenance.js';
 import { hullTech, shipShieldHp } from './tech.js';
 import { mulberry32 } from './rng.js';
-import { battleRetreatPolicy, type RetreatWindow } from './battleRetreat.js';
-import type { Fleet, HullId, Rng } from './types.js';
+import { battleBalance, type RetreatWindow } from './battleRetreat.js';
+import { matchup, type PowerUnit } from './matchupPower.js';
+import type { Fleet, HullClass, HullId, Rng } from './types.js';
 import type { BattleResult, CombatRound, CombatOwnerFleet, DefenderStack, JointAttackerStack } from './combat.js';
 import type { BattleRecording, BattleShipState, RecordedAegisStrike, RecordedRound, RecordedShot } from './battleRecording.js';
 
@@ -63,42 +64,35 @@ function shuffle(items: VolleyShip[], rng: Rng): void {
   }
 }
 
-/** Prefer stronger counters; sample distinct members uniformly within a priority. */
-function selectTargets(pool: readonly number[], multipliers: Float64Array, limit: number, rng: Rng): number[] {
-  const selected: number[] = [];
-  for (const multiplier of [COMBAT.strongMult, 1, COMBAT.weakMult]) {
-    const candidates = pool.filter(index => multipliers[index] === multiplier);
-    const count = Math.min(candidates.length, limit - selected.length);
-    if (count === candidates.length) selected.push(...candidates);
-    else for (let i = 0; i < count; i++) {
-      const slot = i + Math.floor(rng() * (candidates.length - i));
-      [candidates[i], candidates[slot]] = [candidates[slot]!, candidates[i]!];
-      selected.push(candidates[i]!);
-    }
-    if (selected.length === limit) break;
+const TARGET_CLASSES: readonly HullClass[] = ['SKIRMISHER', 'BULWARK', 'LANCE'];
+const preferences = new Map<HullClass, readonly HullClass[]>();
+/** The order a shooter takes classes in: the one it counters, neutral, the one that counters it. */
+function preferenceOf(cls: HullClass): readonly HullClass[] {
+  let order = preferences.get(cls);
+  if (!order) {
+    order = [...TARGET_CLASSES].sort((x, y) => counterMult(cls, y) - counterMult(cls, x));
+    preferences.set(cls, order);
   }
-  return selected;
+  return order;
 }
 
 /**
  * Predict a volley without changing either population's round-entry firing rights.
- * Each shooter spreads BASE damage among at most ten distinct targets, selected
- * by counter priority and then at random within the priority. Excess returns to
- * base units and stays within the selection. SUPPORT remains covered until all
- * armed targets die and only uses remaining distinct-target slots.
+ * Combat v3: each shooter puts its whole shot on ONE target — the class it counters
+ * first, then neutral, then the class that counters it, uniformly at random within a
+ * class. A kill carries the overflow, back at base value, to the next target chosen by
+ * the same rule. SUPPORT stays covered until every armed target is dead; the overflow
+ * of the shot that kills the last one may reach it. `roll` already carries the side's
+ * battle-wide damage scale.
  */
 export function resolveVolley(from: readonly VolleyShip[], to: readonly VolleyShip[], roll: number, rng: Rng, aegis: number, owners: number,
   recording?: { fromIds: readonly string[]; toIds: readonly string[]; shots: RecordedShot[]; strikes?: RecordedAegisStrike[]; budget?: CaptureBudget }) {
   const hp = to.map(ship => ship.hp), shields = to.map(ship => ship.shield);
   const combat: number[] = [], cargo: number[] = [];
   for (let i = 0; i < to.length; i++) if (active(to[i]!)) (HULLS[to[i]!.hull].cls === 'SUPPORT' ? cargo : combat).push(i);
-  // Reuse storage and class multipliers: large fleets otherwise allocate and look
-  // up counters for every shooter-target pair. Target order and RNG draws stay exact.
-  const weights = new Float64Array(COMBAT.targetsPerShot);
-  const counters = new Map<HullId, Float64Array>();
   const shooters = from.filter(firing);
-  // Restore the original global shield-opening rule. It targets Aegis, not ten
-  // ships: class adjustment uses the armed line's max-HP shares (cargo only if unescorted).
+  // Restore the original global shield-opening rule. It targets Aegis, not a
+  // ship: class adjustment uses the armed line's max-HP shares (cargo only if unescorted).
   // No target/variance RNG is consumed, and all normal targeting remains unchanged.
   let specialistAbsorbed = 0;
   if (aegis > 0) {
@@ -125,80 +119,68 @@ export function resolveVolley(from: readonly VolleyShip[], to: readonly VolleySh
       }
     }
   }
+  // Live targets by class with O(1) swap-removal; a kill never rescans the line.
+  const pools = new Map<HullClass, number[]>(TARGET_CLASSES.map(cls => [cls, []]));
+  const slot = new Int32Array(to.length);
+  for (const index of combat) {
+    const pool = pools.get(HULLS[to[index]!.hull].cls)!;
+    slot[index] = pool.length;
+    pool.push(index);
+  }
+  for (let i = 0; i < cargo.length; i++) slot[cargo[i]!] = i;
+  let armed = combat.length;
+  const remove = (index: number) => {
+    const cls = HULLS[to[index]!.hull].cls, pool = cls === 'SUPPORT' ? cargo : pools.get(cls)!;
+    const last = pool.pop()!;
+    if (last !== index) { pool[slot[index]!] = last; slot[last] = slot[index]!; }
+    if (cls !== 'SUPPORT') armed--;
+  };
+  const pick = (order: readonly HullClass[]): number => {
+    const pool = armed > 0 ? order.map(cls => pools.get(cls)!).find(list => list.length > 0)! : cargo;
+    return pool.length === 0 ? -1 : pool[Math.floor(rng() * pool.length)]!;
+  };
   shuffle(shooters, rng);
   let incoming = 0, personal = 0, hullDamage = 0, normalAbsorbed = 0;
   const credited = Array.from({ length: owners }, () => 0);
   for (const ship of shooters) {
-    if (combat.length === 0 && cargo.length === 0) break;
-    let multipliers = counters.get(ship.hull);
-    if (!multipliers) {
-      const cls = HULLS[ship.hull].cls;
-      multipliers = Float64Array.from(to, target => counterMult(cls, HULLS[target.hull].cls));
-      counters.set(ship.hull, multipliers);
-    }
+    if (armed === 0 && cargo.length === 0) break;
+    const cls = HULLS[ship.hull].cls, order = preferenceOf(cls);
     let budget = ship.attack * roll;
     const shot: RecordedShot | undefined = recording && !recording.budget?.exceeded ? { sourceId: recording.fromIds[from.indexOf(ship)]!,
       order: recording.shots.length + 1, baseDamage: budget, unusedBaseDamage: 0, hits: [] } : undefined;
-    let pool = selectTargets(combat.length > 0 ? combat : cargo, multipliers, COMBAT.targetsPerShot, rng);
-    let selectedCount = pool.length;
     let pass = 0;
-    while (budget > 0 && (combat.length > 0 || cargo.length > 0)) {
-      if (pool.length === 0) {
-        if (combat.length > 0 || selectedCount === COMBAT.targetsPerShot) break;
-        pool = selectTargets(cargo, multipliers, COMBAT.targetsPerShot - selectedCount, rng);
-        selectedCount += pool.length;
-        if (pool.length === 0) break;
-      }
-      let total = 0;
-      for (let slot = 0; slot < pool.length; slot++) {
-        const weight = 1 - rng();
-        weights[slot] = weight;
-        total += weight;
-      }
-      let remainingShare = budget, overflow = 0, dead = false;
-      for (let slot = 0; slot < pool.length; slot++) {
-        const index = pool[slot]!;
-        const share = slot === pool.length - 1 ? remainingShare : Math.min(remainingShare, budget * weights[slot]! / total);
-        remainingShare -= share;
-        const multiplier = multipliers[index]!;
-        let damage = share * multiplier;
-        const hpBefore = hp[index]!, shieldBefore = shields[index]!, aegisBefore = aegis;
-        const absorbed = Math.min(aegis, damage);
-        aegis -= absorbed;
-        damage -= absorbed;
-        normalAbsorbed += absorbed;
-        const ownAbsorbed = Math.min(shields[index]!, damage);
-        shields[index]! -= ownAbsorbed;
-        damage -= ownAbsorbed;
-        personal += ownAbsorbed;
-        const landed = Math.min(hp[index]!, damage);
-        hp[index] = Math.max(0, hp[index]! - landed);
-        credited[ship.owner]! += landed;
-        hullDamage += landed;
-        incoming += absorbed + ownAbsorbed + landed;
-        if (shot && recording) {
-          if (recording.budget?.remaining === 0) recording.budget.exceeded = true;
-          else {
-            shot.hits.push({ targetId: recording.toIds[index]!, pass, baseShare: share, counter: multiplier,
-              hpBefore, hpAfter: hp[index], shieldBefore, shieldAfter: shields[index]!, aegisBefore, aegisAfter: aegis,
-              bonusAegisDamage: 0, normalAegisDamage: absorbed, shieldDamage: ownAbsorbed, hullDamage: landed });
-            if (recording.budget) recording.budget.remaining--;
-          }
-        }
-        if (hp[index] === 0) {
-          dead = true;
-          overflow += Math.max(0, damage - landed) / multiplier;
+    while (budget > 0) {
+      const index = pick(order);
+      if (index < 0) break;
+      const multiplier = counterMult(cls, HULLS[to[index]!.hull].cls);
+      let damage = budget * multiplier;
+      const hpBefore = hp[index]!, shieldBefore = shields[index]!, aegisBefore = aegis;
+      const absorbed = Math.min(aegis, damage);
+      aegis -= absorbed;
+      damage -= absorbed;
+      normalAbsorbed += absorbed;
+      const ownAbsorbed = Math.min(shields[index]!, damage);
+      shields[index]! -= ownAbsorbed;
+      damage -= ownAbsorbed;
+      personal += ownAbsorbed;
+      const landed = Math.min(hp[index]!, damage);
+      hp[index] = Math.max(0, hp[index]! - landed);
+      credited[ship.owner]! += landed;
+      hullDamage += landed;
+      incoming += absorbed + ownAbsorbed + landed;
+      if (shot && recording) {
+        if (recording.budget?.remaining === 0) recording.budget.exceeded = true;
+        else {
+          shot.hits.push({ targetId: recording.toIds[index]!, pass, baseShare: budget, counter: multiplier,
+            hpBefore, hpAfter: hp[index], shieldBefore, shieldAfter: shields[index]!, aegisBefore, aegisAfter: aegis,
+            bonusAegisDamage: 0, normalAegisDamage: absorbed, shieldDamage: ownAbsorbed, hullDamage: landed });
+          if (recording.budget) recording.budget.remaining--;
         }
       }
-      if (dead) {
-        for (const targets of [pool, combat, cargo]) {
-          let kept = 0;
-          for (const index of targets) if (hp[index]! > 0) targets[kept++] = index;
-          targets.length = kept;
-        }
-      }
-      // Any overflow killed a target, so each extra pass makes finite progress.
-      budget = overflow;
+      if (hp[index] > 0) { budget = 0; break; }
+      remove(index);
+      // Each carry follows a kill, so the passes are bounded by the line.
+      budget = Math.max(0, damage - landed) / multiplier;
       pass++;
     }
     if (shot && recording && !recording.budget?.exceeded) {
@@ -218,8 +200,23 @@ function apply(ships: Ship[], result: ReturnType<typeof resolveVolley>): void {
   }
 }
 
+/** Combat v3 critical damage: a ship hit this round below `criticalBelow` breaks apart with chance 1 − hull share. */
+function breakApart(ships: Ship[], hpBefore: readonly number[], rng: Rng): boolean[] {
+  return ships.map((ship, i) => {
+    if (!active(ship) || ship.hp >= hpBefore[i]!) return false;
+    const share = ship.hp / ship.maxHp;
+    if (share >= COMBAT.criticalBelow || rng() >= 1 - share) return false;
+    ship.hp = 0;
+    return true;
+  });
+}
+
+const unitsOf = (ships: readonly Ship[]): PowerUnit[] => ships.map(ship => ({ hull: ship.hull, cls: HULLS[ship.hull].cls,
+  attack: ship.canFire ? ship.attack : 0, ehp: ship.hp + ship.shield, maxHp: ship.maxHp, count: 1 }));
+
+/** Guns stand, and unarmed hulls leave only with a fleet escape: holds are taken (owner 2026-10-06). */
 function retreat(ships: readonly Ship[], policy: RetreatWindow, rng: Rng): void {
-  for (const ship of ships) if (active(ship) && !HULLS[ship.hull].ground
+  for (const ship of ships) if (active(ship) && !HULLS[ship.hull].ground && HULLS[ship.hull].cls !== 'SUPPORT'
     && ship.hp / ship.maxHp <= policy.threshold + 1e-12 && rng() < policy.chance) ship.retreated = true;
 }
 
@@ -272,10 +269,15 @@ export function resolveRandomBattle(
   }
   const starts = stacks.map(stack => ({ ...stack.fleet })), dStarts = defenders.map(stack => ({ ...stack.fleet }));
   const startA = fleetOf(a, () => true), startD = fleetOf(d, () => true);
-  const policy = battleRetreatPolicy(startA, startD);
-  // Separate streams keep targeting and escape rolls from consuming the fire variance stream.
+  // Combat v3: matchup powers at entry fix the tempo, the stronger side's handicap and both retreat windows.
+  const balance = battleBalance(matchup({ units: unitsOf(a) }, { units: unitsOf(d), aegis: shield }));
+  const attackerScale = balance.tempo * (balance.stronger === 'ATTACK' ? balance.handicap : 1);
+  const defenderScale = balance.tempo * (balance.stronger === 'DEFENCE' ? balance.handicap : 1);
+  if (recording) recording.damageScale = { attacker: attackerScale, defender: defenderScale };
+  // Separate streams keep targeting, escape and break-apart rolls from consuming the fire variance stream.
   const targetRng = mulberry32(Math.floor(rng() * 0x100000000) ^ 0x4C83B12D);
   const retreatRng = mulberry32(Math.floor(rng() * 0x100000000) ^ 0x78E5CA9E);
+  const criticalRng = mulberry32(Math.floor(rng() * 0x100000000) ^ 0x2D9F6B13);
   const credited = stacks.map(() => 0), rounds: CombatRound[] = [];
   const captureBudget: CaptureBudget | undefined = recording?.hitLimit === undefined ? undefined : { remaining: recording.hitLimit, exceeded: false };
   let shieldLeft = shield, shieldProtectedArmed = 0;
@@ -287,31 +289,40 @@ export function resolveRandomBattle(
     const shieldBefore = Math.round(shieldLeft);
     const turn: RecordedRound | undefined = recording && !recording.truncated ? { round, attackerRoll, defenderRoll, aegisBefore: shieldLeft,
       aegisAfter: shieldLeft, aegisStrikes: [], attackerShots: [], defenderShots: [], retreated: [], after: [] } : undefined;
-    const outgoing = resolveVolley(a, d, attackerRoll, targetRng, shieldLeft, stacks.length,
+    const outgoing = resolveVolley(a, d, attackerRoll * attackerScale, targetRng, shieldLeft, stacks.length,
       turn ? { fromIds: aIds, toIds: dIds, shots: turn.attackerShots, strikes: turn.aegisStrikes, budget: captureBudget } : undefined);
-    const incoming = resolveVolley(d, a, defenderRoll, targetRng, 0, defenders.length,
+    const incoming = resolveVolley(d, a, defenderRoll * defenderScale, targetRng, 0, defenders.length,
       turn ? { fromIds: dIds, toIds: aIds, shots: turn.defenderShots, budget: captureBudget } : undefined);
     if (d.some(firing)) shieldProtectedArmed += outgoing.normalAbsorbed;
     shieldLeft = outgoing.aegis;
     for (let i = 0; i < credited.length; i++) credited[i]! += outgoing.credited[i]!;
-    const casualties: CombatOwnerFleet[] = [];
-    for (const [side, ships, hits, owners] of [['ATTACK', a, incoming, stacks], ['DEFENCE', d, outgoing, defenders]] as const) {
-      const dead = owners.map((): Fleet => ({}));
-      for (let j = 0; j < ships.length; j++) {
-        const ship = ships[j]!;
-        if (ship.hp > 0 && hits.hp[j] === 0) add(dead[ship.owner]!, ship.hull);
-      }
-      for (let i = 0; i < owners.length; i++) if (fleetCount(dead[i]!) > 0) {
-        const owner = owners[i]!;
-        casualties.push({ side, playerId: owner.playerId, stackId: ownerId(owner), fleet: dead[i]! });
-      }
-    }
+    const hpA = a.map(ship => ship.hp), hpD = d.map(ship => ship.hp);
     apply(a, incoming);
     apply(d, outgoing);
+    const brokeA = breakApart(a, hpA, criticalRng), brokeD = breakApart(d, hpD, criticalRng);
+    const casualties: CombatOwnerFleet[] = [], explosions: CombatOwnerFleet[] = [];
+    const losses = { ATTACK: {} as Fleet, DEFENCE: {} as Fleet };
+    for (const [side, ships, before, broke, owners] of [['ATTACK', a, hpA, brokeA, stacks], ['DEFENCE', d, hpD, brokeD, defenders]] as const) {
+      const dead = owners.map((): Fleet => ({})), burst = owners.map((): Fleet => ({}));
+      for (let j = 0; j < ships.length; j++) {
+        const ship = ships[j]!;
+        if (before[j]! <= 0 || ship.hp > 0) continue;
+        add(dead[ship.owner]!, ship.hull);
+        add(losses[side], ship.hull);
+        if (broke[j]) add(burst[ship.owner]!, ship.hull);
+      }
+      for (let i = 0; i < owners.length; i++) {
+        const owner = owners[i]!, row = { side, playerId: owner.playerId, stackId: ownerId(owner) };
+        if (fleetCount(dead[i]!) > 0) casualties.push({ ...row, fleet: dead[i]! });
+        if (fleetCount(burst[i]!) > 0) explosions.push({ ...row, fleet: burst[i]! });
+      }
+    }
     const beforeA = a.map(ship => ship.retreated), beforeD = d.map(ship => ship.retreated);
+    // Nobody retreats from an enemy that can no longer fire, nor after the last round.
     if (round < COMBAT.rounds) {
-      retreat(a, policy.attacker, retreatRng);
-      retreat(d, policy.defender, retreatRng);
+      const threatToA = d.some(firing), threatToD = a.some(firing);
+      if (threatToA && balance.attacker) retreat(a, balance.attacker, retreatRng);
+      if (threatToD && balance.defender) retreat(d, balance.defender, retreatRng);
     }
     if (recording && captureBudget?.exceeded) { recording.truncated = true; recording.rounds.length = 0; }
     if (turn && recording && !recording.truncated) {
@@ -319,6 +330,8 @@ export function resolveRandomBattle(
       turn.after = [...a.map((ship, i) => state(ship, aIds[i]!)), ...d.map((ship, i) => state(ship, dIds[i]!))];
       turn.retreated = [...a.filter((ship, i) => ship.retreated && !beforeA[i]).map(ship => aIds[a.indexOf(ship)]!),
         ...d.filter((ship, i) => ship.retreated && !beforeD[i]).map(ship => dIds[d.indexOf(ship)]!)];
+      const exploded = [...aIds.filter((_, i) => brokeA[i]), ...dIds.filter((_, i) => brokeD[i])];
+      if (exploded.length > 0) turn.exploded = exploded;
       recording.rounds.push(turn);
     }
     const retreats: CombatOwnerFleet[] = [];
@@ -340,8 +353,8 @@ export function resolveRandomBattle(
       shieldBefore, shieldAfter: Math.round(shieldLeft), shieldAbsorbed: shieldBefore - Math.round(shieldLeft),
       shieldBreakerDamage: Math.round(outgoing.specialistAbsorbed),
       attackerShipShieldAbsorbed: Math.round(incoming.personal), defenderShipShieldAbsorbed: Math.round(outgoing.personal),
-      attackerHullDamage: Math.round(outgoing.hullDamage), attackerLosses: incoming.losses, defenderLosses: outgoing.losses,
-      retreats, casualties });
+      attackerHullDamage: Math.round(outgoing.hullDamage), attackerLosses: losses.ATTACK, defenderLosses: losses.DEFENCE,
+      retreats, casualties, ...(explosions.length > 0 ? { explosions } : {}) });
   }
   const attackerSurvivors = fleetOf(a, alive), defenderSurvivors = fleetOf(d, alive);
   const attackerRetreated = fleetOf(a, ship => ship.retreated), defenderRetreated = fleetOf(d, ship => ship.retreated);
@@ -356,7 +369,9 @@ export function resolveRandomBattle(
   const grade = unableToFight ? 'REPELLED' : fleetCount(defenderActive) === 0 && (before === 0 || shieldLeft <= 0)
     ? 'DECISIVE' : lossRatio >= COMBAT.partialThreshold ? 'PARTIAL' : 'REPELLED';
   // Per-shot floating sums may exceed the entry charge by an ulp; Honor validates this physical budget strictly.
-  return { grade, lossRatio, rounds, shieldLeft: Math.max(0, Math.round(shieldLeft)),
+  return { balance: { attackerPower: balance.attackerPower, defenderPower: balance.defenderPower, tempo: balance.tempo, handicap: balance.handicap,
+      attackerRetreat: balance.attacker, defenderRetreat: balance.defender },
+    grade, lossRatio, rounds, shieldLeft: Math.max(0, Math.round(shieldLeft)),
     shieldProtectedArmed: Math.min(shield, shieldProtectedArmed),
     attackerSurvivors, defenderSurvivors, attackerRetreated, defenderRetreated,
     attackerCombatSurvivors: fleetOf(a, firing),

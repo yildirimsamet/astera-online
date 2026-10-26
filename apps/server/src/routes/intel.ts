@@ -110,6 +110,10 @@ export function registerIntelRoutes(app: FastifyInstance): void {
         ...(r.report.silhouette?.doctrines
           ? { doctrines: r.report.silhouette.doctrines }
           : {}),
+        // Combat v3: windows holding each level. A report carries one reading or the other.
+        ...(r.report.silhouette?.research
+          ? { research: r.report.silhouette.research }
+          : {}),
         ...(r.report.silhouette?.interceptors === undefined
           ? {}
           : { interceptors: r.report.silhouette.interceptors }),

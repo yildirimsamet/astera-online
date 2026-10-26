@@ -19,7 +19,8 @@ describe('approved global Nullifier opening before normal fire', () => {
   it('does not interleave one Nullifier’s bonus shares with normal damage across two targets', () => {
     const { result, strikes } = fire([ship('NULLIFIER', 200)], [ship('HARPOON'), ship('HARPOON')], 800);
     expect(result.specialistAbsorbed).toBe(800); expect(result.normalAbsorbed).toBe(0);
-    expect(result.hp).toEqual([900, 900]); expect(strikes).toHaveLength(1);
+    // The whole 200-point normal shot lands on one Harpoon, after the bonus has taken the Aegis.
+    expect([...result.hp].sort()).toEqual([1000, 800]); expect(strikes).toHaveLength(1);
   });
   it('uses the standing armed line’s researched maximum HP and classes, with protected cargo excluded', () => {
     const targets = [{ ...ship('HARPOON', 0, 20), maxHp: 1000 }, ship('THORN'), ship('ARGOSY', 0, 100000)];

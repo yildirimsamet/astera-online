@@ -4,14 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
   BUILDING_IDS, ESCAPE, FLEET_V2_HULLS, HULLS, INSTRUMENT_IDS, INSTRUMENT_MAX_LEVEL, MULTI_WORLD,
-  combatValue,
   RESEARCH_PROJECT_IDS, SATELLITES, SATELLITE_IDS, satelliteSlots,
 } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
 import { openAllBands, planetView } from './fixtures.js';
-import { compact } from '../src/lib/format.js';
 
 /**
  * THE ORBIT SURFACE — TWO KINDS OF HARDWARE, AND THE DIFFERENCE IS THE POINT. D25.
@@ -742,7 +740,8 @@ describe('nothing is sold without a control', () => {
 describe('the escape threshold on Defend', () => {
   it('states it when the season was dealt the rule and ships stand at home', () => {
     show({ rulesetVersion: MULTI_WORLD.fleetEscapeRulesetVersion, fleet: { DART: 20 } }, 'defend');
-    expect(screen.getByTestId('escape-readout')).toHaveTextContent(compact(ESCAPE.ratio * combatValue({ DART: 20 })));
+    // Combat v3 states the escape as a matchup ratio, not a firepower figure.
+    expect(screen.getByTestId('escape-readout')).toHaveTextContent(`${ESCAPE.ratio.toFixed(1)}×`);
   });
 
   it('says nothing in a season dealt before it', () => {

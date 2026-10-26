@@ -104,14 +104,13 @@ describe('support logistics — reuse the clan aid lane, never a second formula'
 });
 
 describe('escape verdict and the raid — the posture is part of the rule', () => {
-  const wall = { low: 100, high: 120 };
-  const clears = { low: 5_000, high: 6_000 };
+  const outmatched = { low: 80, high: 100 };
 
   it('lets a SUPPORT or HOLD world always STAND, whatever the reading says', () => {
-    expect(escapeVerdict(10_000, wall, clears)).toBe('RUN');
-    expect(escapeVerdict(10_000, wall, clears, false, 'ESCAPE')).toBe('RUN');
-    expect(escapeVerdict(10_000, wall, clears, false, 'SUPPORT')).toBe('STAND');
-    expect(escapeVerdict(10_000, wall, clears, false, 'HOLD')).toBe('STAND');
+    expect(escapeVerdict(outmatched)).toBe('RUN');
+    expect(escapeVerdict(outmatched, false, 'ESCAPE')).toBe('RUN');
+    expect(escapeVerdict(outmatched, false, 'SUPPORT')).toBe('STAND');
+    expect(escapeVerdict(outmatched, false, 'HOLD')).toBe('STAND');
   });
 
   it('fights a supported line as one battle and never lifts it', () => {

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useEffect } from 'react';
+import { COMBAT } from '@astera/rules';
 import { BattleReplay } from '../src/battle-simulator/BattleReplay.js';
 import { DEFAULT_SCENARIO, scenarioSchema, simulateScenario } from '../src/battle-simulator/scenario.js';
 import { buildReplayTimeline, sampleReplay, type ShotEvent } from '../src/battle-simulator/timeline.js';
@@ -20,12 +21,12 @@ describe('replay state follows navigation', () => {
     expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(`#${shots[0]!.shot.sourceId}`);
     fireEvent.click(screen.getByRole('button', { name: 'Next shot' }));
     expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent(`#${shots[1]!.shot.sourceId}`);
-    fireEvent.click(screen.getByRole('button', { name: 'Replay from start' }));
+    fireEvent.change(screen.getByLabelText('Battle timeline'), { target: { value: '0' } });
     expect(screen.queryByRole('table', { name: 'Damage distribution' })).not.toBeInTheDocument();
   });
 
   it('snaps the native range last step to the exact finish, including mutual destruction', () => {
-    const simulation = simulateScenario(scenarioSchema.parse({ ...DEFAULT_SCENARIO, seed: 0, aegisLevel: 0,
+    const simulation = simulateScenario(scenarioSchema.parse({ ...DEFAULT_SCENARIO, seed: 1, aegisLevel: 0,
       attackers: [{ id: 'a', fleet: { DART: 1 } }], defenders: [{ id: 'd', fleet: { DART: 1 } }] }));
     const timeline = buildReplayTimeline(simulation.recording);
     expect(timeline.recording.rounds.at(-1)?.after.every(ship => ship.hp === 0)).toBe(true);
@@ -33,20 +34,21 @@ describe('replay state follows navigation', () => {
     fireEvent.change(screen.getByLabelText('Battle timeline'), { target: { value: String(Math.floor(timeline.duration * 100) / 100) } });
     expect(screen.getByText('Both fleets were destroyed.')).toBeInTheDocument();
     expect(screen.getByLabelText('Battle timeline')).toHaveValue(String(timeline.duration));
-    fireEvent.click(screen.getByRole('button', { name: 'Replay from start' }));
+    fireEvent.change(screen.getByLabelText('Battle timeline'), { target: { value: '0' } });
     expect(screen.queryByText('Both fleets were destroyed.')).not.toBeInTheDocument();
   });
 
-  it('does not label the sixth round end as a retreat phase', () => {
+  // A raid that cannot crack the transports runs every round: the last one ends without retreats.
+  it('does not label the last round end as a retreat phase', () => {
     const run = simulateScenario(scenarioSchema.parse({ ...DEFAULT_SCENARIO, seed: 0, aegisLevel: 0,
-      attackers: [{ id: 'a', fleet: { CITADEL: 1 }, tech: { SHIP_SHIELDS: 4 } }], defenders: [{ id: 'd', fleet: { CITADEL: 1 }, tech: { SHIP_SHIELDS: 4 } }] }));
+      attackers: [{ id: 'a', fleet: { DART: 5 } }], defenders: [{ id: 'd', fleet: { ATLAS: 10 } }] }));
     const timeline = buildReplayTimeline(run.recording);
-    expect(timeline.rounds.at(-1)?.round).toBe(6);
+    expect(timeline.rounds.at(-1)?.round).toBe(COMBAT.rounds);
     expect(sampleReplay(timeline, timeline.rounds.at(-1)!.retreatAt + .1).phase).toBe('ROUND_END');
   });
 
   it('shows monument control separately when both fleets are destroyed', () => {
-    const simulation = simulateScenario(scenarioSchema.parse({ ...DEFAULT_SCENARIO, environment: 'MONUMENT', seed: 0, aegisLevel: 0,
+    const simulation = simulateScenario(scenarioSchema.parse({ ...DEFAULT_SCENARIO, environment: 'MONUMENT', seed: 1, aegisLevel: 0,
       attackers: [{ id: 'a', fleet: { CATACLYSM: 1 } }], defenders: [{ id: 'd', fleet: { CATACLYSM: 1 } }] }));
     expect(simulation.control).toBe('EMPTY');
     const timeline = buildReplayTimeline(simulation.recording);
@@ -76,7 +78,7 @@ describe('replay state follows navigation', () => {
     expect(screen.getByLabelText('Battle timeline')).toHaveValue('12.5');
   });
 
-  it('pauses while the player opens the round and camera explanation', () => {
+  it('pauses while the player opens the round explanation', () => {
     render(<BattleReplay simulation={simulateScenario(DEFAULT_SCENARIO)} environment="PLANET" />);
     const guide = screen.getByText('Simultaneous round · shown shot by shot').closest('details')!;
     fireEvent(guide, new Event('toggle', { bubbles: true }));

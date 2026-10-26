@@ -636,6 +636,7 @@ export const dossier = {
   shapeNote: "射撃可能な戦力の資源価値で示します。50%を超える種類が過半数です。",
   shapeUnread: "未読",
   shapeUnreadNote: "彼らの ヴェール は、プローブを送信した 造船所 よりも強力です。",
+  shapeRangesNote: "攻撃できる艦の価値に基づきます。各割合は範囲で、実際の割合はその中にあります。",
   shieldLabel: "シールドチャージ",
   shieldNote: "船体が攻撃する前に襲撃の砲撃を受け、数時間かけて砲撃を補充します。",
   unarmedLabel: "列内では非武装",
@@ -680,6 +681,7 @@ export const dossier = {
   doctrinesNone: "戦闘研究なし",
   doctrinesNote: "敵艦は基本値より強化されています。攻撃時にはこの倍率が適用されます。",
   doctrinesNoneNote: "探査機による観測時、敵は艦船の戦闘研究を持っていませんでした。",
+  researchWindowNote: "範囲として観測しました。実際のレベルはそれぞれの範囲内にあります。レベルが高いほど相手の艦は強く戦います。",
 
   surfaceGapLabel: "この惑星の基本情報",
   surfaceGapMissing: "この惑星はまだ観測していません",

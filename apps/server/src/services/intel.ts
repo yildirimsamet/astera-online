@@ -23,6 +23,7 @@ import {
   fleetCount,
   combatValue,
   classReading,
+  researchReading,
   garrisonOf,
   unarmedCount,
   radarRevealsBearing,
@@ -1078,7 +1079,7 @@ export async function resolveProbe(
     bands a report already carried and the detection roll below are untouched.
   */
   const line = garrisonOf(ready, {});
-  const shape = classReading(line, accuracy);
+  const shape = classReading(line, accuracy, seededFrom(mission.id, 0xc1a_55e));
   const shield = fuzzBand(standing.shield, accuracy, seededFrom(mission.id, 0x5e1d_0a));
   const unarmed = fuzzBand(unarmedCount(line), accuracy, seededFrom(mission.id, 0x0a4_3ed));
   /*
@@ -1103,7 +1104,9 @@ export async function resolveProbe(
       supporters: standingSupport.supporters,
       defence: fuzzBand(combatValue(standingSupport.fleet), accuracy, seededFrom(mission.id, 0x5a9_d1e)),
       fleetSize: fuzzBand(fleetCount(standingSupport.fleet), accuracy, seededFrom(mission.id, 0x5a9_517)),
-      classReading: standingSupport.supporters > 0 ? classReading(standingSupport.fleet, accuracy) : null,
+      classReading: standingSupport.supporters > 0
+        ? classReading(standingSupport.fleet, accuracy, seededFrom(mission.id, 0x5a9_c1a))
+        : null,
     };
   }
   /*
@@ -1173,14 +1176,18 @@ export async function resolveProbe(
     invisibly on every battle and quietly devalue the scouting flight that the
     whole information layer is built to sell.
   */
+  /*
+    AS WINDOWS, combat v3 (owner 2026-10-25): no probe reads a level exactly, only a window
+    holding it — two levels at the 80% ceiling. On a stream of its own, like the bands above.
+  */
   const owner = target.controllerPlayerId;
   const held = owner === null ? new Map<string, number>() : await researchLevels(tx, owner);
-  const doctrines = owner === null
+  const research = owner === null
     ? undefined
-    : Object.fromEntries(
-      COMBAT_RESEARCH_PROJECTS
-        .map((id) => [id, held.get(id) ?? 0] as const)
-        .filter(([, level]) => level > 0),
+    : researchReading(
+      Object.fromEntries(COMBAT_RESEARCH_PROJECTS.map((id) => [id, held.get(id) ?? 0])),
+      accuracy,
+      seededFrom(mission.id, 0x7e5_ea7),
     );
   /*
     AND HOW MANY WEAPONS IT CAN SHOOT DOWN. T10 · owner, 2026-10-01.
@@ -1218,7 +1225,7 @@ export async function resolveProbe(
   const silhouette = outside
     ? {
       ...silhouetteOf(outside),
-      ...(doctrines === undefined ? {} : { doctrines }),
+      ...(research === undefined ? {} : { research }),
       ...(owner === null ? {} : { interceptors: charges.length }),
       ...(loyalty === undefined ? {} : { loyalty }),
     }

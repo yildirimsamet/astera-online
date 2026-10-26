@@ -475,7 +475,7 @@ describe('the holds a pirate is left with', () => {
     expect(pirateOverrun(departed)).toEqual(departed);
   });
 
-  it('takes a lone hold that six rounds could not sink', () => {
+  it('takes a lone hold that the rounds could not sink', () => {
     const raw = fight({ DART: 1 }, { ATLAS: 1 });
     expect(raw.grade).toBe('REPELLED');
     expect(raw.defenderSurvivors.ATLAS).toBe(1);
@@ -485,7 +485,7 @@ describe('the holds a pirate is left with', () => {
   });
 
   it('leaves the result alone while a pirate warship still stands', () => {
-    const raw = fight({ DART: 1 }, { RAMPART: 2, COURIER: 1 });
+    const raw = fight({ DART: 1 }, { RAMPART: 6, COURIER: 1 });
     expect(raw.defenderSurvivors.RAMPART).toBeGreaterThan(0);
     expect(pirateOverrun(raw)).toBe(raw);
   });

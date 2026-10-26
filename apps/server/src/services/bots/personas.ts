@@ -331,11 +331,16 @@ export const BOTS = {
    */
   hopelessRatio: 5,
   /**
-   * FORECASTS ONE TURN MAY RUN. Each is ~45 ms of fights on the worker that lands
-   * every raid on time (D52, a one-second tick); six keeps a turn's judgement well
-   * under that tick.
+   * READINGS ONE TURN MAY WEIGH. Combat v3 reads the launch sheet's power ruler, no
+   * longer dozens of fights, so this only keeps one turn's look as short as a person's.
    */
   forecastsPerTurn: 6,
+  /**
+   * THE RATIO A CAREFUL HABIT CALLS CLEARING THE WALL, and the one at which a raid is
+   * counted to carry the whole haul home. Measured 2026-10-25 on the v3 engine: from 1:2
+   * the weaker line leaves the field (destroyed or retreated) in every fight.
+   */
+  clearRatio: 2,
 
   /**
    * How often the worker looks at the roster at all. Twenty seconds since

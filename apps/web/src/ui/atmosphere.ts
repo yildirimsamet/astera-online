@@ -17,6 +17,7 @@ export const ATMOSPHERE = {
   academy: { src: `${BASE}/academy-v1.webp`, position: '50% 45%' },
   donate: { src: `${BASE}/donate-v1.webp`, position: '50% 45%' },
   feedback: { src: `${BASE}/feedback-v1.webp`, position: '50% 45%' },
+  simulator: { src: `${BASE}/simulator-v1.webp`, position: '62% 55%' },
   commanderRoom: { src: `${BASE}/commander-room-v2.webp`, position: '50% 22%' },
   repair: { src: `${BASE}/repair-v2.webp`, position: '50% 72%' },
   interceptor: { src: `${BASE}/interceptor-v4.webp`, position: '50% 32%' },

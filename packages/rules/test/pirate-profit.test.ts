@@ -68,18 +68,23 @@ describe('pirate launch economics', () => {
     expect(collected).not.toHaveProperty('capturedHull');
   });
 
-  it('does not let a collector that retreated alive lift wreck after the battle', () => {
+  // Combat v3: unarmed hulls never retreat in battle, so a collector lifts wreck only by outliving the fight.
+  it('keeps a wounded collector in the fight and lifts nothing once it is lost', () => {
     const config = { ...input, attacker: { DART: 20, GARBAGE_COLLECTOR: 1 }, crew: { CORSAIR: 2 },
       level: 1 as const, tech: {}, hoard: zero, fuel: 0,
       damage: [{ hull: 'GARBAGE_COLLECTOR' as const, count: 1, damageBp: 8000 }] };
-    const fight = resolveBattle([soloStack(config.attacker, { tech: {} }, config.damage)],
-      [{ stackId: 'pirate', playerId: '', fleet: config.crew, tech: { tech: {}, damageMult: pirateStats(1).damageMult }, maintenanceExempt: true }],
-      0, seededFrom('retreated-collector', 1), 'HP_PLANET', true);
-    expect(fight.attackerRetreated?.GARBAGE_COLLECTOR).toBe(1);
-    expect(fleetCount(fight.attackerLosses)).toBeGreaterThan(0);
-    const trial = pirateRaidTrial(config, seededFrom('retreated-collector', 1));
-    expect(trial.returning.GARBAGE_COLLECTOR).toBe(1);
-    expect(trial.salvage).toEqual(zero);
+    let lost = 0;
+    for (let i = 1; i <= 16; i++) {
+      const fight = resolveBattle([soloStack(config.attacker, { tech: {} }, config.damage)],
+        [{ stackId: 'pirate', playerId: '', fleet: config.crew, tech: { tech: {}, damageMult: pirateStats(1).damageMult }, maintenanceExempt: true }],
+        0, seededFrom('retreated-collector', i), 'HP_PLANET', true);
+      expect(fight.attackerRetreated?.GARBAGE_COLLECTOR ?? 0).toBe(0);
+      const trial = pirateRaidTrial(config, seededFrom('retreated-collector', i));
+      if ((trial.returning.GARBAGE_COLLECTOR ?? 0) > 0) continue;
+      lost++;
+      expect(trial.salvage).toEqual(zero);
+    }
+    expect(lost).toBeGreaterThan(0);
   });
 
   it('includes outbound destruction and full launch fuel when the fleet never reaches the fight', () => {

@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  combatOutcomeTable,
   combatValue,
+  exactPowerRange,
   fleetCargo,
-  forecastLines,
   missionFuel,
   pirateHoard,
   pirateStats,
-  pirateOverrun,
-  resolveCombat,
+  readPowerRange,
   type Fleet,
 } from '@astera/rules';
 import {
@@ -16,38 +16,71 @@ import {
   planPirateRaid,
   planWorldRaid,
   raidingWing,
+  ratioForLoss,
+  researchOf,
   type Nerve,
   type WallReading,
 } from '../src/services/bots/judgement.js';
 import { BOTS, BOT_PERSONAS } from '../src/services/bots/personas.js';
 
 /**
- * A BOT READS THE SAME FORECAST A PERSON DOES, AND ONLY FLIES WHAT IT CAN WIN.
+ * A BOT READS THE SAME RULER A PERSON DOES, AND ONLY FLIES WHAT IT CAN WIN.
  * Owner report, 2026-09-19: *"Hayvan gibi filosu olan oyuncuya saçma sapan 1-2 tane
  * gemi gönderip duruyorlar."*
  *
- * The launch sheet's lines (`forecastLines` / `forecastLoss`, the engine the server
- * grades with) against the probe's bands: the least favourable wall the reading
- * allows must still fall to the wing, the fight must not cost more than the habit
- * will pay, and the haul must be worth the fuel.
+ * Combat v3 (owner 2026-10-25): the launch sheet's ruler is the matchup power ratio the
+ * probe's ranges allow (`readPowerRange`), and the owner's outcome table says what a side
+ * loses at a ratio. A bot flies only where the worst ratio the reading allows — padded by
+ * `wallMargin` — costs no more of the wing than its habit pays, and where the haul pays
+ * for the fuel.
  */
 
 const bold: Nerve = { need: 'BREAKS', maxLoss: 1, lootOverFuel: 0 };
 const careful: Nerve = { need: 'CLEARS', maxLoss: 1, lootOverFuel: 0 };
+const none = { low: 0, high: 0 };
 
 const reading = (over: Partial<WallReading> = {}): WallReading => ({
   defence: { low: 0, high: 0 },
   stock: { low: 50_000, high: 60_000 },
   shield: { low: 0, high: 0 },
-  unarmed: { low: 0, high: 0 },
   classReading: null,
-  doctrines: {},
+  research: {},
   domeCeiling: 0,
   ...over,
 });
 
 const fleet: Fleet = { DART: 40, WARDEN: 10 };
 const base = { fleet, tech: {}, distance: 900, deuterium: 1_000_000 };
+
+/** The worst ratio a wing holds against a host line of `value`, padded as the bot pads it. */
+const worst = (wing: Fleet, value: number): number =>
+  readPowerRange({ fleet: wing, tech: {} }, [{ value: { low: value, high: value }, research: {} }], none)!.ratio.low / BOTS.wallMargin;
+/** The host value at which this wing's padded worst ratio is exactly `ratio`. */
+const wallAt = (wing: Fleet, ratio: number): number => {
+  let low = 1, high = 10_000_000;
+  for (let i = 0; i < 60; i++) {
+    const mid = (low + high) / 2;
+    if (worst(wing, mid) > ratio) low = mid; else high = mid;
+  }
+  return low;
+};
+
+describe('the loss a habit pays, as a ratio', () => {
+  it('reads the owner’s table: the least ratio at which the stronger side loses no more than that', () => {
+    const table = combatOutcomeTable();
+    expect(ratioForLoss(1)).toBe(1);
+    expect(ratioForLoss(table.find((row) => row.ratio === 2)!.strongLoses.high)).toBeCloseTo(2, 9);
+    expect(ratioForLoss(0.2)).toBeGreaterThan(2);
+    expect(ratioForLoss(0.2)).toBeLessThan(2.5);
+    expect(ratioForLoss(0.45)).toBeGreaterThan(1.6);
+    expect(ratioForLoss(0.45)).toBeLessThan(1.8);
+    expect(ratioForLoss(0)).toBe(Infinity);
+  });
+
+  it('asks more of a careful habit than of the raider', () => {
+    expect(ratioForLoss(BOT_PERSONAS.BUILDER.nerve.maxLoss)).toBeGreaterThan(ratioForLoss(BOT_PERSONAS.RAIDER.nerve.maxLoss));
+  });
+});
 
 describe('a raid on a world', () => {
   it('never throws two ships at a wall that dwarfs them', () => {
@@ -65,49 +98,53 @@ describe('a raid on a world', () => {
     expect(plan?.wing).toEqual(raidingWing(fleet, BOTS.wingShares[0]!));
   });
 
-  it('commits more of the line only as far as the wall asks, and the lines agree', () => {
+  it('commits more of the line only as far as the wall asks', () => {
     const full = raidingWing(fleet, BOTS.wingShares.at(-1)!);
     const smallest = raidingWing(fleet, BOTS.wingShares[0]!);
-    // A wall the full wing clears in the worst case and the smallest does not.
-    const fullClears = forecastLines(full, { attackerTech: {}, defenderTech: {}, shield: { low: 0, high: 0 },
-      unarmed: { low: 0, high: 0 }, wall: { kind: 'UNKNOWN' } }).clears.low;
-    const smallClears = forecastLines(smallest, { attackerTech: {}, defenderTech: {}, shield: { low: 0, high: 0 },
-      unarmed: { low: 0, high: 0 }, wall: { kind: 'UNKNOWN' } }).clears.low;
-    const wall = ((smallClears + fullClears) / 2) / BOTS.wallMargin;
-    const plan = planWorldRaid({
-      ...base,
-      reading: reading({ defence: { low: wall * 0.9, high: wall } }),
-      nerve: careful,
-    });
+    const wall = wallAt(full, BOTS.clearRatio * 1.05);
+    expect(worst(smallest, wall)).toBeLessThan(BOTS.clearRatio);
+    const plan = planWorldRaid({ ...base, reading: reading({ defence: { low: wall * 0.9, high: wall } }), nerve: careful });
     expect(plan).not.toBeNull();
     expect(combatValue(plan!.wing)).toBeGreaterThan(combatValue(smallest));
     expect(combatValue(plan!.wing)).toBeLessThanOrEqual(combatValue(full));
+    expect(worst(plan!.wing, wall)).toBeGreaterThanOrEqual(BOTS.clearRatio);
   });
 
   it('lets a bold habit settle for breaking a wall a careful one would leave alone', () => {
     const full = raidingWing(fleet, BOTS.wingShares.at(-1)!);
-    const lines = forecastLines(full, { attackerTech: {}, defenderTech: {}, shield: { low: 0, high: 0 },
-      unarmed: { low: 0, high: 0 }, wall: { kind: 'UNKNOWN' } });
-    expect(lines.breaks.low).toBeGreaterThan(lines.clears.low);
-    const wall = ((lines.clears.low + lines.breaks.low) / 2) / BOTS.wallMargin;
+    const wall = wallAt(full, (1 + BOTS.clearRatio) / 2);
     const input = { ...base, reading: reading({ defence: { low: wall, high: wall } }) };
     expect(planWorldRaid({ ...input, nerve: careful })).toBeNull();
     expect(planWorldRaid({ ...input, nerve: bold })).not.toBeNull();
   });
 
+  it('never attacks a wall the reading allows to be the stronger', () => {
+    const full = raidingWing(fleet, BOTS.wingShares.at(-1)!);
+    const wall = wallAt(full, 0.95);
+    expect(planWorldRaid({ ...base, reading: reading({ defence: { low: wall, high: wall } }), nerve: bold })).toBeNull();
+  });
+
   /**
    * KLAN SAVUNMA DESTEĞİ: the raid meets the host AND the clanmates standing there, so the
-   * probe's separate support reading joins the wall — the same sum the launch sheet draws.
+   * probe's separate support reading joins the wall — the same lines the launch sheet reads.
    */
   it('counts the clan support standing at the world into the wall', () => {
     const full = raidingWing(fleet, BOTS.wingShares.at(-1)!);
-    const lines = forecastLines(full, { attackerTech: {}, defenderTech: {}, shield: { low: 0, high: 0 },
-      unarmed: { low: 0, high: 0 }, wall: { kind: 'UNKNOWN' } });
-    const half = (lines.clears.low / BOTS.wallMargin) * 0.6;
+    const half = wallAt(full, BOTS.clearRatio * 1.6);
     const alone = reading({ defence: { low: half, high: half } });
     expect(planWorldRaid({ ...base, reading: alone, nerve: careful })).not.toBeNull();
-    const supported = reading({ defence: { low: half, high: half }, support: { low: half, high: half } });
+    const supported = reading({ defence: { low: half, high: half }, support: { value: { low: half, high: half } } });
     expect(planWorldRaid({ ...base, reading: supported, nerve: careful })).toBeNull();
+  });
+
+  it('reads the research the probe brought home into the wall', () => {
+    const full = raidingWing(fleet, BOTS.wingShares.at(-1)!);
+    const wall = wallAt(full, BOTS.clearRatio * 1.1);
+    const plain = reading({ defence: { low: wall, high: wall } });
+    expect(planWorldRaid({ ...base, reading: plain, nerve: careful })).not.toBeNull();
+    const drilled = reading({ defence: { low: wall, high: wall },
+      research: { SHIP_POWER: { low: 4, high: 5 }, SHIP_ARMOR: { low: 4, high: 5 }, SHIP_SHIELDS: { low: 3, high: 4 } } });
+    expect(planWorldRaid({ ...base, reading: drilled, nerve: careful })).toBeNull();
   });
 
   it('refuses a fight that costs more of the wing than the habit pays', () => {
@@ -145,6 +182,17 @@ describe('a raid on a world', () => {
   });
 });
 
+describe('the research a record carries', () => {
+  it('reads combat v3 windows as they are, older exact levels as one-level windows, a caretaker as none', () => {
+    const windows = { SHIP_POWER: { low: 2, high: 3 } };
+    expect(researchOf({ kind: 'CAPITAL', research: windows })).toEqual(windows);
+    expect(researchOf({ kind: 'COLONY', doctrines: { SHIP_ARMOR: 3 } })).toEqual({ SHIP_ARMOR: { low: 3, high: 3 } });
+    expect(researchOf({ kind: 'NEUTRAL' })).toEqual({});
+    // Never read: anything the ladders allow, never nothing.
+    expect(researchOf({ kind: 'CAPITAL' })).toBeUndefined();
+  });
+});
+
 describe('the wing', () => {
   /** A raid that cannot carry the haul home is a raid for nothing. */
   it('takes every cargo hull along, whatever share of the line flies', () => {
@@ -160,19 +208,15 @@ describe('the wing', () => {
   });
 });
 
-describe('what is not worth asking the engine', () => {
-  /**
-   * A forecast is a few dozen fights, on the worker that lands every raid on time.
-   * A wall several times the wing's own firepower falls to no wall shape the
-   * reading could hold, so it is refused without asking.
-   */
-  it('calls a wall hopeless well past anything the best case clears', () => {
+describe('what is not worth reading', () => {
+  /** A wall several times the wing's own firepower falls to no wall the reading could hold. */
+  it('calls a wall hopeless where even the best case leaves the wing the weaker', () => {
     const wing = { DART: 20 };
-    const best = forecastLines(wing, { attackerTech: {}, defenderTech: {}, shield: { low: 0, high: 0 },
-      unarmed: { low: 0, high: 0 }, wall: { kind: 'UNKNOWN' } }).breaks.high;
-    expect(hopeless(wing, best * 0.9)).toBe(false);
-    expect(hopeless(wing, combatValue(wing) * BOTS.hopelessRatio + 1)).toBe(true);
-    expect(combatValue(wing) * BOTS.hopelessRatio).toBeGreaterThan(best);
+    const wall = combatValue(wing) * BOTS.hopelessRatio;
+    expect(hopeless(wing, wall * 0.5)).toBe(false);
+    expect(hopeless(wing, wall + 1)).toBe(true);
+    const best = readPowerRange({ fleet: wing, tech: {} }, [{ value: { low: wall, high: wall }, research: {} }], none)!.ratio.high;
+    expect(best).toBeLessThan(1);
   });
 });
 
@@ -191,22 +235,19 @@ describe('a raid on a pirate', () => {
   });
 
   /**
-   * A bot reads the pirate as the server settles it: holds that outlive the crew's last warship
-   * are taken (`pirateOverrun`, 2026-10-06), so a wing that kills the line clears the pirate.
-   * The 25% base shield lets a smaller wing clear the armed line. Verify that actual
-   * cargo still survives normal fire and is then taken by overrun.
+   * The crew is known exactly, so its ratio is one figure; its holds fly behind the line and add
+   * nothing to it, and they are taken once the line falls (`pirateOverrun`, 2026-10-06).
    */
-  it('counts a crew whose holds outlive its line as cleared', () => {
+  it('weighs the crew exactly and sends the smallest wing that clears it', () => {
     const crew: Fleet = { PIKE: 1, COURIER: 2 };
-    const plan = planPirateRaid({ ...base, fleet: { DART: 5 }, crew, damageMult: pirateStats(1).damageMult,
-      hoard: pirateHoard(crew), nerve: careful });
-    expect(plan?.wing).toEqual({ DART: 2 });
-    const fought = resolveCombat(plan!.wing, crew, 0, () => .5, {
-      attacker: { tech: {} }, defender: { tech: {}, damageMult: pirateStats(1).damageMult },
-    });
-    expect(fought.defenderSurvivors.COURIER ?? 0).toBeGreaterThan(0);
-    expect(pirateOverrun(fought).grade).toBe('DECISIVE');
-    expect(pirateOverrun(fought).defenderSurvivors).toEqual({});
+    const damageMult = pirateStats(1).damageMult;
+    const plan = planPirateRaid({ ...base, fleet: { DART: 5 }, crew, damageMult, hoard: pirateHoard(crew), nerve: careful });
+    const ratio = (wing: Fleet) => exactPowerRange({ fleet: wing, tech: {} }, crew, { tech: {}, damageMult }).ratio.low;
+    expect(plan).not.toBeNull();
+    expect(ratio(plan!.wing)).toBeGreaterThanOrEqual(BOTS.clearRatio);
+    const smaller = BOTS.wingShares.map((share) => raidingWing({ DART: 5 }, share))
+      .filter((wing) => (wing.DART ?? 0) > 0 && (wing.DART ?? 0) < plan!.wing.DART!);
+    for (const wing of smaller) expect(ratio(wing)).toBeLessThan(BOTS.clearRatio);
   });
 
   it('takes a crew it clears, with the smallest wing that does', () => {

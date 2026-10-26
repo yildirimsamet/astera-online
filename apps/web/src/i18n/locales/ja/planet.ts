@@ -256,9 +256,9 @@ export const planet = {
       "迎撃弾1発で、レーダーL3の範囲に入るか望遠鏡で確認された次のデス・スター1基を破壊します。発射時に消費されます。",
     /** Taktik geri çekilme: the defender's own threshold and the fuel it takes. */
     escapeReady:
-      "戦術的撤退 · 火力{{at}}以上でこの防衛線を全滅させる襲撃から、船は退避します · 重水素{{fuel}}を消費",
+      "戦術的撤退 · この防衛線（艦船と稼働中の砲）の{{ratio}}倍の戦力で全滅させる襲撃から、船は退避します · 重水素{{fuel}}を消費",
     escapeShort:
-      "戦術的撤退には重水素{{fuel}}が必要ですが、備蓄は{{stock}}です。火力{{at}}以上の襲撃から退避できません。",
+      "戦術的撤退には重水素{{fuel}}が必要ですが、備蓄は{{stock}}です。この防衛線（艦船と稼働中の砲）の{{ratio}}倍の戦力の襲撃から退避できません。",
     shieldBand: "シールド",
     shieldNote:
       "イージスは船や地上砲へのダメージを先に吸収し、毎時最大値の35%を再生します。",
@@ -740,7 +740,7 @@ export const launch = {
   stays: "ステイホーム",
   staysUnits_one: "{{count}}ユニット",
   staysUnits_other: "{{count}} ユニット",
-  staysPower: "パワー {{value}}",
+  staysPower: "武装ユニット値 {{value}}",
   cargoEach: "{{amount}} 貨物各",
   cargoAdds: "+{{amount}} 貨物",
   paceBrief: "燃料を節約・減速区間12時間以内",

@@ -1,6 +1,8 @@
 import { ANTI_STRATEGIC, INTEL, SENSOR } from './constants.js';
 import { COMBAT_CLASSES, COMBAT_HULLS, HULLS, fleetEntries, fleetValue } from './hulls.js';
+import { RESEARCH_MAX_LEVEL } from './research.js';
 import { clamp, seededFrom } from './rng.js';
+import { COMBAT_RESEARCH_PROJECTS, type TechLevels } from './tech.js';
 import type {
   ClarityState,
   CombatClass,
@@ -8,6 +10,7 @@ import type {
   FleetStatus,
   InstrumentId,
   MassClass,
+  ResearchProjectId,
   Rng,
   Vec3,
 } from './types.js';
@@ -209,31 +212,51 @@ export interface Band {
   mid: number;
 }
 
+/** Whole units, low to high; the truth is always inside. */
+export interface ReadingRange { low: number; high: number }
+
 /**
- * WHAT A PROBE CAN TELL ABOUT THE SHAPE OF A WALL. D199.
+ * WHAT A PROBE CAN TELL ABOUT THE SHAPE OF A WALL. D199, combat v3 (owner 2026-10-25).
  *
  *   · `NONE` — nothing that fires was standing there. Any probe can say that; the
  *     firepower band already reads 0 – 0.
- *   · `UNREAD` — the probe was too weak to tell (its Shipyard below the Veil).
- *   · `EVEN` — no class held more than half of the firepower.
- *   · `DOMINANT` — one class held more than half.
- *   · `SHARES` — the whole split, in `classShareStep` steps that add up to 100.
+ *   · `RANGES` — each class's share of the firepower, in whole percents, as a range as
+ *     wide as the accuracy leaves: ±10 points at the 80% ceiling.
+ *
+ * Reports written before combat v3 carry the old steps, still read as they were:
+ * `UNREAD` (too weak to tell), `EVEN` (no class over half), `DOMINANT` (one over half)
+ * and `SHARES` (the split in `classShareStep` steps).
  */
 export type ClassReading =
   | { kind: 'NONE' }
+  | { kind: 'RANGES'; shares: Record<CombatClass, ReadingRange> }
   | { kind: 'UNREAD' }
   | { kind: 'EVEN' }
   | { kind: 'DOMINANT'; cls: CombatClass }
   | { kind: 'SHARES'; shares: Record<CombatClass, number> };
 
+/** How much of a 0–`scale` reading the accuracy leaves open: 20% of it at the ceiling. */
+const openWidth = (accuracy: number, scale: number): number =>
+  Math.round((1 - clamp(accuracy, INTEL.accuracyMin, INTEL.accuracyMax)) * scale + 1e-9);
+
 /**
- * Read the counter-cycle shape of a defending line, as a probe of this accuracy can.
+ * A window of `width` holding `truth`, placed by one draw and kept inside `min`–`max`, so its
+ * edges never tell where inside it the truth sits.
+ */
+function windowAround(truth: number, width: number, min: number, max: number, draw: number): ReadingRange {
+  const low = clamp(truth - draw * width, min, Math.max(min, max - width));
+  return { low: Math.floor(low), high: Math.min(max, Math.ceil(low + width)) };
+}
+
+/**
+ * Read the counter-cycle shape of a defending line, as a probe of this accuracy can:
+ * one draw per class from `rng`.
  *
  * Only what FIRES is weighed, by value — the same axis `combatValue` measures the
  * wall on — so the three ground guns count in their own classes and a hangar of
  * transports counts for nothing. Transports are a separate reading (`unarmedCount`).
  */
-export function classReading(line: Fleet, accuracy: number): ClassReading {
+export function classReading(line: Fleet, accuracy: number, rng: Rng): ClassReading {
   const value: Record<CombatClass, number> = { SKIRMISHER: 0, BULWARK: 0, LANCE: 0 };
   let total = 0;
   for (const [id, n] of fleetEntries(line)) {
@@ -244,45 +267,25 @@ export function classReading(line: Fleet, accuracy: number): ClassReading {
     total += v;
   }
   if (total <= 0) return { kind: 'NONE' };
-
-  // A hair of float noise must not turn a par probe into a weak one.
-  const reaches = (bar: number) => accuracy >= bar - 1e-9;
-  if (!reaches(INTEL.classMajorityAccuracy)) return { kind: 'UNREAD' };
-
-  if (reaches(INTEL.classSharesAccuracy)) {
-    return { kind: 'SHARES', shares: inSteps(value, total, INTEL.classShareStep) };
-  }
-  for (const cls of COMBAT_CLASSES) {
-    if (value[cls] / total > INTEL.classMajority) return { kind: 'DOMINANT', cls };
-  }
-  return { kind: 'EVEN' };
+  const width = openWidth(accuracy, 100);
+  const shares = {} as Record<CombatClass, ReadingRange>;
+  for (const cls of COMBAT_CLASSES) shares[cls] = windowAround(100 * value[cls] / total, width, 0, 100, rng());
+  return { kind: 'RANGES', shares };
 }
 
 /**
- * Shares in whole steps that add up to exactly 100 — largest remainder, ties to the
- * cycle's own order, so the same wall always prints the same split.
+ * COMBAT RESEARCH AS A WINDOW. Owner, 2026-10-25: every combat project read as a window of
+ * levels holding the truth — two levels at the 80% ceiling ("3–4"), three at par, five at
+ * the floor. One draw per project, in `COMBAT_RESEARCH_PROJECTS` order.
  */
-function inSteps(
-  value: Record<CombatClass, number>,
-  total: number,
-  step: number,
-): Record<CombatClass, number> {
-  const units = Math.round(100 / step);
-  const raw = COMBAT_CLASSES.map((cls) => (value[cls] / total) * units);
-  const whole = raw.map((r) => Math.floor(r));
-  let left = units - whole.reduce((a, b) => a + b, 0);
-  const byRemainder = raw
-    .map((r, i) => ({ i, rest: r - Math.floor(r) }))
-    .sort((a, b) => b.rest - a.rest || a.i - b.i);
-  for (const { i } of byRemainder) {
-    if (left <= 0) break;
-    whole[i] = (whole[i] ?? 0) + 1;
-    left -= 1;
+export function researchReading(levels: TechLevels, accuracy: number, rng: Rng): Partial<Record<ResearchProjectId, ReadingRange>> {
+  const out: Partial<Record<ResearchProjectId, ReadingRange>> = {};
+  for (const id of COMBAT_RESEARCH_PROJECTS) {
+    const max = RESEARCH_MAX_LEVEL[id], span = Math.min(openWidth(accuracy, 5), max);
+    const truth = clamp(Math.floor(levels[id] ?? 0), 0, max);
+    const low = clamp(truth - Math.floor(rng() * (span + 1)), 0, max - span);
+    out[id] = { low, high: low + span };
   }
-  const out: Record<CombatClass, number> = { SKIRMISHER: 0, BULWARK: 0, LANCE: 0 };
-  COMBAT_CLASSES.forEach((cls, i) => {
-    out[cls] = (whole[i] ?? 0) * step;
-  });
   return out;
 }
 

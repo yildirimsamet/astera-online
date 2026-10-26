@@ -104,7 +104,7 @@ describe('the menu groups what it offers', () => {
     const onOpen = vi.fn();
     const view = show({ onOpen });
     const tiles = [...view.container.querySelectorAll('[data-menu-tile]')];
-    expect(tiles.filter(tile => tile.querySelector('[data-atmosphere-image]'))).toHaveLength(6);
+    expect(tiles.filter(tile => tile.querySelector('[data-atmosphere-image]'))).toHaveLength(7);
     const rewards = screen.getByRole('button', { name: named(i18n.t('menu.rewardsLabel'), i18n.t('menu.rewardsHint')) });
     expect(rewards.querySelector('img')).toHaveAttribute('alt', '');
     fireEvent.click(rewards);

@@ -71,4 +71,21 @@ describe('real battle capture and frozen access policy', () => {
     capture.recording!.truncated = true;
     expect(buildBattleReplay(capture, result, meta)).toBeNull();
   });
+
+  it('carries the combat v3 battle balance and every ship that broke apart to the client', () => {
+    for (let seed = 1; seed < 200; seed++) {
+      const attackers = [a({ DART: 12 })], defenders = [d({ DART: 12 })];
+      const capture = prepareBattleReplay(attackers, defenders);
+      const result = resolveBattle(attackers, defenders, 0, mulberry32(seed), 'HP_PLANET', true, capture.recording);
+      const payload = buildBattleReplay(capture, result, meta)!;
+      expect(payload.recording.damageScale).toEqual(capture.recording!.damageScale);
+      expect(payload.recording.damageScale?.attacker).toBeGreaterThan(0);
+      const broke = payload.recording.rounds.find(round => (round.exploded?.length ?? 0) > 0);
+      if (!broke) continue;
+      expect(broke.exploded).toEqual(capture.recording!.rounds.find(round => round.round === broke.round)!.exploded);
+      return;
+    }
+    throw new Error('no recorded break-up');
+  });
 });
+

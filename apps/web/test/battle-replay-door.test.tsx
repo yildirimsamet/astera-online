@@ -2,23 +2,27 @@ import type { Api } from '../src/api/client.js';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadBattleReplayView, reloadReplayPage } from '../src/battle-simulator/replayView.js';
+import { loadBattleReplayView, loadSimulatorView, reloadReplayPage } from '../src/battle-simulator/replayView.js';
 import { BattleReplayAction } from '../src/battle-simulator/BattleReplayAction.js';
-import { simulateScenario, DEFAULT_SCENARIO } from '../src/battle-simulator/scenario.js';
+import { simulateScenario, scenarioSchema, DEFAULT_SCENARIO, type BattleScenario } from '../src/battle-simulator/scenario.js';
 
 const fetchReplay = vi.fn<Api['battleReplay']>();
-vi.mock('../src/battle-simulator/replayView.js', () => ({ loadBattleReplayView: vi.fn(), reloadReplayPage: vi.fn() }));
+vi.mock('../src/battle-simulator/replayView.js', () => ({ loadBattleReplayView: vi.fn(), loadSimulatorView: vi.fn(), reloadReplayPage: vi.fn() }));
 vi.mock('../src/api/context.js', () => ({ useApi: () => ({ battleReplay: fetchReplay }) }));
+vi.mock('../src/battle-simulator/BattleSimulator.js', () => ({ BattleSimulator: ({ initialScenario, note, backLabel, onLeave }: { initialScenario?: BattleScenario; note?: string; backLabel?: string; onLeave: () => void }) =>
+  <div>Simulator · {Object.entries(initialScenario?.attackers[0]?.fleet ?? {}).sort().join(' ')} · pirate {initialScenario?.pirateLevel} · {note}<button onClick={onLeave}>{backLabel}</button></div> }));
 vi.mock('../src/battle-simulator/BattleReplay.js', () => ({ BattleReplay: ({ initialViewer }: { initialViewer: string }) => <div>Recorded fight · {initialViewer}<button>Inspect recorded ship</button></div> }));
-beforeEach(() => { fetchReplay.mockReset(); vi.mocked(reloadReplayPage).mockReset(); vi.mocked(loadBattleReplayView).mockReset().mockImplementation(async () => (await import('../src/battle-simulator/BattleReplayDialog.js')).default); });
-const show = (status: 'AVAILABLE' | 'NOT_RECORDED' | 'INSUFFICIENT_FORCE' | 'TOO_LARGE' = 'AVAILABLE') => {
+beforeEach(() => { fetchReplay.mockReset(); vi.mocked(reloadReplayPage).mockReset(); vi.mocked(loadBattleReplayView).mockReset().mockImplementation(async () => (await import('../src/battle-simulator/BattleReplayDialog.js')).default);
+  vi.mocked(loadSimulatorView).mockReset().mockImplementation(async () => (await import('../src/battle-simulator/SimulatorDialog.js')).default); });
+const show = (status: 'AVAILABLE' | 'NOT_RECORDED' | 'INSUFFICIENT_FORCE' | 'TOO_LARGE' = 'AVAILABLE', pirateLevel?: number) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<QueryClientProvider client={client}><BattleReplayAction kind="BATTLE" id="report-id" status={status} /></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><BattleReplayAction kind="BATTLE" id="report-id" status={status} {...(pirateLevel ? { pirateLevel } : {})} /></QueryClientProvider>);
 };
 describe('real report replay door', () => {
   it.each(['NOT_RECORDED', 'INSUFFICIENT_FORCE', 'TOO_LARGE'] as const)('explains %s without fetching protected telemetry', status => {
     show(status); expect(fetchReplay).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Watch battle' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try in simulator' })).not.toBeInTheDocument();
     expect(screen.getByTestId('replay-unavailable')).not.toHaveTextContent(/^$/);
   });
   it('loads only when opened, aborts on close, restores focus and leaves the report open', async () => {
@@ -68,5 +72,34 @@ describe('real report replay door', () => {
     await screen.findByText('Recorded fight · DEFENCE');
     fireEvent.click(screen.getByRole('button', { name: 'Return to report' }));
     expect(screen.queryByText('Recorded fight · DEFENCE')).not.toBeInTheDocument();
+  });
+
+  /** Owner 2026-10-26: the recorded forces open in the simulator, so a player can change one thing and fight it again. */
+  it('opens the recorded forces in the simulator over the report, and returns to it', async () => {
+    fetchReplay.mockResolvedValue({ viewer: 'ATTACK', replay: simulateScenario(DEFAULT_SCENARIO) });
+    show();
+    const opener = screen.getByRole('button', { name: 'Try in simulator' }); opener.focus(); fireEvent.click(opener);
+    const dialog = await screen.findByRole('dialog', { name: 'Battle simulator' });
+    await screen.findByText(new RegExp(`Simulator · ${Object.entries(DEFAULT_SCENARIO.attackers[0]!.fleet).sort().join(' ')} ·`));
+    expect(dialog).toHaveTextContent('Forces from the report · dice re-rolled');
+    fireEvent.click(screen.getByRole('button', { name: 'Return to report' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+  });
+
+  it('carries the pirate level from the report, since a replay does not record it', async () => {
+    const pirate = scenarioSchema.parse({ ...DEFAULT_SCENARIO, environment: 'MONUMENT', aegisLevel: 0, pirateLevel: 2,
+      attackers: [{ id: '1', fleet: { CORSAIR: 6 } }], defenders: [{ id: '1', fleet: { VIPER: 3 } }] });
+    fetchReplay.mockResolvedValue({ viewer: 'ATTACK', replay: simulateScenario(pirate) });
+    show('AVAILABLE', 2); fireEvent.click(screen.getByRole('button', { name: 'Try in simulator' }));
+    await screen.findByText(/pirate 2/);
+  });
+
+  it('closes the simulator with Escape', async () => {
+    fetchReplay.mockResolvedValue({ viewer: 'ATTACK', replay: simulateScenario(DEFAULT_SCENARIO) });
+    show(); fireEvent.click(screen.getByRole('button', { name: 'Try in simulator' }));
+    await screen.findByText(/Simulator ·/);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

@@ -1,18 +1,21 @@
 import {
   type ClassReading,
   type Fleet,
-  type ForecastInput,
-  type ForecastSpan,
   type HullId,
+  type LineReading,
+  type PowerRange,
+  type PowerSpan,
+  type ReadingRange,
+  type ResearchProjectId,
   type TechLevels,
   HULLS,
+  combatOutcomeTable,
   combatValue,
+  exactPowerRange,
   fleetCargo,
   fleetCount,
-  forecastLines,
-  forecastLoss,
   missionFuel,
-  wallKnowledgeOf,
+  readPowerRange,
 } from '@astera/rules';
 import { BOTS } from './personas.js';
 
@@ -21,20 +24,17 @@ import { BOTS } from './personas.js';
  * Owner report, 2026-09-19: *"Hayvan gibi filosu olan oyuncuya saçma sapan 1-2 tane
  * gemi gönderip duruyorlar."*
  *
- * The brain used to check only that a record EXISTED and then fly most of whatever
- * stood on the pad — so two Darts went at a war fleet, every evening, because the
- * probe that said so was never read. A person reads the launch sheet first, and this
- * is that sheet: the same `forecastLines` / `forecastLoss` the phone draws, run by
- * the same `resolveCombat` the server grades with, against the same bands the probe
- * brought home. Nothing here knows more than the report does.
+ * A person reads the launch sheet first, and this is that sheet. Combat v3 (owner
+ * 2026-10-25): the sheet's ruler is the matchup power ratio the probe's ranges allow
+ * (`readPowerRange`), and the owner's outcome table says what the stronger side loses
+ * at a ratio. Nothing here knows more than the report does.
  *
  * THREE QUESTIONS, IN THE ORDER A PERSON ASKS THEM:
  *
- *   1. Does the least favourable wall the reading allows still fall? The habit's
- *      nerve says what "fall" means — a careful commander wants it CLEARED, a raider
- *      settles for BROKEN. The wall is the band's top, widened by `wallMargin`
- *      because a reading ages and a fleet comes home.
- *   2. Is the worst loss the lines allow one this habit will pay?
+ *   1. Is the wing the stronger side against the worst wall the reading allows, padded
+ *      by `wallMargin` because a reading ages and a fleet comes home? A careful habit
+ *      wants the wall CLEARED (`clearRatio`); a raider settles for BREAKING it.
+ *   2. Does the table's loss at that ratio stay inside what this habit will pay?
  *   3. Does what the wing can carry home pay for the fuel, several times over?
  *
  * AND THE SMALLEST WING THAT PASSES, not the largest. A commander who sends the
@@ -56,21 +56,54 @@ export interface Nerve {
 /** What one probe report says about a world, as the launch sheet reads it. */
 export interface WallReading {
   /** Firepower standing at home, fuzzed by the probe's accuracy. */
-  readonly defence: ForecastSpan;
+  readonly defence: PowerSpan;
   /** What a DECISIVE raid could carry away, fuzzed the same way. */
-  readonly stock: ForecastSpan;
+  readonly stock: PowerSpan;
   /** Null on a report written before D199 — an unmeasured dome. */
-  readonly shield: ForecastSpan | null;
-  readonly unarmed: ForecastSpan | null;
+  readonly shield: PowerSpan | null;
   readonly classReading: ClassReading | null;
-  readonly doctrines: TechLevels;
+  /** Combat research windows (`researchOf`); undefined is anything the ladders allow. */
+  readonly research: Partial<Record<ResearchProjectId, ReadingRange>> | undefined;
   /** The most Aegis a raised dome could hold, used only when `shield` is unmeasured. */
   readonly domeCeiling: number;
   /**
    * Klan Savunma Desteği: the clanmates' ships standing there, as the probe read them
    * apart from the home fleet. They fight in the same line, so they join the wall.
    */
-  readonly support?: ForecastSpan | null;
+  readonly support?: LineReading | null;
+}
+
+/**
+ * THE RESEARCH A RECORD CARRIES, as the launch sheet reads it: combat v3 windows as they
+ * are, an older report's exact levels as one-level windows, a caretaker as none (it holds
+ * no research), and a record that never read it as anything the ladders allow.
+ */
+export function researchOf(silhouette: {
+  kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
+  research?: Partial<Record<ResearchProjectId, ReadingRange>>;
+  doctrines?: Partial<Record<ResearchProjectId, number>>;
+}): Partial<Record<ResearchProjectId, ReadingRange>> | undefined {
+  if (silhouette.research) return silhouette.research;
+  if (silhouette.doctrines) {
+    return Object.fromEntries(Object.entries(silhouette.doctrines).map(([id, level]) => [id, { low: level, high: level }]));
+  }
+  return silhouette.kind === 'NEUTRAL' ? {} : undefined;
+}
+
+/**
+ * THE LEAST RATIO AT WHICH THE STRONGER SIDE LOSES NO MORE THAN `maxLoss`, read off the
+ * owner's outcome table between its rows; Infinity for a loss the table never gets down to.
+ */
+export function ratioForLoss(maxLoss: number): number {
+  const rows = combatOutcomeTable();
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]!, loss = row.strongLoses.high;
+    if (loss > maxLoss) continue;
+    if (i === 0) return row.ratio;
+    const before = rows[i - 1]!, previous = before.strongLoses.high;
+    return before.ratio + (row.ratio - before.ratio) * (previous - maxLoss) / (previous - loss);
+  }
+  return Infinity;
 }
 
 export interface RaidPlan {
@@ -110,15 +143,14 @@ export function raidingWing(fleet: Fleet, share: number): Fleet {
 }
 
 /**
- * A WALL NO SHAPE OF IT COULD LOSE TO, refused without asking the engine. A forecast
- * is a few dozen fights on the worker that lands every raid on time; a wall
- * `hopelessRatio` times the wing's own firepower is past even the most favourable
- * edge any reading allows.
+ * A WALL NO SHAPE OF IT COULD LOSE TO, refused without reading it: a wall `hopelessRatio`
+ * times the wing's own firepower leaves the wing the weaker side at every edge any
+ * reading allows.
  */
 export const hopeless = (wing: Fleet, wallHigh: number): boolean =>
   wallHigh > combatValue(wing) * BOTS.hopelessRatio;
 
-/** How many forecasts one decision may run. Shared across every candidate a turn weighs. */
+/** How many readings one decision may weigh. Shared across every candidate a turn weighs. */
 export interface ForecastBudget {
   left: number;
 }
@@ -129,11 +161,13 @@ export interface ForecastBudget {
  */
 function smallestWing(
   common: Common,
-  input: ForecastInput,
-  wall: ForecastSpan,
+  weigh: (wing: Fleet) => PowerRange | null,
+  wallHigh: number,
+  margin: number,
   haul: number,
   budget: ForecastBudget,
 ): RaidPlan | null {
+  const need = Math.max(1, ratioForLoss(common.nerve.maxLoss), common.nerve.need === 'CLEARS' ? BOTS.clearRatio : 1);
   let previous = '';
   for (const share of BOTS.wingShares) {
     const wing = raidingWing(common.fleet, share);
@@ -145,20 +179,19 @@ function smallestWing(
     const fuel = missionFuel(wing, common.distance, 2);
     if (fuel > common.deuterium) continue;
 
-    if (hopeless(wing, wall.high)) continue;
+    if (hopeless(wing, wallHigh)) continue;
     if (budget.left <= 0) return null;
     budget.left -= 1;
-    const lines = forecastLines(wing, input);
-    const edge = common.nerve.need === 'CLEARS' ? lines.clears.low : lines.breaks.low;
-    // `clears`/`breaks` are the firepower at which the wing STOPS winning: below wins.
-    if (!(wall.high < edge)) continue;
-
-    const loss = forecastLoss(wing, wall, input);
-    if (loss.high > common.nerve.maxLoss) continue;
+    const power = weigh(wing);
+    if (!power) continue;
+    // The worst ratio the reading allows, padded: the wall is assumed `margin` times stronger.
+    const worst = power.ratio.low / margin;
+    // A strict pass: a wing exactly even with the wall is not the stronger side.
+    if (!(worst >= need && worst > 1)) continue;
 
     const carried = Math.min(haul, fleetCargo(wing, common.tech));
     // A wing that can only break the wall comes home with part of the haul at best.
-    const expectedLoot = lines.clears.low > wall.high ? carried : carried * 0.5;
+    const expectedLoot = worst >= BOTS.clearRatio ? carried : carried * 0.5;
     if (expectedLoot < fuel * common.nerve.lootOverFuel) continue;
     if (expectedLoot <= 0 && common.nerve.lootOverFuel > 0) continue;
 
@@ -172,26 +205,20 @@ export function planWorldRaid(
   budget: ForecastBudget = { left: BOTS.forecastsPerTurn },
 ): RaidPlan | null {
   const { reading } = input;
-  const none = { low: 0, high: 0 };
-  const forecast: ForecastInput = {
-    attackerTech: input.tech,
-    defenderTech: reading.doctrines,
-    // An unmeasured dome is anything up to the most the world can hold — the same
-    // assumption the launch sheet makes, never the kindest one.
-    shield: reading.shield ?? { low: 0, high: reading.domeCeiling },
-    unarmed: reading.unarmed ?? none,
-    wall: wallKnowledgeOf(reading.classReading ?? undefined),
-  };
-  const wall = {
-    low: reading.defence.low + (reading.support?.low ?? 0),
-    high: (reading.defence.high + (reading.support?.high ?? 0)) * BOTS.wallMargin,
-  };
-  return smallestWing(input, forecast, wall, Math.max(0, reading.stock.low), budget);
+  const lines: LineReading[] = [{ value: reading.defence, shape: reading.classReading, research: reading.research }];
+  if (reading.support && reading.support.value.high > 0) lines.push(reading.support);
+  // An unmeasured dome is anything up to the most the world can hold — the same
+  // assumption the launch sheet makes, never the kindest one.
+  const aegis = reading.shield ?? { low: 0, high: reading.domeCeiling };
+  const wallHigh = (reading.defence.high + (reading.support?.value.high ?? 0)) * BOTS.wallMargin;
+  return smallestWing(input, (wing) => readPowerRange({ fleet: wing, tech: input.tech }, lines, aegis),
+    wallHigh, BOTS.wallMargin, Math.max(0, reading.stock.low), budget);
 }
 
 /**
  * A pirate's crew is known exactly — its level is public and its roster follows
- * from it — so the wall is the crew itself and needs no margin.
+ * from it — so the wall is the crew itself and needs no margin. Its holds fly behind
+ * the line and are taken once it falls (`pirateOverrun`).
  */
 export function planPirateRaid(input: Common & {
   readonly crew: Fleet;
@@ -200,20 +227,10 @@ export function planPirateRaid(input: Common & {
 }, budget: ForecastBudget = { left: BOTS.forecastsPerTurn }): RaidPlan | null {
   if (fleetCount(input.crew) === 0) return null;
   if (input.hoard.alloy + input.hoard.crystal + input.hoard.deuterium <= 0) return null;
-  const forecast: ForecastInput = {
-    attackerTech: input.tech,
-    defenderTech: {},
-    defenderDamageMult: input.damageMult,
-    // Settled as the server settles it: holds outliving the line are taken (`pirateOverrun`).
-    pirate: true,
-    shield: { low: 0, high: 0 },
-    unarmed: { low: 0, high: 0 },
-    wall: { kind: 'EXACT', fleet: input.crew },
-  };
-  // The launch sheet's own axis for a crew: what of it can fire.
-  const firepower = combatValue(input.crew);
   const haul = input.hoard.alloy + input.hoard.crystal + input.hoard.deuterium;
-  return smallestWing(input, forecast, { low: firepower, high: firepower }, haul, budget);
+  return smallestWing(input,
+    (wing) => exactPowerRange({ fleet: wing, tech: input.tech }, input.crew, { tech: {}, damageMult: input.damageMult }),
+    combatValue(input.crew), 1, haul, budget);
 }
 
 /**

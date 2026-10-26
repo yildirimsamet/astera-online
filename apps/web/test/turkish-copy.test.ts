@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import i18n from '../src/i18n/index.js';
 
 /**
- * THE D199 SENTENCES, AS A TURKISH READER READS THEM. Found in review, on the phone
+ * THE D199 SENTENCES, AS A TURKISH READER READS THEM (and combat v3's ratio sentence). Found in review, on the phone
  * screenshots: four lines that were grammatical to the writer and wrong to the
  * reader, and two names that said one thing two ways.
  *
@@ -18,17 +18,13 @@ describe('the Turkish the force readings are written in', () => {
   const tr = i18n.getFixedT('tr');
   const en = i18n.getFixedT('en');
 
-  it('says where a line sits without saying "gold"', () => {
-    const clears = tr('counter.linesClears', { at: '12b' });
-    const breaks = tr('counter.linesBreaks', { at: '12b' });
-    // Owner report, 2026-10-06: "Tam başarı sınırı: 15b 20b · Kısmi başarı sınırı: 23b 31b — bu ne
-    // saçmalık". A bare "limit" read as what the wing NEEDS; the line states the condition.
-    expect(clears).toBe('Savunma en çok 12b ise tam başarı');
-    expect(breaks).toBe('Savunma en çok 12b ise en az kısmi başarı');
-    // The rule this test exists for, held on the reading rather than the wording:
-    // "12b altını" is read as GOLD before it is read as "what is under 12b", so the
-    // line may never reach for `altı` to say where it sits.
-    for (const line of [clears, breaks]) expect(line).not.toMatch(/alt[ıi]n/i);
+  /** Combat v3: the ratio sentence says the multiple once, in "kat", never "×… katı". */
+  it('says who is stronger once, as a multiple', () => {
+    const you = tr('counter.ratioYou', { band: '1,1–1,7' });
+    const them = tr('counter.ratioThem', { band: '2,0' });
+    expect(you).toBe('Sen 1,1–1,7 kat güçlüsün');
+    expect(them).toBe('Onlar 2,0 kat güçlü');
+    for (const line of [you, them, tr('counter.ratioOpen', { them: '1,3', you: '1,2' })]) expect(line).not.toMatch(/×/);
   });
 
   it('says where the transports stand without saying "moreover"', () => {

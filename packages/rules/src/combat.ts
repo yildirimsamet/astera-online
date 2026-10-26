@@ -22,6 +22,7 @@ import type { Fleet, Grade, HullId, Rng } from './types.js';
 import { partitionCombatFleet } from './shipMaintenance.js';
 import { resolveRandomBattle } from './randomBattle.js';
 import type { BattleRecording } from './battleRecording.js';
+import type { RetreatWindow } from './battleRetreat.js';
 
 /** Only the explicitly shield-disabled historical cohort replay uses these rounds. */
 const LEGACY_COMBAT_ROUNDS = 3;
@@ -42,6 +43,8 @@ export interface CombatRound {
   retreats?: CombatOwnerFleet[];
   /** Owner-specific physical deaths; never includes retreats. */
   casualties?: CombatOwnerFleet[];
+  /** Combat v3 critical damage: the part of `casualties` that broke apart after a hit. */
+  explosions?: CombatOwnerFleet[];
   round: number;
   /** The bounded shot multiplier rolled for each side. Present on newly resolved reports. */
   attackerRoll?: number;
@@ -63,7 +66,19 @@ export interface CombatRound {
   defenderLosses: Fleet;
 }
 
+/** What a combat v3 battle fixed at entry: matchup powers, the shared tempo and the stronger side's handicap. */
+export interface CombatBalance {
+  attackerPower: number;
+  defenderPower: number;
+  tempo: number;
+  handicap: number;
+  /** Each side's in-battle retreat window; null for a side that never retreats in this fight. */
+  attackerRetreat: RetreatWindow | null;
+  defenderRetreat: RetreatWindow | null;
+}
+
 export interface CombatResult {
+  balance?: CombatBalance;
   /** Active armed survivors that had firing eligibility at entry, preserving per-ship identity. */
   attackerCombatSurvivors?: Fleet;
   /** Included in physical survivors; excluded from later fire, control and loot. */
@@ -936,6 +951,7 @@ export function resolveCombat(
   );
   return {
     grade: joint.grade,
+    ...(joint.balance ? { balance: joint.balance } : {}),
     ...(joint.attackerRetreated ? { attackerCombatSurvivors: joint.attackerCombatSurvivors, attackerRetreated: joint.attackerRetreated, defenderRetreated: joint.defenderRetreated,
       attackerRetreatDamage: joint.attackerRetreatDamage, defenderRetreatDamage: joint.defenderRetreatDamage } : {}),
     lossRatio: joint.lossRatio,

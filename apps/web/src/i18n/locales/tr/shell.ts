@@ -185,6 +185,7 @@ export const menu = {
   rewardsHint: "Tamamladığın hedeflerden kazandığın kaynak ödüllerini al",
   guideLabel: 'Wiki',
   guideHint: 'Binalar, gemiler ve galaksinin kuralları',
+  simulatorHint: "İstediğin savaşı kur, nasıl bittiğini izle",
   rewardsWaiting: '{{count}} hazır',
   researchLabel: 'Araştırma',
   researchHint: "Tüm gezegenlerinde geçerli araştırmaları ve koşullarını incele",

@@ -255,9 +255,9 @@ export const planet = {
       "Une munition chargée détruit la première Étoile de la Mort détectée par un Radar de niveau 3 ou identifiée dans le champ de vision d’un Télescope ; elle est consommée lorsqu’elle tire.",
     /** Taktik geri çekilme : le seuil propre du défenseur et le carburant qu’il coûte. */
     escapeReady:
-      "Retraite tactique · un raid de {{at}}+ de feu qui anéantirait cette ligne ne trouve plus tes vaisseaux · le décollage brûle {{fuel}} Deutérium",
+      "Retraite tactique · un raid de {{ratio}}× la puissance de cette ligne (vaisseaux et canons actifs) qui l’anéantirait ne trouve plus tes vaisseaux · le décollage brûle {{fuel}} Deutérium",
     escapeShort:
-      "Retraite tactique · tes vaisseaux fuiraient un raid de {{at}}+ de feu, mais le décollage demande {{fuel}} Deutérium et le réservoir en contient {{stock}}",
+      "Retraite tactique · tes vaisseaux fuiraient un raid de {{ratio}}× la puissance de cette ligne (vaisseaux et canons actifs), mais le décollage demande {{fuel}} Deutérium et le réservoir en contient {{stock}}",
     shieldBand: "Bouclier",
     shieldNote:
       "L’Aegis absorbe les dégâts avant qu’ils n’atteignent tes unités. Ses niveaux augmentent le bouclier maximal ; il régénère chaque heure 35 % de sa valeur maximale.",
@@ -704,7 +704,7 @@ export const launch = {
   stays: "Reste au monde",
   staysUnits_one: "{{count}} unité",
   staysUnits_other: "{{count}} unités",
-  staysPower: "puissance {{value}}",
+  staysPower: "valeur des unités armées {{value}}",
   cargoEach: "{{amount}} de soute chacun",
   cargoAdds: "+{{amount}} de soute",
   paceBrief: "moins de carburant · trajet ralenti ≤12 h",

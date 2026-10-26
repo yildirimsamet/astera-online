@@ -64,43 +64,39 @@ export const counter = {
   matchupLabel: '{{attacker}} gegen {{defender}}: {{outcome}}, ×{{mult}} Schaden',
   cycleLabel: 'Scharmützler schlägt Bollwerk, Bollwerk schlägt Lanze, Lanze schlägt Scharmützler',
   /** Above the two bars on the launch sheet — the one name of the one force unit. D199. */
-  compareHeading: 'Wert der bewaffneten Einheit',
+  /** Combat v3 force ruler (owner 2026-10-25): each side’s power, their ratio, and the rule one tap deep. */
+  compareHeading: "Relative Stärke",
+  compareLabel: "Deine Stärke {{yours}}; ihre Stärke {{theirs}}",
+  comparePick: "Wähle Schiffe, um sie gegen dieses Ziel abzuwägen.",
+  compareMeaning: "Feuerkraft und Haltbarkeit gegeneinander, Klassenvorteile eingerechnet. Die stärkere Seite behält mehr von ihrer Flotte.",
+  compareRule: "Stärke zählt bewaffnete Schiffe und aktive Bodengeschütze: ihre Forschung, Schäden und den Klassenkreislauf gegen die andere Seite, dazu die Aegis-Ladung. Unbewaffnete Schiffe zählen nicht. Eine Sonde misst in Bereichen, daher ist jede Seite ein Bereich; das untere Ende des Verhältnisses ist dein schlechtester Fall. Messungen veralten, und in jedem Kampf fallen die Schüsse zufällig.",
+  ratioYou: "Du bist {{band}}× so stark",
+  ratioThem: "Sie sind {{band}}× so stark",
+  ratioOpen: "Die Messung klärt nicht, wer stärker ist: sie bis {{them}}×, du bis {{you}}×",
+  ratioEven: "Etwa gleich stark",
+  ratioNoFire: "Dort feuert nichts zurück",
+  ratioUnarmed: "Dein Flügel hat nichts, das feuert",
+  axisTheirs: "Sie stärker",
+  axisEven: "Gleich",
+  axisYours: "Du stärker",
+  outcomeHeading: "Was jede Seite im Schnitt behält",
+  outcomeRatio: "Verhältnis",
+  outcomeWeak: "Schwächere behält",
+  outcomeStrong: "Stärkere verliert",
+  outcomeNote: "Durchschnitt vieler Kämpfe. Lebend zurückgezogene Schiffe zählen als behalten. Bei 1:1 behalten größere Flotten mehr.",
+  escapeRun: "In der ganzen Messung beträgt deine Stärke mindestens das {{ratio}}-Fache ihrer. Kann dein Flügel ihre Linie vernichten und zahlt ihr Tank den Start, heben ihre Schiffe ab.",
+  escapeStand: "Ihre Schiffe bleiben und kämpfen: In der ganzen Messung liegt deine Stärke unter dem {{ratio}}-Fachen ihrer.",
+  escapeRule: "Ihre Schiffe heben vor dem Kampf ab, wenn deine Stärke mindestens das {{ratio}}-Fache ihrer Linie beträgt, aktive Bodengeschütze eingeschlossen. Dein Flügel muss diese Linie außerdem vernichten können. Ihr Planet muss einen Hin- und Rückflug über {{distance}} Einheiten bezahlen. Bodengeschütze bleiben, und Ressourcen können weiter geplündert werden.",
   compareYours: 'Senden',
   compareTheirs: 'Steht da',
-  /** The reading has an age and a width, and both are the fact. */
   compareRecord: '{{source}}, {{age}}',
   compareLive: '{{source}}, jetzt lesen',
   compareUnknown: 'Nie gemessen',
   compareUnknownWhy: 'Eine Sonde würde eine Zahl auf dieser Seite des Balkens platzieren.',
-  compareLabel: 'Sie senden {{yours}}; die letzte Lesung ihrer Welt war {{theirs}}',
-  /**
-   * WHAT THE FIGURE AND THE LINES ARE, ONE TAP DEEP. D199.
-   *
-   * The figure is what the hulls and guns that can fire cost — D183 took the
-   * transports out of it. The lines are the battle engine run on this wing against
-   * every wall the reading allows, so they include the counter cycle, research and
-   * a known shield; what they leave out is said, never implied.
-   */
-  /** Taktik geri çekilme im Vergleich: die Aussage und die Regel einen Tipp tiefer. */
-  escapeRun: "Die Messung erfüllt die {{ratio}}-fache Rückzugsgrenze und die Linie kann vernichtet werden. Mit genug Treibstoff heben ihre Schiffe ab.",
-  escapeStand: "Ihre Schiffe bleiben und kämpfen: Die Messung erfüllt die {{ratio}}-fache Rückzugsgrenze nicht, oder dieser Flügel kann die Linie nicht vernichten.",
   escapeUnsure: 'Ihre Schiffe könnten abheben; die Messung klärt nicht alle Rückzugsbedingungen.',
-  escapeAt: 'Rückzugsgrenze: {{at}}',
-  escapeRule:
-    "Der Ressourcenwert der bewaffneten Angreifer muss mindestens das {{ratio}}-Fache der bewaffneten Verteidiger betragen, einschließlich aktiver Bodengeschütze. Die stehende Verteidigung müsste vollständig vernichtet werden. Der Planet muss einen {{distance}}-Einheiten-Rundflug bezahlen können. Dann entkommen die Schiffe dem Kampf. Bodengeschütze bleiben; Ressourcen können weiterhin geplündert werden.",
   escapeMinimumRule: 'Der Verteidiger braucht außerdem mindestens {{count}} Kampfschiffe vor Ort. Eine Sondenmessung zeigt ihre Anzahl nicht.',
   compareRuleToggle: 'Was ist das?',
-  compareMeaning: 'Ressourcenkosten, kein Angriffsschaden. Eine größere Flotte allein garantiert keinen Sieg.',
-  compareRule:
-    "Verglichen wird der Ressourcenwert bewaffneter Schiffe und Bodengeschütze; Schild und unbewaffnete Schiffe zählen nicht dazu. Die Prognose berücksichtigt auch Klassen, Forschung und den bekannten Schild. Teilweiser und voller Erfolg erfordern mindestens ein überlebendes Schiff. Unbekannte Klassen oder Schilde erzeugen Schwellenbereiche: links der schlechteste, rechts der beste Fall. Geschätzte Verluste zeigen mögliche Kosten. Messungen können veraltet sein; zufällige Schussvariation bleibt unberücksichtigt.",
-  forecastCalculating: "Kampfschätzung wird berechnet…",
-  forecastFailed: "Kampfschätzung nicht verfügbar. Ändere die Flotte für einen neuen Versuch.",
-  linesClears: 'Voller Erfolg bei höchstens {{at}} Verteidigung',
-  linesBreaks: 'Mindestens Teilerfolg bei höchstens {{at}}',
   lineJoin: ' · ',
-  lossLabel: 'Dein geschätzter Verlust: {{share}} des Flügels (nach Ressourcenwert)',
-  lossUncertainty: 'Dies ist eine Verlustspanne, die auf aktuellen Informationen basiert, keine Gewinnchance.',
-  lossTotalRisk: 'Hohes Risiko: Keines Ihrer Schiffe kehrt möglicherweise zurück.',
   /** What the lines could not see, and what is already known about the reading. D199. */
   noteShieldUnmeasured: 'Schildladung nicht gemessen',
   noteShapeUnread: 'Form der Wand nicht gelesen',

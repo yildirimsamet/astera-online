@@ -650,6 +650,7 @@ export const dossier = {
   shapeUnread: "Illisible",
   shapeUnreadNote:
     "Leur Voile est plus avancé que le Chantier Spatial qui a envoyé la sonde.",
+  shapeRangesNote: "Selon la valeur de ce qui peut tirer. Chaque part est une fourchette ; la vraie part s’y trouve.",
   shieldLabel: "Puissance du bouclier",
   shieldNote:
     "Il absorbe les tirs du raid avant les coques et se régénère en quelques heures.",
@@ -689,6 +690,7 @@ export const dossier = {
     "Ces recherches augmentent la puissance d’attaque et la résistance de coque des vaisseaux. Les valeurs du rapport correspondent au moment du passage de la sonde.",
   doctrinesNoneNote:
     "Aucune recherche de combat n’était terminée au moment du passage de la sonde.",
+  researchWindowNote: "Lu en fenêtres : chaque niveau réel se trouve dans sa fenêtre. Des niveaux plus élevés font mieux combattre leurs vaisseaux.",
   surfaceGapLabel: "Identité et développement de la planète",
   surfaceGapMissing: "Tu n’as jamais observé ce monde",
   surfaceGapWhy:

@@ -1,4 +1,5 @@
 import { renderHook } from '@testing-library/react';
+import { readPowerRange, shieldHp } from '@astera/rules';
 import { describe, expect, it } from 'vitest';
 import type { GalaxyPlanet, IntelView } from '../src/api/schemas.js';
 import { useTargetReading } from '../src/lib/useTargetReading.js';
@@ -7,9 +8,8 @@ import { useTargetReading } from '../src/lib/useTargetReading.js';
  * THE TARGET'S READING, AGAINST WHATEVER WING IS ASKED ABOUT. F3.5a.
  *
  * The launch sheet asks it about the fleet being packed; the dossier (E2) about what
- * stands home. Its behaviour inside the launch is pinned by the launch suites; this
- * pins the two things the dossier leans on: no probe draws no enemy band and no
- * lines, and an empty wing draws no lines even against a reading.
+ * stands home. Combat v3: it weighs the wing against the reading with `readPowerRange`,
+ * fed everything the probe read and nothing it did not.
  */
 
 const NOW = Date.now();
@@ -48,9 +48,9 @@ const probed: IntelView = {
   probeCost: { alloy: 25, crystal: 25, deuterium: 0 },
 };
 
-const read = (intel: IntelView | undefined, wing: Record<string, number>) =>
+const read = (intel: IntelView | undefined, wing: Record<string, number>, over: Partial<GalaxyPlanet> = {}) =>
   renderHook(() => useTargetReading({
-    target: { kind: 'world', world },
+    target: { kind: 'world', world: { ...world, ...over } },
     intel,
     reports: [],
     tech: {},
@@ -58,22 +58,45 @@ const read = (intel: IntelView | undefined, wing: Record<string, number>) =>
     rulesetVersion: 0,
   })).result.current;
 
+const report = probed.probeReports[0]!;
+
 describe('the target reading', () => {
-  it('puts the probe band on the axis, dated, and draws lines for a wing that can fight', () => {
+  it('stamps the reading and weighs the wing against it as the rules read it', () => {
     const reading = read(probed, { DART: 40 });
-    expect(reading.opposing).toMatchObject({ low: 27_000, high: 53_000 });
     expect(reading.opposing?.ageMinutes).toBeGreaterThanOrEqual(119);
-    expect(reading.lines).not.toBeNull();
+    // An old report with no research read: anything the ladders allow.
+    expect(reading.power).toEqual(readPowerRange({ fleet: { DART: 40 }, tech: {} },
+      [{ value: report.defence, shape: undefined, research: undefined }], { low: 0, high: 0 }));
   });
 
-  it('draws no enemy band and no lines where nobody has looked', () => {
+  it('reads the research windows a v3 probe brought home', () => {
+    const research = { SHIP_POWER: { low: 2, high: 3 } };
+    const reading = read({ ...probed, probeReports: [{ ...report, research }] }, { DART: 40 });
+    expect(reading.power).toEqual(readPowerRange({ fleet: { DART: 40 }, tech: {} },
+      [{ value: report.defence, shape: undefined, research }], { low: 0, high: 0 }));
+  });
+
+  it('reads the doctrines of a report written before v3 as exact levels', () => {
+    const reading = read({ ...probed, probeReports: [{ ...report, doctrines: { SHIP_ARMOR: 2 } }] }, { DART: 40 });
+    expect(reading.power).toEqual(readPowerRange({ fleet: { DART: 40 }, tech: {} },
+      [{ value: report.defence, shape: undefined, research: { SHIP_ARMOR: { low: 2, high: 2 } } }], { low: 0, high: 0 }));
+  });
+
+  it('meets an unmeasured dome as anything up to the most this world can hold', () => {
+    const reading = read(probed, { DART: 40 }, { shielded: true });
+    expect(reading.power).toEqual(readPowerRange({ fleet: { DART: 40 }, tech: {} },
+      [{ value: report.defence, shape: undefined, research: undefined }], { low: 0, high: shieldHp(world.coreLevel) }));
+  });
+
+  it('weighs the wing alone where nobody has looked', () => {
     const reading = read(undefined, { DART: 40 });
     expect(reading.opposing).toBeNull();
-    expect(reading.lines).toBeNull();
     expect(reading.classReading).toBeNull();
+    expect(reading.power?.mine.low).toBeGreaterThan(0);
+    expect(reading.power?.theirs).toEqual({ low: 0, high: 0 });
   });
 
-  it('draws no lines for an empty wing, even against a reading', () => {
-    expect(read(probed, {}).lines).toBeNull();
+  it('weighs nothing for an empty wing, even against a reading', () => {
+    expect(read(probed, {}).power).toBeNull();
   });
 });

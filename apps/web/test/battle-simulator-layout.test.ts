@@ -17,11 +17,45 @@ describe('battle formation identity and portrait composition', () => {
     for (const ship of ground) {
       const pose = poses.get(ship.id)!;
       const radius = Math.hypot(pose.x - planet.x, pose.y - planet.y, pose.z - planet.z);
-      // The model's lower face must stay outside the sphere, not just its centre.
-      expect(radius - pose.scale * .5).toBeGreaterThan(planet.radius + .02);
-      expect(radius).toBeLessThan(planet.radius + pose.scale * .7 + .1);
+      // A gun stands on its own plinth: the pose is where that plinth meets the ground.
+      expect(radius).toBeGreaterThanOrEqual(planet.radius);
+      expect(radius).toBeLessThan(planet.radius + .05);
     }
   });
+  // Owner 2026-10-26: scattered guns looked silly, and 50 or 100 shrank into one blob on a small planet.
+  it.each([6, 20, 50, 100])('sets %i ground guns in ordered batteries facing the attacker, on a planet big enough to hold them', count => {
+    const scenario = structuredClone(DEFAULT_SCENARIO);
+    const third = Math.floor(count / 3);
+    scenario.attackers[0]!.fleet = { DART: 1 };
+    scenario.defenders[0]!.fleet = { RAMPART: 4, BASTION: third, HARPOON: third, THORN: count - 2 * third };
+    const { recording } = simulateScenario(scenario), poses = layoutBattle(recording);
+    const { planet } = battlefieldEnvironment(recording, poses);
+    const guns = recording.ships.filter(ship => HULLS[ship.hull].ground).map(ship => ({ ship, pose: poses.get(ship.id)! }));
+    expect(guns).toHaveLength(count);
+    for (const { pose } of guns) {
+      expect(pose.scale).toBe(1);
+      // Every gun sits on the face the attacker's camera sees.
+      const n = { x: pose.x - planet.x, y: pose.y - planet.y, z: pose.z - planet.z }, length = Math.hypot(n.x, n.y, n.z);
+      expect((n.y * .82 - n.z * .58) / length / Math.hypot(.82, .58)).toBeGreaterThan(.3);
+    }
+    for (let i = 0; i < guns.length; i++) for (let j = i + 1; j < guns.length; j++) {
+      const a = guns[i]!.pose, b = guns[j]!.pose;
+      expect(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z)).toBeGreaterThan(1.1);
+    }
+    // Read front row to back row, left to right: each kind of gun is one unbroken battery.
+    const rows = [...new Set(guns.map(({ pose }) => pose.y.toFixed(3)))];
+    expect(rows.length).toBeLessThanOrEqual(Math.ceil(count / 4));
+    const reading = [...guns].sort((a, b) => a.pose.y - b.pose.y || a.pose.x - b.pose.x).map(({ ship }) => ship.hull);
+    expect(reading.filter((hull, i) => i > 0 && hull !== reading[i - 1]).length).toBe(2);
+    expect(planet.radius).toBeGreaterThanOrEqual(6);
+    if (count === 100) {
+      const twenty = structuredClone(scenario);
+      twenty.defenders[0]!.fleet = { RAMPART: 4, BASTION: 6, HARPOON: 6, THORN: 8 };
+      const small = simulateScenario(twenty).recording;
+      expect(planet.radius).toBeGreaterThan(battlefieldEnvironment(small, layoutBattle(small)).planet.radius);
+    }
+  });
+
   it('fits sixteen ships side by side and starts a new row at seventeen', () => {
     const scenario = structuredClone(DEFAULT_SCENARIO);
     scenario.attackers[0]!.fleet = { DART: 33 };

@@ -82,6 +82,7 @@ export function buildBattleReplay(capture: BattleReplayCapture, result: Pick<Com
   }
   return {
     recording: { schemaVersion: 1, roundLimit: source.roundLimit, initialAegis: source.initialAegis, ships, rounds: source.rounds, finalState,
+      ...(source.damageScale ? { damageScale: source.damageScale } : {}),
       ...(context.aftermath && targets.size > 0 ? { aftermath: [{ kind: context.aftermath, shipIds: [...targets] }] } : {}) },
     owners: capture.owners.filter(owner => used.has(owner.stackId)), result: { grade: result.grade, defenceSalvage: result.defenceSalvage },
     environment: context.environment, aegisCapacity: context.aegisCapacity, defenceOffline: context.defenceOffline,

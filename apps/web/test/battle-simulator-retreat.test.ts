@@ -6,7 +6,7 @@ import { layoutBattle, retreatDestinations, sampleRetreatPose } from '../src/bat
 
 describe('escaped units remain alive outside the battlefield', () => {
   const run = simulateScenario(scenarioSchema.parse({ ...DEFAULT_SCENARIO, seed: 0, aegisLevel: 0,
-    attackers: [{ id: 'a', fleet: { DART: 18 } }], defenders: [{ id: 'd', fleet: { DART: 18 } }] }));
+    attackers: [{ id: 'a', fleet: { DART: 36 } }], defenders: [{ id: 'd', fleet: { DART: 18 } }] }));
   const timeline = buildReplayTimeline(run.recording), poses = layoutBattle(run.recording);
 
   it('only exposes escapes that have happened, with their true identity, round and remaining health', () => {

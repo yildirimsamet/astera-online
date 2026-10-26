@@ -3685,8 +3685,12 @@ export const probeReports = pgTable('probe_reports', {
      * rule. So the doctrines are a PROBE product — earned, never public — and
      * they freeze at the look like everything else here. Absent on reports
      * written before this existed, which read as no research at all.
+     *
+     * Written only before combat v3; a newer report carries `research` instead.
      */
     doctrines?: Partial<Record<ResearchProjectId, number>>;
+    /** Combat research as windows holding each level (combat v3, owner 2026-10-25). */
+    research?: Partial<Record<ResearchProjectId, { low: number; high: number }>>;
     /**
      * HOW MANY DEATH STARS THIS WORLD CAN SHOOT DOWN. T10 · owner, 2026-10-01.
      *
@@ -3780,6 +3784,7 @@ export const probeWorldMemories = pgTable('probe_world_memories', {
     satellites: string[];
     shielded: boolean;
     doctrines?: Partial<Record<ResearchProjectId, number>>;
+    research?: Partial<Record<ResearchProjectId, { low: number; high: number }>>;
     interceptors?: number;
     loyalty?: number;
   }>().notNull(),

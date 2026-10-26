@@ -1,8 +1,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
-  COMBAT, HULLS, counterMult, battleRetreatPolicy, fleetCount, fleetEntries, mulberry32, resolveBattle,
-  resolveCombat, resolveMonumentCombat, resolveRaid, seededFrom,
+  COMBAT, HULLS, counterMult, fleetCount, mulberry32, resolveBattle,
+  resolveMonumentCombat, resolveRaid, seededFrom,
   type Fleet, type HullId, type JointAttackerStack,
 } from '../src/index.js';
 import { resolveRandomBattle, resolveVolley, type VolleyShip } from '../src/randomBattle.js';
@@ -16,26 +16,25 @@ const attack = (fleet: Fleet): JointAttackerStack[] =>
 const defence = (fleet: Fleet) => [{ stackId: 'd', playerId: 'd', fleet, tech: { tech: {} } }];
 const mean = () => .5;
 
-describe('six-round distributed combat: approved production contract', () => {
-  it.each(distributedCombatReference)('$name preserves ownership, shot budgets and determinism under the new target cap', spec => {
+/*
+ * The per-ship engine's invariants, kept through combat v3 (owner 2026-10-25): eight rounds,
+ * one target per shot. The v3 rules themselves are pinned in combat-v3.test.ts.
+ */
+describe('per-ship combat: invariants carried into v3', () => {
+  it.each(distributedCombatReference)('$name preserves ownership, shot budgets and determinism', spec => {
     // These inputs cover the earlier all-target calibration. Its numeric golden
-    // results remain in the fixture as history, not as expectations for this new rule.
+    // results remain in the fixture as history, not as expectations for v3.
     const rng = () => typeof spec.seed === 'string' ? seededFrom(spec.seed) : mulberry32(spec.seed);
     const recording = createBattleRecording();
     const result = resolveRandomBattle(spec.attackers, spec.defenders, spec.shield, rng(), spec.precise, spec.maintenance, recording);
     expect(result).toEqual(resolveRandomBattle(spec.attackers, spec.defenders, spec.shield, rng(), spec.precise, spec.maintenance));
-    expect(result.rounds.every(round => round.distributedFire === true && round.targetLimit === 10)).toBe(true);
-    const unchangedSelection = [spec.attackers, spec.defenders].every(side =>
-      side.reduce((sum, owner) => sum + fleetCount(owner.fleet), 0) <= COMBAT.targetsPerShot
-      && new Set(side.flatMap(owner => fleetEntries(owner.fleet).map(([hull]) => HULLS[hull].cls))).size <= 1);
-    const unchangedOpening = spec.shield === 0 || spec.attackers.every(owner => (owner.fleet.NULLIFIER ?? 0) === 0);
-    if (unchangedSelection && unchangedOpening) expect({ ...result, rounds: result.rounds.map(({ distributedFire: _model, targetLimit: _cap, ...round }) => round) }).toEqual(spec.expected);
+    expect(result.rounds.every(round => round.distributedFire === true && round.targetLimit === COMBAT.targetsPerShot)).toBe(true);
     for (const owner of [...result.contributions, ...result.defenders]) {
       expect(fleetCount(owner.sent)).toBe(fleetCount(owner.survivors) + fleetCount(owner.losses));
       expect(fleetCount(owner.retreated ?? {})).toBeLessThanOrEqual(fleetCount(owner.survivors));
     }
     for (const round of recording.rounds) for (const shot of [...round.attackerShots, ...round.defenderShots]) {
-      expect(new Set(shot.hits.map(hit => hit.targetId)).size).toBeLessThanOrEqual(10);
+      expect(new Set(shot.hits.map(hit => hit.targetId)).size).toBe(shot.hits.length);
       expect(shot.hits.reduce((sum, hit) => sum + (hit.normalAegisDamage + hit.shieldDamage + hit.hullDamage) / hit.counter, shot.unusedBaseDamage)).toBeCloseTo(shot.baseDamage, 7);
       for (const hit of shot.hits) {
         expect(hit.hpAfter).toBeGreaterThanOrEqual(0);
@@ -45,30 +44,11 @@ describe('six-round distributed combat: approved production contract', () => {
     }
   });
 
-  it('uses six rounds and the rounded percentage windows, excluding support power', () => {
-    expect(COMBAT.rounds).toBe(6);
-    const fresh = resolveCombat({ CITADEL: 1 }, { CITADEL: 1 }, 0, mean, { attacker: { tech: {} }, defender: { tech: {} } });
-    expect(fresh.rounds[0]).toHaveProperty('distributedFire', true);
-    for (const [n, weakChance, weakHp, strongChance, strongHp] of [
-      [100, .10, .30, .10, .30], [149, .10, .30, .10, .30],
-      [150, .20, .46, .10, .30], [199, .20, .46, .10, .30],
-      [200, .28, .66, .10, .30], [299, .28, .66, .10, .30],
-      [300, .40, .80, .06, .26], [400, .40, .80, .06, .26],
-    ] as const) {
-      const a = { CORSAIR: n, COURIER: 10000 }, d = { CORSAIR: 100, GARBAGE_COLLECTOR: 10000 };
-      const weak = { chance: weakChance, threshold: weakHp }, strong = { chance: strongChance, threshold: strongHp };
-      expect(battleRetreatPolicy(a, d)).toEqual({ attacker: strong, defender: weak });
-      expect(battleRetreatPolicy(d, a)).toEqual({ attacker: weak, defender: strong });
-    }
-  });
-
-  it('splits ONE shot among ten eligible ships without mutating the live round snapshot', () => {
+  it('never mutates the live round snapshot it fires from', () => {
     const from = [ship('CORSAIR', 1000, 408)], to = Array.from({ length: 10 }, () => ship('DART'));
     const before = structuredClone({ from, to });
     const r = resolveVolley(from, to, 1, mulberry32(19), 0, 1);
-    expect(r.hp.filter(hp => hp < 1000)).toHaveLength(10);
     expect(r.hp.reduce((sum, hp) => sum + 1000 - hp, 0)).toBeCloseTo(408, 8);
-    expect(new Set(r.hp).size).toBeGreaterThan(1);
     expect({ from, to }).toEqual(before);
   });
 
@@ -79,7 +59,7 @@ describe('six-round distributed combat: approved production contract', () => {
     expect(r.credited).toEqual([100]);
   });
 
-  it('protects cargo AND collectors, then moves surplus to both within the same shot', () => {
+  it('protects cargo AND collectors, then moves surplus to one of them within the same shot', () => {
     const from = [ship('CORSAIR', 1000, 20)];
     const protectedHit = resolveVolley(from,
       [ship('DART', 1000), ship('COURIER', 100), ship('GARBAGE_COLLECTOR', 100)], 1, () => 0, 0, 1);
@@ -87,9 +67,8 @@ describe('six-round distributed combat: approved production contract', () => {
     const overflow = resolveVolley(from,
       [ship('DART', 5, 0, 3), ship('COURIER', 100), ship('GARBAGE_COLLECTOR', 100)], 1, () => 0, 0, 1);
     expect(overflow.hp[0]).toBe(0);
-    // Twelve base damage left, divided between two SUPPORT targets at the existing 1.6 counter.
-    expect(overflow.hp[1]).toBeCloseTo(90.4, 10);
-    expect(overflow.hp[2]).toBeCloseTo(90.4, 10);
+    // Twelve base damage left, landing on one SUPPORT target at the existing 1.6 counter.
+    expect(overflow.hp.slice(1).sort()).toEqual([100 - 12 * COMBAT.strongMult, 100].sort());
   });
 
   it('converts surplus back to base damage before applying a different target counter', () => {
@@ -108,40 +87,24 @@ describe('six-round distributed combat: approved production contract', () => {
     expect(r.credited).toEqual([160]);
   });
 
-  it('executes all SIX rounds without healing and never retreats after the last round', () => {
-    const side = { tech: { SHIP_SHIELDS: 4 } };
-    const r = resolveBattle(attack({ CITADEL: 1 }).map(row => ({ ...row, tech: side })),
-      defence({ CITADEL: 1 }).map(row => ({ ...row, tech: side })), 0, mean, 'HP_PLANET');
-    expect(r.rounds.map(round => round.round)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(r.rounds.map(round => round.attackerShipShieldAbsorbed)).toEqual([445, 445, 189, 0, 0, 0]);
-    expect(r.rounds[5]!.retreats).toEqual([]);
-    for (const damage of [r.attackerDamage[0]!, r.defenderDamage[0]!]) {
-      const hp = HULLS.CITADEL.hp * (1 - (damage.damageBp + (damage.remainderBp ?? 0)) / 10000);
-      expect(hp).toBeCloseTo(567, 8);
-      expect(hp / HULLS.CITADEL.hp).toBeLessThan(.30);
-    }
-    expect(r.attackerRetreated).toEqual({}); expect(r.defenderRetreated).toEqual({});
-  });
-
-  it('allows fifth-round escape, preserving living ships and their owner/wounds', () => {
-    let fifthRoundEscapes = 0;
+  it('allows late-round escape, preserving living ships and their owner/wounds', () => {
+    let lateEscapes = 0;
     for (let seed = 0; seed < 64; seed++) {
-      const r = resolveBattle(attack({ CITADEL: 1 }), defence({ CITADEL: 1 }), 0, mulberry32(seed), 'HP_PLANET');
+      const r = resolveBattle(attack({ CITADEL: 10 }), defence({ CITADEL: 10 }), 0, mulberry32(seed), 'HP_PLANET');
       for (const round of r.rounds) {
-        if (round.round === 5) fifthRoundEscapes += (round.retreats ?? []).reduce((sum, row) => sum + fleetCount(row.fleet), 0);
-        if (round.round === 6) expect(round.retreats).toEqual([]);
+        if (round.round >= 4) lateEscapes += (round.retreats ?? []).reduce((sum, row) => sum + fleetCount(row.fleet), 0);
+        if (round.round === COMBAT.rounds) expect(round.retreats).toEqual([]);
       }
-      expect(fleetCount(r.attackerSurvivors) + fleetCount(r.attackerLosses)).toBe(1);
-      expect(fleetCount(r.defenderSurvivors) + fleetCount(r.defenderLosses)).toBe(1);
+      expect(fleetCount(r.attackerSurvivors) + fleetCount(r.attackerLosses)).toBe(10);
+      expect(fleetCount(r.defenderSurvivors) + fleetCount(r.defenderLosses)).toBe(10);
     }
-    expect(fifthRoundEscapes).toBeGreaterThan(0);
+    expect(lateEscapes).toBeGreaterThan(0);
   });
 
-  it('fires simultaneously even when both sides are killed by their first volley', () => {
-    const a = attack({ DART: 1 }).map(row => ({ ...row, tech: { tech: {}, damageMult: 100 } }));
-    const d = defence({ DART: 1 }).map(row => ({ ...row, tech: { tech: {}, damageMult: 100 } }));
-    const r = resolveBattle(a, d, 0, mean);
-    expect(r.attackerLosses).toEqual({ DART: 1 }); expect(r.defenderLosses).toEqual({ DART: 1 });
+  it('lets a ship killed in the round still fire that round', () => {
+    const r = resolveBattle(attack({ DART: 1 }), defence({ DART: 30 }), 0, mean);
+    expect(r.rounds[0]!.attackerLosses).toEqual({ DART: 1 });
+    expect(r.rounds[0]!.attackerDamage).toBeGreaterThan(0);
     expect(r.rounds).toHaveLength(1); expect(r.rounds[0]!.retreats).toEqual([]);
   });
 
@@ -154,7 +117,6 @@ describe('six-round distributed combat: approved production contract', () => {
       defender: { tech: { SHIP_POWER: 2 } }, deuterium: 0, escape: true,
       minimumCombatShips: 5, maintenance: true, preciseDamage: true });
     expect(r.escape).toBeNull(); expect(r.result.grade).toBe('DECISIVE');
-    expect(r.result.attackerSurvivors).toEqual(fleet);
     const active = fleetCount(r.result.defenderSurvivors) - fleetCount(r.result.defenderRetreated ?? {});
     expect(active).toBe(0);
   });
@@ -198,7 +160,7 @@ it('conserves base-shot energy through mixed counters, shields, cargo and repeat
         + (shots.some(shot => shot.sourceId === 'b') ? 0 : power * 3 / 4);
       expect(consumed).toBeLessThanOrEqual(Math.min(capacity, power) + 1e-7);
       expect(consumed + unused).toBeCloseTo(power, 7);
-      for (const shot of shots) expect(new Set(shot.hits.map(hit => hit.targetId)).size).toBeLessThanOrEqual(10);
+      for (const shot of shots) expect(new Set(shot.hits.map(hit => hit.targetId)).size).toBe(shot.hits.length);
       expect(r.credited.reduce((sum, value) => sum + value, 0)).toBeCloseTo(actualHull, 7);
       expect(r.hullDamage).toBeCloseTo(actualHull, 7);
     }), { seed: 20261023, numRuns: 150 });

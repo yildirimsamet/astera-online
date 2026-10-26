@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { COMBAT, HULLS, PIRATE, activeBattleFleet, fleetCount, mulberry32, resolveBattle, shieldHp, shipShieldHp } from '@astera/rules';
+import { COMBAT, HULLS, PIRATE, activeBattleFleet, fleetCount, mulberry32, pirateOverrun, resolveBattle, resolveMonumentCombat, shieldHp, shipShieldHp } from '@astera/rules';
 import { DEFAULT_SCENARIO, SIMULATION_UNIT_LIMIT, scenarioSchema, simulateScenario } from '../src/battle-simulator/scenario.js';
-import { buildReplayTimeline, sampleReplay } from '../src/battle-simulator/timeline.js';
+import { VOLLEY_SECONDS, buildReplayTimeline, sampleReplay, type ShotEvent } from '../src/battle-simulator/timeline.js';
 
 describe('isolated battle simulator uses the real shared rules', () => {
   it('uses both owners research, entry wounds and Aegis charge with exact engine parity', () => {
@@ -86,6 +86,94 @@ describe('isolated battle simulator uses the real shared rules', () => {
   });
 });
 
+/**
+ * THE SIMULATOR FIGHTS EACH BATTLE THE WAY THE SERVER DOES (review 2026-10-25). A pirate is
+ * `pirateRaid.ts`: no research, no Aegis, no guns, exempt from maintenance, its unescorted holds
+ * taken after the fight. A monument is `resolveMonumentCombat`, its surviving cargo withdrawing
+ * when the attacker takes control. A ship at or under 5% hull never stands in a line.
+ */
+describe('the simulator fights each battle the way the server does', () => {
+  it('fights a pirate as pirateRaid does: no research, no Aegis, holds taken once the line falls', () => {
+    // A pirate fights in open space, as its replay is drawn (`pirateRaid.ts`).
+    const scenario = scenarioSchema.parse({ ...DEFAULT_SCENARIO, seed: 7, pirateLevel: 2, environment: 'MONUMENT', aegisLevel: 0,
+      attackers: [{ id: 'a', fleet: { CORSAIR: 1 } }],
+      defenders: [{ id: 'd', fleet: { PIKE: 1, ARGOSY: 6 }, tech: { SHIP_POWER: 5, SHIP_ARMOR: 5 } }] });
+    const run = simulateScenario(scenario);
+    expect(run.recording.initialAegis).toBe(0);
+    expect(run.control).toBeNull();
+    const pike = run.recording.ships.find(s => s.side === 'DEFENCE' && s.hull === 'PIKE')!;
+    expect(pike.attack).toBe(HULLS.PIKE.atk * PIRATE.damageMult[2]);
+    expect(pike.maxHp).toBe(HULLS.PIKE.hp);
+    const fought = resolveBattle(run.attackers, [{ stackId: 'd:d', playerId: 'd:d', fleet: { PIKE: 1, ARGOSY: 6 },
+      tech: { tech: {}, damageMult: PIRATE.damageMult[2] }, maintenanceExempt: true }], 0, mulberry32(7), 'HP_PLANET', true);
+    expect(run.result).toEqual(pirateOverrun(fought, { CORSAIR: 1 }));
+    expect(run.result.grade).toBe('DECISIVE');
+    expect(run.recording.aftermath?.[0]?.kind).toBe('PIRATE_OVERRUN');
+    expect(run.recording.aftermath?.[0]?.shipIds.length).toBeGreaterThan(0);
+    expect(run.recording.finalState?.filter(s => run.recording.aftermath![0]!.shipIds.includes(s.id)).every(s => s.status === 'DESTROYED')).toBe(true);
+  });
+
+  it('lets only a warship able to fire take a pirate’s holds, as pirateRaid counts its escort', () => {
+    const pirate = (health: number) => simulateScenario(scenarioSchema.parse({ ...DEFAULT_SCENARIO, seed: 3, pirateLevel: 1, environment: 'MONUMENT',
+      aegisLevel: 0, attackers: [{ id: 'a', fleet: { CORSAIR: 1, VIPER: 1 }, health: { CORSAIR: health } }], defenders: [{ id: 'd', fleet: { ARGOSY: 12 } }] }));
+    expect(pirate(100).recording.aftermath?.[0]?.kind).toBe('PIRATE_OVERRUN');
+    // The Viper still escorts; a grounded Corsair alone does not.
+    expect(pirate(5).recording.aftermath?.[0]?.kind).toBe('PIRATE_OVERRUN');
+    const alone = simulateScenario(scenarioSchema.parse({ ...DEFAULT_SCENARIO, seed: 3, pirateLevel: 1, environment: 'MONUMENT', aegisLevel: 0,
+      attackers: [{ id: 'a', fleet: { CORSAIR: 1 }, health: { CORSAIR: 5 } }], defenders: [{ id: 'd', fleet: { ARGOSY: 12 } }] }));
+    expect(alone.recording.aftermath).toBeUndefined();
+    expect(alone.result.grade).not.toBe('DECISIVE');
+  });
+
+  it('refuses pirate settings no pirate has', () => {
+    const pirate = { ...DEFAULT_SCENARIO, pirateLevel: 1, environment: 'MONUMENT', aegisLevel: 0 };
+    expect(scenarioSchema.safeParse({ ...pirate, environment: 'PLANET', defenders: [{ id: 'd', fleet: { DART: 1 } }] }).success).toBe(false);
+    expect(scenarioSchema.safeParse({ ...pirate, defenders: [{ id: 'd', fleet: { DART: 1 } }, { id: 'e', fleet: { DART: 1 } }] }).success).toBe(false);
+    expect(scenarioSchema.safeParse({ ...pirate, defenders: [{ id: 'd', fleet: { DART: 1 } }] }).success).toBe(true);
+  });
+
+  it('fights a monument as resolveMonumentCombat does, and withdraws the cargo the attacker drove off', () => {
+    const scenario = scenarioSchema.parse({ ...DEFAULT_SCENARIO, seed: 5, environment: 'MONUMENT', aegisLevel: 0,
+      attackers: [{ id: 'a', fleet: { CORSAIR: 1 } }], defenders: [{ id: 'd', fleet: { PIKE: 1, ARGOSY: 6 } }] });
+    const run = simulateScenario(scenario);
+    const real = resolveMonumentCombat(run.attackers, run.defenders, mulberry32(5), true);
+    expect(run.control).toBe(real.control);
+    expect(run.result.grade).toBe(real.grade);
+    expect(run.control).toBe('ATTACKER');
+    const argosies = run.recording.ships.filter(s => s.side === 'DEFENCE' && s.hull === 'ARGOSY').map(s => s.id);
+    expect(run.recording.aftermath).toEqual([{ kind: 'CARGO_WITHDRAWAL', shipIds: argosies }]);
+    expect(run.recording.finalState?.filter(s => argosies.includes(s.id)).every(s => s.status === 'RETREATED')).toBe(true);
+  });
+
+  it('fields a ship at or under 5% hull as the engine does: out of a planet’s line, a target that cannot fire elsewhere', () => {
+    const scenario = (over: object) => scenarioSchema.parse({ ...DEFAULT_SCENARIO, aegisLevel: 0, ...over });
+    // A planet defender grounded for repair stays home; a grounded attacker flies as a target that cannot fire.
+    const planet = simulateScenario(scenario({ attackers: [{ id: 'a', fleet: { DART: 2, CORSAIR: 2 }, health: { DART: 5 } }],
+      defenders: [{ id: 'd', fleet: { DART: 3, PIKE: 1 }, health: { DART: 3 } }] }));
+    expect(planet.recording.ships.filter(s => s.side === 'DEFENCE' && s.hull === 'DART')).toHaveLength(0);
+    const passive = planet.recording.ships.filter(s => s.side === 'ATTACK' && s.hull === 'DART');
+    expect(passive).toHaveLength(2);
+    expect(passive.every(s => !s.canFire)).toBe(true);
+    expect(planet.recording.ships.find(s => s.side === 'ATTACK' && s.hull === 'CORSAIR')?.canFire).toBe(true);
+    // At a monument the wounded stand in the field without firing.
+    const monument = simulateScenario(scenario({ environment: 'MONUMENT', attackers: [{ id: 'a', fleet: { CORSAIR: 2 } }],
+      defenders: [{ id: 'd', fleet: { DART: 2, PIKE: 1 }, health: { DART: 4 } }] }));
+    const wounded = monument.recording.ships.filter(s => s.side === 'DEFENCE' && s.hull === 'DART');
+    expect(wounded).toHaveLength(2);
+    expect(wounded.every(s => !s.canFire)).toBe(true);
+    // A pirate is exempt from maintenance: its wounded still fire.
+    const pirate = simulateScenario(scenario({ environment: 'MONUMENT', pirateLevel: 1, attackers: [{ id: 'a', fleet: { CORSAIR: 2 } }],
+      defenders: [{ id: 'd', fleet: { DART: 2 }, health: { DART: 4 } }] }));
+    expect(pirate.recording.ships.filter(s => s.side === 'DEFENCE').every(s => s.canFire)).toBe(true);
+  });
+
+  it('records the damage scale every shot already carries', () => {
+    const run = simulateScenario(scenarioSchema.parse(DEFAULT_SCENARIO));
+    expect(run.recording.damageScale?.attacker).toBeGreaterThan(0);
+    expect(run.result.balance?.attackerPower).toBeGreaterThan(0);
+  });
+});
+
 describe('seekable battle replay timeline', () => {
   it('keeps entry values until the real impact and applies that exact recorded hit', () => {
     const run = simulateScenario(scenarioSchema.parse(DEFAULT_SCENARIO));
@@ -128,6 +216,24 @@ describe('seekable battle replay timeline', () => {
         expect(actual.map(e => e.kind === 'HIT' ? e.hit : null)).toEqual(expected);
       }
     }
+  });
+
+  // 200v200 played one shot at a time ran for half an hour. A big side fires as one long volley.
+  it('fires a large side as overlapping volleys, so a turn lasts about as long as a small one, and still shows every shot in order', () => {
+    const { recording } = simulateScenario(scenarioSchema.parse({ ...DEFAULT_SCENARIO, seed: 3, aegisLevel: 0,
+      attackers: [{ id: 'a', fleet: { DART: 100, CORSAIR: 100 } }], defenders: [{ id: 'd', fleet: { RAMPART: 100, CITADEL: 100 } }] }));
+    const timeline = buildReplayTimeline(recording);
+    for (const turn of timeline.rounds) {
+      const round = recording.rounds.find(item => item.round === turn.round)!;
+      const shots = timeline.events.filter((e): e is ShotEvent => e.kind === 'SHOT' && e.round === turn.round);
+      for (const [side, from, to, recorded] of [['ATTACK', turn.openingEnd, turn.defenderStart, round.attackerShots], ['DEFENCE', turn.defenderStart, turn.retreatAt, round.defenderShots]] as const) {
+        const list = shots.filter(e => e.side === side);
+        expect(list.map(e => e.shot)).toEqual(recorded);
+        for (let i = 1; i < list.length; i++) expect(list[i]!.at).toBeGreaterThan(list[i - 1]!.at);
+        if (list.length > 12) expect(to - from).toBeLessThanOrEqual(VOLLEY_SECONDS + 3);
+      }
+    }
+    expect(timeline.duration).toBeLessThan(recording.rounds.length * 45);
   });
 
   it('keeps a zero-HP defender visible for its frozen firing right, then destroys it after its own shot', () => {

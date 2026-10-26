@@ -64,43 +64,39 @@ export const counter = {
   matchupLabel: "{{attacker}}対{{defender}}：{{outcome}}、ダメージ×{{mult}}",
   cycleLabel: "機動型は防壁型に、防壁型は突撃型に、突撃型は機動型に強い",
   /** Above the two bars on the launch sheet — the one name of the one force unit. D199. */
-  compareHeading: "武装ユニット値",
+  /** Combat v3 force ruler (owner 2026-10-25): each side’s power, their ratio, and the rule one tap deep. */
+  compareHeading: "相対戦力",
+  compareLabel: "あなたの戦力は{{yours}}、相手の戦力は{{theirs}}です。",
+  comparePick: "艦船を選ぶと、この目標と比較できます。",
+  compareMeaning: "互いに対する火力と耐久力です。クラス相性も含みます。強い側ほど艦隊を多く残します。",
+  compareRule: "戦力は武装艦と稼働中の地上砲を数えます。研究、損傷、相手に対するクラス相性、イージスの充填量を含みます。非武装艦は戦力に加わりません。探査機は範囲で観測するため、各陣営の戦力も範囲になります。比率の下端があなたにとって最悪の場合です。観測値は古くなり、戦闘では毎回射撃がランダムに決まります。",
+  ratioYou: "あなたは{{band}}倍強い",
+  ratioThem: "相手は{{band}}倍強い",
+  ratioOpen: "観測値ではどちらが強いか決まりません：相手は最大{{them}}倍、あなたは最大{{you}}倍",
+  ratioEven: "ほぼ互角",
+  ratioNoFire: "相手側に反撃する武装はありません",
+  ratioUnarmed: "あなたの部隊には攻撃できる艦がありません",
+  axisTheirs: "相手が優勢",
+  axisEven: "互角",
+  axisYours: "あなたが優勢",
+  outcomeHeading: "平均して各陣営に残るもの",
+  outcomeRatio: "比率",
+  outcomeWeak: "弱い側が残す",
+  outcomeStrong: "強い側が失う",
+  outcomeNote: "多数の戦闘の平均です。生きて撤退した艦は残ったものとして数えます。1:1では、大きい艦隊ほど多く残ります。",
+  escapeRun: "観測範囲のすべてで、あなたの戦力は相手の{{ratio}}倍以上です。あなたの部隊が戦列を全滅させられ、相手の燃料が離脱費を払えるなら、敵艦は退避します。",
+  escapeStand: "敵艦は退避せずに戦います。観測範囲のすべてで、あなたの戦力は相手の{{ratio}}倍未満です。",
+  escapeRule: "あなたの戦力が、稼働中の地上砲を含む相手戦列の{{ratio}}倍以上なら、敵艦は戦闘前に退避します。あなたの部隊がその戦列を全滅させられることも条件です。相手の惑星は{{distance}}単位の往復燃料を払う必要があります。地上砲は残り、資源は引き続き略奪できます。",
   compareYours: "派遣戦力",
   compareTheirs: "現地戦力",
-  /** The reading has an age and a width, and both are the fact. */
   compareRecord: "{{source}}, {{age}}",
   compareLive: "{{source}}、現在の情報",
   compareUnknown: "未測定",
   compareUnknownWhy: "探査機を送ると、この値を確認できます。",
-  compareLabel: "派遣戦力は{{yours}}。敵の惑星の最新観測値は{{theirs}}です。",
-  /**
-   * WHAT THE FIGURE AND THE LINES ARE, ONE TAP DEEP. D199.
-   *
-   * The figure is what the hulls and guns that can fire cost — D183 took the
-   * transports out of it. The lines are the battle engine run on this wing against
-   * every wall the reading allows, so they include the counter cycle, research and
-   * a known shield; what they leave out is said, never implied.
-   */
-  /** Taktik geri çekilme on the comparison: the verdict line and the rule one tap deeper. */
-  escapeRun: "観測値は{{ratio}}倍の退避条件を満たしており、戦列を全滅させられます。燃料が足りれば敵艦は退避します。",
-  escapeStand: "敵艦は退避せずに戦います。観測値が{{ratio}}倍の退避条件を満たしていないか、この部隊では戦列を全滅させられません。",
   escapeUnsure: "敵艦は退避するかもしれません。観測値だけでは退避条件をすべて判断できません。",
-  escapeAt: "退避判定の戦力線：{{at}}",
-  escapeRule:
-    "攻撃側の武装部隊の資源価値が、稼働中の地上砲を含む防衛側の武装部隊の{{ratio}}倍以上である必要があります。さらに、その攻撃で駐留する防衛戦列が全滅することが条件です。惑星には{{distance}}単位の往復に必要な燃料も必要です。条件を満たすと艦船は戦闘から退避します。地上砲は残り、資源は引き続き略奪され得ます。",
   escapeMinimumRule: "防衛側の惑星に戦闘艦が{{count}}隻以上必要です。探査機の観測では正確な隻数は分かりません。",
   compareRuleToggle: "これは何ですか？",
-  compareMeaning: "攻撃ダメージではなく資源コストです。艦隊が大きいだけでは勝利は保証されません。",
-  compareRule:
-    "比較には武装艦と地上砲の資源価値を使い、シールドと非武装艦は含めません。予測にはクラス、研究、既知のシールドも反映します。部分成功と完全成功のどちらにも、少なくとも1隻が生き残る必要があります。クラスやシールドが不明だと閾値は範囲になり、左端が最悪、右端が最良の条件です。下の損失予測は想定費用を示します。情報が古い場合があり、射撃のランダムな変動は含みません。",
-  forecastCalculating: "戦闘予測を計算中…",
-  forecastFailed: "戦闘予測を計算できませんでした。艦隊を変更して再試行してください。",
-  linesClears: "防御が最大{{at}}なら完全成功",
-  linesBreaks: "最大{{at}}なら少なくとも部分成功",
   lineJoin: " · ",
-  lossLabel: "あなたの推定損失：艦隊の{{share}}（資源価値ベース）",
-  lossUncertainty: "これは現在の情報に基づく損失の範囲で、勝率ではありません。",
-  lossTotalRisk: "高リスク：あなたの艦船が1隻も帰還しない可能性があります。",
   /** What the lines could not see, and what is already known about the reading. D199. */
   noteShieldUnmeasured: "シールドの残量は未測定",
   noteShapeUnread: "防衛戦力の内訳は未確認",

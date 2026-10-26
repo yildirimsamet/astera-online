@@ -1716,8 +1716,9 @@ describe('every payload the client parses', () => {
     const report = parsed.probeReports.find((r) => r.targetPlanetId === theirs);
     expect(report, 'the delivered report never reached the payload').toBeDefined();
     expect(report).toMatchObject({ missionId: launch.missionId });
-    expect(report?.doctrines, 'the doctrine reading was dropped on the way out')
-      .toEqual({ SHIP_POWER: 2 });
+    expect(report?.research?.SHIP_POWER, 'the research reading was dropped on the way out')
+      .toSatisfy((window: { low: number; high: number }) => window.low <= 2 && window.high >= 2);
+    expect(report).not.toHaveProperty('doctrines');
     expect(report?.interceptors, 'the interceptor count was dropped on the way out')
       .toBe(1);
     // A capital has no loyalty, so the reading is absent rather than invented.
@@ -1769,10 +1770,12 @@ describe('every payload the client parses', () => {
 
     const fresh = intelSchema.parse(await get('/api/intel'))
       .probeReports.find((r) => r.targetPlanetId === theirs);
-    expect(fresh?.classReading).toEqual({ kind: 'SHARES', shares: { SKIRMISHER: 20, BULWARK: 80, LANCE: 0 } });
+    expect(fresh?.classReading).toMatchObject({ kind: 'RANGES', shares: { LANCE: { low: 0 } } });
     // This fixture hands the target an Aegis 1 at full charge (see `beforeEach`).
-    expect(fresh?.shield).toEqual({ low: shieldHp(1), high: shieldHp(1) });
-    expect(fresh?.unarmed).toEqual({ low: 2, high: 2 });
+    expect(fresh?.shield?.low).toBeLessThanOrEqual(shieldHp(1));
+    expect(fresh?.shield?.high).toBeGreaterThanOrEqual(shieldHp(1));
+    expect(fresh?.unarmed?.low).toBeLessThanOrEqual(2);
+    expect(fresh?.unarmed?.high).toBeGreaterThanOrEqual(2);
 
     // The same report as it would have been written before D199.
     await f.db.update(probeReports).set({ classReading: null, shield: null, unarmed: null });
