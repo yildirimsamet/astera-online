@@ -9,7 +9,7 @@ import { loadEnv } from '../../src/env.js';
 
 const ORIGIN = 'http://localhost:5198';
 const env = loadEnv({ DATABASE_URL: 'postgres://test/arena_test', JWT_SECRET: 'test-secret-that-is-long-enough',
-  ROLE: 'arena', ARENA_ENABLED: 'true', ARENA_DEV: 'true', ARENA_ALLOWED_ORIGINS: ORIGIN });
+  ROLE: 'arena', ARENA_ENABLED: 'true', ARENA_DEV: 'true', ARENA_ALLOWED_ORIGINS: ORIGIN, ARENA_BOTS: '3' });
 
 const closers: (() => Promise<void>)[] = [];
 afterEach(async () => { while (closers.length) await closers.pop()?.(); });
@@ -306,6 +306,14 @@ describe('arena room protocol v2', () => {
 describe('ship classes in the room', () => {
   interface Row { id: number; role?: 'hunter' | 'miner' | 'patrol'; ship: string }
   const pilots = (m: unknown): Row[] => (m as { pilots: Row[] }).pilots;
+
+  it('opens without house bots unless the host asks for them (owner 2026-10-27)', () => {
+    const app = Fastify(); app.decorate('clock', systemClock);
+    const world = registerArena(app, { ...env, ARENA_BOTS: 0 }).world;
+    expect(world.brains.size).toBe(0);
+    expect(world.drones.filter(drone => drone.bot)).toHaveLength(0);
+    void app.close();
+  });
 
   it('flies the class the hello names, and the roster names every ship\'s class, bots by their role', async () => {
     const url = await room();

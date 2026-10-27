@@ -300,7 +300,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     audio.unlock(); audio.ui(true); setEnded(false); setDeskNote('');
     if (owned) { setShip(owned.class); world.pilot.ship = owned.class; }
     if (mode === 'online') network.connect(owned?.class ?? ship, member?.tactic ?? tactic, Boolean(member?.outcome));
-    else Object.assign(world, createSandboxWorld({ ship: owned?.class ?? ship, tactic }));
+    else Object.assign(world, createSandboxWorld({ ship: owned?.class ?? ship, tactic, bots: T.practiceBots }));
     controls.setThrottle(0.5); arm();
     client.current?.reset();
     setScreen(member?.outcome ? 'spectate' : 'flight');
@@ -311,7 +311,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const again = (): void => {
     audio.ui(true); controls.clear(); setEnded(false);
     if (mode === 'online') network.dev('restart');
-    else Object.assign(world, createSandboxWorld({ ship, tactic }));
+    else Object.assign(world, createSandboxWorld({ ship, tactic, bots: T.practiceBots }));
     controls.setThrottle(0.5); arm();
     client.current?.reset();
     setScreen('flight');

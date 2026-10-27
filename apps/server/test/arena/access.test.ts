@@ -10,7 +10,7 @@ import { fakeShips } from './fakeShips.js';
 /**
  * The live playtest path: no guests, no debug actions. Pilots are real accounts on the
  * ARENA_PILOTS list, identified by their access token. Owner 2026-10-21: three bots
- * fly the room beside them.
+ * fly the room beside them; since 2026-10-27 only when the host asks (`ARENA_BOTS`).
  */
 const ORIGIN = 'https://asteraonline.space';
 const ACCOUNTS: Record<string, { accountId: string; username: string; name: string; pilot: boolean }> = {
@@ -26,7 +26,7 @@ afterEach(async () => { while (closers.length) await closers.pop()?.(); });
 
 async function room(pilots = 'alice,bob') {
   const env = loadEnv({ DATABASE_URL: 'postgres://test/arena_test', JWT_SECRET: 'test-secret-that-is-long-enough',
-    ROLE: 'arena', ARENA_ENABLED: 'true', ARENA_ALLOWED_ORIGINS: ORIGIN, ARENA_PILOTS: pilots });
+    ROLE: 'arena', ARENA_ENABLED: 'true', ARENA_ALLOWED_ORIGINS: ORIGIN, ARENA_PILOTS: pilots, ARENA_BOTS: '3' });
   const app = Fastify();
   app.decorate('clock', systemClock);
   // Every launch is granted: the hangar's own rules are `arena-ships.test.ts` and `sortie.test.ts`.

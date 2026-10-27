@@ -95,9 +95,9 @@ export function createSandboxWorld(options: WorldOptions = {}): ArenaWorld {
   place(world, pilot);
   copyFlight(world.previous, pilot);
   for (let g = 0; g < T.fieldGroups; g++) growField(world, g);
-  const count = Math.max(0, Math.min(ROLES.length, options.bots ?? ROLES.length));
+  const count = Math.max(0, Math.floor(options.bots ?? ROLES.length));
   for (let i = 0; i < count; i++) {
-    const role = ROLES[i] ?? 'patrol';
+    const role = ROLES[i % ROLES.length] ?? 'patrol';
     const bot = createPilot(i + 1, ROLE_SHIPS[role]);
     bot.bot = true;
     place(world, bot);

@@ -160,6 +160,8 @@ const NUMBERS = Object.freeze({
   farmSpots: 150,
   /** Field ore groups (a lone piece or a cluster); a fully taken group regrows elsewhere. */
   fieldGroups: 12,
+  /** Bots in the practice room, the roles taking turns (owner 2026-10-27: 20). */
+  practiceBots: 20,
   fieldFarmRespawn: 20,
   // Inside magnetRadius from the middle: one pass through a cluster pulls all of it.
   clusterRadius: 30,

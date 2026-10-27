@@ -143,3 +143,23 @@ describe('aim circle in combat (owner 2026-10-21: 8.5°, the guns follow inside 
     expect(duel(12, true, 'akinci')).toBe(0);
   });
 });
+
+/** Owner 2026-10-27: "antreman modundaki bot sayısını 20 yap". The roles take turns past three. */
+describe('the practice room', () => {
+  it('flies twenty bots, every role among them, each its own ship', () => {
+    expect(T.practiceBots).toBe(20);
+    const world = createSandboxWorld({ bots: T.practiceBots });
+    const bots = world.drones.filter(drone => drone.bot);
+    expect(bots).toHaveLength(20);
+    expect(world.brains.size).toBe(20);
+    expect(new Set([...world.brains.values()].map(brain => brain.role))).toEqual(new Set(['hunter', 'miner', 'patrol']));
+    expect(new Set(bots.map(bot => bot.id)).size).toBe(20);
+    expect(world.nextId).toBe(21);
+    for (let i = 0; i < 300; i++) stepSandboxWorld(world, intent());
+    expect(world.drones.filter(drone => drone.bot)).toHaveLength(20);
+  });
+
+  it('still opens the default room with one bot per role', () => {
+    expect(createSandboxWorld().brains.size).toBe(3);
+  });
+});

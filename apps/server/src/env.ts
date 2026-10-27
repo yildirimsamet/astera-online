@@ -16,6 +16,8 @@ const schema = z.object({
   ARENA_ALLOWED_ORIGINS: z.string().default('http://localhost:5173,http://127.0.0.1:5173'),
   /** Pilots one room seats (owner 2026-10-23: 100, headroom over the 48 the v6 map is sized for). */
   ARENA_SEATS: z.coerce.number().int().positive().max(ARENA_MAX_SEATS).default(100),
+  /** House bots in the live room, up to the three roles; none unless asked (owner 2026-10-27: "botları kapat"). */
+  ARENA_BOTS: z.coerce.number().int().min(0).max(3).default(0),
   /** Private playtest reference pack on this host; unset serves none and the arena draws its procedural set. */
   ARENA_REF_DIR: z.string().min(1).optional(),
   /** Usernames that may fly the live playtest arena; `*` admits every signed-in account. */

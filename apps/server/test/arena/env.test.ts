@@ -36,6 +36,14 @@ describe('arena feature flags', () => {
     expect(loadEnv({ ...base, ARENA_SEATS: String(ARENA_MAX_SEATS) }).ARENA_SEATS).toBe(ARENA_MAX_SEATS);
   });
 
+  // Owner 2026-10-27, opening the Yarık to every commander: "botları kapat". Zero by default;
+  // up to the three roles (hunter, miner, patrol) when a host asks for them.
+  it('flies no house bots by default, and reads a whole count up to the three roles', () => {
+    expect(loadEnv(base).ARENA_BOTS).toBe(0);
+    expect(loadEnv({ ...base, ARENA_BOTS: '3' }).ARENA_BOTS).toBe(3);
+    for (const value of ['-1', '4', '1.5', 'some']) expect(() => loadEnv({ ...base, ARENA_BOTS: value })).toThrow(/ARENA_BOTS/);
+  });
+
   it('reads the arena pilot list as canonical usernames, empty by default', () => {
     expect(loadEnv(base).ARENA_PILOTS).toEqual([]);
     expect(loadEnv({ ...base, ARENA_PILOTS: ' Alice, bob ,,' }).ARENA_PILOTS).toEqual(['alice', 'bob']);

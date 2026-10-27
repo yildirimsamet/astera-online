@@ -980,6 +980,9 @@ Y6a: gerçek gemi ve gerçek kargo (2026-10-23, sahibin kararları). Seviye, XP 
 - **Doldurma:** her kalkışta depo ve şarjör başkentin döteryumuyla tamamlanır; yalnız eksik
   ödenir. Tam depo 30/40/50 D, tam şarjör 15/22/30 D (Akıncı/Kılavuz/Muhafız). Bilerek pahalı:
   "sabahtan akşama yalnız bu mod oynanmasın; ölmenin cezası olsun".
+- **Herkese açılış (sahip 2026-10-27):** Yarık her komutana açık (`ARENA_PILOTS='*'`), amiral eskortu canlı
+  sezonlarda `season activate-admiral` ile açık. Gerçek uçuş odasında ev botu yok ("botları kapat";
+  `ARENA_BOTS`, varsayılan 0, en çok 3). Antrenmanda 20 bot uçar, roller sırayla (`ARENA_TUNING.practiceBots`).
 - **Kalkış planı (sahip 2026-10-27, "kısmi dolum ekle"):** oyuncu hangarın Kalkış sekmesinde depoyu
   %25/50/75/100, şarjörü %0/25/50/75/100 seçer; kalkış her parçayı yalnız o seviyeye tamamlar ve
   yalnız o eksiği öder. Planın üstünde gemide kalan yakıt/mermi kalır, geri satılmaz. %0 cephane:
