@@ -258,7 +258,7 @@ function GalleryBase({ empty = false, open = false, production = false }: { empt
     return null;
   });
   return (
-    <Sheet title="Thistle" eyebrow="Samet" quietTitle onClose={noop} detents={['full']} bleed>
+    <Sheet title="Thistle" eyebrow="Samet" headerArt={ATMOSPHERE.baseWorld} onClose={noop} detents={['full']} bleed>
       <PlanetScreen focusGroup={production ? 'grow' : 'reach'} {...(open ? { focusItem: 'REPAIR_STATION' } : {})} />
     </Sheet>
   );
@@ -286,7 +286,7 @@ function GalleryStrategic({ tab }: { tab: 'tactical' | 'defend' }) {
     return null;
   });
   return (
-    <Sheet title="Thistle" eyebrow="Samet" quietTitle onClose={noop} detents={['full']} bleed>
+    <Sheet title="Thistle" eyebrow="Samet" headerArt={ATMOSPHERE.baseWorld} onClose={noop} detents={['full']} bleed>
       <PlanetScreen focusGroup={tab} />
     </Sheet>
   );
@@ -756,7 +756,7 @@ function Views({ view }: { view: string }) {
   if (view.startsWith('support-')) return <GallerySupport view={view} />;
   if (view.startsWith('rewards')) return <GalleryRewards state={view.replace('rewards-', '')} />;
   // The Komutan gemisi hangar; the camera mocks `/arena/hangar` with each state it photographs.
-  if (view === 'arena-hangar') return <Sheet detents={['full']} quietTitle title="Komutan gemisi" onClose={noop}>
+  if (view === 'arena-hangar') return <Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} eyebrow="Samet" title="Komutan gemisi" onClose={noop}>
     <BaseSwitch value="ship" onChange={noop} arenaAvailable /><HangarPanel credential={() => Promise.resolve('dev')} onEnter={noop} />
   </Sheet>;
   if (view === 'arena-team') return <Sheet detents={['full']} title="Yarık" onClose={noop}>
