@@ -97,7 +97,8 @@ describe('Japanese language support', () => {
     expect(ja.errors.TIER_BAND).toContain('2ティア以上');
     expect(ja.errors.TIER_BAND_WEAK).toContain('2ティア以上');
     expect(ja.faults.name.SHIPYARD_REVOLT).toContain('造船所');
-    expect(ja.clanWar.composer).toContain('攻撃隊');
+    // Owner 2026-10-27: the contribution action is "Gemi Ekle" — add ships — in every language.
+    expect(ja.clanWar.composer).toContain('艦船');
     expect(ja.clanWar.seatNoWave).toContain('攻撃隊');
     expect(ja.focus.planet.settle).toContain('入植');
     expect(ja.focus.planet.settlementConfirm.race).toContain('2隻');
