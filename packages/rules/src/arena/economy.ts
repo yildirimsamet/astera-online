@@ -6,7 +6,8 @@ import { levelOf, shipStats } from './progression.js';
  * capital one for one, through an exit only. The tank and magazine are filled from the capital's
  * deuterium before a flight, the missing part only; what is left stays aboard. Each day carries at
  * most capHours of the capital's own production of each resource. A destroyed ship is repaired
- * for free in repairMinutes; every flight ends with serviceMinutes of maintenance.
+ * for free in repairMinutes; every flight ends with serviceMinutes of maintenance. Both are 3 min
+ * for now (owner 2026-10-28: "biraz oynasınlar alışsınlar"); an escort keeps its own (ADMIRAL_WAIT).
  */
 export const ARENA_ECONOMY = Object.freeze({
   /** Komuta Merkezi level that gives a commander a ship (plan 14 §3). */
@@ -18,8 +19,8 @@ export const ARENA_ECONOMY = Object.freeze({
     muhafiz: Object.freeze({ fuel: 50, ammo: 30 }),
   }) satisfies Readonly<Record<ShipClass, Readonly<{ fuel: number; ammo: number }>>>,
   capHours: 4,
-  repairMinutes: 60,
-  serviceMinutes: 10,
+  repairMinutes: 3,
+  serviceMinutes: 3,
   freeChangeHours: 24,
   /** Entry closes this long before the season ends (KG-A16). */
   entryClosesMinutes: 10,

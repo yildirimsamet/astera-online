@@ -42,4 +42,4 @@ export type {
   SphereObstacle, SteeringSettings, StructureKind, Vec3,
 } from './types.js';
 
-export { ADMIRAL_RULESET, ADMIRAL_XP, admiralApplies, admiralBonuses, admiralOpen, admiralDefeated, admiralOutcome, admiralXp, withAdmiral, type AdmiralBonuses, type AdmiralSnapshot, type AdmiralFlightKind } from './admiral.js';
+export { ADMIRAL_RULESET, ADMIRAL_WAIT, ADMIRAL_XP, admiralApplies, admiralBonuses, admiralOpen, admiralDefeated, admiralOutcome, admiralXp, withAdmiral, type AdmiralBonuses, type AdmiralSnapshot, type AdmiralFlightKind } from './admiral.js';

@@ -1007,6 +1007,8 @@ Y6a: gerçek gemi ve gerçek kargo (2026-10-23, sahibin kararları). Seviye, XP 
 - **Günlük tavan:** her kaynaktan günde en çok başkentin kendi 4 saatlik üretimi (UTC günü).
   Tavanı aşan kısım yatmaz; sonuç ekranı bunu ayrıca söyler.
 - **Ölüm:** ambar enkaza düşer, 60 dk bedava tamir. Her uçuştan sonra 10 dk bakım.
+  **Sahip, 28 Ekim 2026:** şimdilik ikisi de 3 dk ("biraz oynasınlar alışsınlar"). Amiral
+  eskortu kendi sürelerini korur: kayıpta 60 dk tamir, dönüşte 10 dk bakım (`ADMIRAL_WAIT`).
 - **Kapanış/çökme (KG-A15):** kargo ambarda kalır, tamir ya da bakım işlemez.
 - **Sezon sonu (KG-A16):** bitişe 10 dk kala giriş kapanır. Dondurmadan sonra gelen kargo kaybolur.
 - **Saha karışımı:** döteryum daha seyrek ve derinde kalır; mevcut karışım korunur.
@@ -1074,6 +1076,8 @@ Y6c (2026-10-24). Sahip: **"Radar kendi seviyesinde başlasın; her yetenek ayr�
 
 #### KG-X35
 Y6d (2026-10-24), 14 §7.4'teki ödemeli tamir uygulandı. Bedava 60 dakika korunur.
+- **28 Ekim 2026:** Yarık tamiri 3 dk olduğundan ödeme orada hiç önerilmez (kod yerinde, sahip kararı);
+  yalnız Amiral kaybının 60 dk tamirini kısaltır.
 - Bedel: alaşım `150 + 25·sv`, kristal `50 + 10·sv`. Ödemeden sonra bekleme:
   `15 + round(15·(sv−1)/19)` dakika. Tamir anında bitmez; ayrıca bakım eklenmez.
 - Yalnız aktif tamir kısaltılır. Yeni bekleme kalan süreden kısa değilse ücret alınmaz.

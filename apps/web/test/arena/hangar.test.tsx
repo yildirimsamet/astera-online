@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ARENA_LAYOUT, ARENA_PROTOCOL, CLASS_STATS, createSandboxWorld, shipStats, type Pilot, type ShipClass } from '@astera/rules/arena';
+import { ARENA_ECONOMY, ARENA_LAYOUT, ARENA_PROTOCOL, CLASS_STATS, createSandboxWorld, shipStats, type Pilot, type ShipClass } from '@astera/rules/arena';
 import i18n from '../../src/i18n/index.js';
 import { arenaCopy } from '../../src/arena/copy.js';
 import { SortieSummary, launchText, levelGains } from '../../src/arena/Hangar.js';
@@ -64,6 +64,9 @@ describe('the hangar desk client', () => {
     expect(repairOffer(hangar({}, { readyReason: 'service', readyAt: repairing.ship?.readyAt }), NOW)).toBeNull();
     expect(repairOffer(hangar({}, { flying: true, readyReason: 'repair', readyAt: repairing.ship?.readyAt }), NOW)).toBeNull();
     expect(repairOffer(hangar({}, null), NOW)).toBeNull();
+    // Owner 2026-10-28: a Yarık death repairs faster than any quote, so it is never offered there.
+    const yarik = new Date(NOW + ARENA_ECONOMY.repairMinutes * 60_000).toISOString();
+    for (const level of [1, 10, 20]) expect(repairOffer(hangar({}, { level, readyReason: 'repair', readyAt: yarik }), NOW)).toBeNull();
   });
   it('reads the hangar with the session, and a refusal by its code', async () => {
     const fetcher = vi.fn((url: RequestInfo | URL, init?: RequestInit) => {
@@ -112,6 +115,19 @@ describe('the hangar desk client', () => {
   it('counts what the capital can still take today, never below nothing', () => {
     expect(capLeft(hangar())).toEqual({ alloy: 5000, crystal: 2832, deuterium: 0 });
     expect([clockText(0), clockText(59_000), clockText(9 * 60_000 + 58_000), clockText(60 * 60_000)]).toEqual(['0:00', '0:59', '9:58', '60:00']);
+  });
+});
+
+describe('the hangar rules', () => {
+  // Owner 2026-10-28: the waits are read from the rules, so the sheet never promises an old number.
+  it('names the repair and the maintenance the rules hold, in both languages', async () => {
+    for (const language of ['tr', 'en']) {
+      await i18n.changeLanguage(language);
+      const rules = arenaCopy().rules.join(' ');
+      expect(rules).toContain(`${String(ARENA_ECONOMY.repairMinutes)} ${language === 'tr' ? 'dk' : 'min'}`);
+      expect(rules).toContain(`${String(ARENA_ECONOMY.serviceMinutes)} ${language === 'tr' ? 'dk' : 'min'}`);
+      expect(rules).not.toMatch(/\b(60|10) (dk|min)\b/);
+    }
   });
 });
 

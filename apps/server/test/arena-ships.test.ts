@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { alloyRate, crystalRate, deuteriumRate } from '@astera/rules';
-import { ARENA_ECONOMY as E, CLASS_STATS, dailyCap, shipStats } from '@astera/rules/arena';
+import { ADMIRAL_WAIT, ARENA_ECONOMY as E, CLASS_STATS, dailyCap, shipStats } from '@astera/rules/arena';
 import { arenaShips, notifications, planets, seasons } from '../src/db/schema.js';
 import { chooseShip, endSortie, launchSortie, readHangar, recallOpenSorties, repairShip, setLoadout, spendAbility, upgradeShip } from '../src/services/arenaShips.js';
 import { GameError } from '../src/services/planet.js';
@@ -76,11 +76,26 @@ describe('separate ability points', () => {
 });
 
 describe('paid repair', () => {
-  const wreck = async () => {
+  const dead = async () => {
     await chooseShip(f.db, f.clock, account, 'akinci');
     const flight = await launchSortie(f.db, f.clock, account);
     await endSortie(f.db, f.clock, account, flight.sortieId, { ...empty, outcome: 'dead' });
   };
+  // Owner 2026-10-28: a Yarık death repairs faster than any quote; payment shortens a long repair,
+  // the kind an escort's lost battle leaves (ADMIRAL_WAIT), so the wreck is given one.
+  const wreck = async () => {
+    await dead();
+    await f.db.update(arenaShips).set({ readyAt: new Date(f.clock.now().getTime() + ADMIRAL_WAIT.repairMinutes * 60_000) });
+  };
+
+  it('never charges for a Yarık death: its repair is already shorter than any quote', async () => {
+    await dead();
+    const before = await stock(); const readyAt = (await shipRow())?.readyAt;
+    expect(readyAt).toEqual(new Date(f.clock.now().getTime() + E.repairMinutes * 60_000));
+    expect(await code(repairShip(f.db, f.clock, account))).toBe('REPAIR_NOT_SHORTER');
+    expect(await stock()).toEqual(before);
+    expect((await shipRow())?.readyAt).toEqual(readyAt);
+  });
 
   it('charges the capital and shortens the repair, keeping the ship grounded until it ends', async () => {
     await wreck();
