@@ -115,7 +115,7 @@ Gerekçe ve ölçüm: `17-paket-kucultme-plani.md`.
 **Protokol 8 (Y4, 2026-10-23, `rules/arena/classes.ts`):** kendi satırı sınıfı taşır (faz alanından
 hemen önce, 54 sayı); çözücü yakıt, gövde, şarjör ve ambarı o sınıfın sınırıyla denetler. Kadronun
 her satırında `ship` var; başka geminin satırı sınıf taşımaz, gövdesi en sağlam sınıfın (600) sınırıyla
-denetlenir. Sınıf `hello` ile seçilir ve **bir sonraki uçuşta** geçer; uçuş sürerken değişmez.
+denetlenir (2026-10-27'den beri 900, seviye 20'de 1413). Sınıf `hello` ile seçilir ve **bir sonraki uçuşta** geçer; uçuş sürerken değişmez.
 
 **Protokol 9 (Y4c, 2026-10-23, `rules/arena/signatures.ts`, KG-X29):**
 - `hello` artık `tactic` da taşır: `smoke` veya `cloak`.
@@ -173,6 +173,9 @@ denetlenir. Sınıf `hello` ile seçilir ve **bir sonraki uçuşta** geçer; uç
 - `POST /arena/repair {}` aynı oturum/koltuk kapısını kullanır. Bedel ve yeni bitiş sunucudadır
   (KG-X35); kalan süre yeterince kısaysa yeniden ödeme yapılmaz.
 - Y6c için migration 0199 önce uygulanır; web ve arena protokol 13'e birlikte geçer.
+
+**Protokol 15 (sahip 2026-10-27):** satırlar aynı; gövdeler %50 güçlendi ve çözücü sınırları sınıf
+gövdesinden okur, 14'teki bir sayfa 900'lük Muhafızı reddederdi. Eski sayfa `kick: version` alır ve yenilenir.
 
 **Protokol 14 (Y7, 2026-10-24, KG-X36):**
 - Kendi satırı 72 sayı; seviye sonrasındaki `mendPower` onarımı gönderenin gücünü korur.

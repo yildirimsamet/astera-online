@@ -165,7 +165,7 @@ Sahibin listesi: **isabet, hız, yakıt deposu, ambar, defans, hasar.**
 |---|---|---|---|
 | Hız / turbo (m/s) | 80 / 160 | 72 / 144 | 60 / 120 |
 | Dönüş (°/sn) | 82 | 72 | 58 |
-| Defans (gövde) | 340 | 400 | 600 |
+| Defans (gövde) | 510 | 600 | 900 (sahip 2026-10-27: +%50; 340/400/600 idi) |
 | Hasar × atış/sn | 13 × 9 (117/sn) | 10 × 8 (80/sn) | 18 × 5,5 (99/sn) |
 | İsabet (saçılma) | 1,3° | 1,5° | 1,8° |
 | Yakıt deposu | 220 | 250 | 280 |

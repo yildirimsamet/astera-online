@@ -983,6 +983,16 @@ Y6a: gerçek gemi ve gerçek kargo (2026-10-23, sahibin kararları). Seviye, XP 
 - **Herkese açılış (sahip 2026-10-27):** Yarık her komutana açık (`ARENA_PILOTS='*'`), amiral eskortu canlı
   sezonlarda `season activate-admiral` ile açık. Gerçek uçuş odasında ev botu yok ("botları kapat";
   `ARENA_BOTS`, varsayılan 0, en çok 3). Antrenmanda 20 bot uçar, roller sırayla (`ARENA_TUNING.practiceBots`).
+- **Gövde +%50 (sahip 2026-10-27, "gemiler biraz çabuk ölüyor"):** Akıncı 510, Kılavuz 600, Muhafız 900
+  (340/400/600 idi); seviye büyümesi aynı oranla üstüne biner. Protokol 15: eski sayfa yenilenir.
+- **Masaüstü (sahip 2026-10-27):** fare yön verir (pointer lock: gökyüzüne tık alır, Esc bırakır), sol tık
+  ateş, Q yetenek (A), E taktik (B), Shift turbo, M harita, Tab basılıyken sıralama ve tuşlar. V kalktı.
+  Masaüstünde joystick gizli, her tuş kendi tuşunu yazar.
+- **Kalkan/onarım hedefi (sahip 2026-10-27, "basıyorum çalışmıyor diyorlar"):** odada dost yoksa basınca
+  doğrudan pilota gider. Dost varsa tuşun yanında "Kalkan kime?" tepsisi açılır: önce Sen, sonra en yakın
+  dostlar gövde çubuklarıyla; dokunarak ya da masaüstünde 1–5 ile seçilir, 6 sn bekler. Hızlı çift dokunuş
+  kendine olarak kalır.
+- **Ambar sayıları (sahip 2026-10-27):** ambar göstergesinin altında her kaynağın kendi renginde sayısı.
 - **Kalkış planı (sahip 2026-10-27, "kısmi dolum ekle"):** oyuncu hangarın Kalkış sekmesinde depoyu
   %25/50/75/100, şarjörü %0/25/50/75/100 seçer; kalkış her parçayı yalnız o seviyeye tamamlar ve
   yalnız o eksiği öder. Planın üstünde gemide kalan yakıt/mermi kalır, geri satılmaz. %0 cephane:
