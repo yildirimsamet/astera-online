@@ -7,13 +7,15 @@ import i18n from '../../src/i18n/index.js';
 import { arenaCopy } from '../../src/arena/copy.js';
 
 /** Owner 2026-10-27: the Yarık's desktop keys on the flight page (desktop-controls.test.tsx has the controls). */
-const flight = vi.hoisted(() => ({ args: null as { world: ArenaWorld; store: HudStore; controls: ArenaControls } | null }));
+const flight = vi.hoisted(() => ({ args: null as { world: ArenaWorld; store: HudStore; controls: ArenaControls } | null,
+  friendAt: null as ((x: number, y: number) => number | null) | null }));
 vi.mock('../../src/arena/assets/load.js', () => ({ loadArenaAssets: () => Promise.resolve({ colliders: new Map(), rivals: [], classes: new Map(), fx: new Map(), sounds: new Map(), music: new Map() }) }));
 vi.mock('../../src/arena/assets/memory.js', () => ({ assetTextureBytes: () => 0, releaseKtx2: () => undefined }));
 vi.mock('../../src/arena/client.js', () => ({ createArenaClient: (args: typeof flight.args) => {
   flight.args = args;
+  const friendAt = vi.fn((_x: number, _y: number): number | null => null); flight.friendAt = friendAt;
   return { warm: () => Promise.resolve(), start: vi.fn(), setHud: vi.fn(), setPhase: vi.fn(), dispose: vi.fn(),
-    setSpectator: vi.fn(), reset: vi.fn(), friendAt: vi.fn(() => null), metrics: { fps: 60 } };
+    setSpectator: vi.fn(), reset: vi.fn(), friendAt, metrics: { fps: 60 } };
 } }));
 const { default: Sandbox } = await import('../../src/arena/Sandbox.js');
 
@@ -89,6 +91,16 @@ describe('a desktop flight', () => {
     expect(unlock).toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: arenaCopy().resume }));
     expect(lock).toHaveBeenCalledTimes(2);
+  });
+
+  // Under the lock the cursor is hidden and its last spot stale: a click picks the friend on the crosshair.
+  it('under the lock picks the friend a click aims at on the crosshair', async () => {
+    const { view, controls } = await fly();
+    const main = view.container.querySelector('main')!;
+    fireEvent.pointerDown(main, { pointerType: 'mouse', button: 0 });
+    vi.spyOn(controls, 'aiming').mockReturnValue(true);
+    fireEvent.pointerDown(view.container.querySelector('canvas')!, { pointerType: 'mouse', button: 0, clientX: 12, clientY: 30 });
+    expect(flight.friendAt).toHaveBeenLastCalledWith(window.innerWidth / 2, window.innerHeight / 2);
   });
 
   it('leaves the pointer alone at launch on a touch screen', async () => {

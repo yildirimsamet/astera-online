@@ -1,6 +1,6 @@
 import { fireEvent, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSandboxWorld, type Pilot } from '@astera/rules/arena';
+import { ARENA_TUNING as T, createSandboxWorld, steeringGain, type Pilot } from '@astera/rules/arena';
 import i18n from '../../src/i18n/index.js';
 import { FlightControls, aimKey, aimTargets } from '../../src/arena/Controls.js';
 import { arenaCopy } from '../../src/arena/copy.js';
@@ -76,11 +76,24 @@ describe('the mouse', () => {
     controls.steerWithMouse(true);
     controls.mouseMove(MOUSE_RADIUS / 2, 0);
     controls.sample();
-    expect(controls.stick.x).toBeCloseTo((0.5 - MOUSE_DEADZONE) / (1 - MOUSE_DEADZONE), 6);
+    expect(controls.stick.x).toBeGreaterThan(0.5); expect(controls.stick.x).toBeLessThan(1);
     controls.mouseMove(MOUSE_RADIUS * 4, -MOUSE_RADIUS * 4);
     controls.sample();
     expect(Math.hypot(controls.stick.x, controls.stick.y)).toBeCloseTo(1, 6);
     expect(controls.stick.x).toBeGreaterThan(0); expect(controls.stick.y).toBeLessThan(0);
+  });
+
+  // The stick's curve is a thumb's (soft in the middle, steep at the rim); the mouse was fed into it and
+  // gave 13 % of the turn at half travel, 51 % at four fifths. On a mouse the turn follows the travel.
+  it('turns in step with the mouse: half the travel past the centre is half the turn, on both axes', () => {
+    for (const [dx, dy] of [[1, 0], [0, 1]] as const) for (const share of [0.25, 0.5, 0.75, 1]) {
+      const controls = createControls(); controls.steerWithMouse(true);
+      const travel = MOUSE_DEADZONE + share * (1 - MOUSE_DEADZONE);
+      controls.mouseMove(dx * travel * MOUSE_RADIUS, dy * travel * MOUSE_RADIUS);
+      const intent = controls.sample();
+      const length = Math.hypot(intent.steerX, intent.steerY);
+      expect(length * steeringGain(intent.steerX, intent.steerY, 1, T), `${String(dx)},${String(dy)} ${String(share)}`).toBeCloseTo(share, 2);
+    }
   });
 
   it('keeps turning while the mouse rests, and flies straight once it is back in the small centre', () => {

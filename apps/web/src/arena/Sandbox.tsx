@@ -421,7 +421,8 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     onPointerDownCapture={event => {
       const now = performance.now();
       if (screen !== 'flight' || !controls.aiming(now) || (event.target instanceof Element && event.target.closest('button,input,[role="dialog"]'))) return;
-      const friend = client.current?.friendAt(event.clientX, event.clientY);
+      // Under the mouse's lock the cursor is hidden: the click means the crosshair.
+      const friend = mouse ? client.current?.friendAt(window.innerWidth / 2, window.innerHeight / 2) : client.current?.friendAt(event.clientX, event.clientY);
       if (friend === null || friend === undefined) return;
       controls.signatureAt(friend, now); event.preventDefault(); event.stopPropagation();
     }}>

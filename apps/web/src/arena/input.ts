@@ -1,4 +1,4 @@
-import { createInput, sampleInput, type ArenaIntent, type Tactic } from '@astera/rules/arena';
+import { ARENA_TUNING, createInput, sampleInput, steeringGain, type ArenaIntent, type Tactic } from '@astera/rules/arena';
 
 /** Thumb travel to full deflection: longer travel means finer aim for the same turn. */
 export const STICK_RADIUS = 72;
@@ -91,6 +91,20 @@ export const AIM_WINDOW_MS = 6000;
  */
 export const MOUSE_RADIUS = 240;
 export const MOUSE_DEADZONE = 0.06;
+/**
+ * The stick length the flight shapes into `share` of the full turn (its curve is a thumb's: soft in
+ * the middle, steep at the rim). The mouse goes through it so its turn follows its travel.
+ */
+function stickForTurn(share: number): number {
+  if (share <= 0) return 0;
+  if (share >= 1) return 1;
+  let low = 0; let high = 1;
+  for (let step = 0; step < 24; step++) {
+    const mid = (low + high) / 2;
+    if (mid * steeringGain(mid, 0, 1, ARENA_TUNING) < share) low = mid; else high = mid;
+  }
+  return high;
+}
 /** The pointer id the mouse's left button holds FIRE under (a finger's id is never negative). */
 export const MOUSE_POINTER = -1;
 
@@ -164,9 +178,9 @@ export function createControls() {
   const steer = (): void => {
     keyboardStick();
     if (!mouseOn || stickPointer !== null || stick.x !== 0 || stick.y !== 0) return;
-    // Past the centre the deflection grows from nothing, so leaving it never jolts the ship.
+    // Past the centre the turn grows from nothing, so leaving it never jolts the ship, and in step with the travel.
     const length = Math.hypot(mouse.x, mouse.y);
-    const gain = length <= MOUSE_DEADZONE ? 0 : (length - MOUSE_DEADZONE) / (1 - MOUSE_DEADZONE) / length;
+    const gain = length <= MOUSE_DEADZONE ? 0 : stickForTurn((length - MOUSE_DEADZONE) / (1 - MOUSE_DEADZONE)) / length;
     stick.x = mouse.x * gain; stick.y = mouse.y * gain;
   };
   return {

@@ -1,7 +1,7 @@
 // Independent subpath: never re-export these through the galaxy rules barrel.
 export { ARENA_TUNING, type FlightTuning } from './tuning.js';
 export { CLASS_HULLS, CLASS_STATS, SHIP_CLASSES, classTuning, type ClassStats, type ShipClass } from './classes.js';
-export { DEFAULT_STEERING, clampAssist, createInput, sampleAssist, sampleInput, shapeSteering } from './controls.js';
+export { DEFAULT_STEERING, clampAssist, createInput, sampleAssist, sampleInput, shapeSteering, steeringGain } from './controls.js';
 export { createFlightState, stepFlight } from './flight.js';
 export { fuelBurn, lowFuel, remainingFlightSeconds } from './fuel.js';
 export { ARENA_LAYOUT, ARENA_SEED, buildArenaLayout, obstacleSize, spawnFlight } from './layout.js';

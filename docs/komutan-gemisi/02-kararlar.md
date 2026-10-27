@@ -990,7 +990,9 @@ Y6a: gerçek gemi ve gerçek kargo (2026-10-23, sahibin kararları). Seviye, XP 
   Masaüstünde joystick gizli, her tuş kendi tuşunu yazar. İkinci tur (aynı gün): fare kalkış tıklamasıyla
   kendiliğinden alınır (menüden dönüşte de); fare yerinde kalan bir joysticktir — durunca dönüş sürer,
   ortadaki %6'lık bölgeye dönünce düzleşir (`MOUSE_RADIUS` 240 px, `MOUSE_DEADZONE`). Ping çarkı masaüstünde
-  yalnız orta tuşla açılır: basılı tut, yöne it, bırak.
+  yalnız orta tuşla açılır: basılı tut, yöne it, bırak. Farede dönüş mesafeyle doğrusaldır (yarı mesafe =
+  yarı dönüş); başparmak çubuğunun ortası yumuşak eğrisi fareye uygulanmaz. Kilitliyken hedef tıklaması
+  nişangâhtaki arkadaşı seçer.
 - **Kalkan/onarım hedefi (sahip 2026-10-27, "basıyorum çalışmıyor diyorlar"):** odada dost yoksa basınca
   doğrudan pilota gider. Dost varsa tuşun yanında "Kalkan kime?" tepsisi açılır: önce Sen, sonra en yakın
   dostlar gövde çubuklarıyla; dokunarak ya da masaüstünde 1–5 ile seçilir, 6 sn bekler. Hızlı çift dokunuş
