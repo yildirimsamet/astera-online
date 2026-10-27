@@ -12,6 +12,7 @@ import { countdown, duration, useNow } from '../lib/time.js';
 import { planetArt, RESOURCE_ART } from '../ui/assets.js';
 import { PaceRow } from '../ui/PaceRow.js';
 import { RadiationPreview } from '../ui/RadiationPreview.js';
+import { Confirm } from '../ui/kit/Confirm.js';
 import { initials } from '../v2/hud/CommanderCard.js';
 import { Icon } from '../v2/icons.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
@@ -62,6 +63,7 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
   const now = useNow();
   const [waveOpen, setWaveOpen] = useState(false);
   const [donateOpen, setDonateOpen] = useState(false);
+  const [cancelOperationId, setCancelOperationId] = useState<string | null>(null);
   const [acknowledgeStartShield, setAcknowledgeStartShield] = useState(false);
   const [wantedPace, setWantedPace] = useState<MissionPace>(1);
   const [acknowledgeRadiation, setAcknowledgeRadiation] = useState(false);
@@ -97,6 +99,7 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
   }
 
   const assembling = operation.status === 'ASSEMBLING';
+  const confirmingCancel = cancelOperationId === operation.id && role === 'LEADER' && assembling;
   const inbound = operation.contributions.some((wave) => wave.status === 'OUTBOUND');
   const critical = operation.contributions.some(wave => wave.status === 'STAGED' && wave.damage.some(lot => !shipCanFight(lot)));
   const startReason = operation.status !== 'ASSEMBLING' ? t('clanWar.notAssembling')
@@ -199,9 +202,9 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
             />
           </div>
           <Button size="sm" variant="ghost" disabled={actions.cancel.isPending}
-            onClick={() => { actions.cancel.mutate(); }}>{t('clanWar.cancel')}</Button>
+            onClick={() => { actions.cancel.reset(); setCancelOperationId(operation.id); }}>{t('clanWar.cancel')}</Button>
           {actions.start.isError && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.start.error)}</p>}
-          {actions.cancel.isError && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.cancel.error)}</p>}
+          {actions.cancel.isError && !confirmingCancel && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.cancel.error)}</p>}
         </Plate>
       )}
 
@@ -215,6 +218,23 @@ export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlay
       {treasury}
       {purpose}
       {donation}
+      {confirmingCancel && (
+        <Confirm
+          eyebrow={t('clanWar.leaderTitle')}
+          title={t('clanWar.cancelTitle')}
+          confirmLabel={t('clanWar.cancelConfirm')}
+          backLabel={t('clanWar.cancelBack')}
+          pending={actions.cancel.isPending}
+          onClose={() => { setCancelOperationId(null); }}
+          onConfirm={() => {
+            if (actions.cancel.isPending) return;
+            actions.cancel.mutate(undefined, { onSuccess: () => { setCancelOperationId(null); } });
+          }}
+        >
+          <p className="text-body leading-relaxed text-v2-ink-2">{t('clanWar.cancelBody')}</p>
+          {actions.cancel.isError && <p role="alert" className="mt-2 text-caption text-v2-warn">{describeError(actions.cancel.error)}</p>}
+        </Confirm>
+      )}
       {waveOpen && (
         <ClanWaveSheet
           operation={operation}

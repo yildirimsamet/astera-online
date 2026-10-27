@@ -2,9 +2,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { Api } from '../src/api/client.js';
+import { Api, ApiError } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { clanWarSchema } from '../src/api/schemas.js';
+import i18n from '../src/i18n/index.js';
 import { ClanDonateSheet } from '../src/screens/ClanDonateSheet.js';
 import { ClanWarPanel, type WarSeatMember } from '../src/screens/ClanWarPanel.js';
 import { planetView } from './fixtures.js';
@@ -56,16 +57,17 @@ function show(
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(['season'], { honorSoloCredit });
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
-  render(<QueryClientProvider client={client}><ApiProvider api={api}>
-    <ClanWarPanel war={war} role={role} mature worlds={worlds} members={members}
+  const panel = (nextWar: typeof war) => <QueryClientProvider client={client}><ApiProvider api={api}>
+    <ClanWarPanel war={nextWar} role={role} mature worlds={worlds} members={members}
       selfPlayerId="leader" onOpenClanChat={onOpenClanChat} />
-  </ApiProvider></QueryClientProvider>);
-  return { api, client, onOpenClanChat };
+  </ApiProvider></QueryClientProvider>;
+  const view = render(panel(war));
+  return { api, client, onOpenClanChat, rerenderWar: (nextWar: typeof war) => { view.rerender(panel(nextWar)); } };
 }
 
-/** The wave goes from its own launch page (E9 → B14): opened by "Send a wave". */
+/** Adding ships opens their own launch page (E9 → B14). */
 const openWave = async (): Promise<void> => {
-  await userEvent.setup().click(screen.getByRole('button', { name: /^send a wave/i }));
+  await userEvent.setup().click(screen.getByRole('button', { name: /^add ships/i }));
 };
 /** The held commit of the wave page; its face carries the reason it cannot send. */
 const send = (): HTMLElement => within(document.querySelector<HTMLElement>('[data-wave-commit]')!).getByRole('button');
@@ -92,6 +94,81 @@ const shieldQuote = {
 };
 
 describe('clan war decision surface', () => {
+  it('calls the Turkish fleet contribution action Gemi Ekle', async () => {
+    await i18n.changeLanguage('tr');
+    show(active, 'LEADER', [origin]);
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Gemi Ekle/ }));
+    expect(screen.getByRole('dialog', { name: /Vega/ })).toBeVisible();
+  });
+
+  it('asks before cancelling the target and explains that all gathering fleets return', async () => {
+    const { api } = show(launchReady);
+    const cancel = vi.spyOn(api, 'cancelClanWar');
+    await userEvent.setup().click(screen.getByRole('button', { name: /^cancel target$/i }));
+    const modal = screen.getByRole('dialog', { name: /cancel the clan target/i });
+    expect(modal).toHaveTextContent(/staged and inbound fleets.*home worlds/i);
+    expect(modal).toHaveTextContent(/cannot be undone/i);
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it.each(['back', 'close', 'escape'] as const)('dismisses the cancellation with %s without returning any fleet', async (dismissal) => {
+    const { api } = show(launchReady);
+    const cancel = vi.spyOn(api, 'cancelClanWar');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /^cancel target$/i }));
+    const modal = screen.getByRole('dialog', { name: /cancel the clan target/i });
+    if (dismissal === 'escape') await user.keyboard('{Escape}');
+    else await user.click(within(modal).getByRole('button', { name: dismissal === 'back' ? /^go back$/i : /close/i }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it('cancels only after confirmation, blocks repeated submission, and closes on success', async () => {
+    const { api } = show(launchReady);
+    let finish: ((result: Awaited<ReturnType<Api['cancelClanWar']>>) => void) | undefined;
+    const cancel = vi.spyOn(api, 'cancelClanWar').mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /^cancel target$/i }));
+    const modal = screen.getByRole('dialog', { name: /cancel the clan target/i });
+    const commit = within(modal).getByRole('button', { name: /yes, cancel target/i });
+    await user.dblClick(commit);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(commit).toBeDisabled();
+    finish?.({ operation: { ...launchReady.operation!, status: 'RETURNING', closeReason: 'LEADER_CANCEL' } });
+    await waitFor(() => { expect(screen.queryByRole('dialog')).toBeNull(); });
+  });
+
+  it('keeps a failed cancellation in the modal and lets the leader retry', async () => {
+    const { api } = show(launchReady);
+    const cancel = vi.spyOn(api, 'cancelClanWar')
+      .mockRejectedValueOnce(new ApiError('UNREACHABLE', 'Network unavailable', 0))
+      .mockReturnValue(new Promise<never>(() => undefined));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /^cancel target$/i }));
+    const modal = screen.getByRole('dialog', { name: /cancel the clan target/i });
+    await user.click(within(modal).getByRole('button', { name: /yes, cancel target/i }));
+    expect(await within(modal).findByRole('alert')).toHaveTextContent(i18n.t('errors.unreachable'));
+    await user.click(within(modal).getByRole('button', { name: /yes, cancel target/i }));
+    expect(cancel).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['replaced', 'started', 'removed'] as const)('dismisses stale confirmation when the operation is %s', async (change) => {
+    const { api, rerenderWar } = show(launchReady);
+    const cancel = vi.spyOn(api, 'cancelClanWar');
+    await userEvent.setup().click(screen.getByRole('button', { name: /^cancel target$/i }));
+    expect(screen.getByRole('dialog')).toBeVisible();
+    rerenderWar(clanWarSchema.parse({ ...launchReady, operation: change === 'removed' ? null : {
+      ...launchReady.operation!, ...(change === 'replaced' ? { id: 'next-operation' } : { status: 'ATTACKING' }),
+    } }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it('does not offer target cancellation to members', () => {
+    show(launchReady, 'MEMBER');
+    expect(screen.queryByRole('button', { name: /^cancel target$/i })).toBeNull();
+  });
+
   it('states Honor restrictions before a combined attack can be dispatched', () => {
     show(active, 'LEADER', [], crew, vi.fn(), true);
     expect(screen.getByText(/Shared sides cannot earn positive Honor/)).toBeVisible();
