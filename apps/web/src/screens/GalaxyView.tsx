@@ -1780,15 +1780,14 @@ export function GalaxyView({
       )}
 
       {/*
-        THE BASE AND ITS RESEARCH, AS THE MOCKS DRAW THEM (M5): no page header — the switch
-        and the world's hero head the page, the close floats beside the switch, and the page
-        stands under the top bar so the purse stays in sight while it is spent.
+        THE BASE AND ITS RESEARCH (M5): the page stands under the top bar so the purse stays in
+        sight while it is spent. Owner 2026-10-27: it is headed by its own art, as research is.
       */}
       {panel === 'planet' && planet.data && (
         <V2Sheet
           bleed
           detents={['full']}
-          quietTitle
+          headerArt={ATMOSPHERE.baseWorld}
           eyebrow={commander}
           title={planet.data.planet.name}
           onClose={() => {
@@ -1845,7 +1844,7 @@ export function GalaxyView({
       )}
 
       {panel === 'ship' && onEnterArena && (
-        <V2Sheet detents={['full']} quietTitle title={t('arena.nav')} onClose={() => { onPanel(null); }}>
+        <V2Sheet detents={['full']} headerArt={ATMOSPHERE.commanderShip} eyebrow={commander} title={t('arena.nav')} onClose={() => { onPanel(null); }}>
           <BaseSwitch value="ship" onChange={openBase} arenaAvailable />
           <Suspense fallback={null}><HangarPanel credential={() => arenaCredential(api)} onEnter={onEnterArena}
             onSpent={() => { for (const queryKey of [keys.planet, keys.commanderShip]) void queryClient.invalidateQueries({ queryKey }); }} /></Suspense>

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Icon } from '../icons.js';
 import { Segmented } from '../kit/Segmented.js';
 
 export type BaseView = 'world' | 'research' | 'ship';
@@ -20,9 +21,10 @@ export function BaseSwitch({ value, onChange, arenaAvailable = false }: {
       <Segmented
         label={t('baseSwitch.label')}
         options={[
-          { id: 'world', label: t('baseSwitch.world') },
-          { id: 'research', label: t('baseSwitch.research') },
-          ...(arenaAvailable ? [{ id: 'ship' as const, label: t('arena.nav') }] : []),
+          // Owner 2026-10-27: a coloured glyph beside each word — the world, its research, the ship flown.
+          { id: 'world', label: t('baseSwitch.world'), icon: <Icon id="i-base" className="size-4 shrink-0 text-v2-alloy" /> },
+          { id: 'research', label: t('baseSwitch.research'), icon: <Icon id="i-spark" className="size-4 shrink-0 text-v2-crystal" /> },
+          ...(arenaAvailable ? [{ id: 'ship' as const, label: t('arena.nav'), icon: <Icon id="i-fleet" className="size-4 shrink-0 text-v2-self" /> }] : []),
         ]}
         value={value}
         onChange={onChange}

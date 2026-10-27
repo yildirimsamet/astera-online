@@ -30,6 +30,9 @@ export const ATMOSPHERE = {
   rewards: { src: `${BASE}/rewards-v1.webp`, position: '65% 50%' },
   season: { src: `${BASE}/season-v1.webp`, position: '50% 70%' },
   research: { src: `${BASE}/research-v1.webp`, position: '65% 40%' },
+  /** Owner 2026-10-27: the Base's other two pages had no header art. */
+  baseWorld: { src: `${BASE}/base-world-v1.webp`, position: '60% 42%' },
+  commanderShip: { src: `${BASE}/commander-ship-v1.webp`, position: '55% 52%' },
 } satisfies Record<string, AtmosphereArt>;
 
 
