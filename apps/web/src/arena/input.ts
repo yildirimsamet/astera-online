@@ -75,12 +75,24 @@ export const TAKEOFF_THROTTLE = 0.33;
 export type ArenaAction = 'fire' | 'turbo' | Tactic | 'signature';
 /** An aimed signature (shield, repair): a second tap this soon casts it on oneself (Y4c, owner 2026-10-23). */
 export const DOUBLE_TAP_MS = 300;
-/** Keys the flight page hands to the controls; the rest stay the browser's. */
-export const GAME_KEY = /^(Key[WASDRFXQETV]|Space|Shift(Left|Right)|Arrow(Up|Down|Left|Right))$/;
+/**
+ * Keys the flight page hands to the controls; the rest stay the browser's. Owner 2026-10-27: Q is
+ * the ability (A) and E the tactic (B); V and the second tactic key are gone.
+ */
+export const GAME_KEY = /^(Key[WASDRFXQET]|Space|Shift(Left|Right)|Arrow(Up|Down|Left|Right))$/;
 /** Keys that act once a press: the browser's auto-repeat must not fire them again. */
-export const ONE_PRESS_KEYS: readonly string[] = ['KeyQ', 'KeyE', 'KeyL', 'KeyT', 'KeyX', 'KeyV'];
-/** How long one tap waits for the friend to be tapped. */
-export const AIM_WINDOW_MS = 3000;
+export const ONE_PRESS_KEYS: readonly string[] = ['KeyQ', 'KeyE', 'KeyL', 'KeyT', 'KeyX', 'KeyM', 'Tab'];
+/** How long the target tray waits for a choice (the tray says who; owner 2026-10-27). */
+export const AIM_WINDOW_MS = 6000;
+/**
+ * The desktop's mouse (owner 2026-10-27: "joystick yerine mouse hareketi"): this much travel in
+ * one tick is full deflection, and each tick the deflection eases back by MOUSE_RECENTRE, so the
+ * ship turns while the mouse moves and flies straight about a quarter second after it rests.
+ */
+export const MOUSE_RADIUS = 40;
+export const MOUSE_RECENTRE = 0.7;
+/** The pointer id the mouse's left button holds FIRE under (a finger's id is never negative). */
+export const MOUSE_POINTER = -1;
 
 /**
  * The throttle a touch at `y` asks for, read off the rail itself (inset by its 4 px end caps): its
@@ -105,6 +117,8 @@ export function createControls() {
   const intent: ArenaIntent = createInput();
   const stick = { x: 0, y: 0 };
   const stickCenter = { x: 0, y: 0 };
+  const mouse = { x: 0, y: 0 };
+  let mouseOn = false;
   const keys = new Set<string>();
   const actions = new Map<ArenaAction, number>();
   let stickPointer: number | null = null;
@@ -121,12 +135,14 @@ export function createControls() {
     if (which === 'smoke') smoke = true; else if (which === 'cloak') cloak = true; else if (which === 'illusion') illusion = true; else radar = true;
   };
   // The A slot: a missile goes at once; a shield or repair is aimed (`aimedAt`: when the wait began).
-  let signatureMode = { aimed: false, self: (): number => -1 };
+  // With no friend in the room there is no one to choose: it goes on the pilot at once.
+  let signatureMode = { aimed: false, self: (): number => -1, friends: (): number => 0 };
   let signature = false; let signatureTarget = -1; let aimedAt = -Infinity;
   const pressSignature = (time: number): void => {
     if (!signatureMode.aimed) { signature = true; signatureTarget = -1; return; }
-    if (time - aimedAt <= DOUBLE_TAP_MS && time >= aimedAt) { signature = true; signatureTarget = signatureMode.self(); aimedAt = -Infinity; }
-    else aimedAt = time;
+    if (signatureMode.friends() === 0 || (time - aimedAt <= DOUBLE_TAP_MS && time >= aimedAt)) {
+      signature = true; signatureTarget = signatureMode.self(); aimedAt = -Infinity;
+    } else aimedAt = time;
   };
   const listeners = new Set<() => void>();
   const changed = (): void => { for (const listener of listeners) listener(); };
@@ -144,6 +160,13 @@ export function createControls() {
     stick.x = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft'));
     stick.y = Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp'));
   };
+  /** The tick's steering: a finger on the stick, else the steering keys, else the mouse while it holds the pointer. */
+  const steer = (): void => {
+    keyboardStick();
+    if (!mouseOn) return;
+    if (stickPointer === null && stick.x === 0 && stick.y === 0) { stick.x = mouse.x; stick.y = mouse.y; }
+    mouse.x *= MOUSE_RECENTRE; mouse.y *= MOUSE_RECENTRE;
+  };
   return {
     stick, stickCenter,
     get throttle(): number { return throttle; },
@@ -154,8 +177,28 @@ export function createControls() {
     subscribe(listener: () => void): () => void { listeners.add(listener); return () => { listeners.delete(listener); }; },
     setThrottle,
     takeOff(): void { setThrottle(TAKEOFF_THROTTLE, true); },
-    /** The flight's A slot: `aimed` for a shield or repair; `self` reads the pilot's own id (the room's, once it has given one). */
-    setSignature(mode: { aimed: boolean; self: () => number }): void { signatureMode = mode; aimedAt = -Infinity; },
+    /**
+     * The flight's A slot: `aimed` for a shield or repair; `self` reads the pilot's own id (the room's,
+     * once it has given one); `friends` counts the living friends it could go to instead.
+     */
+    setSignature(mode: { aimed: boolean; self: () => number; friends: () => number }): void { signatureMode = mode; aimedAt = -Infinity; },
+    /** The tray's own chip, or the 1 key: the aimed ability goes on the pilot. */
+    castOnSelf(time: number): void {
+      if (time - aimedAt > AIM_WINDOW_MS || time < aimedAt) return;
+      signature = true; signatureTarget = signatureMode.self(); aimedAt = -Infinity; changed();
+    },
+    /** The tray closed without a choice. */
+    cancelAim(): void { if (Number.isFinite(aimedAt)) { aimedAt = -Infinity; changed(); } },
+    get mouseSteering(): boolean { return mouseOn; },
+    /** The page holds the pointer (desktop): the mouse steers until it lets go. */
+    steerWithMouse(on: boolean): void { mouseOn = on; mouse.x = 0; mouse.y = 0; if (!on && stickPointer === null) keyboardStick(); },
+    /** Mouse travel since the last move, in CSS px; full deflection at MOUSE_RADIUS, never past it. */
+    mouseMove(dx: number, dy: number): void {
+      if (!mouseOn || !Number.isFinite(dx) || !Number.isFinite(dy)) return;
+      mouse.x += dx / MOUSE_RADIUS; mouse.y += dy / MOUSE_RADIUS;
+      const length = Math.hypot(mouse.x, mouse.y);
+      if (length > 1) { mouse.x /= length; mouse.y /= length; }
+    },
     /** The flight's B slot (Y4d): the one tactic Q and E press. */
     setTactic(next: Tactic): void { tactic = next; },
     /** Waiting for the friend an aimed signature goes to. */
@@ -217,8 +260,8 @@ export function createControls() {
       if (code === 'KeyT') setThrottle(Math.max(0.5, lastThrottle));
       if (code === 'Space') fire = true;
       if (code === 'ShiftLeft' || code === 'ShiftRight') turbo = true;
-      if (code === 'KeyQ' || code === 'KeyE') pressTactic(tactic);
-      if (code === 'KeyV') { pressSignature(performance.now()); changed(); }
+      if (code === 'KeyQ') { pressSignature(performance.now()); changed(); }
+      if (code === 'KeyE') pressTactic(tactic);
       keyboardStick();
     },
     keyUp(code: string): void {
@@ -233,7 +276,7 @@ export function createControls() {
      */
     sample(autopilot?: { x: number; y: number }): ArenaIntent {
       if (autopilot) sampleInput(intent, autopilot.x, autopilot.y, throttle, turbo);
-      else sampleInput(intent, stick.x, stick.y, throttle, turbo);
+      else { steer(); sampleInput(intent, stick.x, stick.y, throttle, turbo); }
       intent.fire = fire; intent.smoke = smoke; intent.cloak = cloak; intent.illusion = illusion; intent.radar = radar; intent.turboBurst = turboBurst;
       intent.signature = signature; intent.signatureTarget = signatureTarget;
       smoke = false; cloak = false; illusion = false; radar = false; turboBurst = false; signature = false; signatureTarget = -1;
@@ -246,7 +289,7 @@ export function createControls() {
      */
     clear(): void {
       keys.clear(); actions.clear(); stickPointer = null; throttlePointer = null;
-      stick.x = 0; stick.y = 0; fire = false; turbo = false; smoke = false; cloak = false; illusion = false; radar = false; turboBurst = false;
+      stick.x = 0; stick.y = 0; mouse.x = 0; mouse.y = 0; fire = false; turbo = false; smoke = false; cloak = false; illusion = false; radar = false; turboBurst = false;
       signature = false; signatureTarget = -1; aimedAt = -Infinity;
       lastTap = -Infinity; changed();
     },

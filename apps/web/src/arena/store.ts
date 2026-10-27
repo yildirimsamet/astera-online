@@ -1,7 +1,8 @@
-import { ARENA_TUNING as T, CLASS_STATS, abilityStats, alive, sameSide, flightRanks, dustAt, lockShare, locked as missileLocked, remainingFlightSeconds, shipTuning, type ArenaWorld, type Pilot } from '@astera/rules/arena';
+import { ARENA_TUNING as T, CLASS_STATS, abilityStats, alive, sameSide, flightRanks, dustAt, lockShare, locked as missileLocked, remainingFlightSeconds, shipTuning, statsOf, type ArenaWorld, type Pilot } from '@astera/rules/arena';
 
 export interface HudSnapshot {
-  friends: readonly { id: number; x: number; z: number }[];
+  /** Living friends: where they are, their hull's share and their distance in metres (the target tray, owner 2026-10-27). */
+  friends: readonly { id: number; x: number; z: number; hull: number; distance: number }[];
   clientPhase: 'preflight' | 'flight' | 'paused';
   phase: Pilot['phase'];
   /** The class flown, and its level (Y6b): every gauge reads against its own hull, tank, hold and magazine. */
@@ -67,7 +68,8 @@ export function createHudStore() {
       });
       const planar = Math.sqrt(p.p.x * p.p.x + p.p.z * p.p.z);
       snapshot = Object.freeze({
-        friends: world.drones.filter(d => d.decoyOf < 0 && alive(d) && sameSide(p, d)).map(d => ({ id: d.id, x: d.p.x, z: d.p.z })),
+        friends: world.drones.filter(d => d.decoyOf < 0 && alive(d) && sameSide(p, d)).map(d => ({ id: d.id, x: d.p.x, z: d.p.z,
+          hull: d.hull / statsOf(d).hull, distance: Math.hypot(d.p.x - p.p.x, d.p.y - p.p.y, d.p.z - p.p.z) })),
         clientPhase, phase: p.phase, ship: p.ship, level: p.level, ranks: p.ranks, hull: p.hull, fuel: p.fuel, ammo: p.ammo, shieldHp: p.shieldHp, shieldMax: p.shieldMax,
         remaining: remainingFlightSeconds(p.fuel, 1, false, shipTuning(p.ship, p.level)), cargo: p.cargo, speed: p.s, throttle: p.throttle,
         hold: [...p.hold], depositKind: slot >= 0 ? world.layout.depositKinds[slot] ?? -1 : -1,

@@ -13,7 +13,8 @@ import { createHudStore } from '../../src/arena/store.js';
  * Y4c, owner 2026-10-23: the right thumb holds FIRE, TURBO, A and B. A is the class's
  * signature: the Akıncı's missile leaves at once on a held lock; the Muhafız's shield and the
  * Kılavuz's repair are aimed: one tap, then the friend; two taps, oneself. B is the tactic
- * chosen in the hangar.
+ * chosen in the hangar. Owner 2026-10-27: the keys are Q and E, and the friend is chosen in a
+ * tray on the screen (desktop-controls.test.tsx).
  */
 class TestPointerEvent extends MouseEvent {
   readonly pointerId: number;
@@ -32,7 +33,7 @@ const tap = (controls: ReturnType<typeof createControls>, time: number): void =>
 describe('the A slot on the controls', () => {
   it('sends the missile on one press, at no one: the lock picks the target', () => {
     const controls = createControls();
-    controls.setSignature({ aimed: false, self: () => 4 });
+    controls.setSignature({ aimed: false, self: () => 4, friends: () => 0 });
     tap(controls, 0);
     const intent = controls.sample();
     expect([intent.signature, intent.signatureTarget]).toEqual([true, -1]);
@@ -41,7 +42,7 @@ describe('the A slot on the controls', () => {
 
   it('aims a shield or repair: one tap waits for a friend, a second tap soon after casts on oneself', () => {
     const controls = createControls();
-    controls.setSignature({ aimed: true, self: () => 4 });
+    controls.setSignature({ aimed: true, self: () => 4, friends: () => 1 });
     tap(controls, 0);
     expect(controls.sample().signature).toBe(false);
     expect(controls.aiming(100)).toBe(true);
@@ -53,7 +54,7 @@ describe('the A slot on the controls', () => {
 
   it('casts on the friend tapped while aiming, and aiming runs out', () => {
     const controls = createControls();
-    controls.setSignature({ aimed: true, self: () => 4 });
+    controls.setSignature({ aimed: true, self: () => 4, friends: () => 1 });
     tap(controls, 0);
     controls.signatureAt(7, 500);
     const intent = controls.sample();
@@ -66,22 +67,19 @@ describe('the A slot on the controls', () => {
 
   it('takes two slow taps as two aims, never as a cast on oneself', () => {
     const controls = createControls();
-    controls.setSignature({ aimed: true, self: () => 4 });
+    controls.setSignature({ aimed: true, self: () => 4, friends: () => 1 });
     tap(controls, 0); tap(controls, DOUBLE_TAP_MS + 100);
     expect(controls.sample().signature).toBe(false);
     expect(controls.aiming(DOUBLE_TAP_MS + 200)).toBe(true);
   });
 
-  it('answers the keyboard: V is A', () => {
+  it('answers the keyboard: Q is A, one cast a press however long it is held', () => {
     const controls = createControls();
-    controls.setSignature({ aimed: false, self: () => 4 });
-    controls.keyDown('KeyV'); controls.keyUp('KeyV');
+    controls.setSignature({ aimed: false, self: () => 4, friends: () => 0 });
+    controls.keyDown('KeyQ'); controls.keyUp('KeyQ');
     expect(controls.sample().signature).toBe(true);
-  });
-
-  it('lets V through the page\'s key filter, one cast a press however long it is held', () => {
-    expect(GAME_KEY.test('KeyV')).toBe(true);
-    expect(ONE_PRESS_KEYS).toContain('KeyV');
+    expect(GAME_KEY.test('KeyQ')).toBe(true);
+    expect(ONE_PRESS_KEYS).toContain('KeyQ');
   });
 });
 
@@ -121,14 +119,14 @@ describe('the A and B keys', () => {
     expect(Number(key?.style.getPropertyValue('--charge'))).toBeCloseTo(12 / SIGNATURE_COOLDOWN.kilavuz, 6);
   });
 
-  it('says where an aimed signature goes while it waits for a friend', () => {
+  it('asks who an aimed signature goes to while it waits for a friend', () => {
     const controls = createControls();
-    controls.setSignature({ aimed: true, self: () => 0 });
+    controls.setSignature({ aimed: true, self: () => 0, friends: () => 1 });
     const view = render(<FlightControls controls={controls} store={flying('kilavuz')} onLand={() => undefined} onCancel={() => undefined} />).container;
     const key = view.querySelector<HTMLElement>('.ac-signature'); if (!key) throw new Error('no key');
     key.setPointerCapture = () => undefined;
     fireEvent.pointerDown(key, { pointerId: 3 }); fireEvent.pointerUp(key, { pointerId: 3 });
-    expect(view.querySelector('.ac-aim-hint')?.textContent).toBe(arenaCopy().aimHint);
+    expect(view.querySelector('.ac-aim-tray strong')?.textContent).toBe(arenaCopy().aimTitle.kilavuz);
   });
 });
 

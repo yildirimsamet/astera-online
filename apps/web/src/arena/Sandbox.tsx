@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefCallback } from 'react';
-import { ARENA_TUNING as T, FARM_POINTS, SHIP_CLASSES, TACTICS, createInput, createSandboxWorld, holdPoints, type Pilot, type ShipClass, type SteeringSettings,
-  type Tactic, type TeamView } from '@astera/rules/arena';
+import { ARENA_TUNING as T, FARM_POINTS, SHIP_CLASSES, TACTICS, alive, createInput, createSandboxWorld, holdPoints, sameSide, type ArenaWorld, type Pilot, type ShipClass,
+  type SteeringSettings, type Tactic, type TeamView } from '@astera/rules/arena';
 import { ClassPicker, TacticPicker } from './ClassPicker.js';
 import { LaunchLabel, SortieSummary, launchText } from './Hangar.js';
 import { debriefText, pilotName, readDebrief, type Debrief } from './debrief.js';
@@ -17,10 +17,10 @@ import { ModePicker } from './ModePicker.js';
 import { openReferenceSession } from './access.js';
 import { createArenaAudio } from './audio.js';
 import { createArenaClient, type ArenaClient, type HudRefs } from './client.js';
-import { FlightControls } from './Controls.js';
+import { FlightControls, aimKey } from './Controls.js';
 import { ModelCredits } from './credits.js';
 import { ArenaHud, type HudBind } from './Hud.js';
-import { GAME_KEY, ONE_PRESS_KEYS, createControls } from './input.js';
+import { GAME_KEY, MOUSE_POINTER, ONE_PRESS_KEYS, createControls } from './input.js';
 import { createArenaNetwork, type Standing } from './network.js';
 import { createHudStore } from './store.js';
 import { arenaCopy, type ArenaCopy } from './copy.js';
@@ -102,6 +102,10 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const [assets, setAssets] = useState<ArenaAssets | null>(null);
   const [warming, setWarming] = useState(false);
   const [menu, setMenu] = useState(false);
+  // Owner 2026-10-27, the desktop: M opens the map, Tab holds the list up, a click in the sky takes the mouse.
+  const [map, setMap] = useState(false);
+  const [board, setBoard] = useState(false);
+  const [mouse, setMouse] = useState(false);
   const [tip, setTip] = useState(0);
   // The page needs the flight's phase. The HUD numbers change ten times a second; the page
   // re-rendering for them rebuilt everything under it, most of an S22 frame (V6g).
@@ -111,7 +115,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     return store.subscribe(() => {
       const next = `${world.pilot.ship}:${world.pilot.tactic}`;
       if (armed === next) return;
-      armed = next; controls.setSignature({ aimed: world.pilot.ship !== 'akinci', self: () => world.pilot.id }); controls.setTactic(world.pilot.tactic);
+      armed = next; controls.setSignature(signatureMode(world)); controls.setTactic(world.pilot.tactic);
     });
   }, [store, world, controls]);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -196,7 +200,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
       created.start(); setWarming(false);
       if (!resumingRef.current) { setScreen('preflight'); return; }
       // Back to a ship already in the air: its own throttle, its own keys.
-      controls.setThrottle(world.pilot.throttle); controls.setSignature({ aimed: world.pilot.ship !== 'akinci', self: () => world.pilot.id });
+      controls.setThrottle(world.pilot.throttle); controls.setSignature(signatureMode(world));
       controls.setTactic(world.pilot.tactic); created.reset(); setScreen('flight');
     })
       .catch((error: unknown) => { diag.push(`warm failed: ${error instanceof Error ? error.message : String(error)}`); setDiagOpen(true); });
@@ -243,23 +247,53 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   }, [screen, connection.watching, connection.phase, connection.received]);
 
   useEffect(() => {
-    const clear = (): void => { controls.clear(); };
+    const clear = (): void => { controls.clear(); setBoard(false); };
     const hidden = (): void => { if (document.hidden) { clear(); audio.silence(); } };
     const down = (event: KeyboardEvent): void => {
       if (screen !== 'flight' || menu || event.target instanceof HTMLInputElement) return;
+      if (event.code === 'Escape' && document.pointerLockElement) { document.exitPointerLock(); return; }
+      if (event.code === 'Tab') event.preventDefault();
       if (event.repeat && ONE_PRESS_KEYS.includes(event.code)) return;
       if (event.code === 'KeyL') { event.preventDefault(); client.current?.land(); return; }
+      if (event.code === 'KeyM') { event.preventDefault(); setMap(open => !open); return; }
+      if (event.code === 'Tab') { setBoard(true); return; }
+      if (aimKey(controls, store.getSnapshot(), event.code, performance.now())) { event.preventDefault(); return; }
       if (import.meta.env.DEV && event.code === 'KeyC') { client.current?.toggleColliders(); return; }
       if (GAME_KEY.test(event.code)) { event.preventDefault(); controls.keyDown(event.code); }
     };
-    const up = (event: KeyboardEvent): void => { controls.keyUp(event.code); };
+    const up = (event: KeyboardEvent): void => { if (event.code === 'Tab') setBoard(false); controls.keyUp(event.code); };
     window.addEventListener('keydown', down); window.addEventListener('keyup', up);
     window.addEventListener('blur', clear); document.addEventListener('visibilitychange', hidden);
     return () => {
       window.removeEventListener('keydown', down); window.removeEventListener('keyup', up);
       window.removeEventListener('blur', clear); document.removeEventListener('visibilitychange', hidden);
     };
-  }, [controls, audio, screen, menu]);
+  }, [controls, audio, screen, menu, store]);
+
+  // The desktop's mouse: it steers and fires only while the page holds the pointer; Esc (the
+  // browser's own) lets it go, and with it the ship. A menu or the flight's end lets it go too.
+  useEffect(() => {
+    const changed = (): void => {
+      const held = document.pointerLockElement !== null && document.pointerLockElement === canvas.current;
+      controls.steerWithMouse(held); setMouse(held);
+      if (!held) controls.actionUp('fire', MOUSE_POINTER, performance.now());
+    };
+    const move = (event: MouseEvent): void => { controls.mouseMove(event.movementX, event.movementY); };
+    const press = (event: MouseEvent): void => {
+      if (event.button === 0 && controls.mouseSteering) controls.actionDown('fire', MOUSE_POINTER, event.timeStamp);
+    };
+    const release = (event: MouseEvent): void => { if (event.button === 0) controls.actionUp('fire', MOUSE_POINTER, event.timeStamp); };
+    document.addEventListener('pointerlockchange', changed); document.addEventListener('mousemove', move);
+    document.addEventListener('mousedown', press); document.addEventListener('mouseup', release);
+    return () => {
+      document.removeEventListener('pointerlockchange', changed); document.removeEventListener('mousemove', move);
+      document.removeEventListener('mousedown', press); document.removeEventListener('mouseup', release);
+    };
+  }, [controls]);
+  useEffect(() => {
+    if ((screen !== 'flight' || menu) && document.pointerLockElement) document.exitPointerLock();
+    if (screen !== 'flight') { setMap(false); setBoard(false); }
+  }, [screen, menu]);
 
   useEffect(() => { client.current?.setPhase(screen === 'flight' || screen === 'spectate' ? (menu && mode === 'solo' ? 'paused' : 'flight') : 'preflight'); }, [screen, menu, mode]);
 
@@ -292,7 +326,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     try { localStorage.setItem(TACTIC_KEY, next); } catch { /* As the class. */ }
   };
   /** A missile goes on one press; a shield or repair is aimed (input.ts). Q and E press the B slot flown. */
-  const arm = (): void => { controls.setSignature({ aimed: world.pilot.ship !== 'akinci', self: () => world.pilot.id }); controls.setTactic(world.pilot.tactic); };
+  const arm = (): void => { controls.setSignature(signatureMode(world)); controls.setTactic(world.pilot.tactic); };
   const launch = (reserved?: TeamView): void => {
     const party = reserved?.team?.joined && reserved.team.state === 'flying' ? reserved.team : null;
     if (grounded && !party) return;
@@ -329,7 +363,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     setShip(owned); world.pilot.ship = owned;
     network.connect(owned, tactic);
     if (screen === 'preflight') {
-      controls.setThrottle(world.pilot.throttle); controls.setSignature({ aimed: owned !== 'akinci', self: () => world.pilot.id }); controls.setTactic(world.pilot.tactic);
+      controls.setThrottle(world.pilot.throttle); controls.setSignature(signatureMode(world, owned)); controls.setTactic(world.pilot.tactic);
       client.current?.reset(); setScreen('flight');
     }
   }, [real, desk, network, world, tactic, screen, controls]);
@@ -367,6 +401,12 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
   const what: Debrief | null = real && connection.sortie?.outcome === 'recalled' ? { kind: 'recalled' } : debrief;
   const flownPoints = holdPoints(flown);
   return <main ref={root} className={`arena-root screen-${screen}`} onContextMenu={event => { event.preventDefault(); }} data-arena="sandbox" data-screen={screen}
+    onPointerDown={event => {
+      // A click in the sky takes the mouse for steering (desktop); a key, the menu or a finger never does.
+      if (screen !== 'flight' || menu || mouse || event.pointerType !== 'mouse' || event.button !== 0
+        || (event.target instanceof Element && event.target.closest('button,input,a,[role="dialog"],[role="slider"],[role="group"]'))) return;
+      void Promise.resolve(canvas.current?.requestPointerLock()).catch(() => undefined);
+    }}
     onPointerDownCapture={event => {
       const now = performance.now();
       if (screen !== 'flight' || !controls.aiming(now) || (event.target instanceof Element && event.target.closest('button,input,[role="dialog"]'))) return;
@@ -378,7 +418,7 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
     {screen === 'flight' && <>
       <PingWheel c={c} aim={(x, y) => client.current?.aim(x, y) ?? null}
         onPing={(kind, target) => { if (target) { client.current?.ping(kind, target); audio.ui(true); } }} />
-      <ArenaHud store={store} bind={bind} layout={world.layout} onMenu={() => { audio.ui(); controls.clear(); setMenu(true); }}
+      <ArenaHud store={store} bind={bind} layout={world.layout} map={map} onMap={setMap} onMenu={() => { audio.ui(); controls.clear(); setMenu(true); }}
         connection={mode === 'online' ? <div className={`ah-link is-${connection.phase}`}>
           {connection.phase === 'online' ? <><i role="img" aria-label={c.live} /><span>{standingLine(connection.board, c)}</span><small>{connection.rtt} ms</small></>
             : connection.phase === 'failed' ? <><span>{c.kicks[connection.reason] ?? c.connectionFailed}</span>
@@ -386,8 +426,15 @@ export default function Sandbox({ onLeave, credential }: { onLeave: () => void; 
               {connection.reason !== 'denied' && connection.reason !== 'version' && <button onClick={() => { network.connect(ship, tactic); }}>{c.reconnect}</button>}</>
               : <span>{connection.phase === 'reconnecting' ? c.reconnecting : c.connecting}</span>}
         </div> : null} />
-      <FlightControls controls={controls} store={store}
+      <FlightControls controls={controls} store={store} nameOf={id => pilotName(id, c, world, network)}
         onLand={() => { if (client.current?.land()) audio.ui(true); }} onCancel={() => { client.current?.cancelLanding(); audio.ui(); }} />
+      {!mouse && !menu && <p className="arena-mouse-hint">{c.mouseHint}</p>}
+      {board && <div className="arena-board-peek" role="dialog" aria-label={c.standings}>
+        {mode === 'online' && connection.board.length > 0 ? <Standings board={connection.board} c={c} />
+          : <header><p className="ap-eyebrow">{c.standings}</p><small>{c.practiceBoard}</small></header>}
+        <p className="ap-eyebrow">{c.keysTitle}</p>
+        <dl className="ab-keys">{c.keyList.map(([key, what]) => <div key={key}><dt><kbd>{key}</kbd></dt><dd>{what}</dd></div>)}</dl>
+      </div>}
     </>}
     {screen === 'spectate' && connection.teamId && <SpectatorPanel world={world} store={store} network={network} teamId={connection.teamId}
       watching={connection.watching} onResults={() => { setScreen('result'); }} />}
@@ -482,6 +529,12 @@ function ShipLine({ c, desk, note }: { c: ArenaCopy; desk: HangarAnswer | null; 
     {ship && <p className="ap-ship"><span>{c.hangarTitle}</span><b>{c.classes[ship.class].name}</b><em>{c.level(ship.level)}</em></p>}
     {note && <p className="hg-note" role="alert">{note}</p>}
   </>;
+}
+
+/** The A slot as the flight flies it: a shield or repair is aimed, at whichever friend lives now (input.ts). */
+function signatureMode(world: ArenaWorld, ship: ShipClass = world.pilot.ship) {
+  return { aimed: ship !== 'akinci', self: () => world.pilot.id,
+    friends: () => world.drones.filter(drone => drone.decoyOf < 0 && alive(drone) && sameSide(world.pilot, drone)).length };
 }
 
 /** "Rank 1/3 · 120 pts" — where you stand, in the number the room is won on. */

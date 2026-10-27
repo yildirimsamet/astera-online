@@ -124,9 +124,12 @@ export function hudContext(s: HudSnapshot, c: ArenaCopy): { title: string; hint?
   return null;
 }
 
-export function ArenaHud({ store, bind, layout, onMenu, connection }: { store: HudStore; bind: HudBind; layout: ArenaLayout; onMenu: () => void; connection: ReactNode }) {
+export function ArenaHud({ store, bind, layout, onMenu, connection, map, onMap }: { store: HudStore; bind: HudBind; layout: ArenaLayout; onMenu: () => void; connection: ReactNode;
+  /** The map sheet, when the page holds it: M opens it on a desktop as the radar does (owner 2026-10-27). */
+  map?: boolean; onMap?: (open: boolean) => void }) {
   const s = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
-  const [map, setMap] = useState(false);
+  const [ownMap, setOwnMap] = useState(false);
+  const mapOpen = map ?? ownMap; const setMapOpen = onMap ?? setOwnMap;
   const c = arenaCopy();
   const flight = s.clientPhase === 'flight';
   const note = hudContext(s, c);
@@ -143,7 +146,7 @@ export function ArenaHud({ store, bind, layout, onMenu, connection }: { store: H
       </button>
     </div>
     <div className="ah-instruments">
-      <button type="button" className="ah-radar" aria-label={c.mapOpen} aria-expanded={map} onClick={() => { setMap(open => !open); }}>
+      <button type="button" className="ah-radar" aria-label={c.mapOpen} aria-expanded={mapOpen} onClick={() => { setMapOpen(!mapOpen); }}>
         <canvas ref={bind.radar} width={132} height={132} aria-hidden />
         <span className="ah-radar-hint" aria-hidden><svg viewBox="0 0 10 8"><path d="M.5 1.5 3.5.5l3 1 3-1v6l-3 1-3-1-3 1z M3.5.5v6M6.5 1.5v6" fill="none" stroke="currentColor" strokeWidth=".9" /></svg></span>
       </button>
@@ -155,7 +158,7 @@ export function ArenaHud({ store, bind, layout, onMenu, connection }: { store: H
       </div>
     </div>
     {connection}
-    {map && <MapSheet layout={layout} c={c} self={bind.mapSelf} altitude={bind.mapAltitude} friends={s.friends} onClose={() => { setMap(false); }} />}
+    {mapOpen && <MapSheet layout={layout} c={c} self={bind.mapSelf} altitude={bind.mapAltitude} friends={s.friends} onClose={() => { setMapOpen(false); }} />}
     {note && <div className={`ah-note tone-${note.tone}`} role="status">
       <strong>{note.title}</strong>{note.hint && <span>{note.hint}</span>}
       {note.progress !== undefined && <i><b style={{ transform: `scaleX(${String(Math.max(0, Math.min(1, note.progress)))})` }} /></i>}

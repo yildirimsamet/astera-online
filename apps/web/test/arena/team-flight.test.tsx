@@ -77,11 +77,13 @@ describe('a prepared team flight', () => {
         snapshotRate: 15, layoutVersion: ARENA_LAYOUT.version, pilots: [{ id: 4, name: 'Ada', ship: 'kilavuz', clanId: id(10), teamId: id(20) }] });
       world.pilot.tactic = 'radar'; store.publish(world, 'flight', false, false);
     });
+    // Bora flies beside: the repair waits for a choice instead of going on the pilot (owner 2026-10-27).
+    act(() => { world.drones.push(Object.assign(createPilot(5, 'kilavuz'), { clanId: world.pilot.clanId })); store.publish(world, 'flight', false, false); });
     controls.actionDown('signature', 1, performance.now()); controls.actionUp('signature', 1, performance.now());
     fireEvent.pointerDown(view.container.querySelector('main')!, { clientX: 120, clientY: 220 });
     expect(controls.sample()).toMatchObject({ signature: true, signatureTarget: 5 });
     expect(flight.friendAt).toHaveBeenCalled();
-    controls.keyDown('KeyQ'); controls.keyUp('KeyQ'); expect(controls.sample().radar).toBe(true);
+    controls.keyDown('KeyE'); controls.keyUp('KeyE'); expect(controls.sample().radar).toBe(true);
   });
 
   it('moves an ended member into the living teammate camera, then lets them see the result', async () => {

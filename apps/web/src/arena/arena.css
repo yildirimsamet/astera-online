@@ -529,9 +529,72 @@
 .ac-cloak { color: #cfe6ff; }
 .ac-illusion { color: #a8f2ff; }
 .ac-radar { color: #9ff2e2; }
-.ac-aim-hint { position: absolute; right: 8px; bottom: calc(262px + var(--safe-bottom)); margin: 0; padding: 6px 10px; border-radius: 14px; pointer-events: none;
-  font: 600 10.5px var(--font-v2-ui); color: #eafff6; background: color-mix(in srgb, #7cf0a8 14%, #061220); border: 1px solid color-mix(in srgb, #7cf0a8 45%, transparent);
-  box-shadow: 0 6px 18px rgba(0,0,0,.35); animation: ah-in .18s ease-out; }
+/*
+ * WHO THE SHIELD OR REPAIR IS FOR (owner 2026-10-27): beside the A key, left of the throttle; the
+ * pilot first, then the nearest friends, each with its hull. The bar under the title runs the window down.
+ */
+.ac-aim-tray { --sig: #7cf0a8; position: absolute; right: 58px; bottom: calc(232px + var(--safe-bottom)); width: 176px; pointer-events: auto; touch-action: none;
+  display: grid; gap: 4px; padding: 8px; border-radius: 12px; background: color-mix(in srgb, #050b14 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sig) 45%, transparent); box-shadow: 0 10px 26px rgba(0,0,0,.45), 0 0 18px color-mix(in srgb, var(--sig) 16%, transparent);
+  animation: ah-in .16s ease-out; }
+.ac-aim-tray[data-ship='muhafiz'] { --sig: #7fd7ff; }
+/* A tail pointing down-right at the A key. */
+.ac-aim-tray::after { content: ''; position: absolute; right: -6px; bottom: 14px; width: 10px; height: 10px; transform: rotate(45deg);
+  background: inherit; border-right: 1px solid color-mix(in srgb, var(--sig) 45%, transparent); border-top: 1px solid color-mix(in srgb, var(--sig) 45%, transparent); }
+.ac-aim-tray header { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 0 6px 2px; }
+.ac-aim-tray header strong { font: 650 12px var(--font-v2-ui); color: color-mix(in srgb, var(--sig) 55%, #fff); }
+.ac-aim-tray header i { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px; background: var(--sig); transform-origin: left;
+  animation: ac-aim-window var(--window) linear forwards; opacity: .8; }
+@keyframes ac-aim-window { to { transform: scaleX(0); } }
+.ac-aim-close { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: var(--color-v2-ink-2);
+  background: rgba(255,255,255,.05); border: 1px solid var(--edge); }
+.ac-aim-close svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.ac-aim-chip { --hp: 1; position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 7px; min-height: 36px;
+  padding: 0 9px 3px 7px; border-radius: 9px; overflow: hidden; text-align: left; color: var(--color-v2-ink);
+  background: rgba(255,255,255,.045); border: 1px solid var(--edge); }
+.ac-aim-chip:active { transform: scale(.97); background: color-mix(in srgb, var(--sig) 16%, transparent); }
+.ac-aim-chip.is-self { border-color: color-mix(in srgb, var(--sig) 50%, transparent); background: color-mix(in srgb, var(--sig) 10%, transparent); }
+.ac-aim-chip b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12px var(--font-v2-ui); }
+.ac-aim-chip small { font: 9.5px var(--font-v2-mono); font-variant-numeric: tabular-nums; color: var(--color-v2-ink-3); }
+.ac-aim-chip kbd { display: none; min-width: 16px; padding: 1px 4px; border-radius: 4px; font: 600 9px var(--font-v2-mono); text-align: center;
+  color: var(--color-v2-ink-2); background: rgba(255,255,255,.07); border: 1px solid var(--edge-hi); }
+/* The chip's hull: a hurt friend shows at a glance, red under a third. */
+.ac-aim-chip u { position: absolute; left: 7px; right: 7px; bottom: 3px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.08); }
+.ac-aim-chip u::after { content: ''; position: absolute; inset: 0; width: calc(var(--hp) * 100%); border-radius: 2px; background: var(--self); }
+.ac-aim-chip.is-hurt u::after { background: var(--hostile); }
+.ac-key { display: none; }
+.ac-mouse { display: none; }
+.arena-mouse-hint, .arena-board-peek { display: none; }
+/*
+ * THE DESKTOP (owner 2026-10-27): the mouse steers, so the stick goes; every key names its key, a dot
+ * shows where the mouse holds the turn, and a pill says a click takes the mouse.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .ac-stick-pad { display: none; }
+  .ac-key { display: block; position: absolute; top: -6px; right: -8px; padding: 1px 5px; border-radius: 5px; font: 600 9px var(--font-v2-mono);
+    letter-spacing: .04em; color: var(--color-v2-ink); background: #0b1626; border: 1px solid var(--edge-hi); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+  .ac-aim-chip kbd { display: block; }
+  .ac-mouse { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }
+  .ac-mouse[data-active] { display: block; }
+  .ac-mouse i { position: absolute; width: 10px; height: 10px; margin: -5px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--self) 85%, #fff);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--self) 60%, transparent); }
+  .arena-mouse-hint { display: block; position: absolute; z-index: 6; left: 50%; bottom: calc(36px + var(--safe-bottom)); transform: translateX(-50%); margin: 0;
+    padding: 7px 14px; border-radius: 16px; pointer-events: none; white-space: nowrap; font: 600 11px var(--font-v2-ui); color: #eafff9;
+    background: color-mix(in srgb, var(--self) 14%, #061220); border: 1px solid color-mix(in srgb, var(--self) 45%, transparent); box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+  .arena-board-peek { display: block; position: absolute; z-index: 24; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(440px, calc(100% - 32px));
+    padding: 16px 18px; border-radius: 14px; pointer-events: none; background: rgba(4,8,15,.9); border: 1px solid var(--edge-hi); box-shadow: 0 18px 40px rgba(0,0,0,.5); }
+  .arena-board-peek .ar-board { margin: 0 0 14px; }
+  .arena-board-peek > header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+  .arena-board-peek > header .ap-eyebrow { margin: 0; }
+  .arena-board-peek > header small { font-size: 10px; color: var(--color-v2-ink-3); }
+  .arena-board-peek > .ap-eyebrow { margin: 0 0 8px; }
+  .ab-keys { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; margin: 0; }
+  .ab-keys div { display: flex; align-items: center; gap: 10px; }
+  .ab-keys dt { flex: 0 0 64px; }
+  .ab-keys kbd { display: inline-block; padding: 2px 7px; border-radius: 5px; font: 600 10px var(--font-v2-mono); color: var(--color-v2-ink);
+    background: #0b1626; border: 1px solid var(--edge-hi); box-shadow: 0 2px 0 rgba(0,0,0,.4); }
+  .ab-keys dd { margin: 0; font-size: 12px; color: var(--color-v2-ink-2); }
+}
 .ac-land { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(242px + var(--safe-bottom)); pointer-events: auto; min-width: 74px; height: 36px; padding: 0 14px;
   border-radius: 19px !important; font: 700 12px var(--font-v2-ui) !important; letter-spacing: .08em; text-transform: uppercase;
   background: color-mix(in srgb, var(--crystal) 18%, #061220) !important; border: 1px solid color-mix(in srgb, var(--crystal) 60%, transparent) !important;

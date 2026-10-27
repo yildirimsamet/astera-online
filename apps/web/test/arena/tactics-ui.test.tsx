@@ -38,8 +38,8 @@ describe('the B slot on the controls', () => {
     }
   });
 
-  it('presses whichever tactic the flight carries on Q or E', () => {
-    for (const tactic of TACTICS) for (const key of ['KeyQ', 'KeyE']) {
+  it('presses whichever tactic the flight carries on E (owner 2026-10-27: Q is the ability now)', () => {
+    for (const tactic of TACTICS) for (const key of ['KeyE']) {
       const controls = createControls();
       controls.setTactic(tactic);
       controls.keyDown(key); controls.keyUp(key);

@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from 'react';
-import { CLASS_STATS, abilityStats, type ShipClass, type Tactic } from '@astera/rules/arena';
+import { CLASS_STATS, abilityStats, shipStats, type ShipClass, type Tactic } from '@astera/rules/arena';
 import { AIM_WINDOW_MS, KNOB_TRAVEL, LANDING_THROTTLE, THROTTLE_DETENTS, chordAt, chordLink, railLevel, stickHome, type ArenaAction, type ArenaControls, type Circle } from './input.js';
 import type { HudSnapshot, HudStore } from './store.js';
-import { arenaCopy } from './copy.js';
+import { arenaCopy, type ArenaCopy } from './copy.js';
 
 /** Each class's A slot (Y4c): the missile, the shield, the repair. */
 export const SIGNATURE_ICONS: Record<ShipClass, React.ReactNode> = {
@@ -54,6 +54,56 @@ export function LandKey({ status, onLand, onCancel, onTakeOff }: { status: HudSn
   return <button className="ac-land" onPointerDown={event => { event.preventDefault(); onLand(); }}>{c.land}</button>;
 }
 
+/** Friends the target tray offers after the pilot, nearest first: as many as the number keys reach. */
+export function aimTargets(s: HudSnapshot): HudSnapshot['friends'] {
+  return [...s.friends].sort((a, b) => a.distance - b.distance).slice(0, 4);
+}
+
+/** The desktop's number keys while the tray waits: 1 the pilot, 2–5 the friends in the tray's order. */
+export function aimKey(controls: ArenaControls, s: HudSnapshot, code: string, time: number): boolean {
+  const digit = /^Digit([1-5])$/.exec(code)?.[1];
+  if (!digit || !controls.aiming(time)) return false;
+  if (digit === '1') { controls.castOnSelf(time); return true; }
+  const friend = aimTargets(s)[Number(digit) - 2];
+  if (!friend) return false;
+  controls.signatureAt(friend.id, time);
+  return true;
+}
+
+/**
+ * WHO THE SHIELD OR REPAIR IS FOR (owner 2026-10-27: players pressed it, saw nothing, and called it
+ * broken — the wait for a friend's tap was invisible). Pressed with a friend in the room, the key
+ * opens this: the pilot first, then the nearest friends with their hulls, so the one who needs it
+ * shows. A tap — or the number on a desktop — casts; the bar runs down the window.
+ */
+function AimTray({ controls, s, since, nameOf }: { controls: ArenaControls; s: HudSnapshot; since: number; nameOf: (id: number) => string }) {
+  const c = arenaCopy();
+  const own = s.hull / shipStats(s.ship, s.level).hull;
+  const pick = (event: PointerEvent<HTMLButtonElement>, id: number | null): void => {
+    event.preventDefault(); event.stopPropagation();
+    if (id === null) controls.castOnSelf(event.timeStamp); else controls.signatureAt(id, event.timeStamp);
+  };
+  const ship = s.ship === 'muhafiz' ? 'muhafiz' : 'kilavuz';
+  return <div className="ac-aim-tray" role="group" aria-label={c.aimTitle[ship]} data-ship={ship}>
+    <header><strong>{c.aimTitle[ship]}</strong>
+      <button type="button" className="ac-aim-close" aria-label={c.aimCancel}
+        onPointerDown={event => { event.preventDefault(); event.stopPropagation(); controls.cancelAim(); }}>
+        <svg viewBox="0 0 12 12" aria-hidden><path d="M3 3l6 6M9 3 3 9" /></svg></button>
+      <i aria-hidden key={since} style={{ '--window': `${String(AIM_WINDOW_MS)}ms` } as React.CSSProperties} />
+    </header>
+    <button type="button" className="ac-aim-chip is-self" style={{ '--hp': String(own) } as React.CSSProperties} onPointerDown={event => { pick(event, null); }}>
+      <kbd>1</kbd><b>{c.aimSelf}</b><small>{String(Math.round(own * 100))}%</small><u aria-hidden />
+    </button>
+    {aimTargets(s).map((friend, index) => <button key={friend.id} type="button" className={`ac-aim-chip ${friend.hull < 0.34 ? 'is-hurt' : ''}`}
+      style={{ '--hp': String(friend.hull) } as React.CSSProperties} onPointerDown={event => { pick(event, friend.id); }}>
+      <kbd>{index + 2}</kbd><b>{nameOf(friend.id)}</b><small>{friend.distance < 1000 ? `${String(Math.round(friend.distance))} m` : `${(friend.distance / 1000).toFixed(1)} km`}</small><u aria-hidden />
+    </button>)}
+  </div>;
+}
+
+/** The desktop's key on each control (shown by arena.css only where a fine pointer hovers). */
+const keyCap = (action: ArenaAction, c: ArenaCopy): string => action === 'fire' ? c.keyFire : action === 'turbo' ? 'Shift' : action === 'signature' ? 'Q' : 'E';
+
 const circleOf = (element: HTMLElement): Circle => {
   const r = element.getBoundingClientRect();
   return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2 };
@@ -64,13 +114,17 @@ const keyCircles = (keys: ReadonlyMap<ArenaAction, HTMLElement>): { fire: Circle
   return fire && turbo ? { fire: circleOf(fire), turbo: circleOf(turbo) } : null;
 };
 
-export function FlightControls({ controls, store, onLand, onCancel }: { controls: ArenaControls; store: HudStore; onLand: () => void; onCancel: () => void }) {
+export function FlightControls({ controls, store, onLand, onCancel, nameOf = String }: { controls: ArenaControls; store: HudStore; onLand: () => void; onCancel: () => void;
+  /** A friend's name for the target tray. */
+  nameOf?: (id: number) => string }) {
   const c = arenaCopy();
   const keys = useRef(new Map<ArenaAction, HTMLButtonElement>());
   // FIRE and TURBO share one touch zone so one thumb across both holds both (chordAt).
   const chords = useRef(new Map<number, Set<ArenaAction>>());
   const ring = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
+  // The desktop's mouse: where it holds the stick, a dot off the screen's centre.
+  const pointer = useRef<HTMLDivElement>(null);
   const pad = useRef<HTMLDivElement>(null);
   const [held, setHeld] = useState<ReadonlySet<ArenaAction>>(new Set());
   // The strip that holds both, drawn where chordAt finds it: measured from the keys as laid out.
@@ -131,6 +185,10 @@ export function FlightControls({ controls, store, onLand, onCancel }: { controls
     let frame = 0;
     const paint = (): void => {
       frame = requestAnimationFrame(paint);
+      if (pointer.current) {
+        pointer.current.toggleAttribute('data-active', controls.mouseSteering);
+        if (controls.mouseSteering) pointer.current.style.transform = `translate(${String(controls.stick.x * 90)}px, ${String(controls.stick.y * 90)}px)`;
+      }
       if (!ring.current || !knob.current) return;
       const bounds = padOrigin.current;
       const active = controls.stickPointer !== null;
@@ -210,7 +268,8 @@ export function FlightControls({ controls, store, onLand, onCancel }: { controls
       onLostPointerCapture={event => { chord(event, 'cancel'); }}>
       <i className={`ac-link ${held.has('fire') && held.has('turbo') ? 'is-linked' : ''} ${!alive || status.ammo < 1 ? 'is-off' : ''}`} style={link} />
     </div>
-    {aiming && <p className="ac-aim-hint">{c.aimHint}</p>}
+    <div ref={pointer} className="ac-mouse" aria-hidden><i /></div>
+    {aiming && <AimTray controls={controls} s={status} since={aimSince} nameOf={nameOf} />}
     {(['fire', 'turbo', 'signature', status.tactic] as const).map(action => {
       const wait = seconds(action);
       const charge = cooldown(action);
@@ -234,6 +293,7 @@ export function FlightControls({ controls, store, onLand, onCancel }: { controls
         <svg className="ac-ring" viewBox="0 0 100 100" aria-hidden><circle cx="50" cy="50" r="47" /></svg>
         <span className="ac-icon" aria-hidden>{action === 'signature' ? SIGNATURE_ICONS[status.ship] : ACTION_ICONS[action]}</span>
         <small>{label(action, wait)}</small>
+        <kbd className="ac-key">{keyCap(action, c)}</kbd>
       </button>;
     })}
   </div>;
