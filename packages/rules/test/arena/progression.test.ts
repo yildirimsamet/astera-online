@@ -75,7 +75,7 @@ describe('growth by level', () => {
   it('grows each class\'s own strengths to level 20 (plan §3.2)', () => {
     const top = (ship: ShipClass) => shipStats(ship, 20);
     expect(top('akinci').damage / CLASS_STATS.akinci.damage).toBeCloseTo(1.475, 6);
-    expect(top('muhafiz').hull).toBe(Math.round(600 * 1.57));
+    expect(top('muhafiz').hull).toBe(Math.round(900 * 1.57));
     expect(top('kilavuz').fuelTank).toBe(Math.round(250 * 1.475));
     expect(top('muhafiz').cargoCapacity).toBe(Math.round(500 * 1.57));
     expect(top('akinci').spreadBase / CLASS_STATS.akinci.spreadBase).toBeCloseTo(1 - 0.285, 6);

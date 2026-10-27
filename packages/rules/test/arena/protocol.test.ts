@@ -30,7 +30,8 @@ describe('arena protocol v14', () => {
     for (const watching of [-2, 0.5, 1e9, Number.NaN, '5', null]) expect(decodeArenaSnapshot({ ...snapshot(), watching })).toBeNull();
   });
   it('is a new version: signatures and the B slot travel (Y4c, signatures.test.ts); others travel in three tiers', () => {
-    expect(ARENA_PROTOCOL).toBe(14);
+    // 15 (owner 2026-10-27): hulls 50 % stronger; the decoder's bounds moved with them, so a page on 14 reloads.
+    expect(ARENA_PROTOCOL).toBe(15);
     // 800 m / 1.6 km / 2.4 km (owner 2026-10-23): every snapshot, every other one, every third one.
     expect(REMOTE_NEAR_RANGE).toBe(800);
     expect(MID_EVERY).toBe(T.tickRate / T.snapshotRate * 2);

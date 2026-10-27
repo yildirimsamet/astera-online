@@ -13,12 +13,13 @@ const WIDER = 1.15;
 /**
  * Y4 (plan 14 §3.1), owner 2026-10-23: the plan's ratios scaled to the ship of today, which is the
  * Kılavuz; the Akıncı is the fastest at the KG-X25 cap. Turbo doubles each one's own speed; the
- * magazine is 60 s of fire. At 60 % hits: Akıncı mirror 4.8 s, Kılavuz 8.3 s, Muhafız 10.1 s.
+ * magazine is 60 s of fire. Owner 2026-10-27: every hull 50 % stronger ("gemiler biraz çabuk ölüyor").
+ * At 60 % hits: Akıncı mirror 7.3 s, Kılavuz 12.5 s, Muhafız 15.2 s.
  */
 export const CLASS_STATS: Readonly<Record<ShipClass, Readonly<ClassStats>>> = Object.freeze({
-  akinci: Object.freeze({ speedMax: 80, turnRateMax: 82 * DEG, hull: 340, damage: 13, fireRate: 9, spreadBase: 1.3 * DEG * WIDER, fuelTank: 220,
+  akinci: Object.freeze({ speedMax: 80, turnRateMax: 82 * DEG, hull: 510, damage: 13, fireRate: 9, spreadBase: 1.3 * DEG * WIDER, fuelTank: 220,
     cargoCapacity: 300, ammoCapacity: 540 }),
-  muhafiz: Object.freeze({ speedMax: 60, turnRateMax: 58 * DEG, hull: 600, damage: 18, fireRate: 5.5, spreadBase: 1.8 * DEG * WIDER, fuelTank: 280,
+  muhafiz: Object.freeze({ speedMax: 60, turnRateMax: 58 * DEG, hull: 900, damage: 18, fireRate: 5.5, spreadBase: 1.8 * DEG * WIDER, fuelTank: 280,
     cargoCapacity: 500, ammoCapacity: 330 }),
   kilavuz: Object.freeze({ speedMax: 72, turnRateMax: ARENA_TUNING.turnRateMax, hull: ARENA_TUNING.hull, damage: ARENA_TUNING.damage,
     fireRate: ARENA_TUNING.fireRate, spreadBase: ARENA_TUNING.spreadBase * WIDER, fuelTank: ARENA_TUNING.fuelTank,

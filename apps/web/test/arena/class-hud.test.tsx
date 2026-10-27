@@ -24,7 +24,7 @@ describe('a class\'s own gauges', () => {
     expect(createPilot(1, 'muhafiz').hull).toBe(CLASS_STATS.muhafiz.hull);
     expect(hud('muhafiz').querySelector('.ah-hull strong')?.textContent).toMatch(/^100%/);
     expect(hud('muhafiz', { hull: CLASS_STATS.muhafiz.hull / 2 }).querySelector('.ah-hull strong')?.textContent).toMatch(/^50%/);
-    // 340 is full for an Akıncı.
+    // 510 is full for an Akıncı.
     expect(hud('akinci').querySelector('.ah-hull strong')?.textContent).toMatch(/^100%/);
   });
 

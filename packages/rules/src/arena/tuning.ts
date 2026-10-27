@@ -39,7 +39,8 @@ const NUMBERS = Object.freeze({
   // Owner 2026-10-21: ammunition is its own magazine, not fuel. Full at the start of a
   // flight (60 s of continuous fire at fireRate), never refilled in flight.
   ammoCapacity: 480,
-  hull: 400,
+  /** Owner 2026-10-27: 50 % stronger (was 400). */
+  hull: 600,
   /** Nominal ship size: the arena wall, bot sight lines and layout clearances. */
   shipHitRadius: 6,
   /**

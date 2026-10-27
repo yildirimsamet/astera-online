@@ -38,9 +38,10 @@ describe('three classes', () => {
     });
     expect(table).toEqual([
       // Owner 2026-10-24: every cone starts 15 % wider (1.3°, 1.8°, 1.5° before); levels narrow it as before.
-      ['akinci', 80, 82, 340, 13, 9, 1.49, 220, 300, 540],
-      ['muhafiz', 60, 58, 600, 18, 5.5, 2.07, 280, 500, 330],
-      ['kilavuz', 72, 72, 400, 10, 8, 1.72, 250, 400, 480],
+      // Owner 2026-10-27: "gemiler biraz çabuk ölüyor" — every hull 50 % stronger (340, 600, 400 before).
+      ['akinci', 80, 82, 510, 13, 9, 1.49, 220, 300, 540],
+      ['muhafiz', 60, 58, 900, 18, 5.5, 2.07, 280, 500, 330],
+      ['kilavuz', 72, 72, 600, 10, 8, 1.72, 250, 400, 480],
     ]);
   });
 
@@ -55,9 +56,9 @@ describe('three classes', () => {
   it('gives the owner\'s times to kill at 60 % hits', () => {
     const ttk = (from: ShipClass, to: ShipClass): number => CLASS_STATS[to].hull / (CLASS_STATS[from].damage * CLASS_STATS[from].fireRate * 0.6);
     const round = (n: number): number => Math.round(n * 10) / 10;
-    expect([ttk('akinci', 'akinci'), ttk('akinci', 'kilavuz'), ttk('akinci', 'muhafiz')].map(round)).toEqual([4.8, 5.7, 8.5]);
-    expect([ttk('kilavuz', 'akinci'), ttk('kilavuz', 'kilavuz'), ttk('kilavuz', 'muhafiz')].map(round)).toEqual([7.1, 8.3, 12.5]);
-    expect([ttk('muhafiz', 'akinci'), ttk('muhafiz', 'kilavuz'), ttk('muhafiz', 'muhafiz')].map(round)).toEqual([5.7, 6.7, 10.1]);
+    expect([ttk('akinci', 'akinci'), ttk('akinci', 'kilavuz'), ttk('akinci', 'muhafiz')].map(round)).toEqual([7.3, 8.5, 12.8]);
+    expect([ttk('kilavuz', 'akinci'), ttk('kilavuz', 'kilavuz'), ttk('kilavuz', 'muhafiz')].map(round)).toEqual([10.6, 12.5, 18.8]);
+    expect([ttk('muhafiz', 'akinci'), ttk('muhafiz', 'kilavuz'), ttk('muhafiz', 'muhafiz')].map(round)).toEqual([8.6, 10.1, 15.2]);
   });
 
   it('starts a pilot of each class full: hull, tank, magazine', () => {

@@ -22,8 +22,10 @@ import { ARENA_POOLS } from './pools.js';
  *    `sortie` adds the XP the flight made and what the ship kept.
  * 14: clan friendships, team observers and the caster repair power in the own row (Y7).
  * 13: effective signature, selected tactic and turbo ranks in the own row (Y6c).
+ * 15: hulls 50 % stronger (owner 2026-10-27): the rows are as before, but a page on 14 would bound
+ *    them by the old hulls and refuse a 900 Muhafız, so it is told to reload.
  */
-export const ARENA_PROTOCOL = 14;
+export const ARENA_PROTOCOL = 15;
 /** Other ships one snapshot carries, every tier together: the nearest first (owner: room seats / 2). */
 export const MAX_REMOTE_PILOTS = 50;
 /**

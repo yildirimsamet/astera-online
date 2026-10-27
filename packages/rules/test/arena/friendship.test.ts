@@ -26,7 +26,7 @@ describe('Y7 server-owned clan friendship', () => {
   it('lets bullets pass through clanmates and still strike the rival behind them', () => {
     const world = field(); const ally = add(world, 1, 'a', 40); const foe = add(world, 2, 'b', 90);
     for (let i = 0; i < 20; i++) stepSandboxWorld(world, { ...createInput(), fire: true });
-    expect(ally.hull).toBe(600); expect(foe.hull).toBeLessThan(600);
+    expect(ally.hull).toBe(900); expect(foe.hull).toBeLessThan(900);
   });
 
   it('keeps a launched missile friendly even after its owner left the room', () => {
@@ -35,7 +35,7 @@ describe('Y7 server-owned clan friendship', () => {
     Object.assign(missile, { owner: 999, target: -1, life: 2, damage: 96, clanId: 'a' });
     Object.assign(missile.p, { x: 0, y: 0, z: 0 }); Object.assign(missile.v, { x: 0, y: 0, z: T.missileSpeed });
     for (let i = 0; i < 40; i++) { world.tick++; stepMissiles(world); }
-    expect(world.pilot.hull).toBe(340); expect(ally.hull).toBe(600); expect(foe.hull).toBe(504);
+    expect(world.pilot.hull).toBe(510); expect(ally.hull).toBe(900); expect(foe.hull).toBe(804);
   });
 
   it('never locks a clanmate or names them in an enemy radar sweep', () => {
