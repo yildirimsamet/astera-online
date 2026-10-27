@@ -967,7 +967,8 @@ seçenek var: Duman, Gizlen, İllüzyon, Tarama. Klavyede Q ve E, uçuşun takti
   arkasındakiler, tozun içindekiler de. Görünmezler ve kopyalar işaretlenmez. Sunucu taranan
   gemileri görüş ve menzil sınırı olmadan gönderir. İşaret düşmanın çevresinde camgöbeği bir
   sonar halkasıdır; ekran dışındaysa kenar oku camgöbeği olur. Radar ekranında nokta kenarda,
-  halkalı durur. Taranan pilot "Tarandın" uyarısını alır, taramanın geldiği yönü görür.
+  halkalı durur. Taranan pilot "Tarandın" uyarısını alır; taramanın geldiği yön ve tarayanın
+  yeri **gösterilmez**, sunucu da göndermez (sahip, 27 Ekim 2026: "taramanın ne anlamı kalıyor").
   Tarama uyarısı en düşük önceliktir: kilit ve füze uyarısı onu her zaman bastırır.
 
 #### KG-X31

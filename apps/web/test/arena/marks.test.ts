@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LAST_SEEN, MARK_RANGE, enemyMarked, sighting, type Sighting, edgePoint } from '../../src/arena/marks.js';
+import { SCANNED } from '@astera/rules/arena';
+import { LAST_SEEN, MARK_RANGE, enemyMarked, sighting, threatPointed, type Sighting, edgePoint } from '../../src/arena/marks.js';
 
 /**
  * Owner 2026-10-21: the red box over an enemy shows at 700 m and closer; a ship further out
@@ -20,6 +21,18 @@ describe('enemy marks', () => {
   it('keep a landed pilot that is not mining quiet beyond 320 m', () => {
     expect(enemyMarked({ landed: 3, mining: false }, 320)).toBe(true);
     expect(enemyMarked({ landed: 3, mining: false }, 321)).toBe(false);
+  });
+});
+
+/**
+ * Owner 2026-10-27: a lock or a missile on the pilot is pointed at on screen; a radar sweep is
+ * only told ("Tarandın"). Its source is never drawn, or the sweep would give its pilot away.
+ */
+describe('incoming warning marker', () => {
+  it('points at a lock building, a held lock and a missile, never at a sweep or nothing', () => {
+    expect([1, 2, 3].map(threatPointed)).toEqual([true, true, true]);
+    expect(threatPointed(SCANNED)).toBe(false);
+    expect(threatPointed(0)).toBe(false);
   });
 });
 

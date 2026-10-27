@@ -168,7 +168,7 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     // Bullets, smoke, impacts, cargo and crystals: what changed since the last snapshot, or a key frame.
     applyFeed(world, snap);
     // The ships our own sweep marks (Y4d): the room sends them wherever they are; the HUD reads them as the sandbox's.
-    world.scans = snap.scan.length > 0 ? [{ owner: world.pilot.id, ticks: 1, x: 0, y: 0, z: 0, targets: snap.scan }] : [];
+    world.scans = snap.scan.length > 0 ? [{ owner: world.pilot.id, ticks: 1, targets: snap.scan }] : [];
     track(snap); lastSnapshotAt = performance.now();
   };
   const open = (): void => {
