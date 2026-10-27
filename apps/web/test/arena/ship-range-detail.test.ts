@@ -1,7 +1,7 @@
 // @vitest-environment node
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { ShipCrowd, TRAIL_POINTS } from '../../src/arena/render/crowd.js';
+import { ShipCrowd, TRAIL_AGE, TRAIL_POINTS, TRAIL_WIDTH } from '../../src/arena/render/crowd.js';
 import { Effects } from '../../src/arena/render/effects.js';
 import { proceduralShip } from '../../src/arena/render/procedural.js';
 import { LIGHTS_RANGE, PLUME_RANGE, ShipVisual, type ShipPose } from '../../src/arena/render/ships.js';
@@ -95,5 +95,13 @@ describe('a ship shows what a phone can see at its distance', () => {
     const position = batch().geometry.getAttribute('position');
     // Half a second of history: the ribbon's tail lies metres behind its head, not on it.
     expect(Math.abs(position.getZ(0) - position.getZ(2 * (TRAIL_POINTS - 2)))).toBeGreaterThan(20);
+  });
+
+  // Owner 2026-10-27: a ship 700–800 m out was too hard to pick out; its trail is 30 % longer and
+  // 30 % wider (0.55 s and 0.8 × the nozzle before), sampled no coarser than before.
+  it('leaves a trail 30 % longer and 30 % wider than before, as finely sampled', () => {
+    expect(TRAIL_AGE).toBeCloseTo(0.55 * 1.3, 6);
+    expect(TRAIL_WIDTH).toBeCloseTo(0.8 * 1.3, 6);
+    expect(TRAIL_AGE / TRAIL_POINTS).toBeLessThanOrEqual(0.55 / 24 + 1e-9);
   });
 });

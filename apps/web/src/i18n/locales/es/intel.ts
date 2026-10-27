@@ -457,6 +457,11 @@ export const reports = {
   /** Everything a battle did beyond the loot line, each said only when true. */
   effects: {
     heading: 'Qué hizo',
+    admiralYours: 'Tu nave de comandante escoltó a la flota: {{ship}} {{level}}. No disparó ni recibió impactos.',
+    admiralHeld: 'Tu nave de comandante escoltó a la flota: {{ship}} {{level}}. La flota defiende el monumento; la nave volvió sola a casa.',
+    admiralRepair: 'Tu nave de comandante escoltó a la flota: {{ship}} {{level}}. Se perdió la batalla, así que pasa {{minutes}} min en reparación.',
+    admiralRaider: 'La nave de comandante del atacante escoltó a la flota: {{ship}} {{level}}. Da una bonificación y nunca recibe impactos.',
+    admiralDefence: 'Una nave de comandante estaba en la línea defensiva: {{ship}} {{level}}. Da una bonificación y nunca recibe impactos.',
     shieldTheirs: 'Su escudo absorbió el daño {{amount}} antes de que algo alcanzara el casco.',
     shieldYours: 'Tu escudo absorbió el daño {{amount}} antes de que algo alcanzara el casco.',
     cargoLimited:

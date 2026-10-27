@@ -14,6 +14,12 @@
  */
 
 export const errors = {
+  ADMIRAL_RULESET: "Begleitung durch das Kommandantenschiff kommt mit einer neuen Saison.",
+  ADMIRAL_AWAY: "Dein Kommandantenschiff begleitet bereits eine andere Flotte.",
+  SHIP_NOT_READY: "Dein Kommandantenschiff ist noch nicht bereit: Es ist in Reparatur oder Wartung.",
+  SHIP_FLYING: "Dein Kommandantenschiff ist gerade im Yarık.",
+  SHIP_UNAVAILABLE: "Dein Kommandantenschiff ist mit einem anderen Befehl beschäftigt. Versuch es gleich noch einmal.",
+  TEAM_LOBBY: "Verlasse zuerst dein Yarık-Team.",
   COMMUNITY_POLICY_REQUIRED: "Lies und akzeptiere die Gemeinschaftsregeln, bevor du einen Kommandanten erstellst oder etwas veröffentlichst. Öffne die App bei Bedarf erneut.",
   NAME_NOT_ALLOWED: "Wähle einen anderen Kommandantennamen. „{{word}}“ verstößt gegen die Gemeinschaftsregeln.",
   CLAN_NAME_NOT_ALLOWED: "Wähle einen anderen Clannamen oder ein anderes Clan-Tag. „{{word}}“ verstößt gegen die Gemeinschaftsregeln.",

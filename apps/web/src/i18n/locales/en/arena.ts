@@ -1,12 +1,8 @@
 export const arena = {
   "menuLabel": "Commander ship",
-  "menuHint": "Playtest arena · gather ore, score at an exit",
+  "menuHint": "The Yarık · gather ore, bring it home, grow your ship",
   "join": "Join",
   "nav": "Commander ship",
-  "trial": "Flight trial",
-  "title": "Pilot your ship",
-  "intro": "Gather alloy, crystal and deuterium in one zone with the invited pilots. Fly through ore, land on deposits and mine; a downed ship's hold scatters. Every unit you bring to an exit scores.",
-  "enter": "Start flight",
   "start": "Start",
   "leave": "Return to galaxy",
   "loadingCode": "Loading flight controls",
@@ -36,6 +32,5 @@ export const arena = {
   "objective": "Follow the drones",
   "speedUnit": "m/s",
   "secondsUnit": "s",
-  "trialNote": "Flight trial · progress is not saved",
   "gpuRestore": "Rebuilding the flight view"
 } as const;

@@ -1,0 +1,1 @@
+ALTER TABLE "arena_ships" ADD COLUMN "abilities" jsonb DEFAULT '{}'::jsonb NOT NULL;

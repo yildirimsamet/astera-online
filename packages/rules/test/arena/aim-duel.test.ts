@@ -94,7 +94,9 @@ describe('aim circle against a ship seen through network delay', () => {
     // Shots twice as fast (owner 2026-10-21) are in the air half as long, so a jink at 300 m
     // costs less than it did: 85 % → 65 % (75 % → 40 % at 600 m/s). At 80 m/s (KG-X25, owner
     // 2026-10-23: easier to hit, kept knowing this) a jink moves the hull less: 85 % → 80 %.
-    expect(weaving).toBeLessThan(straight);
+    // Owner 2026-10-24: every cone 15 % wider. The wider cone covers the jink: 70 % → 70 % here
+    // (200 m 85 → 90, 450 m 45 → 45). Reported to the owner; a jink no longer earns misses at 80 m/s.
+    expect(weaving).toBeLessThanOrEqual(straight);
     expect(weaving).toBeGreaterThan(0.1);
   });
 

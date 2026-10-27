@@ -27,6 +27,9 @@ import type { WaveRow } from './clanSupportView.js';
 import { notify } from './notifications.js';
 import { recomputePlayerWealth, setUnits, type LockedPlanet } from './planet.js';
 import { peakCoreLevels } from './player.js';
+import { admiralForFlight, recordAdmiralBattle, reportAdmirals } from './admiral.js';
+import { withAdmiral, type AdmiralSnapshot } from '@astera/rules/arena';
+import type { ReportAdmiral } from '../db/schema.js';
 
 /**
  * KLAN SAVUNMA DESTEĞİ — THE DEFENDING LINE, WHOEVER HOLDS IT. Plan §Server.
@@ -50,7 +53,13 @@ export interface Station {
   stack: DefenderStack;
   /** `combatValue` the wave brought — its Dominion weight (owner K6). */
   power: number;
+  /** The commander ship standing with this wave (Y9): it lends its bonus and is never hit. */
+  escort: AdmiralSnapshot | null;
 }
+
+/** The report's escort lines for the defending line. */
+export const stationAdmirals = (stations: readonly Station[]): ReportAdmiral[] =>
+  stations.flatMap((station) => reportAdmirals('defence', station.escort));
 
 export async function lockStationsAt(
   tx: Tx,
@@ -106,15 +115,17 @@ export async function standStations(
     }
     const lots = !damageRule ? [] : normalizeHpDamage(fleet, wave.damage);
     const ready = partitionCombatFleet(fleet, lots);
+    const escort = await admiralForFlight(tx, 'defence', wave.id);
     stations.push({
       wave,
       fleet,
       power: combatValue(ready.eligible),
+      escort: escort && { ship: escort.ship, level: escort.level },
       stack: {
         stackId: wave.id,
         playerId: wave.senderPlayerId,
         fleet: ready.eligible,
-        tech: { tech: await supportFlightTech(tx, wave) },
+        tech: withAdmiral({ tech: await supportFlightTech(tx, wave) }, escort),
         ...(ready.damage.length > 0 ? { damage: ready.damage } : {}),
       },
     });
@@ -138,11 +149,15 @@ export function lineOf(hostLine: Fleet, stations: readonly Station[]): Fleet {
 /** Each wave's survivors and damage written back to its own row; a wiped wave is lost. */
 export async function settleStations(
   tx: Tx,
-  input: { stations: readonly Station[]; outcomes: readonly DefenderOutcome[]; damageRule: boolean; now: Date },
+  input: { stations: readonly Station[]; outcomes: readonly DefenderOutcome[]; damageRule: boolean; now: Date;
+    /** What the battle meant to an escort (`escortedBattle('defence', result)`). */
+    battle: { lost: boolean; lostValue: number } },
 ): Promise<void> {
   for (const station of input.stations) {
     const outcome = input.outcomes.find((row) => row.stackId === station.wave.id);
     if (!outcome) throw new Error(`support wave ${station.wave.id} left the battle unrecorded`);
+    // Before a lost wave releases its escort: a decisive defeat is what sends it to repair.
+    if (fleetCount(station.stack.fleet) > 0) await recordAdmiralBattle(tx, 'defence', station.wave.id, input.battle);
     const excluded = partitionCombatFleet(station.fleet, station.wave.damage);
     const physical: Fleet = { ...outcome.survivors };
     for (const [hull, count] of fleetEntries(excluded.excluded)) physical[hull] = (physical[hull] ?? 0) + count;

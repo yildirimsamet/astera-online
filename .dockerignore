@@ -23,6 +23,8 @@ apps/web/ios
 # Source art and rendering scratch. `apps/web/public/assets` holds the exported
 # copies the client actually loads; this is the 25 MB it was exported FROM.
 assets
+# Except the one data file the client compiles in (`src/vfx/engineFlames.ts`).
+!assets/source/engine-flames/recipes.json
 legacy
 
 .git

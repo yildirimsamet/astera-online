@@ -118,7 +118,7 @@ describe('the HUD line', () => {
       const c = arenaCopy();
       for (const tactic of TACTICS satisfies readonly Tactic[]) {
         expect(c[tactic].length, `${language} ${tactic}`).toBeGreaterThan(0);
-        expect(c.tactics[tactic].length, `${language} ${tactic}`).toBeLessThanOrEqual(64);
+        expect(c.tactics[tactic]('9.9', '99.9').length, `${language} ${tactic}`).toBeLessThanOrEqual(64);
       }
       expect(c.threats[4]?.length).toBeGreaterThan(0);
       expect(c.threatHints[4]?.length).toBeGreaterThan(0);

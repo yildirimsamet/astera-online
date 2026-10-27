@@ -2,7 +2,7 @@ import type { ArenaLayout, StructureKind } from '@astera/rules/arena';
 
 /**
  * The Rift map (owner 2026-10-22, item 9; 15-yarik-haritasi §7): places only. It is built from
- * the layout alone, so no pilot can end up on it: the information is the game.
+ * the layout alone. Y7's friend overlay is separate; this plan never exposes a rival.
  *
  * Map space is SVG units = metres, north-up: +Z is up and, looking down, −X is to the right
  * (facing +Z, your right-hand side is −X).

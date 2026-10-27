@@ -17,6 +17,7 @@ import { familyGroups } from '../lib/roster.js';
 import { useLaunchPlan } from '../lib/useLaunchPlan.js';
 import { serverNow } from '../lib/clock.js';
 import { PaceRow } from '../ui/PaceRow.js';
+import { EscortRow } from '../ui/EscortRow.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
@@ -98,6 +99,7 @@ export function LaunchSheet({
   const {
     sending, set, roomFor, allowance, lesson, season, honorTarget, spendsShield, pirate, mods, radiation,
     paces, pace, setWantedPace, route, fullSpeedRoute, paceReset, total, salvageRoom, baysFree, tooLate, busy,
+    escort, escorted, setEscortWanted,
     holding, away, atHome, recordAge, opposing, lines, loss, escape, notes, refusal,
     commit, classReading, report, pirateProfit, pirateProfitState,
   } = useLaunchPlan({ target, planet, intel, reports, onLaunched, onAim });
@@ -381,6 +383,11 @@ export function LaunchSheet({
           two rules a player needs here are on the row: slower saves fuel, and
           nothing may stay up past the ceiling. Hidden when only full speed is legal.
         */}
+        {/*
+          THE COMMANDER SHIP AS ESCORT (Y9): who flies, what it lends, what a lost battle costs it.
+          Above the pace, because its time bonus is part of what the pace row and the figures quote.
+        */}
+        <EscortRow escort={escort} on={escorted} onChange={setEscortWanted} />
         <PaceRow data-launch-pace paces={paces} pace={pace} onChange={setWantedPace}
           brief={t('launch.paceBrief')} reset={paceReset}
           {...(route && fullSpeedRoute && !lesson && target.kind === 'world' ? {

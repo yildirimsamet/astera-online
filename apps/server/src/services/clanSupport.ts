@@ -74,6 +74,7 @@ import { peakCoreLevels } from './player.js';
 import { techOf } from './researchState.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 import { selectHomeDispatch, takeHomeHealth } from './homeHealth.js';
+import { admiralHomeward, admiralTime, attachAdmiral, finishAdmiralLeg, prepareAdmiral, previewAdmiral } from './admiral.js';
 
 /**
  * KLAN SAVUNMA DESTEĞİ — the server half. Owner decisions, 2026-10-01
@@ -156,9 +157,13 @@ export interface SupportInput {
   hostPlanetId: string;
   fleet: Fleet;
   clock: Clock;
+  /** The commander ship stands with the wave (Y9); a quote previews it and reserves nothing. */
+  admiral?: boolean;
 }
 
 interface SupportContext {
+  /** The reserved escort task, on a send only. */
+  admiralId: string | null;
   origin: LockedPlanet;
   hostPlayerId: string;
   clanId: string;
@@ -204,7 +209,7 @@ function assertSupportFleet(fleet: Fleet): void {
  * locks of both worlds and the sender's capital — the same gatherer for both, so the
  * screen can never offer a wave the server then refuses.
  */
-async function gatherSupport(tx: Tx, input: SupportInput): Promise<SupportContext> {
+async function gatherSupport(tx: Tx, input: SupportInput, reserve: boolean): Promise<SupportContext> {
   const refusals: SupportRefusal[] = [];
   const refuse = (code: string, message: string, params?: Record<string, string | number>): void => {
     refusals.push({ code, message, ...(params ? { params } : {}) });
@@ -295,8 +300,13 @@ async function gatherSupport(tx: Tx, input: SupportInput): Promise<SupportContex
   }
 
   const tech = await techOf(tx, input.senderPlayerId);
+  const escort = reserve
+    ? await prepareAdmiral(tx, origin, input.admiral ?? false).then(plan => ({ id: plan?.id ?? null, bonuses: plan?.bonuses ?? null }))
+    : { id: null, bonuses: await previewAdmiral(tx, origin, input.admiral ?? false) };
+  // A Kılavuz shortens both legs and the round trip paid at dispatch (Y9).
+  const escortTime = escort.bonuses?.time ?? 1;
   const dist = distance(origin, host);
-  const fuel = supportFuel(input.fleet, dist);
+  const fuel = escort.bonuses ? Math.ceil(supportFuel(input.fleet, dist) * escort.bonuses.fuel) : supportFuel(input.fleet, dist);
   if (fuelAvailable(origin.deuterium) < fuel) {
     refuse('INSUFFICIENT_FUEL', 'Not enough deuterium to fly there and back', {
       needed: fuel,
@@ -304,8 +314,8 @@ async function gatherSupport(tx: Tx, input: SupportInput): Promise<SupportContex
     });
   }
   const pace = { boost: fleetSpeedMult(origin.orbit), tech };
-  const travelMinutes = supportTravelMinutes(fleetTravelExact(dist, input.fleet, pace));
-  const returnMinutes = supportTravelMinutes(fleetTravelExact(dist, input.fleet, pace));
+  const travelMinutes = supportTravelMinutes(fleetTravelExact(dist, input.fleet, pace) * escortTime);
+  const returnMinutes = supportTravelMinutes(fleetTravelExact(dist, input.fleet, pace) * escortTime);
   if (!Number.isFinite(travelMinutes)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel', 400);
   const arriveAt = addMinutes(now, travelMinutes);
 
@@ -321,6 +331,7 @@ async function gatherSupport(tx: Tx, input: SupportInput): Promise<SupportContex
 
   const owned = await totalUnitsOf(tx, origin.planetId);
   return {
+    admiralId: escort.id,
     origin,
     hostPlayerId: host.controllerPlayerId,
     clanId: sender.clanId,
@@ -364,7 +375,7 @@ export interface ClanSupportQuote {
  */
 export async function quoteClanSupport(db: Db, input: SupportInput): Promise<ClanSupportQuote> {
   return db.transaction(async (tx) => {
-    const context = await gatherSupport(tx, input);
+    const context = await gatherSupport(tx, input, false);
     return {
       refusals: context.refusals,
       arriveAt: context.arriveAt.toISOString(),
@@ -396,7 +407,7 @@ export async function sendClanSupport(
   tx: Tx,
   input: SupportInput,
 ): Promise<{ wave: ClanSupportWaveView; planet: PlanetView }> {
-  const context = await gatherSupport(tx, input);
+  const context = await gatherSupport(tx, input, true);
   const first = context.refusals[0];
   if (first) throw new GameError(first.code, first.message, 409, first.params);
 
@@ -448,6 +459,7 @@ export async function sendClanSupport(
     arriveAt: context.arriveAt,
   }).returning();
   if (!wave) throw new Error('clan support wave insert returned no row');
+  await attachAdmiral(tx, context.admiralId, 'defence', wave.id);
 
   await schedule(tx, {
     seasonId: origin.seasonId,
@@ -557,7 +569,7 @@ async function homewardMinutes(db: Queryable, wave: WaveRow, destinationPlanetId
   const minutes = supportTravelMinutes(fleetTravelExact(span, fleet, {
     boost: fleetSpeedMult(await orbitOf(db, destinationPlanetId)),
     tech,
-  }));
+  }) * await admiralTime(db, 'defence', wave.id));
   return { minutes, distance: span, tech };
 }
 
@@ -649,6 +661,8 @@ export async function publishSupport(tx: Tx, wave: Pick<WaveRow, 'senderPlayerId
 export async function loseWave(tx: Tx, wave: WaveRow, now: Date): Promise<void> {
   await tx.delete(units).where(and(eq(units.planetId, wave.originPlanetId), eq(units.location, wave.unitLocation)));
   await tx.update(clanSupportWaves).set({ status: 'LOST', resolvedAt: now }).where(eq(clanSupportWaves.id, wave.id));
+  // Its escort is never hit (Y9): it flies home alone and repairs.
+  await admiralHomeward(tx, 'defence', { id: wave.id, departAt: wave.sentAt, arriveAt: wave.arriveAt }, null, now);
   await recomputePlayerWealth(tx, wave.senderPlayerId, now);
   await publishSupport(tx, wave);
 }
@@ -672,6 +686,7 @@ async function landSupport(
     radiationAt,
   });
   await tx.update(clanSupportWaves).set({ status: 'HOME', resolvedAt: now }).where(eq(clanSupportWaves.id, wave.id));
+  await finishAdmiralLeg(tx, now, 'defence', wave.id, fleetCount(fleet));
   await recomputePlayerWealth(tx, wave.senderPlayerId, now);
   if (fleetChangesWatch(fleet)) await publishWatchChanges(tx, [destinationPlanetId]);
   await publishSupport(tx, wave);

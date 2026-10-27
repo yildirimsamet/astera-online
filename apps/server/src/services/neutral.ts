@@ -37,8 +37,10 @@ import {
   normalizeHpDamage,
   type HpDamageLots,
 } from '@astera/rules';
+import { admiralBonuses, withAdmiral } from '@astera/rules/arena';
 import { addMinutes, type Clock } from '../clock.js';
 import { shipsIn } from './shipDamage.js';
+import { admiralForFlight, admiralHomeward, admiralTime, escortedBattle, recordAdmiralBattle, reportAdmirals } from './admiral.js';
 import type { Tx } from '../db/client.js';
 import {
   battleReports,
@@ -235,7 +237,8 @@ export async function resolveNeutralBattle(
     fleetEntries(standing).filter(([hull]) => !HULLS[hull].ground),
   ) as Fleet;
   const defenders = garrisonOf(mobile, defenceDark ? {} : ground);
-  const result = resolveBattle([soloStack(attackingFleet, { tech: mission.tech ?? {} }, mission.damage ?? undefined)],
+  const escort = await admiralForFlight(tx, 'mission', mission.id);
+  const result = resolveBattle([soloStack(attackingFleet, withAdmiral({ tech: mission.tech ?? {} }, escort), mission.damage ?? undefined)],
     [{ stackId: 'neutral', playerId: '', fleet: defenders, damage: neutral.radiationEnabled ? health.damage : [],
       tech: { tech: {} }, maintenanceExempt: true }],
     defenceDark ? 0 : neutral.shield, seededFrom(mission.id), hpRadiationApplies(rulesetVersion) ? 'HP_PLANET' : 'PLANET', true);
@@ -363,6 +366,7 @@ export async function resolveNeutralBattle(
     defenderPlayerId: null,
     targetPlanetId: neutral.id,
     targetKind: 'NEUTRAL',
+    admirals: reportAdmirals('attack', escort),
     grade: result.grade,
     rounds: result.rounds,
     loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
@@ -433,12 +437,14 @@ export async function resolveNeutralBattle(
 
   await createAttackerDebris(tx, mission, wreck, clock.now());
   await clearMissionUnits(tx, mission.originPlanetId, mission.id);
+  await recordAdmiralBattle(tx, 'mission', mission.id, escortedBattle('attack', result));
+  let returnId: string | null = null;
   if (fleetCount(result.attackerSurvivors) > 0) {
     const home = fleetTravelExact(
       mission.distance,
       result.attackerSurvivors,
       { boost: fleetSpeedMult(attackerOrbit), tech: mission.tech ?? {}, pace: missionPaceOf(mission.pace) },
-    );
+    ) * (escort ? admiralBonuses(escort.ship, escort.level).time : 1);
     const arriveAt = addMinutes(clock.now(), home);
     const [returnMission] = await tx.insert(missions).values({
       // A return leg is already paid for: fuel is charged in full at the outbound launch.
@@ -459,6 +465,7 @@ export async function resolveNeutralBattle(
       arriveAt,
     }).returning();
     if (!returnMission) throw new Error('neutral return insert returned no row');
+    returnId = returnMission.id;
     await setUnits(
       tx,
       mission.originPlanetId,
@@ -473,6 +480,7 @@ export async function resolveNeutralBattle(
       resolveAt: arriveAt,
     });
   }
+  await admiralHomeward(tx, 'mission', mission, returnId, clock.now());
   await recomputePlayerWealth(tx, mission.ownerPlayerId, clock.now());
   await publishShard(tx, mission.seasonId, 'world');
 }
@@ -487,14 +495,14 @@ export async function returnAttackUntouched(
   const attackerOrbit = await orbitOf(tx, attackerHomeId);
   const fleet = await fleetOfMission(tx, mission.originPlanetId, mission.id);
   await clearMissionUnits(tx, mission.originPlanetId, mission.id);
-  if (fleetCount(fleet) === 0) return;
+  if (fleetCount(fleet) === 0) { await admiralHomeward(tx, 'mission', mission, null, clock.now()); return; }
   const arriveAt = addMinutes(
     clock.now(),
     fleetTravelExact(
       mission.distance,
       fleet,
       { boost: fleetSpeedMult(attackerOrbit), tech: mission.tech ?? {}, pace: missionPaceOf(mission.pace) },
-    ),
+    ) * await admiralTime(tx, 'mission', mission.id),
   );
   const [ret] = await tx.insert(missions).values({
     // A return leg is already paid for: fuel is charged in full at the outbound launch.
@@ -515,6 +523,7 @@ export async function returnAttackUntouched(
     arriveAt,
   }).returning();
   if (!ret) throw new Error('peaceful return insert returned no row');
+  await admiralHomeward(tx, 'mission', mission, ret.id, clock.now());
   await setUnits(tx, mission.originPlanetId, fleet, ret.id, mission.ownerPlayerId);
   await schedule(tx, {
     seasonId: mission.seasonId,

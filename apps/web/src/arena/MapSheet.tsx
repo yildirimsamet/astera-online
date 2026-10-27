@@ -2,16 +2,18 @@ import { useMemo, type Ref } from 'react';
 import { ARENA_TUNING as T, type ArenaLayout } from '@astera/rules/arena';
 import i18n from '../i18n/index.js';
 import type { ArenaCopy } from './copy.js';
-import { mapGrid, mapPlan } from './map.js';
+import { mapGrid, mapPlan, mapPoint } from './map.js';
+import { teamCopy } from './teamCopy.js';
 
 /**
  * The Rift map (owner 2026-10-22, item 9): where you are, the rough structures, exits and
- * entries. Places only — the plan is built from the layout, so no ship can appear on it.
+ * entries. The plan comes from the layout; Y7 adds only the living clan friends the server sent.
  * Shapes are SVG in metres; labels are HTML on top, so they stay crisp at any map size.
  * The own arrow and the altitude marker are moved by the client every few frames.
  */
-export function MapSheet({ layout, c, self, altitude, onClose }: {
+export function MapSheet({ layout, c, self, altitude, onClose, friends = [] }: {
   layout: ArenaLayout; c: ArenaCopy; self: Ref<SVGGElement>; altitude: Ref<HTMLElement>; onClose: () => void;
+  friends?: readonly { id: number; x: number; z: number }[];
 }) {
   const plan = useMemo(() => mapPlan(layout), [layout]);
   const view = plan.radius * 1.06;
@@ -88,6 +90,9 @@ export function MapSheet({ layout, c, self, altitude, onClose }: {
           <g ref={self} data-self="" className="ah-map-self">
             <g transform={`scale(${String(k)})`}><circle r={190} /><path d="M0 -150L105 115L0 60L-105 115Z" /></g>
           </g>
+          {friends.map(p => <g key={p.id} data-friend-id={p.id} transform={`translate(${String(mapPoint(p.x, p.z).x)} ${String(mapPoint(p.x, p.z).y)})`} className="ah-map-friend">
+            <circle r={65 * k} /><circle r={130 * k} className="is-ring" />
+          </g>)}
         </svg>
         {plan.landmarks.filter(l => l.kind !== 'outpost' && l.kind !== 'refinery' && l.kind !== 'annex').map((l, i) => <span key={i} className="ah-map-label" data-side={side(l.x, l.y)} style={at(l.x, l.y)}>{c.landmarks[l.kind]}</span>)}
         {plan.exits.map((e, i) => <span key={i} className="ah-map-label is-exit" style={at(e.x, e.y)}>{c.exit}</span>)}
@@ -104,6 +109,7 @@ export function MapSheet({ layout, c, self, altitude, onClose }: {
     <footer>
       <ul>
         <li><i className="is-self" />{c.you}</li>
+        {friends.length > 0 && <li><i className="is-friend" />{teamCopy().friend}</li>}
         <li><i className="is-exit" />{c.exit}</li>
         <li><i className="is-entry" />{c.mapEntry}</li>
         <li><i className="is-belt" />{c.mapBelt}</li>
@@ -112,7 +118,7 @@ export function MapSheet({ layout, c, self, altitude, onClose }: {
         <li><i className="is-cave" />{c.mapCave}</li>
         <li><i className="is-dust" />{c.mapDust} · {c.dustSight.toLocaleLowerCase(i18n.resolvedLanguage)} {T.dustSight} m</li>
       </ul>
-      <p>{c.mapNoShips}</p>
+      <p>{friends.length > 0 ? teamCopy().mapFriends : c.mapNoShips}</p>
     </footer>
   </section>;
 }

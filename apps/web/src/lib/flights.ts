@@ -4,6 +4,7 @@ import type { Contact, MiningRun, PendingThread } from '../api/schemas.js';
 import type { Focus } from '../galaxy/FocusPanel.js';
 import type { CraftFocus } from '../galaxy/ownCraft.js';
 import { threadKey } from '../galaxy/threadKey.js';
+import { arenaCopy } from '../arena/copy.js';
 import i18n from '../i18n/index.js';
 import { monumentName } from '../i18n/names.js';
 import { serverNow } from './clock.js';
@@ -190,3 +191,10 @@ export const runArrival = (run: MiningRun): number =>
  * be anchored to anything.
  */
 export const arrivalOf = (thread: PendingThread): number => thread.arriveAt.getTime();
+
+/** F25: the commander ship flying with a wave of yours, for the line under its row; null without one. */
+export function escortLine(thread: Pick<PendingThread, 'admiral'>): string | null {
+  if (!thread.admiral) return null;
+  const c = arenaCopy();
+  return i18n.t('pendingStrip.escorted', { ship: c.classes[thread.admiral.ship].name, level: c.level(thread.admiral.level) });
+}

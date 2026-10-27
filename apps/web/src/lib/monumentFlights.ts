@@ -23,6 +23,7 @@ export function monumentPendingThreads(view: Monuments | undefined, nowMs = view
       leg: wave.status === 'RETURNING' ? 'return' : 'outbound', fleet: wave.fleet,
       ...(recallable ? { recallable: true, monumentRecall: { minutes: recallMinutes } } : {}),
       ...(wave.fadeAt ? { fadeAt: wave.fadeAt } : {}),
+      ...(wave.admiral ? { admiral: wave.admiral } : {}),
       path: { from: leg.from, to: leg.to, departAt: new Date(leg.startMs), arriveAt: new Date(leg.endMs) } });
   }
   for (const probe of view.probes) {

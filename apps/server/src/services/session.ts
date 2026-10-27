@@ -1,5 +1,6 @@
 import { rewardFlightFleet } from './fleetTowing.js';
-import { and, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import type { AdmiralSnapshot } from '@astera/rules/arena';
 import { alias } from 'drizzle-orm/pg-core';
 import {
   alloyRate,
@@ -26,8 +27,11 @@ import {
 import type { Clock } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
 import {
+  arenaAdmiralLegs,
+  arenaAdmirals,
   battleReports,
   buildings,
+  clanSupportWaves,
   clanWarMissions,
   clanWarOperations,
   intergalacticConvoyRuns,
@@ -174,6 +178,8 @@ export interface PendingThread {
   id?: string;
   /** Klan Savunma Desteği: this `transfer` is a support wave's leg, named for what it is. */
   clanSupport?: true;
+  /** Y9: the commander ship flying at the rear of this craft. Your own craft only. */
+  admiral?: AdmiralSnapshot;
   /**
    * Set only on an outbound transfer or raid that may still be turned around — the same facts
    * `recallFlight` checks. Owner decisions 2026-09-21 (transfers) and 2026-09-23 (raids, K8).
@@ -1242,7 +1248,37 @@ export async function pendingThreads(
       path: { from, to, departAt, arriveAt },
     });
   }
+  if (playerId) await markAdmiral(db, playerId, pending);
   return pending;
+}
+
+/**
+ * The craft the asking commander's ship escorts (Y9), by the thread's own id: a raid's mission, a
+ * pirate raid, or a support wave's outbound or return mission. A ship flying home alone has no
+ * open leg, so nothing here draws it.
+ */
+async function markAdmiral(db: Queryable, playerId: string, pending: PendingThread[]): Promise<void> {
+  // Most reads carry no own craft (a radar sweep, an idle world): no query for them.
+  if (!pending.some(thread => thread.id && thread.kind !== 'incoming')) return;
+  const legs = await db.select({ kind: arenaAdmiralLegs.kind, refId: arenaAdmiralLegs.refId, ship: arenaAdmirals.ship, level: arenaAdmirals.level })
+    .from(arenaAdmiralLegs).innerJoin(arenaAdmirals, eq(arenaAdmirals.id, arenaAdmiralLegs.admiralId))
+    .where(and(eq(arenaAdmirals.playerId, playerId), eq(arenaAdmirals.status, 'active'), isNull(arenaAdmiralLegs.finishedAt)));
+  if (legs.length === 0) return;
+  const escorts = new Map<string, AdmiralSnapshot>();
+  for (const leg of legs) if (leg.kind === 'mission' || leg.kind === 'pirate') escorts.set(leg.refId, { ship: leg.ship, level: leg.level });
+  const waves = legs.filter(leg => leg.kind === 'defence');
+  if (waves.length > 0) {
+    const rows = await db.select({ id: clanSupportWaves.id, out: clanSupportWaves.outboundMissionId, back: clanSupportWaves.returnMissionId })
+      .from(clanSupportWaves).where(inArray(clanSupportWaves.id, waves.map(leg => leg.refId)));
+    for (const row of rows) {
+      const leg = waves.find(wave => wave.refId === row.id)!;
+      for (const id of [row.out, row.back]) if (id) escorts.set(id, { ship: leg.ship, level: leg.level });
+    }
+  }
+  for (const thread of pending) {
+    const escort = thread.id && thread.kind !== 'incoming' ? escorts.get(thread.id) : undefined;
+    if (escort) thread.admiral = escort;
+  }
 }
 
 /* ── notifications ──────────────────────────────────────────── */

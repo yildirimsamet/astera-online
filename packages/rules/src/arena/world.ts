@@ -1,7 +1,9 @@
 import { mulberry32 } from '../rng.js';
 import type { Rng } from '../types.js';
 import { createBrain, thinkBot, type BotBrain, type BotRole } from './bots.js';
-import { CLASS_STATS, classTuning, type ShipClass } from './classes.js';
+import type { ShipClass } from './classes.js';
+import { shipTuning, statsOf } from './progression.js';
+import { abilityStats } from './ranks.js';
 import { scatter, shoot, stepGhosts, stepProjectiles, impact } from './combat.js';
 import { createInput } from './controls.js';
 import { FIELD_GROUP_SIZE, pickFieldSpawn } from './farms.js';
@@ -11,7 +13,7 @@ import { alive, copyFlight, createPilot, type ArenaIntent, type CargoDrop, type 
   type Projectile, type SmokePuff, type Tactic } from './pilot.js';
 import { ageEffects, ARENA_POOLS } from './pools.js';
 import { castSignature, stepLock, stepMissiles, stepSignatureTimers } from './signatures.js';
-import { castTactic, dissolveDecoys, mirrorIntent, stepScans, type Scan } from './tactics.js';
+import { castTactic, dissolveDecoys, stepDecoy, stepScans, type Scan } from './tactics.js';
 import { RING12 } from './vec.js';
 import { ARENA_TUNING as T } from './tuning.js';
 import type { ArenaLayout, FlightState, SteeringSettings, Vec3 } from './types.js';
@@ -28,8 +30,6 @@ export interface ArenaWorld {
   /** A crystal mined dry rests until it grows back to half its reserve. */
   dry: boolean[];
   tick: number; droneInput: ArenaIntent; neutralInput: ArenaIntent;
-  /** Scratch for the mirrored intent an illusion's copy flies. */
-  decoyInput: ArenaIntent;
   projectiles: Projectile[]; ghosts: Projectile[]; smoke: SmokePuff[];
   cargoDrops: CargoDrop[]; impacts: Impact[]; missiles: Missile[];
   /** The entrance the next arrival takes (`nextEntry`). */
@@ -81,11 +81,11 @@ export function createSandboxWorld(options: WorldOptions = {}): ArenaWorld {
     layout, pilot, previous: createFlightState(), drones: [], dronePrevious: [], brains: new Map(),
     random: mulberry32(options.seed ?? 4100),
     minerals: layout.deposits.map(() => T.crystalReserve), dry: layout.deposits.map(() => false),
-    tick: 0, droneInput: createInput(), neutralInput: createInput(), decoyInput: createInput(),
+    tick: 0, droneInput: createInput(), neutralInput: createInput(),
     projectiles: Array.from({ length: ARENA_POOLS.bullets }, projectile), ghosts: Array.from({ length: ARENA_POOLS.ghosts }, projectile),
     smoke: Array.from({ length: ARENA_POOLS.smoke }, () => ({ p: point(), age: 0, active: false, owner: -1 })),
     impacts: Array.from({ length: ARENA_POOLS.impacts }, () => ({ p: point(), age: 0, kind: 'rock', active: false })),
-    missiles: Array.from({ length: ARENA_POOLS.missiles }, () => ({ p: point(), previous: point(), v: point(), life: 0, owner: -1, target: -1 })),
+    missiles: Array.from({ length: ARENA_POOLS.missiles }, () => ({ p: point(), previous: point(), v: point(), life: 0, owner: -1, target: -1, damage: T.missileDamage })),
     cargoDrops: Array.from({ length: ARENA_POOLS.cargo },
       (_, i) => ({ p: point(), amount: 0, active: false, age: 0, field: i < T.fieldGroups * FIELD_GROUP_SIZE, kind: 0, claim: -1 })),
     fieldSpots: Array.from({ length: T.fieldGroups }, () => -1), fieldTimers: Array.from({ length: T.fieldGroups }, () => 0),
@@ -99,8 +99,9 @@ export function createSandboxWorld(options: WorldOptions = {}): ArenaWorld {
   for (let i = 0; i < count; i++) {
     const role = ROLES[i] ?? 'patrol';
     const bot = createPilot(i + 1, ROLE_SHIPS[role]);
+    bot.bot = true;
     place(world, bot);
-    if (role === 'miner') { bot.cargo = 20; bot.hold[1] = 20; }
+    if (role === 'miner') { bot.cargo = 80; bot.hold[1] = 80; }
     world.brains.set(bot.id, createBrain(role));
     world.drones.push(bot);
     const prior = createFlightState(); copyFlight(prior, bot); world.dronePrevious.push(prior);
@@ -111,7 +112,7 @@ export function createSandboxWorld(options: WorldOptions = {}): ArenaWorld {
 
 function respawnBot(world: ArenaWorld, bot: Pilot, brain: BotBrain): void {
   const id = bot.id;
-  Object.assign(bot, createPilot(id, bot.ship));
+  Object.assign(bot, createPilot(id, bot.ship), { bot: true });
   place(world, bot);
   if (brain.role === 'miner') { bot.cargo = 0; bot.hold = bot.hold.map(() => 0); }
   const fresh = createBrain(brain.role);
@@ -128,7 +129,7 @@ function mineAndRegrow(world: ArenaWorld): void {
     if (pilot.phase !== 'flying' || !pilot.landed || pilot.decoyOf >= 0) continue;
     const slot = world.layout.deposits.indexOf(pilot.landed - 1);
     const kind = world.layout.depositKinds[slot] ?? 0;
-    const hold = CLASS_STATS[pilot.ship].cargoCapacity;
+    const hold = statsOf(pilot).cargoCapacity;
     if (slot < 0 || world.dry[slot] || pilot.cargo >= hold) continue;
     const reserve = world.minerals[slot] ?? 0;
     const amount = Math.min(T.mineRate / T.tickRate, reserve, hold - pilot.cargo);
@@ -189,8 +190,14 @@ function stepPilot(world: ArenaWorld, pilot: Pilot, input: ArenaIntent, settings
   const powered = pilot.fuel > 0 && pilot.phase === 'flying';
   stepSignatureTimers(world, pilot);
   if (!predictOnly) { stepLock(world, pilot); if (powered) { castSignature(world, pilot, input); castTactic(world, pilot, input); } }
-  if (powered && input.smoke && pilot.tactic === 'smoke' && pilot.smokeCooldown === 0) { pilot.smokeEmit = T.smokeEmitDuration * T.tickRate; pilot.smokeCooldown = T.smokeCooldown * T.tickRate; }
-  if (powered && input.cloak && pilot.tactic === 'cloak' && pilot.cloakCooldown === 0) { pilot.cloak = T.cloakDuration * T.tickRate; pilot.cloakCooldown = T.cloakCooldown * T.tickRate; }
+  if (powered && input.smoke && pilot.tactic === 'smoke' && pilot.smokeCooldown === 0) {
+    const skill = abilityStats(pilot.ship, 'smoke', pilot.ranks.tactic);
+    pilot.smokeEmit = Math.round(skill.duration * T.tickRate); pilot.smokeCooldown = Math.round(skill.cooldown * T.tickRate);
+  }
+  if (powered && input.cloak && pilot.tactic === 'cloak' && pilot.cloakCooldown === 0) {
+    const skill = abilityStats(pilot.ship, 'cloak', pilot.ranks.tactic);
+    pilot.cloak = Math.round(skill.duration * T.tickRate); pilot.cloakCooldown = Math.round(skill.cooldown * T.tickRate);
+  }
   if (powered && input.turboBurst) pilot.turboBurst = T.turboTapBurst * T.tickRate;
   // On the ground turbo is a take-off (stepFlight lifts off): the escape from a mining ambush.
   const turbo = powered && (input.turbo || pilot.turboBurst > 0) && pilot.turboCharge > 0
@@ -198,16 +205,19 @@ function stepPilot(world: ArenaWorld, pilot: Pilot, input: ArenaIntent, settings
   pilot.turboActive = turbo;
   if (turbo) { pilot.turboCharge = Math.max(0, pilot.turboCharge - dt); pilot.turboDelay = T.turboRegenDelay * T.tickRate; }
   else if (pilot.turboDelay > 0) pilot.turboDelay--;
-  else pilot.turboCharge = Math.min(T.turboCharge, pilot.turboCharge + T.turboRegen * dt * (pilot.landed ? T.landedTurboRegenMul : 1));
+  else {
+    const skill = abilityStats(pilot.ship, 'turbo', pilot.ranks.turbo);
+    pilot.turboCharge = Math.min(skill.duration, pilot.turboCharge + skill.duration / skill.cooldown * dt * (pilot.landed ? T.landedTurboRegenMul : 1));
+  }
   pilot.turboBurst = Math.max(0, pilot.turboBurst - 1);
   const held = input.turbo; input.turbo = turbo;
   if (pilot.phase === 'fuelOut') {
     // Out of fuel: no pilot input at all; the hull coasts to a stop.
     const throttle = input.throttle; const steerX = input.steerX; const steerY = input.steerY;
     input.throttle = 0; input.steerX = 0; input.steerY = 0;
-    stepFlight(pilot, input, world.layout, settings, classTuning(pilot.ship));
+    stepFlight(pilot, input, world.layout, settings, shipTuning(pilot.ship, pilot.level));
     input.throttle = throttle; input.steerX = steerX; input.steerY = steerY;
-  } else stepFlight(pilot, input, world.layout, settings, classTuning(pilot.ship));
+  } else stepFlight(pilot, input, world.layout, settings, shipTuning(pilot.ship, pilot.level));
   input.turbo = held;
   if (powered && input.fire) shoot(world, pilot, predictOnly, !bot);
   if (pilot.smokeEmit > 0) {
@@ -247,14 +257,14 @@ function stepMagnet(world: ArenaWorld): void {
     if (!drop.active || drop.claim < 0) continue;
     const ship = puller(drop);
     const load = (ship ? pulling.get(ship.id) ?? 0 : 0) + drop.amount;
-    if (!ship || squared(drop.p, ship.p) > 4 * reach || ship.cargo + load > CLASS_STATS[ship.ship].cargoCapacity + 1e-9) { drop.claim = -1; continue; }
+    if (!ship || squared(drop.p, ship.p) > 4 * reach || ship.cargo + load > statsOf(ship).cargoCapacity + 1e-9) { drop.claim = -1; continue; }
     pulling.set(ship.id, load);
   }
   for (const drop of world.cargoDrops) {
     if (!drop.active || drop.claim >= 0) continue;
     let best: Pilot | undefined; let nearest = reach;
     for (const ship of ships) {
-      if (ship.phase !== 'flying' || ship.cargo + (pulling.get(ship.id) ?? 0) + drop.amount > CLASS_STATS[ship.ship].cargoCapacity + 1e-9) continue;
+      if (ship.phase !== 'flying' || ship.cargo + (pulling.get(ship.id) ?? 0) + drop.amount > statsOf(ship).cargoCapacity + 1e-9) continue;
       const d = squared(drop.p, ship.p);
       if (d > nearest || (best && d === nearest && ship.id > best.id)) continue;
       best = ship; nearest = d;
@@ -295,18 +305,15 @@ function stepWorld(world: ArenaWorld, input: ArenaIntent, settings?: SteeringSet
   for (const ship of [world.pilot, ...world.drones]) ship.threat = 0;
   stepScans(world);
   stepPilot(world, world.pilot, input, settings, false);
-  // A copy flies its pilot's stick, so the pilot's intent stays readable until the copies have flown.
-  const decoyInput = (owner: number): ArenaIntent => owner === world.pilot.id ? input : controlled?.get(owner) ?? world.neutralInput;
   const oneShots = (): void => { input.smoke = false; input.cloak = false; input.turboBurst = false; input.signature = false; input.illusion = false; input.radar = false; };
   for (let i = 0; i < world.drones.length; i++) {
     const drone = world.drones[i]; const previous = world.dronePrevious[i];
     if (!drone || !previous) continue;
     copyFlight(previous, drone);
     if (drone.decoyOf >= 0) {
-      drone.fuel = CLASS_STATS[drone.ship].fuelTank; drone.ammo = CLASS_STATS[drone.ship].ammoCapacity;
-      stepPilot(world, drone, mirrorIntent(world.decoyInput, decoyInput(drone.decoyOf)),
-        drone.decoyOf === world.pilot.id ? settings : pilotSettings?.get(drone.decoyOf), false);
-      drone.decoyLife--;
+      // A copy joins after its pilot, so its pilot has flown this tick already.
+      const owner = drone.decoyOf === world.pilot.id ? world.pilot : world.drones.find(ship => ship.id === drone.decoyOf);
+      if (owner && alive(owner)) stepDecoy(world, drone, owner);
       continue;
     }
     const brain = world.brains.get(drone.id);
@@ -317,7 +324,7 @@ function stepWorld(world: ArenaWorld, input: ArenaIntent, settings?: SteeringSet
     }
     thinkBot(world, drone, brain, world.droneInput);
     // Bots never run dry: neither tank nor magazine is theirs to manage.
-    drone.fuel = CLASS_STATS[drone.ship].fuelTank; drone.ammo = CLASS_STATS[drone.ship].ammoCapacity;
+    drone.fuel = statsOf(drone).fuelTank; drone.ammo = statsOf(drone).ammoCapacity;
     stepPilot(world, drone, world.droneInput, undefined, false, true);
     if (drone.phase === 'extracted') drone.respawn = T.botRespawn * T.tickRate;
   }

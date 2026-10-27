@@ -486,6 +486,15 @@ export const directives = {
 
 /** The seven kinds of news, turned into the sentences a player reads. */
 export const notifications = {
+  arenaShipReady: "Tu nave de comandante está lista. Abre el hangar.",
+  arenaRepairReady: "La reparación de tu nave de comandante ha terminado. Abre el hangar.",
+  arenaServiceReady: "El mantenimiento de tu nave de comandante ha terminado. Abre el hangar.",
+  arenaTeamShare: "Tu parte del equipo está lista: {{loot}}. Recógela en el hangar.",
+  arenaTeamShareReady: "Tu parte del equipo está lista. Recógela en el hangar.",
+  arenaSortieTowed: "Se cortó tu conexión; tu nave de comandante fue remolcada fuera del Yarık.",
+  arenaSortieDead: "Tu nave de comandante fue derribada en el Yarık y está en reparación.",
+  arenaSortieLoot: "Perdido de la bodega: {{loot}}.",
+
   incomingFallback: 'Flota entrante.',
   incomingLanded: 'aterrizó',
   incomingEta: 'ETA {{minutes}} min',
@@ -494,6 +503,7 @@ export const notifications = {
   strategicIncomingHead: 'Arma estratégica entrante · {{clock}}',
   incomingEstimate: 'est. {{count}} naves',
   incomingFrom: 'de {{origin}}',
+  incomingAdmiral: 'con nave de comandante: {{ship}} {{level}}',
   /** Which of the reader's own worlds is under the crosshair. Never a radar product. */
   incomingAt: 'dirigido a {{world}}',
   commanderAt: '{{username}} en {{planet}}',

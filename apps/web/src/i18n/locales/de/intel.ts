@@ -457,6 +457,11 @@ export const reports = {
   /** Everything a battle did beyond the loot line, each said only when true. */
   effects: {
     heading: 'Was es bewirkt hat',
+    admiralYours: 'Dein Kommandantenschiff begleitete die Flotte: {{ship}} {{level}}. Es feuerte nie und wurde nie getroffen.',
+    admiralHeld: 'Dein Kommandantenschiff begleitete die Flotte: {{ship}} {{level}}. Die Flotte hält das Monument; das Schiff flog allein heim.',
+    admiralRepair: 'Dein Kommandantenschiff begleitete die Flotte: {{ship}} {{level}}. Die Schlacht ging verloren, es kommt {{minutes}} Min. in die Reparatur.',
+    admiralRaider: 'Das Kommandantenschiff des Angreifers begleitete die Flotte: {{ship}} {{level}}. Es gibt einen Bonus und wird nie getroffen.',
+    admiralDefence: 'Ein Kommandantenschiff stand bei der Verteidigung: {{ship}} {{level}}. Es gibt einen Bonus und wird nie getroffen.',
     shieldTheirs: 'Ihr Schild absorbierte {{amount}} Schaden, bevor etwas den Rumpf erreichte.',
     shieldYours: 'Dein Schild hat {{amount}} Schaden absorbiert, bevor irgendetwas den Rumpf erreicht hat.',
     cargoLimited:

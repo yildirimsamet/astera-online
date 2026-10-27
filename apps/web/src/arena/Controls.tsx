@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from 'react';
-import { ARENA_TUNING as T, CLASS_STATS, SIGNATURE_COOLDOWN, type ShipClass, type Tactic } from '@astera/rules/arena';
-import { AIM_WINDOW_MS, KNOB_TRAVEL, LANDING_THROTTLE, THROTTLE_DETENTS, chordAt, chordLink, stickHome, type ArenaAction, type ArenaControls, type Circle } from './input.js';
+import { CLASS_STATS, abilityStats, type ShipClass, type Tactic } from '@astera/rules/arena';
+import { AIM_WINDOW_MS, KNOB_TRAVEL, LANDING_THROTTLE, THROTTLE_DETENTS, chordAt, chordLink, railLevel, stickHome, type ArenaAction, type ArenaControls, type Circle } from './input.js';
 import type { HudSnapshot, HudStore } from './store.js';
 import { arenaCopy } from './copy.js';
 
@@ -144,19 +144,18 @@ export function FlightControls({ controls, store, onLand, onCancel }: { controls
     frame = requestAnimationFrame(paint);
     return () => { cancelAnimationFrame(frame); };
   }, [controls]);
-  const level = (event: PointerEvent<HTMLDivElement>): number => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    return Math.max(0, Math.min(1, 1 - (event.clientY - bounds.top - 10) / Math.max(1, bounds.height - 20)));
-  };
+  const level = (event: PointerEvent<HTMLDivElement>): number =>
+    railLevel(event.clientY, (event.currentTarget.querySelector('.ac-rail') ?? event.currentTarget).getBoundingClientRect());
   const alive = status.phase === 'flying';
   // A missile waits for its lock; a shield or repair is aimed with taps (input.ts).
   const missile = status.ship === 'akinci';
   // FIRE's ring is the magazine (owner 2026-10-21: ammunition is its own, read where it is spent);
   // the missile's ring fills as its lock builds.
-  const cooldown = (action: ArenaAction): number => action === 'smoke' ? status.smokeCooldown / T.smokeCooldown
-    : action === 'cloak' ? status.cloakCooldown / T.cloakCooldown : action === 'turbo' ? 1 - status.turboCharge / T.turboCharge
-      : action === 'illusion' ? status.tacticCooldown / T.illusionCooldown : action === 'radar' ? status.tacticCooldown / T.radarCooldown
-      : action === 'signature' ? status.signatureCooldown > 0 ? status.signatureCooldown / SIGNATURE_COOLDOWN[status.ship] : missile ? 1 - status.lockProgress : 0
+  const skill = (action: 'signature' | 'turbo' | Tactic) => abilityStats(status.ship, action, action === 'signature' ? status.ranks.signature : action === 'turbo' ? status.ranks.turbo : status.ranks.tactic);
+  const cooldown = (action: ArenaAction): number => action === 'smoke' ? status.smokeCooldown / skill(action).cooldown
+    : action === 'cloak' ? status.cloakCooldown / skill(action).cooldown : action === 'turbo' ? 1 - status.turboCharge / skill(action).duration
+      : action === 'illusion' || action === 'radar' ? status.tacticCooldown / skill(action).cooldown
+      : action === 'signature' ? status.signatureCooldown > 0 ? status.signatureCooldown / skill(action).cooldown : missile ? 1 - status.lockProgress : 0
         : 1 - status.ammo / CLASS_STATS[status.ship].ammoCapacity;
   const label = (action: ArenaAction, wait: number): string => wait > 0 ? String(Math.ceil(wait))
     : action === 'signature' ? aiming ? c.aimKey : missile && !status.lockReady ? status.lockProgress > 0 ? c.lockBuilding : c.noLock

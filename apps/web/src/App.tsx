@@ -6,6 +6,8 @@ import { useLiveAlerts } from './session/useLiveAlerts.js';
 import { ArenaGate } from './arena/ArenaGate.js';
 import { canEnterArena, canOpenArenaSandbox } from './arena/flags.js';
 import { arenaCredential, useArenaAccess } from './arena/access.js';
+import { arenaDoor, pageStorage, takeArenaDoor } from './arena/freshEntry.js';
+import { roomyRenderer } from './arena/room.js';
 import { useApi } from './api/context.js';
 import { LandingScreen } from './screens/LandingScreen.jsx';
 const Academy = lazy(() => import('./onboarding/Academy.jsx').then(module => ({ default: module.Academy })));
@@ -87,7 +89,9 @@ function SessionApp() {
   } = useSession();
   const ready = session.phase === 'ready';
   const [academyReplay, setAcademyReplay] = useState(false);
-  const [arenaOpen, setArenaOpen] = useState(false);
+  // A page loaded afresh to go into the Yarık, or back out of it (`freshEntry`, S22 32-bit Chrome).
+  const [door] = useState(() => takeArenaDoor(pageStorage()));
+  const [arenaOpen, setArenaOpen] = useState(door === 'enter');
   const api = useApi();
   const arenaAllowed = useArenaAccess(api, ready && import.meta.env.VITE_ARENA === '1');
 
@@ -105,7 +109,7 @@ function SessionApp() {
   useEventStream(ready && !academyReplay, rollover);
   useLiveAlerts(ready && !academyReplay);
 
-  const [panel, setPanel] = useState<Panel>(null);
+  const [panel, setPanel] = useState<Panel>(door === 'leave' ? 'ship' : null);
   /**
    * WHICH SHELF THE PANEL OPENS ON, WHEN THE CALLER KNOWS. D121.
    *
@@ -220,7 +224,8 @@ function SessionApp() {
   if (academyReplay) return <Academy replay onClaim={() => Promise.reject(new Error('REPLAY_ONLY'))}
     onSignIn={() => { setAcademyReplay(false); }} onLeave={() => { setAcademyReplay(false); }} />;
 
-  if (arenaOpen) return <ArenaGate credential={() => arenaCredential(api)} onLeave={() => { setArenaOpen(false); setPanel('ship'); }} />;
+  const through = (way: 'enter' | 'leave'): 'page' | 'reload' => arenaDoor(way, { roomy: roomyRenderer(), storage: pageStorage(), reload: () => { location.reload(); } });
+  if (arenaOpen) return <ArenaGate credential={() => arenaCredential(api)} onLeave={() => { if (through('leave') === 'page') { setArenaOpen(false); setPanel('ship'); } }} />;
 
   return (
     <WorldProvider>
@@ -259,7 +264,7 @@ function SessionApp() {
             onPlacementLost={rollover}
             onReplayAcademy={() => { setPanel(null); setAcademyReplay(true); }}
             onEnterArena={canEnterArena(import.meta.env, arenaAllowed)
-              ? () => { setPanel(null); setArenaOpen(true); } : undefined}
+              ? () => { if (through('enter') === 'page') { setPanel(null); setArenaOpen(true); } } : undefined}
             homeRequest={homeRequest}
             worldsRequest={worldsRequest}
             centerRequest={centerRequest}

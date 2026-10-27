@@ -5,8 +5,8 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig(
-  // Local scratch output and pre-existing agent worktrees are not build input.
-  { ignores: ['**/dist/**', '**/mobile-dist/**', '**/node_modules/**', 'legacy/**', '**/drizzle/**', '.dev/**', '.claude/worktrees/**', '**/out/**', 'astera-refs/**', 'astera-ref-assets/**', 'apps/web/android/**/build/**', 'apps/web/android/app/src/main/assets/**', 'apps/web/android/capacitor-cordova-android-plugins/**'] },
+  // Local scratch output, pre-existing worktrees and the verbatim three.js Basis decoder are not authored source.
+  { ignores: ['**/dist/**', '**/mobile-dist/**', '**/node_modules/**', 'legacy/**', '**/drizzle/**', '.dev/**', '.claude/worktrees/**', '**/out/**', 'astera-refs/**', 'astera-ref-assets/**', 'apps/web/android/**/build/**', 'apps/web/android/app/src/main/assets/**', 'apps/web/android/capacitor-cordova-android-plugins/**', 'apps/server/*.load.ts', 'apps/web/*.tmp.ts', 'apps/web/dist-preview-tmp/**', 'apps/web/public/basis/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,

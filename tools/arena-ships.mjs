@@ -21,6 +21,7 @@ import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { materialIndices } from './ship-lod-materials.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(realpathSync(join(ROOT, 'node_modules/@gltf-transform/cli/package.json')));
@@ -414,7 +415,7 @@ async function prepare(sourceDir, workDir) {
       levels = [[part], [simplifyPart(part, LODS[1], LOD_ERROR[1])], [simplifyPart(part, LODS[2], LOD_ERROR[2], true)]];
       materials = [{ name: `${ship.key}-hull`, base: [1, 1, 1], metal: 1, rough: 1, emissive: [1, 1, 1], strength, maps: await maps(ship.key, 'hull', images) }];
     }
-    for (const lod of levels) for (const part of lod) part.material = typeof part.material === 'number' ? part.material : parts.findIndex(p => p.material === part.material);
+    levels = materialIndices(parts, levels);
     await writeIntermediate(workDir, ship.key, levels, materials);
     report[ship.key] = { triangles: levels.map(lod => lod.reduce((sum, part) => sum + triangles(part), 0)), size };
     console.log(`  LOD triangles ${report[ship.key].triangles.join(' / ')}`);

@@ -1,6 +1,7 @@
 import { circleAim, gimbalAim } from './aim.js';
 import { segmentObstacles } from './collision.js';
-import { CLASS_STATS, classTuning } from './classes.js';
+import { classTuning } from './classes.js';
+import { ARENA_PROGRESSION, statsOf } from './progression.js';
 import { sweptHull } from './hull.js';
 import { ARENA_TUNING as T } from './tuning.js';
 import { alive, sameSide, type Impact, type Pilot, type Projectile, type SmokePuff, type CargoDrop } from './pilot.js';
@@ -20,6 +21,42 @@ export interface CombatWorld {
 // Deterministic spread pattern, in units of spreadBase (pairs: x, y).
 const SPREAD = [0, 0, 0.35, 0.1, -0.25, 0.2, 0.15, -0.4, -0.6, -0.1, 0.5, 0.45, -0.2, -0.65, 0.1, 0.7,
   0.65, -0.4, -0.45, 0.4, 0.3, -0.2, -0.1, 0.25];
+export const SPREAD_PATTERN: readonly number[] = Object.freeze([...SPREAD]);
+const RADII = Array.from({ length: SPREAD.length / 2 }, (_, i) => {
+  const x = SPREAD[i * 2] ?? 0; const y = SPREAD[i * 2 + 1] ?? 0;
+  return Math.sqrt(x * x + y * y);
+});
+/** The widest shot of the pattern, in units of spreadBase: every shot lands inside this cone (the reticle's ring). */
+export const SPREAD_REACH = Math.max(...RADII);
+
+/** Where the reticle's ring is true (owner 2026-10-24): the spread a pilot sees drawn is the spread at 500 m. */
+export const RING_DISTANCE = 500;
+/** How far off the line the widest shot lands at `distance` metres: the ring's radius out there. */
+export function spreadAt(spreadBase: number, distance: number): number {
+  if (!Number.isFinite(spreadBase) || !Number.isFinite(distance) || spreadBase < 0 || distance < 0) return 0;
+  // A cone of a degree or two: the angle is its own tangent (no transcendentals in the shared simulation).
+  return distance * SPREAD_REACH * spreadBase;
+}
+
+/** Where accuracy is read: a ship-sized target (4 m round) dead ahead, anywhere 200–400 m out. */
+export const HIT_REFERENCE = Object.freeze({ radius: 4, near: 200, far: 400 });
+/**
+ * Accuracy as a share (owner 2026-10-24, "accuracy oranı"): of the pattern the guns fire, how much
+ * lands on the reference target aimed dead centre, averaged over its distances. It comes from the
+ * same cone the guns use, so it grows smoothly as a level narrows it.
+ */
+export function hitShare(spreadBase: number): number {
+  if (!Number.isFinite(spreadBase) || spreadBase < 0) return 0;
+  const { radius, near, far } = HIT_REFERENCE;
+  const each = RADII.map(r => {
+    if (r * spreadBase === 0) return 1;
+    // A shot this far off the line stays on the target out to `reach` metres (a cone of a degree or
+    // two: the angle is its own tangent, and the shared simulation stays free of transcendentals).
+    const reach = radius / (r * spreadBase);
+    return Math.min(1, Math.max(0, (reach - near) / (far - near)));
+  });
+  return each.reduce((sum, n) => sum + n, 0) / each.length;
+}
 
 export function impact(world: CombatWorld, x: number, y: number, z: number, kind: Impact['kind']): void {
   const hit = world.impacts[world.impactCursor++ % world.impacts.length]; if (!hit) return;
@@ -69,7 +106,7 @@ const aim = { x: 0, y: 0, z: 0 };
 export function shoot(world: CombatWorld, pilot: Pilot, ghost: boolean, circle: boolean): void {
   if (world.tick < pilot.nextShot || pilot.ammo < 1) return;
   if (pilot.nextShot < world.tick - 1) pilot.nextShot = world.tick;
-  const gun = CLASS_STATS[pilot.ship];
+  const gun = statsOf(pilot);
   pilot.nextShot += T.tickRate / gun.fireRate;
   pilot.ammo -= 1; pilot.shield = 0; pilot.cloak = 0;
   pilot.shots++; if (pilot === world.pilot) world.shots++;
@@ -95,7 +132,7 @@ export function shoot(world: CombatWorld, pilot: Pilot, ghost: boolean, circle: 
   bullet.previous.x = bullet.p.x; bullet.previous.y = bullet.p.y; bullet.previous.z = bullet.p.z;
   bullet.v.x = dx * speed + fx * pilot.s; bullet.v.y = dy * speed + fy * pilot.s; bullet.v.z = dz * speed + fz * pilot.s;
   // An illusion's copy fires blanks in its pilot's name (Y4d): light that hurts no one.
-  bullet.life = T.projectileLife; bullet.owner = pilot.decoyOf >= 0 ? pilot.decoyOf : pilot.id; bullet.damage = pilot.decoyOf >= 0 ? 0 : gun.damage;
+  bullet.clanId = pilot.clanId; bullet.life = T.projectileLife; bullet.owner = pilot.decoyOf >= 0 ? pilot.decoyOf : pilot.id; bullet.damage = pilot.decoyOf >= 0 ? 0 : gun.damage;
 }
 
 /**
@@ -129,12 +166,12 @@ export function advance(bullet: Projectile): void {
 }
 
 /** Earliest ship along a shot's path this tick (a bullet or a missile), or none. Writes the fraction into `hit`. */
-export function firstShip(world: CombatWorld, bullet: { p: Vec3; previous: Vec3; owner: number }, hit: { t: number }): Pilot | undefined {
+export function firstShip(world: CombatWorld, bullet: { p: Vec3; previous: Vec3; owner: number; clanId?: string | null }, hit: { t: number }): Pilot | undefined {
   let victim: Pilot | undefined; hit.t = 2;
   for (let j = 0; j <= world.drones.length; j++) {
     const target = j === 0 ? world.pilot : world.drones[j - 1];
     const previous = j === 0 ? world.previous : world.dronePrevious[j - 1];
-    if (!target || !previous || target.id === bullet.owner || target.decoyOf === bullet.owner || !alive(target)) continue;
+    if (!target || !previous || target.id === bullet.owner || target.decoyOf === bullet.owner || (bullet.clanId != null && bullet.clanId === target.clanId) || !alive(target)) continue;
     const contact = sweptHull(bullet, target, previous.p, classTuning(target.ship));
     if (contact < hit.t) { hit.t = contact; victim = target; }
   }
@@ -173,16 +210,34 @@ export function strike(world: CombatWorld, struck: Pilot, damage: number, owner:
     if (struck.shieldHp === 0) { struck.shieldMax = 0; struck.ward = 0; }
   } else struck.hull = Math.max(0, struck.hull - damage);
   struck.lastDamage = world.tick; struck.extraction = 0; struck.lastAttacker = owner;
-  const attacker = owner === world.pilot.id ? world.pilot : world.drones.find(drone => drone.id === owner);
+  const attacker = shipById(world, owner);
   if (attacker) attacker.hits++;
   // A copy takes the hit like a ship, its bar falling, and breaks once it has had its share: no kill, no wreck.
   if (struck.decoyOf >= 0) { struck.decoyHp = struck.hull === 0 ? 0 : Math.max(0, struck.decoyHp - damage); return; }
+  if (owner !== struck.id) remember(struck, owner, world.tick);
   if (struck.hull === 0) {
     struck.phase = 'dead'; struck.respawn = T.tickRate * T.botRespawn; struck.landed = 0; struck.mining = false;
     scatter(world, struck);
     impact(world, struck.p.x, struck.p.y, struck.p.z, 'explosion');
     if (attacker) attacker.kills++;
+    // XP counts pilots only: a bot is a kill on the board and nothing more (owner 2026-10-23).
+    if (struck.bot) return;
+    if (attacker) attacker.pilotKills++;
+    const since = world.tick - ARENA_PROGRESSION.assistSeconds * T.tickRate;
+    for (const hit of struck.recentHits) if (hit.id !== owner && hit.tick >= since) { const helper = shipById(world, hit.id); if (helper) helper.assists++; }
   }
+}
+
+const shipById = (world: CombatWorld, id: number): Pilot | undefined => id === world.pilot.id ? world.pilot : world.drones.find(drone => drone.id === id);
+/** Who hurt a ship and when, the latest few: the assists at its death. */
+function remember(struck: Pilot, owner: number, tick: number): void {
+  const known = struck.recentHits.find(hit => hit.id === owner);
+  if (known) { known.tick = tick; return; }
+  if (struck.recentHits.length >= 8) {
+    const stalest = struck.recentHits.reduce((at, hit, i, all) => hit.tick < (all[at]?.tick ?? Infinity) ? i : at, 0);
+    struck.recentHits.splice(stalest, 1);
+  }
+  struck.recentHits.push({ id: owner, tick });
 }
 
 /** Predicted tracers only: they stop at the first rock or ship and never deal damage. */

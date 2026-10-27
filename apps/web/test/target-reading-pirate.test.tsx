@@ -31,4 +31,17 @@ describe('the forecast against a pirate crew', () => {
     expect(result.current.lines).not.toBeNull();
     expect(combatValue(crew)).toBeLessThan(result.current.lines!.clears.low);
   });
+
+  it('draws the lines with the commander-ship escort\'s bonus when it flies (Y9)', () => {
+    // An even fight, where a sixth more damage and a tenth more hull change what comes home.
+    const even = { ...pirate, fleet: { DART: 15 }, damageMult: 1 } as PirateContact;
+    const read = (escort: Parameters<typeof useTargetReading>[0]['escort']) => renderHook(() => useTargetReading({
+      target: { kind: 'pirate', pirate: even }, reports: [], tech: {}, wing: { DART: 20 }, rulesetVersion: 19, escort,
+    })).result.current;
+    const plain = read(null);
+    const led = read({ damage: 1.15, hull: 1.1, time: 1, fuel: 1 });
+    expect(led.loss!.low).toBeLessThan(plain.loss!.low);
+    // A Kılavuz shortens the road and lends the fight nothing.
+    expect(read({ damage: 1, hull: 1, time: 0.97, fuel: 0.95 }).loss).toEqual(plain.loss);
+  });
 });

@@ -70,9 +70,11 @@ const NUMBERS = Object.freeze({
   bounceHalf: 50,
   scrapeFriction: 0.25,
   knockDecay: 1.6,
+  // Y6a (owner 2026-10-23): farms are raw resources, landed one for one. Owner 2026-10-27: a rock
+  // holds half (160 before) and regrows in the same ~114 s; mining gives at most 4 a second (16).
   mineRate: 4,
-  crystalReserve: 40,
-  crystalRegen: 0.35,
+  crystalReserve: 80,
+  crystalRegen: 0.7,
   damage: 10,
   fireRate: 8,
   // Owner 2026-10-21: twice as fast (600 m/s before) so the lead mark sits near the hull;
@@ -144,8 +146,8 @@ const NUMBERS = Object.freeze({
   radarDuration: 3,
   radarCooldown: 30,
   fuelOutRescueDelay: 10,
-  testCargo: 60,
-  cargoCapacity: 100,
+  testCargo: 240,
+  cargoCapacity: 400,
   // Owner 2026-10-22: loose pieces are pulled in like a magnet by the first ship this close
   // that can hold them whole, homing at the puller's own speed plus magnetPull (m/s).
   magnetRadius: 50,
@@ -153,7 +155,7 @@ const NUMBERS = Object.freeze({
   /** Wreck pieces (a destroyed hold) vanish after this; field farms never do. */
   dropLife: 300,
   wreckDrops: 48,
-  dropChunk: 10,
+  dropChunk: 40,
   scatterRadius: 16,
   farmSpots: 150,
   /** Field ore groups (a lone piece or a cluster); a fully taken group regrows elsewhere. */

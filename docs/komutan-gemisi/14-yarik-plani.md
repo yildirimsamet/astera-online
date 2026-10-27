@@ -63,6 +63,18 @@ kararını hızlandırır; oyundaki asıl varlıklar §14 hattından geçer.
 
 ---
 
+## 0.2 İlk sürüm kapsam düzeltmesi — KARAR (24 Ekim 2026)
+
+Sahip: “1. Yap. 2. Boşver, bu fikri şuanlık kaldıralım 3.4. Ertelenecek, sonra yapılacak.
+İlk sürümde olmayacak. (kabul kriterlerinden çıkart) 5. yap 6. yap”. Numaralar kalan iş
+listesidir: ortak giriş yapılacak; geçici çıkış/acil sıçrama kaldırıldı; Kalp olayı ve Öz
+ertelendi; Amiral ve hazır bildirim/başkentte park yapılacak. Ayrıca skinler ertelendi.
+
+Aşağıdaki eski öneriler bu ilk sürüm kapsamını genişletmez. Güncel iş ve kabul kaydı:
+[22](22-ilk-surum-mantigi.md). Etkin yetenek rütbe tavanı 3 kalır; ilk sürümde Öz maliyeti yoktur.
+
+---
+
 ## 1. Kararlar özeti
 
 | # | Konu | Karar | § |
@@ -205,8 +217,8 @@ Sağ başparmak bugünkü gibi 4 düğme taşır: **ATEŞ + Turbo + A + B.**
   sistem eklemeden derinlik gelir.
 - **Dost (KG-X29):** hedefleme mekaniği hazır. Klanlar gelene dek (§12) arenada dost yoktur; kalkan ve
   onarım yalnız kendine gider.
-- **Sınıf yakınlığı:** sınıfına yakın B yeteneği +1 rütbeyle başlar. **Y6'da** gelir: rütbeler
-  seviye ve yetenek puanıyla tanımlanır (sahip, 2026-10-23).
+- **Sınıf yakınlığı:** sınıfına yakın B yeteneği +1 rütbeyle başlar. **Y6c ile uygulandı** (KG-X34): rütbeler
+  seviye ve ayrı yetenek puanlarıyla tanımlanır (sahip, 2026-10-24).
   - Akıncı → İllüzyon
   - Muhafız → Duman
   - Kılavuz → Radar
@@ -222,8 +234,8 @@ Sağ başparmak bugünkü gibi 4 düğme taşır: **ATEŞ + Turbo + A + B.**
 | **Radar tarama** | Tüm haritaya sinyal. Düşmanlar 3 sn boyunca haritada ve dünyada işaretlenir. Görünmezler hariç, **kayaya inip saklananlar dahil** (KARAR). Bekleme 30 sn. | Taranan "TARANDIN" uyarısı ve yön alır; saklanan yer değiştirir. Tarama, tarayanın yerini de ele verir. |
 
 **İllüzyon ayrıntısı (ÖNERİ):**
-- Kopya sunucuda gerçek bir uçuş durumudur. Kayaya çarpar; sekme ve alan sınırı kuralları ona da
-  işler.
+- Kopya kendi fiziğiyle uçmaz (sahip 2026-10-24): her tick pilotun, atıldığı andaki doğrultuya göre
+  tam aynasına konur. Kayaya ya da alan sınırına giren kopya hologram gibi dağılır.
 - Ateş edersen kopya da kendi burnu yönünde sahte iz atar.
 - Düşman ekranında birebir aynıdır: isim, kostüm, motor izi, ses.
 - Mermi ona da çarpar ve normal kıvılcım görünür. Sahte gövdesi gerçek gövdenin %25'idir; bitince
@@ -264,8 +276,8 @@ ilkesinin Yarık'taki karşılığıdır. Görmek bir karardır, görünmek bir 
   - Neden: XP şartı, galaksi servetinin doğrudan gemi gücüne çevrilmesini engeller. Kaynak şartı
     iki oyunu bağlar.
 - **Seviye başına (ÖNERİ):** özellik büyümesi (§3.2) + **1 yetenek puanı**.
-  - 3 yetenek (A, B, Turbo) × rütbe 2–5 = 12 puan gerekir; 19 puan var.
-  - Fazlası seçimdir: hangi yeteneği önce büyüteceğin.
+  - İmza, Turbo ve dört taktik ayrı gelişir (sahip, 2026-10-24, KG-X34).
+  - Her satın alma bir puan; 19 puan bütün yetenekleri tavana taşımaz. Sınıf yakınlığı bedavadır.
 - **Hedef hız:** günde 2–3 sortie oynayan biri sezonda ~12–15'e çıkar, çok oynayan 20'ye.
   v1 eğrisi ve kontrol hesabı §7.4'te (`50·sv` XP).
 
@@ -330,7 +342,9 @@ Var olan `cosmeticCatalog` ve ödeme hattı (Polar/Shopier) kullanılır.
   - Kullanılmayan yakıt gemide kalır (S34).
   - Döteryum galakside de değerlidir (değer ağırlığı 32). Her giriş gerçek bir bedel; "girmeye
     değer mi?" kararı doğar.
-- **Fiyat v1 (§7.4):** 1 depo birimi = **0,05 döteryum**. Eski öneri (0,5 D) bir sortie'yi
+- **Fiyat — Y6a (KG-X31):** tam depo 30/40/50 D, tam şarjör 15/22/30 D; yalnız eksik ödenir. Aşağıdaki v1 fiyatı tarihçedir.
+- **Kalkış planı (2026-10-27):** depo çeyrek adımlarla, şarjör boştan; kalkış plana kadar tamamlar (bkz. 02-kararlar.md).
+- ~~**Fiyat v1 (§7.4):** 1 depo birimi = **0,05 döteryum**.~~ Eski öneri (0,5 D) bir sortie'yi
   çoğu ambardan pahalı yapıyordu: döteryum galakside 32 değer, alaşım 1.
 
 | Sınıf | Tam depo | Döteryum | Tesis L6'da (medyan) üretim karşılığı |
@@ -374,6 +388,11 @@ Var olan `cosmeticCatalog` ve ödeme hattı (Polar/Shopier) kullanılır.
 
 ### 7.4 Sayılar v1 — ihtiyatlı (2026-10-21)
 
+> **Y6a ile değişti (2026-10-23, KG-X31):** ambar birimi ve değer hesabı kalktı; ambar ham
+> kaynaktır, 1:1 başkente gider (Akıncı 300 · Kılavuz 400 · Muhafız 500, karışım serbest). Tam
+> depo 30/40/50 D, tam şarjör 15/22/30 D; yalnız eksik ödenir. Günlük tavan her kaynaktan
+> başkentin 4 saatlik üretimidir. Aşağıdaki birim, değer ve 0,05 D fiyatı satırları tarihçedir.
+
 Sahibin ölçütü: "Çok fazla kaynak dağıtmasın, çok az da dağıtmasın; gerekirse az olsun ama fazla
 olmasın." Sayılar oyun testinden sonra ancak **yukarı** açılır; aşağı çekmek oyuncudan bir şey
 geri almak olur.
@@ -414,7 +433,7 @@ yakıtı, çıkış oranı, ortalama ambar doluluğu, tavana çarpan oyuncu oran
 sortie getirisi 0,03–0,25 saat; tavana çarpan oyuncu ≤ %5. Uzun ekonomi koşuları yalnız sahip
 isteyince yapılır (CLAUDE.md).
 
-### 7.3 Yarık Özü — KARAR: var, yalnız gemiye harcanır
+### 7.3 Yarık Özü — ERTELENDİ, ilk sürüm kabulünden çıkarıldı (24 Ekim)
 
 - Yalnız Yarık'ta bulunan küçük bir kaynak: Kalp olayları ve Kalp'teki nadir damarlar.
 - Seviye 10+ yükseltmede ve yetenek rütbe 4–5'te harcanır.
@@ -510,7 +529,7 @@ isteyince yapılır (CLAUDE.md).
 
 ---
 
-## 10. Giriş ve çıkış — KARAR: sabit 3 + geçici 2 + acil sıçrama
+## 10. Giriş ve çıkış — ilk sürümde v6 sabit çıkışları; geçici çıkış/acil sıçrama kaldırıldı
 
 **Giriş (ÖNERİ):**
 - Dış kenarda **6 giriş ağzı**.
@@ -590,15 +609,15 @@ crosshair hedefi takip edecek; yönü kullanıcı ayarlamalı, hedefi o alan iç
 
 ## 12. Klan ile birlikte giriş
 
-- **ÖNERİ — lobi:** klan sayfasında **"Yarık'a Takım Kur"**.
-  - Lider açar, üyeler katılır, herkes **Hazır** der, lider **Gir**'e basar (CS:GO / Valorant
-    lobisi).
+- **Uygulandı — lobi (Y7, KG-X36):** klan sayfasında **"Takım kur"**.
+  - Lider açar, üyeler katılır. **Uçuşa hazırlan** oyunu yükler; ardından herkes **Hazırım**
+    der, lider **Birlikte kalk**'a basar. Hazır olma yükleme bitmeden açılamaz.
   - Lobide her üyenin sınıfı, seviyesi, yakıtı ve "gemi hazır mı" durumu görünür. İkmalde veya
     tamirde olan üye Hazır diyemez; kalan süresi yazar.
 - **KARAR — takım boyu = klan kapasitesi.**
   - Bugün 5. Kapasite 10 olursa takım 10, 3 olursa takım 3.
   - Kod sabit bir sayı yazmaz; klan kapasitesini okur.
-- **ÖNERİ — dostluk** (KG-A7'nin cevabı):
+- **Uygulandı — dostluk** (KG-A7'nin cevabı, Y7):
   - Klan üyeleri dosttur; dost ateşi kapalıdır (füze ve çarpışma dahil).
   - Dostlar ekranda (isim + gövde çubuğu) ve haritada görünür.
   - Onarım ve kalkan yalnız dosta işler.
@@ -611,7 +630,8 @@ crosshair hedefi takip edecek; yönü kullanıcı ayarlamalı, hedefi o alan iç
   - Havuz, o maçta Yarık'a giren üye sayısına **eşit** bölünür; ölen üye de payını alır.
   - Her üye kendi payını talep eder (claim); pay başkentine yatırılır.
   - Ölen üyenin taşıdığı yük havuza girmez; Yarık'a saçılmıştır (S34).
-  - ÖNERİ: bölünemeyen artık en çok çıkaran üyeye gider. XP kişiseldir, bölünmez.
+  - **KARAR (sahip, 2026-10-24):** bölünemeyen artık en yüksek değerli ganimeti çıkaran
+    üyeye gider. Eşitlikte sabit oyuncu kimliği sırası kullanılır. XP kişiseldir, bölünmez.
 - **KARAR — ölen üye:** takım arkadaşlarının kamerasından izler (seyirci). Aynı maça yeniden
   giremez, maç bitince payını alır.
 - **KARAR — yalnız oyuncuya ek kural yok.** Ölen düşmanın ambarı zaten herkese düşer.
@@ -751,7 +771,7 @@ Aşağıdaki cevaplar, ayrıca KARAR yazmıyorsa ÖNERİ'dir.
   donmadan önce yatırılır; dağıtım beklenmez.
 - Deploy/çökme sırasında maç: KG-A15 kuralı. Çıkarılmış havuz kalıcıdır (DB), dağıtım sunucu
   dönünce tamamlanır.
-- Pay talep edilmezse: ÖNERİ, 7 gün sonra otomatik yatırılır.
+- Pay talep edilmezse: **KARAR (sahip, 2026-10-24)**, 7 gün sonra otomatik yatırılır.
 - Tek kişilik "takım": yalnız oyuncu gibi davranır.
 - Havuz bölünürken başkent deposu doluysa: galaksinin mevcut depo kuralı neyse o uygulanır;
   taşan miktar varsa raporda gösterilir.
@@ -786,10 +806,10 @@ ve sahibin oynayıp onayıyla kapanır. Tablodaki ölçütler bu kapılara eklen
 | **Y2** ✅ | Çarpışma gövdeleri + gemi kapsülü (§8) | Kaya ve kristalde çizilen = çarpılan (≤ 1e-6 m, katalog testi). Yüzeye 1 m kala çarpma yok, temas durdurur (test). Tick ort. ~0,2 ms, p99 1–2 ms (VPS, 654 mesh kaya). Gemi kapsülü uyumu Y4'e kaldı (§8). Sahip oynayıp onaylayacak. |
 | **Y3** | Varlık hattı: KTX2, LOD, meshopt (§14.1) | iPhone 12 mini'de çökme yok; iOS'ta GPU doku belleği ≤ 120 MB. **Ölçüldü:** lite paket 161 → 51,5 MB (KG-T49). Sahibin iPhone'unda deneme bekliyor. **Kaya LOD'u ✅ (2026-10-22):** uzakta iki hafif seviye (%35, %12 köşe; dikiş açmadan), gemi birkaç saniyede varabileceği her kayayı tam collider olarak görür; 5,2 km Yarık'ta kenardan bakışta ~650 bin → ~150 bin üçgen/kare (masaüstü ölçüm). Kalan: Alaska kayası. |
 | **Y4** (kod ✅; TTK yalnız hesapla doğrulandı, bot ölçümü yapılmadı) | Sınıflar + özellikler + yetenek yuvaları (§3–4); önce Simülatör | Üç sınıf, 8 yetenek; TTK tablosu bot ölçümüyle ±1 sn. Her sınıfın modeli kapsülünden en çok 0,5 m taşar (araçla ölçülür). **Y4a ✅ (2026-10-23):** üç sınıfın değerleri kurallarda, sunucuda ve istemcide (§3.1, KG-X27); uçuş öncesi sınıf seçimi; botlar rolünün gemisinde (avcı Akıncı, madenci Muhafız, devriye Kılavuz). **Y4b ✅:** sınıf kapsülleri modele oturdu, en çok 0,46 m taşma (§8, KG-X28). **Y4c ✅:** A yuvası imzaları (güdümlü füze, soğurucu kalkan, onarım) ve hangarda B yuvası seçimi (Duman · Gizlen); kilit işareti, tehdit uyarısı ve yönü, füze, kalkan balonu (KG-X29, protokol 9). **Y4d ✅:** İllüzyon (ayna kopya, hologram kırılması, radar gerçeği gösterir) ve Tarama (alan çapında işaret, taranana uyarı) (KG-X30, protokol 10). Sınıf yakınlığı rütbesi, sahibin kararıyla (2026-10-23) rütbe sistemiyle birlikte Y6'ya ertelendi. |
-| **Y5** (sıradaki) | Yeni harita (§9–10, [15](15-yarik-haritasi.md)) + tek ortak oda | Ölçü kararı; 32 pilotta sunucu tick p95 < 5 ms; telefonda 60 fps hedefi. **Ölçüldü 2026-10-22 (v5 harita, Kovuk + Liman collider'ı, VPS):** 32 gemi (31 bot yapay zekâsıyla) uçarken simülasyon tick p50 0,73 · p95 2,07 · p99 2,92 ms. |
-| **Y6** | Kalıcılık (F8): gemi seçimi, seviye, XP, yetenek rütbeleri ve sınıf yakınlığı (§4), yakıt doldurma, tamir/ikmal, gerçek yük → başkent | Sezonluk veri, idempotent yatırım, TEST kargo asla yatırılmaz; günlük aktarım tavanı (§7.4) aşılamaz. |
-| **Y7** | Klan takımı lobisi + eşit ganimet (§12) | §16 takım uç durumlarının hepsi testli. |
-| **Y8** | Görsel kademeler + kostüm (§6) | Kademe/kostüm vuruş gövdesini değiştirmez (test). |
+| **Y5** (v6 harita kodu var; kabul eksikleri 19'da) | Yeni harita (§9–10, [15](15-yarik-haritasi.md)) + tek ortak oda | Ölçü kararı; 32 pilotta sunucu tick p95 < 5 ms; telefonda 60 fps hedefi. **Ölçüldü 2026-10-22 (v5 harita, Kovuk + Liman collider'ı, VPS):** 32 gemi (31 bot yapay zekâsıyla) uçarken simülasyon tick p50 0,73 · p95 2,07 · p99 2,92 ms. |
+| **Y6** (Y6a–d ve hangar kodu var; Öz gelene kadar rütbe tavanı 3; son cihaz/oynanış kabulü açık) | Kalıcılık (F8): gemi seçimi, seviye, XP, yetenek rütbeleri ve sınıf yakınlığı (§4), yakıt doldurma, tamir/ikmal, gerçek yük → başkent | Sezonluk veri, idempotent yatırım, TEST kargo asla yatırılmaz; günlük aktarım tavanı (§7.4) aşılamaz. **Y6a ✅ (2026-10-23, KG-X31):** Core 9'da gemi seçimi, başkent döteryumuyla doldurma, ham kargo 1:1 başkente, kaynak başına 4 saatlik günlük tavan, 60 dk tamir / 10 dk bakım, deploy'da geri çağırma (protokol 11). **Y6b ✅ (2026-10-23, KG-X32):** seviye 1–20 (tavan Çekirdek), XP (10 kaynak = 1, öldürme 40, yardım 15, uçuş 10, kayıpta %40), dolu çubukta Yükselt (alaşım+kristal), sınıf büyümesi (hız en çok 120 m/s), botlar XP vermez (protokol 12). **Hangar ✅ (2026-10-23, KG-X33):** gemi işleri ana menüdeki Komutan gemisi sekmesinde, 3B hangarda; Yarık ön ekranında taktik ve alan kaldı. **Y6c kodu (2026-10-24, KG-X34):** ayrı taktik rütbeleri, puanlar, sınıf yakınlığı, protokol 13. **Sahip kararı:** Öz gelene kadar etkin rütbe tavanı 3; 4–5 sunucuda ve hangarda kilitli; [19](19-devralma-2026-10-24.md). **Y6d ✅ (KG-X35):** süreyi sıfırlamayan, çift ödeme almayan ödemeli tamir. Doğrulama: [19](19-devralma-2026-10-24.md). |
+| **Y7** (kod + otomatik doğrulama ✅; cihaz/oynanış kabulü açık) | Klan takımı lobisi + eşit ganimet (§12) | Kalıcı havuz/pay, ortak kalkış, klan dostluğu/destek ve seyirci; ayrılan/ölen üyeye pay, 7 gün otomatik yatırım, artık paylaşımı, deploy/sezon kapanışı ve idempotent ödeme testli. Protokol 14 / migration 0200. Kanıt ve sınırlar: [20](20-y7-takim.md). |
+| **Y8** — ERTELENDİ | Skin/kostüm ve modüler görünüm | İlk sürüm kabulü değil; önceki prototip yerel yedekte. [22](22-ilk-surum-mantigi.md). |
 | **Y9** | Amiral rolü (§13), yeni sezonun ruleset kapısıyla | Sayaç döngüsü ölçümleri bozulmaz; bonus sınırları kural testinde. |
 
 **Yeşil tanımı:** sıfır tip hatası, sıfır lint hatası, ilgili testler yeşil. Testler VPS'te ya da
@@ -810,6 +830,29 @@ Sıra: önce hızlı düzeltmeler, sonra bugünkü haritadaki hata yerleri, en s
 | 5 | Çıkış noktası: nereden geçilecek, nerede durulacak, nerede beklenecek belli değil | Y5 ([15 §5](15-yarik-haritasi.md#5-çıkış-iskelesi-madde-5--öneri)) | planlandı |
 | 8 | Harita rastgele değil, akıllıca planlanmalı. Kayalardan mağara benzeri, içinde birden çok yol olan yapılar; gemi içine girip izini kaybettirebilmeli. İçine girilen, içinde farklı yollar olan terk edilmiş uzay binaları. Harita bugünkünün 2 katı | Y5 (§9) | tasarım belgesi: [15-yarik-haritasi.md](15-yarik-haritasi.md), sahip onayı bekliyor. Ölçü §9 kararıyla aynı: yarıçap 2600 → 5200 m, yükseklik ±650 → ±1300 m. |
 | 9 | Dokununca açılan harita: neredeyim, kaba yapılar (kaya bölgeleri, terk edilmiş istasyon…), giriş ve çıkışlar | Y5 ([15 §7](15-yarik-haritasi.md#7-harita-ekranı-madde-9--öneri)) | ✅ ilk sürüm (bölge adları Y5c'de gelir) |
+
+### 17.2 Sahibin hangar ve uçuş notları (2026-10-23/24)
+
+**Devralma, 2026-10-24:** Hangar ve son hasar/isabet/nişangâh kodu güncel worktree'de bulundu.
+Y6c ve Y6d devamı, doğrulama ve kalan açıklar [19](19-devralma-2026-10-24.md)'da.
+
+| # | Sahibin notu | Durum |
+|---|---|---|
+| 1 | Gemiler hangar zemininin içine giriyor | ✅ Modeller merkezlidir; gövdenin en alt noktası ölçülür, gemi zeminin üstünde süzülür (`restHeight`, test). |
+| 2 | "Neon = Premium mu?" Alt bölüm ui-v2 diliyle yeniden | ✅ `hangar/ShipDesk.tsx`: v2 kit (SectionHead, Segmented, Button, Cost). Parlama yok; hata notu kırmızı değil. |
+| 3 | "Sadelikten gözlerim kapandı": ikon ve renk | ✅ Sınıf rengi = uçuştaki A tuşunun rengi (Akıncı amber, Muhafız buz mavisi, Kılavuz nane). Sekmelerde, yetenek kartında ve değer çubuklarında. Değerlerde ve bölüm başlıklarında ikon. Kaynak miktarları kendi renginde. |
+| 4 | Masaüstünde gemiyi çevirince hangar da oynuyor | ✅ Fareyle dikey sürükleme kamerayı eğiyordu. Kaldırıldı; sürükleme her cihazda yalnız gemiyi döndürür (test). |
+| 5 | Telefonda FPS (S22) | bekliyor |
+| 6 | Hasar miktarı ve isabet oranı gemi değerlerinde görünmeli, seviyeyle azar azar büyümeli | Büyüme kuralda zaten var (§3.2, `progression.ts` GROWTH: Akıncı hasar +%47,5, koni −%28,5 …). Ekranda da var; sınıf/seviye karşılaştırması ve sonraki seviye kazancı gösterilir. |
+| 7 | İsabet şimdikinden biraz kötü başlamalı | ✅ Başlangıç konileri %15 geniş; isabet yüzdesi aynı dağılımdan hesaplanır. |
+| 8 | Nişangâh + değil, ortası noktalı yuvarlak; boyu merminin dağılımı kadar, seviyeyle hafifçe küçülür | ✅ 500 m dağılımını çizer; seviye büyüdükçe daralır. |
+| 9 | Halka 500 m'de doğru olsun, yazısı da ona göre | ✅ Halka 500 m'deki dağılım çemberidir; hangarda "500 m'de X m'ye dağılır" yazar. |
+| 10 | İllüzyon kopyası pilotun tam aynası değil; sahibine gecikmeli görünüyor | ✅ Kopya artık kendi fiziğiyle uçmaz. Her tick, atıldığı andaki doğrultuya göre pilotun tam aynasına konur (sağ↔sol, yukarı↔aşağı; hız, turbo, ateş birebir). Kayaya ya da alan sınırına giren kopya hologram gibi dağılır. Sahibi kendi kopyasını kendi geminden çizer: gecikme yok. (`mirrorPose`, `stepDecoy`; roster `mirror` satırı; testler) |
+| 11 | Basılı tutup ping hep ~400 m'yi işaretliyor | ✅ Parmağın çizgisinde 4 km içinde kaya/yapı varsa onu, yoksa 4 km ileriyi işaretler. |
+| 12 | CR 2026-10-25: sunucu tip kontrolü kırık (`arena_ship_ready` devir kuralı yok), 2 lint hatası | ✅ Kural PERSONAL (Death Star hazır olayı gibi); lint düzeldi. |
+| 13 | Lobiden kalkış öncesi ayrılan üyenin satırı 7 günlük otomatik aktarımı kilitliyordu | ✅ Otomatik aktarım yalnız payı olan satırları seçer; test eklendi. |
+| 14 | Hazır diyen ama ekranda olmayan üye kalkışta 30 sn içinde bağlanamayıp uçuşu kaybediyordu | ✅ Hazır işareti, oyuncu masadan ayrılınca (panel kapanır, telefon kilitlenir) kalkar; hazırken "Kalkışa kadar bu ekranda kal" yazar. |
+| 15 | Park görünümü (KG-A20) API'de vardı, ekranda yoktu | ✅ Gemi kendi başkentinin yanında döner (1,7 yarıçap); tamir/bakımda durur ve sayaç gösterir; dokununca Komutan gemisi sekmesi açılır. Yarık'ta/amiralde çizilmez. |
 
 ---
 

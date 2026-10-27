@@ -33,6 +33,11 @@ import { restoreMonumentGarrison } from './monumentBoundaries.js';
 import { observeLockedMonumentProbe } from './monumentProbe.js';
 import { completeMonumentJoint } from './monumentJoint.js';
 import { notify } from './notifications.js';
+import { admiralForFlight, admiralHomeward, recordAdmiralBattle } from './admiral.js';
+import { withAdmiral, type AdmiralSnapshot } from '@astera/rules/arena';
+
+const snapshotOf = (escort: AdmiralSnapshot | null | undefined): AdmiralSnapshot | null =>
+  escort ? { ship: escort.ship, level: escort.level } : null;
 
 type Wave = typeof monumentWaves.$inferSelect;
 type Battle = typeof monumentBattles.$inferSelect;
@@ -94,6 +99,8 @@ async function finishDeadWave(tx: Tx, wave: Wave, at: Date): Promise<void> {
   wave.reservedBulk = 0;
   wave.generation += 1;
   await saveWave(tx, wave);
+  // Its escort flies home alone and repairs (Y9).
+  await admiralHomeward(tx, 'monument', { id: wave.id, departAt: wave.sentAt, arriveAt: at }, null, at);
 }
 
 async function chooseHold(tx: Tx, locked: LockedMonument, homes: ReadonlyMap<string, World>, incomingWaves: readonly Wave[], at: Date, observedAt: Date): Promise<void> {
@@ -110,6 +117,9 @@ async function chooseHold(tx: Tx, locked: LockedMonument, homes: ReadonlyMap<str
     incoming.reservedBulk = 0;
     incoming.generation += 1;
     await saveWave(tx, incoming);
+    // The fleet enters the monument; its escort turns home alone (Y9, owner 2026-10-25).
+    const stayed = locked.lots.filter((lot) => lot.waveId === incoming.id).reduce((sum, lot) => sum + lot.count, 0);
+    await admiralHomeward(tx, 'monument', { id: incoming.id, departAt: incoming.sentAt, arriveAt: at }, null, at, stayed);
   }
   const existingLots = locked.lots.filter((lot) => existingHoldIds.has(lot.waveId));
   const existingBulk = existingLots.reduce((sum, lot) => sum + hangarLoad({ [lot.hull]: lot.count }), 0);
@@ -178,8 +188,11 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
   const dBefore = locked.lots.filter((lot) => defenderIds.has(lot.waveId));
   const neutral = dBefore.length === 0 && fleetCount(locked.monument.garrison) > 0;
   const defenceNavy = await honorDefenceNavy(tx, locked.season.id, dBefore.map(lot => lot.playerId));
+  // An escort lends its bonus to its own wave's ships and is never a target (Y9). Holders fight
+  // without one: an escort turns home the moment its fleet enters the monument.
+  const escorts = new Map(await Promise.all(incomingWaves.map(async (wave) => [wave.id, await admiralForFlight(tx, 'monument', wave.id)] as const)));
   const result = resolveMonumentCombat(aBefore.map((lot) => ({ contributionId: lot.id, playerId: lot.playerId,
-    fleet: { [lot.hull]: lot.count }, damage: [lot], tech: { tech: lot.tech } })),
+    fleet: { [lot.hull]: lot.count }, damage: [lot], tech: withAdmiral({ tech: lot.tech }, escorts.get(lot.waveId)) })),
   neutral ? [{ stackId: `neutral:${locked.monument.id}`, playerId: `neutral:${locked.monument.id}`,
     fleet: locked.monument.garrison, damage: locked.monument.garrisonDamage, tech: { tech: locked.monument.garrisonTech }, maintenanceExempt: true }]
     : dBefore.map((lot) => ({ stackId: lot.id, playerId: lot.playerId, fleet: { [lot.hull]: lot.count }, damage: [lot], tech: { tech: lot.tech } })),
@@ -244,10 +257,15 @@ async function battleAt(tx: Tx, locked: LockedMonument, incomingWaves: readonly 
         commanderName: identityByPlayer.get(playerId) ?? 'Unknown commander', clanName: clan?.name ?? null, clanTag: clan?.tag ?? null,
         side, waveIds: [...new Set(own.map((lot) => lot.waveId))].sort(), fleet: fleetOf(own), survivors: fleetOf(ownAfter), losses: fleetOf(dead), damage,
         lootDeuterium: looting?.shares.find((row) => row.playerId === playerId)?.deuterium ?? 0,
-        dominionDelta: shares.find((row) => row.playerId === playerId)?.delta ?? 0, createdAt: at });
+        dominionDelta: shares.find((row) => row.playerId === playerId)?.delta ?? 0,
+        admiral: side === 'ATTACK' ? snapshotOf(own.map((lot) => escorts.get(lot.waveId)).find((escort) => escort)) : null, createdAt: at });
     }
   }
   await tx.insert(monumentBattleParticipants).values(participants);
+  for (const wave of incomingWaves) {
+    await recordAdmiralBattle(tx, 'monument', wave.id, { lost: result.control !== 'ATTACKER',
+      lostValue: Math.round(result.attackerLossValue + result.defenderLossValue) });
+  }
   for (const participant of participants) {
     const ownBefore = (participant.side === 'ATTACK' ? aBefore : dBefore).filter(lot => lot.playerId === participant.playerId);
     const ownAfter = after.filter(lot => lot.playerId === participant.playerId);

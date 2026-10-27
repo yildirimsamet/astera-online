@@ -1,17 +1,24 @@
 import { z } from 'zod';
 import { ARENA_LAYOUT, ARENA_PROTOCOL, ARENA_ROSTER_MAX, ARENA_TUNING as T, FAR_EVERY, MID_EVERY, SHIP_CLASSES, applyFeed, copyFlight, createFlightState, createPilot,
-  decodeArenaSnapshot, predictPilot, stepFeedEffects, stepPredictedTracers, unpackFar, unpackPilot, unpackRemote, type ArenaIntent, type ArenaSnapshot,
+  decodeArenaSnapshot, predictPilot, sameSide, stepFeedEffects, stepPredictedTracers, unpackFar, unpackPilot, unpackRemote, type ArenaIntent, type ArenaSnapshot,
   type ArenaWorld, type Pilot, type ShipClass, type SteeringSettings, type Tactic } from '@astera/rules/arena';
 import { createIdempotencyKey } from '../api/client.js';
+import { sortieSchema, type SortieReport } from './hangarDesk.js';
 import { absorbCorrection, createCorrection } from './smoothing.js';
 
 const rosterRow = z.object({ id: z.number().int().nonnegative(), name: z.string().max(32), ship: z.enum(SHIP_CLASSES),
+  /** Y6b: the ship's level; a row without one is level one (a bot). */
+  level: z.number().int().min(1).max(20).optional(),
+  clanId: z.string().uuid().nullable().optional(), teamId: z.string().uuid().optional(),
   role: z.enum(['hunter', 'miner', 'patrol']).optional(),
   points: z.number().int().nonnegative().optional(),
   kills: z.number().int().nonnegative().optional(), deaths: z.number().int().nonnegative().optional(),
   /** An illusion's pilot (Y4d): it wears that pilot's name and class, never ranks, and the radar leaves it out. */
-  copyOf: z.number().int().nonnegative().optional() });
+  copyOf: z.number().int().nonnegative().optional(),
+  /** The line the copy mirrors its pilot about: where it was cast, then the heading. */
+  mirror: z.array(z.number().finite()).length(6).optional() });
 const rosterSchema = z.array(rosterRow).max(ARENA_ROSTER_MAX);
+const NO_MIRROR: readonly number[] = [0, 0, 0, 0, 0, 0];
 export interface Standing { id: number; name: string; points: number; kills: number; deaths: number; self: boolean }
 
 /** Room standings: farm points delivered first, then kills, then fewer deaths, then name. Bots never rank. */
@@ -23,14 +30,18 @@ export function rankStandings(pilots: readonly z.infer<typeof rosterRow>[], self
 const lowMessage = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('welcome'), v: z.literal(ARENA_PROTOCOL), pilotId: z.number().int().positive(),
     tick: z.number().int().nonnegative(), seq: z.number().int().nonnegative(), tickRate: z.literal(30),
-    snapshotRate: z.literal(15), layoutVersion: z.literal(ARENA_LAYOUT.version), pilots: rosterSchema }),
+    snapshotRate: z.literal(15), layoutVersion: z.literal(ARENA_LAYOUT.version), pilots: rosterSchema, teamId: z.string().uuid().optional() }),
   z.object({ kind: z.literal('roster'), pilots: rosterSchema }),
   z.object({ kind: z.literal('pong'), t: z.number().finite(), serverTimeMs: z.number().finite() }),
   z.object({ kind: z.literal('kick'), reason: z.string().max(32) }),
+  sortieSchema,
 ]);
 export interface NetworkStatus {
   phase: 'idle' | 'connecting' | 'online' | 'reconnecting' | 'failed'; rtt: number; pilots: number; reason: string;
   board: readonly Standing[];
+  /** How the last real flight ended (Y6a): what reached the capital and when the ship is ready. */
+  sortie: SortieReport | null;
+  teamId: string | null; watching: number | null; received: boolean;
 }
 interface Pending { seq: number; input: ArenaIntent }
 const AIM_HORIZON_MAX = 0.6;
@@ -80,7 +91,7 @@ function poseAt(samples: readonly Sample[], tick: number, cap: number, out: Pilo
 export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings, onLost: () => void,
   credential?: () => Promise<string | null>) {
   const listeners = new Set<() => void>();
-  let status: Readonly<NetworkStatus> = { phase: 'idle', rtt: 0, pilots: 0, reason: '', board: [] };
+  let status: Readonly<NetworkStatus> = { phase: 'idle', rtt: 0, pilots: 0, reason: '', board: [], sortie: null, teamId: null, watching: null, received: false };
   let socket: WebSocket | null = null; let retry: ReturnType<typeof setTimeout> | null = null;
   let stopped = true; let welcomed = false; let connected = false; let attempts = 0; let seq = 0; let lastPing = 0;
   let settingSignature = ''; let lastSnapshot = -1; let lastSnapshotAt = 0;
@@ -117,23 +128,28 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
   const correction = createCorrection();
   const names = new Map<number, string>();
   const roles = new Map<number, 'hunter' | 'miner' | 'patrol'>();
-  /** Every ship's class by id, from the roster; our own comes in our row. */
-  const ships = new Map<number, ShipClass>();
-  /** Each illusion's pilot by the illusion's id. */
-  const copies = new Map<number, number>();
+  /** Every ship's class and level by id, from the roster; our own come in our row. */
+  const ships = new Map<number, ShipClass>(); const levels = new Map<number, number>();
+  const clans = new Map<number, string>(); const teamIds = new Map<number, string>();
+  /** Each illusion's pilot by the illusion's id, and the line it mirrors that pilot about. */
+  const copies = new Map<number, number>(); const mirrors = new Map<number, readonly number[]>();
   /** The class this pilot's hello names: its next flight's. */
   let ship: ShipClass = 'kilavuz';
   let tactic: Tactic = 'smoke';
+  let spectating = false;
   const guestKey = 'astera-arena-prototype-guest';
   let guest = sessionStorage.getItem(guestKey);
   if (!guest) { guest = createIdempotencyKey(); sessionStorage.setItem(guestKey, guest); }
   const notify = (patch: Partial<NetworkStatus>): void => { status = { ...status, ...patch }; for (const listener of listeners) listener(); };
   const send = (value: unknown): void => { if (socket?.readyState === WebSocket.OPEN && socket.bufferedAmount < 64000) socket.send(JSON.stringify(value)); };
   const roster = (pilots: z.infer<typeof rosterSchema>): void => {
-    names.clear(); roles.clear(); ships.clear(); copies.clear();
+    names.clear(); roles.clear(); ships.clear(); levels.clear(); copies.clear(); mirrors.clear(); clans.clear(); teamIds.clear();
     for (const p of pilots) {
-      names.set(p.id, p.name); ships.set(p.id, p.ship); if (p.role) roles.set(p.id, p.role); if (p.copyOf !== undefined) copies.set(p.id, p.copyOf);
+      names.set(p.id, p.name); ships.set(p.id, p.ship); levels.set(p.id, p.level ?? 1); if (p.role) roles.set(p.id, p.role); if (p.copyOf !== undefined) copies.set(p.id, p.copyOf);
+      if (p.mirror) mirrors.set(p.id, p.mirror);
+      if (p.clanId) clans.set(p.id, p.clanId); if (p.teamId) teamIds.set(p.id, p.teamId);
     }
+    world.pilot.clanId = clans.get(world.pilot.id) ?? null;
     notify({ pilots: pilots.filter(p => !p.role && p.copyOf === undefined).length, board: rankStandings(pilots, world.pilot.id) });
   };
   const receive = (snap: ArenaSnapshot): void => {
@@ -141,6 +157,8 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     lastSnapshot = snap.tick;
     copyFlight(before, world.pilot); copyFlight(prior, world.previous);
     unpackPilot(snap.self, world.pilot); world.tick = snap.tick; world.shots = world.pilot.shots;
+    const watching = snap.watching === undefined || snap.watching < 0 ? null : snap.watching;
+    if (!status.received || status.watching !== watching) notify({ received: true, watching });
     while (history[0] && history[0].seq <= snap.ack) history.shift();
     for (const pending of history) predictPilot(world, pending.input, settings);
     // The replay overwrote the interpolation start; restore it, then fold the difference
@@ -160,7 +178,7 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     socket = connection;
     const timeout = setTimeout(() => { if (!connected) connection.close(); }, 5000);
     connection.onopen = () => {
-      const hello = { kind: 'hello', v: ARENA_PROTOCOL, guestId: guest, mode: welcomed ? 'resume' : 'enter', ship, tactic };
+      const hello = { kind: 'hello', v: ARENA_PROTOCOL, guestId: guest, mode: welcomed ? 'resume' : spectating ? 'spectate' : 'enter', ship, tactic };
       if (!credential) { send(hello); return; }
       void credential().then(token => { if (socket === connection) send({ ...hello, ...(token ? { token } : {}) }); });
     };
@@ -175,9 +193,11 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
       if (msg.kind === 'welcome') {
         clearTimeout(timeout); welcomed = true; connected = true; attempts = 0; seq = Math.max(seq, msg.seq);
         settingSignature = ''; history.length = 0; remote.clear(); lastSnapshot = -1; viewTick = -1;
-        world.pilot.id = msg.pilotId; notify({ phase: 'online', reason: '' }); roster(msg.pilots);
+        world.pilot.id = msg.pilotId; notify({ phase: 'online', reason: '', teamId: msg.teamId ?? null }); roster(msg.pilots);
       } else if (msg.kind === 'roster') roster(msg.pilots);
       else if (msg.kind === 'pong') notify({ rtt: Math.round(performance.now() - msg.t) });
+      else if (msg.kind === 'sortie') notify({ sortie: { outcome: msg.outcome, deposit: msg.deposit, overflow: msg.overflow, readyAt: msg.readyAt,
+        readyReason: msg.readyReason, xp: msg.xp, ...(msg.teamId ? { teamId: msg.teamId } : {}) } });
       else { stopped = true; connected = false; notify({ phase: 'failed', reason: msg.reason }); connection.close(); }
     };
     connection.onclose = () => {
@@ -204,7 +224,11 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
       copyFlight(previous, pilot);
       if (entry.tier === 'far') unpackFar(entry.row, pilot); else unpackRemote(entry.row, pilot);
       // A ship in before the roster that names it is drawn as the Kılavuz until the roster comes.
-      pilot.ship = ships.get(pilot.id) ?? 'kilavuz'; pilot.decoyOf = copies.get(pilot.id) ?? -1;
+      pilot.ship = ships.get(pilot.id) ?? 'kilavuz'; pilot.level = levels.get(pilot.id) ?? 1; pilot.decoyOf = copies.get(pilot.id) ?? -1;
+      pilot.clanId = clans.get(pilot.id) ?? null;
+      const line = mirrors.get(pilot.id) ?? NO_MIRROR;
+      pilot.decoyFrom.x = line[0] ?? 0; pilot.decoyFrom.y = line[1] ?? 0; pilot.decoyFrom.z = line[2] ?? 0;
+      pilot.decoyAlong.x = line[3] ?? 0; pilot.decoyAlong.y = line[4] ?? 0; pilot.decoyAlong.z = line[5] ?? 0;
       poseAt(entry.samples, targetTick, entry.tier === 'far' ? FAR_EVERY : T.extrapolationCap * T.tickRate, pilot);
       entry.step = step;
       if (!continuous) copyFlight(previous, pilot);
@@ -212,16 +236,23 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     }
     // Nearest first, as the room sent them: the HUD marks the first few.
     const d2 = (p: Pilot): number => (p.p.x - me.x) ** 2 + (p.p.y - me.y) ** 2 + (p.p.z - me.z) ** 2;
-    drawn.sort((a, b) => d2(a.pilot) - d2(b.pilot));
+    // Friends retain their HUD slots even when a dozen closer rivals fill the room.
+    drawn.sort((a, b) => Number(sameSide(world.pilot, b.pilot)) - Number(sameSide(world.pilot, a.pilot)) || d2(a.pilot) - d2(b.pilot));
     world.drones.length = 0; world.dronePrevious.length = 0;
     for (const entry of drawn) { world.drones.push(entry.pilot); world.dronePrevious.push(entry.previous); }
   };
   return {
-    names, roles, correction,
+    names, roles, correction, teamIds,
     getSnapshot: (): Readonly<NetworkStatus> => status,
     subscribe: (listener: () => void): (() => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
     /** Into the room in `next` with the B slot `nextTactic`: what the hello names. */
-    connect(next: ShipClass, nextTactic: Tactic): void { ship = next; tactic = nextTactic; stopped = false; attempts = 0; if (retry) clearTimeout(retry); if (socket) socket.close(); connected = false; open(); },
+    // A flight from the hangar always enters afresh: the room reattaches a ship still in the air.
+    connect(next: ShipClass, nextTactic: Tactic, observer = false): void {
+      ship = next; tactic = nextTactic; spectating = observer; stopped = false; attempts = 0; welcomed = false; notify({ sortie: null, teamId: null, watching: null, received: false });
+      if (retry) clearTimeout(retry); if (socket) socket.close(); connected = false; open();
+    },
+    /** Back to the hangar after a flight: the link closes without asking the room for anything. */
+    stop(): void { stopped = true; connected = false; if (retry) clearTimeout(retry); const closing = socket; socket = null; closing?.close(); notify({ phase: 'idle', reason: '', teamId: null, watching: null }); },
     get connected(): boolean { return connected; },
     /**
      * Seconds between the other ships as drawn and our own ship as predicted: interpolation
@@ -254,6 +285,7 @@ export function createArenaNetwork(world: ArenaWorld, settings: SteeringSettings
     },
     dev(action: 'restart' | 'exit' | 'fuel' | 'cargo' | 'position', value?: number, p?: { x: number; y: number; z: number }): void { send({ kind: 'dev', action, value, p }); },
     leave(): void { send({ kind: 'leave' }); },
+    watch(pilotId: number): void { send({ kind: 'watch', pilotId }); },
     dispose(): void { stopped = true; connected = false; if (retry) clearTimeout(retry); socket?.close(); socket = null; },
   };
 }

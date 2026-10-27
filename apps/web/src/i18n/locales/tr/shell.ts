@@ -91,6 +91,7 @@ export const pendingStrip = {
   recallStarted: 'Kazıcılar rotayı çevirdi · eve dönüyor',
   craftCount: '{{count}} araç',
   craftUnknown: 'Araç dökümü bilinmiyor',
+  escorted: '+ komutan gemin · {{ship}} {{level}}',
   incomingHint: 'Yaklaşan tehdit · kaynak sisin ardında',
   /** Aynı uyarı, araç senin diskinde görünürken. D162. */
   incomingVisible: 'Yaklaşan tehdit · sensörlerinde — bakmak için dokun',

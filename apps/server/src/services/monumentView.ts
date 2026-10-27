@@ -10,7 +10,7 @@ import {
 } from '@astera/rules';
 import type { Tx } from '../db/client.js';
 import { addMinutes } from '../clock.js';
-import { accounts, clanMemberships, clans, monumentProbes, monuments, monumentShipLots, monumentWaves, planets, players } from '../db/schema.js';
+import { accounts, arenaAdmiralLegs, arenaAdmirals, clanMemberships, clans, monumentProbes, monuments, monumentShipLots, monumentWaves, planets, players } from '../db/schema.js';
 import { lockMonuments, readMonumentRosters, projectMonumentHold, type LockedMonument } from './monument.js';
 import { advanceLockedMonument, monumentEndpoints, monumentHomes } from './monumentArrival.js';
 import { resolveMonumentReturn, settleMonumentFlight } from './monumentMovement.js';
@@ -247,6 +247,11 @@ async function returnForecast(tx: Tx, target: LockedMonument, wave: typeof monum
 
 async function ownWaves(tx: Tx, targets: readonly LockedMonument[], input: Reader) {
   const result = [];
+  // Y9: the commander ship flying with a wave is drawn at its rear; owner-only, as this whole list is.
+  const escorts = new Map((await tx.select({ refId: arenaAdmiralLegs.refId, ship: arenaAdmirals.ship, level: arenaAdmirals.level })
+    .from(arenaAdmiralLegs).innerJoin(arenaAdmirals, eq(arenaAdmirals.id, arenaAdmiralLegs.admiralId))
+    .where(and(eq(arenaAdmirals.playerId, input.playerId), eq(arenaAdmirals.status, 'active'), eq(arenaAdmiralLegs.kind, 'monument'), isNull(arenaAdmiralLegs.finishedAt))))
+    .map(leg => [leg.refId, { ship: leg.ship, level: leg.level }]));
   for (const target of targets) {
     const at = new Date(Math.min(input.at.getTime(), target.season.endsAt.getTime()));
     const sources = await hpSourcesForSeason(tx, input.seasonId, { from: at, until: target.season.endsAt,
@@ -258,6 +263,7 @@ async function ownWaves(tx: Tx, targets: readonly LockedMonument[], input: Reade
       monumentHoldPath(target.monument, target.season, at.getTime(), at.getTime() + 1), sources) * 60_000 : 0;
     for (const wave of target.waves.filter((row) => row.playerId === input.playerId && (row.status === 'OUTBOUND' || row.status === 'HOLD' || row.status === 'RETURNING'))) {
       const lots = target.lots.filter((lot) => lot.waveId === wave.id);
+      const escort = escorts.get(wave.id);
       const rate = flowing.lots.filter((lot) => lot.waveId === wave.id)
         .reduce((sum, lot) => sum + lot.deuterium - (lots.find((before) => before.id === lot.id)?.deuterium ?? 0), 0);
       const segment = monumentHoldPath(target.monument,target.season,at.getTime(),target.season.endsAt.getTime());
@@ -299,6 +305,7 @@ async function ownWaves(tx: Tx, targets: readonly LockedMonument[], input: Reade
         cargoLossAt: cargoDeaths.length === 0 ? null : new Date(Math.min(...cargoDeaths)).toISOString(),
         fadeAt: fadeAt === null ? null : new Date(fadeAt).toISOString(),
         returnReason: wave.returnReason,
+        ...(escort ? { admiral: escort } : {}),
         returnForecast: await returnForecast(tx, target, wave, lots, at) });
     }
   }

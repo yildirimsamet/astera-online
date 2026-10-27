@@ -82,3 +82,10 @@ describe('multi-category cosmetics', () => {
     for (const item of COSMETICS) expect(cosmeticById(item.id)).toEqual(item);
   });
 });
+
+it('defers Yarık skins without removing established engine and clan cosmetics', () => {
+  expect(cosmeticCategoriesFor()).not.toContain('COMMANDER');
+  for (const id of ['arena-standard', 'arena-helios', 'arena-nebula']) expect(cosmeticById(id)).toBeNull();
+  expect(cosmeticsInCategory('ENGINE')).toHaveLength(6);
+  expect(cosmeticById('flag-helios')?.category).toBe('FLAG');
+});

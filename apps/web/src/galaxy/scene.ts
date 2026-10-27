@@ -592,17 +592,20 @@ export function legStandoff(
   // A return mission row is stored with the two worlds swapped (D28), so the
   // foreign orbit is the start on the way home and the end on the way out. Home
   // is the other endpoint and takes only the tight surface clearance (D120).
+  if (returning) return homewardStandoff(thread.path, nodes);
   const startNode = targetNodeOf(nodes, thread.path.from);
   const endNode = targetNodeOf(nodes, thread.path.to);
-  return returning
-    ? {
-        start: startNode ? orbitStandoff(startNode.radius) : 0,
-        end: endNode ? surfaceStandoff(endNode.radius) : 0,
-      }
-    : {
+  return {
         start: startNode ? surfaceStandoff(startNode.radius) : 0,
         end: endNode ? orbitStandoff(endNode.radius) : 0,
       };
+}
+
+/** A leg home: off the foreign world's orbit, down to the home world's surface clearance. */
+export function homewardStandoff(path: NonNullable<PendingThread['path']>, nodes: readonly PlanetNode[]): LegStandoff {
+  const startNode = targetNodeOf(nodes, path.from);
+  const endNode = targetNodeOf(nodes, path.to);
+  return { start: startNode ? orbitStandoff(startNode.radius) : 0, end: endNode ? surfaceStandoff(endNode.radius) : 0 };
 }
 
 /**

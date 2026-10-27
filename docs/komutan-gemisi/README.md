@@ -1,6 +1,14 @@
-# Komutan Gemisi + Savaş Alanı — Özelliğin beyni
+# Yarık + Komutan Gemisi — Özelliğin beyni
 
-> **Durum:** Özel deneme sürümü (2026-10-20) `release/arena-playtest-20261020` dalında, prod e88cab68 üstünde; canlıya çıkış sahip onayı bekliyor (KG-K27). F7 sahip incelemesi bu denemeyle yapılır.
+> **Durum (2026-10-24):** Güncel kod ve commit edilmemiş devam çalışması
+> `../blindspace-arena-playtest`, `release/arena-playtest-20261020` dalında.
+> Eski `../blindspace-komutan-gemisi` ilk MVP'dir; ana worktree'deki bu klasör de geridedir.
+> Güncel sıra ve kabul durumu: [14 §17](14-yarik-plani.md#17-uygulama-sırası-ve-kabul-ölçütleri).
+> Y6c yetenek rütbeleri ve Y6d ödemeli tamir eklendi. Öz gelene kadar rütbe üst sınırı 3;
+> doğrulama ve eksikler [19](19-devralma-2026-10-24.md).
+> Y7 takım lobisi, ortak ganimet ve seyirci kodu/doğrulaması tamam: [20](20-y7-takim.md).
+> **İlk sürüm kapsamı (sahibin son kararı):** ortak giriş, Amiral, hazır bildirim/park: [22](22-ilk-surum-mantigi.md).
+> Skinler, Kalp olayı ve Öz ertelendi; geçici çıkış/acil sıçrama kaldırıldı. Önceki Y8 kaydı tarihçedir: [21](21-y8-gorunum.md).
 > Çalıştırma ve doğrulama: [13](13-gelistirme-notlari.md). Faz durumu: [panoda](#durum-panosu).
 > **Hedef okuyucu:** Bu özelliği **hiç görmemiş** ve geliştirmeyi sahibin bilgisayarında yapacak
 > agent. Sahip brief'i sana ayrıca vermeyecek: **bu klasör tek kaynaktır** (KG-K7).
@@ -76,10 +84,19 @@ telefonunda oynayıp **hissi onaylamadan** kapsam büyümez.
 | [13-gelistirme-notlari.md](13-gelistirme-notlari.md) | Güncel çalışma dilimi, sınırlar, riskler ve doğrulama kaydı |
 | [14-yarik-plani.md](14-yarik-plani.md) | Yarık büyük planı: sınıflar, yetenekler, seviye, ekonomi, harita, takım, amiral (v1, 2026-10-21) |
 | [15-yarik-haritasi.md](15-yarik-haritasi.md) | Y5 harita tasarımı: bölgeler, mağara ve terk edilmiş istasyon, çizilen = çarpılan yapılar, çıkış iskelesi, görüş kuralı, harita ekranı (v1, 2026-10-22) |
+| [16-yarik-v6-plani.md](16-yarik-v6-plani.md) | Uygulanan v6 harita ve performans ölçümleri |
+| [17-paket-kucultme-plani.md](17-paket-kucultme-plani.md) | Telefon varlık paketi ve kalan cihaz kontrolleri |
+| [18-kademeli-gorunurluk-plani.md](18-kademeli-gorunurluk-plani.md) | 50 uzak gemi, ağ kademeleri ve toplu çizim |
+| [19-devralma-2026-10-24.md](19-devralma-2026-10-24.md) | Koddan doğrulanan devam noktası, Y6c/Y6d ve test kanıtı |
+| [20-y7-takim.md](20-y7-takim.md) | Y7 takım/lobi, ortak ganimet, dostluk, seyirci ve doğrulama kaydı |
 | Sahibin yerel referans görselleri | Eklendi ve incelendi; kabaca yön verir (KG-K15, konum ve metin dökümü [07 §1](07-hud-ve-ekranlar.md)) |
 
 <a id="durum-panosu"></a>
 ## Durum panosu
+
+Aşağıdaki F0–F7 tablosu ilk MVP'nin tarihsel kapılarıdır. Sahiple netleştirilen Yarık
+çalışması [14](14-yarik-plani.md)'teki Y1–Y9 sırasını izler; eski "F8–F11 bekliyor"
+satırı bugün uygulanmış gemi/ekonomi kodunun yok olduğu anlamına gelmez.
 
 | Faz | Durum | Not |
 |---|---|---|

@@ -14,9 +14,14 @@ import type { FlameSet } from './ships.js';
  */
 export const CROWD_RANGE = 800;
 export const CROWD_BAND = 40;
-/** Samples in a trail and the seconds it lasts: a sample every 1/45 s, each fading by its own age. */
-export const TRAIL_POINTS = 24;
-export const TRAIL_AGE = 0.55;
+/**
+ * Samples in a trail and the seconds it lasts: a sample every ~1/45 s, each fading by its own age;
+ * its half-width in nozzle radii. Owner 2026-10-27: 30 % longer and wider (0.55 s, 0.8) so a ship
+ * 700–800 m out can be picked out.
+ */
+export const TRAIL_POINTS = 32;
+export const TRAIL_AGE = 0.55 * 1.3;
+export const TRAIL_WIDTH = 0.8 * 1.3;
 
 /** One engine's recent nozzle positions, newest first, and when each was taken; kept by its ship. */
 export interface TrailSamples { readonly points: Float32Array; readonly ages: Float32Array; readonly count: number }

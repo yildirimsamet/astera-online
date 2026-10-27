@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import {
-  ARENA_TUNING as T, CLASS_STATS, aimCone, alive, circleAim, classTuning, createFlightState, holdPoints, leadPoint, lockShare, MAX_REMOTE_PILOTS, pilotInSight, pilotVisible, scanTargets, stepSandboxWorld,
+  ARENA_TUNING as T, RING_DISTANCE, aimCone, alive, sameSide, circleAim, createFlightState, holdPoints, leadPoint, lockShare, MAX_REMOTE_PILOTS, mirrorPose, pilotInSight, pilotVisible, scanTargets, shipTuning, spreadAt, statsOf, stepSandboxWorld,
   type AimCone, type ArenaWorld, type FlightState, type Pilot, type ShipClass, type SteeringSettings, type Vec3,
 } from '@astera/rules/arena';
 import type { ArenaAssets, PreparedModel } from './assets/load.js';
+import { releaseRenderer } from './assets/memory.js';
 import type { ArenaAudio } from './audio.js';
 import { shipModelFor } from './classes.js';
 import { nearestDeposit } from './compass.js';
@@ -11,7 +12,7 @@ import { createFrameDriver } from './driver.js';
 import type { ArenaControls } from './input.js';
 import type { ArenaNetwork } from './network.js';
 import { altitudeShare, selfTransform } from './map.js';
-import { MARK_RANGE, enemyMarked, sighting, type Sighting } from './marks.js';
+import { MARK_RANGE, edgePoint, enemyMarked, friendTarget, sighting, type EdgeMark, type Sighting } from './marks.js';
 import { ChaseCamera } from './render/camera.js';
 import { createDust, RUSH_DUST } from './render/dust.js';
 import { Effects } from './render/effects.js';
@@ -154,6 +155,7 @@ export function createArenaClient(options: ClientOptions) {
   };
   const autopilot = { x: 0, y: 0, throttle: 0 };
   let phase: ClientPhase = 'preflight';
+  let spectator: number | null = null;
   let width = 1; let height = 1;
   let lost = false;
   const ownPose: ShipPose = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), throttle: 0, speed: 0, turbo: false,
@@ -161,7 +163,7 @@ export function createArenaClient(options: ClientOptions) {
     ward: 0, mend: false, hologram: false };
   const otherPose: ShipPose = { ...ownPose, position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), normal: new THREE.Vector3() };
   const seen = { compassKind: -1, shots: 0, hits: 0, kills: 0, damage: -100000, landed: 0, phase: 'flying' as Pilot['phase'], hitAt: -10, killAt: -10,
-    damageAt: -10, damageAngle: 0, extractedAt: -1, deadAt: -1, warpIn: true, drawn: 0, lastHud: 0, time: 0, lastDraw: 0, bump: 0, turbo: false, circle: 0, reticleAt: 0,
+    damageAt: -10, damageAngle: 0, extractedAt: -1, deadAt: -1, warpIn: true, drawn: 0, lastHud: 0, time: 0, lastDraw: 0, bump: 0, turbo: false, circle: 0, ring: 0, reticleAt: 0,
     landTarget: null as ReturnType<typeof findLandingTarget> };
   const droneShots = new Map<number, number>();
   const droneHull = new Map<number, { hull: number; at: number }>();
@@ -189,7 +191,7 @@ export function createArenaClient(options: ClientOptions) {
     aimCone(focusCone, pilot);
     let best: Pilot | undefined; let bestCos = Math.cos(THREE.MathUtils.degToRad(24));
     for (const drone of world.drones) {
-      if (!alive(drone) || drone.id === pilot.decoy) continue;
+      if (!alive(drone) || drone.id === pilot.decoy || sameSide(pilot, drone)) continue;
       const dx = drone.p.x - pilot.p.x; const dy = drone.p.y - pilot.p.y; const dz = drone.p.z - pilot.p.z;
       const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
       if (distance > MARK_RANGE || distance < 1 || dx * fx + dy * fy + dz * fz <= 0) continue;
@@ -240,15 +242,8 @@ export function createArenaClient(options: ClientOptions) {
   /** Lower edge of the free band: above the thumbs, and above our own ship's nose. */
   let bandBottom = 512;
   /** Clamps an off-screen point to an ellipse inside the free middle band (clear of HUD, thumbs and our ship). */
-  const edge = (px: number, py: number, behind: boolean, margin: number): { x: number; y: number; angle: number } => {
-    const top = 205; const bottom = bandBottom;
-    const cx = width / 2; const cy = (top + bottom) / 2;
-    let dx = px - cx; let dy = py - cy;
-    if (behind) { dx = -dx; dy = -dy; if (Math.abs(dx) + Math.abs(dy) < 1) dy = 1; }
-    const rx = width / 2 - margin - 18; const ry = (bottom - top) / 2;
-    const k = 1 / Math.max(1e-6, Math.sqrt((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry)));
-    return { x: cx + dx * k, y: cy + dy * k, angle: Math.atan2(dy, dx) };
-  };
+  const edge = (px: number, py: number, behind: boolean, margin: number, sideways = false): EdgeMark =>
+    edgePoint(px, py, behind, margin, { width, top: 205, bottom: bandBottom }, sideways);
 
   const drawHud = (time: number): void => {
     const pilot = world.pilot;
@@ -303,6 +298,13 @@ export function createArenaClient(options: ClientOptions) {
       hud.reticle.style.transform = `translate3d(${(aim.x + reticleOffset.x).toFixed(1)}px,${(aim.y + reticleOffset.y).toFixed(1)}px,0)`;
       hud.reticle.style.opacity = flying && !aim.behind ? '1' : '0';
       hud.reticle.toggleAttribute('data-locked', tracking);
+      // The ring is the spread at 500 m (owner 2026-10-24), through the chase camera: true out there.
+      const far = project(ownPose.position.x + forward.x * RING_DISTANCE, ownPose.position.y + forward.y * RING_DISTANCE, ownPose.position.z + forward.z * RING_DISTANCE);
+      const wide = spreadAt(statsOf(pilot).spreadBase, RING_DISTANCE);
+      const edge = project(ownPose.position.x + forward.x * RING_DISTANCE + cameraUp.x * wide,
+        ownPose.position.y + forward.y * RING_DISTANCE + cameraUp.y * wide, ownPose.position.z + forward.z * RING_DISTANCE + cameraUp.z * wide);
+      const ring = far.behind ? 0 : Math.hypot(edge.x - far.x, edge.y - far.y);
+      if (Math.abs(ring - seen.ring) > 0.25) { seen.ring = ring; hud.reticle.style.setProperty('--s', `${ring.toFixed(1)}px`); }
       if (hud.hit) hud.hit.style.transform = hud.reticle.style.transform;
       if (hud.kill) hud.kill.style.transform = hud.reticle.style.transform;
     }
@@ -324,14 +326,15 @@ export function createArenaClient(options: ClientOptions) {
       const visual = others.get(drone.id);
       const at = visual ? visual.group.position : scratch.set(drone.p.x, drone.p.y, drone.p.z);
       const scanned = swept.includes(drone.id);
+      const friendly = sameSide(pilot, drone);
       // The radar reaches miners at 1.6 km: past that no mark needs the sight ray.
       const near = Math.hypot(drone.p.x - pilot.p.x, drone.p.y - pilot.p.y, drone.p.z - pilot.p.z) < RADAR_RANGE * 1.6;
-      const mark = alive(drone) && (scanned || (near && pilotVisible(world, pilot, drone)))
-        ? sighting(sightings, drone.id, scanned || pilotInSight(world, pilot, drone), at, time) : undefined;
+      const mark = alive(drone) && (friendly || scanned || (near && pilotVisible(world, pilot, drone)))
+        ? sighting(sightings, drone.id, friendly || scanned || pilotInSight(world, pilot, drone), at, time) : undefined;
       if (!mark) { sightings.delete(drone.id); continue; }
       const dx = mark.x - pilot.p.x; const dy = mark.y - pilot.p.y; const dz = mark.z - pilot.p.z;
       const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (!enemyMarked(drone, distance, scanned)) continue;
+      if (!friendly && !enemyMarked(drone, distance, scanned)) continue;
       const lost = mark.level < 1;
       const screen = project(mark.x, mark.y, mark.z);
       const onScreen = !screen.behind && screen.x > 8 && screen.x < width - 8 && screen.y > 60 && screen.y < height - 120;
@@ -346,6 +349,7 @@ export function createArenaClient(options: ClientOptions) {
         node.toggleAttribute('data-mining', drone.mining);
         node.toggleAttribute('data-lost', lost);
         node.toggleAttribute('data-scan', scanned);
+        node.toggleAttribute('data-friend', friendly);
         const lock = drone.id === pilot.lockTarget ? lockShare(pilot) : 0;
         node.toggleAttribute('data-lock', lock > 0);
         node.toggleAttribute('data-locked', lock >= 1);
@@ -355,7 +359,7 @@ export function createArenaClient(options: ClientOptions) {
           const name = node.querySelector('[data-name]'); if (name) name.textContent = options.name(drone);
           const label = node.querySelector('[data-distance]'); if (label) label.textContent = `${String(Math.round(distance))} m`;
           // Width is a layout write: with the labels, not every frame.
-          const bar = node.querySelector<HTMLElement>('[data-hull]'); if (bar) bar.style.width = `${String(drone.hull / CLASS_STATS[drone.ship].hull * 100)}%`;
+          const bar = node.querySelector<HTMLElement>('[data-hull]'); if (bar) bar.style.width = `${String(drone.hull / statsOf(drone).hull * 100)}%`;
         }
       } else if (!onScreen && threat < hud.threats.length) {
         const node = hud.threats[threat++];
@@ -364,7 +368,8 @@ export function createArenaClient(options: ClientOptions) {
         node.style.display = 'block';
         node.style.transform = `translate3d(${e.x.toFixed(1)}px,${e.y.toFixed(1)}px,0) rotate(${e.angle.toFixed(3)}rad)`;
         node.toggleAttribute('data-scan', scanned);
-        node.style.opacity = scanned ? '0.9' : String((0.45 + 0.55 * (1 - distance / MARK_RANGE)) * (lost ? mark.level * 0.6 : 1));
+        node.toggleAttribute('data-friend', friendly);
+        node.style.opacity = friendly || scanned ? '0.9' : String((0.45 + 0.55 * (1 - distance / MARK_RANGE)) * (lost ? mark.level * 0.6 : 1));
       }
     }
     for (let i = slot; i < hud.enemies.length; i++) { const node = hud.enemies[i]; if (node) node.style.display = 'none'; }
@@ -397,9 +402,10 @@ export function createArenaClient(options: ClientOptions) {
       if (best && flying) {
         const p = project(best.x, best.y + 40, best.z);
         const inside = !p.behind && p.x > 30 && p.x < width - 60 && p.y > 205 && p.y < bandBottom;
-        const e = inside ? { x: p.x, y: p.y, angle: 0 } : edge(p.x, p.y, p.behind, 30);
+        const e = inside ? { x: p.x, y: p.y, angle: 0, side: 'right' } : edge(p.x, p.y, p.behind, 30, true);
         hud.exit.style.display = 'block';
         hud.exit.toggleAttribute('data-edge', !inside);
+        hud.exit.dataset.side = e.side;
         hud.exit.style.transform = `translate3d(${e.x.toFixed(1)}px,${e.y.toFixed(1)}px,0)`;
         hud.exit.style.setProperty('--angle', `${e.angle.toFixed(3)}rad`);
         if (seen.drawn % 6 === 0) {
@@ -459,7 +465,7 @@ export function createArenaClient(options: ClientOptions) {
         const name = hud.crystal.querySelector('[data-kind]'); if (name) name.textContent = arenaCopy().kinds[bestKind] ?? '';
       }
       const o = world.layout.obstacles[best];
-      if (o && flying && !pilot.landed && pilot.cargo < CLASS_STATS[pilot.ship].cargoCapacity) {
+      if (o && flying && !pilot.landed && pilot.cargo < statsOf(pilot).cargoCapacity) {
         const p = project(o.p.x, o.p.y, o.p.z);
         hud.crystal.style.display = p.behind ? 'none' : 'block';
         hud.crystal.style.transform = `translate3d(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px,0)`;
@@ -536,15 +542,16 @@ export function createArenaClient(options: ClientOptions) {
       const distance = Math.hypot(mark.x - me.x, mark.z - me.z);
       // A ship our sweep marks shows wherever it is: past the radar's reach, on its rim towards it, ringed.
       const scanned = swept.includes(drone.id);
-      if (!scanned && drone.landed && !drone.mining && distance > 320) continue;
-      if (!scanned && distance > range * (drone.mining ? 1.6 : 1)) continue;
+      const friendly = sameSide(world.pilot, drone);
+      if (!friendly && !scanned && drone.landed && !drone.mining && distance > 320) continue;
+      if (!friendly && !scanned && distance > range * (drone.mining ? 1.6 : 1)) continue;
       let [x, y] = place(mark.x, mark.z);
-      if (scanned && Math.hypot(x - r, y - r) > r * 0.92) { const a = Math.atan2(y - r, x - r); x = r + Math.cos(a) * r * 0.92; y = r + Math.sin(a) * r * 0.92; }
+      if ((friendly || scanned) && Math.hypot(x - r, y - r) > r * 0.92) { const a = Math.atan2(y - r, x - r); x = r + Math.cos(a) * r * 0.92; y = r + Math.sin(a) * r * 0.92; }
       const dy = mark.y - me.y;
       ctx.globalAlpha = mark.level < 1 ? mark.level * 0.6 : 1;
       const cx = Math.min(size - 4, Math.max(4, x)); const cy = Math.min(size - 4, Math.max(4, y));
-      ctx.strokeStyle = 'rgba(255,90,60,0.6)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - Math.max(-10, Math.min(10, dy / 40))); ctx.stroke();
-      ctx.fillStyle = drone.mining ? '#ffd166' : '#ff5a3c';
+      ctx.strokeStyle = friendly ? 'rgba(75,213,255,0.6)' : 'rgba(255,90,60,0.6)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - Math.max(-10, Math.min(10, dy / 40))); ctx.stroke();
+      ctx.fillStyle = friendly ? '#4bd5ff' : drone.mining ? '#ffd166' : '#ff5a3c';
       ctx.beginPath(); ctx.arc(cx, cy - Math.max(-10, Math.min(10, dy / 40)), drone.id === focus.id ? 3.4 : 2.6, 0, Math.PI * 2); ctx.fill();
       if (scanned) { ctx.strokeStyle = 'rgba(46,230,200,0.85)'; ctx.beginPath(); ctx.arc(cx, cy - Math.max(-10, Math.min(10, dy / 40)), 5, 0, Math.PI * 2); ctx.stroke(); }
     }
@@ -568,7 +575,7 @@ export function createArenaClient(options: ClientOptions) {
     ownPose.omegaYaw = pilot.omegaYaw; ownPose.omegaPitch = pilot.omegaPitch; ownPose.landed = pilot.landed > 0;
     ownPose.mining = pilot.mining; ownPose.shield = pilot.shield; ownPose.cloak = pilot.cloak; ownPose.hull = pilot.hull;
     ownPose.ward = pilot.ward > 0 && pilot.shieldMax > 0 ? pilot.shieldHp / pilot.shieldMax : 0; ownPose.mend = pilot.mend > 0;
-    ownPose.hullMax = CLASS_STATS[pilot.ship].hull;
+    ownPose.hullMax = statsOf(pilot).hull;
     ownPose.normal.set(pilot.nx, pilot.ny, pilot.nz);
     ownPose.visible = alive(pilot) || (pilot.phase === 'extracted' && time - seen.extractedAt < 1.1);
     if (pilot.lastDamage > seen.damage) {
@@ -599,7 +606,7 @@ export function createArenaClient(options: ClientOptions) {
     own.update(ownPose, time, dt);
     if (pilot.bump > 0.12 && alive(pilot) && pilot.bump !== seen.bump) {
       // One burst per impact, on the rock face the hull met.
-      if (!scrapePoint(world.layout, ownPose.position, classTuning(pilot.ship), scratch)) scratch.copy(ownPose.position);
+      if (!scrapePoint(world.layout, ownPose.position, shipTuning(pilot.ship, pilot.level), scratch)) scratch.copy(ownPose.position);
       effects.scrape(scratch.x, scratch.y, scratch.z, pilot.bump);
       chase.kick(pilot.bump * 0.6);
     }
@@ -635,11 +642,18 @@ export function createArenaClient(options: ClientOptions) {
       interpolate(otherPose, previous, drone, blend);
       otherPose.throttle = drone.throttle; otherPose.speed = drone.s; otherPose.turbo = drone.turboActive;
       otherPose.omegaYaw = drone.omegaYaw; otherPose.omegaPitch = drone.omegaPitch; otherPose.landed = drone.landed > 0;
-      otherPose.mining = drone.mining; otherPose.shield = drone.shield; otherPose.cloak = drone.cloak; otherPose.hull = drone.hull;
+      // Our own illusion is drawn off our own ship, not from the room's late rows: it turns as we turn (owner 2026-10-24).
+      const line = drone.decoyAlong;
+      if (drone.id === pilot.decoy && (line.x !== 0 || line.y !== 0 || line.z !== 0)) {
+        mirrorPose(drone.decoyFrom, line, ownPose.position, ownPose.quaternion, otherPose.position, otherPose.quaternion);
+        otherPose.throttle = pilot.throttle; otherPose.speed = pilot.s; otherPose.turbo = pilot.turboActive;
+        otherPose.omegaYaw = -pilot.omegaYaw; otherPose.omegaPitch = -pilot.omegaPitch;
+      }
+      otherPose.mining = drone.mining; otherPose.shield = drone.shield; otherPose.cloak = sameSide(pilot, drone) ? 0 : drone.cloak; otherPose.hull = drone.hull;
       // Others' rows carry only that a shield is up, not how much of it is left.
       otherPose.ward = drone.ward > 0 ? (drone.shieldMax > 0 ? drone.shieldHp / drone.shieldMax : 1) : 0; otherPose.mend = drone.mend > 0;
-      otherPose.hullMax = CLASS_STATS[drone.ship].hull; otherPose.hologram = drone.id === pilot.decoy;
-      otherPose.visible = alive(drone) && drone.cloak === 0;
+      otherPose.hullMax = statsOf(drone).hull; otherPose.hologram = drone.id === pilot.decoy;
+      otherPose.visible = alive(drone) && (sameSide(pilot, drone) || drone.cloak === 0);
       const record = droneHull.get(drone.id);
       if (record && drone.hull < record.hull) record.at = time;
       if (!record) droneHull.set(drone.id, { hull: drone.hull, at: -10 }); else record.hull = drone.hull;
@@ -670,7 +684,13 @@ export function createArenaClient(options: ClientOptions) {
     }
     // Camera.
     const aspect = width / Math.max(1, height);
-    if (pilot.phase === 'dead') {
+    const watched = spectator === null ? undefined : world.drones.find(d => d.id === spectator && alive(d));
+    const watchedVisual = watched ? others.get(watched.id) : undefined;
+    if (watched && watchedVisual) {
+      chase.update({ position: watchedVisual.group.position, quaternion: watchedVisual.group.quaternion, speed: watched.s,
+        speedMax: shipTuning(watched.ship, watched.level).speedMax, accel: 0, turbo: watched.turboActive, landed: watched.landed > 0,
+        omegaYaw: watched.omegaYaw, omegaPitch: watched.omegaPitch }, dt, aspect);
+    } else if (pilot.phase === 'dead') {
       const t = time - seen.deadAt;
       camera.position.set(deathPoint.x + Math.sin(t * 0.35) * 70, deathPoint.y + 28, deathPoint.z + Math.cos(t * 0.35) * 70);
       camera.up.set(0, 1, 0); camera.lookAt(deathPoint); camera.updateMatrixWorld();
@@ -758,6 +778,14 @@ export function createArenaClient(options: ClientOptions) {
       phase = next;
     },
     setHud(refs: HudRefs): void { hud = refs; },
+    setSpectator(id: number | null): void { if (spectator !== id) { spectator = id; chase.snap(); } },
+    friendAt(clientX: number, clientY: number): number | null {
+      const rect = canvas.getBoundingClientRect();
+      return friendTarget(world.pilot, world.drones.map(pilot => {
+        const at = others.get(pilot.id)?.group.position ?? pilot.p;
+        return { pilot, ...project(at.x, at.y, at.z) };
+      }), clientX - rect.left, clientY - rect.top);
+    },
     /** Applies a new graphics choice at once: sharpness, samples, and whether Otomatik may adapt. */
     setGraphics(choice: ArenaGraphicsChoice): void {
       graphics = graphicsFor(choice, window.devicePixelRatio);
@@ -800,7 +828,8 @@ export function createArenaClient(options: ClientOptions) {
       cancelAnimationFrame(handle); handle = 0;
       observer.disconnect(); canvas.removeEventListener('webglcontextlost', onLost);
       own.dispose(scene); for (const visual of others.values()) visual.dispose(scene); crowd.dispose(); flameNoise.dispose();
-      ore.dispose(); colliderView.dispose(); stage.dispose(); post.dispose(); renderer.dispose();
+      // The context goes too: the galaxy mounts next and needs the phone's GPU memory back (B1).
+      ore.dispose(); colliderView.dispose(); stage.dispose(); post.dispose(); releaseRenderer(renderer);
     },
   };
 }

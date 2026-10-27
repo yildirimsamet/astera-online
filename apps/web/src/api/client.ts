@@ -1,3 +1,4 @@
+import { commanderShipSchema } from './commanderShipSchemas.js';
 import { communityPolicyConsentSchema, communityPolicyStatusSchema, type CommunityPolicyConsent } from './communityPolicySchemas.js';
 import { buildHeader, reportUpdateRequired } from '../platform/updateGate.js';
 import { accountSecuritySchema, securityChallengeSchema, securityCompleteSchema, accountDeletionStatusSchema, accountDeletionSubmittedSchema } from './schemas.js';
@@ -271,6 +272,8 @@ export interface MonumentSendInput {
   purpose: 'ATTACK' | 'REINFORCE';
   acknowledgeShieldLoss?: boolean;
   acknowledgeRadiationLoss?: boolean;
+  /** The commander ship escorts the wave out (Y9). */
+  admiral?: boolean;
 }
 export interface MonumentRecallSelection { lotId: string; count: number }
 export type FlightRecallInput =
@@ -573,6 +576,7 @@ export class Api {
   security = () => this.send('/api/auth/security', accountSecuritySchema);
   accountDeletion = () => this.send('/api/auth/account-deletion', accountDeletionStatusSchema);
   communityPolicy = () => this.send('/api/community/policy', communityPolicyStatusSchema);
+  commanderShip = () => this.send('/api/commander-ship', commanderShipSchema);
   acceptCommunityPolicy = (consent: CommunityPolicyConsent) => this.send('/api/community/policy', communityPolicyStatusSchema, { method: 'POST', body: consent });
   communityBlocks = () => this.send('/api/community/blocks', communityBlocksSchema);
   blockCommunityPlayer = (targetPlayerId: string) => this.send('/api/community/blocks', communityBlockResultSchema, { method: 'POST', body: { targetPlayerId } });
@@ -873,9 +877,9 @@ export class Api {
       clanWarRecallResultSchema);
   /* Klan Savunma Desteği. */
   mySupport = () => this.send('/api/clan/support', mySupportSchema);
-  quoteClanSupport = (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet }) =>
+  quoteClanSupport = (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet; admiral?: boolean }) =>
     this.send('/api/clan/support/quote', clanSupportQuoteSchema, { method: 'POST', body: { ...input } });
-  sendClanSupport = (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet }) =>
+  sendClanSupport = (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet; admiral?: boolean }) =>
     this.clanMutation('/api/clan/support', clanSupportSendSchema, input);
   recallClanSupport = (waveId: string) =>
     this.clanMutation(`/api/clan/support/${encodeURIComponent(waveId)}/recall`, clanSupportWaveAnswerSchema);
@@ -1154,6 +1158,8 @@ export class Api {
     pace?: MissionPace,
     /** The commander has read what radiation on this route would take (plan D10). */
     acknowledgeRadiation?: boolean,
+    /** The commander ship escorts this raid (Y9). */
+    admiral?: boolean,
   ) =>
     this.send('/api/fleet/launch', launchSchema, {
       method: 'POST',
@@ -1164,6 +1170,7 @@ export class Api {
         ...(acknowledgeShieldLoss ? { acknowledgeShieldLoss: true } : {}),
         ...(pace !== undefined && pace !== 1 ? { pace } : {}),
         ...(acknowledgeRadiation ? { acknowledgeRadiation: true } : {}),
+        ...(admiral ? { admiral: true } : {}),
       },
     });
 
@@ -1325,6 +1332,7 @@ export class Api {
     originPlanetId?: string,
     quotedMinutes?: number,
     acknowledgeRadiationLoss?: boolean,
+    admiral?: boolean,
   ) =>
     this.send('/api/pirates/raid', pirateRaidSchema, {
       method: 'POST',
@@ -1334,6 +1342,7 @@ export class Api {
         ...(originPlanetId ? { originPlanetId } : {}),
         ...(quotedMinutes !== undefined ? { quotedMinutes } : {}),
         ...(acknowledgeRadiationLoss ? { acknowledgeRadiationLoss: true } : {}),
+        ...(admiral ? { admiral: true } : {}),
       },
     });
 

@@ -410,6 +410,11 @@ export const reports = {
   /** Savaşın yağma satırının ötesinde yaptıkları; her biri yalnız doğruysa yazılır. */
   effects: {
     heading: 'Bu savaş ne yaptı',
+    admiralYours: 'Komutan gemin filoya eşlik etti: {{ship}} {{level}}. Ateş etmedi, vurulmadı.',
+    admiralHeld: 'Komutan gemin filoya eşlik etti: {{ship}} {{level}}. Filo anıtı tutuyor; gemi tek başına eve döndü.',
+    admiralRepair: 'Komutan gemin filoya eşlik etti: {{ship}} {{level}}. Savaş kaybedildiği için {{minutes}} dk tamire girdi.',
+    admiralRaider: 'Saldıranın komutan gemisi filoya eşlik etti: {{ship}} {{level}}. Bonus verir, vurulmaz.',
+    admiralDefence: 'Savunma hattında bir komutan gemisi vardı: {{ship}} {{level}}. Bonus verir, vurulmaz.',
     shieldTheirs: 'Kalkanları, gövdelere ulaşmadan önce {{amount}} hasarı karşıladı.',
     shieldYours: 'Kalkanın, gövdelerine ulaşmadan önce {{amount}} hasarı karşıladı.',
     cargoLimited:

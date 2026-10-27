@@ -14,6 +14,12 @@
  */
 
 export const errors = {
+  ADMIRAL_RULESET: "司令官艦の随伴は新シーズンから使えます。",
+  ADMIRAL_AWAY: "司令官艦はすでに別のフリートに随伴しています。",
+  SHIP_NOT_READY: "司令官艦はまだ準備ができていません。修理中または整備中です。",
+  SHIP_FLYING: "司令官艦は現在Yarıkにいます。",
+  SHIP_UNAVAILABLE: "司令官艦は別の操作中です。少し待ってから再試行してください。",
+  TEAM_LOBBY: "先にYarıkのチームから抜けてください。",
   COMMUNITY_POLICY_REQUIRED: "司令官の作成や投稿の前にコミュニティルールを確認して同意してください。必要に応じてアプリを開き直してください。",
   NAME_NOT_ALLOWED: "別の司令官名を選んでください。「{{word}}」はコミュニティルールに違反しています。",
   CLAN_NAME_NOT_ALLOWED: "別のクラン名またはタグを選んでください。「{{word}}」はコミュニティルールに違反しています。",

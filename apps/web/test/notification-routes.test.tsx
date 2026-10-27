@@ -34,6 +34,9 @@ import { subscribeUnknownSignal } from '../src/lib/unknownSignal.js';
  * Adding a kind fails there first, and its message names this file.
  */
 const EVERY_KIND = [
+  'arena_ship_ready',
+  'arena_sortie_end',
+  'arena_team_share',
   'clan_support_departed',
   'clan_support_inbound',
   'clan_support_result',
@@ -68,6 +71,9 @@ const EVERY_KIND = [
 
 /** A payload each kind's parser will actually accept, so a row really renders. */
 const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
+  arena_ship_ready: { reason: 'service' },
+  arena_sortie_end: { outcome: 'towed', lost: { alloy: 50, crystal: 0, deuterium: 0 }, reason: 'service', readyAt: '2026-08-26T12:20:00.000Z', xp: 4 },
+  arena_team_share: { teamId: '00000000-0000-4000-8000-000000000004', share: { alloy: 150, crystal: 60, deuterium: 0 } },
   unknown_signal_result: { signalId: '00000000-0000-4000-8000-000000000003', outcome: { kind: 'ENERGY', hours: 2 } },
   convoy_result: { trip: 'intergalactic_convoy', runId: '00000000-0000-4000-8000-000000000002', resourceReward: { alloy: 10, crystal: 0, deuterium: 0 }, awardedFleet: {}, inTransit: true },
   monument_returning: { targetKind: 'MONUMENT', monumentId: '00000000-0000-4000-8000-000000000001', monumentOrdinal: 1, reason: 'CAPACITY', craft: 2, arriveAt: '2026-08-26T12:40:00.000Z' },

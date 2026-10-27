@@ -1,5 +1,6 @@
 import { COSMETIC_IDS, COSMETIC_CATEGORIES, SHIP_SKIN_IDS, isMissionPace, honorBenefits, VACATION_BLOCK_REASONS } from '@astera/rules';
 import { z } from 'zod';
+import { SHIP_CLASSES } from '@astera/rules/arena';
 import { CHAT_LANGUAGES, COUNTRY_CODES, FAULT_KINDS, PLANET_SKIN_IDS, REACTION_EMOJIS } from '@astera/rules';
 import type {
   BuildQueueId,
@@ -1429,6 +1430,8 @@ export const monumentWaveSchema = z.object({
   cargoLossAt: z.coerce.date().nullable().optional(),
   fadeAt: z.coerce.date().nullable().optional(),
   returnReason: z.enum(['RECALLED', 'CAPACITY', 'MEMBERSHIP', 'CONTROL_CHANGED', 'DEFEAT', 'WORLD_CHANGED', 'FREEZE']).nullable().optional(),
+  /** Y9: the commander ship escorting this wave, drawn at its rear. */
+  admiral: z.object({ ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) }).optional(),
   returnForecast: monumentReturnForecastSchema,
 });
 export type MonumentWave = z.infer<typeof monumentWaveSchema>;
@@ -2582,6 +2585,8 @@ const pendingThread = z.object({
   monumentOrdinal: z.number().int().min(1).max(8).optional(),
   /** Klan Savunma Desteği: a `transfer` that is a support wave's leg. Optional for a rolling deploy. */
   clanSupport: z.boolean().optional(),
+  /** Y9: the commander ship flying at the rear of this craft; your own craft only. */
+  admiral: z.object({ ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) }).optional(),
   /**
    * The mission's own id. YOUR OWN CRAFT ONLY — an inbound thread has none.
    *
@@ -2951,6 +2956,8 @@ const ordinaryBattleReport = z.object({
        * into it, and on a server that predates it.
        */
       fleetEscape: fleetEscapeRecord.nullish(),
+      /** Y9: the commander ships that escorted either side. Optional for a rolling deploy. */
+      admirals: z.array(z.object({ side: z.enum(['attack', 'defence']), ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) })).optional(),
       /**
        * Defender only: the lookback's NET loss in hours of the reader's production at
        * this battle, and whether it bought the recovery shield. Optional for a rolling
@@ -3072,6 +3079,8 @@ const monumentBattleReport = z.object({
   honor: honorReceipt.nullish(),
   opponents: z.array(z.object({ kind: z.enum(['PLAYER', 'NEUTRAL']), playerId: z.string().nullable(), name: z.string(),
     clanName: z.string().nullable(), clanTag: z.string().nullable() })).default([]),
+  /** Y9: the escorts beside the attack. Optional for a rolling deploy. */
+  admirals: z.array(z.object({ side: z.enum(['attack', 'defence']), ship: z.enum(SHIP_CLASSES), level: z.number().int().min(1) })).optional(),
 });
 export type MonumentBattleReport = z.infer<typeof monumentBattleReport>;
 
@@ -3385,6 +3394,8 @@ export const piratesSchema = z.object({
        */
       at: vec,
     })),
+    /** The same table solved at a Kılavuz escort's speed (Y9); only its commander gets it. */
+    escortReach: z.array(z.object({ hull: hullId, minutes: z.number(), distance: z.number(), at: vec })).optional(),
     /** IDENTIFIED only: what it is, what it flies, and how hard it hits. */
     level: z.number().int().min(1).max(4).optional(),
     fleet: fleet.optional(),

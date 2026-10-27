@@ -138,9 +138,53 @@ denetlenir. Sınıf `hello` ile seçilir ve **bir sonraki uçuşta** geçer; uç
 - Çarpma türlerine `hologram` eklenir: kopya kırıldı.
 - Her anlık görüntü `scan` taşır. Bu, alıcının kendi taramasının işaretlediği gemi id'leridir.
   Bu gemiler görüş ve menzil sınırı olmadan gönderilir; menzil dışındakiler uzak satır olarak.
+
+**Protokol 11 (Y6a, 2026-10-23, `rules/arena/economy.ts`, `services/arenaShips.ts`, KG-X31):**
+- Ambar ham kaynaktır: `hold` alaşım, kristal, döteryum miktarıdır; birim ve puan yoktur.
+- Hesapla gelen pilotun `hello`'sundaki sınıf yok sayılır. Oda uçuşu hangardan açar (`launch`) ve
+  hangarın gemisini, deposunu, şarjörünü ve ambarını uçurur. Konuk `hello`'daki sınıfla uçar.
+- Hangar reddederse oda, sebebi koduyla `kick` gönderir (`SHIP_NOT_READY`, `NOT_ENOUGH_DEUTERIUM`,
+  `SEASON_CLOSING` …); kimse oturtulmaz.
+- Uçuş bitince oda bir kez `sortie` gönderir: sonuç, başkente yatan, günlük tavanın dışarıda
+  bıraktığı, gemi hazır olma anı ve sebebi (tamir/bakım).
+- Oda kapanırken (`preClose`) havadaki uçuşlar `recalled` olarak kapanır, ambar gemide kalır.
+  Çökmeden kalan açık uçuşlar ilk kalkıştan önce bir kez geri çağrılır.
 - Roster kopyayı sahibinin adı ve sınıfıyla, `copyOf` (sahibin id'si) alanıyla taşır. Yeni bir
   kopya yarım saniyelik roster birikimini beklemez; anlık görüntüden önce gönderilir. Roster en
   çok `ARENA_MAX_SEATS × 2 + 8` satırdır.
+
+**Protokol 12 (Y6b, 2026-10-23, `rules/arena/progression.ts`, KG-X32):**
+- Kendi satırı geminin seviyesini taşır (indeks 38, öldürmelerden sonra; `PILOT_WIDTH` 68).
+  Satırın sınırları o seviyenin değerleridir. Uzak gövde sınırı en sağlam 20. seviye gövdedir.
+- Roster satırı `level` taşır (1–20). Kopya sahibinin seviyesini gösterir.
+- `sortie` mesajı `xp {earned, kept, banked}` taşır: uçuşun kazandığı, geminin tuttuğu, çubuğa
+  girebilen.
+- `POST /arena/upgrade` bir sonraki seviyeyi başkentin alaşım ve kristaliyle alır. Kilit sırası:
+  sezon → gemi satırı → başkent.
+
+**Protokol 13 (Y6c, 2026-10-24, KG-X34):**
+- Kendi satırı 71 sayı: üç etkin yetenek rütbesi kargodan sonra, sınıf/fazdan önce.
+  Diğer oyuncuların satır genişliği değişmez. Rütbeler 1–5 tam sayı olarak doğrulanır.
+- `arena_ships.abilities`: imza, turbo ve dört taktiğin ayrı satın alma sayıları. Etkin rütbe,
+  sınıf yakınlığıyla hesaplanır. Kalkış bu kaydı okur; `hello` istemciden rütbe/puan almaz.
+- `POST /arena/ability {ability}` yalnız bir kazanılmış puan harcar. Sezon → gemi → başkent
+  kilit sırası, uçuş ve rütbe/puan sınırları korunur. Hangar cevabındaki `abilities` web'in
+  Zod sınırında doğrulanır; gerçek API/DB cevabı `test/arena/contract.test.ts` ile sınanır.
+- `POST /arena/repair {}` aynı oturum/koltuk kapısını kullanır. Bedel ve yeni bitiş sunucudadır
+  (KG-X35); kalan süre yeterince kısaysa yeniden ödeme yapılmaz.
+- Y6c için migration 0199 önce uygulanır; web ve arena protokol 13'e birlikte geçer.
+
+**Protokol 14 (Y7, 2026-10-24, KG-X36):**
+- Kendi satırı 72 sayı; seviye sonrasındaki `mendPower` onarımı gönderenin gücünü korur.
+  Uzaktaki gemilerin satır genişliği değişmez. Roster klan/takım kimliğini sunucudan taşır.
+- `welcome.teamId` ortak kalkışı tanımlar. Biten takım üyesinin snapshot'ında `watching`
+  yaşayan kamera hedefidir; `-1` kalan dost olmadığını bildirir. `watch {pilotId}` yalnız
+  aynı kalkışın yaşayan gerçek pilotunu seçebilir; `hello.mode=spectate` yeni sorti açmaz.
+- `GET /arena/team`; `POST /arena/team/{create,join,leave,remove,ready,start,claim}`. Oturum,
+  Yarık erişimi, klan/lider yetkisi ve bütün kaynak/gemi kararları sunucuda doğrulanır.
+  Lobi kalkışından önce başlangıç geri çağırması tamamlanır; hata olursa yeni uçuş açılmaz.
+- Migration `0200_arena_teams` önce uygulanır; web ve arena birlikte protokol 14'e geçer.
+  Kalıcılık/kilitler ve doğrulama kaydı: [20](20-y7-takim.md).
 
 ## 5. Simülasyon döngüsü (KG-T10)
 

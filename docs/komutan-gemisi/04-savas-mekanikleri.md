@@ -255,7 +255,7 @@ Diğer belgeler bu değerleri **adıyla** anar; çelişki olursa bu tablo geçer
 | `landSpeed` / `landSettle` / `landedYawRate` | 24 m/s / 0,35 sn / 1,2 rad/sn | bu hızın altında temas = iniş (KG-K21) |
 | `liftSpeed` / `liftTicks` / `landedTurboRegenMul` | 14 m/s / 12 tick / ×2 | kalkış itişi; inişte turbo iki kat dolar |
 | `bounceMin` / `bounceMax` / `bounceHalf` / `scrapeFriction` / `knockDecay` | 0,15 / 0,4 / 50 m/s / 0,25 / 1,6 /sn | sekme: dik hız, çarpma hızıyla 0,15→0,4 esneklikle geri seker; kayma, dik itkinin 0,25'i kadar yavaşlar (KG-T35) |
-| `mineRate` / `crystalReserve` / `crystalRegen` | 4 /sn / 40 / 0,35 /sn | tükenen kristal yarısına dolana kadar kazılmaz |
+| `mineRate` / `crystalReserve` / `crystalRegen` | 4 /sn / 80 / 0,7 /sn | sahip 2026-10-27: kaya yarıya (160), kazı en çok 4/sn (16), dolum ~114 sn aynı; serbest cevher 12/6/6/8; tükenen kristal yarısına dolana kadar kazılmaz |
 | `gimbalCos` / `gimbalRange` | cos 3,5° / 700 m | namlu, burna yakın görünür hedefin önleme noktasına döner (KG-K20) |
 | `assistMax` / `assistCos` / `assistRange` | 0,32 / cos 9° / 900 m | ateş ederken direksiyon mıknatısı; sunucu kırpar |
 | `botRespawn` | 8 sn | |

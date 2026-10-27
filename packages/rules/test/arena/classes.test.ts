@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARENA_TUNING as T, CLASS_HULLS, CLASS_STATS, PILOT_WIDTH, SHIP_CLASSES, classTuning, createInput, createPilot, createSandboxWorld,
-  decodeArenaSnapshot, fuelBurn, hullGap, hullReach, lowFuel, packPilot, packRemote, stepSandboxWorld, sweptHull, unpackPilot,
+  decodeArenaSnapshot, fuelBurn, hullGap, hullReach, lowFuel, packPilot, packRemote, shipStats, stepSandboxWorld, sweptHull, unpackPilot,
   type ArenaIntent, type ArenaWorld, type Pilot, type ShipClass,
 } from '../../src/arena/index.js';
 import { layoutWith, sphere } from './helpers.js';
@@ -37,17 +37,19 @@ describe('three classes', () => {
         Number((s.spreadBase * 180 / Math.PI).toFixed(2)), s.fuelTank, s.cargoCapacity, s.ammoCapacity];
     });
     expect(table).toEqual([
-      ['akinci', 80, 82, 340, 13, 9, 1.3, 220, 70, 540],
-      ['muhafiz', 60, 58, 600, 18, 5.5, 1.8, 280, 160, 330],
-      ['kilavuz', 72, 72, 400, 10, 8, 1.5, 250, 100, 480],
+      // Owner 2026-10-24: every cone starts 15 % wider (1.3°, 1.8°, 1.5° before); levels narrow it as before.
+      ['akinci', 80, 82, 340, 13, 9, 1.49, 220, 300, 540],
+      ['muhafiz', 60, 58, 600, 18, 5.5, 2.07, 280, 500, 330],
+      ['kilavuz', 72, 72, 400, 10, 8, 1.72, 250, 400, 480],
     ]);
   });
 
-  it('flies the Akıncı at the KG-X25 cap; the Kılavuz is the ship of today in all but speed', () => {
+  it('flies the Akıncı at the KG-X25 cap; the Kılavuz is the ship of today in all but speed and its wider cone', () => {
     expect(CLASS_STATS.akinci.speedMax).toBe(T.speedMax);
     const k = CLASS_STATS.kilavuz;
-    expect([k.hull, k.damage, k.fireRate, k.spreadBase, k.fuelTank, k.cargoCapacity, k.ammoCapacity, k.turnRateMax])
-      .toEqual([T.hull, T.damage, T.fireRate, T.spreadBase, T.fuelTank, T.cargoCapacity, T.ammoCapacity, T.turnRateMax]);
+    expect([k.hull, k.damage, k.fireRate, k.fuelTank, k.cargoCapacity, k.ammoCapacity, k.turnRateMax])
+      .toEqual([T.hull, T.damage, T.fireRate, T.fuelTank, T.cargoCapacity, T.ammoCapacity, T.turnRateMax]);
+    expect(k.spreadBase).toBeCloseTo(T.spreadBase * 1.15, 12);
   });
 
   it('gives the owner\'s times to kill at 60 % hits', () => {
@@ -244,7 +246,8 @@ describe('a class on the wire', () => {
     expect(decodeArenaSnapshot(snap(packPilot(tank)))).toBeNull();
     const hold = createPilot(4, 'akinci'); hold.hold[0] = CLASS_STATS.akinci.cargoCapacity + 1;
     expect(decodeArenaSnapshot(snap(packPilot(hold)))).toBeNull();
-    const remote = createPilot(5, 'muhafiz'); remote.hull = CLASS_STATS.muhafiz.hull + 1;
+    // Another ship's row says nothing of its level: the bound is the sturdiest level-20 hull (Y6b).
+    const remote = createPilot(5, 'muhafiz'); remote.hull = shipStats('muhafiz', 20).hull + 1;
     expect(decodeArenaSnapshot(snap(packPilot(createPilot(4)), [packRemote(remote)]))).toBeNull();
   });
 

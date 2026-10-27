@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { KTX2Loader, type KTX2LoaderWorkerConfig } from 'three/addons/loaders/KTX2Loader.js';
+import type { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { STRUCTURE_CATALOG } from '@astera/rules/arena';
 import { parseReferenceManifest, SHIP_CLASSES, type MapSet, type ModelDescriptor, type ReferenceManifest, type ShipClass } from './manifest.js';
-import { compressedSupport, TRANSCODER_PATH } from './memory.js';
+import { ktx2Ready } from './memory.js';
 
 export interface ModelPart { geometry: THREE.BufferGeometry; material: THREE.MeshStandardMaterial; glow: boolean }
 /**
@@ -284,10 +284,17 @@ export function memoryTight(nav: { userAgent: string; maxTouchPoints: number; de
 }
 
 /** The KTX2 manifests (tools/arena-ktx2.mjs) first; the webp ones serve a pack not converted yet. */
-const PACKS = {
+export const PACKS = {
   full: ['/__ref/dist/v2/manifest-ktx2.json', '/__ref/dist/v2/manifest.json'],
   lite: ['/__ref/dist/v2/manifest-lite-ktx2.json', '/__ref/dist/v2/manifest-lite.json'],
 } as const;
+/**
+ * The pack for a renderer that cannot start the transcoder (`ktx2Ready`, S22 2026-10-26): every
+ * map webp at 512, class ships included (tools/arena-webp.mjs). Webp decodes to full RGBA on the
+ * GPU, so it is the lite one whatever the device's memory.
+ */
+export const WEBP_PACK = '/__ref/dist/v2/manifest-lite.json';
+export const packsFor = (lite: boolean, ktx2: boolean): readonly string[] => ktx2 ? lite ? PACKS.lite : PACKS.full : [WEBP_PACK];
 
 /** The models the arena draws from a pack. With the class ships in it, the older hero and rivals are never drawn, so not loaded. */
 /**
@@ -299,10 +306,11 @@ export const ARENA_FX: readonly string[] = ['laserBlue', 'muzzleBlue', 'impactBl
 
 export const fxToLoad = (fx: Readonly<Record<string, string>>): [string, string][] => Object.entries(fx).filter(([key]) => ARENA_FX.includes(key));
 
-const structureModel = (key: string): ModelDescriptor =>
-  ({ model: `/assets/arena/yarik/${key}.glb`, uvFlip: false, rotateY: 0, unit: true, pbr: true, lods: 3 });
+/** The Rift's structures: KTX2, or their webp copies at 512 for a renderer without the transcoder. */
+const structureModel = (key: string, webp: boolean): ModelDescriptor =>
+  ({ model: `/assets/arena/${webp ? 'yarik-webp' : 'yarik'}/${key}.glb`, uvFlip: false, rotateY: 0, unit: true, pbr: true, lods: 3 });
 
-export function modelsToLoad(m: ReferenceManifest): { key: string; d: ModelDescriptor; ship: boolean }[] {
+export function modelsToLoad(m: ReferenceManifest, webp = false): { key: string; d: ModelDescriptor; ship: boolean }[] {
   return [
     ...(m.ships.classes ? [] : [{ key: 'hero', d: m.ships.hero, ship: true }, ...m.ships.rivals.map((d, i) => ({ key: `rival:${String(i)}`, d, ship: true }))]),
     ...SHIP_CLASSES.flatMap(name => { const d = m.ships.classes?.[name]; return d ? [{ key: `class:${name}`, d, ship: true }] : []; }),
@@ -311,20 +319,10 @@ export function modelsToLoad(m: ReferenceManifest): { key: string; d: ModelDescr
     // The pack's exit ring, outposts, generator, relays, heart, wrecks and pad are not loaded:
     // the Rift draws only its own closed structures (owner 2026-10-22, items 4 and 7;
     // 15-yarik-haritasi §4.1), in metres like the colliders they are drawn over.
-    ...STRUCTURE_CATALOG.map(({ key }) => ({ key: `structure:${key}`, d: structureModel(key), ship: false })),
+    ...STRUCTURE_CATALOG.map(({ key }) => ({ key: `structure:${key}`, d: structureModel(key, webp), ship: false })),
     ...m.props.debris.map((d, i) => ({ key: `debris:${String(i)}`, d, ship: false })),
     { key: 'cargo', d: m.props.cargo, ship: false },
   ];
-}
-
-/** Asks a throwaway context which compressed formats this GPU reads, then releases it. */
-function probeSupport(): KTX2LoaderWorkerConfig {
-  if (typeof document === 'undefined') return compressedSupport(null);
-  const canvas = document.createElement('canvas');
-  const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
-  const config = compressedSupport(gl);
-  gl?.getExtension('WEBGL_lose_context')?.loseContext();
-  return config;
 }
 
 /**
@@ -332,12 +330,15 @@ function probeSupport(): KTX2LoaderWorkerConfig {
  * the deliberate price of a flight that never hitches on a first texture upload.
  */
 export async function loadArenaAssets(references: boolean, anisotropy: number, onProgress: (p: LoadProgress) => void,
-  fetcher: typeof fetch = fetch, lite = memoryTight(navigator)): Promise<ArenaAssets> {
+  fetcher: typeof fetch = fetch, lite = memoryTight(navigator), transcoder: Promise<KTX2Loader | null> = ktx2Ready()): Promise<ArenaAssets> {
   const assets = emptyArenaAssets();
   let manifest: ReferenceManifest | null = null;
   onProgress({ done: 0, total: 1, stage: 'manifest' });
+  // KTX2 maps stay block-compressed on the GPU: a quarter of RGBA or less (plan §14.1, step 4).
+  // The page's one transcoder, or none: then the webp pack, which needs no WebAssembly heap.
+  const ktx2 = references ? await transcoder : null;
   // The lite pack halves every image; a server without it still serves the full one.
-  for (const path of references ? lite ? [...PACKS.lite, ...PACKS.full] : PACKS.full : []) {
+  for (const path of !references ? [] : !ktx2 ? [WEBP_PACK] : lite ? [...PACKS.lite, ...PACKS.full] : PACKS.full) {
     try {
       const response = await fetcher(path);
       if (response.ok) manifest = parseReferenceManifest(await response.json());
@@ -348,15 +349,14 @@ export async function loadArenaAssets(references: boolean, anisotropy: number, o
   const m = manifest;
   assets.references = true;
   const textureLoader = new THREE.TextureLoader();
-  // KTX2 maps stay block-compressed on the GPU: a quarter of RGBA or less (plan §14.1, step 4).
-  const ktx2 = new KTX2Loader().setTranscoderPath(TRANSCODER_PATH).setWorkerLimit(2);
-  ktx2.workerConfig = probeSupport();
   const loaders: TextureLoaders = {
-    image: path => textureLoader.loadAsync(path), ktx2: path => ktx2.loadAsync(path),
+    image: path => textureLoader.loadAsync(path),
+    ktx2: path => ktx2 ? ktx2.loadAsync(path) : Promise.reject(new Error(`no transcoder for ${path}`)),
     cube: faces => new THREE.CubeTextureLoader().loadAsync([...faces]),
   };
-  const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).setKTX2Loader(ktx2);
-  const descriptors = modelsToLoad(m);
+  const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  if (ktx2) gltf.setKTX2Loader(ktx2);
+  const descriptors = modelsToLoad(m, !ktx2);
   const texturePaths = new Set<string>(Object.values(m.textures));
   const soundEntries = Object.entries(m.sounds);
   const total = 2 + descriptors.length + texturePaths.size + fxToLoad(m.fx).length
@@ -364,6 +364,7 @@ export async function loadArenaAssets(references: boolean, anisotropy: number, o
   let done = 0;
   const tick = (stage: LoadProgress['stage']): void => { done++; onProgress({ done, total, stage }); };
 
+  const prepared = new Map<string, PreparedModel>();
   [assets.sky, assets.env] = await Promise.all([
     loadSky(loaders, m.sky.faces, m.sky.cube, anisotropy).finally(() => { tick('sky'); }),
     cubeFaces(loaders, m.sky.env, anisotropy).finally(() => { tick('sky'); }),
@@ -378,7 +379,6 @@ export async function loadArenaAssets(references: boolean, anisotropy: number, o
     if (result) { result.colorSpace = THREE.SRGBColorSpace; result.flipY = true; result.wrapS = THREE.ClampToEdgeWrapping; result.wrapT = THREE.ClampToEdgeWrapping; assets.fx.set(key, result); }
     tick('textures');
   }));
-  const prepared = new Map<string, PreparedModel>();
   await Promise.all(descriptors.map(async ({ key, d, ship }) => {
     try {
       const scene = (await gltf.loadAsync(d.model)).scene;
@@ -391,7 +391,6 @@ export async function loadArenaAssets(references: boolean, anisotropy: number, o
   const list = (prefix: string): PreparedModel[] => Array.from(prepared).filter(([key]) => key.startsWith(prefix + ':')).map(([, value]) => value);
   assets.hero = prepared.get('hero') ?? null; assets.rivals = list('rival');
   for (const name of SHIP_CLASSES) { const model = prepared.get(`class:${name}`); if (model) assets.classes.set(name, model); }
-  ktx2.dispose();
   for (const [key, model] of prepared) {
     if (key.startsWith('collider:')) assets.colliders.set(key.slice('collider:'.length), model);
     if (key.startsWith('structure:')) assets.structures.set(key.slice('structure:'.length), model);

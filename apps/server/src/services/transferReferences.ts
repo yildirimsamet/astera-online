@@ -41,6 +41,8 @@ export const TRANSFER_EVENT_POLICIES = {
   season_act: 'GLOBAL',
   neutral_reinforce: 'NEUTRAL',
   death_star_ready: 'PERSONAL',
+  // The commander ship's ready news, like the Death Star's: the commander's own clock.
+  arena_ship_ready: 'PERSONAL',
   recovery_end: 'BLOCKER',
   occupation_end: 'BLOCKER',
   build_complete: 'PERSONAL',

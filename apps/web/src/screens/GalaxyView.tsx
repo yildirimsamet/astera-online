@@ -12,7 +12,10 @@ import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
 import { CommanderHost } from '../v2/shell/CommanderHost.js';
 import { BaseSwitch, type BaseView } from '../v2/hud/BaseSwitch.js';
-import { ArenaEntry } from '../arena/ArenaEntry.js';
+import { arenaCredential } from '../arena/access.js';
+import { useApi } from '../api/context.js';
+import { useQueryClient } from '@tanstack/react-query';
+import { keys } from '../api/keys.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
 import { VIEW, hpRadiationApplies } from '@astera/rules';
@@ -168,6 +171,8 @@ import {
 } from '../shell/panelRoute.js';
 import type { ReachRing } from '../galaxy/SensorRings.jsx';
 import { planetsWithClanPresence } from '../galaxy/clanPresence.js';
+import { useCommanderShip } from '../api/commanderShip.js';
+import { homewardShip, parkedShip } from '../galaxy/parkedShip.js';
 import { GalaxyEventsGuide } from './GalaxyEventsGuide.js';
 import { FpsReadout } from '../ui/FpsReadout.js';
 import { setPerfExtra } from '../lib/perfSession.js';
@@ -183,6 +188,12 @@ const NO_SENSORS: readonly ReachRing[] = [];
 const ClanScreen = lazy(async () => {
   const module = await import('./ClanScreen.jsx');
   return { default: module.ClanScreen };
+});
+
+/** The Komutan gemisi hangar draws a 3D bay; it and the arena's styles load only when opened. */
+const HangarPanel = lazy(async () => {
+  const module = await import('../arena/hangar/HangarPanel.js');
+  return { default: module.HangarPanel };
 });
 
 const IntergalacticConvoySheet = lazy(async () => {
@@ -387,6 +398,8 @@ export function GalaxyView({
   // The admin performance recorder notes which sheet was open that second.
   useEffect(() => { setPerfExtra('panel', perfPanelCode(panel)); }, [panel]);
   const { t, i18n } = useTranslation();
+  const api = useApi();
+  const queryClient = useQueryClient();
   const returnStatus = useReturnStatus(showChat);
   const applyToReturn = useApplyToReturn();
   const galaxy = useGalaxy();
@@ -1147,6 +1160,9 @@ export function GalaxyView({
     onPanel(view === 'world' ? 'planet' : view === 'ship' ? 'ship' : 'research');
   };
   const arenaAvailable = onEnterArena !== undefined;
+  const commanderShip = useCommanderShip(arenaAvailable);
+  const park = parkedShip(commanderShip.data, Date.now());
+  const homeward = homewardShip(commanderShip.data, Date.now());
 
   const tryCosmetic = (cosmeticId: CosmeticId): void => {
     const item = cosmeticById(cosmeticId);
@@ -1249,6 +1265,9 @@ export function GalaxyView({
         {...(activeWorldPosition ? { homePosition: activeWorldPosition } : { homePosition: undefined })}
         activePlanetId={activePlanetId}
         aegisLevel={planet.data?.instruments.AEGIS ?? 0}
+        parkedShip={park}
+        homewardShip={homeward}
+        onOpenShip={() => { onPanel('ship'); }}
         {...(season.data ? { seasonStart: season.data.startsAt } : { seasonStart: undefined })}
         rivals={season.data?.rivals ?? []}
         focus={focus}
@@ -1828,7 +1847,8 @@ export function GalaxyView({
       {panel === 'ship' && onEnterArena && (
         <V2Sheet detents={['full']} quietTitle title={t('arena.nav')} onClose={() => { onPanel(null); }}>
           <BaseSwitch value="ship" onChange={openBase} arenaAvailable />
-          <ArenaEntry onEnter={onEnterArena} />
+          <Suspense fallback={null}><HangarPanel credential={() => arenaCredential(api)} onEnter={onEnterArena}
+            onSpent={() => { for (const queryKey of [keys.planet, keys.commanderShip]) void queryClient.invalidateQueries({ queryKey }); }} /></Suspense>
         </V2Sheet>
       )}
 
@@ -1855,7 +1875,8 @@ export function GalaxyView({
             <CommanderHost name={commander} />
           </div>
           <MenuPanel
-            onEnterArena={onEnterArena}
+            // F2: one way into the Yarık, through the hangar, where the ship, its price and its readiness are.
+            {...(onEnterArena ? { onEnterArena: () => { onPanel('ship'); } } : {})}
             galaxy={season.data?.shardName ?? null}
             shard={season.data?.shard ?? null}
             endsAt={season.data?.endsAt ?? null}
@@ -2043,6 +2064,7 @@ export function GalaxyView({
           <Suspense fallback={<Waiting>{t('clan.waiting')}</Waiting>}>
             <ClanScreen
               initialTab={clanInitialTab}
+              {...(onEnterArena ? { arena: { credential: () => arenaCredential(api), onEnter: onEnterArena } } : {})}
               {...(onOpenChat ? { onOpenClanChat: () => { onOpenChat('clan'); } } : {})}
             />
           </Suspense>

@@ -63,6 +63,9 @@ export interface ForecastInput {
   attackerDamage?: HpDamageLots;
   /** The launching commander's ladders — frozen at launch, so today's are the ones. */
   attackerTech: TechLevels;
+  /** A commander-ship escort's bonus to the wing (Y9 `withAdmiral`). Absent without one. */
+  attackerDamageMult?: number;
+  attackerHullMult?: number;
   /** The doctrines a probe brought home, or none. */
   defenderTech: TechLevels;
   /** A pirate crew's handicap (D150). Absent for everybody else. */
@@ -294,15 +297,18 @@ const merge = (a: Fleet, b: Fleet): Fleet => {
 };
 
 function fight(wing: Fleet, wall: Fleet, shield: number, input: ForecastInput) {
+  const attacker: CombatSide = { tech: input.attackerTech,
+    ...(input.attackerDamageMult === undefined ? {} : { damageMult: input.attackerDamageMult }),
+    ...(input.attackerHullMult === undefined ? {} : { hullMult: input.attackerHullMult }) };
   const defender: CombatSide = input.defenderDamageMult === undefined
     ? { tech: input.defenderTech }
     : { tech: input.defenderTech, damageMult: input.defenderDamageMult };
   const result = input.attackerDamage?.length ? resolveBattle(
-    [soloStack(wing, { tech: input.attackerTech }, input.attackerDamage)],
+    [soloStack(wing, attacker, input.attackerDamage)],
     [{ stackId: 'forecast', playerId: '', fleet: wall, tech: defender, maintenanceExempt: input.pirate === true }],
     shield, MEAN_ROLL, 'PLANET', true,
   ) : resolveCombat(wing, wall, shield, MEAN_ROLL, {
-    attacker: { tech: input.attackerTech },
+    attacker,
     defender,
   });
   return input.pirate === true ? pirateOverrun(result, partitionCombatFleet(wing, input.attackerDamage).eligible) : result;

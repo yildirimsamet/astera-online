@@ -1,12 +1,8 @@
 export const arena = {
   "menuLabel": "Kommandantenschiff",
-  "menuHint": "Testarena · Erz sammeln, am Ausgang punkten",
+  "menuHint": "Der Yarık · Erz sammeln, zur Hauptwelt bringen, dein Schiff ausbauen",
   "join": "Beitreten",
   "nav": "Kommandantenschiff",
-  "trial": "Flugtest",
-  "title": "Steuere dein Schiff",
-  "intro": "Sammle Legierung, Kristall und Deuterium mit den eingeladenen Piloten in einer Zone. Flieg durch Erz, lande auf Vorkommen und baue ab; der Frachtraum eines Abgeschossenen verstreut sich. Jede Einheit am Ausgang zählt Punkte.",
-  "enter": "Flug starten",
   "start": "Start",
   "leave": "Zur Galaxie",
   "loadingCode": "Flugsteuerung wird geladen",
@@ -36,6 +32,5 @@ export const arena = {
   "objective": "Folge den Drohnen",
   "speedUnit": "m/s",
   "secondsUnit": "s",
-  "trialNote": "Flugtest · Fortschritt wird nicht gespeichert",
   "gpuRestore": "Flugansicht wird wiederhergestellt"
 } as const;

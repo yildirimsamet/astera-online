@@ -6,5 +6,6 @@
     "test/**/*.ts",
     "*.ts",
     "../web/src/api/schemas.ts"
-  ]
+  ],
+  "exclude": ["node_modules", "*.load.ts"]
 }

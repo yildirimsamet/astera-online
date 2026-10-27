@@ -14,6 +14,12 @@
  */
 
 export const errors = {
+  ADMIRAL_RULESET: "Commander ship escorts arrive with a new season.",
+  ADMIRAL_AWAY: "Your commander ship is already escorting another fleet.",
+  SHIP_NOT_READY: "Your commander ship is not ready yet: it is in repair or maintenance.",
+  SHIP_FLYING: "Your commander ship is in the Yarık right now.",
+  SHIP_UNAVAILABLE: "Your commander ship is busy with another order. Try again in a moment.",
+  TEAM_LOBBY: "Leave your Yarık team first.",
   COMMUNITY_POLICY_REQUIRED: "Review and accept the community rules before creating a commander or posting. Reopen the app if needed.",
   NAME_NOT_ALLOWED: "Choose another commander name. “{{word}}” breaks the community rules.",
   CLAN_NAME_NOT_ALLOWED: "Choose another clan name or tag. “{{word}}” breaks the community rules.",

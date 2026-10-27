@@ -12,6 +12,7 @@ import { publish, publishShard } from '../stream/bus.js';
 import { closeMonumentProbes } from './monumentProbe.js';
 import { notify } from './notifications.js';
 import { completeMonumentJoint } from './monumentJoint.js';
+import { finishAdmiralLeg } from './admiral.js';
 
 interface Delivery {
   wave: typeof monumentWaves.$inferSelect;
@@ -37,6 +38,8 @@ async function deliver(tx: Tx, input: Delivery): Promise<void> {
   wave.reservedBulk = 0;
   wave.generation += 1;
   await saveWave(tx, wave);
+  // An escort still with this wave lands beside it (Y9).
+  await finishAdmiralLeg(tx, at, 'monument', wave.id, lots.reduce((sum, lot) => sum + lot.count, 0));
   await completeMonumentJoint(tx, wave.jointOperationId, at);
   await notify(tx, { playerId: wave.playerId, kind: 'fleet_returned', refId: wave.id, at,
     payload: { trip: 'monument', targetKind: 'MONUMENT', monumentId: wave.monumentId, monumentOrdinal: input.ordinal,

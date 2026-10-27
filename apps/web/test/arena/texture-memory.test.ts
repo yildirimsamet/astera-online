@@ -1,10 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+import { createContext, runInContext } from 'node:vm';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { emptyArenaAssets, type PreparedModel } from '../../src/arena/assets/load.js';
-import { assetTextureBytes, compressedSupport, textureBytes, TRANSCODER_PATH } from '../../src/arena/assets/memory.js';
+import { assetTextureBytes, compressedSupport, textureBytes, TRANSCODER_PATH, TRANSCODER_PROBE } from '../../src/arena/assets/memory.js';
+
+interface Ktx2File { isValid(): boolean; getWidth(): number; isUASTC(): boolean; startTranscoding(): number; close(): void; delete(): void }
+interface BasisModule { initializeBasis(): void; KTX2File: new (bytes: Uint8Array) => Ktx2File }
+type BasisFactory = (options: { wasmBinary: ArrayBuffer }) => Promise<BasisModule>;
+const isBasisFactory = (value: unknown): value is BasisFactory => typeof value === 'function';
 
 /**
  * Y3 gate (plan 14 §17): an iPhone holds at most 120 MB of arena textures on the GPU. The
@@ -69,11 +75,25 @@ describe('compressed formats', () => {
     expect(Object.values(config).every(v => v === false)).toBe(true);
   });
 
-  it('serves the basis transcoder that matches three\'s KTX2 loader byte for byte', () => {
+  it('serves three\'s basis wasm byte for byte', () => {
     const basis = dirname(createRequire(import.meta.url).resolve('three/examples/jsm/libs/basis/basis_transcoder.js'));
     const ours = join(import.meta.dirname, '../../public', TRANSCODER_PATH);
-    for (const file of ['basis_transcoder.js', 'basis_transcoder.wasm']) {
-      expect(readFileSync(join(ours, file)).equals(readFileSync(join(basis, file)))).toBe(true);
-    }
+    expect(readFileSync(join(ours, 'basis_transcoder.wasm')).equals(readFileSync(join(basis, 'basis_transcoder.wasm')))).toBe(true);
+  });
+
+  // Stage 2026-10-27: the page's CSP has no 'unsafe-eval' and the KTX2 worker inherits it. Three's
+  // glue builds its call wrappers with `new Function`, so every device fell back to the webp pack.
+  // A context that refuses code from strings is that CSP; no `process` makes the glue run as in a worker.
+  it('serves a transcoder that starts and transcodes where code from strings is refused', async () => {
+    const ours = join(import.meta.dirname, '../../public', TRANSCODER_PATH);
+    const csp = createContext({ TextDecoder, console }, { codeGeneration: { strings: false, wasm: true } });
+    const factory: unknown = runInContext(`${readFileSync(join(ours, 'basis_transcoder.js'), 'utf8')}\nBASIS`, csp);
+    if (!isBasisFactory(factory)) throw new Error('basis_transcoder.js defines no BASIS factory');
+    const wasm = readFileSync(join(ours, 'basis_transcoder.wasm'));
+    const basis = await factory({ wasmBinary: wasm.buffer.slice(wasm.byteOffset, wasm.byteOffset + wasm.byteLength) });
+    basis.initializeBasis();
+    const file = new basis.KTX2File(new Uint8Array(TRANSCODER_PROBE()));
+    expect([file.isValid(), file.getWidth(), file.isUASTC(), file.startTranscoding()]).toEqual([true, 4, true, 1]);
+    file.close(); file.delete();
   });
 });

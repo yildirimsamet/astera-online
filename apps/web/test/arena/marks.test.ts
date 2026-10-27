@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LAST_SEEN, MARK_RANGE, enemyMarked, sighting, type Sighting } from '../../src/arena/marks.js';
+import { LAST_SEEN, MARK_RANGE, enemyMarked, sighting, type Sighting, edgePoint } from '../../src/arena/marks.js';
 
 /**
  * Owner 2026-10-21: the red box over an enemy shows at 700 m and closer; a ship further out
@@ -55,5 +55,27 @@ describe('last seen', () => {
     sighting(memory, 4, true, { x: 0, y: 0, z: 0 }, 10);
     sighting(memory, 4, false, { x: 50, y: 0, z: 0 }, 11);
     expect(sighting(memory, 4, true, { x: 90, y: 0, z: 0 }, 11.2)).toMatchObject({ x: 90, level: 1 });
+  });
+});
+
+/** F10/F13 (S22 2026-10-26): the exit arrow's name ran under the throttle, and an exit behind sat on the nose. */
+describe('an edge arrow', () => {
+  const band = { width: 360, top: 205, bottom: 397 };
+  const cx = 180; const cy = 301; const rx = 360 / 2 - 30 - 18;
+
+  it('rides the ellipse of the free band, and says which side it is on', () => {
+    const right = edgePoint(900, cy, false, 30, band);
+    expect([Math.round(right.x), Math.round(right.y), right.side]).toEqual([cx + rx, cy, 'right']);
+    expect(edgePoint(-500, cy, false, 30, band).side).toBe('left');
+  });
+
+  it('keeps a point behind at the bottom unless asked to put it on a side', () => {
+    expect(Math.round(edgePoint(cx, cy - 50, true, 30, band).y)).toBe(397);
+    const aside = edgePoint(cx, cy - 50, true, 30, band, true);
+    expect([Math.round(aside.x), aside.side]).toEqual([cx + rx, 'right']);
+    expect(Math.abs(aside.y - cy)).toBeLessThan(30);
+    // Behind and to the left stays on the left, and its arrow points out of that side.
+    const left = edgePoint(cx + 120, cy, true, 30, band, true);
+    expect([Math.round(left.x), left.side, Math.round(Math.abs(left.angle) * 100)]).toEqual([cx - rx, 'left', 314]);
   });
 });

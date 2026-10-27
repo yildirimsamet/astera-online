@@ -9,11 +9,12 @@ export const FARM_POINTS: readonly number[] = [1, 2, 3];
 
 /** One way a field group can grow back: a lone piece or a small cluster of one kind. */
 export interface FieldSpawn { kind: number; pieces: number; amount: number; weight: number }
+// Owner 2026-10-27: half of what they held (24/12/12/16).
 export const FIELD_SPAWNS: readonly FieldSpawn[] = [
-  { kind: 0, pieces: 1, amount: 6, weight: 4 },
-  { kind: 0, pieces: 4, amount: 3, weight: 3 },
-  { kind: 1, pieces: 3, amount: 3, weight: 2 },
-  { kind: 2, pieces: 1, amount: 4, weight: 1 },
+  { kind: 0, pieces: 1, amount: 12, weight: 4 },
+  { kind: 0, pieces: 4, amount: 6, weight: 3 },
+  { kind: 1, pieces: 3, amount: 6, weight: 2 },
+  { kind: 2, pieces: 1, amount: 8, weight: 1 },
 ];
 /** Slots per field group: the largest cluster. */
 export const FIELD_GROUP_SIZE = 4;

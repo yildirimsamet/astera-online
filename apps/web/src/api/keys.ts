@@ -13,6 +13,7 @@
 export const keys = {
   communityBlocks: ['community', 'blocks'],
   communityPolicy: ['community', 'policy'],
+  commanderShip: ['commander-ship'],
   vacation: ['vacation'],
   returnStatus: ['return-status'],
   servers: ['servers'],

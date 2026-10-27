@@ -84,6 +84,8 @@ import {
   type LockedPlanet,
 } from './planet.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
+import { admiralForFlight, admiralHomeward, admiralTime, attachAdmiral, escortedBattle, finishAdmiralLeg, prepareAdmiral, recordAdmiralBattle, reportAdmirals } from './admiral.js';
+import { withAdmiral } from '@astera/rules/arena';
 
 /**
  * RAIDING A PIRATE. D150.
@@ -187,6 +189,8 @@ export async function launchPirateRaid(
    */
   quotedMinutes?: number,
   acknowledgeRadiationLoss = false,
+  /** The commander ship escorts the raid (Y9): it lends its bonus and is never hit. */
+  admiral = false,
 ): Promise<PirateRaidLaunch> {
   const requested: Fleet = {};
   for (const [hull, count] of Object.entries(fleet) as [HullId, number][]) {
@@ -274,7 +278,10 @@ export async function launchPirateRaid(
     }
 
     const tech = await techOf(tx, origin.playerId);
-    const speed = fleetSpeed(requested, tech) * fleetSpeedMult(origin.orbit);
+    const escort = await prepareAdmiral(tx, origin, admiral);
+    // A Kılavuz shortens the road, so the meeting is solved at its faster speed (the quote's `escortReach`).
+    const escortTime = escort?.bonuses.time ?? 1;
+    const speed = fleetSpeed(requested, tech) * fleetSpeedMult(origin.orbit) / escortTime;
     const hit = interceptOrbit(
       origin,
       speed,
@@ -319,7 +326,8 @@ export async function launchPirateRaid(
      * Nothing is refunded if the raid fails or its commander calls it back.
      */
     const reach = distance(origin, hit.at);
-    const fuel = missionFuel(requested, reach, 2);
+    const plainFuel = missionFuel(requested, reach, 2);
+    const fuel = escort ? Math.ceil(plainFuel * escort.bonuses.fuel) : plainFuel;
     assertFuel(fuel, origin.deuterium);
 
     const arriveAt = atMinute(snapshot.startsAt, hit.meetsAtMinutes);
@@ -328,7 +336,7 @@ export async function launchPirateRaid(
       reach,
       requested,
       { boost: fleetSpeedMult(origin.orbit), tech },
-    );
+    ) * escortTime;
     if (hpRadiationApplies(origin.rulesetVersion)) await assertRadiationSafe(tx, {
       seasonId: origin.seasonId, from: origin, to: hit.at, departAt: origin.now, arriveAt, fleet: requested,
       damage: selectHomeDispatch(origin.homeFleet, origin.homeDamage, requested, true).selectedDamage,
@@ -358,6 +366,7 @@ export async function launchPirateRaid(
         arriveAt,
       })
       .returning();
+    await attachAdmiral(tx, escort?.id, 'pirate', raid!.id);
     await markProgress(tx, origin.playerId, origin.now); // D212
 
     const remaining: Fleet = { ...origin.homeFleet };
@@ -466,6 +475,7 @@ export async function resolvePirateArrival(
   }
   if (fleetCount(attacking) === 0) {
     await tx.update(pirateRaids).set({ status: 'done' }).where(eq(pirateRaids.id, raidId));
+    await admiralHomeward(tx, 'pirate', raid, null, clock.now());
     return;
   }
 
@@ -568,7 +578,8 @@ async function settleArrival(
     attacker: { tech: raid.tech ?? {} },
     defender: { tech: {}, damageMult: pirateStats(spec.level).damageMult },
   };
-  const fought = resolveBattle([soloStack(attacking, combatTech.attacker, raid.damage ?? undefined)],
+  const escort = await admiralForFlight(tx, 'pirate', raid.id);
+  const fought = resolveBattle([soloStack(attacking, withAdmiral(combatTech.attacker, escort), raid.damage ?? undefined)],
     [{ stackId: 'pirate', playerId: '', fleet: crew, tech: combatTech.defender, maintenanceExempt: true }],
     0, seededFrom(raid.id), hpRadiationApplies(origin.rulesetVersion) ? 'HP_PLANET' : 'PLANET', true);
   /*
@@ -587,6 +598,7 @@ async function settleArrival(
     losses[hull] = (losses[hull] ?? 0) + count;
   }
   const wiped = result.grade === 'DECISIVE';
+  await recordAdmiralBattle(tx, 'pirate', raid.id, escortedBattle('attack', result));
   await tx
     .insert(pirateState)
     .values({
@@ -739,6 +751,7 @@ async function settleArrival(
      * column says zero so the report can state it rather than omit the line.
      */
     dominionSwing: 0,
+    admirals: reportAdmirals('attack', escort),
     createdAt: now,
   });
 
@@ -885,6 +898,7 @@ async function turnRaidNow(
       .set({ status: 'done', damage, radiationSettledAt, ...(recall ? { recalledAt: now } : {}) })
       .where(and(eq(pirateRaids.id, raid.id), eq(pirateRaids.status, 'outbound')))
       .returning({ id: pirateRaids.id });
+    if (closed[0]) await admiralHomeward(tx, 'pirate', raid, null, now);
     return closed[0] ? { outcome: 'lost' } : { outcome: 'missed' };
   }
 
@@ -914,7 +928,7 @@ async function turnRaidNow(
       distance(turn, outbound.from),
       fleet,
       { boost: fleetSpeedMult(orbit), tech: raid.tech ?? {} },
-    ),
+    ) * await admiralTime(tx, 'pirate', raid.id),
   );
 
   const claimed = await tx
@@ -1057,6 +1071,8 @@ async function turnForHome(
       .update(pirateRaids)
       .set({ status: 'done', loot, salvage, capturedHull: captured, homeAt: null })
       .where(eq(pirateRaids.id, raid.id));
+    const leaves = hpRadiationApplies(origin.rulesetVersion) ? new Date(engagementEndsAt(raid.arriveAt.getTime())) : origin.now;
+    await admiralHomeward(tx, 'pirate', raid, null, leaves);
     await recomputeWealth(tx, raid.planetId, origin.now);
     await recomputePlayerWealth(tx, raid.ownerPlayerId, origin.now);
     return;
@@ -1067,7 +1083,7 @@ async function turnForHome(
     distance(meet, origin),
     survivors,
     { boost: fleetSpeedMult(await orbitOf(tx, raid.planetId)), tech: raid.tech ?? {} },
-  );
+  ) * await admiralTime(tx, 'pirate', raid.id);
   const returnDepartAt = hpRadiationApplies(origin.rulesetVersion)
     ? new Date(engagementEndsAt(raid.arriveAt.getTime())) : origin.now;
   const homeAt = addMinutes(returnDepartAt, back);
@@ -1161,7 +1177,7 @@ export async function resolvePirateReturn(
     raid = { ...raid, damage: dose.damage.length ? [...dose.damage] : null, loot: cargo.loot, salvage: cargo.salvage,
       capturedHull: null, radiationSettledAt: dose.radiationSettledAt };
     await tx.update(pirateRaids).set({ damage: raid.damage, radiationSettledAt: raid.radiationSettledAt, loot: raid.loot, salvage: raid.salvage }).where(eq(pirateRaids.id, raid.id));
-    if (fleetCount(returning) === 0) return null;
+    if (fleetCount(returning) === 0) { await finishAdmiralLeg(tx, home.now, 'pirate', raid.id, 0); return null; }
   }
   // The towed hull comes home whole: it was the pirate's, and its damage was the pirate's.
   const landing: Fleet = { ...returning };
@@ -1175,6 +1191,7 @@ export async function resolvePirateReturn(
     at: home.now,
     radiationAt: raid.homeAt ?? home.now,
   });
+  await finishAdmiralLeg(tx, home.now, 'pirate', raid.id, fleetCount(returning));
 
   const loot = raid.loot ?? { alloy: 0, crystal: 0, deuterium: 0 };
   // The wreck its collectors lifted lands beside the hoard, whole. D200.

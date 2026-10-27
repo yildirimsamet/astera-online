@@ -1,5 +1,8 @@
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { describe, expect, it } from 'vitest';
-import { loadArenaAssets, memoryTight } from '../../src/arena/assets/load.js';
+import { loadArenaAssets, memoryTight, packsFor } from '../../src/arena/assets/load.js';
+
+const transcoder = Promise.resolve(new KTX2Loader());
 
 /**
  * Owner 2026-10-21: an iPhone 12 mini tab died ("A problem repeatedly occurred") loading
@@ -34,14 +37,23 @@ describe('the lite reference pack', () => {
 
   it('asks a memory-tight browser for the lite manifest first and falls back to the full one, KTX2 before webp', async () => {
     const asked: string[] = [];
-    await loadArenaAssets(true, 1, () => undefined, fetcher({}, asked), true);
+    await loadArenaAssets(true, 1, () => undefined, fetcher({}, asked), true, transcoder);
     expect(asked).toEqual(['/__ref/dist/v2/manifest-lite-ktx2.json', '/__ref/dist/v2/manifest-lite.json',
       '/__ref/dist/v2/manifest-ktx2.json', '/__ref/dist/v2/manifest.json']);
   });
 
   it('gives every other browser the full pack only, KTX2 before webp', async () => {
     const asked: string[] = [];
-    await loadArenaAssets(true, 1, () => undefined, fetcher({}, asked), false);
+    await loadArenaAssets(true, 1, () => undefined, fetcher({}, asked), false, transcoder);
     expect(asked).toEqual(['/__ref/dist/v2/manifest-ktx2.json', '/__ref/dist/v2/manifest.json']);
+  });
+
+  /** S22 2026-10-26: a 32-bit Chrome cannot start the transcoder once the galaxy is up. */
+  it('gives a renderer that cannot start the transcoder the lite webp pack alone, whatever its memory', async () => {
+    const asked: string[] = [];
+    await loadArenaAssets(true, 1, () => undefined, fetcher({}, asked), false, Promise.resolve(null));
+    expect(asked).toEqual(['/__ref/dist/v2/manifest-lite.json']);
+    expect(packsFor(false, false)).toEqual(['/__ref/dist/v2/manifest-lite.json']);
+    expect(packsFor(true, true)).toEqual(['/__ref/dist/v2/manifest-lite-ktx2.json', '/__ref/dist/v2/manifest-lite.json']);
   });
 });

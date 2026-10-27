@@ -1,3 +1,4 @@
+import type { AdmiralFlightKind, AdmiralSnapshot } from '@astera/rules/arena';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -59,6 +60,7 @@ import type {
 } from '@astera/rules';
 import type { ChatLanguage, ReactionEmoji, ChatMedia } from '@astera/rules';
 import type { HonorCatalogue, HonorStrategicCatalogue } from '@astera/rules';
+import type { AbilityPoints, ArenaResources, ShipClass, SortieLoadout, SortieOutcome, Tactic } from '@astera/rules/arena';
 import type { HonorAccountedEvent, HonorAccountingState, HonorEvidence } from '../services/honorAccounting.js';
 import type { HonorCommitment } from '../services/honorCommitment.js';
 
@@ -170,6 +172,7 @@ export const eventKind = pgEnum('event_kind', [
   'unknown_signal_expire',
   'unknown_signal_arrival',
   'unknown_signal_return',
+  'arena_ship_ready',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -271,6 +274,11 @@ export const notificationKind = pgEnum('notification_kind', [
   'monument_returning',
   'radiation_bomb_result',
   'unknown_signal_result',
+  'arena_ship_ready',
+  /** A team's Yarık flight ended; each member's share waits in the hangar. */
+  'arena_team_share',
+  /** A Yarık flight was lost (destroyed or towed) while its pilot's page was closed: the result they never saw. */
+  'arena_sortie_end',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -587,6 +595,8 @@ export const seasons = pgTable('seasons', {
   tempoStartsAt: timestamp('tempo_starts_at', { withTimezone: true }),
   /** Explicit cutover for bomb availability, the HP cap and parked fleet exposure. */
   radiationBombStartsAt: timestamp('radiation_bomb_starts_at', { withTimezone: true }),
+  /** Y9: commander ship escorts switched on in a live season dealt before them (`season activate-admiral`). */
+  admiralStartsAt: timestamp('admiral_starts_at', { withTimezone: true }),
   /** Immutable: v1 capitals, v2 multi-world, v3 seasonal clans. */
   rulesetVersion: integer('ruleset_version').notNull().default(1),
   /** Zero is a legacy/partial season; newer versions promise the full sealed metric set. */
@@ -2542,6 +2552,8 @@ export const monumentBattleParticipants = pgTable('monument_battle_participants'
   damage: jsonb('damage').$type<HpDamageLot[]>().notNull(),
   lootDeuterium: doublePrecision('loot_deuterium').notNull(),
   dominionDelta: bigint('dominion_delta', { mode: 'number' }).notNull(),
+  /** The commander ship that escorted this commander's wave (Y9); it lends a bonus and is never hit. */
+  admiral: jsonb('admiral').$type<AdmiralSnapshot>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
   primaryKey({ columns: [t.battleId, t.playerId, t.side] }),
@@ -2617,6 +2629,7 @@ export const scheduledEvents = pgTable('scheduled_events', {
 
 /* ── outcomes and intel ─────────────────────────────────────── */
 
+export interface ReportAdmiral { side: 'attack' | 'defence'; ship: ShipClass; level: number }
 export const battleReports = pgTable('battle_reports', {
   id: uuid('id').primaryKey().defaultRandom(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
@@ -2694,6 +2707,8 @@ export const battleReports = pgTable('battle_reports', {
    * its own. Empty on every report before ruleset 14.
    */
   attackerDamage: jsonb('attacker_damage').$type<HpDamageLot[]>().notNull().default([]),
+  /** Y9: the commander ships that escorted either side; they lend a bonus and never fight (owner 2026-10-25). */
+  admirals: jsonb('admirals').$type<ReportAdmiral[]>().notNull().default([]),
   defenderDamage: jsonb('defender_damage').$type<HpDamageLot[]>().notNull().default([]),
   /** Historical compatibility field. New battle reports always write zero. */
   disruptedMinutes: real('disrupted_minutes').notNull().default(0),
@@ -4637,6 +4652,127 @@ export const arenaPilots = pgTable('arena_pilots', {
   grantedByAccountId: uuid('granted_by_account_id').references(() => accounts.id, { onDelete: 'set null' }),
   grantedAt: timestamp('granted_at', { withTimezone: true }).notNull(),
 });
+
+/**
+ * A COMMANDER'S YARIK SHIP (Y6a, plan 14 §7). One per commander, so a wipe that deletes the
+ * commander deletes the ship: a new season chooses again. Repair and maintenance are stored as
+ * their end only and read against the clock; `sortie_id` is the flight in the air, and ending a
+ * flight clears it in the same transaction that lands the hold, which makes that landing happen once.
+ */
+export const arenaShips = pgTable('arena_ships', {
+  playerId: uuid('player_id').primaryKey().references(() => players.id, { onDelete: 'cascade' }),
+  ship: text('ship').$type<ShipClass>().notNull(),
+  chosenAt: timestamp('chosen_at', { withTimezone: true }).notNull(),
+  /** The one free change, once made (KG-X31: within 24 h of the first choice). */
+  changedAt: timestamp('changed_at', { withTimezone: true }),
+  fuel: doublePrecision('fuel').notNull(),
+  ammo: doublePrecision('ammo').notNull(),
+  /** Cargo still aboard: only a deploy recall leaves any (KG-A15). */
+  holdAlloy: doublePrecision('hold_alloy').notNull().default(0),
+  holdCrystal: doublePrecision('hold_crystal').notNull().default(0),
+  holdDeuterium: doublePrecision('hold_deuterium').notNull().default(0),
+  /** Generation of the currently pending completion notice; superseded flights cannot notify it. */
+  readyNoticeId: uuid('ready_notice_id'),
+  /** One active admiral task; its native legs are in arena_admiral_legs. */
+  admiralId: uuid('admiral_id'),
+  readyAt: timestamp('ready_at', { withTimezone: true }),
+  readyReason: text('ready_reason').$type<'repair' | 'service'>(),
+  sortieId: uuid('sortie_id'),
+  /** The UTC day `sent_*` count for; another day starts them from zero. */
+  transferDay: text('transfer_day'),
+  sentAlloy: doublePrecision('sent_alloy').notNull().default(0),
+  sentCrystal: doublePrecision('sent_crystal').notNull().default(0),
+  sentDeuterium: doublePrecision('sent_deuterium').notNull().default(0),
+  /** Y6b: the ship's level and the XP in its bar towards the next (never past a full bar). */
+  level: integer('level').notNull().default(1),
+  xp: integer('xp').notNull().default(0),
+  /** Purchases per ability, separate from the class's free affinity rank (Y6c). */
+  abilities: jsonb('abilities').$type<AbilityPoints>().notNull().default({}),
+  /** Owner 2026-10-27: what a launch tops the tank and the magazine up to, in percent (rules LOADOUT). */
+  fuelPlan: integer('fuel_plan').notNull().default(100),
+  ammoPlan: integer('ammo_plan').notNull().default(100),
+}, (t) => [
+  check('arena_ships_ship_check', sql`${t.ship} IN ('akinci', 'muhafiz', 'kilavuz')`),
+  check('arena_ships_ready_check', sql`(${t.readyAt} IS NULL) = (${t.readyReason} IS NULL)`),
+  check('arena_ships_level_check', sql`${t.level} BETWEEN 1 AND 20 AND ${t.xp} >= 0`),
+  check('arena_ships_plan_check', sql`${t.fuelPlan} IN (25, 50, 75, 100) AND ${t.ammoPlan} IN (0, 25, 50, 75, 100)`),
+]);
+
+/** One frozen commander task, independent of the native fleet tables and their return forks. */
+export const arenaAdmirals = pgTable('arena_admirals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  ship: text('ship').$type<ShipClass>().notNull(),
+  level: integer('level').notNull(),
+  status: text('status').$type<'active' | 'returned'>().notNull().default('active'),
+  fought: boolean('fought').notNull().default(false),
+  landedShips: integer('landed_ships').notNull().default(0), xp: integer('xp').notNull().default(0),
+  /** Owner 2026-10-25: a lost battle sends the admiral to repair; XP follows the value both sides lost. */
+  lost: boolean('lost').notNull().default(false), lostValue: integer('lost_value').notNull().default(0),
+  /** When it turned home alone (its fleet lost, or left in a monument); `finishedAt` is then its landing. */
+  homeDepartAt: timestamp('home_depart_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+}, t => [
+  uniqueIndex('arena_admirals_active_player_idx').on(t.playerId).where(sql`${t.status} = 'active'`),
+  check('arena_admirals_state_check', sql`${t.status} IN ('active','returned') AND ${t.level} BETWEEN 1 AND 20 AND ${t.landedShips} >= 0 AND ${t.xp} >= 0`),
+  check('arena_admirals_lost_value_check', sql`${t.lostValue} >= 0`),
+  check('arena_admirals_ship_check', sql`${t.ship} IN ('akinci','muhafiz','kilavuz')`),
+]);
+export const arenaAdmiralLegs = pgTable('arena_admiral_legs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  admiralId: uuid('admiral_id').notNull().references(() => arenaAdmirals.id, { onDelete: 'cascade' }),
+  kind: text('kind').$type<AdmiralFlightKind>().notNull(),
+  refId: uuid('ref_id').notNull(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+}, t => [
+  uniqueIndex('arena_admiral_leg_ref_idx').on(t.kind, t.refId),
+  index('arena_admiral_leg_task_idx').on(t.admiralId),
+  check('arena_admiral_leg_kind_check', sql`${t.kind} IN ('mission','pirate','mining','trade','convoy','monument','signal','defence')`),
+]);
+
+/** Y7: one forming/flying lobby per clan; completed matches keep their immutable loot ledger. */
+export const arenaTeams = pgTable('arena_teams', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id, { onDelete: 'cascade' }),
+  clanId: uuid('clan_id').notNull().references(() => clans.id, { onDelete: 'cascade' }),
+  solo: boolean('solo').notNull().default(false),
+  state: text('state').$type<'forming' | 'flying' | 'finished' | 'cancelled'>().notNull().default('forming'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+}, t => [
+  uniqueIndex('arena_teams_active_clan_idx').on(t.clanId).where(sql`${t.state} IN ('forming', 'flying')`),
+  index('arena_teams_season_state_idx').on(t.seasonId, t.state),
+  check('arena_teams_state_check', sql`${t.state} IN ('forming', 'flying', 'finished', 'cancelled')`),
+]);
+
+export const arenaTeamMembers = pgTable('arena_team_members', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  teamId: uuid('team_id').notNull().references(() => arenaTeams.id, { onDelete: 'cascade' }),
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  ready: boolean('ready').notNull().default(false),
+  fingerprint: text('fingerprint'),
+  tactic: text('tactic').$type<Tactic>().notNull().default('smoke'),
+  joinedAt: timestamp('joined_at', { withTimezone: true }).notNull(),
+  releasedAt: timestamp('released_at', { withTimezone: true }),
+  sortieId: uuid('sortie_id'),
+  launch: jsonb('launch').$type<SortieLoadout>(),
+  connectedAt: timestamp('connected_at', { withTimezone: true }),
+  outcome: text('outcome').$type<SortieOutcome>(),
+  extracted: jsonb('extracted').$type<ArenaResources>().notNull().default({ alloy: 0, crystal: 0, deuterium: 0 }),
+  share: jsonb('share').$type<ArenaResources>(),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  receipt: jsonb('receipt').$type<{ deposit: ArenaResources; overflow: ArenaResources }>(),
+}, t => [
+  uniqueIndex('arena_team_members_roster_idx').on(t.teamId, t.playerId),
+  uniqueIndex('arena_team_members_active_player_idx').on(t.playerId).where(sql`${t.releasedAt} IS NULL`),
+  uniqueIndex('arena_team_members_sortie_idx').on(t.sortieId).where(sql`${t.sortieId} IS NOT NULL`),
+  index('arena_team_members_claim_idx').on(t.playerId, t.claimedAt),
+  check('arena_team_members_tactic_check', sql`${t.tactic} IN ('smoke', 'cloak', 'illusion', 'radar')`),
+  check('arena_team_members_outcome_check', sql`${t.outcome} IS NULL OR ${t.outcome} IN ('extracted', 'dead', 'towed', 'recalled', 'test')`),
+]);
 
 /** Local intent binds a signed Paddle transaction to an account and the chosen offer. */
 export const paddleSkinOrders = pgTable('paddle_skin_orders', {

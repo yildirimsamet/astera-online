@@ -42,7 +42,7 @@ export interface FeedState {
 }
 
 /** A crystal's reserve goes out once it has moved this much; its brightness cannot show less. */
-export const MINERAL_STEP = 0.2;
+export const MINERAL_STEP = 0.8;
 const CARGO_WIDTH = 5;
 const IMPACT_KINDS: readonly Impact['kind'][] = ['rock', 'ship', 'shield', 'explosion', 'hologram'];
 const cm = (n: number): number => Math.round(n * 100) / 100;

@@ -1,6 +1,6 @@
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ARENA_LAYOUT, createSandboxWorld } from '@astera/rules/arena';
+import { ARENA_LAYOUT, createPilot, createSandboxWorld } from '@astera/rules/arena';
 import { arenaCopy } from '../../src/arena/copy.js';
 import { ArenaHud, type HudBind } from '../../src/arena/Hud.js';
 import { createHudStore } from '../../src/arena/store.js';
@@ -16,6 +16,19 @@ const hud = () => {
 };
 
 describe('the map sheet', () => {
+  it('shows living real clan friends, including cloaked friends, without disclosing rivals', () => {
+    const world = createSandboxWorld({ bots: 0 }); world.pilot.clanId = 'clan';
+    world.drones = [2, 3, 4, 5].map(id => createPilot(id));
+    world.drones[0]!.clanId = 'clan'; world.drones[0]!.cloak = 10; world.drones[0]!.p.x = 800;
+    world.drones[2]!.clanId = 'clan'; world.drones[2]!.phase = 'dead';
+    world.drones[3]!.clanId = 'clan'; world.drones[3]!.decoyOf = 2;
+    const store = createHudStore(); store.publish(world, 'flight', false, false);
+    const view = render(<ArenaHud store={store} bind={bind} layout={ARENA_LAYOUT} onMenu={() => undefined} connection={null} />);
+    fireEvent.click(view.getByRole('button', { name: arenaCopy().mapOpen }));
+    expect(view.container.querySelectorAll('[data-friend-id]')).toHaveLength(1);
+    expect(view.container.querySelector('[data-friend-id="2"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-friend-id="2"]')?.getAttribute('transform')).toBe('translate(-800 0)');
+  });
   it('opens from the radar and shows exits, entries and the own ship, never an enemy', () => {
     const view = hud();
     expect(view.container.querySelector('.ah-map')).toBeNull();

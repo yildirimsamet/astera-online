@@ -26,6 +26,23 @@ beforeEach(() => { FakeSocket.last = null; vi.stubGlobal('WebSocket', FakeSocket
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('arena network', () => {
+  it('uses the server clan roster and observer target without sending a second enter request', () => {
+    const world = createSandboxWorld({ bots: 0 });
+    const network = createArenaNetwork(world, { sensitivity: 1, invertPitch: false }, () => undefined);
+    const clanId = '00000000-0000-4000-8000-000000000011'; const teamId = '00000000-0000-4000-8000-000000000012';
+    network.connect('kilavuz', 'radar', true); socket().open();
+    expect(socket().sent[0]).toMatchObject({ mode: 'spectate' });
+    socket().receive({ ...welcome([{ id: 4, name: 'Ada', ship: 'kilavuz', clanId, teamId }, { id: 5, name: 'Bora', ship: 'muhafiz', clanId, teamId }, { id: 6, name: 'Rival', ship: 'akinci' }]), teamId });
+    const other = createPilot(5, 'muhafiz'); other.p.z = 100;
+    const rival = createPilot(6); rival.p.z = 10;
+    const self = createPilot(4); self.phase = 'dead';
+    socket().receive({ kind: 'snap', tick: 10, ack: 0, self: packPilot(self), others: [packRemote(other), packRemote(rival)], mid: [], far: [], scan: [], ...keyFeed(world), watching: 5 });
+    network.step(createInput());
+    expect(world.pilot.clanId).toBe(clanId); expect(world.drones[0]?.clanId).toBe(clanId);
+    expect(network.getSnapshot()).toMatchObject({ teamId, watching: 5 });
+    network.watch(5); expect(socket().sent.at(-1)).toEqual({ kind: 'watch', pilotId: 5 });
+    network.dispose();
+  });
   it('greets the live room with a fresh session token', async () => {
     const network = createArenaNetwork(createSandboxWorld({ bots: 0 }), { sensitivity: 1, invertPitch: false }, () => undefined,
       () => Promise.resolve('token-alice'));
@@ -393,6 +410,32 @@ describe('tactics on the client (Y4d)', () => {
     socket().receive({ kind: 'snap', tick: 10, ack: 0, self: packPilot(createPilot(4)), others: [packRemote(copy)], mid: [], far: [], scan: [], ...keyFeed(world) });
     network.step(createInput());
     expect(world.drones.map(d => [d.id, d.ship, d.decoyOf])).toEqual([[11, 'muhafiz', 5]]);
+    network.dispose();
+  });
+
+  it('takes the line an illusion mirrors its pilot about: the caster draws its copy off its own ship (owner 2026-10-24)', () => {
+    const world = createSandboxWorld({ bots: 0 });
+    const network = createArenaNetwork(world, { sensitivity: 1, invertPitch: false }, () => undefined);
+    network.connect('akinci', 'illusion'); socket().open();
+    socket().receive(welcome([{ id: 4, name: 'Alice', ship: 'akinci' }, { id: 11, name: 'Alice', ship: 'akinci', copyOf: 4, mirror: [10, 20, 30, 0, 0, 1] },
+      { id: 12, name: 'Bob', ship: 'akinci' }]));
+    const copy = createPilot(11, 'akinci'); copy.p.z = 300;
+    const plain = createPilot(12, 'akinci'); plain.p.z = 320;
+    socket().receive({ kind: 'snap', tick: 10, ack: 0, self: packPilot(createPilot(4)), others: [packRemote(copy), packRemote(plain)], mid: [], far: [], scan: [], ...keyFeed(world) });
+    network.step(createInput());
+    const lines = world.drones.map(d => [d.id, d.decoyFrom.x, d.decoyFrom.y, d.decoyFrom.z, d.decoyAlong.x, d.decoyAlong.y, d.decoyAlong.z]);
+    expect(lines).toEqual([[11, 10, 20, 30, 0, 0, 1], [12, 0, 0, 0, 0, 0, 0]]);
+    network.dispose();
+  });
+
+  it('refuses a roster whose mirror line is broken, as any malformed roster', () => {
+    const world = createSandboxWorld({ bots: 0 });
+    const network = createArenaNetwork(world, { sensitivity: 1, invertPitch: false }, () => undefined);
+    network.connect('akinci', 'illusion'); socket().open();
+    socket().receive(welcome([{ id: 4, name: 'Alice', ship: 'akinci' }]));
+    socket().receive({ kind: 'roster', pilots: [{ id: 4, name: 'Alice', ship: 'akinci' }, { id: 12, name: 'Bob', ship: 'akinci' },
+      { id: 11, name: 'Alice', ship: 'akinci', copyOf: 4, mirror: [1, 2, 3] }] });
+    expect(network.getSnapshot().pilots).toBe(1);
     network.dispose();
   });
 

@@ -164,14 +164,14 @@ describe('a destroyed hold', () => {
     const world = openWorld();
     const field = world.cargoDrops.slice(0, FIELD_SLOTS).map(drop => ({ ...drop, p: { ...drop.p } }));
     world.pilot.p.x = 400; world.pilot.p.y = 50; world.pilot.p.z = 400;
-    world.pilot.hold = [25, 0, 7]; world.pilot.cargo = 32;
+    world.pilot.hold = [100, 0, 28]; world.pilot.cargo = 128;
     scatter(world, world.pilot);
     expect(world.pilot.cargo).toBe(0);
     expect(world.pilot.hold).toEqual([0, 0, 0]);
     const pieces = wreckDrops(world).filter(drop => drop.active);
     const byKind = (kind: number) => pieces.filter(d => d.kind === kind).map(d => d.amount).sort((a, b) => a - b);
-    expect(byKind(ALLOY)).toEqual([5, 10, 10]);
-    expect(byKind(DEUTERIUM)).toEqual([7]);
+    expect(byKind(ALLOY)).toEqual([20, 40, 40]);
+    expect(byKind(DEUTERIUM)).toEqual([28]);
     expect(byKind(CRYSTAL)).toEqual([]);
     for (const drop of pieces) {
       expect(drop.field).toBe(false);

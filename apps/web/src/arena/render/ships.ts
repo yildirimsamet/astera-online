@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { PreparedModel } from '../assets/load.js';
-import { CROWD_BAND, CROWD_RANGE, TRAIL_AGE, TRAIL_POINTS, type ShipCrowd, type TrailSamples } from './crowd.js';
+import { CROWD_BAND, CROWD_RANGE, TRAIL_AGE, TRAIL_POINTS, TRAIL_WIDTH, type ShipCrowd, type TrailSamples } from './crowd.js';
 import { ShipDetail, ditherMaterial } from './detail.js';
 import type { Effects } from './effects.js';
 import { ShipFlames } from './flames.js';
@@ -29,7 +29,7 @@ const UP = new THREE.Vector3(0, 1, 0);
 export const LIGHTS_RANGE = 700;
 export const PLUME_RANGE = 1200;
 /** A trail reaches about this far behind its ship (TRAIL_AGE at turbo speed): its cull sphere. */
-const TRAIL_REACH = 100;
+const TRAIL_REACH = 130;
 /** The shield bubble's radius against the ship's length: it clears every class's wingtips. */
 const WARD_RADIUS = 0.62;
 const SHIELD_BLUE = new THREE.Color('#5fb4ff');
@@ -387,7 +387,7 @@ export class ShipVisual {
     const strength = Math.min(0.55, pose.speed / 220) * (1 + this.turboMix * 0.6);
     this.trails.forEach((trail, i) => {
       trail.push(this.nozzleAt(i), time);
-      if (this.trailed) this.crowd?.addTrail(trail, time, strength, this.nozzle * 0.8);
+      if (this.trailed) this.crowd?.addTrail(trail, time, strength, this.nozzle * TRAIL_WIDTH);
     });
   }
 

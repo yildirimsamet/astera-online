@@ -112,6 +112,7 @@ export const pendingStrip = {
   recallStarted: 'Prospectors turned around · returning home',
   craftCount: '{{count}} craft',
   craftUnknown: 'Craft manifest unavailable',
+  escorted: '+ your commander ship · {{ship}} {{level}}',
   incomingHint: 'Inbound warning · origin hidden by fog',
   /**
    * THE SAME WARNING, WHEN THE CRAFT IS ON YOUR DISC. D162.

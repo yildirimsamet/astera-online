@@ -82,6 +82,15 @@ export const ONE_PRESS_KEYS: readonly string[] = ['KeyQ', 'KeyE', 'KeyL', 'KeyT'
 /** How long one tap waits for the friend to be tapped. */
 export const AIM_WINDOW_MS = 3000;
 
+/**
+ * The throttle a touch at `y` asks for, read off the rail itself (inset by its 4 px end caps): its
+ * foot is a full stop, a touch below it too, its head full (F12: the whole column was read, and
+ * the visible foot was about 5 %).
+ */
+export function railLevel(y: number, rail: { top: number; height: number }): number {
+  return Math.max(0, Math.min(1, 1 - (y - rail.top - 4) / Math.max(1, rail.height - 8)));
+}
+
 const snap = (value: number): number => {
   for (const detent of THROTTLE_DETENTS) if (Math.abs(value - detent) < 0.045) return detent;
   return Math.max(0, Math.min(1, value));

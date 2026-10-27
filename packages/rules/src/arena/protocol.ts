@@ -1,5 +1,6 @@
 import { ARENA_LAYOUT } from './layout.js';
-import { CLASS_STATS, SHIP_CLASSES } from './classes.js';
+import { SHIP_CLASSES } from './classes.js';
+import { ARENA_PROGRESSION, shipStats } from './progression.js';
 import { PHASES, TACTICS, createPilot, type Pilot } from './pilot.js';
 import { ARENA_TUNING as T } from './tuning.js';
 import { FARM_KINDS } from './farms.js';
@@ -15,8 +16,14 @@ import { ARENA_POOLS } from './pools.js';
  *    target, the own row its cooldown, lock and warning, other rows a shield and a repair, the feed missiles.
  * 10: the last tactics (Y4d): illusion and radar sweep. The own row carries the tactic cooldown, its
  *    copy and its sweep; the snapshot the ships the pilot's sweep marks; impacts a hologram break.
+ * 11: the real ship (Y6a): holds are raw resources (300–500), and a flight ends with a `sortie`
+ *    message: what reached the capital, what the day's cap left out, and when the ship is ready.
+ * 12: levels (Y6b): the own row carries the ship's level after its kills, the roster everyone's;
+ *    `sortie` adds the XP the flight made and what the ship kept.
+ * 14: clan friendships, team observers and the caster repair power in the own row (Y7).
+ * 13: effective signature, selected tactic and turbo ranks in the own row (Y6c).
  */
-export const ARENA_PROTOCOL = 10;
+export const ARENA_PROTOCOL = 14;
 /** Other ships one snapshot carries, every tier together: the nearest first (owner: room seats / 2). */
 export const MAX_REMOTE_PILOTS = 50;
 /**
@@ -38,7 +45,7 @@ export const FAR_WIDTH = 10;
 export const ARENA_MAX_SEATS = 120;
 export const ARENA_ROSTER_MAX = ARENA_MAX_SEATS * 2 + 8;
 /** Numbers per packed pilot. The phase is always the last one, the class just before it. */
-export const PILOT_WIDTH = 67;
+export const PILOT_WIDTH = 72;
 
 /** Numeric tuples preserve full self precision and bound prototype traffic. The shared rows are an `ArenaFeed`. */
 export interface ArenaSnapshot extends ArenaFeed {
@@ -47,15 +54,18 @@ export interface ArenaSnapshot extends ArenaFeed {
   others: number[][]; mid: number[][]; far: number[][];
   /** Ids of the ships the pilot's own radar sweep marks (Y4d): sent and marked wherever they are. */
   scan: number[];
+  /** An ended team member's current living viewpoint; -1 when none remain. */
+  watching?: number;
 }
 
 export function packPilot(p: Pilot): number[] {
   return [p.id, p.p.x, p.p.y, p.p.z, p.q.x, p.q.y, p.q.z, p.q.w, p.s, p.throttle, p.omegaYaw, p.omegaPitch, p.fuel,
     p.landed, p.nx, p.ny, p.nz, p.landThrottle, p.liftoff, p.bump, p.kx, p.ky, p.kz,
     p.hull, p.shield, p.cloak, p.cloakCooldown, p.smokeCooldown, p.smokeEmit, p.turboCharge, p.turboDelay, p.turboBurst,
-    Number(p.turboActive), p.nextShot, p.gun, p.cargo, p.hits, p.kills, p.lastDamage, p.lastAttacker, p.extraction,
+    Number(p.turboActive), p.nextShot, p.gun, p.cargo, p.hits, p.kills, p.level, p.mendPower, p.lastDamage, p.lastAttacker, p.extraction,
     p.rescue, p.respawn, p.shots, p.linkLost, Number(p.mining), p.tacticCooldown, p.decoy, p.scan, TACTICS.indexOf(p.tactic), p.signatureCooldown, p.lockTarget, p.lockTicks,
     p.threat, p.threatX, p.threatY, p.threatZ, p.ward, p.mend, p.ammo, p.shieldHp, p.shieldMax, p.hold[0] ?? 0, p.hold[1] ?? 0, p.hold[2] ?? 0,
+    p.ranks.signature, p.ranks.tactic, p.ranks.turbo,
     SHIP_CLASSES.indexOf(p.ship), PHASES.indexOf(p.phase)];
 }
 
@@ -71,13 +81,14 @@ export function unpackPilot(values: readonly number[], out: Pilot = createPilot(
   out.hull = next(); out.shield = next(); out.cloak = next(); out.cloakCooldown = next(); out.smokeCooldown = next();
   out.smokeEmit = next(); out.turboCharge = next(); out.turboDelay = next(); out.turboBurst = next();
   out.turboActive = next() === 1; out.nextShot = next(); out.gun = next(); out.cargo = next(); out.hits = next();
-  out.kills = next(); out.lastDamage = next(-100000); out.lastAttacker = next(-1); out.extraction = next();
+  out.kills = next(); out.level = next(1); out.mendPower = next(); out.lastDamage = next(-100000); out.lastAttacker = next(-1); out.extraction = next();
   out.rescue = next(); out.respawn = next(); out.shots = next(); out.linkLost = next(); out.mining = next() === 1;
   out.tacticCooldown = next(); out.decoy = next(-1); out.scan = next();
   out.tactic = TACTICS[next()] ?? 'smoke'; out.signatureCooldown = next(); out.lockTarget = next(-1); out.lockTicks = next();
   out.threat = next(); out.threatX = next(); out.threatY = next(); out.threatZ = next(); out.ward = next(); out.mend = next();
   out.ammo = next(); out.shieldHp = next(); out.shieldMax = next();
   out.hold = [next(), next(), next()];
+  out.ranks = { signature: next(1), tactic: next(1), turbo: next(1) };
   out.ship = SHIP_CLASSES[next()] ?? 'kilavuz';
   out.phase = PHASES[next()] ?? 'flying';
   return out;
@@ -142,23 +153,29 @@ function slots(value: unknown, size: number): value is number[] {
 function rows(value: unknown, count: number, max: number): value is number[][] {
   return Array.isArray(value) && value.length <= max && value.every((row: unknown) => numbers(row, count));
 }
-/** Bounded by the pilot's own class: its tank, hull, magazine and hold. */
+/** Bounded by the pilot's own class at its level: its tank, hull, magazine and hold. */
 function validPilot(value: number[]): boolean {
   const id = value[0] ?? -1; const phase = value[PILOT_WIDTH - 1] ?? -1; const landed = value[13] ?? -1;
   const ship = SHIP_CLASSES[value[PILOT_WIDTH - 2] ?? -1]; if (!ship) return false;
-  const most = CLASS_STATS[ship];
-  const ammo = value[PILOT_WIDTH - 8] ?? -1; const shieldHp = value[PILOT_WIDTH - 7] ?? -1; const shieldMax = value[PILOT_WIDTH - 6] ?? -1;
+  const level = value[LEVEL_AT] ?? -1;
+  if (!Number.isInteger(level) || level < 1 || level > ARENA_PROGRESSION.maxLevel) return false;
+  const most = shipStats(ship, level);
+  const ammo = value[PILOT_WIDTH - 11] ?? -1; const shieldHp = value[PILOT_WIDTH - 10] ?? -1; const shieldMax = value[PILOT_WIDTH - 9] ?? -1;
   const fuel = value[12] ?? -1; const hull = value[23] ?? -1;
-  const tactic = value[PILOT_WIDTH - 18] ?? -1; const threat = value[PILOT_WIDTH - 14] ?? -1; const decoy = value[PILOT_WIDTH - 20] ?? -2;
+  const tactic = value[PILOT_WIDTH - 21] ?? -1; const threat = value[PILOT_WIDTH - 17] ?? -1; const decoy = value[PILOT_WIDTH - 23] ?? -2;
   return Number.isInteger(id) && id >= 0 && Number.isInteger(decoy) && decoy >= -1 && Number.isInteger(tactic) && tactic >= 0 && tactic < TACTICS.length
     && Number.isInteger(threat) && threat >= 0 && threat <= 4 && Number.isInteger(phase) && phase >= 0 && phase < PHASES.length
     && Number.isInteger(landed) && landed >= 0 && landed <= ARENA_LAYOUT.obstacles.length
+    && (value[LEVEL_AT + 1] ?? -1) >= 0 && (value[LEVEL_AT + 1] ?? -1) <= T.mendHp * 1.4
     && fuel >= 0 && fuel <= most.fuelTank && hull >= 0 && hull <= most.hull
     && ammo >= 0 && ammo <= most.ammoCapacity && shieldMax >= 0 && shieldHp >= 0 && shieldHp <= shieldMax
-    && value.slice(PILOT_WIDTH - 5, PILOT_WIDTH - 2).every(units => units >= 0 && units <= most.cargoCapacity + 1e-6);
+    && value.slice(PILOT_WIDTH - 8, PILOT_WIDTH - 5).every(units => units >= 0 && units <= most.cargoCapacity + 1e-6)
+    && value.slice(PILOT_WIDTH - 5, PILOT_WIDTH - 2).every(rank => Number.isInteger(rank) && rank >= 1 && rank <= 5);
 }
-/** The sturdiest class's hull: another ship's row says nothing of its class. */
-const MOST_HULL = Math.max(...SHIP_CLASSES.map(ship => CLASS_STATS[ship].hull));
+/** The sturdiest hull any class reaches: another ship's row says nothing of its class or level. */
+const MOST_HULL = Math.max(...SHIP_CLASSES.map(ship => shipStats(ship, ARENA_PROGRESSION.maxLevel).hull));
+/** Where the level sits in the own row: just after the kills. */
+const LEVEL_AT = 38;
 
 function validRemote(v: number[]): boolean {
   const id = v[0] ?? -1; const landed = v[12] ?? -1; const hull = v[16] ?? -1; const flags = v[17] ?? -1; const phase = v[REMOTE_WIDTH - 1] ?? -1;
@@ -203,8 +220,10 @@ export function decodeArenaSnapshot(value: unknown): ArenaSnapshot | null {
     || !value.minerals.every(([i, reserve = -1, dry]) => slot(i, ARENA_LAYOUT.deposits.length) && reserve >= 0 && reserve <= T.crystalReserve
       && (dry === 0 || dry === 1))
     || !('missiles' in value) || !rows(value.missiles, 10, ARENA_POOLS.missiles) || !value.missiles.every(row => slot(row[0], ARENA_POOLS.missiles))
-    || !('scan' in value) || !shipIds(value.scan)) return null;
+    || !('scan' in value) || !shipIds(value.scan)
+    || ('watching' in value && (typeof value.watching !== 'number' || !Number.isSafeInteger(value.watching) || value.watching < -1 || value.watching > 1e8))) return null;
   return { kind: 'snap', tick: value.tick, ack: value.ack, self: value.self, others: value.others, mid: value.mid, far: value.far, key: value.key,
     bullets: value.bullets, bulletsGone: value.bulletsGone, smoke: value.smoke, smokeGone: value.smokeGone, impacts: value.impacts,
-    cargo: value.cargo, cargoGone: value.cargoGone, minerals: value.minerals, missiles: value.missiles, scan: value.scan };
+    cargo: value.cargo, cargoGone: value.cargoGone, minerals: value.minerals, missiles: value.missiles, scan: value.scan,
+    ...('watching' in value && typeof value.watching === 'number' ? { watching: value.watching } : {}) };
 }

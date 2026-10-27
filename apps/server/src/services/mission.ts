@@ -62,6 +62,7 @@ import { assertRadiationSafe } from './radiation.js';
 import { assertOutsideSilentSpace, markProgress } from './waitingRoom.js';
 import { takeHomeHealth } from './homeHealth.js';
 import { commitHonor } from './honorCommitment.js';
+import { attachAdmiral, prepareAdmiral } from './admiral.js';
 
 export interface LaunchResult {
   missionId: string;
@@ -126,6 +127,8 @@ export async function launchAttack(
   /** The commander has read what radiation on this route would take (plan D10). */
   acknowledgeRadiation = false,
   adminUsernames: ReadonlySet<string> = new Set(),
+  /** The commander ship flies with this raid (Y9): it lends its class bonus and never fights. */
+  admiral = false,
 ): Promise<LaunchResult> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot attack your own planet');
@@ -394,16 +397,20 @@ export async function launchAttack(
       );
     }
 
-    const fuel = missionFuel(requested, dist, 2, 'HOSTILE', chosenPace);
+    // Reserved here, after every refusal above and before anything is spent; a refusal below rolls it back.
+    const escort = await prepareAdmiral(tx, origin, admiral);
+    const plainFuel = missionFuel(requested, dist, 2, 'HOSTILE', chosenPace);
+    const fuel = escort ? Math.ceil(plainFuel * escort.bonuses.fuel) : plainFuel;
     // A raid carries no hold on the way out, so the whole store is the tank.
     assertFuel(fuel, origin.deuterium);
     // The Beacon in orbit, if there is one. D25.
     const tech = mods.tech;
-    const oneWay = fleetTravelExact(dist, requested, { ...mods, pace: chosenPace });
+    const escortTime = escort?.bonuses.time ?? 1;
+    const oneWay = fleetTravelExact(dist, requested, { ...mods, pace: chosenPace }) * escortTime;
     const arriveAt = addMinutes(origin.now, oneWay);
     const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
     // Home at the same pace it went out (owner, 2026-10-06): the round trip is two equal legs.
-    const homeward = fleetTravelExact(dist, requested, { ...mods, pace: chosenPace });
+    const homeward = fleetTravelExact(dist, requested, { ...mods, pace: chosenPace }) * escortTime;
     const homeAt = addMinutes(resolveAt, homeward);
     await assertRadiationSafe(tx, {
       seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
@@ -459,6 +466,7 @@ export async function launchAttack(
         arriveAt,
       })
       .returning();
+    await attachAdmiral(tx, escort?.id, 'mission', mission!.id);
     await markProgress(tx, origin.playerId, origin.now); // D212
 
     if (them && preparedClanAttack) {

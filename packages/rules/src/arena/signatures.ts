@@ -1,9 +1,11 @@
 import { aimCone, type AimCone } from './aim.js';
-import { CLASS_STATS, type ShipClass } from './classes.js';
+import { statsOf } from './progression.js';
 import { segmentObstacles } from './collision.js';
 import { firstShip, impact, strike, type CombatWorld } from './combat.js';
 import { alive, sameSide, type ArenaIntent, type Missile, type Pilot } from './pilot.js';
 import { ARENA_TUNING as T } from './tuning.js';
+import { abilityStats } from './ranks.js';
+export { SIGNATURE_COOLDOWN } from './ranks.js';
 import { hiddenBySmoke, pilotInSight } from './visibility.js';
 
 /**
@@ -11,7 +13,6 @@ import { hiddenBySmoke, pilotInSight } from './visibility.js';
  * ship held in its aim circle and sends a homing missile; the Muhafız raises a shield that
  * swallows hits; the Kılavuz repairs. Shield and repair are aimed at a friend, or at oneself.
  */
-export const SIGNATURE_COOLDOWN: Readonly<Record<ShipClass, number>> = Object.freeze({ akinci: 14, muhafiz: 22, kilavuz: 20 });
 
 export interface SignatureWorld extends CombatWorld { missiles: Missile[]; missileCursor: number }
 
@@ -67,12 +68,14 @@ export function stepLock(world: CombatWorld, pilot: Pilot): void {
   warn(target, locked(pilot) ? 2 : 1, pilot.p.x, pilot.p.y, pilot.p.z);
 }
 
-/** Who a shield or repair may go to: until the arena has friends (clans, plan 14 §12), only the caster. */
-const friend = (caster: Pilot, id: number): Pilot | undefined => id === caster.id ? caster : undefined;
+/** A living real clanmate or oneself; an illusion cannot receive a support ability. */
+const friend = (world: SignatureWorld, caster: Pilot, id: number): Pilot | undefined =>
+  ships(world).find(target => target.id === id && alive(target) && target.decoyOf < 0 && sameSide(caster, target));
 
 /** The A slot pressed: a missile at the lock, or a shield or repair on its target. Nothing is spent when it cannot go. */
 export function castSignature(world: SignatureWorld, pilot: Pilot, input: ArenaIntent): void {
   if (!input.signature || pilot.signatureCooldown > 0) return;
+  const skill = abilityStats(pilot.ship, 'signature', pilot.ranks.signature);
   if (pilot.ship === 'akinci') {
     if (!locked(pilot)) return;
     const missile = world.missiles[world.missileCursor++ % world.missiles.length];
@@ -83,16 +86,16 @@ export function castSignature(world: SignatureWorld, pilot: Pilot, input: ArenaI
     missile.p.x = pilot.p.x + fx * nose; missile.p.y = pilot.p.y + fy * nose; missile.p.z = pilot.p.z + fz * nose;
     missile.previous.x = missile.p.x; missile.previous.y = missile.p.y; missile.previous.z = missile.p.z;
     missile.v.x = fx * T.missileSpeed; missile.v.y = fy * T.missileSpeed; missile.v.z = fz * T.missileSpeed;
-    missile.life = T.missileLife; missile.owner = pilot.id; missile.target = pilot.lockTarget;
+    missile.clanId = pilot.clanId; missile.life = T.missileLife; missile.owner = pilot.id; missile.target = pilot.lockTarget; missile.damage = skill.power;
     pilot.lockTarget = -1; pilot.lockTicks = 0; pilot.shield = 0; pilot.cloak = 0;
   } else {
-    const target = friend(pilot, input.signatureTarget ?? -1);
+    const target = friend(world, pilot, input.signatureTarget ?? -1);
     if (!target) return;
     if (pilot.ship === 'muhafiz') {
-      target.shieldHp = T.wardHp; target.shieldMax = T.wardHp; target.ward = Math.round(T.wardDuration * T.tickRate);
-    } else target.mend = Math.round(T.mendDuration * T.tickRate);
+      target.shieldHp = skill.power; target.shieldMax = skill.power; target.ward = Math.round(T.wardDuration * T.tickRate);
+    } else { target.mend = Math.round(T.mendDuration * T.tickRate); target.mendPower = skill.power; }
   }
-  pilot.signatureCooldown = Math.round(SIGNATURE_COOLDOWN[pilot.ship] * T.tickRate);
+  pilot.signatureCooldown = Math.round(skill.cooldown * T.tickRate);
 }
 
 /** A shield that runs out drops; a repair mends its share, half while the ship is under fire. */
@@ -101,8 +104,8 @@ export function stepSignatureTimers(world: CombatWorld, pilot: Pilot): void {
   if (pilot.ward > 0 && --pilot.ward === 0) { pilot.shieldHp = 0; pilot.shieldMax = 0; }
   if (pilot.mend > 0) {
     const hurt = world.tick - pilot.lastDamage < T.mendHurtWindow * T.tickRate;
-    const share = T.mendHp / (T.mendDuration * T.tickRate) * (hurt ? T.mendHurtFactor : 1);
-    pilot.hull = Math.min(CLASS_STATS[pilot.ship].hull, pilot.hull + share);
+    const share = pilot.mendPower / (T.mendDuration * T.tickRate) * (hurt ? T.mendHurtFactor : 1);
+    pilot.hull = Math.min(statsOf(pilot).hull, pilot.hull + share);
     pilot.mend--;
   }
 }
@@ -119,7 +122,7 @@ export function stepMissiles(world: SignatureWorld): void {
   for (const missile of world.missiles) {
     if (missile.life <= 0) continue;
     const target = missile.target >= 0 ? ships(world).find(ship => ship.id === missile.target) : undefined;
-    if (!target || !alive(target) || target.cloak > 0 || hiddenBySmoke(world.smoke, missile.p, target.p)) missile.target = -1;
+    if (!target || !alive(target) || (missile.clanId != null && target.clanId === missile.clanId) || target.cloak > 0 || hiddenBySmoke(world.smoke, missile.p, target.p)) missile.target = -1;
     else {
       const ux = missile.v.x / T.missileSpeed; const uy = missile.v.y / T.missileSpeed; const uz = missile.v.z / T.missileSpeed;
       let dx = target.p.x - missile.p.x; let dy = target.p.y - missile.p.y; let dz = target.p.z - missile.p.z;
@@ -147,7 +150,7 @@ export function stepMissiles(world: SignatureWorld): void {
     if (t <= 1) {
       impact(world, missile.previous.x + (missile.p.x - missile.previous.x) * t, missile.previous.y + (missile.p.y - missile.previous.y) * t,
         missile.previous.z + (missile.p.z - missile.previous.z) * t, 'explosion');
-      if (victim && rock > hit.t && victim.shield === 0) strike(world, victim, T.missileDamage, missile.owner);
+      if (victim && rock > hit.t && victim.shield === 0) strike(world, victim, missile.damage, missile.owner);
       missile.life = 0; missile.target = -1;
       continue;
     }

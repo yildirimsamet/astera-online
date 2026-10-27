@@ -15,7 +15,9 @@
   -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
 }
 .arena-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.arena-root button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+@layer base {
+  .arena-root button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+}
 .arena-root svg { display: block; }
 
 /* ---------- Loading ---------- */
@@ -39,10 +41,13 @@
 .al-progress i b { display: block; height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--self) 40%, transparent), var(--self));
   transform-origin: left; transition: transform .25s ease-out; box-shadow: 0 0 12px var(--self); }
 .al-tip { position: relative; max-width: 280px; margin: 0; text-align: center; font-size: 12px; line-height: 1.5; color: var(--color-v2-ink-2); min-height: 3em; }
+.al-failed { position: relative; display: grid; gap: 8px; width: min(280px, 100%); text-align: center; }
+.al-failed p { margin: 0 0 4px; font-size: 13px; line-height: 1.5; color: var(--color-v2-ink); }
 
 /* ---------- Preflight ---------- */
 .arena-preflight { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; justify-content: space-between;
   padding: calc(22px + var(--safe-top)) 16px calc(16px + var(--safe-bottom));
+  overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: none;
   background: linear-gradient(180deg, rgba(2,5,10,.6) 0%, transparent 18%, transparent 66%, rgba(2,5,10,.82) 100%); }
 .arena-preflight header { text-align: center; text-shadow: 0 1px 12px rgba(0,0,0,.6); }
 .arena-preflight header span { display: block; font-size: 11px; letter-spacing: .5em; padding-left: .5em; font-weight: 300; color: #dff3ff; }
@@ -50,10 +55,10 @@
 .arena-preflight header small { display: block; margin-top: 5px; font: 9px var(--font-v2-mono); letter-spacing: .26em; text-transform: uppercase; color: var(--self); }
 /* The launch dock: no card, so the ship and the field stay the picture. */
 .ap-dock { width: 100%; max-width: 420px; margin: 0 auto; display: grid; gap: 8px; }
-.ap-dock .ap-mode { margin: 0; background: rgba(2,6,12,.55); backdrop-filter: blur(6px); }
+.ap-dock .ap-mode { margin: 0; background: rgba(2,6,12,.55); }
 .ap-dock .ap-leave { margin-top: 0; min-height: 32px; }
 .ap-loop button { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 0 8px;
-  border-radius: 999px; background: rgba(2,6,12,.5) !important; border: 1px solid var(--edge) !important; backdrop-filter: blur(6px);
+  border-radius: 999px; background: rgba(2,6,12,.5) !important; border: 1px solid var(--edge) !important;
   font-size: 11.5px; color: var(--color-v2-ink) !important; }
 .ap-loop span { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
 .ap-loop span + span::before { content: '→'; margin-right: 6px; color: var(--color-v2-ink-3); }
@@ -70,6 +75,10 @@
 .ap-eyebrow { margin: 0 0 10px; font: 9px var(--font-v2-mono); letter-spacing: .24em; text-transform: uppercase; color: var(--color-v2-ink-3); }
 .ap-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; padding: 3px; border-radius: 9px; background: rgba(0,0,0,.3); border: 1px solid var(--edge); }
 .ap-mode button { min-height: 36px; border-radius: 7px; font-size: 12px; color: var(--color-v2-ink-2) !important; }
+/* F8: each mode says what it is worth under its name. */
+.ap-mode.is-noted button { display: grid; gap: 1px; min-height: 42px; padding: 4px 6px; line-height: 1.15; }
+.ap-mode.is-noted b { font-size: 12.5px; font-weight: 600; }
+.ap-mode.is-noted small { font-size: 10px; opacity: .78; }
 .ap-mode button.is-selected { background: color-mix(in srgb, var(--self) 16%, transparent); color: var(--self) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--self) 40%, transparent); }
 .ap-launch { width: 100%; min-height: 50px; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 10px;
   background: linear-gradient(180deg, #43f0d4, #1fbfa6) !important; color: #032520 !important; font-weight: 700 !important; font-size: 15px !important; letter-spacing: .02em;
@@ -80,7 +89,8 @@
 .ap-keys { margin: 8px 0 0; text-align: center; font: 9px/1.5 var(--font-v2-mono); color: var(--color-v2-ink-3); }
 @media (pointer: coarse) { .ap-keys { display: none; } }
 /* The class for the next flight (Y4): tabs, one line on its job, six bars against the best class. */
-.ap-class { padding: 6px 8px 7px; border-radius: 11px; background: rgba(2,6,12,.66); border: 1px solid var(--edge); }
+/* F4: denser than before (.66) so the dock's ship does not show through the cards; no blur over a live canvas. */
+.ap-class { padding: 6px 8px 7px; border-radius: 11px; background: rgba(2,6,12,.86); border: 1px solid var(--edge); }
 .ap-class .ap-mode { margin: 0 0 7px; background: rgba(0,0,0,.34); }
 .ap-mode.is-three { grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .ap-mode.is-three button { min-height: 32px; font-size: 12px; letter-spacing: .01em; }
@@ -95,10 +105,8 @@
 .ap-class-stats i b { position: absolute; inset: 0 auto 0 0; width: calc(var(--fill) * 100%); border-radius: inherit;
   background: linear-gradient(90deg, color-mix(in srgb, var(--self) 35%, transparent), var(--self));
   box-shadow: 0 0 8px color-mix(in srgb, var(--self) 55%, transparent); transition: width .28s cubic-bezier(.2,.8,.2,1); }
-.ap-class-stats i em, .ap-class-key i { position: absolute; top: -2px; bottom: -2px; left: calc(var(--at) * 100%); width: 1.5px; margin-left: -1px;
-  border-radius: 1px; background: color-mix(in srgb, var(--color-v2-ink) 62%, transparent); }
-.ap-class-key { position: relative; margin: 8px 2px 0; padding-left: 9px; font: 8.5px var(--font-v2-mono); letter-spacing: .06em; color: var(--color-v2-ink-3); }
-.ap-class-key i { left: 1px; top: 1px; bottom: 1px; margin: 0; }
+.ap-class-stats span em { font-style: normal; color: var(--self); letter-spacing: 0; }
+.ap-class-key { margin: 8px 2px 0; font: 8.5px var(--font-v2-mono); letter-spacing: .06em; color: var(--color-v2-ink-3); }
 /* Y4c: the class's A slot, one line with its own colour; the B slot, two tactics side by side. */
 .ap-class-signature { --sig: #ffc66b; display: grid; grid-template-columns: 22px auto 1fr; align-items: start; column-gap: 7px; margin: 0 2px 9px; padding: 6px 8px;
   min-height: 3.6em; border-radius: 8px; background: color-mix(in srgb, var(--sig) 7%, rgba(0,0,0,.3)); border: 1px solid color-mix(in srgb, var(--sig) 26%, transparent); }
@@ -108,7 +116,7 @@
 .ap-class-signature span { font-size: 10.5px; line-height: 1.4; color: var(--color-v2-ink-2); padding-top: 2px; }
 .ap-class:has([data-ship="muhafiz"][aria-checked="true"]) .ap-class-signature { --sig: #7fd7ff; }
 .ap-class:has([data-ship="kilavuz"][aria-checked="true"]) .ap-class-signature { --sig: #7cf0a8; }
-.ap-tactic { margin-top: 6px; padding: 6px 8px 7px; border-radius: 11px; background: rgba(2,6,12,.66); border: 1px solid var(--edge); }
+.ap-tactic { margin-top: 6px; padding: 6px 8px 7px; border-radius: 11px; background: rgba(2,6,12,.86); border: 1px solid var(--edge); }
 .ap-tactic-head { display: flex; justify-content: space-between; align-items: baseline; margin: 0 2px 6px; }
 .ap-tactic-head span { font: 600 9px var(--font-v2-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--color-v2-ink-2); }
 .ap-tactic-head small { font: 8.5px var(--font-v2-mono); letter-spacing: .04em; color: var(--color-v2-ink-3); }
@@ -155,9 +163,11 @@
 .ah-radar[aria-expanded="true"] { border-color: var(--self); box-shadow: 0 0 12px color-mix(in srgb, var(--self) 45%, transparent); }
 
 /* ---------- Map sheet (item 9): places only, under the instruments, flight goes on ---------- */
-/* Right edge stops short of the throttle column: the throttle stays usable while the map is open. */
+/* Right edge stops short of the throttle column: the throttle stays usable while the map is open.
+   While it is open the HUD rises over the controls (z 6): the Kalk and ability keys drew over the map (F21). */
+.ah-root:has(.ah-map) { z-index: 7; }
 .ah-map { pointer-events: auto; position: absolute; z-index: 6; top: calc(122px + var(--safe-top)); left: 10px; right: 52px; padding: 8px 10px 9px;
-  border-radius: 14px; border: 1px solid var(--edge-hi); background: color-mix(in srgb, #040912 88%, transparent); backdrop-filter: blur(8px);
+  border-radius: 14px; border: 1px solid var(--edge-hi); background: color-mix(in srgb, #040912 88%, transparent);
   box-shadow: 0 18px 40px rgba(0,0,0,.55), inset 0 1px 0 color-mix(in srgb, #9fd8ff 10%, transparent); animation: ah-map-in .18s ease-out; }
 @keyframes ah-map-in { from { opacity: 0; translate: 0 -6px; scale: .98; } }
 .ah-map header { display: flex; align-items: center; gap: 8px; }
@@ -264,13 +274,13 @@
 .ah-circle[data-track] path { stroke: color-mix(in srgb, var(--hostile) 78%, #fff); stroke-width: 1.5px; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--hostile) 55%, transparent)); }
 .ah-circle[data-assist] path { stroke: var(--self); stroke-width: 1.75px; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--self) 70%, transparent)); }
 .ah-reticle { width: 0; height: 0; transition: opacity .2s; }
-.ah-reticle i { position: absolute; width: 11px; height: 2px; background: color-mix(in srgb, #e9fbff 90%, transparent); box-shadow: 0 0 6px color-mix(in srgb, var(--self) 70%, transparent); transition: transform .12s ease-out; }
-.ah-reticle i:nth-child(1) { transform: translate(-25px, -1px); } .ah-reticle i:nth-child(2) { transform: translate(14px, -1px); }
-.ah-reticle i:nth-child(3) { width: 2px; height: 11px; transform: translate(-1px, -25px); } .ah-reticle i:nth-child(4) { width: 2px; height: 11px; transform: translate(-1px, 14px); }
-.ah-reticle b { position: absolute; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #fff; box-shadow: 0 0 8px var(--self); }
-.ah-reticle[data-locked] i { background: var(--self); }
-.ah-reticle[data-locked] i:nth-child(1) { transform: translate(-17px, -1px); } .ah-reticle[data-locked] i:nth-child(2) { transform: translate(6px, -1px); }
-.ah-reticle[data-locked] i:nth-child(3) { transform: translate(-1px, -17px); } .ah-reticle[data-locked] i:nth-child(4) { transform: translate(-1px, 6px); }
+.ah-reticle i { position: absolute; width: calc(var(--s, 10px) * 2); height: calc(var(--s, 10px) * 2); margin: calc(var(--s, 10px) * -1);
+  box-sizing: border-box; border-radius: 50%; border: 1.5px solid color-mix(in srgb, #dceaf5 58%, transparent); box-shadow: 0 0 0 1px rgba(0,0,0,.2), inset 0 0 0 1px rgba(0,0,0,.12);
+  transition: border-color .12s ease-out; }
+.ah-reticle b { position: absolute; width: 3px; height: 3px; margin: -1.5px; border-radius: 50%; background: color-mix(in srgb, #e9f3fb 80%, transparent); box-shadow: 0 0 0 1px rgba(0,0,0,.3); }
+/* The ring is the guns' cone (owner 2026-10-24): its size is the ship's, only its colour says the guns follow a target. */
+.ah-reticle[data-locked] i { border-color: color-mix(in srgb, var(--self) 75%, transparent); }
+.ah-reticle[data-locked] b { background: var(--self); }
 .ah-hit { width: 0; height: 0; opacity: 0; }
 .ah-hit i { position: absolute; width: 11px; height: 2px; margin: -1px 0 0 -5.5px; background: #fff; box-shadow: 0 0 6px #fff; }
 .ah-hit i:nth-child(1) { transform: rotate(45deg) translateX(-11px); } .ah-hit i:nth-child(2) { transform: rotate(-45deg) translateX(-11px); }
@@ -298,6 +308,33 @@
 .ah-enemy[data-focus] > i { border-color: #ff8a6a; border-width: 2px; width: 10px; height: 10px; filter: drop-shadow(0 0 4px var(--hostile)); }
 .ah-enemy[data-mining] > i { border-color: var(--warn); }
 .ah-enemy[data-mining] span { color: #ffe9a8; }
+.ah-enemy[data-friend] { --hostile: #4bd5ff; }
+.ah-enemy[data-friend] > i { border-color: #4bd5ff; border-radius: 2px; }
+.ah-enemy[data-friend] span, .ah-enemy[data-friend] span b { color: #a3eaff; }
+.ah-enemy[data-friend] u b { background: #4bd5ff; }
+.ah-threat[data-friend] { color: #4bd5ff; --hostile: #4bd5ff; }
+.ah-map-friend { fill: #4bd5ff; stroke: #b2f0ff; stroke-width: 8px; }
+.ah-map-friend .is-ring { fill: none; stroke: #4bd5ff; stroke-opacity: .45; }
+.ah-map footer i.is-friend { background: #4bd5ff; }
+.ap-team { margin-block: 12px; padding: 14px; border: 1px solid rgba(75,213,255,.2); border-radius: 12px;
+  background: linear-gradient(120deg,rgba(11,39,56,.8),rgba(7,15,27,.9)); text-align: left; }
+.ap-team button { touch-action: manipulation; }
+/* F11: a solo result has no share to take; the frame goes with it. */
+.ap-team:empty { display: none; }
+.ss-pool { color: #a3eaff; font-size: 13px; line-height: 1.6; }
+.arena-spectator { position: absolute; z-index: 4; left: max(14px,env(safe-area-inset-left)); right: max(14px,env(safe-area-inset-right));
+  bottom: max(24px,env(safe-area-inset-bottom)); max-width: 480px; margin-inline: auto; padding: 16px;
+  border: 1px solid rgba(75,213,255,.3); border-radius: 16px; background: rgba(5,14,25,.94); box-shadow: 0 12px 60px #0008; }
+.arena-spectator > p { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: #78c6dc; font-size: 11px; }
+.arena-spectator > p > i { width: 6px; height: 6px; border-radius: 50%; background: #4bd5ff; box-shadow: 0 0 12px #4bd5ff; }
+.arena-spectator strong { margin-left: auto; color: #e6fbff; font-size: 14px; }
+.as-roster { display: flex; gap: 8px; overflow-x: auto; }
+.as-roster > button { position: relative; display: flex; flex: 1 0 100px; align-items: center; gap: 12px; justify-content: space-between;
+  min-height: 44px; padding: 10px; border: 1px solid #4bd5ff30; border-radius: 8px; background: #0c1d2b; color: #b0d6e3; overflow: hidden; }
+.as-roster > button[aria-pressed=true] { border-color: #4bd5ff; color: #fff; background: #153446; }
+.as-roster small { font: 10px var(--font-mono,monospace); color: #80d9f5; }
+.as-roster i { position: absolute; left: 0; bottom: 0; width: calc(var(--hp) * 100%); height: 2px; background: #4bd5ff; }
+.as-result { display: block; min-height: 36px; margin: 12px auto 0; padding: 6px 16px; color: #92a9b9; font-size: 12px; }
 /* Behind rock: the corners stay where it went in, thin and dashed, no hull bar; it is a guess now. */
 .ah-enemy[data-lost] > i { border-style: dashed; border-width: 1px; filter: none; }
 .ah-enemy[data-lost] u { display: none; }
@@ -355,6 +392,9 @@
 .ah-exit span b, .ah-crystal span b { font-weight: 400; color: color-mix(in srgb, currentColor 75%, #fff); }
 .ah-exit[data-edge] i { rotate: 0deg; border: 0; width: 0; height: 0; margin: -7px 0 0 -5px; border-left: 12px solid var(--self);
   border-top: 7px solid transparent; border-bottom: 7px solid transparent; transform: rotate(var(--angle)); box-shadow: none; filter: drop-shadow(0 0 6px var(--self)); }
+/* On an edge the exit's name leans inwards beside its arrow: on the right it ran under the throttle (F10). */
+.ah-exit[data-edge] span { top: 0; transform: translate(12px, -50%); }
+.ah-exit[data-edge][data-side="right"] span { transform: translate(calc(-100% - 12px), -50%); }
 .ah-crystal i { position: absolute; width: 10px; height: 12px; margin: -6px -5px; background: var(--crystal);
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); box-shadow: 0 0 10px var(--crystal); opacity: .85; }
 .ah-crystal span { color: var(--crystal); }
@@ -522,7 +562,7 @@
 .ar-stats strong { font: 600 20px var(--font-v2-mono); }
 .ar-board { margin-bottom: 14px; }
 .ar-board header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.ar-board header .ap-eyebrow { margin: 0; }
+.ar-board header .ap-eyebrow { margin: 0; flex: none; white-space: nowrap; } /* F11: it broke in two at 360 px; the rule beside it wraps instead. */
 .ar-board header small { font-size: 10px; color: var(--color-v2-ink-3); text-align: right; }
 .ar-board table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
 .ar-board th { padding: 0 6px 4px; font: 8px var(--font-v2-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--color-v2-ink-3); text-align: right; }
@@ -569,6 +609,11 @@
 .ah-crystal span em { font-style: normal; }
 
 /* ---------- Result: what this flight was worth ---------- */
+/* "Ne oldu?": the cause in one sentence, marked in the result's own colour. */
+.ar-card > p.ar-what { margin: 0 0 12px; padding: 7px 10px; display: grid; gap: 2px; border-left: 2px solid var(--what, var(--warn));
+  border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--what, var(--warn)) 8%, transparent); font-size: 12.5px; line-height: 1.45; color: var(--color-v2-ink); }
+.ar-card > p.ar-what span { font: 600 9.5px var(--font-v2-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--what, var(--warn)); }
+.ar-card.is-dead > p.ar-what { --what: #ff8a73; }
 .ar-card > p.ar-points { margin: 2px 0 8px; font: 600 13px var(--font-v2-mono); color: var(--color-v2-ink-2); }
 .ar-points strong { font-size: 30px; line-height: 1; color: var(--self); text-shadow: 0 0 18px color-mix(in srgb, var(--self) 45%, transparent); }
 .ar-points.is-dead strong, .ar-points.is-towed strong { color: #ff8a73; text-shadow: none; }
@@ -594,3 +639,40 @@
 .ap-credits ul { list-style: none; margin: 8px 0 6px; padding: 0; display: grid; gap: 4px; font-size: 11px; color: var(--color-v2-ink-2); }
 .ap-credits p { margin: 0; font-size: 10px; line-height: 1.45; color: var(--color-v2-ink-3); }
 .ap-credits a { color: var(--self); text-decoration: none; }
+
+/* The ship a real flight takes, in one line: everything about it is set in the hangar. */
+.ap-ship { margin: 0; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(2,6,12,.86); border: 1px solid var(--edge); }
+.ap-ship span { font: 9px var(--font-v2-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--color-v2-ink-3); }
+.ap-ship b { font-size: 14px; font-weight: 600; }
+.ap-ship em { padding: 1px 6px; border-radius: 5px; font: 600 10px var(--font-v2-mono); font-style: normal; color: var(--self);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--self) 38%, transparent); }
+.hg-wait, .hg-note { margin: 0; padding: 0 2px; font-size: 11px; color: var(--color-v2-ink-3); }
+.hg-wait { animation: ah-pulse 1.4s ease-in-out infinite; }
+.hg-note { padding: 7px 9px; border-radius: 9px; color: var(--color-v2-ink-2); background: rgba(2,6,12,.66); border: 1px solid var(--edge); }
+.arena-root .ap-launch:disabled { cursor: default; background: rgba(255,255,255,.06) !important; color: var(--color-v2-ink-2) !important;
+  box-shadow: inset 0 0 0 1px var(--edge-hi); min-height: 40px; font-size: 13px !important; font-weight: 600 !important; font-variant-numeric: tabular-nums; }
+/* The price on the button, and under it what pays it. */
+.ap-launch-text { display: grid; justify-items: center; gap: 1px; line-height: 1.15; }
+.ap-launch-text small { font: 500 9.5px var(--font-v2-mono); letter-spacing: .04em; font-variant-numeric: tabular-nums; opacity: .72; }
+.arena-root .ap-launch:disabled:active { transform: none; }
+.arena-root .ap-mode button:disabled { opacity: .32; cursor: default; }
+.arena-root button:disabled { cursor: default; }
+/* The sortie's end: what reached the capital, what the day kept out, what fell with the wreck. */
+.ss { display: grid; gap: 6px; margin-bottom: 12px; }
+.ss .ap-eyebrow { margin: 0; }
+.ss-landed, .ss-lost { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.ss-landed li, .ss-lost li { display: grid; grid-template-columns: 7px 1fr; align-items: center; column-gap: 6px; row-gap: 1px; padding: 7px 9px; border-radius: 9px;
+  background: rgba(255,255,255,.04); border: 1px solid color-mix(in srgb, var(--tone) 32%, transparent); }
+.ss-landed li i, .ss-lost li i { width: 7px; height: 7px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 8px var(--tone); }
+.ss-landed li b, .ss-lost li b { font: 600 15px var(--font-v2-mono); font-variant-numeric: tabular-nums; color: var(--color-v2-ink); white-space: nowrap; }
+.ss-landed li small, .ss-lost li small { grid-column: 2; font-size: 10px; color: var(--color-v2-ink-3); }
+.ss-lost li { border-color: color-mix(in srgb, #ff8a73 28%, transparent); }
+.ss-lost li b { color: #ff8a73; }
+.ss-empty, .ss-overflow, .ss-ready { margin: 0; font-size: 11px; color: var(--color-v2-ink-2); }
+.ss-overflow { color: var(--warn); }
+.ss-xp { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 2px; }
+.ss-xp b { font: 600 13px var(--font-v2-mono); font-variant-numeric: tabular-nums; color: var(--self); }
+.ss-xp small { font-size: 10.5px; color: var(--color-v2-ink-3); }
+.ss-ready { font-family: var(--font-v2-mono); font-variant-numeric: tabular-nums; color: var(--warn); }
+.ss-ready[data-reason="repair"] { color: #ff8a73; }
+.ar-stats.is-two { grid-template-columns: 1fr 1fr; }

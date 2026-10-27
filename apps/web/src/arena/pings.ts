@@ -11,9 +11,11 @@ export type PingKind = (typeof PING_KINDS)[number];
 
 export const PING_LIFE = 5;
 const MAX_PINGS = 3;
-/** How far the finger's line looks for something to mark, and where it marks open space. */
-const REACH = 3000;
-const OPEN = 600;
+/**
+ * How far the finger's line looks for a rock or a building to mark; with none on it, the mark
+ * goes this far out along the line (owner 2026-10-24: a few hundred metres read as "here").
+ */
+const REACH = 4000;
 
 /** The wheel's slice under an offset from its centre (screen px, y down): enemy on top, clockwise. */
 export function pingSector(dx: number, dy: number, deadZone: number): PingKind | null {
@@ -25,7 +27,7 @@ export function pingSector(dx: number, dy: number, deadZone: number): PingKind |
 /** The first surface along the finger's line from the eye (just in front of it), else open space. */
 export function pingTarget(layout: ArenaLayout, eye: Vec3, dir: Vec3): Vec3 {
   const t = segmentObstacles(layout, eye.x, eye.y, eye.z, eye.x + dir.x * REACH, eye.y + dir.y * REACH, eye.z + dir.z * REACH, 0);
-  const at = t <= 1 ? Math.max(0, t * REACH - 2) : OPEN;
+  const at = t <= 1 ? Math.max(0, t * REACH - 2) : REACH;
   return { x: eye.x + dir.x * at, y: eye.y + dir.y * at, z: eye.z + dir.z * at };
 }
 

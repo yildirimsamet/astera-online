@@ -1,9 +1,10 @@
 import { motionPositionAt } from '@astera/rules';
 import { useNow } from '../lib/time.js';
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ComponentRef, type RefObject } from 'react';
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import { GalaxyVisualPhase } from './visualFrame.js';
+import type { HomewardShip, ParkedShip } from './parkedShip.js';
 import { UnknownSignalGuide, UnknownSignalGuideTracker } from './UnknownSignalGuide.js';
 import { GalaxyPostprocessing } from './GalaxyPostprocessing.js';
 import { useGpuContext } from './gpuContext.js';
@@ -254,6 +255,11 @@ export interface GalaxyCanvasProps {
   activePlanetId?: string | null;
   /** Your Aegis level. Only ever your own — D15 keeps everyone else's private. */
   aegisLevel: number;
+  /** Your commander ship, when it is home beside its capital (KG-A20). */
+  parkedShip?: ParkedShip | null;
+  /** Your commander ship flying home alone after its fleet (Y9). */
+  homewardShip?: HomewardShip | null;
+  onOpenShip?: () => void;
   seasonStart: Date | undefined;
   /** The one commander whose history is pinned for this season. */
   /** Up to `RIVAL.max` marks, each carrying the slot its colour comes from. D183. */
@@ -334,6 +340,10 @@ export interface GalaxyCanvasProps {
   openingCovered?: boolean;
 }
 
+/** The Yarık's ship loader stays out of the galaxy's first chunk; most commanders have no ship. */
+const ParkedShipModel = lazy(() => import('./ParkedShip.js'));
+const HomewardShipModel = lazy(() => import('./HomewardShip.js'));
+
 export function GalaxyCanvas({
   cosmeticAppearance,
   planets,
@@ -358,6 +368,9 @@ export function GalaxyCanvas({
   homePosition,
   activePlanetId = null,
   aegisLevel,
+  parkedShip = null,
+  homewardShip = null,
+  onOpenShip,
   seasonStart,
   rivals = EMPTY_RIVALS,
   focus,
@@ -830,6 +843,8 @@ export function GalaxyCanvas({
         */}
         <DysonShells nodes={nodes} />
         <Satellites nodes={nodes} />
+        {parkedShip && onOpenShip && <Suspense fallback={null}><ParkedShipModel park={parkedShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
+        {homewardShip && onOpenShip && <Suspense fallback={null}><HomewardShipModel home={homewardShip} nodes={nodes} onSelect={onOpenShip} /></Suspense>}
         <Shields nodes={nodes} ownLevel={aegisLevel} ownId={selfId} />
         <OwnFleets
           appearance={cosmeticAppearance}

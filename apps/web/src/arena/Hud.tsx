@@ -1,5 +1,5 @@
 import { memo, useState, useSyncExternalStore, type ReactNode, type Ref } from 'react';
-import { ARENA_TUNING as T, CLASS_STATS, FARM_POINTS, classTuning, lowFuel, type ArenaLayout } from '@astera/rules/arena';
+import { ARENA_TUNING as T, lowFuel, shipStats, shipTuning, type ArenaLayout } from '@astera/rules/arena';
 import { FARM_TONE } from './farmColors.js';
 import { ENEMY_MARKS } from './marks.js';
 import type { HudStore, HudSnapshot } from './store.js';
@@ -39,7 +39,7 @@ function Gauge({ icon, label, value, fill, tone, alert }: { icon: ReactNode; lab
  * pools): its own line above the hull's and its own number, in the shield's colour.
  */
 function HullGauge({ s, c }: { s: HudSnapshot; c: ArenaCopy }) {
-  const share = s.hull / CLASS_STATS[s.ship].hull;
+  const share = s.hull / shipStats(s.ship, s.level).hull;
   const shielded = s.shieldMax > 0;
   return <div className={`ah-gauge ah-hull ${share < 0.3 ? 'is-alert' : ''} ${shielded ? 'has-shield' : ''}`}
     style={{ '--tone': share < 0.3 ? 'var(--color-v2-hostile)' : 'var(--color-v2-self)', '--fill': String(Math.max(0, Math.min(1, share))),
@@ -53,14 +53,18 @@ function HullGauge({ s, c }: { s: HudSnapshot; c: ArenaCopy }) {
   </div>;
 }
 
-/** The hold: what it would score (the number), how full it is and of what (the bar, by kind). */
+/**
+ * The hold: how much is aboard against the hold, as it would land in the capital (Y6a: one for
+ * one); the bar splits it by kind, the label names each.
+ */
 function HoldGauge({ s, c }: { s: HudSnapshot; c: ArenaCopy }) {
-  const hold = CLASS_STATS[s.ship].cargoCapacity;
+  const hold = shipStats(s.ship, s.level).cargoCapacity;
   const full = s.cargo >= hold;
+  const aboard = s.hold.flatMap((units, kind) => units >= 1 ? [`${String(Math.floor(units))} ${c.kinds[kind] ?? ''}`] : []);
   return <div className={`ah-gauge ah-hold ${full ? 'is-full' : ''}`} style={{ '--tone': 'var(--color-v2-ink)' } as React.CSSProperties}>
     <span className="ah-gauge-icon" aria-hidden>{ICON.cargo}</span>
     <span className="ah-gauge-label">{c.cargo} · {String(Math.floor(s.cargo))}/{String(hold)}</span>
-    <strong>{s.points}<small> {c.pointsShort}</small></strong>
+    <strong aria-label={aboard.join(' · ') || undefined}>{Math.floor(s.cargo)}<small>/{hold}</small></strong>
     <i aria-hidden>{s.hold.map((units, kind) => units > 0 && <b key={kind}
       style={{ width: `${String(units / hold * 100)}%`, background: FARM_TONE[kind], boxShadow: `0 0 6px ${FARM_TONE[kind] ?? ''}` }} />)}</i>
   </div>;
@@ -75,9 +79,9 @@ const ICON = {
 };
 
 /** One line that says what the pilot must know right now, and why. */
-function context(s: HudSnapshot, c: ArenaCopy): { title: string; hint?: string; tone: 'self' | 'warn' | 'hostile' | 'crystal'; progress?: number } | null {
+export function hudContext(s: HudSnapshot, c: ArenaCopy): { title: string; hint?: string; tone: 'self' | 'warn' | 'hostile' | 'crystal'; progress?: number } | null {
   if (s.clientPhase !== 'flight' || (s.phase !== 'flying' && s.phase !== 'fuelOut')) return null;
-  const hold = CLASS_STATS[s.ship].cargoCapacity;
+  const hold = shipStats(s.ship, s.level).cargoCapacity;
   if (s.linkLost > 0) return { title: c.link, hint: `${String(Math.ceil(s.linkLost))} s`, tone: 'hostile' };
   if (s.phase === 'fuelOut') return { title: c.rescue, hint: `${String(Math.ceil(s.rescue))} s`, tone: 'warn', progress: 1 - s.rescue / T.fuelOutRescueDelay };
   // Someone aiming at you outranks everything you are doing: it is the one line you can still act on in time.
@@ -89,16 +93,18 @@ function context(s: HudSnapshot, c: ArenaCopy): { title: string; hint?: string; 
   }
   if (s.landed) {
     const kind = c.kinds[s.depositKind];
-    if (s.mining && kind) return { title: `${kind} · ${c.mining}`, hint: `${String(Math.floor(s.cargo))}/${String(hold)} · ${c.perUnit} ${String(FARM_POINTS[s.depositKind] ?? 0)} ${c.pointsShort} · ${c.miningHint}`, tone: 'crystal', progress: s.cargo / hold };
+    if (s.mining && kind) return { title: `${kind} · ${c.mining}`, hint: `${String(Math.floor(s.cargo))}/${String(hold)} · ${c.miningHint}`, tone: 'crystal', progress: s.cargo / hold };
     if (s.depositKind >= 0 && s.cargo >= hold) return { title: c.full, hint: c.fullHint, tone: 'warn' };
     if (s.depositKind >= 0 && s.dry) return { title: c.dry, hint: c.dryHint, tone: 'warn' };
+    // F19: a rock with no vein is a landing, never a mine; say so, and what a mine looks like.
+    if (s.landedOn === 'rock' && s.depositKind < 0) return { title: c.noOre, hint: c.noOreHint, tone: 'warn' };
     return { title: c.landed, hint: c.landedHint, tone: 'self' };
   }
   if (s.landing === 'approach') return { title: `${c.landingNote} · ${String(Math.round(s.landingDistance))} m`, hint: c.landingHint, tone: 'crystal' };
   if (s.cloak > 0) return { title: c.cloaked, hint: `${s.cloak.toFixed(1)} s · ${c.cloakedHint}`, tone: 'self', progress: s.cloak / T.cloakDuration };
   if (s.illusion > 0) return { title: `${c.illusion} · ${String(Math.ceil(s.illusion))} s`, hint: c.illusionHint, tone: 'self', progress: s.illusion / T.illusionDuration };
   if (s.scan > 0) return { title: `${c.radar} · ${String(Math.ceil(s.scan))} s`, hint: c.radarHint, tone: 'self', progress: s.scan / T.radarDuration };
-  if (lowFuel(s.fuel, classTuning(s.ship))) return { title: c.lowFuel, hint: `${clock(s.remaining)} · ${c.lowFuelHint}`, tone: 'hostile' };
+  if (lowFuel(s.fuel, shipTuning(s.ship, s.level))) return { title: c.lowFuel, hint: `${clock(s.remaining)} · ${c.lowFuelHint}`, tone: 'hostile' };
   if (s.boundary < T.boundaryWarn) return { title: c.boundary, hint: `${String(Math.max(0, Math.round(s.boundary)))} m`, tone: 'warn' };
   if (s.inDust) return { title: c.dust, hint: `${c.dustSight} ${String(T.dustSight)} m · ${c.dustHint}`, tone: 'self' };
   // A full hold sends you to an exit, and the spawn shield is a countdown you plan around;
@@ -117,13 +123,13 @@ export function ArenaHud({ store, bind, layout, onMenu, connection }: { store: H
   const [map, setMap] = useState(false);
   const c = arenaCopy();
   const flight = s.clientPhase === 'flight';
-  const note = context(s, c);
-  const hullShare = s.hull / CLASS_STATS[s.ship].hull;
-  const low = lowFuel(s.fuel, classTuning(s.ship));
+  const note = hudContext(s, c);
+  const hullShare = s.hull / shipStats(s.ship, s.level).hull;
+  const low = lowFuel(s.fuel, shipTuning(s.ship, s.level));
   return <div className={`ah-root ${flight ? 'is-flight' : ''}`}>
     <div className="ah-top">
       <HullGauge s={s} c={c} />
-      <Gauge icon={ICON.fuel} label={c.fuel} value={clock(s.remaining)} fill={s.fuel / CLASS_STATS[s.ship].fuelTank}
+      <Gauge icon={ICON.fuel} label={c.fuel} value={clock(s.remaining)} fill={s.fuel / shipStats(s.ship, s.level).fuelTank}
         tone={low ? 'var(--color-v2-hostile)' : 'var(--color-v2-deut)'} alert={low} />
       <HoldGauge s={s} c={c} />
       <button className="ah-menu" aria-label={c.settings} onClick={onMenu}>
@@ -143,7 +149,7 @@ export function ArenaHud({ store, bind, layout, onMenu, connection }: { store: H
       </div>
     </div>
     {connection}
-    {map && <MapSheet layout={layout} c={c} self={bind.mapSelf} altitude={bind.mapAltitude} onClose={() => { setMap(false); }} />}
+    {map && <MapSheet layout={layout} c={c} self={bind.mapSelf} altitude={bind.mapAltitude} friends={s.friends} onClose={() => { setMap(false); }} />}
     {note && <div className={`ah-note tone-${note.tone}`} role="status">
       <strong>{note.title}</strong>{note.hint && <span>{note.hint}</span>}
       {note.progress !== undefined && <i><b style={{ transform: `scaleX(${String(Math.max(0, Math.min(1, note.progress)))})` }} /></i>}
@@ -163,7 +169,7 @@ const HudMarks = memo(function HudMarks({ bind, layout, c }: { bind: HudBind; la
       <path d="M10.68 22.47A48 48 0 0 0 10.68 77.53M89.32 22.47A48 48 0 0 1 89.32 77.53" />
       <path className="ah-circle-tick" d="M2 50h6M92 50h6" />
     </svg></div>
-    <div ref={bind.reticle} className="ah-reticle"><i /><i /><i /><i /><b /></div>
+    <div ref={bind.reticle} className="ah-reticle"><i /><b /></div>
     <div ref={bind.hit} className="ah-hit"><i /><i /><i /><i /></div>
     <div ref={bind.kill} className="ah-kill"><i /><span>{c.destroyed}</span></div>
     <div ref={bind.lead} className="ah-lead" />

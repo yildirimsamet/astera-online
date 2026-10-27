@@ -98,6 +98,15 @@ describe('the lines a wing is drawn against', () => {
       expect(forecast.high).toBe(forecast.low);
     }
   });
+  it('fights with the bonus a commander-ship escort lends the wing, as the server does (Y9)', () => {
+    const crew: Fleet = { DART: 15 };
+    const wing: Fleet = { DART: 20 };
+    const firepower = { low: combatValue(crew), high: combatValue(crew) };
+    const led = blind({ wall: { kind: 'EXACT', fleet: crew }, attackerDamageMult: 1.15, attackerHullMult: 1.1 });
+    const battle = resolveCombat(wing, crew, 0, flat, { attacker: { tech: {}, damageMult: 1.15, hullMult: 1.1 }, defender: { tech: {} } });
+    expect(forecastLoss(wing, firepower, led).low).toBeCloseTo(battle.attackerLossValue / fleetValue(wing), 8);
+    expect(forecastLoss(wing, firepower, led).low).toBeLessThan(forecastLoss(wing, firepower, blind({ wall: { kind: 'EXACT', fleet: crew } })).low);
+  });
   it('never clears more than it breaks', () => {
     fc.assert(fc.property(
       fc.record({

@@ -101,6 +101,8 @@ const launchBody = z.object({
   acknowledgeShieldLoss: z.boolean().optional(),
   /** The commander has read what radiation on this route would take. Plan D10. */
   acknowledgeRadiation: z.boolean().optional(),
+  /** The commander ship escorts this raid (Y9). */
+  admiral: z.boolean().optional(),
   /**
    * HOW FAST TO FLY IT. Owner decision, 2026-09-21.
    *
@@ -467,6 +469,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.pace,
       body.acknowledgeRadiation ?? false,
       app.adminUsernames,
+      body.admiral ?? false,
     );
   });
 

@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from 'react';
+import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 
 export interface SegmentedOption<T extends string> {
   id: T;
@@ -9,6 +9,8 @@ export interface SegmentedOption<T extends string> {
   dotLabel?: string;
   /** The whole accessible name, where the caller already words it ("Clan — 2 unread"). */
   name?: string;
+  /** A glyph before the label, where the options are things with a shape of their own (the hangar's classes). */
+  icon?: ReactNode;
 }
 
 export interface SegmentedProps<T extends string> {
@@ -67,6 +69,7 @@ export function Segmented<T extends string>({ label, options, value, onChange, t
             onKeyDown={(event) => { onKeyDown(event, index); }}
             className="v2-segmented-option flex min-h-9 flex-1 shrink-0 items-center justify-center gap-1 whitespace-nowrap px-2 py-1.5"
           >
+            {option.icon}
             <span className="text-center">{option.label}</span>
             {option.dot && <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-v2-self" />}
           </button>

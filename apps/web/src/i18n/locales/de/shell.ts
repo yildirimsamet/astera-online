@@ -112,6 +112,7 @@ export const pendingStrip = {
   recallStarted: 'Die Prospector haben umgedreht und kehren zurück',
   craftCount: '{{count}} Schiff',
   craftUnknown: 'Schiffstypen unbekannt',
+  escorted: '+ dein Kommandantenschiff · {{ship}} {{level}}',
   incomingHint: 'Eingehende Warnung · Ursprung durch Nebel verdeckt',
   /**
    * THE SAME WARNING, WHEN THE CRAFT IS ON YOUR DISC. D162.

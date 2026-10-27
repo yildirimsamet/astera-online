@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ARENA_TUNING as T, CLASS_STATS, applyFeed, createInput, createPilot, createSandboxWorld, keyFeed, packPilot, packRemote, scanTargets,
-  stepSandboxWorld, strike, unpackPilot, type ArenaIntent, type ArenaObstacle, type ArenaWorld, type Pilot, type ShipClass, type Tactic,
+  ARENA_TUNING as T, CLASS_STATS, applyFeed, createInput, createPilot, createSandboxWorld, keyFeed, mirrorPose, packPilot, packRemote, scanTargets,
+  stepSandboxWorld, strike, unpackPilot, type ArenaIntent, type ArenaObstacle, type ArenaWorld, type Pilot, type Quaternion, type ShipClass, type Tactic, type Vec3,
 } from '../../src/arena/index.js';
 import { layoutWith, sphere } from './helpers.js';
 
@@ -30,6 +30,20 @@ function enemy(world: ArenaWorld, ship: ShipClass, x: number, z: number): Pilot 
 }
 const copyOf = (world: ArenaWorld, pilot: Pilot): Pilot | undefined => world.drones.find(ship => ship.decoyOf === pilot.id);
 const holograms = (world: ArenaWorld): number => world.impacts.filter(hit => hit.active && hit.kind === 'hologram').length;
+const forwardOf = (q: Quaternion): Vec3 => ({ x: 2 * (q.x * q.z + q.w * q.y), y: 2 * (q.y * q.z - q.w * q.x), z: 1 - 2 * (q.x * q.x + q.y * q.y) });
+const upOf = (q: Quaternion): Vec3 => ({ x: 2 * (q.x * q.y - q.w * q.z), y: 1 - 2 * (q.x * q.x + q.z * q.z), z: 2 * (q.y * q.z + q.w * q.x) });
+/** A half turn about the unit line `f`: along it stays, across it flips (right is left, up is down). */
+const halfTurn = (v: Vec3, f: Vec3): Vec3 => {
+  const d = v.x * f.x + v.y * f.y + v.z * f.z;
+  return { x: 2 * d * f.x - v.x, y: 2 * d * f.y - v.y, z: 2 * d * f.z - v.z };
+};
+const near = (a: Vec3, b: Vec3, digits = 6): void => { expect([a.x, a.y, a.z].map(n => n.toFixed(digits))).toEqual([b.x, b.y, b.z].map(n => n.toFixed(digits))); };
+/** Moves a copy's line so it flies at (x, y, z) from where its pilot is now: the line half-way, across the gap. */
+function put(world: ArenaWorld, copy: Pilot, x: number, y: number, z: number): void {
+  const p = world.pilot.p; const dx = x - p.x; const dz = z - p.z; const length = Math.sqrt(dx * dx + dz * dz);
+  Object.assign(copy.decoyFrom, { x: (p.x + x) / 2, y: (p.y + y) / 2, z: (p.z + z) / 2 });
+  Object.assign(copy.decoyAlong, { x: -dz / length, y: 0, z: dx / length });
+}
 
 describe('illusion', () => {
   it('casts a copy inside the ship: same place, heading, speed, class and hull bar; its cooldown runs', () => {
@@ -41,7 +55,8 @@ describe('illusion', () => {
     expect(world.pilot.decoy).toBe(copy.id);
     expect(copy.id).not.toBe(world.pilot.id);
     expect([copy.ship, copy.hull, copy.s, copy.p.z, copy.q.w]).toEqual([world.pilot.ship, 300, world.pilot.s, world.pilot.p.z, world.pilot.q.w]);
-    expect(world.pilot.tacticCooldown).toBe(ticks(T.illusionCooldown));
+    // Akıncı's free illusion rank (Y6c): 5% shorter cooldown.
+    expect(world.pilot.tacticCooldown).toBe(ticks(T.illusionCooldown * 0.95));
     run(world, 1, intent({ illusion: true }));
     expect(world.drones.filter(ship => ship.decoyOf === world.pilot.id)).toHaveLength(1);
   });
@@ -64,6 +79,70 @@ describe('illusion', () => {
     expect(copy.s).toBeCloseTo(world.pilot.s, 6);
     expect(copy.turboActive).toBe(world.pilot.turboActive);
     expect(Math.sign(copy.p.x)).toBe(-Math.sign(world.pilot.p.x));
+  });
+
+  it('is its pilot\'s exact mirror about the line it was cast along, cast climbing, through every turn and the turbo (owner 2026-10-24)', () => {
+    const world = arena('illusion');
+    // Cast climbing, nose 30° up and heading +x: the line it is cast along is not level.
+    const from = { x: 120, y: 40, z: -60 }; const n = Math.sqrt(2 * (0.183 * 0.183 + 0.683 * 0.683)); const q = { x: -0.183 / n, y: 0.683 / n, z: 0.183 / n, w: 0.683 / n };
+    Object.assign(world.pilot.p, from); Object.assign(world.pilot.q, q);
+    const along = forwardOf(q);
+    expect(along.y).toBeGreaterThan(0.4);
+    run(world, 1, intent({ illusion: true, throttle: 1 }));
+    const copy = copyOf(world, world.pilot); if (!copy) throw new Error('no copy');
+    let boosted = false;
+    const legs = [{ steerX: 0.7 }, { steerY: 0.6, turbo: true }, { steerX: -0.7 }, { steerY: -0.6 }, { steerX: 0.6, steerY: 0.5 }, { steerX: -0.5, steerY: -0.6, turbo: true }];
+    for (const leg of legs) {
+      for (let i = 0; i < 28; i++) {
+        run(world, 1, intent({ throttle: 1, ...leg }));
+        const pilot = world.pilot; boosted ||= pilot.turboActive;
+        const d = halfTurn({ x: pilot.p.x - from.x, y: pilot.p.y - from.y, z: pilot.p.z - from.z }, along);
+        near(copy.p, { x: from.x + d.x, y: from.y + d.y, z: from.z + d.z });
+        near(forwardOf(copy.q), halfTurn(forwardOf(pilot.q), along));
+        const up = halfTurn(upOf(pilot.q), along);
+        near(upOf(copy.q), { x: -up.x, y: -up.y, z: -up.z });
+        expect([copy.s, copy.turboActive]).toEqual([pilot.s, pilot.turboActive]);
+      }
+    }
+    expect(boosted).toBe(true);
+    expect(Math.abs(world.pilot.p.z - from.z)).toBeGreaterThan(20);
+    expect(copyOf(world, world.pilot)).toBeDefined();
+  });
+
+  it('breaks at the arena\'s floor, as at rock, where its pilot climbs away from it', () => {
+    const climb = (steerY: number): boolean => { const dry = arena('illusion'); run(dry, 30, intent({ throttle: 1, steerY })); return dry.pilot.p.y > 5; };
+    const up = climb(0.8) ? 0.8 : -0.8;
+    expect(climb(up)).toBe(true);
+    const world = arena('illusion');
+    world.pilot.p.y = -world.layout.halfHeight + 30;
+    run(world, 1, intent({ illusion: true, throttle: 1 }));
+    for (let i = 0; i < 60 && copyOf(world, world.pilot); i++) run(world, 1, intent({ throttle: 1, steerY: up }));
+    expect(copyOf(world, world.pilot)).toBeUndefined();
+    expect(holograms(world)).toBe(1);
+    run(world, 30, intent({ throttle: 1, steerY: up }));
+    expect(world.pilot.p.y).toBeGreaterThan(-world.layout.halfHeight + 60);
+  });
+
+  it('mirrors a pose the client can hand in as its own out: the cast pose is itself', () => {
+    const q = { x: 0.1, y: 0.7, z: -0.1, w: 0.7 }; const n = Math.sqrt(0.01 + 0.49 + 0.01 + 0.49);
+    q.x /= n; q.y /= n; q.z /= n; q.w /= n;
+    const p = { x: 5, y: -7, z: 9 }; const along = forwardOf(q);
+    const outP = { ...p }; const outQ = { ...q };
+    mirrorPose(p, along, outP, outQ, outP, outQ);
+    near(outP, p); expect([outQ.x, outQ.y, outQ.z, outQ.w].map(v => v.toFixed(9))).toEqual([q.x, q.y, q.z, q.w].map(v => v.toFixed(9)));
+  });
+
+  it('breaks like a hologram when it flies into rock its pilot flies clear of (owner 2026-10-24)', () => {
+    const fly = (world: ArenaWorld): void => { run(world, 1, intent({ illusion: true, throttle: 1 })); run(world, 60, intent({ throttle: 1, steerX: 0.7 })); };
+    const dry = arena('illusion'); fly(dry);
+    const at = dry.pilot.p;
+    expect(Math.sqrt(at.x * at.x + at.y * at.y)).toBeGreaterThan(30);
+    // Cast from the origin heading +z: the copy is at (-x, -y, z) of its pilot.
+    const world = arena('illusion', 'kilavuz', [sphere(0, -at.x, -at.y, at.z, 12)]); fly(world);
+    expect(copyOf(world, world.pilot)).toBeUndefined();
+    expect(world.pilot.decoy).toBe(-1);
+    expect(holograms(world)).toBe(1);
+    expect([world.pilot.phase, world.pilot.hull]).toEqual(['flying', CLASS_STATS.kilavuz.hull]);
   });
 
   it('breaks like a hologram once its time is up; the pilot is told it is gone', () => {
@@ -101,7 +180,7 @@ describe('illusion', () => {
     const world = arena('illusion');
     run(world, 1, intent({ illusion: true }));
     const copy = copyOf(world, world.pilot); if (!copy) throw new Error('no copy');
-    Object.assign(copy.p, { x: 0, y: 0, z: 150 });
+    put(world, copy, 0, 0, 150);
     const own = world.projectiles[0]; if (!own) throw new Error('no bullet');
     Object.assign(own, { p: { x: 0, y: 0, z: 120 }, previous: { x: 0, y: 0, z: 120 }, v: { x: 0, y: 0, z: T.muzzleSpeed }, life: 1, owner: world.pilot.id, damage: 20 });
     const foe = enemy(world, 'muhafiz', 400, 0);
@@ -113,13 +192,22 @@ describe('illusion', () => {
     expect(world.impacts.some(hit => hit.active && hit.kind === 'ship')).toBe(true);
   });
 
-  it('fires blanks in its pilot\'s name as its pilot fires', () => {
+  it('fires blanks in its pilot\'s name as its pilot fires, round for round', () => {
     const world = arena('illusion');
     run(world, 1, intent({ illusion: true }));
     run(world, 6, intent({ fire: true }));
     const blanks = world.projectiles.filter(bullet => bullet.life > 0 && bullet.owner === world.pilot.id && bullet.damage === 0);
     expect(blanks.length).toBeGreaterThan(0);
+    expect(blanks.length).toBe(world.projectiles.filter(bullet => bullet.life > 0 && bullet.owner === world.pilot.id && bullet.damage > 0).length);
     expect(world.pilot.ammo).toBe(CLASS_STATS.kilavuz.ammoCapacity - world.pilot.shots);
+  });
+
+  it('stays silent when its pilot\'s magazine is empty: a copy that fires alone gives itself away', () => {
+    const world = arena('illusion');
+    run(world, 1, intent({ illusion: true }));
+    world.pilot.ammo = 0;
+    run(world, 6, intent({ fire: true }));
+    expect(world.projectiles.filter(bullet => bullet.life > 0)).toHaveLength(0);
   });
 
   it('goes with its pilot: one who dies or leaves takes the copy away', () => {
@@ -135,7 +223,9 @@ describe('illusion', () => {
     const world = arena('illusion');
     run(world, 1, intent({ illusion: true }));
     const copy = copyOf(world, world.pilot); if (!copy) throw new Error('no copy');
-    Object.assign(copy.p, { x: 600, y: 0, z: 0 });
+    put(world, copy, 600, 0, 0);
+    run(world, 1);
+    expect(copy.p.x).toBeCloseTo(600, 3);
     const drop = world.cargoDrops.find(piece => !piece.field); if (!drop) throw new Error('no drop');
     Object.assign(drop, { p: { x: 605, y: 0, z: 0 }, amount: 5, active: true, kind: 0, claim: -1, age: 0 });
     run(world, 2);
@@ -148,13 +238,14 @@ describe('illusion', () => {
     run(world, 1, intent({ illusion: true }));
     const copy = copyOf(world, world.pilot); if (!copy) throw new Error('no copy');
     run(world, ticks(T.lockTime) + 1);
-    Object.assign(copy.p, { x: 0, y: 0, z: 200 });
+    put(world, copy, 0, 0, 200);
     run(world, ticks(T.lockTime) + 1);
+    expect(copy.p.z).toBeCloseTo(200, 3);
     expect(world.pilot.lockTarget).toBe(-1);
     const foe = enemy(world, 'akinci', 0, 450);
     Object.assign(foe.q, { x: 0, y: 1, z: 0, w: 0 });
     world.pilot.p.x = 80;
-    for (let i = 0; i < ticks(T.lockTime) + 1; i++) { Object.assign(copy.p, { x: 0, y: 0, z: 200 }); run(world, 1); }
+    for (let i = 0; i < ticks(T.lockTime) + 1; i++) { put(world, copy, 0, 0, 200); run(world, 1); }
     expect(foe.lockTarget).toBe(copy.id);
   });
 });
@@ -168,10 +259,11 @@ describe('radar sweep', () => {
     const copy = enemy(world, 'akinci', 0, -400); copy.decoyOf = open.id;
     run(world, 1, intent({ radar: true }));
     expect(scanTargets(world, world.pilot.id).sort((a, b) => a - b)).toEqual([open.id, hidden.id].sort((a, b) => a - b));
-    expect(world.pilot.scan).toBe(ticks(T.radarDuration));
-    expect(world.pilot.tacticCooldown).toBe(ticks(T.radarCooldown));
+    // Kılavuz's free radar rank (Y6c): 10% longer sweep, 5% shorter cooldown.
+    expect(world.pilot.scan).toBe(ticks(T.radarDuration * 1.1));
+    expect(world.pilot.tacticCooldown).toBe(ticks(T.radarCooldown * 0.95));
     expect(scanTargets(world, open.id)).toEqual([]);
-    run(world, ticks(T.radarDuration));
+    run(world, ticks(T.radarDuration * 1.1));
     expect(scanTargets(world, world.pilot.id)).toEqual([]);
     expect(world.pilot.scan).toBe(0);
   });
@@ -183,7 +275,7 @@ describe('radar sweep', () => {
     run(world, 1, intent({ radar: true }));
     expect([foe.threat, foe.threatX, foe.threatZ]).toEqual([4, 0, 10]);
     expect(world.pilot.threat).toBe(0);
-    run(world, ticks(T.radarDuration) - 1);
+    run(world, ticks(T.radarDuration * 1.1) - 1);
     expect(foe.threat).toBe(4);
     run(world, 1);
     expect(foe.threat).toBe(0);

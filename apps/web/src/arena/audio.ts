@@ -1,4 +1,4 @@
-import { ARENA_TUNING as T, CLASS_STATS, classTuning, lowFuel, type ArenaWorld, type Pilot, type Vec3 } from '@astera/rules/arena';
+import { ARENA_TUNING as T, lowFuel, shipTuning, statsOf, type ArenaWorld, type Pilot, type Vec3 } from '@astera/rules/arena';
 
 interface Loop { source: AudioBufferSourceNode; gain: GainNode }
 interface Listener { x: number; y: number; z: number; rx: number; ry: number; rz: number }
@@ -8,6 +8,15 @@ interface Listener { x: number; y: number; z: number; rx: number; ry: number; rz
  * distinct voice for "you fired", "you hit", "you were hit" and "you killed" (S58, S69).
  * Every event is derived from state changes, so prediction rewinds never replay one.
  */
+/**
+ * The low-fuel alarm: once on entering the low band, then every 20 s while in it; leaving the band
+ * re-arms it (CR7: it re-armed under 15 fuel only, inside a band that starts higher, so every frame warned).
+ */
+export function fuelAlarm(low: boolean, now: number, warnAt: number): { play: boolean; warnAt: number } {
+  if (!low) return { play: false, warnAt: Number.NEGATIVE_INFINITY };
+  return now - warnAt > 20000 ? { play: true, warnAt: now } : { play: false, warnAt };
+}
+
 export function createArenaAudio() {
   let context: AudioContext | null = null;
   let master: GainNode | null = null;
@@ -22,7 +31,7 @@ export function createArenaAudio() {
   const explosionSeen = new Float64Array(48 * 4).fill(-1);
   const listener: Listener = { x: 0, y: 0, z: 0, rx: 1, ry: 0, rz: 0 };
   const last = { shots: 0, hits: 0, kills: 0, damage: -100000, cargo: 0, turbo: false, cloak: 0, smokeReady: true,
-    cloakReady: true, landed: 0, extraction: 0, phase: 'flying', warnAt: 0, lockAt: 0, mining: false, bumpAt: 0, critical: false };
+    cloakReady: true, landed: 0, extraction: 0, phase: 'flying', warnAt: Number.NEGATIVE_INFINITY, lockAt: 0, mining: false, bumpAt: 0, critical: false };
   let round = 0;
 
   /** `cut`: hard stop (seconds, short fade) for a sample longer than the moment it marks. */
@@ -125,7 +134,7 @@ export function createArenaAudio() {
         if (typeof navigator.vibrate === 'function' && audio.enabled) navigator.vibrate([18, 24, 12]);
       }
       // Crossing into critical hull warns once; it re-arms only after a repair or respawn.
-      const critical = flying && pilot.hull < CLASS_STATS[pilot.ship].hull * 0.3;
+      const critical = flying && pilot.hull < statsOf(pilot).hull * 0.3;
       if (critical && !last.critical) play('warn', 0.45, { cut: 0.9 });
       last.critical = critical;
       if (pilot.cargo > last.cargo + 0.9 && !pilot.mining) play('cargo', 0.5);
@@ -141,8 +150,9 @@ export function createArenaAudio() {
       if (pilot.phase === 'extracted' && last.phase !== 'extracted') play('warp', 0.9);
       if (pilot.phase === 'dead' && last.phase !== 'dead') { play('shipExplode', 1); play('explosionNear', 0.8); }
       // Low fuel: once on the way down, then a reminder every 20 s (the HUD carries the count).
-      if (flying && lowFuel(pilot.fuel, classTuning(pilot.ship)) && performance.now() - last.warnAt > 20000) { last.warnAt = performance.now(); play('warn', 0.4, { cut: 0.9 }); }
-      if (pilot.fuel >= 15) last.warnAt = 0;
+      const alarm = fuelAlarm(flying && lowFuel(pilot.fuel, shipTuning(pilot.ship, pilot.level)), performance.now(), last.warnAt);
+      last.warnAt = alarm.warnAt;
+      if (alarm.play) play('warn', 0.4, { cut: 0.9 });
       for (const drone of world.drones) {
         const seen = shotsSeen.get(drone.id);
         if (seen !== undefined && drone.shots > seen) at(drone.p, 'fireOther', 0.55, 1100, 0.95 + Math.random() * 0.1);

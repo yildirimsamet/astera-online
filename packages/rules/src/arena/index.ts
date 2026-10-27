@@ -16,11 +16,15 @@ export { hullCapsule, hullReach, segmentCapsule, sweptHull, type Capsule } from 
 export { aimCone, assistSteer, circleAim, gimbalAim, leadPoint, leadTime, type AimCone } from './aim.js';
 export { alignUp, forwardVector, sideVector, toLocal, upVector } from './vec.js';
 export { alive, PHASES, TACTICS, sameSide } from './pilot.js';
-export { SCANNED, scanTargets, type Scan } from './tactics.js';
-export { scatter, strike } from './combat.js';
+export { SCANNED, mirrorPose, scanTargets, type Scan } from './tactics.js';
+export { HIT_REFERENCE, RING_DISTANCE, SPREAD_PATTERN, SPREAD_REACH, hitShare, scatter, spreadAt, strike } from './combat.js';
 export { SIGNATURE_COOLDOWN, lockShare, locked } from './signatures.js';
+export { ABILITIES, AFFINITY, MAX_POINT_RANK, abilityRank, abilityStats, flightRanks, pointsLeft, type Ability, type AbilityPoints, type FlightRanks } from './ranks.js';
 export { FARM_KINDS, FARM_POINTS, FIELD_GROUP_SIZE, FIELD_SPAWNS, emptyHold, holdPoints, pickFieldSpawn, type FarmKind, type FieldSpawn } from './farms.js';
 export { createBrain, type BotBrain, type BotRole } from './bots.js';
+export { ARENA_ECONOMY, FULL_LOADOUT, LOADOUT, classChangeOpen, dailyCap, entryOpen, launchLoad, loadoutPlan, refillCost, repairQuote, settleHold, type LoadoutPlan, type Resources as ArenaResources } from './economy.js';
+export { ARENA_PROGRESSION, GROWTH, gainXp, levelCap, levelCost, levelOf, shipStats, shipTuning, sortieXp, statsOf, xpToNext, type SortieOutcome } from './progression.js';
+export { TEAM_CLAIM_DAYS, TEAM_CONNECT_SECONDS, splitTeamLoot, type SortieLoadout, type TeamMemberView, type TeamView } from './team.js';
 export { dustAt, hiddenByDust, hiddenBySmoke, pilotInSight } from './visibility.js';
 export {
   createSandboxWorld, stepSandboxWorld, stepArenaWorld, stepPredictedTracers, createPilot, recoverPilot, copyFlight,
@@ -37,3 +41,5 @@ export type {
   ArenaDust, ArenaField, ArenaLayout, ArenaObstacle, ArenaStructure, BoxObstacle, FlightInput, FlightState, MeshObstacle, ObstacleKind, Quaternion,
   SphereObstacle, SteeringSettings, StructureKind, Vec3,
 } from './types.js';
+
+export { ADMIRAL_RULESET, ADMIRAL_XP, admiralApplies, admiralBonuses, admiralOpen, admiralDefeated, admiralOutcome, admiralXp, withAdmiral, type AdmiralBonuses, type AdmiralSnapshot, type AdmiralFlightKind } from './admiral.js';

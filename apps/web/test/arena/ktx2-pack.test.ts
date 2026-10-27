@@ -147,6 +147,13 @@ describe('which models a pack loads', () => {
     }
   });
 
+  it('takes the webp copies of the structures when the renderer cannot start the transcoder (S22 2026-10-26)', () => {
+    const loaded = modelsToLoad(parsed(pack()), true);
+    for (const key of STRUCTURE_CATALOG.map(entry => entry.key)) {
+      expect(loaded.find(entry => entry.key === `structure:${key}`)?.d.model).toBe(`/assets/arena/yarik-webp/${key}.glb`);
+    }
+  });
+
   it('does not load the outposts, the generator or the relay: the Rift has none (15-yarik-haritasi §4.1)', () => {
     const loaded = keys(parsed(pack()));
     expect(loaded.filter(key => key === 'generator' || key === 'relay' || key.startsWith('outpost:'))).toEqual([]);

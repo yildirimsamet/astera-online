@@ -785,6 +785,11 @@ describe('a raid on an unclaimed world', () => {
 describe('the kinds of news the server can send', () => {
   it('is the list the client routes, and nothing has been added quietly', () => {
     expect([...notificationKind.enumValues].sort()).toEqual([
+      'arena_ship_ready',
+      // A flight lost while its pilot's page was closed: the result they never saw.
+      'arena_sortie_end',
+      // A team's Yarık flight ended: each member's share waits in the hangar.
+      'arena_team_share',
       // Klan Savunma Desteği (ruleset 15): who is coming, who left, what the ships did.
       'clan_support_departed',
       'clan_support_inbound',

@@ -32,6 +32,11 @@ select {
   .galaxy-world-label .rank-badge-face {
     font-size: calc(var(--text-micro) * 0.9);
   }
+
+  /* Owner 2026-10-27: the parked commander ship's tag, two pixels under a micro reading. */
+  .galaxy-ship-tag.text-micro {
+    font-size: calc(var(--text-micro) - 2px);
+  }
 }
 
 /**

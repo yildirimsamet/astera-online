@@ -20,6 +20,7 @@ import {
   type HpDamageLots,
   type TechLevels,
 } from '@astera/rules';
+import type { AdmiralBonuses } from '@astera/rules/arena';
 import type { IntelView, Report } from '../api/schemas.js';
 import { combatClassLabel } from '../i18n/names.js';
 import { serverNow } from './clock.js';
@@ -46,6 +47,7 @@ export function useTargetReading({
   wing,
   damage,
   rulesetVersion,
+  escort,
 }: {
   target: LaunchTarget;
   intel?: IntelView | undefined;
@@ -56,6 +58,8 @@ export function useTargetReading({
   damage?: HpDamageLots;
   /** The season's ruleset, which decides whether the escape rule applies. */
   rulesetVersion: number;
+  /** The commander ship flying with the wing (Y9): its bonus fights in the forecast as on the server. */
+  escort?: AdmiralBonuses | null | undefined;
 }) {
   const { t } = useTranslation();
 
@@ -140,11 +144,14 @@ export function useTargetReading({
   const domeCeiling = target.kind === 'world' && target.world.shielded ? shieldHp(target.world.coreLevel) : 0;
   const wingState = useMemo(() => ({ wing, damage }), [wing, damage]);
   const { wing: settled, damage: settledDamage } = useDeferredValue(wingState);
+  const escortDamage = escort?.damage ?? 1; const escortHull = escort?.hull ?? 1;
   const forecastInput = useMemo<ForecastInput>(() => {
     const none = { low: 0, high: 0 };
+    const led = { ...(escortDamage === 1 ? {} : { attackerDamageMult: escortDamage }), ...(escortHull === 1 ? {} : { attackerHullMult: escortHull }) };
     if (isPirate) {
       return {
         attackerTech: tech,
+        ...led,
         ...(settledDamage?.length ? { attackerDamage: settledDamage } : {}),
         defenderTech: {},
         ...(pirateHandicap === undefined ? {} : { defenderDamageMult: pirateHandicap }),
@@ -157,13 +164,14 @@ export function useTargetReading({
     }
     return {
       attackerTech: tech,
+      ...led,
       ...(settledDamage?.length ? { attackerDamage: settledDamage } : {}),
       defenderTech: report?.doctrines ?? {},
       shield: report?.shield ?? { low: 0, high: domeCeiling },
       unarmed: report?.unarmed ?? none,
       wall: wallKnowledgeOf(report?.classReading),
     };
-  }, [isPirate, pirateCrew, pirateHandicap, report, tech, domeCeiling, settledDamage]);
+  }, [isPirate, pirateCrew, pirateHandicap, report, tech, domeCeiling, settledDamage, escortDamage, escortHull]);
 
   /*
     A FEW DOZEN BATTLES PER READING, SO IT WAITS FOR THE THUMB. The picker renders

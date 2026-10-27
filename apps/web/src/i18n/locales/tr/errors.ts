@@ -11,6 +11,12 @@
  */
 
 export const errors = {
+  ADMIRAL_RULESET: "Komutan gemisi eşliği yeni sezonla gelir.",
+  ADMIRAL_AWAY: "Komutan gemin zaten başka bir filoya eşlik ediyor.",
+  SHIP_NOT_READY: "Komutan gemin henüz hazır değil: tamirde veya bakımda.",
+  SHIP_FLYING: "Komutan gemin şu an Yarık'ta.",
+  SHIP_UNAVAILABLE: "Komutan gemin şu an başka bir işlemde. Biraz sonra yeniden dene.",
+  TEAM_LOBBY: "Önce Yarık takım kaydından çık.",
   COMMUNITY_POLICY_REQUIRED: "Komutan oluşturmadan veya paylaşım yapmadan önce topluluk kurallarını inceleyip kabul et. Gerekirse uygulamayı yeniden aç.",
   NAME_NOT_ALLOWED: "Başka bir komutan adı seç. “{{word}}” topluluk kurallarına aykırı.",
   CLAN_NAME_NOT_ALLOWED: "Başka bir klan adı veya etiketi seç. “{{word}}” topluluk kurallarına aykırı.",

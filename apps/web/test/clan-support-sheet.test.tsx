@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { ClanSupportSheet } from '../src/screens/ClanSupportSheet.js';
+import { keys } from '../src/api/keys.js';
 import { planetView } from './fixtures.js';
 
 /**
@@ -28,12 +29,13 @@ const quote = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-function show(answer: Record<string, unknown>, world?: ReturnType<typeof planetView>, honorSoloCredit = false) {
+function show(answer: Record<string, unknown>, world?: ReturnType<typeof planetView>, honorSoloCredit = false, ship: unknown = null) {
   const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify(answer), {
     status: 200, headers: { 'content-type': 'application/json' },
   })));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   client.setQueryData(['season'], { honorSoloCredit });
+  if (ship) client.setQueryData(keys.commanderShip, ship);
   const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
   const origin = world ?? planetView({ fleet: { PIKE: 30, DART: 10 } }, { id: 'origin', name: 'Home' });
   render(<QueryClientProvider client={client}><ApiProvider api={api}>
@@ -83,6 +85,26 @@ describe('the clan support sheet', () => {
     expect(screen.getByText(/your dominion stays unchanged as a supporter/i)).toHaveTextContent(/your losses are not multiplied/i);
     expect(screen.getByText(/tier 3 · host tier 3/i)).toBeInTheDocument();
     expect(commit()).toHaveTextContent(/send 4 ships/i);
+  });
+
+  it('offers the commander ship to stand with the wave, quoting and sending it (Y9)', async () => {
+    const { fetch } = show(quote(), undefined, false, { capitalPlanetId: '00000000-0000-4000-8000-000000000009', rulesetVersion: 19,
+      ship: { class: 'muhafiz', level: 1, status: 'ready', readyAt: null } });
+    await pick(4);
+    const toggle = await screen.findByRole('switch', { name: /commander ship escorts/i });
+    expect(screen.getByText(/hull and shields \+2%/i)).toBeVisible();
+    expect(screen.getByText(/only a decisive defeat of the line sends it to repair for 60 min/i)).toBeVisible();
+    act(() => { toggle.click(); });
+    await pick(0);
+    const bodyOf = (call: unknown): string => { const body = (call as [string, RequestInit | undefined])[1]?.body; return typeof body === 'string' ? body : ''; };
+    const bodies = () => fetch.mock.calls.map(bodyOf);
+    await waitFor(() => { expect(bodies().some((body) => body.includes('"admiral":true'))).toBe(true); });
+    fireEvent.keyDown(commit(), { key: 'Enter' });
+    fireEvent.keyDown(commit(), { key: 'Enter' });
+    await waitFor(() => {
+      const sent = fetch.mock.calls.find((call) => (call as [string])[0].endsWith('/api/clan/support'));
+      expect(bodyOf(sent)).toContain('"admiral":true');
+    });
   });
 
   it('puts the first refusal on the button', async () => {

@@ -46,6 +46,7 @@ import {
   strategicInterceptions,
   type StrategicDestroyedOrder,
   type StrategicLevelChange,
+  type ReportAdmiral,
 } from '../db/schema.js';
 import { pirateCallsign, pirateSpecAt } from './pirateField.js';
 import { addDominionCounters } from './dominion.js';
@@ -285,6 +286,8 @@ export interface BattleReportView {
    * report reads as any other fight — null.
    */
   fleetEscape: EscapeOutcome | { kind: 'ESCAPED' } | null;
+  /** Y9: the commander ships that escorted either side. Both sides see them (owner 2026-10-25). */
+  admirals: ReportAdmiral[];
   /**
    * WHERE THIS DEFEAT LEFT THE READER AGAINST THE RECOVERY SHIELD. DEFENDER ONLY.
    * Owner instruction, 2026-09-18.
@@ -949,6 +952,7 @@ async function readBattleReportsIn(
       fleetEscape: attacking
         ? row.fleetEscape?.kind === 'ESCAPED' ? { kind: 'ESCAPED' } : null
         : supporting ? null : row.fleetEscape,
+      admirals: row.admirals,
       pvpBalance: row.pvpBalance,
       recovery: attacking || supporting || row.targetKind !== 'PLAYER' || row.recoveryLossHours === null
         ? null

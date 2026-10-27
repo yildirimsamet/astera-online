@@ -632,6 +632,20 @@ Nozul yerleri ve çapları modelde ölçülür (`tools/arena-ships.mjs`: arkadan
 üç dik görünümde işaretlenir) ve manifeste `engines` + `nozzle` olarak yazılır; alev o çapta çıkar.
 Akıncı'nın alevleri kuyruk ucundan değil, yan gövdelerdeki yuvarlak nozullardan çıkar (sahip 2026-10-22).
 
+#### KG-T51 — ERTELENDİ (24 Ekim, sahibin sonraki talimatı)
+
+Aşağıdaki prototip uygulamadan geri alındı; [22](22-ilk-surum-mantigi.md) güncel kapsamdır.
+
+**Y8: mevcut gövde üzerinde kademe/boya yüzeyi ve hesap kozmetiği** (2026-10-24).
+1/5/10/15/20 kapıları ilerlemeden okunur; ayrı stat veya satın alınan seviye yoktur.
+Birleşik sınıf modellerinin geometri/namlu/kapsülünü değiştirmeyen shader; uzakta tek
+`aLook` instanced özniteliği, amblem için tek 1024×512 atlas. `COMMANDER` hesap yuvası
+Standart/Helios/Nebula boyalarını; mevcut `ENGINE` yuvası alev/parıltı/iz seçimini taşır.
+Klan liderinin doğrulanmış bayrağı kalkış yüküne dondurulur. Takım hazır denetimi boyayı
+kapsar ve doğruladığı görünümü kalkışa aktarır. Sayısal paket/protokol 14 değişmez;
+eski yükler standart görünür. Ayrı kanat/namlu/ek motor ve amiral silueti sanat önerisi
+mevcut modellerde gerçekleştirilmiş sayılmaz. Kanıt ve sınırlar: [21](21-y8-gorunum.md).
+
 ---
 
 ## Açık sorular (KG-A)
@@ -940,7 +954,9 @@ B yuvasının son iki taktiği (Y4d, 2026-10-23; plan §4 önerisi uygulandı). 
 seçenek var: Duman, Gizlen, İllüzyon, Tarama. Klavyede Q ve E, uçuşun taktiğine basar.
 - **İllüzyon (6 sn, bekleme 20 sn):** kopya geminin tam içinde doğar. Pilotun yön girdisinin tam
   tersini yapar (sağ↔sol ve yukarı↔aşağı); gaz, turbo ve tetik aynıdır. Gemi döndükçe ikisi
-  ayrılır. Kopyanın mermileri boştur. Kopya çeyrek gövde hasar alınca, süresi bitince, pilotu
+  ayrılır. 2026-10-24: kopya kendi fiziğiyle uçmaz; her tick pilotun, atıldığı doğrultuya göre
+  tam aynasına konur, böylece hiç sapmaz. Pilot ateş ettikçe ateş eder. Kayaya ya da alan sınırına
+  giren kopya hologram gibi kırılır. Sahibi kopyayı kendi geminden çizer. Kopyanın mermileri boştur. Kopya çeyrek gövde hasar alınca, süresi bitince, pilotu
   ölünce ya da yeniden uçunca hologram gibi kırılır: enkaz, ganimet, öldürme sayılmaz.
   Düşman kopyayı kilitleyebilir; pilotu kilitleyemez. Kopya kazmaz, kargo çekmez, çıkış yapmaz.
 - **Görünüm:** düşman kopyayı sıradan bir gemi olarak görür. Aynı ad ve sınıfla görünür; uzaktan
@@ -953,3 +969,106 @@ seçenek var: Duman, Gizlen, İllüzyon, Tarama. Klavyede Q ve E, uçuşun takti
   sonar halkasıdır; ekran dışındaysa kenar oku camgöbeği olur. Radar ekranında nokta kenarda,
   halkalı durur. Taranan pilot "Tarandın" uyarısını alır, taramanın geldiği yönü görür.
   Tarama uyarısı en düşük önceliktir: kilit ve füze uyarısı onu her zaman bastırır.
+
+#### KG-X31
+Y6a: gerçek gemi ve gerçek kargo (2026-10-23, sahibin kararları). Seviye, XP ve rütbeler Y6b'de.
+- **Giriş:** Komuta Çekirdeği 9. Bu sezon, koltuklu pilotlarla (KG-A17). Altında Solo uçuş açık.
+- **Gemi:** komutan sezon için bir sınıf seçer. Seçimden sonraki 24 saatte bir kez ücretsiz
+  değiştirebilir; gemi havadayken ya da ambarında kargo varken değişmez.
+- **Ambar:** ham kaynaktır, 1:1 başkente gider. Tek ortak toplam, istenen karışım (yalnız döteryum
+  da olur): Akıncı 300 · Kılavuz 400 · Muhafız 500.
+- **Doldurma:** her kalkışta depo ve şarjör başkentin döteryumuyla tamamlanır; yalnız eksik
+  ödenir. Tam depo 30/40/50 D, tam şarjör 15/22/30 D (Akıncı/Kılavuz/Muhafız). Bilerek pahalı:
+  "sabahtan akşama yalnız bu mod oynanmasın; ölmenin cezası olsun".
+- **Kalkış planı (sahip 2026-10-27, "kısmi dolum ekle"):** oyuncu hangarın Kalkış sekmesinde depoyu
+  %25/50/75/100, şarjörü %0/25/50/75/100 seçer; kalkış her parçayı yalnız o seviyeye tamamlar ve
+  yalnız o eksiği öder. Planın üstünde gemide kalan yakıt/mermi kalır, geri satılmaz. %0 cephane:
+  ateş edilemez, yalnız maden. Plan gemide saklanır (`arena_ships.fuel_plan/ammo_plan`, varsayılan
+  100/100); `POST /arena/loadout` yalnız bu adımları kabul eder (`LOADOUT`, `loadoutPlan`).
+- **Günlük tavan:** her kaynaktan günde en çok başkentin kendi 4 saatlik üretimi (UTC günü).
+  Tavanı aşan kısım yatmaz; sonuç ekranı bunu ayrıca söyler.
+- **Ölüm:** ambar enkaza düşer, 60 dk bedava tamir. Her uçuştan sonra 10 dk bakım.
+- **Kapanış/çökme (KG-A15):** kargo ambarda kalır, tamir ya da bakım işlemez.
+- **Sezon sonu (KG-A16):** bitişe 10 dk kala giriş kapanır. Dondurmadan sonra gelen kargo kaybolur.
+- **Saha karışımı:** döteryum daha seyrek ve derinde kalır; mevcut karışım korunur.
+- **Ekran:** hangar kartı durumu (hazır/tamirde/bakımda), bugün başkente gidebilecek miktarı ve
+  yenilenme saatini gösterir. Kurallar bir dokunuş derindedir. Doldurma bedeli ve başkentteki
+  döteryum, bedeli ödeyen düğmenin üstündedir. Uçuşta ambar göstergesi toplam/kapasitedir;
+  çubuğun renkleri kaynaklara böler.
+- **Bilinen sınır:** sunucu sert çökerse o uçuşta toplanan kargo kaybolur; ambar kalkıştaki
+  hâline döner.
+
+#### KG-X32
+Y6b: geminin seviyesi (2026-10-23, sahibin kararları). Rütbe, puan ve sınıf yakınlığı Y6c'de;
+ödemeli tamir Y6d'de.
+- **Seviye:** 1–20, sezonluk. Tavan min(20, Komuta Çekirdeği). Tavandaki gemi XP almaz;
+  Çekirdek büyüyünce gemi yeniden büyür.
+- **XP:** başkente çıkan 10 kaynak (hangi tür olursa) = 1 XP. Düşürülen pilot 40, son 10 sn'de
+  vuruşla yardım 15, her uçuş 10. Ölen ya da çekilen uçuş %40'ını tutar. Geri çağrılan uçuş
+  dövüşlerini tutar; ambarda kalan kargo, çıkarıldığı uçuşta XP olur. Deneme uçuşu XP vermez.
+  Botlar XP vermez (canlıda kapanacaklar).
+- **Dolu çubuk:** XP birikmez. Seviye "Yükselt" ile alınır: alaşım 150·sv + kristal 75·sv
+  (Yarık Özü gelene dek yalnız bunlar). Gemi havadayken yükseltilmez.
+- **Büyüme:** §3.2 oranları seviye 20'de, arada doğrusal. Hız yavaş büyür: en hızlı gemi
+  (Akıncı) 20'de 120 m/s. Dönüş, ateş temposu ve şarjör sınıfın kendisi kalır. Sınıf değişince
+  seviye ve XP korunur.
+
+#### KG-X33
+Hangar (2026-10-23, sahibin kararı): gemiyle ilgili bütün işler ana menüdeki **Komutan gemisi**
+sekmesinde yapılır.
+- Sekme, sahibin verdiği hangar modelinde (`assets/source/models/hangar/`) duran gemiyi gösterir.
+  Yatay sürükleme gemiyi pistte 360° çevirir, bırakınca ataletle yavaşlar. Boşta kendiliğinden
+  yavaşça döner. İki parmak yakınlaştırır. Dikey dokunuş sayfayı kaydırır. Kamera hangar
+  kapısının önünde kalır, duvara girmez.
+- Hangarda: ilk sınıf seçimi (seçmeden önce üç sınıf da hangarda görünür), 24 saatlik ücretsiz
+  değişiklik, seviye ve Yükselt, tamir/bakım sayacı, bugünkü başkent tavanı.
+- Sayfanın ayağındaki düğme o anın tek işidir: gemi yoksa "seç", varsa "Yarık'a gir". Uçamayan
+  gemi Yarık'ı antrenman için açık tutar ve nedenini söyler.
+- Görünüm Gözlemevi dilindedir (sahip: "Neon = Premium mu?"). Parlama yok; turkuaz yalnız seviye
+  çubuğu ve tek birincil düğmede. Bölümler ince çizgili başlıklarla ayrılır: Seviye, Bugün
+  başkente gidebilir, Sınıf, Değerler, Kurallar (bir dokunuşla açılır). Sınıf sekmeleri yalnız ilk
+  seçimde ve ücretsiz değişim süresince görünür. Gemi durumu sahnenin köşesindedir (Hazır ya da
+  Tamirde · süre). Hatalar kırmızı değil, düz notla söylenir.
+- Yarık'ın kendi ön ekranında yalnız taktik, solo/ortak alan ve kalkış kalır. Gerçek uçuştan
+  sonra "Hangara dön" bu sekmeye döner.
+- Maliyet: hangar 115 bin üçgen ve 1024 webp dokuyla tek çizim (ana kaynak 956 bin). Boşta
+  30 fps, el üstündeyken 60 fps. Işık şeritleri kendi renginden parlar; gölge ve motor ışıkları
+  sprite'tır.
+
+#### KG-X34
+Y6c (2026-10-24). Sahip: **"Radar kendi seviyesinde başlasın; her yetenek ayrı gelişsin."**
+- İmza, turbo ve dört taktik ayrı puan kaydı tutar. Bir taktiğe harcanan puan diğerine geçmez.
+- Seviye 1'de sıfır puan; sonraki her seviyede bir puan. Bir puan bir rütbe alır, üst sınır 5.
+  Sınıf yakınlığı (Akıncı–İllüzyon, Muhafız–Duman, Kılavuz–Radar) ücretsiz +1 rütbedir;
+  sınırı aşmaz, puan tüketmez. İlk 24 saatteki sınıf değişimi tüm harcanmış puanları iade eder.
+- Küçük adımların ilk uygulama ayarı (plan §4 önerisi): her ek rütbe imza gücünü %10,
+  taktik süresini %10 büyütür; beklemeyi %5 kısaltır. Turbo süresi %10 büyür, dolum süresi %5
+  kısalır; **hız artmaz**. İmzanın süresi, füze kilidi/hızı ve dumanın görüş kuralı değişmez.
+- Hangar her yeteneğin mevcut → sonraki etki ve süresini, rütbesini, kalan puanı gösterir.
+  Puan ve rütbe sunucuda kilitli işlemle yazılır; uçarken değiştirilmez.
+- Etkin üç rütbe kalkışta sabitlenir ve yalnız pilotun kendi satırında taşınır (protokol 13).
+  İstemci tahmini ve HUD sayaçları aynı değerleri okur. DB göçü: `0199_arena_ability_points`.
+- **Sahip kararı (24 Ekim, “Tamam olur”):** Öz şartı korunur. Öz sistemi gelene kadar
+  puanla en çok etkin rütbe 3 alınır; ücretsiz sınıf yakınlığı da bu sınıra dahildir.
+  Rütbe 4–5 kapalıdır. Sunucu fazladan puan harcatmaz, hangar kilidi ve nedenini gösterir.
+  Birikmiş puanlar diğer yeteneklere ayrılabilir veya saklanır.
+
+#### KG-X35
+Y6d (2026-10-24), 14 §7.4'teki ödemeli tamir uygulandı. Bedava 60 dakika korunur.
+- Bedel: alaşım `150 + 25·sv`, kristal `50 + 10·sv`. Ödemeden sonra bekleme:
+  `15 + round(15·(sv−1)/19)` dakika. Tamir anında bitmez; ayrıca bakım eklenmez.
+- Yalnız aktif tamir kısaltılır. Yeni bekleme kalan süreden kısa değilse ücret alınmaz.
+  Eşzamanlı ve tekrarlı ödeme aynı kilitli sayaçla reddedilir.
+- Hangar ücretsiz kalan süreyi, ödemeden sonraki beklemeyi ve bedeli birlikte gösterir.
+  `POST /arena/repair` süre/bedel kabul etmez; onları sunucu hesaplar. Yeni DB alanı yoktur.
+
+#### KG-X36
+Y7 (2026-10-24): klan takım lobisi, tek işlemde toplu kalkış, kalıcı ortak ganimet,
+klan dostluğu ve yaşayan takım arkadaşının kamerasından izleme uygulandı.
+- Sahip iki açık ayrıntıyı birlikte onayladı: bölünemeyen kaynaklar en yüksek değerli
+  ganimeti çıkarana; alınmayan pay 7 gün sonra otomatik başkente. Eşitlikte sabit oyuncu
+  kimliği sırası kullanılır. Günlük Yarık aktarım tavanı ve kişisel XP korunur.
+- Klan sayfası hazırlığa götürür; hazır olma/kalkış, oyun yüklendikten sonra açılır.
+  Liderin de kalkış kadrosunda bulunması gerekir. Kalkıştan sonra kadro ve taktik sabittir.
+- DB `0200_arena_teams`, protokol 14. Ayrılan/atılan üyenin başlamış maçtaki payı korunur.
+  Tek kişilik takım solo gibi işler. Ayrıntılar ve son kontroller: [20](20-y7-takim.md).

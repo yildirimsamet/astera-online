@@ -132,6 +132,8 @@ const supportBody = z.object({
   originPlanetId: z.string().uuid(),
   hostPlanetId: z.string().uuid(),
   fleet: mobileFleetSchema,
+  /** The commander ship stands with the wave (Y9). */
+  admiral: z.boolean().optional(),
 }).strict();
 const waveParam = z.object({ waveId: z.string().uuid() }).strict();
 const warContributionBody = z.object({

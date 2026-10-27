@@ -1,4 +1,4 @@
-import { CLASS_STATS } from './classes.js';
+import { statsOf } from './progression.js';
 import { assistSteer, leadPoint } from './aim.js';
 import { nearestObstacle, segmentObstacles, surfaceGap, type Contact } from './collision.js';
 import { sampleAssist } from './controls.js';
@@ -119,7 +119,7 @@ function engage(world: BotWorld, bot: Pilot, brain: BotBrain, target: Pilot, out
   assistSteer(magnet, bot, target.p, velocity, out.steerX, out.steerY, out.fire);
   sampleAssist(out, magnet.x, magnet.y);
   // Badly hurt and chased: smoke, turbo away and break the line of fire.
-  if (bot.hull < CLASS_STATS[bot.ship].hull * T.botFleeHull && world.tick - bot.lastDamage < T.tickRate * 2) {
+  if (bot.hull < statsOf(bot).hull * T.botFleeHull && world.tick - bot.lastDamage < T.tickRate * 2) {
     brain.mode = 'flee'; brain.timer = T.tickRate * 6;
   }
 }

@@ -1,15 +1,18 @@
-import { ARENA_TUNING as T, CLASS_STATS, dustAt, holdPoints, lockShare, locked as missileLocked, remainingFlightSeconds, type ArenaWorld, type Pilot } from '@astera/rules/arena';
+import { ARENA_TUNING as T, CLASS_STATS, abilityStats, alive, sameSide, flightRanks, dustAt, lockShare, locked as missileLocked, remainingFlightSeconds, shipTuning, type ArenaWorld, type Pilot } from '@astera/rules/arena';
 
 export interface HudSnapshot {
+  friends: readonly { id: number; x: number; z: number }[];
   clientPhase: 'preflight' | 'flight' | 'paused';
   phase: Pilot['phase'];
-  /** The class flown: every gauge reads against its own hull, tank, hold and magazine. */
-  ship: Pilot['ship'];
+  /** The class flown, and its level (Y6b): every gauge reads against its own hull, tank, hold and magazine. */
+  ship: Pilot['ship']; level: number;
+  ranks: Pilot['ranks'];
+  /** `remaining`: seconds the tank lasts at full throttle, a reading that only falls (F20: it followed the throttle and jumped). */
   hull: number; fuel: number; remaining: number; cargo: number; speed: number; throttle: number;
   /** Rounds left in the magazine; the shield layer's hit points and its maximum (0 without a shield). */
   ammo: number; shieldHp: number; shieldMax: number;
   /** Units aboard by farm kind, and what they would score at an exit. */
-  hold: readonly number[]; points: number;
+  hold: readonly number[];
   /** Farm kind of the deposit the ship sits on, or -1 off any deposit. */
   depositKind: number;
   turboCharge: number; turboActive: boolean; shield: number; cloak: number; cloakCooldown: number; smokeCooldown: number;
@@ -33,9 +36,11 @@ export interface HudSnapshot {
 }
 
 const initial: HudSnapshot = {
-  clientPhase: 'preflight', phase: 'flying', ship: 'kilavuz', hull: CLASS_STATS.kilavuz.hull, fuel: CLASS_STATS.kilavuz.fuelTank, remaining: 0, cargo: 0, speed: 0, throttle: 0,
+  friends: [],
+  clientPhase: 'preflight', phase: 'flying', ship: 'kilavuz', level: 1, hull: CLASS_STATS.kilavuz.hull, fuel: CLASS_STATS.kilavuz.fuelTank, remaining: 0, cargo: 0, speed: 0, throttle: 0,
+  ranks: flightRanks('kilavuz', 'smoke', {}),
   ammo: CLASS_STATS.kilavuz.ammoCapacity, shieldHp: 0, shieldMax: 0,
-  hold: [0, 0, 0], points: 0, depositKind: -1,
+  hold: [0, 0, 0], depositKind: -1,
   turboCharge: T.turboCharge, turboActive: false, shield: T.spawnShield, cloak: 0, cloakCooldown: 0, smokeCooldown: 0,
   tactic: 'smoke', signatureCooldown: 0, lockProgress: 0, lockReady: false, threat: 0, ward: 0, mend: 0,
   tacticCooldown: 0, decoy: -1, illusion: 0, scan: 0,
@@ -62,9 +67,10 @@ export function createHudStore() {
       });
       const planar = Math.sqrt(p.p.x * p.p.x + p.p.z * p.p.z);
       snapshot = Object.freeze({
-        clientPhase, phase: p.phase, ship: p.ship, hull: p.hull, fuel: p.fuel, ammo: p.ammo, shieldHp: p.shieldHp, shieldMax: p.shieldMax,
-        remaining: remainingFlightSeconds(p.fuel, p.throttle, p.turboActive), cargo: p.cargo, speed: p.s, throttle: p.throttle,
-        hold: [...p.hold], points: holdPoints(p.hold), depositKind: slot >= 0 ? world.layout.depositKinds[slot] ?? -1 : -1,
+        friends: world.drones.filter(d => d.decoyOf < 0 && alive(d) && sameSide(p, d)).map(d => ({ id: d.id, x: d.p.x, z: d.p.z })),
+        clientPhase, phase: p.phase, ship: p.ship, level: p.level, ranks: p.ranks, hull: p.hull, fuel: p.fuel, ammo: p.ammo, shieldHp: p.shieldHp, shieldMax: p.shieldMax,
+        remaining: remainingFlightSeconds(p.fuel, 1, false, shipTuning(p.ship, p.level)), cargo: p.cargo, speed: p.s, throttle: p.throttle,
+        hold: [...p.hold], depositKind: slot >= 0 ? world.layout.depositKinds[slot] ?? -1 : -1,
         turboCharge: p.turboCharge, turboActive: p.turboActive, shield: p.shield / T.tickRate, cloak: p.cloak / T.tickRate,
         cloakCooldown: p.cloakCooldown / T.tickRate, smokeCooldown: p.smokeCooldown / T.tickRate,
         tactic: p.tactic, signatureCooldown: p.signatureCooldown / T.tickRate,
@@ -72,7 +78,7 @@ export function createHudStore() {
         threat: p.threat, ward: p.ward / T.tickRate, mend: p.mend / T.tickRate,
         // The copy lives the first illusionDuration of the cooldown its cast started, unless it broke first.
         tacticCooldown: p.tacticCooldown / T.tickRate, decoy: p.decoy,
-        illusion: p.decoy >= 0 ? Math.max(0, p.tacticCooldown / T.tickRate - (T.illusionCooldown - T.illusionDuration)) : 0,
+        illusion: p.decoy >= 0 ? Math.max(0, p.tacticCooldown / T.tickRate - (abilityStats(p.ship, 'illusion', p.ranks.tactic).cooldown - abilityStats(p.ship, 'illusion', p.ranks.tactic).duration)) : 0,
         scan: p.scan / T.tickRate,
         landed: p.landed > 0, landedOn: surface?.kind ?? null, mining: p.mining,
         reserve: slot >= 0 ? world.minerals[slot] ?? 0 : 0, dry: slot >= 0 && world.dry[slot] === true,

@@ -34,6 +34,7 @@ import { dockNotice, landHpShips, type HpDockReport } from './shipDamage.js';
 import { publish, publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { monumentRouteSchema, scheduleFlightBoundary } from './monumentBoundaries.js';
+import { admiralHomeward, finishAdmiralLeg } from './admiral.js';
 
 type WaveRow = typeof monumentWaves.$inferSelect;
 const fleetOf = (lots: readonly MonumentShipLot[]): Fleet => {
@@ -98,6 +99,9 @@ export async function settleMonumentFlight(tx: Tx, locked: LockedMonument, waveI
     if (wave.status === 'OUTBOUND' && wave.purpose === 'REINFORCE') wave.reservedBulk = hangarLoad(fleetOf(result.lots));
     if (result.lots.length === 0) {
       const death = Math.max(...before.map((lot) => hpLethalAtMs(parsed.data, sources, lot) ?? toMs));
+      // The escort is never hit (Y9): outbound it turns home alone, homebound it flies on.
+      if (wave.status === 'OUTBOUND') await admiralHomeward(tx, 'monument', { id: wave.id, departAt: wave.sentAt, arriveAt: new Date(death) }, null, new Date(death));
+      else await finishAdmiralLeg(tx, wave.arriveAt ?? new Date(death), 'monument', wave.id, 0);
       wave.status = 'LOST';
       wave.resolvedAt = new Date(death);
       wave.reservedBulk = 0;
@@ -322,6 +326,7 @@ export async function resolveMonumentReturn(tx: Tx, input: { waveId: string; gen
   wave.reservedBulk = 0;
   wave.generation += 1;
   await saveWave(tx, wave);
+  await finishAdmiralLeg(tx, at, 'monument', wave.id, loss.lots.reduce((sum, lot) => sum + lot.count, 0));
   await recomputePlayerWealth(tx, wave.playerId, input.at);
   await notify(tx, { playerId: wave.playerId, kind: 'fleet_returned', refId: wave.id, at,
     payload: { trip: 'monument', targetKind: 'MONUMENT', monumentId: locked.monument.id, monumentOrdinal: locked.monument.ordinal,

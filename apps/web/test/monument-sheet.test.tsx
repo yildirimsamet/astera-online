@@ -33,14 +33,15 @@ const held = { id: waveId, monumentId: id, playerId: 'self', originPlanetId: 'ho
     deuterium: 300, lostDeuterium: 0, lots: [cargoLot] } };
 
 function show(view: unknown = catalog, quoteDelay = 0, locked = false, onClanTarget?: (monumentId: string) => void,
-  pricing: { send?: unknown; recall?: unknown; origin?: ReturnType<typeof planetView>; honorSoloCredit?: boolean } = {}) {
+  pricing: { send?: unknown; recall?: unknown; origin?: ReturnType<typeof planetView>; honorSoloCredit?: boolean; ship?: unknown } = {}) {
   const requests: { path: string; body: string; key: string | null }[] = [];
   const fetch: typeof globalThis.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const path = typeof url === 'string' ? url : url instanceof URL ? url.pathname : url.url;
     const body = typeof init?.body === 'string' ? init.body : '';
     if (init?.method === 'POST') requests.push({ path, body, key: new Headers(init.headers).get('idempotency-key') });
     if (path.endsWith('/quote') && quoteDelay > 0) await new Promise((resolve) => setTimeout(resolve, quoteDelay));
-    const result = path.endsWith('/recall/quote') ? pricing.recall ?? { fleet: { ARGOSY: 1 }, deuterium: 150, arriveAt: later, minutes: 60,
+    const result = path.endsWith('/api/commander-ship') ? pricing.ship ?? { capitalPlanetId: 'home', rulesetVersion: 18, ship: null }
+      : path.endsWith('/recall/quote') ? pricing.recall ?? { fleet: { ARGOSY: 1 }, deuterium: 150, arriveAt: later, minutes: 60,
       doseHp: 100, destroyed: 0, arrivalDeuterium: 150, lots: [{ ...cargoLot, count: 1, deuterium: 150, cargoCapacity: 300 }], arrivalLots: [] }
       : path.endsWith('/quote') ? pricing.send ?? quote
         : path.endsWith('/send') ? { wave: { id: waveId, monumentId: id, status: 'OUTBOUND' }, quote }
@@ -177,6 +178,20 @@ describe('monument decision surface, through the real client and cache', () => {
     await waitFor(() => { expect(requests.find(request => request.path.endsWith('/send'))?.body)
       .toContain('"CITADEL":1'); });
     expect(requests.find(request => request.path.endsWith('/send'))?.body).toContain('CITADEL');
+  });
+
+  it('offers the commander ship as an escort, prices the wave with it and sends it (Y9)', async () => {
+    const { requests } = show(catalog, 0, false, undefined, {
+      ship: { capitalPlanetId: '00000000-0000-4000-8000-000000000009', rulesetVersion: 19, ship: { class: 'akinci', level: 3, status: 'ready', readyAt: null } },
+      send: { ...quote, shieldWouldDrop: false, outboundForecast: { ...quote.outboundForecast, destroyed: 0 } } });
+    fireEvent.change(await screen.findByRole('textbox', { name: /citadel.*quantity/i }), { target: { value: '1' } });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('switch', { name: /commander ship escorts/i }));
+    expect(screen.getByText(/damage \+2%/i)).toBeVisible();
+    await waitFor(() => { expect(requests.filter(request => request.path.endsWith('/quote')).at(-1)?.body).toContain('"admiral":true'); });
+    await waitFor(() => expect(send()).toBeEnabled());
+    hold(send());
+    await waitFor(() => { expect(requests.find(request => request.path.endsWith('/send'))?.body).toContain('"admiral":true'); });
   });
 
   it('explains Easy tier access before selection and disables new dispatch for an ineligible commander', async () => {
